@@ -165,6 +165,19 @@
 // ROM's own clear, through the conductor's own comms_seat_session_request, so
 // the order on this port is the DS's: the ROM clears at boot, the menu seats
 // after it. The comment at the call site carries the full reading.
+//
+// AND WHERE "AFTER" ENDS: BELOW R2c, NOT BETWEEN R2b AND R2c. The re-seat
+// first sat right after func_0201fec8, which put the child role (2) in the
+// byte when R2c's func_02042f68 read it. src/func_02042f68.c:11-12 returns
+// before the card bring-up when func_0203da3c() reads 2 -- a Download Play
+// child has no cartridge -- so a joining console booted with no card thread
+// and its first file read never returned (the child stopped at "[pad] none",
+// 44 lines in; the parent seated alone). This port is always a console WITH
+// its cartridge, and on such a DS the card comes up at boot with the byte at
+// 0 and the menu seats the role long after. So the re-seat now runs once
+// R2c is done: R2c reads the 0 the ROM's own clear left, exactly as the
+// cartridge does, and every reader of the role below main's a054 call (the
+// conductor's open, its session wait, src/func_0203df40.c) still finds it.
 // ---------------------------------------------------------------------------
 
 #include <cstdio>
@@ -481,6 +494,11 @@ static int port_r2b_storage_layout(void)
 // run shows firing.
 void port_rom_a054_arms(void)
 {
+    /* The role R2b's ROM call cleared, carried to below R2c where it is
+       re-seated (THE ONE ORDERING REPAIR, in the R2b arm). 0 = nothing to
+       re-seat: a solo run, or an R2b that was skipped or refused. */
+    unsigned char r2b_reseat_role = 0;
+
     /* ARM R2a. func_02013e64() -- memset(data_0209caa0, 0, 0x32c). */
     if (port_r2a_saveblock_layout()) {
         std::fprintf(stderr, "  [rom-a054] R2a REFUSED: the save block is not "
@@ -578,24 +596,35 @@ void port_rom_a054_arms(void)
                    OWN FUNCTION -- so the wide-record clear and the
                    data_02099e1c one-shot it also seats stay consistent with
                    each other, which a hand-written byte restore would not.
-                   Nothing has read the byte in between: the conductor's own
-                   open and its session wait are both below this seam
+                   A solo run seats nothing and re-seats nothing.
+
+                   THE RE-SEAT ITSELF RUNS BELOW R2c, NOT HERE. The menu seats
+                   the role long after boot, and one reader sits between this
+                   call and the conductor: R2c's src/func_02042f68.c:11-12,
+                   which skips the card bring-up when the role reads 2 (a
+                   Download Play child has no cartridge). Seated here, a
+                   joining console booted with no card thread and hung on its
+                   first file read. So this arm only records what the ROM
+                   cleared; R2c then reads the 0 a console with its cartridge
+                   reads, and the re-seat after it puts the role back before
+                   anything else reads it: the conductor's own open and its
+                   session wait are both below this seam
                    (hal/comms_conductor.cpp, "holding the world seat until the
                    session joins", which the captured run prints after these
-                   lines). A solo run seats nothing and re-seats nothing. */
+                   lines). */
                 const unsigned char role_before = data_020a0f04[0];
 
                 func_0201fec8();
 
                 if (role_before != 0 && data_020a0f04[0] == 0) {
                     std::fprintf(stderr,
-                                 "  [rom-a054] R2b re-seating the session "
-                                 "request: src/func_0203db64.c:70 cleared "
-                                 "data_020a0f04 as it does on the cartridge, "
-                                 "and this port's menu stand-in had already run "
-                                 "(role %u). Re-applying it in the DS's own "
-                                 "order.\n", (unsigned)role_before);
-                    port::comms_seat_session_request((int)role_before);
+                                 "  [rom-a054] R2b src/func_0203db64.c:70 "
+                                 "cleared data_020a0f04 as it does on the "
+                                 "cartridge, over this port's menu stand-in "
+                                 "(role %u); it is re-seated after R2c's card "
+                                 "bring-up, in the DS's own order\n",
+                                 (unsigned)role_before);
+                    r2b_reseat_role = role_before;
                 }
 
                 std::fprintf(stderr,
@@ -726,6 +755,19 @@ void port_rom_a054_arms(void)
         if (row_before == row_after)
             std::fprintf(stderr, "  [rom-a054] R2c NOTE: the device pointer in "
                                  "data_020a8760 did not move across the call\n");
+    }
+
+    /* R2b's RE-SEAT, NOW THAT R2c HAS RUN. The menu stand-in goes back
+       through the conductor's own function (the reasons are in the R2b arm),
+       after the card bring-up read the byte as a console with its cartridge
+       does and before anything that reads the role for the session. The
+       byte is tested again rather than trusted: nothing between the two arms
+       writes it today, and if something ever does, its value stands. */
+    if (r2b_reseat_role != 0 && data_020a0f04[0] == 0) {
+        std::fprintf(stderr, "  [rom-a054] R2b re-seating the session request "
+                             "(role %u) after R2c's card bring-up\n",
+                     (unsigned)r2b_reseat_role);
+        port::comms_seat_session_request((int)r2b_reseat_role);
     }
 }
 
