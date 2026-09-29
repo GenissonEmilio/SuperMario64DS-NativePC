@@ -42,6 +42,21 @@ ROOM_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 # ------------------------------------------------------------------- plumbing
 
 
+def server_contract():
+    """(CONTRACT_MIN, CONTRACT_V) as app/server.py declares them.
+
+    Parsed from the source rather than imported, so reading two numbers never
+    runs the server module's import-time setup in this process.
+    """
+    found = {}
+    with open(SERVER, encoding="utf-8") as f:
+        for line in f:
+            for name in ("CONTRACT_MIN", "CONTRACT_V"):
+                if line.startswith(name + " = "):
+                    found[name] = int(line.split("=", 1)[1].split("#")[0])
+    return found.get("CONTRACT_MIN"), found.get("CONTRACT_V")
+
+
 def pick_port():
     """A base port derived from our own pid, then proven free by binding it."""
     base = 20000 + (os.getpid() * 7) % 20000
@@ -437,8 +452,13 @@ def selftest_dial(c):
     """
     print("\n-- the player-count dial (contract, and the refusal)")
     status, health = c.get("health")
+    # The range is read from the server source this client spawns, not typed
+    # here: a literal went stale the moment v4 landed and failed this line
+    # for a server that was answering correctly (MPSCOUT's 133/1).
+    want_min, want_v = server_contract()
     check("health names the contract range and the dial's ceiling",
-          health.get("contract_min") == 1 and health.get("contract_v") == 3
+          health.get("contract_min") == want_min
+          and health.get("contract_v") == want_v
           and "dial_max" in health, health)
     dial_max = health["dial_max"]
 
