@@ -15,8 +15,9 @@ access to the release zips every launcher downloads and runs.
 spawn it), and `failed` (any playing member aborts it back to lobby). NOTHING
 spawns a game until every playing seat has readied, and the seat count is frozen
 at `start` and forced into every launch plan as `SM64DS_VS_PLAYERS` -- the
-join-race guarantee. `result` arrives in stage C and answers `404 unknown_verb`
-today.
+join-race guarantee. Stage C added `result`. **Lobby 1.0 (contract v5)** adds
+the game build check, Luigi Infection and voice, the session digest, adventure
+rooms with a room-lifetime hub code, and the world pool: see CONTRACT v5 below.
 
 ---
 
@@ -29,6 +30,7 @@ today.
 | `docker-compose.yml` | the deploy unit, and every limit as an env knob |
 | `test_client.py` | over-the-wire `selftest`, `negatives` and `soak` |
 | `test_units.py` | the grammar, the caps, the lifecycle, the limiters, in process |
+| `test_security.py` | slow bodies, forged `X-Forwarded-For`, the world pool's bounds, over raw sockets |
 
 ---
 
@@ -49,12 +51,135 @@ python3 test_client.py selftest             # spawns a server, proves the wire
 python3 test_client.py negatives --out DIR  # writes one file per refusal
 python3 test_client.py dial                 # the dial, on the DEPLOYED knobs
 python3 test_client.py soak --seconds 60
+python3 test_security.py                    # spawns its own servers
 python3 test_client.py selftest --url https://tangos.dev/port/lobby
 ```
 
 ---
 
-## THE WIRE CONTRACT, v1 and v2
+## CONTRACT v5 (lobby 1.0): THE ONLY VERSION THIS SERVER SPEAKS
+
+Multiplayer 1.0 (run mp1, NETARCH1 design section 5). **`CONTRACT_MIN =
+CONTRACT_V = 5`.** Every request that says `"v":1..4` is `400 bad_version`,
+which launchers 0.3.x..0.5.x already show as "This launcher and the lobby
+server do not agree on the rules. Check for an update." The floor moved with
+the version because the game under it changed: a 1.0 match needs a relay v2
+seat, a server-minted Luigi seed and a session digest in every plan, and a
+pre-1.0 launcher would spawn a game that cannot pair with a 1.0 host. The
+older gates that kept a narrow v2 client out of a wide room are gone with the
+clients they guarded against; the history sections below still describe them.
+
+**The examples further down were written at v1/v2.** Since v5 every request
+says `"v":5`, and `create`/`join` also carry `game`. Everything else in them
+is unchanged.
+
+What v5 is, all of it:
+
+| where | what |
+|---|---|
+| `create`, `join`, `world` | `game` REQUIRED: the game build id, `^[0-9A-Za-z._-]{1,24}$`, compared byte for byte, never parsed. A room remembers its creator's build; a join from another build is **409 `game_mismatch`** ("someone in this room runs a different game version"), checked before `room_full` |
+| `create` | `session_type` `"vs"` (default) or `"adventure"`. `"party"` is not a 1.0 room: `400 bad_session_type` |
+| `params` (VS rooms) | optional `luigi` 0/1 (Luigi Infection, default 0) and `voice` 0/1 (the match allows proximity voice, default 1). Anything but the integer 0 or 1 is `400 bad_field`. On an adventure room `luigi`, `voice` or `match_players` is `400 bad_field`. Both ride the `view` and the `params` event |
+| `start` (VS) | mints `seed` (u32, system RNG) and freezes `luigi`/`voice`/`seed` with the rest of the match. A new seed every match. `start` on an adventure room is **409 `not_vs`** |
+| VS go plan | gains `relay_v` (2), `want_seat` (= `slot`), `luigi`, `seed`, `voice`, `digest` |
+| adventure rooms | a hub code minted once at create for the room's life; the plan arrives in the create/join answer and on every poll; no start/ready gate; the room outlives its creator |
+| `world`, `world_ping` | the always-on world pool (below) |
+| `/health` | `contract_min` 5, `contract_v` 5, plus `relay_v`, `worlds`, `world_seats`, `world_member_s` |
+
+**The VS plan, and what the launcher exports from it** (v5 keys marked):
+
+```json
+{"role":"child", "code":"M7KQ2PXR", "relay":"135.148.26.201:41234",
+ "session_type":"vs", "map":1, "players":4, "slot":2, "spawn_delay_ms":1500,
+ "playing":true, "names":"tango,opie,ace,nn", "match_players":4,
+ "colors":",,,", "relay_v":2, "want_seat":2, "luigi":1, "seed":3735928559,
+ "voice":1, "digest":909114140, "star_target":3}
+```
+
+| plan key | env |
+|---|---|
+| `luigi` | `SM64DS_VS_LUIGI_INFECTION` |
+| `seed` | `SM64DS_VS_LUIGI_SEED` (decimal u32) |
+| `voice` | `SM64DS_VOICE_ALLOWED` |
+| `digest` | `SM64DS_SESSION_DIGEST` (decimal u32) |
+| `relay_v`, `want_seat` | the relay HELLO the game sends (`want_seat` is the slot, so the relay's stamp and the game's slot agree) |
+
+**The session digest** is the number the game's ACCEPT check computes from its
+own environment (port/hal/comms_loopback.cpp, the NETCORE1 session check), so
+a console launched with a plan that disagrees with the host's leaves at the
+door (exit code 3) instead of desyncing. FNV-1a 32 (`h = 2166136261; h ^= b;
+h *= 16777619`) over the ASCII string
+
+```
+map|players|win|target|king|luigi|seed|netmode|wire
+```
+
+`win` is `time`/`stars`/`king`; `target` is the star target in stars mode,
+else 0; `king` the king target in king mode, else 0; `seed` the seed when
+`luigi` is 1, else 0; `netmode` is `lockstep` (the only online VS mode in 1.0);
+`wire` is 2 for four players or fewer, else 3. Decimal, no padding, no
+spaces. `"1|4|stars|3|0|1|3735928559|lockstep|2"` is `909114140`. Pinned in
+`test_units.py::test_session_digest`, and the selftest recomputes every plan's
+digest with an implementation of its own.
+
+**Adventure rooms.** `create` with `session_type:"adventure"` mints the room's
+hub code once (8 characters of the room alphabet, never the room code). The
+create and join answers carry the plan, and so does every poll:
+
+```json
+{"playing":true, "session_type":"adventure", "code":"Q4WXN8ZT",
+ "relay":"135.148.26.201:41234", "relay_v":2, "want_seat":255}
+```
+
+The launcher boots the TITLE with `SM64DS_ADVENTURE=1`, `SM64DS_COMMS_CODE`
+and `SM64DS_COMMS_RELAY`, and exports no `SM64DS_LEVEL` and no `SM64DS_VS_*`:
+each player plays their own save. `want_seat` 255 asks the relay for any free
+hub seat. Everybody in an adventure room is "playing" (there is no dial). When
+the host leaves, the host role (kick only) passes to the lowest seat still in,
+with a `host` event; the room stays open. An adventure room is exempt from
+`ROOM_IDLE_S` and closes only after `ADV_EMPTY_S` (600 s) with nobody in it.
+The heartbeat still applies, so a launcher keeps polling while its game runs.
+
+**World rooms.** Nobody creates a world; a launcher asks for one:
+
+```
+-> {"v":5, "nick":"tango", "game":"1.0.0"}               (+ color/shoes, + "skip":"<code>")
+<- 200 {"v":5, "code":"H3PRK7VA", "relay":"...", "relay_v":2, "want_seat":255,
+        "world_no":1, "token":"<32 hex>", "members":7}
+-> world_ping {"v":5, "code":"H3PRK7VA", "token":"<32 hex>"}   every 10 s while the game runs
+<- 200 {"v":5, "ok":true, "world_no":1, "members":7}
+```
+
+The pool is per game build. `world` answers the lowest-numbered world with
+fewer than `WORLD_SEATS` (16) members seen in the last `WORLD_MEMBER_S` (30 s),
+and opens the next number when all are full. `skip` names a world the relay
+just refused as full (the game exits with code 4 and the launcher asks again):
+that world is passed over. A member unheard for 30 s is forgotten, and its
+`world_ping` answers `403 not_a_member` (ask `world` again); a code the pool no
+longer has is `404 no_such_world`. A world with nobody in it for
+`WORLD_EMPTY_S` (600 s) is dropped and its number is reused. The nick and
+colours are grammar-checked and then dropped: a world holds a number, a hub
+code and `{token: last seen}`, nothing about a player. `world` is charged
+against the per-address join budget; `MAX_WORLDS` (64) bounds the whole pool
+across every build id (`503 full`); `RELAY_V=1` turns the pool off (`503
+world_off`: a world needs the relay's hub rules). The lobby never talks to the
+relay, so it cannot see the relay's own seat count; `skip` is the answer to
+that race.
+
+New knobs (all optional; the defaults are the design's numbers):
+
+| knob | default | what |
+|---|---|---|
+| `RELAY_V` | 2 | the relay protocol plans name; 1 if the relay v2 deploy is rolled back |
+| `ADV_EMPTY_S` | 600 | an empty adventure room closes after this |
+| `WORLD_SEATS` | 16 | members per world |
+| `WORLD_MEMBER_S` | 30 | a world member unheard this long is not counted |
+| `WORLD_EMPTY_S` | 600 | an empty world is dropped after this |
+| `MAX_WORLDS` | 64 | worlds in the pool, every build together |
+
+---
+
+## THE WIRE CONTRACT, v1 and v2 (history; v5 above is what runs)
 
 ### Rules that apply to every request
 
@@ -66,7 +191,7 @@ python3 test_client.py selftest --url https://tangos.dev/port/lobby
 | `Content-Length` | REQUIRED, and parsed **before any rejection** | missing -> 411 `length_required`, close |
 | request body | <= 4096 bytes | 413 `too_large`, connection closed (body not read) |
 | JSON shape | one object; no arrays at the top level | 400 `bad_shape` |
-| `v` | REQUIRED, integer, `1` or `2` (see below) | 400 `bad_version` |
+| `v` | REQUIRED, integer, `5` (the contract range `/health` reports) | 400 `bad_version` |
 | unknown top-level key | rejected | 400 `bad_field` |
 | missing required key | rejected | 400 `bad_field` |
 | wrong type for a key | rejected | 400, the field's own code |
@@ -192,7 +317,7 @@ it blocks on a condition variable, not on a socket read, and is capped by the
 
 | field | type | rule | reject code |
 |---|---|---|---|
-| `v` | int | `1..2` (the contract range `/health` reports) | `bad_version` |
+| `v` | int | `5..5` (the contract range `/health` reports) | `bad_version` |
 | `room` | string | exactly 6 chars from `ABCDEFGHJKMNPQRSTUVWXYZ23456789` | `bad_room` |
 | `token` | string | exactly 32 chars from `0-9a-f` | `bad_token` |
 | `nick` | string | 1..16 **bytes**, every byte `0x20..0x7E` **except `,`**, not all spaces, no leading/trailing space | `bad_nick` |
@@ -208,6 +333,11 @@ it blocks on a condition variable, not on a socket read, and is capped by the
 | `pre_ok` | bool | `true`/`false`; optional on `create` and `join` | `bad_field` |
 | `color` | string | **v2 only.** exactly 6 hex digits, either case in, stored lower case. The BODY colour, and the swatch beside the name in the roster | `bad_color` |
 | `shoes` | string | **v2 only.** the same grammar. Travels with `color`: both or neither | `bad_color` |
+| `game` | string | **v5, required on `create`/`join`/`world`.** 1..24 of `0-9A-Za-z._-`, compared byte for byte | `bad_game` |
+| `luigi` | int | **v5.** exactly `0` or `1`; optional on `params`, VS rooms only | `bad_field` |
+| `voice` | int | **v5.** exactly `0` or `1`; optional on `params`, VS rooms only | `bad_field` |
+| `code` | string | **v5** (`world_ping`). exactly 8 chars of the room alphabet | `bad_code` |
+| `skip` | string | **v5** (`world`, optional). the same grammar as `code` | `bad_code` |
 
 A string longer than its cap answers `too_long` rather than the field's own
 code, because the length check runs first and never lets an oversized field
@@ -236,11 +366,13 @@ never leaves the lobby and keeps its commas.
 | `POST /port/lobby/params` | **host only** | set map / win condition |
 | `POST /port/lobby/preflight` | a seated member | correct its OWN `pre_ok` in place |
 | `POST /port/lobby/color` | a seated member | set its OWN two colours (**v2**, lobby state only) |
-| `POST /port/lobby/start` | **host only** | arm a match (stage B) |
+| `POST /port/lobby/start` | **host only** | arm a match (stage B); VS rooms only (`409 not_vs`) |
 | `POST /port/lobby/ready` | a playing member | "my launcher can spawn this match" (stage B) |
 | `POST /port/lobby/failed` | a playing member | report a match that could not run (stage B) |
 | `POST /port/lobby/kick` | **host only** | remove a member |
-| `POST /port/lobby/leave` | a seated member | give up the seat (host: close the room) |
+| `POST /port/lobby/leave` | a seated member | give up the seat (VS host: close the room; adventure host: hand it on) |
+| `POST /port/lobby/world` | anyone | **v5.** a seat in the world pool: a hub plan and a token |
+| `POST /port/lobby/world_ping` | a world member | **v5.** "still here", every 10 s while the game runs |
 | `GET  /port/lobby/health` | anyone | liveness, counts, revision |
 
 Stage C adds `result`. Any other path under `/port/lobby/` is a 404 and one log
@@ -634,8 +766,9 @@ seat opened.
 
 ```
 GET /port/lobby/health
-<- 200 {"ok":true,"ts":"...","revision":"lobby-1","contract_min":1,"contract_v":2,
-        "dial_max":4,"rooms":3,"members":7,"waiters":5}
+<- 200 {"ok":true,"ts":"...","revision":"lobby-5","contract_min":5,"contract_v":5,
+        "dial_max":16,"relay_v":2,"rooms":3,"members":7,"worlds":2,
+        "world_seats":16,"world_member_s":30,"waiters":5}
 ```
 
 `rooms` visible from outside is the difference between a detectable outage and
@@ -713,6 +846,9 @@ three commas.
 | member stops polling | 45 s heartbeat timeout, treated as a leave with `why:"timeout"` | as above |
 | service restarts | **every room is gone.** State is in memory by design | every poll gets 404; the launcher says the room is gone and returns to the create/join screen |
 | room idle | 30 minutes with no event -> `closed`, `why:"idle"` | "This room timed out." |
+| adventure host leaves | the room stays; host (kick) passes to the lowest seat with a `host` event | nothing changes for anybody playing |
+| adventure room empty | closed `why:"idle"` after `ADV_EMPTY_S` (600 s) empty; never on `ROOM_IDLE_S` | a code shared yesterday is gone |
+| world member silent 30 s | forgotten; its `world_ping` is 403 `not_a_member` | the launcher asks `world` again |
 
 Rooms are ephemeral and that is the whole recovery story. There is no
 persistence, no database, no file on disk and nothing to restore. **If the
@@ -736,6 +872,9 @@ match keeps playing and does not notice.**
 | long-poll holders | 96 | server | `MAX_WAITERS` |
 | bad-sender ignore | 10 refusals in 10 s -> 10 s | per address | `BAD_LIMIT`, `BAD_WINDOW_S`, `BAD_IGNORE_S` |
 | read timeout | 20 s per connection | per connection | `HANDLER_TIMEOUT_S` |
+| world calls | charged as joins (60/min) | per address | `RATE_JOIN_PER_MIN` |
+| worlds | 64, every build together | server | `MAX_WORLDS` |
+| world seats | 16 | per world | `WORLD_SEATS` |
 
 Generosity is deliberate: two launchers on one desk and four players in one
 house share an address, and the owner will create dozens of rooms while
