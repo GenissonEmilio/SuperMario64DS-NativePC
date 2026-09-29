@@ -1355,6 +1355,24 @@ BODIES = {"vs": r_vs, "advsave": r_advsave, "vssave": r_vssave, "match": r_match
 # ---------------------------------------------------------------------------
 # THE LADDER
 # ---------------------------------------------------------------------------
+def release_lock(path):
+    """build_lock.release, made sure. Its os.remove swallows OSError, and on
+    Windows a delete fails while another waiter has the lockfile open to read
+    the holder; with several lanes queued that is common, and a silent failed
+    release left this ladder waiting on its own lock (and every lane behind
+    it). Retry until the file no longer names this process; refuse to go on
+    if it still does."""
+    end = time.time() + 30
+    while True:
+        build_lock.release(path)
+        pid = build_lock.holder(path)[0]
+        if pid != os.getpid():
+            return
+        if time.time() >= end:
+            raise Stop("could not release the ladder lock %s" % path)
+        time.sleep(0.1)
+
+
 def asset_root_for(a):
     """The consoles read build/assets/ (the NitroFS index, romdata) from their
     asset root, and it must be the one the exe was built against."""
@@ -1396,7 +1414,7 @@ class Ladder:
                                       timeout=self.a.lock_timeout)
             if not busy(self.busy_log):
                 return lock
-            build_lock.release(lock)
+            release_lock(lock)
 
     def run_rung(self, r, idx, feats, rerun=False):
         miss = feats.missing([x for x in r.needs if x != "kit"])
@@ -1420,7 +1438,7 @@ class Ladder:
                 if run.relay and run.relay_stats is None:
                     run.relay_stats = run.relay.stop()
         finally:
-            build_lock.release(lock)
+            release_lock(lock)
         shared_after = file_digest(self.shared_save)
         ck.ok(shared_before == shared_after, "the shared default save beside the exe untouched "
               "(%s -> %s)" % (shared_before, shared_after))
