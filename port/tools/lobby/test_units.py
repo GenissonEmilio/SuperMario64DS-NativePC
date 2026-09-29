@@ -2946,6 +2946,100 @@ def test_name_and_colour_shapes_move_together():
 
 
 
+# ------------------------------------------ run mp1 L-J1: join at the next match
+#
+# Tango's rule (09-29): a VS joiner waits in the room while a match runs and is
+# in from the next match; nobody is moved into or out of a running match's
+# roster; the host leaving ends a running match for everybody and the room
+# carries on with a new host; one player's result does not end the match for
+# the room.
+
+
+def _running(n=3, now=1000.0, state="in_match"):
+    """A room of n playing seats (host = seat 1), taken to `state`."""
+    st, h = S.do_create({"v": 5, "game": GAME, "nick": "h", "pre_ok": True},
+                        "10.0.0.1", now)
+    code = h["room"]
+    toks = [h["token"]]
+    for k in range(2, n + 1):
+        st, out = S.do_join({"v": 5, "game": GAME, "room": code,
+                             "nick": "g%d" % k, "pre_ok": True},
+                            "10.0.0.%d" % k, now)
+        toks.append(out["token"])
+    room = S.ROOMS[code]
+    if n > 2:
+        S.do_params({"v": 5, "room": code, "token": toks[0], "map": 0,
+                     "win_mode": "time", "match_players": n}, "10.0.0.1", now)
+    st, p = start(code, toks[0], now=now)
+    match = p["match"]
+    if state in ("go", "in_match"):
+        for i, tok in enumerate(toks):
+            ready(code, tok, match, who="10.0.0.%d" % (i + 1), now=now)
+    if state == "in_match":
+        S.sweep(now + S.GO_GRACE_S + 0.1)
+    return code, room, toks, match
+
+
+def _result(code, tok, match, scores=(1, 0, 0, 0), win="time-up",
+            who="10.0.0.1", now=1100.0):
+    return S.do_result({"v": 5, "room": code, "token": tok, "match": match,
+                        "win": win, "scores": list(scores)}, who, now)
+
+
+def test_a_dropped_player_plays_the_next_match():
+    print("\n-- L-J1: a player dropped from a match is back in for the next one")
+    reset()
+    with game_max(4, seats=4):
+        code, room, toks, match = _running(3)
+        check("three players are in a running match",
+              room.state == "in_match" and room.playing_count() == 3,
+              (room.state, room.playing_count()))
+        st, f = S.do_failed({"v": 5, "room": code, "token": toks[1],
+                             "match": match, "reason": "user_cancelled"},
+                            "10.0.0.2", 1010.0)
+        check("a guest's failed drops that seat and the match runs on",
+              st == 200 and room.members[2].playing is False
+              and room.state == "in_match", (st, room.state))
+        _result(code, toks[0], match, scores=(2, 0, 1, 0))
+        check("the result returns the room to lobby", room.state == "lobby",
+              room.state)
+        check("the dropped seat is PLAYING again for the next match (G7)",
+              room.members[2].playing is True, room.members[2].playing)
+        check("and the other two were not moved",
+              room.members[1].playing and room.members[3].playing)
+        st, p = start(code, toks[0], now=1200.0)
+        check("the rematch freezes all three again",
+              st == 200 and sorted(room.slot_of) == [1, 2, 3], room.slot_of)
+
+    # A failed that ends the match (the last guest out of a 2P match) goes back
+    # through the same reset, so that guest is back in too.
+    reset()
+    code, room, toks, match = _running(2)
+    S.do_failed({"v": 5, "room": code, "token": toks[1], "match": match,
+                 "reason": "no_pairing"}, "10.0.0.2", 1010.0)
+    check("a 2P match that drops below two ends",
+          room.state == "lobby" and room.events[-1]["kind"] == "failed",
+          room.state)
+    check("and the guest who failed is playing again in the lobby",
+          room.members[2].playing is True)
+
+    # The dial still rules: a room dialled below its head count keeps its
+    # extra members watching through a match end.
+    reset()
+    st, h = create(nick="h", pre_ok=True)
+    code = h["room"]
+    join(code, "g2", who="10.0.0.2", pre_ok=True)
+    st, w = join(code, "w3", who="10.0.0.3", pre_ok=True)
+    room = S.ROOMS[code]
+    st, p = start(code, h["token"])
+    ready(code, h["token"], p["match"])
+    ready(code, room.members[2].token, p["match"], who="10.0.0.2")
+    _result(code, h["token"], p["match"])
+    check("a watcher past the dial (2) is still watching after the match",
+          room.members[3].playing is False and room.playing_count() == 2,
+          room.playing_count())
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -2997,6 +3091,7 @@ def main():
     test_rate_buckets()
     test_server_caps()
     test_opacity()
+    test_a_dropped_player_plays_the_next_match()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

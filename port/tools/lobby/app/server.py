@@ -2083,7 +2083,18 @@ def member_plan(room, seat):
 
 def _reset_match(room):
     """Back to a clean lobby: clear the frozen match state and every armed
-    flag. Does NOT push an event; the caller pushes result/failed."""
+    flag, then seat the next match. Does NOT push an event; the caller pushes
+    result/failed.
+
+    THE DIAL RUNS HERE (run mp1, L-J1). A seat that sat a match out -- a
+    player dropped by its own `failed`, or anybody who joined while the match
+    ran -- is `playing = False` for that match's life, because nothing may be
+    promoted into a frozen roster. The match ending is the moment that stops
+    being true, so the roster is brought back up to the host's dial exactly as
+    a vacancy in the lobby would bring it up: lowest seats first, nobody who
+    is already playing moved. A room whose dial is below its head count keeps
+    its extra members watching, as it always did. The view every poll carries
+    shows the new roster; no event kind is added for it."""
     room.state = "lobby"
     room.match = None
     room.comms_code = None
@@ -2102,6 +2113,7 @@ def _reset_match(room):
     room.match_start = None
     for m in room.members.values():
         m.armed = False
+    room.apply_dial()
 
 
 def match_to_lobby(room, reason):
