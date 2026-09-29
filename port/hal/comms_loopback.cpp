@@ -1240,6 +1240,7 @@ unsigned long long g_lg_help_holds = 0;      // host: exchange() calls held by i
 unsigned long long g_lg_help_rounds = 0;     // host: rounds closed while helping
 unsigned long long g_lg_reserve_held = 0;    // host: re-serves held by the pacing
 bool     g_lg_sprinted = false;              // joiner: the last frame skipped its sleep
+unsigned g_lg_late_tx_ms = 0;                // joiner: when its last late block went out
 unsigned g_cache_serve_ms[kCacheDepth];      // stop-and-wait re-serve pacing, per cache slot
 unsigned lg_wait_window_ms() {
     if (g_lg_wait_cfg >= 0) return (unsigned)g_lg_wait_cfg;
@@ -1296,6 +1297,7 @@ void lg_reset() {
     g_lg_help_rounds = 0;
     g_lg_reserve_held = 0;
     g_lg_sprinted   = false;
+    g_lg_late_tx_ms = 0;
     std::memset(g_cache_serve_ms, 0, sizeof g_cache_serve_ms);
     g_hitch_last_ms = 0;
     g_seat_mask_said = ~0u;
@@ -5247,13 +5249,23 @@ int lb_exchange(const void *my_block, uint16_t *status) {
                 // it a console catching up sends nothing at all, which the host
                 // cannot tell from a console that died (it retired such
                 // catchers as silent: final1 laggard4-hitch p3).
+                // At most one per room period: a catcher replays closed rounds
+                // at its full speed (see port_comms_rounds_ahead), and one late
+                // block per replayed round would run it past the relay's cap
+                // for one seat; one per round of the room's own pace proves it
+                // alive and keeps its substitute fresh just as well.
                 mine.lg_late_sent = true;
-                Packet b;
-                fill_header(b, kTypeBlocks);
-                b.round = g_round;
-                b.have  = (1u << g_slot) | kBlocksLateBit;   // no re-serve wanted
-                std::memcpy(b.blocks[g_slot], my_block, kCommsBlockBytes);
-                send_to_slot(b, 0);
+                const unsigned t = now_ms();
+                if (g_lg_late_tx_ms == 0 ||
+                    (unsigned)(t - g_lg_late_tx_ms) * 100u >= (unsigned)kRoundPeriodMs100) {
+                    g_lg_late_tx_ms = t ? t : 1;
+                    Packet b;
+                    fill_header(b, kTypeBlocks);
+                    b.round = g_round;
+                    b.have  = (1u << g_slot) | kBlocksLateBit;   // no re-serve wanted
+                    std::memcpy(b.blocks[g_slot], my_block, kCommsBlockBytes);
+                    send_to_slot(b, 0);
+                }
             }
             if (first_publish && !closed) {
                 Packet b;
@@ -5802,12 +5814,27 @@ extern "C" int port_comms_rounds_ahead(void) {
     if (natural < 0) natural = 0;
     n -= natural;
     if (n < 0) n = 0;
-    // AT MOST EVERY OTHER FRAME. A sprinting console publishes one block per
-    // frame, and at its unpaced speed that is well past the relay's lockstep
-    // cap for one seat (75 a second on relay v2, 120 for everything on v1), so
-    // an unbroken sprint would lose its own catch-up blocks at the relay. One
-    // skipped sleep in two is about 60 frames a second: twice the room's pace,
-    // under the cap.
+    // AT MOST EVERY OTHER FRAME while this console's own round is still open.
+    // Then a sprinting console publishes one real block per frame, and at its
+    // unpaced speed that is well past the relay's lockstep cap for one seat (75
+    // a second on relay v2, 120 for everything on v1), so an unbroken sprint
+    // would lose its own blocks at the relay. One skipped sleep in two is about
+    // 60 frames a second: twice the room's pace, under the cap.
+    // FLAT OUT while the round it plays is already CLOSED (the room has moved
+    // past it): what it sends then is the late block, one per room period at
+    // most (lb_exchange), so its speed costs nothing at the relay. Halving that
+    // sprint too kept a joiner 90 rounds behind after a 0.4 s hitch on a busy
+    // PC (tip14 laggard4-hitch: 547 substituted rounds for 6 hitches), past the
+    // host's help threshold on every hitch, and the help's stretch is felt by
+    // every other console; the full sprint closed it in about 48 (tip4/tip6,
+    // before the halving: 333 for 7, the others at their baseline).
+    const PipeRound *cur = pipe_find(g_round);
+    const bool replaying = cur && cur->agg;
+    if (n > kCatchupAhead && replaying) {
+        g_lg_sprinted = true;
+        ++g_lg_catchup;
+        return n;
+    }
     if (n > kCatchupAhead) {
         if (g_lg_sprinted) {
             g_lg_sprinted = false;
