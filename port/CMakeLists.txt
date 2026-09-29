@@ -11567,6 +11567,10 @@ list(APPEND SLICE_COMMS_SOURCES hal/comms_conductor.cpp)
 # only -- nothing in src/ knows it exists -- and OFF unless SM64DS_SYNC=1,
 # so linking it changes no behaviour. See runs/mg16/status/MP4-DESIGN.md.
 list(APPEND SLICE_COMMS_SOURCES hal/comms_sync.cpp)
+# Run mp1 lane HUB1: the adventure hub carrier. Port-side only and INERT
+# unless SM64DS_ADVENTURE is on AND a relay or SM64DS_HUB_PORT is named, so
+# linking it changes no behaviour; see hal/comms_hub.h.
+list(APPEND SLICE_COMMS_SOURCES hal/comms_hub.cpp)
 # Lane VOICE: proximity voice chat. Port-side only -- nothing in src/ knows it
 # exists -- and INERT unless settings.json turns VoiceEnabled on, which is off
 # by default, so linking it opens no device and changes no behaviour. It rides
