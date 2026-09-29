@@ -135,8 +135,12 @@ struct SyncCfg {
                       // can A/B item 2 by avg_err/snaps
 };
 
+// ONE ROM FRAME IS 33.3 ms ON THIS BASE (design.txt F1): the game loop runs
+// 30 frames a second, not the 60 the first cut of this file assumed.
+enum : int { kGameHz = 30 };
+
 SyncCfg g_cfg;
-int      g_send_every = 2;    // frames between sends, from SM64DS_SYNC_HZ
+int      g_send_every = 1;    // frames between sends, from SM64DS_SYNC_HZ
 unsigned g_frame = 0;         // this console's own tick of the sync clock
 bool g_parsed = false;
 bool g_enabled = false;        // the layer actually running
@@ -198,8 +202,12 @@ void parse_cfg() {
     if (g_cfg.hz > 60) g_cfg.hz = 60;
     if (g_cfg.lerp_pct < 1) g_cfg.lerp_pct = 1;
     if (g_cfg.lerp_pct > 100) g_cfg.lerp_pct = 100;
-    /* frames between sends at a 60 Hz frame loop; 30 Hz is every other frame */
-    g_send_every = 60 / g_cfg.hz;
+    /* Frames between sends. THE GAME RUNS 30 FRAMES A SECOND ON THIS BASE, not
+       60 (design.txt F1/F2: data_0208ee44 = 2, one ROM frame per round, 900
+       frames in 30.3 s). This line used to divide 60 by the rate, so the
+       default "30 Hz" sent every 2nd frame -- 15 Hz -- and every rate knob
+       read half of what it said. */
+    g_send_every = kGameHz / g_cfg.hz;
     if (g_send_every < 1) g_send_every = 1;
 }
 
