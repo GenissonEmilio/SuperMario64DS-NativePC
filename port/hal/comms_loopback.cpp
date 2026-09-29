@@ -4383,7 +4383,19 @@ void service() {
             // whole in-flight window on every tick would turn one lost
             // datagram into a burst exactly when the path is already unhappy.
             g_last_publish_ms = t;
-            for (unsigned q = g_pipe_low; (int)(q - rb_live_round()) < 0; ++q) {
+            // THE ROUND THIS CONSOLE IS WAITING ON IS IN RANGE TOO (RELAY2's
+            // SUSPECT X). At the first frame that is round 0 == g_round, which
+            // the bound left out, so a lost round-0 aggregate was never asked
+            // for again: every joiner sat at round 0, the host starved on
+            // every slot, and the game's wait bound ended the match (16P
+            // through the relay, whenever the host's join burst brushed its
+            // cap). Every later round is already covered: frame R waits on
+            // round R - N, inside [g_pipe_low, g_round). The republish is
+            // paced here, and the host re-serves a round at most once per
+            // republish interval (the laggard rule's pacing).
+            unsigned end = rb_live_round();
+            if (!g_rollback && g_round == 0) end = 1;
+            for (unsigned q = g_pipe_low; (int)(q - end) < 0; ++q) {
                 PipeRound *s = pipe_find(q);
                 if (!s || (s->mask & (1u << g_slot)) == 0) continue;
                 Packet b;
