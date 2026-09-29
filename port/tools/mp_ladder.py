@@ -1531,9 +1531,11 @@ def main(argv=None):
     print("out %s, %d rungs, tier %s, ports from pid %d" % (L.out, len(rungs), a.tier, PID), flush=True)
     rerun = []
     stopped = ""
-    for idx, r in enumerate(rungs):
+    idx, aborts = 0, 0
+    while idx < len(rungs):
+        r = rungs[idx]
         try:
-            v, wall, detail, rcs = L.run_rung(r, idx, feats)
+            v, wall, detail, rcs = L.run_rung(r, idx + 100 * aborts, feats)
         except (Stop, build_lock.BuildLockTimeout) as s:
             stopped = str(s)
             print("STOPPED at %s: %s" % (r.name, stopped), flush=True)
@@ -1541,13 +1543,14 @@ def main(argv=None):
                 L.record_notrun(rest, feats, stopped)
             break
         L.record(r, v, wall, detail, rcs)
-        if v == "ABORTED":
-            stopped = detail
-            for rest in rungs[idx + 1:]:
-                L.record_notrun(rest, feats, stopped)
-            break
+        if v == "ABORTED" and aborts < 3:
+            # the busy flag came up mid-rung: the rung is run again once it
+            # clears (run_rung waits for that, bounded by --busy-wait)
+            aborts += 1
+            continue
         if v == "TIMEOUT":
             rerun.append((idx, r))
+        idx, aborts = idx + 1, 0
     if rerun and not stopped and not a.no_rerun:
         print("re-running %d TIMEOUT row(s) alone" % len(rerun), flush=True)
         for idx, r in rerun:
