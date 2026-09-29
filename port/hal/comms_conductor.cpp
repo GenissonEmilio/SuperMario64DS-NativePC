@@ -83,6 +83,8 @@
 // ===========================================================================
 
 #include "comms_seam.h"
+#include "comms_hub.h"         // run mp1 lane GHOSTWIRE1: the adventure hub's
+                               // ghost bodies (vs_player_count)
 #include "player_fields.h"   // run mg16 lane MP4: state_id for the VS probe
 #include "host_settings.h"   // adventure_ghost_mode(): fan-out stands down so an
                              // adventure console runs its own solo game
@@ -1014,6 +1016,18 @@ int vs_player_count() {
                      "[comms:conductor] SM64DS_VS_PLAYERS=%s out of range "
                      "1..%d; ignored\n", s, (int)kCommsMaxPlayers);
     }
+    /* run mp1 lane GHOSTWIRE1: AN ADVENTURE CONSOLE ON THE HUB seats FOUR
+       bodies -- its own player and three ghost bodies, which
+       hal/comms_sync.cpp hands to the three nearest players in the room each
+       frame (everyone else in the room stays on the wire: names, chat, voice).
+       There is no DS transport on the hub, so without this the answer was 1
+       and no ghost could ever be drawn. FOUR AND NO MORE, measured: two hub
+       consoles taking the Bob-omb Battlefield star and saving keep the star
+       and the save at 2 and 4 bodies and lose both at 8 and 16 (the star arms
+       and the course never ends). The hub is installed only for an adventure
+       console with a relay or test mesh, so VS and solo never reach this. */
+    enum : int { kHubBodies = 4 };
+    if (comms_hub_active()) return kHubBodies;
     const CommsTransport *t = comms_transport();
     if (!t) return 1;                       // solo: unchanged, and that is load-bearing
     const int n = t->player_count();
