@@ -165,6 +165,14 @@ extern "C" void func_02040724(void);   /* the seam's close() face */
 
 extern "C" int host_setting_net_mode(void);   /* hal/host_settings.cpp */
 
+/* the build's git tip (host-src/port_gittip.c, written by CMake), hashed into
+   the session check's build id. The weak fallback is tests/fault_probe.h's own,
+   spelled identically, so a target without the generated file (smoke_player)
+   still links and the two directives agree. */
+extern "C" const char port_build_gittip[];
+extern "C" __declspec(selectany) const char port_fault_no_gittip[] = "unknown";
+#pragma comment(linker, "/alternatename:_port_build_gittip=_port_fault_no_gittip")
+
 namespace port {
 namespace {
 
@@ -735,7 +743,8 @@ enum : int { kPipeDepth = 64 };        // rounds in flight; ~2 s at 30 Hz
 // this lane was given carry handshake round trips of 94..172 ms -- so the old
 // ceiling could not cover the worst path the relay actually sees, and a
 // session on that path starves on most frames no matter what anyone sets. 15
-// covers 250 ms.
+// was written as 250 ms; the rounds are 33.33 ms (30 Hz, see
+// kRoundPeriodMs100), so it is honestly 500 ms, and it stays the cap.
 //
 // NOTHING SIZED BY IT NEEDS TO GROW. The ring is kPipeDepth=64 rounds and the
 // only requirement on it is that a round stays in the ring for the whole time
@@ -748,12 +757,16 @@ static_assert(kInputDelayMax + 1 < kPipeDepth,
               "the pipeline ring must hold every round in flight: frame R "
               "reads round R-N while round R is open, so N+1 entries are "
               "live at once and the ring has to be strictly larger");
-// THE ROUND PERIOD, in hundredths of a millisecond. The seam's rounds are
-// paced at 60 Hz, which is what makes the shipped relay default of 5 frames
-// the 83 ms it was measured to be worth (p50 lockstep round trip 90.6 ms).
-// The 33 ms in the pipelining banner above is the older 30 fps framing and is
-// left standing because the argument it makes does not depend on the number.
-enum : int { kRoundPeriodMs100 = 1667 };
+// THE ROUND PERIOD, in hundredths of a millisecond. ONE ROUND IS ONE ROM GAME
+// FRAME, AND THE ROM'S VS LOOP RUNS AT 30 Hz (divider data_0208ee44 = 2; a
+// paced solo VS run plays 900 frames in 30.3 s), so a round is 33.33 ms.
+// This was 1667 (60 Hz) until multiplayer 1.0, and every depth the adaptive
+// sizing picked was about twice what the path needed: a measured 100 ms path
+// sized to 9 rounds = 300 ms of input delay where 5 = 167 ms covers it with
+// the same 25 percent safety and one round of margin. The 16.67 ms and 83 ms
+// figures in older comments below are that 60 Hz arithmetic; the argument
+// each makes does not depend on the number, the depths it produced did.
+enum : int { kRoundPeriodMs100 = 3333 };
 struct PipeRound {
     unsigned      round;
     unsigned char blocks[kCommsMaxPlayers][kCommsBlockBytes];
@@ -777,8 +790,9 @@ PipeRound g_pipe[kPipeDepth];
 
 // ===========================================================================
 // ROLLBACK NETCODE (port/rollback). OPT-IN since the 0.3.6 hotfix of
-// 2026-09-03: g_rollback is false (lockstep) unless settings.json says NetMode
-// "rollback" or SM64DS_NETMODE=rollback, and even then only when the seated
+// 2026-09-03: g_rollback is false (lockstep) unless SM64DS_NETMODE=rollback
+// (since multiplayer 1.0 the settings.json NetMode key is not read for online
+// sessions; see the NetMode block at install), and even then only when the seated
 // session is no wider than kRollbackMaxPlayers (the width it is proven to;
 // the install block says so on one line). Rollback re-simulates the world on
 // every frame a remote peer moves, which is why it lost the default.
@@ -963,13 +977,16 @@ enum : unsigned { kStarveLogMs = 1000 };
 // trip it measured across its own handshake; the parent takes the WORST of
 // them, because one number has to cover every peer, and turns it into frames:
 //
-//     N = ceil(worst_rtt_ms * safety / 16.67) + jitter_margin
+//     N = ceil(worst_rtt_ms * safety / round_period) + jitter_margin
 //
-// clamped to [floor, kInputDelayMax]. safety (125 percent) is headroom for a
-// path that is worse under load than it was at handshake; jitter_margin (1
-// frame) is for the variance a single handshake sample cannot see; the floor
-// (5) keeps a session that measured suspiciously well from shipping less cover
-// than the constant it replaced.
+// clamped to [floor, kInputDelayMax], round_period = kRoundPeriodMs100 (33.33
+// ms). safety (125 percent) is headroom for a path that is worse under load
+// than it was at handshake; jitter_margin (1 frame) is for the variance a
+// single handshake sample cannot see; the floor keeps a session that measured
+// suspiciously well from shipping no cover at all: 2 rounds (67 ms) on a
+// relay, 1 (33 ms) direct. Worked (multiplayer 1.0): 40 ms -> 3, 80 ms -> 5,
+// 160 ms -> 8, 250 ms -> 11. The floor was 5 until 1.0, which at 30 Hz is
+// 167 ms charged to players sitting next to the relay.
 //
 // EVERY PEER STILL RUNS THE SAME NUMBER. That invariant is not weakened here
 // and could not be: it is published through the ACCEPT field exactly as
@@ -1002,11 +1019,13 @@ enum : unsigned { kStarveLogMs = 1000 };
 bool g_adaptive_delay  = false;         // sizing is in effect on this end
 bool g_delay_frozen    = false;         // parent: frame 0 has been asked for
 bool g_frames_produced = false;         // this end handed the game a round
-// THE THREE TERMS OF THE FORMULA, NAMED. The floor is the mode default every
-// shipped build already runs on a relay; the margin is one frame of jitter
-// cover on top of the measured path; the safety is the 125 percent the field
-// numbers were worked against (94 ms -> 9, 172 ms -> 14 in the banner).
-enum : int { kDelayFloorDefault = 5 };       // frames
+// THE THREE TERMS OF THE FORMULA, NAMED. The floor is the least cover a sized
+// session ships: 2 rounds on a relay (every path through it has two home links
+// on it), 1 direct (the direct mode default below); install picks the one for
+// the mode. The margin is one frame of jitter cover on top of the measured
+// path; the safety is the 125 percent the field numbers were worked against.
+enum : int { kDelayFloorDefault = 2 };       // frames, relay
+enum : int { kDelayFloorDirect  = 1 };       // frames, direct
 enum : int { kDelayMarginDefault = 1 };      // frames
 enum : int { kDelaySafetyPctDefault = 125 }; // percent of the worst round trip
 int  g_delay_floor       = kDelayFloorDefault;      // SM64DS_COMMS_DELAY_FLOOR
@@ -1479,6 +1498,157 @@ void fill_header(Packet &p, unsigned char type) {
     p.round   = g_round;
 }
 
+// ===========================================================================
+// THE SESSION CHECK (multiplayer 1.0, NETARCH1 design 2.3).
+//
+// Lockstep only stays in step if every console runs the same build with the
+// same match settings; a child whose map, width, win rule, Luigi Infection
+// seed or net mode differs from the host's plays a different match from frame
+// 0 and nobody is told. So the parent stamps blocks[0] of every ACCEPT it
+// sends (the unicast one and the roster broadcast; blocks of an ACCEPT were
+// never read by any build, so an older child ignores the bytes):
+//
+//     +0 'S','D','1','0'   +4 build id u32 LE   +8 settings digest u32 LE
+//
+// build id = FNV-1a 32 over port_build_gittip. digest = FNV-1a 32 over the
+// canonical ASCII string, every number decimal, no spaces:
+//
+//     map|players|win|target|king|luigi|seed|netmode|wire
+//
+//   map      SM64DS_VS_MAP as atoi, -1 when absent
+//   players  SM64DS_VS_PLAYERS as this carrier took it (1..16, else 0)
+//   win      "king" if king > 0, else "stars" if target > 0, else "time"
+//   target   SM64DS_VS_STAR_TARGET as atoi, 0 when absent or negative
+//   king     SM64DS_VS_KING_TARGET as atoi, 0 when absent or negative
+//   luigi    0 when SM64DS_VS_LUIGI_INFECTION is absent, "" or "0", else 1
+//   seed     SM64DS_VS_LUIGI_SEED as strtoul base 10 when luigi is 1, else 0
+//   netmode  "lockstep" or "rollback", what this end runs after install
+//   wire     the MP2L version the session speaks: 2 (<= 4 players) or 3
+//
+// e.g. a 4-player stars match on map 0, target 1, Luigi off:
+//     "0|4|stars|1|0|0|0|lockstep|2"
+// The lobby computes the same string from the plan it hands out (lobby v5's
+// "digest"), so SM64DS_SESSION_DIGEST, when present, is compared too and a
+// disagreement is logged (not enforced: the ACCEPT compare is the gate).
+//
+// A 1.0 CHILD compares the stamp with its own at its first ACCEPT. On a
+// missing stamp (an older host), another build, or another digest it sends
+// BYE and exits with code 3, which the launcher reports as a session
+// mismatch; the host drops the slot on the BYE and plays on. Only the child
+// checks: the host is the authority, and a refused child is the one that
+// has to leave. SM64DS_SESSION_CHECK=0 logs a mismatch without leaving (a
+// test knob), and SM64DS_COMMS_LEGACY_PEER skips it (an old build never
+// looked).
+// ===========================================================================
+const unsigned char kSessionTag[4] = { 'S', 'D', '1', '0' };
+
+unsigned fnv1a32(const char *s) {
+    unsigned h = 2166136261u;
+    for (; *s; ++s) { h ^= (unsigned char)*s; h *= 16777619u; }
+    return h;
+}
+
+int env_atoi_or(const char *name, int absent) {
+    const char *e = std::getenv(name);
+    return e ? std::atoi(e) : absent;
+}
+
+// The canonical string, written into buf; returns its FNV-1a digest.
+unsigned session_digest(char *buf, size_t cap) {
+    const int map = env_atoi_or("SM64DS_VS_MAP", -1);
+    int target = env_atoi_or("SM64DS_VS_STAR_TARGET", 0);
+    int king   = env_atoi_or("SM64DS_VS_KING_TARGET", 0);
+    if (target < 0) target = 0;
+    if (king < 0)   king = 0;
+    const char *li = std::getenv("SM64DS_VS_LUIGI_INFECTION");
+    const int luigi = (!li || li[0] == 0 || (li[0] == '0' && li[1] == 0)) ? 0 : 1;
+    unsigned long seed = 0;
+    if (luigi)
+        if (const char *s = std::getenv("SM64DS_VS_LUIGI_SEED"))
+            seed = std::strtoul(s, 0, 10);
+    std::snprintf(buf, cap, "%d|%d|%s|%d|%d|%d|%lu|%s|%u", map, g_want_players,
+                  king > 0 ? "king" : (target > 0 ? "stars" : "time"),
+                  target, king, luigi, seed & 0xFFFFFFFFul,
+                  g_rollback ? "rollback" : "lockstep",
+                  (unsigned)wire_version());
+    return fnv1a32(buf);
+}
+
+unsigned session_build_id() { return fnv1a32(port_build_gittip); }
+
+void put_u32le(unsigned char *p, unsigned v) {
+    p[0] = (unsigned char)v;          p[1] = (unsigned char)(v >> 8);
+    p[2] = (unsigned char)(v >> 16);  p[3] = (unsigned char)(v >> 24);
+}
+unsigned get_u32le(const unsigned char *p) {
+    return (unsigned)p[0] | ((unsigned)p[1] << 8) | ((unsigned)p[2] << 16) |
+           ((unsigned)p[3] << 24);
+}
+
+// Once per process: the canonical string and the two numbers, and the plan's
+// digest if the launcher exported one.
+void log_session_identity(const char *who) {
+    static bool said = false;
+    if (said) return;
+    said = true;
+    char canon[160];
+    const unsigned d = session_digest(canon, sizeof canon);
+    std::fprintf(stderr, "[comms:loopback] session check (%s): build %s id "
+                 "%08x, settings \"%s\" digest %08x\n", who, port_build_gittip,
+                 session_build_id(), canon, d);
+    if (const char *e = std::getenv("SM64DS_SESSION_DIGEST")) {
+        const unsigned long plan = std::strtoul(e, 0, 10);
+        if ((unsigned)(plan & 0xFFFFFFFFul) != d)
+            std::fprintf(stderr, "[comms:loopback] session check: the lobby "
+                         "plan's digest %lu disagrees with this end's %u (%s); "
+                         "the environment was edited or the lobby and this "
+                         "build build the string differently. Logged only.\n",
+                         plan, d, canon);
+    }
+}
+
+// Parent: stamp an ACCEPT.
+void stamp_session(Packet &a) {
+    log_session_identity("host");
+    char canon[160];
+    unsigned char *b = a.blocks[0];
+    std::memcpy(b, kSessionTag, 4);
+    put_u32le(b + 4, session_build_id());
+    put_u32le(b + 8, session_digest(canon, sizeof canon));
+}
+
+// Child, at its first ACCEPT: true = same build and settings, go on.
+bool session_check_ok(const Packet &a) {
+    if (g_legacy_peer_sim) return true;
+    log_session_identity("child");
+    const unsigned char *b = a.blocks[0];
+    char canon[160];
+    const unsigned mine_d = session_digest(canon, sizeof canon);
+    const unsigned mine_b = session_build_id();
+    const bool tagged = std::memcmp(b, kSessionTag, 4) == 0;
+    const unsigned host_b = get_u32le(b + 4), host_d = get_u32le(b + 8);
+    if (tagged && host_b == mine_b && host_d == mine_d) {
+        std::fprintf(stderr, "[comms:loopback] session check OK: the host runs "
+                     "build id %08x and settings digest %08x, same as this "
+                     "end\n", host_b, host_d);
+        return true;
+    }
+    const char *why = !tagged ? "the host is an older build (no session stamp)"
+                    : host_b != mine_b ? "the host runs a different build"
+                                       : "the host's match settings differ";
+    std::fprintf(stderr, "[comms:loopback] SESSION MISMATCH: %s. host build id "
+                 "%08x digest %08x; this end build id %08x digest %08x "
+                 "(\"%s\")%s\n", why, tagged ? host_b : 0u, tagged ? host_d : 0u,
+                 mine_b, mine_d, canon,
+                 std::getenv("SM64DS_SESSION_CHECK") &&
+                         std::atoi(std::getenv("SM64DS_SESSION_CHECK")) == 0
+                     ? "; SM64DS_SESSION_CHECK=0, staying"
+                     : "; leaving the session, exit code 3");
+    if (const char *e = std::getenv("SM64DS_SESSION_CHECK"))
+        if (std::atoi(e) == 0) return true;
+    return false;
+}
+
 // THE ROSTER, SENT TO EVERYONE. See the banner over kRosterAnnounceMs for why
 // a three- or four-player session cannot form without this.
 //
@@ -1501,6 +1671,7 @@ void announce_roster() {
     Packet a;
     fill_header(a, kTypeAccept);
     set_live(a, g_live);
+    stamp_session(a);                     // multiplayer 1.0: the session check
     a.have = ((unsigned)(g_input_delay & 0xFF) << 8) |
              (g_rollback ? kAcceptRollbackBit : 0u);   // port/rollback: the mode too
     send_to_children(a);
@@ -2070,6 +2241,7 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         Packet a;
         fill_header(a, kTypeAccept);
         set_live(a, g_live);
+        stamp_session(a);                 // multiplayer 1.0: the session check
         // THE PARENT ASSIGNS THE SLOT AND THE RELAY DOES NOT. A child over the
         // internet cannot claim a slot by binding a port the way a loopback
         // child does, so it PROPOSES one in its JOIN and this is the answer.
@@ -2351,6 +2523,18 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
         // it -- a wedge that no timer recovers from, because both sides think
         // they are done.
         if ((p.live_wide & (1u << g_slot)) == 0) { ++g_dropped; break; }
+        // THE SESSION CHECK, before anything is adopted from this ACCEPT: a
+        // child on another build or other match settings leaves now, with a
+        // BYE so the host drops the slot at once, and exit code 3 so the
+        // launcher can say why. See the banner over stamp_session.
+        if (g_state != kCommsChildConnected && !session_check_ok(p)) {
+            Packet bye;
+            fill_header(bye, kTypeBye);
+            send_to_slot(bye, 0);
+            std::fflush(stderr);
+            std::fflush(stdout);
+            std::exit(3);
+        }
         g_live = p.live_wide;
         if (g_state != kCommsChildConnected) {
             if (g_join_started_ms != 0) {
@@ -4310,8 +4494,18 @@ bool comms_loopback_install_from_env() {
     //   untouched, both ends still consume the SAME round sequence in the same
     //   order, and nothing is predicted, rolled back or discarded. Only the
     //   offset between the frame being drawn and the round being read moves.
+    //
+    // ---- MULTIPLAYER 1.0: THESE ARE STARTING VALUES, THE SIZING DECIDES.
+    // The parent sizes every relay and direct session from its children's
+    // measured round trips (the adaptive banner), now against the real 33.33
+    // ms round, down to a floor of 2 on a relay and 1 direct. RELAY STAYS 5:
+    // it is the depth a session falls back to if sizing is withdrawn, and it
+    // is the knee the vs_pace arms above measured at 30 fps. DIRECT IS 1
+    // (33 ms), which is also its floor: at 30 Hz the old 2 was 67 ms of lag
+    // charged to a LAN. LOOPBACK 0, unchanged.
     if (g_net_mode == kNetRelay)       g_input_delay = 5;
-    else if (g_net_mode == kNetDirect) g_input_delay = 2;
+    else if (g_net_mode == kNetDirect) g_input_delay = 1;
+    if (g_net_mode == kNetDirect)      g_delay_floor = kDelayFloorDirect;
 
     if (const char *n = std::getenv("SM64DS_COMMS_INPUT_DELAY")) {
         int v = std::atoi(n);
@@ -4322,9 +4516,8 @@ bool comms_loopback_install_from_env() {
     }
 
     // THE ADAPTIVE SIZING'S OWN KNOBS. All three are tuning, none of them is a
-    // decision a player makes, and the defaults are the shipped behaviour's
-    // own numbers: floor 5 is the relay constant this replaces, so a session
-    // whose paths all measure well keeps exactly the cover it had.
+    // decision a player makes. The floor (2 relay, 1 direct since 1.0) is the
+    // least cover a session whose paths all measure well is given.
     if (const char *v = std::getenv("SM64DS_COMMS_DELAY_SAFETY")) {
         const int q = std::atoi(v);
         if (q >= 100 && q <= 400) g_delay_safety_pct = q;
@@ -4361,12 +4554,19 @@ bool comms_loopback_install_from_env() {
                      "clamped\n", kLegacyInputDelayMax);
     }
 
-    // NetMode (port/rollback): settings.json "NetMode": "lockstep" | "rollback",
-    // SM64DS_NETMODE overriding it. LOCKSTEP IS THE DEFAULT and rollback is
-    // opt-in (0.3.6 hotfix, 2026-09-03: rollback shipped as the default in
-    // 0.3.4 but re-simulates the world every frame a remote peer moves, which
-    // halves the effective tick rate; hal/host_settings.cpp reads an absent or
-    // unparseable file, or a file without the key, as lockstep). With
+    // NetMode (port/rollback). MULTIPLAYER 1.0: EVERY SESSION THIS CARRIER
+    // OPENS RUNS LOCKSTEP, and only the env SM64DS_NETMODE=rollback (a test
+    // knob) turns rollback on. settings.json's "NetMode" is NOT READ here any
+    // more. It was: hal/host_settings.cpp still defaults it to rollback (the
+    // 0.3.7 revert), so a session nobody configured, and every player whose
+    // settings file kept a 0.3.x-era "rollback", opened in rollback -- and
+    // rollback desyncs on this base within seconds (a rewind restores a world
+    // that is not the one it saved: the host tick record at data_0209d574 and
+    // the frame counter at data_0209f2a8 are outside the snapshot). The
+    // parent's pick also rides bit 17 of the ACCEPT and every child adopts it,
+    // so one player's settings file used to choose a desyncing mode for the
+    // whole room. The carrier is only ever installed for a session, never
+    // solo, so the settings key is untouched for everything else. With
     // lockstep g_rollback stays false, which leaves every path above and
     // below this block byte-for-byte what it was. Rollback runs at input
     // delay 0 by construction (the delay is what it replaces), and the
@@ -4381,13 +4581,19 @@ bool comms_loopback_install_from_env() {
     // reads the same SM64DS_VS_PLAYERS, so every peer lands on the same side
     // of this line, and the parent's bit 17 carries it anyway.
     {
-        int mode = host_setting_net_mode();
+        int mode = 0;
+        bool from_env = false;
         if (const char *e = std::getenv("SM64DS_NETMODE")) {
-            if (ieq_word(e, "rollback")) mode = 1;
-            else if (ieq_word(e, "lockstep")) mode = 0;
+            if (ieq_word(e, "rollback")) { mode = 1; from_env = true; }
+            else if (ieq_word(e, "lockstep")) { mode = 0; from_env = true; }
             else std::fprintf(stderr, "[comms:loopback] SM64DS_NETMODE=%s is "
                               "neither lockstep nor rollback; ignored\n", e);
         }
+        if (!from_env && host_setting_net_mode() == 1)
+            std::fprintf(stderr, "[comms:loopback] settings NetMode rollback "
+                         "is not used for online sessions (multiplayer 1.0: "
+                         "VS runs lockstep; SM64DS_NETMODE=rollback is the "
+                         "test knob)\n");
         if (mode == 1 && g_want_players > kRollbackMaxPlayers) {
             std::fprintf(stderr, "[comms:loopback] NetMode rollback asked for "
                          "a %d-player session, but rollback is proven "
@@ -4409,6 +4615,9 @@ bool comms_loopback_install_from_env() {
                          "rewinds and replays (hal/rollback.cpp); past the "
                          "window this stalls %u ms and then drops the slot\n",
                          kRbWindow, kRbGraceMs);
+        } else {
+            std::fprintf(stderr, "[comms:loopback] NetMode lockstep (%s)\n",
+                         from_env ? "SM64DS_NETMODE" : "the online default");
         }
     }
     // ARMED ONLY WHERE IT CAN HELP AND ONLY WHERE IT IS ALLOWED TO DECIDE.
