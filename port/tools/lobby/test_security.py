@@ -516,10 +516,141 @@ def world_pool():
         sp.stop()
 
 
+def waiting_seats():
+    """run mp1 L-J1, at the SHIPPED compose settings (plus the release step's
+    GAME_IDS line): a VS room whose match is on now takes joiners as WAITING
+    seats instead of 409 in_match. A waiting seat must not be able to touch
+    the running match, and a flood of waiting joins must hit the caps a lobby
+    join always had (the join budget, the request bucket, MAX_SEATS)."""
+    print("\n== L-J1 WAITING SEATS at the shipped docker-compose settings ==")
+    env = dict(compose_env())
+    env["GAME_IDS"] = REAL
+    seats = int(env.get("MAX_SEATS", "16"))
+
+    def running_room(c, tag):
+        """A 2P room of our own, taken to `go` (both launchers ready)."""
+        st, h = quick_post(c, "create", {"v": 5, "nick": "h", "game": REAL,
+                                         "pre_ok": True}, "198.51.100.%d" % tag)
+        code = h["room"]
+        st, g = quick_post(c, "join", {"v": 5, "room": code, "nick": "g",
+                                       "game": REAL, "pre_ok": True},
+                           "198.51.100.%d" % (tag + 1))
+        st, a = quick_post(c, "start", {"v": 5, "room": code,
+                                        "token": h["token"]},
+                           "198.51.100.%d" % tag)
+        for tok, ip in ((h["token"], tag), (g["token"], tag + 1)):
+            quick_post(c, "ready", {"v": 5, "room": code, "token": tok,
+                                    "match": a["match"]}, "198.51.100.%d" % ip)
+        return code, h, g, a["match"]
+
+    def view(c, code, tok, ip):
+        st, out = quick_post(c, "poll", {"v": 5, "room": code, "token": tok,
+                                         "cursor": 1, "wait": 0}, ip)
+        return st, out
+
+    sp = Spawned(pick_port(), env)
+    c = sp.wait_ready()
+    try:
+        # (1) One address floods joins into a running room.
+        code, h, g, match = running_room(c, 10)
+        st, hv = view(c, code, h["token"], "198.51.100.10")
+        comms = [e["plan"]["code"] for e in hv.get("events", [])
+                 if e.get("kind") == "go" and e.get("plan", {}).get("code")]
+        counts = {}
+        for i in range(80):
+            st, out = quick_post(c, "join", {"v": 5, "room": code,
+                                             "nick": "f%d" % i, "game": REAL},
+                                 "203.0.113.50")
+            key = "%s %s" % (st, out.get("error", "")) if st != 200 else "200"
+            counts[key] = counts.get(key, 0) + 1
+        st, hv = view(c, code, h["token"], "198.51.100.10")
+        members = hv.get("view", {}).get("members", [])
+        print("info  (1) one-address flood of 80 joins: %s; room %d members, "
+              "%d playing, state %s"
+              % (counts, len(members), sum(1 for m in members if m["playing"]),
+                 hv.get("view", {}).get("state")))
+        check("one address, 80 joins into a running room: at most MAX_SEATS "
+              "(%d) seats, every other answer room_full or 429" % seats,
+              len(members) <= seats
+              and counts.get("200", 0) == len(members) - 2
+              and all(k == "200" or k.startswith("409 room_full")
+                      or k.startswith("429") for k in counts),
+              (counts, len(members)))
+        check("and every waiting seat is out of the match: 2 playing, still "
+              "running", sum(1 for m in members if m["playing"]) == 2
+              and hv["view"]["state"] in ("go", "in_match")
+              and hv["view"]["match"] == match, hv.get("view"))
+
+        # (2) Many addresses flood a second running room.
+        code2, h2, g2, match2 = running_room(c, 20)
+        ok, full = 0, 0
+        for i in range(40):
+            st, out = quick_post(c, "join", {"v": 5, "room": code2,
+                                             "nick": "m%d" % i, "game": REAL},
+                                 "203.0.114.%d" % (i + 1))
+            ok += st == 200
+            full += st == 409 and out.get("error") == "room_full"
+        print("info  (2) 40 addresses: %d seated, %d room_full" % (ok, full))
+        check("40 addresses into a running room: %d waiting seats, the rest "
+              "room_full" % (seats - 2), ok == seats - 2 and full == 40 - ok,
+              (ok, full))
+
+        # (3) A waiting seat against the running match, over HTTP.
+        code3, h3, g3, match3 = running_room(c, 30)
+        time.sleep(6)       # past GO_GRACE_S: the room is in_match
+        st, w = quick_post(c, "join", {"v": 5, "room": code3, "nick": "w",
+                                       "game": REAL}, "203.0.115.1")
+        tok, ip = w.get("token"), "203.0.115.1"
+        answers = {}
+        for verb, body in (
+                ("ready", {"match": match3}),
+                ("failed", {"match": match3, "reason": "no_pairing"}),
+                ("result", {"match": match3, "win": "star-target",
+                            "scores": [0, 9, 0, 0]}),
+                ("start", {}),
+                ("params", {"map": 1, "win_mode": "time"}),
+                ("kick", {"seat": 1})):
+            b = {"v": 5, "room": code3, "token": tok}
+            b.update(body)
+            st, out = quick_post(c, verb, b, ip)
+            answers[verb] = (st, out.get("error"))
+        print("info  (3) waiting seat: %s" % answers)
+        check("a waiting seat's ready/failed/result are 403 not_playing, its "
+              "start/params/kick 403 not_host",
+              st == 403 and all(answers[v] == (403, "not_playing")
+                                for v in ("ready", "failed", "result"))
+              and all(answers[v] == (403, "not_host")
+                      for v in ("start", "params", "kick")), answers)
+        picks = {}
+        for key, val in (("slot", 0), ("want_seat", 0), ("role", "parent"),
+                         ("playing", True)):
+            st, out = quick_post(c, "join", {"v": 5, "room": code3, "nick": "p",
+                                             "game": REAL, key: val},
+                                 "203.0.115.%d" % (10 + len(picks)))
+            picks[key] = (st, out.get("error"))
+        check("no join field picks a slot, a seat or a role: 400 bad_field",
+              all(v == (400, "bad_field") for v in picks.values()), picks)
+        st, wv = view(c, code3, tok, ip)
+        st2, hv3 = view(c, code3, h3["token"], "198.51.100.30")
+        host_codes = [e["plan"]["code"] for e in hv3.get("events", [])
+                      if e.get("kind") == "go" and "code" in e.get("plan", {})]
+        check("the room is still in its match; the waiting seat's answers "
+              "never carry the match's relay code",
+              hv3["view"]["state"] == "in_match"
+              and hv3["view"]["match"] == match3 and host_codes
+              and host_codes[0] not in json.dumps(w)
+              and host_codes[0] not in json.dumps(wv)
+              and wv.get("plan", {"playing": False}) == {"playing": False},
+              (hv3.get("view", {}).get("state"), wv.get("plan")))
+    finally:
+        sp.stop()
+
+
 def main():
     blocker1()
     blocker2()
     world_pool()
+    waiting_seats()
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:
         print("  FAILED: %s" % name)
