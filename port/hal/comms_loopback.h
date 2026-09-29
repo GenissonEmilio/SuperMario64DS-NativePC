@@ -254,4 +254,11 @@ CommsRollbackStats comms_rb_stats();
 
 }  // namespace port
 
+// Multiplayer 1.0, lane LAGGARD1 (NETARCH1 design 4.2, the laggard rule).
+// port_comms_rounds_ahead: for walk_window.cpp's frame pacer, which skips its
+// sleep for the frame when the answer is above 2 (a child catching up after a
+// hitch); 0 on every console that must not sprint (the parent, rollback,
+// solo).
+extern "C" int      port_comms_rounds_ahead(void);
+
 #endif  // PORT_HAL_COMMS_LOOPBACK_H
