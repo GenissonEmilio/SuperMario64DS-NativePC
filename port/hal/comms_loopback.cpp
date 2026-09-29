@@ -5279,8 +5279,19 @@ void lb_poll() { service(); }
 // The seat the next relayed ping asks to answer: the live seats other than
 // this one, in turn. -1 when there is nobody (the ping then stays a broadcast,
 // which with nobody to answer costs nothing).
+//
+// EACH CONSOLE STARTS ITS TURN AT ITS OWN SEAT + 1 (REVVSAUX1 fold note 2). The
+// rotation used to start at seat 0 on every console, and every console pings at
+// the same 2 Hz, so all fifteen asked the SAME seat at once and that seat's
+// answers ran into the relay's 6-a-second pong cap. Offset by the asker's own
+// seat, the fifteen askers name fifteen different seats on each tick.
 int g_ping_rr = 0;
+int g_ping_rr_slot = -1;             // the seat the turn was started from
 int ping_next_seat() {
+    if (g_ping_rr_slot != g_slot) {
+        g_ping_rr      = g_slot;
+        g_ping_rr_slot = g_slot;
+    }
     for (int i = 1; i <= kCommsMaxPlayers; ++i) {
         const int s = (g_ping_rr + i) % kCommsMaxPlayers;
         if (s == g_slot || (g_live & (1u << s)) == 0) continue;
