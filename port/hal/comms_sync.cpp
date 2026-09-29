@@ -796,27 +796,94 @@ void gw_me_read() {
     g_gw_me.build_id = h;
 }
 
-// Remote seat <-> ghost body. Seats other than mine, in order, onto bodies
-// other than mine, in order. -1 when either side is missing.
-int gw_body_for_seat(int seat) {
-    const int my = comms_hub_my_seat();
-    if (my < 0 || seat < 0 || seat >= kHubMaxSeats || seat == my) return -1;
-    const int rank = seat < my ? seat : seat - 1;        // 0..14
-    const int me = (int)data_0209f250;
-    const int body = rank < me ? rank : rank + 1;
-    if (body >= (int)data_0209f21c || body >= kCommsMaxPlayers) return -1;
-    return body;
-}
+// Remote seat <-> ghost body. THE BODIES ARE FEW: the ROM seats them at level
+// boot (vs_player_count), and an adventure level with more than four Player
+// bodies stops taking stars and saving (suspects.tsv S1: 2 and 4 bodies keep
+// the star + save, 8 and 16 lose it). So a room of 16 cannot give every seat
+// a body. gw_assign() hands the free bodies to the NEAREST visible seats (same
+// level, frames fresh) once a frame, keeps a seat on its body while it stays
+// visible, and moves a body to a much nearer seat only after it has shown its
+// current one for 2 s. A seat without a body is still on the wire (name, tag
+// facts, voice, chat); it is simply not drawn.
+int      g_body_seat[kCommsMaxPlayers];     // seat driving body i, or -1
+unsigned g_body_since[kCommsMaxPlayers];    // GetTickCount of that assignment
+bool     g_assign_init = false;
+unsigned g_gw_myseat_seen = 0xffffffffu;
 
 int gw_seat_for_body(int body) {
+    if (!g_assign_init || body < 0 || body >= kCommsMaxPlayers) return -1;
+    if (body >= (int)data_0209f21c || body == (int)data_0209f250) return -1;
+    return g_body_seat[body];
+}
+
+bool gw_visible(int seat);
+
+long long gw_dist2(int seat, const int me_xyz[3]) {
+    const GwSeat &z = g_gw[seat];
+    const HubGhostFrame &f = z.ring[z.n - 1].f;
+    const long long dx = (long long)(f.x - me_xyz[0]) >> 12;
+    const long long dz = (long long)(f.z - me_xyz[2]) >> 12;
+    const long long dy = (long long)(f.y - me_xyz[1]) >> 12;
+    return dx * dx + dy * dy + dz * dz;
+}
+
+void gw_assign(unsigned now) {
+    if (!g_assign_init) {
+        for (int b = 0; b < kCommsMaxPlayers; ++b) g_body_seat[b] = -1;
+        g_assign_init = true;
+    }
     const int my = comms_hub_my_seat();
     const int me = (int)data_0209f250;
-    if (my < 0 || body < 0 || body >= (int)data_0209f21c ||
-        body >= kCommsMaxPlayers || body == me)
-        return -1;
-    const int rank = body < me ? body : body - 1;
-    const int seat = rank < my ? rank : rank + 1;
-    return seat < kHubMaxSeats ? seat : -1;
+    const int nb = (int)data_0209f21c < kCommsMaxPlayers ? (int)data_0209f21c
+                                                         : kCommsMaxPlayers;
+    if ((unsigned)my != g_gw_myseat_seen) {      // re-paired: start over
+        g_gw_myseat_seen = (unsigned)my;
+        for (int b = 0; b < kCommsMaxPlayers; ++b) g_body_seat[b] = -1;
+    }
+    if (my < 0 || me < 0 || me >= kCommsMaxPlayers || !data_0209f394[me]) return;
+    void *mb = data_0209f394[me];
+    const int me_xyz[3] = {*player::pos_x(mb), *player::pos_y(mb),
+                           *player::pos_z(mb)};
+    bool has[kHubMaxSeats] = {};
+    for (int b = 0; b < kCommsMaxPlayers; ++b) {
+        const int s = g_body_seat[b];
+        if (s < 0) continue;
+        if (b >= nb || b == me || !gw_visible(s)) { g_body_seat[b] = -1; continue; }
+        has[s] = true;
+    }
+    for (;;) {
+        /* the nearest visible seat with no body */
+        int cand = -1;
+        long long cd = 0;
+        for (int s = 0; s < kHubMaxSeats; ++s) {
+            if (s == my || has[s] || !gw_visible(s)) continue;
+            const long long d = gw_dist2(s, me_xyz);
+            if (cand < 0 || d < cd) { cand = s; cd = d; }
+        }
+        if (cand < 0) return;
+        int free_b = -1;
+        for (int b = 0; b < nb; ++b)
+            if (b != me && data_0209f394[b] && g_body_seat[b] < 0) { free_b = b; break; }
+        if (free_b < 0) {
+            /* no free body: take the one showing the farthest seat, if this
+               one is under half its distance and it has had 2 s */
+            long long fd = -1;
+            for (int b = 0; b < nb; ++b) {
+                const int s = g_body_seat[b];
+                if (b == me || s < 0) continue;
+                if ((unsigned)(now - g_body_since[b]) < 2000u) continue;
+                const long long d = gw_dist2(s, me_xyz);
+                if (d > fd) { fd = d; free_b = b; }
+            }
+            if (free_b < 0 || cd * 4 >= fd) return;
+            has[g_body_seat[free_b]] = false;
+        }
+        g_body_seat[free_b] = cand;
+        g_body_since[free_b] = now;
+        has[cand] = true;
+        g_gw[cand].driven = 0;
+        g_gw[cand].body_ptr = 0;
+    }
 }
 
 void gw_reset_seat(GwSeat &z, bool keep_ident) {
@@ -1264,9 +1331,13 @@ void gw_send(unsigned now) {
 }
 
 void gw_report(const char *tag) {
-    unsigned vis = 0;
+    unsigned vis = 0, drawn = 0;
     for (int s = 0; s < kHubMaxSeats; ++s)
         if (gw_visible(s)) vis |= 1u << s;
+    for (int b = 0; b < kCommsMaxPlayers; ++b) {
+        const int s = gw_seat_for_body(b);
+        if (s >= 0) drawn |= 1u << s;
+    }
     char names[kHubMaxSeats * (kHubIdentNameMax + 6) + 1];
     int w = 0;
     names[0] = 0;
@@ -1282,14 +1353,14 @@ void gw_report(const char *tag) {
                  "syng_paused=%llu syni_sent=%llu send_fail=%llu "
                  "syng_recvd=%llu syni_recvd=%llu drop_len=%llu drop_tag=%llu "
                  "drop_ver=%llu drop_seat=%llu drop_field=%llu drop_old=%llu "
-                 "resets=%llu vis=0x%04x interp=%llu reckon=%llu hold=%llu "
+                 "resets=%llu vis=0x%04x drawn=0x%04x interp=%llu reckon=%llu hold=%llu "
                  "reposes=%llu recursor=%llu charswaps=%llu names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
                  g_gws.drop_len, g_gws.drop_tag, g_gws.drop_ver,
                  g_gws.drop_seat, g_gws.drop_field, g_gws.drop_old,
-                 g_gws.resets, vis, g_gws.interp, g_gws.reckon, g_gws.hold,
+                 g_gws.resets, vis, drawn, g_gws.interp, g_gws.reckon, g_gws.hold,
                  g_gws.reposes, g_gws.recursor, g_gws.charswaps, names);
 }
 
@@ -1317,6 +1388,7 @@ void gw_tick() {
     const unsigned now = GetTickCount();
     ++g_gw_frame;
     gw_recv();
+    gw_assign(now);
     gw_send(now);
     static int every = -1;
     if (every < 0) {
