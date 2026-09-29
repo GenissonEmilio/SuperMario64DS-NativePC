@@ -4409,6 +4409,95 @@ static int host_key_script(int vk)
     return now;
 }
 
+/* SM64DS_CHAT_KEY_TEST (run mp1, lane CHATUI1): A PHYSICAL KEY, SCRIPTED.
+   TEST ONLY, and compiled out of a PORT_ROM_CLEAN (shipping) build.
+
+   SM64DS_HOST_KEY cannot prove what the chat box does to the keys around it:
+   its keys enter key_live ABOVE the stale latch, so a key the box has just
+   let go of reads as pressed whatever the latch says, and it posts no window
+   message, so the box never sees it at all. A player's key does both: it is
+   down to GetAsyncKeyState from the moment it is pressed, and its WM_KEYDOWN
+   reaches the window procedure at the next pump. This knob is that key.
+   Items, comma separated, any of them repeated (16 at most), frames in
+   g_host_key_frame (the level loop's frame):
+     <vk-hex>@<f0>-<f1>  the key is physically down f0..f1: key_live reads it
+                         in place of GetAsyncKeyState, BELOW the stale latch,
+                         the selftest gate and the focus gate (the rebind,
+                         pad-learn and replay gates still apply), and at f0 its
+                         WM_KEYDOWN is posted to the window, so the frame
+                         loop's own pump delivers it (and TranslateMessage its
+                         WM_CHAR) on the next frame, where a real one arrives
+     box@<f>             opens the chat box at f with "hi" typed in it
+     rebind@<f>          arms the rebind capture at f, the two lines the
+                         menu's run row runs
+   Every scripted key is read once a frame at chat_pad_gate (after the pump,
+   ahead of the menu and the button reads) and each change is logged:
+     [chat] keytest f<frame> vk <vk> held=<0|1> game=<0|1> box=<0|1>
+   game=1 is the game seeing the key down. Inert unless set. */
+#ifndef PORT_ROM_CLEAN
+struct ChatKeyHold { int vk, f0, f1; };   /* vk -1 is box@, -2 rebind@ */
+static ChatKeyHold g_ckt_hold[16];
+static int g_ckt_holds;
+static int chat_key_test_on(void)
+{
+    static int on = -1;
+    if (on >= 0) return on;
+    on = 0;
+    const char *env = getenv("SM64DS_CHAT_KEY_TEST");
+    if (!env || !*env) return 0;
+    on = 1;
+    const char *p = env;
+    while (*p) {
+        char *q;
+        const int act = !strncmp(p, "box@", 4) ? -1
+                      : !strncmp(p, "rebind@", 7) ? -2 : 0;
+        if (act) {
+            const int at = (int)strtol(p + (act == -1 ? 4 : 7), &q, 10);
+            p = q;
+            if (at >= 0 && g_ckt_holds < 16) {
+                g_ckt_hold[g_ckt_holds].vk = act;
+                g_ckt_hold[g_ckt_holds].f0 = at;
+                g_ckt_hold[g_ckt_holds].f1 = at;
+                ++g_ckt_holds;
+            }
+        } else {
+            const int vk = (int)strtoul(p, &q, 16);
+            p = q;
+            int f0 = -1, f1 = -1;
+            if (*p == '@') { f0 = f1 = (int)strtol(p + 1, &q, 10); p = q; }
+            if (*p == '-') { f1 = (int)strtol(p + 1, &q, 10); p = q; }
+            if (vk > 0 && vk < 256 && f0 >= 0 && g_ckt_holds < 16) {
+                g_ckt_hold[g_ckt_holds].vk = vk;
+                g_ckt_hold[g_ckt_holds].f0 = f0;
+                g_ckt_hold[g_ckt_holds].f1 = f1;
+                ++g_ckt_holds;
+            }
+        }
+        while (*p && *p != ',') ++p;
+        if (*p == ',') ++p;
+    }
+    fprintf(stderr, "[chat] keytest SM64DS_CHAT_KEY_TEST=%s (%d items)\n", env,
+            g_ckt_holds);
+    return 1;
+}
+/* 1 when vk is a scripted key; *down is then its physical state this frame */
+static int chat_key_test_down(int vk, int *down)
+{
+    if (!chat_key_test_on()) return 0;
+    int mine = 0;
+    for (int i = 0; i < g_ckt_holds; ++i) {
+        if (g_ckt_hold[i].vk != vk) continue;
+        mine = 1;
+        if (g_host_key_frame >= g_ckt_hold[i].f0 &&
+            g_host_key_frame <= g_ckt_hold[i].f1)
+            *down = 1;
+    }
+    return mine;
+}
+#else
+static int chat_key_test_down(int, int *) { return 0; }
+#endif
+
 static int key_live(int vk)
 {
     /* THE CHAT BOX (run mp1, lane CHATUI1). While a player is typing, every
@@ -4417,12 +4506,16 @@ static int key_live(int vk)
        console's pad record still goes out every round, with nothing held. */
     if (port::chat_typing()) return 0;
     if (host_key_script(vk)) return 1;
-    if (g_selftest) return 0;
+    int down = 0;
+    const int scripted = chat_key_test_down(vk, &down);   /* TEST ONLY */
+    if (g_selftest && !scripted) return 0;
     if (g_rebind_capture) return 0;
     if (g_padlearn) return 0;           /* a pad is being taught */
     if (rb_replaying()) return 0;       /* a rewound window is being re-run */
-    if (!hal_window_focused()) return 0;
-    const int down = W.GetAsyncKeyState_(vk) < 0;
+    if (!scripted) {
+        if (!hal_window_focused()) return 0;
+        down = W.GetAsyncKeyState_(vk) < 0;
+    }
     if ((unsigned)vk < 256) {
         if (!down) { key_stale[vk] = 0; return 0; }
         if (key_stale[vk]) return 0;
@@ -4456,7 +4549,9 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
        and resuming after (the ladder's proof of the local input gate). */
     {
         static int trace = -1;
-        if (trace < 0) trace = getenv("SM64DS_CHAT_TYPE_TEST") ? 1 : 0;
+        if (trace < 0)
+            trace = (getenv("SM64DS_CHAT_TYPE_TEST") ||
+                     getenv("SM64DS_CHAT_KEY_TEST")) ? 1 : 0;
         const unsigned me = data_0209f250;
         const char *p = (trace && frame >= 0 && me < 16)
                 ? (const char *)data_0209f394[me] : 0;
@@ -4472,8 +4567,10 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
    is neutral too. Called after pad_focus_gate and before pad_test_apply at
    both read sites, the focus gate's own position, so a scripted pad still
    drives an automated run. */
+static void chat_key_test_frame(void);   /* SM64DS_CHAT_KEY_TEST, test only */
 static void chat_pad_gate(int *pad_live, XPad *pad)
 {
+    chat_key_test_frame();
     if (!port::chat_typing()) return;
     memset(pad, 0, sizeof *pad);
     *pad_live = 0;
@@ -7326,6 +7423,79 @@ static HWND g_present_hwnd;
 static HDC g_present_hdc;
 static const BITMAPINFO *g_present_bi;
 static const ntr::Framebuffer *g_present_fb;
+
+/* SM64DS_CHAT_KEY_TEST's once-a-frame half (the grammar is at key_live), here
+   because the key's messages go to g_present_hwnd, the window both frame
+   loops present into. Called from chat_pad_gate: after the frame's pump,
+   ahead of the menu and the button reads. */
+static void chat_key_test_frame(void)
+{
+#ifndef PORT_ROM_CLEAN
+    if (!chat_key_test_on()) return;
+    const int f = g_host_key_frame;
+    static int last_f = -0x7fffffff;
+    if (f == last_f) return;
+    last_f = f;
+    for (int i = 0; i < g_ckt_holds; ++i) {
+        if (g_ckt_hold[i].vk >= 0 || f != g_ckt_hold[i].f0) continue;
+        if (g_ckt_hold[i].vk == -1) {
+            const bool ok = port::chat_open();
+            if (ok) { port::chat_char_ansi('h'); port::chat_char_ansi('i'); }
+            fprintf(stderr, "[chat] keytest f%d box %s\n", f,
+                    ok ? "opened, typed \"hi\"" : "REFUSED (no chat carrier)");
+        } else {
+            g_rebind_capture = 1;     /* the menu's run row, :6539 */
+            g_rebind_key = 0;
+            fprintf(stderr, "[chat] keytest f%d rebind capture armed\n", f);
+        }
+    }
+    static int run_was = -1;
+    if (g_run_key != run_was) {
+        fprintf(stderr, "[chat] keytest f%d run key %02x\n", f, g_run_key);
+        run_was = g_run_key;
+    }
+    typedef BOOL(WINAPI *PostFn)(HWND, UINT, WPARAM, LPARAM);
+    typedef UINT(WINAPI *MapFn)(UINT, UINT);
+    static PostFn post;
+    static MapFn map;
+    if (!post) {
+        HMODULE u = GetModuleHandleA("user32.dll");
+        post = u ? (PostFn)GetProcAddress(u, "PostMessageA") : 0;
+        map = u ? (MapFn)GetProcAddress(u, "MapVirtualKeyA") : 0;
+    }
+    static unsigned char seen[256];   /* 1 + held + 2 game + 4 box, per vk */
+    for (int i = 0; i < g_ckt_holds; ++i) {
+        const ChatKeyHold &k = g_ckt_hold[i];
+        if (k.vk <= 0) continue;
+        const LPARAM scan = map ? (LPARAM)(map((UINT)k.vk, 0) & 0xff) << 16 : 0;
+        if (f == k.f0 && post && g_present_hwnd) {
+            post(g_present_hwnd, WM_KEYDOWN, (WPARAM)k.vk, 1 | scan);
+            fprintf(stderr, "[chat] keytest f%d vk %02x WM_KEYDOWN posted\n",
+                    f, k.vk);
+        }
+        if (f == k.f1 + 1 && post && g_present_hwnd)
+            post(g_present_hwnd, WM_KEYUP, (WPARAM)k.vk,
+                 1 | scan | (LPARAM)0xC0000000u);
+    }
+    for (int i = 0; i < g_ckt_holds; ++i) {
+        const int vk = g_ckt_hold[i].vk;
+        if (vk <= 0) continue;
+        int first = 1;
+        for (int j = 0; j < i; ++j) first &= g_ckt_hold[j].vk != vk;
+        if (!first) continue;     /* one probe per key */
+        int held = 0;
+        chat_key_test_down(vk, &held);
+        const int game = key_live(vk);
+        const int box = port::chat_typing() ? 1 : 0;
+        const unsigned char now =
+            (unsigned char)(1 + held + 2 * game + 4 * box);
+        if (now != seen[vk])
+            fprintf(stderr, "[chat] keytest f%d vk %02x held=%d game=%d box=%d\n",
+                    f, vk, held, game, box);
+        seen[vk] = now;
+    }
+#endif
+}
 /* THE STACKED SOURCE, when there is one. Set by the frame loop to the tall
    image hal_sub_screen_stacked_image built, with its own BITMAPINFO because
    the DIB height is part of the header rather than an argument. Null in the
