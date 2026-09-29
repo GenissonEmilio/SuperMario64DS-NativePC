@@ -694,7 +694,9 @@ def t_malformed_and_amplification(relay):
     try:
         case("bad magic", build_hello("CODE0001", ROLE_PARENT,
                                       magic=b"SMRX"), STATUS_BAD, True)
-        case("bad version", build_hello("CODE0002", ROLE_PARENT, version=2),
+        # Version 2 is a real HELLO since relay v2 (test_relay_v2.py covers
+        # it), so the unknown version here is one nobody speaks.
+        case("bad version", build_hello("CODE0002", ROLE_PARENT, version=9),
              STATUS_BAD, True)
         case("bad role", build_hello("CODE0003", 7), STATUS_BAD, True)
         case("empty code", build_hello("", ROLE_PARENT), STATUS_BAD, True)
@@ -771,8 +773,11 @@ def t_rehello_idempotent(relay):
     return res
 
 
+MAX_SESSIONS = 256   # relay.py MAX_SESSIONS (64 before relay v2)
+
+
 def t_caps():
-    """Four endpoints per session, sixty four sessions, then refusals."""
+    """Four endpoints per session, MAX_SESSIONS sessions, then refusals."""
     res = Result("session and endpoint caps")
     with Relay(tag="caps") as relay:
         nodes = []
@@ -798,17 +803,18 @@ def t_caps():
                 "second parent refused with status 1")
 
             ok_sessions = 1
-            for i in range(63):
+            for i in range(MAX_SESSIONS - 1):
                 node = Node(relay.addr, "s%d" % i)
                 nodes.append(node)
                 if node.join("S%07d" % i, ROLE_PARENT, tries=2) == STATUS_OK:
                     ok_sessions += 1
-            res.check(ok_sessions == 64, "64 sessions accepted (%d)"
-                      % ok_sessions)
+            res.check(ok_sessions == MAX_SESSIONS, "%d sessions accepted (%d)"
+                      % (MAX_SESSIONS, ok_sessions))
             over = Node(relay.addr, "over")
             nodes.append(over)
             res.check(over.join("OVERFLOW", ROLE_PARENT, tries=2)
-                      == STATUS_FULL, "65th session refused with status 1")
+                      == STATUS_FULL, "session %d refused with status 1"
+                      % (MAX_SESSIONS + 1))
             res.note("relay logged %d refusals"
                      % sum(1 for l in relay.log_text().splitlines()
                            if "refused" in l))

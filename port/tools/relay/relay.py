@@ -28,6 +28,27 @@ larger than what arrived, which is what stops this being useful as an
 amplifier. The flip side, and the game side has to respect it: a forwarded
 packet must not be exactly 16 bytes starting with "SMRC".
 
+VERSION 2 (run mp1, lane RELAY2; NETARCH1 design section 3). Everything above
+is version 1 and a version 1 HELLO is still served exactly as it always was.
+A version 2 HELLO is the same 16 bytes with the reserved field put to work:
+
+  HELLO v2   "SMRC" | version u8 = 2 | role u8 (0 parent, 1 child, 2 member)
+             | want_seat u8 | flags u8 | code 8B
+  ACK v2     "SMRA" | version u8 = 2 | status u8 | seat u8 | 0 | code 8B
+             status 0 ok, 1 full, 2 bad request, 3 version mismatch,
+             4 seat taken, 5 wrong session kind
+
+A code is a version 1 or a version 2 session by its first HELLO and never
+mixes. A version 2 session is a STAR (parent + children, the VS lockstep
+shape) or a HUB (members only, no host: adventure code rooms and world rooms),
+again by its first HELLO. Every seat has a number, and in a version 2 session
+the relay is no longer blind: it classifies each datagram by its first four
+bytes and its exact length against the kind table below (KINDS), drops
+anything else, routes it by the table, and OVERWRITES the sender's seat into
+the datagram (offset 6 for 'MP2L', offset 5 for every 'SYN*' kind), so no
+client can speak as another seat. That is the one byte the relay writes;
+everything else still goes through untouched and is never logged.
+
 Configuration (environment):
 
   SM64DS_RELAY_PORT     UDP port to bind          (default 41234)
@@ -43,6 +64,13 @@ Configuration (environment):
                         budget breakdown at RATE_PPS below.
   SM64DS_RELAY_RATE_BURST
                         token bucket depth (default: the same as RATE_PPS)
+  SM64DS_RELAY_RATE_PPS_V2
+                        the same budget for an endpoint in a version 2
+                        session (default 240); the per-kind caps in KINDS
+                        apply inside it
+  SM64DS_RELAY_HUB_IDLE_S
+                        idle expiry of a hub member (default 10; members send
+                        a HELLO every second as their keepalive)
 
 Python 3 standard library only. No dependencies, no state on disk.
 """
@@ -76,6 +104,85 @@ ROLE_CHILD = 1
 STATUS_OK = 0
 STATUS_FULL = 1
 STATUS_BAD = 2
+
+# ---- version 2 (design section 3) -----------------------------------------
+PROTO_V2 = 2
+ROLE_MEMBER = 2             # a hub member; only version 2 knows this role
+WANT_ANY = 0xFF             # want_seat: "any free seat"
+STATUS_VERSION = 3          # this code is a session of the other version
+STATUS_SEAT_TAKEN = 4       # the named seat is held by another endpoint
+STATUS_WRONG_KIND = 5       # a star role into a hub code, or the reverse
+
+KIND_STAR = "star"
+KIND_HUB = "hub"
+HUB_SEATS = 16              # a hub session holds seats 0..15, nobody hosts
+
+# ---- THE KIND TABLE (design section 3) --------------------------------------
+#
+# In a version 2 session this table is the whole of what the relay forwards.
+# A datagram is classified by its first four bytes AND its exact length; a tag
+# not in the table, a length the table does not list for that tag, a kind the
+# session's shape does not route, or a sender over that kind's cap is DROPPED
+# and counted under its reason. Nothing else is ever forwarded.
+#
+# Routes:
+#   STAR  parent -> every child, child -> the parent (the VS lockstep star)
+#   ALL   every other endpoint of the session
+#   SEAT6 only the seat named at byte 6 (a pong goes back to its pinger)
+#   UP    child -> the parent; the parent's own is dropped
+#   None  the kind does not exist in that session shape: DROP
+#
+# STAMP is the byte the relay overwrites with the sender's seat. Caps are
+# packets per second per sender, bucket depth one second, inside the
+# per-source budget RATE_PPS_V2.
+R_STAR = "star"
+R_ALL = "all"
+R_SEAT6 = "seat6"
+R_UP = "up"
+
+
+class Kind(object):
+    __slots__ = ("tag", "name", "lo", "hi", "exact", "star", "hub", "cap",
+                 "stamp")
+
+    def __init__(self, tag, name, lengths, star, hub, cap, stamp):
+        self.tag = tag
+        self.name = name
+        if isinstance(lengths, range):
+            self.lo, self.hi, self.exact = lengths.start, lengths.stop - 1, None
+        else:
+            self.lo, self.hi = min(lengths), max(lengths)
+            self.exact = frozenset(lengths)
+        self.star = star
+        self.hub = hub
+        self.cap = cap
+        self.stamp = stamp
+
+    def length_ok(self, n):
+        if self.exact is not None:
+            return n in self.exact
+        return self.lo <= n <= self.hi
+
+
+KINDS = {}
+for _k in (
+        #     tag      name        lengths            star     hub     cap stamp
+        Kind(b"MP2L", "lockstep", (0x90, 0x214),     R_STAR,  None,   75, 6),
+        Kind(b"SYNG", "ghost",    (44,),             None,    R_ALL,  35, 5),
+        Kind(b"SYNI", "ident",    range(24, 65),     R_ALL,   R_ALL,   3, 5),
+        Kind(b"SYNT", "chat",     range(12, 133),    R_ALL,   R_ALL,   8, 5),
+        Kind(b"SYNV", "voice",    (176, 340),        R_ALL,   R_ALL,  30, 5),
+        Kind(b"SYNP", "ping",     (12,),             R_ALL,   R_ALL,   6, 5),
+        Kind(b"SYNQ", "pong",     (12,),             R_SEAT6, R_SEAT6, 6, 5),
+        Kind(b"SYNK", "clock",    (24,),             R_UP,    None,    4, 5),
+        Kind(b"SYN1", "sync4",    (56,),             R_STAR,  None,   35, 5),
+):
+    KINDS[_k.tag] = _k
+del _k
+KIND_ORDER = tuple(KINDS)   # stats line order, the table's own
+
+# The reasons a version 2 datagram is dropped, in stats line order.
+DROP_REASONS = ("unknown", "length", "route", "cap", "target")
 
 # ------------------------------------------------------------------ limits
 
@@ -121,7 +228,15 @@ MAX_PAYLOAD = 700           # bytes; larger datagrams are dropped in silence
 RATE_PPS = clamp_int(os.environ.get("SM64DS_RELAY_RATE_PPS"), 120, 30, 2000)
 RATE_BURST = clamp_int(os.environ.get("SM64DS_RELAY_RATE_BURST"),
                        RATE_PPS, 30, 4000)
-MAX_SESSIONS = 64
+# Version 2 sessions get their own budget (design section 3: 240 for v2, v1
+# keeps its 120). The sum of the per-kind caps a real seat can reach is ~150
+# (30 lockstep + 25 voice + pings + ghosts in a hub), so 240 is headroom, and
+# the per-kind caps in KINDS are what stops one kind eating the rest.
+RATE_PPS_V2 = clamp_int(os.environ.get("SM64DS_RELAY_RATE_PPS_V2"),
+                        240, 30, 2000)
+RATE_BURST_V2 = RATE_PPS_V2
+# 64 -> 256 for version 2: an always-on world room is a session of its own.
+MAX_SESSIONS = 256
 
 # HOW MANY PEOPLE ONE SESSION HOLDS. A knob since the player-count dial landed,
 # and the DEFAULT IS UNCHANGED, so a relay nobody reconfigures behaves exactly
@@ -156,6 +271,7 @@ DEFAULT_PORT = 41234
 DEFAULT_BIND = "0.0.0.0"
 DEFAULT_IDLE_S = 90.0
 DEFAULT_STATS_S = 60.0
+DEFAULT_HUB_IDLE_S = 10.0
 
 # ------------------------------------------------------------------- utils
 
@@ -259,17 +375,26 @@ def rss_kb():
 
 
 class Endpoint(object):
-    __slots__ = ("addr", "code", "role", "last_seen")
+    # version / seat / caps are version 2 only; a version 1 endpoint keeps
+    # version 1, seat None and no caps, and nothing on its path reads them.
+    __slots__ = ("addr", "code", "role", "last_seen", "version", "seat",
+                 "caps")
 
-    def __init__(self, addr, code, role, now):
+    def __init__(self, addr, code, role, now, version=PROTO_VERSION,
+                 seat=None):
         self.addr = addr
         self.code = code
         self.role = role
         self.last_seen = now
+        self.version = version
+        self.seat = seat
+        self.caps = None if version == PROTO_VERSION else {}
 
 
 class Session(object):
+    """A version 1 session: the star, blind, exactly as it always was."""
     __slots__ = ("code", "parent", "children", "created")
+    version = PROTO_VERSION
 
     def __init__(self, code, now):
         self.code = code
@@ -287,12 +412,38 @@ class Session(object):
         return out
 
 
+class SessionV2(object):
+    """A version 2 session: a STAR (seat 0 is the parent, 1..MAX_CHILDREN the
+    children) or a HUB (seats 0..HUB_SEATS-1, all members, nobody hosts)."""
+    __slots__ = ("code", "kind", "seats", "created")
+    version = PROTO_V2
+
+    def __init__(self, code, kind, now):
+        self.code = code
+        self.kind = kind
+        self.seats = {}         # seat -> addr
+        self.created = now
+
+    def size(self):
+        return len(self.seats)
+
+    def capacity(self):
+        return HUB_SEATS if self.kind == KIND_HUB else MAX_ENDPOINTS_PER_SESSION
+
+    def free_seat(self, lo, hi):
+        """Lowest free seat in lo..hi inclusive, or None."""
+        for seat in range(lo, hi + 1):
+            if seat not in self.seats:
+                return seat
+        return None
+
+
 class Bucket(object):
     """Token bucket, one per source address."""
     __slots__ = ("tokens", "stamp")
 
-    def __init__(self, now):
-        self.tokens = float(RATE_BURST)
+    def __init__(self, now, burst=None):
+        self.tokens = float(RATE_BURST if burst is None else burst)
         self.stamp = now
 
 
@@ -301,8 +452,9 @@ class Bucket(object):
 
 class RelayProtocol(asyncio.DatagramProtocol):
 
-    def __init__(self, idle_s):
+    def __init__(self, idle_s, hub_idle_s=DEFAULT_HUB_IDLE_S):
         self.idle_s = idle_s
+        self.hub_idle_s = hub_idle_s
         self.transport = None
         self.sessions = {}      # code -> Session
         self.endpoints = {}     # addr -> Endpoint
@@ -320,6 +472,13 @@ class RelayProtocol(asyncio.DatagramProtocol):
         self.n_bad = 0
         self.n_full = 0
         self.n_expired = 0
+        # version 2 counters: HELLO refusals by status, per-reason drops, and
+        # per kind [rx, fwd, drop] (fwd counts copies sent, like n_fwd)
+        self.n_seat_taken = 0
+        self.n_vmix = 0
+        self.n_wrong_kind = 0
+        self.v2_drop = dict((r, 0) for r in DROP_REASONS)
+        self.kstats = dict((tag, [0, 0, 0]) for tag in KIND_ORDER)
 
     # ---- asyncio hooks
 
@@ -333,7 +492,11 @@ class RelayProtocol(asyncio.DatagramProtocol):
         return
 
     def datagram_received(self, data, addr):
-        now = time.monotonic()
+        self.on_datagram(data, addr, time.monotonic())
+
+    def on_datagram(self, data, addr, now):
+        """One datagram at time `now`. Split from the asyncio hook so a test
+        can drive the relay with its own clock."""
         self.n_rx += 1
 
         until = self.ignored.get(addr)
@@ -363,23 +526,34 @@ class RelayProtocol(asyncio.DatagramProtocol):
             self._on_hello(data, addr, now)
             return
 
+        if endpoint.version == PROTO_V2:
+            self._forward_v2(data, addr, now, endpoint)
+            return
         self._forward(data, addr, now, endpoint)
 
     # ---- rate limiting
 
     def _rate_ok(self, addr, now):
+        # The budget follows the session version of the endpoint at this
+        # address: a version 2 seat gets RATE_PPS_V2, everybody else
+        # (version 1 seats and strangers) the version 1 budget, unchanged.
+        endpoint = self.endpoints.get(addr)
+        if endpoint is not None and endpoint.version == PROTO_V2:
+            pps, burst = RATE_PPS_V2, RATE_BURST_V2
+        else:
+            pps, burst = RATE_PPS, RATE_BURST
         bucket = self.buckets.get(addr)
         if bucket is None:
             if len(self.buckets) >= MAX_BUCKETS:
                 # Tracking table is full. Fail closed rather than grow.
                 return False
-            bucket = Bucket(now)
+            bucket = Bucket(now, burst)
             self.buckets[addr] = bucket
         else:
             elapsed = now - bucket.stamp
             if elapsed > 0:
                 bucket.tokens = min(
-                    float(RATE_BURST), bucket.tokens + elapsed * RATE_PPS)
+                    float(burst), bucket.tokens + elapsed * pps)
                 bucket.stamp = now
         if bucket.tokens < 1.0:
             return False
@@ -388,16 +562,23 @@ class RelayProtocol(asyncio.DatagramProtocol):
 
     # ---- sending
 
-    def _send_ack(self, addr, status, code_raw, request_len):
+    def _send_ack(self, addr, status, code_raw, request_len,
+                  version=PROTO_VERSION, seat=0):
         """Reply to a HELLO.
 
         Never sends more bytes than we just received from this endpoint.
         An unpaired stranger can therefore never use us as an amplifier.
+        A version 1 ACK is byte for byte what it always was (reserved zero);
+        a version 2 ACK carries the seat the relay will stamp at byte 6.
         """
         if len(code_raw) != 8:
             code_raw = (code_raw + b"\x00" * 8)[:8]
-        reply = (MAGIC_ACK + bytes((PROTO_VERSION, status)) + b"\x00\x00"
-                 + code_raw)
+        if version == PROTO_V2:
+            reply = (MAGIC_ACK + bytes((PROTO_V2, status, seat & 0xFF, 0))
+                     + code_raw)
+        else:
+            reply = (MAGIC_ACK + bytes((PROTO_VERSION, status)) + b"\x00\x00"
+                     + code_raw)
         if len(reply) > request_len:
             return
         try:
@@ -408,7 +589,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
 
     # ---- HELLO
 
-    def _reject(self, data, addr, now, code_raw=None):
+    def _reject(self, data, addr, now, code_raw=None, version=PROTO_VERSION):
         """Malformed HELLO: answer at most once, then go quiet on them."""
         last = self.bad_ack_at.get(addr)
         if last is None or (now - last) >= BAD_ACK_INTERVAL_S:
@@ -416,7 +597,8 @@ class RelayProtocol(asyncio.DatagramProtocol):
             self.n_bad += 1
             if code_raw is None:
                 code_raw = data[8:16] if len(data) >= 16 else b""
-            self._send_ack(addr, STATUS_BAD, code_raw, len(data))
+            self._send_ack(addr, STATUS_BAD, code_raw, len(data),
+                           version=version)
             log("bad request from %s len=%d" % (short_addr(addr), len(data)))
         self.ignored[addr] = now + BAD_IGNORE_S
 
@@ -426,6 +608,9 @@ class RelayProtocol(asyncio.DatagramProtocol):
         code_raw = data[8:16]
         if data[:4] != MAGIC_HELLO:
             self._reject(data, addr, now, code_raw=b"\x00" * 8)
+            return
+        if version == PROTO_V2:
+            self._on_hello_v2(data, addr, now)
             return
         if version != PROTO_VERSION or role not in (ROLE_PARENT, ROLE_CHILD):
             self._reject(data, addr, now)
@@ -439,7 +624,8 @@ class RelayProtocol(asyncio.DatagramProtocol):
 
         endpoint = self.endpoints.get(addr)
         if endpoint is not None and (endpoint.code != code
-                                     or endpoint.role != role):
+                                     or endpoint.role != role
+                                     or endpoint.version != PROTO_VERSION):
             # Same endpoint asking for something else. Drop the old seat.
             self._detach(endpoint, "rejoin")
             endpoint = None
@@ -451,6 +637,16 @@ class RelayProtocol(asyncio.DatagramProtocol):
             return
 
         session = self.sessions.get(code)
+        if session is not None and session.version != PROTO_VERSION:
+            # A version 1 game quoting a version 2 session's code. Version 1
+            # has no status 3, so it gets the refusal it knows: FULL, which an
+            # old game logs ("session is FULL") and then plays solo. The
+            # session is untouched.
+            self.n_vmix += 1
+            log("session %s refused %s: a v1 HELLO for a v2 session"
+                % (code, short_addr(addr)))
+            self._send_ack(addr, STATUS_FULL, code_raw, len(data))
+            return
         if session is None:
             if len(self.sessions) >= MAX_SESSIONS:
                 self.n_full += 1
@@ -513,12 +709,226 @@ class RelayProtocol(asyncio.DatagramProtocol):
                 continue
             self.n_fwd += 1
 
+    # ---- version 2: HELLO
+
+    def _refuse_v2(self, addr, status, code, code_raw, request_len, why):
+        """A well-formed version 2 HELLO the relay cannot seat. Answered every
+        time (the reply is never longer than the HELLO) and never ignored:
+        the game is not malformed, the room is just not open to it."""
+        if status == STATUS_FULL:
+            self.n_full += 1
+        elif status == STATUS_SEAT_TAKEN:
+            self.n_seat_taken += 1
+        elif status == STATUS_VERSION:
+            self.n_vmix += 1
+        elif status == STATUS_WRONG_KIND:
+            self.n_wrong_kind += 1
+        log("session %s refused %s: %s (v2 status %d)"
+            % (code, short_addr(addr), why, status))
+        self._send_ack(addr, status, code_raw, request_len, version=PROTO_V2)
+
+    def _on_hello_v2(self, data, addr, now):
+        role = data[5]
+        want = data[6]
+        # data[7] is flags; bit0 "this endpoint will send voice". Every
+        # version 2 endpoint already gets the voice budget (RATE_PPS_V2), so
+        # the flag changes nothing today and unknown bits are not policed,
+        # the same rule as version 1's reserved field.
+        code_raw = data[8:16]
+        n = len(data)
+        code = parse_code(code_raw)
+        if code is None:
+            self._reject(data, addr, now, code_raw=b"\x00" * 8,
+                         version=PROTO_V2)
+            return
+        # want_seat grammar, per role. Anything else is a malformed HELLO.
+        if role == ROLE_PARENT:
+            ok = want == 0
+        elif role == ROLE_CHILD:
+            ok = (1 <= want <= 15) or want == WANT_ANY
+        elif role == ROLE_MEMBER:
+            ok = (0 <= want < HUB_SEATS) or want == WANT_ANY
+        else:
+            ok = False
+        if not ok:
+            self._reject(data, addr, now, version=PROTO_V2)
+            return
+        kind = KIND_HUB if role == ROLE_MEMBER else KIND_STAR
+
+        endpoint = self.endpoints.get(addr)
+        if endpoint is not None:
+            if (endpoint.version == PROTO_V2 and endpoint.code == code
+                    and endpoint.role == role
+                    and (want == WANT_ANY or want == endpoint.seat)):
+                # Known endpoint, same seat: the keepalive. Idempotent.
+                endpoint.last_seen = now
+                self._send_ack(addr, STATUS_OK, code_raw, n,
+                               version=PROTO_V2, seat=endpoint.seat)
+                return
+            self._detach(endpoint, "rejoin")
+
+        session = self.sessions.get(code)
+        if session is not None and session.version != PROTO_V2:
+            self._refuse_v2(addr, STATUS_VERSION, code, code_raw, n,
+                            "a v2 HELLO for a v1 session")
+            return
+        if session is not None and session.kind != kind:
+            self._refuse_v2(addr, STATUS_WRONG_KIND, code, code_raw, n,
+                            "a %s role into a %s session"
+                            % (kind, session.kind))
+            return
+        created = False
+        if session is None:
+            if len(self.sessions) >= MAX_SESSIONS:
+                self._refuse_v2(addr, STATUS_FULL, code, code_raw, n,
+                                "relay at %d sessions" % MAX_SESSIONS)
+                return
+            session = SessionV2(code, kind, now)
+            self.sessions[code] = session
+            created = True
+            log("session %s create by %s (v2 %s)"
+                % (code, short_addr(addr), kind))
+
+        # Seat the endpoint.
+        status, why, seat = STATUS_OK, "", None
+        if kind == KIND_STAR and role == ROLE_PARENT:
+            if 0 in session.seats:
+                status, why = STATUS_SEAT_TAKEN, "parent seat taken"
+            else:
+                seat = 0
+        elif kind == KIND_STAR:
+            if want == WANT_ANY:
+                seat = session.free_seat(1, MAX_CHILDREN)
+                if seat is None:
+                    status, why = STATUS_FULL, "no free child seat"
+            elif want > MAX_CHILDREN:
+                status, why = STATUS_FULL, ("seat %d is past this relay's %d "
+                                            "children" % (want, MAX_CHILDREN))
+            elif want in session.seats:
+                status, why = STATUS_SEAT_TAKEN, "seat %d taken" % want
+            else:
+                seat = want
+        else:
+            if want == WANT_ANY:
+                seat = session.free_seat(0, HUB_SEATS - 1)
+                if seat is None:
+                    status, why = STATUS_FULL, "hub full"
+            elif want in session.seats:
+                status, why = STATUS_SEAT_TAKEN, "seat %d taken" % want
+            else:
+                seat = want
+        if status != STATUS_OK:
+            self._refuse_v2(addr, status, code, code_raw, n, why)
+            if created:
+                self._drop_if_empty(session)
+            return
+
+        session.seats[seat] = addr
+        self.endpoints[addr] = Endpoint(addr, code, role, now,
+                                        version=PROTO_V2, seat=seat)
+        log("session %s join %s as %s seat %d (%d/%d) v2"
+            % (code, short_addr(addr),
+               ("parent", "child", "member")[role], seat, session.size(),
+               session.capacity()))
+        self._send_ack(addr, STATUS_OK, code_raw, n, version=PROTO_V2,
+                       seat=seat)
+
+    # ---- version 2: forwarding by the kind table
+
+    def _kind_cap_ok(self, endpoint, kind, now):
+        """Per (sender, kind) token bucket: kind.cap a second, one second
+        deep. Inside the per-source budget, so no kind can starve another."""
+        cap = endpoint.caps.get(kind.tag)
+        if cap is None:
+            cap = [float(kind.cap), now]
+            endpoint.caps[kind.tag] = cap
+        else:
+            elapsed = now - cap[1]
+            if elapsed > 0:
+                cap[0] = min(float(kind.cap), cap[0] + elapsed * kind.cap)
+                cap[1] = now
+        if cap[0] < 1.0:
+            return False
+        cap[0] -= 1.0
+        return True
+
+    def _drop_v2(self, reason, kstat=None):
+        self.v2_drop[reason] += 1
+        if kstat is not None:
+            kstat[2] += 1
+
+    def _forward_v2(self, data, addr, now, endpoint):
+        n = len(data)
+        kind = KINDS.get(bytes(data[:4])) if n >= 4 else None
+        if kind is None:
+            self._drop_v2("unknown")
+            return
+        kstat = self.kstats[kind.tag]
+        kstat[0] += 1
+        if not kind.length_ok(n):
+            self._drop_v2("length", kstat)
+            return
+        session = self.sessions.get(endpoint.code)
+        if session is None:
+            self.n_drop_unpaired += 1
+            kstat[2] += 1
+            return
+        route = kind.hub if session.kind == KIND_HUB else kind.star
+        if route is None:
+            self._drop_v2("route", kstat)
+            return
+        seat = endpoint.seat
+        if route == R_STAR:
+            if seat == 0:
+                targets = [a for s, a in session.seats.items() if s != 0]
+            else:
+                parent = session.seats.get(0)
+                targets = [parent] if parent is not None else []
+        elif route == R_ALL:
+            targets = [a for s, a in session.seats.items() if s != seat]
+        elif route == R_UP:
+            if seat == 0:
+                self._drop_v2("route", kstat)
+                return
+            parent = session.seats.get(0)
+            targets = [parent] if parent is not None else []
+        else:  # R_SEAT6
+            to = session.seats.get(data[6])
+            targets = [to] if (to is not None and data[6] != seat) else []
+        # The cap is spent only on a datagram that is otherwise forwardable,
+        # so garbage cannot eat a seat's own budget for a kind.
+        if not self._kind_cap_ok(endpoint, kind, now):
+            self._drop_v2("cap", kstat)
+            return
+        endpoint.last_seen = now
+        if not targets:
+            self._drop_v2("target", kstat)
+            return
+        out = bytearray(data)
+        out[kind.stamp] = seat
+        out = bytes(out)
+        for target in targets:
+            try:
+                self.transport.sendto(out, target)
+            except Exception:
+                continue
+            self.n_fwd += 1
+            kstat[1] += 1
+
     # ---- bookkeeping
 
     def _detach(self, endpoint, why):
         self.endpoints.pop(endpoint.addr, None)
         session = self.sessions.get(endpoint.code)
         if session is None:
+            return
+        if session.version == PROTO_V2:
+            if session.seats.get(endpoint.seat) == endpoint.addr:
+                del session.seats[endpoint.seat]
+            log("session %s leave %s seat %s (%s)"
+                % (endpoint.code, short_addr(endpoint.addr), endpoint.seat,
+                   why))
+            self._drop_if_empty(session)
             return
         if session.parent == endpoint.addr:
             session.parent = None
@@ -535,7 +945,10 @@ class RelayProtocol(asyncio.DatagramProtocol):
 
     def sweep(self, now):
         for addr, endpoint in list(self.endpoints.items()):
-            if (now - endpoint.last_seen) > self.idle_s:
+            idle = self.idle_s
+            if endpoint.role == ROLE_MEMBER and endpoint.version == PROTO_V2:
+                idle = self.hub_idle_s
+            if (now - endpoint.last_seen) > idle:
                 self.n_expired += 1
                 self._detach(endpoint, "idle")
         for addr, bucket in list(self.buckets.items()):
@@ -552,12 +965,29 @@ class RelayProtocol(asyncio.DatagramProtocol):
         rss = rss_kb()
         return ("stats sessions=%d endpoints=%d rx=%d fwd=%d ack=%d "
                 "drop_rate=%d drop_size=%d drop_unpaired=%d drop_ignored=%d "
-                "bad=%d full=%d expired=%d rss_kb=%s"
+                "bad=%d full=%d expired=%d rss_kb=%s%s"
                 % (len(self.sessions), len(self.endpoints), self.n_rx,
                    self.n_fwd, self.n_ack, self.n_drop_rate, self.n_drop_size,
                    self.n_drop_unpaired, self.n_drop_ignored, self.n_bad,
                    self.n_full, self.n_expired,
-                   "?" if rss is None else str(rss)))
+                   "?" if rss is None else str(rss), self.stats_v2()))
+
+    def stats_v2(self):
+        """The version 2 tail of the stats line: session and seat refusals,
+        drops by reason, and per kind rx/fwd/drop (fwd counts copies sent)."""
+        v2_sessions = sum(1 for s in self.sessions.values()
+                          if s.version == PROTO_V2)
+        hubs = sum(1 for s in self.sessions.values()
+                   if s.version == PROTO_V2 and s.kind == KIND_HUB)
+        head = (" v2_sessions=%d hubs=%d seat_taken=%d vmix=%d wrong_kind=%d"
+                % (v2_sessions, hubs, self.n_seat_taken, self.n_vmix,
+                   self.n_wrong_kind))
+        drops = " ".join("drop_%s=%d" % (r, self.v2_drop[r])
+                         for r in DROP_REASONS)
+        kinds = " ".join("%s=%d/%d/%d" % ((tag.decode("ascii"),)
+                                          + tuple(self.kstats[tag]))
+                         for tag in KIND_ORDER)
+        return "%s %s %s" % (head, drops, kinds)
 
 
 # ------------------------------------------------------------------- entry
@@ -568,11 +998,14 @@ async def run():
     bind = os.environ.get("SM64DS_RELAY_BIND", DEFAULT_BIND)
     idle_s = float(os.environ.get("SM64DS_RELAY_IDLE_S", DEFAULT_IDLE_S))
     stats_s = float(os.environ.get("SM64DS_RELAY_STATS_S", DEFAULT_STATS_S))
+    hub_idle_s = float(os.environ.get("SM64DS_RELAY_HUB_IDLE_S",
+                                      DEFAULT_HUB_IDLE_S))
 
     family = socket.AF_INET6 if ":" in bind else socket.AF_INET
     loop = asyncio.get_running_loop()
     transport, protocol = await loop.create_datagram_endpoint(
-        lambda: RelayProtocol(idle_s), local_addr=(bind, port), family=family)
+        lambda: RelayProtocol(idle_s, hub_idle_s), local_addr=(bind, port),
+        family=family)
 
     sock = transport.get_extra_info("socket")
     if sock is not None:
@@ -587,10 +1020,14 @@ async def run():
         "(1 parent + %d children)"
         % (bind, port, idle_s, MAX_SESSIONS, MAX_PAYLOAD, RATE_PPS,
            RATE_BURST, MAX_ENDPOINTS_PER_SESSION, MAX_CHILDREN))
+    log("v2: rate_pps_v2=%d hub_idle=%.0fs hub_seats=%d kinds=%s"
+        % (RATE_PPS_V2, hub_idle_s, HUB_SEATS,
+           ",".join(t.decode("ascii") for t in KIND_ORDER)))
     if RATE_PPS < 240:
-        log("note: rate_pps %d is the pre-voice budget. A seat running "
-            "proximity voice chat sends ~117 packets a second; set "
-            "SM64DS_RELAY_RATE_PPS=240 before hosting voice sessions."
+        log("note: rate_pps %d is the pre-voice budget for version 1 "
+            "sessions. A v1 seat running proximity voice chat sends ~117 "
+            "packets a second; set SM64DS_RELAY_RATE_PPS=240 before hosting "
+            "v1 voice sessions. Version 2 sessions use rate_pps_v2."
             % RATE_PPS)
     log(protocol.stats_line())
 
