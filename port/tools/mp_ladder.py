@@ -1663,6 +1663,9 @@ def main(argv=None):
         print("  lane %-2s %-10s %s  [%s]" % (lane, LANE_NAMES[lane],
                                               "present" if feats.have[lane] else "absent ",
                                               feats.why[lane]))
+    if not a.busy_log:
+        print("WARNING: NO BUSY FLAG: --busy-log and $SM64DS_BUSY_LOG are both unset, so nothing "
+              "pauses this ladder for other work on the machine")
     aroot = asset_root_for(a)
     print("asset root %s" % aroot)
     for shadow in (os.path.join(os.path.dirname(os.path.abspath(a.exe)), "settings.json"),
