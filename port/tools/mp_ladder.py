@@ -862,8 +862,9 @@ def r_late(L, run, r):
     ck = Checks()
     late = n - 1
     seated = cs[late]["session"]
-    refused = bool(re.search(r"(?i)refus", texts[late]))
-    ck.ok(seated or refused, "late p%d seated=%s refused-aloud=%s" % (late, seated, refused))
+    refused = not seated and bool(re.search(r"(?i)refus", texts[late]))
+    ck.ok(seated or refused, "late p%d %s" % (late, "seated" if seated else
+                                              ("refused out loud" if refused else "neither seated nor refused")))
     for k in range(n):
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
         ck.ok(not cs[k]["faults"], "p%d faults=%d" % (k, len(cs[k]["faults"])))
