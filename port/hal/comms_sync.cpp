@@ -2244,6 +2244,12 @@ namespace {
 // (func_ov002_020e88a8) still faces the local player's heading because the
 // park shares its x and z. The body's own Behavior is skipped (its pauseFlags
 // bit 2, hal/player_bridges.cpp), so the height runs no pit or fall logic.
+// A parked body is also VANISHED (mIsVanish, +0x6fb): with the local player
+// vanished (Luigi's power flower, Player::InitVanishLuigi),
+// dActor_c::ClosestNonVanishPlayer skips the local body, and an unvanished
+// parked ghost would be the only one left, where solo answers null. Boo,
+// Pokey, Fly Guy, Scuttlebug, Ukiki and friends then turned to face the
+// invisible Luigi. The follower clears it again on a ghost it shows.
 int g_gw_nopark = -1;
 int g_drawpos_have[kCommsMaxPlayers];
 int g_drawpos[kCommsMaxPlayers][3];
@@ -2259,6 +2265,7 @@ void gw_park_body(void *a) {
     *player::pos_z(a) = *player::pos_z(mb);
     *(int *)((char *)a + 0x98) = 0;
     *(int *)((char *)a + 0xa8) = 0;
+    *((unsigned char *)a + 0x6fb) = 1;
     ++g_gws.parked;
 }
 
@@ -2372,6 +2379,7 @@ void gw_follow() {
         if (port_adventure_ghost_fade(i) >= 256) {
             if (sm.grounded) *(int *)((char *)a + 0x644) = sm.y;
             *((unsigned char *)a + 0x717) = 0;
+            *((unsigned char *)a + 0x6fb) = 0;   // the park's vanish, off
             func_ov002_020e444c((char *)a);
         }
         if (!no_repose) {
