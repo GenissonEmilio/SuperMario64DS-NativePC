@@ -56,10 +56,11 @@ THE ENVIRONMENT RULES THIS HARNESS KEEPS (the run's standing orders):
     own launch only, so other lanes' rungs interleave between ours; --hold-s S
     keeps it across consecutive rungs for up to S seconds when the queue is
     long (every rung otherwise goes to the back of the line);
-  - a busy flag: when the last line of --busy-log (default
-    ~/.claude/scripts/league_chill.log) contains "chilling", the ladder does
-    not start a rung, and a rung already running is killed and recorded as
-    ABORTED; --busy-wait S waits up to S seconds for the flag to clear;
+  - an optional busy flag: --busy-log FILE (default $SM64DS_BUSY_LOG; unset
+    means no busy flag at all). When the last line of that file contains
+    "chilling" (the machine's owner needs it quiet), the ladder does not start
+    a rung, and a rung already running is killed and recorded as ABORTED;
+    --busy-wait S waits up to S seconds for the flag to clear;
   - ports derived from this process's PID, never the shipped default 51765;
   - a TIMEOUT row (a console killed at the deadline) is re-run once, alone,
     after the other rungs; the re-run's verdict is the one that counts and
@@ -245,6 +246,10 @@ class Aborted(Exception):
 
 
 def busy(path):
+    """The busy flag's last line when it says "chilling", else "". No path
+    (no --busy-log and no $SM64DS_BUSY_LOG) means never busy."""
+    if not path:
+        return ""
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             lines = [ln for ln in f.read().splitlines() if ln.strip()]
@@ -1507,7 +1512,7 @@ class Ladder:
         self.asset_root = asset_root_for(a)
         self.relay_py = os.path.abspath(a.relay_py)
         self.relay1_py = os.path.abspath(a.relay1_py or a.relay_py)
-        self.busy_log = os.path.expanduser(a.busy_log)
+        self.busy_log = os.path.expanduser(a.busy_log) if a.busy_log else ""
         self.minpos = a.minpos
         self.kit, self.rom = a.kit, a.rom
         stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
@@ -1628,7 +1633,8 @@ def main(argv=None):
     ap.add_argument("--hold-s", type=int, default=0,
                     help="keep the lock across consecutive rungs for up to this many seconds (a batch), "
                     "then queue again; 0 = release after every rung")
-    ap.add_argument("--busy-log", default="~/.claude/scripts/league_chill.log")
+    ap.add_argument("--busy-log", default=os.environ.get("SM64DS_BUSY_LOG", ""),
+                    help="busy-flag file (default $SM64DS_BUSY_LOG; unset = no busy flag)")
     ap.add_argument("--busy-wait", type=int, default=0, help="seconds to wait for the busy flag")
     ap.add_argument("--tier", default="gate", choices=("dev", "gate", "full"))
     ap.add_argument("--only", help="regex over rung names (applied after --tier)")
