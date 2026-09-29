@@ -11,6 +11,7 @@ line: PASS, FAIL, SKIP (with the reason) or TIMEOUT.
                                    [--tier dev|gate|full] [--only REGEX]
                                    [--skip REGEX] [--assume LANE,...]
                                    [--kit KITDIR --rom ROM.nds] [--out DIR]
+                                   [--hold-s S] [--busy-wait S]
     python port/tools/mp_ladder.py --list [--tier full]     # rungs + gating
     python port/tools/mp_ladder.py --probe                  # lane markers only
 
@@ -34,13 +35,22 @@ Match rungs add: exactly one MATCH OVER line per console, identical on every
 console, and the "[vs] closing" exit. The chosen input delay and the starved /
 subst / late / catchup counters are printed on every VS row.
 
+SAVES. Every console gets its own SM64DS_SAVE_PATH (the default,
+<exe folder>/save/sm64ds.sav, would be one file shared by every console of a
+one-machine run), and that shared default is hashed around every rung: any
+write to it is a red. The save rows: adventure consoles each collect a star
+and save their own valid cartridge; a VS match leaves the host's real save
+byte-identical and joiners write none.
+
 THE ENVIRONMENT RULES THIS HARNESS KEEPS (the run's standing orders):
   - every console hidden and muted: mp2_proof.spawn (CREATE_NO_WINDOW +
     SW_SHOWMINNOACTIVE) and mp2_proof.env_base (SM64DS_NO_FOCUS,
     SM64DS_MINIMIZED, SM64DS_VOLUME=0); voice rungs add SM64DS_NO_AUDIO=1;
   - one multi-console run at a time machine-wide: every rung holds --lock (a
     build_lock.py lockfile; the ladder refuses to launch without one) for its
-    own launch only, so other lanes' rungs interleave between ours;
+    own launch only, so other lanes' rungs interleave between ours; --hold-s S
+    keeps it across consecutive rungs for up to S seconds when the queue is
+    long (every rung otherwise goes to the back of the line);
   - a busy flag: when the last line of --busy-log (default
     ~/.claude/scripts/league_chill.log) contains "chilling", the ladder does
     not start a rung, and a rung already running is killed and recorded as
