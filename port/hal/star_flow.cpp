@@ -919,6 +919,7 @@ void port_vs_countdown_tick(void)
  * The schedule, in host ticks (walk_window runs the 3D logic at ~30Hz, so 30
  * ticks ~= one second), anchored at frame 90 -- the frame the tagger used to be
  * seeded, past the level-entry no-control freeze:
+ *     [0,90)     count 3   held, silent (the level-entry freeze; see the drive)
  *     [90,150)   count 3   READY? + red 3    ~2.0s (the get-ready / spread beat)
  *     [150,195)  count 2   READY? + red 2    ~1.5s
  *     [195,240)  count 1   READY? + red 1    ~1.5s
@@ -947,18 +948,37 @@ void port_luigi_countdown_drive(int frame)
 {
     if (data_0209f2d8 != 1) return;         /* VS only */
     if (!port_luigi_enabled()) return;      /* a normal VS round never enters */
-    if (frame < kLiCdStart) return;         /* seat_vs_countdown left the counter
-                                               at 3; hold there until the arena
-                                               is ready and the render can draw */
 
+    /* THE HOLD STARTS AT FRAME 0, not at the first beep. The ROM's own
+       Stage::Behavior countdown block runs every VS frame ahead of this call
+       (the frame loop's copy retired; see walk_window's Stage comment) and on
+       its own ~2s cadence reaches 0 at f61, which lets every player out of the
+       level-entry step (func_ov002_020c71e0) at f62. Writing the count back to
+       3 at f90 does not put anyone back in that step, so a drive that started
+       at f90 left the players running for ~6s under READY? 3-2-1. Held from
+       frame 0, the count is never 0 before the pick, so the players stay held
+       until START, the way the DS's own 3-2-1 holds them. Before kLiCdStart
+       the count is simply held at 3 (what seat_vs_countdown seated), silently:
+       the beeps and the trace keep their schedule below. */
     int count;
     if      (frame < kLiCd3End) count = 3;
     else if (frame < kLiCd2End) count = 2;
     else if (frame < kLiCdPick) count = 1;
     else                        count = 0;
 
+    /* THE TIMER WORD WHILE A COUNT IS SHOWING: 0x2a, not 0x28. The ROM block
+       that runs first next frame opens with "if (f304 == 0x28 && f2bc == 3)
+       Play2D(0x2b)", then steps f304 down by data_0208ee44 (2) and drops the
+       count when it lands on 0. 0x2a is not 0x28, so its entry beep never
+       fires (a held 0x28 beeps every frame of the 3), and 0x2a - 2 is 0x28,
+       not 0, so it never drops the count, rings its own beep or GO, or starts
+       the music: this function stays the only source of all four. The render
+       only asks whether f304 is non-zero (the START glyph), so the value is
+       free. After the pick the count is 0 and the ROM's entry test cannot
+       match, so START keeps the 0x28 it always had. */
     data_0209f2bc = (unsigned char)count;
-    data_0209f304 = (unsigned short)((count != 0 || frame < kLiCdEnd) ? 0x28 : 0);
+    data_0209f304 = (unsigned short)(count != 0 ? 0x2a
+                                     : frame < kLiCdEnd ? 0x28 : 0);
 
     /* the native countdown audio on the stretched schedule: Sound::Play2D(2,..)
        -- a beep entering each count (0x2b), the GO chord (0x2a) and the arena's
@@ -1009,7 +1029,7 @@ void port_luigi_countdown_drive(int frame)
        cannot put back, so a replay would both double-print and leave the latch
        reading a count the world has since backed out of. */
     static int last_shown = -99;
-    if (count != last_shown && !g_port_rb_replaying) {
+    if (frame >= kLiCdStart && count != last_shown && !g_port_rb_replaying) {
         last_shown = count;
         fprintf(stderr, "[luigi] COUNTDOWN f%d shows %s\n", frame,
                 count == 3 ? "READY? + 3" : count == 2 ? "READY? + 2" :
