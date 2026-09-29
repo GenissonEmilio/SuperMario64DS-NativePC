@@ -216,7 +216,10 @@ TICKETS_SUFFIX = ".tickets"
 #     the next waiter breaks it at once: a release never leaves a live-named lock;
 #   * a sharing error while reading, creating or breaking is a busy moment, not
 #     a verdict: reads are retried briefly, a create that meets a file still
-#     being deleted counts as "not ours yet", and the waiter polls again.
+#     being deleted counts as "not ours yet", and the waiter polls again;
+#   * only the HOLDER retries a delete, re-reading that the file is still its
+#     own before every attempt. A stale break deletes once: a breaker's retry
+#     could delete the fresh lock another waiter created in between.
 RELEASE_RETRY_SECONDS = 10.0
 SHARING_RETRY_SECONDS = 0.5
 _SHARING_SLEEP = 0.005
@@ -351,15 +354,16 @@ def _held_for(acquired):
         return None
 
 
-def _stale_reason(path):
+def _stale_reason(path, read=None):
     """Why the lock on disk is stale, or None if it is a healthy live hold.
 
     Two rules, in the order they are cheap and certain: a dead holder pid (the
     killed-build case), then an age past the hard cap (the wedged-but-alive and
     pid-reuse case). Returning the REASON rather than a bool is what lets the
-    break print a line that says which rule fired.
+    break print a line that says which rule fired. `read` is a _read_holder
+    result to judge instead of reading again (the break uses its own one read).
     """
-    pid, acquired, _, _, text = _read_holder(path)
+    pid, acquired, _, _, text = read if read is not None else _read_holder(path)
     if pid is None and text == "" and os.path.exists(path):
         # Empty: a holder between its create and its write (or a file mid-
         # delete). Only stale once it has stayed empty past the grace.
@@ -423,9 +427,9 @@ def _try_create(path, label, root):
     return True
 
 
-def _describe_holder(path):
+def _describe_holder(path, read=None):
     """A one-line 'pid N (label L, root R), held Ns' for messages."""
-    pid, acquired, label, root, _ = _read_holder(path)
+    pid, acquired, label, root, _ = read if read is not None else _read_holder(path)
     held = _held_for(acquired)
     bits = f"pid {pid}"
     if label:
@@ -446,11 +450,24 @@ def _break_stale(path):
     another breaker having already removed it. The subsequent _try_create in
     acquire() is the real race arbiter -- exactly one O_EXCL create can win.
     """
-    reason = _stale_reason(path)
+    # ONE read, judged and described, then the delete at once: every extra read
+    # between the verdict and the delete (a sharing retry can take a while) is
+    # time for another waiter to break the same file and create a fresh lock
+    # that this delete would then remove.
+    read = _read_holder(path)
+    reason = _stale_reason(path, read)
     if not reason:
         return False
-    who = _describe_holder(path)
-    if not _remove_retrying(path, SHARING_RETRY_SECONDS):
+    who = _describe_holder(path, read)
+    # ONE delete, never retried. "Stale" was decided from one read; if this
+    # delete meets a sharing error, another waiter may break the same file and
+    # create its own fresh lock before a retry would run, and a retry would then
+    # delete THAT live lock and put two holders on the box (measured by the
+    # REVMPPROOF1 review: 22-27 of 50 in a thread check, 52-90 overlapping holds
+    # in 150 dying-holder hand-overs). A failed delete just loses this poll.
+    try:
+        os.remove(path)
+    except OSError:
         return False
     print(f"[build_lock] BROKE STALE LOCK ({reason}): was {who} "
           f"-- lockfile {path}. A killed build must not wedge the box; if that "
@@ -705,11 +722,17 @@ def release(path=None):
     pid, _, _, _, _ = _read_holder(path)
     if pid != os.getpid():
         return
-    if _remove_retrying(path, RELEASE_RETRY_SECONDS):
+    me = os.getpid()
+    if _remove_retrying(path, RELEASE_RETRY_SECONDS,
+                        still_ours=lambda: _read_holder(path)[0] == me):
         return
     # The delete would not take inside the bound. Never leave a lockfile that
     # names this live process: rewrite it to name nobody, which every waiter's
-    # stale check breaks on its next poll.
+    # stale check breaks on its next poll. Re-read first: past the age cap a
+    # waiter may have broken ours and taken a lock of its own meanwhile, and
+    # that one must not be overwritten.
+    if _read_holder(path)[0] != me:
+        return
     try:
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"pid": None, "released": True, "host": socket.gethostname(),
@@ -723,11 +746,16 @@ def release(path=None):
               file=sys.stderr)
 
 
-def _remove_retrying(path, seconds):
+def _remove_retrying(path, seconds, still_ours):
     """os.remove, retried through Windows sharing errors for up to `seconds`.
-    True when the file is gone (by us or anyone), False if it never went."""
+    still_ours() is read before EVERY attempt, so a retry can never delete a
+    lockfile somebody else has created since (a holder past the age cap can have
+    its lock broken and replaced while it retries). True when our file is gone
+    (or is no longer ours to delete), False if it never went."""
     deadline = time.time() + seconds
     while True:
+        if not still_ours():
+            return True
         try:
             os.remove(path)
             return True

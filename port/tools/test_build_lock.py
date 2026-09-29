@@ -660,6 +660,47 @@ def test_release_that_cannot_delete_leaves_no_live_lock(lockfile, monkeypatch):
     assert not os.path.exists(again)
 
 
+def test_a_stale_break_never_deletes_a_lock_taken_meanwhile(lockfile):
+    # Breaker X meets a sharing error on a stale lock; meanwhile head H breaks
+    # the same file and creates its own. X must not come back and delete H's.
+    import threading
+    for _ in range(10):
+        _write_lock(lockfile, 0x7FFFFFF0)                 # a dead holder
+        reader = open(lockfile, "r", encoding="utf-8")    # some waiter mid-read
+        xres = []
+        x = threading.Thread(target=lambda: xres.append(build_lock._break_stale(lockfile)))
+        x.start()
+        time.sleep(0.02)
+        reader.close()
+        build_lock._break_stale(lockfile)
+        assert build_lock._try_create(lockfile, "H", "")
+        x.join()
+        assert os.path.exists(lockfile), "a breaker deleted the lock H had just taken"
+        assert build_lock.holder(lockfile)[2] == "H"
+        os.remove(lockfile)
+
+
+def test_a_release_retry_never_deletes_a_successors_lock(lockfile):
+    # Past the age cap our lock can be broken and replaced while release() is
+    # still retrying its delete: the successor's lockfile must survive.
+    import threading
+    path = build_lock.acquire(label="old", timeout=2)
+    reader = open(path, "r", encoding="utf-8")
+    t = threading.Thread(target=build_lock.release, args=(path,))
+    t.start()
+    time.sleep(0.1)                                        # release is retrying
+    sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        _write_lock(path, sleeper.pid, label="successor")  # the successor's lock
+        reader.close()
+        t.join(15)
+        assert os.path.exists(path), "release deleted its successor's lock"
+        assert build_lock.holder(path)[0] == sleeper.pid
+    finally:
+        sleeper.terminate()
+        sleeper.wait()
+
+
 _HOLDER = r"""
 import os, sys, threading, time
 sys.path.insert(0, sys.argv[1])
