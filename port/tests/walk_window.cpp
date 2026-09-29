@@ -417,6 +417,7 @@ static bool winapi_load(void)
 #include "hal/comms_seam.h"       /* run mg15 lane MP1: the radio seam */
 #include "hal/voice_chat.h"      /* lane VOICE: proximity voice chat */
 #include "hal/comms_loopback.h"   /* run mg16 lane MP2: the loopback carrier */
+#include "hal/comms_hub.h"        /* run mp1 lane HUB1: the adventure hub */
 /* run mg16 lane MP3: hal/comms_lockstep.h is RETIRED. Its transcription of
    src/func_0203ea5c.c existed only because that TU was in no slice; the TU is
    linked now and drives itself. Its lessons live in comms_seam.h's frozen
@@ -10653,7 +10654,12 @@ int main(void)
        the seam keeps its own solo answers, and every path below is the one that
        ran yesterday. Placed after io_init because the seam's boot indicator
        writes through the 0x027ff000 mapping io_init reserves. */
-    port::comms_loopback_install_from_env();
+    /* run mp1 lane HUB1: an ADVENTURE console with a relay (or a test mesh)
+       opens the hub instead: no DS session, no rounds, nobody waits. It
+       returns false for every VS and solo run, which then takes the loopback
+       install exactly as before. */
+    if (!port::comms_hub_install_from_env())
+        port::comms_loopback_install_from_env();
     pacer_begin();
 #ifdef PORT_ROM_CLEAN
     /* ROM-CLEAN: load + verify the ROM tables from romdata.bin FIRST, before
