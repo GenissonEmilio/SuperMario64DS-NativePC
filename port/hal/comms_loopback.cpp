@@ -782,8 +782,9 @@ PipeRound g_pipe[kPipeDepth];
 
 // ===========================================================================
 // ROLLBACK NETCODE (port/rollback). OPT-IN since the 0.3.6 hotfix of
-// 2026-09-03: g_rollback is false (lockstep) unless settings.json says NetMode
-// "rollback" or SM64DS_NETMODE=rollback, and even then only when the seated
+// 2026-09-03: g_rollback is false (lockstep) unless SM64DS_NETMODE=rollback
+// (since multiplayer 1.0 the settings.json NetMode key is not read for online
+// sessions; see the NetMode block at install), and even then only when the seated
 // session is no wider than kRollbackMaxPlayers (the width it is proven to;
 // the install block says so on one line). Rollback re-simulates the world on
 // every frame a remote peer moves, which is why it lost the default.
@@ -4380,12 +4381,19 @@ bool comms_loopback_install_from_env() {
                      "clamped\n", kLegacyInputDelayMax);
     }
 
-    // NetMode (port/rollback): settings.json "NetMode": "lockstep" | "rollback",
-    // SM64DS_NETMODE overriding it. LOCKSTEP IS THE DEFAULT and rollback is
-    // opt-in (0.3.6 hotfix, 2026-09-03: rollback shipped as the default in
-    // 0.3.4 but re-simulates the world every frame a remote peer moves, which
-    // halves the effective tick rate; hal/host_settings.cpp reads an absent or
-    // unparseable file, or a file without the key, as lockstep). With
+    // NetMode (port/rollback). MULTIPLAYER 1.0: EVERY SESSION THIS CARRIER
+    // OPENS RUNS LOCKSTEP, and only the env SM64DS_NETMODE=rollback (a test
+    // knob) turns rollback on. settings.json's "NetMode" is NOT READ here any
+    // more. It was: hal/host_settings.cpp still defaults it to rollback (the
+    // 0.3.7 revert), so a session nobody configured, and every player whose
+    // settings file kept a 0.3.x-era "rollback", opened in rollback -- and
+    // rollback desyncs on this base within seconds (a rewind restores a world
+    // that is not the one it saved: the host tick record at data_0209d574 and
+    // the frame counter at data_0209f2a8 are outside the snapshot). The
+    // parent's pick also rides bit 17 of the ACCEPT and every child adopts it,
+    // so one player's settings file used to choose a desyncing mode for the
+    // whole room. The carrier is only ever installed for a session, never
+    // solo, so the settings key is untouched for everything else. With
     // lockstep g_rollback stays false, which leaves every path above and
     // below this block byte-for-byte what it was. Rollback runs at input
     // delay 0 by construction (the delay is what it replaces), and the
@@ -4400,13 +4408,19 @@ bool comms_loopback_install_from_env() {
     // reads the same SM64DS_VS_PLAYERS, so every peer lands on the same side
     // of this line, and the parent's bit 17 carries it anyway.
     {
-        int mode = host_setting_net_mode();
+        int mode = 0;
+        bool from_env = false;
         if (const char *e = std::getenv("SM64DS_NETMODE")) {
-            if (ieq_word(e, "rollback")) mode = 1;
-            else if (ieq_word(e, "lockstep")) mode = 0;
+            if (ieq_word(e, "rollback")) { mode = 1; from_env = true; }
+            else if (ieq_word(e, "lockstep")) { mode = 0; from_env = true; }
             else std::fprintf(stderr, "[comms:loopback] SM64DS_NETMODE=%s is "
                               "neither lockstep nor rollback; ignored\n", e);
         }
+        if (!from_env && host_setting_net_mode() == 1)
+            std::fprintf(stderr, "[comms:loopback] settings NetMode rollback "
+                         "is not used for online sessions (multiplayer 1.0: "
+                         "VS runs lockstep; SM64DS_NETMODE=rollback is the "
+                         "test knob)\n");
         if (mode == 1 && g_want_players > kRollbackMaxPlayers) {
             std::fprintf(stderr, "[comms:loopback] NetMode rollback asked for "
                          "a %d-player session, but rollback is proven "
@@ -4428,6 +4442,9 @@ bool comms_loopback_install_from_env() {
                          "rewinds and replays (hal/rollback.cpp); past the "
                          "window this stalls %u ms and then drops the slot\n",
                          kRbWindow, kRbGraceMs);
+        } else {
+            std::fprintf(stderr, "[comms:loopback] NetMode lockstep (%s)\n",
+                         from_env ? "SM64DS_NETMODE" : "the online default");
         }
     }
     // ARMED ONLY WHERE IT CAN HELP AND ONLY WHERE IT IS ALLOWED TO DECIDE.
