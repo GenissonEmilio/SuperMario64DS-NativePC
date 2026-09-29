@@ -1748,6 +1748,23 @@ void fill_header(Packet &p, unsigned char type) {
 // looked).
 // ===========================================================================
 const unsigned char kSessionTag[4] = { 'S', 'D', '1', '0' };
+// THE REFUSAL'S REASON, IN THE BYE (multiplayer 1.0, lane VSAUX1). A joiner
+// that refuses the session writes 'SDNO' + reason u32 + its own build id and
+// settings digest into blocks[0] of the BYE it sends before exit code 3, so
+// the host's log says why the slot left. A BYE's blocks are unused and zero
+// in every build, so an older host reads nothing there.
+const unsigned char kSessionRefuseTag[4] = { 'S', 'D', 'N', 'O' };
+enum : unsigned { kRefuseHostOlder = 1, kRefuseBuild = 2, kRefuseSettings = 3 };
+unsigned g_session_refuse = 0;
+const char *session_refuse_text(unsigned why) {
+    switch (why) {
+    case kRefuseHostOlder: return "it found no session stamp (this host looked "
+                                  "older than it)";
+    case kRefuseBuild:     return "it runs a different build";
+    case kRefuseSettings:  return "its match settings differ from this host's";
+    default:               return "a reason this build does not know";
+    }
+}
 
 unsigned fnv1a32(const char *s) {
     unsigned h = 2166136261u;
@@ -1862,6 +1879,8 @@ bool session_check_ok(const Packet &a) {
                      "end\n", host_b, host_d);
         return true;
     }
+    g_session_refuse = !tagged ? kRefuseHostOlder
+                     : host_b != mine_b ? kRefuseBuild : kRefuseSettings;
     const char *why = !tagged ? "the host is an older build (no session stamp)"
                     : host_b != mine_b ? "the host runs a different build"
                                        : "the host's match settings differ";
@@ -2771,6 +2790,17 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         if (popcount_live(g_live) <= 1) g_state = kCommsConnecting;
         std::fprintf(stderr, "[comms:loopback] slot %d left; live mask 0x%x\n",
                      k, g_live);
+        // A JOINER THAT REFUSED THE SESSION SAYS WHY in its BYE (see
+        // session_check_ok), so the host's log names the reason instead of
+        // only the departure. An older joiner's BYE has zero blocks.
+        if (std::memcmp(p.blocks[0], kSessionRefuseTag, 4) == 0) {
+            const unsigned why = get_u32le(p.blocks[0] + 4);
+            std::fprintf(stderr, "[comms:loopback] slot %d refused this session: "
+                         "%s (joiner build id %08x digest %08x; this host build "
+                         "id %08x)\n", k, session_refuse_text(why),
+                         get_u32le(p.blocks[0] + 8), get_u32le(p.blocks[0] + 12),
+                         session_build_id());
+        }
         break;
     default:
         ++g_dropped;
@@ -3072,6 +3102,14 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
         if (g_state != kCommsChildConnected && !session_check_ok(p)) {
             Packet bye;
             fill_header(bye, kTypeBye);
+            // The reason rides the BYE (see kSessionRefuseTag).
+            {
+                char canon[160];
+                std::memcpy(bye.blocks[0], kSessionRefuseTag, 4);
+                put_u32le(bye.blocks[0] + 4, g_session_refuse);
+                put_u32le(bye.blocks[0] + 8, session_build_id());
+                put_u32le(bye.blocks[0] + 12, session_digest(canon, sizeof canon));
+            }
             send_to_slot(bye, 0);
             std::fflush(stderr);
             std::fflush(stdout);
