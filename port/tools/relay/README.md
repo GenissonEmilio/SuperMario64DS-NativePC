@@ -152,6 +152,18 @@ another seat. No other byte changes.
 table's last column, one second deep), so a flood of one kind cannot eat the
 budget of another. Version 1 seats keep their 120.
 
+**The session budget.** Those limits are per sender, and a hub copies each
+datagram to up to 15 others, so a version 2 session also has a budget of its
+own: at most 15000 copies a second leave the relay for one session
+(`SM64DS_RELAY_SESSION_FWD_PPS`, one second deep). A datagram that would go
+over it is dropped whole, never sent to some members and not others. The
+number is sized from the worst room the game can legitimately make, a full
+16-seat hub with every seat talking at once (about 11200 copies a second); a
+normal room with a few talkers is about half that, and a 16-player VS match
+far less. It exists so that sixteen sockets sending at every cap cannot make
+one room cost more than the busiest real room does. Version 1 sessions have
+no session budget and behave as they always did.
+
 **A 1.0 game against an old relay.** A version 1 relay reads a version 2
 HELLO as a bad request: it answers status 2 in a version 1 ACK and then
 ignores that address for 10 seconds. A 1.0 game that falls back to version 1
@@ -174,6 +186,7 @@ Every one of these is enforced, and every one has a test.
 | Seats per v2 hub             | 16    | The next member gets status 1               |
 | Idle before a hub seat is freed | 10 s | The member's next HELLO seats it again   |
 | v2 datagram not in the table |       | Dropped, counted under its reason           |
+| Copies sent per v2 session   | 15000/s | Excess dropped whole, counted as `drop_session_cap` |
 
 120 packets a second is generous for 30 frames a second of lockstep play plus
 retries. A player sending more than that is either broken or malicious, and
@@ -381,6 +394,7 @@ Set in the unit file, visible with `systemctl cat sm64ds-relay`:
 | `SM64DS_RELAY_RATE_PPS` | 120      | per-address packet budget of a version 1 seat |
 | `SM64DS_RELAY_RATE_PPS_V2` | 240   | per-address packet budget of a version 2 seat |
 | `SM64DS_RELAY_HUB_IDLE_S` | 10     | seconds before a quiet hub seat is freed |
+| `SM64DS_RELAY_SESSION_FWD_PPS` | 15000 | copies a second one version 2 session may make the relay send |
 
 After editing the unit: `sudo systemctl daemon-reload && sudo systemctl restart
 sm64ds-relay`. Changing the port means changing the firewall rule to match, and
@@ -424,11 +438,13 @@ ignored (see "Running it on Windows" below), and the version 2 counters:
 `drop_length` (a length the table does not list for that tag), `drop_route`
 (a kind the session's shape does not carry, or a parent's clock report),
 `drop_cap` (over that kind's cap), `drop_target` (nobody to send it to: a pong
-for an empty seat, a parent alone); and per kind `TAG=rx/fwd/drop`, where
+for an empty seat, a parent alone), `drop_session_cap` (over the session
+budget); and per kind `TAG=rx/fwd/drop`, where
 `fwd` counts copies sent:
 
     reset=0 v2_sessions=1 hubs=1 seat_taken=0 vmix=0 wrong_kind=0 drop_unknown=0
-    drop_length=0 drop_route=0 drop_cap=0 drop_target=0 MP2L=0/0/0
+    drop_length=0 drop_route=0 drop_cap=0 drop_target=0 drop_session_cap=0
+    MP2L=0/0/0
     SYNG=720/10800/0 SYNI=0/0/0 SYNT=0/0/0 SYNV=236/3540/0 SYNP=96/1440/0
     SYNQ=0/0/0 SYNK=0/0/0 SYN1=0/0/0
 
@@ -542,4 +558,6 @@ half runs the relay as a subprocess over real sockets: a 16-seat hub where
 every member hears the other fifteen under their own seats, a spoofed seat,
 oversize and flood datagrams, a version 1 session beside a version 2 one, and
 a member whose process dies mid-session while the others keep hearing each
-other (on Windows twice: with the OS report turned off, and left on).
+other (on Windows twice: with the OS report turned off, and left on), and
+sixteen sockets flooding one hub held to the session budget while the hub
+beside them hears everything.

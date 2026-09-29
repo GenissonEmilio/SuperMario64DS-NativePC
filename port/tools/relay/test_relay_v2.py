@@ -649,11 +649,120 @@ def u_v1_untouched(mod):
     return res
 
 
+def schedule(addrs, per_kind, t0, secs, pong_to=None):
+    """(t, addr, datagram) events: every addr sends every (tag, length, pps)
+    in per_kind evenly over [t0, t0 + secs), each sender offset a little."""
+    ev = []
+    for i, a in enumerate(addrs):
+        for tag, n, pps in per_kind:
+            step = 1.0 / pps
+            k = 0
+            while True:
+                t = t0 + (i * 0.00037) + k * step
+                if t >= t0 + secs:
+                    break
+                b6 = None
+                if tag == b"SYNQ":
+                    b6 = (pong_to(i, k) if pong_to
+                          else (i + 1) % len(addrs))
+                ev.append((t, a, dgram(tag, n, byte6=b6)))
+                k += 1
+    return ev
+
+
+def u_session_budget(mod):
+    res = Result("per-session forward budget: a flooding hub is held, a "
+                 "normal and a worst-case hub beside it are untouched")
+    budget = mod.SESSION_FWD_PPS
+    res.check(budget == 15000, "default budget 15000 forwards/s (%d)" % budget)
+    rig = Rig(mod)
+    flood = build_hub(rig, "FLOODHUB", 16)
+    normal = build_hub(rig, "NORMHUB1", 16)
+    worst = build_hub(rig, "WORSTHUB", 16)
+    # 12 s, read over the last 4: the budget's one-second bucket lets a flood
+    # run over it until that second of credit is spent (~6 s at this flood)
+    secs = 12.0
+    t0 = rig.now + 0.5
+    # the flood: 16 ordinary sockets, each at every per-kind cap
+    ev = schedule(flood, [(b"SYNG", 44, 35), (b"SYNI", 24, 3),
+                          (b"SYNT", 40, 8), (b"SYNV", 340, 30),
+                          (b"SYNP", 12, 6), (b"SYNQ", 12, 6)], t0, secs)
+    # a normal room: 15 Hz ghosts, 2 Hz pings, 4 talkers
+    ev += schedule(normal, [(b"SYNG", 44, 15), (b"SYNP", 12, 2)], t0, secs)
+    ev += schedule(normal[:4], [(b"SYNV", 340, 25)], t0, secs)
+    # the worst legitimate room (design sections 3 and 6): every seat talking,
+    # chatting at the sender limit (3 sends per 1.5 s), identity every 2 s,
+    # pings at 2 Hz, pongs at the table's cap of 6 a second
+    ev += schedule(worst, [(b"SYNG", 44, 15), (b"SYNP", 12, 2),
+                           (b"SYNI", 24, 0.5), (b"SYNT", 40, 2),
+                           (b"SYNV", 340, 25), (b"SYNQ", 12, 6)], t0, secs,
+                   pong_to=lambda i, k: (i + 1 + k % 15) % 16)
+    ev.sort(key=lambda e: e[0])
+    where = {}
+    for name, addrs in (("flood", flood), ("normal", normal),
+                        ("worst", worst)):
+        for a in addrs:
+            where[a] = name
+    got = dict((n, 0) for n in ("flood", "normal", "worst"))
+    late = dict((n, 0) for n in ("flood", "normal", "worst"))
+    for t, a, d in ev:
+        rig.now = t
+        rig.relay.on_datagram(d, a, t)
+        for _, to in rig.wire.take():
+            got[where[to]] += 1
+            if t >= t0 + 8.0:
+                late[where[to]] += 1
+    late_s = secs - 8.0
+    rate = late["flood"] / late_s
+    res.note("forwards/s over the last 4 s: flood %.0f, normal %.0f, "
+             "worst-case %.0f; session_cap drops %d"
+             % (rate, late["normal"] / late_s, late["worst"] / late_s,
+                rig.relay.v2_drop["session_cap"]))
+    res.check(budget * 0.95 <= rate <= budget * 1.01,
+              "the flooding hub is held at the budget (%.0f/s)" % rate)
+    exp = {"normal": 0, "worst": 0}
+    for t, a, d in ev:
+        if where[a] in exp:
+            exp[where[a]] += 1 if d[:4] == b"SYNQ" else 15
+    for name in ("normal", "worst"):
+        res.check(got[name] == exp[name], "the %s hub got every copy (%d of "
+                  "%d)" % (name, got[name], exp[name]))
+    res.check(late["worst"] / late_s > 10000,
+              "the worst-case room ran at %.0f/s, under the budget"
+              % (late["worst"] / late_s))
+    line = rig.relay.stats_line()
+    res.check(rig.relay.v2_drop["session_cap"] > 0 and
+              ("drop_session_cap=%d" % rig.relay.v2_drop["session_cap"])
+              in line, "drops counted as drop_session_cap in the stats line")
+    # the knob, and v1 is not budgeted at all
+    small = load_relay({"SM64DS_RELAY_SESSION_FWD_PPS": "300"})
+    rig2 = Rig(small)
+    a = build_hub(rig2, "KNOBHUB1", 16)
+    n = 0
+    for k in range(3):
+        for x in a:
+            n += len(rig2.send(x, dgram(b"SYNG", 44), dt=0.0005))
+    res.check(n == 300, "SM64DS_RELAY_SESSION_FWD_PPS=300: a burst passes "
+              "exactly 300 copies (%d)" % n)
+    p = rig2.addr()
+    rig2.send(p, hello("KNOBV1XX", ROLE_PARENT, version=1))
+    for kid in [rig2.addr() for _ in range(3)]:
+        rig2.send(kid, hello("KNOBV1XX", ROLE_CHILD, version=1))
+    rig2.settle()
+    n = 0
+    for k in range(110):
+        n += len(rig2.send(p, b"MP2L" + bytes(0x8C), dt=0.0005))
+    res.check(n == 330, "and a v1 session on that relay is not budgeted "
+              "(%d of 110 x 3)" % n)
+    return res
+
+
 def run_unit():
     mod = load_relay()
     results = []
     for t in (u_kind_table, u_hello_and_ack, u_refusals, u_routes_and_stamping,
-              u_drop_reasons, u_rate_budget, u_idle, u_v1_untouched, u_fuzz):
+              u_drop_reasons, u_rate_budget, u_idle, u_v1_untouched, u_fuzz,
+              u_session_budget):
         res = t(mod)
         res.report()
         results.append(res)
@@ -956,9 +1065,79 @@ def s_member_exits(relay_env=None, relay_py=None, label=""):
     return res
 
 
+def s_session_budget():
+    """Real sockets, the budget set low: 16 sockets flooding one hub are held
+    to it while a normal hub beside them hears everything."""
+    budget = 2000
+    res = Result("socket: 16 flooding sockets held to the session budget "
+                 "(%d/s), the hub beside them untouched" % budget)
+    with RelayProc({"SM64DS_RELAY_SESSION_FWD_PPS": str(budget)}) as relay:
+        flood = [Sock(relay) for _ in range(16)]
+        normal = [Sock(relay) for _ in range(4)]
+        try:
+            fa = [m.join("SOCKFLD1", ROLE_MEMBER, ANY) for m in flood]
+            na = [m.join("SOCKNRM1", ROLE_MEMBER, ANY) for m in normal]
+            res.check(all(a and a[1] == ST_OK for a in fa + na),
+                      "16 + 4 members seated")
+            for m in flood + normal:
+                m.s.setblocking(False)
+            late_f = 0
+            per_n = [dict() for _ in normal]
+            secs, warm = 5.0, 1.5
+            t0 = time.time()
+            nxt_f = nxt_n = t0
+            while True:
+                now = time.time()
+                if now - t0 >= secs:
+                    break
+                if now >= nxt_f:            # 30/s per flooding socket
+                    for m in flood:
+                        m.send(dgram(b"SYNG", 44))
+                    nxt_f += 1.0 / 30
+                if now >= nxt_n:            # 15/s per normal socket
+                    for m in normal:
+                        m.send(dgram(b"SYNG", 44))
+                    nxt_n += 1.0 / 15
+                for m in flood:
+                    while True:
+                        try:
+                            m.s.recvfrom(4096)
+                        except OSError:
+                            break
+                        if now - t0 >= warm:
+                            late_f += 1
+                for k, m in enumerate(normal):
+                    while True:
+                        try:
+                            d, _ = m.s.recvfrom(4096)
+                        except OSError:
+                            break
+                        if d[:4] == b"SYNG":
+                            per_n[k][d[5]] = per_n[k].get(d[5], 0) + 1
+                time.sleep(0.001)
+            rate = late_f / (secs - warm)
+            res.note("flood hub delivered %.0f/s after %.1f s (offered %d/s)"
+                     % (rate, warm, 16 * 30 * 15))
+            res.check(budget * 0.7 <= rate <= budget * 1.1,
+                      "the flooding hub is held to the budget (%.0f/s)" % rate)
+            exp = secs * 15
+            res.check(all(len(p) == 3 and min(p.values()) >= exp * 0.85
+                          for p in per_n),
+                      "every normal member heard the other 3 at ~15/s (%s)"
+                      % [sorted(p.values()) for p in per_n])
+            line = relay.last_stats()
+            res.check("drop_session_cap=" in line
+                      and "drop_session_cap=0 " not in line,
+                      "the stats line counts drop_session_cap")
+        finally:
+            for m in flood + normal:
+                m.close()
+    return res
+
+
 def run_socket():
     results = []
-    tests = [s_hub16, s_security, s_member_exits]
+    tests = [s_hub16, s_security, s_member_exits, s_session_budget]
     if os.name == "nt":
         # the second line of defence on its own: the OS report left on
         tests.append(lambda: s_member_exits(

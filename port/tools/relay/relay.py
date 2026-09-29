@@ -182,7 +182,7 @@ del _k
 KIND_ORDER = tuple(KINDS)   # stats line order, the table's own
 
 # The reasons a version 2 datagram is dropped, in stats line order.
-DROP_REASONS = ("unknown", "length", "route", "cap", "target")
+DROP_REASONS = ("unknown", "length", "route", "cap", "target", "session_cap")
 
 # ------------------------------------------------------------------ limits
 
@@ -235,6 +235,31 @@ RATE_BURST = clamp_int(os.environ.get("SM64DS_RELAY_RATE_BURST"),
 RATE_PPS_V2 = clamp_int(os.environ.get("SM64DS_RELAY_RATE_PPS_V2"),
                         240, 30, 2000)
 RATE_BURST_V2 = RATE_PPS_V2
+
+# ---- THE PER-SESSION FORWARD BUDGET (run mp1, REVRELAY2 finding H2) --------
+#
+# Every limit above is per SENDER. A hub fans each datagram out to up to 15
+# others, so sixteen ordinary sockets each sending at every per-kind cap drive
+# one hub to ~19800 forwards a second (82 fanned-out datagrams/s x 15 + pongs,
+# x 16 seats), about 5.5x the worst v1 session. This caps what ONE version 2
+# session can make the relay send, counted in copies sent, one second deep.
+#
+# SIZED FROM THE WORST LEGITIMATE ROOM (design sections 3 and 6), a full
+# 16-seat hub with EVERY seat talking at once:
+#     per seat in:  ghost 15 + ping 2 + identity 0.5 + chat 2 (1 message per
+#                   1.5 s, sent 3 times) + voice 25          = 44.5 /s
+#     fanned to 15 others: 44.5 x 15 x 16 seats              = 10680 /s
+#     pongs: every seat answers 15 pingers at 2 Hz, 1 copy    =   480 /s
+#     total                                                   ~ 11160 /s
+# (a normal room with 4 talkers is ~5600/s, measured). 15000 leaves a third
+# over that absolute worst case and cuts a hostile hub from ~19800 to 15000.
+# A 16-player VS star is far below it (~900/s of lockstep plus its aux).
+# Version 1 sessions are not budgeted here: they stay exactly as they were.
+# What this cannot do is stop MANY hostile sessions; that is the per-address
+# work in the handshake proposal (findings H1/H8).
+SESSION_FWD_PPS = clamp_int(os.environ.get("SM64DS_RELAY_SESSION_FWD_PPS"),
+                            15000, 100, 1000000)
+SESSION_FWD_BURST = SESSION_FWD_PPS
 # 64 -> 256 for version 2: an always-on world room is a session of its own.
 MAX_SESSIONS = 256
 
@@ -415,7 +440,8 @@ class Session(object):
 class SessionV2(object):
     """A version 2 session: a STAR (seat 0 is the parent, 1..MAX_CHILDREN the
     children) or a HUB (seats 0..HUB_SEATS-1, all members, nobody hosts)."""
-    __slots__ = ("code", "kind", "seats", "created")
+    __slots__ = ("code", "kind", "seats", "created", "fwd_tokens",
+                 "fwd_stamp")
     version = PROTO_V2
 
     def __init__(self, code, kind, now):
@@ -423,6 +449,23 @@ class SessionV2(object):
         self.kind = kind
         self.seats = {}         # seat -> addr
         self.created = now
+        # the per-session forward budget (SESSION_FWD_PPS), in copies sent
+        self.fwd_tokens = float(SESSION_FWD_BURST)
+        self.fwd_stamp = now
+
+    def budget_ok(self, copies, now):
+        """Spend `copies` of the session's forward budget, or refuse the
+        whole datagram (never a partial fan-out: every recipient of a
+        datagram gets it or none does)."""
+        elapsed = now - self.fwd_stamp
+        if elapsed > 0:
+            self.fwd_tokens = min(float(SESSION_FWD_BURST),
+                                  self.fwd_tokens + elapsed * SESSION_FWD_PPS)
+            self.fwd_stamp = now
+        if self.fwd_tokens < copies:
+            return False
+        self.fwd_tokens -= copies
+        return True
 
     def size(self):
         return len(self.seats)
@@ -934,6 +977,9 @@ class RelayProtocol(asyncio.DatagramProtocol):
         endpoint.last_seen = now
         if not targets:
             self._drop_v2("target", kstat)
+            return
+        if not session.budget_ok(len(targets), now):
+            self._drop_v2("session_cap", kstat)
             return
         out = bytearray(data)
         out[kind.stamp] = seat
