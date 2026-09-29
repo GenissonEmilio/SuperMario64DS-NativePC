@@ -77,14 +77,14 @@ What v5 is, all of it:
 
 | where | what |
 |---|---|
-| `create`, `join`, `world` | `game` REQUIRED: the game build id, `^[0-9A-Za-z._-]{1,24}$`, compared byte for byte, never parsed. A room remembers its creator's build; a join from another build is **409 `game_mismatch`** ("someone in this room runs a different game version"), checked before `room_full` |
+| `create`, `join`, `world` | `game` REQUIRED: the game build id, `^[0-9A-Za-z._-]{1,24}$`, compared byte for byte, never parsed. A build not on the server's `GAME_IDS` allow list is **409 `unknown_game`** (check for an update). A room remembers its creator's build; a join from another listed build is **409 `game_mismatch`** ("someone in this room runs a different game version"), checked before `room_full` |
 | `create` | `session_type` `"vs"` (default) or `"adventure"`. `"party"` is not a 1.0 room: `400 bad_session_type` |
 | `params` (VS rooms) | optional `luigi` 0/1 (Luigi Infection, default 0) and `voice` 0/1 (the match allows proximity voice, default 1). Anything but the integer 0 or 1 is `400 bad_field`. On an adventure room `luigi`, `voice` or `match_players` is `400 bad_field`. Both ride the `view` and the `params` event |
 | `start` (VS) | mints `seed` (u32, system RNG) and freezes `luigi`/`voice`/`seed` with the rest of the match. A new seed every match. `start` on an adventure room is **409 `not_vs`** |
 | VS go plan | gains `relay_v` (2), `want_seat` (= `slot`), `luigi`, `seed`, `voice`, `digest` |
 | adventure rooms | a hub code minted once at create for the room's life; the plan arrives in the create/join answer and on every poll; no start/ready gate; the room outlives its creator |
 | `world`, `world_ping` | the always-on world pool (below) |
-| `/health` | `contract_min` 5, `contract_v` 5, plus `relay_v`, `worlds`, `world_seats`, `world_member_s` |
+| `/health` | `contract_min` 5, `contract_v` 5, plus `relay_v`, `world_open`, `game_ids` (how many builds are listed), `worlds`, `world_seats`, `world_member_s`, `world_addr_tokens` |
 
 **The VS plan, and what the launcher exports from it** (v5 keys marked):
 
@@ -102,7 +102,7 @@ What v5 is, all of it:
 | `seed` | `SM64DS_VS_LUIGI_SEED` (decimal u32) |
 | `voice` | `SM64DS_VOICE_ALLOWED` |
 | `digest` | `SM64DS_SESSION_DIGEST` (decimal u32) |
-| `relay_v`, `want_seat` | the relay HELLO the game sends (`want_seat` is the slot, so the relay's stamp and the game's slot agree) |
+| `relay_v`, `want_seat` | informational: no env today. The game already speaks relay v2 with v1 fallback, VS takes its seat from `SM64DS_COMMS_SLOT` (= `want_seat`) and the hub asks for any seat (255) |
 
 **The session digest** is the number the game's ACCEPT check computes from its
 own environment (port/hal/comms_loopback.cpp, the NETCORE1 session check), so
@@ -157,24 +157,40 @@ just refused as full (the game exits with code 4 and the launcher asks again):
 that world is passed over. A member unheard for 30 s is forgotten, and its
 `world_ping` answers `403 not_a_member` (ask `world` again); a code the pool no
 longer has is `404 no_such_world`. A world with nobody in it for
-`WORLD_EMPTY_S` (600 s) is dropped and its number is reused. The nick and
-colours are grammar-checked and then dropped: a world holds a number, a hub
-code and `{token: last seen}`, nothing about a player. `world` is charged
-against the per-address join budget; `MAX_WORLDS` (64) bounds the whole pool
-across every build id (`503 full`); `RELAY_V=1` turns the pool off (`503
-world_off`: a world needs the relay's hub rules). The lobby never talks to the
+`WORLD_EMPTY_S` (30 s) with no live member is dropped and its number is
+reused. The nick and colours are grammar-checked and then dropped: a world
+holds a number, a hub code and per token `[last seen, issuing address]`, and
+the address is used only for the per-address cap, never logged or sent.
+
+**What bounds the pool** (review REVLOBBY5, S2: before these, one home
+connection filled all 64 worlds in about a minute with made-up build ids):
+
+- **`GAME_IDS`, the build allow list.** Only listed builds get a room or a
+  world (`409 unknown_game` otherwise). The release step writes the list into
+  `docker-compose.yml`. **Empty (the default) turns the world pool off** (`503
+  world_off`) while code rooms take any build, so forgetting the line fails
+  safe.
+- **`WORLD_ADDR_TOKENS` (4) live members per client address.** A `world` call
+  from an address already holding four retires that address's least recently
+  heard token (its next `world_ping` is 403 and the launcher asks again), so a
+  household of four and a relaunch both work, and one address can never stand
+  for more than four members however many calls it makes.
+- The per-address join budget (60/min), `MAX_WORLDS` (64) across every build,
+  `RELAY_V=1` (pool off), and the 30 s empty drop. The lobby never talks to the
 relay, so it cannot see the relay's own seat count; `skip` is the answer to
 that race.
 
-New knobs (all optional; the defaults are the design's numbers):
+New knobs (all in `docker-compose.yml` with these values):
 
 | knob | default | what |
 |---|---|---|
-| `RELAY_V` | 2 | the relay protocol plans name; 1 if the relay v2 deploy is rolled back |
+| `RELAY_V` | 2 | the relay protocol plans name; 1 if the relay v2 deploy is rolled back (the world pool is then off) |
+| `GAME_IDS` | empty | the game builds served, comma-separated; empty = any build for rooms, world pool OFF. The release step sets it |
+| `WORLD_ADDR_TOKENS` | 4 | live world members one client address may hold |
 | `ADV_EMPTY_S` | 600 | an empty adventure room closes after this |
 | `WORLD_SEATS` | 16 | members per world |
 | `WORLD_MEMBER_S` | 30 | a world member unheard this long is not counted |
-| `WORLD_EMPTY_S` | 600 | an empty world is dropped after this |
+| `WORLD_EMPTY_S` | 30 | a world with no live member is dropped after this |
 | `MAX_WORLDS` | 64 | worlds in the pool, every build together |
 
 ---
@@ -767,8 +783,9 @@ seat opened.
 ```
 GET /port/lobby/health
 <- 200 {"ok":true,"ts":"...","revision":"lobby-5","contract_min":5,"contract_v":5,
-        "dial_max":16,"relay_v":2,"rooms":3,"members":7,"worlds":2,
-        "world_seats":16,"world_member_s":30,"waiters":5}
+        "dial_max":16,"relay_v":2,"world_open":true,"game_ids":1,"rooms":3,
+        "members":7,"worlds":2,"world_seats":16,"world_member_s":30,
+        "world_addr_tokens":4,"waiters":5}
 ```
 
 `rooms` visible from outside is the difference between a detectable outage and
