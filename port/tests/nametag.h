@@ -137,6 +137,13 @@ extern unsigned char data_0209fc5c[];
    in this console's level (hal/comms_sync.cpp). The tag loop skips a peer in
    another level so no name floats over a body that is not drawn. */
 int port_adventure_peer_visible(int slot);
+/* run mp1 lane GHOSTWIRE1: a hub ghost's own facts, off its SYNI / SYNG
+   (hal/comms_sync.cpp). seat -1 means "not a hub ghost": use the VS facts. */
+int port_adventure_ghost_seat(int slot);
+const char *port_adventure_ghost_name(int slot);
+int port_adventure_ghost_stars(int slot);
+unsigned port_adventure_ghost_rgb(int slot);
+int port_adventure_ghost_fade(int slot);
 }
 
 /* ADVENTURE GHOSTS: the same head tags label the ghosts in an adventure
@@ -464,6 +471,8 @@ static void nt_draw(const OvlSurface &fb)
                                 : (kFar - dist) / (kFar - kNear);
                 alpha = (int)(aa * 255.0 + 0.5);
             }
+            /* a hub ghost whose frames stopped fades with its body */
+            alpha = alpha * port_adventure_ghost_fade(i) / 256;
             if (alpha <= 0) continue;   /* out of prox-chat range: no tag */
         }
         /* OFF THE SCREEN ENTIRELY, with a whole tag's margin so a name that is
@@ -489,22 +498,38 @@ static void nt_draw(const OvlSurface &fb)
         const int name_y = adventure ? y_top : y_bot;
         const int star_y = adventure ? y_bot : y_top;
 
-        char who[24];
-        const char *nick = port_vs_slot_name(i);
+        /* A HUB GHOST (run mp1 lane GHOSTWIRE1) is labelled from its own wire:
+           the name its SYNI carries (already cut down to printable ASCII), the
+           save's star total its SYNG carries, and the name drawn in its body
+           colour. Anything else keeps the VS facts below. */
+        const int gseat = adventure ? port_adventure_ghost_seat(i) : -1;
+        char who[32];
+        const char *nick = gseat >= 0 ? port_adventure_ghost_name(i)
+                                      : port_vs_slot_name(i);
         if (nick && nick[0])
             snprintf(who, sizeof who, "%s", nick);
         else
-            snprintf(who, sizeof who, "PLAYER %d", i + 1);
+            snprintf(who, sizeof who, "PLAYER %d",
+                     (gseat >= 0 ? gseat : i) + 1);
 
         /* The star count is port_vs_slot_stars, the per-server VS score, and it
            labels a ghost the same as a VS body now: how many stars that player
-           has on this server. */
-        const int stars = port_vs_slot_stars(i);
+           has on this server. A hub ghost carries its own. */
+        int stars = port_vs_slot_stars(i);
+        if (gseat >= 0) {
+            const int gs = port_adventure_ghost_stars(i);
+            stars = gs >= 0 ? gs : 0;
+        }
         char sline[24];
         snprintf(sline, sizeof sline, "%d STAR%s", stars, stars == 1 ? "" : "S");
+        unsigned name_rgb = 0xFFFFFFFFu;
+        if (gseat >= 0) {
+            const unsigned rgb = port_adventure_ghost_rgb(i);
+            if (rgb) name_rgb = rgb;
+        }
 
         nt_text_centred(fb, cx, star_y, sline, scale, 0xFFFFE060u, alpha);
-        nt_text_centred(fb, cx, name_y, who, scale, 0xFFFFFFFFu, alpha);
+        nt_text_centred(fb, cx, name_y, who, scale, name_rgb, alpha);
 
         if (nt_probe()) {
             fprintf(stderr, "[tag] slot %d \"%s\" %s at (%.0f,%.0f) w=%.2f "
