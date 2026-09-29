@@ -814,12 +814,66 @@ def u_rehello_caps(mod):
     return res
 
 
+def u_host_mp2l_cap(mod):
+    res = Result("the star host's lockstep cap: 150/s for seat 0, children "
+                 "still 75/s")
+    res.check(mod.HOST_MP2L_PPS == 150, "default host MP2L cap 150/s (%d)"
+              % mod.HOST_MP2L_PPS)
+    rig = Rig(mod)
+    star = build_star(rig, "HOSTCAP1", 16)
+    t0 = rig.now + 0.5
+    secs = 4.0
+    # the host at 140/s of wide aggregates, 14 children at 30/s, and one
+    # child (seat 15) pushing 100/s
+    ev = schedule(star[:1], [(b"MP2L", 0x214, 140)], t0, secs)
+    ev += schedule(star[1:15], [(b"MP2L", 0x214, 30)], t0, secs)
+    ev += schedule(star[15:], [(b"MP2L", 0x214, 100)], t0, secs)
+    ev.sort(key=lambda e: e[0])
+    host = star[0]
+    sent = {"host": 0, "fast": 0}
+    out = {"host": 0, "fast": 0}
+    for t, a, d in ev:
+        rig.now = t
+        rig.relay.on_datagram(d, a, t)
+        copies = rig.wire.take()
+        who = "host" if a == host else ("fast" if a == star[15] else None)
+        if who:
+            sent[who] += 1
+            if copies:
+                out[who] += 1
+    res.note("host sent %d, forwarded %d; seat 15 sent %d, forwarded %d"
+             % (sent["host"], out["host"], sent["fast"], out["fast"]))
+    res.check(out["host"] == sent["host"],
+              "the host at 140/s loses nothing (%d of %d)"
+              % (out["host"], sent["host"]))
+    # a token bucket passes one second of burst plus the rate: 75 + 75 x 4
+    res.check(abs(out["fast"] - (75 + 75 * secs)) <= 2,
+              "a child at 100/s is still held at 75/s: %d of %d through "
+              "(75 burst + 75 x %.0f s)" % (out["fast"], sent["fast"], secs))
+    # 160/s from the host is held at 150/s: 150 burst + 150 x 20 s
+    rig2 = Rig(mod)
+    s2 = build_star(rig2, "HOSTCAP2", 3)
+    t1 = rig2.now + 0.5
+    ev = schedule(s2[:1], [(b"MP2L", 0x90, 160)], t1, 20.0)
+    n = 0
+    for t, a, d in ev:
+        rig2.relay.on_datagram(d, a, t)
+        n += 1 if rig2.wire.take() else 0
+    res.check(abs(n - (150 + 150 * 20)) <= 2,
+              "the host at 160/s is held at 150/s: %d of %d through "
+              "(150 burst + 150 x 20 s)" % (n, len(ev)))
+    # the knob
+    k = load_relay({"SM64DS_RELAY_HOST_MP2L_PPS": "90"})
+    res.check(k.HOST_MP2L_PPS == 90, "SM64DS_RELAY_HOST_MP2L_PPS=90 read")
+    return res
+
+
 def run_unit():
     mod = load_relay()
     results = []
     for t in (u_kind_table, u_hello_and_ack, u_refusals, u_routes_and_stamping,
               u_drop_reasons, u_rate_budget, u_idle, u_v1_untouched, u_fuzz,
-              u_session_budget, u_rehello_caps):
+              u_session_budget, u_rehello_caps, u_host_mp2l_cap):
         res = t(mod)
         res.report()
         results.append(res)

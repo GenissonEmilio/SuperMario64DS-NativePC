@@ -152,7 +152,11 @@ another seat. No other byte changes.
 table's last column, one second deep), so a flood of one kind cannot eat the
 budget of another. The per-kind allowances belong to the sender's address,
 not to its seat: asking for another seat, session or version does not refill
-them. Version 1 seats keep their 120.
+them. One exception to the table's caps: the host of a VS star (seat 0)
+may send 150 `MP2L` a second instead of 75 (`SM64DS_RELAY_HOST_MP2L_PPS`),
+because it sends every aggregate and republishes it while a round is open; at
+75 a paced 16-player match lost up to 13 percent of the host's lockstep
+traffic. Version 1 seats keep their 120.
 
 **The session budget.** Those limits are per sender, and a hub copies each
 datagram to up to 15 others, so a version 2 session also has a budget of its
@@ -397,6 +401,7 @@ Set in the unit file, visible with `systemctl cat sm64ds-relay`:
 | `SM64DS_RELAY_RATE_PPS_V2` | 240   | per-address packet budget of a version 2 seat |
 | `SM64DS_RELAY_HUB_IDLE_S` | 10     | seconds before a quiet hub seat is freed |
 | `SM64DS_RELAY_SESSION_FWD_PPS` | 15000 | copies a second one version 2 session may make the relay send |
+| `SM64DS_RELAY_HOST_MP2L_PPS` | 150 | `MP2L` a second the host (seat 0) of a version 2 VS star may send |
 
 After editing the unit: `sudo systemctl daemon-reload && sudo systemctl restart
 sm64ds-relay`. Changing the port means changing the firewall rule to match, and

@@ -265,6 +265,17 @@ SESSION_FWD_BURST = SESSION_FWD_PPS
 # this long after the address last spent one and holds no seat; any value
 # over one second (the depth of every kind bucket) is exact.
 KIND_CAPS_IDLE_S = 5.0
+# THE STAR HOST'S LOCKSTEP CAP (run mp1, REVVSAUX1 S6). The kind table caps
+# 'MP2L' at 75 a second per sender, which fits every child (one block a round
+# plus republishes). The host of a VS star is different: it sends every
+# aggregate AND republishes it while a round is open, and in a paced 16-player
+# match through the relay it hit 75 and lost up to ~13 percent of its lockstep
+# datagrams, which the 15 joiners then waited for (+19 to +64 percent starve
+# waits). Seat 0 of a star gets this cap instead; a relay copy at 150 dropped
+# nothing. It stays inside the per-source budget (RATE_PPS_V2) and the
+# session budget (SESSION_FWD_PPS); every other seat and kind is unchanged.
+HOST_MP2L_PPS = clamp_int(os.environ.get("SM64DS_RELAY_HOST_MP2L_PPS"),
+                          150, 1, 2000)
 # 64 -> 256 for version 2: an always-on world room is a session of its own.
 MAX_SESSIONS = 256
 
@@ -921,17 +932,19 @@ class RelayProtocol(asyncio.DatagramProtocol):
 
     # ---- version 2: forwarding by the kind table
 
-    def _kind_cap_ok(self, endpoint, kind, now):
-        """Per (sender, kind) token bucket: kind.cap a second, one second
-        deep. Inside the per-source budget, so no kind can starve another."""
+    def _kind_cap_ok(self, endpoint, kind, now, rate=None):
+        """Per (sender, kind) token bucket: kind.cap a second (or `rate`),
+        one second deep. Inside the per-source budget, so no kind can starve
+        another."""
+        rate = kind.cap if rate is None else rate
         cap = endpoint.caps.get(kind.tag)
         if cap is None:
-            cap = [float(kind.cap), now]
+            cap = [float(rate), now]
             endpoint.caps[kind.tag] = cap
         else:
             elapsed = now - cap[1]
             if elapsed > 0:
-                cap[0] = min(float(kind.cap), cap[0] + elapsed * kind.cap)
+                cap[0] = min(float(rate), cap[0] + elapsed * rate)
                 cap[1] = now
         if cap[0] < 1.0:
             return False
@@ -983,7 +996,10 @@ class RelayProtocol(asyncio.DatagramProtocol):
             targets = [to] if (to is not None and data[6] != seat) else []
         # The cap is spent only on a datagram that is otherwise forwardable,
         # so garbage cannot eat a seat's own budget for a kind.
-        if not self._kind_cap_ok(endpoint, kind, now):
+        rate = None
+        if route == R_STAR and seat == 0 and kind.tag == b"MP2L":
+            rate = HOST_MP2L_PPS        # the star host's lockstep cap
+        if not self._kind_cap_ok(endpoint, kind, now, rate):
             self._drop_v2("cap", kstat)
             return
         endpoint.last_seen = now
@@ -1159,8 +1175,9 @@ async def run():
         "(1 parent + %d children)"
         % (bind, port, idle_s, MAX_SESSIONS, MAX_PAYLOAD, RATE_PPS,
            RATE_BURST, MAX_ENDPOINTS_PER_SESSION, MAX_CHILDREN))
-    log("v2: rate_pps_v2=%d hub_idle=%.0fs hub_seats=%d kinds=%s"
-        % (RATE_PPS_V2, hub_idle_s, HUB_SEATS,
+    log("v2: rate_pps_v2=%d session_fwd_pps=%d host_mp2l_pps=%d "
+        "hub_idle=%.0fs hub_seats=%d kinds=%s"
+        % (RATE_PPS_V2, SESSION_FWD_PPS, HOST_MP2L_PPS, hub_idle_s, HUB_SEATS,
            ",".join(t.decode("ascii") for t in KIND_ORDER)))
     if os.name == "nt":
         log("windows: udp connreset %s" % connreset)
