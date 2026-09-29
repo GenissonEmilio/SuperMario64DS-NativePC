@@ -2293,8 +2293,10 @@ def test_arming_roster_is_the_frozen_one():
           room.state == "lobby" and room.events[-1]["kind"] == "failed"
           and room.events[-1]["reason"] == "member_not_ready")
 
-    # (b) a PROMOTION during arming keeps the count but changes the seats. This
-    # is the shape a bare len(ps) == agreed_players check would still let through.
+    # (b) a playing seat leaving during arming with a spectator in the room.
+    # Before run mp1 L-J1 the spectator was PROMOTED here, which kept the count
+    # and changed the seats (the shape a bare len(ps) == agreed_players check
+    # would let through). Now nobody is promoted into a frozen match at all.
     reset()
     st, host = create(nick="h", pre_ok=True)
     code = host["room"]
@@ -2308,16 +2310,20 @@ def test_arming_roster_is_the_frozen_one():
     check("the frozen slot map is seats 1 and 2", sorted(room.slot_of) == [1, 2],
           room.slot_of)
     S.do_leave({"v": 5, "room": code, "token": g2["token"]}, "10.0.0.2", 1001.0)
-    check("seat 3 was promoted, so the COUNT still matches agreed_players",
-          room.members[3].playing is True
-          and len([s for s in room.members if room.members[s].playing])
-              == room.agreed_players)
+    check("seat 3 is NOT promoted into the arming match (L-J1)",
+          room.members[3].playing is False, room.members[3].playing)
     ready(code, host["token"], match, now=1002.0)
-    ready(code, g3["token"], match, who="10.0.0.3", now=1002.0)
-    check("but the SEATS differ, so the room still does not go",
+    st, r = ready(code, g3["token"], match, who="10.0.0.3", now=1002.0)
+    check("the spectator's ready is 403 not_playing",
+          st == 403 and r["error"] == "not_playing", (st, r))
+    check("and the room does not go with the frozen seat missing",
           room.state == "arming", room.state)
     check("no plan was ever issued crediting the departed player",
           frozen_names.startswith("h,g2,"), frozen_names)
+    S.sweep(1000.0 + S.ARM_DEADLINE_S + 0.1)
+    check("the arming deadline returns it to lobby, where seat 3 is promoted",
+          room.state == "lobby" and room.members[3].playing is True,
+          (room.state, room.members[3].playing))
 
 
 def test_only_playing_members_drive_a_match():
@@ -3040,6 +3046,44 @@ def test_a_dropped_player_plays_the_next_match():
           room.playing_count())
 
 
+def test_no_promotion_into_a_running_match():
+    """plan.txt C4: a playing seat leaving during go/in_match used to run the
+    dial and promote a spectator, whose go plan then said child, slot 0."""
+    print("\n-- L-J1: a leave during a match promotes nobody")
+    for state in ("go", "in_match"):
+        reset()
+        st, h = create(nick="h", pre_ok=True)
+        code = h["room"]
+        st, g2 = join(code, "g2", who="10.0.0.2", pre_ok=True)
+        st, w3 = join(code, "w3", who="10.0.0.3", pre_ok=True)
+        room = S.ROOMS[code]
+        st, p = start(code, h["token"])
+        ready(code, h["token"], p["match"])
+        ready(code, g2["token"], p["match"], who="10.0.0.2")
+        if state == "in_match":
+            S.sweep(1000.0 + S.GO_GRACE_S + 0.1)
+        check("[%s] the room is running with seat 3 watching" % state,
+              room.state == state and room.members[3].playing is False,
+              room.state)
+        S.do_leave({"v": 5, "room": code, "token": g2["token"]},
+                   "10.0.0.2", 1010.0)
+        check("[%s] seat 2 leaving promotes nobody" % state,
+              room.members[3].playing is False and room.playing_count() == 1,
+              room.playing_count())
+        st, out = poll(code, w3["token"], 1, who="10.0.0.3", now=1010.0)
+        plans = [e["plan"] for e in out["events"] if e["kind"] == "go"]
+        if "plan" in out:
+            plans.append(out["plan"])
+        check("[%s] the spectator's plans are all {playing: false}" % state,
+              plans and all(pl == {"playing": False} for pl in plans), plans)
+        check("[%s] and nothing it is handed carries the match's relay code"
+              % state, room.comms_code not in json.dumps(out), "leaked")
+        _result(code, h["token"], p["match"], now=1100.0)
+        check("[%s] at the match end the vacancy is filled: seat 3 plays" % state,
+              room.state == "lobby" and room.members[3].playing is True,
+              (room.state, room.members[3].playing))
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -3092,6 +3136,7 @@ def main():
     test_server_caps()
     test_opacity()
     test_a_dropped_player_plays_the_next_match()
+    test_no_promotion_into_a_running_match()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

@@ -1856,7 +1856,14 @@ def drop_member(room, seat, why):
                 log("room %s host -> seat %d" % (room.code, room.host_seat))
         # (An empty room's clock is started by the reaper, on its own `now`.)
         return
-    if was_playing:
+    # NOBODY IS PROMOTED INTO A FROZEN MATCH (run mp1, L-J1). From `start`
+    # until the room is back in lobby the roster, the slot map and the names
+    # are frozen; a watcher promoted then held no slot, and during `go` every
+    # poll hands a playing seat a plan, so the promoted watcher was told to
+    # join the running match as a child in slot 0 -- the host's slot. The
+    # seat that opened is filled when the match ends: _reset_match runs the
+    # dial.
+    if was_playing and room.state == "lobby":
         before = {s for s in room.members if room.members[s].playing}
         # ONE RULE, STATED ONCE. Promotion-on-vacancy and the host's dial are
         # the same thing -- "bring the playing count up to what the room is set
@@ -2153,6 +2160,10 @@ def try_go(room, now):
     comparing against them costs nothing and closes both shapes at once. A room
     whose roster moved simply stalls here and the arming deadline returns it to
     lobby with `member_not_ready`, which is the honest outcome.
+
+    (Since run mp1 L-J1 drop_member promotes nobody while a match is frozen,
+    so the promotion shape above cannot arise any more; the set comparison
+    stays as the second lock on the same door.)
     """
     ps = playing_seats(room)
     frozen = sorted(room.slot_of)
