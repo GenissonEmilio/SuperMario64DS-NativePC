@@ -1199,6 +1199,8 @@ struct LgSlot {
     unsigned long long subst;                // rounds substituted, total
     unsigned      last_rx_ms;                // when a real block last landed
     unsigned      silent_run;                // of `run`, rounds it was also silent
+    bool          step_have;                 // a block has landed in an open round
+    unsigned      step_round;                // ... for this round, the newest
 };
 LgSlot   g_lg[kCommsMaxPlayers];
 unsigned g_lg_retired = 0;                   // parent: slots retired this session
@@ -2683,8 +2685,18 @@ bool lg_should_wait(PipeRound &s) {
         if (!p.have) continue;                     // lg_fill waits for these
         if ((unsigned)(t - p.last_rx_ms) >= w) continue;          // silent
         // too far behind to deliver before the host needs the round itself
-        // (frame round + N): the catch-up after a hitch, not a console in step
-        if ((int)(s.round - p.round) > (g_input_delay > 3 ? g_input_delay - 1 : 2)) continue;
+        // (frame round + N): the catch-up after a hitch, not a console in step.
+        // Measured from the newest block that landed in a round still OPEN,
+        // never from a catcher's late blocks (kBlocksLateBit, rule b): those
+        // prove it is alive and feed its substitute, but a console that is
+        // replaying rounds the room already closed is catching up, and holding
+        // the room for it is the old lockstep stall this rule exists to end
+        // (tip13 laggard4-hitch: the host waited on the catcher every time it
+        // came within N - 1 rounds, and the others' stall lines went 3 -> 13,
+        // 5 -> 18). It is waited for again once one of its blocks makes an
+        // open round on its own.
+        if (!p.step_have) continue;
+        if ((int)(s.round - p.step_round) > (g_input_delay > 3 ? g_input_delay - 1 : 2)) continue;
         if (!s.lg_waited) { s.lg_waited = true; ++g_lg_waited; }
         return true;
     }
@@ -3198,7 +3210,14 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
                     std::memcpy(s->blocks[k], p.blocks[k], kCommsBlockBytes);
                     s->mask |= (1u << k);
                     rb_note_block(k, p.round, p.blocks[k]);
-                    if (!g_rollback) lg_note_block(k, p.round, p.blocks[k]);
+                    if (!g_rollback) {
+                        lg_note_block(k, p.round, p.blocks[k]);
+                        LgSlot &q = g_lg[k];
+                        if (!q.step_have || (int)(p.round - q.step_round) > 0) {
+                            q.step_have  = true;
+                            q.step_round = p.round;
+                        }
+                    }
                 }
             }
             // A republish of a round already closed means the child never saw
