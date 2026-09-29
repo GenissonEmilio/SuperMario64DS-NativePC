@@ -679,6 +679,7 @@ enum : int {
     kPlayerAnimCount = 194,
     kGwPosLimit   = 0x8000 << 12,   // |x|, |y|, |z| beyond 32768 units: garbage
     kGwParkUp     = 200000 << 12,   // the park, above the local player (Fix12)
+    kGwSwapNear   = 500,            // units: a shown seat this close keeps its body
     kGwClockJumpMs = 2000,   // a sender clock step this big is a restart
 };
 
@@ -827,8 +828,12 @@ void gw_me_read() {
 // a body. gw_assign() hands the free bodies to the NEAREST visible seats (same
 // level, frames fresh) once a frame, keeps a seat on its body while it stays
 // visible, and moves a body to a much nearer seat only after it has shown its
-// current one for 2 s. A seat without a body is still on the wire (name, tag
-// facts, voice, chat); it is simply not drawn.
+// current one for 2 s, and never while the farthest shown seat is within
+// kGwSwapNear units: players standing together (a shared entrance, a crowd at
+// a wall) are all at a distance near 0, where "under half the distance" is
+// true of a unit or two and the three drawn ghosts swapped every 2 s
+// (REVGHOSTWIRE1-R3, crowd8: 10-16 swaps per console). A seat without a body
+// is still on the wire (name, tag facts, voice, chat); it is simply not drawn.
 int      g_body_seat[kCommsMaxPlayers];     // seat driving body i, or -1
 unsigned g_body_since[kCommsMaxPlayers];    // GetTickCount of that assignment
 bool     g_assign_init = false;
@@ -890,7 +895,8 @@ void gw_assign(unsigned now) {
             if (b != me && data_0209f394[b] && g_body_seat[b] < 0) { free_b = b; break; }
         if (free_b < 0) {
             /* no free body: take the one showing the farthest seat, if this
-               one is under half its distance and it has had 2 s */
+               one is under half its distance, it has had 2 s, and that seat
+               is not itself close by */
             long long fd = -1;
             for (int b = 0; b < nb; ++b) {
                 const int s = g_body_seat[b];
@@ -899,7 +905,9 @@ void gw_assign(unsigned now) {
                 const long long d = gw_dist2(s, me_xyz);
                 if (d > fd) { fd = d; free_b = b; }
             }
-            if (free_b < 0 || cd * 4 >= fd) return;
+            if (free_b < 0 || cd * 4 >= fd ||
+                fd <= (long long)kGwSwapNear * kGwSwapNear)
+                return;
             has[g_body_seat[free_b]] = false;
         }
         g_body_seat[free_b] = cand;
