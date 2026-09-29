@@ -16,9 +16,12 @@ so it doubles as a reference for the game side and as the acceptance suite.
       Two paired endpoints trading packets for the given time. Prints loss
       and the relay's own memory at start and end.
 
-  python test_client.py probe --host HOST [--port 41234] [--code CODE]
+  python test_client.py probe --host HOST [--port 41234] [--code CODE] [--v2]
       One HELLO to a running relay, prints the ACK and the round trip. Use
-      this against the deployed relay after a deploy.
+      this against the deployed relay after a deploy. --v2 sends a version 2
+      hub member HELLO instead (want any seat) and prints the seat: a relay
+      that answers version 2 with status 0 speaks relay v2; a version 1 relay
+      answers version 1 status 2 (and then ignores this address for 10 s).
 
   python test_client.py remote-check --host HOST [--port 41234]
       Pairs a parent and a child from this machine through a remote relay and
@@ -67,11 +70,12 @@ def build_hello(code, role, version=PROTO_VERSION, magic=MAGIC_HELLO,
 
 
 def parse_ack(data):
-    """Returns (version, status, code) or None if this is not an ACK."""
+    """Returns (version, status, code, seat) or None if this is not an ACK.
+    The seat is byte 6: the stamped seat in a version 2 ACK, 0 in version 1."""
     if len(data) != 16 or data[:4] != MAGIC_ACK:
         return None
     return (data[4], data[5], data[8:16].rstrip(b"\x00").decode(
-        "ascii", "replace"))
+        "ascii", "replace"), data[6])
 
 
 class Node(object):
@@ -993,21 +997,32 @@ def soak(minutes=10.0, pps=30):
 # --------------------------------------------------------- remote helpers
 
 
-def probe(host, port, code, role, tries=5):
+STATUS_NAME_V2 = {0: "ok", 1: "full", 2: "bad", 3: "version mismatch",
+                  4: "seat taken", 5: "wrong session kind"}
+
+
+def probe(host, port, code, role, tries=5, v2=False):
     addr = (host, port)
     node = Node(addr, "probe")
     try:
         for attempt in range(tries):
             t0 = time.perf_counter()
-            node.hello(code, role)
+            if v2:
+                # version 2, role 2 (hub member), want_seat 0xFF (any), flags 0
+                node.hello(code, 2, version=2, reserved=0x00FF)
+            else:
+                node.hello(code, role)
             ack = node.recv_ack(1.0)
             rtt = (time.perf_counter() - t0) * 1000.0
             if ack is not None:
+                names = STATUS_NAME_V2 if ack[0] == 2 else STATUS_NAME
                 print("ACK from %s:%d version=%d status=%d (%s) code=%r "
-                      "rtt=%.1f ms"
+                      "rtt=%.1f ms%s"
                       % (host, port, ack[0], ack[1],
-                         STATUS_NAME.get(ack[1], "?"), ack[2], rtt))
-                return 0 if ack[1] == STATUS_OK else 1
+                         names.get(ack[1], "?"), ack[2], rtt,
+                         (" seat=%d" % ack[3]) if ack[0] == 2 else ""))
+                return 0 if (ack[1] == STATUS_OK
+                             and (ack[0] == 2) == bool(v2)) else 1
             print("no ACK (try %d of %d)" % (attempt + 1, tries))
         print("no ACK from %s:%d after %d tries" % (host, port, tries))
         return 1
@@ -1150,6 +1165,8 @@ def main(argv=None):
     probe_p.add_argument("--code", default="PROBE001")
     probe_p.add_argument("--role", choices=("parent", "child"),
                          default="parent")
+    probe_p.add_argument("--v2", action="store_true",
+                         help="send a version 2 hub member HELLO")
     rc_p = sub.add_parser("remote-check",
                           help="pair two endpoints through a remote relay")
     rc_p.add_argument("--host", required=True)
@@ -1164,7 +1181,7 @@ def main(argv=None):
         return soak(args.minutes, args.pps)
     if args.cmd == "probe":
         role = ROLE_PARENT if args.role == "parent" else ROLE_CHILD
-        return probe(args.host, args.port, args.code, role)
+        return probe(args.host, args.port, args.code, role, v2=args.v2)
     if args.cmd == "remote-check":
         return remote_check(args.host, args.port, args.code, args.count)
     parser.print_help()
