@@ -119,6 +119,15 @@ unsigned port_stage_behavior_calls(void);
 // The save's star total, the number the HUD prints outside VS
 // (src/_ZN3HUD15RenderStarCountEv.cpp:69).
 unsigned char NumStars(void);
+// The ROM's per-frame body placement, the half of Player::Behavior's draw
+// preparation before the pose (src/func_ov002_020e444c.c): the body / head
+// matrices from position and angles, and the shadow node
+// (Actor::DropShadowRadHeight). Run by the follower for a hub ghost, whose own
+// Behavior is skipped (hal/player_bridges.cpp, port_adventure_ghost_hold).
+void func_ov002_020e444c(char *self);
+// The ROM's live-actor walk (src/_ZN8dActor_c4NextEPKS_.cpp), for the
+// targeting probe.
+void *_ZN8dActor_c4NextEPKS_(const void *prev);
 }
 
 namespace port {
@@ -638,6 +647,12 @@ inline int units(int n) { return n * 4096; }
 // ===========================================================================
 namespace {
 
+/* THE DEATH PLANE: func_ov002_020c5d60, the pit test Player::Behavior runs
+   every frame, returns while y >= 0xf8ad0000 (-29952 units) and otherwise
+   puts the player in ST_DEAD_PIT. A ghost whose player is down there is
+   falling out of the level: it is hidden, never drawn or placed there. */
+const int kDeathPlaneY = (int)0xf8ad0000;
+
 enum : int {
     kGwSendHz     = 15,      // design 6.1
     kGwPausedMs   = 500,     // 2 Hz while paused / in a menu
@@ -663,6 +678,7 @@ enum : int {
        in the room, c0000005 in UpdateBones). */
     kPlayerAnimCount = 194,
     kGwPosLimit   = 0x8000 << 12,   // |x|, |y|, |z| beyond 32768 units: garbage
+    kGwParkUp     = 200000 << 12,   // the park, above the local player (Fix12)
     kGwClockJumpMs = 2000,   // a sender clock step this big is a restart
 };
 
@@ -699,6 +715,7 @@ struct GwStats {
     unsigned long long drop_len, drop_tag, drop_ver, drop_seat, drop_field,
                        drop_old;
     unsigned long long resets, charswaps, reposes, recursor;
+    unsigned long long parked, below, clamped, target_ghost, near_ghost;
     unsigned long long interp, reckon, hold, teleports;
 };
 GwStats g_gws;
@@ -1068,6 +1085,7 @@ bool gw_visible(int seat) {
     if (z.n == 0) return false;
     if ((unsigned)(GetTickCount() - z.last_ms) > (unsigned)kGwDespawnMs)
         return false;
+    if (z.ring[z.n - 1].f.y < kDeathPlaneY) return false;   // fell out
     return (int)z.ring[z.n - 1].f.level_id == (int)data_0209f2f8;
 }
 
@@ -1078,6 +1096,7 @@ struct GwSample {
     int cursor;              // 20.12
     unsigned char character;
     bool teleport;
+    bool grounded;
 };
 
 inline int gw_lerp(int a, int b, long long num, long long den) {
@@ -1088,6 +1107,7 @@ inline int gw_lerp(int a, int b, long long num, long long den) {
 bool gw_sample(int seat, unsigned now, GwSample *o) {
     const GwSeat &z = g_gw[seat];
     if (z.n == 0 || !z.have_off) return false;
+    o->grounded = (z.ring[z.n - 1].f.flags & kGhostGrounded) != 0;
     const long long T = (long long)now - z.off - kGwInterpMs;
     const GwFrame &nw = z.ring[z.n - 1];
     const GwFrame *a = 0, *b = 0;
@@ -1365,14 +1385,17 @@ void gw_report(const char *tag) {
                  "syng_recvd=%llu syni_recvd=%llu drop_len=%llu drop_tag=%llu "
                  "drop_ver=%llu drop_seat=%llu drop_field=%llu drop_old=%llu "
                  "resets=%llu vis=0x%04x drawn=0x%04x interp=%llu reckon=%llu hold=%llu "
-                 "reposes=%llu recursor=%llu charswaps=%llu names=[%s]\n",
+                 "reposes=%llu recursor=%llu charswaps=%llu parked=%llu below=%llu "
+                 "clamped=%llu target_ghost=%llu near_ghost=%llu names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
                  g_gws.drop_len, g_gws.drop_tag, g_gws.drop_ver,
                  g_gws.drop_seat, g_gws.drop_field, g_gws.drop_old,
                  g_gws.resets, vis, drawn, g_gws.interp, g_gws.reckon, g_gws.hold,
-                 g_gws.reposes, g_gws.recursor, g_gws.charswaps, names);
+                 g_gws.reposes, g_gws.recursor, g_gws.charswaps, g_gws.parked,
+                 g_gws.below, g_gws.clamped, g_gws.target_ghost,
+                 g_gws.near_ghost, names);
 }
 
 // sync_decide's hub arm: an adventure console on the HUB has no DS transport
@@ -1394,10 +1417,13 @@ bool gw_decide() {
     return true;
 }
 
+void gw_target_probe();   // with the follower, below
+
 // One frame of the hub ghost layer, from sync_tick.
 void gw_tick() {
     const unsigned now = GetTickCount();
     ++g_gw_frame;
+    gw_target_probe();
     gw_recv();
     gw_assign(now);
     gw_send(now);
@@ -2210,21 +2236,57 @@ extern "C" void port_party_set_member(int slot, int on) {
 // (the before arm, for the proof).
 // ---------------------------------------------------------------------------
 namespace {
+// Where a ghost body waits between draws: straight above the local player, far
+// out of reach. dActor_c::ClosestPlayer walks every seated body
+// (src/_ZN8dActor_c13ClosestPlayerEv.cpp), so a ghost standing where its
+// player stands would be chased by the watcher's enemies; parked here it is
+// never the nearest, and the one FarthestPlayer caller
+// (func_ov002_020e88a8) still faces the local player's heading because the
+// park shares its x and z. The body's own Behavior is skipped (its pauseFlags
+// bit 2, hal/player_bridges.cpp), so the height runs no pit or fall logic.
+int g_gw_nopark = -1;
+int g_drawpos_have[kCommsMaxPlayers];
+int g_drawpos[kCommsMaxPlayers][3];
+
+void gw_park_body(void *a) {
+    if (g_gw_nopark < 0) g_gw_nopark = std::getenv("SM64DS_GHOST_NO_PARK") ? 1 : 0;
+    if (g_gw_nopark || !a) return;
+    const int me = (int)data_0209f250;
+    void *mb = (me >= 0 && me < kCommsMaxPlayers) ? data_0209f394[me] : 0;
+    if (!mb || mb == a) return;
+    *player::pos_x(a) = *player::pos_x(mb);
+    *player::pos_y(a) = *player::pos_y(mb) + kGwParkUp;
+    *player::pos_z(a) = *player::pos_z(mb);
+    *(int *)((char *)a + 0x98) = 0;
+    *(int *)((char *)a + 0xa8) = 0;
+    ++g_gws.parked;
+}
+
 void gw_follow() {
     static int no_repose = -1, no_swap = -1;
     if (no_repose < 0) no_repose = std::getenv("SM64DS_GHOST_NO_REPOSE") ? 1 : 0;
     if (no_swap < 0) no_swap = std::getenv("SM64DS_GHOST_NO_CHARSWAP") ? 1 : 0;
     const unsigned now = GetTickCount();
     const int me = (int)data_0209f250;
-    for (int i = 0; i < kCommsMaxPlayers; ++i) {
+    const int nb = (int)data_0209f21c < kCommsMaxPlayers ? (int)data_0209f21c
+                                                         : kCommsMaxPlayers;
+    for (int i = 0; i < nb; ++i) {
         if (i == me) continue;
-        const int s = gw_seat_for_body(i);
-        if (s < 0 || !gw_visible(s)) continue;
-        if (party_member(i)) continue;
         void *a = data_0209f394[i];
         if (!a) continue;
+        g_drawpos_have[i] = 0;
+        const int s = gw_seat_for_body(i);
         GwSample sm;
-        if (!gw_sample(s, now, &sm)) continue;
+        if (s < 0 || !gw_visible(s) || party_member(i) ||
+            !gw_sample(s, now, &sm)) {
+            gw_park_body(a);               // undriven: parked, not drawn
+            continue;
+        }
+        if (sm.y < kDeathPlaneY) {         // falling out of the level: hidden
+            ++g_gws.below;
+            gw_park_body(a);
+            continue;
+        }
         GwSeat &z = g_gw[s];
         if (z.body_ptr != a) { z.body_ptr = a; z.driven = 0; }
         if (sm.teleport) ++g_gws.teleports;
@@ -2232,7 +2294,8 @@ void gw_follow() {
         *player::pos_y(a) = sm.y;
         *player::pos_z(a) = sm.z;
         *player::facing(a) = sm.yaw;
-        /* the puppet's own physics must not carry it off between frames */
+        g_drawpos[i][0] = sm.x; g_drawpos[i][1] = sm.y; g_drawpos[i][2] = sm.z;
+        g_drawpos_have[i] = 1;
         *(int *)((char *)a + 0x98) = 0;
         *(int *)((char *)a + 0xa8) = 0;
         /* THE CHARACTER, through the game's own in-place swap (the door
@@ -2256,8 +2319,9 @@ void gw_follow() {
            cursor 11 on the wire while its ghost walked on in place. When the
            id is the same and the frame differs, make the ROM's own reset
            first, then SetAnim lands the wire's frame. */
+        int want_f = sm.cursor >> 12;
+        if (want_f < 0) want_f = 0;
         {
-            const int want_f = sm.cursor >> 12;
             int *cur = player::anim_frame_ptr(a);
             if (player::anim_id(a) == sm.anim && cur && (*cur >> 12) != want_f) {
                 if (void *m = player::body_model_anim(a))
@@ -2266,7 +2330,50 @@ void gw_follow() {
             }
         }
         _ZN6Player7SetAnimEji5Fix12IiEj(a, sm.anim, 0, 0x1000,
-                                        (unsigned)(sm.cursor >> 12));
+                                        (unsigned)(want_f & 0xffff));
+        /* THE FRAME, BOUNDED BY THE ANIMATION'S OWN LENGTH. The id is checked
+           on receipt; the frame can only be checked now that SetAnim has the
+           file: Animation (ModelAnim +0x50) holds numFrames << 12 in +0x04
+           (src/_ZN9Animation12SetAnimationEti5Fix12IiEt.cpp) and the cursor in
+           +0x08. A frame past the end would have UpdateBones read past the
+           animation's channel tables. The follower installs every animation
+           looping (flags 0), so an overrun wraps, the way Animation::Advance
+           wraps a looping one. No length: nothing to pose. The ghost's own
+           Behavior is skipped, so no animation event reads this cursor. */
+        int frames = 0;
+        if (char *m = (char *)player::body_model_anim(a)) {
+            frames = (*(int *)(m + 0x54) & ~(int)0xc0000000) >> 12;
+            if (frames > 0) {
+                const int ok_f = want_f % frames;
+                if (ok_f != want_f) ++g_gws.clamped;
+                *(int *)(m + 0x58) = ok_f << 12;
+            }
+        }
+        if (frames <= 0) { gw_park_body(a); continue; }
+        /* PLACE, THEN POSE, in Player::Behavior's own order: the body matrix
+           and the shadow node from the position (func_ov002_020e444c), then
+           the bones (func_ov002_020e4768), which read that matrix. A ghost
+           that is fading out gets neither: it keeps its last matrix and casts
+           no shadow while it goes. The floor height the shadow measures from
+           (+0x644) is the ghost's own feet whenever its player is grounded. */
+        /* FULLY OPAQUE to the ROM's own gates: mOpacity (+0x6f5, 0..0x1f)
+           starts at 0 at a level entrance and only the body's own entry state
+           raises it (src/actors/Player.cpp), which a ghost never runs; at 0
+           the draw gate (port_player_render_hidden) and the shadow skip it.
+           The see-through look is the render's ghost alpha, not this. */
+        *((unsigned char *)a + 0x6f5) = 0x1f;
+        /* ...and not culled. dActor_c::BeforeBehavior writes the camera cull
+           bits 0x38 of Actor mFlags (+0xb0) every frame an actor ticks
+           (src/_ZN8dActor_c14BeforeBehaviorEv.cpp); a ghost's tick is
+           skipped, so whatever they held at its last tick would stand for
+           ever, and bit 0x10 is one the draw gate honours. The follower
+           decides a ghost is on show, so it clears them. */
+        *(unsigned *)((char *)a + 0xb0) &= ~0x38u;
+        if (port_adventure_ghost_fade(i) >= 256) {
+            if (sm.grounded) *(int *)((char *)a + 0x644) = sm.y;
+            *((unsigned char *)a + 0x717) = 0;
+            func_ov002_020e444c((char *)a);
+        }
         if (!no_repose) {
             func_ov002_020e4768((char *)a);
             ++g_gws.reposes;
@@ -2275,14 +2382,99 @@ void gw_follow() {
         if (gw_pose_probe() > 0 &&
             (g_gw_frame % (unsigned)gw_pose_probe()) == 0)
             std::fprintf(stderr, "[gwpose] t=%u f=%u GHOST seat=%d body=%d "
-                         "anim=%u cur=%d hash=%08x wire_anim=%u wire_cur=%d\n",
+                         "anim=%u cur=%d hash=%08x wire_anim=%u wire_cur=%d "
+                         "y=%d\n",
                          now, g_gw_frame, s, i,
                          (unsigned)player::anim_id(a),
                          player::anim_frame(a) >> 12, gw_pose_hash(a),
-                         (unsigned)sm.anim, sm.cursor >> 12);
+                         (unsigned)sm.anim, sm.cursor >> 12, sm.y >> 12);
     }
 }
 }  // namespace
+
+
+// SM64DS_GHOST_TARGET_PROBE=1: what the enemies saw. Runs at sync_tick, after
+// this frame's actor phase and before the follower, so every body is where it
+// was while the actors ran. For each non-player actor it makes
+// dActor_c::ClosestPlayer's own choice (every seated body, strict <, index
+// order: src/_ZN8dActor_c13ClosestPlayerEv.cpp) and counts target_ghost when
+// that choice is not the local player; near_ghost counts actors standing
+// within 600 units of where a ghost was DRAWN last frame -- the ones that could
+// have been tempted. Reads only.
+namespace {
+void gw_target_probe() {
+    static int on = -1;
+    if (on < 0) on = std::getenv("SM64DS_GHOST_TARGET_PROBE") ? 1 : 0;
+    if (!on) return;
+    const int me = (int)data_0209f250;
+    const int nb = (int)data_0209f21c < kCommsMaxPlayers ? (int)data_0209f21c
+                                                         : kCommsMaxPlayers;
+    for (const char *a = (const char *)_ZN8dActor_c4NextEPKS_(0); a;
+         a = (const char *)_ZN8dActor_c4NextEPKS_(a)) {
+        bool is_player = false;
+        for (int i = 0; i < nb; ++i)
+            if (data_0209f394[i] == a) is_player = true;
+        if (is_player) continue;
+        const long long ax = *(const int *)(a + 0x5c),
+                        ay = *(const int *)(a + 0x60),
+                        az = *(const int *)(a + 0x64);
+        int best = -1;
+        long long bd = 0;
+        for (int i = 0; i < nb; ++i) {
+            const char *p = (const char *)data_0209f394[i];
+            if (!p) continue;
+            const long long dx = (*(const int *)(p + 0x5c) - ax) >> 4,
+                            dy = (*(const int *)(p + 0x60) - ay) >> 4,
+                            dz = (*(const int *)(p + 0x64) - az) >> 4;
+            const long long d = dx * dx + dy * dy + dz * dz;
+            if (best < 0 || d < bd) { best = i; bd = d; }
+        }
+        if (best >= 0 && best != me) {
+            ++g_gws.target_ghost;
+            static int said = 0;
+            if (said < 8) {
+                ++said;
+                std::fprintf(stderr, "[gwtarget] frame %u: actor id %u picked "
+                             "body %d (a ghost)\n", g_gw_frame,
+                             (unsigned)*(const unsigned short *)(a + 0x0c), best);
+            }
+        }
+        for (int i = 0; i < nb; ++i) {
+            if (i == me || !g_drawpos_have[i]) continue;
+            const long long dx = (g_drawpos[i][0] - ax) >> 4,
+                            dy = (g_drawpos[i][1] - ay) >> 4,
+                            dz = (g_drawpos[i][2] - az) >> 4;
+            const long long lim = (600LL << 12) >> 4;
+            if (dx * dx + dy * dy + dz * dz < lim * lim) {
+                ++g_gws.near_ghost;
+                break;
+            }
+        }
+    }
+}
+}  // namespace
+
+// hal/player_bridges.cpp's two faces: is this body a ghost body on the hub,
+// and park it (after its draw).
+extern "C" int port_adventure_hub_body(int slot) {
+    /* the hub itself, not g_hub: sync_decide runs at the first pad publish,
+       and a level can seat and tick its bodies before that */
+    return (adventure_ghost_mode() && comms_hub_active() &&
+            slot >= 0 && slot < kCommsMaxPlayers &&
+            slot != (int)data_0209f250 && slot < (int)data_0209f21c) ? 1 : 0;
+}
+extern "C" void port_adventure_ghost_park(void *body) { gw_park_body(body); }
+
+// Where the follower put a hub ghost this frame (tests/nametag.h reads the tag
+// position here: by the time the overlay draws, the body is parked again).
+extern "C" int port_adventure_ghost_drawpos(int slot, int out[3]) {
+    if (!g_hub || slot < 0 || slot >= kCommsMaxPlayers || !g_drawpos_have[slot])
+        return 0;
+    out[0] = g_drawpos[slot][0];
+    out[1] = g_drawpos[slot][1];
+    out[2] = g_drawpos[slot][2];
+    return 1;
+}
 
 // ---------------------------------------------------------------------------
 // ADVENTURE GHOSTS: the pure-follower step. Called once per RENDER frame from

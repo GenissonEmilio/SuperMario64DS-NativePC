@@ -426,6 +426,11 @@ static void ghost_opacity(void *model, int slot)
    interactive. Gated on the mode, so VS and solo are byte-unaffected. Called
    from the per-frame tick in tests/walk_window.cpp, beside sync_tick. */
 extern "C" int port_party_member(int slot);   /* hal/comms_sync.cpp */
+/* run mp1 lane GHOSTWIRE1: 1 when this body is a ghost body on the adventure
+   hub (hal/comms_sync.cpp), and the park that keeps it out of the local game
+   between draws. */
+extern "C" int port_adventure_hub_body(int slot);
+extern "C" void port_adventure_ghost_park(void *body);
 extern "C" void port_adventure_ghost_hold()
 {
     if (!port::adventure_ghost_mode()) return;
@@ -437,8 +442,25 @@ extern "C" void port_adventure_ghost_hold()
            interacts -- do NOT hold it non-colliding. Only non-party remotes
            (adventure ghosts) get the pass-through hold. */
         if (port_party_member(i)) continue;
-        if (void *a = data_0209f394[i])
+        if (void *a = data_0209f394[i]) {
             port::player::disable_interaction(a);
+            /* run mp1 lane GHOSTWIRE1: ON THE HUB A GHOST BODY RUNS NO GAME
+               LOGIC AT ALL. fBase_c::BeforeBehavior returns 0 while pauseFlags
+               & 2 is set (src/_ZN7fBase_c14BeforeBehaviorEv.cpp), so the
+               actor list skips its Player::Behavior: no state machine, so no
+               pit death (func_ov002_020c5d60 -> ST_DEAD_PIT -> HitDeathPlane
+               restarted the WATCHER's level whenever a ghost went below the
+               death plane), no damage, no exit, no shadow of its own. The
+               ghost is posed, placed and shadowed by hal/comms_sync.cpp's
+               follower instead. Re-asserted every frame like the flags above;
+               nothing in src/ or the port clears an actor's bit 2. */
+            if (port_adventure_hub_body(i)) {
+                *((unsigned char *)a + 0x13) |= 2;
+                /* and parked, from the first frame after the level seats it:
+                   the follower brings back only the ghosts it draws */
+                port_adventure_ghost_park(a);
+            }
+        }
     }
 }
 
@@ -1546,7 +1568,22 @@ extern "C" int port_player_render_hidden(const void *player)
     return 0;
 }
 
+static void hal_render_player_world_body(void *player);
+
+/* run mp1 lane GHOSTWIRE1: a hub ghost is PARKED again the moment it has been
+   drawn, so the next frame's actor phase never finds it where the player it
+   shows is standing (hal/comms_sync.cpp port_adventure_ghost_park: enemies
+   pick targets with dActor_c::ClosestPlayer over every seated body). */
 void hal_render_player_world(void *player)
+{
+    hal_render_player_world_body(player);
+    const int slot = (int)*(const unsigned char *)((const char *)player + 0x6d8);
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+        port_adventure_hub_body(slot))
+        port_adventure_ghost_park(player);
+}
+
+static void hal_render_player_world_body(void *player)
 {
     char *c = (char *)player;
     /* ADVENTURE GHOSTS: a REMOTE body drawn see-through. This is the render

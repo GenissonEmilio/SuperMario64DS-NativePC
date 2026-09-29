@@ -144,6 +144,7 @@ const char *port_adventure_ghost_name(int slot);
 int port_adventure_ghost_stars(int slot);
 unsigned port_adventure_ghost_rgb(int slot);
 int port_adventure_ghost_fade(int slot);
+int port_adventure_ghost_drawpos(int slot, int out[3]);
 }
 
 /* ADVENTURE GHOSTS: the same head tags label the ghosts in an adventure
@@ -434,9 +435,16 @@ static void nt_draw(const OvlSurface &fb)
            one shared level and does not consult the filter. */
         if (adventure && !port_adventure_peer_visible(i)) continue;
 
-        const int wp[3] = {*(const int *)(p + 0x5c),
-                           *(const int *)(p + 0x60) + NT_HEAD_UP,
-                           *(const int *)(p + 0x64)};
+        /* WHERE THE BODY WAS DRAWN. A hub ghost is parked out of the level
+           again right after its draw (hal/comms_sync.cpp), so its tag reads
+           the position the follower drew it at this frame, and a hub ghost
+           that was not drawn gets no tag. Every other body: its own. */
+        int bp[3] = {*(const int *)(p + 0x5c), *(const int *)(p + 0x60),
+                     *(const int *)(p + 0x64)};
+        if (adventure && port_adventure_ghost_seat(i) >= 0 &&
+            !port_adventure_ghost_drawpos(i, bp))
+            continue;
+        const int wp[3] = {bp[0], bp[1] + NT_HEAD_UP, bp[2]};
         float sx = 0, sy = 0, d = 0;
         if (!nt_project(wp, &sx, &sy, &d)) continue;
 
@@ -457,12 +465,9 @@ static void nt_draw(const OvlSurface &fb)
         if (adventure) {
             const char *mp = (const char *)data_0209f394[me];
             if (mp) {
-                const double ddx = (double)(*(const int *)(p + 0x5c) -
-                                            *(const int *)(mp + 0x5c));
-                const double ddy = (double)(*(const int *)(p + 0x60) -
-                                            *(const int *)(mp + 0x60));
-                const double ddz = (double)(*(const int *)(p + 0x64) -
-                                            *(const int *)(mp + 0x64));
+                const double ddx = (double)(bp[0] - *(const int *)(mp + 0x5c));
+                const double ddy = (double)(bp[1] - *(const int *)(mp + 0x60));
+                const double ddz = (double)(bp[2] - *(const int *)(mp + 0x64));
                 const double dist =
                     sqrt(ddx * ddx + ddy * ddy + ddz * ddz) / 4096.0;
                 const double kNear = 512.0, kFar = 3072.0;
@@ -535,9 +540,7 @@ static void nt_draw(const OvlSurface &fb)
             fprintf(stderr, "[tag] slot %d \"%s\" %s at (%.0f,%.0f) w=%.2f "
                     "scale %d\n", i, who, sline, sx, sy, d, scale);
             if (nt_probe() >= 2) {
-                const int fp[3] = {*(const int *)(p + 0x5c),
-                                   *(const int *)(p + 0x60),
-                                   *(const int *)(p + 0x64)};
+                const int fp[3] = {bp[0], bp[1], bp[2]};
                 float fx = 0, fy = 0, fd = 0;
                 if (nt_project(fp, &fx, &fy, &fd))
                     fprintf(stderr, "[tag]   ruler: feet y=%.1f world at screen"
