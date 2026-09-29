@@ -41,14 +41,16 @@ def _locked(fn):
 
 for _name in ("do_create", "do_join", "do_poll", "do_chat", "do_params",
               "do_preflight", "do_color", "do_start", "do_ready", "do_result",
-              "do_failed", "do_kick", "do_leave", "sweep"):
+              "do_failed", "do_kick", "do_leave", "do_world",
+              "do_world_ping", "sweep"):
     setattr(S, _name, _locked(getattr(S, _name)))
 S.VERBS = {"create": S.do_create, "join": S.do_join, "poll": S.do_poll,
            "chat": S.do_chat, "params": S.do_params,
            "preflight": S.do_preflight, "color": S.do_color,
            "start": S.do_start,
            "ready": S.do_ready, "result": S.do_result, "failed": S.do_failed,
-           "kick": S.do_kick, "leave": S.do_leave}
+           "kick": S.do_kick, "leave": S.do_leave,
+           "world": S.do_world, "world_ping": S.do_world_ping}
 
 PASSED = []
 FAILED = []
@@ -64,6 +66,7 @@ def check(name, ok, detail=""):
 def reset():
     """A clean server between groups, without restarting a process."""
     S.ROOMS.clear()
+    S.WORLDS.clear()
     S.BUCKETS = S.Buckets()
     S.WAITERS = 0
 
@@ -886,6 +889,8 @@ _FIELD_SAMPLES = {
     "game": "1.0.0",
     "luigi": 1,
     "voice": 1,
+    "code": "K7QMR3AB",
+    "skip": "K7QMR3AB",
 }
 
 
@@ -1802,6 +1807,157 @@ def test_vs_one_settings():
           S.ROOMS[code].luigi == 0 and S.ROOMS[code].voice == 1)
 
 
+def world(nick="w", game=None, who=None, now=1000.0, **extra):
+    body = {"v": 5, "nick": nick, "game": game or GAME}
+    body.update(extra)
+    return S.do_world(body, who or "10.9.%d.%d" % (len(nick), ord(nick[-1])),
+                      now)
+
+
+def world_ping(code, token, who="10.9.0.1", now=1000.0):
+    return S.do_world_ping({"v": 5, "code": code, "token": token}, who, now)
+
+
+def test_world_pool():
+    """v5 world rooms (design section 5): an always-on pool per game build,
+    sixteen members a world, fill then overflow, freshness by world_ping."""
+    print("\n-- v5 world rooms: fill 16, overflow, expiry")
+    reset()
+    st, w1 = world("a")
+    check("the first world answer is 200", st == 200, (st, w1))
+    check("it is world 1 with a hub plan: code, relay, relay_v 2, any seat",
+          w1.get("world_no") == 1 and len(w1.get("code", "")) == 8
+          and w1.get("relay") == S.RELAY_ADDR and w1.get("relay_v") == 2
+          and w1.get("want_seat") == 255 and len(w1.get("token", "")) == 32,
+          w1)
+    check("the hub code is from the room alphabet",
+          all(ch in S.ROOM_ALPHABET for ch in w1["code"]))
+    toks = [w1["token"]]
+    for k in range(1, S.WORLD_SEATS):
+        st, out = world("p%d" % k, who="10.9.1.%d" % k)
+        same = st == 200 and out["code"] == w1["code"] and out["world_no"] == 1
+        if not same:
+            break
+        toks.append(out["token"])
+    check("members 2..16 all land in world 1", len(toks) == S.WORLD_SEATS,
+          len(toks))
+    st, w2 = world("q17", who="10.9.2.1")
+    check("the 17th goes to a NEW world 2 with its own code",
+          st == 200 and w2["world_no"] == 2 and w2["code"] != w1["code"],
+          (st, w2))
+    check("and world 1 holds exactly 16",
+          S.WORLDS[w1["code"]].count(1000.0) == 16)
+
+    # A different game build has its own pool, starting at 1.
+    st, o = world("old", game="0.9.9", who="10.9.3.1")
+    check("another build gets its own world 1",
+          st == 200 and o["world_no"] == 1 and o["code"] not in
+          (w1["code"], w2["code"]), (st, o))
+
+    # FRESHNESS. Members of world 1 that keep pinging stay; the rest expire.
+    t = 1000.0
+    for step in range(4):
+        t += 10.0
+        for tok in toks[:10]:
+            st, _ = world_ping(w1["code"], tok, now=t)
+        world_ping(w2["code"], w2["token"], now=t)
+        S.sweep(t)
+    check("pinging members stay counted, silent ones expire after 30 s",
+          S.WORLDS[w1["code"]].count(t) == 10, S.WORLDS[w1["code"]].count(t))
+    st, out = world_ping(w1["code"], toks[12], now=t)
+    check("an expired member's ping is 403 not_a_member (ask world again)",
+          st == 403 and out["error"] == "not_a_member", (st, out))
+    st, out = world_ping(w1["code"], toks[0], now=t)
+    check("a live member's ping is 200 with the world number and head count",
+          st == 200 and out["world_no"] == 1 and out["members"] == 10,
+          (st, out))
+    st, back = world("back", who="10.9.4.1", now=t)
+    check("with seats free again, a newcomer fills world 1 before world 2",
+          st == 200 and back["world_no"] == 1, (st, back))
+
+    # SKIP: the relay said world 1 is full (a race the lobby cannot see).
+    st, sk = world("skipper", who="10.9.4.2", now=t, skip=w1["code"])
+    check("skip=world 1 answers the next world with room (world 2)",
+          st == 200 and sk["world_no"] == 2, (st, sk))
+    st, out = world("bad", who="10.9.4.3", now=t, skip="short")
+    check("a malformed skip is 400 bad_code",
+          st == 400 and out["error"] == "bad_code", (st, out))
+
+    # EMPTY WORLDS ARE DROPPED after WORLD_EMPTY_S, and the number comes back.
+    t2 = t + S.WORLD_MEMBER_S + 1
+    S.sweep(t2)
+    check("once every member is silent, the world is empty but kept",
+          w2["code"] in S.WORLDS and not S.WORLDS[w2["code"]].members)
+    S.sweep(t2 + S.WORLD_EMPTY_S)
+    check("and dropped WORLD_EMPTY_S later", w2["code"] not in S.WORLDS
+          and w1["code"] not in S.WORLDS, sorted(S.WORLDS))
+    st, again = world("again", who="10.9.5.1", now=t2 + S.WORLD_EMPTY_S + 1)
+    check("the next arrival opens world 1 again, with a fresh code",
+          st == 200 and again["world_no"] == 1
+          and again["code"] not in (w1["code"], w2["code"]), (st, again))
+    st, out = world_ping(w1["code"], toks[0], now=t2 + S.WORLD_EMPTY_S + 1)
+    check("a ping to a dropped world is 404 no_such_world",
+          st == 404 and out["error"] == "no_such_world", (st, out))
+
+    # GRAMMAR AND BOUNDS.
+    reset()
+    for body, code in (
+            ({"v": 5, "nick": "x"}, "bad_field"),
+            ({"v": 5, "nick": "x", "game": "a b"}, "bad_game"),
+            ({"v": 5, "nick": "x,y", "game": GAME}, "bad_nick"),
+            ({"v": 5, "nick": "x", "game": GAME, "color": "ff0000"},
+             "bad_color"),
+            ({"v": 5, "nick": "x", "game": GAME, "room": "K7QMR3"},
+             "bad_field"),
+            ({"v": 4, "nick": "x", "game": GAME}, "bad_version")):
+        st, out = S.do_world(body, "10.9.6.1", 1000.0)
+        check("world %s -> 400 %s" % (sorted(body), code),
+              st == 400 and out["error"] == code, (st, out))
+    check("and none of that opened a world", not S.WORLDS)
+    st, w = world("colours", color="FF0000", shoes="00ff00")
+    check("a world call with a colour pair is fine", st == 200, (st, w))
+    check("and the world keeps no nick, no colour, no address: a token and a "
+          "time, nothing else",
+          S.WORLDS[w["code"]].members == {w["token"]: 1000.0}
+          and set(vars(S.WORLDS[w["code"]])) == {"game", "no", "code",
+                                                  "members", "empty_since"},
+          vars(S.WORLDS[w["code"]]))
+    for body, code in (({"v": 5, "code": "abc", "token": "0" * 32}, "bad_code"),
+                       ({"v": 5, "code": w["code"], "token": "x"}, "bad_token"),
+                       ({"v": 5, "code": w["code"]}, "bad_field")):
+        st, out = S.do_world_ping(body, "10.9.6.1", 1000.0)
+        check("world_ping %s -> 400 %s" % (sorted(body), code),
+              st == 400 and out["error"] == code, (st, out))
+    st, out = world_ping(w["code"], "f" * 32)
+    check("a token nobody holds is 403 not_a_member",
+          st == 403 and out["error"] == "not_a_member", (st, out))
+
+    reset()
+    was = S.MAX_WORLDS
+    S.MAX_WORLDS = 3
+    try:
+        codes = []
+        for k in range(3):
+            st, out = world("m%d" % k, game="b%d" % k)
+            codes.append(st)
+        st, out = world("m9", game="b9")
+        check("MAX_WORLDS bounds the whole pool: the fourth build is 503 full",
+              codes == [200] * 3 and st == 503 and out["error"] == "full",
+              (codes, st, out))
+    finally:
+        S.MAX_WORLDS = was
+    reset()
+    was = S.RELAY_V
+    S.RELAY_V = 1
+    try:
+        st, out = world("v1")
+        check("on a v1 relay the world pool is off: 503 world_off",
+              st == 503 and out["error"] == "world_off", (st, out))
+    finally:
+        S.RELAY_V = was
+    reset()
+
+
 def test_king_of_the_star():
     print("\n-- king of the star: win_mode and king_target, required-iff-king")
     reset()
@@ -2671,6 +2827,7 @@ def main():
     test_ready_and_go()
     test_session_type()
     test_adventure_room()
+    test_world_pool()
     test_go_plan()
     test_session_digest()
     test_vs_one_settings()

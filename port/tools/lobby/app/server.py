@@ -278,6 +278,17 @@ CLOSED_KEEP_S = env_int("CLOSED_KEEP_S", 60, 5, 3600)
 # events for as long as they play.
 ADV_EMPTY_S = env_int("ADV_EMPTY_S", 600, 30, 86400)
 
+# v5 WORLD ROOMS (design section 5): always-on adventure hubs that nobody
+# creates. The pool is per game build; a world holds WORLD_SEATS members seen
+# in the last WORLD_MEMBER_S seconds (the launcher sends `world_ping` every
+# 10 s while its game runs), and a world nobody has pinged for WORLD_EMPTY_S
+# is dropped. MAX_WORLDS bounds the whole pool (every build together), so a
+# flood of made-up build ids cannot grow it without limit.
+WORLD_SEATS = env_int("WORLD_SEATS", 16, 2, DIAL_HARD_MAX)
+WORLD_MEMBER_S = env_int("WORLD_MEMBER_S", 30, 5, 3600)
+WORLD_EMPTY_S = env_int("WORLD_EMPTY_S", 600, 30, 86400)
+MAX_WORLDS = env_int("MAX_WORLDS", 64, 1, 4096)
+
 # Stage B knobs. Read here so the compose file and this file cannot drift, and
 # so `health` can report what the room semantics would be, but nothing in stage
 # A arms a match.
@@ -569,6 +580,8 @@ REQ_COUNT = 0
 REJ_RATE = 0
 REJ_SHAPE = 0
 REJ_AUTH = 0
+
+WORLDS = {}                 # hub code -> World (v5 world rooms)
 
 
 class Member(object):
@@ -895,6 +908,29 @@ class Room(object):
         log("room %s close (%s)" % (self.code, why))
 
 
+class World(object):
+    """One always-on adventure hub (v5). Nothing in it but a number, the hub
+    code, and when each member token last proved it was alive. No nick, no
+    colour and no address is kept: the world's members meet each other through
+    the game's identity frames, never through the lobby."""
+
+    def __init__(self, game, no, code, now):
+        self.game = game
+        self.no = no
+        self.code = code
+        self.members = {}       # token -> last seen (monotonic)
+        self.empty_since = now
+
+    def count(self, now):
+        return sum(1 for t in self.members.values()
+                   if now - t <= WORLD_MEMBER_S)
+
+    def forget_stale(self, now):
+        for tok, t in list(self.members.items()):
+            if now - t > WORLD_MEMBER_S:
+                del self.members[tok]
+
+
 # ------------------------------------------------------------- rate limits
 
 
@@ -1176,6 +1212,22 @@ def v_game(body):
     return s, None
 
 
+def v_code(body, key):
+    """A relay/hub code the lobby minted: 8 characters of the room alphabet."""
+    s, err = want_str(body, key, "bad_code")
+    if err:
+        return None, err
+    n = byte_len(s)
+    if n > COMMS_LEN:
+        return None, "too_long"
+    if n != COMMS_LEN:
+        return None, "bad_code"
+    for ch in s:
+        if ch not in ROOM_ALPHABET:
+            return None, "bad_code"
+    return s, None
+
+
 def v_win(body):
     s, err = want_str(body, "win", "bad_win")
     if err:
@@ -1285,6 +1337,11 @@ VERB_FIELDS = {
     "failed":    (("v", "room", "token", "match", "reason"), {}),
     "kick":      (("v", "room", "token", "seat"), {}),
     "leave":     (("v", "room", "token"), {}),
+    # v5 WORLD ROOMS. Both verbs are v5 as a whole. `skip` is the world the
+    # relay just answered "full" for (the game exited with code 4).
+    "world":     (("v", "nick", "game"),
+                  {"color": V_COLOR, "shoes": V_COLOR, "skip": V_ONE}, V_ONE),
+    "world_ping": (("v", "code", "token"), {}, V_ONE),
 }
 
 
@@ -2483,6 +2540,104 @@ def do_poll(body, who, now):
     return 200, out
 
 
+def world_plan(w):
+    return {"code": w.code, "relay": RELAY_ADDR, "relay_v": RELAY_V,
+            "want_seat": WANT_ANY_SEAT, "world_no": w.no}
+
+
+def do_world(body, who, now):
+    """v5: "put me in a world". The lowest-numbered world of the caller's game
+    build with a free seat (members seen in the last WORLD_MEMBER_S), else a
+    new one. The answer is a hub plan like an adventure room's, plus the world
+    number for the launcher to show and a token for `world_ping`.
+
+    The nick and colours are checked against the same grammar as everywhere
+    else and then dropped: nothing about a player is kept in a world.
+    """
+    err = shape_for("world", body)
+    if err:
+        return 400, {"error": err}
+    nick, err = v_nick(body)
+    if err:
+        return 400, {"error": err}
+    color, shoes, err = v_color_pair(body)
+    if err:
+        return 400, {"error": err}
+    game, err = v_game(body)
+    if err:
+        return 400, {"error": err}
+    skip = None
+    if "skip" in body:
+        skip, err = v_code(body, "skip")
+        if err:
+            return 400, {"error": err}
+    if RELAY_V < 2:
+        # A world needs the relay's hub rules; on a v1 relay it cannot exist.
+        return 503, {"error": "world_off"}
+    if not BUCKETS.allow_join(who, now):
+        return 429, {"error": "too_fast"}
+
+    mine = sorted((w for w in WORLDS.values() if w.game == game),
+                  key=lambda w: w.no)
+    pick = None
+    for w in mine:
+        if w.code != skip and w.count(now) < WORLD_SEATS:
+            pick = w
+            break
+    if pick is None:
+        if len(WORLDS) >= MAX_WORLDS:
+            return 503, {"error": "full"}
+        taken = {w.no for w in mine}
+        no = 1
+        while no in taken:
+            no += 1
+        code = None
+        for _ in range(8):
+            cand = new_comms_code()
+            if cand not in WORLDS:
+                code = cand
+                break
+        if code is None:
+            return 503, {"error": "busy"}
+        pick = World(game, no, code, now)
+        WORLDS[code] = pick
+        log("world %s open no=%d (%d worlds)" % (code, no, len(WORLDS)))
+    token = new_token()
+    pick.members[token] = now
+    pick.empty_since = None
+    out = world_plan(pick)
+    out["token"] = token
+    out["members"] = pick.count(now)
+    log("world %s join %s no=%d (%d/%d)" % (pick.code, blunt_host(who),
+                                            pick.no, out["members"],
+                                            WORLD_SEATS))
+    return 200, out
+
+
+def do_world_ping(body, who, now):
+    """v5: "I am still in this world", every 10 s while the game runs. A token
+    unheard for WORLD_MEMBER_S has already been forgotten and is refused, and
+    the launcher asks `world` again."""
+    err = shape_for("world_ping", body)
+    if err:
+        return 400, {"error": err}
+    code, err = v_code(body, "code")
+    if err:
+        return 400, {"error": err}
+    token, err = v_token(body)
+    if err:
+        return 400, {"error": err}
+    w = WORLDS.get(code)
+    if w is None:
+        return 404, {"error": "no_such_world"}
+    seen = w.members.get(token)
+    if seen is None or now - seen > WORLD_MEMBER_S:
+        w.members.pop(token, None)
+        return 403, {"error": "not_a_member"}
+    w.members[token] = now
+    return 200, {"ok": True, "world_no": w.no, "members": w.count(now)}
+
+
 VERBS = {
     "create": do_create,
     "join": do_join,
@@ -2497,6 +2652,8 @@ VERBS = {
     "failed": do_failed,
     "kick": do_kick,
     "leave": do_leave,
+    "world": do_world,
+    "world_ping": do_world_ping,
 }
 
 # EVERY VERB HAS A ROW, AND EVERY ROW HAS A VERB. Checked at import rather than
@@ -2573,6 +2730,18 @@ def sweep(now):
                     room.close("idle")
         room.forget_old_kicks(now)
 
+    # v5 world pool: forget stale members, drop a world empty for
+    # WORLD_EMPTY_S. Its number is free for the next world of that build.
+    for code, w in list(WORLDS.items()):
+        w.forget_stale(now)
+        if w.members:
+            w.empty_since = None
+        elif w.empty_since is None:
+            w.empty_since = now
+        elif now - w.empty_since >= WORLD_EMPTY_S:
+            del WORLDS[code]
+            log("world %s drop no=%d (empty)" % (code, w.no))
+
     BUCKETS.sweep(now)
 
 
@@ -2586,9 +2755,11 @@ def reaper():
             sweep(now)
             if now - last_stats >= STATS_INTERVAL_S:
                 last_stats = now
-                log("stats rooms=%d members=%d waiters=%d req=%d rej_rate=%d "
-                    "rej_shape=%d rej_auth=%d"
+                log("stats rooms=%d members=%d worlds=%d world_members=%d "
+                    "waiters=%d req=%d rej_rate=%d rej_shape=%d rej_auth=%d"
                     % (len(ROOMS), sum(len(r.members) for r in ROOMS.values()),
+                       len(WORLDS),
+                       sum(w.count(now) for w in WORLDS.values()),
                        WAITERS, REQ_COUNT, REJ_RATE, REJ_SHAPE, REJ_AUTH))
 
 
@@ -2710,6 +2881,9 @@ class Handler(BaseHTTPRequestHandler):
                 "relay_v": RELAY_V,
                 "rooms": len(ROOMS),
                 "members": sum(len(r.members) for r in ROOMS.values()),
+                "worlds": len(WORLDS),
+                "world_seats": WORLD_SEATS,
+                "world_member_s": WORLD_MEMBER_S,
                 "waiters": WAITERS,
             }
         self._send(200, payload)
@@ -2919,8 +3093,13 @@ class Server(ThreadingHTTPServer):
 def main():
     Handler.timeout = HANDLER_TIMEOUT_S
     log("sm64ds-lobby %s starting on %s:%d" % (REVISION, LISTEN_ADDR, LISTEN_PORT))
-    log("contract v%d..v%d, player dial 2..%d (seats=%d, game=%d)"
-        % (CONTRACT_MIN, CONTRACT_V, DIAL_MAX, MAX_SEATS, GAME_MAX_PLAYERS))
+    log("contract v%d..v%d, player dial 2..%d (seats=%d, game=%d), relay v%d"
+        % (CONTRACT_MIN, CONTRACT_V, DIAL_MAX, MAX_SEATS, GAME_MAX_PLAYERS,
+           RELAY_V))
+    log("worlds max=%d seats=%d member=%ds empty=%ds; adventure rooms "
+        "empty=%ds"
+        % (MAX_WORLDS, WORLD_SEATS, WORLD_MEMBER_S, WORLD_EMPTY_S,
+           ADV_EMPTY_S))
     log("limits rooms=%d seats=%d players=%d waiters=%d body=%d read_timeout=%ds "
         "req=%d/s burst=%d create=%d/h join=%d/min star_max=%d king_max=%d "
         "kick_cool=%ds"

@@ -606,6 +606,63 @@ def selftest_match(c):
     selftest_preflight(c)
     selftest_colors(c)
     selftest_one(c)
+    selftest_world(c)
+
+
+def selftest_world(c):
+    """v5 world rooms over the wire: sixteen fill world 1, the seventeenth
+    opens world 2, a silent member expires, a pinging one stays."""
+    print("\n-- v5: the world pool")
+    status, health = c.get("health")
+    seats = health.get("world_seats", 16)
+    expiry = health.get("world_member_s", 30)
+    game = "t-world-%d" % os.getpid()      # a pool of this run's own
+    answers = []
+    for k in range(seats + 1):
+        status, out = c.post("world", {"v": 5, "nick": "w%d" % k,
+                                       "game": game})
+        answers.append((status, out))
+    first = answers[0][1]
+    check("every world call answered 200",
+          all(st == 200 for st, _ in answers), [a[0] for a in answers])
+    check("the first %d share world 1 and one hub code" % seats,
+          all(out.get("world_no") == 1 and out.get("code") == first.get("code")
+              for _, out in answers[:seats]), [o.get("world_no")
+                                               for _, o in answers])
+    last = answers[seats][1]
+    check("member %d opens world 2 with its own code" % (seats + 1),
+          last.get("world_no") == 2 and last.get("code") != first.get("code"),
+          last)
+    check("a world answer is a hub plan: relay_v 2, any seat",
+          first.get("relay_v") == 2 and first.get("want_seat") == 255
+          and ":" in first.get("relay", ""), first)
+    expect("a world call from an old build shape is refused",
+           c.post("world", {"v": 5, "nick": "x"}), 400, "bad_field")
+    expect("a world_ping for a world that does not exist is 404",
+           c.post("world_ping", {"v": 5, "code": "ZZZZZZZZ",
+                                 "token": first.get("token", "")}),
+           404, "no_such_world")
+    if expiry > 10:
+        print("  (member expiry is %d s on this server: the wait is skipped)"
+              % expiry)
+        return
+    keep = first.get("token", "")
+    deadline = time.time() + expiry + 2
+    while time.time() < deadline:
+        status, pong = c.post("world_ping", {"v": 5, "code": first["code"],
+                                             "token": keep})
+        time.sleep(1.0)
+    check("a member that keeps pinging stays (%d s past the expiry)" % expiry,
+          status == 200 and pong.get("world_no") == 1, (status, pong))
+    check("the silent ones expired: world 1 counts only the pinger",
+          pong.get("members") == 1, pong)
+    expect("a silent member's ping after the expiry is 403 not_a_member",
+           c.post("world_ping", {"v": 5, "code": first["code"],
+                                 "token": answers[1][1].get("token", "")}),
+           403, "not_a_member")
+    status, again = c.post("world", {"v": 5, "nick": "late", "game": game})
+    check("with seats free again a newcomer lands in world 1",
+          status == 200 and again.get("world_no") == 1, again)
 
 
 def digest_of(plan):
@@ -1596,6 +1653,10 @@ def main():
             extra["RATE_REQ_PER_S"] = "1000000"
             extra["RATE_BURST"] = "1000000"
             extra["BAD_LIMIT"] = "1000000"
+            extra["RATE_JOIN_PER_MIN"] = "100000"
+            # The world member expiry at its floor, so the selftest proves it
+            # in seconds rather than waiting out the shipped 30.
+            extra["WORLD_MEMBER_S"] = "5"
             print("  (rate limits lifted on the selftest's own server; "
                   "`negatives` and `test_security` prove them at shipped values)")
         if args.mode == "dial":

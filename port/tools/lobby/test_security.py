@@ -132,7 +132,8 @@ def blocker1():
         burned = "10.9.9.1"
         last = None
         for _ in range(12):
-            last = quick_post(c, "create", {"v": 5, "nick": "x", "game": "t-1.0"}, burned)
+            last = quick_post(c, "create",
+                              {"v": 5, "nick": "x", "game": "t-1.0"}, burned)
         check("an address can be pushed to 429 ignored",
               last is not None and last[0] == 429
               and last[1].get("error") == "ignored", last)
@@ -193,6 +194,11 @@ def blocker1():
 # ---------------------------------------------------------- BLOCKER 2
 
 
+# A join to a room nobody holds: well formed at contract v5, so it reaches the
+# join limiter and then the room lookup (404) when the limiter lets it through.
+JOIN_BODY = {"v": 5, "room": "ZZZZZZ", "nick": "n", "game": "t-1.0"}
+
+
 def blocker2():
     print("\n== BLOCKER 2: X-Forwarded-For must be read from the entry Caddy "
           "controls, not the entry the client controls ==")
@@ -210,7 +216,7 @@ def blocker2():
         codes = {}
         for i in range(30):
             forged = "%d.%d.%d.%d" % (i + 1, i + 2, i + 3, i + 4)
-            st, _ = quick_post(c, "join", {"v": 5, "room": "ZZZZZZ", "nick": "n", "game": "t-1.0"},
+            st, _ = quick_post(c, "join", JOIN_BODY,
                                "%s, %s" % (forged, REAL))
             codes[st] = codes.get(st, 0) + 1
         check("forged FIRST entries do not bypass the join cap when the real "
@@ -227,8 +233,7 @@ def blocker2():
         time.sleep(1)
         honest = {}
         for _ in range(30):
-            st, _ = quick_post(c, "join", {"v": 5, "room": "ZZZZZZ", "nick": "n", "game": "t-1.0"},
-                               "198.51.100.7")
+            st, _ = quick_post(c, "join", JOIN_BODY, "198.51.100.7")
             honest[st] = honest.get(st, 0) + 1
         check("an honest single address is still rate-limited",
               honest.get(429, 0) > 0, honest)
@@ -243,7 +248,7 @@ def blocker2():
         direct = {}
         for i in range(30):
             forged = "%d.%d.%d.%d" % (100 + i, i, i, i)
-            st, _ = quick_post(c, "join", {"v": 5, "room": "ZZZZZZ", "nick": "n", "game": "t-1.0"},
+            st, _ = quick_post(c, "join", JOIN_BODY,
                                forged)   # single entry, no appended peer
             direct[st] = direct.get(st, 0) + 1
         print("info  direct-exposure control (no proxy appending a real peer): "
@@ -253,9 +258,81 @@ def blocker2():
         sp.stop()
 
 
+# ------------------------------------------------------ v5 WORLD POOL
+
+
+def world_pool():
+    """The world verbs are the lobby's second unauthenticated way to make
+    server state (after create). Three bounds keep that state finite: the
+    per-address join limiter charges every `world` call, MAX_WORLDS caps the
+    pool across every build id, and every field is grammar-checked before any
+    of it is touched."""
+    print("\n== v5 WORLD POOL: bounded per address and in total ==")
+    port = pick_port()
+    sp = Spawned(port, {"RATE_JOIN_PER_MIN": "5", "RATE_REQ_PER_S": "1000",
+                        "RATE_BURST": "2000", "BAD_LIMIT": "1000000",
+                        "MAX_WORLDS": "8"})
+    c = sp.wait_ready()
+    try:
+        # (a) One address inventing a new build id per call: the join limiter
+        #     engages after its budget, whatever the build id says.
+        codes = {}
+        first = None
+        for i in range(30):
+            st, out = quick_post(c, "world", {"v": 5, "nick": "f",
+                                              "game": "fake-%d" % i},
+                                 "198.51.100.20")
+            codes[st] = codes.get(st, 0) + 1
+            if st == 200 and first is None:
+                first = out
+        check("one address minting build ids is capped by the join limiter",
+              codes.get(429, 0) > 0 and codes.get(200, 0) <= 5, codes)
+        # (b) Many addresses, a new build id each: MAX_WORLDS caps the pool.
+        many = {}
+        for i in range(12):
+            st, _ = quick_post(c, "world", {"v": 5, "nick": "m",
+                                            "game": "many-%d" % i},
+                               "198.51.101.%d" % (i + 1))
+            many[st] = many.get(st, 0) + 1
+        st, health = c.get("health")
+        check("twelve more addresses cannot grow the pool past MAX_WORLDS "
+              "(8): the rest are 503", health.get("worlds") == 8
+              and many.get(503, 0) >= 7, (health.get("worlds"), many))
+        # (c) Oversized and hostile fields are refused before any state.
+        for body, want in (
+                ({"v": 5, "nick": "n" * 17, "game": "g"}, "too_long"),
+                ({"v": 5, "nick": "n", "game": "g" * 25}, "too_long"),
+                ({"v": 5, "nick": "n", "game": "../../etc"}, "bad_game"),
+                ({"v": 5, "nick": "n", "game": "g", "skip": "A" * 400},
+                 "too_long"),
+                ({"v": 5, "nick": "n", "game": "g", "admin": True},
+                 "bad_field")):
+            st, out = quick_post(c, "world", body, "198.51.102.1")
+            check("world %s -> 400 %s" % (sorted(body), want),
+                  st == 400 and out.get("error") == want, (st, out))
+        # (d) A stranger guessing at world_ping learns nothing and makes
+        #     nothing: a code that does not exist is 404, a token nobody holds
+        #     in a world that does exist is 403.
+        w = first or {}
+        st1, _ = quick_post(c, "world_ping", {"v": 5, "code": "ZZZZZZZZ",
+                                              "token": "0" * 32},
+                            "198.51.102.2")
+        st2, _ = quick_post(c, "world_ping", {"v": 5, "code": w.get("code"),
+                                              "token": "0" * 32},
+                            "198.51.102.2")
+        st, health2 = c.get("health")
+        check("guessed world_pings are 404 / 403 and open nothing",
+              st1 == 404 and st2 == 403
+              and health2.get("worlds") == health.get("worlds"),
+              (st1, st2, health2.get("worlds")))
+    finally:
+        sp.stop()
+
+
 def main():
     blocker1()
     blocker2()
+    world_pool()
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:
         print("  FAILED: %s" % name)
