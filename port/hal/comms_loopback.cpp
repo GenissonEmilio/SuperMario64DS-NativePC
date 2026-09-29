@@ -1228,6 +1228,7 @@ bool     g_lg_help = false;                  // host: stretching frames for a sl
 unsigned long long g_lg_help_holds = 0;      // host: exchange() calls held by it
 unsigned long long g_lg_help_rounds = 0;     // host: rounds closed while helping
 unsigned long long g_lg_reserve_held = 0;    // host: re-serves held by the pacing
+bool     g_lg_sprinted = false;              // joiner: the last frame skipped its sleep
 unsigned g_cache_serve_ms[kCacheDepth];      // stop-and-wait re-serve pacing, per cache slot
 unsigned lg_wait_window_ms() {
     if (g_lg_wait_cfg >= 0) return (unsigned)g_lg_wait_cfg;
@@ -1283,6 +1284,7 @@ void lg_reset() {
     g_lg_help_holds = 0;
     g_lg_help_rounds = 0;
     g_lg_reserve_held = 0;
+    g_lg_sprinted   = false;
     std::memset(g_cache_serve_ms, 0, sizeof g_cache_serve_ms);
     g_hitch_last_ms = 0;
     g_seat_mask_said = ~0u;
@@ -5717,7 +5719,22 @@ extern "C" int port_comms_rounds_ahead(void) {
     if (natural < 0) natural = 0;
     n -= natural;
     if (n < 0) n = 0;
-    if (n > kCatchupAhead) ++g_lg_catchup;
+    // AT MOST EVERY OTHER FRAME. A sprinting console publishes one block per
+    // frame, and at its unpaced speed that is well past the relay's lockstep
+    // cap for one seat (75 a second on relay v2, 120 for everything on v1), so
+    // an unbroken sprint would lose its own catch-up blocks at the relay. One
+    // skipped sleep in two is about 60 frames a second: twice the room's pace,
+    // under the cap.
+    if (n > kCatchupAhead) {
+        if (g_lg_sprinted) {
+            g_lg_sprinted = false;
+            return 0;
+        }
+        g_lg_sprinted = true;
+        ++g_lg_catchup;
+        return n;
+    }
+    g_lg_sprinted = false;
     return n;
 }
 
