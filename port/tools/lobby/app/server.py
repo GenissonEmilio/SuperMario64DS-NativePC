@@ -56,7 +56,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-REVISION = "lobby-1"
+REVISION = "lobby-5"
 
 # ------------------------------------------------------- the contract version
 #
@@ -90,7 +90,11 @@ REVISION = "lobby-1"
 #       * `create`/`join` may carry `color` + `shoes`
 #       * the `color` verb exists at all      - a v2-ONLY VERB
 #     A client claiming v2 is claiming all three. There is no half of v2.
-CONTRACT_MIN = 1
+#
+# (The history below is kept because the field table still records the version
+# each field arrived in. Since v5 the floor is v5, so none of it is negotiable
+# any more: see v5 at the bottom of this block.)
+#
 # v3, run vs16: the sixteen-player wire. The version itself gains no new FIELD
 # -- `match_players` has been a v2 optional since SEAT16 -- but it gains a new
 # legal RANGE for that field, and the two are not the same kind of change:
@@ -100,8 +104,8 @@ CONTRACT_MIN = 1
 #                sixteen-field SM64DS_VS_NAMES its own validator refuses,
 #                spawn nothing, and have no idea why
 #
-# So the range is gated on the version too (see wide_ok / dial_max_for), and
-# that is what makes v3 a real version rather than a number that went up.
+# So the range was gated on the version too, and that is what made v3 a real
+# version rather than a number that went up (retired by the v5 floor).
 #
 # v4, ADVENTURE co-op (M2): a room gains an optional `session_type` field on
 # `create`. Default "vs" -- an unset field is exactly the versus match every
@@ -112,17 +116,38 @@ CONTRACT_MIN = 1
 # (SM64DS_ADVENTURE=1 + SM64DS_LEVEL) instead of a versus arena
 # (SM64DS_VS_MAP); the relay and the seam are already session-type blind, so
 # nothing below the lobby changes.
-CONTRACT_V = 4
+#
+# v5, MULTIPLAYER 1.0 (run mp1, NETARCH1 design section 5), AND THE FLOOR MOVES
+# WITH IT. Every request below v5 is refused `bad_version`, which launchers
+# 0.3.x..0.5.x already turn into "Check for an update". The negotiation above
+# was right for additive versions; v5 is not additive, because the game under
+# it changed: a 1.0 match needs a relay v2 seat, a server-minted Luigi seed and
+# a session digest in every plan, and a pre-1.0 launcher would spawn a game
+# that cannot pair with a 1.0 host (or worse, pairs and desyncs). So v5 is the
+# only version this build speaks, and everything the older gates guarded (the
+# narrow client in a wide room, the v2-only dial) is gone with the clients
+# they guarded against. What v5 IS, all of it, or it is not v5:
+#   * create/join carry `game`, the game build id; a join from another build
+#     is 409 `game_mismatch`
+#   * params (vs rooms) may carry `luigi` and `voice`; start mints `seed`
+#   * every go plan carries relay_v, want_seat, luigi, seed, voice, digest
+#   * adventure rooms: one hub code for the room's life, no start gate
+#   * the `world` and `world_ping` verbs
+CONTRACT_MIN = 5
+CONTRACT_V = 5
 V_SESSION = 4    # create.session_type
 
 # The session types a room may be. "vs" is the versus match; "adventure" is the
-# ghost-presence session, where each console runs its own solo level and only
-# broadcasts where its body is. "party" (party slice, status/COOP_PARTY.md) is
-# the shared, synced world: it rides the SAME room-code invite path as
-# adventure, but seats as a ROLLBACK session (NetMode rollback) and every
-# joiner boots into the HOST's level, so members share one deterministic world
-# instead of ghosting their own. An unknown value is refused at do_create.
-SESSION_TYPES = ("vs", "adventure", "party")
+# ghost-presence session (design section 1): every console plays its own save
+# from the title, and the relay's hub rules carry only ghost frames, identity,
+# chat and voice between them. "party" (the shared rollback world) is NOT a 1.0
+# room type (Tango, 09-28): it is refused as an unknown value at do_create.
+SESSION_TYPES = ("vs", "adventure")
+
+# v5 ADVENTURE ROOMS. The seat the plan asks the relay for: "any free seat".
+# The relay assigns the lowest free hub seat and stamps it; the lobby does not
+# hand out adventure seats, because people come and go without it.
+WANT_ANY_SEAT = 255
 
 # The version each v2 addition arrived in. All three are 2 and all three say so
 # by name rather than by the digit, so a later bump cannot accidentally lock v2
@@ -130,6 +155,7 @@ SESSION_TYPES = ("vs", "adventure", "party")
 # as three entries rather than as one number repeated.
 V_DIAL = 2       # params.match_players
 V_COLOR = 2      # create/join color+shoes, and the `color` verb itself
+V_ONE = 5        # the 1.0 fields: game, luigi, voice; the world verbs
 
 # ------------------------------------------------------------------ config
 #
@@ -209,25 +235,9 @@ recompute_dial()
 # and the game from having two opinions about one match.
 NARROW_PLAYERS = 4
 
-# The version a caller must speak before the server will accept a dial above
-# NARROW_PLAYERS. Derived, one expression, one reader -- the same discipline
-# recompute_dial() has, and for the same reason: a bound restated anywhere else
-# is a bound that will drift.
-WIDE_MIN_V = 3
-
-
-def dial_max_for(ver):
-    """The largest match_players THIS CALLER may ask for.
-
-    The deployment's own bound (DIAL_MAX) capped by what the caller's contract
-    version can survive being told. A v2 launcher validates
-    SM64DS_VS_NAMES at exactly four fields and refuses to spawn on anything
-    else, so handing it a wide room would be a room it can join and cannot
-    play -- worse than a refusal, because the refusal at least says why.
-    """
-    if ver >= WIDE_MIN_V:
-        return DIAL_MAX
-    return min(DIAL_MAX, NARROW_PLAYERS)
+# (Until v5 a caller below v3 was held to NARROW_PLAYERS here, because a v2
+# launcher validates SM64DS_VS_NAMES at exactly four fields. The v5 floor
+# retired every such launcher, so the dial's bound is the deployment's alone.)
 
 # The largest "first to N stars" a host may pick. FIVE TODAY BECAUSE AN ARENA
 # HOLDS FIVE STARS, not because the number five is special: the owner picks the
@@ -262,6 +272,32 @@ KICK_COOLDOWN_S = env_int("KICK_COOLDOWN_S", 120, 0, 86400)
 MEMBER_TIMEOUT_S = env_int("MEMBER_TIMEOUT_S", 45, 5, 3600)
 ROOM_IDLE_S = env_int("ROOM_IDLE_S", 1800, 30, 86400)
 CLOSED_KEEP_S = env_int("CLOSED_KEEP_S", 60, 5, 3600)
+# v5: an adventure room outlives its creator and closes only after it has been
+# empty this long (design section 5: ten minutes). It is exempt from
+# ROOM_IDLE_S, because a room whose members are all out playing pushes no
+# events for as long as they play.
+ADV_EMPTY_S = env_int("ADV_EMPTY_S", 600, 30, 86400)
+
+# v5 WORLD ROOMS (design section 5): always-on adventure hubs that nobody
+# creates. The pool is per game build; a world holds WORLD_SEATS members seen
+# in the last WORLD_MEMBER_S seconds (the launcher sends `world_ping` every
+# 10 s while its game runs), and a world with no live member for WORLD_EMPTY_S
+# is dropped. MAX_WORLDS bounds the whole pool (every build together).
+# WORLD_EMPTY_S is 30 s, not the ten minutes it started at (review REVLOBBY5,
+# S2): a world nobody plays in costs nothing to reopen, while ten minutes made
+# a burst of opens cheap to hold for a long time.
+WORLD_SEATS = env_int("WORLD_SEATS", 16, 2, DIAL_HARD_MAX)
+WORLD_MEMBER_S = env_int("WORLD_MEMBER_S", 30, 5, 3600)
+WORLD_EMPTY_S = env_int("WORLD_EMPTY_S", 30, 5, 86400)
+MAX_WORLDS = env_int("MAX_WORLDS", 64, 1, 4096)
+# THE PER-ADDRESS CAP (review REVLOBBY5, S2): how many live world tokens one
+# client address may hold across the whole pool. Four covers a household
+# behind one connection. A `world` call from an address already at the cap
+# retires that address's least recently heard token first, so a relaunch or a
+# re-ask never locks a real player out, and one address can never stand for
+# more than this many members (padding a world full of phantoms, or holding
+# worlds open, then takes WORLD_SEATS / this many addresses per world).
+WORLD_ADDR_TOKENS = env_int("WORLD_ADDR_TOKENS", 4, 1, WORLD_SEATS)
 
 # Stage B knobs. Read here so the compose file and this file cannot drift, and
 # so `health` can report what the room semantics would be, but nothing in stage
@@ -270,6 +306,13 @@ ARM_DEADLINE_S = env_int("ARM_DEADLINE_S", 20, 5, 120)
 GO_GRACE_S = env_int("GO_GRACE_S", 5, 1, 60)
 MATCH_TIMEOUT_S = env_int("MATCH_TIMEOUT_S", 1200, 60, 86400)
 RELAY_ADDR = env_str("RELAY_ADDR", "135.148.26.201:41234")
+
+# v5: the relay protocol the plan tells the game to speak (design section 3).
+# 2 once relay v2 is deployed (S1). A 1.0 game that meets a v1 relay falls back
+# on its own ("bad request" to the v2 HELLO), so 2 is safe to ship before the
+# deploy; 1 is the operator's switch if the deploy is rolled back, and it also
+# turns the world pool off (a world room needs the relay's hub rules).
+RELAY_V = env_int("RELAY_V", 2, 1, 2)
 
 RATE_REQ_PER_S = env_int("RATE_REQ_PER_S", 20, 1, 10000)
 RATE_BURST = env_int("RATE_BURST", 40, 1, 20000)
@@ -334,6 +377,51 @@ GAME_NAME_MAX = 16
 MATCH_LEN = 16             # a match id, 16 lowercase hex, minted per arm
 
 COLOR_LEN = 6              # a picked colour, "rrggbb", stored lower case
+
+# v5: the game build id a launcher sends on create/join/world. The game's own
+# version string, 1..24 of [0-9A-Za-z._-]; compared byte for byte, never parsed.
+GAME_ID_MAX = 24
+GAME_ID_ALPHABET = ("0123456789abcdefghijklmnopqrstuvwxyz"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ._-")
+
+
+def game_id_ok(s):
+    return (isinstance(s, str) and 1 <= len(s) <= GAME_ID_MAX
+            and all(ch in GAME_ID_ALPHABET for ch in s))
+
+
+def parse_game_ids(raw):
+    """GAME_IDS: the real game build ids this server serves, comma-separated
+    (the launcher's `game`, e.g. "1.0.0-0123abcd"). The release step writes it
+    into docker-compose.yml. Returns (ids, dropped): an entry outside the
+    build-id grammar is dropped (and said so at start), never half-used."""
+    ids, dropped = [], []
+    for part in (raw or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        (ids if game_id_ok(part) else dropped).append(part)
+    return tuple(dict.fromkeys(ids)), dropped
+
+
+# THE BUILD ALLOW LIST (review REVLOBBY5, S2). A world is keyed by build id,
+# so a made-up id used to open a fresh world per call and one home connection
+# filled the pool in a minute. With a list, every create/join/world naming a
+# build not on it is refused 409 `unknown_game` (the launcher says "check for
+# an update"). EMPTY (unset) is the safe default, not the open one: code rooms
+# then take any well-formed build (a dev box, a test harness) and the WORLD
+# POOL IS OFF (503 world_off), so a deploy that forgot the compose line cannot
+# reopen the hole.
+GAME_IDS, GAME_IDS_DROPPED = parse_game_ids(os.environ.get("GAME_IDS", ""))
+
+
+def game_allowed(game):
+    return not GAME_IDS or game in GAME_IDS
+
+
+def world_open():
+    """The pool needs the relay's hub rules (RELAY_V 2) and a build list."""
+    return RELAY_V >= 2 and bool(GAME_IDS)
 
 # WHAT A COLOUR-CARRYING REQUEST NEEDS TO CLAIM: see V_COLOR at the top of this
 # file, and VERB_FIELDS for where it is enforced. This block used to declare a
@@ -475,6 +563,60 @@ def new_comms_code():
     return "".join(_RNG.choice(ROOM_ALPHABET) for _ in range(COMMS_LEN))
 
 
+def new_seed():
+    """The Luigi Infection seed for one match (v5): a u32 from the system RNG.
+
+    Minted HERE, at `start`, for every VS match whether Luigi is on or off, so
+    no launcher and no player chooses it and every console of the match reads
+    the same number from the same plan.
+    """
+    return _RNG.getrandbits(32)
+
+
+# THE SESSION DIGEST (design 2.3 + section 5). The game's ACCEPT check computes
+# the same number from its own environment, so a console launched with an env
+# that disagrees with the host's (a hand edit, a stale settings key, a
+# different build's defaults) refuses at the door with exit code 3 instead of
+# desyncing at frame 240. The canonical string, field by field:
+#   map|players|win|target|king|luigi|seed|netmode|wire
+#   map      SM64DS_VS_MAP 0..3            players  SM64DS_VS_PLAYERS 2..16
+#   win      time | stars | king           target   star target, else 0
+#   king     king target, else 0           luigi    0 | 1
+#   seed     the u32 seed when luigi is 1, else 0 (the plan carries the
+#            minted seed either way; an off room does not digest it)
+#   netmode  "lockstep" (the only online VS mode in 1.0)
+#   wire     2 when players <= 4, else 3
+# decimal integers, no padding, no spaces. FNV-1a 32 over the ASCII bytes.
+# This is the game's own rule (hal/comms_loopback.cpp session_digest, the
+# NETCORE1 session check), and test_units.py (test_session_digest) pins it
+# with that lane's published examples.
+NETMODE_ONLINE = "lockstep"
+FNV32_OFFSET = 2166136261
+FNV32_PRIME = 16777619
+
+
+def fnv1a32(data):
+    h = FNV32_OFFSET
+    for b in data:
+        h ^= b
+        h = (h * FNV32_PRIME) & 0xFFFFFFFF
+    return h
+
+
+def session_canonical(map_id, players, win_mode, star_target, king_target,
+                      luigi, seed, netmode=NETMODE_ONLINE):
+    wire = 2 if players <= NARROW_PLAYERS else 3
+    return "%d|%d|%s|%d|%d|%d|%d|%s|%d" % (
+        map_id, players, win_mode,
+        star_target if win_mode == "stars" and star_target else 0,
+        king_target if win_mode == "king" and king_target else 0,
+        1 if luigi else 0, (seed & 0xFFFFFFFF) if luigi else 0, netmode, wire)
+
+
+def session_digest(*args, **kw):
+    return fnv1a32(session_canonical(*args, **kw).encode("ascii"))
+
+
 # --------------------------------------------------------------- room state
 #
 # ONE module-level lock guards every room, every member and every counter
@@ -490,19 +632,16 @@ REJ_RATE = 0
 REJ_SHAPE = 0
 REJ_AUTH = 0
 
+WORLDS = {}                 # hub code -> World (v5 world rooms)
+
 
 class Member(object):
     __slots__ = ("seat", "token", "nick", "display", "playing", "pre_ok",
                  "armed", "seen", "chat_allowance", "chat_stamp", "last_addr",
-                 "color", "shoes", "v")
+                 "color", "shoes")
 
     def __init__(self, seat, token, nick, playing, pre_ok, now, addr="",
-                 color="", shoes="", v=1):
-        # The contract version this member joined at. 0.3.2: the dial and the
-        # start both refuse to take a room past four while anyone seated is
-        # below WIDE_MIN_V, because that member's build would be handed a
-        # sixteen-field plan it refuses at spawn and take the match down.
-        self.v = v
+                 color="", shoes=""):
         self.seat = seat
         self.token = token
         self.nick = nick            # exactly as sent, never rewritten
@@ -554,7 +693,7 @@ class Member(object):
 
 
 class Room(object):
-    def __init__(self, code, now, host_v=CONTRACT_MIN):
+    def __init__(self, code, now, game=""):
         self.code = code
         self.cond = threading.Condition(LOCK)
         self.members = {}       # seat -> Member
@@ -579,17 +718,17 @@ class Room(object):
         # set through `params`, frozen from Start until the room is back in
         # lobby. It starts at the deployment's own capability so a host who
         # never opens the settings dialog gets the old behaviour exactly.
-        # RUN vs16: bounded by the HOST'S contract version, not only by the
-        # deployment's. On a sixteen-player deployment a v2 host would
-        # otherwise get a room that defaults to sixteen, be handed a
-        # sixteen-field SM64DS_VS_NAMES its own build validates at four, and
-        # spawn nothing -- without ever touching the dial it is not allowed to
-        # move. The room's default capability cannot exceed what its host is
-        # able to drive.
-        #
-        # On every deployment that exists today the two answers are the same
-        # number, so this is invisible where nothing can use it.
-        self.match_players = dial_max_for(host_v)
+        self.match_players = DIAL_MAX
+        # v5 VS settings, host-set through `params` like map and win_mode.
+        # luigi: Luigi Infection (0 off). voice: whether the match allows
+        # proximity voice (1, the default: the host has to turn it off).
+        self.luigi = 0
+        self.voice = 1
+        # v5: THE GAME BUILD this room plays, the creator's `game` string, set
+        # once at create. Every join must carry the same string: two builds in
+        # one match is how a room desyncs at frame 240 instead of refusing at
+        # the door, and the lobby is the first door.
+        self.game = game
         self.match = None
         # STAGE B/C match state, all None/empty in lobby and reset by
         # _reset_match. Frozen at the arming instant so a join, a leave or a
@@ -601,6 +740,9 @@ class Room(object):
         self.match_star_target = None
         self.match_king_target = None
         self.match_dial = 0         # the dial the host had set at arm
+        self.match_luigi = 0        # v5: luigi/voice frozen at arm, and the
+        self.match_voice = 1        # seed minted at arm, one per match
+        self.match_seed = 0
         self.names = ""             # SM64DS_VS_NAMES, built once, slot order
         self.colors = ""            # SM64DS_VS_COLORS, likewise
         self.slot_of = {}           # seat -> slot (0..3), packed among playing
@@ -620,6 +762,9 @@ class Room(object):
         self.touched = now      # last event, for the idle timer
         self.closed_at = None
         self.why = None
+        # v5 adventure rooms: when the last member left (monotonic), or None
+        # while anybody is in. The reaper closes the room ADV_EMPTY_S later.
+        self.empty_since = None
         # Kicked addresses and the tokens they held, each with an expiry. The
         # token record exists only so a kicked launcher gets told WHY on its
         # next poll instead of a bare "you are not a member".
@@ -702,6 +847,10 @@ class Room(object):
         seat 1 while the dial is at least 1, and the loop refuses it anyway
         rather than relying on that.
         """
+        if self.session_type != "vs":
+            # An adventure room has no match and so no dial: every member
+            # plays their own game, all of them "playing".
+            return
         want = self.match_players
         seats = sorted(self.members)
         while self.playing_count() < want:
@@ -793,6 +942,9 @@ class Room(object):
             "win_mode": self.win_mode,
             "star_target": self.star_target,
             "king_target": self.king_target,
+            # v5: the two VS settings, so every launcher shows the host's pick.
+            "luigi": self.luigi,
+            "voice": self.voice,
             "members": [self.members[s].view() for s in sorted(self.members)],
             "match": self.match,
         }
@@ -805,6 +957,51 @@ class Room(object):
         self.why = why
         self.push("closed", why=why)
         log("room %s close (%s)" % (self.code, why))
+
+
+class World(object):
+    """One always-on adventure hub (v5). Nothing in it but a number, the hub
+    code, and per member token when it last proved it was alive and the client
+    address it was issued to. No nick and no colour is kept: the world's
+    members meet each other through the game's identity frames, never through
+    the lobby. The address is held ONLY for WORLD_ADDR_TOKENS, like a room
+    member's last_addr for a kick: never logged whole, never sent to anybody,
+    dropped with the token."""
+
+    def __init__(self, game, no, code, now):
+        self.game = game
+        self.no = no
+        self.code = code
+        self.members = {}       # token -> [last seen (monotonic), address]
+        self.empty_since = now
+
+    def count(self, now):
+        return sum(1 for m in self.members.values()
+                   if now - m[0] <= WORLD_MEMBER_S)
+
+    def forget_stale(self, now):
+        for tok, m in list(self.members.items()):
+            if now - m[0] > WORLD_MEMBER_S:
+                del self.members[tok]
+
+
+def retire_over_cap(who, now):
+    """Before issuing `who` a new world token, retire its least recently heard
+    live tokens until it holds fewer than WORLD_ADDR_TOKENS. Returns how many
+    were retired. A retired token's next world_ping is 403 not_a_member, which
+    the launcher answers by asking `world` again."""
+    mine = []
+    for w in WORLDS.values():
+        for tok, m in w.members.items():
+            if m[1] == who and now - m[0] <= WORLD_MEMBER_S:
+                mine.append((m[0], w.code, tok))
+    mine.sort()
+    retired = 0
+    while len(mine) - retired >= WORLD_ADDR_TOKENS:
+        _, code, tok = mine[retired]
+        WORLDS[code].members.pop(tok, None)
+        retired += 1
+    return retired
 
 
 # ------------------------------------------------------------- rate limits
@@ -1021,7 +1218,7 @@ def v_color(body, key):
     return s.lower(), None
 
 
-def v_color_pair(body, ver):
+def v_color_pair(body):
     """The two colour keys, which travel together or not at all.
 
     Returns (color, shoes, error). ("", "") means the caller picked nothing,
@@ -1063,6 +1260,44 @@ def v_match(body):
     for ch in s:
         if ch not in HEX_ALPHABET:
             return None, "bad_match"
+    return s, None
+
+
+def v_game(body):
+    """The game build id (v5): ^[0-9A-Za-z._-]{1,24}$, compared, never parsed.
+
+    It is a claim the launcher makes about the game it will spawn, and the only
+    thing the lobby does with it is refuse to seat two different claims in one
+    room. A lying launcher gains nothing by it: the game's own session check
+    (the build id and digest in the ACCEPT) is the second door.
+    """
+    s, err = want_str(body, "game", "bad_game")
+    if err:
+        return None, err
+    n = byte_len(s)
+    if n > GAME_ID_MAX:
+        return None, "too_long"
+    if n < 1:
+        return None, "bad_game"
+    for ch in s:
+        if ch not in GAME_ID_ALPHABET:
+            return None, "bad_game"
+    return s, None
+
+
+def v_code(body, key):
+    """A relay/hub code the lobby minted: 8 characters of the room alphabet."""
+    s, err = want_str(body, key, "bad_code")
+    if err:
+        return None, err
+    n = byte_len(s)
+    if n > COMMS_LEN:
+        return None, "too_long"
+    if n != COMMS_LEN:
+        return None, "bad_code"
+    for ch in s:
+        if ch not in ROOM_ALPHABET:
+            return None, "bad_code"
     return s, None
 
 
@@ -1146,14 +1381,14 @@ def shape(body, required, optional=()):
 # did not exist at v1 at all, and gating only its fields would have left a v1
 # client able to call it with its required set and be answered.
 VERB_FIELDS = {
-    "create":    (("v", "nick"),
+    "create":    (("v", "nick", "game"),
                   # A colour pick travels as a PAIR or not at all; do_create
                   # enforces the pairing. Here they are two keys that may
                   # appear from v2. session_type is a v4 optional (ADVENTURE);
                   # do_create checks its value against SESSION_TYPES.
                   {"pre_ok": 1, "color": V_COLOR, "shoes": V_COLOR,
                    "session_type": V_SESSION}),
-    "join":      (("v", "room", "nick"),
+    "join":      (("v", "room", "nick", "game"),
                   {"pre_ok": 1, "color": V_COLOR, "shoes": V_COLOR}),
     "poll":      (("v", "room", "token", "cursor"), {"wait": 1}),
     "chat":      (("v", "room", "token", "text"), {}),
@@ -1161,7 +1396,10 @@ VERB_FIELDS = {
                   # star_target is required-iff-stars and forbidden otherwise;
                   # do_params enforces that pairing. Here it is only "a key
                   # this verb may carry, since v1".
-                  {"star_target": 1, "king_target": 1, "match_players": V_DIAL}),
+                  {"star_target": 1, "king_target": 1, "match_players": V_DIAL,
+                   # v5: Luigi Infection and the voice switch, VS rooms only;
+                   # do_params refuses either on an adventure room.
+                   "luigi": V_ONE, "voice": V_ONE}),
     # THE WHOLE VERB IS v2. Its fields are required, so they carry no version
     # of their own -- the verb's own `since` is what refuses a v1 caller.
     "color":     (("v", "room", "token", "color", "shoes"), {}, V_COLOR),
@@ -1172,6 +1410,11 @@ VERB_FIELDS = {
     "failed":    (("v", "room", "token", "match", "reason"), {}),
     "kick":      (("v", "room", "token", "seat"), {}),
     "leave":     (("v", "room", "token"), {}),
+    # v5 WORLD ROOMS. Both verbs are v5 as a whole. `skip` is the world the
+    # relay just answered "full" for (the game exited with code 4).
+    "world":     (("v", "nick", "game"),
+                  {"color": V_COLOR, "shoes": V_COLOR, "skip": V_ONE}, V_ONE),
+    "world_ping": (("v", "code", "token"), {}, V_ONE),
 }
 
 
@@ -1210,6 +1453,11 @@ def shape_for(verb, body):
     # floor rather than trusting it keeps this function safe to call directly
     # from a test.
     ver = request_version(body)
+    # v5: THE RANGE, here as well as in the transport, so a handler called
+    # directly (the unit tests do) refuses a pre-floor body the same way the
+    # wire does instead of quietly serving it.
+    if ver < CONTRACT_MIN or ver > CONTRACT_V:
+        return "bad_version"
     # THE VERB ITSELF FIRST. A verb that does not exist at the caller's version
     # is refused before its fields are looked at, so a v1 caller cannot learn
     # anything about a v2 verb from the shape of its refusal.
@@ -1255,9 +1503,14 @@ def do_create(body, who, now):
         pre_ok, err = v_bool(body, "pre_ok")
         if err:
             return 400, {"error": err}
-    color, shoes, err = v_color_pair(body, body.get("v", 1))
+    color, shoes, err = v_color_pair(body)
     if err:
         return 400, {"error": err}
+    game, err = v_game(body)
+    if err:
+        return 400, {"error": err}
+    if not game_allowed(game):
+        return 409, {"error": "unknown_game"}
     # ADVENTURE co-op (v4): the session type. shape_for has already refused the
     # key for a v1..v3 body, so reaching here with it present means a v4 caller;
     # the value is the only thing left to check. Absent is "vs", the default and
@@ -1285,22 +1538,33 @@ def do_create(body, who, now):
     # The host's own contract version bounds the room's default width; see
     # Room.__init__. Defaulted at the floor so a direct Room() in a test is
     # narrow unless it says otherwise.
-    room = Room(code, now, request_version(body))
+    room = Room(code, now, game)
     room.session_type = session_type
+    if session_type == "adventure":
+        # THE ROOM'S HUB CODE, minted once and kept for the room's life: an
+        # adventure room is one relay hub session that people drop in and out
+        # of, not a sequence of matches. Like a VS match's code it is never
+        # the room code, so reading the invite aloud does not hand anybody a
+        # relay seat without the lobby.
+        room.comms_code = new_comms_code()
     token = new_token()
     # The host plays if the dial has room for anybody at all. The host is also
     # the session's parent, so a host who is not playing is not a thing any
     # later code has to handle: `apply_dial` refuses to demote seat 1.
     m = Member(1, token, nick, room.match_players >= 1, pre_ok, now, who,
-               color, shoes, request_version(body))
+               color, shoes)
     room.members[1] = m
     room.by_token[token] = 1
     room.host_seat = 1
     room.refresh_displays()
     ROOMS[code] = room
-    log("room %s create by %s (1/%d)" % (code, blunt_host(who), MAX_SEATS))
-    return 200, {"room": code, "token": token, "member": 1,
-                 "cursor": room.seq, "view": room.view(1)}
+    log("room %s create %s by %s (1/%d)"
+        % (code, session_type, blunt_host(who), MAX_SEATS))
+    out = {"room": code, "token": token, "member": 1,
+           "cursor": room.seq, "view": room.view(1)}
+    if room.session_type == "adventure":
+        out["plan"] = member_plan(room, 1)
+    return 200, out
 
 
 def do_join(body, who, now):
@@ -1318,9 +1582,14 @@ def do_join(body, who, now):
         pre_ok, err = v_bool(body, "pre_ok")
         if err:
             return 400, {"error": err}
-    color, shoes, err = v_color_pair(body, body.get("v", 1))
+    color, shoes, err = v_color_pair(body)
     if err:
         return 400, {"error": err}
+    game, err = v_game(body)
+    if err:
+        return 400, {"error": err}
+    if not game_allowed(game):
+        return 409, {"error": "unknown_game"}
 
     if not BUCKETS.allow_join(who, now):
         return 429, {"error": "too_fast"}
@@ -1331,22 +1600,15 @@ def do_join(body, who, now):
     room.forget_old_kicks(now)
     if who in room.kicked_addr:
         return 403, {"error": "kicked"}
+    # v5: ONE GAME BUILD PER ROOM. Refused before the seat checks so a player
+    # on the wrong build hears the reason that is actually theirs (somebody in
+    # this room runs a different game version) rather than "room full".
+    if game != room.game:
+        return 409, {"error": "game_mismatch"}
     if len(room.members) >= MAX_SEATS:
         return 409, {"error": "room_full"}
     if room.state != "lobby":
         return 409, {"error": "in_match"}
-    # RUN vs16: A NARROW CLIENT CANNOT JOIN A WIDE ROOM, and it is turned away
-    # here rather than seated and then handed a plan it cannot use.
-    #
-    # Above four players the game speaks wire version 3 and both name strings
-    # carry sixteen fields. A v2 build validates them at four and refuses to
-    # spawn, so without this it would sit in the room, be counted as playing,
-    # arm, and then fail at launch -- taking the whole match with it, because
-    # `failed` returns the room to lobby. A refusal at the door is the same
-    # answer given early enough to be actionable.
-    if (room.match_players > NARROW_PLAYERS
-            and request_version(body) < WIDE_MIN_V):
-        return 409, {"error": "needs_newer_client"}
 
     seat = room.free_seat()
     if seat is None:
@@ -1354,18 +1616,28 @@ def do_join(body, who, now):
     token = new_token()
     # The dial decides, not the deployment knob. Same rule as before -- the
     # first N in the room play -- with N now chosen by the host instead of
-    # fixed for the whole server.
-    playing = room.playing_count() < room.match_players
+    # fixed for the whole server. An adventure room has no dial: everybody
+    # in it plays their own game.
+    playing = (room.session_type != "vs"
+               or room.playing_count() < room.match_players)
+    if not room.members:
+        # Only an adventure room can be empty and open (a VS room closes when
+        # its host leaves). Whoever walks into the empty room holds it now.
+        room.host_seat = seat
+        room.empty_since = None
     room.members[seat] = Member(seat, token, nick, playing, pre_ok, now, who,
-                                color, shoes, request_version(body))
+                                color, shoes)
     room.by_token[token] = seat
     room.refresh_displays()
     room.push("joined", seat=seat, display=room.members[seat].display)
     log("room %s join %s seat %d %s (%d/%d)"
         % (code, blunt_host(who), seat, "playing" if playing else "watching",
            len(room.members), MAX_SEATS))
-    return 200, {"room": code, "token": token, "member": seat,
-                 "cursor": room.seq, "view": room.view(seat)}
+    out = {"room": code, "token": token, "member": seat,
+           "cursor": room.seq, "view": room.view(seat)}
+    if room.session_type == "adventure":
+        out["plan"] = member_plan(room, seat)
+    return 200, out
 
 
 def do_chat(body, who, now):
@@ -1467,19 +1739,21 @@ def do_params(body, who, now):
     # The bound the refusal enforces is advertised as `dial_max` in every view,
     # so a launcher that reads the view never has to be refused at all.
     #
-    # AND THE UPPER BOUND IS THE CALLER'S, NOT THE DEPLOYMENT'S ALONE. Run
-    # vs16: above four players the game speaks a different wire and the two
-    # name/colour strings carry sixteen fields, so a v2 caller asking for eight
-    # is refused with the same code and for a better reason than the
-    # deployment's capability -- its own build could not play the room it was
-    # asking for. `dial_max` in the room view is still the DEPLOYMENT's number,
-    # unchanged in meaning for launcher 0.3.0, and a v3 launcher greys against
-    # it correctly because for a v3 caller the two bounds are the same.
     match_players = None
     if "match_players" in body:
-        match_players, err = v_int(body, "match_players", 2,
-                                   dial_max_for(request_version(body)),
+        match_players, err = v_int(body, "match_players", 2, DIAL_MAX,
                                    "bad_match_players")
+        if err:
+            return 400, {"error": err}
+    # v5: two switches, 0 or 1 and nothing else (not a bool, not a string).
+    # Absent means "keep what the room has", like the dial.
+    luigi = voice = None
+    if "luigi" in body:
+        luigi, err = v_int(body, "luigi", 0, 1, "bad_field")
+        if err:
+            return 400, {"error": err}
+    if "voice" in body:
+        voice, err = v_int(body, "voice", 0, 1, "bad_field")
         if err:
             return 400, {"error": err}
 
@@ -1494,6 +1768,13 @@ def do_params(body, who, now):
         return 403, {"error": "not_host"}
     if room.state != "lobby":
         return 409, {"error": "not_in_lobby"}
+    # v5: Luigi Infection, the voice switch and the dial are VS match
+    # settings. An adventure room has no match to put them in, so any of them
+    # there is a field this room does not have: bad_field, like any undefined
+    # key.
+    if room.session_type != "vs" and (luigi is not None or voice is not None
+                                      or match_players is not None):
+        return 400, {"error": "bad_field"}
 
     room.map = mp
     room.win_mode = win_mode
@@ -1503,26 +1784,25 @@ def do_params(body, who, now):
     # it had rather than being reset by an old launcher's ordinary settings
     # edit. That is the whole of the "0.3.0 is unaffected" story on this verb.
     if match_players is not None:
-        # 0.3.2: the door check in do_join is join-time only. A v2 client
-        # seated in a four-wide room, followed by a v3 host dialing it to
-        # eight, would be the same failure one verb later -- so the dial is
-        # refused while anyone seated cannot play the width asked for.
-        if match_players > NARROW_PLAYERS and any(
-                m.v < WIDE_MIN_V for m in room.members.values()):
-            return 409, {"error": "seated_client_too_old"}
         room.match_players = match_players
         room.apply_dial()
+    if luigi is not None:
+        room.luigi = luigi
+    if voice is not None:
+        room.voice = voice
     # `match_players` rides the event as well as the view. Older launchers
     # ignore an extra field on an event they already know (section 3.5 is about
     # unknown KINDS; the field tolerance is what JSON readers do by default and
     # is pinned by a test), and the roster change is visible in the view every
     # poll carries regardless.
     room.push("params", map=mp, win_mode=win_mode, star_target=star_target,
-              king_target=king_target, match_players=room.match_players)
-    log("room %s params map=%d win=%s target=%s king=%s players=%d/%d"
+              king_target=king_target, match_players=room.match_players,
+              luigi=room.luigi, voice=room.voice)
+    log("room %s params map=%d win=%s target=%s king=%s players=%d/%d "
+        "luigi=%d voice=%d"
         % (code, mp, win_mode, star_target if star_target else "-",
            king_target if king_target else "-",
-           room.playing_count(), room.match_players))
+           room.playing_count(), room.match_players, room.luigi, room.voice))
     return 200, {"cursor": room.seq}
 
 
@@ -1553,7 +1833,7 @@ def drop_member(room, seat, why):
     m = room.members.get(seat)
     if m is None:
         return
-    if seat == room.host_seat:
+    if seat == room.host_seat and room.session_type == "vs":
         room.close("host_left")
         return
     was_playing = m.playing
@@ -1563,6 +1843,19 @@ def drop_member(room, seat, why):
     room.push("left", seat=seat, display=m.display, why=why)
     log("room %s leave seat %d (%s) (%d/%d)"
         % (room.code, seat, why, len(room.members), MAX_SEATS))
+    if room.session_type != "vs":
+        # AN ADVENTURE ROOM OUTLIVES ITS CREATOR (design section 5). Nobody
+        # hosts a hub session, so the host role is only the lobby's (kick):
+        # it passes to the lowest seat still in, and an empty room waits
+        # ADV_EMPTY_S for somebody to come back before the reaper closes it.
+        if seat == room.host_seat:
+            if room.members:
+                room.host_seat = min(room.members)
+                room.push("host", seat=room.host_seat,
+                          display=room.members[room.host_seat].display)
+                log("room %s host -> seat %d" % (room.code, room.host_seat))
+        # (An empty room's clock is started by the reaper, on its own `now`.)
+        return
     if was_playing:
         before = {s for s in room.members if room.members[s].playing}
         # ONE RULE, STATED ONCE. Promotion-on-vacancy and the host's dial are
@@ -1728,27 +2021,22 @@ def member_plan(room, seat):
     m = room.members.get(seat)
     if m is None or not m.playing:
         return {"playing": False}
+    if room.session_type == "adventure":
+        # THE ADVENTURE PLAN (v5, design section 5): the room's hub code, the
+        # relay, and "any seat". The launcher boots the TITLE with
+        # SM64DS_ADVENTURE=1 and the comms code/relay, and sets no
+        # SM64DS_LEVEL and no SM64DS_VS_*: the player plays their own save.
+        return {"playing": True, "session_type": "adventure",
+                "code": room.comms_code, "relay": RELAY_ADDR,
+                "relay_v": RELAY_V, "want_seat": WANT_ANY_SEAT}
     role = "parent" if seat == room.host_seat else "child"
     plan = {
         "role": role,
         "code": room.comms_code,
         "relay": RELAY_ADDR,
-        # ADVENTURE co-op (v4): the session type, so the launcher knows which
-        # game to boot. For "vs" it exports SM64DS_VS_MAP=<map> and the ROM's
-        # own VS start sets the mode byte, exactly as before. For "adventure"
-        # it exports SM64DS_ADVENTURE=1 and SM64DS_LEVEL=<map> instead, and
-        # must NOT set SM64DS_VS_MAP -- a solo level with the wire open, where
-        # each console ghosts the peers in its own level. The transport quartet
-        # (role/code/relay/slot) is identical for both; the relay forwards the
-        # same opaque datagrams either way.
-        #
-        # PARTY (party slice, status/COOP_PARTY.md): same adventure invite path,
-        # but a SHARED world. The launcher exports SM64DS_ADVENTURE=1 +
-        # SM64DS_PARTY=1 + SM64DS_NETMODE=rollback, and -- the shared-world
-        # entry -- SM64DS_LEVEL=<host_level> for EVERY member (below), so a
-        # joiner boots into the host's level rather than its own. The parent's
-        # bit-17 accept still carries the rollback mode on the wire, so a joiner
-        # that asked for lockstep adopts it (the shipped handshake).
+        # The session type, so the launcher knows which game to boot: "vs"
+        # here (the adventure plan returned above). It exports
+        # SM64DS_VS_MAP=<map> and the ROM's own VS start sets the mode byte.
         "session_type": room.session_type,
         "map": room.match_map,
         "players": room.agreed_players,
@@ -1766,6 +2054,23 @@ def member_plan(room, seat):
         # seat's: each client draws all four Yoshis, so each client needs
         # all four rows.
         "colors": room.colors,
+        # v5 (design section 5). relay_v: the relay protocol to speak.
+        # want_seat: the seat to ask the relay for; in a VS star session it
+        # is the slot (parent 0, children 1..15), so the relay's stamp and
+        # the game's slot are the same number.
+        "relay_v": RELAY_V,
+        "want_seat": room.slot_of.get(seat, 0),
+        # The match settings frozen at arm. The launcher exports luigi and
+        # seed as SM64DS_VS_LUIGI_INFECTION / SM64DS_VS_LUIGI_SEED, voice as
+        # SM64DS_VOICE_ALLOWED and digest as SM64DS_SESSION_DIGEST. The seed
+        # is minted for every match; the digest counts it only with Luigi on.
+        "luigi": room.match_luigi,
+        "seed": room.match_seed,
+        "voice": room.match_voice,
+        "digest": session_digest(room.match_map, room.agreed_players,
+                                 room.match_win_mode, room.match_star_target,
+                                 room.match_king_target, room.match_luigi,
+                                 room.match_seed),
     }
     if room.match_win_mode == "stars":
         plan["star_target"] = room.match_star_target
@@ -1773,19 +2078,6 @@ def member_plan(room, seat):
     # host enforces one star all match and the first-to-N-points win.
     if room.match_win_mode == "king":
         plan["king_target"] = room.match_king_target
-    # PARTY (party slice): the two fields that make a party session what it is.
-    #   host_level  -- SHARED WORLD ENTRY (COOP_PARTY.md step 2/3): the host's
-    #     level, handed to EVERY member so a joiner boots the host's world, not
-    #     its own. It is room.match_map (the level the host is in) for every
-    #     seat, which is exactly "the joiner adopts the host's level".
-    #   netmode     -- ROLLBACK SEATING (COOP_PARTY.md step 1): the launcher
-    #     exports SM64DS_NETMODE=rollback so announce_roster() carries the
-    #     accept-rollback bit and the session runs the shipped rollback sim.
-    # Both are additive: a "vs" or "adventure" plan never carries them, so those
-    # launchers are byte-unchanged.
-    if room.session_type == "party":
-        plan["host_level"] = room.match_map
-        plan["netmode"] = "rollback"
     return plan
 
 
@@ -1799,6 +2091,9 @@ def _reset_match(room):
     room.match_star_target = None
     room.match_king_target = None
     room.match_dial = 0
+    room.match_luigi = 0
+    room.match_voice = 1
+    room.match_seed = 0
     room.names = ""
     room.colors = ""
     room.slot_of = {}
@@ -1882,16 +2177,15 @@ def do_start(body, who, now):
     room.members[seat].seen = now
     if seat != room.host_seat:
         return 403, {"error": "not_host"}
+    if room.session_type != "vs":
+        # No start gate in an adventure room (design section 5): every member
+        # got its plan at create/join and presses Play whenever it likes.
+        return 409, {"error": "not_vs"}
     if room.state != "lobby":
         return 409, {"error": "not_in_lobby"}
     ps = playing_seats(room)
     if len(ps) < 2:
         return 409, {"error": "not_enough_players"}
-    # 0.3.2: belt and braces over do_params -- no wide start with an old
-    # client seated, whatever path got the room here.
-    if room.match_players > NARROW_PLAYERS and any(
-            m.v < WIDE_MIN_V for m in room.members.values()):
-        return 409, {"error": "seated_client_too_old"}
     if any(not room.members[s].pre_ok for s in ps):
         return 409, {"error": "member_not_ready"}
 
@@ -1905,6 +2199,9 @@ def do_start(body, who, now):
     room.match_star_target = room.star_target
     room.match_king_target = room.king_target
     room.match_dial = room.match_players
+    room.match_luigi = room.luigi
+    room.match_voice = room.voice
+    room.match_seed = new_seed()
     room.slot_of = assign_slots(room)
     room.names = build_names(room)
     room.colors = build_colors(room)
@@ -1913,8 +2210,9 @@ def do_start(body, who, now):
     room.state = "arming"
     room.arm_deadline = now + ARM_DEADLINE_S
     room.push("arming", match=room.match, deadline_ms=ARM_DEADLINE_S * 1000)
-    log("room %s arm match=%s players=%d deadline=%ds"
-        % (code, room.match, room.agreed_players, ARM_DEADLINE_S))
+    log("room %s arm match=%s players=%d luigi=%d voice=%d deadline=%ds"
+        % (code, room.match, room.agreed_players, room.match_luigi,
+           room.match_voice, ARM_DEADLINE_S))
     return 200, {"cursor": room.seq, "match": room.match}
 
 
@@ -2313,9 +2611,115 @@ def do_poll(body, who, now):
     # behind the ring and resynced (getting chat only, no `go` event) still has
     # its plan and can spawn. Belt and suspenders; the launcher prefers the
     # event's plan and falls back to this.
-    if room.state == "go":
+    if room.state == "go" or (room.session_type == "adventure"
+                              and room.state != "closed"):
         out["plan"] = member_plan(room, seat)
     return 200, out
+
+
+def world_plan(w):
+    return {"code": w.code, "relay": RELAY_ADDR, "relay_v": RELAY_V,
+            "want_seat": WANT_ANY_SEAT, "world_no": w.no}
+
+
+def do_world(body, who, now):
+    """v5: "put me in a world". The lowest-numbered world of the caller's game
+    build with a free seat (members seen in the last WORLD_MEMBER_S), else a
+    new one. The answer is a hub plan like an adventure room's, plus the world
+    number for the launcher to show and a token for `world_ping`.
+
+    The nick and colours are checked against the same grammar as everywhere
+    else and then dropped: nothing about a player is kept in a world.
+    """
+    err = shape_for("world", body)
+    if err:
+        return 400, {"error": err}
+    nick, err = v_nick(body)
+    if err:
+        return 400, {"error": err}
+    color, shoes, err = v_color_pair(body)
+    if err:
+        return 400, {"error": err}
+    game, err = v_game(body)
+    if err:
+        return 400, {"error": err}
+    skip = None
+    if "skip" in body:
+        skip, err = v_code(body, "skip")
+        if err:
+            return 400, {"error": err}
+    if not world_open():
+        # A world needs the relay's hub rules (RELAY_V 2) and the build allow
+        # list (GAME_IDS); without either the pool is off.
+        return 503, {"error": "world_off"}
+    if not game_allowed(game):
+        return 409, {"error": "unknown_game"}
+    if not BUCKETS.allow_join(who, now):
+        return 429, {"error": "too_fast"}
+
+    retired = retire_over_cap(who, now)
+    if retired:
+        log("world retire %d older token(s) of %s (cap %d)"
+            % (retired, blunt_host(who), WORLD_ADDR_TOKENS))
+    mine = sorted((w for w in WORLDS.values() if w.game == game),
+                  key=lambda w: w.no)
+    pick = None
+    for w in mine:
+        if w.code != skip and w.count(now) < WORLD_SEATS:
+            pick = w
+            break
+    if pick is None:
+        if len(WORLDS) >= MAX_WORLDS:
+            return 503, {"error": "full"}
+        taken = {w.no for w in mine}
+        no = 1
+        while no in taken:
+            no += 1
+        code = None
+        for _ in range(8):
+            cand = new_comms_code()
+            if cand not in WORLDS:
+                code = cand
+                break
+        if code is None:
+            return 503, {"error": "busy"}
+        pick = World(game, no, code, now)
+        WORLDS[code] = pick
+        log("world %s open no=%d (%d worlds)" % (code, no, len(WORLDS)))
+    token = new_token()
+    pick.members[token] = [now, who]
+    pick.empty_since = None
+    out = world_plan(pick)
+    out["token"] = token
+    out["members"] = pick.count(now)
+    log("world %s join %s no=%d (%d/%d)" % (pick.code, blunt_host(who),
+                                            pick.no, out["members"],
+                                            WORLD_SEATS))
+    return 200, out
+
+
+def do_world_ping(body, who, now):
+    """v5: "I am still in this world", every 10 s while the game runs. A token
+    unheard for WORLD_MEMBER_S has already been forgotten and is refused, and
+    the launcher asks `world` again."""
+    err = shape_for("world_ping", body)
+    if err:
+        return 400, {"error": err}
+    code, err = v_code(body, "code")
+    if err:
+        return 400, {"error": err}
+    token, err = v_token(body)
+    if err:
+        return 400, {"error": err}
+    w = WORLDS.get(code)
+    if w is None:
+        return 404, {"error": "no_such_world"}
+    seen = w.members.get(token)
+    if seen is None or now - seen[0] > WORLD_MEMBER_S:
+        w.members.pop(token, None)
+        return 403, {"error": "not_a_member"}
+    seen[0] = now
+    return 200, {"ok": True, "world_no": w.no, "members": w.count(now)}
 
 
 VERBS = {
@@ -2332,6 +2736,8 @@ VERBS = {
     "failed": do_failed,
     "kick": do_kick,
     "leave": do_leave,
+    "world": do_world,
+    "world_ping": do_world_ping,
 }
 
 # EVERY VERB HAS A ROW, AND EVERY ROW HAS A VERB. Checked at import rather than
@@ -2393,11 +2799,32 @@ def sweep(now):
                     drop_member(room, seat, "timeout")
                     if room.state == "closed":
                         break
-            if room.state != "closed" and now - room.touched > ROOM_IDLE_S:
-                room.close("idle")
-            if room.state != "closed" and not room.members:
-                room.close("idle")
+            if room.session_type == "adventure":
+                # Exempt from ROOM_IDLE_S; closed only after ADV_EMPTY_S empty.
+                if room.members:
+                    room.empty_since = None
+                elif room.empty_since is None:
+                    room.empty_since = now
+                elif now - room.empty_since >= ADV_EMPTY_S:
+                    room.close("idle")
+            else:
+                if room.state != "closed" and now - room.touched > ROOM_IDLE_S:
+                    room.close("idle")
+                if room.state != "closed" and not room.members:
+                    room.close("idle")
         room.forget_old_kicks(now)
+
+    # v5 world pool: forget stale members, drop a world empty for
+    # WORLD_EMPTY_S. Its number is free for the next world of that build.
+    for code, w in list(WORLDS.items()):
+        w.forget_stale(now)
+        if w.members:
+            w.empty_since = None
+        elif w.empty_since is None:
+            w.empty_since = now
+        elif now - w.empty_since >= WORLD_EMPTY_S:
+            del WORLDS[code]
+            log("world %s drop no=%d (empty)" % (code, w.no))
 
     BUCKETS.sweep(now)
 
@@ -2412,9 +2839,11 @@ def reaper():
             sweep(now)
             if now - last_stats >= STATS_INTERVAL_S:
                 last_stats = now
-                log("stats rooms=%d members=%d waiters=%d req=%d rej_rate=%d "
-                    "rej_shape=%d rej_auth=%d"
+                log("stats rooms=%d members=%d worlds=%d world_members=%d "
+                    "waiters=%d req=%d rej_rate=%d rej_shape=%d rej_auth=%d"
                     % (len(ROOMS), sum(len(r.members) for r in ROOMS.values()),
+                       len(WORLDS),
+                       sum(w.count(now) for w in WORLDS.values()),
                        WAITERS, REQ_COUNT, REJ_RATE, REJ_SHAPE, REJ_AUTH))
 
 
@@ -2533,8 +2962,17 @@ class Handler(BaseHTTPRequestHandler):
                 "contract_min": CONTRACT_MIN,
                 "contract_v": CONTRACT_V,
                 "dial_max": DIAL_MAX,
+                "relay_v": RELAY_V,
+                "world_open": world_open(),
+                "game_ids": len(GAME_IDS),
                 "rooms": len(ROOMS),
                 "members": sum(len(r.members) for r in ROOMS.values()),
+                "worlds": len(WORLDS),
+                "world_members": sum(w.count(time.monotonic())
+                                     for w in WORLDS.values()),
+                "world_seats": WORLD_SEATS,
+                "world_member_s": WORLD_MEMBER_S,
+                "world_addr_tokens": WORLD_ADDR_TOKENS,
                 "waiters": WAITERS,
             }
         self._send(200, payload)
@@ -2744,8 +3182,21 @@ class Server(ThreadingHTTPServer):
 def main():
     Handler.timeout = HANDLER_TIMEOUT_S
     log("sm64ds-lobby %s starting on %s:%d" % (REVISION, LISTEN_ADDR, LISTEN_PORT))
-    log("contract v%d..v%d, player dial 2..%d (seats=%d, game=%d)"
-        % (CONTRACT_MIN, CONTRACT_V, DIAL_MAX, MAX_SEATS, GAME_MAX_PLAYERS))
+    log("contract v%d..v%d, player dial 2..%d (seats=%d, game=%d), relay v%d"
+        % (CONTRACT_MIN, CONTRACT_V, DIAL_MAX, MAX_SEATS, GAME_MAX_PLAYERS,
+           RELAY_V))
+    log("worlds max=%d seats=%d member=%ds empty=%ds per_address=%d; "
+        "adventure rooms empty=%ds"
+        % (MAX_WORLDS, WORLD_SEATS, WORLD_MEMBER_S, WORLD_EMPTY_S,
+           WORLD_ADDR_TOKENS, ADV_EMPTY_S))
+    if GAME_IDS:
+        log("game builds served: %d (GAME_IDS); world pool %s"
+            % (len(GAME_IDS), "open" if world_open() else "off (RELAY_V 1)"))
+    else:
+        log("GAME_IDS is empty: rooms take any build and the world pool is "
+            "OFF")
+    for bad in GAME_IDS_DROPPED:
+        log("GAME_IDS entry dropped, not a build id (%d chars)" % len(bad))
     log("limits rooms=%d seats=%d players=%d waiters=%d body=%d read_timeout=%ds "
         "req=%d/s burst=%d create=%d/h join=%d/min star_max=%d king_max=%d "
         "kick_cool=%ds"
