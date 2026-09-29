@@ -955,6 +955,15 @@ void capture_pump(int send)
                exactly like the device it stands in for. */
             const unsigned t = now_ms();
             if (!g_tone_ms) g_tone_ms = t;
+            /* AND IT OVERRUNS LIKE ONE (run mp1 lane VOICE1). A waveIn ring
+               is eight 20 ms buffers deep: after a stall longer than that the
+               device has lost the older audio, it does not hand it over late.
+               Without this the generator kept every millisecond of a stall as
+               backlog and paid it out at up to 8 frames a tick once the loop
+               sped up, which on a crowded 16-console proof ran a talker at
+               about 37 datagrams a second for a while and tripped the relay's
+               30 a second voice allowance, a burst no microphone can make. */
+            if ((unsigned)(t - g_tone_ms) > 180u) g_tone_ms = t - 160u;
             if ((unsigned)(t - g_tone_ms) < 20u) break;
             g_tone_ms += 20;
             tone_frame(frame);
