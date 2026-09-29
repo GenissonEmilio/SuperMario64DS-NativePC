@@ -336,7 +336,18 @@ def test_leaving():
     st, out = S.do_leave({"v": 5, "room": code, "token": host["token"]},
                          "10.0.0.1", 1003.0)
     check("the host can leave", st == 200)
-    check("the host leaving closes the room", room.state == "closed")
+    # run mp1 L-J1: a VS host leaving passes the host on; the room closes only
+    # when its LAST member leaves.
+    check("the host leaving a room with people in it does NOT close it",
+          room.state == "lobby" and room.host_seat == 3, (room.state,
+                                                          room.host_seat))
+    check("a host event names the new host",
+          room.events[-1]["kind"] == "host" and room.events[-1]["seat"] == 3,
+          room.events[-1])
+    st, out = S.do_leave({"v": 5, "room": code, "token": g3["token"]},
+                         "10.0.0.3", 1003.5)
+    check("the last member (the new host) leaving closes the room",
+          room.state == "closed")
     check("and the reason is on the record", room.why == "host_left"
           and room.events[-1]["kind"] == "closed"
           and room.events[-1]["why"] == "host_left", room.events[-1])
@@ -1615,14 +1626,18 @@ def test_adventure_room():
     check("an adventure room whose member keeps polling outlives ROOM_IDLE_S",
           room.state == "lobby", room.state)
 
-    # The VS host rule is unchanged: a VS host leaving closes the room.
+    # The VS host rule since run mp1 L-J1: a VS host leaving passes the host
+    # on like an adventure room does (the match, if one is on, ends first; see
+    # test_the_host_leaving_passes_the_host_on). A VS room closes only when
+    # its last member leaves, with no ADV_EMPTY_S wait.
     reset()
     st, host = create(nick="host")
     join(host["room"], "b")
     S.do_leave({"v": 5, "room": host["room"], "token": host["token"]},
                "10.0.0.1", 1001.0)
-    check("a VS host leaving still closes the room",
-          S.ROOMS[host["room"]].state == "closed")
+    check("a VS host leaving passes the host to seat 2 (was: closes the room)",
+          S.ROOMS[host["room"]].state == "lobby"
+          and S.ROOMS[host["room"]].host_seat == 2)
 
 
 def test_go_plan():
@@ -3258,6 +3273,116 @@ def test_waiting_join_floods_hit_the_caps():
               room.playing_count() == 16, room.playing_count())
 
 
+def test_the_host_leaving_passes_the_host_on():
+    print("\n-- L-J1: a VS host leaving passes the host on; a match on ends")
+    # (1) In lobby.
+    reset()
+    st, h = create(nick="h", pre_ok=True)
+    code = h["room"]
+    st, g2 = join(code, "g2", who="10.0.0.2", pre_ok=True)
+    st, w3 = join(code, "w3", who="10.0.0.3", pre_ok=True)
+    room = S.ROOMS[code]
+    S.do_leave({"v": 5, "room": code, "token": h["token"]}, "10.0.0.1", 1001.0)
+    check("[lobby] the room stays open", room.state == "lobby", room.state)
+    check("[lobby] the host is now seat 2 (the lowest playing seat)",
+          room.host_seat == 2, room.host_seat)
+    check("[lobby] the watcher filled the host's playing seat",
+          room.members[3].playing is True, room.members[3].playing)
+    check("[lobby] events: left then host",
+          [e["kind"] for e in room.events[-2:]] == ["left", "host"]
+          and room.events[-1]["seat"] == 2, room.events[-2:])
+    st, out = poll(code, h["token"], 1, now=1002.0)
+    check("[lobby] the old host's token is no member any more",
+          st == 403 and out["error"] == "not_a_member", (st, out))
+    st, p = start(code, g2["token"], who="10.0.0.2", now=1003.0)
+    check("[lobby] the new host can start", st == 200, (st, p))
+    check("[lobby] and is the parent in slot 0",
+          S.member_plan(room, 2)["role"] == "parent"
+          and S.member_plan(room, 2)["slot"] == 0
+          and S.member_plan(room, 3)["role"] == "child"
+          and S.member_plan(room, 3)["slot"] == 1,
+          (S.member_plan(room, 2), S.member_plan(room, 3)))
+    check("[lobby] the names string is in slot order",
+          room.names.split(",")[:2] == ["g2", "w3"], room.names)
+
+    # (2) Mid-match, in every frozen state, with a waiting joiner.
+    for state in ("arming", "go", "in_match"):
+        reset()
+        with game_max(4, seats=4):
+            code, room, toks, match = _running(3, state=state)
+            st, j = join(code, "late", who="10.0.0.9", now=1010.0, pre_ok=True)
+            S.do_leave({"v": 5, "room": code, "token": toks[0]},
+                       "10.0.0.1", 1011.0)
+            kinds = [e["kind"] for e in room.events[-3:]]
+            check("[%s] the room survives, back in lobby" % state,
+                  room.state == "lobby" and room.match is None
+                  and room.comms_code is None, (room.state, room.why))
+            check("[%s] events: left, failed host_left, host" % state,
+                  kinds == ["left", "failed", "host"]
+                  and room.events[-2]["reason"] == "host_left"
+                  and room.events[-2]["match"] == match
+                  and room.events[-1]["seat"] == 2, room.events[-3:])
+            check("[%s] the new host is seat 2" % state, room.host_seat == 2)
+            check("[%s] the waiting joiner and both guests play next" % state,
+                  sorted(s for s in room.members if room.members[s].playing)
+                  == [2, 3, 4], {s: m.playing for s, m in room.members.items()})
+            st, r = _result(code, toks[1], match, who="10.0.0.2")
+            check("[%s] a late result for the ended match is 409 stale" % state,
+                  st == 409 and r["error"] == "stale_match", (st, r))
+            st, p = start(code, toks[1], who="10.0.0.2", now=1020.0)
+            check("[%s] the new host starts the next match, parent slot 0"
+                  % state, st == 200 and room.slot_of == {2: 0, 3: 1, 4: 2}
+                  and S.member_plan(room, 2)["role"] == "parent",
+                  (st, room.slot_of))
+
+    # (3) The host is slot 0 even when a lower seat number plays.
+    reset()
+    with game_max(4, seats=4):
+        st, h = create(nick="h", pre_ok=True)
+        code = h["room"]
+        st, g2 = join(code, "g2", who="10.0.0.2", pre_ok=True)
+        st, g3 = join(code, "g3", who="10.0.0.3", pre_ok=True)
+        room = S.ROOMS[code]
+        S.do_leave({"v": 5, "room": code, "token": h["token"]}, "10.0.0.1", 1001.0)
+        st, n1 = join(code, "new1", who="10.0.0.4", now=1002.0, pre_ok=True)
+        check("a later joiner takes the freed seat 1 and plays",
+              n1["member"] == 1 and room.members[1].playing is True, n1)
+        st, p = start(code, g2["token"], who="10.0.0.2", now=1003.0)
+        check("the host (seat 2) is slot 0 and seat 1 is a child in slot 1",
+              room.slot_of == {2: 0, 1: 1, 3: 2}
+              and S.member_plan(room, 2)["role"] == "parent"
+              and S.member_plan(room, 1)["role"] == "child"
+              and S.member_plan(room, 1)["want_seat"] == 1, room.slot_of)
+        check("and the names string follows the slots",
+              room.names.split(",")[:3] == ["g2", "new1", "g3"], room.names)
+
+    # (4) host_left is the server's word: a client cannot send it.
+    reset()
+    code, room, toks, match = _running(2)
+    st, f = S.do_failed({"v": 5, "room": code, "token": toks[1], "match": match,
+                         "reason": "host_left"}, "10.0.0.2", 1010.0)
+    check("a client's failed with reason host_left is 400 bad_reason",
+          st == 400 and f["error"] == "bad_reason" and room.state == "in_match",
+          (st, f, room.state))
+
+    # (5) A host that times out in lobby passes the host on too.
+    reset()
+    st, h = create(nick="h", now=1000.0)
+    code = h["room"]
+    st, g2 = join(code, "g2", now=1000.0)
+    room = S.ROOMS[code]
+    room.members[2].seen = 1000.0 + S.MEMBER_TIMEOUT_S
+    S.sweep(1000.0 + S.MEMBER_TIMEOUT_S + 1)
+    check("a silent host is dropped and the room passes to seat 2",
+          room.state == "lobby" and room.host_seat == 2
+          and 1 not in room.members, (room.state, room.host_seat))
+
+    # (6) The old host coming back is a new member, not the host.
+    st, back = join(code, "h", who="10.0.0.1", now=1100.0)
+    check("the old host rejoining gets a seat, not the host role",
+          st == 200 and room.host_seat == 2 and back["member"] == 1, back)
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -3314,6 +3439,7 @@ def main():
     test_the_plan_guard()
     test_join_while_a_match_runs_is_a_waiting_seat()
     test_waiting_join_floods_hit_the_caps()
+    test_the_host_leaving_passes_the_host_on()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:
