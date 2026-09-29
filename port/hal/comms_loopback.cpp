@@ -5521,10 +5521,22 @@ int comms_recv_kind(unsigned tag, void *buf, int cap, int *from_seat) {
 // THE LAGGARD RULE'S CATCH-UP QUERY (rule c; see the banner over g_lg). One
 // caller: port/tests/walk_window.cpp frame_pace, which skips its sleep for the
 // frame when this is above kCatchupAhead (2). A CHILD in a pipelined lockstep
-// session answers how many complete rounds it holds past the one it consumes
-// next; every other console (the parent is the room's clock, rollback, solo)
-// answers 0, so the pacer runs exactly as before. Each answer above the
-// threshold is counted as one skipped sleep (catchup= on the close line).
+// session answers how many complete rounds it holds BEYOND what a console in
+// step with the host holds; every other console (the parent is the room's
+// clock, rollback, solo) answers 0, so the pacer runs exactly as before. Each
+// answer above the threshold is counted as one skipped sleep (catchup= on the
+// close line).
+//
+// IN STEP IS NOT ZERO, and the first cut of this rule got that wrong. A child
+// in step with the host consumes round R at the moment round R + N - rtt (in
+// rounds, its own round trip) comes back, so it naturally holds N - rtt
+// complete rounds past the next one: 2 for a close player in a room sized for
+// him, 8 for the same player in a room sized for someone 250 ms away. Measured
+// with the raw count (after2 laggard4-slowlink: room delay 11, two 93 ms
+// children): those children sprinted to 2 rounds of slack, ran ahead of the
+// host, and starved on every wobble of the host's own pace (489 and 529
+// starves against 7 without the far player). Counting from the in-step buffer,
+// only a console that is really behind -- the one that hitched -- sprints.
 // ---------------------------------------------------------------------------
 extern "C" int port_comms_rounds_ahead(void) {
     if (!g_lg_on || g_rollback || g_input_delay <= 0) return 0;
@@ -5537,6 +5549,13 @@ extern "C" int port_comms_rounds_ahead(void) {
         const PipeRound *s = pipe_find(q);
         if (!s || !s->agg) break;
     }
+    int natural = g_input_delay;
+    if (g_handshake_rtt_ms > 0)
+        natural -= (int)(((unsigned)g_handshake_rtt_ms * 100u + kRoundPeriodMs100 - 1u) /
+                         kRoundPeriodMs100);
+    if (natural < 0) natural = 0;
+    n -= natural;
+    if (n < 0) n = 0;
     if (n > kCatchupAhead) ++g_lg_catchup;
     return n;
 }
