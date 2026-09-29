@@ -757,12 +757,69 @@ def u_session_budget(mod):
     return res
 
 
+def u_rehello_caps(mod):
+    res = Result("per-kind caps survive a re-HELLO into another seat, "
+                 "session or version")
+    rig = Rig(mod)
+    listener = rig.addr()
+    rig.join(listener, "HOPHUB01", ROLE_MEMBER, 0)
+    hopper = rig.addr()
+    rig.join(hopper, "HOPHUB01", ROLE_MEMBER, 1)
+    other = rig.addr()
+    rig.join(other, "HOPHUB02", ROLE_MEMBER, 0)
+    v1p = rig.addr()
+    rig.send(v1p, hello("HOPV1XXX", ROLE_PARENT, version=1))
+    rig.settle(3.0)
+    t0 = rig.now
+    heard = [0, 0, 0]
+    seat = 1
+    for i in range(3 * 200):     # 200 voice datagrams a second for 3 s
+        rig.now = t0 + i / 200.0
+        if i % 5 == 4:
+            # hop: another seat, now and then another session or a v1 seat
+            step = (i // 5) % 6
+            if step == 5:
+                data = hello("HOPV1XXX", ROLE_CHILD, version=1)
+            elif step == 4:
+                data = hello("HOPHUB02", ROLE_MEMBER, ANY)
+            else:
+                seat = 1 + (seat % 14)
+                data = hello("HOPHUB01", ROLE_MEMBER, seat)
+            rig.relay.on_datagram(data, hopper, rig.now)
+            rig.wire.take()
+            continue
+        ep = rig.relay.endpoints.get(hopper)
+        if ep is None or ep.version != 2:
+            continue            # a v1 seat forwards blind: not this test
+        rig.relay.on_datagram(dgram(b"SYNV", 340), hopper, rig.now)
+        for d, to in rig.wire.take():
+            if to in (listener, other):
+                heard[min(2, int(rig.now - t0))] += 1
+    res.note("voice copies a second at the listeners while hopping: %s"
+             % heard)
+    res.check(heard[0] <= 60 and heard[1] <= 30 and heard[2] <= 30,
+              "held to the 30/s voice cap (plus one second of burst in the "
+              "first second): %s" % heard)
+    res.check(heard[1] >= 25 and heard[2] >= 25,
+              "and not starved below it: %s" % heard)
+    rig.relay._detach(rig.relay.endpoints[hopper], "test")
+    rig.now += mod.KIND_CAPS_IDLE_S + 1.0
+    rig.relay.on_datagram(hello("HOPHUB01", ROLE_MEMBER, 0), listener,
+                          rig.now)
+    rig.relay.sweep(rig.now)
+    res.check(hopper not in rig.relay.kind_caps,
+              "an address that holds no seat is forgotten after %.0f s"
+              % mod.KIND_CAPS_IDLE_S)
+    res.check(listener in rig.relay.kind_caps, "a seated address is kept")
+    return res
+
+
 def run_unit():
     mod = load_relay()
     results = []
     for t in (u_kind_table, u_hello_and_ack, u_refusals, u_routes_and_stamping,
               u_drop_reasons, u_rate_budget, u_idle, u_v1_untouched, u_fuzz,
-              u_session_budget):
+              u_session_budget, u_rehello_caps):
         res = t(mod)
         res.report()
         results.append(res)

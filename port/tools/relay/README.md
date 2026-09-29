@@ -150,7 +150,9 @@ another seat. No other byte changes.
 **Rates.** A version 2 seat gets 240 packets a second at its source address
 (`SM64DS_RELAY_RATE_PPS_V2`), and inside that each kind has its own cap (the
 table's last column, one second deep), so a flood of one kind cannot eat the
-budget of another. Version 1 seats keep their 120.
+budget of another. The per-kind allowances belong to the sender's address,
+not to its seat: asking for another seat, session or version does not refill
+them. Version 1 seats keep their 120.
 
 **The session budget.** Those limits are per sender, and a hub copies each
 datagram to up to 15 others, so a version 2 session also has a budget of its

@@ -260,6 +260,11 @@ RATE_BURST_V2 = RATE_PPS_V2
 SESSION_FWD_PPS = clamp_int(os.environ.get("SM64DS_RELAY_SESSION_FWD_PPS"),
                             15000, 100, 1000000)
 SESSION_FWD_BURST = SESSION_FWD_PPS
+# A sender's per-kind allowances are kept by source ADDRESS (finding H3: a
+# re-HELLO into another seat used to hand out fresh ones). They are forgotten
+# this long after the address last spent one and holds no seat; any value
+# over one second (the depth of every kind bucket) is exact.
+KIND_CAPS_IDLE_S = 5.0
 # 64 -> 256 for version 2: an always-on world room is a session of its own.
 MAX_SESSIONS = 256
 
@@ -402,18 +407,23 @@ def rss_kb():
 class Endpoint(object):
     # version / seat / caps are version 2 only; a version 1 endpoint keeps
     # version 1, seat None and no caps, and nothing on its path reads them.
+    # A version 2 endpoint's caps dict is the one RelayProtocol.kind_caps
+    # holds for its address, so it outlives the seat (finding H3).
     __slots__ = ("addr", "code", "role", "last_seen", "version", "seat",
                  "caps")
 
     def __init__(self, addr, code, role, now, version=PROTO_VERSION,
-                 seat=None):
+                 seat=None, caps=None):
         self.addr = addr
         self.code = code
         self.role = role
         self.last_seen = now
         self.version = version
         self.seat = seat
-        self.caps = None if version == PROTO_VERSION else {}
+        if version == PROTO_VERSION:
+            self.caps = None
+        else:
+            self.caps = {} if caps is None else caps
 
 
 class Session(object):
@@ -504,6 +514,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
         self.buckets = {}       # addr -> Bucket
         self.bad_ack_at = {}    # addr -> monotonic of last status 2 sent
         self.ignored = {}       # addr -> monotonic when the ignore ends
+        self.kind_caps = {}     # addr -> {tag: [tokens, stamp]} (v2 senders)
         # counters, all cumulative
         self.n_rx = 0
         self.n_fwd = 0
@@ -898,8 +909,9 @@ class RelayProtocol(asyncio.DatagramProtocol):
             return
 
         session.seats[seat] = addr
-        self.endpoints[addr] = Endpoint(addr, code, role, now,
-                                        version=PROTO_V2, seat=seat)
+        self.endpoints[addr] = Endpoint(
+            addr, code, role, now, version=PROTO_V2, seat=seat,
+            caps=self.kind_caps.setdefault(addr, {}))
         log("session %s join %s as %s seat %d (%d/%d) v2"
             % (code, short_addr(addr),
                ("parent", "child", "member")[role], seat, session.size(),
@@ -1028,6 +1040,12 @@ class RelayProtocol(asyncio.DatagramProtocol):
             if (now - endpoint.last_seen) > idle:
                 self.n_expired += 1
                 self._detach(endpoint, "idle")
+        for addr, caps in list(self.kind_caps.items()):
+            if addr in self.endpoints:
+                continue
+            last = max([c[1] for c in caps.values()] or [0.0])
+            if (now - last) > KIND_CAPS_IDLE_S:
+                del self.kind_caps[addr]
         for addr, bucket in list(self.buckets.items()):
             if (now - bucket.stamp) > BUCKET_IDLE_S and addr not in self.endpoints:
                 del self.buckets[addr]
