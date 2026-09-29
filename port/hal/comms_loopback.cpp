@@ -5017,6 +5017,33 @@ bool comms_loopback_install_from_env() {
     const char *role = std::getenv("SM64DS_COMMS_ROLE");
     if (!role || !*role) return false;      // nothing installed, nothing moved
 
+    // AN ADVENTURE CONSOLE NEVER OPENS THE VS CARRIER (multiplayer 1.0). An
+    // adventure console plays its own solo game and talks through the hub
+    // (hal/comms_hub.cpp), which never seats the DS multiplayer role; this
+    // carrier would seat it and put the console into a lockstep session. main()
+    // tries the hub first and only comes here when the hub declined, and
+    // hal/scene_vs_menu.cpp's port_vs_stage_and_start (the debug VS row) calls
+    // this install too. So the rule lives HERE, where every caller meets it:
+    // adventure on (SM64DS_ADVENTURE or the AdventureGhosts setting) and no VS
+    // map named means no VS carrier. A VS lobby names its map
+    // (SM64DS_VS_MAP), so a player whose settings file has AdventureGhosts on
+    // still joins a VS match normally.
+    {
+        const char *vsmap = std::getenv("SM64DS_VS_MAP");
+        if (adventure_ghost_mode() && (!vsmap || !*vsmap)) {
+            static bool said = false;
+            if (!said) {
+                said = true;
+                std::fprintf(stderr, "[comms:loopback] adventure mode is on and "
+                             "no VS map is named: NOT installing the VS carrier "
+                             "(SM64DS_COMMS_ROLE=%s ignored). Adventure goes "
+                             "through the hub; nothing here seats a DS "
+                             "multiplayer role.\n", role);
+            }
+            return false;
+        }
+    }
+
     // TWO SPELLINGS, AND BOTH OF THEM ARE THIS TREE'S OWN. Run rel0215, lane
     // vsnet.
     //
