@@ -378,11 +378,99 @@ unsigned g_tone_ms;              // the tone generator's own 20 ms clock
 
 unsigned long long g_cap_frames, g_tx_pkts, g_rx_pkts, g_rx_bad, g_rx_dup;
 unsigned g_report_ms;
+/* Per sender slot, every datagram accepted from it since the process started.
+   Kept outside RemoteVoice on purpose: rv_reset runs whenever a peer goes quiet
+   for 400 ms, and a proof that asks "did every seat hear every talking seat"
+   needs a count that a pause between two sentences does not wipe. */
+unsigned long long g_rx_from[kCommsMaxPlayers];
+
+// ---------------------------------------------------------------------------
+// THE MIC GATE (run mp1 lane VOICE1). Voice goes on the wire only while the
+// player is making sound.
+//
+// Each captured 20 ms frame is measured (RMS of its 320 samples). A frame at
+// or above the threshold OPENS the gate; the gate then stays open for
+// kGateHangFrames more frames after the last loud one (200 ms), so the quiet
+// gaps inside a sentence and the soft tail of a word are sent rather than
+// chopped. While the gate is closed the frames are drained and thrown away
+// and NOTHING is sent: a room of sixteen players with their mics on and
+// nobody speaking costs zero voice datagrams, where the open mic cost 25 a
+// second from every one of them.
+//
+// ONE FRAME OF PRE-ROLL. The loudest part of a word is rarely its first 20
+// ms; the frame just before the one that crossed the threshold usually holds
+// the consonant that starts it. The newest quiet frame is kept, and when the
+// gate opens it goes out first, in the same datagram as the frame that opened
+// it. That costs nothing while quiet (a copy) and 20 ms of added audio per
+// talk spurt.
+//
+// WHEN THE GATE CLOSES, a half-filled datagram is flushed at once rather than
+// held for a second frame that is not coming, so the end of a sentence is not
+// stuck in this console until the next time the player speaks.
+//
+// The threshold is an RMS amplitude on the s16 scale. The default, 256, is
+// about -42 dBFS: well under normal speech into a headset or desk mic (roughly
+// -30 to -20 dBFS) and above the hiss of a quiet room. SM64DS_VOICE_GATE
+// overrides it; 0 turns the gate off entirely (every frame is "loud", which is
+// the open mic this file shipped with, kept for A/B runs).
+// ---------------------------------------------------------------------------
+enum : int { kGateDefault = 256, kGateHangFrames = 10 };   // 10 x 20 ms = 200 ms
+int   g_gate_thr = kGateDefault;
+int   g_gate_open;                 // 1 while frames are being sent
+int   g_gate_hang;                 // frames of hangover left
+int   g_gate_level;                // RMS of the newest frame, for the report
+short g_preroll[kCapFrameSamples];
+int   g_have_preroll;
+unsigned long long g_gate_opens, g_gate_quiet;   // spurts started, frames not sent
+
+// ---------------------------------------------------------------------------
+// THE TEST SOURCE'S SHAPE (run mp1 lane VOICE1). Only meaningful with
+// SM64DS_VOICE_TEST_TONE=1, which already replaces the microphone with a
+// generated sine and opens no device. These make that sine behave like a
+// person, so the gate can be proven without any real audio:
+//   SM64DS_VOICE_TEST_TONE_AMP=<0..32767>   the sine's amplitude (16000)
+//   SM64DS_VOICE_TEST_TONE_DUTY=<on>,<off>  milliseconds of tone, then of
+//                                           silence, repeating (default: tone
+//                                           all the time)
+//   SM64DS_VOICE_TEST_NOISE=<0..32767>      a deterministic hiss of this peak
+//                                           amplitude under everything, so
+//                                           "silence" is a quiet room rather
+//                                           than digital zero
+// ---------------------------------------------------------------------------
+int      g_tone_amp = 16000;
+unsigned g_tone_on_ms, g_tone_off_ms;       // 0/0 = continuous
+unsigned g_tone_t;                          // ms into the current on+off cycle
+int      g_noise_amp;
+unsigned g_noise_seed = 0x2545F491u;
+
+void gate_reset();              // below, beside the gate itself
 
 int env_on(const char *name)
 {
     const char *v = getenv(name);
     return v && *v && strcmp(v, "0") != 0;
+}
+
+/* An integer env knob clamped to [lo, hi]; `def` when unset or not a number. */
+int env_int(const char *name, int def, int lo, int hi)
+{
+    const char *v = getenv(name);
+    if (!v || !*v) return def;
+    char *end = 0;
+    const long n = strtol(v, &end, 10);
+    if (end == v) return def;
+    if (n < lo) return lo;
+    if (n > hi) return hi;
+    return (int)n;
+}
+
+/* RMS of one frame, on the s16 scale. */
+int frame_rms(const short *pcm)
+{
+    double acc = 0.0;
+    for (int i = 0; i < kCapFrameSamples; ++i)
+        acc += (double)pcm[i] * (double)pcm[i];
+    return (int)sqrt(acc / (double)kCapFrameSamples);
 }
 
 unsigned now_ms()
@@ -533,7 +621,7 @@ void refresh_settings()
                the player turned it off. */
             voice::cap_close();
             for (int i = 0; i < kCommsMaxPlayers; ++i) rv_reset(g_rv[i]);
-            g_pending_n = 0;
+            gate_reset();
         }
     }
     if (!g_on) return;
@@ -584,16 +672,43 @@ void refresh_settings()
 void tone_frame(short *out)
 {
     const double w = 2.0 * 3.14159265358979323846 * 440.0 / (double)kCapRate;
+    /* The duty cycle runs on the generator's own 20 ms clock, one step per
+       frame, so "1000 on, 2000 off" is exactly 50 frames of tone and 100 of
+       silence however the host loop is paced. */
+    int amp = g_tone_amp;
+    if (g_tone_on_ms || g_tone_off_ms) {
+        const unsigned cycle = g_tone_on_ms + g_tone_off_ms;
+        if (g_tone_t >= g_tone_on_ms) amp = 0;
+        g_tone_t += 20;
+        if (g_tone_t >= cycle) g_tone_t = 0;
+    }
     for (int i = 0; i < kCapFrameSamples; ++i) {
-        out[i] = (short)(16000.0 * sin(g_tone_phase));
+        int v = (int)((double)amp * sin(g_tone_phase));
+        if (g_noise_amp) {
+            g_noise_seed = g_noise_seed * 1664525u + 1013904223u;
+            v += (int)((g_noise_seed >> 16) % (unsigned)(2 * g_noise_amp + 1)) -
+                 g_noise_amp;
+        }
+        out[i] = (short)(v < -32768 ? -32768 : (v > 32767 ? 32767 : v));
         g_tone_phase += w;
         if (g_tone_phase > 2.0 * 3.14159265358979323846)
             g_tone_phase -= 2.0 * 3.14159265358979323846;
     }
 }
 
+/* The gate selftest's dry run: send_pending counts frames and datagrams here
+   instead of touching any transport. See gate_selftest. */
+int g_gate_dry;
+unsigned long long g_dry_frames, g_dry_pkts;
+
 void send_pending()
 {
+    if (g_gate_dry) {
+        g_dry_frames += (unsigned long long)g_pending_n;
+        if (g_pending_n) ++g_dry_pkts;
+        g_pending_n = 0;
+        return;
+    }
     const CommsTransport *t = comms_transport();
     if (!t || !t->send_aux) { g_pending_n = 0; return; }
 
@@ -614,6 +729,113 @@ void send_pending()
     if (t->send_aux(pkt, len) == len) ++g_tx_pkts;
     g_tx_seq += (unsigned)g_pending_n;
     g_pending_n = 0;
+}
+
+/* Everything the gate remembers goes, so the next spurt starts clean: used
+   whenever sending stops for a reason other than quiet (no session, voice
+   off, no peer in range). */
+void gate_reset()
+{
+    g_gate_open = 0;
+    g_gate_hang = 0;
+    g_have_preroll = 0;
+    g_pending_n = 0;
+}
+
+/* THE GATE, one captured frame at a time. Returns 1 when `frame` is to be
+   sent. Opening queues the pre-roll frame first; closing flushes whatever is
+   pending. See the banner at g_gate_thr. */
+int gate_frame(const short *frame)
+{
+    const int level = frame_rms(frame);
+    g_gate_level = level;
+    const int loud = g_gate_thr <= 0 || level >= g_gate_thr;
+    if (loud) {
+        if (!g_gate_open) {
+            g_gate_open = 1;
+            ++g_gate_opens;
+            if (g_have_preroll) {
+                memcpy(g_pending[g_pending_n], g_preroll, sizeof g_preroll);
+                ++g_pending_n;
+                if (g_pending_n >= kFramesPerPkt) send_pending();
+            }
+        }
+        g_have_preroll = 0;
+        g_gate_hang = kGateHangFrames;
+        return 1;
+    }
+    if (g_gate_open && g_gate_hang > 0) {
+        --g_gate_hang;
+        return 1;
+    }
+    if (g_gate_open) {
+        g_gate_open = 0;
+        if (g_pending_n > 0) send_pending();
+    }
+    memcpy(g_preroll, frame, sizeof g_preroll);
+    g_have_preroll = 1;
+    ++g_gate_quiet;
+    return 0;
+}
+
+/* THE GATE, MEASURED ON THE SHIPPED FUNCTION. SM64DS_VOICE_GATE_SELFTEST=1.
+ *
+ * A scripted talker pushed through the real gate_frame and send_pending, no
+ * transport, no device: 25 frames of quiet-room hiss (peak 40, far under the
+ * threshold), a 4-frame word at amplitude 8000, 25 frames of hiss, a single
+ * loud frame, 40 frames of hiss. What must come out:
+ *   first spurt   1 pre-roll + 4 loud + 10 hangover = 15 frames
+ *   second spurt  1 pre-roll + 1 loud + 10 hangover = 12 frames
+ *   everything else (the hiss outside those windows) = 0 frames
+ * so 27 frames in 2 spurts and 14 datagrams: the first spurt's odd last
+ * frame goes out alone when the gate closes rather than being held. Prints one
+ * line with PASS or FAIL. The live gate state is saved and restored around it,
+ * so it costs a running session nothing. */
+void gate_selftest()
+{
+    short frame[kCapFrameSamples];
+    const int save_thr = g_gate_thr;
+    const unsigned save_seed = g_noise_seed;
+    const unsigned long long save_opens = g_gate_opens, save_quiet = g_gate_quiet;
+    g_gate_thr = kGateDefault;
+    gate_reset();
+    g_gate_dry = 1;
+    g_dry_frames = g_dry_pkts = 0;
+    g_gate_opens = 0;
+    const int script[5][2] = { {25, 0}, {4, 8000}, {25, 0}, {1, 8000}, {40, 0} };
+    double ph = 0.0;
+    const double w = 2.0 * 3.14159265358979323846 * 440.0 / (double)kCapRate;
+    int total = 0;
+    for (int seg = 0; seg < 5; ++seg) {
+        for (int f = 0; f < script[seg][0]; ++f, ++total) {
+            for (int i = 0; i < kCapFrameSamples; ++i) {
+                g_noise_seed = g_noise_seed * 1664525u + 1013904223u;
+                const int hiss = (int)((g_noise_seed >> 16) % 81u) - 40;
+                frame[i] = (short)((double)script[seg][1] * sin(ph) + hiss);
+                ph += w;
+            }
+            if (gate_frame(frame)) {
+                memcpy(g_pending[g_pending_n], frame, sizeof frame);
+                ++g_pending_n;
+                if (g_pending_n >= kFramesPerPkt) send_pending();
+            }
+        }
+    }
+    if (g_pending_n) send_pending();
+    const unsigned long long frames = g_dry_frames, pkts = g_dry_pkts,
+                             opens = g_gate_opens;
+    const int ok = frames == 27 && opens == 2 && pkts == 14;
+    fprintf(stderr, "[voice] gate selftest: %d frames scripted, %llu sent in "
+                    "%llu datagrams over %llu spurts (want 27 in 14 over 2), "
+                    "threshold %d, hangover %d frames: %s\n",
+            total, frames, pkts, opens, kGateDefault, kGateHangFrames,
+            ok ? "PASS" : "FAIL");
+    g_gate_dry = 0;
+    gate_reset();
+    g_gate_thr = save_thr;
+    g_noise_seed = save_seed;
+    g_gate_opens = save_opens;
+    g_gate_quiet = save_quiet;
 }
 
 /* `send` false means the device is drained and the audio thrown away.
@@ -646,7 +868,8 @@ void capture_pump(int send)
             break;
         }
         ++g_cap_frames;
-        if (!send) continue;
+        if (!send) { gate_reset(); continue; }
+        if (!gate_frame(frame)) continue;
         memcpy(g_pending[g_pending_n], frame, sizeof frame);
         ++g_pending_n;
         if (g_pending_n >= kFramesPerPkt) send_pending();
@@ -679,6 +902,7 @@ void recv_pump()
         r.last_seq = seq + (unsigned)(nf - 1);
         r.last_ms = now_ms();
         ++g_rx_pkts;
+        ++g_rx_from[from];
 
         short frame[kCapFrameSamples];
         for (int i = 0; i < nf; ++i) {
@@ -734,12 +958,28 @@ void voice_tick()
         for (int i = 0; i < kCommsMaxPlayers; ++i) rv_reset(g_rv[i]);
         if (env_on("SM64DS_VOICE_DEVICES")) dump_devices();
         if (env_on("SM64DS_VOICE_CODEC_SELFTEST")) codec_selftest();
+        if (env_on("SM64DS_VOICE_GATE_SELFTEST")) gate_selftest();
         /* Owner-facing mic proof (lane MIC PROBE): the settings panel that
            would exercise the microphone is hidden until the capture fallback
            lands, so this is the only way to test one from a shipped bundle.
            Blocks for a few seconds; off by default, no other behaviour
            changes when unset. */
         if (env_on("SM64DS_VOICE_MIC_PROBE")) voice::cap_probe();
+        g_gate_thr = env_int("SM64DS_VOICE_GATE", kGateDefault, 0, 32767);
+        g_tone_amp = env_int("SM64DS_VOICE_TEST_TONE_AMP", 16000, 0, 32767);
+        g_noise_amp = env_int("SM64DS_VOICE_TEST_NOISE", 0, 0, 32767);
+        {
+            const char *d = getenv("SM64DS_VOICE_TEST_TONE_DUTY");
+            unsigned on = 0, off = 0;
+            if (d && sscanf(d, "%u,%u", &on, &off) == 2 && on + off > 0 &&
+                on <= 600000u && off <= 600000u) {
+                g_tone_on_ms = on;
+                g_tone_off_ms = off;
+            }
+        }
+        if (g_gate_thr != kGateDefault)
+            fprintf(stderr, "[voice] mic gate threshold %d (RMS)%s\n",
+                    g_gate_thr, g_gate_thr ? "" : ": gate OFF, open mic");
         if (g_tone)
             fprintf(stderr, "[voice] SM64DS_VOICE_TEST_TONE=1: a generated "
                             "440 Hz tone replaces the microphone and NO "
@@ -763,7 +1003,7 @@ void voice_tick()
        broadcasting into a socket with nobody on it. */
     const CommsReadout rr = comms_readout();
     if (!rr.connected || rr.players <= 1) {
-        g_pending_n = 0;
+        gate_reset();
         for (int i = 0; i < kCommsMaxPlayers; ++i)
             if (g_rv[i].playing || g_rv[i].avail) rv_reset(g_rv[i]);
         capture_pump(0);
@@ -776,15 +1016,28 @@ void voice_tick()
     report_if_due();
 }
 
+int voice_talking()
+{
+    return (g_on && g_gate_open) ? 1 : 0;
+}
+
 void voice_report(const char *tag)
 {
-    char line[512];
+    /* Sized for sixteen seats: the fixed fields, sixteen rx counts and up to
+       fifteen per-slot segments. 512 truncated the line past about ten. */
+    char line[2048];
     int k = snprintf(line, sizeof line,
                      "[voice] %s: on=%d tone=%d dev=%d cap=%llu tx=%llu "
-                     "rx=%llu bad=%llu dup=%llu vol=%d near=%d far=%d",
+                     "rx=%llu bad=%llu dup=%llu vol=%d near=%d far=%d "
+                     "gate=%d open=%d lvl=%d opens=%llu quiet=%llu "
+                     "talking=%d rxs=",
                      tag ? tag : "-", g_on, g_tone, voice::cap_is_open(),
                      g_cap_frames, g_tx_pkts, g_rx_pkts, g_rx_bad, g_rx_dup,
-                     g_vol, g_near, g_far);
+                     g_vol, g_near, g_far, g_gate_thr, g_gate_open,
+                     g_gate_level, g_gate_opens, g_gate_quiet, voice_talking());
+    for (int s = 0; s < kCommsMaxPlayers && k > 0 && k < (int)sizeof line; ++s)
+        k += snprintf(line + k, sizeof line - (size_t)k, "%s%llu",
+                      s ? "," : "", g_rx_from[s]);
     for (int s = 0; s < kCommsMaxPlayers && k > 0 && k < (int)sizeof line; ++s) {
         const RemoteVoice &r = g_rv[s];
         if (!r.playing && r.avail == 0 && r.dist < 0) continue;
