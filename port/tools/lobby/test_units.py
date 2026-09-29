@@ -2392,7 +2392,15 @@ def test_only_playing_members_drive_a_match():
     st, rr = S.do_result({"v": 5, "room": code, "token": g["token"],
                           "match": match, "win": "time-up",
                           "scores": [1, 2, 0, 0]}, "10.0.0.2", 1011.0)
-    check("a PLAYING member's result still works", st == 200 and room.state == "lobby")
+    # run mp1 L-J1: a non-host's result is a vote. Accepted (200), and on its
+    # own it does not end a match the host is still in (G5); the host's does.
+    check("a PLAYING guest's result is accepted as a vote",
+          st == 200 and room.state == "in_match", (st, room.state))
+    st, rr = S.do_result({"v": 5, "room": code, "token": host["token"],
+                          "match": match, "win": "time-up",
+                          "scores": [1, 2, 0, 0]}, "10.0.0.1", 1011.5)
+    check("a PLAYING member's result still works: the host's ends it",
+          st == 200 and room.state == "lobby")
 
 
 def test_preflight_updates():
@@ -3383,6 +3391,103 @@ def test_the_host_leaving_passes_the_host_on():
           st == 200 and room.host_seat == 2 and back["member"] == 1, back)
 
 
+def test_a_quitters_result_does_not_end_the_match():
+    """plan.txt G5, server half: first-result-wins let one quitter's fake
+    draw end the match for the room."""
+    print("\n-- L-J1: one player's result does not end the match for the room")
+    DRAW = (0, 0, 0, 0)
+    REAL = (3, 1, 2, 0)
+
+    # (1) 2P: the guest quits and its launcher posts a draw.
+    reset()
+    code, room, toks, match = _running(2)
+    st, r = _result(code, toks[1], match, scores=DRAW, win="draw",
+                    who="10.0.0.2")
+    check("[2P] the guest's lone draw is 200 and the match runs on",
+          st == 200 and room.state == "in_match" and room.match == match,
+          (st, room.state))
+    check("[2P] and no result event was pushed",
+          not any(e["kind"] == "result" for e in room.events))
+    st, r = _result(code, toks[0], match, scores=(1, 0, 0, 0))
+    check("[2P] the host's result ends it with the HOST's scoreline",
+          st == 200 and room.state == "lobby"
+          and room.events[-1]["kind"] == "result"
+          and room.events[-1]["scores"] == [1, 0, 0, 0], room.events[-1])
+    st, r = _result(code, toks[1], match, scores=DRAW, win="draw",
+                    who="10.0.0.2", now=1101.0)
+    check("[2P] a result after the end is idempotent 200", st == 200)
+
+    with game_max(4, seats=4):
+        # (2) 4P: p2 quits (draw), p3 and p4 report the real result, the host
+        # says nothing (its launcher died): 2 of 4 live is not a majority...
+        reset()
+        code, room, toks, match = _running(4)
+        _result(code, toks[1], match, scores=DRAW, win="draw", who="10.0.0.2")
+        _result(code, toks[2], match, scores=REAL, who="10.0.0.3")
+        _result(code, toks[3], match, scores=REAL, who="10.0.0.4")
+        check("[4P] quitter's draw + two real votes of four live: still on",
+              room.state == "in_match", room.state)
+        # ...until the quitter's `failed` drops it (what L-J2's launcher sends):
+        # 2 of 3 live agree.
+        S.do_failed({"v": 5, "room": code, "token": toks[1], "match": match,
+                     "reason": "user_cancelled"}, "10.0.0.2", 1110.0)
+        check("[4P] the quitter's failed drops it and the two real votes settle",
+              room.state == "lobby" and room.events[-1]["kind"] == "result"
+              and room.events[-1]["scores"] == list(REAL), room.events[-2:])
+        check("[4P] and the quitter is back in for the next match",
+              room.members[2].playing is True)
+
+        # (3) Three of four non-host seats agree: settled without the host.
+        reset()
+        code, room, toks, match = _running(4)
+        for k in (1, 2):
+            _result(code, toks[k], match, scores=REAL, who="10.0.0.%d" % (k + 1))
+        check("[4P] two agreeing votes of four: on", room.state == "in_match")
+        _result(code, toks[3], match, scores=REAL, who="10.0.0.4")
+        check("[4P] three agreeing votes of four live: over, their scoreline",
+              room.state == "lobby"
+              and room.events[-1]["scores"] == list(REAL), room.events[-1])
+
+        # (4) Votes that disagree never settle; a seat's first vote stands.
+        reset()
+        code, room, toks, match = _running(4)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2")
+        _result(code, toks[2], match, scores=DRAW, win="draw", who="10.0.0.3")
+        for _ in range(5):
+            _result(code, toks[1], match, scores=DRAW, win="draw",
+                    who="10.0.0.2")
+        _result(code, toks[3], match, scores=(9, 9, 9, 9), who="10.0.0.4")
+        check("[4P] three different votes never settle, re-votes change "
+              "nothing", room.state == "in_match"
+              and room.result_votes[2] == ("time-up", REAL),
+              (room.state, room.result_votes))
+        st, r = _result(code, toks[0], match, scores=REAL)
+        check("[4P] the host's result ends it", room.state == "lobby"
+              and room.events[-1]["scores"] == list(REAL))
+
+        # (5) A leave that shrinks the live roster re-counts the votes.
+        reset()
+        code, room, toks, match = _running(4)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2")
+        _result(code, toks[2], match, scores=REAL, who="10.0.0.3")
+        check("[4P] two of four: on", room.state == "in_match")
+        S.do_leave({"v": 5, "room": code, "token": toks[3]}, "10.0.0.4", 1110.0)
+        check("[4P] p4 leaves: two of three live agree, the match is over",
+              room.state == "lobby" and room.events[-1]["kind"] == "result",
+              room.events[-1])
+
+        # (6) Hostile: a dropped seat cannot vote; a vote before `go` is not a
+        # thing (arming is not a match yet).
+        reset()
+        code, room, toks, match = _running(4)
+        S.do_failed({"v": 5, "room": code, "token": toks[3], "match": match,
+                     "reason": "no_pairing"}, "10.0.0.4", 1010.0)
+        st, r = _result(code, toks[3], match, scores=REAL, who="10.0.0.4")
+        check("[4P] a dropped seat's result is 403 not_playing",
+              st == 403 and r["error"] == "not_playing", (st, r))
+        check("[4P] and it was not counted", 4 not in room.result_votes)
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -3440,6 +3545,7 @@ def main():
     test_join_while_a_match_runs_is_a_waiting_seat()
     test_waiting_join_floods_hit_the_caps()
     test_the_host_leaving_passes_the_host_on()
+    test_a_quitters_result_does_not_end_the_match()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

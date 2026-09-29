@@ -758,6 +758,10 @@ class Room(object):
         # The last match id a result was accepted for, so a SECOND result for a
         # match already resolved is idempotent (200) rather than stale (409).
         self.last_result_match = None
+        # run mp1 L-J1: the results posted for the current match so far, one
+        # per seat, seat -> (win, scores tuple). A non-host's result is a
+        # VOTE; see do_result. Cleared by _reset_match.
+        self.result_votes = {}
         # A fresh room starts at cursor 1 with nothing behind it, so the very
         # first real event is seq 2 and a client that polls from the cursor it
         # was handed at create sees everything that happened after it arrived.
@@ -1925,6 +1929,11 @@ def drop_member(room, seat, why):
     # join the running match as a child in slot 0 -- the host's slot. The
     # seat that opened is filled when the match ends: _reset_match runs the
     # dial.
+    if was_playing and room.state != "lobby":
+        # A player leaving a running match may leave the votes already in as
+        # a majority of who is left (see do_result).
+        maybe_settle(room)
+        return
     if was_playing and room.state == "lobby":
         before = {s for s in room.members if room.members[s].playing}
         # ONE RULE, STATED ONCE. Promotion-on-vacancy and the host's dial are
@@ -2205,6 +2214,7 @@ def _reset_match(room):
     room.names = ""
     room.colors = ""
     room.slot_of = {}
+    room.result_votes = {}
     room.arm_deadline = None
     room.go_at = None
     room.match_start = None
@@ -2222,6 +2232,43 @@ def match_to_lobby(room, reason):
     if mid:
         room.push("failed", match=mid, reason=reason)
     log("room %s failed match=%s reason=%s" % (room.code, mid, reason))
+
+
+def finish_match(room, win, scores):
+    """The match is over: record it, reset, push the `result` event."""
+    mid = room.match
+    room.last_result_match = mid
+    _reset_match(room)
+    room.push("result", match=mid, win=win, scores=list(scores))
+    log("room %s result match=%s win=%s" % (room.code, mid, win))
+
+
+def settled_vote(room):
+    """The result a MAJORITY of the match's live seats agree on, or None.
+
+    Live = frozen into slot_of and still playing (not dropped, not gone).
+    Only live seats' votes count, and a vote needs strictly more than half of
+    the live seats, so no single non-host seat can settle a match that two or
+    more others are still playing."""
+    live = [s for s in room.slot_of if in_frozen_match(room, s)]
+    tally = {}
+    for s in live:
+        v = room.result_votes.get(s)
+        if v is not None:
+            tally[v] = tally.get(v, 0) + 1
+    for v, n in tally.items():
+        if 2 * n > len(live):
+            return v
+    return None
+
+
+def maybe_settle(room):
+    """After the live roster of a running match shrank (a drop or a leave),
+    the votes already in may now be a majority: end the match if so."""
+    if room.state in ("go", "in_match"):
+        v = settled_vote(room)
+        if v is not None:
+            finish_match(room, v[0], v[1])
 
 
 def try_go(room, now):
@@ -2437,13 +2484,31 @@ def do_failed(body, who, now):
                 % (room.code, seat, room.match, reason, room.playing_count()))
             if room.playing_count() < 2:
                 match_to_lobby(room, reason)
+            else:
+                maybe_settle(room)
     return 200, {"cursor": room.seq}
 
 
 def do_result(body, who, now):
-    """A playing member reporting a finished match. The FIRST valid result for
-    the current match returns the room to lobby; later ones are idempotent
-    (spec 3.9, 5.4)."""
+    """A playing member reporting a finished match (spec 3.9, 5.4).
+
+    WHO ENDS THE MATCH (run mp1, L-J1; plan.txt G5). It used to be the FIRST
+    valid result from anybody, and that was the bug: a launcher whose player
+    closed the game mid-match reported a draw, the room flipped to lobby
+    with a fake 0-0-0-0 while everybody else was still playing, and their
+    real result then got 409 stale_match. Now:
+      * the HOST's result ends the match. The host is the parent of the
+        session; its game cannot be running on without it, so a result from
+        the host is true about the whole room either way;
+      * a non-host's result is a VOTE. It ends the match only when strictly
+        more than half of the match's live seats (frozen, still playing)
+        have posted the SAME win and scores (settled_vote), and a drop or a
+        leave that shrinks the live roster re-counts (maybe_settle). One
+        quitter's result therefore never ends a match two or more others are
+        still in. A vote that does not settle is answered 200 like any
+        accepted result; the room's state and the `result` event are what
+        say the match ended. A seat's first vote stands.
+    Later results for a finished match are idempotent (200) as before."""
     err = shape_for("result", body)
     if err:
         return 400, {"error": err}
@@ -2480,14 +2545,18 @@ def do_result(body, who, now):
     if room.match is not None and match == room.match:
         if not in_frozen_match(room, seat):
             return 403, {"error": "not_playing"}
-        # The first result for the current match. Append the event, discard the
-        # comms code, clear the match, drop back to lobby. Params, seats, nicks,
-        # tokens and chat all survive (spec 5.6): "same again" is one button.
-        mid = room.match
-        room.last_result_match = mid
-        _reset_match(room)
-        room.push("result", match=mid, win=win, scores=scores)
-        log("room %s result match=%s win=%s" % (code, mid, win))
+        vote = (win, tuple(scores))
+        room.result_votes.setdefault(seat, vote)
+        decided = vote if seat == room.host_seat else settled_vote(room)
+        if decided is None:
+            log("room %s result vote seat %d match=%s (%d of %d live)"
+                % (code, seat, room.match, len(room.result_votes),
+                   sum(1 for s in room.slot_of if in_frozen_match(room, s))))
+            return 200, {"cursor": room.seq}
+        # The match is over. Append the event, discard the comms code, clear
+        # the match, drop back to lobby. Params, seats, nicks, tokens and chat
+        # all survive (spec 5.6): "same again" is one button.
+        finish_match(room, decided[0], decided[1])
         return 200, {"cursor": room.seq}
     if match == room.last_result_match:
         # Both players reporting is normal and harmless: the second is ignored.

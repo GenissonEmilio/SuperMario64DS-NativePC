@@ -1079,7 +1079,23 @@ def selftest_only_playing(c):
     status, _ = c.post("result", {"v": 5, "room": code, "token": guest["token"],
                                   "match": match, "win": "time-up",
                                   "scores": [1, 2, 0, 0]})
-    check("a PLAYING member's result still ends it", status == 200)
+    check("a PLAYING guest's result is accepted", status == 200)
+    # run mp1 L-J1: a non-host's result is a vote; alone it does not end a
+    # match the host is still in (plan.txt G5). The host's result does.
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": host["token"],
+                                   "cursor": armed["cursor"], "wait": 0})
+    check("the guest's lone result leaves the match running",
+          seen["view"]["state"] in ("go", "in_match")
+          and seen["view"]["match"] == match, seen["view"])
+    status, _ = c.post("result", {"v": 5, "room": code, "token": host["token"],
+                                  "match": match, "win": "time-up",
+                                  "scores": [1, 2, 0, 0]})
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": host["token"],
+                                   "cursor": armed["cursor"], "wait": 0})
+    check("the host's result ends it",
+          status == 200 and seen["view"]["state"] == "lobby"
+          and any(e["kind"] == "result" and e["scores"] == [1, 2, 0, 0]
+                  for e in seen["events"]), seen.get("view"))
     c.post("leave", {"v": 5, "room": code, "token": host["token"]})
 
 
