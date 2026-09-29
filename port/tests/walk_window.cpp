@@ -4529,7 +4529,9 @@ static int key_live(int vk)
    draws it. When the box closes, every key goes STALE the way it does on the
    focus-regained edge, so the Enter that sent the line, the Escape that
    cancelled it or a letter still held reads released to the game until it is
-   let go -- none of them is a fresh press for Mario or the menu. Solo, the
+   let go -- none of them is a fresh press for Mario or the menu. A close by
+   Enter or Escape marks them in the window procedure, before this frame's
+   readers; the mark here covers a close that no key made. Solo, the
    tick returns on its first line and there is nothing to draw. `frame` is the
    level loop's frame number (the one the [vs] probe prints), -1 on the scene
    path; it only labels the two edge lines. */
@@ -8895,6 +8897,13 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
         static int chat_swallow_t;
         if (m == WM_KEYDOWN && port::chat_typing()) {
             if (!(l & (1 << 30)) || w == VK_BACK) port::chat_key((int)w);
+            /* The Enter that sent or the Escape that cancelled is still
+               physically down, and this is the pump: the menu, Start and the
+               buttons read the keys later in this same frame. Every key goes
+               stale NOW, so none of them reads as a press until it is let go
+               (chat_host_frame's own mark at the end of the frame is too late
+               for this one). */
+            if (!port::chat_typing()) memset(key_stale, 1, sizeof key_stale);
             return 0;
         }
         if (m == WM_CHAR && port::chat_typing()) {
