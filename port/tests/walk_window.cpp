@@ -418,6 +418,7 @@ static bool winapi_load(void)
 #include "hal/voice_chat.h"      /* lane VOICE: proximity voice chat */
 #include "hal/comms_loopback.h"   /* run mg16 lane MP2: the loopback carrier */
 #include "hal/comms_hub.h"        /* run mp1 lane HUB1: the adventure hub */
+#include "hal/adv_chat.h"         /* run mp1 lane CHATUI1: in-game text chat */
 /* run mg16 lane MP3: hal/comms_lockstep.h is RETIRED. Its transcription of
    src/func_0203ea5c.c existed only because that TU was in no slice; the TU is
    linked now and drives itself. Its lessons live in comms_seam.h's frozen
@@ -3437,6 +3438,211 @@ static int ovl_text(const OvlSurface &fb, int x0, int y0, const char *s,
    banner carries the font decode, the projection and the slot rules. */
 #include "nametag.h"
 
+/* ---- THE CHAT OVERLAY (run mp1, lane CHATUI1) ------------------------------
+   hal/adv_chat.cpp owns the messages and the rules; this is the pixels. The
+   last lines sit bottom-left above the toast, each one "NAME: text" with the
+   name in the sender's colour, and the open box ("SAY: ...") under them.
+
+   THE GLYPHS ARE THE NAME TAGS' GLYPHS: the ROM's message font, read out of
+   engine A's BG character base with tests/nametag.h's decode (Message::AddChar
+   is the authority, see that banner). This atlas is the chat's own copy, built
+   through chat_font_code, so the one table that decides which characters the
+   cleaner lets through is also the one that decides which glyphs get decoded;
+   the tags' atlas is untouched. When the font is not in VRAM (a scene with no
+   BG font loaded) the overlay's own 5x7 font draws the same text instead. */
+static NtGlyph g_chat_glyph[NT_LAST - NT_FIRST + 1];
+static int g_chat_font_ready;
+
+static int chat_font_build(void)
+{
+    if (g_chat_font_ready) return 1;
+    const unsigned base = (unsigned)func_02054d88();
+    if (!base) return 0;
+    {   /* the letter A as the probe, nt_font_build's reason */
+        const unsigned off = (unsigned)(((0x0a & 0x1f) + ((0x0a & 0xe0) << 1)) << 5);
+        const unsigned char *t = (const unsigned char *)(base + off);
+        int any = 0;
+        for (int i = 0; i < 32 && !any; ++i) any = t[i] != 0;
+        if (!any) return 0;
+    }
+    for (int a = NT_FIRST; a <= NT_LAST; ++a) {
+        NtGlyph &gl = g_chat_glyph[a - NT_FIRST];
+        gl.have = 0;
+        gl.adv = 6;
+        const int c = port::chat_font_code((unsigned char)a);
+        if (c < 0) continue;
+        const unsigned off = (unsigned)(((c & 0x1f) + ((c & 0xe0) << 1)) << 5);
+        const unsigned char *top = (const unsigned char *)(base + off);
+        const unsigned char *bot = top + 0x400;
+        for (int r = 0; r < NT_GH; ++r) {
+            const unsigned char *t = (r < 8 ? top : bot) + (r & 7) * 4;
+            for (int x = 0; x < NT_GW; ++x) {
+                const unsigned char b = t[x >> 1];
+                gl.ink[r][x] = (unsigned char)((x & 1) ? (b >> 4) : (b & 0x0f));
+            }
+        }
+        const unsigned w = data_0208f074[c];
+        gl.adv = (unsigned char)((w >= 1 && w <= 16) ? w : 6);
+        gl.have = 1;
+    }
+    g_chat_font_ready = 1;
+    return 1;
+}
+
+/* Width of one character at `scale`, in whichever font is drawing. */
+static int chat_adv(unsigned char ch, int rom, int scale)
+{
+    if (!rom) return OVL_ADVANCE * OVL_SCALE;
+    if (ch < NT_FIRST || ch > NT_LAST) return 6 * scale;
+    return (int)g_chat_glyph[ch - NT_FIRST].adv * scale;
+}
+
+/* n characters of s at (x0, y0); returns the width. pass 0 outline, 1 ink
+   (ROM font); the 5x7 font has no outline and paints on pass 1 only. */
+static int chat_text(const OvlSurface &fb, int x0, int y0, const char *s,
+                     int n, int rom, int scale, uint32_t rgb, int pass,
+                     int alpha)
+{
+    int x = x0;
+    for (int i = 0; i < n && s[i]; ++i) {
+        const unsigned char a = (unsigned char)s[i];
+        const int adv = chat_adv(a, rom, scale);
+        if (!rom) {
+            if (pass == 1) {
+                char one[2] = {(char)a, 0};
+                ovl_text(fb, x, y0 + (NT_GH * scale - OVL_GLYPH_H * OVL_SCALE) / 2,
+                         one, rgb);
+            }
+            x += adv;
+            continue;
+        }
+        if (a < NT_FIRST || a > NT_LAST || !g_chat_glyph[a - NT_FIRST].have) {
+            x += adv;
+            continue;
+        }
+        const NtGlyph &gl = g_chat_glyph[a - NT_FIRST];
+        for (int r = 0; r < NT_GH; ++r)
+            for (int c = 0; c < NT_GW; ++c) {
+                if (!gl.ink[r][c]) continue;
+                for (int sy = 0; sy < scale; ++sy)
+                    for (int sx = 0; sx < scale; ++sx)
+                        for (int oy = -1; oy <= 1; ++oy)
+                            for (int ox = -1; ox <= 1; ++ox) {
+                                if (pass == 1 && (ox || oy)) continue;
+                                if (pass == 0 && !ox && !oy) continue;
+                                const int qx = x + c * scale + sx + ox * scale;
+                                const int qy = y0 + r * scale + sy + oy * scale;
+                                if (qx < 0 || qx >= ntr::active_w || qy < 0 ||
+                                    qy >= ntr::active_h)
+                                    continue;
+                                const size_t idx =
+                                    (size_t)qy * (size_t)fb.stride + qx;
+                                fb.px[idx] = nt_blend(fb.px[idx],
+                                    pass ? rgb : 0xFF000000u, alpha);
+                            }
+            }
+        x += adv;
+    }
+    return x - x0;
+}
+
+/* One message, word-wrapped to `width`, bottom row at y_bottom; returns the
+   number of rows it used (drawing upward), at most `max_rows`. */
+struct ChatRow { int start, len, indent; };
+static int chat_layout(const char *name, const char *text, int rom, int scale,
+                       int width, ChatRow *rows, int max_rows)
+{
+    /* the name and its ": " on row 0; text continues after it and wraps at
+       spaces where it can, mid-word where a word is wider than a row */
+    int name_w = 0;
+    for (const char *p = name; *p; ++p) name_w += chat_adv((unsigned char)*p, rom, scale);
+    if (*name) name_w += chat_adv(':', rom, scale) + chat_adv(' ', rom, scale);
+    int n = 0, i = 0;
+    const int len = (int)strlen(text);
+    while (i < len && n < max_rows) {
+        const int indent = n == 0 ? name_w : 0;
+        int w = indent, j = i, last_space = -1;
+        while (j < len) {
+            const int a = chat_adv((unsigned char)text[j], rom, scale);
+            if (w + a > width && j > i) break;
+            if (text[j] == ' ') last_space = j;
+            w += a;
+            ++j;
+        }
+        if (j < len && last_space > i) j = last_space + 1;
+        rows[n].start = i;
+        rows[n].len = j - i;
+        rows[n].indent = indent;
+        ++n;
+        i = j;
+    }
+    if (n == 0 && max_rows > 0) { rows[0].start = 0; rows[0].len = 0; rows[0].indent = name_w; n = 1; }
+    return n;
+}
+
+static void chat_draw(const OvlSurface &fb)
+{
+    port::ChatView v;
+    port::chat_view(&v);
+    if (v.n == 0 && !v.open) return;
+    const int rom = chat_font_build();
+    const int scale = OVL_SCALE;
+    const int row_h = rom ? (NT_GH + 2) * scale : OVL_LINE;
+    const int left = 6 * scale;
+    const int width = ntr::active_w - 2 * left;
+    /* above the save-state toast's row, which is the bottom OVL_LINE + 4 */
+    int y = ntr::active_h - OVL_LINE - 8 * scale - row_h;
+
+    if (v.open) {
+        char line[160];
+        snprintf(line, sizeof line, "SAY: %s%s", v.box, v.caret ? "_" : " ");
+        /* the tail of a long line, so the caret stays on screen */
+        const char *s = line;
+        int w = 0;
+        for (const char *p = s; *p; ++p) w += chat_adv((unsigned char)*p, rom, scale);
+        while (*s && w > width) { w -= chat_adv((unsigned char)*s, rom, scale); ++s; }
+        ovl_shade(fb, left - 2 * scale, y - scale, w + 4 * scale, row_h);
+        if (rom) chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 0, 255);
+        chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 1, 255);
+        char cnt[16];
+        snprintf(cnt, sizeof cnt, "%d", port::kChatTextMax - v.box_bytes);
+        int cw = 0;
+        for (const char *p = cnt; *p; ++p) cw += chat_adv((unsigned char)*p, rom, scale);
+        const int cx = ntr::active_w - left - cw;
+        if (rom) chat_text(fb, cx, y, cnt, (int)strlen(cnt), rom, scale, 0xFFA0A0A0u, 0, 255);
+        chat_text(fb, cx, y, cnt, (int)strlen(cnt), rom, scale, 0xFFA0A0A0u, 1, 255);
+        y -= row_h + 2 * scale;
+    }
+
+    /* newest at the bottom: walk the lines newest first, drawing upward */
+    for (int k = v.n - 1; k >= 0; --k) {
+        const port::ChatViewLine &l = v.line[k];
+        ChatRow rows[3];
+        const int nr = chat_layout(l.name, l.text, rom, scale, width, rows, 3);
+        const int top = y - (nr - 1) * row_h;
+        if (top < 0) break;
+        for (int r = 0; r < nr; ++r) {
+            const int ry = top + r * row_h;
+            int rw = rows[r].indent;
+            for (int q = 0; q < rows[r].len; ++q)
+                rw += chat_adv((unsigned char)l.text[rows[r].start + q], rom, scale);
+            if (l.alpha > 96) ovl_shade(fb, left - 2 * scale, ry - scale, rw + 4 * scale, row_h);
+            for (int pass = rom ? 0 : 1; pass <= 1; ++pass) {
+                if (r == 0 && l.name[0]) {
+                    const int nw = chat_text(fb, left, ry, l.name, (int)strlen(l.name),
+                                             rom, scale, l.rgb, pass, l.alpha);
+                    chat_text(fb, left + nw, ry, ": ", 2, rom, scale, l.rgb, pass,
+                              l.alpha);
+                }
+                chat_text(fb, left + rows[r].indent, ry, l.text + rows[r].start,
+                          rows[r].len, rom, scale,
+                          l.name[0] ? 0xFFFFFFFFu : 0xFFC0C0C0u, pass, l.alpha);
+            }
+        }
+        y = top - row_h - scale;
+    }
+}
+
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
    1-second exponential average, so the numbers are readable instead of
    flickering with whatever the OS did to that one frame. */
@@ -4201,6 +4407,11 @@ static int host_key_script(int vk)
 
 static int key_live(int vk)
 {
+    /* THE CHAT BOX (run mp1, lane CHATUI1). While a player is typing, every
+       key reads released to the game, the scripted ones included: the letters
+       are going into the box, not into Mario. LOCAL ONLY -- in VS this
+       console's pad record still goes out every round, with nothing held. */
+    if (port::chat_typing()) return 0;
     if (host_key_script(vk)) return 1;
     if (g_selftest) return 0;
     if (g_rebind_capture) return 0;
@@ -4213,6 +4424,41 @@ static int key_live(int vk)
         if (key_stale[vk]) return 0;
     }
     return down;
+}
+
+/* ---- CHAT, ONCE A PRESENTED FRAME (run mp1, lane CHATUI1) ------------------
+   Both frame loops call this where they paint their host overlays. It pumps
+   the chat (hal/adv_chat.cpp: sends, receives, the scripted test knobs) and
+   draws it. When the box closes, every key goes STALE the way it does on the
+   focus-regained edge, so the Enter that sent the line, the Escape that
+   cancelled it or a letter still held reads released to the game until it is
+   let go -- none of them is a fresh press for Mario or the menu. Solo, the
+   tick returns on its first line and there is nothing to draw. `frame` is the
+   level loop's frame number (the one the [vs] probe prints), -1 on the scene
+   path; it only labels the two edge lines. */
+static void chat_host_frame(const OvlSurface &surf, int frame)
+{
+    static int was_typing;
+    port::chat_tick();
+    const int typing = port::chat_typing();
+    if (typing != was_typing) {
+        if (!typing) memset(key_stale, 1, sizeof key_stale);
+        fprintf(stderr, "[chat] box %s at f%d%s\n", typing ? "open" : "closed",
+                frame, typing ? " (game input released locally)" : "");
+    }
+    was_typing = typing;
+    if (!rb_skip_render()) chat_draw(surf);
+}
+
+/* The pad's half of the chat box: while the player is typing the controller
+   is neutral too. Called after pad_focus_gate and before pad_test_apply at
+   both read sites, the focus gate's own position, so a scripted pad still
+   drives an automated run. */
+static void chat_pad_gate(int *pad_live, XPad *pad)
+{
+    if (!port::chat_typing()) return;
+    memset(pad, 0, sizeof *pad);
+    *pad_live = 0;
 }
 
 /* The bound key for an action, through key_live and so behind all three
@@ -8448,6 +8694,42 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
         if (!(l & (1 << 30))) g_rebind_key = (int)w;
         return 0;
     }
+    /* THE CHAT BOX (run mp1, lane CHATUI1), after the rebind capture and ahead
+       of everything else. While it is open every WM_KEYDOWN and WM_CHAR is the
+       box's: Enter sends, Escape cancels, Backspace deletes, characters type.
+       (Alt combinations are WM_SYSKEYDOWN and pass, so alt+F4 still closes.)
+       Closed, a fresh T opens it -- only while a chat carrier is up, the menu
+       is shut and nobody is choosing a binding, so solo T is an ordinary key.
+       TranslateMessage has already queued the WM_CHAR for that T by the time
+       this runs, so the one character after the opening press is swallowed if
+       it is the t. */
+    {
+        static int chat_swallow_t;
+        if (m == WM_KEYDOWN && port::chat_typing()) {
+            if (!(l & (1 << 30)) || w == VK_BACK) port::chat_key((int)w);
+            return 0;
+        }
+        if (m == WM_CHAR && port::chat_typing()) {
+            if (chat_swallow_t) {
+                chat_swallow_t = 0;
+                if (w == 't' || w == 'T') return 0;
+            }
+            port::chat_char_ansi((unsigned char)w);
+            return 0;
+        }
+        /* T is unbound by default; a player who bound a game action to it
+           keeps that action (no chat box on T for them). */
+        int t_bound = 0;
+        if (m == WM_KEYDOWN && w == 'T') {
+            bindings_load();
+            for (int i = 0; i < HOST_KEY_COUNT; ++i) t_bound |= g_key[i] == 'T';
+        }
+        if (m == WM_KEYDOWN && w == 'T' && !(l & (1 << 30)) && !menu_on &&
+            !g_padlearn && !t_bound && port::chat_open()) {
+            chat_swallow_t = 1;
+            return 0;
+        }
+    }
     /* THERE IS NO ESCAPE BRANCH HERE ANY MORE (run mg10, lane ESC), and its
        absence is the feature. It read
            if (m == WM_KEYDOWN && w == VK_ESCAPE) { mo_release(); quit; }
@@ -9687,6 +9969,7 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
 
     int pad_live = port_pad_poll(pad);
     pad_focus_gate(&pad_live, pad);
+    chat_pad_gate(&pad_live, pad);        /* the chat box, run mp1 CHATUI1 */
     pad_test_apply(frame, &pad_live, pad);
     /* the pad layout learn flow, the same call the level loop makes;
        inert unless the menu's row armed it */
@@ -9846,6 +10129,9 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
         os.menu_paused = menu_on;
         ovl_draw(surf, os);
     }
+    /* THE CHAT on the scene path too (title, file select, star select), so an
+       adventure room's lines are seen before a course is entered. */
+    chat_host_frame(surf, -1);
     if (menu_on) menu_draw(surf);
     if (!rb_skip_render())
         toast_draw(surf);
@@ -12646,6 +12932,7 @@ int main(void)
         static XPad pad;
         int pad_live = !selftest && !rb_replaying() && port_pad_poll(&pad);
         pad_focus_gate(&pad_live, &pad);
+        chat_pad_gate(&pad_live, &pad);   /* the chat box, run mp1 CHATUI1 */
         int orbiting = 0;
         /* SM64DS_PAD_TEST: DBG1's scripted pad, at file scope now so the
            windowed scene loop gets the same one. Inert unless the variable is
@@ -17361,8 +17648,11 @@ int main(void)
         /* THE NAME TAGS, before the menu and the banner so a menu the player
            opened still sits over them. Returns immediately outside a VS match,
            which is why no adventure selftest BMP moves. */
+        if (!rb_skip_render()) nt_draw(surf);
+        /* THE CHAT (run mp1, lane CHATUI1): over the tags, under the menu.
+           Pumped every presented frame whether or not this one renders. */
+        chat_host_frame(surf, frame);
         if (!rb_skip_render()) {
-        nt_draw(surf);
         if (menu_on) menu_draw(surf);
         }
         /* THE WINNER, once a VS match is over. Centred, over everything, for
