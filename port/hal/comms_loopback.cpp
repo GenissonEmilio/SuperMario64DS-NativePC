@@ -936,6 +936,7 @@ struct PipeRound {
     unsigned      agg_have;    // the slots that aggregate carried
     unsigned      lg_subst;    // parent: slots it carried a substitute for
     bool          lg_waited;   // parent: held past its deadline for a sender
+    bool          lg_late_sent; // child: its own block sent into a closed round
 };
 PipeRound g_pipe[kPipeDepth];
 
@@ -1491,6 +1492,12 @@ enum : unsigned { kReportRetryFloorMs = 50 };
 // word in the handshake. Bit 30 tags a REPORT; an older parent reads `have` on
 // a JOIN nowhere at all and answers a report exactly as it answers a re-knock.
 enum : unsigned { kJoinReportBit = 0x40000000u };
+// BLOCKS `have`: bit 30 marks a joiner's block for a round it already holds the
+// aggregate of (the laggard rule's catch-up: it is behind and says so). The
+// host files it as that player's newest input and does NOT re-serve the round
+// for it -- the joiner is not missing it, and answering sixty of those a
+// second would run the host past the relay's per-seat cap.
+enum : unsigned { kBlocksLateBit = 0x40000000u };
 // ACCEPT `have`: bit 31 is the slot assignment and 8..15 the delay, both
 // frozen. Bit 16 is new and says "your report was recorded".
 enum : unsigned { kAcceptRttAckBit = 0x00010000u };
@@ -3183,7 +3190,9 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
             // aggregates past the relay's per-seat cap (MPPROOF1
             // BROKEN-vs4-stall-relay1: 335 dropped). One copy fans out to
             // every joiner through the relay anyway.
-            if (done && done->sent && !g_rollback &&
+            if (done && done->sent && !g_rollback && (p.have & kBlocksLateBit)) {
+                // a joiner catching up: it holds this round (see kBlocksLateBit)
+            } else if (done && done->sent && !g_rollback &&
                 (unsigned)(now_ms() - done->last_agg_ms) < (unsigned)g_resend_ms &&
                 done->last_agg_ms != 0) {
                 ++g_lg_reserve_held;
@@ -3853,8 +3862,8 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
                              "(it fell too far behind the match)\n", who);
                 break;
             }
-            std::fprintf(stderr, "[comms:loopback] RETIRED: this console (slot "
-                         "%d) sent the host nothing usable for 3 s, so the "
+            std::fprintf(stderr, "[comms:loopback] RETIRED: nothing from this "
+                         "console (slot %d) reached the host in time, so the "
                          "match went on without it; you lost connection to "
                          "the match. Back to idle.\n", g_slot);
             match_lost("the host dropped this console from the match");
@@ -5179,6 +5188,21 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         }
 
         if (g_role == kRoleChild) {
+            if (closed && !mine.lg_late_sent) {
+                // BEHIND, AND SAYING SO. The round is closed and this block
+                // changes nothing in it (rule a), but the host files it as this
+                // player's newest input for the next substitute -- and without
+                // it a console catching up sends nothing at all, which the host
+                // cannot tell from a console that died (it retired such
+                // catchers as silent: final1 laggard4-hitch p3).
+                mine.lg_late_sent = true;
+                Packet b;
+                fill_header(b, kTypeBlocks);
+                b.round = g_round;
+                b.have  = (1u << g_slot) | kBlocksLateBit;   // no re-serve wanted
+                std::memcpy(b.blocks[g_slot], my_block, kCommsBlockBytes);
+                send_to_slot(b, 0);
+            }
             if (first_publish && !closed) {
                 Packet b;
                 fill_header(b, kTypeBlocks);
