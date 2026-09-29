@@ -469,11 +469,30 @@ enum : int { kRelayDefaultPort = 41234 };
 // ---------------------------------------------------------------------------
 enum : int { kRelayMsgBytes = 16, kRelayCodeBytes = 8 };
 enum : unsigned char { kRelayVersion = 1 };
+// RELAY VERSION 2 (multiplayer 1.0; NETARCH1 design section 3, the relay's own
+// README "Version 2"). Same 16 bytes, so a version 1 relay still reads it as a
+// HELLO -- and answers "bad request", which is how this end learns it is
+// talking to one (see relay_on_ack). What version 2 adds, for this carrier:
+//   HELLO byte 6  want_seat: parent 0; child the lobby plan's slot
+//                 (SM64DS_COMMS_SLOT) or 0xFF for any free child seat
+//   HELLO byte 7  flags, 0 (bit 0 "will send voice" is informational only)
+//   ACK   byte 6  the seat the relay will STAMP on this end's datagrams. The
+//                 child uses it as its slot: that is the number every peer
+//                 will see on everything it sends.
+// and, in a version 2 session, the relay OVERWRITES the sender's seat into
+// every forwarded datagram: byte 6 of MP2L (Packet.slot) and byte 5 of every
+// 'SYN*' kind. So the sender of an aux message is a byte the relay wrote, not
+// the first-live-child guess classify_aux_sender() has to make on version 1.
+enum : unsigned char { kRelayVersion2 = 2 };
 enum : unsigned char { kRelayRoleParent = 0, kRelayRoleChild = 1 };
+enum : unsigned char { kRelayWantAnySeat = 0xFF };
 enum : unsigned char {
-    kRelayStatusOk       = 0,
-    kRelayStatusFull     = 1,
-    kRelayStatusBadReq   = 2,
+    kRelayStatusOk        = 0,
+    kRelayStatusFull      = 1,
+    kRelayStatusBadReq    = 2,
+    kRelayStatusVersion   = 3,   // v2: the code is a session of the other version
+    kRelayStatusSeatTaken = 4,   // v2: another address holds that seat
+    kRelayStatusWrongKind = 5,   // v2: a VS role into an adventure hub code
 };
 
 const unsigned char kRelayHelloMagic[4] = { 'S', 'M', 'R', 'C' };
@@ -482,9 +501,11 @@ const unsigned char kRelayAckMagic[4]   = { 'S', 'M', 'R', 'A' };
 #pragma pack(push, 1)
 struct RelayHello {
     unsigned char magic[4];                 // "SMRC" out, "SMRA" back
-    unsigned char version;                  // 1
+    unsigned char version;                  // 1, or 2
     unsigned char role_or_status;           // role on the way out, status back
-    unsigned char reserved[2];              // zero
+    unsigned char seat;                     // v1: reserved 0. v2: want_seat
+                                            //     out, the stamped seat back
+    unsigned char flags;                    // v1: reserved 0. v2: flags, 0
     unsigned char code[kRelayCodeBytes];    // ASCII, NUL right-padded
 };
 #pragma pack(pop)
@@ -598,18 +619,127 @@ static_assert(kRawMaxBytes >= kPacketWideBytes,
               "sixteen-player packet would be lost to WSAEMSGSIZE");
 static_assert(kAuxMaxBytes <= kRelayMaxPayload,
               "an aux datagram no longer fits the relay's payload cap");
-enum : int { kAuxKinds = 4 };        // 0 = 'SYN1' state, 1 = 'SYNP' ping,
-                                     // 2 = 'SYNQ' pong, 3 = 'SYNV' voice --
-                                     // see the tag note
-// Lane VOICE: the voice kind is served by lb_recv_voice and SKIPPED by
-// lb_recv_aux, so the sync layer's drain-until-zero pump cannot swallow audio
-// and the voice pump cannot swallow a snapshot. Two consumers, one socket, no
-// shared queue -- the alternative was one of them eating the other's messages,
-// which is exactly the failure the per-(sender, kind) split was made to stop.
-enum : int { kAuxKindVoice = 3 };
+// ===========================================================================
+// THE AUX KIND TABLE (multiplayer 1.0, lane VSAUX1; NETARCH1 design 3 and 6).
+//
+// Every aux datagram is classified by its four-byte tag AND its length against
+// this table, on the way in and on the way out. A tag the table does not name,
+// or a length outside its row, is refused and counted -- the security law's
+// "nothing unexpected", and the same table relay v2 enforces, so this end never
+// spends its relay budget on a datagram the relay would drop.
+//
+// Every kind carries the common 8-byte envelope: tag | version | SEAT at byte
+// 5 | two kind bytes. Byte 5 is the SENDER, and it is never the sender's word
+// for it: relay v2 overwrites it with the seat it stamped (relay_stamped()),
+// and on loopback, direct and relay v1 this carrier overwrites it with the
+// slot its own classifier found. One exception, written down where it is
+// handled in dispatch(): 'SYN1' predates the envelope, and its byte 5 is the
+// second byte of a 32-bit version field, which the relay's stamp would
+// corrupt; the carrier puts back the 0 the sender wrote there.
+//
+// WHO READS WHAT, one consumer per kind, so no two pumps eat each other's
+// messages (the per-(sender, kind) split's own reason, carried forward):
+//   'SYN1' 'SYNP' 'SYNQ'  the sync layer, through the seam's recv_aux
+//   'SYNV' voice          hal/voice_chat.cpp, comms_recv_voice / comms_recv_kind
+//   'SYNT' chat           the chat overlay, comms_recv_kind
+//   'SYNI' identity       comms_recv_kind
+//   'SYNK' clock          this carrier (the parent keeps the newest per seat)
+// A later kind is one row here and one comms_recv_kind caller elsewhere.
+//
+// THE QUEUES. State kinds stay ONE DEEP PER (SEAT, KIND), newest wins: a
+// backlog of one sender's position is worthless (see the note above). Voice is
+// a STREAM, not state, and one-deep lost most of it (VOICE1 suspect S1: 20-30
+// percent delivered at 4P, because two datagrams from one talker routinely
+// land inside one game frame), so voice gets a small FIFO per seat. Chat is a
+// few messages that must each arrive, so it gets one small FIFO shared by
+// every seat, oldest first.
+// ===========================================================================
+const unsigned kAuxChatLE  = 0x544e5953u;   // 'S','Y','N','T'
+const unsigned kAuxIdentLE = 0x494e5953u;   // 'S','Y','N','I'
+const unsigned kAuxClockLE = 0x4b4e5953u;   // 'S','Y','N','K'
+enum : int {
+    kAuxKindSync  = 0,     // 'SYN1'
+    kAuxKindPing  = 1,     // 'SYNP'
+    kAuxKindPong  = 2,     // 'SYNQ'
+    kAuxKindVoice = 3,     // 'SYNV'
+    kAuxKindChat  = 4,     // 'SYNT'
+    kAuxKindIdent = 5,     // 'SYNI'
+    kAuxKindClock = 6,     // 'SYNK'
+    kAuxKinds     = 7,
+};
+enum : unsigned char {
+    kAuxQueueNewest   = 0,   // one deep per (seat, kind), newest wins
+    kAuxQueueSeatFifo = 1,   // a FIFO per seat (voice)
+    kAuxQueueShared   = 2,   // one FIFO for every seat (chat)
+    kAuxQueueCarrier  = 3,   // consumed by this file (clock)
+};
+struct AuxKindDef {
+    unsigned      tag;
+    char          letter;    // the kind's letter on the report line
+    short         lo, hi;    // accepted length range
+    short         alt;       // a second exact length, 0 = none
+    unsigned char queue;
+    bool          sync_layer;   // served through the seam's recv_aux
+};
+const AuxKindDef kAuxTable[kAuxKinds] = {
+    //  tag          ltr  lo   hi            alt  queue              sync
+    { kAuxMagicLE, 'S', 16,  kAuxMaxBytes, 0,   kAuxQueueNewest,   true  },
+    { kAuxPingLE,  'P', 12,  12,           0,   kAuxQueueNewest,   true  },
+    { kAuxPongLE,  'Q', 12,  12,           0,   kAuxQueueNewest,   true  },
+    { kAuxVoiceLE, 'V', 176, 176,          340, kAuxQueueSeatFifo, false },
+    { kAuxChatLE,  'T', 12,  132,          0,   kAuxQueueShared,   false },
+    { kAuxIdentLE, 'I', 24,  64,           0,   kAuxQueueNewest,   false },
+    { kAuxClockLE, 'K', 24,  24,           0,   kAuxQueueCarrier,  false },
+};
+// The kind of a datagram, or -1: the tag must be in the table and the length
+// inside its row. The ONE classifier, used on both directions.
+int aux_kind_of(const void *raw, int n) {
+    if (!raw || n < 8) return -1;
+    unsigned tag;
+    std::memcpy(&tag, raw, 4);
+    for (int k = 0; k < kAuxKinds; ++k) {
+        const AuxKindDef &d = kAuxTable[k];
+        if (d.tag != tag) continue;
+        if ((n >= d.lo && n <= d.hi) || (d.alt && n == d.alt)) return k;
+        return -2;                           // ours, at a length it never has
+    }
+    return -1;
+}
+// A tag in the table at all, whatever its length: tells "one of ours, bad
+// length" (counted, dropped) apart from "not aux" (maybe a lockstep packet).
+bool aux_tag_known(const void *raw, int n) {
+    if (!raw || n < 4) return false;
+    unsigned tag;
+    std::memcpy(&tag, raw, 4);
+    for (int k = 0; k < kAuxKinds; ++k)
+        if (kAuxTable[k].tag == tag) return true;
+    return false;
+}
+
 struct AuxSlot { int len; unsigned char buf[kAuxMaxBytes]; };
 AuxSlot  g_aux[kCommsMaxPlayers][kAuxKinds];
 int      g_aux_rr     = 0;           // recv_aux round-robin cursor, see below
+// Voice: a FIFO per seat, oldest dropped when full. 8 x 40 ms is 320 ms, more
+// than the voice pump's own jitter ring holds, so a full FIFO means the pump
+// has stopped running, not that the wire is bursty.
+enum : int { kVoiceFifoDepth = 8 };
+struct AuxFifo { int head, count; AuxSlot e[kVoiceFifoDepth]; };
+AuxFifo  g_voice_fifo[kCommsMaxPlayers];
+// Chat: one FIFO for the room, oldest first. 32 is the whole room sending its
+// 3-copy burst at once with room to spare; the receiver dedupes the copies.
+enum : int { kChatFifoDepth = 32 };
+struct ChatEntry { int seat; AuxSlot m; };
+ChatEntry g_chat_fifo[kChatFifoDepth];
+int      g_chat_head = 0, g_chat_count = 0;
+// Per-seat, per-kind receive counters (the attribution proof reads these) and
+// the refusals, each under its own reason.
+unsigned long long g_aux_rx[kCommsMaxPlayers][kAuxKinds];
+unsigned long long g_aux_tx[kAuxKinds];
+unsigned long long g_aux_tx_refused = 0;   // send: tag/length not in the table
+unsigned long long g_aux_bad_len    = 0;   // recv: our tag, wrong length
+unsigned long long g_aux_bad_seat   = 0;   // recv: sender not a seat of ours
+unsigned long long g_aux_fifo_drop  = 0;   // recv: a FIFO was full
+unsigned long long g_ping_not_asked = 0;   // recv: a ping that asked another seat
 unsigned long long g_aux_superseded = 0;
 int      g_port_base  = kCommsLoopbackPortBase;
 int      g_my_port    = 0;
@@ -1073,7 +1203,15 @@ enum : int { kLegacyInputDelayMax = 8 };
 unsigned g_accept_sent_ms[kCommsMaxPlayers]; // when the last unicast went out
 unsigned g_sizing_wait_since_ms = 0;         // 0 = not waiting yet
 unsigned long long g_sizing_holds = 0;
-enum : unsigned { kSizingGraceMs = 400 };
+// HOW LONG THE HOST WAITS FOR EVERY CHILD'S ROUND-TRIP REPORT once its ROM
+// asks for the first round. 400 ms until multiplayer 1.0, which covered a
+// report sent the moment the ACCEPT landed. A 1.0 child first measures the
+// path five times (see the banner over g_rtt_samples): about one more round
+// trip, at most kRttProbeWaitMs. The grace covers that ceiling plus the
+// report's own trip back. It is a ceiling, not a delay: the host goes the
+// moment every report is in, and only a peer that never reports (a build
+// older than the adaptive sizing) costs the whole of it.
+enum : unsigned { kSizingGraceMs = 1500 };
 unsigned g_delay_gate_since_ms = 0;          // 0 = the gate is open
 unsigned g_delay_gate_last_log_ms = 0;
 // AND ONE OF ITS OWN FOR THE LATE-JOIN REFUSAL. It shared the hold line's
@@ -1285,6 +1423,62 @@ int g_join_wait_ms = kJoinResendMs;
 enum : int { kJoinBackoffStartMs = 200, kJoinBackoffCapMs = 1000 };
 unsigned g_join_started_ms = 0;       // for the handshake RTT sample
 int g_handshake_rtt_ms = -1;
+// ===========================================================================
+// THE ROUND TRIP, MEASURED SEVERAL TIMES AND EXACTLY (multiplayer 1.0, lane
+// VSAUX1; NETCORE1 suspect S2). The number the whole room's input delay is
+// sized from.
+//
+// WHAT WAS WRONG. It was ONE sample per joiner, and not even a round trip:
+// the time from the child's FIRST JOIN to the first ACCEPT. An ACCEPT does not
+// say which JOIN it answers, so that sample silently included every JOIN that
+// went unanswered first -- sent while the host was still booting, or before
+// the relay had a host to forward to -- plus the 200 / 400 / 800 ms join
+// backoff between them. NETCORE1 measured the result: a nominal 80 ms path
+// read 93..141 ms at 4P, and at 16P one joiner read 500 ms and put the room at
+// the 15-round cap (500 ms of input delay for sixteen people, off one late
+// knock).
+//
+// THE FIX, TWO HALVES.
+//   1. EXACT SAMPLES. A 1.0 child writes 'RT01' + a sequence number into
+//      blocks[0] of every JOIN it sends (a JOIN's blocks are unused and zero on
+//      the wire; no build reads them), and a 1.0 host echoes those 8 bytes into
+//      the ACCEPT that answers it, at blocks[0] + 12, right after the session
+//      stamp (also unused space in every older build's reading). The child
+//      looks the number up and knows exactly which JOIN, sent when, this
+//      ACCEPT answers. An older host echoes nothing and the child falls back
+//      to the old first-JOIN sample, which is what that host always got.
+//   2. SEVERAL OF THEM, AND THE MINIMUM. At its first ACCEPT a child that saw
+//      the echo (a host of this same build, which the session check proves)
+//      sends kRttProbes more plain JOINs at once (any host answers a
+//      JOIN from a live slot with an ACCEPT and changes nothing else) and
+//      holds its first report until they are answered or kRttProbeWaitMs
+//      passes. The report carries the MINIMUM of the handshake sample and the
+//      probes. With exact samples nothing can make one read SHORTER than the
+//      path; everything that goes wrong (a busy host, a JOIN that waited a
+//      host frame behind another one, the relay's queue) only adds time. So
+//      the smallest of five is the path, and the margin in the sizing formula
+//      covers the jitter the minimum leaves out. Measured on the first cut
+//      (a median): the probes sent together came back [94 94 172 172 172] ms
+//      on a nominal 80 ms path, because the host answers one per frame.
+//   The report goes out about one round trip later than before. The host's
+//   sizing grace (kSizingGraceMs) is sized for that; see there.
+// ===========================================================================
+const unsigned char kRttEchoTag[4] = { 'R', 'T', '0', '1' };
+enum : int { kRttEchoAt = 12 };      // offset of the echo in an ACCEPT's blocks[0]
+enum : int { kRttProbes = 4 };       // plus the handshake sample: five
+enum : unsigned { kRttProbeWaitMs = 1000 };   // ceiling on holding the report
+enum : int { kJoinLogDepth = 32 };
+struct JoinSent { unsigned nonce, at_ms; unsigned char kind; };
+enum : unsigned char { kJoinKnock = 1, kJoinReport = 2, kJoinProbe = 3 };
+JoinSent g_join_log[kJoinLogDepth];
+unsigned g_join_nonce   = 0;
+int      g_rtt_samples[1 + kRttProbes];
+int      g_rtt_nsamples = 0;
+bool     g_rtt_probing  = false;     // probes out, first report held
+bool     g_rtt_echo_seen = false;    // the host echoes: exact samples
+unsigned g_rtt_probe_ms = 0;         // when the probes went out
+unsigned long long g_rtt_exact = 0, g_rtt_unmatched = 0;
+
 
 bool g_wsa_up = false;
 
@@ -1439,6 +1633,19 @@ bool        g_relay_paired  = false; // an ACK with status 0 has landed
 unsigned    g_last_hello_ms = 0;
 unsigned long long g_relay_acks = 0;
 unsigned char g_code[kRelayCodeBytes];
+// RELAY VERSION 2 STATE. g_relay_ver is the version this end speaks to the
+// relay NOW: 2 from install, 1 after a version 1 relay answered "bad request"
+// (the fallback, relay_on_ack). g_relay_seat is the seat a version 2 ACK
+// named, -1 before one. A version 2 session is SEAT-STAMPED: relay_stamped()
+// is the one predicate every reader of the stamp asks.
+unsigned char g_relay_ver   = kRelayVersion2;
+int           g_relay_seat  = -1;
+int           g_relay_last_status = -1;   // the last refusal said out loud
+unsigned long long g_relay_fallbacks = 0;
+inline bool relay_stamped() {
+    return g_net_mode == kNetRelay && g_relay_ver == kRelayVersion2 &&
+           g_relay_paired && g_relay_seat >= 0;
+}
 
 // Where a datagram addressed to `slot` actually goes.
 sockaddr_in slot_addr(int slot) {
@@ -1541,6 +1748,23 @@ void fill_header(Packet &p, unsigned char type) {
 // looked).
 // ===========================================================================
 const unsigned char kSessionTag[4] = { 'S', 'D', '1', '0' };
+// THE REFUSAL'S REASON, IN THE BYE (multiplayer 1.0, lane VSAUX1). A joiner
+// that refuses the session writes 'SDNO' + reason u32 + its own build id and
+// settings digest into blocks[0] of the BYE it sends before exit code 3, so
+// the host's log says why the slot left. A BYE's blocks are unused and zero
+// in every build, so an older host reads nothing there.
+const unsigned char kSessionRefuseTag[4] = { 'S', 'D', 'N', 'O' };
+enum : unsigned { kRefuseHostOlder = 1, kRefuseBuild = 2, kRefuseSettings = 3 };
+unsigned g_session_refuse = 0;
+const char *session_refuse_text(unsigned why) {
+    switch (why) {
+    case kRefuseHostOlder: return "it found no session stamp (this host looked "
+                                  "older than it)";
+    case kRefuseBuild:     return "it runs a different build";
+    case kRefuseSettings:  return "its match settings differ from this host's";
+    default:               return "a reason this build does not know";
+    }
+}
 
 unsigned fnv1a32(const char *s) {
     unsigned h = 2166136261u;
@@ -1583,6 +1807,28 @@ void put_u32le(unsigned char *p, unsigned v) {
 unsigned get_u32le(const unsigned char *p) {
     return (unsigned)p[0] | ((unsigned)p[1] << 8) | ((unsigned)p[2] << 16) |
            ((unsigned)p[3] << 24);
+}
+
+// Stamp a JOIN with the next sequence number and remember when it left.
+void join_stamp(Packet &j, unsigned char kind) {
+    const unsigned n = ++g_join_nonce;
+    std::memcpy(j.blocks[0], kRttEchoTag, 4);
+    put_u32le(j.blocks[0] + 4, n);
+    JoinSent &s = g_join_log[n % kJoinLogDepth];
+    s.nonce = n;
+    s.at_ms = now_ms();
+    s.kind  = kind;
+}
+
+// The JOIN an ACCEPT answers, from the echo: its log entry, or 0 when the
+// ACCEPT carries no echo (an older host) or one this end no longer remembers.
+JoinSent *join_answered(const Packet &a) {
+    const unsigned char *e = a.blocks[0] + kRttEchoAt;
+    if (std::memcmp(e, kRttEchoTag, 4) != 0) return 0;
+    const unsigned n = get_u32le(e + 4);
+    JoinSent &s = g_join_log[n % kJoinLogDepth];
+    if (s.nonce != n || n == 0) { ++g_rtt_unmatched; return 0; }
+    return &s;
 }
 
 // Once per process: the canonical string and the two numbers, and the plan's
@@ -1633,6 +1879,8 @@ bool session_check_ok(const Packet &a) {
                      "end\n", host_b, host_d);
         return true;
     }
+    g_session_refuse = !tagged ? kRefuseHostOlder
+                     : host_b != mine_b ? kRefuseBuild : kRefuseSettings;
     const char *why = !tagged ? "the host is an older build (no session stamp)"
                     : host_b != mine_b ? "the host runs a different build"
                                        : "the host's match settings differ";
@@ -1827,6 +2075,9 @@ bool delay_gate_open() {
 //             session over an unauthenticated relay, it is what the DS's own
 //             radio offered, and the mitigation (a per-session shared secret)
 //             belongs in the relay contract, not smuggled in here.
+//             RELAY V2 CLOSES IT (multiplayer 1.0): a v2 relay overwrites
+//             this byte with the seat it gave the sender, so on v2 the slot
+//             read here is the relay's word, not the sender's.
 // ===========================================================================
 int classify_sender(const sockaddr_in &from, int claimed, bool learn_ok) {
     if (g_net_mode == kNetRelay) {
@@ -1869,16 +2120,62 @@ int classify_sender(const sockaddr_in &from, int claimed, bool learn_ok) {
 // ---------------------------------------------------------------------------
 enum : unsigned { kRelayHelloMs = 1000, kRelayKeepaliveMs = 20000 };
 
+// THE SEAT THIS END ASKS FOR. The parent is seat 0 by the relay's own rule. A
+// child asks for the seat the relay already stamped on it (so a keepalive, or
+// a re-HELLO after a relay restart, can never move it mid-match), else the
+// lobby plan's slot (SM64DS_COMMS_SLOT, g_pinned), else any free child seat.
+unsigned char relay_want_seat() {
+    if (g_role == kRoleParent) return 0;
+    if (g_relay_seat >= 1) return (unsigned char)g_relay_seat;
+    if (g_pinned >= 1) return (unsigned char)g_pinned;
+    return kRelayWantAnySeat;
+}
+
 void relay_send_hello() {
     RelayHello h;
     std::memset(&h, 0, sizeof h);
     std::memcpy(h.magic, kRelayHelloMagic, 4);
-    h.version        = kRelayVersion;
+    h.version        = g_relay_ver;
     h.role_or_status = (g_role == kRoleParent) ? kRelayRoleParent
                                                : kRelayRoleChild;
+    if (g_relay_ver == kRelayVersion2) h.seat = relay_want_seat();
     std::memcpy(h.code, g_code, kRelayCodeBytes);
     send_raw(&h, kRelayMsgBytes, g_relay_addr);
     g_last_hello_ms = now_ms();
+}
+
+// THE VERSION 1 FALLBACK NEEDS A NEW SOCKET, and the relay's README says why:
+// a version 1 relay answers a version 2 HELLO with "bad request" and then
+// IGNORES THAT SOURCE ADDRESS FOR 10 SECONDS. Retrying version 1 from the same
+// socket would cost every player on an old relay ten silent seconds at the
+// start of every match. A fresh socket is a fresh source port, which the relay
+// has never refused. In relay mode the local port means nothing (every
+// datagram goes to and comes from the relay), so it binds an ephemeral one.
+// If anything here fails the old socket is kept and the ten seconds are paid,
+// which is slow but still correct.
+void relay_fresh_socket() {
+    SOCKET s = WS.socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (s == INVALID_SOCKET) return;
+    u_long nb = 1;
+    WS.ioctlsocket(s, FIONBIO, &nb);
+    {
+        DWORD off = 0, ret = 0;
+        WS.WSAIoctl(s, SIO_UDP_CONNRESET, &off, sizeof off, 0, 0, &ret, 0, 0);
+    }
+    sockaddr_in a;
+    std::memset(&a, 0, sizeof a);
+    a.sin_family = AF_INET;                 // INADDR_ANY, port 0: ephemeral
+    if (WS.bind(s, (const sockaddr *)&a, (int)sizeof a) != 0) {
+        WS.closesocket(s);
+        std::fprintf(stderr, "[comms:relay] could not open a fresh socket for "
+                     "the version 1 retry (winsock %d); retrying on this one, "
+                     "which an old relay ignores for about 10 s\n",
+                     WS.WSAGetLastError());
+        return;
+    }
+    WS.closesocket(g_sock);
+    g_sock = s;
+    g_my_port = 0;
 }
 
 // Idempotent BY CONTRACT: the relay expires an idle endpoint after 90 s and
@@ -1886,10 +2183,34 @@ void relay_send_hello() {
 // means anything.
 void relay_on_ack(const RelayHello &h) {
     ++g_relay_acks;
-    if (h.version != kRelayVersion) {
+    // A VERSION 1 "BAD REQUEST" TO OUR VERSION 2 HELLO IS AN OLD RELAY. That
+    // is the one answer a version 1 relay gives a version 2 HELLO (its README
+    // and the live copy both), and it is the documented signal to fall back:
+    // the relay deploy and the game release must not depend on each other
+    // (design section 6). On version 1 the VS match plays exactly as it always
+    // has -- the inputs are star-routed either way -- and only the aux fan-out
+    // is lost: a joiner's voice and chat reach the host alone, and aux senders
+    // go back to classify_aux_sender's guess.
+    if (g_relay_ver == kRelayVersion2 && h.version == kRelayVersion &&
+        h.role_or_status == kRelayStatusBadReq) {
+        ++g_relay_fallbacks;
+        std::fprintf(stderr, "[comms:relay] the relay answered our version 2 "
+                     "HELLO as a version 1 relay (bad request); FALLING BACK "
+                     "to relay version 1 on a fresh socket. The match plays "
+                     "the same; voice and chat from a joiner reach only the "
+                     "host until the relay is updated.\n");
+        g_relay_ver = kRelayVersion;
+        g_relay_paired = false;
+        g_relay_seat = -1;
+        g_relay_last_status = -1;
+        relay_fresh_socket();
+        relay_send_hello();
+        return;
+    }
+    if (h.version != g_relay_ver) {
         std::fprintf(stderr, "[comms:relay] ACK version %u, expected %u; the "
                      "relay and this build disagree. Staying unpaired.\n",
-                     (unsigned)h.version, (unsigned)kRelayVersion);
+                     (unsigned)h.version, (unsigned)g_relay_ver);
         return;
     }
     if (std::memcmp(h.code, g_code, kRelayCodeBytes) != 0) {
@@ -1897,24 +2218,97 @@ void relay_on_ack(const RelayHello &h) {
                      "code; ignored\n");
         return;
     }
+    // A version 2 refusal repeats once a second for as long as it holds; it
+    // is said once per change, not once per ACK.
+    const bool say = (int)h.role_or_status != g_relay_last_status;
+    if (h.role_or_status != kRelayStatusOk) g_relay_last_status = h.role_or_status;
     switch (h.role_or_status) {
     case kRelayStatusOk:
+        if (g_relay_ver == kRelayVersion2) {
+            // THE STAMPED SEAT, CHECKED BEFORE IT IS BELIEVED. The parent is
+            // seat 0 by rule; a child's seat must be a slot this session's
+            // wire can carry (a narrow session has four). Anything else is a
+            // relay this build does not agree with, and pairing on it would
+            // seat a body the wire cannot move.
+            const int seat = h.seat;
+            const bool ok = (g_role == kRoleParent) ? seat == 0
+                                                    : (seat >= 1 && seat < slot_cap());
+            if (!ok) {
+                if (say || g_relay_last_status != 0x100 + seat)
+                    std::fprintf(stderr, "[comms:relay] the relay seated this "
+                                 "%s at seat %d, which this session (%d slots) "
+                                 "cannot use; staying unpaired\n",
+                                 g_role == kRoleParent ? "parent" : "child",
+                                 seat, slot_cap());
+                g_relay_last_status = 0x100 + seat;
+                return;
+            }
+            if (g_role == kRoleChild && seat != g_slot) {
+                std::fprintf(stderr, "[comms:relay] the relay seated this "
+                             "child at seat %d (it bound local slot %d); "
+                             "playing as slot %d, the seat every peer sees on "
+                             "its datagrams\n", seat, g_slot, seat);
+                g_slot = seat;
+            }
+            g_relay_seat = seat;
+        }
+        g_relay_last_status = -1;
         if (!g_relay_paired) {
             g_relay_paired = true;
-            std::fprintf(stderr, "[comms:relay] paired as %s on code '%.8s'; "
-                         "the relay will forward from here\n",
-                         g_role == kRoleParent ? "parent" : "child",
-                         (const char *)g_code);
+            if (g_relay_ver == kRelayVersion2)
+                std::fprintf(stderr, "[comms:relay] paired as %s seat %d on "
+                             "code '%.8s' (relay v2: seats stamped, voice and "
+                             "chat reach every seat)\n",
+                             g_role == kRoleParent ? "parent" : "child",
+                             g_relay_seat, (const char *)g_code);
+            else
+                std::fprintf(stderr, "[comms:relay] paired as %s on code "
+                             "'%.8s'; the relay will forward from here\n",
+                             g_role == kRoleParent ? "parent" : "child",
+                             (const char *)g_code);
         }
         break;
     case kRelayStatusFull:
-        std::fprintf(stderr, "[comms:relay] session '%.8s' is FULL; staying "
-                     "unpaired so the ROM's own bound drops this to solo\n",
-                     (const char *)g_code);
+        if (say)
+            std::fprintf(stderr, "[comms:relay] session '%.8s' is FULL; staying "
+                         "unpaired so the ROM's own bound drops this to solo\n",
+                         (const char *)g_code);
         break;
     case kRelayStatusBadReq:
-        std::fprintf(stderr, "[comms:relay] the relay refused the HELLO as a "
-                     "bad request (code '%.8s')\n", (const char *)g_code);
+        if (say)
+            std::fprintf(stderr, "[comms:relay] the relay refused the HELLO as "
+                         "a bad request (code '%.8s')\n", (const char *)g_code);
+        break;
+    case kRelayStatusVersion:
+        // THE CODE IS ALREADY A VERSION 1 SESSION: an older build opened it.
+        // Joining it on version 1 is what lets the session check say so
+        // plainly ("the host runs an older build") instead of this end
+        // knocking into a refusal until the ROM's bound runs out.
+        if (g_relay_ver == kRelayVersion2) {
+            ++g_relay_fallbacks;
+            std::fprintf(stderr, "[comms:relay] session '%.8s' is a relay "
+                         "version 1 session (an older build opened it); "
+                         "joining it on version 1\n", (const char *)g_code);
+            g_relay_ver = kRelayVersion;
+            g_relay_paired = false;
+            g_relay_seat = -1;
+            g_relay_last_status = -1;
+            relay_send_hello();
+        }
+        break;
+    case kRelayStatusSeatTaken:
+        if (say)
+            std::fprintf(stderr, "[comms:relay] seat %u of session '%.8s' is "
+                         "held by another address (a console that left may "
+                         "still hold it for up to 90 s); retrying each "
+                         "second\n", (unsigned)relay_want_seat(),
+                         (const char *)g_code);
+        break;
+    case kRelayStatusWrongKind:
+        if (say)
+            std::fprintf(stderr, "[comms:relay] code '%.8s' is an adventure "
+                         "room, not a VS match; staying unpaired\n",
+                         (const char *)g_code);
         break;
     default:
         std::fprintf(stderr, "[comms:relay] ACK status %u is not one this "
@@ -2242,6 +2636,11 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         fill_header(a, kTypeAccept);
         set_live(a, g_live);
         stamp_session(a);                 // multiplayer 1.0: the session check
+        // THE ROUND-TRIP ECHO: the joiner's 'RT01' + sequence number, handed
+        // back so it knows exactly which of its JOINs this answers (see the
+        // banner over g_rtt_samples). A JOIN without one echoes nothing.
+        if (std::memcmp(p.blocks[0], kRttEchoTag, 4) == 0)
+            std::memcpy(a.blocks[0] + kRttEchoAt, p.blocks[0], 8);
         // THE PARENT ASSIGNS THE SLOT AND THE RELAY DOES NOT. A child over the
         // internet cannot claim a slot by binding a port the way a loopback
         // child does, so it PROPOSES one in its JOIN and this is the answer.
@@ -2391,11 +2790,119 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         if (popcount_live(g_live) <= 1) g_state = kCommsConnecting;
         std::fprintf(stderr, "[comms:loopback] slot %d left; live mask 0x%x\n",
                      k, g_live);
+        // A JOINER THAT REFUSED THE SESSION SAYS WHY in its BYE (see
+        // session_check_ok), so the host's log names the reason instead of
+        // only the departure. An older joiner's BYE has zero blocks.
+        if (std::memcmp(p.blocks[0], kSessionRefuseTag, 4) == 0) {
+            const unsigned why = get_u32le(p.blocks[0] + 4);
+            std::fprintf(stderr, "[comms:loopback] slot %d refused this session: "
+                         "%s (joiner build id %08x digest %08x; this host build "
+                         "id %08x)\n", k, session_refuse_text(why),
+                         get_u32le(p.blocks[0] + 8), get_u32le(p.blocks[0] + 12),
+                         session_build_id());
+        }
         break;
     default:
         ++g_dropped;
         break;
     }
+}
+
+// ===========================================================================
+// THE CLOCK REPORT 'SYNK' (multiplayer 1.0; NETARCH1 design 2.5 and 6.6).
+//
+// Each child tells the parent, twice a second, where its own clock is: the
+// round it last handed the game, the newest aggregate it holds, its mean frame
+// time and its measured round trip. 1.0 uses it for the close line (whose
+// console was behind, and by how much) and it is the field the laggard rule and
+// the post-1.0 ladder (mid-match delay changes, relay-clocked rounds) read, so
+// it ships now and old and new builds stay aligned. Relay v2 routes it child
+// to parent only; an older parent drops it (not a lockstep length).
+//
+//   0 'SYNK' | 4 version 1 | 5 seat | 6 flags | 7 input_delay u8
+//   8 consumed_round u32 | 12 newest_aggregate_round u32
+//   16 mean_frame_us u32 | 20 rtt_ms u16 | 22 subst_seen u16
+// ===========================================================================
+#pragma pack(push, 1)
+struct ClockReport {
+    unsigned       tag;
+    unsigned char  version;
+    unsigned char  seat;
+    unsigned char  flags;
+    unsigned char  input_delay;
+    unsigned       consumed_round;
+    unsigned       newest_round;
+    unsigned       mean_frame_us;
+    unsigned short rtt_ms;
+    unsigned short subst_seen;
+};
+#pragma pack(pop)
+static_assert(sizeof(ClockReport) == 24, "'SYNK' v1 is 24 bytes");
+enum : unsigned char { kClockVersion = 1 };
+enum : unsigned { kClockEveryMs = 500 };
+
+// Child side: what the report carries, kept by exchange() and on_child_packet.
+unsigned g_consumed_round   = 0;   // the round last handed to the game
+bool     g_consumed_any     = false;
+unsigned g_newest_agg_round = 0;   // the newest aggregate filed
+bool     g_newest_agg_any   = false;
+unsigned g_clock_last_ms    = 0;   // last report sent
+unsigned g_clock_win_ms     = 0;   // frame-time window start
+unsigned g_clock_win_frames = 0;
+unsigned long long g_clock_sent = 0;
+// Parent side: the newest report per seat.
+struct ClockSeen { bool have; ClockReport r; unsigned at_ms; unsigned long long n; };
+ClockSeen g_clock_seen[kCommsMaxPlayers];
+
+void clock_note_frame() {
+    const unsigned t = now_ms();
+    if (g_clock_win_ms == 0) g_clock_win_ms = t ? t : 1;
+    ++g_clock_win_frames;
+}
+
+void clock_send_if_due() {
+    if (g_role != kRoleChild || g_state != kCommsChildConnected) return;
+    const unsigned t = now_ms();
+    if (g_clock_last_ms && (unsigned)(t - g_clock_last_ms) < kClockEveryMs) return;
+    g_clock_last_ms = t ? t : 1;
+    ClockReport r;
+    std::memset(&r, 0, sizeof r);
+    r.tag            = kAuxClockLE;
+    r.version        = kClockVersion;
+    r.seat           = (unsigned char)g_slot;
+    r.input_delay    = (unsigned char)(g_input_delay & 0xFF);
+    r.consumed_round = g_consumed_round;
+    r.newest_round   = g_newest_agg_round;
+    if (g_clock_win_frames && g_clock_win_ms) {
+        const unsigned span = t - g_clock_win_ms;
+        r.mean_frame_us = (unsigned)((unsigned long long)span * 1000ull /
+                                     g_clock_win_frames);
+    }
+    g_clock_win_ms = t ? t : 1;
+    g_clock_win_frames = 0;
+    int rtt = g_handshake_rtt_ms;
+    if (rtt < 0) rtt = 0;
+    if (rtt > 0xFFFF) rtt = 0xFFFF;
+    r.rtt_ms = (unsigned short)rtt;
+    send_raw(&r, (int)sizeof r, slot_addr(0));
+    ++g_aux_tx[kAuxKindClock];
+    ++g_clock_sent;
+}
+
+void on_clock_report(const unsigned char *m, int n, int sender) {
+    if (g_role != kRoleParent || n != (int)sizeof(ClockReport)) return;
+    // Relay v1 cannot say which child sent it once there are two; a report
+    // filed under a guessed seat would blame the wrong console.
+    if (g_net_mode == kNetRelay && !relay_stamped() && popcount_live(g_live) > 2)
+        return;
+    ClockReport r;
+    std::memcpy(&r, m, sizeof r);
+    if (r.version != kClockVersion) return;
+    ClockSeen &c = g_clock_seen[sender];
+    c.have  = true;
+    c.r     = r;
+    c.at_ms = now_ms();
+    ++c.n;
 }
 
 // THE CHILD'S RTT REPORT. A JOIN with bit 30 set in `have`, carrying the round
@@ -2413,10 +2920,74 @@ void child_send_report() {
     fill_header(j, kTypeJoin);
     j.have = kJoinReportBit | (unsigned)r |
              ((unsigned)(g_input_delay & 0xFF) << 16);
+    join_stamp(j, kJoinReport);
     send_to_slot(j, 0);
     g_last_report_ms = now_ms();
     ++g_report_tries;
 }
+
+// THE PROBES AND THE MINIMUM (see the banner over g_rtt_samples). Child side.
+//
+// The first report is held while the probes are out and goes when every probe
+// is answered or rtt_probe_wait_ms() passes, carrying the smallest of the
+// handshake sample and the probes: every way a sample goes wrong makes it
+// LONGER, never shorter.
+unsigned rtt_probe_wait_ms() {
+    unsigned w = 3u * (unsigned)(g_handshake_rtt_ms > 0 ? g_handshake_rtt_ms : 0);
+    if (w < 300u) w = 300u;
+    if (w > kRttProbeWaitMs) w = kRttProbeWaitMs;
+    return w;
+}
+
+void rtt_finish(unsigned t, const char *why) {
+    g_rtt_probing = false;
+    const int n = g_rtt_nsamples;
+    int med = n > 0 ? g_rtt_samples[0] : g_handshake_rtt_ms;
+    for (int i = 1; i < n; ++i)
+        if (g_rtt_samples[i] < med) med = g_rtt_samples[i];
+    char list[96];
+    int w = 0;
+    list[0] = 0;
+    for (int i = 0; i < n && w < (int)sizeof list - 12; ++i)
+        w += std::snprintf(list + w, sizeof list - (size_t)w, "%s%d",
+                           i ? " " : "", g_rtt_samples[i]);
+    std::fprintf(stderr, "[comms:loopback] round trip from %d sample(s) "
+                 "[handshake first: %s] ms: minimum %d ms (%s, %u ms after the "
+                 "accept); this is the number reported\n",
+                 n, list, med, why, t - g_rtt_probe_ms);
+    g_handshake_rtt_ms = med;
+    // The republish interval follows the better number: same rule and bounds
+    // as the handshake sample's, and the env still wins.
+    if (std::getenv("SM64DS_COMMS_RESEND_MS") == 0) {
+        int r = med;
+        if (r < 20)  r = 20;
+        if (r > 250) r = 250;
+        g_resend_ms = r;
+    }
+    g_report_acked = false;
+    g_report_tries = 0;
+    child_send_report();
+}
+
+// An ACCEPT addressed to this end whose echo names one of its JOINs: the exact
+// round trip of that JOIN. A probe's answer files a sample; each JOIN counts
+// once, so a duplicated ACCEPT (SM64DS_COMMS_DUP) cannot count twice.
+void rtt_on_answer(JoinSent &s, unsigned t) {
+    ++g_rtt_exact;
+    const unsigned char kind = s.kind;
+    const unsigned sent = s.at_ms;
+    s.nonce = 0;
+    // A probe's answer, or the late answer to a knock sent before the first
+    // ACCEPT (exact too, now that it names its JOIN), while the samples are
+    // still being gathered.
+    if ((kind != kJoinProbe && kind != kJoinKnock) || !g_rtt_probing) return;
+    if (g_rtt_nsamples < 1 + kRttProbes) {
+        const int r = (int)(t - sent);
+        g_rtt_samples[g_rtt_nsamples++] = r < 0 ? 0 : r;
+    }
+    if (g_rtt_nsamples >= 1 + kRttProbes) rtt_finish(t, "all answered");
+}
+
 
 // ADOPT A DELAY THE PARENT PUBLISHED. Split out of the accept arm because the
 // parent may now publish a SECOND number -- it sizes the session from every
@@ -2481,10 +3052,11 @@ void child_adopt_delay(int parent_delay, bool at_accept) {
     g_input_delay = parent_delay;
     // SAY IT BACK. The parent will not serve round 0 until every child it
     // retold has acked, so this is not politeness, it is the thing that lets
-    // the session start.
+    // the session start. While the round-trip probes are out the report is
+    // held, and the one rtt_finish() sends carries this number too.
     g_report_acked  = false;
     g_report_tries  = 0;
-    child_send_report();
+    if (!g_rtt_probing) child_send_report();
 }
 
 void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
@@ -2530,6 +3102,14 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
         if (g_state != kCommsChildConnected && !session_check_ok(p)) {
             Packet bye;
             fill_header(bye, kTypeBye);
+            // The reason rides the BYE (see kSessionRefuseTag).
+            {
+                char canon[160];
+                std::memcpy(bye.blocks[0], kSessionRefuseTag, 4);
+                put_u32le(bye.blocks[0] + 4, g_session_refuse);
+                put_u32le(bye.blocks[0] + 8, session_build_id());
+                put_u32le(bye.blocks[0] + 12, session_digest(canon, sizeof canon));
+            }
             send_to_slot(bye, 0);
             std::fflush(stderr);
             std::fflush(stdout);
@@ -2537,8 +3117,29 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
         }
         g_live = p.live_wide;
         if (g_state != kCommsChildConnected) {
-            if (g_join_started_ms != 0) {
-                g_handshake_rtt_ms = (int)(now_ms() - g_join_started_ms);
+            // THE HANDSHAKE SAMPLE. Exact when the host echoed which JOIN this
+            // ACCEPT answers (a 1.0 host; see the banner over g_rtt_samples);
+            // otherwise the old reading, first JOIN to first ACCEPT.
+            JoinSent *js = ((p.have & 0x80000000u) &&
+                            (int)(p.have & 0xFFu) == g_slot) ? join_answered(p) : 0;
+            // THE HOST ANSWERS PROBES WITH AN ECHO when it is this build, and
+            // the session check just above has proved it is: it passes only
+            // on the same build id. The first ACCEPT a joiner sees is often
+            // not its own (the roster announce goes out first, and over the
+            // relay every ACCEPT reaches every child), so the echo itself may
+            // not be on it.
+            if (!g_legacy_peer_sim ||
+                std::memcmp(p.blocks[0] + kRttEchoAt, kRttEchoTag, 4) == 0)
+                g_rtt_echo_seen = true;
+            if (js || g_join_started_ms != 0) {
+                const unsigned tnow = now_ms();
+                if (js) {
+                    g_rtt_echo_seen = true;
+                    g_handshake_rtt_ms = (int)(tnow - js->at_ms);
+                    rtt_on_answer(*js, tnow);
+                } else {
+                    g_handshake_rtt_ms = (int)(tnow - g_join_started_ms);
+                }
                 if (g_handshake_rtt_ms < 0) g_handshake_rtt_ms = 0;
                 // TUNE THE REPUBLISH TO THE MEASURED PATH. This is the first
                 // and only round trip this carrier gets to see before the
@@ -2578,6 +3179,13 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
             // exists to prevent, arriving by a different door. Before any
             // round has been consumed there is nothing to replay: exchange()
             // returns 0 until this line sets kCommsChildConnected.
+            // THE PROBES, armed before the delay is adopted so an adoption
+            // does not send the report early: when the host echoes, the first
+            // report waits for the minimum (see the banner over g_rtt_samples).
+            g_rtt_nsamples = 0;
+            if (g_handshake_rtt_ms >= 0) g_rtt_samples[g_rtt_nsamples++] = g_handshake_rtt_ms;
+            g_rtt_probing = g_rtt_echo_seen && g_net_mode != kNetLoopback &&
+                            !g_legacy_peer_sim;
             child_adopt_delay((int)((p.have >> 8) & 0xFF), true);
             // ROLLBACK IS THE PARENT'S CALL TOO, for the same reason the
             // delay is: one end predicting while the other waits is two
@@ -2618,7 +3226,20 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
             // one of its datagrams, so this is the sample.
             g_report_acked = false;
             g_report_tries = 0;
-            child_send_report();
+            if (g_rtt_probing) {
+                // Every probe at once: each answer names its own JOIN, so
+                // they cannot be confused, and the report waits one round
+                // trip instead of five.
+                g_rtt_probe_ms = now_ms();
+                for (int i = 0; i < kRttProbes; ++i) {
+                    Packet j;
+                    fill_header(j, kTypeJoin);        // a plain re-knock
+                    join_stamp(j, kJoinProbe);
+                    send_to_slot(j, 0);
+                }
+            } else {
+                child_send_report();
+            }
             break;
         }
         // ALREADY CONNECTED. Two things can still be in this accept: the ack
@@ -2634,6 +3255,19 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
         // end believing the parent has its round trip when the parent has
         // nothing, and the parent would then hold round 0 for a confirmation
         // that had already been thrown away.
+        // AN ANSWER TO A PROBE (or a late answer to a knock) IS A ROUND-TRIP
+        // SAMPLE AND NOTHING ELSE: with the echo this end knows it did not
+        // answer a report, so it is never taken as the report's ack.
+        if ((p.have & 0x80000000u) && (int)(p.have & 0xFFu) == g_slot) {
+            if (JoinSent *js = join_answered(p)) {
+                const unsigned char kind = js->kind;
+                rtt_on_answer(*js, now_ms());
+                if (kind != kJoinReport) {
+                    child_adopt_delay((int)((p.have >> 8) & 0xFF), false);
+                    break;
+                }
+            }
+        }
         if ((p.have & kAcceptRttAckBit) && (p.have & 0x80000000u) &&
             (int)(p.have & 0xFFu) == g_slot)
             g_report_acked = true;
@@ -2688,6 +3322,10 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
                     s.mask |= (1u << i);
                 }
             }
+            if (!g_newest_agg_any || (int)(p.round - g_newest_agg_round) > 0) {
+                g_newest_agg_round = p.round;   // for the 'SYNK' clock report
+                g_newest_agg_any   = true;
+            }
             // ADVANCE THE LOW-WATER MARK BY SCANNING, NOT BY JUMPING TO
             // p.round + 1. Jumping is the obvious version and it is wrong the
             // moment anything arrives out of order -- which jitter guarantees.
@@ -2705,6 +3343,8 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
             break;
         }
         if (p.round != g_round) break;   // a round we already finished
+        g_newest_agg_round = p.round;    // for the 'SYNK' clock report
+        g_newest_agg_any   = true;
         g_live = p.live_wide;
         for (int i = 0; i < kCommsMaxPlayers; ++i) {
             if (p.have & (1u << i)) {
@@ -2742,6 +3382,10 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
 //                      is a sender byte in the sync payload -- a wire change,
 //                      named as the next step, not smuggled in behind a
 //                      measurement it would invalidate.
+//                      Multiplayer 1.0 (lane VSAUX1): that fix is relay v2's
+//                      seat stamp. On a v2 relay dispatch() reads the stamped
+//                      byte and never calls this; the guess below is the
+//                      relay v1 fallback's answer only.
 unsigned long long g_aux_ambiguous = 0;
 
 int classify_aux_sender(const sockaddr_in &from) {
@@ -2784,29 +3428,89 @@ void dispatch(const unsigned char *raw, int n, const sockaddr_in &from) {
         return;
     }
 
-    int aux_kind = -1;
-    if (n >= 4 && std::memcmp(raw, &kAuxMagicLE, 4) == 0) aux_kind = 0;
-    else if (n >= 4 && std::memcmp(raw, &kAuxPingLE, 4) == 0) aux_kind = 1;
-    else if (n >= 4 && std::memcmp(raw, &kAuxPongLE, 4) == 0) aux_kind = 2;
-    else if (n >= 4 && std::memcmp(raw, &kAuxVoiceLE, 4) == 0)
-        aux_kind = kAuxKindVoice;
-    if (aux_kind >= 0) {
-        const int sender = classify_aux_sender(from);
+    if (aux_tag_known(raw, n)) {
+        const int aux_kind = aux_kind_of(raw, n);
+        if (aux_kind < 0) { ++g_aux_bad_len; ++g_dropped; return; }
+        // WHO SENT IT. On relay v2 the relay wrote the answer into byte 5 and
+        // nothing else can: that is the seat, full stop (after checking the
+        // datagram came from the relay at all). Everywhere else the carrier's
+        // own classifier answers, as it always has.
+        int sender;
+        if (relay_stamped()) {
+            sender = same_addr(from, g_relay_addr) ? (int)raw[5] : -1;
+            if (sender >= slot_cap()) sender = -1;
+        } else {
+            sender = classify_aux_sender(from);
+        }
         if (sender < 0 || sender >= kCommsMaxPlayers || sender == g_slot) {
+            ++g_aux_bad_seat;
             ++g_dropped;
             return;
         }
-        /* Newest wins WITHIN one sender's one kind; see the queue's own
-           note for why the slots are split. A superseded message is
-           counted rather than silently forgotten, because "sync looks
-           laggy" and "sync is being outrun by its own send rate" are
-           different problems and the counter is what tells them apart. */
-        AuxSlot &slot = g_aux[sender][aux_kind];
-        if (slot.len != 0) ++g_aux_superseded;
-        const int keep = n < kAuxMaxBytes ? n : kAuxMaxBytes;
-        std::memcpy(slot.buf, raw, (size_t)keep);
-        slot.len = keep;
-        return;
+        ++g_aux_rx[sender][aux_kind];
+        unsigned char m[kAuxMaxBytes];
+        std::memcpy(m, raw, (size_t)n);
+        // THE ENVELOPE'S SEAT BYTE, made true on every path: stamped by the
+        // relay on v2, stamped here from the classifier everywhere else.
+        // 'SYN1' is the exception: its byte 5 is the high half of a version
+        // word the sender always writes as 0 (kSyncVersion is 4), and relay
+        // v2's stamp would make every child's snapshot read as version
+        // 0x104, 0x204, ... and be refused by the sync layer. The sender
+        // wrote 0 there; the carrier puts the 0 back.
+        if (aux_kind == kAuxKindSync) m[5] = 0;
+        else                          m[5] = (unsigned char)sender;
+        // ONE ASKED SEAT PER PING. Relay v2 caps a seat's pongs at 6 a second
+        // and at 16 players an echo-everyone ping draws 30; so a ping sent
+        // through the relay names ONE seat at byte 6 (lb_send_aux rotates it)
+        // and only that seat answers. 0xFF is the old broadcast ping, still
+        // answered by everyone, which is what every other path sends.
+        if (aux_kind == kAuxKindPing && m[6] != 0xFF && m[6] != (unsigned char)g_slot) {
+            ++g_ping_not_asked;
+            return;
+        }
+        switch (kAuxTable[aux_kind].queue) {
+        case kAuxQueueCarrier:
+            on_clock_report(m, n, sender);
+            return;
+        case kAuxQueueSeatFifo: {
+            AuxFifo &f = g_voice_fifo[sender];
+            if (f.count == kVoiceFifoDepth) {        // drop the oldest
+                f.head = (f.head + 1) % kVoiceFifoDepth;
+                --f.count;
+                ++g_aux_fifo_drop;
+            }
+            AuxSlot &s = f.e[(f.head + f.count) % kVoiceFifoDepth];
+            std::memcpy(s.buf, m, (size_t)n);
+            s.len = n;
+            ++f.count;
+            return;
+        }
+        case kAuxQueueShared: {
+            if (g_chat_count == kChatFifoDepth) {
+                g_chat_head = (g_chat_head + 1) % kChatFifoDepth;
+                --g_chat_count;
+                ++g_aux_fifo_drop;
+            }
+            ChatEntry &c = g_chat_fifo[(g_chat_head + g_chat_count) % kChatFifoDepth];
+            c.seat = sender;
+            std::memcpy(c.m.buf, m, (size_t)n);
+            c.m.len = n;
+            ++g_chat_count;
+            return;
+        }
+        default: {
+            /* Newest wins WITHIN one sender's one kind; see the queue's own
+               note for why the slots are split. A superseded message is
+               counted rather than silently forgotten, because "sync looks
+               laggy" and "sync is being outrun by its own send rate" are
+               different problems and the counter is what tells them apart. */
+            AuxSlot &slot = g_aux[sender][aux_kind];
+            if (slot.len != 0) ++g_aux_superseded;
+            std::memcpy(slot.buf, m, (size_t)n);
+            slot.len = n;
+            return;
+        }
+        }
     }
 
     Packet p;
@@ -3048,6 +3752,8 @@ void service() {
         if (!g_relay_paired) return;
     }
 
+    clock_send_if_due();              // children: the 'SYNK' clock report
+
     // A child that has not been accepted keeps knocking. BACKOFF IN THE
     // ADDRESS MODES, flat 50 ms on loopback (where it always was and where
     // there is no wire to flood). A lost JOIN or a lost ACCEPT must cost a
@@ -3069,6 +3775,10 @@ void service() {
     const unsigned report_every = (unsigned)(g_resend_ms > (int)kReportRetryFloorMs
                                              ? g_resend_ms : (int)kReportRetryFloorMs);
     if (g_role == kRoleChild && g_state == kCommsChildConnected &&
+        g_rtt_probing && (unsigned)(t - g_rtt_probe_ms) >= rtt_probe_wait_ms())
+        rtt_finish(t, "timed out waiting for the rest");
+    if (g_role == kRoleChild && g_state == kCommsChildConnected &&
+        !g_rtt_probing &&
         !g_report_acked && g_report_tries < kMaxReportTries &&
         (unsigned)(t - g_last_report_ms) >= report_every) {
         child_send_report();
@@ -3084,6 +3794,7 @@ void service() {
             // address modes the same byte is only a PROPOSAL, and the parent's
             // ACCEPT is the answer. Same byte, two meanings, decided by mode.
             fill_header(j, kTypeJoin);
+            if (!g_legacy_peer_sim) join_stamp(j, kJoinKnock);
             send_to_slot(j, 0);
             ++g_resends;
             ++g_joins_sent;
@@ -3303,6 +4014,17 @@ void lb_open(unsigned mode) {
     g_slot    = bound;
     g_my_port = g_port_base + bound;
     g_open    = true;
+    // A NEW SOCKET IS A NEW ADDRESS TO THE RELAY, so a reopen pairs again
+    // rather than trusting an ACK that named the old one. The seat a version 2
+    // relay stamped is kept: relay_want_seat() asks for it back.
+    g_relay_paired = false;
+    // The clock report and the aux queues start with the session.
+    g_consumed_round = 0;   g_consumed_any   = false;
+    g_newest_agg_round = 0; g_newest_agg_any = false;
+    g_clock_last_ms = 0;    g_clock_win_ms = 0; g_clock_win_frames = 0;
+    std::memset(g_clock_seen, 0, sizeof g_clock_seen);
+    std::memset(g_voice_fifo, 0, sizeof g_voice_fifo);
+    g_chat_head = g_chat_count = 0;
     g_parent_requested = false;
     g_state   = kCommsIdle;      // open() does not connect anything
     g_live    = 0;
@@ -3361,8 +4083,76 @@ void lb_open(unsigned mode) {
     }
 }
 
+// THE AUX VERDICT, ONCE, AT CLOSE (lane VSAUX1). Who this console heard, per
+// seat and per kind -- the attribution the relay's stamp exists for, in a form
+// a proof can compare against every sender's own tx count -- and, on the
+// parent, where each child's clock stood in its last report. Printed only when
+// the session carried aux or clock traffic, so a session without any keeps
+// its close exactly as before.
+void aux_close_report(int my_slot) {
+    bool any = g_aux_tx_refused || g_aux_bad_len || g_aux_bad_seat;
+    for (int k = 0; k < kAuxKinds; ++k) if (g_aux_tx[k]) any = true;
+    for (int s = 0; s < kCommsMaxPlayers; ++s)
+        for (int k = 0; k < kAuxKinds; ++k) if (g_aux_rx[s][k]) any = true;
+    if (!any) return;
+    static char line[3072];
+    int w = 0;
+    const char *how = g_net_mode == kNetLoopback ? "loopback port"
+                    : g_net_mode == kNetDirect   ? "direct address"
+                    : relay_stamped()            ? "relay v2 stamp"
+                                                 : "relay v1 star";
+    w += std::snprintf(line + w, sizeof line - (size_t)w,
+                       "[comms:loopback] aux: slot %d, senders by %s; tx", my_slot, how);
+    for (int k = 0; k < kAuxKinds && w < (int)sizeof line - 64; ++k)
+        w += std::snprintf(line + w, sizeof line - (size_t)w, " %c=%llu",
+                           kAuxTable[k].letter, g_aux_tx[k]);
+    w += std::snprintf(line + w, sizeof line - (size_t)w, " refused=%llu | rx",
+                       g_aux_tx_refused);
+    for (int s = 0; s < kCommsMaxPlayers && w < (int)sizeof line - 200; ++s) {
+        bool heard = false;
+        for (int k = 0; k < kAuxKinds; ++k) if (g_aux_rx[s][k]) heard = true;
+        if (!heard) continue;
+        w += std::snprintf(line + w, sizeof line - (size_t)w, " s%d:", s);
+        bool first = true;
+        for (int k = 0; k < kAuxKinds; ++k) {
+            if (!g_aux_rx[s][k]) continue;
+            w += std::snprintf(line + w, sizeof line - (size_t)w, "%s%c%llu",
+                               first ? "" : ",", kAuxTable[k].letter,
+                               g_aux_rx[s][k]);
+            first = false;
+        }
+    }
+    std::snprintf(line + w, sizeof line - (size_t)w,
+                  " | ambiguous=%llu bad_seat=%llu bad_len=%llu not_asked=%llu "
+                  "fifo_drop=%llu superseded=%llu\n",
+                  g_aux_ambiguous, g_aux_bad_seat, g_aux_bad_len,
+                  g_ping_not_asked, g_aux_fifo_drop, g_aux_superseded);
+    std::fputs(line, stderr);
+    if (g_role == kRoleParent) {
+        w = std::snprintf(line, sizeof line, "[comms:loopback] clock reports:");
+        bool some = false;
+        for (int s = 1; s < kCommsMaxPlayers && w < (int)sizeof line - 96; ++s) {
+            const ClockSeen &c = g_clock_seen[s];
+            if (!c.have) continue;
+            some = true;
+            w += std::snprintf(line + w, sizeof line - (size_t)w,
+                               " s%d n=%llu consumed=%u newest=%u frame=%uus "
+                               "rtt=%ums delay=%u;", s, c.n,
+                               c.r.consumed_round, c.r.newest_round,
+                               c.r.mean_frame_us, (unsigned)c.r.rtt_ms,
+                               (unsigned)c.r.input_delay);
+        }
+        if (some) std::fprintf(stderr, "%s parent consumed=%u\n", line,
+                               g_consumed_round);
+    } else if (g_clock_sent) {
+        std::fprintf(stderr, "[comms:loopback] clock reports: sent %llu to the "
+                     "parent\n", g_clock_sent);
+    }
+}
+
 void lb_close() {
     if (!g_open) return;             // double close is legal and silent
+    const int my_slot = g_slot;      // for the aux line, which prints after the reset
     Packet b;
     fill_header(b, kTypeBye);
     if (g_role == kRoleParent) send_to_children(b);
@@ -3377,6 +4167,8 @@ void lb_close() {
     g_latched_mask = 0;
     g_stage_mask   = 0;
     std::memset(g_aux, 0, sizeof g_aux);   // pending aux dies with the session
+    std::memset(g_voice_fifo, 0, sizeof g_voice_fifo);
+    g_chat_head = g_chat_count = 0;
     // THE PACING VERDICT, ONCE, ON EVERY SESSION. Run rel0215 lane vslag.
     //
     // `starved` is what tells a pair their input delay is too shallow for
@@ -3411,6 +4203,7 @@ void lb_close() {
                  "starved=%llu sent=%llu recvd=%llu resends=%llu%s\n",
                  rb_live_round(), g_input_delay, g_pipe_starved, g_sent, g_recvd,
                  g_resends, by);
+    aux_close_report(my_slot);
     if (g_rollback)
         std::fprintf(stderr, "[comms:loopback] rollback: live=0x%x peak=0x%x predicted=%llu ok=%llu "
                      "mispredicted=%llu rewinds=%llu replayed=%llu "
@@ -3483,6 +4276,9 @@ void lb_become_child() {
     g_last_join_ms = now_ms() - (unsigned)g_join_wait_ms;
     g_join_started_ms = 0;
     delay_state_reset();
+    g_rtt_probing   = false;             // the round-trip samples start afresh
+    g_rtt_echo_seen = false;
+    g_rtt_nsamples  = 0;
     service();
 }
 
@@ -3870,6 +4666,9 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         }
         std::memcpy(g_latched, s->blocks, sizeof g_latched);
         g_latched_mask = s->mask & g_live;
+        g_consumed_round = want;          // for the 'SYNK' clock report
+        g_consumed_any   = true;
+        clock_note_frame();
         ++g_round;
         // A ROUND HAS REACHED THE GAME. Rule 2's bound: from here the depth is
         // part of this end's history and cannot move.
@@ -3918,6 +4717,9 @@ int lb_exchange(const void *my_block, uint16_t *status) {
     // -- an incomplete exchange() never disturbs the last good round.
     std::memcpy(g_latched, g_stage, sizeof g_latched);
     g_latched_mask = g_stage_mask & g_live;
+    g_consumed_round = g_round;           // for the 'SYNK' clock report
+    g_consumed_any   = true;
+    clock_note_frame();
 
     ++g_round;
     g_stage_mask = 0;
@@ -3987,10 +4789,29 @@ void lb_poll() { service(); }
  * channel -- a peer that missed this message is exactly the case the channel
  * already tolerates, and returning 0 there would make the caller treat a
  * mostly-delivered broadcast as a total failure. */
+// The seat the next relayed ping asks to answer: the live seats other than
+// this one, in turn. -1 when there is nobody (the ping then stays a broadcast,
+// which with nobody to answer costs nothing).
+int g_ping_rr = 0;
+int ping_next_seat() {
+    for (int i = 1; i <= kCommsMaxPlayers; ++i) {
+        const int s = (g_ping_rr + i) % kCommsMaxPlayers;
+        if (s == g_slot || (g_live & (1u << s)) == 0) continue;
+        g_ping_rr = s;
+        return s;
+    }
+    return -1;
+}
+
 int lb_send_aux(const void *buf, int len) {
     if (!buf || len <= 0) return 0;
     if (g_sock == INVALID_SOCKET) return 0;
     if (len > kAuxMaxBytes) return 0;          // one datagram or nothing
+    // THE KIND TABLE, OUTBOUND. A tag or length the table does not name is
+    // refused here, before it costs a relay budget slot the relay would only
+    // spend on dropping it.
+    const int kind = aux_kind_of(buf, len);
+    if (kind < 0) { ++g_aux_tx_refused; return 0; }
 
     /* THROUGH THE RELAY, ONE COPY. The relay fans a parent's datagram out to
        every child and sends a child's to the parent, so the loop below would
@@ -3999,7 +4820,36 @@ int lb_send_aux(const void *buf, int len) {
        through that helper -- aux carries opaque bytes, not a Packet. */
     if (g_net_mode == kNetRelay) {
         if (!g_relay_paired) return 0;
+        ++g_aux_tx[kind];
+        // ONE ASKED SEAT PER PING, through relay v2. Relay v2 fans a ping to
+        // every seat but caps each seat's pongs at 6 a second; the sync
+        // layer's ping is a broadcast (byte 6 = 0xFF) that every peer
+        // answers, so at 16 players each console would draw 15 pings x 2 Hz
+        // = 30 pongs a second and the relay would drop four in five (HUB1
+        // suspect S2). Byte 6 names the one seat that answers, rotating, the
+        // way the adventure hub does; every other seat hears the ping (it is
+        // still presence) and does not answer (dispatch()). On relay v1 the
+        // broadcast stays: only the host hears a joiner's ping there.
+        if (kind == kAuxKindPing && relay_stamped() &&
+            ((const unsigned char *)buf)[6] == 0xFF) {
+            const int to = ping_next_seat();
+            if (to >= 0) {
+                unsigned char m[16];
+                std::memcpy(m, buf, (size_t)len);
+                m[6] = (unsigned char)to;
+                send_raw(m, len, g_relay_addr);
+                return len;
+            }
+        }
         send_raw(buf, len, g_relay_addr);
+        return len;
+    }
+    // THE CLOCK REPORT IS FOR THE PARENT ALONE, on every path (relay v2 routes
+    // it child -> parent); nobody else has a use for it.
+    if (kind == kAuxKindClock) {
+        if (g_role != kRoleChild) return 0;
+        send_raw(buf, len, slot_addr(0));
+        ++g_aux_tx[kind];
         return len;
     }
 
@@ -4018,6 +4868,7 @@ int lb_send_aux(const void *buf, int len) {
                                 (sockaddr *)&to, (int)sizeof to);
         if (n == len) sent = len;
     }
+    if (sent) ++g_aux_tx[kind];
     return sent;
 }
 
@@ -4034,7 +4885,10 @@ int lb_recv_aux(void *buf, int cap) {
     const int total = kCommsMaxPlayers * kAuxKinds;
     for (int i = 0; i < total; ++i) {
         const int idx = (g_aux_rr + i) % total;
-        if ((idx % kAuxKinds) == kAuxKindVoice) continue;   // lane VOICE: not ours
+        // THE SYNC LAYER'S KINDS ONLY. Voice, chat, identity and the clock
+        // each have their own reader (see the kind table); serving them here
+        // would let the sync pump's drain-until-zero loop eat them.
+        if (!kAuxTable[idx % kAuxKinds].sync_layer) continue;
         AuxSlot &slot = g_aux[idx / kAuxKinds][idx % kAuxKinds];
         if (slot.len <= 0) continue;
         const int n = slot.len < cap ? slot.len : cap;
@@ -4047,38 +4901,80 @@ int lb_recv_aux(void *buf, int cap) {
 }
 
 // ---------------------------------------------------------------------------
-// THE VOICE READER. Lane VOICE.
+// THE KIND READER (multiplayer 1.0, lane VSAUX1). Lane VOICE's reader, made
+// general so a later kind never has to touch this file.
 //
-// The same round-robin over the same slots, restricted to the voice kind, with
-// its OWN cursor so a busy voice channel cannot move the sync layer's cursor
-// and vice versa. `from` is the sender slot the carrier already classified --
-// by source port on loopback, by learned address in direct mode, by the
-// packet's own slot field on the relay -- so the audio payload never has to be
-// trusted to say who sent it.
+// One whole datagram of the kind `tag` names, with the SENDER'S SEAT through
+// `from` -- the seat the relay stamped (relay v2) or the carrier classified (by
+// source port on loopback, by learned address in direct mode, by the star on
+// relay v1) -- so no payload is ever trusted to say who sent it. Byte 5 of the
+// datagram says the same seat. Returns the byte count, or 0 when nothing is
+// waiting; never blocks. A datagram longer than `cap` is dropped (counted) and
+// the next one tried, rather than handed over cut short.
 //
-// Returns the byte count, or 0 when nothing is waiting. Never blocks. It
-// drains the socket first, exactly as lb_recv_aux does, because voice has to
-// work with the sync layer switched off and that layer's pump is the only
-// other thing that would have drained it. service() is idempotent -- a
-// nonblocking read loop that stops on WSAEWOULDBLOCK -- so a second call in
-// the same frame costs one failed recvfrom.
-int g_voice_rr = 0;
+// It drains the socket first, exactly as lb_recv_aux does, because each of
+// these readers has to work with the sync layer switched off. service() is
+// idempotent -- a nonblocking read loop that stops on WSAEWOULDBLOCK -- so a
+// second call in the same frame costs one failed recvfrom.
+//
+// SERVED: 'SYNV' voice (a FIFO per seat, round-robin across seats), 'SYNT'
+// chat (one FIFO for the room, oldest first), 'SYNI' identity (newest per
+// seat, round-robin). REFUSED (returns 0): the sync layer's three kinds, which
+// recv_aux serves, and the clock report, which this file consumes.
+int g_kind_rr[kAuxKinds];
 
-int lb_recv_voice(void *buf, int cap, int *from) {
+int lb_recv_kind(unsigned tag, void *buf, int cap, int *from) {
     if (!buf || cap <= 0) return 0;
+    int kind = -1;
+    for (int k = 0; k < kAuxKinds; ++k)
+        if (kAuxTable[k].tag == tag) { kind = k; break; }
+    if (kind < 0 || kAuxTable[kind].sync_layer ||
+        kAuxTable[kind].queue == kAuxQueueCarrier)
+        return 0;
     service();
-    for (int i = 0; i < kCommsMaxPlayers; ++i) {
-        const int s = (g_voice_rr + i) % kCommsMaxPlayers;
-        AuxSlot &slot = g_aux[s][kAuxKindVoice];
-        if (slot.len <= 0) continue;
-        const int n = slot.len < cap ? slot.len : cap;
-        std::memcpy(buf, slot.buf, (size_t)n);
-        slot.len = 0;
-        g_voice_rr = (s + 1) % kCommsMaxPlayers;
-        if (from) *from = s;
-        return n;
+    switch (kAuxTable[kind].queue) {
+    case kAuxQueueShared:
+        while (g_chat_count > 0) {
+            ChatEntry &c = g_chat_fifo[g_chat_head];
+            g_chat_head = (g_chat_head + 1) % kChatFifoDepth;
+            --g_chat_count;
+            if (c.m.len > cap) { ++g_aux_fifo_drop; continue; }
+            std::memcpy(buf, c.m.buf, (size_t)c.m.len);
+            if (from) *from = c.seat;
+            return c.m.len;
+        }
+        return 0;
+    case kAuxQueueSeatFifo:
+        for (int i = 0; i < kCommsMaxPlayers; ++i) {
+            const int s = (g_kind_rr[kind] + i) % kCommsMaxPlayers;
+            AuxFifo &f = g_voice_fifo[s];
+            while (f.count > 0) {
+                AuxSlot &e = f.e[f.head];
+                f.head = (f.head + 1) % kVoiceFifoDepth;
+                --f.count;
+                if (e.len > cap) { ++g_aux_fifo_drop; continue; }
+                std::memcpy(buf, e.buf, (size_t)e.len);
+                g_kind_rr[kind] = (s + 1) % kCommsMaxPlayers;
+                if (from) *from = s;
+                return e.len;
+            }
+        }
+        return 0;
+    default:
+        for (int i = 0; i < kCommsMaxPlayers; ++i) {
+            const int s = (g_kind_rr[kind] + i) % kCommsMaxPlayers;
+            AuxSlot &slot = g_aux[s][kind];
+            if (slot.len <= 0) continue;
+            const int n = slot.len;
+            slot.len = 0;
+            if (n > cap) { ++g_aux_fifo_drop; continue; }
+            std::memcpy(buf, slot.buf, (size_t)n);
+            g_kind_rr[kind] = (s + 1) % kCommsMaxPlayers;
+            if (from) *from = s;
+            return n;
+        }
+        return 0;
     }
-    return 0;
 }
 
 void lb_abandon() {
@@ -4139,7 +5035,14 @@ int comms_session_players() { return g_want_players; }
 // no voice: the pump asks comms_transport() first and stays silent when the
 // carrier is not this one.
 int comms_recv_voice(void *buf, int cap, int *from_slot) {
-    return lb_recv_voice(buf, cap, from_slot);
+    return lb_recv_kind(kAuxVoiceLE, buf, cap, from_slot);
+}
+
+// The general reader, exported (see lb_recv_kind). Same reasoning as the
+// voice reader above: the seam's struct stays frozen, and the read side of a
+// port feature's kind is one carrier-specific entry.
+int comms_recv_kind(unsigned tag, void *buf, int cap, int *from_seat) {
+    return lb_recv_kind(tag, buf, cap, from_seat);
 }
 
 // ---------------------------------------------------------------------------
@@ -4151,6 +5054,33 @@ bool comms_loopback_install_from_env() {
 
     const char *role = std::getenv("SM64DS_COMMS_ROLE");
     if (!role || !*role) return false;      // nothing installed, nothing moved
+
+    // AN ADVENTURE CONSOLE NEVER OPENS THE VS CARRIER (multiplayer 1.0). An
+    // adventure console plays its own solo game and talks through the hub
+    // (hal/comms_hub.cpp), which never seats the DS multiplayer role; this
+    // carrier would seat it and put the console into a lockstep session. main()
+    // tries the hub first and only comes here when the hub declined, and
+    // hal/scene_vs_menu.cpp's port_vs_stage_and_start (the debug VS row) calls
+    // this install too. So the rule lives HERE, where every caller meets it:
+    // adventure on (SM64DS_ADVENTURE or the AdventureGhosts setting) and no VS
+    // map named means no VS carrier. A VS lobby names its map
+    // (SM64DS_VS_MAP), so a player whose settings file has AdventureGhosts on
+    // still joins a VS match normally.
+    {
+        const char *vsmap = std::getenv("SM64DS_VS_MAP");
+        if (adventure_ghost_mode() && (!vsmap || !*vsmap)) {
+            static bool said = false;
+            if (!said) {
+                said = true;
+                std::fprintf(stderr, "[comms:loopback] adventure mode is on and "
+                             "no VS map is named: NOT installing the VS carrier "
+                             "(SM64DS_COMMS_ROLE=%s ignored). Adventure goes "
+                             "through the hub; nothing here seats a DS "
+                             "multiplayer role.\n", role);
+            }
+            return false;
+        }
+    }
 
     // TWO SPELLINGS, AND BOTH OF THEM ARE THIS TREE'S OWN. Run rel0215, lane
     // vsnet.
@@ -4280,6 +5210,18 @@ bool comms_loopback_install_from_env() {
         }
         std::memcpy(g_code, code, cl);
         g_net_mode = kNetRelay;
+        // SM64DS_COMMS_RELAY_V=1 speaks relay version 1 from the start: the
+        // escape hatch if a version 2 relay ever misbehaves, and the proof's
+        // way to run this build the old way against the same relay. Anything
+        // else (and unset) is version 2 with the automatic fallback.
+        if (const char *v = std::getenv("SM64DS_COMMS_RELAY_V")) {
+            if (std::atoi(v) == 1) {
+                g_relay_ver = kRelayVersion;
+                std::fprintf(stderr, "[comms:relay] SM64DS_COMMS_RELAY_V=1: "
+                             "speaking relay version 1 (no seat stamps, aux "
+                             "reaches the host only)\n");
+            }
+        }
         if (host && *host)
             std::fprintf(stderr, "[comms:loopback] both SM64DS_COMMS_RELAY and "
                          "SM64DS_COMMS_HOST are set; using the RELAY\n");
