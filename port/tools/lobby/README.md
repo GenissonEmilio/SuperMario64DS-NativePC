@@ -140,6 +140,27 @@ with a `host` event; the room stays open. An adventure room is exempt from
 `ROOM_IDLE_S` and closes only after `ADV_EMPTY_S` (600 s) with nobody in it.
 The heartbeat still applies, so a launcher keeps polling while its game runs.
 
+**VS joining, leaving and results (run mp1, L-J1).** Tango's rules for 1.0:
+a joiner waits in the room and is in from the next match; no mid-match drop-in;
+the host leaving mid-match ends the match for everybody and the next player is
+host; one player's result does not end the match for the room. No field name
+changed and no version moved: only states and reasons widened.
+
+| what | before L-J1 | now |
+|---|---|---|
+| `join` while the room is `arming`/`go`/`in_match` | 409 `in_match` | **200, a WAITING seat**: `playing:false` for the match that is on, in no plan, slot map or names string; it sees the view, the roster and the chat. Every lobby cap still holds (join budget, `MAX_SEATS` -> `room_full`, kick cooldown, `game_mismatch`, `unknown_game`) |
+| a playing seat leaves during a match | the dial promoted a watcher into the running match; its go plan said child, slot 0 (the host's) | **nobody is promoted while a match is frozen**; the vacancy is filled when the match ends |
+| a plan for a seat not in the frozen slot map | slot 0 by default | `{"playing":false}`; `ready`/`failed`/`result` for the current match need a frozen, playing seat (else 403 `not_playing`) |
+| the match ends (`result`, `failed`, a deadline, a timeout) | watchers and dropped players stayed out until the host touched the dial | **the dial runs**: waiting and dropped seats play the next match, lowest seats first, up to the host's dial |
+| the VS host leaves (`leave`, or 45 s without a poll while in lobby) | the room closed, `closed` `why:"host_left"` | a match that is on ends: `failed` with **`reason:"host_left"`** (server-minted; 400 `bad_reason` from a client). Then the host passes to the **lowest playing seat** with a `host` event (`{"kind":"host","seat":n,"display":...}`, the adventure rooms' event). The room stays open. Only the LAST member out closes it (`closed`, `why:"host_left"`) |
+| slot 0 | the lowest playing seat, which was always the host (seat 1) | **the host, by name**, then everybody else in seat order (the host is no longer always seat 1) |
+| `result` for the current match | the FIRST valid result from any playing seat ended the match | **the host's result ends it.** A non-host's result is a vote: accepted 200, and it ends the match only when strictly more than half of the match's live seats (frozen, still playing, still in the room) have posted the same `win` and `scores`. A drop or a leave re-counts. A seat's first vote stands. A late result for an ended match is still 200 |
+
+A waiting seat reads as `playing:false` in the view while `state` is not
+`lobby`; after the match it is `playing:true` (or still `false` if the host's
+dial is below the head count). A 200 from `result` no longer means the match
+ended: the `result` event and the view's `state` say that.
+
 **World rooms.** Nobody creates a world; a launcher asks for one:
 
 ```
@@ -423,7 +444,8 @@ minute of asset extraction inside a twenty-second arming window.
 
 404 `no_such_room` if unknown or closed; 403 `kicked` if this address was
 kicked from this room inside the cooldown; 409 `room_full` at `MAX_SEATS`;
-409 `in_match` if the room is not in the lobby state.
+409 `in_match` if the room is not in the lobby state (until run mp1 L-J1:
+since then a join during a match is a waiting seat, see the v5 section).
 
 Seats are numbered 1..`MAX_SEATS` and a joiner takes the lowest free one. A
 joiner plays while fewer than `GAME_MAX_PLAYERS` seats already do; the rest are
@@ -451,9 +473,11 @@ All three are asserted in `test_units.py`, in `test_seat_stability`.
 1. **A member's seat number never changes while they hold it.** Nothing
    renumbers anybody, through other people joining, leaving, being removed and
    being promoted.
-2. **The host is always seat 1.** The creator takes seat 1, and a host leaving
-   closes the room rather than handing it on, so no live room has a host at any
-   other number.
+2. **The host starts as seat 1.** The creator takes seat 1. Until run mp1
+   (L-J1) a host leaving closed the room, so no live room had a host at any
+   other number; since then a VS host leaving passes the role to the lowest
+   playing seat, and slot 0 goes to the host by name (`assign_slots`), not to
+   the lowest seat.
 3. **Seat numbers are distinct and always inside 1..`MAX_SEATS`**, so the slots
    derived from them are distinct and always inside 0..3.
 
@@ -727,7 +751,8 @@ a match with no result is returned to lobby with `failed` reason `timeout` after
 A playing member reporting a finished match. `win` is `time-up`, `star-target`
 or `draw` (the launcher posts `draw` with all-zero scores for a `MATCH OVER`
 marker it could not parse). `scores` is four ints, 0..99, in slot order. The
-FIRST valid result for the current match appends a `result` event, discards the
+match-ending result (since run mp1 L-J1 the HOST's, or one a majority of the
+live match seats agree on; see the v5 section) appends a `result` event, discards the
 comms code, clears the match id and every `armed` flag, and returns the room to
 `lobby` -- while the room code, seats, nicknames, tokens, chat AND the params all
 survive, so "same again" is one Start press. A later result for the same match id
@@ -774,9 +799,12 @@ costs one button and takes the code with it.
 <- 200 {"v":1,"ok":true}
 ```
 
-Host: the room closes (`closed`, `why:"host_left"`). Member: the seat is freed,
-a `left` event is pushed, and the lowest spectator is promoted if a playing
-seat opened.
+Host (VS, since run mp1 L-J1): a match that is on ends with `failed`
+`reason:"host_left"`, the host passes to the lowest playing seat with a `host`
+event, and the room stays open; the last member out closes it (`closed`,
+`why:"host_left"`). Member: the seat is freed, a `left` event is pushed, and
+the lowest spectator is promoted if a playing seat opened -- in lobby only; a
+seat that opens during a match is filled when the match ends.
 
 #### `health`
 
@@ -858,7 +886,8 @@ three commas.
 
 | event | what the server does | what players see |
 |---|---|---|
-| host leaves, or 45 s without a poll | room -> `closed`, `why:"host_left"`; the record is kept 60 s so members get the reason rather than a bare 404, then deleted | "The host closed the room." |
+| VS host leaves, or 45 s without a poll in lobby | a match that is on ends (`failed`, `reason:"host_left"`); the host passes to the lowest playing seat (`host` event); the room stays (run mp1 L-J1) | the match ends with a host-left message, everybody is back in the room with a new host |
+| the last member leaves | room -> `closed`, `why:"host_left"`; the record is kept 60 s so members get the reason rather than a bare 404, then deleted | "The host closed the room." |
 | member leaves | seat freed, `left` event, spectator promoted if a playing seat opened | the name disappears; a system line says who left |
 | member stops polling | 45 s heartbeat timeout, treated as a leave with `why:"timeout"` | as above |
 | service restarts | **every room is gone.** State is in memory by design | every poll gets 404; the launcher says the room is gone and returns to the create/join screen |
