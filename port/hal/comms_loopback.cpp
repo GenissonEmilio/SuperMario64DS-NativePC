@@ -1153,6 +1153,24 @@ enum : unsigned { kStarveLogMs = 1000 };
 bool     g_lg_on = true;                     // SM64DS_COMMS_LAGGARD=0: off
 enum : unsigned { kLgRetireRounds = 90 };    // 3 s of 33 ms rounds
 enum : int { kCatchupAhead = 2 };            // rounds of slack a child keeps
+// A SLOT THAT IS STILL SENDING BUT CANNOT CATCH UP ON ITS OWN (lane LAGGARD1,
+// measured: laggard16-hitch on tip6). Catch-up (rule c) runs a joiner at its
+// unpaced speed, which is plenty on a player's own PC and nothing at all on a
+// machine with no headroom -- sixteen consoles on one PC all run flat out, so
+// a joiner that hitched once stayed nine rounds behind, was substituted for 90
+// rounds in a row while sending every frame, and was retired after ONE 0.4 s
+// hitch. Two changes, both for a slot that is SENDING (heard within the wait
+// window) rather than silent:
+//   - retirement counts only SILENT substituted rounds (a stall, a crash, a
+//     dead link: exactly 3 s of nothing), plus a give-up after kLgGiveUpRounds
+//     of substitution even while sending (10 s behind: it is not coming back);
+//   - HELP: once such a slot has been substituted kLgHelpRounds in a row, the
+//     host stretches its own frames to 5/4 of its measured pace until the slot
+//     is back in step, so a console with no spare speed closes the gap at a
+//     quarter of the room's rate (the GGPO-style time sync, one way). The room
+//     runs a little slower for those seconds instead of dropping the player.
+enum : unsigned { kLgHelpRounds = 45 };      // 1.5 s substituted while sending
+enum : unsigned { kLgGiveUpRounds = 300 };   // 10 s behind while sending
 struct LgSlot {
     bool          have;                      // a real block has landed
     unsigned      round;                     // ... for this round, the newest
@@ -1161,6 +1179,7 @@ struct LgSlot {
     unsigned      run;                       // rounds substituted in a row
     unsigned long long subst;                // rounds substituted, total
     unsigned      last_rx_ms;                // when a real block last landed
+    unsigned      silent_run;                // of `run`, rounds it was also silent
 };
 LgSlot   g_lg[kCommsMaxPlayers];
 unsigned g_lg_retired = 0;                   // parent: slots retired this session
@@ -1195,6 +1214,9 @@ int      g_lg_wait_cfg   = -1;               // -1 auto, 0 strict, >0 fixed ms
 unsigned g_lg_frame_x100 = 3333;             // host: mean frame time, ms * 100
 unsigned g_lg_last_consume_ms = 0;
 unsigned long long g_lg_waited = 0;          // host: rounds held for a sending slot
+bool     g_lg_help = false;                  // host: stretching frames for a slot
+unsigned long long g_lg_help_holds = 0;      // host: exchange() calls held by it
+unsigned long long g_lg_help_rounds = 0;     // host: rounds closed while helping
 unsigned lg_wait_window_ms() {
     if (g_lg_wait_cfg >= 0) return (unsigned)g_lg_wait_cfg;
     const unsigned w = g_lg_frame_x100 * 3u / 200u;       // 1.5 frames, ms
@@ -1245,6 +1267,9 @@ void lg_reset() {
     g_lg_frame_x100 = 3333;
     g_lg_last_consume_ms = 0;
     g_lg_waited     = 0;
+    g_lg_help       = false;
+    g_lg_help_holds = 0;
+    g_lg_help_rounds = 0;
     g_hitch_last_ms = 0;
     g_seat_mask_said = ~0u;
     g_match_full    = false;
@@ -2585,11 +2610,13 @@ void lg_retire_slot(int k) {
     g_live       &= ~bit;
     g_stage_mask &= ~bit;
     g_lg_retired |= bit;
-    const unsigned run = g_lg[k].run;
+    const unsigned run = g_lg[k].silent_run >= kLgRetireRounds ? g_lg[k].silent_run
+                                                               : g_lg[k].run;
     g_lg[k].have = false;
     g_lg[k].run  = 0;
-    std::fprintf(stderr, "[comms:loopback] slot %d retired at round %u: nothing "
-                 "usable from it for %u rounds in a row (%u ms), so the host "
+    g_lg[k].silent_run = 0;
+    std::fprintf(stderr, "[comms:loopback] slot %d retired at round %u: no block "
+                 "from it in time for %u rounds in a row (%u ms), so the host "
                  "played its last input for it and now drops it from the match. "
                  "Every console drops it from the same round (the aggregates "
                  "say so) and its body stops. Live mask now 0x%x\n",
@@ -2655,15 +2682,36 @@ bool lg_fill(PipeRound &s) {
 // A round just went out: count the substitutions and retire any slot that has
 // had nothing but substitutes for kLgRetireRounds rounds.
 void lg_account(const PipeRound &s) {
+    const unsigned t = now_ms();
+    const unsigned w = lg_wait_window_ms() > 100u ? lg_wait_window_ms() : 100u;
+    bool help = false;
     for (int k = 1; k < kCommsMaxPlayers; ++k) {
         const unsigned bit = 1u << k;
         if (!(s.agg_have & bit)) continue;
         LgSlot &p = g_lg[k];
-        if (s.lg_subst & bit) { ++p.subst; ++p.run; }
-        else                  p.run = 0;
+        const bool silent = (unsigned)(t - p.last_rx_ms) >= w;
+        if (s.lg_subst & bit) {
+            ++p.subst;
+            ++p.run;
+            if (silent) ++p.silent_run;
+        } else {
+            p.run = 0;
+            p.silent_run = 0;
+        }
+        if (!silent && p.run >= kLgHelpRounds) help = true;
     }
+    if (help != g_lg_help)
+        std::fprintf(stderr, "[comms:loopback] %s at round %u: %s\n",
+                     help ? "HELPING a player catch up" : "every player is back in step",
+                     s.round,
+                     help ? "a console that is still sending has been behind for "
+                            "1.5 s, so this host stretches its frames to 5/4 until "
+                            "it is back in step" : "frames back to the room's pace");
+    g_lg_help = help;
+    if (help) ++g_lg_help_rounds;
     for (int k = 1; k < kCommsMaxPlayers; ++k)
-        if ((g_live & (1u << k)) && g_lg[k].run >= kLgRetireRounds)
+        if ((g_live & (1u << k)) &&
+            (g_lg[k].silent_run >= kLgRetireRounds || g_lg[k].run >= kLgGiveUpRounds))
             lg_retire_slot(k);
 }
 
@@ -4646,8 +4694,8 @@ void lb_close() {
                                        i, g_lg[i].subst);
             std::snprintf(lg + w, sizeof lg - (size_t)w,
                           " late=%llu catchup=0 retired=0x%x waited=%llu "
-                          "laggard=%s", g_lg_late, g_lg_retired, g_lg_waited,
-                          g_lg_on ? "on" : "off");
+                          "helped=%llu laggard=%s", g_lg_late, g_lg_retired,
+                          g_lg_waited, g_lg_help_rounds, g_lg_on ? "on" : "off");
         } else {
             std::snprintf(lg, sizeof lg, " subst=%llu late=%llu catchup=%llu "
                           "far=%llu hitches=%llu laggard=%s",
@@ -5110,6 +5158,18 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         const unsigned want = (g_round >= (unsigned)g_input_delay)
                                   ? g_round - (unsigned)g_input_delay
                                   : 0u;
+        // HELP (see kLgHelpRounds): the host holds its next round until 5/4 of
+        // its measured frame time has passed, so a joiner with no spare speed
+        // can close the gap. Not a starve: nothing is missing, and the
+        // measured pace is frozen while it lasts so the stretch cannot feed on
+        // itself.
+        if (g_role == kRoleParent && g_lg_help && g_lg_last_consume_ms != 0) {
+            const unsigned need = g_lg_frame_x100 * 5u / 400u;   // 1.25 frames, ms
+            if ((unsigned)(now_ms() - g_lg_last_consume_ms) < need) {
+                ++g_lg_help_holds;
+                return 0;
+            }
+        }
         // A ROUND IS READY WHEN ITS AUTHORITY IS: the parent consumes a round
         // it has sent, a child one whose aggregate landed, and both consume
         // exactly the slots that aggregate carried (PipeRound::agg).
@@ -5160,7 +5220,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         g_consumed_round = want;          // for the 'SYNK' clock report
         {
             const unsigned t = now_ms();
-            if (g_lg_last_consume_ms != 0) {
+            if (g_lg_last_consume_ms != 0 && !g_lg_help) {
                 unsigned dt = t - g_lg_last_consume_ms;
                 if (dt > 1000u) dt = 1000u;
                 g_lg_frame_x100 = (g_lg_frame_x100 * 7u + dt * 100u) / 8u;
