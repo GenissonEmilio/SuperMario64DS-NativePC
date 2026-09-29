@@ -54,6 +54,7 @@
 
 #include "hal/comms_seam.h"
 #include "hal/comms_loopback.h"
+#include "hal/comms_hub.h"
 #include "hal/host_settings.h"
 #include "hal/sdat/sdat.h"
 
@@ -74,6 +75,9 @@ extern "C" {
 // symbols hal/comms_sync.cpp reads, declared the same way.
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;
+// The level this console is in (signed, levels 0..51), the same symbol and
+// the same widening hal/comms_sync.cpp uses when it writes SYNG level_id.
+extern signed char data_0209f2f8;
 }
 
 namespace port {
@@ -436,6 +440,65 @@ unsigned long long g_gate_opens, g_gate_quiet;   // spurts started, frames not s
 int g_allowed = 1;
 
 // ---------------------------------------------------------------------------
+// THE ADVENTURE ROUTE (run mp1 lane VOICE1). In adventure online there is no
+// DS session: hal/comms_hub.cpp is the carrier, every console plays its own
+// world, and the other players are ghosts. Voice rides the hub's 'SYNV' kind
+// (same datagram, byte for byte, as in VS) and the sender is the seat the
+// relay stamped, never a byte of the payload.
+//
+// PROXIMITY DECIDES WHETHER TO SEND AT ALL, not only how loud to play. Each
+// tick, from the hub's newest ghost frame per seat: is any present seat in MY
+// level and closer than VoiceFarRadius? If none is, gated audio is dropped
+// here instead of going out (counted as "nobody"), because every receiver
+// would play it at gain 0 anyway: in a world room of sixteen spread over the
+// castle, a player talking alone in a course costs nobody any bandwidth. The
+// gate still runs, so the talking flag on this player's ghost stays honest.
+//
+// On the receive side the distance is the same one: my body against the
+// sender's newest ghost position, and a sender in another level is silent.
+// ---------------------------------------------------------------------------
+static_assert(kHubMaxSeats == kCommsMaxPlayers, "hub seats index g_rv");
+int g_hub;                       // 1 while this tick runs over the hub
+int g_in_range;                  // some seat can hear me (hub only)
+int g_in_range_n;                // how many, for the report
+unsigned long long g_tx_nobody;  // gated frames dropped: nobody in range
+
+/* SM64DS_VOICE_TEST_GHOST=1: A PROOF STAND-IN FOR THE GHOST LAYER, OFF BY
+   DEFAULT AND NEVER SET BY THE LAUNCHER. The proximity rule above reads the
+   seats' positions out of their 'SYNG' ghost frames, which hal/comms_sync.cpp
+   (lane GHOSTWIRE1) sends; on a build without that sender every seat has no
+   ghost frame, nobody is ever in range, and voice over the hub could not be
+   proven at all. With this knob the voice tick sends a minimal SYNG of this
+   console's own body (live flag, talking flag, level, position; everything
+   else zero) every second tick, through the hub's own kind table. Do not set
+   it together with the real ghost sender: two sources of one seat's frames
+   would fight over its seq. */
+int g_test_ghost;
+unsigned g_test_ghost_seq;
+unsigned g_test_ghost_tick;
+
+void test_ghost_send()
+{
+    if (!g_test_ghost || !g_hub) return;
+    if ((g_test_ghost_tick++ & 1u) != 0) return;
+    const char *me = (const char *)data_0209f394[data_0209f250];
+    HubGhostFrame f;
+    memset(&f, 0, sizeof f);
+    f.tag = kHubTagGhost;
+    f.version = 1;
+    f.seat = 0xFF;
+    f.flags = (unsigned char)(kGhostLive | (g_gate_open ? kGhostTalking : 0));
+    f.seq = (unsigned short)(g_test_ghost_seq++);
+    f.level_id = (unsigned short)(int)data_0209f2f8;
+    if (me) {
+        f.x = *(const int *)(me + 0x5c);
+        f.y = *(const int *)(me + 0x60);
+        f.z = *(const int *)(me + 0x64);
+    }
+    comms_hub_send(&f, (int)sizeof f);
+}
+
+// ---------------------------------------------------------------------------
 // THE TEST SOURCE'S SHAPE (run mp1 lane VOICE1). Only meaningful with
 // SM64DS_VOICE_TEST_TONE=1, which already replaces the microphone with a
 // generated sine and opens no device. These make that sine behave like a
@@ -724,13 +787,25 @@ void send_pending()
         g_pending_n = 0;
         return;
     }
-    const CommsTransport *t = comms_transport();
-    if (!t || !t->send_aux) { g_pending_n = 0; return; }
+    const CommsTransport *t = 0;
+    if (g_hub) {
+        if (!g_in_range) {
+            g_tx_nobody += (unsigned long long)g_pending_n;
+            g_pending_n = 0;
+            return;
+        }
+    } else {
+        t = comms_transport();
+        if (!t || !t->send_aux) { g_pending_n = 0; return; }
+    }
 
     unsigned char pkt[kMaxPktBytes];
     memcpy(pkt, &kVoiceTagLE, 4);
     pkt[4] = (unsigned char)kVersion;
-    pkt[5] = (unsigned char)(t->slot ? t->slot() : 0);
+    /* Diagnostic only on both carriers: the hub (and the relay) overwrite it
+       with the seat they know sent it. */
+    pkt[5] = (unsigned char)(g_hub ? comms_hub_my_seat()
+                                   : (t->slot ? t->slot() : 0));
     pkt[6] = (unsigned char)g_pending_n;
     pkt[7] = 0;
     pkt[8]  = (unsigned char)(g_tx_seq & 0xff);
@@ -741,7 +816,11 @@ void send_pending()
         encode_frame(g_pending[i], pkt + kHeaderBytes + i * kBlockBytes);
 
     const int len = kHeaderBytes + g_pending_n * kBlockBytes;
-    if (t->send_aux(pkt, len) == len) ++g_tx_pkts;
+    if (g_hub) {
+        if (comms_hub_send(pkt, len)) ++g_tx_pkts;
+    } else if (t->send_aux(pkt, len) == len) {
+        ++g_tx_pkts;
+    }
     g_tx_seq += (unsigned)g_pending_n;
     g_pending_n = 0;
 }
@@ -896,7 +975,11 @@ void recv_pump()
     unsigned char pkt[512];
     int from = -1;
     int n;
-    while ((n = comms_recv_voice(pkt, (int)sizeof pkt, &from)) > 0) {
+    for (;;) {
+        from = -1;
+        n = g_hub ? comms_hub_recv(kHubVoice, pkt, (int)sizeof pkt, &from)
+                  : comms_recv_voice(pkt, (int)sizeof pkt, &from);
+        if (n <= 0) break;
         if (from < 0 || from >= kCommsMaxPlayers) { ++g_rx_bad; continue; }
         if (n < kHeaderBytes + kBlockBytes) { ++g_rx_bad; continue; }
         if (pkt[4] != kVersion) { ++g_rx_bad; continue; }
@@ -927,12 +1010,46 @@ void recv_pump()
     }
 }
 
+/* Adventure: my body against `seat`'s newest ghost frame, in world units, or
+   -1 when the seat is absent, has sent no ghost frame, is in another level,
+   or my own body is not mounted. Same Fix12 shift-before-multiply rule as
+   slot_distance. */
+int hub_distance(int seat)
+{
+    HubSeatInfo si;
+    if (!comms_hub_seat_info(seat, &si) || !si.present || !si.has_ghost)
+        return -1;
+    const unsigned short mine = (unsigned short)(int)data_0209f2f8;
+    if ((unsigned short)si.level_id != mine) return -1;
+    const char *me = (const char *)data_0209f394[data_0209f250];
+    if (!me) return -1;
+    const int dx = (*(const int *)(me + 0x5c) >> 12) - (si.x >> 12);
+    const int dy = (*(const int *)(me + 0x60) >> 12) - (si.y >> 12);
+    const int dz = (*(const int *)(me + 0x64) >> 12) - (si.z >> 12);
+    const double d2 = (double)dx * dx + (double)dy * dy + (double)dz * dz;
+    return (int)sqrt(d2);
+}
+
+/* Adventure: can anybody hear me this tick? */
+void hub_range()
+{
+    const unsigned mask = comms_hub_seat_mask();
+    int n = 0;
+    for (int s = 0; s < kHubMaxSeats; ++s) {
+        if (!(mask & (1u << s))) continue;
+        const int d = hub_distance(s);
+        if (d >= 0 && d < g_far) ++n;
+    }
+    g_in_range_n = n;
+    g_in_range = n > 0;
+}
+
 /* Every remote slot's gain for the frame. A slot with no body, no recent
    audio, or a distance past the far radius goes to zero; the mixer ramps to
    it rather than cutting. */
 void update_gains()
 {
-    const int me = (int)data_0209f250;
+    const int me = g_hub ? comms_hub_my_seat() : (int)data_0209f250;
     const float vol = (float)g_vol / 100.0f;
     const unsigned t = now_ms();
     for (int s = 0; s < kCommsMaxPlayers; ++s) {
@@ -946,7 +1063,7 @@ void update_gains()
             rv_reset(r);
             continue;
         }
-        const int d = slot_distance(me, s);
+        const int d = g_hub ? hub_distance(s) : slot_distance(me, s);
         r.dist = d;
         r.gain = d < 0 ? 0.0f : falloff(d) * vol;
     }
@@ -981,6 +1098,7 @@ void voice_tick()
            changes when unset. */
         if (env_on("SM64DS_VOICE_MIC_PROBE")) voice::cap_probe();
         g_gate_thr = env_int("SM64DS_VOICE_GATE", kGateDefault, 0, 32767);
+        g_test_ghost = env_on("SM64DS_VOICE_TEST_GHOST");
         g_tone_amp = env_int("SM64DS_VOICE_TEST_TONE_AMP", 16000, 0, 32767);
         g_noise_amp = env_int("SM64DS_VOICE_TEST_NOISE", 0, 0, 32767);
         {
@@ -1025,8 +1143,19 @@ void voice_tick()
        is still DRAINED, for the reason capture_pump's own note gives. What
        stops is sending: a player sitting in the menus with voice on is not
        broadcasting into a socket with nobody on it. */
-    const CommsReadout rr = comms_readout();
-    if (!rr.connected || rr.players <= 1) {
+    /* WHICH CARRIER. The hub is installed only for adventure online and
+       never together with the VS carrier (hal/comms_hub.h), so this is a
+       choice, not a merge. Hub "live with anybody present" is the adventure
+       counterpart of "connected with more than one player". */
+    g_hub = comms_hub_active() ? 1 : 0;
+    int live;
+    if (g_hub) {
+        live = comms_hub_state() == kHubLive && comms_hub_seat_mask() != 0;
+    } else {
+        const CommsReadout rr = comms_readout();
+        live = rr.connected && rr.players > 1;
+    }
+    if (!live) {
         gate_reset();
         for (int i = 0; i < kCommsMaxPlayers; ++i)
             if (g_rv[i].playing || g_rv[i].avail) rv_reset(g_rv[i]);
@@ -1034,7 +1163,9 @@ void voice_tick()
         return;
     }
 
+    if (g_hub) hub_range();
     capture_pump(1);
+    test_ghost_send();
     recv_pump();
     update_gains();
     report_if_due();
@@ -1054,11 +1185,12 @@ void voice_report(const char *tag)
                      "[voice] %s: on=%d tone=%d dev=%d cap=%llu tx=%llu "
                      "rx=%llu bad=%llu dup=%llu vol=%d near=%d far=%d "
                      "allowed=%d gate=%d open=%d lvl=%d opens=%llu quiet=%llu "
-                     "talking=%d rxs=",
+                     "talking=%d hub=%d inrange=%d nobody=%llu rxs=",
                      tag ? tag : "-", g_on, g_tone, voice::cap_is_open(),
                      g_cap_frames, g_tx_pkts, g_rx_pkts, g_rx_bad, g_rx_dup,
                      g_vol, g_near, g_far, g_allowed, g_gate_thr, g_gate_open,
-                     g_gate_level, g_gate_opens, g_gate_quiet, voice_talking());
+                     g_gate_level, g_gate_opens, g_gate_quiet, voice_talking(),
+                     g_hub, g_in_range_n, g_tx_nobody);
     for (int s = 0; s < kCommsMaxPlayers && k > 0 && k < (int)sizeof line; ++s)
         k += snprintf(line + k, sizeof line - (size_t)k, "%s%llu",
                       s ? "," : "", g_rx_from[s]);

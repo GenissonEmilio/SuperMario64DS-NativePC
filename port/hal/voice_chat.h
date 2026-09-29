@@ -88,6 +88,17 @@
  *                              shape the test tone like a talker: amplitude,
  *                              milliseconds on then off repeating, and a quiet
  *                              deterministic hiss under it. Tone hook only.
+ *   SM64DS_VOICE_TEST_GHOST=1  adventure proofs only: send a minimal 'SYNG'
+ *                              of this console's body so the proximity rule
+ *                              has positions on a build without the ghost
+ *                              layer's sender. Never with the real sender.
+ *
+ * ADVENTURE ONLINE. With hal/comms_hub.cpp installed (no DS session, every
+ * console its own world, the others drawn as ghosts) the same datagram rides
+ * the hub's 'SYNV' kind, the sender is the relay-stamped seat, the distance is
+ * my body against the sender's newest ghost frame (another level is silent),
+ * and nothing is sent at all while no present seat is in my level inside
+ * VoiceFarRadius.
  *
  * THE ROOM'S SETTING. SM64DS_VOICE_ALLOWED=0 (from the lobby's go plan: the
  * VS host switched voice off) is VoiceEnabled false for the whole process,
