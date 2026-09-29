@@ -68,14 +68,17 @@ def reset():
     S.WAITERS = 0
 
 
+GAME = "t-1.0"      # the game build id every test room plays (v5)
+
+
 def create(nick="tango", who="10.0.0.1", now=1000.0, **extra):
-    body = {"v": 1, "nick": nick}
+    body = {"v": 5, "nick": nick, "game": GAME}
     body.update(extra)
     return S.do_create(body, who, now)
 
 
 def join(room, nick, who="10.0.0.2", now=1000.0, **extra):
-    body = {"v": 1, "room": room, "nick": nick}
+    body = {"v": 5, "room": room, "nick": nick, "game": GAME}
     body.update(extra)
     return S.do_join(body, who, now)
 
@@ -167,14 +170,14 @@ def test_grammar():
 
     # shape
     check("an unknown key is bad_field",
-          S.shape({"v": 1, "nick": "x", "colour": "red"}, ("v", "nick")) == "bad_field")
+          S.shape({"v": 5, "nick": "x", "colour": "red"}, ("v", "nick")) == "bad_field")
     check("a missing required key is bad_field",
-          S.shape({"v": 1}, ("v", "nick")) == "bad_field")
+          S.shape({"v": 5}, ("v", "nick")) == "bad_field")
     check("a declared optional key is allowed",
-          S.shape({"v": 1, "nick": "x", "pre_ok": True}, ("v", "nick"),
+          S.shape({"v": 5, "nick": "x", "pre_ok": True}, ("v", "nick"),
                   ("pre_ok",)) is None)
     check("the exact required set passes",
-          S.shape({"v": 1, "nick": "x"}, ("v", "nick")) is None)
+          S.shape({"v": 5, "nick": "x"}, ("v", "nick")) is None)
 
 
 def test_addresses():
@@ -307,7 +310,7 @@ def test_leaving():
     room = S.ROOMS[code]
     check("seat 3 starts as a spectator", room.members[3].playing is False)
 
-    st, out = S.do_leave({"v": 1, "room": code, "token": g2["token"]},
+    st, out = S.do_leave({"v": 5, "room": code, "token": g2["token"]},
                          "10.0.0.2", 1001.0)
     check("a member can leave", st == 200 and out.get("ok") is True, (st, out))
     check("the seat is freed", 2 not in room.members)
@@ -322,12 +325,12 @@ def test_leaving():
                             "result", "failed", "closed")
               for e in room.events), [e["kind"] for e in room.events])
 
-    st, out = S.do_leave({"v": 1, "room": code, "token": g2["token"]},
+    st, out = S.do_leave({"v": 5, "room": code, "token": g2["token"]},
                          "10.0.0.2", 1002.0)
     check("a token that already left is not a member any more",
           st == 403 and out["error"] == "not_a_member", (st, out))
 
-    st, out = S.do_leave({"v": 1, "room": code, "token": host["token"]},
+    st, out = S.do_leave({"v": 5, "room": code, "token": host["token"]},
                          "10.0.0.1", 1003.0)
     check("the host can leave", st == 200)
     check("the host leaving closes the room", room.state == "closed")
@@ -363,7 +366,7 @@ def test_timeouts():
     # The host keeps polling the way a live launcher does; only the guest goes
     # quiet. Without this the HOST times out first and the room closes, which
     # is correct behaviour and a different assertion (further down).
-    S.do_poll({"v": 1, "room": code, "token": host["token"], "cursor": 0,
+    S.do_poll({"v": 5, "room": code, "token": host["token"], "cursor": 0,
                "wait": 0}, "10.0.0.1", now + S.MEMBER_TIMEOUT_S)
     S.sweep(now + S.MEMBER_TIMEOUT_S + 1)
     check("a member that stopped polling loses its seat", 2 not in room.members)
@@ -379,7 +382,7 @@ def test_timeouts():
     code = host["room"]
     st, g = join(code, "guest", now=1000.0)
     room = S.ROOMS[code]
-    S.do_poll({"v": 1, "room": code, "token": g["token"], "cursor": 0,
+    S.do_poll({"v": 5, "room": code, "token": g["token"], "cursor": 0,
                "wait": 0}, "10.0.0.2", 1000.0 + S.MEMBER_TIMEOUT_S - 5)
     S.sweep(1000.0 + S.MEMBER_TIMEOUT_S + 1)
     check("a poll before the deadline keeps the seat", 2 in room.members)
@@ -417,7 +420,7 @@ def test_cursor_and_rings():
 
     seqs = []
     for i in range(10):
-        st, out = S.do_chat({"v": 1, "room": code, "token": host["token"],
+        st, out = S.do_chat({"v": 5, "room": code, "token": host["token"],
                              "text": "line %d" % i}, "10.0.0.1",
                             1000.0 + i * 3)
         if st != 200:
@@ -426,7 +429,7 @@ def test_cursor_and_rings():
     check("the cursor is strictly monotonic",
           seqs == sorted(seqs) and len(set(seqs)) == len(seqs), seqs)
 
-    st, out = S.do_poll({"v": 1, "room": code, "token": g["token"],
+    st, out = S.do_poll({"v": 5, "room": code, "token": g["token"],
                          "cursor": seqs[4], "wait": 0}, "10.0.0.2", 1100.0)
     check("a poll returns exactly what came after its cursor",
           [e["seq"] for e in out["events"]] == seqs[5:],
@@ -445,7 +448,7 @@ def test_cursor_and_rings():
     check("the rings keep the NEWEST, not the oldest",
           room.events[-1]["text"] == "fill 199")
 
-    st, out = S.do_poll({"v": 1, "room": code, "token": g["token"],
+    st, out = S.do_poll({"v": 5, "room": code, "token": g["token"],
                          "cursor": 1, "wait": 0}, "10.0.0.2", 1100.0)
     check("a cursor older than the ring asks the client to resync",
           out.get("resync") is True, out.get("resync"))
@@ -456,12 +459,12 @@ def test_cursor_and_rings():
           out["view"]["state"] == "lobby" and len(out["view"]["members"]) == 2)
 
     fresh = room.events[-1]["seq"] - 3
-    st, out = S.do_poll({"v": 1, "room": code, "token": g["token"],
+    st, out = S.do_poll({"v": 5, "room": code, "token": g["token"],
                          "cursor": fresh, "wait": 0}, "10.0.0.2", 1100.0)
     check("a cursor inside the ring does NOT ask for a resync",
           "resync" not in out and len(out["events"]) == 3, out.get("events"))
 
-    st, out = S.do_poll({"v": 1, "room": code, "token": g["token"],
+    st, out = S.do_poll({"v": 5, "room": code, "token": g["token"],
                          "cursor": room.seq + 50, "wait": 0}, "10.0.0.2", 1100.0)
     check("a cursor from the future asks for a resync too",
           out.get("resync") is True)
@@ -474,33 +477,33 @@ def test_auth():
     code = host["room"]
     st, g = join(code, "opie")
 
-    st, out = S.do_params({"v": 1, "room": code, "token": g["token"], "map": 1,
+    st, out = S.do_params({"v": 5, "room": code, "token": g["token"], "map": 1,
                            "win_mode": "time"}, "10.0.0.2", 1000.0)
     check("a member cannot set params",
           st == 403 and out["error"] == "not_host", (st, out))
-    st, out = S.do_params({"v": 1, "room": code, "token": host["token"],
+    st, out = S.do_params({"v": 5, "room": code, "token": host["token"],
                            "map": 1, "win_mode": "time"}, "10.0.0.1", 1000.0)
     check("the host can", st == 200, out)
     check("and the room took the values",
           S.ROOMS[code].map == 1 and S.ROOMS[code].win_mode == "time"
           and S.ROOMS[code].star_target is None)
 
-    st, out = S.do_params({"v": 1, "room": code, "token": host["token"],
+    st, out = S.do_params({"v": 5, "room": code, "token": host["token"],
                            "map": 3, "win_mode": "stars", "star_target": 5},
                           "10.0.0.1", 1000.0)
     check("stars with a target is accepted", st == 200, out)
     check("the host picks the target, and every value up to the ceiling works",
-          all(S.do_params({"v": 1, "room": code, "token": host["token"],
+          all(S.do_params({"v": 5, "room": code, "token": host["token"],
                            "map": 0, "win_mode": "stars", "star_target": n},
                           "10.0.0.1", 1000.0)[0] == 200
               for n in range(1, S.STAR_TARGET_MAX + 1)))
     check("one past the ceiling is refused",
-          S.do_params({"v": 1, "room": code, "token": host["token"], "map": 0,
+          S.do_params({"v": 5, "room": code, "token": host["token"], "map": 0,
                        "win_mode": "stars",
                        "star_target": S.STAR_TARGET_MAX + 1},
                       "10.0.0.1", 1000.0)[1]["error"] == "bad_star_target")
     check("zero is refused too",
-          S.do_params({"v": 1, "room": code, "token": host["token"], "map": 0,
+          S.do_params({"v": 5, "room": code, "token": host["token"], "map": 0,
                        "win_mode": "stars", "star_target": 0},
                       "10.0.0.1", 1000.0)[1]["error"] == "bad_star_target")
     check("the ceiling is a knob, not a literal scattered around the file",
@@ -509,13 +512,13 @@ def test_auth():
     stranger = "f" * 32
     for verb, extra in (("chat", {"text": "hi"}), ("leave", {}),
                         ("params", {"map": 0, "win_mode": "time"})):
-        body = {"v": 1, "room": code, "token": stranger}
+        body = {"v": 5, "room": code, "token": stranger}
         body.update(extra)
         st, out = S.VERBS[verb](body, "10.0.0.9", 1000.0)
         check("a stranger's token is refused by %s" % verb,
               st == 403 and out["error"] == "not_a_member", (verb, st, out))
 
-    st, out = S.do_poll({"v": 1, "room": code, "token": stranger, "cursor": 0,
+    st, out = S.do_poll({"v": 5, "room": code, "token": stranger, "cursor": 0,
                          "wait": 0}, "10.0.0.9", 1000.0)
     check("a stranger's token is refused by poll",
           st == 403 and out["error"] == "not_a_member", (st, out))
@@ -530,15 +533,15 @@ def test_chat_limits():
     t = 2000.0
     results = []
     for _ in range(6):
-        results.append(S.do_chat({"v": 1, "room": code, "token": host["token"],
+        results.append(S.do_chat({"v": 5, "room": code, "token": host["token"],
                                   "text": "x"}, "10.0.0.1", t)[0])
     check("the burst is spent and then refused",
           results[:3] == [200, 200, 200] and results[3:] == [429, 429, 429],
           results)
-    st, _ = S.do_chat({"v": 1, "room": code, "token": g["token"], "text": "x"},
+    st, _ = S.do_chat({"v": 5, "room": code, "token": g["token"], "text": "x"},
                       "10.0.0.2", t)
     check("the OTHER member is unaffected: the limit is per member", st == 200)
-    st, _ = S.do_chat({"v": 1, "room": code, "token": host["token"], "text": "x"},
+    st, _ = S.do_chat({"v": 5, "room": code, "token": host["token"], "text": "x"},
                       "10.0.0.1", t + 2.1)
     check("two seconds later the host may speak again", st == 200)
 
@@ -611,13 +614,13 @@ def test_server_caps():
 
 
 def _params(code, token, who="10.0.0.1", now=1000.0, **extra):
-    body = {"v": 1, "room": code, "token": token, "map": 0,
+    body = {"v": 5, "room": code, "token": token, "map": 0,
             "win_mode": "time"}
     body.update(extra)
     return S.do_params(body, who, now)
 
 
-def _dial(code, token, n, v=2, **kw):
+def _dial(code, token, n, v=5, **kw):
     return _params(code, token, v=v, match_players=n, **kw)
 
 
@@ -695,8 +698,8 @@ def test_dial_defaults_are_inert():
         S.recompute_dial()
         reset()
 
-    # A v1 `params` -- the only kind launcher 0.3.0 sends -- leaves the dial
-    # alone rather than resetting it.
+    # A params that does not carry the dial (the host changing the arena)
+    # leaves the dial alone rather than resetting it.
     reset()
     st, host = create()
     code = host["room"]
@@ -704,7 +707,7 @@ def test_dial_defaults_are_inert():
     _dial(code, host["token"], 2)
     check("the host sets the dial to 2", room.match_players == 2)
     st, out = _params(code, host["token"], map=3)
-    check("a v1 params (an old launcher changing the arena) is accepted",
+    check("a params without the dial (the host changing the arena) is accepted",
           st == 200, (st, out))
     check("and does NOT reset the dial the host set",
           room.match_players == 2 and room.map == 3,
@@ -782,30 +785,76 @@ def test_dial_range_is_server_enforced():
                   and room.match_players == 4, (st, out, room.match_players))
 
 
-def test_dial_is_v2_only():
-    """Section 3.0's strictness, kept: a client claiming v1 gets the v1 field
-    set and nothing else."""
-    print("\n-- the dial is a v2 field, and v1 stays as strict as it was")
-    reset()
-    st, host = create()
-    code, token = host["room"], host["token"]
+def test_the_v5_floor():
+    """Contract v5 (lobby 1.0) is the only version this server answers.
 
-    st, out = _params(code, token, v=1, match_players=2)
-    check("a v1 request carrying the v2 field is bad_field, exactly as an "
-          "undefined field would be",
+    Launchers 0.3.x..0.5.x speak v1..v4 and map `bad_version` to "Check for an
+    update", so the floor is how an old launcher is kept out of a 1.0 room
+    instead of spawning a game that cannot pair with it.
+    """
+    print("\n-- contract v5 is the floor and the ceiling")
+    check("the version range is exactly 5..5",
+          (S.CONTRACT_MIN, S.CONTRACT_V) == (5, 5),
+          (S.CONTRACT_MIN, S.CONTRACT_V))
+    for verb, row in sorted(S.VERB_FIELDS.items()):
+        body = {k: _FIELD_SAMPLES[k] for k in row[0]}
+        for ver in (1, 2, 3, 4, 6):
+            body["v"] = ver
+            check("%s: a v%d body is bad_version" % (verb, ver),
+                  S.shape_for(verb, body) == "bad_version",
+                  S.shape_for(verb, body))
+    reset()
+    st, out = S.do_create({"v": 4, "nick": "old"}, "10.0.0.1", 1000.0)
+    check("a v4 create (launcher 0.5.x) is 400 bad_version",
+          st == 400 and out["error"] == "bad_version", (st, out))
+    check("and it made no room", not S.ROOMS, list(S.ROOMS))
+
+    # -- the game build field -----------------------------------------------
+    st, out = S.do_create({"v": 5, "nick": "t"}, "10.0.0.1", 1000.0)
+    check("a v5 create without `game` is bad_field",
           st == 400 and out["error"] == "bad_field", (st, out))
-    st, out = _params(code, token, v=2, match_players=2)
-    check("the same body at v2 is accepted", st == 200, (st, out))
-    check("the version range is a range, and it is 1..4",
-          (S.CONTRACT_MIN, S.CONTRACT_V) == (1, 4))
-    check("and the gate on the field is named, not spelled 2 at the check",
-          S.V_DIAL == 2)
-    # run vs16: the DIAL ARRIVED in v2 and stays gated at v2 forever -- a field
-    # does not move to the newest version just because a newer one exists. What
-    # v3 changed is the RANGE the field may carry, which is a different rule
-    # with its own gate below.
-    st, out = _params(code, token, v=2, match_players=2)
-    check("the dial is still a v2 field after v3 exists", st == 200, (st, out))
+    for bad, code in (("", "bad_game"), ("a" * 25, "too_long"),
+                      ("1.0 beta", "bad_game"), ("1.0/x", "bad_game"),
+                      ("1.0\n", "bad_game"), ("\u00e9", "bad_game"),
+                      (10, "bad_game"), (None, "bad_game")):
+        st, out = S.do_create({"v": 5, "nick": "t", "game": bad},
+                              "10.0.0.1", 1000.0)
+        check("game %r is refused %s" % (bad, code),
+              st == 400 and out["error"] == code, (st, out))
+    for good in ("1.0.0", "a" * 24, "0.5.4-rc_2", "X"):
+        check("game %r is a legal build id" % good,
+              S.v_game({"game": good}) == (good, None), S.v_game({"game": good}))
+
+    reset()
+    st, host = S.do_create({"v": 5, "nick": "tango", "game": "1.0.0"},
+                           "10.0.0.1", 1000.0)
+    code = host["room"]
+    check("the room remembers its creator's build",
+          S.ROOMS[code].game == "1.0.0", S.ROOMS[code].game)
+    st, out = S.do_join({"v": 5, "room": code, "nick": "opie",
+                         "game": "1.0.1"}, "10.0.0.2", 1000.0)
+    check("a join from another build is 409 game_mismatch",
+          st == 409 and out["error"] == "game_mismatch", (st, out))
+    check("and seats nobody", len(S.ROOMS[code].members) == 1)
+    st, out = S.do_join({"v": 5, "room": code, "nick": "opie"},
+                        "10.0.0.2", 1000.0)
+    check("a join without `game` is bad_field",
+          st == 400 and out["error"] == "bad_field", (st, out))
+    st, out = S.do_join({"v": 5, "room": code, "nick": "opie",
+                         "game": "1.0.0"}, "10.0.0.2", 1000.0)
+    check("the same build joins", st == 200, (st, out))
+    # A full room still says game_mismatch to the wrong build: the reason that
+    # is actually theirs, not "room full".
+    with game_max(2, seats=2):
+        st, h = S.do_create({"v": 5, "nick": "a", "game": "1.0.0"},
+                            "10.0.0.1", 1000.0)
+        S.do_join({"v": 5, "room": h["room"], "nick": "b", "game": "1.0.0"},
+                  "10.0.0.2", 1000.0)
+        st, out = S.do_join({"v": 5, "room": h["room"], "nick": "c",
+                             "game": "0.9"}, "10.0.0.3", 1000.0)
+        check("a full room answers the wrong build game_mismatch, not "
+              "room_full", st == 409 and out["error"] == "game_mismatch",
+              (st, out))
 
 
 # A body that satisfies each verb's REQUIRED fields, so the generic walk below
@@ -813,7 +862,7 @@ def test_dial_is_v2_only():
 # test. The values need only be well-formed enough to reach the shape check,
 # which runs before any of them is validated.
 _FIELD_SAMPLES = {
-    "v": 1,
+    "v": 5,
     "room": "K7QMR3",
     "token": "0" * 32,
     "nick": "tango",
@@ -834,6 +883,7 @@ _FIELD_SAMPLES = {
     "color": "ff8800",
     "shoes": "1a2b3c",
     "session_type": "adventure",
+    "game": "1.0.0",
 }
 
 
@@ -872,8 +922,9 @@ def test_every_versioned_field_is_gated():
     check("the walk knows a sample value for every field in the table, so it "
           "cannot skip one by accident", not missing, sorted(missing))
 
-    check("there is at least one versioned field to check (the walk is not "
-          "vacuously passing)", bool(versioned), versioned)
+    # Since v5 every field in the table arrived at or below the floor, so the
+    # list below is empty today; the walk stays so the next version's fields
+    # are gated on the day they are added.
 
     for verb, name, since in versioned:
         required = S.VERB_FIELDS[verb][0]
@@ -903,9 +954,6 @@ def test_every_versioned_field_is_gated():
     # row carries the verb's own version, and this walks it the same way -- by
     # the table, naming no verb, so the next v3 verb is covered on the day it
     # is added.
-    check("there is at least one verb that arrived after the floor (the "
-          "verb-level walk is not vacuously passing)", bool(late_verbs),
-          late_verbs)
 
     for verb, since in late_verbs:
         required = S.VERB_FIELDS[verb][0]
@@ -930,41 +978,21 @@ def test_every_versioned_field_is_gated():
         check("%s: and at v%d the verb answers normally" % (verb, since),
               S.shape_for(verb, body) is None, S.shape_for(verb, body))
 
-    # THE UNION, asserted as one fact rather than assumed from the rows above:
-    # everything v2 adds is v2, and there is no second definition of the
-    # number anywhere in the module.
-    v2_adds = sorted(
-        [(v, n) for v, n, sc in versioned if sc == 2]
-        + [(v, "<the verb itself>") for v, sc in late_verbs if sc == 2])
-    check("v2 is the UNION of both lanes' additions, in one table: %s"
-          % ", ".join("%s.%s" % (v, n) for v, n in v2_adds),
-          v2_adds == [("color", "<the verb itself>"),
-                      ("create", "color"), ("create", "shoes"),
-                      ("join", "color"), ("join", "shoes"),
-                      ("params", "match_players")], v2_adds)
+    check("and no field or verb names a version this server does not answer",
+          all(sc <= S.CONTRACT_V for _, _, sc in versioned)
+          and all(sc <= S.CONTRACT_V for _, sc in late_verbs)
+          and all(S.CONTRACT_MIN >= g for g in (S.V_DIAL, S.V_COLOR,
+                                                S.V_SESSION)),
+          (versioned, late_verbs))
     check("and the retired second definition of v2 is really gone -- no "
           "PROTO_VERSIONS, no PROTO_COLOR_V",
           not hasattr(S, "PROTO_VERSIONS") and not hasattr(S, "PROTO_COLOR_V"),
           [n for n in ("PROTO_VERSIONS", "PROTO_COLOR_V") if hasattr(S, n)])
-    # THIS CHECK USED TO SAY "agree with the contract version", and that was
-    # only ever true while v2 WAS the newest version -- it read as a statement
-    # about the gates and was really a statement about there being exactly two
-    # versions. run vs16 added v3 and the sentence stopped being about
-    # anything. What it should always have said is that a named gate names the
-    # version its field ARRIVED IN, and that no gate names a version this
-    # server does not answer.
-    check("the two named v2 gates both name v2, the version their fields "
-          "arrived in -- a field does not follow the contract version upward",
-          S.V_DIAL == 2 and S.V_COLOR == 2, (S.V_DIAL, S.V_COLOR))
-    check("and no named gate is outside the range this server answers",
-          all(S.CONTRACT_MIN <= g <= S.CONTRACT_V
-              for g in (S.V_DIAL, S.V_COLOR)),
-          (S.V_DIAL, S.V_COLOR, S.CONTRACT_MIN, S.CONTRACT_V))
 
     # The other half of the same guarantee: a key NO version defines is
     # refused at every version, including the newest.
     for ver in range(S.CONTRACT_MIN, S.CONTRACT_V + 1):
-        body = {"v": ver, "nick": "tango", "colour": "red"}
+        body = {"v": ver, "nick": "tango", "game": "1.0.0", "colour": "red"}
         check("a key no version defines is bad_field at v%d too" % ver,
               S.shape_for("create", body) == "bad_field")
 
@@ -1043,7 +1071,7 @@ def _dial_seat_reuse():
     check("dial 2 with four in the room: 1 and 2 play",
           [s for s in (1, 2, 3, 4) if room.members[s].playing] == [1, 2])
 
-    S.do_leave({"v": 1, "room": code, "token": b["token"]}, "10.0.0.2", 1000.0)
+    S.do_leave({"v": 5, "room": code, "token": b["token"]}, "10.0.0.2", 1000.0)
     check("seat 2 leaves and seat 3 is promoted into the gap",
           [s for s in sorted(room.members) if room.members[s].playing]
           == [1, 3],
@@ -1073,7 +1101,7 @@ def _dial_plan():
     third = join(code, "c", who="10.0.0.3", pre_ok=True)[1]
     _dial(code, token, 3)
 
-    st, out = S.do_start({"v": 1, "room": code, "token": token},
+    st, out = S.do_start({"v": 5, "room": code, "token": token},
                          "10.0.0.1", 1000.0)
     check("start is accepted with three playing seats", st == 200, (st, out))
     check("agreed_players is what actually turned up", room.agreed_players == 3)
@@ -1092,14 +1120,14 @@ def _dial_plan():
     room = S.ROOMS[code]
     join(code, "b", pre_ok=True)
     _dial(code, token, 4)
-    S.do_start({"v": 1, "room": code, "token": token}, "10.0.0.1", 1000.0)
+    S.do_start({"v": 5, "room": code, "token": token}, "10.0.0.1", 1000.0)
     plan = S.member_plan(room, 1)
     check("with 2 of a 4-player dial filled, the plan says players=2 and "
           "match_players=4 -- no pretending",
           plan["players"] == 2 and plan["match_players"] == 4, plan)
     check("and SM64DS_VS_PLAYERS therefore rides the REAL count",
           plan["players"] == room.agreed_players)
-    _r = S.do_failed({"v": 1, "room": code, "token": token,
+    _r = S.do_failed({"v": 5, "room": code, "token": token,
                       "match": room.match, "reason": "spawn_failed"},
                      "10.0.0.1", 1000.0)
     check("and the frozen dial is cleared with the rest of the match state",
@@ -1112,7 +1140,7 @@ def test_opacity():
     tricky = "<b>&amp; \"quoted\" 'x' \\ / %s %d {0}"
     st, host = create(nick="tan<go>")
     code = host["room"]
-    st, out = S.do_chat({"v": 1, "room": code, "token": host["token"],
+    st, out = S.do_chat({"v": 5, "room": code, "token": host["token"],
                          "text": tricky}, "10.0.0.1", 1000.0)
     check("a chat line full of markup and format specifiers is accepted",
           st == 200, out)
@@ -1128,9 +1156,7 @@ def test_opacity():
               "seat", "token", "nick", "display", "playing", "pre_ok", "armed",
               "seen", "chat_allowance", "chat_stamp", "last_addr",
               # v2: the two colours this player picked.
-              "color", "shoes",
-              # 0.3.2: the contract version this member joined at.
-              "v"},
+              "color", "shoes"},
           Member_fields(room.members[1]))
     check("the only client address kept is the one a kick needs, and it never "
           "reaches a client",
@@ -1151,28 +1177,28 @@ def test_kick():
     st, g3 = join(code, "fine", who="10.0.0.3")
     room = S.ROOMS[code]
 
-    st, out = S.do_kick({"v": 1, "room": code, "token": g2["token"], "seat": 3},
+    st, out = S.do_kick({"v": 5, "room": code, "token": g2["token"], "seat": 3},
                         "10.0.0.2", 1000.0)
     check("a member cannot kick anybody",
           st == 403 and out["error"] == "not_host", (st, out))
 
-    st, out = S.do_kick({"v": 1, "room": code, "token": host["token"],
+    st, out = S.do_kick({"v": 5, "room": code, "token": host["token"],
                          "seat": 1}, "10.0.0.1", 1000.0)
     check("the host cannot kick itself",
           st == 400 and out["error"] == "bad_seat", (st, out))
 
-    st, out = S.do_kick({"v": 1, "room": code, "token": host["token"],
+    st, out = S.do_kick({"v": 5, "room": code, "token": host["token"],
                          "seat": 4}, "10.0.0.1", 1000.0)
     check("an empty seat cannot be kicked",
           st == 400 and out["error"] == "bad_seat", (st, out))
 
-    st, out = S.do_kick({"v": 1, "room": code, "token": host["token"],
+    st, out = S.do_kick({"v": 5, "room": code, "token": host["token"],
                          "seat": 9}, "10.0.0.1", 1000.0)
     check("a seat number outside the room is bad_seat",
           st == 400 and out["error"] == "bad_seat", (st, out))
 
     victim_token = g2["token"]
-    st, out = S.do_kick({"v": 1, "room": code, "token": host["token"],
+    st, out = S.do_kick({"v": 5, "room": code, "token": host["token"],
                          "seat": 2}, "10.0.0.1", 1000.0)
     check("the host can kick a member", st == 200 and out.get("ok") is True,
           (st, out))
@@ -1183,7 +1209,7 @@ def test_kick():
     check("the spectator is promoted exactly as it is for a plain leave",
           room.members[3].playing is True)
 
-    st, out = S.do_poll({"v": 1, "room": code, "token": victim_token,
+    st, out = S.do_poll({"v": 5, "room": code, "token": victim_token,
                          "cursor": 0, "wait": 0}, "10.0.0.2", 1000.0)
     check("the kicked launcher is told WHY on its next request",
           st == 403 and out["error"] == "kicked", (st, out))
@@ -1200,7 +1226,7 @@ def test_kick():
     st, host = create(who="10.0.0.1")
     code = host["room"]
     st, g = join(code, "rude", who="10.0.0.2")
-    S.do_kick({"v": 1, "room": code, "token": host["token"], "seat": 2},
+    S.do_kick({"v": 5, "room": code, "token": host["token"], "seat": 2},
               "10.0.0.1", 1000.0)
     st, out = join(code, "rude-again", who="10.0.0.7", now=1000.0)
     check("a kicked player who changes address walks straight back in "
@@ -1213,7 +1239,7 @@ def test_kick():
     code = host["room"]
     join(code, "housemate-a", who="10.0.0.2")
     join(code, "housemate-b", who="10.0.0.2")
-    S.do_kick({"v": 1, "room": code, "token": host["token"], "seat": 2},
+    S.do_kick({"v": 5, "room": code, "token": host["token"], "seat": 2},
               "10.0.0.1", 1000.0)
     st, out = join(code, "housemate-c", who="10.0.0.2", now=1000.0)
     check("a housemate on the same address shares the cooldown, which is why "
@@ -1225,7 +1251,7 @@ def test_kick():
     code = host["room"]
     join(code, "b", who="10.0.0.2")
     S.ROOMS[code].state = "arming"
-    st, out = S.do_kick({"v": 1, "room": code, "token": host["token"],
+    st, out = S.do_kick({"v": 5, "room": code, "token": host["token"],
                          "seat": 2}, "10.0.0.1", 1000.0)
     check("a kick is refused once the room has left the lobby state",
           st == 409 and out["error"] == "not_in_lobby", (st, out))
@@ -1301,8 +1327,8 @@ def test_seat_stability():
     tokens = {m.seat: m.token for m in room.members.values()}
 
     # Everything that can happen to a room, short of it closing.
-    S.do_leave({"v": 1, "room": code, "token": tokens[3]}, "10.0.0.3", 1001.0)
-    S.do_kick({"v": 1, "room": code, "token": host["token"], "seat": 4},
+    S.do_leave({"v": 5, "room": code, "token": tokens[3]}, "10.0.0.3", 1001.0)
+    S.do_kick({"v": 5, "room": code, "token": host["token"], "seat": 4},
               "10.0.0.1", 1002.0)
     st, e = join(code, "e", who="10.0.0.5", now=1003.0)
     check("a new joiner takes the lowest FREE number, not the next one up",
@@ -1333,7 +1359,7 @@ def test_seat_stability():
     join(code, "c")
     before = {m.token: m.seat for m in room.members.values()}
     guest2 = [m for m in room.members.values() if m.seat == 2][0]
-    S.do_leave({"v": 1, "room": code, "token": guest2.token}, "10.0.0.2", 1001.0)
+    S.do_leave({"v": 5, "room": code, "token": guest2.token}, "10.0.0.2", 1001.0)
     check("the promoted spectator keeps the number it already had",
           room.members[3].playing is True and 3 in room.members,
           sorted(room.members))
@@ -1363,16 +1389,16 @@ def _two_ready(now=1000.0, guest_pre_ok=True, host_pre_ok=True):
 
 
 def start(code, token, who="10.0.0.1", now=1000.0):
-    return S.do_start({"v": 1, "room": code, "token": token}, who, now)
+    return S.do_start({"v": 5, "room": code, "token": token}, who, now)
 
 
 def ready(code, token, match, who="10.0.0.1", now=1000.0):
-    return S.do_ready({"v": 1, "room": code, "token": token, "match": match},
+    return S.do_ready({"v": 5, "room": code, "token": token, "match": match},
                       who, now)
 
 
 def poll(code, token, cursor, who="10.0.0.1", now=1000.0, wait=0):
-    return S.do_poll({"v": 1, "room": code, "token": token, "cursor": cursor,
+    return S.do_poll({"v": 5, "room": code, "token": token, "cursor": cursor,
                       "wait": wait}, who, now)
 
 
@@ -1422,7 +1448,7 @@ def test_start():
           and ev["deadline_ms"] == S.ARM_DEADLINE_S * 1000, ev)
 
     # Frozen: params, join, kick, and a second start are all refused now.
-    st, pp = S.do_params({"v": 1, "room": code, "token": host["token"],
+    st, pp = S.do_params({"v": 5, "room": code, "token": host["token"],
                           "map": 2, "win_mode": "time"}, "10.0.0.1", 1001.0)
     check("params is 409 not_in_lobby while arming",
           st == 409 and pp["error"] == "not_in_lobby", (st, pp))
@@ -1471,24 +1497,17 @@ def test_session_type():
           and S.ROOMS[host["room"]].session_type == "vs", (st, host))
     check("and its view says so, additively", host["view"]["session_type"] == "vs")
 
-    # A v1..v3 body carrying the v4 field is refused as bad_field, exactly as an
-    # undefined key would be -- the bump has to mean something.
-    reset()
-    st, out = create(nick="host", v=1, session_type="adventure")
-    check("a v1 create carrying session_type is bad_field",
-          st == 400 and out["error"] == "bad_field", (st, out))
-
     # A v4 create names the type, and an unknown value is refused by name.
     reset()
-    st, out = create(nick="host", v=4, session_type="bogus")
-    check("a v4 create with an unknown session_type is bad_session_type",
+    st, out = create(nick="host", v=5, session_type="bogus")
+    check("a create with an unknown session_type is bad_session_type",
           st == 400 and out["error"] == "bad_session_type", (st, out))
 
     reset()
-    st, host = create(nick="host", v=4, session_type="adventure", pre_ok=True)
+    st, host = create(nick="host", v=5, session_type="adventure", pre_ok=True)
     code, token = host["room"], host["token"]
     room = S.ROOMS[code]
-    check("a v4 adventure create makes an adventure room", st == 200
+    check("an adventure create makes an adventure room", st == 200
           and room.session_type == "adventure", (st, host))
     check("the view reports the type", host["view"]["session_type"] == "adventure")
 
@@ -1520,7 +1539,7 @@ def test_party_session():
     print("\n-- the party session type (party slice)")
     # A v4 party create makes a party room, exactly as adventure does.
     reset()
-    st, host = create(nick="host", v=4, session_type="party", pre_ok=True)
+    st, host = create(nick="host", v=5, session_type="party", pre_ok=True)
     code, token = host["room"], host["token"]
     room = S.ROOMS[code]
     check("a v4 party create makes a party room",
@@ -1561,7 +1580,7 @@ def test_party_session():
           "host_level" not in vp and "netmode" not in vp, vp)
 
     reset()
-    st, host = create(nick="host", v=4, session_type="adventure", pre_ok=True)
+    st, host = create(nick="host", v=5, session_type="adventure", pre_ok=True)
     code, token = host["room"], host["token"]
     room = S.ROOMS[code]
     join(code, "b", pre_ok=True)
@@ -1578,7 +1597,7 @@ def test_go_plan():
     # A third seat: a spectator, since GAME_MAX_PLAYERS is 2.
     st, spec = join(code, "watch", who="10.0.0.3")
     check("the third seat is a spectator", room.members[3].playing is False)
-    S.do_params({"v": 1, "room": code, "token": host["token"],
+    S.do_params({"v": 5, "room": code, "token": host["token"],
                  "map": 2, "win_mode": "stars", "star_target": 3},
                 "10.0.0.1", 1000.0)
     st, p = start(code, host["token"])
@@ -1631,7 +1650,7 @@ def test_king_of_the_star():
     tok = host["token"]
 
     # king with a target is accepted, and the room takes the values.
-    st, out = S.do_params({"v": 1, "room": code, "token": tok, "map": 2,
+    st, out = S.do_params({"v": 5, "room": code, "token": tok, "map": 2,
                            "win_mode": "king", "king_target": 30},
                           "10.0.0.1", 1000.0)
     check("king with a target is accepted", st == 200, out)
@@ -1645,41 +1664,41 @@ def test_king_of_the_star():
 
     # every value up to the ceiling works; one past it, and zero, are refused.
     check("one is the floor and is accepted",
-          S.do_params({"v": 1, "room": code, "token": tok, "map": 0,
+          S.do_params({"v": 5, "room": code, "token": tok, "map": 0,
                        "win_mode": "king", "king_target": 1},
                       "10.0.0.1", 1000.0)[0] == 200)
     check("the ceiling is accepted",
-          S.do_params({"v": 1, "room": code, "token": tok, "map": 0,
+          S.do_params({"v": 5, "room": code, "token": tok, "map": 0,
                        "win_mode": "king", "king_target": S.KING_TARGET_MAX},
                       "10.0.0.1", 1000.0)[0] == 200)
     check("one past the ceiling is refused with its own code",
-          S.do_params({"v": 1, "room": code, "token": tok, "map": 0,
+          S.do_params({"v": 5, "room": code, "token": tok, "map": 0,
                        "win_mode": "king",
                        "king_target": S.KING_TARGET_MAX + 1},
                       "10.0.0.1", 1000.0)[1]["error"] == "bad_king_target")
     check("zero is refused too",
-          S.do_params({"v": 1, "room": code, "token": tok, "map": 0,
+          S.do_params({"v": 5, "room": code, "token": tok, "map": 0,
                        "win_mode": "king", "king_target": 0},
                       "10.0.0.1", 1000.0)[1]["error"] == "bad_king_target")
 
     # required iff king: king with no target is refused.
     check("king with no target is refused",
-          S.do_params({"v": 1, "room": code, "token": tok, "map": 0,
+          S.do_params({"v": 5, "room": code, "token": tok, "map": 0,
                        "win_mode": "king"},
                       "10.0.0.1", 1000.0)[1]["error"] == "bad_king_target")
     # forbidden otherwise: king_target on a non-king mode is refused.
     check("king_target in time mode is refused",
-          S.do_params({"v": 1, "room": code, "token": tok, "map": 0,
+          S.do_params({"v": 5, "room": code, "token": tok, "map": 0,
                        "win_mode": "time", "king_target": 30},
                       "10.0.0.1", 1000.0)[1]["error"] == "bad_king_target")
     check("king_target in stars mode is refused",
-          S.do_params({"v": 1, "room": code, "token": tok, "map": 0,
+          S.do_params({"v": 5, "room": code, "token": tok, "map": 0,
                        "win_mode": "stars", "star_target": 3,
                        "king_target": 30},
                       "10.0.0.1", 1000.0)[1]["error"] == "bad_king_target")
     # and star_target on king is refused for the mirror reason.
     check("star_target in king mode is refused",
-          S.do_params({"v": 1, "room": code, "token": tok, "map": 0,
+          S.do_params({"v": 5, "room": code, "token": tok, "map": 0,
                        "win_mode": "king", "king_target": 30,
                        "star_target": 3},
                       "10.0.0.1", 1000.0)[1]["error"] == "bad_star_target")
@@ -1691,7 +1710,7 @@ def test_king_of_the_star():
     # it freezes into the match and rides the plan, and only in king mode.
     reset()
     code, room, host, guest = _two_ready()
-    S.do_params({"v": 1, "room": code, "token": host["token"],
+    S.do_params({"v": 5, "room": code, "token": host["token"],
                  "map": 1, "win_mode": "king", "king_target": 25},
                 "10.0.0.1", 1000.0)
     st, p = start(code, host["token"])
@@ -1745,7 +1764,7 @@ def test_failed():
     st, p = start(code, host["token"])
     match = p["match"]
 
-    st, f = S.do_failed({"v": 1, "room": code, "token": guest["token"],
+    st, f = S.do_failed({"v": 5, "room": code, "token": guest["token"],
                          "match": match, "reason": "spawn_failed"},
                         "10.0.0.2", 1001.0)
     check("a failed returns 200", st == 200, (st, f))
@@ -1763,16 +1782,16 @@ def test_failed():
     reset()
     code, room, host, guest = _two_ready()
     st, p = start(code, host["token"])
-    st, f = S.do_failed({"v": 1, "room": code, "token": host["token"],
+    st, f = S.do_failed({"v": 5, "room": code, "token": host["token"],
                          "match": p["match"], "reason": "nope"}, "10.0.0.1", 1001.0)
     check("an unknown reason is 400 bad_reason",
           st == 400 and f["error"] == "bad_reason", (st, f))
-    st, f = S.do_failed({"v": 1, "room": code, "token": host["token"],
+    st, f = S.do_failed({"v": 5, "room": code, "token": host["token"],
                          "match": p["match"], "reason": "member_not_ready"},
                         "10.0.0.1", 1001.0)
     check("member_not_ready is server-minted only, refused from a client",
           st == 400 and f["error"] == "bad_reason", (st, f))
-    st, f = S.do_failed({"v": 1, "room": code, "token": host["token"],
+    st, f = S.do_failed({"v": 5, "room": code, "token": host["token"],
                          "match": "a" * 16, "reason": "no_pairing"},
                         "10.0.0.1", 1001.0)
     check("a failed for a stale match is 409 stale_match",
@@ -1793,7 +1812,7 @@ def test_arming_roster_is_the_frozen_one():
     code, room, host, guest = _two_ready()
     st, p = start(code, host["token"])
     match = p["match"]
-    st, _ = S.do_leave({"v": 1, "room": code, "token": guest["token"]},
+    st, _ = S.do_leave({"v": 5, "room": code, "token": guest["token"]},
                        "10.0.0.2", 1001.0)
     check("the guest can leave during arming", st == 200)
     check("the live roster is down to the host alone",
@@ -1820,7 +1839,7 @@ def test_arming_roster_is_the_frozen_one():
     frozen_names = room.names
     check("the frozen slot map is seats 1 and 2", sorted(room.slot_of) == [1, 2],
           room.slot_of)
-    S.do_leave({"v": 1, "room": code, "token": g2["token"]}, "10.0.0.2", 1001.0)
+    S.do_leave({"v": 5, "room": code, "token": g2["token"]}, "10.0.0.2", 1001.0)
     check("seat 3 was promoted, so the COUNT still matches agreed_players",
           room.members[3].playing is True
           and len([s for s in room.members if room.members[s].playing])
@@ -1855,7 +1874,7 @@ def test_only_playing_members_drive_a_match():
           st == 403 and r["error"] == "not_playing", (st, r))
     check("and it did not arm the spectator's seat", room.members[3].armed is False)
 
-    st, f = S.do_failed({"v": 1, "room": code, "token": spec["token"],
+    st, f = S.do_failed({"v": 5, "room": code, "token": spec["token"],
                          "match": match, "reason": "no_pairing"}, "10.0.0.3", 1001.0)
     check("a spectator's failed is 403 not_playing",
           st == 403 and f["error"] == "not_playing", (st, f))
@@ -1869,7 +1888,7 @@ def test_only_playing_members_drive_a_match():
     S.sweep(1002.0 + S.GO_GRACE_S + 0.1)
     check("the two playing seats got the match running", room.state == "in_match",
           room.state)
-    st, rr = S.do_result({"v": 1, "room": code, "token": spec["token"],
+    st, rr = S.do_result({"v": 5, "room": code, "token": spec["token"],
                           "match": match, "win": "star-target",
                           "scores": [9, 0, 0, 0]}, "10.0.0.3", 1010.0)
     check("a spectator's result is 403 not_playing",
@@ -1880,7 +1899,7 @@ def test_only_playing_members_drive_a_match():
           not any(e["kind"] == "result" for e in room.events))
 
     # A playing member still can, so the gate is not simply refusing everybody.
-    st, rr = S.do_result({"v": 1, "room": code, "token": g["token"],
+    st, rr = S.do_result({"v": 5, "room": code, "token": g["token"],
                           "match": match, "win": "time-up",
                           "scores": [1, 2, 0, 0]}, "10.0.0.2", 1011.0)
     check("a PLAYING member's result still works", st == 200 and room.state == "lobby")
@@ -1904,7 +1923,7 @@ def test_preflight_updates():
     check("so the host cannot start", st == 409 and p["error"] == "member_not_ready")
 
     before = room.seq
-    st, r = S.do_preflight({"v": 1, "room": code, "token": g["token"],
+    st, r = S.do_preflight({"v": 5, "room": code, "token": g["token"],
                             "pre_ok": True}, "10.0.0.2", 1001.0)
     check("the guest can say it is ready now", st == 200, (st, r))
     check("the roster shows it", room.members[2].pre_ok is True)
@@ -1924,32 +1943,32 @@ def test_preflight_updates():
     room = S.ROOMS[code]
     seq = room.seq
     for _ in range(5):
-        st, _ = S.do_preflight({"v": 1, "room": code, "token": host["token"],
+        st, _ = S.do_preflight({"v": 5, "room": code, "token": host["token"],
                                 "pre_ok": True}, "10.0.0.1", 1001.0)
         check("repeating the same answer is accepted", st == 200)
     check("...and pushes NOTHING, so a polling launcher costs the room nothing",
           room.seq == seq, (seq, room.seq))
 
     # It can go the other way too (a ROM that went missing).
-    st, _ = S.do_preflight({"v": 1, "room": code, "token": host["token"],
+    st, _ = S.do_preflight({"v": 5, "room": code, "token": host["token"],
                             "pre_ok": False}, "10.0.0.1", 1002.0)
     check("a member can also go back to not-ready",
           room.members[1].pre_ok is False and room.seq > seq)
 
     # Authority and grammar.
-    st, r = S.do_preflight({"v": 1, "room": code, "token": "0" * 32,
+    st, r = S.do_preflight({"v": 5, "room": code, "token": "0" * 32,
                             "pre_ok": True}, "10.0.0.9", 1003.0)
     check("a token that holds no seat is refused",
           st == 403 and r["error"] == "not_a_member", (st, r))
-    st, r = S.do_preflight({"v": 1, "room": code, "token": host["token"],
+    st, r = S.do_preflight({"v": 5, "room": code, "token": host["token"],
                             "pre_ok": "yes"}, "10.0.0.1", 1003.0)
     check("a non-boolean pre_ok is 400 bad_field",
           st == 400 and r["error"] == "bad_field", (st, r))
-    st, r = S.do_preflight({"v": 1, "room": code, "token": host["token"]},
+    st, r = S.do_preflight({"v": 5, "room": code, "token": host["token"]},
                            "10.0.0.1", 1003.0)
     check("a missing pre_ok is 400 bad_field",
           st == 400 and r["error"] == "bad_field", (st, r))
-    st, r = S.do_preflight({"v": 1, "room": code, "token": host["token"],
+    st, r = S.do_preflight({"v": 5, "room": code, "token": host["token"],
                             "pre_ok": True, "seat": 2}, "10.0.0.1", 1003.0)
     check("there is NO seat argument: a member speaks only for itself",
           st == 400 and r["error"] == "bad_field", (st, r))
@@ -1963,7 +1982,7 @@ def test_preflight_updates():
     ready(code, guest["token"], p["match"], who="10.0.0.2", now=1000.0)
     S.sweep(1000.0 + S.GO_GRACE_S + 0.1)
     check("a match is running", room.state == "in_match")
-    st, _ = S.do_preflight({"v": 1, "room": code, "token": guest["token"],
+    st, _ = S.do_preflight({"v": 5, "room": code, "token": guest["token"],
                             "pre_ok": False}, "10.0.0.2", 1010.0)
     check("preflight is still accepted mid-match", st == 200)
     check("and it does NOT disturb the running match",
@@ -2024,7 +2043,7 @@ def test_result_and_rematch():
     print("\n-- result: the rematch loop, and a fresh comms code each match")
     reset()
     code, room, host, guest = _two_ready(now=1000.0)
-    S.do_params({"v": 1, "room": code, "token": host["token"],
+    S.do_params({"v": 5, "room": code, "token": host["token"],
                  "map": 3, "win_mode": "stars", "star_target": 3},
                 "10.0.0.1", 1000.0)
     st, p = start(code, host["token"], now=1000.0)
@@ -2036,18 +2055,18 @@ def test_result_and_rematch():
     check("match one is running", room.state == "in_match")
 
     # A result validates its fields.
-    st, rr = S.do_result({"v": 1, "room": code, "token": host["token"],
+    st, rr = S.do_result({"v": 5, "room": code, "token": host["token"],
                           "match": match1, "win": "nope",
                           "scores": [3, 1, 0, 0]}, "10.0.0.1", 1010.0)
     check("a bad win is 400 bad_win", st == 400 and rr["error"] == "bad_win")
-    st, rr = S.do_result({"v": 1, "room": code, "token": host["token"],
+    st, rr = S.do_result({"v": 5, "room": code, "token": host["token"],
                           "match": match1, "win": "star-target",
                           "scores": [3, 1, 0]}, "10.0.0.1", 1010.0)
     check("scores that are not four ints is 400 bad_scores",
           st == 400 and rr["error"] == "bad_scores")
 
     # The real result.
-    st, rr = S.do_result({"v": 1, "room": code, "token": host["token"],
+    st, rr = S.do_result({"v": 5, "room": code, "token": host["token"],
                           "match": match1, "win": "star-target",
                           "scores": [3, 1, 0, 0]}, "10.0.0.1", 1010.0)
     check("the result returns the room to lobby", room.state == "lobby")
@@ -2062,7 +2081,7 @@ def test_result_and_rematch():
     check("the roster survived", set(room.members) == {1, 2})
 
     # The SECOND result for the same match is idempotent, not an error.
-    st, rr = S.do_result({"v": 1, "room": code, "token": guest["token"],
+    st, rr = S.do_result({"v": 5, "room": code, "token": guest["token"],
                           "match": match1, "win": "star-target",
                           "scores": [3, 1, 0, 0]}, "10.0.0.2", 1011.0)
     check("both players reporting is normal: the second is idempotent 200",
@@ -2080,7 +2099,7 @@ def test_result_and_rematch():
     ready(code, host["token"], match2, now=1012.0)
     ready(code, guest["token"], match2, who="10.0.0.2", now=1012.0)
     S.sweep(1012.0 + S.GO_GRACE_S + 0.1)
-    st, rr = S.do_result({"v": 1, "room": code, "token": host["token"],
+    st, rr = S.do_result({"v": 5, "room": code, "token": host["token"],
                           "match": match2, "win": "draw",
                           "scores": [0, 0, 0, 0]}, "10.0.0.1", 1020.0)
     check("a draw result is accepted", st == 200 and room.state == "lobby")
@@ -2112,25 +2131,14 @@ def test_colors():
           S.v_color({"c": "1a2b3g"}, "c")[1] == "bad_color")
     check("a number is bad_color", S.v_color({"c": 123456}, "c")[1] == "bad_color")
 
-    # -- the version bump --------------------------------------------------
-    reset()
-    st, out = S.do_create({"v": 1, "nick": "t", "color": "ff0000",
-                           "shoes": "0000ff"}, "10.0.0.1", 1000.0)
-    check("a v1 create carrying colours is refused: the bump has to mean "
-          "something", st == 400 and out["error"] == "bad_field", (st, out))
-    check("v1 through v4 are the versions this server answers, and nothing "
-          "else",
-          (S.CONTRACT_MIN, S.CONTRACT_V) == (1, 4),
-          (S.CONTRACT_MIN, S.CONTRACT_V))
-
     # -- create and join with colours -------------------------------------
     reset()
-    st, host = S.do_create({"v": 2, "nick": "tango", "pre_ok": True,
+    st, host = S.do_create({"v": 5, "game": GAME, "nick": "tango", "pre_ok": True,
                             "color": "8A2BE2", "shoes": "FFD700"},
                            "10.0.0.1", 1000.0)
     code = host["room"]
     room = S.ROOMS[code]
-    check("a v2 create takes both colours", st == 200, (st, host))
+    check("a create takes both colours", st == 200, (st, host))
     check("and stores them lower case",
           room.members[1].color == "8a2be2" and room.members[1].shoes == "ffd700",
           (room.members[1].color, room.members[1].shoes))
@@ -2139,36 +2147,37 @@ def test_colors():
           and host["view"]["members"][0]["shoes"] == "ffd700",
           host["view"]["members"][0])
 
-    st, out = S.do_join({"v": 2, "room": code, "nick": "opie", "pre_ok": True,
+    st, out = S.do_join({"v": 5, "game": GAME, "room": code, "nick": "opie", "pre_ok": True,
                          "color": "ff0000"}, "10.0.0.2", 1000.0)
     check("a join with one colour and not the other is bad_color",
           st == 400 and out["error"] == "bad_color", (st, out))
-    st, guest = S.do_join({"v": 2, "room": code, "nick": "opie", "pre_ok": True,
+    st, guest = S.do_join({"v": 5, "game": GAME, "room": code, "nick": "opie", "pre_ok": True,
                            "color": "ff0000", "shoes": "00ff00"},
                           "10.0.0.2", 1000.0)
     check("a join with both is seated", st == 200, (st, guest))
     check("and the guest's row carries them",
           room.members[2].color == "ff0000" and room.members[2].shoes == "00ff00")
 
-    # -- a v1 join into a coloured room -----------------------------------
-    st, old = S.do_join({"v": 1, "room": code, "nick": "old", "pre_ok": True},
+    # -- a join that picked nothing, into a coloured room --------------------
+    st, old = S.do_join({"v": 5, "game": GAME, "room": code, "nick": "old", "pre_ok": True},
                         "10.0.0.3", 1000.0)
-    check("a v1 launcher can still join a room full of colours", st == 200, (st, old))
+    check("a player who picked nothing joins a room full of colours",
+          st == 200, (st, old))
     check("and takes the empty pair, which means the built-in Yoshi",
           room.members[3].color == "" and room.members[3].shoes == "")
-    st, p = S.do_leave({"v": 1, "room": code, "token": old["token"]},
+    st, p = S.do_leave({"v": 5, "room": code, "token": old["token"]},
                        "10.0.0.3", 1000.0)
     check("and it can leave again", st == 200, (st, p))
 
     # -- the verb: own seat only, no-op on unchanged, event on change ------
     before = room.seq
-    st, r = S.do_color({"v": 2, "room": code, "token": guest["token"],
+    st, r = S.do_color({"v": 5, "room": code, "token": guest["token"],
                         "color": "ff0000", "shoes": "00ff00"},
                        "10.0.0.2", 1001.0)
     check("re-sending the same pair is a no-op", st == 200 and room.seq == before,
           (st, room.seq, before))
 
-    st, r = S.do_color({"v": 2, "room": code, "token": guest["token"],
+    st, r = S.do_color({"v": 5, "room": code, "token": guest["token"],
                         "color": "123456", "shoes": "654321"},
                        "10.0.0.2", 1002.0)
     check("a real change is taken", st == 200, (st, r))
@@ -2181,39 +2190,32 @@ def test_colors():
     check("the view every poll carries reflects it",
           room.view(1)["members"][1]["color"] == "123456")
 
-    st, r = S.do_color({"v": 2, "room": code, "token": guest["token"],
+    st, r = S.do_color({"v": 5, "room": code, "token": guest["token"],
                         "color": "", "shoes": ""}, "10.0.0.2", 1003.0)
     check("two empty strings put a player back on the built-in colour",
           st == 200 and room.members[2].color == "", (st, room.members[2].color))
-    st, r = S.do_color({"v": 2, "room": code, "token": guest["token"],
+    st, r = S.do_color({"v": 5, "room": code, "token": guest["token"],
                         "color": "ff0000", "shoes": ""}, "10.0.0.2", 1004.0)
     check("one empty and one not is bad_color",
           st == 400 and r["error"] == "bad_color", (st, r))
-    st, r = S.do_color({"v": 1, "room": code, "token": guest["token"],
+    st, r = S.do_color({"v": 4, "room": code, "token": guest["token"],
                         "color": "ff0000", "shoes": "00ff00"},
                        "10.0.0.2", 1005.0)
-    # bad_field, not bad_version, and that is the consolidation's one
-    # deliberate behaviour change on this verb. The whole verb's version lives
-    # in VERB_FIELDS now, so a v1 caller is refused exactly the way any
-    # out-of-version key is refused -- which means it cannot tell a v2 verb
-    # apart from a verb that does not exist, and the server gives away nothing
-    # about what it grew. No player-visible difference: LobbyWire.Explain maps
-    # bad_field and bad_version to the same sentence.
-    check("the verb is v2 only, refused the same way every out-of-version key "
-          "is", st == 400 and r["error"] == "bad_field", (st, r))
-    st, r = S.do_color({"v": 2, "room": code, "token": "f" * 32,
+    check("a pre-v5 caller is refused bad_version like every other verb",
+          st == 400 and r["error"] == "bad_version", (st, r))
+    st, r = S.do_color({"v": 5, "room": code, "token": "f" * 32,
                         "color": "ff0000", "shoes": "00ff00"},
                        "10.0.0.9", 1006.0)
     check("a token that holds no seat is refused",
           st == 403 and r["error"] == "not_a_member", (st, r))
-    st, r = S.do_color({"v": 2, "room": code, "token": guest["token"], "seat": 1,
+    st, r = S.do_color({"v": 5, "room": code, "token": guest["token"], "seat": 1,
                         "color": "ff0000", "shoes": "00ff00"},
                        "10.0.0.2", 1007.0)
     check("A SEAT ARGUMENT IS REFUSED OUTRIGHT: the verb has no way to reach "
           "anybody else's row", st == 400 and r["error"] == "bad_field", (st, r))
 
     # -- the string the game reads ----------------------------------------
-    S.do_color({"v": 2, "room": code, "token": guest["token"],
+    S.do_color({"v": 5, "room": code, "token": guest["token"],
                 "color": "ff0000", "shoes": "00ff00"}, "10.0.0.2", 1008.0)
     st, p = start(code, host["token"], now=1009.0)
     check("the room arms", st == 200, (st, p))
@@ -2223,7 +2225,7 @@ def test_colors():
           S.member_plan(room, 1)["colors"] == S.member_plan(room, 2)["colors"]
           == room.colors)
     check("and it is frozen, not live: changing a colour now is refused",
-          S.do_color({"v": 2, "room": code, "token": guest["token"],
+          S.do_color({"v": 5, "room": code, "token": guest["token"],
                       "color": "ffffff", "shoes": "ffffff"},
                      "10.0.0.2", 1010.0)[0] == 409)
     check("so the string the two games are wearing has not moved",
@@ -2240,11 +2242,11 @@ def test_colors():
 
     # -- one picker, one not ----------------------------------------------
     reset()
-    st, host = S.do_create({"v": 2, "nick": "tango", "pre_ok": True,
+    st, host = S.do_create({"v": 5, "game": GAME, "nick": "tango", "pre_ok": True,
                             "color": "18e618", "shoes": "e66318"},
                            "10.0.0.1", 1000.0)
     code = host["room"]
-    S.do_join({"v": 1, "room": code, "nick": "opie", "pre_ok": True},
+    S.do_join({"v": 5, "game": GAME, "room": code, "nick": "opie", "pre_ok": True},
               "10.0.0.2", 1000.0)
     room = S.ROOMS[code]
     start(code, host["token"])
@@ -2276,7 +2278,7 @@ def test_colors():
     for a in hostile:
         for b in hostile:
             reset()
-            st, h = S.do_create({"v": 2, "nick": "t", "pre_ok": True,
+            st, h = S.do_create({"v": 5, "game": GAME, "nick": "t", "pre_ok": True,
                                  "color": a, "shoes": b}, "10.0.0.1", 1000.0)
             if st != 200:
                 refused += 1
@@ -2284,7 +2286,7 @@ def test_colors():
             emitted += 1
             c2 = h["room"]
             r2 = S.ROOMS[c2]
-            S.do_join({"v": 2, "room": c2, "nick": "g", "pre_ok": True,
+            S.do_join({"v": 5, "game": GAME, "room": c2, "nick": "g", "pre_ok": True,
                        "color": a, "shoes": b}, "10.0.0.2", 1000.0)
             start(c2, h["token"])
             out = r2.colors
@@ -2297,12 +2299,12 @@ def test_colors():
     # And the same guarantee stated as a property of the builder rather than of
     # the validators, so a future validator bug is still caught here.
     reset()
-    st, h = S.do_create({"v": 2, "nick": "t", "pre_ok": True,
+    st, h = S.do_create({"v": 5, "game": GAME, "nick": "t", "pre_ok": True,
                          "color": "ffffff", "shoes": "000000"},
                         "10.0.0.1", 1000.0)
     code = h["room"]
     room = S.ROOMS[code]
-    S.do_join({"v": 2, "room": code, "nick": "g", "pre_ok": True,
+    S.do_join({"v": 5, "game": GAME, "room": code, "nick": "g", "pre_ok": True,
                "color": "000000", "shoes": "ffffff"}, "10.0.0.2", 1000.0)
     start(code, h["token"])
     check("the longest legal string is 4 x 13 + 3 = 55 bytes, which is the "
@@ -2312,44 +2314,6 @@ def test_colors():
 
 
 
-def test_the_dial_cannot_widen_over_a_seated_old_client():
-    """0.3.2. The join-time gate answers 'can this client enter a wide room';
-    this one answers the other order: the old client is already in a narrow
-    room and the host then turns the dial. Same failure, one verb later, and
-    the same refusal, given to the host who can act on it."""
-    print("-- the dial refuses to widen a room over a seated v2 client")
-    reset()
-    with game_max(16, seats=16):
-        st, h = S.do_create({"v": 3, "nick": "new", "pre_ok": True},
-                             "10.0.0.1", 1000.0)
-        code, token = h["room"], h["token"]
-        st, out = S.do_params({"v": 3, "room": code, "token": token, "map": 0,
-                               "win_mode": "time", "match_players": 4},
-                              "10.0.0.1", 1000.5)
-        check("the v3 host dials the room down to four first", st == 200, (st, out))
-        st, out = S.do_join({"v": 2, "room": code, "nick": "old",
-                             "pre_ok": True}, "10.0.0.2", 1000.0)
-        check("a v2 client joins the four-wide room", st == 200, (st, out))
-        old_token = out["token"]
-        base = {"v": 3, "room": code, "token": token, "map": 0,
-                "win_mode": "time"}
-        st, out = S.do_params(dict(base, match_players=8), "10.0.0.1", 1001.0)
-        check("dialing it to eight is refused seated_client_too_old",
-              st == 409 and out["error"] == "seated_client_too_old", (st, out))
-        check("and the room is still four wide",
-              S.ROOMS[code].match_players == 4, S.ROOMS[code].match_players)
-        st, out = S.do_params(dict(base, match_players=3), "10.0.0.1", 1002.0)
-        check("dialing within four is still fine", st == 200, (st, out))
-        st, out = S.do_leave({"v": 2, "room": code, "token": old_token},
-                             "10.0.0.2", 1003.0)
-        st, out = S.do_join({"v": 3, "room": code, "nick": "new2",
-                             "pre_ok": True}, "10.0.0.3", 1004.0)
-        check("a v3 client joins in its place", st == 200, (st, out))
-        st, out = S.do_params(dict(base, match_players=8), "10.0.0.1", 1005.0)
-        check("and now the dial opens to eight", st == 200 and
-              S.ROOMS[code].match_players == 8, (st, out))
-
-
 def test_a_dropout_after_go_does_not_end_the_match_for_the_rest():
     """0.3.2 field lesson. Once the match is sent off, a non-host member's
     failed drops that member and the rest play on; the host's failed still
@@ -2357,15 +2321,15 @@ def test_a_dropout_after_go_does_not_end_the_match_for_the_rest():
     print("-- after go, one dropout does not end the match for the rest")
     reset()
     with game_max(16, seats=16):
-        st, h = S.do_create({"v": 3, "nick": "h", "pre_ok": True},
+        st, h = S.do_create({"v": 5, "game": GAME, "nick": "h", "pre_ok": True},
                             "10.0.0.1", 1000.0)
         code, htok = h["room"], h["token"]
         toks = []
         for k in (2, 3):
-            st, out = S.do_join({"v": 3, "room": code, "nick": "g%d" % k,
+            st, out = S.do_join({"v": 5, "game": GAME, "room": code, "nick": "g%d" % k,
                                  "pre_ok": True}, "10.0.0.%d" % k, 1000.0)
             toks.append(out["token"])
-        st, out = S.do_params({"v": 3, "room": code, "token": htok, "map": 0,
+        st, out = S.do_params({"v": 5, "room": code, "token": htok, "map": 0,
                                "win_mode": "time", "match_players": 3},
                               "10.0.0.1", 1000.5)
         st, p = start(code, htok)
@@ -2376,10 +2340,10 @@ def test_a_dropout_after_go_does_not_end_the_match_for_the_rest():
         # last one flips the room from arming to go.
         for tok, ip in ((htok, "10.0.0.1"), (toks[0], "10.0.0.2"),
                         (toks[1], "10.0.0.3")):
-            st, out = S.do_ready({"v": 3, "room": code, "token": tok,
+            st, out = S.do_ready({"v": 5, "room": code, "token": tok,
                                   "match": match}, ip, 1001.0)
         check("the room is at go", room.state == "go", room.state)
-        st, f = S.do_failed({"v": 3, "room": code, "token": toks[0],
+        st, f = S.do_failed({"v": 5, "room": code, "token": toks[0],
                              "match": match, "reason": "no_pairing"},
                             "10.0.0.2", 1005.0)
         check("a guest's failed after go is 200", st == 200, (st, f))
@@ -2391,7 +2355,7 @@ def test_a_dropout_after_go_does_not_end_the_match_for_the_rest():
         check("a dropped event names the seat and the reason",
               ev["kind"] == "dropped" and ev["seat"] == 2
               and ev["reason"] == "no_pairing", ev)
-        st, f = S.do_failed({"v": 3, "room": code, "token": htok,
+        st, f = S.do_failed({"v": 5, "room": code, "token": htok,
                              "match": match, "reason": "no_pairing"},
                             "10.0.0.1", 1006.0)
         check("the host's failed still ends the match",
@@ -2417,49 +2381,22 @@ def test_result_accepts_a_wide_scoreline():
           S.v_scores({"scores": [0] * 17})[1] == "bad_scores")
 
 
-def test_wide_is_v3_only():
-    """run vs16. Above four players the game speaks a different wire and the
-    two name/colour strings carry sixteen fields, so the RANGE the dial may
-    carry is gated on the caller's version -- not the field, which arrived in
-    v2 and stays there."""
-    print("\n-- five players and up need v3, and the shape follows the dial")
+def test_wide_rooms_need_no_version_gate():
+    """Before v5 a v2 caller was held to four players (its build validated
+    four name fields). The floor retired those callers, so the dial's bound
+    is the deployment's alone and a fresh room defaults to all of it."""
+    print("\n-- above the v5 floor the dial's bound is the deployment's")
     reset()
     with game_max(16, seats=16):
-        # 0.3.2: the host is seated at the version it created with, and a
-        # wide dial is refused while anyone seated is below v3 -- so a host
-        # that will dial at v3 creates at v3, as a real v3 launcher does.
-        st, host = S.do_create({"v": 3, "nick": "h", "pre_ok": True},
-                               "10.0.0.1", 1000.0)
+        st, host = create(pre_ok=True)
         code, token = host["room"], host["token"]
-
-        # A v2 caller may still dial anything up to four.
-        for n in (2, 3, 4):
-            st, out = _dial(code, token, n, v=2)
-            check("a v2 caller may dial %d" % n, st == 200, (n, st, out))
-
-        # And nothing above it, even on a deployment that could run it.
-        for n in (5, 8, 16):
-            st, out = _dial(code, token, n, v=2)
-            check("a v2 caller asking for %d is refused bad_match_players, "
-                  "because its own build validates four name fields and would "
-                  "have joined a room it could not play" % n,
-                  st == 400 and out["error"] == "bad_match_players",
-                  (n, st, out))
-
-        # The same numbers at v3 are accepted.
-        for n in (5, 8, 16):
-            st, out = _dial(code, token, n, v=3)
-            check("a v3 caller may dial %d" % n, st == 200, (n, st, out))
-
-        # THE BOUND IS DERIVED, not restated. dial_max_for is the only reader
-        # of the rule and it answers both halves.
-        check("dial_max_for caps a v2 caller at four and lets v3 through",
-              S.dial_max_for(2) == 4 and S.dial_max_for(3) == S.DIAL_MAX,
-              (S.dial_max_for(2), S.dial_max_for(3), S.DIAL_MAX))
-    check("and on a four-player deployment the two answers are identical, "
-          "so the gate is invisible where nothing can use it",
-          S.dial_max_for(2) == S.dial_max_for(3) == S.DIAL_MAX,
-          (S.dial_max_for(2), S.dial_max_for(3), S.DIAL_MAX))
+        check("a fresh room on a sixteen-player deployment defaults to 16",
+              S.ROOMS[code].match_players == 16, S.ROOMS[code].match_players)
+        for n in (2, 4, 5, 8, 16):
+            st, out = _dial(code, token, n)
+            check("the host may dial %d" % n, st == 200, (n, st, out))
+        check("and the narrow-client gates are gone, not merely unreachable",
+              not hasattr(S, "dial_max_for") and not hasattr(S, "WIDE_MIN_V"))
     reset()
 
 
@@ -2471,11 +2408,11 @@ def test_name_and_colour_shapes_move_together():
     reset()
     with game_max(16, seats=16):
         # A room nobody dials wide: four fields, exactly as before.
-        st, h = S.do_create({"v": 3, "nick": "tango", "pre_ok": True,
+        st, h = S.do_create({"v": 5, "game": GAME, "nick": "tango", "pre_ok": True,
                              "color": "8A2BE2", "shoes": "FFD700"},
                             "10.0.0.1", 1000.0)
         code = h["room"]
-        S.do_join({"v": 3, "room": code, "nick": "opie", "pre_ok": True,
+        S.do_join({"v": 5, "game": GAME, "room": code, "nick": "opie", "pre_ok": True,
                    "color": "FF0000", "shoes": "00FF00"}, "10.0.0.2", 1000.0)
         room = S.ROOMS[code]
 
@@ -2484,7 +2421,7 @@ def test_name_and_colour_shapes_move_together():
         # built, so a test that built them directly would be testing a room
         # state that never exists in production -- and would have read a dial
         # of 0 and passed for the wrong reason.
-        _params(code, h["token"], v=3, match_players=4)
+        _params(code, h["token"], v=5, match_players=4)
         start(code, h["token"])
         names, colors = room.names, room.colors
         check("a four-player room's names carry exactly three commas",
@@ -2496,7 +2433,7 @@ def test_name_and_colour_shapes_move_together():
 
         # Dial it wide and both strings grow, in the same start.
         S.ROOMS[code].state = "lobby"
-        st, out = _params(code, h["token"], v=3, match_players=8)
+        st, out = _params(code, h["token"], v=5, match_players=8)
         check("the room dials to eight", st == 200, (st, out))
         start(code, h["token"])
         names, colors = room.names, room.colors
@@ -2520,7 +2457,7 @@ def test_name_and_colour_shapes_move_together():
 
         # Back down and the shape goes back with it.
         S.ROOMS[code].state = "lobby"
-        st, out = _params(code, h["token"], v=3, match_players=4)
+        st, out = _params(code, h["token"], v=5, match_players=4)
         check("the room dials back to four", st == 200, (st, out))
         start(code, h["token"])
         check("and the string is four fields again, byte for byte the shape "
@@ -2531,7 +2468,7 @@ def test_name_and_colour_shapes_move_together():
         # The game's own caps, checked here so the service cannot emit a
         # string the reader in hal/star_flow.cpp would throw away.
         S.ROOMS[code].state = "lobby"
-        _params(code, h["token"], v=3, match_players=16)
+        _params(code, h["token"], v=5, match_players=16)
         start(code, h["token"])
         check("the widest legal names string is inside the game's 271-byte cap",
               len(room.names) <= 271, len(room.names))
@@ -2539,46 +2476,6 @@ def test_name_and_colour_shapes_move_together():
               len(room.colors) <= 223, len(room.colors))
     reset()
 
-
-
-def test_a_room_is_never_wider_than_its_host_can_drive():
-    """run vs16. The hole this closes is not the dial -- a v2 host cannot move
-    the dial past four -- it is the DEFAULT. On a sixteen-player deployment a
-    room defaults to the deployment's capability, and a v2 host would have got
-    a sixteen-wide room without touching anything, then been handed a
-    sixteen-field name string its own build refuses."""
-    print("\n-- a room's default width is bounded by its host's version")
-    reset()
-    with game_max(16, seats=16):
-        st, h2 = S.do_create({"v": 2, "nick": "old", "pre_ok": True},
-                             "10.0.0.1", 1000.0)
-        check("a v2 host's room defaults to four, not to the deployment's 16",
-              S.ROOMS[h2["room"]].match_players == 4,
-              S.ROOMS[h2["room"]].match_players)
-        st, h3 = S.do_create({"v": 3, "nick": "new", "pre_ok": True},
-                             "10.0.0.2", 1000.0)
-        check("a v3 host's room defaults to the deployment's 16",
-              S.ROOMS[h3["room"]].match_players == 16,
-              S.ROOMS[h3["room"]].match_players)
-
-        # And a narrow client cannot join the wide room at all.
-        code = h3["room"]
-        st, out = S.do_join({"v": 2, "room": code, "nick": "old2",
-                             "pre_ok": True}, "10.0.0.3", 1000.0)
-        check("a v2 client joining a wide room is refused needs_newer_client, "
-              "at the door rather than at spawn time",
-              st == 409 and out["error"] == "needs_newer_client", (st, out))
-        st, out = S.do_join({"v": 3, "room": code, "nick": "new2",
-                             "pre_ok": True}, "10.0.0.4", 1000.0)
-        check("and a v3 client joins it", st == 200, (st, out))
-
-        # The same v2 client joins the NARROW room without complaint, which is
-        # the half that proves the refusal is about width and not about age.
-        st, out = S.do_join({"v": 2, "room": h2["room"], "nick": "old3",
-                             "pre_ok": True}, "10.0.0.5", 1000.0)
-        check("the same v2 client joins a four-player room fine",
-              st == 200, (st, out))
-    reset()
 
 
 def Member_fields(m):
@@ -2600,13 +2497,11 @@ def main():
     test_no_two_player_assumption()
     test_dial_defaults_are_inert()
     test_dial_range_is_server_enforced()
-    test_dial_is_v2_only()
-    test_wide_is_v3_only()
+    test_the_v5_floor()
+    test_wide_rooms_need_no_version_gate()
     test_a_dropout_after_go_does_not_end_the_match_for_the_rest()
     test_result_accepts_a_wide_scoreline()
-    test_the_dial_cannot_widen_over_a_seated_old_client()
     test_name_and_colour_shapes_move_together()
-    test_a_room_is_never_wider_than_its_host_can_drive()
     test_every_versioned_field_is_gated()
     test_dial_moves_the_fewest_people()
     test_dial_and_seat_reuse()

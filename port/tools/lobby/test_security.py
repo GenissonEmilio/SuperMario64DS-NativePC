@@ -132,7 +132,7 @@ def blocker1():
         burned = "10.9.9.1"
         last = None
         for _ in range(12):
-            last = quick_post(c, "create", {"v": 1, "nick": "x"}, burned)
+            last = quick_post(c, "create", {"v": 5, "nick": "x", "game": "t-1.0"}, burned)
         check("an address can be pushed to 429 ignored",
               last is not None and last[0] == 429
               and last[1].get("error") == "ignored", last)
@@ -183,7 +183,7 @@ def blocker1():
                 hs.close()
             except OSError:
                 pass
-        st, body = c.post("create", {"v": 1, "nick": "after"})
+        st, body = c.post("create", {"v": 5, "nick": "after", "game": "t-1.0"})
         check("after the held connections time out the server serves normally",
               st == 200, (st, body))
     finally:
@@ -210,7 +210,7 @@ def blocker2():
         codes = {}
         for i in range(30):
             forged = "%d.%d.%d.%d" % (i + 1, i + 2, i + 3, i + 4)
-            st, _ = quick_post(c, "join", {"v": 1, "room": "ZZZZZZ", "nick": "n"},
+            st, _ = quick_post(c, "join", {"v": 5, "room": "ZZZZZZ", "nick": "n", "game": "t-1.0"},
                                "%s, %s" % (forged, REAL))
             codes[st] = codes.get(st, 0) + 1
         check("forged FIRST entries do not bypass the join cap when the real "
@@ -227,7 +227,7 @@ def blocker2():
         time.sleep(1)
         honest = {}
         for _ in range(30):
-            st, _ = quick_post(c, "join", {"v": 1, "room": "ZZZZZZ", "nick": "n"},
+            st, _ = quick_post(c, "join", {"v": 5, "room": "ZZZZZZ", "nick": "n", "game": "t-1.0"},
                                "198.51.100.7")
             honest[st] = honest.get(st, 0) + 1
         check("an honest single address is still rate-limited",
@@ -243,7 +243,7 @@ def blocker2():
         direct = {}
         for i in range(30):
             forged = "%d.%d.%d.%d" % (100 + i, i, i, i)
-            st, _ = quick_post(c, "join", {"v": 1, "room": "ZZZZZZ", "nick": "n"},
+            st, _ = quick_post(c, "join", {"v": 5, "room": "ZZZZZZ", "nick": "n", "game": "t-1.0"},
                                forged)   # single entry, no appended peer
             direct[st] = direct.get(st, 0) + 1
         print("info  direct-exposure control (no proxy appending a real peer): "

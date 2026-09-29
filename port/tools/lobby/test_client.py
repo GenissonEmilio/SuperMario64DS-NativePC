@@ -38,6 +38,8 @@ PREFIX = "/port/lobby"
 
 ROOM_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
+GAME = "t-1.0"      # the game build id every selftest room plays (v5)
+
 
 # ------------------------------------------------------------------- plumbing
 
@@ -241,7 +243,7 @@ def selftest(c, quick=False):
     rooms_before = health.get("rooms", 0)
 
     # -- create ----------------------------------------------------------
-    status, host = c.post("create", {"v": 1, "nick": "tango", "pre_ok": True})
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "tango", "pre_ok": True})
     check("create answers 200", status == 200, host)
     code = host.get("room", "")
     check("room code is 6 chars of the room alphabet",
@@ -260,7 +262,7 @@ def selftest(c, quick=False):
           c.get("health")[1]["rooms"] == rooms_before + 1)
 
     # -- join ------------------------------------------------------------
-    status, guest = c.post("join", {"v": 1, "room": code, "nick": "opie"})
+    status, guest = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "opie"})
     check("join answers 200", status == 200, guest)
     check("joiner is seat 2 and playing",
           guest.get("member") == 2
@@ -270,7 +272,7 @@ def selftest(c, quick=False):
           guest["view"]["members"])
 
     # -- the roster reaches the host through a poll -----------------------
-    status, seen = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                    "cursor": host["cursor"], "wait": 0})
     check("host's poll carries the joined event",
           any(e["kind"] == "joined" and e["seat"] == 2 for e in seen["events"]),
@@ -280,22 +282,22 @@ def selftest(c, quick=False):
     check("the host's own view says you=1", seen["view"]["you"] == 1)
 
     # -- chat, both ways --------------------------------------------------
-    status, sent = c.post("chat", {"v": 1, "room": code, "token": host["token"],
+    status, sent = c.post("chat", {"v": 5, "room": code, "token": host["token"],
                                    "text": "hey"})
     check("host can chat", status == 200, sent)
-    status, seen2 = c.post("poll", {"v": 1, "room": code, "token": guest["token"],
+    status, seen2 = c.post("poll", {"v": 5, "room": code, "token": guest["token"],
                                     "cursor": guest["cursor"], "wait": 0})
     chats = [e for e in seen2["events"] if e["kind"] == "chat"]
     check("the guest sees the host's line verbatim",
           len(chats) == 1 and chats[0]["text"] == "hey"
           and chats[0]["display"] == "tango", seen2.get("events"))
 
-    status, _ = c.post("chat", {"v": 1, "room": code, "token": guest["token"],
+    status, _ = c.post("chat", {"v": 5, "room": code, "token": guest["token"],
                                 "text": "gg"})
     check("guest can chat", status == 200)
     # From the cursor the host's OWN chat handed back, so the only thing this
     # poll can carry is what happened after it.
-    status, seen3 = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    status, seen3 = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                     "cursor": sent["cursor"], "wait": 0})
     chats = [e for e in seen3["events"] if e["kind"] == "chat"]
     check("the host sees the guest's line verbatim",
@@ -307,14 +309,14 @@ def selftest(c, quick=False):
 
     def hold_poll():
         t0 = time.time()
-        hold["r"] = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+        hold["r"] = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                     "cursor": seen3["cursor"], "wait": 20})
         hold["dt"] = time.time() - t0
 
     t = threading.Thread(target=hold_poll)
     t.start()
     time.sleep(1.0)
-    c.post("chat", {"v": 1, "room": code, "token": guest["token"], "text": "wake"})
+    c.post("chat", {"v": 5, "room": code, "token": guest["token"], "text": "wake"})
     t.join(timeout=25)
     check("a long poll returns as soon as there is something to say",
           hold.get("dt", 99) < 5.0, hold.get("dt"))
@@ -324,7 +326,7 @@ def selftest(c, quick=False):
 
     if not quick:
         t0 = time.time()
-        status, idle = c.post("poll", {"v": 1, "room": code,
+        status, idle = c.post("poll", {"v": 5, "room": code,
                                        "token": host["token"],
                                        "cursor": hold["r"][1]["cursor"],
                                        "wait": 3})
@@ -341,13 +343,13 @@ def selftest(c, quick=False):
 
     # -- params, and who may set them -------------------------------------
     expect("a guest cannot set params",
-           c.post("params", {"v": 1, "room": code, "token": guest["token"],
+           c.post("params", {"v": 5, "room": code, "token": guest["token"],
                              "map": 2, "win_mode": "stars", "star_target": 3}),
            403, "not_host")
-    status, _ = c.post("params", {"v": 1, "room": code, "token": host["token"],
+    status, _ = c.post("params", {"v": 5, "room": code, "token": host["token"],
                                   "map": 2, "win_mode": "stars", "star_target": 3})
     check("the host can set params", status == 200)
-    status, after = c.post("poll", {"v": 1, "room": code, "token": guest["token"],
+    status, after = c.post("poll", {"v": 5, "room": code, "token": guest["token"],
                                     "cursor": hcur, "wait": 0})
     check("a params event reaches the other window",
           any(e["kind"] == "params" and e["map"] == 2
@@ -357,24 +359,24 @@ def selftest(c, quick=False):
           after["view"]["map"] == 2 and after["view"]["win_mode"] == "stars"
           and after["view"]["star_target"] == 3, after["view"])
     expect("star_target is forbidden under win_mode time",
-           c.post("params", {"v": 1, "room": code, "token": host["token"],
+           c.post("params", {"v": 5, "room": code, "token": host["token"],
                              "map": 0, "win_mode": "time", "star_target": 3}),
            400, "bad_star_target")
     expect("star_target is required under win_mode stars",
-           c.post("params", {"v": 1, "room": code, "token": host["token"],
+           c.post("params", {"v": 5, "room": code, "token": host["token"],
                              "map": 0, "win_mode": "stars"}),
            400, "bad_star_target")
     expect("star_target is capped at 5",
-           c.post("params", {"v": 1, "room": code, "token": host["token"],
+           c.post("params", {"v": 5, "room": code, "token": host["token"],
                              "map": 0, "win_mode": "stars", "star_target": 6}),
            400, "bad_star_target")
     expect("map is 0..3",
-           c.post("params", {"v": 1, "room": code, "token": host["token"],
+           c.post("params", {"v": 5, "room": code, "token": host["token"],
                              "map": 4, "win_mode": "time"}),
            400, "bad_map")
 
     # -- duplicate nicknames are disambiguated once, by the server --------
-    status, dup = c.post("join", {"v": 1, "room": code, "nick": "opie"})
+    status, dup = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "opie"})
     check("a third seat may join", status == 200, dup)
     check("the third seat is a spectator", dup["view"]["members"][2]["playing"] is False,
           dup["view"]["members"])
@@ -383,17 +385,17 @@ def selftest(c, quick=False):
           dup["view"]["members"])
 
     # -- seats are capped --------------------------------------------------
-    status, four = c.post("join", {"v": 1, "room": code, "nick": "ace"})
+    status, four = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "ace"})
     check("a fourth seat may join", status == 200, four)
-    expect("a fifth may not", c.post("join", {"v": 1, "room": code, "nick": "nn"}),
+    expect("a fifth may not", c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "nn"}),
            409, "room_full")
 
     # -- leaving -----------------------------------------------------------
-    hcur = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    hcur = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                            "cursor": hcur, "wait": 0})[1]["cursor"]
-    status, _ = c.post("leave", {"v": 1, "room": code, "token": dup["token"]})
+    status, _ = c.post("leave", {"v": 5, "room": code, "token": dup["token"]})
     check("a member can leave", status == 200)
-    status, gone = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    status, gone = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                    "cursor": hcur, "wait": 0})
     check("the room drops to three seats", len(gone["view"]["members"]) == 3,
           gone["view"]["members"])
@@ -404,16 +406,16 @@ def selftest(c, quick=False):
 
     # A playing seat leaving promotes the lowest spectator, and the promotion
     # arrives in the view rather than as a new event kind.
-    status, _ = c.post("leave", {"v": 1, "room": code, "token": guest["token"]})
+    status, _ = c.post("leave", {"v": 5, "room": code, "token": guest["token"]})
     check("a playing member can leave", status == 200)
-    status, promoted = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    status, promoted = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                        "cursor": hcur, "wait": 0})
     seats = {m["seat"]: m for m in promoted["view"]["members"]}
     check("the lowest spectator is promoted into the free playing seat",
           seats.get(4, {}).get("playing") is True, promoted["view"]["members"])
 
     # -- resync ------------------------------------------------------------
-    status, resync = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    status, resync = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                      "cursor": 0, "wait": 0})
     check("a cursor of 0 on a busy room asks the client to replace its state",
           resync.get("resync") is True, resync)
@@ -422,17 +424,17 @@ def selftest(c, quick=False):
           and len(resync["events"]) >= 3, resync["events"])
 
     # -- the host leaving closes the room ----------------------------------
-    last = c.post("join", {"v": 1, "room": code, "nick": "watcher"})[1]
-    status, _ = c.post("leave", {"v": 1, "room": code, "token": host["token"]})
+    last = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "watcher"})[1]
+    status, _ = c.post("leave", {"v": 5, "room": code, "token": host["token"]})
     check("the host can leave", status == 200)
-    status, closed = c.post("poll", {"v": 1, "room": code, "token": last["token"],
+    status, closed = c.post("poll", {"v": 5, "room": code, "token": last["token"],
                                      "cursor": last["cursor"], "wait": 0})
     check("the room is closed, and the reason survives for the members",
           status == 200 and closed["view"]["state"] == "closed"
           and any(e["kind"] == "closed" and e["why"] == "host_left"
                   for e in closed["events"]), (status, closed))
     expect("a closed room refuses a new join",
-           c.post("join", {"v": 1, "room": code, "nick": "late"}),
+           c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "late"}),
            404, "no_such_room")
 
     selftest_match(c)
@@ -462,7 +464,7 @@ def selftest_dial(c):
           and "dial_max" in health, health)
     dial_max = health["dial_max"]
 
-    status, host = c.post("create", {"v": 1, "nick": "tango", "pre_ok": True})
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "tango", "pre_ok": True})
     code, token = host["room"], host["token"]
     view = host["view"]
     check("a fresh room's view carries match_players and dial_max",
@@ -472,28 +474,22 @@ def selftest_dial(c):
           view.get("max_players") == dial_max, view)
 
     base = {"room": code, "token": token, "map": 0, "win_mode": "time"}
-    status, body = c.post("params", dict(base, v=1))
-    check("a v1 params is answered at v1", status == 200 and body.get("v") == 1,
-          (status, body))
-    status, body = c.post("params", dict(base, v=2,
+    status, body = c.post("params", dict(base, v=5))
+    check("a params without the dial is answered at v5",
+          status == 200 and body.get("v") == 5, (status, body))
+    status, body = c.post("params", dict(base, v=5,
                                           match_players=min(dial_max, 4)))
-    check("a v2 params carrying the dial is answered at v2",
-          status == 200 and body.get("v") == 2, (status, body))
-    if dial_max > 4:
-        expect("a v2 dial past four is refused even where the deployment "
-               "allows it (contract v3 owns the wide range)",
-               c.post("params", dict(base, v=2, match_players=5)),
-               400, "bad_match_players")
-
-    expect("the dial at v1 is bad_field, as strict as an undefined field",
-           c.post("params", dict(base, v=1, match_players=2)),
-           400, "bad_field")
+    check("a params carrying the dial is answered at v5",
+          status == 200 and body.get("v") == 5, (status, body))
+    expect("a pre-v5 params is refused bad_version, dial or not",
+           c.post("params", dict(base, v=2, match_players=2)),
+           400, "bad_version")
 
     # THE OWNER'S ASK, and the honest half of the answer: the control reaches
     # 16, and the server refuses every value the deployment cannot run.
     refused = []
     for n in range(2, 17):
-        status, body = c.post("params", dict(base, v=3, match_players=n))
+        status, body = c.post("params", dict(base, v=5, match_players=n))
         if n <= dial_max:
             check("dial %d accepted" % n, status == 200, (status, body))
         else:
@@ -503,7 +499,7 @@ def selftest_dial(c):
           "with bad_match_players, one clean reason each" % dial_max,
           refused == list(range(dial_max + 1, 17)), refused)
 
-    status, seen = c.post("poll", {"v": 1, "room": code, "token": token,
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": token,
                                    "cursor": 0, "wait": 0})
     check("and after all of that the room still reads the last GOOD value",
           seen["view"]["match_players"] == dial_max, seen["view"])
@@ -513,34 +509,34 @@ def selftest_match(c):
     """Stage B + C over the wire: arm, ready, the per-member go plan, result,
     and a rematch with a fresh comms code."""
     # -- start refusals, each in its own fresh room ----------------------
-    status, host = c.post("create", {"v": 1, "nick": "tango", "pre_ok": True})
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "tango", "pre_ok": True})
     code = host["room"]
-    status, guest = c.post("join", {"v": 1, "room": code, "nick": "opie",
+    status, guest = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "opie",
                                     "pre_ok": True})
     expect("a non-host cannot start",
-           c.post("start", {"v": 1, "room": code, "token": guest["token"]}),
+           c.post("start", {"v": 5, "room": code, "token": guest["token"]}),
            403, "not_host")
 
-    status, solo = c.post("create", {"v": 1, "nick": "alone", "pre_ok": True})
+    status, solo = c.post("create", {"v": 5, "game": GAME, "nick": "alone", "pre_ok": True})
     expect("start with one playing seat is refused",
-           c.post("start", {"v": 1, "room": solo["room"],
+           c.post("start", {"v": 5, "room": solo["room"],
                             "token": solo["token"]}), 409, "not_enough_players")
-    c.post("leave", {"v": 1, "room": solo["room"], "token": solo["token"]})
+    c.post("leave", {"v": 5, "room": solo["room"], "token": solo["token"]})
 
-    status, h2 = c.post("create", {"v": 1, "nick": "h", "pre_ok": True})
-    c.post("join", {"v": 1, "room": h2["room"], "nick": "g", "pre_ok": False})
+    status, h2 = c.post("create", {"v": 5, "game": GAME, "nick": "h", "pre_ok": True})
+    c.post("join", {"v": 5, "game": GAME, "room": h2["room"], "nick": "g", "pre_ok": False})
     expect("start with a playing seat not pre_ok is refused",
-           c.post("start", {"v": 1, "room": h2["room"], "token": h2["token"]}),
+           c.post("start", {"v": 5, "room": h2["room"], "token": h2["token"]}),
            409, "member_not_ready")
-    c.post("leave", {"v": 1, "room": h2["room"], "token": h2["token"]})
+    c.post("leave", {"v": 5, "room": h2["room"], "token": h2["token"]})
 
     # -- the happy arm ---------------------------------------------------
-    status, armed = c.post("start", {"v": 1, "room": code,
+    status, armed = c.post("start", {"v": 5, "room": code,
                                      "token": host["token"]})
     check("start arms the match", status == 200 and len(armed.get("match", "")) == 16,
           armed)
     match1 = armed["match"]
-    status, seen = c.post("poll", {"v": 1, "room": code, "token": guest["token"],
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": guest["token"],
                                    "cursor": guest["cursor"], "wait": 0})
     arm_ev = [e for e in seen["events"] if e["kind"] == "arming"]
     check("the guest is told the room is arming, with a deadline",
@@ -549,19 +545,19 @@ def selftest_match(c):
     check("the view says state=arming", seen["view"]["state"] == "arming")
 
     # -- ready, and the per-member go plan -------------------------------
-    status, _ = c.post("ready", {"v": 1, "room": code, "token": host["token"],
+    status, _ = c.post("ready", {"v": 5, "room": code, "token": host["token"],
                                  "match": match1})
     check("the host readies", status == 200)
-    status, hostpoll = c.post("poll", {"v": 1, "room": code,
+    status, hostpoll = c.post("poll", {"v": 5, "room": code,
                                        "token": host["token"],
                                        "cursor": armed["cursor"], "wait": 0})
     check("one ready is not enough: still arming",
           hostpoll["view"]["state"] == "arming", hostpoll["view"])
-    status, _ = c.post("ready", {"v": 1, "room": code, "token": guest["token"],
+    status, _ = c.post("ready", {"v": 5, "room": code, "token": guest["token"],
                                  "match": match1})
     check("the guest readies -> go", status == 200)
 
-    status, gp = c.post("poll", {"v": 1, "room": code, "token": guest["token"],
+    status, gp = c.post("poll", {"v": 5, "room": code, "token": guest["token"],
                                  "cursor": seen["cursor"], "wait": 0})
     go = [e for e in gp["events"] if e["kind"] == "go"]
     check("the guest's go event carries a child plan: slot 1, 1500 ms delay",
@@ -569,7 +565,7 @@ def selftest_match(c):
           and go[0]["plan"]["slot"] == 1
           and go[0]["plan"]["spawn_delay_ms"] == 1500, go)
     gplan = go[0]["plan"]
-    status, hp = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    status, hp = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                  "cursor": hostpoll["cursor"], "wait": 0})
     hgo = [e for e in hp["events"] if e["kind"] == "go"]
     hplan = hgo[0]["plan"]
@@ -588,22 +584,22 @@ def selftest_match(c):
           gplan["relay"] == hplan["relay"] and ":" in gplan["relay"])
 
     # -- failed, in a fresh room -----------------------------------------
-    status, fh = c.post("create", {"v": 1, "nick": "fh", "pre_ok": True})
+    status, fh = c.post("create", {"v": 5, "game": GAME, "nick": "fh", "pre_ok": True})
     fcode = fh["room"]
-    status, fg = c.post("join", {"v": 1, "room": fcode, "nick": "fg",
+    status, fg = c.post("join", {"v": 5, "game": GAME, "room": fcode, "nick": "fg",
                                  "pre_ok": True})
-    status, fa = c.post("start", {"v": 1, "room": fcode, "token": fh["token"]})
-    status, ff = c.post("failed", {"v": 1, "room": fcode, "token": fg["token"],
+    status, fa = c.post("start", {"v": 5, "room": fcode, "token": fh["token"]})
+    status, ff = c.post("failed", {"v": 5, "room": fcode, "token": fg["token"],
                                    "match": fa["match"], "reason": "no_pairing"})
     check("a failed is accepted", status == 200, ff)
-    status, fp = c.post("poll", {"v": 1, "room": fcode, "token": fh["token"],
+    status, fp = c.post("poll", {"v": 5, "room": fcode, "token": fh["token"],
                                  "cursor": fa["cursor"], "wait": 0})
     check("a failed event returns the room to lobby with the reason",
           fp["view"]["state"] == "lobby"
           and any(e["kind"] == "failed" and e["reason"] == "no_pairing"
                   for e in fp["events"]), fp.get("events"))
-    c.post("leave", {"v": 1, "room": fcode, "token": fh["token"]})
-    c.post("leave", {"v": 1, "room": code, "token": host["token"]})
+    c.post("leave", {"v": 5, "room": fcode, "token": fh["token"]})
+    c.post("leave", {"v": 5, "room": code, "token": host["token"]})
 
     selftest_arming_roster(c)
     selftest_only_playing(c)
@@ -615,70 +611,68 @@ def selftest_match(c):
 def selftest_colors(c):
     """The owner's two picked colours, over the wire.
 
-    The point of doing this over HTTP as well as in the unit tests is the
-    version boundary: the shipped 0.3.0 launcher speaks v1 and the reviewer will
-    run it against this server, so "a v1 client is untouched" has to be a fact
-    about real requests and not about a function call.
+    Over HTTP as well as in the unit tests, so the colour grammar and the
+    player who picked nothing are facts about real requests and not about a
+    function call.
     """
-    status, host = c.post("create", {"v": 2, "nick": "ch", "pre_ok": True,
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "ch", "pre_ok": True,
                                      "color": "8A2BE2", "shoes": "FFD700"})
     code = host["room"]
-    check("a v2 create with two colours is accepted", status == 200, host)
-    check("the answer echoes v2", host.get("v") == 2, host)
+    check("a create with two colours is accepted", status == 200, host)
+    check("the answer echoes v5", host.get("v") == 5, host)
     check("the roster row carries them, normalised to lower case",
           host["view"]["members"][0]["color"] == "8a2be2"
           and host["view"]["members"][0]["shoes"] == "ffd700",
           host["view"]["members"][0])
 
-    expect("a v1 create carrying a colour is refused",
-           c.post("create", {"v": 1, "nick": "cx", "color": "ff0000",
-                             "shoes": "00ff00"}), 400, "bad_field")
+    expect("a pre-v5 create carrying a colour is refused bad_version",
+           c.post("create", {"v": 2, "nick": "cx", "color": "ff0000",
+                             "shoes": "00ff00"}), 400, "bad_version")
     expect("a five-digit colour is refused",
-           c.post("join", {"v": 2, "room": code, "nick": "cg",
+           c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "cg",
                            "color": "ff000", "shoes": "00ff00"}),
            400, "bad_color")
     expect("one colour without the other is refused",
-           c.post("join", {"v": 2, "room": code, "nick": "cg",
+           c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "cg",
                            "color": "ff0000"}), 400, "bad_color")
 
-    status, guest = c.post("join", {"v": 2, "room": code, "nick": "cg",
+    status, guest = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "cg",
                                     "pre_ok": True, "color": "ff0000",
                                     "shoes": "00ff00"})
-    check("a v2 join with both colours is seated", status == 200, guest)
+    check("a join with both colours is seated", status == 200, guest)
 
-    # THE V1 LAUNCHER. Everything the shipped 0.3.0 build does, against a
-    # server that now speaks v2, and none of it may change.
-    status, old = c.post("join", {"v": 1, "room": code, "nick": "cold",
+    # A PLAYER WHO PICKED NO COLOUR, in a room full of them.
+    status, old = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "cold",
                                   "pre_ok": True})
-    check("a v1 join into a coloured room still works", status == 200, old)
-    check("and its answer still says v1", old.get("v") == 1, old)
-    status, seen = c.post("poll", {"v": 1, "room": code, "token": old["token"],
+    check("a join with no colours into a coloured room works", status == 200,
+          old)
+    check("and its answer says v5", old.get("v") == 5, old)
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": old["token"],
                                    "cursor": old["cursor"], "wait": 0})
-    check("a v1 poll still reads the whole room", status == 200, seen)
-    check("the extra keys on a roster row are simply extra: every field a v1 "
-          "launcher reads is still there",
+    check("its poll reads the whole room", status == 200, seen)
+    check("every roster field a launcher reads is there",
           all(k in seen["view"]["members"][0]
               for k in ("seat", "display", "playing", "pre_ok", "armed")),
           seen["view"]["members"][0])
-    status, _ = c.post("chat", {"v": 1, "room": code, "token": old["token"],
+    status, _ = c.post("chat", {"v": 5, "room": code, "token": old["token"],
                                 "text": "still here"})
-    check("a v1 chat still lands", status == 200)
-    status, _ = c.post("leave", {"v": 1, "room": code, "token": old["token"]})
-    check("and a v1 leave still gives the seat back", status == 200)
+    check("its chat lands", status == 200)
+    status, _ = c.post("leave", {"v": 5, "room": code, "token": old["token"]})
+    check("and its leave gives the seat back", status == 200)
 
     # The verb.
-    status, r0 = c.post("color", {"v": 2, "room": code, "token": guest["token"],
+    status, r0 = c.post("color", {"v": 5, "room": code, "token": guest["token"],
                                   "color": "ff0000", "shoes": "00ff00"})
     before = r0["cursor"]
-    status, r = c.post("color", {"v": 2, "room": code, "token": guest["token"],
+    status, r = c.post("color", {"v": 5, "room": code, "token": guest["token"],
                                  "color": "ff0000", "shoes": "00ff00"})
     check("re-sending the same pair is a no-op: the cursor does not move",
           status == 200 and r["cursor"] == before, (r, before))
-    status, r = c.post("color", {"v": 2, "room": code, "token": guest["token"],
+    status, r = c.post("color", {"v": 5, "room": code, "token": guest["token"],
                                  "color": "123456", "shoes": "654321"})
     check("a real change moves the cursor", status == 200 and r["cursor"] > before,
           (r, before))
-    status, seen = c.post("poll", {"v": 2, "room": code, "token": host["token"],
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                    "cursor": host["cursor"], "wait": 0})
     check("the HOST sees the new swatch without asking for it",
           seen["view"]["members"][1]["color"] == "123456",
@@ -689,36 +683,31 @@ def selftest_colors(c):
           seen["events"])
 
     expect("there is no seat argument: a member colours only itself",
-           c.post("color", {"v": 2, "room": code, "token": guest["token"],
+           c.post("color", {"v": 5, "room": code, "token": guest["token"],
                             "seat": 1, "color": "ff0000", "shoes": "00ff00"}),
            400, "bad_field")
-    # bad_field, not bad_version: the verb's version lives in VERB_FIELDS, so a
-    # v1 caller is refused exactly the way any out-of-version key is -- it
-    # cannot tell a v2 verb apart from one that does not exist. Same sentence
-    # reaches the player either way (LobbyWire.Explain).
-    expect("the verb is v2 only, and refuses a v1 caller the same way an "
-           "unknown key is refused",
-           c.post("color", {"v": 1, "room": code, "token": guest["token"],
+    expect("a pre-v5 caller of the verb is refused bad_version",
+           c.post("color", {"v": 2, "room": code, "token": guest["token"],
                             "color": "ff0000", "shoes": "00ff00"}),
-           400, "bad_field")
+           400, "bad_version")
     expect("a stranger's token cannot colour a seat",
-           c.post("color", {"v": 2, "room": code, "token": "f" * 32,
+           c.post("color", {"v": 5, "room": code, "token": "f" * 32,
                             "color": "ff0000", "shoes": "00ff00"}),
            403, "not_a_member")
 
     # The string that reaches the games.
-    c.post("color", {"v": 2, "room": code, "token": guest["token"],
+    c.post("color", {"v": 5, "room": code, "token": guest["token"],
                      "color": "ff0000", "shoes": "00ff00"})
-    status, _ = c.post("start", {"v": 2, "room": code, "token": host["token"]})
+    status, _ = c.post("start", {"v": 5, "room": code, "token": host["token"]})
     check("the host can arm a coloured room", status == 200)
-    c.post("ready", {"v": 2, "room": code, "token": host["token"],
+    c.post("ready", {"v": 5, "room": code, "token": host["token"],
                      "match": _last_match(c, code, host)})
     plans = {}
     for who in (host, guest):
         m = _last_match(c, code, who)
-        c.post("ready", {"v": 2, "room": code, "token": who["token"], "match": m})
+        c.post("ready", {"v": 5, "room": code, "token": who["token"], "match": m})
     for who, name in ((host, "host"), (guest, "guest")):
-        status, seen = c.post("poll", {"v": 2, "room": code,
+        status, seen = c.post("poll", {"v": 5, "room": code,
                                        "token": who["token"],
                                        "cursor": 0, "wait": 0})
         for e in seen.get("events", []):
@@ -734,14 +723,14 @@ def selftest_colors(c):
         check("and BOTH launchers were handed the byte-identical string",
               plans["host"]["colors"] == plans["guest"]["colors"],
               (plans["host"]["colors"], plans["guest"]["colors"]))
-    c.post("failed", {"v": 2, "room": code, "token": host["token"],
+    c.post("failed", {"v": 5, "room": code, "token": host["token"],
                       "match": _last_match(c, code, host),
                       "reason": "user_cancelled"})
-    c.post("leave", {"v": 2, "room": code, "token": host["token"]})
+    c.post("leave", {"v": 5, "room": code, "token": host["token"]})
 
 
 def _last_match(c, code, who):
-    status, seen = c.post("poll", {"v": 2, "room": code, "token": who["token"],
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": who["token"],
                                    "cursor": 0, "wait": 0})
     return seen["view"].get("match") or ""
 
@@ -753,22 +742,22 @@ def selftest_preflight(c):
     window open was stuck "not ready" until they closed it, reopened it, made a
     new room and rejoined.
     """
-    status, host = c.post("create", {"v": 1, "nick": "fh", "pre_ok": True})
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "fh", "pre_ok": True})
     code = host["room"]
-    status, guest = c.post("join", {"v": 1, "room": code, "nick": "fg",
+    status, guest = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "fg",
                                     "pre_ok": False})
     check("the guest joins not-ready",
           guest["view"]["members"][1]["pre_ok"] is False,
           guest["view"]["members"])
     expect("so the host cannot start",
-           c.post("start", {"v": 1, "room": code, "token": host["token"]}),
+           c.post("start", {"v": 5, "room": code, "token": host["token"]}),
            409, "member_not_ready")
 
-    status, up = c.post("preflight", {"v": 1, "room": code,
+    status, up = c.post("preflight", {"v": 5, "room": code,
                                       "token": guest["token"], "pre_ok": True})
     check("the guest can say it is ready now, in place", status == 200, up)
 
-    status, seen = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                    "cursor": host["cursor"], "wait": 0})
     check("the HOST's roster shows the guest ready, with no rejoin",
           seen["view"]["members"][1]["pre_ok"] is True, seen["view"]["members"])
@@ -776,20 +765,20 @@ def selftest_preflight(c):
           any(e["kind"] == "preflight" and e["seat"] == 2
               and e["pre_ok"] is True for e in seen["events"]), seen["events"])
 
-    status, _ = c.post("start", {"v": 1, "room": code, "token": host["token"]})
+    status, _ = c.post("start", {"v": 5, "room": code, "token": host["token"]})
     check("NOW the host can start, no new room needed", status == 200)
 
     # Grammar and authority.
     expect("a non-boolean pre_ok is refused",
-           c.post("preflight", {"v": 1, "room": code, "token": host["token"],
+           c.post("preflight", {"v": 5, "room": code, "token": host["token"],
                                 "pre_ok": "yes"}), 400, "bad_field")
     expect("there is no seat argument: a member speaks only for itself",
-           c.post("preflight", {"v": 1, "room": code, "token": host["token"],
+           c.post("preflight", {"v": 5, "room": code, "token": host["token"],
                                 "pre_ok": True, "seat": 2}), 400, "bad_field")
     expect("a token holding no seat is refused",
-           c.post("preflight", {"v": 1, "room": code, "token": "0" * 32,
+           c.post("preflight", {"v": 5, "room": code, "token": "0" * 32,
                                 "pre_ok": True}), 403, "not_a_member")
-    c.post("leave", {"v": 1, "room": code, "token": host["token"]})
+    c.post("leave", {"v": 5, "room": code, "token": host["token"]})
 
 
 def selftest_arming_roster(c):
@@ -799,17 +788,17 @@ def selftest_arming_roster(c):
     that were frozen. A guest closing its launcher during the twenty-second
     countdown is ordinary behaviour.
     """
-    status, host = c.post("create", {"v": 1, "nick": "ah", "pre_ok": True})
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "ah", "pre_ok": True})
     code = host["room"]
-    status, guest = c.post("join", {"v": 1, "room": code, "nick": "ag",
+    status, guest = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "ag",
                                     "pre_ok": True})
-    status, armed = c.post("start", {"v": 1, "room": code, "token": host["token"]})
+    status, armed = c.post("start", {"v": 5, "room": code, "token": host["token"]})
     match = armed["match"]
-    status, _ = c.post("leave", {"v": 1, "room": code, "token": guest["token"]})
+    status, _ = c.post("leave", {"v": 5, "room": code, "token": guest["token"]})
     check("a guest can leave during the arming window", status == 200)
-    status, _ = c.post("ready", {"v": 1, "room": code, "token": host["token"],
+    status, _ = c.post("ready", {"v": 5, "room": code, "token": host["token"],
                                  "match": match})
-    status, seen = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                    "cursor": armed["cursor"], "wait": 0})
     check("the host's own ready does NOT send the depleted room to go",
           seen["view"]["state"] == "arming", seen["view"]["state"])
@@ -818,39 +807,39 @@ def selftest_arming_roster(c):
           seen.get("events"))
     check("the room holds one member, so no plan for a departed player exists",
           len(seen["view"]["members"]) == 1, seen["view"]["members"])
-    c.post("leave", {"v": 1, "room": code, "token": host["token"]})
+    c.post("leave", {"v": 5, "room": code, "token": host["token"]})
 
 
 def selftest_only_playing(c):
     """ready / failed / result are restricted to a seated PLAYING member."""
-    status, host = c.post("create", {"v": 1, "nick": "ph", "pre_ok": True})
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "ph", "pre_ok": True})
     code = host["room"]
-    status, guest = c.post("join", {"v": 1, "room": code, "nick": "pg",
+    status, guest = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "pg",
                                     "pre_ok": True})
-    status, spec = c.post("join", {"v": 1, "room": code, "nick": "ps",
+    status, spec = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "ps",
                                    "pre_ok": True})
     check("the third seat is a spectator",
           spec["view"]["members"][2]["playing"] is False,
           spec["view"]["members"])
-    status, armed = c.post("start", {"v": 1, "room": code, "token": host["token"]})
+    status, armed = c.post("start", {"v": 5, "room": code, "token": host["token"]})
     match = armed["match"]
 
     expect("a spectator cannot ready",
-           c.post("ready", {"v": 1, "room": code, "token": spec["token"],
+           c.post("ready", {"v": 5, "room": code, "token": spec["token"],
                             "match": match}), 403, "not_playing")
     expect("a spectator cannot abort the match with failed",
-           c.post("failed", {"v": 1, "room": code, "token": spec["token"],
+           c.post("failed", {"v": 5, "room": code, "token": spec["token"],
                              "match": match, "reason": "no_pairing"}),
            403, "not_playing")
 
     # Take it live, then try to end it as the spectator.
-    c.post("ready", {"v": 1, "room": code, "token": host["token"], "match": match})
-    c.post("ready", {"v": 1, "room": code, "token": guest["token"], "match": match})
+    c.post("ready", {"v": 5, "room": code, "token": host["token"], "match": match})
+    c.post("ready", {"v": 5, "room": code, "token": guest["token"], "match": match})
     expect("a spectator cannot end the match with result, nor write the scoreline",
-           c.post("result", {"v": 1, "room": code, "token": spec["token"],
+           c.post("result", {"v": 5, "room": code, "token": spec["token"],
                              "match": match, "win": "star-target",
                              "scores": [9, 0, 0, 0]}), 403, "not_playing")
-    status, seen = c.post("poll", {"v": 1, "room": code, "token": host["token"],
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": host["token"],
                                    "cursor": armed["cursor"], "wait": 0})
     check("the match is still the room's own, unaborted and unresolved",
           seen["view"]["state"] in ("go", "in_match")
@@ -859,47 +848,47 @@ def selftest_only_playing(c):
           not any(e["kind"] == "result" for e in seen.get("events", [])),
           seen.get("events"))
 
-    status, _ = c.post("result", {"v": 1, "room": code, "token": guest["token"],
+    status, _ = c.post("result", {"v": 5, "room": code, "token": guest["token"],
                                   "match": match, "win": "time-up",
                                   "scores": [1, 2, 0, 0]})
     check("a PLAYING member's result still ends it", status == 200)
-    c.post("leave", {"v": 1, "room": code, "token": host["token"]})
+    c.post("leave", {"v": 5, "room": code, "token": host["token"]})
 
 
 def selftest_rematch(c):
     """Stage C over the wire: a match plays to a result, the room comes back to
     lobby with the params intact, and a rematch uses a FRESH comms code."""
-    status, host = c.post("create", {"v": 1, "nick": "tango", "pre_ok": True})
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "tango", "pre_ok": True})
     code = host["room"]
-    status, guest = c.post("join", {"v": 1, "room": code, "nick": "opie",
+    status, guest = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "opie",
                                     "pre_ok": True})
-    c.post("params", {"v": 1, "room": code, "token": host["token"],
+    c.post("params", {"v": 5, "room": code, "token": host["token"],
                       "map": 3, "win_mode": "stars", "star_target": 3})
-    status, armed = c.post("start", {"v": 1, "room": code, "token": host["token"]})
+    status, armed = c.post("start", {"v": 5, "room": code, "token": host["token"]})
     match1 = armed["match"]
-    c.post("ready", {"v": 1, "room": code, "token": host["token"], "match": match1})
-    c.post("ready", {"v": 1, "room": code, "token": guest["token"], "match": match1})
-    status, gp = c.post("poll", {"v": 1, "room": code, "token": guest["token"],
+    c.post("ready", {"v": 5, "room": code, "token": host["token"], "match": match1})
+    c.post("ready", {"v": 5, "room": code, "token": guest["token"], "match": match1})
+    status, gp = c.post("poll", {"v": 5, "room": code, "token": guest["token"],
                                  "cursor": guest["cursor"], "wait": 0})
     go = [e for e in gp["events"] if e["kind"] == "go"]
     code1 = go[0]["plan"]["code"]
 
     # A result validates its fields.
     expect("a bad win value is refused",
-           c.post("result", {"v": 1, "room": code, "token": host["token"],
+           c.post("result", {"v": 5, "room": code, "token": host["token"],
                              "match": match1, "win": "nope",
                              "scores": [3, 0, 0, 0]}), 400, "bad_win")
     expect("scores that are not four ints are refused",
-           c.post("result", {"v": 1, "room": code, "token": host["token"],
+           c.post("result", {"v": 5, "room": code, "token": host["token"],
                              "match": match1, "win": "time-up",
                              "scores": [3, 0, 0]}), 400, "bad_scores")
 
     # The real result.
-    status, res = c.post("result", {"v": 1, "room": code, "token": host["token"],
+    status, res = c.post("result", {"v": 5, "room": code, "token": host["token"],
                                     "match": match1, "win": "star-target",
                                     "scores": [3, 1, 0, 0]})
     check("a result is accepted", status == 200, res)
-    status, back = c.post("poll", {"v": 1, "room": code, "token": guest["token"],
+    status, back = c.post("poll", {"v": 5, "room": code, "token": guest["token"],
                                    "cursor": gp["cursor"], "wait": 0})
     res_ev = [e for e in back["events"] if e["kind"] == "result"]
     check("a result event reaches the room with win and scores",
@@ -911,29 +900,29 @@ def selftest_rematch(c):
           and back["view"]["map"] == 3
           and back["view"]["star_target"] == 3, back["view"])
     expect("a second result for the finished match is idempotent, not stale",
-           c.post("result", {"v": 1, "room": code, "token": guest["token"],
+           c.post("result", {"v": 5, "room": code, "token": guest["token"],
                              "match": match1, "win": "star-target",
                              "scores": [3, 1, 0, 0]}), 200)
 
     # The rematch, and THE FRESH COMMS CODE.
-    status, armed2 = c.post("start", {"v": 1, "room": code, "token": host["token"]})
+    status, armed2 = c.post("start", {"v": 5, "room": code, "token": host["token"]})
     match2 = armed2["match"]
     check("a rematch arms with a different match id", match2 != match1, match2)
-    c.post("ready", {"v": 1, "room": code, "token": host["token"], "match": match2})
-    c.post("ready", {"v": 1, "room": code, "token": guest["token"], "match": match2})
-    status, gp2 = c.post("poll", {"v": 1, "room": code, "token": guest["token"],
+    c.post("ready", {"v": 5, "room": code, "token": host["token"], "match": match2})
+    c.post("ready", {"v": 5, "room": code, "token": guest["token"], "match": match2})
+    status, gp2 = c.post("poll", {"v": 5, "room": code, "token": guest["token"],
                                   "cursor": back["cursor"], "wait": 0})
     go2 = [e for e in gp2["events"] if e["kind"] == "go"]
     check("THE REMATCH USES A DIFFERENT COMMS CODE than the first match",
           go2 and go2[0]["plan"]["code"] != code1,
           (code1, go2[0]["plan"]["code"] if go2 else None))
     # A draw result is accepted (the launcher posts it for an unparseable marker).
-    status, dr = c.post("result", {"v": 1, "room": code, "token": host["token"],
+    status, dr = c.post("result", {"v": 5, "room": code, "token": host["token"],
                                    "match": match2, "win": "draw",
                                    "scores": [0, 0, 0, 0]})
     check("a draw result is accepted and returns to lobby",
           status == 200, dr)
-    c.post("leave", {"v": 1, "room": code, "token": host["token"]})
+    c.post("leave", {"v": 5, "room": code, "token": host["token"]})
 
 
 def selftest_kick(c):
@@ -944,26 +933,26 @@ def selftest_kick(c):
     earlier would lock this process out of the room it was testing. Kick
     records are per room, so a fresh room contains the damage.
     """
-    status, host = c.post("create", {"v": 1, "nick": "hostk"})
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "hostk"})
     check("a room for the kick test", status == 200, host)
     code = host["room"]
-    status, guest = c.post("join", {"v": 1, "room": code, "nick": "rude"})
+    status, guest = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "rude"})
     check("somebody to remove", status == 200, guest)
 
     expect("a member cannot kick",
-           c.post("kick", {"v": 1, "room": code, "token": guest["token"],
+           c.post("kick", {"v": 5, "room": code, "token": guest["token"],
                            "seat": 1}), 403, "not_host")
     expect("the host cannot kick itself",
-           c.post("kick", {"v": 1, "room": code, "token": host["token"],
+           c.post("kick", {"v": 5, "room": code, "token": host["token"],
                            "seat": 1}), 400, "bad_seat")
     expect("an empty seat cannot be kicked",
-           c.post("kick", {"v": 1, "room": code, "token": host["token"],
+           c.post("kick", {"v": 5, "room": code, "token": host["token"],
                            "seat": 4}), 400, "bad_seat")
 
-    status, out = c.post("kick", {"v": 1, "room": code,
+    status, out = c.post("kick", {"v": 5, "room": code,
                                   "token": host["token"], "seat": 2})
     check("the host can remove a member", status == 200, out)
-    status, seen = c.post("poll", {"v": 1, "room": code,
+    status, seen = c.post("poll", {"v": 5, "room": code,
                                    "token": host["token"],
                                    "cursor": host["cursor"], "wait": 0})
     check("the roster drops to one seat", len(seen["view"]["members"]) == 1,
@@ -973,13 +962,13 @@ def selftest_kick(c):
               for e in seen["events"]), seen["events"])
 
     expect("the removed launcher is told why, not just refused",
-           c.post("poll", {"v": 1, "room": code, "token": guest["token"],
+           c.post("poll", {"v": 5, "room": code, "token": guest["token"],
                            "cursor": 0, "wait": 0}), 403, "kicked")
     expect("and it cannot walk straight back in with the same code",
-           c.post("join", {"v": 1, "room": code, "nick": "rude"}),
+           c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "rude"}),
            403, "kicked")
 
-    c.post("leave", {"v": 1, "room": code, "token": host["token"]})
+    c.post("leave", {"v": 5, "room": code, "token": host["token"]})
 
 
 # ----------------------------------------------------------------- negatives
@@ -997,43 +986,42 @@ def dial_deployed(c):
     check("this server's dial tops out at 4", health.get("dial_max") == 4,
           health)
 
-    # 1. A HOST WHO NEVER TOUCHES THE DIAL. This is launcher 0.3.0's whole
-    #    behaviour, byte for byte: v1 everywhere, no match_players, ever.
-    status, host = c.post("create", {"v": 1, "nick": "tango", "pre_ok": True})
+    # 1. A HOST WHO NEVER TOUCHES THE DIAL: no match_players, ever.
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "tango", "pre_ok": True})
     code, token = host["room"], host["token"]
     guests = []
     for nick in ("opie", "cee", "dee"):
-        st, g = c.post("join", {"v": 1, "room": code, "nick": nick,
+        st, g = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": nick,
                                 "pre_ok": True})
         guests.append(g)
-    st, seen = c.post("poll", {"v": 1, "room": code, "token": token,
+    st, seen = c.post("poll", {"v": 5, "room": code, "token": token,
                                "cursor": 0, "wait": 0})
     playing = [m["seat"] for m in seen["view"]["members"] if m["playing"]]
-    check("a 0.3.0-shaped host (v1, never sends the dial) still seats all "
+    check("a host who never sends the dial still seats all "
           "four as players -- the dial is inert until somebody turns it",
           playing == [1, 2, 3, 4], seen["view"]["members"])
-    check("and every answer it got was stamped v1",
-          seen.get("v") == 1 and host.get("v") == 1, (host.get("v"),
+    check("and every answer it got was stamped v5",
+          seen.get("v") == 5 and host.get("v") == 5, (host.get("v"),
                                                       seen.get("v")))
 
     # 2. THE DIAL DOING SOMETHING A HOST CAN FEEL.
     base = {"room": code, "token": token, "map": 0, "win_mode": "time"}
-    st, body = c.post("params", dict(base, v=2, match_players=2))
+    st, body = c.post("params", dict(base, v=5, match_players=2))
     check("the host dials it down to 2", st == 200, (st, body))
-    st, seen = c.post("poll", {"v": 1, "room": code, "token": token,
+    st, seen = c.post("poll", {"v": 5, "room": code, "token": token,
                                "cursor": 0, "wait": 0})
     playing = [m["seat"] for m in seen["view"]["members"] if m["playing"]]
     check("seats 3 and 4 become spectators, and the two who were playing "
           "stay playing", playing == [1, 2], seen["view"]["members"])
-    st, body = c.post("params", dict(base, v=2, match_players=3))
-    st, seen = c.post("poll", {"v": 1, "room": code, "token": token,
+    st, body = c.post("params", dict(base, v=5, match_players=3))
+    st, seen = c.post("poll", {"v": 5, "room": code, "token": token,
                                "cursor": 0, "wait": 0})
     playing = [m["seat"] for m in seen["view"]["members"] if m["playing"]]
     check("dialling back to 3 promotes the lowest watcher, not a reshuffle",
           playing == [1, 2, 3], seen["view"]["members"])
 
     # 3. A SPECTATOR SEES ITSELF AS ONE, and its go plan is empty.
-    st, seen4 = c.post("poll", {"v": 1, "room": code,
+    st, seen4 = c.post("poll", {"v": 5, "room": code,
                                 "token": guests[2]["token"],
                                 "cursor": 0, "wait": 0})
     me = [m for m in seen4["view"]["members"]
@@ -1044,38 +1032,38 @@ def dial_deployed(c):
     # 4. THE REFUSALS, on the deployment that can run four.
     bad = []
     for n in range(5, 17):
-        st, body = c.post("params", dict(base, v=2, match_players=n))
+        st, body = c.post("params", dict(base, v=5, match_players=n))
         if not (st == 400 and body.get("error") == "bad_match_players"):
             bad.append((n, st, body))
     check("5 through 16 are all refused with bad_match_players", not bad, bad)
 
     # 5. A REAL MATCH, STARTED THROUGH THE DIAL, at 2 / 3 / 4.
     for want in (2, 3, 4):
-        st, host = c.post("create", {"v": 1, "nick": "tango", "pre_ok": True})
+        st, host = c.post("create", {"v": 5, "game": GAME, "nick": "tango", "pre_ok": True})
         rc, rt = host["room"], host["token"]
         toks = [rt]
         for i in range(want - 1):
-            st, g = c.post("join", {"v": 1, "room": rc, "nick": "p%d" % (i + 2),
+            st, g = c.post("join", {"v": 5, "game": GAME, "room": rc, "nick": "p%d" % (i + 2),
                                     "pre_ok": True})
             toks.append(g["token"])
         # Fill the rest of the room with watchers, so the dial is the only
         # thing deciding who plays.
         for i in range(4 - want):
-            c.post("join", {"v": 1, "room": rc, "nick": "w%d" % (i + 1),
+            c.post("join", {"v": 5, "game": GAME, "room": rc, "nick": "w%d" % (i + 1),
                             "pre_ok": True})
-        st, body = c.post("params", {"v": 2, "room": rc, "token": rt,
+        st, body = c.post("params", {"v": 5, "room": rc, "token": rt,
                                      "map": 1, "win_mode": "time",
                                      "match_players": want})
         check("[%dP] the dial is set to %d" % (want, want), st == 200,
               (st, body))
-        st, body = c.post("start", {"v": 1, "room": rc, "token": rt})
+        st, body = c.post("start", {"v": 5, "room": rc, "token": rt})
         check("[%dP] start is accepted" % want, st == 200, (st, body))
         match = body.get("match", "")
         for t in toks:
-            c.post("ready", {"v": 1, "room": rc, "token": t, "match": match})
+            c.post("ready", {"v": 5, "room": rc, "token": t, "match": match})
         plans = []
         for t in toks:
-            st, seen = c.post("poll", {"v": 1, "room": rc, "token": t,
+            st, seen = c.post("poll", {"v": 5, "room": rc, "token": t,
                                        "cursor": 0, "wait": 0})
             plans.append(seen.get("plan") or next(
                 (e["plan"] for e in seen["events"]
@@ -1099,12 +1087,12 @@ def dial_deployed(c):
               len(set(p["names"] for p in plans)) == 1
               and plans[0]["names"].count(",") == 3, plans[0]["names"])
         # The watchers, if any, got nothing to launch.
-        st, seen = c.post("poll", {"v": 1, "room": rc, "token": rt,
+        st, seen = c.post("poll", {"v": 5, "room": rc, "token": rt,
                                    "cursor": 0, "wait": 0})
         watchers = [m for m in seen["view"]["members"] if not m["playing"]]
         check("[%dP] the other %d in the room are spectators"
               % (want, 4 - want), len(watchers) == 4 - want, watchers)
-        c.post("failed", {"v": 1, "room": rc, "token": rt, "match": match,
+        c.post("failed", {"v": 5, "room": rc, "token": rt, "match": match,
                           "reason": "spawn_failed"})
 
 
@@ -1121,11 +1109,11 @@ def negatives(c, out_dir=None):
     captures = []
     PACE = 1.3
 
-    st, host = c.post("create", {"v": 1, "nick": "tango"})
+    st, host = c.post("create", {"v": 5, "game": GAME, "nick": "tango"})
     if st != 200:
         raise SystemExit("could not create a room for the negatives: %s" % host)
     room = host["room"]
-    st, guest = c.post("join", {"v": 1, "room": room, "nick": "opie"})
+    st, guest = c.post("join", {"v": 5, "game": GAME, "room": room, "nick": "opie"})
     if st != 200:
         raise SystemExit("could not join: %s" % guest)
 
@@ -1157,13 +1145,13 @@ def negatives(c, out_dir=None):
     # ---- the seven the stage A proof list names --------------------------
 
     rej("unknown key -> 400 bad_field", "chat",
-        {"v": 1, "room": room, "token": host["token"], "text": "hi",
+        {"v": 5, "room": room, "token": host["token"], "text": "hi",
          "colour": "red"}, 400, "bad_field",
         "strictness is deliberate. The launcher and the server ship together "
         "and are versioned together, so a field that appears without a version "
         "bump is a bug or an attack and there is no third option.")
 
-    big = json.dumps({"v": 1, "room": room, "token": host["token"],
+    big = json.dumps({"v": 5, "room": room, "token": host["token"],
                       "text": "x" * 5000}).encode()
     rej("a 5 KB body -> 413", "chat", None, 413, "too_large",
         "refused on the announced Content-Length, before a byte of the body is "
@@ -1171,12 +1159,12 @@ def negatives(c, out_dir=None):
         "the next request on this keep-alive connection would parse the middle "
         "of it as a request line.", raw_body=big)
 
-    rej("POST /port/lobby/xyz -> 404 unknown_verb", "xyz", {"v": 1},
+    rej("POST /port/lobby/xyz -> 404 unknown_verb", "xyz", {"v": 5},
         404, "unknown_verb",
         "the verb list is closed. The server writes one log line for this and "
         "nothing else.")
 
-    rej("a 17 byte nickname -> 400", "create", {"v": 1, "nick": "a" * 17},
+    rej("a 17 byte nickname -> 400", "create", {"v": 5, "game": GAME, "nick": "a" * 17},
         400, "too_long",
         "a string field's LENGTH IN BYTES is checked before its content, so an "
         "oversized field never reaches a grammar loop at all. Section 3.0 of "
@@ -1184,14 +1172,14 @@ def negatives(c, out_dir=None):
         "field's own bad_nick.")
 
     rej("a chat line with a 0x07 byte in it -> 400 bad_text", "chat",
-        {"v": 1, "room": room, "token": host["token"],
+        {"v": 5, "room": room, "token": host["token"],
          "text": "bell" + chr(7) + "here"}, 400, "bad_text",
         "chat is 0x20..0x7E and nothing else, so the launcher can render it "
         "into a read-only TextBox as plain text with no control characters, no "
         "markup and no link detection to consider.")
 
     rej("a member's token on params -> 403 not_host", "params",
-        {"v": 1, "room": room, "token": guest["token"], "map": 2,
+        {"v": 5, "room": room, "token": guest["token"], "map": 2,
          "win_mode": "time"}, 403, "not_host",
         "the room code is only permission to walk in. The 128 bit member token "
         "is what proves which seat you are and whether you are the host.")
@@ -1202,7 +1190,7 @@ def negatives(c, out_dir=None):
     t0 = time.time()
     for _ in range(200):
         st, _tx = c.raw("POST", PREFIX + "/poll",
-                        json.dumps({"v": 1, "room": room,
+                        json.dumps({"v": 5, "room": room,
                                     "token": host["token"],
                                     "cursor": 0, "wait": 0}).encode())
         codes[st] = codes.get(st, 0) + 1
@@ -1226,14 +1214,14 @@ def negatives(c, out_dir=None):
 
     # ---- the rest of the transport law -----------------------------------
 
-    rej("no Content-Length -> 411", "create", {"v": 1, "nick": "x"},
+    rej("no Content-Length -> 411", "create", {"v": 5, "game": GAME, "nick": "x"},
         411, "length_required",
         "the length is parsed before any rejection is written. A rejection "
         "that does not know how many bytes are owed cannot drain them, and an "
         "undrained body makes one rejected request appear twice.",
         content_length="omit")
 
-    rej("the wrong content type -> 415", "create", {"v": 1, "nick": "x"},
+    rej("the wrong content type -> 415", "create", {"v": 5, "game": GAME, "nick": "x"},
         415, "bad_content_type", "application/json, or nothing.",
         ctype="text/plain")
 
@@ -1241,7 +1229,7 @@ def negatives(c, out_dir=None):
         "GET is served for /port/lobby/health and for nothing else.",
         raw_body=None, method="GET", ctype=None)
 
-    rej("a query string -> 404", "poll", {"v": 1}, 404, "unknown_verb",
+    rej("a query string -> 404", "poll", {"v": 5}, 404, "unknown_verb",
         "the URL is exactly /port/lobby/<verb>, never with a query string, so "
         "nothing a client sends can end up in Caddy's access log.",
         path=PREFIX + "/poll?room=X")
@@ -1253,8 +1241,8 @@ def negatives(c, out_dir=None):
         400, "bad_shape", "one object, never an array, never a bare value.",
         raw_body=b'[{"v":1}]')
 
-    # The contract is a RANGE (v1..v3 since run vs16), so the refusal is for a
-    # version outside it, not for "anything but 1". A version above what the
+    # The contract is a RANGE (5..5 since lobby 1.0), so the refusal is for a
+    # version outside it. A version above what the
     # server speaks is the case that matters: a newer launcher against an older
     # server has to be told plainly rather than half-served.
     #
@@ -1268,61 +1256,63 @@ def negatives(c, out_dir=None):
         "the fields are.")
 
     rej("a version below the contract floor -> 400 bad_version", "create",
-        {"v": 0, "nick": "x"}, 400, "bad_version", "")
+        {"v": 4, "nick": "x"}, 400, "bad_version",
+        "v5 is the floor: launchers 0.3.x..0.5.x speak v1..v4 and show "
+        "\"Check for an update\" for this code.")
 
     rej("a missing version -> 400 bad_version", "create", {"nick": "x"},
         400, "bad_version", "")
 
     rej("a lowercase room code -> 400 bad_room", "join",
-        {"v": 1, "room": "abc123", "nick": "x"}, 400, "bad_room",
+        {"v": 5, "game": GAME, "room": "abc123", "nick": "x"}, 400, "bad_room",
         "six characters of ABCDEFGHJKMNPQRSTUVWXYZ23456789, which carries no "
         "I, no L, no O, no 0 and no 1, because the code is read aloud.")
 
     rej("an unused room code -> 404 no_such_room", "join",
-        {"v": 1, "room": "ZZZZZZ", "nick": "x"}, 404, "no_such_room", "")
+        {"v": 5, "game": GAME, "room": "ZZZZZZ", "nick": "x"}, 404, "no_such_room", "")
 
     rej("a well formed token nobody holds -> 403", "chat",
-        {"v": 1, "room": room, "token": "f" * 32, "text": "hi"},
+        {"v": 5, "room": room, "token": "f" * 32, "text": "hi"},
         403, "not_a_member",
         "the token is 128 bits of system randomness; guessing one is not a "
         "thing that happens.")
 
     rej("a comma in a nickname -> 400 bad_nick", "create",
-        {"v": 1, "nick": "ta,ngo"}, 400, "bad_nick",
+        {"v": 5, "game": GAME, "nick": "ta,ngo"}, 400, "bad_nick",
         "comma separates the four nicknames in the one environment variable "
         "that carries them into the game, so it is barred from a nickname and "
         "from nowhere else. Chat keeps its commas.")
 
     rej("a leading space in a nickname -> 400 bad_nick", "create",
-        {"v": 1, "nick": " tango"}, 400, "bad_nick", "")
+        {"v": 5, "game": GAME, "nick": " tango"}, 400, "bad_nick", "")
 
     rej("a nickname that is not a string -> 400 bad_nick", "create",
-        {"v": 1, "nick": 7}, 400, "bad_nick", "")
+        {"v": 5, "game": GAME, "nick": 7}, 400, "bad_nick", "")
 
     rej("a missing required key -> 400 bad_field", "chat",
-        {"v": 1, "room": room, "token": host["token"]}, 400, "bad_field", "")
+        {"v": 5, "room": room, "token": host["token"]}, 400, "bad_field", "")
 
     rej("a 201 byte chat line -> 400 too_long", "chat",
-        {"v": 1, "room": room, "token": host["token"], "text": "y" * 201},
+        {"v": 5, "room": room, "token": host["token"], "text": "y" * 201},
         400, "too_long", "200 bytes, counted as bytes and not as characters.")
 
     rej("star_target under win_mode time -> 400", "params",
-        {"v": 1, "room": room, "token": host["token"], "map": 0,
+        {"v": 5, "room": room, "token": host["token"], "map": 0,
          "win_mode": "time", "star_target": 3}, 400, "bad_star_target",
         "required if and only if the win mode is stars. One shape, not two.")
 
     rej("a map outside 0..3 -> 400 bad_map", "params",
-        {"v": 1, "room": room, "token": host["token"], "map": 9,
+        {"v": 5, "room": room, "token": host["token"], "map": 9,
          "win_mode": "time"}, 400, "bad_map", "the ROM has four VS maps.")
 
     rej("a member's token on kick -> 403 not_host", "kick",
-        {"v": 1, "room": room, "token": guest["token"], "seat": 1},
+        {"v": 5, "room": room, "token": guest["token"], "seat": 1},
         403, "not_host",
         "kick is host-only, the same way params is. Removing somebody is the "
         "owner's answer to the spec's open question 4.")
 
     rej("the host kicking itself -> 400 bad_seat", "kick",
-        {"v": 1, "room": room, "token": host["token"], "seat": 1},
+        {"v": 5, "room": room, "token": host["token"], "seat": 1},
         400, "bad_seat",
         "the host closes the room instead; there is no way to leave a room "
         "hostless.")
@@ -1333,7 +1323,7 @@ def negatives(c, out_dir=None):
     got = []
     for i in range(6):
         st, _ = c.raw("POST", PREFIX + "/chat",
-                      json.dumps({"v": 1, "room": room, "token": host["token"],
+                      json.dumps({"v": 5, "room": room, "token": host["token"],
                                   "text": "flood %d" % i}).encode())
         got.append(st)
     check("chat flooding is refused once the burst is spent",
@@ -1344,7 +1334,7 @@ def negatives(c, out_dir=None):
         "greys its Send button for two seconds rather than ever showing this "
         "to a player.")
 
-    c.post("leave", {"v": 1, "room": room, "token": host["token"]})
+    c.post("leave", {"v": 5, "room": room, "token": host["token"]})
 
     if out_dir:
         write_captures(captures, out_dir)
@@ -1379,13 +1369,13 @@ def write_captures(captures, out_dir):
 
 
 def soak(c, seconds, members):
-    status, host = c.post("create", {"v": 1, "nick": "soakhost"})
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "soakhost"})
     if status != 200:
         raise SystemExit("could not create a room: %s" % host)
     room = host["room"]
     people = [host]
     for i in range(members - 1):
-        st, m = c.post("join", {"v": 1, "room": room, "nick": "soak%d" % (i + 2)})
+        st, m = c.post("join", {"v": 5, "game": GAME, "room": room, "nick": "soak%d" % (i + 2)})
         if st != 200:
             raise SystemExit("could not join: %s" % m)
         people.append(m)
@@ -1398,7 +1388,7 @@ def soak(c, seconds, members):
         cursor = me["cursor"]
         while not stop.is_set():
             try:
-                st, body = c.post("poll", {"v": 1, "room": room,
+                st, body = c.post("poll", {"v": 5, "room": room,
                                            "token": me["token"],
                                            "cursor": cursor, "wait": 5})
                 if st == 200:
@@ -1409,7 +1399,7 @@ def soak(c, seconds, members):
                     with lock:
                         counts["err"] += 1
                 if random.random() < 0.25:
-                    st, _ = c.post("chat", {"v": 1, "room": room,
+                    st, _ = c.post("chat", {"v": 5, "room": room,
                                             "token": me["token"],
                                             "text": "soak %.3f" % time.time()})
                     with lock:
@@ -1432,7 +1422,7 @@ def soak(c, seconds, members):
     stop.set()
     for t in threads:
         t.join(timeout=15)
-    c.post("leave", {"v": 1, "room": room, "token": host["token"]})
+    c.post("leave", {"v": 5, "room": room, "token": host["token"]})
     print("soak done: %s" % counts)
     return counts["err"] == 0
 

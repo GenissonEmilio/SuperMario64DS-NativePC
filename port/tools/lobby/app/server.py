@@ -56,7 +56,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-REVISION = "lobby-1"
+REVISION = "lobby-5"
 
 # ------------------------------------------------------- the contract version
 #
@@ -90,7 +90,11 @@ REVISION = "lobby-1"
 #       * `create`/`join` may carry `color` + `shoes`
 #       * the `color` verb exists at all      - a v2-ONLY VERB
 #     A client claiming v2 is claiming all three. There is no half of v2.
-CONTRACT_MIN = 1
+#
+# (The history below is kept because the field table still records the version
+# each field arrived in. Since v5 the floor is v5, so none of it is negotiable
+# any more: see v5 at the bottom of this block.)
+#
 # v3, run vs16: the sixteen-player wire. The version itself gains no new FIELD
 # -- `match_players` has been a v2 optional since SEAT16 -- but it gains a new
 # legal RANGE for that field, and the two are not the same kind of change:
@@ -100,8 +104,8 @@ CONTRACT_MIN = 1
 #                sixteen-field SM64DS_VS_NAMES its own validator refuses,
 #                spawn nothing, and have no idea why
 #
-# So the range is gated on the version too (see wide_ok / dial_max_for), and
-# that is what makes v3 a real version rather than a number that went up.
+# So the range was gated on the version too, and that is what made v3 a real
+# version rather than a number that went up (retired by the v5 floor).
 #
 # v4, ADVENTURE co-op (M2): a room gains an optional `session_type` field on
 # `create`. Default "vs" -- an unset field is exactly the versus match every
@@ -112,7 +116,25 @@ CONTRACT_MIN = 1
 # (SM64DS_ADVENTURE=1 + SM64DS_LEVEL) instead of a versus arena
 # (SM64DS_VS_MAP); the relay and the seam are already session-type blind, so
 # nothing below the lobby changes.
-CONTRACT_V = 4
+#
+# v5, MULTIPLAYER 1.0 (run mp1, NETARCH1 design section 5), AND THE FLOOR MOVES
+# WITH IT. Every request below v5 is refused `bad_version`, which launchers
+# 0.3.x..0.5.x already turn into "Check for an update". The negotiation above
+# was right for additive versions; v5 is not additive, because the game under
+# it changed: a 1.0 match needs a relay v2 seat, a server-minted Luigi seed and
+# a session digest in every plan, and a pre-1.0 launcher would spawn a game
+# that cannot pair with a 1.0 host (or worse, pairs and desyncs). So v5 is the
+# only version this build speaks, and everything the older gates guarded (the
+# narrow client in a wide room, the v2-only dial) is gone with the clients
+# they guarded against. What v5 IS, all of it, or it is not v5:
+#   * create/join carry `game`, the game build id; a join from another build
+#     is 409 `game_mismatch`
+#   * params (vs rooms) may carry `luigi` and `voice`; start mints `seed`
+#   * every go plan carries relay_v, want_seat, luigi, seed, voice, digest
+#   * adventure rooms: one hub code for the room's life, no start gate
+#   * the `world` and `world_ping` verbs
+CONTRACT_MIN = 5
+CONTRACT_V = 5
 V_SESSION = 4    # create.session_type
 
 # The session types a room may be. "vs" is the versus match; "adventure" is the
@@ -130,6 +152,7 @@ SESSION_TYPES = ("vs", "adventure", "party")
 # as three entries rather than as one number repeated.
 V_DIAL = 2       # params.match_players
 V_COLOR = 2      # create/join color+shoes, and the `color` verb itself
+V_ONE = 5        # the 1.0 fields: game, luigi, voice; the world verbs
 
 # ------------------------------------------------------------------ config
 #
@@ -209,25 +232,9 @@ recompute_dial()
 # and the game from having two opinions about one match.
 NARROW_PLAYERS = 4
 
-# The version a caller must speak before the server will accept a dial above
-# NARROW_PLAYERS. Derived, one expression, one reader -- the same discipline
-# recompute_dial() has, and for the same reason: a bound restated anywhere else
-# is a bound that will drift.
-WIDE_MIN_V = 3
-
-
-def dial_max_for(ver):
-    """The largest match_players THIS CALLER may ask for.
-
-    The deployment's own bound (DIAL_MAX) capped by what the caller's contract
-    version can survive being told. A v2 launcher validates
-    SM64DS_VS_NAMES at exactly four fields and refuses to spawn on anything
-    else, so handing it a wide room would be a room it can join and cannot
-    play -- worse than a refusal, because the refusal at least says why.
-    """
-    if ver >= WIDE_MIN_V:
-        return DIAL_MAX
-    return min(DIAL_MAX, NARROW_PLAYERS)
+# (Until v5 a caller below v3 was held to NARROW_PLAYERS here, because a v2
+# launcher validates SM64DS_VS_NAMES at exactly four fields. The v5 floor
+# retired every such launcher, so the dial's bound is the deployment's alone.)
 
 # The largest "first to N stars" a host may pick. FIVE TODAY BECAUSE AN ARENA
 # HOLDS FIVE STARS, not because the number five is special: the owner picks the
@@ -334,6 +341,12 @@ GAME_NAME_MAX = 16
 MATCH_LEN = 16             # a match id, 16 lowercase hex, minted per arm
 
 COLOR_LEN = 6              # a picked colour, "rrggbb", stored lower case
+
+# v5: the game build id a launcher sends on create/join/world. The game's own
+# version string, 1..24 of [0-9A-Za-z._-]; compared byte for byte, never parsed.
+GAME_ID_MAX = 24
+GAME_ID_ALPHABET = ("0123456789abcdefghijklmnopqrstuvwxyz"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ._-")
 
 # WHAT A COLOUR-CARRYING REQUEST NEEDS TO CLAIM: see V_COLOR at the top of this
 # file, and VERB_FIELDS for where it is enforced. This block used to declare a
@@ -494,15 +507,10 @@ REJ_AUTH = 0
 class Member(object):
     __slots__ = ("seat", "token", "nick", "display", "playing", "pre_ok",
                  "armed", "seen", "chat_allowance", "chat_stamp", "last_addr",
-                 "color", "shoes", "v")
+                 "color", "shoes")
 
     def __init__(self, seat, token, nick, playing, pre_ok, now, addr="",
-                 color="", shoes="", v=1):
-        # The contract version this member joined at. 0.3.2: the dial and the
-        # start both refuse to take a room past four while anyone seated is
-        # below WIDE_MIN_V, because that member's build would be handed a
-        # sixteen-field plan it refuses at spawn and take the match down.
-        self.v = v
+                 color="", shoes=""):
         self.seat = seat
         self.token = token
         self.nick = nick            # exactly as sent, never rewritten
@@ -554,7 +562,7 @@ class Member(object):
 
 
 class Room(object):
-    def __init__(self, code, now, host_v=CONTRACT_MIN):
+    def __init__(self, code, now, game=""):
         self.code = code
         self.cond = threading.Condition(LOCK)
         self.members = {}       # seat -> Member
@@ -579,17 +587,12 @@ class Room(object):
         # set through `params`, frozen from Start until the room is back in
         # lobby. It starts at the deployment's own capability so a host who
         # never opens the settings dialog gets the old behaviour exactly.
-        # RUN vs16: bounded by the HOST'S contract version, not only by the
-        # deployment's. On a sixteen-player deployment a v2 host would
-        # otherwise get a room that defaults to sixteen, be handed a
-        # sixteen-field SM64DS_VS_NAMES its own build validates at four, and
-        # spawn nothing -- without ever touching the dial it is not allowed to
-        # move. The room's default capability cannot exceed what its host is
-        # able to drive.
-        #
-        # On every deployment that exists today the two answers are the same
-        # number, so this is invisible where nothing can use it.
-        self.match_players = dial_max_for(host_v)
+        self.match_players = DIAL_MAX
+        # v5: THE GAME BUILD this room plays, the creator's `game` string, set
+        # once at create. Every join must carry the same string: two builds in
+        # one match is how a room desyncs at frame 240 instead of refusing at
+        # the door, and the lobby is the first door.
+        self.game = game
         self.match = None
         # STAGE B/C match state, all None/empty in lobby and reset by
         # _reset_match. Frozen at the arming instant so a join, a leave or a
@@ -1021,7 +1024,7 @@ def v_color(body, key):
     return s.lower(), None
 
 
-def v_color_pair(body, ver):
+def v_color_pair(body):
     """The two colour keys, which travel together or not at all.
 
     Returns (color, shoes, error). ("", "") means the caller picked nothing,
@@ -1063,6 +1066,28 @@ def v_match(body):
     for ch in s:
         if ch not in HEX_ALPHABET:
             return None, "bad_match"
+    return s, None
+
+
+def v_game(body):
+    """The game build id (v5): ^[0-9A-Za-z._-]{1,24}$, compared, never parsed.
+
+    It is a claim the launcher makes about the game it will spawn, and the only
+    thing the lobby does with it is refuse to seat two different claims in one
+    room. A lying launcher gains nothing by it: the game's own session check
+    (the build id and digest in the ACCEPT) is the second door.
+    """
+    s, err = want_str(body, "game", "bad_game")
+    if err:
+        return None, err
+    n = byte_len(s)
+    if n > GAME_ID_MAX:
+        return None, "too_long"
+    if n < 1:
+        return None, "bad_game"
+    for ch in s:
+        if ch not in GAME_ID_ALPHABET:
+            return None, "bad_game"
     return s, None
 
 
@@ -1146,14 +1171,14 @@ def shape(body, required, optional=()):
 # did not exist at v1 at all, and gating only its fields would have left a v1
 # client able to call it with its required set and be answered.
 VERB_FIELDS = {
-    "create":    (("v", "nick"),
+    "create":    (("v", "nick", "game"),
                   # A colour pick travels as a PAIR or not at all; do_create
                   # enforces the pairing. Here they are two keys that may
                   # appear from v2. session_type is a v4 optional (ADVENTURE);
                   # do_create checks its value against SESSION_TYPES.
                   {"pre_ok": 1, "color": V_COLOR, "shoes": V_COLOR,
                    "session_type": V_SESSION}),
-    "join":      (("v", "room", "nick"),
+    "join":      (("v", "room", "nick", "game"),
                   {"pre_ok": 1, "color": V_COLOR, "shoes": V_COLOR}),
     "poll":      (("v", "room", "token", "cursor"), {"wait": 1}),
     "chat":      (("v", "room", "token", "text"), {}),
@@ -1210,6 +1235,11 @@ def shape_for(verb, body):
     # floor rather than trusting it keeps this function safe to call directly
     # from a test.
     ver = request_version(body)
+    # v5: THE RANGE, here as well as in the transport, so a handler called
+    # directly (the unit tests do) refuses a pre-floor body the same way the
+    # wire does instead of quietly serving it.
+    if ver < CONTRACT_MIN or ver > CONTRACT_V:
+        return "bad_version"
     # THE VERB ITSELF FIRST. A verb that does not exist at the caller's version
     # is refused before its fields are looked at, so a v1 caller cannot learn
     # anything about a v2 verb from the shape of its refusal.
@@ -1255,7 +1285,10 @@ def do_create(body, who, now):
         pre_ok, err = v_bool(body, "pre_ok")
         if err:
             return 400, {"error": err}
-    color, shoes, err = v_color_pair(body, body.get("v", 1))
+    color, shoes, err = v_color_pair(body)
+    if err:
+        return 400, {"error": err}
+    game, err = v_game(body)
     if err:
         return 400, {"error": err}
     # ADVENTURE co-op (v4): the session type. shape_for has already refused the
@@ -1285,14 +1318,14 @@ def do_create(body, who, now):
     # The host's own contract version bounds the room's default width; see
     # Room.__init__. Defaulted at the floor so a direct Room() in a test is
     # narrow unless it says otherwise.
-    room = Room(code, now, request_version(body))
+    room = Room(code, now, game)
     room.session_type = session_type
     token = new_token()
     # The host plays if the dial has room for anybody at all. The host is also
     # the session's parent, so a host who is not playing is not a thing any
     # later code has to handle: `apply_dial` refuses to demote seat 1.
     m = Member(1, token, nick, room.match_players >= 1, pre_ok, now, who,
-               color, shoes, request_version(body))
+               color, shoes)
     room.members[1] = m
     room.by_token[token] = 1
     room.host_seat = 1
@@ -1318,7 +1351,10 @@ def do_join(body, who, now):
         pre_ok, err = v_bool(body, "pre_ok")
         if err:
             return 400, {"error": err}
-    color, shoes, err = v_color_pair(body, body.get("v", 1))
+    color, shoes, err = v_color_pair(body)
+    if err:
+        return 400, {"error": err}
+    game, err = v_game(body)
     if err:
         return 400, {"error": err}
 
@@ -1331,22 +1367,15 @@ def do_join(body, who, now):
     room.forget_old_kicks(now)
     if who in room.kicked_addr:
         return 403, {"error": "kicked"}
+    # v5: ONE GAME BUILD PER ROOM. Refused before the seat checks so a player
+    # on the wrong build hears the reason that is actually theirs (somebody in
+    # this room runs a different game version) rather than "room full".
+    if game != room.game:
+        return 409, {"error": "game_mismatch"}
     if len(room.members) >= MAX_SEATS:
         return 409, {"error": "room_full"}
     if room.state != "lobby":
         return 409, {"error": "in_match"}
-    # RUN vs16: A NARROW CLIENT CANNOT JOIN A WIDE ROOM, and it is turned away
-    # here rather than seated and then handed a plan it cannot use.
-    #
-    # Above four players the game speaks wire version 3 and both name strings
-    # carry sixteen fields. A v2 build validates them at four and refuses to
-    # spawn, so without this it would sit in the room, be counted as playing,
-    # arm, and then fail at launch -- taking the whole match with it, because
-    # `failed` returns the room to lobby. A refusal at the door is the same
-    # answer given early enough to be actionable.
-    if (room.match_players > NARROW_PLAYERS
-            and request_version(body) < WIDE_MIN_V):
-        return 409, {"error": "needs_newer_client"}
 
     seat = room.free_seat()
     if seat is None:
@@ -1357,7 +1386,7 @@ def do_join(body, who, now):
     # fixed for the whole server.
     playing = room.playing_count() < room.match_players
     room.members[seat] = Member(seat, token, nick, playing, pre_ok, now, who,
-                                color, shoes, request_version(body))
+                                color, shoes)
     room.by_token[token] = seat
     room.refresh_displays()
     room.push("joined", seat=seat, display=room.members[seat].display)
@@ -1467,18 +1496,9 @@ def do_params(body, who, now):
     # The bound the refusal enforces is advertised as `dial_max` in every view,
     # so a launcher that reads the view never has to be refused at all.
     #
-    # AND THE UPPER BOUND IS THE CALLER'S, NOT THE DEPLOYMENT'S ALONE. Run
-    # vs16: above four players the game speaks a different wire and the two
-    # name/colour strings carry sixteen fields, so a v2 caller asking for eight
-    # is refused with the same code and for a better reason than the
-    # deployment's capability -- its own build could not play the room it was
-    # asking for. `dial_max` in the room view is still the DEPLOYMENT's number,
-    # unchanged in meaning for launcher 0.3.0, and a v3 launcher greys against
-    # it correctly because for a v3 caller the two bounds are the same.
     match_players = None
     if "match_players" in body:
-        match_players, err = v_int(body, "match_players", 2,
-                                   dial_max_for(request_version(body)),
+        match_players, err = v_int(body, "match_players", 2, DIAL_MAX,
                                    "bad_match_players")
         if err:
             return 400, {"error": err}
@@ -1503,13 +1523,6 @@ def do_params(body, who, now):
     # it had rather than being reset by an old launcher's ordinary settings
     # edit. That is the whole of the "0.3.0 is unaffected" story on this verb.
     if match_players is not None:
-        # 0.3.2: the door check in do_join is join-time only. A v2 client
-        # seated in a four-wide room, followed by a v3 host dialing it to
-        # eight, would be the same failure one verb later -- so the dial is
-        # refused while anyone seated cannot play the width asked for.
-        if match_players > NARROW_PLAYERS and any(
-                m.v < WIDE_MIN_V for m in room.members.values()):
-            return 409, {"error": "seated_client_too_old"}
         room.match_players = match_players
         room.apply_dial()
     # `match_players` rides the event as well as the view. Older launchers
@@ -1887,11 +1900,6 @@ def do_start(body, who, now):
     ps = playing_seats(room)
     if len(ps) < 2:
         return 409, {"error": "not_enough_players"}
-    # 0.3.2: belt and braces over do_params -- no wide start with an old
-    # client seated, whatever path got the room here.
-    if room.match_players > NARROW_PLAYERS and any(
-            m.v < WIDE_MIN_V for m in room.members.values()):
-        return 409, {"error": "seated_client_too_old"}
     if any(not room.members[s].pre_ok for s in ps):
         return 409, {"error": "member_not_ready"}
 
