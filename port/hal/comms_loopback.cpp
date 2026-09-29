@@ -2682,7 +2682,9 @@ bool lg_should_wait(PipeRound &s) {
         const LgSlot &p = g_lg[k];
         if (!p.have) continue;                     // lg_fill waits for these
         if ((unsigned)(t - p.last_rx_ms) >= w) continue;          // silent
-        if ((int)(s.round - p.round) > 2) continue;               // too far behind
+        // too far behind to deliver before the host needs the round itself
+        // (frame round + N): the catch-up after a hitch, not a console in step
+        if ((int)(s.round - p.round) > (g_input_delay > 3 ? g_input_delay - 1 : 2)) continue;
         if (!s.lg_waited) { s.lg_waited = true; ++g_lg_waited; }
         return true;
     }
@@ -2824,10 +2826,24 @@ void pipe_try_broadcast() {
         g_delay_gate_since_ms = 0;
     }
     // THE DEADLINE (the laggard rule): round q goes out by the parent's frame
-    // q + N - 1 whether or not every child's block is in. One round of slack
-    // is the aggregate's time on the wire to the children; at N = 1 (direct)
-    // there is none to give and the deadline is the frame that consumes it.
-    const unsigned slack = g_input_delay > 1 ? (unsigned)g_input_delay - 1u : 1u;
+    // q + N - 1 - down, whether or not every child's block is in, where down is
+    // the aggregate's time on the wire to the children in rounds (half the
+    // worst reported round trip). Design 4.2 gave it one round flat, which is
+    // only enough when the one-way time is under a frame: at 80 ms round trips
+    // the aggregate of a round closed at N - 1 reached the joiners after they
+    // needed it, so every joiner stalled a little on every substituted round
+    // (final1/x2/x3 laggard4-hitch: the others' stall lines 5 -> 20). A slot
+    // that is still SENDING is waited for past the deadline anyway (the wait
+    // window), so an early deadline costs nothing to a console in step; it
+    // only makes a SILENT one's substitute arrive in time. At N = 1 (direct)
+    // there is nothing to give and the deadline is the frame that consumes it.
+    int worst_rtt = 0;
+    for (int k = 1; k < kCommsMaxPlayers; ++k)
+        if ((g_live & (1u << k)) && g_child_rtt_ms[k] > worst_rtt) worst_rtt = g_child_rtt_ms[k];
+    const int down = (int)(((unsigned)worst_rtt * 50u + kRoundPeriodMs100 - 1u) / kRoundPeriodMs100);
+    int slack_i = g_input_delay - 1 - down;
+    if (slack_i < 1) slack_i = 1;
+    const unsigned slack = (unsigned)slack_i;
     for (unsigned q = g_pipe_low; q <= g_round; ++q) {
         PipeRound *s = pipe_find(q);
         if (!s) break;                        // a hole: nothing past it is due
