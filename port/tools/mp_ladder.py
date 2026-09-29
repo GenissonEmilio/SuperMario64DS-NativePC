@@ -80,6 +80,7 @@ build/mp_ladder/<UTC stamp> under the repo root.
 
 import argparse
 import collections
+import math
 import hashlib
 import os
 import re
@@ -122,7 +123,8 @@ LANE_MARKERS = {
     "R1": [("relay", 2)],                                         # relay v2
     "H1": [("map", "comms_hub.cpp")],                             # hub member transport
     "W2": [("str", b"SYNG")],                                     # ghost frames
-    "C1": [("map", "adv_chat.cpp"), ("str", b"SYNT")],            # text chat
+    # text chat: the map marker only ("SYNT" is in the exe from VSAUX1's kind table)
+    "C1": [("map", "adv_chat.cpp")],
     "V1": [("env", "SM64DS_VOICE_ALLOWED")],                      # mic gate + room setting
 }
 LANE_NAMES = {"N1": "NETCORE1", "N2": "VSAUX1", "N3": "LAGGARD1", "R1": "RELAY2",
@@ -437,9 +439,12 @@ def build_rungs():
     R.append(Rung("luigi16-relay1-rtt80", "luigi", 16, GATE, "relay1", 80, seed=7))
     # Adventure. adv*: today's transport (ghosts ride the VS carrier).
     # hub*: the 1.0 hub member through relay v2 (H1), ghost frames (W2).
-    R.append(Rung("adv2-loop", "adv", 2, DEV))
-    R.append(Rung("adv4-loop", "adv", 4, DEV))
-    R.append(Rung("adv16-loop", "adv", 16, GATE))
+    # adv*-loop and adv2-save-loop run adventure over the VS lockstep carrier,
+    # which VSAUX1's guard removed: they retire once N2 is in the exe, and the
+    # hub* rungs (hub2/4/16, joinleave, pause, hub2-save) cover adventure.
+    R.append(Rung("adv2-loop", "adv", 2, DEV, retired_by=["N2"]))
+    R.append(Rung("adv4-loop", "adv", 4, DEV, retired_by=["N2"]))
+    R.append(Rung("adv16-loop", "adv", 16, GATE, retired_by=["N2"]))
     R.append(Rung("hub2-relay2", "hub", 2, DEV, "relay2", needs=["H1", "W2"]))
     R.append(Rung("hub4-relay2", "hub", 4, DEV, "relay2", needs=["H1", "W2"]))
     R.append(Rung("hub16-relay2", "hub", 16, GATE, "relay2", needs=["H1", "W2"]))
@@ -447,7 +452,7 @@ def build_rungs():
     R.append(Rung("hub4-pause-relay2", "hubpause", 4, DEV, "relay2", needs=["H1"]))
     # Saves: every console its own cartridge (adventure saves a star each; a VS
     # match leaves the host's save byte-identical and joiners write none).
-    R.append(Rung("adv2-save-loop", "advsave", 2, DEV))
+    R.append(Rung("adv2-save-loop", "advsave", 2, DEV, retired_by=["N2"]))
     R.append(Rung("hub2-save-relay2", "advsave", 2, DEV, "relay2", needs=["H1"], hub=True))
     R.append(Rung("vs2-save-untouched", "vssave", 2, DEV))
     R.append(Rung("vs4-save-untouched-relay1", "vssave", 4, DEV, "relay1"))
@@ -828,9 +833,17 @@ def r_vs(L, run, r):
     a, row = delay_row(cs[0], r.rtt)
     if relay:
         ck.note(row)
-        if a and a[3] == N1_PERIOD and r.rtt in (80, 160) and n <= 4:
-            want = {80: 5, 160: 8}[r.rtt]
-            ck.ok(int(a[0]) <= want, "1.0 delay at rtt %d: %s <= %d" % (r.rtt, a[0], want))
+        if a and a[3] == N1_PERIOD:
+            # Judged against the formula on the RTT the game MEASURED, not the
+            # nominal added RTT: the test rig's delay shim holds each datagram to a
+            # Windows timer tick (15.6 ms), so "160 ms" measures about 187 ms and
+            # delay 9 is the right answer there (review VSAUX1 fold note 6).
+            frames_, worst, safety, period, margin_, floor, cap = a
+            want = int(math.ceil(int(worst) * int(safety) / 100.0 / float(period))) + int(margin_)
+            want = max(int(floor), min(int(cap), want))
+            ck.ok(int(frames_) == want, "1.0 delay: %s = ceil(%s ms * %s%% / %s ms) + %s clamped "
+                  "[%s, %s] = %d (nominal rtt %d)" % (frames_, worst, safety, period, margin_,
+                                                      floor, cap, want, r.rtt))
     ck.note("close " + close_summary(cs))
     ck.note("starve events per console " + ",".join(str(cs[k]["starve_events"]) for k in range(n)))
     return ck, wall, rcs
@@ -1535,6 +1548,9 @@ class Ladder:
             self.lock = None
 
     def run_rung(self, r, idx, feats, rerun=False):
+        gone = [x for x in r.opts.get("retired_by", ()) if feats.have.get(x)]
+        if gone:
+            return "SKIP", 0.0, "retired: %s is in this exe (adventure over the VS carrier is gone; "                 "the hub* rungs cover it)" % ", ".join(LANE_NAMES.get(x, x) for x in gone), {}
         miss = feats.missing([x for x in r.needs if x != "kit"])
         if "kit" in r.needs and not (self.kit and self.rom):
             return "SKIP", 0.0, "needs --kit and --rom (a player-shaped install)", {}
@@ -1669,6 +1685,8 @@ def main(argv=None):
             miss = feats.missing([x for x in r.needs if x != "kit"])
             if "kit" in r.needs and not (a.kit and a.rom):
                 miss.append("kit")
+            if [x for x in r.opts.get("retired_by", ()) if feats.have.get(x)]:
+                miss = ["retired"]
             print("%-34s %-40s %s" % (r.name, r.desc(), ("needs " + ",".join(miss)) if miss else "runs"))
         print("%d rungs in tier %s" % (len(rungs), a.tier))
         return 0
