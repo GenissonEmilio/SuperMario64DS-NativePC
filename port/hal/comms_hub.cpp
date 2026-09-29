@@ -452,8 +452,16 @@ void accept_datagram(unsigned char *p, int len, int seat, unsigned now,
     if (kind == kHubGhost) {
         unsigned short seq;
         std::memcpy(&seq, p + 8, 2);
-        if (z.has_ghost && (short)(seq - z.ghost_seq) <= 0) {
-            ++g_drop_stale;             // late or duplicate: newest wins
+        // Late or duplicate: newest wins. Only within 16 frames (about 1 s at
+        // 15 Hz, far past any real reordering), though: a console that
+        // restarts and lands on the same seat before its old presence lapses
+        // starts again from seq 0, and a plain wrap compare would hold every
+        // frame it sends as "stale" until it passed the old count (measured:
+        // a restart 4 s in lost its first 52 frames with a 64-frame window).
+        // A jump back past the window is a new sender.
+        const short d = (short)(seq - z.ghost_seq);
+        if (z.has_ghost && d <= 0 && d > -16) {
+            ++g_drop_stale;
             return;
         }
         z.has_ghost = true;
