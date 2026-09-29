@@ -1310,6 +1310,37 @@ bool g_adaptive_delay  = false;         // sizing is in effect on this end
 bool g_delay_frozen    = false;         // parent: frame 0 has been asked for
 bool g_frames_produced = false;         // this end handed the game a round
 bool match_underway() { return g_match_full || g_frames_produced; }   // see g_match_full
+
+// A VS MATCH THIS CONSOLE HAS LOST ENDS HERE, OUT LOUD (multiplayer 1.0, lane
+// LAGGARD1; REVMPPROOF1's latejoin4 finding). What used to happen: the other
+// consoles went quiet for the ROM's whole wait bound (a host stalled ~2 s on a
+// busy PC), src/func_0203ea5c.c:487 dropped every console to SOLO, and each of
+// the four kept playing its own game to the end with exit code 0 -- one match
+// quietly split into four, nobody told. A console now leaves the match the
+// moment it knows the match is lost to it, with one line saying why and exit
+// code 5 (the launcher's "you lost connection to the match"):
+//   - the ROM gave up waiting for the others mid-match (abandon() after this
+//     end has played a round), on the host or on a joiner;
+//   - the host retired this console (the laggard rule), by the tagged Bye or
+//     by rounds that stopped carrying it;
+//   - the host retired the last other player (all of them lost, none left).
+// A player who LEAVES (a Bye) or is refused at the door is not a loss for the
+// others: the host plays on with the seats that are left. Before the first
+// round nothing here fires, so a session that never formed keeps retrying the
+// way the DS's menu would. SM64DS_COMMS_LOST_EXIT=0 logs the line and plays on
+// (the old behaviour), for a proof that wants to watch what happens next.
+bool g_lost_exit = true;
+void match_lost(const char *why) {
+    std::fprintf(stderr, "[comms:loopback] LOST THE VS MATCH (slot %d, round "
+                 "%u): %s. %s\n", g_slot, g_round, why,
+                 g_lost_exit ? "This console stops here instead of playing on "
+                               "alone (exit code 5)"
+                             : "SM64DS_COMMS_LOST_EXIT=0: playing on");
+    if (!g_lost_exit) return;
+    std::fflush(stderr);
+    std::fflush(stdout);
+    std::exit(5);
+}
 // THE THREE TERMS OF THE FORMULA, NAMED. The floor is the least cover a sized
 // session ships: 2 rounds on a relay (every path through it has two home links
 // on it), 1 direct (the direct mode default below); install picks the one for
@@ -2555,6 +2586,8 @@ void lg_retire_slot(int k) {
     // one it is for. Loopback and direct address it alone.
     if (g_net_mode == kNetRelay) send_to_children(r);
     else                         send_to_slot(r, k);
+    if (popcount_live(g_live) <= 1)
+        match_lost("every other player lost connection");
 }
 
 // Round s is past its deadline: fill every live slot that has not delivered
@@ -3632,6 +3665,7 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
                              "rounds no longer carry this console (slot %d); "
                              "you lost connection to the match. Back to idle.\n",
                              g_slot);
+                match_lost("the host dropped this console from the match");
                 g_state = kCommsIdle;
                 g_live  = 0;
                 break;
@@ -3712,6 +3746,7 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
                          "%d) sent the host nothing usable for 3 s, so the "
                          "match went on without it; you lost connection to "
                          "the match. Back to idle.\n", g_slot);
+            match_lost("the host dropped this console from the match");
         } else {
             std::fprintf(stderr, "[comms:loopback] the parent left; back to idle\n");
         }
@@ -5409,6 +5444,12 @@ int lb_recv_kind(unsigned tag, void *buf, int cap, int *from) {
 }
 
 void lb_abandon() {
+    if (g_frames_produced && (g_role == kRoleParent || g_role == kRoleChild))
+        match_lost(g_role == kRoleParent
+                       ? "no other console answered for the game's whole wait "
+                         "bound, so the game gave up on the match"
+                       : "the host stopped answering for the game's whole wait "
+                         "bound, so the game gave up on the match");
     if (g_latched_mask == 0 && g_stage_mask == 0) return;   // nothing open
     std::fprintf(stderr,
                  "[comms:loopback] the game abandoned round %lu (the ROM's "
@@ -5779,6 +5820,8 @@ bool comms_loopback_install_from_env() {
                          "(SM64DS_COMMS_LAGGARD=0): the room waits for the "
                          "slowest console\n");
     }
+    if (const char *e = std::getenv("SM64DS_COMMS_LOST_EXIT"))
+        g_lost_exit = std::atoi(e) != 0;
     if (const char *w = std::getenv("SM64DS_COMMS_LAGGARD_WAIT_MS")) {
         int v = std::atoi(w);
         if (v < 0) v = 0;
