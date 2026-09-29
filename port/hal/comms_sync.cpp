@@ -691,7 +691,7 @@ struct GwStats {
     unsigned long long syng_recvd, syni_recvd;
     unsigned long long drop_len, drop_tag, drop_ver, drop_seat, drop_field,
                        drop_old;
-    unsigned long long resets, charswaps, reposes;
+    unsigned long long resets, charswaps, reposes, recursor;
     unsigned long long interp, reckon, hold, teleports;
 };
 GwStats g_gws;
@@ -1283,14 +1283,14 @@ void gw_report(const char *tag) {
                  "syng_recvd=%llu syni_recvd=%llu drop_len=%llu drop_tag=%llu "
                  "drop_ver=%llu drop_seat=%llu drop_field=%llu drop_old=%llu "
                  "resets=%llu vis=0x%04x interp=%llu reckon=%llu hold=%llu "
-                 "reposes=%llu charswaps=%llu names=[%s]\n",
+                 "reposes=%llu recursor=%llu charswaps=%llu names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
                  g_gws.drop_len, g_gws.drop_tag, g_gws.drop_ver,
                  g_gws.drop_seat, g_gws.drop_field, g_gws.drop_old,
                  g_gws.resets, vis, g_gws.interp, g_gws.reckon, g_gws.hold,
-                 g_gws.reposes, g_gws.charswaps, names);
+                 g_gws.reposes, g_gws.recursor, g_gws.charswaps, names);
 }
 
 // sync_decide's hub arm: an adventure console on the HUB has no DS transport
@@ -2163,6 +2163,24 @@ void gw_follow() {
             ++g_gws.charswaps;
             std::fprintf(stderr, "[ghost] seat %d body %d character -> %u\n",
                          s, i, (unsigned)sm.character);
+        }
+        /* THE CURSOR. Player::SetAnim only lands its start frame when the
+           animation CHANGES: that arm clears the ModelAnim's file word (+0x60,
+           src/actors/Player.cpp, "*(int *)(modelPtr + 0x60) = 0") so
+           ModelAnim::SetAnim takes its slow path; with the same id it keeps
+           the file and ignores the start frame, so the ghost's own Behavior
+           ran the cycle at its own pace -- measured: a paused source's frozen
+           cursor 11 on the wire while its ghost walked on in place. When the
+           id is the same and the frame differs, make the ROM's own reset
+           first, then SetAnim lands the wire's frame. */
+        {
+            const int want_f = sm.cursor >> 12;
+            int *cur = player::anim_frame_ptr(a);
+            if (player::anim_id(a) == sm.anim && cur && (*cur >> 12) != want_f) {
+                if (void *m = player::body_model_anim(a))
+                    *(int *)((char *)m + 0x60) = 0;
+                ++g_gws.recursor;
+            }
         }
         _ZN6Player7SetAnimEji5Fix12IiEj(a, sm.anim, 0, 0x1000,
                                         (unsigned)(sm.cursor >> 12));
