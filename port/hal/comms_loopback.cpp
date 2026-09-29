@@ -1227,6 +1227,8 @@ unsigned long long g_lg_waited = 0;          // host: rounds held for a sending 
 bool     g_lg_help = false;                  // host: stretching frames for a slot
 unsigned long long g_lg_help_holds = 0;      // host: exchange() calls held by it
 unsigned long long g_lg_help_rounds = 0;     // host: rounds closed while helping
+unsigned long long g_lg_reserve_held = 0;    // host: re-serves held by the pacing
+unsigned g_cache_serve_ms[kCacheDepth];      // stop-and-wait re-serve pacing, per cache slot
 unsigned lg_wait_window_ms() {
     if (g_lg_wait_cfg >= 0) return (unsigned)g_lg_wait_cfg;
     const unsigned w = g_lg_frame_x100 * 3u / 200u;       // 1.5 frames, ms
@@ -1280,6 +1282,8 @@ void lg_reset() {
     g_lg_help       = false;
     g_lg_help_holds = 0;
     g_lg_help_rounds = 0;
+    g_lg_reserve_held = 0;
+    std::memset(g_cache_serve_ms, 0, sizeof g_cache_serve_ms);
     g_hitch_last_ms = 0;
     g_seat_mask_said = ~0u;
     g_match_full    = false;
@@ -3168,8 +3172,19 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
             // the aggregate. Re-serve it from the ledger, same job the
             // stop-and-wait cache does.
             PipeRound *done = pipe_find(p.round);
-            if (done && done->sent) {
+            // ONCE PER ROUND PER REPUBLISH INTERVAL, not once per republish: a
+            // host that froze for 5 s drains every joiner's queued republishes
+            // at once on resume, and answering each one put a burst of
+            // aggregates past the relay's per-seat cap (MPPROOF1
+            // BROKEN-vs4-stall-relay1: 335 dropped). One copy fans out to
+            // every joiner through the relay anyway.
+            if (done && done->sent && !g_rollback &&
+                (unsigned)(now_ms() - done->last_agg_ms) < (unsigned)g_resend_ms &&
+                done->last_agg_ms != 0) {
+                ++g_lg_reserve_held;
+            } else if (done && done->sent) {
                 pipe_send_aggregate(*done);
+                done->last_agg_ms = now_ms() ? now_ms() : 1;
                 ++g_stale_serves;
             }
             pipe_try_broadcast();
@@ -3185,8 +3200,18 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
             // from the cache rather than let two clocks stare at each other.
             const int i = (int)(p.round % kCacheDepth);
             if (g_cache_valid[i] && g_cache[i].round == p.round) {
-                send_to_slot(g_cache[i], k);
-                ++g_stale_serves;
+                // Paced the same way as the pipelined re-serve above, when
+                // one datagram reaches every joiner (the relay); a direct or
+                // loopback re-serve is addressed to the one that asked.
+                const unsigned t = now_ms();
+                if (g_net_mode == kNetRelay && g_cache_serve_ms[i] != 0 &&
+                    (unsigned)(t - g_cache_serve_ms[i]) < (unsigned)g_resend_ms) {
+                    ++g_lg_reserve_held;
+                } else {
+                    send_to_slot(g_cache[i], k);
+                    g_cache_serve_ms[i] = t ? t : 1;
+                    ++g_stale_serves;
+                }
             }
         } else {
             // A child ahead of the parent cannot happen while the parent is
