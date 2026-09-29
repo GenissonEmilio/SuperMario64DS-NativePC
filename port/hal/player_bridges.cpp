@@ -452,8 +452,13 @@ extern "C" void port_adventure_ghost_hold()
                restarted the WATCHER's level whenever a ghost went below the
                death plane), no damage, no exit, no shadow of its own. The
                ghost is posed, placed and shadowed by hal/comms_sync.cpp's
-               follower instead. Re-asserted every frame like the flags above;
-               nothing in src/ or the port clears an actor's bit 2. */
+               follower instead. Re-asserted every frame like the flags above,
+               and for a reason of its own: the ROM's scene pass that follows
+               the actor walk (phase 1, func_020441cc over the scene tree)
+               clears bit 2 again every frame (REVGHOSTWIRE1-R3 measured it set
+               at the start of every walk and clear at the end of it on 3594 of
+               3597 body-checks). The skip holds only because this hold runs
+               AFTER that pass and BEFORE the next walk: keep it there. */
             if (port_adventure_hub_body(i)) {
                 *((unsigned char *)a + 0x13) |= 2;
                 /* and parked, from the first frame after the level seats it:
