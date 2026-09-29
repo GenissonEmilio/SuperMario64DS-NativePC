@@ -164,6 +164,11 @@
 extern "C" void func_02040724(void);   /* the seam's close() face */
 
 extern "C" int host_setting_net_mode(void);   /* hal/host_settings.cpp */
+// The DS's multiplayer error word. src/func_0203ea5c.c (and the wide host copy,
+// hal/comms_conductor_wide.cpp) set bit 0 at the same statement that drops the
+// session to solo when the wait bound runs out; read only by lb_close below, to
+// tell the game ENDING a match that went silent from the port's own shutdown.
+extern "C" unsigned short data_020a0f1c;
 
 /* the build's git tip (host-src/port_gittip.c, written by CMake), hashed into
    the session check's build id. The weak fallback is tests/fault_probe.h's own,
@@ -1330,6 +1335,8 @@ bool match_underway() { return g_match_full || g_frames_produced; }   // see g_m
 // way the DS's menu would. SM64DS_COMMS_LOST_EXIT=0 logs the line and plays on
 // (the old behaviour), for a proof that wants to watch what happens next.
 bool g_lost_exit = true;
+bool g_exiting   = false;      // the port's own shutdown is closing the carrier
+bool g_err_at_start = false;   // the error bit was already set at the first round
 void match_lost(const char *why) {
     std::fprintf(stderr, "[comms:loopback] LOST THE VS MATCH (slot %d, round "
                  "%u): %s. %s\n", g_slot, g_round, why,
@@ -4547,6 +4554,15 @@ void aux_close_report(int my_slot) {
 void lb_close() {
     if (!g_open) return;             // double close is legal and silent
     const int my_slot = g_slot;      // for the aux line, which prints after the reset
+    // THE GAME ENDING THE MATCH BECAUSE IT WENT SILENT (see match_lost). When
+    // the wait bound runs out, src/func_0203ea5c.c sets bit 0 of the DS error
+    // word and drops the role to solo, and src/func_0203df40.c then closes the
+    // radio -- this call -- and plays on alone. The port's own shutdown closes
+    // through here too (the atexit hook at install), so only a close that is
+    // not the shutdown, mid-match, with the error bit newly set, is the loss.
+    const bool lost = !g_exiting && g_frames_produced && !g_err_at_start &&
+                      (data_020a0f1c & 1u) != 0 &&
+                      (g_role == kRoleParent || g_role == kRoleChild);
     Packet b;
     fill_header(b, kTypeBye);
     if (g_role == kRoleParent) send_to_children(b);
@@ -4652,6 +4668,9 @@ void lb_close() {
                      g_rb_miss_only_heading, g_rb_miss_hd[0], g_rb_miss_hd[1],
                      g_rb_miss_hd[2], g_rb_miss_hd[3], g_rb_miss_hd[4], g_rb_miss_hd[5]);
     }
+    if (lost)
+        match_lost("the other consoles stopped answering for the game's whole "
+                   "wait bound, so the game ended the session");
 }
 
 void lb_become_parent() {
@@ -5137,6 +5156,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         ++g_round;
         // A ROUND HAS REACHED THE GAME. Rule 2's bound: from here the depth is
         // part of this end's history and cannot move.
+        if (!g_frames_produced) g_err_at_start = (data_020a0f1c & 1u) != 0;
         g_frames_produced = true;
         return 1;
     }
@@ -5194,6 +5214,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
     // raised from zero by the adaptive sizing spends its first exchanges here,
     // and a bound that only existed on the pipelined arm would leave this end
     // believing it had produced no frames when it had produced several.
+    if (!g_frames_produced) g_err_at_start = (data_020a0f1c & 1u) != 0;
     g_frames_produced = true;
     return 1;
 }
@@ -6267,7 +6288,7 @@ bool comms_loopback_install_from_env() {
     // Bye is what clears the leaver out of the parent's live mask, which lets
     // the parent complete another round, which is when the ROM's per-record
     // clear at src/func_0203ea5c.c:275 wipes the leaver's stale live bit.
-    std::atexit([]() { func_02040724(); });
+    std::atexit([]() { g_exiting = true; func_02040724(); });
     std::fprintf(stderr, "[comms:loopback] installed as %s, port base %d\n",
                  g_role == kRoleParent ? "parent" : "child", g_port_base);
     return true;
