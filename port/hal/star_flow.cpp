@@ -1047,13 +1047,27 @@ void port_luigi_countdown_drive(int frame)
    countdown sprites join the same engine-A OAM batch the VS timer fills: the
    ROM's own Stage::RenderVsModeCountdown, which reads data_0209f2bc and draws
    READY? + the red numeral + START. Null-guarded on the fader that render
-   dereferences without a check. Inert unless the mode is armed. */
+   dereferences without a check. Inert unless the mode is armed.
+
+   THE SAME FOUR-WIDE CENSUS AS THE START. The render opens with the ROM's own
+   "count the landed players in slots 0..3, draw nothing unless that reaches
+   data_0209fc50", so above four players it drew nothing at all: no READY?, no
+   numeral, no START, while the round itself still ran on the drive above. The
+   call takes the view hal/stage_frame.cpp gives Stage::Behavior's matching
+   census (the seated count reads n minus the landed seats 4..n-1 for the
+   length of the call, put back straight after), so the sprites draw once every
+   seat has landed at every width. Four players or fewer never take the view. */
+extern "C" int  port_vs_census_view_enter(void);
+extern "C" void port_vs_census_view_leave(int saved);
+
 void port_luigi_countdown_render(void)
 {
     if (data_0209f2d8 != 1) return;
     if (!port_luigi_enabled()) return;
     if (data_0209f5bc == 0) return;
+    const int census = port_vs_census_view_enter();
     _ZN5Stage21RenderVsModeCountdownEv();
+    port_vs_census_view_leave(census);
 }
 
 // =============================================================================
