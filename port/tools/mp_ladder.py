@@ -65,7 +65,6 @@ build/mp_ladder/<UTC stamp> under the repo root.
 
 import argparse
 import collections
-import datetime
 import hashlib
 import os
 import re
@@ -1356,17 +1355,30 @@ BODIES = {"vs": r_vs, "advsave": r_advsave, "vssave": r_vssave, "match": r_match
 # ---------------------------------------------------------------------------
 # THE LADDER
 # ---------------------------------------------------------------------------
+def asset_root_for(a):
+    """The consoles read build/assets/ (the NitroFS index, romdata) from their
+    asset root, and it must be the one the exe was built against."""
+    if a.asset_root:
+        return os.path.abspath(a.asset_root)
+    exe_dir = os.path.dirname(os.path.abspath(a.exe))
+    tree = os.path.dirname(os.path.dirname(exe_dir))
+    if os.path.basename(exe_dir) == "port" and os.path.exists(
+            os.path.join(tree, "build", "assets", "nitrofs.tsv")):
+        return tree
+    return ROOT
+
+
 class Ladder:
     def __init__(self, a):
         self.a = a
         self.exe = os.path.abspath(a.exe)
-        self.asset_root = os.path.abspath(a.asset_root or ROOT)
+        self.asset_root = asset_root_for(a)
         self.relay_py = os.path.abspath(a.relay_py)
         self.relay1_py = os.path.abspath(a.relay1_py or a.relay_py)
         self.busy_log = os.path.expanduser(a.busy_log)
         self.minpos = a.minpos
         self.kit, self.rom = a.kit, a.rom
-        stamp = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
         self.out = os.path.abspath(a.out or os.path.join(ROOT, "build", "mp_ladder", stamp))
         self.kit_work = os.path.abspath(a.kit_work or os.path.join(os.path.dirname(self.out), "kit"))
         self.shared_save = os.path.join(os.path.dirname(self.exe), "save", "sm64ds.sav")
@@ -1427,6 +1439,16 @@ class Ladder:
             return "TIMEOUT", wall, detail, rcs
         return ("FAIL" if bad else "PASS"), wall, detail, rcs
 
+    def record_notrun(self, r, feats, why):
+        """After a stop, a rung whose lane is absent is still a SKIP, not a NOTRUN."""
+        miss = feats.missing([x for x in r.needs if x != "kit"])
+        if "kit" in r.needs and not (self.kit and self.rom):
+            miss.append("kit")
+        if miss:
+            self.record(r, "SKIP", 0.0, "needs " + ", ".join(miss), {})
+        else:
+            self.record(r, "NOTRUN", 0.0, why, {})
+
     def record(self, r, verdict, wall, detail, rcs, note=""):
         row = (r.name, verdict, "%.0f" % wall, r.desc(), note + detail)
         self.rows.append(row)
@@ -1438,7 +1460,8 @@ class Ladder:
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exe", default=DEFAULT_EXE)
-    ap.add_argument("--asset-root", help="SM64DS_ASSET_ROOT for the consoles (default: this repo)")
+    ap.add_argument("--asset-root", help="SM64DS_ASSET_ROOT for the consoles (default: the tree the "
+                    "exe was built in when it sits at <tree>/build/port/, else this repo)")
     ap.add_argument("--relay-py", default=RELAY_PY, help="relay source for relay2 rungs (240 pps)")
     ap.add_argument("--relay1-py", help="relay source for relay1 rungs (120 pps); default --relay-py."
                     " Point it at a copy of the deployed v1 relay to prove the v1 fallback.")
@@ -1472,10 +1495,16 @@ def main(argv=None):
         print("  lane %-2s %-10s %s  [%s]" % (lane, LANE_NAMES[lane],
                                               "present" if feats.have[lane] else "absent ",
                                               feats.why[lane]))
+    aroot = asset_root_for(a)
+    print("asset root %s" % aroot)
     for shadow in (os.path.join(os.path.dirname(os.path.abspath(a.exe)), "settings.json"),
-                   os.path.join(os.path.abspath(a.asset_root or ROOT), "settings.json")):
+                   os.path.join(aroot, "settings.json")):
         if os.path.exists(shadow):
             print("  WARNING: %s is read before each console's own settings.json" % shadow)
+    if not os.path.exists(os.path.join(aroot, "build", "assets", "nitrofs.tsv")):
+        print("the asset root has no build/assets/nitrofs.tsv: pass --asset-root <the tree the exe "
+              "was built in>")
+        return 2
     if a.probe:
         return 0
     rungs = [r for r in build_rungs() if a.tier in r.tiers]
@@ -1509,13 +1538,13 @@ def main(argv=None):
             stopped = str(s)
             print("STOPPED at %s: %s" % (r.name, stopped), flush=True)
             for rest in rungs[idx:]:
-                L.record(rest, "NOTRUN", 0.0, stopped, {})
+                L.record_notrun(rest, feats, stopped)
             break
         L.record(r, v, wall, detail, rcs)
         if v == "ABORTED":
             stopped = detail
             for rest in rungs[idx + 1:]:
-                L.record(rest, "NOTRUN", 0.0, stopped, {})
+                L.record_notrun(rest, feats, stopped)
             break
         if v == "TIMEOUT":
             rerun.append((idx, r))
