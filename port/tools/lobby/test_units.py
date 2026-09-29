@@ -3084,6 +3084,61 @@ def test_no_promotion_into_a_running_match():
               (room.state, room.members[3].playing))
 
 
+def test_the_plan_guard():
+    """A seat missing from slot_of never gets a slot, least of all slot 0."""
+    print("\n-- L-J1: the plan guard (no default slot 0)")
+    reset()
+    st, h = create(nick="h", pre_ok=True)
+    code = h["room"]
+    st, g2 = join(code, "g2", who="10.0.0.2", pre_ok=True)
+    st, w3 = join(code, "w3", who="10.0.0.3", pre_ok=True)
+    room = S.ROOMS[code]
+    st, p = start(code, h["token"])
+    match = p["match"]
+    # Forge the C4 state directly (a seat playing that the match never froze),
+    # so the guard is proved on its own and not only through drop_member.
+    room.members[3].playing = True
+    check("a playing seat outside slot_of is handed no plan",
+          S.member_plan(room, 3) == {"playing": False}, S.member_plan(room, 3))
+    st, r = ready(code, w3["token"], match, who="10.0.0.3")
+    check("and its ready is 403 not_playing",
+          st == 403 and r["error"] == "not_playing", (st, r))
+    # (try_go compares the live playing set to the frozen one, so the forged
+    # seat would stall arming: forge it again once the pair is at go.)
+    room.members[3].playing = False
+    ready(code, h["token"], match)
+    ready(code, g2["token"], match, who="10.0.0.2")
+    check("the frozen pair still goes", room.state == "go", room.state)
+    room.members[3].playing = True
+    st, out = poll(code, w3["token"], 1, who="10.0.0.3", now=1001.0)
+    goplans = [e["plan"] for e in out["events"] if e["kind"] == "go"]
+    check("its go event and top-level plan are {playing: false}",
+          goplans == [{"playing": False}] and out.get("plan") == {"playing": False},
+          (goplans, out.get("plan")))
+    check("the frozen seats keep their own slots: host 0, seat 2 slot 1",
+          S.member_plan(room, 1)["slot"] == 0
+          and S.member_plan(room, 2)["slot"] == 1
+          and S.member_plan(room, 2)["want_seat"] == 1)
+    st, f = S.do_failed({"v": 5, "room": code, "token": w3["token"],
+                         "match": match, "reason": "no_pairing"},
+                        "10.0.0.3", 1002.0)
+    check("its failed is 403 not_playing and the match runs on",
+          st == 403 and f["error"] == "not_playing" and room.state == "go",
+          (st, f, room.state))
+    st, rr = _result(code, w3["token"], match, who="10.0.0.3")
+    check("its result is 403 not_playing and the match runs on",
+          st == 403 and rr["error"] == "not_playing" and room.state == "go",
+          (st, rr, room.state))
+    room.members[3].playing = False
+    _result(code, h["token"], match)
+    check("the match ends on the host's result", room.state == "lobby")
+    # An old `go` event replayed from the ring after the match ended.
+    st, out = poll(code, g2["token"], 1, who="10.0.0.2", now=1200.0)
+    goplans = [e["plan"] for e in out["events"] if e["kind"] == "go"]
+    check("a go event replayed in lobby carries {playing: false}, not slot 0 "
+          "with no code", goplans == [{"playing": False}], goplans)
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -3137,6 +3192,7 @@ def main():
     test_opacity()
     test_a_dropped_player_plays_the_next_match()
     test_no_promotion_into_a_running_match()
+    test_the_plan_guard()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

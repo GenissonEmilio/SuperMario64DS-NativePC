@@ -1948,6 +1948,16 @@ def playing_seats(room):
     return sorted(s for s in room.members if room.members[s].playing)
 
 
+def in_frozen_match(room, seat):
+    """True for a seat that is PLAYING the room's current match: playing, and
+    one of the seats frozen into slot_of at `start`. ready / failed / result
+    for the current match ask this, not `playing` alone (run mp1, L-J1), so a
+    seat the match never froze -- a waiting joiner on a reused seat number,
+    or anything a future path promotes -- cannot arm, abort or end it."""
+    m = room.members.get(seat)
+    return m is not None and m.playing and seat in room.slot_of
+
+
 def assign_slots(room):
     """seat -> slot, PACKED among the playing seats in seat order.
 
@@ -2036,6 +2046,16 @@ def member_plan(room, seat):
         return {"playing": True, "session_type": "adventure",
                 "code": room.comms_code, "relay": RELAY_ADDR,
                 "relay_v": RELAY_V, "want_seat": WANT_ANY_SEAT}
+    # THE PLAN GUARD (run mp1, L-J1). A VS plan is only ever the frozen
+    # match's, so a seat the match did not freeze gets the spectator's empty
+    # plan -- never a default slot. `slot_of.get(seat, 0)` used to hand such a
+    # seat slot 0, which is the host's: a watcher promoted mid-match (C4), a
+    # seat number reused by a joiner, or an old `go` event replayed from the
+    # ring after the match ended would all have been told to join as the
+    # parent's slot. slot_of is empty in lobby, so this also covers the last.
+    if seat not in room.slot_of:
+        return {"playing": False}
+    slot = room.slot_of[seat]
     role = "parent" if seat == room.host_seat else "child"
     plan = {
         "role": role,
@@ -2047,7 +2067,7 @@ def member_plan(room, seat):
         "session_type": room.session_type,
         "map": room.match_map,
         "players": room.agreed_players,
-        "slot": room.slot_of.get(seat, 0),
+        "slot": slot,
         # The parent goes first; children wait 1.5 s (spec 4.3). It is an
         # optimisation, not the guarantee -- the child's JOIN retries anyway.
         "spawn_delay_ms": 0 if role == "parent" else 1500,
@@ -2066,7 +2086,7 @@ def member_plan(room, seat):
         # is the slot (parent 0, children 1..15), so the relay's stamp and
         # the game's slot are the same number.
         "relay_v": RELAY_V,
-        "want_seat": room.slot_of.get(seat, 0),
+        "want_seat": slot,
         # The match settings frozen at arm. The launcher exports luigi and
         # seed as SM64DS_VS_LUIGI_INFECTION / SM64DS_VS_LUIGI_SEED, voice as
         # SM64DS_VOICE_ALLOWED and digest as SM64DS_SESSION_DIGEST. The seed
@@ -2271,7 +2291,7 @@ def do_ready(body, who, now):
     # ignored, so that `ready`, `failed` and `result` -- the three verbs spec 3.2
     # restricts to "a seated PLAYING member" -- all answer the same way. This one
     # used to be a silent no-op, which was harmless but made the trio disagree.
-    if not m.playing:
+    if not in_frozen_match(room, seat):
         return 403, {"error": "not_playing"}
     if room.state == "arming":
         m.armed = True
@@ -2317,7 +2337,7 @@ def do_failed(body, who, now):
     # `session up` would kill its own game. The host's only remedy, `kick`, is
     # refused while the room is not in lobby, so the same client could do it to
     # match after match.
-    if not m.playing:
+    if not in_frozen_match(room, seat):
         return 403, {"error": "not_playing"}
     # Only a real pre-result phase can be failed. If a result already landed the
     # match id was cleared, so this is stale_match above; here the room is still
@@ -2388,6 +2408,8 @@ def do_result(body, who, now):
         return 403, {"error": "not_playing"}
 
     if room.match is not None and match == room.match:
+        if not in_frozen_match(room, seat):
+            return 403, {"error": "not_playing"}
         # The first result for the current match. Append the event, discard the
         # comms code, clear the match, drop back to lobby. Params, seats, nicks,
         # tokens and chat all survive (spec 5.6): "same again" is one button.
