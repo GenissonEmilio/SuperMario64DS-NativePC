@@ -1001,9 +1001,12 @@ def r_luigi(L, run, r):
     facts = {k: luigi_facts(texts[k]) for k in range(n)}
     seeds = {f[0] for f in facts.values()}
     ck.ok(len(seeds) == 1 and None not in seeds, "one Luigi seed pick on every console (%s)" % seeds)
-    tagsets = {tuple(f[1]) for f in facts.values()}
-    ck.ok(len(tagsets) == 1, "identical TAG sequence on every console (%d distinct, %d tags on p0)"
-          % (len(tagsets), len(facts[0][1])))
+    # The parent outlives its children (parent_surplus), so it may tag more
+    # after they leave: the sequences must agree over the common prefix.
+    common = min(len(f[1]) for f in facts.values())
+    tagsets = {tuple(f[1][:common]) for f in facts.values()}
+    ck.ok(len(tagsets) == 1, "identical TAG sequence on every console over the first %d tags "
+          "(%d distinct; p0 saw %d)" % (common, len(tagsets), len(facts[0][1])))
     ok, msg = sweep(texts, list(range(n)), 24, run.dir)
     ck.ok(ok, msg)
     relay_checks(ck, run)
