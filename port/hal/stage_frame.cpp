@@ -108,6 +108,8 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "vs_width.h"
+
 extern "C" {
 /* the flat-C matched bodies the faces below forward to */
 void _ZN5Stage10PS_CleanupEv(void);
@@ -604,6 +606,94 @@ static void port_frame_ctrl_prime(void)
    derivation and the two measured faults. */
 extern "C" int port_level_interlude_live(void);   /* hal/level_change.cpp */
 
+/* ---- THE VS START CENSUS ABOVE FOUR SEATS (run mp1, lane VSNP1) -----------
+ *
+ * WHAT WAS BROKEN. A VS match of 5 to 14 players never started: every body on
+ * every console stood in St_LevelEnter for the whole match. 2, 3, 4, 15 and
+ * 16 started at about frame 61.
+ *
+ * WHY. The VS 3-2-1 freeze is two ROM statements. The player's own level-enter
+ * step (func_ov002_020c71e0, src/actors/Player.cpp) sets +0x711 ("I have
+ * landed") and then holds the body while data_0209f2bc != 0. Stage::Behavior's
+ * VS arm (src/_ZN5Stage8BehaviorEv.cpp:141-171) counts the landed players and
+ * only ticks data_0209f2bc down once that count reaches data_0209fc50, the
+ * player count SetNumPlayers seated:
+ *
+ *     for (i = 0; i < 4; i++) if (data_0209f394[i] && p[0x711]) cnt++;
+ *     if (cnt >= data_0209fc50) { ... data_0209f2bc -= 1 ... }
+ *
+ * The census is the cartridge's own four-wide loop and the count is the
+ * port's sixteen-wide seat (hal/vs_width.h). At 5..15 players cnt tops out at
+ * four and never reaches the count, so the countdown never moves and nobody is
+ * ever released. port/tests/walk_window.cpp's Stage block already named this
+ * ("THE READINESS CENSUS IS FOUR-WIDE") and left it for a VS lane.
+ * Fifteen and sixteen only started by accident: Stage::CheckCameraInput's
+ * per-seat walk ran off the end of a short host array (data_0209f368, see
+ * hal/auto_bss.cpp) and zeroed data_0209fc50 at seat 14, and a count of zero
+ * passes any census. That array is seat-wide now, so the count survives at
+ * every size and this census is what lets every size start.
+ *
+ * THE FIX, IN THE SHAPE hal/vs_width.h RULES FOR THE MOD: the matched TU runs,
+ * unedited, and the host supplies seats 4..n-1. A census is not a loop the
+ * host can append to after the fact -- the compare and the decrement are one
+ * statement -- so the host folds its seats into the THRESHOLD instead. The
+ * rule the mod wants is "every seated player has landed":
+ *
+ *     ready(0..3) + ready(4..n-1) >= n   <=>   ready(0..3) >= n - ready(4..n-1)
+ *
+ * so for the length of the one Stage::Behavior call, and only in a VS match
+ * seated wider than four, data_0209fc50 reads n - ready(4..n-1), and it is put
+ * back the moment the call returns. With every wide seat landed that is 4 and
+ * the ROM's own compare decides on its own four slots exactly as it does in a
+ * four-player match; with any wide seat still in the air it stays above 4 and
+ * the ROM keeps holding, as it would for a late player in slots 0..3. Nothing
+ * inside Stage::Behavior's closure reads data_0209fc50 but that compare (every
+ * reader in src/ was listed: the census here, Stage::RenderVsModeCountdown's
+ * matching census, UnknownVsEntry and the ov075 lobby), so the view cannot leak
+ * into anything else. Four players or fewer, adventure, and solo never enter:
+ * the byte is not touched and the ROM's statement runs on the seat as is.
+ *
+ * Stage::RenderVsModeCountdown carries the same four-wide census for its
+ * READY? / 3 / 2 / 1 sprites; the port draws it only for Luigi Infection
+ * (hal/star_flow.cpp), whose countdown it drives itself. The pair below is
+ * exported so that call can take the same view. */
+
+extern "C" unsigned char data_0209fc50;   /* the seated player count (SetNumPlayers) */
+extern "C" unsigned char data_0209f2d8;   /* game mode: 1 is VS */
+extern "C" void *data_0209f394[];         /* per-seat Player* */
+
+/* Returns the seated count to put back, or -1 when the view was not taken. */
+extern "C" int port_vs_census_view_enter(void)
+{
+    const int n = (int)data_0209fc50;
+    if (data_0209f2d8 != 1 || n <= kPortNarrowPlayers)
+        return -1;
+    int wide_ready = 0;
+    for (int i = kPortNarrowPlayers; i < n && i < kPortMaxPlayers; ++i) {
+        const unsigned char *p = (const unsigned char *)data_0209f394[i];
+        if (p != 0 && p[0x711] != 0)
+            ++wide_ready;
+    }
+    data_0209fc50 = (unsigned char)(n - wide_ready);
+    /* One line each time the wide seats go from "someone still in the air" to
+       "all landed", so a log says when the host handed the start back to the
+       ROM's own compare. */
+    static int all_landed_was;
+    const int all_landed = (wide_ready == n - kPortNarrowPlayers);
+    if (all_landed && !all_landed_was)
+        std::fprintf(stderr, "[vsgo] start census: %d seated, seats %d..%d all "
+                     "landed; the ROM's four-slot compare now runs the 3-2-1\n",
+                     n, (int)kPortNarrowPlayers, n - 1);
+    all_landed_was = all_landed;
+    return n;
+}
+
+extern "C" void port_vs_census_view_leave(int saved)
+{
+    if (saved >= 0)
+        data_0209fc50 = (unsigned char)saved;
+}
+
 extern "C" int port_stage_rom_behavior(void *self)
 {
     if (port_level_interlude_live())
@@ -611,7 +701,9 @@ extern "C" int port_stage_rom_behavior(void *self)
     stage_frame_arm();
     ++g_beh_calls;
     port_frame_ctrl_prime();
+    const int census = port_vs_census_view_enter();
     const int r = ((Stage *)self)->Stage::Behavior();
+    port_vs_census_view_leave(census);
     port_frame_ctrl_publish();
     return r;
 }
