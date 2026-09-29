@@ -1202,7 +1202,15 @@ enum : int { kLegacyInputDelayMax = 8 };
 unsigned g_accept_sent_ms[kCommsMaxPlayers]; // when the last unicast went out
 unsigned g_sizing_wait_since_ms = 0;         // 0 = not waiting yet
 unsigned long long g_sizing_holds = 0;
-enum : unsigned { kSizingGraceMs = 400 };
+// HOW LONG THE HOST WAITS FOR EVERY CHILD'S ROUND-TRIP REPORT once its ROM
+// asks for the first round. 400 ms until multiplayer 1.0, which covered a
+// report sent the moment the ACCEPT landed. A 1.0 child first measures the
+// path five times (see the banner over g_rtt_samples): about one more round
+// trip, at most kRttProbeWaitMs. The grace covers that ceiling plus the
+// report's own trip back. It is a ceiling, not a delay: the host goes the
+// moment every report is in, and only a peer that never reports (a build
+// older than the adaptive sizing) costs the whole of it.
+enum : unsigned { kSizingGraceMs = 1500 };
 unsigned g_delay_gate_since_ms = 0;          // 0 = the gate is open
 unsigned g_delay_gate_last_log_ms = 0;
 // AND ONE OF ITS OWN FOR THE LATE-JOIN REFUSAL. It shared the hold line's
@@ -1414,6 +1422,62 @@ int g_join_wait_ms = kJoinResendMs;
 enum : int { kJoinBackoffStartMs = 200, kJoinBackoffCapMs = 1000 };
 unsigned g_join_started_ms = 0;       // for the handshake RTT sample
 int g_handshake_rtt_ms = -1;
+// ===========================================================================
+// THE ROUND TRIP, MEASURED SEVERAL TIMES AND EXACTLY (multiplayer 1.0, lane
+// VSAUX1; NETCORE1 suspect S2). The number the whole room's input delay is
+// sized from.
+//
+// WHAT WAS WRONG. It was ONE sample per joiner, and not even a round trip:
+// the time from the child's FIRST JOIN to the first ACCEPT. An ACCEPT does not
+// say which JOIN it answers, so that sample silently included every JOIN that
+// went unanswered first -- sent while the host was still booting, or before
+// the relay had a host to forward to -- plus the 200 / 400 / 800 ms join
+// backoff between them. NETCORE1 measured the result: a nominal 80 ms path
+// read 93..141 ms at 4P, and at 16P one joiner read 500 ms and put the room at
+// the 15-round cap (500 ms of input delay for sixteen people, off one late
+// knock).
+//
+// THE FIX, TWO HALVES.
+//   1. EXACT SAMPLES. A 1.0 child writes 'RT01' + a sequence number into
+//      blocks[0] of every JOIN it sends (a JOIN's blocks are unused and zero on
+//      the wire; no build reads them), and a 1.0 host echoes those 8 bytes into
+//      the ACCEPT that answers it, at blocks[0] + 12, right after the session
+//      stamp (also unused space in every older build's reading). The child
+//      looks the number up and knows exactly which JOIN, sent when, this
+//      ACCEPT answers. An older host echoes nothing and the child falls back
+//      to the old first-JOIN sample, which is what that host always got.
+//   2. SEVERAL OF THEM, AND THE MINIMUM. At its first ACCEPT a child that saw
+//      the echo (a host of this same build, which the session check proves)
+//      sends kRttProbes more plain JOINs at once (any host answers a
+//      JOIN from a live slot with an ACCEPT and changes nothing else) and
+//      holds its first report until they are answered or kRttProbeWaitMs
+//      passes. The report carries the MINIMUM of the handshake sample and the
+//      probes. With exact samples nothing can make one read SHORTER than the
+//      path; everything that goes wrong (a busy host, a JOIN that waited a
+//      host frame behind another one, the relay's queue) only adds time. So
+//      the smallest of five is the path, and the margin in the sizing formula
+//      covers the jitter the minimum leaves out. Measured on the first cut
+//      (a median): the probes sent together came back [94 94 172 172 172] ms
+//      on a nominal 80 ms path, because the host answers one per frame.
+//   The report goes out about one round trip later than before. The host's
+//   sizing grace (kSizingGraceMs) is sized for that; see there.
+// ===========================================================================
+const unsigned char kRttEchoTag[4] = { 'R', 'T', '0', '1' };
+enum : int { kRttEchoAt = 12 };      // offset of the echo in an ACCEPT's blocks[0]
+enum : int { kRttProbes = 4 };       // plus the handshake sample: five
+enum : unsigned { kRttProbeWaitMs = 1000 };   // ceiling on holding the report
+enum : int { kJoinLogDepth = 32 };
+struct JoinSent { unsigned nonce, at_ms; unsigned char kind; };
+enum : unsigned char { kJoinKnock = 1, kJoinReport = 2, kJoinProbe = 3 };
+JoinSent g_join_log[kJoinLogDepth];
+unsigned g_join_nonce   = 0;
+int      g_rtt_samples[1 + kRttProbes];
+int      g_rtt_nsamples = 0;
+bool     g_rtt_probing  = false;     // probes out, first report held
+bool     g_rtt_echo_seen = false;    // the host echoes: exact samples
+unsigned g_rtt_probe_ms = 0;         // when the probes went out
+unsigned long long g_rtt_exact = 0, g_rtt_unmatched = 0;
+
 
 bool g_wsa_up = false;
 
@@ -1725,6 +1789,28 @@ void put_u32le(unsigned char *p, unsigned v) {
 unsigned get_u32le(const unsigned char *p) {
     return (unsigned)p[0] | ((unsigned)p[1] << 8) | ((unsigned)p[2] << 16) |
            ((unsigned)p[3] << 24);
+}
+
+// Stamp a JOIN with the next sequence number and remember when it left.
+void join_stamp(Packet &j, unsigned char kind) {
+    const unsigned n = ++g_join_nonce;
+    std::memcpy(j.blocks[0], kRttEchoTag, 4);
+    put_u32le(j.blocks[0] + 4, n);
+    JoinSent &s = g_join_log[n % kJoinLogDepth];
+    s.nonce = n;
+    s.at_ms = now_ms();
+    s.kind  = kind;
+}
+
+// The JOIN an ACCEPT answers, from the echo: its log entry, or 0 when the
+// ACCEPT carries no echo (an older host) or one this end no longer remembers.
+JoinSent *join_answered(const Packet &a) {
+    const unsigned char *e = a.blocks[0] + kRttEchoAt;
+    if (std::memcmp(e, kRttEchoTag, 4) != 0) return 0;
+    const unsigned n = get_u32le(e + 4);
+    JoinSent &s = g_join_log[n % kJoinLogDepth];
+    if (s.nonce != n || n == 0) { ++g_rtt_unmatched; return 0; }
+    return &s;
 }
 
 // Once per process: the canonical string and the two numbers, and the plan's
@@ -2530,6 +2616,11 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         fill_header(a, kTypeAccept);
         set_live(a, g_live);
         stamp_session(a);                 // multiplayer 1.0: the session check
+        // THE ROUND-TRIP ECHO: the joiner's 'RT01' + sequence number, handed
+        // back so it knows exactly which of its JOINs this answers (see the
+        // banner over g_rtt_samples). A JOIN without one echoes nothing.
+        if (std::memcmp(p.blocks[0], kRttEchoTag, 4) == 0)
+            std::memcpy(a.blocks[0] + kRttEchoAt, p.blocks[0], 8);
         // THE PARENT ASSIGNS THE SLOT AND THE RELAY DOES NOT. A child over the
         // internet cannot claim a slot by binding a port the way a loopback
         // child does, so it PROPOSES one in its JOIN and this is the answer.
@@ -2798,9 +2889,72 @@ void child_send_report() {
     fill_header(j, kTypeJoin);
     j.have = kJoinReportBit | (unsigned)r |
              ((unsigned)(g_input_delay & 0xFF) << 16);
+    join_stamp(j, kJoinReport);
     send_to_slot(j, 0);
     g_last_report_ms = now_ms();
     ++g_report_tries;
+}
+
+// THE PROBES AND THE MINIMUM (see the banner over g_rtt_samples). Child side.
+//
+// The first report is held while the probes are out and goes when every probe
+// is answered or rtt_probe_wait_ms() passes, carrying the smallest of the
+// handshake sample and the probes: every way a sample goes wrong makes it
+// LONGER, never shorter.
+unsigned rtt_probe_wait_ms() {
+    unsigned w = 3u * (unsigned)(g_handshake_rtt_ms > 0 ? g_handshake_rtt_ms : 0);
+    if (w < 300u) w = 300u;
+    if (w > kRttProbeWaitMs) w = kRttProbeWaitMs;
+    return w;
+}
+
+void rtt_finish(unsigned t, const char *why) {
+    g_rtt_probing = false;
+    const int n = g_rtt_nsamples;
+    int med = n > 0 ? g_rtt_samples[0] : g_handshake_rtt_ms;
+    for (int i = 1; i < n; ++i)
+        if (g_rtt_samples[i] < med) med = g_rtt_samples[i];
+    char list[96];
+    int w = 0;
+    list[0] = 0;
+    for (int i = 0; i < n && w < (int)sizeof list - 12; ++i)
+        w += std::snprintf(list + w, sizeof list - (size_t)w, "%s%d",
+                           i ? " " : "", g_rtt_samples[i]);
+    std::fprintf(stderr, "[comms:loopback] round trip from %d sample(s) "
+                 "[handshake first: %s] ms: minimum %d ms (%s, %u ms after the "
+                 "accept); this is the number reported\n",
+                 n, list, med, why, t - g_rtt_probe_ms);
+    g_handshake_rtt_ms = med;
+    // The republish interval follows the better number: same rule and bounds
+    // as the handshake sample's, and the env still wins.
+    if (std::getenv("SM64DS_COMMS_RESEND_MS") == 0) {
+        int r = med;
+        if (r < 20)  r = 20;
+        if (r > 250) r = 250;
+        g_resend_ms = r;
+    }
+    g_report_acked = false;
+    g_report_tries = 0;
+    child_send_report();
+}
+
+// An ACCEPT addressed to this end whose echo names one of its JOINs: the exact
+// round trip of that JOIN. A probe's answer files a sample; each JOIN counts
+// once, so a duplicated ACCEPT (SM64DS_COMMS_DUP) cannot count twice.
+void rtt_on_answer(JoinSent &s, unsigned t) {
+    ++g_rtt_exact;
+    const unsigned char kind = s.kind;
+    const unsigned sent = s.at_ms;
+    s.nonce = 0;
+    // A probe's answer, or the late answer to a knock sent before the first
+    // ACCEPT (exact too, now that it names its JOIN), while the samples are
+    // still being gathered.
+    if ((kind != kJoinProbe && kind != kJoinKnock) || !g_rtt_probing) return;
+    if (g_rtt_nsamples < 1 + kRttProbes) {
+        const int r = (int)(t - sent);
+        g_rtt_samples[g_rtt_nsamples++] = r < 0 ? 0 : r;
+    }
+    if (g_rtt_nsamples >= 1 + kRttProbes) rtt_finish(t, "all answered");
 }
 
 
@@ -2867,10 +3021,11 @@ void child_adopt_delay(int parent_delay, bool at_accept) {
     g_input_delay = parent_delay;
     // SAY IT BACK. The parent will not serve round 0 until every child it
     // retold has acked, so this is not politeness, it is the thing that lets
-    // the session start.
+    // the session start. While the round-trip probes are out the report is
+    // held, and the one rtt_finish() sends carries this number too.
     g_report_acked  = false;
     g_report_tries  = 0;
-    child_send_report();
+    if (!g_rtt_probing) child_send_report();
 }
 
 void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
@@ -2923,8 +3078,29 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
         }
         g_live = p.live_wide;
         if (g_state != kCommsChildConnected) {
-            if (g_join_started_ms != 0) {
-                g_handshake_rtt_ms = (int)(now_ms() - g_join_started_ms);
+            // THE HANDSHAKE SAMPLE. Exact when the host echoed which JOIN this
+            // ACCEPT answers (a 1.0 host; see the banner over g_rtt_samples);
+            // otherwise the old reading, first JOIN to first ACCEPT.
+            JoinSent *js = ((p.have & 0x80000000u) &&
+                            (int)(p.have & 0xFFu) == g_slot) ? join_answered(p) : 0;
+            // THE HOST ANSWERS PROBES WITH AN ECHO when it is this build, and
+            // the session check just above has proved it is: it passes only
+            // on the same build id. The first ACCEPT a joiner sees is often
+            // not its own (the roster announce goes out first, and over the
+            // relay every ACCEPT reaches every child), so the echo itself may
+            // not be on it.
+            if (!g_legacy_peer_sim ||
+                std::memcmp(p.blocks[0] + kRttEchoAt, kRttEchoTag, 4) == 0)
+                g_rtt_echo_seen = true;
+            if (js || g_join_started_ms != 0) {
+                const unsigned tnow = now_ms();
+                if (js) {
+                    g_rtt_echo_seen = true;
+                    g_handshake_rtt_ms = (int)(tnow - js->at_ms);
+                    rtt_on_answer(*js, tnow);
+                } else {
+                    g_handshake_rtt_ms = (int)(tnow - g_join_started_ms);
+                }
                 if (g_handshake_rtt_ms < 0) g_handshake_rtt_ms = 0;
                 // TUNE THE REPUBLISH TO THE MEASURED PATH. This is the first
                 // and only round trip this carrier gets to see before the
@@ -2964,6 +3140,13 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
             // exists to prevent, arriving by a different door. Before any
             // round has been consumed there is nothing to replay: exchange()
             // returns 0 until this line sets kCommsChildConnected.
+            // THE PROBES, armed before the delay is adopted so an adoption
+            // does not send the report early: when the host echoes, the first
+            // report waits for the minimum (see the banner over g_rtt_samples).
+            g_rtt_nsamples = 0;
+            if (g_handshake_rtt_ms >= 0) g_rtt_samples[g_rtt_nsamples++] = g_handshake_rtt_ms;
+            g_rtt_probing = g_rtt_echo_seen && g_net_mode != kNetLoopback &&
+                            !g_legacy_peer_sim;
             child_adopt_delay((int)((p.have >> 8) & 0xFF), true);
             // ROLLBACK IS THE PARENT'S CALL TOO, for the same reason the
             // delay is: one end predicting while the other waits is two
@@ -3004,7 +3187,20 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
             // one of its datagrams, so this is the sample.
             g_report_acked = false;
             g_report_tries = 0;
-            child_send_report();
+            if (g_rtt_probing) {
+                // Every probe at once: each answer names its own JOIN, so
+                // they cannot be confused, and the report waits one round
+                // trip instead of five.
+                g_rtt_probe_ms = now_ms();
+                for (int i = 0; i < kRttProbes; ++i) {
+                    Packet j;
+                    fill_header(j, kTypeJoin);        // a plain re-knock
+                    join_stamp(j, kJoinProbe);
+                    send_to_slot(j, 0);
+                }
+            } else {
+                child_send_report();
+            }
             break;
         }
         // ALREADY CONNECTED. Two things can still be in this accept: the ack
@@ -3020,6 +3216,19 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
         // end believing the parent has its round trip when the parent has
         // nothing, and the parent would then hold round 0 for a confirmation
         // that had already been thrown away.
+        // AN ANSWER TO A PROBE (or a late answer to a knock) IS A ROUND-TRIP
+        // SAMPLE AND NOTHING ELSE: with the echo this end knows it did not
+        // answer a report, so it is never taken as the report's ack.
+        if ((p.have & 0x80000000u) && (int)(p.have & 0xFFu) == g_slot) {
+            if (JoinSent *js = join_answered(p)) {
+                const unsigned char kind = js->kind;
+                rtt_on_answer(*js, now_ms());
+                if (kind != kJoinReport) {
+                    child_adopt_delay((int)((p.have >> 8) & 0xFF), false);
+                    break;
+                }
+            }
+        }
         if ((p.have & kAcceptRttAckBit) && (p.have & 0x80000000u) &&
             (int)(p.have & 0xFFu) == g_slot)
             g_report_acked = true;
@@ -3518,6 +3727,10 @@ void service() {
     const unsigned report_every = (unsigned)(g_resend_ms > (int)kReportRetryFloorMs
                                              ? g_resend_ms : (int)kReportRetryFloorMs);
     if (g_role == kRoleChild && g_state == kCommsChildConnected &&
+        g_rtt_probing && (unsigned)(t - g_rtt_probe_ms) >= rtt_probe_wait_ms())
+        rtt_finish(t, "timed out waiting for the rest");
+    if (g_role == kRoleChild && g_state == kCommsChildConnected &&
+        !g_rtt_probing &&
         !g_report_acked && g_report_tries < kMaxReportTries &&
         (unsigned)(t - g_last_report_ms) >= report_every) {
         child_send_report();
@@ -3533,6 +3746,7 @@ void service() {
             // address modes the same byte is only a PROPOSAL, and the parent's
             // ACCEPT is the answer. Same byte, two meanings, decided by mode.
             fill_header(j, kTypeJoin);
+            if (!g_legacy_peer_sim) join_stamp(j, kJoinKnock);
             send_to_slot(j, 0);
             ++g_resends;
             ++g_joins_sent;
@@ -4014,6 +4228,9 @@ void lb_become_child() {
     g_last_join_ms = now_ms() - (unsigned)g_join_wait_ms;
     g_join_started_ms = 0;
     delay_state_reset();
+    g_rtt_probing   = false;             // the round-trip samples start afresh
+    g_rtt_echo_seen = false;
+    g_rtt_nsamples  = 0;
     service();
 }
 
