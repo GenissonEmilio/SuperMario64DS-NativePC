@@ -626,6 +626,89 @@ def test_pid_alive_true_for_self_false_for_dead(lockfile):
     assert build_lock._pid_alive(-1) is False
 
 
+# --- release while somebody has the lockfile open (Windows sharing) -------
+# On Windows a file cannot be deleted while another handle has it open without
+# FILE_SHARE_DELETE, and every waiter opens the lockfile to read its holder on
+# every poll. A release that lost that race used to swallow the error and leave
+# a lockfile naming a LIVE pid: nobody could break it, so the holder and every
+# lane queued behind it waited until the holder process exited.
+
+def test_release_waits_out_a_reader_holding_the_file(lockfile):
+    import threading
+    path = build_lock.acquire(label="held", timeout=2)
+    reader = open(path, "r", encoding="utf-8")      # a waiter mid-read
+    threading.Timer(0.3, reader.close).start()
+    build_lock.release(path)
+    assert not os.path.exists(path), "release gave up while a reader had the file open"
+
+
+def test_release_that_cannot_delete_leaves_no_live_lock(lockfile, monkeypatch):
+    # The delete never succeeds inside the bound: the lockfile must stop naming
+    # this live process, so the next waiter breaks it instead of waiting on it.
+    monkeypatch.setattr(build_lock, "RELEASE_RETRY_SECONDS", 0.2)
+    path = build_lock.acquire(label="held", timeout=2)
+    reader = open(path, "r", encoding="utf-8")
+    try:
+        build_lock.release(path)
+        assert build_lock.holder(path)[0] != os.getpid()
+        assert (not os.path.exists(path)) or build_lock._is_stale(path)
+    finally:
+        reader.close()
+    again = build_lock.acquire(label="next", timeout=2, poll=0.05)
+    assert build_lock.holder(again)[0] == os.getpid()
+    build_lock.release(again)
+    assert not os.path.exists(again)
+
+
+_HOLDER = r"""
+import os, sys, threading, time
+sys.path.insert(0, sys.argv[1])
+import build_lock
+path = build_lock.acquire(label="holder", timeout=10)
+stop = []
+def hammer():                      # a reader in the holder's own process,
+    while not stop:                # so the release always meets an open handle
+        try:
+            with open(path, "rb") as f:
+                f.read()
+        except OSError:
+            pass
+threading.Thread(target=hammer, daemon=True).start()
+time.sleep(0.5)
+t = time.time()
+build_lock.release(path)
+stop.append(1)
+print("RELEASED %.6f" % t, flush=True)
+time.sleep(4)                      # stay alive: only a real release frees the lock
+"""
+
+_WAITER = r"""
+import os, sys, time
+sys.path.insert(0, sys.argv[1])
+import build_lock
+time.sleep(0.2)
+path = build_lock.acquire(label="waiter", timeout=10, poll=0.01)
+print("ACQUIRED %.6f" % time.time(), flush=True)
+build_lock.release(path)
+"""
+
+
+def test_two_processes_waiter_gets_the_lock_within_a_second_of_release(lockfile):
+    here = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(3):
+        holder = subprocess.Popen([sys.executable, "-c", _HOLDER, here],
+                                  stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        time.sleep(0.2)
+        waiter = subprocess.Popen([sys.executable, "-c", _WAITER, here],
+                                  stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        wout, _ = waiter.communicate(timeout=30)
+        hout, _ = holder.communicate(timeout=30)
+        t_rel = float(hout.split("RELEASED")[1].split()[0])
+        t_acq = float(wout.split("ACQUIRED")[1].split()[0])
+        assert 0 <= t_acq - t_rel < 1.0, "waiter took %.3fs after the release" % (t_acq - t_rel)
+        assert not os.path.exists(lockfile)
+
+
 # --- no-pytest standalone runner -----------------------------------------
 # When pytest is not installed this drives the same test bodies with a minimal
 # tmp_path + monkeypatch, so the lock logic can be proven anywhere Python runs.

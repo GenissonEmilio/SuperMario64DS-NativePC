@@ -202,6 +202,29 @@ WAIT_NOTICE_SECONDS = 60
 # port_build.lock -> port_build.tickets/. See FAIRNESS in the module docstring.
 TICKETS_SUFFIX = ".tickets"
 
+# WINDOWS FILE SHARING (run mp1, lane MPPROOF1). A file cannot be deleted on
+# Windows while any other handle has it open without FILE_SHARE_DELETE, and
+# Python's open() never asks for that. Every waiter opens the lockfile on every
+# poll to read its holder, so with a queue of lanes a release routinely meets an
+# open handle. release() used to swallow that PermissionError and return: the
+# lockfile went on naming a LIVE pid, the stale rules could never break it, and
+# the holder plus every lane behind it waited until the holder process exited
+# (measured: 10 minutes, eight lanes, 09-29). The fix is three rules:
+#   * a delete is retried until it takes, for up to RELEASE_RETRY_SECONDS (the
+#     readers hold the file for microseconds, so it takes within a few tries);
+#   * if it still will not take, the lockfile is rewritten to name nobody, so
+#     the next waiter breaks it at once: a release never leaves a live-named lock;
+#   * a sharing error while reading, creating or breaking is a busy moment, not
+#     a verdict: reads are retried briefly, a create that meets a file still
+#     being deleted counts as "not ours yet", and the waiter polls again.
+RELEASE_RETRY_SECONDS = 10.0
+SHARING_RETRY_SECONDS = 0.5
+_SHARING_SLEEP = 0.005
+
+# A lockfile that exists but is still EMPTY is a holder between its O_EXCL
+# create and its write, not a corrupt file: it is only called stale after this.
+EMPTY_GRACE_SECONDS = 2.0
+
 
 class BuildLockTimeout(TimeoutError):
     """Raised when the full-build lock could not be acquired within the timeout.
@@ -295,11 +318,21 @@ def _read_holder(path):
     a lock nobody can be identified from is treated as dead-held, which the
     stale rules then break.
     """
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            text = f.read()
-    except OSError:
-        return None, None, "", "", ""
+    deadline = time.time() + SHARING_RETRY_SECONDS
+    while True:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+            break
+        except PermissionError:
+            # Windows: the file is mid-delete (another process released it) or
+            # otherwise briefly unshareable. Look again rather than report a
+            # lock that names nobody.
+            if time.time() >= deadline:
+                return None, None, "", "", ""
+            time.sleep(_SHARING_SLEEP)
+        except OSError:
+            return None, None, "", "", ""
     try:
         data = json.loads(text)
         return (data.get("pid"), data.get("acquired"),
@@ -326,7 +359,15 @@ def _stale_reason(path):
     pid-reuse case). Returning the REASON rather than a bool is what lets the
     break print a line that says which rule fired.
     """
-    pid, acquired, _, _, _ = _read_holder(path)
+    pid, acquired, _, _, text = _read_holder(path)
+    if pid is None and text == "" and os.path.exists(path):
+        # Empty: a holder between its create and its write (or a file mid-
+        # delete). Only stale once it has stayed empty past the grace.
+        try:
+            if time.time() - os.path.getmtime(path) < EMPTY_GRACE_SECONDS:
+                return None
+        except OSError:
+            return "lockfile vanished while being read"
     if pid is None:
         # Unreadable or half-written: it names nobody, so nobody can ever be
         # shown to have finished with it. Treat it as dead-held rather than
@@ -371,6 +412,10 @@ def _try_create(path, label, root):
         fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError:
         return False
+    except PermissionError:
+        # Windows: the previous lockfile is deleted but a reader still has it
+        # open, so the name is not free yet. Not ours this poll; the next is.
+        return False
     try:
         _write_locked(fd, label, root)
     finally:
@@ -405,9 +450,7 @@ def _break_stale(path):
     if not reason:
         return False
     who = _describe_holder(path)
-    try:
-        os.remove(path)
-    except OSError:
+    if not _remove_retrying(path, SHARING_RETRY_SECONDS):
         return False
     print(f"[build_lock] BROKE STALE LOCK ({reason}): was {who} "
           f"-- lockfile {path}. A killed build must not wedge the box; if that "
@@ -660,11 +703,40 @@ def release(path=None):
     if path is None:
         path = lock_path()
     pid, _, _, _, _ = _read_holder(path)
-    if pid == os.getpid():
+    if pid != os.getpid():
+        return
+    if _remove_retrying(path, RELEASE_RETRY_SECONDS):
+        return
+    # The delete would not take inside the bound. Never leave a lockfile that
+    # names this live process: rewrite it to name nobody, which every waiter's
+    # stale check breaks on its next poll.
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"pid": None, "released": True, "host": socket.gethostname(),
+                       "acquired": time.time(), "label": "released", "root": ""}, f)
+        print(f"[build_lock] released {path} by rewriting it to name nobody: the "
+              f"delete kept failing for {RELEASE_RETRY_SECONDS:.0f}s (another process "
+              f"holds it open); the next waiter breaks it", file=sys.stderr)
+    except OSError as e:
+        print(f"[build_lock] COULD NOT RELEASE {path}: {e}. It names pid "
+              f"{os.getpid()}, which the stale rules break once this process exits",
+              file=sys.stderr)
+
+
+def _remove_retrying(path, seconds):
+    """os.remove, retried through Windows sharing errors for up to `seconds`.
+    True when the file is gone (by us or anyone), False if it never went."""
+    deadline = time.time() + seconds
+    while True:
         try:
             os.remove(path)
+            return True
+        except FileNotFoundError:
+            return True
         except OSError:
-            pass
+            if time.time() >= deadline:
+                return False
+            time.sleep(_SHARING_SLEEP)
 
 
 def holder(path=None):
