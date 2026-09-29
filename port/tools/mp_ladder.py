@@ -1401,20 +1401,37 @@ class Ladder:
         self.kit_work = os.path.abspath(a.kit_work or os.path.join(os.path.dirname(self.out), "kit"))
         self.shared_save = os.path.join(os.path.dirname(self.exe), "save", "sm64ds.sav")
         self.rows = []
+        self.lock, self.lock_t = None, 0.0
 
     def take_lock(self, r):
         """The busy flag is read before queueing AND again once the lock is
         held: a match can start while this ladder waits in line, and a rung
-        must not launch into it. Busy after the lock: release, wait, re-queue."""
+        must not launch into it. Busy after the lock: release, wait, re-queue.
+        With --hold-s, a lock taken for one rung is kept for the next ones
+        until it has been held that long (a batch), then goes back in line."""
         os.environ["SM64DS_BUILD_LOCK_PATH"] = self.a.lock
+        if self.lock:
+            fresh = time.time() - self.lock_t < self.a.hold_s
+            if fresh and not busy(self.busy_log) and build_lock.holder(self.lock)[0] == os.getpid():
+                return self.lock
+            self.drop_lock()
         end = time.time() + self.a.busy_wait
         while True:
             wait_not_busy(self.busy_log, max(0, end - time.time()))
             lock = build_lock.acquire(label="mp_ladder-%s" % r.name, root=ROOT,
                                       timeout=self.a.lock_timeout)
             if not busy(self.busy_log):
+                self.lock, self.lock_t = lock, time.time()
                 return lock
             release_lock(lock)
+
+    def drop_lock(self, force=True):
+        """Release unless a batch (--hold-s) is still running."""
+        if not self.lock:
+            return
+        if force or time.time() - self.lock_t >= self.a.hold_s or busy(self.busy_log):
+            release_lock(self.lock)
+            self.lock = None
 
     def run_rung(self, r, idx, feats, rerun=False):
         miss = feats.missing([x for x in r.needs if x != "kit"])
@@ -1426,19 +1443,22 @@ class Ladder:
         ok, why = mem_ok(r.n)
         if not ok:
             raise Stop("memory: " + why)
-        lock = self.take_lock(r)
+        self.take_lock(r)
         shared_before = file_digest(self.shared_save)
+        failed, run = True, None
         try:
             run = Run(self, r, idx, os.path.join(self.out, r.name + ("-rerun" if rerun else "")))
             try:
                 ck, wall, rcs = BODIES[r.kind](self, run, r)
+                failed = False
             except Skip as s:
+                failed = False
                 return "SKIP", 0.0, str(s), {}
             finally:
                 if run.relay and run.relay_stats is None:
                     run.relay_stats = run.relay.stop()
         finally:
-            release_lock(lock)
+            self.drop_lock(force=failed or run is None or bool(run.aborted))
         shared_after = file_digest(self.shared_save)
         ck.ok(shared_before == shared_after, "the shared default save beside the exe untouched "
               "(%s -> %s)" % (shared_before, shared_after))
@@ -1486,6 +1506,9 @@ def main(argv=None):
     ap.add_argument("--lock", default=os.environ.get("SM64DS_LADDER_LOCK"),
                     help="the machine-wide ladder lockfile (or $SM64DS_LADDER_LOCK)")
     ap.add_argument("--lock-timeout", type=int, default=1200)
+    ap.add_argument("--hold-s", type=int, default=0,
+                    help="keep the lock across consecutive rungs for up to this many seconds (a batch), "
+                    "then queue again; 0 = release after every rung")
     ap.add_argument("--busy-log", default="~/.claude/scripts/league_chill.log")
     ap.add_argument("--busy-wait", type=int, default=0, help="seconds to wait for the busy flag")
     ap.add_argument("--tier", default="gate", choices=("dev", "gate", "full"))
@@ -1579,6 +1602,7 @@ def main(argv=None):
                 stopped = str(s)
                 break
             L.record(r, v, wall, detail, rcs, note="rerun: ")
+    L.drop_lock()
     final = collections.OrderedDict()
     for name, v, *_ in L.rows:
         final[name] = v
