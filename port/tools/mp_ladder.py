@@ -28,11 +28,16 @@ WHAT A VS RUNG CHECKS, per console: rc 0, no FAULT line, the session came up,
 the live mask covers every slot, lockstep (a rung that did not ask for rollback
 must not run it), every slot's body took at least --minpos distinct positions
 in THIS console's world (a motionless body cannot pass), every slot's pad word
-was nonzero at least once. Per rung: the dhdiff sweep over EVERY pairing
-(parent first, then child pairs, trimmed to the shortest log minus a tail
-margin), one input delay on every console, the local relay's drop counters 0.
-Match rungs add: exactly one MATCH OVER line per console, identical on every
-console, and the "[vs] closing" exit. The chosen input delay and the starved /
+was nonzero at least once, and the SESSION LASTED THE RUN: its close line
+reaches the frame budget (a match: its MATCH OVER frame) minus a margin. A
+session that drops part-way leaves every console playing on alone, rc 0, every
+body moving and every log agreeing up to the drop, so only the round count
+tells. Per rung: the dhdiff sweep over EVERY pairing (parent first, then child
+pairs, trimmed to the shortest log minus a tail margin) whose window must also
+reach the budget, one input delay on every console, and every local relay
+counter that means a lost datagram (every drop_*, bad, full) at 0. Match rungs
+add the session and live-mask checks, exactly one MATCH OVER line per console,
+identical on every console, and the "[vs] closing" exit. The chosen input delay and the starved /
 subst / late / catchup counters are printed on every VS row.
 
 SAVES. Every console gets its own SM64DS_SAVE_PATH (the default,
@@ -231,6 +236,10 @@ class Stop(Exception):
 
 class Skip(Exception):
     """A rung found at run time that the exe does not carry its lane yet."""
+
+
+class Aborted(Exception):
+    """The busy flag came up while a rung's consoles were running or starting."""
 
 
 def busy(path):
@@ -602,6 +611,9 @@ class Run:
         wall = time.time() - t0
         if self.relay:
             self.relay_stats = self.relay.stop()
+        if self.aborted:
+            # Some consoles may never have been spawned; no body can judge this.
+            raise Aborted(self.aborted)
         texts = {k: M.text(os.path.join(self.dir, "p%d" % k, "run.log")) for k in procs}
         return rcs, texts, wall
 
@@ -674,13 +686,19 @@ class Checks:
         return [m for ok, m in self.items if not ok]
 
 
-def sweep(texts, keys, margin, workdir):
+def sweep(texts, keys, margin, workdir, want=None):
     """dhdiff every pairing among keys (first key against the rest, then pairs),
-    each log trimmed to the shortest log's hashed rounds minus margin."""
+    each log trimmed to the shortest log's hashed rounds minus margin. With
+    `want` (the rounds the session had to last) the compared window must also
+    reach want minus the margins: a session that dropped early and left every
+    console playing alone agrees with itself up to the drop, and that is a red."""
     caps = {k: max([int(m.group(2)) for m in DH.finditer(texts[k])] or [0]) for k in keys}
     cap = min(caps.values()) - margin
     if cap <= 30:
         return False, "too few hashed rounds (%s)" % ",".join("p%d:%d" % kv for kv in caps.items())
+    if want is not None and cap < want - margin - LAST_MARGIN:
+        return False, "SWEEP window reached only round %d of the %d the session had to last (%s)" % (
+            cap, want, ",".join("p%d:%d" % kv for kv in caps.items()))
     trimmed = {}
     for k in keys:
         out = os.path.join(workdir, "p%d" % k, "run.log.trim")
@@ -696,7 +714,7 @@ def sweep(texts, keys, margin, workdir):
     bad = []
     for a, b in pairs:
         p = subprocess.run([sys.executable, DHDIFF, trimmed[a], trimmed[b]], capture_output=True,
-                           text=True, errors="replace")
+                           text=True, errors="replace", creationflags=M.NO_CONSOLE)
         if p.returncode != 0:
             first = [ln.strip() for ln in p.stdout.splitlines() if "DIVERGENCE" in ln]
             last = (first or p.stdout.strip().splitlines() or ["rc %d" % p.returncode])[0][:100]
@@ -722,6 +740,28 @@ def console_vs(ck, k, c, rc, n, minpos, want_mode="lockstep", slots=None):
     nopad = [s for s in slots if not c["pad"].get(s)]
     ck.ok(not nopad, "p%d every slot's pad word nonzero (zero: %s)" % (
         k, ",".join("s%d" % s for s in nopad) or "-"))
+
+
+# A console's session must reach the frame budget minus this many rounds (1 s).
+LAST_MARGIN = 30
+
+
+def lasted(ck, cs, keys, want, margin=LAST_MARGIN):
+    """Every console's session lasted the run: its close line reaches `want`
+    rounds minus a margin. Catches a session that drops part-way while every
+    console plays on alone (the consoles still exit rc 0, every body still moves,
+    and the logs agree up to the drop)."""
+    for k in keys:
+        cl = cs[k]["close"]
+        got = cl["rounds"] if cl else None
+        ck.ok(got is not None and got >= want - margin,
+              "p%d session lasted the run (%s of %d rounds)" % (k, got, want))
+
+
+def session_up(ck, k, c, n):
+    ck.ok(c["session"], "p%d session up" % k)
+    full = (1 << n) - 1
+    ck.ok(c["mask"] & full == full, "p%d live mask 0x%x covers 0x%x" % (k, c["mask"], full))
 
 
 def close_summary(cs):
@@ -772,14 +812,17 @@ def r_vs(L, run, r):
     cs = {k: parse(t) for k, t in texts.items()}
     ck = Checks()
     if r.opts.get("default_mode") and any(c["rollback"] for c in cs.values()):
-        raise Skip("needs N1 (%s): the default online mode is still ROLLBACK on this exe"
-                   % LANE_NAMES["N1"])
+        if not L.feats.have.get("N1"):
+            raise Skip("needs N1 (%s): the default online mode is still ROLLBACK on this exe"
+                       % LANE_NAMES["N1"])
+        ck.ok(False, "N1 is in this exe but the default online mode still runs ROLLBACK")
     for k in range(n):
         console_vs(ck, k, cs[k], rcs.get(k), n, L.minpos)
+    lasted(ck, cs, range(n), frames)
     delays = sorted({c["close"]["indelay"] for c in cs.values() if c["close"]})
     ck.ok(len(delays) == 1, "one input delay on every console (%s)" % delays)
     margin = max(24, 2 * (delays[-1] if delays else 0) + 8)
-    ok, msg = sweep(texts, list(range(n)), margin, run.dir)
+    ok, msg = sweep(texts, list(range(n)), margin, run.dir, want=frames)
     ck.ok(ok, msg)
     relay_checks(ck, run)
     a, row = delay_row(cs[0], r.rtt)
@@ -797,9 +840,19 @@ def relay_checks(ck, run):
     if run.relay_stats is None:
         return
     st = run.relay_stats
-    drops = {k: v for k, v in st.items() if k.startswith("drop") and v}
-    ck.ok(st.get("drop_rate", 0) == 0, "relay drop_rate=%s" % st.get("drop_rate", "?"))
-    ck.note("relay rx=%s fwd=%s drops=%s" % (st.get("rx", "?"), st.get("fwd", "?"), drops or 0))
+    bad = {k: v for k, v in st.items() if (k.startswith("drop") or k in ("bad", "full")) and v}
+    ck.ok(bool(st) and not bad, "relay dropped nothing (%s)" % (
+        ", ".join("%s=%d" % kv for kv in sorted(bad.items())) if bad else
+        ("no stats line" if not st else "every drop counter, bad and full 0")))
+    ck.note("relay rx=%s fwd=%s" % (st.get("rx", "?"), st.get("fwd", "?")))
+
+
+def match_frame(cs):
+    """The frame the match ended on (MATCH OVER f<N>); the session must reach it.
+    A console with no MATCH OVER line counts as a match that never ended."""
+    ends = [int(re.search(r"MATCH OVER f(\d+)", c["match"][0]).group(1)) for c in cs.values()
+            if c["match"] and re.search(r"MATCH OVER f(\d+)", c["match"][0])]
+    return max(ends) if ends else 10**6
 
 
 def r_match(L, run, r):
@@ -818,13 +871,17 @@ def r_match(L, run, r):
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
         ck.ok(not c["faults"], "p%d faults=%d" % (k, len(c["faults"])))
         ck.ok(not c["rollback"], "p%d runs lockstep" % k)
+        session_up(ck, k, c, n)
         ck.ok(len(c["match"]) == 1, "p%d one MATCH OVER line (%d)" % (k, len(c["match"])))
         ck.ok(c["closing"], "p%d [vs] closing" % k)
     lines = {c["match"][0] for c in cs.values() if c["match"]}
     ck.ok(len(lines) == 1, "MATCH OVER identical on every console (%d distinct)" % len(lines))
     if lines:
         ck.note(next(iter(lines))[:140])
-    ok, msg = sweep(texts, list(range(n)), 24, run.dir)
+    end = match_frame(cs)
+    delays = [c["close"]["indelay"] for c in cs.values() if c["close"]]
+    lasted(ck, cs, range(n), end, margin=10 + 2 * max(delays or [0]))
+    ok, msg = sweep(texts, list(range(n)), 24, run.dir, want=end)
     ck.ok(ok, msg)
     relay_checks(ck, run)
     return ck, wall, rcs
@@ -852,15 +909,19 @@ def r_leave(L, run, r):
               % (k, cl["rounds"] if cl else "-"))
         low = [s for s in stay if cs[k]["pos"].get(s, 0) < L.minpos]
         ck.ok(not low, "p%d staying slots moved (low %s)" % (k, low or "-"))
-    ok, msg = sweep(texts, stay, 24, run.dir)
+    ok, msg = sweep(texts, stay, 24, run.dir, want=frames)
     ck.ok(ok, msg)
     ck.note("close " + close_summary(cs))
     return ck, wall, rcs
 
 
 def r_late(L, run, r):
-    """Child n-1 is launched 10 s after the others: seated (or refused out loud),
-    and every seated console closes on one input delay after >= 200 rounds."""
+    """Child n-1 is launched 10 s after the others. On the 09-28 base this is a
+    DELAYED START rather than a join into a running match: the conductor holds
+    the world seat until all SM64DS_VS_PLAYERS consoles are in, so everybody
+    starts together once the late one arrives. The late console is seated (or
+    refused out loud), every seated console's session lasts the run on one
+    input delay, and every seated pairing stays in sync."""
     n, frames = r.n, r.frames or 900
     relay = run.start_relay()
     specs = []
@@ -879,13 +940,11 @@ def r_late(L, run, r):
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
         ck.ok(not cs[k]["faults"], "p%d faults=%d" % (k, len(cs[k]["faults"])))
     keys = list(range(n)) if seated else list(range(n - 1))
-    for k in keys:
-        cl = cs[k]["close"]
-        ck.ok(cl and cl["rounds"] >= 200, "p%d >= 200 rounds (%s)" % (k, cl["rounds"] if cl else "-"))
+    lasted(ck, cs, keys, frames)
     delays = sorted({cs[k]["close"]["indelay"] for k in keys if cs[k]["close"]})
     ck.ok(len(delays) == 1, "one input delay among seated consoles (%s)" % delays)
-    ok, msg = sweep(texts, list(range(n - 1)), 24, run.dir)
-    ck.ok(ok, msg + " (on-time consoles)")
+    ok, msg = sweep(texts, keys, 24, run.dir, want=frames)
+    ck.ok(ok, msg + " (seated consoles)")
     ck.note("close " + close_summary(cs))
     return ck, wall, rcs
 
@@ -911,7 +970,7 @@ def r_kill(L, run, r):
         ck.ok(cl and cl["rounds"] >= frames - 60, "p%d finished (%s rounds)" % (k, cl["rounds"] if cl else "-"))
     ck.ok(bool(re.search(r"(?i)slot %d[^\n]*retir|retir[^\n]*slot %d" % (n - 1, n - 1), texts[0])),
           "parent retired the killed slot %d" % (n - 1))
-    ok, msg = sweep(texts, stay, 24, run.dir)
+    ok, msg = sweep(texts, stay, 24, run.dir, want=frames)
     ck.ok(ok, msg)
     ck.note("close " + close_summary(cs))
     return ck, wall, rcs
@@ -936,8 +995,6 @@ def r_laggard(L, run, r):
             d, e = vs_env(sub, k, n, frames, relay, r.paced, r.rtt, cwd_env=extra)
             specs.append((k, e, d, 0.0 if k == 0 else 1.0 + 0.3 * k))
         rcs, texts, wall = sub.launch(specs, timeout_for(n, frames, r.paced))
-        if sub.aborted:
-            run.aborted = sub.aborted
         res[arm] = (rcs, texts, {k: parse(t) for k, t in texts.items()}, sub, wall)
     ck = Checks()
     rcs, texts, cs, sub, wall = res["hitch"]
@@ -950,7 +1007,8 @@ def r_laggard(L, run, r):
     cl = cs[n - 1]["close"]
     catch = int(cl["extra"].get("catchup", "0").split(",")[0] or 0) if cl else 0
     ck.ok(catch > 0, "the hitching child caught up (catchup=%s)" % catch)
-    ok, msg = sweep(texts, list(range(n)), 24, sub.dir)
+    lasted(ck, cs, range(n), frames)
+    ok, msg = sweep(texts, list(range(n)), 24, sub.dir, want=frames)
     ck.ok(ok, msg)
     ck.note("base close " + close_summary(base))
     ck.note("hitch close " + close_summary(cs))
@@ -998,6 +1056,8 @@ def r_luigi(L, run, r):
     for k in range(n):
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
         ck.ok(not cs[k]["faults"], "p%d faults=%d" % (k, len(cs[k]["faults"])))
+        session_up(ck, k, cs[k], n)
+    lasted(ck, cs, range(n), frames)
     facts = {k: luigi_facts(texts[k]) for k in range(n)}
     seeds = {f[0] for f in facts.values()}
     ck.ok(len(seeds) == 1 and None not in seeds, "one Luigi seed pick on every console (%s)" % seeds)
@@ -1007,7 +1067,7 @@ def r_luigi(L, run, r):
     tagsets = {tuple(f[1][:common]) for f in facts.values()}
     ck.ok(len(tagsets) == 1, "identical TAG sequence on every console over the first %d tags "
           "(%d distinct; p0 saw %d)" % (common, len(tagsets), len(facts[0][1])))
-    ok, msg = sweep(texts, list(range(n)), 24, run.dir)
+    ok, msg = sweep(texts, list(range(n)), 24, run.dir, want=frames)
     ck.ok(ok, msg)
     relay_checks(ck, run)
     return ck, wall, rcs
@@ -1171,16 +1231,21 @@ def r_chat(L, run, r, hub=False):
             e["SM64DS_COMMS_DROP"] = str(r.opts["loss"])
         specs.append((k, e, d, 0.0 if k == 0 else 1.0 + 0.3 * k))
     rcs, texts, wall = run.launch(specs, timeout_for(n, frames, False))
+    cs = {k: parse(t) for k, t in texts.items()}
     ck = Checks()
     for k in range(n):
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
+        ck.ok(not cs[k]["faults"], "p%d faults=%d" % (k, len(cs[k]["faults"])))
+        if not hub:
+            session_up(ck, k, cs[k], n)
         if k == 1:
             continue
         rx = CHAT_RX.findall(texts[k])
         ids = {(s, i) for s, i in rx}
         ck.ok(len(ids) == 1 and len(rx) == 1, "p%d shows the line once (%s)" % (k, rx[:4]))
     if not hub:
-        ok, msg = sweep(texts, list(range(n)), 24, run.dir)
+        lasted(ck, cs, range(n), frames)
+        ok, msg = sweep(texts, list(range(n)), 24, run.dir, want=frames)
         ck.ok(ok, msg + " (while chatting)")
     relay_checks(ck, run)
     return ck, wall, rcs
@@ -1203,9 +1268,13 @@ def r_voice(L, run, r):
                   "SM64DS_VOICE_ALLOWED": "1"})
         specs.append((k, e, d, 0.0 if k == 0 else 1.0 + 0.3 * k))
     rcs, texts, wall = run.launch(specs, timeout_for(n, frames, True))
+    cs = {k: parse(t) for k, t in texts.items()}
     ck = Checks()
+    lasted(ck, cs, range(n), frames)
     for k in range(n):
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
+        ck.ok(not cs[k]["faults"], "p%d faults=%d" % (k, len(cs[k]["faults"])))
+        session_up(ck, k, cs[k], n)
         reps = VOICE.findall(texts[k])
         if not reps:
             ck.ok(False, "p%d no [voice] report" % k)
@@ -1219,10 +1288,27 @@ def r_voice(L, run, r):
         miss = [s for s in range(n) if s != k and s not in heard]
         ck.ok(tx > 0 and rx > 0, "p%d tx=%d rx=%d" % (k, tx, rx))
         ck.ok(not miss, "p%d hears every other seat (missing %s)" % (k, miss or "-"))
-    ok, msg = sweep(texts, list(range(n)), 24, run.dir)
+    ok, msg = sweep(texts, list(range(n)), 24, run.dir, want=frames)
     ck.ok(ok, msg + " (voice on)")
     relay_checks(ck, run)
     return ck, wall, rcs
+
+
+def run_extractor_hidden(bundle):
+    """kit_smoke.run_extractor's exact play.bat invocation (the script read as
+    text and run as a script block), launched with no console window: from a
+    console-less parent the plain call flashes a PowerShell window."""
+    script = os.path.join(str(bundle), "extract_assets.ps1")
+    cmd = ("$ErrorActionPreference='Stop'; "
+           "& ([scriptblock]::Create([IO.File]::ReadAllText("
+           "'%s'))) -Destination '%s'" % (script, bundle))
+    p = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                        "-OutputFormat", "Text", "-WindowStyle", "Hidden", "-Command", cmd],
+                       cwd=str(bundle), capture_output=True, text=True, errors="replace",
+                       creationflags=M.NO_CONSOLE)
+    for line in (p.stdout or "").splitlines()[-4:]:
+        print("       | " + line)
+    return p.returncode
 
 
 def kit_bundle(L):
@@ -1238,7 +1324,7 @@ def kit_bundle(L):
     if not (bundle / "build" / "assets" / "romdata.bin").exists():
         work.mkdir(parents=True, exist_ok=True)
         bundle = kit_smoke.stage(pathlib.Path(L.kit), pathlib.Path(L.rom), work)
-        rc = kit_smoke.run_extractor(bundle)
+        rc = run_extractor_hidden(bundle)
         for drop in ("PLACE YOUR ROM HERE", "PLACE EU ROM HERE"):
             for f in (bundle / drop).glob("*") if (bundle / drop).is_dir() else ():
                 if f.suffix.lower() == ".nds":
@@ -1269,6 +1355,7 @@ def r_kit(L, run, r):
     ck = Checks()
     for k in range(2):
         console_vs(ck, k, cs[k], rcs.get(k), 2, L.minpos, want_mode=None)
+    lasted(ck, cs, range(2), frames)
     ck.note("kit bundle exe md5 %s" % hashlib.md5(open(exe, "rb").read()).hexdigest())
     return ck, wall, rcs
 
@@ -1468,6 +1555,8 @@ class Ladder:
             except Skip as s:
                 failed = False
                 return "SKIP", 0.0, str(s), {}
+            except Aborted as s:
+                return "ABORTED", 0.0, str(s), {}
             finally:
                 if run.relay and run.relay_stats is None:
                     run.relay_stats = run.relay.stop()
@@ -1588,6 +1677,7 @@ def main(argv=None):
               "at a time machine-wide")
         return 2
     L = Ladder(a)
+    L.feats = feats
     os.makedirs(L.out, exist_ok=True)
     with open(os.path.join(L.out, "summary.tsv"), "w", encoding="utf-8") as f:
         f.write("rung\tverdict\twall_s\tshape\tdetail\n")
