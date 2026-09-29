@@ -71,6 +71,16 @@
 //                                   REQUIRED with RELAY and has no default;
 //                                   a default would put everyone who forgot to
 //                                   set one into the same session.
+//                                   Relay version 2 first (seats stamped by
+//                                   the relay, voice / chat / pings reach
+//                                   every seat); a version 1 relay answers
+//                                   "bad request" and this end falls back to
+//                                   version 1 on a fresh socket. A child asks
+//                                   for SM64DS_COMMS_SLOT as its seat (any
+//                                   free one without it) and plays as the
+//                                   seat the relay's ACK names.
+//   SM64DS_COMMS_RELAY_V=1          speak relay version 1 from the start
+//                                   (escape hatch and test knob).
 //
 //   SM64DS_COMMS_DELAY_MS=<n>       TEST SCAFFOLDING: hold every received
 //                                   datagram n ms. ONE WAY -- both ends run it,
@@ -161,6 +171,30 @@ int comms_session_players();
 // pump cannot eat each other's messages. hal/voice_chat.cpp is the only
 // caller; its header carries the datagram format.
 int comms_recv_voice(void *buf, int cap, int *from_slot);
+
+// Multiplayer 1.0 (lane VSAUX1): THE GENERAL KIND READER. One whole aux
+// datagram of the kind `tag` names (the first four bytes read as a little-
+// endian word), with the SENDER'S SEAT through `from_seat` -- stamped by relay
+// v2, classified by this carrier everywhere else, and never read out of the
+// payload; byte 5 of the datagram carries the same seat. Returns the byte
+// count or 0 when nothing is waiting; never blocks. A datagram longer than
+// `cap` is dropped (counted), not cut short.
+//
+// Every aux datagram starts with the 8-byte envelope tag | version | seat | two
+// kind bytes, and is checked against the carrier's kind table (tag + length)
+// both ways: send_aux refuses, and the receive side drops, anything else.
+//   'SYNT' chat      12..132 B   one FIFO for the room, oldest first
+//   'SYNI' identity  24..64 B    newest per seat
+//   'SYNV' voice     176/340 B   a FIFO per seat (comms_recv_voice is this)
+// The sync layer's 'SYN1' / 'SYNP' / 'SYNQ' are served by the seam's recv_aux
+// and the 'SYNK' clock report is the carrier's own, so this returns 0 for
+// those. Sending is the seam's send_aux for every kind.
+enum : unsigned {
+    kCommsTagChat  = 0x544e5953u,   // 'S','Y','N','T'
+    kCommsTagIdent = 0x494e5953u,   // 'S','Y','N','I'
+    kCommsTagVoice = 0x564e5953u,   // 'S','Y','N','V'
+};
+int comms_recv_kind(unsigned tag, void *buf, int cap, int *from_seat);
 
 // The carrier's own counters, for a log line and for the proof ladder. These
 // are the transport's view; port::comms_readout() is the seam's.
