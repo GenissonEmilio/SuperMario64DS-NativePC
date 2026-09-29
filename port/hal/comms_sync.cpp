@@ -62,6 +62,8 @@
 // makes a netcode feel like rubber. rung SY2 asserts it.
 
 #include "comms_seam.h"
+#include "comms_hub.h"       // run mp1 lane GHOSTWIRE1: the adventure hub carries
+                             // 'SYNG' / 'SYNI' when it is installed
 #include "player_fields.h"
 #include "host_settings.h"   // port::adventure_ghost_mode(): adventure runs this
                              // layer without SM64DS_SYNC
@@ -101,6 +103,22 @@ extern unsigned char data_0209f250;
 // it shares this console's level; the presence gate compares a received level
 // against it. signed char in the ROM (levels 0..51); read as int here.
 extern signed char data_0209f2f8;
+
+// GHOSTWIRE1. The ROM's ONE per-frame body pose (src/func_ov002_020e4768.cpp:
+// UpdateBones from the animation, the head/neck look angles, then
+// UpdateVertsUsingBones) -- the pass hal/player_bridges.cpp's render banner
+// names as the only place a player body is posed. Re-run on a ghost after the
+// follower has installed the wire's animation; see gw_follow.
+void func_ov002_020e4768(char *self);
+// The in-place character change every swap entry point shares
+// (hal/player_bridges.cpp, the door path by default).
+void port_player_set_character(void *player, unsigned ch);
+// Stage::Behavior's own call counter (hal/stage_frame.cpp): it does not move on
+// a frame the game did not tick, which is what "paused" means here.
+unsigned port_stage_behavior_calls(void);
+// The save's star total, the number the HUD prints outside VS
+// (src/_ZN3HUD15RenderStarCountEv.cpp:69).
+unsigned char NumStars(void);
 }
 
 namespace port {
@@ -233,6 +251,8 @@ void parse_cfg() {
 // aux entries are the optional half of the contract -- so this is the only
 // place the difference is noticed.
 // ---------------------------------------------------------------------------
+namespace { bool gw_decide(); }   // GHOSTWIRE1, defined with the hub layer
+
 bool sync_enabled() { return g_enabled; }
 
 void sync_decide() {
@@ -240,6 +260,12 @@ void sync_decide() {
     g_enabled = false;
 
     if (!g_cfg.on) return;                        // the default, silently
+
+    /* run mp1 lane GHOSTWIRE1: an adventure console on the HUB has no DS
+       transport by design (hal/comms_hub.h: the ROM stays single-player). The
+       ghost layer runs on the hub's own send/receive instead of the aux
+       entries below; nothing else in this function applies to it. */
+    if (gw_decide()) return;
 
     const CommsTransport *t = comms_transport();
     if (!t) {
@@ -575,6 +601,740 @@ bool g_warp_pending = false;
 // One DS unit is 4096 in Fix12. The thresholds are in units and converted here
 // so the constants read the way the design note states them.
 inline int units(int n) { return n * 4096; }
+
+// ===========================================================================
+// GHOSTWIRE (run mp1, lane GHOSTWIRE1): ADVENTURE GHOSTS OVER THE HUB.
+//
+// With the adventure hub installed (hal/comms_hub.h) there is no DS transport
+// at all: comms_transport() is null, the ROM thinks it is single-player, and
+// the whole 'SYN1' path above has nothing to send on. This section is the
+// adventure layer for that carrier, the wire of design.txt section 6:
+//
+//   'SYNG' ghost frame, 44 bytes, 15 Hz from a wall-clock cadence (2 Hz with
+//          kGhostPaused while the game is not ticking). seq is the sender's
+//          15 Hz wall tick, so a receiver reads the sender's clock straight
+//          off it: sender_ms = seq * 1000 / 15.
+//   'SYNI' identity, name + colours + character + build, on the first live
+//          frame, every 2 s, and when the roster changes.
+//
+// THE RECEIVER DRAWS EVERY SEAT 100 ms BEHIND REAL TIME. Per seat it keeps the
+// last 8 frames and a lower-envelope estimate of (arrival - sender clock), so
+// "100 ms ago" is a point on the sender's own timeline: interpolate between
+// the two frames around it, dead-reckon past the newest for at most 250 ms,
+// snap across a kGhostTeleport frame, and stand still on a paused one. A seat
+// whose last frame is 3 s old is gone; a seat in another level is hidden.
+//
+// WHICH BODY. The ghost bodies are the ROM's own per-slot Player actors
+// data_0209f394[] that level boot seats (vs_player_count, hal/comms_conductor
+// .cpp); the local player is data_0209f250. Remote seats map onto the other
+// bodies in seat order, skipping mine, so seat s drives one fixed body for as
+// long as my seat does not change. A seat with no body (more peers than
+// bodies) is simply not drawn.
+//
+// NOTHING HERE WRITES THE LOCAL BODY, and nothing here reads a payload for its
+// sender: the seat is the one the relay (or the loopback mesh) stamped.
+// Every datagram is checked for tag, version, exact length and field ranges
+// before any field is used; failures are dropped and counted by reason.
+// ===========================================================================
+namespace {
+
+enum : int {
+    kGwSendHz     = 15,      // design 6.1
+    kGwPausedMs   = 500,     // 2 Hz while paused / in a menu
+    kGwIdentMs    = 2000,    // SYNI every 2 s
+    kGwIdentGapMs = 250,     // an extra SYNI (roster change) no sooner than this
+    kGwInterpMs   = 100,     // draw a remote seat this far behind real time
+    kGwReckonMs   = 250,     // dead-reckon past the newest frame at most this
+    /* A GHOST GOES ON THE AGE OF ITS OWN FRAMES, NOT ON HUB PRESENCE. The
+       hub's presence is its I/O thread's pings, which keep answering while a
+       console's game loop is hung, so a frozen game would otherwise leave a
+       frozen ghost standing (review of HUB1, fold note 4). No SYNG for this
+       long: the ghost fades out from kGwFadeMs and is gone at kGwDespawnMs,
+       and comes back with the next frame. A paused player sends 2 Hz, so
+       one lost paused frame (a 1 s gap) still does not blink it. */
+    kGwFadeMs     = 700,
+    kGwDespawnMs  = 1200,
+    kGwRing       = 8,       // frames kept per seat (~0.5 s at 15 Hz)
+    kGwMaxAnimId  = 0x400,   // an id this large is garbage, never SetAnim'd
+    kGwClockJumpMs = 2000,   // a sender clock step this big is a restart
+};
+
+struct GwFrame {
+    unsigned      ext;       // seq extended to 32 bits
+    long long     ts;        // the sender's clock for this frame, ms
+    HubGhostFrame f;
+};
+
+struct GwSeat {
+    bool      have_epoch;
+    unsigned  epoch;         // comms_hub_seat_info().join_epoch last seen
+    GwFrame   ring[kGwRing]; // ascending by ext
+    int       n;
+    bool      have_off;
+    long long off;           // local arrival ms - sender ms, lower envelope
+    unsigned  last_ms;       // GetTickCount of the newest accepted frame
+    bool      have_ident;
+    char      name[kHubIdentNameMax + 1];
+    unsigned char character, body[3], shoes[3];
+    unsigned  build_id;
+    unsigned  char_try_ms;   // last character-swap attempt on its body
+    unsigned  driven;        // frames the follower has driven its body
+    const void *body_ptr;    // ...and which body that was (a level load
+                             // seats new ones: the count starts again)
+};
+
+GwSeat g_gw[kHubMaxSeats];
+bool   g_hub = false;        // the ghost layer runs on the hub
+
+struct GwStats {
+    unsigned long long syng_sent, syng_paused, syni_sent, send_fail;
+    unsigned long long syng_recvd, syni_recvd;
+    unsigned long long drop_len, drop_tag, drop_ver, drop_seat, drop_field,
+                       drop_old;
+    unsigned long long resets, charswaps, reposes;
+    unsigned long long interp, reckon, hold, teleports;
+};
+GwStats g_gws;
+
+// The sender.
+unsigned g_gw_t0 = 0;
+bool     g_gw_t0_set = false;
+unsigned g_gw_last_seq = 0xffffffffu;
+unsigned g_gw_last_send_ms = 0;
+unsigned g_gw_last_ident_ms = 0;
+bool     g_gw_ident_sent = false;
+unsigned g_gw_roster = 0;
+unsigned g_gw_beh_last = 0;
+bool     g_gw_beh_seeded = false;
+int      g_gw_frozen = 0;          // frames the local body has not moved at all
+int      g_gw_fz[6];               // x y z yaw anim cursor, last frame
+bool     g_gw_prev_have = false;
+int      g_gw_prev[3];
+int      g_gw_prev_level = -1;
+bool     g_gw_warp = false;
+int      g_gw_v[3];
+unsigned g_gw_last_report_ms = 0;
+unsigned g_gw_frame = 0;
+
+// Who I am on the wire. SM64DS_PLAYER_NAME (1..24 bytes, 0x20..0x7e),
+// SM64DS_PLAYER_COLOR / SM64DS_PLAYER_SHOES (six hex digits, the lobby's colour
+// grammar). The launcher exports them from the same nick/colours it sends the
+// lobby; absent means an empty name (the tag then reads "PLAYER n").
+struct GwMe {
+    bool read;
+    char name[kHubIdentNameMax + 1];
+    int  name_len;
+    unsigned char body[3], shoes[3];
+    unsigned build_id;
+};
+GwMe g_gw_me;
+
+// The character a body renders as: the low byte of param1 (+0x08), which
+// GetBodyModelID reads and the door swap writes (hal/player_bridges.cpp).
+unsigned gw_char(const void *a) {
+    const unsigned c = (unsigned)(*(const int *)((const char *)a + 8) & 0xff);
+    return c <= 3 ? c : 0u;
+}
+
+int gw_hex(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+void gw_rgb_env(const char *var, unsigned char out[3],
+                unsigned char r, unsigned char g, unsigned char b) {
+    out[0] = r; out[1] = g; out[2] = b;
+    const char *e = std::getenv(var);
+    if (!e) return;
+    if (std::strlen(e) != 6) {
+        std::fprintf(stderr, "[ghost] %s ignored: not six hex digits\n", var);
+        return;
+    }
+    unsigned char t[3];
+    for (int i = 0; i < 3; ++i) {
+        const int hi = gw_hex(e[2 * i]), lo = gw_hex(e[2 * i + 1]);
+        if (hi < 0 || lo < 0) {
+            std::fprintf(stderr, "[ghost] %s ignored: not six hex digits\n",
+                         var);
+            return;
+        }
+        t[i] = (unsigned char)(hi * 16 + lo);
+    }
+    out[0] = t[0]; out[1] = t[1]; out[2] = t[2];
+}
+
+void gw_me_read() {
+    if (g_gw_me.read) return;
+    g_gw_me.read = true;
+    g_gw_me.name[0] = 0;
+    g_gw_me.name_len = 0;
+    if (const char *e = std::getenv("SM64DS_PLAYER_NAME")) {
+        const size_t n = std::strlen(e);
+        bool ok = n >= 1 && n <= (size_t)kHubIdentNameMax;
+        for (size_t i = 0; ok && i < n; ++i)
+            ok = (unsigned char)e[i] >= 0x20 && (unsigned char)e[i] <= 0x7e;
+        if (ok) {
+            std::memcpy(g_gw_me.name, e, n);
+            g_gw_me.name[n] = 0;
+            g_gw_me.name_len = (int)n;
+        } else {
+            std::fprintf(stderr, "[ghost] SM64DS_PLAYER_NAME ignored: 1..%d "
+                         "bytes of 0x20..0x7e\n", (int)kHubIdentNameMax);
+        }
+    }
+    gw_rgb_env("SM64DS_PLAYER_COLOR", g_gw_me.body, 0xff, 0xff, 0xff);
+    gw_rgb_env("SM64DS_PLAYER_SHOES", g_gw_me.shoes, 0x80, 0x40, 0x20);
+    /* A build id for the identity record: FNV-1a of this TU's build stamp.
+       Display / diagnosis only (design 6.2: never parsed for meaning). */
+    unsigned h = 2166136261u;
+    for (const char *p = __DATE__ " " __TIME__; *p; ++p) {
+        h ^= (unsigned char)*p;
+        h *= 16777619u;
+    }
+    g_gw_me.build_id = h;
+}
+
+// Remote seat <-> ghost body. Seats other than mine, in order, onto bodies
+// other than mine, in order. -1 when either side is missing.
+int gw_body_for_seat(int seat) {
+    const int my = comms_hub_my_seat();
+    if (my < 0 || seat < 0 || seat >= kHubMaxSeats || seat == my) return -1;
+    const int rank = seat < my ? seat : seat - 1;        // 0..14
+    const int me = (int)data_0209f250;
+    const int body = rank < me ? rank : rank + 1;
+    if (body >= (int)data_0209f21c || body >= kCommsMaxPlayers) return -1;
+    return body;
+}
+
+int gw_seat_for_body(int body) {
+    const int my = comms_hub_my_seat();
+    const int me = (int)data_0209f250;
+    if (my < 0 || body < 0 || body >= (int)data_0209f21c ||
+        body >= kCommsMaxPlayers || body == me)
+        return -1;
+    const int rank = body < me ? body : body - 1;
+    const int seat = rank < my ? rank : rank + 1;
+    return seat < kHubMaxSeats ? seat : -1;
+}
+
+void gw_reset_seat(GwSeat &z, bool keep_ident) {
+    const bool hi = z.have_ident;
+    char name[kHubIdentNameMax + 1];
+    std::memcpy(name, z.name, sizeof name);
+    const unsigned char ch = z.character;
+    unsigned char body[3], shoes[3];
+    std::memcpy(body, z.body, 3);
+    std::memcpy(shoes, z.shoes, 3);
+    const unsigned bid = z.build_id;
+    const bool he = z.have_epoch;
+    const unsigned ep = z.epoch;
+    std::memset(&z, 0, sizeof z);
+    z.have_epoch = he;
+    z.epoch = ep;
+    if (keep_ident && hi) {
+        z.have_ident = true;
+        std::memcpy(z.name, name, sizeof name);
+        z.character = ch;
+        std::memcpy(z.body, body, 3);
+        std::memcpy(z.shoes, shoes, 3);
+        z.build_id = bid;
+    }
+}
+
+// A seat (re)joined since we last looked: forget everything about the old
+// presence, its identity included.
+void gw_epoch_check(int seat) {
+    HubSeatInfo si;
+    if (!comms_hub_seat_info(seat, &si)) return;
+    GwSeat &z = g_gw[seat];
+    if (!z.have_epoch || z.epoch != si.join_epoch) {
+        if (z.have_epoch) ++g_gws.resets;
+        gw_reset_seat(z, false);
+        z.have_epoch = true;
+        z.epoch = si.join_epoch;
+    }
+}
+
+void gw_on_ghost(const unsigned char *buf, int n, int seat) {
+    if (n != (int)sizeof(HubGhostFrame)) { ++g_gws.drop_len; return; }
+    HubGhostFrame f;
+    std::memcpy(&f, buf, sizeof f);
+    if (f.tag != kHubTagGhost) { ++g_gws.drop_tag; return; }
+    if (f.version != 1) { ++g_gws.drop_ver; return; }
+    if (seat < 0 || seat >= kHubMaxSeats || seat == comms_hub_my_seat()) {
+        ++g_gws.drop_seat;
+        return;
+    }
+    if ((f.flags & ~0x1fu) || f.character > 3 || f.anim_id >= kGwMaxAnimId ||
+        f.level_id > 0xff || f.reserved[0] || f.reserved[1] || f.reserved[2]) {
+        ++g_gws.drop_field;
+        return;
+    }
+    gw_epoch_check(seat);
+    GwSeat &z = g_gw[seat];
+    const unsigned now = GetTickCount();
+    unsigned ext;
+    if (z.n == 0) {
+        ext = 0x100000u + f.seq;     // headroom so a backward step stays > 0
+    } else {
+        const unsigned newest = z.ring[z.n - 1].ext;
+        const int delta = (short)(unsigned short)(f.seq - (unsigned short)newest);
+        if (delta <= 0) {
+            /* HUB1 H1d's rule, receiver side: a sender that restarted counts
+               from 0 again; a step back of more than 16 frames is that, not a
+               reordered datagram. */
+            if (delta >= -16) { ++g_gws.drop_old; return; }
+            ++g_gws.resets;
+            gw_reset_seat(z, true);
+            ext = 0x100000u + f.seq;
+        } else {
+            ext = newest + (unsigned)delta;
+        }
+    }
+    const long long ts = (long long)ext * 1000 / kGwSendHz;
+    const long long d = (long long)now - ts;
+    if (z.have_off && (d - z.off > kGwClockJumpMs || z.off - d > kGwClockJumpMs)) {
+        /* the sender's clock stepped (a restart inside the u16 window, or a
+           machine that stalled for seconds): start its timeline again */
+        ++g_gws.resets;
+        const GwFrame keep = { ext, ts, f };
+        gw_reset_seat(z, true);
+        z.ring[0] = keep;
+        z.n = 1;
+        z.have_off = true;
+        z.off = d;
+        z.last_ms = now;
+        ++g_gws.syng_recvd;
+        return;
+    }
+    if (!z.have_off || d < z.off) {
+        z.off = d;
+        z.have_off = true;
+    } else {
+        z.off += (d - z.off) / 32;   // slow rise: drift and route changes
+    }
+    if (z.n == kGwRing) {
+        std::memmove(&z.ring[0], &z.ring[1], sizeof(GwFrame) * (kGwRing - 1));
+        --z.n;
+    }
+    z.ring[z.n].ext = ext;
+    z.ring[z.n].ts = ts;
+    z.ring[z.n].f = f;
+    ++z.n;
+    z.last_ms = now;
+    ++g_gws.syng_recvd;
+}
+
+// Printable ASCII passes through; every other code point (control
+// characters, anything outside the tag font, broken UTF-8) becomes one '?'.
+int gw_sanitize(const unsigned char *in, int n, char *out, int cap) {
+    int o = 0, i = 0;
+    while (i < n && o < cap) {
+        const unsigned c = in[i];
+        if (c >= 0x20 && c <= 0x7e) { out[o++] = (char)c; ++i; continue; }
+        int len = (c >= 0xc2 && c <= 0xdf) ? 2
+                : (c >= 0xe0 && c <= 0xef) ? 3
+                : (c >= 0xf0 && c <= 0xf4) ? 4 : 1;
+        int k = 1;
+        while (k < len && i + k < n && (in[i + k] & 0xc0) == 0x80) ++k;
+        if (k < len) len = 1;
+        out[o++] = '?';
+        i += len;
+    }
+    out[o] = 0;
+    return o;
+}
+
+void gw_on_ident(const unsigned char *buf, int n, int seat) {
+    if (n < 24 || n > 64 || (n & 3)) { ++g_gws.drop_len; return; }
+    HubIdentHead h;
+    std::memcpy(&h, buf, sizeof h);
+    if (h.tag != kHubTagIdent) { ++g_gws.drop_tag; return; }
+    if (h.version != 1) { ++g_gws.drop_ver; return; }
+    if (seat < 0 || seat >= kHubMaxSeats || seat == comms_hub_my_seat()) {
+        ++g_gws.drop_seat;
+        return;
+    }
+    if (h.name_len > kHubIdentNameMax || 20 + (int)h.name_len > n ||
+        h.character > 3) {
+        ++g_gws.drop_field;
+        return;
+    }
+    gw_epoch_check(seat);
+    GwSeat &z = g_gw[seat];
+    gw_sanitize(buf + 20, h.name_len, z.name, kHubIdentNameMax);
+    z.character = h.character;
+    std::memcpy(z.body, h.body_rgb, 3);
+    std::memcpy(z.shoes, h.shoes_rgb, 3);
+    z.build_id = h.build_id;
+    z.have_ident = true;
+    ++g_gws.syni_recvd;
+}
+
+void gw_recv() {
+    unsigned char buf[kHubMaxDatagram];
+    int seat = -1, n;
+    while ((n = comms_hub_recv(kHubGhost, buf, (int)sizeof buf, &seat)) > 0)
+        gw_on_ghost(buf, n, seat);
+    while ((n = comms_hub_recv(kHubIdent, buf, (int)sizeof buf, &seat)) > 0)
+        gw_on_ident(buf, n, seat);
+}
+
+// A seat is DRAWN when its newest ghost frame is under 3 s old and names the
+// level this console is in. Paused seats keep sending at 2 Hz and stay.
+bool gw_visible(int seat) {
+    if (!g_hub || seat < 0 || seat >= kHubMaxSeats) return false;
+    const GwSeat &z = g_gw[seat];
+    if (z.n == 0) return false;
+    if ((unsigned)(GetTickCount() - z.last_ms) > (unsigned)kGwDespawnMs)
+        return false;
+    return (int)z.ring[z.n - 1].f.level_id == (int)data_0209f2f8;
+}
+
+struct GwSample {
+    int x, y, z;
+    short yaw;
+    unsigned short anim;
+    int cursor;              // 20.12
+    unsigned char character;
+    bool teleport;
+};
+
+inline int gw_lerp(int a, int b, long long num, long long den) {
+    return a + (int)(((long long)(b - a) * num) / den);
+}
+
+// The seat's body as it was kGwInterpMs ago on the sender's own clock.
+bool gw_sample(int seat, unsigned now, GwSample *o) {
+    const GwSeat &z = g_gw[seat];
+    if (z.n == 0 || !z.have_off) return false;
+    const long long T = (long long)now - z.off - kGwInterpMs;
+    const GwFrame &nw = z.ring[z.n - 1];
+    const GwFrame *a = 0, *b = 0;
+    for (int k = z.n - 1; k >= 0; --k)
+        if (z.ring[k].ts <= T) { a = &z.ring[k]; b = k + 1 < z.n ? &z.ring[k + 1] : 0; break; }
+    const long long fms = 1000 / kGameHz;          // 33 ms, one game frame
+    if (!a) {
+        /* older than anything held: hold the oldest frame */
+        const GwFrame &o0 = z.ring[0];
+        o->x = o0.f.x; o->y = o0.f.y; o->z = o0.f.z; o->yaw = o0.f.yaw;
+        o->anim = o0.f.anim_id; o->cursor = o0.f.anim_frame;
+        o->character = o0.f.character;
+        o->teleport = (o0.f.flags & kGhostTeleport) != 0;
+        ++g_gws.hold;
+        return true;
+    }
+    o->character = a->f.character;
+    if (b && !(b->f.flags & kGhostTeleport)) {
+        /* INTERPOLATE between the two frames around T */
+        const long long num = T - a->ts, den = b->ts - a->ts;
+        o->x = gw_lerp(a->f.x, b->f.x, num, den);
+        o->y = gw_lerp(a->f.y, b->f.y, num, den);
+        o->z = gw_lerp(a->f.z, b->f.z, num, den);
+        const short dy = (short)(b->f.yaw - a->f.yaw);   // the short way round
+        o->yaw = (short)(a->f.yaw + (int)((long long)dy * num / den));
+        o->teleport = false;
+        if (a->f.anim_id == b->f.anim_id && b->f.anim_frame >= a->f.anim_frame) {
+            o->anim = a->f.anim_id;                        // same cycle
+            o->cursor = gw_lerp(a->f.anim_frame, b->f.anim_frame, num, den);
+        } else {
+            /* the cycle wrapped or the animation changed between the two:
+               walk back from b at speed 1.0 while that stays inside b's
+               animation, otherwise carry a forward at speed 1.0 */
+            const long long back = (den - num) * 4096 / fms;
+            if ((long long)b->f.anim_frame - back >= 0) {
+                o->anim = b->f.anim_id;
+                o->cursor = (int)(b->f.anim_frame - back);
+            } else {
+                o->anim = a->f.anim_id;
+                o->cursor = (int)(a->f.anim_frame + num * 4096 / fms);
+            }
+        }
+        ++g_gws.interp;
+        return true;
+    }
+    if (b) {
+        /* the next frame is a teleport: stay on a until T reaches it */
+        o->x = a->f.x; o->y = a->f.y; o->z = a->f.z; o->yaw = a->f.yaw;
+        o->anim = a->f.anim_id; o->cursor = a->f.anim_frame;
+        o->teleport = false;
+        ++g_gws.hold;
+        return true;
+    }
+    /* PAST THE NEWEST FRAME: dead-reckon on the ground axes for at most
+       kGwReckonMs at the sender's own per-frame velocity (Y is a parabola
+       under gravity and is held, the measured reason in apply_snapshot), and
+       carry the cursor at speed 1.0. A paused or teleport frame holds. */
+    long long ex = T - nw.ts;
+    if (ex > kGwReckonMs) ex = kGwReckonMs;
+    const bool still = (nw.f.flags & (kGhostPaused | kGhostTeleport)) != 0;
+    o->x = nw.f.x; o->y = nw.f.y; o->z = nw.f.z; o->yaw = nw.f.yaw;
+    o->anim = nw.f.anim_id; o->cursor = nw.f.anim_frame;
+    o->character = nw.f.character;
+    o->teleport = (nw.f.flags & kGhostTeleport) != 0;
+    if (!still && ex > 0) {
+        o->x += (int)((long long)nw.f.vx * ex / fms);
+        o->z += (int)((long long)nw.f.vz * ex / fms);
+        o->cursor += (int)(ex * 4096 / fms);
+        ++g_gws.reckon;
+    } else {
+        ++g_gws.hold;
+    }
+    return true;
+}
+
+// FNV-1a over the body's posed bone transforms -- the matrices the draw
+// reads (ModelComponents::transforms, one Matrix4x3 per bone). What the
+// player sees, as a number: SM64DS_GHOST_POSE_PROBE's witness.
+unsigned gw_pose_hash(void *a) {
+    const char *ma = (const char *)player::body_model_anim(a);
+    if (!ma) return 0;
+    const char *comp = ma + 8;                               // ModelComponents
+    const char *file = *(const char *const *)comp;           // BMD_File
+    const int *xf = *(const int *const *)(comp + 0x0c);      // transforms
+    if (!file || !xf) return 0;
+    unsigned nb = *(const unsigned *)(file + 4);             // numBones
+    if (nb > 128) nb = 128;
+    unsigned h = 2166136261u;
+    for (unsigned i = 0; i < nb * 12; ++i) {
+        h ^= (unsigned)xf[i];
+        h *= 16777619u;
+    }
+    return h;
+}
+
+int gw_pose_probe() {
+    static int p = -1;
+    if (p < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_POSE_PROBE");
+        p = e ? std::atoi(e) : 0;
+        if (p < 0) p = 0;
+    }
+    return p;
+}
+
+void gw_send_ident(unsigned now) {
+    gw_me_read();
+    unsigned char buf[64];
+    std::memset(buf, 0, sizeof buf);
+    HubIdentHead h;
+    h.tag = kHubTagIdent;
+    h.version = 1;
+    h.seat = 0xff;
+    h.name_len = (unsigned char)g_gw_me.name_len;
+    const int me = (int)data_0209f250;
+    void *a = (me >= 0 && me < kCommsMaxPlayers) ? data_0209f394[me] : 0;
+    h.character = (unsigned char)(a ? gw_char(a) : 0u);
+    h.build_id = g_gw_me.build_id;
+    std::memcpy(h.body_rgb, g_gw_me.body, 3);
+    std::memcpy(h.shoes_rgb, g_gw_me.shoes, 3);
+    h.flags = 0;
+    h.reserved = 0;
+    std::memcpy(buf, &h, sizeof h);
+    std::memcpy(buf + 20, g_gw_me.name, (size_t)g_gw_me.name_len);
+    int len = (20 + g_gw_me.name_len + 3) & ~3;
+    if (len < 24) len = 24;
+    if (comms_hub_send(buf, len)) {
+        ++g_gws.syni_sent;
+        g_gw_ident_sent = true;
+        g_gw_last_ident_ms = now;
+    } else {
+        ++g_gws.send_fail;
+    }
+}
+
+// THE SEND SIDE: my own body only, once per 15 Hz wall tick.
+void gw_send(unsigned now) {
+    if (comms_hub_state() != kHubLive) return;
+    const int me = (int)data_0209f250;
+    if (me < 0 || me >= kCommsMaxPlayers) return;
+    void *a = data_0209f394[me];
+    if (!a) return;
+
+    /* PAUSED: the game is not advancing my body. Two ways to see it, both
+       observations rather than a pause-state variable the port would have to
+       name: Stage::Behavior did not run since the last tick (the host menu, a
+       loading hold), or the body has not changed at all -- position, facing,
+       animation AND its cursor -- for 8 frames. The ROM's own pause menu is
+       the second kind: Stage::Behavior keeps running it, and the player's
+       animation stops dead (measured: anim 72 cursor 11 on every frame from
+       the START press on). A player standing idle still has a looping idle
+       animation turning over, so standing is not paused. */
+    const unsigned beh = port_stage_behavior_calls();
+    const bool no_tick = g_gw_beh_seeded && beh == g_gw_beh_last;
+    g_gw_beh_last = beh;
+    g_gw_beh_seeded = true;
+
+    const int cx = *player::pos_x(a), cy = *player::pos_y(a),
+              cz = *player::pos_z(a);
+    const int fz[6] = {cx, cy, cz, (int)*player::facing(a),
+                       (int)player::anim_id(a), player::anim_frame(a)};
+    if (std::memcmp(fz, g_gw_fz, sizeof fz) == 0) {
+        if (g_gw_frozen < 1000) ++g_gw_frozen;
+    } else {
+        g_gw_frozen = 0;
+        std::memcpy(g_gw_fz, fz, sizeof fz);
+    }
+    const bool paused = no_tick || g_gw_frozen >= 8;
+    const int level = (int)data_0209f2f8;
+    if (!paused) {
+        if (g_gw_prev_have && level == g_gw_prev_level) {
+            const int d[3] = {cx - g_gw_prev[0], cy - g_gw_prev[1],
+                              cz - g_gw_prev[2]};
+            const int step = (d[0] < 0 ? -d[0] : d[0]) +
+                             (d[1] < 0 ? -d[1] : d[1]) +
+                             (d[2] < 0 ? -d[2] : d[2]);
+            if (step > units(g_cfg.snap_units)) {
+                g_gw_warp = true;
+                g_gw_v[0] = g_gw_v[1] = g_gw_v[2] = 0;
+            } else {
+                for (int k = 0; k < 3; ++k) g_gw_v[k] = d[k];
+            }
+        } else {
+            if (g_gw_prev_have) g_gw_warp = true;     // a level change
+            g_gw_v[0] = g_gw_v[1] = g_gw_v[2] = 0;
+        }
+        g_gw_prev[0] = cx; g_gw_prev[1] = cy; g_gw_prev[2] = cz;
+        g_gw_prev_have = true;
+        g_gw_prev_level = level;
+    }
+
+    if (gw_pose_probe() > 0 && (g_gw_frame % (unsigned)gw_pose_probe()) == 0)
+        std::fprintf(stderr, "[gwpose] t=%u f=%u LOCAL seat=%d anim=%u cur=%d "
+                     "hash=%08x\n", now, g_gw_frame, comms_hub_my_seat(),
+                     (unsigned)player::anim_id(a), player::anim_frame(a) >> 12,
+                     gw_pose_hash(a));
+
+    if (!g_gw_t0_set) { g_gw_t0 = now; g_gw_t0_set = true; }
+    const unsigned seq = (unsigned)((unsigned long long)(now - g_gw_t0) *
+                                    kGwSendHz / 1000u);
+    if (seq == g_gw_last_seq) return;
+    if (paused && (unsigned)(now - g_gw_last_send_ms) < (unsigned)kGwPausedMs)
+        return;
+
+    HubGhostFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.tag = kHubTagGhost;
+    f.version = 1;
+    f.seat = 0xff;
+    f.flags = (unsigned char)(kGhostLive |
+                              (player::on_ground(a) ? kGhostGrounded : 0) |
+                              (g_gw_warp ? kGhostTeleport : 0) |
+                              (paused ? kGhostPaused : 0));
+    f.character = (unsigned char)gw_char(a);
+    f.seq = (unsigned short)seq;
+    f.level_id = (unsigned short)(level & 0xff);
+    f.x = cx; f.y = cy; f.z = cz;
+    /* per-frame Fix12 delta, clamped to the s16 the frame carries (design
+       6.1): about 8 units a frame, so a dash reckons short -- the 100 ms
+       interpolation, not the reckoning, is what normally draws the body */
+    short vv[3];
+    for (int k = 0; k < 3; ++k) {
+        int v = g_gw_warp ? 0 : g_gw_v[k];
+        if (v > 32767) v = 32767; else if (v < -32767) v = -32767;
+        vv[k] = (short)v;
+    }
+    f.vx = vv[0]; f.vy = vv[1]; f.vz = vv[2];
+    f.yaw = *player::facing(a);
+    f.anim_id = player::anim_id(a);
+    f.anim_frame = player::anim_frame(a);
+    f.stars = (unsigned short)NumStars();
+    f.area = 0;              // one level id per area on this game (data_0209f2f8)
+    if (comms_hub_send(&f, (int)sizeof f)) {
+        ++g_gws.syng_sent;
+        if (paused) ++g_gws.syng_paused;
+        g_gw_last_seq = seq;
+        g_gw_last_send_ms = now;
+        g_gw_warp = false;                 // the flag reached the wire
+    } else {
+        ++g_gws.send_fail;
+    }
+
+    const unsigned roster = comms_hub_roster_version();
+    const bool roster_moved = roster != g_gw_roster;
+    if (!g_gw_ident_sent ||
+        (unsigned)(now - g_gw_last_ident_ms) >= (unsigned)kGwIdentMs ||
+        (roster_moved &&
+         (unsigned)(now - g_gw_last_ident_ms) >= (unsigned)kGwIdentGapMs)) {
+        g_gw_roster = roster;
+        gw_send_ident(now);
+    }
+}
+
+void gw_report(const char *tag) {
+    unsigned vis = 0;
+    for (int s = 0; s < kHubMaxSeats; ++s)
+        if (gw_visible(s)) vis |= 1u << s;
+    char names[kHubMaxSeats * (kHubIdentNameMax + 6) + 1];
+    int w = 0;
+    names[0] = 0;
+    for (int s = 0; s < kHubMaxSeats; ++s) {
+        if (!g_gw[s].have_ident) continue;
+        const int r = std::snprintf(names + w, sizeof names - (size_t)w,
+                                    "%s%d:%s", w ? "," : "", s, g_gw[s].name);
+        if (r < 0 || w + r >= (int)sizeof names) break;
+        w += r;
+    }
+    std::fprintf(stderr,
+                 "[ghost:%s] hub=1 seat=%d level=%d syng_sent=%llu "
+                 "syng_paused=%llu syni_sent=%llu send_fail=%llu "
+                 "syng_recvd=%llu syni_recvd=%llu drop_len=%llu drop_tag=%llu "
+                 "drop_ver=%llu drop_seat=%llu drop_field=%llu drop_old=%llu "
+                 "resets=%llu vis=0x%04x interp=%llu reckon=%llu hold=%llu "
+                 "reposes=%llu charswaps=%llu names=[%s]\n",
+                 tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
+                 g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
+                 g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
+                 g_gws.drop_len, g_gws.drop_tag, g_gws.drop_ver,
+                 g_gws.drop_seat, g_gws.drop_field, g_gws.drop_old,
+                 g_gws.resets, vis, g_gws.interp, g_gws.reckon, g_gws.hold,
+                 g_gws.reposes, g_gws.charswaps, names);
+}
+
+// sync_decide's hub arm: an adventure console on the HUB has no DS transport
+// by design (hal/comms_hub.h: the ROM stays single-player), so the ghost layer
+// runs on the hub's own send/receive instead of the transport's aux entries.
+bool gw_decide() {
+    if (!(adventure_ghost_mode() && comms_hub_active())) return false;
+    g_hub = true;
+    g_enabled = true;
+    gw_me_read();
+    std::fprintf(stderr,
+                 "[ghost] adventure ghosts on the hub: SYNG %d Hz "
+                 "(2 Hz paused), SYNI every %d s, drawn %d ms behind, "
+                 "reckon <= %d ms, fades from %d ms and gone at %d ms without "
+                 "a frame; name \"%s\"\n",
+                 (int)kGwSendHz, (int)kGwIdentMs / 1000, (int)kGwInterpMs,
+                 (int)kGwReckonMs, (int)kGwFadeMs, (int)kGwDespawnMs,
+                 g_gw_me.name);
+    return true;
+}
+
+// One frame of the hub ghost layer, from sync_tick.
+void gw_tick() {
+    const unsigned now = GetTickCount();
+    ++g_gw_frame;
+    gw_recv();
+    gw_send(now);
+    static int every = -1;
+    if (every < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_REPORT_S");
+        every = e ? std::atoi(e)
+                  : (g_cfg.report ? 5 : 0);
+        if (every < 0) every = 0;
+    }
+    if (every > 0) {
+        if (!g_gw_last_report_ms) g_gw_last_report_ms = now;
+        if ((unsigned)(now - g_gw_last_report_ms) >= (unsigned)every * 1000u) {
+            g_gw_last_report_ms = now;
+            gw_report("tick");
+        }
+    }
+}
+
+}  // namespace
 
 // ---------------------------------------------------------------------------
 // THE POSE, APPLIED THROUGH THE ROM'S OWN FACES. Never by raw store.
@@ -1230,6 +1990,8 @@ bool peer_visible(int slot) {
     if (!adventure_ghost_mode()) return false;
     if (slot < 0 || slot >= kCommsMaxPlayers) return false;
     if (slot == (int)data_0209f250) return false;
+    /* GHOSTWIRE1: on the hub the body's seat decides, off its own frames */
+    if (g_hub) return gw_visible(gw_seat_for_body(slot));
     if (!g_peer_present[slot]) return false;
     if ((unsigned)(GetTickCount() - g_peer_seen_ms[slot]) > kPresenceTimeoutMs)
         return false;
@@ -1242,6 +2004,44 @@ bool peer_visible(int slot) {
 // player_bridges' hold, nametag.h's tag). Same predicate, one authority.
 extern "C" int port_adventure_peer_visible(int slot) {
     return peer_visible(slot) ? 1 : 0;
+}
+
+// GHOSTWIRE1: what the name tag (tests/nametag.h) shows over a hub ghost.
+// The seat's SYNI name (sanitised to the tag font's ASCII, '?' for the rest),
+// its body colour, and the star count its newest SYNG carries. -1 / null / 0
+// when the body is not a hub ghost, so the tag falls back to the VS facts.
+extern "C" int port_adventure_ghost_seat(int slot) {
+    if (!g_hub) return -1;
+    return gw_seat_for_body(slot);
+}
+extern "C" const char *port_adventure_ghost_name(int slot) {
+    const int s = port_adventure_ghost_seat(slot);
+    if (s < 0 || !g_gw[s].have_ident || !g_gw[s].name[0]) return 0;
+    return g_gw[s].name;
+}
+extern "C" int port_adventure_ghost_stars(int slot) {
+    const int s = port_adventure_ghost_seat(slot);
+    if (s < 0 || g_gw[s].n == 0) return -1;
+    return (int)g_gw[s].ring[g_gw[s].n - 1].f.stars;
+}
+// 0..256: how much of a hub ghost to draw, off the age of its newest frame
+// (full to kGwFadeMs, then down to nothing at kGwDespawnMs). 256 for any
+// body that is not a hub ghost, so VS, solo and the old path are untouched.
+extern "C" int port_adventure_ghost_fade(int slot) {
+    const int s = port_adventure_ghost_seat(slot);
+    if (s < 0 || g_gw[s].n == 0) return 256;
+    const unsigned age = GetTickCount() - g_gw[s].last_ms;
+    if (age <= (unsigned)kGwFadeMs) return 256;
+    if (age >= (unsigned)kGwDespawnMs) return 0;
+    return (int)(256u * ((unsigned)kGwDespawnMs - age) /
+                 (unsigned)(kGwDespawnMs - kGwFadeMs));
+}
+
+extern "C" unsigned port_adventure_ghost_rgb(int slot) {
+    const int s = port_adventure_ghost_seat(slot);
+    if (s < 0 || !g_gw[s].have_ident) return 0;
+    return 0xff000000u | ((unsigned)g_gw[s].body[0] << 16) |
+           ((unsigned)g_gw[s].body[1] << 8) | (unsigned)g_gw[s].body[2];
 }
 
 // ---------------------------------------------------------------------------
@@ -1305,6 +2105,85 @@ extern "C" void port_party_set_member(int slot, int on) {
 }
 
 // ---------------------------------------------------------------------------
+// GHOSTWIRE1: THE HUB FOLLOWER, and the G4 fix (the walking pose).
+//
+// Every visible seat's body is put exactly where the sender was 100 ms ago
+// (gw_sample: interpolated, reckoned or held), facing the same way, playing
+// the sender's animation at the sender's cursor.
+//
+// THE POSE IS RE-RUN AFTER THE ANIMATION IS INSTALLED, and that is the whole
+// of the walking-pose bug. A player body is posed ONCE a frame, inside
+// Player::Behavior (func_ov002_020e4768: UpdateBones from the animation, the
+// look angles, UpdateVertsUsingBones); the draw poses nothing
+// (hal/player_bridges.cpp, "NO RE-POSE AT DRAW TIME"). The ghost's own
+// Behavior runs first and its no-control state puts the standing entry
+// animation (71) back every frame, so by the time the follower installed the
+// wire's walk (72) the frame's pose was already the standing one, and the
+// draw showed that: GHOSTSCOUT T7, anim 71 with the cursor pinned at 1 while
+// the source walked on 72. The 09-02 fix worked while the draw still re-posed
+// the body; HEAD3 took that re-pose out for good reasons. So the follower now
+// runs the ROM's own pose routine once more on the ghost, after SetAnim, and
+// the draw reads the wire's animation. SM64DS_GHOST_NO_REPOSE=1 leaves it out
+// (the before arm, for the proof).
+// ---------------------------------------------------------------------------
+namespace {
+void gw_follow() {
+    static int no_repose = -1, no_swap = -1;
+    if (no_repose < 0) no_repose = std::getenv("SM64DS_GHOST_NO_REPOSE") ? 1 : 0;
+    if (no_swap < 0) no_swap = std::getenv("SM64DS_GHOST_NO_CHARSWAP") ? 1 : 0;
+    const unsigned now = GetTickCount();
+    const int me = (int)data_0209f250;
+    for (int i = 0; i < kCommsMaxPlayers; ++i) {
+        if (i == me) continue;
+        const int s = gw_seat_for_body(i);
+        if (s < 0 || !gw_visible(s)) continue;
+        if (party_member(i)) continue;
+        void *a = data_0209f394[i];
+        if (!a) continue;
+        GwSample sm;
+        if (!gw_sample(s, now, &sm)) continue;
+        GwSeat &z = g_gw[s];
+        if (z.body_ptr != a) { z.body_ptr = a; z.driven = 0; }
+        if (sm.teleport) ++g_gws.teleports;
+        *player::pos_x(a) = sm.x;
+        *player::pos_y(a) = sm.y;
+        *player::pos_z(a) = sm.z;
+        *player::facing(a) = sm.yaw;
+        /* the puppet's own physics must not carry it off between frames */
+        *(int *)((char *)a + 0x98) = 0;
+        *(int *)((char *)a + 0xa8) = 0;
+        /* THE CHARACTER, through the game's own in-place swap (the door
+           path), once the body has been driven for a second and no more than
+           once every 2 s per seat. */
+        if (!no_swap && z.driven >= 30 &&
+            gw_char(a) != (unsigned)sm.character &&
+            (unsigned)(now - z.char_try_ms) >= 2000u) {
+            z.char_try_ms = now;
+            port_player_set_character(a, sm.character);
+            ++g_gws.charswaps;
+            std::fprintf(stderr, "[ghost] seat %d body %d character -> %u\n",
+                         s, i, (unsigned)sm.character);
+        }
+        _ZN6Player7SetAnimEji5Fix12IiEj(a, sm.anim, 0, 0x1000,
+                                        (unsigned)(sm.cursor >> 12));
+        if (!no_repose) {
+            func_ov002_020e4768((char *)a);
+            ++g_gws.reposes;
+        }
+        ++z.driven;
+        if (gw_pose_probe() > 0 &&
+            (g_gw_frame % (unsigned)gw_pose_probe()) == 0)
+            std::fprintf(stderr, "[gwpose] t=%u f=%u GHOST seat=%d body=%d "
+                         "anim=%u cur=%d hash=%08x wire_anim=%u wire_cur=%d\n",
+                         now, g_gw_frame, s, i,
+                         (unsigned)player::anim_id(a),
+                         player::anim_frame(a) >> 12, gw_pose_hash(a),
+                         (unsigned)sm.anim, sm.cursor >> 12);
+    }
+}
+}  // namespace
+
+// ---------------------------------------------------------------------------
 // ADVENTURE GHOSTS: the pure-follower step. Called once per RENDER frame from
 // the walk loop, AFTER sync_tick (so the target is this frame's freshest) and
 // after the ROM actor tick (so it OVERRIDES the physics the ghost would
@@ -1333,6 +2212,7 @@ extern "C" void port_adventure_ghost_follow() {
         g_follow_diag = e ? std::atoi(e) : 0;   /* value = log stride, 0 = off */
     }
     ++g_follow_fcount;
+    if (g_hub) { gw_follow(); return; }
     const int me = (int)data_0209f250;
     for (int i = 0; i < kCommsMaxPlayers; ++i) {
         if (i == me) continue;
@@ -1797,6 +2677,7 @@ void sync_tick() {
     dh_frame();      // VCHOMP detector: ahead of the gate on purpose -- it has
                      // to work with the sync layer off. No-op unless armed.
     if (!g_enabled) return;
+    if (g_hub) { gw_tick(); return; }   // GHOSTWIRE1: the hub, no session gate
     const CommsReadout r = comms_readout();
     if (!r.connected || r.players <= 1) {
         ++g_stats.gated;
@@ -1829,6 +2710,7 @@ SyncStats sync_stats() { return g_stats; }
 
 void sync_report(const char *tag) {
     parse_cfg();
+    if (g_hub) gw_report(tag);
     /* The prefix through worst_err is parsed by the SY rungs
        (port/tools/mp3_play_proof.py) and stays byte-identical; the rig's
        fields append after it. */
