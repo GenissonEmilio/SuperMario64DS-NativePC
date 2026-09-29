@@ -3590,25 +3590,29 @@ static void chat_draw(const OvlSurface &fb)
     const int row_h = rom ? (NT_GH + 2) * scale : OVL_LINE;
     const int left = 6 * scale;
     const int width = ntr::active_w - 2 * left;
-    /* above the save-state toast's row, which is the bottom OVL_LINE + 4 */
-    int y = ntr::active_h - OVL_LINE - 8 * scale - row_h;
+    /* clear of the bottom corners: the save-state toast's row and the HUD's
+       corner icon on the left, the inset touch panel on the right (the box
+       never reaches it: the counter follows the text instead of the edge) */
+    int y = ntr::active_h - 40 * scale - row_h;
 
     if (v.open) {
-        char line[160];
-        snprintf(line, sizeof line, "SAY: %s%s", v.box, v.caret ? "_" : " ");
-        /* the tail of a long line, so the caret stays on screen */
-        const char *s = line;
-        int w = 0;
-        for (const char *p = s; *p; ++p) w += chat_adv((unsigned char)*p, rom, scale);
-        while (*s && w > width) { w -= chat_adv((unsigned char)*s, rom, scale); ++s; }
-        ovl_shade(fb, left - 2 * scale, y - scale, w + 4 * scale, row_h);
-        if (rom) chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 0, 255);
-        chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 1, 255);
         char cnt[16];
         snprintf(cnt, sizeof cnt, "%d", port::kChatTextMax - v.box_bytes);
         int cw = 0;
         for (const char *p = cnt; *p; ++p) cw += chat_adv((unsigned char)*p, rom, scale);
-        const int cx = ntr::active_w - left - cw;
+        char line[160];
+        snprintf(line, sizeof line, "SAY: %s%s", v.box, v.caret ? "_" : " ");
+        /* the tail of a long line, so the caret stays on screen; the room
+           left over the text is shown after it, dimmed */
+        const char *s = line;
+        int w = 0;
+        for (const char *p = s; *p; ++p) w += chat_adv((unsigned char)*p, rom, scale);
+        const int room = width - cw - 8 * scale;
+        while (*s && w > room) { w -= chat_adv((unsigned char)*s, rom, scale); ++s; }
+        ovl_shade(fb, left - 2 * scale, y - scale, w + cw + 12 * scale, row_h);
+        if (rom) chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 0, 255);
+        chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 1, 255);
+        const int cx = left + w + 8 * scale;
         if (rom) chat_text(fb, cx, y, cnt, (int)strlen(cnt), rom, scale, 0xFFA0A0A0u, 0, 255);
         chat_text(fb, cx, y, cnt, (int)strlen(cnt), rom, scale, 0xFFA0A0A0u, 1, 255);
         y -= row_h + 2 * scale;
@@ -4447,6 +4451,20 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
                 frame, typing ? " (game input released locally)" : "");
     }
     was_typing = typing;
+    /* TEST ONLY: under SM64DS_CHAT_TYPE_TEST, the local body's position every
+       level frame, so a rung can show the walk stopping while the box is open
+       and resuming after (the ladder's proof of the local input gate). */
+    {
+        static int trace = -1;
+        if (trace < 0) trace = getenv("SM64DS_CHAT_TYPE_TEST") ? 1 : 0;
+        const unsigned me = data_0209f250;
+        const char *p = (trace && frame >= 0 && me < 16)
+                ? (const char *)data_0209f394[me] : 0;
+        if (p)
+            fprintf(stderr, "[chat] me f%d pos=(%d,%d,%d) typing=%d\n", frame,
+                    *(const int *)(p + 0x5c), *(const int *)(p + 0x60),
+                    *(const int *)(p + 0x64), typing);
+    }
     if (!rb_skip_render()) chat_draw(surf);
 }
 
