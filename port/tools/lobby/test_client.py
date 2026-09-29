@@ -673,7 +673,8 @@ def digest_of(plan):
            "king" if "king_target" in plan else "time")
     text = "|".join(str(x) for x in (
         plan["map"], plan["players"], win, plan.get("star_target", 0),
-        plan.get("king_target", 0), plan["luigi"], plan["seed"], "lockstep",
+        plan.get("king_target", 0), plan["luigi"],
+        plan["seed"] if plan["luigi"] else 0, "lockstep",
         2 if plan["players"] <= 4 else 3))
     h = 0x811C9DC5
     for b in text.encode("ascii"):

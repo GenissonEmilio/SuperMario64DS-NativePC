@@ -533,12 +533,14 @@ def new_seed():
 #   map      SM64DS_VS_MAP 0..3            players  SM64DS_VS_PLAYERS 2..16
 #   win      time | stars | king           target   star target, else 0
 #   king     king target, else 0           luigi    0 | 1
-#   seed     the u32 seed, ALWAYS (Luigi on or off)
+#   seed     the u32 seed when luigi is 1, else 0 (the plan carries the
+#            minted seed either way; an off room does not digest it)
 #   netmode  "lockstep" (the only online VS mode in 1.0)
 #   wire     2 when players <= 4, else 3
 # decimal integers, no padding, no spaces. FNV-1a 32 over the ASCII bytes.
-# Test vectors live in test_units.py (test_session_digest) and in the lane's
-# out/LOBBY5/digest_contract.txt; the game side must reproduce them.
+# This is the game's own rule (hal/comms_loopback.cpp session_digest, the
+# NETCORE1 session check), and test_units.py (test_session_digest) pins it
+# with that lane's published examples.
 NETMODE_ONLINE = "lockstep"
 FNV32_OFFSET = 2166136261
 FNV32_PRIME = 16777619
@@ -559,7 +561,7 @@ def session_canonical(map_id, players, win_mode, star_target, king_target,
         map_id, players, win_mode,
         star_target if win_mode == "stars" and star_target else 0,
         king_target if win_mode == "king" and king_target else 0,
-        1 if luigi else 0, seed & 0xFFFFFFFF, netmode, wire)
+        1 if luigi else 0, (seed & 0xFFFFFFFF) if luigi else 0, netmode, wire)
 
 
 def session_digest(*args, **kw):
@@ -1984,9 +1986,9 @@ def member_plan(room, seat):
         "relay_v": RELAY_V,
         "want_seat": room.slot_of.get(seat, 0),
         # The match settings frozen at arm. The launcher exports luigi and
-        # seed as SM64DS_VS_LUIGI_INFECTION / SM64DS_VS_LUIGI_SEED (the seed
-        # ALWAYS, Luigi on or off: it is in the digest either way), voice as
-        # SM64DS_VOICE_ALLOWED and digest as SM64DS_SESSION_DIGEST.
+        # seed as SM64DS_VS_LUIGI_INFECTION / SM64DS_VS_LUIGI_SEED, voice as
+        # SM64DS_VOICE_ALLOWED and digest as SM64DS_SESSION_DIGEST. The seed
+        # is minted for every match; the digest counts it only with Luigi on.
         "luigi": room.match_luigi,
         "seed": room.match_seed,
         "voice": room.match_voice,

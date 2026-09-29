@@ -1702,15 +1702,24 @@ def test_session_digest():
     check("a stale star target outside stars mode does not reach the string",
           S.session_canonical(0, 2, "time", 3, None, 0, 0)
           == "0|2|time|0|0|0|0|lockstep|2")
-    check("the seed is in the string with Luigi off (the launcher always "
-          "exports it)",
+    check("with Luigi off the seed digests as 0 (the game's rule: an off "
+          "room does not depend on it)",
           S.session_canonical(0, 2, "time", None, None, 0, 7)
-          == "0|2|time|0|0|0|7|lockstep|2")
-    a = S.session_digest(0, 2, "time", None, None, 0, 1)
-    b = S.session_digest(0, 2, "time", None, None, 0, 2)
-    c = S.session_digest(0, 2, "time", None, None, 1, 1)
-    check("one seed apart, or Luigi on vs off, is a different digest",
-          len({a, b, c}) == 3, (a, b, c))
+          == "0|2|time|0|0|0|0|lockstep|2")
+    # NETCORE1's published examples (out/NETCORE1/session_check_spec.txt),
+    # so the lobby and the game's ACCEPT check are pinned to one rule.
+    for args, text in (
+            ((0, 4, "stars", 1, None, 0, 99), "0|4|stars|1|0|0|0|lockstep|2"),
+            ((2, 16, "time", None, None, 1, 12345),
+             "2|16|time|0|0|1|12345|lockstep|3"),
+            ((1, 8, "king", None, 30, 0, 5), "1|8|king|0|30|0|0|lockstep|3")):
+        check("NETCORE1 example %s" % text,
+              S.session_canonical(*args) == text, S.session_canonical(*args))
+    a = S.session_digest(0, 2, "time", None, None, 1, 1)
+    b = S.session_digest(0, 2, "time", None, None, 1, 2)
+    c = S.session_digest(0, 2, "time", None, None, 0, 1)
+    check("with Luigi on, one seed apart is a different digest, and Luigi off "
+          "is a third", len({a, b, c}) == 3, (a, b, c))
 
 
 def test_vs_one_settings():
