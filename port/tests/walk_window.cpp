@@ -8915,11 +8915,15 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
             return 0;
         }
         /* T is unbound by default; a player who bound a game action to it
-           keeps that action (no chat box on T for them). */
+           keeps that action (no chat box on T for them). The run key is read
+           out of g_run_key, not g_key[]: the menu's rebind row writes only
+           that one while the game runs, so it is asked separately. It is the
+           one key the session can rebind; the rest change on a relaunch. */
         int t_bound = 0;
         if (m == WM_KEYDOWN && w == 'T') {
             bindings_load();
             for (int i = 0; i < HOST_KEY_COUNT; ++i) t_bound |= g_key[i] == 'T';
+            t_bound |= g_run_key == 'T';
         }
         if (m == WM_KEYDOWN && w == 'T' && !(l & (1 << 30)) && !menu_on &&
             !g_padlearn && !t_bound && port::chat_open()) {
