@@ -23,7 +23,10 @@
 // adventure mode is on (SM64DS_ADVENTURE, or the AdventureGhosts setting) AND
 // one of the two address modes below is named. Otherwise it installs nothing
 // and returns false, and the caller goes on to comms_loopback_install_from_env()
-// exactly as before (VS, and every solo path, unchanged).
+// exactly as before (VS, and every solo path, unchanged). A VS match
+// (SM64DS_VS_MAP set) is never the hub's, even with the adventure flag on, and
+// an adventure console is never handed to the VS carrier; see
+// comms_hub_install_from_env below.
 //
 //   RELAY MODE (what the launcher sets; design.txt section 3, relay v2):
 //     SM64DS_COMMS_RELAY=<host[:port]>  the relay, default port 41234
@@ -193,8 +196,14 @@ enum : int {
 // ---------------------------------------------------------------------------
 
 // Called once from main() (tests/walk_window.cpp) BEFORE
-// comms_loopback_install_from_env(). Returns true when the hub was installed;
-// the caller then skips the loopback install. Safe to call more than once.
+// comms_loopback_install_from_env(). Returns true when this is an adventure
+// session the hub owns, and the caller then skips the loopback install: the
+// hub was installed (relay or mesh), or the console was handed the VS
+// carrier's env (SM64DS_COMMS_ROLE) with no hub address and plays solo, since
+// adventure never seats a DS role. Returns false for every VS match
+// (SM64DS_VS_MAP set, even with the adventure flag on), every solo run, and
+// offline adventure. Whether a socket is open: comms_hub_active(). Safe to
+// call more than once.
 bool comms_hub_install_from_env();
 
 // True once installed (socket open), whether or not a peer has been heard.

@@ -792,16 +792,42 @@ void report_at_exit() {
 // ===========================================================================
 bool comms_hub_install_from_env() {
     static bool tried = false;
-    if (tried) return g_installed;
+    static bool owned = false;   // the answer: true = skip the VS carrier
+    if (tried) return owned;
     tried = true;
 
     if (!adventure_ghost_mode()) return false;
+    // A VS MATCH IS NEVER THE HUB'S, whatever the adventure flag says. The
+    // launcher names the VS map for every VS match and never for adventure,
+    // so SM64DS_VS_MAP is the one knob that cannot be a stale setting: a
+    // hand-edited settings.json with AdventureGhosts on must not let the hub
+    // take a VS match's relay code and keep the VS carrier from installing.
+    // Declined silently; the VS carrier logs its own install.
+    if (const char *vs = std::getenv("SM64DS_VS_MAP"))
+        if (*vs) return false;
+
     const char *relay = std::getenv("SM64DS_COMMS_RELAY");
     const char *code = std::getenv("SM64DS_COMMS_CODE");
     const char *mesh = std::getenv("SM64DS_HUB_PORT");
     const bool want_relay = relay && *relay;
     const bool want_mesh = !want_relay && mesh && *mesh;
-    if (!want_relay && !want_mesh) return false;   // adventure, but offline
+    if (!want_relay && !want_mesh) {
+        // ADVENTURE NEVER SEATS A DS ROLE, and that holds on this path too.
+        // An adventure console handed the VS carrier's direct env (a role and
+        // a port, no relay, no hub port) used to open that carrier and seat
+        // roles 1 and 2: the old 0.5.3 adventure transport, joiner without a
+        // save included. It plays solo instead, and says why once.
+        if (const char *role = std::getenv("SM64DS_COMMS_ROLE")) {
+            std::fprintf(stderr, "[hub] adventure mode with SM64DS_COMMS_ROLE="
+                         "%s but no hub address (SM64DS_COMMS_RELAY or "
+                         "SM64DS_HUB_PORT): the VS carrier is not opened for "
+                         "adventure, so this console plays solo\n", role);
+            owned = true;
+            return true;
+        }
+        return false;   // adventure, offline: nothing to open, nothing to skip
+    }
+    owned = true;
 
     if (const char *role = std::getenv("SM64DS_COMMS_ROLE"))
         std::fprintf(stderr, "[hub] SM64DS_COMMS_ROLE=%s is ignored: an "
