@@ -165,6 +165,14 @@ extern "C" void func_02040724(void);   /* the seam's close() face */
 
 extern "C" int host_setting_net_mode(void);   /* hal/host_settings.cpp */
 
+/* the build's git tip (host-src/port_gittip.c, written by CMake), hashed into
+   the session check's build id. The weak fallback is tests/fault_probe.h's own,
+   spelled identically, so a target without the generated file (smoke_player)
+   still links and the two directives agree. */
+extern "C" const char port_build_gittip[];
+extern "C" __declspec(selectany) const char port_fault_no_gittip[] = "unknown";
+#pragma comment(linker, "/alternatename:_port_build_gittip=_port_fault_no_gittip")
+
 namespace port {
 namespace {
 
@@ -1490,6 +1498,157 @@ void fill_header(Packet &p, unsigned char type) {
     p.round   = g_round;
 }
 
+// ===========================================================================
+// THE SESSION CHECK (multiplayer 1.0, NETARCH1 design 2.3).
+//
+// Lockstep only stays in step if every console runs the same build with the
+// same match settings; a child whose map, width, win rule, Luigi Infection
+// seed or net mode differs from the host's plays a different match from frame
+// 0 and nobody is told. So the parent stamps blocks[0] of every ACCEPT it
+// sends (the unicast one and the roster broadcast; blocks of an ACCEPT were
+// never read by any build, so an older child ignores the bytes):
+//
+//     +0 'S','D','1','0'   +4 build id u32 LE   +8 settings digest u32 LE
+//
+// build id = FNV-1a 32 over port_build_gittip. digest = FNV-1a 32 over the
+// canonical ASCII string, every number decimal, no spaces:
+//
+//     map|players|win|target|king|luigi|seed|netmode|wire
+//
+//   map      SM64DS_VS_MAP as atoi, -1 when absent
+//   players  SM64DS_VS_PLAYERS as this carrier took it (1..16, else 0)
+//   win      "king" if king > 0, else "stars" if target > 0, else "time"
+//   target   SM64DS_VS_STAR_TARGET as atoi, 0 when absent or negative
+//   king     SM64DS_VS_KING_TARGET as atoi, 0 when absent or negative
+//   luigi    0 when SM64DS_VS_LUIGI_INFECTION is absent, "" or "0", else 1
+//   seed     SM64DS_VS_LUIGI_SEED as strtoul base 10 when luigi is 1, else 0
+//   netmode  "lockstep" or "rollback", what this end runs after install
+//   wire     the MP2L version the session speaks: 2 (<= 4 players) or 3
+//
+// e.g. a 4-player stars match on map 0, target 1, Luigi off:
+//     "0|4|stars|1|0|0|0|lockstep|2"
+// The lobby computes the same string from the plan it hands out (lobby v5's
+// "digest"), so SM64DS_SESSION_DIGEST, when present, is compared too and a
+// disagreement is logged (not enforced: the ACCEPT compare is the gate).
+//
+// A 1.0 CHILD compares the stamp with its own at its first ACCEPT. On a
+// missing stamp (an older host), another build, or another digest it sends
+// BYE and exits with code 3, which the launcher reports as a session
+// mismatch; the host drops the slot on the BYE and plays on. Only the child
+// checks: the host is the authority, and a refused child is the one that
+// has to leave. SM64DS_SESSION_CHECK=0 logs a mismatch without leaving (a
+// test knob), and SM64DS_COMMS_LEGACY_PEER skips it (an old build never
+// looked).
+// ===========================================================================
+const unsigned char kSessionTag[4] = { 'S', 'D', '1', '0' };
+
+unsigned fnv1a32(const char *s) {
+    unsigned h = 2166136261u;
+    for (; *s; ++s) { h ^= (unsigned char)*s; h *= 16777619u; }
+    return h;
+}
+
+int env_atoi_or(const char *name, int absent) {
+    const char *e = std::getenv(name);
+    return e ? std::atoi(e) : absent;
+}
+
+// The canonical string, written into buf; returns its FNV-1a digest.
+unsigned session_digest(char *buf, size_t cap) {
+    const int map = env_atoi_or("SM64DS_VS_MAP", -1);
+    int target = env_atoi_or("SM64DS_VS_STAR_TARGET", 0);
+    int king   = env_atoi_or("SM64DS_VS_KING_TARGET", 0);
+    if (target < 0) target = 0;
+    if (king < 0)   king = 0;
+    const char *li = std::getenv("SM64DS_VS_LUIGI_INFECTION");
+    const int luigi = (!li || li[0] == 0 || (li[0] == '0' && li[1] == 0)) ? 0 : 1;
+    unsigned long seed = 0;
+    if (luigi)
+        if (const char *s = std::getenv("SM64DS_VS_LUIGI_SEED"))
+            seed = std::strtoul(s, 0, 10);
+    std::snprintf(buf, cap, "%d|%d|%s|%d|%d|%d|%lu|%s|%u", map, g_want_players,
+                  king > 0 ? "king" : (target > 0 ? "stars" : "time"),
+                  target, king, luigi, seed & 0xFFFFFFFFul,
+                  g_rollback ? "rollback" : "lockstep",
+                  (unsigned)wire_version());
+    return fnv1a32(buf);
+}
+
+unsigned session_build_id() { return fnv1a32(port_build_gittip); }
+
+void put_u32le(unsigned char *p, unsigned v) {
+    p[0] = (unsigned char)v;          p[1] = (unsigned char)(v >> 8);
+    p[2] = (unsigned char)(v >> 16);  p[3] = (unsigned char)(v >> 24);
+}
+unsigned get_u32le(const unsigned char *p) {
+    return (unsigned)p[0] | ((unsigned)p[1] << 8) | ((unsigned)p[2] << 16) |
+           ((unsigned)p[3] << 24);
+}
+
+// Once per process: the canonical string and the two numbers, and the plan's
+// digest if the launcher exported one.
+void log_session_identity(const char *who) {
+    static bool said = false;
+    if (said) return;
+    said = true;
+    char canon[160];
+    const unsigned d = session_digest(canon, sizeof canon);
+    std::fprintf(stderr, "[comms:loopback] session check (%s): build %s id "
+                 "%08x, settings \"%s\" digest %08x\n", who, port_build_gittip,
+                 session_build_id(), canon, d);
+    if (const char *e = std::getenv("SM64DS_SESSION_DIGEST")) {
+        const unsigned long plan = std::strtoul(e, 0, 10);
+        if ((unsigned)(plan & 0xFFFFFFFFul) != d)
+            std::fprintf(stderr, "[comms:loopback] session check: the lobby "
+                         "plan's digest %lu disagrees with this end's %u (%s); "
+                         "the environment was edited or the lobby and this "
+                         "build build the string differently. Logged only.\n",
+                         plan, d, canon);
+    }
+}
+
+// Parent: stamp an ACCEPT.
+void stamp_session(Packet &a) {
+    log_session_identity("host");
+    char canon[160];
+    unsigned char *b = a.blocks[0];
+    std::memcpy(b, kSessionTag, 4);
+    put_u32le(b + 4, session_build_id());
+    put_u32le(b + 8, session_digest(canon, sizeof canon));
+}
+
+// Child, at its first ACCEPT: true = same build and settings, go on.
+bool session_check_ok(const Packet &a) {
+    if (g_legacy_peer_sim) return true;
+    log_session_identity("child");
+    const unsigned char *b = a.blocks[0];
+    char canon[160];
+    const unsigned mine_d = session_digest(canon, sizeof canon);
+    const unsigned mine_b = session_build_id();
+    const bool tagged = std::memcmp(b, kSessionTag, 4) == 0;
+    const unsigned host_b = get_u32le(b + 4), host_d = get_u32le(b + 8);
+    if (tagged && host_b == mine_b && host_d == mine_d) {
+        std::fprintf(stderr, "[comms:loopback] session check OK: the host runs "
+                     "build id %08x and settings digest %08x, same as this "
+                     "end\n", host_b, host_d);
+        return true;
+    }
+    const char *why = !tagged ? "the host is an older build (no session stamp)"
+                    : host_b != mine_b ? "the host runs a different build"
+                                       : "the host's match settings differ";
+    std::fprintf(stderr, "[comms:loopback] SESSION MISMATCH: %s. host build id "
+                 "%08x digest %08x; this end build id %08x digest %08x "
+                 "(\"%s\")%s\n", why, tagged ? host_b : 0u, tagged ? host_d : 0u,
+                 mine_b, mine_d, canon,
+                 std::getenv("SM64DS_SESSION_CHECK") &&
+                         std::atoi(std::getenv("SM64DS_SESSION_CHECK")) == 0
+                     ? "; SM64DS_SESSION_CHECK=0, staying"
+                     : "; leaving the session, exit code 3");
+    if (const char *e = std::getenv("SM64DS_SESSION_CHECK"))
+        if (std::atoi(e) == 0) return true;
+    return false;
+}
+
 // THE ROSTER, SENT TO EVERYONE. See the banner over kRosterAnnounceMs for why
 // a three- or four-player session cannot form without this.
 //
@@ -1512,6 +1671,7 @@ void announce_roster() {
     Packet a;
     fill_header(a, kTypeAccept);
     set_live(a, g_live);
+    stamp_session(a);                     // multiplayer 1.0: the session check
     a.have = ((unsigned)(g_input_delay & 0xFF) << 8) |
              (g_rollback ? kAcceptRollbackBit : 0u);   // port/rollback: the mode too
     send_to_children(a);
@@ -2081,6 +2241,7 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         Packet a;
         fill_header(a, kTypeAccept);
         set_live(a, g_live);
+        stamp_session(a);                 // multiplayer 1.0: the session check
         // THE PARENT ASSIGNS THE SLOT AND THE RELAY DOES NOT. A child over the
         // internet cannot claim a slot by binding a port the way a loopback
         // child does, so it PROPOSES one in its JOIN and this is the answer.
@@ -2362,6 +2523,18 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
         // it -- a wedge that no timer recovers from, because both sides think
         // they are done.
         if ((p.live_wide & (1u << g_slot)) == 0) { ++g_dropped; break; }
+        // THE SESSION CHECK, before anything is adopted from this ACCEPT: a
+        // child on another build or other match settings leaves now, with a
+        // BYE so the host drops the slot at once, and exit code 3 so the
+        // launcher can say why. See the banner over stamp_session.
+        if (g_state != kCommsChildConnected && !session_check_ok(p)) {
+            Packet bye;
+            fill_header(bye, kTypeBye);
+            send_to_slot(bye, 0);
+            std::fflush(stderr);
+            std::fflush(stdout);
+            std::exit(3);
+        }
         g_live = p.live_wide;
         if (g_state != kCommsChildConnected) {
             if (g_join_started_ms != 0) {
