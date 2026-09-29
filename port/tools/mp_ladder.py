@@ -1527,6 +1527,8 @@ def main(argv=None):
     ap.add_argument("--skip", help="regex over rung names to leave out")
     ap.add_argument("--assume", default="", help="comma list of lanes to treat as landed")
     ap.add_argument("--minpos", type=int, default=100, help="distinct positions per slot")
+    ap.add_argument("--sizes", default="", help="comma list of extra console counts (2..16) to run "
+                    "as vs<N>-loop-rtt0-u rungs in any tier, e.g. to bracket a size that fails")
     ap.add_argument("--kit", help="a fresh kit directory (the release zip unpacked, never run)")
     ap.add_argument("--rom", help="the ROM the kit extractor reads")
     ap.add_argument("--kit-work", help="where the extracted player install is cached")
@@ -1560,6 +1562,12 @@ def main(argv=None):
     if a.probe:
         return 0
     rungs = [r for r in build_rungs() if a.tier in r.tiers]
+    have = {r.name for r in rungs}
+    for s in filter(None, (x.strip() for x in a.sizes.split(","))):
+        n = max(2, min(16, int(s)))
+        if "vs%d-loop-rtt0-u" % n not in have:
+            rungs.append(Rung("vs%d-loop-rtt0-u" % n, "vs", n, ("dev", "gate", "full")))
+            have.add(rungs[-1].name)
     if a.only:
         rungs = [r for r in rungs if re.search(a.only, r.name)]
     if a.skip:
