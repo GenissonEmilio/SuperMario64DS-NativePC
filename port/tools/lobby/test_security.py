@@ -99,9 +99,17 @@ def status_of(reply):
 
 
 def quick_post(c, verb, obj, xff):
-    """One POST with a chosen X-Forwarded-For, returning (status, parsed)."""
-    status, text = c.raw("POST", "/port/lobby/" + verb, json.dumps(obj).encode(),
-                         extra=(("X-Forwarded-For", xff),))
+    """One POST with a chosen X-Forwarded-For, returning (status, parsed).
+
+    A refusal closes the connection at once (see _reject), and on Windows the
+    client can see that close as WinError 10053 before it reads the answer.
+    That is a refused request, so it comes back as status 0, never a crash."""
+    try:
+        status, text = c.raw("POST", "/port/lobby/" + verb,
+                             json.dumps(obj).encode(),
+                             extra=(("X-Forwarded-For", xff),))
+    except ConnectionError:
+        return 0, {}
     try:
         return status, json.loads(text)
     except ValueError:
@@ -261,70 +269,249 @@ def blocker2():
 # ------------------------------------------------------ v5 WORLD POOL
 
 
+def compose_env():
+    """The environment docker-compose.yml ships, read from the file itself so
+    these rows run at the SHIPPED settings and cannot drift from them (review
+    REVLOBBY5: the first version of this section narrowed the pool and the
+    join budget, which hid the flood)."""
+    import os
+    import re
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "docker-compose.yml")
+    env, inside = {}, False
+    for line in open(path, encoding="utf-8"):
+        if re.match(r"^\s+environment:\s*$", line):
+            inside = True
+            continue
+        if inside:
+            m = re.match(r'^\s+([A-Z_][A-Z0-9_]*):\s*"([^"]*)"\s*$', line)
+            if m:
+                env[m.group(1)] = m.group(2)
+            elif re.match(r"^\s+#", line) or not line.strip():
+                continue
+            else:
+                break
+    env.pop("LISTEN_PORT", None)
+    return env
+
+
+REAL = "1.0.0-0123abcd"     # the build id the release step would list
+
+
 def world_pool():
-    """The world verbs are the lobby's second unauthenticated way to make
-    server state (after create). Three bounds keep that state finite: the
-    per-address join limiter charges every `world` call, MAX_WORLDS caps the
-    pool across every build id, and every field is grammar-checked before any
-    of it is touched."""
-    print("\n== v5 WORLD POOL: bounded per address and in total ==")
-    port = pick_port()
-    sp = Spawned(port, {"RATE_JOIN_PER_MIN": "5", "RATE_REQ_PER_S": "1000",
-                        "RATE_BURST": "2000", "BAD_LIMIT": "1000000",
-                        "MAX_WORLDS": "8"})
-    c = sp.wait_ready()
+    """Review REVLOBBY5 S2, at the SHIPPED compose settings: the world pool
+    cannot be filled or padded from one or two home connections, a household
+    of four behind one connection plays, and unknown builds are refused.
+
+    Each row gets a fresh server (the compose env plus the release step's
+    GAME_IDS line), and what the attacker holds is read from /health
+    (`worlds`, `world_members` = live members over the whole pool) rather than
+    from the attacker's own pings, which the bad-sender rule is by then
+    refusing."""
+    print("\n== v5 WORLD POOL at the shipped docker-compose settings ==")
+    shipped = compose_env()
+    print("info  compose env: %s" % ", ".join(
+        "%s=%s" % kv for kv in sorted(shipped.items())
+        if kv[0] in ("GAME_IDS", "RELAY_V", "MAX_WORLDS", "WORLD_SEATS",
+                     "WORLD_MEMBER_S", "WORLD_EMPTY_S", "WORLD_ADDR_TOKENS",
+                     "RATE_JOIN_PER_MIN", "RATE_REQ_PER_S", "BAD_LIMIT",
+                     "TRUST_XFF")))
+    released = dict(shipped)
+    released["GAME_IDS"] = REAL
+
+    def fresh(env):
+        sp = Spawned(pick_port(), env)
+        return sp, sp.wait_ready()
+
+    def world(c, who, game=REAL, skip=None, nick="x"):
+        body = {"v": 5, "nick": nick, "game": game}
+        if skip:
+            body["skip"] = skip
+        return quick_post(c, "world", body, who)
+
+    # (0) The compose file AS SHIPPED (GAME_IDS empty until the release step
+    #     writes it): the world pool is off, code rooms work.
+    sp, c = fresh(shipped)
     try:
-        # (a) One address inventing a new build id per call: the join limiter
-        #     engages after its budget, whatever the build id says.
+        st, h = c.get("health")
+        st1, w = world(c, "198.51.100.1")
+        st2, r = quick_post(c, "create", {"v": 5, "nick": "a", "game": REAL},
+                            "198.51.100.1")
+        check("compose as shipped (GAME_IDS empty): world pool off (503 "
+              "world_off), code rooms work",
+              h.get("world_open") is False and st1 == 503
+              and w.get("error") == "world_off" and st2 == 200,
+              (h.get("world_open"), st1, w, st2))
+    finally:
+        sp.stop()
+
+    # (1) THE REVIEWER'S FLOOD: one address, 64 world calls with made-up
+    #     build ids.
+    sp, c = fresh(released)
+    try:
+        st, h = c.get("health")
+        check("with GAME_IDS set the pool is open at the shipped knobs",
+              h.get("world_open") is True and h.get("world_addr_tokens") == 4
+              and h.get("worlds") == 0, h)
         codes = {}
-        first = None
-        for i in range(30):
-            st, out = quick_post(c, "world", {"v": 5, "nick": "f",
-                                              "game": "fake-%d" % i},
-                                 "198.51.100.20")
+        for i in range(64):
+            st, _ = world(c, "203.0.113.66", game="fake-%d" % i)
             codes[st] = codes.get(st, 0) + 1
-            if st == 200 and first is None:
-                first = out
-        check("one address minting build ids is capped by the join limiter",
-              codes.get(429, 0) > 0 and codes.get(200, 0) <= 5, codes)
-        # (b) Many addresses, a new build id each: MAX_WORLDS caps the pool.
-        many = {}
-        for i in range(12):
-            st, _ = quick_post(c, "world", {"v": 5, "nick": "m",
-                                            "game": "many-%d" % i},
-                               "198.51.101.%d" % (i + 1))
-            many[st] = many.get(st, 0) + 1
-        st, health = c.get("health")
-        check("twelve more addresses cannot grow the pool past MAX_WORLDS "
-              "(8): the rest are 503", health.get("worlds") == 8
-              and many.get(503, 0) >= 7, (health.get("worlds"), many))
-        # (c) Oversized and hostile fields are refused before any state.
+            time.sleep(0.25)
+        st, h = c.get("health")
+        st2, real = world(c, "198.51.100.200", nick="real")
+        print("info  (1) status counts %s, worlds %s, real player %s world %s"
+              % (codes, h.get("worlds"), st2, real.get("world_no")))
+        check("one address, 64 made-up builds: not one world opens (409 "
+              "unknown_game, then the bad-sender rule), a real player gets "
+              "world 1",
+              codes.get(200, 0) == 0 and h.get("worlds") == 0
+              and st2 == 200 and real.get("world_no") == 1,
+              (codes, h, st2, real))
+        st, out = quick_post(c, "create", {"v": 5, "nick": "x",
+                                           "game": "fake-99"}, "198.51.100.77")
+        check("an unknown build on create is 409 unknown_game",
+              st == 409 and out.get("error") == "unknown_game", (st, out))
+    finally:
+        sp.stop()
+
+    # (2) THE REAL BUILD FROM ONE ADDRESS (review H9b): 64 calls, skip
+    #     alternating to spread over worlds.
+    sp, c = fresh(released)
+    try:
+        codes, last = {}, None
+        for i in range(64):
+            st, out = world(c, "203.0.113.77", skip=last)
+            codes[st] = codes.get(st, 0) + 1
+            if st == 200:
+                last = out["code"]
+            time.sleep(0.25)
+        st, h = c.get("health")
+        st2, real = world(c, "198.51.100.201", nick="real")
+        print("info  (2) status counts %s, pool worlds %s live members %s, "
+              "real player %s world %s members %s"
+              % (codes, h.get("worlds"), h.get("world_members"), st2,
+                 real.get("world_no"), real.get("members")))
+        check("one address, real build, 64 calls with skip: the whole pool "
+              "holds at most 4 live members and 2 worlds, a real player gets "
+              "world 1 with room",
+              h.get("world_members", 99) <= 4 and h.get("worlds", 99) <= 2
+              and st2 == 200 and real.get("world_no") == 1
+              and real.get("members", 99) <= 5, (codes, h, st2, real))
+    finally:
+        sp.stop()
+
+    # (3) TWO ADDRESSES AT ONCE, one with the real build and skip, one with
+    #     made-up builds.
+    sp, c = fresh(released)
+    try:
+        codes, last = {}, None
+        for i in range(64):
+            st, out = world(c, "203.0.113.88", skip=last)
+            codes[st] = codes.get(st, 0) + 1
+            if st == 200:
+                last = out["code"]
+            st, _ = world(c, "203.0.113.99", game="fake-%d" % i)
+            codes[st] = codes.get(st, 0) + 1
+            time.sleep(0.25)
+        st, h = c.get("health")
+        st2, real = world(c, "198.51.100.202", nick="real")
+        print("info  (3) status counts %s, pool worlds %s live members %s, "
+              "real player %s world %s"
+              % (codes, h.get("worlds"), h.get("world_members"), st2,
+                 real.get("world_no")))
+        check("two addresses flooding at once: at most 4 live members and 2 "
+              "worlds in the pool, a real player gets world 1",
+              h.get("world_members", 99) <= 4 and h.get("worlds", 99) <= 2
+              and st2 == 200 and real.get("world_no") == 1,
+              (codes, h, st2, real))
+        # and a second pair of addresses, both on the real build (the row
+        # above's members are still live, so this reads the growth)
+        before = h.get("world_members", 0) + 1     # + the real player
+        for i in range(64):
+            for who in ("203.0.113.101", "203.0.113.102"):
+                world(c, who)
+            time.sleep(0.25)
+        st, h = c.get("health")
+        print("info  (3b) two real-build addresses: pool worlds %s live "
+              "members %s (was %d)" % (h.get("worlds"),
+                                       h.get("world_members"), before))
+        check("two real-build addresses, 64 calls each: they add at most 8 "
+              "live members to the pool (4 each)",
+              h.get("world_members", 99) - before <= 8
+              and h.get("worlds", 99) <= 2, (before, h))
+    finally:
+        sp.stop()
+
+    # (4) FAKE-MEMBER PADDING: an observer (a real player) sits in world 1;
+    #     one address asks 16 times with no skip to fill that world.
+    sp, c = fresh(released)
+    try:
+        st, obs = world(c, "198.51.100.30", nick="observer")
+        for i in range(16):
+            world(c, "203.0.113.111")
+            time.sleep(0.1)
+        st, pong = quick_post(c, "world_ping", {"v": 5, "code": obs["code"],
+                                                "token": obs["token"]},
+                              "198.51.100.30")
+        print("info  (4) world 1 after 16 padding asks: %s members"
+              % pong.get("members"))
+        check("padding world 1 from one address: it holds the observer + 4, "
+              "not 17", st == 200 and pong.get("members") == 5, (st, pong))
+    finally:
+        sp.stop()
+
+    # (5) A HOUSEHOLD OF 4 behind one connection, playing normally.
+    sp, c = fresh(released)
+    try:
+        home = "198.51.100.150"
+        fam = [world(c, home, nick="fam%d" % i) for i in range(4)]
+        ok = all(st == 200 for st, _ in fam)
+        lives = []
+        for _round in range(3):
+            time.sleep(1.0)
+            n = 0
+            for st, o in fam:
+                if st == 200:
+                    st2, _ = quick_post(c, "world_ping", {
+                        "v": 5, "code": o["code"], "token": o["token"]}, home)
+                    n += st2 == 200
+            lives.append(n)
+        st, h = c.get("health")
+        print("info  (5) household: %s, pings live per round %s, pool live "
+              "members %s" % ([st for st, _ in fam], lives,
+                              h.get("world_members")))
+        check("a household of 4 on one address: all 4 get world 1 and all 4 "
+              "keep pinging (3 rounds)",
+              ok and lives == [4, 4, 4] and h.get("world_members") == 4
+              and all(o.get("world_no") == 1 for _, o in fam),
+              (fam, lives, h))
+
+        # (6) Hostile fields and guessed pings still make nothing.
         for body, want in (
-                ({"v": 5, "nick": "n" * 17, "game": "g"}, "too_long"),
+                ({"v": 5, "nick": "n" * 17, "game": REAL}, "too_long"),
                 ({"v": 5, "nick": "n", "game": "g" * 25}, "too_long"),
                 ({"v": 5, "nick": "n", "game": "../../etc"}, "bad_game"),
-                ({"v": 5, "nick": "n", "game": "g", "skip": "A" * 400},
+                ({"v": 5, "nick": "n", "game": REAL, "skip": "A" * 400},
                  "too_long"),
-                ({"v": 5, "nick": "n", "game": "g", "admin": True},
+                ({"v": 5, "nick": "n", "game": REAL, "admin": True},
                  "bad_field")):
             st, out = quick_post(c, "world", body, "198.51.102.1")
             check("world %s -> 400 %s" % (sorted(body), want),
                   st == 400 and out.get("error") == want, (st, out))
-        # (d) A stranger guessing at world_ping learns nothing and makes
-        #     nothing: a code that does not exist is 404, a token nobody holds
-        #     in a world that does exist is 403.
-        w = first or {}
+        st, h0 = c.get("health")
         st1, _ = quick_post(c, "world_ping", {"v": 5, "code": "ZZZZZZZZ",
                                               "token": "0" * 32},
                             "198.51.102.2")
-        st2, _ = quick_post(c, "world_ping", {"v": 5, "code": w.get("code"),
+        st2, _ = quick_post(c, "world_ping", {"v": 5,
+                                              "code": fam[0][1].get("code"),
                                               "token": "0" * 32},
                             "198.51.102.2")
-        st, health2 = c.get("health")
+        st, h1 = c.get("health")
         check("guessed world_pings are 404 / 403 and open nothing",
               st1 == 404 and st2 == 403
-              and health2.get("worlds") == health.get("worlds"),
-              (st1, st2, health2.get("worlds")))
+              and h1.get("worlds") == h0.get("worlds"),
+              (st1, st2, h0.get("worlds"), h1.get("worlds")))
     finally:
         sp.stop()
 

@@ -2968,6 +2968,8 @@ class Handler(BaseHTTPRequestHandler):
                 "rooms": len(ROOMS),
                 "members": sum(len(r.members) for r in ROOMS.values()),
                 "worlds": len(WORLDS),
+                "world_members": sum(w.count(time.monotonic())
+                                     for w in WORLDS.values()),
                 "world_seats": WORLD_SEATS,
                 "world_member_s": WORLD_MEMBER_S,
                 "world_addr_tokens": WORLD_ADDR_TOKENS,
