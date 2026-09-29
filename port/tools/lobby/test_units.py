@@ -884,6 +884,8 @@ _FIELD_SAMPLES = {
     "shoes": "1a2b3c",
     "session_type": "adventure",
     "game": "1.0.0",
+    "luigi": 1,
+    "voice": 1,
 }
 
 
@@ -1640,6 +1642,137 @@ def test_go_plan():
     st, p = start(code, host["token"])
     check("time mode: the plan has no star_target key",
           "star_target" not in S.member_plan(room, 1), S.member_plan(room, 1))
+
+
+def test_session_digest():
+    """The digest the game's ACCEPT check reproduces (design 2.3). The vectors
+    are the lane's published contract; the game side must match them."""
+    print("\n-- the session digest: canonical string and FNV-1a")
+    check("FNV-1a of nothing is the offset basis",
+          S.fnv1a32(b"") == 2166136261, S.fnv1a32(b""))
+    vectors = [
+        ((0, 2, "time", None, None, 0, 0),
+         "0|2|time|0|0|0|0|lockstep|2", 1172137709),
+        ((1, 4, "stars", 3, None, 1, 3735928559),
+         "1|4|stars|3|0|1|3735928559|lockstep|2", 909114140),
+        ((2, 16, "king", None, 30, 1, 4294967295),
+         "2|16|king|0|30|1|4294967295|lockstep|3", 2033119464),
+    ]
+    for args, text, want in vectors:
+        check("canonical %s" % text, S.session_canonical(*args) == text,
+              S.session_canonical(*args))
+        check("digest of %s is %d" % (text, want),
+              S.session_digest(*args) == want, S.session_digest(*args))
+    check("the wire field follows the head count: 4 players is wire 2",
+          S.session_canonical(0, 4, "time", None, None, 0, 0).endswith("|2"))
+    check("and 5 players is wire 3",
+          S.session_canonical(0, 5, "time", None, None, 0, 0).endswith("|3"))
+    check("a stale star target outside stars mode does not reach the string",
+          S.session_canonical(0, 2, "time", 3, None, 0, 0)
+          == "0|2|time|0|0|0|0|lockstep|2")
+    check("the seed is in the string with Luigi off (the launcher always "
+          "exports it)",
+          S.session_canonical(0, 2, "time", None, None, 0, 7)
+          == "0|2|time|0|0|0|7|lockstep|2")
+    a = S.session_digest(0, 2, "time", None, None, 0, 1)
+    b = S.session_digest(0, 2, "time", None, None, 0, 2)
+    c = S.session_digest(0, 2, "time", None, None, 1, 1)
+    check("one seed apart, or Luigi on vs off, is a different digest",
+          len({a, b, c}) == 3, (a, b, c))
+
+
+def test_vs_one_settings():
+    """v5 VS settings: Luigi Infection and the voice switch on `params`, the
+    seed minted at `start`, and the six new plan fields."""
+    print("\n-- v5 VS settings: luigi, voice, seed, digest, relay seat")
+    reset()
+    code, room, host, guest = _two_ready()
+    tok = host["token"]
+    check("a fresh VS room has Luigi off and voice on",
+          room.luigi == 0 and room.voice == 1, (room.luigi, room.voice))
+    view = room.view(1)
+    check("and the view says so", view["luigi"] == 0 and view["voice"] == 1,
+          view)
+    for key in ("luigi", "voice"):
+        for bad in (2, -1, True, False, "1", 1.0, None):
+            st, out = _params(code, tok, **{key: bad})
+            check("%s=%r is 400 bad_field" % (key, bad),
+                  st == 400 and out["error"] == "bad_field", (st, out))
+    st, out = _params(code, tok, luigi=1, voice=0)
+    check("the host sets luigi=1 voice=0", st == 200 and room.luigi == 1
+          and room.voice == 0, (st, out, room.luigi, room.voice))
+    ev = room.events[-1]
+    check("the params event carries both",
+          ev["kind"] == "params" and ev["luigi"] == 1 and ev["voice"] == 0, ev)
+    st, out = _params(code, tok, map=2)
+    check("a params without them keeps them",
+          st == 200 and room.luigi == 1 and room.voice == 0,
+          (room.luigi, room.voice))
+    st, out = _params(code, guest["token"], who="10.0.0.2", luigi=0)
+    check("a guest cannot set them", st == 403 and out["error"] == "not_host",
+          (st, out))
+
+    st, p = start(code, tok)
+    check("the room arms", st == 200, (st, p))
+    hp, gp = S.member_plan(room, 1), S.member_plan(room, 2)
+    check("both plans carry luigi=1 voice=0",
+          hp["luigi"] == gp["luigi"] == 1 and hp["voice"] == gp["voice"] == 0,
+          (hp, gp))
+    check("the seed is a u32 and identical in every member's plan",
+          isinstance(hp["seed"], int) and 0 <= hp["seed"] <= 0xFFFFFFFF
+          and hp["seed"] == gp["seed"] == room.match_seed, (hp["seed"],
+                                                           gp["seed"]))
+    check("relay_v is 2 in both", hp["relay_v"] == gp["relay_v"] == 2)
+    check("want_seat is the slot: parent 0, child 1",
+          hp["want_seat"] == 0 and gp["want_seat"] == 1, (hp, gp))
+    want = S.session_digest(hp["map"], hp["players"], "time", None, None,
+                            hp["luigi"], hp["seed"])
+    check("the digest is the canonical digest of the plan's own fields",
+          hp["digest"] == gp["digest"] == want, (hp["digest"], want))
+    st, out = _params(code, tok, luigi=0)
+    check("and nothing moves once armed", st == 409, (st, out))
+
+    # THE SEED IS PER MATCH. Twenty rematches, twenty seeds from the system
+    # RNG: all distinct (a 1-in-10^7 chance of a false failure), each one the
+    # same in both plans.
+    seeds, digests, same = [], set(), True
+    for k in range(20):
+        S._reset_match(room)
+        st, p = start(code, tok, now=1001.0 + k)
+        hp, gp = S.member_plan(room, 1), S.member_plan(room, 2)
+        same = same and hp["seed"] == gp["seed"] and hp["digest"] == gp["digest"]
+        seeds.append(hp["seed"])
+        digests.add(hp["digest"])
+    check("twenty matches, twenty different seeds", len(set(seeds)) == 20,
+          seeds)
+    check("and so twenty different digests", len(digests) == 20, digests)
+    check("and every match's seed and digest identical in every plan", same)
+    S._reset_match(room)
+    check("the reset clears the frozen seed and settings but not the room's",
+          room.match_seed == 0 and room.match_luigi == 0
+          and room.luigi == 1 and room.voice == 0)
+
+    # A stars match digests its target.
+    reset()
+    code, room, host, guest = _two_ready()
+    _params(code, host["token"], map=1, win_mode="stars", star_target=3)
+    start(code, host["token"])
+    hp = S.member_plan(room, 1)
+    check("a stars match digests its target",
+          hp["digest"] == S.session_digest(1, 2, "stars", 3, None, 0,
+                                           hp["seed"]), hp)
+
+    # An adventure room has no match to put Luigi or voice in.
+    reset()
+    st, host = create(nick="adv", session_type="adventure", pre_ok=True)
+    code = host["room"]
+    for key in ("luigi", "voice"):
+        for val in (0, 1):
+            st, out = _params(code, host["token"], **{key: val})
+            check("%s=%d on an adventure room is 400 bad_field" % (key, val),
+                  st == 400 and out["error"] == "bad_field", (st, out))
+    check("and the room did not take it",
+          S.ROOMS[code].luigi == 0 and S.ROOMS[code].voice == 1)
 
 
 def test_king_of_the_star():
@@ -2512,6 +2645,8 @@ def main():
     test_session_type()
     test_party_session()
     test_go_plan()
+    test_session_digest()
+    test_vs_one_settings()
     test_king_of_the_star()
     test_names()
     test_failed()

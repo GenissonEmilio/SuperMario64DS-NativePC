@@ -605,6 +605,99 @@ def selftest_match(c):
     selftest_only_playing(c)
     selftest_preflight(c)
     selftest_colors(c)
+    selftest_one(c)
+
+
+def digest_of(plan):
+    """The session digest recomputed HERE from a plan's own fields, by an
+    implementation that shares nothing with the server's, so a server that
+    drifted from the published canonical string fails this check."""
+    win = ("stars" if "star_target" in plan else
+           "king" if "king_target" in plan else "time")
+    text = "|".join(str(x) for x in (
+        plan["map"], plan["players"], win, plan.get("star_target", 0),
+        plan.get("king_target", 0), plan["luigi"], plan["seed"], "lockstep",
+        2 if plan["players"] <= 4 else 3))
+    h = 0x811C9DC5
+    for b in text.encode("ascii"):
+        h = ((h ^ b) * 0x01000193) % (1 << 32)
+    return h
+
+
+def _arm_and_plans(c, code, host, guest):
+    """start + both readies, then each member's own go plan off its poll."""
+    status, armed = c.post("start", {"v": 5, "room": code,
+                                     "token": host["token"]})
+    for who in (host, guest):
+        c.post("ready", {"v": 5, "room": code, "token": who["token"],
+                         "match": armed.get("match", "")})
+    plans = []
+    for who in (host, guest):
+        status, seen = c.post("poll", {"v": 5, "room": code,
+                                       "token": who["token"], "cursor": 0,
+                                       "wait": 0})
+        plans.append(seen.get("plan") or {})
+    return armed, plans
+
+
+def selftest_one(c):
+    """Contract v5's VS additions over the wire: a build mismatch refused at
+    the door, Luigi/voice on params, the server-minted seed (identical in every
+    plan, fresh per match), the relay seat and the digest."""
+    print("\n-- v5: game build, luigi/voice, seed, digest")
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "h5",
+                                     "pre_ok": True})
+    code = host["room"]
+    expect("a join from another game build is 409 game_mismatch",
+           c.post("join", {"v": 5, "game": GAME + "x", "room": code,
+                           "nick": "g5", "pre_ok": True}),
+           409, "game_mismatch")
+    status, guest = c.post("join", {"v": 5, "game": GAME, "room": code,
+                                    "nick": "g5", "pre_ok": True})
+    check("the same build joins", status == 200, guest)
+    base = {"v": 5, "room": code, "token": host["token"], "map": 1,
+            "win_mode": "time"}
+    expect("luigi=2 is refused", c.post("params", dict(base, luigi=2)),
+           400, "bad_field")
+    status, body = c.post("params", dict(base, luigi=1, voice=0))
+    check("the host turns Luigi on and voice off", status == 200, body)
+
+    armed, (hp, gp) = _arm_and_plans(c, code, host, guest)
+    check("the room went to go", hp.get("role") == "parent"
+          and gp.get("role") == "child", (hp, gp))
+    check("both plans carry luigi=1 voice=0 relay_v=2",
+          hp.get("luigi") == gp.get("luigi") == 1
+          and hp.get("voice") == gp.get("voice") == 0
+          and hp.get("relay_v") == gp.get("relay_v") == 2, (hp, gp))
+    check("want_seat is the slot (0 host, 1 guest)",
+          hp.get("want_seat") == 0 and gp.get("want_seat") == 1, (hp, gp))
+    check("the seed is identical in every member's plan",
+          isinstance(hp.get("seed"), int) and hp.get("seed") == gp.get("seed"),
+          (hp.get("seed"), gp.get("seed")))
+    check("the digest matches an independent recomputation from the plan",
+          hp.get("digest") == gp.get("digest") == digest_of(hp),
+          (hp.get("digest"), digest_of(hp)))
+    first_seed = hp.get("seed")
+
+    status, r = c.post("result", {"v": 5, "room": code, "token": host["token"],
+                                  "match": armed.get("match", ""),
+                                  "win": "time-up", "scores": [1, 0, 0, 0]})
+    check("the match ends", status == 200, r)
+    armed2, (hp2, gp2) = _arm_and_plans(c, code, host, guest)
+    check("the rematch mints a different seed, again identical in both plans",
+          hp2.get("seed") == gp2.get("seed")
+          and hp2.get("seed") != first_seed, (first_seed, hp2.get("seed")))
+    check("and its digest still matches", hp2.get("digest") == digest_of(hp2))
+    c.post("leave", {"v": 5, "room": code, "token": host["token"]})
+
+    status, adv = c.post("create", {"v": 5, "game": GAME, "nick": "a5",
+                                    "session_type": "adventure"})
+    expect("luigi on an adventure room is 400 bad_field",
+           c.post("params", {"v": 5, "room": adv["room"],
+                             "token": adv["token"], "map": 0,
+                             "win_mode": "time", "luigi": 1}),
+           400, "bad_field")
+    c.post("leave", {"v": 5, "room": adv["room"], "token": adv["token"]})
 
 
 

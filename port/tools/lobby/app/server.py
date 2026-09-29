@@ -278,6 +278,13 @@ GO_GRACE_S = env_int("GO_GRACE_S", 5, 1, 60)
 MATCH_TIMEOUT_S = env_int("MATCH_TIMEOUT_S", 1200, 60, 86400)
 RELAY_ADDR = env_str("RELAY_ADDR", "135.148.26.201:41234")
 
+# v5: the relay protocol the plan tells the game to speak (design section 3).
+# 2 once relay v2 is deployed (S1). A 1.0 game that meets a v1 relay falls back
+# on its own ("bad request" to the v2 HELLO), so 2 is safe to ship before the
+# deploy; 1 is the operator's switch if the deploy is rolled back, and it also
+# turns the world pool off (a world room needs the relay's hub rules).
+RELAY_V = env_int("RELAY_V", 2, 1, 2)
+
 RATE_REQ_PER_S = env_int("RATE_REQ_PER_S", 20, 1, 10000)
 RATE_BURST = env_int("RATE_BURST", 40, 1, 20000)
 RATE_CREATE_PER_HOUR = env_int("RATE_CREATE_PER_HOUR", 30, 1, 100000)
@@ -488,6 +495,58 @@ def new_comms_code():
     return "".join(_RNG.choice(ROOM_ALPHABET) for _ in range(COMMS_LEN))
 
 
+def new_seed():
+    """The Luigi Infection seed for one match (v5): a u32 from the system RNG.
+
+    Minted HERE, at `start`, for every VS match whether Luigi is on or off, so
+    no launcher and no player chooses it and every console of the match reads
+    the same number from the same plan.
+    """
+    return _RNG.getrandbits(32)
+
+
+# THE SESSION DIGEST (design 2.3 + section 5). The game's ACCEPT check computes
+# the same number from its own environment, so a console launched with an env
+# that disagrees with the host's (a hand edit, a stale settings key, a
+# different build's defaults) refuses at the door with exit code 3 instead of
+# desyncing at frame 240. The canonical string, field by field:
+#   map|players|win|target|king|luigi|seed|netmode|wire
+#   map      SM64DS_VS_MAP 0..3            players  SM64DS_VS_PLAYERS 2..16
+#   win      time | stars | king           target   star target, else 0
+#   king     king target, else 0           luigi    0 | 1
+#   seed     the u32 seed, ALWAYS (Luigi on or off)
+#   netmode  "lockstep" (the only online VS mode in 1.0)
+#   wire     2 when players <= 4, else 3
+# decimal integers, no padding, no spaces. FNV-1a 32 over the ASCII bytes.
+# Test vectors live in test_units.py (test_session_digest) and in the lane's
+# out/LOBBY5/digest_contract.txt; the game side must reproduce them.
+NETMODE_ONLINE = "lockstep"
+FNV32_OFFSET = 2166136261
+FNV32_PRIME = 16777619
+
+
+def fnv1a32(data):
+    h = FNV32_OFFSET
+    for b in data:
+        h ^= b
+        h = (h * FNV32_PRIME) & 0xFFFFFFFF
+    return h
+
+
+def session_canonical(map_id, players, win_mode, star_target, king_target,
+                      luigi, seed, netmode=NETMODE_ONLINE):
+    wire = 2 if players <= NARROW_PLAYERS else 3
+    return "%d|%d|%s|%d|%d|%d|%d|%s|%d" % (
+        map_id, players, win_mode,
+        star_target if win_mode == "stars" and star_target else 0,
+        king_target if win_mode == "king" and king_target else 0,
+        1 if luigi else 0, seed & 0xFFFFFFFF, netmode, wire)
+
+
+def session_digest(*args, **kw):
+    return fnv1a32(session_canonical(*args, **kw).encode("ascii"))
+
+
 # --------------------------------------------------------------- room state
 #
 # ONE module-level lock guards every room, every member and every counter
@@ -588,6 +647,11 @@ class Room(object):
         # lobby. It starts at the deployment's own capability so a host who
         # never opens the settings dialog gets the old behaviour exactly.
         self.match_players = DIAL_MAX
+        # v5 VS settings, host-set through `params` like map and win_mode.
+        # luigi: Luigi Infection (0 off). voice: whether the match allows
+        # proximity voice (1, the default: the host has to turn it off).
+        self.luigi = 0
+        self.voice = 1
         # v5: THE GAME BUILD this room plays, the creator's `game` string, set
         # once at create. Every join must carry the same string: two builds in
         # one match is how a room desyncs at frame 240 instead of refusing at
@@ -604,6 +668,9 @@ class Room(object):
         self.match_star_target = None
         self.match_king_target = None
         self.match_dial = 0         # the dial the host had set at arm
+        self.match_luigi = 0        # v5: luigi/voice frozen at arm, and the
+        self.match_voice = 1        # seed minted at arm, one per match
+        self.match_seed = 0
         self.names = ""             # SM64DS_VS_NAMES, built once, slot order
         self.colors = ""            # SM64DS_VS_COLORS, likewise
         self.slot_of = {}           # seat -> slot (0..3), packed among playing
@@ -796,6 +863,9 @@ class Room(object):
             "win_mode": self.win_mode,
             "star_target": self.star_target,
             "king_target": self.king_target,
+            # v5: the two VS settings, so every launcher shows the host's pick.
+            "luigi": self.luigi,
+            "voice": self.voice,
             "members": [self.members[s].view() for s in sorted(self.members)],
             "match": self.match,
         }
@@ -1186,7 +1256,10 @@ VERB_FIELDS = {
                   # star_target is required-iff-stars and forbidden otherwise;
                   # do_params enforces that pairing. Here it is only "a key
                   # this verb may carry, since v1".
-                  {"star_target": 1, "king_target": 1, "match_players": V_DIAL}),
+                  {"star_target": 1, "king_target": 1, "match_players": V_DIAL,
+                   # v5: Luigi Infection and the voice switch, VS rooms only;
+                   # do_params refuses either on an adventure room.
+                   "luigi": V_ONE, "voice": V_ONE}),
     # THE WHOLE VERB IS v2. Its fields are required, so they carry no version
     # of their own -- the verb's own `since` is what refuses a v1 caller.
     "color":     (("v", "room", "token", "color", "shoes"), {}, V_COLOR),
@@ -1502,6 +1575,17 @@ def do_params(body, who, now):
                                    "bad_match_players")
         if err:
             return 400, {"error": err}
+    # v5: two switches, 0 or 1 and nothing else (not a bool, not a string).
+    # Absent means "keep what the room has", like the dial.
+    luigi = voice = None
+    if "luigi" in body:
+        luigi, err = v_int(body, "luigi", 0, 1, "bad_field")
+        if err:
+            return 400, {"error": err}
+    if "voice" in body:
+        voice, err = v_int(body, "voice", 0, 1, "bad_field")
+        if err:
+            return 400, {"error": err}
 
     room = ROOMS.get(code)
     if room is None or room.state == "closed":
@@ -1514,6 +1598,11 @@ def do_params(body, who, now):
         return 403, {"error": "not_host"}
     if room.state != "lobby":
         return 409, {"error": "not_in_lobby"}
+    # v5: Luigi Infection and the voice switch are VS match settings. An
+    # adventure room has no match to put them in, so either key there is a
+    # field this room does not have: bad_field, like any undefined key.
+    if room.session_type != "vs" and (luigi is not None or voice is not None):
+        return 400, {"error": "bad_field"}
 
     room.map = mp
     room.win_mode = win_mode
@@ -1525,17 +1614,23 @@ def do_params(body, who, now):
     if match_players is not None:
         room.match_players = match_players
         room.apply_dial()
+    if luigi is not None:
+        room.luigi = luigi
+    if voice is not None:
+        room.voice = voice
     # `match_players` rides the event as well as the view. Older launchers
     # ignore an extra field on an event they already know (section 3.5 is about
     # unknown KINDS; the field tolerance is what JSON readers do by default and
     # is pinned by a test), and the roster change is visible in the view every
     # poll carries regardless.
     room.push("params", map=mp, win_mode=win_mode, star_target=star_target,
-              king_target=king_target, match_players=room.match_players)
-    log("room %s params map=%d win=%s target=%s king=%s players=%d/%d"
+              king_target=king_target, match_players=room.match_players,
+              luigi=room.luigi, voice=room.voice)
+    log("room %s params map=%d win=%s target=%s king=%s players=%d/%d "
+        "luigi=%d voice=%d"
         % (code, mp, win_mode, star_target if star_target else "-",
            king_target if king_target else "-",
-           room.playing_count(), room.match_players))
+           room.playing_count(), room.match_players, room.luigi, room.voice))
     return 200, {"cursor": room.seq}
 
 
@@ -1779,6 +1874,23 @@ def member_plan(room, seat):
         # seat's: each client draws all four Yoshis, so each client needs
         # all four rows.
         "colors": room.colors,
+        # v5 (design section 5). relay_v: the relay protocol to speak.
+        # want_seat: the seat to ask the relay for; in a VS star session it
+        # is the slot (parent 0, children 1..15), so the relay's stamp and
+        # the game's slot are the same number.
+        "relay_v": RELAY_V,
+        "want_seat": room.slot_of.get(seat, 0),
+        # The match settings frozen at arm. The launcher exports luigi and
+        # seed as SM64DS_VS_LUIGI_INFECTION / SM64DS_VS_LUIGI_SEED (the seed
+        # ALWAYS, Luigi on or off: it is in the digest either way), voice as
+        # SM64DS_VOICE_ALLOWED and digest as SM64DS_SESSION_DIGEST.
+        "luigi": room.match_luigi,
+        "seed": room.match_seed,
+        "voice": room.match_voice,
+        "digest": session_digest(room.match_map, room.agreed_players,
+                                 room.match_win_mode, room.match_star_target,
+                                 room.match_king_target, room.match_luigi,
+                                 room.match_seed),
     }
     if room.match_win_mode == "stars":
         plan["star_target"] = room.match_star_target
@@ -1812,6 +1924,9 @@ def _reset_match(room):
     room.match_star_target = None
     room.match_king_target = None
     room.match_dial = 0
+    room.match_luigi = 0
+    room.match_voice = 1
+    room.match_seed = 0
     room.names = ""
     room.colors = ""
     room.slot_of = {}
@@ -1913,6 +2028,9 @@ def do_start(body, who, now):
     room.match_star_target = room.star_target
     room.match_king_target = room.king_target
     room.match_dial = room.match_players
+    room.match_luigi = room.luigi
+    room.match_voice = room.voice
+    room.match_seed = new_seed()
     room.slot_of = assign_slots(room)
     room.names = build_names(room)
     room.colors = build_colors(room)
@@ -1921,8 +2039,9 @@ def do_start(body, who, now):
     room.state = "arming"
     room.arm_deadline = now + ARM_DEADLINE_S
     room.push("arming", match=room.match, deadline_ms=ARM_DEADLINE_S * 1000)
-    log("room %s arm match=%s players=%d deadline=%ds"
-        % (code, room.match, room.agreed_players, ARM_DEADLINE_S))
+    log("room %s arm match=%s players=%d luigi=%d voice=%d deadline=%ds"
+        % (code, room.match, room.agreed_players, room.match_luigi,
+           room.match_voice, ARM_DEADLINE_S))
     return 200, {"cursor": room.seq, "match": room.match}
 
 
@@ -2541,6 +2660,7 @@ class Handler(BaseHTTPRequestHandler):
                 "contract_min": CONTRACT_MIN,
                 "contract_v": CONTRACT_V,
                 "dial_max": DIAL_MAX,
+                "relay_v": RELAY_V,
                 "rooms": len(ROOMS),
                 "members": sum(len(r.members) for r in ROOMS.values()),
                 "waiters": WAITERS,
