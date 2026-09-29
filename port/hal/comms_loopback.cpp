@@ -3199,6 +3199,7 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
             if (p.have & (1u << k)) {
                 std::memcpy(g_stage[k], p.blocks[k], kCommsBlockBytes);
                 g_stage_mask |= (1u << k);
+                g_lg[k].have = true;          // it has played: the retire rule applies
             }
         } else if (p.round < g_round) {
             // The child never saw our broadcast for that round. Re-serve it
@@ -5304,12 +5305,12 @@ int lb_exchange(const void *my_block, uint16_t *status) {
     } else {
         // The parent completes when every live slot's block for this round is
         // in. Its own is in by definition, one line above.
-        if ((g_stage_mask & g_live) != g_live && g_lg_on && match_underway()) {
+        if ((g_stage_mask & g_live) != g_live && g_lg_on && g_frames_produced) {
             // THE LAGGARD RULE, STOP-AND-WAIT FORM (see kLgStopWaitSilentMs).
             const unsigned t = now_ms();
             const unsigned missing = g_live & ~g_stage_mask & ~1u;
             for (int k = 1; k < kCommsMaxPlayers; ++k)
-                if ((missing & (1u << k)) && g_lg[k].last_rx_ms != 0 &&
+                if ((missing & (1u << k)) && g_lg[k].have && g_lg[k].last_rx_ms != 0 &&
                     (unsigned)(t - g_lg[k].last_rx_ms) >= kLgStopWaitSilentMs) {
                     g_lg[k].run = (unsigned)(t - g_lg[k].last_rx_ms) * 100u /
                                   kRoundPeriodMs100;       // for the retire line
