@@ -927,6 +927,7 @@ struct PipeRound {
     bool          agg;         // parent: sent; child: the aggregate landed
     unsigned      agg_have;    // the slots that aggregate carried
     unsigned      lg_subst;    // parent: slots it carried a substitute for
+    bool          lg_waited;   // parent: held past its deadline for a sender
 };
 PipeRound g_pipe[kPipeDepth];
 
@@ -1154,6 +1155,7 @@ struct LgSlot {
     int           head_delta;                // heading change per round
     unsigned      run;                       // rounds substituted in a row
     unsigned long long subst;                // rounds substituted, total
+    unsigned      last_rx_ms;                // when a real block last landed
 };
 LgSlot   g_lg[kCommsMaxPlayers];
 unsigned g_lg_retired = 0;                   // parent: slots retired this session
@@ -1166,6 +1168,33 @@ unsigned long long g_lg_far       = 0;       // child: aggregates too far ahead 
 unsigned g_lg_join_round = 0;                // child: the parent's clock at its accept
 unsigned g_hitch_every_ms = 0, g_hitch_ms = 0, g_hitch_last_ms = 0;
 unsigned long long g_hitches = 0;
+// THE WAIT WINDOW, and why the rule is not "never wait past the deadline".
+// Measured on this lane's first build: four consoles on one busy PC ran at 16
+// to 18 frames a second, the host (which no longer waited for anybody) ran a
+// little faster than its children, and within seconds every child's blocks
+// were late, substituted, and one child was retired in a match where nobody
+// had hitched at all (after1 vs4-relay1-rtt80-p: subst=536, retired=0x2). A
+// console that cannot hold the host's pace is not a laggard in the sense this
+// rule is for; it is the room's real speed, and lockstep has always run at
+// it. So at the deadline the host still WAITS for a slot that is sending --
+// a real block landed within the window and it is at most two rounds short
+// of the round being closed -- and substitutes only for a slot that has gone
+// SILENT for the window (a stalled window, a hitch, a crash, a dead link) or
+// fallen further behind than that. A console that stops is never waited for
+// longer than the window; one that sends slowly slows the room to its pace,
+// exactly as before 1.0. SM64DS_COMMS_LAGGARD_WAIT_MS sets the window; 0 is
+// design 4.2 read strictly (never wait past the deadline); the default is
+// max(100 ms, 1.5 host frames), so a host running below 30 frames a second
+// (a crowded test PC) does not mistake its own slowness for a silent peer.
+int      g_lg_wait_cfg   = -1;               // -1 auto, 0 strict, >0 fixed ms
+unsigned g_lg_frame_x100 = 3333;             // host: mean frame time, ms * 100
+unsigned g_lg_last_consume_ms = 0;
+unsigned long long g_lg_waited = 0;          // host: rounds held for a sending slot
+unsigned lg_wait_window_ms() {
+    if (g_lg_wait_cfg >= 0) return (unsigned)g_lg_wait_cfg;
+    const unsigned w = g_lg_frame_x100 * 3u / 200u;       // 1.5 frames, ms
+    return w > 100u ? w : 100u;
+}
 const unsigned char kRetireTag[4] = { 'L', 'G', 'R', 'T' };
 unsigned g_seat_mask_said = ~0u;             // the last seat mask logged
 // THE MATCH IS UNDER WAY once the parent has seen the whole planned roster
@@ -1199,6 +1228,9 @@ void lg_reset() {
     g_lg_catchup   = 0;
     g_lg_far       = 0;
     g_lg_join_round = 0;
+    g_lg_frame_x100 = 3333;
+    g_lg_last_consume_ms = 0;
+    g_lg_waited     = 0;
     g_hitch_last_ms = 0;
     g_seat_mask_said = ~0u;
     g_match_full    = false;
@@ -1208,6 +1240,7 @@ void lg_reset() {
 // arriving late (a republish) changes nothing. Same shape as rb_note_block.
 void lg_note_block(int k, unsigned r, const unsigned char *b) {
     LgSlot &p = g_lg[k];
+    p.last_rx_ms = (unsigned)GetTickCount(); // now_ms(): sending, whatever the round
     if (p.have && (int)(r - p.round) <= 0) return;
     if (p.have) {
         const int d = (short)(rb_heading(b) - rb_heading(p.block));
@@ -2528,6 +2561,26 @@ void lg_retire_slot(int k) {
 // with its substitute. False (and s untouched) when some missing slot has
 // never delivered a block at all: there is nothing to repeat, so the round
 // waits for it as it always did.
+// Round s is past its deadline: is some missing slot still SENDING (see the
+// banner over g_lg_wait_cfg)? Then the round waits for it, bounded by the
+// window since that slot's last block.
+bool lg_should_wait(PipeRound &s) {
+    const unsigned w = lg_wait_window_ms();
+    if (w == 0) return false;
+    const unsigned t = now_ms();
+    const unsigned missing = g_live & ~s.mask;
+    for (int k = 1; k < kCommsMaxPlayers; ++k) {
+        if (!(missing & (1u << k))) continue;
+        const LgSlot &p = g_lg[k];
+        if (!p.have) continue;                     // lg_fill waits for these
+        if ((unsigned)(t - p.last_rx_ms) >= w) continue;          // silent
+        if ((int)(s.round - p.round) > 2) continue;               // too far behind
+        if (!s.lg_waited) { s.lg_waited = true; ++g_lg_waited; }
+        return true;
+    }
+    return false;
+}
+
 bool lg_fill(PipeRound &s) {
     const unsigned missing = g_live & ~s.mask;
     for (int k = 1; k < kCommsMaxPlayers; ++k)
@@ -2651,7 +2704,8 @@ void pipe_try_broadcast() {
         if (!s) break;                        // a hole: nothing past it is due
         if (!s->sent) {
             if ((s->mask & g_live) != g_live) {   // still waiting on a peer
-                if (!g_lg_on || (int)(g_round - q) < (int)slack || !lg_fill(*s))
+                if (!g_lg_on || (int)(g_round - q) < (int)slack ||
+                    lg_should_wait(*s) || !lg_fill(*s))
                     break;
             }
             pipe_send_aggregate(*s);
@@ -4524,8 +4578,9 @@ void lb_close() {
                     w += std::snprintf(lg + w, sizeof lg - (size_t)w, ",%d:%llu",
                                        i, g_lg[i].subst);
             std::snprintf(lg + w, sizeof lg - (size_t)w,
-                          " late=%llu catchup=0 retired=0x%x laggard=%s",
-                          g_lg_late, g_lg_retired, g_lg_on ? "on" : "off");
+                          " late=%llu catchup=0 retired=0x%x waited=%llu "
+                          "laggard=%s", g_lg_late, g_lg_retired, g_lg_waited,
+                          g_lg_on ? "on" : "off");
         } else {
             std::snprintf(lg, sizeof lg, " subst=%llu late=%llu catchup=%llu "
                           "far=%llu hitches=%llu laggard=%s",
@@ -4951,7 +5006,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         // console alone simulate something else. Nothing to publish either:
         // the round is closed.
         const bool closed = g_role == kRoleChild && mine.agg;
-        if (!closed) {
+        if (!closed && (first_publish || g_role == kRoleParent)) {
             std::memcpy(mine.blocks[g_slot], my_block, kCommsBlockBytes);
             mine.mask |= (1u << g_slot);
         }
@@ -5033,6 +5088,15 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         g_latched_mask = s->agg_have;
         note_seat_mask(want);
         g_consumed_round = want;          // for the 'SYNK' clock report
+        {
+            const unsigned t = now_ms();
+            if (g_lg_last_consume_ms != 0) {
+                unsigned dt = t - g_lg_last_consume_ms;
+                if (dt > 1000u) dt = 1000u;
+                g_lg_frame_x100 = (g_lg_frame_x100 * 7u + dt * 100u) / 8u;
+            }
+            g_lg_last_consume_ms = t ? t : 1;
+        }
         g_consumed_any   = true;
         clock_note_frame();
         ++g_round;
@@ -5714,6 +5778,15 @@ bool comms_loopback_install_from_env() {
             std::fprintf(stderr, "[comms:loopback] laggard rule OFF "
                          "(SM64DS_COMMS_LAGGARD=0): the room waits for the "
                          "slowest console\n");
+    }
+    if (const char *w = std::getenv("SM64DS_COMMS_LAGGARD_WAIT_MS")) {
+        int v = std::atoi(w);
+        if (v < 0) v = 0;
+        if (v > 5000) v = 5000;
+        g_lg_wait_cfg = v;
+        std::fprintf(stderr, "[comms:loopback] laggard rule: the host waits at "
+                     "most %d ms past a round's deadline for a console that is "
+                     "still sending (SM64DS_COMMS_LAGGARD_WAIT_MS)\n", v);
     }
     if (const char *h = std::getenv("SM64DS_COMMS_HITCH")) {
         int every = std::atoi(h), ms = 0;
