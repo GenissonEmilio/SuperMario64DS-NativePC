@@ -1167,6 +1167,17 @@ unsigned g_lg_join_round = 0;                // child: the parent's clock at its
 unsigned g_hitch_every_ms = 0, g_hitch_ms = 0, g_hitch_last_ms = 0;
 unsigned long long g_hitches = 0;
 const unsigned char kRetireTag[4] = { 'L', 'G', 'R', 'T' };
+// THE MATCH IS UNDER WAY once the parent has seen the whole planned roster
+// (SM64DS_VS_PLAYERS, the number the conductor seats the world for) or has
+// handed the game a round. From then on nobody leaving -- a Bye, a refusal at
+// the door, a retire -- sends the parent back to "connecting". It used to,
+// the moment it was alone: its exchange() then returned 0, the ROM's own wait
+// bound ran out and it played on SOLO, and in a solo world every seated body
+// reads THIS console's pad (NETCORE1 S4: a refused only child's body mirrored
+// the host). Staying in the session instead, the rounds carry the host alone
+// and every other seat's record is cleared each round, so an absent player's
+// body stands still, on every console alike.
+bool g_match_full = false;
 
 void lg_reset() {
     std::memset(g_lg, 0, sizeof g_lg);
@@ -1178,6 +1189,7 @@ void lg_reset() {
     g_lg_far       = 0;
     g_lg_join_round = 0;
     g_hitch_last_ms = 0;
+    g_match_full    = false;
 }
 
 // Parent: a real block for slot k, round r. Keeps the newest; an older round
@@ -1252,6 +1264,7 @@ void lg_note_block(int k, unsigned r, const unsigned char *b) {
 bool g_adaptive_delay  = false;         // sizing is in effect on this end
 bool g_delay_frozen    = false;         // parent: frame 0 has been asked for
 bool g_frames_produced = false;         // this end handed the game a round
+bool match_underway() { return g_match_full || g_frames_produced; }   // see g_match_full
 // THE THREE TERMS OF THE FORMULA, NAMED. The floor is the least cover a sized
 // session ships: 2 rounds on a relay (every path through it has two home links
 // on it), 1 direct (the direct mode default below); install picks the one for
@@ -2497,7 +2510,6 @@ void lg_retire_slot(int k) {
     // one it is for. Loopback and direct address it alone.
     if (g_net_mode == kNetRelay) send_to_children(r);
     else                         send_to_slot(r, k);
-    if (popcount_live(g_live) <= 1) g_state = kCommsConnecting;   // as a Bye
 }
 
 // Round s is past its deadline: fill every live slot that has not delivered
@@ -2754,6 +2766,8 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
             // A seat taken afresh starts with no history to repeat.
             g_lg[k].have = false;
             g_lg[k].run  = 0;
+            if (g_want_players >= 2 && popcount_live(g_live) >= g_want_players)
+                g_match_full = true;
         }
         // A REPORT RATHER THAN A KNOCK. Bit 30 of a JOIN's `have` means the
         // child is telling the parent what its path measured and what number
@@ -3005,9 +3019,13 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         if (g_rollback && (g_live & (1u << k))) rb_retire_slot(k, "Bye");
         g_live &= ~(1u << k);
         g_stage_mask &= ~(1u << k);
-        if (popcount_live(g_live) <= 1) g_state = kCommsConnecting;
-        std::fprintf(stderr, "[comms:loopback] slot %d left; live mask 0x%x\n",
-                     k, g_live);
+        if (popcount_live(g_live) <= 1 && !match_underway())
+            g_state = kCommsConnecting;
+        std::fprintf(stderr, "[comms:loopback] slot %d left; live mask 0x%x%s\n",
+                     k, g_live,
+                     popcount_live(g_live) <= 1 && match_underway()
+                         ? " (the match is under way: this console plays on "
+                           "with the seats that are left)" : "");
         // A JOINER THAT REFUSED THE SESSION SAYS WHY in its BYE (see
         // session_check_ok), so the host's log names the reason instead of
         // only the departure. An older joiner's BYE has zero blocks.
