@@ -1201,6 +1201,15 @@ unsigned lg_wait_window_ms() {
     return w > 100u ? w : 100u;
 }
 const unsigned char kRetireTag[4] = { 'L', 'G', 'R', 'T' };
+// THE HOST'S GOODBYE AT A MATCH'S NORMAL END. When the game itself ends the
+// session without an error (the VS match is over, src/func_0203df40.c closes
+// the radio with bit 0 of the DS error word clear), the host tags its Bye
+// 'DONE'. A joiner that gets it knows the match ended rather than its host
+// vanishing, so the wait bound that runs out afterwards (nobody is sending any
+// more) is not reported as a lost match. An untagged Bye mid-match (the host
+// quit, or its process ended) still is, once the joiner's own bound runs out.
+const unsigned char kDoneTag[4] = { 'D', 'O', 'N', 'E' };
+bool g_host_done = false;                    // joiner: the host said DONE
 unsigned g_seat_mask_said = ~0u;             // the last seat mask logged
 // THE MATCH IS UNDER WAY once the parent has seen the whole planned roster
 // (SM64DS_VS_PLAYERS, the number the conductor seats the world for) or has
@@ -1239,6 +1248,7 @@ void lg_reset() {
     g_hitch_last_ms = 0;
     g_seat_mask_said = ~0u;
     g_match_full    = false;
+    g_host_done     = false;
 }
 
 // Parent: a real block for slot k, round r. Keeps the newest; an older round
@@ -3754,6 +3764,10 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
                          "match went on without it; you lost connection to "
                          "the match. Back to idle.\n", g_slot);
             match_lost("the host dropped this console from the match");
+        } else if (std::memcmp(p.blocks[0], kDoneTag, 4) == 0) {
+            g_host_done = true;
+            std::fprintf(stderr, "[comms:loopback] the parent left: the match "
+                         "is over; back to idle\n");
         } else {
             std::fprintf(stderr, "[comms:loopback] the parent left; back to idle\n");
         }
@@ -4561,10 +4575,12 @@ void lb_close() {
     // through here too (the atexit hook at install), so only a close that is
     // not the shutdown, mid-match, with the error bit newly set, is the loss.
     const bool lost = !g_exiting && g_frames_produced && !g_err_at_start &&
-                      (data_020a0f1c & 1u) != 0 &&
+                      (data_020a0f1c & 1u) != 0 && !g_host_done &&
                       (g_role == kRoleParent || g_role == kRoleChild);
     Packet b;
     fill_header(b, kTypeBye);
+    if (!g_exiting && g_frames_produced && (data_020a0f1c & 1u) == 0)
+        std::memcpy(b.blocks[0], kDoneTag, 4);   // the game ended the match itself
     if (g_role == kRoleParent) send_to_children(b);
     else                       send_to_slot(b, 0);
     WS.closesocket(g_sock);
@@ -5476,7 +5492,8 @@ int lb_recv_kind(unsigned tag, void *buf, int cap, int *from) {
 }
 
 void lb_abandon() {
-    if (g_frames_produced && (g_role == kRoleParent || g_role == kRoleChild))
+    if (g_frames_produced && !g_host_done &&
+        (g_role == kRoleParent || g_role == kRoleChild))
         match_lost(g_role == kRoleParent
                        ? "no other console answered for the game's whole wait "
                          "bound, so the game gave up on the match"
