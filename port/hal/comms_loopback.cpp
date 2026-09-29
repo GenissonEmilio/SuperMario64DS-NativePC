@@ -735,7 +735,8 @@ enum : int { kPipeDepth = 64 };        // rounds in flight; ~2 s at 30 Hz
 // this lane was given carry handshake round trips of 94..172 ms -- so the old
 // ceiling could not cover the worst path the relay actually sees, and a
 // session on that path starves on most frames no matter what anyone sets. 15
-// covers 250 ms.
+// was written as 250 ms; the rounds are 33.33 ms (30 Hz, see
+// kRoundPeriodMs100), so it is honestly 500 ms, and it stays the cap.
 //
 // NOTHING SIZED BY IT NEEDS TO GROW. The ring is kPipeDepth=64 rounds and the
 // only requirement on it is that a round stays in the ring for the whole time
@@ -748,12 +749,16 @@ static_assert(kInputDelayMax + 1 < kPipeDepth,
               "the pipeline ring must hold every round in flight: frame R "
               "reads round R-N while round R is open, so N+1 entries are "
               "live at once and the ring has to be strictly larger");
-// THE ROUND PERIOD, in hundredths of a millisecond. The seam's rounds are
-// paced at 60 Hz, which is what makes the shipped relay default of 5 frames
-// the 83 ms it was measured to be worth (p50 lockstep round trip 90.6 ms).
-// The 33 ms in the pipelining banner above is the older 30 fps framing and is
-// left standing because the argument it makes does not depend on the number.
-enum : int { kRoundPeriodMs100 = 1667 };
+// THE ROUND PERIOD, in hundredths of a millisecond. ONE ROUND IS ONE ROM GAME
+// FRAME, AND THE ROM'S VS LOOP RUNS AT 30 Hz (divider data_0208ee44 = 2; a
+// paced solo VS run plays 900 frames in 30.3 s), so a round is 33.33 ms.
+// This was 1667 (60 Hz) until multiplayer 1.0, and every depth the adaptive
+// sizing picked was about twice what the path needed: a measured 100 ms path
+// sized to 9 rounds = 300 ms of input delay where 5 = 167 ms covers it with
+// the same 25 percent safety and one round of margin. The 16.67 ms and 83 ms
+// figures in older comments below are that 60 Hz arithmetic; the argument
+// each makes does not depend on the number, the depths it produced did.
+enum : int { kRoundPeriodMs100 = 3333 };
 struct PipeRound {
     unsigned      round;
     unsigned char blocks[kCommsMaxPlayers][kCommsBlockBytes];
@@ -963,13 +968,16 @@ enum : unsigned { kStarveLogMs = 1000 };
 // trip it measured across its own handshake; the parent takes the WORST of
 // them, because one number has to cover every peer, and turns it into frames:
 //
-//     N = ceil(worst_rtt_ms * safety / 16.67) + jitter_margin
+//     N = ceil(worst_rtt_ms * safety / round_period) + jitter_margin
 //
-// clamped to [floor, kInputDelayMax]. safety (125 percent) is headroom for a
-// path that is worse under load than it was at handshake; jitter_margin (1
-// frame) is for the variance a single handshake sample cannot see; the floor
-// (5) keeps a session that measured suspiciously well from shipping less cover
-// than the constant it replaced.
+// clamped to [floor, kInputDelayMax], round_period = kRoundPeriodMs100 (33.33
+// ms). safety (125 percent) is headroom for a path that is worse under load
+// than it was at handshake; jitter_margin (1 frame) is for the variance a
+// single handshake sample cannot see; the floor keeps a session that measured
+// suspiciously well from shipping no cover at all: 2 rounds (67 ms) on a
+// relay, 1 (33 ms) direct. Worked (multiplayer 1.0): 40 ms -> 3, 80 ms -> 5,
+// 160 ms -> 8, 250 ms -> 11. The floor was 5 until 1.0, which at 30 Hz is
+// 167 ms charged to players sitting next to the relay.
 //
 // EVERY PEER STILL RUNS THE SAME NUMBER. That invariant is not weakened here
 // and could not be: it is published through the ACCEPT field exactly as
@@ -1002,11 +1010,13 @@ enum : unsigned { kStarveLogMs = 1000 };
 bool g_adaptive_delay  = false;         // sizing is in effect on this end
 bool g_delay_frozen    = false;         // parent: frame 0 has been asked for
 bool g_frames_produced = false;         // this end handed the game a round
-// THE THREE TERMS OF THE FORMULA, NAMED. The floor is the mode default every
-// shipped build already runs on a relay; the margin is one frame of jitter
-// cover on top of the measured path; the safety is the 125 percent the field
-// numbers were worked against (94 ms -> 9, 172 ms -> 14 in the banner).
-enum : int { kDelayFloorDefault = 5 };       // frames
+// THE THREE TERMS OF THE FORMULA, NAMED. The floor is the least cover a sized
+// session ships: 2 rounds on a relay (every path through it has two home links
+// on it), 1 direct (the direct mode default below); install picks the one for
+// the mode. The margin is one frame of jitter cover on top of the measured
+// path; the safety is the 125 percent the field numbers were worked against.
+enum : int { kDelayFloorDefault = 2 };       // frames, relay
+enum : int { kDelayFloorDirect  = 1 };       // frames, direct
 enum : int { kDelayMarginDefault = 1 };      // frames
 enum : int { kDelaySafetyPctDefault = 125 }; // percent of the worst round trip
 int  g_delay_floor       = kDelayFloorDefault;      // SM64DS_COMMS_DELAY_FLOOR
@@ -4310,8 +4320,18 @@ bool comms_loopback_install_from_env() {
     //   untouched, both ends still consume the SAME round sequence in the same
     //   order, and nothing is predicted, rolled back or discarded. Only the
     //   offset between the frame being drawn and the round being read moves.
+    //
+    // ---- MULTIPLAYER 1.0: THESE ARE STARTING VALUES, THE SIZING DECIDES.
+    // The parent sizes every relay and direct session from its children's
+    // measured round trips (the adaptive banner), now against the real 33.33
+    // ms round, down to a floor of 2 on a relay and 1 direct. RELAY STAYS 5:
+    // it is the depth a session falls back to if sizing is withdrawn, and it
+    // is the knee the vs_pace arms above measured at 30 fps. DIRECT IS 1
+    // (33 ms), which is also its floor: at 30 Hz the old 2 was 67 ms of lag
+    // charged to a LAN. LOOPBACK 0, unchanged.
     if (g_net_mode == kNetRelay)       g_input_delay = 5;
-    else if (g_net_mode == kNetDirect) g_input_delay = 2;
+    else if (g_net_mode == kNetDirect) g_input_delay = 1;
+    if (g_net_mode == kNetDirect)      g_delay_floor = kDelayFloorDirect;
 
     if (const char *n = std::getenv("SM64DS_COMMS_INPUT_DELAY")) {
         int v = std::atoi(n);
@@ -4322,9 +4342,8 @@ bool comms_loopback_install_from_env() {
     }
 
     // THE ADAPTIVE SIZING'S OWN KNOBS. All three are tuning, none of them is a
-    // decision a player makes, and the defaults are the shipped behaviour's
-    // own numbers: floor 5 is the relay constant this replaces, so a session
-    // whose paths all measure well keeps exactly the cover it had.
+    // decision a player makes. The floor (2 relay, 1 direct since 1.0) is the
+    // least cover a session whose paths all measure well is given.
     if (const char *v = std::getenv("SM64DS_COMMS_DELAY_SAFETY")) {
         const int q = std::atoi(v);
         if (q >= 100 && q <= 400) g_delay_safety_pct = q;
