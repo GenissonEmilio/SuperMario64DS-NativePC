@@ -1241,6 +1241,7 @@ unsigned long long g_lg_help_rounds = 0;     // host: rounds closed while helpin
 unsigned long long g_lg_reserve_held = 0;    // host: re-serves held by the pacing
 bool     g_lg_sprinted = false;              // joiner: the last frame skipped its sleep
 unsigned g_lg_late_tx_ms = 0;                // joiner: when its last late block went out
+bool     g_lg_recovering = false;            // joiner: replayed a closed round, not yet in time
 unsigned g_cache_serve_ms[kCacheDepth];      // stop-and-wait re-serve pacing, per cache slot
 unsigned lg_wait_window_ms() {
     if (g_lg_wait_cfg >= 0) return (unsigned)g_lg_wait_cfg;
@@ -1298,6 +1299,7 @@ void lg_reset() {
     g_lg_reserve_held = 0;
     g_lg_sprinted   = false;
     g_lg_late_tx_ms = 0;
+    g_lg_recovering = false;
     std::memset(g_cache_serve_ms, 0, sizeof g_cache_serve_ms);
     g_hitch_last_ms = 0;
     g_seat_mask_said = ~0u;
@@ -5328,6 +5330,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
             g_starve_last_round = want;
             const unsigned have_mask = s ? (s->mask & g_live) : (1u << g_slot);
             const unsigned missing   = g_live & ~have_mask;
+            g_lg_recovering = false;      // waiting on the room: not behind it
             for (int i = 0; i < kCommsMaxPlayers; ++i)
                 if (missing & (1u << i)) ++g_starve_by_slot[i];
             // RATE LIMITED TO ONE LINE A SECOND. On a path this delay does not
@@ -5830,12 +5833,24 @@ extern "C" int port_comms_rounds_ahead(void) {
     // before the halving: 333 for 7, the others at their baseline).
     const PipeRound *cur = pipe_find(g_round);
     const bool replaying = cur && cur->agg;
+    if (replaying) g_lg_recovering = true;
     if (n > kCatchupAhead && replaying) {
         g_lg_sprinted = true;
         ++g_lg_catchup;
         return n;
     }
-    if (n > kCatchupAhead) {
+    // A CATCHER SPRINTS ALL THE WAY BACK. The two rounds of slack above keep
+    // a console in step from sprinting on every wobble of its own pace, but a
+    // console that fell behind and stops there is still about a round trip
+    // late for the host's deadline, which closes early for the wire (slack
+    // N - 1 - down): it was substituted on every round while sending until the
+    // host's help fired (tip15/tip16 laggard4-hitch: help on every 0.4 s
+    // hitch, 474-556 substituted rounds for 6). A console that replayed a
+    // closed round goes on (every other frame: its blocks are real again)
+    // until it holds no more than the in-step buffer, or it has to wait for
+    // the room, whichever comes first.
+    if (g_lg_recovering && n <= 0) g_lg_recovering = false;
+    if (n > (g_lg_recovering ? 0 : kCatchupAhead)) {
         if (g_lg_sprinted) {
             g_lg_sprinted = false;
             return 0;
