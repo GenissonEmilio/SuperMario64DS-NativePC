@@ -1460,8 +1460,9 @@ def test_start():
     check("params is 409 not_in_lobby while arming",
           st == 409 and pp["error"] == "not_in_lobby", (st, pp))
     st, jj = join(code, "ace", who="10.0.0.9", now=1001.0)
-    check("a join is 409 in_match while arming",
-          st == 409 and jj["error"] == "in_match", (st, jj))
+    check("a join while arming is a WAITING seat (L-J1; was 409 in_match)",
+          st == 200 and room.members[jj["member"]].playing is False
+          and jj["member"] not in room.slot_of, (st, jj))
     st, ss = start(code, host["token"], now=1001.0)
     check("a second start is 409 not_in_lobby",
           st == 409 and ss["error"] == "not_in_lobby", (st, ss))
@@ -2973,9 +2974,7 @@ def _running(n=3, now=1000.0, state="in_match"):
                             "10.0.0.%d" % k, now)
         toks.append(out["token"])
     room = S.ROOMS[code]
-    if n > 2:
-        S.do_params({"v": 5, "room": code, "token": toks[0], "map": 0,
-                     "win_mode": "time", "match_players": n}, "10.0.0.1", now)
+    # (No dial call: a room made inside game_max(k) is dialled to k already.)
     st, p = start(code, toks[0], now=now)
     match = p["match"]
     if state in ("go", "in_match"):
@@ -3139,6 +3138,126 @@ def test_the_plan_guard():
           "with no code", goplans == [{"playing": False}], goplans)
 
 
+def test_join_while_a_match_runs_is_a_waiting_seat():
+    print("\n-- L-J1: joining a room whose match is on = a waiting seat")
+    for state in ("arming", "go", "in_match"):
+        reset()
+        with game_max(4, seats=4):
+            code, room, toks, match = _running(3, state=state)
+            names, slots = room.names, dict(room.slot_of)
+            st, j = join(code, "late", who="10.0.0.9", now=1010.0, pre_ok=True)
+            seat = j.get("member")
+            check("[%s] the join answers 200 with a seat" % state,
+                  st == 200 and seat == 4, (st, j))
+            check("[%s] the seat is waiting (playing false), the room still %s"
+                  % (state, state),
+                  room.members[seat].playing is False and room.state == state,
+                  (room.members[seat].playing, room.state))
+            check("[%s] the join answer carries no plan" % state,
+                  "plan" not in j, sorted(j))
+            check("[%s] the view shows the waiting seat to everybody" % state,
+                  any(m["seat"] == seat and m["playing"] is False
+                      for m in j["view"]["members"]))
+            check("[%s] the frozen match did not move: names, slots, count"
+                  % state,
+                  room.names == names and room.slot_of == slots
+                  and room.agreed_players == 3, (room.slot_of, room.names))
+            st, out = poll(code, j["token"], 1, who="10.0.0.9", now=1011.0)
+            plans = [e["plan"] for e in out["events"] if e["kind"] == "go"]
+            if "plan" in out:
+                plans.append(out["plan"])
+            check("[%s] every plan it is handed is {playing: false}" % state,
+                  all(pl == {"playing": False} for pl in plans), plans)
+            check("[%s] no answer to it carries the match's relay code" % state,
+                  room.comms_code not in json.dumps(out)
+                  and room.comms_code not in json.dumps(j), "leaked")
+            st, c = S.do_chat({"v": 5, "room": code, "token": j["token"],
+                               "text": "hi"}, "10.0.0.9", 1012.0)
+            check("[%s] it can chat in the room" % state, st == 200, (st, c))
+
+            # Hostile: a waiting seat cannot ready, fail, end, start, set up
+            # or kick, and has no field that picks a slot.
+            st, r = ready(code, j["token"], match, who="10.0.0.9", now=1013.0)
+            check("[%s] waiting ready -> 403 not_playing" % state,
+                  st == 403 and r["error"] == "not_playing", (st, r))
+            st, f = S.do_failed({"v": 5, "room": code, "token": j["token"],
+                                 "match": match, "reason": "no_pairing"},
+                                "10.0.0.9", 1013.0)
+            check("[%s] waiting failed -> 403 not_playing" % state,
+                  st == 403 and f["error"] == "not_playing", (st, f))
+            st, rr = _result(code, j["token"], match, who="10.0.0.9",
+                             scores=(0, 0, 0, 9))
+            check("[%s] waiting result -> 403 not_playing, match unchanged"
+                  % state, st == 403 and rr["error"] == "not_playing"
+                  and room.state == state and room.match == match, (st, rr))
+            st, s2 = start(code, j["token"], who="10.0.0.9", now=1013.0)
+            check("[%s] waiting start -> 403 not_host" % state,
+                  st == 403 and s2["error"] == "not_host", (st, s2))
+            st, pp = S.do_params({"v": 5, "room": code, "token": j["token"],
+                                  "map": 1, "win_mode": "time"},
+                                 "10.0.0.9", 1013.0)
+            check("[%s] waiting params -> 403 not_host" % state,
+                  st == 403 and pp["error"] == "not_host", (st, pp))
+            st, kk = S.do_kick({"v": 5, "room": code, "token": j["token"],
+                                "seat": 1}, "10.0.0.9", 1013.0)
+            check("[%s] waiting kick -> 403 not_host" % state,
+                  st == 403 and kk["error"] == "not_host", (st, kk))
+            for key, val in (("slot", 0), ("want_seat", 0), ("playing", True),
+                             ("role", "parent")):
+                st, bad = join(code, "x", who="10.0.0.10", now=1014.0,
+                               **{key: val})
+                check("[%s] a join naming `%s` is 400 bad_field" % (state, key),
+                      st == 400 and bad["error"] == "bad_field", (st, bad))
+            check("[%s] still one waiting seat, still frozen" % state,
+                  len(room.members) == 4 and room.slot_of == slots)
+
+            # The next match: the waiting seat is in it.
+            if state == "arming":
+                S.sweep(1000.0 + S.ARM_DEADLINE_S + 0.1)
+                check("[arming] the deadline ends the arm", room.state == "lobby")
+            else:
+                _result(code, toks[0], match, scores=(1, 2, 3, 0))
+            check("[%s] back in lobby the waiting seat is PLAYING" % state,
+                  room.state == "lobby" and room.members[seat].playing is True,
+                  (room.state, room.members[seat].playing))
+            S.do_params({"v": 5, "room": code, "token": toks[0], "map": 0,
+                         "win_mode": "time", "match_players": 4},
+                        "10.0.0.1", 1101.0)
+            st, p2 = start(code, toks[0], now=1102.0)
+            check("[%s] the next match freezes it into a slot" % state,
+                  st == 200 and room.slot_of.get(seat) == 3
+                  and room.agreed_players == 4, (st, room.slot_of))
+            check("[%s] and its name is in the next names string" % state,
+                  room.names.split(",")[3] == "late", room.names)
+
+
+def test_waiting_join_floods_hit_the_caps():
+    print("\n-- L-J1: a flood of waiting joins hits the existing caps")
+    reset()
+    with game_max(16, seats=16):
+        code, room, toks, match = _running(2)
+        # From one address: the per-address join budget.
+        answers = []
+        for i in range(S.RATE_JOIN_PER_MIN + 5):
+            st, out = join(code, "f%d" % i, who="10.6.6.6", now=1010.0)
+            answers.append(st)
+        check("one address: MAX_SEATS seats then room_full, never past 16",
+              len(room.members) == S.MAX_SEATS == 16, len(room.members))
+        check("and the join budget answers 429 past %d a minute"
+              % S.RATE_JOIN_PER_MIN,
+              answers.count(429) == 5 and 429 not in answers[:S.RATE_JOIN_PER_MIN],
+              {s: answers.count(s) for s in set(answers)})
+        check("every waiting seat is out of the match",
+              room.playing_count() == 2 and sorted(room.slot_of) == [1, 2],
+              room.playing_count())
+        st, out = join(code, "one-more", who="10.7.7.7", now=1011.0)
+        check("a fresh address meets room_full, not a 17th seat",
+              st == 409 and out["error"] == "room_full", (st, out))
+        _result(code, toks[0], match, scores=(1, 0, 0, 0))
+        check("at the match end the dial (16) seats all 16",
+              room.playing_count() == 16, room.playing_count())
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -3193,6 +3312,8 @@ def main():
     test_a_dropped_player_plays_the_next_match()
     test_no_promotion_into_a_running_match()
     test_the_plan_guard()
+    test_join_while_a_match_runs_is_a_waiting_seat()
+    test_waiting_join_floods_hit_the_caps()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

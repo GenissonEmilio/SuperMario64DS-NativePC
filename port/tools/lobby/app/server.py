@@ -1607,8 +1607,15 @@ def do_join(body, who, now):
         return 409, {"error": "game_mismatch"}
     if len(room.members) >= MAX_SEATS:
         return 409, {"error": "room_full"}
-    if room.state != "lobby":
-        return 409, {"error": "in_match"}
+    # JOIN AT THE NEXT MATCH (Tango, 09-29; run mp1 L-J1). A VS room whose
+    # match is arming, going or running used to refuse the door with 409
+    # `in_match`. Now the joiner gets a WAITING seat: playing = False for the
+    # match that is on, so it is in no plan, no slot map and no names string,
+    # and ready / failed / result refuse it (not_playing). It sees the room,
+    # the roster and the chat like any member, and when the match ends
+    # _reset_match runs the dial and seats it for the next one. Every cap a
+    # lobby join has still holds: the join budget per address, MAX_SEATS,
+    # the kick cooldown and the one-build rule above.
 
     seat = room.free_seat()
     if seat is None:
@@ -1617,9 +1624,11 @@ def do_join(body, who, now):
     # The dial decides, not the deployment knob. Same rule as before -- the
     # first N in the room play -- with N now chosen by the host instead of
     # fixed for the whole server. An adventure room has no dial: everybody
-    # in it plays their own game.
+    # in it plays their own game. A VS room with a match on seats nobody
+    # into it: the joiner waits (see above).
     playing = (room.session_type != "vs"
-               or room.playing_count() < room.match_players)
+               or (room.state == "lobby"
+                   and room.playing_count() < room.match_players))
     if not room.members:
         # Only an adventure room can be empty and open (a VS room closes when
         # its host leaves). Whoever walks into the empty room holds it now.
@@ -1631,7 +1640,9 @@ def do_join(body, who, now):
     room.refresh_displays()
     room.push("joined", seat=seat, display=room.members[seat].display)
     log("room %s join %s seat %d %s (%d/%d)"
-        % (code, blunt_host(who), seat, "playing" if playing else "watching",
+        % (code, blunt_host(who), seat,
+           "playing" if playing else
+           ("waiting" if room.state != "lobby" else "watching"),
            len(room.members), MAX_SEATS))
     out = {"room": code, "token": token, "member": seat,
            "cursor": room.seq, "view": room.view(seat)}
