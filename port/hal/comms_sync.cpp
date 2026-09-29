@@ -64,6 +64,8 @@
 #include "comms_seam.h"
 #include "comms_hub.h"       // run mp1 lane GHOSTWIRE1: the adventure hub carries
                              // 'SYNG' / 'SYNI' when it is installed
+#include "voice_chat.h"      // run mp1 fold: the SYNG talking bit mirrors
+                             // voice_talking() (VOICE1 exports it)
 #include "player_fields.h"
 #include "host_settings.h"   // port::adventure_ghost_mode(): adventure runs this
                              // layer without SM64DS_SYNC
@@ -1320,7 +1322,8 @@ void gw_send(unsigned now) {
     f.flags = (unsigned char)(kGhostLive |
                               (player::on_ground(a) ? kGhostGrounded : 0) |
                               (g_gw_warp ? kGhostTeleport : 0) |
-                              (paused ? kGhostPaused : 0));
+                              (paused ? kGhostPaused : 0) |
+                              (voice_talking() ? kGhostTalking : 0));
     f.character = (unsigned char)gw_char(a);
     f.seq = (unsigned short)seq;
     f.level_id = (unsigned short)(level & 0xff);
