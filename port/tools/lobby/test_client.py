@@ -616,7 +616,7 @@ def selftest_world(c):
     status, health = c.get("health")
     seats = health.get("world_seats", 16)
     expiry = health.get("world_member_s", 30)
-    game = "t-world-%d" % os.getpid()      # a pool of this run's own
+    game = GAME                             # the spawned server lists it
     answers = []
     for k in range(seats + 1):
         status, out = c.post("world", {"v": 5, "nick": "w%d" % k,
@@ -710,6 +710,10 @@ def selftest_one(c):
            c.post("join", {"v": 5, "game": GAME + "x", "room": code,
                            "nick": "g5", "pre_ok": True}),
            409, "game_mismatch")
+    expect("a build the server does not serve is 409 unknown_game",
+           c.post("join", {"v": 5, "game": "made-up-1", "room": code,
+                           "nick": "g5", "pre_ok": True}),
+           409, "unknown_game")
     status, guest = c.post("join", {"v": 5, "game": GAME, "room": code,
                                     "nick": "g5", "pre_ok": True})
     check("the same build joins", status == 200, guest)
@@ -1641,7 +1645,9 @@ def main():
     else:
         port = pick_port()
         print("spawning a server on 127.0.0.1:%d" % port)
-        extra = {}
+        # The build allow list: the one build every test room plays. Without
+        # it the spawned server's world pool is off (the safe default).
+        extra = {"GAME_IDS": GAME + "," + GAME + "x"}
         if args.mode == "selftest":
             # The selftest exercises the HAPPY PATH at full speed from one
             # address, which is exactly what the request rate limiter and the

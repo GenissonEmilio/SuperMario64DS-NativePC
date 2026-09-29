@@ -1827,7 +1827,74 @@ def world_ping(code, token, who="10.9.0.1", now=1000.0):
     return S.do_world_ping({"v": 5, "code": code, "token": token}, who, now)
 
 
+class game_ids(object):
+    """Run a block with the GAME_IDS allow list at a given value (a compose
+    edit plus a restart)."""
+
+    def __init__(self, ids):
+        self.ids = tuple(ids)
+
+    def __enter__(self):
+        self.was = S.GAME_IDS
+        S.GAME_IDS = self.ids
+        reset()
+
+    def __exit__(self, *exc):
+        S.GAME_IDS = self.was
+        reset()
+        return False
+
+
+def test_game_allow_list():
+    """Review REVLOBBY5 S2, part 1: only the real game builds are served."""
+    print("\n-- the build allow list (GAME_IDS)")
+    ids, dropped = S.parse_game_ids(" 1.0.0-0123abcd, 1.0.1 ,,1.0.0-0123abcd,"
+                                    "bad id,%s" % ("x" * 25))
+    check("GAME_IDS parses, trims, dedupes, and drops non-build-ids",
+          ids == ("1.0.0-0123abcd", "1.0.1")
+          and dropped == ["bad id", "x" * 25], (ids, dropped))
+    check("an unset GAME_IDS is an empty list",
+          S.parse_game_ids(None) == ((), []))
+    with game_ids(()):
+        st, out = create(game="anything-1")
+        check("empty list: a code room takes any well-formed build",
+              st == 200, (st, out))
+        check("empty list: the world pool is OFF (the safe default)",
+              not S.world_open() and world(game="anything-1")[1].get("error")
+              == "world_off")
+    with game_ids((GAME,)):
+        check("with a list and relay v2 the pool is open", S.world_open())
+        for verb in ("create", "world"):
+            st, out = (create(game="made-up-7") if verb == "create"
+                       else world(game="made-up-7"))
+            check("%s with a build not on the list is 409 unknown_game" % verb,
+                  st == 409 and out["error"] == "unknown_game", (st, out))
+        check("and none of that made a room or a world",
+              not S.ROOMS and not S.WORLDS, (list(S.ROOMS), list(S.WORLDS)))
+        st, host = create()
+        was = S.GAME_IDS
+        S.GAME_IDS = ("other",)
+        st, out = join(host["room"], "g")
+        S.GAME_IDS = was
+        check("join with a build that left the list is 409 unknown_game",
+              st == 409 and out["error"] == "unknown_game", (st, out))
+        st, out = world()
+        check("a listed build gets a world", st == 200, (st, out))
+        st, out = world(game="bad id")
+        check("grammar still comes first: 400 bad_game",
+              st == 400 and out["error"] == "bad_game", (st, out))
+        was = S.RELAY_V
+        S.RELAY_V = 1
+        check("RELAY_V 1 still turns the pool off", not S.world_open())
+        S.RELAY_V = was
+
+
 def test_world_pool():
+    with game_ids((GAME, "0.9.9") + tuple("b%d" % k for k in range(10))):
+        _world_pool()
+
+
+def _world_pool():
     """v5 world rooms (design section 5): an always-on pool per game build,
     sixteen members a world, fill then overflow, freshness by world_ping."""
     print("\n-- v5 world rooms: fill 16, overflow, expiry")
@@ -2836,6 +2903,7 @@ def main():
     test_ready_and_go()
     test_session_type()
     test_adventure_room()
+    test_game_allow_list()
     test_world_pool()
     test_go_plan()
     test_session_digest()

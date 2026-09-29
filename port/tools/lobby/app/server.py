@@ -374,6 +374,45 @@ GAME_ID_MAX = 24
 GAME_ID_ALPHABET = ("0123456789abcdefghijklmnopqrstuvwxyz"
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ._-")
 
+
+def game_id_ok(s):
+    return (isinstance(s, str) and 1 <= len(s) <= GAME_ID_MAX
+            and all(ch in GAME_ID_ALPHABET for ch in s))
+
+
+def parse_game_ids(raw):
+    """GAME_IDS: the real game build ids this server serves, comma-separated
+    (the launcher's `game`, e.g. "1.0.0-0123abcd"). The release step writes it
+    into docker-compose.yml. Returns (ids, dropped): an entry outside the
+    build-id grammar is dropped (and said so at start), never half-used."""
+    ids, dropped = [], []
+    for part in (raw or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        (ids if game_id_ok(part) else dropped).append(part)
+    return tuple(dict.fromkeys(ids)), dropped
+
+
+# THE BUILD ALLOW LIST (review REVLOBBY5, S2). A world is keyed by build id,
+# so a made-up id used to open a fresh world per call and one home connection
+# filled the pool in a minute. With a list, every create/join/world naming a
+# build not on it is refused 409 `unknown_game` (the launcher says "check for
+# an update"). EMPTY (unset) is the safe default, not the open one: code rooms
+# then take any well-formed build (a dev box, a test harness) and the WORLD
+# POOL IS OFF (503 world_off), so a deploy that forgot the compose line cannot
+# reopen the hole.
+GAME_IDS, GAME_IDS_DROPPED = parse_game_ids(os.environ.get("GAME_IDS", ""))
+
+
+def game_allowed(game):
+    return not GAME_IDS or game in GAME_IDS
+
+
+def world_open():
+    """The pool needs the relay's hub rules (RELAY_V 2) and a build list."""
+    return RELAY_V >= 2 and bool(GAME_IDS)
+
 # WHAT A COLOUR-CARRYING REQUEST NEEDS TO CLAIM: see V_COLOR at the top of this
 # file, and VERB_FIELDS for where it is enforced. This block used to declare a
 # PROTO_VERSIONS/PROTO_COLOR_V pair of its own, which was the cross-lane defect:
@@ -1438,6 +1477,8 @@ def do_create(body, who, now):
     game, err = v_game(body)
     if err:
         return 400, {"error": err}
+    if not game_allowed(game):
+        return 409, {"error": "unknown_game"}
     # ADVENTURE co-op (v4): the session type. shape_for has already refused the
     # key for a v1..v3 body, so reaching here with it present means a v4 caller;
     # the value is the only thing left to check. Absent is "vs", the default and
@@ -1515,6 +1556,8 @@ def do_join(body, who, now):
     game, err = v_game(body)
     if err:
         return 400, {"error": err}
+    if not game_allowed(game):
+        return 409, {"error": "unknown_game"}
 
     if not BUCKETS.allow_join(who, now):
         return 429, {"error": "too_fast"}
@@ -2573,9 +2616,12 @@ def do_world(body, who, now):
         skip, err = v_code(body, "skip")
         if err:
             return 400, {"error": err}
-    if RELAY_V < 2:
-        # A world needs the relay's hub rules; on a v1 relay it cannot exist.
+    if not world_open():
+        # A world needs the relay's hub rules (RELAY_V 2) and the build allow
+        # list (GAME_IDS); without either the pool is off.
         return 503, {"error": "world_off"}
+    if not game_allowed(game):
+        return 409, {"error": "unknown_game"}
     if not BUCKETS.allow_join(who, now):
         return 429, {"error": "too_fast"}
 
@@ -2881,6 +2927,8 @@ class Handler(BaseHTTPRequestHandler):
                 "contract_v": CONTRACT_V,
                 "dial_max": DIAL_MAX,
                 "relay_v": RELAY_V,
+                "world_open": world_open(),
+                "game_ids": len(GAME_IDS),
                 "rooms": len(ROOMS),
                 "members": sum(len(r.members) for r in ROOMS.values()),
                 "worlds": len(WORLDS),
@@ -3102,6 +3150,14 @@ def main():
         "empty=%ds"
         % (MAX_WORLDS, WORLD_SEATS, WORLD_MEMBER_S, WORLD_EMPTY_S,
            ADV_EMPTY_S))
+    if GAME_IDS:
+        log("game builds served: %d (GAME_IDS); world pool %s"
+            % (len(GAME_IDS), "open" if world_open() else "off (RELAY_V 1)"))
+    else:
+        log("GAME_IDS is empty: rooms take any build and the world pool is "
+            "OFF")
+    for bad in GAME_IDS_DROPPED:
+        log("GAME_IDS entry dropped, not a build id (%d chars)" % len(bad))
     log("limits rooms=%d seats=%d players=%d waiters=%d body=%d read_timeout=%ds "
         "req=%d/s burst=%d create=%d/h join=%d/min star_max=%d king_max=%d "
         "kick_cool=%ds"
