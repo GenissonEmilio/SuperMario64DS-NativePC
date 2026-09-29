@@ -169,6 +169,9 @@ extern "C" int host_setting_net_mode(void);   /* hal/host_settings.cpp */
 // session to solo when the wait bound runs out; read only by lb_close below, to
 // tell the game ENDING a match that went silent from the port's own shutdown.
 extern "C" unsigned short data_020a0f1c;
+// hal/star_flow.cpp: nonzero once the VS match is over (the end freeze), the
+// same frame on every console. After it nobody leaving is a lost match.
+extern "C" int port_vs_match_end_frozen(void);
 
 /* the build's git tip (host-src/port_gittip.c, written by CMake), hashed into
    the session check's build id. The weak fallback is tests/fault_probe.h's own,
@@ -4664,13 +4667,16 @@ void lb_close() {
     // radio -- this call -- and plays on alone. The port's own shutdown closes
     // through here too (the atexit hook at install), so only a close that is
     // not the shutdown, mid-match, with the error bit newly set, is the loss.
+    const bool over = g_frames_produced && port_vs_match_end_frozen() != 0;
     const bool lost = !g_exiting && g_frames_produced && !g_err_at_start &&
-                      (data_020a0f1c & 1u) != 0 && !g_host_done &&
+                      (data_020a0f1c & 1u) != 0 && !g_host_done && !over &&
                       (g_role == kRoleParent || g_role == kRoleChild);
     Packet b;
     fill_header(b, kTypeBye);
-    if (!g_exiting && g_frames_produced && (data_020a0f1c & 1u) == 0)
-        std::memcpy(b.blocks[0], kDoneTag, 4);   // the game ended the match itself
+    // DONE: the match is over (its end freeze has run, or the game ended the
+    // session itself without an error), so this Bye is a goodbye, not a loss.
+    if (over || (!g_exiting && g_frames_produced && (data_020a0f1c & 1u) == 0))
+        std::memcpy(b.blocks[0], kDoneTag, 4);
     if (g_role == kRoleParent) send_to_children(b);
     else                       send_to_slot(b, 0);
     WS.closesocket(g_sock);
@@ -5606,7 +5612,7 @@ int lb_recv_kind(unsigned tag, void *buf, int cap, int *from) {
 }
 
 void lb_abandon() {
-    if (g_frames_produced && !g_host_done &&
+    if (g_frames_produced && !g_host_done && !port_vs_match_end_frozen() &&
         (g_role == kRoleParent || g_role == kRoleChild))
         match_lost(g_role == kRoleParent
                        ? "no other console answered for the game's whole wait "
