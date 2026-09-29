@@ -19,7 +19,8 @@ nothing ever leaves the relay that the kind table does not allow.
 SOCKET: the real relay.py on 127.0.0.1 (a port from this process id, never
 51765), real sockets: a 16-seat hub fan-out with stamping, a spoofed seat, an
 oversize datagram, a flood against the caps, a version 1 session beside a
-version 2 one, and the stats line's per-kind counters.
+version 2 one, the stats line's per-kind counters, and a member process that
+dies mid-session while the others keep hearing each other.
 
 Python 3 standard library only.
 """
@@ -680,7 +681,8 @@ def pid_port():
 
 
 class RelayProc(object):
-    def __init__(self, env=None):
+    def __init__(self, env=None, relay_py=None):
+        self.relay_py = relay_py or RELAY_PY
         self.port = pid_port()
         self.addr = ("127.0.0.1", self.port)
         self.env = dict(os.environ)
@@ -698,7 +700,7 @@ class RelayProc(object):
 
     def __enter__(self):
         self.proc = subprocess.Popen(
-            [sys.executable, "-u", RELAY_PY], stdout=self.fh,
+            [sys.executable, "-u", self.relay_py], stdout=self.fh,
             stderr=subprocess.STDOUT, env=self.env,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         t0 = time.time()
@@ -881,9 +883,88 @@ def s_security():
     return res
 
 
+# A hub member in its own process: join, send a few ghost frames, then exit
+# without a word (os._exit: no close, no goodbye), so its UDP port simply
+# vanishes the way a crashed or killed game's does.
+MEMBER_THAT_DIES = r"""
+import socket, sys, time
+host, port, code = sys.argv[1], int(sys.argv[2]), sys.argv[3].encode()
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind(("127.0.0.1", 0))
+s.settimeout(2.0)
+s.sendto(b"SMRC" + bytes([2, 2, 0xFF, 0]) + code.ljust(8, b"\0"), (host, port))
+ack = s.recvfrom(64)[0]
+print("seat", ack[6], flush=True)
+for i in range(5):
+    s.sendto(b"SYNG" + bytes([1, 0, 1, 0]) + bytes(36), (host, port))
+    time.sleep(0.05)
+import os
+os._exit(0)
+"""
+
+
+def s_member_exits(relay_env=None, relay_py=None, label=""):
+    """A member process exits abruptly mid-session; the rest keep hearing each
+    other. On Windows the relay's next forward to the dead port comes back as
+    an ICMP port-unreachable; before this was handled it stopped the relay
+    receiving for good (run mp1, HUB1 S1)."""
+    res = Result("socket: a member process dies, the others keep hearing "
+                 "each other%s" % label)
+    with RelayProc(relay_env, relay_py) as relay:
+        members = [Sock(relay) for _ in range(3)]
+        try:
+            code = "DIEHUB01"
+            acks = [m.join(code, ROLE_MEMBER, ANY) for m in members]
+            res.check(all(a and a[1] == ST_OK for a in acks),
+                      "three members seated")
+            seat = [a[2] for a in acks]
+            dead = subprocess.run(
+                [sys.executable, "-c", MEMBER_THAT_DIES, "127.0.0.1",
+                 str(relay.port), code], capture_output=True, timeout=20,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            res.check(dead.stdout.startswith(b"seat 3"),
+                      "the fourth member joined as seat 3 and exited (%r)"
+                      % dead.stdout.strip())
+            # 4 s of ghost traffic at 15 Hz from the three survivors: every
+            # one of these is also forwarded to the dead member's closed port
+            # until its hub seat expires at 10 s.
+            heard = [dict() for _ in members]
+            t_end = time.time() + 4.0
+            late = [dict() for _ in members]
+            while time.time() < t_end:
+                for m in members:
+                    m.send(dgram(b"SYNG", 44))
+                for k, m in enumerate(members):
+                    for d in m.recv_all(0.066):
+                        if d[:4] != b"SYNG":
+                            continue
+                        heard[k][d[5]] = heard[k].get(d[5], 0) + 1
+                        if t_end - time.time() < 1.0:
+                            late[k][d[5]] = late[k].get(d[5], 0) + 1
+            for k in range(3):
+                others = [seat[j] for j in range(3) if j != k]
+                res.check(all(late[k].get(o, 0) >= 5 for o in others),
+                          "member seat %d still hears %s in the last second "
+                          "(%s)" % (seat[k], others, late[k]))
+            line = relay.last_stats()
+            res.note("relay: %s" % " ".join(
+                w for w in line.split() if w.startswith(("rx=", "fwd=",
+                                                         "reset="))))
+        finally:
+            for m in members:
+                m.close()
+    return res
+
+
 def run_socket():
     results = []
-    for t in (s_hub16, s_security):
+    tests = [s_hub16, s_security, s_member_exits]
+    if os.name == "nt":
+        # the second line of defence on its own: the OS report left on
+        tests.append(lambda: s_member_exits(
+            {"SM64DS_RELAY_KEEP_CONNRESET": "1"},
+            label=" (connreset left on: error_received re-arms)"))
+    for t in tests:
         res = t()
         res.report()
         results.append(res)

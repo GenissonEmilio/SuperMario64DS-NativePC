@@ -479,6 +479,9 @@ class RelayProtocol(asyncio.DatagramProtocol):
         self.n_wrong_kind = 0
         self.v2_drop = dict((r, 0) for r in DROP_REASONS)
         self.kstats = dict((tag, [0, 0, 0]) for tag in KIND_ORDER)
+        # socket errors the OS reported (error_received), logged once
+        self.n_reset = 0
+        self.reset_logged = False
 
     # ---- asyncio hooks
 
@@ -487,9 +490,37 @@ class RelayProtocol(asyncio.DatagramProtocol):
 
     def error_received(self, exc):
         # Windows raises WSAECONNRESET on the socket when a previous sendto
-        # hit a closed port. It says nothing about the socket's health, and
-        # there is nothing useful to do with it.
-        return
+        # hit a closed port (an ICMP port-unreachable coming back). It says
+        # nothing about the socket's health. run() turns that report off with
+        # SIO_UDP_CONNRESET; this is the second line of defence, on any
+        # platform, for a report that still gets through.
+        #
+        # THE TRAP (run mp1, HUB1 S1): on the Windows proactor loop an error
+        # from a pending receive is handed to this method and the transport
+        # then does NOT post another receive. The relay goes deaf for good,
+        # every seat times out on every screen, and nothing is logged. So: log
+        # the first one, count them all, and re-arm the receive if it died.
+        # A selector loop (Linux) keeps reading on its own and is untouched.
+        self.n_reset += 1
+        if not self.reset_logged:
+            self.reset_logged = True
+            log("socket error from the OS (%s: %s); ignored, still receiving"
+                " (logged once, counted as reset=)"
+                % (type(exc).__name__, exc))
+        transport = self.transport
+        if (transport is not None
+                and hasattr(transport, "_loop_reading")
+                and getattr(transport, "_read_fut", False) is None):
+            asyncio.get_running_loop().call_soon(self._rearm_reading,
+                                                 transport)
+
+    @staticmethod
+    def _rearm_reading(transport):
+        # Proactor datagram transports only (the hasattr check above). Checked
+        # again here: the loop may have re-armed itself in between.
+        if transport.is_closing() or transport._read_fut is not None:
+            return
+        transport._loop_reading()
 
     def datagram_received(self, data, addr):
         self.on_datagram(data, addr, time.monotonic())
@@ -979,9 +1010,10 @@ class RelayProtocol(asyncio.DatagramProtocol):
                           if s.version == PROTO_V2)
         hubs = sum(1 for s in self.sessions.values()
                    if s.version == PROTO_V2 and s.kind == KIND_HUB)
-        head = (" v2_sessions=%d hubs=%d seat_taken=%d vmix=%d wrong_kind=%d"
-                % (v2_sessions, hubs, self.n_seat_taken, self.n_vmix,
-                   self.n_wrong_kind))
+        head = (" reset=%d v2_sessions=%d hubs=%d seat_taken=%d vmix=%d "
+                "wrong_kind=%d"
+                % (self.n_reset, v2_sessions, hubs, self.n_seat_taken,
+                   self.n_vmix, self.n_wrong_kind))
         drops = " ".join("drop_%s=%d" % (r, self.v2_drop[r])
                          for r in DROP_REASONS)
         kinds = " ".join("%s=%d/%d/%d" % ((tag.decode("ascii"),)
@@ -991,6 +1023,48 @@ class RelayProtocol(asyncio.DatagramProtocol):
 
 
 # ------------------------------------------------------------------- entry
+
+SIO_UDP_CONNRESET = 0x9800000C     # _WSAIOW(IOC_VENDOR, 12), mstcpip.h
+
+
+def udp_connreset_off(sock):
+    """Windows only: stop the OS reporting an ICMP port-unreachable (a peer's
+    port closed) as WSAECONNRESET on this UDP socket.
+
+    Without this, a relay on Windows goes deaf the first time any member's
+    game exits: the next forward to that member's closed port comes back as
+    an error on the receive, and the asyncio proactor loop stops receiving
+    (run mp1, HUB1 S1). Linux does not report ICMP errors on an unconnected
+    UDP socket, so the deployed relay never needed this; local Windows test
+    rungs do. Python's socket.ioctl refuses this control code and asyncio
+    hands back a socket wrapper without ioctl, so it is a raw WSAIoctl.
+    SM64DS_RELAY_KEEP_CONNRESET=1 skips it (tests only: it lets the suite
+    prove the second line of defence in error_received on its own).
+    Returns a word for the startup log."""
+    if os.name != "nt":
+        return "n/a"
+    if os.environ.get("SM64DS_RELAY_KEEP_CONNRESET") == "1":
+        return "kept (SM64DS_RELAY_KEEP_CONNRESET=1)"
+    try:
+        import ctypes
+        from ctypes import wintypes
+        ws2 = ctypes.WinDLL("ws2_32")
+        ws2.WSAIoctl.argtypes = [
+            ctypes.c_size_t, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD,
+            ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD),
+            ctypes.c_void_p, ctypes.c_void_p]
+        ws2.WSAIoctl.restype = ctypes.c_int
+        off = wintypes.BOOL(False)
+        got = wintypes.DWORD(0)
+        rc = ws2.WSAIoctl(sock.fileno(), SIO_UDP_CONNRESET, ctypes.byref(off),
+                          ctypes.sizeof(off), None, 0, ctypes.byref(got),
+                          None, None)
+        if rc != 0:
+            return "FAILED (WSAIoctl rc %d, error %d)" % (
+                rc, ws2.WSAGetLastError())
+        return "off"
+    except Exception as exc:
+        return "FAILED (%s)" % exc
 
 
 async def run():
@@ -1014,6 +1088,7 @@ async def run():
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1 << 20)
         except OSError:
             pass
+    connreset = udp_connreset_off(sock) if sock is not None else "no socket"
 
     log("relay listening on %s:%d idle=%.0fs max_sessions=%d "
         "max_payload=%d rate_pps=%d rate_burst=%d seats=%d "
@@ -1023,6 +1098,8 @@ async def run():
     log("v2: rate_pps_v2=%d hub_idle=%.0fs hub_seats=%d kinds=%s"
         % (RATE_PPS_V2, hub_idle_s, HUB_SEATS,
            ",".join(t.decode("ascii") for t in KIND_ORDER)))
+    if os.name == "nt":
+        log("windows: udp connreset %s" % connreset)
     if RATE_PPS < 240:
         log("note: rate_pps %d is the pre-voice budget for version 1 "
             "sessions. A v1 seat running proximity voice chat sends ~117 "

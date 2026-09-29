@@ -417,8 +417,9 @@ with no session, `drop_ignored` from an address inside its 10 second penalty,
 `bad` malformed HELLOs answered, `full` refusals for a full session or a full
 relay, `expired` seats dropped for going quiet, `rss_kb` the relay's own memory.
 
-The line then carries the version 2 counters: `v2_sessions` and `hubs` open
-now; HELLO refusals `seat_taken`, `vmix` (a code of the other version) and
+The line then carries `reset`, socket errors the OS reported and the relay
+ignored (see "Running it on Windows" below), and the version 2 counters:
+`v2_sessions` and `hubs` open now; HELLO refusals `seat_taken`, `vmix` (a code of the other version) and
 `wrong_kind`; drops by reason, `drop_unknown` (a tag not in the table),
 `drop_length` (a length the table does not list for that tag), `drop_route`
 (a kind the session's shape does not carry, or a parent's clock report),
@@ -426,10 +427,27 @@ now; HELLO refusals `seat_taken`, `vmix` (a code of the other version) and
 for an empty seat, a parent alone); and per kind `TAG=rx/fwd/drop`, where
 `fwd` counts copies sent:
 
-    v2_sessions=1 hubs=1 seat_taken=0 vmix=0 wrong_kind=0 drop_unknown=0
+    reset=0 v2_sessions=1 hubs=1 seat_taken=0 vmix=0 wrong_kind=0 drop_unknown=0
     drop_length=0 drop_route=0 drop_cap=0 drop_target=0 MP2L=0/0/0
     SYNG=720/10800/0 SYNI=0/0/0 SYNT=0/0/0 SYNV=236/3540/0 SYNP=96/1440/0
     SYNQ=0/0/0 SYNK=0/0/0 SYN1=0/0/0
+
+## Running it on Windows (local tests)
+
+The deployed relay runs on Linux. Local test rungs run it on Windows, where
+one thing differs: when a player's game exits, the relay's next forward to
+that player's closed port comes back as an ICMP port-unreachable, and Windows
+reports that as an error on the relay's socket (WSAECONNRESET). Left alone,
+that error stops Python's asyncio loop receiving on the socket for good: every
+seat then times out on every screen. The relay handles it twice over:
+
+- At startup it turns the report off for its socket (`SIO_UDP_CONNRESET`);
+  the startup log says `windows: udp connreset off`.
+- If an error still arrives, on any platform, it is logged once, counted as
+  `reset=` in the stats line, and receiving carries on.
+
+`SM64DS_RELAY_KEEP_CONNRESET=1` skips the first step. It exists only so the
+suite can prove the second one on its own; never set it anywhere else.
 
 ## Troubleshooting
 
@@ -522,4 +540,6 @@ expiry, version 1 sessions staying blind, and a fuzz pass of random datagrams
 that checks nothing outside the kind table ever leaves the relay. Its second
 half runs the relay as a subprocess over real sockets: a 16-seat hub where
 every member hears the other fifteen under their own seats, a spoofed seat,
-oversize and flood datagrams, and a version 1 session beside a version 2 one.
+oversize and flood datagrams, a version 1 session beside a version 2 one, and
+a member whose process dies mid-session while the others keep hearing each
+other (on Windows twice: with the OS report turned off, and left on).
