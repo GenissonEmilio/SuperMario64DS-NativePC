@@ -1173,7 +1173,12 @@ enum : int { kCatchupAhead = 2 };            // rounds of slack a child keeps
 //     is back in step, so a console with no spare speed closes the gap at a
 //     quarter of the room's rate (the GGPO-style time sync, one way). The room
 //     runs a little slower for those seconds instead of dropping the player.
-enum : unsigned { kLgHelpRounds = 45 };      // 1.5 s substituted while sending
+//     2.5 s, because every other console feels the stretch (its rounds come
+//     slower than its own pace) and a joiner that CAN catch up does so in about
+//     2 s after a 0.4 s hitch even on a crowded PC (final1 laggard4-hitch: 55
+//     substituted rounds a hitch); at 1.5 s the help fired on every hitch and
+//     the others' stalls rose with it.
+enum : unsigned { kLgHelpRounds = 75 };      // 2.5 s substituted while sending
 // STOP-AND-WAIT (input delay 0: the loopback test carrier) has no deadline to
 // substitute at -- every console waits on the same round -- so there the rule
 // is retire-only: a slot the host is waiting on that has sent NOTHING for this
@@ -2731,7 +2736,7 @@ void lg_account(const PipeRound &s) {
                      help ? "HELPING a player catch up" : "every player is back in step",
                      s.round,
                      help ? "a console that is still sending has been behind for "
-                            "1.5 s, so this host stretches its frames to 5/4 until "
+                            "2.5 s, so this host stretches its frames to 5/4 until "
                             "it is back in step" : "frames back to the room's pace");
     g_lg_help = help;
     if (help) ++g_lg_help_rounds;
