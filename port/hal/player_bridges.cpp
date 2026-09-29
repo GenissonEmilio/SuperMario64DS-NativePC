@@ -400,9 +400,20 @@ static unsigned ghost_alpha()
    Player::Render makes on the wings. Re-applied every frame because the
    material flags are rebuilt by the per-frame update. */
 extern "C" void _ZN9ModelBase12ApplyOpacityEj(void *self, unsigned a);
-static void ghost_opacity(void *model)
+/* run mp1 lane GHOSTWIRE1: a hub ghost whose frames have stopped coming fades
+   out before it is despawned (hal/comms_sync.cpp, 0..256; 256 for every body
+   that is not a hub ghost, so the old path and the probes are unchanged). */
+extern "C" int port_adventure_ghost_fade(int slot);
+static void ghost_opacity(void *model, int slot)
 {
-    if (model) _ZN9ModelBase12ApplyOpacityEj(model, ghost_alpha());
+    if (!model) return;
+    unsigned a = ghost_alpha();
+    const int f = port_adventure_ghost_fade(slot);
+    if (f < 256) {
+        a = a * (unsigned)(f < 0 ? 0 : f) / 256u;
+        if (a < 1) a = 1;              /* 0 is the DS's wireframe, not clear */
+    }
+    _ZN9ModelBase12ApplyOpacityEj(model, a);
 }
 
 /* ---- THE NO-COLLISION HALF OF THE GHOST PASS ------------------------------
@@ -1705,7 +1716,7 @@ void hal_render_player_world(void *player)
     /* see-through, last before the draw so the per-frame material rebuild
        (UpdateVerts, the palette stamp) is already done and the alpha is what
        the raster reads. */
-    if (ghost) ghost_opacity(ma);
+    if (ghost) ghost_opacity(ma, party_slot);
     /* THE ROM'S BODY DRAW, WHOLE. src/_ZN6Player6RenderEv.cpp:79 is one
        statement carrying two facts, and the port used to get both of them
        wrong with `ma->ModelAnim::Render(0)`:
@@ -1750,7 +1761,7 @@ void hal_render_player_world(void *player)
     if (balloon) {
         ModelAnim *m3 = (ModelAnim *)(c + 0xf0);    /* mModelAnim3 */
         _ZN9ModelBase12ApplyOpacityEj(m3, *(const unsigned char *)(c + 0x6f5));
-        if (ghost) ghost_opacity(m3);
+        if (ghost) ghost_opacity(m3, party_slot);
         m3->Render((const Vector3 *)(c + 0x80));    /* virtual, as the ROM's */
     } else {
         if (hsink_on()) ntr::gx_polygons(hsink_t0);
@@ -1772,7 +1783,7 @@ void hal_render_player_world(void *player)
                         (const int *)(c + 0x80),
                         hid, (int)(hsink_t1 - hsink_t0));
             hal_player_vs_palette(c, head);
-            if (ghost) ghost_opacity(head);
+            if (ghost) ghost_opacity(head, party_slot);
             hal_render_head_group(c, head, hid, ma, scene);
             hal_player_texseq_head(c, hid);
             /* THE MIRROR, once for the body (above) and once here for the
