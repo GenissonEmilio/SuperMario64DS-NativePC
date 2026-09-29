@@ -1170,6 +1170,16 @@ enum : int { kCatchupAhead = 2 };            // rounds of slack a child keeps
 //     quarter of the room's rate (the GGPO-style time sync, one way). The room
 //     runs a little slower for those seconds instead of dropping the player.
 enum : unsigned { kLgHelpRounds = 45 };      // 1.5 s substituted while sending
+// STOP-AND-WAIT (input delay 0: the loopback test carrier) has no deadline to
+// substitute at -- every console waits on the same round -- so there the rule
+// is retire-only: a slot the host is waiting on that has sent NOTHING for this
+// long is retired and the round closes without it. It has to beat the game's
+// own wait bound on the other consoles (about 2.7 s on an unpaced test run:
+// REVMPPROOF1's latejoin4 joiners gave up after 671 republishes at 4 ms), or
+// they drop to solo first (MPPROOF1 BROKEN-vs4-kill-loop: a killed joiner and
+// the other three all closed at round 189 and played on alone). A live console
+// republishes every 4 ms on loopback, so a second of silence is not a hitch.
+enum : unsigned { kLgStopWaitSilentMs = 1000 };
 enum : unsigned { kLgGiveUpRounds = 300 };   // 10 s behind while sending
 struct LgSlot {
     bool          have;                      // a real block has landed
@@ -2865,6 +2875,11 @@ void rb_retire_slot(int k, const char *why) {
 
 void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
     (void)from;
+    if (k > 0 && k < kCommsMaxPlayers && !(g_lg_retired & (1u << k))) {
+        // Anything at all from a slot says its console is alive.
+        g_lg[k].last_rx_ms = now_ms();
+        if (!g_lg[k].last_rx_ms) g_lg[k].last_rx_ms = 1;
+    }
     if (g_rollback && (g_rb_dropped & (1u << k)) && p.type != kTypeBye) {
         // A slot the grace rule retired is gone the way a DS that stopped
         // sending is gone: its late keepalives and blocks must not seat it
@@ -5256,6 +5271,18 @@ int lb_exchange(const void *my_block, uint16_t *status) {
     } else {
         // The parent completes when every live slot's block for this round is
         // in. Its own is in by definition, one line above.
+        if ((g_stage_mask & g_live) != g_live && g_lg_on && match_underway()) {
+            // THE LAGGARD RULE, STOP-AND-WAIT FORM (see kLgStopWaitSilentMs).
+            const unsigned t = now_ms();
+            const unsigned missing = g_live & ~g_stage_mask & ~1u;
+            for (int k = 1; k < kCommsMaxPlayers; ++k)
+                if ((missing & (1u << k)) && g_lg[k].last_rx_ms != 0 &&
+                    (unsigned)(t - g_lg[k].last_rx_ms) >= kLgStopWaitSilentMs) {
+                    g_lg[k].run = (unsigned)(t - g_lg[k].last_rx_ms) * 100u /
+                                  kRoundPeriodMs100;       // for the retire line
+                    lg_retire_slot(k);
+                }
+        }
         if ((g_stage_mask & g_live) != g_live) return 0;
 
         // Broadcast the assembled round, and keep a copy so a child whose
