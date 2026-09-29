@@ -739,6 +739,7 @@ unsigned long long g_aux_tx_refused = 0;   // send: tag/length not in the table
 unsigned long long g_aux_bad_len    = 0;   // recv: our tag, wrong length
 unsigned long long g_aux_bad_seat   = 0;   // recv: sender not a seat of ours
 unsigned long long g_aux_fifo_drop  = 0;   // recv: a FIFO was full
+unsigned long long g_ping_not_asked = 0;   // recv: a ping that asked another seat
 unsigned long long g_aux_superseded = 0;
 int      g_port_base  = kCommsLoopbackPortBase;
 int      g_my_port    = 0;
@@ -3420,6 +3421,15 @@ void dispatch(const unsigned char *raw, int n, const sockaddr_in &from) {
         // wrote 0 there; the carrier puts the 0 back.
         if (aux_kind == kAuxKindSync) m[5] = 0;
         else                          m[5] = (unsigned char)sender;
+        // ONE ASKED SEAT PER PING. Relay v2 caps a seat's pongs at 6 a second
+        // and at 16 players an echo-everyone ping draws 30; so a ping sent
+        // through the relay names ONE seat at byte 6 (lb_send_aux rotates it)
+        // and only that seat answers. 0xFF is the old broadcast ping, still
+        // answered by everyone, which is what every other path sends.
+        if (aux_kind == kAuxKindPing && m[6] != 0xFF && m[6] != (unsigned char)g_slot) {
+            ++g_ping_not_asked;
+            return;
+        }
         switch (kAuxTable[aux_kind].queue) {
         case kAuxQueueCarrier:
             on_clock_report(m, n, sender);
@@ -4075,10 +4085,10 @@ void aux_close_report(int my_slot) {
         }
     }
     std::snprintf(line + w, sizeof line - (size_t)w,
-                  " | ambiguous=%llu bad_seat=%llu bad_len=%llu "
+                  " | ambiguous=%llu bad_seat=%llu bad_len=%llu not_asked=%llu "
                   "fifo_drop=%llu superseded=%llu\n",
                   g_aux_ambiguous, g_aux_bad_seat, g_aux_bad_len,
-                  g_aux_fifo_drop, g_aux_superseded);
+                  g_ping_not_asked, g_aux_fifo_drop, g_aux_superseded);
     std::fputs(line, stderr);
     if (g_role == kRoleParent) {
         w = std::snprintf(line, sizeof line, "[comms:loopback] clock reports:");
@@ -4741,6 +4751,19 @@ void lb_poll() { service(); }
  * channel -- a peer that missed this message is exactly the case the channel
  * already tolerates, and returning 0 there would make the caller treat a
  * mostly-delivered broadcast as a total failure. */
+// The seat the next relayed ping asks to answer: the live seats other than
+// this one, in turn. -1 when there is nobody (the ping then stays a broadcast,
+// which with nobody to answer costs nothing).
+int g_ping_rr = 0;
+int ping_next_seat() {
+    for (int i = 1; i <= kCommsMaxPlayers; ++i) {
+        const int s = (g_ping_rr + i) % kCommsMaxPlayers;
+        if (s == g_slot || (g_live & (1u << s)) == 0) continue;
+        g_ping_rr = s;
+        return s;
+    }
+    return -1;
+}
 
 int lb_send_aux(const void *buf, int len) {
     if (!buf || len <= 0) return 0;
@@ -4760,6 +4783,26 @@ int lb_send_aux(const void *buf, int len) {
     if (g_net_mode == kNetRelay) {
         if (!g_relay_paired) return 0;
         ++g_aux_tx[kind];
+        // ONE ASKED SEAT PER PING, through relay v2. Relay v2 fans a ping to
+        // every seat but caps each seat's pongs at 6 a second; the sync
+        // layer's ping is a broadcast (byte 6 = 0xFF) that every peer
+        // answers, so at 16 players each console would draw 15 pings x 2 Hz
+        // = 30 pongs a second and the relay would drop four in five (HUB1
+        // suspect S2). Byte 6 names the one seat that answers, rotating, the
+        // way the adventure hub does; every other seat hears the ping (it is
+        // still presence) and does not answer (dispatch()). On relay v1 the
+        // broadcast stays: only the host hears a joiner's ping there.
+        if (kind == kAuxKindPing && relay_stamped() &&
+            ((const unsigned char *)buf)[6] == 0xFF) {
+            const int to = ping_next_seat();
+            if (to >= 0) {
+                unsigned char m[16];
+                std::memcpy(m, buf, (size_t)len);
+                m[6] = (unsigned char)to;
+                send_raw(m, len, g_relay_addr);
+                return len;
+            }
+        }
         send_raw(buf, len, g_relay_addr);
         return len;
     }
