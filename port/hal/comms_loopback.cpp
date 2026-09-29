@@ -1167,6 +1167,7 @@ unsigned g_lg_join_round = 0;                // child: the parent's clock at its
 unsigned g_hitch_every_ms = 0, g_hitch_ms = 0, g_hitch_last_ms = 0;
 unsigned long long g_hitches = 0;
 const unsigned char kRetireTag[4] = { 'L', 'G', 'R', 'T' };
+unsigned g_seat_mask_said = ~0u;             // the last seat mask logged
 // THE MATCH IS UNDER WAY once the parent has seen the whole planned roster
 // (SM64DS_VS_PLAYERS, the number the conductor seats the world for) or has
 // handed the game a round. From then on nobody leaving -- a Bye, a refusal at
@@ -1179,6 +1180,16 @@ const unsigned char kRetireTag[4] = { 'L', 'G', 'R', 'T' };
 // body stands still, on every console alike.
 bool g_match_full = false;
 
+// THE SEATS IN PLAY, logged when they change: the set of slots the round the
+// game was just handed carries (port_vs_seat_live_mask). The same line at the
+// same round on every console, so a proof can compare them.
+void note_seat_mask(unsigned round) {
+    if (g_latched_mask == g_seat_mask_said) return;
+    g_seat_mask_said = g_latched_mask;
+    std::fprintf(stderr, "[comms:loopback] seats in play now 0x%x (round %u)\n",
+                 g_latched_mask, round);
+}
+
 void lg_reset() {
     std::memset(g_lg, 0, sizeof g_lg);
     g_lg_retired   = 0;
@@ -1189,6 +1200,7 @@ void lg_reset() {
     g_lg_far       = 0;
     g_lg_join_round = 0;
     g_hitch_last_ms = 0;
+    g_seat_mask_said = ~0u;
     g_match_full    = false;
 }
 
@@ -5019,6 +5031,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         }
         std::memcpy(g_latched, s->blocks, sizeof g_latched);
         g_latched_mask = s->agg_have;
+        note_seat_mask(want);
         g_consumed_round = want;          // for the 'SYNK' clock report
         g_consumed_any   = true;
         clock_note_frame();
@@ -5070,6 +5083,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
     // -- an incomplete exchange() never disturbs the last good round.
     std::memcpy(g_latched, g_stage, sizeof g_latched);
     g_latched_mask = g_stage_mask & g_live;
+    note_seat_mask(g_round);
     g_consumed_round = g_round;           // for the 'SYNK' clock report
     g_consumed_any   = true;
     clock_note_frame();
@@ -5420,6 +5434,22 @@ extern "C" int port_comms_rounds_ahead(void) {
     }
     if (n > kCatchupAhead) ++g_lg_catchup;
     return n;
+}
+
+// ---------------------------------------------------------------------------
+// THE SEATS THE MATCH IS RUNNING WITH, AS THE ROUNDS CARRY THEM (multiplayer
+// 1.0, lane LAGGARD1, for luigi_infection.cpp's pick). Bit k is set when the
+// round the game is simulating right now carried slot k's block. Every
+// console computes it from the same aggregate for the same round, so it is
+// the same on every console at the same frame; a seat that was refused at the
+// door, quit, or was retired by the laggard rule is clear from the round it
+// left on. 0 when no VS carrier session is running (solo, adventure), which a
+// caller reads as "no information: every body counts".
+// ---------------------------------------------------------------------------
+extern "C" unsigned port_vs_seat_live_mask(void) {
+    if (g_state != kCommsParentConnected && g_state != kCommsChildConnected)
+        return 0u;
+    return g_latched_mask;
 }
 
 // ---------------------------------------------------------------------------

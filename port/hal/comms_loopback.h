@@ -258,7 +258,11 @@ CommsRollbackStats comms_rb_stats();
 // port_comms_rounds_ahead: for walk_window.cpp's frame pacer, which skips its
 // sleep for the frame when the answer is above 2 (a child catching up after a
 // hitch); 0 on every console that must not sprint (the parent, rollback,
-// solo).
+// solo). port_vs_seat_live_mask: bit k set when the round the game is
+// simulating carried slot k's block -- the same on every console at the same
+// frame, so a seat refused at the door, quit or retired is clear from the
+// round it left on; 0 when no VS carrier session is running.
 extern "C" int      port_comms_rounds_ahead(void);
+extern "C" unsigned port_vs_seat_live_mask(void);
 
 #endif  // PORT_HAL_COMMS_LOOPBACK_H
