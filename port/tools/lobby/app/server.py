@@ -138,13 +138,16 @@ CONTRACT_V = 5
 V_SESSION = 4    # create.session_type
 
 # The session types a room may be. "vs" is the versus match; "adventure" is the
-# ghost-presence session, where each console runs its own solo level and only
-# broadcasts where its body is. "party" (party slice, status/COOP_PARTY.md) is
-# the shared, synced world: it rides the SAME room-code invite path as
-# adventure, but seats as a ROLLBACK session (NetMode rollback) and every
-# joiner boots into the HOST's level, so members share one deterministic world
-# instead of ghosting their own. An unknown value is refused at do_create.
-SESSION_TYPES = ("vs", "adventure", "party")
+# ghost-presence session (design section 1): every console plays its own save
+# from the title, and the relay's hub rules carry only ghost frames, identity,
+# chat and voice between them. "party" (the shared rollback world) is NOT a 1.0
+# room type (Tango, 09-28): it is refused as an unknown value at do_create.
+SESSION_TYPES = ("vs", "adventure")
+
+# v5 ADVENTURE ROOMS. The seat the plan asks the relay for: "any free seat".
+# The relay assigns the lowest free hub seat and stamps it; the lobby does not
+# hand out adventure seats, because people come and go without it.
+WANT_ANY_SEAT = 255
 
 # The version each v2 addition arrived in. All three are 2 and all three say so
 # by name rather than by the digit, so a later bump cannot accidentally lock v2
@@ -269,6 +272,11 @@ KICK_COOLDOWN_S = env_int("KICK_COOLDOWN_S", 120, 0, 86400)
 MEMBER_TIMEOUT_S = env_int("MEMBER_TIMEOUT_S", 45, 5, 3600)
 ROOM_IDLE_S = env_int("ROOM_IDLE_S", 1800, 30, 86400)
 CLOSED_KEEP_S = env_int("CLOSED_KEEP_S", 60, 5, 3600)
+# v5: an adventure room outlives its creator and closes only after it has been
+# empty this long (design section 5: ten minutes). It is exempt from
+# ROOM_IDLE_S, because a room whose members are all out playing pushes no
+# events for as long as they play.
+ADV_EMPTY_S = env_int("ADV_EMPTY_S", 600, 30, 86400)
 
 # Stage B knobs. Read here so the compose file and this file cannot drift, and
 # so `health` can report what the room semantics would be, but nothing in stage
@@ -690,6 +698,9 @@ class Room(object):
         self.touched = now      # last event, for the idle timer
         self.closed_at = None
         self.why = None
+        # v5 adventure rooms: when the last member left (monotonic), or None
+        # while anybody is in. The reaper closes the room ADV_EMPTY_S later.
+        self.empty_since = None
         # Kicked addresses and the tokens they held, each with an expiry. The
         # token record exists only so a kicked launcher gets told WHY on its
         # next poll instead of a bare "you are not a member".
@@ -772,6 +783,10 @@ class Room(object):
         seat 1 while the dial is at least 1, and the loop refuses it anyway
         rather than relying on that.
         """
+        if self.session_type != "vs":
+            # An adventure room has no match and so no dial: every member
+            # plays their own game, all of them "playing".
+            return
         want = self.match_players
         seats = sorted(self.members)
         while self.playing_count() < want:
@@ -1393,6 +1408,13 @@ def do_create(body, who, now):
     # narrow unless it says otherwise.
     room = Room(code, now, game)
     room.session_type = session_type
+    if session_type == "adventure":
+        # THE ROOM'S HUB CODE, minted once and kept for the room's life: an
+        # adventure room is one relay hub session that people drop in and out
+        # of, not a sequence of matches. Like a VS match's code it is never
+        # the room code, so reading the invite aloud does not hand anybody a
+        # relay seat without the lobby.
+        room.comms_code = new_comms_code()
     token = new_token()
     # The host plays if the dial has room for anybody at all. The host is also
     # the session's parent, so a host who is not playing is not a thing any
@@ -1404,9 +1426,13 @@ def do_create(body, who, now):
     room.host_seat = 1
     room.refresh_displays()
     ROOMS[code] = room
-    log("room %s create by %s (1/%d)" % (code, blunt_host(who), MAX_SEATS))
-    return 200, {"room": code, "token": token, "member": 1,
-                 "cursor": room.seq, "view": room.view(1)}
+    log("room %s create %s by %s (1/%d)"
+        % (code, session_type, blunt_host(who), MAX_SEATS))
+    out = {"room": code, "token": token, "member": 1,
+           "cursor": room.seq, "view": room.view(1)}
+    if room.session_type == "adventure":
+        out["plan"] = member_plan(room, 1)
+    return 200, out
 
 
 def do_join(body, who, now):
@@ -1456,8 +1482,15 @@ def do_join(body, who, now):
     token = new_token()
     # The dial decides, not the deployment knob. Same rule as before -- the
     # first N in the room play -- with N now chosen by the host instead of
-    # fixed for the whole server.
-    playing = room.playing_count() < room.match_players
+    # fixed for the whole server. An adventure room has no dial: everybody
+    # in it plays their own game.
+    playing = (room.session_type != "vs"
+               or room.playing_count() < room.match_players)
+    if not room.members:
+        # Only an adventure room can be empty and open (a VS room closes when
+        # its host leaves). Whoever walks into the empty room holds it now.
+        room.host_seat = seat
+        room.empty_since = None
     room.members[seat] = Member(seat, token, nick, playing, pre_ok, now, who,
                                 color, shoes)
     room.by_token[token] = seat
@@ -1466,8 +1499,11 @@ def do_join(body, who, now):
     log("room %s join %s seat %d %s (%d/%d)"
         % (code, blunt_host(who), seat, "playing" if playing else "watching",
            len(room.members), MAX_SEATS))
-    return 200, {"room": code, "token": token, "member": seat,
-                 "cursor": room.seq, "view": room.view(seat)}
+    out = {"room": code, "token": token, "member": seat,
+           "cursor": room.seq, "view": room.view(seat)}
+    if room.session_type == "adventure":
+        out["plan"] = member_plan(room, seat)
+    return 200, out
 
 
 def do_chat(body, who, now):
@@ -1598,10 +1634,12 @@ def do_params(body, who, now):
         return 403, {"error": "not_host"}
     if room.state != "lobby":
         return 409, {"error": "not_in_lobby"}
-    # v5: Luigi Infection and the voice switch are VS match settings. An
-    # adventure room has no match to put them in, so either key there is a
-    # field this room does not have: bad_field, like any undefined key.
-    if room.session_type != "vs" and (luigi is not None or voice is not None):
+    # v5: Luigi Infection, the voice switch and the dial are VS match
+    # settings. An adventure room has no match to put them in, so any of them
+    # there is a field this room does not have: bad_field, like any undefined
+    # key.
+    if room.session_type != "vs" and (luigi is not None or voice is not None
+                                      or match_players is not None):
         return 400, {"error": "bad_field"}
 
     room.map = mp
@@ -1661,7 +1699,7 @@ def drop_member(room, seat, why):
     m = room.members.get(seat)
     if m is None:
         return
-    if seat == room.host_seat:
+    if seat == room.host_seat and room.session_type == "vs":
         room.close("host_left")
         return
     was_playing = m.playing
@@ -1671,6 +1709,19 @@ def drop_member(room, seat, why):
     room.push("left", seat=seat, display=m.display, why=why)
     log("room %s leave seat %d (%s) (%d/%d)"
         % (room.code, seat, why, len(room.members), MAX_SEATS))
+    if room.session_type != "vs":
+        # AN ADVENTURE ROOM OUTLIVES ITS CREATOR (design section 5). Nobody
+        # hosts a hub session, so the host role is only the lobby's (kick):
+        # it passes to the lowest seat still in, and an empty room waits
+        # ADV_EMPTY_S for somebody to come back before the reaper closes it.
+        if seat == room.host_seat:
+            if room.members:
+                room.host_seat = min(room.members)
+                room.push("host", seat=room.host_seat,
+                          display=room.members[room.host_seat].display)
+                log("room %s host -> seat %d" % (room.code, room.host_seat))
+        # (An empty room's clock is started by the reaper, on its own `now`.)
+        return
     if was_playing:
         before = {s for s in room.members if room.members[s].playing}
         # ONE RULE, STATED ONCE. Promotion-on-vacancy and the host's dial are
@@ -1836,27 +1887,22 @@ def member_plan(room, seat):
     m = room.members.get(seat)
     if m is None or not m.playing:
         return {"playing": False}
+    if room.session_type == "adventure":
+        # THE ADVENTURE PLAN (v5, design section 5): the room's hub code, the
+        # relay, and "any seat". The launcher boots the TITLE with
+        # SM64DS_ADVENTURE=1 and the comms code/relay, and sets no
+        # SM64DS_LEVEL and no SM64DS_VS_*: the player plays their own save.
+        return {"playing": True, "session_type": "adventure",
+                "code": room.comms_code, "relay": RELAY_ADDR,
+                "relay_v": RELAY_V, "want_seat": WANT_ANY_SEAT}
     role = "parent" if seat == room.host_seat else "child"
     plan = {
         "role": role,
         "code": room.comms_code,
         "relay": RELAY_ADDR,
-        # ADVENTURE co-op (v4): the session type, so the launcher knows which
-        # game to boot. For "vs" it exports SM64DS_VS_MAP=<map> and the ROM's
-        # own VS start sets the mode byte, exactly as before. For "adventure"
-        # it exports SM64DS_ADVENTURE=1 and SM64DS_LEVEL=<map> instead, and
-        # must NOT set SM64DS_VS_MAP -- a solo level with the wire open, where
-        # each console ghosts the peers in its own level. The transport quartet
-        # (role/code/relay/slot) is identical for both; the relay forwards the
-        # same opaque datagrams either way.
-        #
-        # PARTY (party slice, status/COOP_PARTY.md): same adventure invite path,
-        # but a SHARED world. The launcher exports SM64DS_ADVENTURE=1 +
-        # SM64DS_PARTY=1 + SM64DS_NETMODE=rollback, and -- the shared-world
-        # entry -- SM64DS_LEVEL=<host_level> for EVERY member (below), so a
-        # joiner boots into the host's level rather than its own. The parent's
-        # bit-17 accept still carries the rollback mode on the wire, so a joiner
-        # that asked for lockstep adopts it (the shipped handshake).
+        # The session type, so the launcher knows which game to boot: "vs"
+        # here (the adventure plan returned above). It exports
+        # SM64DS_VS_MAP=<map> and the ROM's own VS start sets the mode byte.
         "session_type": room.session_type,
         "map": room.match_map,
         "players": room.agreed_players,
@@ -1898,19 +1944,6 @@ def member_plan(room, seat):
     # host enforces one star all match and the first-to-N-points win.
     if room.match_win_mode == "king":
         plan["king_target"] = room.match_king_target
-    # PARTY (party slice): the two fields that make a party session what it is.
-    #   host_level  -- SHARED WORLD ENTRY (COOP_PARTY.md step 2/3): the host's
-    #     level, handed to EVERY member so a joiner boots the host's world, not
-    #     its own. It is room.match_map (the level the host is in) for every
-    #     seat, which is exactly "the joiner adopts the host's level".
-    #   netmode     -- ROLLBACK SEATING (COOP_PARTY.md step 1): the launcher
-    #     exports SM64DS_NETMODE=rollback so announce_roster() carries the
-    #     accept-rollback bit and the session runs the shipped rollback sim.
-    # Both are additive: a "vs" or "adventure" plan never carries them, so those
-    # launchers are byte-unchanged.
-    if room.session_type == "party":
-        plan["host_level"] = room.match_map
-        plan["netmode"] = "rollback"
     return plan
 
 
@@ -2010,6 +2043,10 @@ def do_start(body, who, now):
     room.members[seat].seen = now
     if seat != room.host_seat:
         return 403, {"error": "not_host"}
+    if room.session_type != "vs":
+        # No start gate in an adventure room (design section 5): every member
+        # got its plan at create/join and presses Play whenever it likes.
+        return 409, {"error": "not_vs"}
     if room.state != "lobby":
         return 409, {"error": "not_in_lobby"}
     ps = playing_seats(room)
@@ -2440,7 +2477,8 @@ def do_poll(body, who, now):
     # behind the ring and resynced (getting chat only, no `go` event) still has
     # its plan and can spawn. Belt and suspenders; the launcher prefers the
     # event's plan and falls back to this.
-    if room.state == "go":
+    if room.state == "go" or (room.session_type == "adventure"
+                              and room.state != "closed"):
         out["plan"] = member_plan(room, seat)
     return 200, out
 
@@ -2520,10 +2558,19 @@ def sweep(now):
                     drop_member(room, seat, "timeout")
                     if room.state == "closed":
                         break
-            if room.state != "closed" and now - room.touched > ROOM_IDLE_S:
-                room.close("idle")
-            if room.state != "closed" and not room.members:
-                room.close("idle")
+            if room.session_type == "adventure":
+                # Exempt from ROOM_IDLE_S; closed only after ADV_EMPTY_S empty.
+                if room.members:
+                    room.empty_since = None
+                elif room.empty_since is None:
+                    room.empty_since = now
+                elif now - room.empty_since >= ADV_EMPTY_S:
+                    room.close("idle")
+            else:
+                if room.state != "closed" and now - room.touched > ROOM_IDLE_S:
+                    room.close("idle")
+                if room.state != "closed" and not room.members:
+                    room.close("idle")
         room.forget_old_kicks(now)
 
     BUCKETS.sweep(now)

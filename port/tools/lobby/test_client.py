@@ -697,7 +697,32 @@ def selftest_one(c):
                              "token": adv["token"], "map": 0,
                              "win_mode": "time", "luigi": 1}),
            400, "bad_field")
+    aplan = adv.get("plan") or {}
+    check("the adventure create answer carries the hub plan at once",
+          aplan.get("session_type") == "adventure"
+          and len(aplan.get("code", "")) == 8 and aplan.get("relay_v") == 2
+          and aplan.get("want_seat") == 255, aplan)
+    status, ag = c.post("join", {"v": 5, "game": GAME, "room": adv["room"],
+                                 "nick": "a6"})
+    check("a joiner gets the same hub code, no start needed",
+          status == 200 and (ag.get("plan") or {}).get("code")
+          == aplan.get("code"), ag)
+    expect("start in an adventure room is 409 not_vs",
+           c.post("start", {"v": 5, "room": adv["room"],
+                            "token": adv["token"]}), 409, "not_vs")
     c.post("leave", {"v": 5, "room": adv["room"], "token": adv["token"]})
+    status, seen = c.post("poll", {"v": 5, "room": adv["room"],
+                                   "token": ag["token"], "cursor": 0,
+                                   "wait": 0})
+    check("the creator leaving does not close it; the poll still carries the "
+          "same plan", status == 200 and seen["view"]["state"] == "lobby"
+          and (seen.get("plan") or {}).get("code") == aplan.get("code"),
+          (status, seen.get("view", {}).get("state"), seen.get("plan")))
+    c.post("leave", {"v": 5, "room": adv["room"], "token": ag["token"]})
+    expect("party is not a 1.0 room type",
+           c.post("create", {"v": 5, "game": GAME, "nick": "p5",
+                             "session_type": "party"}),
+           400, "bad_session_type")
 
 
 

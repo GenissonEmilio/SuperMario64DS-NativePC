@@ -1490,43 +1490,22 @@ def test_ready_and_go():
 
 
 def test_session_type():
-    print("\n-- the adventure session type (v4)")
+    print("\n-- session types: vs, adventure, and party refused")
     reset()
-    # The default is vs, and a pre-v4 create cannot say otherwise -- so every
-    # room that ever existed before this version is exactly what it was.
     st, host = create(nick="host")
     check("a plain create is a vs room", st == 200
           and S.ROOMS[host["room"]].session_type == "vs", (st, host))
-    check("and its view says so, additively", host["view"]["session_type"] == "vs")
+    check("and its view says so", host["view"]["session_type"] == "vs")
+    check("a vs create answer carries no plan (VS plans come at go)",
+          "plan" not in host, host)
+    for bad in ("bogus", "party", "", 1, None):
+        reset()
+        st, out = create(nick="host", session_type=bad)
+        check("session_type %r is bad_session_type" % (bad,),
+              st == 400 and out["error"] == "bad_session_type", (st, out))
+        check("and made no room", not S.ROOMS)
 
-    # A v4 create names the type, and an unknown value is refused by name.
-    reset()
-    st, out = create(nick="host", v=5, session_type="bogus")
-    check("a create with an unknown session_type is bad_session_type",
-          st == 400 and out["error"] == "bad_session_type", (st, out))
-
-    reset()
-    st, host = create(nick="host", v=5, session_type="adventure", pre_ok=True)
-    code, token = host["room"], host["token"]
-    room = S.ROOMS[code]
-    check("an adventure create makes an adventure room", st == 200
-          and room.session_type == "adventure", (st, host))
-    check("the view reports the type", host["view"]["session_type"] == "adventure")
-
-    # It reaches the go plan, beside the SAME transport quartet a vs plan
-    # carries -- role, code, relay, slot -- so the launcher branches on the
-    # type and seats the identical carrier either way.
-    join(code, "b", pre_ok=True)
-    st, p = start(code, token)
-    plan = S.member_plan(room, 1)
-    check("the plan carries session_type=adventure",
-          plan["session_type"] == "adventure", plan)
-    check("and still carries the transport quartet unchanged",
-          plan["role"] == "parent" and "code" in plan and "relay" in plan
-          and plan["slot"] == 0, plan)
-
-    # A vs room's plan carries the type too, defaulted, so a launcher never has
-    # to guess: the field is always present from v4 on.
+    # A vs room's plan carries the type, so a launcher never has to guess.
     reset()
     st, host = create(nick="host", pre_ok=True)
     code, token = host["room"], host["token"]
@@ -1537,59 +1516,107 @@ def test_session_type():
           S.member_plan(room, 1)["session_type"] == "vs")
 
 
-def test_party_session():
-    print("\n-- the party session type (party slice)")
-    # A v4 party create makes a party room, exactly as adventure does.
+def test_adventure_room():
+    """v5 adventure rooms (design section 5): one hub code for the room's
+    life, no start gate, a plan at create/join and on every poll, the room
+    outlives its creator and closes after ten minutes empty."""
+    print("\n-- v5 adventure rooms: a hub code, no start gate")
     reset()
-    st, host = create(nick="host", v=5, session_type="party", pre_ok=True)
+    st, host = create(nick="host", session_type="adventure")
     code, token = host["room"], host["token"]
     room = S.ROOMS[code]
-    check("a v4 party create makes a party room",
-          st == 200 and room.session_type == "party", (st, host))
-    check("the view reports the type", host["view"]["session_type"] == "party")
+    check("an adventure create makes an adventure room", st == 200
+          and room.session_type == "adventure", (st, host))
+    plan = host.get("plan", {})
+    check("the create answer carries the plan at once: no start gate",
+          plan == {"playing": True, "session_type": "adventure",
+                   "code": room.comms_code, "relay": S.RELAY_ADDR,
+                   "relay_v": 2, "want_seat": 255}, plan)
+    check("the hub code is 8 characters of the room alphabet and is not the "
+          "room code", len(plan["code"]) == 8 and plan["code"] != code
+          and all(ch in S.ROOM_ALPHABET for ch in plan["code"]), plan["code"])
+    check("the plan names no level and no VS field (the title boots)",
+          not any(k in plan for k in ("map", "players", "names", "slot",
+                                       "luigi", "seed", "digest")), plan)
 
-    # SHARED WORLD ENTRY: the host's level rides the plan as host_level, and it
-    # is the SAME value for the host and the joiner, so a joiner boots the
-    # host's level rather than its own. ROLLBACK SEATING: netmode=rollback.
-    room.map = 2                       # the host is in level 2
-    join(code, "b", pre_ok=True)
-    st, p = start(code, token)
-    host_plan = S.member_plan(room, 1)     # seats are 1-based: host is seat 1
-    join_plan = S.member_plan(room, 2)     # the joiner is seat 2
-    check("the plan carries session_type=party",
-          host_plan["session_type"] == "party", host_plan)
-    check("the host plan carries host_level=2 (the host's level)",
-          host_plan.get("host_level") == 2, host_plan)
-    check("the JOINER's plan carries the SAME host_level=2 (shared world entry)",
-          join_plan.get("host_level") == 2, join_plan)
-    check("the plan seats rollback (netmode=rollback)",
-          host_plan.get("netmode") == "rollback"
-          and join_plan.get("netmode") == "rollback", (host_plan, join_plan))
-    check("and still carries the transport quartet unchanged",
-          host_plan["role"] == "parent" and "code" in host_plan
-          and "relay" in host_plan and host_plan["slot"] == 0, host_plan)
+    guests = []
+    for k in range(3):
+        st, g = join(code, "g%d" % k, who="10.0.1.%d" % k, pre_ok=bool(k % 2))
+        guests.append(g)
+    check("every joiner gets the SAME hub code, pre_ok or not",
+          all(g["plan"]["code"] == plan["code"] for g in guests),
+          [g.get("plan") for g in guests])
+    check("and everybody is playing: an adventure room has no dial",
+          all(m.playing for m in room.members.values()))
+    st, out = poll(code, guests[0]["token"], 0, who="10.0.1.0")
+    check("every poll answer carries the plan",
+          out.get("plan") == guests[0]["plan"], out.get("plan"))
+    st, out = start(code, token)
+    check("start is refused in an adventure room: 409 not_vs",
+          st == 409 and out["error"] == "not_vs", (st, out))
+    check("and the room is still in lobby with the same code",
+          room.state == "lobby" and room.comms_code == plan["code"])
+    st, out = _params(code, token, match_players=2)
+    check("the dial on an adventure room is bad_field",
+          st == 400 and out["error"] == "bad_field", (st, out))
 
-    # A vs and an adventure plan never carry the party-only fields, so those
-    # launchers are byte-unchanged.
+    # THE ROOM OUTLIVES ITS CREATOR.
+    st, out = S.do_leave({"v": 5, "room": code, "token": token},
+                         "10.0.0.1", 1001.0)
+    check("the creator leaves", st == 200, (st, out))
+    check("the room stays open", room.state == "lobby", room.state)
+    check("the host role passes to the lowest seat still in",
+          room.host_seat == 2, room.host_seat)
+    ev = room.events[-1]
+    check("with a host event", ev["kind"] == "host" and ev["seat"] == 2, ev)
+    check("and the hub code has not changed",
+          room.comms_code == plan["code"])
+    for g, k in zip(guests, range(3)):
+        S.do_leave({"v": 5, "room": code, "token": g["token"]},
+                   "10.0.1.%d" % k, 1002.0)
+    check("the last member leaves and the room is still open, empty",
+          room.state == "lobby" and not room.members, room.state)
+    S.sweep(1003.0)
+    check("the reaper starts the empty clock and keeps the room",
+          room.state == "lobby" and room.empty_since == 1003.0,
+          (room.state, room.empty_since))
+    S.sweep(1003.0 + S.ADV_EMPTY_S - 1)
+    check("one second short of ADV_EMPTY_S it is still open",
+          room.state == "lobby")
+    st, back = join(code, "back", who="10.0.2.1", now=1003.0 + S.ADV_EMPTY_S - 1)
+    check("somebody comes back: seated, host, same hub code",
+          st == 200 and room.host_seat == back["member"]
+          and back["plan"]["code"] == plan["code"], (st, back))
+    S.sweep(1003.0 + S.ADV_EMPTY_S + 5)
+    check("a room with a member in it does not close on the empty clock",
+          room.state == "lobby" and room.empty_since is None)
+    S.do_leave({"v": 5, "room": code, "token": back["token"]}, "10.0.2.1",
+               2000.0)
+    S.sweep(2000.0)
+    S.sweep(2000.0 + S.ADV_EMPTY_S)
+    check("empty for ADV_EMPTY_S: closed as idle",
+          room.state == "closed" and room.why == "idle", (room.state, room.why))
+
+    # EXEMPT FROM ROOM_IDLE_S: members out playing push no events for hours.
     reset()
-    st, host = create(nick="host", pre_ok=True)
-    code, token = host["room"], host["token"]
-    room = S.ROOMS[code]
-    join(code, "b", pre_ok=True)
-    start(code, token)
-    vp = S.member_plan(room, 1)
-    check("a vs plan carries no host_level and no netmode",
-          "host_level" not in vp and "netmode" not in vp, vp)
+    st, host = create(nick="host", session_type="adventure")
+    room = S.ROOMS[host["room"]]
+    t = 1000.0
+    while t < 1000.0 + S.ROOM_IDLE_S + 120:
+        t += 20.0
+        poll(host["room"], host["token"], room.seq, now=t)
+        S.sweep(t)
+    check("an adventure room whose member keeps polling outlives ROOM_IDLE_S",
+          room.state == "lobby", room.state)
 
+    # The VS host rule is unchanged: a VS host leaving closes the room.
     reset()
-    st, host = create(nick="host", v=5, session_type="adventure", pre_ok=True)
-    code, token = host["room"], host["token"]
-    room = S.ROOMS[code]
-    join(code, "b", pre_ok=True)
-    start(code, token)
-    ap = S.member_plan(room, 1)
-    check("an adventure plan carries no host_level and no netmode",
-          "host_level" not in ap and "netmode" not in ap, ap)
+    st, host = create(nick="host")
+    join(host["room"], "b")
+    S.do_leave({"v": 5, "room": host["room"], "token": host["token"]},
+               "10.0.0.1", 1001.0)
+    check("a VS host leaving still closes the room",
+          S.ROOMS[host["room"]].state == "closed")
 
 
 def test_go_plan():
@@ -2643,7 +2670,7 @@ def main():
     test_start()
     test_ready_and_go()
     test_session_type()
-    test_party_session()
+    test_adventure_room()
     test_go_plan()
     test_session_digest()
     test_vs_one_settings()
