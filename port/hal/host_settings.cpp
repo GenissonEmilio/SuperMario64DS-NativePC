@@ -770,7 +770,8 @@ double g_aspect = 0.0;
    normal VS match. See the header: this key is the launcher's channel to the
    game-side Luigi Infection module, which arms off SM64DS_VS_LUIGI_INFECTION;
    load_once bridges the file to that variable when the mode is on and the
-   player has not set it. */
+   player has not set it, in a solo run only: online the lobby's match plan
+   is the one source of the mode and its seed (hal/luigi_infection.cpp). */
 int g_vs_luigi_infection = 0;
 int g_vs_luigi_seconds = 0;
 
@@ -1565,8 +1566,23 @@ void load_once(void)
            the mode on and the player has NOT already exported the variable,
            publish it, so the launcher's settings.json is one channel to the same
            flag the environment toggles. Env-wins, the Aspect contract: an
-           environment value already set (a proof run) is left untouched. */
-        if (g_vs_luigi_infection && !getenv("SM64DS_VS_LUIGI_INFECTION")) {
+           environment value already set (a proof run) is left untouched.
+
+           SOLO ONLY (1.0). In an online session (SM64DS_COMMS_ROLE names a
+           role, even one the carrier then refuses) the mode and its seed are
+           the room's: the launcher exports both from the lobby's go plan and
+           nothing else may arm the mode, so this per-machine key is ignored
+           there, the test clock with it. Otherwise one player's old checkbox
+           turns Luigi Infection on for one console of a normal room and the
+           match desyncs at the pick; ignored, that console's session digest
+           reads the plan's answer and the carrier's join check sorts it out. */
+        const char *li_role = getenv("SM64DS_COMMS_ROLE");
+        const int li_online = li_role && *li_role;
+        if (g_vs_luigi_infection && li_online)
+            fprintf(stderr, "[settings] VsLuigiInfection on but this is an "
+                    "online session: ignored, the match plan decides\n");
+        if (g_vs_luigi_infection && !li_online
+                && !getenv("SM64DS_VS_LUIGI_INFECTION")) {
             port_setenv("SM64DS_VS_LUIGI_INFECTION", "1");
             if (g_vs_luigi_seconds > 0 && !getenv("SM64DS_VS_LUIGI_TIME")) {
                 char secbuf[16];
