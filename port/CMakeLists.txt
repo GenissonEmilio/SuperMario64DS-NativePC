@@ -11571,6 +11571,10 @@ list(APPEND SLICE_COMMS_SOURCES hal/comms_sync.cpp)
 # unless SM64DS_ADVENTURE is on AND a relay or SM64DS_HUB_PORT is named, so
 # linking it changes no behaviour; see hal/comms_hub.h.
 list(APPEND SLICE_COMMS_SOURCES hal/comms_hub.cpp)
+# Run mp1 lane CHATUI1: in-game text chat over the VS carrier's aux kinds and
+# the hub. Port-side only and INERT unless one of those carriers is installed,
+# so linking it changes no behaviour solo; see hal/adv_chat.h.
+list(APPEND SLICE_COMMS_SOURCES hal/adv_chat.cpp)
 # Lane VOICE: proximity voice chat. Port-side only -- nothing in src/ knows it
 # exists -- and INERT unless settings.json turns VoiceEnabled on, which is off
 # by default, so linking it opens no device and changes no behaviour. It rides
