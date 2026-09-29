@@ -1895,6 +1895,8 @@ def test_world_address_cap():
     print("\n-- one address, at most WORLD_ADDR_TOKENS world members")
     with game_ids((GAME,)):
         cap = S.WORLD_ADDR_TOKENS
+        check("an empty world is dropped after 30 s, not ten minutes",
+              S.WORLD_EMPTY_S == 30, S.WORLD_EMPTY_S)
         check("the shipped cap is 4 (a household behind one connection)",
               cap == 4, cap)
         home = "198.51.100.40"

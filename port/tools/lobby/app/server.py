@@ -281,12 +281,14 @@ ADV_EMPTY_S = env_int("ADV_EMPTY_S", 600, 30, 86400)
 # v5 WORLD ROOMS (design section 5): always-on adventure hubs that nobody
 # creates. The pool is per game build; a world holds WORLD_SEATS members seen
 # in the last WORLD_MEMBER_S seconds (the launcher sends `world_ping` every
-# 10 s while its game runs), and a world nobody has pinged for WORLD_EMPTY_S
-# is dropped. MAX_WORLDS bounds the whole pool (every build together), so a
-# flood of made-up build ids cannot grow it without limit.
+# 10 s while its game runs), and a world with no live member for WORLD_EMPTY_S
+# is dropped. MAX_WORLDS bounds the whole pool (every build together).
+# WORLD_EMPTY_S is 30 s, not the ten minutes it started at (review REVLOBBY5,
+# S2): a world nobody plays in costs nothing to reopen, while ten minutes made
+# a burst of opens cheap to hold for a long time.
 WORLD_SEATS = env_int("WORLD_SEATS", 16, 2, DIAL_HARD_MAX)
 WORLD_MEMBER_S = env_int("WORLD_MEMBER_S", 30, 5, 3600)
-WORLD_EMPTY_S = env_int("WORLD_EMPTY_S", 600, 30, 86400)
+WORLD_EMPTY_S = env_int("WORLD_EMPTY_S", 30, 5, 86400)
 MAX_WORLDS = env_int("MAX_WORLDS", 64, 1, 4096)
 # THE PER-ADDRESS CAP (review REVLOBBY5, S2): how many live world tokens one
 # client address may hold across the whole pool. Four covers a household
