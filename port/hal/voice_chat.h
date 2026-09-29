@@ -89,6 +89,9 @@
  *                              milliseconds on then off repeating, and a quiet
  *                              deterministic hiss under it. Tone hook only.
  *
+ * THE ROOM'S SETTING. SM64DS_VOICE_ALLOWED=0 (from the lobby's go plan: the
+ * VS host switched voice off) is VoiceEnabled false for the whole process,
+ * whatever settings.json says. Absent means allowed.
  *
  * The mixed result reaches the existing SM64DS_WAV_DUMP file, because voice is
  * rendered into the same stereo block hal/sdat/mixer.cpp hands that dump. No
@@ -114,7 +117,8 @@ void voice_report(const char *tag);
 // talking and voice datagrams are going out (or would, if a peer were in
 // range). The 'talking' bit of the adventure ghost frame (SYNG flags bit 4,
 // NETARCH1 design 6.1) mirrors it, so other players can see who is speaking.
-// 0 whenever VoiceEnabled is off or the gate is closed. A variable read.
+// 0 whenever VoiceEnabled is off, the room forbids voice
+// (SM64DS_VOICE_ALLOWED=0), or the gate is closed. A variable read.
 int voice_talking();
 
 // ---- THE CAPTURE BACKEND, hal/voice_capture_win.cpp --------------------

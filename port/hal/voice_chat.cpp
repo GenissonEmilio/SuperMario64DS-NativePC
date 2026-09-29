@@ -424,6 +424,18 @@ int   g_have_preroll;
 unsigned long long g_gate_opens, g_gate_quiet;   // spurts started, frames not sent
 
 // ---------------------------------------------------------------------------
+// THE ROOM'S VOICE SETTING (run mp1 lane VOICE1). SM64DS_VOICE_ALLOWED comes
+// from the lobby's go plan: the host of a VS room can switch voice off for
+// the match. "0" means this console behaves exactly as if VoiceEnabled were
+// false for the whole process -- no recording device is opened, nothing is
+// sent, nothing received is played -- whatever the player's own settings.json
+// says. Absent, or any other value, is "allowed", so a solo boot, a test run
+// and an adventure plan (which has no such field) are unaffected. Read once:
+// the plan is fixed for the life of the process.
+// ---------------------------------------------------------------------------
+int g_allowed = 1;
+
+// ---------------------------------------------------------------------------
 // THE TEST SOURCE'S SHAPE (run mp1 lane VOICE1). Only meaningful with
 // SM64DS_VOICE_TEST_TONE=1, which already replaces the microphone with a
 // generated sine and opens no device. These make that sine behave like a
@@ -598,7 +610,10 @@ int slot_distance(int a, int b)
 // ---------------------------------------------------------------------------
 void refresh_settings()
 {
-    const int want = host_setting_voice_enabled() ? 1 : 0;
+    /* The room's setting outranks the player's: a host who switched voice off
+       for the match gets a console with no device open, exactly as if the
+       player had never turned it on. */
+    const int want = (g_allowed && host_setting_voice_enabled()) ? 1 : 0;
     g_vol = host_setting_voice_volume();
     g_near = host_setting_voice_near_radius();
     g_far = host_setting_voice_far_radius();
@@ -977,6 +992,15 @@ void voice_tick()
                 g_tone_off_ms = off;
             }
         }
+        {
+            const char *a = getenv("SM64DS_VOICE_ALLOWED");
+            g_allowed = !(a && strcmp(a, "0") == 0);
+            if (!g_allowed)
+                fprintf(stderr, "[voice] SM64DS_VOICE_ALLOWED=0: the host "
+                                "switched voice off for this match; no "
+                                "recording device will be opened and nothing "
+                                "is sent or played\n");
+        }
         if (g_gate_thr != kGateDefault)
             fprintf(stderr, "[voice] mic gate threshold %d (RMS)%s\n",
                     g_gate_thr, g_gate_thr ? "" : ": gate OFF, open mic");
@@ -1029,11 +1053,11 @@ void voice_report(const char *tag)
     int k = snprintf(line, sizeof line,
                      "[voice] %s: on=%d tone=%d dev=%d cap=%llu tx=%llu "
                      "rx=%llu bad=%llu dup=%llu vol=%d near=%d far=%d "
-                     "gate=%d open=%d lvl=%d opens=%llu quiet=%llu "
+                     "allowed=%d gate=%d open=%d lvl=%d opens=%llu quiet=%llu "
                      "talking=%d rxs=",
                      tag ? tag : "-", g_on, g_tone, voice::cap_is_open(),
                      g_cap_frames, g_tx_pkts, g_rx_pkts, g_rx_bad, g_rx_dup,
-                     g_vol, g_near, g_far, g_gate_thr, g_gate_open,
+                     g_vol, g_near, g_far, g_allowed, g_gate_thr, g_gate_open,
                      g_gate_level, g_gate_opens, g_gate_quiet, voice_talking());
     for (int s = 0; s < kCommsMaxPlayers && k > 0 && k < (int)sizeof line; ++s)
         k += snprintf(line + k, sizeof line - (size_t)k, "%s%llu",
