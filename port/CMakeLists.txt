@@ -1665,12 +1665,14 @@ endforeach()
 # crashed). Resolved at configure time via `git rev-parse`; a re-configure on a
 # new commit refreshes it. Emitted as a tiny .c so any target that wants the tip
 # just links it. Falls back to "unknown" outside a git checkout, which matches
-# fault_probe.h's weak default.
+# fault_probe.h's weak default. The length is fixed at 10 so two clones of one
+# commit bake the same tip, and so the same online build id (comms_loopback's
+# session check hashes this string).
 find_program(GIT_EXECUTABLE git)
 set(PORT_GIT_TIP "unknown")
 if(GIT_EXECUTABLE)
     execute_process(
-        COMMAND "${GIT_EXECUTABLE}" -C "${PORT_REPO_ROOT_ABS}" rev-parse --short HEAD
+        COMMAND "${GIT_EXECUTABLE}" -C "${PORT_REPO_ROOT_ABS}" rev-parse --short=10 HEAD
         OUTPUT_VARIABLE PORT_GIT_TIP_OUT
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET RESULT_VARIABLE PORT_GIT_RC)
