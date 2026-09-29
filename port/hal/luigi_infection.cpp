@@ -26,11 +26,18 @@
  *   SM64DS_VS_LUIGI_INFECTION  unset / empty / "0"  -> OFF (the common case,
  *                              silent, byte-identical normal VS).
  *                              any other non-empty value -> ON.
- *   SM64DS_VS_LUIGI_SEED       0..15, which slot starts as the tagger. Default
- *                              0. See the LOCKSTEP note below -- the HOST picks
- *                              the random tagger and passes it here, so every
- *                              console seeds the SAME slot. A local rand() would
- *                              desync a real session, so there is none.
+ *   SM64DS_VS_LUIGI_SEED       a u32 in decimal (read as the session check
+ *                              reads it: strtoul base 10, low 32 bits),
+ *                              default 0. The tagger is the
+ *                              (seed mod n)-th slot that has a body at the pick,
+ *                              n = the number of bodies. A VS arena seats its
+ *                              bodies in slots 0..n-1, so 0..n-1 still name a
+ *                              slot directly (the old 0..15 grammar, unchanged
+ *                              for every value that had a body) and the
+ *                              lobby's server-minted 32-bit seed spreads evenly
+ *                              over whoever is in the arena. See the LOCKSTEP
+ *                              note below: a local rand() would desync a real
+ *                              session, so there is none.
  *   SM64DS_VS_LUIGI_TIME       optional test override, seconds. 0 / unset ->
  *                              use the ROM's own match clock (the default and
  *                              the faithful one). A positive value ends the
@@ -41,9 +48,25 @@
  * environment the host built, not rolled locally, and the tag/immunity/win
  * decisions are pure functions of shared state (data_0209f394, the team array
  * every console updates the same way on the same frame). Nothing here asks the
- * other console anything. The lobby's job is to choose one random slot and put
- * it in SM64DS_VS_LUIGI_SEED for every peer; that is the online wiring this
- * game side is waiting on, the same shape as SM64DS_VS_CHARS / _NAMES.
+ * other console anything.
+ *
+ * ONLINE: THE MATCH PLAN IS THE ONLY SOURCE (1.0).  In an online session the
+ * mode and the seed are the room's, not the machine's. The host picks Luigi
+ * Infection in the lobby, the lobby server mints the seed at start, and every
+ * console's launcher exports the same two values from the same go plan as
+ * SM64DS_VS_LUIGI_INFECTION and SM64DS_VS_LUIGI_SEED. Nothing else counts:
+ * hal/host_settings.cpp does not bridge the per-machine VsLuigiInfection key
+ * into the environment when SM64DS_COMMS_ROLE names a session, so a player
+ * whose settings.json still has the mode on cannot arm it for one console of
+ * a room that did not ask for it (the per-machine key was how two consoles in
+ * one room could run different modes, or pick different Luigis, and desync).
+ * The session check the carrier runs at join (hal/comms_loopback.cpp, the
+ * ACCEPT's settings digest, "...|luigi|seed|...") reads the same two variables
+ * with the same rules as li_load below (luigi: unset / "" / "0" is 0, else 1;
+ * seed: strtoul base 10, low 32 bits, counted only when luigi is 1), so a
+ * console whose plan disagrees with the host's, or whose own settings file
+ * would have armed the mode, is refused at the door (exit 3) instead of
+ * desyncing at frame 240. Keep the two readers in step. Solo keeps the key.
  */
 
 #include <cstdlib>
@@ -83,7 +106,7 @@ enum { kLuigiChar = 1 };
 
 static int g_li_read;                     /* env parsed once */
 static int g_li_on;                       /* mode enabled */
-static int g_li_seed_slot;                /* the initial tagger's slot */
+static unsigned g_li_seed;                /* the tagger pick's seed (u32) */
 static int g_li_time_frames;              /* >0 = test timer, in frames */
 static int g_li_seeded;                   /* the seed has run this match */
 static int g_li_team[kPortMaxPlayers];    /* 1 = on Luigi's team (infected) */
@@ -93,7 +116,7 @@ static void li_load(void)
     if (g_li_read) return;
     g_li_read = 1;
     g_li_on = 0;
-    g_li_seed_slot = 0;
+    g_li_seed = 0;
     g_li_time_frames = 0;
     for (int i = 0; i < kPortMaxPlayers; ++i) g_li_team[i] = 0;
 
@@ -102,20 +125,20 @@ static void li_load(void)
         return;                            /* absent / "0": OFF, and silent */
     g_li_on = 1;
 
-    if (const char *s = std::getenv("SM64DS_VS_LUIGI_SEED")) {
-        int v = std::atoi(s);
-        if (v >= 0 && v < kPortMaxPlayers) g_li_seed_slot = v;
-        else
-            std::fprintf(stderr, "[luigi] SM64DS_VS_LUIGI_SEED %d out of "
-                    "0..%d, using slot 0\n", v, kPortMaxPlayers - 1);
-    }
+    /* The seed exactly as the session digest reads it (strtoul base 10, low
+       32 bits), so the value the join check compared is the value that picks
+       the tagger, whatever string the plan carried. */
+    if (const char *s = std::getenv("SM64DS_VS_LUIGI_SEED"))
+        g_li_seed = (unsigned)(std::strtoul(s, 0, 10) & 0xFFFFFFFFul);
+
     if (const char *t = std::getenv("SM64DS_VS_LUIGI_TIME")) {
         int secs = std::atoi(t);
         if (secs > 0) g_li_time_frames = secs * 60;
     }
-    std::fprintf(stderr, "[luigi] Luigi Infection ARMED: tagger seed = slot %d, "
-            "timer = %s\n", g_li_seed_slot,
-            g_li_time_frames ? "override" : "ROM match clock");
+    const char *role = std::getenv("SM64DS_COMMS_ROLE");
+    std::fprintf(stderr, "[luigi] Luigi Infection ARMED%s: tagger seed = %u, "
+            "timer = %s\n", (role && *role) ? " (online: the match plan)" : "",
+            g_li_seed, g_li_time_frames ? "override" : "ROM match clock");
 }
 
 extern "C" int port_luigi_enabled(void)
@@ -181,7 +204,7 @@ extern "C" int port_luigi_seeded(void) { return g_li_seeded; }
  * g_li_seeded across the pick at frame 240: it latches, so a rewind over it
  * loses the tagger for good.
  *
- * The env-derived configuration (g_li_read / g_li_on / g_li_seed_slot /
+ * The env-derived configuration (g_li_read / g_li_on / g_li_seed /
  * g_li_time_frames) is deliberately NOT carried: it is parsed once out of an
  * environment every peer shares and never moves after, so restoring it would
  * copy bytes that cannot have changed. */
@@ -255,26 +278,26 @@ extern "C" void port_luigi_seed(int frame)
     if (!g_li_on || g_li_seeded) return;
     g_li_seeded = 1;
 
-    int slot = g_li_seed_slot;
-    if (slot < 0 || slot >= kPortMaxPlayers || !data_0209f394[slot]) {
-        /* the chosen seat has no body in this arena: fall to the first live
-           slot so the mode always has exactly one tagger */
-        slot = -1;
-        for (int i = 0; i < kPortMaxPlayers; ++i)
-            if (data_0209f394[i]) { slot = i; break; }
-        if (slot >= 0)
-            std::fprintf(stderr, "[luigi] seed slot %d had no body; the tagger "
-                    "falls to slot %d\n", g_li_seed_slot, slot);
-    }
-    if (slot < 0) {
+    /* THE PICK: the (seed mod n)-th slot with a body, n = bodies in the arena.
+       A pure function of the shared seed and of data_0209f394, which every
+       console holds identically at this frame, so every console picks the
+       same tagger; and every body is a possible pick, so the mode always has
+       exactly one tagger however many players the room had. */
+    int n = 0;
+    for (int i = 0; i < kPortMaxPlayers; ++i)
+        if (data_0209f394[i]) ++n;
+    if (n == 0) {
         std::fprintf(stderr, "[luigi] seed: no player bodies in the arena, "
                 "nothing seeded\n");
         return;
     }
+    int slot = -1;
+    for (int i = 0, k = (int)(g_li_seed % (unsigned)n); i < kPortMaxPlayers; ++i)
+        if (data_0209f394[i] && k-- == 0) { slot = i; break; }
     if (!g_port_rb_replaying)
     std::fprintf(stderr, "[luigi] SEED f%d: slot %d starts as Luigi (the "
-            "tagger); local player is slot %d\n", frame, slot,
-            (int)data_0209f250);
+            "tagger); local player is slot %d; seed %u over %d bodies\n",
+            frame, slot, (int)data_0209f250, g_li_seed, n);
     li_infect(slot);
 }
 
