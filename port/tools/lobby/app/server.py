@@ -288,6 +288,14 @@ WORLD_SEATS = env_int("WORLD_SEATS", 16, 2, DIAL_HARD_MAX)
 WORLD_MEMBER_S = env_int("WORLD_MEMBER_S", 30, 5, 3600)
 WORLD_EMPTY_S = env_int("WORLD_EMPTY_S", 600, 30, 86400)
 MAX_WORLDS = env_int("MAX_WORLDS", 64, 1, 4096)
+# THE PER-ADDRESS CAP (review REVLOBBY5, S2): how many live world tokens one
+# client address may hold across the whole pool. Four covers a household
+# behind one connection. A `world` call from an address already at the cap
+# retires that address's least recently heard token first, so a relaunch or a
+# re-ask never locks a real player out, and one address can never stand for
+# more than this many members (padding a world full of phantoms, or holding
+# worlds open, then takes WORLD_SEATS / this many addresses per world).
+WORLD_ADDR_TOKENS = env_int("WORLD_ADDR_TOKENS", 4, 1, WORLD_SEATS)
 
 # Stage B knobs. Read here so the compose file and this file cannot drift, and
 # so `health` can report what the room semantics would be, but nothing in stage
@@ -951,25 +959,47 @@ class Room(object):
 
 class World(object):
     """One always-on adventure hub (v5). Nothing in it but a number, the hub
-    code, and when each member token last proved it was alive. No nick, no
-    colour and no address is kept: the world's members meet each other through
-    the game's identity frames, never through the lobby."""
+    code, and per member token when it last proved it was alive and the client
+    address it was issued to. No nick and no colour is kept: the world's
+    members meet each other through the game's identity frames, never through
+    the lobby. The address is held ONLY for WORLD_ADDR_TOKENS, like a room
+    member's last_addr for a kick: never logged whole, never sent to anybody,
+    dropped with the token."""
 
     def __init__(self, game, no, code, now):
         self.game = game
         self.no = no
         self.code = code
-        self.members = {}       # token -> last seen (monotonic)
+        self.members = {}       # token -> [last seen (monotonic), address]
         self.empty_since = now
 
     def count(self, now):
-        return sum(1 for t in self.members.values()
-                   if now - t <= WORLD_MEMBER_S)
+        return sum(1 for m in self.members.values()
+                   if now - m[0] <= WORLD_MEMBER_S)
 
     def forget_stale(self, now):
-        for tok, t in list(self.members.items()):
-            if now - t > WORLD_MEMBER_S:
+        for tok, m in list(self.members.items()):
+            if now - m[0] > WORLD_MEMBER_S:
                 del self.members[tok]
+
+
+def retire_over_cap(who, now):
+    """Before issuing `who` a new world token, retire its least recently heard
+    live tokens until it holds fewer than WORLD_ADDR_TOKENS. Returns how many
+    were retired. A retired token's next world_ping is 403 not_a_member, which
+    the launcher answers by asking `world` again."""
+    mine = []
+    for w in WORLDS.values():
+        for tok, m in w.members.items():
+            if m[1] == who and now - m[0] <= WORLD_MEMBER_S:
+                mine.append((m[0], w.code, tok))
+    mine.sort()
+    retired = 0
+    while len(mine) - retired >= WORLD_ADDR_TOKENS:
+        _, code, tok = mine[retired]
+        WORLDS[code].members.pop(tok, None)
+        retired += 1
+    return retired
 
 
 # ------------------------------------------------------------- rate limits
@@ -2625,6 +2655,10 @@ def do_world(body, who, now):
     if not BUCKETS.allow_join(who, now):
         return 429, {"error": "too_fast"}
 
+    retired = retire_over_cap(who, now)
+    if retired:
+        log("world retire %d older token(s) of %s (cap %d)"
+            % (retired, blunt_host(who), WORLD_ADDR_TOKENS))
     mine = sorted((w for w in WORLDS.values() if w.game == game),
                   key=lambda w: w.no)
     pick = None
@@ -2651,7 +2685,7 @@ def do_world(body, who, now):
         WORLDS[code] = pick
         log("world %s open no=%d (%d worlds)" % (code, no, len(WORLDS)))
     token = new_token()
-    pick.members[token] = now
+    pick.members[token] = [now, who]
     pick.empty_since = None
     out = world_plan(pick)
     out["token"] = token
@@ -2679,10 +2713,10 @@ def do_world_ping(body, who, now):
     if w is None:
         return 404, {"error": "no_such_world"}
     seen = w.members.get(token)
-    if seen is None or now - seen > WORLD_MEMBER_S:
+    if seen is None or now - seen[0] > WORLD_MEMBER_S:
         w.members.pop(token, None)
         return 403, {"error": "not_a_member"}
-    w.members[token] = now
+    seen[0] = now
     return 200, {"ok": True, "world_no": w.no, "members": w.count(now)}
 
 
@@ -2934,6 +2968,7 @@ class Handler(BaseHTTPRequestHandler):
                 "worlds": len(WORLDS),
                 "world_seats": WORLD_SEATS,
                 "world_member_s": WORLD_MEMBER_S,
+                "world_addr_tokens": WORLD_ADDR_TOKENS,
                 "waiters": WAITERS,
             }
         self._send(200, payload)
@@ -3146,10 +3181,10 @@ def main():
     log("contract v%d..v%d, player dial 2..%d (seats=%d, game=%d), relay v%d"
         % (CONTRACT_MIN, CONTRACT_V, DIAL_MAX, MAX_SEATS, GAME_MAX_PLAYERS,
            RELAY_V))
-    log("worlds max=%d seats=%d member=%ds empty=%ds; adventure rooms "
-        "empty=%ds"
+    log("worlds max=%d seats=%d member=%ds empty=%ds per_address=%d; "
+        "adventure rooms empty=%ds"
         % (MAX_WORLDS, WORLD_SEATS, WORLD_MEMBER_S, WORLD_EMPTY_S,
-           ADV_EMPTY_S))
+           WORLD_ADDR_TOKENS, ADV_EMPTY_S))
     if GAME_IDS:
         log("game builds served: %d (GAME_IDS); world pool %s"
             % (len(GAME_IDS), "open" if world_open() else "off (RELAY_V 1)"))

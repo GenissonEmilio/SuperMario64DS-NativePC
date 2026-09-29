@@ -1889,6 +1889,80 @@ def test_game_allow_list():
         S.RELAY_V = was
 
 
+def test_world_address_cap():
+    """Review REVLOBBY5 S2, part 2: one address holds at most
+    WORLD_ADDR_TOKENS live world tokens, however it asks."""
+    print("\n-- one address, at most WORLD_ADDR_TOKENS world members")
+    with game_ids((GAME,)):
+        cap = S.WORLD_ADDR_TOKENS
+        check("the shipped cap is 4 (a household behind one connection)",
+              cap == 4, cap)
+        home = "198.51.100.40"
+        toks = []
+        for k in range(4):
+            st, out = world("h%d" % k, who=home, now=1000.0 + k)
+            toks.append((st, out))
+        check("a household of 4 on one address: all 4 get world 1",
+              all(st == 200 and o["world_no"] == 1 for st, o in toks), toks)
+        code = toks[0][1]["code"]
+        pings = [world_ping(code, o["token"], who=home, now=1010.0)[0]
+                 for _, o in toks]
+        check("and all 4 keep pinging fine", pings == [200] * 4, pings)
+        check("world 1 counts 4", S.WORLDS[code].count(1010.0) == 4)
+        # A fifth ask from the same address (one of them relaunched): the
+        # least recently heard token is retired, never a refusal.
+        world_ping(code, toks[1][1]["token"], who=home, now=1011.0)
+        world_ping(code, toks[2][1]["token"], who=home, now=1011.0)
+        world_ping(code, toks[3][1]["token"], who=home, now=1011.0)
+        st, fifth = world("h4", who=home, now=1012.0)
+        check("a fifth ask from the address is served (a relaunch works)",
+              st == 200 and fifth["world_no"] == 1, (st, fifth))
+        check("and world 1 still counts 4 from that address",
+              S.WORLDS[code].count(1012.0) == 4, S.WORLDS[code].count(1012.0))
+        st, out = world_ping(code, toks[0][1]["token"], who=home, now=1013.0)
+        check("the retired token was the least recently heard one: 403",
+              st == 403 and out["error"] == "not_a_member", (st, out))
+
+        # THE PADDING ATTACK (review H9b): one address, the real build, many
+        # calls, pinging everything it was given.
+        reset()
+        evil = "203.0.113.66"
+        got = []
+        t = 2000.0
+        for k in range(200):
+            t += 1.0
+            st, out = S.do_world({"v": 5, "nick": "x", "game": GAME}, evil, t)
+            if st == 200:
+                got.append(out)
+            for o in got:
+                world_ping(o["code"], o["token"], who=evil, now=t)
+        live = sum(w.count(t) for w in S.WORLDS.values())
+        check("200 world calls from ONE address, every token pinged: it never "
+              "holds more than %d live members" % cap, live <= cap, live)
+        st, real = world("real", who="198.51.100.9", now=t)
+        check("a real player from another address still gets world 1 with "
+              "room to spare", st == 200 and real["world_no"] == 1
+              and real["members"] <= cap + 1, (st, real))
+        check("and the pool never grew past one world", len(S.WORLDS) == 1,
+              len(S.WORLDS))
+        # skip cannot spread one address over many worlds either
+        reset()
+        codes = set()
+        last = None
+        for k in range(40):
+            body = {"v": 5, "nick": "x", "game": GAME}
+            if last:
+                body["skip"] = last
+            st, out = S.do_world(body, evil, 3000.0 + k)
+            if st == 200:
+                last = out["code"]
+                codes.add(last)
+        live = sum(w.count(3040.0) for w in S.WORLDS.values())
+        check("40 calls with skip from one address: at most %d live members, "
+              "at most 2 worlds" % cap, live <= cap and len(S.WORLDS) <= 2,
+              (live, len(S.WORLDS)))
+
+
 def test_world_pool():
     with game_ids((GAME, "0.9.9") + tuple("b%d" % k for k in range(10))):
         _world_pool()
@@ -1992,9 +2066,9 @@ def _world_pool():
     check("and none of that opened a world", not S.WORLDS)
     st, w = world("colours", color="FF0000", shoes="00ff00")
     check("a world call with a colour pair is fine", st == 200, (st, w))
-    check("and the world keeps no nick, no colour, no address: a token and a "
-          "time, nothing else",
-          S.WORLDS[w["code"]].members == {w["token"]: 1000.0}
+    check("and the world keeps no nick and no colour: per token a time and "
+          "the issuing address (for the per-address cap), nothing else",
+          S.WORLDS[w["code"]].members == {w["token"]: [1000.0, "10.9.7.115"]}
           and set(vars(S.WORLDS[w["code"]])) == {"game", "no", "code",
                                                   "members", "empty_since"},
           vars(S.WORLDS[w["code"]]))
@@ -2904,6 +2978,7 @@ def main():
     test_session_type()
     test_adventure_room()
     test_game_allow_list()
+    test_world_address_cap()
     test_world_pool()
     test_go_plan()
     test_session_digest()

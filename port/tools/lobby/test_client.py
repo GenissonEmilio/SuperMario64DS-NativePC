@@ -617,10 +617,16 @@ def selftest_world(c):
     seats = health.get("world_seats", 16)
     expiry = health.get("world_member_s", 30)
     game = GAME                             # the spawned server lists it
+    # One address per member (X-Forwarded-For, which the spawned server
+    # trusts): the server holds at most `world_addr_tokens` live members per
+    # address, so sixteen from one address would be four.
+    def xff(k):
+        return (("X-Forwarded-For", "198.51.100.%d" % (k + 1)),)
+
     answers = []
     for k in range(seats + 1):
         status, out = c.post("world", {"v": 5, "nick": "w%d" % k,
-                                       "game": game})
+                                       "game": game}, extra=xff(k))
         answers.append((status, out))
     first = answers[0][1]
     check("every world call answered 200",
@@ -650,7 +656,7 @@ def selftest_world(c):
     deadline = time.time() + expiry + 2
     while time.time() < deadline:
         status, pong = c.post("world_ping", {"v": 5, "code": first["code"],
-                                             "token": keep})
+                                             "token": keep}, extra=xff(0))
         time.sleep(1.0)
     check("a member that keeps pinging stays (%d s past the expiry)" % expiry,
           status == 200 and pong.get("world_no") == 1, (status, pong))
@@ -660,9 +666,27 @@ def selftest_world(c):
            c.post("world_ping", {"v": 5, "code": first["code"],
                                  "token": answers[1][1].get("token", "")}),
            403, "not_a_member")
-    status, again = c.post("world", {"v": 5, "nick": "late", "game": game})
+    status, again = c.post("world", {"v": 5, "nick": "late", "game": game},
+                           extra=xff(40))
     check("with seats free again a newcomer lands in world 1",
           status == 200 and again.get("world_no") == 1, again)
+
+    # THE PER-ADDRESS CAP over the wire: a household of cap on one address
+    # all get world 1; one more ask from that address retires its oldest.
+    cap = health.get("world_addr_tokens", 4)
+    home = (("X-Forwarded-For", "198.51.100.200"),)
+    fam = [c.post("world", {"v": 5, "nick": "f%d" % k, "game": game},
+                  extra=home) for k in range(cap)]
+    check("a household of %d on one address all get a world" % cap,
+          all(st == 200 for st, _ in fam), [st for st, _ in fam])
+    status, extra_one = c.post("world", {"v": 5, "nick": "f9", "game": game},
+                               extra=home)
+    check("one more ask from that address is served, not refused",
+          status == 200, extra_one)
+    expect("and the address's oldest token was retired (its ping is 403)",
+           c.post("world_ping", {"v": 5, "code": fam[0][1].get("code", ""),
+                                 "token": fam[0][1].get("token", "")},
+                  extra=home), 403, "not_a_member")
 
 
 def digest_of(plan):
