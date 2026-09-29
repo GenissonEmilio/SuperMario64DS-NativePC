@@ -655,7 +655,14 @@ enum : int {
     kGwFadeMs     = 700,
     kGwDespawnMs  = 1200,
     kGwRing       = 8,       // frames kept per seat (~0.5 s at 15 Hz)
-    kGwMaxAnimId  = 0x400,   // an id this large is garbage, never SetAnim'd
+    /* THE PLAYER HAS 194 ANIMATIONS. Player::SetAnim indexes
+       data_ov002_020ff480[id * 4 + character], and that table is 0xc20 bytes
+       (0x020ff480..0x021000a0) = 194 ids x 4 characters: id 194 and up read
+       the words after the table as file pointers, and the re-pose then walks
+       garbage (REVGHOSTWIRE1: one frame with anim 194 crashed every console
+       in the room, c0000005 in UpdateBones). */
+    kPlayerAnimCount = 194,
+    kGwPosLimit   = 0x8000 << 12,   // |x|, |y|, |z| beyond 32768 units: garbage
     kGwClockJumpMs = 2000,   // a sender clock step this big is a restart
 };
 
@@ -934,8 +941,12 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat) {
         ++g_gws.drop_seat;
         return;
     }
-    if ((f.flags & ~0x1fu) || f.character > 3 || f.anim_id >= kGwMaxAnimId ||
-        f.level_id > 0xff || f.reserved[0] || f.reserved[1] || f.reserved[2]) {
+    if ((f.flags & ~0x1fu) || f.character > 3 ||
+        f.anim_id >= kPlayerAnimCount || f.level_id > 0xff ||
+        f.reserved[0] || f.reserved[1] || f.reserved[2] ||
+        f.x > kGwPosLimit || f.x < -kGwPosLimit ||
+        f.y > kGwPosLimit || f.y < -kGwPosLimit ||
+        f.z > kGwPosLimit || f.z < -kGwPosLimit) {
         ++g_gws.drop_field;
         return;
     }
