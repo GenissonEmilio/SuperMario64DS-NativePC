@@ -245,6 +245,14 @@ def wait_not_busy(path, wait_s):
         time.sleep(15)
 
 
+def file_digest(path):
+    try:
+        with open(path, "rb") as f:
+            return hashlib.md5(f.read()).hexdigest()[:12]
+    except OSError:
+        return "absent"
+
+
 def mem_ok(n):
     if psutil is None:
         return True, "psutil missing, memory not checked"
@@ -419,6 +427,12 @@ def build_rungs():
     R.append(Rung("hub16-relay2", "hub", 16, GATE, "relay2", needs=["H1", "W2"]))
     R.append(Rung("hub4-joinleave-relay2", "hubjoin", 4, DEV, "relay2", needs=["H1", "W2"]))
     R.append(Rung("hub4-pause-relay2", "hubpause", 4, DEV, "relay2", needs=["H1"]))
+    # Saves: every console its own cartridge (adventure saves a star each; a VS
+    # match leaves the host's save byte-identical and joiners write none).
+    R.append(Rung("adv2-save-loop", "advsave", 2, DEV))
+    R.append(Rung("hub2-save-relay2", "advsave", 2, DEV, "relay2", needs=["H1"], hub=True))
+    R.append(Rung("vs2-save-untouched", "vssave", 2, DEV))
+    R.append(Rung("vs4-save-untouched-relay1", "vssave", 4, DEV, "relay1"))
     # Chat (C1) in VS and in adventure, with 20 % loss.
     R.append(Rung("chat3-vs-relay2", "chat", 3, DEV, "relay2", needs=["C1", "N2"]))
     R.append(Rung("chat3-vs-relay2-loss20", "chat", 3, DEV, "relay2", needs=["C1", "N2"],
@@ -497,6 +511,11 @@ class Run:
         os.makedirs(os.path.join(d, "tmp"), exist_ok=True)
         tag = "m%s%d" % (hashlib.md5(self.rung.name.encode()).hexdigest()[:4], k)
         e = M.env_base(asset_root or self.L.asset_root, d, tag)
+        # EVERY CONSOLE ITS OWN CARTRIDGE. The default save is <exe folder>/save/
+        # sm64ds.sav, so consoles launched from one exe would share one file;
+        # on real machines every player has their own. The shared default is
+        # hashed around every rung (Ladder.run_rung) so a write to it is a red.
+        e["SM64DS_SAVE_PATH"] = os.path.join(d, "sm64ds.sav")
         return d, e
 
     def launch(self, specs, timeout, actions=()):
@@ -1241,7 +1260,93 @@ def r_kit(L, run, r):
     return ck, wall, rcs
 
 
-BODIES = {"vs": r_vs, "match": r_match, "leave": r_leave, "late": r_late, "kill": r_kill,
+def save_records(path):
+    """Valid FileSaveData slots in a cartridge image, by the ROM's own framing
+    (save_proof.py's reader): tag + recomputed checksum on BOTH copies."""
+    import save_proof as S
+    try:
+        with open(path, "rb") as f:
+            img = f.read()
+    except OSError:
+        return None, []
+    good = []
+    for slot in range(3):
+        a = S.parse_record(img, slot << 7)
+        b = S.parse_record(img, S.HALF + (slot << 7))
+        if a[0] and b[0] and a[1] == a[2] and b[1] == b[2] and a[4] == b[4]:
+            good.append(slot)
+    return len(img), good
+
+
+def r_advsave(L, run, r):
+    """Adventure: each console collects a star in Bob-omb Battlefield (the ROM's
+    own touch gate) and answers "save and continue" (twostar_fade_proof's
+    recipe, staggered per console). Each console's OWN cartridge then holds a
+    valid record and nobody wrote anyone else's."""
+    n, frames = r.n, r.frames or 800
+    relay = run.start_relay()
+    specs = []
+    for k in range(n):
+        d, e = hub_env(run, k, frames, relay) if r.opts.get("hub") else adv_env(run, k, n, frames)
+        off = 40 * k
+        e.update({"SM64DS_LEVEL": "6", "SM64DS_SELFTEST_IDLE": "1",
+                  "SM64DS_STAR_TRIGGER": str(200 + off),
+                  "SM64DS_HOST_PAD": ",".join("1000@%d-%d" % (f, f + 6) for f in range(300, frames, 50)),
+                  "SM64DS_TOUCH_PROBE": "%d-%d:128:56" % (412 + off, 418 + off),
+                  "SM64DS_SAVE_TRACE": "1"})
+        specs.append((k, e, d, 0.0 if k == 0 else 1.0 + 0.4 * k))
+    rcs, texts, wall = run.launch(specs, timeout_for(n, frames, False, 60))
+    cs = {k: parse(t) for k, t in texts.items()}
+    ck = Checks()
+    for k in range(n):
+        ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
+        ck.ok(not cs[k]["faults"], "p%d faults=%d" % (k, len(cs[k]["faults"])))
+        left = bool(re.search(r"\[lvl\] change: level 6 -> 1,", texts[k]))
+        ck.ok(left, "p%d star exit back to the castle" % k)
+        size, good = save_records(os.path.join(run.dir, "p%d" % k, "sm64ds.sav"))
+        ck.ok(size == 0x2000 and good, "p%d own save %s bytes, valid slots %s" % (k, size, good))
+    return ck, wall, rcs
+
+
+def r_vssave(L, run, r):
+    """VS: the host's cartridge holds a real save (written by the game's own
+    SaveFile path in a one-console pre-run); after a match on it, the host's
+    file is byte-identical and no joiner created or changed a cartridge."""
+    frames = r.frames or 600
+    host_sav = os.path.join(run.dir, "p0", "sm64ds.sav")
+    d, e = run.base_env(0)
+    pre = os.path.join(run.dir, "seed")
+    os.makedirs(os.path.join(pre, "tmp"), exist_ok=True)
+    e.pop("SM64DS_LEVEL", None)
+    e.update({"SM64DS_SCENE": "1", "SM64DS_WINDOW_SELFTEST": "120", "SM64DS_SAVE_PROBE": "write",
+              "SM64DS_SAVE_PROBE_FRAME": "60", "SM64DS_SAVE_PATH": host_sav,
+              "TEMP": os.path.join(pre, "tmp"), "TMP": os.path.join(pre, "tmp")})
+    rc = M.run_one(L.exe, pre, e, os.path.join(pre, "run.log"), timeout=240)
+    size, good = save_records(host_sav)
+    if rc != 0 or not good:
+        return_ck = Checks()
+        return_ck.ok(False, "seed save: rc=%s size=%s valid=%s" % (rc, size, good))
+        return return_ck, 0.0, {"seed": rc}
+    before = file_digest(host_sav)
+    relay = run.start_relay()
+    specs = []
+    for k in range(r.n):
+        d, e = vs_env(run, k, r.n, frames, relay, False, 0, match=True)
+        specs.append((k, e, d, 0.0 if k == 0 else 1.0 + 0.3 * k))
+    rcs, texts, wall = run.launch(specs, timeout_for(r.n, frames, False, 60))
+    ck = Checks()
+    for k in range(r.n):
+        ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
+    ck.ok(file_digest(host_sav) == before, "host save byte-identical after the match (%s -> %s)"
+          % (before, file_digest(host_sav)))
+    for k in range(1, r.n):
+        sz, gd = save_records(os.path.join(run.dir, "p%d" % k, "sm64ds.sav"))
+        ck.ok(not gd, "p%d wrote no save record (size %s, valid %s)" % (k, sz, gd))
+    ck.note("seed save valid slots %s md5 %s" % (good, before))
+    return ck, wall, rcs
+
+
+BODIES = {"vs": r_vs, "advsave": r_advsave, "vssave": r_vssave, "match": r_match, "leave": r_leave, "late": r_late, "kill": r_kill,
           "laggard": r_laggard, "digest": r_digest, "luigi": r_luigi, "luigiseeds": r_luigiseeds,
           "adv": r_adv, "hub": r_hub, "hubjoin": r_hubjoin, "hubpause": r_hubpause,
           "chat": r_chat, "chathub": lambda L, run, r: r_chat(L, run, r, hub=True),
@@ -1264,7 +1369,22 @@ class Ladder:
         stamp = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
         self.out = os.path.abspath(a.out or os.path.join(ROOT, "build", "mp_ladder", stamp))
         self.kit_work = os.path.abspath(a.kit_work or os.path.join(os.path.dirname(self.out), "kit"))
+        self.shared_save = os.path.join(os.path.dirname(self.exe), "save", "sm64ds.sav")
         self.rows = []
+
+    def take_lock(self, r):
+        """The busy flag is read before queueing AND again once the lock is
+        held: a match can start while this ladder waits in line, and a rung
+        must not launch into it. Busy after the lock: release, wait, re-queue."""
+        os.environ["SM64DS_BUILD_LOCK_PATH"] = self.a.lock
+        end = time.time() + self.a.busy_wait
+        while True:
+            wait_not_busy(self.busy_log, max(0, end - time.time()))
+            lock = build_lock.acquire(label="mp_ladder-%s" % r.name, root=ROOT,
+                                      timeout=self.a.lock_timeout)
+            if not busy(self.busy_log):
+                return lock
+            build_lock.release(lock)
 
     def run_rung(self, r, idx, feats, rerun=False):
         miss = feats.missing([x for x in r.needs if x != "kit"])
@@ -1276,10 +1396,8 @@ class Ladder:
         ok, why = mem_ok(r.n)
         if not ok:
             raise Stop("memory: " + why)
-        wait_not_busy(self.busy_log, self.a.busy_wait)
-        os.environ["SM64DS_BUILD_LOCK_PATH"] = self.a.lock
-        lock = build_lock.acquire(label="mp_ladder-%s" % r.name, root=ROOT,
-                                  timeout=self.a.lock_timeout)
+        lock = self.take_lock(r)
+        shared_before = file_digest(self.shared_save)
         try:
             run = Run(self, r, idx, os.path.join(self.out, r.name + ("-rerun" if rerun else "")))
             try:
@@ -1291,6 +1409,9 @@ class Ladder:
                     run.relay_stats = run.relay.stop()
         finally:
             build_lock.release(lock)
+        shared_after = file_digest(self.shared_save)
+        ck.ok(shared_before == shared_after, "the shared default save beside the exe untouched "
+              "(%s -> %s)" % (shared_before, shared_after))
         if run.aborted:
             return "ABORTED", wall, run.aborted, rcs
         bad = ck.failed()
