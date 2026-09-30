@@ -164,6 +164,14 @@
 extern "C" void func_02040724(void);   /* the seam's close() face */
 
 extern "C" int host_setting_net_mode(void);   /* hal/host_settings.cpp */
+// The DS's multiplayer error word. src/func_0203ea5c.c (and the wide host copy,
+// hal/comms_conductor_wide.cpp) set bit 0 at the same statement that drops the
+// session to solo when the wait bound runs out; read only by lb_close below, to
+// tell the game ENDING a match that went silent from the port's own shutdown.
+extern "C" unsigned short data_020a0f1c;
+// hal/star_flow.cpp: nonzero once the VS match is over (the end freeze), the
+// same frame on every console. After it nobody leaving is a lost match.
+extern "C" int port_vs_match_end_frozen(void);
 
 /* the build's git tip (host-src/port_gittip.c, written by CMake), hashed into
    the session check's build id. The weak fallback is tests/fault_probe.h's own,
@@ -915,6 +923,20 @@ struct PipeRound {
     unsigned      last_agg_ms; // parent: when the last aggregate for it left
     bool          live_set;    // parent: s.live was declared at staging
     unsigned char pred[kCommsMaxPlayers][kCommsBlockBytes];
+    // ---- LOCKSTEP: THE ROUND'S AUTHORITY (multiplayer 1.0, lane LAGGARD1). ----
+    // The aggregate is authoritative for every slot on every console (design
+    // F5), so the set of slots a round carries is decided ONCE, by the parent,
+    // when it first sends the round, and every console consumes exactly that
+    // set: the parent from what it sent, a child from what it received. Before
+    // this, each console consumed "the round's blocks AND ITS CURRENT live
+    // mask", which is only the same set on every console while nobody leaves:
+    // a slot dropped between two consoles' consumption of one round was in
+    // that round for one of them and not for the other.
+    bool          agg;         // parent: sent; child: the aggregate landed
+    unsigned      agg_have;    // the slots that aggregate carried
+    unsigned      lg_subst;    // parent: slots it carried a substitute for
+    bool          lg_waited;   // parent: held past its deadline for a sender
+    bool          lg_late_sent; // child: its own block sent into a closed round
 };
 PipeRound g_pipe[kPipeDepth];
 
@@ -1093,6 +1115,215 @@ bool      g_starve_ever         = false;
 enum : unsigned { kStarveLogMs = 1000 };
 
 // ===========================================================================
+// THE LAGGARD RULE (multiplayer 1.0, lane LAGGARD1; NETARCH1 design 4.2):
+// ONE SLOW PLAYER NEVER FREEZES THE ROOM.
+//
+// Lockstep as it stood made the parent wait for the slowest child's block
+// before it could close a round, so one console that hitched (a Windows
+// stall, a Wi-Fi burst) stalled all sixteen. The parent now stops waiting at a
+// DEADLINE: round R goes out no later than the parent's own frame R + N - 1
+// (N the input delay; one round of slack for the aggregate to reach the
+// children before they need it). A live slot whose block for R has not landed
+// by then is SUBSTITUTED: its last real block, the camera heading carried
+// forward at its last per-round rate (the rb_predict rule) and the frame
+// counter at +2..+5 set to the parent's own for R (the ROM compares it,
+// src/func_0203ea5c.c:418). The aggregate is authoritative for every slot on
+// every console, the late one included, so every console simulates the same
+// substituted block: deterministic, no rollback. The holes that closes:
+//
+//   a) a child never writes its own block into a round whose aggregate already
+//      landed (the aggregate's copy of its slot may be the substitute);
+//   b) the parent ignores a block for a round it already sent ("late");
+//   c) CATCH-UP: a child holding complete aggregates more than kCatchupAhead
+//      rounds past the one it is about to consume skips the frame pacer's
+//      sleep (walk_window.cpp frame_pace asks port_comms_rounds_ahead()), so a
+//      console that hitched runs at its unpaced speed until it is back in step
+//      instead of staying behind forever with every input substituted;
+//   d) RETIRE: a slot substituted for kLgRetireRounds rounds in a row (3 s)
+//      leaves the match. Every later aggregate goes out without it, so every
+//      console zeroes its record from the same round (the ROM's own unpack
+//      loop clears a record it is not handed, func_0205a588) and its body
+//      stops. The parent tells it with a Bye tagged 'LGRT' + its slot, which a
+//      1.0 child that is NOT that slot ignores (over the relay a parent
+//      datagram reaches every child).
+//
+// A slot that has never delivered a block is never substituted: there is
+// nothing to repeat, so the parent waits for its first block as it always did
+// (the session start stays in step). SM64DS_COMMS_LAGGARD=0 turns the rule off
+// (the room waits for the slowest, as before 1.0). SM64DS_COMMS_HITCH=
+// <every_ms>:<ms> is the test knob that stops this console's pump for <ms>
+// every <every_ms> once rounds are flowing.
+// ===========================================================================
+bool     g_lg_on = true;                     // SM64DS_COMMS_LAGGARD=0: off
+enum : unsigned { kLgRetireRounds = 90 };    // 3 s of 33 ms rounds
+enum : int { kCatchupAhead = 2 };            // rounds of slack a child keeps
+// A SLOT THAT IS STILL SENDING BUT CANNOT CATCH UP ON ITS OWN (lane LAGGARD1,
+// measured: laggard16-hitch on tip6). Catch-up (rule c) runs a joiner at its
+// unpaced speed, which is plenty on a player's own PC and nothing at all on a
+// machine with no headroom -- sixteen consoles on one PC all run flat out, so
+// a joiner that hitched once stayed nine rounds behind, was substituted for 90
+// rounds in a row while sending every frame, and was retired after ONE 0.4 s
+// hitch. Two changes, both for a slot that is SENDING (heard within the wait
+// window) rather than silent:
+//   - retirement counts only SILENT substituted rounds (a stall, a crash, a
+//     dead link: exactly 3 s of nothing), plus a give-up after kLgGiveUpRounds
+//     of substitution even while sending (10 s behind: it is not coming back);
+//   - HELP: once such a slot has been substituted kLgHelpRounds in a row, the
+//     host stretches its own frames to 5/4 of its measured pace until the slot
+//     is back in step, so a console with no spare speed closes the gap at a
+//     quarter of the room's rate (the GGPO-style time sync, one way). The room
+//     runs a little slower for those seconds instead of dropping the player.
+//     2.5 s, because every other console feels the stretch (its rounds come
+//     slower than its own pace) and a joiner that CAN catch up does so in about
+//     2 s after a 0.4 s hitch even on a crowded PC (final1 laggard4-hitch: 55
+//     substituted rounds a hitch); at 1.5 s the help fired on every hitch and
+//     the others' stalls rose with it.
+enum : unsigned { kLgHelpRounds = 75 };      // 2.5 s substituted while sending
+// STOP-AND-WAIT (input delay 0: the loopback test carrier) has no deadline to
+// substitute at -- every console waits on the same round -- so there the rule
+// is retire-only: a slot the host is waiting on that has sent NOTHING for this
+// long is retired and the round closes without it. It has to beat the game's
+// own wait bound on the other consoles (about 2.7 s on an unpaced test run:
+// REVMPPROOF1's latejoin4 joiners gave up after 671 republishes at 4 ms), or
+// they drop to solo first (MPPROOF1 BROKEN-vs4-kill-loop: a killed joiner and
+// the other three all closed at round 189 and played on alone). A live console
+// republishes every 4 ms on loopback, so a second of silence is not a hitch.
+enum : unsigned { kLgStopWaitSilentMs = 1000 };
+enum : unsigned { kLgGiveUpRounds = 300 };   // 10 s behind while sending
+struct LgSlot {
+    bool          have;                      // a real block has landed
+    unsigned      round;                     // ... for this round, the newest
+    unsigned char block[kCommsBlockBytes];
+    int           head_delta;                // heading change per round
+    unsigned      run;                       // rounds substituted in a row
+    unsigned long long subst;                // rounds substituted, total
+    unsigned      last_rx_ms;                // when a real block last landed
+    unsigned      silent_run;                // of `run`, rounds it was also silent
+    bool          step_have;                 // a block has landed in an open round
+    unsigned      step_round;                // ... for this round, the newest
+};
+LgSlot   g_lg[kCommsMaxPlayers];
+unsigned g_lg_retired = 0;                   // parent: slots retired this session
+unsigned long long g_lg_late      = 0;       // parent: blocks for rounds already sent
+unsigned long long g_lg_own_subst = 0;       // child: rounds that carried a block
+                                             // for this console it did not send
+unsigned long long g_lg_own_late  = 0;       // child: ... and it had not sent one yet
+unsigned long long g_lg_catchup   = 0;       // child: pace sleeps skipped
+unsigned long long g_lg_far       = 0;       // child: aggregates too far ahead to file
+unsigned g_lg_join_round = 0;                // child: the parent's clock at its accept
+unsigned g_hitch_every_ms = 0, g_hitch_ms = 0, g_hitch_last_ms = 0;
+unsigned long long g_hitches = 0;
+// THE WAIT WINDOW, and why the rule is not "never wait past the deadline".
+// Measured on this lane's first build: four consoles on one busy PC ran at 16
+// to 18 frames a second, the host (which no longer waited for anybody) ran a
+// little faster than its children, and within seconds every child's blocks
+// were late, substituted, and one child was retired in a match where nobody
+// had hitched at all (after1 vs4-relay1-rtt80-p: subst=536, retired=0x2). A
+// console that cannot hold the host's pace is not a laggard in the sense this
+// rule is for; it is the room's real speed, and lockstep has always run at
+// it. So at the deadline the host still WAITS for a slot that is sending --
+// a real block landed within the window and it is at most two rounds short
+// of the round being closed -- and substitutes only for a slot that has gone
+// SILENT for the window (a stalled window, a hitch, a crash, a dead link) or
+// fallen further behind than that. A console that stops is never waited for
+// longer than the window; one that sends slowly slows the room to its pace,
+// exactly as before 1.0. SM64DS_COMMS_LAGGARD_WAIT_MS sets the window; 0 is
+// design 4.2 read strictly (never wait past the deadline); the default is
+// max(100 ms, 1.5 host frames), so a host running below 30 frames a second
+// (a crowded test PC) does not mistake its own slowness for a silent peer.
+int      g_lg_wait_cfg   = -1;               // -1 auto, 0 strict, >0 fixed ms
+unsigned g_lg_frame_x100 = 3333;             // host: mean frame time, ms * 100
+unsigned g_lg_last_consume_ms = 0;
+unsigned long long g_lg_waited = 0;          // host: rounds held for a sending slot
+bool     g_lg_help = false;                  // host: stretching frames for a slot
+unsigned long long g_lg_help_holds = 0;      // host: exchange() calls held by it
+unsigned long long g_lg_help_rounds = 0;     // host: rounds closed while helping
+unsigned long long g_lg_reserve_held = 0;    // host: re-serves held by the pacing
+bool     g_lg_sprinted = false;              // joiner: the last frame skipped its sleep
+unsigned g_lg_late_tx_ms = 0;                // joiner: when its last late block went out
+bool     g_lg_recovering = false;            // joiner: replayed a closed round, not yet in time
+unsigned g_cache_serve_ms[kCacheDepth];      // stop-and-wait re-serve pacing, per cache slot
+unsigned lg_wait_window_ms() {
+    if (g_lg_wait_cfg >= 0) return (unsigned)g_lg_wait_cfg;
+    const unsigned w = g_lg_frame_x100 * 3u / 200u;       // 1.5 frames, ms
+    return w > 100u ? w : 100u;
+}
+const unsigned char kRetireTag[4] = { 'L', 'G', 'R', 'T' };
+// THE HOST'S GOODBYE AT A MATCH'S NORMAL END. When the game itself ends the
+// session without an error (the VS match is over, src/func_0203df40.c closes
+// the radio with bit 0 of the DS error word clear), the host tags its Bye
+// 'DONE'. A joiner that gets it knows the match ended rather than its host
+// vanishing, so the wait bound that runs out afterwards (nobody is sending any
+// more) is not reported as a lost match. An untagged Bye mid-match (the host
+// quit, or its process ended) still is, once the joiner's own bound runs out.
+const unsigned char kDoneTag[4] = { 'D', 'O', 'N', 'E' };
+bool g_host_done = false;                    // joiner: the host said DONE
+unsigned g_seat_mask_said = ~0u;             // the last seat mask logged
+// THE MATCH IS UNDER WAY once the parent has seen the whole planned roster
+// (SM64DS_VS_PLAYERS, the number the conductor seats the world for) or has
+// handed the game a round. From then on nobody leaving -- a Bye, a refusal at
+// the door, a retire -- sends the parent back to "connecting". It used to,
+// the moment it was alone: its exchange() then returned 0, the ROM's own wait
+// bound ran out and it played on SOLO, and in a solo world every seated body
+// reads THIS console's pad (NETCORE1 S4: a refused only child's body mirrored
+// the host). Staying in the session instead, the rounds carry the host alone
+// and every other seat's record is cleared each round, so an absent player's
+// body stands still, on every console alike.
+bool g_match_full = false;
+
+// THE SEATS IN PLAY, logged when they change: the set of slots the round the
+// game was just handed carries (port_vs_seat_live_mask). The same line at the
+// same round on every console, so a proof can compare them.
+void note_seat_mask(unsigned round) {
+    if (g_latched_mask == g_seat_mask_said) return;
+    g_seat_mask_said = g_latched_mask;
+    std::fprintf(stderr, "[comms:loopback] seats in play now 0x%x (round %u)\n",
+                 g_latched_mask, round);
+}
+
+void lg_reset() {
+    std::memset(g_lg, 0, sizeof g_lg);
+    g_lg_retired   = 0;
+    g_lg_late      = 0;
+    g_lg_own_subst = 0;
+    g_lg_own_late  = 0;
+    g_lg_catchup   = 0;
+    g_lg_far       = 0;
+    g_lg_join_round = 0;
+    g_lg_frame_x100 = 3333;
+    g_lg_last_consume_ms = 0;
+    g_lg_waited     = 0;
+    g_lg_help       = false;
+    g_lg_help_holds = 0;
+    g_lg_help_rounds = 0;
+    g_lg_reserve_held = 0;
+    g_lg_sprinted   = false;
+    g_lg_late_tx_ms = 0;
+    g_lg_recovering = false;
+    std::memset(g_cache_serve_ms, 0, sizeof g_cache_serve_ms);
+    g_hitch_last_ms = 0;
+    g_seat_mask_said = ~0u;
+    g_match_full    = false;
+    g_host_done     = false;
+}
+
+// Parent: a real block for slot k, round r. Keeps the newest; an older round
+// arriving late (a republish) changes nothing. Same shape as rb_note_block.
+void lg_note_block(int k, unsigned r, const unsigned char *b) {
+    LgSlot &p = g_lg[k];
+    p.last_rx_ms = (unsigned)GetTickCount(); // now_ms(): sending, whatever the round
+    if (p.have && (int)(r - p.round) <= 0) return;
+    if (p.have) {
+        const int d = (short)(rb_heading(b) - rb_heading(p.block));
+        const int span = (int)(r - p.round);
+        p.head_delta = span > 0 ? d / span : 0;
+    }
+    p.have  = true;
+    p.round = r;
+    std::memcpy(p.block, b, kCommsBlockBytes);
+}
+
+// ===========================================================================
 // ADAPTIVE INPUT DELAY (run rel0215 lane LAGDELAY). PARENT SIDE.
 //
 // THE NUMBER WAS A CONSTANT AND THE PATH IS NOT. The relay default of 5 frames
@@ -1149,6 +1380,40 @@ enum : unsigned { kStarveLogMs = 1000 };
 bool g_adaptive_delay  = false;         // sizing is in effect on this end
 bool g_delay_frozen    = false;         // parent: frame 0 has been asked for
 bool g_frames_produced = false;         // this end handed the game a round
+bool match_underway() { return g_match_full || g_frames_produced; }   // see g_match_full
+
+// A VS MATCH THIS CONSOLE HAS LOST ENDS HERE, OUT LOUD (multiplayer 1.0, lane
+// LAGGARD1; REVMPPROOF1's latejoin4 finding). What used to happen: the other
+// consoles went quiet for the ROM's whole wait bound (a host stalled ~2 s on a
+// busy PC), src/func_0203ea5c.c:487 dropped every console to SOLO, and each of
+// the four kept playing its own game to the end with exit code 0 -- one match
+// quietly split into four, nobody told. A console now leaves the match the
+// moment it knows the match is lost to it, with one line saying why and exit
+// code 5 (the launcher's "you lost connection to the match"):
+//   - the ROM gave up waiting for the others mid-match (abandon() after this
+//     end has played a round), on the host or on a joiner;
+//   - the host retired this console (the laggard rule), by the tagged Bye or
+//     by rounds that stopped carrying it;
+//   - the host retired the last other player (all of them lost, none left).
+// A player who LEAVES (a Bye) or is refused at the door is not a loss for the
+// others: the host plays on with the seats that are left. Before the first
+// round nothing here fires, so a session that never formed keeps retrying the
+// way the DS's menu would. SM64DS_COMMS_LOST_EXIT=0 logs the line and plays on
+// (the old behaviour), for a proof that wants to watch what happens next.
+bool g_lost_exit = true;
+bool g_exiting   = false;      // the port's own shutdown is closing the carrier
+bool g_err_at_start = false;   // the error bit was already set at the first round
+void match_lost(const char *why) {
+    std::fprintf(stderr, "[comms:loopback] LOST THE VS MATCH (slot %d, round "
+                 "%u): %s. %s\n", g_slot, g_round, why,
+                 g_lost_exit ? "This console stops here instead of playing on "
+                               "alone (exit code 5)"
+                             : "SM64DS_COMMS_LOST_EXIT=0: playing on");
+    if (!g_lost_exit) return;
+    std::fflush(stderr);
+    std::fflush(stdout);
+    std::exit(5);
+}
 // THE THREE TERMS OF THE FORMULA, NAMED. The floor is the least cover a sized
 // session ships: 2 rounds on a relay (every path through it has two home links
 // on it), 1 direct (the direct mode default below); install picks the one for
@@ -1238,6 +1503,12 @@ enum : unsigned { kReportRetryFloorMs = 50 };
 // word in the handshake. Bit 30 tags a REPORT; an older parent reads `have` on
 // a JOIN nowhere at all and answers a report exactly as it answers a re-knock.
 enum : unsigned { kJoinReportBit = 0x40000000u };
+// BLOCKS `have`: bit 30 marks a joiner's block for a round it already holds the
+// aggregate of (the laggard rule's catch-up: it is behind and says so). The
+// host files it as that player's newest input and does NOT re-serve the round
+// for it -- the joiner is not missing it, and answering sixty of those a
+// second would run the host past the relay's per-seat cap.
+enum : unsigned { kBlocksLateBit = 0x40000000u };
 // ACCEPT `have`: bit 31 is the slot assignment and 8..15 the delay, both
 // frozen. Bit 16 is new and says "your report was recorded".
 enum : unsigned { kAcceptRttAckBit = 0x00010000u };
@@ -1284,6 +1555,7 @@ void delay_state_reset() {
     g_delay_gate_since_ms = 0;
     g_sizing_wait_since_ms = 0;
     g_starve_ever         = false;
+    lg_reset();                           // the laggard rule's per-session state
 }
 
 PipeRound *pipe_find(unsigned r) {
@@ -2321,11 +2593,20 @@ void relay_on_ack(const RelayHello &h) {
 // PIPELINED SEND HELPERS. Parent side only; a child publishes one slot and has
 // nothing to assemble.
 // ---------------------------------------------------------------------------
-void pipe_send_aggregate(const PipeRound &s) {
+void pipe_send_aggregate(PipeRound &s) {
+    // THE SET IS DECIDED AT THE FIRST SEND AND NEVER AGAIN: a re-serve of this
+    // round (a child that missed it) carries exactly what the first copy
+    // carried, whoever has left since. See PipeRound::agg.
+    // (Rollback revises rounds and has its own aggregate; its re-serve through
+    // here keeps the old reading.)
+    if (!s.agg || g_rollback) {
+        s.agg      = true;
+        s.agg_have = s.mask & g_live;
+    }
     Packet b;
     fill_header(b, kTypeBlocks);
     b.round = s.round;               // NOT g_round: the parent is ahead of it
-    b.have  = s.mask & g_live;
+    b.have  = s.agg_have;
     for (int i = 0; i < kCommsMaxPlayers; ++i)
         if (b.have & (1u << i))
             std::memcpy(b.blocks[i], s.blocks[i], kCommsBlockBytes);
@@ -2355,6 +2636,132 @@ void pipe_send_aggregate_rb(PipeRound &s) {
     send_to_children(b);
     s.sent_mask = b.have;
     if (b.have == s.live) s.sent = true;
+}
+
+// THE LAGGARD RULE, PARENT SIDE (see the banner over g_lg). Retire slot k:
+// every round not yet sent goes out without it, its later datagrams are
+// ignored for the session, and it is told with a tagged Bye.
+void lg_retire_slot(int k) {
+    const unsigned bit = 1u << k;
+    if (k <= 0 || !(g_live & bit)) return;
+    g_live       &= ~bit;
+    g_stage_mask &= ~bit;
+    g_lg_retired |= bit;
+    const unsigned run = g_lg[k].silent_run >= kLgRetireRounds ? g_lg[k].silent_run
+                                                               : g_lg[k].run;
+    g_lg[k].have = false;
+    g_lg[k].run  = 0;
+    g_lg[k].silent_run = 0;
+    std::fprintf(stderr, "[comms:loopback] slot %d retired at round %u: no block "
+                 "from it in time for %u rounds in a row (%u ms), so the host "
+                 "played its last input for it and now drops it from the match. "
+                 "Every console drops it from the same round (the aggregates "
+                 "say so) and its body stops. Live mask now 0x%x\n",
+                 k, g_pipe_low, run, run * (unsigned)kRoundPeriodMs100 / 100u,
+                 g_live);
+    Packet r;
+    fill_header(r, kTypeBye);
+    std::memcpy(r.blocks[0], kRetireTag, 4);
+    put_u32le(r.blocks[0] + 4, (unsigned)k);
+    // Over the relay a parent datagram reaches every child; the tag names the
+    // one it is for. Loopback and direct address it alone.
+    if (g_net_mode == kNetRelay) send_to_children(r);
+    else                         send_to_slot(r, k);
+    if (popcount_live(g_live) <= 1)
+        match_lost("every other player lost connection");
+}
+
+// Round s is past its deadline: fill every live slot that has not delivered
+// with its substitute. False (and s untouched) when some missing slot has
+// never delivered a block at all: there is nothing to repeat, so the round
+// waits for it as it always did.
+// Round s is past its deadline: is some missing slot still SENDING (see the
+// banner over g_lg_wait_cfg)? Then the round waits for it, bounded by the
+// window since that slot's last block.
+bool lg_should_wait(PipeRound &s) {
+    const unsigned w = lg_wait_window_ms();
+    if (w == 0) return false;
+    const unsigned t = now_ms();
+    const unsigned missing = g_live & ~s.mask;
+    for (int k = 1; k < kCommsMaxPlayers; ++k) {
+        if (!(missing & (1u << k))) continue;
+        const LgSlot &p = g_lg[k];
+        if (!p.have) continue;                     // lg_fill waits for these
+        if ((unsigned)(t - p.last_rx_ms) >= w) continue;          // silent
+        // too far behind to deliver before the host needs the round itself
+        // (frame round + N): the catch-up after a hitch, not a console in step.
+        // Measured from the newest block that landed in a round still OPEN,
+        // never from a catcher's late blocks (kBlocksLateBit, rule b): those
+        // prove it is alive and feed its substitute, but a console that is
+        // replaying rounds the room already closed is catching up, and holding
+        // the room for it is the old lockstep stall this rule exists to end
+        // (tip13 laggard4-hitch: the host waited on the catcher every time it
+        // came within N - 1 rounds, and the others' stall lines went 3 -> 13,
+        // 5 -> 18). It is waited for again once one of its blocks makes an
+        // open round on its own.
+        if (!p.step_have) continue;
+        if ((int)(s.round - p.step_round) > (g_input_delay > 3 ? g_input_delay - 1 : 2)) continue;
+        if (!s.lg_waited) { s.lg_waited = true; ++g_lg_waited; }
+        return true;
+    }
+    return false;
+}
+
+bool lg_fill(PipeRound &s) {
+    const unsigned missing = g_live & ~s.mask;
+    for (int k = 1; k < kCommsMaxPlayers; ++k)
+        if ((missing & (1u << k)) && !g_lg[k].have) return false;
+    if (!(s.mask & 1u)) return false;     // the parent's own block: always there
+    for (int k = 1; k < kCommsMaxPlayers; ++k) {
+        if (!(missing & (1u << k))) continue;
+        const LgSlot &p = g_lg[k];
+        unsigned char *out = s.blocks[k];
+        std::memcpy(out, p.block, kCommsBlockBytes);
+        const int span = (int)(s.round - p.round) > 0 ? (int)(s.round - p.round) : 0;
+        const short h = (short)(rb_heading(p.block) + p.head_delta * span);
+        out[0x0B] = (unsigned char)(h & 0xFF);
+        out[0x0C] = (unsigned char)((h >> 8) & 0xFF);
+        std::memcpy(out + 2, s.blocks[0] + 2, 4);   // the parent's frame counter
+        s.mask     |= (1u << k);
+        s.lg_subst |= (1u << k);
+    }
+    return true;
+}
+
+// A round just went out: count the substitutions and retire any slot that has
+// had nothing but substitutes for kLgRetireRounds rounds.
+void lg_account(const PipeRound &s) {
+    const unsigned t = now_ms();
+    const unsigned w = lg_wait_window_ms() > 100u ? lg_wait_window_ms() : 100u;
+    bool help = false;
+    for (int k = 1; k < kCommsMaxPlayers; ++k) {
+        const unsigned bit = 1u << k;
+        if (!(s.agg_have & bit)) continue;
+        LgSlot &p = g_lg[k];
+        const bool silent = (unsigned)(t - p.last_rx_ms) >= w;
+        if (s.lg_subst & bit) {
+            ++p.subst;
+            ++p.run;
+            if (silent) ++p.silent_run;
+        } else {
+            p.run = 0;
+            p.silent_run = 0;
+        }
+        if (!silent && p.run >= kLgHelpRounds) help = true;
+    }
+    if (help != g_lg_help)
+        std::fprintf(stderr, "[comms:loopback] %s at round %u: %s\n",
+                     help ? "HELPING a player catch up" : "every player is back in step",
+                     s.round,
+                     help ? "a console that is still sending has been behind for "
+                            "2.5 s, so this host stretches its frames to 5/4 until "
+                            "it is back in step" : "frames back to the room's pace");
+    g_lg_help = help;
+    if (help) ++g_lg_help_rounds;
+    for (int k = 1; k < kCommsMaxPlayers; ++k)
+        if ((g_live & (1u << k)) &&
+            (g_lg[k].silent_run >= kLgRetireRounds || g_lg[k].run >= kLgGiveUpRounds))
+            lg_retire_slot(k);
 }
 
 void pipe_try_broadcast() {
@@ -2434,13 +2841,37 @@ void pipe_try_broadcast() {
                      g_delay_gate_holds);
         g_delay_gate_since_ms = 0;
     }
+    // THE DEADLINE (the laggard rule): round q goes out by the parent's frame
+    // q + N - 1 - down, whether or not every child's block is in, where down is
+    // the aggregate's time on the wire to the children in rounds (half the
+    // worst reported round trip). Design 4.2 gave it one round flat, which is
+    // only enough when the one-way time is under a frame: at 80 ms round trips
+    // the aggregate of a round closed at N - 1 reached the joiners after they
+    // needed it, so every joiner stalled a little on every substituted round
+    // (final1/x2/x3 laggard4-hitch: the others' stall lines 5 -> 20). A slot
+    // that is still SENDING is waited for past the deadline anyway (the wait
+    // window), so an early deadline costs nothing to a console in step; it
+    // only makes a SILENT one's substitute arrive in time. At N = 1 (direct)
+    // there is nothing to give and the deadline is the frame that consumes it.
+    int worst_rtt = 0;
+    for (int k = 1; k < kCommsMaxPlayers; ++k)
+        if ((g_live & (1u << k)) && g_child_rtt_ms[k] > worst_rtt) worst_rtt = g_child_rtt_ms[k];
+    const int down = (int)(((unsigned)worst_rtt * 50u + kRoundPeriodMs100 - 1u) / kRoundPeriodMs100);
+    int slack_i = g_input_delay - 1 - down;
+    if (slack_i < 1) slack_i = 1;
+    const unsigned slack = (unsigned)slack_i;
     for (unsigned q = g_pipe_low; q <= g_round; ++q) {
         PipeRound *s = pipe_find(q);
         if (!s) break;                        // a hole: nothing past it is due
         if (!s->sent) {
-            if ((s->mask & g_live) != g_live) break;   // still waiting on a peer
+            if ((s->mask & g_live) != g_live) {   // still waiting on a peer
+                if (!g_lg_on || (int)(g_round - q) < (int)slack ||
+                    lg_should_wait(*s) || !lg_fill(*s))
+                    break;
+            }
             pipe_send_aggregate(*s);
             s->sent = true;
+            lg_account(*s);
         }
         if (q == g_pipe_low) ++g_pipe_low;
     }
@@ -2497,6 +2928,11 @@ void rb_retire_slot(int k, const char *why) {
 
 void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
     (void)from;
+    if (k > 0 && k < kCommsMaxPlayers && !(g_lg_retired & (1u << k))) {
+        // Anything at all from a slot says its console is alive.
+        g_lg[k].last_rx_ms = now_ms();
+        if (!g_lg[k].last_rx_ms) g_lg[k].last_rx_ms = 1;
+    }
     if (g_rollback && (g_rb_dropped & (1u << k)) && p.type != kTypeBye) {
         // A slot the grace rule retired is gone the way a DS that stopped
         // sending is gone: its late keepalives and blocks must not seat it
@@ -2507,6 +2943,12 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
             std::fprintf(stderr, "[comms:loopback] ROLLBACK: slot %d was dropped; "
                          "its later datagrams are ignored this session\n", k);
         }
+        return;
+    }
+    if (!g_rollback && (g_lg_retired & (1u << k)) && p.type != kTypeBye) {
+        // RETIRED BY THE LAGGARD RULE: gone for the rest of the session, the
+        // way the rollback drop above is. A late block or a report from it
+        // must not seat it again mid-match as a fresh join.
         return;
     }
     switch (p.type) {
@@ -2552,6 +2994,13 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
             break;
         }
         g_live |= (1u << k);
+        if (fresh) {
+            // A seat taken afresh starts with no history to repeat.
+            g_lg[k].have = false;
+            g_lg[k].run  = 0;
+            if (g_want_players >= 2 && popcount_live(g_live) >= g_want_players)
+                g_match_full = true;
+        }
         // A REPORT RATHER THAN A KNOCK. Bit 30 of a JOIN's `have` means the
         // child is telling the parent what its path measured and what number
         // it is currently running. Everything below this block treats it as
@@ -2743,22 +3192,57 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
                 // round older than the ring can hold must not evict a live
                 // one: pipe_open would reset a newer round's entry.
                 PipeRound *s = pipe_find(p.round);
-                if (!s && (!g_rollback ||
-                           ((int)(p.round - g_pipe_low) >= 0 &&
-                            (int)(p.round - (rb_live_round() + kPipeDepth / 2)) < 0)))
+                // LOCKSTEP TOO, since the laggard rule: a child that fell far
+                // behind can name a round the ring no longer holds, and
+                // opening it would reset a live round's entry.
+                if (!s && ((int)(p.round - g_pipe_low) >= 0 &&
+                           (int)(p.round - (rb_live_round() + kPipeDepth / 2)) < 0))
                     s = &pipe_open(p.round);
-                if (s) {
+                if (!g_rollback && (!s || s->sent)) {
+                    // RULE (b): a block for a round already sent is LATE. The
+                    // round went out with a substitute and every console runs
+                    // that; filing this one here would make the parent alone
+                    // run something else. It is still the newest word on what
+                    // this player is doing, so the next substitute uses it.
+                    // (A republish of a block the round DID carry is the
+                    // ordinary loss recovery below, not lateness.)
+                    if (!s || (s->lg_subst & (1u << k))) {
+                        ++g_lg_late;
+                        lg_note_block(k, p.round, p.blocks[k]);
+                    }
+                } else if (s) {
                     std::memcpy(s->blocks[k], p.blocks[k], kCommsBlockBytes);
                     s->mask |= (1u << k);
                     rb_note_block(k, p.round, p.blocks[k]);
+                    if (!g_rollback) {
+                        lg_note_block(k, p.round, p.blocks[k]);
+                        LgSlot &q = g_lg[k];
+                        if (!q.step_have || (int)(p.round - q.step_round) > 0) {
+                            q.step_have  = true;
+                            q.step_round = p.round;
+                        }
+                    }
                 }
             }
             // A republish of a round already closed means the child never saw
             // the aggregate. Re-serve it from the ledger, same job the
             // stop-and-wait cache does.
             PipeRound *done = pipe_find(p.round);
-            if (done && done->sent) {
+            // ONCE PER ROUND PER REPUBLISH INTERVAL, not once per republish: a
+            // host that froze for 5 s drains every joiner's queued republishes
+            // at once on resume, and answering each one put a burst of
+            // aggregates past the relay's per-seat cap (MPPROOF1
+            // BROKEN-vs4-stall-relay1: 335 dropped). One copy fans out to
+            // every joiner through the relay anyway.
+            if (done && done->sent && !g_rollback && (p.have & kBlocksLateBit)) {
+                // a joiner catching up: it holds this round (see kBlocksLateBit)
+            } else if (done && done->sent && !g_rollback &&
+                (unsigned)(now_ms() - done->last_agg_ms) < (unsigned)g_resend_ms &&
+                done->last_agg_ms != 0) {
+                ++g_lg_reserve_held;
+            } else if (done && done->sent) {
                 pipe_send_aggregate(*done);
+                done->last_agg_ms = now_ms() ? now_ms() : 1;
                 ++g_stale_serves;
             }
             pipe_try_broadcast();
@@ -2768,14 +3252,25 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
             if (p.have & (1u << k)) {
                 std::memcpy(g_stage[k], p.blocks[k], kCommsBlockBytes);
                 g_stage_mask |= (1u << k);
+                g_lg[k].have = true;          // it has played: the retire rule applies
             }
         } else if (p.round < g_round) {
             // The child never saw our broadcast for that round. Re-serve it
             // from the cache rather than let two clocks stare at each other.
             const int i = (int)(p.round % kCacheDepth);
             if (g_cache_valid[i] && g_cache[i].round == p.round) {
-                send_to_slot(g_cache[i], k);
-                ++g_stale_serves;
+                // Paced the same way as the pipelined re-serve above, when
+                // one datagram reaches every joiner (the relay); a direct or
+                // loopback re-serve is addressed to the one that asked.
+                const unsigned t = now_ms();
+                if (g_net_mode == kNetRelay && g_cache_serve_ms[i] != 0 &&
+                    (unsigned)(t - g_cache_serve_ms[i]) < (unsigned)g_resend_ms) {
+                    ++g_lg_reserve_held;
+                } else {
+                    send_to_slot(g_cache[i], k);
+                    g_cache_serve_ms[i] = t ? t : 1;
+                    ++g_stale_serves;
+                }
             }
         } else {
             // A child ahead of the parent cannot happen while the parent is
@@ -2787,9 +3282,13 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         if (g_rollback && (g_live & (1u << k))) rb_retire_slot(k, "Bye");
         g_live &= ~(1u << k);
         g_stage_mask &= ~(1u << k);
-        if (popcount_live(g_live) <= 1) g_state = kCommsConnecting;
-        std::fprintf(stderr, "[comms:loopback] slot %d left; live mask 0x%x\n",
-                     k, g_live);
+        if (popcount_live(g_live) <= 1 && !match_underway())
+            g_state = kCommsConnecting;
+        std::fprintf(stderr, "[comms:loopback] slot %d left; live mask 0x%x%s\n",
+                     k, g_live,
+                     popcount_live(g_live) <= 1 && match_underway()
+                         ? " (the match is under way: this console plays on "
+                           "with the seats that are left)" : "");
         // A JOINER THAT REFUSED THE SESSION SAYS WHY in its BYE (see
         // session_check_ok), so the host's log names the reason instead of
         // only the departure. An older joiner's BYE has zero blocks.
@@ -2884,6 +3383,10 @@ void clock_send_if_due() {
     if (rtt < 0) rtt = 0;
     if (rtt > 0xFFFF) rtt = 0xFFFF;
     r.rtt_ms = (unsigned short)rtt;
+    // How many rounds carried a block for this console that it did not send
+    // (the laggard rule substituted it), clamped to the field.
+    r.subst_seen = (unsigned short)(g_lg_own_subst > 0xFFFFu ? 0xFFFFu
+                                                             : g_lg_own_subst);
     send_raw(&r, (int)sizeof r, slot_addr(0));
     ++g_aux_tx[kAuxKindClock];
     ++g_clock_sent;
@@ -3208,6 +3711,7 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
                 }
             }
             g_round = p.round;          // adopt the parent's clock
+            g_lg_join_round = p.round;  // rounds from here on carry this end
             if (g_rollback) {           // port/rollback: the ledger starts here
                 g_rb_scan_low = p.round;
                 g_pipe_low = p.round;
@@ -3315,13 +3819,50 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
             // is the mechanism, not lateness -- so the stop-and-wait test
             // "is this the round I am on" would throw away every packet.
             g_live = p.live_wide;
+            if ((p.live_wide & (1u << g_slot)) == 0 &&
+                (int)(p.round - g_lg_join_round) >= 0) {
+                // THE PARENT NO LONGER COUNTS THIS CONSOLE: it was retired
+                // (the laggard rule) and the tagged Bye that says so was lost.
+                // Same exit as the Bye. (A round from before this end's
+                // accept was assembled before it joined and proves nothing.)
+                std::fprintf(stderr, "[comms:loopback] RETIRED: the host's "
+                             "rounds no longer carry this console (slot %d); "
+                             "you lost connection to the match. Back to idle.\n",
+                             g_slot);
+                match_lost("the host dropped this console from the match");
+                g_state = kCommsIdle;
+                g_live  = 0;
+                break;
+            }
+            // THE WINDOW THE RING CAN HOLD. A round below the low-water mark
+            // is complete here already (a re-serve), and one so far ahead
+            // that filing it would evict a round this console has not
+            // consumed yet is dropped: a console that far behind is retired
+            // by the parent before it could use it.
+            if ((int)(p.round - g_pipe_low) < 0) break;
+            if ((int)(p.round - (g_round + kPipeDepth / 2)) >= 0) { ++g_lg_far; break; }
             PipeRound &s = pipe_open(p.round);
+            if (!s.agg && (p.have & (1u << g_slot))) {
+                // WAS THIS CONSOLE'S INPUT REPLACED? The parent carries a
+                // substitute for a slot whose block missed the deadline; this
+                // end runs it like everybody else (rule a, in exchange()).
+                const bool sent = (s.mask & (1u << g_slot)) != 0;
+                if (!sent) {
+                    ++g_lg_own_late;
+                    ++g_lg_own_subst;
+                } else if (std::memcmp(s.blocks[g_slot], p.blocks[g_slot],
+                                       kCommsBlockBytes) != 0) {
+                    ++g_lg_own_subst;
+                }
+            }
             for (int i = 0; i < kCommsMaxPlayers; ++i) {
                 if (p.have & (1u << i)) {
                     std::memcpy(s.blocks[i], p.blocks[i], kCommsBlockBytes);
                     s.mask |= (1u << i);
                 }
             }
+            s.agg      = true;               // the round's authority landed
+            s.agg_have = p.have;
             if (!g_newest_agg_any || (int)(p.round - g_newest_agg_round) > 0) {
                 g_newest_agg_round = p.round;   // for the 'SYNK' clock report
                 g_newest_agg_any   = true;
@@ -3337,7 +3878,7 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
             // is found by walking up from where it was.
             while (true) {
                 PipeRound *low = pipe_find(g_pipe_low);
-                if (!low || (low->mask & g_live) != g_live) break;
+                if (!low || !low->agg) break;
                 ++g_pipe_low;
             }
             break;
@@ -3355,7 +3896,28 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
         g_round_done = true;
         break;
     case kTypeBye:
-        std::fprintf(stderr, "[comms:loopback] the parent left; back to idle\n");
+        if (std::memcmp(p.blocks[0], kRetireTag, 4) == 0) {
+            // THE LAGGARD RULE'S RETIRE, which over the relay reaches every
+            // child. Only the slot it names leaves; the rest learn it from
+            // the rounds, which stop carrying that slot.
+            const unsigned who = get_u32le(p.blocks[0] + 4);
+            if ((int)who != g_slot) {
+                std::fprintf(stderr, "[comms:loopback] the host retired slot %u "
+                             "(it fell too far behind the match)\n", who);
+                break;
+            }
+            std::fprintf(stderr, "[comms:loopback] RETIRED: nothing from this "
+                         "console (slot %d) reached the host in time, so the "
+                         "match went on without it; you lost connection to "
+                         "the match. Back to idle.\n", g_slot);
+            match_lost("the host dropped this console from the match");
+        } else if (std::memcmp(p.blocks[0], kDoneTag, 4) == 0) {
+            g_host_done = true;
+            std::fprintf(stderr, "[comms:loopback] the parent left: the match "
+                         "is over; back to idle\n");
+        } else {
+            std::fprintf(stderr, "[comms:loopback] the parent left; back to idle\n");
+        }
         g_state = kCommsIdle;
         g_live = 0;
         break;
@@ -3860,7 +4422,19 @@ void service() {
             // whole in-flight window on every tick would turn one lost
             // datagram into a burst exactly when the path is already unhappy.
             g_last_publish_ms = t;
-            for (unsigned q = g_pipe_low; (int)(q - rb_live_round()) < 0; ++q) {
+            // THE ROUND THIS CONSOLE IS WAITING ON IS IN RANGE TOO (RELAY2's
+            // SUSPECT X). At the first frame that is round 0 == g_round, which
+            // the bound left out, so a lost round-0 aggregate was never asked
+            // for again: every joiner sat at round 0, the host starved on
+            // every slot, and the game's wait bound ended the match (16P
+            // through the relay, whenever the host's join burst brushed its
+            // cap). Every later round is already covered: frame R waits on
+            // round R - N, inside [g_pipe_low, g_round). The republish is
+            // paced here, and the host re-serves a round at most once per
+            // republish interval (the laggard rule's pacing).
+            unsigned end = rb_live_round();
+            if (!g_rollback && g_round == 0) end = 1;
+            for (unsigned q = g_pipe_low; (int)(q - end) < 0; ++q) {
                 PipeRound *s = pipe_find(q);
                 if (!s || (s->mask & (1u << g_slot)) == 0) continue;
                 Packet b;
@@ -4153,8 +4727,22 @@ void aux_close_report(int my_slot) {
 void lb_close() {
     if (!g_open) return;             // double close is legal and silent
     const int my_slot = g_slot;      // for the aux line, which prints after the reset
+    // THE GAME ENDING THE MATCH BECAUSE IT WENT SILENT (see match_lost). When
+    // the wait bound runs out, src/func_0203ea5c.c sets bit 0 of the DS error
+    // word and drops the role to solo, and src/func_0203df40.c then closes the
+    // radio -- this call -- and plays on alone. The port's own shutdown closes
+    // through here too (the atexit hook at install), so only a close that is
+    // not the shutdown, mid-match, with the error bit newly set, is the loss.
+    const bool over = g_frames_produced && port_vs_match_end_frozen() != 0;
+    const bool lost = !g_exiting && g_frames_produced && !g_err_at_start &&
+                      (data_020a0f1c & 1u) != 0 && !g_host_done && !over &&
+                      (g_role == kRoleParent || g_role == kRoleChild);
     Packet b;
     fill_header(b, kTypeBye);
+    // DONE: the match is over (its end freeze has run, or the game ended the
+    // session itself without an error), so this Bye is a goodbye, not a loss.
+    if (over || (!g_exiting && g_frames_produced && (data_020a0f1c & 1u) == 0))
+        std::memcpy(b.blocks[0], kDoneTag, 4);
     if (g_role == kRoleParent) send_to_children(b);
     else                       send_to_slot(b, 0);
     WS.closesocket(g_sock);
@@ -4199,10 +4787,40 @@ void lb_close() {
         else std::snprintf(by + w, sizeof by - (size_t)w, " lastround=%u",
                            g_starve_last_round);
     }
+    // THE LAGGARD RULE'S COUNTERS, on every pipelined lockstep session (see
+    // the banner over g_lg). Parent: subst = rounds it carried a substitute
+    // in, then per slot; late = blocks that arrived after their round went
+    // out; retired = the slots it dropped. Child: subst = rounds that carried
+    // a block for this console it did not send, late = of those, rounds whose
+    // aggregate beat this console's own publish (it was behind), catchup =
+    // pace sleeps it skipped to get back in step.
+    char lg[256];
+    lg[0] = 0;
+    if (g_input_delay > 0 && !g_rollback) {
+        int w = 0;
+        if (g_role == kRoleParent) {
+            unsigned long long tot = 0;
+            for (int i = 1; i < kCommsMaxPlayers; ++i) tot += g_lg[i].subst;
+            w = std::snprintf(lg, sizeof lg, " subst=%llu", tot);
+            for (int i = 1; i < kCommsMaxPlayers && w < (int)sizeof lg - 64; ++i)
+                if (g_lg[i].subst)
+                    w += std::snprintf(lg + w, sizeof lg - (size_t)w, ",%d:%llu",
+                                       i, g_lg[i].subst);
+            std::snprintf(lg + w, sizeof lg - (size_t)w,
+                          " late=%llu catchup=0 retired=0x%x waited=%llu "
+                          "helped=%llu laggard=%s", g_lg_late, g_lg_retired,
+                          g_lg_waited, g_lg_help_rounds, g_lg_on ? "on" : "off");
+        } else {
+            std::snprintf(lg, sizeof lg, " subst=%llu late=%llu catchup=%llu "
+                          "far=%llu hitches=%llu laggard=%s",
+                          g_lg_own_subst, g_lg_own_late, g_lg_catchup, g_lg_far,
+                          g_hitches, g_lg_on ? "on" : "off");
+        }
+    }
     std::fprintf(stderr, "[comms:loopback] closed after %u rounds; indelay=%d "
-                 "starved=%llu sent=%llu recvd=%llu resends=%llu%s\n",
+                 "starved=%llu sent=%llu recvd=%llu resends=%llu%s%s\n",
                  rb_live_round(), g_input_delay, g_pipe_starved, g_sent, g_recvd,
-                 g_resends, by);
+                 g_resends, lg, by);
     aux_close_report(my_slot);
     if (g_rollback)
         std::fprintf(stderr, "[comms:loopback] rollback: live=0x%x peak=0x%x predicted=%llu ok=%llu "
@@ -4228,6 +4846,9 @@ void lb_close() {
                      g_rb_miss_only_heading, g_rb_miss_hd[0], g_rb_miss_hd[1],
                      g_rb_miss_hd[2], g_rb_miss_hd[3], g_rb_miss_hd[4], g_rb_miss_hd[5]);
     }
+    if (lost)
+        match_lost("the other consoles stopped answering for the game's whole "
+                   "wait bound, so the game ended the session");
 }
 
 void lb_become_parent() {
@@ -4580,6 +5201,25 @@ int lb_exchange(const void *my_block, uint16_t *status) {
     // 0 the stop-and-wait code underneath is what runs, unaltered.
     // =======================================================================
     if (g_input_delay > 0) {
+        // THE HITCH TEST KNOB (SM64DS_COMMS_HITCH=<every_ms>:<ms>): once rounds
+        // are flowing, stop this console's whole pump for <ms> every
+        // <every_ms>, the way a stalled window or a Windows hiccup does. The
+        // laggard rule's proof rung; off unless the env names it.
+        if (g_hitch_every_ms && g_frames_produced) {
+            const unsigned t = now_ms();
+            if (g_hitch_last_ms == 0) {
+                g_hitch_last_ms = t ? t : 1;
+            } else if ((unsigned)(t - g_hitch_last_ms) >= g_hitch_every_ms) {
+                std::fprintf(stderr, "[comms:loopback] HITCH (test knob): "
+                             "stopping this console %u ms at round %u\n",
+                             g_hitch_ms, g_round);
+                Sleep(g_hitch_ms);
+                g_hitch_last_ms = now_ms();
+                if (!g_hitch_last_ms) g_hitch_last_ms = 1;
+                ++g_hitches;
+                service();
+            }
+        }
         PipeRound &mine = pipe_open(g_round);
         // PUBLISH ONCE PER ROUND, NOT ONCE PER CALL, and the difference is not
         // cosmetic. The ROM's wait loop calls exchange() over and over inside a
@@ -4591,11 +5231,45 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         // beneath has always had this guard (`first_publish`); the pipelined
         // one needs its own because it stages into the ring instead.
         const bool first_publish = (mine.mask & (1u << g_slot)) == 0;
-        std::memcpy(mine.blocks[g_slot], my_block, kCommsBlockBytes);
-        mine.mask |= (1u << g_slot);
+        // RULE (a) of the laggard rule: a child whose aggregate for this round
+        // already landed is BEHIND, and that aggregate's copy of its own slot
+        // (a substitute, or the parent's copy of what it sent) is what every
+        // console runs. Writing this end's block over it would make this
+        // console alone simulate something else. Nothing to publish either:
+        // the round is closed.
+        const bool closed = g_role == kRoleChild && mine.agg;
+        if (!closed && (first_publish || g_role == kRoleParent)) {
+            std::memcpy(mine.blocks[g_slot], my_block, kCommsBlockBytes);
+            mine.mask |= (1u << g_slot);
+        }
 
         if (g_role == kRoleChild) {
-            if (first_publish) {
+            if (closed && !mine.lg_late_sent) {
+                // BEHIND, AND SAYING SO. The round is closed and this block
+                // changes nothing in it (rule a), but the host files it as this
+                // player's newest input for the next substitute -- and without
+                // it a console catching up sends nothing at all, which the host
+                // cannot tell from a console that died (it retired such
+                // catchers as silent: final1 laggard4-hitch p3).
+                // At most one per room period: a catcher replays closed rounds
+                // at its full speed (see port_comms_rounds_ahead), and one late
+                // block per replayed round would run it past the relay's cap
+                // for one seat; one per round of the room's own pace proves it
+                // alive and keeps its substitute fresh just as well.
+                mine.lg_late_sent = true;
+                const unsigned t = now_ms();
+                if (g_lg_late_tx_ms == 0 ||
+                    (unsigned)(t - g_lg_late_tx_ms) * 100u >= (unsigned)kRoundPeriodMs100) {
+                    g_lg_late_tx_ms = t ? t : 1;
+                    Packet b;
+                    fill_header(b, kTypeBlocks);
+                    b.round = g_round;
+                    b.have  = (1u << g_slot) | kBlocksLateBit;   // no re-serve wanted
+                    std::memcpy(b.blocks[g_slot], my_block, kCommsBlockBytes);
+                    send_to_slot(b, 0);
+                }
+            }
+            if (first_publish && !closed) {
                 Packet b;
                 fill_header(b, kTypeBlocks);
                 b.round = g_round;
@@ -4623,8 +5297,23 @@ int lb_exchange(const void *my_block, uint16_t *status) {
         const unsigned want = (g_round >= (unsigned)g_input_delay)
                                   ? g_round - (unsigned)g_input_delay
                                   : 0u;
+        // HELP (see kLgHelpRounds): the host holds its next round until 5/4 of
+        // its measured frame time has passed, so a joiner with no spare speed
+        // can close the gap. Not a starve: nothing is missing, and the
+        // measured pace is frozen while it lasts so the stretch cannot feed on
+        // itself.
+        if (g_role == kRoleParent && g_lg_help && g_lg_last_consume_ms != 0) {
+            const unsigned need = g_lg_frame_x100 * 5u / 400u;   // 1.25 frames, ms
+            if ((unsigned)(now_ms() - g_lg_last_consume_ms) < need) {
+                ++g_lg_help_holds;
+                return 0;
+            }
+        }
+        // A ROUND IS READY WHEN ITS AUTHORITY IS: the parent consumes a round
+        // it has sent, a child one whose aggregate landed, and both consume
+        // exactly the slots that aggregate carried (PipeRound::agg).
         PipeRound *s = pipe_find(want);
-        if (!s || (s->mask & g_live) != g_live) {
+        if (!s || !s->agg) {
             // The wire is slower than N frames of pipeline. This is the honest
             // stall, and it is COUNTED rather than hidden: a session running
             // with a nonzero starve count is one whose input delay is set too
@@ -4641,6 +5330,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
             g_starve_last_round = want;
             const unsigned have_mask = s ? (s->mask & g_live) : (1u << g_slot);
             const unsigned missing   = g_live & ~have_mask;
+            g_lg_recovering = false;      // waiting on the room: not behind it
             for (int i = 0; i < kCommsMaxPlayers; ++i)
                 if (missing & (1u << i)) ++g_starve_by_slot[i];
             // RATE LIMITED TO ONE LINE A SECOND. On a path this delay does not
@@ -4665,13 +5355,24 @@ int lb_exchange(const void *my_block, uint16_t *status) {
             return 0;
         }
         std::memcpy(g_latched, s->blocks, sizeof g_latched);
-        g_latched_mask = s->mask & g_live;
+        g_latched_mask = s->agg_have;
+        note_seat_mask(want);
         g_consumed_round = want;          // for the 'SYNK' clock report
+        {
+            const unsigned t = now_ms();
+            if (g_lg_last_consume_ms != 0 && !g_lg_help) {
+                unsigned dt = t - g_lg_last_consume_ms;
+                if (dt > 1000u) dt = 1000u;
+                g_lg_frame_x100 = (g_lg_frame_x100 * 7u + dt * 100u) / 8u;
+            }
+            g_lg_last_consume_ms = t ? t : 1;
+        }
         g_consumed_any   = true;
         clock_note_frame();
         ++g_round;
         // A ROUND HAS REACHED THE GAME. Rule 2's bound: from here the depth is
         // part of this end's history and cannot move.
+        if (!g_frames_produced) g_err_at_start = (data_020a0f1c & 1u) != 0;
         g_frames_produced = true;
         return 1;
     }
@@ -4695,6 +5396,18 @@ int lb_exchange(const void *my_block, uint16_t *status) {
     } else {
         // The parent completes when every live slot's block for this round is
         // in. Its own is in by definition, one line above.
+        if ((g_stage_mask & g_live) != g_live && g_lg_on && g_frames_produced) {
+            // THE LAGGARD RULE, STOP-AND-WAIT FORM (see kLgStopWaitSilentMs).
+            const unsigned t = now_ms();
+            const unsigned missing = g_live & ~g_stage_mask & ~1u;
+            for (int k = 1; k < kCommsMaxPlayers; ++k)
+                if ((missing & (1u << k)) && g_lg[k].have && g_lg[k].last_rx_ms != 0 &&
+                    (unsigned)(t - g_lg[k].last_rx_ms) >= kLgStopWaitSilentMs) {
+                    g_lg[k].run = (unsigned)(t - g_lg[k].last_rx_ms) * 100u /
+                                  kRoundPeriodMs100;       // for the retire line
+                    lg_retire_slot(k);
+                }
+        }
         if ((g_stage_mask & g_live) != g_live) return 0;
 
         // Broadcast the assembled round, and keep a copy so a child whose
@@ -4717,6 +5430,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
     // -- an incomplete exchange() never disturbs the last good round.
     std::memcpy(g_latched, g_stage, sizeof g_latched);
     g_latched_mask = g_stage_mask & g_live;
+    note_seat_mask(g_round);
     g_consumed_round = g_round;           // for the 'SYNK' clock report
     g_consumed_any   = true;
     clock_note_frame();
@@ -4728,6 +5442,7 @@ int lb_exchange(const void *my_block, uint16_t *status) {
     // raised from zero by the adaptive sizing spends its first exchanges here,
     // and a bound that only existed on the pipelined arm would leave this end
     // believing it had produced no frames when it had produced several.
+    if (!g_frames_produced) g_err_at_start = (data_020a0f1c & 1u) != 0;
     g_frames_produced = true;
     return 1;
 }
@@ -4792,8 +5507,19 @@ void lb_poll() { service(); }
 // The seat the next relayed ping asks to answer: the live seats other than
 // this one, in turn. -1 when there is nobody (the ping then stays a broadcast,
 // which with nobody to answer costs nothing).
+//
+// EACH CONSOLE STARTS ITS TURN AT ITS OWN SEAT + 1 (REVVSAUX1 fold note 2). The
+// rotation used to start at seat 0 on every console, and every console pings at
+// the same 2 Hz, so all fifteen asked the SAME seat at once and that seat's
+// answers ran into the relay's 6-a-second pong cap. Offset by the asker's own
+// seat, the fifteen askers name fifteen different seats on each tick.
 int g_ping_rr = 0;
+int g_ping_rr_slot = -1;             // the seat the turn was started from
 int ping_next_seat() {
+    if (g_ping_rr_slot != g_slot) {
+        g_ping_rr      = g_slot;
+        g_ping_rr_slot = g_slot;
+    }
     for (int i = 1; i <= kCommsMaxPlayers; ++i) {
         const int s = (g_ping_rr + i) % kCommsMaxPlayers;
         if (s == g_slot || (g_live & (1u << s)) == 0) continue;
@@ -4978,6 +5704,13 @@ int lb_recv_kind(unsigned tag, void *buf, int cap, int *from) {
 }
 
 void lb_abandon() {
+    if (g_frames_produced && !g_host_done && !port_vs_match_end_frozen() &&
+        (g_role == kRoleParent || g_role == kRoleChild))
+        match_lost(g_role == kRoleParent
+                       ? "no other console answered for the game's whole wait "
+                         "bound, so the game gave up on the match"
+                       : "the host stopped answering for the game's whole wait "
+                         "bound, so the game gave up on the match");
     if (g_latched_mask == 0 && g_stage_mask == 0) return;   // nothing open
     std::fprintf(stderr,
                  "[comms:loopback] the game abandoned round %lu (the ROM's "
@@ -5043,6 +5776,113 @@ int comms_recv_voice(void *buf, int cap, int *from_slot) {
 // port feature's kind is one carrier-specific entry.
 int comms_recv_kind(unsigned tag, void *buf, int cap, int *from_seat) {
     return lb_recv_kind(tag, buf, cap, from_seat);
+}
+
+// ---------------------------------------------------------------------------
+// THE LAGGARD RULE'S CATCH-UP QUERY (rule c; see the banner over g_lg). One
+// caller: port/tests/walk_window.cpp frame_pace, which skips its sleep for the
+// frame when this is above kCatchupAhead (2). A CHILD in a pipelined lockstep
+// session answers how many complete rounds it holds BEYOND what a console in
+// step with the host holds; every other console (the parent is the room's
+// clock, rollback, solo) answers 0, so the pacer runs exactly as before. Each
+// answer above the threshold is counted as one skipped sleep (catchup= on the
+// close line).
+//
+// IN STEP IS NOT ZERO, and the first cut of this rule got that wrong. A child
+// in step with the host consumes round R at the moment round R + N - rtt (in
+// rounds, its own round trip) comes back, so it naturally holds N - rtt
+// complete rounds past the next one: 2 for a close player in a room sized for
+// him, 8 for the same player in a room sized for someone 250 ms away. Measured
+// with the raw count (after2 laggard4-slowlink: room delay 11, two 93 ms
+// children): those children sprinted to 2 rounds of slack, ran ahead of the
+// host, and starved on every wobble of the host's own pace (489 and 529
+// starves against 7 without the far player). Counting from the in-step buffer,
+// only a console that is really behind -- the one that hitched -- sprints.
+// ---------------------------------------------------------------------------
+extern "C" int port_comms_rounds_ahead(void) {
+    if (!g_lg_on || g_rollback || g_input_delay <= 0) return 0;
+    if (g_role != kRoleChild || g_state != kCommsChildConnected) return 0;
+    if (!g_frames_produced) return 0;
+    const unsigned want = (g_round >= (unsigned)g_input_delay)
+                              ? g_round - (unsigned)g_input_delay : 0u;
+    int n = 0;
+    for (unsigned q = want + 1; n < kPipeDepth / 2; ++q, ++n) {
+        const PipeRound *s = pipe_find(q);
+        if (!s || !s->agg) break;
+    }
+    int natural = g_input_delay;
+    if (g_handshake_rtt_ms > 0)
+        natural -= (int)(((unsigned)g_handshake_rtt_ms * 100u + kRoundPeriodMs100 - 1u) /
+                         kRoundPeriodMs100);
+    if (natural < 0) natural = 0;
+    n -= natural;
+    if (n < 0) n = 0;
+    // AT MOST EVERY OTHER FRAME while this console's own round is still open.
+    // Then a sprinting console publishes one real block per frame, and at its
+    // unpaced speed that is well past the relay's lockstep cap for one seat (75
+    // a second on relay v2, 120 for everything on v1), so an unbroken sprint
+    // would lose its own blocks at the relay. One skipped sleep in two is about
+    // 60 frames a second: twice the room's pace, under the cap.
+    // FLAT OUT while the round it plays is already CLOSED (the room has moved
+    // past it): what it sends then is the late block, one per room period at
+    // most (lb_exchange), so its speed costs nothing at the relay. Halving that
+    // sprint too kept a joiner 90 rounds behind after a 0.4 s hitch on a busy
+    // PC (tip14 laggard4-hitch: 547 substituted rounds for 6 hitches), past the
+    // host's help threshold on every hitch, and the help's stretch is felt by
+    // every other console; the full sprint closed it in about 48 (tip4/tip6,
+    // before the halving: 333 for 7, the others at their baseline).
+    const PipeRound *cur = pipe_find(g_round);
+    const bool replaying = cur && cur->agg;
+    if (replaying) g_lg_recovering = true;
+    if (n > kCatchupAhead && replaying) {
+        g_lg_sprinted = true;
+        ++g_lg_catchup;
+        return n;
+    }
+    // A CATCHER SPRINTS ALL THE WAY BACK. The two rounds of slack above keep
+    // a console in step from sprinting on every wobble of its own pace, but a
+    // console that fell behind and stops there is still about a round trip
+    // late for the host's deadline, which closes early for the wire (slack
+    // N - 1 - down): it was substituted on every round while sending until the
+    // host's help fired (tip15/tip16 laggard4-hitch: help on every 0.4 s
+    // hitch, 474-556 substituted rounds for 6). A console that replayed a
+    // closed round goes on (every other frame: its blocks are real again)
+    // until it holds no more than the in-step buffer, or it has to wait for
+    // the room, whichever comes first.
+    // The pacer skips its sleep only for an answer above kCatchupAhead (2),
+    // so a catcher's sprint with one or two rounds still to make up answers
+    // kCatchupAhead + 1: answering its real count there made the pacer sleep
+    // anyway (tip17 laggard4-hitch: catch-up counted on those frames, the
+    // catcher still substituted 516-535 rounds for 7 hitches, help on every
+    // hitch).
+    if (g_lg_recovering && n <= 0) g_lg_recovering = false;
+    if (n > (g_lg_recovering ? 0 : kCatchupAhead)) {
+        if (g_lg_sprinted) {
+            g_lg_sprinted = false;
+            return 0;
+        }
+        g_lg_sprinted = true;
+        ++g_lg_catchup;
+        return n > kCatchupAhead ? n : kCatchupAhead + 1;
+    }
+    g_lg_sprinted = false;
+    return n;
+}
+
+// ---------------------------------------------------------------------------
+// THE SEATS THE MATCH IS RUNNING WITH, AS THE ROUNDS CARRY THEM (multiplayer
+// 1.0, lane LAGGARD1, for luigi_infection.cpp's pick). Bit k is set when the
+// round the game is simulating right now carried slot k's block. Every
+// console computes it from the same aggregate for the same round, so it is
+// the same on every console at the same frame; a seat that was refused at the
+// door, quit, or was retired by the laggard rule is clear from the round it
+// left on. 0 when no VS carrier session is running (solo, adventure), which a
+// caller reads as "no information: every body counts".
+// ---------------------------------------------------------------------------
+extern "C" unsigned port_vs_seat_live_mask(void) {
+    if (g_state != kCommsParentConnected && g_state != kCommsChildConnected)
+        return 0u;
+    return g_latched_mask;
 }
 
 // ---------------------------------------------------------------------------
@@ -5298,6 +6138,39 @@ bool comms_loopback_install_from_env() {
                      "THIS IS ONE WAY -- with both ends running it the round "
                      "trip is %d ms.\n",
                      g_delay_ms, g_jitter_ms, 2 * g_delay_ms);
+
+    // THE LAGGARD RULE (see the banner over g_lg): on unless
+    // SM64DS_COMMS_LAGGARD=0, and its hitch test knob.
+    if (const char *l = std::getenv("SM64DS_COMMS_LAGGARD")) {
+        g_lg_on = std::atoi(l) != 0;
+        if (!g_lg_on)
+            std::fprintf(stderr, "[comms:loopback] laggard rule OFF "
+                         "(SM64DS_COMMS_LAGGARD=0): the room waits for the "
+                         "slowest console\n");
+    }
+    if (const char *e = std::getenv("SM64DS_COMMS_LOST_EXIT"))
+        g_lost_exit = std::atoi(e) != 0;
+    if (const char *w = std::getenv("SM64DS_COMMS_LAGGARD_WAIT_MS")) {
+        int v = std::atoi(w);
+        if (v < 0) v = 0;
+        if (v > 5000) v = 5000;
+        g_lg_wait_cfg = v;
+        std::fprintf(stderr, "[comms:loopback] laggard rule: the host waits at "
+                     "most %d ms past a round's deadline for a console that is "
+                     "still sending (SM64DS_COMMS_LAGGARD_WAIT_MS)\n", v);
+    }
+    if (const char *h = std::getenv("SM64DS_COMMS_HITCH")) {
+        int every = std::atoi(h), ms = 0;
+        if (const char *c = std::strchr(h, ':')) ms = std::atoi(c + 1);
+        if (every >= 100 && ms > 0) {
+            if (ms > 10000) ms = 10000;
+            g_hitch_every_ms = (unsigned)every;
+            g_hitch_ms       = (unsigned)ms;
+            std::fprintf(stderr, "[comms:loopback] TEST SCAFFOLDING: this "
+                         "console stops %d ms every %d ms once rounds flow "
+                         "(SM64DS_COMMS_HITCH)\n", ms, every);
+        }
+    }
 
     if (const char *k = std::getenv("SM64DS_COMMS_DUP")) {
         int v = std::atoi(k);
@@ -5703,7 +6576,7 @@ bool comms_loopback_install_from_env() {
     // Bye is what clears the leaver out of the parent's live mask, which lets
     // the parent complete another round, which is when the ROM's per-record
     // clear at src/func_0203ea5c.c:275 wipes the leaver's stale live bit.
-    std::atexit([]() { func_02040724(); });
+    std::atexit([]() { g_exiting = true; func_02040724(); });
     std::fprintf(stderr, "[comms:loopback] installed as %s, port base %d\n",
                  g_role == kRoleParent ? "parent" : "child", g_port_base);
     return true;

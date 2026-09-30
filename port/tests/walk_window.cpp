@@ -2893,6 +2893,14 @@ extern "C" double port_present_clock(long long now, long long deadline,
     return (end.QuadPart - now) * 1000.0 / (double)qpf;
 }
 
+/* THE LAGGARD RULE'S CATCH-UP (multiplayer 1.0, NETARCH1 design 4.2 rule c;
+   hal/comms_loopback.cpp). A VS child that hitched holds complete rounds it
+   has not played yet; while it holds more than two, frame_pace below skips
+   its sleep so the console runs at its unpaced speed until it is back in step
+   with the room, then paces again. Every other console (the host, solo,
+   adventure) is answered 0 and paces exactly as before. */
+extern "C" int port_comms_rounds_ahead(void);
+
 static void frame_pace(void)
 {
     static LARGE_INTEGER qpf, next;
@@ -2930,6 +2938,9 @@ static void frame_pace(void)
         next.QuadPart += step;
         if (next.QuadPart <= now.QuadPart) {
             next.QuadPart = now.QuadPart;   /* overran: reset, do not sprint */
+        } else if (port_comms_rounds_ahead() > 2) {
+            /* behind the VS room: this frame is not slept (see above) */
+            next.QuadPart = now.QuadPart;
         } else {
             const double ms =
                 (next.QuadPart - now.QuadPart) * 1000.0 / (double)qpf.QuadPart;
