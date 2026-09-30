@@ -12602,7 +12602,10 @@ int main(void)
                         "menu's load row) to load it\n");
     }
 
-    if (getenv("SM64DS_SS_DISKLOAD") && lk7_persist_available()) {
+    /* the boot read is a load like any other: an online launch refuses it
+       (ss_online_refused, which reads the carriers installed above) */
+    if (getenv("SM64DS_SS_DISKLOAD") && lk7_persist_available() &&
+        !ss_online_refused("the boot-time SM64DS_SS_DISKLOAD read")) {
         if (lk7_persist_read()) {
             an_pivot_live = 0;   /* no ease across the load */
             ss_census("after the boot-time disk restore", player, cam);
