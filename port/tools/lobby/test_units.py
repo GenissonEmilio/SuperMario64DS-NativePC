@@ -3669,6 +3669,74 @@ def test_server_line_width():
     check("no line of server.py is over 100 characters", not long, long)
 
 
+def test_a_throttled_host_is_not_silent():
+    """REVLOBBYJOIN1-B note C: host and guest behind ONE public address (a
+    household NAT). A modified guest floods that address, the rate limiter
+    refuses everything from it -- the live host's polls included, BEFORE
+    they stamp `seen` -- and its fake result settled at +60 s. Silence the
+    limiter caused is not silence: the host-silent clock counts from the
+    later of the first vote and the host address's last refusal."""
+    print("\n-- L-J1C: a host whose address is being refused is not silent")
+    FAKE = (0, 9, 0, 0)
+    Q = S.HOST_SILENT_S
+    t0 = 1100.0
+    NAT = "10.0.0.1"
+
+    def flood(addr, t_from, t_to):
+        # What the HTTP layer does for each refused request (the guest's
+        # flood and the host's own polls alike): note_reject on the address.
+        t = t_from
+        while t <= t_to:
+            S.BUCKETS.note_reject(addr, t)
+            t += 0.5
+
+    reset()
+    code, room, toks, match = _running(2)
+    _result(code, toks[1], match, scores=FAKE, who=NAT, now=t0)
+    flood(NAT, t0 + 0.5, t0 + 75)
+    S.sweep(t0 + Q + 1)
+    check("[NAT] the address is refused through +75 s: at +%ds still on"
+          % (Q + 1), room.state == "in_match" and room.match == match,
+          room.state)
+    S.sweep(t0 + 75 + Q - 1)
+    check("[NAT] %d s after the last refusal: still on" % (Q - 1),
+          room.state == "in_match", room.state)
+    # The host really is dead: once its address has been left alone for
+    # HOST_SILENT_S the rule works as before, so it is never stuck for good.
+    # (The guest's launcher is alive and polling.)
+    poll(code, toks[1], room.seq, who=NAT, now=t0 + 75 + Q)
+    S.sweep(t0 + 75 + Q + 0.5)
+    check("[NAT] %d s after the last refusal, host silent: over" % Q,
+          any(e["kind"] == "result" and e["match"] == match
+              for e in room.events), room.state)
+
+    # A refusal of SOME OTHER address does not hold the pair's match.
+    reset()
+    code, room, toks, match = _running(2)
+    _result(code, toks[1], match, scores=FAKE, who="10.0.0.2", now=t0)
+    flood("10.0.0.77", t0, t0 + 75)
+    poll(code, toks[1], room.seq, who="10.0.0.2", now=t0 + Q)
+    S.sweep(t0 + Q + 0.5)
+    check("[other address refused] the pair still settles at +%ds" % Q,
+          room.state == "lobby", room.state)
+
+    # A refusal that could not be recorded (the address tables are full)
+    # holds it too: the guard fails closed.
+    reset()
+    code, room, toks, match = _running(2)
+    _result(code, toks[1], match, scores=FAKE, who=NAT, now=t0)
+    real = S.MAX_BUCKETS
+    try:
+        S.MAX_BUCKETS = 0
+        S.BUCKETS.bad.clear()
+        S.BUCKETS.note_reject(NAT, t0 + 30)
+    finally:
+        S.MAX_BUCKETS = real
+    S.sweep(t0 + Q + 1)
+    check("[tables full] an unrecorded refusal since the vote: still on",
+          room.state == "in_match", room.state)
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -3729,6 +3797,7 @@ def main():
     test_a_quitters_result_does_not_end_the_match()
     test_the_new_host_played_the_match()
     test_every_guest_agrees_and_the_host_is_silent()
+    test_a_throttled_host_is_not_silent()
     test_server_line_width()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))

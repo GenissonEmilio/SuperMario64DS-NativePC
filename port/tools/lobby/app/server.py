@@ -1035,6 +1035,10 @@ class Buckets(object):
         self.creates = {}       # host -> [timestamps]
         self.joins = {}         # host -> [timestamps]
         self.bad = {}           # host -> [count, window_start, ignored_until]
+        # host -> when it was last refused, and when a refusal last could not
+        # be recorded (the table was full): host_silent_vote (L-J1C).
+        self.refused = {}
+        self.refused_lost = float("-inf")
 
     def _room(self, table, host):
         if host not in table and len(table) >= MAX_BUCKETS:
@@ -1086,6 +1090,10 @@ class Buckets(object):
         Same shape relay.py uses, and for the same reason: answering a broken
         or hostile client at full speed is work we are doing on its behalf.
         """
+        if self._room(self.refused, host):
+            self.refused[host] = now
+        else:
+            self.refused_lost = now
         b = self.bad.get(host)
         if b is None:
             if not self._room(self.bad, host):
@@ -1100,7 +1108,18 @@ class Buckets(object):
             b[2] = now + BAD_IGNORE_S
             b[0], b[1] = 0, now
 
+    def last_refused(self, host):
+        """When a request from `host` was last refused (-inf if never, or not
+        within HOST_SILENT_S). A refusal the full table could not record
+        counts for every address: the guard that reads this fails closed."""
+        return max(self.refused.get(host, float("-inf")), self.refused_lost)
+
     def sweep(self, now):
+        # An entry older than HOST_SILENT_S cannot change host_silent_vote's
+        # answer any more, so it goes.
+        for host, t in list(self.refused.items()):
+            if now - t > HOST_SILENT_S:
+                del self.refused[host]
         for host, b in list(self.tokens.items()):
             if now - b[1] > 60.0:
                 del self.tokens[host]
@@ -2309,7 +2328,17 @@ def host_silent_vote(room, now):
     if len(votes) != 1:
         return None
     first = min(room.vote_at.get(s, now) for s in guests)
-    if host.seen > first or now - first < HOST_SILENT_S:
+    if host.seen > first:
+        return None
+    # SILENCE THE RATE LIMITER CAUSED IS NOT SILENCE (REVLOBBYJOIN1-B note
+    # C). The budget is per address and charged before the verb runs, so a
+    # guest on the host's own public address (a household NAT) could flood it
+    # into refusals and the live host's polls would never stamp `seen`. The
+    # quiet time counts from the later of the first vote and the host
+    # address's last refusal; a host that is really gone still settles once
+    # its address has been left alone for HOST_SILENT_S.
+    quiet_from = max(first, BUCKETS.last_refused(host.last_addr))
+    if now - quiet_from < HOST_SILENT_S:
         return None
     return votes.pop()
 
