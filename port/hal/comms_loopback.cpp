@@ -5849,6 +5849,12 @@ extern "C" int port_comms_rounds_ahead(void) {
     // closed round goes on (every other frame: its blocks are real again)
     // until it holds no more than the in-step buffer, or it has to wait for
     // the room, whichever comes first.
+    // The pacer skips its sleep only for an answer above kCatchupAhead (2),
+    // so a catcher's sprint with one or two rounds still to make up answers
+    // kCatchupAhead + 1: answering its real count there made the pacer sleep
+    // anyway (tip17 laggard4-hitch: catch-up counted on those frames, the
+    // catcher still substituted 516-535 rounds for 7 hitches, help on every
+    // hitch).
     if (g_lg_recovering && n <= 0) g_lg_recovering = false;
     if (n > (g_lg_recovering ? 0 : kCatchupAhead)) {
         if (g_lg_sprinted) {
@@ -5857,7 +5863,7 @@ extern "C" int port_comms_rounds_ahead(void) {
         }
         g_lg_sprinted = true;
         ++g_lg_catchup;
-        return n;
+        return n > kCatchupAhead ? n : kCatchupAhead + 1;
     }
     g_lg_sprinted = false;
     return n;
