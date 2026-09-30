@@ -491,6 +491,27 @@ static int nt_bubble_wrap(const char *text, int scale, int maxw, int max_rows,
     return r;
 }
 
+/* The rows at the top of every chat glyph cell that nothing draws into:
+   above the highest inked row of any glyph in the bubble atlas, less the one
+   row its black outline takes. Read off the decoded font once. */
+static int nt_bubble_blank_top(void)
+{
+    static int blank = -1;
+    if (blank >= 0) return blank;
+    int top = NT_GH;
+    for (int a = 0; a <= NT_LAST - NT_FIRST; ++a) {
+        const NtGlyph &g = g_nt_bglyph[a];
+        if (!g.have) continue;
+        for (int r = 0; r < top; ++r) {
+            int any = 0;
+            for (int c = 0; c < NT_GW && !any; ++c) any = g.ink[r][c] != 0;
+            if (any) { top = r; break; }
+        }
+    }
+    blank = top >= NT_GH ? 0 : (top > 0 ? top - 1 : 0);
+    return blank;
+}
+
 /* The bubble whose BOTTOM edge is at y, centred on cx. Dots in the sender's
    colour; a line in white. The shade is the chat log's own (ovl_shade), under
    the text while it is still mostly opaque. */
@@ -499,6 +520,17 @@ static void nt_bubble_draw(const OvlSurface &fb, int cx, int y,
                            int max_rows)
 {
     const int lh = NT_GH * scale + 2 * scale;
+    /* KEEP IT ON THE PICTURE. At RenderScale 1 (256x192) a close body's head
+       sits so high that three rows above it would start off the top edge, so
+       only the rows that fit above y are drawn (at least one; the wrap ends
+       the last one in "..."), and y never sits closer to the top than one
+       row. A row counts as fitting when its INK is on the picture: the glyph
+       cells' blank top rows (above the highest outline pixel any chat glyph
+       has) may hang over the edge, so a bubble whose top row just touches
+       the edge keeps that row. */
+    const int fit = (y + nt_bubble_blank_top() * scale) / lh;
+    if (max_rows > fit) max_rows = fit < 1 ? 1 : fit;
+    if (y < lh) y = lh;
     if (b.typing) {
         static const char *const kDots[3] = {".", "..", "..."};
         const int w3 = nt_bwidth("...", scale);
