@@ -115,11 +115,28 @@
  * port_vs_slot_name and port_vs_slot_stars rather than being read here, so the
  * tag and the end-of-match banner cannot disagree about either -- including
  * about the lobby's known slot-order caveat, which that file states.
+ *
+ * ---- THE CHAT BUBBLE (run mp1, lane BUBBLE1) -------------------------------
+ *
+ * Over the two tag lines, what that player said last (5 s, fading over the
+ * last one) or "." ".." "..." in his colour while his chat box is open. The
+ * state is hal/adv_chat.cpp's (port::chat_bubble, per chat seat); this draws
+ * it with the same projection, the same cull and the same ROM font -- but
+ * through adv_chat's chat_font_code, the one table that decides which
+ * characters a chat line can hold, so a '.' or a ',' in a line is the font's
+ * own glyph and not the tag decode's space. Body -> seat: in VS the body's
+ * slot IS its chat seat; an adventure ghost's seat is port_adventure_ghost_seat.
+ * Your own bubble is drawn over your own body too (Tango's call), with no tag
+ * under it. The Name Tags setting switches the two tag lines only: bubbles
+ * still draw with it off. Bodies are drawn far to near so the nearest bubble
+ * sits on top; a far body (past the tag's close step) gets a one-row bubble.
  */
 #ifndef PORT_TESTS_NAMETAG_H
 #define PORT_TESTS_NAMETAG_H
 
 #include <math.h>   /* the ghost tag's distance fade (nt_draw) */
+
+#include "hal/adv_chat.h"   /* port::chat_bubble, chat_font_code (BUBBLE1) */
 
 extern "C" {
 /* the settings key and its env override (hal/host_settings.cpp) */
@@ -166,6 +183,8 @@ struct NtGlyph {
 };
 
 static NtGlyph g_nt_glyph[NT_LAST - NT_FIRST + 1];
+/* the bubble's atlas: the same sheet, decoded through port::chat_font_code */
+static NtGlyph g_nt_bglyph[NT_LAST - NT_FIRST + 1];
 static int g_nt_font_ready;
 static int g_nt_font_said;
 
@@ -203,11 +222,13 @@ static int nt_font_build(void)
         if (!any) return 0;
     }
 
-    for (int a = NT_FIRST; a <= NT_LAST; ++a) {
-        NtGlyph &g = g_nt_glyph[a - NT_FIRST];
+    for (int a = NT_FIRST; a <= NT_LAST; ++a)
+    for (int atlas = 0; atlas < 2; ++atlas) {
+        NtGlyph &g = (atlas ? g_nt_bglyph : g_nt_glyph)[a - NT_FIRST];
         g.have = 0;
         g.adv = 6;
-        const int c = nt_code_for((unsigned char)a);
+        const int c = atlas ? port::chat_font_code((unsigned char)a)
+                            : nt_code_for((unsigned char)a);
         if (c < 0) continue;
 
         const unsigned off =
@@ -258,13 +279,14 @@ static inline uint32_t nt_blend(uint32_t dst, uint32_t src, int a)
 }
 
 static int nt_line(const OvlSurface &fb, int x0, int y0, const char *s,
-                   int scale, uint32_t rgb, int pass, int measure, int alpha = 255)
+                   int scale, uint32_t rgb, int pass, int measure, int alpha = 255,
+                   const NtGlyph *atlas = g_nt_glyph)
 {
     int x = x0;
     for (; *s; ++s) {
         const unsigned char a = (unsigned char)*s;
         if (a < NT_FIRST || a > NT_LAST) continue;
-        const NtGlyph &g = g_nt_glyph[a - NT_FIRST];
+        const NtGlyph &g = atlas[a - NT_FIRST];
         const int adv = (int)g.adv * scale;
         if (measure || !g.have) { x += adv; continue; }
         for (int r = 0; r < NT_GH; ++r)
@@ -410,9 +432,113 @@ static int nt_probe(void)
     return on;
 }
 
+/* ---- the bubble -----------------------------------------------------------
+   One chat line wrapped into at most max_rows rows no wider than half the
+   screen (a word too long for a row is cut inside it); text past the last row
+   ends that row in "...". Returns the row count. */
+enum { NT_BUBBLE_ROWS = 3 };
+
+static int nt_badv(unsigned char a, int scale)
+{
+    if (a < NT_FIRST || a > NT_LAST) return 6 * scale;
+    return (int)g_nt_bglyph[a - NT_FIRST].adv * scale;
+}
+
+static int nt_bwidth(const char *s, int scale)
+{
+    int w = 0;
+    for (; *s; ++s) w += nt_badv((unsigned char)*s, scale);
+    return w;
+}
+
+static int nt_bubble_wrap(const char *text, int scale, int maxw, int max_rows,
+                          char rows[NT_BUBBLE_ROWS][port::kChatTextMax + 4])
+{
+    const int n = (int)strlen(text);
+    int i = 0, r = 0;
+    while (i < n && text[i] == ' ') ++i;
+    while (i < n && r < max_rows) {
+        /* the longest run from i that fits, preferring to end at a space */
+        int w = 0, j = i, last_space = -1;
+        while (j < n) {
+            const int a = nt_badv((unsigned char)text[j], scale);
+            if (w + a > maxw && j > i) break;
+            if (text[j] == ' ') last_space = j;
+            w += a;
+            ++j;
+        }
+        int end = j;
+        if (j < n && last_space > i) end = last_space;   /* break at the space */
+        int len = end - i;
+        while (len > 0 && text[i + len - 1] == ' ') --len;
+        memcpy(rows[r], text + i, (size_t)len);
+        rows[r][len] = 0;
+        i = end;
+        while (i < n && text[i] == ' ') ++i;
+        ++r;
+    }
+    if (i < n && r > 0) {
+        /* more than fits: the last row ends in "...", trimmed until it fits */
+        char *row = rows[r - 1];
+        int len = (int)strlen(row);
+        while (len > 0 && nt_bwidth(row, scale) + nt_bwidth("...", scale) > maxw)
+            row[--len] = 0;
+        memcpy(row + len, "...", 4);
+    }
+    return r;
+}
+
+/* The bubble whose BOTTOM edge is at y, centred on cx. Dots in the sender's
+   colour; a line in white. The shade is the chat log's own (ovl_shade), under
+   the text while it is still mostly opaque. */
+static void nt_bubble_draw(const OvlSurface &fb, int cx, int y,
+                           const port::ChatBubble &b, int scale, int alpha,
+                           int max_rows)
+{
+    const int lh = NT_GH * scale + 2 * scale;
+    if (b.typing) {
+        static const char *const kDots[3] = {".", "..", "..."};
+        const int w3 = nt_bwidth("...", scale);
+        const int x = cx - w3 / 2;
+        const int top = y - lh;
+        if (alpha > 96)
+            ovl_shade(fb, x - 3 * scale, top - scale, w3 + 6 * scale, lh);
+        const char *d = kDots[(b.dots - 1) % 3];
+        nt_line(fb, x, top, d, scale, b.rgb, 0, 0, alpha, g_nt_bglyph);
+        nt_line(fb, x, top, d, scale, b.rgb, 1, 0, alpha, g_nt_bglyph);
+        return;
+    }
+    char rows[NT_BUBBLE_ROWS][port::kChatTextMax + 4];
+    const int nr = nt_bubble_wrap(b.text, scale, ntr::SCREEN_W / 2, max_rows, rows);
+    if (nr <= 0) return;
+    const int a = alpha * b.alpha / 255;
+    if (a <= 0) return;
+    int w = 0;
+    for (int r = 0; r < nr; ++r) {
+        const int rw = nt_bwidth(rows[r], scale);
+        if (rw > w) w = rw;
+    }
+    const int top = y - nr * lh;
+    if (a > 96)
+        ovl_shade(fb, cx - w / 2 - 3 * scale, top - scale, w + 6 * scale, nr * lh);
+    for (int pass = 0; pass <= 1; ++pass)
+        for (int r = 0; r < nr; ++r) {
+            const int rw = nt_bwidth(rows[r], scale);
+            nt_line(fb, cx - rw / 2, top + r * lh, rows[r], scale, 0xFFFFFFFFu,
+                    pass, 0, a, g_nt_bglyph);
+        }
+}
+
 /* ---- the tags -------------------------------------------------------------
    Called once per frame, with the surface every other host overlay draws on.
    Reads only. */
+struct NtBody {
+    int i;               /* the body (player slot) */
+    int seat;            /* its chat seat, -1 when it has none */
+    float sx, sy, d;
+    int bp[3];
+};
+
 static void nt_draw(const OvlSurface &fb)
 {
     /* A VS match OR an adventure-ghost session -- both draw a tag over every
@@ -420,12 +546,17 @@ static void nt_draw(const OvlSurface &fb)
        the two modes, not the one flag. */
     const bool adventure = port::adventure_ghost_mode();
     if (data_0209f2d8 != 1 && !adventure) return;
-    if (!host_setting_name_tags()) return;
+    /* The Name Tags setting turns the two tag lines off; a chat bubble still
+       draws with it off (lane BUBBLE1). */
+    const bool tags_on = host_setting_name_tags() != 0;
+    const int my_seat = port::chat_my_seat();
+    if (!tags_on && my_seat < 0) return;
     if (!nt_font_build()) return;
 
     const int me = (int)data_0209f250;
+    NtBody bodies[kPortMaxPlayers];
+    int nb = 0;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
-        if (i == me) continue;                   /* never over the local body */
         const char *p = (const char *)data_0209f394[i];
         if (!p) continue;
         if (data_0209fc5c[i] == 0) continue;     /* Player::Render's own guard */
@@ -433,20 +564,51 @@ static void nt_draw(const OvlSurface &fb)
            this console's level -- a body in another level is despawned and
            draws nothing, so a name over it would float on empty space. VS is
            one shared level and does not consult the filter. */
-        if (adventure && !port_adventure_peer_visible(i)) continue;
+        if (i != me && adventure && !port_adventure_peer_visible(i)) continue;
+
+        /* the body's chat seat: its VS slot, a hub ghost's hub seat, or this
+           console's own seat over its own body */
+        int seat = -1;
+        if (i == me) seat = my_seat;
+        else if (adventure) seat = port_adventure_ghost_seat(i);
+        else if (my_seat >= 0) seat = i;
+        /* never a tag over the local body; only its own bubble, if any */
+        port::ChatBubble own;
+        if (i == me && !(seat >= 0 && port::chat_bubble(seat, &own))) continue;
+        if (i != me && !tags_on && seat < 0) continue;
 
         /* WHERE THE BODY WAS DRAWN. A hub ghost is parked out of the level
            again right after its draw (hal/comms_sync.cpp), so its tag reads
            the position the follower drew it at this frame, and a hub ghost
            that was not drawn gets no tag. Every other body: its own. */
-        int bp[3] = {*(const int *)(p + 0x5c), *(const int *)(p + 0x60),
-                     *(const int *)(p + 0x64)};
-        if (adventure && port_adventure_ghost_seat(i) >= 0 &&
-            !port_adventure_ghost_drawpos(i, bp))
+        NtBody &e = bodies[nb];
+        e.bp[0] = *(const int *)(p + 0x5c);
+        e.bp[1] = *(const int *)(p + 0x60);
+        e.bp[2] = *(const int *)(p + 0x64);
+        if (i != me && adventure && port_adventure_ghost_seat(i) >= 0 &&
+            !port_adventure_ghost_drawpos(i, e.bp))
             continue;
-        const int wp[3] = {bp[0], bp[1] + NT_HEAD_UP, bp[2]};
-        float sx = 0, sy = 0, d = 0;
-        if (!nt_project(wp, &sx, &sy, &d)) continue;
+        const int wp[3] = {e.bp[0], e.bp[1] + NT_HEAD_UP, e.bp[2]};
+        if (!nt_project(wp, &e.sx, &e.sy, &e.d)) continue;
+        e.i = i;
+        e.seat = seat;
+        ++nb;
+    }
+    /* FAR TO NEAR, so the nearest body's tag and bubble land on top (a plain
+       insertion sort: at most sixteen) */
+    for (int a = 1; a < nb; ++a)
+        for (int b = a; b > 0 && bodies[b].d > bodies[b - 1].d; --b) {
+            const NtBody t = bodies[b];
+            bodies[b] = bodies[b - 1];
+            bodies[b - 1] = t;
+        }
+
+    static unsigned s_said[kPortMaxPlayers];     /* the probe's last bubble line */
+    for (int k = 0; k < nb; ++k) {
+        const NtBody &e = bodies[k];
+        const int i = e.i;
+        const int *bp = e.bp;
+        const float sx = e.sx, sy = e.sy, d = e.d;
 
         /* SIZE. The VS tag steps up one size when the player is close (a
            continuous scale shimmers as it rounds to whole pixels; the w<200
@@ -462,7 +624,7 @@ static void nt_draw(const OvlSurface &fb)
            Full opacity inside near, linear to zero at far, and NO tag at all
            beyond it -- a name you cannot talk to is not drawn. */
         int alpha = 255;
-        if (adventure) {
+        if (adventure && i != me) {
             const char *mp = (const char *)data_0209f394[me];
             if (mp) {
                 const double ddx = (double)(bp[0] - *(const int *)(mp + 0x5c));
@@ -500,53 +662,86 @@ static void nt_draw(const OvlSurface &fb)
         const int cx = (int)(sx + 0.5f);
         const int y_top = (int)(sy + 0.5f) - 2 * lh;
         const int y_bot = (int)(sy + 0.5f) - lh;
-        const int name_y = adventure ? y_top : y_bot;
-        const int star_y = adventure ? y_bot : y_top;
+        const bool tagged = tags_on && i != me;
+        if (tagged) {
+            const int name_y = adventure ? y_top : y_bot;
+            const int star_y = adventure ? y_bot : y_top;
 
-        /* A HUB GHOST (run mp1 lane GHOSTWIRE1) is labelled from its own wire:
-           the name its SYNI carries (already cut down to printable ASCII), the
-           save's star total its SYNG carries, and the name drawn in its body
-           colour. Anything else keeps the VS facts below. */
-        const int gseat = adventure ? port_adventure_ghost_seat(i) : -1;
-        char who[32];
-        const char *nick = gseat >= 0 ? port_adventure_ghost_name(i)
-                                      : port_vs_slot_name(i);
-        if (nick && nick[0])
-            snprintf(who, sizeof who, "%s", nick);
-        else
-            snprintf(who, sizeof who, "PLAYER %d",
-                     (gseat >= 0 ? gseat : i) + 1);
+            /* A HUB GHOST (run mp1 lane GHOSTWIRE1) is labelled from its own
+               wire: the name its SYNI carries (already cut down to printable
+               ASCII), the save's star total its SYNG carries, and the name
+               drawn in its body colour. Anything else keeps the VS facts. */
+            const int gseat = adventure ? port_adventure_ghost_seat(i) : -1;
+            char who[32];
+            const char *nick = gseat >= 0 ? port_adventure_ghost_name(i)
+                                          : port_vs_slot_name(i);
+            if (nick && nick[0])
+                snprintf(who, sizeof who, "%s", nick);
+            else
+                snprintf(who, sizeof who, "PLAYER %d",
+                         (gseat >= 0 ? gseat : i) + 1);
 
-        /* The star count is port_vs_slot_stars, the per-server VS score, and it
-           labels a ghost the same as a VS body now: how many stars that player
-           has on this server. A hub ghost carries its own. */
-        int stars = port_vs_slot_stars(i);
-        if (gseat >= 0) {
-            const int gs = port_adventure_ghost_stars(i);
-            stars = gs >= 0 ? gs : 0;
+            /* The star count is port_vs_slot_stars, the per-server VS score,
+               and it labels a ghost the same as a VS body now: how many stars
+               that player has on this server. A hub ghost carries its own. */
+            int stars = port_vs_slot_stars(i);
+            if (gseat >= 0) {
+                const int gs = port_adventure_ghost_stars(i);
+                stars = gs >= 0 ? gs : 0;
+            }
+            char sline[24];
+            snprintf(sline, sizeof sline, "%d STAR%s", stars, stars == 1 ? "" : "S");
+            unsigned name_rgb = 0xFFFFFFFFu;
+            if (gseat >= 0) {
+                const unsigned rgb = port_adventure_ghost_rgb(i);
+                if (rgb) name_rgb = rgb;
+            }
+
+            nt_text_centred(fb, cx, star_y, sline, scale, 0xFFFFE060u, alpha);
+            nt_text_centred(fb, cx, name_y, who, scale, name_rgb, alpha);
+
+            if (nt_probe()) {
+                fprintf(stderr, "[tag] slot %d \"%s\" %s at (%.0f,%.0f) w=%.2f "
+                        "scale %d\n", i, who, sline, sx, sy, d, scale);
+                if (nt_probe() >= 2) {
+                    const int fp[3] = {bp[0], bp[1], bp[2]};
+                    float fx = 0, fy = 0, fd = 0;
+                    if (nt_project(fp, &fx, &fy, &fd))
+                        fprintf(stderr, "[tag]   ruler: feet y=%.1f world at "
+                                "screen y %.0f, so +%d world lifts the anchor "
+                                "%.0f px\n", fp[1] / 4096.0, fy,
+                                (int)(NT_HEAD_UP / 4096), fy - sy);
+                }
+            }
         }
-        char sline[24];
-        snprintf(sline, sizeof sline, "%d STAR%s", stars, stars == 1 ? "" : "S");
-        unsigned name_rgb = 0xFFFFFFFFu;
-        if (gseat >= 0) {
-            const unsigned rgb = port_adventure_ghost_rgb(i);
-            if (rgb) name_rgb = rgb;
+
+        /* THE BUBBLE, over the tag lines (or straight over the head when
+           there are none: your own body, or tags switched off). */
+        port::ChatBubble bub;
+        const int have = e.seat >= 0 && port::chat_bubble(e.seat, &bub);
+        if (have) {
+            const int bottom = (tagged ? y_top : (int)(sy + 0.5f)) - 2 * scale;
+            nt_bubble_draw(fb, cx, bottom, bub, scale, alpha,
+                           d < 200.0f ? NT_BUBBLE_ROWS : 1);
         }
-
-        nt_text_centred(fb, cx, star_y, sline, scale, 0xFFFFE060u, alpha);
-        nt_text_centred(fb, cx, name_y, who, scale, name_rgb, alpha);
-
         if (nt_probe()) {
-            fprintf(stderr, "[tag] slot %d \"%s\" %s at (%.0f,%.0f) w=%.2f "
-                    "scale %d\n", i, who, sline, sx, sy, d, scale);
-            if (nt_probe() >= 2) {
-                const int fp[3] = {bp[0], bp[1], bp[2]};
-                float fx = 0, fy = 0, fd = 0;
-                if (nt_project(fp, &fx, &fy, &fd))
-                    fprintf(stderr, "[tag]   ruler: feet y=%.1f world at screen"
-                            " y %.0f, so +%d world lifts the anchor %.0f px\n",
-                            fp[1] / 4096.0, fy, (int)(NT_HEAD_UP / 4096),
-                            fy - sy);
+            /* one line when a body's bubble changes, not one per frame */
+            unsigned sig = !have ? 0u : bub.typing ? 1u : 2166136261u;
+            if (have && !bub.typing)
+                for (const char *q = bub.text; *q; ++q)
+                    sig = (sig ^ (unsigned char)*q) * 16777619u;
+            if (sig != s_said[i]) {
+                s_said[i] = sig;
+                if (!have)
+                    fprintf(stderr, "[tag] bubble body=%d seat=%d%s none\n", i,
+                            e.seat, i == me ? " (me)" : "");
+                else
+                    fprintf(stderr, "[tag] bubble body=%d seat=%d%s %s at "
+                            "(%.0f,%.0f) w=%.2f rows=%d \"%s\"\n", i, e.seat,
+                            i == me ? " (me)" : "",
+                            bub.typing ? "typing" : "text", sx, sy, d,
+                            bub.typing ? 1 : (d < 200.0f ? NT_BUBBLE_ROWS : 1),
+                            bub.typing ? "..." : bub.text);
             }
         }
     }
