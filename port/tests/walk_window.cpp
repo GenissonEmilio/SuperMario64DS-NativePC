@@ -764,6 +764,7 @@ int func_ov002_020d82f0(void *c);   /* its second gate, logged on a refusal */
    anything reads them. Loud FATAL if the file is missing/corrupt. Runs ahead of
    port_ov002_patch and every sinit -- see hal/romdata_loader.cpp. */
 extern "C" void port_romdata_load(void);
+extern "C" void port_nitrofs_rekey_after_romdata(void);
 #endif
 void port_ov002_patch(void);
 /* the pointers that leave their own mount, ovdata.py --cross. Order does not
@@ -11167,6 +11168,8 @@ int main(void)
        bytes exactly as they would over baked-in ones. */
     pt_milestone("io + winapi + pacer ready");
     port_romdata_load();
+    /* the "rom" archive was named before its name bytes existed: hal/fs_names.cpp */
+    port_nitrofs_rekey_after_romdata();
     pt_milestone("romdata loaded");
 #endif
     /* SM64DS_DUMP_LEVEL_NAMES=1: print the debug level-select rows exactly as
