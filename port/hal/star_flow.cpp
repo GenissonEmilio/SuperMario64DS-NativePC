@@ -1991,8 +1991,121 @@ extern "C" unsigned port_vs_seat_live_mask(void);     /* hal/comms_loopback.cpp 
 extern "C" unsigned port_vs_seat_mask_round(void);    /* ... and its round      */
 extern "C++" { namespace port { bool comms_rb_mode(); } }   /* this block is extern "C" */
 
+/* THE LEAVER'S BODY GOES, THE WAY THE CARTRIDGE TAKES A PLAYER OUT (plan G1).
+   The DS drops a lost child mid-match in src/func_02030b58.c, the in-match
+   wireless state's per-frame check: for each seat whose radio link is gone it
+   sets that seat's bit in data_0209fc58 and clears data_0209fc5c[i], the "this
+   seat is live" byte. From then on Player::Behavior returns at its first test
+   for that seat in VS (src/_ZN6Player8BehaviorEv.cpp:73), Player::Render draws
+   nothing (src/_ZN6Player6RenderEv.cpp:46), and the name tag, which reads the
+   same byte (tests/nametag.h), is gone too. The port does not run that
+   function (its closure is the WM stack; hal/arm9_tables_link100.cpp says
+   why), so the same two writes are made here, from the seat mask, at the same
+   round on every console. The ROM's loop covers its four seats, and
+   data_0209fc58's upper bits mean other things (src/func_02030e4c.c), so seats
+   4..15 clear only their live byte.
+   PARKED as well, which the cartridge does not do. Its body would stay where
+   it stood, invisible but still the nearest player for an enemy's
+   dActor_c::ClosestPlayer, and still an icon on the bottom-screen map
+   (Minimap::Behavior places every seated body whatever its live byte says).
+   Moved far out of the level and stopped (no Behavior runs to move it back:
+   no fall, no pit), it is nobody's nearest player and off the map. The spot is
+   the body's own position plus fixed offsets -- lockstep state only, so the
+   same spot on every console -- at the height the adventure ghosts park at
+   (hal/comms_sync.cpp kGwParkUp, proven against ClosestPlayer). */
+extern "C" unsigned char data_0209fc5c[];   /* per-seat live byte, 16 wide */
+extern "C" unsigned char data_0209fc58;     /* the ROM's "seats lost" bits  */
+enum : int {
+    kVsParkUp   = 200000 << 12,              /* Fix12 world units */
+    kVsParkSide = 100000 << 12,
+};
+
+static void vs_remove_body(int k, char *what, int cap)
+{
+    if (k < 4)
+        data_0209fc58 = (unsigned char)(data_0209fc58 | (1u << k));
+    data_0209fc5c[k] = 0;
+    char *c = (char *)data_0209f394[k];
+    if (!c) {
+        std::snprintf(what, (size_t)cap, "no body to remove");
+        return;
+    }
+    int *pos = (int *)(c + 0x5c);
+    const int x = pos[0], y = pos[1], z = pos[2];
+    pos[0] = x + kVsParkSide;
+    pos[1] = y + kVsParkUp;
+    pos[2] = z + kVsParkSide;
+    *(int *)(c + 0x98) = 0;                  /* horizontal speed */
+    *(int *)(c + 0xa8) = 0;                  /* vertical speed   */
+    std::snprintf(what, (size_t)cap, "body removed where it stood (%d,%d,%d), "
+                  "parked at (%d,%d,%d)", x >> 12, y >> 12, z >> 12,
+                  pos[0] >> 12, pos[1] >> 12, pos[2] >> 12);
+}
+
+/* SM64DS_VS_LEAVE_PROBE=1 (a proof instrument; reads only): for 150 frames
+   after a seat leaves, every 15 frames, one line with the removed body (its
+   live byte, where it is), where the bottom-screen map would put its icon and
+   whether Minimap::Render's own on-screen and same-map tests would draw it
+   (the sixteen-wide host copy, port/unmatched/Minimap_Render.cpp), and every
+   VS star (0xb2) on the field. */
+extern "C" int g_mm_iconX[16];                /* the minimap's per-seat blips,  */
+extern "C" int g_mm_iconY[16];                /* sixteen wide (port/unmatched/  */
+extern "C" signed char g_mm_mapID[16];        /* Minimap_wide.h)                */
+extern "C" signed char data_ov002_02111148;   /* the map area being shown */
+extern "C" void *data_0209b468;               /* the live-actor list head */
+static int g_leave_probe = -1;
+static int g_leave_probe_left;                /* frames of probing left */
+static int g_leave_probe_tick;
+static unsigned g_leave_probe_slots;
+
+static void vs_leave_probe(void)
+{
+    if (g_leave_probe_left <= 0)
+        return;
+    --g_leave_probe_left;
+    if (g_leave_probe_tick++ % 15)
+        return;
+    char buf[1400];
+    int w = 0;
+    buf[0] = 0;
+    for (int k = 0; k < kPortMaxPlayers && w < 1000; ++k) {
+        if (!(g_leave_probe_slots >> k & 1u))
+            continue;
+        const char *c = (const char *)data_0209f394[k];
+        const int *p = c ? (const int *)(c + 0x5c) : 0;
+        w += std::snprintf(buf + w, sizeof buf - (size_t)w,
+                           " slot%d live=%u pos=(%d,%d,%d)", k,
+                           (unsigned)data_0209fc5c[k], p ? p[0] >> 12 : 0,
+                           p ? p[1] >> 12 : 0, p ? p[2] >> 12 : 0);
+        {
+            const int ix = g_mm_iconX[k], iy = g_mm_iconY[k];
+            const int id = g_mm_mapID[k];
+            const int shown = (unsigned short)(iy + 0x10) < 0xe0 &&
+                              (unsigned short)(ix + 0x10) < 0x120 &&
+                              id == data_ov002_02111148;
+            w += std::snprintf(buf + w, sizeof buf - (size_t)w,
+                               " map_icon=(%d,%d) map_id=%d/%d drawn=%d",
+                               ix, iy, id, (int)data_ov002_02111148, shown);
+        }
+    }
+    struct Node { void *x0; Node *next; char **x8; };
+    int stars = 0;
+    for (Node *nd = *(Node **)&data_0209b468; nd && w < 1300; nd = nd->next) {
+        const char *a = (const char *)nd->x8;
+        if (!a || *(const unsigned short *)(a + 0xc) != 0xb2)
+            continue;
+        const int *p = (const int *)(a + 0x5c);
+        ++stars;
+        w += std::snprintf(buf + w, sizeof buf - (size_t)w, " star(%d,%d,%d)",
+                           p[0] >> 12, p[1] >> 12, p[2] >> 12);
+    }
+    fprintf(stderr, "[vsleave] t%d%s | %d VS star(s) on the field\n",
+            g_leave_probe_tick - 1, buf, stars);
+}
+
 static void vs_track_seats(void)
 {
+    vs_leave_probe();
     if (data_0209f2d8 != 1 || g_end_fired >= 0)
         return;
     const unsigned live = port_vs_seat_live_mask();
@@ -2010,11 +2123,21 @@ static void vs_track_seats(void)
             continue;
         g_vs_left |= 1u << k;
         const char *nick = vs_name_for(k);
-        fprintf(stderr, "[vs] slot %d left at round %u (%s): %d player(s) "
+        char what[200];
+        vs_remove_body(k, what, (int)sizeof what);
+        fprintf(stderr, "[vs] slot %d left at round %u (%s): %s; %d player(s) "
                 "still in the match\n", k, round, nick ? nick : "no name",
-                vs_popcount(g_vs_seen & ~g_vs_left));
+                what, vs_popcount(g_vs_seen & ~g_vs_left));
     }
     fflush(stderr);
+    if (g_leave_probe < 0)
+        g_leave_probe = std::getenv("SM64DS_VS_LEAVE_PROBE") ? 1 : 0;
+    if (g_leave_probe) {
+        g_leave_probe_slots |= gone;
+        g_leave_probe_left = 150;
+        g_leave_probe_tick = 0;
+        vs_leave_probe();
+    }
 }
 
 /* THE LAST PLAYER STANDING: the slot that is alone in a match two or more
