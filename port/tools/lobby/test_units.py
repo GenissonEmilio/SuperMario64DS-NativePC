@@ -336,7 +336,18 @@ def test_leaving():
     st, out = S.do_leave({"v": 5, "room": code, "token": host["token"]},
                          "10.0.0.1", 1003.0)
     check("the host can leave", st == 200)
-    check("the host leaving closes the room", room.state == "closed")
+    # run mp1 L-J1: a VS host leaving passes the host on; the room closes only
+    # when its LAST member leaves.
+    check("the host leaving a room with people in it does NOT close it",
+          room.state == "lobby" and room.host_seat == 3, (room.state,
+                                                          room.host_seat))
+    check("a host event names the new host",
+          room.events[-1]["kind"] == "host" and room.events[-1]["seat"] == 3,
+          room.events[-1])
+    st, out = S.do_leave({"v": 5, "room": code, "token": g3["token"]},
+                         "10.0.0.3", 1003.5)
+    check("the last member (the new host) leaving closes the room",
+          room.state == "closed")
     check("and the reason is on the record", room.why == "host_left"
           and room.events[-1]["kind"] == "closed"
           and room.events[-1]["why"] == "host_left", room.events[-1])
@@ -1460,8 +1471,9 @@ def test_start():
     check("params is 409 not_in_lobby while arming",
           st == 409 and pp["error"] == "not_in_lobby", (st, pp))
     st, jj = join(code, "ace", who="10.0.0.9", now=1001.0)
-    check("a join is 409 in_match while arming",
-          st == 409 and jj["error"] == "in_match", (st, jj))
+    check("a join while arming is a WAITING seat (L-J1; was 409 in_match)",
+          st == 200 and room.members[jj["member"]].playing is False
+          and jj["member"] not in room.slot_of, (st, jj))
     st, ss = start(code, host["token"], now=1001.0)
     check("a second start is 409 not_in_lobby",
           st == 409 and ss["error"] == "not_in_lobby", (st, ss))
@@ -1614,14 +1626,18 @@ def test_adventure_room():
     check("an adventure room whose member keeps polling outlives ROOM_IDLE_S",
           room.state == "lobby", room.state)
 
-    # The VS host rule is unchanged: a VS host leaving closes the room.
+    # The VS host rule since run mp1 L-J1: a VS host leaving passes the host
+    # on like an adventure room does (the match, if one is on, ends first; see
+    # test_the_host_leaving_passes_the_host_on). A VS room closes only when
+    # its last member leaves, with no ADV_EMPTY_S wait.
     reset()
     st, host = create(nick="host")
     join(host["room"], "b")
     S.do_leave({"v": 5, "room": host["room"], "token": host["token"]},
                "10.0.0.1", 1001.0)
-    check("a VS host leaving still closes the room",
-          S.ROOMS[host["room"]].state == "closed")
+    check("a VS host leaving passes the host to seat 2 (was: closes the room)",
+          S.ROOMS[host["room"]].state == "lobby"
+          and S.ROOMS[host["room"]].host_seat == 2)
 
 
 def test_go_plan():
@@ -2293,8 +2309,10 @@ def test_arming_roster_is_the_frozen_one():
           room.state == "lobby" and room.events[-1]["kind"] == "failed"
           and room.events[-1]["reason"] == "member_not_ready")
 
-    # (b) a PROMOTION during arming keeps the count but changes the seats. This
-    # is the shape a bare len(ps) == agreed_players check would still let through.
+    # (b) a playing seat leaving during arming with a spectator in the room.
+    # Before run mp1 L-J1 the spectator was PROMOTED here, which kept the count
+    # and changed the seats (the shape a bare len(ps) == agreed_players check
+    # would let through). Now nobody is promoted into a frozen match at all.
     reset()
     st, host = create(nick="h", pre_ok=True)
     code = host["room"]
@@ -2308,16 +2326,20 @@ def test_arming_roster_is_the_frozen_one():
     check("the frozen slot map is seats 1 and 2", sorted(room.slot_of) == [1, 2],
           room.slot_of)
     S.do_leave({"v": 5, "room": code, "token": g2["token"]}, "10.0.0.2", 1001.0)
-    check("seat 3 was promoted, so the COUNT still matches agreed_players",
-          room.members[3].playing is True
-          and len([s for s in room.members if room.members[s].playing])
-              == room.agreed_players)
+    check("seat 3 is NOT promoted into the arming match (L-J1)",
+          room.members[3].playing is False, room.members[3].playing)
     ready(code, host["token"], match, now=1002.0)
-    ready(code, g3["token"], match, who="10.0.0.3", now=1002.0)
-    check("but the SEATS differ, so the room still does not go",
+    st, r = ready(code, g3["token"], match, who="10.0.0.3", now=1002.0)
+    check("the spectator's ready is 403 not_playing",
+          st == 403 and r["error"] == "not_playing", (st, r))
+    check("and the room does not go with the frozen seat missing",
           room.state == "arming", room.state)
     check("no plan was ever issued crediting the departed player",
           frozen_names.startswith("h,g2,"), frozen_names)
+    S.sweep(1000.0 + S.ARM_DEADLINE_S + 0.1)
+    check("the arming deadline returns it to lobby, where seat 3 is promoted",
+          room.state == "lobby" and room.members[3].playing is True,
+          (room.state, room.members[3].playing))
 
 
 def test_only_playing_members_drive_a_match():
@@ -2370,7 +2392,15 @@ def test_only_playing_members_drive_a_match():
     st, rr = S.do_result({"v": 5, "room": code, "token": g["token"],
                           "match": match, "win": "time-up",
                           "scores": [1, 2, 0, 0]}, "10.0.0.2", 1011.0)
-    check("a PLAYING member's result still works", st == 200 and room.state == "lobby")
+    # run mp1 L-J1: a non-host's result is a vote. Accepted (200), and on its
+    # own it does not end a match the host is still in (G5); the host's does.
+    check("a PLAYING guest's result is accepted as a vote",
+          st == 200 and room.state == "in_match", (st, room.state))
+    st, rr = S.do_result({"v": 5, "room": code, "token": host["token"],
+                          "match": match, "win": "time-up",
+                          "scores": [1, 2, 0, 0]}, "10.0.0.1", 1011.5)
+    check("a PLAYING member's result still works: the host's ends it",
+          st == 200 and room.state == "lobby")
 
 
 def test_preflight_updates():
@@ -2946,6 +2976,791 @@ def test_name_and_colour_shapes_move_together():
 
 
 
+# ------------------------------------------ run mp1 L-J1: join at the next match
+#
+# Tango's rule (09-29): a VS joiner waits in the room while a match runs and is
+# in from the next match; nobody is moved into or out of a running match's
+# roster; the host leaving ends a running match for everybody and the room
+# carries on with a new host; one player's result does not end the match for
+# the room.
+
+
+def _running(n=3, now=1000.0, state="in_match"):
+    """A room of n playing seats (host = seat 1), taken to `state`."""
+    st, h = S.do_create({"v": 5, "game": GAME, "nick": "h", "pre_ok": True},
+                        "10.0.0.1", now)
+    code = h["room"]
+    toks = [h["token"]]
+    for k in range(2, n + 1):
+        st, out = S.do_join({"v": 5, "game": GAME, "room": code,
+                             "nick": "g%d" % k, "pre_ok": True},
+                            "10.0.0.%d" % k, now)
+        toks.append(out["token"])
+    room = S.ROOMS[code]
+    # (No dial call: a room made inside game_max(k) is dialled to k already.)
+    st, p = start(code, toks[0], now=now)
+    match = p["match"]
+    if state in ("go", "in_match"):
+        for i, tok in enumerate(toks):
+            ready(code, tok, match, who="10.0.0.%d" % (i + 1), now=now)
+    if state == "in_match":
+        S.sweep(now + S.GO_GRACE_S + 0.1)
+    return code, room, toks, match
+
+
+def _result(code, tok, match, scores=(1, 0, 0, 0), win="time-up",
+            who="10.0.0.1", now=1100.0):
+    return S.do_result({"v": 5, "room": code, "token": tok, "match": match,
+                        "win": win, "scores": list(scores)}, who, now)
+
+
+def test_a_dropped_player_plays_the_next_match():
+    print("\n-- L-J1: a player dropped from a match is back in for the next one")
+    reset()
+    with game_max(4, seats=4):
+        code, room, toks, match = _running(3)
+        check("three players are in a running match",
+              room.state == "in_match" and room.playing_count() == 3,
+              (room.state, room.playing_count()))
+        st, f = S.do_failed({"v": 5, "room": code, "token": toks[1],
+                             "match": match, "reason": "user_cancelled"},
+                            "10.0.0.2", 1010.0)
+        check("a guest's failed drops that seat and the match runs on",
+              st == 200 and room.members[2].playing is False
+              and room.state == "in_match", (st, room.state))
+        _result(code, toks[0], match, scores=(2, 0, 1, 0))
+        check("the result returns the room to lobby", room.state == "lobby",
+              room.state)
+        check("the dropped seat is PLAYING again for the next match (G7)",
+              room.members[2].playing is True, room.members[2].playing)
+        check("and the other two were not moved",
+              room.members[1].playing and room.members[3].playing)
+        st, p = start(code, toks[0], now=1200.0)
+        check("the rematch freezes all three again",
+              st == 200 and sorted(room.slot_of) == [1, 2, 3], room.slot_of)
+
+    # A failed that ends the match (the last guest out of a 2P match) goes back
+    # through the same reset, so that guest is back in too.
+    reset()
+    code, room, toks, match = _running(2)
+    S.do_failed({"v": 5, "room": code, "token": toks[1], "match": match,
+                 "reason": "no_pairing"}, "10.0.0.2", 1010.0)
+    check("a 2P match that drops below two ends",
+          room.state == "lobby" and room.events[-1]["kind"] == "failed",
+          room.state)
+    check("and the guest who failed is playing again in the lobby",
+          room.members[2].playing is True)
+
+    # The dial still rules: a room dialled below its head count keeps its
+    # extra members watching through a match end.
+    reset()
+    st, h = create(nick="h", pre_ok=True)
+    code = h["room"]
+    join(code, "g2", who="10.0.0.2", pre_ok=True)
+    st, w = join(code, "w3", who="10.0.0.3", pre_ok=True)
+    room = S.ROOMS[code]
+    st, p = start(code, h["token"])
+    ready(code, h["token"], p["match"])
+    ready(code, room.members[2].token, p["match"], who="10.0.0.2")
+    _result(code, h["token"], p["match"])
+    check("a watcher past the dial (2) is still watching after the match",
+          room.members[3].playing is False and room.playing_count() == 2,
+          room.playing_count())
+
+
+def test_no_promotion_into_a_running_match():
+    """plan.txt C4: a playing seat leaving during go/in_match used to run the
+    dial and promote a spectator, whose go plan then said child, slot 0."""
+    print("\n-- L-J1: a leave during a match promotes nobody")
+    for state in ("go", "in_match"):
+        reset()
+        st, h = create(nick="h", pre_ok=True)
+        code = h["room"]
+        st, g2 = join(code, "g2", who="10.0.0.2", pre_ok=True)
+        st, w3 = join(code, "w3", who="10.0.0.3", pre_ok=True)
+        room = S.ROOMS[code]
+        st, p = start(code, h["token"])
+        ready(code, h["token"], p["match"])
+        ready(code, g2["token"], p["match"], who="10.0.0.2")
+        if state == "in_match":
+            S.sweep(1000.0 + S.GO_GRACE_S + 0.1)
+        check("[%s] the room is running with seat 3 watching" % state,
+              room.state == state and room.members[3].playing is False,
+              room.state)
+        S.do_leave({"v": 5, "room": code, "token": g2["token"]},
+                   "10.0.0.2", 1010.0)
+        check("[%s] seat 2 leaving promotes nobody" % state,
+              room.members[3].playing is False and room.playing_count() == 1,
+              room.playing_count())
+        st, out = poll(code, w3["token"], 1, who="10.0.0.3", now=1010.0)
+        plans = [e["plan"] for e in out["events"] if e["kind"] == "go"]
+        if "plan" in out:
+            plans.append(out["plan"])
+        check("[%s] the spectator's plans are all {playing: false}" % state,
+              plans and all(pl == {"playing": False} for pl in plans), plans)
+        check("[%s] and nothing it is handed carries the match's relay code"
+              % state, room.comms_code not in json.dumps(out), "leaked")
+        _result(code, h["token"], p["match"], now=1100.0)
+        check("[%s] at the match end the vacancy is filled: seat 3 plays" % state,
+              room.state == "lobby" and room.members[3].playing is True,
+              (room.state, room.members[3].playing))
+
+
+def test_the_plan_guard():
+    """A seat missing from slot_of never gets a slot, least of all slot 0."""
+    print("\n-- L-J1: the plan guard (no default slot 0)")
+    reset()
+    st, h = create(nick="h", pre_ok=True)
+    code = h["room"]
+    st, g2 = join(code, "g2", who="10.0.0.2", pre_ok=True)
+    st, w3 = join(code, "w3", who="10.0.0.3", pre_ok=True)
+    room = S.ROOMS[code]
+    st, p = start(code, h["token"])
+    match = p["match"]
+    # Forge the C4 state directly (a seat playing that the match never froze),
+    # so the guard is proved on its own and not only through drop_member.
+    room.members[3].playing = True
+    check("a playing seat outside slot_of is handed no plan",
+          S.member_plan(room, 3) == {"playing": False}, S.member_plan(room, 3))
+    st, r = ready(code, w3["token"], match, who="10.0.0.3")
+    check("and its ready is 403 not_playing",
+          st == 403 and r["error"] == "not_playing", (st, r))
+    # (try_go compares the live playing set to the frozen one, so the forged
+    # seat would stall arming: forge it again once the pair is at go.)
+    room.members[3].playing = False
+    ready(code, h["token"], match)
+    ready(code, g2["token"], match, who="10.0.0.2")
+    check("the frozen pair still goes", room.state == "go", room.state)
+    room.members[3].playing = True
+    st, out = poll(code, w3["token"], 1, who="10.0.0.3", now=1001.0)
+    goplans = [e["plan"] for e in out["events"] if e["kind"] == "go"]
+    check("its go event and top-level plan are {playing: false}",
+          goplans == [{"playing": False}] and out.get("plan") == {"playing": False},
+          (goplans, out.get("plan")))
+    check("the frozen seats keep their own slots: host 0, seat 2 slot 1",
+          S.member_plan(room, 1)["slot"] == 0
+          and S.member_plan(room, 2)["slot"] == 1
+          and S.member_plan(room, 2)["want_seat"] == 1)
+    st, f = S.do_failed({"v": 5, "room": code, "token": w3["token"],
+                         "match": match, "reason": "no_pairing"},
+                        "10.0.0.3", 1002.0)
+    check("its failed is 403 not_playing and the match runs on",
+          st == 403 and f["error"] == "not_playing" and room.state == "go",
+          (st, f, room.state))
+    st, rr = _result(code, w3["token"], match, who="10.0.0.3")
+    check("its result is 403 not_playing and the match runs on",
+          st == 403 and rr["error"] == "not_playing" and room.state == "go",
+          (st, rr, room.state))
+    room.members[3].playing = False
+    _result(code, h["token"], match)
+    check("the match ends on the host's result", room.state == "lobby")
+    # An old `go` event replayed from the ring after the match ended.
+    st, out = poll(code, g2["token"], 1, who="10.0.0.2", now=1200.0)
+    goplans = [e["plan"] for e in out["events"] if e["kind"] == "go"]
+    check("a go event replayed in lobby carries {playing: false}, not slot 0 "
+          "with no code", goplans == [{"playing": False}], goplans)
+
+
+def test_join_while_a_match_runs_is_a_waiting_seat():
+    print("\n-- L-J1: joining a room whose match is on = a waiting seat")
+    for state in ("arming", "go", "in_match"):
+        reset()
+        with game_max(4, seats=4):
+            code, room, toks, match = _running(3, state=state)
+            names, slots = room.names, dict(room.slot_of)
+            st, j = join(code, "late", who="10.0.0.9", now=1010.0, pre_ok=True)
+            seat = j.get("member")
+            check("[%s] the join answers 200 with a seat" % state,
+                  st == 200 and seat == 4, (st, j))
+            check("[%s] the seat is waiting (playing false), the room still %s"
+                  % (state, state),
+                  room.members[seat].playing is False and room.state == state,
+                  (room.members[seat].playing, room.state))
+            check("[%s] the join answer carries no plan" % state,
+                  "plan" not in j, sorted(j))
+            check("[%s] the view shows the waiting seat to everybody" % state,
+                  any(m["seat"] == seat and m["playing"] is False
+                      for m in j["view"]["members"]))
+            check("[%s] the frozen match did not move: names, slots, count"
+                  % state,
+                  room.names == names and room.slot_of == slots
+                  and room.agreed_players == 3, (room.slot_of, room.names))
+            st, out = poll(code, j["token"], 1, who="10.0.0.9", now=1011.0)
+            plans = [e["plan"] for e in out["events"] if e["kind"] == "go"]
+            if "plan" in out:
+                plans.append(out["plan"])
+            check("[%s] every plan it is handed is {playing: false}" % state,
+                  all(pl == {"playing": False} for pl in plans), plans)
+            check("[%s] no answer to it carries the match's relay code" % state,
+                  room.comms_code not in json.dumps(out)
+                  and room.comms_code not in json.dumps(j), "leaked")
+            st, c = S.do_chat({"v": 5, "room": code, "token": j["token"],
+                               "text": "hi"}, "10.0.0.9", 1012.0)
+            check("[%s] it can chat in the room" % state, st == 200, (st, c))
+
+            # Hostile: a waiting seat cannot ready, fail, end, start, set up
+            # or kick, and has no field that picks a slot.
+            st, r = ready(code, j["token"], match, who="10.0.0.9", now=1013.0)
+            check("[%s] waiting ready -> 403 not_playing" % state,
+                  st == 403 and r["error"] == "not_playing", (st, r))
+            st, f = S.do_failed({"v": 5, "room": code, "token": j["token"],
+                                 "match": match, "reason": "no_pairing"},
+                                "10.0.0.9", 1013.0)
+            check("[%s] waiting failed -> 403 not_playing" % state,
+                  st == 403 and f["error"] == "not_playing", (st, f))
+            st, rr = _result(code, j["token"], match, who="10.0.0.9",
+                             scores=(0, 0, 0, 9))
+            check("[%s] waiting result -> 403 not_playing, match unchanged"
+                  % state, st == 403 and rr["error"] == "not_playing"
+                  and room.state == state and room.match == match, (st, rr))
+            st, s2 = start(code, j["token"], who="10.0.0.9", now=1013.0)
+            check("[%s] waiting start -> 403 not_host" % state,
+                  st == 403 and s2["error"] == "not_host", (st, s2))
+            st, pp = S.do_params({"v": 5, "room": code, "token": j["token"],
+                                  "map": 1, "win_mode": "time"},
+                                 "10.0.0.9", 1013.0)
+            check("[%s] waiting params -> 403 not_host" % state,
+                  st == 403 and pp["error"] == "not_host", (st, pp))
+            st, kk = S.do_kick({"v": 5, "room": code, "token": j["token"],
+                                "seat": 1}, "10.0.0.9", 1013.0)
+            check("[%s] waiting kick -> 403 not_host" % state,
+                  st == 403 and kk["error"] == "not_host", (st, kk))
+            for key, val in (("slot", 0), ("want_seat", 0), ("playing", True),
+                             ("role", "parent")):
+                st, bad = join(code, "x", who="10.0.0.10", now=1014.0,
+                               **{key: val})
+                check("[%s] a join naming `%s` is 400 bad_field" % (state, key),
+                      st == 400 and bad["error"] == "bad_field", (st, bad))
+            check("[%s] still one waiting seat, still frozen" % state,
+                  len(room.members) == 4 and room.slot_of == slots)
+
+            # The next match: the waiting seat is in it.
+            if state == "arming":
+                S.sweep(1000.0 + S.ARM_DEADLINE_S + 0.1)
+                check("[arming] the deadline ends the arm", room.state == "lobby")
+            else:
+                _result(code, toks[0], match, scores=(1, 2, 3, 0))
+            check("[%s] back in lobby the waiting seat is PLAYING" % state,
+                  room.state == "lobby" and room.members[seat].playing is True,
+                  (room.state, room.members[seat].playing))
+            S.do_params({"v": 5, "room": code, "token": toks[0], "map": 0,
+                         "win_mode": "time", "match_players": 4},
+                        "10.0.0.1", 1101.0)
+            st, p2 = start(code, toks[0], now=1102.0)
+            check("[%s] the next match freezes it into a slot" % state,
+                  st == 200 and room.slot_of.get(seat) == 3
+                  and room.agreed_players == 4, (st, room.slot_of))
+            check("[%s] and its name is in the next names string" % state,
+                  room.names.split(",")[3] == "late", room.names)
+
+
+def test_waiting_join_floods_hit_the_caps():
+    print("\n-- L-J1: a flood of waiting joins hits the existing caps")
+    reset()
+    with game_max(16, seats=16):
+        code, room, toks, match = _running(2)
+        # From one address: the per-address join budget.
+        answers = []
+        for i in range(S.RATE_JOIN_PER_MIN + 5):
+            st, out = join(code, "f%d" % i, who="10.6.6.6", now=1010.0)
+            answers.append(st)
+        check("one address: MAX_SEATS seats then room_full, never past 16",
+              len(room.members) == S.MAX_SEATS == 16, len(room.members))
+        check("and the join budget answers 429 past %d a minute"
+              % S.RATE_JOIN_PER_MIN,
+              answers.count(429) == 5 and 429 not in answers[:S.RATE_JOIN_PER_MIN],
+              {s: answers.count(s) for s in set(answers)})
+        check("every waiting seat is out of the match",
+              room.playing_count() == 2 and sorted(room.slot_of) == [1, 2],
+              room.playing_count())
+        st, out = join(code, "one-more", who="10.7.7.7", now=1011.0)
+        check("a fresh address meets room_full, not a 17th seat",
+              st == 409 and out["error"] == "room_full", (st, out))
+        _result(code, toks[0], match, scores=(1, 0, 0, 0))
+        check("at the match end the dial (16) seats all 16",
+              room.playing_count() == 16, room.playing_count())
+
+
+def test_the_host_leaving_passes_the_host_on():
+    print("\n-- L-J1: a VS host leaving passes the host on; a match on ends")
+    # (1) In lobby.
+    reset()
+    st, h = create(nick="h", pre_ok=True)
+    code = h["room"]
+    st, g2 = join(code, "g2", who="10.0.0.2", pre_ok=True)
+    st, w3 = join(code, "w3", who="10.0.0.3", pre_ok=True)
+    room = S.ROOMS[code]
+    S.do_leave({"v": 5, "room": code, "token": h["token"]}, "10.0.0.1", 1001.0)
+    check("[lobby] the room stays open", room.state == "lobby", room.state)
+    check("[lobby] the host is now seat 2 (the lowest playing seat)",
+          room.host_seat == 2, room.host_seat)
+    check("[lobby] the watcher filled the host's playing seat",
+          room.members[3].playing is True, room.members[3].playing)
+    check("[lobby] events: left then host",
+          [e["kind"] for e in room.events[-2:]] == ["left", "host"]
+          and room.events[-1]["seat"] == 2, room.events[-2:])
+    st, out = poll(code, h["token"], 1, now=1002.0)
+    check("[lobby] the old host's token is no member any more",
+          st == 403 and out["error"] == "not_a_member", (st, out))
+    st, p = start(code, g2["token"], who="10.0.0.2", now=1003.0)
+    check("[lobby] the new host can start", st == 200, (st, p))
+    check("[lobby] and is the parent in slot 0",
+          S.member_plan(room, 2)["role"] == "parent"
+          and S.member_plan(room, 2)["slot"] == 0
+          and S.member_plan(room, 3)["role"] == "child"
+          and S.member_plan(room, 3)["slot"] == 1,
+          (S.member_plan(room, 2), S.member_plan(room, 3)))
+    check("[lobby] the names string is in slot order",
+          room.names.split(",")[:2] == ["g2", "w3"], room.names)
+
+    # (2) Mid-match, in every frozen state, with a waiting joiner.
+    for state in ("arming", "go", "in_match"):
+        reset()
+        with game_max(4, seats=4):
+            code, room, toks, match = _running(3, state=state)
+            st, j = join(code, "late", who="10.0.0.9", now=1010.0, pre_ok=True)
+            S.do_leave({"v": 5, "room": code, "token": toks[0]},
+                       "10.0.0.1", 1011.0)
+            kinds = [e["kind"] for e in room.events[-3:]]
+            check("[%s] the room survives, back in lobby" % state,
+                  room.state == "lobby" and room.match is None
+                  and room.comms_code is None, (room.state, room.why))
+            check("[%s] events: left, failed host_left, host" % state,
+                  kinds == ["left", "failed", "host"]
+                  and room.events[-2]["reason"] == "host_left"
+                  and room.events[-2]["match"] == match
+                  and room.events[-1]["seat"] == 2, room.events[-3:])
+            check("[%s] the new host is seat 2" % state, room.host_seat == 2)
+            check("[%s] the waiting joiner and both guests play next" % state,
+                  sorted(s for s in room.members if room.members[s].playing)
+                  == [2, 3, 4], {s: m.playing for s, m in room.members.items()})
+            st, r = _result(code, toks[1], match, who="10.0.0.2")
+            check("[%s] a late result for the ended match is 409 stale" % state,
+                  st == 409 and r["error"] == "stale_match", (st, r))
+            st, p = start(code, toks[1], who="10.0.0.2", now=1020.0)
+            check("[%s] the new host starts the next match, parent slot 0"
+                  % state, st == 200 and room.slot_of == {2: 0, 3: 1, 4: 2}
+                  and S.member_plan(room, 2)["role"] == "parent",
+                  (st, room.slot_of))
+
+    # (3) The host is slot 0 even when a lower seat number plays.
+    reset()
+    with game_max(4, seats=4):
+        st, h = create(nick="h", pre_ok=True)
+        code = h["room"]
+        st, g2 = join(code, "g2", who="10.0.0.2", pre_ok=True)
+        st, g3 = join(code, "g3", who="10.0.0.3", pre_ok=True)
+        room = S.ROOMS[code]
+        S.do_leave({"v": 5, "room": code, "token": h["token"]}, "10.0.0.1", 1001.0)
+        st, n1 = join(code, "new1", who="10.0.0.4", now=1002.0, pre_ok=True)
+        check("a later joiner takes the freed seat 1 and plays",
+              n1["member"] == 1 and room.members[1].playing is True, n1)
+        st, p = start(code, g2["token"], who="10.0.0.2", now=1003.0)
+        check("the host (seat 2) is slot 0 and seat 1 is a child in slot 1",
+              room.slot_of == {2: 0, 1: 1, 3: 2}
+              and S.member_plan(room, 2)["role"] == "parent"
+              and S.member_plan(room, 1)["role"] == "child"
+              and S.member_plan(room, 1)["want_seat"] == 1, room.slot_of)
+        check("and the names string follows the slots",
+              room.names.split(",")[:3] == ["g2", "new1", "g3"], room.names)
+
+    # (4) host_left is the server's word: a client cannot send it.
+    reset()
+    code, room, toks, match = _running(2)
+    st, f = S.do_failed({"v": 5, "room": code, "token": toks[1], "match": match,
+                         "reason": "host_left"}, "10.0.0.2", 1010.0)
+    check("a client's failed with reason host_left is 400 bad_reason",
+          st == 400 and f["error"] == "bad_reason" and room.state == "in_match",
+          (st, f, room.state))
+
+    # (5) A host that times out in lobby passes the host on too.
+    reset()
+    st, h = create(nick="h", now=1000.0)
+    code = h["room"]
+    st, g2 = join(code, "g2", now=1000.0)
+    room = S.ROOMS[code]
+    room.members[2].seen = 1000.0 + S.MEMBER_TIMEOUT_S
+    S.sweep(1000.0 + S.MEMBER_TIMEOUT_S + 1)
+    check("a silent host is dropped and the room passes to seat 2",
+          room.state == "lobby" and room.host_seat == 2
+          and 1 not in room.members, (room.state, room.host_seat))
+
+    # (6) The old host coming back is a new member, not the host.
+    st, back = join(code, "h", who="10.0.0.1", now=1100.0)
+    check("the old host rejoining gets a seat, not the host role",
+          st == 200 and room.host_seat == 2 and back["member"] == 1, back)
+
+
+def test_a_quitters_result_does_not_end_the_match():
+    """plan.txt G5, server half: first-result-wins let one quitter's fake
+    draw end the match for the room."""
+    print("\n-- L-J1: one player's result does not end the match for the room")
+    DRAW = (0, 0, 0, 0)
+    REAL = (3, 1, 2, 0)
+
+    # (1) 2P: the guest quits and its launcher posts a draw.
+    reset()
+    code, room, toks, match = _running(2)
+    st, r = _result(code, toks[1], match, scores=DRAW, win="draw",
+                    who="10.0.0.2")
+    check("[2P] the guest's lone draw is 200 and the match runs on",
+          st == 200 and room.state == "in_match" and room.match == match,
+          (st, room.state))
+    check("[2P] and no result event was pushed",
+          not any(e["kind"] == "result" for e in room.events))
+    st, r = _result(code, toks[0], match, scores=(1, 0, 0, 0))
+    check("[2P] the host's result ends it with the HOST's scoreline",
+          st == 200 and room.state == "lobby"
+          and room.events[-1]["kind"] == "result"
+          and room.events[-1]["scores"] == [1, 0, 0, 0], room.events[-1])
+    st, r = _result(code, toks[1], match, scores=DRAW, win="draw",
+                    who="10.0.0.2", now=1101.0)
+    check("[2P] a result after the end is idempotent 200", st == 200)
+
+    with game_max(4, seats=4):
+        # (2) 4P: p2 quits (draw), p3 and p4 report the real result, the host
+        # says nothing (its launcher died): 2 of 4 live is not a majority...
+        reset()
+        code, room, toks, match = _running(4)
+        _result(code, toks[1], match, scores=DRAW, win="draw", who="10.0.0.2")
+        _result(code, toks[2], match, scores=REAL, who="10.0.0.3")
+        _result(code, toks[3], match, scores=REAL, who="10.0.0.4")
+        check("[4P] quitter's draw + two real votes of four live: still on",
+              room.state == "in_match", room.state)
+        # ...until the quitter's `failed` drops it (what L-J2's launcher sends):
+        # 2 of 3 live agree.
+        S.do_failed({"v": 5, "room": code, "token": toks[1], "match": match,
+                     "reason": "user_cancelled"}, "10.0.0.2", 1110.0)
+        check("[4P] the quitter's failed drops it and the two real votes settle",
+              room.state == "lobby" and room.events[-1]["kind"] == "result"
+              and room.events[-1]["scores"] == list(REAL), room.events[-2:])
+        check("[4P] and the quitter is back in for the next match",
+              room.members[2].playing is True)
+
+        # (3) Three of four non-host seats agree: settled without the host.
+        reset()
+        code, room, toks, match = _running(4)
+        for k in (1, 2):
+            _result(code, toks[k], match, scores=REAL, who="10.0.0.%d" % (k + 1))
+        check("[4P] two agreeing votes of four: on", room.state == "in_match")
+        _result(code, toks[3], match, scores=REAL, who="10.0.0.4")
+        check("[4P] three agreeing votes of four live: over, their scoreline",
+              room.state == "lobby"
+              and room.events[-1]["scores"] == list(REAL), room.events[-1])
+
+        # (4) Votes that disagree never settle; a seat's first vote stands.
+        reset()
+        code, room, toks, match = _running(4)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2")
+        _result(code, toks[2], match, scores=DRAW, win="draw", who="10.0.0.3")
+        for _ in range(5):
+            _result(code, toks[1], match, scores=DRAW, win="draw",
+                    who="10.0.0.2")
+        _result(code, toks[3], match, scores=(9, 9, 9, 9), who="10.0.0.4")
+        check("[4P] three different votes never settle, re-votes change "
+              "nothing", room.state == "in_match"
+              and room.result_votes[2] == ("time-up", REAL),
+              (room.state, room.result_votes))
+        st, r = _result(code, toks[0], match, scores=REAL)
+        check("[4P] the host's result ends it", room.state == "lobby"
+              and room.events[-1]["scores"] == list(REAL))
+
+        # (5) A leave that shrinks the live roster re-counts the votes.
+        reset()
+        code, room, toks, match = _running(4)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2")
+        _result(code, toks[2], match, scores=REAL, who="10.0.0.3")
+        check("[4P] two of four: on", room.state == "in_match")
+        S.do_leave({"v": 5, "room": code, "token": toks[3]}, "10.0.0.4", 1110.0)
+        check("[4P] p4 leaves: two of three live agree, the match is over",
+              room.state == "lobby" and room.events[-1]["kind"] == "result",
+              room.events[-1])
+
+        # (6) Hostile: a dropped seat cannot vote; a vote before `go` is not a
+        # thing (arming is not a match yet).
+        reset()
+        code, room, toks, match = _running(4)
+        S.do_failed({"v": 5, "room": code, "token": toks[3], "match": match,
+                     "reason": "no_pairing"}, "10.0.0.4", 1010.0)
+        st, r = _result(code, toks[3], match, scores=REAL, who="10.0.0.4")
+        check("[4P] a dropped seat's result is 403 not_playing",
+              st == 403 and r["error"] == "not_playing", (st, r))
+        check("[4P] and it was not counted", 4 not in room.result_votes)
+
+
+def test_the_new_host_played_the_match():
+    """REVLOBBYJOIN1 NOTE B: the new host is picked from the seats that were
+    playing the match the host's leaving ended, not from whoever the
+    end-of-match dial seated (a joiner who waited on a freed low seat)."""
+    print("\n-- L-J1B: a host leaving mid-match passes to a seat that played it")
+    with game_max(4, seats=4):
+        for state in ("arming", "go", "in_match"):
+            reset()
+            code, room, toks, match = _running(4, state=state)
+            S.do_leave({"v": 5, "room": code, "token": toks[1]},
+                       "10.0.0.2", 1010.0)
+            st, late = join(code, "late", who="10.0.0.9", now=1011.0,
+                            pre_ok=True)
+            check("[%s] the joiner waits on the freed seat 2" % state,
+                  st == 200 and late["member"] == 2
+                  and room.members[2].playing is False, (st, late))
+            S.do_leave({"v": 5, "room": code, "token": toks[0]},
+                       "10.0.0.1", 1012.0)
+            check("[%s] the new host is seat 3, who played the match, not "
+                  "the joiner on seat 2" % state,
+                  room.state == "lobby" and room.host_seat == 3
+                  and room.events[-1]["kind"] == "host"
+                  and room.events[-1]["seat"] == 3,
+                  (room.host_seat, room.events[-1]))
+            check("[%s] the joiner still plays the next match" % state,
+                  room.members[2].playing is True
+                  and sorted(s for s in room.members
+                             if room.members[s].playing) == [2, 3, 4],
+                  {s: m.playing for s, m in room.members.items()})
+            st, p = start(code, toks[2], who="10.0.0.3", now=1020.0)
+            check("[%s] the new host starts as the parent in slot 0" % state,
+                  st == 200 and room.slot_of == {3: 0, 2: 1, 4: 2}
+                  and S.member_plan(room, 3)["role"] == "parent",
+                  (st, room.slot_of))
+
+        # A host leaving in lobby: no match, the rule is unchanged.
+        reset()
+        code, room, toks, match = _running(3, state="in_match")
+        _result(code, toks[0], match)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1200.0)
+        check("[lobby] no match on: the lowest playing seat hosts, as before",
+              room.host_seat == 2, room.host_seat)
+
+        # Every seat that played has gone: the lowest playing seat hosts.
+        reset()
+        code, room, toks, match = _running(2, state="in_match")
+        st, w = join(code, "w", who="10.0.0.9", now=1010.0, pre_ok=True)
+        S.do_leave({"v": 5, "room": code, "token": toks[1]}, "10.0.0.2", 1011.0)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1012.0)
+        check("[none left] only the waiter is left: it hosts and plays",
+              room.state == "lobby" and room.host_seat == w["member"]
+              and room.members[w["member"]].playing is True,
+              (room.state, room.host_seat))
+
+
+def test_every_guest_agrees_and_the_host_is_silent():
+    """REVLOBBYJOIN1 section 3: when every live non-host seat has posted the
+    SAME result and the host has sent nothing since the first of those votes
+    for HOST_SILENT_S (60 s), the match is over: settle it with that vote
+    instead of waiting out MATCH_TIMEOUT_S. Only a live pair needs this (with
+    three or more live seats, all the guests agreeing is already a
+    majority)."""
+    print("\n-- L-J1B: all guests agree and the host is silent 60 s: settled")
+    REAL = (3, 1, 0, 0)
+    DRAW = (0, 0, 0, 0)
+    Q = getattr(S, "HOST_SILENT_S", None) or 60
+    check("the bound is 60 s by default",
+          getattr(S, "HOST_SILENT_S", None) == 60, Q)
+
+    # (1) 2P, the host's launcher died at MATCH OVER: the guest's real result
+    # settles 60 s after it came in, not 20 minutes after the start.
+    reset()
+    code, room, toks, match = _running(2)
+    t0 = 1100.0
+    _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+    S.sweep(t0 + Q - 1)
+    check("[2P] 59 s after the guest's vote: still on",
+          room.state == "in_match", room.state)
+    # (The guest's launcher is alive and polling; the host's is dead.)
+    poll(code, toks[1], room.seq, who="10.0.0.2", now=t0 + Q)
+    S.sweep(t0 + Q + 0.1)
+    res = [e for e in room.events if e["kind"] == "result"]
+    check("[2P] 60 s after it, host silent: over, the guest's scoreline",
+          room.state == "lobby" and len(res) == 1
+          and res[0]["match"] == match
+          and res[0]["scores"] == list(REAL), room.events[-3:])
+    check("[2P] back in lobby the dead host is dropped and the guest hosts",
+          1 not in room.members and room.host_seat == 2
+          and [e["kind"] for e in room.events[-3:]]
+          == ["result", "left", "host"], room.events[-3:])
+
+    # (2) The host is alive (it polled after the vote): no settle by this
+    # rule, however long. Its own result will come.
+    reset()
+    code, room, toks, match = _running(2)
+    _result(code, toks[1], match, scores=DRAW, win="draw", who="10.0.0.2",
+            now=t0)
+    poll(code, toks[0], room.seq, now=t0 + 30)
+    S.sweep(t0 + 30 + Q + 1)
+    check("[2P] a host that spoke after the vote: still on",
+          room.state == "in_match", room.state)
+    # ... and a host that polled before the vote only is silent after it.
+    reset()
+    code, room, toks, match = _running(2)
+    poll(code, toks[0], room.seq, now=t0 - 5)
+    _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+    S.sweep(t0 + Q + 0.1)
+    check("[2P] a host last heard BEFORE the vote counts as silent",
+          any(e["kind"] == "result" and e["match"] == match
+              for e in room.events), room.events[-3:])
+
+    with game_max(4, seats=4):
+        # (3) Disagreeing guests never settle by this rule.
+        reset()
+        code, room, toks, match = _running(3)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+        _result(code, toks[2], match, scores=DRAW, win="draw",
+                who="10.0.0.3", now=t0)
+        S.sweep(t0 + Q + 60)
+        check("[3P] two guests, two different results, host silent: on",
+              room.state == "in_match", room.state)
+
+        # (4) A guest that has not voted blocks it.
+        reset()
+        code, room, toks, match = _running(4)
+        S.do_failed({"v": 5, "room": code, "token": toks[3], "match": match,
+                     "reason": "no_pairing"}, "10.0.0.4", t0 - 10)
+        S.do_failed({"v": 5, "room": code, "token": toks[2], "match": match,
+                     "reason": "no_pairing"}, "10.0.0.3", t0 - 10)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+        S.sweep(t0 + Q + 0.1)
+        check("[4P->2 live] the one live guest agrees, host silent: over",
+              any(e["kind"] == "result" and e["match"] == match
+                  for e in room.events), room.events[-3:])
+
+        # (5) A waiting joiner cannot feed this rule (it cannot vote), and a
+        # guest that has not voted blocks it.
+        reset()
+        code, room, toks, match = _running(3)
+        st, w = join(code, "w", who="10.0.0.9", now=t0 - 1, pre_ok=True)
+        st, r = _result(code, w["token"], match, scores=REAL,
+                        who="10.0.0.9", now=t0)
+        check("[3P] the waiting seat's vote is 403",
+              st == 403 and r["error"] == "not_playing", (st, r))
+        S.sweep(t0 + Q + 60)
+        check("[3P] no guest voted: on", room.state == "in_match", room.state)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0 + 100)
+        S.sweep(t0 + 100 + Q + 60)
+        check("[3P] one of two guests voted, host silent: on",
+              room.state == "in_match", room.state)
+
+        # (6) The clock is the FIRST of the agreeing votes still counted,
+        # and it starts over with the next match.
+        reset()
+        code, room, toks, match = _running(2)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+        _result(code, toks[0], match, scores=REAL, now=t0 + 1)
+        st, p = start(code, toks[0], now=t0 + 2)
+        m2 = p["match"]
+        for i, tok in enumerate(toks):
+            ready(code, tok, m2, who="10.0.0.%d" % (i + 1), now=t0 + 2)
+        S.sweep(t0 + 2 + S.GO_GRACE_S + 0.1)
+        S.sweep(t0 + Q + 10)
+        check("[next match] no vote carried over: on",
+              room.state == "in_match" and room.match == m2,
+              (room.state, room.match))
+
+
+def test_server_line_width():
+    """REVLOBBYJOIN1 hygiene nit: assign_slots lost a line break and made the
+    only line of server.py over 100 characters."""
+    print("\n-- L-J1B: server.py keeps its lines at 100 characters or fewer")
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "app", "server.py")
+    with open(path, encoding="utf-8") as f:
+        long = [(n, len(line.rstrip("\r\n")))
+                for n, line in enumerate(f, 1)
+                if len(line.rstrip("\r\n")) > 100]
+    check("no line of server.py is over 100 characters", not long, long)
+
+
+def test_host_silent_floor():
+    """REVLOBBYJOIN1-B note D: HOST_SILENT_S accepted 10 from the env, under
+    the launcher's 20 s poll hold, and set that low it read a live host as
+    silent. Its floor is 45, the member heartbeat (MEMBER_TIMEOUT_S)."""
+    print("\n-- L-J1C: HOST_SILENT_S cannot be set under 45 s")
+    import subprocess
+    app = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app")
+    got = {}
+    for raw in ("10", "44", "45", "90", "99999", "junk"):
+        env = dict(os.environ, HOST_SILENT_S=raw)
+        out = subprocess.run(
+            [sys.executable, "-c",
+             "import server; print(server.HOST_SILENT_S)"],
+            cwd=app, env=env, capture_output=True, text=True, timeout=60)
+        got[raw] = out.stdout.strip().splitlines()[-1] if out.stdout else out.stderr
+    check("HOST_SILENT_S=10 and =44 read as 45 (the floor)",
+          got["10"] == "45" and got["44"] == "45", got)
+    check("45 and 90 are kept, 99999 is clamped to 3600, junk is the default 60",
+          (got["45"], got["90"], got["99999"], got["junk"])
+          == ("45", "90", "3600", "60"), got)
+    check("the floor is not under the member heartbeat (MEMBER_TIMEOUT_S 45)",
+          int(got["10"]) >= 45, got)
+
+
+def test_a_throttled_host_is_not_silent():
+    """REVLOBBYJOIN1-B note C: host and guest behind ONE public address (a
+    household NAT). A modified guest floods that address, the rate limiter
+    refuses everything from it -- the live host's polls included, BEFORE
+    they stamp `seen` -- and its fake result settled at +60 s. Silence the
+    limiter caused is not silence: the host-silent clock counts from the
+    later of the first vote and the host address's last refusal."""
+    print("\n-- L-J1C: a host whose address is being refused is not silent")
+    FAKE = (0, 9, 0, 0)
+    Q = S.HOST_SILENT_S
+    t0 = 1100.0
+    NAT = "10.0.0.1"
+
+    def flood(addr, t_from, t_to):
+        # What the HTTP layer does for each refused request (the guest's
+        # flood and the host's own polls alike): note_reject on the address.
+        t = t_from
+        while t <= t_to:
+            S.BUCKETS.note_reject(addr, t)
+            t += 0.5
+
+    reset()
+    code, room, toks, match = _running(2)
+    _result(code, toks[1], match, scores=FAKE, who=NAT, now=t0)
+    flood(NAT, t0 + 0.5, t0 + 75)
+    S.sweep(t0 + Q + 1)
+    check("[NAT] the address is refused through +75 s: at +%ds still on"
+          % (Q + 1), room.state == "in_match" and room.match == match,
+          room.state)
+    S.sweep(t0 + 75 + Q - 1)
+    check("[NAT] %d s after the last refusal: still on" % (Q - 1),
+          room.state == "in_match", room.state)
+    # The host really is dead: once its address has been left alone for
+    # HOST_SILENT_S the rule works as before, so it is never stuck for good.
+    # (The guest's launcher is alive and polling.)
+    poll(code, toks[1], room.seq, who=NAT, now=t0 + 75 + Q)
+    S.sweep(t0 + 75 + Q + 0.5)
+    check("[NAT] %d s after the last refusal, host silent: over" % Q,
+          any(e["kind"] == "result" and e["match"] == match
+              for e in room.events), room.state)
+
+    # A refusal of SOME OTHER address does not hold the pair's match.
+    reset()
+    code, room, toks, match = _running(2)
+    _result(code, toks[1], match, scores=FAKE, who="10.0.0.2", now=t0)
+    flood("10.0.0.77", t0, t0 + 75)
+    poll(code, toks[1], room.seq, who="10.0.0.2", now=t0 + Q)
+    S.sweep(t0 + Q + 0.5)
+    check("[other address refused] the pair still settles at +%ds" % Q,
+          room.state == "lobby", room.state)
+
+    # A refusal that could not be recorded (the address tables are full)
+    # holds it too: the guard fails closed.
+    reset()
+    code, room, toks, match = _running(2)
+    _result(code, toks[1], match, scores=FAKE, who=NAT, now=t0)
+    real = S.MAX_BUCKETS
+    try:
+        S.MAX_BUCKETS = 0
+        S.BUCKETS.bad.clear()
+        S.BUCKETS.note_reject(NAT, t0 + 30)
+    finally:
+        S.MAX_BUCKETS = real
+    S.sweep(t0 + Q + 1)
+    check("[tables full] an unrecorded refusal since the vote: still on",
+          room.state == "in_match", room.state)
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -2997,6 +3812,18 @@ def main():
     test_rate_buckets()
     test_server_caps()
     test_opacity()
+    test_a_dropped_player_plays_the_next_match()
+    test_no_promotion_into_a_running_match()
+    test_the_plan_guard()
+    test_join_while_a_match_runs_is_a_waiting_seat()
+    test_waiting_join_floods_hit_the_caps()
+    test_the_host_leaving_passes_the_host_on()
+    test_a_quitters_result_does_not_end_the_match()
+    test_the_new_host_played_the_match()
+    test_every_guest_agrees_and_the_host_is_silent()
+    test_a_throttled_host_is_not_silent()
+    test_host_silent_floor()
+    test_server_line_width()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

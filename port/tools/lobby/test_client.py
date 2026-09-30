@@ -423,13 +423,37 @@ def selftest(c, quick=False):
           all(e["kind"] == "chat" for e in resync["events"])
           and len(resync["events"]) >= 3, resync["events"])
 
-    # -- the host leaving closes the room ----------------------------------
+    # -- the host leaving passes the host on (run mp1, L-J1) ---------------
+    # Before L-J1 a VS room closed when its host left. Now the host role goes
+    # to the lowest PLAYING seat and the room carries on; only the last member
+    # out closes it. Seats here: host 1, "ace" 4 (promoted above), and the
+    # watcher joining now takes the freed seat 2.
     last = c.post("join", {"v": 5, "game": GAME, "room": code, "nick": "watcher"})[1]
+    check("the watcher takes the lowest free seat, 2, watching",
+          last["member"] == 2
+          and {m["seat"]: m["playing"] for m in last["view"]["members"]}.get(2)
+          is False, last["view"]["members"])
     status, _ = c.post("leave", {"v": 5, "room": code, "token": host["token"]})
     check("the host can leave", status == 200)
+    status, passed = c.post("poll", {"v": 5, "room": code, "token": last["token"],
+                                     "cursor": last["cursor"], "wait": 0})
+    check("the room stays open in lobby with a new host: seat 2, promoted",
+          status == 200 and passed["view"]["state"] == "lobby"
+          and passed["view"]["host"] == 2
+          and {m["seat"]: m["playing"] for m in passed["view"]["members"]}
+          == {2: True, 4: True}, (status, passed.get("view")))
+    check("a host event names the new host, after the old host's left event",
+          [e["kind"] for e in passed["events"]][-2:] == ["left", "host"]
+          and passed["events"][-1]["seat"] == 2, passed.get("events"))
+    expect("the old host's token is no member any more",
+           c.post("poll", {"v": 5, "room": code, "token": host["token"],
+                           "cursor": 0, "wait": 0}), 403, "not_a_member")
+    status, _ = c.post("leave", {"v": 5, "room": code, "token": four["token"]})
+    status, _ = c.post("leave", {"v": 5, "room": code, "token": last["token"]})
+    check("the last member out (the new host) can leave", status == 200)
     status, closed = c.post("poll", {"v": 5, "room": code, "token": last["token"],
                                      "cursor": last["cursor"], "wait": 0})
-    check("the room is closed, and the reason survives for the members",
+    check("the last member out closes the room, and the reason survives",
           status == 200 and closed["view"]["state"] == "closed"
           and any(e["kind"] == "closed" and e["why"] == "host_left"
                   for e in closed["events"]), (status, closed))
@@ -1055,7 +1079,23 @@ def selftest_only_playing(c):
     status, _ = c.post("result", {"v": 5, "room": code, "token": guest["token"],
                                   "match": match, "win": "time-up",
                                   "scores": [1, 2, 0, 0]})
-    check("a PLAYING member's result still ends it", status == 200)
+    check("a PLAYING guest's result is accepted", status == 200)
+    # run mp1 L-J1: a non-host's result is a vote; alone it does not end a
+    # match the host is still in (plan.txt G5). The host's result does.
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": host["token"],
+                                   "cursor": armed["cursor"], "wait": 0})
+    check("the guest's lone result leaves the match running",
+          seen["view"]["state"] in ("go", "in_match")
+          and seen["view"]["match"] == match, seen["view"])
+    status, _ = c.post("result", {"v": 5, "room": code, "token": host["token"],
+                                  "match": match, "win": "time-up",
+                                  "scores": [1, 2, 0, 0]})
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": host["token"],
+                                   "cursor": armed["cursor"], "wait": 0})
+    check("the host's result ends it",
+          status == 200 and seen["view"]["state"] == "lobby"
+          and any(e["kind"] == "result" and e["scores"] == [1, 2, 0, 0]
+                  for e in seen["events"]), seen.get("view"))
     c.post("leave", {"v": 5, "room": code, "token": host["token"]})
 
 
@@ -1518,8 +1558,8 @@ def negatives(c, out_dir=None):
     rej("the host kicking itself -> 400 bad_seat", "kick",
         {"v": 5, "room": room, "token": host["token"], "seat": 1},
         400, "bad_seat",
-        "the host closes the room instead; there is no way to leave a room "
-        "hostless.")
+        "the host leaves instead, and the host role passes to the lowest "
+        "playing seat; there is no way to leave a room hostless.")
 
     # ---- the chat limiter, which is per MEMBER rather than per address ----
     print("   (letting the chat allowance refill)")

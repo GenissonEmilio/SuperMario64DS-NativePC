@@ -305,6 +305,14 @@ WORLD_ADDR_TOKENS = env_int("WORLD_ADDR_TOKENS", 4, 1, WORLD_SEATS)
 ARM_DEADLINE_S = env_int("ARM_DEADLINE_S", 20, 5, 120)
 GO_GRACE_S = env_int("GO_GRACE_S", 5, 1, 60)
 MATCH_TIMEOUT_S = env_int("MATCH_TIMEOUT_S", 1200, 60, 86400)
+# run mp1 L-J1B: every live non-host seat has posted the SAME result and the
+# host has sent nothing since the first of those votes for this long: the
+# match is over (see host_silent_vote). Not in the compose file on purpose:
+# the default is the reviewed value. The floor is the member heartbeat (45 s):
+# under the launcher's 20 s poll hold plus its error backoff a LIVE host can
+# look silent (REVLOBBYJOIN1-B note D: at 10 a live host's match ended on the
+# guest's draw after 16 s).
+HOST_SILENT_S = env_int("HOST_SILENT_S", 60, 45, 3600)
 RELAY_ADDR = env_str("RELAY_ADDR", "135.148.26.201:41234")
 
 # v5: the relay protocol the plan tells the game to speak (design section 3).
@@ -450,7 +458,13 @@ FAIL_REASONS = ("spawn_failed", "no_pairing", "wrong_player_count",
                 "startup_error", "user_cancelled", "timeout",
                 # server-minted, never sent by a client: the arming deadline
                 # passed with some playing seat not ready.
-                "member_not_ready")
+                "member_not_ready",
+                # server-minted, never sent by a client (run mp1, L-J1): the
+                # host left a VS room while its match was arming, going or
+                # running, so the match ended for everybody and the host role
+                # passed on (the `host` event that follows names the new one).
+                "host_left")
+SERVER_REASONS = ("member_not_ready", "host_left")
 
 # What the game reports as the win condition, plus "draw" for an unparseable
 # marker (spec 5.3). The server never interprets it; it echoes it in the event.
@@ -752,6 +766,11 @@ class Room(object):
         # The last match id a result was accepted for, so a SECOND result for a
         # match already resolved is idempotent (200) rather than stale (409).
         self.last_result_match = None
+        # run mp1 L-J1: the results posted for the current match so far, one
+        # per seat, seat -> (win, scores tuple). A non-host's result is a
+        # VOTE; see do_result. Cleared by _reset_match.
+        self.result_votes = {}
+        self.vote_at = {}           # seat -> when its vote came in (L-J1B)
         # A fresh room starts at cursor 1 with nothing behind it, so the very
         # first real event is seq 2 and a client that polls from the cursor it
         # was handed at create sees everything that happened after it arrived.
@@ -790,9 +809,12 @@ class Room(object):
              here renumbers anybody: a member keeps the number they were given
              until they leave, through other people joining, leaving, being
              removed and being promoted.
-          2. THE HOST IS ALWAYS SEAT 1. The creator takes seat 1, and a host
-             leaving closes the room rather than handing the room to anybody
-             else, so no live room ever has a host at another number.
+          2. THE HOST STARTS AS SEAT 1. The creator takes seat 1. Since run
+             mp1 (L-J1) a VS host leaving passes the role to the lowest
+             playing seat instead of closing the room (adventure rooms always
+             did), so a live room can have its host at another number; the
+             host's slot 0 is then assign_slots' job, which puts the host
+             first by name rather than trusting it to be the lowest seat.
           3. Seat numbers are distinct and always inside 1..MAX_SEATS, so the
              slots derived from them are distinct and always inside 0..3.
 
@@ -804,7 +826,7 @@ class Room(object):
         ACCEPT is a broadcast with no recipient field, so two children claiming
         the same slot cannot be told apart by the game. The LOBBY is the only
         place a slot can be handed out uniquely, and stage B's start plan does
-        exactly that from these numbers: host = seat 1 = slot 0.
+        exactly that from these numbers: the host is slot 0.
 
         ONE THING STAGE B STILL HAS TO DECIDE, flagged here so it is not
         discovered late. With GAME_MAX_PLAYERS below MAX_SEATS the playing seats
@@ -841,7 +863,7 @@ class Room(object):
         this function are the same rule stated twice, and both move a member
         only when a seat actually opened or closed.
 
-        THE HOST IS NEVER DEMOTED. Seat 1 is the host and the host is the
+        THE HOST IS NEVER DEMOTED. The host (seat 1 unless it passed) is the
         parent of the game session; a spectating host would hand out a go plan
         with no parent in it. Demoting from the highest seat down cannot reach
         seat 1 while the dial is at least 1, and the loop refuses it anyway
@@ -1016,6 +1038,10 @@ class Buckets(object):
         self.creates = {}       # host -> [timestamps]
         self.joins = {}         # host -> [timestamps]
         self.bad = {}           # host -> [count, window_start, ignored_until]
+        # host -> when it was last refused, and when a refusal last could not
+        # be recorded (the table was full): host_silent_vote (L-J1C).
+        self.refused = {}
+        self.refused_lost = float("-inf")
 
     def _room(self, table, host):
         if host not in table and len(table) >= MAX_BUCKETS:
@@ -1067,6 +1093,10 @@ class Buckets(object):
         Same shape relay.py uses, and for the same reason: answering a broken
         or hostile client at full speed is work we are doing on its behalf.
         """
+        if self._room(self.refused, host):
+            self.refused[host] = now
+        else:
+            self.refused_lost = now
         b = self.bad.get(host)
         if b is None:
             if not self._room(self.bad, host):
@@ -1081,7 +1111,18 @@ class Buckets(object):
             b[2] = now + BAD_IGNORE_S
             b[0], b[1] = 0, now
 
+    def last_refused(self, host):
+        """When a request from `host` was last refused (-inf if never, or not
+        within HOST_SILENT_S). A refusal the full table could not record
+        counts for every address: the guard that reads this fails closed."""
+        return max(self.refused.get(host, float("-inf")), self.refused_lost)
+
     def sweep(self, now):
+        # An entry older than HOST_SILENT_S cannot change host_silent_vote's
+        # answer any more, so it goes.
+        for host, t in list(self.refused.items()):
+            if now - t > HOST_SILENT_S:
+                del self.refused[host]
         for host, b in list(self.tokens.items()):
             if now - b[1] > 60.0:
                 del self.tokens[host]
@@ -1331,9 +1372,10 @@ def v_reason(body):
     s, err = want_str(body, "reason", "bad_reason")
     if err:
         return None, err
-    # A fixed enum, never free text. member_not_ready is server-minted only,
-    # so a client that sends it is refused like any other unknown reason.
-    if s not in FAIL_REASONS or s == "member_not_ready":
+    # A fixed enum, never free text. member_not_ready and host_left are
+    # server-minted only, so a client that sends one is refused like any
+    # other unknown reason.
+    if s not in FAIL_REASONS or s in SERVER_REASONS:
         return None, "bad_reason"
     return s, None
 
@@ -1607,8 +1649,15 @@ def do_join(body, who, now):
         return 409, {"error": "game_mismatch"}
     if len(room.members) >= MAX_SEATS:
         return 409, {"error": "room_full"}
-    if room.state != "lobby":
-        return 409, {"error": "in_match"}
+    # JOIN AT THE NEXT MATCH (Tango, 09-29; run mp1 L-J1). A VS room whose
+    # match is arming, going or running used to refuse the door with 409
+    # `in_match`. Now the joiner gets a WAITING seat: playing = False for the
+    # match that is on, so it is in no plan, no slot map and no names string,
+    # and ready / failed / result refuse it (not_playing). It sees the room,
+    # the roster and the chat like any member, and when the match ends
+    # _reset_match runs the dial and seats it for the next one. Every cap a
+    # lobby join has still holds: the join budget per address, MAX_SEATS,
+    # the kick cooldown and the one-build rule above.
 
     seat = room.free_seat()
     if seat is None:
@@ -1617,12 +1666,14 @@ def do_join(body, who, now):
     # The dial decides, not the deployment knob. Same rule as before -- the
     # first N in the room play -- with N now chosen by the host instead of
     # fixed for the whole server. An adventure room has no dial: everybody
-    # in it plays their own game.
+    # in it plays their own game. A VS room with a match on seats nobody
+    # into it: the joiner waits (see above).
     playing = (room.session_type != "vs"
-               or room.playing_count() < room.match_players)
+               or (room.state == "lobby"
+                   and room.playing_count() < room.match_players))
     if not room.members:
         # Only an adventure room can be empty and open (a VS room closes when
-        # its host leaves). Whoever walks into the empty room holds it now.
+        # its last member leaves). Whoever walks into the empty room holds it now.
         room.host_seat = seat
         room.empty_since = None
     room.members[seat] = Member(seat, token, nick, playing, pre_ok, now, who,
@@ -1631,7 +1682,9 @@ def do_join(body, who, now):
     room.refresh_displays()
     room.push("joined", seat=seat, display=room.members[seat].display)
     log("room %s join %s seat %d %s (%d/%d)"
-        % (code, blunt_host(who), seat, "playing" if playing else "watching",
+        % (code, blunt_host(who), seat,
+           "playing" if playing else
+           ("waiting" if room.state != "lobby" else "watching"),
            len(room.members), MAX_SEATS))
     out = {"room": code, "token": token, "member": seat,
            "cursor": room.seq, "view": room.view(seat)}
@@ -1827,13 +1880,43 @@ def do_leave(body, who, now):
     return 200, {"ok": True}
 
 
+def pass_host(room, played=()):
+    """Hand a VS room's host role on after its host left (run mp1, L-J1).
+
+    THE NEW HOST IS THE LOWEST-NUMBERED SEAT THAT PLAYED THE MATCH THE HOST'S
+    LEAVING ENDED (`played`, taken by drop_member before the match was
+    reset), so somebody who joined mid-match and waited on a freed low seat
+    number is not made host ahead of the people who played it. With no match
+    on, or none of its players left, it is the lowest-numbered PLAYING seat,
+    or the lowest seat when nobody is playing. A player rather than simply
+    the lowest seat, because
+    the host is the parent of the next match and apply_dial never demotes
+    it: a watcher made host would be forced into play past the dial. The
+    seat number does not change (free_seat's property 1); what changes is
+    that the host is no longer always seat 1, which is why assign_slots puts
+    the host in slot 0 explicitly. Called in lobby only: a running match was
+    ended first (match_to_lobby), so the new host starts the next one."""
+    ps = [s for s in played if s in room.members] or playing_seats(room)
+    new = ps[0] if ps else min(room.members)
+    room.host_seat = new
+    m = room.members[new]
+    if not m.playing and room.match_players >= 1:
+        m.playing = True
+        room.apply_dial()
+    room.push("host", seat=new, display=m.display)
+    log("room %s host -> seat %d" % (room.code, new))
+
+
 def drop_member(room, seat, why):
-    """Free a seat. The host leaving closes the room; anyone else leaving
-    promotes the lowest-numbered spectator if a playing seat opened up."""
+    """Free a seat. Anyone but the host leaving promotes the lowest-numbered
+    spectator if a playing seat opened up (in lobby only). A VS host leaving
+    ends a match that is on (reason host_left) and passes the host role on;
+    only the LAST member leaving closes the room."""
     m = room.members.get(seat)
     if m is None:
         return
-    if seat == room.host_seat and room.session_type == "vs":
+    if (seat == room.host_seat and room.session_type == "vs"
+            and len(room.members) == 1):
         room.close("host_left")
         return
     was_playing = m.playing
@@ -1856,7 +1939,39 @@ def drop_member(room, seat, why):
                 log("room %s host -> seat %d" % (room.code, room.host_seat))
         # (An empty room's clock is started by the reaper, on its own `now`.)
         return
-    if was_playing:
+    if seat == room.host_seat:
+        # THE VS HOST LEFT A ROOM THAT STILL HAS PEOPLE IN IT (Tango, 09-29:
+        # Q3). The host is the parent of the game session -- the round clock
+        # every console waits on -- so a match that is arming, going or
+        # running cannot go on without it: it ends for everybody with the
+        # reason host_left, which the launchers word, and everybody lands
+        # back in the room. _reset_match runs the dial, so waiting and
+        # dropped seats are in the next match. Then the host role passes on
+        # and the new host presses Start. Seamless mid-match host hand-over
+        # is after 1.0. (Before L-J1 this closed the room for everybody.)
+        # The seats still playing the match are read BEFORE the reset: after
+        # it the dial has seated the waiting joiners too, and the host should
+        # pass to somebody who played (REVLOBBYJOIN1 note B).
+        played = sorted(s for s in room.slot_of if in_frozen_match(room, s))
+        if room.state != "lobby":
+            match_to_lobby(room, "host_left")
+        else:
+            room.apply_dial()
+        pass_host(room, played)
+        return
+    # NOBODY IS PROMOTED INTO A FROZEN MATCH (run mp1, L-J1). From `start`
+    # until the room is back in lobby the roster, the slot map and the names
+    # are frozen; a watcher promoted then held no slot, and during `go` every
+    # poll hands a playing seat a plan, so the promoted watcher was told to
+    # join the running match as a child in slot 0 -- the host's slot. The
+    # seat that opened is filled when the match ends: _reset_match runs the
+    # dial.
+    if was_playing and room.state != "lobby":
+        # A player leaving a running match may leave the votes already in as
+        # a majority of who is left (see do_result).
+        maybe_settle(room)
+        return
+    if was_playing and room.state == "lobby":
         before = {s for s in room.members if room.members[s].playing}
         # ONE RULE, STATED ONCE. Promotion-on-vacancy and the host's dial are
         # the same thing -- "bring the playing count up to what the room is set
@@ -1941,6 +2056,16 @@ def playing_seats(room):
     return sorted(s for s in room.members if room.members[s].playing)
 
 
+def in_frozen_match(room, seat):
+    """True for a seat that is PLAYING the room's current match: playing, and
+    one of the seats frozen into slot_of at `start`. ready / failed / result
+    for the current match ask this, not `playing` alone (run mp1, L-J1), so a
+    seat the match never froze -- a waiting joiner on a reused seat number,
+    or anything a future path promotes -- cannot arm, abort or end it."""
+    m = room.members.get(seat)
+    return m is not None and m.playing and seat in room.slot_of
+
+
 def assign_slots(room):
     """seat -> slot, PACKED among the playing seats in seat order.
 
@@ -1954,8 +2079,17 @@ def assign_slots(room):
     the relay ACCEPT is a recipientless broadcast, so two children on the same
     slot cannot be told apart, and the lobby is the only place a slot is handed
     out uniquely.
+
+    THE HOST IS PUT FIRST BY NAME, not by being the lowest seat (run mp1,
+    L-J1). Since a VS host that leaves passes the role on, the host can be
+    seat 3 while a later joiner holds seat 1; seat order alone would then
+    give the joiner slot 0 and the parent slot 1. Everybody else keeps seat
+    order, so a room whose host is seat 1 gets exactly the map it always did.
     """
-    return {seat: slot for slot, seat in enumerate(playing_seats(room))}
+    ps = playing_seats(room)
+    order = ([room.host_seat] if room.host_seat in ps else []) + \
+        [s for s in ps if s != room.host_seat]
+    return {seat: slot for slot, seat in enumerate(order)}
 
 
 def name_field_count(room):
@@ -2029,6 +2163,16 @@ def member_plan(room, seat):
         return {"playing": True, "session_type": "adventure",
                 "code": room.comms_code, "relay": RELAY_ADDR,
                 "relay_v": RELAY_V, "want_seat": WANT_ANY_SEAT}
+    # THE PLAN GUARD (run mp1, L-J1). A VS plan is only ever the frozen
+    # match's, so a seat the match did not freeze gets the spectator's empty
+    # plan -- never a default slot. `slot_of.get(seat, 0)` used to hand such a
+    # seat slot 0, which is the host's: a watcher promoted mid-match (C4), a
+    # seat number reused by a joiner, or an old `go` event replayed from the
+    # ring after the match ended would all have been told to join as the
+    # parent's slot. slot_of is empty in lobby, so this also covers the last.
+    if seat not in room.slot_of:
+        return {"playing": False}
+    slot = room.slot_of[seat]
     role = "parent" if seat == room.host_seat else "child"
     plan = {
         "role": role,
@@ -2040,7 +2184,7 @@ def member_plan(room, seat):
         "session_type": room.session_type,
         "map": room.match_map,
         "players": room.agreed_players,
-        "slot": room.slot_of.get(seat, 0),
+        "slot": slot,
         # The parent goes first; children wait 1.5 s (spec 4.3). It is an
         # optimisation, not the guarantee -- the child's JOIN retries anyway.
         "spawn_delay_ms": 0 if role == "parent" else 1500,
@@ -2059,7 +2203,7 @@ def member_plan(room, seat):
         # is the slot (parent 0, children 1..15), so the relay's stamp and
         # the game's slot are the same number.
         "relay_v": RELAY_V,
-        "want_seat": room.slot_of.get(seat, 0),
+        "want_seat": slot,
         # The match settings frozen at arm. The launcher exports luigi and
         # seed as SM64DS_VS_LUIGI_INFECTION / SM64DS_VS_LUIGI_SEED, voice as
         # SM64DS_VOICE_ALLOWED and digest as SM64DS_SESSION_DIGEST. The seed
@@ -2083,7 +2227,18 @@ def member_plan(room, seat):
 
 def _reset_match(room):
     """Back to a clean lobby: clear the frozen match state and every armed
-    flag. Does NOT push an event; the caller pushes result/failed."""
+    flag, then seat the next match. Does NOT push an event; the caller pushes
+    result/failed.
+
+    THE DIAL RUNS HERE (run mp1, L-J1). A seat that sat a match out -- a
+    player dropped by its own `failed`, or anybody who joined while the match
+    ran -- is `playing = False` for that match's life, because nothing may be
+    promoted into a frozen roster. The match ending is the moment that stops
+    being true, so the roster is brought back up to the host's dial exactly as
+    a vacancy in the lobby would bring it up: lowest seats first, nobody who
+    is already playing moved. A room whose dial is below its head count keeps
+    its extra members watching, as it always did. The view every poll carries
+    shows the new roster; no event kind is added for it."""
     room.state = "lobby"
     room.match = None
     room.comms_code = None
@@ -2097,11 +2252,14 @@ def _reset_match(room):
     room.names = ""
     room.colors = ""
     room.slot_of = {}
+    room.result_votes = {}
+    room.vote_at = {}
     room.arm_deadline = None
     room.go_at = None
     room.match_start = None
     for m in room.members.values():
         m.armed = False
+    room.apply_dial()
 
 
 def match_to_lobby(room, reason):
@@ -2113,6 +2271,88 @@ def match_to_lobby(room, reason):
     if mid:
         room.push("failed", match=mid, reason=reason)
     log("room %s failed match=%s reason=%s" % (room.code, mid, reason))
+
+
+def finish_match(room, win, scores):
+    """The match is over: record it, reset, push the `result` event."""
+    mid = room.match
+    room.last_result_match = mid
+    _reset_match(room)
+    room.push("result", match=mid, win=win, scores=list(scores))
+    log("room %s result match=%s win=%s" % (room.code, mid, win))
+
+
+def settled_vote(room):
+    """The result a MAJORITY of the match's live seats agree on, or None.
+
+    Live = frozen into slot_of and still playing (not dropped, not gone).
+    Only live seats' votes count, and a vote needs strictly more than half of
+    the live seats, so no single non-host seat can settle a match that two or
+    more others are still playing."""
+    live = [s for s in room.slot_of if in_frozen_match(room, s)]
+    tally = {}
+    for s in live:
+        v = room.result_votes.get(s)
+        if v is not None:
+            tally[v] = tally.get(v, 0) + 1
+    for v, n in tally.items():
+        if 2 * n > len(live):
+            return v
+    return None
+
+
+def host_silent_vote(room, now):
+    """The result to end a match with because the host went silent, or None
+    (run mp1, L-J1B; REVLOBBYJOIN1 section 3).
+
+    EVERY live non-host seat has posted the SAME result, and the host has
+    sent no request since the first of those votes came in, for
+    HOST_SILENT_S. Every guest's console printed the same MATCH OVER, so the
+    match is over; what is missing is only the host's launcher (it died at
+    MATCH OVER without a `leave`). With three or more live seats the guests
+    agreeing is already a majority (settled_vote), so in practice this is the
+    live pair's rule, which otherwise waited out MATCH_TIMEOUT_S.
+
+    "Host silent after ANY vote" would NOT be safe: an old launcher's quitter
+    posts a draw mid-match, and a busy game can starve the host's poll (the
+    sweep's 45 s note). Requiring every guest to agree is what rules that out:
+    a quitter's draw next to a real result is two results, and a lone guest
+    in a pair that quit took the match down with it anyway."""
+    if room.state not in ("go", "in_match"):
+        return None
+    host = room.members.get(room.host_seat)
+    if host is None or not in_frozen_match(room, room.host_seat):
+        return None
+    guests = [s for s in room.slot_of
+              if s != room.host_seat and in_frozen_match(room, s)]
+    if not guests or any(s not in room.result_votes for s in guests):
+        return None
+    votes = set(room.result_votes[s] for s in guests)
+    if len(votes) != 1:
+        return None
+    first = min(room.vote_at.get(s, now) for s in guests)
+    if host.seen > first:
+        return None
+    # SILENCE THE RATE LIMITER CAUSED IS NOT SILENCE (REVLOBBYJOIN1-B note
+    # C). The budget is per address and charged before the verb runs, so a
+    # guest on the host's own public address (a household NAT) could flood it
+    # into refusals and the live host's polls would never stamp `seen`. The
+    # quiet time counts from the later of the first vote and the host
+    # address's last refusal; a host that is really gone still settles once
+    # its address has been left alone for HOST_SILENT_S.
+    quiet_from = max(first, BUCKETS.last_refused(host.last_addr))
+    if now - quiet_from < HOST_SILENT_S:
+        return None
+    return votes.pop()
+
+
+def maybe_settle(room):
+    """After the live roster of a running match shrank (a drop or a leave),
+    the votes already in may now be a majority: end the match if so."""
+    if room.state in ("go", "in_match"):
+        v = settled_vote(room)
+        if v is not None:
+            finish_match(room, v[0], v[1])
 
 
 def try_go(room, now):
@@ -2141,6 +2381,10 @@ def try_go(room, now):
     comparing against them costs nothing and closes both shapes at once. A room
     whose roster moved simply stalls here and the arming deadline returns it to
     lobby with `member_not_ready`, which is the honest outcome.
+
+    (Since run mp1 L-J1 drop_member promotes nobody while a match is frozen,
+    so the promotion shape above cannot arise any more; the set comparison
+    stays as the second lock on the same door.)
     """
     ps = playing_seats(room)
     frozen = sorted(room.slot_of)
@@ -2248,7 +2492,7 @@ def do_ready(body, who, now):
     # ignored, so that `ready`, `failed` and `result` -- the three verbs spec 3.2
     # restricts to "a seated PLAYING member" -- all answer the same way. This one
     # used to be a silent no-op, which was harmless but made the trio disagree.
-    if not m.playing:
+    if not in_frozen_match(room, seat):
         return 403, {"error": "not_playing"}
     if room.state == "arming":
         m.armed = True
@@ -2294,7 +2538,7 @@ def do_failed(body, who, now):
     # `session up` would kill its own game. The host's only remedy, `kick`, is
     # refused while the room is not in lobby, so the same client could do it to
     # match after match.
-    if not m.playing:
+    if not in_frozen_match(room, seat):
         return 403, {"error": "not_playing"}
     # Only a real pre-result phase can be failed. If a result already landed the
     # match id was cleared, so this is stale_match above; here the room is still
@@ -2324,13 +2568,31 @@ def do_failed(body, who, now):
                 % (room.code, seat, room.match, reason, room.playing_count()))
             if room.playing_count() < 2:
                 match_to_lobby(room, reason)
+            else:
+                maybe_settle(room)
     return 200, {"cursor": room.seq}
 
 
 def do_result(body, who, now):
-    """A playing member reporting a finished match. The FIRST valid result for
-    the current match returns the room to lobby; later ones are idempotent
-    (spec 3.9, 5.4)."""
+    """A playing member reporting a finished match (spec 3.9, 5.4).
+
+    WHO ENDS THE MATCH (run mp1, L-J1; plan.txt G5). It used to be the FIRST
+    valid result from anybody, and that was the bug: a launcher whose player
+    closed the game mid-match reported a draw, the room flipped to lobby
+    with a fake 0-0-0-0 while everybody else was still playing, and their
+    real result then got 409 stale_match. Now:
+      * the HOST's result ends the match. The host is the parent of the
+        session; its game cannot be running on without it, so a result from
+        the host is true about the whole room either way;
+      * a non-host's result is a VOTE. It ends the match only when strictly
+        more than half of the match's live seats (frozen, still playing)
+        have posted the SAME win and scores (settled_vote), and a drop or a
+        leave that shrinks the live roster re-counts (maybe_settle). One
+        quitter's result therefore never ends a match two or more others are
+        still in. A vote that does not settle is answered 200 like any
+        accepted result; the room's state and the `result` event are what
+        say the match ended. A seat's first vote stands.
+    Later results for a finished match are idempotent (200) as before."""
     err = shape_for("result", body)
     if err:
         return 400, {"error": err}
@@ -2365,14 +2627,22 @@ def do_result(body, who, now):
         return 403, {"error": "not_playing"}
 
     if room.match is not None and match == room.match:
-        # The first result for the current match. Append the event, discard the
-        # comms code, clear the match, drop back to lobby. Params, seats, nicks,
-        # tokens and chat all survive (spec 5.6): "same again" is one button.
-        mid = room.match
-        room.last_result_match = mid
-        _reset_match(room)
-        room.push("result", match=mid, win=win, scores=scores)
-        log("room %s result match=%s win=%s" % (code, mid, win))
+        if not in_frozen_match(room, seat):
+            return 403, {"error": "not_playing"}
+        vote = (win, tuple(scores))
+        if seat not in room.result_votes:
+            room.result_votes[seat] = vote
+            room.vote_at[seat] = now
+        decided = vote if seat == room.host_seat else settled_vote(room)
+        if decided is None:
+            log("room %s result vote seat %d match=%s (%d of %d live)"
+                % (code, seat, room.match, len(room.result_votes),
+                   sum(1 for s in room.slot_of if in_frozen_match(room, s))))
+            return 200, {"cursor": room.seq}
+        # The match is over. Append the event, discard the comms code, clear
+        # the match, drop back to lobby. Params, seats, nicks, tokens and chat
+        # all survive (spec 5.6): "same again" is one button.
+        finish_match(room, decided[0], decided[1])
         return 200, {"cursor": room.seq}
     if match == room.last_result_match:
         # Both players reporting is normal and harmless: the second is ignored.
@@ -2784,11 +3054,18 @@ def sweep(now):
         elif room.state == "in_match" and room.match_start is not None \
                 and now - room.match_start >= MATCH_TIMEOUT_S:
             match_to_lobby(room, "timeout")
+        # Every guest agrees and the host has been silent HOST_SILENT_S since
+        # the first of their votes: the match is over (host_silent_vote).
+        vote = host_silent_vote(room, now)
+        if vote is not None:
+            log("room %s host silent %ds after every guest's same result"
+                % (room.code, HOST_SILENT_S))
+            finish_match(room, vote[0], vote[1])
 
         # HEARTBEAT AND IDLE TIMEOUTS APPLY ONLY IN LOBBY. During a match a
         # member disconnecting is nothing (spec 6): the ROM copes, and the room
         # holds until a result or the 20-minute match timeout above. Dropping a
-        # member -- worse, the host, which closes the room -- because a busy game
+        # member -- worse, the host, which ends the match -- because a busy game
         # starved the poll loop for 45 s would kill a live match. Arming (<=20 s)
         # and go (<=5 s) are too short to trip the 45 s timeout, and their own
         # deadlines already catch a launcher that went away, so this guard is
