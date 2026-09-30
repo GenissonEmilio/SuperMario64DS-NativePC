@@ -15906,6 +15906,15 @@ int main(void)
                a VS match has been won; see hal/star_flow.cpp for why this holds
                the input rather than skipping the tick the way the debug menu
                does (the comms exchange lives inside the tick). */
+            /* ADVENTURE GHOSTS, BEFORE THE WALK TOO: a level seats its Player
+               bodies between frames (level boot, a level change), so without
+               this the first actor walk after every level entry found the hub
+               ghost bodies standing at their entrance spots, not paused and not
+               parked: enemies could pick them (dActor_c::ClosestPlayer) and each
+               ran one Player::Behavior tick. The hold after the walk stays where
+               it is (it has to follow the scene pass; hal/player_bridges.cpp).
+               No-op unless adventure-ghost mode is on. */
+            port_adventure_ghost_hold();
             port_vs_match_end_hold();
             {
                 const double rb_t = rb_probe_mode() ? rb_now_ms() : 0.0;
