@@ -1414,6 +1414,27 @@ void match_lost(const char *why) {
     std::fflush(stdout);
     std::exit(5);
 }
+// THE HOST LEFT A MATCH UNDER WAY (multiplayer 1.0, lane DROPOUT1; plan G3).
+// An untagged Bye from the parent after rounds have flowed is the host
+// quitting or its game closing: not the DONE goodbye of a finished match, not
+// a retire. The joiner used to go idle and let the ROM drop it to SOLO, where
+// it played on alone until its launcher closed it (LAUNCHJOIN1 vshostleave4:
+// every guest still running 8 s later). The host is the round clock, so the
+// match cannot go on without it: every joiner ends at once, with the line the
+// launcher words as "the host left" (it anchors on this exact prefix) and
+// the lost-match exit code. A host that vanishes without a Bye still ends
+// through match_lost once the game's own wait bound runs out.
+void host_left() {
+    std::fprintf(stderr, "[comms:loopback] THE HOST LEFT THE VS MATCH (slot %d, "
+                 "round %u): the host quit or closed the game, so the match is "
+                 "over for everyone. %s\n", g_slot, g_round,
+                 g_lost_exit ? "This console stops here (exit code 5)"
+                             : "SM64DS_COMMS_LOST_EXIT=0: playing on");
+    if (!g_lost_exit) return;
+    std::fflush(stderr);
+    std::fflush(stdout);
+    std::exit(5);
+}
 // THE THREE TERMS OF THE FORMULA, NAMED. The floor is the least cover a sized
 // session ships: 2 rounds on a relay (every path through it has two home links
 // on it), 1 direct (the direct mode default below); install picks the one for
@@ -3915,6 +3936,8 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
             g_host_done = true;
             std::fprintf(stderr, "[comms:loopback] the parent left: the match "
                          "is over; back to idle\n");
+        } else if (match_underway() && !port_vs_match_end_frozen()) {
+            host_left();                 // a match under way cannot outlive its host
         } else {
             std::fprintf(stderr, "[comms:loopback] the parent left; back to idle\n");
         }
