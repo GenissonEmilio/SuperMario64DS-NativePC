@@ -1164,6 +1164,58 @@ static int ss_cutscene_running(void)
     return data_0209fc48 != 0;
 }
 
+/* ---- SAVE STATES ARE OFF ONLINE (run mp1, lane SSGATE1) -------------------
+
+   A save state is ONE console's world. Loaded on one console of a VS lockstep
+   match it rewinds that console alone, and the session desyncs on the spot:
+   the other consoles did not load anything. In an adventure hub it teleports
+   that player under everyone's ghosts and puts back a world the room has
+   moved past. A save is refused too, so nothing taken online can be loaded
+   later (the disk mirror included).
+
+   ANY ONE OF THREE TESTS MAKES THIS CONSOLE ONLINE:
+   - the VS carrier is installed: comms_loopback_stats().installed, the same
+     test that keeps the F5 menu shut in a VS session;
+   - the adventure hub is installed: comms_hub_state() != kHubOff, whether it
+     is pairing, live, or failed after its install (the hub owns the session
+     even when it cannot reach anyone);
+   - the process was LAUNCHED for a session (a role, a relay, a room code or a
+     hub mesh port in its environment) but no carrier is installed, or its
+     install turned the env away: a lobby-launched game before its session is
+     up is still somebody's online game.
+   A solo run has none of the three, so every solo path is unchanged; the
+   test is only read when a save or a load is asked for. */
+static const char *ss_online_why(void)
+{
+    if (port::comms_loopback_stats().installed)
+        return "a VS session is installed";
+    if (port::comms_hub_state() != port::kHubOff)
+        return "the adventure hub is installed";
+    static const char *const ONLINE_ENV[] = {
+        "SM64DS_COMMS_ROLE", "SM64DS_COMMS_RELAY",
+        "SM64DS_COMMS_CODE", "SM64DS_HUB_PORT",
+    };
+    for (unsigned i = 0; i < sizeof ONLINE_ENV / sizeof *ONLINE_ENV; ++i) {
+        const char *v = getenv(ONLINE_ENV[i]);
+        if (v && *v)
+            return "this game was launched for an online session";
+    }
+    return 0;
+}
+
+/* 1 when an online session refuses the save or load `how` names: one log
+   line and the toast, nothing written, nothing restored. */
+static int ss_online_refused(const char *how)
+{
+    const char *why = ss_online_why();
+    if (!why)
+        return 0;
+    fprintf(stderr, "[savestate] %s refused: save states are off online "
+                    "(%s). Nothing was saved or loaded.\n", how, why);
+    ss_note("save states are off online");
+    return 1;
+}
+
 /* The one save path: the F8 latch, the debug menu's save row and the scripted
    SM64DS_SS_SAVE all come through here, so a refusal cannot be true on one of
    them and false on another. Returns 1 if the world was snapshotted.
@@ -1174,6 +1226,8 @@ static int ss_cutscene_running(void)
    no file behind. */
 static int ss_save_state(const char *how, int to_disk)
 {
+    if (ss_online_refused(how))
+        return 0;
     if (ss_cutscene_running()) {
         fprintf(stderr, "[savestate] %s refused: a cutscene script is running "
                         "(%p). Nothing was written to the slot or to disk -- a "
@@ -1265,9 +1319,12 @@ static void ss_file_put_back(const SsFileKeep *k)
             moved ? "the snapshot held an older copy of it"
                   : "the snapshot's copy was the same");
 }
-static int ss_load_state(void)
+static int ss_load_state(const char *how)
 {
     static SsFileKeep keep;
+    /* before the slot and before the disk: online, neither is read */
+    if (ss_online_refused(how))
+        return 0;
     ss_file_keep(&keep);
     if (lk6_savestate_has()) {
         if (lk6_savestate_load()) {
@@ -6693,7 +6750,7 @@ static void menu_input(int pad_live, const XPad *pad)
                 /* enter/right only: restore the slot. A no-op with no
                    saved state. */
                 if (edge & (1u << 5)) {
-                    if (ss_load_state()) {
+                    if (ss_load_state("the menu's load row")) {
                         an_pivot_live = 0;
                         ss_reseat_pending = 1;
                     }
@@ -12786,7 +12843,7 @@ int main(void)
             if (save_now && !save_edge)
                 ss_save_state("F8", 1);
             if (load_now && !load_edge) {
-                if (ss_load_state()) {
+                if (ss_load_state("F9")) {
                     an_pivot_live = 0;   /* no ease across */
                     ss_census("after an F9 restore", player, cam);
                     ss_reseat("after an F9 restore");
@@ -13019,7 +13076,7 @@ int main(void)
                    slot is empty, and what has to be proven is that the
                    PLAYER's key finds the file. It can only be proven on the
                    player's own function. */
-                if (ss_load_state()) {
+                if (ss_load_state("the scripted SM64DS_SS_LOAD")) {
                     an_pivot_live = 0;
                     ss_census("after the scripted SM64DS_SS_LOAD restore",
                                    player, cam);
