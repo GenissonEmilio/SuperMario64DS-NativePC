@@ -305,6 +305,11 @@ WORLD_ADDR_TOKENS = env_int("WORLD_ADDR_TOKENS", 4, 1, WORLD_SEATS)
 ARM_DEADLINE_S = env_int("ARM_DEADLINE_S", 20, 5, 120)
 GO_GRACE_S = env_int("GO_GRACE_S", 5, 1, 60)
 MATCH_TIMEOUT_S = env_int("MATCH_TIMEOUT_S", 1200, 60, 86400)
+# run mp1 L-J1B: every live non-host seat has posted the SAME result and the
+# host has sent nothing since the first of those votes for this long: the
+# match is over (see host_silent_vote). Not in the compose file on purpose:
+# the default is the reviewed value.
+HOST_SILENT_S = env_int("HOST_SILENT_S", 60, 10, 3600)
 RELAY_ADDR = env_str("RELAY_ADDR", "135.148.26.201:41234")
 
 # v5: the relay protocol the plan tells the game to speak (design section 3).
@@ -762,6 +767,7 @@ class Room(object):
         # per seat, seat -> (win, scores tuple). A non-host's result is a
         # VOTE; see do_result. Cleared by _reset_match.
         self.result_votes = {}
+        self.vote_at = {}           # seat -> when its vote came in (L-J1B)
         # A fresh room starts at cursor 1 with nothing behind it, so the very
         # first real event is seq 2 and a client that polls from the cursor it
         # was handed at create sees everything that happened after it arrived.
@@ -2224,6 +2230,7 @@ def _reset_match(room):
     room.colors = ""
     room.slot_of = {}
     room.result_votes = {}
+    room.vote_at = {}
     room.arm_deadline = None
     room.go_at = None
     room.match_start = None
@@ -2269,6 +2276,41 @@ def settled_vote(room):
         if 2 * n > len(live):
             return v
     return None
+
+
+def host_silent_vote(room, now):
+    """The result to end a match with because the host went silent, or None
+    (run mp1, L-J1B; REVLOBBYJOIN1 section 3).
+
+    EVERY live non-host seat has posted the SAME result, and the host has
+    sent no request since the first of those votes came in, for
+    HOST_SILENT_S. Every guest's console printed the same MATCH OVER, so the
+    match is over; what is missing is only the host's launcher (it died at
+    MATCH OVER without a `leave`). With three or more live seats the guests
+    agreeing is already a majority (settled_vote), so in practice this is the
+    live pair's rule, which otherwise waited out MATCH_TIMEOUT_S.
+
+    "Host silent after ANY vote" would NOT be safe: an old launcher's quitter
+    posts a draw mid-match, and a busy game can starve the host's poll (the
+    sweep's 45 s note). Requiring every guest to agree is what rules that out:
+    a quitter's draw next to a real result is two results, and a lone guest
+    in a pair that quit took the match down with it anyway."""
+    if room.state not in ("go", "in_match"):
+        return None
+    host = room.members.get(room.host_seat)
+    if host is None or not in_frozen_match(room, room.host_seat):
+        return None
+    guests = [s for s in room.slot_of
+              if s != room.host_seat and in_frozen_match(room, s)]
+    if not guests or any(s not in room.result_votes for s in guests):
+        return None
+    votes = set(room.result_votes[s] for s in guests)
+    if len(votes) != 1:
+        return None
+    first = min(room.vote_at.get(s, now) for s in guests)
+    if host.seen > first or now - first < HOST_SILENT_S:
+        return None
+    return votes.pop()
 
 
 def maybe_settle(room):
@@ -2555,7 +2597,9 @@ def do_result(body, who, now):
         if not in_frozen_match(room, seat):
             return 403, {"error": "not_playing"}
         vote = (win, tuple(scores))
-        room.result_votes.setdefault(seat, vote)
+        if seat not in room.result_votes:
+            room.result_votes[seat] = vote
+            room.vote_at[seat] = now
         decided = vote if seat == room.host_seat else settled_vote(room)
         if decided is None:
             log("room %s result vote seat %d match=%s (%d of %d live)"
@@ -2977,6 +3021,13 @@ def sweep(now):
         elif room.state == "in_match" and room.match_start is not None \
                 and now - room.match_start >= MATCH_TIMEOUT_S:
             match_to_lobby(room, "timeout")
+        # Every guest agrees and the host has been silent HOST_SILENT_S since
+        # the first of their votes: the match is over (host_silent_vote).
+        vote = host_silent_vote(room, now)
+        if vote is not None:
+            log("room %s host silent %ds after every guest's same result"
+                % (room.code, HOST_SILENT_S))
+            finish_match(room, vote[0], vote[1])
 
         # HEARTBEAT AND IDLE TIMEOUTS APPLY ONLY IN LOBBY. During a match a
         # member disconnecting is nothing (spec 6): the ROM copes, and the room

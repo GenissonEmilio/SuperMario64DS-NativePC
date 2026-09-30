@@ -3543,6 +3543,119 @@ def test_the_new_host_played_the_match():
               (room.state, room.host_seat))
 
 
+def test_every_guest_agrees_and_the_host_is_silent():
+    """REVLOBBYJOIN1 section 3: when every live non-host seat has posted the
+    SAME result and the host has sent nothing since the first of those votes
+    for HOST_SILENT_S (60 s), the match is over: settle it with that vote
+    instead of waiting out MATCH_TIMEOUT_S. Only a live pair needs this (with
+    three or more live seats, all the guests agreeing is already a
+    majority)."""
+    print("\n-- L-J1B: all guests agree and the host is silent 60 s: settled")
+    REAL = (3, 1, 0, 0)
+    DRAW = (0, 0, 0, 0)
+    Q = getattr(S, "HOST_SILENT_S", None) or 60
+    check("the bound is 60 s by default",
+          getattr(S, "HOST_SILENT_S", None) == 60, Q)
+
+    # (1) 2P, the host's launcher died at MATCH OVER: the guest's real result
+    # settles 60 s after it came in, not 20 minutes after the start.
+    reset()
+    code, room, toks, match = _running(2)
+    t0 = 1100.0
+    _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+    S.sweep(t0 + Q - 1)
+    check("[2P] 59 s after the guest's vote: still on",
+          room.state == "in_match", room.state)
+    # (The guest's launcher is alive and polling; the host's is dead.)
+    poll(code, toks[1], room.seq, who="10.0.0.2", now=t0 + Q)
+    S.sweep(t0 + Q + 0.1)
+    res = [e for e in room.events if e["kind"] == "result"]
+    check("[2P] 60 s after it, host silent: over, the guest's scoreline",
+          room.state == "lobby" and len(res) == 1
+          and res[0]["match"] == match
+          and res[0]["scores"] == list(REAL), room.events[-3:])
+    check("[2P] back in lobby the dead host is dropped and the guest hosts",
+          1 not in room.members and room.host_seat == 2
+          and [e["kind"] for e in room.events[-3:]]
+          == ["result", "left", "host"], room.events[-3:])
+
+    # (2) The host is alive (it polled after the vote): no settle by this
+    # rule, however long. Its own result will come.
+    reset()
+    code, room, toks, match = _running(2)
+    _result(code, toks[1], match, scores=DRAW, win="draw", who="10.0.0.2",
+            now=t0)
+    poll(code, toks[0], room.seq, now=t0 + 30)
+    S.sweep(t0 + 30 + Q + 1)
+    check("[2P] a host that spoke after the vote: still on",
+          room.state == "in_match", room.state)
+    # ... and a host that polled before the vote only is silent after it.
+    reset()
+    code, room, toks, match = _running(2)
+    poll(code, toks[0], room.seq, now=t0 - 5)
+    _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+    S.sweep(t0 + Q + 0.1)
+    check("[2P] a host last heard BEFORE the vote counts as silent",
+          any(e["kind"] == "result" and e["match"] == match
+              for e in room.events), room.events[-3:])
+
+    with game_max(4, seats=4):
+        # (3) Disagreeing guests never settle by this rule.
+        reset()
+        code, room, toks, match = _running(3)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+        _result(code, toks[2], match, scores=DRAW, win="draw",
+                who="10.0.0.3", now=t0)
+        S.sweep(t0 + Q + 60)
+        check("[3P] two guests, two different results, host silent: on",
+              room.state == "in_match", room.state)
+
+        # (4) A guest that has not voted blocks it.
+        reset()
+        code, room, toks, match = _running(4)
+        S.do_failed({"v": 5, "room": code, "token": toks[3], "match": match,
+                     "reason": "no_pairing"}, "10.0.0.4", t0 - 10)
+        S.do_failed({"v": 5, "room": code, "token": toks[2], "match": match,
+                     "reason": "no_pairing"}, "10.0.0.3", t0 - 10)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+        S.sweep(t0 + Q + 0.1)
+        check("[4P->2 live] the one live guest agrees, host silent: over",
+              any(e["kind"] == "result" and e["match"] == match
+                  for e in room.events), room.events[-3:])
+
+        # (5) A waiting joiner cannot feed this rule (it cannot vote), and a
+        # guest that has not voted blocks it.
+        reset()
+        code, room, toks, match = _running(3)
+        st, w = join(code, "w", who="10.0.0.9", now=t0 - 1, pre_ok=True)
+        st, r = _result(code, w["token"], match, scores=REAL,
+                        who="10.0.0.9", now=t0)
+        check("[3P] the waiting seat's vote is 403",
+              st == 403 and r["error"] == "not_playing", (st, r))
+        S.sweep(t0 + Q + 60)
+        check("[3P] no guest voted: on", room.state == "in_match", room.state)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0 + 100)
+        S.sweep(t0 + 100 + Q + 60)
+        check("[3P] one of two guests voted, host silent: on",
+              room.state == "in_match", room.state)
+
+        # (6) The clock is the FIRST of the agreeing votes still counted,
+        # and it starts over with the next match.
+        reset()
+        code, room, toks, match = _running(2)
+        _result(code, toks[1], match, scores=REAL, who="10.0.0.2", now=t0)
+        _result(code, toks[0], match, scores=REAL, now=t0 + 1)
+        st, p = start(code, toks[0], now=t0 + 2)
+        m2 = p["match"]
+        for i, tok in enumerate(toks):
+            ready(code, tok, m2, who="10.0.0.%d" % (i + 1), now=t0 + 2)
+        S.sweep(t0 + 2 + S.GO_GRACE_S + 0.1)
+        S.sweep(t0 + Q + 10)
+        check("[next match] no vote carried over: on",
+              room.state == "in_match" and room.match == m2,
+              (room.state, room.match))
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -3602,6 +3715,7 @@ def main():
     test_the_host_leaving_passes_the_host_on()
     test_a_quitters_result_does_not_end_the_match()
     test_the_new_host_played_the_match()
+    test_every_guest_agrees_and_the_host_is_silent()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:
