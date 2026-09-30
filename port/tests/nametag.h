@@ -126,8 +126,8 @@
  * characters a chat line can hold, so a '.' or a ',' in a line is the font's
  * own glyph and not the tag decode's space. Body -> seat: in VS the body's
  * slot IS its chat seat; an adventure ghost's seat is port_adventure_ghost_seat.
- * Your own bubble is drawn over your own body too (Tango's call), with no tag
- * under it. The Name Tags setting switches the two tag lines only: bubbles
+ * Your own bubble is drawn over your own body too (Tango's call), at the same
+ * height with no tag under it. The Name Tags setting switches the two tag lines only: bubbles
  * still draw with it off. Bodies are drawn far to near so the nearest bubble
  * sits on top; a far body (past the tag's close step) gets a one-row bubble.
  */
@@ -512,7 +512,9 @@ static void nt_bubble_draw(const OvlSurface &fb, int cx, int y,
         return;
     }
     char rows[NT_BUBBLE_ROWS][port::kChatTextMax + 4];
-    const int nr = nt_bubble_wrap(b.text, scale, ntr::SCREEN_W / 2, max_rows, rows);
+    /* half the ACTIVE width: SCREEN_W is the largest tier's buffer, not the
+       screen this frame is drawn at */
+    const int nr = nt_bubble_wrap(b.text, scale, ntr::active_w / 2, max_rows, rows);
     if (nr <= 0) return;
     const int a = alpha * b.alpha / 255;
     if (a <= 0) return;
@@ -724,12 +726,14 @@ static void nt_draw(const OvlSurface &fb)
             }
         }
 
-        /* THE BUBBLE, over the tag lines (or straight over the head when
-           there are none: your own body, or tags switched off). */
+        /* THE BUBBLE, over the tag lines' place whether or not they are drawn
+           (your own body, or tags switched off): one height over every head,
+           so a bubble never lands on the tag of a body standing where you
+           stand. */
         port::ChatBubble bub;
         const int have = e.seat >= 0 && port::chat_bubble(e.seat, &bub);
         if (have) {
-            const int bottom = (tagged ? y_top : (int)(sy + 0.5f)) - 2 * scale;
+            const int bottom = y_top - 2 * scale;
             nt_bubble_draw(fb, cx, bottom, bub, scale, alpha,
                            d < 200.0f ? NT_BUBBLE_ROWS : 1);
         }
