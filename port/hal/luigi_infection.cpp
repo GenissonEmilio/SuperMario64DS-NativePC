@@ -79,6 +79,8 @@ extern void         *data_0209f394[];      /* per-slot Player* (null = no body) 
 extern unsigned char data_0209fc5c[];      /* per-seat live byte, 16 wide */
 extern unsigned char data_0209f250;        /* local player index */
 extern void port_player_set_character(void *player, unsigned ch);
+unsigned port_vs_seat_live_mask(void);     /* hal/comms_loopback.cpp */
+unsigned port_vs_seat_mask_round(void);    /* ... and its round      */
 }
 
 /* NONZERO WHILE A REWIND IS BEING RE-RUN. The mode's WORLD writes (the team
@@ -111,6 +113,7 @@ static unsigned g_li_seed;                /* the tagger pick's seed (u32) */
 static int g_li_time_frames;              /* >0 = test timer, in frames */
 static int g_li_seeded;                   /* the seed has run this match */
 static int g_li_team[kPortMaxPlayers];    /* 1 = on Luigi's team (infected) */
+static unsigned g_li_absent;              /* bodies no round carried at START */
 
 static void li_load(void)
 {
@@ -233,10 +236,12 @@ extern "C" void port_luigi_state_set(const int *team, int seeded)
  * (port_vs_seat_live_mask / port_vs_seat_mask_round), at the same round on
  * every console, and it is arena state, so a rewind puts it back with the
  * world. Once the match is decided star_flow stops removing seats, so the
- * counts the banner reads afterwards hold still. */
+ * counts the banner reads afterwards hold still. A seat no round carried at
+ * START (g_li_absent, latched by the pick below) is not in the match either. */
 static int li_in_match(int i)
+
 {
-    return data_0209f394[i] && data_0209fc5c[i];
+    return data_0209f394[i] && data_0209fc5c[i] && !(g_li_absent >> i & 1u);
 }
 
 /* survivors still alive: slots in the match that are NOT on Luigi's team.
@@ -298,14 +303,39 @@ extern "C" void port_luigi_seed(int frame)
     if (!g_li_on || g_li_seeded) return;
     g_li_seeded = 1;
 
-    /* THE PICK: the (seed mod n)-th slot with a body, n = bodies in the arena.
-       A pure function of the shared seed and of data_0209f394, which every
-       console holds identically at this frame, so every console picks the
-       same tagger; and every body is a possible pick, so the mode always has
-       exactly one tagger however many players the room had. */
+    /* WHO IS IN THE MATCH AT START. The arena seats a body for every seat the
+       room planned, and a seat whose console never made it into the session
+       (refused at the door, crashed or quit before its first round) keeps that
+       body where it spawned: a statue nobody plays. A statue picked as the
+       tagger leaves a round nobody can lose; a statue counted as a survivor
+       leaves a round the Luigis can never win. The seat mask the round
+       carries says who is really here, the same on every console at this
+       frame (0 = no session: every body is a player). Latched here, at the
+       pick, so the same seats stay out for the whole round; not carried in
+       the rollback slot because a rewind over the pick clears g_li_seeded and
+       this runs again from the same round. A seat that is seen and then
+       leaves is star_flow's (its live byte), before or after the pick. */
+    g_li_absent = 0;
+    const unsigned live = port_vs_seat_live_mask();
+    if (live) {
+        for (int i = 0; i < kPortMaxPlayers; ++i)
+            if (data_0209f394[i] && !(live >> i & 1u)) g_li_absent |= 1u << i;
+        if (g_li_absent && !g_port_rb_replaying)
+            std::fprintf(stderr, "[luigi] START f%d: seat mask %04x at round "
+                    "%u: bodies %04x are not in the match (not picked, not "
+                    "counted)\n", frame, live, port_vs_seat_mask_round(),
+                    g_li_absent);
+    }
+
+    /* THE PICK: the (seed mod n)-th slot in the match, n = the players in
+       the match. A pure function of the shared seed, of data_0209f394 and of
+       the round's seat mask, which every console holds identically at this
+       frame, so every console picks the same tagger; and every player is a
+       possible pick, so the mode always has exactly one tagger however many
+       players the room had. */
     int n = 0;
     for (int i = 0; i < kPortMaxPlayers; ++i)
-        if (data_0209f394[i]) ++n;
+        if (li_in_match(i)) ++n;
     if (n == 0) {
         std::fprintf(stderr, "[luigi] seed: no player bodies in the arena, "
                 "nothing seeded\n");
@@ -313,7 +343,7 @@ extern "C" void port_luigi_seed(int frame)
     }
     int slot = -1;
     for (int i = 0, k = (int)(g_li_seed % (unsigned)n); i < kPortMaxPlayers; ++i)
-        if (data_0209f394[i] && k-- == 0) { slot = i; break; }
+        if (li_in_match(i) && k-- == 0) { slot = i; break; }
     if (!g_port_rb_replaying)
     std::fprintf(stderr, "[luigi] SEED f%d: slot %d starts as Luigi (the "
             "tagger); local player is slot %d; seed %u over %d bodies\n",
@@ -489,5 +519,6 @@ extern "C" void port_luigi_hittest(int frame)
 extern "C" void port_luigi_match_reset(void)
 {
     g_li_seeded = 0;
+    g_li_absent = 0;
     for (int i = 0; i < kPortMaxPlayers; ++i) g_li_team[i] = 0;
 }
