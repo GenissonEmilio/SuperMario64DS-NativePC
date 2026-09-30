@@ -169,6 +169,14 @@ MATCH = re.compile(r"^\[vs\] MATCH OVER[^\n]*", re.M)
 RBLINE = re.compile(r"rollback: live=0x[0-9a-f]+ peak=0x[0-9a-f]+[^\n]*?rewinds=(\d+)[^\n]*?"
                     r"stalled=(\d+)")
 VIS = re.compile(r"\[advdiag\][^\n]*slot(\d+)\(ghost\)[^\n]*vis=(-?\d+)")
+# W2: every hub member's periodic report; vis = the seats it hears, drawn = the
+# seats it draws a body for (both masks by relay seat, its own bit clear).
+GHOST_TICK = re.compile(r"^\[ghost:tick\] hub=1 seat=(\d+) [^\n]*? vis=0x([0-9a-f]+) "
+                        r"drawn=0x([0-9a-f]+)", re.M)
+# hal/comms_conductor.cpp kHubBodies = 4: a hub console seats its own player
+# and three ghost bodies, handed each frame to the three nearest players; the
+# rest of the room stays on the wire (names, chat, voice) with no body.
+HUB_DRAWN = 3
 APPLIED = re.compile(r"\[sync:[^\]]*\][^\n]*\bapplied=(-?\d+)")
 LOCALW = re.compile(r"\[sync:[^\]]*\][^\n]*\blocal_writes=(-?\d+)")
 VOICE = re.compile(r"^\[voice\] [^:\n]*: on=(\d+) tone=(\d+) dev=(-?\d+) cap=(\d+) tx=(\d+) "
@@ -219,9 +227,15 @@ def parse(t):
     rb = RBLINE.findall(t)
     c["rb"] = (int(rb[-1][0]), int(rb[-1][1])) if rb else None
     vis = {}
+    drawn_at = collections.defaultdict(int)
     for m in VIS.finditer(t):
         vis[int(m.group(1))] = int(m.group(2))
+        f = re.match(r"\[advdiag\] f(\d+)", m.group(0))
+        if f and m.group(2) == "1":
+            drawn_at[int(f.group(1))] += 1
     c["vis"] = vis
+    c["drawn_max"] = max(drawn_at.values(), default=0)
+    c["ghost_ticks"] = [(int(a), int(b, 16), int(w, 16)) for a, b, w in GHOST_TICK.findall(t)]
     ap = APPLIED.findall(t)
     c["applied"] = int(ap[-1]) if ap else None
     lw = LOCALW.findall(t)
@@ -1197,9 +1211,29 @@ def hub_console(ck, k, c, rc):
     ck.ok(c["starve_events"] == 0, "p%d never starved (%d)" % (k, c["starve_events"]))
 
 
+def heard_all(ck, k, c, n):
+    """Hub visibility past HUB_DRAWN others: the console must have heard every
+    other console at once (one [ghost:tick] whose vis mask holds n-1 seats, its
+    own clear) and, on that tick, drawn bodies for exactly min(HUB_DRAWN, n-1)
+    of them, all among the heard."""
+    pop = lambda v: bin(v).count("1")
+    ticks = c["ghost_ticks"]
+    best = max(ticks, key=lambda x: (pop(x[1]), x[1])) if ticks else None
+    if best is None:
+        ck.ok(False, "p%d hears every other console at once (no [ghost:tick] line)" % k)
+        return
+    seat, vis, drawn = best
+    ck.ok(pop(vis) == n - 1 and not (vis >> seat) & 1,
+          "p%d hears all %d others at once (seat %d vis=0x%04x)" % (k, n - 1, seat, vis))
+    want = min(HUB_DRAWN, n - 1)
+    ck.ok(pop(drawn) == want and not drawn & ~vis,
+          "p%d draws the %d nearest of them (drawn=0x%04x)" % (k, want, drawn))
+
+
 def r_hub(L, run, r):
-    """Hub members through relay v2: no rounds, every console sees every other.
-    Seats are the relay's, so visibility is judged as a count of live ghosts."""
+    """Hub members through relay v2: no rounds, every console hears every other
+    and draws bodies for the HUB_DRAWN nearest. Seats are the relay's, so what is
+    drawn is judged as a count of live ghost slots."""
     n, frames = r.n, r.frames or 450
     relay = run.start_relay()
     specs = []
@@ -1211,8 +1245,16 @@ def r_hub(L, run, r):
     ck = Checks()
     for k in range(n):
         hub_console(ck, k, cs[k], rcs.get(k))
-        seen = sum(1 for v in cs[k]["vis"].values() if v == 1)
-        ck.ok(seen == n - 1, "p%d sees %d of %d others" % (k, seen, n - 1))
+        if n - 1 <= HUB_DRAWN:
+            seen = sum(1 for v in cs[k]["vis"].values() if v == 1)
+            ck.ok(seen == n - 1, "p%d sees %d of %d others" % (k, seen, n - 1))
+        else:
+            # Past HUB_DRAWN the last report is no measure: the consoles end at
+            # staggered times, and a leaver's body fades 0.7-1.2 s before the
+            # next nearest is drawn. Judge the most drawn at one report instead.
+            ck.ok(cs[k]["drawn_max"] == HUB_DRAWN, "p%d draws %d ghosts at once (the %d nearest "
+                  "of %d others)" % (k, cs[k]["drawn_max"], HUB_DRAWN, n - 1))
+            heard_all(ck, k, cs[k], n)
     relay_checks(ck, run)
     return ck, wall, rcs
 
