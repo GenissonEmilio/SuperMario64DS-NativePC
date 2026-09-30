@@ -1316,6 +1316,52 @@ static int g_end_by_king;
  * the survivors won (clock ran out with one alive). Set in the end poll, read
  * by the banner and the marker so the winner line names the team, not a slot. */
 static int g_end_by_luigi;
+/* lane DROPOUT1: 1 + the slot that won because everybody else left, 0 when
+   the match ended any other way. */
+static int g_end_by_last;
+/* lane DROPOUT1: the slots that have been in play this match, and those of
+   them that have left it (vs_track_seats, below, keeps both). A slot that left
+   has no place in the result: the winner, the draw test and the scores run
+   over the players still in the match. With no carrier session nobody ever
+   leaves, and every result below is the one it always was. */
+static unsigned g_vs_seen;
+static unsigned g_vs_left;
+
+static int vs_popcount(unsigned m)
+{
+    int n = 0;
+    for (; m; m &= m - 1) ++n;
+    return n;
+}
+
+/* 1 when slot i is in the match: it has been in play (a seat the carrier
+   never carried -- slots 2 and 3 of a two-player match, whose floor is four --
+   is nobody) and has not left. With no carrier session every slot is. */
+static int vs_in_play(int i)
+{
+    if (g_vs_seen == 0)
+        return 1;
+    return (g_vs_seen >> i & 1u) != 0 && (g_vs_left >> i & 1u) == 0;
+}
+
+/* THE WINNER OVER THE PLAYERS STILL IN THE MATCH: the lowest in-play slot with
+   the top latched score, and how many other in-play slots share it (a draw).
+   With nobody gone this is exactly the old scan over 0..np-1. */
+static int vs_end_best(int np, int *ties)
+{
+    int best = -1;
+    for (int i = 0; i < np; ++i)
+        if (vs_in_play(i) && (best < 0 || g_end_scores[i] > g_end_scores[best]))
+            best = i;
+    if (best < 0)
+        best = 0;
+    int t = 0;
+    for (int i = 0; i < np; ++i)
+        if (i != best && vs_in_play(i) && g_end_scores[i] == g_end_scores[best])
+            ++t;
+    *ties = t;
+    return best;
+}
 
 /* SM64DS_VS_LUIGI_INFECTION, defined in hal/luigi_infection.cpp. All inert (a
  * cached compare) when the mode is off. */
@@ -1811,6 +1857,10 @@ static int vs_score_list(char *out, int cap, int np, int best)
                              g_end_scores[2], g_end_scores[3]);
     }
     const int me = (int)data_0209f250;
+    /* the count shown is the players still in the match (lane DROPOUT1) */
+    int shown = 0;
+    for (int i = 0; i < np; ++i)
+        shown += vs_in_play(i);
     switch (vs_banner_mode()) {
     case 2: {                                /* all */
         /* snprintf RETURNS THE LENGTH IT WANTED, not the length it wrote, so
@@ -1848,15 +1898,15 @@ static int vs_score_list(char *out, int cap, int np, int best)
             pick[k] = g_end_scores[bi];
         }
         return std::snprintf(out, (size_t)cap, "%d - %d - %d - %d  (%d players)",
-                             pick[0], pick[1], pick[2], pick[3], np);
+                             pick[0], pick[1], pick[2], pick[3], shown);
     }
     default: {                               /* basic */
         const int mine = (me >= 0 && me < np) ? g_end_scores[me] : 0;
         if (me == best)
             return std::snprintf(out, (size_t)cap, "%d   (%d players)",
-                                 g_end_scores[best], np);
+                                 g_end_scores[best], shown);
         return std::snprintf(out, (size_t)cap, "%d   you %d   (%d players)",
-                             g_end_scores[best], mine, np);
+                             g_end_scores[best], mine, shown);
     }
     }
 }
@@ -1894,11 +1944,8 @@ extern "C" int port_vs_match_end_banner(char *out, int n)
        not over four. What the DISPLAY does with sixteen scores is a separate
        question and is answered below. */
     const int np = vs_players();
-    int best = 0, ties = 0;
-    for (int i = 1; i < np; ++i)
-        if (g_end_scores[i] > g_end_scores[best]) best = i;
-    for (int i = 0; i < np; ++i)
-        if (i != best && g_end_scores[i] == g_end_scores[best]) ++ties;
+    int ties = 0;
+    const int best = vs_end_best(np, &ties);
     if (ties) {
         int w = std::snprintf(out, (size_t)n, "MATCH OVER  -  DRAW  ");
         if (w < 0) w = 0;
@@ -1922,6 +1969,314 @@ extern "C" int port_vs_match_end_banner(char *out, int n)
     return 1;
 }
 
+/* ---- WHO IS STILL IN THE MATCH (multiplayer 1.0, lane DROPOUT1) ------------
+ *
+ * The carrier's seat mask (hal/comms_loopback.cpp, port_vs_seat_live_mask) is
+ * the set of slots the round the game is simulating carried: the same on
+ * every console at the same round, so anything keyed on it here is lockstep
+ * state, never a local opinion. A slot that was in play and is no longer
+ * (it quit with a Bye, was retired after 3 s of silence, or its console died)
+ * has LEFT, from that round on, for good.
+ *
+ * Read once a frame from port_vs_match_end_hold, before the actor walk, so the
+ * round the walk is about to run is the one it acts on. 0 from the carrier
+ * means no session (solo, the VS debug row, a test with no transport) or no
+ * round yet: nothing is tracked and every path below is the old one. Not under
+ * rollback: a rewind restores the world to before a departure and this latch
+ * would not run again on the replay (rollback returns after 1.0). Nothing
+ * changes once the match is decided (g_end_fired): the scores are latched and
+ * the consoles are about to close.
+ * ------------------------------------------------------------------------- */
+extern "C" unsigned port_vs_seat_live_mask(void);     /* hal/comms_loopback.cpp */
+extern "C" unsigned port_vs_seat_mask_round(void);    /* ... and its round      */
+extern "C++" { namespace port { bool comms_rb_mode(); } }   /* this block is extern "C" */
+
+/* THE LEAVER'S BODY GOES, THE WAY THE CARTRIDGE TAKES A PLAYER OUT (plan G1).
+   The DS drops a lost child mid-match in src/func_02030b58.c, the in-match
+   wireless state's per-frame check: for each seat whose radio link is gone it
+   sets that seat's bit in data_0209fc58 and clears data_0209fc5c[i], the "this
+   seat is live" byte. From then on Player::Behavior returns at its first test
+   for that seat in VS (src/_ZN6Player8BehaviorEv.cpp:73), Player::Render draws
+   nothing (src/_ZN6Player6RenderEv.cpp:46), and the name tag, which reads the
+   same byte (tests/nametag.h), is gone too. The port does not run that
+   function (its closure is the WM stack; hal/arm9_tables_link100.cpp says
+   why), so the same two writes are made here, from the seat mask, at the same
+   round on every console. The ROM's loop covers its four seats, and
+   data_0209fc58's upper bits mean other things (src/func_02030e4c.c), so seats
+   4..15 clear only their live byte.
+   PARKED as well, which the cartridge does not do. Its body would stay where
+   it stood, invisible but still the nearest player for an enemy's
+   dActor_c::ClosestPlayer, and still an icon on the bottom-screen map
+   (Minimap::Behavior places every seated body whatever its live byte says).
+   Moved far out of the level and stopped (no Behavior runs to move it back:
+   no fall, no pit), it is nobody's nearest player and off the map. The spot is
+   the body's own position plus fixed offsets -- lockstep state only, so the
+   same spot on every console -- at the height the adventure ghosts park at
+   (hal/comms_sync.cpp kGwParkUp, proven against ClosestPlayer). */
+extern "C" unsigned char data_0209fc5c[];   /* per-seat live byte, 16 wide */
+extern "C" unsigned char data_0209fc58;     /* the ROM's "seats lost" bits  */
+enum : int {
+    kVsParkUp   = 200000 << 12,              /* Fix12 world units */
+    kVsParkSide = 100000 << 12,
+};
+
+static void vs_remove_body(int k, char *what, int cap)
+{
+    if (k < 4)
+        data_0209fc58 = (unsigned char)(data_0209fc58 | (1u << k));
+    data_0209fc5c[k] = 0;
+    char *c = (char *)data_0209f394[k];
+    if (!c) {
+        std::snprintf(what, (size_t)cap, "no body to remove");
+        return;
+    }
+    int *pos = (int *)(c + 0x5c);
+    const int x = pos[0], y = pos[1], z = pos[2];
+    pos[0] = x + kVsParkSide;
+    pos[1] = y + kVsParkUp;
+    pos[2] = z + kVsParkSide;
+    *(int *)(c + 0x98) = 0;                  /* horizontal speed */
+    *(int *)(c + 0xa8) = 0;                  /* vertical speed   */
+    std::snprintf(what, (size_t)cap, "body removed where it stood (%d,%d,%d), "
+                  "parked at (%d,%d,%d)", x >> 12, y >> 12, z >> 12,
+                  pos[0] >> 12, pos[1] >> 12, pos[2] >> 12);
+}
+
+/* A LEAVER'S STARS SPILL WHERE IT STOOD (plan G1, Tango's call: spill them if
+   the game's own drop does it cleanly). The drop is the ROM's own, the one a
+   hit runs (Player::St_Hurt_Main -> func_ov002_020d94cc): one carried star off
+   data_0209f310 and one VS star actor (0xb2) spawned at the body, flying the
+   way the body faces. It is called once per carried star, turning the body a
+   fraction of a circle between calls so the stars fan out instead of landing
+   in one pile; the body is parked right after, so the turn is never seen. A
+   star the ROM could not spawn (actor table full) is already off the count --
+   the drop decrements first -- and so leaves with the player. The same calls
+   at the same round on every console: the stars are lockstep state like any
+   other drop. King of the Star's one star goes back on the field this way. */
+extern "C" int func_ov002_020d94cc(char *self);
+extern "C" char *_ZN8dActor_c15FindWithActorIDEjPS_(unsigned id, char *prev);
+extern "C" char *_ZN8dActor_c10FindWithIDEj(unsigned id);
+
+/* THE DROP NEEDS A FREE STAR MARKER. The dropped star is tied to a marker
+   (0xb4) whose own star is gone, picked at random among them
+   (src/func_ov002_020e7554.c) -- `% count`, and with no free marker that is a
+   division by zero, which the DS's software divide shrugs off and an x86
+   divide does not. Every carried star freed the marker it came from, so in
+   play there is always one per carried star; this counts them the ROM's way
+   first anyway, and a star with no marker to go to leaves with the player
+   instead of taking every console down with it. */
+static int vs_free_star_markers(void)
+{
+    int n = 0;
+    char *m = 0;
+    while (n < 5 && (m = _ZN8dActor_c15FindWithActorIDEjPS_(0xb4, m)) != 0) {
+        const unsigned char st = *(unsigned char *)(m + 0x1d8);
+        const int gone = _ZN8dActor_c10FindWithIDEj(*(unsigned *)(m + 0x1cc)) == 0;
+        if ((st == 3 && gone) ||
+            (st != 0 && (*(unsigned char *)(m + 0x1db) & 1) && gone))
+            ++n;
+    }
+    return n;
+}
+
+static int vs_spill_stars(int k)
+{
+    char *c = (char *)data_0209f394[k];
+    const int n = data_0209f310[k];
+    if (!c || n <= 0)
+        return 0;
+    short *yaw = (short *)(c + 0x94);
+    const short yaw0 = *yaw;
+    int spilled = 0;
+    for (int i = 0; i < n && data_0209f310[k] > 0; ++i) {
+        if (vs_free_star_markers() == 0)
+            break;
+        *yaw = (short)(yaw0 + i * (0x10000 / n));
+        spilled += func_ov002_020d94cc(c) ? 1 : 0;
+    }
+    *yaw = yaw0;
+    return spilled;
+}
+
+/* SM64DS_VS_LEAVE_PROBE=1 (a proof instrument; reads only): for 150 frames
+   after a seat leaves, every 15 frames, one line with the removed body (its
+   live byte, where it is), where the bottom-screen map would put its icon and
+   whether Minimap::Render's own on-screen and same-map tests would draw it
+   (the sixteen-wide host copy, port/unmatched/Minimap_Render.cpp), and every
+   VS star (0xb2) on the field. */
+extern "C" int g_mm_iconX[16];                /* the minimap's per-seat blips,  */
+extern "C" int g_mm_iconY[16];                /* sixteen wide (port/unmatched/  */
+extern "C" signed char g_mm_mapID[16];        /* Minimap_wide.h)                */
+extern "C" signed char data_ov002_02111148;   /* the map area being shown */
+extern "C" void *data_0209b468;               /* the live-actor list head */
+static int g_leave_probe = -1;
+static int g_leave_probe_left;                /* frames of probing left */
+static int g_leave_probe_tick;
+static unsigned g_leave_probe_slots;
+
+static void vs_leave_probe(void)
+{
+    if (g_leave_probe_left <= 0)
+        return;
+    --g_leave_probe_left;
+    if (g_leave_probe_tick++ % 15)
+        return;
+    char buf[1400];
+    int w = 0;
+    buf[0] = 0;
+    for (int k = 0; k < kPortMaxPlayers && w < 1000; ++k) {
+        if (!(g_leave_probe_slots >> k & 1u))
+            continue;
+        const char *c = (const char *)data_0209f394[k];
+        const int *p = c ? (const int *)(c + 0x5c) : 0;
+        w += std::snprintf(buf + w, sizeof buf - (size_t)w,
+                           " slot%d live=%u pos=(%d,%d,%d)", k,
+                           (unsigned)data_0209fc5c[k], p ? p[0] >> 12 : 0,
+                           p ? p[1] >> 12 : 0, p ? p[2] >> 12 : 0);
+        {
+            const int ix = g_mm_iconX[k], iy = g_mm_iconY[k];
+            const int id = g_mm_mapID[k];
+            const int shown = (unsigned short)(iy + 0x10) < 0xe0 &&
+                              (unsigned short)(ix + 0x10) < 0x120 &&
+                              id == data_ov002_02111148;
+            w += std::snprintf(buf + w, sizeof buf - (size_t)w,
+                               " map_icon=(%d,%d) map_id=%d/%d drawn=%d",
+                               ix, iy, id, (int)data_ov002_02111148, shown);
+        }
+    }
+    struct Node { void *x0; Node *next; char **x8; };
+    int stars = 0;
+    for (Node *nd = *(Node **)&data_0209b468; nd && w < 1300; nd = nd->next) {
+        const char *a = (const char *)nd->x8;
+        if (!a || *(const unsigned short *)(a + 0xc) != 0xb2)
+            continue;
+        const int *p = (const int *)(a + 0x5c);
+        ++stars;
+        w += std::snprintf(buf + w, sizeof buf - (size_t)w, " star(%d,%d,%d)",
+                           p[0] >> 12, p[1] >> 12, p[2] >> 12);
+    }
+    fprintf(stderr, "[vsleave] t%d%s | %d VS star(s) on the field\n",
+            g_leave_probe_tick - 1, buf, stars);
+}
+
+/* TEMPORARY proof fixture, SM64DS_VS_GIVE_STARS=<slot>:<frame>[,<frame>...]:
+   on each frame, before the walk, arm the touch of the first reachable VS star
+   (PowerStar state 4 or 8, the ones func_ov002_020e930c reads) with <slot>'s
+   body, the way SM64DS_STAR_TRIGGER (hal/input_probe.cpp) arms it with the
+   first body -- so the ROM's own collect handler hands that player a real star
+   and frees its marker. It lets a proof make a JOINER carry stars and then
+   take it out of the match; the ladder's trigger only ever scores for slot 0.
+   Same env on every console, same frame: lockstep state. Inert unless set.
+   g_vs_frame is the walk's frame number, the one the star trigger counts in
+   (the end poll records it). */
+static int g_vs_frame = -1;
+
+static void vs_give_fixture(void)
+{
+    static int slot = -2;
+    static const char *frames;
+    if (slot == -2) {
+        slot = -1;
+        if (const char *e = std::getenv("SM64DS_VS_GIVE_STARS")) {
+            char *end;
+            const long v = std::strtol(e, &end, 10);
+            if (end != e && *end == ':' && v >= 0 && v < kPortMaxPlayers) {
+                slot = (int)v;
+                frames = end + 1;
+            }
+        }
+    }
+    if (slot < 0)
+        return;
+    const int now = g_vs_frame + 1;
+    int want = 0;
+    for (const char *p = frames; *p;) {
+        char *end;
+        const long f = std::strtol(p, &end, 10);
+        if (end == p)
+            break;
+        if (f == now) { want = 1; break; }
+        p = (*end == ',') ? end + 1 : end;
+        if (end == p) break;
+    }
+    const char *body = (const char *)data_0209f394[slot];
+    if (!want || !body)
+        return;
+    struct Node { void *x0; Node *next; char **x8; };
+    for (Node *nd = *(Node **)&data_0209b468; nd; nd = nd->next) {
+        char *a = (char *)nd->x8;
+        if (!a || *(unsigned short *)(a + 0xc) != 0xb2)
+            continue;
+        const int st = *(int *)(a + 0x440);
+        if (st != 4 && st != 8)
+            continue;
+        *(unsigned int *)(a + 0x134) = *(const unsigned int *)(body + 0x4);
+        *(unsigned int *)(a + 0x130) |= 0x400000;
+        fprintf(stderr, "  [vsgive] f%d armed a star's touch (state %d) with "
+                "slot %d's body; slot %d carries %d before the collect\n", now,
+                st, slot, slot, (int)data_0209f310[slot]);
+        return;
+    }
+    fprintf(stderr, "  [vsgive] f%d no reachable star to arm\n", now);
+}
+
+static void vs_track_seats(void)
+{
+    vs_leave_probe();
+    if (data_0209f2d8 == 1)
+        vs_give_fixture();
+    if (data_0209f2d8 != 1 || g_end_fired >= 0)
+        return;
+    const unsigned live = port_vs_seat_live_mask();
+    if (live == 0 || port::comms_rb_mode())
+        return;
+    const int np = vs_players();
+    const unsigned all = np >= 32 ? ~0u : ((1u << np) - 1u);
+    g_vs_seen |= live & all;
+    const unsigned gone = g_vs_seen & ~live & ~g_vs_left & all;
+    if (!gone)
+        return;
+    const unsigned round = port_vs_seat_mask_round();
+    for (int k = 0; k < np; ++k) {
+        if (!(gone >> k & 1u))
+            continue;
+        g_vs_left |= 1u << k;
+        const char *nick = vs_name_for(k);
+        const int had = data_0209f310[k] > 0 ? (int)data_0209f310[k] : 0;
+        const int spilled = vs_spill_stars(k);
+        char what[200];
+        vs_remove_body(k, what, (int)sizeof what);
+        fprintf(stderr, "[vs] slot %d left at round %u (%s): %s; %d of its %d "
+                "star(s) spilled where it stood; %d player(s) still in the "
+                "match\n", k, round, nick ? nick : "no name", what, spilled,
+                had, vs_popcount(g_vs_seen & ~g_vs_left));
+    }
+    fflush(stderr);
+    if (g_leave_probe < 0)
+        g_leave_probe = std::getenv("SM64DS_VS_LEAVE_PROBE") ? 1 : 0;
+    if (g_leave_probe) {
+        g_leave_probe_slots |= gone;
+        g_leave_probe_left = 150;
+        g_leave_probe_tick = 0;
+        vs_leave_probe();
+    }
+}
+
+/* THE LAST PLAYER STANDING: the slot that is alone in a match two or more
+   people started, or -1. The host is the round clock, so this is the host in
+   practice (a host that leaves ends the match for everyone instead,
+   comms_loopback.cpp host_left). */
+static int vs_last_standing(void)
+{
+    const unsigned in = g_vs_seen & ~g_vs_left;
+    if (vs_popcount(g_vs_seen) < 2 || vs_popcount(in) != 1)
+        return -1;
+    for (int k = 0; k < kPortMaxPlayers; ++k)
+        if (in >> k & 1u)
+            return k;
+    return -1;
+}
+
 extern "C" void port_vs_match_end_hold(void)
 {
     static int on = -1;
@@ -1929,6 +2284,7 @@ extern "C" void port_vs_match_end_hold(void)
         const char *e = std::getenv("SM64DS_VS_END_FREEZE");
         on = (e && e[0] == '0') ? 0 : 1;
     }
+    vs_track_seats();
     if (!on || g_end_fired < 0 || data_0209f2d8 != 1)
         return;
     for (int i = 0; i < vs_players(); ++i) {
@@ -1945,6 +2301,7 @@ extern "C" void port_vs_match_end_hold(void)
 
 extern "C" int port_vs_match_end_poll(int frame)
 {
+    g_vs_frame = frame;
     /* Outside VS: nothing but the disarm, and the disarm is a branch taken at
        most once per match. No getenv on this path, ever. */
     if (data_0209f2d8 != 1) {
@@ -1954,10 +2311,14 @@ extern "C" int port_vs_match_end_poll(int frame)
             g_end_by_target = 0;
             g_end_by_king = 0;
             g_end_by_luigi = 0;
+            g_end_by_last = 0;
             /* Leaving VS clears the Luigi Infection latch too, so the next VS
                entry re-seeds one tagger from a clean team array. */
             port_luigi_match_reset();
         }
+        /* and who was in the match: the next one starts with nobody gone */
+        g_vs_seen = 0;
+        g_vs_left = 0;
         /* Outside VS the king match is disarmed, so the next VS entry re-zeroes
            the points. This is the only reset point, so a king match always
            starts from zero however it was reached. */
@@ -2102,12 +2463,25 @@ extern "C" int port_vs_match_end_poll(int frame)
                 if (expired) luigi_end = 2;
             }
         }
-        if (!timeup && star_winner < 0 && king_winner < 0 && luigi_end == 0)
+        /* ---- TRIGGER FIVE: THE LAST PLAYER STANDING (lane DROPOUT1, plan G4).
+         * Everybody else left a match two or more people started: the one who
+         * stayed wins it, with the normal MATCH OVER and exit 0, where the
+         * console used to stop with LOST THE VS MATCH and exit 5 (a win read
+         * as a loss). Keyed on the seat mask, so it is the same round on every
+         * console that is still running -- which here is the one. Feeds the
+         * same one end path; the marker says win=time-up (the match ended
+         * before any target, and the launcher and the lobby know no other
+         * word for that) and names the winner in winner=. */
+        const int last = vs_last_standing();
+        if (!timeup && star_winner < 0 && king_winner < 0 && luigi_end == 0 &&
+            last < 0)
             return 0;
         g_end_by_luigi = luigi_end;
         g_end_fired = frame;
         g_end_by_target = (star_winner >= 0);
         g_end_by_king = (king_winner >= 0);
+        g_end_by_last = (!timeup && star_winner < 0 && king_winner < 0 &&
+                         luigi_end == 0) ? last + 1 : 0;
         /* run vs16: latch every player's score. data_0209f310 is hosted 32
            bytes wide as a guarded contiguous band (hal/actor_classes_star.cpp),
            so sixteen is inside the storage the port already had -- this loop
@@ -2116,8 +2490,12 @@ extern "C" int port_vs_match_end_poll(int frame)
            so the banner, the winner pick and the marker all read the score the
            king match was actually decided on (this also makes a king time-up
            pick the points leader, not the carried-star leader). */
+        /* A slot that LEFT the match scores nothing (lane DROPOUT1, plan G2):
+           a player who quit while leading is never named the winner -- not
+           by the banner, not by the marker the launcher posts. */
         for (int i = 0; i < np_end; ++i)
-            g_end_scores[i] = (king_target > 0) ? g_king_points[i]
+            g_end_scores[i] = !vs_in_play(i) ? 0
+                            : (king_target > 0) ? g_king_points[i]
                                                 : (int)data_0209f310[i];
         g_end_total = (int)NumVsStarsObtained();
         if (luigi_end != 0)
@@ -2126,6 +2504,11 @@ extern "C" int port_vs_match_end_poll(int frame)
                     luigi_end == 1 ? "all survivors infected, the LUIGIS win"
                                    : "the clock ran out, the SURVIVORS win",
                     port_luigi_survivors_alive(), port_luigi_match_slots());
+        else if (g_end_by_last)
+            fprintf(stderr, "[vs] f%d LAST PLAYER STANDING: every other player "
+                    "left the match, so slot %d wins it (%d of %d players left "
+                    "during the match)\n", frame, g_end_by_last - 1,
+                    vs_popcount(g_vs_left), vs_popcount(g_vs_seen));
         else if (king_winner >= 0)
             fprintf(stderr, "[vs] f%d KING TARGET REACHED: player %d has %d "
                     "point(s), the target is %d (points %d,%d,%d,%d)\n", frame,
@@ -2226,11 +2609,8 @@ extern "C" int port_vs_match_end_poll(int frame)
     const int np_marker = vs_players();
     int win_slot = -1;
     {
-        int b = 0, t = 0;
-        for (int i = 1; i < np_marker; ++i)
-            if (g_end_scores[i] > g_end_scores[b]) b = i;
-        for (int i = 0; i < np_marker; ++i)
-            if (i != b && g_end_scores[i] == g_end_scores[b]) ++t;
+        int t = 0;
+        const int b = vs_end_best(np_marker, &t);
         if (!t) win_slot = b;
     }
     /* THE MARKER'S SCORE FIELD CARRIES EVERY PLAYER, always, whatever the

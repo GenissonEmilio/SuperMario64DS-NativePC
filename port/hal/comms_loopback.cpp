@@ -1414,6 +1414,27 @@ void match_lost(const char *why) {
     std::fflush(stdout);
     std::exit(5);
 }
+// THE HOST LEFT A MATCH UNDER WAY (multiplayer 1.0, lane DROPOUT1; plan G3).
+// An untagged Bye from the parent after rounds have flowed is the host
+// quitting or its game closing: not the DONE goodbye of a finished match, not
+// a retire. The joiner used to go idle and let the ROM drop it to SOLO, where
+// it played on alone until its launcher closed it (LAUNCHJOIN1 vshostleave4:
+// every guest still running 8 s later). The host is the round clock, so the
+// match cannot go on without it: every joiner ends at once, with the line the
+// launcher words as "the host left" (it anchors on this exact prefix) and
+// the lost-match exit code. A host that vanishes without a Bye still ends
+// through match_lost once the game's own wait bound runs out.
+void host_left() {
+    std::fprintf(stderr, "[comms:loopback] THE HOST LEFT THE VS MATCH (slot %d, "
+                 "round %u): the host quit or closed the game, so the match is "
+                 "over for everyone. %s\n", g_slot, g_round,
+                 g_lost_exit ? "This console stops here (exit code 5)"
+                             : "SM64DS_COMMS_LOST_EXIT=0: playing on");
+    if (!g_lost_exit) return;
+    std::fflush(stderr);
+    std::fflush(stdout);
+    std::exit(5);
+}
 // THE THREE TERMS OF THE FORMULA, NAMED. The floor is the least cover a sized
 // session ships: 2 rounds on a relay (every path through it has two home links
 // on it), 1 direct (the direct mode default below); install picks the one for
@@ -2667,8 +2688,21 @@ void lg_retire_slot(int k) {
     // one it is for. Loopback and direct address it alone.
     if (g_net_mode == kNetRelay) send_to_children(r);
     else                         send_to_slot(r, k);
-    if (popcount_live(g_live) <= 1)
-        match_lost("every other player lost connection");
+    if (popcount_live(g_live) > 1) return;
+    // THE LAST PLAYER STANDING (lane DROPOUT1, plan G4). With a VS match under
+    // way the host stays in it alone: the rounds carry the host by itself, the
+    // game's end poll sees one seat left (hal/star_flow.cpp, trigger five) and
+    // ends the match the normal way -- the winner named, MATCH OVER, exit 0.
+    // It used to stop here with LOST THE VS MATCH and exit 5, which told the
+    // one player who stayed that they had lost. Before the match is under way
+    // (nothing played yet) this is still the lost session it always was.
+    if (match_underway()) {
+        std::fprintf(stderr, "[comms:loopback] every other player has left the "
+                     "match: the host is the last one in it, and the game ends "
+                     "the match with it as the winner\n");
+        return;
+    }
+    match_lost("every other player lost connection");
 }
 
 // Round s is past its deadline: fill every live slot that has not delivered
@@ -2924,6 +2958,30 @@ void rb_retire_slot(int k, const char *why) {
     }
     if (popcount_live(g_live) <= 1) g_state = kCommsConnecting;
     pipe_try_broadcast();
+}
+
+// A GOODBYE IS SENT MORE THAN ONCE (lane DROPOUT1; MPFOLD1's loss20 row). A
+// console used to send ONE Bye when it closed, and a lost Bye turned a player
+// who LEFT into a silent seat: 3 s later the laggard rule retired it as lost
+// connection, and when it was the last opponent the host ended "LOST THE VS
+// MATCH". lb_close now sends kByeCopies copies kByeGapMs apart (a burst that
+// eats one rarely eats all three), and the receiving end handles the first and
+// counts the rest: the same sender's Bye again within kByeRepeatMs is a copy.
+// The laggard rule's retire Bye (tagged, sent once, one per retired slot) is
+// not deduplicated; the rounds carry a retire even when its Bye is lost.
+enum : int { kByeCopies = 3, kByeGapMs = 50 };
+enum : unsigned { kByeRepeatMs = 1000 };
+unsigned g_bye_last_ms[kCommsMaxPlayers];
+unsigned long long g_bye_copies = 0;         // copies received and ignored
+bool bye_repeat(int from) {
+    if (from < 0 || from >= kCommsMaxPlayers) return false;
+    const unsigned t = now_ms();
+    if (g_bye_last_ms[from] && t - g_bye_last_ms[from] < kByeRepeatMs) {
+        ++g_bye_copies;
+        return true;
+    }
+    g_bye_last_ms[from] = t ? t : 1;
+    return false;
 }
 
 void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
@@ -3279,6 +3337,7 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         }
         break;
     case kTypeBye:
+        if (bye_repeat(k)) break;        // a copy of a goodbye already handled
         if (g_rollback && (g_live & (1u << k))) rb_retire_slot(k, "Bye");
         g_live &= ~(1u << k);
         g_stage_mask &= ~(1u << k);
@@ -3911,10 +3970,14 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
                          "match went on without it; you lost connection to "
                          "the match. Back to idle.\n", g_slot);
             match_lost("the host dropped this console from the match");
+        } else if (bye_repeat(0)) {
+            break;                       // a copy of the host's goodbye
         } else if (std::memcmp(p.blocks[0], kDoneTag, 4) == 0) {
             g_host_done = true;
             std::fprintf(stderr, "[comms:loopback] the parent left: the match "
                          "is over; back to idle\n");
+        } else if (match_underway() && !port_vs_match_end_frozen()) {
+            host_left();                 // a match under way cannot outlive its host
         } else {
             std::fprintf(stderr, "[comms:loopback] the parent left; back to idle\n");
         }
@@ -4743,8 +4806,14 @@ void lb_close() {
     // session itself without an error), so this Bye is a goodbye, not a loss.
     if (over || (!g_exiting && g_frames_produced && (data_020a0f1c & 1u) == 0))
         std::memcpy(b.blocks[0], kDoneTag, 4);
-    if (g_role == kRoleParent) send_to_children(b);
-    else                       send_to_slot(b, 0);
+    // kByeCopies copies, kByeGapMs apart (see bye_repeat): one lost datagram
+    // no longer turns a player who left into a lost connection 3 s later.
+    for (int copy = 0; copy < kByeCopies; ++copy) {
+        if (copy) Sleep(kByeGapMs);
+        if (g_role == kRoleParent) send_to_children(b);
+        else                       send_to_slot(b, 0);
+    }
+    std::memset(g_bye_last_ms, 0, sizeof g_bye_last_ms);
     WS.closesocket(g_sock);
     g_sock  = INVALID_SOCKET;
     g_open  = false;
@@ -5883,6 +5952,12 @@ extern "C" unsigned port_vs_seat_live_mask(void) {
     if (g_state != kCommsParentConnected && g_state != kCommsChildConnected)
         return 0u;
     return g_latched_mask;
+}
+// The round that mask belongs to (lane DROPOUT1): the round last handed to the
+// game, the same number on every console, for the "slot k left at round R"
+// line hal/star_flow.cpp prints when a seat leaves the match.
+extern "C" unsigned port_vs_seat_mask_round(void) {
+    return g_consumed_round;
 }
 
 // ---------------------------------------------------------------------------
