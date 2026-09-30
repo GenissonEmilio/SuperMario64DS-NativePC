@@ -1233,8 +1233,15 @@ def heard_all(ck, k, c, n):
 def r_hub(L, run, r):
     """Hub members through relay v2: no rounds, every console hears every other
     and draws bodies for the HUB_DRAWN nearest. Seats are the relay's, so what is
-    drawn is judged as a count of live ghost slots."""
-    n, frames = r.n, r.frames or 450
+    drawn is judged as a count of live ghost slots.
+
+    Past HUB_DRAWN others the verdict needs one [ghost:tick] that hears every
+    other console at once, and the ticks come on the wall clock. The consoles
+    start 0.4 s apart and run unpaced, so on an idle box the first ones used
+    to finish their 450 frames before the last joiner's first tick: that
+    console never heard seat 0 while seat 0 had heard everyone. Those rungs
+    run 900 frames, long enough for every console to overlap the last one."""
+    n, frames = r.n, r.frames or (450 if r.n - 1 <= HUB_DRAWN else 900)
     relay = run.start_relay()
     specs = []
     for k in range(n):
