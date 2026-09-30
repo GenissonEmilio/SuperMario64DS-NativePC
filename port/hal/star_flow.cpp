@@ -2042,6 +2042,62 @@ static void vs_remove_body(int k, char *what, int cap)
                   pos[0] >> 12, pos[1] >> 12, pos[2] >> 12);
 }
 
+/* A LEAVER'S STARS SPILL WHERE IT STOOD (plan G1, Tango's call: spill them if
+   the game's own drop does it cleanly). The drop is the ROM's own, the one a
+   hit runs (Player::St_Hurt_Main -> func_ov002_020d94cc): one carried star off
+   data_0209f310 and one VS star actor (0xb2) spawned at the body, flying the
+   way the body faces. It is called once per carried star, turning the body a
+   fraction of a circle between calls so the stars fan out instead of landing
+   in one pile; the body is parked right after, so the turn is never seen. A
+   star the ROM could not spawn (actor table full) is already off the count --
+   the drop decrements first -- and so leaves with the player. The same calls
+   at the same round on every console: the stars are lockstep state like any
+   other drop. King of the Star's one star goes back on the field this way. */
+extern "C" int func_ov002_020d94cc(char *self);
+extern "C" char *_ZN8dActor_c15FindWithActorIDEjPS_(unsigned id, char *prev);
+extern "C" char *_ZN8dActor_c10FindWithIDEj(unsigned id);
+
+/* THE DROP NEEDS A FREE STAR MARKER. The dropped star is tied to a marker
+   (0xb4) whose own star is gone, picked at random among them
+   (src/func_ov002_020e7554.c) -- `% count`, and with no free marker that is a
+   division by zero, which the DS's software divide shrugs off and an x86
+   divide does not. Every carried star freed the marker it came from, so in
+   play there is always one per carried star; this counts them the ROM's way
+   first anyway, and a star with no marker to go to leaves with the player
+   instead of taking every console down with it. */
+static int vs_free_star_markers(void)
+{
+    int n = 0;
+    char *m = 0;
+    while (n < 5 && (m = _ZN8dActor_c15FindWithActorIDEjPS_(0xb4, m)) != 0) {
+        const unsigned char st = *(unsigned char *)(m + 0x1d8);
+        const int gone = _ZN8dActor_c10FindWithIDEj(*(unsigned *)(m + 0x1cc)) == 0;
+        if ((st == 3 && gone) ||
+            (st != 0 && (*(unsigned char *)(m + 0x1db) & 1) && gone))
+            ++n;
+    }
+    return n;
+}
+
+static int vs_spill_stars(int k)
+{
+    char *c = (char *)data_0209f394[k];
+    const int n = data_0209f310[k];
+    if (!c || n <= 0)
+        return 0;
+    short *yaw = (short *)(c + 0x94);
+    const short yaw0 = *yaw;
+    int spilled = 0;
+    for (int i = 0; i < n && data_0209f310[k] > 0; ++i) {
+        if (vs_free_star_markers() == 0)
+            break;
+        *yaw = (short)(yaw0 + i * (0x10000 / n));
+        spilled += func_ov002_020d94cc(c) ? 1 : 0;
+    }
+    *yaw = yaw0;
+    return spilled;
+}
+
 /* SM64DS_VS_LEAVE_PROBE=1 (a proof instrument; reads only): for 150 frames
    after a seat leaves, every 15 frames, one line with the removed body (its
    live byte, where it is), where the bottom-screen map would put its icon and
@@ -2103,9 +2159,72 @@ static void vs_leave_probe(void)
             g_leave_probe_tick - 1, buf, stars);
 }
 
+/* TEMPORARY proof fixture, SM64DS_VS_GIVE_STARS=<slot>:<frame>[,<frame>...]:
+   on each frame, before the walk, arm the touch of the first reachable VS star
+   (PowerStar state 4 or 8, the ones func_ov002_020e930c reads) with <slot>'s
+   body, the way SM64DS_STAR_TRIGGER (hal/input_probe.cpp) arms it with the
+   first body -- so the ROM's own collect handler hands that player a real star
+   and frees its marker. It lets a proof make a JOINER carry stars and then
+   take it out of the match; the ladder's trigger only ever scores for slot 0.
+   Same env on every console, same frame: lockstep state. Inert unless set.
+   g_vs_frame is the walk's frame number, the one the star trigger counts in
+   (the end poll records it). */
+static int g_vs_frame = -1;
+
+static void vs_give_fixture(void)
+{
+    static int slot = -2;
+    static const char *frames;
+    if (slot == -2) {
+        slot = -1;
+        if (const char *e = std::getenv("SM64DS_VS_GIVE_STARS")) {
+            char *end;
+            const long v = std::strtol(e, &end, 10);
+            if (end != e && *end == ':' && v >= 0 && v < kPortMaxPlayers) {
+                slot = (int)v;
+                frames = end + 1;
+            }
+        }
+    }
+    if (slot < 0)
+        return;
+    const int now = g_vs_frame + 1;
+    int want = 0;
+    for (const char *p = frames; *p;) {
+        char *end;
+        const long f = std::strtol(p, &end, 10);
+        if (end == p)
+            break;
+        if (f == now) { want = 1; break; }
+        p = (*end == ',') ? end + 1 : end;
+        if (end == p) break;
+    }
+    const char *body = (const char *)data_0209f394[slot];
+    if (!want || !body)
+        return;
+    struct Node { void *x0; Node *next; char **x8; };
+    for (Node *nd = *(Node **)&data_0209b468; nd; nd = nd->next) {
+        char *a = (char *)nd->x8;
+        if (!a || *(unsigned short *)(a + 0xc) != 0xb2)
+            continue;
+        const int st = *(int *)(a + 0x440);
+        if (st != 4 && st != 8)
+            continue;
+        *(unsigned int *)(a + 0x134) = *(const unsigned int *)(body + 0x4);
+        *(unsigned int *)(a + 0x130) |= 0x400000;
+        fprintf(stderr, "  [vsgive] f%d armed a star's touch (state %d) with "
+                "slot %d's body; slot %d carries %d before the collect\n", now,
+                st, slot, slot, (int)data_0209f310[slot]);
+        return;
+    }
+    fprintf(stderr, "  [vsgive] f%d no reachable star to arm\n", now);
+}
+
 static void vs_track_seats(void)
 {
     vs_leave_probe();
+    if (data_0209f2d8 == 1)
+        vs_give_fixture();
     if (data_0209f2d8 != 1 || g_end_fired >= 0)
         return;
     const unsigned live = port_vs_seat_live_mask();
@@ -2123,11 +2242,14 @@ static void vs_track_seats(void)
             continue;
         g_vs_left |= 1u << k;
         const char *nick = vs_name_for(k);
+        const int had = data_0209f310[k] > 0 ? (int)data_0209f310[k] : 0;
+        const int spilled = vs_spill_stars(k);
         char what[200];
         vs_remove_body(k, what, (int)sizeof what);
-        fprintf(stderr, "[vs] slot %d left at round %u (%s): %s; %d player(s) "
-                "still in the match\n", k, round, nick ? nick : "no name",
-                what, vs_popcount(g_vs_seen & ~g_vs_left));
+        fprintf(stderr, "[vs] slot %d left at round %u (%s): %s; %d of its %d "
+                "star(s) spilled where it stood; %d player(s) still in the "
+                "match\n", k, round, nick ? nick : "no name", what, spilled,
+                had, vs_popcount(g_vs_seen & ~g_vs_left));
     }
     fflush(stderr);
     if (g_leave_probe < 0)
@@ -2179,6 +2301,7 @@ extern "C" void port_vs_match_end_hold(void)
 
 extern "C" int port_vs_match_end_poll(int frame)
 {
+    g_vs_frame = frame;
     /* Outside VS: nothing but the disarm, and the disarm is a branch taken at
        most once per match. No getenv on this path, ever. */
     if (data_0209f2d8 != 1) {
