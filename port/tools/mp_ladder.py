@@ -486,7 +486,7 @@ class LocalRelay:
                 env.pop(k)
         env.update(SM64DS_RELAY_PORT=str(port), SM64DS_RELAY_BIND="127.0.0.1",
                    SM64DS_RELAY_MAX_CHILDREN="15", SM64DS_RELAY_RATE_PPS=str(pps),
-                   SM64DS_RELAY_STATS_S="5")
+                   SM64DS_RELAY_STATS_S="1")   # 1 s: seating shows in the counters
         self.logpath = logpath
         self.log = open(logpath, "wb")
         self.p = subprocess.Popen([sys.executable, "-u", src], env=env, stdout=self.log,
@@ -506,6 +506,12 @@ class LocalRelay:
         with open(self.logpath, "r", encoding="utf-8", errors="replace") as f:
             t = f.read()
         stats = [ln for ln in t.splitlines() if " stats " in ln]
+        # (endpoints, drop_target) per stats line, oldest first, for alone_target_drops().
+        self.series = []
+        for ln in stats:
+            ep, dt = re.search(r"\bendpoints=(\d+)", ln), re.search(r"\bdrop_target=(\d+)", ln)
+            if ep:
+                self.series.append((int(ep.group(1)), int(dt.group(1)) if dt else 0))
         last = stats[-1] if stats else ""
         return {k: int(v) for k, v in re.findall(r"\b(drop\w*|rx|fwd|full|bad)=(\d+)", last)}
 
@@ -854,10 +860,30 @@ def r_vs(L, run, r):
     return ck, wall, rcs
 
 
+def alone_target_drops(series):
+    """drop_target counts a datagram the relay had nobody to send to. The first
+    console into a room is alone until the second one joins, and what it sends
+    meanwhile lands there: the relay is right to drop it and nothing was lost.
+    Returns how much drop_target grew over stats intervals that began with fewer
+    than 2 endpoints (the local relay writes a stats line every second, so the
+    seating shows). Growth over an interval that began with 2 or more endpoints
+    stays a drop."""
+    alone = 0
+    for (ep0, dt0), (_, dt1) in zip(series, series[1:]):
+        if ep0 < 2 and dt1 > dt0:
+            alone += dt1 - dt0
+    return alone
+
+
 def relay_checks(ck, run):
     if run.relay_stats is None:
         return
-    st = run.relay_stats
+    st = dict(run.relay_stats)
+    alone = alone_target_drops(getattr(run.relay, "series", None) or [])
+    if alone and st.get("drop_target"):
+        ck.note("relay drop_target: %d sent while a console sat alone in its room (nobody to "
+                "send to; not a drop)" % min(alone, st["drop_target"]))
+        st["drop_target"] = max(0, st["drop_target"] - alone)
     bad = {k: v for k, v in st.items() if (k.startswith("drop") or k in ("bad", "full")) and v}
     ck.ok(bool(st) and not bad, "relay dropped nothing (%s)" % (
         ", ".join("%s=%d" % kv for kv in sorted(bad.items())) if bad else
