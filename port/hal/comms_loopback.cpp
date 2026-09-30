@@ -2688,8 +2688,21 @@ void lg_retire_slot(int k) {
     // one it is for. Loopback and direct address it alone.
     if (g_net_mode == kNetRelay) send_to_children(r);
     else                         send_to_slot(r, k);
-    if (popcount_live(g_live) <= 1)
-        match_lost("every other player lost connection");
+    if (popcount_live(g_live) > 1) return;
+    // THE LAST PLAYER STANDING (lane DROPOUT1, plan G4). With a VS match under
+    // way the host stays in it alone: the rounds carry the host by itself, the
+    // game's end poll sees one seat left (hal/star_flow.cpp, trigger five) and
+    // ends the match the normal way -- the winner named, MATCH OVER, exit 0.
+    // It used to stop here with LOST THE VS MATCH and exit 5, which told the
+    // one player who stayed that they had lost. Before the match is under way
+    // (nothing played yet) this is still the lost session it always was.
+    if (match_underway()) {
+        std::fprintf(stderr, "[comms:loopback] every other player has left the "
+                     "match: the host is the last one in it, and the game ends "
+                     "the match with it as the winner\n");
+        return;
+    }
+    match_lost("every other player lost connection");
 }
 
 // Round s is past its deadline: fill every live slot that has not delivered

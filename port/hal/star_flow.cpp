@@ -1316,6 +1316,9 @@ static int g_end_by_king;
  * the survivors won (clock ran out with one alive). Set in the end poll, read
  * by the banner and the marker so the winner line names the team, not a slot. */
 static int g_end_by_luigi;
+/* lane DROPOUT1: 1 + the slot that won because everybody else left, 0 when
+   the match ended any other way. */
+static int g_end_by_last;
 /* lane DROPOUT1: the slots that have been in play this match, and those of
    them that have left it (vs_track_seats, below, keeps both). A slot that left
    has no place in the result: the winner, the draw test and the scores run
@@ -2014,6 +2017,21 @@ static void vs_track_seats(void)
     fflush(stderr);
 }
 
+/* THE LAST PLAYER STANDING: the slot that is alone in a match two or more
+   people started, or -1. The host is the round clock, so this is the host in
+   practice (a host that leaves ends the match for everyone instead,
+   comms_loopback.cpp host_left). */
+static int vs_last_standing(void)
+{
+    const unsigned in = g_vs_seen & ~g_vs_left;
+    if (vs_popcount(g_vs_seen) < 2 || vs_popcount(in) != 1)
+        return -1;
+    for (int k = 0; k < kPortMaxPlayers; ++k)
+        if (in >> k & 1u)
+            return k;
+    return -1;
+}
+
 extern "C" void port_vs_match_end_hold(void)
 {
     static int on = -1;
@@ -2047,6 +2065,7 @@ extern "C" int port_vs_match_end_poll(int frame)
             g_end_by_target = 0;
             g_end_by_king = 0;
             g_end_by_luigi = 0;
+            g_end_by_last = 0;
             /* Leaving VS clears the Luigi Infection latch too, so the next VS
                entry re-seeds one tagger from a clean team array. */
             port_luigi_match_reset();
@@ -2198,12 +2217,25 @@ extern "C" int port_vs_match_end_poll(int frame)
                 if (expired) luigi_end = 2;
             }
         }
-        if (!timeup && star_winner < 0 && king_winner < 0 && luigi_end == 0)
+        /* ---- TRIGGER FIVE: THE LAST PLAYER STANDING (lane DROPOUT1, plan G4).
+         * Everybody else left a match two or more people started: the one who
+         * stayed wins it, with the normal MATCH OVER and exit 0, where the
+         * console used to stop with LOST THE VS MATCH and exit 5 (a win read
+         * as a loss). Keyed on the seat mask, so it is the same round on every
+         * console that is still running -- which here is the one. Feeds the
+         * same one end path; the marker says win=time-up (the match ended
+         * before any target, and the launcher and the lobby know no other
+         * word for that) and names the winner in winner=. */
+        const int last = vs_last_standing();
+        if (!timeup && star_winner < 0 && king_winner < 0 && luigi_end == 0 &&
+            last < 0)
             return 0;
         g_end_by_luigi = luigi_end;
         g_end_fired = frame;
         g_end_by_target = (star_winner >= 0);
         g_end_by_king = (king_winner >= 0);
+        g_end_by_last = (!timeup && star_winner < 0 && king_winner < 0 &&
+                         luigi_end == 0) ? last + 1 : 0;
         /* run vs16: latch every player's score. data_0209f310 is hosted 32
            bytes wide as a guarded contiguous band (hal/actor_classes_star.cpp),
            so sixteen is inside the storage the port already had -- this loop
@@ -2226,6 +2258,11 @@ extern "C" int port_vs_match_end_poll(int frame)
                     luigi_end == 1 ? "all survivors infected, the LUIGIS win"
                                    : "the clock ran out, the SURVIVORS win",
                     port_luigi_survivors_alive(), port_luigi_match_slots());
+        else if (g_end_by_last)
+            fprintf(stderr, "[vs] f%d LAST PLAYER STANDING: every other player "
+                    "left the match, so slot %d wins it (%d of %d players left "
+                    "during the match)\n", frame, g_end_by_last - 1,
+                    vs_popcount(g_vs_left), vs_popcount(g_vs_seen));
         else if (king_winner >= 0)
             fprintf(stderr, "[vs] f%d KING TARGET REACHED: player %d has %d "
                     "point(s), the target is %d (points %d,%d,%d,%d)\n", frame,
