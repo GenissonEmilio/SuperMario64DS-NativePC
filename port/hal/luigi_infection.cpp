@@ -81,6 +81,7 @@ extern unsigned char data_0209f250;        /* local player index */
 extern void port_player_set_character(void *player, unsigned ch);
 unsigned port_vs_seat_live_mask(void);     /* hal/comms_loopback.cpp */
 unsigned port_vs_seat_mask_round(void);    /* ... and its round      */
+int port_vs_match_end_frozen(void);        /* hal/star_flow.cpp */
 }
 
 /* NONZERO WHILE A REWIND IS BEING RE-RUN. The mode's WORLD writes (the team
@@ -290,17 +291,46 @@ extern "C" void port_luigi_tag_player(const void *victim)
     li_infect(s);
 }
 
+/* THE LAST LUIGI LEFT. A Luigi who leaves the match is parked and can tag
+ * nobody (hal/star_flow.cpp removes the body at the round the seat mask drops
+ * him), so when every Luigi has left, the survivors could not be caught and
+ * the round would just run out the clock. The Luigi passes on instead: the
+ * (seed mod n)-th player still in the match, by the same rule as the first
+ * pick, becomes the Luigi. Everything it reads (the team array, the live
+ * bytes star_flow cleared this frame, the shared seed) is the same on every
+ * console at the same frame, so every console hands off on the same round to
+ * the same player. Two or more players left: with one, star_flow's last
+ * player standing ends the match; not once the match is decided. */
+static void li_hand_off(int frame)
+{
+    if (port_vs_match_end_frozen()) return;
+    int n = 0, luigis = 0;
+    for (int i = 0; i < kPortMaxPlayers; ++i)
+        if (li_in_match(i)) { ++n; if (g_li_team[i]) ++luigis; }
+    if (luigis || n < 2) return;
+    int slot = -1;
+    for (int i = 0, k = (int)(g_li_seed % (unsigned)n); i < kPortMaxPlayers; ++i)
+        if (li_in_match(i) && k-- == 0) { slot = i; break; }
+    if (!g_port_rb_replaying)
+    std::fprintf(stderr, "[luigi] HAND-OFF f%d (round %u): every Luigi left "
+            "the match; slot %d is the Luigi now (seed %u over %d players)\n",
+            frame, port_vs_seat_mask_round(), slot, g_li_seed, n);
+    li_infect(slot);
+}
+
 /* SEED: turn exactly one slot into the starting Luigi. VS only, once per match.
  * The TIMING is owned by the pre-round countdown driver (hal/star_flow.cpp's
  * port_luigi_countdown_drive), which calls this at countdown end (frame 240, a
  * full five seconds in) rather than the old frame 90 -- so the tagger is chosen
  * only after the READY? / 3-2-1 / START countdown has played out. Self-latches
- * on g_li_seeded, so being called every frame from the pick on seeds once. */
+ * on g_li_seeded, so being called every frame from the pick on seeds once;
+ * after that each call only checks whether the Luigis are still here. */
 extern "C" void port_luigi_seed(int frame)
 {
     if (data_0209f2d8 != 1) return;        /* VS mode only */
     li_load();
-    if (!g_li_on || g_li_seeded) return;
+    if (!g_li_on) return;
+    if (g_li_seeded) { li_hand_off(frame); return; }
     g_li_seeded = 1;
 
     /* WHO IS IN THE MATCH AT START. The arena seats a body for every seat the
