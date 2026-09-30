@@ -3669,6 +3669,30 @@ def test_server_line_width():
     check("no line of server.py is over 100 characters", not long, long)
 
 
+def test_host_silent_floor():
+    """REVLOBBYJOIN1-B note D: HOST_SILENT_S accepted 10 from the env, under
+    the launcher's 20 s poll hold, and set that low it read a live host as
+    silent. Its floor is 45, the member heartbeat (MEMBER_TIMEOUT_S)."""
+    print("\n-- L-J1C: HOST_SILENT_S cannot be set under 45 s")
+    import subprocess
+    app = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app")
+    got = {}
+    for raw in ("10", "44", "45", "90", "99999", "junk"):
+        env = dict(os.environ, HOST_SILENT_S=raw)
+        out = subprocess.run(
+            [sys.executable, "-c",
+             "import server; print(server.HOST_SILENT_S)"],
+            cwd=app, env=env, capture_output=True, text=True, timeout=60)
+        got[raw] = out.stdout.strip().splitlines()[-1] if out.stdout else out.stderr
+    check("HOST_SILENT_S=10 and =44 read as 45 (the floor)",
+          got["10"] == "45" and got["44"] == "45", got)
+    check("45 and 90 are kept, 99999 is clamped to 3600, junk is the default 60",
+          (got["45"], got["90"], got["99999"], got["junk"])
+          == ("45", "90", "3600", "60"), got)
+    check("the floor is not under the member heartbeat (MEMBER_TIMEOUT_S 45)",
+          int(got["10"]) >= 45, got)
+
+
 def test_a_throttled_host_is_not_silent():
     """REVLOBBYJOIN1-B note C: host and guest behind ONE public address (a
     household NAT). A modified guest floods that address, the rate limiter
@@ -3798,6 +3822,7 @@ def main():
     test_the_new_host_played_the_match()
     test_every_guest_agrees_and_the_host_is_silent()
     test_a_throttled_host_is_not_silent()
+    test_host_silent_floor()
     test_server_line_width()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))

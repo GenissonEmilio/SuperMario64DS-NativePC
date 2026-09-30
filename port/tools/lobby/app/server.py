@@ -308,8 +308,11 @@ MATCH_TIMEOUT_S = env_int("MATCH_TIMEOUT_S", 1200, 60, 86400)
 # run mp1 L-J1B: every live non-host seat has posted the SAME result and the
 # host has sent nothing since the first of those votes for this long: the
 # match is over (see host_silent_vote). Not in the compose file on purpose:
-# the default is the reviewed value.
-HOST_SILENT_S = env_int("HOST_SILENT_S", 60, 10, 3600)
+# the default is the reviewed value. The floor is the member heartbeat (45 s):
+# under the launcher's 20 s poll hold plus its error backoff a LIVE host can
+# look silent (REVLOBBYJOIN1-B note D: at 10 a live host's match ended on the
+# guest's draw after 16 s).
+HOST_SILENT_S = env_int("HOST_SILENT_S", 60, 45, 3600)
 RELAY_ADDR = env_str("RELAY_ADDR", "135.148.26.201:41234")
 
 # v5: the relay protocol the plan tells the game to speak (design section 3).
