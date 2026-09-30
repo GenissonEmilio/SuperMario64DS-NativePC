@@ -8,6 +8,9 @@
 //   never trusted from the sender) | 6 flags 0 | 7 text_len 1..120 |
 //   8 msg_id u16 | 10 reserved u16 0 | 12 text, text_len bytes of UTF-8
 //
+// (flags bit0 marks the 12-byte typing frame of the 6.3 addendum, described
+// with the bubble below; any other flag bit is dropped and counted.)
+//
 // Reliability without a stream: every message goes out three times (0, 150
 // and 500 ms after the first copy leaves) and a receiver shows it once,
 // deduplicated on (seat, msg_id) over the last 64 ids it accepted. A sender
@@ -56,11 +59,26 @@
 //       SM64DS_HUB_LOSS_PCT and is not dropped twice.
 //   SM64DS_CHAT_LOG=1
 //       add the cleaned text to every rx / tx log line.
+//   SM64DS_CHAT_TYPE_HOLD=<frames>
+//       with SM64DS_CHAT_TYPE_TEST: keep the box open that many frames after
+//       the last character before the Enter (a very large value keeps it
+//       open until the console exits or is killed).
+//   SM64DS_CHAT_TYPE_ESC=1
+//       with SM64DS_CHAT_TYPE_TEST: cancel with Esc instead of sending.
+//   SM64DS_CHAT_TYPING_FLOOD=<frame>:<n>
+//       send n typing frames at <frame> straight to the carrier, then four
+//       malformed ones (a flag bit that does not exist, a 13-byte typing
+//       frame, text_len set on a typing frame, state 7); receivers' caps and
+//       checks are what is under test.
 //
 // LOG LINES: "[chat] on: carrier=<vs|hub> seat=<n>" once, "[chat] tx id=<n>
 // bytes=<n>" per message sent, "[chat] rx seat=<n> id=<n> bytes=<n>" per
 // message shown (after dedupe and the caps), and one "[chat] report ..." line
-// with every counter at exit.
+// with every counter at exit. The bubble adds "[chat] typing tx state=<0|1>
+// t=<ms>" per typing frame sent, "[chat] typing seat=<n> on|off (<why>)
+// t=<ms>" when a seat's dots start or stop, and "[chat] bubble seat=<n>
+// bytes=<n> t=<ms>" / "[chat] bubble seat=<n> gone t=<ms>" (t is the
+// machine's QPC clock in ms, the same across processes on one PC).
 //
 // PORT_HOST_ABI: host plumbing like the carriers. Nothing in src/ knows it
 // exists, it reads no game state beyond the VS slot name, and it writes none.
@@ -117,6 +135,38 @@ struct ChatView {
     bool         caret;                   // blink phase
 };
 void chat_view(ChatView *out);
+
+// THE BUBBLE OVER A HEAD (run mp1, lane BUBBLE1). Per seat: the newest line
+// that seat sent, for kChatBubbleMs (fading over the last second; a newer line
+// replaces it), and whether that seat has its box open. The typing state
+// travels as a TYPING FRAME (design.txt 6.3 addendum): a 'SYNT' with flags
+// bit0 set, exactly 12 bytes, text_len 0, bytes 8..9 a typing sequence (never
+// a chat msg_id), byte 10 the state (1 box open, 0 box closed), byte 11 0.
+// The sender sends state 1 when the box opens and every second while it stays
+// open, and state 0 twice (0 and 150 ms) when it closes without a message; a
+// sent message ends the typing by itself. A receiver shows the dots until the
+// state 0, a line from that seat, 3 s without a refresh, or the seat leaving.
+// Typing frames have their own receive cap (4 a second per seat) so they
+// never spend the one real messages are taken from. The window's name-tag pass
+// (tests/nametag.h) draws the bubble; this file owns the state.
+enum : int {
+    kChatBubbleMs  = 5000,
+    kChatTypingMs  = 3000,
+};
+struct ChatBubble {
+    bool     typing;        // the dots
+    int      dots;          // 1..3, cycling every 0.4 s
+    bool     has_text;
+    char     text[kChatTextMax + 1];   // printable ASCII, the log's cleaning
+    int      alpha;         // 0..255 for the text, fades out over the last 1 s
+    unsigned rgb;           // 0xFFRRGGBB, the sender's colour
+};
+// False when that seat has nothing over its head. seat is the carrier's seat:
+// the VS slot, or the hub seat in an adventure room.
+bool chat_bubble(int seat, ChatBubble *out);
+
+// This console's own seat on the chat carrier, -1 when chat is off.
+int chat_my_seat();
 
 // The game font's character code for a printable ASCII character, or -1 when
 // the font has no glyph for it (the cleaner turns those into '?'). The one

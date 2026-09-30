@@ -29,12 +29,24 @@ enum : int {
     kTestMax      = 16,
 };
 const unsigned kTagChat = 0x544e5953u;           // 'S','Y','N','T'
+// The 6.3 addendum's typing frame: flags bit0, exactly the 12-byte head.
+const unsigned char kFlagTyping = 0x01;
 const unsigned kCopyAtMs[kCopies] = {0, 150, 500};
 
 // Sender: 1 message per 1.5 s, burst 3. Receiver: 1 per second per seat,
 // burst 3 (so an honest sender's burst is never cut). Token buckets in
 // thousandths of a message.
 const int kSendRefillMs = 1500, kRecvRefillMs = 1000, kBurst = 3;
+// Typing frames: their own bucket per seat, 4 a second, burst 4. An honest
+// typer sends about one a second (two state-0 copies on a close), so it is
+// never cut; a flood is, and it never touches the chat bucket above.
+const int kTypeRefillMs = 250, kTypeBurst = 4;
+// The sender's typing schedule: state 1 on open and every second while open,
+// the second state-0 copy 150 ms after the first. A sequence that does not move
+// forward is a late copy, unless the sender has been quiet this long (a
+// restarted console starts a new sequence anywhere).
+const unsigned kTypeRefreshMs = 1000, kTypeZeroAgainMs = 150,
+               kTypeSeqFreshMs = 5000;
 
 enum Carrier : int { kNone = 0, kVs = 1, kHub = 2 };
 
@@ -52,12 +64,12 @@ struct Bucket {
     unsigned last;
     bool     init;
 };
-bool bucket_take(Bucket &b, unsigned now, int refill_ms) {
-    if (!b.init) { b.init = true; b.milli = kBurst * 1000; b.last = now; }
+bool bucket_take(Bucket &b, unsigned now, int refill_ms, int burst = kBurst) {
+    if (!b.init) { b.init = true; b.milli = burst * 1000; b.last = now; }
     const unsigned dt = now - b.last;
     b.last = now;
     long long m = (long long)b.milli + (long long)dt * 1000 / refill_ms;
-    if (m > kBurst * 1000) m = kBurst * 1000;
+    if (m > burst * 1000) m = burst * 1000;
     b.milli = (int)m;
     if (b.milli < 1000) return false;
     b.milli -= 1000;
@@ -85,6 +97,21 @@ struct Line {
 
 struct TestSend { int frame; int len; unsigned char text[kChatTextMax * 2]; };
 
+// What one seat shows over its head (lane BUBBLE1). The receiver's side of the
+// typing frame and the newest line; this console's own seat uses the line half
+// only (its own dots are g.typing).
+struct SeatBubble {
+    bool           typing;
+    unsigned       typing_until;
+    bool           have_seq;
+    unsigned short last_seq;
+    unsigned       last_seq_ms;
+    Bucket         type_bucket;
+    bool           has_text;
+    char           text[kChatTextMax + 1];
+    unsigned       text_until;
+};
+
 struct State {
     bool     env_read;
     int      carrier;          // Carrier, re-read every tick
@@ -102,6 +129,12 @@ struct State {
     Line     lines[kChatShowLines];
     int      line_head;        // next slot to fill (oldest when all used)
 
+    SeatBubble sb[kCommsMaxPlayers];
+    unsigned short type_seq;
+    unsigned type_next_ms;     // next state-1 refresh while the box is open
+    bool     type_zero_due;    // the second state-0 copy is still owed
+    unsigned type_zero_ms;
+
     bool     typing;
     unsigned char box[kChatTextMax];
     int      box_len;
@@ -116,6 +149,9 @@ struct State {
     unsigned char type_text[kChatTextMax];
     int      type_len, type_pos;
     int      flood_frame, flood_n;
+    int      type_hold;        // frames between the last character and Enter
+    bool     type_esc;         // cancel instead of sending
+    int      tflood_frame, tflood_n;
     bool     selftest;
     unsigned rng;
 
@@ -123,7 +159,9 @@ struct State {
     unsigned long long sent_msgs, sent_copies, send_fail, send_limited,
         send_given_up, rx_dgrams, rx_shown, rx_dup, rx_bad_len, rx_bad_ver,
         rx_bad_seat, rx_self, rx_rate, rx_test_drop, rx_invalid_utf8,
-        rx_ctrl_stripped, rx_unknown_glyph, box_refused;
+        rx_ctrl_stripped, rx_unknown_glyph, box_refused, tx_typing,
+        tx_typing_fail, rx_typing, rx_typing_bad, rx_typing_rate,
+        rx_typing_stale, rx_bad_flags;
     bool     reported;
 };
 State g;
@@ -170,6 +208,7 @@ void read_env() {
     g.next_id = (unsigned short)(g.rng >> 7);
     g.type_frame = -1;
     g.flood_frame = -1;
+    g.tflood_frame = -1;
     g.drop_pct = -1;
 
     if (const char *e = std::getenv("SM64DS_CHAT_DROP")) {
@@ -216,9 +255,27 @@ void read_env() {
                          g.flood_n, g.flood_frame);
         }
     }
+    if (const char *e = std::getenv("SM64DS_CHAT_TYPE_HOLD")) {
+        g.type_hold = std::atoi(e);
+        if (g.type_hold < 0) g.type_hold = 0;
+        if (g.type_hold > 100000000) g.type_hold = 100000000;
+    }
+    g.type_esc = env_on("SM64DS_CHAT_TYPE_ESC");
+    if (const char *e = std::getenv("SM64DS_CHAT_TYPING_FLOOD")) {
+        const char *colon = std::strchr(e, ':');
+        if (colon) {
+            g.tflood_frame = std::atoi(e);
+            g.tflood_n = std::atoi(colon + 1);
+            if (g.tflood_n < 0) g.tflood_n = 0;
+            if (g.tflood_n > 200) g.tflood_n = 200;
+            std::fprintf(stderr, "[chat] TEST: flooding %d typing frame(s) + 4 "
+                         "malformed at frame %d (SM64DS_CHAT_TYPING_FLOOD)\n",
+                         g.tflood_n, g.tflood_frame);
+        }
+    }
     g.selftest = env_on("SM64DS_CHAT_SELFTEST");
     g.log_text = env_on("SM64DS_CHAT_LOG") || g.ntests || g.type_frame >= 0 ||
-                 g.flood_frame >= 0 || g.selftest;
+                 g.flood_frame >= 0 || g.tflood_frame >= 0 || g.selftest;
 }
 
 // ---------------------------------------------------------------------------
@@ -411,6 +468,99 @@ void add_line(int seat, const char *text) {
 }
 
 // ---------------------------------------------------------------------------
+// THE BUBBLE STATE (lane BUBBLE1)
+// ---------------------------------------------------------------------------
+void typing_off(int seat, const char *why, unsigned now) {
+    SeatBubble &s = g.sb[seat];
+    if (!s.typing) return;
+    s.typing = false;
+    std::fprintf(stderr, "[chat] typing seat=%d off (%s) t=%u\n", seat, why, now);
+}
+
+void set_bubble(int seat, const char *shown, unsigned now) {
+    if (seat < 0 || seat >= kCommsMaxPlayers) return;
+    SeatBubble &s = g.sb[seat];
+    typing_off(seat, "line", now);          // the message ends the typing
+    s.has_text = true;
+    std::snprintf(s.text, sizeof s.text, "%s", shown);
+    s.text_until = now + kChatBubbleMs;
+    std::fprintf(stderr, "[chat] bubble seat=%d bytes=%d t=%u\n", seat,
+                 (int)std::strlen(s.text), now);
+}
+
+void bubble_gone(int seat, unsigned now) {
+    SeatBubble &s = g.sb[seat];
+    if (!s.has_text) return;
+    s.has_text = false;
+    std::fprintf(stderr, "[chat] bubble seat=%d gone t=%u\n", seat, now);
+}
+
+// Ages every seat's dots and line, and clears a seat that left: in VS the
+// round's seat mask (the same on every console; 0 = no information yet), on
+// the hub the seat's presence.
+void bubbles_age(unsigned now) {
+    unsigned live = 0xFFFFFFFFu;
+    if (g.carrier == kVs) {
+        const unsigned m = port_vs_seat_live_mask();
+        if (m) live = m;
+    } else if (g.carrier == kHub) {
+        live = comms_hub_seat_mask();
+    }
+    if (g.my_seat >= 0 && g.my_seat < kCommsMaxPlayers) live |= 1u << g.my_seat;
+    for (int seat = 0; seat < kCommsMaxPlayers; ++seat) {
+        SeatBubble &s = g.sb[seat];
+        if (!((live >> seat) & 1u)) {
+            typing_off(seat, "left", now);
+            bubble_gone(seat, now);
+            s.have_seq = false;
+            continue;
+        }
+        if (s.typing && (int)(s.typing_until - now) <= 0)
+            typing_off(seat, "timeout", now);
+        if (s.has_text && (int)(s.text_until - now) <= 0) bubble_gone(seat, now);
+    }
+}
+
+// flags / text_len / state / length are parameters only so the flood knob can
+// build the malformed kinds a hostile sender would; the real path sends
+// (kFlagTyping, 0, state, 12).
+int build_typing(unsigned char *buf, unsigned short seq, int state,
+                 unsigned char flags, unsigned char text_len, int len) {
+    HubChatHead h = {};
+    h.tag = kTagChat;
+    h.version = 1;
+    h.seat = 0xFF;
+    h.flags = flags;
+    h.text_len = text_len;
+    h.msg_id = seq;
+    h.reserved = (unsigned short)(state & 0xFF);   // byte 10 state, byte 11 0
+    std::memset(buf, 0, (size_t)len);
+    std::memcpy(buf, &h, sizeof h);
+    return len;
+}
+
+void send_typing(int state) {
+    if (g.carrier == kNone) return;
+    unsigned char w[kHeadBytes];
+    build_typing(w, g.type_seq++, state, kFlagTyping, 0, kHeadBytes);
+    const unsigned now = now_ms();
+    if (carrier_send(w, kHeadBytes)) {
+        ++g.tx_typing;
+        std::fprintf(stderr, "[chat] typing tx state=%d t=%u\n", state, now);
+    } else {
+        ++g.tx_typing_fail;
+    }
+}
+
+// The box closed and no message went out (Esc, an empty Enter, a refused
+// send): tell the room now and once more 150 ms later.
+void typing_closed_quiet() {
+    send_typing(0);
+    g.type_zero_due = true;
+    g.type_zero_ms = now_ms() + kTypeZeroAgainMs;
+}
+
+// ---------------------------------------------------------------------------
 // SENDING
 // ---------------------------------------------------------------------------
 int build_wire(unsigned char *buf, unsigned short id, const unsigned char *text,
@@ -456,6 +606,7 @@ bool queue_message(const unsigned char *text, int len) {
     else
         std::fprintf(stderr, "[chat] tx id=%u bytes=%d\n", (unsigned)p->id, len);
     add_line(g.my_seat, shown);      // the sender sees their own line at once
+    set_bubble(g.my_seat, shown, now);  // and over their own head (Tango, Q1)
     return true;
 }
 
@@ -517,6 +668,42 @@ void pump_recv() {
         HubChatHead h;
         std::memcpy(&h, buf, sizeof h);
         if (h.tag != kTagChat || h.version != 1) { ++g.rx_bad_ver; continue; }
+        if (h.flags != 0) {
+            // THE TYPING FRAME (6.3 addendum). Only bit0 exists; it is exactly
+            // the 12-byte head with text_len 0, state 0 or 1 in byte 10 and 0
+            // in byte 11. Anything else is dropped and counted.
+            if (h.flags != kFlagTyping) { ++g.rx_bad_flags; continue; }
+            if (n != kHeadBytes || h.text_len != 0 || buf[10] > 1 || buf[11] != 0) {
+                ++g.rx_typing_bad;
+                continue;
+            }
+            if (seat < 0 || seat >= kCommsMaxPlayers) { ++g.rx_bad_seat; continue; }
+            if (seat == g.my_seat) { ++g.rx_self; continue; }
+            const unsigned now = now_ms();
+            SeatBubble &s = g.sb[seat];
+            if (!bucket_take(s.type_bucket, now, kTypeRefillMs, kTypeBurst)) {
+                ++g.rx_typing_rate;
+                continue;
+            }
+            if (s.have_seq && (short)(h.msg_id - s.last_seq) <= 0 &&
+                now - s.last_seq_ms < kTypeSeqFreshMs) {
+                ++g.rx_typing_stale;               // a late copy never undoes
+                continue;                          // a newer state
+            }
+            s.have_seq = true;
+            s.last_seq = h.msg_id;
+            s.last_seq_ms = now;
+            ++g.rx_typing;
+            if (buf[10]) {
+                if (!s.typing)
+                    std::fprintf(stderr, "[chat] typing seat=%d on t=%u\n", seat, now);
+                s.typing = true;
+                s.typing_until = now + kChatTypingMs;
+            } else {
+                typing_off(seat, "closed", now);
+            }
+            continue;
+        }
         if (h.text_len < 1 || h.text_len > kChatTextMax ||
             kHeadBytes + (int)h.text_len != n) {
             ++g.rx_bad_len;
@@ -546,6 +733,7 @@ void pump_recv() {
             std::fprintf(stderr, "[chat] rx seat=%d id=%u bytes=%d\n", seat,
                          (unsigned)h.msg_id, (int)h.text_len);
         add_line(seat, shown);
+        set_bubble(seat, shown, now_ms());
     }
 }
 
@@ -553,9 +741,10 @@ void pump_recv() {
 // THE BOX
 // ---------------------------------------------------------------------------
 void box_send() {
-    if (g.box_len > 0) queue_message(g.box, g.box_len);
+    const bool sent = g.box_len > 0 && queue_message(g.box, g.box_len);
     g.box_len = 0;
     g.typing = false;
+    if (!sent) typing_closed_quiet();    // a sent line ends the dots by itself
 }
 
 void box_append_cp(unsigned cp) {
@@ -714,15 +903,52 @@ void chat_tick() {
             const unsigned char b = g.type_text[step - 1];
             if (b < 0x80) box_append_cp(b);
             else if (g.box_len < kChatTextMax) g.box[g.box_len++] = b;  // raw
-        } else if (step == g.type_len + 1) {
-            std::fprintf(stderr, "[chat] TEST: Enter at frame %d\n", f);
-            chat_key(VK_RETURN);
+        } else if (step >= g.type_len + 1 + g.type_hold) {
+            std::fprintf(stderr, "[chat] TEST: %s at frame %d\n",
+                         g.type_esc ? "Esc" : "Enter", f);
+            chat_key(g.type_esc ? VK_ESCAPE : VK_RETURN);
             g.type_frame = -1;
         }
+    }
+    if (g.tflood_frame >= 0 && f >= g.tflood_frame) {
+        // straight to the carrier, like SM64DS_CHAT_FLOOD: the receivers' typing
+        // cap and checks are what is under test. Then one of each malformed
+        // kind: a flag bit that does not exist, a 13-byte typing frame, text_len
+        // on a typing frame, a state that does not exist.
+        unsigned char w[kHeadBytes + 1];
+        int sent = 0;
+        for (int i = 0; i < g.tflood_n; ++i) {
+            build_typing(w, g.type_seq++, 1, kFlagTyping, 0, kHeadBytes);
+            if (carrier_send(w, kHeadBytes)) ++sent;
+        }
+        build_typing(w, g.type_seq++, 1, 0x02, 0, kHeadBytes);
+        if (carrier_send(w, kHeadBytes)) ++sent;
+        build_typing(w, g.type_seq++, 1, kFlagTyping, 0, kHeadBytes + 1);
+        if (carrier_send(w, kHeadBytes + 1)) ++sent;
+        build_typing(w, g.type_seq++, 1, kFlagTyping, 5, kHeadBytes);
+        if (carrier_send(w, kHeadBytes)) ++sent;
+        build_typing(w, g.type_seq++, 7, kFlagTyping, 0, kHeadBytes);
+        if (carrier_send(w, kHeadBytes)) ++sent;
+        std::fprintf(stderr, "[chat] TEST: typing flood of %d + 4 malformed, %d "
+                     "left this console\n", g.tflood_n, sent);
+        g.tflood_frame = -1;
+    }
+
+    // THE TYPING FRAMES this console owes: the refresh while the box is open,
+    // and the second state-0 copy after a quiet close.
+    const unsigned now = now_ms();
+    if (g.typing && (int)(now - g.type_next_ms) >= 0) {
+        send_typing(1);
+        g.type_next_ms = now + kTypeRefreshMs;
+    }
+    if (g.type_zero_due && (int)(now - g.type_zero_ms) >= 0) {
+        g.type_zero_due = false;
+        if (!g.typing) send_typing(0);
     }
 
     pump_sends();
     pump_recv();
+    bubbles_age(now_ms());
 }
 
 bool chat_available() {
@@ -734,16 +960,28 @@ bool chat_typing() { return g.typing; }
 
 bool chat_open() {
     if (!chat_available()) return false;
+    const bool was = g.typing;
     g.typing = true;
     g.box_len = 0;
     g.dbcs_lead = 0;
+    if (!was) {
+        // the room sees the dots from now (and every second while it stays open)
+        g.type_zero_due = false;
+        send_typing(1);
+        g.type_next_ms = now_ms() + kTypeRefreshMs;
+    }
     return true;
 }
 
 void chat_key(int vk) {
     if (!g.typing) return;
     if (vk == VK_RETURN) { box_send(); return; }
-    if (vk == VK_ESCAPE) { g.typing = false; g.box_len = 0; return; }
+    if (vk == VK_ESCAPE) {
+        g.typing = false;
+        g.box_len = 0;
+        typing_closed_quiet();
+        return;
+    }
     if (vk == VK_BACK) {
         // one whole UTF-8 character
         while (g.box_len > 0) {
@@ -786,6 +1024,30 @@ void chat_view(ChatView *out) {
     }
 }
 
+bool chat_bubble(int seat, ChatBubble *out) {
+    std::memset(out, 0, sizeof *out);
+    if (seat < 0 || seat >= kCommsMaxPlayers || g.carrier == kNone) return false;
+    const unsigned now = now_ms();
+    const SeatBubble &s = g.sb[seat];
+    out->typing = seat == g.my_seat ? g.typing
+                                    : s.typing && (int)(s.typing_until - now) > 0;
+    if (s.has_text && (int)(s.text_until - now) > 0) {
+        out->has_text = true;
+        std::memcpy(out->text, s.text, sizeof out->text);
+        const int left = (int)(s.text_until - now);
+        out->alpha = left >= 1000 ? 255 : left * 255 / 1000;
+    }
+    // dots win over an older line: that seat is typing again
+    if (out->typing) out->has_text = false;
+    if (!out->typing && !out->has_text) return false;
+    out->dots = 1 + (int)((now / 400u) % 3u);
+    char name[kChatNameMax + 1];
+    seat_identity(seat, name, &out->rgb);
+    return true;
+}
+
+int chat_my_seat() { return g.carrier == kNone ? -1 : g.my_seat; }
+
 void chat_report(const char *tag) {
     if (!g.said_carrier) return;
     std::fprintf(stderr,
@@ -793,13 +1055,17 @@ void chat_report(const char *tag) {
                  "send_fail=%llu limited=%llu given_up=%llu rx=%llu shown=%llu "
                  "dup=%llu rate=%llu bad_len=%llu bad_ver=%llu bad_seat=%llu "
                  "self=%llu test_drop=%llu invalid_utf8=%llu ctrl=%llu "
-                 "unknown_glyph=%llu box_refused=%llu\n",
+                 "unknown_glyph=%llu box_refused=%llu typing_tx=%llu "
+                 "typing_tx_fail=%llu typing_rx=%llu typing_bad=%llu "
+                 "typing_rate=%llu typing_stale=%llu bad_flags=%llu\n",
                  tag ? tag : "-", g.said_carrier == kHub ? "hub" : "vs",
                  g.my_seat, g.sent_msgs, g.sent_copies, g.send_fail,
                  g.send_limited, g.send_given_up, g.rx_dgrams, g.rx_shown,
                  g.rx_dup, g.rx_rate, g.rx_bad_len, g.rx_bad_ver, g.rx_bad_seat,
                  g.rx_self, g.rx_test_drop, g.rx_invalid_utf8,
-                 g.rx_ctrl_stripped, g.rx_unknown_glyph, g.box_refused);
+                 g.rx_ctrl_stripped, g.rx_unknown_glyph, g.box_refused,
+                 g.tx_typing, g.tx_typing_fail, g.rx_typing, g.rx_typing_bad,
+                 g.rx_typing_rate, g.rx_typing_stale, g.rx_bad_flags);
     std::fflush(stderr);
 }
 
