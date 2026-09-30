@@ -152,9 +152,9 @@ changed and no version moved: only states and reasons widened.
 | a playing seat leaves during a match | the dial promoted a watcher into the running match; its go plan said child, slot 0 (the host's) | **nobody is promoted while a match is frozen**; the vacancy is filled when the match ends |
 | a plan for a seat not in the frozen slot map | slot 0 by default | `{"playing":false}`; `ready`/`failed`/`result` for the current match need a frozen, playing seat (else 403 `not_playing`) |
 | the match ends (`result`, `failed`, a deadline, a timeout) | watchers and dropped players stayed out until the host touched the dial | **the dial runs**: waiting and dropped seats play the next match, lowest seats first, up to the host's dial |
-| the VS host leaves (`leave`, or 45 s without a poll while in lobby) | the room closed, `closed` `why:"host_left"` | a match that is on ends: `failed` with **`reason:"host_left"`** (server-minted; 400 `bad_reason` from a client). Then the host passes to the **lowest playing seat** with a `host` event (`{"kind":"host","seat":n,"display":...}`, the adventure rooms' event). The room stays open. Only the LAST member out closes it (`closed`, `why:"host_left"`) |
+| the VS host leaves (`leave`, or 45 s without a poll while in lobby) | the room closed, `closed` `why:"host_left"` | a match that is on ends: `failed` with **`reason:"host_left"`** (server-minted; 400 `bad_reason` from a client). Then the host passes to the **lowest seat that was playing the match that ended** (with no match on, or none of its players left: the lowest playing seat; never a joiner who waited through the match) with a `host` event (`{"kind":"host","seat":n,"display":...}`, the adventure rooms' event). The room stays open. Only the LAST member out closes it (`closed`, `why:"host_left"`) |
 | slot 0 | the lowest playing seat, which was always the host (seat 1) | **the host, by name**, then everybody else in seat order (the host is no longer always seat 1) |
-| `result` for the current match | the FIRST valid result from any playing seat ended the match | **the host's result ends it.** A non-host's result is a vote: accepted 200, and it ends the match only when strictly more than half of the match's live seats (frozen, still playing, still in the room) have posted the same `win` and `scores`. A drop or a leave re-counts. A seat's first vote stands. A late result for an ended match is still 200 |
+| `result` for the current match | the FIRST valid result from any playing seat ended the match | **the host's result ends it.** A non-host's result is a vote: accepted 200, and it ends the match only when strictly more than half of the match's live seats (frozen, still playing, still in the room) have posted the same `win` and `scores`. A drop or a leave re-counts. A seat's first vote stands. A late result for an ended match is still 200. **If every live non-host seat posted the same result and the host has sent no request since the first of those votes for `HOST_SILENT_S` (60 s), the match ends with that result** (a pair whose host launcher died at MATCH OVER; with three or more live seats the guests agreeing is already a majority) |
 
 A waiting seat reads as `playing:false` in the view while `state` is not
 `lobby`; after the match it is `playing:true` (or still `false` if the host's
@@ -476,8 +476,8 @@ All three are asserted in `test_units.py`, in `test_seat_stability`.
 2. **The host starts as seat 1.** The creator takes seat 1. Until run mp1
    (L-J1) a host leaving closed the room, so no live room had a host at any
    other number; since then a VS host leaving passes the role to the lowest
-   playing seat, and slot 0 goes to the host by name (`assign_slots`), not to
-   the lowest seat.
+   seat that played the match it ended (else the lowest playing seat), and
+   slot 0 goes to the host by name (`assign_slots`), not to the lowest seat.
 3. **Seat numbers are distinct and always inside 1..`MAX_SEATS`**, so the slots
    derived from them are distinct and always inside 0..3.
 
@@ -738,7 +738,8 @@ and the host could not even `kick` them (kick is refused outside lobby). Any `fa
 returns the whole room to lobby with a `failed` event, so every other launcher
 learns why. The `go`->`in_match` transition happens `GO_GRACE_S` after `go`, and
 a match with no result is returned to lobby with `failed` reason `timeout` after
-`MATCH_TIMEOUT_S`.
+`MATCH_TIMEOUT_S` (a pair whose guest posted a result while the host went
+silent ends `HOST_SILENT_S` after that result instead; see the v5 section).
 
 #### `result` — stage C
 
@@ -752,7 +753,8 @@ A playing member reporting a finished match. `win` is `time-up`, `star-target`
 or `draw` (the launcher posts `draw` with all-zero scores for a `MATCH OVER`
 marker it could not parse). `scores` is four ints, 0..99, in slot order. The
 match-ending result (since run mp1 L-J1 the HOST's, or one a majority of the
-live match seats agree on; see the v5 section) appends a `result` event, discards the
+live match seats agree on, or every guest's after `HOST_SILENT_S` of host
+silence; see the v5 section) appends a `result` event, discards the
 comms code, clears the match id and every `armed` flag, and returns the room to
 `lobby` -- while the room code, seats, nicknames, tokens, chat AND the params all
 survive, so "same again" is one Start press. A later result for the same match id
@@ -800,8 +802,9 @@ costs one button and takes the code with it.
 ```
 
 Host (VS, since run mp1 L-J1): a match that is on ends with `failed`
-`reason:"host_left"`, the host passes to the lowest playing seat with a `host`
-event, and the room stays open; the last member out closes it (`closed`,
+`reason:"host_left"`, the host passes to the lowest seat that played that
+match (else the lowest playing seat) with a `host` event, and the room stays
+open; the last member out closes it (`closed`,
 `why:"host_left"`). Member: the seat is freed, a `left` event is pushed, and
 the lowest spectator is promoted if a playing seat opened -- in lobby only; a
 seat that opens during a match is filled when the match ends.
@@ -886,11 +889,12 @@ three commas.
 
 | event | what the server does | what players see |
 |---|---|---|
-| VS host leaves, or 45 s without a poll in lobby | a match that is on ends (`failed`, `reason:"host_left"`); the host passes to the lowest playing seat (`host` event); the room stays (run mp1 L-J1) | the match ends with a host-left message, everybody is back in the room with a new host |
+| VS host leaves, or 45 s without a poll in lobby | a match that is on ends (`failed`, `reason:"host_left"`); the host passes to the lowest seat that played that match, else the lowest playing seat (`host` event); the room stays (run mp1 L-J1) | the match ends with a host-left message, everybody is back in the room with a new host |
 | the last member leaves | room -> `closed`, `why:"host_left"`; the record is kept 60 s so members get the reason rather than a bare 404, then deleted | "The host closed the room." |
 | member leaves | seat freed, `left` event, spectator promoted if a playing seat opened | the name disappears; a system line says who left |
 | member stops polling | 45 s heartbeat timeout, treated as a leave with `why:"timeout"` | as above |
 | service restarts | **every room is gone.** State is in memory by design | every poll gets 404; the launcher says the room is gone and returns to the create/join screen |
+| VS host launcher dies at MATCH OVER (no `leave`) | 3+ live seats: the guests' same result is a majority and ends it at once. A pair: the guest's result ends it `HOST_SILENT_S` (60 s) after it came in, if the host sent nothing since; otherwise `MATCH_TIMEOUT_S` | the result shows up a minute late in a pair |
 | room idle | 30 minutes with no event -> `closed`, `why:"idle"` | "This room timed out." |
 | adventure host leaves | the room stays; host (kick) passes to the lowest seat with a `host` event | nothing changes for anybody playing |
 | adventure room empty | closed `why:"idle"` after `ADV_EMPTY_S` (600 s) empty; never on `ROOM_IDLE_S` | a code shared yesterday is gone |
