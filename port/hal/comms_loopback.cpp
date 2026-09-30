@@ -5907,6 +5907,12 @@ extern "C" unsigned port_vs_seat_live_mask(void) {
         return 0u;
     return g_latched_mask;
 }
+// The round that mask belongs to (lane DROPOUT1): the round last handed to the
+// game, the same number on every console, for the "slot k left at round R"
+// line hal/star_flow.cpp prints when a seat leaves the match.
+extern "C" unsigned port_vs_seat_mask_round(void) {
+    return g_consumed_round;
+}
 
 // ---------------------------------------------------------------------------
 // INSTALL

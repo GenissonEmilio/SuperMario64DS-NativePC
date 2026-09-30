@@ -1316,6 +1316,49 @@ static int g_end_by_king;
  * the survivors won (clock ran out with one alive). Set in the end poll, read
  * by the banner and the marker so the winner line names the team, not a slot. */
 static int g_end_by_luigi;
+/* lane DROPOUT1: the slots that have been in play this match, and those of
+   them that have left it (vs_track_seats, below, keeps both). A slot that left
+   has no place in the result: the winner, the draw test and the scores run
+   over the players still in the match. With no carrier session nobody ever
+   leaves, and every result below is the one it always was. */
+static unsigned g_vs_seen;
+static unsigned g_vs_left;
+
+static int vs_popcount(unsigned m)
+{
+    int n = 0;
+    for (; m; m &= m - 1) ++n;
+    return n;
+}
+
+/* 1 when slot i is in the match: it has been in play (a seat the carrier
+   never carried -- slots 2 and 3 of a two-player match, whose floor is four --
+   is nobody) and has not left. With no carrier session every slot is. */
+static int vs_in_play(int i)
+{
+    if (g_vs_seen == 0)
+        return 1;
+    return (g_vs_seen >> i & 1u) != 0 && (g_vs_left >> i & 1u) == 0;
+}
+
+/* THE WINNER OVER THE PLAYERS STILL IN THE MATCH: the lowest in-play slot with
+   the top latched score, and how many other in-play slots share it (a draw).
+   With nobody gone this is exactly the old scan over 0..np-1. */
+static int vs_end_best(int np, int *ties)
+{
+    int best = -1;
+    for (int i = 0; i < np; ++i)
+        if (vs_in_play(i) && (best < 0 || g_end_scores[i] > g_end_scores[best]))
+            best = i;
+    if (best < 0)
+        best = 0;
+    int t = 0;
+    for (int i = 0; i < np; ++i)
+        if (i != best && vs_in_play(i) && g_end_scores[i] == g_end_scores[best])
+            ++t;
+    *ties = t;
+    return best;
+}
 
 /* SM64DS_VS_LUIGI_INFECTION, defined in hal/luigi_infection.cpp. All inert (a
  * cached compare) when the mode is off. */
@@ -1811,6 +1854,10 @@ static int vs_score_list(char *out, int cap, int np, int best)
                              g_end_scores[2], g_end_scores[3]);
     }
     const int me = (int)data_0209f250;
+    /* the count shown is the players still in the match (lane DROPOUT1) */
+    int shown = 0;
+    for (int i = 0; i < np; ++i)
+        shown += vs_in_play(i);
     switch (vs_banner_mode()) {
     case 2: {                                /* all */
         /* snprintf RETURNS THE LENGTH IT WANTED, not the length it wrote, so
@@ -1848,15 +1895,15 @@ static int vs_score_list(char *out, int cap, int np, int best)
             pick[k] = g_end_scores[bi];
         }
         return std::snprintf(out, (size_t)cap, "%d - %d - %d - %d  (%d players)",
-                             pick[0], pick[1], pick[2], pick[3], np);
+                             pick[0], pick[1], pick[2], pick[3], shown);
     }
     default: {                               /* basic */
         const int mine = (me >= 0 && me < np) ? g_end_scores[me] : 0;
         if (me == best)
             return std::snprintf(out, (size_t)cap, "%d   (%d players)",
-                                 g_end_scores[best], np);
+                                 g_end_scores[best], shown);
         return std::snprintf(out, (size_t)cap, "%d   you %d   (%d players)",
-                             g_end_scores[best], mine, np);
+                             g_end_scores[best], mine, shown);
     }
     }
 }
@@ -1894,11 +1941,8 @@ extern "C" int port_vs_match_end_banner(char *out, int n)
        not over four. What the DISPLAY does with sixteen scores is a separate
        question and is answered below. */
     const int np = vs_players();
-    int best = 0, ties = 0;
-    for (int i = 1; i < np; ++i)
-        if (g_end_scores[i] > g_end_scores[best]) best = i;
-    for (int i = 0; i < np; ++i)
-        if (i != best && g_end_scores[i] == g_end_scores[best]) ++ties;
+    int ties = 0;
+    const int best = vs_end_best(np, &ties);
     if (ties) {
         int w = std::snprintf(out, (size_t)n, "MATCH OVER  -  DRAW  ");
         if (w < 0) w = 0;
@@ -1922,6 +1966,54 @@ extern "C" int port_vs_match_end_banner(char *out, int n)
     return 1;
 }
 
+/* ---- WHO IS STILL IN THE MATCH (multiplayer 1.0, lane DROPOUT1) ------------
+ *
+ * The carrier's seat mask (hal/comms_loopback.cpp, port_vs_seat_live_mask) is
+ * the set of slots the round the game is simulating carried: the same on
+ * every console at the same round, so anything keyed on it here is lockstep
+ * state, never a local opinion. A slot that was in play and is no longer
+ * (it quit with a Bye, was retired after 3 s of silence, or its console died)
+ * has LEFT, from that round on, for good.
+ *
+ * Read once a frame from port_vs_match_end_hold, before the actor walk, so the
+ * round the walk is about to run is the one it acts on. 0 from the carrier
+ * means no session (solo, the VS debug row, a test with no transport) or no
+ * round yet: nothing is tracked and every path below is the old one. Not under
+ * rollback: a rewind restores the world to before a departure and this latch
+ * would not run again on the replay (rollback returns after 1.0). Nothing
+ * changes once the match is decided (g_end_fired): the scores are latched and
+ * the consoles are about to close.
+ * ------------------------------------------------------------------------- */
+extern "C" unsigned port_vs_seat_live_mask(void);     /* hal/comms_loopback.cpp */
+extern "C" unsigned port_vs_seat_mask_round(void);    /* ... and its round      */
+extern "C++" { namespace port { bool comms_rb_mode(); } }   /* this block is extern "C" */
+
+static void vs_track_seats(void)
+{
+    if (data_0209f2d8 != 1 || g_end_fired >= 0)
+        return;
+    const unsigned live = port_vs_seat_live_mask();
+    if (live == 0 || port::comms_rb_mode())
+        return;
+    const int np = vs_players();
+    const unsigned all = np >= 32 ? ~0u : ((1u << np) - 1u);
+    g_vs_seen |= live & all;
+    const unsigned gone = g_vs_seen & ~live & ~g_vs_left & all;
+    if (!gone)
+        return;
+    const unsigned round = port_vs_seat_mask_round();
+    for (int k = 0; k < np; ++k) {
+        if (!(gone >> k & 1u))
+            continue;
+        g_vs_left |= 1u << k;
+        const char *nick = vs_name_for(k);
+        fprintf(stderr, "[vs] slot %d left at round %u (%s): %d player(s) "
+                "still in the match\n", k, round, nick ? nick : "no name",
+                vs_popcount(g_vs_seen & ~g_vs_left));
+    }
+    fflush(stderr);
+}
+
 extern "C" void port_vs_match_end_hold(void)
 {
     static int on = -1;
@@ -1929,6 +2021,7 @@ extern "C" void port_vs_match_end_hold(void)
         const char *e = std::getenv("SM64DS_VS_END_FREEZE");
         on = (e && e[0] == '0') ? 0 : 1;
     }
+    vs_track_seats();
     if (!on || g_end_fired < 0 || data_0209f2d8 != 1)
         return;
     for (int i = 0; i < vs_players(); ++i) {
@@ -1958,6 +2051,9 @@ extern "C" int port_vs_match_end_poll(int frame)
                entry re-seeds one tagger from a clean team array. */
             port_luigi_match_reset();
         }
+        /* and who was in the match: the next one starts with nobody gone */
+        g_vs_seen = 0;
+        g_vs_left = 0;
         /* Outside VS the king match is disarmed, so the next VS entry re-zeroes
            the points. This is the only reset point, so a king match always
            starts from zero however it was reached. */
@@ -2116,8 +2212,12 @@ extern "C" int port_vs_match_end_poll(int frame)
            so the banner, the winner pick and the marker all read the score the
            king match was actually decided on (this also makes a king time-up
            pick the points leader, not the carried-star leader). */
+        /* A slot that LEFT the match scores nothing (lane DROPOUT1, plan G2):
+           a player who quit while leading is never named the winner -- not
+           by the banner, not by the marker the launcher posts. */
         for (int i = 0; i < np_end; ++i)
-            g_end_scores[i] = (king_target > 0) ? g_king_points[i]
+            g_end_scores[i] = !vs_in_play(i) ? 0
+                            : (king_target > 0) ? g_king_points[i]
                                                 : (int)data_0209f310[i];
         g_end_total = (int)NumVsStarsObtained();
         if (luigi_end != 0)
@@ -2226,11 +2326,8 @@ extern "C" int port_vs_match_end_poll(int frame)
     const int np_marker = vs_players();
     int win_slot = -1;
     {
-        int b = 0, t = 0;
-        for (int i = 1; i < np_marker; ++i)
-            if (g_end_scores[i] > g_end_scores[b]) b = i;
-        for (int i = 0; i < np_marker; ++i)
-            if (i != b && g_end_scores[i] == g_end_scores[b]) ++t;
+        int t = 0;
+        const int b = vs_end_best(np_marker, &t);
         if (!t) win_slot = b;
     }
     /* THE MARKER'S SCORE FIELD CARRIES EVERY PLAYER, always, whatever the
