@@ -6151,7 +6151,13 @@ static void menu_draw(const OvlSurface &fb)
     /* the disk suffix tells the player whether a save will outlive the run: it
        does only when the arena is at its fixed base, which is what lets a disk
        state's pointers relocate on the next launch (hal/lk7_persist.cpp). */
-    if (ss_cutscene_running())
+    /* online (the hub leaves this menu openable) both rows say they are off,
+       so the row agrees with what enter will do */
+    const int ss_off_online = ss_online_why() != 0;
+    if (ss_off_online)
+        snprintf(ln[MENU_SAVESTATE], sizeof ln[0],
+                 "save state        F8   (off online)");
+    else if (ss_cutscene_running())
         snprintf(ln[MENU_SAVESTATE], sizeof ln[0],
                  "save state        F8   (not during cutscenes)");
     else
@@ -6163,6 +6169,7 @@ static void menu_draw(const OvlSurface &fb)
        has an empty slot and a full disk -- and the row used to answer that with
        "(no state saved)", which is exactly wrong. */
     snprintf(ln[MENU_LOADSTATE], sizeof ln[0], "load state        F9   %s",
+             ss_off_online ? "(off online)" :
              lk6_savestate_has() ? "(restore slot)"
                                  : (lk7_persist_present() ? "(load from disk)"
                                                           : "(no state saved)"));
