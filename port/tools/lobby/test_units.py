@@ -3488,6 +3488,61 @@ def test_a_quitters_result_does_not_end_the_match():
         check("[4P] and it was not counted", 4 not in room.result_votes)
 
 
+def test_the_new_host_played_the_match():
+    """REVLOBBYJOIN1 NOTE B: the new host is picked from the seats that were
+    playing the match the host's leaving ended, not from whoever the
+    end-of-match dial seated (a joiner who waited on a freed low seat)."""
+    print("\n-- L-J1B: a host leaving mid-match passes to a seat that played it")
+    with game_max(4, seats=4):
+        for state in ("arming", "go", "in_match"):
+            reset()
+            code, room, toks, match = _running(4, state=state)
+            S.do_leave({"v": 5, "room": code, "token": toks[1]},
+                       "10.0.0.2", 1010.0)
+            st, late = join(code, "late", who="10.0.0.9", now=1011.0,
+                            pre_ok=True)
+            check("[%s] the joiner waits on the freed seat 2" % state,
+                  st == 200 and late["member"] == 2
+                  and room.members[2].playing is False, (st, late))
+            S.do_leave({"v": 5, "room": code, "token": toks[0]},
+                       "10.0.0.1", 1012.0)
+            check("[%s] the new host is seat 3, who played the match, not "
+                  "the joiner on seat 2" % state,
+                  room.state == "lobby" and room.host_seat == 3
+                  and room.events[-1]["kind"] == "host"
+                  and room.events[-1]["seat"] == 3,
+                  (room.host_seat, room.events[-1]))
+            check("[%s] the joiner still plays the next match" % state,
+                  room.members[2].playing is True
+                  and sorted(s for s in room.members
+                             if room.members[s].playing) == [2, 3, 4],
+                  {s: m.playing for s, m in room.members.items()})
+            st, p = start(code, toks[2], who="10.0.0.3", now=1020.0)
+            check("[%s] the new host starts as the parent in slot 0" % state,
+                  st == 200 and room.slot_of == {3: 0, 2: 1, 4: 2}
+                  and S.member_plan(room, 3)["role"] == "parent",
+                  (st, room.slot_of))
+
+        # A host leaving in lobby: no match, the rule is unchanged.
+        reset()
+        code, room, toks, match = _running(3, state="in_match")
+        _result(code, toks[0], match)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1200.0)
+        check("[lobby] no match on: the lowest playing seat hosts, as before",
+              room.host_seat == 2, room.host_seat)
+
+        # Every seat that played has gone: the lowest playing seat hosts.
+        reset()
+        code, room, toks, match = _running(2, state="in_match")
+        st, w = join(code, "w", who="10.0.0.9", now=1010.0, pre_ok=True)
+        S.do_leave({"v": 5, "room": code, "token": toks[1]}, "10.0.0.2", 1011.0)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1012.0)
+        check("[none left] only the waiter is left: it hosts and plays",
+              room.state == "lobby" and room.host_seat == w["member"]
+              and room.members[w["member"]].playing is True,
+              (room.state, room.host_seat))
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -3546,6 +3601,7 @@ def main():
     test_waiting_join_floods_hit_the_caps()
     test_the_host_leaving_passes_the_host_on()
     test_a_quitters_result_does_not_end_the_match()
+    test_the_new_host_played_the_match()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

@@ -1852,18 +1852,23 @@ def do_leave(body, who, now):
     return 200, {"ok": True}
 
 
-def pass_host(room):
+def pass_host(room, played=()):
     """Hand a VS room's host role on after its host left (run mp1, L-J1).
 
-    THE NEW HOST IS THE LOWEST-NUMBERED PLAYING SEAT, or the lowest seat when
-    nobody is playing. A player rather than simply the lowest seat, because
+    THE NEW HOST IS THE LOWEST-NUMBERED SEAT THAT PLAYED THE MATCH THE HOST'S
+    LEAVING ENDED (`played`, taken by drop_member before the match was
+    reset), so somebody who joined mid-match and waited on a freed low seat
+    number is not made host ahead of the people who played it. With no match
+    on, or none of its players left, it is the lowest-numbered PLAYING seat,
+    or the lowest seat when nobody is playing. A player rather than simply
+    the lowest seat, because
     the host is the parent of the next match and apply_dial never demotes
     it: a watcher made host would be forced into play past the dial. The
     seat number does not change (free_seat's property 1); what changes is
     that the host is no longer always seat 1, which is why assign_slots puts
     the host in slot 0 explicitly. Called in lobby only: a running match was
     ended first (match_to_lobby), so the new host starts the next one."""
-    ps = playing_seats(room)
+    ps = [s for s in played if s in room.members] or playing_seats(room)
     new = ps[0] if ps else min(room.members)
     room.host_seat = new
     m = room.members[new]
@@ -1916,11 +1921,15 @@ def drop_member(room, seat, why):
         # dropped seats are in the next match. Then the host role passes on
         # and the new host presses Start. Seamless mid-match host hand-over
         # is after 1.0. (Before L-J1 this closed the room for everybody.)
+        # The seats still playing the match are read BEFORE the reset: after
+        # it the dial has seated the waiting joiners too, and the host should
+        # pass to somebody who played (REVLOBBYJOIN1 note B).
+        played = sorted(s for s in room.slot_of if in_frozen_match(room, s))
         if room.state != "lobby":
             match_to_lobby(room, "host_left")
         else:
             room.apply_dial()
-        pass_host(room)
+        pass_host(room, played)
         return
     # NOBODY IS PROMOTED INTO A FROZEN MATCH (run mp1, L-J1). From `start`
     # until the room is back in lobby the roster, the slot map and the names
