@@ -76,6 +76,7 @@
 extern "C" {
 extern unsigned char data_0209f2d8;        /* game mode: 0 adventure, 1 VS */
 extern void         *data_0209f394[];      /* per-slot Player* (null = no body) */
+extern unsigned char data_0209fc5c[];      /* per-seat live byte, 16 wide */
 extern unsigned char data_0209f250;        /* local player index */
 extern void port_player_set_character(void *player, unsigned ch);
 }
@@ -220,7 +221,25 @@ extern "C" void port_luigi_state_set(const int *team, int seeded)
     g_li_seeded = seeded;
 }
 
-/* survivors still alive: slots that have a body and are NOT on Luigi's team.
+/* IN THE MATCH: a slot with a body whose seat is still live. A player who
+ * LEAVES a VS match keeps his body in data_0209f394 -- hal/star_flow.cpp's
+ * vs_remove_body parks it far out of the level and clears the seat's live
+ * byte data_0209fc5c[k], the way the cartridge's own in-match drop does
+ * (src/func_02030b58.c) -- so counting bodies counts the leaver for the rest
+ * of the match. A survivor who left then stayed a survivor nobody could reach:
+ * the Luigis could never infect "everyone", and the round ran to the clock
+ * and went to the survivors even with every player still there caught.
+ * The live byte is cleared from the seat mask the round carries
+ * (port_vs_seat_live_mask / port_vs_seat_mask_round), at the same round on
+ * every console, and it is arena state, so a rewind puts it back with the
+ * world. Once the match is decided star_flow stops removing seats, so the
+ * counts the banner reads afterwards hold still. */
+static int li_in_match(int i)
+{
+    return data_0209f394[i] && data_0209fc5c[i];
+}
+
+/* survivors still alive: slots in the match that are NOT on Luigi's team.
  * -1 when the mode is off, so a caller can tell "no survivors" (0) from "not
  * this mode" (-1). */
 extern "C" int port_luigi_survivors_alive(void)
@@ -228,16 +247,17 @@ extern "C" int port_luigi_survivors_alive(void)
     if (!g_li_on) return -1;
     int n = 0;
     for (int i = 0; i < kPortMaxPlayers; ++i)
-        if (data_0209f394[i] && !g_li_team[i]) ++n;
+        if (li_in_match(i) && !g_li_team[i]) ++n;
     return n;
 }
 
-/* how many bodies are in this match at all (team or not). */
+/* how many players are in this match at all (team or not); a slot that left
+ * is not one of them. */
 extern "C" int port_luigi_match_slots(void)
 {
     int n = 0;
     for (int i = 0; i < kPortMaxPlayers; ++i)
-        if (data_0209f394[i]) ++n;
+        if (li_in_match(i)) ++n;
     return n;
 }
 
@@ -258,7 +278,7 @@ extern "C" void port_luigi_tag_player(const void *victim)
 {
     if (!g_li_on) return;
     const int s = li_slot_of(victim);
-    if (s < 0 || g_li_team[s]) return;
+    if (s < 0 || g_li_team[s] || !li_in_match(s)) return;
     if (!g_port_rb_replaying)
     std::fprintf(stderr, "[luigi] TAG: slot %d converted to Luigi "
             "(survivors left = %d)\n", s, port_luigi_survivors_alive() - 1);
@@ -395,14 +415,15 @@ extern "C" void port_luigi_hittest(int frame)
 
     /* TAG-ALL: Luigi tags every survivor through the real resolver, so the next
        match-end poll sees survivors_alive==0 and fires the LUIGIS-win path.
-       Proves the all-infected win end to end from real tags. */
+       Proves the all-infected win end to end from real tags. Only players
+       still in the match: a Luigi can not reach a body that left (parked). */
     if (tagall && g_li_on && port_luigi_seeded()) {
         int luigi = -1;
         for (int i = 0; i < kPortMaxPlayers; ++i)
-            if (data_0209f394[i] && g_li_team[i]) { luigi = i; break; }
+            if (li_in_match(i) && g_li_team[i]) { luigi = i; break; }
         if (luigi >= 0) {
             for (int i = 0; i < kPortMaxPlayers; ++i)
-                if (data_0209f394[i] && !g_li_team[i])
+                if (li_in_match(i) && !g_li_team[i])
                     li_stage_hit(data_0209f394[i], data_0209f394[luigi], 0x400);
             std::fprintf(stderr, "[luigi] TAGALL f%d: survivors_alive now %d\n",
                          frame, port_luigi_survivors_alive());
@@ -415,7 +436,7 @@ extern "C" void port_luigi_hittest(int frame)
        in A must not turn C's attacker into a Luigi (the trap the first cut hit). */
     int luigi = -1, surv[kPortMaxPlayers], nsurv = 0;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
-        if (!data_0209f394[i]) continue;
+        if (!li_in_match(i)) continue;
         if (g_li_team[i]) { if (luigi < 0) luigi = i; }
         else surv[nsurv++] = i;
     }
