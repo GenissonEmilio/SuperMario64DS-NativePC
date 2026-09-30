@@ -210,6 +210,11 @@ Why classify(const unsigned char *p, int len, int *kind) {
         if (len < 12 || len > 12 + kHubChatTextMax) return kBadLen;
         if (p[4] != 1) return kBadVersion;
         const int text_len = p[7];
+        // design.txt 6.3 addendum (run mp1, lane BUBBLE1): the TYPING FRAME is
+        // the bare 12-byte head with flags bit0 set and text_len 0. The chat
+        // layer (hal/adv_chat.cpp) checks its flags, state and sequence.
+        if (text_len == 0 && len == (int)sizeof(HubChatHead) && (p[6] & 1))
+            return kOk;
         if (text_len < 1 || text_len > kHubChatTextMax ||
             (int)sizeof(HubChatHead) + text_len != len) return kBadLen;
         return kOk;
