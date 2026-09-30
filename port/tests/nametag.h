@@ -162,6 +162,9 @@ int port_adventure_ghost_stars(int slot);
 unsigned port_adventure_ghost_rgb(int slot);
 int port_adventure_ghost_fade(int slot);
 int port_adventure_ghost_drawpos(int slot, int out[3]);
+/* the VS round's seat mask, the same on every console at the same frame
+   (hal/comms_loopback.cpp; 0 = no VS carrier session, no information) */
+unsigned port_vs_seat_live_mask(void);
 }
 
 /* ADVENTURE GHOSTS: the same head tags label the ghosts in an adventure
@@ -554,12 +557,18 @@ static void nt_draw(const OvlSurface &fb)
     if (!nt_font_build()) return;
 
     const int me = (int)data_0209f250;
+    const unsigned vs_live = adventure ? 0u : port_vs_seat_live_mask();
     NtBody bodies[kPortMaxPlayers];
     int nb = 0;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
         const char *p = (const char *)data_0209f394[i];
         if (!p) continue;
         if (data_0209fc5c[i] == 0) continue;     /* Player::Render's own guard */
+        /* A VS PLAYER WHO LEFT (quit, refused at the door, retired): the round
+           no longer carries his slot, from the same round on every console, so
+           no tag and no bubble float over the body he left behind. A mask of
+           0 is "no information yet" and skips nothing. */
+        if (vs_live && !((vs_live >> i) & 1u)) continue;
         /* ADVENTURE co-op (M2): in a ghost session, only tag a peer present in
            this console's level -- a body in another level is despawned and
            draws nothing, so a name over it would float on empty space. VS is
