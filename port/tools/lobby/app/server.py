@@ -2065,7 +2065,8 @@ def assign_slots(room):
     order, so a room whose host is seat 1 gets exactly the map it always did.
     """
     ps = playing_seats(room)
-    order = ([room.host_seat] if room.host_seat in ps else []) +         [s for s in ps if s != room.host_seat]
+    order = ([room.host_seat] if room.host_seat in ps else []) + \
+        [s for s in ps if s != room.host_seat]
     return {seat: slot for slot, seat in enumerate(order)}
 
 

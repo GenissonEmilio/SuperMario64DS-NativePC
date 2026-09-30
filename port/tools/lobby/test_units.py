@@ -3656,6 +3656,19 @@ def test_every_guest_agrees_and_the_host_is_silent():
               (room.state, room.match))
 
 
+def test_server_line_width():
+    """REVLOBBYJOIN1 hygiene nit: assign_slots lost a line break and made the
+    only line of server.py over 100 characters."""
+    print("\n-- L-J1B: server.py keeps its lines at 100 characters or fewer")
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "app", "server.py")
+    with open(path, encoding="utf-8") as f:
+        long = [(n, len(line.rstrip("\r\n")))
+                for n, line in enumerate(f, 1)
+                if len(line.rstrip("\r\n")) > 100]
+    check("no line of server.py is over 100 characters", not long, long)
+
+
 def Member_fields(m):
     return [k for k in m.__slots__]
 
@@ -3716,6 +3729,7 @@ def main():
     test_a_quitters_result_does_not_end_the_match()
     test_the_new_host_played_the_match()
     test_every_guest_agrees_and_the_host_is_silent()
+    test_server_line_width()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:
