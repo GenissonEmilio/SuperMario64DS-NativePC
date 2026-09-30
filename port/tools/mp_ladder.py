@@ -1200,6 +1200,12 @@ def hub_env(run, k, frames, relay):
     e["SM64DS_COMMS_RELAY"] = relay
     e["SM64DS_COMMS_CODE"] = run.code
     e["SM64DS_WINDOW_SELFTEST"] = str(frames)
+    # A player's pace (30 fps), as a real hub runs. The hub rungs are timed on
+    # the wall clock (0.4 s start stagger, a joiner 10 s in, [ghost:tick] and
+    # the body fade), so unpaced consoles made the verdict depend on how busy
+    # the box was: on a quiet box hub16 and hub4-joinleave ended before the
+    # last joiner was heard or the leaver had gone.
+    e["SM64DS_PACE_SELFTEST"] = "1"
     return d, e
 
 
@@ -1233,15 +1239,8 @@ def heard_all(ck, k, c, n):
 def r_hub(L, run, r):
     """Hub members through relay v2: no rounds, every console hears every other
     and draws bodies for the HUB_DRAWN nearest. Seats are the relay's, so what is
-    drawn is judged as a count of live ghost slots.
-
-    Past HUB_DRAWN others the verdict needs one [ghost:tick] that hears every
-    other console at once, and the ticks come on the wall clock. The consoles
-    start 0.4 s apart and run unpaced, so on an idle box the first ones used
-    to finish their 450 frames before the last joiner's first tick: that
-    console never heard seat 0 while seat 0 had heard everyone. Those rungs
-    run 900 frames, long enough for every console to overlap the last one."""
-    n, frames = r.n, r.frames or (450 if r.n - 1 <= HUB_DRAWN else 900)
+    drawn is judged as a count of live ghost slots."""
+    n, frames = r.n, r.frames or 450
     relay = run.start_relay()
     specs = []
     for k in range(n):
