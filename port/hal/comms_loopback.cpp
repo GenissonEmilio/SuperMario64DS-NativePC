@@ -2960,6 +2960,30 @@ void rb_retire_slot(int k, const char *why) {
     pipe_try_broadcast();
 }
 
+// A GOODBYE IS SENT MORE THAN ONCE (lane DROPOUT1; MPFOLD1's loss20 row). A
+// console used to send ONE Bye when it closed, and a lost Bye turned a player
+// who LEFT into a silent seat: 3 s later the laggard rule retired it as lost
+// connection, and when it was the last opponent the host ended "LOST THE VS
+// MATCH". lb_close now sends kByeCopies copies kByeGapMs apart (a burst that
+// eats one rarely eats all three), and the receiving end handles the first and
+// counts the rest: the same sender's Bye again within kByeRepeatMs is a copy.
+// The laggard rule's retire Bye (tagged, sent once, one per retired slot) is
+// not deduplicated; the rounds carry a retire even when its Bye is lost.
+enum : int { kByeCopies = 3, kByeGapMs = 50 };
+enum : unsigned { kByeRepeatMs = 1000 };
+unsigned g_bye_last_ms[kCommsMaxPlayers];
+unsigned long long g_bye_copies = 0;         // copies received and ignored
+bool bye_repeat(int from) {
+    if (from < 0 || from >= kCommsMaxPlayers) return false;
+    const unsigned t = now_ms();
+    if (g_bye_last_ms[from] && t - g_bye_last_ms[from] < kByeRepeatMs) {
+        ++g_bye_copies;
+        return true;
+    }
+    g_bye_last_ms[from] = t ? t : 1;
+    return false;
+}
+
 void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
     (void)from;
     if (k > 0 && k < kCommsMaxPlayers && !(g_lg_retired & (1u << k))) {
@@ -3313,6 +3337,7 @@ void on_parent_packet(const Packet &p, const sockaddr_in &from, int k) {
         }
         break;
     case kTypeBye:
+        if (bye_repeat(k)) break;        // a copy of a goodbye already handled
         if (g_rollback && (g_live & (1u << k))) rb_retire_slot(k, "Bye");
         g_live &= ~(1u << k);
         g_stage_mask &= ~(1u << k);
@@ -3945,6 +3970,8 @@ void on_child_packet(const Packet &p, const sockaddr_in &from, int k) {
                          "match went on without it; you lost connection to "
                          "the match. Back to idle.\n", g_slot);
             match_lost("the host dropped this console from the match");
+        } else if (bye_repeat(0)) {
+            break;                       // a copy of the host's goodbye
         } else if (std::memcmp(p.blocks[0], kDoneTag, 4) == 0) {
             g_host_done = true;
             std::fprintf(stderr, "[comms:loopback] the parent left: the match "
@@ -4779,8 +4806,14 @@ void lb_close() {
     // session itself without an error), so this Bye is a goodbye, not a loss.
     if (over || (!g_exiting && g_frames_produced && (data_020a0f1c & 1u) == 0))
         std::memcpy(b.blocks[0], kDoneTag, 4);
-    if (g_role == kRoleParent) send_to_children(b);
-    else                       send_to_slot(b, 0);
+    // kByeCopies copies, kByeGapMs apart (see bye_repeat): one lost datagram
+    // no longer turns a player who left into a lost connection 3 s later.
+    for (int copy = 0; copy < kByeCopies; ++copy) {
+        if (copy) Sleep(kByeGapMs);
+        if (g_role == kRoleParent) send_to_children(b);
+        else                       send_to_slot(b, 0);
+    }
+    std::memset(g_bye_last_ms, 0, sizeof g_bye_last_ms);
     WS.closesocket(g_sock);
     g_sock  = INVALID_SOCKET;
     g_open  = false;
