@@ -20,6 +20,17 @@
  * smoothed model's extra triangles are added. The fill is the cost, and the
  * card does fill.
  *
+ * THE WHOLE FRAME (run cardfull). The translucent polygons, the shadow volumes,
+ * the toon and highlight polygons and the edge smoothing can be drawn on the
+ * card too, into the same targets, so that one finished 3D picture is read back
+ * instead of an opaque one that the processor then finishes. env
+ * SM64DS_RENDERER_FULL selects it (1 whole frame, 0 the opaque-only card
+ * above); a device below Direct3D feature level 11_0, or any failure of the
+ * whole-frame pass, drops back to the opaque-only card for the rest of the run
+ * with one line, and a failure of the card itself drops back to the software
+ * rasteriser as before. The in-process A/B (SM64DS_RENDERER_AB=1) compares the
+ * whole frame in this mode.
+ *
  * WHAT IT IS NOT. It is not byte-identical to the software path and cannot be:
  * two rasterisers with different fill rules and different float paths tie
  * differently on edges. The software path stays the default, stays the byte

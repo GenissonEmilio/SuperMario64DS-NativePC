@@ -2,6 +2,73 @@
  * setting is and hal/gpu_device.h for the one device it shares with the
  * present path.
  *
+ * ================== THE WHOLE FRAME (run cardfull, CARDFULL1) ==================
+ *
+ * Everything below this block was written for a card that draws the OPAQUE pass
+ * only. Since run cardfull the card draws the SECOND pass too -- the
+ * translucent polygons, the mode-3 shadow volumes and the mode-2 toon and
+ * highlight polygons the opaque pass already handled -- and the edge smoothing
+ * as well, all on its own targets, and the picture comes back to the processor
+ * ONCE, finished. SM64DS_RENDERER_FULL picks it: 1 draws the whole frame there,
+ * 0 is the opaque-only card described below, unchanged. That opaque-only card
+ * is also what a card older than Direct3D 11 (feature level 11_0) gets, because
+ * the edge smoothing needs shader model 5, and what any run gets after the
+ * whole-frame mode has given up (one line says so).
+ *
+ * THE STENCIL BUFFER IS WHAT MAKES THE SECOND PASS EXPRESSIBLE. gx.cpp keeps
+ * three per-pixel pieces of state for it, and an 8-bit stencil holds all three:
+ *
+ *   bit 7 (0x80)   the shadow mask bit (gx.cpp's g_stencil)
+ *   bit 6 (0x40)   "this pixel took a translucent fragment this frame"
+ *   bits 0..5      that fragment's polygon ID           (together: g_tlattr,
+ *                                                        0x40 | polyid)
+ *   and the OPAQUE polygon ID (g_attrid), which a shadow polygon compares
+ *   against, stays in the polygon-ID colour target and is READ by the shadow
+ *   shader as a texture. It is written only by the opaque pass, so it never
+ *   needs to be both read and drawn in one draw.
+ *
+ *   translucent polygon   stencil test NOT_EQUAL against 0x40|polyid under a
+ *                         0x7F mask (the shadow bit does not take part), depth
+ *                         test LESS, no depth write; a fragment that passes
+ *                         REPLACEs the low seven bits with 0x40|polyid. That is
+ *                         the equal-ID refusal: a pixel that already took this
+ *                         ID refuses the next fragment of it.
+ *   shadow mask           depth LESS; where the DEPTH TEST FAILS the stencil
+ *   (mode 3, ID 0)        op sets bit 7. No colour, no depth, no pixel shader.
+ *   shadow polygon        stencil test EQUAL on bit 7 (the mask is set); every
+ *   (mode 3, ID != 0)     fragment that reaches the output merger clears bit 7
+ *                         (ZERO, whether the depth test passes or not), and the
+ *                         pixel shader draws only where the opaque polygon ID
+ *                         underneath differs. It never discards, because a
+ *                         discarded fragment skips the stencil op and gx.cpp
+ *                         clears the bit at every stencilled pixel the polygon
+ *                         touches; "nothing to draw" is a colour alpha of 0.
+ *   mask groups           a new mask group clears bit 7 of the whole picture,
+ *                         which is one full-screen draw with a write mask of
+ *                         0x80, at exactly the triangles gx.cpp's g_clr_cum
+ *                         counts.
+ *   an opaque fragment    in the second pass (a translucent-class polygon whose
+ *   in the second pass    texel came out at full alpha) writes depth and clears
+ *                         the translucent record (stencil ZERO under 0x7F), so
+ *                         a polygon that can reach full alpha is drawn twice,
+ *                         once for the pixels under 31 and once for the pixels
+ *                         at 31 (see hal/gpu_raster.hlsl); a card cannot write
+ *                         depth for some pixels of a draw and not others.
+ *
+ * THE COLOUR TARGET'S ALPHA IS COVERAGE in this mode (a MAX blend on the alpha
+ * channel only), which frees the polygon-ID target from carrying it and lets
+ * the edge smoothing read colour and coverage out of one texture.
+ *
+ * WHERE THIS DIFFERS FROM gx.cpp, beyond the opaque pass's own list below:
+ *   - THE BLEND ROUNDS TO NEAREST and gx.cpp's integer divide by 31 truncates,
+ *     so a translucent pixel can land one step higher.
+ *   - A POLYGON THAT CAN REACH FULL ALPHA is drawn as two halves per batch (the
+ *     pixels under 31, then the pixels at 31), not interleaved triangle by
+ *     triangle. Overlapping triangles of one batch that mix the two classes can
+ *     therefore resolve in the other order.
+ *   - A FRAGMENT WITH A BLEND WEIGHT OF ZERO still marks coverage (the weight
+ *     is held at 1/1024, which the colour rounds away).
+ *
  * ============================ THE SEAM ====================================
  *
  * ntr/gx.cpp draws a frame in two passes over the same buffers: an OPAQUE pass
@@ -129,6 +196,15 @@ int g_fail_readback;   /* SM64DS_RENDERER_FAIL_READBACK: the other drill */
    takes: the setting is on, no device starts, the game draws every frame the
    ordinary way and says so once. */
 int g_fail_device;
+/* THE WHOLE-FRAME MODE (run cardfull). SM64DS_RENDERER_FULL=1 turns it on,
+   0 is the opaque-only card of run hd2. g_full_dead is the same one-way latch
+   g_down is, for this part alone: a card that cannot do the second pass falls
+   back to the opaque-only path for the rest of the run and keeps drawing. */
+int g_full_on;
+int g_full_dead;
+int g_fail_full;       /* SM64DS_RENDERER_FAIL_FULL: the drill for the above */
+int g_aa_on_full = -1; /* SM64DS_RENDERER_AA: 0 keeps the smoothing on the processor */
+long long g_full_smooth, g_pre_kept;   /* frames smoothed whole-frame, and how many kept the pre-smoothing copy */
 
 /* ---- THE DEPTH RANGE, AND WHY IT IS HALVED ------------------------------
    ntr/gx.cpp clears its depth buffer to 1e30 and tests LESS, so "nothing has
@@ -181,6 +257,16 @@ ID3D11DepthStencilState *g_dss;
 ID3D11BlendState     *g_blend;
 ID3D11Buffer         *g_vb;
 UINT                  g_vb_verts;
+/* the whole-frame pipeline (run cardfull), built on the first frame that wants
+   it: the translucent, translucent-opaque and shadow pixel shaders, the
+   full-screen vertex shader the mask clear and the smoothing share, the five
+   depth-stencil states and the blend that carries coverage in alpha */
+ID3D11VertexShader      *g_full_vs;
+ID3D11PixelShader       *g_ps_tl, *g_ps_tlop, *g_ps_shadow, *g_ps_faa;
+ID3D11DepthStencilState *g_dss_tl, *g_dss_tlop, *g_dss_mask, *g_dss_shadow,
+                        *g_dss_clrm;
+ID3D11BlendState        *g_blend_full;
+bool                     g_full_ready;
 /* THE TOON TABLE the pixel shader reads for a mode-2 polygon (the
    ToonTable constant buffer, 32 float4, rgb 0..255): ntr/gx.cpp's frame table,
    uploaded only on a frame that has one and only when it changed */
@@ -206,6 +292,14 @@ ID3D11RenderTargetView *g_id_rtv;
 ID3D11Texture2D        *g_dep, *g_dep_stage;
 ID3D11DepthStencilView *g_dep_dsv;
 int                     g_rt_w, g_rt_h;
+/* the whole-frame targets' extras: the colour and polygon-ID targets are also
+   read as textures (the smoothing reads colour, the shadow shader reads the
+   ID), the depth target carries the stencil, and the smoothing has its own
+   result target and staging copy */
+bool                     g_rt_full;
+ID3D11ShaderResourceView *g_col_srv, *g_id_srv;
+ID3D11Texture2D          *g_fa_out, *g_fa_st;
+ID3D11RenderTargetView   *g_fa_rtv;
 
 /* ---- the texture cache on the card --------------------------------------- */
 
@@ -360,6 +454,129 @@ bool make_pipeline()
     return true;
 }
 
+/* ---- THE WHOLE-FRAME PIPELINE (run cardfull), made once ------------------- */
+
+/* The whole-frame mode gives up for the rest of the run, with one line, and the
+   opaque-only path takes over. Not fall_back: the card still draws. */
+void full_give_up(const char *why, HRESULT hr)
+{
+    if (g_full_dead) return;
+    g_full_dead = 1;
+    if (hr)
+        fprintf(stderr, "[renderer] the graphics card stops drawing the "
+                        "translucent polygons and the edge smoothing (%s, code "
+                        "%08x). It keeps drawing the opaque picture; the "
+                        "processor does the rest.\n", why, (unsigned)hr);
+    else
+        fprintf(stderr, "[renderer] the graphics card does not draw the "
+                        "translucent polygons and the edge smoothing (%s). It "
+                        "draws the opaque picture; the processor does the "
+                        "rest.\n", why);
+}
+
+static D3D11_DEPTH_STENCILOP_DESC sop(D3D11_STENCIL_OP fail,
+                                      D3D11_STENCIL_OP dfail,
+                                      D3D11_STENCIL_OP pass,
+                                      D3D11_COMPARISON_FUNC fn)
+{
+    D3D11_DEPTH_STENCILOP_DESC o;
+    o.StencilFailOp = fail;
+    o.StencilDepthFailOp = dfail;
+    o.StencilPassOp = pass;
+    o.StencilFunc = fn;
+    return o;
+}
+
+/* One depth-stencil state, front and back faces alike (nothing is culled on the
+   card, so the two are the same rule). */
+static ID3D11DepthStencilState *make_dss(bool depth, bool depth_write,
+                                         UINT8 rmask, UINT8 wmask,
+                                         D3D11_DEPTH_STENCILOP_DESC op)
+{
+    D3D11_DEPTH_STENCIL_DESC dd;
+    memset(&dd, 0, sizeof dd);
+    dd.DepthEnable = depth ? TRUE : FALSE;
+    dd.DepthWriteMask = depth_write ? D3D11_DEPTH_WRITE_MASK_ALL
+                                    : D3D11_DEPTH_WRITE_MASK_ZERO;
+    dd.DepthFunc = D3D11_COMPARISON_LESS;
+    dd.StencilEnable = TRUE;
+    dd.StencilReadMask = rmask;
+    dd.StencilWriteMask = wmask;
+    dd.FrontFace = op;
+    dd.BackFace = op;
+    ID3D11DepthStencilState *s = 0;
+    if (FAILED(g_dev->CreateDepthStencilState(&dd, &s))) return 0;
+    return s;
+}
+
+bool make_full_pipeline()
+{
+    if (g_full_ready) return true;
+    if (port_gpu_device_feature_level() < 0xb000) {   /* D3D_FEATURE_LEVEL_11_0 */
+        full_give_up("the card is older than Direct3D 11", 0);
+        return false;
+    }
+    HRESULT hr = g_dev->CreateVertexShader(kGpuAaVS, sizeof kGpuAaVS, 0, &g_full_vs);
+    if (FAILED(hr)) { full_give_up("the full-screen vertex shader would not load", hr); return false; }
+    hr = g_dev->CreatePixelShader(kGpuTlPS, sizeof kGpuTlPS, 0, &g_ps_tl);
+    if (FAILED(hr)) { full_give_up("the translucent pixel shader would not load", hr); return false; }
+    hr = g_dev->CreatePixelShader(kGpuTlopPS, sizeof kGpuTlopPS, 0, &g_ps_tlop);
+    if (FAILED(hr)) { full_give_up("the translucent-opaque pixel shader would not load", hr); return false; }
+    hr = g_dev->CreatePixelShader(kGpuShadowPS, sizeof kGpuShadowPS, 0, &g_ps_shadow);
+    if (FAILED(hr)) { full_give_up("the shadow pixel shader would not load", hr); return false; }
+    hr = g_dev->CreatePixelShader(kGpuFullAaPS, sizeof kGpuFullAaPS, 0, &g_ps_faa);
+    if (FAILED(hr)) { full_give_up("the smoothing pixel shader would not load", hr); return false; }
+
+    /* the translucent polygon: low seven stencil bits are 0x40 | polygon ID,
+       refuse the fragment when they already say this ID, else write them */
+    g_dss_tl = make_dss(true, false, 0x7F, 0x7F,
+        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
+            D3D11_STENCIL_OP_REPLACE, D3D11_COMPARISON_NOT_EQUAL));
+    /* its opaque half: depth written, the translucent record cleared */
+    g_dss_tlop = make_dss(true, true, 0xFF, 0x7F,
+        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
+            D3D11_STENCIL_OP_ZERO, D3D11_COMPARISON_ALWAYS));
+    /* the shadow mask: where the depth test FAILS set bit 7 (reference 0x80) */
+    g_dss_mask = make_dss(true, false, 0xFF, 0x80,
+        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_REPLACE,
+            D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_ALWAYS));
+    /* the drawn shadow: only where bit 7 is set, and every fragment that gets
+       that far clears it (reference 0x80 for the test, ZERO for the write) */
+    g_dss_shadow = make_dss(true, false, 0x80, 0x80,
+        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_ZERO,
+            D3D11_STENCIL_OP_ZERO, D3D11_COMPARISON_EQUAL));
+    /* a new mask group: clear bit 7 of everything the draw covers */
+    g_dss_clrm = make_dss(false, false, 0xFF, 0x80,
+        sop(D3D11_STENCIL_OP_ZERO, D3D11_STENCIL_OP_ZERO,
+            D3D11_STENCIL_OP_ZERO, D3D11_COMPARISON_ALWAYS));
+    if (!g_dss_tl || !g_dss_tlop || !g_dss_mask || !g_dss_shadow || !g_dss_clrm) {
+        full_give_up("a depth-stencil state was refused", 0);
+        return false;
+    }
+
+    /* colour blends by the shader's alpha (the DS's effective alpha over 31)
+       and the ALPHA channel keeps the largest alpha any fragment gave the
+       pixel, which is the coverage mark; see the banner at the top */
+    D3D11_BLEND_DESC bd;
+    memset(&bd, 0, sizeof bd);
+    bd.IndependentBlendEnable = TRUE;
+    bd.RenderTarget[0].BlendEnable = TRUE;
+    bd.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    bd.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    bd.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+    bd.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+    bd.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+    bd.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
+    bd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+    bd.RenderTarget[1].BlendEnable = FALSE;
+    bd.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+    hr = g_dev->CreateBlendState(&bd, &g_blend_full);
+    if (FAILED(hr)) { full_give_up("no blend state", hr); return false; }
+
+    g_full_ready = true;
+    return true;
+}
+
 /* WRAP, CLAMP AND MIRROR ARE PER AXIS, which is ntr/gx.cpp's tex_coord_i: a
    cleared repeat bit is CLAMP, repeat without flip is WRAP and repeat with
    flip is MIRROR. Built on demand and kept, so a level pays for the handful of
@@ -397,6 +614,12 @@ ID3D11SamplerState *sampler(int filter, int au, int av)
 
 void release_targets()
 {
+    if (g_fa_rtv) { g_fa_rtv->Release(); g_fa_rtv = 0; }
+    if (g_fa_st) { g_fa_st->Release(); g_fa_st = 0; }
+    if (g_fa_out) { g_fa_out->Release(); g_fa_out = 0; }
+    if (g_col_srv) { g_col_srv->Release(); g_col_srv = 0; }
+    if (g_id_srv) { g_id_srv->Release(); g_id_srv = 0; }
+    g_rt_full = false;
     if (g_col_rtv) { g_col_rtv->Release(); g_col_rtv = 0; }
     if (g_col_stage) { g_col_stage->Release(); g_col_stage = 0; }
     if (g_col) { g_col->Release(); g_col = 0; }
@@ -409,9 +632,9 @@ void release_targets()
     g_rt_w = g_rt_h = 0;
 }
 
-bool ensure_targets(int w, int h)
+bool ensure_targets(int w, int h, bool full)
 {
-    if (g_col && g_rt_w == w && g_rt_h == h) return true;
+    if (g_col && g_rt_w == w && g_rt_h == h && g_rt_full == full) return true;
     release_targets();
 
     D3D11_TEXTURE2D_DESC d;
@@ -425,27 +648,41 @@ bool ensure_targets(int w, int h)
     /* colour: the framebuffer's own byte order */
     d.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     d.BindFlags = D3D11_BIND_RENDER_TARGET;
+    if (full) d.BindFlags |= D3D11_BIND_SHADER_RESOURCE;   /* the smoothing reads it */
     HRESULT hr = g_dev->CreateTexture2D(&d, 0, &g_col);
     if (FAILED(hr)) { fall_back("no colour target", hr); return false; }
     hr = g_dev->CreateRenderTargetView(g_col, 0, &g_col_rtv);
     if (FAILED(hr)) { fall_back("no colour target view", hr); return false; }
+    if (full) {
+        hr = g_dev->CreateShaderResourceView(g_col, 0, &g_col_srv);
+        if (FAILED(hr)) { fall_back("no colour target reader", hr); return false; }
+    }
 
-    /* polygon ID plus the coverage bit */
+    /* polygon ID plus the coverage bit (whole-frame mode: the ID alone is what
+       matters, the shadow shader reads it) */
     d.Format = DXGI_FORMAT_R8_UINT;
+    d.BindFlags = D3D11_BIND_RENDER_TARGET;
+    if (full) d.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
     hr = g_dev->CreateTexture2D(&d, 0, &g_id);
     if (FAILED(hr)) { fall_back("no polygon-id target", hr); return false; }
     hr = g_dev->CreateRenderTargetView(g_id, 0, &g_id_rtv);
     if (FAILED(hr)) { fall_back("no polygon-id target view", hr); return false; }
+    if (full) {
+        hr = g_dev->CreateShaderResourceView(g_id, 0, &g_id_srv);
+        if (FAILED(hr)) { fall_back("no polygon-id target reader", hr); return false; }
+    }
 
     /* depth: typeless so the same texture can be a depth view for drawing and
-       a plain float copy for reading back */
-    d.Format = DXGI_FORMAT_R32_TYPELESS;
+       a plain float copy for reading back. The whole-frame mode adds the
+       stencil byte beside it (D32_FLOAT_S8X24: the float depth is the first
+       four bytes of every eight). */
+    d.Format = full ? DXGI_FORMAT_R32G8X24_TYPELESS : DXGI_FORMAT_R32_TYPELESS;
     d.BindFlags = D3D11_BIND_DEPTH_STENCIL;
     hr = g_dev->CreateTexture2D(&d, 0, &g_dep);
     if (FAILED(hr)) { fall_back("no depth target", hr); return false; }
     D3D11_DEPTH_STENCIL_VIEW_DESC vd;
     memset(&vd, 0, sizeof vd);
-    vd.Format = DXGI_FORMAT_D32_FLOAT;
+    vd.Format = full ? DXGI_FORMAT_D32_FLOAT_S8X24_UINT : DXGI_FORMAT_D32_FLOAT;
     vd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
     hr = g_dev->CreateDepthStencilView(g_dep, &vd, &g_dep_dsv);
     if (FAILED(hr)) { fall_back("no depth target view", hr); return false; }
@@ -460,12 +697,13 @@ bool ensure_targets(int w, int h)
     d.Format = DXGI_FORMAT_R8_UINT;
     hr = g_dev->CreateTexture2D(&d, 0, &g_id_stage);
     if (FAILED(hr)) { fall_back("no polygon-id readback buffer", hr); return false; }
-    d.Format = DXGI_FORMAT_R32_TYPELESS;
+    d.Format = full ? DXGI_FORMAT_R32G8X24_TYPELESS : DXGI_FORMAT_R32_TYPELESS;
     hr = g_dev->CreateTexture2D(&d, 0, &g_dep_stage);
     if (FAILED(hr)) { fall_back("no depth readback buffer", hr); return false; }
 
     g_rt_w = w;
     g_rt_h = h;
+    g_rt_full = full;
     return true;
 }
 
@@ -602,14 +840,17 @@ bool start()
     LARGE_INTEGER f;
     if (QueryPerformanceFrequency(&f)) g_qpf = f.QuadPart;
     fprintf(stderr, "[renderer] the 3D picture is drawn by \"%s\"%s, feature "
-            "level %u_%u, ready in %.1f ms. The translucent polygons, the "
-            "shadows and everything after them still run here.\n",
+            "level %u_%u, ready in %.1f ms. %s\n",
             port_gpu_device_adapter()[0] ? port_gpu_device_adapter() : "(unnamed)",
             port_gpu_device_is_warp() ? " (WARP, the software device Windows ships)"
                                       : "",
             (unsigned)((port_gpu_device_feature_level() >> 12) & 0xf),
             (unsigned)((port_gpu_device_feature_level() >> 8) & 0xf),
-            port_gpu_device_create_ms());
+            port_gpu_device_create_ms(),
+            g_full_on ? "The whole picture is drawn there, the translucent "
+                        "polygons, the shadows and the edge smoothing included."
+                      : "The translucent polygons, the shadows and everything "
+                        "after them still run here.");
     if (!make_pipeline()) return false;
     port_gpu_device_address_rows("after ", g_addrcheck);
     atexit(at_exit);
@@ -626,6 +867,18 @@ void at_exit()
                 g_frames, g_tris, g_batches, g_ms_build / (double)g_frames,
                 g_ms_draw / (double)g_frames, g_ms_read / (double)g_frames,
                 (unsigned)(g_tex_bytes / 1024));
+    {
+        /* THE CARD'S OWN CLOCK over the pictures it drew (hal/gpu_device.h): the
+           readback above is how long the processor WAITED, this is how long the
+           card was BUSY, and the second is what a faster card shrinks */
+        double card = 0.0, opaque = 0.0;
+        unsigned long long pics = 0, missed = 0;
+        if (port_gpu_timer_totals(&card, &opaque, 0, &pics, &missed) && pics)
+            fprintf(stderr, "[renderer] the card itself was busy %.3f ms a "
+                    "picture over %llu picture(s) (%llu not measured), of which "
+                    "%.3f ms drawing the 3D.\n", card / (double)pics, pics,
+                    missed, opaque / (double)pics);
+    }
     /* THE ADDRESS ROWS WITH THE THREE TARGETS STILL ALIVE, which is the point
        of taking them here rather than after the release below: a 32-bit
        process that lost one of the six DS ranges to a driver's own mapping is
@@ -648,6 +901,18 @@ void at_exit()
     if (g_layout) { g_layout->Release(); g_layout = 0; }
     if (g_toon_cb) { g_toon_cb->Release(); g_toon_cb = 0; }
     g_toon_valid = false;
+    if (g_ps_faa) { g_ps_faa->Release(); g_ps_faa = 0; }
+    if (g_ps_shadow) { g_ps_shadow->Release(); g_ps_shadow = 0; }
+    if (g_ps_tlop) { g_ps_tlop->Release(); g_ps_tlop = 0; }
+    if (g_ps_tl) { g_ps_tl->Release(); g_ps_tl = 0; }
+    if (g_full_vs) { g_full_vs->Release(); g_full_vs = 0; }
+    if (g_dss_clrm) { g_dss_clrm->Release(); g_dss_clrm = 0; }
+    if (g_dss_shadow) { g_dss_shadow->Release(); g_dss_shadow = 0; }
+    if (g_dss_mask) { g_dss_mask->Release(); g_dss_mask = 0; }
+    if (g_dss_tlop) { g_dss_tlop->Release(); g_dss_tlop = 0; }
+    if (g_dss_tl) { g_dss_tl->Release(); g_dss_tl = 0; }
+    if (g_blend_full) { g_blend_full->Release(); g_blend_full = 0; }
+    g_full_ready = false;
     if (g_ps) { g_ps->Release(); g_ps = 0; }
     if (g_vs) { g_vs->Release(); g_vs = 0; }
     /* the device itself belongs to hal/gpu_device.cpp and is released there */
@@ -1226,6 +1491,11 @@ int aa_backend(ntr::GxGpuAa *a)
 
 void aa_at_exit()
 {
+    if (g_full_smooth)
+        fprintf(stderr, "[renderer] the whole-frame smoothing ran on %lld "
+                "picture(s); the picture as it was before the smoothing was kept "
+                "for %lld of them (the display capture unit may read those).\n",
+                g_full_smooth, g_pre_kept);
     if (g_aa_frames)
         fprintf(stderr, "[renderer] %lld frame(s) smoothed on the card, %.3f ms "
                 "per frame for the whole round trip.\n", g_aa_frames,
@@ -1239,6 +1509,684 @@ void aa_at_exit() {}
 #endif
 
 /* ---- the frame ----------------------------------------------------------- */
+
+/* ==== THE WHOLE FRAME (run cardfull, lane CARDFULL1) ======================== */
+
+/* One draw of the second pass, in submission order. The vertex offsets are
+   into g_scratch1, which sits after the opaque vertices in the one buffer. */
+enum { OP_A = 0, OP_AB = 1, OP_MASK = 2, OP_SHADOW = 3, OP_CLRM = 4 };
+struct Op {
+    int kind;
+    const GTex *tex;
+    int au, av;
+    int pid;                /* the stencil reference of a translucent draw */
+    UINT first, count;
+};
+std::vector<GVert> g_scratch1;
+std::vector<Op> g_ops;
+
+/* the smoothing's own result target and the readback copy of it, made when the
+   first frame that smooths asks (and again whenever the picture's size moves,
+   because release_targets drops it with the rest) */
+bool ensure_fa(int w, int h)
+{
+    if (g_fa_out) return true;
+    D3D11_TEXTURE2D_DESC d;
+    memset(&d, 0, sizeof d);
+    d.Width = (UINT)w;
+    d.Height = (UINT)h;
+    d.MipLevels = d.ArraySize = 1;
+    d.SampleDesc.Count = 1;
+    d.Usage = D3D11_USAGE_DEFAULT;
+    d.Format = DXGI_FORMAT_R32_UINT;
+    d.BindFlags = D3D11_BIND_RENDER_TARGET;
+    HRESULT hr = g_dev->CreateTexture2D(&d, 0, &g_fa_out);
+    if (FAILED(hr)) { full_give_up("no smoothing result target", hr); return false; }
+    hr = g_dev->CreateRenderTargetView(g_fa_out, 0, &g_fa_rtv);
+    if (FAILED(hr)) { full_give_up("no smoothing result target view", hr); return false; }
+    d.BindFlags = 0;
+    d.Usage = D3D11_USAGE_STAGING;
+    d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    hr = g_dev->CreateTexture2D(&d, 0, &g_fa_st);
+    if (FAILED(hr)) { full_give_up("no smoothing readback buffer", hr); return false; }
+    return true;
+}
+
+inline int pop4(int m) { return (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1); }
+
+/* THE COPY OUT OF A FINISHED, ALPHA-MARKED PICTURE into the software
+   rasteriser's buffers: a pixel whose alpha byte is not 0 is covered, and only
+   covered pixels are written (colour with its alpha forced to 0xFF, coverage
+   byte 1), so every pixel the card did not reach keeps exactly what the caller's
+   clear put there. Four pixels at a time. `changed`, when not null, gets the
+   number of pixels whose alpha is 0xFE added to it, which is how the smoothing
+   pass says "I moved this one". `only_fe` writes ONLY those pixels (the
+   smoothed ones, laid over a frame whose unsmoothed colours were copied
+   first) and leaves the coverage alone. */
+void copy_box_a(const ntr::GxGpuFrame *f, int bx0, int by0, int bx1, int by1,
+                const D3D11_MAPPED_SUBRESOURCE &m, unsigned long long *changed,
+                bool only_fe)
+{
+    const __m128i amask = _mm_set1_epi32((int)0xFF000000u);
+    const __m128i zero = _mm_setzero_si128();
+    const __m128i fe = _mm_set1_epi32((int)0xFE000000u);
+    unsigned long long cnt = 0;
+    for (int y = by0; y < by1; ++y) {
+        const uint32_t *crow =
+            (const uint32_t *)((const unsigned char *)m.pData + (size_t)y * m.RowPitch);
+        uint32_t *fbrow = f->fb + (size_t)y * f->stride;
+        uint8_t *cvrow = f->cover + (size_t)y * f->stride;
+        int x = bx0;
+        for (; x + 4 <= bx1; x += 4) {
+            const __m128i c = _mm_loadu_si128((const __m128i *)(crow + x));
+            const __m128i a = _mm_and_si128(c, amask);
+            const int zm = _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpeq_epi32(a, zero)));
+            if (zm == 0xF) continue;
+            const int fm = _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpeq_epi32(a, fe)));
+            cnt += (unsigned)pop4(fm);
+            if (only_fe) {
+                if (!fm) continue;
+                for (int k = 0; k < 4; ++k)
+                    if ((fm >> k) & 1)
+                        fbrow[x + k] = 0xFF000000u | (crow[x + k] & 0x00FFFFFFu);
+                continue;
+            }
+            if (zm == 0) {
+                _mm_storeu_si128((__m128i *)(fbrow + x), _mm_or_si128(c, amask));
+                *(uint32_t *)(cvrow + x) = 0x01010101u;
+                continue;
+            }
+            for (int k = 0; k < 4; ++k) {
+                if (!(crow[x + k] & 0xFF000000u)) continue;
+                fbrow[x + k] = 0xFF000000u | (crow[x + k] & 0x00FFFFFFu);
+                cvrow[x + k] = 1;
+            }
+        }
+        for (; x < bx1; ++x) {
+            const uint32_t p = crow[x];
+            if (!(p & 0xFF000000u)) continue;
+            if ((p >> 24) == 0xFEu) ++cnt;
+            if (only_fe && (p >> 24) != 0xFEu) continue;
+            fbrow[x] = 0xFF000000u | (p & 0x00FFFFFFu);
+            if (!only_fe) cvrow[x] = 1;
+        }
+    }
+    if (changed) *changed += cnt;
+}
+
+/* one triangle's three vertices, the same arithmetic the opaque loop uses */
+void push_tri(const ntr::GxTriangle &t, const ntr::GxGpuFrame *f, bool textured,
+              float inv_cw, float inv_ch, std::vector<GVert> &dst)
+{
+    const float tsc = (float)(t.tex_scale ? t.tex_scale : 1);
+    const float iw = textured ? 1.0f / (float)t.tw : 0.0f;
+    const float ih = textured ? 1.0f / (float)t.th : 0.0f;
+    const float pa = (float)((t.alpha >= 31 || t.alpha == 0) ? 31u : t.alpha);
+    const float pid = (float)(t.polyid +
+        ((t.mode == 2 && f->toon_shade) ? 64 * f->toon_shade : 0));
+    for (int k = 0; k < 3; ++k) {
+        const ntr::GxVertex &v = t.v[k];
+        GVert o;
+        const float xn = (float)v.x * inv_cw - 1.0f;
+        const float yn = 1.0f - (float)v.y * inv_ch;
+        o.x = xn * v.w;
+        o.y = yn * v.w;
+        o.z = v.z * kDepthScale * v.w;
+        o.w = v.w;
+        o.u = textured ? v.u * tsc * iw : 0.0f;
+        o.v = textured ? v.v * tsc * ih : 0.0f;
+        o.r = (float)((v.color >> 16) & 0xFF);
+        o.g = (float)((v.color >> 8) & 0xFF);
+        o.b = (float)(v.color & 0xFF);
+        o.pa = pa;
+        o.pid = pid;
+        dst.push_back(o);
+    }
+}
+
+/* Returns 2 when the card drew the whole frame, 0 after fall_back (the CPU
+   buffers are untouched and gx.cpp draws everything), and -1 when the
+   whole-frame mode cannot run at all (it has given up, nothing was touched,
+   and the caller carries on with the opaque-only path). */
+int draw_full(const ntr::GxGpuFrame *f)
+{
+    if (!make_full_pipeline()) return -1;
+    if (!ensure_targets(f->cw, f->ch, true)) return 0;
+
+    const bool smooth = f->aa_mode && f->pre && f->out && !f->ab &&
+                        g_aa_on_full != 0;
+    const bool keep_pre = smooth && (f->pre_needed || g_aacheck);
+    if (smooth && !ensure_fa(f->cw, f->ch)) return -1;
+    if (smooth) ++g_full_smooth;
+    if (keep_pre && f->pre_needed) ++g_pre_kept;
+
+    const long long t0 = qpc();
+
+    /* ---- build: the opaque batches exactly as before, and the second pass's
+       draws in submission order -------------------------------------------- */
+    g_scratch.clear();
+    g_scratch1.clear();
+    g_batch.clear();
+    g_ops.clear();
+    const GTex *cur_tex = 0;
+    int cur_au = -1, cur_av = -1;
+    bool open = false;
+    bool prev_mask = false, seen_mask_group = false;
+
+    const float inv_cw = 2.0f / (float)f->cw;
+    const float inv_ch = 2.0f / (float)f->ch;
+    float bminx = 1e30f, bminy = 1e30f, bmaxx = -1e30f, bmaxy = -1e30f;
+    bool bwide = false;
+
+    for (size_t i = 0; i < f->count; ++i) {
+        const ntr::GxTriangle &t = f->tris[i];
+        const bool pass1 = t.translucent != 0;
+        if (!pass1 && t.mode == 3) continue;        /* never happens; as before */
+        const bool is_mask = pass1 && t.mode == 3 && t.polyid == 0;
+        if (pass1) {
+            /* gx.cpp's clear points: a mask polygon after any non-mask polygon
+               of the second pass starts a new group, culled or not. The first
+               group needs no clear, the stencil starts at zero. */
+            if (is_mask && !prev_mask) {
+                if (seen_mask_group) {
+                    /* close the draw in progress before the clear splits it */
+                    if (!g_ops.empty() && g_ops.back().kind != OP_CLRM)
+                        g_ops.back().count =
+                            (UINT)g_scratch1.size() - g_ops.back().first;
+                    Op c;
+                    memset(&c, 0, sizeof c);
+                    c.kind = OP_CLRM;
+                    g_ops.push_back(c);
+                }
+                seen_mask_group = true;
+            }
+            prev_mask = is_mask;
+        }
+
+        const ntr::GxVertex &a = t.v[0], &b = t.v[1], &c = t.v[2];
+        const float area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+        if (area < 1e-6f && area > -1e-6f) continue;
+        const bool backface = area > 0.0f;
+        if (backface && !(t.cull & 1)) continue;
+        if (!backface && !(t.cull & 2)) continue;
+
+        if (!is_mask) {
+            for (int k = 0; k < 3; ++k) {
+                const float vx = t.v[k].x, vy = t.v[k].y;
+                if (!(vx > -1e20f && vx < 1e20f && vy > -1e20f && vy < 1e20f)) {
+                    bwide = true;
+                    continue;
+                }
+                if (vx < bminx) bminx = vx;
+                if (vx > bmaxx) bmaxx = vx;
+                if (vy < bminy) bminy = vy;
+                if (vy > bmaxy) bmaxy = vy;
+            }
+        }
+
+        const bool textured = !is_mask && t.tex && t.tw > 0 && t.th > 0;
+        const GTex *gt = 0;
+        int au = 0, av = 0;
+        if (textured) {
+            gt = upload_texture(t.tex_id, t.tex, t.tw, t.th, f->tex_filter);
+            if (!gt) return 0;                    /* fall_back already said why */
+            const bool rep_s = (t.wrap & 1) != 0, rep_t = (t.wrap & 2) != 0;
+            const bool flip_s = (t.wrap & 4) != 0, flip_t = (t.wrap & 8) != 0;
+            au = rep_s ? (flip_s ? 2 : 1) : 0;
+            av = rep_t ? (flip_t ? 2 : 1) : 0;
+        }
+
+        if (!pass1) {
+            if (!open || gt != cur_tex || au != cur_au || av != cur_av) {
+                if (open) g_batch.back().count =
+                    (UINT)g_scratch.size() - g_batch.back().first;
+                Batch nb;
+                nb.tex = gt;
+                nb.au = au;
+                nb.av = av;
+                nb.first = (UINT)g_scratch.size();
+                nb.count = 0;
+                g_batch.push_back(nb);
+                cur_tex = gt;
+                cur_au = au;
+                cur_av = av;
+                open = true;
+            }
+            push_tri(t, f, textured, inv_cw, inv_ch, g_scratch);
+            continue;
+        }
+
+        int kind;
+        if (t.mode == 3) kind = is_mask ? OP_MASK : OP_SHADOW;
+        else kind = (t.alpha >= 31 || t.alpha == 0) ? OP_AB : OP_A;
+        const int pid = (kind == OP_A || kind == OP_AB) ? (int)t.polyid : 0;
+        if (g_ops.empty() || g_ops.back().kind != kind || g_ops.back().tex != gt ||
+            g_ops.back().au != au || g_ops.back().av != av ||
+            g_ops.back().pid != pid) {
+            if (!g_ops.empty() && g_ops.back().kind != OP_CLRM)
+                g_ops.back().count = (UINT)g_scratch1.size() - g_ops.back().first;
+            Op o;
+            o.kind = kind;
+            o.tex = gt;
+            o.au = au;
+            o.av = av;
+            o.pid = pid;
+            o.first = (UINT)g_scratch1.size();
+            o.count = 0;
+            g_ops.push_back(o);
+        }
+        push_tri(t, f, textured, inv_cw, inv_ch, g_scratch1);
+    }
+    if (open)
+        g_batch.back().count = (UINT)g_scratch.size() - g_batch.back().first;
+    if (!g_ops.empty() && g_ops.back().kind != OP_CLRM)
+        g_ops.back().count = (UINT)g_scratch1.size() - g_ops.back().first;
+
+    const long long t1 = qpc();
+
+    const bool nothing = g_scratch.empty() && g_scratch1.empty();
+    const UINT nopaque = (UINT)g_scratch.size();
+
+    if (!nothing) port_gpu_timer_span_begin(PORT_GPU_SPAN_OPAQUE);
+
+    const float clr[4] = {
+        (float)((f->clear_argb >> 16) & 0xFF) / 255.0f,
+        (float)((f->clear_argb >> 8) & 0xFF) / 255.0f,
+        (float)(f->clear_argb & 0xFF) / 255.0f,
+        0.0f,                      /* alpha is coverage: nothing covered yet */
+    };
+    const float zero[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    if (!nothing) {
+        g_ctx->ClearRenderTargetView(g_col_rtv, clr);
+        g_ctx->ClearRenderTargetView(g_id_rtv, zero);
+        g_ctx->ClearDepthStencilView(g_dep_dsv,
+                                     D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
+                                     1.0f, 0);
+
+        if (!ensure_vb(g_scratch.size() + g_scratch1.size())) return 0;
+        D3D11_MAPPED_SUBRESOURCE ms;
+        memset(&ms, 0, sizeof ms);
+        HRESULT hr = g_ctx->Map(g_vb, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms);
+        if (FAILED(hr)) { fall_back("the vertex buffer would not open", hr); return 0; }
+        if (!g_scratch.empty())
+            memcpy(ms.pData, &g_scratch[0], g_scratch.size() * sizeof(GVert));
+        if (!g_scratch1.empty())
+            memcpy((GVert *)ms.pData + g_scratch.size(), &g_scratch1[0],
+                   g_scratch1.size() * sizeof(GVert));
+        g_ctx->Unmap(g_vb, 0);
+
+        D3D11_VIEWPORT vp;
+        vp.TopLeftX = 0.0f;
+        vp.TopLeftY = 0.0f;
+        vp.Width = (float)f->cw;
+        vp.Height = (float)f->ch;
+        vp.MinDepth = 0.0f;
+        vp.MaxDepth = 1.0f;
+        g_ctx->RSSetViewports(1, &vp);
+        D3D11_RECT sc;
+        sc.left = f->px0;
+        sc.top = f->py0;
+        sc.right = f->px0 + f->pw;
+        sc.bottom = f->py0 + f->ph;
+        g_ctx->RSSetScissorRects(1, &sc);
+        g_ctx->RSSetState(g_rast);
+        g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        const UINT stride = (UINT)sizeof(GVert), offset = 0;
+        g_ctx->IASetVertexBuffers(0, 1, &g_vb, &stride, &offset);
+        if (f->toon_shade && f->toon_rgb &&
+            (!g_toon_valid ||
+             memcmp(g_toon_seen, f->toon_rgb, sizeof g_toon_seen) != 0)) {
+            D3D11_MAPPED_SUBRESOURCE tm;
+            memset(&tm, 0, sizeof tm);
+            HRESULT thr = g_ctx->Map(g_toon_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &tm);
+            if (FAILED(thr)) { fall_back("the toon table would not open", thr); return 0; }
+            float *dst = (float *)tm.pData;
+            for (int i = 0; i < 32; ++i) {
+                dst[i * 4 + 0] = f->toon_rgb[i * 3 + 0];
+                dst[i * 4 + 1] = f->toon_rgb[i * 3 + 1];
+                dst[i * 4 + 2] = f->toon_rgb[i * 3 + 2];
+                dst[i * 4 + 3] = 0.0f;
+            }
+            g_ctx->Unmap(g_toon_cb, 0);
+            memcpy(g_toon_seen, f->toon_rgb, sizeof g_toon_seen);
+            g_toon_valid = true;
+        }
+        g_ctx->PSSetConstantBuffers(0, 1, &g_toon_cb);
+
+        const float bf[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        ID3D11ShaderResourceView *nosrv = 0;
+        ID3D11RenderTargetView *rtv2[2] = { g_col_rtv, g_id_rtv };
+        ID3D11RenderTargetView *rtv1[1] = { g_col_rtv };
+        bool id_bound = false;
+
+        /* ---- the opaque pass: unchanged apart from the blend, which also
+           keeps the largest alpha as coverage ------------------------------ */
+        if (nopaque) {
+            g_ctx->OMSetRenderTargets(2, rtv2, g_dep_dsv);
+            g_ctx->OMSetDepthStencilState(g_dss, 0);
+            g_ctx->OMSetBlendState(g_blend_full, bf, 0xffffffffu);
+            g_ctx->IASetInputLayout(g_layout);
+            g_ctx->VSSetShader(g_vs, 0, 0);
+            g_ctx->PSSetShader(g_ps, 0, 0);
+            for (size_t bi = 0; bi < g_batch.size(); ++bi) {
+                const Batch &bt = g_batch[bi];
+                if (!bt.count) continue;
+                ID3D11ShaderResourceView *srv = bt.tex ? bt.tex->srv : g_white_srv;
+                ID3D11SamplerState *smp =
+                    bt.tex ? sampler(f->tex_filter, bt.au, bt.av) : sampler(0, 0, 0);
+                if (!smp) { fall_back("no sampler state", 0); return 0; }
+                g_ctx->PSSetShaderResources(0, 1, &srv);
+                g_ctx->PSSetSamplers(0, 1, &smp);
+                g_ctx->Draw(bt.count, bt.first);
+                ++g_batches;
+            }
+        }
+
+        /* ---- the second pass ------------------------------------------- */
+        for (size_t oi = 0; oi < g_ops.size(); ++oi) {
+            const Op &op = g_ops[oi];
+            if (op.kind != OP_SHADOW && id_bound) {
+                g_ctx->PSSetShaderResources(1, 1, &nosrv);
+                id_bound = false;
+            }
+            if (op.kind == OP_CLRM) {
+                g_ctx->OMSetRenderTargets(0, 0, g_dep_dsv);
+                g_ctx->OMSetDepthStencilState(g_dss_clrm, 0);
+                g_ctx->OMSetBlendState(0, bf, 0xffffffffu);
+                g_ctx->IASetInputLayout(0);
+                g_ctx->VSSetShader(g_full_vs, 0, 0);
+                g_ctx->PSSetShader(0, 0, 0);
+                g_ctx->Draw(3, 0);
+                ++g_batches;
+                continue;
+            }
+            if (!op.count) continue;
+            g_ctx->IASetInputLayout(g_layout);
+            g_ctx->VSSetShader(g_vs, 0, 0);
+            if (op.kind == OP_MASK) {
+                g_ctx->OMSetRenderTargets(0, 0, g_dep_dsv);
+                g_ctx->OMSetDepthStencilState(g_dss_mask, 0x80);
+                g_ctx->OMSetBlendState(0, bf, 0xffffffffu);
+                g_ctx->PSSetShader(0, 0, 0);
+                g_ctx->Draw(op.count, nopaque + op.first);
+                ++g_batches;
+                continue;
+            }
+            ID3D11ShaderResourceView *srv = op.tex ? op.tex->srv : g_white_srv;
+            ID3D11SamplerState *smp =
+                op.tex ? sampler(f->tex_filter, op.au, op.av) : sampler(0, 0, 0);
+            if (!smp) { fall_back("no sampler state", 0); return 0; }
+            g_ctx->PSSetShaderResources(0, 1, &srv);
+            g_ctx->PSSetSamplers(0, 1, &smp);
+            if (op.kind == OP_SHADOW) {
+                g_ctx->OMSetRenderTargets(1, rtv1, g_dep_dsv);
+                g_ctx->OMSetDepthStencilState(g_dss_shadow, 0x80);
+                g_ctx->OMSetBlendState(g_blend_full, bf, 0xffffffffu);
+                g_ctx->PSSetShader(g_ps_shadow, 0, 0);
+                g_ctx->PSSetShaderResources(1, 1, &g_id_srv);
+                id_bound = true;
+                g_ctx->Draw(op.count, nopaque + op.first);
+                ++g_batches;
+                continue;
+            }
+            /* a translucent draw: the pixels under 31 first ... */
+            g_ctx->OMSetRenderTargets(1, rtv1, g_dep_dsv);
+            g_ctx->OMSetDepthStencilState(g_dss_tl, (UINT)(0x40 | op.pid));
+            g_ctx->OMSetBlendState(g_blend_full, bf, 0xffffffffu);
+            g_ctx->PSSetShader(g_ps_tl, 0, 0);
+            g_ctx->Draw(op.count, nopaque + op.first);
+            ++g_batches;
+            if (op.kind == OP_AB) {
+                /* ... then, for a polygon that can reach full alpha, the pixels
+                   at 31, drawn as the opaque pixels gx.cpp calls them */
+                g_ctx->OMSetRenderTargets(2, rtv2, g_dep_dsv);
+                g_ctx->OMSetDepthStencilState(g_dss_tlop, 0);
+                g_ctx->PSSetShader(g_ps_tlop, 0, 0);
+                g_ctx->Draw(op.count, nopaque + op.first);
+                ++g_batches;
+            }
+        }
+        ID3D11ShaderResourceView *nones[2] = { 0, 0 };
+        g_ctx->PSSetShaderResources(0, 2, nones);
+        g_ctx->OMSetRenderTargets(0, 0, 0);
+    }
+
+    /* the box the readback needs: the triangles' own screen box plus a pixel of
+       margin each side, cut to the present rectangle */
+    int bx0 = f->px0, by0 = f->py0;
+    int bx1 = f->px0 + f->pw, by1 = f->py0 + f->ph;
+    if (!nothing && !bwide) {
+        if (bminx - 1.0f > (float)bx0) bx0 = (int)(bminx - 1.0f);
+        if (bminy - 1.0f > (float)by0) by0 = (int)(bminy - 1.0f);
+        if (bmaxx + 2.0f < (float)bx1) bx1 = (int)(bmaxx + 2.0f);
+        if (bmaxy + 2.0f < (float)by1) by1 = (int)(bmaxy + 2.0f);
+    }
+    /* a frame with only mask volumes draws no pixel at all */
+    const bool drew_pixels = bwide || (bminx <= bmaxx && bminy <= bmaxy);
+    const bool have_box = !nothing && drew_pixels && bx1 > bx0 && by1 > by0;
+
+    /* ---- the smoothing, on the card's own colour target ------------------- */
+    bool smoothed = false;
+    if (smooth && have_box) {
+        D3D11_VIEWPORT vp;
+        vp.TopLeftX = 0.0f;
+        vp.TopLeftY = 0.0f;
+        vp.Width = (float)f->cw;
+        vp.Height = (float)f->ch;
+        vp.MinDepth = 0.0f;
+        vp.MaxDepth = 1.0f;
+        g_ctx->RSSetViewports(1, &vp);
+        D3D11_RECT sc;
+        sc.left = bx0;
+        sc.top = by0;
+        sc.right = bx1;
+        sc.bottom = by1;
+        g_ctx->RSSetScissorRects(1, &sc);
+        g_ctx->RSSetState(g_rast);
+        g_ctx->OMSetRenderTargets(1, &g_fa_rtv, 0);
+        g_ctx->OMSetDepthStencilState(0, 0);
+        g_ctx->OMSetBlendState(0, 0, 0xffffffffu);
+        g_ctx->IASetInputLayout(0);
+        g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        g_ctx->VSSetShader(g_full_vs, 0, 0);
+        g_ctx->PSSetShader(g_ps_faa, 0, 0);
+        g_ctx->PSSetShaderResources(0, 1, &g_col_srv);
+        g_ctx->Draw(3, 0);
+        ID3D11ShaderResourceView *none = 0;
+        g_ctx->PSSetShaderResources(0, 1, &none);
+        g_ctx->OMSetRenderTargets(0, 0, 0);
+        smoothed = true;
+    }
+
+    /* ---- copy out to the staging textures --------------------------------- */
+    D3D11_BOX box;
+    box.left = (UINT)bx0;
+    box.right = (UINT)bx1;
+    box.top = (UINT)by0;
+    box.bottom = (UINT)by1;
+    box.front = 0;
+    box.back = 1;
+    const bool read_col = have_box && (!smoothed || keep_pre);
+    if (read_col)
+        g_ctx->CopySubresourceRegion(g_col_stage, 0, (UINT)bx0, (UINT)by0, 0,
+                                     g_col, 0, &box);
+    if (smoothed)
+        g_ctx->CopySubresourceRegion(g_fa_st, 0, (UINT)bx0, (UINT)by0, 0,
+                                     g_fa_out, 0, &box);
+    const bool read_ab = have_box && f->ab;
+    if (read_ab) {
+        g_ctx->CopyResource(g_id_stage, g_id);
+        g_ctx->CopyResource(g_dep_stage, g_dep);
+    }
+    if (!nothing) port_gpu_timer_span_end(PORT_GPU_SPAN_OPAQUE);
+
+    const long long t2 = qpc();
+
+    if (g_fail_readback && g_frames >= g_fail_readback) {
+        fprintf(stderr, "[renderer] SM64DS_RENDERER_FAIL_READBACK=%d reached "
+                "after %lld frame(s); forcing a readback failure on purpose\n",
+                g_fail_readback, g_frames);
+        fall_back("a test asked the readback to fail", 0);
+        return 0;
+    }
+
+    /* ---- read it back, ONCE: every Map first, so a failure leaves the CPU
+       buffers exactly as gx.cpp cleared them -------------------------------- */
+    double wait_ms = 0.0;
+    D3D11_MAPPED_SUBRESOURCE mcol, mfa, mid, mdep;
+    memset(&mcol, 0, sizeof mcol);
+    memset(&mfa, 0, sizeof mfa);
+    memset(&mid, 0, sizeof mid);
+    memset(&mdep, 0, sizeof mdep);
+    bool m_col = false, m_fa = false, m_id = false, m_dep = false;
+    {
+        const long long tw0 = qpc();
+        HRESULT hr = 0;
+        if (smoothed) {
+            hr = g_ctx->Map(g_fa_st, 0, D3D11_MAP_READ, 0, &mfa);
+            m_fa = SUCCEEDED(hr);
+        }
+        if (SUCCEEDED(hr) && read_col) {
+            hr = g_ctx->Map(g_col_stage, 0, D3D11_MAP_READ, 0, &mcol);
+            m_col = SUCCEEDED(hr);
+        }
+        if (SUCCEEDED(hr) && read_ab) {
+            hr = g_ctx->Map(g_id_stage, 0, D3D11_MAP_READ, 0, &mid);
+            m_id = SUCCEEDED(hr);
+            if (SUCCEEDED(hr)) {
+                hr = g_ctx->Map(g_dep_stage, 0, D3D11_MAP_READ, 0, &mdep);
+                m_dep = SUCCEEDED(hr);
+            }
+        }
+        wait_ms = ms_between(tw0, qpc());
+        if (FAILED(hr)) {
+            if (m_dep) g_ctx->Unmap(g_dep_stage, 0);
+            if (m_id) g_ctx->Unmap(g_id_stage, 0);
+            if (m_col) g_ctx->Unmap(g_col_stage, 0);
+            if (m_fa) g_ctx->Unmap(g_fa_st, 0);
+            fall_back("the picture could not be read back", hr);
+            return 0;
+        }
+    }
+
+    /* ---- from here the CPU buffers are written ---------------------------- */
+    unsigned long long changed = 0;
+    int pre_valid = 0;
+    if (have_box) {
+        if (smoothed && !keep_pre)
+            copy_box_a(f, bx0, by0, bx1, by1, mfa, &changed, false);
+        else
+            copy_box_a(f, bx0, by0, bx1, by1, mcol, 0, false);
+    }
+    if (keep_pre) {
+        /* aa_pass's own copy of the whole picture, taken before a pixel moves,
+           then the smoothed pixels laid over the live frame */
+        for (int y = 0; y < f->ch; ++y)
+            memcpy(f->pre + (size_t)y * f->stride, f->fb + (size_t)y * f->stride,
+                   (size_t)f->cw * sizeof(uint32_t));
+        pre_valid = f->pre_needed ? 1 : 0;
+        if (g_aacheck && smoothed) {
+            /* THE CHECK: this file's copy of aa_band on the unsmoothed frame
+               against what the card's pass made of it, covered pixels only */
+            ntr::GxGpuAa ga;
+            ga.src = f->pre;
+            ga.cover = f->cover;
+            ga.fb = f->fb;
+            ga.stride = f->stride;
+            ga.w = f->cw;
+            ga.h = f->ch;
+            ga.changed = 0;
+            g_aac_ref.resize((size_t)f->cw * (size_t)f->ch);
+            aa_ref(&ga, &g_aac_ref[0]);
+            long long bad = 0;
+            for (int y = by0; y < by1; ++y) {
+                const uint32_t *orow = (const uint32_t *)
+                    ((const unsigned char *)mfa.pData + (size_t)y * mfa.RowPitch);
+                const uint32_t *rrow = &g_aac_ref[(size_t)y * f->cw];
+                const uint8_t *crow = f->cover + (size_t)y * f->stride;
+                for (int x = bx0; x < bx1; ++x)
+                    if (crow[x] && (orow[x] & 0x00FFFFFFu) != (rrow[x] & 0x00FFFFFFu))
+                        ++bad;
+            }
+            ++g_aac_frames;
+            if (bad) {
+                ++g_aac_bad_frames;
+                g_aac_bad_px += bad;
+                if (g_aac_bad_frames <= 5)
+                    fprintf(stderr, "[renderer-aacheck] frame %lld: %lld pixel(s) "
+                            "differ\n", g_frames, bad);
+            }
+        }
+        if (smoothed)
+            copy_box_a(f, bx0, by0, bx1, by1, mfa, &changed, true);
+    }
+    if (read_ab) {
+        /* THE A/B PLANES: the depth where the card wrote one (a cleared pixel
+           reads back as 2.0 after the unhalving) and the polygon ID where the
+           opaque pass left one */
+        for (int y = by0; y < by1; ++y) {
+            const unsigned char *irow =
+                (const unsigned char *)mid.pData + (size_t)y * mid.RowPitch;
+            const float *drow = (const float *)
+                ((const unsigned char *)mdep.pData + (size_t)y * mdep.RowPitch);
+            float *dprow = f->depth + (size_t)y * f->stride;
+            uint8_t *idrow = f->attrid + (size_t)y * f->stride;
+            for (int x = bx0; x < bx1; ++x) {
+                const float z = drow[(size_t)x * 2] * kDepthUnscale;
+                if (z < 1.999f) dprow[x] = z;
+                if (irow[x] & 0x80u) idrow[x] = (uint8_t)(irow[x] & 0x3Fu);
+            }
+        }
+    }
+    if (m_dep) g_ctx->Unmap(g_dep_stage, 0);
+    if (m_id) g_ctx->Unmap(g_id_stage, 0);
+    if (m_col) g_ctx->Unmap(g_col_stage, 0);
+    if (m_fa) g_ctx->Unmap(g_fa_st, 0);
+
+    const long long t3 = qpc();
+    ++g_frames;
+    const size_t nverts = g_scratch.size() + g_scratch1.size();
+    g_tris += (long long)(nverts / 3);
+    g_verts += (long long)nverts;
+    g_ms_build += ms_between(t0, t1);
+    g_ms_draw += ms_between(t1, t2);
+    g_ms_read += ms_between(t2, t3);
+    if (smoothed) {
+        ++g_aa_frames;
+        g_aa_ms += ms_between(t1, t3);
+    }
+
+    if (g_perf) {
+        g_perf_build += ms_between(t0, t1);
+        g_perf_draw += ms_between(t1, t2);
+        g_perf_read += ms_between(t2, t3);
+        g_perf_wait += wait_ms;
+        g_perf_copy += ms_between(t2, t3) - wait_ms;
+        g_perf_tris += (long long)(nverts / 3);
+        g_perf_batches += (long long)(g_batch.size() + g_ops.size());
+        if (++g_perf_n >= 30) {
+            fprintf(stderr, "[renderer] build %6.3fms submit %6.3fms readback "
+                    "%6.3fms (wait %6.3fms copy %6.3fms) tris %6lld batches "
+                    "%4lld (whole frame)\n",
+                    g_perf_build / g_perf_n, g_perf_draw / g_perf_n,
+                    g_perf_read / g_perf_n, g_perf_wait / g_perf_n,
+                    g_perf_copy / g_perf_n, g_perf_tris / g_perf_n,
+                    g_perf_batches / g_perf_n);
+            g_perf_build = g_perf_draw = g_perf_read = 0.0;
+            g_perf_wait = g_perf_copy = 0.0;
+            g_perf_tris = g_perf_batches = 0;
+            g_perf_n = 0;
+        }
+    }
+
+    if (f->out) {
+        f->out->aa_done = smooth ? 1 : 0;
+        f->out->pre_valid = pre_valid;
+        f->out->aa_changed = changed;
+    }
+    return 2;
+}
 
 int draw_frame(const ntr::GxGpuFrame *f)
 {
@@ -1258,7 +2206,22 @@ int draw_frame(const ntr::GxGpuFrame *f)
         g_tex_gen_seen = f->tex_generation;
         release_textures();
     }
-    if (!ensure_targets(f->cw, f->ch)) return 0;
+
+    /* THE WHOLE FRAME, when it is on and has not given up (run cardfull). A -1
+       means it could not start and touched nothing: this frame is then drawn
+       by the opaque-only path below, as is every frame after it. */
+    if (g_fail_full && !g_full_dead && g_frames >= g_fail_full) {
+        fprintf(stderr, "[renderer] SM64DS_RENDERER_FAIL_FULL=%d reached after "
+                "%lld frame(s); forcing the whole-frame fallback on purpose\n",
+                g_fail_full, g_frames);
+        full_give_up("a test asked for it", 0);
+    }
+    if (g_full_on && !g_full_dead && f->full_ok) {
+        const int r = draw_full(f);
+        if (r >= 0) return r;
+    }
+
+    if (!ensure_targets(f->cw, f->ch, false)) return 0;
 
     const long long t0 = qpc();
 
@@ -1587,6 +2550,13 @@ extern "C" void port_gpu_raster_configure(void)
     if (g_rbcheck) atexit(rbc_report);
     g_rbtime = env_int("SM64DS_RENDERER_RBTIME", 0);
     if (g_rbtime) atexit(rbt_report);
+    /* THE WHOLE-FRAME MODE: SM64DS_RENDERER_FULL=0 is the escape hatch back to
+       the opaque-only card. The two read-back test knobs above compare the
+       OPAQUE readback and mean nothing here, so they keep the old path. */
+    g_full_on = env_int("SM64DS_RENDERER_FULL", 0);
+    if (g_rbcheck || g_rbtime) g_full_on = 0;
+    g_fail_full = env_int("SM64DS_RENDERER_FAIL_FULL", 0);
+    g_aa_on_full = env_int("SM64DS_RENDERER_AA", -1);
 #if defined(GX_HAS_GPU_AA)
     g_aa_on = env_int("SM64DS_RENDERER_AA", -1);
     g_aacheck = env_int("SM64DS_RENDERER_AACHECK", 0);
