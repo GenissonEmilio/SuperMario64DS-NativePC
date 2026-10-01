@@ -4900,7 +4900,13 @@ static bool capture_may_read() {
             if ((c & 0x87u) == 0x80u) { hold = 300; break; }
         }
     }
-    if (sticky) return true;
+    /* SM64DS_CAPTURE_STICKY=0 puts the old rule back (a prediction that lapses
+       after 300 frames), for the A/B against the capture drill below. */
+    static const bool keep_all = [] {
+        const char *e = getenv("SM64DS_CAPTURE_STICKY");
+        return !(e && e[0] == '0');
+    }();
+    if (sticky && keep_all) return true;
     if (hold > 0) {
         --hold;
         return true;
@@ -4908,7 +4914,58 @@ static bool capture_may_read() {
     return false;
 }
 
+/* SM64DS_CAPTURE_DRILL=<n>,<n>,...: a test that arms the display capture LATE
+   on a scene that has not captured, which no real scene does (every dual-screen
+   minigame maps its bank a frame or more before it arms the unit). After the
+   gx_render of each listed frame it maps VRAM bank D to LCDC and arms a 128 x
+   128 capture into it, exactly the order the capture comment in ntr/ppu.cpp
+   warns about: the arming comes after the picture is drawn and nothing before
+   it said a capture was coming. Before the next gx_render it puts the bank
+   back, so the bank is not itself a sign that carries into the following
+   frames. Off unless the key is set. The first drilled capture finds no copy
+   (nobody could have known) and says so on stderr; the later ones, however
+   long after, must read the copy. */
+static void capture_drill(bool after) {
+    static int init = 0;
+    static unsigned long long frame = 0;
+    static unsigned at[16];
+    static int nat = 0;
+    static bool mapped = false;
+    if (!init) {
+        init = 1;
+        if (const char *e = getenv("SM64DS_CAPTURE_DRILL")) {
+            while (*e && nat < 16) {
+                char *end = nullptr;
+                const unsigned long v = strtoul(e, &end, 10);
+                if (end == e) break;
+                at[nat++] = (unsigned)v;
+                e = (*end == ',') ? end + 1 : end;
+            }
+        }
+    }
+    if (!nat || !io_ready()) return;
+    volatile uint8_t *bank_d = reinterpret_cast<volatile uint8_t *>(0x04000243u);
+    if (!after) {
+        if (mapped) {
+            *bank_d = 0;
+            mapped = false;
+        }
+        return;
+    }
+    for (int i = 0; i < nat; ++i)
+        if (at[i] == frame) {
+            *bank_d = 0x80;
+            mapped = true;
+            *reinterpret_cast<volatile uint32_t *>(0x04000064u) = 0x80030000u;
+            std::fprintf(stderr, "[capture-drill] armed a capture after the "
+                         "draw of frame %llu\n", frame);
+            std::fflush(stderr);
+        }
+    ++frame;
+}
+
 void gx_render(Framebuffer &fb) {
+    capture_drill(false);
     /* run interp1: what reached the raster is the frame; seal its record. */
     if (g_ip_rec) ip_rec_seal();
     /* LAST FRAME'S PRE-SMOOTHING COPY STOPS BEING THIS FRAME'S HERE, before
@@ -6092,6 +6149,7 @@ void gx_render(Framebuffer &fb) {
         aa_pass(fb, cw, ch, nt);
     }
     aa_report();
+    capture_drill(true);
 
     if (tm) t_aa1 = std::chrono::steady_clock::now();
 
