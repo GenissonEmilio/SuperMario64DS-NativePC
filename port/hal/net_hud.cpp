@@ -16,6 +16,10 @@ namespace {
 
 enum : unsigned { kRefreshMs = 500, kLogEveryMs = 10000 };
 enum : int { kLossWindow = 20 };   // 500 ms intervals: ten seconds
+// A seat unheard this long is leaving (the hub keeps it 3 s) or frozen, not
+// on a lossy path: its ghost frames come 15 times a second, so even at 50%
+// loss a one-second silence has odds of about 1 in 30000.
+enum : unsigned { kQuietMs = 1000, kLossSpanMs = 10000 };
 
 NetHudView g_view;          // what is on screen until the next refresh
 bool       g_view_valid = false;
@@ -24,39 +28,55 @@ unsigned   g_next_log_ms = 0;
 bool       g_shown = false;
 int        g_kind = 0;      // 0 none, 1 room, 2 VS
 
-// THE ROOM'S LOSS WINDOW. One entry per refresh interval in which somebody
-// was in the room at both ends (a ping with nobody to ask is never answered
-// and is not a loss): the pings the hub sent and the pongs it got back.
-struct Interval { unsigned long long ping, pong; };
+// THE ROOM'S LOSS WINDOW: the pings the hub sent and the pongs it got back,
+// per refresh interval, over the last ten seconds. An interval counts only
+// when it was CLEAN at both ends -- somebody in the room and nobody in it
+// gone quiet -- because a ping with nobody to ask is never answered, and a
+// ping to a player who just left or froze is not the network losing it. It is
+// held back one interval before it counts, so a pong still in flight when a
+// player leaves is not read as lost either.
+struct Interval { unsigned long long ping, pong; unsigned at; };
 Interval g_win[kLossWindow];
 int      g_win_n = 0, g_win_head = 0;
+Interval g_pending;
+bool     g_have_pending = false;
 unsigned long long g_prev_ping = 0, g_prev_pong = 0;
-bool     g_prev_valid = false, g_prev_peers = false;
+bool     g_prev_valid = false, g_prev_clean = false;
 
 void loss_reset() {
     g_win_n = g_win_head = 0;
+    g_have_pending = false;
     g_prev_valid = false;
 }
 
-void loss_sample(const CommsHubStats &st) {
-    const bool peers = st.seat_mask != 0;
-    if (g_prev_valid && peers && g_prev_peers &&
-        st.pings_sent >= g_prev_ping && st.pongs_recvd >= g_prev_pong) {
-        g_win[g_win_head].ping = st.pings_sent - g_prev_ping;
-        g_win[g_win_head].pong = st.pongs_recvd - g_prev_pong;
+void loss_sample(const CommsHubStats &st, bool clean, unsigned now) {
+    if (g_have_pending && clean) {
+        g_win[g_win_head] = g_pending;
         g_win_head = (g_win_head + 1) % kLossWindow;
         if (g_win_n < kLossWindow) ++g_win_n;
     }
+    g_have_pending = false;
+    if (g_prev_valid && g_prev_clean && clean &&
+        st.pings_sent >= g_prev_ping && st.pongs_recvd >= g_prev_pong) {
+        g_pending.ping = st.pings_sent - g_prev_ping;
+        g_pending.pong = st.pongs_recvd - g_prev_pong;
+        g_pending.at = now;
+        g_have_pending = true;
+    }
     g_prev_ping = st.pings_sent;
     g_prev_pong = st.pongs_recvd;
-    g_prev_peers = peers;
+    g_prev_clean = clean;
     g_prev_valid = true;
 }
 
-// Loss in tenths of a percent, -1 until the window holds four pings.
-int loss_tenths() {
+// Loss in tenths of a percent, -1 until the last ten seconds hold four pings.
+int loss_tenths(unsigned now) {
     unsigned long long ping = 0, pong = 0;
-    for (int i = 0; i < g_win_n; ++i) { ping += g_win[i].ping; pong += g_win[i].pong; }
+    for (int i = 0; i < g_win_n; ++i) {
+        if ((unsigned)(now - g_win[i].at) > kLossSpanMs) continue;
+        ping += g_win[i].ping;
+        pong += g_win[i].pong;
+    }
     if (ping < 4) return -1;
     if (pong >= ping) return 0;
     return (int)(((ping - pong) * 1000ull + ping / 2) / ping);
@@ -88,20 +108,23 @@ bool build_room(NetHudView *v) {
     const int state = comms_hub_state();
     if (state != kHubPairing && state != kHubLive) return false;
     const CommsHubStats st = comms_hub_stats();
-    loss_sample(st);
+    const unsigned now = GetTickCount();
     long long sum = 0;
     int n = 0;
+    bool quiet = false;
     for (int s = 0; s < kHubMaxSeats; ++s) {
         if (!(st.seat_mask & (1u << s))) continue;
         HubSeatInfo info;
-        if (!comms_hub_seat_info(s, &info) || !info.present || info.rtt_ms < 0)
-            continue;
+        if (!comms_hub_seat_info(s, &info) || !info.present) continue;
+        if (info.heard_ms_ago > kQuietMs) quiet = true;
+        if (info.rtt_ms < 0) continue;
         sum += info.rtt_ms;
         ++n;
     }
+    loss_sample(st, st.seat_mask != 0 && !quiet, now);
     put_ping(v->line[0], "ping", n ? (int)((sum + n / 2) / n) : -1);
     if (st.seat_mask) {
-        put_loss(v->line[1], loss_tenths());
+        put_loss(v->line[1], loss_tenths(now));
         v->n = 2;
     } else {
         v->n = 1;

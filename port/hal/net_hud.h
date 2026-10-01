@@ -17,7 +17,9 @@
 //                 else is in the room or no pong has come back yet.
 //   loss (room)   the share of those pings that got no pong, over the last
 //                 ten seconds (comms_hub_stats() pings_sent / pongs_recvd,
-//                 counted only while somebody was there to answer). A ping
+//                 counted only while somebody was there to answer and
+//                 nobody in the room had gone quiet for a second: a player
+//                 who left or froze is not the network losing pings). A ping
 //                 and its pong both cross the network, so this is round-trip
 //                 loss: 20% loss each way reads about 36%.
 //   ping (VS)     the joiner's round trip to the host as the carrier measured
