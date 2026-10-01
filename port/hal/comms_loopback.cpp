@@ -6682,6 +6682,17 @@ CommsLoopbackStats comms_loopback_stats() {
     return s;
 }
 
+// The host's view of one joiner's round trip, read-only (hal/net_hud.h, the
+// online ping readout): the number the joiner reported (the smallest of its
+// five exact round trips) and the sizing line prints per child. -1 on a
+// joiner, for the host's own slot, a slot that is not live or has not
+// reported, or out of range.
+int comms_loopback_child_rtt_ms(int slot) {
+    if (g_role != kRoleParent || slot <= 0 || slot >= kCommsMaxPlayers) return -1;
+    if (!(g_live & (1u << slot))) return -1;
+    return g_child_rtt_ms[slot];
+}
+
 // ---------------------------------------------------------------------------
 // ROLLBACK (port/rollback): what hal/rollback.cpp's frame-boundary step asks.
 // ---------------------------------------------------------------------------

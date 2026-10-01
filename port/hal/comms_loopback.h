@@ -226,6 +226,12 @@ struct CommsLoopbackStats {
 };
 CommsLoopbackStats comms_loopback_stats();
 
+// The host's view of joiner `slot`'s round trip in ms (what the joiner
+// reported at join; the per-child list of the host's sizing line). -1 on a
+// joiner, for slot 0, a slot that is not live or has not reported yet.
+// Read-only.
+int comms_loopback_child_rtt_ms(int slot);
+
 // One line to stderr, the transport half of the MP1 report. Tagged the same
 // way port::comms_report is so the two interleave readably in one log.
 void comms_loopback_report(const char *tag);
