@@ -2191,6 +2191,10 @@ int draw_full(const ntr::GxGpuFrame *f)
 int draw_frame(const ntr::GxGpuFrame *f)
 {
     if (g_down || !f) return 0;
+    /* THE PROBE (ntr/gx.h): would a frame offered whole be drawn whole? Costs
+       three tests and touches nothing. */
+    if (f->probe)
+        return (g_full_on && !g_full_dead && f->full_ok == 2) ? 2 : 0;
     if (!start()) return 0;
     if (f->cw <= 0 || f->ch <= 0 || f->pw <= 0 || f->ph <= 0) return 0;
 
@@ -2219,6 +2223,11 @@ int draw_frame(const ntr::GxGpuFrame *f)
     if (g_full_on && !g_full_dead && f->full_ok) {
         const int r = draw_full(f);
         if (r >= 0) return r;
+        /* it could not start. A frame offered with full_ok 2 has skipped the
+           CPU raster's own clears, so the opaque-only path below must not
+           copy into them: this one frame is handed back undrawn, and the next
+           one is not offered whole (the probe now says no). */
+        if (f->full_ok == 2) return 0;
     }
 
     if (!ensure_targets(f->cw, f->ch, false)) return 0;
