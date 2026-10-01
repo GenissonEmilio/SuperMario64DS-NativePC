@@ -722,6 +722,33 @@ enum : int {
     kGwIdentColours = 0x01,
 };
 
+// GHOSTLOOK1: TWO TEST KNOBS for the smoothness measurement, both default to
+// the design's numbers. SM64DS_GHOST_SEND_HZ (5..30) is the SYNG rate AND the
+// timebase a receiver turns seq into time with, so EVERY console in a room
+// must run the same value: it is a lab knob, not a setting (a real rate change
+// has to put the rate on the wire). SM64DS_GHOST_INTERP_MS (0..400) is how far
+// behind real time a ghost is drawn.
+int gw_send_hz() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_SEND_HZ");
+        v = e ? std::atoi(e) : (int)kGwSendHz;
+        if (v < 5) v = 5;
+        if (v > 30) v = 30;
+    }
+    return v;
+}
+int gw_interp_ms() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_INTERP_MS");
+        v = e ? std::atoi(e) : (int)kGwInterpMs;
+        if (v < 0) v = 0;
+        if (v > 400) v = 400;
+    }
+    return v;
+}
+
 struct GwFrame {
     unsigned      ext;       // seq extended to 32 bits
     long long     ts;        // the sender's clock for this frame, ms
@@ -1058,7 +1085,7 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat) {
             ext = newest + (unsigned)delta;
         }
     }
-    const long long ts = (long long)ext * 1000 / kGwSendHz;
+    const long long ts = (long long)ext * 1000 / gw_send_hz();
     const long long d = (long long)now - ts;
     if (z.have_off && (d - z.off > kGwClockJumpMs || z.off - d > kGwClockJumpMs)) {
         /* the sender's clock stepped (a restart inside the u16 window, or a
@@ -1212,7 +1239,7 @@ bool gw_sample(int seat, unsigned now, GwSample *o) {
     const GwSeat &z = g_gw[seat];
     if (z.n == 0 || !z.have_off) return false;
     o->grounded = (z.ring[z.n - 1].f.flags & kGhostGrounded) != 0;
-    const long long T = (long long)now - z.off - kGwInterpMs;
+    const long long T = (long long)now - z.off - gw_interp_ms();
     const GwFrame &nw = z.ring[z.n - 1];
     const GwFrame *a = 0, *b = 0;
     for (int k = z.n - 1; k >= 0; --k)
@@ -1488,7 +1515,7 @@ void gw_send(unsigned now) {
 
     if (!g_gw_t0_set) { g_gw_t0 = now; g_gw_t0_set = true; }
     const unsigned seq = (unsigned)((unsigned long long)(now - g_gw_t0) *
-                                    kGwSendHz / 1000u);
+                                    (unsigned)gw_send_hz() / 1000u);
     if (seq == g_gw_last_seq) return;
     if (paused && (unsigned)(now - g_gw_last_send_ms) < (unsigned)kGwPausedMs)
         return;
@@ -1608,7 +1635,7 @@ bool gw_decide() {
                  "(2 Hz paused), SYNI every %d s, drawn %d ms behind, "
                  "reckon <= %d ms, fades from %d ms and gone at %d ms without "
                  "a frame; name \"%s\"\n",
-                 (int)kGwSendHz, (int)kGwIdentMs / 1000, (int)kGwInterpMs,
+                 gw_send_hz(), (int)kGwIdentMs / 1000, gw_interp_ms(),
                  (int)kGwReckonMs, (int)kGwFadeMs, (int)kGwDespawnMs,
                  g_gw_me.name);
     return true;
