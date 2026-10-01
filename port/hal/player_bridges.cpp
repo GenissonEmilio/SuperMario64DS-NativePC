@@ -380,14 +380,23 @@ extern unsigned char data_0209f250;   /* local player index */
    The DS polygon alpha is 5 bits (0..31); func_02046208 writes it into the
    0x1f0000 field of every material's polygon attribute. 31 is fully opaque and
    1 is nearly gone; 0 is NOT invisible, it is the DS's wireframe mode, so the
-   floor here is 1. The default is a ghostly ~40%. SM64DS_ADVENTURE_ALPHA tunes
-   it for the visual check without a rebuild. */
+   floor here is 1. SM64DS_ADVENTURE_ALPHA tunes it for the visual check
+   without a rebuild.
+   run mp1 lane GHOSTLOOK1: THE DEFAULT IS SOLID (31), the value
+   Player::Render itself stamps every frame (ModelBase::ApplyOpacity(model,
+   mOpacity), src/_ZN6Player6RenderEv.cpp, and the follower holds a shown
+   ghost's mOpacity at 0x1f). It was a ghostly 12, and a see-through Yoshi is
+   drawn the DS's translucent way: no depth written, and a translucent pixel
+   never lands on one of the same polygon id, so the far arm and leg showed
+   through the body and parts of the body vanished behind itself (the field
+   report's "clipping / transparency"). The fade below still takes it down
+   while a ghost appears or goes. */
 static unsigned ghost_alpha()
 {
     static int a = -1;
     if (a < 0) {
         const char *e = std::getenv("SM64DS_ADVENTURE_ALPHA");
-        a = e ? std::atoi(e) : 12;
+        a = e ? std::atoi(e) : 31;
         if (a < 1) a = 1;
         if (a > 31) a = 31;
     }
