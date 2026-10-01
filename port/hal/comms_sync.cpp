@@ -81,10 +81,10 @@
 #include "vs_palette_gen.h"  // GHOSTLOOK1: the VS colour arithmetic, for a hub
                              // ghost in its player's own colours
 
-// The decoded-texture cache keys a bind on the first palette word only, so a
-// rewritten row must drop it (hal/model_host.cpp's hal_tex_cache_drop does the
-// same).
-namespace ntr { void gx_invalidate_textures(); }
+// The decoded-texture cache's generation (ntr/gx.h): it counts every time the
+// cache is thrown away, which is when a cached decode of an old row stops
+// being able to come back. See gw_colour_row.
+namespace ntr { unsigned gx_texture_generation(); }
 
 extern "C" {
 // SetAnim IS DECLARED void HERE, WHICH IS ITS ACTUAL RETURN TYPE.
@@ -797,6 +797,8 @@ struct GwStats {
                                                 // of those, with a ghost shown
     unsigned long long shown_frames;            // follower frames, any ghost shown
     unsigned long long comebacks;   // frames that brought back a gone ghost
+    unsigned long long pal_held;   // GHOSTLOOK1: frames a pick waited for a
+                                   // cache drop (gw_row_drawable)
     unsigned long long pal_rows, pal_writes;   // GHOSTLOOK1: ghosts drawn in
                                                // their own colours; row writes
 };
@@ -1386,6 +1388,70 @@ unsigned short *gw_pltt_row(int base16) {
 // adventure hub never draws one otherwise; row 0 (this console's own player)
 // is never written. Yoshi only, as in VS: the bros have no row per player.
 // Returns the row to stamp, or -1 to leave the model's own.
+//
+// NO CACHE DROP HERE. The first version threw the decoded-texture cache away
+// (ntr::gx_invalidate_textures) whenever it rewrote a row, the way the ROM's
+// GX::EndLoadTexPltt does. The ROM does that at load time; this runs after the
+// frame's render walk has bound its textures and before the raster draws
+// them, and every triangle holds a pointer into a decode the drop frees: the
+// watcher crashed in the raster on the first frame a coloured ghost showed.
+// The drop is not needed. A bind's cache key is the palette base, the texture
+// words AND the first two words of the row, and words 0..1 are the body
+// family, so a new pick with a new body colour can never be served an old
+// decode. The one case that could is a second pick with the SAME body colour
+// and other shoes drawn on the same row before the cache is next dropped (a
+// level load does it); this keeps, per body row, what has been drawn there
+// since the last drop and leaves such a ghost in the model's own colours until
+// the next one.
+struct GwRowSeen {
+    unsigned gen;            // ntr::gx_texture_generation() these were kept in
+    int      n;
+    unsigned cp[8];          // words 0..1 of a row drawn here (the cache key)
+    unsigned sum[8];         // ...and all sixteen words, hashed
+};
+GwRowSeen g_row_seen[kCommsMaxPlayers];
+unsigned short g_row_last[kCommsMaxPlayers][16];   // the last row written
+bool g_row_last_have[kCommsMaxPlayers];            // into each body's row
+
+unsigned gw_row_sum(const unsigned short *r) {
+    unsigned h = 2166136261u;
+    for (int i = 0; i < 16; ++i) { h ^= r[i]; h *= 16777619u; }
+    return h;
+}
+
+// true when `row` may be drawn on body row `no` without a cached decode of
+// another row with the same key being served for it (and then remembered)
+bool gw_row_drawable(int no, const unsigned short *row) {
+    GwRowSeen &rs = g_row_seen[no];
+    const unsigned gen = ntr::gx_texture_generation();
+    if (rs.gen != gen) {
+        /* dropped since: only what the row holds now can have been drawn
+           (and cached) after the drop */
+        rs.gen = gen;
+        rs.n = 0;
+        if (g_row_last_have[no]) {
+            std::memcpy(&rs.cp[0], g_row_last[no], 4);
+            rs.sum[0] = gw_row_sum(g_row_last[no]);
+            rs.n = 1;
+        }
+    }
+    unsigned cp;
+    std::memcpy(&cp, row, 4);
+    const unsigned sum = gw_row_sum(row);
+    bool seen = false;
+    for (int k = 0; k < rs.n; ++k) {
+        if (rs.cp[k] != cp) continue;
+        if (rs.sum[k] != sum) return false;   // same key, other colours
+        seen = true;
+    }
+    if (seen) return true;
+    if (rs.n >= 8) return false;
+    rs.cp[rs.n] = cp;
+    rs.sum[rs.n] = sum;
+    ++rs.n;
+    return true;
+}
+
 int gw_colour_row(GwSeat &z, void *a) {
     if (!z.have_ident || !z.colours) return -1;
     if (gw_char(a) != 3u) return -1;
@@ -1405,13 +1471,18 @@ int gw_colour_row(GwSeat &z, void *a) {
         vspal::vs_palette_row(z.pal_src, z.pal_body, z.pal_shoes, z.pal_out);
         z.pal_have = true;
     }
+    if (!gw_row_drawable(no, z.pal_out)) {
+        ++g_gws.pal_held;
+        return -1;
+    }
     /* a level load uploads the file's rows again: write it back when the
        row no longer holds it */
     if (std::memcmp(rp, z.pal_out, sizeof z.pal_out) != 0) {
         std::memcpy(rp, z.pal_out, sizeof z.pal_out);
-        ntr::gx_invalidate_textures();
         ++g_gws.pal_writes;
     }
+    std::memcpy(g_row_last[no], z.pal_out, sizeof z.pal_out);
+    g_row_last_have[no] = true;
     ++g_gws.pal_rows;
     return pal;
 }
@@ -1607,7 +1678,7 @@ void gw_report(const char *tag) {
                  "clamped=%llu target_ghost=%llu near_ghost=%llu seat_fix=%llu "
                  "adopted=%llu cut_nosend=%llu cut_frames=%llu cut_drawn=%llu "
                  "shown_frames=%llu comebacks=%llu pal_rows=%llu "
-                 "pal_writes=%llu cut=%d names=[%s]\n",
+                 "pal_writes=%llu pal_held=%llu cut=%d names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
@@ -1619,7 +1690,8 @@ void gw_report(const char *tag) {
                  g_gws.near_ghost, g_gws.seat_fix, g_gws.adopted,
                  g_gws.cut_nosend, g_gws.cut_frames, g_gws.cut_drawn,
                  g_gws.shown_frames, g_gws.comebacks, g_gws.pal_rows,
-                 g_gws.pal_writes, data_0209fc48 != 0 ? 1 : 0, names);
+                 g_gws.pal_writes, g_gws.pal_held,
+                 data_0209fc48 != 0 ? 1 : 0, names);
 }
 
 // sync_decide's hub arm: an adventure console on the HUB has no DS transport
@@ -2495,6 +2567,7 @@ unsigned g_gw_follow_n = 1;   // GHOSTLOOK1: follower passes, for show_n
                               // (from 1: a seat's show_n starts at 0)
 int g_drawpos_have[kCommsMaxPlayers];
 int g_gw_pal[kCommsMaxPlayers];   // GHOSTLOOK1: the row each body draws with
+const void *g_gw_pal_body[kCommsMaxPlayers];   // ...the body it was made for
 int g_drawpos[kCommsMaxPlayers][3];
 
 void gw_park_body(void *a) {
@@ -2663,6 +2736,7 @@ void gw_follow() {
                 (unsigned char)_ZN6Player8HasNoCapEv(c);
         }
         g_gw_pal[i] = gw_colour_row(z, a);
+        g_gw_pal_body[i] = a;
         ++z.driven;
         shown_any = true;
         if (gw_look_probe() > 0 &&
@@ -3057,9 +3131,19 @@ void gw_body_probe() {
 // GHOSTLOOK1: the palette row the render stamps into a hub ghost body's
 // materials for this frame's draw, or -1 (not a shown hub ghost, no pick, not
 // Yoshi): hal/player_bridges.cpp's hal_render_player_world.
+//
+// Only while the row still holds what the follower wrote, for the body it was
+// written for: a level load seats new bodies and uploads the file's rows again
+// before the next follower pass, and that frame draws the model's own row.
 extern "C" int port_adventure_ghost_palette(int slot) {
     if (!g_hub || slot < 0 || slot >= kCommsMaxPlayers) return -1;
-    return g_gw_pal[slot];
+    const int pal = g_gw_pal[slot];
+    if (pal < 0 || !g_row_last_have[slot]) return -1;
+    if (g_gw_pal_body[slot] != data_0209f394[slot]) return -1;
+    const unsigned short *rp = gw_pltt_row(pal);
+    if (!rp || std::memcmp(rp, g_row_last[slot], sizeof g_row_last[slot]) != 0)
+        return -1;
+    return pal;
 }
 
 extern "C" void port_adventure_ghost_follow() {
