@@ -83,6 +83,7 @@
 
 #include <cstring>       /* run mg16 lane MP3: the touch-ring store */
 
+#include "ntr/gx.h"
 #include "ntr/ppu.h"
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
@@ -4357,6 +4358,10 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
            the three plates, and the game's own picture under them, and the
            plate, the banner, the handle and the attention arrows are none of
            those. */
+        /* the picture is built out of the top screen's own pixels, so a frame
+           held on the graphics card (run cardfull, lane CARD2) has to be read
+           back first */
+        ntr::gx_card_settle_because("the save menu's swapped picture");
         swap_present(dst, w, h);
     } else if (!hal_sub_screen_stacked()) {
         /* THE DECORATIVE PANEL FIRST, because it goes BEHIND the map: the
