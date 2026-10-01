@@ -740,6 +740,7 @@ struct GwStats {
     unsigned long long cut_frames, cut_drawn;   // follower frames in one, and
                                                 // of those, with a ghost shown
     unsigned long long shown_frames;            // follower frames, any ghost shown
+    unsigned long long comebacks;   // frames that brought back a gone ghost
 };
 GwStats g_gws;
 
@@ -1039,6 +1040,22 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat) {
         z.have_off = true;
     } else {
         z.off += (d - z.off) / 32;   // slow rise: drift and route changes
+    }
+    /* run mp1 lane OPENCOUNT1: A GHOST THAT WAS GONE COMES BACK AT ITS NEW
+       FRAME. Past kGwDespawnMs with no frame the ghost has faded out and is not
+       drawn (gw_visible), so the frames still in its ring describe a spot the
+       player has since left: a cutscene during which the player moved (the
+       star-get camera slides Mario on his momentum while his console sends
+       nothing), or a gap on the link. Kept, gw_sample drew the newest of them
+       for the 100 ms interpolation delay -- across a teleport frame it holds
+       the frame before -- and then snapped to the real spot (REVGHOSTCUT1 N1:
+       ~110 ms at the old spot, then a 105-unit jump). Nothing on screen
+       continues from those frames, so the ring starts again with this one, and
+       the sample holds it until the timeline reaches it. The clock estimate is
+       kept: the sender's clock did not step. */
+    if (z.n > 0 && (unsigned)(now - z.last_ms) > (unsigned)kGwDespawnMs) {
+        z.n = 0;
+        ++g_gws.comebacks;
     }
     if (z.n == kGwRing) {
         std::memmove(&z.ring[0], &z.ring[1], sizeof(GwFrame) * (kGwRing - 1));
@@ -1443,7 +1460,7 @@ void gw_report(const char *tag) {
                  "reposes=%llu recursor=%llu charswaps=%llu parked=%llu below=%llu "
                  "clamped=%llu target_ghost=%llu near_ghost=%llu seat_fix=%llu "
                  "adopted=%llu cut_nosend=%llu cut_frames=%llu cut_drawn=%llu "
-                 "shown_frames=%llu cut=%d names=[%s]\n",
+                 "shown_frames=%llu comebacks=%llu cut=%d names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
@@ -1454,7 +1471,8 @@ void gw_report(const char *tag) {
                  g_gws.below, g_gws.clamped, g_gws.target_ghost,
                  g_gws.near_ghost, g_gws.seat_fix, g_gws.adopted,
                  g_gws.cut_nosend, g_gws.cut_frames, g_gws.cut_drawn,
-                 g_gws.shown_frames, data_0209fc48 != 0 ? 1 : 0, names);
+                 g_gws.shown_frames, g_gws.comebacks,
+                 data_0209fc48 != 0 ? 1 : 0, names);
 }
 
 // sync_decide's hub arm: an adventure console on the HUB has no DS transport
