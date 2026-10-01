@@ -149,6 +149,9 @@ void *_ZN8dActor_c4NextEPKS_(const void *prev);
 // func_ov002_020becf4: the character, then with arg2 = 1 the render latches),
 // for the look probe.
 unsigned func_ov002_020becf4(char *self, unsigned v, int arg2);
+// Player::HasNoCap through the port's C face (hal/player_bridges.cpp), the
+// value func_ov002_020e4bb8 latches into +0x701 for the render.
+int _ZN6Player8HasNoCapEv(void *self);
 }
 
 namespace port {
@@ -2500,6 +2503,30 @@ void gw_follow() {
         if (!no_repose) {
             func_ov002_020e4768((char *)a);
             ++g_gws.reposes;
+        }
+        /* GHOSTLOOK1: THE RENDER LATCHES, the last block of the same routine
+           (src/func_ov002_020e4bb8.c, after the place and the pose this
+           follower already runs). Player::Render does not read the live
+           fields; it reads what the end of the body's Behavior copied for it:
+           +0x6db the character whose head it picks (func_ov002_020becf4 with
+           arg2 = 1, and the eye-blink sequence), +0x6fe / +0x6fa the balloon
+           and no-head latches, +0x6fc the vanish latch Luigi's texture
+           sequence reads, +0x700 the wings, +0x701 HasNoCap. A ghost's own
+           Behavior is skipped from the frame its body is seated, so nothing
+           ever wrote them: every byte stayed 0, and 0 in +0x6db is MARIO. A
+           Yoshi ghost then asked for head index 0 (Mario's cap head, drawn on
+           Yoshi's neck bone, nowhere to be seen) instead of 3, its own: the
+           headless Yoshi of the field report. A Mario ghost looked right only
+           because Mario is 0. The ROM's six statements, as it writes them. */
+        {
+            char *c = (char *)a;
+            *(unsigned char *)(c + 0x6db) = (unsigned char)*(int *)(c + 8);
+            *(unsigned char *)(c + 0x6fe) = *(unsigned char *)(c + 0x6fd);
+            *(unsigned char *)(c + 0x6fa) = *(unsigned char *)(c + 0x6f9);
+            *(unsigned char *)(c + 0x6fc) = *(unsigned char *)(c + 0x6fb);
+            *(unsigned char *)(c + 0x700) = *(unsigned char *)(c + 0x6ff);
+            *(unsigned char *)(c + 0x701) =
+                (unsigned char)_ZN6Player8HasNoCapEv(c);
         }
         ++z.driven;
         shown_any = true;
