@@ -160,6 +160,10 @@ int   port_tree_link_refusals(void);
 void port_actor_scene_pass(void);
 void *port_stage_object(void);
 void *port_stage_a_boot(void *mc, int spawn);
+/* run mp1 lane OPENCOUNT1: the adventure hub's bodies, seated again by the
+   level load that ends the new-file opening (hal/comms_sync.cpp). A no-op
+   unless the hub's opening hold is on. */
+void port_adventure_hub_level_seat(void);
 void port_level_reset_host(void);        /* hal/level_boot.cpp (also captures the
                                             outgoing level's orphaned KCL image --
                                             the ~108KB re-entry leak -- for
@@ -2031,6 +2035,10 @@ extern "C" int port_level_change_apply(void)
     port_level_stage_reseat(stage);
     /* [lvl-perf] span 0: everything between the change firing and the boot */
     port_lvlperf_note(0, port_lvlperf_now() - lvlperf_t0);
+    /* run mp1 lane OPENCOUNT1: the hub's new-file opening played on the
+       one-player seat (tests/walk_window.cpp's title fall-through); its closing
+       level load is this one, and it spawns the hub's four bodies. */
+    port_adventure_hub_level_seat();
     port_stage_a_boot((char *)stage + 0x91c, 1);
 
     g_crossed_scenes = 0;

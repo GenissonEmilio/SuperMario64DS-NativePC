@@ -597,6 +597,11 @@ void hal_render_player_world(void *p);
 /* ADVENTURE GHOSTS: the per-frame no-collision hold over remote slots
    (hal/player_bridges.cpp). No-op unless adventure-ghost mode is on. */
 void port_adventure_ghost_hold(void);
+/* run mp1 lane OPENCOUNT1: the hub's new-file opening on the one-player seat
+   (hal/comms_sync.cpp); begin answers 1 when it took the hold. */
+int port_adventure_hub_opening_begin(void);
+int port_adventure_hub_opening_held(void);
+int port_intro_suppressed(void);   /* hal/level_boot.cpp */
 /* the headless M1 proof; no-op unless SM64DS_ADVENTURE_PROBE is set. */
 void port_adventure_probe(int frame);
 /* ADVENTURE GHOSTS: the per-render-frame pure-follower step (hal/comms_sync.cpp).
@@ -11536,6 +11541,18 @@ int main(void)
             return scene_rc;
         fprintf(stderr, "[title-entry] scene run over; falling through to the "
                         "level boot in this process\n");
+        /* run mp1 lane OPENCOUNT1: THE HUB'S NEW-FILE OPENING BOOTS ON THE
+           ONE-PLAYER SEAT. The file just picked plays the opening when the
+           ROM's intro gate will take it (hal/level_boot.cpp's
+           port_intro_wants_play: single-file mode, the opening-seen bit clear,
+           not suppressed). On the adventure hub the bring-up seated four
+           bodies before the title, so this boot would spawn four for a
+           one-player cutscene; hal/comms_sync.cpp takes the count StartFile
+           left instead, until the opening's own closing level load. A no-op
+           off the hub. */
+        if (data_0209f2d8 == 0 && !(data_0209caa0[2] & 0x80) &&
+            !port_intro_suppressed())
+            port_adventure_hub_opening_begin();
         /* AND THE PRESENTATION FOLLOWS IT. The title is a two-screen scene and
            says so (hal/scene_boot.cpp's port_scene_layout_propose names it
            beside the minigames, on the owner's ruling); an adventure is the
@@ -12193,7 +12210,15 @@ int main(void)
        is exactly what the VS probe measured: the boot log said "2 players" and
        the probe reported count=1 with slot1 NULL on every frame of a 300-frame
        run. Two seats for one fact, and the later one silently won. */
-    data_0209f21c = (unsigned char)port::vs_player_count();
+    /* run mp1 lane OPENCOUNT1: not while the hub's new-file opening holds
+       the one-player seat (the title fall-through above); the opening's
+       closing level load seats the hub's bodies. */
+    if (!port_adventure_hub_opening_held())
+        data_0209f21c = (unsigned char)port::vs_player_count();
+    else if (data_0209fc48 == 0)
+        fprintf(stderr, "[ghost] hub: the opening hold is on but no opening "
+                        "script runs; this level has one body until the next "
+                        "level load\n");
     data_0209f350[0] = 0;
     /* run mg16 lane MPBTN: THE REAL REMAP MAPS, and retiring the zeros that
        sat here. This line used to point all four entries at a zero map,

@@ -2176,6 +2176,9 @@ extern void *data_0209f318;              /* the Camera LoadEntranceObjects spawn
 }
 
 extern "C" void port_vs_spawn_extra_players(void *tbl, unsigned p3);
+/* run mp1 lane OPENCOUNT1: the hub's spare bodies, held the moment the
+   new-file opening's closing load spawns them (hal/comms_sync.cpp). */
+extern "C" void port_adventure_hub_spawned();
 
 /* THE PORT NO LONGER HOLDS A CHARACTER CHOICE. What stood here was a
    four-slot table defaulting to slot-index order (0 Mario, 1 Luigi, 2 Wario,
@@ -2346,6 +2349,7 @@ static void port_load1(void *t, int a, unsigned b)
     _Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij(t, a, b);
     data_0209f21c = saved_count;
     port_vs_spawn_extra_players(t, b);
+    port_adventure_hub_spawned();
     data_0209f250 = saved_local;
     char *const cam = (char *)data_0209f318;
     if (hold && cam && data_0209f394[saved_local])

@@ -107,6 +107,13 @@ extern int data_0209fc48;
 // n, then func_020308d0 writes the live bytes), for the hub seat repair.
 extern unsigned char data_0208a0e0;
 void SetNumPlayers(int n);
+// The wireless session state Player::Behavior tests before it points
+// data_020a0e40 at its own slot (hal/level_boot.cpp's a2 seat: 1 when more
+// than one body is seated, 0 for one), for the hub's opening hold.
+extern int data_0209fc68[];
+// The file's save block (FileSaveData); byte 8 bit 7 is the opening-seen bit,
+// for the end of the hub opening's hand-over.
+extern unsigned char data_0209caa0[];
 // ADVENTURE co-op (M2): the level currently up on THIS console, the id
 // hal/level_boot.cpp seats at every mount and hal/level_change.cpp rewrites on
 // a warp. The send side stamps it into each snapshot so a peer can tell whether
@@ -733,6 +740,7 @@ struct GwStats {
     unsigned long long cut_frames, cut_drawn;   // follower frames in one, and
                                                 // of those, with a ghost shown
     unsigned long long shown_frames;            // follower frames, any ghost shown
+    unsigned long long comebacks;   // frames that brought back a gone ghost
 };
 GwStats g_gws;
 
@@ -1032,6 +1040,22 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat) {
         z.have_off = true;
     } else {
         z.off += (d - z.off) / 32;   // slow rise: drift and route changes
+    }
+    /* run mp1 lane OPENCOUNT1: A GHOST THAT WAS GONE COMES BACK AT ITS NEW
+       FRAME. Past kGwDespawnMs with no frame the ghost has faded out and is not
+       drawn (gw_visible), so the frames still in its ring describe a spot the
+       player has since left: a cutscene during which the player moved (the
+       star-get camera slides Mario on his momentum while his console sends
+       nothing), or a gap on the link. Kept, gw_sample drew the newest of them
+       for the 100 ms interpolation delay -- across a teleport frame it holds
+       the frame before -- and then snapped to the real spot (REVGHOSTCUT1 N1:
+       ~110 ms at the old spot, then a 105-unit jump). Nothing on screen
+       continues from those frames, so the ring starts again with this one, and
+       the sample holds it until the timeline reaches it. The clock estimate is
+       kept: the sender's clock did not step. */
+    if (z.n > 0 && (unsigned)(now - z.last_ms) > (unsigned)kGwDespawnMs) {
+        z.n = 0;
+        ++g_gws.comebacks;
     }
     if (z.n == kGwRing) {
         std::memmove(&z.ring[0], &z.ring[1], sizeof(GwFrame) * (kGwRing - 1));
@@ -1436,7 +1460,7 @@ void gw_report(const char *tag) {
                  "reposes=%llu recursor=%llu charswaps=%llu parked=%llu below=%llu "
                  "clamped=%llu target_ghost=%llu near_ghost=%llu seat_fix=%llu "
                  "adopted=%llu cut_nosend=%llu cut_frames=%llu cut_drawn=%llu "
-                 "shown_frames=%llu cut=%d names=[%s]\n",
+                 "shown_frames=%llu comebacks=%llu cut=%d names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
@@ -1447,7 +1471,8 @@ void gw_report(const char *tag) {
                  g_gws.below, g_gws.clamped, g_gws.target_ghost,
                  g_gws.near_ghost, g_gws.seat_fix, g_gws.adopted,
                  g_gws.cut_nosend, g_gws.cut_frames, g_gws.cut_drawn,
-                 g_gws.shown_frames, data_0209fc48 != 0 ? 1 : 0, names);
+                 g_gws.shown_frames, g_gws.comebacks,
+                 data_0209fc48 != 0 ? 1 : 0, names);
 }
 
 // sync_decide's hub arm: an adventure console on the HUB has no DS transport
@@ -2566,8 +2591,10 @@ extern "C" void port_adventure_ghost_park(void *body) { gw_park_body(body); }
 //     much later and keep their own ids, so they are never taken.
 // Runs from the hold (hal/player_bridges.cpp), before the walk, so a repaired
 // body is skipped and parked before its first Behavior tick. Hub only.
+static void port_adventure_hub_opening_tick();   // the opening's hand-over, below
 extern "C" void port_adventure_hub_seat() {
     if (!(adventure_ghost_mode() && comms_hub_active())) return;
+    port_adventure_hub_opening_tick();
     const int count = (int)data_0209f21c;
     if (count <= 1 || count > 4) return;      // the live bytes are four wide
     bool short_seat = (int)data_0208a0e0 != count;
@@ -2606,6 +2633,112 @@ extern "C" void port_adventure_hub_seat() {
         std::fprintf(stderr, "[ghost] hub seat: slot %d's body (id %u) was "
                      "spawned unseated; seated\n", i, *(const unsigned *)(a + 0x4));
     }
+}
+
+// THE NEW-FILE OPENING PLAYS ON THE ROM'S OWN ONE-PLAYER SEAT, on the hub too.
+//
+// The hub seats four bodies, and on the title path the level boot after the
+// file pick spawns them before the new-file opening starts. The opening is a
+// one-player cutscene and the ROM reads the count all through it: the kuppa
+// script numbers its cast from it (ResetKuppaScript: data_0209b270 =
+// data_0209f21c), and LakituBro's hand-over looks for the player through
+// ClosestPlayer. Measured with four (REVGHOSTCUT1 item 5): the cast came out
+// numbered 0..2 instead of 1..3 and walked off its marks, LakituBro ran its
+// hand-over during the opening and set the opening-seen bit at f930 (solo
+// f3480, after the reload), the ~31 s hand-over after the reload never played,
+// and the pause opened during the rest of the opening (the bit gates it). With
+// SM64DS_VS_PLAYERS=1 the same console plays the opening byte-identical to solo.
+//
+// So the hub plays the opening on exactly the seat a one-player boot has, in
+// three steps:
+//   1. the opening (port_adventure_hub_opening_begin, from
+//      tests/walk_window.cpp's title fall-through before the level boot
+//      spawns): the count StartFile left (SetNumPlayers(1): data_0208a0e0 = 1,
+//      live bytes 1000), data_0209f21c to match, and the session state
+//      data_0209fc68 at 0, which is what the a2 seat writes for one player.
+//      Nothing is seated for a ghost, so nothing is drawn or held (the seat
+//      repair, the hold and the follower all walk data_0209f21c).
+//   2. the opening's own closing level load (port_adventure_hub_level_seat,
+//      from hal/level_change.cpp before it boots the level): the count goes
+//      back to the hub's through the ROM's setter, so that load spawns and
+//      seats all four bodies, and the spares are held the moment they spawn
+//      (port_adventure_hub_spawned, below).
+//   3. the hand-over after that load (LakituBro wakes the player and talks,
+//      solo f2504..f3480) still runs with the session state at 0: with 1 the
+//      ROM's wireless arms (actor culling, Stage::Behavior) cut it 31 frames
+//      short and the opening-seen bit came at f3450. The state goes to the
+//      hub's 1 when the hand-over sets the bit (port_adventure_hub_opening_tick,
+//      from the per-frame seat repair), or on any level change before that.
+// Every other boot (an existing file, SM64DS_LEVEL, VS, solo) never takes this.
+static bool g_hub_opening = false;        // step 1 until the closing load
+static bool g_hub_opening_spawn = false;  // step 2, until that load spawns
+static bool g_hub_handover = false;       // step 3, until the bit
+static int g_hub_handover_level = -1;
+
+extern "C" int port_adventure_hub_opening_begin() {
+    if (!(adventure_ghost_mode() && comms_hub_active())) return 0;
+    std::fprintf(stderr, "[ghost] hub: the new-file opening will play; it "
+                 "boots on the ROM's one-player seat (count %d, live bytes "
+                 "%d%d%d%d; was %d bodies), the hub's bodies come with the "
+                 "opening's closing level load\n", (int)data_0208a0e0,
+                 (int)data_0209fc5c[0], (int)data_0209fc5c[1],
+                 (int)data_0209fc5c[2], (int)data_0209fc5c[3],
+                 (int)data_0209f21c);
+    g_hub_opening = true;
+    data_0209f21c = data_0208a0e0;
+    data_0209fc68[0] = 0;
+    return 1;
+}
+
+extern "C" int port_adventure_hub_opening_held() { return g_hub_opening ? 1 : 0; }
+
+// Step 2. Called by hal/level_change.cpp before every level boot; does nothing
+// unless the opening is on.
+extern "C" void port_adventure_hub_level_seat() {
+    if (!g_hub_opening) return;
+    g_hub_opening = false;
+    if (!(adventure_ghost_mode() && comms_hub_active())) return;
+    const int want = vs_player_count();
+    if (want <= 1 || want > 4) return;        // the live bytes are four wide
+    std::fprintf(stderr, "[ghost] hub: the opening's level load seats the "
+                 "hub's %d bodies again (count was %d); SetNumPlayers(%d)\n",
+                 want, (int)data_0209f21c, want);
+    SetNumPlayers(want);
+    data_0209f21c = (unsigned char)want;
+    g_hub_opening_spawn = true;
+    g_hub_handover = true;
+    g_hub_handover_level = (int)data_0209f2f8;
+}
+
+// The same load's spawn: the moment hal/level_boot.cpp's entrance loader has
+// spawned the four bodies, before anything else the load creates. The spares
+// come up on the level's player records 1..3 beside the local body, and the
+// hand-over's LakituBro picks the body it puts to sleep through ClosestPlayer
+// while the load is still running (func_ov085_0212df84 ->
+// func_ov002_020d228c): measured, it took slot 2's body on record 2, and the
+// local body walked in through St_LevelEnter instead of waking up. So the hold
+// takes the spares at once (Behavior skipped, parked), what it does to them on
+// every later frame, and the only body left on a player record is the local
+// one, as in a one-player load.
+extern "C" void port_adventure_ghost_hold();   // hal/player_bridges.cpp
+extern "C" void port_adventure_hub_spawned() {
+    if (!g_hub_opening_spawn) return;
+    g_hub_opening_spawn = false;
+    port_adventure_ghost_hold();
+}
+
+// Step 3's end, every frame from port_adventure_hub_seat: the opening-seen bit
+// (save byte 8 bit 7, set by func_ov085_0212d5dc when LakituBro is done) or a
+// level change ends the hand-over, and the session state takes the hub's 1.
+static void port_adventure_hub_opening_tick() {
+    if (!g_hub_handover) return;
+    const bool seen = (data_0209caa0[8] & 0x80) != 0;
+    if (!seen && (int)data_0209f2f8 == g_hub_handover_level) return;
+    g_hub_handover = false;
+    data_0209fc68[0] = 1;
+    std::fprintf(stderr, "[ghost] hub: the opening's hand-over is over (%s); "
+                 "the session state goes to 1 like every hub boot\n",
+                 seen ? "the opening-seen bit is set" : "the level changed");
 }
 
 // Where the follower put a hub ghost this frame (tests/nametag.h reads the tag
