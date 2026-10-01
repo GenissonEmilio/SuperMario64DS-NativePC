@@ -261,6 +261,11 @@ struct GxGpuFrame {
     //            clears them itself if the card does not); 0 not at all
     // probe      do not draw: answer 2 if a frame offered with full_ok 2 would
     //            be attempted whole, 0 otherwise (nothing is touched)
+    // planes     do not draw: fill depth and attrid (already cleared by the
+    //            caller) from the frame the card last drew whole, and answer 1,
+    //            or 0 if there is no such frame. A whole frame does not bring
+    //            those planes back; gx_depth and gx_attr_ids ask for them here
+    //            only if somebody reads them
     // ab         the in-process A/B is comparing this frame: the depth and the
     //            polygon-ID plane come back as well, and the smoothing is left
     //            to gx_render's own pass so the comparison sees the picture
@@ -274,6 +279,7 @@ struct GxGpuFrame {
     // out        the backend's report; written only on a return of 2
     int full_ok;
     int probe;
+    int planes;
     int ab;
     int aa_mode;
     int pre_needed;

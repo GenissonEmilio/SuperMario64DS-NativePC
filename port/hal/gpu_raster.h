@@ -23,9 +23,9 @@
  * THE WHOLE FRAME (run cardfull). The translucent polygons, the shadow volumes,
  * the toon and highlight polygons and the edge smoothing can be drawn on the
  * card too, into the same targets, so that one finished 3D picture is read back
- * instead of an opaque one that the processor then finishes. env
- * SM64DS_RENDERER_FULL selects it (1 whole frame, 0 the opaque-only card
- * above); a device below Direct3D feature level 11_0, or any failure of the
+ * instead of an opaque one that the processor then finishes. It is what the
+ * setting does now; env SM64DS_RENDERER_FULL=0 is the escape hatch back to the
+ * opaque-only card above; a device below Direct3D feature level 11_0, or any failure of the
  * whole-frame pass, drops back to the opaque-only card for the rest of the run
  * with one line, and a failure of the card itself drops back to the software
  * rasteriser as before. The in-process A/B (SM64DS_RENDERER_AB=1) compares the
