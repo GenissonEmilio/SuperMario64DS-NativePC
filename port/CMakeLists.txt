@@ -11577,6 +11577,10 @@ list(APPEND SLICE_COMMS_SOURCES hal/comms_hub.cpp)
 # the hub. Port-side only and INERT unless one of those carriers is installed,
 # so linking it changes no behaviour solo; see hal/adv_chat.h.
 list(APPEND SLICE_COMMS_SOURCES hal/adv_chat.cpp)
+# Run mp1 lane PINGHUD1: the online ping readout's view (the painter is in
+# hal/net_hud.h, drawn by tests/walk_window.cpp). Reads carrier stats only and
+# shows nothing solo; see hal/net_hud.h.
+list(APPEND SLICE_COMMS_SOURCES hal/net_hud.cpp)
 # Lane VOICE: proximity voice chat. Port-side only -- nothing in src/ knows it
 # exists -- and INERT unless settings.json turns VoiceEnabled on, which is off
 # by default, so linking it opens no device and changes no behaviour. It rides
