@@ -259,8 +259,12 @@ struct GxGpuFrame {
     // since run cardfull). A backend that only knows the opaque pass ignores it
     // all and returns 1, and gx_render does the rest itself, as it always did.
     //
-    // full_ok    gx_render will take a whole-frame answer (the in-process A/B
-    //            hands the card the same list with this set too)
+    // full_ok    gx_render will take a whole-frame answer: 1 over buffers it has
+    //            cleared (the in-process A/B), 2 over buffers it has NOT (it
+    //            skips their clears for a frame the card draws whole, and
+    //            clears them itself if the card does not); 0 not at all
+    // probe      do not draw: answer 2 if a frame offered with full_ok 2 would
+    //            be attempted whole, 0 otherwise (nothing is touched)
     // ab         the in-process A/B is comparing this frame: the depth and the
     //            polygon-ID plane come back as well, and the smoothing is left
     //            to gx_render's own pass so the comparison sees the picture
@@ -273,6 +277,7 @@ struct GxGpuFrame {
     //            it when pre_needed, exactly as aa_pass would have
     // out        the backend's report; written only on a return of 2
     int full_ok;
+    int probe;
     int ab;
     int aa_mode;
     int pre_needed;

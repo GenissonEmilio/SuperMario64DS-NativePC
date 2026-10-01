@@ -5120,6 +5120,18 @@ static bool aa_scratch_alloc() {
     return false;
 }
 
+/* gpu_full_probe: does the registered backend mean to draw this frame whole?
+   Asked every frame, answered without touching anything. Not in the A/B, which
+   draws the CPU passes itself first and hands the card the cleared buffers. */
+static bool gpu_full_probe() {
+    if (!g_gpu_opaque || ab_mode()) return false;
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.probe = 1;
+    f.full_ok = 2;
+    return g_gpu_opaque(&f) == 2;
+}
+
 static bool capture_may_read() {
     static unsigned long long last_performed = ~0ull;
     static uint32_t last_gen = 0;
@@ -5200,14 +5212,11 @@ void gx_render(Framebuffer &fb) {
     const int cw = active_w > 0 ? (active_w < SCREEN_W ? active_w : SCREEN_W) : 0;
     const int ch = active_h > 0 ? (active_h < SCREEN_H ? active_h : SCREEN_H) : 0;
 
-    /* Depth clear. 1e30f is not a repeating byte pattern so memset cannot do
-       it, but one row can be built scalar and the rest copied from it, which
-       is memcpy's problem rather than a scalar loop's. */
+    /* THE DEPTH CLEAR MOVED DOWN (run cardfull): it now sits below the early
+       whole-frame card call, so a frame the card draws whole never pays for
+       it. Nothing between here and there reads depth. */
     raster_buffers();
     DepthRow *const depth = g_depth;
-    for (int x = 0; x < cw; ++x) depth[0][x] = 1e30f;
-    for (int y = 1; y < ch; ++y)
-        std::memcpy(depth[y], depth[0], (size_t)cw * sizeof(float));
 
     /* THE 3D COVERAGE MASK, see gx_coverage() in ntr/gx.h. One byte per pixel,
        set beside every store into fb.px below and cleared here. It is what
@@ -5312,15 +5321,72 @@ void gx_render(Framebuffer &fb) {
        graphics-card renderer -- want_id is have_shadow and nothing about this
        block or the write in the band below has changed. */
     const bool want_id = have_shadow || (g_gpu_opaque && ab_mode());
-    if (have_shadow)
-        for (int y = 0; y < ch; ++y) std::memset(stencil[y], 0, (size_t)cw);
-    if (want_id) {
-        /* 0 is the clear plane's polygon ID (CLEAR_COLOR bits 24-29 reset
-           value); pixels no opaque polygon reaches keep it. */
-        for (int y = 0; y < ch; ++y) std::memset(attrid[y], 0, (size_t)cw);
+
+    /* ---- THE WHOLE FRAME ON THE CARD, ASKED FOR EARLY (run cardfull) --------
+       A backend that draws the translucent pass and the edge smoothing too
+       says so beforehand (gpu_full_probe), and is then asked for the whole
+       frame BEFORE any of the CPU raster's own preparation: the depth, polygon
+       ID, stencil and translucent-ID planes it never reads, the trilinear
+       levels and the bins of the tiles it never runs. A frame that comes
+       back drawn skips all of that and both CPU passes. One that does not (the
+       card fell back, or declined) carries on below exactly as it always did,
+       and the opaque-only call at the seam is still there for it. With no
+       backend registered, and in the A/B, none of this runs. */
+    int gpu_drew = 0;
+    /* 1 when the card drew the translucent and shadow pass as well (and maybe
+       the edge smoothing: gpu_out.aa_done), so neither CPU pass runs below */
+    int gpu_full = 0;
+    GxGpuOut gpu_out;
+    std::memset(&gpu_out, 0, sizeof gpu_out);
+    if (gpu_full_probe()) {
+        GxGpuFrame f;
+        std::memset(&f, 0, sizeof f);
+        f.tris = g.tris.data();
+        f.count = g.tris.size();
+        f.fb = &fb.px[0][0];
+        f.depth = &g_depth[0][0];
+        f.cover = &g_cover[0][0];
+        f.attrid = &g_attrid[0][0];
+        f.stride = SCREEN_W;
+        f.cw = cw;
+        f.ch = ch;
+        f.px0 = present_x();
+        f.py0 = present_y();
+        f.pw = present_w();
+        f.ph = present_h();
+        f.want_attrid = 0;
+        f.want_depth = 0;
+        f.tex_filter = g_tex_filter;
+        f.tex_generation = g_tex_generation;
+        f.clear_argb = (cw > 0 && ch > 0) ? fb.px[f.py0][f.px0] : 0xFF000000u;
+        f.toon_shade = g_toon_shade;
+        f.toon_rgb = g_toon8;
+        f.full_ok = 2;
+        f.out = &gpu_out;
+        if (g_aa_mode && aa_scratch_alloc()) {
+            f.aa_mode = 1;
+            f.pre = g_aa_src;
+            f.pre_needed = capture_may_read() ? 1 : 0;
+        }
+        if (g_gpu_opaque(&f) == 2) gpu_full = 1;
     }
-    if (have_translucent)
-        for (int y = 0; y < ch; ++y) std::memset(tlattr[y], 0, (size_t)cw);
+    if (!gpu_full) {
+        /* Depth clear. 1e30f is not a repeating byte pattern so memset cannot
+           do it, but one row can be built scalar and the rest copied from it,
+           which is memcpy's problem rather than a scalar loop's. */
+        for (int x = 0; x < cw; ++x) depth[0][x] = 1e30f;
+        for (int y = 1; y < ch; ++y)
+            std::memcpy(depth[y], depth[0], (size_t)cw * sizeof(float));
+        if (have_shadow)
+            for (int y = 0; y < ch; ++y) std::memset(stencil[y], 0, (size_t)cw);
+        if (want_id) {
+            /* 0 is the clear plane's polygon ID (CLEAR_COLOR bits 24-29 reset
+               value); pixels no opaque polygon reaches keep it. */
+            for (int y = 0; y < ch; ++y) std::memset(attrid[y], 0, (size_t)cw);
+        }
+        if (have_translucent)
+            for (int y = 0; y < ch; ++y) std::memset(tlattr[y], 0, (size_t)cw);
+    }
 
     /* SM64DS_TEX_ONLY=<hex teximage>: draw only the polygons that were
        bound to that texture, so a material can be located on screen
@@ -5381,7 +5447,7 @@ void gx_render(Framebuffer &fb) {
        the bands only read it. Nothing below runs at filter 0 or 1: the vector
        is never even sized. */
     const int filt = g_tex_filter;
-    if (filt == 2) {
+    if (filt == 2 && !gpu_full) {
         g_tritex.assign(g.tris.size(), TriTex{nullptr, 0, 0.0f});
         for (size_t i = 0; i < g.tris.size(); ++i) {
             const GxTriangle &t = g.tris[i];
@@ -5837,7 +5903,7 @@ void gx_render(Framebuffer &fb) {
        threshold the handover costs more than the fill, and the frame runs
        as ONE tile the height of the allocation, which is the old
        single-thread walk. */
-    {
+    if (!gpu_full) {
         int px0, py0, px1, py1;
         raster_clip(px0, py0, px1, py1);
         g_bin_tmp.clear();
@@ -5963,13 +6029,7 @@ void gx_render(Framebuffer &fb) {
     std::chrono::steady_clock::time_point t_seam0, t_seam1, t_pass1, t_aa1;
     if (tm) t_seam0 = std::chrono::steady_clock::now();
 
-    int gpu_drew = 0;
-    /* 1 when the card drew the translucent and shadow pass as well (and maybe
-       the edge smoothing: gpu_out.aa_done), so neither CPU pass runs below */
-    int gpu_full = 0;
-    GxGpuOut gpu_out;
-    std::memset(&gpu_out, 0, sizeof gpu_out);
-    if (g_gpu_opaque) {
+    if (g_gpu_opaque && !gpu_full) {
         GxGpuFrame f;
         std::memset(&f, 0, sizeof f);
         f.tris = g.tris.data();
@@ -6022,14 +6082,9 @@ void gx_render(Framebuffer &fb) {
            second pass says so by returning 2; one that cannot returns 1 or 0
            and nothing below changes. The smoothing is offered to it only
            outside an A/B, which compares the picture before it. */
-        f.full_ok = 1;
+        f.full_ok = ab_mode() ? 1 : 0;
         f.ab = ab_mode();
         f.out = &gpu_out;
-        if (g_aa_mode && !ab_mode() && aa_scratch_alloc()) {
-            f.aa_mode = 1;
-            f.pre = g_aa_src;
-            f.pre_needed = capture_may_read() ? 1 : 0;
-        }
 
         if (!ab_mode()) {
             const int r = g_gpu_opaque(&f);
