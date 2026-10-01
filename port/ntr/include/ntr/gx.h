@@ -200,6 +200,15 @@ const GxTriangle *gx_polygons(size_t &count);
 // backend holding copies of those textures knows to drop them.
 uint32_t gx_texture_generation();
 
+// What a whole-frame backend reports back. aa_done: the smoothing ran (the
+// picture in fb is the smoothed one and aa_changed counts the pixels it moved);
+// pre_valid: `pre` holds the frame as it was before the smoothing.
+struct GxGpuOut {
+    int aa_done;
+    int pre_valid;
+    unsigned long long aa_changed;
+};
+
 // ---- THE OPTIONAL GRAPHICS-CARD BACKEND FOR THE OPAQUE PASS (run hd2) -----
 //
 // gx_render draws a frame in two passes over the same buffers: an OPAQUE pass
@@ -217,14 +226,6 @@ uint32_t gx_texture_generation();
 //
 // hal/gpu_raster.cpp is the Direct3D 11 one. The software pass stays the
 // default and the only byte-exact reference.
-// What a whole-frame backend reports back. aa_done: the smoothing ran (the
-// picture in fb is the smoothed one and aa_changed counts the pixels it moved);
-// pre_valid: `pre` holds the frame as it was before the smoothing.
-struct GxGpuOut {
-    int aa_done;
-    int pre_valid;
-    unsigned long long aa_changed;
-};
 struct GxGpuFrame {
     const GxTriangle *tris;
     size_t count;
