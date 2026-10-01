@@ -305,6 +305,37 @@ bool                     g_rt_full;
 ID3D11ShaderResourceView *g_col_srv, *g_id_srv;
 ID3D11Texture2D          *g_fa_out, *g_fa_st;
 ID3D11RenderTargetView   *g_fa_rtv;
+ID3D11ShaderResourceView *g_fa_srv;     /* the composite reads the smoothed picture */
+
+/* ---- THE PICTURE HELD ON THE CARD (run cardfull, lane CARD2) ---------------
+   See the banner above cp_keep_ok. g_cp_on is the setting (SM64DS_PRESENT_FROM_CARD),
+   g_cp_dead the one-way latch every failure sets, g_cp_held whether the last
+   whole frame is still on the card unread, and the rest is what a settle, the
+   capture picture or the composite needs to find it again. */
+int       g_cp_on;
+int       g_cp_dead;
+int       g_cp_fail_after;       /* SM64DS_PRESENT_FROM_CARD_FAIL_AFTER */
+int       g_cp_check;            /* SM64DS_PRESENT_FROM_CARD_CHECK */
+bool      g_cp_held;
+bool      g_cp_smoothed;
+int       g_cp_box[4];           /* x0 y0 x1 y1 of the pixels the card drew in */
+int       g_cp_cw, g_cp_ch, g_cp_px0, g_cp_py0, g_cp_pw, g_cp_ph;
+uint32_t  g_cp_clear, g_cp_outside;
+int       g_cp_fade, g_cp_evy, g_cp_white;
+long long g_cp_composed, g_cp_checked, g_cp_bad_frames, g_cp_bad_px;
+long long g_cp_settled, g_cp_captured;
+double    g_cp_ms;
+/* the brightness mask of the held frame (hal/message_compositor.cpp), when its
+   fade only takes some pixels: one byte per picture pixel, `g_cp_mask_stride`
+   to a row, and the two facts the per-pixel answer needs besides coverage */
+const uint8_t *g_cp_mask;
+int       g_cp_mask_stride, g_cp_shown3d, g_cp_clear_opaque;
+ID3D11Texture2D          *g_ov_tex, *g_comp_tex, *g_comp_stage, *g_bm_tex;
+ID3D11ShaderResourceView *g_ov_srv, *g_comp_srv, *g_bm_srv;
+ID3D11RenderTargetView   *g_comp_rtv;
+ID3D11Buffer             *g_comp_cb;
+ID3D11PixelShader        *g_ps_comp;
+int                       g_cp_w, g_cp_h;
 
 /* ---- the texture cache on the card --------------------------------------- */
 
@@ -619,6 +650,17 @@ ID3D11SamplerState *sampler(int filter, int au, int av)
 
 void release_targets()
 {
+    g_cp_held = false;                 /* the targets the frame lived in are gone */
+    if (g_ov_srv) { g_ov_srv->Release(); g_ov_srv = 0; }
+    if (g_ov_tex) { g_ov_tex->Release(); g_ov_tex = 0; }
+    if (g_bm_srv) { g_bm_srv->Release(); g_bm_srv = 0; }
+    if (g_bm_tex) { g_bm_tex->Release(); g_bm_tex = 0; }
+    if (g_comp_rtv) { g_comp_rtv->Release(); g_comp_rtv = 0; }
+    if (g_comp_srv) { g_comp_srv->Release(); g_comp_srv = 0; }
+    if (g_comp_tex) { g_comp_tex->Release(); g_comp_tex = 0; }
+    if (g_comp_stage) { g_comp_stage->Release(); g_comp_stage = 0; }
+    g_cp_w = g_cp_h = 0;
+    if (g_fa_srv) { g_fa_srv->Release(); g_fa_srv = 0; }
     if (g_fa_rtv) { g_fa_rtv->Release(); g_fa_rtv = 0; }
     if (g_fa_st) { g_fa_st->Release(); g_fa_st = 0; }
     if (g_fa_out) { g_fa_out->Release(); g_fa_out = 0; }
@@ -890,9 +932,23 @@ void at_exit()
        a process whose game cannot run, and the render targets are the biggest
        thing this file ever asks a driver for. */
     port_gpu_device_address_rows("exit  ", g_addrcheck);
+    if (g_cp_composed || g_cp_settled || g_cp_captured)
+        fprintf(stderr, "[renderer] picture presented straight from the card: "
+                "%lld composited (%.3f ms each on the processor's clock), %lld "
+                "settled back to the processor, %lld capture picture(s)%s.\n",
+                g_cp_composed,
+                g_cp_composed ? g_cp_ms / (double)g_cp_composed : 0.0,
+                g_cp_settled, g_cp_captured,
+                g_cp_dead ? "; it gave up during the run" : "");
+    if (g_cp_checked)
+        fprintf(stderr, "[renderer-cpcheck] %lld composite(s) compared with the "
+                "processor's copy of the rule: %lld differed (%lld pixel(s)).\n",
+                g_cp_checked, g_cp_bad_frames, g_cp_bad_px);
     aa_at_exit();
     release_textures();
     release_targets();
+    if (g_ps_comp) { g_ps_comp->Release(); g_ps_comp = 0; }
+    if (g_comp_cb) { g_comp_cb->Release(); g_comp_cb = 0; }
     if (g_vb) { g_vb->Release(); g_vb = 0; }
     if (g_white_srv) { g_white_srv->Release(); g_white_srv = 0; }
     if (g_white) { g_white->Release(); g_white = 0; }
@@ -1544,11 +1600,13 @@ bool ensure_fa(int w, int h)
     d.SampleDesc.Count = 1;
     d.Usage = D3D11_USAGE_DEFAULT;
     d.Format = DXGI_FORMAT_R32_UINT;
-    d.BindFlags = D3D11_BIND_RENDER_TARGET;
+    d.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
     HRESULT hr = g_dev->CreateTexture2D(&d, 0, &g_fa_out);
     if (FAILED(hr)) { full_give_up("no smoothing result target", hr); return false; }
     hr = g_dev->CreateRenderTargetView(g_fa_out, 0, &g_fa_rtv);
     if (FAILED(hr)) { full_give_up("no smoothing result target view", hr); return false; }
+    hr = g_dev->CreateShaderResourceView(g_fa_out, 0, &g_fa_srv);
+    if (FAILED(hr)) { full_give_up("no smoothing result reader", hr); return false; }
     d.BindFlags = 0;
     d.Usage = D3D11_USAGE_STAGING;
     d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
@@ -1670,6 +1728,60 @@ void push_tri(const ntr::GxTriangle &t, const ntr::GxGpuFrame *f, bool textured,
         o.pid = pid;
         dst.push_back(o);
     }
+}
+
+/* ==== THE PICTURE HELD ON THE CARD (run cardfull, lane CARD2) ===============
+ *
+ * With Renderer 1 and PresentBackend 1 and SM64DS_PRESENT_FROM_CARD on, a frame
+ * the card drew whole is not read back at all. Its colour (and, when the card
+ * smoothed it, the smoothed copy) stays in the card's own targets, the
+ * processor writes only the 2D into the framebuffer (ntr/gx.h, GX_OV_*), and
+ * the present composites the two on the card (comp_ps in the shader file) and
+ * scales the result onto the window. Four things on the processor still want
+ * real pixels and each has a way to ask:
+ *   - a SETTLE (GxGpuFrame::settle 1) reads the card's picture back once and
+ *     turns the framebuffer into the ordinary finished frame, in place. The
+ *     host overlays, the stacked layout, a picture dump, the brightness-mask
+ *     fade and a blend that reads the 3D pixel all take it;
+ *   - the DISPLAY CAPTURE (settle 2) gets the frame it reads built on request
+ *     out of the card's copy BEFORE the smoothing, under the 2D, so the game
+ *     reads the same bytes it always did and no prediction is involved;
+ *   - nothing else reads the 3D after gx_render: the compositor's coverage
+ *     questions are asked of the card inside the composite (a 2D layer behind
+ *     the 3D layer shows only where the 3D engine drew nothing).
+ * ANY failure is one plain line and the latch g_cp_dead: the frame in hand is
+ * settled and every frame after it is read back and presented as before. The
+ * 3D can only be lost by a card that stops answering in the middle of a settle,
+ * and then that one frame shows the clear colour where the 3D was, never a
+ * mixture. */
+void cp_give_up(const char *why, HRESULT hr)
+{
+    if (g_cp_dead) return;
+    g_cp_dead = 1;
+    /* g_cp_held stays as it is: the frame in hand is still on the card and its
+       settle still has to be able to read it */
+    if (hr)
+        fprintf(stderr, "[renderer] the picture is no longer presented straight "
+                "from the graphics card (%s, code %08x). It is read back and "
+                "presented the ordinary way from now on; nothing else "
+                "changes.\n", why, (unsigned)hr);
+    else
+        fprintf(stderr, "[renderer] the picture is no longer presented straight "
+                "from the graphics card (%s). It is read back and presented the "
+                "ordinary way from now on; nothing else changes.\n", why);
+}
+
+/* May a frame offered with GxGpuFrame::keep be held on the card? Only on the
+   whole-frame path with the smoothing on the card and with the Direct3D present
+   on, which is where the picture is composited and shown (a swap chain, or the
+   offscreen proof target of the same quad). */
+bool cp_keep_ok()
+{
+    if (!g_cp_on || g_cp_dead || g_down) return false;
+    if (!g_full_on || g_full_dead || g_aa_on_full == 0 || g_aacheck) return false;
+    static int backend = -1;
+    if (backend < 0) backend = host_setting_present_backend() ? 1 : 0;
+    return backend != 0;
 }
 
 /* Returns 2 when the card drew the whole frame, 0 after fall_back (the CPU
@@ -2027,6 +2139,75 @@ int draw_full(const ntr::GxGpuFrame *f)
         smoothed = true;
     }
 
+    /* ---- THE FRAME STAYS ON THE CARD (see cp_keep_ok): nothing is copied or
+       read; the targets this frame lives in are left as they are for the
+       composite, a settle or the capture picture --------------------------- */
+    if (f->keep && !f->ab && cp_keep_ok()) {
+        if (!nothing) port_gpu_timer_span_end(PORT_GPU_SPAN_OPAQUE);
+        const long long t2 = qpc();
+        ++g_frames;
+        const size_t kverts = g_scratch.size() + g_scratch1.size();
+        g_tris += (long long)(kverts / 3);
+        g_verts += (long long)kverts;
+        g_ms_build += ms_between(t0, t1);
+        g_ms_draw += ms_between(t1, t2);
+        if (smoothed) {
+            ++g_aa_frames;
+            g_aa_ms += ms_between(t1, t2);
+        }
+        g_cp_held = true;
+        g_cp_smoothed = smoothed;
+        g_cp_box[0] = have_box ? bx0 : 0;
+        g_cp_box[1] = have_box ? by0 : 0;
+        g_cp_box[2] = have_box ? bx1 : 0;
+        g_cp_box[3] = have_box ? by1 : 0;
+        g_cp_cw = f->cw;
+        g_cp_ch = f->ch;
+        g_cp_px0 = f->px0;
+        g_cp_py0 = f->py0;
+        g_cp_pw = f->pw;
+        g_cp_ph = f->ph;
+        g_cp_clear = f->clear_argb;
+        g_cp_outside = f->outside_argb;
+        g_cp_fade = 0;
+        g_cp_evy = 0;
+        g_cp_white = 0;
+        g_cp_mask = 0;
+        if (f->out) {
+            f->out->aa_done = smooth ? 1 : 0;
+            f->out->pre_valid = 0;
+            f->out->aa_changed = 0;
+            f->out->kept = 1;
+        }
+        if (g_perf) {
+            /* the same per-30-pictures line the readback path prints, with a
+               readback that is not there */
+            g_perf_build += ms_between(t0, t1);
+            g_perf_draw += ms_between(t1, t2);
+            g_perf_tris += (long long)(kverts / 3);
+            g_perf_batches += (long long)(g_batch.size() + g_ops.size());
+            if (++g_perf_n >= 30) {
+                fprintf(stderr, "[renderer] build %6.3fms submit %6.3fms readback "
+                        "%6.3fms (wait %6.3fms copy %6.3fms) tris %6lld batches "
+                        "%4lld (whole frame, held on the card)\n",
+                        g_perf_build / g_perf_n, g_perf_draw / g_perf_n, 0.0,
+                        0.0, 0.0, g_perf_tris / g_perf_n,
+                        g_perf_batches / g_perf_n);
+                g_perf_build = g_perf_draw = g_perf_read = 0.0;
+                g_perf_wait = g_perf_copy = 0.0;
+                g_perf_tris = g_perf_batches = 0;
+                g_perf_n = 0;
+            }
+        }
+        g_last_full = true;
+        g_last_box = have_box;
+        g_lb_x0 = bx0;
+        g_lb_y0 = by0;
+        g_lb_x1 = bx1;
+        g_lb_y1 = by1;
+        return 2;
+    }
+
     /* ---- copy out to the staging textures --------------------------------- */
     D3D11_BOX box;
     box.left = (UINT)bx0;
@@ -2231,15 +2412,404 @@ int fill_planes(const ntr::GxGpuFrame *f)
     return 1;
 }
 
+/* ---- THE PROCESSOR'S COPY OF THE COMPOSITE RULE (run cardfull, CARD2) ------
+ *
+ * comp_ps in the shader file and cp_combine / cp_fade here are the same rule
+ * written twice, in integers, so they cannot differ by rounding. This copy is
+ * what a settle and the capture picture use, and what the check compares the
+ * card's composite against. */
+inline uint32_t cp_combine(uint32_t ov, uint32_t base, bool cov)
+{
+    const uint32_t mode = ov >> 24;
+    if (mode == 0xFFu) return 0xFF000000u | (ov & 0x00FFFFFFu);
+    if (mode == 0xFEu) return cov ? base : (0xFF000000u | (ov & 0x00FFFFFFu));
+    return base;
+}
+
+inline uint32_t cp_fade(uint32_t p, int evy, int white)
+{
+    int r = (int)((p >> 16) & 0xFFu), g = (int)((p >> 8) & 0xFFu), b = (int)(p & 0xFFu);
+    if (white) {
+        r += ((255 - r) * evy) >> 4;
+        g += ((255 - g) * evy) >> 4;
+        b += ((255 - b) * evy) >> 4;
+    } else {
+        r -= (r * evy) >> 4;
+        g -= (g * evy) >> 4;
+        b -= (b * evy) >> 4;
+    }
+    return 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+}
+
+/* the box of the held frame copied to the two staging textures and mapped:
+   `plain` is the opaque-and-translucent picture (alpha != 0 covered), `sm` the
+   smoothed one. An empty box maps nothing and every pixel reads as uncovered. */
+struct CpMaps {
+    D3D11_MAPPED_SUBRESOURCE plain, sm;
+    bool have_plain, have_sm;
+    int x0, y0, x1, y1;
+};
+
+bool cp_map(CpMaps &m, bool want_plain, bool want_sm)
+{
+    memset(&m, 0, sizeof m);
+    m.x0 = g_cp_box[0];
+    m.y0 = g_cp_box[1];
+    m.x1 = g_cp_box[2];
+    m.y1 = g_cp_box[3];
+    if (m.x1 <= m.x0 || m.y1 <= m.y0) return true;
+    D3D11_BOX box;
+    box.left = (UINT)m.x0;
+    box.right = (UINT)m.x1;
+    box.top = (UINT)m.y0;
+    box.bottom = (UINT)m.y1;
+    box.front = 0;
+    box.back = 1;
+    if (want_sm && !(g_cp_smoothed && g_fa_out && g_fa_st)) want_sm = false;
+    if (want_plain && !(g_col && g_col_stage)) return false;
+    if (want_sm)
+        g_ctx->CopySubresourceRegion(g_fa_st, 0, (UINT)m.x0, (UINT)m.y0, 0,
+                                     g_fa_out, 0, &box);
+    if (want_plain)
+        g_ctx->CopySubresourceRegion(g_col_stage, 0, (UINT)m.x0, (UINT)m.y0, 0,
+                                     g_col, 0, &box);
+    HRESULT hr = 0;
+    if (want_sm) {
+        hr = g_ctx->Map(g_fa_st, 0, D3D11_MAP_READ, 0, &m.sm);
+        m.have_sm = SUCCEEDED(hr);
+    }
+    if (SUCCEEDED(hr) && want_plain) {
+        hr = g_ctx->Map(g_col_stage, 0, D3D11_MAP_READ, 0, &m.plain);
+        m.have_plain = SUCCEEDED(hr);
+    }
+    if (FAILED(hr)) {
+        if (m.have_sm) g_ctx->Unmap(g_fa_st, 0);
+        if (m.have_plain) g_ctx->Unmap(g_col_stage, 0);
+        memset(&m, 0, sizeof m);
+        return false;
+    }
+    return true;
+}
+
+void cp_unmap(CpMaps &m)
+{
+    if (m.have_sm) g_ctx->Unmap(g_fa_st, 0);
+    if (m.have_plain) g_ctx->Unmap(g_col_stage, 0);
+    m.have_sm = m.have_plain = false;
+}
+
+/* THE RULE, over the picture. `final_sm` says the picture shown is the smoothed
+   one (else the plain one); `pre`, when not null, gets the same overlay over
+   the plain picture, no fade (the frame before the smoothing); `cover`, when
+   not null, gets 1 where the 3D engine drew. dst may be the overlay itself. */
+void cp_resolve(const uint32_t *ov, int ov_stride, uint32_t *dst, int dst_stride,
+                uint8_t *cover, uint32_t *pre, int aux_stride, bool fade,
+                bool final_sm, const CpMaps &m)
+{
+    const int cw = g_cp_cw, ch = g_cp_ch;
+    const int rx0 = g_cp_px0, ry0 = g_cp_py0;
+    const int rx1 = g_cp_px0 + g_cp_pw, ry1 = g_cp_py0 + g_cp_ph;
+    for (int y = 0; y < ch; ++y) {
+        const uint32_t *orow = ov + (size_t)y * ov_stride;
+        uint32_t *drow = dst + (size_t)y * dst_stride;
+        const bool in_y = y >= m.y0 && y < m.y1;
+        const bool inr_y = y >= ry0 && y < ry1;
+        const uint32_t *srow = (in_y && m.have_sm)
+            ? (const uint32_t *)((const unsigned char *)m.sm.pData +
+                                 (size_t)(y - m.y0) * m.sm.RowPitch) : 0;
+        const uint32_t *prow = (in_y && m.have_plain)
+            ? (const uint32_t *)((const unsigned char *)m.plain.pData +
+                                 (size_t)(y - m.y0) * m.plain.RowPitch) : 0;
+        for (int x = 0; x < cw; ++x) {
+            const uint32_t o = orow[x];
+            uint32_t base = (inr_y && x >= rx0 && x < rx1) ? g_cp_clear
+                                                           : g_cp_outside;
+            uint32_t basepre = base;
+            bool cov = false;
+            if (in_y && x >= m.x0 && x < m.x1) {
+                const int i = x - m.x0;
+                if (final_sm) {
+                    if (srow && (srow[i] >> 24)) {
+                        cov = true;
+                        base = 0xFF000000u | (srow[i] & 0x00FFFFFFu);
+                    }
+                    if (prow && (prow[i] >> 24))
+                        basepre = 0xFF000000u | (prow[i] & 0x00FFFFFFu);
+                } else if (prow && (prow[i] >> 24)) {
+                    cov = true;
+                    base = 0xFF000000u | (prow[i] & 0x00FFFFFFu);
+                    basepre = base;
+                }
+            }
+            uint32_t p = cp_combine(o, base, cov);
+            if (fade) {
+                /* does the fade take this pixel? Every one, unless the frame
+                   has a brightness mask (comp_ps carries the same rule) */
+                bool take = true;
+                if (g_cp_mask) {
+                    const unsigned code = g_cp_mask[(size_t)y * g_cp_mask_stride + x];
+                    const bool is3d = g_cp_clear_opaque || (g_cp_shown3d && cov);
+                    const bool def = (code & (is3d ? 1u : 2u)) != 0;
+                    const unsigned mode = o >> 24;
+                    if (mode == 0xFFu) take = ((code >> 2) & 1u) != 0;
+                    else if (mode == 0xFEu) take = cov ? def : (((code >> 2) & 1u) != 0);
+                    else take = def;
+                }
+                if (take) p = cp_fade(p, g_cp_evy, g_cp_white);
+            }
+            if (cover) cover[(size_t)y * aux_stride + x] = cov ? 1 : 0;
+            if (pre) pre[(size_t)y * aux_stride + x] = cp_combine(o, basepre, cov);
+            drow[x] = p;
+        }
+    }
+}
+
+/* SETTLE 1 and 2 (ntr/gx.h, GxGpuFrame::settle). 1 turns the framebuffer into
+   the ordinary finished frame in place (fade included when one was recorded),
+   fills the coverage plane and, for a smoothed frame, the copy before the
+   smoothing. 2 writes the picture the display capture reads into f->pre. */
+int card_settle(const ntr::GxGpuFrame *f)
+{
+    if (!g_cp_held || !f->fb) return 0;
+    const bool one = f->settle == 1;
+    const bool sm = g_cp_smoothed;
+    CpMaps m;
+    memset(&m, 0, sizeof m);
+    /* settle 1 shows the smoothed picture when there is one and keeps the plain
+       one as the copy before the smoothing; settle 2 is the plain one only */
+    const bool ok = (!g_down && g_ctx)
+        ? (one ? cp_map(m, true, sm) : cp_map(m, true, false)) : false;
+    if (!ok) {
+        cp_give_up("the picture could not be read back to settle it", 0);
+        /* every pixel reads as uncovered: the clear colour under the 2D */
+        memset(&m, 0, sizeof m);
+    }
+    const int stride = f->stride;
+    if (one) {
+        cp_resolve(f->fb, stride, f->fb, stride, f->cover,
+                   (sm && f->pre) ? f->pre : 0, stride, g_cp_fade != 0, sm, m);
+        if (f->out) f->out->pre_valid = (sm && f->pre) ? 1 : 0;
+        ++g_cp_settled;
+        g_cp_held = false;
+    } else {
+        if (!f->pre) { cp_unmap(m); return 0; }
+        cp_resolve(f->fb, stride, f->pre, stride, 0, 0, stride, false, false, m);
+        ++g_cp_captured;
+    }
+    cp_unmap(m);
+    return ok ? 1 : 0;
+}
+
+/* ---- THE COMPOSITE ON THE CARD ---------------------------------------------
+   One pass into a plain colour target, which the present quad then scales onto
+   the window with whichever filter the player picked. The overlay is uploaded
+   whole (it is one picture of 4-byte pixels); the targets it reads are the
+   ones the frame was drawn into. */
+bool cp_ensure(int w, int h)
+{
+    if (!g_ps_comp) {
+        HRESULT hr = g_dev->CreatePixelShader(kGpuCompPS, sizeof kGpuCompPS, 0,
+                                              &g_ps_comp);
+        if (FAILED(hr)) { cp_give_up("the composite shader would not load", hr); return false; }
+        D3D11_BUFFER_DESC bd;
+        memset(&bd, 0, sizeof bd);
+        bd.ByteWidth = 48;
+        bd.Usage = D3D11_USAGE_DYNAMIC;
+        bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        hr = g_dev->CreateBuffer(&bd, 0, &g_comp_cb);
+        if (FAILED(hr)) { cp_give_up("no composite parameters buffer", hr); return false; }
+    }
+    if (g_ov_tex && g_cp_w == w && g_cp_h == h) return true;
+    if (g_ov_srv) { g_ov_srv->Release(); g_ov_srv = 0; }
+    if (g_ov_tex) { g_ov_tex->Release(); g_ov_tex = 0; }
+    if (g_bm_srv) { g_bm_srv->Release(); g_bm_srv = 0; }
+    if (g_bm_tex) { g_bm_tex->Release(); g_bm_tex = 0; }
+    if (g_comp_rtv) { g_comp_rtv->Release(); g_comp_rtv = 0; }
+    if (g_comp_srv) { g_comp_srv->Release(); g_comp_srv = 0; }
+    if (g_comp_tex) { g_comp_tex->Release(); g_comp_tex = 0; }
+    if (g_comp_stage) { g_comp_stage->Release(); g_comp_stage = 0; }
+    D3D11_TEXTURE2D_DESC d;
+    memset(&d, 0, sizeof d);
+    d.Width = (UINT)w;
+    d.Height = (UINT)h;
+    d.MipLevels = d.ArraySize = 1;
+    d.SampleDesc.Count = 1;
+    d.Usage = D3D11_USAGE_DEFAULT;
+    d.Format = DXGI_FORMAT_R32_UINT;
+    d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    HRESULT hr = g_dev->CreateTexture2D(&d, 0, &g_ov_tex);
+    if (FAILED(hr)) { cp_give_up("no overlay texture", hr); return false; }
+    hr = g_dev->CreateShaderResourceView(g_ov_tex, 0, &g_ov_srv);
+    if (FAILED(hr)) { cp_give_up("no overlay texture view", hr); return false; }
+    d.Format = DXGI_FORMAT_R8_UINT;
+    d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    hr = g_dev->CreateTexture2D(&d, 0, &g_bm_tex);
+    if (FAILED(hr)) { cp_give_up("no brightness mask texture", hr); return false; }
+    hr = g_dev->CreateShaderResourceView(g_bm_tex, 0, &g_bm_srv);
+    if (FAILED(hr)) { cp_give_up("no brightness mask texture view", hr); return false; }
+    d.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    d.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    hr = g_dev->CreateTexture2D(&d, 0, &g_comp_tex);
+    if (FAILED(hr)) { cp_give_up("no composite target", hr); return false; }
+    hr = g_dev->CreateRenderTargetView(g_comp_tex, 0, &g_comp_rtv);
+    if (FAILED(hr)) { cp_give_up("no composite target view", hr); return false; }
+    hr = g_dev->CreateShaderResourceView(g_comp_tex, 0, &g_comp_srv);
+    if (FAILED(hr)) { cp_give_up("no composite target reader", hr); return false; }
+    g_cp_w = w;
+    g_cp_h = h;
+    return true;
+}
+
+/* THE CHECK (SM64DS_PRESENT_FROM_CARD_CHECK=N, every Nth composite): read the
+   card's composite back and compare every pixel with the processor's own copy
+   of the rule over the same overlay. Zero differing pixels is the claim. */
+void cp_check(const uint32_t *overlay, int stride_px)
+{
+    if (!g_comp_stage) {
+        D3D11_TEXTURE2D_DESC d;
+        memset(&d, 0, sizeof d);
+        d.Width = (UINT)g_cp_w;
+        d.Height = (UINT)g_cp_h;
+        d.MipLevels = d.ArraySize = 1;
+        d.SampleDesc.Count = 1;
+        d.Usage = D3D11_USAGE_STAGING;
+        d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        d.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        if (FAILED(g_dev->CreateTexture2D(&d, 0, &g_comp_stage))) return;
+    }
+    g_ctx->CopyResource(g_comp_stage, g_comp_tex);
+    D3D11_MAPPED_SUBRESOURCE cm;
+    memset(&cm, 0, sizeof cm);
+    if (FAILED(g_ctx->Map(g_comp_stage, 0, D3D11_MAP_READ, 0, &cm))) return;
+    CpMaps m;
+    if (!cp_map(m, !g_cp_smoothed, g_cp_smoothed)) { g_ctx->Unmap(g_comp_stage, 0); return; }
+    std::vector<uint32_t> ref((size_t)g_cp_cw * (size_t)g_cp_ch);
+    cp_resolve(overlay, stride_px, &ref[0], g_cp_cw, 0, 0, g_cp_cw,
+               g_cp_fade != 0, g_cp_smoothed, m);
+    cp_unmap(m);
+    long long bad = 0;
+    for (int y = 0; y < g_cp_ch; ++y) {
+        const uint32_t *crow = (const uint32_t *)
+            ((const unsigned char *)cm.pData + (size_t)y * cm.RowPitch);
+        const uint32_t *rrow = &ref[(size_t)y * g_cp_cw];
+        for (int x = 0; x < g_cp_cw; ++x)
+            if ((crow[x] & 0x00FFFFFFu) != (rrow[x] & 0x00FFFFFFu)) ++bad;
+    }
+    g_ctx->Unmap(g_comp_stage, 0);
+    ++g_cp_checked;
+    if (bad) {
+        ++g_cp_bad_frames;
+        g_cp_bad_px += bad;
+        if (g_cp_bad_frames <= 5)
+            fprintf(stderr, "[renderer-cpcheck] composite %lld: %lld pixel(s) "
+                    "differ from the processor's copy of the rule\n",
+                    g_cp_composed, bad);
+    }
+}
+
+/* Composite the held frame with the overlay (the framebuffer as the processor
+   left it, `stride_px` pixels to a row) into g_comp_tex and hand back its
+   view, or null after cp_give_up. The processor then presents that texture
+   exactly as it presents the uploaded one. */
+void *cp_compose(const uint32_t *overlay, int stride_px)
+{
+    if (!g_cp_held || g_cp_dead || g_down || !g_ctx || !overlay) return 0;
+    if (g_cp_fail_after && g_cp_composed >= g_cp_fail_after) {
+        fprintf(stderr, "[renderer] SM64DS_PRESENT_FROM_CARD_FAIL_AFTER=%d "
+                "reached after %lld composite(s); forcing the fallback on "
+                "purpose\n", g_cp_fail_after, g_cp_composed);
+        cp_give_up("a test asked for it", 0);
+        return 0;
+    }
+    const long long t0 = qpc();
+    const int w = g_cp_cw, h = g_cp_ch;
+    if (!cp_ensure(w, h)) return 0;
+    if (g_cp_smoothed && !g_fa_srv) { cp_give_up("no smoothing reader", 0); return 0; }
+
+    D3D11_BOX ob;
+    ob.left = 0;
+    ob.right = (UINT)w;
+    ob.top = 0;
+    ob.bottom = (UINT)h;
+    ob.front = 0;
+    ob.back = 1;
+    g_ctx->UpdateSubresource(g_ov_tex, 0, &ob, overlay, (UINT)stride_px * 4u, 0);
+    if (g_cp_mask)
+        g_ctx->UpdateSubresource(g_bm_tex, 0, &ob, g_cp_mask,
+                                 (UINT)g_cp_mask_stride, 0);
+
+    D3D11_MAPPED_SUBRESOURCE cm;
+    memset(&cm, 0, sizeof cm);
+    HRESULT hr = g_ctx->Map(g_comp_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &cm);
+    if (FAILED(hr) || !cm.pData) { cp_give_up("the composite parameters were refused", hr); return 0; }
+    uint32_t *u = (uint32_t *)cm.pData;
+    u[0] = (uint32_t)g_cp_box[0];
+    u[1] = (uint32_t)g_cp_box[1];
+    u[2] = (uint32_t)g_cp_box[2];
+    u[3] = (uint32_t)g_cp_box[3];
+    u[4] = (uint32_t)g_cp_px0;
+    u[5] = (uint32_t)g_cp_py0;
+    u[6] = (uint32_t)g_cp_pw;
+    u[7] = (uint32_t)g_cp_ph;
+    u[8] = g_cp_clear;
+    u[9] = g_cp_outside;
+    u[10] = (g_cp_smoothed ? 1u : 0u) | (g_cp_fade ? 2u : 0u) |
+            ((g_cp_fade && g_cp_white) ? 4u : 0u) | (g_cp_mask ? 8u : 0u) |
+            (g_cp_shown3d ? 16u : 0u) | (g_cp_clear_opaque ? 32u : 0u);
+    u[11] = (uint32_t)g_cp_evy;
+    g_ctx->Unmap(g_comp_cb, 0);
+
+    D3D11_VIEWPORT vp;
+    vp.TopLeftX = 0.0f;
+    vp.TopLeftY = 0.0f;
+    vp.Width = (float)w;
+    vp.Height = (float)h;
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    g_ctx->RSSetViewports(1, &vp);
+    D3D11_RECT sc;
+    sc.left = 0;
+    sc.top = 0;
+    sc.right = w;
+    sc.bottom = h;
+    g_ctx->RSSetScissorRects(1, &sc);
+    g_ctx->RSSetState(g_rast);
+    g_ctx->OMSetRenderTargets(1, &g_comp_rtv, 0);
+    g_ctx->OMSetDepthStencilState(0, 0);
+    g_ctx->OMSetBlendState(0, 0, 0xffffffffu);
+    g_ctx->IASetInputLayout(0);
+    g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    g_ctx->VSSetShader(g_full_vs, 0, 0);
+    g_ctx->PSSetShader(g_ps_comp, 0, 0);
+    g_ctx->PSSetConstantBuffers(0, 1, &g_comp_cb);
+    ID3D11ShaderResourceView *srvs[4] = { g_col_srv, g_cp_smoothed ? g_fa_srv : 0,
+                                          g_ov_srv, g_cp_mask ? g_bm_srv : 0 };
+    g_ctx->PSSetShaderResources(0, 4, srvs);
+    g_ctx->Draw(3, 0);
+    ID3D11ShaderResourceView *none[4] = { 0, 0, 0, 0 };
+    g_ctx->PSSetShaderResources(0, 4, none);
+    g_ctx->OMSetRenderTargets(0, 0, 0);
+
+    ++g_cp_composed;
+    g_cp_ms += ms_between(t0, qpc());
+    if (g_cp_check && ((g_cp_composed - 1) % g_cp_check) == 0) cp_check(overlay, stride_px);
+    return g_comp_srv;
+}
+
 int draw_frame(const ntr::GxGpuFrame *f)
 {
     if (g_down || !f) return 0;
     /* THE PROBE (ntr/gx.h): would a frame offered whole be drawn whole? Costs
-       three tests and touches nothing. */
-    if (f->probe)
-        return (g_full_on && !g_full_dead && f->full_ok == 2) ? 2 : 0;
+       three tests and touches nothing. 3 is "and held on the card". */
+    if (f->probe) {
+        if (!(g_full_on && !g_full_dead && f->full_ok == 2)) return 0;
+        return (f->keep && cp_keep_ok()) ? 3 : 2;
+    }
+    if (f->settle) return card_settle(f);
     if (f->planes) return fill_planes(f);
     g_last_full = false;                /* any other frame replaces that one */
+    g_cp_held = false;
     if (!start()) return 0;
     if (f->cw <= 0 || f->ch <= 0 || f->pw <= 0 || f->ph <= 0) return 0;
 
@@ -2620,6 +3190,11 @@ extern "C" void port_gpu_raster_configure(void)
     if (g_rbcheck || g_rbtime) g_full_on = 0;
     g_fail_full = env_int("SM64DS_RENDERER_FAIL_FULL", 0);
     g_aa_on_full = env_int("SM64DS_RENDERER_AA", -1);
+    /* THE PICTURE HELD ON THE CARD (run cardfull, lane CARD2): off unless asked
+       while it is being proved. See cp_keep_ok. */
+    g_cp_on = env_int("SM64DS_PRESENT_FROM_CARD", 0);
+    g_cp_fail_after = env_int("SM64DS_PRESENT_FROM_CARD_FAIL_AFTER", 0);
+    g_cp_check = env_int("SM64DS_PRESENT_FROM_CARD_CHECK", 0);
 #if defined(GX_HAS_GPU_AA)
     g_aa_on = env_int("SM64DS_RENDERER_AA", -1);
     g_aacheck = env_int("SM64DS_RENDERER_AACHECK", 0);
@@ -2641,6 +3216,41 @@ extern "C" double port_gpu_raster_readback_ms(void)
     return g_ms_read;
 }
 
+extern "C" void port_gpu_raster_present_down(void)
+{
+    /* the Direct3D present stood down (its own line says why): nothing is
+       presented from the card any more, so no frame is held for it */
+    g_cp_dead = 1;
+}
+
+extern "C" int port_gpu_card_held(void)
+{
+    return (g_cp_held && !g_cp_dead && !g_down) ? 1 : 0;
+}
+
+extern "C" void port_gpu_card_set_mask(const unsigned char *mask, int stride,
+                                       int shown3d, int clear_opaque)
+{
+    if (!g_cp_held) return;
+    g_cp_mask = (const uint8_t *)mask;
+    g_cp_mask_stride = stride;
+    g_cp_shown3d = shown3d ? 1 : 0;
+    g_cp_clear_opaque = clear_opaque ? 1 : 0;
+}
+
+extern "C" void port_gpu_card_set_fade(int evy, int white)
+{
+    if (!g_cp_held) return;
+    g_cp_evy = evy < 0 ? 0 : (evy > 16 ? 16 : evy);
+    g_cp_white = white ? 1 : 0;
+    g_cp_fade = g_cp_evy > 0 ? 1 : 0;
+}
+
+extern "C" void *port_gpu_card_compose(const unsigned int *overlay, int stride_px)
+{
+    return cp_compose((const uint32_t *)overlay, stride_px);
+}
+
 #else   /* not Windows: the port ships on Windows and there is no card here */
 
 #include "hal/gpu_raster.h"
@@ -2648,5 +3258,10 @@ extern "C" double port_gpu_raster_readback_ms(void)
 void port_gpu_raster_configure(void) {}
 int port_gpu_raster_active(void) { return 0; }
 double port_gpu_raster_readback_ms(void) { return 0.0; }
+void port_gpu_raster_present_down(void) {}
+int port_gpu_card_held(void) { return 0; }
+void port_gpu_card_set_fade(int, int) {}
+void port_gpu_card_set_mask(const unsigned char *, int, int, int) {}
+void *port_gpu_card_compose(const unsigned int *, int) { return 0; }
 
 #endif
