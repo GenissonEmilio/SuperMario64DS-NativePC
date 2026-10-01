@@ -3528,27 +3528,24 @@ static int ovl_text(const OvlSurface &fb, int x0, int y0, const char *s,
    name in the sender's colour, and the open box ("SAY: ...") under them.
 
    THE GLYPHS ARE THE NAME TAGS' GLYPHS: the ROM's message font, read out of
-   engine A's BG character base with tests/nametag.h's decode (Message::AddChar
-   is the authority, see that banner). This atlas is the chat's own copy, built
-   through chat_font_code, so the one table that decides which characters the
-   cleaner lets through is also the one that decides which glyphs get decoded;
-   the tags' atlas is untouched. When the font is not in VRAM (a scene with no
-   BG font loaded) the overlay's own 5x7 font draws the same text instead. */
+   its own file through tests/nametag.h's nt_font_sheet and decoded with that
+   file's decode (Message::AddChar is the authority, see that banner). This
+   atlas is the chat's own copy, built through chat_font_code, so the one table
+   that decides which characters the cleaner lets through is also the one that
+   decides which glyphs get decoded; the tags' atlas is untouched. The ping
+   readout (hal/net_hud.h) draws through it too. It is NOT read from VRAM: on
+   the launcher's path the first draw is over the title, where VRAM holds the
+   title's graphics (run mp1 FONTFIELD1, nametag.h says more). When the file
+   cannot be read the overlay's own 5x7 font draws the same text instead. */
 static NtGlyph g_chat_glyph[NT_LAST - NT_FIRST + 1];
 static int g_chat_font_ready;
 
 static int chat_font_build(void)
 {
     if (g_chat_font_ready) return 1;
-    const unsigned base = (unsigned)func_02054d88();
-    if (!base) return 0;
-    {   /* the letter A as the probe, nt_font_build's reason */
-        const unsigned off = (unsigned)(((0x0a & 0x1f) + ((0x0a & 0xe0) << 1)) << 5);
-        const unsigned char *t = (const unsigned char *)(base + off);
-        int any = 0;
-        for (int i = 0; i < 32 && !any; ++i) any = t[i] != 0;
-        if (!any) return 0;
-    }
+    const unsigned char *sheet = nt_font_sheet();   /* checked there: A has ink */
+    if (!sheet) return 0;
+    const uintptr_t base = (uintptr_t)sheet;
     for (int a = NT_FIRST; a <= NT_LAST; ++a) {
         NtGlyph &gl = g_chat_glyph[a - NT_FIRST];
         gl.have = 0;
