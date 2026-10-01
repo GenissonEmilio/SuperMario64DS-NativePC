@@ -7,6 +7,7 @@
 #include "hal/comms_loopback.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #include <windows.h>   // GetTickCount
@@ -104,6 +105,47 @@ int popcount16(unsigned m) {
     return n;
 }
 
+// THE ROOM'S PING IS A MEDIAN. The hub keeps only each seat's newest round
+// trip, and one frame hitch on either console (a level load, a stall) makes
+// that one reading jump by a hundred milliseconds or more. So each seat's
+// reading is sampled at every refresh into a ring of the last five, and the
+// seat counts with the median of those: a single late pong never reaches the
+// screen, a real change shows within three refreshes (1.5 s). A seat that
+// leaves, or comes back as a new join, starts its ring again.
+enum : int { kRttRing = 5 };
+struct SeatRtt { unsigned epoch; int n, head; int v[kRttRing]; };
+SeatRtt g_seat_rtt[kHubMaxSeats];
+
+// SM64DS_NET_HUD_TRACE=1 (test only): one line per seat per refresh, the raw
+// reading next to the median the readout uses.
+bool trace_on() {
+    static int t = -1;
+    if (t < 0) t = std::getenv("SM64DS_NET_HUD_TRACE") ? 1 : 0;
+    return t == 1;
+}
+
+int seat_median(int s, const HubSeatInfo &info) {
+    SeatRtt &r = g_seat_rtt[s];
+    if (r.epoch != info.join_epoch) {
+        r.epoch = info.join_epoch;
+        r.n = r.head = 0;
+    }
+    r.v[r.head] = info.rtt_ms;
+    r.head = (r.head + 1) % kRttRing;
+    if (r.n < kRttRing) ++r.n;
+    int sorted[kRttRing];
+    for (int i = 0; i < r.n; ++i) sorted[i] = r.v[i];
+    for (int i = 1; i < r.n; ++i)            // five values: insertion sort
+        for (int j = i; j > 0 && sorted[j - 1] > sorted[j]; --j) {
+            const int t = sorted[j]; sorted[j] = sorted[j - 1]; sorted[j - 1] = t;
+        }
+    const int med = sorted[r.n / 2];
+    if (trace_on())
+        std::fprintf(stderr, "[nethud] trace seat=%d raw=%d median=%d\n", s,
+                     info.rtt_ms, med);
+    return med;
+}
+
 // THE ROOM. True when the hub is pairing or live.
 bool build_room(NetHudView *v) {
     if (!comms_hub_active()) return false;
@@ -117,10 +159,13 @@ bool build_room(NetHudView *v) {
     for (int s = 0; s < kHubMaxSeats; ++s) {
         if (!(st.seat_mask & (1u << s))) continue;
         HubSeatInfo info;
-        if (!comms_hub_seat_info(s, &info) || !info.present) continue;
+        if (!comms_hub_seat_info(s, &info) || !info.present) {
+            g_seat_rtt[s].n = 0;
+            continue;
+        }
         if (info.heard_ms_ago > kQuietMs) quiet = true;
         if (info.rtt_ms < 0) continue;
-        sum += info.rtt_ms;
+        sum += seat_median(s, info);
         ++n;
     }
     loss_sample(st, st.seat_mask != 0 && !quiet, now);
