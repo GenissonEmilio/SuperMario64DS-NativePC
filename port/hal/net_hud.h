@@ -3,7 +3,7 @@
 // Two short lines at the bottom right of the game picture while a console is
 // online, in the chat's font:
 //
-//   adventure room (hal/comms_hub.cpp)   "ping 48 ms"      "loss 0.3%"
+//   adventure room (hal/comms_hub.cpp)   "ping 48 ms"      "loss 0%"
 //   VS, a joiner (hal/comms_loopback.cpp) "ping 94 ms"     "delay 5"
 //   VS, the host                          "delay 5"        "worst 96 ms P3"
 //
@@ -15,10 +15,11 @@
 //                 every 500 ms (comms_hub_seat_info().rtt_ms; the "rtt=[..]"
 //                 list of the hub's periodic line). "ping --" while nobody
 //                 else is in the room or no pong has come back yet.
-//   loss (room)   the share of those pings that got no pong, over the last
+//   loss (room)   the share of those pings that got no pong, in whole
+//                 percent (ten seconds is about twenty pings), over the last
 //                 ten seconds (comms_hub_stats() pings_sent / pongs_recvd,
 //                 counted only while somebody was there to answer and
-//                 nobody in the room had gone quiet for a second: a player
+//                 nobody in the room had gone quiet for 0.4 s: a player
 //                 who left or froze is not the network losing pings). A ping
 //                 and its pong both cross the network, so this is round-trip
 //                 loss: 20% loss each way reads about 36%.

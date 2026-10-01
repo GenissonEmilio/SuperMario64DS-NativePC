@@ -17,9 +17,9 @@ namespace {
 enum : unsigned { kRefreshMs = 500, kLogEveryMs = 10000 };
 enum : int { kLossWindow = 20 };   // 500 ms intervals: ten seconds
 // A seat unheard this long is leaving (the hub keeps it 3 s) or frozen, not
-// on a lossy path: its ghost frames come 15 times a second, so even at 50%
-// loss a one-second silence has odds of about 1 in 30000.
-enum : unsigned { kQuietMs = 1000, kLossSpanMs = 10000 };
+// on a lossy path: its ghost frames come 15 times a second, so a 400 ms
+// silence is six frames in a row lost, about 1 in 15000 at 20% loss.
+enum : unsigned { kQuietMs = 400, kLossSpanMs = 10000 };
 
 NetHudView g_view;          // what is on screen until the next refresh
 bool       g_view_valid = false;
@@ -34,7 +34,9 @@ int        g_kind = 0;      // 0 none, 1 room, 2 VS
 // gone quiet -- because a ping with nobody to ask is never answered, and a
 // ping to a player who just left or froze is not the network losing it. It is
 // held back one interval before it counts, so a pong still in flight when a
-// player leaves is not read as lost either.
+// player leaves is not read as lost either. And the newest pings of the window
+// may simply not be answered YET (a pong lands up to one round trip after its
+// ping, often in the next interval), so that many are left out of the count.
 struct Interval { unsigned long long ping, pong; unsigned at; };
 Interval g_win[kLossWindow];
 int      g_win_n = 0, g_win_head = 0;
@@ -69,26 +71,26 @@ void loss_sample(const CommsHubStats &st, bool clean, unsigned now) {
     g_prev_valid = true;
 }
 
-// Loss in tenths of a percent, -1 until the last ten seconds hold four pings.
-int loss_tenths(unsigned now) {
+// Loss in whole percent over the last ten seconds, -1 until they hold four
+// answerable pings. `rtt_ms` (the room's mean round trip) sizes the in-flight
+// allowance: one ping, plus one per 500 ms of round trip.
+int loss_pct(unsigned now, int rtt_ms) {
     unsigned long long ping = 0, pong = 0;
     for (int i = 0; i < g_win_n; ++i) {
         if ((unsigned)(now - g_win[i].at) > kLossSpanMs) continue;
         ping += g_win[i].ping;
         pong += g_win[i].pong;
     }
-    if (ping < 4) return -1;
+    const unsigned long long in_flight = 1 + (unsigned)(rtt_ms > 0 ? rtt_ms : 0) / kRefreshMs;
+    if (ping < in_flight + 4) return -1;
+    ping -= in_flight;
     if (pong >= ping) return 0;
-    return (int)(((ping - pong) * 1000ull + ping / 2) / ping);
+    return (int)(((ping - pong) * 100ull + ping / 2) / ping);
 }
 
-void put_loss(char *out, int tenths) {
-    if (tenths < 0)
-        std::snprintf(out, kNetHudLineMax, "loss --");
-    else if (tenths < 100)
-        std::snprintf(out, kNetHudLineMax, "loss %d.%d%%", tenths / 10, tenths % 10);
-    else
-        std::snprintf(out, kNetHudLineMax, "loss %d%%", (tenths + 5) / 10);
+void put_loss(char *out, int pct) {
+    if (pct < 0) std::snprintf(out, kNetHudLineMax, "loss --");
+    else         std::snprintf(out, kNetHudLineMax, "loss %d%%", pct);
 }
 
 void put_ping(char *out, const char *label, int ms) {
@@ -122,9 +124,10 @@ bool build_room(NetHudView *v) {
         ++n;
     }
     loss_sample(st, st.seat_mask != 0 && !quiet, now);
-    put_ping(v->line[0], "ping", n ? (int)((sum + n / 2) / n) : -1);
+    const int ping = n ? (int)((sum + n / 2) / n) : -1;
+    put_ping(v->line[0], "ping", ping);
     if (st.seat_mask) {
-        put_loss(v->line[1], loss_tenths(now));
+        put_loss(v->line[1], loss_pct(now, ping));
         v->n = 2;
     } else {
         v->n = 1;
