@@ -595,6 +595,9 @@ bool ppu_write_bmp_px(const char *path, const uint32_t *px, int w, int h) {
 }
 
 bool ppu_write_bmp(const char *path, const Framebuffer &fb) {
+    // A frame held on the graphics card (run cardfull, lane CARD2) is only its
+    // 2D in the framebuffer: read the 3D back first, so a dump is the picture.
+    gx_card_settle_because("a picture dump");
     // The framebuffer's live image is active_w x active_h. On every fixed tier
     // (and on NTR_WIDE_RT with the toggle on) that equals the row stride, so the
     // buffer is already tight and this is the byte-identical old call.
@@ -972,7 +975,15 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
      * the armed test caught only 169 of them, so five hundred captured frames
      * carried the smoothing. Reading the copy assumes nothing about when the
      * game arms the unit, which is the only reason it holds. */
-    if (const uint32_t *pre = gx_aa_preimage()) {
+    if (const uint32_t *held = gx_card_capture_picture()) {
+        /* THE FRAME IS HELD ON THE GRAPHICS CARD (run cardfull, CARD2): the
+           framebuffer is only the 2D overlay of it, so the picture is built
+           here from the card's copy of the 3D as it was BEFORE the smoothing,
+           under that overlay. It is the same frame the copy below is, so with
+           the setting on it counts as having read the pre-smoothing frame. */
+        src = held;
+        if (gx_anti_aliasing()) ++g_cap_from_preimage;
+    } else if (const uint32_t *pre = gx_aa_preimage()) {
         src = pre;
         ++g_cap_from_preimage;
     }

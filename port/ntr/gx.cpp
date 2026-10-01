@@ -3477,6 +3477,9 @@ static void planes_if_stale()
 
 const uint8_t *gx_coverage()
 {
+    /* a frame held on the card has no coverage plane on the processor: any
+       reader that wants it makes the frame an ordinary one first */
+    gx_card_settle_because("the coverage plane was asked for");
     raster_buffers();
     return &g_cover[0][0];
 }
@@ -3630,8 +3633,54 @@ static void raster_clip(int &x0, int &y0, int &x1, int &y1)
         x1 = x0 + present_w() - 1; y1 = y0 + present_h() - 1;
     }
 }
+/* THE PICTURE-ON-THE-CARD STATE (run cardfull, lane CARD2; see ntr/gx.h).
+   g_cp_allow is the caller's one-frame permission, g_cp_pending is set by the
+   fill below until gx_render has either kept the frame on the card or given
+   up, g_cp_active is the frame being held, and g_cp_geo is what a later
+   settle needs to ask the card for it. */
+static int g_cp_allow;
+static int g_cp_pending;
+static int g_cp_active;
+static Framebuffer *g_cp_fb;
+static struct { int cw, ch, px0, py0, pw, ph; } g_cp_geo;
+static uint32_t *g_cp_scratch;      /* the capture's picture, SCREEN_W stride */
+
+void gx_card_present_allow(int allow) { g_cp_allow = allow ? 1 : 0; }
+int gx_card_overlay_active() { return g_cp_active; }
+
+static void clear_fill_classic(Framebuffer &fb);
 
 void gx_clear_fill(Framebuffer &fb)
+{
+    /* a new frame: nothing from the last one is held any more */
+    g_cp_active = 0;
+    g_cp_pending = 0;
+    g_cp_fb = &fb;
+    const int allow = g_cp_allow;
+    g_cp_allow = 0;
+    if (allow && g_gpu_opaque && !ab_mode()) {
+        /* would the card keep a frame offered like this? Asked without
+           touching anything; 3 is yes. */
+        GxGpuFrame f;
+        std::memset(&f, 0, sizeof f);
+        f.probe = 1;
+        f.full_ok = 2;
+        f.keep = 1;
+        if (g_gpu_opaque(&f) == 3) {
+            /* THE TRANSPARENT FILL: alpha 0 everywhere, which says "no 2D
+               here". The clear colour is the card's to draw. */
+            const int w = active_w, h = active_h;
+            for (int y = 0; y < h && y < SCREEN_H; ++y)
+                std::memset(fb.px[y], 0, (size_t)(w < SCREEN_W ? w : SCREEN_W) *
+                                             sizeof(fb.px[0][0]));
+            g_cp_pending = 1;
+            return;
+        }
+    }
+    clear_fill_classic(fb);
+}
+
+static void clear_fill_classic(Framebuffer &fb)
 {
     const uint32_t c = gx_clear_argb();
     const int w = active_w, h = active_h;
@@ -3688,6 +3737,93 @@ void gx_aa_counters(unsigned long long &changed, unsigned long long &frames) {
    setting no matter when the game arms the capture unit. Same SCREEN_W
    stride as the framebuffer, so an index into one indexes the other. */
 uint32_t *gx_aa_preimage() { return g_aa_pre_valid ? g_aa_src : nullptr; }
+
+/* THE SETTLE (run cardfull, lane CARD2): see ntr/gx.h. Written after the
+   buffers it fills, ahead of everything that calls it. */
+void gx_card_settle() { gx_card_settle_because("something read the picture"); }
+
+void gx_card_settle_because(const char *why)
+{
+    if (!g_cp_active || !g_cp_fb || !g_gpu_opaque) return;
+    /* THE REASONS, COUNTED. A frame that reads the 3D back is a frame that is
+       not presented from the card, so each way into this function is named
+       and the totals are printed once at exit. */
+    {
+        static struct { const char *why; unsigned long long n; } tab[16];
+        static int used, registered;
+        static unsigned long long total;
+        if (!registered) {
+            registered = 1;
+            std::atexit([] {
+                std::fprintf(stderr, "[gx] frames settled back to the processor "
+                             "(read back, not presented from the card): %llu",
+                             total);
+                for (int i = 0; i < used; ++i)
+                    std::fprintf(stderr, "; %s %llu", tab[i].why, tab[i].n);
+                std::fprintf(stderr, "\n");
+                std::fflush(stderr);
+            });
+        }
+        ++total;
+        int i = 0;
+        for (; i < used; ++i)
+            if (!std::strcmp(tab[i].why, why)) break;
+        if (i == used && used < 16) { tab[used].why = why; tab[used].n = 0; ++used; }
+        if (i < used) ++tab[i].n;
+    }
+    /* classical from here on, whatever the card answers */
+    g_cp_active = 0;
+    raster_buffers();
+    GxGpuOut out;
+    std::memset(&out, 0, sizeof out);
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.settle = 1;
+    f.outside_argb = kOldClear;
+    f.fb = &g_cp_fb->px[0][0];
+    f.cover = &g_cover[0][0];
+    f.stride = SCREEN_W;
+    f.cw = g_cp_geo.cw;
+    f.ch = g_cp_geo.ch;
+    f.px0 = g_cp_geo.px0;
+    f.py0 = g_cp_geo.py0;
+    f.pw = g_cp_geo.pw;
+    f.ph = g_cp_geo.ph;
+    f.aa_mode = g_aa_mode;
+    f.pre = g_aa_src;
+    f.out = &out;
+    g_gpu_opaque(&f);
+    g_aa_pre_valid = out.pre_valid ? 1 : 0;
+    g_planes_stale = 1;
+}
+
+const uint32_t *gx_card_capture_picture()
+{
+    if (!g_cp_active || !g_cp_fb || !g_gpu_opaque) return nullptr;
+    if (!g_cp_scratch)
+        g_cp_scratch = (uint32_t *)std::calloc((size_t)SCREEN_W * SCREEN_H,
+                                               sizeof(uint32_t));
+    if (!g_cp_scratch) { gx_card_settle(); return nullptr; }
+    GxGpuOut out;
+    std::memset(&out, 0, sizeof out);
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.settle = 2;
+    f.outside_argb = kOldClear;
+    f.fb = &g_cp_fb->px[0][0];
+    f.pre = g_cp_scratch;
+    f.stride = SCREEN_W;
+    f.cw = g_cp_geo.cw;
+    f.ch = g_cp_geo.ch;
+    f.px0 = g_cp_geo.px0;
+    f.py0 = g_cp_geo.py0;
+    f.pw = g_cp_geo.pw;
+    f.ph = g_cp_geo.ph;
+    f.aa_mode = g_aa_mode;
+    f.out = &out;
+    if (g_gpu_opaque(&f) != 1) { gx_card_settle(); return nullptr; }
+    return g_cp_scratch;
+}
 
 namespace {
 
@@ -5486,11 +5622,14 @@ void gx_render(Framebuffer &fb) {
         f.want_depth = 0;
         f.tex_filter = g_tex_filter;
         f.tex_generation = g_tex_generation;
-        f.clear_argb = (cw > 0 && ch > 0) ? fb.px[f.py0][f.px0] : 0xFF000000u;
+        f.clear_argb = g_cp_pending ? gx_clear_argb()
+                       : (cw > 0 && ch > 0) ? fb.px[f.py0][f.px0] : 0xFF000000u;
         f.toon_shade = g_toon_shade;
         f.toon_rgb = g_toon8;
         f.full_ok = 2;
         f.out = &gpu_out;
+        f.keep = g_cp_pending;
+        f.outside_argb = kOldClear;
         if (g_aa_mode && aa_scratch_alloc()) {
             f.aa_mode = 1;
             f.pre = g_aa_src;
@@ -5499,8 +5638,21 @@ void gx_render(Framebuffer &fb) {
         if (g_gpu_opaque(&f) == 2) {
             gpu_full = 1;
             g_planes_stale = 1;
+            if (g_cp_pending && gpu_out.kept) {
+                g_cp_active = 1;
+                g_cp_geo.cw = cw;
+                g_cp_geo.ch = ch;
+                g_cp_geo.px0 = f.px0;
+                g_cp_geo.py0 = f.py0;
+                g_cp_geo.pw = f.pw;
+                g_cp_geo.ph = f.ph;
+            }
         }
     }
+    /* A frame the card did not keep goes on as an ordinary one: the CPU passes
+       draw into the clear colour, which the transparent fill did not leave */
+    if (g_cp_pending && !g_cp_active) clear_fill_classic(fb);
+    g_cp_pending = 0;
     if (!gpu_full) {
         /* Depth clear. 1e30f is not a repeating byte pattern so memset cannot
            do it, but one row can be built scalar and the rest copied from it,

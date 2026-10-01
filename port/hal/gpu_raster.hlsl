@@ -409,3 +409,104 @@ uint fa_ps(float4 pos : SV_Position) : SV_Target0
     if (o == pM) return pM;
     return (o & 0x00FFFFFFu) | 0xFE000000u;
 }
+
+// ==== THE COMPOSITE (run cardfull, lane CARD2): THE PICTURE PRESENTED FROM THE
+// CARD ======================================================================
+//
+// With the picture-on-the-card path on, the 3D never comes back to the
+// processor. The processor's 2D compositor writes only the pixels it owns into
+// the framebuffer, and the alpha byte of each of them is a verdict (ntr/gx.h,
+// GX_OV_*): 0x00 nothing, 0xFF a 2D pixel in front of the 3D layer, 0xFE a 2D
+// pixel BEHIND it. This one pass puts the two together, the way the DS's layer
+// compositor and engine A's master brightness do, into a plain colour target
+// that the present quad then scales onto the window:
+//
+//   3D colour   the smoothed picture where the card smoothed it (t1, R32_UINT,
+//               alpha 0 = not covered), else the opaque/translucent picture
+//               (t0, alpha 0 = not covered); a pixel outside the box the card
+//               drew in, or not covered, is the frame's clear colour inside the
+//               present rectangle and the pillarbox constant outside it
+//   overlay     t2, the framebuffer as the processor left it (R32_UINT,
+//               0xAARRGGBB, one texel per picture pixel)
+//   fade        engine A's brightness fade, the same integer arithmetic
+//               port_engine_a_fade runs on the processor, over the pixels the
+//               brightness mask says the DS blends (all of them when the frame
+//               has no mask)
+//
+// EVERYTHING IS INTEGER so the result is exactly what the processor's own copy
+// of this rule (hal/gpu_raster.cpp, cp_combine / cp_fade, which is what a
+// settle and the capture use) makes of the same inputs: the A/B between the
+// two is a check of equality, not of closeness.
+cbuffer CompParams : register(b0)
+{
+    uint4 box;      // x0, y0, x1, y1 of the pixels the card drew in
+    uint4 rect;     // the present rectangle: x0, y0, w, h
+    uint4 clr;      // clear colour (0xAARRGGBB), pillarbox constant, flags, evy
+                    // flags: bit 0 the frame was smoothed, bit 1 a fade is on,
+                    // bit 2 the fade goes to white, bit 3 a brightness mask is
+                    // bound (t3), bit 4 the 3D layer is shown, bit 5 its clear
+                    // plane is opaque
+};
+
+Texture2D<float4> cp_col : register(t0);
+Texture2D<uint>   cp_sm  : register(t1);
+Texture2D<uint>   cp_ov  : register(t2);
+// the brightness mask, one byte per picture pixel (hal/message_compositor.cpp):
+//   bit 0  would the fade take this pixel if the 3D layer showed here
+//   bit 1  ... if the backdrop showed here
+//   bit 2  does it take the 2D pixel written here (overlay mode FF or FE)
+Texture2D<uint>   cp_bm  : register(t3);
+
+uint cp_pack(float4 c)
+{
+    uint r = (uint)(c.r * 255.0 + 0.5);
+    uint g = (uint)(c.g * 255.0 + 0.5);
+    uint b = (uint)(c.b * 255.0 + 0.5);
+    return 0xFF000000u | (r << 16) | (g << 8) | b;
+}
+
+float4 comp_ps(float4 pos : SV_Position) : SV_Target0
+{
+    int x = (int)pos.x, y = (int)pos.y;
+    uint ov = cp_ov.Load(int3(x, y, 0));
+    uint mode = ov >> 24;
+    uint base = ((uint)x >= rect.x && (uint)x < rect.x + rect.z &&
+                 (uint)y >= rect.y && (uint)y < rect.y + rect.w) ? clr.x : clr.y;
+    bool cov = false;
+    if ((uint)x >= box.x && (uint)x < box.z && (uint)y >= box.y && (uint)y < box.w) {
+        if (clr.z & 1u) {
+            uint s = cp_sm.Load(int3(x, y, 0));
+            if ((s >> 24) != 0u) { cov = true; base = 0xFF000000u | (s & 0x00FFFFFFu); }
+        } else {
+            float4 c = cp_col.Load(int3(x, y, 0));
+            if (c.a > 0.0) { cov = true; base = cp_pack(c); }
+        }
+    }
+    uint p = base;
+    if (mode == 0xFFu) p = 0xFF000000u | (ov & 0x00FFFFFFu);
+    else if (mode == 0xFEu) p = cov ? base : (0xFF000000u | (ov & 0x00FFFFFFu));
+    // does the fade take this pixel? Every pixel, unless a mask says otherwise.
+    bool take = true;
+    if (clr.z & 8u) {
+        uint code = cp_bm.Load(int3(x, y, 0));
+        bool is3d = ((clr.z & 32u) != 0u) || (((clr.z & 16u) != 0u) && cov);
+        bool def = (code & (is3d ? 1u : 2u)) != 0u;
+        if (mode == 0xFFu) take = ((code >> 2) & 1u) != 0u;
+        else if (mode == 0xFEu) take = cov ? def : (((code >> 2) & 1u) != 0u);
+        else take = def;
+    }
+    int r = (int)((p >> 16) & 0xFFu), g = (int)((p >> 8) & 0xFFu), b = (int)(p & 0xFFu);
+    if ((clr.z & 2u) && take) {
+        int evy = (int)clr.w;
+        if (clr.z & 4u) {
+            r += ((255 - r) * evy) >> 4;
+            g += ((255 - g) * evy) >> 4;
+            b += ((255 - b) * evy) >> 4;
+        } else {
+            r -= (r * evy) >> 4;
+            g -= (g * evy) >> 4;
+            b -= (b * evy) >> 4;
+        }
+    }
+    return float4((float)r / 255.0, (float)g / 255.0, (float)b / 255.0, 1.0);
+}
