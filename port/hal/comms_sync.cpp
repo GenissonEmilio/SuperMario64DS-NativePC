@@ -729,6 +729,10 @@ struct GwStats {
     unsigned long long parked, below, clamped, target_ghost, near_ghost;
     unsigned long long interp, reckon, hold, teleports;
     unsigned long long seat_fix, adopted;   // the hub seat repair
+    unsigned long long cut_nosend;          // ghost frames not sent: cutscene
+    unsigned long long cut_frames, cut_drawn;   // follower frames in one, and
+                                                // of those, with a ghost shown
+    unsigned long long shown_frames;            // follower frames, any ghost shown
 };
 GwStats g_gws;
 
@@ -1098,6 +1102,21 @@ void gw_recv() {
 
 // A seat is DRAWN when its newest ghost frame is under 3 s old and names the
 // level this console is in. Paused seats keep sending at 2 Hz and stay.
+// GHOSTCUT1: THE LOCAL PLAYER IS IN A CUTSCENE. data_0209fc48 is the running
+// cutscene (kuppa) script, non-zero from the script's start to its
+// EndKuppaScript: the new-file opening, the star-get camera, the ending. While
+// it runs Mario is not the player's to move, so nobody else's ghost is drawn on
+// this console and this console's own body goes off the wire (its last frame
+// fades out on the others the way a dropped player's does); both come back on
+// the first frame the script is over. Stage::CheckInput keys its stick block off
+// the same word (src/_ZN5Stage10CheckInputEv.cpp).
+// SM64DS_GHOST_CUT_SHOW=1 leaves this out (the before arm, for the proof).
+bool gw_cut() {
+    static int show = -1;
+    if (show < 0) show = std::getenv("SM64DS_GHOST_CUT_SHOW") ? 1 : 0;
+    return !show && data_0209fc48 != 0;
+}
+
 bool gw_visible(int seat) {
     if (!g_hub || seat < 0 || seat >= kHubMaxSeats) return false;
     const GwSeat &z = g_gw[seat];
@@ -1330,6 +1349,15 @@ void gw_send(unsigned now) {
     if (seq == g_gw_last_seq) return;
     if (paused && (unsigned)(now - g_gw_last_send_ms) < (unsigned)kGwPausedMs)
         return;
+    if (gw_cut()) {
+        /* GHOSTCUT1: in a cutscene: no ghost frame. The first frame after it
+           is a teleport, so the others snap the ghost back in rather than
+           slide it from where it was before the cutscene. */
+        ++g_gws.cut_nosend;
+        g_gw_last_seq = seq;
+        g_gw_warp = true;
+        return;
+    }
 
     HubGhostFrame f;
     std::memset(&f, 0, sizeof f);
@@ -1407,7 +1435,8 @@ void gw_report(const char *tag) {
                  "resets=%llu vis=0x%04x drawn=0x%04x interp=%llu reckon=%llu hold=%llu "
                  "reposes=%llu recursor=%llu charswaps=%llu parked=%llu below=%llu "
                  "clamped=%llu target_ghost=%llu near_ghost=%llu seat_fix=%llu "
-                 "adopted=%llu names=[%s]\n",
+                 "adopted=%llu cut_nosend=%llu cut_frames=%llu cut_drawn=%llu "
+                 "shown_frames=%llu cut=%d names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
@@ -1416,7 +1445,9 @@ void gw_report(const char *tag) {
                  g_gws.resets, vis, drawn, g_gws.interp, g_gws.reckon, g_gws.hold,
                  g_gws.reposes, g_gws.recursor, g_gws.charswaps, g_gws.parked,
                  g_gws.below, g_gws.clamped, g_gws.target_ghost,
-                 g_gws.near_ghost, g_gws.seat_fix, g_gws.adopted, names);
+                 g_gws.near_ghost, g_gws.seat_fix, g_gws.adopted,
+                 g_gws.cut_nosend, g_gws.cut_frames, g_gws.cut_drawn,
+                 g_gws.shown_frames, data_0209fc48 != 0 ? 1 : 0, names);
 }
 
 // sync_decide's hub arm: an adventure console on the HUB has no DS transport
@@ -2121,7 +2152,7 @@ bool peer_visible(int slot) {
     if (slot < 0 || slot >= kCommsMaxPlayers) return false;
     if (slot == (int)data_0209f250) return false;
     /* GHOSTWIRE1: on the hub the body's seat decides, off its own frames */
-    if (g_hub) return gw_visible(gw_seat_for_body(slot));
+    if (g_hub) return !gw_cut() && gw_visible(gw_seat_for_body(slot));
     if (!g_peer_present[slot]) return false;
     if ((unsigned)(GetTickCount() - g_peer_seen_ms[slot]) > kPresenceTimeoutMs)
         return false;
@@ -2298,6 +2329,8 @@ void gw_follow() {
     const int me = (int)data_0209f250;
     const int nb = (int)data_0209f21c < kCommsMaxPlayers ? (int)data_0209f21c
                                                          : kCommsMaxPlayers;
+    const bool in_cut = data_0209fc48 != 0;
+    bool shown_any = false;
     for (int i = 0; i < nb; ++i) {
         if (i == me) continue;
         void *a = data_0209f394[i];
@@ -2305,7 +2338,7 @@ void gw_follow() {
         g_drawpos_have[i] = 0;
         const int s = gw_seat_for_body(i);
         GwSample sm;
-        if (s < 0 || !gw_visible(s) || party_member(i) ||
+        if (s < 0 || !gw_visible(s) || party_member(i) || gw_cut() ||
             !gw_sample(s, now, &sm)) {
             gw_park_body(a);               // undriven: parked, not drawn
             continue;
@@ -2408,6 +2441,7 @@ void gw_follow() {
             ++g_gws.reposes;
         }
         ++z.driven;
+        shown_any = true;
         if (gw_pose_probe() > 0 &&
             (g_gw_frame % (unsigned)gw_pose_probe()) == 0)
             std::fprintf(stderr, "[gwpose] t=%u f=%u GHOST seat=%d body=%d "
@@ -2417,6 +2451,11 @@ void gw_follow() {
                          (unsigned)player::anim_id(a),
                          player::anim_frame(a) >> 12, gw_pose_hash(a),
                          (unsigned)sm.anim, sm.cursor >> 12, sm.y >> 12);
+    }
+    if (shown_any) ++g_gws.shown_frames;
+    if (in_cut) {
+        ++g_gws.cut_frames;
+        if (shown_any) ++g_gws.cut_drawn;
     }
 }
 }  // namespace
