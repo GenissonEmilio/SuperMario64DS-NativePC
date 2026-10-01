@@ -2265,6 +2265,14 @@ int draw_frame(const ntr::GxGpuFrame *f)
                 g_fail_full, g_frames);
         full_give_up("a test asked for it", 0);
     }
+    /* A FRAME OFFERED WHOLE (full_ok 2) HAS SKIPPED THE CPU RASTER'S OWN
+       CLEARS, so the opaque-only path below must never copy into it, whatever
+       made the whole-frame mode stop (a draw that could not start, or the
+       drill above latching it after the probe had already said yes). It is
+       handed back undrawn: gx_render clears its buffers, reads the clear
+       colour from the cleared picture and offers the frame again, and the
+       probe now says no. */
+    if (f->full_ok == 2 && (!g_full_on || g_full_dead)) return 0;
     if (g_full_on && !g_full_dead && f->full_ok) {
         const int r = draw_full(f);
         if (r >= 0) return r;
