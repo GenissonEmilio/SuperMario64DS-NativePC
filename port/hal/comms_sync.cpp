@@ -78,6 +78,14 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "vs_palette_gen.h"  // GHOSTLOOK1: the VS colour arithmetic, for a hub
+                             // ghost in its player's own colours
+
+// The decoded-texture cache keys a bind on the first palette word only, so a
+// rewritten row must drop it (hal/model_host.cpp's hal_tex_cache_drop does the
+// same).
+namespace ntr { void gx_invalidate_textures(); }
+
 extern "C" {
 // SetAnim IS DECLARED void HERE, WHICH IS ITS ACTUAL RETURN TYPE.
 // src/actors/Player.cpp:14 defines it `void`; 74 matched
@@ -732,6 +740,10 @@ struct GwSeat {
     char      name[kHubIdentNameMax + 1];
     unsigned char character, body[3], shoes[3];
     bool      colours;       // GHOSTLOOK1: body / shoes are the player's pick
+    unsigned short pal_src[16];  // GHOSTLOOK1: the row 0 the colours were
+    unsigned short pal_out[16];  // made from, and the row made from it with
+    unsigned char  pal_body[3], pal_shoes[3];   // these colours
+    bool      pal_have;
     unsigned  build_id;
     unsigned  char_try_ms;   // last character-swap attempt on its body
     unsigned  driven;        // frames the follower has driven its body
@@ -758,6 +770,8 @@ struct GwStats {
                                                 // of those, with a ghost shown
     unsigned long long shown_frames;            // follower frames, any ghost shown
     unsigned long long comebacks;   // frames that brought back a gone ghost
+    unsigned long long pal_rows, pal_writes;   // GHOSTLOOK1: ghosts drawn in
+                                               // their own colours; row writes
 };
 GwStats g_gws;
 
@@ -1330,6 +1344,51 @@ unsigned short *gw_pltt_row(int base16) {
     return (unsigned short *)(0x06880000u + (unsigned)base16 * 16u);
 }
 
+// GHOSTLOOK1: A HUB GHOST IN ITS PLAYER'S OWN COLOURS, the way VS colours its
+// Yoshis. VS tells its Yoshis apart by palette ROW: every body's materials name
+// the row Player+0x61c holds (row 0 + mPlayerNo << 1 in 16-byte units, written
+// by InitResources and repaired to the true slot by hal/level_boot.cpp), and
+// Player::Render stamps that into each material before the draw
+// (src/_ZN6Player6RenderEv.cpp, the data_0209f2d8 == 1 arm). A VS pick reaches
+// the row through the served file (hal/fs_mods.cpp, vs_palette_row over the
+// sixteen grown rows). A hub ghost's pick arrives on the wire after the level
+// is up, so its row is made here, with the same vs_palette_row out of the same
+// row 0 this console's file served, and written into the body's own row of
+// the texture palette slots; hal/player_bridges.cpp stamps the row into the
+// ghost's materials around its draw. Rows above 0 belong to VS seats, and the
+// adventure hub never draws one otherwise; row 0 (this console's own player)
+// is never written. Yoshi only, as in VS: the bros have no row per player.
+// Returns the row to stamp, or -1 to leave the model's own.
+int gw_colour_row(GwSeat &z, void *a) {
+    if (!z.have_ident || !z.colours) return -1;
+    if (gw_char(a) != 3u) return -1;
+    const char *c = (const char *)a;
+    const int no = (int)*(const unsigned char *)(c + 0x6d8);
+    const int pal = *(const int *)(c + 0x61c);
+    if (no <= 0 || no >= kCommsMaxPlayers) return -1;
+    const unsigned short *r0 = gw_pltt_row(pal - (no << 1));
+    unsigned short *rp = gw_pltt_row(pal);
+    if (!r0 || !rp) return -1;
+    if (!z.pal_have || std::memcmp(z.pal_src, r0, sizeof z.pal_src) != 0 ||
+        std::memcmp(z.pal_body, z.body, 3) != 0 ||
+        std::memcmp(z.pal_shoes, z.shoes, 3) != 0) {
+        std::memcpy(z.pal_src, r0, sizeof z.pal_src);
+        std::memcpy(z.pal_body, z.body, 3);
+        std::memcpy(z.pal_shoes, z.shoes, 3);
+        vspal::vs_palette_row(z.pal_src, z.pal_body, z.pal_shoes, z.pal_out);
+        z.pal_have = true;
+    }
+    /* a level load uploads the file's rows again: write it back when the
+       row no longer holds it */
+    if (std::memcmp(rp, z.pal_out, sizeof z.pal_out) != 0) {
+        std::memcpy(rp, z.pal_out, sizeof z.pal_out);
+        ntr::gx_invalidate_textures();
+        ++g_gws.pal_writes;
+    }
+    ++g_gws.pal_rows;
+    return pal;
+}
+
 void gw_send_ident(unsigned now) {
     gw_me_read();
     unsigned char buf[64];
@@ -1520,7 +1579,8 @@ void gw_report(const char *tag) {
                  "reposes=%llu recursor=%llu charswaps=%llu parked=%llu below=%llu "
                  "clamped=%llu target_ghost=%llu near_ghost=%llu seat_fix=%llu "
                  "adopted=%llu cut_nosend=%llu cut_frames=%llu cut_drawn=%llu "
-                 "shown_frames=%llu comebacks=%llu cut=%d names=[%s]\n",
+                 "shown_frames=%llu comebacks=%llu pal_rows=%llu "
+                 "pal_writes=%llu cut=%d names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
@@ -1531,8 +1591,8 @@ void gw_report(const char *tag) {
                  g_gws.below, g_gws.clamped, g_gws.target_ghost,
                  g_gws.near_ghost, g_gws.seat_fix, g_gws.adopted,
                  g_gws.cut_nosend, g_gws.cut_frames, g_gws.cut_drawn,
-                 g_gws.shown_frames, g_gws.comebacks,
-                 data_0209fc48 != 0 ? 1 : 0, names);
+                 g_gws.shown_frames, g_gws.comebacks, g_gws.pal_rows,
+                 g_gws.pal_writes, data_0209fc48 != 0 ? 1 : 0, names);
 }
 
 // sync_decide's hub arm: an adventure console on the HUB has no DS transport
@@ -2407,6 +2467,7 @@ int g_gw_nopark = -1;
 unsigned g_gw_follow_n = 1;   // GHOSTLOOK1: follower passes, for show_n
                               // (from 1: a seat's show_n starts at 0)
 int g_drawpos_have[kCommsMaxPlayers];
+int g_gw_pal[kCommsMaxPlayers];   // GHOSTLOOK1: the row each body draws with
 int g_drawpos[kCommsMaxPlayers][3];
 
 void gw_park_body(void *a) {
@@ -2440,6 +2501,7 @@ void gw_follow() {
         void *a = data_0209f394[i];
         if (!a) continue;
         g_drawpos_have[i] = 0;
+        g_gw_pal[i] = -1;
         const int s = gw_seat_for_body(i);
         GwSample sm;
         if (s < 0 || !gw_visible(s) || party_member(i) || gw_cut() ||
@@ -2573,6 +2635,7 @@ void gw_follow() {
             *(unsigned char *)(c + 0x701) =
                 (unsigned char)_ZN6Player8HasNoCapEv(c);
         }
+        g_gw_pal[i] = gw_colour_row(z, a);
         ++z.driven;
         shown_any = true;
         if (gw_look_probe() > 0 &&
@@ -2963,6 +3026,14 @@ void gw_body_probe() {
     last_sig = sig;
 }
 }  // namespace
+
+// GHOSTLOOK1: the palette row the render stamps into a hub ghost body's
+// materials for this frame's draw, or -1 (not a shown hub ghost, no pick, not
+// Yoshi): hal/player_bridges.cpp's hal_render_player_world.
+extern "C" int port_adventure_ghost_palette(int slot) {
+    if (!g_hub || slot < 0 || slot >= kCommsMaxPlayers) return -1;
+    return g_gw_pal[slot];
+}
 
 extern "C" void port_adventure_ghost_follow() {
     if (!adventure_ghost_mode()) return;
