@@ -2135,6 +2135,7 @@ static void r3e_census(const char *when)
    with the install must read vbl_dispatch=N framepump=N. That pair is the
    whole of both rungs' evidence and it cannot be a build difference. */
 extern "C" void port_install_host_frame_pump(int (*pump)(unsigned));
+extern "C" void port_install_frame_pump_paces(int (*paces)(void));
 static int r3d_wait_probe_left;    /* frames of phase 7 still owed to the wait */
 static int r3d_wait_probe_taken;   /* frames of phase 7 the wait actually took */
 namespace port { void thread_sched_report(const char *tag); }
@@ -3342,6 +3343,16 @@ static void ovl_gpu_sample(void)
    player actually had whether or not they ever pressed F3. */
 static void perf_log_frame(int scene);
 
+/* Whether the call below sleeps the halt out to the next VBlank deadline.
+   hal/boot2_thread.cpp asks it (port_halt_paced_by_frame_pump) on behalf of
+   the radio pump that runs earlier in the same halt, so a connected VS session
+   spends each VBlank once, here, instead of once in each pump. */
+static int frame_pump_paces(void)
+{
+    return (!rb_replaying() || rb_presented_frame()) &&
+           (!g_selftest_frames || port_pace_selftest());
+}
+
 extern "C" int port_host_frame_pump(unsigned spin)
 {
     (void)spin;
@@ -3355,8 +3366,7 @@ extern "C" int port_host_frame_pump(unsigned spin)
        what ends the frame, one whole game frame per call while this loop is. */
     r3e_heap_watch("inside the frame pump (an idle turn)");
     g_pace_div_override = port_rom_loop_enabled() ? 1 : 0;
-    if ((!rb_replaying() || rb_presented_frame()) &&
-        (!g_selftest_frames || port_pace_selftest())) frame_pace();
+    if (frame_pump_paces()) frame_pace();
     g_pace_div_override = 0;
     return 1;
 }
@@ -11310,6 +11320,7 @@ int main(void)
                         "nothing (rung D1's program, on rung D2's binary)\n");
     } else {
         port_install_host_frame_pump(port_host_frame_pump);
+        port_install_frame_pump_paces(frame_pump_paces);
         fprintf(stderr, "[r3d] the host frame pump is installed; step 1b of "
                         "the ROM's wait (hal/boot2_thread.cpp) runs the frame's "
                         "own duties from now on\n");
