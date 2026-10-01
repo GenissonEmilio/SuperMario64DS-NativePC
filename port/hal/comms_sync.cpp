@@ -692,6 +692,7 @@ enum : int {
        and comes back with the next frame. A paused player sends 2 Hz, so
        one lost paused frame (a 1 s gap) still does not blink it. */
     kGwFadeMs     = 700,
+    kGwAppearMs   = 300,     // GHOSTLOOK1: a ghost that comes on show fades in
     kGwDespawnMs  = 1200,
     kGwRing       = 8,       // frames kept per seat (~0.5 s at 15 Hz)
     /* THE PLAYER HAS 194 ANIMATIONS. Player::SetAnim indexes
@@ -729,6 +730,8 @@ struct GwSeat {
     unsigned  driven;        // frames the follower has driven its body
     const void *body_ptr;    // ...and which body that was (a level load
                              // seats new ones: the count starts again)
+    unsigned  show_ms;       // GHOSTLOOK1: when it last came on show, and
+    unsigned  show_n;        // the follower pass that last showed it
 };
 
 GwSeat g_gw[kHubMaxSeats];
@@ -2252,14 +2255,30 @@ extern "C" int port_adventure_ghost_stars(int slot) {
 // 0..256: how much of a hub ghost to draw, off the age of its newest frame
 // (full to kGwFadeMs, then down to nothing at kGwDespawnMs). 256 for any
 // body that is not a hub ghost, so VS, solo and the old path are untouched.
-extern "C" int port_adventure_ghost_fade(int slot) {
-    const int s = port_adventure_ghost_seat(slot);
-    if (s < 0 || g_gw[s].n == 0) return 256;
+namespace {
+int gw_fade_out(int s) {
     const unsigned age = GetTickCount() - g_gw[s].last_ms;
     if (age <= (unsigned)kGwFadeMs) return 256;
     if (age >= (unsigned)kGwDespawnMs) return 0;
     return (int)(256u * ((unsigned)kGwDespawnMs - age) /
                  (unsigned)(kGwDespawnMs - kGwFadeMs));
+}
+// GHOSTLOOK1: and UP from nothing over kGwAppearMs once it comes on show (a
+// level entry, a player walking in from another level, a comeback after a
+// despawn). A ghost is drawn solid now, and a solid body that pops into the
+// world in one frame is the jolt the old see-through look hid. The follower
+// stamps show_ms when a seat is shown after a pass that did not show it.
+int gw_fade_in(int s) {
+    const unsigned in = GetTickCount() - g_gw[s].show_ms;
+    if (in >= (unsigned)kGwAppearMs) return 256;
+    return (int)(256u * in / (unsigned)kGwAppearMs);
+}
+}  // namespace
+extern "C" int port_adventure_ghost_fade(int slot) {
+    const int s = port_adventure_ghost_seat(slot);
+    if (s < 0 || g_gw[s].n == 0) return 256;
+    const int o = gw_fade_out(s), i = gw_fade_in(s);
+    return o < i ? o : i;
 }
 
 extern "C" unsigned port_adventure_ghost_rgb(int slot) {
@@ -2367,6 +2386,8 @@ namespace {
 // Pokey, Fly Guy, Scuttlebug, Ukiki and friends then turned to face the
 // invisible Luigi. The follower clears it again on a ghost it shows.
 int g_gw_nopark = -1;
+unsigned g_gw_follow_n = 1;   // GHOSTLOOK1: follower passes, for show_n
+                              // (from 1: a seat's show_n starts at 0)
 int g_drawpos_have[kCommsMaxPlayers];
 int g_drawpos[kCommsMaxPlayers][3];
 
@@ -2395,6 +2416,7 @@ void gw_follow() {
                                                          : kCommsMaxPlayers;
     const bool in_cut = data_0209fc48 != 0;
     bool shown_any = false;
+    ++g_gw_follow_n;
     for (int i = 0; i < nb; ++i) {
         if (i == me) continue;
         void *a = data_0209f394[i];
@@ -2414,6 +2436,10 @@ void gw_follow() {
         }
         GwSeat &z = g_gw[s];
         if (z.body_ptr != a) { z.body_ptr = a; z.driven = 0; }
+        /* GHOSTLOOK1: on show from this pass; not shown on the last one
+           means it is coming on show now, and fades in (gw_fade_in) */
+        if (z.show_n + 1 != g_gw_follow_n) z.show_ms = now;
+        z.show_n = g_gw_follow_n;
         if (sm.teleport) ++g_gws.teleports;
         *player::pos_x(a) = sm.x;
         *player::pos_y(a) = sm.y;
@@ -2494,7 +2520,8 @@ void gw_follow() {
            ever, and bit 0x10 is one the draw gate honours. The follower
            decides a ghost is on show, so it clears them. */
         *(unsigned *)((char *)a + 0xb0) &= ~0x38u;
-        if (port_adventure_ghost_fade(i) >= 256) {
+        /* fading OUT only: a ghost fading in is placed like a shown one */
+        if (gw_fade_out(s) >= 256) {
             if (sm.grounded) *(int *)((char *)a + 0x644) = sm.y;
             *((unsigned char *)a + 0x717) = 0;
             *((unsigned char *)a + 0x6fb) = 0;   // the park's vanish, off
