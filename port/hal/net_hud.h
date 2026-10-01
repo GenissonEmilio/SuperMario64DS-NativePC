@@ -10,9 +10,10 @@
 // WHAT EACH NUMBER IS, and every one is a number the carrier already keeps
 // (this file measures nothing and sends nothing):
 //
-//   ping (room)   the mean of the newest round trip to every other player in
-//                 the room: the hub's own SYNP / SYNQ pings, one asked seat
-//                 every 500 ms (comms_hub_seat_info().rtt_ms; the "rtt=[..]"
+//   ping (room)   the mean of each player's median of their last five readings
+//                 of the round trip to them: the hub's own SYNP / SYNQ pings,
+//                 one asked seat every 500 ms (comms_hub_seat_info().rtt_ms;
+//                 the "rtt=[..]"
 //                 list of the hub's periodic line). "ping --" while nobody
 //                 else is in the room or no pong has come back yet.
 //   loss (room)   the share of those pings that got no pong, in whole
