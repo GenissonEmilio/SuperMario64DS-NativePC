@@ -4066,6 +4066,12 @@ double g_ab_dw_span_card, g_ab_dw_span_soft;
 std::vector<uint32_t> g_ab_save, g_ab_fb;
 std::vector<float> g_ab_dep;
 std::vector<uint8_t> g_ab_cov, g_ab_id;
+/* the software arm's planes again after its TRANSLUCENT pass too (run
+   cardfull): a card that draws the whole frame is compared against these, one
+   that only draws the opaque pass against the ones above */
+std::vector<uint32_t> g_ab2_fb;
+std::vector<float> g_ab2_dep;
+std::vector<uint8_t> g_ab2_cov, g_ab2_id;
 
 double env_d(const char *n, double dflt) {
     const char *e = getenv(n);
@@ -5079,6 +5085,82 @@ static void cover_dump(const char *path, int cw, int ch) {
     std::fclose(f);
 }
 
+/* ---- THE TWO HELPERS OF THE WHOLE-FRAME HAND-OVER (run cardfull) ----------
+ *
+ * aa_scratch_alloc: aa_pass's own scratch picture, allocated the same way for a
+ * backend that smooths on the card and so needs somewhere to leave the
+ * pre-smoothing copy. False with one line when there is no memory, and the
+ * setting is then off for the run exactly as aa_pass's own failure leaves it.
+ *
+ * capture_may_read: whether the display capture unit can read THIS frame, which
+ * is what decides if the picture before the smoothing has to be kept. On the
+ * graphics card keeping it costs a second readback of the whole picture, so it
+ * is only kept when something can read it. Any one of four signs is enough, and
+ * each keeps it for the next 300 frames (a dual-screen minigame captures every
+ * other frame, so the bank and the arming come and go), except the last, which
+ * keeps it for eight:
+ *   - a capture was PERFORMED (ppu_capture_counters moved);
+ *   - DISPCAPCNT is armed right now with a destination in it
+ *     (Scene::ResetHardwareRegisters arms the bare enable bit at every scene
+ *     boot and it is always refused; that one carries no destination);
+ *   - a VRAM bank A..D is allocated to LCDC, the only place a capture can land;
+ *   - the texture cache was just thrown away, which is every scene boot and the
+ *     first frame of the process: the unit is armed after a scene's first
+ *     frame has been rasterised, so none of the other signs can exist for it. */
+static bool aa_scratch_alloc() {
+    if (g_aa_src) return true;
+    g_aa_src = (uint32_t *)std::calloc((size_t)SCREEN_W * SCREEN_H,
+                                       sizeof(uint32_t));
+    if (g_aa_src) return true;
+    std::fprintf(stderr,
+                 "[aa] no memory for the %d x %d scratch picture; edge "
+                 "smoothing is off for this run.\n", SCREEN_W, SCREEN_H);
+    std::fflush(stderr);
+    g_aa_mode = 0;
+    return false;
+}
+
+static bool capture_may_read() {
+    static unsigned long long last_performed = ~0ull;
+    static uint32_t last_gen = 0;
+    static int hold = 0;
+    unsigned long long performed = 0, refused = 0, hash = 0, from_pre = 0;
+    ppu_capture_counters(performed, refused, hash, from_pre);
+    /* A SCENE'S FIRST FRAMES ARE COVERED WHATEVER ELSE IS SEEN. The unit is
+       armed and its bank mapped after the first frame of a scene has been
+       rasterised, so neither sign below can exist yet for that frame, and a
+       capture can land on it (scene 373's first capture did, with the hash
+       to prove it). The texture cache is thrown away at every scene boot
+       (VRAM is remapped), and the first frame of the process sees that too. */
+    if (last_gen != g_tex_generation) {
+        last_gen = g_tex_generation;
+        if (hold < 8) hold = 8;
+    }
+    if (last_performed == ~0ull) last_performed = performed;
+    if (performed != last_performed) {
+        last_performed = performed;
+        hold = 300;
+    }
+    if (io_ready()) {
+        const uint32_t cap =
+            *reinterpret_cast<const volatile uint32_t *>(0x04000064u);
+        if ((cap & 0x80000000u) && (cap & 0x00FF0000u)) hold = 300;
+        /* A CAPTURE CAN ONLY LAND IN A BANK THAT IS ALLOCATED TO LCDC (VRAMCNT
+           enabled, MST 0; ppu_display_capture refuses any other), and the
+           minigames map the destination there in the same breath as they arm
+           the unit, so a bank in that state is a frame that may be read. */
+        for (unsigned b = 0; b < 4; ++b) {
+            const uint8_t c = *reinterpret_cast<const volatile uint8_t *>(0x04000240u + b);
+            if ((c & 0x87u) == 0x80u) { hold = 300; break; }
+        }
+    }
+    if (hold > 0) {
+        --hold;
+        return true;
+    }
+    return false;
+}
+
 void gx_render(Framebuffer &fb) {
     /* run interp1: what reached the raster is the frame; seal its record. */
     if (g_ip_rec) ip_rec_seal();
@@ -5882,6 +5964,11 @@ void gx_render(Framebuffer &fb) {
     if (tm) t_seam0 = std::chrono::steady_clock::now();
 
     int gpu_drew = 0;
+    /* 1 when the card drew the translucent and shadow pass as well (and maybe
+       the edge smoothing: gpu_out.aa_done), so neither CPU pass runs below */
+    int gpu_full = 0;
+    GxGpuOut gpu_out;
+    std::memset(&gpu_out, 0, sizeof gpu_out);
     if (g_gpu_opaque) {
         GxGpuFrame f;
         std::memset(&f, 0, sizeof f);
@@ -5931,9 +6018,23 @@ void gx_render(Framebuffer &fb) {
         /* the frame's toon table, for its mode-2 polygons (0 = none) */
         f.toon_shade = g_toon_shade;
         f.toon_rgb = g_toon8;
+        /* THE WHOLE-FRAME HAND-OVER (run cardfull). A backend that can draw the
+           second pass says so by returning 2; one that cannot returns 1 or 0
+           and nothing below changes. The smoothing is offered to it only
+           outside an A/B, which compares the picture before it. */
+        f.full_ok = 1;
+        f.ab = ab_mode();
+        f.out = &gpu_out;
+        if (g_aa_mode && !ab_mode() && aa_scratch_alloc()) {
+            f.aa_mode = 1;
+            f.pre = g_aa_src;
+            f.pre_needed = capture_may_read() ? 1 : 0;
+        }
 
         if (!ab_mode()) {
-            gpu_drew = g_gpu_opaque(&f) ? 1 : 0;
+            const int r = g_gpu_opaque(&f);
+            gpu_drew = r ? 1 : 0;
+            gpu_full = (r == 2) ? 1 : 0;
         } else {
             /* THE A/B: the same list drawn both ways, compared before the
                translucent pass, the card's answer kept. See the block above
@@ -5959,6 +6060,23 @@ void gx_render(Framebuffer &fb) {
                 std::memcpy(&g_ab_cov[o], &g_cover[y][x0], (size_t)w);
                 std::memcpy(&g_ab_id[o], &g_attrid[y][x0], (size_t)w);
             }
+            /* THE SAME PLANES AFTER THE SECOND PASS, for a card that draws it
+               (run cardfull). The software arm simply carries on from where
+               the opaque pass left it, which is what the real frame does. */
+            if (g_ab2_fb.size() != n) {
+                g_ab2_fb.assign(n, 0);
+                g_ab2_dep.assign(n, 0.0f);
+                g_ab2_cov.assign(n, 0);
+                g_ab2_id.assign(n, 0);
+            }
+            run_checked(1, 1);
+            for (int y = y0; y < y0 + h; ++y) {
+                const size_t o = (size_t)y * SCREEN_W + x0;
+                std::memcpy(&g_ab2_fb[o], &fb.px[y][x0], (size_t)w * sizeof(uint32_t));
+                std::memcpy(&g_ab2_dep[o], &g_depth[y][x0], (size_t)w * sizeof(float));
+                std::memcpy(&g_ab2_cov[o], &g_cover[y][x0], (size_t)w);
+                std::memcpy(&g_ab2_id[o], &g_attrid[y][x0], (size_t)w);
+            }
             /* put the buffers back exactly as the clears left them */
             for (int y = y0; y < y0 + h; ++y) {
                 std::memcpy(&fb.px[y][x0], &g_ab_save[(size_t)y * SCREEN_W + x0],
@@ -5967,9 +6085,22 @@ void gx_render(Framebuffer &fb) {
                 std::memset(&g_cover[y][x0], 0, (size_t)w);
                 std::memset(&g_attrid[y][x0], 0, (size_t)w);
                 if (have_translucent) std::memset(&g_tlattr[y][x0], 0, (size_t)w);
+                if (have_shadow) std::memset(&g_stencil[y][x0], 0, (size_t)w);
             }
 
-            gpu_drew = g_gpu_opaque(&f) ? 1 : 0;    /* arm A: the card */
+            {
+                const int r = g_gpu_opaque(&f);     /* arm A: the card */
+                gpu_drew = r ? 1 : 0;
+                gpu_full = (r == 2) ? 1 : 0;
+            }
+            /* the card drew the whole frame: it is compared against the
+               software arm's whole frame, not its opaque half */
+            if (gpu_full) {
+                g_ab_fb.swap(g_ab2_fb);
+                g_ab_dep.swap(g_ab2_dep);
+                g_ab_cov.swap(g_ab2_cov);
+                g_ab_id.swap(g_ab2_id);
+            }
 
             static int abf;
             const int frame = abf++;
@@ -6181,6 +6312,7 @@ void gx_render(Framebuffer &fb) {
                     std::memset(&g_cover[y][x0], 0, (size_t)w);
                     std::memset(&g_attrid[y][x0], 0, (size_t)w);
                     if (have_translucent) std::memset(&g_tlattr[y][x0], 0, (size_t)w);
+                    if (have_shadow) std::memset(&g_stencil[y][x0], 0, (size_t)w);
                 }
             }
         }
@@ -6188,7 +6320,8 @@ void gx_render(Framebuffer &fb) {
 
     if (tm) t_seam1 = std::chrono::steady_clock::now();
 
-    run_checked(gpu_drew ? 1 : 0, 1);
+    /* the second pass: skipped when the card drew it (run cardfull) */
+    if (!gpu_full) run_checked(gpu_drew ? 1 : 0, 1);
 
     if (tm) t_pass1 = std::chrono::steady_clock::now();
 
@@ -6206,6 +6339,16 @@ void gx_render(Framebuffer &fb) {
         if (cd && *cd) cover_dump(cd, cw, ch);
     }
     aa_pass(fb, cw, ch, nt);
+    if (gpu_full && gpu_out.aa_done) {
+        /* the card smoothed the picture and left aa_pass's own bookkeeping to
+           be done here: the frame count, the pixels moved, and whether the
+           pre-smoothing copy exists for the display capture */
+        ++g_aa_run_frames;
+        g_aa_changed += gpu_out.aa_changed;
+        g_aa_pre_valid = gpu_out.pre_valid ? 1 : 0;
+    } else {
+        aa_pass(fb, cw, ch, nt);
+    }
     aa_report();
 
     if (tm) t_aa1 = std::chrono::steady_clock::now();

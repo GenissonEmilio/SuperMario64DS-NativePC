@@ -220,6 +220,14 @@ uint32_t gx_texture_generation();
 //
 // hal/gpu_raster.cpp is the Direct3D 11 one. The software pass stays the
 // default and the only byte-exact reference.
+// What a whole-frame backend reports back. aa_done: the smoothing ran (the
+// picture in fb is the smoothed one and aa_changed counts the pixels it moved);
+// pre_valid: `pre` holds the frame as it was before the smoothing.
+struct GxGpuOut {
+    int aa_done;
+    int pre_valid;
+    unsigned long long aa_changed;
+};
 struct GxGpuFrame {
     const GxTriangle *tris;
     size_t count;
@@ -244,7 +252,36 @@ struct GxGpuFrame {
     // per entry, in the units the vertex colour travels in.
     int toon_shade;
     const float *toon_rgb;
+
+    // ---- THE WHOLE FRAME ON THE CARD (run cardfull, lane CARDFULL1) ---------
+    // Everything below is for a backend that draws the translucent and shadow
+    // pass and the edge smoothing as well (hal/gpu_raster.cpp, the default
+    // since run cardfull). A backend that only knows the opaque pass ignores it
+    // all and returns 1, and gx_render does the rest itself, as it always did.
+    //
+    // full_ok    gx_render will take a whole-frame answer (the in-process A/B
+    //            hands the card the same list with this set too)
+    // ab         the in-process A/B is comparing this frame: the depth and the
+    //            polygon-ID plane come back as well, and the smoothing is left
+    //            to gx_render's own pass so the comparison sees the picture
+    //            before it
+    // aa_mode    edge smoothing is on and the backend may run it (never in an
+    //            A/B)
+    // pre_needed the display capture unit may read this frame, so the picture
+    //            as it was BEFORE smoothing has to exist (see gx_aa_preimage)
+    // pre        aa_pass's own copy buffer, SCREEN_W stride; the backend fills
+    //            it when pre_needed, exactly as aa_pass would have
+    // out        the backend's report; written only on a return of 2
+    int full_ok;
+    int ab;
+    int aa_mode;
+    int pre_needed;
+    uint32_t *pre;
+    GxGpuOut *out;
 };
+// The return value of the callback: 0 the card drew nothing (gx_render runs
+// both passes), 1 the opaque pass only (the old contract), 2 the whole frame
+// (the translucent pass is done, and the smoothing too when out->aa_done).
 typedef int (*GxGpuOpaqueFn)(const GxGpuFrame *);
 void gx_set_gpu_opaque(GxGpuOpaqueFn fn);
 int gx_gpu_opaque_registered();
