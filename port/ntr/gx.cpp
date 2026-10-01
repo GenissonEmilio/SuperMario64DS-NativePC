@@ -3226,6 +3226,7 @@ int g_aa_pre_valid;
 int g_aa_mode = 0;                     /* 0 off, 1 edge smoothing */
 unsigned long long g_aa_changed;       /* pixels rewritten, whole run */
 unsigned long long g_aa_run_frames;    /* frames the pass ran on */
+unsigned long long g_cap_missed;       /* captures that read a smoothed frame */
 unsigned g_aa_hits[64];                /* per band, summed after each pass */
 
 bool raster_buffers(void)
@@ -3712,9 +3713,9 @@ static void aa_report(void) {
                          "pixel(s) rewritten; captures performed %llu, armed "
                          "but refused %llu, captures that read the "
                          "pre-smoothing frame %llu, captured-bytes hash "
-                         "%016llx\n",
+                         "%016llx, captures that found no copy %llu\n",
                          g_aa_mode, g_aa_run_frames, g_aa_changed, cap, ref,
-                         pre, hash);
+                         pre, hash, g_cap_missed);
             std::fflush(stderr);
         });
     }
@@ -4803,7 +4804,15 @@ void rab_compare(Framebuffer &fb, int lo, int hi) {
  *   - a VRAM bank A..D is allocated to LCDC, the only place a capture can land;
  *   - the texture cache was just thrown away, which is every scene boot and the
  *     first frame of the process: the unit is armed after a scene's first
- *     frame has been rasterised, so none of the other signs can exist for it. */
+ *     frame has been rasterised, so none of the other signs can exist for it.
+ *
+ * THE FOURTH SIGN IS A GUESS ABOUT THE FUTURE, so it is not the last word:
+ * once any capture has been performed or armed with a destination in this
+ * run, the copy is kept for the REST OF THE RUN (a scene that captures once
+ * will capture again, and a prediction that lapsed between two arms is exactly
+ * how a capture ends up reading the smoothed picture). And a capture that did
+ * land on a frame with no copy is counted and said once on stderr, so a miss
+ * can never be silent. */
 static bool aa_scratch_alloc() {
     if (g_aa_src) return true;
     g_aa_src = (uint32_t *)std::calloc((size_t)SCREEN_W * SCREEN_H,
@@ -4830,11 +4839,35 @@ static bool gpu_full_probe() {
 }
 
 static bool capture_may_read() {
-    static unsigned long long last_performed = ~0ull;
+    static unsigned long long last_performed = ~0ull, last_from_pre = 0;
     static uint32_t last_gen = 0;
     static int hold = 0;
+    static bool sticky = false;
     unsigned long long performed = 0, refused = 0, hash = 0, from_pre = 0;
     ppu_capture_counters(performed, refused, hash, from_pre);
+    /* A MISS, COUNTED. Every capture performed since the last frame should
+       have read the pre-smoothing copy (this function runs on every frame the
+       setting is on, so the counters only move between two calls by a capture
+       of the frame before). One that did not read it saw the host's smoothing:
+       say so, once, with the numbers. */
+    if (last_performed != ~0ull) {
+        const unsigned long long d_perf = performed - last_performed;
+        const unsigned long long d_pre = from_pre - last_from_pre;
+        if (d_perf > d_pre) {
+            g_cap_missed += d_perf - d_pre;
+            static int said;
+            if (!said) {
+                said = 1;
+                std::fprintf(stderr,
+                             "[aa] a display capture read a frame that had no "
+                             "pre-smoothing copy (%llu so far); the copy is now "
+                             "kept for the rest of the run.\n",
+                             g_cap_missed);
+                std::fflush(stderr);
+            }
+        }
+    }
+    last_from_pre = from_pre;
     /* A SCENE'S FIRST FRAMES ARE COVERED WHATEVER ELSE IS SEEN. The unit is
        armed and its bank mapped after the first frame of a scene has been
        rasterised, so neither sign below can exist yet for that frame, and a
@@ -4849,11 +4882,15 @@ static bool capture_may_read() {
     if (performed != last_performed) {
         last_performed = performed;
         hold = 300;
+        sticky = true;
     }
     if (io_ready()) {
         const uint32_t cap =
             *reinterpret_cast<const volatile uint32_t *>(0x04000064u);
-        if ((cap & 0x80000000u) && (cap & 0x00FF0000u)) hold = 300;
+        if ((cap & 0x80000000u) && (cap & 0x00FF0000u)) {
+            hold = 300;
+            sticky = true;
+        }
         /* A CAPTURE CAN ONLY LAND IN A BANK THAT IS ALLOCATED TO LCDC (VRAMCNT
            enabled, MST 0; ppu_display_capture refuses any other), and the
            minigames map the destination there in the same breath as they arm
@@ -4863,6 +4900,7 @@ static bool capture_may_read() {
             if ((c & 0x87u) == 0x80u) { hold = 300; break; }
         }
     }
+    if (sticky) return true;
     if (hold > 0) {
         --hold;
         return true;
