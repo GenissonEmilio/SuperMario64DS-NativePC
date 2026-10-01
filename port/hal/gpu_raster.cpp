@@ -2577,10 +2577,23 @@ int card_settle(const ntr::GxGpuFrame *f)
     memset(&m, 0, sizeof m);
     /* settle 1 shows the smoothed picture when there is one and keeps the plain
        one as the copy before the smoothing; settle 2 is the plain one only */
-    const bool ok = (!g_down && g_ctx)
-        ? (one ? cp_map(m, true, sm) : cp_map(m, true, false)) : false;
+    bool ok = (!g_down && g_ctx);
+    if (ok && g_fail_readback && g_frames >= g_fail_readback) {
+        /* the readback drill reaches the settle too: the card cannot give the
+           picture back */
+        fprintf(stderr, "[renderer] SM64DS_RENDERER_FAIL_READBACK=%d reached "
+                "after %lld frame(s); forcing a readback failure on purpose\n",
+                g_fail_readback, g_frames);
+        ok = false;
+    } else if (ok) {
+        ok = one ? cp_map(m, true, sm) : cp_map(m, true, false);
+    }
     if (!ok) {
-        cp_give_up("the picture could not be read back to settle it", 0);
+        /* a card that will not hand a picture back is a card that has stopped:
+           the renderer goes back to the processor for the rest of the run, and
+           this one frame shows the clear colour under its 2D */
+        fall_back("the picture could not be read back to settle it", 0);
+        g_cp_dead = 1;      /* its own line was just said */
         /* every pixel reads as uncovered: the clear colour under the 2D */
         memset(&m, 0, sizeof m);
     }

@@ -2051,6 +2051,20 @@ bool g_bm_live;
 bool g_bm_card;
 bool g_bm_shown3d, g_bm_clear_opaque;
 
+/* SM64DS_CARD_SETTLE_DRILL=<bits> (a test, off unless set): settle a frame held
+   on the graphics card at one more place, so the paths that only a rare frame
+   reaches run on every frame of a row. bit 0 settles just before the final blit
+   (a sprite blended over the 3D does this), bit 1 just before engine A's fade
+   (the save menu's swapped picture does). The picture must come out the same. */
+inline unsigned settle_drill() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_CARD_SETTLE_DRILL");
+        v = e ? (int)std::strtoul(e, nullptr, 0) : 0;
+    }
+    return (unsigned)v;
+}
+
 inline bool bm_off_env() {
     static int v = -1;
     if (v < 0) {
@@ -2321,6 +2335,7 @@ extern "C" int port_fader_blend_state(int *evy, int *toWhite);
 extern "C" void port_engine_a_fade(unsigned int *px, int w, int h)
 {
     int evy = 0, toWhite = 0;
+    if (settle_drill() & 2u) ntr::gx_card_settle_because("a test drill, before the fade");
     /* A FRAME HELD ON THE GRAPHICS CARD (run cardfull, lane CARD2): the picture
        is not on the processor to fade, and no pixel of it needs the brightness
        mask (a frame that did was settled before it got here). The composite
@@ -3048,6 +3063,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        (ntr/gx.h, GX_OV_*). Everything below that reads `cover` is then the
        processor-only branch, and the pre-smoothing copy is null as well (the
        capture builds its picture from the card). */
+    if (settle_drill() & 1u) ntr::gx_card_settle_because("a test drill, before the blit");
     const bool ovl3d = ntr::gx_card_overlay_active() != 0;
     /* a frame settled after its mask was made (a sprite blended over the 3D)
        is an ordinary one from here: the mask has to be one too */
