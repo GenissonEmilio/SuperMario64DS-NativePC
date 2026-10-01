@@ -107,13 +107,26 @@ int popcount16(unsigned m) {
 
 // THE ROOM'S PING IS A MEDIAN. The hub keeps only each seat's newest round
 // trip, and one frame hitch on either console (a level load, a stall) makes
-// that one reading jump by a hundred milliseconds or more. So each seat's
-// reading is sampled at every refresh into a ring of the last five, and the
-// seat counts with the median of those: a single late pong never reaches the
-// screen, a real change shows within three refreshes (1.5 s). A seat that
-// leaves, or comes back as a new join, starts its ring again.
+// that one reading jump by a hundred milliseconds or more. So each seat keeps
+// a ring of its last five READINGS and counts with their median: a single
+// late pong never reaches the screen, a real change shows after about three
+// new readings.
+// A READING, NOT A REFRESH. The hub asks one seat per 500 ms, round robin, so
+// with k other players a seat's reading changes only every k * 0.5 s, while
+// this runs every 500 ms. Pushing at every refresh put one late pong into the
+// ring k times, and from k = 3 it won the median (REVPINGHUD1 R1). A value
+// enters only when it differs from the last one entered, or when a whole ping
+// cycle (k refreshes) has passed without one, so a run of identical real
+// readings still enters about once per reading. A seat that leaves, or comes
+// back as a new join, starts its ring again.
 enum : int { kRttRing = 5 };
-struct SeatRtt { unsigned epoch; int n, head; int v[kRttRing]; };
+struct SeatRtt {
+    unsigned epoch;
+    int n, head;
+    int last;      // the value entered last
+    int since;     // refreshes since a value entered
+    int v[kRttRing];
+};
 SeatRtt g_seat_rtt[kHubMaxSeats];
 
 // SM64DS_NET_HUD_TRACE=1 (test only): one line per seat per refresh, the raw
@@ -124,15 +137,20 @@ bool trace_on() {
     return t == 1;
 }
 
-int seat_median(int s, const HubSeatInfo &info) {
+int seat_median(int s, const HubSeatInfo &info, int others) {
     SeatRtt &r = g_seat_rtt[s];
     if (r.epoch != info.join_epoch) {
         r.epoch = info.join_epoch;
         r.n = r.head = 0;
     }
-    r.v[r.head] = info.rtt_ms;
-    r.head = (r.head + 1) % kRttRing;
-    if (r.n < kRttRing) ++r.n;
+    ++r.since;
+    if (r.n == 0 || info.rtt_ms != r.last || r.since >= others) {
+        r.v[r.head] = info.rtt_ms;
+        r.head = (r.head + 1) % kRttRing;
+        if (r.n < kRttRing) ++r.n;
+        r.last = info.rtt_ms;
+        r.since = 0;
+    }
     int sorted[kRttRing];
     for (int i = 0; i < r.n; ++i) sorted[i] = r.v[i];
     for (int i = 1; i < r.n; ++i)            // five values: insertion sort
@@ -156,16 +174,17 @@ bool build_room(NetHudView *v) {
     long long sum = 0;
     int n = 0;
     bool quiet = false;
+    const int others = popcount16(st.seat_mask & 0xFFFFu);
     for (int s = 0; s < kHubMaxSeats; ++s) {
         if (!(st.seat_mask & (1u << s))) continue;
         HubSeatInfo info;
         if (!comms_hub_seat_info(s, &info) || !info.present) {
-            g_seat_rtt[s].n = 0;
+            g_seat_rtt[s].n = g_seat_rtt[s].head = 0;
             continue;
         }
         if (info.heard_ms_ago > kQuietMs) quiet = true;
         if (info.rtt_ms < 0) continue;
-        sum += seat_median(s, info);
+        sum += seat_median(s, info, others);
         ++n;
     }
     loss_sample(st, st.seat_mask != 0 && !quiet, now);
