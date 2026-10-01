@@ -3444,6 +3444,36 @@ bool raster_buffers(void)
 
 }  // namespace
 
+/* THE DEPTH AND POLYGON-ID PLANES AFTER A FRAME THE CARD DREW WHOLE (run
+   cardfull). That pass does not bring them back, because nothing in a game
+   reads them; the one reader that exists (tests/smoke_gpu_raster.cpp) asks
+   through the two accessors below, and the first ask after such a frame clears
+   the two planes and has the backend fill them from the card's own targets,
+   which still hold that frame. gx_render drops the flag at its head. */
+static int g_planes_stale;
+static void planes_if_stale()
+{
+    if (!g_planes_stale) return;
+    g_planes_stale = 0;
+    if (!g_gpu_opaque) return;
+    const int cw = active_w > 0 ? (active_w < SCREEN_W ? active_w : SCREEN_W) : 0;
+    const int ch = active_h > 0 ? (active_h < SCREEN_H ? active_h : SCREEN_H) : 0;
+    for (int y = 0; y < ch; ++y) {
+        for (int x = 0; x < cw; ++x) g_depth[y][x] = 1e30f;
+        std::memset(g_attrid[y], 0, (size_t)cw);
+    }
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.planes = 1;
+    f.depth = &g_depth[0][0];
+    f.attrid = &g_attrid[0][0];
+    f.cover = &g_cover[0][0];
+    f.stride = SCREEN_W;
+    f.cw = cw;
+    f.ch = ch;
+    g_gpu_opaque(&f);
+}
+
 const uint8_t *gx_coverage()
 {
     raster_buffers();
@@ -3460,12 +3490,14 @@ const uint8_t *gx_coverage()
 const uint8_t *gx_attr_ids()
 {
     raster_buffers();
+    planes_if_stale();
     return &g_attrid[0][0];
 }
 
 const float *gx_depth()
 {
     raster_buffers();
+    planes_if_stale();
     return &g_depth[0][0];
 }
 
@@ -5180,6 +5212,7 @@ void gx_render(Framebuffer &fb) {
        anything is drawn. A capture that somehow ran against a frame this
        function never finished would otherwise sample the frame before it. */
     g_aa_pre_valid = 0;
+    g_planes_stale = 0;
     const int tm = frame_ms();
     std::chrono::steady_clock::time_point t_enter;
     if (tm) t_enter = std::chrono::steady_clock::now();
@@ -5368,7 +5401,10 @@ void gx_render(Framebuffer &fb) {
             f.pre = g_aa_src;
             f.pre_needed = capture_may_read() ? 1 : 0;
         }
-        if (g_gpu_opaque(&f) == 2) gpu_full = 1;
+        if (g_gpu_opaque(&f) == 2) {
+            gpu_full = 1;
+            g_planes_stale = 1;
+        }
     }
     if (!gpu_full) {
         /* Depth clear. 1e30f is not a repeating byte pattern so memset cannot

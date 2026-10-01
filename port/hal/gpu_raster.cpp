@@ -9,8 +9,8 @@
  * translucent polygons, the mode-3 shadow volumes and the mode-2 toon and
  * highlight polygons the opaque pass already handled -- and the edge smoothing
  * as well, all on its own targets, and the picture comes back to the processor
- * ONCE, finished. SM64DS_RENDERER_FULL picks it: 1 draws the whole frame there,
- * 0 is the opaque-only card described below, unchanged. That opaque-only card
+ * ONCE, finished. SM64DS_RENDERER_FULL picks it: 1 (the default) draws the whole
+ * frame there, 0 is the opaque-only card described below, unchanged. That opaque-only card
  * is also what a card older than Direct3D 11 (feature level 11_0) gets, because
  * the edge smoothing needs shader model 5, and what any run gets after the
  * whole-frame mode has given up (one line says so).
@@ -299,6 +299,11 @@ ID3D11DepthStencilState *g_dss_tl, *g_dss_tlop, *g_dss_mask, *g_dss_shadow,
                         *g_dss_clrm;
 ID3D11BlendState        *g_blend_full;
 bool                     g_full_ready;
+/* the last frame drawn whole: whether there is one, and the box of pixels it
+   drew, for the depth and polygon-ID planes gx_depth and gx_attr_ids may ask
+   for afterwards (ntr/gx.h, GxGpuFrame::planes) */
+bool                     g_last_full, g_last_box;
+int                      g_lb_x0, g_lb_y0, g_lb_x1, g_lb_y1;
 /* THE TOON TABLE the pixel shader reads for a mode-2 polygon (the
    ToonTable constant buffer, 32 float4, rgb 0..255): ntr/gx.cpp's frame table,
    uploaded only on a frame that has one and only when it changed */
@@ -1707,6 +1712,29 @@ void copy_box_a(const ntr::GxGpuFrame *f, int bx0, int by0, int bx1, int by1,
     if (changed) *changed += cnt;
 }
 
+/* THE A/B PLANES, out of two mapped staging copies: the depth where the card
+   wrote one (a cleared pixel reads back as 2.0 after the unhalving) and the
+   polygon ID where the opaque pass left one. The depth texel is eight bytes,
+   the float first. */
+void copy_ab_planes(const ntr::GxGpuFrame *f, int bx0, int by0, int bx1, int by1,
+                    const D3D11_MAPPED_SUBRESOURCE &mid,
+                    const D3D11_MAPPED_SUBRESOURCE &mdep)
+{
+    for (int y = by0; y < by1; ++y) {
+        const unsigned char *irow =
+            (const unsigned char *)mid.pData + (size_t)y * mid.RowPitch;
+        const float *drow = (const float *)
+            ((const unsigned char *)mdep.pData + (size_t)y * mdep.RowPitch);
+        float *dprow = f->depth + (size_t)y * f->stride;
+        uint8_t *idrow = f->attrid + (size_t)y * f->stride;
+        for (int x = bx0; x < bx1; ++x) {
+            const float z = drow[(size_t)x * 2] * kDepthUnscale;
+            if (z < 1.999f) dprow[x] = z;
+            if (irow[x] & 0x80u) idrow[x] = (uint8_t)(irow[x] & 0x3Fu);
+        }
+    }
+}
+
 /* one triangle's three vertices, the same arithmetic the opaque loop uses */
 void push_tri(const ntr::GxTriangle &t, const ntr::GxGpuFrame *f, bool textured,
               float inv_cw, float inv_ch, std::vector<GVert> &dst)
@@ -2214,24 +2242,7 @@ int draw_full(const ntr::GxGpuFrame *f)
         if (smoothed)
             copy_box_a(f, bx0, by0, bx1, by1, mfa, &changed, true);
     }
-    if (read_ab) {
-        /* THE A/B PLANES: the depth where the card wrote one (a cleared pixel
-           reads back as 2.0 after the unhalving) and the polygon ID where the
-           opaque pass left one */
-        for (int y = by0; y < by1; ++y) {
-            const unsigned char *irow =
-                (const unsigned char *)mid.pData + (size_t)y * mid.RowPitch;
-            const float *drow = (const float *)
-                ((const unsigned char *)mdep.pData + (size_t)y * mdep.RowPitch);
-            float *dprow = f->depth + (size_t)y * f->stride;
-            uint8_t *idrow = f->attrid + (size_t)y * f->stride;
-            for (int x = bx0; x < bx1; ++x) {
-                const float z = drow[(size_t)x * 2] * kDepthUnscale;
-                if (z < 1.999f) dprow[x] = z;
-                if (irow[x] & 0x80u) idrow[x] = (uint8_t)(irow[x] & 0x3Fu);
-            }
-        }
-    }
+    if (read_ab) copy_ab_planes(f, bx0, by0, bx1, by1, mid, mdep);
     if (m_dep) g_ctx->Unmap(g_dep_stage, 0);
     if (m_id) g_ctx->Unmap(g_id_stage, 0);
     if (m_col) g_ctx->Unmap(g_col_stage, 0);
@@ -2278,7 +2289,39 @@ int draw_full(const ntr::GxGpuFrame *f)
         f->out->pre_valid = pre_valid;
         f->out->aa_changed = changed;
     }
+    g_last_full = true;
+    g_last_box = have_box;
+    g_lb_x0 = bx0;
+    g_lb_y0 = by0;
+    g_lb_x1 = bx1;
+    g_lb_y1 = by1;
     return 2;
+}
+
+/* THE DEPTH AND POLYGON-ID PLANES OF THE LAST WHOLE FRAME, on request. The
+   whole-frame pass never reads them back (nothing in a game reads them); a
+   caller that does (tests/smoke_gpu_raster.cpp, through gx_depth and
+   gx_attr_ids) asks here, and gets them from the card's targets, which still
+   hold that frame. */
+int fill_planes(const ntr::GxGpuFrame *f)
+{
+    if (!g_last_full || g_down || !g_rt_full || !g_ctx || !g_id_stage || !g_dep_stage)
+        return 0;
+    if (!g_last_box) return 1;                /* nothing was drawn: all clear */
+    g_ctx->CopyResource(g_id_stage, g_id);
+    g_ctx->CopyResource(g_dep_stage, g_dep);
+    D3D11_MAPPED_SUBRESOURCE mid, mdep;
+    memset(&mid, 0, sizeof mid);
+    memset(&mdep, 0, sizeof mdep);
+    if (FAILED(g_ctx->Map(g_id_stage, 0, D3D11_MAP_READ, 0, &mid))) return 0;
+    if (FAILED(g_ctx->Map(g_dep_stage, 0, D3D11_MAP_READ, 0, &mdep))) {
+        g_ctx->Unmap(g_id_stage, 0);
+        return 0;
+    }
+    copy_ab_planes(f, g_lb_x0, g_lb_y0, g_lb_x1, g_lb_y1, mid, mdep);
+    g_ctx->Unmap(g_dep_stage, 0);
+    g_ctx->Unmap(g_id_stage, 0);
+    return 1;
 }
 
 int draw_frame(const ntr::GxGpuFrame *f)
@@ -2288,6 +2331,8 @@ int draw_frame(const ntr::GxGpuFrame *f)
        three tests and touches nothing. */
     if (f->probe)
         return (g_full_on && !g_full_dead && f->full_ok == 2) ? 2 : 0;
+    if (f->planes) return fill_planes(f);
+    g_last_full = false;                /* any other frame replaces that one */
     if (!start()) return 0;
     if (f->cw <= 0 || f->ch <= 0 || f->pw <= 0 || f->ph <= 0) return 0;
 
@@ -2666,10 +2711,11 @@ extern "C" void port_gpu_raster_configure(void)
     if (g_rbcheck) atexit(rbc_report);
     g_rbtime = env_int("SM64DS_RENDERER_RBTIME", 0);
     if (g_rbtime) atexit(rbt_report);
-    /* THE WHOLE-FRAME MODE: SM64DS_RENDERER_FULL=0 is the escape hatch back to
-       the opaque-only card. The two read-back test knobs above compare the
-       OPAQUE readback and mean nothing here, so they keep the old path. */
-    g_full_on = env_int("SM64DS_RENDERER_FULL", 0);
+    /* THE WHOLE-FRAME MODE IS WHAT RENDERER 1 DOES. SM64DS_RENDERER_FULL=0 is
+       the escape hatch back to the opaque-only card. The two read-back test
+       knobs above compare the OPAQUE readback and mean nothing here, so they
+       keep the old path. */
+    g_full_on = env_int("SM64DS_RENDERER_FULL", 1);
     if (g_rbcheck || g_rbtime) g_full_on = 0;
     g_fail_full = env_int("SM64DS_RENDERER_FAIL_FULL", 0);
     g_aa_on_full = env_int("SM64DS_RENDERER_AA", -1);
