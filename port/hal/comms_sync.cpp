@@ -706,6 +706,12 @@ enum : int {
     kGwParkUp     = 200000 << 12,   // the park, above the local player (Fix12)
     kGwSwapNear   = 500,            // units: a shown seat this close keeps its body
     kGwClockJumpMs = 2000,   // a sender clock step this big is a restart
+    /* GHOSTLOOK1: 'SYNI' byte 18 (flags, design 6.2) bit 0: the body and shoe
+       colours at bytes 12..17 are the player's own pick (the launcher sent
+       SM64DS_PLAYER_COLOR and SM64DS_PLAYER_SHOES). Without it they are this
+       file's defaults, which name the tag but do not recolour the ghost. An
+       identity from an older build carries flags 0 and is taken as before. */
+    kGwIdentColours = 0x01,
 };
 
 struct GwFrame {
@@ -725,6 +731,7 @@ struct GwSeat {
     bool      have_ident;
     char      name[kHubIdentNameMax + 1];
     unsigned char character, body[3], shoes[3];
+    bool      colours;       // GHOSTLOOK1: body / shoes are the player's pick
     unsigned  build_id;
     unsigned  char_try_ms;   // last character-swap attempt on its body
     unsigned  driven;        // frames the follower has driven its body
@@ -783,6 +790,7 @@ struct GwMe {
     char name[kHubIdentNameMax + 1];
     int  name_len;
     unsigned char body[3], shoes[3];
+    bool colours;            // GHOSTLOOK1: both colours came from the launcher
     unsigned build_id;
 };
 GwMe g_gw_me;
@@ -801,14 +809,15 @@ int gw_hex(char c) {
     return -1;
 }
 
-void gw_rgb_env(const char *var, unsigned char out[3],
+// true when the variable was there and was six hex digits (out is then it)
+bool gw_rgb_env(const char *var, unsigned char out[3],
                 unsigned char r, unsigned char g, unsigned char b) {
     out[0] = r; out[1] = g; out[2] = b;
     const char *e = std::getenv(var);
-    if (!e) return;
+    if (!e) return false;
     if (std::strlen(e) != 6) {
         std::fprintf(stderr, "[ghost] %s ignored: not six hex digits\n", var);
-        return;
+        return false;
     }
     unsigned char t[3];
     for (int i = 0; i < 3; ++i) {
@@ -816,11 +825,12 @@ void gw_rgb_env(const char *var, unsigned char out[3],
         if (hi < 0 || lo < 0) {
             std::fprintf(stderr, "[ghost] %s ignored: not six hex digits\n",
                          var);
-            return;
+            return false;
         }
         t[i] = (unsigned char)(hi * 16 + lo);
     }
     out[0] = t[0]; out[1] = t[1]; out[2] = t[2];
+    return true;
 }
 
 void gw_me_read() {
@@ -842,8 +852,13 @@ void gw_me_read() {
                          "bytes of 0x20..0x7e\n", (int)kHubIdentNameMax);
         }
     }
-    gw_rgb_env("SM64DS_PLAYER_COLOR", g_gw_me.body, 0xff, 0xff, 0xff);
-    gw_rgb_env("SM64DS_PLAYER_SHOES", g_gw_me.shoes, 0x80, 0x40, 0x20);
+    /* GHOSTLOOK1: a pick is the PAIR, the launcher's both-or-neither rule
+       (LobbyLaunch IdentityEnv): one without the other is no pick */
+    const bool b_ok =
+        gw_rgb_env("SM64DS_PLAYER_COLOR", g_gw_me.body, 0xff, 0xff, 0xff);
+    const bool s_ok =
+        gw_rgb_env("SM64DS_PLAYER_SHOES", g_gw_me.shoes, 0x80, 0x40, 0x20);
+    g_gw_me.colours = b_ok && s_ok;
     /* A build id for the identity record: FNV-1a of this TU's build stamp.
        Display / diagnosis only (design 6.2: never parsed for meaning). */
     unsigned h = 2166136261u;
@@ -1120,6 +1135,9 @@ void gw_on_ident(const unsigned char *buf, int n, int seat) {
     z.character = h.character;
     std::memcpy(z.body, h.body_rgb, 3);
     std::memcpy(z.shoes, h.shoes_rgb, 3);
+    /* GHOSTLOOK1: bit 0 only; the other flag bits stay unread (display data,
+       design 6.2), so an identity from any build parses as it did */
+    z.colours = (h.flags & kGwIdentColours) != 0;
     z.build_id = h.build_id;
     z.have_ident = true;
     ++g_gws.syni_recvd;
@@ -1327,7 +1345,7 @@ void gw_send_ident(unsigned now) {
     h.build_id = g_gw_me.build_id;
     std::memcpy(h.body_rgb, g_gw_me.body, 3);
     std::memcpy(h.shoes_rgb, g_gw_me.shoes, 3);
-    h.flags = 0;
+    h.flags = g_gw_me.colours ? (unsigned char)kGwIdentColours : 0;
     h.reserved = 0;
     std::memcpy(buf, &h, sizeof h);
     std::memcpy(buf + 20, g_gw_me.name, (size_t)g_gw_me.name_len);
