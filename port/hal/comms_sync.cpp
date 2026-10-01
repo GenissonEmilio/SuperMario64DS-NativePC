@@ -99,6 +99,10 @@ void _ZN6Player11ChangeStateERNS_5StateE(char *, void *);
 extern void *data_0209f394[];
 extern unsigned char data_0209f21c;
 extern unsigned char data_0209f250;
+// The per-slot "this slot is live" byte (16 wide), for the body probe.
+extern unsigned char data_0209fc5c[];
+// The running cutscene (kuppa) script, 0 = none (src/ResetKuppaScript.c).
+extern int data_0209fc48;
 // ADVENTURE co-op (M2): the level currently up on THIS console, the id
 // hal/level_boot.cpp seats at every mount and hal/level_change.cpp rewrites on
 // a warp. The send side stamps it into each snapshot so a peer can tell whether
@@ -2510,6 +2514,72 @@ extern "C" int port_adventure_ghost_drawpos(int slot, int out[3]) {
 // lands exactly rather than sliding across the level.
 static int g_follow_diag = -1;
 static unsigned g_follow_fcount = 0;
+
+// SM64DS_GHOST_BODY_PROBE=<stride>: what every Player body on this console is
+// doing, every <stride> follower frames and on any frame the set of bodies
+// changes. A Player body is any live actor sharing the local body's vtable, so
+// a body the seat table (data_0209f394) does not name is still seen. For each:
+// its seat-table index (-1 if none), unique id, spawn param, mPlayerNo,
+// character, position, camera-space position (what its sounds are placed
+// from), pauseFlags bit 2 (the skip), mOpacity, mIsVanish and its state word;
+// the line also carries the count, the four live bytes and the cutscene word.
+// Reads only; inert unset.
+namespace {
+void gw_body_probe() {
+    static int stride = -1;
+    if (stride < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_BODY_PROBE");
+        stride = e ? std::atoi(e) : 0;
+    }
+    if (stride <= 0) return;
+    const int me = (int)data_0209f250;
+    const char *mb = (me >= 0 && me < kCommsMaxPlayers)
+                         ? (const char *)data_0209f394[me] : 0;
+    if (!mb) return;
+    const void *vt = *(void *const *)mb;
+    char buf[1200];
+    int w = 0, n = 0;
+    unsigned sig = (unsigned)data_0209f21c;
+    for (const char *a = (const char *)_ZN8dActor_c4NextEPKS_(0);
+         a && w < 1000; a = (const char *)_ZN8dActor_c4NextEPKS_(a)) {
+        if (*(void *const *)a != vt) continue;
+        int idx = -1;
+        for (int i = 0; i < kCommsMaxPlayers; ++i)
+            if (data_0209f394[i] == a) idx = i;
+        ++n;
+        sig = sig * 31u + (unsigned)(idx + 2);
+        const int r = std::snprintf(
+            buf + w, sizeof buf - (size_t)w,
+            " [%s%d id=%u prm=%x no=%u ch=%u pos=(%d,%d,%d) cam=(%d,%d,%d) "
+            "skip=%d op=%u van=%u st=%08x]",
+            a == mb ? "ME" : "b", idx,
+            *(const unsigned *)(a + 0x4), *(const unsigned *)(a + 0x8),
+            (unsigned)*((const unsigned char *)a + 0x6d8),
+            (unsigned)*((const unsigned char *)a + 0x6d9),
+            *(const int *)(a + 0x5c) >> 12, *(const int *)(a + 0x60) >> 12,
+            *(const int *)(a + 0x64) >> 12,
+            *(const int *)(a + 0x74) >> 12, *(const int *)(a + 0x78) >> 12,
+            *(const int *)(a + 0x7c) >> 12,
+            (*((const unsigned char *)a + 0x13) & 2) ? 1 : 0,
+            (unsigned)*((const unsigned char *)a + 0x6f5),
+            (unsigned)*((const unsigned char *)a + 0x6fb),
+            *(const unsigned *)(a + 0x370));
+        if (r < 0) break;
+        w += r;
+    }
+    buf[w] = 0;
+    static unsigned last_sig = 0;
+    if ((g_follow_fcount % (unsigned)stride) == 0 || sig != last_sig)
+        std::fprintf(stderr, "[gcbody] f=%u hub=%d count=%d live=%d%d%d%d "
+                     "cut=%d me=%d bodies=%d%s\n",
+                     g_follow_fcount, g_hub ? 1 : 0, (int)data_0209f21c,
+                     (int)data_0209fc5c[0], (int)data_0209fc5c[1],
+                     (int)data_0209fc5c[2], (int)data_0209fc5c[3],
+                     (int)data_0209fc48, me, n, buf);
+    last_sig = sig;
+}
+}  // namespace
+
 extern "C" void port_adventure_ghost_follow() {
     if (!adventure_ghost_mode()) return;
     static int fpct = -1;
@@ -2524,6 +2594,7 @@ extern "C" void port_adventure_ghost_follow() {
         g_follow_diag = e ? std::atoi(e) : 0;   /* value = log stride, 0 = off */
     }
     ++g_follow_fcount;
+    gw_body_probe();
     if (g_hub) { gw_follow(); return; }
     const int me = (int)data_0209f250;
     for (int i = 0; i < kCommsMaxPlayers; ++i) {
