@@ -103,6 +103,10 @@ extern unsigned char data_0209f250;
 extern unsigned char data_0209fc5c[];
 // The running cutscene (kuppa) script, 0 = none (src/ResetKuppaScript.c).
 extern int data_0209fc48;
+// The ROM's player count and its setter (src/SetNumPlayers.c: data_0208a0e0 =
+// n, then func_020308d0 writes the live bytes), for the hub seat repair.
+extern unsigned char data_0208a0e0;
+void SetNumPlayers(int n);
 // ADVENTURE co-op (M2): the level currently up on THIS console, the id
 // hal/level_boot.cpp seats at every mount and hal/level_change.cpp rewrites on
 // a warp. The send side stamps it into each snapshot so a peer can tell whether
@@ -724,6 +728,7 @@ struct GwStats {
     unsigned long long resets, charswaps, reposes, recursor;
     unsigned long long parked, below, clamped, target_ghost, near_ghost;
     unsigned long long interp, reckon, hold, teleports;
+    unsigned long long seat_fix, adopted;   // the hub seat repair
 };
 GwStats g_gws;
 
@@ -1401,7 +1406,8 @@ void gw_report(const char *tag) {
                  "drop_ver=%llu drop_seat=%llu drop_field=%llu drop_old=%llu "
                  "resets=%llu vis=0x%04x drawn=0x%04x interp=%llu reckon=%llu hold=%llu "
                  "reposes=%llu recursor=%llu charswaps=%llu parked=%llu below=%llu "
-                 "clamped=%llu target_ghost=%llu near_ghost=%llu names=[%s]\n",
+                 "clamped=%llu target_ghost=%llu near_ghost=%llu seat_fix=%llu "
+                 "adopted=%llu names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
@@ -1410,7 +1416,7 @@ void gw_report(const char *tag) {
                  g_gws.resets, vis, drawn, g_gws.interp, g_gws.reckon, g_gws.hold,
                  g_gws.reposes, g_gws.recursor, g_gws.charswaps, g_gws.parked,
                  g_gws.below, g_gws.clamped, g_gws.target_ghost,
-                 g_gws.near_ghost, names);
+                 g_gws.near_ghost, g_gws.seat_fix, g_gws.adopted, names);
 }
 
 // sync_decide's hub arm: an adventure console on the HUB has no DS transport
@@ -2487,6 +2493,81 @@ extern "C" int port_adventure_hub_body(int slot) {
             slot != (int)data_0209f250 && slot < (int)data_0209f21c) ? 1 : 0;
 }
 extern "C" void port_adventure_ghost_park(void *body) { gw_park_body(body); }
+
+// THE HUB'S SPARE BODIES ON THE TITLE PATH, which is the path every player
+// takes (the launcher's adventure plan boots the title; SM64DS_LEVEL is the
+// test harness's path, and every hub proof before this used it).
+//
+// The title's file pick runs the ROM's own StartFile, and StartFile calls
+// SetNumPlayers(1) (src/StartFile.c): data_0208a0e0 = 1 and, through
+// func_020308d0, the live bytes data_0209fc5c become {1,0,0,0}. The level
+// boot that follows still spawns vs_player_count() bodies (4 on the hub), and
+// LoadEntranceObjects stores a spawned body in the seat table only when its
+// live byte is set (src/_Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij
+// .cpp: data_0209f394[i] = data_0209fc5c[i] ? a : 0). So three Player bodies
+// came up that no seat names. Everything that keeps a hub body out of the game
+// (the Behavior skip, the park, the follower, the draw gate) finds its bodies
+// through the seat table, so those three ran their own Player::Behavior with
+// nobody holding them: measured alone in a room (no peer at all), they walked
+// off, climbed, fell and drowned around the player, made their sounds, and in
+// the new-file opening one of them died and restarted the level ("level 1 ->
+// 1, entrance 13, reason 2", the death wipe, where solo ends the opening with
+// entrance 0, reason 0). And with the count at 1 a later level load seated one
+// body, so no peer's ghost had a body to be drawn on.
+//
+// The repair is the level path's own state, made the level path's own way:
+//   - the count and the live bytes through the ROM's setter, SetNumPlayers
+//     (what hal/level_boot.cpp does before every level-path spawn), so every
+//     later level load seats all four bodies itself;
+//   - a body this level's spawn already made and left unseated goes into its
+//     seat. It is found exactly: LoadEntranceObjects spawns slot i right after
+//     slot i-1, so its unique id is the local body's plus i, and its
+//     mPlayerNo (+0x6d8) is i. The new-file opening's cast (Mario, Luigi and
+//     Wario as Player actors, positioned by the cutscene script) are spawned
+//     much later and keep their own ids, so they are never taken.
+// Runs from the hold (hal/player_bridges.cpp), before the walk, so a repaired
+// body is skipped and parked before its first Behavior tick. Hub only.
+extern "C" void port_adventure_hub_seat() {
+    if (!(adventure_ghost_mode() && comms_hub_active())) return;
+    const int count = (int)data_0209f21c;
+    if (count <= 1 || count > 4) return;      // the live bytes are four wide
+    bool short_seat = (int)data_0208a0e0 != count;
+    for (int i = 0; i < count; ++i)
+        if (!data_0209fc5c[i]) short_seat = true;
+    if (short_seat) {
+        std::fprintf(stderr, "[ghost] hub seat: the ROM's count was %d with "
+                     "live bytes %d%d%d%d for %d seated bodies (the title's "
+                     "StartFile); SetNumPlayers(%d)\n", (int)data_0208a0e0,
+                     (int)data_0209fc5c[0], (int)data_0209fc5c[1],
+                     (int)data_0209fc5c[2], (int)data_0209fc5c[3], count, count);
+        SetNumPlayers(count);
+        ++g_gws.seat_fix;
+    }
+    const int me = (int)data_0209f250;
+    const char *mb = (me >= 0 && me < count) ? (const char *)data_0209f394[me] : 0;
+    if (!mb) return;
+    bool missing = false;
+    for (int i = 0; i < count; ++i)
+        if (i != me && !data_0209f394[i]) missing = true;
+    if (!missing) return;
+    const void *vt = *(void *const *)mb;
+    const unsigned base = *(const unsigned *)(mb + 0x4) - (unsigned)me;
+    for (const char *a = (const char *)_ZN8dActor_c4NextEPKS_(0); a;
+         a = (const char *)_ZN8dActor_c4NextEPKS_(a)) {
+        if (a == mb || *(void *const *)a != vt) continue;
+        const int i = (int)*(const unsigned char *)(a + 0x6d8);
+        if (i <= 0 || i >= count || i == me || data_0209f394[i]) continue;
+        if (*(const unsigned *)(a + 0x4) != base + (unsigned)i) continue;
+        bool seated = false;
+        for (int j = 0; j < kCommsMaxPlayers; ++j)
+            if (data_0209f394[j] == a) seated = true;
+        if (seated) continue;
+        data_0209f394[i] = (void *)a;
+        ++g_gws.adopted;
+        std::fprintf(stderr, "[ghost] hub seat: slot %d's body (id %u) was "
+                     "spawned unseated; seated\n", i, *(const unsigned *)(a + 0x4));
+    }
+}
 
 // Where the follower put a hub ghost this frame (tests/nametag.h reads the tag
 // position here: by the time the overlay draws, the body is parked again).

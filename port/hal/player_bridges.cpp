@@ -431,9 +431,14 @@ extern "C" int port_party_member(int slot);   /* hal/comms_sync.cpp */
    between draws. */
 extern "C" int port_adventure_hub_body(int slot);
 extern "C" void port_adventure_ghost_park(void *body);
+/* run mp1 lane GHOSTCUT1: the hub's spare bodies seated on the title path,
+   where the ROM's StartFile left the count at 1 (hal/comms_sync.cpp). First,
+   so the hold below finds every spare body in the seat table. */
+extern "C" void port_adventure_hub_seat();
 extern "C" void port_adventure_ghost_hold()
 {
     if (!port::adventure_ghost_mode()) return;
+    port_adventure_hub_seat();
     const int me = (int)data_0209f250;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
         if (i == me) continue;
