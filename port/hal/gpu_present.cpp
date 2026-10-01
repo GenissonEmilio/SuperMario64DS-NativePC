@@ -1176,6 +1176,14 @@ extern "C" int port_gpu_present_card_offscreen(const void *overlay, int stride_p
     if (!port_gpu_present_offscreen_mode() || !port_gpu_card_held()) return 0;
     if (!overlay || src_w <= 0 || src_h <= 0) return 0;
     if (!start()) return 0;
+    /* the device-lost drill, as the ordinary offscreen frame has it */
+    if (g_fail_after && g_off_frames >= g_fail_after) {
+        fprintf(stderr, "[present] SM64DS_PRESENT_FAIL_AFTER=%d reached after "
+                "%d picture(s); forcing the fallback on purpose\n",
+                g_fail_after, g_off_frames);
+        fall_back("a test asked for it", 0);
+        return 0;
+    }
     const int dw = g_off_w ? g_off_w : src_w;
     const int dh = g_off_h ? g_off_h : src_h;
     if (!ensure_offscreen(dw, dh)) return 0;
