@@ -3297,9 +3297,11 @@ extern "C" void port_gpu_raster_configure(void)
     if (g_rbcheck || g_rbtime) g_full_on = 0;
     g_fail_full = env_int("SM64DS_RENDERER_FAIL_FULL", 0);
     g_aa_on_full = env_int("SM64DS_RENDERER_AA", -1);
-    /* THE PICTURE HELD ON THE CARD (run cardfull, lane CARD2): off unless asked
-       while it is being proved. See cp_keep_ok. */
-    g_cp_on = env_int("SM64DS_PRESENT_FROM_CARD", 0);
+    /* THE PICTURE HELD ON THE CARD (run cardfull, lane CARD2) IS WHAT RENDERER 1
+       WITH PRESENTBACKEND 1 DOES. SM64DS_PRESENT_FROM_CARD=0 is the escape hatch
+       back to reading the picture back and presenting the processor's copy.
+       See cp_keep_ok for what has to be on. */
+    g_cp_on = env_int("SM64DS_PRESENT_FROM_CARD", 1);
     g_cp_fail_after = env_int("SM64DS_PRESENT_FROM_CARD_FAIL_AFTER", 0);
     g_cp_check = env_int("SM64DS_PRESENT_FROM_CARD_CHECK", 0);
 #if defined(GX_HAS_GPU_AA)
