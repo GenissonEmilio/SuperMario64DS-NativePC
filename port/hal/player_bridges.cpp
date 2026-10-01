@@ -431,9 +431,14 @@ extern "C" int port_party_member(int slot);   /* hal/comms_sync.cpp */
    between draws. */
 extern "C" int port_adventure_hub_body(int slot);
 extern "C" void port_adventure_ghost_park(void *body);
+/* run mp1 lane GHOSTCUT1: the hub's spare bodies seated on the title path,
+   where the ROM's StartFile left the count at 1 (hal/comms_sync.cpp). First,
+   so the hold below finds every spare body in the seat table. */
+extern "C" void port_adventure_hub_seat();
 extern "C" void port_adventure_ghost_hold()
 {
     if (!port::adventure_ghost_mode()) return;
+    port_adventure_hub_seat();
     const int me = (int)data_0209f250;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
         if (i == me) continue;
@@ -1578,13 +1583,18 @@ static void hal_render_player_world_body(void *player);
 /* run mp1 lane GHOSTWIRE1: a hub ghost is PARKED again the moment it has been
    drawn, so the next frame's actor phase never finds it where the player it
    shows is standing (hal/comms_sync.cpp port_adventure_ghost_park: enemies
-   pick targets with dActor_c::ClosestPlayer over every seated body). */
+   pick targets with dActor_c::ClosestPlayer over every seated body).
+   run mp1 lane GHOSTCUT1: only the body that IS that slot's seat. The
+   new-file opening's cast are Player actors with player numbers 0..2 that no
+   seat names, drawn by hal/level_boot.cpp's ps_render; parking them by number
+   threw the cast's Luigi and Wario 200000 units up after every draw, and they
+   fell back through the opening over and over with their landing sounds. */
 void hal_render_player_world(void *player)
 {
     hal_render_player_world_body(player);
     const int slot = (int)*(const unsigned char *)((const char *)player + 0x6d8);
     if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
-        port_adventure_hub_body(slot))
+        data_0209f394[slot] == player && port_adventure_hub_body(slot))
         port_adventure_ghost_park(player);
 }
 
@@ -1603,7 +1613,14 @@ static void hal_render_player_world_body(void *player)
        between the two treatments; everything else about the ghost pass is
        unchanged. The slot is the Player number at +0x6d8. */
     const int party_slot = (int)*(const unsigned char *)(c + 0x6d8);
-    const bool remote = player != data_0209f394[data_0209f250];
+    /* run mp1 lane GHOSTCUT1: and a REMOTE PLAYER'S body, which is the body
+       the seat table holds for that slot. The new-file opening's cast (Mario,
+       Luigi and Wario as Player actors, drawn through hal/level_boot.cpp's
+       ps_render) carry player numbers 0..2 too but are nobody's seat, and in
+       solo they draw solid; in adventure they were drawn see-through. */
+    const bool remote = player != data_0209f394[data_0209f250] &&
+                        party_slot >= 0 && party_slot < 16 &&
+                        data_0209f394[party_slot] == player;
     const bool ghost = port::adventure_ghost_mode() && remote &&
                        !port_party_member(party_slot);
     if (party_slot >= 0 && party_slot < 16)
