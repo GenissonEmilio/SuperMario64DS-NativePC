@@ -145,6 +145,10 @@ void func_ov002_020e444c(char *self);
 // The ROM's live-actor walk (src/_ZN8dActor_c4NextEPKS_.cpp), for the
 // targeting probe.
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
+// GHOSTLOOK1: the head pick Player::Render makes (src/actors/Player.cpp,
+// func_ov002_020becf4: the character, then with arg2 = 1 the render latches),
+// for the look probe.
+unsigned func_ov002_020becf4(char *self, unsigned v, int arg2);
 }
 
 namespace port {
@@ -1275,6 +1279,33 @@ int gw_pose_probe() {
     return p;
 }
 
+// GHOSTLOOK1: SM64DS_GHOST_LOOK_PROBE=<stride>. What a shown ghost body is
+// drawn as, read the way Player::Render reads it: the body's character
+// (param1, +0x08), the head the render picks (func_ov002_020becf4 with the
+// render latches: +0x6db the latched character, +0x6fa / +0x6fe / +0x701), the
+// palette row the body's materials name (+0x61c, in 16-byte units of the
+// texture palette window) and the first two words of row 0 and of that row,
+// the drawn position and the fade; and on the sending side the local body's
+// own position on the same clock, so a watcher's drawn path can be laid over
+// the source's real one. Reads only; inert unset.
+int gw_look_probe() {
+    static int p = -1;
+    if (p < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_LOOK_PROBE");
+        p = e ? std::atoi(e) : 0;
+        if (p < 0) p = 0;
+    }
+    return p;
+}
+
+// One sixteen-colour row of the texture palette slots, by the 16-byte unit a
+// material's +0x20 names: mapped at the host address the raster decodes them
+// from (ntr/gx.cpp PLTT_SLOT_BASE, 0x18000 bytes). 0 when out of the window.
+unsigned short *gw_pltt_row(int base16) {
+    if (base16 < 0 || base16 * 16 + 32 > 0x18000) return 0;
+    return (unsigned short *)(0x06880000u + (unsigned)base16 * 16u);
+}
+
 void gw_send_ident(unsigned now) {
     gw_me_read();
     unsigned char buf[64];
@@ -1366,6 +1397,11 @@ void gw_send(unsigned now) {
                      "hash=%08x\n", now, g_gw_frame, comms_hub_my_seat(),
                      (unsigned)player::anim_id(a), player::anim_frame(a) >> 12,
                      gw_pose_hash(a));
+    if (gw_look_probe() > 0 && (g_gw_frame % (unsigned)gw_look_probe()) == 0)
+        std::fprintf(stderr, "[gwlook] t=%u f=%u LOCAL seat=%d pos=(%d,%d,%d) "
+                     "anim=%u\n", now, g_gw_frame, comms_hub_my_seat(),
+                     cx >> 12, cy >> 12, cz >> 12,
+                     (unsigned)player::anim_id(a));
 
     if (!g_gw_t0_set) { g_gw_t0 = now; g_gw_t0_set = true; }
     const unsigned seq = (unsigned)((unsigned long long)(now - g_gw_t0) *
@@ -2467,6 +2503,29 @@ void gw_follow() {
         }
         ++z.driven;
         shown_any = true;
+        if (gw_look_probe() > 0 &&
+            (g_gw_frame % (unsigned)gw_look_probe()) == 0) {
+            char *c = (char *)a;
+            const int pal = *(const int *)(c + 0x61c);
+            const int row0 =
+                pal - ((int)*(const unsigned char *)(c + 0x6d8) << 1);
+            const unsigned short *r0 = gw_pltt_row(row0);
+            const unsigned short *rp = gw_pltt_row(pal);
+            const unsigned char latch = *(const unsigned char *)(c + 0x6db);
+            std::fprintf(stderr, "[gwlook] t=%u f=%u GHOST seat=%d body=%d "
+                         "ch=%u latch=%u hid=%d l6fa=%u l6fe=%u l701=%u "
+                         "pal=%d row0=%04x,%04x rowpal=%04x,%04x "
+                         "pos=(%d,%d,%d) fade=%d ident=%d\n",
+                         now, g_gw_frame, s, i, gw_char(a), (unsigned)latch,
+                         (int)func_ov002_020becf4(c, latch, 1),
+                         (unsigned)*(const unsigned char *)(c + 0x6fa),
+                         (unsigned)*(const unsigned char *)(c + 0x6fe),
+                         (unsigned)*(const unsigned char *)(c + 0x701),
+                         pal, r0 ? r0[0] : 0u, r0 ? r0[1] : 0u,
+                         rp ? rp[0] : 0u, rp ? rp[1] : 0u,
+                         sm.x >> 12, sm.y >> 12, sm.z >> 12,
+                         port_adventure_ghost_fade(i), z.have_ident ? 1 : 0);
+        }
         if (gw_pose_probe() > 0 &&
             (g_gw_frame % (unsigned)gw_pose_probe()) == 0)
             std::fprintf(stderr, "[gwpose] t=%u f=%u GHOST seat=%d body=%d "
