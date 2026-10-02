@@ -181,6 +181,8 @@ bool parse_host_port(const char *s, int default_port, sockaddr_in *out) {
 // send what it would refuse to receive (or what relay v2 would drop).
 // ---------------------------------------------------------------------------
 enum : int { kKindPing = kHubKinds, kKindPong = kHubKinds + 1,
+             kKindRefPing = kHubKinds + 2,   // arena: 'SYNP' v2, 20 bytes
+             kKindRefPong = kHubKinds + 3,   // arena: 'SYNQ' v2, 20 bytes
              kKindNone = -1 };
 
 enum Why : int { kOk = 0, kBadTag, kBadLen, kBadVersion };
@@ -226,17 +228,68 @@ Why classify(const unsigned char *p, int len, int *kind) {
         return kOk;
     case kHubTagPing:
         *kind = kKindPing;
+        if (len == 20) {                     // arena: the referee clock ping
+            *kind = kKindRefPing;
+            return p[4] == 2 ? kOk : kBadVersion;
+        }
         if (len != 12) return kBadLen;
         if (p[4] != 0) return kBadVersion;   // SyncPingV1.kind = ping
         return kOk;
     case kHubTagPong:
         *kind = kKindPong;
+        if (len == 20) {                     // arena: the referee clock pong
+            *kind = kKindRefPong;
+            return p[4] == 2 ? kOk : kBadVersion;
+        }
         if (len != 12) return kBadLen;
         if (p[4] != 1) return kBadVersion;   // SyncPingV1.kind = pong
         return kOk;
+    // THE ARENA KINDS (lane ARENACORE1). Exact lengths, version 1; which shape
+    // may send or receive them is shape_ok()'s business, below.
+    case kHubTagArenaState:
+        *kind = kHubArenaState;
+        if (len != 48) return kBadLen;
+        return p[4] == 1 ? kOk : kBadVersion;
+    case kHubTagArenaObject:
+        *kind = kHubArenaObject;
+        if (len != 32) return kBadLen;
+        return p[4] == 1 ? kOk : kBadVersion;
+    case kHubTagArenaRef:
+        *kind = kHubArenaRef;
+        if (len != 272) return kBadLen;
+        return p[4] == 1 ? kOk : kBadVersion;
+    case kHubTagArenaClaim:
+        *kind = kHubArenaClaim;
+        if (len != 24) return kBadLen;
+        return p[4] == 1 ? kOk : kBadVersion;
     default:
         return kBadTag;
     }
+}
+
+// WHICH SHAPE OWNS WHICH KIND. The adventure hub never sends or takes an
+// arena kind and an arena console never sends or takes a ghost frame ('SYNG'
+// is adventure's). Within the arena: 'SYNR' and the 20-byte referee pong come
+// only from the referee, and a console never sends them; a claim 'SYNE' and
+// the 20-byte referee ping only go up, so receiving one is unexpected.
+bool arena_kind(int kind) {
+    return kind == kHubArenaState || kind == kHubArenaObject ||
+           kind == kHubArenaRef || kind == kHubArenaClaim ||
+           kind == kKindRefPing || kind == kKindRefPong;
+}
+bool shape_ok_send(int kind, bool arena) {
+    if (kind == kHubGhost) return !arena;
+    if (kind == kHubArenaRef || kind == kKindRefPong) return false;
+    if (arena_kind(kind)) return arena;
+    return true;
+}
+bool shape_ok_recv(int kind, bool arena, bool from_referee) {
+    if (kind == kHubGhost) return !arena;
+    if (kind == kHubArenaRef || kind == kKindRefPong)
+        return arena && from_referee;
+    if (kind == kHubArenaClaim || kind == kKindRefPing) return false;
+    if (arena_kind(kind)) return arena;
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +297,9 @@ Why classify(const unsigned char *p, int len, int *kind) {
 // ---------------------------------------------------------------------------
 enum : int { kModeNone = 0, kModeRelay = 1, kModeMesh = 2 };
 
-const int kFifoDepth[kHubKinds] = { 64, 32, 32, 32 };
+// ghost, ident, chat, voice; then the arena's state, object, ref, claim (the
+// claim queue is never filled: claims only go up)
+const int kFifoDepth[kHubKinds] = { 64, 32, 32, 32, 64, 64, 32, 1 };
 enum : int { kFifoMaxDepth = 64 };
 
 struct Msg {
@@ -272,6 +327,7 @@ struct Seat {
 
 SRWLOCK g_lock = SRWLOCK_INIT;
 bool g_installed = false;
+bool g_arena = false;       // installed in the arena shape (lane ARENACORE1)
 int g_mode = kModeNone;
 int g_state = kHubOff;
 int g_seat = -1;
@@ -291,6 +347,17 @@ Fifo g_fifo[kHubKinds];
 Seat g_seats[kHubMaxSeats];
 CommsHubStats g_st = {};
 unsigned long long g_drop_stale = 0;
+
+// THE REFEREE CLOCK (arena, relay mode; plan 4.2, arena_wire.h RefPing /
+// RefPong). Eight newest pongs; the estimate is the minimum-RTT one.
+struct RefSample { bool used; int rtt; unsigned t_ref; unsigned recv; };
+enum : int { kRefSamples = 8 };
+RefSample g_ref[kRefSamples];
+int g_ref_next = 0;
+unsigned g_ref_last_t_ref = 0;     // echoed in the next ping
+unsigned g_ref_last_recv = 0;
+bool g_ref_have = false;
+int g_ref_cap_ms = -1;
 
 // test knobs
 int g_delay_ms = 0, g_loss_pct = 0, g_report_s = 10;
@@ -349,7 +416,10 @@ void send_out(const unsigned char *p, int len, int to_seat, int mode, int me,
 }
 
 void send_hello() {
+    // role 2 = hub member (adventure), role 3 = arena member (arena_wire.h
+    // kRoleArena: the relay's "arena" session, the referee's)
     unsigned char h[16] = { 'S', 'M', 'R', 'C', 2, 2, 0, 0 };
+    if (g_arena) h[5] = 3;
     h[6] = (unsigned char)g_want_seat;
     h[7] = host_setting_voice_enabled() ? 1 : 0;
     std::memcpy(h + 8, g_code, 8);
@@ -371,6 +441,31 @@ void send_ping(int me, int mode, const sockaddr_in &relay, int ask) {
     const unsigned t = now_ms();
     std::memcpy(p + 8, &t, 4);
     send_out(p, 12, -1, mode, me, relay);
+}
+
+// THE REFEREE CLOCK PING (arena, relay mode): 'SYNP' v2, 20 bytes, byte 6 =
+// 0xFE, which the relay answers itself (arena_wire.h RefPing). It carries the
+// newest pong's referee time back and how long I held it, so the referee can
+// measure my round trip too. I/O thread only; the caller holds no lock.
+void send_ref_ping(const sockaddr_in &relay, int me) {
+    unsigned char p[20] = { 'S', 'Y', 'N', 'P', 2, 0, (unsigned char)kHubRefereeSeat, 0 };
+    p[5] = (unsigned char)me;
+    const unsigned t = now_ms();
+    unsigned echo = 0, held = 0xFFFFu;
+    {
+        Lock l;
+        if (g_ref_have) {
+            echo = g_ref_last_t_ref;
+            const unsigned h = t - g_ref_last_recv;
+            held = h < 0xFFFFu ? h : 0xFFFEu;
+        }
+        ++g_st.ref_pings;
+    }
+    const unsigned short held16 = (unsigned short)held;
+    std::memcpy(p + 8, &t, 4);
+    std::memcpy(p + 12, &echo, 4);
+    std::memcpy(p + 16, &held16, 2);
+    raw_send_to(p, 20, relay);
 }
 
 // ---------------------------------------------------------------------------
@@ -426,6 +521,38 @@ void accept_datagram(unsigned char *p, int len, int seat, unsigned now,
     if (w == kBadTag) { ++g_st.drop_tag; return; }
     if (w == kBadLen) { ++g_st.drop_len; return; }
     if (w == kBadVersion) { ++g_st.drop_version; return; }
+    const bool from_ref = (g_mode == kModeRelay && seat == kHubRefereeSeat);
+    if (!shape_ok_recv(kind, g_arena, from_ref)) { ++g_st.drop_shape; return; }
+    if (from_ref) {
+        // THE REFEREE (arena): only its event frames and its clock pong are
+        // expected from 0xFE; it is not a seat and never joins the roster.
+        if (kind == kKindRefPong) {
+            if (p[6] != (unsigned char)g_seat) { ++g_st.drop_seat; return; }
+            unsigned t_cons, t_ref;
+            unsigned short cap;
+            std::memcpy(&t_cons, p + 8, 4);
+            std::memcpy(&t_ref, p + 12, 4);
+            std::memcpy(&cap, p + 18, 2);
+            const unsigned rtt = now - t_cons;
+            if (rtt >= 10000u) { ++g_drop_stale; return; }
+            RefSample &r = g_ref[g_ref_next];
+            g_ref_next = (g_ref_next + 1) % kRefSamples;
+            r.used = true;
+            r.rtt = (int)rtt;
+            r.t_ref = t_ref;
+            r.recv = now;
+            g_ref_last_t_ref = t_ref;
+            g_ref_last_recv = now;
+            g_ref_have = true;
+            g_ref_cap_ms = cap == 0xFFFFu ? -1 : (int)cap;
+            ++g_st.ref_pongs;
+            return;
+        }
+        if (kind != kHubArenaRef) { ++g_st.drop_seat; return; }
+        ++g_st.recvd[kind];
+        fifo_push(kind, p, len, kHubRefereeSeat, now);
+        return;
+    }
     if (seat < 0 || seat >= kHubMaxSeats) { ++g_st.drop_seat; return; }
     if (seat == g_seat) { ++g_st.drop_self; return; }
     p[5] = (unsigned char)seat;   // the carrier's stamp is the only truth
@@ -536,12 +663,23 @@ void on_ack(const unsigned char *p, unsigned now) {
         g_want_seat = 0xFF;
         return;
     default:
-        if (g_state != kHubRefused)
-            std::fprintf(stderr, "[hub] the relay refused the hub HELLO "
-                         "(status %d: %s). Playing solo.\n", status,
-                         status == 3 ? "this code is a v1 session"
-                         : status == 5 ? "this code is a VS session"
-                         : "bad request");
+        if (g_state != kHubRefused) {
+            if (g_arena)
+                std::fprintf(stderr, "[hub] the relay refused the ARENA HELLO "
+                             "(status %d: %s). No arena match without the "
+                             "relay; asking again every 5 s.\n", status,
+                             status == 2 ? "this relay predates arena mode"
+                             : status == 3 ? "this code is a v1 session"
+                             : status == 5 ? "this code is a hub or star "
+                                             "session"
+                             : "refused");
+            else
+                std::fprintf(stderr, "[hub] the relay refused the hub HELLO "
+                             "(status %d: %s). Playing solo.\n", status,
+                             status == 3 ? "this code is a v1 session"
+                             : status == 5 ? "this code is a VS session"
+                             : "bad request");
+        }
         g_state = kHubRefused;
         return;
     }
@@ -555,6 +693,23 @@ void presence_sweep(unsigned now) {
 
 void report_locked(const char *tag) {
     const unsigned now = now_ms();
+    // THE ARENA TAIL: the four arena kinds and the referee clock, only on an
+    // arena console, so the adventure line keeps its exact shape.
+    char arena_tail[200] = "";
+    if (g_arena) {
+        int best = -1;
+        for (int i = 0; i < kRefSamples; ++i)
+            if (g_ref[i].used && (best < 0 || g_ref[i].rtt < g_ref[best].rtt))
+                best = i;
+        std::snprintf(arena_tail, sizeof arena_tail,
+                      " arena sent s/o/e=%llu/%llu/%llu recvd s/o/r=%llu/%llu/"
+                      "%llu shape=%llu ref ping=%llu pong=%llu rtt=%d cap=%d",
+                      g_st.sent[kHubArenaState], g_st.sent[kHubArenaObject],
+                      g_st.sent[kHubArenaClaim], g_st.recvd[kHubArenaState],
+                      g_st.recvd[kHubArenaObject], g_st.recvd[kHubArenaRef],
+                      g_st.drop_shape, g_st.ref_pings, g_st.ref_pongs,
+                      best >= 0 ? g_ref[best].rtt : -1, g_ref_cap_ms);
+    }
     unsigned mask = 0;
     int n = 0;
     for (int s = 0; s < kHubMaxSeats; ++s)
@@ -571,7 +726,7 @@ void report_locked(const char *tag) {
                  "ping=%llu pong=%llu/%llu rtt=[%s] refused=%llu "
                  "drop tag/len/ver/src/self/seat/queue/cap/stale/test="
                  "%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu "
-                 "joins=%llu leaves=%llu hello=%llu ack=%llu\n",
+                 "joins=%llu leaves=%llu hello=%llu ack=%llu%s\n",
                  tag, now,
                  g_mode == kModeRelay ? "relay" : g_mode == kModeMesh ? "mesh"
                                                                       : "none",
@@ -583,7 +738,7 @@ void report_locked(const char *tag) {
                  g_st.drop_version, g_st.drop_source, g_st.drop_self,
                  g_st.drop_seat, g_st.drop_queue, g_st.drop_cap, g_drop_stale,
                  g_st.drop_test, g_st.joins, g_st.leaves, g_st.hellos,
-                 g_st.acks);
+                 g_st.acks, arena_tail);
 }
 
 // One datagram off the wire (or out of the test hold ring).
@@ -625,6 +780,7 @@ void process(unsigned char *p, int len, const sockaddr_in &from,
 
 DWORD WINAPI hub_thread(void *) {
     unsigned last_hello = 0, last_ping = 0, last_report = now_ms();
+    unsigned last_ref_ping = 0;
     bool first_hello = true;
     unsigned char buf[2048];
     for (;;) {
@@ -668,6 +824,12 @@ DWORD WINAPI hub_thread(void *) {
                 last_ping = now;
             }
             send_ping(me, mode, relay, ask);
+        }
+        // THE REFEREE CLOCK PING, 2 Hz, arena relay mode only (plan 4.2).
+        if (g_arena && mode == kModeRelay && state == kHubLive &&
+            now - last_ref_ping >= 500u) {
+            last_ref_ping = now;
+            send_ref_ping(relay, me);
         }
 
         fd_set rd;
@@ -731,12 +893,25 @@ DWORD WINAPI hub_thread(void *) {
     }
 }
 
-bool open_socket_mesh() {
+bool open_socket_mesh(int prefer) {
     SOCKET s = WS.socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (s == INVALID_SOCKET) return false;
     BOOL excl = TRUE;   // two consoles can never share a seat's port
     WS.setsockopt(s, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char *)&excl,
                   (int)sizeof excl);
+    // A PINNED SEAT FIRST (arena: the seat is the body, so a test that names
+    // its seats gets them, not whichever port came free first).
+    if (prefer >= 0 && prefer < kHubMaxSeats) {
+        sockaddr_in a = mesh_addr(prefer);
+        if (WS.bind(s, (const sockaddr *)&a, (int)sizeof a) == 0) {
+            g_sock = s;
+            g_seat = prefer;
+            return true;
+        }
+        std::fprintf(stderr, "[hub] mesh: pinned seat %d (port %d) is taken; "
+                     "taking the first free seat\n", prefer,
+                     g_mesh_base + prefer);
+    }
     for (int k = 0; k < kHubMaxSeats; ++k) {
         sockaddr_in a = mesh_addr(k);
         if (WS.bind(s, (const sockaddr *)&a, (int)sizeof a) == 0) {
@@ -790,6 +965,103 @@ void report_at_exit() {
     comms_hub_report("exit");
 }
 
+// THE OPEN, shared by the adventure install and the arena install (lane
+// ARENACORE1 split it out of comms_hub_install_from_env, unchanged for
+// adventure). From here on the hub owns the session even if it fails to open:
+// a failed hub must not fall through to the VS carrier and seat a DS role
+// (adventure), and a failed arena must not turn itself into a lockstep match
+// (arena: lockstep is chosen by the go plan, never as a silent fallback).
+bool install_open(bool want_relay, const char *relay, const char *code,
+                  int want_seat) {
+    const char *what = g_arena ? "arena online" : "adventure online";
+    g_installed = true;
+    g_state = kHubFailed;
+    g_delay_ms = env_int("SM64DS_HUB_DELAY_MS", 0, 0, 2000);
+    g_loss_pct = env_int("SM64DS_HUB_LOSS_PCT", 0, 0, 90);
+    g_report_s = env_int("SM64DS_HUB_REPORT_S", 10, 0, 3600);
+    g_rng ^= (unsigned)::GetCurrentProcessId() * 2654435761u;
+
+    if (!ws_up()) return true;
+
+    if (want_relay) {
+        g_mode = kModeRelay;
+        const size_t cl = code ? std::strlen(code) : 0;
+        bool code_ok = cl >= 1 && cl <= 8;
+        for (size_t i = 0; code_ok && i < cl; ++i)
+            if ((unsigned char)code[i] < 0x21 || (unsigned char)code[i] > 0x7E)
+                code_ok = false;
+        if (!code_ok) {
+            std::fprintf(stderr, "[hub] SM64DS_COMMS_CODE must be 1..8 "
+                         "printable ASCII characters; %s is off\n", what);
+            return true;
+        }
+        std::memcpy(g_code, code, cl);
+        if (!parse_host_port(relay, 41234, &g_relay)) {
+            std::fprintf(stderr, "[hub] could not resolve the relay '%s'; "
+                         "%s is off\n", relay, what);
+            return true;
+        }
+        g_want_seat = want_seat;
+        if (g_want_seat >= kHubMaxSeats) g_want_seat = 0xFF;
+        if (!open_socket_relay()) {
+            std::fprintf(stderr, "[hub] no UDP socket; %s is off\n", what);
+            return true;
+        }
+        g_state = kHubPairing;
+    } else {
+        g_mode = kModeMesh;
+        g_mesh_base = env_int("SM64DS_HUB_PORT", 0, 1024, 65535 - kHubMaxSeats);
+        if (!g_mesh_base) return true;
+        if (g_mesh_base <= 51765 && 51765 < g_mesh_base + kHubMaxSeats)
+            std::fprintf(stderr, "[hub] WARNING: mesh ports %d..%d include "
+                         "51765\n", g_mesh_base,
+                         g_mesh_base + kHubMaxSeats - 1);
+        if (!open_socket_mesh(g_arena && want_seat < kHubMaxSeats ? want_seat
+                                                                  : -1))
+            return true;
+        g_state = kHubLive;
+    }
+    finish_socket();
+
+    HANDLE th = ::CreateThread(nullptr, 64 * 1024, hub_thread, nullptr, 0,
+                               nullptr);
+    if (!th) {
+        std::fprintf(stderr, "[hub] could not start the I/O thread; %s is "
+                     "off\n", what);
+        WS.closesocket(g_sock);
+        g_sock = INVALID_SOCKET;
+        g_state = kHubFailed;
+        return true;
+    }
+    g_thread = th;   // kept open: report_at_exit waits on it
+    std::atexit(report_at_exit);
+    if (g_arena) {
+        char cs[9] = {};
+        std::memcpy(cs, g_code, 8);
+        if (g_mode == kModeRelay)
+            std::fprintf(stderr, "[hub] installed: ARENA through the relay "
+                         "%s, code %s, role 3, want seat %d. No DS session "
+                         "and no rounds; the referee is the relay.\n", relay,
+                         cs, g_want_seat);
+        else
+            std::fprintf(stderr, "[hub] installed: ARENA on the loopback mesh "
+                         "base %d, seat %d (tests only: no referee here). No "
+                         "DS session and no rounds.\n", g_mesh_base, g_seat);
+    } else if (g_mode == kModeRelay) {
+        char cs[9] = {};
+        std::memcpy(cs, g_code, 8);
+        std::fprintf(stderr, "[hub] installed: adventure hub through the "
+                     "relay %s, code %s, want seat %d. No DS session is "
+                     "seated; this console plays its own game.\n", relay, cs,
+                     g_want_seat);
+    } else {
+        std::fprintf(stderr, "[hub] installed: adventure hub, loopback mesh "
+                     "base %d, seat %d. No DS session is seated; this console "
+                     "plays its own game.\n", g_mesh_base, g_seat);
+    }
+    return true;
+}
+
 }  // namespace
 
 // ===========================================================================
@@ -839,81 +1111,53 @@ bool comms_hub_install_from_env() {
                      "adventure console opens the hub, never the VS "
                      "carrier\n", role);
 
-    // FROM HERE ON THE HUB OWNS THE SESSION even if it fails to open: a
-    // failed hub must not fall through to the VS carrier and seat a DS role.
-    g_installed = true;
-    g_state = kHubFailed;
-    g_delay_ms = env_int("SM64DS_HUB_DELAY_MS", 0, 0, 2000);
-    g_loss_pct = env_int("SM64DS_HUB_LOSS_PCT", 0, 0, 90);
-    g_report_s = env_int("SM64DS_HUB_REPORT_S", 10, 0, 3600);
-    g_rng ^= (unsigned)::GetCurrentProcessId() * 2654435761u;
+    return install_open(want_relay, relay, code,
+                        env_int("SM64DS_HUB_SEAT", 0xFF, 0, 0xFF));
+}
 
-    if (!ws_up()) return true;
+// THE ARENA INSTALL (lane ARENACORE1; hal/vs_arena.cpp is the only caller).
+// The caller already decided this is an arena console: no adventure gate and
+// no VS refusal here. Only the address is read from the env, the same two
+// knobs the adventure hub uses.
+bool comms_hub_install_arena(int want_seat) {
+    static bool tried = false;
+    static bool owned = false;
+    if (tried) return owned;
+    tried = true;
+    const char *relay = std::getenv("SM64DS_COMMS_RELAY");
+    const char *code = std::getenv("SM64DS_COMMS_CODE");
+    const char *mesh = std::getenv("SM64DS_HUB_PORT");
+    const bool want_relay = relay && *relay;
+    const bool want_mesh = !want_relay && mesh && *mesh;
+    if (!want_relay && !want_mesh) return false;
+    owned = true;
+    g_arena = true;
+    return install_open(want_relay, relay, code,
+                        want_seat >= 0 && want_seat < kHubMaxSeats ? want_seat
+                                                                   : 0xFF);
+}
 
-    if (want_relay) {
-        g_mode = kModeRelay;
-        const size_t cl = code ? std::strlen(code) : 0;
-        bool code_ok = cl >= 1 && cl <= 8;
-        for (size_t i = 0; code_ok && i < cl; ++i)
-            if ((unsigned char)code[i] < 0x21 || (unsigned char)code[i] > 0x7E)
-                code_ok = false;
-        if (!code_ok) {
-            std::fprintf(stderr, "[hub] SM64DS_COMMS_CODE must be 1..8 "
-                         "printable ASCII characters; adventure online is "
-                         "off\n");
-            return true;
-        }
-        std::memcpy(g_code, code, cl);
-        if (!parse_host_port(relay, 41234, &g_relay)) {
-            std::fprintf(stderr, "[hub] could not resolve the relay '%s'; "
-                         "adventure online is off\n", relay);
-            return true;
-        }
-        g_want_seat = env_int("SM64DS_HUB_SEAT", 0xFF, 0, 0xFF);
-        if (g_want_seat >= kHubMaxSeats) g_want_seat = 0xFF;
-        if (!open_socket_relay()) {
-            std::fprintf(stderr, "[hub] no UDP socket; adventure online is "
-                         "off\n");
-            return true;
-        }
-        g_state = kHubPairing;
-    } else {
-        g_mode = kModeMesh;
-        g_mesh_base = env_int("SM64DS_HUB_PORT", 0, 1024, 65535 - kHubMaxSeats);
-        if (!g_mesh_base) return true;
-        if (g_mesh_base <= 51765 && 51765 < g_mesh_base + kHubMaxSeats)
-            std::fprintf(stderr, "[hub] WARNING: mesh ports %d..%d include "
-                         "51765\n", g_mesh_base,
-                         g_mesh_base + kHubMaxSeats - 1);
-        if (!open_socket_mesh()) return true;
-        g_state = kHubLive;
-    }
-    finish_socket();
+bool comms_hub_arena() {
+    Lock l;
+    return g_installed && g_arena;
+}
 
-    HANDLE th = ::CreateThread(nullptr, 64 * 1024, hub_thread, nullptr, 0,
-                               nullptr);
-    if (!th) {
-        std::fprintf(stderr, "[hub] could not start the I/O thread; "
-                     "adventure online is off\n");
-        WS.closesocket(g_sock);
-        g_sock = INVALID_SOCKET;
-        g_state = kHubFailed;
-        return true;
-    }
-    g_thread = th;   // kept open: report_at_exit waits on it
-    std::atexit(report_at_exit);
-    if (g_mode == kModeRelay) {
-        char cs[9] = {};
-        std::memcpy(cs, g_code, 8);
-        std::fprintf(stderr, "[hub] installed: adventure hub through the "
-                     "relay %s, code %s, want seat %d. No DS session is "
-                     "seated; this console plays its own game.\n", relay, cs,
-                     g_want_seat);
-    } else {
-        std::fprintf(stderr, "[hub] installed: adventure hub, loopback mesh "
-                     "base %d, seat %d. No DS session is seated; this console "
-                     "plays its own game.\n", g_mesh_base, g_seat);
-    }
+unsigned comms_hub_now_ms() { return now_ms(); }
+
+bool comms_hub_referee_clock(unsigned *ref_now_ms, int *rtt_ms, int *cap_ms) {
+    Lock l;
+    int best = -1;
+    for (int i = 0; i < kRefSamples; ++i)
+        if (g_ref[i].used && (best < 0 || g_ref[i].rtt < g_ref[best].rtt))
+            best = i;
+    if (best < 0) return false;
+    const RefSample &r = g_ref[best];
+    // At r.recv the referee's clock read about t_ref + rtt/2.
+    const unsigned now = now_ms();
+    if (ref_now_ms)
+        *ref_now_ms = r.t_ref + (unsigned)(r.rtt / 2) + (now - r.recv);
+    if (rtt_ms) *rtt_ms = r.rtt;
+    if (cap_ms) *cap_ms = g_ref_cap_ms;
     return true;
 }
 
@@ -946,7 +1190,8 @@ bool comms_hub_send(const void *datagram, int len) {
     {
         Lock l;
         if (!g_installed || g_state != kHubLive ||
-            classify(p, len, &kind) != kOk || kind >= kHubKinds) {
+            classify(p, len, &kind) != kOk || kind >= kHubKinds ||
+            !shape_ok_send(kind, g_arena)) {
             ++g_st.send_refused;
             return false;
         }
@@ -959,6 +1204,11 @@ bool comms_hub_send(const void *datagram, int len) {
 }
 
 int comms_hub_recv(HubKind kind, void *buf, int cap, int *seat) {
+    return comms_hub_recv_t(kind, buf, cap, seat, nullptr);
+}
+
+int comms_hub_recv_t(HubKind kind, void *buf, int cap, int *seat,
+                     unsigned *t_ms) {
     if (kind < 0 || kind >= kHubKinds || !buf) return 0;
     Lock l;
     Fifo &f = g_fifo[kind];
@@ -970,6 +1220,7 @@ int comms_hub_recv(HubKind kind, void *buf, int cap, int *seat) {
         if (m.len > cap) { ++g_st.drop_cap; continue; }
         std::memcpy(buf, m.b, (size_t)m.len);
         if (seat) *seat = m.seat;
+        if (t_ms) *t_ms = m.t;
         return m.len;
     }
     return 0;
@@ -1036,6 +1287,7 @@ CommsHubStats comms_hub_stats() {
     for (int k = 0; k < kHubMaxSeats; ++k)
         if (g_seats[k].present) s.seat_mask |= 1u << k;
     s.drop_stale = g_drop_stale;
+    s.arena = g_installed && g_arena;
     return s;
 }
 
