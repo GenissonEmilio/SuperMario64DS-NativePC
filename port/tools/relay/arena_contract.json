@@ -433,7 +433,8 @@
     "wings": 2,
     "metal": 4,
     "vanish": 8,
-    "mega": 16
+    "mega": 16,
+    "no_cap": 32
    }
   },
   "SYNO": {

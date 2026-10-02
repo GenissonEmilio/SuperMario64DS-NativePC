@@ -111,7 +111,7 @@ SYNS_FIELDS = [   # ARENACORE1's layout (plan 2.1), the fields the referee reads
 SYNS_FLAGS = ["live", "grounded", "teleport", "paused", "talking", "in_hurt",
               "no_control", "star_lock"]          # bit 0..7, plan 2.1 order
 SYNS_POWER = {"fire": 0x01, "wings": 0x02, "metal": 0x04, "vanish": 0x08,
-              "mega": 0x10}                       # bits 5-6: cap look
+              "mega": 0x10, "no_cap": 0x20}       # ARENACORE1's vs_arena.h
 
 SYNO_FIELDS = [
     ["tag", 0, 4, "u32", "'SYNO'"],

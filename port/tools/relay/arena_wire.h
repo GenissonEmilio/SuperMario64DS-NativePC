@@ -112,6 +112,7 @@ enum : unsigned char {
     SYNS_P_METAL = 0x04,
     SYNS_P_VANISH = 0x08,
     SYNS_P_MEGA = 0x10,
+    SYNS_P_NO_CAP = 0x20,
 };
 
 // The numbers the referee decides with (ms unless named).
