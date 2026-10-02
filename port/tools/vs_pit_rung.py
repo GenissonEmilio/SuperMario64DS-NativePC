@@ -6,6 +6,7 @@
                                      [--match] [--kit-root DIR] [--exe EXE]
                                      [--transport loop|relay1|relay2] [--out DIR]
                                      [--name NAME] [--expect-deaths K]
+                                     [--hold N] [--hash 1|2|3]
 
 WHY. On test build 3 your OWN pit death in a VS match crashed your game
 (c0000005 after "[wipe] WRONG RECEIVER at SetForwardTime"). Every other VS rung
@@ -22,6 +23,15 @@ the wire like a player's) until they walk off the map, die in the pit, respawn
 and walk off again. With --match the arena's blocks break and a late star ends
 the match (MATCH OVER), so a pit death lands mid-match and the match still has
 to end the same way everywhere.
+
+--hold N lets the fallers go of the key after N rounds, so they stand on
+their feet once they have respawned. A --match row wants that: when the star
+is taken by a player who is still walking, the score popup (actor 330,
+Number) comes up at a different spot on each console, with or without a pit
+death (a walking collector on map 0, no pit anywhere, diverges the same way,
+on the test build 3 kit exe as well as the fixed one). That is the popup's
+own problem, not the pit's, and --hold keeps it out of the pit proof.
+--hash 2 / 3 names the diverging actor / field.
 
 VERDICT, per console: rc 0, no FAULT, no "[wipe] WRONG RECEIVER" line, session
 up and lasted the run; on EVERY console every faller's body went down the pit
@@ -98,13 +108,17 @@ def r_pit(L, run, r):
                          netmode=None if kit else "lockstep", match=o["match"],
                          inject=False, exe=exe, asset_root=kit)
         e["SM64DS_VS_MAP"] = str(o["map"])
-        e["SM64DS_VS_STATE_HASH"] = "1"
+        e["SM64DS_VS_STATE_HASH"] = str(o.get("hash", 1))
         e["SM64DS_SELFTEST_IDLE"] = "1"
         if o["match"]:
             # A late star: the pit deaths come first, then the match ends on it.
             e["SM64DS_STAR_TRIGGER"] = o.get("star", "1200,1280")
         if k in o["fallers"]:
             e["SM64DS_COMMS_INJECT"] = "key=0x%04x" % o["key"]
+            if o.get("hold"):
+                # Hold the key for that many rounds, then let go for as many:
+                # the faller stops on its feet after the respawn.
+                e["SM64DS_COMMS_INJECT"] += ",toggle=%d" % o["hold"]
         if kit:
             e.pop("SM64DS_COMMS_FANOUT", None)
             e.pop("SM64DS_FAULTS_FATAL", None)
@@ -182,6 +196,10 @@ def main():
     ap.add_argument("--rtt", type=int, default=0)
     ap.add_argument("--paced", action="store_true")
     ap.add_argument("--expect-deaths", type=int, default=1)
+    ap.add_argument("--hold", type=int, default=0, help="fallers let go of the key after this many "
+                    "rounds (0: held for the whole run)")
+    ap.add_argument("--hash", type=int, default=1, help="SM64DS_VS_STATE_HASH level: 2 names the "
+                    "diverging actor, 3 the field")
     ap.add_argument("--name")
     ap.add_argument("--out")
     ap.add_argument("--relay-py", default=ML.RELAY_PY)
@@ -202,7 +220,8 @@ def main():
                                                "-match" if a.match else "", a.transport)
     r = ML.Rung(name, "pit", a.n, ("dev",), a.transport, a.rtt, a.paced, a.frames,
                 map=a.map, fallers=fallers, key=int(a.key, 0), match=a.match, star=a.star,
-                deaths=a.expect_deaths, kit_root=os.path.abspath(a.kit_root) if a.kit_root else None)
+                deaths=a.expect_deaths, hash=a.hash, hold=a.hold,
+                kit_root=os.path.abspath(a.kit_root) if a.kit_root else None)
     feats = ML.Features(L.exe, L.relay_py, [])
     verdict, wall, detail, rcs = L.run_rung(r, 0, feats)
     L.record(r, verdict, wall, detail, rcs)
