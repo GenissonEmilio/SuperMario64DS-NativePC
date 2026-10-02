@@ -2603,6 +2603,25 @@ def test_result_and_rematch():
                           "scores": [0, 0, 0, 0]}, "10.0.0.1", 1020.0)
     check("a draw result is accepted", st == 200 and room.state == "lobby")
 
+    # run mp1: every end word the game's marker prints is a result, echoed in
+    # the event as posted (King of the Star, and Luigi Infection's two team
+    # ends, which the launcher names as a team).
+    for k, win in enumerate(("king-target", "luigi-all-infected",
+                             "survivor-timeout")):
+        t = 1030.0 + 20 * k
+        st, p3 = start(code, host["token"], now=t)
+        m = p3["match"]
+        ready(code, host["token"], m, now=t)
+        ready(code, guest["token"], m, who="10.0.0.2", now=t)
+        S.sweep(t + S.GO_GRACE_S + 0.1)
+        st, rr = S.do_result({"v": 5, "room": code, "token": host["token"],
+                              "match": m, "win": win,
+                              "scores": [2, 0, 0, 0]}, "10.0.0.1", t + 5)
+        ev = room.events[-1]
+        check("a %s result is accepted and echoed" % win,
+              st == 200 and room.state == "lobby" and ev["kind"] == "result"
+              and ev["win"] == win, (st, rr, ev.get("win")))
+
 
 
 # ---------------------------------------------------------------- v2 colours

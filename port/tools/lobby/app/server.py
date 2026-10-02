@@ -528,7 +528,12 @@ SERVER_REASONS = ("member_not_ready", "host_left")
 
 # What the game reports as the win condition, plus "draw" for an unparseable
 # marker (spec 5.3). The server never interprets it; it echoes it in the event.
-WIN_VALUES = ("time-up", "star-target", "draw")
+# run mp1: the game's marker also says king-target (King of the Star),
+# luigi-all-infected and survivor-timeout (Luigi Infection, a team win), and a
+# launcher that reads a go plan carrying "netmode" (this lobby) posts them as
+# printed; an older launcher keeps to the first three.
+WIN_VALUES = ("time-up", "star-target", "draw",
+              "king-target", "luigi-all-infected", "survivor-timeout")
 
 STATES = ("lobby", "arming", "go", "in_match", "closed")
 
