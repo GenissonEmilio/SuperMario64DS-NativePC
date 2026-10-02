@@ -1164,8 +1164,12 @@ def run_vectors(mod, write=False, races=200):
                         "1-2.",
                "races": vec}
         with open(VECTORS, "w", newline="\n") as fh:
-            json.dump(doc, fh, indent=0)
-            fh.write("\n")
+            # one race per line, so the file reads (and diffs) as a table
+            fh.write('{"about": %s,\n "races": [\n'
+                     % json.dumps(doc["about"]))
+            fh.write(",\n".join("  " + json.dumps(r, sort_keys=True)
+                                for r in vec))
+            fh.write("\n ]}\n")
         res.note("wrote %s (%d races)" % (os.path.basename(VECTORS),
                                           len(vec)))
     else:
