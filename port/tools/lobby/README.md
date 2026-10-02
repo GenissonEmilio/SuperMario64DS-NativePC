@@ -214,6 +214,30 @@ New knobs (all in `docker-compose.yml` with these values):
 | `WORLD_EMPTY_S` | 30 | a world with no live member is dropped after this |
 | `MAX_WORLDS` | 64 | worlds in the pool, every build together |
 
+**ARENA MODE: the `netmode` of a VS match (run mp1, lane A4).** The new VS
+netcode (every console runs its own Yoshi with no input delay, the others are
+drawn slightly behind, and a referee on the relay settles stars, hits, the
+clock and the winner) is chosen per match by the lobby. No field was renamed
+and no version moved. Lockstep stays as the fallback for one release.
+
+| where | what |
+|---|---|
+| VS go plan | gains `netmode`, `"arena"` or `"lockstep"`, on every playing VS plan. A plan without it (an older server) means lockstep. Spectator and adventure plans never carry it. Every other key keeps its meaning: in an arena match `slot` is the player's body and relay seat (`want_seat` = `slot`), `role` is only the lobby's name for slot 0 (there is no host inside an arena match), and `code` is still fresh per match |
+| digest | the canonical string's `netmode` term is the plan's `netmode`: `"0\|2\|time\|0\|0\|0\|0\|arena\|2"` is `1565304087`, `"1\|4\|stars\|3\|0\|0\|0\|arena\|2"` is `1476757693`. A console that runs lockstep computes `lockstep` and can never pair with an arena console |
+| launcher env | `netmode:"arena"` adds `SM64DS_NETMODE=arena` to exactly the VS set it exports today. `netmode:"lockstep"` sets no `SM64DS_NETMODE` (the launcher always clears it), so a lockstep console's environment is unchanged. Any other value, or an arena plan with Luigi on or a king target, is refused before anything spawns |
+| relay session | the lobby still never talks to the relay. The game picks the session from the netmode: lockstep opens the v2 star (roles parent/child, seat = slot) as before; arena opens the relay's arena session (relay lane A2) with seat = slot. Every console of one arena match gets the same map, players, target, names, colours and digest, and the digest commits to all of them, so the referee can take the settings from the seats and refuse a seat whose digest differs |
+| `params` (VS rooms) | optional `netmode` `"arena"`/`"lockstep"`, the host's pick; absent keeps the room's; anything else `400 bad_netmode`; on an adventure room `400 bad_field`. A new room starts at `NETMODE_DEFAULT`. The `params` event carries the pick |
+| `start` | resolves the match's netmode and freezes it with the rest: **arena when** the pick is arena, the room's build is on `ARENA_GAME_IDS`, `RELAY_V` is 2, the match has 2 to `ARENA_MAX_PLAYERS` players, the win mode is `time` or `stars` and Luigi is off; **lockstep otherwise** (King of the Star and Luigi Infection stay on lockstep until their referee rules exist). Picking arena is never an error. The `arming` event carries the resolved `netmode` |
+| `view` | `netmode` (the pick, VS rooms), `arena_ok` (this room's build can play arena on this server), `arena_max`, `arena_now` (what Start would resolve to on the current roster and settings), `match_netmode` (the running match's, `null` in lobby) |
+| an arena match has no host in it | lockstep matches keep every L-J1 rule. In an arena match the host's `failed` drops only the host's seat (`dropped`), and the host leaving the room does not end the match: `left`, then `host` (the L-J1B pick), and no `failed host_left`. The match still ends with fewer than 2 players left, by the (current) host's result, by a majority, by the host-silent rule or by `MATCH_TIMEOUT_S` |
+| `/health` | `arena_game_ids` (how many builds), `arena_max`, `netmode_default` |
+
+| knob | default | what |
+|---|---|---|
+| `ARENA_GAME_IDS` | empty | the builds that play arena, comma-separated. **Empty = arena off for every build** (this server then behaves exactly as before). `*` = every build, for dev and test boxes only. Written at the relay redeploy that brings the referee; removing it is the rollback |
+| `ARENA_MAX_PLAYERS` | 4 | the largest arena match (2..16); bigger matches play lockstep |
+| `NETMODE_DEFAULT` | arena | a new room's pick (`arena` or `lockstep`) |
+
 ---
 
 ## THE WIRE CONTRACT, v1 and v2 (history; v5 above is what runs)
