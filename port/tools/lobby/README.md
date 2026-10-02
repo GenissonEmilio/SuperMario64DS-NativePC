@@ -776,7 +776,9 @@ silent ends `HOST_SILENT_S` after that result instead; see the v5 section).
 
 A playing member reporting a finished match. `win` is `time-up`, `star-target`
 or `draw` (the launcher posts `draw` with all-zero scores for a `MATCH OVER`
-marker it could not parse). `scores` is four ints, 0..99, in slot order. The
+marker it could not parse), or since run mp1 one of the game marker's other
+ends, `king-target`, `luigi-all-infected` or `survivor-timeout` (a launcher
+posts those only to a lobby whose go plans carry `netmode`). `scores` is four ints, 0..99, in slot order. The
 match-ending result (since run mp1 L-J1 the HOST's, or one a majority of the
 live match seats agree on, or every guest's after `HOST_SILENT_S` of host
 silence; see the v5 section) appends a `result` event, discards the
