@@ -435,6 +435,25 @@ def u_handshake(mod):
     res.check(any(d[:4] == b"SYNR" for d in q.got[n0:]),
               "it hears the referee again once it sends")
     rig.consoles.remove(q)
+    # another seat's clock does not verify a forged seat (per-seat base;
+    # REVREFEREE1 H1: the attacker reads its own pong, echoes it from forged
+    # addresses)
+    f_addr = rig.addr()
+    rig.relay.on_datagram(hello("ARENA02", 3), f_addr, rig.now)
+    rig.wire.sent = []
+    fseat = rig.relay.endpoints[f_addr].seat
+    a.ping()
+    t_a = S_PING.unpack([d for d in a.got if len(d) == 20][-1])[6]
+    rig.relay.on_datagram(S_PING.pack(b"SYNP", 2, 0, 0xFE, 0, 1, 0, 0xFFFF, 0),
+                          f_addr, rig.now)
+    for g in range(t_a - 3, t_a + 4):
+        rig.now += 0.2          # inside the SYNP cap: every guess is read
+        rig.relay.on_datagram(S_PING.pack(b"SYNP", 2, 0, 0xFE, 0, 1,
+                                          g & 0xFFFFFFFF, 0, 0),
+                              f_addr, rig.now)
+    rig.wire.sent = []
+    res.check(not rig.ref("ARENA02").seats[fseat].verified,
+              "a forged seat echoing another seat's clock is not verified")
     # spoofed echo (a guessed t_ref) does not verify
     b = Console(rig, "ARENA02", ping=False)
     for guess in (0, 1, 1000, 2000, 123456):
@@ -624,7 +643,7 @@ def u_timeup(mod):
     res.check(over and over[0]["c"] == (1 << a.seat) | (1 << b.seat)
               and over[0]["b"] == 2, "a and b tie on 1: both win")
     t0 = ref.t0
-    res.check(over and ref.unwire(over[0]["t"]) == t0 + 5000,
+    res.check(over and ref.seat_unwire(c.seat, over[0]["t"]) == t0 + 5000,
               "end time = T0 + 5 s exactly")
     return res
 
@@ -649,10 +668,10 @@ def u_contention(mod):
               % (sa.cap(), sb.cap()))
     # b touched first (stamp 60 ms ago) but its claim arrives after a's
     inst = fresh_star()
-    now = ref.ref_ms(rig.now)
-    ca = a.claim(CL["GRAB"], inst, stamp=now - 10)
+    tnow = rig.now
+    ca = a.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, a.seat) - 10)
     rig.advance(0.02)
-    cb = b.claim(CL["GRAB"], inst, stamp=now - 60)
+    cb = b.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, b.seat) - 60)
     streaming(rig, [a, b], 0.4)
     res.check(b.verdict(cb)["name"] == "STAR_TAKEN", "earlier stamp (b) "
               "wins though it arrived later")
@@ -661,39 +680,40 @@ def u_contention(mod):
     sa.rtt_min = 40
     sb.rtt_min = 125
     inst = fresh_star()
-    now = ref.ref_ms(rig.now)
+    tnow = rig.now
     c0 = sa.clamps
-    ca = a.claim(CL["GRAB"], inst, stamp=now - 500)   # clamped to now - 45
-    cb = b.claim(CL["GRAB"], inst, stamp=now - 60)    # inside b's 87 cap
+    # a's 500 ms back-date clamps to now - 45; b's 60 is inside its 87 cap
+    ca = a.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, a.seat) - 500)
+    cb = b.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, b.seat) - 60)
     streaming(rig, [a, b], 0.4)
     res.check(sa.clamps == c0 + 1, "a's stamp clamped")
     res.check(b.verdict(cb)["name"] == "STAR_TAKEN",
               "clamped back-dater loses to a real earlier touch")
     # from the future: clamped to arrival
     inst = fresh_star()
-    now = ref.ref_ms(rig.now)
+    tnow = rig.now
     c0 = sa.clamps
-    ca = a.claim(CL["GRAB"], inst, stamp=now + 5000)
+    ca = a.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, a.seat) + 5000)
     rig.advance(0.01)
-    cb = b.claim(CL["GRAB"], inst, stamp=now - 5)
+    cb = b.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, b.seat) - 5)
     streaming(rig, [a, b], 0.4)
     res.check(sa.clamps == c0 + 1, "future stamp clamped")
     res.check(b.verdict(cb)["name"] == "STAR_TAKEN", "future stamp gains "
               "nothing")
     # exact tie: fewer stars first (b has 3, a has 0)
     inst = fresh_star()
-    now = ref.ref_ms(rig.now)
-    ca = a.claim(CL["GRAB"], inst, stamp=now - 20)
-    cb = b.claim(CL["GRAB"], inst, stamp=now - 20)
+    tnow = rig.now
+    ca = a.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, a.seat) - 20)
+    cb = b.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, b.seat) - 20)
     streaming(rig, [a, b], 0.4)
     res.check(a.verdict(ca)["name"] == "STAR_TAKEN", "tie -> fewer stars "
               "(a 0 vs b %d)" % ref.scores[b.seat])
     # tie at equal scores -> seed rank (deterministic)
     ref.scores[a.seat] = ref.scores[b.seat] = 2
     inst = fresh_star()
-    now = ref.ref_ms(rig.now)
-    ca = a.claim(CL["GRAB"], inst, stamp=now - 20)
-    cb = b.claim(CL["GRAB"], inst, stamp=now - 20)
+    tnow = rig.now
+    ca = a.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, a.seat) - 20)
+    cb = b.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, b.seat) - 20)
     streaming(rig, [a, b], 0.4)
     first = a.seat if ref.seat_rank[a.seat] < ref.seat_rank[b.seat] else b.seat
     win = a if first == a.seat else b
@@ -824,11 +844,11 @@ def u_hits(mod):
     a.yaw = 0
     a.state = b.state = ST_DIVE
     streaming(rig, [a, b], 0.3)
-    now = ref.ref_ms(rig.now)
+    tnow = rig.now
     ca = a.claim(CL["HIT"], b.seat, aux=0x400 >> 5, ref_frame=b.frame - 2,
-                 stamp=now - 20)
+                 stamp=ref.ref_ms(tnow, a.seat) - 20)
     cb = b.claim(CL["HIT"], a.seat, aux=0x400 >> 5, ref_frame=a.frame - 2,
-                 stamp=now - 10)
+                 stamp=ref.ref_ms(tnow, b.seat) - 10)
     streaming(rig, [a, b], 0.4)
     va, vb = a.verdict(ca), b.verdict(cb)
     res.check(va["name"] == "HIT" and vb["name"] == "HIT" and vb["b"] == 1,
@@ -1148,7 +1168,8 @@ def decide_race(mod, v):
             rig.deliver()
         c = (a, b)[who]
         cids[who] = c.claim(CL["GRAB"], inst,
-                            stamp=ref.wire(t_base + v["stamp"][who] - 2000))
+                            stamp=ref.seat_wire(c.seat, t_base
+                                                + v["stamp"][who] - 2000))
     streaming(rig, [a, b], 0.4)
     va, vb = a.verdict(cids[0]), b.verdict(cids[1])
     wins = [va["name"] == "STAR_TAKEN", vb["name"] == "STAR_TAKEN"]
@@ -1279,7 +1300,7 @@ def run_fuzz(mod, rounds=150000, seed=1):
                 tgt = rng.choice([rng.randrange(0, 20),
                                   rng.choice(cons).seat or 0])
                 c.claim(kind, tgt, aux=rng.randrange(65536),
-                        stamp=(ref.ref_ms(rig.now)
+                        stamp=(ref.ref_ms(rig.now, c.seat)
                                - rng.randrange(-50, 400)) & 0xFFFFFFFF,
                         frame=max(0, c.frame - rng.randrange(0, 20)),
                         ref_frame=max(0, rng.choice(cons).frame

@@ -53,8 +53,10 @@ SESSION = {
                       "none); SYNS held / eaten_by are seat+1 (0 = none), as "
                       "plan 2.1 writes them",
     "referee_mark": 0xFE,
-    "referee_clock": "referee ms = milliseconds since the relay created this "
-                     "arena session, u32",
+    "referee_clock": "referee ms, u32, from a random base PER SEAT: every "
+                     "time a seat receives (SYNQ t_ref, SYNR header and "
+                     "event times) and every stamp it sends is in its own "
+                     "base; use them only relative to your own pongs",
     "no_relay": "arena mode needs a relay (a local relay copy for tests); the "
                 "loopback mesh has no referee",
 }

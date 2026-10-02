@@ -35,8 +35,10 @@ match seed's seat order.
 
 NO AMPLIFIER. The referee sends nothing to a seat until that seat has PROVEN
 it receives at its address: its clock ping echoes the exact referee time of a
-pong the referee sent to it, and the referee clock starts at a random base per
-session, so a sender with a spoofed source address can never echo one. Until
+pong the referee sent to it, and every seat sees the referee clock from its
+OWN random base (pongs, claim stamps and every time in a SYNR it receives),
+so neither a spoofed source address nor another seat of the same session
+can ever echo one. Until
 then the seat gets only clock pongs, each the size of the ping that asked.
 And whatever a seat has proven, the referee never sends it more than
 AMP_FACTOR times the bytes it has sent the referee (a send credit per seat,
@@ -121,6 +123,7 @@ S_SYNE = struct.Struct("<4sBBBBHHIII")
 S_PING = struct.Struct("<4sBBBBIIHH")
 S_HDR = struct.Struct("<4sBBBBIHHII16bBBBBBBBB")
 S_EVT = struct.Struct("<HBBBBHHHIiii")
+_U32 = struct.Struct("<I")
 assert (S_SYNS.size, S_SYNO.size, S_SYNE.size, S_PING.size, S_HDR.size,
         S_EVT.size) == (48, 32, 24, 20, 48, 28)
 
@@ -264,6 +267,7 @@ class Seat(object):
         self.seat = seat
         self.joined = rt
         self.verified = False       # echoed one of our pongs (no amplifier)
+        self.base = 0               # this seat's own clock base (on_join)
         self.credit = 0             # bytes the referee may still send it
         self.pongs = deque(maxlen=RTT_KEEP)   # t_ref values we sent it
         self.hist = deque(maxlen=HISTORY_FRAMES)
@@ -361,6 +365,7 @@ class Referee(object):
         self.kick_on = kick is not None     # the relay passes one only when
                                             # SM64DS_REFEREE_KICK=1
         self.seed_env = seed
+        self._base_rng = random.Random((seed or 0) ^ 0xBA5E5EED)
         self.seats = {}             # seat -> Seat (every seated member)
         self.order_counter = 0
         self.reset_match(self.rt(now))
@@ -381,8 +386,21 @@ class Referee(object):
         """Referee ms since this session was created (float)."""
         return (now - self.created) * 1000.0
 
-    def ref_ms(self, now):
-        return self.wire(self.rt(now))
+    def ref_ms(self, now, seat=None):
+        """The referee clock now: the session's wire base, or the u32 one
+        seat sees (its own base) when `seat` is given."""
+        if seat is None:
+            return self.wire(self.rt(now))
+        return self.seat_wire(seat, self.rt(now))
+
+    def seat_wire(self, seat, rt):
+        s = self.seats.get(seat)
+        return ((s.base if s else self.base) + int(rt)) & 0xFFFFFFFF
+
+    def seat_unwire(self, seat, v):
+        s = self.seats.get(seat)
+        d = (v - (s.base if s else self.base)) & 0xFFFFFFFF
+        return d - 0x100000000 if d >= 0x80000000 else d
 
     def wire(self, rt):
         """Internal referee ms -> the u32 the wire carries."""
@@ -506,13 +524,25 @@ class Referee(object):
                           c & 0xFFFF, d & 0xFFFF, e & 0xFFFF, self.wire(t),
                           _s32(x), _s32(y), _s32(z))
 
-    def _frame(self, rt, records, flags=0, part=0):
-        """One SYNR: the header and up to 8 event records, newest first."""
+    def _frame(self, rt, records, flags=0, part=0, seat=None):
+        """One SYNR for `seat`: the header and up to 8 event records, newest
+        first, every time rendered in that seat's own clock base (records
+        are kept in the session base and re-based here)."""
         recs = list(records)[:SYNR_EVENTS]
+        if seat is not None:
+            out = []
+            for rec in recs:
+                t = self.unwire(_U32.unpack_from(rec, 12)[0])
+                out.append(rec[:12] + _U32.pack(self.seat_wire(seat, t))
+                           + rec[16:])
+            recs = out
+            wire = lambda v: self.seat_wire(seat, v)
+        else:
+            wire = self.wire
         hdr = S_HDR.pack(TAG_SYNR, 1, REF_MARK, len(recs), self.state,
-                         self.wire(rt), self.newest_seq,
+                         wire(rt), self.newest_seq,
                          self._mask(self.roster),
-                         self.wire(self.t0) if self.t0 else 0,
+                         wire(self.t0) if self.t0 else 0,
                          self.match_ms & 0xFFFFFFFF,
                          *[max(-128, min(127, v)) for v in self.scores],
                          self.progress & 0xFF,
@@ -539,9 +569,9 @@ class Referee(object):
         s.credit = min(AMP_CREDIT_CAP, s.credit + AMP_FACTOR * n)
 
     def _broadcast(self, rt, records, flags=0):
-        data = self._frame(rt, records, flags)
         for s in sorted(self.seats):
-            self._tx(s, data)
+            if self.seats[s].verified:
+                self._tx(s, self._frame(rt, records, flags, seat=s))
 
     def _window(self):
         return [rec for seq, rec in reversed(self.events)][:SYNR_EVENTS]
@@ -572,7 +602,12 @@ class Referee(object):
     def on_join(self, seat, now):
         # Nothing is sent yet: the seat hears the referee once its clock ping
         # proves its address (on_ping).
-        self.seats[seat] = Seat(seat, self.rt(now))
+        s = Seat(seat, self.rt(now))
+        if self.seed_env is not None:
+            s.base = self._base_rng.getrandbits(31)
+        else:
+            s.base = int.from_bytes(os.urandom(4), "little") & 0x7FFFFFFF
+        self.seats[seat] = s
 
     def on_leave(self, seat, now, why=L_DETACH):
         rt = self.rt(now)
@@ -685,13 +720,13 @@ class Referee(object):
                 s.verified = True
                 s.credit = min(AMP_CREDIT_CAP, s.credit + SYNR_LEN)
                 # proven: it hears the current state at once
-                self._tx(seat, self._frame(rt, self._window()))
+                self._tx(seat, self._frame(rt, self._window(), seat=seat))
             if held != 0xFFFF:
-                rtt = int(rt) - self.unwire(echo) - held
+                rtt = int(rt) - self.seat_unwire(seat, echo) - held
                 if 0 <= rtt <= 5000:
                     s.rtts.append(rtt)
                     s.rtt_min = min(s.rtts)
-        t_ref = self.ref_ms(now)
+        t_ref = self.ref_ms(now, seat)
         s.pongs.append(t_ref)
         return S_PING.pack(TAG_SYNQ, 2, REF_MARK, seat, 0, f[5], t_ref,
                            0xFFFF if s.rtt_min is None else
@@ -742,7 +777,7 @@ class Referee(object):
             return
         # clamp the stamp into [arrival - cap, arrival]
         cap = s.cap()
-        st = self.unwire(stamp)
+        st = self.seat_unwire(seat, stamp)
         if st > rt + FUTURE_SLACK_MS:
             st = int(rt)
             s.clamps += 1
@@ -866,7 +901,7 @@ class Referee(object):
                     chunk = retained[i:i + SYNR_EVENTS]
                     self._tx(seat, self._frame(
                         rt, [r for q, r in reversed(chunk)],
-                        RF_DIRECTED | RF_RESEND))
+                        RF_DIRECTED | RF_RESEND, seat=seat))
             elif rt - s.ack_lag_since >= SNAPSHOT_LAG_MS or not s.ack:
                 if rt - s.last_snapshot >= SNAPSHOT_LAG_MS:
                     self._snapshot(seat, rt)
@@ -896,7 +931,7 @@ class Referee(object):
         n = min(15, len(parts))
         for i, chunk in enumerate(parts[:n]):
             self._tx(seat, self._frame(rt, chunk, RF_SNAPSHOT | RF_DIRECTED,
-                                       ((i & 0xF) << 4) | n))
+                                       ((i & 0xF) << 4) | n, seat=seat))
 
     # ---- READY
 
@@ -959,7 +994,7 @@ class Referee(object):
 
     def _direct(self, c, rec, rt):
         self._record(c, (0, rec))
-        self._tx(c.seat, self._frame(rt, [rec], RF_DIRECTED))
+        self._tx(c.seat, self._frame(rt, [rec], RF_DIRECTED, seat=c.seat))
 
     def _deny(self, c, reason, rt, winner=0xFF):
         rec = self._snap_record(EV_DENY, c.seat, c.kind, reason, c.cid,
@@ -978,7 +1013,8 @@ class Referee(object):
         seq, rec = done
         if seq and any(q == seq for q, r in list(self.events)[-SYNR_EVENTS:]):
             return      # still in the window every SYNR carries
-        self._tx(seat, self._frame(rt, [rec], RF_DIRECTED | RF_RESEND))
+        self._tx(seat, self._frame(rt, [rec], RF_DIRECTED | RF_RESEND,
+                                   seat=seat))
 
     def _decide(self, c, rt):
         k = c.kind
