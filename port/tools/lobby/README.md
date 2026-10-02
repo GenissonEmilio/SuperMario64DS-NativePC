@@ -52,6 +52,7 @@ python3 test_client.py negatives --out DIR  # writes one file per refusal
 python3 test_client.py dial                 # the dial, on the DEPLOYED knobs
 python3 test_client.py soak --seconds 60
 python3 test_security.py                    # spawns its own servers
+python3 test_client.py arena                # arena netmode over the wire
 python3 test_client.py selftest --url https://tangos.dev/port/lobby
 ```
 
