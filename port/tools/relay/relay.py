@@ -1441,7 +1441,9 @@ async def run():
         # Only arena sessions do anything here; without one a tick is a
         # loop over an empty dict.
         while not stop.is_set():
-            await asyncio.sleep(REFEREE_TICK_S)
+            # 10 ms while an arena session exists; a quarter second otherwise,
+            # so a relay with no arena pays nothing for the referee's clock
+            await asyncio.sleep(REFEREE_TICK_S if protocol.arenas else 0.25)
             try:
                 protocol.tick(time.monotonic())
             except Exception as exc:     # never let one session stop the clock
