@@ -1159,7 +1159,10 @@ class Referee(object):
         if vs is None:
             self._deny(c, D_STALE, rt)
             return
-        age = c.stamp - (vs.rt - v.one_way())
+        # how long before the touch the referee itself received the frame
+        # the attacker drew: the victim's self-reported RTT plays no part
+        # (REVREFEREE1 F1: a victim inflating it voided every hit on it)
+        age = c.stamp - vs.rt
         if age > COMP_MAX_MS + FRAME_MS:
             self._deny(c, D_TOO_OLD, rt)
             return
