@@ -953,6 +953,11 @@ class Referee(object):
             return
         cfg = (target, aux, first_to_n, mode, capacity, markers, digest)
         if self.state == MS_OVER and cfg != self.cfg:
+            if self.over_at is not None and rt - self.over_at < OVER_LINGER_MS:
+                # the last match's MATCH_OVER keeps riding the window for
+                # OVER_LINGER_MS (a console that lost it still gets it); this
+                # READY gets no verdict yet, so its console keeps resending
+                return
             self.reset_match(rt)        # a new match in the same session
         if self.cfg is None:
             self.cfg = cfg

@@ -1102,11 +1102,28 @@ def u_eat(mod):
     return res
 
 
+def u_rematch(mod):
+    res = Result("rematch in one session: linger, then a new match")
+    rig, (a, b) = match(2, first_to_n=1, code="REMATCH1")
+    ref = rig.ref("REMATCH1")
+    inst = a.find("STAR_WAKE")[-1]["a"]
+    a.claim(CL["MARKER_BREAK"], inst)
+    streaming(rig, [a, b], 0.2)
+    a.claim(CL["GRAB"], inst)
+    streaming(rig, [a, b], 0.3)
+    res.check(ref.state == 3, "first match over")
+    cr = a.ready(cap=2, digest=0xBEEF)
+    streaming(rig, [a, b], 1.0)
+    res.check(ref.state == 3 and a.verdict(cr) is None,
+              "a new READY inside OVER_LINGER_MS waits (no verdict, no reset)")
+    return res
+
+
 def run_unit():
     mod = load_relay()
     tests = (u_contract, u_handshake, u_routes, u_match, u_timeup,
              u_contention, u_hits, u_reliability, u_leave, u_ready,
-             u_strikes, u_eat)
+             u_strikes, u_eat, u_rematch)
     results = []
     for t in tests:
         try:
