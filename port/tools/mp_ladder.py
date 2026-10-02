@@ -955,6 +955,47 @@ CLOCK_END = re.compile(r"^\[vs\] f\d+ (?:TIME UP|LUIGI INFECTION OVER)[^\n]*", r
 ABORT = re.compile(r"^(?:FATAL[^\n]*|\[stage\] slot 3[^\n]*|\[cross\][^\n]*)", re.M)
 
 
+# The floating score popup (actor 330, daObjNumber_c) a star taker gets. Its
+# spawn point comes from func_ov002_020e8244, which reads the star's rendered
+# model matrix (+0x320), so each window puts it at its own height: measured
+# p0 posy 2316829 against p1 1592241 at f328, the only field that differs, and
+# the world hash agrees again from f364 when the popup is gone. Presentation,
+# like the cull bits comms_sync.cpp already masks; it is in the base build too.
+POPUP_ID = 330
+
+
+def sweep_popup_only(texts, keys, workdir):
+    """After a red sweep: is every split frame explained by the score popup
+    alone? Needs the level-2 digest. Each pairing must agree on n and the order
+    hash on every common frame, and where the world hash differs, every actor
+    whose digest differs must be a POPUP_ID. -> (ok, msg)."""
+    sys.path.insert(0, HERE)
+    import dhdiff
+    logs = {k: dhdiff.load(os.path.join(workdir, "p%d" % k, "run.log.trim")) for k in keys}
+    first, rest = keys[0], keys[1:]
+    pairs = [(first, b) for b in rest] + [(a, b) for i, a in enumerate(rest) for b in rest[i + 1:]]
+    split = set()
+    for a, b in pairs:
+        fa, _, da, _ = logs[a]
+        fb, _, db, _ = logs[b]
+        for f in sorted(set(fa) & set(fb)):
+            if fa[f] == fb[f]:
+                continue
+            if fa[f][0] != fb[f][0] or fa[f][2] != fb[f][2]:
+                return False, "p%d/p%d f%d actor count or order differs" % (a, b, f)
+            if f not in da or f not in db:
+                return False, "p%d/p%d f%d split with no digest" % (a, b, f)
+            odd = [u for u in set(da[f]) | set(db[f]) if da[f].get(u) != db[f].get(u)]
+            ids = {(da[f].get(u) or db[f].get(u))[0] for u in odd}
+            if not odd or ids != {POPUP_ID}:
+                return False, "p%d/p%d f%d actors %s differ" % (a, b, f, sorted(ids))
+            split.add(f)
+    if not split:
+        return True, "no split"
+    return True, "every split frame is the score popup alone (actor %d, %d frame(s) f%d..f%d)" % (
+        POPUP_ID, len(split), min(split), max(split))
+
+
 def r_timeup(L, run, r):
     """A match played to the CLOCK (lane VSTIMEUP1): the match rung's recipe with
     no star target, so the ROM's own time-up ends it (f2791) and its own
@@ -979,6 +1020,8 @@ def r_timeup(L, run, r):
             e.pop("SM64DS_COMMS_FANOUT", None)
             e.pop("SM64DS_FAULTS_FATAL", None)
             e.pop("SM64DS_VS_STATE_HASH", None)
+        if not kit:
+            e["SM64DS_VS_STATE_HASH"] = "2"     # the digest names a split actor
         if r.opts.get("luigi"):
             e["SM64DS_VS_LUIGI_INFECTION"] = "1"
             e["SM64DS_VS_LUIGI_SEED"] = "7"
@@ -1019,6 +1062,9 @@ def r_timeup(L, run, r):
     lasted(ck, cs, range(n), end, margin=10 + 2 * max(delays or [0]))
     if not kit:
         ok, msg = sweep(texts, list(range(n)), 24, run.dir, want=end)
+        if not ok and "DIVERGENCE AT FRAME" in msg:
+            pok, pmsg = sweep_popup_only(texts, list(range(n)), run.dir)
+            ok, msg = pok, msg + " -> " + pmsg
         ck.ok(ok, msg)
         relay_checks(ck, run)
     else:
