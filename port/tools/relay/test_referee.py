@@ -413,6 +413,28 @@ def u_handshake(mod):
     res.check(any(len(d) == 272 for d in a.got), "echo -> SYNR at once")
     syn = [parse_synr(d) for d in a.got if len(d) == 272]
     res.check(all(h["seat"] == 0xFE for h in syn), "SYNR byte 5 = 0xFE")
+    # the send credit: a verified seat that then only keeps its seat with
+    # HELLOs (which the relay answers, not the referee) gets <= 3x what it
+    # sent the referee, however long it stays seated (REVREFEREE1 H1)
+    q = Console(rig, "ARENA02")
+    sent = [0]
+    q_in = sum(len(d) for d in [b"x" * 20] * 2)   # its two pings
+    q.got = []
+    for k in range(60):
+        rig.send(q.addr, hello("ARENA02", 3, q.seat))
+        rig.advance(1.0)
+    got = sum(len(d) for d in q.got if d[:4] == b"SYNR")
+    res.check(got <= 3 * q_in + 272, "quiet verified seat: %d B of SYNR in "
+              "60 s for %d B sent (cap 3x + the verify frame)" % (got, q_in))
+    res.check(rig.ref("ARENA02").n_starved > 0, "heartbeats held for credit")
+    n0 = len(q.got)
+    for k in range(6):          # 0.2 s of 30 Hz SYNS = 864 B of credit
+        q.syns()
+        rig.advance(1 / 30.0)
+    rig.advance(0.4)
+    res.check(any(d[:4] == b"SYNR" for d in q.got[n0:]),
+              "it hears the referee again once it sends")
+    rig.consoles.remove(q)
     # spoofed echo (a guessed t_ref) does not verify
     b = Console(rig, "ARENA02", ping=False)
     for guess in (0, 1, 1000, 2000, 123456):

@@ -38,6 +38,13 @@ it receives at its address: its clock ping echoes the exact referee time of a
 pong the referee sent to it, and the referee clock starts at a random base per
 session, so a sender with a spoofed source address can never echo one. Until
 then the seat gets only clock pongs, each the size of the ping that asked.
+And whatever a seat has proven, the referee never sends it more than
+AMP_FACTOR times the bytes it has sent the referee (a send credit per seat,
+the QUIC rule, capped at AMP_CREDIT_CAP): a seat that goes quiet stops
+hearing the referee, so even a seat verified by a trick (REVREFEREE1 H1: one
+real seat reading the session clock for forged ones) cannot be turned into a
+reflector. A live console streams SYNS at 10-30 Hz, three times which is
+1.4-4.3 KB/s of credit against a 1.1 KB/s heartbeat.
 
 SECURITY. Fixed-size kinds only (the relay checks tag + exact length before
 anything here runs); every field is range-checked; every table is bounded
@@ -96,6 +103,8 @@ DONE_PER_SEAT = 64
 PENDING_PER_SEAT = 16
 CATCHUP_EVERY_MS = 250
 RTT_KEEP = 8
+AMP_FACTOR = 3                  # referee bytes out <= 3 x the seat's bytes in
+AMP_CREDIT_CAP = 16384          # the most credit a seat can bank
 RESET_BACK_FRAMES = 300         # a frame this far back = the console restarted
 
 # ---------------------------------------------------------------- wire
@@ -255,6 +264,7 @@ class Seat(object):
         self.seat = seat
         self.joined = rt
         self.verified = False       # echoed one of our pongs (no amplifier)
+        self.credit = 0             # bytes the referee may still send it
         self.pongs = deque(maxlen=RTT_KEEP)   # t_ref values we sent it
         self.hist = deque(maxlen=HISTORY_FRAMES)
         self.last_heard = rt
@@ -361,6 +371,7 @@ class Referee(object):
         self.n_verdicts = 0
         self.n_pings = 0
         self.n_tx = 0
+        self.n_starved = 0
         self.n_violations = 0
         self.last_beat = -1e9
 
@@ -516,8 +527,16 @@ class Referee(object):
         s = self.seats.get(seat)
         if s is None or not s.verified:
             return      # not proven to receive at its address: nothing
+        if s.credit < len(data):
+            self.n_starved += 1     # quiet seat: it hears the referee again
+            return                  # once it sends (heartbeats re-carry all)
+        s.credit -= len(data)
         self.n_tx += 1
         self.send(seat, data)
+
+    @staticmethod
+    def _earn(s, n):
+        s.credit = min(AMP_CREDIT_CAP, s.credit + AMP_FACTOR * n)
 
     def _broadcast(self, rt, records, flags=0):
         data = self._frame(rt, records, flags)
@@ -590,6 +609,7 @@ class Referee(object):
             return
         rt = self.rt(now)
         self.n_states += 1
+        self._earn(s, len(data))
         f = S_SYNS.unpack(data)
         frame = f[5]
         s.last_heard = rt
@@ -632,6 +652,9 @@ class Referee(object):
 
     def on_object(self, seat, data, now):
         f = S_SYNO.unpack(data)
+        so = self.seats.get(seat)
+        if so is not None:
+            self._earn(so, len(data))
         star = self.stars.get(f[4])
         if star is None or star.state != ST_FREE:
             return
@@ -655,10 +678,12 @@ class Referee(object):
         rt = self.rt(now)
         self.n_pings += 1
         s.last_heard = rt
+        self._earn(s, len(data))
         echo, held = f[6], f[7]
         if echo and echo in s.pongs:
             if not s.verified:
                 s.verified = True
+                s.credit = min(AMP_CREDIT_CAP, s.credit + SYNR_LEN)
                 # proven: it hears the current state at once
                 self._tx(seat, self._frame(rt, self._window()))
             if held != 0xFFFF:
@@ -677,6 +702,7 @@ class Referee(object):
         if s is None:
             return
         rt = self.rt(now)
+        self._earn(s, len(data))
         f = S_SYNE.unpack(data)
         if f[1] != 1:
             return
@@ -1324,7 +1350,8 @@ class Referee(object):
                 "roster": len(self.roster), "states": self.n_states,
                 "bad_states": self.n_bad_states, "claims": self.n_claims,
                 "verdicts": self.n_verdicts, "pings": self.n_pings,
-                "tx": self.n_tx, "violations": self.n_violations}
+                "tx": self.n_tx, "starved": self.n_starved,
+                "violations": self.n_violations}
 
 
 def _s32(v):

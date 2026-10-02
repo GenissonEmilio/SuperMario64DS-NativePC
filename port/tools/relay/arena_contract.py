@@ -332,6 +332,8 @@ NUMBERS = {
     "STRIKE_WINDOW_MS": 10000,
     "STRIKES_TO_KICK": 3,
     "POS_LIMIT_UNITS": 32768,
+    "AMP_FACTOR": 3,
+    "AMP_CREDIT_CAP": 16384,
 }
 
 # The 78 Player::State records in g_player_states order
@@ -414,7 +416,10 @@ RULES = [
     "the seat's clock ping (SYNP 20) echoes the exact t_ref of a referee "
     "pong it received (echo_ref) with held_ms = how long it held that pong. "
     "Ping at 2 Hz from the moment the seat is paired; the second ping "
-    "verifies it.",
+    "verifies it. After that the referee sends a seat at most 3x the bytes "
+    "the seat sends it (SYNS / SYNO / SYNE / SYNP, banked up to 16 KB): keep "
+    "SYNS flowing (10 Hz idle is plenty) from pairing on, or heartbeats pause "
+    "until you send again (every SYNR re-carries the 8 newest events).",
     "Claims are decided in STAMP order once referee time passes stamp + H, H = "
     "the largest back-dating cap among the other seats in the match (<= "
     "HOLD_MAX_MS). Exact stamp ties: fewer stars first, then the match seed's "

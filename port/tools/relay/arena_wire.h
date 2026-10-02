@@ -142,6 +142,8 @@ constexpr int kInvulnCheatMs = 300;
 constexpr int kStrikeWindowMs = 10000;
 constexpr int kStrikesToKick = 3;
 constexpr int kPosLimitUnits = 32768;
+constexpr int kAmpFactor = 3;
+constexpr int kAmpCreditCap = 16384;
 
 #pragma pack(push, 1)
 struct RefClaim {
