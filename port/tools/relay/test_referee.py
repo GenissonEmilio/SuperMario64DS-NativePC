@@ -1116,6 +1116,16 @@ def u_rematch(mod):
     streaming(rig, [a, b], 1.0)
     res.check(ref.state == 3 and a.verdict(cr) is None,
               "a new READY inside OVER_LINGER_MS waits (no verdict, no reset)")
+    seq_before = ref.newest_seq
+    streaming(rig, [a, b], 2.5)
+    for c in (a, b):
+        c.ready(cap=2, digest=0xBEEF)
+    streaming(rig, [a, b], 0.5)
+    res.check(ref.state in (1, 2), "after the linger the rematch starts")
+    st = [e for e in b.events if e["name"] == "START"]
+    res.check(len(st) == 2 and st[1]["seq"] > seq_before,
+              "seq keeps running: b applies the new START in order (%s)"
+              % [e["seq"] for e in st])
     return res
 
 

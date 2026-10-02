@@ -434,8 +434,11 @@ class Referee(object):
         self.broken = {}            # inst -> breaker seat
         self.next_inst = 1
         self.pending = []
+        # A rematch in the same session starts a clean window but keeps the
+        # sequence running, so a console from the last match applies the new
+        # START in order instead of waiting for a SNAPSHOT (REVREFEREE1).
         self.events = deque(maxlen=RETAIN_EVENTS)   # (seq, record)
-        self.newest_seq = 0
+        self.newest_seq = getattr(self, "newest_seq", 0)
         self.unsent = 0
         self.over_at = None
         self.over_event = None
