@@ -116,7 +116,7 @@ map|players|win|target|king|luigi|seed|netmode|wire
 
 `win` is `time`/`stars`/`king`; `target` is the star target in stars mode,
 else 0; `king` the king target in king mode, else 0; `seed` the seed when
-`luigi` is 1, else 0; `netmode` is `lockstep` (the only online VS mode in 1.0);
+`luigi` is 1, else 0; `netmode` is the plan's `netmode`, `lockstep` or `arena` (see ARENA MODE below);
 `wire` is 2 for four players or fewer, else 3. Decimal, no padding, no
 spaces. `"1|4|stars|3|0|1|3735928559|lockstep|2"` is `909114140`. Pinned in
 `test_units.py::test_session_digest`, and the selftest recomputes every plan's

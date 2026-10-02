@@ -431,6 +431,66 @@ def world_open():
     """The pool needs the relay's hub rules (RELAY_V 2) and a build list."""
     return RELAY_V >= 2 and bool(GAME_IDS)
 
+
+# ARENA MODE (run mp1, lane A4; VSSYNC1 plan sections 6 and 8). A VS match is
+# played one of two ways, and the go plan's `netmode` says which:
+#   "lockstep"  every console waits on every other's inputs (1.0's VS until
+#               now, and the fallback for one release)
+#   "arena"     every console runs its own Yoshi with no input delay, the
+#               others are drawn slightly behind, and a referee on the relay
+#               settles stars, hits, the clock and the winner
+# The game picks its relay session from the netmode; the lobby still never
+# speaks to the relay. Arena needs a game build that has it and a relay that
+# runs the referee, so it is OFF until the deploy names the build here.
+NETMODES = ("arena", "lockstep")
+
+# ARENA_GAME_IDS: the builds that play arena, comma-separated, same grammar as
+# GAME_IDS. EMPTY (the default) = arena off for every build, which is exactly
+# this server before arena existed. "*" = every build: dev and test boxes
+# only, never the live compose file (a build without arena would be handed a
+# netmode it does not know; it would still refuse at its own door, because
+# the digest counts the netmode, but nobody should rely on that).
+_ARENA_RAW = (os.environ.get("ARENA_GAME_IDS", "") or "").strip()
+ARENA_ANY = _ARENA_RAW == "*"
+ARENA_GAME_IDS, ARENA_GAME_IDS_DROPPED = (
+    ((), []) if ARENA_ANY else parse_game_ids(_ARENA_RAW))
+
+# The largest arena match. Phase A is 2 to 4 players; phase B raises it with a
+# compose edit. A bigger match plays lockstep.
+ARENA_MAX_PLAYERS = env_int("ARENA_MAX_PLAYERS", 4, 2, DIAL_HARD_MAX)
+
+# A new room's pick. Unknown values read as the default, like every knob.
+NETMODE_DEFAULT = env_str("NETMODE_DEFAULT", "arena")
+if NETMODE_DEFAULT not in NETMODES:
+    NETMODE_DEFAULT = "arena"
+
+# The win modes arena can referee today. King of the Star and Luigi Infection
+# stay on lockstep until the referee has their rules (plan phase C).
+ARENA_WIN_MODES = ("time", "stars")
+
+
+def arena_ok(room):
+    """True when this room's build can play arena on this server at all: the
+    build is on ARENA_GAME_IDS (or the list is "*") and the plans name relay
+    v2. Says nothing about the match's settings; arena_for does that."""
+    if RELAY_V < 2:
+        return False
+    return ARENA_ANY or room.game in ARENA_GAME_IDS
+
+
+def arena_for(room, players, win_mode, luigi):
+    """The netmode a match with these settings plays in this room. Arena only
+    when the host picked it, the build and relay can play it, the match is
+    2..ARENA_MAX_PLAYERS players, the win mode is one the referee knows and
+    Luigi is off; lockstep otherwise. Never an error: a host who picked arena
+    for a six-player King match just plays lockstep, and the view says so."""
+    if (room.session_type == "vs" and room.netmode == "arena"
+            and arena_ok(room)
+            and 2 <= players <= ARENA_MAX_PLAYERS
+            and win_mode in ARENA_WIN_MODES and not luigi):
+        return "arena"
+    return "lockstep"
+
 # WHAT A COLOUR-CARRYING REQUEST NEEDS TO CLAIM: see V_COLOR at the top of this
 # file, and VERB_FIELDS for where it is enforced. This block used to declare a
 # PROTO_VERSIONS/PROTO_COLOR_V pair of its own, which was the cross-lane defect:
@@ -598,7 +658,7 @@ def new_seed():
 #   king     king target, else 0           luigi    0 | 1
 #   seed     the u32 seed when luigi is 1, else 0 (the plan carries the
 #            minted seed either way; an off room does not digest it)
-#   netmode  "lockstep" (the only online VS mode in 1.0)
+#   netmode  the plan's "netmode": "lockstep", or "arena" (run mp1 A4)
 #   wire     2 when players <= 4, else 3
 # decimal integers, no padding, no spaces. FNV-1a 32 over the ASCII bytes.
 # This is the game's own rule (hal/comms_loopback.cpp session_digest, the
@@ -738,6 +798,10 @@ class Room(object):
         # proximity voice (1, the default: the host has to turn it off).
         self.luigi = 0
         self.voice = 1
+        # ARENA MODE (run mp1 A4): the host's netmode pick, "arena" or
+        # "lockstep". What a match actually plays is resolved at `start`
+        # (arena_for) into match_netmode below.
+        self.netmode = NETMODE_DEFAULT
         # v5: THE GAME BUILD this room plays, the creator's `game` string, set
         # once at create. Every join must carry the same string: two builds in
         # one match is how a room desyncs at frame 240 instead of refusing at
@@ -757,6 +821,7 @@ class Room(object):
         self.match_luigi = 0        # v5: luigi/voice frozen at arm, and the
         self.match_voice = 1        # seed minted at arm, one per match
         self.match_seed = 0
+        self.match_netmode = None   # A4: "arena"/"lockstep" frozen at arm
         self.names = ""             # SM64DS_VS_NAMES, built once, slot order
         self.colors = ""            # SM64DS_VS_COLORS, likewise
         self.slot_of = {}           # seat -> slot (0..3), packed among playing
@@ -940,7 +1005,7 @@ class Room(object):
         return False
 
     def view(self, you):
-        return {
+        v = {
             "state": self.state,
             "host": self.host_seat,
             "you": you,
@@ -970,6 +1035,19 @@ class Room(object):
             "members": [self.members[s].view() for s in sorted(self.members)],
             "match": self.match,
         }
+        if self.session_type == "vs":
+            # ARENA MODE (run mp1 A4), additive like every field above. The
+            # host's pick; whether this room's build can play arena here at
+            # all (false = the launcher greys the switch); the arena size
+            # limit; what a Start pressed now would resolve to; and the
+            # running match's resolved netmode (null in lobby).
+            v["netmode"] = self.netmode
+            v["arena_ok"] = arena_ok(self)
+            v["arena_max"] = ARENA_MAX_PLAYERS
+            v["arena_now"] = arena_for(self, self.playing_count(),
+                                       self.win_mode, self.luigi)
+            v["match_netmode"] = self.match_netmode
+        return v
 
     def close(self, why):
         if self.state == "closed":
@@ -1441,7 +1519,9 @@ VERB_FIELDS = {
                   {"star_target": 1, "king_target": 1, "match_players": V_DIAL,
                    # v5: Luigi Infection and the voice switch, VS rooms only;
                    # do_params refuses either on an adventure room.
-                   "luigi": V_ONE, "voice": V_ONE}),
+                   "luigi": V_ONE, "voice": V_ONE,
+                   # run mp1 A4: the host's netmode pick, VS rooms only.
+                   "netmode": V_ONE}),
     # THE WHOLE VERB IS v2. Its fields are required, so they carry no version
     # of their own -- the verb's own `since` is what refuses a v1 caller.
     "color":     (("v", "room", "token", "color", "shoes"), {}, V_COLOR),
@@ -1809,6 +1889,14 @@ def do_params(body, who, now):
         voice, err = v_int(body, "voice", 0, 1, "bad_field")
         if err:
             return 400, {"error": err}
+    # run mp1 A4: the netmode pick, one of two exact strings. Absent keeps
+    # the room's, like luigi and voice. Its own refusal code, like bad_map,
+    # so a launcher can say a true sentence about it.
+    netmode = None
+    if "netmode" in body:
+        netmode = body["netmode"]
+        if not isinstance(netmode, str) or netmode not in NETMODES:
+            return 400, {"error": "bad_netmode"}
 
     room = ROOMS.get(code)
     if room is None or room.state == "closed":
@@ -1826,7 +1914,8 @@ def do_params(body, who, now):
     # there is a field this room does not have: bad_field, like any undefined
     # key.
     if room.session_type != "vs" and (luigi is not None or voice is not None
-                                      or match_players is not None):
+                                      or match_players is not None
+                                      or netmode is not None):
         return 400, {"error": "bad_field"}
 
     room.map = mp
@@ -1843,19 +1932,24 @@ def do_params(body, who, now):
         room.luigi = luigi
     if voice is not None:
         room.voice = voice
+    if netmode is not None:
+        room.netmode = netmode
     # `match_players` rides the event as well as the view. Older launchers
     # ignore an extra field on an event they already know (section 3.5 is about
     # unknown KINDS; the field tolerance is what JSON readers do by default and
     # is pinned by a test), and the roster change is visible in the view every
     # poll carries regardless.
+    # run mp1 A4: a VS room's event also carries the netmode pick.
+    extra = {"netmode": room.netmode} if room.session_type == "vs" else {}
     room.push("params", map=mp, win_mode=win_mode, star_target=star_target,
               king_target=king_target, match_players=room.match_players,
-              luigi=room.luigi, voice=room.voice)
+              luigi=room.luigi, voice=room.voice, **extra)
     log("room %s params map=%d win=%s target=%s king=%s players=%d/%d "
-        "luigi=%d voice=%d"
+        "luigi=%d voice=%d netmode=%s"
         % (code, mp, win_mode, star_target if star_target else "-",
            king_target if king_target else "-",
-           room.playing_count(), room.match_players, room.luigi, room.voice))
+           room.playing_count(), room.match_players, room.luigi, room.voice,
+           room.netmode if room.session_type == "vs" else "-"))
     return 200, {"cursor": room.seq}
 
 
@@ -2211,10 +2305,16 @@ def member_plan(room, seat):
         "luigi": room.match_luigi,
         "seed": room.match_seed,
         "voice": room.match_voice,
+        # run mp1 A4: "arena" or "lockstep", frozen at arm. The launcher
+        # exports SM64DS_NETMODE=arena for an arena plan and nothing for a
+        # lockstep one; the game opens the matching relay session, and the
+        # digest below counts it, so the two can never pair by accident.
+        "netmode": room.match_netmode or "lockstep",
         "digest": session_digest(room.match_map, room.agreed_players,
                                  room.match_win_mode, room.match_star_target,
                                  room.match_king_target, room.match_luigi,
-                                 room.match_seed),
+                                 room.match_seed,
+                                 netmode=room.match_netmode or "lockstep"),
     }
     if room.match_win_mode == "stars":
         plan["star_target"] = room.match_star_target
@@ -2249,6 +2349,7 @@ def _reset_match(room):
     room.match_luigi = 0
     room.match_voice = 1
     room.match_seed = 0
+    room.match_netmode = None
     room.names = ""
     room.colors = ""
     room.slot_of = {}
@@ -2446,6 +2547,10 @@ def do_start(body, who, now):
     room.match_luigi = room.luigi
     room.match_voice = room.voice
     room.match_seed = new_seed()
+    # run mp1 A4: arena or lockstep, decided once here on the frozen roster
+    # and settings, and the same for every plan of this match.
+    room.match_netmode = arena_for(room, room.agreed_players,
+                                   room.match_win_mode, room.match_luigi)
     room.slot_of = assign_slots(room)
     room.names = build_names(room)
     room.colors = build_colors(room)
@@ -2453,10 +2558,12 @@ def do_start(body, who, now):
         m.armed = False
     room.state = "arming"
     room.arm_deadline = now + ARM_DEADLINE_S
-    room.push("arming", match=room.match, deadline_ms=ARM_DEADLINE_S * 1000)
-    log("room %s arm match=%s players=%d luigi=%d voice=%d deadline=%ds"
+    room.push("arming", match=room.match, deadline_ms=ARM_DEADLINE_S * 1000,
+              netmode=room.match_netmode)
+    log("room %s arm match=%s players=%d luigi=%d voice=%d netmode=%s "
+        "deadline=%ds"
         % (code, room.match, room.agreed_players, room.match_luigi,
-           room.match_voice, ARM_DEADLINE_S))
+           room.match_voice, room.match_netmode, ARM_DEADLINE_S))
     return 200, {"cursor": room.seq, "match": room.match}
 
 
@@ -3242,6 +3349,11 @@ class Handler(BaseHTTPRequestHandler):
                 "relay_v": RELAY_V,
                 "world_open": world_open(),
                 "game_ids": len(GAME_IDS),
+                # run mp1 A4: how many builds play arena (-1 = "*", every
+                # build), the arena size limit, and a new room's pick.
+                "arena_game_ids": -1 if ARENA_ANY else len(ARENA_GAME_IDS),
+                "arena_max": ARENA_MAX_PLAYERS,
+                "netmode_default": NETMODE_DEFAULT,
                 "rooms": len(ROOMS),
                 "members": sum(len(r.members) for r in ROOMS.values()),
                 "worlds": len(WORLDS),
@@ -3474,6 +3586,20 @@ def main():
             "OFF")
     for bad in GAME_IDS_DROPPED:
         log("GAME_IDS entry dropped, not a build id (%d chars)" % len(bad))
+    if ARENA_ANY:
+        log("arena: EVERY build (ARENA_GAME_IDS=*, a dev/test box setting), "
+            "max %d players, new rooms pick %s"
+            % (ARENA_MAX_PLAYERS, NETMODE_DEFAULT))
+    elif ARENA_GAME_IDS:
+        log("arena: %d build(s) (ARENA_GAME_IDS), max %d players, new rooms "
+            "pick %s%s" % (len(ARENA_GAME_IDS), ARENA_MAX_PLAYERS,
+                            NETMODE_DEFAULT,
+                            "" if RELAY_V >= 2 else "; OFF while RELAY_V is 1"))
+    else:
+        log("arena: OFF (ARENA_GAME_IDS is empty): every VS match is lockstep")
+    for bad in ARENA_GAME_IDS_DROPPED:
+        log("ARENA_GAME_IDS entry dropped, not a build id (%d chars)"
+            % len(bad))
     log("limits rooms=%d seats=%d players=%d waiters=%d body=%d read_timeout=%ds "
         "req=%d/s burst=%d create=%d/h join=%d/min star_max=%d king_max=%d "
         "kick_cool=%ds"

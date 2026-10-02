@@ -900,6 +900,7 @@ _FIELD_SAMPLES = {
     "game": "1.0.0",
     "luigi": 1,
     "voice": 1,
+    "netmode": "arena",
     "code": "K7QMR3AB",
     "skip": "K7QMR3AB",
 }
@@ -3765,6 +3766,270 @@ def Member_fields(m):
     return [k for k in m.__slots__]
 
 
+# ------------------------------------------------------------- ARENA MODE
+#
+# run mp1, lane A4 (VSSYNC1 plan section 8): the go plan's `netmode`, the
+# digest that counts it, the host's pick, the build switch, and the one lobby
+# rule an arena match changes (it has no host in it).
+
+
+class arena(object):
+    """Run a block with the arena knobs set, the way a compose edit plus a
+    restart would: ARENA_GAME_IDS ("*" or a tuple of builds), the size limit,
+    RELAY_V and a new room's pick. Restores all of them after."""
+
+    def __init__(self, ids="*", max_players=4, relay_v=2, default="arena"):
+        self.ids = ids
+        self.max_players = max_players
+        self.relay_v = relay_v
+        self.default = default
+
+    def __enter__(self):
+        self.was = (S.ARENA_ANY, S.ARENA_GAME_IDS, S.ARENA_MAX_PLAYERS,
+                    S.RELAY_V, S.NETMODE_DEFAULT)
+        S.ARENA_ANY = self.ids == "*"
+        S.ARENA_GAME_IDS = () if self.ids == "*" else tuple(self.ids)
+        S.ARENA_MAX_PLAYERS = self.max_players
+        S.RELAY_V = self.relay_v
+        S.NETMODE_DEFAULT = self.default
+        return self
+
+    def __exit__(self, *exc):
+        (S.ARENA_ANY, S.ARENA_GAME_IDS, S.ARENA_MAX_PLAYERS, S.RELAY_V,
+         S.NETMODE_DEFAULT) = self.was
+        return False
+
+
+def test_arena_digest():
+    print("\n-- arena: the digest counts the netmode")
+    vectors = [
+        ((0, 2, "time", None, None, 0, 0), "arena",
+         "0|2|time|0|0|0|0|arena|2", 1565304087),
+        ((1, 4, "stars", 3, None, 0, 3735928559), "arena",
+         "1|4|stars|3|0|0|0|arena|2", 1476757693),
+        ((3, 3, "stars", 5, None, 0, 7), "arena",
+         "3|3|stars|5|0|0|0|arena|2", 1991793976),
+        ((0, 2, "time", None, None, 0, 0), "lockstep",
+         "0|2|time|0|0|0|0|lockstep|2", 1172137709),
+    ]
+    for args, nm, text, want in vectors:
+        check("canonical %s" % text,
+              S.session_canonical(*args, netmode=nm) == text,
+              S.session_canonical(*args, netmode=nm))
+        check("digest of %s is %d" % (text, want),
+              S.session_digest(*args, netmode=nm) == want,
+              S.session_digest(*args, netmode=nm))
+    check("the default netmode is still lockstep (every old caller unchanged)",
+          S.session_canonical(0, 2, "time", None, None, 0, 0)
+          == "0|2|time|0|0|0|0|lockstep|2")
+    check("an arena match and a lockstep match of the same settings never "
+          "share a digest",
+          S.session_digest(0, 2, "time", None, None, 0, 0, netmode="arena")
+          != S.session_digest(0, 2, "time", None, None, 0, 0))
+
+
+def test_arena_off_by_default():
+    print("\n-- arena: OFF until ARENA_GAME_IDS names the build")
+    reset()
+    check("the file default: no arena builds, not '*'",
+          S.ARENA_GAME_IDS == () and S.ARENA_ANY is False,
+          (S.ARENA_GAME_IDS, S.ARENA_ANY))
+    check("the file defaults: arena max 4, new rooms pick arena",
+          S.ARENA_MAX_PLAYERS == 4 and S.NETMODE_DEFAULT == "arena",
+          (S.ARENA_MAX_PLAYERS, S.NETMODE_DEFAULT))
+    code, room, toks, match = _running(2)
+    p0, p1 = S.member_plan(room, 1), S.member_plan(room, 2)
+    check("the room's pick is arena, but the build is not on the list",
+          room.netmode == "arena" and S.arena_ok(room) is False)
+    check("so the match plays lockstep", room.match_netmode == "lockstep",
+          room.match_netmode)
+    check("both plans say lockstep",
+          p0["netmode"] == p1["netmode"] == "lockstep",
+          (p0.get("netmode"), p1.get("netmode")))
+    check("and the digest is the lockstep one, unchanged from before arena",
+          p0["digest"] == S.session_digest(0, 2, "time", None, None,
+                                           room.match_luigi, room.match_seed)
+          and p0["digest"] == 1172137709, p0["digest"])
+    v = room.view(1)
+    check("the view: pick arena, arena_ok false, arena_now lockstep, "
+          "match_netmode lockstep",
+          v["netmode"] == "arena" and v["arena_ok"] is False
+          and v["arena_now"] == "lockstep" and v["match_netmode"] == "lockstep"
+          and v["arena_max"] == 4, v)
+
+
+def test_arena_plan():
+    print("\n-- arena: a listed build plays arena; the plan and the digest")
+    for ids in ("*", (GAME,)):
+        reset()
+        with arena(ids=ids):
+            st, h = create(nick="h", pre_ok=True)
+            code = h["room"]
+            st, g = join(code, "g", who="10.0.0.2", pre_ok=True)
+            room = S.ROOMS[code]
+            v = room.view(1)
+            check("[%s] lobby view: arena_ok, arena_now arena, no match yet"
+                  % (ids,), v["arena_ok"] is True and v["arena_now"] == "arena"
+                  and v["match_netmode"] is None and v["netmode"] == "arena", v)
+            st, p = start(code, h["token"])
+            check("[%s] start resolves arena" % (ids,),
+                  st == 200 and room.match_netmode == "arena",
+                  (st, room.match_netmode))
+            arm = [e for e in room.events if e["kind"] == "arming"][-1]
+            check("[%s] the arming event carries netmode arena" % (ids,),
+                  arm.get("netmode") == "arena", arm)
+            p0, p1 = S.member_plan(room, 1), S.member_plan(room, 2)
+            check("[%s] both plans say arena" % (ids,),
+                  p0["netmode"] == p1["netmode"] == "arena")
+            check("[%s] the digest counts arena: 0|2|time|0|0|0|0|arena|2"
+                  % (ids,), p0["digest"] == p1["digest"] == 1565304087,
+                  p0["digest"])
+            check("[%s] slot, want_seat and role are unchanged: host parent "
+                  "slot 0, guest child slot 1" % (ids,),
+                  (p0["role"], p0["slot"], p0["want_seat"]) == ("parent", 0, 0)
+                  and (p1["role"], p1["slot"], p1["want_seat"])
+                  == ("child", 1, 1), (p0, p1))
+            check("[%s] the code is fresh per match as always" % (ids,),
+                  p0["code"] == room.comms_code and len(p0["code"]) == 8)
+            check("[%s] the view says match_netmode arena" % (ids,),
+                  room.view(2)["match_netmode"] == "arena")
+            st, w = join(code, "w", who="10.0.0.3", pre_ok=True)
+            check("[%s] a waiting seat's plan is just playing:false" % (ids,),
+                  S.member_plan(room, w["member"]) == {"playing": False},
+                  S.member_plan(room, w["member"]))
+            for i, tok in enumerate([h["token"], g["token"]]):
+                ready(code, tok, room.match, who="10.0.0.%d" % (i + 1))
+            S.sweep(1000.0 + S.GO_GRACE_S + 0.1)
+            _result(code, h["token"], room.match)
+            check("[%s] after the result match_netmode is null again" % (ids,),
+                  room.state == "lobby" and room.match_netmode is None
+                  and room.view(1)["match_netmode"] is None)
+    reset()
+    with arena(ids=("1.0.0-otherbld",)):
+        code, room, toks, match = _running(2)
+        check("a build not on ARENA_GAME_IDS plays lockstep",
+              room.match_netmode == "lockstep"
+              and S.member_plan(room, 1)["netmode"] == "lockstep")
+    reset()
+    with arena():
+        st, a = create(nick="a", session_type="adventure")
+        room = S.ROOMS[a["room"]]
+        v = room.view(1)
+        check("an adventure room's view has no netmode keys",
+              not any(k in v for k in ("netmode", "arena_ok", "arena_max",
+                                       "arena_now", "match_netmode")), v)
+        check("and its plan has no netmode",
+              "netmode" not in S.member_plan(room, 1), S.member_plan(room, 1))
+
+
+def test_arena_when():
+    print("\n-- arena: which matches play arena (and the rest lockstep)")
+
+    def resolved(n=2, win="time", star=None, king=None, luigi=0,
+                 relay_v=2, max_players=4, pick=None):
+        reset()
+        with game_max(16, seats=16), arena(relay_v=relay_v,
+                                           max_players=max_players):
+            st, h = S.do_create({"v": 5, "game": GAME, "nick": "h",
+                                 "pre_ok": True}, "10.0.0.1", 1000.0)
+            code = h["room"]
+            for k in range(2, n + 1):
+                S.do_join({"v": 5, "game": GAME, "room": code,
+                           "nick": "g%d" % k, "pre_ok": True},
+                          "10.0.1.%d" % k, 1000.0)
+            extra = {}
+            if star is not None:
+                extra["star_target"] = star
+            if king is not None:
+                extra["king_target"] = king
+            if pick is not None:
+                extra["netmode"] = pick
+            st, out = _params(code, h["token"], win_mode=win,
+                              match_players=n, luigi=luigi, **extra)
+            assert st == 200, (st, out)
+            room = S.ROOMS[code]
+            now = room.view(1)["arena_now"]
+            st, p = start(code, h["token"])
+            assert st == 200, (st, p)
+            return room.match_netmode, now, S.member_plan(room, 1)
+
+    for n in (2, 3, 4):
+        nm, now, plan = resolved(n)
+        check("%d players, time: arena" % n, nm == "arena" and now == "arena"
+              and plan["netmode"] == "arena", (nm, now))
+    nm, now, plan = resolved(3, win="stars", star=5)
+    check("stars mode: arena", nm == "arena" and plan["star_target"] == 5)
+    nm, now, plan = resolved(5)
+    check("5 players with the phase-A limit 4: lockstep (and arena_now said "
+          "so before Start)", nm == "lockstep" and now == "lockstep",
+          (nm, now))
+    nm, now, plan = resolved(6, max_players=16)
+    check("6 players once the limit is 16: arena", nm == "arena")
+    nm, now, plan = resolved(2, win="king", king=30)
+    check("King of the Star: lockstep", nm == "lockstep")
+    nm, now, plan = resolved(2, luigi=1)
+    check("Luigi Infection: lockstep", nm == "lockstep" and plan["luigi"] == 1)
+    nm, now, plan = resolved(2, relay_v=1)
+    check("RELAY_V 1: lockstep", nm == "lockstep")
+    nm, now, plan = resolved(2, pick="lockstep")
+    check("the host picked lockstep (the fallback switch): lockstep, and the "
+          "lockstep digest",
+          nm == "lockstep" and now == "lockstep"
+          and plan["digest"] == S.session_digest(
+              0, 2, "time", None, None, 0, plan["seed"]), (nm, now))
+    nm, now, plan = resolved(2, pick="arena")
+    check("and picking arena again: arena", nm == "arena")
+
+
+def test_arena_params():
+    print("\n-- arena: the host's netmode pick on params")
+    reset()
+    with arena():
+        st, h = create(nick="h", pre_ok=True)
+        code = h["room"]
+        room = S.ROOMS[code]
+        st, g = join(code, "g", who="10.0.0.2", pre_ok=True)
+        check("a new room starts at NETMODE_DEFAULT (arena)",
+              room.netmode == "arena")
+        st, out = _params(code, h["token"], netmode="lockstep")
+        ev = room.events[-1]
+        check("netmode lockstep is accepted and rides the params event",
+              st == 200 and room.netmode == "lockstep"
+              and ev["kind"] == "params" and ev["netmode"] == "lockstep",
+              (st, out, ev))
+        st, out = _params(code, h["token"])
+        check("a params without netmode keeps the room's pick",
+              st == 200 and room.netmode == "lockstep", room.netmode)
+        for bad in ("ARENA", "rollback", "", 1, True, None, ["arena"],
+                    "arena ", "a" * 300):
+            st, out = _params(code, h["token"], netmode=bad)
+            check("netmode %r is 400 bad_netmode and changes nothing"
+                  % (bad if not isinstance(bad, str) else bad[:12],),
+                  st == 400 and out["error"] == "bad_netmode"
+                  and room.netmode == "lockstep", (st, out))
+        st, out = _params(code, g["token"], who="10.0.0.2", netmode="arena")
+        check("a guest cannot set it (403 not_host)",
+              st == 403 and out["error"] == "not_host"
+              and room.netmode == "lockstep", (st, out))
+        st, out = _params(code, h["token"], netmode="arena")
+        st, p = start(code, h["token"])
+        st, out = _params(code, h["token"], netmode="lockstep")
+        check("not while a match is arming (409 not_in_lobby)",
+              st == 409 and out["error"] == "not_in_lobby"
+              and room.netmode == "arena" and room.match_netmode == "arena",
+              (st, out))
+        st, a = create(nick="a", who="10.0.0.7", session_type="adventure")
+        st, out = _params(a["room"], a["token"], who="10.0.0.7",
+                          netmode="arena")
+        check("on an adventure room it is 400 bad_field",
+              st == 400 and out["error"] == "bad_field", (st, out))
+    reset()
+    with arena(default="lockstep"):
+        st, h = create(nick="h", pre_ok=True)
+        check("NETMODE_DEFAULT lockstep: a new room picks lockstep",
+              S.ROOMS[h["room"]].netmode == "lockstep")
+
+
 def main():
     test_grammar()
     test_addresses()
@@ -3824,6 +4089,11 @@ def main():
     test_a_throttled_host_is_not_silent()
     test_host_silent_floor()
     test_server_line_width()
+    test_arena_digest()
+    test_arena_off_by_default()
+    test_arena_plan()
+    test_arena_when()
+    test_arena_params()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

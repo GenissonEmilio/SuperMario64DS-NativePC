@@ -101,6 +101,16 @@ services:
       WORLD_ADDR_TOKENS: "4"
       # An adventure code room closes after this long with nobody in it.
       ADV_EMPTY_S: "600"
+      # ARENA MODE (run mp1 A4): the builds that play VS in arena mode (own
+      # Yoshi with no input delay, a referee on the relay), comma-separated
+      # like GAME_IDS. EMPTY = arena off: every VS match plays lockstep, as
+      # before. Written at the relay redeploy that brings the referee;
+      # emptying it again is the rollback. Never "*" here (dev boxes only).
+      ARENA_GAME_IDS: ""
+      # The largest arena match (phase A: 4); bigger matches play lockstep.
+      ARENA_MAX_PLAYERS: "4"
+      # A new room's netmode pick; the host can switch it to lockstep.
+      NETMODE_DEFAULT: "arena"
     read_only: true
     tmpfs:
       - /tmp:size=8m
