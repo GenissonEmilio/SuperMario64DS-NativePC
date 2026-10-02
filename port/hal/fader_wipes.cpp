@@ -371,8 +371,9 @@ struct HalFaderWipe {
 
        AND __cdecl, WITH THE RECEIVER ON THE STACK. These two slots are the
        fifth class of the shape 0ec379b94 and 19a71216e retired on the sibling
-       tables, and the reasoning is 19a71216e's word for word. The one call site
-       these two slots have is src/_ZN8dScene_c14BeforeBehaviorEv.cpp, whose
+       tables, and the reasoning is 19a71216e's word for word. These two slots
+       have THREE callers; this block once named only the first,
+       src/_ZN8dScene_c14BeforeBehaviorEv.cpp, whose
        banner says why it cannot go through the real class and keep matching: it
        reaches the installed fader through a file-local FaderVTable of PLAIN
        FUNCTION POINTERS with an explicit first parameter,
@@ -397,6 +398,19 @@ struct HalFaderWipe {
        __cdecl member takes `this` as its first stack word and cleans nothing,
        which is exactly the frame the call site builds. Run link100, lane
        SINGLES2; measured by lane SINGLES (out/SINGLES/handoff_BOOT1.md).
+
+       The other two are src/FUN_020299f4.cpp (slot 0x10, from
+       Player::St_DeadPit_Init on the local player's own pit death in a VS
+       match) and src/FUN_02029980.cpp (slot 0x0c, from Player::St_Respawn_Main,
+       the respawn after it). Both reach wipe 6 (data_0209f324 + 0x240) through
+       a shadow struct of plain virtuals, which MSVC compiles __thiscall: the
+       receiver in ecx, (0x1e, 0) pushed, the CALLEE to take them back. Against
+       these __cdecl slots the call read 0x1e as the receiver ("WRONG RECEIVER
+       at SetForwardTime"), left eight bytes on the caller's frame, and the
+       caller returned into the pushed 0: FAULT c0000005 at eip 0 on level 29.
+       Their _MSC_VER arms declare the one slot each calls __cdecl, so the call
+       pushes the receiver and cleans up after itself; the #else arms are the
+       matched source. Run mp1, lane PITCRASH1.
 
        Receiver check included for 19a71216e's stated reason: a caller of the
        old shape would hand these two a vtable or a frame count as the receiver,
