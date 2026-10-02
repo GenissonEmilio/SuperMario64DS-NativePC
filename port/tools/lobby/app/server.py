@@ -2327,7 +2327,7 @@ def member_plan(room, seat):
         "seed": room.match_seed,
         "voice": room.match_voice,
         # run mp1 A4: "arena" or "lockstep", frozen at arm. The launcher
-        # exports SM64DS_NETMODE=arena for an arena plan and nothing for a
+        # exports SM64DS_VS_NETMODE=arena for an arena plan, nothing for a
         # lockstep one; the game opens the matching relay session, and the
         # digest below counts it, so the two can never pair by accident.
         "netmode": room.match_netmode or "lockstep",
