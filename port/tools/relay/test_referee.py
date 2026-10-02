@@ -645,6 +645,21 @@ def u_timeup(mod):
     t0 = ref.t0
     res.check(over and ref.seat_unwire(c.seat, over[0]["t"]) == t0 + 5000,
               "end time = T0 + 5 s exactly")
+    # a grab touched 5 ms after time-up, arriving inside the hold: STALE
+    rig, (a, b) = match(2, time_s=4, code="TIMEUP02")
+    ref = rig.ref("TIMEUP02")
+    end = ref.t0 + ref.match_ms
+    inst = a.find("STAR_WAKE")[-1]["a"]
+    a.claim(CL["MARKER_BREAK"], inst)
+    streaming(rig, [a, b], 0.2)
+    while ref.rt(rig.now) < end + 20:
+        streaming(rig, [a, b], 0.01)
+    cid = a.claim(CL["GRAB"], inst, stamp=ref.seat_wire(a.seat, end + 5))
+    streaming(rig, [a, b], 1.0)
+    v = a.verdict(cid)
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STALE"]
+              and ref.scores[a.seat] == 0,
+              "grab stamped after time-up: DENY STALE, no point (%s)" % v)
     return res
 
 

@@ -1018,6 +1018,12 @@ class Referee(object):
 
     def _decide(self, c, rt):
         k = c.kind
+        if (self.match_ms and k != C_QUIT
+                and c.stamp >= self.t0 + self.match_ms):
+            # touched after the clock ran out: the match ends at T0 +
+            # match_ms even though claims are still decided during the hold
+            self._deny(c, D_STALE, rt)
+            return
         if k == C_GRAB:
             self._grab(c, rt)
         elif k == C_MARKER_BREAK:
