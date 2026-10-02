@@ -49,6 +49,19 @@ the datagram (offset 6 for 'MP2L', offset 5 for every 'SYN*' kind), so no
 client can speak as another seat. That is the one byte the relay writes;
 everything else still goes through untouched and is never logged.
 
+ARENA SESSIONS (run mp1, lane REFEREE1; VSSYNC1 plan section 4). A version 2
+HELLO with role 3 opens or joins an ARENA session: hub-shaped (seats 0..15,
+nobody hosts) with a REFEREE inside the relay (referee.py) that owns every
+outcome two players can disagree about -- stars, hits, the score, the clock
+and the winner. An arena session has its own kind table (ARENA_KINDS): state
+and object frames are forwarded to every other seat AND read by the referee,
+claims go to the referee only and are never forwarded, the referee's own
+event frames ('SYNR') and clock pongs come from the relay alone (a seat that
+sends one is dropped and struck), and a state frame that fails the referee's
+range checks is not forwarded at all. Star and hub sessions never see any of
+this: their path through the relay is unchanged. The wire is
+arena_contract.py's.
+
 Configuration (environment):
 
   SM64DS_RELAY_PORT     UDP port to bind          (default 41234)
@@ -70,12 +83,17 @@ Configuration (environment):
                         apply inside it
   SM64DS_RELAY_HUB_IDLE_S
                         idle expiry of a hub member (default 10; members send
-                        a HELLO every second as their keepalive)
+                        a HELLO every second as their keepalive); arena
+                        members use the same window
+  SM64DS_REFEREE_KICK   1 = the referee kicks a seat at 3 strikes in 10 s
+                        (default off: phase A logs strikes only)
+  SM64DS_REFEREE_SEED   tests only: a fixed match seed and clock base
 
 Python 3 standard library only. No dependencies, no state on disk.
 """
 
 import asyncio
+import importlib.util
 import os
 import socket
 import sys
@@ -116,6 +134,8 @@ STATUS_WRONG_KIND = 5       # a star role into a hub code, or the reverse
 KIND_STAR = "star"
 KIND_HUB = "hub"
 HUB_SEATS = 16              # a hub session holds seats 0..15, nobody hosts
+ROLE_ARENA = 3              # an arena member (hub-shaped, refereed)
+KIND_ARENA = "arena"
 
 # ---- THE KIND TABLE (design section 3) --------------------------------------
 #
@@ -183,6 +203,68 @@ KIND_ORDER = tuple(KINDS)   # stats line order, the table's own
 
 # The reasons a version 2 datagram is dropped, in stats line order.
 DROP_REASONS = ("unknown", "length", "route", "cap", "target", "session_cap")
+
+# ---- THE ARENA KIND TABLE (arena_contract.py ARENA_KINDS) -------------------
+#
+# An arena session forwards exactly this; star and hub sessions never read it.
+# Routes:
+#   A_ALL     every other seat (as a hub)
+#   A_ALLREF  every other seat AND the referee reads it; a frame that fails
+#             the referee's range checks is dropped, not forwarded
+#   A_REF     the referee only, never forwarded
+#   A_PING    12 bytes: a peer ping to everyone (as a hub); 20 bytes with
+#             byte 6 = 0xFE: the referee's clock ping, answered by the relay
+#   A_PONG    12 bytes: to the seat at byte 6 (as a hub); 20: referee-only
+#   A_NONE    referee-originated only; a seat sending it is struck
+A_ALL = "all"
+A_ALLREF = "all+ref"
+A_REF = "ref"
+A_PING = "ping"
+A_PONG = "pong"
+A_NONE = "none"
+ARENA_KINDS = {}
+for _tag, _lengths, _route, _cap in (
+        (b"SYNS", (48,), A_ALLREF, 35),
+        (b"SYNO", (32,), A_ALLREF, 35),
+        (b"SYNE", (24,), A_REF, 20),
+        (b"SYNR", (272,), A_NONE, 0),
+        (b"SYNP", (12, 20), A_PING, 6),
+        (b"SYNQ", (12, 20), A_PONG, 6),
+        (b"SYNI", tuple(range(24, 65)), A_ALL, 3),
+        (b"SYNT", tuple(range(12, 133)), A_ALL, 8),
+        (b"SYNV", (176, 340), A_ALL, 30),
+):
+    ARENA_KINDS[_tag] = (_route, Kind(_tag, "arena", _lengths, None, None,
+                                      _cap, 5))
+del _tag, _lengths, _route, _cap
+ARENA_ORDER = tuple(ARENA_KINDS)
+ARENA_DROPS = ("unknown", "length", "route", "field", "cap", "target",
+               "session_cap")
+REFEREE_TICK_S = 0.01       # verdict / clock / heartbeat granularity
+REFEREE_KICK = os.environ.get("SM64DS_REFEREE_KICK") == "1"
+REFEREE_SEED = (clamp_int(os.environ.get("SM64DS_REFEREE_SEED"), None, 0,
+                          0xFFFFFFFF)
+                if os.environ.get("SM64DS_REFEREE_SEED") else None)
+
+
+def _load_referee():
+    """referee.py from this file's own directory (the deploy copies both).
+    None when it is missing: arena HELLOs are then refused as bad requests,
+    the answer an older relay gives, and nothing else changes."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "referee.py")
+    try:
+        spec = importlib.util.spec_from_file_location("sm64ds_referee", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception as exc:     # missing or broken: no arena mode
+        print("referee.py not loaded (%s); arena sessions disabled" % exc,
+              file=sys.stderr, flush=True)
+        return None
+
+
+referee = _load_referee()
 
 # ------------------------------------------------------------------ limits
 
@@ -462,7 +544,7 @@ class SessionV2(object):
     """A version 2 session: a STAR (seat 0 is the parent, 1..MAX_CHILDREN the
     children) or a HUB (seats 0..HUB_SEATS-1, all members, nobody hosts)."""
     __slots__ = ("code", "kind", "seats", "created", "fwd_tokens",
-                 "fwd_stamp")
+                 "fwd_stamp", "referee")
     version = PROTO_V2
 
     def __init__(self, code, kind, now):
@@ -470,6 +552,7 @@ class SessionV2(object):
         self.kind = kind
         self.seats = {}         # seat -> addr
         self.created = now
+        self.referee = None     # arena sessions only (referee.Referee)
         # the per-session forward budget (SESSION_FWD_PPS), in copies sent
         self.fwd_tokens = float(SESSION_FWD_BURST)
         self.fwd_stamp = now
@@ -492,7 +575,9 @@ class SessionV2(object):
         return len(self.seats)
 
     def capacity(self):
-        return HUB_SEATS if self.kind == KIND_HUB else MAX_ENDPOINTS_PER_SESSION
+        if self.kind in (KIND_HUB, KIND_ARENA):
+            return HUB_SEATS
+        return MAX_ENDPOINTS_PER_SESSION
 
     def free_seat(self, lo, hi):
         """Lowest free seat in lo..hi inclusive, or None."""
@@ -547,6 +632,12 @@ class RelayProtocol(asyncio.DatagramProtocol):
         # socket errors the OS reported (error_received), logged once
         self.n_reset = 0
         self.reset_logged = False
+        # arena sessions: per kind [rx, fwd, drop], drops by reason, and what
+        # the referee itself sent (event frames + clock pongs)
+        self.arenas = {}        # code -> SessionV2, the arena ones
+        self.akstats = dict((tag, [0, 0, 0]) for tag in ARENA_ORDER)
+        self.a_drop = dict((r, 0) for r in ARENA_DROPS)
+        self.n_ref_tx = 0
 
     # ---- asyncio hooks
 
@@ -723,7 +814,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
                                      or endpoint.role != role
                                      or endpoint.version != PROTO_VERSION):
             # Same endpoint asking for something else. Drop the old seat.
-            self._detach(endpoint, "rejoin")
+            self._detach(endpoint, "rejoin", now)
             endpoint = None
 
         if endpoint is not None:
@@ -844,12 +935,17 @@ class RelayProtocol(asyncio.DatagramProtocol):
             ok = (1 <= want <= 15) or want == WANT_ANY
         elif role == ROLE_MEMBER:
             ok = (0 <= want < HUB_SEATS) or want == WANT_ANY
+        elif role == ROLE_ARENA and referee is not None:
+            ok = (0 <= want < HUB_SEATS) or want == WANT_ANY
         else:
             ok = False
         if not ok:
             self._reject(data, addr, now, version=PROTO_V2)
             return
-        kind = KIND_HUB if role == ROLE_MEMBER else KIND_STAR
+        if role == ROLE_ARENA:
+            kind = KIND_ARENA
+        else:
+            kind = KIND_HUB if role == ROLE_MEMBER else KIND_STAR
 
         endpoint = self.endpoints.get(addr)
         if endpoint is not None:
@@ -861,7 +957,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
                 self._send_ack(addr, STATUS_OK, code_raw, n,
                                version=PROTO_V2, seat=endpoint.seat)
                 return
-            self._detach(endpoint, "rejoin")
+            self._detach(endpoint, "rejoin", now)
 
         session = self.sessions.get(code)
         if session is not None and session.version != PROTO_V2:
@@ -880,6 +976,9 @@ class RelayProtocol(asyncio.DatagramProtocol):
                                 "relay at %d sessions" % MAX_SESSIONS)
                 return
             session = SessionV2(code, kind, now)
+            if kind == KIND_ARENA:
+                session.referee = self._new_referee(session, now)
+                self.arenas[code] = session
             self.sessions[code] = session
             created = True
             log("session %s create by %s (v2 %s)"
@@ -925,10 +1024,12 @@ class RelayProtocol(asyncio.DatagramProtocol):
             caps=self.kind_caps.setdefault(addr, {}))
         log("session %s join %s as %s seat %d (%d/%d) v2"
             % (code, short_addr(addr),
-               ("parent", "child", "member")[role], seat, session.size(),
-               session.capacity()))
+               ("parent", "child", "member", "arena")[role], seat,
+               session.size(), session.capacity()))
         self._send_ack(addr, STATUS_OK, code_raw, n, version=PROTO_V2,
                        seat=seat)
+        if session.referee is not None:
+            session.referee.on_join(seat, now)
 
     # ---- version 2: forwarding by the kind table
 
@@ -958,6 +1059,9 @@ class RelayProtocol(asyncio.DatagramProtocol):
 
     def _forward_v2(self, data, addr, now, endpoint):
         n = len(data)
+        if endpoint.role == ROLE_ARENA:
+            self._forward_arena(data, addr, now, endpoint)
+            return
         kind = KINDS.get(bytes(data[:4])) if n >= 4 else None
         if kind is None:
             self._drop_v2("unknown")
@@ -1020,9 +1124,127 @@ class RelayProtocol(asyncio.DatagramProtocol):
             self.n_fwd += 1
             kstat[1] += 1
 
+    # ---- arena sessions: the referee's kind table
+
+    def _new_referee(self, session, now):
+        code = session.code
+
+        def send(seat, data, session=session):
+            addr = session.seats.get(seat)
+            if addr is None:
+                return
+            try:
+                self.transport.sendto(data, addr)
+            except Exception:
+                return
+            self.n_ref_tx += 1
+
+        def kick(seat, session=session):
+            addr = session.seats.get(seat)
+            endpoint = self.endpoints.get(addr) if addr is not None else None
+            if endpoint is not None:
+                self._detach(endpoint, "kicked by the referee")
+                self.ignored[addr] = time.monotonic() + BAD_IGNORE_S
+
+        return referee.Referee(code, now, send, log,
+                               kick=kick if REFEREE_KICK else None,
+                               seed=REFEREE_SEED)
+
+    def _drop_a(self, reason, kstat=None):
+        self.a_drop[reason] += 1
+        if kstat is not None:
+            kstat[2] += 1
+
+    def _forward_arena(self, data, addr, now, endpoint):
+        """An arena seat's datagram, by ARENA_KINDS. Same discipline as a
+        hub (classify by tag + exact length, cap, budget, stamp byte 5), plus
+        the referee: it reads state / object frames, takes claims and clock
+        pings, and is the only source of 'SYNR' and 20-byte 'SYNQ'."""
+        n = len(data)
+        entry = ARENA_KINDS.get(bytes(data[:4])) if n >= 4 else None
+        if entry is None:
+            self._drop_a("unknown")
+            return
+        route, kind = entry
+        kstat = self.akstats[kind.tag]
+        kstat[0] += 1
+        if not kind.length_ok(n):
+            self._drop_a("length", kstat)
+            return
+        session = self.sessions.get(endpoint.code)
+        if session is None or session.referee is None:
+            self.n_drop_unpaired += 1
+            kstat[2] += 1
+            return
+        ref = session.referee
+        seat = endpoint.seat
+        if route == A_NONE or (route == A_PONG and n != 12) or (
+                route == A_PING and n != 12 and data[6] != referee.REF_MARK):
+            self._drop_a("route", kstat)
+            if route == A_NONE:
+                ref.on_violation(seat, "sent a referee-only kind", now)
+            return
+        if route == A_ALLREF:
+            ok = (ref.check_state(seat, data) if kind.tag == b"SYNS"
+                  else ref.check_object(seat, data))
+            if not ok:
+                self._drop_a("field", kstat)
+                ref.on_violation(seat, "%s field out of range"
+                                 % kind.tag.decode("ascii"), now)
+                return
+        if not self._kind_cap_ok(endpoint, kind, now):
+            self._drop_a("cap", kstat)
+            return
+        endpoint.last_seen = now
+        out = bytearray(data)
+        out[5] = seat
+        out = bytes(out)
+        if route == A_REF:
+            ref.on_claim(seat, out, now)
+            return
+        if route == A_PING and n == 20:
+            reply = ref.on_ping(seat, out, now)
+            if reply is not None:
+                try:
+                    self.transport.sendto(reply, addr)
+                    self.n_ref_tx += 1
+                except Exception:
+                    pass
+            return
+        if route == A_PONG:
+            to = session.seats.get(data[6])
+            targets = [to] if (to is not None and data[6] != seat) else []
+        else:
+            targets = [a for s, a in session.seats.items() if s != seat]
+        if route == A_ALLREF:
+            if kind.tag == b"SYNS":
+                ref.on_state(seat, out, now)
+            else:
+                ref.on_object(seat, out, now)
+        if not targets:
+            self._drop_a("target", kstat)
+            return
+        if not session.budget_ok(len(targets), now):
+            self._drop_a("session_cap", kstat)
+            return
+        for target in targets:
+            try:
+                self.transport.sendto(out, target)
+            except Exception:
+                continue
+            self.n_fwd += 1
+            kstat[1] += 1
+
+    def tick(self, now):
+        """The referees' clock (REFEREE_TICK_S): verdicts whose hold has
+        passed, match timers, heartbeats. Nothing at all without arenas."""
+        for session in list(self.arenas.values()):
+            if session.referee is not None:
+                session.referee.tick(now)
+
     # ---- bookkeeping
 
-    def _detach(self, endpoint, why):
+    def _detach(self, endpoint, why, now=None):
         self.endpoints.pop(endpoint.addr, None)
         session = self.sessions.get(endpoint.code)
         if session is None:
@@ -1030,6 +1252,10 @@ class RelayProtocol(asyncio.DatagramProtocol):
         if session.version == PROTO_V2:
             if session.seats.get(endpoint.seat) == endpoint.addr:
                 del session.seats[endpoint.seat]
+                if session.referee is not None:
+                    session.referee.on_leave(
+                        endpoint.seat,
+                        time.monotonic() if now is None else now)
             log("session %s leave %s seat %s (%s)"
                 % (endpoint.code, short_addr(endpoint.addr), endpoint.seat,
                    why))
@@ -1046,16 +1272,19 @@ class RelayProtocol(asyncio.DatagramProtocol):
     def _drop_if_empty(self, session):
         if session.size() == 0 and self.sessions.get(session.code) is session:
             del self.sessions[session.code]
+            if self.arenas.get(session.code) is session:
+                del self.arenas[session.code]
             log("session %s expire" % session.code)
 
     def sweep(self, now):
         for addr, endpoint in list(self.endpoints.items()):
             idle = self.idle_s
-            if endpoint.role == ROLE_MEMBER and endpoint.version == PROTO_V2:
+            if (endpoint.role in (ROLE_MEMBER, ROLE_ARENA)
+                    and endpoint.version == PROTO_V2):
                 idle = self.hub_idle_s
             if (now - endpoint.last_seen) > idle:
                 self.n_expired += 1
-                self._detach(endpoint, "idle")
+                self._detach(endpoint, "idle", now)
         for addr, caps in list(self.kind_caps.items()):
             if addr in self.endpoints:
                 continue
@@ -1099,7 +1328,19 @@ class RelayProtocol(asyncio.DatagramProtocol):
         kinds = " ".join("%s=%d/%d/%d" % ((tag.decode("ascii"),)
                                           + tuple(self.kstats[tag]))
                          for tag in KIND_ORDER)
-        return "%s %s %s" % (head, drops, kinds)
+        return "%s %s %s%s" % (head, drops, kinds, self.stats_arena())
+
+    def stats_arena(self):
+        """The arena tail: sessions, referee sends, drops by reason, and per
+        arena kind rx/fwd/drop."""
+        # One token each, spelled so no star / hub counter name ("drop_x=",
+        # "SYNP=") appears inside them: log readers grep for those.
+        drops = ",".join("%s:%d" % (r, self.a_drop[r]) for r in ARENA_DROPS)
+        kinds = ",".join("%s:%d/%d/%d" % ((tag.decode("ascii"),)
+                                          + tuple(self.akstats[tag]))
+                         for tag in ARENA_ORDER)
+        return " arenas=%d ref_tx=%d arena_drops=%s arena_kinds=%s" % (
+            len(self.arenas), self.n_ref_tx, drops, kinds)
 
 
 # ------------------------------------------------------------------- entry
@@ -1189,7 +1430,24 @@ async def run():
             % RATE_PPS)
     log(protocol.stats_line())
 
+    log("arena: referee %s tick=%.0fms kick=%s"
+        % ("loaded" if referee is not None else "MISSING (arena off)",
+           REFEREE_TICK_S * 1000,
+           "on" if REFEREE_KICK else "off"))
+
     stop = asyncio.Event()
+
+    async def referee_clock():
+        # Only arena sessions do anything here; without one a tick is a
+        # loop over an empty dict.
+        while not stop.is_set():
+            await asyncio.sleep(REFEREE_TICK_S)
+            try:
+                protocol.tick(time.monotonic())
+            except Exception as exc:     # never let one session stop the clock
+                log("referee tick error: %s: %s" % (type(exc).__name__, exc))
+
+    clock_task = loop.create_task(referee_clock())
     try:
         import signal
         for signame in ("SIGTERM", "SIGINT"):
@@ -1212,6 +1470,7 @@ async def run():
                 last_stats = now
                 log(protocol.stats_line())
     finally:
+        clock_task.cancel()
         log(protocol.stats_line())
         log("relay stopping")
         transport.close()
