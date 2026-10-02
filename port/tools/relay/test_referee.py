@@ -180,6 +180,7 @@ class Console(object):
         self.got = []           # every datagram received
         self.events = []        # applied stream events, in order
         self.snap = []          # snapshot records
+        self.direct = []        # directed records (DENY / ACCEPTED)
         self.applied = 0
         self.last_pong_ref = 0
         self.last_pong_at = None
@@ -222,6 +223,11 @@ class Console(object):
                 if idx == cnt - 1:
                     self.applied = h["newest"]
                 return
+            for e in h["events"]:
+                if e["seq"] == 0 and h["flags"] & 0x02:
+                    self.direct.append(e)
+                    if e not in self.events:
+                        self.events.append(e)
             for e in sorted(h["events"], key=lambda e: e["seq"]):
                 if e["seq"] == ((self.applied % 0xFFFF) + 1):
                     self.events.append(e)
@@ -557,6 +563,12 @@ def u_match(mod):
               [e["seq"] for e in b.find("MATCH_OVER")] ==
               [e["seq"] for e in over], "same MATCH_OVER on both")
     res.check(ref.state == 3, "OVER")
+    res.check(all(e["seat"] == a.seat for e in a.direct)
+              and all(e["seat"] == b.seat for e in b.direct),
+              "DENY / ACCEPTED reach their claimant only")
+    res.check(not [e for e in a.events + b.events
+                   if e["name"] in ("DENY", "ACCEPTED") and e["seq"]],
+              "and never ride the shared stream")
     late = a.claim(CL["GRAB"], 99)
     streaming(rig, [a, b], 0.2)
     res.check(a.verdict(late)["b"] == DENY["STALE"], "claims after: STALE")
@@ -812,9 +824,11 @@ def u_reliability(mod):
     streaming(rig, [a, b], 0.3)
     v = [e for e in a.events if e["seat"] == a.seat and e["c"] == cid]
     res.check(len(v) == 1, "one verdict for a resent claim")
-    # resend after the verdict left the window: directed resend
+    # resend after the verdict left the window: directed resend (ten
+    # stream events push it out; DENY / ACCEPTED are directed, not stream)
     for i in range(10):
         a.claim(CL["PIT"], 0xFF)
+        ref._emit(ref.EV_JOIN if hasattr(ref, "EV_JOIN") else 11, 0xFF)
     streaming(rig, [a, b], 0.2)
     n0 = len(a.got)
     a.claim(CL["MARKER_BREAK"], inst, cid=cid)
@@ -829,7 +843,7 @@ def u_reliability(mod):
     real = b.receive
     b.receive = lambda d: None   # deaf for a while
     for i in range(12):
-        a.claim(CL["PIT"], 0xFF)
+        ref._emit(11, 0xFF)     # stream events while b is deaf
     streaming(rig, [a, b], 0.3)
     b.receive = real
     b.applied = b_applied
@@ -1175,16 +1189,27 @@ def run_fuzz(mod, rounds=150000, seed=1):
     rng = random.Random(seed)
     rig = Rig(mod)
     viol = []
-    cons = [Console(rig, "FUZZ0001") for _ in range(4)]
+    cons = [Console(rig, "FUZZ0001") for _ in range(4)]       # honest
+    attackers = [Console(rig, "FUZZ0001") for _ in range(2)]  # seated, hostile
     hub = [rig.addr() for _ in range(2)]
     for h in hub:
         rig.relay.on_datagram(hello("FUZZHUB1", 2), h, rig.now)
     rig.wire.sent = []
     streaming(rig, cons, 0.6)
-    for c in cons:
-        c.ready(cap=4, time_s=60, first_to_n=0)
-    streaming(rig, cons, 3.5)
     ref = rig.ref("FUZZ0001")
+    # Instrument the referee: every event it ever makes, for the ledger
+    # conservation and one-winner checks below.
+    log = []
+    real_emit = ref._emit
+
+    def emit(etype, seat, a=0, b=0, c=0, d=0, e=0, t=0, x=0, y=0, z=0):
+        log.append((etype, seat, a, b, c, d, e))
+        return real_emit(etype, seat, a, b, c, d, e, t, x, y, z)
+    ref._emit = emit
+    digest = [100]
+    for c in cons:
+        c.ready(cap=4, time_s=60, first_to_n=0, digest=digest[0])
+    streaming(rig, cons, 3.5)
     strangers = [rig.addr() for _ in range(8)]
     templates = []
     for c in cons:
@@ -1199,7 +1224,7 @@ def run_fuzz(mod, rounds=150000, seed=1):
         b"SYNI" + bytes(28), b"SYNT" + bytes(20), b"SYNV" + bytes(172),
         b"SYNG" + bytes(40), hello("FUZZ0001", 3), hello("FUZZ0001", 3, 99),
     ]
-    arena_addrs = set(c.addr for c in cons)
+    arena_addrs = set(c.addr for c in cons + attackers)
     fwd_ok = {}
     for tag, (route, kind) in mod.ARENA_KINDS.items():
         fwd_ok[tag] = (kind.exact, route)
@@ -1213,8 +1238,26 @@ def run_fuzz(mod, rounds=150000, seed=1):
             if c.seat is not None:
                 c.pos[0] += rng.uniform(-20, 20)
                 c.syns()
+        if r < 0.06:
+            # a well-formed claim with random fields from a console (the
+            # referee's logic, not just its parser)
+            c = rng.choice(cons)
+            if c.seat is not None:
+                kind = (rng.choice([2, 2, 3, 3, 3, 4, 4, 5, 6, 8, 9, 10, 11])
+                        if rng.random() > 0.003 else 7)
+                tgt = rng.choice([rng.randrange(0, 20),
+                                  rng.choice(cons).seat or 0])
+                c.claim(kind, tgt, aux=rng.randrange(65536),
+                        stamp=(ref.ref_ms(rig.now)
+                               - rng.randrange(-50, 400)) & 0xFFFFFFFF,
+                        frame=max(0, c.frame - rng.randrange(0, 20)),
+                        ref_frame=max(0, rng.choice(cons).frame
+                                      - rng.randrange(0, 20)))
+                c.state = rng.choice([14, 15, 59, 62, 3, 7, 35, 18])
+                c.invuln = rng.choice([0, 0, 0, 10])
+            continue
         if r < 0.75:
-            src = rng.choice(cons).addr if rng.random() < 0.9 else \
+            src = rng.choice(attackers).addr if rng.random() < 0.8 else \
                 rng.choice(strangers + hub)
             d = bytearray(rng.choice(templates))
             for _ in range(rng.choice([0, 1, 2, 4, 8])):
@@ -1228,7 +1271,7 @@ def run_fuzz(mod, rounds=150000, seed=1):
                                for _ in range(rng.randrange(8)))
             d = bytes(d)
         else:
-            src = rng.choice(list(arena_addrs) + strangers)
+            src = rng.choice([x.addr for x in attackers] + strangers)
             d = bytes(rng.randrange(256) for _ in range(rng.choice(
                 [rng.randrange(0, 300), 16, 20, 24, 32, 48, 272])))
         seated_before = dict((a, rig.relay.endpoints.get(a))
@@ -1284,6 +1327,14 @@ def run_fuzz(mod, rounds=150000, seed=1):
             bad = sess.referee.invariants()
             if bad:
                 viol.append("invariants: %s" % bad)
+            # a match that ended (or never started) is replaced by a fresh
+            # one, so the fuzz keeps exercising a RUNNING referee
+            if sess.referee.state in (0, 3):
+                digest[0] += 1
+                for c in cons:
+                    if c.seat is not None:
+                        c.ready(cap=4, time_s=60, digest=digest[0])
+                rig.deliver()
         if len(viol) > 20:
             break
         # keep the consoles alive (keepalive + pings) so the match runs on
@@ -1294,6 +1345,47 @@ def run_fuzz(mod, rounds=150000, seed=1):
                                       c.addr, rig.now)
                 c.ping()
             rig.deliver()
+    # ledger conservation and one winner per match, from the event log
+    matches = 0
+    overs = 0
+    score = {}
+    taken = set()
+    starts = 0
+    for etype, seat, a_, b_, c_, d_, e_ in log:
+        if etype == 1:                      # START: a new match
+            starts += 1
+            if score and any(v < 0 for v in score.values()):
+                viol.append("negative running score")
+            score = {}
+            taken = set()
+            overs = 0
+            matches += 1
+        elif etype == 4:                    # STAR_TAKEN
+            score[seat] = score.get(seat, 0) + 1
+            if b_ != score[seat] and b_ != 127:
+                viol.append("STAR_TAKEN score %d != ledger %d" % (b_,
+                                                                  score[seat]))
+            key = (a_, len(taken))
+            taken.add(key)
+        elif etype == 8 and seat != 0xFF:   # SPILL
+            score[seat] = score.get(seat, 0) - 1
+            if d_ != score[seat]:
+                viol.append("SPILL new score %d != ledger %d" % (d_,
+                                                                 score[seat]))
+        elif etype == 11 and a_ == 1:       # JOIN mid-match: starts at 0
+            if score.get(seat, 0) != 0:
+                viol.append("JOIN with a nonzero running score")
+        elif etype == 9:
+            overs += 1
+            if overs > 1:
+                viol.append("two MATCH_OVER in one match")
+    res.note("matches %d, events %d, claims decided %d, STAR_TAKEN %d, "
+             "SPILL %d, HIT %d, DENY %d" % (
+                 matches, len(log), ref.n_verdicts,
+                 sum(1 for e in log if e[0] == 4),
+                 sum(1 for e in log if e[0] == 8),
+                 sum(1 for e in log if e[0] == 6),
+                 sum(1 for e in log if e[0] == 5)))
     res.check(not viol, "0 violations (%d): %s" % (len(viol), viol[:5]))
     res.note("referee: %s; relay arena drops %s" % (
         rig.ref("FUZZ0001").stats() if rig.session("FUZZ0001") else "-",

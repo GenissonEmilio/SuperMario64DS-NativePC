@@ -259,8 +259,9 @@ EVENTS = [
                          "The breaker's console launches the star (SYNO)"),
     (4, "STAR_TAKEN", "seat winner; a instance; b winner's new score; c claim "
                       "id; e progress after; t stamp; xyz winner position"),
-    (5, "DENY", "seat claimant; a claim kind; b reason (DENY_*); c claim id; "
-                "d winner seat when LOST else 0xFF; e target echo; t now"),
+    (5, "DENY", "DIRECTED to the claimant only (seq 0, flag directed): seat "
+                "claimant; a claim kind; b reason (DENY_*); c claim id; d "
+                "winner seat when LOST else 0xFF; e target echo; t now"),
     (6, "HIT", "seat victim; a attacker; b 0 hit / 1 trade; c attacker's "
                "claim id; d aux (hitFlags >> 5); e spilled instance (0 none); "
                "t stamp; xyz attacker position (Fix12) for Player::Hurt"),
@@ -277,9 +278,9 @@ EVENTS = [
     (12, "STAR_STATE", "SNAPSHOT ONLY (seq 0): seat 0xFF; a instance; b "
                        "state 1 waking / 2 free; c marker; d star id; t since; "
                        "xyz last known position"),
-    (13, "ACCEPTED", "seat claimant; a claim kind; c claim id; d spilled "
-                     "instance or 0; t now (READY, HURT_SELF, PIT, QUIT, SPIT, "
-                     "SWALLOW, ESCAPE)"),
+    (13, "ACCEPTED", "DIRECTED to the claimant only (seq 0, flag directed): "
+                     "seat claimant; a claim kind; c claim id; d spilled "
+                     "instance or 0; t now (READY, HURT_SELF, PIT, QUIT)"),
     (14, "EATEN", "PROVISIONAL (A5): seat victim; a eater; c claim id; t "
                   "stamp; xyz eater position"),
     (15, "RELEASED", "PROVISIONAL (A5): seat victim; a eater; b 1 spit 2 "
@@ -420,14 +421,22 @@ RULES = [
     "MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, ACCEPTED or "
     "DENY. A resend "
     "after the verdict gets that same event again (directed if it left the "
-    "8-event window). Resend a claim every CLAIM_RESEND_MS until named; no "
+    "8-event window). DENY and ACCEPTED are directed records (seq 0) to the "
+    "claimant alone, never in the stream; the others are stream events "
+    "everyone hears. Resend a claim every CLAIM_RESEND_MS until named; no "
     "verdict in VERDICT_TIMEOUT_MS = treat as denied.",
+    "The claimant of an event: its seat for DENY, ACCEPTED, STAR_TAKEN and "
+    "MARKER_BROKEN; its field a for HIT, CLASH and EATEN (seat = the "
+    "victim); seat or a for RELEASED (escape: the victim; spit / swallow: "
+    "the eater).",
     "Every SYNR carries the 8 newest events (newest first). It goes out at "
     "once when events are made and as a HEARTBEAT_HZ heartbeat. Apply events "
     "in seq order exactly once and report the newest applied in SYNS.ack; a "
-    "seat whose ack trails a missed window for SNAPSHOT_LAG_MS gets a "
+    "seat whose ack trails past the window gets the missed events again "
+    "(directed, flag resend) while the referee still holds them, else a "
     "SNAPSHOT (directed SYNR parts, flag snapshot: START replay + STAR_STATE "
-    "records, seq 0); after the last part set applied = header newest_seq.",
+    "records + MATCH_OVER if over, seq 0); after the last part set applied = "
+    "header newest_seq.",
     "Every collect (order star or spilled star) advances progress p; the "
     "referee then wakes VS_STAR_SPAWN_ORDERS[row][p] as a new instance "
     "(STAR_WAKE), the ROM's own rule with the referee's row.",

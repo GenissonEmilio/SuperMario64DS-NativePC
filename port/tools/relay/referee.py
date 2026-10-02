@@ -921,22 +921,31 @@ class Referee(object):
             s.done.pop(s.done_order.popleft(), None)
         self.n_verdicts += 1
 
+    # DENY and ACCEPTED concern the claimant alone, so they are DIRECTED
+    # records (seq 0) sent to it only, never part of the stream every seat
+    # hears: a seat spamming bad claims cannot crowd the other seats' event
+    # window or bandwidth. A resend of the claim gets the same record again.
+
+    def _direct(self, c, rec, rt):
+        self._record(c, (0, rec))
+        self._tx(c.seat, self._frame(rt, [rec], RF_DIRECTED))
+
     def _deny(self, c, reason, rt, winner=0xFF):
-        ev = self._emit(EV_DENY, c.seat, c.kind, reason, c.cid, winner,
-                        c.target, int(rt))
-        self._record(c, ev)
+        rec = self._snap_record(EV_DENY, c.seat, c.kind, reason, c.cid,
+                                winner, c.target, int(rt))
+        self._direct(c, rec, rt)
         s = self.seats.get(c.seat)
         if s is not None:
             s.pending_ids.discard(c.cid)
 
     def _accept(self, c, rt, spilled=0):
-        ev = self._emit(EV_ACCEPTED, c.seat, c.kind, 0, c.cid, spilled, 0,
-                        int(rt))
-        self._record(c, ev)
+        rec = self._snap_record(EV_ACCEPTED, c.seat, c.kind, 0, c.cid,
+                                spilled, 0, int(rt))
+        self._direct(c, rec, rt)
 
     def _resend_verdict(self, seat, done, rt):
         seq, rec = done
-        if any(q == seq for q, r in list(self.events)[-SYNR_EVENTS:]):
+        if seq and any(q == seq for q, r in list(self.events)[-SYNR_EVENTS:]):
             return      # still in the window every SYNR carries
         self._tx(seat, self._frame(rt, [rec], RF_DIRECTED | RF_RESEND))
 

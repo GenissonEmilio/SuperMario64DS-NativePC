@@ -1051,7 +1051,7 @@
   {
    "id": 5,
    "name": "DENY",
-   "fields": "seat claimant; a claim kind; b reason (DENY_*); c claim id; d winner seat when LOST else 0xFF; e target echo; t now"
+   "fields": "DIRECTED to the claimant only (seq 0, flag directed): seat claimant; a claim kind; b reason (DENY_*); c claim id; d winner seat when LOST else 0xFF; e target echo; t now"
   },
   {
    "id": 6,
@@ -1091,7 +1091,7 @@
   {
    "id": 13,
    "name": "ACCEPTED",
-   "fields": "seat claimant; a claim kind; c claim id; d spilled instance or 0; t now (READY, HURT_SELF, PIT, QUIT, SPIT, SWALLOW, ESCAPE)"
+   "fields": "DIRECTED to the claimant only (seq 0, flag directed): seat claimant; a claim kind; c claim id; d spilled instance or 0; t now (READY, HURT_SELF, PIT, QUIT)"
   },
   {
    "id": 14,
@@ -1459,8 +1459,9 @@
  "rules": [
   "Claims are decided in STAMP order once referee time passes stamp + H, H = the largest back-dating cap among the other seats in the match (<= HOLD_MAX_MS). Exact stamp ties: fewer stars first, then the match seed's seat order.",
   "A stamp is clamped into [arrival - cap, arrival] (cap = min(HOLD_MAX_MS, rtt_min/2 + CAP_MARGIN_MS); CAP_UNKNOWN_MS before any clock ping); clamps are counted per seat.",
-  "Every claim (seat, claim_id) gets exactly one terminal event naming it: MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, ACCEPTED or DENY. A resend after the verdict gets that same event again (directed if it left the 8-event window). Resend a claim every CLAIM_RESEND_MS until named; no verdict in VERDICT_TIMEOUT_MS = treat as denied.",
-  "Every SYNR carries the 8 newest events (newest first). It goes out at once when events are made and as a HEARTBEAT_HZ heartbeat. Apply events in seq order exactly once and report the newest applied in SYNS.ack; a seat whose ack trails a missed window for SNAPSHOT_LAG_MS gets a SNAPSHOT (directed SYNR parts, flag snapshot: START replay + STAR_STATE records, seq 0); after the last part set applied = header newest_seq.",
+  "Every claim (seat, claim_id) gets exactly one terminal event naming it: MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, ACCEPTED or DENY. A resend after the verdict gets that same event again (directed if it left the 8-event window). DENY and ACCEPTED are directed records (seq 0) to the claimant alone, never in the stream; the others are stream events everyone hears. Resend a claim every CLAIM_RESEND_MS until named; no verdict in VERDICT_TIMEOUT_MS = treat as denied.",
+  "The claimant of an event: its seat for DENY, ACCEPTED, STAR_TAKEN and MARKER_BROKEN; its field a for HIT, CLASH and EATEN (seat = the victim); seat or a for RELEASED (escape: the victim; spit / swallow: the eater).",
+  "Every SYNR carries the 8 newest events (newest first). It goes out at once when events are made and as a HEARTBEAT_HZ heartbeat. Apply events in seq order exactly once and report the newest applied in SYNS.ack; a seat whose ack trails past the window gets the missed events again (directed, flag resend) while the referee still holds them, else a SNAPSHOT (directed SYNR parts, flag snapshot: START replay + STAR_STATE records + MATCH_OVER if over, seq 0); after the last part set applied = header newest_seq.",
   "Every collect (order star or spilled star) advances progress p; the referee then wakes VS_STAR_SPAWN_ORDERS[row][p] as a new instance (STAR_WAKE), the ROM's own rule with the referee's row.",
   "The ledger (header scores) is the only score. HIT = victim -1 and a SPILL (if it had any); leave / QUIT = all of that seat's stars spill; HURT_SELF and PIT (aux bit0) spill one.",
   "MATCH_OVER only from the referee: first_to_n reached, referee time >= T0 + match_ms, one seat left of a match that had two or more, or everyone left. Winners = every seat on the top score.",
