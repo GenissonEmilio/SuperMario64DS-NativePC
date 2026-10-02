@@ -229,9 +229,14 @@ time of a pong the referee sent it, and the referee clock starts at a random
 point per session, so a sender with a forged source address cannot echo one.
 Until then the only thing the seat gets back is a pong the size of its ping.
 
-**Cost.** One more Python module on the box, a 10 ms clock that does nothing
-unless an arena session exists, and per state frame a fixed-size parse. The
-measured cost is in `out\REFEREE1\` (the CPU rows) of run mp1.
+**Cost.** One more Python module on the box, a 10 ms clock that runs only
+while an arena session exists, and per state frame a fixed-size parse.
+Measured on a local copy (a desktop PC shared with other work, so the
+numbers are noisy): a full 16-seat arena at 30 Hz delivered all 7200 copies
+a second with no drops for 17.6 to 18.3% of one core, against 5.4 to 10.7%
+for the same traffic as a plain hub on the same relay; with four voice
+talkers 37.8%; a 4-seat arena 0.2%. The live box is roughly half as fast
+per copy as that PC.
 
 **Phase A limits.** Classic mode only (king of the hill and Luigi rooms stay
 on lockstep); the eat claims are provisional; speed strikes are logged and
