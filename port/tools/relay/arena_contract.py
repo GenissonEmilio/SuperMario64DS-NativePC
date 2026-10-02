@@ -283,7 +283,8 @@ EVENTS = [
     (14, "EATEN", "PROVISIONAL (A5): seat victim; a eater; c claim id; t "
                   "stamp; xyz eater position"),
     (15, "RELEASED", "PROVISIONAL (A5): seat victim; a eater; b 1 spit 2 "
-                     "swallow 3 escape 4 leave; t now"),
+                     "swallow 3 escape 4 leave; c claim id (SPIT / SWALLOW / "
+                     "ESCAPE; 0 for a leave); t now"),
 ]
 
 DENY_REASONS = [
@@ -367,7 +368,12 @@ DISABLED_STATES = ["St_Hurt", "St_HurtWater", "St_Electrocute", "St_BurnFire",
                    "St_InYoshiMouth", "St_NoControl", "St_Squish",
                    "St_DizzyStars", "St_Respawn", "St_Thrown", "St_Grabbed"]
 # A victim mid punch / kick facing the attacker within 0x4000 clashes.
-CLASH_STATES = ["St_PunchKick", "St_SweepKick"]
+# func_ov002_020d853c tests St_PunchKick only (data_ov002_02110574 = index 59),
+# a punch-frame window from data_ov002_0210a5dc that phase A does not read (the
+# whole punch counts), and AngleDiff(Vec3_HorzAngle(victim, attacker), victim
+# yaw) < 0x4000; the referee takes the horizontal angle as atan2(dx, dz) in
+# 0x10000 units (A3: confirm against Vec3_HorzAngle).
+CLASH_STATES = ["St_PunchKick"]
 
 # Speed sanity (M2 envelope + 25%), horizontal units per frame. Phase A: the
 # referee LOGS strikes; kicking is phase B (STRIKES1).
@@ -411,7 +417,8 @@ RULES = [
     "rtt_min/2 + CAP_MARGIN_MS); CAP_UNKNOWN_MS before any clock ping); "
     "clamps are counted per seat.",
     "Every claim (seat, claim_id) gets exactly one terminal event naming it: "
-    "MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, ACCEPTED or DENY. A resend "
+    "MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, ACCEPTED or "
+    "DENY. A resend "
     "after the verdict gets that same event again (directed if it left the "
     "8-event window). Resend a claim every CLAIM_RESEND_MS until named; no "
     "verdict in VERDICT_TIMEOUT_MS = treat as denied.",
@@ -430,6 +437,8 @@ RULES = [
     "MATCH_OVER only from the referee: first_to_n reached, referee time >= T0 "
     "+ match_ms, one seat left of a match that had two or more, or everyone "
     "left. Winners = every seat on the top score.",
+    "A seat the referee dropped from the match (LEAVE naming itself) must send "
+    "READY again to come back (JOIN mid-match, score 0, SNAPSHOT).",
     "Phase A: classic mode only (READY mode != 0 is DENY UNSUPPORTED); EAT / "
     "SPIT / SWALLOW / ESCAPE are provisional for A5; speed strikes are logged, "
     "not kicked.",

@@ -1101,7 +1101,7 @@
   {
    "id": 15,
    "name": "RELEASED",
-   "fields": "PROVISIONAL (A5): seat victim; a eater; b 1 spit 2 swallow 3 escape 4 leave; t now"
+   "fields": "PROVISIONAL (A5): seat victim; a eater; b 1 spit 2 swallow 3 escape 4 leave; c claim id (SPIT / SWALLOW / ESCAPE; 0 for a leave); t now"
   }
  ],
  "deny_reasons": [
@@ -1316,8 +1316,7 @@
   "St_Grabbed"
  ],
  "clash_states": [
-  "St_PunchKick",
-  "St_SweepKick"
+  "St_PunchKick"
  ],
  "speed_classes": {
   "walk": {
@@ -1460,11 +1459,12 @@
  "rules": [
   "Claims are decided in STAMP order once referee time passes stamp + H, H = the largest back-dating cap among the other seats in the match (<= HOLD_MAX_MS). Exact stamp ties: fewer stars first, then the match seed's seat order.",
   "A stamp is clamped into [arrival - cap, arrival] (cap = min(HOLD_MAX_MS, rtt_min/2 + CAP_MARGIN_MS); CAP_UNKNOWN_MS before any clock ping); clamps are counted per seat.",
-  "Every claim (seat, claim_id) gets exactly one terminal event naming it: MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, ACCEPTED or DENY. A resend after the verdict gets that same event again (directed if it left the 8-event window). Resend a claim every CLAIM_RESEND_MS until named; no verdict in VERDICT_TIMEOUT_MS = treat as denied.",
+  "Every claim (seat, claim_id) gets exactly one terminal event naming it: MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, ACCEPTED or DENY. A resend after the verdict gets that same event again (directed if it left the 8-event window). Resend a claim every CLAIM_RESEND_MS until named; no verdict in VERDICT_TIMEOUT_MS = treat as denied.",
   "Every SYNR carries the 8 newest events (newest first). It goes out at once when events are made and as a HEARTBEAT_HZ heartbeat. Apply events in seq order exactly once and report the newest applied in SYNS.ack; a seat whose ack trails a missed window for SNAPSHOT_LAG_MS gets a SNAPSHOT (directed SYNR parts, flag snapshot: START replay + STAR_STATE records, seq 0); after the last part set applied = header newest_seq.",
   "Every collect (order star or spilled star) advances progress p; the referee then wakes VS_STAR_SPAWN_ORDERS[row][p] as a new instance (STAR_WAKE), the ROM's own rule with the referee's row.",
   "The ledger (header scores) is the only score. HIT = victim -1 and a SPILL (if it had any); leave / QUIT = all of that seat's stars spill; HURT_SELF and PIT (aux bit0) spill one.",
   "MATCH_OVER only from the referee: first_to_n reached, referee time >= T0 + match_ms, one seat left of a match that had two or more, or everyone left. Winners = every seat on the top score.",
+  "A seat the referee dropped from the match (LEAVE naming itself) must send READY again to come back (JOIN mid-match, score 0, SNAPSHOT).",
   "Phase A: classic mode only (READY mode != 0 is DENY UNSUPPORTED); EAT / SPIT / SWALLOW / ESCAPE are provisional for A5; speed strikes are logged, not kicked."
  ]
 }
