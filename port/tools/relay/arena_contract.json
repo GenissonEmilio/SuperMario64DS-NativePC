@@ -1458,6 +1458,7 @@
   ]
  ],
  "rules": [
+  "The referee sends a seat nothing, and counts no claim from it, until the seat's clock ping (SYNP 20) echoes the exact t_ref of a referee pong it received (echo_ref) with held_ms = how long it held that pong. Ping at 2 Hz from the moment the seat is paired; the second ping verifies it.",
   "Claims are decided in STAMP order once referee time passes stamp + H, H = the largest back-dating cap among the other seats in the match (<= HOLD_MAX_MS). Exact stamp ties: fewer stars first, then the match seed's seat order.",
   "A stamp is clamped into [arrival - cap, arrival] (cap = min(HOLD_MAX_MS, rtt_min/2 + CAP_MARGIN_MS); CAP_UNKNOWN_MS before any clock ping); clamps are counted per seat.",
   "Every claim (seat, claim_id) gets exactly one terminal event naming it: MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, ACCEPTED or DENY. A resend after the verdict gets that same event again (directed if it left the 8-event window). DENY and ACCEPTED are directed records (seq 0) to the claimant alone, never in the stream; the others are stream events everyone hears. Resend a claim every CLAIM_RESEND_MS until named; no verdict in VERDICT_TIMEOUT_MS = treat as denied.",

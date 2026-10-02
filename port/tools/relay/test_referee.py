@@ -423,6 +423,11 @@ def u_handshake(mod):
               "guessed echoes never verify")
     res.check(all(len(d) in (16, 20) for d in b.got), "unverified: only ACK "
               "and pongs")
+    ref = rig.ref("ARENA02")
+    n0 = ref.n_claims
+    b.ready(cap=2)
+    res.check(ref.n_claims == n0 and not ref.seats[b.seat].ready,
+              "an unverified seat's claims do not count")
     # wrong kinds
     rig.send(rig.addr(), hello("HUBCODE1", 2))
     x = Console(rig, "HUBCODE1", ping=False)

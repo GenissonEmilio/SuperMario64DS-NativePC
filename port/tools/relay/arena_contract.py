@@ -410,6 +410,11 @@ STAR_ORDERS = [
 ]
 
 RULES = [
+    "The referee sends a seat nothing, and counts no claim from it, until "
+    "the seat's clock ping (SYNP 20) echoes the exact t_ref of a referee "
+    "pong it received (echo_ref) with held_ms = how long it held that pong. "
+    "Ping at 2 Hz from the moment the seat is paired; the second ping "
+    "verifies it.",
     "Claims are decided in STAMP order once referee time passes stamp + H, H = "
     "the largest back-dating cap among the other seats in the match (<= "
     "HOLD_MAX_MS). Exact stamp ties: fewer stars first, then the match seed's "

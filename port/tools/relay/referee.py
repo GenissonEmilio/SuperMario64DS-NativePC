@@ -682,6 +682,11 @@ class Referee(object):
             return
         kind, target, cid, aux, stamp, frame, ref_frame = (
             f[3], f[4], f[5], f[6], f[7], f[8], f[9])
+        if not s.verified:
+            # Not yet proven to receive at its address (see NO AMPLIFIER):
+            # nothing it claims counts. A real console verifies within one
+            # ping interval and keeps resending its claim until named.
+            return
         if kind not in CLAIM_NAMES or cid == 0:
             self._strike(seat, "bad claim", rt)
             return
@@ -797,7 +802,7 @@ class Referee(object):
                     return
 
     def _hit_checks(self, rt):
-        for s in self.seats.values():
+        for s in list(self.seats.values()):     # a kick may drop a seat
             if s.hit_check is None or rt < s.hit_check[0]:
                 continue
             verdict_rt = s.hit_check[1]
