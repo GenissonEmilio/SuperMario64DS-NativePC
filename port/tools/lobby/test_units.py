@@ -4030,6 +4030,136 @@ def test_arena_params():
               S.ROOMS[h["room"]].netmode == "lockstep")
 
 
+def test_arena_has_no_host_in_the_match():
+    print("\n-- arena: the host leaving or failing does not end the match")
+    # (1) the host leaves an arena match: left, host; the match runs on.
+    for state in ("go", "in_match"):
+        reset()
+        with game_max(4, seats=4), arena():
+            code, room, toks, match = _running(3, state=state)
+            st, j = join(code, "late", who="10.0.0.9", now=1010.0, pre_ok=True)
+            n_ev = len(room.events)
+            S.do_leave({"v": 5, "room": code, "token": toks[0]},
+                       "10.0.0.1", 1011.0)
+            kinds = [e["kind"] for e in room.events[n_ev:]]
+            check("[%s] events: left, host (no failed)" % state,
+                  kinds == ["left", "host"]
+                  and room.events[-1]["seat"] == 2, room.events[n_ev:])
+            check("[%s] the match runs on, same id and code" % state,
+                  room.state == state and room.match == match
+                  and room.comms_code is not None, (room.state, room.match))
+            check("[%s] the new host is seat 2, which played it" % state,
+                  room.host_seat == 2 and S.in_frozen_match(room, 2))
+            check("[%s] the waiting joiner is still waiting" % state,
+                  room.members[j["member"]].playing is False)
+            check("[%s] a re-sent plan keeps the roles: seat 2 is still the "
+                  "child in slot 1" % state,
+                  S.member_plan(room, 2)["role"] == "child"
+                  and S.member_plan(room, 2)["slot"] == 1,
+                  S.member_plan(room, 2))
+            st, r = _result(code, toks[2], match, who="10.0.0.3")
+            check("[%s] a guest's result is a vote (1 of 2 live)" % state,
+                  st == 200 and room.state == state, (st, r, room.state))
+            st, r = _result(code, toks[1], match, who="10.0.0.2")
+            check("[%s] the new host's result ends it" % state,
+                  st == 200 and room.state == "lobby"
+                  and room.events[-1]["kind"] == "result", room.events[-1])
+            check("[%s] then the joiner plays the next match" % state,
+                  room.members[j["member"]].playing is True)
+    # (2) the new host had already voted: the hand-over settles it.
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(3)
+        _result(code, toks[1], match, who="10.0.0.2")
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1011.0)
+        check("a host leaving after seat 2 voted: seat 2 is host, its "
+              "result ends the match", room.state == "lobby"
+              and [e["kind"] for e in room.events[-3:]]
+              == ["left", "host", "result"], room.events[-3:])
+    # (3) arming still ends it (nothing has spawned; the plan is remade).
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(3, state="arming")
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1011.0)
+        check("during arming the host leaving ends it as before (failed "
+              "host_left)", room.state == "lobby"
+              and any(e["kind"] == "failed" and e["reason"] == "host_left"
+                      for e in room.events[-3:]), room.events[-3:])
+    # (4) fewer than 2 left still ends an arena match.
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(2)
+        S.do_failed({"v": 5, "room": code, "token": toks[1], "match": match,
+                     "reason": "user_cancelled"}, "10.0.0.2", 1005.0)
+        check("a 2P arena match whose guest quit ends (fewer than 2 left)",
+              room.state == "lobby", room.state)
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(2)
+        S.do_leave({"v": 5, "room": code, "token": toks[1]}, "10.0.0.2",
+                   1005.0)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1",
+                   1006.0)
+        check("a 2P arena match whose guest left, then the host left: the "
+              "room closes (last member out)", room.state == "closed",
+              room.state)
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(2)
+        st, j = join(code, "late", who="10.0.0.9", now=1004.0, pre_ok=True)
+        S.do_leave({"v": 5, "room": code, "token": toks[1]}, "10.0.0.2",
+                   1005.0)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1",
+                   1006.0)
+        check("both players gone with a waiting joiner left: the match ends "
+              "(failed host_left) and the joiner is host",
+              room.state == "lobby" and room.host_seat == j["member"]
+              and any(e["kind"] == "failed" and e["reason"] == "host_left"
+                      for e in room.events[-3:]), (room.state,
+                                                   room.events[-3:]))
+    # (5) the host's failed drops only the host.
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(3)
+        st, f = S.do_failed({"v": 5, "room": code, "token": toks[0],
+                             "match": match, "reason": "user_cancelled"},
+                            "10.0.0.1", 1005.0)
+        ev = room.events[-1]
+        check("an arena host's failed drops only the host",
+              st == 200 and room.state == "in_match"
+              and (ev["kind"], ev["seat"], ev["reason"])
+              == ("dropped", 1, "user_cancelled")
+              and room.members[1].playing is False, (room.state, ev))
+        check("and the host keeps the room's host role", room.host_seat == 1)
+        st, r = _result(code, toks[0], match)
+        check("the dropped host cannot post a result (403 not_playing)",
+              st == 403 and r["error"] == "not_playing", (st, r))
+        _result(code, toks[1], match, who="10.0.0.2")
+        st, r = _result(code, toks[2], match, who="10.0.0.3")
+        check("the two left playing end it by a majority",
+              room.state == "lobby" and room.events[-1]["kind"] == "result",
+              room.events[-1])
+        check("and the host is playing again for the next match",
+              room.members[1].playing is True)
+    # (6) the SAME events in a lockstep match are unchanged.
+    reset()
+    with game_max(4, seats=4), arena(ids=()):
+        code, room, toks, match = _running(3)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1011.0)
+        check("lockstep: the host leaving still ends the match (failed "
+              "host_left)", room.state == "lobby"
+              and [e["kind"] for e in room.events[-3:]]
+              == ["left", "failed", "host"], room.events[-3:])
+    reset()
+    with game_max(4, seats=4), arena(ids=()):
+        code, room, toks, match = _running(3)
+        S.do_failed({"v": 5, "room": code, "token": toks[0], "match": match,
+                     "reason": "user_cancelled"}, "10.0.0.1", 1005.0)
+        check("lockstep: the host's failed still ends the match",
+              room.state == "lobby" and room.events[-1]["kind"] == "failed",
+              room.events[-1])
+
+
 def main():
     test_grammar()
     test_addresses()
@@ -4094,6 +4224,7 @@ def main():
     test_arena_plan()
     test_arena_when()
     test_arena_params()
+    test_arena_has_no_host_in_the_match()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

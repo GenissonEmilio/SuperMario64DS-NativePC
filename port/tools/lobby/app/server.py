@@ -1988,8 +1988,10 @@ def pass_host(room, played=()):
     it: a watcher made host would be forced into play past the dial. The
     seat number does not change (free_seat's property 1); what changes is
     that the host is no longer always seat 1, which is why assign_slots puts
-    the host in slot 0 explicitly. Called in lobby only: a running match was
-    ended first (match_to_lobby), so the new host starts the next one."""
+    the host in slot 0 explicitly. Called in lobby, after a running match was
+    ended (match_to_lobby), so the new host starts the next one; or (run mp1
+    A4) during an ARENA match, with `played` = its live seats (never empty),
+    so the new host is a seat already playing it and nobody is promoted."""
     ps = [s for s in played if s in room.members] or playing_seats(room)
     new = ps[0] if ps else min(room.members)
     room.host_seat = new
@@ -2047,6 +2049,19 @@ def drop_member(room, seat, why):
         # it the dial has seated the waiting joiners too, and the host should
         # pass to somebody who played (REVLOBBYJOIN1 note B).
         played = sorted(s for s in room.slot_of if in_frozen_match(room, s))
+        if (room.match_netmode == "arena" and room.state in ("go", "in_match")
+                and played):
+            # AN ARENA MATCH HAS NO HOST IN IT (run mp1 A4). Its referee is
+            # on the relay and every console runs its own Yoshi, so the
+            # host's game leaving changes nothing for the others: the match
+            # runs on, the leaver is simply gone from it (its stars are the
+            # referee's to spill), and the host role passes now to the
+            # lowest seat still playing it. No failed host_left. The match
+            # still ends by results (the new host's, or a majority, or the
+            # host-silent rule) or MATCH_TIMEOUT_S.
+            pass_host(room, played)
+            settle_after_host_change(room)
+            return
         if room.state != "lobby":
             match_to_lobby(room, "host_left")
         else:
@@ -2267,7 +2282,13 @@ def member_plan(room, seat):
     if seat not in room.slot_of:
         return {"playing": False}
     slot = room.slot_of[seat]
-    role = "parent" if seat == room.host_seat else "child"
+    # "parent" is slot 0, which assign_slots gives the host at `start`. Read
+    # from the frozen slot rather than the live host seat (run mp1 A4): an
+    # arena match keeps running when its host leaves and the host role passes
+    # mid-match, and a plan re-sent during `go` must still name the same
+    # roles. In a lockstep match the host cannot change mid-match, so this is
+    # the same answer it always was.
+    role = "parent" if slot == 0 else "child"
     plan = {
         "role": role,
         "code": room.comms_code,
@@ -2445,6 +2466,19 @@ def host_silent_vote(room, now):
     if now - quiet_from < HOST_SILENT_S:
         return None
     return votes.pop()
+
+
+def settle_after_host_change(room):
+    """An arena match's host role just passed mid-match (run mp1 A4). If the
+    new host already posted a result for it, the host's result ends a match,
+    so it does now; otherwise the shrunk live roster may already be a
+    majority (maybe_settle)."""
+    if room.state in ("go", "in_match"):
+        v = room.result_votes.get(room.host_seat)
+        if v is not None and in_frozen_match(room, room.host_seat):
+            finish_match(room, v[0], v[1])
+            return
+    maybe_settle(room)
 
 
 def maybe_settle(room):
@@ -2665,9 +2699,12 @@ def do_failed(body, who, now):
         # one who failed and let the rest play on. The HOST is the parent of
         # the session, so its failure still ends the match; and a match that
         # drops below two players ends too.
-        if seat == room.host_seat:
+        if seat == room.host_seat and room.match_netmode != "arena":
             match_to_lobby(room, reason)
         else:
+            # (An ARENA match's host is dropped like anybody else, run mp1
+            # A4: nobody's game waits on the host's. The host keeps the
+            # room's host role; the match ends by the others' results.)
             m.playing = False
             m.armed = False
             room.push("dropped", seat=seat, reason=reason)
