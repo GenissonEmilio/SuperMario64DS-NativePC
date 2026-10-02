@@ -92,6 +92,8 @@ enum : int {
     kArenaPosLimit   = 32768,   // |x|,|y|,|z| <= 32768 units (Fix12 << 12)
     kArenaSeats      = 16,
     kArenaHeldObject = 0x20,    // held >= 0x20: a non-player object
+    kArenaInvulnMax  = 36,      // invuln is clamped here (the referee drops
+                                // a SYNS with more)
 };
 
 #pragma pack(push, 1)
@@ -115,10 +117,12 @@ struct ArenaState {
     unsigned char  state_idx;   // +36 0..77, the Player::State object in ov002
                                 //     bss order (0x0210ffec + idx*0x18): see
                                 //     out/ARENACORE1/state_table.json.
-                                //     0xFF = not one of the 78. OBSERVATION
-                                //     ONLY: a receiver never applies it.
+                                //     Senders never write 0xFF (the referee
+                                //     drops it): a body with no state object
+                                //     repeats its last. Receivers accept
+                                //     0xFF. OBSERVATION ONLY: never applied.
     unsigned char  state_step;  // +37 mStateStep +0x6e3
-    unsigned char  invuln;      // +38 mInvincibleTimer +0x6a0, clamped 255
+    unsigned char  invuln;      // +38 mInvincibleTimer +0x6a0, clamped 36
     unsigned char  power;       // +39 kArena* power bits
     unsigned char  held;        // +40 0 none; 1..16 = seat+1 in my mouth;
                                 //     kArenaHeldObject = something else
@@ -269,7 +273,7 @@ struct ArenaStats {
     unsigned long long holds, releases;
 };
 ArenaStats vs_arena_stats();
-void vs_arena_report(const char *tag);   // one "[arena] ..." line to stderr
+void vs_arena_report(const char *tag);   // one "[vsarena] ..." line to stderr
 
 }  // namespace port
 
