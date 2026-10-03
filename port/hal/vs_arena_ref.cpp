@@ -230,6 +230,8 @@ struct Ref {
     unsigned rig_next = 0;       // referee ms of the next scripted step
     int rig_press_frames = 0;
     int rig_inject = 0;
+    int rig_phase = 0;
+    unsigned chain_hit_at = 0;   // referee ms (my base)
 };
 Ref g;
 
@@ -636,6 +638,7 @@ void on_star_taken(const RefEvent &e) {
                  e.t);
     if (!i) return;
     i->state = 3;
+    if (g.rig == 3 && e.seat == 1) g.chain_hit_at = e.t + 3000u;
     if (i->holding) {
         if (e.seat == g.seat) { i->result = 1; }
         else { i->result = 2; i->winner = e.seat; }
@@ -700,6 +703,7 @@ void on_spill(const RefEvent &e) {
             if ((g.roster >> k & 1u) && k != e.seat) { owner = k; break; }
     }
     i->owner = (unsigned char)owner;
+    i->t_broken = e.t;               // the chain rig times the pick-up from it
     const int origin[3] = { e.x, e.y, e.z };
     char *s = spawn_spill_star(e.b, origin, e.seat);
     if (s) i->uid = actor_uid(s);
@@ -1362,11 +1366,12 @@ void rig_parse() {
     if (!e || !*e) return;
     if (std::strncmp(e, "race", 4) == 0) g.rig = 1;
     else if (std::strncmp(e, "hit", 3) == 0) g.rig = 2;
+    else if (std::strncmp(e, "chain", 5) == 0) g.rig = 3;
     const char *c = std::strchr(e, ':');
     if (c) g.rig_seed = (unsigned)std::strtoul(c + 1, nullptr, 10);
     if (g.rig)
         std::fprintf(stderr, "[rig] SM64DS_ARENA_RIG=%s: scripted %s rig, seed %u\n",
-                     e, g.rig == 1 ? "contention" : "hit", g.rig_seed);
+                     e, g.rig == 1 ? "contention" : g.rig == 2 ? "hit" : "chain", g.rig_seed);
 }
 
 void rig_press(int slot, unsigned short mask) {
@@ -1429,70 +1434,132 @@ void rig_race() {
     }
 }
 
+// the punch every hit step uses: stand `dist` units behind seat 1 (in z), face
+// it, press B for three frames; three frames after the press the pair pass's two
+// words are written onto seat 1's body cylinder (what the ROM's overlap test would
+// write when the attack touches), and the ordinary detection makes the claim
+void rig_punch_start(int dist_units) {
+    char *me = my_body();
+    char *vb = body_of(1);
+    if (!me || !vb) return;
+    int to[3] = { s32r(vb, 0x5c), s32r(vb, 0x60), s32r(vb, 0x64) - (dist_units << 12) };
+    rig_teleport(me, to);
+    s16r(me, 0x8e) = 0;               // facing +Z, toward the victim
+    s16r(me, 0x94) = 0;
+    g.rig_press_frames = 3;
+}
+
+void rig_punch_tick(bool inject_words) {
+    char *me = my_body();
+    if (g.rig_press_frames > 0) {
+        --g.rig_press_frames;
+        rig_press(g.seat, 0x0002);
+        if (g.rig_press_frames == 0 && inject_words) g.rig_inject = 3;
+    } else if (g.rig_inject > 0 && --g.rig_inject == 0) {
+        char *vb = body_of(1);
+        if (vb && me) {
+            u32r(vb, 0x2f4) = 0x40;
+            u32r(vb, 0x2f8) = actor_uid(me);
+            std::fprintf(stderr, "[rig] hit: the pair pass result written onto "
+                         "seat 1's body cylinder (flags 0x40)\n");
+        }
+    }
+}
+
+void rig_direct_hit_claim(const char *what) {
+    unsigned stamp;
+    if (!stamp_for(now_ms(), &stamp)) return;
+    PClaim *c = make_claim(CLAIM_HIT, 1, 0x40 >> 5, stamp, my_frame_now(), drawn_frame(1));
+    std::fprintf(stderr, "[rig] hit: %s claim sent (id %u)\n", what, c ? c->cid : 0u);
+}
+
+// hit rig: seat 0 hits seat 1, standing. phase 0 a valid punch; 1 a repeat claim
+// inside the hit immunity; 2 an attack from out of reach (a claim the referee
+// range-checks against both bodies' own reported positions); then again.
 void rig_hit() {
+    if (!g.started || g.over || g.seat > 1) return;
+    unsigned r;
+    if (!ref_now(&r)) return;
+    if (!my_body()) return;
+    if (g.rig_next == 0) g.rig_next = g.t0 + 6000u;
+    rig_punch_tick(true);
+    if (g.seat != 0 || (int)(r - g.rig_next) < 0) return;
+    if (g.rig_phase == 0) {
+        std::fprintf(stderr, "[rig] hit cycle %d: valid punch (B pressed, ref %u)\n", g.rig_n, r);
+        rig_punch_start(90);
+        g.rig_phase = 1;
+        g.rig_next = r + 450u;
+    } else if (g.rig_phase == 1) {
+        rig_direct_hit_claim("repeat (inside the hit immunity)");
+        g.rig_phase = 2;
+        g.rig_next = r + 3000u;
+    } else if (g.rig_phase == 2) {
+        std::fprintf(stderr, "[rig] hit cycle %d: out of reach (600 units, B pressed)\n", g.rig_n);
+        rig_punch_start(600);
+        g.rig_phase = 3;
+        g.rig_next = r + 300u;
+    } else {
+        rig_direct_hit_claim("out-of-reach");
+        g.rig_phase = 0;
+        g.rig_next = r + 2500u;
+        ++g.rig_n;
+    }
+}
+
+// chain rig: seat 1 collects each star, seat 0 punches it (the star spills), seat 0
+// collects the dropped star. Proves the grab, the hit verdict, the spill seam and
+// the grab of a spilled star end to end.
+void rig_chain() {
     if (!g.started || g.over || g.seat > 1) return;
     unsigned r;
     if (!ref_now(&r)) return;
     char *me = my_body();
     if (!me) return;
-    if (g.rig_next == 0) g.rig_next = g.t0 + 6000u;
-    if (g.rig_press_frames > 0) {
-        --g.rig_press_frames;
-        rig_press(g.seat, 0x0002);
-        if (g.rig_press_frames == 0) g.rig_inject = 3;
-    } else if (g.rig_inject > 0 && --g.rig_inject == 0) {
-        // the ROM's pair pass would write this onto the victim's body cylinder
-        // when the punch overlaps it; the rig writes the same two words (the
-        // overlap test itself is the ROM's and is not what this row proves)
-        char *vb2 = body_of(1);
-        if (vb2 && me) {
-            u32r(vb2, 0x2f4) = 0x40;
-            u32r(vb2, 0x2f8) = actor_uid(me);
-            std::fprintf(stderr, "[rig] hit: the pair pass result written onto "
-                         "seat 1's body cylinder (flags 0x40)\n");
+    rig_punch_tick(true);
+    for (int k = 1; k < kMaxInst; ++k) {
+        Inst &i = g.inst[k];
+        if (!i.used) continue;
+        if (i.state == 1 && g.seat == 0 && !i.rig_break_sent && !i.spilled &&
+            now_ms() - i.born_ms > 2000 && g.vs_frames > 120) {
+            unsigned stamp;
+            if (!stamp_for(now_ms(), &stamp)) continue;
+            PClaim *c = make_claim(CLAIM_MARKER_BREAK, (unsigned char)k,
+                                   (unsigned short)GetAngleToCamera(g.seat), stamp,
+                                   my_frame_now(), 0);
+            if (c) { c->inst = (unsigned char)k; i.rig_break_sent = true; }
+            std::fprintf(stderr, "[rig] seat 0 breaks the marker of inst %d\n", k);
+        }
+        // seat 1 collects the order star 3.5 s after its glass broke
+        if (i.state == 2 && !i.spilled && i.t_broken && !i.rig_race_done && g.seat == 1) {
+            char *s = star_by_uid(i.uid);
+            if (!s || (int)(r - (i.t_broken + 3500u)) < 0) continue;
+            const int to[3] = { s32r(s, 0x5c), s32r(s, 0x60), s32r(s, 0x64) };
+            rig_teleport(me, to);
+            i.rig_race_done = true;
+            std::fprintf(stderr, "[rig] chain: seat 1 goes to star inst %d (ref %u)\n", k, r);
+        }
+        // seat 0 collects a dropped star 4.5 s after the spill
+        if (i.state == 2 && i.spilled && !i.rig_race_done && g.seat == 0) {
+            char *s = star_by_uid(i.uid);
+            if (!s || (int)(r - (i.t_broken + 4500u)) < 0) continue;
+            const int to[3] = { s32r(s, 0x5c), s32r(s, 0x60), s32r(s, 0x64) };
+            rig_teleport(me, to);
+            i.rig_race_done = true;
+            std::fprintf(stderr, "[rig] chain: seat 0 goes to the dropped star inst %d (ref %u)\n", k, r);
         }
     }
-    if (g.seat != 0 || (int)(r - g.rig_next) < 0) return;
-    char *vb = body_of(1);
-    if (!vb) return;
-    const int cycle = g.rig_n % 3;
-    const unsigned fr = my_frame_now();
-    if (cycle == 0) {
-        // a real punch: stand 90 units behind the victim, face it, press B
-        int to[3] = { s32r(vb, 0x5c), s32r(vb, 0x60), s32r(vb, 0x64) - (90 << 12) };
-        rig_teleport(me, to);
-        s16r(me, 0x8e) = 0;               // facing +Z, toward the victim
-        s16r(me, 0x94) = 0;
-        g.rig_press_frames = 3;
-        std::fprintf(stderr, "[rig] hit cycle %d: valid punch (B pressed, %u)\n",
-                     g.rig_n, r);
-        g.rig_next = r + 2500u;
-    } else if (cycle == 1) {
-        // out of reach: a claim with nothing under it (the referee checks the
-        // two bodies' own reported positions)
-        unsigned stamp;
-        if (stamp_for(now_ms(), &stamp)) {
-            PClaim *c = make_claim(CLAIM_HIT, 1, 0x40 >> 5, stamp, fr, drawn_frame(1));
-            std::fprintf(stderr, "[rig] hit cycle %d: invalid claim sent (id %u)\n",
-                         g.rig_n, c ? c->cid : 0u);
-        }
-        g.rig_next = r + 2500u;
-    } else {
-        // inside the hit immunity of the last landed hit
-        unsigned stamp;
-        if (stamp_for(now_ms(), &stamp)) {
-            PClaim *c = make_claim(CLAIM_HIT, 1, 0x40 >> 5, stamp, fr, drawn_frame(1));
-            std::fprintf(stderr, "[rig] hit cycle %d: repeat claim sent (id %u)\n",
-                         g.rig_n, c ? c->cid : 0u);
-        }
-        g.rig_next = r + 3500u;
+    // seat 0 punches seat 1 three seconds after a star was taken by seat 1
+    if (g.seat == 0 && g.chain_hit_at && (int)(r - g.chain_hit_at) >= 0) {
+        g.chain_hit_at = 0;
+        std::fprintf(stderr, "[rig] chain: seat 0 punches seat 1 (ref %u)\n", r);
+        rig_punch_start(90);
     }
-    ++g.rig_n;
 }
 
 void rig_step() {
     if (g.rig == 1) rig_race();
     else if (g.rig == 2) rig_hit();
+    else if (g.rig == 3) rig_chain();
 }
 
 // ---------------------------------------------------------------------------
