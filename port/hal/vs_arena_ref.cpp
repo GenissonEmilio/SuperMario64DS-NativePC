@@ -1382,7 +1382,7 @@ void rig_teleport(char *me, const int *to) {
 }
 
 void rig_race() {
-    if (!g.started || g.over || g.seat > 1) return;
+    if (!g.started || g.over) return;
     unsigned r;
     if (!ref_now(&r)) return;
     char *me = my_body();
@@ -1391,7 +1391,7 @@ void rig_race() {
         Inst &i = g.inst[k];
         if (!i.used || i.spilled) continue;
         if (i.state == 1 && g.seat == 0 && !i.rig_break_sent &&
-            now_ms() - i.born_ms > 2600 && g.vs_frames > 120) {
+            now_ms() - i.born_ms > 2000 && g.vs_frames > 120) {
             // the breaker: a claim straight to the referee (the glass breaks on
             // the event, everywhere)
             unsigned stamp;
@@ -1405,9 +1405,18 @@ void rig_race() {
         if (i.state == 2 && i.t_broken && !i.rig_race_done) {
             char *s = star_by_uid(i.uid);
             if (!s) continue;
-            const int gap = (int)(rig_rand(g.rig_seed, (unsigned)k + 101u * g.rig_n) % 251u) - 125;
-            const int off = g.seat == 0 ? (gap < 0 ? -gap : 0) : (gap > 0 ? gap : 0);
-            const unsigned at = i.t_broken + 4500u + (unsigned)off;
+            // two seats: a scripted gap in -160..+160 ms (the plan's M3 model);
+            // more: every seat's own offset in 0..160 ms. Every console computes
+            // the same numbers from (seed, instance, seat).
+            int gap = 0, off = 0;
+            if (g.bodies == 2) {
+                gap = (int)(rig_rand(g.rig_seed, (unsigned)k) % 321u) - 160;
+                off = g.seat == 0 ? (gap < 0 ? -gap : 0) : (gap > 0 ? gap : 0);
+            } else {
+                off = (int)(rig_rand(g.rig_seed ^ ((unsigned)g.seat * 7919u),
+                                     (unsigned)k) % 161u);
+            }
+            const unsigned at = i.t_broken + 3500u + (unsigned)off;
             if ((int)(r - at) < 0) continue;
             const int to[3] = { s32r(s, 0x5c), s32r(s, 0x60), s32r(s, 0x64) };
             rig_teleport(me, to);
@@ -1532,7 +1541,7 @@ bool vs_ref_active() {
     if (!h.installed) return false;
     g.installed = true;
     g.active = h.mode == 1;           // relay mode only: the mesh has no referee
-    g.log = env_on("SM64DS_ARENA_LOG");
+    g.log = env_on("SM64DS_ARENA_REFLOG");
     for (int k = 0; k < 16; ++k) g.ledger[k] = 0;
     std::fprintf(stderr, "[vsarena] referee client %s (hub mode %d)\n",
                  g.active ? "ACTIVE: the referee in the relay decides stars, hits, "
