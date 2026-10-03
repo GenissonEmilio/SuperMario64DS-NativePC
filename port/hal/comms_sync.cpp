@@ -78,6 +78,14 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "vs_palette_gen.h"  // GHOSTLOOK1: the VS colour arithmetic, for a hub
+                             // ghost in its player's own colours
+
+// The decoded-texture cache's generation (ntr/gx.h): it counts every time the
+// cache is thrown away, which is when a cached decode of an old row stops
+// being able to come back. See gw_colour_row.
+namespace ntr { unsigned gx_texture_generation(); }
+
 extern "C" {
 // SetAnim IS DECLARED void HERE, WHICH IS ITS ACTUAL RETURN TYPE.
 // src/actors/Player.cpp:14 defines it `void`; 74 matched
@@ -145,6 +153,13 @@ void func_ov002_020e444c(char *self);
 // The ROM's live-actor walk (src/_ZN8dActor_c4NextEPKS_.cpp), for the
 // targeting probe.
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
+// GHOSTLOOK1: the head pick Player::Render makes (src/actors/Player.cpp,
+// func_ov002_020becf4: the character, then with arg2 = 1 the render latches),
+// for the look probe.
+unsigned func_ov002_020becf4(char *self, unsigned v, int arg2);
+// Player::HasNoCap through the port's C face (hal/player_bridges.cpp), the
+// value func_ov002_020e4bb8 latches into +0x701 for the render.
+int _ZN6Player8HasNoCapEv(void *self);
 }
 
 namespace port {
@@ -685,6 +700,7 @@ enum : int {
        and comes back with the next frame. A paused player sends 2 Hz, so
        one lost paused frame (a 1 s gap) still does not blink it. */
     kGwFadeMs     = 700,
+    kGwAppearMs   = 300,     // GHOSTLOOK1: a ghost that comes on show fades in
     kGwDespawnMs  = 1200,
     kGwRing       = 8,       // frames kept per seat (~0.5 s at 15 Hz)
     /* THE PLAYER HAS 194 ANIMATIONS. Player::SetAnim indexes
@@ -698,7 +714,40 @@ enum : int {
     kGwParkUp     = 200000 << 12,   // the park, above the local player (Fix12)
     kGwSwapNear   = 500,            // units: a shown seat this close keeps its body
     kGwClockJumpMs = 2000,   // a sender clock step this big is a restart
+    /* GHOSTLOOK1: 'SYNI' byte 18 (flags, design 6.2) bit 0: the body and shoe
+       colours at bytes 12..17 are the player's own pick (the launcher sent
+       SM64DS_PLAYER_COLOR and SM64DS_PLAYER_SHOES). Without it they are this
+       file's defaults, which name the tag but do not recolour the ghost. An
+       identity from an older build carries flags 0 and is taken as before. */
+    kGwIdentColours = 0x01,
 };
+
+// GHOSTLOOK1: TWO TEST KNOBS for the smoothness measurement, both default to
+// the design's numbers. SM64DS_GHOST_SEND_HZ (5..30) is the SYNG rate AND the
+// timebase a receiver turns seq into time with, so EVERY console in a room
+// must run the same value: it is a lab knob, not a setting (a real rate change
+// has to put the rate on the wire). SM64DS_GHOST_INTERP_MS (0..400) is how far
+// behind real time a ghost is drawn.
+int gw_send_hz() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_SEND_HZ");
+        v = e ? std::atoi(e) : (int)kGwSendHz;
+        if (v < 5) v = 5;
+        if (v > 30) v = 30;
+    }
+    return v;
+}
+int gw_interp_ms() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_INTERP_MS");
+        v = e ? std::atoi(e) : (int)kGwInterpMs;
+        if (v < 0) v = 0;
+        if (v > 400) v = 400;
+    }
+    return v;
+}
 
 struct GwFrame {
     unsigned      ext;       // seq extended to 32 bits
@@ -717,11 +766,18 @@ struct GwSeat {
     bool      have_ident;
     char      name[kHubIdentNameMax + 1];
     unsigned char character, body[3], shoes[3];
+    bool      colours;       // GHOSTLOOK1: body / shoes are the player's pick
+    unsigned short pal_src[16];  // GHOSTLOOK1: the row 0 the colours were
+    unsigned short pal_out[16];  // made from, and the row made from it with
+    unsigned char  pal_body[3], pal_shoes[3];   // these colours
+    bool      pal_have;
     unsigned  build_id;
     unsigned  char_try_ms;   // last character-swap attempt on its body
     unsigned  driven;        // frames the follower has driven its body
     const void *body_ptr;    // ...and which body that was (a level load
                              // seats new ones: the count starts again)
+    unsigned  show_ms;       // GHOSTLOOK1: when it last came on show, and
+    unsigned  show_n;        // the follower pass that last showed it
 };
 
 GwSeat g_gw[kHubMaxSeats];
@@ -741,6 +797,10 @@ struct GwStats {
                                                 // of those, with a ghost shown
     unsigned long long shown_frames;            // follower frames, any ghost shown
     unsigned long long comebacks;   // frames that brought back a gone ghost
+    unsigned long long pal_held;   // GHOSTLOOK1: frames a pick waited for a
+                                   // cache drop (gw_row_drawable)
+    unsigned long long pal_rows, pal_writes;   // GHOSTLOOK1: ghosts drawn in
+                                               // their own colours; row writes
 };
 GwStats g_gws;
 
@@ -773,6 +833,7 @@ struct GwMe {
     char name[kHubIdentNameMax + 1];
     int  name_len;
     unsigned char body[3], shoes[3];
+    bool colours;            // GHOSTLOOK1: both colours came from the launcher
     unsigned build_id;
 };
 GwMe g_gw_me;
@@ -791,14 +852,15 @@ int gw_hex(char c) {
     return -1;
 }
 
-void gw_rgb_env(const char *var, unsigned char out[3],
+// true when the variable was there and was six hex digits (out is then it)
+bool gw_rgb_env(const char *var, unsigned char out[3],
                 unsigned char r, unsigned char g, unsigned char b) {
     out[0] = r; out[1] = g; out[2] = b;
     const char *e = std::getenv(var);
-    if (!e) return;
+    if (!e) return false;
     if (std::strlen(e) != 6) {
         std::fprintf(stderr, "[ghost] %s ignored: not six hex digits\n", var);
-        return;
+        return false;
     }
     unsigned char t[3];
     for (int i = 0; i < 3; ++i) {
@@ -806,11 +868,12 @@ void gw_rgb_env(const char *var, unsigned char out[3],
         if (hi < 0 || lo < 0) {
             std::fprintf(stderr, "[ghost] %s ignored: not six hex digits\n",
                          var);
-            return;
+            return false;
         }
         t[i] = (unsigned char)(hi * 16 + lo);
     }
     out[0] = t[0]; out[1] = t[1]; out[2] = t[2];
+    return true;
 }
 
 void gw_me_read() {
@@ -832,8 +895,13 @@ void gw_me_read() {
                          "bytes of 0x20..0x7e\n", (int)kHubIdentNameMax);
         }
     }
-    gw_rgb_env("SM64DS_PLAYER_COLOR", g_gw_me.body, 0xff, 0xff, 0xff);
-    gw_rgb_env("SM64DS_PLAYER_SHOES", g_gw_me.shoes, 0x80, 0x40, 0x20);
+    /* GHOSTLOOK1: a pick is the PAIR, the launcher's both-or-neither rule
+       (LobbyLaunch IdentityEnv): one without the other is no pick */
+    const bool b_ok =
+        gw_rgb_env("SM64DS_PLAYER_COLOR", g_gw_me.body, 0xff, 0xff, 0xff);
+    const bool s_ok =
+        gw_rgb_env("SM64DS_PLAYER_SHOES", g_gw_me.shoes, 0x80, 0x40, 0x20);
+    g_gw_me.colours = b_ok && s_ok;
     /* A build id for the identity record: FNV-1a of this TU's build stamp.
        Display / diagnosis only (design 6.2: never parsed for meaning). */
     unsigned h = 2166136261u;
@@ -1019,7 +1087,7 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat) {
             ext = newest + (unsigned)delta;
         }
     }
-    const long long ts = (long long)ext * 1000 / kGwSendHz;
+    const long long ts = (long long)ext * 1000 / gw_send_hz();
     const long long d = (long long)now - ts;
     if (z.have_off && (d - z.off > kGwClockJumpMs || z.off - d > kGwClockJumpMs)) {
         /* the sender's clock stepped (a restart inside the u16 window, or a
@@ -1110,6 +1178,9 @@ void gw_on_ident(const unsigned char *buf, int n, int seat) {
     z.character = h.character;
     std::memcpy(z.body, h.body_rgb, 3);
     std::memcpy(z.shoes, h.shoes_rgb, 3);
+    /* GHOSTLOOK1: bit 0 only; the other flag bits stay unread (display data,
+       design 6.2), so an identity from any build parses as it did */
+    z.colours = (h.flags & kGwIdentColours) != 0;
     z.build_id = h.build_id;
     z.have_ident = true;
     ++g_gws.syni_recvd;
@@ -1170,7 +1241,7 @@ bool gw_sample(int seat, unsigned now, GwSample *o) {
     const GwSeat &z = g_gw[seat];
     if (z.n == 0 || !z.have_off) return false;
     o->grounded = (z.ring[z.n - 1].f.flags & kGhostGrounded) != 0;
-    const long long T = (long long)now - z.off - kGwInterpMs;
+    const long long T = (long long)now - z.off - gw_interp_ms();
     const GwFrame &nw = z.ring[z.n - 1];
     const GwFrame *a = 0, *b = 0;
     for (int k = z.n - 1; k >= 0; --k)
@@ -1275,6 +1346,147 @@ int gw_pose_probe() {
     return p;
 }
 
+// GHOSTLOOK1: SM64DS_GHOST_LOOK_PROBE=<stride>. What a shown ghost body is
+// drawn as, read the way Player::Render reads it: the body's character
+// (param1, +0x08), the head the render picks (func_ov002_020becf4 with the
+// render latches: +0x6db the latched character, +0x6fa / +0x6fe / +0x701), the
+// palette row the body's materials name (+0x61c, in 16-byte units of the
+// texture palette window) and the first two words of row 0 and of that row,
+// the drawn position and the fade; and on the sending side the local body's
+// own position on the same clock, so a watcher's drawn path can be laid over
+// the source's real one. Reads only; inert unset.
+int gw_look_probe() {
+    static int p = -1;
+    if (p < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_LOOK_PROBE");
+        p = e ? std::atoi(e) : 0;
+        if (p < 0) p = 0;
+    }
+    return p;
+}
+
+// One sixteen-colour row of the texture palette slots, by the 16-byte unit a
+// material's +0x20 names: mapped at the host address the raster decodes them
+// from (ntr/gx.cpp PLTT_SLOT_BASE, 0x18000 bytes). 0 when out of the window.
+unsigned short *gw_pltt_row(int base16) {
+    if (base16 < 0 || base16 * 16 + 32 > 0x18000) return 0;
+    return (unsigned short *)(0x06880000u + (unsigned)base16 * 16u);
+}
+
+// GHOSTLOOK1: A HUB GHOST IN ITS PLAYER'S OWN COLOURS, the way VS colours its
+// Yoshis. VS tells its Yoshis apart by palette ROW: every body's materials name
+// the row Player+0x61c holds (row 0 + mPlayerNo << 1 in 16-byte units, written
+// by InitResources and repaired to the true slot by hal/level_boot.cpp), and
+// Player::Render stamps that into each material before the draw
+// (src/_ZN6Player6RenderEv.cpp, the data_0209f2d8 == 1 arm). A VS pick reaches
+// the row through the served file (hal/fs_mods.cpp, vs_palette_row over the
+// sixteen grown rows). A hub ghost's pick arrives on the wire after the level
+// is up, so its row is made here, with the same vs_palette_row out of the same
+// row 0 this console's file served, and written into the body's own row of
+// the texture palette slots; hal/player_bridges.cpp stamps the row into the
+// ghost's materials around its draw. Rows above 0 belong to VS seats, and the
+// adventure hub never draws one otherwise; row 0 (this console's own player)
+// is never written. Yoshi only, as in VS: the bros have no row per player.
+// Returns the row to stamp, or -1 to leave the model's own.
+//
+// NO CACHE DROP HERE. The first version threw the decoded-texture cache away
+// (ntr::gx_invalidate_textures) whenever it rewrote a row, the way the ROM's
+// GX::EndLoadTexPltt does. The ROM does that at load time; this runs after the
+// frame's render walk has bound its textures and before the raster draws
+// them, and every triangle holds a pointer into a decode the drop frees: the
+// watcher crashed in the raster on the first frame a coloured ghost showed.
+// The drop is not needed. A bind's cache key is the palette base, the texture
+// words AND the first two words of the row, and words 0..1 are the body
+// family, so a new pick with a new body colour can never be served an old
+// decode. The one case that could is a second pick with the SAME body colour
+// and other shoes drawn on the same row before the cache is next dropped (a
+// level load does it); this keeps, per body row, what has been drawn there
+// since the last drop and leaves such a ghost in the model's own colours until
+// the next one.
+struct GwRowSeen {
+    unsigned gen;            // ntr::gx_texture_generation() these were kept in
+    int      n;
+    unsigned cp[8];          // words 0..1 of a row drawn here (the cache key)
+    unsigned sum[8];         // ...and all sixteen words, hashed
+};
+GwRowSeen g_row_seen[kCommsMaxPlayers];
+unsigned short g_row_last[kCommsMaxPlayers][16];   // the last row written
+bool g_row_last_have[kCommsMaxPlayers];            // into each body's row
+
+unsigned gw_row_sum(const unsigned short *r) {
+    unsigned h = 2166136261u;
+    for (int i = 0; i < 16; ++i) { h ^= r[i]; h *= 16777619u; }
+    return h;
+}
+
+// true when `row` may be drawn on body row `no` without a cached decode of
+// another row with the same key being served for it (and then remembered)
+bool gw_row_drawable(int no, const unsigned short *row) {
+    GwRowSeen &rs = g_row_seen[no];
+    const unsigned gen = ntr::gx_texture_generation();
+    if (rs.gen != gen) {
+        /* dropped since: only what the row holds now can have been drawn
+           (and cached) after the drop */
+        rs.gen = gen;
+        rs.n = 0;
+        if (g_row_last_have[no]) {
+            std::memcpy(&rs.cp[0], g_row_last[no], 4);
+            rs.sum[0] = gw_row_sum(g_row_last[no]);
+            rs.n = 1;
+        }
+    }
+    unsigned cp;
+    std::memcpy(&cp, row, 4);
+    const unsigned sum = gw_row_sum(row);
+    bool seen = false;
+    for (int k = 0; k < rs.n; ++k) {
+        if (rs.cp[k] != cp) continue;
+        if (rs.sum[k] != sum) return false;   // same key, other colours
+        seen = true;
+    }
+    if (seen) return true;
+    if (rs.n >= 8) return false;
+    rs.cp[rs.n] = cp;
+    rs.sum[rs.n] = sum;
+    ++rs.n;
+    return true;
+}
+
+int gw_colour_row(GwSeat &z, void *a) {
+    if (!z.have_ident || !z.colours) return -1;
+    if (gw_char(a) != 3u) return -1;
+    const char *c = (const char *)a;
+    const int no = (int)*(const unsigned char *)(c + 0x6d8);
+    const int pal = *(const int *)(c + 0x61c);
+    if (no <= 0 || no >= kCommsMaxPlayers) return -1;
+    const unsigned short *r0 = gw_pltt_row(pal - (no << 1));
+    unsigned short *rp = gw_pltt_row(pal);
+    if (!r0 || !rp) return -1;
+    if (!z.pal_have || std::memcmp(z.pal_src, r0, sizeof z.pal_src) != 0 ||
+        std::memcmp(z.pal_body, z.body, 3) != 0 ||
+        std::memcmp(z.pal_shoes, z.shoes, 3) != 0) {
+        std::memcpy(z.pal_src, r0, sizeof z.pal_src);
+        std::memcpy(z.pal_body, z.body, 3);
+        std::memcpy(z.pal_shoes, z.shoes, 3);
+        vspal::vs_palette_row(z.pal_src, z.pal_body, z.pal_shoes, z.pal_out);
+        z.pal_have = true;
+    }
+    if (!gw_row_drawable(no, z.pal_out)) {
+        ++g_gws.pal_held;
+        return -1;
+    }
+    /* a level load uploads the file's rows again: write it back when the
+       row no longer holds it */
+    if (std::memcmp(rp, z.pal_out, sizeof z.pal_out) != 0) {
+        std::memcpy(rp, z.pal_out, sizeof z.pal_out);
+        ++g_gws.pal_writes;
+    }
+    std::memcpy(g_row_last[no], z.pal_out, sizeof z.pal_out);
+    g_row_last_have[no] = true;
+    ++g_gws.pal_rows;
+    return pal;
+}
+
 void gw_send_ident(unsigned now) {
     gw_me_read();
     unsigned char buf[64];
@@ -1290,7 +1502,7 @@ void gw_send_ident(unsigned now) {
     h.build_id = g_gw_me.build_id;
     std::memcpy(h.body_rgb, g_gw_me.body, 3);
     std::memcpy(h.shoes_rgb, g_gw_me.shoes, 3);
-    h.flags = 0;
+    h.flags = g_gw_me.colours ? (unsigned char)kGwIdentColours : 0;
     h.reserved = 0;
     std::memcpy(buf, &h, sizeof h);
     std::memcpy(buf + 20, g_gw_me.name, (size_t)g_gw_me.name_len);
@@ -1366,10 +1578,15 @@ void gw_send(unsigned now) {
                      "hash=%08x\n", now, g_gw_frame, comms_hub_my_seat(),
                      (unsigned)player::anim_id(a), player::anim_frame(a) >> 12,
                      gw_pose_hash(a));
+    if (gw_look_probe() > 0 && (g_gw_frame % (unsigned)gw_look_probe()) == 0)
+        std::fprintf(stderr, "[gwlook] t=%u f=%u LOCAL seat=%d pos=(%d,%d,%d) "
+                     "anim=%u\n", now, g_gw_frame, comms_hub_my_seat(),
+                     cx >> 12, cy >> 12, cz >> 12,
+                     (unsigned)player::anim_id(a));
 
     if (!g_gw_t0_set) { g_gw_t0 = now; g_gw_t0_set = true; }
     const unsigned seq = (unsigned)((unsigned long long)(now - g_gw_t0) *
-                                    kGwSendHz / 1000u);
+                                    (unsigned)gw_send_hz() / 1000u);
     if (seq == g_gw_last_seq) return;
     if (paused && (unsigned)(now - g_gw_last_send_ms) < (unsigned)kGwPausedMs)
         return;
@@ -1460,7 +1677,8 @@ void gw_report(const char *tag) {
                  "reposes=%llu recursor=%llu charswaps=%llu parked=%llu below=%llu "
                  "clamped=%llu target_ghost=%llu near_ghost=%llu seat_fix=%llu "
                  "adopted=%llu cut_nosend=%llu cut_frames=%llu cut_drawn=%llu "
-                 "shown_frames=%llu comebacks=%llu cut=%d names=[%s]\n",
+                 "shown_frames=%llu comebacks=%llu pal_rows=%llu "
+                 "pal_writes=%llu pal_held=%llu cut=%d names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
@@ -1471,7 +1689,8 @@ void gw_report(const char *tag) {
                  g_gws.below, g_gws.clamped, g_gws.target_ghost,
                  g_gws.near_ghost, g_gws.seat_fix, g_gws.adopted,
                  g_gws.cut_nosend, g_gws.cut_frames, g_gws.cut_drawn,
-                 g_gws.shown_frames, g_gws.comebacks,
+                 g_gws.shown_frames, g_gws.comebacks, g_gws.pal_rows,
+                 g_gws.pal_writes, g_gws.pal_held,
                  data_0209fc48 != 0 ? 1 : 0, names);
 }
 
@@ -1488,7 +1707,7 @@ bool gw_decide() {
                  "(2 Hz paused), SYNI every %d s, drawn %d ms behind, "
                  "reckon <= %d ms, fades from %d ms and gone at %d ms without "
                  "a frame; name \"%s\"\n",
-                 (int)kGwSendHz, (int)kGwIdentMs / 1000, (int)kGwInterpMs,
+                 gw_send_hz(), (int)kGwIdentMs / 1000, gw_interp_ms(),
                  (int)kGwReckonMs, (int)kGwFadeMs, (int)kGwDespawnMs,
                  g_gw_me.name);
     return true;
@@ -2213,14 +2432,30 @@ extern "C" int port_adventure_ghost_stars(int slot) {
 // 0..256: how much of a hub ghost to draw, off the age of its newest frame
 // (full to kGwFadeMs, then down to nothing at kGwDespawnMs). 256 for any
 // body that is not a hub ghost, so VS, solo and the old path are untouched.
-extern "C" int port_adventure_ghost_fade(int slot) {
-    const int s = port_adventure_ghost_seat(slot);
-    if (s < 0 || g_gw[s].n == 0) return 256;
+namespace {
+int gw_fade_out(int s) {
     const unsigned age = GetTickCount() - g_gw[s].last_ms;
     if (age <= (unsigned)kGwFadeMs) return 256;
     if (age >= (unsigned)kGwDespawnMs) return 0;
     return (int)(256u * ((unsigned)kGwDespawnMs - age) /
                  (unsigned)(kGwDespawnMs - kGwFadeMs));
+}
+// GHOSTLOOK1: and UP from nothing over kGwAppearMs once it comes on show (a
+// level entry, a player walking in from another level, a comeback after a
+// despawn). A ghost is drawn solid now, and a solid body that pops into the
+// world in one frame is the jolt the old see-through look hid. The follower
+// stamps show_ms when a seat is shown after a pass that did not show it.
+int gw_fade_in(int s) {
+    const unsigned in = GetTickCount() - g_gw[s].show_ms;
+    if (in >= (unsigned)kGwAppearMs) return 256;
+    return (int)(256u * in / (unsigned)kGwAppearMs);
+}
+}  // namespace
+extern "C" int port_adventure_ghost_fade(int slot) {
+    const int s = port_adventure_ghost_seat(slot);
+    if (s < 0 || g_gw[s].n == 0) return 256;
+    const int o = gw_fade_out(s), i = gw_fade_in(s);
+    return o < i ? o : i;
 }
 
 extern "C" unsigned port_adventure_ghost_rgb(int slot) {
@@ -2328,7 +2563,11 @@ namespace {
 // Pokey, Fly Guy, Scuttlebug, Ukiki and friends then turned to face the
 // invisible Luigi. The follower clears it again on a ghost it shows.
 int g_gw_nopark = -1;
+unsigned g_gw_follow_n = 1;   // GHOSTLOOK1: follower passes, for show_n
+                              // (from 1: a seat's show_n starts at 0)
 int g_drawpos_have[kCommsMaxPlayers];
+int g_gw_pal[kCommsMaxPlayers];   // GHOSTLOOK1: the row each body draws with
+const void *g_gw_pal_body[kCommsMaxPlayers];   // ...the body it was made for
 int g_drawpos[kCommsMaxPlayers][3];
 
 void gw_park_body(void *a) {
@@ -2356,11 +2595,13 @@ void gw_follow() {
                                                          : kCommsMaxPlayers;
     const bool in_cut = data_0209fc48 != 0;
     bool shown_any = false;
+    ++g_gw_follow_n;
     for (int i = 0; i < nb; ++i) {
         if (i == me) continue;
         void *a = data_0209f394[i];
         if (!a) continue;
         g_drawpos_have[i] = 0;
+        g_gw_pal[i] = -1;
         const int s = gw_seat_for_body(i);
         GwSample sm;
         if (s < 0 || !gw_visible(s) || party_member(i) || gw_cut() ||
@@ -2375,6 +2616,10 @@ void gw_follow() {
         }
         GwSeat &z = g_gw[s];
         if (z.body_ptr != a) { z.body_ptr = a; z.driven = 0; }
+        /* GHOSTLOOK1: on show from this pass; not shown on the last one
+           means it is coming on show now, and fades in (gw_fade_in) */
+        if (z.show_n + 1 != g_gw_follow_n) z.show_ms = now;
+        z.show_n = g_gw_follow_n;
         if (sm.teleport) ++g_gws.teleports;
         *player::pos_x(a) = sm.x;
         *player::pos_y(a) = sm.y;
@@ -2455,7 +2700,8 @@ void gw_follow() {
            ever, and bit 0x10 is one the draw gate honours. The follower
            decides a ghost is on show, so it clears them. */
         *(unsigned *)((char *)a + 0xb0) &= ~0x38u;
-        if (port_adventure_ghost_fade(i) >= 256) {
+        /* fading OUT only: a ghost fading in is placed like a shown one */
+        if (gw_fade_out(s) >= 256) {
             if (sm.grounded) *(int *)((char *)a + 0x644) = sm.y;
             *((unsigned char *)a + 0x717) = 0;
             *((unsigned char *)a + 0x6fb) = 0;   // the park's vanish, off
@@ -2465,8 +2711,57 @@ void gw_follow() {
             func_ov002_020e4768((char *)a);
             ++g_gws.reposes;
         }
+        /* GHOSTLOOK1: THE RENDER LATCHES, the last block of the same routine
+           (src/func_ov002_020e4bb8.c, after the place and the pose this
+           follower already runs). Player::Render does not read the live
+           fields; it reads what the end of the body's Behavior copied for it:
+           +0x6db the character whose head it picks (func_ov002_020becf4 with
+           arg2 = 1, and the eye-blink sequence), +0x6fe / +0x6fa the balloon
+           and no-head latches, +0x6fc the vanish latch Luigi's texture
+           sequence reads, +0x700 the wings, +0x701 HasNoCap. A ghost's own
+           Behavior is skipped from the frame its body is seated, so nothing
+           ever wrote them: every byte stayed 0, and 0 in +0x6db is MARIO. A
+           Yoshi ghost then asked for head index 0 (Mario's cap head, drawn on
+           Yoshi's neck bone, nowhere to be seen) instead of 3, its own: the
+           headless Yoshi of the field report. A Mario ghost looked right only
+           because Mario is 0. The ROM's six statements, as it writes them. */
+        {
+            char *c = (char *)a;
+            *(unsigned char *)(c + 0x6db) = (unsigned char)*(int *)(c + 8);
+            *(unsigned char *)(c + 0x6fe) = *(unsigned char *)(c + 0x6fd);
+            *(unsigned char *)(c + 0x6fa) = *(unsigned char *)(c + 0x6f9);
+            *(unsigned char *)(c + 0x6fc) = *(unsigned char *)(c + 0x6fb);
+            *(unsigned char *)(c + 0x700) = *(unsigned char *)(c + 0x6ff);
+            *(unsigned char *)(c + 0x701) =
+                (unsigned char)_ZN6Player8HasNoCapEv(c);
+        }
+        g_gw_pal[i] = gw_colour_row(z, a);
+        g_gw_pal_body[i] = a;
         ++z.driven;
         shown_any = true;
+        if (gw_look_probe() > 0 &&
+            (g_gw_frame % (unsigned)gw_look_probe()) == 0) {
+            char *c = (char *)a;
+            const int pal = *(const int *)(c + 0x61c);
+            const int row0 =
+                pal - ((int)*(const unsigned char *)(c + 0x6d8) << 1);
+            const unsigned short *r0 = gw_pltt_row(row0);
+            const unsigned short *rp = gw_pltt_row(pal);
+            const unsigned char latch = *(const unsigned char *)(c + 0x6db);
+            std::fprintf(stderr, "[gwlook] t=%u f=%u GHOST seat=%d body=%d "
+                         "ch=%u latch=%u hid=%d l6fa=%u l6fe=%u l701=%u "
+                         "pal=%d row0=%04x,%04x rowpal=%04x,%04x "
+                         "pos=(%d,%d,%d) fade=%d ident=%d\n",
+                         now, g_gw_frame, s, i, gw_char(a), (unsigned)latch,
+                         (int)func_ov002_020becf4(c, latch, 1),
+                         (unsigned)*(const unsigned char *)(c + 0x6fa),
+                         (unsigned)*(const unsigned char *)(c + 0x6fe),
+                         (unsigned)*(const unsigned char *)(c + 0x701),
+                         pal, r0 ? r0[0] : 0u, r0 ? r0[1] : 0u,
+                         rp ? rp[0] : 0u, rp ? rp[1] : 0u,
+                         sm.x >> 12, sm.y >> 12, sm.z >> 12,
+                         port_adventure_ghost_fade(i), z.have_ident ? 1 : 0);
+        }
         if (gw_pose_probe() > 0 &&
             (g_gw_frame % (unsigned)gw_pose_probe()) == 0)
             std::fprintf(stderr, "[gwpose] t=%u f=%u GHOST seat=%d body=%d "
@@ -2832,6 +3127,24 @@ void gw_body_probe() {
     last_sig = sig;
 }
 }  // namespace
+
+// GHOSTLOOK1: the palette row the render stamps into a hub ghost body's
+// materials for this frame's draw, or -1 (not a shown hub ghost, no pick, not
+// Yoshi): hal/player_bridges.cpp's hal_render_player_world.
+//
+// Only while the row still holds what the follower wrote, for the body it was
+// written for: a level load seats new bodies and uploads the file's rows again
+// before the next follower pass, and that frame draws the model's own row.
+extern "C" int port_adventure_ghost_palette(int slot) {
+    if (!g_hub || slot < 0 || slot >= kCommsMaxPlayers) return -1;
+    const int pal = g_gw_pal[slot];
+    if (pal < 0 || !g_row_last_have[slot]) return -1;
+    if (g_gw_pal_body[slot] != data_0209f394[slot]) return -1;
+    const unsigned short *rp = gw_pltt_row(pal);
+    if (!rp || std::memcmp(rp, g_row_last[slot], sizeof g_row_last[slot]) != 0)
+        return -1;
+    return pal;
+}
 
 extern "C" void port_adventure_ghost_follow() {
     if (!adventure_ghost_mode()) return;

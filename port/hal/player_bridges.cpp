@@ -380,14 +380,23 @@ extern unsigned char data_0209f250;   /* local player index */
    The DS polygon alpha is 5 bits (0..31); func_02046208 writes it into the
    0x1f0000 field of every material's polygon attribute. 31 is fully opaque and
    1 is nearly gone; 0 is NOT invisible, it is the DS's wireframe mode, so the
-   floor here is 1. The default is a ghostly ~40%. SM64DS_ADVENTURE_ALPHA tunes
-   it for the visual check without a rebuild. */
+   floor here is 1. SM64DS_ADVENTURE_ALPHA tunes it for the visual check
+   without a rebuild.
+   run mp1 lane GHOSTLOOK1: THE DEFAULT IS SOLID (31), the value
+   Player::Render itself stamps every frame (ModelBase::ApplyOpacity(model,
+   mOpacity), src/_ZN6Player6RenderEv.cpp, and the follower holds a shown
+   ghost's mOpacity at 0x1f). It was a ghostly 12, and a see-through Yoshi is
+   drawn the DS's translucent way: no depth written, and a translucent pixel
+   never lands on one of the same polygon id, so the far arm and leg showed
+   through the body and parts of the body vanished behind itself (the field
+   report's "clipping / transparency"). The fade below still takes it down
+   while a ghost appears or goes. */
 static unsigned ghost_alpha()
 {
     static int a = -1;
     if (a < 0) {
         const char *e = std::getenv("SM64DS_ADVENTURE_ALPHA");
-        a = e ? std::atoi(e) : 12;
+        a = e ? std::atoi(e) : 31;
         if (a < 1) a = 1;
         if (a > 31) a = 31;
     }
@@ -1589,10 +1598,67 @@ static void hal_render_player_world_body(void *player);
    seat names, drawn by hal/level_boot.cpp's ps_render; parking them by number
    threw the cast's Luigi and Wario 200000 units up after every draw, and they
    fell back through the opening over and over with their landing sounds. */
+/* run mp1 lane GHOSTLOOK1: A HUB GHOST IN ITS PLAYER'S OWN COLOURS. The VS
+   statement of Player::Render (src/_ZN6Player6RenderEv.cpp, the
+   data_0209f2d8 == 1 arm, hal_player_vs_palette here) points every material
+   of the body and of the head at the row Player+0x61c names; hal/comms_sync.cpp
+   has written that row with the ghost's own pick and says which row to name.
+   Stamped around the draw and put back after it, so nothing else that reads
+   these material records ever sees the ghost's row. */
+extern "C" int port_adventure_ghost_palette(int slot);
+static const unsigned kGhostStampMax = 64;
+struct GhostPalStamp {
+    char *rec[2];
+    unsigned n[2];
+    int old[2][kGhostStampMax];
+};
+static void ghost_stamp_one(GhostPalStamp &st, int k, char *mdl, int pal)
+{
+    st.rec[k] = 0;
+    st.n[k] = 0;
+    if (!mdl) return;
+    const int *p = (const int *)(mdl + 8);  /* ModelComponents at +0x8 */
+    const unsigned char *hdr = (const unsigned char *)p[0];  /* BMD_File */
+    char *rec = (char *)p[1];                                /* materials */
+    if (!hdr || !rec) return;
+    unsigned n = 0;
+    std::memcpy(&n, hdr + 0x24, 4);         /* BMD_File::numMaterials */
+    if (n == 0 || n > kGhostStampMax) return;
+    for (unsigned i = 0; i < n; ++i) {
+        st.old[k][i] = *(int *)(rec + i * 0x30 + 0x20);
+        *(int *)(rec + i * 0x30 + 0x20) = pal;
+    }
+    st.rec[k] = rec;
+    st.n[k] = n;
+}
+static void ghost_unstamp(GhostPalStamp &st)
+{
+    for (int k = 1; k >= 0; --k)
+        for (unsigned i = 0; i < st.n[k]; ++i)
+            *(int *)(st.rec[k] + i * 0x30 + 0x20) = st.old[k][i];
+}
+
 void hal_render_player_world(void *player)
 {
-    hal_render_player_world_body(player);
     const int slot = (int)*(const unsigned char *)((const char *)player + 0x6d8);
+    int pal = -1;
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+        data_0209f394[slot] == player)
+        pal = port_adventure_ghost_palette(slot);
+    GhostPalStamp st;
+    st.n[0] = st.n[1] = 0;
+    if (pal >= 0) {
+        char *c = (char *)player;
+        const unsigned id =
+            _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
+        ghost_stamp_one(st, 0, (char *)((ModelAnim **)(c + 0xdc))[id], pal);
+        const unsigned hid =
+            func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+        if (hid != 8 && hid != 9)
+            ghost_stamp_one(st, 1, ((char **)(c + 0x154))[hid], pal);
+    }
+    hal_render_player_world_body(player);
+    if (pal >= 0) ghost_unstamp(st);
     if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
         data_0209f394[slot] == player && port_adventure_hub_body(slot))
         port_adventure_ghost_park(player);
