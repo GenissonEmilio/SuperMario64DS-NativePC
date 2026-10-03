@@ -441,6 +441,12 @@ def build_rungs():
     R.append(Rung("match4-relay1-rtt80", "match", 4, DEV, "relay1", 80))
     R.append(Rung("match16-loop", "match", 16, GATE))
     R.append(Rung("match16-relay1-rtt80", "match", 16, GATE, "relay1", 80))
+    # Matches to the CLOCK (no star target): the ROM's own time-up and its scene-7
+    # request, answered by the port's MATCH OVER path (lane VSTIMEUP1).
+    R.append(Rung("timeup2-loop", "timeup", 2, DEV))
+    R.append(Rung("timeup4-relay1-rtt80", "timeup", 4, DEV, "relay1", 80))
+    R.append(Rung("timeup2-luigi-loop", "timeup", 2, DEV, luigi=True))
+    R.append(Rung("timeup2-kit", "timeup", 2, GATE, needs=["kit"], kit=True))
     # Leaving, joining late, dying, lagging.
     R.append(Rung("leave4-loop", "leave", 4, DEV))
     R.append(Rung("latejoin4-loop", "late", 4, DEV))
@@ -942,6 +948,127 @@ def r_match(L, run, r):
     ok, msg = sweep(texts, list(range(n)), 24, run.dir, want=end)
     ck.ok(ok, msg)
     relay_checks(ck, run)
+    return ck, wall, rcs
+
+
+CLOCK_END = re.compile(r"^\[vs\] f\d+ (?:TIME UP|LUIGI INFECTION OVER)[^\n]*", re.M)
+ABORT = re.compile(r"^(?:FATAL[^\n]*|\[stage\] slot 3[^\n]*|\[cross\][^\n]*)", re.M)
+
+
+# The floating score popup (actor 330, daObjNumber_c) a star taker gets. Its
+# spawn point comes from func_ov002_020e8244, which reads the star's rendered
+# model matrix (+0x320), so each window puts it at its own height: measured
+# p0 posy 2316829 against p1 1592241 at f328, the only field that differs, and
+# the world hash agrees again from f364 when the popup is gone. Presentation,
+# like the cull bits comms_sync.cpp already masks; it is in the base build too.
+POPUP_ID = 330
+
+
+def sweep_popup_only(texts, keys, workdir):
+    """After a red sweep: is every split frame explained by the score popup
+    alone? Needs the level-2 digest. Each pairing must agree on n and the order
+    hash on every common frame, and where the world hash differs, every actor
+    whose digest differs must be a POPUP_ID. -> (ok, msg)."""
+    sys.path.insert(0, HERE)
+    import dhdiff
+    logs = {k: dhdiff.load(os.path.join(workdir, "p%d" % k, "run.log.trim")) for k in keys}
+    first, rest = keys[0], keys[1:]
+    pairs = [(first, b) for b in rest] + [(a, b) for i, a in enumerate(rest) for b in rest[i + 1:]]
+    split = set()
+    for a, b in pairs:
+        fa, _, da, _ = logs[a]
+        fb, _, db, _ = logs[b]
+        for f in sorted(set(fa) & set(fb)):
+            if fa[f] == fb[f]:
+                continue
+            if fa[f][0] != fb[f][0] or fa[f][2] != fb[f][2]:
+                return False, "p%d/p%d f%d actor count or order differs" % (a, b, f)
+            if f not in da or f not in db:
+                return False, "p%d/p%d f%d split with no digest" % (a, b, f)
+            odd = [u for u in set(da[f]) | set(db[f]) if da[f].get(u) != db[f].get(u)]
+            ids = {(da[f].get(u) or db[f].get(u))[0] for u in odd}
+            if not odd or ids != {POPUP_ID}:
+                return False, "p%d/p%d f%d actors %s differ" % (a, b, f, sorted(ids))
+            split.add(f)
+    if not split:
+        return True, "no split"
+    return True, "every split frame is the score popup alone (actor %d, %d frame(s) f%d..f%d)" % (
+        POPUP_ID, len(split), min(split), max(split))
+
+
+def r_timeup(L, run, r):
+    """A match played to the CLOCK (lane VSTIMEUP1): the match rung's recipe with
+    no star target, so the ROM's own time-up ends it (f2791) and its own
+    Stage::Behavior asks for scene 7. Every console must end through the port's
+    MATCH OVER path, answer that request (results_screen=port), print one
+    identical clock-end line and one identical MATCH OVER, and exit 0: no FATAL,
+    no slot-3 dispatch, no refused crossing. luigi=True keeps Luigi Infection on
+    with motionless bodies, so its clock end (survivor-timeout) is the one taken.
+    kit=True runs the pair from a player-shaped install (the kit rung's shape)."""
+    n = r.n
+    frames = r.frames or 3300
+    kit = r.opts.get("kit")
+    bundle = kit_bundle(L) if kit else None
+    exe = os.path.join(bundle, "walk_window.exe") if kit else None
+    relay = None if kit else run.start_relay()
+    specs = []
+    for k in range(n):
+        d, e = vs_env(run, k, n, frames, relay, r.paced, r.rtt, match=True,
+                      netmode=None if kit else "lockstep", exe=exe, asset_root=bundle)
+        e.pop("SM64DS_VS_STAR_TARGET", None)
+        if kit:
+            e.pop("SM64DS_COMMS_FANOUT", None)
+            e.pop("SM64DS_FAULTS_FATAL", None)
+            e.pop("SM64DS_VS_STATE_HASH", None)
+        if not kit:
+            e["SM64DS_VS_STATE_HASH"] = "2"     # the digest names a split actor
+        if r.opts.get("luigi"):
+            e["SM64DS_VS_LUIGI_INFECTION"] = "1"
+            e["SM64DS_VS_LUIGI_SEED"] = "7"
+        e["SM64DS_VS_NAMES"] = ",".join("lad%d" % j for j in range(n))
+        specs.append((k, e, d, 0.0 if k == 0 else 1.0 + 0.3 * k))
+    rcs, texts, wall = run.launch(specs, timeout_for(n, frames, r.paced, 60))
+    cs = {k: parse(t) for k, t in texts.items()}
+    want_win = ("survivor-timeout",) if r.opts.get("luigi") else ("time-up",)
+    ck = Checks()
+    ends = {}
+    for k in range(n):
+        c = cs[k]
+        t = texts[k]
+        ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
+        ck.ok(not c["faults"], "p%d faults=%d" % (k, len(c["faults"])))
+        ab = ABORT.findall(t)
+        ck.ok(not ab, "p%d no FATAL / slot-3 / refused crossing %s" % (k, [x[:70] for x in ab[:1]]))
+        ck.ok(not c["rollback"], "p%d runs lockstep" % k)
+        session_up(ck, k, c, n)
+        ce = CLOCK_END.findall(t)
+        ends[k] = ce[0] if ce else ""
+        ck.ok(len(ce) == 1 and "TARGET REACHED" not in t,
+              "p%d the clock ended it (%s)" % (k, (ce[0][:40] if ce else "no clock-end line")))
+        ck.ok(len(c["match"]) == 1, "p%d one MATCH OVER line (%d)" % (k, len(c["match"])))
+        m = c["match"][0] if c["match"] else ""
+        w = re.search(r"\bwin=(\S+)", m)
+        ck.ok(bool(w) and w.group(1) in want_win and "results_screen=port" in m,
+              "p%d MATCH OVER win=%s results_screen=port" % (k, w.group(1) if w else "?"))
+        ck.ok(c["closing"], "p%d [vs] closing" % k)
+    ck.ok(len(set(ends.values())) == 1 and all(ends.values()),
+          "clock-end line identical on every console (%d distinct)" % len(set(ends.values())))
+    lines = {c["match"][0] for c in cs.values() if c["match"]}
+    ck.ok(len(lines) == 1, "MATCH OVER identical on every console (%d distinct)" % len(lines))
+    if lines:
+        ck.note(next(iter(lines))[:160])
+    end = match_frame(cs)
+    delays = [c["close"]["indelay"] for c in cs.values() if c["close"]]
+    lasted(ck, cs, range(n), end, margin=10 + 2 * max(delays or [0]))
+    if not kit:
+        ok, msg = sweep(texts, list(range(n)), 24, run.dir, want=end)
+        if not ok and "DIVERGENCE AT FRAME" in msg:
+            pok, pmsg = sweep_popup_only(texts, list(range(n)), run.dir)
+            ok, msg = pok, msg + " -> " + pmsg
+        ck.ok(ok, msg)
+        relay_checks(ck, run)
+    else:
+        ck.note("kit bundle exe md5 %s" % hashlib.md5(open(exe, "rb").read()).hexdigest())
     return ck, wall, rcs
 
 
@@ -1538,7 +1665,7 @@ def r_vssave(L, run, r):
     return ck, wall, rcs
 
 
-BODIES = {"vs": r_vs, "advsave": r_advsave, "vssave": r_vssave, "match": r_match, "leave": r_leave, "late": r_late, "kill": r_kill,
+BODIES = {"vs": r_vs, "advsave": r_advsave, "vssave": r_vssave, "match": r_match, "timeup": r_timeup, "leave": r_leave, "late": r_late, "kill": r_kill,
           "laggard": r_laggard, "digest": r_digest, "luigi": r_luigi, "luigiseeds": r_luigiseeds,
           "adv": r_adv, "hub": r_hub, "hubjoin": r_hubjoin, "hubpause": r_hubpause,
           "chat": r_chat, "chathub": lambda L, run, r: r_chat(L, run, r, hub=True),

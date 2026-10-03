@@ -1169,6 +1169,20 @@ void port_luigi_countdown_render(void)
 // teardown and puts a scene carrier on the level path -- needs to be able to
 // arm the request and watch where it stops, and this is that instrument.
 //
+// ---- AND THEN THE ROM MADE THE REQUEST ITSELF (run mp1, lane VSTIMEUP1) -----
+//
+// Everything above was written while Stage::Behavior was not in the link. It is
+// now (_ZTV5Stage slot 6 holds the ROM's body, port/slice_gate220.txt), so the
+// statement quoted at the top of this block runs on its own and asks for scene
+// 7 every frame the guard is open, with this switch off. That turned every VS
+// match that ran to the clock into the abort measured above, on every console,
+// in the shipped kit and in a player's own match. port_vs_match_end_poll now
+// answers a pending 7 in VS itself: this port's results screen is this end
+// path (banner, MATCH OVER marker, the launcher room), so the sentinel goes back
+// before Scene::BeforeBehavior reads the id and the Stage is never marked. The
+// marker says results_screen=port when that happened. See the block at the top
+// of port_vs_match_end_poll.
+//
 // ---- THE ENVIRONMENT --------------------------------------------------------
 //
 //   SM64DS_VS_MATCH_END=0   the whole watcher off. Default ON: the time-up
@@ -1176,10 +1190,12 @@ void port_luigi_countdown_render(void)
 //                           behaviour at the ROM's own moment, and the marker
 //                           costs a line in the flight recorder.
 //   SM64DS_VS_END_SCENE=1   ALSO make the ROM's Scene::StartSceneFade(7,0,0)
-//                           request. Default OFF. IT ABORTS THE PROCESS about
-//                           thirty frames later, by the measurement above; it
-//                           is a diagnostic for the lane that will fix that,
-//                           not something to leave on.
+//                           request, and leave the ROM's own request standing
+//                           (no answer). Default OFF. IT ABORTS THE PROCESS
+//                           about thirty frames later, by the measurement
+//                           above; it is the instrument that reproduces the
+//                           abort from a fixed binary, not something to leave
+//                           on.
 //   SM64DS_VS_EXIT_ON_END=1 quit the process once the end state is reached.
 //                           Default OFF -- see the note over the exit.
 //   SM64DS_VS_END_GRACE=<n> frames between the time-up statement and the
@@ -1319,6 +1335,9 @@ static int g_end_by_luigi;
 /* lane DROPOUT1: 1 + the slot that won because everybody else left, 0 when
    the match ended any other way. */
 static int g_end_by_last;
+/* lane VSTIMEUP1: how many times this match the ROM's own Stage::Behavior asked
+   for scene 7 and port_vs_match_end_poll answered it (0 = never asked). */
+static int g_scene7_answered;
 /* lane DROPOUT1: the slots that have been in play this match, and those of
    them that have left it (vs_track_seats, below, keeps both). A slot that left
    has no place in the result: the winner, the draw test and the scores run
@@ -2319,6 +2338,7 @@ extern "C" int port_vs_match_end_poll(int frame)
         /* and who was in the match: the next one starts with nobody gone */
         g_vs_seen = 0;
         g_vs_left = 0;
+        g_scene7_answered = 0;
         /* Outside VS the king match is disarmed, so the next VS entry re-zeroes
            the points. This is the only reset point, so a king match always
            starts from zero however it was reached. */
@@ -2347,6 +2367,44 @@ extern "C" int port_vs_match_end_poll(int frame)
                     "still stands underneath and whichever happens first ends "
                     "the match (SM64DS_VS_STAR_TARGET)\n", star_target);
     }
+    /* ---- THE ROM'S OWN RESULTS REQUEST, ANSWERED (run mp1, lane VSTIMEUP1) --
+     *
+     * Stage::Behavior is the ROM's body now (_ZTV5Stage slot 6, port/
+     * slice_gate220.txt), so its time-up statement runs for real: every frame
+     * the end-of-match guard stays open it calls Scene::StartSceneFade(7, 0, 0),
+     * the VS results screen, whatever this file decides. Left standing, the id
+     * reaches Scene::BeforeBehavior on the next frame, which fades out and then
+     * marks the Stage; scene 7 is not hosted, so hal/level_change.cpp refuses
+     * the crossing and the cleanup Process aborts on the trapped slot 3.
+     * Measured on the shipped kit and in a player's own match: every VS match
+     * that ran to the clock ended in "FATAL: Stage vtable slot 3
+     * (CleanupResources) is not hosted", 0xC0000409, on every console.
+     *
+     * THE PORT'S RESULTS SCREEN IS THIS END PATH: the winner banner over the
+     * arena for the grace window, the MATCH OVER marker and the exit to the
+     * launcher room, which shows the result. That is the ending a star-target
+     * match already has. So a pending 7 in VS is the request this path serves,
+     * and once served the sentinel goes back -- Scene::SpawnIfNecessary's own
+     * second half, the statement port_scene_request_release completes for the
+     * other scenes the port answers itself. The poll runs after the actor tick,
+     * so the id is back before the next frame's BeforeBehavior reads it and the
+     * Stage is never marked. The ROM asks again every frame the guard is open,
+     * and every ask is answered the same way.
+     *
+     * Every console takes the same branch on the same frame: the id is written
+     * by the ROM from lockstep state. SM64DS_VS_END_SCENE=1 leaves the request
+     * standing -- the instrument that reproduces the abort from this binary. */
+    if (data_02092664 == 7 && !want_scene) {
+        if (!g_scene7_answered)
+            fprintf(stderr, "  [vs] f%d the ROM asked for scene 7 (the VS results "
+                    "screen): this port's results are the MATCH OVER banner and "
+                    "the launcher room, so the request is answered here and the "
+                    "pending id goes back to the sentinel (the Stage is not torn "
+                    "down)\n", frame);
+        ++g_scene7_answered;
+        data_02092664 = 0x187;
+    }
+
     if (!on)
         return 0;
 
@@ -2553,10 +2611,13 @@ extern "C" int port_vs_match_end_poll(int frame)
                     "RESULTS screen requested, pending scene id now %u\n",
                     (unsigned)data_02092664);
         } else {
-            fprintf(stderr, "  [vs] the results-screen request is NOT made "
-                    "(SM64DS_VS_END_SCENE is off, which is the default): the "
-                    "port cannot tear the Stage down, so asking would abort "
-                    "the process. Pending scene id left at %u.\n",
+            /* The port makes no request of its own. The ROM's Stage::Behavior
+               makes it from the next frame on, and the block at the top of
+               this function answers it. */
+            fprintf(stderr, "  [vs] the port makes no results-screen request "
+                    "of its own (SM64DS_VS_END_SCENE is off, the default); the "
+                    "ROM's own Stage::Behavior asks for scene 7 and this end "
+                    "path answers it. Pending scene id now %u.\n",
                     (unsigned)data_02092664);
         }
         /* Outside the if/else on the ROM too -- both arms stop the music. */
@@ -2645,7 +2706,8 @@ extern "C" int port_vs_match_end_poll(int frame)
             scores_field, np_marker,
             g_end_total, (unsigned)data_02092664,
             data_02092664 == 7 ? "REQUESTED-BUT-UNSERVICED"
-                               : (data_02092664 == 0x187 ? "none" : "other"),
+              : g_scene7_answered ? "port"
+              : (data_02092664 == 0x187 ? "none" : "other"),
             win_slot, win_name ? " winner_name=" : "", win_name ? win_name : "");
     fflush(stderr);
 
