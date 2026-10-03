@@ -3226,6 +3226,7 @@ int g_aa_pre_valid;
 int g_aa_mode = 0;                     /* 0 off, 1 edge smoothing */
 unsigned long long g_aa_changed;       /* pixels rewritten, whole run */
 unsigned long long g_aa_run_frames;    /* frames the pass ran on */
+unsigned long long g_cap_missed;       /* captures that read a smoothed frame */
 unsigned g_aa_hits[64];                /* per band, summed after each pass */
 
 bool raster_buffers(void)
@@ -3248,8 +3249,41 @@ bool raster_buffers(void)
 
 }  // namespace
 
+/* THE DEPTH AND POLYGON-ID PLANES AFTER A FRAME THE CARD DREW WHOLE (run
+   cardfull). That pass does not bring them back, because nothing in a game
+   reads them; the one reader that exists (tests/smoke_gpu_raster.cpp) asks
+   through the two accessors below, and the first ask after such a frame clears
+   the two planes and has the backend fill them from the card's own targets,
+   which still hold that frame. gx_render drops the flag at its head. */
+static int g_planes_stale;
+static void planes_if_stale()
+{
+    if (!g_planes_stale) return;
+    g_planes_stale = 0;
+    if (!g_gpu_opaque) return;
+    const int cw = active_w > 0 ? (active_w < SCREEN_W ? active_w : SCREEN_W) : 0;
+    const int ch = active_h > 0 ? (active_h < SCREEN_H ? active_h : SCREEN_H) : 0;
+    for (int y = 0; y < ch; ++y) {
+        for (int x = 0; x < cw; ++x) g_depth[y][x] = 1e30f;
+        std::memset(g_attrid[y], 0, (size_t)cw);
+    }
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.planes = 1;
+    f.depth = &g_depth[0][0];
+    f.attrid = &g_attrid[0][0];
+    f.cover = &g_cover[0][0];
+    f.stride = SCREEN_W;
+    f.cw = cw;
+    f.ch = ch;
+    g_gpu_opaque(&f);
+}
+
 const uint8_t *gx_coverage()
 {
+    /* a frame held on the card has no coverage plane on the processor: any
+       reader that wants it makes the frame an ordinary one first */
+    gx_card_settle_because("the coverage plane was asked for");
     raster_buffers();
     return &g_cover[0][0];
 }
@@ -3264,12 +3298,14 @@ const uint8_t *gx_coverage()
 const uint8_t *gx_attr_ids()
 {
     raster_buffers();
+    planes_if_stale();
     return &g_attrid[0][0];
 }
 
 const float *gx_depth()
 {
     raster_buffers();
+    planes_if_stale();
     return &g_depth[0][0];
 }
 
@@ -3377,7 +3413,54 @@ uint32_t gx_clear_argb()
     return out;
 }
 
+/* THE PICTURE-ON-THE-CARD STATE (run cardfull, lane CARD2; see ntr/gx.h).
+   g_cp_allow is the caller's one-frame permission, g_cp_pending is set by the
+   fill below until gx_render has either kept the frame on the card or given
+   up, g_cp_active is the frame being held, and g_cp_geo is what a later
+   settle needs to ask the card for it. */
+static int g_cp_allow;
+static int g_cp_pending;
+static int g_cp_active;
+static Framebuffer *g_cp_fb;
+static struct { int cw, ch, px0, py0, pw, ph; } g_cp_geo;
+static uint32_t *g_cp_scratch;      /* the capture's picture, SCREEN_W stride */
+
+void gx_card_present_allow(int allow) { g_cp_allow = allow ? 1 : 0; }
+int gx_card_overlay_active() { return g_cp_active; }
+
+static void clear_fill_classic(Framebuffer &fb);
+
 void gx_clear_fill(Framebuffer &fb)
+{
+    /* a new frame: nothing from the last one is held any more */
+    g_cp_active = 0;
+    g_cp_pending = 0;
+    g_cp_fb = &fb;
+    const int allow = g_cp_allow;
+    g_cp_allow = 0;
+    if (allow && g_gpu_opaque && !ab_mode()) {
+        /* would the card keep a frame offered like this? Asked without
+           touching anything; 3 is yes. */
+        GxGpuFrame f;
+        std::memset(&f, 0, sizeof f);
+        f.probe = 1;
+        f.full_ok = 2;
+        f.keep = 1;
+        if (g_gpu_opaque(&f) == 3) {
+            /* THE TRANSPARENT FILL: alpha 0 everywhere, which says "no 2D
+               here". The clear colour is the card's to draw. */
+            const int w = active_w, h = active_h;
+            for (int y = 0; y < h && y < SCREEN_H; ++y)
+                std::memset(fb.px[y], 0, (size_t)(w < SCREEN_W ? w : SCREEN_W) *
+                                             sizeof(fb.px[0][0]));
+            g_cp_pending = 1;
+            return;
+        }
+    }
+    clear_fill_classic(fb);
+}
+
+static void clear_fill_classic(Framebuffer &fb)
 {
     const uint32_t c = gx_clear_argb();
     const int w = active_w, h = active_h;
@@ -3434,6 +3517,93 @@ void gx_aa_counters(unsigned long long &changed, unsigned long long &frames) {
    setting no matter when the game arms the capture unit. Same SCREEN_W
    stride as the framebuffer, so an index into one indexes the other. */
 uint32_t *gx_aa_preimage() { return g_aa_pre_valid ? g_aa_src : nullptr; }
+
+/* THE SETTLE (run cardfull, lane CARD2): see ntr/gx.h. Written after the
+   buffers it fills, ahead of everything that calls it. */
+void gx_card_settle() { gx_card_settle_because("something read the picture"); }
+
+void gx_card_settle_because(const char *why)
+{
+    if (!g_cp_active || !g_cp_fb || !g_gpu_opaque) return;
+    /* THE REASONS, COUNTED. A frame that reads the 3D back is a frame that is
+       not presented from the card, so each way into this function is named
+       and the totals are printed once at exit. */
+    {
+        static struct { const char *why; unsigned long long n; } tab[16];
+        static int used, registered;
+        static unsigned long long total;
+        if (!registered) {
+            registered = 1;
+            std::atexit([] {
+                std::fprintf(stderr, "[gx] frames settled back to the processor "
+                             "(read back, not presented from the card): %llu",
+                             total);
+                for (int i = 0; i < used; ++i)
+                    std::fprintf(stderr, "; %s %llu", tab[i].why, tab[i].n);
+                std::fprintf(stderr, "\n");
+                std::fflush(stderr);
+            });
+        }
+        ++total;
+        int i = 0;
+        for (; i < used; ++i)
+            if (!std::strcmp(tab[i].why, why)) break;
+        if (i == used && used < 16) { tab[used].why = why; tab[used].n = 0; ++used; }
+        if (i < used) ++tab[i].n;
+    }
+    /* classical from here on, whatever the card answers */
+    g_cp_active = 0;
+    raster_buffers();
+    GxGpuOut out;
+    std::memset(&out, 0, sizeof out);
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.settle = 1;
+    f.outside_argb = kOldClear;
+    f.fb = &g_cp_fb->px[0][0];
+    f.cover = &g_cover[0][0];
+    f.stride = SCREEN_W;
+    f.cw = g_cp_geo.cw;
+    f.ch = g_cp_geo.ch;
+    f.px0 = g_cp_geo.px0;
+    f.py0 = g_cp_geo.py0;
+    f.pw = g_cp_geo.pw;
+    f.ph = g_cp_geo.ph;
+    f.aa_mode = g_aa_mode;
+    f.pre = g_aa_src;
+    f.out = &out;
+    g_gpu_opaque(&f);
+    g_aa_pre_valid = out.pre_valid ? 1 : 0;
+    g_planes_stale = 1;
+}
+
+const uint32_t *gx_card_capture_picture()
+{
+    if (!g_cp_active || !g_cp_fb || !g_gpu_opaque) return nullptr;
+    if (!g_cp_scratch)
+        g_cp_scratch = (uint32_t *)std::calloc((size_t)SCREEN_W * SCREEN_H,
+                                               sizeof(uint32_t));
+    if (!g_cp_scratch) { gx_card_settle(); return nullptr; }
+    GxGpuOut out;
+    std::memset(&out, 0, sizeof out);
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.settle = 2;
+    f.outside_argb = kOldClear;
+    f.fb = &g_cp_fb->px[0][0];
+    f.pre = g_cp_scratch;
+    f.stride = SCREEN_W;
+    f.cw = g_cp_geo.cw;
+    f.ch = g_cp_geo.ch;
+    f.px0 = g_cp_geo.px0;
+    f.py0 = g_cp_geo.py0;
+    f.pw = g_cp_geo.pw;
+    f.ph = g_cp_geo.ph;
+    f.aa_mode = g_aa_mode;
+    f.out = &out;
+    if (g_gpu_opaque(&f) != 1) { gx_card_settle(); return nullptr; }
+    return g_cp_scratch;
+}
 
 namespace {
 
@@ -3680,9 +3850,9 @@ static void aa_report(void) {
                          "pixel(s) rewritten; captures performed %llu, armed "
                          "but refused %llu, captures that read the "
                          "pre-smoothing frame %llu, captured-bytes hash "
-                         "%016llx\n",
+                         "%016llx, captures that found no copy %llu\n",
                          g_aa_mode, g_aa_run_frames, g_aa_changed, cap, ref,
-                         pre, hash);
+                         pre, hash, g_cap_missed);
             std::fflush(stderr);
         });
     }
@@ -3845,6 +4015,12 @@ double g_ab_dw_span_card, g_ab_dw_span_soft;
 std::vector<uint32_t> g_ab_save, g_ab_fb;
 std::vector<float> g_ab_dep;
 std::vector<uint8_t> g_ab_cov, g_ab_id;
+/* the software arm's planes again after its TRANSLUCENT pass too (run
+   cardfull): a card that draws the whole frame is compared against these, one
+   that only draws the opaque pass against the ones above */
+std::vector<uint32_t> g_ab2_fb;
+std::vector<float> g_ab2_dep;
+std::vector<uint8_t> g_ab2_cov, g_ab2_id;
 
 double env_d(const char *n, double dflt) {
     const char *e = getenv(n);
@@ -4744,13 +4920,196 @@ void rab_compare(Framebuffer &fb, int lo, int hi) {
 
 }  // namespace
 
+/* ---- THE TWO HELPERS OF THE WHOLE-FRAME HAND-OVER (run cardfull) ----------
+ *
+ * aa_scratch_alloc: aa_pass's own scratch picture, allocated the same way for a
+ * backend that smooths on the card and so needs somewhere to leave the
+ * pre-smoothing copy. False with one line when there is no memory, and the
+ * setting is then off for the run exactly as aa_pass's own failure leaves it.
+ *
+ * capture_may_read: whether the display capture unit can read THIS frame, which
+ * is what decides if the picture before the smoothing has to be kept. On the
+ * graphics card keeping it costs a second readback of the whole picture, so it
+ * is only kept when something can read it. Any one of four signs is enough, and
+ * each keeps it for the next 300 frames (a dual-screen minigame captures every
+ * other frame, so the bank and the arming come and go), except the last, which
+ * keeps it for eight:
+ *   - a capture was PERFORMED (ppu_capture_counters moved);
+ *   - DISPCAPCNT is armed right now with a destination in it
+ *     (Scene::ResetHardwareRegisters arms the bare enable bit at every scene
+ *     boot and it is always refused; that one carries no destination);
+ *   - a VRAM bank A..D is allocated to LCDC, the only place a capture can land;
+ *   - the texture cache was just thrown away, which is every scene boot and the
+ *     first frame of the process: the unit is armed after a scene's first
+ *     frame has been rasterised, so none of the other signs can exist for it.
+ *
+ * THE FOURTH SIGN IS A GUESS ABOUT THE FUTURE, so it is not the last word:
+ * once any capture has been performed or armed with a destination in this
+ * run, the copy is kept for the REST OF THE RUN (a scene that captures once
+ * will capture again, and a prediction that lapsed between two arms is exactly
+ * how a capture ends up reading the smoothed picture). And a capture that did
+ * land on a frame with no copy is counted and said once on stderr, so a miss
+ * can never be silent. */
+static bool aa_scratch_alloc() {
+    if (g_aa_src) return true;
+    g_aa_src = (uint32_t *)std::calloc((size_t)SCREEN_W * SCREEN_H,
+                                       sizeof(uint32_t));
+    if (g_aa_src) return true;
+    std::fprintf(stderr,
+                 "[aa] no memory for the %d x %d scratch picture; edge "
+                 "smoothing is off for this run.\n", SCREEN_W, SCREEN_H);
+    std::fflush(stderr);
+    g_aa_mode = 0;
+    return false;
+}
+
+/* gpu_full_probe: does the registered backend mean to draw this frame whole?
+   Asked every frame, answered without touching anything. Not in the A/B, which
+   draws the CPU passes itself first and hands the card the cleared buffers. */
+static bool gpu_full_probe() {
+    if (!g_gpu_opaque || ab_mode()) return false;
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.probe = 1;
+    f.full_ok = 2;
+    return g_gpu_opaque(&f) == 2;
+}
+
+static bool capture_may_read() {
+    static unsigned long long last_performed = ~0ull, last_from_pre = 0;
+    static uint32_t last_gen = 0;
+    static int hold = 0;
+    static bool sticky = false;
+    unsigned long long performed = 0, refused = 0, hash = 0, from_pre = 0;
+    ppu_capture_counters(performed, refused, hash, from_pre);
+    /* A MISS, COUNTED. Every capture performed since the last frame should
+       have read the pre-smoothing copy (this function runs on every frame the
+       setting is on, so the counters only move between two calls by a capture
+       of the frame before). One that did not read it saw the host's smoothing:
+       say so, once, with the numbers. */
+    if (last_performed != ~0ull) {
+        const unsigned long long d_perf = performed - last_performed;
+        const unsigned long long d_pre = from_pre - last_from_pre;
+        if (d_perf > d_pre) {
+            g_cap_missed += d_perf - d_pre;
+            static int said;
+            if (!said) {
+                said = 1;
+                std::fprintf(stderr,
+                             "[aa] a display capture read a frame that had no "
+                             "pre-smoothing copy (%llu so far); the copy is now "
+                             "kept for the rest of the run.\n",
+                             g_cap_missed);
+                std::fflush(stderr);
+            }
+        }
+    }
+    last_from_pre = from_pre;
+    /* A SCENE'S FIRST FRAMES ARE COVERED WHATEVER ELSE IS SEEN. The unit is
+       armed and its bank mapped after the first frame of a scene has been
+       rasterised, so neither sign below can exist yet for that frame, and a
+       capture can land on it (scene 373's first capture did, with the hash
+       to prove it). The texture cache is thrown away at every scene boot
+       (VRAM is remapped), and the first frame of the process sees that too. */
+    if (last_gen != g_tex_generation) {
+        last_gen = g_tex_generation;
+        if (hold < 8) hold = 8;
+    }
+    if (last_performed == ~0ull) last_performed = performed;
+    if (performed != last_performed) {
+        last_performed = performed;
+        hold = 300;
+        sticky = true;
+    }
+    if (io_ready()) {
+        const uint32_t cap =
+            *reinterpret_cast<const volatile uint32_t *>(0x04000064u);
+        if ((cap & 0x80000000u) && (cap & 0x00FF0000u)) {
+            hold = 300;
+            sticky = true;
+        }
+        /* A CAPTURE CAN ONLY LAND IN A BANK THAT IS ALLOCATED TO LCDC (VRAMCNT
+           enabled, MST 0; ppu_display_capture refuses any other), and the
+           minigames map the destination there in the same breath as they arm
+           the unit, so a bank in that state is a frame that may be read. */
+        for (unsigned b = 0; b < 4; ++b) {
+            const uint8_t c = *reinterpret_cast<const volatile uint8_t *>(0x04000240u + b);
+            if ((c & 0x87u) == 0x80u) { hold = 300; break; }
+        }
+    }
+    /* SM64DS_CAPTURE_STICKY=0 puts the old rule back (a prediction that lapses
+       after 300 frames), for the A/B against the capture drill below. */
+    static const bool keep_all = [] {
+        const char *e = getenv("SM64DS_CAPTURE_STICKY");
+        return !(e && e[0] == '0');
+    }();
+    if (sticky && keep_all) return true;
+    if (hold > 0) {
+        --hold;
+        return true;
+    }
+    return false;
+}
+
+/* SM64DS_CAPTURE_DRILL=<n>,<n>,...: a test that arms the display capture LATE
+   on a scene that has not captured, which no real scene does (every dual-screen
+   minigame maps its bank a frame or more before it arms the unit). After the
+   gx_render of each listed frame it maps VRAM bank D to LCDC and arms a 128 x
+   128 capture into it, exactly the order the capture comment in ntr/ppu.cpp
+   warns about: the arming comes after the picture is drawn and nothing before
+   it said a capture was coming. Before the next gx_render it puts the bank
+   back, so the bank is not itself a sign that carries into the following
+   frames. Off unless the key is set. The first drilled capture finds no copy
+   (nobody could have known) and says so on stderr; the later ones, however
+   long after, must read the copy. */
+static void capture_drill(bool after) {
+    static int init = 0;
+    static unsigned long long frame = 0;
+    static unsigned at[16];
+    static int nat = 0;
+    static bool mapped = false;
+    if (!init) {
+        init = 1;
+        if (const char *e = getenv("SM64DS_CAPTURE_DRILL")) {
+            while (*e && nat < 16) {
+                char *end = nullptr;
+                const unsigned long v = strtoul(e, &end, 10);
+                if (end == e) break;
+                at[nat++] = (unsigned)v;
+                e = (*end == ',') ? end + 1 : end;
+            }
+        }
+    }
+    if (!nat || !io_ready()) return;
+    volatile uint8_t *bank_d = reinterpret_cast<volatile uint8_t *>(0x04000243u);
+    if (!after) {
+        if (mapped) {
+            *bank_d = 0;
+            mapped = false;
+        }
+        return;
+    }
+    for (int i = 0; i < nat; ++i)
+        if (at[i] == frame) {
+            *bank_d = 0x80;
+            mapped = true;
+            *reinterpret_cast<volatile uint32_t *>(0x04000064u) = 0x80030000u;
+            std::fprintf(stderr, "[capture-drill] armed a capture after the "
+                         "draw of frame %llu\n", frame);
+            std::fflush(stderr);
+        }
+    ++frame;
+}
+
 void gx_render(Framebuffer &fb) {
+    capture_drill(false);
     /* run interp1: what reached the raster is the frame; seal its record. */
     if (g_ip_rec) ip_rec_seal();
     /* LAST FRAME'S PRE-SMOOTHING COPY STOPS BEING THIS FRAME'S HERE, before
        anything is drawn. A capture that somehow ran against a frame this
        function never finished would otherwise sample the frame before it. */
     g_aa_pre_valid = 0;
+    g_planes_stale = 0;
     const int tm = frame_ms();
     std::chrono::steady_clock::time_point t_enter;
     if (tm) t_enter = std::chrono::steady_clock::now();
@@ -4783,14 +5142,11 @@ void gx_render(Framebuffer &fb) {
     const int cw = active_w > 0 ? (active_w < SCREEN_W ? active_w : SCREEN_W) : 0;
     const int ch = active_h > 0 ? (active_h < SCREEN_H ? active_h : SCREEN_H) : 0;
 
-    /* Depth clear. 1e30f is not a repeating byte pattern so memset cannot do
-       it, but one row can be built scalar and the rest copied from it, which
-       is memcpy's problem rather than a scalar loop's. */
+    /* THE DEPTH CLEAR MOVED DOWN (run cardfull): it now sits below the early
+       whole-frame card call, so a frame the card draws whole never pays for
+       it. Nothing between here and there reads depth. */
     raster_buffers();
     DepthRow *const depth = g_depth;
-    for (int x = 0; x < cw; ++x) depth[0][x] = 1e30f;
-    for (int y = 1; y < ch; ++y)
-        std::memcpy(depth[y], depth[0], (size_t)cw * sizeof(float));
 
     /* THE 3D COVERAGE MASK, see gx_coverage() in ntr/gx.h. One byte per pixel,
        set beside every store into fb.px below and cleared here. It is what
@@ -4895,15 +5251,91 @@ void gx_render(Framebuffer &fb) {
        graphics-card renderer -- want_id is have_shadow and nothing about this
        block or the write in the band below has changed. */
     const bool want_id = have_shadow || (g_gpu_opaque && ab_mode());
-    if (have_shadow)
-        for (int y = 0; y < ch; ++y) std::memset(stencil[y], 0, (size_t)cw);
-    if (want_id) {
-        /* 0 is the clear plane's polygon ID (CLEAR_COLOR bits 24-29 reset
-           value); pixels no opaque polygon reaches keep it. */
-        for (int y = 0; y < ch; ++y) std::memset(attrid[y], 0, (size_t)cw);
+
+    /* ---- THE WHOLE FRAME ON THE CARD, ASKED FOR EARLY (run cardfull) --------
+       A backend that draws the translucent pass and the edge smoothing too
+       says so beforehand (gpu_full_probe), and is then asked for the whole
+       frame BEFORE any of the CPU raster's own preparation: the depth, polygon
+       ID, stencil and translucent-ID planes it never reads, the trilinear
+       levels and the bins of the tiles it never runs. A frame that comes
+       back drawn skips all of that and both CPU passes. One that does not (the
+       card fell back, or declined) carries on below exactly as it always did,
+       and the opaque-only call at the seam is still there for it. With no
+       backend registered, and in the A/B, none of this runs. */
+    int gpu_drew = 0;
+    /* 1 when the card drew the translucent and shadow pass as well (and maybe
+       the edge smoothing: gpu_out.aa_done), so neither CPU pass runs below */
+    int gpu_full = 0;
+    GxGpuOut gpu_out;
+    std::memset(&gpu_out, 0, sizeof gpu_out);
+    if (gpu_full_probe()) {
+        GxGpuFrame f;
+        std::memset(&f, 0, sizeof f);
+        f.tris = g.tris.data();
+        f.count = g.tris.size();
+        f.fb = &fb.px[0][0];
+        f.depth = &g_depth[0][0];
+        f.cover = &g_cover[0][0];
+        f.attrid = &g_attrid[0][0];
+        f.stride = SCREEN_W;
+        f.cw = cw;
+        f.ch = ch;
+        f.px0 = present_x();
+        f.py0 = present_y();
+        f.pw = present_w();
+        f.ph = present_h();
+        f.want_attrid = 0;
+        f.want_depth = 0;
+        f.tex_filter = g_tex_filter;
+        f.tex_generation = g_tex_generation;
+        f.clear_argb = g_cp_pending ? gx_clear_argb()
+                       : (cw > 0 && ch > 0) ? fb.px[f.py0][f.px0] : 0xFF000000u;
+        f.toon_shade = g_toon_shade;
+        f.toon_rgb = g_toon8;
+        f.full_ok = 2;
+        f.out = &gpu_out;
+        f.keep = g_cp_pending;
+        f.outside_argb = kOldClear;
+        if (g_aa_mode && aa_scratch_alloc()) {
+            f.aa_mode = 1;
+            f.pre = g_aa_src;
+            f.pre_needed = capture_may_read() ? 1 : 0;
+        }
+        if (g_gpu_opaque(&f) == 2) {
+            gpu_full = 1;
+            g_planes_stale = 1;
+            if (g_cp_pending && gpu_out.kept) {
+                g_cp_active = 1;
+                g_cp_geo.cw = cw;
+                g_cp_geo.ch = ch;
+                g_cp_geo.px0 = f.px0;
+                g_cp_geo.py0 = f.py0;
+                g_cp_geo.pw = f.pw;
+                g_cp_geo.ph = f.ph;
+            }
+        }
     }
-    if (have_translucent)
-        for (int y = 0; y < ch; ++y) std::memset(tlattr[y], 0, (size_t)cw);
+    /* A frame the card did not keep goes on as an ordinary one: the CPU passes
+       draw into the clear colour, which the transparent fill did not leave */
+    if (g_cp_pending && !g_cp_active) clear_fill_classic(fb);
+    g_cp_pending = 0;
+    if (!gpu_full) {
+        /* Depth clear. 1e30f is not a repeating byte pattern so memset cannot
+           do it, but one row can be built scalar and the rest copied from it,
+           which is memcpy's problem rather than a scalar loop's. */
+        for (int x = 0; x < cw; ++x) depth[0][x] = 1e30f;
+        for (int y = 1; y < ch; ++y)
+            std::memcpy(depth[y], depth[0], (size_t)cw * sizeof(float));
+        if (have_shadow)
+            for (int y = 0; y < ch; ++y) std::memset(stencil[y], 0, (size_t)cw);
+        if (want_id) {
+            /* 0 is the clear plane's polygon ID (CLEAR_COLOR bits 24-29 reset
+               value); pixels no opaque polygon reaches keep it. */
+            for (int y = 0; y < ch; ++y) std::memset(attrid[y], 0, (size_t)cw);
+        }
+        if (have_translucent)
+            for (int y = 0; y < ch; ++y) std::memset(tlattr[y], 0, (size_t)cw);
+    }
 
     /* SM64DS_TEX_ONLY=<hex teximage>: draw only the polygons that were
        bound to that texture, so a material can be located on screen
@@ -4964,7 +5396,7 @@ void gx_render(Framebuffer &fb) {
        the bands only read it. Nothing below runs at filter 0 or 1: the vector
        is never even sized. */
     const int filt = g_tex_filter;
-    if (filt == 2) {
+    if (filt == 2 && !gpu_full) {
         g_tritex.assign(g.tris.size(), TriTex{nullptr, 0, 0.0f});
         for (size_t i = 0; i < g.tris.size(); ++i) {
             const GxTriangle &t = g.tris[i];
@@ -5391,7 +5823,7 @@ void gx_render(Framebuffer &fb) {
        threshold the handover costs more than the fill, and the frame runs
        as ONE tile the height of the allocation, which is the old
        single-thread walk. */
-    {
+    if (!gpu_full) {
         const int px0 = present_x(), py0 = present_y();
         const int px1 = px0 + present_w() - 1, py1 = py0 + present_h() - 1;
         g_bin_tmp.clear();
@@ -5517,8 +5949,7 @@ void gx_render(Framebuffer &fb) {
     std::chrono::steady_clock::time_point t_seam0, t_seam1, t_pass1, t_aa1;
     if (tm) t_seam0 = std::chrono::steady_clock::now();
 
-    int gpu_drew = 0;
-    if (g_gpu_opaque) {
+    if (g_gpu_opaque && !gpu_full) {
         GxGpuFrame f;
         std::memset(&f, 0, sizeof f);
         f.tris = g.tris.data();
@@ -5549,9 +5980,18 @@ void gx_render(Framebuffer &fb) {
         /* the frame's toon table, for its mode-2 polygons (0 = none) */
         f.toon_shade = g_toon_shade;
         f.toon_rgb = g_toon8;
+        /* THE WHOLE-FRAME HAND-OVER (run cardfull). A backend that can draw the
+           second pass says so by returning 2; one that cannot returns 1 or 0
+           and nothing below changes. The smoothing is offered to it only
+           outside an A/B, which compares the picture before it. */
+        f.full_ok = ab_mode() ? 1 : 0;
+        f.ab = ab_mode();
+        f.out = &gpu_out;
 
         if (!ab_mode()) {
-            gpu_drew = g_gpu_opaque(&f) ? 1 : 0;
+            const int r = g_gpu_opaque(&f);
+            gpu_drew = r ? 1 : 0;
+            gpu_full = (r == 2) ? 1 : 0;
         } else {
             /* THE A/B: the same list drawn both ways, compared before the
                translucent pass, the card's answer kept. See the block above
@@ -5577,6 +6017,23 @@ void gx_render(Framebuffer &fb) {
                 std::memcpy(&g_ab_cov[o], &g_cover[y][x0], (size_t)w);
                 std::memcpy(&g_ab_id[o], &g_attrid[y][x0], (size_t)w);
             }
+            /* THE SAME PLANES AFTER THE SECOND PASS, for a card that draws it
+               (run cardfull). The software arm simply carries on from where
+               the opaque pass left it, which is what the real frame does. */
+            if (g_ab2_fb.size() != n) {
+                g_ab2_fb.assign(n, 0);
+                g_ab2_dep.assign(n, 0.0f);
+                g_ab2_cov.assign(n, 0);
+                g_ab2_id.assign(n, 0);
+            }
+            run_checked(1, 1);
+            for (int y = y0; y < y0 + h; ++y) {
+                const size_t o = (size_t)y * SCREEN_W + x0;
+                std::memcpy(&g_ab2_fb[o], &fb.px[y][x0], (size_t)w * sizeof(uint32_t));
+                std::memcpy(&g_ab2_dep[o], &g_depth[y][x0], (size_t)w * sizeof(float));
+                std::memcpy(&g_ab2_cov[o], &g_cover[y][x0], (size_t)w);
+                std::memcpy(&g_ab2_id[o], &g_attrid[y][x0], (size_t)w);
+            }
             /* put the buffers back exactly as the clears left them */
             for (int y = y0; y < y0 + h; ++y) {
                 std::memcpy(&fb.px[y][x0], &g_ab_save[(size_t)y * SCREEN_W + x0],
@@ -5585,9 +6042,22 @@ void gx_render(Framebuffer &fb) {
                 std::memset(&g_cover[y][x0], 0, (size_t)w);
                 std::memset(&g_attrid[y][x0], 0, (size_t)w);
                 if (have_translucent) std::memset(&g_tlattr[y][x0], 0, (size_t)w);
+                if (have_shadow) std::memset(&g_stencil[y][x0], 0, (size_t)w);
             }
 
-            gpu_drew = g_gpu_opaque(&f) ? 1 : 0;    /* arm A: the card */
+            {
+                const int r = g_gpu_opaque(&f);     /* arm A: the card */
+                gpu_drew = r ? 1 : 0;
+                gpu_full = (r == 2) ? 1 : 0;
+            }
+            /* the card drew the whole frame: it is compared against the
+               software arm's whole frame, not its opaque half */
+            if (gpu_full) {
+                g_ab_fb.swap(g_ab2_fb);
+                g_ab_dep.swap(g_ab2_dep);
+                g_ab_cov.swap(g_ab2_cov);
+                g_ab_id.swap(g_ab2_id);
+            }
 
             static int abf;
             const int frame = abf++;
@@ -5799,6 +6269,7 @@ void gx_render(Framebuffer &fb) {
                     std::memset(&g_cover[y][x0], 0, (size_t)w);
                     std::memset(&g_attrid[y][x0], 0, (size_t)w);
                     if (have_translucent) std::memset(&g_tlattr[y][x0], 0, (size_t)w);
+                    if (have_shadow) std::memset(&g_stencil[y][x0], 0, (size_t)w);
                 }
             }
         }
@@ -5806,7 +6277,8 @@ void gx_render(Framebuffer &fb) {
 
     if (tm) t_seam1 = std::chrono::steady_clock::now();
 
-    run_checked(gpu_drew ? 1 : 0, 1);
+    /* the second pass: skipped when the card drew it (run cardfull) */
+    if (!gpu_full) run_checked(gpu_drew ? 1 : 0, 1);
 
     if (tm) t_pass1 = std::chrono::steady_clock::now();
 
@@ -5819,8 +6291,18 @@ void gx_render(Framebuffer &fb) {
        cannot write one, and needs no list of regions to avoid.
        Inside the timed section deliberately: it is part of what a frame costs
        when the setting is on, and the perf line should say so. */
-    aa_pass(fb, cw, ch, nt);
+    if (gpu_full && gpu_out.aa_done) {
+        /* the card smoothed the picture and left aa_pass's own bookkeeping to
+           be done here: the frame count, the pixels moved, and whether the
+           pre-smoothing copy exists for the display capture */
+        ++g_aa_run_frames;
+        g_aa_changed += gpu_out.aa_changed;
+        g_aa_pre_valid = gpu_out.pre_valid ? 1 : 0;
+    } else {
+        aa_pass(fb, cw, ch, nt);
+    }
     aa_report();
+    capture_drill(true);
 
     if (tm) t_aa1 = std::chrono::steady_clock::now();
 

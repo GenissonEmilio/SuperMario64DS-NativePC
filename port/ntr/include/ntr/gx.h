@@ -200,6 +200,16 @@ const GxTriangle *gx_polygons(size_t &count);
 // backend holding copies of those textures knows to drop them.
 uint32_t gx_texture_generation();
 
+// What a whole-frame backend reports back. aa_done: the smoothing ran (the
+// picture in fb is the smoothed one and aa_changed counts the pixels it moved);
+// pre_valid: `pre` holds the frame as it was before the smoothing.
+struct GxGpuOut {
+    int aa_done;
+    int pre_valid;
+    unsigned long long aa_changed;
+    int kept;              // the picture was left on the card (GxGpuFrame::keep)
+};
+
 // ---- THE OPTIONAL GRAPHICS-CARD BACKEND FOR THE OPAQUE PASS (run hd2) -----
 //
 // gx_render draws a frame in two passes over the same buffers: an OPAQUE pass
@@ -240,7 +250,69 @@ struct GxGpuFrame {
     // per entry, in the units the vertex colour travels in.
     int toon_shade;
     const float *toon_rgb;
+
+    // ---- THE WHOLE FRAME ON THE CARD (run cardfull, lane CARDFULL1) ---------
+    // Everything below is for a backend that draws the translucent and shadow
+    // pass and the edge smoothing as well (hal/gpu_raster.cpp, the default
+    // since run cardfull). A backend that only knows the opaque pass ignores it
+    // all and returns 1, and gx_render does the rest itself, as it always did.
+    //
+    // full_ok    gx_render will take a whole-frame answer: 1 over buffers it has
+    //            cleared (the in-process A/B), 2 over buffers it has NOT (it
+    //            skips their clears for a frame the card draws whole, and
+    //            clears them itself if the card does not); 0 not at all
+    // probe      do not draw: answer 2 if a frame offered with full_ok 2 would
+    //            be attempted whole, 0 otherwise (nothing is touched)
+    // planes     do not draw: fill depth and attrid (already cleared by the
+    //            caller) from the frame the card last drew whole, and answer 1,
+    //            or 0 if there is no such frame. A whole frame does not bring
+    //            those planes back; gx_depth and gx_attr_ids ask for them here
+    //            only if somebody reads them
+    // ab         the in-process A/B is comparing this frame: the depth and the
+    //            polygon-ID plane come back as well, and the smoothing is left
+    //            to gx_render's own pass so the comparison sees the picture
+    //            before it
+    // aa_mode    edge smoothing is on and the backend may run it (never in an
+    //            A/B)
+    // pre_needed the display capture unit may read this frame, so the picture
+    //            as it was BEFORE smoothing has to exist (see gx_aa_preimage)
+    // pre        aa_pass's own copy buffer, SCREEN_W stride; the backend fills
+    //            it when pre_needed, exactly as aa_pass would have
+    // out        the backend's report; written only on a return of 2
+    int full_ok;
+    int probe;
+    int planes;
+    int ab;
+    int aa_mode;
+    int pre_needed;
+    uint32_t *pre;
+    GxGpuOut *out;
+
+    // ---- THE PICTURE STAYS ON THE CARD (run cardfull, lane CARD2) -----------
+    // keep    the caller (gx_clear_fill filled fb with the transparent overlay
+    //         value, see gx_card_present_allow) will put the 2D over this frame
+    //         ON THE CARD and the picture is presented from there. With probe
+    //         set the answer is 3 when a frame offered like this would be kept
+    //         (2 or 0 as before when not); a draw that keeps the frame answers
+    //         2 with out->kept 1 and touches NO CPU buffer: no colour, no
+    //         coverage, no copy before the smoothing comes back.
+    // settle  do not draw: 1 = fb holds the 2D overlay of the frame the card
+    //         last kept; turn it into the finished picture in place (3D under
+    //         the overlay, then the fade), fill the coverage plane, and fill
+    //         `pre` with the frame before the smoothing when out->pre_valid
+    //         says so; 2 = write into `pre` the picture the display capture
+    //         reads (the frame before the smoothing under the overlay, no fade)
+    //         and leave fb alone. Both answer 1, or 0 when the card cannot
+    //         (then the 3D of that one frame is the clear colour).
+    int keep;
+    int settle;
+    // outside_argb  what the framebuffer holds outside the present rectangle
+    //               (the pillarbox constant), for the composite and the settle
+    uint32_t outside_argb;
 };
+// The return value of the callback: 0 the card drew nothing (gx_render runs
+// both passes), 1 the opaque pass only (the old contract), 2 the whole frame
+// (the translucent pass is done, and the smoothing too when out->aa_done).
 typedef int (*GxGpuOpaqueFn)(const GxGpuFrame *);
 void gx_set_gpu_opaque(GxGpuOpaqueFn fn);
 int gx_gpu_opaque_registered();
@@ -295,6 +367,40 @@ void gx_render(Framebuffer &fb);
 // prints every change of the registers the answer is made from.
 uint32_t gx_clear_argb();
 void gx_clear_fill(Framebuffer &fb);
+
+// ---- THE PICTURE NEVER COMES BACK TO THE PROCESSOR (run cardfull, CARD2) ----
+//
+// With Renderer 1 and PresentBackend 1 the 3D picture can stay in the card's
+// own targets. gx_clear_fill then fills the framebuffer with 0 (alpha 0, "no
+// 2D here") instead of the clear colour, gx_render draws on the card and reads
+// nothing back, the 2D compositor and the bottom-screen inset write only the
+// pixels they own, and the present composites the two on the card. The alpha
+// byte of a framebuffer pixel is the verdict:
+//   GX_OV_NONE   no 2D: the 3D picture shows (and the fade, if any, applies)
+//   GX_OV_FRONT  a 2D pixel in front of the 3D layer: this colour
+//   GX_OV_BEHIND a 2D pixel BEHIND the 3D layer: this colour where the 3D
+//                engine drew nothing, the 3D pixel where it did
+// Anything on the processor that needs the real pixels calls gx_card_settle,
+// which reads the card's picture back once and makes the frame an ordinary one.
+//
+// gx_card_present_allow: the caller of gx_clear_fill says, for the frame it is
+// about to start, whether the picture may stay on the card (it must not when
+// the host is going to read or draw over the 3D pixels: the stacked layout,
+// SmoothMotion's snapshots, a selftest picture dump). One frame only.
+// gx_card_overlay_active: 1 from the gx_render that kept the frame until the
+// frame is presented or settled. gx_card_capture_picture: the picture the
+// display capture unit reads, built on request from the card's pre-smoothing
+// copy under the overlay; null when the frame is not held on the card.
+#define GX_OV_NONE   0x00u
+#define GX_OV_FRONT  0xFFu
+#define GX_OV_BEHIND 0xFEu
+void gx_card_present_allow(int allow);
+int gx_card_overlay_active();
+void gx_card_settle();
+// The same, saying why: every reason is counted and the counts are printed once
+// at exit, which is how a frame that reads the picture back stays visible.
+void gx_card_settle_because(const char *why);
+const uint32_t *gx_card_capture_picture();
 
 // THE TOON TABLE (GBATEK, DS 3D Toon/Edge/Fog: TOON_TABLE 0x04000380, 32
 // BGR555 halfwords; DS 3D Polygon Attributes: mode 2). A mode-2 polygon's

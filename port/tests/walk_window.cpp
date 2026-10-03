@@ -3475,6 +3475,9 @@ static OvlSurface ovl_surface_stacked(uint32_t *img, ntr::Framebuffer &fb)
 
 static void ovl_shade(const OvlSurface &fb, int x0, int y0, int w, int h)
 {
+    /* the overlay reads and writes real pixels: a frame held on the graphics
+       card (run cardfull, lane CARD2) is read back first */
+    ntr::gx_card_settle_because("a host overlay (shade)");
     /* half-strength darken of what is already there, so the text reads over
        sky and over stone without hiding the frame behind it */
     for (int y = y0; y < y0 + h; ++y) {
@@ -3491,6 +3494,7 @@ static void ovl_shade(const OvlSurface &fb, int x0, int y0, int w, int h)
 static int ovl_text(const OvlSurface &fb, int x0, int y0, const char *s,
                     uint32_t rgb)
 {
+    ntr::gx_card_settle_because("a host overlay (text)");
     int x = x0;
     for (; *s; ++s) {
         const unsigned char ch = (unsigned char)*s;
@@ -3584,6 +3588,7 @@ static int chat_text(const OvlSurface &fb, int x0, int y0, const char *s,
                      int n, int rom, int scale, uint32_t rgb, int pass,
                      int alpha)
 {
+    ntr::gx_card_settle();     /* see ovl_shade */
     int x = x0;
     for (int i = 0; i < n && s[i]; ++i) {
         const unsigned char a = (unsigned char)s[i];
@@ -7672,6 +7677,36 @@ static void present_body(void)
        than with a second present() is deliberate: a resize feature that lives
        in one of two copies of this function is a resize feature that works in
        one layout. */
+    /* A FRAME HELD ON THE GRAPHICS CARD (run cardfull, lane CARD2): the
+       framebuffer is only its 2D, and the card composites that with the 3D it
+       still holds and presents the result through the same fit, filter and
+       swap chain. Anything that cannot (no client area, the offscreen proof
+       mode, a present that stood down) reads the frame back first and takes
+       the ordinary path below, so no picture is ever lost to it. */
+    if (ntr::gx_card_overlay_active()) {
+        if (gpu_offscreen && !g_present_stack &&
+            port_gpu_present_card_offscreen(&g_present_fb->px[0][0],
+                                            g_present_bi->bmiHeader.biWidth,
+                                            ntr::active_w, ntr::active_h))
+            return;
+        if (cw > 0 && ch > 0 && !gpu_offscreen && !g_present_stack &&
+            port_gpu_present_enabled()) {
+            int cdw, cdh, cdx, cdy;
+            hal_present_fit(cw, ch, ntr::active_w, ntr::active_h, &cdx, &cdy,
+                            &cdw, &cdh);
+            if (port_gpu_present_card_frame(
+                    g_present_hwnd, &g_present_fb->px[0][0],
+                    g_present_bi->bmiHeader.biWidth, ntr::active_w,
+                    ntr::active_h, cdx, cdy, cdw, cdh, cw, ch,
+                    PORT_VBLANK_MS * port_frame_divider(),
+                    port_frame_rate_target())) {
+                hal_present_set_rect(cdx, cdy, cdw, cdh, ntr::active_w,
+                                     ntr::active_h);
+                return;
+            }
+        }
+        ntr::gx_card_settle_because("the present could not take it from the card");
+    }
     const uint32_t *bits;
     const BITMAPINFO *bi;
     int sw, sh;
@@ -17783,6 +17818,19 @@ int main(void)
            raster, the engine-A composite, the fade and the overlays below
            all stand down with it (rb_skip_render); they write host pixels
            only, and they were a third of a replayed frame's cost */
+        /* THE PICTURE MAY STAY ON THE GRAPHICS CARD (run cardfull, lane CARD2).
+           With Renderer 1, PresentBackend 1 and SM64DS_PRESENT_FROM_CARD the
+           3D is not read back: the 2D below writes only its own pixels and the
+           present composites the two on the card (ntr/gx.h, GX_OV_*). Not when
+           SmoothMotion is on (its snapshots read the 3D), in the stacked
+           layout, in a replayed frame, or in an online match (the name tags
+           and the chat draw over the 3D). Everything else that reads or draws
+           over the picture settles it first, so the answer here is only "may
+           the card keep it". */
+        ntr::gx_card_present_allow(g_ip_on <= 0 && !hal_sub_screen_stacked() &&
+                                   !rb_resim_skip_render() && !rb_skip_render() &&
+                                   data_0209f2d8 != 1 &&
+                                   !port::adventure_ghost_mode());
         if (!rb_skip_render()) ntr::gx_clear_fill(fb);
         /* the rollback probe's re-run skips the rasteriser (SM64DS_ROLLBACK_DET_SKIP) */
         if (!rb_resim_skip_render() && !rb_skip_render())
@@ -17889,6 +17937,7 @@ int main(void)
             if (fw_lo >= 0) {
                 const int rf = port_rom_frame_checked(frame, "fade-watch");
                 if (rf >= fw_lo && rf <= fw_hi) {
+                    ntr::gx_card_settle();     /* it reads the picture's pixels */
                     unsigned long long sum = 0;
                     unsigned dark = 0, n = 0;
                     for (int y = 0; y < ntr::active_h; ++y) {

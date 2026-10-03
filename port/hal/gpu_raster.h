@@ -20,6 +20,17 @@
  * smoothed model's extra triangles are added. The fill is the cost, and the
  * card does fill.
  *
+ * THE WHOLE FRAME (run cardfull). The translucent polygons, the shadow volumes,
+ * the toon and highlight polygons and the edge smoothing can be drawn on the
+ * card too, into the same targets, so that one finished 3D picture is read back
+ * instead of an opaque one that the processor then finishes. It is what the
+ * setting does now; env SM64DS_RENDERER_FULL=0 is the escape hatch back to the
+ * opaque-only card above; a device below Direct3D feature level 11_0, or any failure of the
+ * whole-frame pass, drops back to the opaque-only card for the rest of the run
+ * with one line, and a failure of the card itself drops back to the software
+ * rasteriser as before. The in-process A/B (SM64DS_RENDERER_AB=1) compares the
+ * whole frame in this mode.
+ *
  * WHAT IT IS NOT. It is not byte-identical to the software path and cannot be:
  * two rasterisers with different fill rules and different float paths tie
  * differently on edges. The software path stays the default, stays the byte
@@ -49,6 +60,34 @@ void port_gpu_raster_configure(void);
 /* 1 when the setting is on and the card has not fallen back. Diagnostics and
  * the perf line; nothing in the render path asks. */
 int port_gpu_raster_active(void);
+
+/* THE PICTURE HELD ON THE CARD (run cardfull, lane CARD2; the long form is the
+   banner above cp_keep_ok in gpu_raster.cpp). 1 when the frame being finished
+   is still on the card unread, which is when the present may composite it
+   there instead of uploading the processor's copy. */
+int port_gpu_card_held(void);
+
+/* The Direct3D present (hal/gpu_present.cpp) has stood down: stop holding
+   frames on the card for it. Called from its own fall-back, once. */
+void port_gpu_raster_present_down(void);
+
+/* Engine A's brightness fade for the held frame (evy 0..16, white 1 = to
+   white), recorded instead of applied, because the composite applies it to the
+   whole picture. Ignored when no frame is held. */
+void port_gpu_card_set_fade(int evy, int white);
+
+/* The brightness mask that fade is limited by, when the frame has one
+   (hal/message_compositor.cpp, in the encoding its comment gives for a frame
+   held on the card): `mask` stays valid until the next frame's compositor.
+   Null means the fade takes every pixel. */
+void port_gpu_card_set_mask(const unsigned char *mask, int stride, int shown3d,
+                            int clear_opaque);
+
+/* Composite the held frame with the overlay (the framebuffer, `stride_px`
+   pixels to a row, alpha byte = ntr/gx.h's GX_OV_* verdict) into a card target
+   and return a view of it (an ID3D11ShaderResourceView as void *), or null
+   after the one plain line that says why the card cannot. */
+void *port_gpu_card_compose(const unsigned int *overlay, int stride_px);
 
 /* THE READBACK WAIT, summed in milliseconds over every frame the card has
  * drawn. This is the CPU side of the opaque pass: the copy out of the render
