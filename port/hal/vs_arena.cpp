@@ -1010,9 +1010,12 @@ void pup_play_sounds(int seat, char *a, const PupDraw &d, Pup &pp,
         for (int k = 0; k < 2; ++k) {
             if (!s.sfx[k]) continue;
             ++pp.sfx_played;
-            if (pup_log())
-                std::fprintf(stderr, "[pup-sfx] play seat=%d f=%u kind=%d id=%u\n",
-                             seat, s.frame, k, (unsigned)s.sfx[k]);
+            if (pup_log()) {
+                const int *cv = (const int *)(a + kPlayerSound);
+                std::fprintf(stderr, "[pup-sfx] play seat=%d f=%u kind=%d id=%u "
+                             "cam=%d,%d,%d\n", seat, s.frame, k, (unsigned)s.sfx[k],
+                             cv[0] >> 12, cv[1] >> 12, cv[2] >> 12);
+            }
             _ZN5Sound4PlayEjjRK7Vector3((unsigned)k, s.sfx[k], a + kPlayerSound);
         }
     }
