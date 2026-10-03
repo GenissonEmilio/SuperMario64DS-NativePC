@@ -1062,8 +1062,7 @@ void pup_before_walk() {
             static bool reg = false;
             if (!reg) { reg = true; std::atexit(pup_report); }
             std::fprintf(stderr, "[puppet] f%u seat %d taken over: Behavior skipped, "
-                         "body cylinder kept in the list by the puppet hold
-", g.frame, k);
+                         "body cylinder kept in the list by the puppet hold\n", g.frame, k);
         }
         pp.driven = true;
         ++pp.frames;
@@ -1109,12 +1108,10 @@ void pup_report() {
         if (!p.frames) continue;
         std::fprintf(stderr, "[puppet] exit seat=%d frames=%llu interp=%llu reckon=%llu "
                      "hold=%llu teleport=%llu older=%llu swaps=%llu sfx_played=%llu "
-                     "buf=%.0f
-", k, p.frames, p.interp, p.reckon, p.hold, p.tele,
+                     "buf=%.0f\n", k, p.frames, p.interp, p.reckon, p.hold, p.tele,
                      p.older, p.swaps, p.sfx_played, p.buf_ms);
     }
-    std::fprintf(stderr, "[puppet] exit sfx_captured=%llu,%llu dropped=%llu
-",
+    std::fprintf(stderr, "[puppet] exit sfx_captured=%llu,%llu dropped=%llu\n",
                  g_sfx_cap[0], g_sfx_cap[1], g_sfx_drop);
 }
 
