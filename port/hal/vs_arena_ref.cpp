@@ -144,6 +144,7 @@ struct Inst {
     bool spilled;
     unsigned uid;                // the local PowerStar's actor uid, 0 none yet
     bool holding;                // my console grabbed it, verdict pending
+    bool claimed;                // the grab claim was made (once per touch)
     int result;                  // 0 pending, 1 mine, 2 lost, 3 timeout
     int winner;
     unsigned short grab_cid;
@@ -228,6 +229,7 @@ struct Ref {
     int rig_n = 0;
     unsigned rig_next = 0;       // referee ms of the next scripted step
     int rig_press_frames = 0;
+    int rig_inject = 0;
 };
 Ref g;
 
@@ -509,7 +511,24 @@ void break_marker(int inst_id, int star_id, int breaker) {
 
 // a dropped star: the ROM's own spawn (func_ov002_020d94cc's) with the
 // referee's marker instead of its RNG
+// a marker a dropped star can land on, the ROM's own rule (func_ov002_020e7554):
+// broken glass with no star linked. The referee's pick stands when it is one;
+// otherwise the lowest-numbered free one (the same on every console, since the
+// glass states agree).
+int pick_free_marker(int want) {
+    auto is_free = [](int id) {
+        char *m = marker_by_id(id);
+        return m && (*u8p(m, 0x1db) & 1) &&
+               _ZN8dActor_c10FindWithIDEj(u32r(m, 0x1cc)) == nullptr;
+    };
+    if (is_free(want)) return want;
+    for (int id = 0; id < 8; ++id)
+        if (is_free(id)) return id;
+    return want;
+}
+
 char *spawn_spill_star(int marker_id, const int *origin, int victim_seat) {
+    marker_id = pick_free_marker(marker_id);
     int pos[3] = { origin[0], origin[1] + 0x82000, origin[2] };
     char *vb = body_of(victim_seat);
     const int area = vb ? (signed char)*u8p(vb, 0xcc) : 0;
@@ -764,8 +783,7 @@ void apply_frame(const RefFrame &f) {
     g.roster_now = f.roster;
     g.ever_roster |= f.roster;
     // the ledger: the newest header wins
-    if (!g.ledger_live || !seq_old(f.newest_seq, g.ledger_seq) ||
-        f.newest_seq == g.ledger_seq) {
+    if (!g.ledger_live || seq_old(f.newest_seq, g.ledger_seq)) {
         std::memcpy(g.ledger, f.scores, 16);
         g.ledger_seq = f.newest_seq;
         g.ledger_live = 1;
@@ -867,6 +885,7 @@ void maybe_send_ready() {
     char *me = my_body();
     if (!me) return;
     read_hud_clock();
+    if (!g.hud_units && g.vs_frames < 300) return;   // wait for the match clock
     const unsigned now = now_ms();
     if (!g.ready_sent) {
         const int markers = count_markers();
@@ -1032,6 +1051,7 @@ void star5_arena(char *c) {
                          (int)(i - g.inst), i->winner);
         } else {
             i->holding = false;
+            i->claimed = false;
             s32r(c, 0x440) = 8;
             s32r(c, 0xa8) = 0x20000;
             s32r(c, 0x98) = 0xc000;
@@ -1069,7 +1089,7 @@ void grab_detect() {
     if (!me) return;
     for (int k = 1; k < kMaxInst; ++k) {
         Inst &i = g.inst[k];
-        if (!i.used || i.state != 2 || i.holding || !i.uid) continue;
+        if (!i.used || i.state != 2 || i.holding || i.claimed || !i.uid) continue;
         char *s = star_by_uid(i.uid);
         if (!s) continue;
         if (s32r(s, 0x440) != 5) continue;
@@ -1087,6 +1107,7 @@ void grab_detect() {
         if (!c) continue;
         c->inst = (unsigned char)k;
         i.holding = true;
+        i.claimed = true;
         i.result = 0;
         i.grab_cid = c->cid;
         i.hold_ms = now_ms();
@@ -1409,6 +1430,18 @@ void rig_hit() {
     if (g.rig_press_frames > 0) {
         --g.rig_press_frames;
         rig_press(g.seat, 0x0002);
+        if (g.rig_press_frames == 0) g.rig_inject = 3;
+    } else if (g.rig_inject > 0 && --g.rig_inject == 0) {
+        // the ROM's pair pass would write this onto the victim's body cylinder
+        // when the punch overlaps it; the rig writes the same two words (the
+        // overlap test itself is the ROM's and is not what this row proves)
+        char *vb2 = body_of(1);
+        if (vb2 && me) {
+            u32r(vb2, 0x2f4) = 0x40;
+            u32r(vb2, 0x2f8) = actor_uid(me);
+            std::fprintf(stderr, "[rig] hit: the pair pass result written onto "
+                         "seat 1's body cylinder (flags 0x40)\n");
+        }
     }
     if (g.seat != 0 || (int)(r - g.rig_next) < 0) return;
     char *vb = body_of(1);
