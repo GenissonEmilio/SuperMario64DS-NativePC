@@ -729,7 +729,7 @@ struct Pup {
     unsigned sfx_frame = 0;
     unsigned swap_at = 0;
     unsigned long long frames = 0, interp = 0, reckon = 0, hold = 0, tele = 0,
-                       older = 0, swaps = 0, sfx_played = 0;
+                       older = 0, swaps = 0, sfx_played = 0, hits = 0;
 };
 Pup g_pup[kArenaSeats];
 struct PupCfg {
@@ -1043,11 +1043,60 @@ void pup_before_walk() {
                      *(const int *)(b + 0x64), (int)*(const short *)(b + 0x8e),
                      (unsigned)player::anim_id(b));
     }
+    // R1 PROBE (plan section 9) and the lab fixture beside it. What the pair
+    // pass (CylinderClsn::Process, in Stage::Render) wrote on the bodies last
+    // frame is still on them here: the body cylinder's hitFlags +0x2f4 and
+    // otherOwner +0x2f8 (dCc_c +0x20 / +0x24), and its pushback +0x2e0.
+    // SM64DS_PUPPET_NEAR=<frame>[:<units>] puts MY body <units> (default 30)
+    // beside the first driven puppet once at that frame, so two real bodies
+    // overlap and the pair pass has something to do.
+    if (pup_log() && g.seat < kArenaSeats && data_0209f394[g.seat]) {
+        const char *b = (const char *)data_0209f394[g.seat];
+        const unsigned hf = *(const unsigned *)(b + kPlayerBodyClsn + 0x20);
+        const unsigned ow = *(const unsigned *)(b + kPlayerBodyClsn + 0x24);
+        const int *pb = (const int *)(b + kPlayerBodyClsn + 0x0c);
+        if (hf || ow || pb[0] || pb[1] || pb[2])
+            std::fprintf(stderr, "[pup-hit] f=%u me seat=%d body hitflags=%08x owner=%u "
+                         "push=%d,%d,%d\n", g.frame, g.seat, hf, ow, pb[0], pb[1], pb[2]);
+    }
+    {
+        static int near_at = -2, near_units = 30;
+        static bool near_done = false;
+        if (near_at == -2) {
+            const char *e = std::getenv("SM64DS_PUPPET_NEAR");
+            near_at = e && *e ? std::atoi(e) : -1;
+            if (e) if (const char *c = std::strchr(e, ':')) near_units = std::atoi(c + 1);
+        }
+        if (near_at >= 0 && !near_done && (int)g.frame >= near_at && g.seat < kArenaSeats &&
+            data_0209f394[g.seat]) {
+            for (int k = 0; k < g.bodies && k < kArenaSeats; ++k) {
+                if (k == g.seat || !g_pup[k].driven || !data_0209f394[k]) continue;
+                char *me = (char *)data_0209f394[g.seat];
+                const char *pk = (const char *)data_0209f394[k];
+                *(int *)(me + 0x5c) = *(const int *)(pk + 0x5c) + (near_units << 12);
+                *(int *)(me + 0x60) = *(const int *)(pk + 0x60);
+                *(int *)(me + 0x64) = *(const int *)(pk + 0x64);
+                near_done = true;
+                std::fprintf(stderr, "[pup-near] f=%u my body placed %d units from the "
+                             "puppet of seat %d\n", g.frame, near_units, k);
+                break;
+            }
+        }
+    }
     for (int k = 0; k < g.bodies && k < kArenaSeats; ++k) {
         if (k == g.seat) continue;
         char *a = (char *)data_0209f394[k];
         if (!a || !data_0209fc5c[k] || g.ring[k].held) continue;
         Pup &pp = g_pup[k];
+        if (pup_log() && pp.driven) {
+            const unsigned hf = *(const unsigned *)(a + kPlayerBodyClsn + 0x20);
+            const unsigned ow = *(const unsigned *)(a + kPlayerBodyClsn + 0x24);
+            if (hf || ow) {
+                ++pp.hits;
+                std::fprintf(stderr, "[pup-hit] f=%u puppet seat=%d body hitflags=%08x "
+                             "owner=%u\n", g.frame, k, hf, ow);
+            }
+        }
         ArenaSeatView sv;
         if (vs_arena_seat_view(k, &sv) && sv.join_epoch != pp.epoch) {
             // the seat's console (re)joined: its timeline starts again
@@ -1110,9 +1159,9 @@ void pup_report() {
         const Pup &p = g_pup[k];
         if (!p.frames) continue;
         std::fprintf(stderr, "[puppet] exit seat=%d frames=%llu interp=%llu reckon=%llu "
-                     "hold=%llu teleport=%llu older=%llu swaps=%llu sfx_played=%llu "
+                     "hold=%llu teleport=%llu older=%llu swaps=%llu sfx_played=%llu hits=%llu "
                      "buf=%.0f\n", k, p.frames, p.interp, p.reckon, p.hold, p.tele,
-                     p.older, p.swaps, p.sfx_played, p.buf_ms);
+                     p.older, p.swaps, p.sfx_played, p.hits, p.buf_ms);
     }
     std::fprintf(stderr, "[puppet] exit sfx_captured=%llu,%llu dropped=%llu\n",
                  g_sfx_cap[0], g_sfx_cap[1], g_sfx_drop);
