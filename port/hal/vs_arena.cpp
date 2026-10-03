@@ -110,6 +110,34 @@ extern unsigned char data_ov002_021106ac[], data_ov002_021106c4[], data_ov002_02
 extern unsigned char data_ov002_021106f4[], data_ov002_0211070c[], data_ov002_02110724[];
 }  // extern "C"
 
+// PUPPET (A1 PUPPET1) externs: what the follower below calls. The same flat
+// names hal/comms_sync.cpp's ghost follower and hal/player_bridges.cpp use.
+extern "C" {
+// Player::SetAnim, declared void (its true return type; see comms_sync.cpp).
+void _ZN6Player7SetAnimEji5Fix12IiEj(void *, unsigned int, int, int, unsigned int);
+// the ROM's body placement and the ROM's one per-frame pose
+void func_ov002_020e444c(char *self);
+void func_ov002_020e4768(char *self);
+// the in-place character change (hal/player_bridges.cpp, the door path)
+void port_player_set_character(void *player, unsigned ch);
+int _ZN6Player8HasNoCapEv(void *self);
+// the collision list: a body whose Behavior is skipped registers its own
+// cylinder, the two calls Player::Behavior ends with
+void _ZN5dCc_c5ClearEv(void *self);
+void _ZN5dCc_c6UpdateEv(void *self);
+void _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(void *self, const void *v);
+// world -> camera space (the vector at Player+0x74 the sound system reads)
+void MulVec3Mat4x3(void *v, void *m, void *dst);
+extern int data_0209b3ec[];
+// the head of the active collision list (src/_ZN5dCc_c6UpdateEv.cpp)
+extern void *data_0209cee8;
+// the flat Sound::Play (hal/sdat/sound_abi.cpp), the one door every sound
+// request goes through
+void _ZN5Sound4PlayEjjRK7Vector3(unsigned kind, unsigned id, void *v);
+// the voice base per character (src/_ZN5Sound13PlayCharVoiceEjjRK7Vector3.cpp)
+extern unsigned char data_02075250[];
+}  // extern "C"
+
 namespace port {
 namespace {
 
@@ -610,6 +638,481 @@ void report_line(const char *tag) {
 
 void report_at_exit() { report_line("exit"); }
 
+// ===========================================================================
+// PUPPET (A1 PUPPET1): THE OTHER SEATS' BODIES, DRAWN FROM THEIR STATE STREAMS
+// (VSSYNC1 plan sections 2.4, 2.5 and 9 R1). Run mp1, lane PUPPET1. Everything
+// from here to the end of this anonymous namespace is the puppet half; the code
+// above this line is the core half (A0) and is not changed by it.
+// ===========================================================================
+//
+// WHAT A PUPPET IS. The body of every seat that is not mine stays a real
+// Player actor in the world (so the ROM's own camera, map, targeting and
+// collision lists see a body there), but its Behavior never runs: the walk's
+// BeforeBehavior returns 0 while pauseFlags (+0x13) bit 2 is set
+// (src/_ZN7fBase_c14BeforeBehaviorEv.cpp), exactly the GHOSTWIRE1 adventure
+// hold. The scene pass at the end of every frame clears that bit again, so it
+// is re-asserted here, right before the walk (vs_arena_before_walk).
+//
+// Each frame, for each puppet, this does what hal/comms_sync.cpp's ghost
+// follower (gw_follow) does for an adventure ghost, driven from the SYNS ring
+// instead of SYNG frames:
+//   - place the body where the owner's body was B ms before it arrived (a
+//     draw time 'B behind the newest packet', interpolated; dead-reckoned for
+//     at most 150 ms past the newest packet, then held; a teleport frame
+//     snaps, nothing is smoothed across it);
+//   - install the owner's animation at the owner's cursor (Player::SetAnim,
+//     the cursor reset the ghost follower documents), place the matrix and the
+//     shadow (func_ov002_020e444c), run the ROM's one pose
+//     (func_ov002_020e4768) and the six render latches (func_ov002_020e4bb8's
+//     tail), so the head, the cap look and the VS colour row draw;
+//   - THE COLLISION HALF (plan R1). With Behavior skipped nothing registers the
+//     body's cylinder (Player::Behavior ends with dCc_c::Clear then Update on
+//     +0x2d4, after putting the cylinder at the actor with
+//     SetPosRelativeToActor). The puppet does both itself, every frame, so the
+//     pair pass (CylinderClsn::Process, in Stage::Render) still finds a body
+//     there: my body is pushed by it and my own attack cylinder lands its hit
+//     flags on it, which is what A3's hit claim reads. The puppet's ATTACK
+//     cylinder (+0x314) is switched off (flags bit 0 stops Update), so the ROM
+//     can never apply a hit from a puppet by itself;
+//   - SOUNDS: a sound my body asks for (Sound::Play with the vector at my own
+//     Player+0x74) goes into the next SYNS (slot 0 = a bank 0 effect id, slot
+//     1 = a bank 1 character voice id), and a puppet replays each one once,
+//     when the drawn timeline reaches the sample that carried it, at the
+//     puppet.
+//
+// LAB KNOBS (off by default): SM64DS_PUPPET=0 turns the puppets off (the A0
+// behaviour: other bodies stand where they spawned); SM64DS_PUPPET_LOG=1 one
+// line per drawn puppet per frame and one truth line for my own body per frame
+// ([pup] / [pup-truth], the REMOTE ERROR VS TRUTH row's input);
+// SM64DS_PUPPET_BUF_MS=<n> pins the buffer B (ms); SM64DS_PUPPET_SOLID=1 gives
+// a puppet's body the solid-obstacle bit (pup_cylinder).
+// ---------------------------------------------------------------------------
+enum : int {
+    kPupBufMin = 50,          // B at 30 Hz: 1.5 send intervals (plan 2.5)
+    kPupBufMax = 100,
+    kPupReckonMs = 150,
+    kPupSwapAfter = 2,        // driven frames before a character swap
+    kPupSwapEvery = 60,       // frames between two swap attempts
+    kPlayerSound = 0x74,      // Player+0x74: the camera-space vector Player
+                              // sounds are played at
+    kPlayerBodyClsn = 0x2d4,  // mdCcAcPos_c
+    kPlayerAttackClsn = 0x314,
+    kPlayerBodyClsnOn = 0x713,
+};
+
+struct PupDraw {
+    int x, y, z;
+    short yaw;
+    unsigned short anim;
+    int cursor;               // 20.12
+    unsigned char look;       // the character the owner's body wears
+    unsigned char flags;
+    unsigned char invuln;
+    unsigned char power;
+    char mode;                // i interp, r reckon, h hold, t teleport hold,
+                              // o older than the ring
+    double ft;                // the sender frame the draw time maps to
+    unsigned newest_frame;
+};
+
+struct Pup {
+    bool driven = false;
+    unsigned n_driven = 0;
+    unsigned epoch = ~0u;
+    double buf_ms = kPupBufMin;
+    bool sfx_init = false;
+    unsigned sfx_frame = 0;
+    unsigned swap_at = 0;
+    unsigned long long frames = 0, interp = 0, reckon = 0, hold = 0, tele = 0,
+                       older = 0, swaps = 0, sfx_played = 0;
+};
+Pup g_pup[kArenaSeats];
+struct PupCfg {
+    int enabled = -1, log = -1, solid = -1, buf = -2;
+} g_pc;
+// my own sounds waiting for a free SYNS slot (a second sound of one kind in a
+// frame goes out one frame later)
+struct SfxQueue { unsigned char id[4]; int n = 0; } g_sq[2];
+unsigned long long g_sfx_cap[2] = {0, 0}, g_sfx_drop = 0;
+
+void pup_report();
+
+bool pup_enabled() {
+    if (g_pc.enabled < 0) {
+        const char *e = std::getenv("SM64DS_PUPPET");
+        g_pc.enabled = !(e && e[0] == '0' && !e[1]);
+    }
+    return g_pc.enabled != 0;
+}
+bool pup_log() {
+    if (g_pc.log < 0) g_pc.log = env_on("SM64DS_PUPPET_LOG") ? 1 : 0;
+    return g_pc.log != 0;
+}
+bool pup_solid() {
+    if (g_pc.solid < 0) g_pc.solid = env_on("SM64DS_PUPPET_SOLID") ? 1 : 0;
+    return g_pc.solid != 0;
+}
+int pup_buf_pin() {
+    if (g_pc.buf == -2) g_pc.buf = env_int("SM64DS_PUPPET_BUF_MS", -1, 10, 400);
+    return g_pc.buf;
+}
+
+inline int lerp_i(int a, int b, double num, double den) {
+    return a + (int)((double)((long long)b - (long long)a) * num / den);
+}
+
+// The buffer B: 50 ms, raised to the seat's delivery jitter p95 + 33 ms when
+// the link is noisy, never above 100 (plan 2.5). Moved by at most 1 ms a frame
+// so a change never shows as a jump.
+double pup_target_buf(const ArenaSample *sm, int n, int off) {
+    if (n < 8) return kPupBufMin;
+    int ex[kArenaRing];
+    for (int i = 0; i < n; ++i) {
+        const int e = (int)(sm[i].recv_ms -
+                            (unsigned)((unsigned long long)sm[i].s.frame * 1000ull / 30ull)) - off;
+        ex[i] = e < 0 ? 0 : e;
+    }
+    for (int i = 1; i < n; ++i) {               // insertion sort, n <= 32
+        const int v = ex[i];
+        int j = i - 1;
+        while (j >= 0 && ex[j] > v) { ex[j + 1] = ex[j]; --j; }
+        ex[j + 1] = v;
+    }
+    int b = ex[(n - 1) * 95 / 100] + 33;
+    if (b < kPupBufMin) b = kPupBufMin;
+    if (b > kPupBufMax) b = kPupBufMax;
+    return b;
+}
+
+// The seat's body as the owner's console had it at draw time. False: nothing
+// to draw yet.
+bool pup_sample(int seat, unsigned now, Pup &pp, PupDraw *o, ArenaSample *ring,
+                int *ring_n) {
+    ArenaSeatView v;
+    if (!vs_arena_seat_view(seat, &v) || !v.present || !v.has_state) return false;
+    const int n = vs_arena_samples(seat, ring, kArenaRing);
+    if (n <= 0) return false;
+    *ring_n = n;
+    if (pup_buf_pin() >= 0) {
+        pp.buf_ms = pup_buf_pin();
+    } else {
+        const double want = pup_target_buf(ring, n, v.clock_offset_ms);
+        if (pp.buf_ms < want) pp.buf_ms = pp.buf_ms + 1.0 > want ? want : pp.buf_ms + 1.0;
+        else if (pp.buf_ms > want) pp.buf_ms = pp.buf_ms - 1.0 < want ? want : pp.buf_ms - 1.0;
+    }
+    const double ft = ((double)now - pp.buf_ms - (double)v.clock_offset_ms) * 30.0 / 1000.0;
+    o->ft = ft;
+    o->newest_frame = ring[0].s.frame;
+    int ia = -1;
+    for (int i = 0; i < n; ++i)
+        if ((double)ring[i].s.frame <= ft) { ia = i; break; }
+    if (ia < 0) {                          // older than anything held
+        const ArenaState &s = ring[n - 1].s;
+        o->x = s.x; o->y = s.y; o->z = s.z; o->yaw = s.yaw; o->anim = s.anim_id;
+        o->cursor = (int)s.anim_cursor << 8; o->look = s.character;
+        o->flags = s.flags; o->invuln = s.invuln; o->power = s.power;
+        o->mode = 'o';
+        return true;
+    }
+    const ArenaState &a = ring[ia].s;
+    o->look = a.character;
+    o->flags = a.flags;
+    o->power = a.power;
+    const double since = ft - (double)a.frame;           // frames past a
+    const int inv = (int)a.invuln - (int)since;
+    o->invuln = (unsigned char)(inv > 0 ? inv : 0);
+    if (ia > 0) {
+        const ArenaState &b = ring[ia - 1].s;
+        if (b.flags & kArenaTeleport) {                   // stay on a until T reaches b
+            o->x = a.x; o->y = a.y; o->z = a.z; o->yaw = a.yaw; o->anim = a.anim_id;
+            o->cursor = (int)a.anim_cursor << 8;
+            o->mode = 't';
+            return true;
+        }
+        const double num = since, den = (double)(b.frame - a.frame);
+        o->x = lerp_i(a.x, b.x, num, den);
+        o->y = lerp_i(a.y, b.y, num, den);
+        o->z = lerp_i(a.z, b.z, num, den);
+        const short dy = (short)(b.yaw - a.yaw);          // the short way round
+        o->yaw = (short)(a.yaw + (int)((double)dy * num / den));
+        const int ac = (int)a.anim_cursor << 8, bc = (int)b.anim_cursor << 8;
+        if (a.anim_id == b.anim_id && bc >= ac) {
+            o->anim = a.anim_id;
+            o->cursor = lerp_i(ac, bc, num, den);
+        } else {
+            // the cycle wrapped or the animation changed between the two: walk
+            // back from b at speed 1.0 while that stays in b's animation,
+            // otherwise carry a forward at speed 1.0
+            const int back = (int)((den - num) * 4096.0);
+            if (bc - back >= 0) { o->anim = b.anim_id; o->cursor = bc - back; }
+            else { o->anim = a.anim_id; o->cursor = ac + (int)(num * 4096.0); }
+        }
+        o->mode = 'i';
+        return true;
+    }
+    // PAST THE NEWEST SAMPLE: dead-reckon the ground axes for at most 150 ms at
+    // its own per-frame step (y is held: a jump is a parabola), then hold.
+    double ex = since;
+    const double cap = kPupReckonMs * 30.0 / 1000.0;
+    if (ex > cap) ex = cap;
+    o->x = a.x; o->y = a.y; o->z = a.z; o->yaw = a.yaw; o->anim = a.anim_id;
+    o->cursor = (int)a.anim_cursor << 8;
+    if (!(a.flags & (kArenaTeleport | kArenaPaused)) && ex > 0.0) {
+        o->x += (int)((double)((int)a.vx * 64) * ex);
+        o->z += (int)((double)((int)a.vz * 64) * ex);
+        o->cursor += (int)(ex * 4096.0);
+        o->mode = 'r';
+    } else {
+        o->mode = 'h';
+    }
+    return true;
+}
+
+// dCc_c::Unlink (src/_ZN5dCc_c6UnlinkEv.cpp, which has no flat host name):
+// take a node out of the active list, a no-op for one that is not in it.
+void pup_unlink(char *node) {
+    char *&prev = *(char **)(node + 0x28);
+    char *&next = *(char **)(node + 0x2c);
+    if (prev) *(char **)(prev + 0x2c) = next;
+    else if ((char *)data_0209cee8 == node) data_0209cee8 = next;
+    if (next) *(char **)(next + 0x28) = prev;
+    prev = 0;
+    next = 0;
+}
+
+// THE BODY CYLINDER, kept in the collision list by hand (see the banner). The
+// radius and height are what Player::Behavior's first lines set; the cylinder
+// is put at the actor with no offset (a dCcAcPos_c keeps its own position,
+// written by SetPosRelativeToActor, it does not read the actor live).
+void pup_cylinder(char *c, unsigned char power) {
+    int scale = 0x1000;
+    if (power & kArenaMega) scale = 0x3000;
+    *(int *)(c + kPlayerBodyClsn + 0x04) = scale * 0x28;
+    *(int *)(c + kPlayerBodyClsn + 0x08) = scale * 0x96;
+    unsigned *fl = (unsigned *)(c + kPlayerBodyClsn + 0x18);
+    if (power & kArenaMega) *fl |= 0x10u; else *fl &= ~0x10u;
+    if (pup_solid()) *fl |= 4u;     // an immovable obstacle: pushes me, is not pushed
+    *(unsigned char *)(c + kPlayerBodyClsnOn) = 1;
+    static const int zero[3] = {0, 0, 0};
+    _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(c + kPlayerBodyClsn, zero);
+    // Unlink first: Process empties the list every frame, and a frame that did
+    // not run it must not leave this node in the list when Update runs again
+    // (a node linked to itself loops the pair pass for ever). Unlink of an
+    // unlinked node is a no-op.
+    pup_unlink(c + kPlayerBodyClsn);
+    *fl &= ~1u;                     // not disabled
+    _ZN5dCc_c5ClearEv(c + kPlayerBodyClsn);
+    _ZN5dCc_c6UpdateEv(c + kPlayerBodyClsn);
+    // the attack cylinder: off. Bit 0 of its flags makes Update return, and
+    // nothing here calls Update on it; it is also taken out of the list.
+    pup_unlink(c + kPlayerAttackClsn);
+    *(unsigned *)(c + kPlayerAttackClsn + 0x18) |= 1u;
+}
+
+// The sound vector of a puppet: its position in camera space, what
+// dActor_c::BeforeBehavior writes at +0x74 for a body that thinks.
+void pup_cam_pos(char *c, const PupDraw &d) {
+    int w[3] = {d.x, d.y, d.z};
+    int out[3] = {0, 0, 0};
+    MulVec3Mat4x3(w, data_0209b3ec, out);
+    int *p = (int *)(c + kPlayerSound);
+    p[0] = out[0]; p[1] = out[1]; p[2] = out[2];
+}
+
+// One puppet body, taken over and posed (see the banner).
+void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
+    // BEHAVIOR SKIPPED, every frame (the scene pass clears the bit)
+    *(a + 0x13) = (char)(*(a + 0x13) | 2);
+    *player::pos_x(a) = d.x;
+    *player::pos_y(a) = d.y;
+    *player::pos_z(a) = d.z;
+    *player::facing(a) = d.yaw;
+    *(int *)(a + 0x98) = 0;                 // horizontal speed
+    *(int *)(a + 0xa8) = 0;                 // vertical speed
+    // THE LOOK: the character the owner's body wears (param1, +0x08), through
+    // the game's own in-place swap, once the body has been driven a moment and
+    // no more often than every 2 s. Cap morphs on the owner come through here.
+    const unsigned want_look = d.look <= 3 ? d.look : 0u;
+    const unsigned have_look = (unsigned)(*(int *)(a + 8) & 0xff);
+    if (have_look != want_look && pp.n_driven >= (unsigned)kPupSwapAfter &&
+        g.frame >= pp.swap_at) {
+        pp.swap_at = g.frame + (unsigned)kPupSwapEvery;
+        port_player_set_character(a, want_look);
+        ++pp.swaps;
+        std::fprintf(stderr, "[puppet] seat %d body look %u -> %u\n", seat,
+                     have_look, want_look);
+    }
+    // THE CURSOR (comms_sync.cpp gw_follow documents all of this): SetAnim only
+    // lands its start frame when the animation CHANGES; with the same id and a
+    // different frame make the ROM's own reset first.
+    int want_f = d.cursor >> 12;
+    if (want_f < 0) want_f = 0;
+    {
+        int *cur = player::anim_frame_ptr(a);
+        if (player::anim_id(a) == d.anim && cur && (*cur >> 12) != want_f)
+            if (void *m = player::body_model_anim(a)) *(int *)((char *)m + 0x60) = 0;
+    }
+    _ZN6Player7SetAnimEji5Fix12IiEj(a, d.anim, 0, 0x1000, (unsigned)(want_f & 0xffff));
+    int frames = 0;
+    if (char *m = (char *)player::body_model_anim(a)) {
+        frames = (*(int *)(m + 0x54) & ~(int)0xc0000000) >> 12;
+        if (frames > 0) *(int *)(m + 0x58) = (want_f % frames) << 12;
+    }
+    if (frames <= 0) return;                // nothing to pose
+    // fully opaque to the ROM's own gates, not culled (BeforeBehavior is not
+    // writing the cull bits for a body that does not think)
+    *(unsigned char *)(a + 0x6f5) = 0x1f;
+    *(unsigned *)(a + 0xb0) &= ~0x38u;
+    // THE BLINK: the draw gate reads the invincibility timer; the owner's value
+    // at draw time reproduces its flicker
+    *(unsigned short *)(a + 0x6a0) = d.invuln;
+    if (d.flags & kArenaGrounded) *(int *)(a + 0x644) = d.y;
+    *(unsigned char *)(a + 0x717) = 0;
+    if (d.power & kArenaVanish) *(unsigned char *)(a + 0x6fb) = 1;
+    else *(unsigned char *)(a + 0x6fb) = 0;
+    // PLACE, THEN POSE, in Player::Behavior's own order
+    func_ov002_020e444c(a);
+    func_ov002_020e4768(a);
+    // the render latches, the tail of func_ov002_020e4bb8 (GHOSTLOOK1 A)
+    *(unsigned char *)(a + 0x6db) = (unsigned char)*(int *)(a + 8);
+    *(unsigned char *)(a + 0x6fe) = *(unsigned char *)(a + 0x6fd);
+    *(unsigned char *)(a + 0x6fa) = *(unsigned char *)(a + 0x6f9);
+    *(unsigned char *)(a + 0x6fc) = *(unsigned char *)(a + 0x6fb);
+    *(unsigned char *)(a + 0x700) = *(unsigned char *)(a + 0x6ff);
+    *(unsigned char *)(a + 0x701) = (unsigned char)_ZN6Player8HasNoCapEv(a);
+    pup_cam_pos(a, d);
+    pup_cylinder(a, d.power);
+    ++pp.n_driven;
+}
+
+// A puppet's sounds: every sample whose frame the drawn timeline has reached
+// since the last pass, once.
+void pup_play_sounds(int seat, char *a, const PupDraw &d, Pup &pp,
+                     const ArenaSample *ring, int n) {
+    if (!pp.sfx_init) {
+        // start at what is already behind the timeline: no replay of history
+        pp.sfx_init = true;
+        pp.sfx_frame = 0;
+        for (int i = 0; i < n; ++i)
+            if ((double)ring[i].s.frame <= d.ft) { pp.sfx_frame = ring[i].s.frame; break; }
+        return;
+    }
+    for (int i = n - 1; i >= 0; --i) {          // oldest first
+        const ArenaState &s = ring[i].s;
+        if (s.frame <= pp.sfx_frame) continue;
+        if ((double)s.frame > d.ft) break;
+        pp.sfx_frame = s.frame;
+        for (int k = 0; k < 2; ++k) {
+            if (!s.sfx[k]) continue;
+            ++pp.sfx_played;
+            if (pup_log())
+                std::fprintf(stderr, "[pup-sfx] play seat=%d f=%u kind=%d id=%u\n",
+                             seat, s.frame, k, (unsigned)s.sfx[k]);
+            _ZN5Sound4PlayEjjRK7Vector3((unsigned)k, s.sfx[k], a + kPlayerSound);
+        }
+    }
+}
+
+// One game frame's worth of puppet work, right before the actor walk.
+void pup_before_walk() {
+    if (!pup_enabled() || g.seat < 0 || data_0209f2d8 != 1) return;
+    // my own sounds that did not fit in last frame's SYNS go in this one's
+    for (int k = 0; k < 2; ++k)
+        if (g_sq[k].n > 0 && !g.sfx[k]) {
+            g.sfx[k] = g_sq[k].id[0];
+            for (int i = 1; i < g_sq[k].n; ++i) g_sq[k].id[i - 1] = g_sq[k].id[i];
+            --g_sq[k].n;
+            g.nsfx = 2;
+            g.send_now = true;
+        }
+    const unsigned now = comms_hub_now_ms();
+    if (pup_log() && g.seat < kArenaSeats && data_0209f394[g.seat] && g.have_last) {
+        // THE TRUTH LINE: my own body as the SYNS for frame g.frame carried it
+        // (this runs before the walk, so the body is where the tick left it)
+        const char *b = (const char *)data_0209f394[g.seat];
+        std::fprintf(stderr, "[pup-truth] t=%u f=%u pos=%d,%d,%d yaw=%d anim=%u\n",
+                     now, g.frame, *(const int *)(b + 0x5c), *(const int *)(b + 0x60),
+                     *(const int *)(b + 0x64), (int)*(const short *)(b + 0x8e),
+                     (unsigned)player::anim_id(b));
+    }
+    for (int k = 0; k < g.bodies && k < kArenaSeats; ++k) {
+        if (k == g.seat) continue;
+        char *a = (char *)data_0209f394[k];
+        if (!a || !data_0209fc5c[k] || g.ring[k].held) continue;
+        Pup &pp = g_pup[k];
+        ArenaSeatView sv;
+        if (vs_arena_seat_view(k, &sv) && sv.join_epoch != pp.epoch) {
+            // the seat's console (re)joined: its timeline starts again
+            pp.epoch = sv.join_epoch;
+            pp.sfx_init = false;
+            pp.buf_ms = kPupBufMin;
+        }
+        ArenaSample ring[kArenaRing];
+        int rn = 0;
+        PupDraw d;
+        if (!pup_sample(k, now, pp, &d, ring, &rn)) continue;
+        pup_drive(k, a, d, pp);
+        pup_play_sounds(k, a, d, pp, ring, rn);
+        if (!pp.driven) {
+            static bool reg = false;
+            if (!reg) { reg = true; std::atexit(pup_report); }
+            std::fprintf(stderr, "[puppet] f%u seat %d taken over: Behavior skipped, "
+                         "body cylinder kept in the list by the puppet hold
+", g.frame, k);
+        }
+        pp.driven = true;
+        ++pp.frames;
+        switch (d.mode) {
+            case 'i': ++pp.interp; break;
+            case 'r': ++pp.reckon; break;
+            case 't': ++pp.tele; break;
+            case 'o': ++pp.older; break;
+            default: ++pp.hold; break;
+        }
+        if (pup_log())
+            std::fprintf(stderr, "[pup] t=%u f=%u seat=%d ft=%.3f mode=%c pos=%d,%d,%d "
+                         "yaw=%d anim=%u cur=%d buf=%.0f newest=%u\n", now, g.frame, k,
+                         d.ft, d.mode, d.x, d.y, d.z, (int)d.yaw, (unsigned)d.anim,
+                         d.cursor >> 12, pp.buf_ms, d.newest_frame);
+    }
+}
+
+// A sound my body asked for (the flat Sound::Play, hal/sdat/sound_abi.cpp).
+void pup_note_sound(unsigned kind, unsigned id, const void *v) {
+    if (!g.installed || g.seat < 0 || g.seat >= kArenaSeats || kind > 1 || !id ||
+        id > 255 || !pup_enabled())
+        return;
+    const void *body = data_0209f394[g.seat];
+    if (!body || v != (const char *)body + kPlayerSound) return;
+    ++g_sfx_cap[kind];
+    if (pup_log())
+        std::fprintf(stderr, "[pup-sfx] cap f=%u kind=%u id=%u\n", g.frame, kind, id);
+    if (!g.sfx[kind]) {
+        g.sfx[kind] = (unsigned char)id;
+    } else if (g_sq[kind].n < 4) {
+        g_sq[kind].id[g_sq[kind].n++] = (unsigned char)id;
+    } else {
+        ++g_sfx_drop;
+    }
+    g.nsfx = 2;               // both slots are always read (A0's sample_body)
+    g.send_now = true;        // a sound is never held for the 10 Hz rule
+}
+
+void pup_report() {
+    for (int k = 0; k < kArenaSeats; ++k) {
+        const Pup &p = g_pup[k];
+        if (!p.frames) continue;
+        std::fprintf(stderr, "[puppet] exit seat=%d frames=%llu interp=%llu reckon=%llu "
+                     "hold=%llu teleport=%llu older=%llu swaps=%llu sfx_played=%llu "
+                     "buf=%.0f
+", k, p.frames, p.interp, p.reckon, p.hold, p.tele,
+                     p.older, p.swaps, p.sfx_played, p.buf_ms);
+    }
+    std::fprintf(stderr, "[puppet] exit sfx_captured=%llu,%llu dropped=%llu
+",
+                 g_sfx_cap[0], g_sfx_cap[1], g_sfx_drop);
+}
+
 }  // namespace
 
 // ===========================================================================
@@ -758,8 +1261,9 @@ void vs_arena_route_pads() {
 void vs_arena_before_walk(int frame) {
     (void)frame;
     if (!g.installed) return;
-    // THE PUPPET HOLD (A1 PUPPET1) hangs here: the other seats' bodies are
-    // held and posed before the actor walk ticks them.
+    // THE PUPPET HOLD (A1 PUPPET1): the other seats' bodies are held and posed
+    // before the actor walk ticks them (see the PUPPET section above).
+    pup_before_walk();
 }
 
 void vs_arena_tick(int frame) {
@@ -851,6 +1355,10 @@ bool vs_arena_referee_now(unsigned *ref_ms, int *rtt_ms) {
 
 int vs_arena_state_index(const void *body) { return state_index_of(body); }
 
+void vs_arena_sound_request(unsigned kind, unsigned id, const void *v) {
+    pup_note_sound(kind, id, v);
+}
+
 bool vs_arena_body_held(int seat) {
     return g.installed && seat >= 0 && seat < kArenaSeats && g.ring[seat].held;
 }
@@ -870,3 +1378,9 @@ void vs_arena_report(const char *tag) {
 }
 
 }  // namespace port
+
+// The flat door hal/sdat/sound_abi.cpp calls for every sound request (A1): a
+// sound whose vector is my own body's Player+0x74 goes out in my next SYNS.
+extern "C" void port_vs_arena_sound(unsigned kind, unsigned id, const void *v) {
+    port::vs_arena_sound_request(kind, id, v);
+}
