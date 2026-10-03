@@ -302,7 +302,12 @@ void sample_body(void *body, ArenaState *s) {
     s->tag = kArenaTagState;
     s->version = 1;
     s->seat = (unsigned char)g.seat;
-    s->character = player::character(body);
+    // A1 PUPPET1: the LOOK the body wears, Player param1 (+0x08), not
+    // Player+0x6d9 (mCharacter, the real character, which a cap never changes:
+    // Player::SetNewHatCharacter moves param1 and mHatCharacter only). 3 for a
+    // Yoshi, 0..2 for a Mario / Luigi / Wario cap; the puppet puts its body in
+    // the same look.
+    s->character = (unsigned char)(*(const int *)(b + 8) & 7);
     s->frame = g.frame;
     s->x = *player::pos_x(body);
     s->y = *player::pos_y(body);
