@@ -369,10 +369,10 @@ struct HalFaderWipe {
        did through the matched setters on hal/scene_boot.cpp's FaderColor
        table).
 
-       AND __cdecl, WITH THE RECEIVER ON THE STACK. These two slots are the
-       fifth class of the shape 0ec379b94 and 19a71216e retired on the sibling
-       tables, and the reasoning is 19a71216e's word for word. These two slots
-       have THREE callers; this block once named only the first,
+       AND SERVED IN BOTH CALL SHAPES, as the sibling tables are. These two
+       slots are the fifth class of the shape 0ec379b94 and 19a71216e retired on
+       those tables, and the reasoning is 19a71216e's word for word. These two
+       slots have THREE callers; this block once named only the first,
        src/_ZN8dScene_c14BeforeBehaviorEv.cpp, whose
        banner says why it cannot go through the real class and keep matching: it
        reaches the installed fader through a file-local FaderVTable of PLAIN
@@ -408,31 +408,18 @@ struct HalFaderWipe {
        these __cdecl slots the call read 0x1e as the receiver ("WRONG RECEIVER
        at SetForwardTime"), left eight bytes on the caller's frame, and the
        caller returned into the pushed 0: FAULT c0000005 at eip 0 on level 29.
-       Their _MSC_VER arms declare the one slot each calls __cdecl, so the call
-       pushes the receiver and cleans up after itself; the #else arms are the
-       matched source. Run mp1, lane PITCRASH1.
+       Those two files are the matched source and stay so: the slots below
+       take both shapes, as the sibling tables' slots do. Run mp1, lane
+       PITCRASH1.
 
        Receiver check included for 19a71216e's stated reason: a caller of the
        old shape would hand these two a vtable or a frame count as the receiver,
        and a fault on that reports nothing. */
-    virtual int __cdecl SetBackwardTime(int frames, int)     /* 0x0c */
-    {
-        if (!hal_wipe_receiver_ok(this)) {
-            hal_wipe_shape_trap("SetBackwardTime (ROM slot 0x0c)", this);
-            return 0;
-        }
-        speed = hal_fade_speed((unsigned)frames, 1);
-        return HalFaderWipe::IsAtStart();
-    }
-    virtual int __cdecl SetForwardTime(int frames, int)      /* 0x10 */
-    {
-        if (!hal_wipe_receiver_ok(this)) {
-            hal_wipe_shape_trap("SetForwardTime (ROM slot 0x10)", this);
-            return 0;
-        }
-        speed = hal_fade_speed((unsigned)frames, 0);
-        return HalFaderWipe::IsAtEnd();
-    }
+    /* BOTH SHAPES, as hal/scene_boot.cpp's FaderColor table (d6141aa019)
+       and hal/fdr_arm9_fader_seat.cpp's dWipe_c table (43dd453d0d) serve
+       them: naked trampolines below, the bodies port_hal_wipe_s0c / _s10. */
+    virtual int SetBackwardTime(int frames, int);            /* 0x0c */
+    virtual int SetForwardTime(int frames, int);             /* 0x10 */
     /* 0x14 / 0x18 -- the matched predicates, reached qualified */
     virtual int IsAtStart()
     { return ((FaderBrightness *)(void *)this)->FaderBrightness::IsAtStart(); }
@@ -753,6 +740,82 @@ DSSTATE_BEGIN
 extern "C" __declspec(align(8)) unsigned char
     data_0209f5e8[sizeof(HalFaderWipe)] = {0};
 DSSTATE_END
+
+/* The two setters' bodies, unchanged, with C linkage so the trampolines can
+   name them. The trampoline's discriminator is the first STACK word, which
+   the language fixes: a __cdecl caller (dScene_c::BeforeBehavior's
+   FaderVTable) pushed the receiver there, a __thiscall caller
+   (src/FUN_020299f4.cpp, src/FUN_02029980.cpp) pushed the frame count, and a
+   frame count is never one of the eight objects this file hands out. */
+extern "C" int __cdecl port_hal_wipe_is_object(const void *p)
+{
+    const char *c = (const char *)p, *b = (const char *)&hal_wipes[0];
+    if (c >= b && c < (const char *)&hal_wipes[7] &&
+        (std::size_t)(c - b) % sizeof(HalFaderWipe) == 0)
+        return 1;
+    return p == (const void *)data_0209f5e8;
+}
+extern "C" int __cdecl port_hal_wipe_s0c(void *s, int frames, int)
+{
+    if (!hal_wipe_receiver_ok(s)) {
+        hal_wipe_shape_trap("SetBackwardTime (ROM slot 0x0c)", s);
+        return 0;
+    }
+    HalFaderWipe *w = (HalFaderWipe *)s;
+    w->speed = hal_fade_speed((unsigned)frames, 1);
+    return w->HalFaderWipe::IsAtStart();
+}
+extern "C" int __cdecl port_hal_wipe_s10(void *s, int frames, int)
+{
+    if (!hal_wipe_receiver_ok(s)) {
+        hal_wipe_shape_trap("SetForwardTime (ROM slot 0x10)", s);
+        return 0;
+    }
+    HalFaderWipe *w = (HalFaderWipe *)s;
+    w->speed = hal_fade_speed((unsigned)frames, 0);
+    return w->HalFaderWipe::IsAtEnd();
+}
+__declspec(naked) int HalFaderWipe::SetBackwardTime(int, int)
+{
+    __asm {
+        push ecx
+        push dword ptr [esp+8]          /* the first stack word */
+        call port_hal_wipe_is_object
+        add  esp, 4
+        pop  ecx
+        test eax, eax
+        jnz  shape_cdecl
+        /* __thiscall: receiver in ecx, callee cleans 8 */
+        push dword ptr [esp+8]
+        push dword ptr [esp+8]
+        push ecx
+        call port_hal_wipe_s0c
+        add  esp, 12
+        ret  8
+    shape_cdecl:
+        jmp  port_hal_wipe_s0c
+    }
+}
+__declspec(naked) int HalFaderWipe::SetForwardTime(int, int)
+{
+    __asm {
+        push ecx
+        push dword ptr [esp+8]
+        call port_hal_wipe_is_object
+        add  esp, 4
+        pop  ecx
+        test eax, eax
+        jnz  shape_cdecl
+        push dword ptr [esp+8]
+        push dword ptr [esp+8]
+        push ecx
+        call port_hal_wipe_s10
+        add  esp, 12
+        ret  8
+    shape_cdecl:
+        jmp  port_hal_wipe_s10
+    }
+}
 
 namespace {
 struct HalColorFaderInit {
