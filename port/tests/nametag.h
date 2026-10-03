@@ -26,10 +26,23 @@
  *     (src/LoadFont3D.c) both MultiCopy_Int file 0x980e -- 0x4000 bytes -- to
  *     func_02054d88(), which is engine A's BG character base in VRAM. VS mode
  *     takes the LoadFont3D arm (Stage::LoadGraphics2D(b=1),
- *     src/_ZN5Stage14LoadGraphics2DEbi.cpp:75). The port maps DS VRAM at its
- *     real address (ntr/mmio.h VRAM_BASE 0x06000000), so the font the game is
- *     itself reading is readable here, at the same address, with no second
- *     copy and no file load of our own.
+ *     src/_ZN5Stage14LoadGraphics2DEbi.cpp:75). So the sheet is READ FROM THAT
+ *     FILE (nt_font_sheet), not from VRAM: file 0x980e is c2d.narc member 14,
+ *     0x4000 bytes stored raw, and hal/fs.cpp's port_fs_archive_member hands
+ *     it over read-only out of the archive image the game itself mounts. That
+ *     is the very source of the bytes LoadFont copies, so the glyphs are the
+ *     same ones the game draws with.
+ *
+ *     IT USED TO BE VRAM, AND THAT WAS THE FIELD BUG (run mp1, FONTFIELD1). The
+ *     overlays draw over the TITLE and the file select too when the launcher
+ *     starts the game (a windowed title), and there engine A's BG character
+ *     base holds the title's own graphics, not the font. The "letter A is not
+ *     blank" probe passed on those tiles, the atlas was decoded from them once
+ *     and kept for the session: the ping readout and the chat lines came out
+ *     as scrambled tile pieces while the tags, first built later in a level,
+ *     were fine. Every scripted proof ran the title headless (a selftest), so
+ *     the first draw always landed in a level and none of them saw it. A file
+ *     cannot hold the wrong thing at the wrong moment.
  *
  *   WHERE A GLYPH IS INSIDE THEM.  Message::AddChar
  *     (src/_ZN7Message7AddCharEc.cpp) is the authority, and it is exact:
@@ -144,8 +157,9 @@ int host_setting_name_tags(void);
 /* the two facts, from hal/star_flow.cpp */
 const char *port_vs_slot_name(int slot);
 int port_vs_slot_stars(int slot);
-/* engine A's BG character base: where LoadFont/LoadFont3D put file 0x980e */
-int func_02054d88(void);
+/* the message font's own file, read-only out of the mounted archive image
+   (hal/fs.cpp; LoadFont / LoadFont3D copy exactly these bytes to VRAM) */
+const unsigned char *port_fs_archive_member(unsigned fileID, unsigned *len_out);
 /* the ROM's per-character advance table (romdata.py NAMED) */
 extern unsigned char data_0208f074[];
 /* per-slot "this slot is live", Player::Render's own guard */
@@ -202,28 +216,50 @@ static int nt_code_for(unsigned char a)
     return -1;
 }
 
-/* Build the atlas if the font is up. Returns 1 once it is built. Cheap to call
-   every frame: one compare after the first success, and one VRAM probe before
-   it (the font is not in VRAM until the scene's LoadGraphics2D has run). */
+/* THE SHEET: file 0x980e itself, the 0x4000 bytes LoadFont / LoadFont3D copy
+   to engine A's BG character base. Looked up once and kept (the archive image
+   it points into is cached for the process and never released); 0 if the file
+   cannot be had, and then nothing draws in the ROM font (the chat falls back
+   to the overlay's 5x7 font, the tags and bubbles stay off) rather than
+   drawing whatever VRAM holds. Shared by all three atlases: the tags', the
+   bubbles' and the chat / ping readout's (walk_window chat_font_build). */
+enum { NT_FONT_FILE = 0x980e, NT_FONT_BYTES = 0x4000 };
+
+static const unsigned char *nt_font_sheet(void)
+{
+    static const unsigned char *sheet;
+    static int tried;
+    if (tried) return sheet;
+    tried = 1;
+    unsigned n = 0;
+    const unsigned char *p = port_fs_archive_member(NT_FONT_FILE, &n);
+    /* THE LETTER A MUST HAVE INK: a member of the wrong size or a blank one is
+       not the font, and is refused the same way a missing one is. */
+    int any = 0;
+    if (p && n >= NT_FONT_BYTES) {
+        const unsigned off =
+            (unsigned)(((0x0a & 0x1f) + ((0x0a & 0xe0) << 1)) << 5);
+        for (int i = 0; i < 32 && !any; ++i) any = p[off + i] != 0;
+    }
+    if (!any) {
+        fprintf(stderr, "[font] the ROM's message font (file 0x%x) is not "
+                "readable (%u bytes): host text uses the overlay font\n",
+                NT_FONT_FILE, p ? n : 0u);
+        return 0;
+    }
+    sheet = p;
+    return sheet;
+}
+
+/* Build the atlas from the sheet. Returns 1 once it is built. Cheap to call
+   every frame: one compare after the first call. */
 static int nt_font_build(void)
 {
     if (g_nt_font_ready) return 1;
 
-    const unsigned base = (unsigned)func_02054d88();
-    if (!base) return 0;                 /* no BG char base in this mode */
-
-    /* THE PROBE IS THE LETTER A, not the base pointer. func_02054d88 answers an
-       address whenever the display is in a mode that has one, whether or not
-       anybody has loaded a font into it, so a build that trusted the pointer
-       would cache 96 blank glyphs on the first frame and never look again. */
-    {
-        const unsigned off =
-            (unsigned)(((0x0a & 0x1f) + ((0x0a & 0xe0) << 1)) << 5);
-        const unsigned char *t = (const unsigned char *)(base + off);
-        int any = 0;
-        for (int i = 0; i < 32 && !any; ++i) any = t[i] != 0;
-        if (!any) return 0;
-    }
+    const unsigned char *sheet = nt_font_sheet();
+    if (!sheet) return 0;
+    const uintptr_t base = (uintptr_t)sheet;
 
     for (int a = NT_FIRST; a <= NT_LAST; ++a)
     for (int atlas = 0; atlas < 2; ++atlas) {
@@ -254,9 +290,10 @@ static int nt_font_build(void)
     g_nt_font_ready = 1;
     if (!g_nt_font_said) {
         g_nt_font_said = 1;
-        fprintf(stderr, "[tag] the ROM's message font is decoded from VRAM "
-                "%08x: 8x16 glyphs, 32-tile rows, widths from data_0208f074\n",
-                base);
+        fprintf(stderr, "[tag] the ROM's message font is decoded from its file "
+                "0x%x (c2d.narc member 14, %u bytes): 8x16 glyphs, 32-tile "
+                "rows, widths from data_0208f074\n", NT_FONT_FILE,
+                (unsigned)NT_FONT_BYTES);
     }
     return 1;
 }
