@@ -557,6 +557,52 @@ def _console(seat, n, reason=2, winners=1, scores=(3, 1, 0, 0), frame=700, up=Tr
     return "\n".join(L) + "\n"
 
 
+def old_return_outcome(tj):
+    """Which clean ending the returning console reached against the OLD relay
+    (the one that names a returner a seat while the dead holder still owns it):
+    'refused' (seat has no body -> ERROR + exit 4), 'seated' (the old relay
+    idle-expired the dead holder and the console got a seat) or None."""
+    if re.search(r"^\[vsarena\] ERROR: seat \d+ has no body", tj, re.M):
+        return "refused"
+    if SEATED.search(tj):
+        return "seated"
+    return None
+
+
+def judge_old_return(tj, rc, seat):
+    """The returning console against the OLD relay accepts exactly two clean
+    results, and either one is judged hard.
+    (a) refused: exactly one '[vsarena] ERROR: seat N has no body' line, exit 4,
+        no VS frame loop, no seat taken.
+    (b) seated: the old relay idle-expired the dead holder and the console got
+        ITS OWN seat back: seated once in `seat`, exit 0, one referee MATCH OVER,
+        no 'has no body' line.
+    Anything else (a fault or crash, another seat, two MATCH OVERs, exit codes
+    that fit neither ending) is red."""
+    out = []
+
+    def ok(c, m):
+        out.append((bool(c), m))
+    which = old_return_outcome(tj)
+    ok(which is not None, "the returning console reached a clean ending: refused (ERROR seat N has no body) "
+                          "or seated in its own seat (%s)" % (which or "neither"))
+    ok(not FAULT.search(tj), "the returning console had no fault or crash text")
+    if which == "refused":
+        n_err = len(re.findall(r"^\[vsarena\] ERROR: seat \d+ has no body", tj, re.M))
+        ok(n_err == 1, "refused: exactly one '[vsarena] ERROR: seat N has no body' line (%d)" % n_err)
+        ok(rc == 4, "refused: left with exit code 4 (rc=%s)" % rc)
+        ok(not re.search(r"first VS frame", tj), "refused: never entered the VS frame loop")
+        ok(not SEATED.search(tj), "refused: was never seated")
+    elif which == "seated":
+        seats = [int(x) for x in SEATED.findall(tj)]
+        ok(seats == [seat], "seated: seated once, in its own seat %d (%s)" % (seat, seats))
+        ok(rc == 0, "seated: exited 0 (rc=%s)" % rc)
+        n_over = len(re.findall(r"^\[vsarena\] MATCH OVER ref", tj, re.M))
+        ok(n_over == 1, "seated: heard exactly one referee MATCH OVER (%d)" % n_over)
+        ok(not re.search(r"seat \d+ has no body", tj), "seated: no 'has no body' line")
+    return out
+
+
 def selftest():
     n_ok = 0
     bad = []
@@ -637,6 +683,20 @@ def selftest():
     # digest vectors from ARENALOBBY1 contract section 2
     expect("digest vectors", lobby_digest(0, 2, 0)[0] == 1565304087 and lobby_digest(1, 4, 3)[0] == 1476757693
            and lobby_digest(3, 3, 5)[0] == 1991793976 and lobby_digest(0, 2, 0, "lockstep")[0] == 1172137709)
+    # returner against the OLD relay: two clean endings, everything else red
+    REF = "[vsarena] installed\n[vsarena] ERROR: seat 1 has no body\n"
+    OVR = "[vsarena] MATCH OVER ref reason=1 winners=0x1 count=4 x\n"
+    SEAT = "[vsarena] installed\n[vsarena] seated: seat 1 is my body\n[vs] first VS frame\n" + OVR
+    expect("old return refused is green", not red(judge_old_return(REF, 4, 1)))
+    expect("old return seated is green", not red(judge_old_return(SEAT, 0, 1)))
+    expect("old return refused rc 0 is red", red(judge_old_return(REF, 0, 1)))
+    expect("old return refused + fault is red", red(judge_old_return(REF + "FAULT c0000005\n", 4, 1)))
+    expect("old return refused twice is red", red(judge_old_return(REF + REF, 4, 1)))
+    expect("old return seated in another seat is red", red(judge_old_return(SEAT, 0, 2)))
+    expect("old return seated rc 1 is red", red(judge_old_return(SEAT, 1, 1)))
+    expect("old return seated + fault is red", red(judge_old_return(SEAT + "FAULT c0000005\n", 0, 1)))
+    expect("old return two MATCH OVERs is red", red(judge_old_return(SEAT + OVR, 0, 1)))
+    expect("old return neither ending is red", red(judge_old_return("[vsarena] installed\n", 0, 1)))
     print("arena_logs selftest: %d checks ok, %d failed %s" % (n_ok, len(bad), bad))
     return 0 if not bad else 1
 

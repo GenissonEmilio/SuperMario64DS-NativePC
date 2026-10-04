@@ -2247,7 +2247,13 @@ def r_arenaleave(L, run, r):
     for k in stay:
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
         ck.ok(not AL.FAULT.search(texts[k]), "p%d no fault" % k)
-    rej = leaver if (o.get("rejoin") and not o.get("expect_refused")) else None   # REJOIN1 scratch: the quick row too
+    # rejoin: the returner is seated in its own seat, so every staying console must see it JOIN and the
+    # leaver's score is not 0. Against the OLD relay (old_relay=True) the ending is either of two clean ones: refused
+    # (ERROR + exit 4, the leaver stays out) or seated in its own seat after the old relay idle-expires the
+    # dead holder; which one it was decides what the staying consoles are judged on.
+    tj0 = texts.get(10 + leaver, "")
+    returned = AL.old_return_outcome(tj0) == "seated" if o.get("old_relay") else bool(o.get("rejoin"))
+    rej = leaver if returned else None
     judge_into(ck, AL.judge_leave(texts, rcs, stay, leaver, rt=rt, rejoined=rej))
     # the staying consoles still end on ONE verdict (the relay's referee ends only one match)
     verdict_items = AL.judge_match({k: texts[k] for k in stay}, rcs, stay, {"reason": None}, rt=None,
@@ -2271,22 +2277,26 @@ def r_arenaleave(L, run, r):
                 m.group(1) if m else "no reclaim line"))
             ck.ok(not re.search(r"asking for any free seat|is taken; asking", tj),
                   "and it never gave up its pin for any seat")
-        if o.get("expect_refused"):
-            # REJOIN1 scratch, game half: an OLD relay names the returner a seat past the body count
-            # (the original bug); the game must print ONE ERROR line and leave with exit 4, no fault
-            n_err = len(re.findall(r"^\[vsarena\] ERROR: seat \d+ has no body", tj, re.M))
-            ck.ok(n_err == 1, "the returning console printed exactly one '[vsarena] ERROR: seat N has no body' line (%d)" % n_err)
-            ck.ok(rcs.get(j) == 4, "and left with exit code 4 (rc=%s)" % rcs.get(j))
-            ck.ok(not re.search(r"first VS frame", tj), "and never entered the VS frame loop")
-            ck.ok(not AL.FAULT.search(tj), "no fault text at all")
+        if o.get("old_relay"):
+            # the OLD relay names the returner a seat while the dead holder still owns it: either the game
+            # refuses cleanly (ERROR seat N has no body, exit 4) or the old relay idle-expires the holder
+            # and the console is seated in its own seat (exit 0); a fault, another seat, a second
+            # MATCH OVER or any other exit is red
+            judge_into(ck, AL.judge_old_return(tj, rcs.get(j), leaver))
+            control(ck, "old-return", lambda t: AL.judge_old_return(t, rcs.get(j), leaver),
+                    ("a fault line on the returning console", tj + "\n[hub] FAULT c0000005 at +0x1406d7\n"))
+            wrong = (AL.SEATED.sub("[vsarena] seated: seat %d is my body" % ((leaver + 1) % n), tj)
+                     if AL.SEATED.search(tj) else None)
+            control(ck, "old-return-seat", lambda t: AL.judge_old_return(t, rcs.get(j), leaver),
+                    ("the returning console is seated in another seat", wrong) if wrong else None)
         else:
-          # REJOIN1 scratch checks: the returning console gets ITS OLD SEAT, plays on, hears one MATCH OVER
-          ck.ok(("[vsarena] seated: seat %d is my body" % leaver) in tj,
-                "the returning console was seated in its old seat %d" % leaver)
-          ck.ok(rcs.get(j) == 0, "the returning console exited 0 (rc=%s)" % rcs.get(j))
-          n_over_j = len(re.findall(r"^\[vsarena\] MATCH OVER ref", tj, re.M))
-          ck.ok(n_over_j == 1, "the returning console heard exactly one referee MATCH OVER (%d)" % n_over_j)
-          ck.ok(not re.search(r"seat \d+ has no body", tj), "no 'has no body' line on the returning console")
+            # the returning console gets ITS OLD SEAT, plays on, hears one MATCH OVER
+            ck.ok(("[vsarena] seated: seat %d is my body" % leaver) in tj,
+                  "the returning console was seated in its old seat %d" % leaver)
+            ck.ok(rcs.get(j) == 0, "the returning console exited 0 (rc=%s)" % rcs.get(j))
+            n_over_j = len(re.findall(r"^\[vsarena\] MATCH OVER ref", tj, re.M))
+            ck.ok(n_over_j == 1, "the returning console heard exactly one referee MATCH OVER (%d)" % n_over_j)
+            ck.ok(not re.search(r"seat \d+ has no body", tj), "no 'has no body' line on the returning console")
     control(ck, "no-spill", lambda t: AL.judge_leave(t, rcs, stay, leaver, rt=rt),
             AL.mutate("no-spill", {k: texts[k] for k in stay}))
     relay_checks(ck, run)
@@ -2295,12 +2305,12 @@ def r_arenaleave(L, run, r):
 
 
 def r_arenahijack(L, run, r):
-    """REJOIN1 scratch row: a LIVE seat is never given away. A fifth source
-    address (not one of the consoles) sends role-3 HELLOs at the relay all
-    through a 4-console rig match: want_seat = each live seat in turn, and
-    want_seat 0xFF; every answer must be a refusal (4 seat taken / 1 full),
-    never an ACK 0; the consoles play on unaffected (one identical MATCH OVER,
-    each seated once, no fault, no seat moved)."""
+    """A LIVE seat is never given away. A fifth source address (not one of the
+    consoles) sends role-3 HELLOs at the relay all through a 4-console rig
+    match: want_seat = each live seat in turn, and want_seat 0xFF; every answer
+    must be a refusal (4 seat taken / 1 full), never an ACK 0; the consoles play
+    on unaffected (one identical MATCH OVER, each seated once, no fault, no seat
+    moved)."""
     n, o = r.n, dict(r.opts)
     relay = run.start_relay()
     host, port = relay.split(":")
@@ -2447,7 +2457,7 @@ def arena_rungs():
     R.append(Rung("arena4-rejoin-quick-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
                   rejoin=True, quick=True, delays=skew4))
     R.append(Rung("arena4-rejoin-quick-oldrelay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
-                  rejoin=True, quick=True, expect_refused=True, delays=skew4))
+                  rejoin=True, quick=True, old_relay=True, delays=skew4))
     R.append(Rung("arena4-rejoin-fast-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
                   rejoin=True, quick=True, fast=True, rejoin_after=0.2, delays=skew4))
     R.append(Rung("arena4-rejoin-quick-relay-b", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
