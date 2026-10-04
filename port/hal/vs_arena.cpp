@@ -696,6 +696,7 @@ enum : int {
     kPupBufMin = 50,          // B at 30 Hz: 1.5 send intervals (plan 2.5)
     kPupBufMax = 100,
     kPupReckonMs = 150,
+    kPupOffN = 10,            // samples the clock offset's minimum looks at
     kPupSwapAfter = 2,        // driven frames before a character swap
     kPupSwapEvery = 60,       // frames between two swap attempts
     kPlayerSound = 0x74,      // Player+0x74: the camera-space vector Player
@@ -703,6 +704,8 @@ enum : int {
     kPlayerBodyClsn = 0x2d4,  // mdCcAcPos_c
     kPlayerAttackClsn = 0x314,
     kPlayerBodyClsnOn = 0x713,
+    kStLevelEnter = 51,       // state_table.json: St_LevelEnter
+    kPupIntroMaxFrames = 900, // 30 s: take over a seat that never leaves the intro
 };
 
 struct PupDraw {
@@ -798,14 +801,29 @@ bool pup_sample(int seat, unsigned now, Pup &pp, PupDraw *o, ArenaSample *ring,
     const int n = vs_arena_samples(seat, ring, kArenaRing);
     if (n <= 0) return false;
     *ring_n = n;
+    // THE CLOCK OFFSET, tracked fast. A0's seat view keeps the lower envelope
+    // over 8 s, which is right for a link but wrong for a SENDER that hitches
+    // (its frame clock then falls behind the wall clock for good, and an 8 s
+    // memory leaves the draw time that many frames ahead of what arrives: the
+    // puppet dead-reckons off the newest packet for seconds, up to 200 units
+    // off in the REMOTE ERROR row's tail). The offset used here is the minimum
+    // over the newest kPupOffN samples (about 0.3 s at 30 Hz); the jitter that
+    // sizes B is read against the minimum over the whole ring (about a second).
+    long long lo_n = 0, lo_all = 0;
+    for (int i = 0; i < n; ++i) {
+        const long long e = (long long)ring[i].recv_ms -
+                            (long long)((unsigned long long)ring[i].s.frame * 1000ull / 30ull);
+        if (i == 0 || e < lo_all) lo_all = e;
+        if (i < kPupOffN && (i == 0 || e < lo_n)) lo_n = e;
+    }
     if (pup_buf_pin() >= 0) {
         pp.buf_ms = pup_buf_pin();
     } else {
-        const double want = pup_target_buf(ring, n, v.clock_offset_ms);
+        const double want = pup_target_buf(ring, n, (int)(unsigned)lo_all);
         if (pp.buf_ms < want) pp.buf_ms = pp.buf_ms + 1.0 > want ? want : pp.buf_ms + 1.0;
         else if (pp.buf_ms > want) pp.buf_ms = pp.buf_ms - 1.0 < want ? want : pp.buf_ms - 1.0;
     }
-    const double ft = ((double)now - pp.buf_ms - (double)v.clock_offset_ms) * 30.0 / 1000.0;
+    const double ft = ((double)now - pp.buf_ms - (double)lo_n) * 30.0 / 1000.0;
     o->ft = ft;
     o->newest_frame = ring[0].s.frame;
     int ia = -1;
@@ -1033,6 +1051,14 @@ void pup_before_walk() {
             g.nsfx = 2;
             g.send_now = true;
         }
+    // THE RING AT THIS INSTANT. A0 drains the hub once a frame, at the end of
+    // the tick, so a puppet drawn here would read a ring that is up to a whole
+    // frame stale: the sample that arrived since is in the hub's queue, and the
+    // draw time (which counts from the packet's own arrival stamp) sits ahead of
+    // every sample the ring holds (the REMOTE ERROR row: lag 0.5 frame behind
+    // ft in 'r' mode at every rtt, B never in play). Drain again first; an
+    // empty queue is a no-op.
+    drain();
     const unsigned now = comms_hub_now_ms();
     if (pup_log() && g.seat < kArenaSeats && data_0209f394[g.seat] && g.have_last) {
         // THE TRUTH LINE: my own body as the SYNS for frame g.frame carried it
@@ -1088,6 +1114,25 @@ void pup_before_walk() {
         char *a = (char *)data_0209f394[k];
         if (!a || !data_0209fc5c[k] || g.ring[k].held) continue;
         Pup &pp = g_pup[k];
+        // THE INTRO RUNS FIRST. The ROM's VS level-entry state (St_LevelEnter,
+        // state_table.json idx 51) is released for the bodies by the level's own
+        // start, and a joiner's own body never left it when slot 0 was held from
+        // frame 0 (real entry path, ARENAGATE1 finding 1: St_LevelEnter for 1500+
+        // frames, A0 alone does not do it). So a puppet is left to the ROM, with
+        // its zero pad, until my own body AND this body are out of that state;
+        // the hold starts at the first frame both are. A seat that never leaves
+        // it (or a fixture without the intro) is taken over anyway after
+        // kPupIntroMaxFrames.
+        if (!pp.driven && g.frame < (unsigned)kPupIntroMaxFrames) {
+            const int mine = state_index_of(data_0209f394[g.seat]);
+            const int its = state_index_of(a);
+            if (mine == kStLevelEnter || its == kStLevelEnter) {
+                if (pup_log() && (g.frame % 30u) == 0)
+                    std::fprintf(stderr, "[pup-intro] f=%u seat=%d waits: my state %d, its "
+                                 "state %d\n", g.frame, k, mine, its);
+                continue;
+            }
+        }
         if (pup_log() && pp.driven) {
             const unsigned hf = *(const unsigned *)(a + kPlayerBodyClsn + 0x20);
             const unsigned ow = *(const unsigned *)(a + kPlayerBodyClsn + 0x24);
