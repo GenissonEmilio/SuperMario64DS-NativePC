@@ -64,6 +64,7 @@ extern char data_0209f498[];                     // Stage::CheckInput's Ctrl[4],
 extern unsigned short data_020a0e58[];           // PadData[4]: {held, pressed} (the raw DS pad)
 extern int data_020a0e5a[];                      // the split "pressed" symbol (same memory on the DS)
 extern unsigned short *data_0209214c[];
+char *_ZN8dActor_c15FindWithActorIDEjPS_(unsigned cls, char *prev);
 char *_ZN8dActor_c10FindWithIDEj(unsigned id);       // the ROM's actor list lookup by unique id          // CheckInput's three DS bit -> Ctrl bit maps
 
 int _ZN6Player7IsStateERNS_5StateE(void *self, void *state);
@@ -71,6 +72,7 @@ void _ZN6Player11ChangeStateERNS_5StateE(void *self, void *state);
 int _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *self, const void *v, unsigned a,
         int knock, unsigned d, unsigned e, unsigned f);
 void Vec3_RotateYAndTranslate(int *out, int *in, short angle, int *src);
+extern void *_ZTV9PowerStar[31];         // hal/actor_classes_star.cpp's host vtable
 int func_ov002_020d82f0(void *c);       // the ROM's "can be hurt / eaten" gate
 int func_ov002_020d5f34(char *c, void *eater);  // victim: into the mouth (state, +0xd0)
 int func_ov002_020d5ed0(char *c);       // victim: mouth step 1 + the 90-frame hold
@@ -533,6 +535,35 @@ void on_event(const RefEvent *ev, int my_seat, bool directed) {
 }
 
 // ---------------------------------------------------------------------------
+// THE TONGUE AND A POWER STAR
+// ---------------------------------------------------------------------------
+// The ROM's tongue can eat a live Power Star (PowerStar::OnYoshiTryEat answers
+// 4: the star goes into the mouth and the ROM then collects it itself with the
+// eater as collector). In an arena that collect happens while the eater is
+// still in the tongue's no-control window, so the referee's GRAB rule denies
+// the claim and the star is tossed back out (14 of 18 in the review's long
+// row). So in an arena the tongue refuses a star exactly as it refuses a
+// player (answer 0, the ROM's refusal path) and a star is only ever collected
+// by touch, through the referee's GRAB claim. Nothing changes outside arena
+// mode: the original answer is called.
+unsigned g_star_orig = 0;
+bool g_star_wrapped = false;
+int __fastcall star_eat_face(void *self, void *edx) {
+    if (vs_arena_active()) return 0;
+    return ((int (__fastcall *)(void *, void *))(size_t)g_star_orig)(self, edx);
+}
+void wrap_star_once() {
+    if (g_star_wrapped) return;
+    static const bool off = std::getenv("SM64DS_EAT_STAR") && *std::getenv("SM64DS_EAT_STAR") == '0';
+    if (off) return;                 // A/B control for the rows: the ROM's own star behaviour
+    g_star_orig = (unsigned)(size_t)_ZTV9PowerStar[kSlotOnYoshiTryEat];
+    if (!g_star_orig) return;        // the slot is not seated yet
+    _ZTV9PowerStar[kSlotOnYoshiTryEat] = (void *)&star_eat_face;
+    g_star_wrapped = true;
+    std::fprintf(stderr, "[eat] arena eating: PowerStar::OnYoshiTryEat wrapped (the tongue never eats a star)\n");
+}
+
+// ---------------------------------------------------------------------------
 // WRAP + LAB RIG
 // ---------------------------------------------------------------------------
 void wrap_once() {
@@ -545,6 +576,7 @@ void wrap_once() {
     g.log = std::getenv("SM64DS_EAT_LOG") && *std::getenv("SM64DS_EAT_LOG") == '1';
     const char *r = std::getenv("SM64DS_EAT_RIG");
     if (r && std::strncmp(r, "tongue", 6) == 0) g.rig = 1;
+    else if (r && std::strncmp(r, "starmouth", 9) == 0) g.rig = 5;
     else if (r && std::strncmp(r, "eat", 3) == 0) {
         g.rig = 2;
         if (std::strstr(r, "spit")) g.rig_var = 1;
@@ -732,6 +764,59 @@ void rig_stale() {
     std::fprintf(stderr, "[eat] rig: my mouth now names a dead block (%p)\n", (void *)g_stale_block);
 }
 
+// LAB RIG, SM64DS_EAT_RIG=starmouth (the star-tongue row). Seat 0 (with the arena rig race: seat 0 breaks the
+// markers) stands 40 units behind the first live (not dormant) PowerStar, faces it and uses the tongue, every 90 frames.
+int star_dist() { static int d = -1; if (d < 0) { const char *e = std::getenv("SM64DS_STAR_DIST"); d = e ? std::atoi(e) : 95; if (d < 20) d = 95; } return d; }
+struct StarRig { int press = 0, pin = 0; unsigned frames = 0, tongues = 0; unsigned last_uid = 0; int last_state = -99; int diag = 0; } sr;
+void rig_starmouth() {
+    const int me = vs_arena_my_seat();
+    if (data_0209f2d8 != 1 || me != 0 || !vs_ref_stats().started) return;
+    char *mb = (char *)data_0209f394[me];
+    if (!mb) return;
+    ++sr.frames;
+    char *star = nullptr;
+    for (char *a = _ZN8dActor_c15FindWithActorIDEjPS_(0xb2, nullptr); a; a = _ZN8dActor_c15FindWithActorIDEjPS_(0xb2, a))
+        if (s32r(a, 0x440) != 9) { star = a; break; }
+    char *mouth = ptr(mb, kMouthObj);
+    if (sr.diag > 0 && star) {
+        --sr.diag;
+        const long ddx = (long)(s32r(star, 0x5c) - s32r(mb, 0x5c)) >> 12, ddz = (long)(s32r(star, 0x64) - s32r(mb, 0x64)) >> 12,
+                   ddy = (long)(s32r(star, 0x60) - s32r(mb, 0x60)) >> 12;
+        std::fprintf(stderr, "[stardiag] f=%u my state=%d step=%d atk=%08x uid_touched=%u mouth=%p | star uid=%u state=%d flags_b0=%08x eater_d0=%p collector_438=%p d=(%ld,%ld,%ld)\n",
+                     vs_arena_frame(), vs_arena_state_index(mb), (int)*(unsigned char *)(mb + 0x6e3), *(unsigned *)(mb + 0x334),
+                     *(unsigned *)(mb + 0x338), (void *)mouth, *(unsigned *)(star + 4), s32r(star, 0x440), *(unsigned *)(star + 0xb0),
+                     (void *)ptr(star, 0xd0), (void *)ptr(star, 0x438), ddx, ddy, ddz);
+    }
+    if (star) {
+        const int st = s32r(star, 0x440);
+        if (st != sr.last_state || *(unsigned *)(star + 4) != sr.last_uid || sr.frames % 30 == 0) {
+            std::fprintf(stderr, "[starrig] f=%u star=%p uid=%u state=%d pos=%d,%d,%d mymouth=%p (star in mouth=%d) mystate=%d step=%d\n",
+                         vs_arena_frame(), (void *)star, *(unsigned *)(star + 4), st, s32r(star, 0x5c) >> 12,
+                         s32r(star, 0x60) >> 12, s32r(star, 0x64) >> 12, (void *)mouth, mouth == star ? 1 : 0,
+                         vs_arena_state_index(mb), (int)*(unsigned char *)(mb + 0x6e3));
+            sr.last_state = st; sr.last_uid = *(unsigned *)(star + 4);
+        }
+    } else if (mouth) {
+        if (sr.frames % 30 == 0)
+            std::fprintf(stderr, "[starrig] f=%u no live star actor; my mouth holds %p (state %d)\n",
+                         vs_arena_frame(), (void *)mouth, vs_arena_state_index(mb));
+    }
+    if (sr.pin > 0 && star) {
+        --sr.pin;
+        int *p = (int *)(mb + 0x5c);
+        p[0] = s32r(star, 0x5c); p[1] = s32r(star, 0x60); p[2] = s32r(star, 0x64) - (star_dist() << 12);
+        s32r(mb, 0x98) = 0; s16r(mb, 0x8e) = 0; s16r(mb, 0x94) = 0;
+    }
+    if (sr.press > 0) { rig_press(me, 0x0001, sr.press == 3); --sr.press; return; }
+    if (!star || mouth || sr.frames % 90 != 0) return;
+    { const int st0 = s32r(star, 0x440); if (st0 == 5 || st0 == 6 || st0 == 7) return; }   // already collected / in flight to the screen
+    int *p = (int *)(mb + 0x5c);
+    p[0] = s32r(star, 0x5c); p[1] = s32r(star, 0x60); p[2] = s32r(star, 0x64) - (star_dist() << 12);
+    s32r(mb, 0x98) = 0; s32r(mb, 0xa8) = 0; s16r(mb, 0x8e) = 0; s16r(mb, 0x94) = 0;
+    sr.press = 3; sr.pin = 25; sr.diag = 40; ++sr.tongues;
+    std::fprintf(stderr, "[starrig] tongue %u at the star uid %u (state %d)\n", sr.tongues, *(unsigned *)(star + 4), s32r(star, 0x440));
+}
+
 void report_at_exit() {
     std::fprintf(stderr, "[eat] exit asked=%llu refused=%llu claims=%llu confirmed=%llu "
                  "denied=%llu unwound=%llu | v_eaten=%llu v_released=%llu v_escapes=%llu "
@@ -784,6 +869,7 @@ void clear_tongue_bits() {
 void vs_eat_before_walk(int frame) {
     (void)frame;
     if (!vs_arena_active()) return;
+    wrap_star_once();
     if (!g.wrapped) {
         wrap_once();
         static bool reg = false;
@@ -797,9 +883,10 @@ void vs_eat_before_walk(int frame) {
     }
     probe_tongue();
     if (g.rig == 3) rig_stale();
+    if (g.rig == 5) rig_starmouth();
     if (data_0209f2d8 == 1) sanitize_mouth();
     clear_tongue_bits();             // part 1: a refused or an eating tongue is never a HIT
-    if (g.rig && g.rig != 3) rig_step();      // (rig 3 is the dead-mouthful rig above)
+    if (g.rig && g.rig != 3 && g.rig != 5) rig_step();      // (rig 3 is the dead-mouthful rig, 5 the star-tongue rig)
 }
 
 void vs_eat_after_walk(int frame) {

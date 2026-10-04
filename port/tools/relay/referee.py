@@ -78,6 +78,11 @@ CAP_UNKNOWN_MS = 100
 FUTURE_SLACK_MS = 5
 COMP_MAX_MS = 200
 HIT_IMMUNE_MS = 1000
+# an ESCAPE earlier than this after the EATEN is refused: the ROM's victim
+# needs 23 or more frames of mashing after its own console has the event, so a
+# real escape is never this fast (a cheating victim could otherwise make its
+# eater lose a star one round trip after being eaten)
+ESCAPE_MIN_MS = int(15 * FRAME_MS)
 TRADE_MS = 34
 REACH_H = 250
 REACH_V = 250
@@ -299,6 +304,7 @@ class Seat(object):
         self.hit_check = None       # (deadline rt, verdict rt)
         self.sanction_until = -1e9
         self.eaten_by = None        # the referee's view (provisional, A5)
+        self.eaten_at = -1e9        # referee ms of the EATEN that set it
         self.speed_win = deque(maxlen=SPEED_AVG_FRAMES)
         self.speed_logged = -1e9
 
@@ -1239,6 +1245,7 @@ class Referee(object):
             return
         if eat:
             v.eaten_by = c.seat
+            v.eaten_at = rt
             v.sanction_until = rt + 60000
             ev = self._emit(EV_EATEN, victim, c.seat, 0, c.cid, 0, 0, c.stamp,
                             att.x, att.y, att.z)
@@ -1277,6 +1284,9 @@ class Referee(object):
         v = self.seats.get(victim)
         if v is None or v.eaten_by != eater:
             self._deny(c, D_GONE, rt)
+            return
+        if c.kind == C_ESCAPE and rt - v.eaten_at < ESCAPE_MIN_MS:
+            self._deny(c, D_STATE, rt)      # too soon after the EATEN to be a real escape
             return
         v.eaten_by = None
         v.sanction_until = rt + 2000
