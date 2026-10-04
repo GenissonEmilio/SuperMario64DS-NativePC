@@ -77,6 +77,7 @@ void func_ov002_020e9448(unsigned char *p);
 void _ZN10StarMarker7CollectEv(void *self);
 short GetAngleToCamera(int i);
 void _ZN6Player11ChangeStateERNS_5StateE(void *self, void *state);
+void port_player_set_character(void *player, unsigned ch);   // hal/player_bridges.cpp: the door swap
 int _ZN6Player7IsStateERNS_5StateE(void *self, void *state);
 int _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *self, const void *v,
         unsigned a, int knock, unsigned d, unsigned e, unsigned f);
@@ -97,6 +98,8 @@ extern void *port_hud_self;      /* hal/sub_actors.cpp: the live HUD (fBase acto
 // state objects: St_Hurt, St_Walk-or-Wait (the neutral state the ROM returns to
 // after a no-control sequence), St_NoControl
 extern unsigned char data_ov002_02110094[];
+extern unsigned char data_ov002_021100ac[];   // St_HurtWater (Init calls the star drop)
+extern unsigned char data_ov002_0211010c[];   // St_DeadHit (Main calls the star drop)
 extern unsigned char data_ov002_0211013c[];
 extern unsigned char data_ov002_0211022c[];
 }  // extern "C"
@@ -221,6 +224,9 @@ struct Ref {
     // wraps
     unsigned star5_orig = 0;
     unsigned hurt_orig = 0;
+    unsigned hurtwater_orig = 0;
+    unsigned swim_clear_at = 0;
+    unsigned deadhit_orig = 0;
     VsRefEventSink sink = nullptr;
     unsigned last_report = 0;
     bool log = false;
@@ -230,6 +236,10 @@ struct Ref {
     int rig_n = 0;
     unsigned rig_next = 0;       // referee ms of the next scripted step
     int rig_press_frames = 0;
+    int rig_press_total = 3;
+    bool rig_real = false;       // chainr / hitr: no injected pair-pass words, a Mario-capped punch
+    int rig_real_n = 0;
+    unsigned rig_cap_frame = 0;
     int rig_inject = 0;
     int rig_follow = 0;          // frames left to keep my body at rig_dist units from the victim's puppet
     int rig_dist = 0;
@@ -1119,6 +1129,7 @@ void star5_arena(char *c) {
     }
     if (i->result == 0 && now_ms() - i->hold_ms >= (unsigned)kHoldMs) {
         i->result = 3;                          // no verdict in time: denied
+        i->winner = -1;                         // nobody won it: the star is tossed back (REVSTARREF1 F2)
         std::fprintf(stderr, "[vsarena-ref] grab of inst %d: no verdict in %d ms; "
                      "treated as denied\n", (int)(i - g.inst), kHoldMs);
     }
@@ -1311,7 +1322,17 @@ unsigned drawn_frame(int seat) {
     return f < 0 ? 0 : (unsigned)f;
 }
 
-void hit_detect() {
+// WHEN THIS RUNS MATTERS (lane HITSPILL1, G2). The pair pass (CylinderClsn::Process,
+// in the render half of the frame) writes an attack's flags and the attacker's
+// uid onto the TARGET's body cylinder (+0x2f4 / +0x2f8). A puppet's body cylinder is
+// Clear()ed and re-registered by the puppet hold at the top of every frame
+// (vs_arena_before_walk, which runs BEFORE this file's pre-walk half), and
+// dCc_c::Clear zeroes those two words. So read in the pre-walk half the contact of
+// the frame before is already gone and a real punch never made a claim (the lab
+// rigs' injected words were wiped the same way). The post-walk half runs after the
+// pair pass and before the next frame's hold, so that is where the contact is read;
+// the pre-walk call is kept for bodies the hold does not own.
+void hit_detect(const char *where) {
     char *me = my_body();
     if (!me) return;
     const unsigned fr = my_frame_now();
@@ -1327,6 +1348,9 @@ void hit_detect() {
         u32r(b, 0x2f8) = 0;
         char *o = _ZN8dActor_c10FindWithIDEj(other);
         if (o != me) continue;
+        if (g.log)
+            std::fprintf(stderr, "[vsarena-ref] contact: my attack touched the body of seat %d "
+                         "(flags 0x%x, read in %s, frame %u)\n", k, flags, where, fr);
         if ((flags & ~0x1000u) == 0) continue;
         // (a lab rig's tongue eats the copy by itself; the rig still wants its hit claim)
         if (!g.rig && vs_arena_body_held(k)) continue;
@@ -1353,10 +1377,18 @@ void apply_hit_on_me(const RefEvent &e) {
     int v[3] = { e.x, e.y, e.z };
     char *ab = body_of(e.a);
     const unsigned param = ab ? (unsigned)s32r(ab, 8) : 3u;
+    // LAB (SM64DS_ARENA_SWIMHIT=1): the victim is in water, so the hit goes through
+    // St_HurtWater (whose Init also calls the ROM's star drop); mIsUnderwater is
+    // put back 90 frames later (hit_apply_tick)
+    static const bool swim = env_on("SM64DS_ARENA_SWIMHIT");
+    if (swim) { *u8p(me, 0x706) = 1; g.swim_clear_at = my_frame_now() + 90u; }
     // the ROM's own damage, from the attacker's position
     const int hr = _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(
         me, v, 1u, 0, 0u, (param + 1) & 0xffu, 1u);
     g.hit_applied_frame = my_frame_now();
+    if (g.log)
+        std::fprintf(stderr, "[vsarena-ref] hit applied on me: Hurt returned %d, my state idx now %d\n",
+                     hr, vs_arena_state_index(me));
     if (!hr) {
         std::fprintf(stderr, "[vsarena-ref] HIT verdict: Player::Hurt refused on my "
                      "body (already hurt?)\n");
@@ -1386,21 +1418,42 @@ void apply_hit_on_me(const RefEvent &e) {
 // St_Hurt's Main, wrapped: the ROM drops a star from inside it (func_ov002_020d94cc
 // reads my carried count and refuses at zero); in an arena the referee already
 // spilled it, so the count reads zero for that one call.
-int __fastcall vs_ref_hurt_main_face(void *self, void *edx) {
+// func_ov002_020d94cc has three callers: St_Hurt_Main, St_HurtWater_Init and
+// St_DeadHit_Main. Each state's entry is wrapped the same way, so a hit that lands
+// while swimming (or a fatal one) cannot give the victim a star of its own on top
+// of the referee's spill (REVSTARREF1 F1).
+int muted_state_call(unsigned orig, void *self, void *edx) {
     char *b = (char *)self;
     if (!g.active || b != my_body())
-        return ((int (__fastcall *)(void *, void *))(size_t)g.hurt_orig)(self, edx);
+        return ((int (__fastcall *)(void *, void *))(size_t)orig)(self, edx);
     const int idx = *u8p(b, 0x6d8);
+    // (SM64DS_ARENA_NOMUTE=1 is the lab's NEGATIVE CONTROL for the star census:
+    // the ROM's own drop runs, and the census then sees a star no referee
+    // instance owns)
+    static const bool nomute = env_on("SM64DS_ARENA_NOMUTE");
     const signed char keep = idx < 16 ? data_0209f310[idx] : 0;
-    if (idx < 16) data_0209f310[idx] = 0;
-    const int r = ((int (__fastcall *)(void *, void *))(size_t)g.hurt_orig)(self, edx);
+    if (idx < 16 && !nomute) data_0209f310[idx] = 0;
+    const int r = ((int (__fastcall *)(void *, void *))(size_t)orig)(self, edx);
     if (idx < 16) data_0209f310[idx] = keep;
     return r;
+}
+int __fastcall vs_ref_hurt_main_face(void *self, void *edx) {
+    return muted_state_call(g.hurt_orig, self, edx);
+}
+int __fastcall vs_ref_hurtwater_init_face(void *self, void *edx) {
+    return muted_state_call(g.hurtwater_orig, self, edx);
+}
+int __fastcall vs_ref_deadhit_main_face(void *self, void *edx) {
+    return muted_state_call(g.deadhit_orig, self, edx);
 }
 
 void my_state_edges() {
     char *me = my_body();
     if (!me || !g.started || g.over) return;
+    if (g.swim_clear_at && (int)(my_frame_now() - g.swim_clear_at) >= 0) {
+        g.swim_clear_at = 0;
+        *u8p(me, 0x706) = 0;
+    }
     int st = vs_arena_state_index(me);
     if (st == 0xFF) return;
     const bool hurt_now = st == kStHurt || st == kStHurtWater ||
@@ -1470,6 +1523,7 @@ void rig_parse() {
     if (std::strncmp(e, "race", 4) == 0) g.rig = 1;
     else if (std::strncmp(e, "hit", 3) == 0) g.rig = 2;
     else if (std::strncmp(e, "chain", 5) == 0) g.rig = 3;
+    if (g.rig == 2 || g.rig == 3) g.rig_real = e[g.rig == 2 ? 3 : 5] == 'r';   // hitr / chainr
     else if (std::strncmp(e, "fuzz", 4) == 0) g.rig = 4;
     const char *c = std::strchr(e, ':');
     if (c) g.rig_seed = (unsigned)std::strtoul(c + 1, nullptr, 10);
@@ -1559,10 +1613,34 @@ void rig_punch_start(int dist_units) {
     rig_teleport(me, to);
     s16r(me, 0x8e) = 0;               // facing +Z, toward the victim
     s16r(me, 0x94) = 0;
-    g.rig_press_frames = 3;
+    g.rig_press_total = g.rig_real ? 1 : 3;
+    g.rig_press_frames = g.rig_press_total;
     g.rig_dist = dist_units;
     g.rig_follow = 0;       // (kept for a walking victim; with the puppets folded in, set > 0: the ROM's tongue
                             //  eats the copy and drags it along, which makes a follower run away from it)
+}
+
+// THE REAL PUNCH (rigs hitr / chainr). Seat 0 wears Mario's cap (the ROM's own
+// character swap, the door path: param1 0 = Mario) so the attack
+// button throws a punch whose attack cylinder really overlaps the puppet's body
+// cylinder; nothing is written onto the victim, the pair pass does it all.
+void rig_wear_cap() {
+    if (!g.rig_real || g.seat != 0) return;
+    char *me = my_body();
+    if (!me) return;
+    const unsigned fr = my_frame_now();
+    if ((s32r(me, 8) & 0xff) == 0 || fr - g.rig_cap_frame < 30u) return;
+    g.rig_cap_frame = fr ? fr : 1;
+    port_player_set_character(me, 0);
+    std::fprintf(stderr, "[rig] seat 0 puts on Mario's cap (param1 now %d)\n", s32r(me, 8));
+}
+
+// the distances a real punch is tried from: the first ones that touch decide
+int rig_real_dist() {
+    static const int tab[5] = { 55, 45, 65, 40, 75 };
+    const int ov = env_int("SM64DS_RIG_DIST", 0, 1, 400);
+    if (ov) return ov;
+    return tab[g.rig_real_n++ % 5];
 }
 
 void rig_punch_tick(bool inject_words) {
@@ -1581,7 +1659,7 @@ void rig_punch_tick(bool inject_words) {
                      (unsigned)*(unsigned short *)(data_0209f49c + g.seat * 0x18),
                      (unsigned)*(unsigned short *)(data_0209f49e + g.seat * 0x18));
     if (g.rig_press_frames > 0) {
-        rig_press(g.seat, 0x0001, g.rig_press_frames == 3);
+        rig_press(g.seat, 0x0001, g.rig_press_frames == g.rig_press_total);
         --g.rig_press_frames;
         if (g.rig_press_frames == 0 && inject_words) g.rig_inject = 3;
     } else if (g.rig_inject > 0 && --g.rig_inject == 0) {
@@ -1629,11 +1707,12 @@ void rig_hit() {
     if (g.rig_next == 0) g.rig_next = g.t0 + 6000u;
     rig_home_capture();
     rig_hold_home();
-    rig_punch_tick(true);
+    rig_wear_cap();
+    rig_punch_tick(!g.rig_real);
     if (g.seat != 0 || (int)(r - g.rig_next) < 0) return;
     if (g.rig_phase == 0) {
         std::fprintf(stderr, "[rig] hit cycle %d: valid attack (attack button pressed, ref %u)\n", g.rig_n, r);
-        rig_punch_start(90);
+        rig_punch_start(g.rig_real ? rig_real_dist() : 90);
         g.rig_phase = 1;
         g.rig_next = r + 450u;
     } else if (g.rig_phase == 1) {
@@ -1662,7 +1741,8 @@ void rig_chain() {
     if (!ref_now(&r)) return;
     char *me = my_body();
     if (!me) return;
-    rig_punch_tick(true);
+    rig_wear_cap();
+    rig_punch_tick(!g.rig_real);
     rig_home_capture();
     if (g.chain_hit_at && (int)(r - (g.chain_hit_at - 2000u)) >= 0 &&
         (int)(r - (g.chain_hit_at + 1500u)) < 0)
@@ -1702,9 +1782,26 @@ void rig_chain() {
     }
     // seat 0 punches seat 1 three seconds after a star was taken by seat 1
     if (g.seat == 0 && g.chain_hit_at && (int)(r - g.chain_hit_at) >= 0) {
+        // SM64DS_RIG_HITMIN=n: only punch a victim that holds n stars or more (the
+        // duplicate-star rows need a victim that still holds one after the spill,
+        // which is what the ROM's own drop would be paid out of)
+        static const int hitmin = env_int("SM64DS_RIG_HITMIN", 1, 1, 8);
+        if (g.ledger[1] < hitmin) { g.chain_hit_at = 0; return; }   // (the next star seat 1 takes arms it again)
+        // a real punch needs a puppeteer that can throw one: not in the star-get pose
+        // (St_NoControl, 24) it is left in for a moment after a collect, not hurt,
+        // not in the air; wait for the walk / wait states, for up to 4.5 s
+        if (g.rig_real) {
+            static unsigned wait_since = 0;
+            const int ms = vs_arena_state_index(me);
+            if (!wait_since) wait_since = r;
+            if (ms != 14 && ms != 15 && (int)(r - wait_since) < 4500) { g.chain_hit_at = r + 200u; return; }
+            wait_since = 0;
+        }
         g.chain_hit_at = 0;
-        std::fprintf(stderr, "[rig] chain: seat 0 punches seat 1 (ref %u)\n", r);
-        rig_punch_start(90);
+        const int dist = g.rig_real ? rig_real_dist() : 90;
+        std::fprintf(stderr, "[rig] chain: seat 0 punches seat 1 (ref %u, from %d units, %s)\n", r, dist,
+                     g.rig_real ? "real contact" : "injected pair-pass words");
+        rig_punch_start(dist);
     }
 }
 
@@ -1923,11 +2020,61 @@ void init_once() {
         g.hurt_orig = cell[0];
         cell[0] = (unsigned)(size_t)&vs_ref_hurt_main_face;
     }
+    if (!g.hurtwater_orig) {                       // Init is cell 0, Main cell 1 (8 bytes each)
+        unsigned *cell = (unsigned *)(data_ov002_021100ac + 0);
+        g.hurtwater_orig = cell[0];
+        cell[0] = (unsigned)(size_t)&vs_ref_hurtwater_init_face;
+    }
+    if (!g.deadhit_orig) {
+        unsigned *cell = (unsigned *)(data_ov002_0211010c + 8);
+        g.deadhit_orig = cell[0];
+        cell[0] = (unsigned)(size_t)&vs_ref_deadhit_main_face;
+    }
     std::atexit(quit_at_exit);
     rig_parse();
     std::fprintf(stderr, "[vsarena] referee client up: seat %d, %d bodies, order "
                  "buffer installed, collect + hurt seams wrapped\n", g.seat,
                  g.bodies);
+}
+
+// STAR CENSUS (the "no duplicate star" row, lab only: SM64DS_ARENA_REFLOG=1).
+// Every PowerStar actor that is not a dormant level copy must belong to an
+// instance the referee named (an order star, or a SPILL). A star the ROM drops
+// by itself (func_ov002_020d94cc, muted in vs_ref_hurt_main_face) is one no
+// instance owns: an ORPHAN. A line is printed when the numbers have held still
+// for 20 frames and differ from the last line.
+void star_census() {
+    if (!g.log || !g.started) return;
+    int live = 0, orphans = 0, free_known = 0, missing = 0;
+    each_class(kClassStar, [&](char *a) {
+        if (s32r(a, 0x440) == 9) return;             // dormant level copy
+        ++live;
+        if (!inst_by_uid(actor_uid(a))) ++orphans;
+    });
+    int sum = 0;
+    for (int k = 0; k < 16; ++k) sum += g.ledger[k];
+    for (int k = 1; k < kMaxInst; ++k) {
+        const Inst &i = g.inst[k];
+        if (!i.used || i.state != 2) continue;
+        ++free_known;
+        // (an instance that never had an actor of its own is the ROM's: past the
+        // fifth star the order repeats a star id whose dormant copy is spent)
+        if ((i.spilled || i.uid) && !star_by_uid(i.uid)) ++missing;
+    }
+    static int cur[5], held = 0, shown[5] = {-1, -1, -1, -1, -1};
+    const int now[5] = { live, orphans, free_known, missing, sum };
+    if (std::memcmp(now, cur, sizeof now) != 0) {
+        std::memcpy(cur, now, sizeof now);
+        held = 0;
+        return;
+    }
+    if (++held != 20 || std::memcmp(now, shown, sizeof now) == 0) return;
+    std::memcpy(shown, now, sizeof now);
+    std::fprintf(stderr, "[vsarena-ref] CENSUS seat=%d f=%u stars_live=%d orphans=%d "
+                 "free_instances=%d missing=%d ledger_sum=%d ledger=%d,%d,%d,%d hud=%d,%d,%d,%d\n",
+                 g.seat, my_frame_now(), live, orphans, free_known, missing, sum,
+                 g.ledger[0], g.ledger[1], g.ledger[2], g.ledger[3],
+                 data_0209f310[0], data_0209f310[1], data_0209f310[2], data_0209f310[3]);
 }
 
 void report_maybe() {
@@ -1986,7 +2133,7 @@ void vs_ref_pre_walk(int frame) {
         neutralise_foreign_star_touches();
         marker_pass();
         puppet_stars();
-        hit_detect();
+        hit_detect("pre-walk");
         rig_step();
     }
 }
@@ -1997,9 +2144,11 @@ void vs_ref_post_walk(int frame) {
     if (g.started && !g.over) {
         if (g.ledger_live)
             for (int k = 0; k < 16; ++k) data_0209f310[k] = g.ledger[k];
+        hit_detect("post-walk");
         grab_detect();
         syno_send();
         my_state_edges();
+        star_census();
     }
     g.last_post_ms = now_ms();
     report_maybe();

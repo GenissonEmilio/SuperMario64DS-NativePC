@@ -878,6 +878,151 @@ def u_hits(mod):
     return res
 
 
+def u_hit_nc(mod):
+    """HITSPILL1: the ROM's tongue raises no_control on the attacker itself;
+    the referee must accept an attacker in that state and nothing else."""
+    res = Result("hit no_control: a caught tongue attacks, nothing frozen does")
+    R = mod.referee
+    NC = 0x40
+    ST_YOSHI, ST_TALK = 3, 48
+    rig, (a, b) = match(2)
+    ref = rig.ref("ARENA01")
+    b.pos, a.pos = [100, 0, 0], [0, 0, 0]
+
+    def settle(sec=1.3):
+        a.state, a.flags = ST_WAIT, 0x03
+        streaming(rig, [a, b], sec)
+
+    def hit(kind=CL["HIT"]):
+        cid = a.claim(kind, b.seat, aux=2, ref_frame=b.frame - 2)
+        streaming(rig, [a, b], 0.3)
+        return a.verdict(cid)
+
+    # 1. the honest tongue: state up clean, the catch raises the flag
+    settle()
+    a.state, a.flags = ST_YOSHI, 0x03
+    streaming(rig, [a, b], 0.3)
+    a.flags = 0x03 | NC
+    streaming(rig, [a, b], 0.4)
+    v = hit()
+    res.check(v and v["name"] == "HIT" and v["a"] == a.seat,
+              "caught tongue (flag raised inside the attack state): HIT (%s)" % v)
+    # 2. the same state, flag already clean: still a HIT (no regression)
+    settle()
+    a.state = ST_YOSHI
+    streaming(rig, [a, b], 0.3)
+    v = hit()
+    res.check(v and v["name"] == "HIT", "plain tongue: HIT (%s)" % v)
+    # 3. no_control in a non-attack state: refused, even right after a tongue
+    settle()
+    a.state, a.flags = ST_YOSHI, 0x03
+    streaming(rig, [a, b], 0.3)
+    a.state, a.flags = ST_TALK, 0x03 | NC
+    streaming(rig, [a, b], 0.2)
+    v = hit()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "St_Talk with no_control inside the attack lookback: STATE (%s)" % v)
+    # 4. forged: the flag raised by a frozen state and carried into the attack
+    settle()
+    a.state, a.flags = ST_TALK, 0x03 | NC
+    streaming(rig, [a, b], 0.5)
+    a.state = ST_YOSHI
+    streaming(rig, [a, b], 0.3)
+    v = hit()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "no_control raised in St_Talk, then St_YoshiPower: STATE (%s)" % v)
+    # 5. forged: the flag up in an attack state that never raises it
+    settle()
+    a.state, a.flags = ST_PUNCH, 0x03
+    streaming(rig, [a, b], 0.3)
+    a.flags = 0x03 | NC
+    streaming(rig, [a, b], 0.3)
+    v = hit()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "St_PunchKick with no_control: STATE (%s)" % v)
+    # 6. bounded: parked in the tongue with the flag up for 1.7 s
+    settle()
+    a.state, a.flags = ST_YOSHI, 0x03
+    streaming(rig, [a, b], 0.3)
+    a.flags = 0x03 | NC
+    streaming(rig, [a, b], 1.7)
+    v = hit()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "flag up in St_YoshiPower for 51+ frames: STATE (%s)" % v)
+    # 7. ... and a fresh run (flag down one frame, up again) qualifies again
+    a.flags = 0x03
+    streaming(rig, [a, b], 0.07)
+    a.flags = 0x03 | NC
+    streaming(rig, [a, b], 0.3)
+    streaming(rig, [a, b], 1.0)
+    a.flags = 0x03
+    streaming(rig, [a, b], 0.07)
+    a.flags = 0x03 | NC
+    streaming(rig, [a, b], 0.3)
+    v = hit()
+    res.check(v and v["name"] == "HIT", "a fresh no_control run: HIT (%s)" % v)
+    # 8. hurt flag with no_control in the tongue: refused
+    settle()
+    a.state, a.flags = ST_YOSHI, 0x03
+    streaming(rig, [a, b], 0.3)
+    a.flags = 0x03 | NC | 0x20
+    streaming(rig, [a, b], 0.3)
+    v = hit()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "in_hurt + no_control in the tongue: STATE (%s)" % v)
+    # 9. eating from the same state
+    settle()
+    a.state, a.flags = ST_YOSHI, 0x03
+    streaming(rig, [a, b], 0.3)
+    a.flags = 0x03 | NC
+    streaming(rig, [a, b], 0.3)
+    v = hit(CL["EAT"])
+    res.check(v and v["name"] == "EATEN", "EAT from a caught tongue: EATEN (%s)" % v)
+    cid = a.claim(CL["SPIT"], b.seat)
+    streaming(rig, [a, b], 0.3)
+    # 10. the exemption is for ATTACKS only: a grab / marker from it is refused
+    settle(0.5)
+    inst = a.find("STAR_WAKE")[-1]["a"]
+    a.state, a.flags = ST_YOSHI, 0x03
+    streaming(rig, [a, b], 0.3)
+    a.flags = 0x03 | NC
+    streaming(rig, [a, b], 0.3)
+    cid = a.claim(CL["MARKER_BREAK"], inst)
+    streaming(rig, [a, b], 0.3)
+    v = a.verdict(cid)
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "MARKER_BREAK with no_control in the tongue: STATE (%s)" % v)
+    # 11. the helper, on hand-made histories: a seat's very first samples,
+    #     a run that began in another state, the frame cap exactly
+    def seat_with(rows):
+        s = R.Seat(1, 0)
+        for i, (st, fl) in enumerate(rows):
+            smp = R.Sample()
+            smp.frame, smp.rt, smp.state, smp.flags = 100 + i, i * 33, st, fl
+            smp.x = smp.y = smp.z = smp.yaw = smp.step = 0
+            smp.invuln = smp.power = smp.held = smp.eaten_by = 0
+            s.hist.append(smp)
+        return s
+    ok = R.Referee._attack_nc_ok
+    s = seat_with([(ST_YOSHI, NC)] * 5)
+    res.check(not ok(s, s.hist[-1]), "no clean sample before the run: refused")
+    s = seat_with([(ST_YOSHI, 0)] + [(ST_YOSHI, NC)] * 5)
+    res.check(ok(s, s.hist[-1]), "clean sample, then a short run: accepted")
+    s = seat_with([(ST_YOSHI, 0)] + [(ST_YOSHI, NC)] * R.ATTACK_NC_MAX_FRAMES)
+    res.check(ok(s, s.hist[-1]), "run of exactly the cap: accepted")
+    s = seat_with([(ST_YOSHI, 0)] + [(ST_YOSHI, NC)] * (R.ATTACK_NC_MAX_FRAMES + 2))
+    res.check(not ok(s, s.hist[-1]), "run one frame past the cap: refused")
+    s = seat_with([(ST_WAIT, 0), (ST_TALK, NC), (ST_YOSHI, NC)])
+    res.check(not ok(s, s.hist[-1]), "run begun in St_Talk: refused")
+    s = seat_with([(ST_WAIT, 0), (ST_YOSHI, NC), (ST_TALK, NC)])
+    res.check(not ok(s, s.hist[-1]), "sample itself in St_Talk: refused")
+    s = seat_with([(ST_WAIT, 0), (ST_YOSHI, NC)])
+    other = seat_with([(ST_YOSHI, NC)]).hist[-1]
+    res.check(not ok(s, other), "a sample not in the history: refused")
+    res.check(ref.invariants() == [], "invariants")
+    return res
+
+
 def u_reliability(mod):
     res = Result("reliability: resends, ack catch-up, snapshot, one verdict")
     rig, (a, b) = match(2, cap=3)       # room for the late joiner below
@@ -1261,7 +1406,7 @@ def u_rematch(mod):
 def run_unit():
     mod = load_relay()
     tests = (u_contract, u_handshake, u_routes, u_match, u_timeup,
-             u_contention, u_hits, u_reliability, u_leave, u_ready,
+             u_contention, u_hits, u_hit_nc, u_reliability, u_leave, u_ready,
              u_strikes, u_eat, u_rematch, u_rejoin)
     results = []
     for t in tests:
