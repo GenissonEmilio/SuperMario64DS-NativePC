@@ -77,7 +77,7 @@ void func_ov002_020e9448(unsigned char *p);
 void _ZN10StarMarker7CollectEv(void *self);
 short GetAngleToCamera(int i);
 void _ZN6Player11ChangeStateERNS_5StateE(void *self, void *state);
-void _ZN6Player18SetNewHatCharacterEjjb(void *self, unsigned a, unsigned b, bool c);
+void port_player_set_character(void *player, unsigned ch);   // hal/player_bridges.cpp: the door swap
 int _ZN6Player7IsStateERNS_5StateE(void *self, void *state);
 int _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *self, const void *v,
         unsigned a, int knock, unsigned d, unsigned e, unsigned f);
@@ -1590,7 +1590,7 @@ void rig_punch_start(int dist_units) {
 }
 
 // THE REAL PUNCH (rigs hitr / chainr). Seat 0 wears Mario's cap (the ROM's own
-// SetNewHatCharacter, what a cap pickup calls: param1 0 = Mario) so the attack
+// character swap, the door path: param1 0 = Mario) so the attack
 // button throws a punch whose attack cylinder really overlaps the puppet's body
 // cylinder; nothing is written onto the victim, the pair pass does it all.
 void rig_wear_cap() {
@@ -1598,9 +1598,9 @@ void rig_wear_cap() {
     char *me = my_body();
     if (!me) return;
     const unsigned fr = my_frame_now();
-    if (s32r(me, 8) == 0 || fr - g.rig_cap_frame < 30u) return;
+    if ((s32r(me, 8) & 0xff) == 0 || fr - g.rig_cap_frame < 30u) return;
     g.rig_cap_frame = fr ? fr : 1;
-    _ZN6Player18SetNewHatCharacterEjjb(me, 0, 0, 0);
+    port_player_set_character(me, 0);
     std::fprintf(stderr, "[rig] seat 0 puts on Mario's cap (param1 now %d)\n", s32r(me, 8));
 }
 
