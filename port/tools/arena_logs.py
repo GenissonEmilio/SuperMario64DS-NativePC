@@ -451,8 +451,10 @@ def judge_solo_alone(text, rc):
         (rc == 0, "alone console rc=%s" % rc),
         (not f["faults"], "no fault (%s)" % (f["faults"][:1] or "-")),
         (f["installed"] is not None and f["seat"] is not None, "installed + seated"),
-        (f["up"] == 0 and not f["over_ref"] and not f["over_leg"],
-         "no match starts with one console (session up %d, MATCH OVER %d)" % (f["up"], len(f["over_leg"]))),
+        # A lone console's READY is accepted by the referee ("session up ... (READY accepted)", REVSTARREF1 item: session up
+        # prints on READY-accepted or START, whichever is first), so the rule is no START and no MATCH OVER, not no "session up".
+        (not f["start"] and not f["over_ref"] and not f["over_leg"],
+         "no match starts with one console (START %d, MATCH OVER %d, session up %d)" % (len(f["start"]), len(f["over_leg"]), f["up"])),
         (not f["conn_lost"], "no 'connection lost' while merely waiting"),
     ]
 
