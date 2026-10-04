@@ -174,6 +174,9 @@ def judge_match(texts, rcs, stay, expect, rt=None, lane=None):
         ok(f["up"] == 1, "p%d exactly one 'session up' (%d)" % (k, f["up"]))
         ok(len(f["start"]) == 1, "p%d exactly one START (%d)" % (k, len(f["start"])))
         ok(not f["conn_lost"], "p%d never lost the referee" % k)
+        if expect.get("min_taken"):
+            ok(len(f["taken"]) >= expect["min_taken"], "p%d saw the referee award >= %d stars (%d): a match "
+               "where nothing is scored proves nothing about stars" % (k, expect["min_taken"], len(f["taken"])))
         ok(len(f["over_ref"]) == 1, "p%d exactly one referee MATCH OVER (%d)" % (k, len(f["over_ref"])))
         ok(len(f["over_leg"]) == 1 and len(f["over_any"]) == 1,
            "p%d exactly one '[vs] MATCH OVER' marker (%d/%d)" % (k, len(f["over_leg"]), len(f["over_any"])))

@@ -2032,7 +2032,7 @@ def r_arena(L, run, r):
     texts, rcs = fl.texts(), fl.rcs
     ck = Checks()
     target = o.get("target", 0)
-    expect = {"reason": 2 if target else 1, "first_to": target}
+    expect = {"reason": 2 if target else 1, "first_to": target, "min_taken": 2 if o.get("rig") else 0}
     lane = {"A1": L.feats.have.get("A1")}
     judge_into(ck, AL.judge_match(texts, rcs, list(range(n)), expect, rt=rt, lane=lane))
     if not kit:
@@ -2210,7 +2210,7 @@ def r_arenaleave(L, run, r):
             if f.alive(leaver) and held >= 1 and "[vsarena] START" in t0 and t > 20:
                 (f.kill if o.get("how") == "kill" else f.close)(leaver)
                 state["left_at"] = t
-            elif t > o.get("giveup", 120) and f.alive(leaver):
+            elif t > o.get("giveup", o.get("time_s", 75) - 25) and f.alive(leaver):
                 f.kill(leaver)                          # never scored: the rung says so
                 state["left_at"] = t
                 state["never"] = True
@@ -2225,8 +2225,8 @@ def r_arenaleave(L, run, r):
     texts, rcs = fl.texts(), fl.rcs
     stay = list(range(n - 1))
     ck = Checks()
-    ck.ok(not state.get("never"), "the leaver scored a star before it left (a leave with nothing to spill "
-                                  "proves nothing)")
+    ck.ok(state["left_at"] is not None and not state.get("never"),
+          "the leaver scored a star before it left (a leave with nothing to spill proves nothing)")
     ck.ok(fl.how.get(leaver) in ("killed", "closed"), "the leaver went away on purpose (%s)" % fl.how.get(leaver))
     for k in stay:
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
