@@ -235,6 +235,8 @@ struct Ref {
     int rig_dist = 0;
     int rig_phase = 0;
     unsigned chain_hit_at = 0;   // referee ms (my base)
+    int rig_home[3] = {0, 0, 0}; // seat 1's spawn point: where seat 0's (unmoved) copy of it stands
+    bool rig_home_set = false;
 };
 Ref g;
 
@@ -1598,6 +1600,22 @@ void rig_direct_hit_claim(const char *what) {
     std::fprintf(stderr, "[rig] hit: %s claim sent (id %u)\n", what, c ? c->cid : 0u);
 }
 
+// Until the puppets (lane PUPPET1) are folded in, seat 0's copy of seat 1 does not
+// move: it stands at seat 1's spawn point. A hit is range-checked by the referee
+// against seat 1's OWN reported position, so the rigs keep seat 1 at its spawn
+// point whenever seat 0 punches (the walking selftest would take it away).
+void rig_home_capture() {
+    char *me = my_body();
+    if (g.seat != 1 || g.rig_home_set || !me) return;
+    for (int a = 0; a < 3; ++a) g.rig_home[a] = s32r(me, 0x5c + 4 * a);
+    g.rig_home_set = true;
+}
+void rig_hold_home() {
+    char *me = my_body();
+    if (g.seat != 1 || !g.rig_home_set || !me) return;
+    rig_teleport(me, g.rig_home);
+}
+
 // hit rig: seat 0 hits seat 1, standing. phase 0 a valid punch; 1 a repeat claim
 // inside the hit immunity; 2 an attack from out of reach (a claim the referee
 // range-checks against both bodies' own reported positions); then again.
@@ -1607,6 +1625,8 @@ void rig_hit() {
     if (!ref_now(&r)) return;
     if (!my_body()) return;
     if (g.rig_next == 0) g.rig_next = g.t0 + 6000u;
+    rig_home_capture();
+    rig_hold_home();
     rig_punch_tick(true);
     if (g.seat != 0 || (int)(r - g.rig_next) < 0) return;
     if (g.rig_phase == 0) {
@@ -1641,6 +1661,10 @@ void rig_chain() {
     char *me = my_body();
     if (!me) return;
     rig_punch_tick(true);
+    rig_home_capture();
+    if (g.chain_hit_at && (int)(r - (g.chain_hit_at - 2000u)) >= 0 &&
+        (int)(r - (g.chain_hit_at + 1500u)) < 0)
+        rig_hold_home();            // seat 1 stands where seat 0's copy of it does
     for (int k = 1; k < kMaxInst; ++k) {
         Inst &i = g.inst[k];
         if (!i.used) continue;
