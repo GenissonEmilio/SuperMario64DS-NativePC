@@ -1420,10 +1420,10 @@ void vs_arena_before_walk(int frame) {
 }
 
 void vs_arena_tick(int frame) {
-    (void)frame;
     latency_probe();
     if (!g.installed || g.seat < 0) return;
     if (data_0209f2d8 != 1) return;          // the VS level only
+    vs_eat_after_walk(frame);                // EAT1: a held puppet stays on its eater
     if (!g.frame_started) {
         g.frame_started = true;
         std::fprintf(stderr, "[vsarena] first VS frame: seat %d, %d bodies "
