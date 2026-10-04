@@ -53,6 +53,7 @@
 #include "comms_hub.h"
 #include "host_settings.h"
 #include "player_fields.h"
+#include "vs_arena_eat.h"
 #include "voice_chat.h"
 
 #include <windows.h>
@@ -1410,11 +1411,12 @@ void vs_arena_route_pads() {
 }
 
 void vs_arena_before_walk(int frame) {
-    (void)frame;
     if (!g.installed) return;
     // THE PUPPET HOLD (A1 PUPPET1): the other seats' bodies are held and posed
     // before the actor walk ticks them (see the PUPPET section above).
     pup_before_walk();
+    // EAT1: the tongue never eats a player in an arena (hal/vs_arena_eat.cpp)
+    vs_eat_before_walk(frame);
 }
 
 void vs_arena_tick(int frame) {
