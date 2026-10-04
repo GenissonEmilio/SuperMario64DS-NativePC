@@ -187,6 +187,13 @@ DISABLED_STATES = ["St_Hurt", "St_HurtWater", "St_Electrocute", "St_BurnFire",
                    "St_InYoshiMouth", "St_NoControl", "St_Squish",
                    "St_DizzyStars", "St_Respawn", "St_Thrown", "St_Grabbed"]
 CLASH_STATES = ["St_PunchKick"]
+# The one attack state in which the ROM itself raises mIsNoControl: a tongue
+# that has caught something (the St_Swallow / YoshiPower helpers call
+# Player_DisableInteraction; no other state in ATTACK_STATES has a caller, see
+# the relocation table of ov002 for 0x020c9e40). An attacker standing in it
+# with that flag up is honest, so _usable() lets it claim (HITSPILL1).
+NC_ATTACK_STATES = ["St_YoshiPower"]
+ATTACK_NC_MAX_FRAMES = 45       # the exemption lasts at most 1.5 s of one run
 SPEED_WALK = ["St_Walk", "St_Wait", "St_TurnAround", "St_Crouch", "St_Crawl",
               "St_PunchKick", "St_YoshiPower", "St_HoldLight", "St_HoldHeavy",
               "St_Throw", "St_Land", "St_Talk", "St_Spin"]
@@ -227,6 +234,7 @@ for _i, _n in enumerate(STATE_NAMES):
         SPEED_CLASS.append("air")
 HURT_IDX = _idx_set(["St_Hurt", "St_HurtWater"])
 YOSHI_POWER_IDX = _idx_set(["St_YoshiPower"])
+NC_ATTACK_IDX = _idx_set(NC_ATTACK_STATES)
 
 STAR_ORDERS = [
     [0, 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0],
@@ -1061,12 +1069,50 @@ class Referee(object):
         else:
             self._deny(c, D_UNSUPPORTED, rt)
 
-    def _usable(self, s, frame):
-        """The claimant's own sample at `frame`, and whether it may act."""
+    @staticmethod
+    def _attack_nc_ok(s, smp):
+        """May an ATTACKER's sample carry the no_control flag?  Only while the
+        ROM's own tongue holds it up (HITSPILL1): the sample is in an
+        NC_ATTACK state, and the whole trailing run of no_control samples
+        ending at it is in such states, is not hurt, began after a sample of
+        the same seat that had the flag DOWN (a flag raised by a talk / cutscene
+        / frozen state and carried into an attack state never qualifies), and
+        is at most ATTACK_NC_MAX_FRAMES long (a state parked in the attack
+        state with the flag up stops qualifying).  No pre-run sample on record
+        (the first thing a seat ever sent) means no exemption.  The flag is the
+        client's own report and a liar can leave it down, so this only
+        decides which honest-looking samples a verdict may accept: it grants
+        a cheater nothing it could not already do."""
+        if smp.state not in NC_ATTACK_IDX or smp.state in DISABLED_IDX:
+            return False
+        hist = s.hist
+        j = len(hist) - 1
+        while j >= 0 and hist[j] is not smp:
+            j -= 1
+        if j < 0:
+            return False
+        first = smp
+        while j >= 0 and hist[j].flags & F_NO_CONTROL:
+            x = hist[j]
+            if x.state not in NC_ATTACK_IDX or x.flags & F_IN_HURT:
+                return False
+            first = x
+            j -= 1
+        if j < 0:
+            return False
+        return smp.frame - first.frame <= ATTACK_NC_MAX_FRAMES
+
+    def _usable(self, s, frame, attack=False):
+        """The claimant's own sample at `frame`, and whether it may act.
+        attack=True: the sample is an attacker's, which may carry no_control
+        for the length of a caught tongue (see _attack_nc_ok)."""
         smp = s.sample_at(frame)
         if smp is None:
             return None, D_STALE
-        if (smp.state in DISABLED_IDX or smp.flags & (F_IN_HURT | F_NO_CONTROL)
+        bad = F_IN_HURT | F_NO_CONTROL
+        if attack and smp.flags & F_NO_CONTROL and self._attack_nc_ok(s, smp):
+            bad = F_IN_HURT
+        if (smp.state in DISABLED_IDX or smp.flags & bad
                 or smp.eaten_by or s.eaten_by is not None):
             return smp, D_STATE
         return smp, 0
@@ -1159,7 +1205,7 @@ class Referee(object):
                 self._deny(c, D_STATE, rt)
                 return
         if not trade:
-            smp, why = self._usable(a, c.frame)
+            smp, why = self._usable(a, c.frame, attack=True)
             if why:
                 self._deny(c, why, rt)
                 return
