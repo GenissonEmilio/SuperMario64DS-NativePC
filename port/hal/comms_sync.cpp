@@ -1419,17 +1419,27 @@ unsigned gw_row_sum(const unsigned short *r) {
     return h;
 }
 
-// true when `row` may be drawn on body row `no` without a cached decode of
-// another row with the same key being served for it (and then remembered)
-bool gw_row_drawable(int no, const unsigned short *row) {
+// true when `row` may be drawn on body row `no` (whose words are at `rp`)
+// without a cached decode of another row with the same key being served for
+// it (and then remembered)
+bool gw_row_drawable(int no, const unsigned short *row,
+                     const unsigned short *rp) {
     GwRowSeen &rs = g_row_seen[no];
     const unsigned gen = ntr::gx_texture_generation();
     if (rs.gen != gen) {
         /* dropped since: only what the row holds now can have been drawn
-           (and cached) after the drop */
+           (and cached) after the drop, and port_adventure_ghost_palette
+           stamps the row only while it still holds the last row written.
+           A level load uploads the file's rows again before anything is
+           drawn, so after one nothing is seeded, and a pick held for its
+           body colour (same words 0..1 as the row drawn before, other
+           shoes) is written in this generation: the hold ends at the first
+           drop, not when a different body colour happens to be written on
+           the row. */
         rs.gen = gen;
         rs.n = 0;
-        if (g_row_last_have[no]) {
+        if (g_row_last_have[no] &&
+            std::memcmp(rp, g_row_last[no], sizeof g_row_last[no]) == 0) {
             std::memcpy(&rs.cp[0], g_row_last[no], 4);
             rs.sum[0] = gw_row_sum(g_row_last[no]);
             rs.n = 1;
@@ -1471,7 +1481,7 @@ int gw_colour_row(GwSeat &z, void *a) {
         vspal::vs_palette_row(z.pal_src, z.pal_body, z.pal_shoes, z.pal_out);
         z.pal_have = true;
     }
-    if (!gw_row_drawable(no, z.pal_out)) {
+    if (!gw_row_drawable(no, z.pal_out, rp)) {
         ++g_gws.pal_held;
         return -1;
     }
