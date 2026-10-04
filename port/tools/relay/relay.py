@@ -62,6 +62,18 @@ range checks is not forwarded at all. Star and hub sessions never see any of
 this: their path through the relay is unchanged. The wire is
 arena_contract.py's.
 
+Seats in an arena session (run mp1, lane REJOIN1): a HELLO naming a seat
+(want_seat 0..15) gets it when it is free. When it is held by a console that
+has sent nothing (no datagram, no HELLO) for SEAT_RECLAIM_S, the returning
+console takes it at once: a console that crashed and restarted comes back on a
+new source port well inside the 10 s idle expiry. The old holder is dropped as
+a leave first, so the referee's leave / spill / join rules run in that order.
+A seat whose console was heard inside SEAT_RECLAIM_S is never given away, so a
+live seat cannot be taken by anyone who only knows the room code. Once the
+first READY has fixed the match's body count, a seat number or an any-seat
+HELLO that would land past it is refused with status 1 (full) and the log says
+why; before that the room is as open as a hub.
+
 Configuration (environment):
 
   SM64DS_RELAY_PORT     UDP port to bind          (default 41234)
