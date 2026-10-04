@@ -1391,8 +1391,12 @@ int __fastcall vs_ref_hurt_main_face(void *self, void *edx) {
     if (!g.active || b != my_body())
         return ((int (__fastcall *)(void *, void *))(size_t)g.hurt_orig)(self, edx);
     const int idx = *u8p(b, 0x6d8);
+    // (SM64DS_ARENA_NOMUTE=1 is the lab's NEGATIVE CONTROL for the star census:
+    // the ROM's own drop runs, and the census then sees a star no referee
+    // instance owns)
+    static const bool nomute = env_on("SM64DS_ARENA_NOMUTE");
     const signed char keep = idx < 16 ? data_0209f310[idx] : 0;
-    if (idx < 16) data_0209f310[idx] = 0;
+    if (idx < 16 && !nomute) data_0209f310[idx] = 0;
     const int r = ((int (__fastcall *)(void *, void *))(size_t)g.hurt_orig)(self, edx);
     if (idx < 16) data_0209f310[idx] = keep;
     return r;
@@ -1930,6 +1934,44 @@ void init_once() {
                  g.bodies);
 }
 
+// STAR CENSUS (the "no duplicate star" row, lab only: SM64DS_ARENA_REFLOG=1).
+// Every PowerStar actor that is not a dormant level copy must belong to an
+// instance the referee named (an order star, or a SPILL). A star the ROM drops
+// by itself (func_ov002_020d94cc, muted in vs_ref_hurt_main_face) is one no
+// instance owns: an ORPHAN. A line is printed when the numbers have held still
+// for 20 frames and differ from the last line.
+void star_census() {
+    if (!g.log || !g.started) return;
+    int live = 0, orphans = 0, free_known = 0, missing = 0;
+    each_class(kClassStar, [&](char *a) {
+        if (s32r(a, 0x440) == 9) return;             // dormant level copy
+        ++live;
+        if (!inst_by_uid(actor_uid(a))) ++orphans;
+    });
+    int sum = 0;
+    for (int k = 0; k < 16; ++k) sum += g.ledger[k];
+    for (int k = 1; k < kMaxInst; ++k) {
+        const Inst &i = g.inst[k];
+        if (!i.used || i.state != 2) continue;
+        ++free_known;
+        if (!star_by_uid(i.uid)) ++missing;
+    }
+    static int cur[5], held = 0, shown[5] = {-1, -1, -1, -1, -1};
+    const int now[5] = { live, orphans, free_known, missing, sum };
+    if (std::memcmp(now, cur, sizeof now) != 0) {
+        std::memcpy(cur, now, sizeof now);
+        held = 0;
+        return;
+    }
+    if (++held != 20 || std::memcmp(now, shown, sizeof now) == 0) return;
+    std::memcpy(shown, now, sizeof now);
+    std::fprintf(stderr, "[vsarena-ref] CENSUS seat=%d f=%u stars_live=%d orphans=%d "
+                 "free_instances=%d missing=%d ledger_sum=%d ledger=%d,%d,%d,%d hud=%d,%d,%d,%d\n",
+                 g.seat, my_frame_now(), live, orphans, free_known, missing, sum,
+                 g.ledger[0], g.ledger[1], g.ledger[2], g.ledger[3],
+                 data_0209f310[0], data_0209f310[1], data_0209f310[2], data_0209f310[3]);
+}
+
 void report_maybe() {
     const unsigned now = now_ms();
     if (!g.last_report) g.last_report = now;
@@ -2000,6 +2042,7 @@ void vs_ref_post_walk(int frame) {
         grab_detect();
         syno_send();
         my_state_edges();
+        star_census();
     }
     g.last_post_ms = now_ms();
     report_maybe();
