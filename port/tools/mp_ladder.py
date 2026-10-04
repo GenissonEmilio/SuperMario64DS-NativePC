@@ -2227,7 +2227,10 @@ def r_arenaleave(L, run, r):
         elif o.get("rejoin") and not state["rejoined"] and t > state["left_at"] + after:
             lv = state["leaver"]
             t0 = f.text(0)
-            if not f.alive(lv) and AL.LEAVE.search(t0) and "[vsarena] MATCH OVER ref" not in t0:
+            # fast=True (REJOIN1B): do not wait for the staying consoles to log the leave; the same console
+            # starts again within a second of its death, so its first HELLO lands inside the relay's 3 s
+            # silence rule and is answered 4 (seat taken) until the old holder has been silent long enough
+            if not f.alive(lv) and (o.get("fast") or AL.LEAVE.search(t0)) and "[vsarena] MATCH OVER ref" not in t0:
                 d, e = arena_env(run, 10 + lv, lv, n, relay, o)
                 f.start(10 + lv, e, d)
                 state["rejoined"] = True
@@ -2259,6 +2262,15 @@ def r_arenaleave(L, run, r):
         ck.ok(not AL.FAULT.search(texts.get(j, "")), "the returning console had no fault (a seat the arena has "
                                                      "no body for must be refused cleanly, not crash)")
         tj = texts.get(j, "")
+        if o.get("fast"):
+            # REJOIN1B: the game half of the status 4 retry (hub keeps the pin and asks again)
+            ck.ok(re.search(r"^\[hub\] seat %d is still held by the console that was here" % leaver, tj, re.M),
+                  "the returning console was told seat %d is held and asked for it again" % leaver)
+            m = re.search(r"seat %d reclaimed from .*silent ([0-9.]+) s" % leaver, rt)
+            ck.ok(m and float(m.group(1)) >= 3.0, "the relay gave the seat back only after >= 3 s of silence (%s)" % (
+                m.group(1) if m else "no reclaim line"))
+            ck.ok(not re.search(r"asking for any free seat|is taken; asking", tj),
+                  "and it never gave up its pin for any seat")
         if o.get("expect_refused"):
             # REJOIN1 scratch, game half: an OLD relay names the returner a seat past the body count
             # (the original bug); the game must print ONE ERROR line and leave with exit 4, no fault
@@ -2436,6 +2448,8 @@ def arena_rungs():
                   rejoin=True, quick=True, delays=skew4))
     R.append(Rung("arena4-rejoin-quick-oldrelay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
                   rejoin=True, quick=True, expect_refused=True, delays=skew4))
+    R.append(Rung("arena4-rejoin-fast-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
+                  rejoin=True, quick=True, fast=True, rejoin_after=0.2, delays=skew4))
     R.append(Rung("arena4-rejoin-quick-relay-b", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
                   rejoin=True, quick=True, delays=skew4))
     R.append(Rung("arena-solo-alone", "arenasolo", 2, DEV, "relay2", needs=["A0", "A2"]))
