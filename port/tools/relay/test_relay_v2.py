@@ -292,7 +292,9 @@ def u_refusals(mod):
             ("child wanting seat 16", hello("BADREQ03", ROLE_CHILD, 16)),
             ("member wanting seat 16", hello("BADREQ04", ROLE_MEMBER, 16)),
             ("member wanting seat 200", hello("BADREQ05", ROLE_MEMBER, 200)),
-            ("role 3", hello("BADREQ06", 3, 0)),
+            ("role 4 (unknown; 3 is an arena member)",
+             hello("BADREQ06", 4, 0)),
+            ("arena wanting seat 16", hello("BADREQ07", 3, 16)),
             ("empty code", hello("", ROLE_MEMBER, ANY)),
             ("code with a space", hello("AB CD", ROLE_MEMBER, ANY))):
         a = expect(name, data, ST_BAD)
