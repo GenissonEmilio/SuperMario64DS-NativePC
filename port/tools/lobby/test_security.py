@@ -646,11 +646,135 @@ def waiting_seats():
         sp.stop()
 
 
+def arena_mode():
+    """run mp1 A4, at the SHIPPED compose settings: (1) the compose file as
+    shipped plays every match lockstep (ARENA_GAME_IDS empty: arena is off
+    until the deploy names a build); (2) with the release step's
+    ARENA_GAME_IDS line, a hostile `netmode` is refused at the field, a
+    waiting seat cannot pick the netmode or end an arena match, and the
+    arena no-host rule (the host leaving does not end the match) never hands
+    the host role to a seat that is not playing the match."""
+    print("\n== ARENA MODE at the shipped docker-compose settings ==")
+    env = dict(compose_env())
+    env["GAME_IDS"] = REAL
+    check("the shipped compose file lists no arena build",
+          env.get("ARENA_GAME_IDS", "") == "", env.get("ARENA_GAME_IDS"))
+
+    def running_room(c, tag, n=2):
+        st, h = quick_post(c, "create", {"v": 5, "nick": "h", "game": REAL,
+                                         "pre_ok": True}, "198.51.100.%d" % tag)
+        code = h["room"]
+        toks = [(h["token"], "198.51.100.%d" % tag)]
+        for k in range(1, n):
+            ip = "198.51.100.%d" % (tag + k)
+            st, g = quick_post(c, "join", {"v": 5, "room": code,
+                                           "nick": "g%d" % k, "game": REAL,
+                                           "pre_ok": True}, ip)
+            toks.append((g["token"], ip))
+        st, a = quick_post(c, "start", {"v": 5, "room": code,
+                                        "token": h["token"]}, toks[0][1])
+        for tok, ip in toks:
+            quick_post(c, "ready", {"v": 5, "room": code, "token": tok,
+                                    "match": a["match"]}, ip)
+        return code, toks, a["match"]
+
+    def view(c, code, tok, ip):
+        st, out = quick_post(c, "poll", {"v": 5, "room": code, "token": tok,
+                                         "cursor": 1, "wait": 0}, ip)
+        return out
+
+    # (1) As shipped: lockstep.
+    sp = Spawned(pick_port(), env)
+    c = sp.wait_ready()
+    try:
+        code, toks, match = running_room(c, 40)
+        hv = view(c, code, toks[0][0], toks[0][1])
+        nm = [e["plan"].get("netmode") for e in hv.get("events", [])
+              if e.get("kind") == "go" and "plan" in e]
+        check("(1) as shipped, a match of a listed build plays lockstep and "
+              "the view says arena_ok false",
+              nm == ["lockstep"] and hv["view"].get("arena_ok") is False
+              and hv["view"].get("match_netmode") == "lockstep",
+              (nm, hv.get("view")))
+    finally:
+        sp.stop()
+
+    # (2) With the release step's ARENA_GAME_IDS line.
+    env["ARENA_GAME_IDS"] = REAL
+    sp = Spawned(pick_port(), env)
+    c = sp.wait_ready()
+    try:
+        st, h = quick_post(c, "create", {"v": 5, "nick": "h", "game": REAL},
+                           "198.51.100.60")
+        code, tok = h["room"], h["token"]
+        answers = {}
+        for val in ("x" * 4000, "arena\u0000", "árena", "lockstep ",
+                    {"a": 1}, [1] * 200, -1, 1e308, False):
+            st, out = quick_post(c, "params", {"v": 5, "room": code,
+                                               "token": tok, "map": 0,
+                                               "win_mode": "time",
+                                               "netmode": val},
+                                 "198.51.100.60")
+            answers[repr(val)[:16]] = (st, out.get("error"))
+        hv = view(c, code, tok, "198.51.100.60")
+        print("info  (2a) hostile netmode values: %s" % answers)
+        check("(2a) every hostile netmode is refused (400 bad_netmode, or "
+              "the body cap) and the room keeps its pick",
+              all(st in (400, 413) for st, _ in answers.values())
+              and all(e == "bad_netmode" for st, e in answers.values()
+                      if st == 400)
+              and hv["view"].get("netmode") == "arena", (answers,
+                                                         hv.get("view")))
+        quick_post(c, "leave", {"v": 5, "room": code, "token": tok},
+                   "198.51.100.60")
+
+        code, toks, match = running_room(c, 70, n=3)
+        time.sleep(6)       # past GO_GRACE_S: the room is in_match
+        st, w = quick_post(c, "join", {"v": 5, "room": code, "nick": "w",
+                                       "game": REAL}, "203.0.116.1")
+        wtok, wip = w.get("token"), "203.0.116.1"
+        got = {}
+        for verb, body in (
+                ("params", {"map": 0, "win_mode": "time",
+                            "netmode": "lockstep"}),
+                ("failed", {"match": match, "reason": "no_pairing"}),
+                ("result", {"match": match, "win": "star-target",
+                            "scores": [0, 0, 0, 9]})):
+            b = {"v": 5, "room": code, "token": wtok}
+            b.update(body)
+            st, out = quick_post(c, verb, b, wip)
+            got[verb] = (st, out.get("error"))
+        print("info  (2b) waiting seat in an arena match: %s" % got)
+        check("(2b) a waiting seat cannot pick the netmode (403 not_host) or "
+              "fail / end the arena match (403 not_playing)",
+              got["params"] == (403, "not_host")
+              and got["failed"] == (403, "not_playing")
+              and got["result"] == (403, "not_playing"), got)
+        quick_post(c, "leave", {"v": 5, "room": code, "token": toks[0][0]},
+                   toks[0][1])
+        gv = view(c, code, toks[1][0], toks[1][1])
+        kinds = [e.get("kind") for e in gv.get("events", [])]
+        check("(2c) the host leaving an arena match: the match runs on and "
+              "the host role goes to a seat PLAYING it, never the waiting "
+              "seat", gv["view"]["state"] == "in_match"
+              and gv["view"]["match"] == match
+              and gv["view"]["host"] == 2 and "failed" not in kinds,
+              (gv.get("view"), kinds[-4:]))
+        st, out = quick_post(c, "params", {"v": 5, "room": code,
+                                           "token": wtok, "map": 0,
+                                           "win_mode": "time"}, wip)
+        check("(2c) and the waiting seat is still not host",
+              (st, out.get("error")) == (403, "not_host"), (st, out))
+    finally:
+        sp.stop()
+
+
 def main():
     blocker1()
     blocker2()
     world_pool()
     waiting_seats()
+    arena_mode()
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:
         print("  FAILED: %s" % name)

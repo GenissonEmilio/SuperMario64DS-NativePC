@@ -52,6 +52,7 @@ python3 test_client.py negatives --out DIR  # writes one file per refusal
 python3 test_client.py dial                 # the dial, on the DEPLOYED knobs
 python3 test_client.py soak --seconds 60
 python3 test_security.py                    # spawns its own servers
+python3 test_client.py arena                # arena netmode over the wire
 python3 test_client.py selftest --url https://tangos.dev/port/lobby
 ```
 
@@ -116,7 +117,7 @@ map|players|win|target|king|luigi|seed|netmode|wire
 
 `win` is `time`/`stars`/`king`; `target` is the star target in stars mode,
 else 0; `king` the king target in king mode, else 0; `seed` the seed when
-`luigi` is 1, else 0; `netmode` is `lockstep` (the only online VS mode in 1.0);
+`luigi` is 1, else 0; `netmode` is the plan's `netmode`, `lockstep` or `arena` (see ARENA MODE below);
 `wire` is 2 for four players or fewer, else 3. Decimal, no padding, no
 spaces. `"1|4|stars|3|0|1|3735928559|lockstep|2"` is `909114140`. Pinned in
 `test_units.py::test_session_digest`, and the selftest recomputes every plan's
@@ -213,6 +214,30 @@ New knobs (all in `docker-compose.yml` with these values):
 | `WORLD_MEMBER_S` | 30 | a world member unheard this long is not counted |
 | `WORLD_EMPTY_S` | 30 | a world with no live member is dropped after this |
 | `MAX_WORLDS` | 64 | worlds in the pool, every build together |
+
+**ARENA MODE: the `netmode` of a VS match (run mp1, lane A4).** The new VS
+netcode (every console runs its own Yoshi with no input delay, the others are
+drawn slightly behind, and a referee on the relay settles stars, hits, the
+clock and the winner) is chosen per match by the lobby. No field was renamed
+and no version moved. Lockstep stays as the fallback for one release.
+
+| where | what |
+|---|---|
+| VS go plan | gains `netmode`, `"arena"` or `"lockstep"`, on every playing VS plan. A plan without it (an older server) means lockstep. Spectator and adventure plans never carry it. Every other key keeps its meaning: in an arena match `slot` is the player's body and relay seat (`want_seat` = `slot`), `role` is only the lobby's name for slot 0 (there is no host inside an arena match), and `code` is still fresh per match |
+| digest | the canonical string's `netmode` term is the plan's `netmode`: `"0\|2\|time\|0\|0\|0\|0\|arena\|2"` is `1565304087`, `"1\|4\|stars\|3\|0\|0\|0\|arena\|2"` is `1476757693`. A console that runs lockstep computes `lockstep` and can never pair with an arena console |
+| launcher env | `netmode:"arena"` adds `SM64DS_VS_NETMODE=arena` (the game's arena switch, port/hal/vs_arena.h) to exactly the VS set it exports today; the game seats itself from `SM64DS_COMMS_ROLE`/`SM64DS_COMMS_SLOT` as before. `netmode:"lockstep"` sets no `SM64DS_VS_NETMODE` (an inherited one is cleared like every `SM64DS_VS_*` the plan does not set), so a lockstep console's environment is unchanged. Any other value, or an arena plan with Luigi on or a king target, is refused before anything spawns |
+| relay session | the lobby still never talks to the relay. The game picks the session from the netmode: lockstep opens the v2 star (roles parent/child, seat = slot) as before; arena opens the relay's arena session (relay lane A2) with seat = slot. Every console of one arena match gets the same map, players, target, names, colours and digest, and the digest commits to all of them, so the referee can take the settings from the seats and refuse a seat whose digest differs |
+| `params` (VS rooms) | optional `netmode` `"arena"`/`"lockstep"`, the host's pick; absent keeps the room's; anything else `400 bad_netmode`; on an adventure room `400 bad_field`. A new room starts at `NETMODE_DEFAULT`. The `params` event carries the pick |
+| `start` | resolves the match's netmode and freezes it with the rest: **arena when** the pick is arena, the room's build is on `ARENA_GAME_IDS`, `RELAY_V` is 2, the match has 2 to `ARENA_MAX_PLAYERS` players, the win mode is `time` or `stars` and Luigi is off; **lockstep otherwise** (King of the Star and Luigi Infection stay on lockstep until their referee rules exist). Picking arena is never an error. The `arming` event carries the resolved `netmode` |
+| `view` | `netmode` (the pick, VS rooms), `arena_ok` (this room's build can play arena on this server), `arena_max`, `arena_now` (what Start would resolve to on the current roster and settings), `match_netmode` (the running match's, `null` in lobby) |
+| an arena match has no host in it | lockstep matches keep every L-J1 rule. In an arena match (`go` or `in_match`) the host's `failed` drops only the host's seat (`dropped`; the host keeps the room's host role), and the host leaving the room does not end the match: `left`, then `host` (the L-J1B pick: the lowest seat still playing it, never a waiting seat), and no `failed host_left`. If the new host had already posted a result, it ends the match at once. The match ends as before: a `failed` that leaves fewer than 2 players, the (current) host's result, a majority, the host-silent rule, or `MATCH_TIMEOUT_S`; with nobody left playing it, the host leaving ends it with `failed host_left`. During `arming` (nothing has spawned) the host leaving ends it as before |
+| `/health` | `arena_game_ids` (how many builds), `arena_max`, `netmode_default` |
+
+| knob | default | what |
+|---|---|---|
+| `ARENA_GAME_IDS` | empty | the builds that play arena, comma-separated. **Empty = arena off for every build** (this server then behaves exactly as before). `*` = every build, for dev and test boxes only. Written at the relay redeploy that brings the referee; removing it is the rollback |
+| `ARENA_MAX_PLAYERS` | 4 | the largest arena match (2..16); bigger matches play lockstep |
+| `NETMODE_DEFAULT` | arena | a new room's pick (`arena` or `lockstep`) |
 
 ---
 
@@ -751,7 +776,9 @@ silent ends `HOST_SILENT_S` after that result instead; see the v5 section).
 
 A playing member reporting a finished match. `win` is `time-up`, `star-target`
 or `draw` (the launcher posts `draw` with all-zero scores for a `MATCH OVER`
-marker it could not parse). `scores` is four ints, 0..99, in slot order. The
+marker it could not parse), or since run mp1 one of the game marker's other
+ends, `king-target`, `luigi-all-infected` or `survivor-timeout` (a launcher
+posts those only to a lobby whose go plans carry `netmode`). `scores` is four ints, 0..99, in slot order. The
 match-ending result (since run mp1 L-J1 the HOST's, or one a majority of the
 live match seats agree on, or every guest's after `HOST_SILENT_S` of host
 silence; see the v5 section) appends a `result` event, discards the
