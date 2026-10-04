@@ -1881,6 +1881,12 @@ def arena_env(run, key, seat, n, relay, o, exe=None, asset_root=None):
     if o.get("cam"):
         e["SM64DS_CAM_WATCH"] = "1"
         e["SM64DS_VS_PROBE"] = "1"
+    if o.get("shot"):
+        # RESULTS1: the presented image of every console AFTER the match ended: a
+        # long grace so the console is still up, the capture frame inside it
+        e["SM64DS_VS_END_GRACE"] = str(o.get("grace", 300))
+        e["SM64DS_DUAL_SCREEN"] = "1"           # the capture exists only in the stacked layout
+        e["SM64DS_STACK_BMP"] = "%s,%d" % (os.path.join(d, "after_over.bmp"), o["shot"])
     return d, e
 
 
@@ -2462,6 +2468,16 @@ def arena_rungs():
                   rejoin=True, quick=True, fast=True, rejoin_after=0.2, delays=skew4))
     R.append(Rung("arena4-rejoin-quick-relay-b", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
                   rejoin=True, quick=True, delays=skew4))
+    # RESULTS1: the match-end rows. shot = the frame the presented image is written at
+    # (inside the long grace, after the referee's MATCH OVER on every console)
+    R.append(Rung("arena4-time-shots", "arena", 4, GATE, "relay2", needs=A, time_s=30, rig=True,
+                  delays=skew4, shot=1150))
+    R.append(Rung("arena2-time-shots", "arena", 2, GATE, "relay2", needs=A, time_s=30, rig=True,
+                  delays=skew2, shot=1150))
+    R.append(Rung("arena4-stars-shots", "arena", 4, GATE, "relay2", needs=A, target=2, time_s=60, rig=True,
+                  delays=skew4, shot=700))
+    R.append(Rung("arena4-time-kit", "arena", 4, GATE, "relay2", needs=A + ["kit"], time_s=30, rig=True,
+                  delays=skew4, kit=True))
     R.append(Rung("arena-solo-alone", "arenasolo", 2, DEV, "relay2", needs=["A0", "A2"]))
     R.append(Rung("arena-solo-gate", "arenasolo_gate", 1, GATE, needs=["A0"]))
     R.append(Rung("arena2-time-kit", "arena", 2, GATE, "relay2", needs=A + ["kit"], time_s=30, rig=True,

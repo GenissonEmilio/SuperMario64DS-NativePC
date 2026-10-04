@@ -1366,6 +1366,12 @@ static int g_end_by_last;
 /* lane VSTIMEUP1: how many times this match the ROM's own Stage::Behavior asked
    for scene 7 and port_vs_match_end_poll answered it (0 = never asked). */
 static int g_scene7_answered;
+/* lane RESULTS1: arena only. 0 = this match did not end through the referee
+   (every lockstep end), 1 = the referee ended it on the clock (the end the ROM
+   answers with its own scene-7 request), 2 = the referee ended it any other
+   way. The marker's results_screen field reads this in an arena instead of
+   g_scene7_answered, which is a per-console race there (see the marker). */
+static int g_arena_results;
 /* lane DROPOUT1: the slots that have been in play this match, and those of
    them that have left it (vs_track_seats, below, keeps both). A slot that left
    has no place in the result: the winner, the draw test and the scores run
@@ -2371,6 +2377,7 @@ extern "C" int port_vs_match_end_poll(int frame)
         g_vs_seen = 0;
         g_vs_left = 0;
         g_scene7_answered = 0;
+        g_arena_results = 0;
         /* Outside VS the king match is disarmed, so the next VS entry re-zeroes
            the points. This is the only reset point, so a king match always
            starts from zero however it was reached. */
@@ -2518,6 +2525,7 @@ extern "C" int port_vs_match_end_poll(int frame)
         g_end_by_king = 0;
         g_end_by_last = 0;
         g_end_by_target = (ov.reason == arena_wire::OVER_FIRST_TO_N);
+        g_arena_results = (ov.reason == arena_wire::OVER_TIME_UP) ? 1 : 2;
         g_vs_seen = (unsigned)ov.seen_mask;
         g_vs_left = (unsigned)(ov.seen_mask & ~ov.roster_mask);
         int total = 0;
@@ -2771,6 +2779,28 @@ extern "C" int port_vs_match_end_poll(int frame)
         }
     }
     const char *win_name = (win_slot >= 0) ? vs_name_for(win_slot) : 0;
+    /* results_screen IN AN ARENA (lane RESULTS1): the field says how the match
+       ended, not when this console's own clock happened to run out.
+
+       Lockstep reads g_scene7_answered, which is safe there because the clock
+       is lockstep state: every console's ROM asks for scene 7 on the same
+       frame. In an arena the referee ends the match on its own wall clock and
+       each console's ROM clock counts that console's own frames, so the ROM's
+       ask lands anywhere from a few frames before to a few seconds after the
+       referee's MATCH OVER, and whether it falls inside the grace window is a
+       coin flip per console. Measured on the final build-4 exes: the same
+       4-player match printed results_screen=port on two consoles and =none on
+       the other two (arena4-loss20-relay, arena4-leave-kill-relay), and on
+       the kit zip's first arena4cam run on p0 only. What a player SAW was the
+       same on all four (the winner banner for the grace window, then the exit;
+       the ask is answered and draws nothing), so it was the marker text alone.
+
+       The referee's reason is the same on every console, and it is what the
+       ROM's ask stands for: a time-up end is the end the ROM answers with the
+       results request (port, as in lockstep), a first-to-N or last-standing
+       end is not (none, as in lockstep). The ask the ROM makes is still
+       answered every frame by the block at the top of this function, whenever
+       it lands. */
     fprintf(stderr, "[vs] MATCH OVER f%d win=%s scores=%s players=%d total=%d "
             "pending_scene=%u results_screen=%s winner=%d%s%s\n", frame,
             g_end_by_luigi == 1 ? "luigi-all-infected"
@@ -2780,6 +2810,7 @@ extern "C" int port_vs_match_end_poll(int frame)
             scores_field, np_marker,
             g_end_total, (unsigned)data_02092664,
             data_02092664 == 7 ? "REQUESTED-BUT-UNSERVICED"
+              : g_arena_results ? (g_arena_results == 1 ? "port" : "none")
               : g_scene7_answered ? "port"
               : (data_02092664 == 0x187 ? "none" : "other"),
             win_slot, win_name ? " winner_name=" : "", win_name ? win_name : "");
