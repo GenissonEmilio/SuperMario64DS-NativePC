@@ -2305,6 +2305,8 @@ def arena_rungs():
                   delays=skew4))
     R.append(Rung("arena2-loss5-relay", "arena", 2, GATE, "relay2", needs=A, time_s=30, rig=True, loss=5,
                   delays=skew2))
+    R.append(Rung("arena2-loss20-relay", "arena", 2, GATE, "relay2", needs=A, time_s=30, rig=True, loss=20,
+                  delays=skew2))
     R.append(Rung("arena4-loss20-relay", "arena", 4, GATE, "relay2", needs=A, time_s=30, rig=True, loss=20,
                   delays=skew4))
     R.append(Rung("arena2-cam-relay", "arenacam", 2, DEV, "relay2", needs=["A0", "A2"], delays=skew2))
