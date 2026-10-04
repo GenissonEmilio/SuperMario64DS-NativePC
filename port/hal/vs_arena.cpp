@@ -1219,6 +1219,34 @@ bool vs_arena_install_from_env() {
     if (tried) return g.installed;
     tried = true;
     if (!vs_arena_requested()) return false;
+
+    // PHASE A IS 2..4 PLAYERS. The ROM's solo record copy fills four slot
+    // records (kNarrowSlots), so a seat of 4 or more never gets its pad and
+    // its body cannot move (review F1). Refuse before anything is touched, so
+    // the process falls back exactly as if the env had not been set (the
+    // lockstep carrier installs next). B1 widens this. The line avoids the
+    // launcher's "NOT installing" watchdog words on purpose.
+    {
+        const char *ps = std::getenv("SM64DS_VS_PLAYERS");
+        char *pend = nullptr;
+        const long pn = (ps && *ps) ? std::strtol(ps, &pend, 10) : 0;
+        if (ps && *ps && pend != ps && !*pend && pn > kNarrowSlots) {
+            std::fprintf(stderr, "[vsarena] ERROR: SM64DS_VS_PLAYERS=%ld is "
+                         "more than the %d seats phase A of the arena can "
+                         "drive; arena mode refused, this console plays "
+                         "without it\n", pn, kNarrowSlots);
+            return false;
+        }
+        const char *pwhy = "";
+        const int ppin = seat_pin_from_env(&pwhy);
+        if (ppin >= kNarrowSlots && ppin < kArenaSeats) {
+            std::fprintf(stderr, "[vsarena] ERROR: seat pin %d (%s) is past "
+                         "the %d seats phase A of the arena can drive; arena "
+                         "mode refused, this console plays without it\n",
+                         ppin, pwhy, kNarrowSlots);
+            return false;
+        }
+    }
     ::InitializeCriticalSection(&g_cs);
     g_cs_up = true;
     for (int k = 0; k < kArenaSeats; ++k) reset_ring(g.ring[k], 0);
@@ -1274,6 +1302,7 @@ bool vs_arena_active() { return g.installed; }
 void vs_arena_seat_world() {
     if (!g.installed) return;
     int seat = comms_hub_my_seat();
+    unsigned waited = 0;
     if (seat < 0 && g.hub && comms_hub_active()) {
         const int wait_ms = env_int("SM64DS_ARENA_PAIR_MS", 8000, 0, 60000);
         const unsigned t0 = comms_hub_now_ms();
@@ -1281,9 +1310,21 @@ void vs_arena_seat_world() {
             ::Sleep(4);
             seat = comms_hub_my_seat();
         }
-        std::fprintf(stderr, "[vsarena] the relay %s after %u ms\n",
-                     seat >= 0 ? "named my seat" : "did not name a seat",
-                     comms_hub_now_ms() - t0);
+        waited = comms_hub_now_ms() - t0;
+        if (seat < 0)
+            std::fprintf(stderr, "[vsarena] the relay did not name a seat "
+                         "after %u ms\n", waited);
+    }
+    // The launcher's watchdog widens its window on this line (line start,
+    // out/ARENALOBBY1/contract.txt section 10), so it prints once, ALWAYS,
+    // whenever the hub settled the seat: waited for, or known at the boot.
+    if (seat >= 0) {
+        char src[48];
+        if (waited) std::snprintf(src, sizeof src, "waited %u ms", waited);
+        else std::snprintf(src, sizeof src, "%s", seat == g.want_seat ?
+                           "known at boot, env pin" : "known at boot, hub");
+        std::fprintf(stderr, "[vsarena] the relay named my seat %d (%s)\n",
+                     seat, src);
     }
     if (seat < 0) {
         seat = g.want_seat < kArenaSeats ? g.want_seat : 0;
@@ -1291,6 +1332,10 @@ void vs_arena_seat_world() {
                      "(%s)\n", seat, g.want_seat < kArenaSeats ? "the pin"
                                                               : "default");
     }
+    if (seat >= kNarrowSlots)
+        std::fprintf(stderr, "[vsarena] ERROR: seat %d is past the %d seats "
+                     "phase A of the arena can drive (no pad reaches it); this "
+                     "console drives nothing\n", seat, kNarrowSlots);
     if (seat >= g.bodies)
         std::fprintf(stderr, "[vsarena] ERROR: seat %d has no body (the arena "
                      "boots %d); this console drives nothing\n", seat,
