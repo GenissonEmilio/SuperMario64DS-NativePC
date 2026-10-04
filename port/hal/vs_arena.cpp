@@ -1129,8 +1129,7 @@ void pup_before_walk() {
             if (mine == kStLevelEnter || its == kStLevelEnter) {
                 if (pup_log() && (g.frame % 30u) == 0)
                     std::fprintf(stderr, "[pup-intro] f=%u seat=%d waits: my state %d, its "
-                                 "state %d
-", g.frame, k, mine, its);
+                                 "state %d\n", g.frame, k, mine, its);
                 continue;
             }
         }
