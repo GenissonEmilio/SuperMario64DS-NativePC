@@ -581,7 +581,7 @@ inline bool pos_ok(int v) { return v >= -(kPosLim << 12) && v <= (kPosLim << 12)
 inline int seat_lim() { return g.bodies > 0 && g.bodies <= kArenaSeats ? g.bodies : 4; }
 inline bool seat_ok(unsigned s) { return s < (unsigned)seat_lim(); }
 inline bool seat_or_none(unsigned s) { return s == 0xFF || seat_ok(s); }
-inline bool score_ok(int v) { return v >= -99 && v <= 99; }
+inline bool score_ok(int v) { return v >= 0 && v <= 127; }   // the referee's ledger: never negative, capped at 127
 
 bool ref_event_valid(const RefEvent &e) {
     const unsigned rmask = (1u << seat_lim()) - 1u;
@@ -595,7 +595,7 @@ bool ref_event_valid(const RefEvent &e) {
         return seat_ok(e.seat) && e.a != 0 && e.b < 8 && pos_ok(e.x) &&
                pos_ok(e.y) && pos_ok(e.z);
     case EV_STAR_TAKEN:
-        return seat_ok(e.seat) && e.a != 0 && score_ok((signed char)e.b) &&
+        return seat_ok(e.seat) && e.a != 0 && score_ok(e.b) &&
                e.e < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
     case EV_DENY:
         return seat_ok(e.seat) && e.a >= 1 && e.a <= 11 && e.b >= 1 && e.b <= 11 &&
@@ -608,7 +608,7 @@ bool ref_event_valid(const RefEvent &e) {
                pos_ok(e.z);
     case EV_SPILL:
         return seat_or_none(e.seat) && e.a != 0 && e.b < 8 && e.c >= 1 && e.c <= 4 &&
-               score_ok((signed short)e.d) && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
+               score_ok(e.d) && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
     case EV_MATCH_OVER:
         return e.seat == 0xFF && e.a >= 1 && e.a <= 4 && e.b <= (unsigned)seat_lim() &&
                (e.c & ~rmask) == 0;
@@ -1722,7 +1722,7 @@ void rig_fuzz() {
     BADFRAME("map 16", f.map = 16);
     BADFRAME("match_ms huge", f.match_ms = 3601u * 1000u);
     BADFRAME("roster beyond the bodies", f.roster = (unsigned short)(f.roster | 0x8000));
-    BADFRAME("score 100", f.scores[0] = 100);
+    BADFRAME("score -1", f.scores[0] = -1);
     BADFRAME("score -100", f.scores[0] = -100);
     BADFRAME("score of an absent seat", f.scores[15] = 1);
     BADFRAME("part on a stream frame", f.part = 0x31);
@@ -1743,6 +1743,7 @@ void rig_fuzz() {
     BADEV("MARKER seat 15", e.type = EV_MARKER_BROKEN; e.seat = 15; e.a = 1);
     BADEV("MARKER x huge", e.type = EV_MARKER_BROKEN; e.a = 1; e.x = big);
     BADEV("MARKER z huge", e.type = EV_MARKER_BROKEN; e.a = 1; e.z = -big);
+    BADEV("TAKEN score 128", e.type = EV_STAR_TAKEN; e.a = 1; e.b = 128);
     BADEV("TAKEN score 200", e.type = EV_STAR_TAKEN; e.a = 1; e.b = 200);
     BADEV("TAKEN progress 300", e.type = EV_STAR_TAKEN; e.a = 1; e.e = 300);
     BADEV("DENY kind 12", e.type = EV_DENY; e.a = 12; e.b = 1; e.d = 0xFF);
@@ -1757,6 +1758,7 @@ void rig_fuzz() {
     BADEV("SPILL cause 0", e.type = EV_SPILL; e.a = 1; e.c = 0);
     BADEV("SPILL cause 5", e.type = EV_SPILL; e.a = 1; e.c = 5);
     BADEV("SPILL marker 8", e.type = EV_SPILL; e.a = 1; e.b = 8; e.c = 1);
+    BADEV("SPILL score 200", e.type = EV_SPILL; e.a = 1; e.c = 1; e.d = 200);
     BADEV("SPILL instance 0", e.type = EV_SPILL; e.a = 0; e.c = 1);
     BADEV("SPILL origin huge", e.type = EV_SPILL; e.a = 1; e.c = 1; e.x = big);
     BADEV("OVER reason 0", e.type = EV_MATCH_OVER; e.seat = 0xFF; e.a = 0);
