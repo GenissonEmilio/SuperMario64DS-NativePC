@@ -74,6 +74,17 @@ The later lanes' test knobs and log lines this ladder reads are collected in
 LANE CONTRACTS below: they are the ladder's proposal where design.txt names
 none, and the owning lane (or the fold) aligns them in one place.
 
+ARENA MODE (run mp1, lane ARENAGATE1, phase A6): the arena-* rungs prove the new VS
+(referee on the relay, own body at 0 frames, puppets, stars, hits, time-up / first-to-N,
+leave) and the lock2-lat-control rung is the lockstep latency control. They are listed
+and judged in the ARENA MODE RUNGS block below; every console on them is started with
+the launcher's own arena env (no SM64DS_LEVEL, no selftest), judged by arena_logs.py
+(each judge has a must-FAIL control run against the real logs), and the real-launcher
+rungs go through arena_e2e.py. Extra arguments: --base-exe (the solo gate's base build),
+--launcher-repo / --kit-exe / --e2e-assets / --e2e-extracted / --e2e-rom (the MpE2E
+rungs). The fold lane's arena gate is   --only '^(arena|lock2-lat)' --tier gate   plus
+the lockstep fallback rungs unchanged (--only '^(vs[24]-loop|match|timeup|leave4|latejoin|luigi4)').
+
 OUTPUT: <out>/<rung>/p<k>/{run.log,env.txt} per console (+ relay.log),
 <out>/summary.tsv and <out>/summary.txt. Default <out> is
 build/mp_ladder/<UTC stamp> under the repo root.
@@ -97,6 +108,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import mp2_proof as M          # noqa: E402  (quiet spawn + env_base)
 import build_lock              # noqa: E402  (the ladder lock)
+import arena_logs as AL        # noqa: E402  (arena-mode log readers + judges, lane ARENAGATE1)
 
 try:
     import psutil              # kill / suspend rungs and the memory guard
@@ -130,6 +142,14 @@ LANE_MARKERS = {
 }
 LANE_NAMES = {"N1": "NETCORE1", "N2": "VSAUX1", "N3": "LAGGARD1", "R1": "RELAY2",
               "H1": "HUB1", "W2": "GHOSTWIRE1", "C1": "CHATUI1", "V1": "VOICE1"}
+# ARENA MODE (run mp1 phase A, lane ARENAGATE1): the five lanes the arena rungs wait on.
+LANE_MARKERS.update({
+    "A0": [("str", b"[vsarena] installed"), ("env", "SM64DS_VS_NETMODE")],     # ARENACORE1: core + SYNS
+    "A1": [("env", "SM64DS_PUPPET_LOG")],                                      # PUPPET1: other seats' bodies
+    "A2": [("relayarena", 1)],                                                 # REFEREE1: the relay's arena session + referee
+    "A3": [("env", "SM64DS_ARENA_RIG"), ("str", b"[vsarena-ref]")],            # STARREF1: referee client (stars, hits, MATCH OVER)
+})
+LANE_NAMES.update({"A0": "ARENACORE1", "A1": "PUPPET1", "A2": "REFEREE1", "A3": "STARREF1"})
 
 # ---------------------------------------------------------------------------
 # LANE CONTRACTS: knobs and log lines of lanes that had not landed when this
@@ -332,6 +352,7 @@ class Features:
             with open(mp, "r", encoding="utf-8", errors="replace") as f:
                 self.map = f.read()
         self.relay_v = relay_version(relay_py)
+        self.relay_arena = relay_arena(relay_py) if self.relay_v >= 2 else 0
         self.have = {}
         self.why = {}
         for lane, marks in LANE_MARKERS.items():
@@ -343,6 +364,8 @@ class Features:
                     ok = val.encode() in self.blob
                 elif kind == "map":
                     ok = self.map is not None and val in self.map
+                elif kind == "relayarena":
+                    ok = self.relay_arena >= val
                 else:
                     ok = self.relay_v >= val
                 seen.append("%s:%s=%s" % (kind, val.decode() if isinstance(val, bytes) else val,
@@ -395,6 +418,45 @@ def relay_version(relay_py):
         p.kill()
         p.wait()
     return ver
+
+
+def relay_arena(relay_py):
+    """1 when the relay source accepts an ARENA hello (HELLO v2 role 3, REFEREE1's
+    arena_wire.h): an ACK with status 0. A relay that predates arena mode answers
+    status 2 (the game logs it and retries every 5 s, never falling to lockstep)."""
+    if not os.path.exists(relay_py):
+        return 0
+    port = relay_port(96)
+    env = dict(os.environ, SM64DS_RELAY_PORT=str(port), SM64DS_RELAY_BIND="127.0.0.1",
+               SM64DS_RELAY_STATS_S="60")
+    p = subprocess.Popen([sys.executable, "-u", relay_py], env=env, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, creationflags=M.NO_CONSOLE)
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0.5)
+    ok = 0
+    try:
+        code = ("Q%07d" % (PID % 10**7)).encode()
+        hello = b"SMRC" + bytes([2, 3, 0xFF, 0]) + code
+        time.sleep(0.8)
+        for _ in range(10):
+            if p.poll() is not None:
+                break
+            try:
+                s.sendto(hello, ("127.0.0.1", port))
+                d, _ = s.recvfrom(64)
+            except socket.timeout:
+                continue
+            except OSError:
+                time.sleep(0.3)
+                continue
+            if d[:4] == b"SMRA" and len(d) >= 6:
+                ok = 1 if (d[4] == 2 and d[5] == 0) else 0
+                break
+    finally:
+        s.close()
+        p.kill()
+        p.wait()
+    return ok
 
 
 # ---------------------------------------------------------------------------
@@ -492,7 +554,7 @@ def build_rungs():
     R.append(Rung("voice16-relay2", "voice", 16, GATE, "relay2", needs=["N2", "V1"]))
     # The 09-26 host fault re-check on a player-shaped install.
     R.append(Rung("kit2-vs-loop", "kit", 2, GATE, needs=["kit"]))
-    return R
+    return R + arena_rungs()
 
 
 # ---------------------------------------------------------------------------
@@ -986,7 +1048,10 @@ def sweep_popup_only(texts, keys, workdir):
             if f not in da or f not in db:
                 return False, "p%d/p%d f%d split with no digest" % (a, b, f)
             odd = [u for u in set(da[f]) | set(db[f]) if da[f].get(u) != db[f].get(u)]
-            ids = {(da[f].get(u) or db[f].get(u))[0] for u in odd}
+            # the class ids come from BOTH consoles: taking them from one side let a uid
+            # holding another class on the other side pass as the popup (REVVSTIMEUP1 M7)
+            ids = ({da[f][u][0] for u in odd if u in da[f]}
+                   | {db[f][u][0] for u in odd if u in db[f]})
             if not odd or ids != {POPUP_ID}:
                 return False, "p%d/p%d f%d actors %s differ" % (a, b, f, sorted(ids))
             split.add(f)
@@ -1673,6 +1738,740 @@ BODIES = {"vs": r_vs, "advsave": r_advsave, "vssave": r_vssave, "match": r_match
 
 
 # ---------------------------------------------------------------------------
+# ARENA MODE RUNGS (run mp1, lane ARENAGATE1, plan phase A6)
+#
+# Every console of an arena rung is started with the environment
+# LobbyLaunch.BuildChildEnv gives a real arena plan (arena_env: SM64DS_VS_MAP /
+# _PLAYERS / _NETMODE / COMMS_RELAY / _CODE / _ROLE / _SLOT / _STAR_TARGET /
+# _NAMES / SESSION_DIGEST / ADVENTURE=0, NO SM64DS_LEVEL, NO selftest, the game
+# paced as a player's), against a local copy of REFEREE1's relay with the
+# referee in it. Test knobs only shorten or script what a player would do
+# (ARENA_TIME_S, ARENA_RIG, HOST_PAD, VS_EXIT_ON_END, HUB_DELAY_MS / _LOSS_PCT).
+# Judges live in arena_logs.py (pure, selftested, each with a must-FAIL control
+# this file runs against the real logs); this file launches and watches.
+#
+# THE ARENA RUNGS, how each is judged (the verdict line names the failed item):
+#   arena2-mesh-loop / arena4-mesh-loop   A0 core on the test mesh (no referee):
+#       every SYNS received == the sender's logged one, monotonic, only my slot
+#       reads a pad, every seat heard.
+#   arena{2,4}-lat-relay                  own body 0 frames on EVERY console
+#       through the relay at skewed delay (HUB_DELAY_MS); lock2-lat-control:
+#       the same probe on the LOCKSTEP carrier must read 3+ (the judge can go red).
+#   arena{2,4}-{stars,time}-relay-*       a whole match through the referee at
+#       skewed RTT: one session up, one START, ONE byte-identical referee MATCH
+#       OVER and marker on every console (no two winners), the relay's own
+#       referee log says the same, puppets driven (A1), rc 0, no fault.
+#   arena{2,4}-cam-relay                  each console films its OWN slot.
+#   arena4-leave-{kill,quit}-relay        a console leaves mid-match holding
+#       stars: one LEAVE everywhere, spill == the ledger's stars, the match goes
+#       on to one MATCH OVER, the leaver scores 0; arena4-rejoin-relay: it comes
+#       back and every console sees JOIN mid-match.
+#   arena{2,4}-loss{5,20}-relay           5 % / 20 % datagram loss on every console
+#       (SM64DS_HUB_LOSS_PCT): the match still reaches one identical MATCH OVER.
+#   arena-solo-alone                      one console alone in a 2-seat world: no
+#       match starts, no crash, no 'connection lost'.
+#   arena-solo-gate                       arena code inert without its env: the
+#       solo identity / static / traps / [vs] probe rows of arenacore1's gate
+#       against --base-exe (arena_solo_gate.py).
+#   arena2-time-kit                       the same match from a kit-built exe in a
+#       player-shaped install (--kit --rom).
+#   arena2-e2e-60s / arena2-e2e-kit       REAL LAUNCHERS (MpE2E vsarena on a
+#       private desktop, arena_e2e.py): a match PAST 60 s (A4's watchdog) and the
+#       same with the kit exe. Need --launcher-repo.
+# The lockstep fallback is the existing vs / match / timeup / leave rungs, untouched.
+# ---------------------------------------------------------------------------
+def close_windows(pid):
+    """WM_CLOSE to every top-level window of pid (a player closing the game)."""
+    import ctypes
+    from ctypes import wintypes
+    u = ctypes.windll.user32
+    hits = []
+    PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def cb(h, _):
+        p = wintypes.DWORD()
+        u.GetWindowThreadProcessId(h, ctypes.byref(p))
+        if p.value == pid:
+            hits.append(h)
+        return True
+    u.EnumWindows(PROC(cb), 0)
+    for h in hits:
+        u.PostMessageW(h, 0x0010, 0, 0)
+    return len(hits)
+
+
+def console_text(d):
+    """run.log (stdout) then every playlog/play_*.log (stderr, which the shipped
+    path reopens onto the flight recorder), as one text."""
+    t = M.text(os.path.join(d, "run.log")) if os.path.exists(os.path.join(d, "run.log")) else ""
+    pl = os.path.join(d, "playlog")
+    if os.path.isdir(pl):
+        for fn in sorted(os.listdir(pl)):
+            if fn.startswith("play_") and fn.endswith(".log"):
+                t += "\n" + M.text(os.path.join(pl, fn))
+    return t
+
+
+DIRS_PAD = [0x0008, 0x0001, 0x0004, 0x0002]      # right up left down (XInput dpad)
+BTN_A, BTN_B = 0x1000, 0x2000
+
+
+def pad_script(k, start=600, span=1800):
+    """SM64DS_HOST_PAD grammar <hex>@<f0>[-<f1>]: walk, jump, punch, run-jump."""
+    ent, f, i = [], start, k
+    while f < start + span:
+        d = DIRS_PAD[i % 4]
+        ent += ["%04x@%d-%d" % (d, f, f + 55), "%04x@%d" % (BTN_A, f + 60),
+                "%04x@%d" % (BTN_B, f + 80), "%04x@%d-%d" % (d | BTN_A, f + 95, f + 125)]
+        f += 150
+        i += 1
+    return ",".join(ent)
+
+
+def lat_pad(start=1000, gap=75, count=8):
+    """SM64DS_PROBE_INPUT: A presses spaced a landing apart, after the countdown (the latency
+    probe reads the ROM's own key word, which SM64DS_HOST_PAD's XInput path did not reach)."""
+    return ",".join("%d:A" % (start + gap * i) for i in range(count))
+
+
+def arena_env(run, key, seat, n, relay, o, exe=None, asset_root=None):
+    """The child environment of an arena plan (LobbyLaunch.BuildChildEnv) plus
+    the rung's test knobs. key names the console's directory, seat its body."""
+    d, e = run.base_env(key, asset_root)
+    e["_EXE"] = exe or run.L.exe
+    e.pop("SM64DS_LEVEL", None)                  # LobbyLaunch clears it: the real path
+    e.pop("SM64DS_WINDOW_SELFTEST", None)
+    target = o.get("target", 0)
+    e["SM64DS_VS_MAP"] = str(o.get("map", 0))
+    e["SM64DS_VS_NETMODE"] = "arena"
+    e["SM64DS_COMMS_RELAY"] = relay
+    e["SM64DS_COMMS_CODE"] = run.code
+    e["SM64DS_COMMS_ROLE"] = "parent" if seat == 0 else "child"
+    e["SM64DS_COMMS_PORT"] = str(run.port)
+    e["SM64DS_VS_PLAYERS"] = str(n)
+    e["SM64DS_ADVENTURE"] = "0"
+    if seat:
+        e["SM64DS_COMMS_SLOT"] = str(seat)
+    if target:
+        e["SM64DS_VS_STAR_TARGET"] = str(target)
+    w = 4 if n <= 4 else 16
+    e["SM64DS_VS_NAMES"] = ",".join([("P%d" % i) if i < n else "" for i in range(w)])
+    e["SM64DS_SESSION_DIGEST"] = str(AL.lobby_digest(o.get("map", 0), n, target)[0])
+    e["SM64DS_PLAYER_NAME"] = "lad%d" % seat
+    # test knobs: end the process with the match, shorten / script what a player does
+    e["SM64DS_VS_EXIT_ON_END"] = "1"
+    e["SM64DS_VS_END_GRACE"] = "30"
+    e["SM64DS_HUB_REPORT_S"] = "5"
+    e["SM64DS_ARENA_REFLOG"] = "1"
+    e["SM64DS_PUPPET_LOG"] = "1"
+    if o.get("time_s"):
+        e["SM64DS_ARENA_TIME_S"] = str(o["time_s"])
+    if o.get("rig"):
+        e["SM64DS_ARENA_RIG"] = "race:%d" % (int(hashlib.md5(run.rung.name.encode()).hexdigest()[:4], 16) % 997)
+    if o.get("lat"):
+        e["SM64DS_ARENA_LATENCY"] = "1"
+        e["SM64DS_PROBE_INPUT"] = lat_pad()
+    elif o.get("pad", True):
+        e["SM64DS_HOST_PAD"] = pad_script(seat)
+    delays = o.get("delays")
+    if delays and delays[seat]:
+        e["SM64DS_HUB_DELAY_MS"] = str(delays[seat])
+    if o.get("loss"):
+        e["SM64DS_HUB_LOSS_PCT"] = str(o["loss"])
+    if o.get("cam"):
+        e["SM64DS_CAM_WATCH"] = "1"
+        e["SM64DS_VS_PROBE"] = "1"
+    return d, e
+
+
+def tasks_lower():
+    try:
+        return subprocess.run(["tasklist"], capture_output=True, text=True,
+                              creationflags=M.NO_CONSOLE).stdout.lower()
+    except OSError:
+        return ""
+
+
+class Fleet:
+    """The consoles of one arena rung: started on a schedule, watched while they
+    run (poll(fleet, t) may close, kill or start a console), killed at the
+    deadline. W43 / W47: while League runs the consoles are IDLE priority on half
+    the cores, while VRChat runs on a quarter."""
+
+    def __init__(self, run):
+        self.run = run
+        self.procs, self.dirs, self.sched = {}, {}, []
+        self.rcs, self.how = {}, {}
+        self.t0 = None
+        t = tasks_lower()
+        self.vr, self.lg = "vrchat.exe" in t, "league of legends.exe" in t
+
+    def add(self, key, env, d, delay):
+        self.sched.append((delay, key, env, d))
+
+    def start(self, key, env, d):
+        with open(os.path.join(d, "env.txt"), "w") as f:
+            for k in sorted(env):
+                if k.startswith("SM64DS_"):
+                    f.write("%s=%s\n" % (k, env[k]))
+        p = M.spawn(os.path.abspath(env["_EXE"]), d, {x: v for x, v in env.items() if x != "_EXE"},
+                    os.path.join(d, "run.log"))
+        self.procs[key], self.dirs[key] = p, d
+        if psutil is not None and (self.vr or self.lg):
+            try:
+                pp = psutil.Process(p.pid)
+                pp.nice(psutil.IDLE_PRIORITY_CLASS)
+                n = os.cpu_count() or 4
+                pp.cpu_affinity(list(range(max(1, n // 4) if self.vr else max(1, n // 2))))
+            except (psutil.Error, OSError, AttributeError):
+                pass
+
+    def alive(self, key):
+        p = self.procs.get(key)
+        return p is not None and p.poll() is None
+
+    def text(self, key):
+        return console_text(self.dirs[key]) if key in self.dirs else ""
+
+    def close(self, key):
+        self.how[key] = "closed"
+        return close_windows(self.procs[key].pid)
+
+    def kill(self, key):
+        self.how[key] = "killed"
+        try:
+            self.procs[key].kill()
+        except OSError:
+            pass
+
+    def run_until(self, timeout, poll=None):
+        self.t0 = time.time()
+        last_busy = 0.0
+        while True:
+            now = time.time() - self.t0
+            for x in [x for x in self.sched if x[0] <= now]:
+                self.sched.remove(x)
+                self.start(x[1], x[2], x[3])
+            if poll:
+                poll(self, now)
+            if not self.sched and not any(p.poll() is None for p in self.procs.values()):
+                break
+            if now >= timeout:
+                for k, p in self.procs.items():
+                    if p.poll() is None:
+                        self.how.setdefault(k, "deadline")
+                        p.kill()
+                break
+            if time.time() - last_busy > 2.0:
+                last_busy = time.time()
+                b = busy(self.run.L.busy_log)
+                if b:
+                    self.run.aborted = "busy flag: " + b.strip()
+                    for p in self.procs.values():
+                        try:
+                            p.kill()
+                        except OSError:
+                            pass
+                    break
+            time.sleep(0.4)
+        for k, p in self.procs.items():
+            self.rcs[k] = M.finish(p, 20)
+        if self.run.aborted:
+            raise Aborted(self.run.aborted)
+        return time.time() - self.t0
+
+    def texts(self, keys=None):
+        return {k: self.text(k) for k in (keys if keys is not None else self.procs)}
+
+
+def stop_relay(run):
+    """Stop the local relay and return its log text (the referee's own record)."""
+    if run.relay and run.relay_stats is None:
+        run.relay_stats = run.relay.stop()
+    try:
+        return M.text(run.relay.logpath) if run.relay else ""
+    except OSError:
+        return ""
+
+
+def judge_into(ck, items):
+    for okk, m in items:
+        ck.ok(okk, m)
+
+
+def control(ck, name, judge, mutated):
+    """MUST-FAIL CONTROL: the judge, fed logs with one thing broken, must go red."""
+    if mutated is None:
+        ck.note("control %s: nothing to break in these logs" % name)
+        return
+    desc, texts = mutated
+    red = [m for okk, m in judge(texts) if not okk]
+    ck.ok(bool(red), "control (%s): the judge %s" % (
+        desc, "went red as it must (%s)" % red[0][:70] if red else "STAYED GREEN"))
+
+
+def match_controls(ck, texts, rcs, n, expect, rt, lane):
+    judge = lambda t: AL.judge_match(t, rcs, list(range(n)), expect, rt=rt, lane=lane)
+    for kind in ("two-winners", "second-marker", "deaf", "lost"):
+        control(ck, kind, judge, AL.mutate(kind, texts))
+
+
+def r_arena(L, run, r):
+    """A whole arena match through the relay's referee: see the table above."""
+    n, o = r.n, dict(r.opts)
+    kit = o.get("kit")
+    bundle = kit_bundle(L) if kit else None
+    exe = os.path.join(bundle, "walk_window.exe") if kit else None
+    relay = run.start_relay()
+    fl = Fleet(run)
+    for k in range(n):
+        d, e = arena_env(run, k, k, n, relay, o, exe=exe, asset_root=bundle)
+        fl.add(k, e, d, 0.0 if k == 0 else 0.4 * k)
+    wall = fl.run_until(o.get("timeout", 420))
+    rt = stop_relay(run)
+    texts, rcs = fl.texts(), fl.rcs
+    ck = Checks()
+    target = o.get("target", 0)
+    expect = {"reason": 2 if target else 1, "first_to": target, "min_taken": 2 if o.get("rig") else 0,
+              "seat_line": b"relay named my seat %d" in L.feats.blob}
+    lane = {"A1": L.feats.have.get("A1")}
+    judge_into(ck, AL.judge_match(texts, rcs, list(range(n)), expect, rt=rt, lane=lane))
+    if not kit:
+        relay_checks(ck, run)
+    match_controls(ck, texts, rcs, n, expect, rt, lane)
+    F = {k: AL.facts(texts[k]) for k in texts}
+    ck.note("delays %s loss %s%% target %s time %ss" % (o.get("delays"), o.get("loss", 0), target or "-",
+                                                        o.get("time_s", "ROM")))
+    if F[0]["over_ref"]:
+        ck.note("MATCH OVER ref " + " ".join(F[0]["over_ref"][0][:7]))
+    ck.note("p0 saw %d stars taken, %d hits, %d spills" % (len(F[0]["taken"]), len(AL.HIT.findall(texts[0])),
+                                                           len(F[0]["spill"])))
+    if kit:
+        ck.note("kit bundle exe md5 %s" % hashlib.md5(open(exe, "rb").read()).hexdigest())
+    return ck, wall, rcs
+
+
+def r_arenacam(L, run, r):
+    """THE CAMERA ROW: every console films its OWN slot (a lockstep sweep never
+    looks at the camera; the 09-30 child filmed slot 0). The consoles play for
+    secs and are closed like a player quitting."""
+    n, o = r.n, dict(r.opts)
+    o["cam"] = True
+    relay = run.start_relay()
+    fl = Fleet(run)
+    for k in range(n):
+        d, e = arena_env(run, k, k, n, relay, o)
+        e.pop("SM64DS_VS_EXIT_ON_END", None)
+        fl.add(k, e, d, 0.0 if k == 0 else 0.4 * k)
+    secs = o.get("secs", 70)
+
+    def poll(f, t):
+        if t >= secs:
+            for k in list(f.procs):
+                if f.alive(k) and k not in f.how:
+                    f.close(k)
+    wall = fl.run_until(secs + 60, poll)
+    stop_relay(run)
+    texts = fl.texts()
+    rcs = {k: (0 if fl.how.get(k) == "closed" else v) for k, v in fl.rcs.items()}
+    ck = Checks()
+    am = bool(L.feats.have.get("A1"))
+    judge_into(ck, AL.judge_camera(texts, rcs, others_move=am))
+    control(ck, "camera", lambda t: AL.judge_camera(t, rcs, others_move=am), AL.mutate("camera", texts))
+    relay_checks(ck, run)
+    return ck, wall, rcs
+
+
+def r_arenalat(L, run, r):
+    """OWN-BODY LATENCY through the relay at skewed delay: the press-to-answer
+    readout of every console reads 0 frames (a frame-count row, not a timing
+    row). lockstep=True is the control: the same probe on the lockstep carrier
+    through the same relay, which must read 3+ frames."""
+    n, o = r.n, dict(r.opts)
+    o["lat"] = True
+    relay = run.start_relay()
+    fl = Fleet(run)
+    lockstep = o.get("lockstep")
+    for k in range(n):
+        d, e = arena_env(run, k, k, n, relay, o)
+        e.pop("SM64DS_VS_EXIT_ON_END", None)
+        if lockstep:
+            for x in ("SM64DS_VS_NETMODE", "SM64DS_SESSION_DIGEST"):
+                e.pop(x, None)
+            e["SM64DS_NETMODE"] = "lockstep"
+            e["SM64DS_COMMS_FANOUT"] = "1"
+            e["SM64DS_COMMS_REPORT"] = "1"
+            if o.get("delays") and o["delays"][k]:
+                e.pop("SM64DS_HUB_DELAY_MS", None)
+                e["SM64DS_COMMS_DELAY_MS"] = str(o["delays"][k])
+        fl.add(k, e, d, 0.0 if k == 0 else 0.4 * k)
+    secs = o.get("secs", 110)
+
+    def poll(f, t):
+        done = len(f.procs) == n and all(
+            len(AL.LAT.findall(f.text(k))) + len(AL.NOANS.findall(f.text(k))) >= 8 for k in f.procs)
+        if t >= secs or done:
+            for k in list(f.procs):
+                if f.alive(k) and k not in f.how:
+                    f.close(k)
+    wall = fl.run_until(secs + 90, poll)
+    stop_relay(run)
+    texts = fl.texts()
+    rcs = {k: (0 if fl.how.get(k) == "closed" else v) for k, v in fl.rcs.items()}
+    ck = Checks()
+    want_zero = not lockstep
+    judge_into(ck, AL.judge_latency(texts, rcs, want_zero=want_zero))
+    if want_zero:
+        control(ck, "late-body", lambda t: AL.judge_latency(t, rcs), AL.mutate("late-body", texts))
+    relay_checks(ck, run)
+    ck.note("delays %s" % (o.get("delays"),))
+    return ck, wall, rcs
+
+
+def r_arenamesh(L, run, r):
+    """A0's core on the TEST MESH (SM64DS_HUB_PORT, no relay, no referee): every
+    SYNS received equals the sender's logged one, own slot only reads a pad.
+    Selftest world (the mesh has no lobby path)."""
+    n = r.n
+    base = 30000 + (PID % 1800) * 16
+    if base <= SHIPPED_PORT < base + 16:
+        base += 32
+    fl = Fleet(run)
+    frames = r.frames or 1200
+    for k in range(n):
+        d, e = run.base_env(k)
+        e["_EXE"] = L.exe
+        e.pop("SM64DS_LEVEL", None)
+        e.update({"SM64DS_VS_MAP": "0", "SM64DS_VS_PROBE": "1", "SM64DS_PACE_SELFTEST": "1",
+                  "SM64DS_VS_NETMODE": "arena", "SM64DS_VS_PLAYERS": str(n),
+                  "SM64DS_WINDOW_SELFTEST": str(frames), "SM64DS_HUB_REPORT_S": "5",
+                  "SM64DS_COMMS_ROLE": "parent" if k == 0 else "child",
+                  "SM64DS_HUB_PORT": str(base), "SM64DS_ARENA_LOG": "1"})
+        if k:
+            e["SM64DS_COMMS_SLOT"] = str(k)
+        d1 = ["RIGHT", "LEFT", "UP", "DOWN"][k % 4]
+        d2 = ["UP", "DOWN", "LEFT", "RIGHT"][k % 4]
+        e["SM64DS_PROBE_INPUT"] = ",".join(["150-230:%s" % d1, "240:A", "250-330:%s" % d2, "360:A",
+                                            "370-450:%s+A" % d1, "480:A", "490-560:%s" % d2, "600:A"])
+        fl.add(k, e, d, 0.4 * k)
+    wall = fl.run_until(timeout_for(n, frames, True, 120))
+    texts, rcs = fl.texts(), fl.rcs
+    ck = Checks()
+    judge_into(ck, AL.judge_wire(texts, rcs, n))
+    control(ck, "wire", lambda t: AL.judge_wire(t, rcs, n), AL.mutate("wire", texts))
+    ck.note("test mesh: no referee, no lobby env (the relay rungs cover the real entry path)")
+    return ck, wall, rcs
+
+
+def r_arenasolo(L, run, r):
+    """ONE console alone in a 2-seat arena world (the HARD note's 'solo alone in
+    a world'): the absent seat's body is held, no match starts (the referee needs
+    two READY seats), nothing crashes, the referee is never reported lost."""
+    relay = run.start_relay()
+    o = dict(r.opts)
+    fl = Fleet(run)
+    d, e = arena_env(run, 0, 0, 2, relay, o)
+    e.pop("SM64DS_VS_EXIT_ON_END", None)
+    fl.add(0, e, d, 0.0)
+    secs = o.get("secs", 55)
+
+    def poll(f, t):
+        if t >= secs and f.alive(0) and 0 not in f.how:
+            f.close(0)
+    wall = fl.run_until(secs + 60, poll)
+    stop_relay(run)
+    texts = fl.texts()
+    rcs = {k: (0 if fl.how.get(k) == "closed" else v) for k, v in fl.rcs.items()}
+    ck = Checks()
+    judge_into(ck, AL.judge_solo_alone(texts[0], rcs[0]))
+    control(ck, "match-appears", lambda t: AL.judge_solo_alone(t[0], rcs[0]),
+            ("a MATCH OVER marker appears", {0: texts[0] + "\n[vs] MATCH OVER f9 win=time-up scores=0,0,0,0 "
+             "players=2 total=0 pending_scene=0 results_screen=port winner=0\n"}))
+    return ck, wall, rcs
+
+
+def r_arenaleave(L, run, r):
+    """A console leaves MID-MATCH holding stars (killed: a crash, or closed: a
+    player quitting) and the match goes on. The leaver is the first seat 1..n-1
+    that holds a star in the referee's ledger (so the leave has something to
+    spill; the rig decides who scores). rejoin=True: the same seat's console
+    comes back rejoin_after seconds later (the relay holds a dead hub seat for
+    its 10 s idle expiry, so 14 s lets the seat be named again); quick=True comes
+    back 4 s later, while the seat is still held: the game must not crash (it
+    may be given another seat or refuse)."""
+    n, o = r.n, dict(r.opts)
+    relay = run.start_relay()
+    fl = Fleet(run)
+    o["rig"] = True
+    for k in range(n):
+        d, e = arena_env(run, k, k, n, relay, o)
+        fl.add(k, e, d, 0.0 if k == 0 else 0.4 * k)
+    state = {"left_at": None, "rejoined": False, "leaver": None}
+    after = o.get("rejoin_after", 4 if o.get("quick") else 14)
+
+    def poll(f, t):
+        if state["left_at"] is None:
+            t0 = f.text(0) if 0 in f.dirs else ""
+            if "[vsarena] START" in t0 and t > 15:
+                cand = [s for s in range(1, n) if f.alive(s) and ("winner=%d " % s) in t0
+                        and AL.ledger_before_leave(t0, s) >= 1]
+                if cand:
+                    state["leaver"] = cand[0]
+                    (f.kill if o.get("how") == "kill" else f.close)(cand[0])
+                    state["left_at"] = t
+            if state["left_at"] is None and t > o.get("giveup", o.get("time_s", 75) - 25) and f.alive(n - 1):
+                state["leaver"] = n - 1
+                f.kill(n - 1)                           # nobody but seat 0 scored: the rung says so
+                state["left_at"] = t
+                state["never"] = True
+        elif o.get("rejoin") and not state["rejoined"] and t > state["left_at"] + after:
+            lv = state["leaver"]
+            t0 = f.text(0)
+            # fast=True (REJOIN1B): do not wait for the staying consoles to log the leave; the same console
+            # starts again within a second of its death, so its first HELLO lands inside the relay's 3 s
+            # silence rule and is answered 4 (seat taken) until the old holder has been silent long enough
+            if not f.alive(lv) and (o.get("fast") or AL.LEAVE.search(t0)) and "[vsarena] MATCH OVER ref" not in t0:
+                d, e = arena_env(run, 10 + lv, lv, n, relay, o)
+                f.start(10 + lv, e, d)
+                state["rejoined"] = True
+    wall = fl.run_until(o.get("timeout", 300), poll)
+    rt = stop_relay(run)
+    texts, rcs = fl.texts(), fl.rcs
+    leaver = state["leaver"] if state["leaver"] is not None else n - 1
+    stay = [k for k in range(n) if k != leaver]
+    ck = Checks()
+    ck.ok(state["left_at"] is not None and not state.get("never"),
+          "a seat other than the host scored a star and then left (a leave with nothing to spill proves nothing)")
+    ck.ok(fl.how.get(leaver) in ("killed", "closed"), "the leaver (seat %d) went away on purpose (%s)" % (
+        leaver, fl.how.get(leaver)))
+    for k in stay:
+        ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
+        ck.ok(not AL.FAULT.search(texts[k]), "p%d no fault" % k)
+    # rejoin: the returner is seated in its own seat, so every staying console must see it JOIN and the
+    # leaver's score is not 0. Against the OLD relay (old_relay=True) the ending is either of two clean ones: refused
+    # (ERROR + exit 4, the leaver stays out) or seated in its own seat after the old relay idle-expires the
+    # dead holder; which one it was decides what the staying consoles are judged on.
+    tj0 = texts.get(10 + leaver, "")
+    returned = AL.old_return_outcome(tj0) == "seated" if o.get("old_relay") else bool(o.get("rejoin"))
+    rej = leaver if returned else None
+    judge_into(ck, AL.judge_leave(texts, rcs, stay, leaver, rt=rt, rejoined=rej))
+    # the staying consoles still end on ONE verdict (the relay's referee ends only one match)
+    verdict_items = AL.judge_match({k: texts[k] for k in stay}, rcs, stay, {"reason": None}, rt=None,
+                                   lane={"A1": L.feats.have.get("A1")})
+    judge_into(ck, [x for x in verdict_items if "byte-identical" in x[1] or "exactly one referee" in x[1]
+                    or "never lost" in x[1]])
+    if o.get("rejoin"):
+        j = 10 + leaver
+        ck.ok(state["rejoined"], "the leaver's seat console was started again")
+        ck.ok(j in texts and "[vsarena] installed" in texts.get(j, ""), "the returning console started and "
+                                                                        "installed arena mode")
+        ck.ok(not AL.FAULT.search(texts.get(j, "")), "the returning console had no fault (a seat the arena has "
+                                                     "no body for must be refused cleanly, not crash)")
+        tj = texts.get(j, "")
+        if o.get("fast"):
+            # REJOIN1B: the game half of the status 4 retry (hub keeps the pin and asks again)
+            ck.ok(re.search(r"^\[hub\] seat %d is still held by the console that was here" % leaver, tj, re.M),
+                  "the returning console was told seat %d is held and asked for it again" % leaver)
+            m = re.search(r"seat %d reclaimed from .*silent ([0-9.]+) s" % leaver, rt)
+            ck.ok(m and float(m.group(1)) >= 3.0, "the relay gave the seat back only after >= 3 s of silence (%s)" % (
+                m.group(1) if m else "no reclaim line"))
+            ck.ok(not re.search(r"asking for any free seat|is taken; asking", tj),
+                  "and it never gave up its pin for any seat")
+        if o.get("old_relay"):
+            # the OLD relay names the returner a seat while the dead holder still owns it: either the game
+            # refuses cleanly (ERROR seat N has no body, exit 4) or the old relay idle-expires the holder
+            # and the console is seated in its own seat (exit 0); a fault, another seat, a second
+            # MATCH OVER or any other exit is red
+            judge_into(ck, AL.judge_old_return(tj, rcs.get(j), leaver))
+            control(ck, "old-return", lambda t: AL.judge_old_return(t, rcs.get(j), leaver),
+                    ("a fault line on the returning console", tj + "\n[hub] FAULT c0000005 at +0x1406d7\n"))
+            wrong = (AL.SEATED.sub("[vsarena] seated: seat %d is my body" % ((leaver + 1) % n), tj)
+                     if AL.SEATED.search(tj) else None)
+            control(ck, "old-return-seat", lambda t: AL.judge_old_return(t, rcs.get(j), leaver),
+                    ("the returning console is seated in another seat", wrong) if wrong else None)
+        else:
+            # the returning console gets ITS OLD SEAT, plays on, hears one MATCH OVER
+            ck.ok(("[vsarena] seated: seat %d is my body" % leaver) in tj,
+                  "the returning console was seated in its old seat %d" % leaver)
+            ck.ok(rcs.get(j) == 0, "the returning console exited 0 (rc=%s)" % rcs.get(j))
+            n_over_j = len(re.findall(r"^\[vsarena\] MATCH OVER ref", tj, re.M))
+            ck.ok(n_over_j == 1, "the returning console heard exactly one referee MATCH OVER (%d)" % n_over_j)
+            ck.ok(not re.search(r"seat \d+ has no body", tj), "no 'has no body' line on the returning console")
+    control(ck, "no-spill", lambda t: AL.judge_leave(t, rcs, stay, leaver, rt=rt),
+            AL.mutate("no-spill", {k: texts[k] for k in stay}))
+    relay_checks(ck, run)
+    ck.note("leaver seat %d left at %.0fs (%s)" % (leaver, state["left_at"] or -1, fl.how.get(leaver)))
+    return ck, wall, rcs
+
+
+def r_arenahijack(L, run, r):
+    """A LIVE seat is never given away. A fifth source address (not one of the
+    consoles) sends role-3 HELLOs at the relay all through a 4-console rig
+    match: want_seat = each live seat in turn, and want_seat 0xFF; every answer
+    must be a refusal (4 seat taken / 1 full), never an ACK 0; the consoles play
+    on unaffected (one identical MATCH OVER, each seated once, no fault, no seat
+    moved)."""
+    n, o = r.n, dict(r.opts)
+    relay = run.start_relay()
+    host, port = relay.split(":")
+    fl = Fleet(run)
+    o["rig"] = True
+    for k in range(n):
+        d, e = arena_env(run, k, k, n, relay, o)
+        fl.add(k, e, d, 0.0 if k == 0 else 0.4 * k)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(("127.0.0.1", 0))
+    sock.setblocking(False)
+    acks = []                       # (want, status, seat)
+    sent = {"n": 0, "next": 0.0, "i": 0}
+
+    def drain():
+        while True:
+            try:
+                data, _ = sock.recvfrom(64)
+            except (BlockingIOError, OSError):
+                return
+            if len(data) == 16 and data[:4] == b"SMRA":
+                acks.append((sent.get("last"), data[5], data[6]))
+
+    def poll(f, t):
+        drain()
+        t0 = f.text(0) if 0 in f.dirs else ""
+        if "[vsarena] START" in t0 and t >= sent["next"]:
+            wants = list(range(n)) + [0xFF]
+            want = wants[sent["i"] % len(wants)]
+            sent["i"] += 1
+            sent["last"] = want
+            hello = b"SMRC" + bytes((2, 3, want, 0)) + run.code.encode("ascii")[:8].ljust(8, bytes(1))
+            sock.sendto(hello, (host, int(port)))
+            sent["n"] += 1
+            sent["next"] = t + 0.25
+            time.sleep(0.05)
+            drain()
+    wall = fl.run_until(o.get("timeout", 300), poll)
+    drain()
+    sock.close()
+    rt = stop_relay(run)
+    texts, rcs = fl.texts(), fl.rcs
+    ck = Checks()
+    expect = {"reason": 1, "first_to": 0, "min_taken": 2, "seat_line": b"relay named my seat %d" in L.feats.blob}
+    lane = {"A1": L.feats.have.get("A1")}
+    judge_into(ck, AL.judge_match(texts, rcs, list(range(n)), expect, rt=rt, lane=lane))
+
+    def judge_acks(a):
+        return [(len(a) >= 8, "the hijacker was answered at least 8 times (%d, sent %d)" % (len(a), sent["n"])),
+                (all(st in (1, 4) for w, st, se in a),
+                 "every answer a refusal, none an ACK 0: %s" % sorted(set((w, st) for w, st, se in a))),
+                (not any(st == 0 for w, st, se in a), "no seat was ever granted to the hijacker"),
+                (any(st == 4 for w, st, se in a), "a live seat answered 4 (seat taken)"),
+                (any(w == 0xFF and st == 1 for w, st, se in a), "any-seat answered 1 (full: all %d bodies seated)" % n)]
+    judge_into(ck, judge_acks(acks))
+    control(ck, "granted", lambda t: judge_acks(t), ("an ACK 0 appears", acks + [(1, 0, 1)]))
+    ck.ok("reclaimed from" not in rt, "the relay reclaimed no seat during the match (a live seat never is)")
+    ck.ok(len(re.findall(r"refused .*seat \d taken", rt)) >= 3, "the relay log shows the seat-taken refusals")
+    for k in range(n):
+        ck.ok(len(re.findall(r"^\[vsarena\] the relay named my seat", texts[k], re.M)) == 1,
+              "p%d was named its seat exactly once (no seat moved)" % k)
+        ck.ok(not re.search(r"my seat moved|re-pairing|has no body", texts[k]), "p%d: no seat moved / re-pairing" % k)
+    st = dict(run.relay_stats or {})
+    bad = {k: v for k, v in st.items() if (k.startswith("drop") or k == "bad") and v}
+    ck.ok(bool(st) and not bad, "relay dropped nothing (%s)" % (", ".join("%s=%d" % kv for kv in sorted(bad.items())) or
+                                                                  ("no stats line" if not st else "every drop counter and bad 0")))
+    n_full = sum(1 for w, s_, se in acks if s_ == 1)
+    ck.ok(st.get("full") == n_full, "the relay's 'full' counter (%s) is exactly the any-seat refusals the hijacker saw (%d)" % (
+        st.get("full"), n_full))
+    ck.note("hijacker sent %d HELLOs, %d answers" % (sent["n"], len(acks)))
+    return ck, wall, rcs
+
+
+def r_arenasolo_gate(L, run, r):
+    """The arena code is inert without its env: arena_solo_gate.py's rows on the
+    exe under test against --base-exe (the frozen stage-5 build)."""
+    import arena_solo_gate as G
+    if not L.a.base_exe:
+        raise Skip("needs --base-exe (the stage-5 / INT69B game build to compare against)")
+    t0 = time.time()
+    lines, okk = G.run_rows(L.a.base_exe, L.exe, L.asset_root, run.dir)
+    ck = Checks()
+    for ln in lines:
+        ck.note(ln)
+    ck.ok(okk, "arena_solo_gate: every row identical to the base (%d rows)" % len(lines))
+    return ck, time.time() - t0, {}
+
+
+def r_arenae2e(L, run, r):
+    """Real launchers (MpE2E vsarena), a match PAST 60 s so A4's launch watchdog
+    is exercised; kit=True runs the kit build."""
+    import arena_e2e as E
+    if not L.a.launcher_repo:
+        raise Skip("needs --launcher-repo (the private launcher checkout with tests/MpE2E built)")
+    kit = r.opts.get("kit")
+    if kit and not L.a.kit_exe:
+        raise Skip("needs --kit-exe (the kit-built walk_window.exe) and --kit-assets for it")
+    return E.run_rung(L, run, r, kit, Checks, Skip)
+
+
+BODIES.update({"arena": r_arena, "arenacam": r_arenacam, "arenalat": r_arenalat,
+               "arenamesh": r_arenamesh, "arenasolo": r_arenasolo, "arenaleave": r_arenaleave,
+               "arenasolo_gate": r_arenasolo_gate, "arenahijack": r_arenahijack, "arenae2e": r_arenae2e})
+
+
+def arena_rungs():
+    """The arena rung table (names are what the fold lane greps)."""
+    R = []
+    DEV, GATE = ("dev", "gate", "full"), ("gate", "full")
+    A = ["A0", "A2", "A3"]
+    skew2, skew4 = (20, 63), (20, 35, 55, 63)
+    R.append(Rung("arena2-mesh-loop", "arenamesh", 2, DEV, needs=["A0"]))
+    R.append(Rung("arena4-mesh-loop", "arenamesh", 4, DEV, needs=["A0"]))
+    R.append(Rung("arena2-lat-relay-skew20-63", "arenalat", 2, DEV, "relay2", needs=["A0", "A2"], delays=skew2))
+    R.append(Rung("arena4-lat-relay-skew", "arenalat", 4, GATE, "relay2", needs=["A0", "A2"], delays=skew4))
+    R.append(Rung("lock2-lat-control-relay-skew20-63", "arenalat", 2, GATE, "relay2", needs=["A0", "R1"],
+                  delays=skew2, lockstep=True))
+    R.append(Rung("arena2-stars-relay-rtt0", "arena", 2, DEV, "relay2", needs=A, target=2, time_s=60, rig=True))
+    R.append(Rung("arena2-stars-relay-skew20-63", "arena", 2, DEV, "relay2", needs=A, target=2, time_s=60,
+                  rig=True, delays=skew2))
+    R.append(Rung("arena2-time-relay-skew20-63", "arena", 2, DEV, "relay2", needs=A, time_s=30, rig=True,
+                  delays=skew2))
+    R.append(Rung("arena4-stars-relay-skew", "arena", 4, GATE, "relay2", needs=A, target=2, time_s=60, rig=True,
+                  delays=skew4))
+    R.append(Rung("arena4-time-relay-skew", "arena", 4, GATE, "relay2", needs=A, time_s=30, rig=True,
+                  delays=skew4))
+    R.append(Rung("arena2-loss5-relay", "arena", 2, GATE, "relay2", needs=A, time_s=30, rig=True, loss=5,
+                  delays=skew2))
+    R.append(Rung("arena2-loss20-relay", "arena", 2, GATE, "relay2", needs=A, time_s=30, rig=True, loss=20,
+                  delays=skew2))
+    R.append(Rung("arena4-loss20-relay", "arena", 4, GATE, "relay2", needs=A, time_s=30, rig=True, loss=20,
+                  delays=skew4))
+    R.append(Rung("arena2-cam-relay", "arenacam", 2, DEV, "relay2", needs=["A0", "A2"], delays=skew2))
+    R.append(Rung("arena4-cam-relay", "arenacam", 4, GATE, "relay2", needs=["A0", "A2"], delays=skew4))
+    R.append(Rung("arena4-leave-kill-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=75, how="kill",
+                  delays=skew4))
+    R.append(Rung("arena3-leave-kill-relay", "arenaleave", 3, GATE, "relay2", needs=A, time_s=75, how="kill",
+                  delays=(20, 35, 63)))
+    R.append(Rung("arena4-leave-quit-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=75, how="close",
+                  delays=skew4))
+    R.append(Rung("arena4-rejoin-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
+                  rejoin=True, delays=skew4))
+    R.append(Rung("arena4-hijack-relay", "arenahijack", 4, GATE, "relay2", needs=A, time_s=40, delays=skew4))
+    R.append(Rung("arena4-rejoin-quick-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
+                  rejoin=True, quick=True, delays=skew4))
+    R.append(Rung("arena4-rejoin-quick-oldrelay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
+                  rejoin=True, quick=True, old_relay=True, delays=skew4))
+    R.append(Rung("arena4-rejoin-fast-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
+                  rejoin=True, quick=True, fast=True, rejoin_after=0.2, delays=skew4))
+    R.append(Rung("arena4-rejoin-quick-relay-b", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
+                  rejoin=True, quick=True, delays=skew4))
+    R.append(Rung("arena-solo-alone", "arenasolo", 2, DEV, "relay2", needs=["A0", "A2"]))
+    R.append(Rung("arena-solo-gate", "arenasolo_gate", 1, GATE, needs=["A0"]))
+    R.append(Rung("arena2-time-kit", "arena", 2, GATE, "relay2", needs=A + ["kit"], time_s=30, rig=True,
+                  delays=skew2, kit=True))
+    R.append(Rung("arena2-e2e-60s", "arenae2e", 2, GATE, needs=A, secs=75))
+    R.append(Rung("arena2-e2e-kit", "arenae2e", 2, GATE, needs=A, secs=75, kit=True))
+    return R
+
+
+# ---------------------------------------------------------------------------
 # THE LADDER
 # ---------------------------------------------------------------------------
 def release_lock(path):
@@ -1847,6 +2646,16 @@ def main(argv=None):
     ap.add_argument("--kit", help="a fresh kit directory (the release zip unpacked, never run)")
     ap.add_argument("--rom", help="the ROM the kit extractor reads")
     ap.add_argument("--kit-work", help="where the extracted player install is cached")
+    ap.add_argument("--base-exe", help="the frozen stage-5 game exe the arena solo gate compares against")
+    ap.add_argument("--launcher-repo", default=os.environ.get("SM64DS_LAUNCHER_REPO", ""),
+                    help="the private launcher checkout (tests/MpE2E built) for the arena e2e rungs")
+    ap.add_argument("--kit-exe", help="the kit-built (PORT_ROM_CLEAN) walk_window.exe for arena2-e2e-kit")
+    ap.add_argument("--e2e-assets", help="build/assets dir for the e2e rungs (the kit exe needs the kit "
+                    "build's own romdata pair); default: <asset root>/build/assets")
+    ap.add_argument("--kit-assets", help="build/assets dir holding the KIT build's own romdata pair "
+                    "(arena2-e2e-kit; the dev assets crash a kit exe)")
+    ap.add_argument("--e2e-extracted", default="", help="extracted/ for the e2e peers' bundles")
+    ap.add_argument("--e2e-rom", default="", help="the .nds for the e2e peers' bundles (default --rom)")
     ap.add_argument("--out")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--probe", action="store_true")
@@ -1897,6 +2706,12 @@ def main(argv=None):
                 miss.append("kit")
             if [x for x in r.opts.get("retired_by", ()) if feats.have.get(x)]:
                 miss = ["retired"]
+            if r.kind == "arenae2e" and not a.launcher_repo:
+                miss.append("--launcher-repo")
+            if r.kind == "arenae2e" and r.opts.get("kit") and not a.kit_exe:
+                miss.append("--kit-exe")
+            if r.kind == "arenasolo_gate" and not a.base_exe:
+                miss.append("--base-exe")
             print("%-34s %-40s %s" % (r.name, r.desc(), ("needs " + ",".join(miss)) if miss else "runs"))
         print("%d rungs in tier %s" % (len(rungs), a.tier))
         return 0
