@@ -121,6 +121,8 @@ int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
 int hal_sub_screen_stacked(void);
 void hal_touch_client_probe(void);
+/* defined at the bottom of this file; poll_touch asks it who owns the keyboard */
+int hal_window_focused(void);
 /* THE THREE ATTENTION ARROWS, re-anchored above the panel (engine A's raster,
    hal/message_compositor.cpp, which owns the sprites; this file owns where the
    panel is). Called with the panel rect this frame's compose just drew, so the
@@ -2257,13 +2259,22 @@ int g_cam_reader_at = -1;        /* g_tp_frame of the last level-loop poll */
  * whole screen, and the arrows' own corners are exactly where the player icon
  * sits when the owner is at the bottom of a course, so a position test would
  * make Mario's head vanish at the bottom of the map. The key is the TILE
- * NUMBER the arrows' own templates carry. OAM::Render copies a template's
- * attr2 into the entry it writes and patches only the palette and priority
- * fields out of it, so the tile bits arrive unchanged; and the eight templates
- * are ROM data this binary links by name (ov002_data.c.obj, aliased in
- * hal/sub_actors.cpp). The set is therefore read from the cartridge's own
- * tables at run time. No literal, no guess, and a graphic that moved would
- * take its tile with it.
+ * NUMBER AND THE PALETTE the arrows' own templates carry.
+ * HUD::RenderCameraButtons (src/_ZN3HUD19RenderCameraButtonsEv.cpp) passes
+ * palette -1, so OAM::Render keeps each template's own palette in the entry it
+ * writes (the priority field is patched, which is why bits 10-11 are not part
+ * of the key); and the eight templates are ROM data this binary links by name
+ * (ov002_data.c.obj, aliased in hal/sub_actors.cpp). The set is therefore read
+ * from the cartridge's own tables at run time. No literal, no guess, and a
+ * graphic that moved would take its tile with it.
+ *
+ * THE PALETTE IS PART OF THE KEY because engine B's OBJ VRAM is shared by
+ * every bottom-screen sprite. Every attr2 in those eight lists carries palette
+ * 9, while the star select's "TOUCH ME!" pieces, the Picture Poker icons and
+ * the title's arrows reuse the same tile numbers (468 / 476) with palette 0,
+ * so a tile-number test alone hid them whenever the improved map was on. The
+ * palette is what tells the two apart on any frame, with no dependence on
+ * which loop ran last.
  *
  * Tile 0 is never added: it is the ROM's own "nothing here" and unrelated
  * templates carry it.
@@ -2281,6 +2292,7 @@ extern const unsigned short _ZN3OAM22S_CAM_BUTTON_L_PRESSEDE[];
 extern const unsigned short _ZN3OAM22S_CAM_BUTTON_R_PRESSEDE[];
 }
 
+/* attr2 with the priority bits dropped: tile (bits 0-9) and palette (12-15). */
 unsigned short g_cam_tiles[64];
 int g_cam_tiles_n = -1;
 
@@ -2292,13 +2304,13 @@ void cam_tiles_add(const unsigned short *t)
     for (int i = 0; i < 16; ++i) {
         const unsigned short a2 = t[i * 4 + 2];
         const unsigned short a3 = t[i * 4 + 3];
-        const unsigned short tile = (unsigned short)(a2 & 0x03FFu);
-        if (tile && g_cam_tiles_n <
+        const unsigned short key = (unsigned short)(a2 & 0xF3FFu);
+        if ((key & 0x03FFu) && g_cam_tiles_n <
                 (int)(sizeof g_cam_tiles / sizeof g_cam_tiles[0])) {
             int seen = 0;
             for (int k = 0; k < g_cam_tiles_n; ++k)
-                if (g_cam_tiles[k] == tile) { seen = 1; break; }
-            if (!seen) g_cam_tiles[g_cam_tiles_n++] = tile;
+                if (g_cam_tiles[k] == key) { seen = 1; break; }
+            if (!seen) g_cam_tiles[g_cam_tiles_n++] = key;
         }
         if (a3 == 0xffff) return;
     }
@@ -2317,16 +2329,18 @@ int cam_button_veto(unsigned short a2)
         cam_tiles_add(_ZN3OAM22S_CAM_BUTTON_L_PRESSEDE);
         cam_tiles_add(_ZN3OAM22S_CAM_BUTTON_R_PRESSEDE);
         if (std::getenv("SM64DS_MINIMAP_TRACE")) {
-            std::fprintf(stderr, "[mmtrace] camera-button tiles (%d):",
+            std::fprintf(stderr, "[mmtrace] camera-button tile/palette (%d):",
                          g_cam_tiles_n);
             for (int k = 0; k < g_cam_tiles_n; ++k)
-                std::fprintf(stderr, " %u", (unsigned)g_cam_tiles[k]);
+                std::fprintf(stderr, " %u/%u",
+                             (unsigned)(g_cam_tiles[k] & 0x03FFu),
+                             (unsigned)(g_cam_tiles[k] >> 12));
             std::fprintf(stderr, "\n");
         }
     }
-    const unsigned short tile = (unsigned short)(a2 & 0x03FFu);
+    const unsigned short key = (unsigned short)(a2 & 0xF3FFu);
     for (int k = 0; k < g_cam_tiles_n; ++k)
-        if (g_cam_tiles[k] == tile)
+        if (g_cam_tiles[k] == key)
             return improved_map_on() ? 3 : 1;
     return 0;
 }
@@ -2692,9 +2706,38 @@ void poll_touch(void)
        hand reaches. Unarmed this costs one load and nothing else. */
     const int inj = g_inj_armed;
     if (inj) ++g_inj_frames;
-    const int btn = inj ? 1
-                        : (!g_headless && g_on && GetAsyncKeyState_ &&
-                           (GetAsyncKeyState_(VK_LBUTTON) & 0x8000) ? 1 : 0);
+    /* THE OS BUTTON IS MACHINE-GLOBAL, so it only counts as the stylus while
+       this window is the foreground one and the press began while it already
+       was. GetAsyncKeyState(VK_LBUTTON) reads the physical button for the
+       whole desktop: without this a click in a browser or a chat window
+       that happened to sit over the bottom screen touched the game behind it
+       (file select, pause menu, minigames), the same hole the keyboard and
+       the pad were closed against (hal_window_focused).
+         raw_was    the button was down at the last poll
+         focus_was  the window was foreground at the last poll
+         hold_ok    the hold that is down right now began on a focused window
+       The click that BRINGS the window to the front is not a touch: it flips
+       the foreground and the button in the same instant, so at the poll before
+       it the window was not focused (focus_was 0) and the hold is dead until
+       the button comes up. Losing focus with the button held drops the touch
+       at once (btn goes 0 below, which releases the drag), and getting it
+       back with the button still held does not revive it. SM64DS_TOUCH_PROBE,
+       the in-process stylus and SM64DS_SKIP_MENU never come through here. */
+    int btn;
+    if (inj) {
+        btn = 1;
+    } else {
+        static int raw_was, focus_was, hold_ok;
+        const int raw = (!g_headless && g_on && GetAsyncKeyState_ &&
+                         (GetAsyncKeyState_(VK_LBUTTON) & 0x8000)) ? 1 : 0;
+        const int foc = hal_window_focused();
+        if (!raw)              hold_ok = 0;
+        else if (!raw_was)     hold_ok = foc && focus_was;
+        else if (!foc)         hold_ok = 0;
+        btn = raw && foc && hold_ok;
+        raw_was = raw;
+        focus_was = foc;
+    }
     if (!btn) {
         drag_own = 0;
         /* and a resize that was in progress is finished and written down */
