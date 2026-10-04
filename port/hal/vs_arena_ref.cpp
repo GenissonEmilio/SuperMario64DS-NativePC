@@ -1316,7 +1316,17 @@ unsigned drawn_frame(int seat) {
     return f < 0 ? 0 : (unsigned)f;
 }
 
-void hit_detect() {
+// WHEN THIS RUNS MATTERS (lane HITSPILL1, G2). The pair pass (CylinderClsn::Process,
+// in the render half of the frame) writes an attack's flags and the attacker's
+// uid onto the TARGET's body cylinder (+0x2f4 / +0x2f8). A puppet's body cylinder is
+// Clear()ed and re-registered by the puppet hold at the top of every frame
+// (vs_arena_before_walk, which runs BEFORE this file's pre-walk half), and
+// dCc_c::Clear zeroes those two words. So read in the pre-walk half the contact of
+// the frame before is already gone and a real punch never made a claim (the lab
+// rigs' injected words were wiped the same way). The post-walk half runs after the
+// pair pass and before the next frame's hold, so that is where the contact is read;
+// the pre-walk call is kept for bodies the hold does not own.
+void hit_detect(const char *where) {
     char *me = my_body();
     if (!me) return;
     const unsigned fr = my_frame_now();
@@ -1332,6 +1342,9 @@ void hit_detect() {
         u32r(b, 0x2f8) = 0;
         char *o = _ZN8dActor_c10FindWithIDEj(other);
         if (o != me) continue;
+        if (g.log)
+            std::fprintf(stderr, "[vsarena-ref] contact: my attack touched the body of seat %d "
+                         "(flags 0x%x, read in %s, frame %u)\n", k, flags, where, fr);
         if ((flags & ~0x1000u) == 0) continue;
         // (a lab rig's tongue eats the copy by itself; the rig still wants its hit claim)
         if (!g.rig && vs_arena_body_held(k)) continue;
@@ -2062,7 +2075,7 @@ void vs_ref_pre_walk(int frame) {
         neutralise_foreign_star_touches();
         marker_pass();
         puppet_stars();
-        hit_detect();
+        hit_detect("pre-walk");
         rig_step();
     }
 }
@@ -2073,6 +2086,7 @@ void vs_ref_post_walk(int frame) {
     if (g.started && !g.over) {
         if (g.ledger_live)
             for (int k = 0; k < 16; ++k) data_0209f310[k] = g.ledger[k];
+        hit_detect("post-walk");
         grab_detect();
         syno_send();
         my_state_edges();
