@@ -109,7 +109,8 @@ struct VsRefStats {
     unsigned long long frames_rx, events_applied, events_dup, gaps,
                        claims_sent, claims_resent, verdicts, denied,
                        stars_taken, hits_claimed, hits_landed, hits_denied,
-                       spills, syno_tx, syno_rx;
+                       spills, syno_tx, syno_rx,
+                       frames_bad, events_bad, syno_bad;  // dropped by the field checks
 };
 VsRefStats vs_ref_stats();
 void vs_ref_report(const char *tag);
