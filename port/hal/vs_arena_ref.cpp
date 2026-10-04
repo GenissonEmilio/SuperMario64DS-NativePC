@@ -1560,7 +1560,8 @@ void rig_punch_start(int dist_units) {
     s16r(me, 0x94) = 0;
     g.rig_press_frames = 3;
     g.rig_dist = dist_units;
-    g.rig_follow = 20;      // the victim walks on; the attacker keeps pace so the range check is the row's subject
+    g.rig_follow = 0;       // (kept for a walking victim; with the puppets folded in, set > 0: the ROM's tongue
+                            //  eats the copy and drags it along, which makes a follower run away from it)
 }
 
 void rig_punch_tick(bool inject_words) {
