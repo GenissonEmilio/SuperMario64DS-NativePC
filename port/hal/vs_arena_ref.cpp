@@ -92,6 +92,7 @@ extern unsigned short data_ov002_020ff29c[];
 // PowerStar_States.cpp seats its entries; entry 5 is the collect confirm)
 struct PortPmfRef { unsigned fn; int delta; };
 extern PortPmfRef data_ov002_021109d8[];
+extern void *port_hud_self;      /* hal/sub_actors.cpp: the live HUD (fBase actor) */
 
 // state objects: St_Hurt, St_Walk-or-Wait (the neutral state the ROM returns to
 // after a no-control sequence), St_NoControl
@@ -867,7 +868,7 @@ void process_synr() {
 // READY
 // ---------------------------------------------------------------------------
 void read_hud_clock() {
-    char *hud = find_class(kClassHud, nullptr);
+    char *hud = (char *)port_hud_self;   // an fBase actor: not in the dActor list
     if (!hud) return;
     unsigned short &units = u16r(hud, 0x60);
     if (!g.hud_set) {

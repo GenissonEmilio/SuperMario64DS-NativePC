@@ -988,8 +988,14 @@ static int port_adv_hud_render_stars_lives_on_top(HUD *self)
 
 // ---- HUD -------------------------------------------------------------------
 int __fastcall hud_init(void *s, void *) { return ((HUD *)s)->HUD::InitResources(); }
-int __fastcall hud_clean(void *s, void *) { return ((HUD *)s)->HUD::CleanupResources(); }
-int __fastcall hud_behavior(void *s, void *) { return ((HUD *)s)->HUD::Behavior(); }
+/* run mp1 lane STARREF1: the live HUD, for the arena referee client (the HUD is
+   an fBase actor, not in dActor_c's list, so FindWithActorID(0x14e) never finds
+   it; the match clock units are at HUD+0x60). Set on every Behavior, cleared on
+   cleanup. Read only by hal/vs_arena_ref.cpp. */
+extern "C" void *port_hud_self;
+void *port_hud_self;
+int __fastcall hud_clean(void *s, void *) { port_hud_self = nullptr; return ((HUD *)s)->HUD::CleanupResources(); }
+int __fastcall hud_behavior(void *s, void *) { port_hud_self = s; return ((HUD *)s)->HUD::Behavior(); }
 int __fastcall hud_render(void *s, void *)
 {
     /* SM64DS_HUD_TRACE=1: the two globals every HUD render leaf dereferences
