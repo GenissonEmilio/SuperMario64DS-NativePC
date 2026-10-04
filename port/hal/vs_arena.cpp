@@ -775,14 +775,21 @@ void vs_arena_seat_world() {
                      "(%s)\n", seat, g.want_seat < kArenaSeats ? "the pin"
                                                               : "default");
     }
+    if (seat >= g.bodies) {
+        // A seat with no body faults the first frame that reaches for it.
+        // Leave the match instead, the way a full room does (exit 4,
+        // comms_hub.cpp): the launcher reads the code, the log has the line.
+        std::fprintf(stderr, "[vsarena] ERROR: seat %d has no body (the arena "
+                     "boots %d); this console leaves the match\n", seat,
+                     g.bodies);
+        std::fflush(stderr);
+        std::fflush(stdout);
+        ::ExitProcess(4);
+    }
     if (seat >= kNarrowSlots)
         std::fprintf(stderr, "[vsarena] ERROR: seat %d is past the %d seats "
                      "phase A of the arena can drive (no pad reaches it); this "
                      "console drives nothing\n", seat, kNarrowSlots);
-    if (seat >= g.bodies)
-        std::fprintf(stderr, "[vsarena] ERROR: seat %d has no body (the arena "
-                     "boots %d); this console drives nothing\n", seat,
-                     g.bodies);
     if (g.seat >= 0 && g.seat != seat)
         std::fprintf(stderr, "[vsarena] my seat moved %d -> %d at a level "
                      "boot\n", g.seat, seat);
