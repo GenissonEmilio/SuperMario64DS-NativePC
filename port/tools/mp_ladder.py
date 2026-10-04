@@ -986,7 +986,10 @@ def sweep_popup_only(texts, keys, workdir):
             if f not in da or f not in db:
                 return False, "p%d/p%d f%d split with no digest" % (a, b, f)
             odd = [u for u in set(da[f]) | set(db[f]) if da[f].get(u) != db[f].get(u)]
-            ids = {(da[f].get(u) or db[f].get(u))[0] for u in odd}
+            # the class ids come from BOTH consoles: taking them from one side let a uid
+            # holding another class on the other side pass as the popup (REVVSTIMEUP1 M7)
+            ids = ({da[f][u][0] for u in odd if u in da[f]}
+                   | {db[f][u][0] for u in odd if u in db[f]})
             if not odd or ids != {POPUP_ID}:
                 return False, "p%d/p%d f%d actors %s differ" % (a, b, f, sorted(ids))
             split.add(f)
