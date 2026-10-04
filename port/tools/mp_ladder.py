@@ -2244,7 +2244,7 @@ def r_arenaleave(L, run, r):
     for k in stay:
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
         ck.ok(not AL.FAULT.search(texts[k]), "p%d no fault" % k)
-    rej = leaver if (o.get("rejoin") and not o.get("quick")) else None
+    rej = leaver if (o.get("rejoin") and not o.get("expect_refused")) else None   # REJOIN1 scratch: the quick row too
     judge_into(ck, AL.judge_leave(texts, rcs, stay, leaver, rt=rt, rejoined=rej))
     # the staying consoles still end on ONE verdict (the relay's referee ends only one match)
     verdict_items = AL.judge_match({k: texts[k] for k in stay}, rcs, stay, {"reason": None}, rt=None,
@@ -2258,10 +2258,107 @@ def r_arenaleave(L, run, r):
                                                                         "installed arena mode")
         ck.ok(not AL.FAULT.search(texts.get(j, "")), "the returning console had no fault (a seat the arena has "
                                                      "no body for must be refused cleanly, not crash)")
+        tj = texts.get(j, "")
+        if o.get("expect_refused"):
+            # REJOIN1 scratch, game half: an OLD relay names the returner a seat past the body count
+            # (the original bug); the game must print ONE ERROR line and leave with exit 4, no fault
+            n_err = len(re.findall(r"^\[vsarena\] ERROR: seat \d+ has no body", tj, re.M))
+            ck.ok(n_err == 1, "the returning console printed exactly one '[vsarena] ERROR: seat N has no body' line (%d)" % n_err)
+            ck.ok(rcs.get(j) == 4, "and left with exit code 4 (rc=%s)" % rcs.get(j))
+            ck.ok(not re.search(r"first VS frame", tj), "and never entered the VS frame loop")
+            ck.ok(not AL.FAULT.search(tj), "no fault text at all")
+        else:
+          # REJOIN1 scratch checks: the returning console gets ITS OLD SEAT, plays on, hears one MATCH OVER
+          ck.ok(("[vsarena] seated: seat %d is my body" % leaver) in tj,
+                "the returning console was seated in its old seat %d" % leaver)
+          ck.ok(rcs.get(j) == 0, "the returning console exited 0 (rc=%s)" % rcs.get(j))
+          n_over_j = len(re.findall(r"^\[vsarena\] MATCH OVER ref", tj, re.M))
+          ck.ok(n_over_j == 1, "the returning console heard exactly one referee MATCH OVER (%d)" % n_over_j)
+          ck.ok(not re.search(r"seat \d+ has no body", tj), "no 'has no body' line on the returning console")
     control(ck, "no-spill", lambda t: AL.judge_leave(t, rcs, stay, leaver, rt=rt),
             AL.mutate("no-spill", {k: texts[k] for k in stay}))
     relay_checks(ck, run)
     ck.note("leaver seat %d left at %.0fs (%s)" % (leaver, state["left_at"] or -1, fl.how.get(leaver)))
+    return ck, wall, rcs
+
+
+def r_arenahijack(L, run, r):
+    """REJOIN1 scratch row: a LIVE seat is never given away. A fifth source
+    address (not one of the consoles) sends role-3 HELLOs at the relay all
+    through a 4-console rig match: want_seat = each live seat in turn, and
+    want_seat 0xFF; every answer must be a refusal (4 seat taken / 1 full),
+    never an ACK 0; the consoles play on unaffected (one identical MATCH OVER,
+    each seated once, no fault, no seat moved)."""
+    n, o = r.n, dict(r.opts)
+    relay = run.start_relay()
+    host, port = relay.split(":")
+    fl = Fleet(run)
+    o["rig"] = True
+    for k in range(n):
+        d, e = arena_env(run, k, k, n, relay, o)
+        fl.add(k, e, d, 0.0 if k == 0 else 0.4 * k)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(("127.0.0.1", 0))
+    sock.setblocking(False)
+    acks = []                       # (want, status, seat)
+    sent = {"n": 0, "next": 0.0, "i": 0}
+
+    def drain():
+        while True:
+            try:
+                data, _ = sock.recvfrom(64)
+            except (BlockingIOError, OSError):
+                return
+            if len(data) == 16 and data[:4] == b"SMRA":
+                acks.append((sent.get("last"), data[5], data[6]))
+
+    def poll(f, t):
+        drain()
+        t0 = f.text(0) if 0 in f.dirs else ""
+        if "[vsarena] START" in t0 and t >= sent["next"]:
+            wants = list(range(n)) + [0xFF]
+            want = wants[sent["i"] % len(wants)]
+            sent["i"] += 1
+            sent["last"] = want
+            hello = b"SMRC" + bytes((2, 3, want, 0)) + run.code.encode("ascii")[:8].ljust(8, bytes(1))
+            sock.sendto(hello, (host, int(port)))
+            sent["n"] += 1
+            sent["next"] = t + 0.25
+            time.sleep(0.05)
+            drain()
+    wall = fl.run_until(o.get("timeout", 300), poll)
+    drain()
+    sock.close()
+    rt = stop_relay(run)
+    texts, rcs = fl.texts(), fl.rcs
+    ck = Checks()
+    expect = {"reason": 1, "first_to": 0, "min_taken": 2, "seat_line": b"relay named my seat %d" in L.feats.blob}
+    lane = {"A1": L.feats.have.get("A1")}
+    judge_into(ck, AL.judge_match(texts, rcs, list(range(n)), expect, rt=rt, lane=lane))
+
+    def judge_acks(a):
+        return [(len(a) >= 8, "the hijacker was answered at least 8 times (%d, sent %d)" % (len(a), sent["n"])),
+                (all(st in (1, 4) for w, st, se in a),
+                 "every answer a refusal, none an ACK 0: %s" % sorted(set((w, st) for w, st, se in a))),
+                (not any(st == 0 for w, st, se in a), "no seat was ever granted to the hijacker"),
+                (any(st == 4 for w, st, se in a), "a live seat answered 4 (seat taken)"),
+                (any(w == 0xFF and st == 1 for w, st, se in a), "any-seat answered 1 (full: all %d bodies seated)" % n)]
+    judge_into(ck, judge_acks(acks))
+    control(ck, "granted", lambda t: judge_acks(t), ("an ACK 0 appears", acks + [(1, 0, 1)]))
+    ck.ok("reclaimed from" not in rt, "the relay reclaimed no seat during the match (a live seat never is)")
+    ck.ok(len(re.findall(r"refused .*seat \d taken", rt)) >= 3, "the relay log shows the seat-taken refusals")
+    for k in range(n):
+        ck.ok(len(re.findall(r"^\[vsarena\] the relay named my seat", texts[k], re.M)) == 1,
+              "p%d was named its seat exactly once (no seat moved)" % k)
+        ck.ok(not re.search(r"my seat moved|re-pairing|has no body", texts[k]), "p%d: no seat moved / re-pairing" % k)
+    st = dict(run.relay_stats or {})
+    bad = {k: v for k, v in st.items() if (k.startswith("drop") or k == "bad") and v}
+    ck.ok(bool(st) and not bad, "relay dropped nothing (%s)" % (", ".join("%s=%d" % kv for kv in sorted(bad.items())) or
+                                                                  ("no stats line" if not st else "every drop counter and bad 0")))
+    n_full = sum(1 for w, s_, se in acks if s_ == 1)
+    ck.ok(st.get("full") == n_full, "the relay's 'full' counter (%s) is exactly the any-seat refusals the hijacker saw (%d)" % (
+        st.get("full"), n_full))
+    ck.note("hijacker sent %d HELLOs, %d answers" % (sent["n"], len(acks)))
     return ck, wall, rcs
 
 
@@ -2294,7 +2391,7 @@ def r_arenae2e(L, run, r):
 
 BODIES.update({"arena": r_arena, "arenacam": r_arenacam, "arenalat": r_arenalat,
                "arenamesh": r_arenamesh, "arenasolo": r_arenasolo, "arenaleave": r_arenaleave,
-               "arenasolo_gate": r_arenasolo_gate, "arenae2e": r_arenae2e})
+               "arenasolo_gate": r_arenasolo_gate, "arenahijack": r_arenahijack, "arenae2e": r_arenae2e})
 
 
 def arena_rungs():
@@ -2334,7 +2431,12 @@ def arena_rungs():
                   delays=skew4))
     R.append(Rung("arena4-rejoin-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
                   rejoin=True, delays=skew4))
+    R.append(Rung("arena4-hijack-relay", "arenahijack", 4, GATE, "relay2", needs=A, time_s=40, delays=skew4))
     R.append(Rung("arena4-rejoin-quick-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
+                  rejoin=True, quick=True, delays=skew4))
+    R.append(Rung("arena4-rejoin-quick-oldrelay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
+                  rejoin=True, quick=True, expect_refused=True, delays=skew4))
+    R.append(Rung("arena4-rejoin-quick-relay-b", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
                   rejoin=True, quick=True, delays=skew4))
     R.append(Rung("arena-solo-alone", "arenasolo", 2, DEV, "relay2", needs=["A0", "A2"]))
     R.append(Rung("arena-solo-gate", "arenasolo_gate", 1, GATE, needs=["A0"]))
