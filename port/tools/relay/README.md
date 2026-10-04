@@ -176,6 +176,72 @@ ignores that address for 10 seconds. A 1.0 game that falls back to version 1
 on that answer should expect its first version 1 HELLOs to go unanswered for
 those 10 seconds (or send them from a fresh socket).
 
+## Arena sessions: a referee inside the relay
+
+Arena mode is the VS netcode where every console runs its own arena world and
+its own Yoshi with no input delay, and everyone else is drawn slightly in the
+past. Anything two players could disagree about is decided by a REFEREE that
+lives in this relay (`referee.py`, loaded by `relay.py` from its own folder):
+which star wakes next, who broke a marker, who got a contested star, whether
+a hit landed, the score, the clock and the winner. There is one referee per
+session, so there can never be two winners.
+
+**Joining.** A version 2 HELLO with role 3 opens or joins an arena session.
+It is hub-shaped: seats 0 to 15, nobody hosts, a HELLO every second keeps the
+seat, 10 seconds of silence frees it. A hub or star code refuses an arena
+HELLO with status 5 and the reverse. A relay older than this file answers an
+arena HELLO with status 2 (bad request); the game takes that as "this relay
+has no arena mode".
+
+**What an arena session forwards.** Its own kind table, `ARENA_KINDS`:
+
+| Kind   | Bytes | Route                                                  |
+|--------|-------|--------------------------------------------------------|
+| `SYNS` | 48    | every other seat, after the referee range-checks it    |
+| `SYNO` | 32    | every other seat, after the referee range-checks it    |
+| `SYNE` | 24    | the referee only (a claim), never forwarded            |
+| `SYNR` | 272   | from the referee only; a seat sending one is struck    |
+| `SYNP` | 12/20 | 12: a peer ping, as a hub; 20 to 0xFE: the referee clock |
+| `SYNQ` | 12/20 | 12: a peer pong, as a hub; 20: from the referee only   |
+| `SYNI` `SYNT` `SYNV` | as a hub | every other seat                     |
+
+`SYNG`, `MP2L`, `SYNK` and `SYN1` do not exist in an arena session. Byte 5 of
+everything is the relay-stamped sender seat; the referee's own frames carry
+0xFE there. A state frame whose fields are out of range (a position past
+32768 units, an animation id of 194 or more, a state index past the 78
+player states, and so on) is dropped instead of forwarded.
+
+**How the referee decides.** Claims carry the console's referee-clock stamp
+of the moment it touched. A stamp is clamped into the window from the
+claim's arrival minus that seat's cap (half its best round trip plus 25 ms,
+never more than 150) up to its arrival, so nobody can claim from the future
+or back-date further than their own one-way time. Claims are decided in
+stamp order once the referee clock is past the stamp plus the largest cap of
+the other players, which is when no earlier claim can still arrive. A hit is
+checked against the attacker's and the victim's OWN reported positions at
+the frames involved (lag compensation, at most 200 ms back). The full rule
+set, every byte layout and every number is `arena_contract.py`, which writes
+`arena_contract.json` and the game's `arena_wire.h`.
+
+**Not an amplifier.** The referee sends nothing to a seat until the seat has
+proven it receives at its address: its clock ping must echo the exact referee
+time of a pong the referee sent it, and the referee clock starts at a random
+point per session, so a sender with a forged source address cannot echo one.
+Until then the only thing the seat gets back is a pong the size of its ping.
+
+**Cost.** One more Python module on the box, a 10 ms clock that runs only
+while an arena session exists, and per state frame a fixed-size parse.
+Measured on a local copy (a desktop PC shared with other work, so the
+numbers are noisy): a full 16-seat arena at 30 Hz delivered all 7200 copies
+a second with no drops for 17.6 to 18.3% of one core, against 5.4 to 10.7%
+for the same traffic as a plain hub on the same relay; with four voice
+talkers 37.8%; a 4-seat arena 0.2%. The live box is roughly half as fast
+per copy as that PC.
+
+**Phase A limits.** Classic mode only (king of the hill and Luigi rooms stay
+on lockstep); the eat claims are provisional; speed strikes are logged and
+`SM64DS_REFEREE_KICK=1` turns kicking on (phase B).
+
 ## Limits, and what happens when you hit one
 
 Every one of these is enforced, and every one has a test.
@@ -402,6 +468,8 @@ Set in the unit file, visible with `systemctl cat sm64ds-relay`:
 | `SM64DS_RELAY_HUB_IDLE_S` | 10     | seconds before a quiet hub seat is freed |
 | `SM64DS_RELAY_SESSION_FWD_PPS` | 15000 | copies a second one version 2 session may make the relay send |
 | `SM64DS_RELAY_HOST_MP2L_PPS` | 150 | `MP2L` a second the host (seat 0) of a version 2 VS star may send |
+| `SM64DS_REFEREE_KICK` | off | `1` = the arena referee kicks a seat at 3 strikes in 10 s |
+| `SM64DS_REFEREE_SEED` | random | tests only: a fixed arena match seed and clock base |
 
 After editing the unit: `sudo systemctl daemon-reload && sudo systemctl restart
 sm64ds-relay`. Changing the port means changing the firewall rule to match, and
@@ -526,6 +594,10 @@ price of never letting a stranger take over a seat by quoting the code.
 - In a version 2 session nothing is forwarded that is not in the kind table,
   and no client can claim another seat: the relay stamps it.
 - The relay speaks only to addresses that spoke to it first.
+- In an arena session the referee reads fixed-size kinds only, range-checks
+  every field, keeps every table bounded, trusts no client for anything it
+  can check (the score is its own ledger), and sends nothing to a seat that
+  has not echoed one of its clock pongs.
 - It never sends an unknown address more bytes than it just received, so it
   cannot be used to amplify traffic at a third party.
 - A malformed sender gets one short answer and is then ignored for 10 seconds.
@@ -568,3 +640,16 @@ a member whose process dies mid-session while the others keep hearing each
 other (on Windows twice: with the OS report turned off, and left on), and
 sixteen sockets flooding one hub held to the session budget while the hub
 beside them hears everything.
+
+    python3 test_referee.py              (unit + contention vectors + fuzz)
+    python3 test_referee.py fuzz 150000
+
+is the arena suite: simulated consoles through relay.py and referee.py in
+process, covering the contract copies, the handshake and the no-amplifier
+rule, every arena route, a whole match, contention, hits, resends and
+snapshots, leaving, strikes, and a fuzz pass whose gate is zero violations
+(nothing forwarded outside the table, no malformed or unearned referee
+frame, bounded tables, a conserved ledger, one MATCH_OVER per match).
+`arena_vectors.json` is its two-console star races, shared with the game's
+fairness rig. `python3 arena_contract.py --check` proves the JSON and the C
+header match their generator.
