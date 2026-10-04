@@ -1786,8 +1786,18 @@ void rig_chain() {
         // duplicate-star rows need a victim that still holds one after the spill,
         // which is what the ROM's own drop would be paid out of)
         static const int hitmin = env_int("SM64DS_RIG_HITMIN", 1, 1, 8);
-        g.chain_hit_at = 0;                      // (the next star seat 1 takes arms it again)
-        if (g.ledger[1] < hitmin) return;
+        if (g.ledger[1] < hitmin) { g.chain_hit_at = 0; return; }   // (the next star seat 1 takes arms it again)
+        // a real punch needs a puppeteer that can throw one: not in the star-get pose
+        // (St_NoControl, 24) it is left in for a moment after a collect, not hurt,
+        // not in the air; wait for the walk / wait states, for up to 4.5 s
+        if (g.rig_real) {
+            static unsigned wait_since = 0;
+            const int ms = vs_arena_state_index(me);
+            if (!wait_since) wait_since = r;
+            if (ms != 14 && ms != 15 && (int)(r - wait_since) < 4500) { g.chain_hit_at = r + 200u; return; }
+            wait_since = 0;
+        }
+        g.chain_hit_at = 0;
         const int dist = g.rig_real ? rig_real_dist() : 90;
         std::fprintf(stderr, "[rig] chain: seat 0 punches seat 1 (ref %u, from %d units, %s)\n", r, dist,
                      g.rig_real ? "real contact" : "injected pair-pass words");
