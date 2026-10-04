@@ -1,0 +1,1475 @@
+{
+ "contract": "sm64ds arena referee",
+ "version": 1,
+ "session": {
+  "hello": "HELLO v2 (relay.py) with role 3 = ARENA member; want_seat 0..15 or 0xFF (any); flags bit0 = this console sends voice",
+  "role_arena": 3,
+  "seats": 16,
+  "keepalive_ms": 1000,
+  "idle_s": 10,
+  "ack_status": {
+   "0": "ok: byte 6 is my seat (0..15), stamped on everything I send",
+   "1": "full: 16 seats taken",
+   "2": "bad request: from an ARENA HELLO this means the relay predates arena mode (an older relay rejects role 3); fall back",
+   "3": "version: this code is a version 1 session",
+   "4": "seat taken: the pinned seat is held; ask again with 0xFF",
+   "5": "wrong kind: this code is a hub or star session"
+  },
+  "seat_numbering": "every 'seat' field in SYNE / SYNR is 0..15 (0xFF = none); SYNS held / eaten_by are seat+1 (0 = none), as plan 2.1 writes them",
+  "referee_mark": 254,
+  "referee_clock": "referee ms, u32, from a random base PER SEAT: every time a seat receives (SYNQ t_ref, SYNR header and event times) and every stamp it sends is in its own base; use them only relative to your own pongs",
+  "no_relay": "arena mode needs a relay (a local relay copy for tests); the loopback mesh has no referee"
+ },
+ "kinds": [
+  {
+   "tag": "SYNS",
+   "lengths": [
+    48
+   ],
+   "route": "all+ref",
+   "cap": 35,
+   "note": "own-body state 30 Hz (A0)"
+  },
+  {
+   "tag": "SYNO",
+   "lengths": [
+    32
+   ],
+   "route": "all+ref",
+   "cap": 35,
+   "note": "object frame: a star in flight"
+  },
+  {
+   "tag": "SYNE",
+   "lengths": [
+    24
+   ],
+   "route": "ref",
+   "cap": 20,
+   "note": "claim to the referee"
+  },
+  {
+   "tag": "SYNR",
+   "lengths": [
+    272
+   ],
+   "route": "none",
+   "cap": 0,
+   "note": "referee events; referee -> seats only"
+  },
+  {
+   "tag": "SYNP",
+   "lengths": [
+    12,
+    20
+   ],
+   "route": "all|ref",
+   "cap": 6,
+   "note": "12 = peer ping (as hub); 20 with byte 6 = 0xFE = referee clock ping"
+  },
+  {
+   "tag": "SYNQ",
+   "lengths": [
+    12,
+    20
+   ],
+   "route": "seat6|ref",
+   "cap": 6,
+   "note": "12 = peer pong (as hub); 20 = the referee's clock pong (from a seat: dropped)"
+  },
+  {
+   "tag": "SYNI",
+   "lengths": [
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64
+   ],
+   "route": "all",
+   "cap": 3,
+   "note": "identity (as hub)"
+  },
+  {
+   "tag": "SYNT",
+   "lengths": [
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127,
+    128,
+    129,
+    130,
+    131,
+    132
+   ],
+   "route": "all",
+   "cap": 8,
+   "note": "chat (as hub)"
+  },
+  {
+   "tag": "SYNV",
+   "lengths": [
+    176,
+    340
+   ],
+   "route": "all",
+   "cap": 30,
+   "note": "voice (as hub)"
+  }
+ ],
+ "not_in_arena": [
+  "SYNG",
+  "MP2L",
+  "SYNK",
+  "SYN1"
+ ],
+ "layouts": {
+  "SYNS": {
+   "length": 48,
+   "owner": "ARENACORE1 (plan 2.1)",
+   "fields": [
+    [
+     "tag",
+     0,
+     4,
+     "u32",
+     "'SYNS'"
+    ],
+    [
+     "version",
+     4,
+     1,
+     "u8",
+     "1"
+    ],
+    [
+     "seat",
+     5,
+     1,
+     "u8",
+     "relay-stamped"
+    ],
+    [
+     "flags",
+     6,
+     1,
+     "u8",
+     "SYNS_F_*"
+    ],
+    [
+     "character",
+     7,
+     1,
+     "u8",
+     ""
+    ],
+    [
+     "frame",
+     8,
+     4,
+     "u32",
+     "sender's match frame, 30 Hz, monotonic"
+    ],
+    [
+     "pos",
+     12,
+     12,
+     "s32[3]",
+     "x, y, z Fix12"
+    ],
+    [
+     "vel",
+     24,
+     6,
+     "s16[3]",
+     "per-frame delta in 1/64 unit"
+    ],
+    [
+     "yaw",
+     30,
+     2,
+     "s16",
+     ""
+    ],
+    [
+     "anim_id",
+     32,
+     2,
+     "u16",
+     "< 194"
+    ],
+    [
+     "anim_cursor",
+     34,
+     2,
+     "u16",
+     ""
+    ],
+    [
+     "state_idx",
+     36,
+     1,
+     "u8",
+     "index into the 78 g_player_states (STATE_NAMES)"
+    ],
+    [
+     "state_step",
+     37,
+     1,
+     "u8",
+     ""
+    ],
+    [
+     "invuln",
+     38,
+     1,
+     "u8",
+     "0..36"
+    ],
+    [
+     "power",
+     39,
+     1,
+     "u8",
+     "SYNS_P_*"
+    ],
+    [
+     "held",
+     40,
+     1,
+     "u8",
+     "0 none, 1..16 = seat+1 in my mouth, 0x20+ object"
+    ],
+    [
+     "eaten_by",
+     41,
+     1,
+     "u8",
+     "0 free, 1..16 = seat+1 whose mouth I am in"
+    ],
+    [
+     "ack",
+     42,
+     2,
+     "u16",
+     "newest referee event seq applied"
+    ],
+    [
+     "sfx",
+     44,
+     2,
+     "u8[2]",
+     ""
+    ],
+    [
+     "reserved",
+     46,
+     2,
+     "u16",
+     "0"
+    ]
+   ],
+   "flags": [
+    "live",
+    "grounded",
+    "teleport",
+    "paused",
+    "talking",
+    "in_hurt",
+    "no_control",
+    "star_lock"
+   ],
+   "power": {
+    "fire": 1,
+    "wings": 2,
+    "metal": 4,
+    "vanish": 8,
+    "mega": 16,
+    "no_cap": 32
+   }
+  },
+  "SYNO": {
+   "length": 32,
+   "fields": [
+    [
+     "tag",
+     0,
+     4,
+     "u32",
+     "'SYNO'"
+    ],
+    [
+     "version",
+     4,
+     1,
+     "u8",
+     "1"
+    ],
+    [
+     "seat",
+     5,
+     1,
+     "u8",
+     "relay-stamped: the launching console"
+    ],
+    [
+     "obj_class",
+     6,
+     1,
+     "u8",
+     "1 = star"
+    ],
+    [
+     "obj_id",
+     7,
+     1,
+     "u8",
+     "star instance (1..255) from STAR_WAKE / SPILL"
+    ],
+    [
+     "frame",
+     8,
+     4,
+     "u32",
+     "sender's match frame"
+    ],
+    [
+     "pos",
+     12,
+     12,
+     "s32[3]",
+     "Fix12"
+    ],
+    [
+     "vel",
+     24,
+     6,
+     "s16[3]",
+     "per-frame delta in 1/64 unit"
+    ],
+    [
+     "state",
+     30,
+     1,
+     "u8",
+     "1 flying, 2 resting, 3 gone"
+    ],
+    [
+     "flags",
+     31,
+     1,
+     "u8",
+     "bit0 teleport"
+    ]
+   ]
+  },
+  "SYNE": {
+   "length": 24,
+   "fields": [
+    [
+     "tag",
+     0,
+     4,
+     "u32",
+     "'SYNE'"
+    ],
+    [
+     "version",
+     4,
+     1,
+     "u8",
+     "1"
+    ],
+    [
+     "seat",
+     5,
+     1,
+     "u8",
+     "relay-stamped"
+    ],
+    [
+     "kind",
+     6,
+     1,
+     "u8",
+     "CLAIM_*"
+    ],
+    [
+     "target",
+     7,
+     1,
+     "u8",
+     "star instance / victim seat / map (READY)"
+    ],
+    [
+     "claim_id",
+     8,
+     2,
+     "u16",
+     "per seat, 1.., +1 per NEW claim, wraps skipping 0; a resend repeats it"
+    ],
+    [
+     "aux",
+     10,
+     2,
+     "u16",
+     "per kind (CLAIMS)"
+    ],
+    [
+     "stamp",
+     12,
+     4,
+     "u32",
+     "referee ms of the touch, from my clock offset"
+    ],
+    [
+     "my_frame",
+     16,
+     4,
+     "u32",
+     "my own match frame of the touch (my SYNS frames)"
+    ],
+    [
+     "ref_frame",
+     20,
+     4,
+     "u32",
+     "HIT / EAT: the victim's SYNS frame I was drawing (rounded down); else 0"
+    ]
+   ]
+  },
+  "SYNP_REF": {
+   "length": 20,
+   "fields": [
+    [
+     "tag",
+     0,
+     4,
+     "u32",
+     "'SYNP'"
+    ],
+    [
+     "version",
+     4,
+     1,
+     "u8",
+     "2"
+    ],
+    [
+     "seat",
+     5,
+     1,
+     "u8",
+     "relay-stamped"
+    ],
+    [
+     "to",
+     6,
+     1,
+     "u8",
+     "0xFE = the referee"
+    ],
+    [
+     "zero",
+     7,
+     1,
+     "u8",
+     "0"
+    ],
+    [
+     "t_cons",
+     8,
+     4,
+     "u32",
+     "console ms at send (echoed)"
+    ],
+    [
+     "echo_ref",
+     12,
+     4,
+     "u32",
+     "t_ref of the newest referee pong I got, 0 = none"
+    ],
+    [
+     "held_ms",
+     16,
+     2,
+     "u16",
+     "my ms between getting that pong and sending this ping; 0xFFFF = none"
+    ],
+    [
+     "zero2",
+     18,
+     2,
+     "u16",
+     "0"
+    ]
+   ]
+  },
+  "SYNQ_REF": {
+   "length": 20,
+   "fields": [
+    [
+     "tag",
+     0,
+     4,
+     "u32",
+     "'SYNQ'"
+    ],
+    [
+     "version",
+     4,
+     1,
+     "u8",
+     "2"
+    ],
+    [
+     "seat",
+     5,
+     1,
+     "u8",
+     "0xFE (the referee)"
+    ],
+    [
+     "to",
+     6,
+     1,
+     "u8",
+     "the pinger's seat"
+    ],
+    [
+     "zero",
+     7,
+     1,
+     "u8",
+     "0"
+    ],
+    [
+     "t_cons",
+     8,
+     4,
+     "u32",
+     "the ping's t_cons, echoed"
+    ],
+    [
+     "t_ref",
+     12,
+     4,
+     "u32",
+     "referee ms at send"
+    ],
+    [
+     "rtt_ms",
+     16,
+     2,
+     "u16",
+     "the referee's min RTT for this seat, 0xFFFF unknown"
+    ],
+    [
+     "cap_ms",
+     18,
+     2,
+     "u16",
+     "this seat's back-dating cap now"
+    ]
+   ]
+  },
+  "SYNR": {
+   "length": 272,
+   "header": [
+    [
+     "tag",
+     0,
+     4,
+     "u32",
+     "'SYNR'"
+    ],
+    [
+     "version",
+     4,
+     1,
+     "u8",
+     "1"
+    ],
+    [
+     "seat",
+     5,
+     1,
+     "u8",
+     "0xFE (the referee); accept SYNR only from the relay with 0xFE here"
+    ],
+    [
+     "n_events",
+     6,
+     1,
+     "u8",
+     "0..8, newest first"
+    ],
+    [
+     "match_state",
+     7,
+     1,
+     "u8",
+     "MS_*"
+    ],
+    [
+     "ref_now",
+     8,
+     4,
+     "u32",
+     "referee ms at send"
+    ],
+    [
+     "newest_seq",
+     12,
+     2,
+     "u16",
+     "newest event seq of the session stream, 0 = none yet"
+    ],
+    [
+     "roster",
+     14,
+     2,
+     "u16",
+     "seats in the match (bit = seat)"
+    ],
+    [
+     "t0",
+     16,
+     4,
+     "u32",
+     "referee ms of match start, 0 = not started"
+    ],
+    [
+     "match_ms",
+     20,
+     4,
+     "u32",
+     "match length, 0 = no clock"
+    ],
+    [
+     "scores",
+     24,
+     16,
+     "s8[16]",
+     "THE LEDGER, per seat; mirror into data_0209f310"
+    ],
+    [
+     "progress",
+     40,
+     1,
+     "u8",
+     "stars collected so far (data_0209f208 mirror)"
+    ],
+    [
+     "first_to_n",
+     41,
+     1,
+     "u8",
+     "0 = off"
+    ],
+    [
+     "flags",
+     42,
+     1,
+     "u8",
+     "SYNR_F_*"
+    ],
+    [
+     "part",
+     43,
+     1,
+     "u8",
+     "snapshot: high nibble part index, low nibble part count; else 0"
+    ],
+    [
+     "order_row",
+     44,
+     1,
+     "u8",
+     "VS_STAR_SPAWN_ORDERS row (0..5)"
+    ],
+    [
+     "map",
+     45,
+     1,
+     "u8",
+     ""
+    ],
+    [
+     "live_stars",
+     46,
+     1,
+     "u8",
+     "star instances alive"
+    ],
+    [
+     "zero",
+     47,
+     1,
+     "u8",
+     "0"
+    ]
+   ],
+   "event": [
+    [
+     "seq",
+     0,
+     2,
+     "u16",
+     "1.. per session (wraps skipping 0); 0 = snapshot record, not part of the stream"
+    ],
+    [
+     "type",
+     2,
+     1,
+     "u8",
+     "EV_*"
+    ],
+    [
+     "seat",
+     3,
+     1,
+     "u8",
+     "subject seat, 0xFF none"
+    ],
+    [
+     "a",
+     4,
+     1,
+     "u8",
+     ""
+    ],
+    [
+     "b",
+     5,
+     1,
+     "u8",
+     ""
+    ],
+    [
+     "c",
+     6,
+     2,
+     "u16",
+     ""
+    ],
+    [
+     "d",
+     8,
+     2,
+     "u16",
+     ""
+    ],
+    [
+     "e",
+     10,
+     2,
+     "u16",
+     ""
+    ],
+    [
+     "t",
+     12,
+     4,
+     "u32",
+     "referee ms"
+    ],
+    [
+     "x",
+     16,
+     4,
+     "s32",
+     ""
+    ],
+    [
+     "y",
+     20,
+     4,
+     "s32",
+     ""
+    ],
+    [
+     "z",
+     24,
+     4,
+     "s32",
+     ""
+    ]
+   ],
+   "events": 8,
+   "flags": {
+    "snapshot": 1,
+    "directed": 2,
+    "resend": 4
+   },
+   "match_states": {
+    "waiting": 0,
+    "countdown": 1,
+    "running": 2,
+    "over": 3
+   }
+  }
+ },
+ "claims": [
+  {
+   "id": 1,
+   "name": "READY",
+   "target": "map (0..3)",
+   "fields": "aux = time limit s (0 none); stamp = rules: b0 first_to_n, b1 mode (0 classic; others refused in phase A), b2 capacity 2..16, b3 marker count 1..8; my_frame = the go plan digest (u32, same on every console); ref_frame 0. Every console sends it once booted; config must match the first READY"
+  },
+  {
+   "id": 2,
+   "name": "MARKER_BREAK",
+   "target": "star instance (a waking marker)",
+   "fields": "aux = the breaker's camera yaw (the ROM pop direction); stamp; my_frame"
+  },
+  {
+   "id": 3,
+   "name": "GRAB",
+   "target": "star instance (free)",
+   "fields": "aux 0; stamp; my_frame"
+  },
+  {
+   "id": 4,
+   "name": "HIT",
+   "target": "victim seat",
+   "fields": "aux = hitFlags >> 5 (F2 mask 0x27fe0); stamp; my_frame; ref_frame = the victim frame I drew"
+  },
+  {
+   "id": 5,
+   "name": "HURT_SELF",
+   "target": "0xFF",
+   "fields": "aux = cause 1 chomp, 2 iron ball, 3 other; always accepted, spills one star; sanctions knockback speed for 2 s"
+  },
+  {
+   "id": 6,
+   "name": "PIT",
+   "target": "0xFF",
+   "fields": "aux bit0 = this fall costs a star (the ROM St_DeadPit path); always accepted; sanctions the respawn teleport for 3 s"
+  },
+  {
+   "id": 7,
+   "name": "QUIT",
+   "target": "0xFF",
+   "fields": "leaving now (clean exit): stars spill at once"
+  },
+  {
+   "id": 8,
+   "name": "EAT",
+   "target": "victim seat",
+   "fields": "PROVISIONAL (A5): tongue on a puppet; ref_frame = victim frame drawn"
+  },
+  {
+   "id": 9,
+   "name": "SPIT",
+   "target": "victim seat",
+   "fields": "PROVISIONAL (A5): eater spits"
+  },
+  {
+   "id": 10,
+   "name": "SWALLOW",
+   "target": "victim seat",
+   "fields": "PROVISIONAL (A5): eater swallows (egg)"
+  },
+  {
+   "id": 11,
+   "name": "ESCAPE",
+   "target": "eater seat",
+   "fields": "PROVISIONAL (A5): victim got out on its own"
+  }
+ ],
+ "events": [
+  {
+   "id": 1,
+   "name": "START",
+   "fields": "seat 0xFF; a order row; b first_to_n; c time limit s; d roster; e marker count; t = T0 (match frame 0, in the future by COUNTDOWN_MS); x seed (u32); y map; z rules word (READY stamp)"
+  },
+  {
+   "id": 2,
+   "name": "STAR_WAKE",
+   "fields": "seat 0xFF; a instance; b star id (VS_STAR_SPAWN_ORDERS[row][c]); c progress index p (data_0209f208); t now"
+  },
+  {
+   "id": 3,
+   "name": "MARKER_BROKEN",
+   "fields": "seat breaker; a instance; b star id; c claim id; d camera yaw; t stamp; xyz breaker position (Fix12). The breaker's console launches the star (SYNO)"
+  },
+  {
+   "id": 4,
+   "name": "STAR_TAKEN",
+   "fields": "seat winner; a instance; b winner's new score; c claim id; e progress after; t stamp; xyz winner position"
+  },
+  {
+   "id": 5,
+   "name": "DENY",
+   "fields": "DIRECTED to the claimant only (seq 0, flag directed): seat claimant; a claim kind; b reason (DENY_*); c claim id; d winner seat when LOST else 0xFF; e target echo; t now"
+  },
+  {
+   "id": 6,
+   "name": "HIT",
+   "fields": "seat victim; a attacker; b 0 hit / 1 trade; c attacker's claim id; d aux (hitFlags >> 5); e spilled instance (0 none); t stamp; xyz attacker position (Fix12) for Player::Hurt"
+  },
+  {
+   "id": 7,
+   "name": "CLASH",
+   "fields": "seat victim; a attacker; c claim id; t stamp; xyz attacker position: both bounce, no star"
+  },
+  {
+   "id": 8,
+   "name": "SPILL",
+   "fields": "seat who lost it (0xFF none); a new instance; b destination marker (referee RNG); c cause 1 hit 2 leave 3 hazard 4 pit; d that seat's new score; t now; xyz origin (Fix12)"
+  },
+  {
+   "id": 9,
+   "name": "MATCH_OVER",
+   "fields": "seat 0xFF; a reason (OVER_*); b winner count; c winners mask; t end; the header ledger is final"
+  },
+  {
+   "id": 10,
+   "name": "LEAVE",
+   "fields": "seat leaver; a 1 quit, 2 silent PRESENCE_MS, 3 relay detach; d stars spilled; t now"
+  },
+  {
+   "id": 11,
+   "name": "JOIN",
+   "fields": "seat joiner; a 0 before start, 1 mid-match; t now"
+  },
+  {
+   "id": 12,
+   "name": "STAR_STATE",
+   "fields": "SNAPSHOT ONLY (seq 0): seat 0xFF; a instance; b state 1 waking / 2 free; c marker; d star id; t since; xyz last known position"
+  },
+  {
+   "id": 13,
+   "name": "ACCEPTED",
+   "fields": "DIRECTED to the claimant only (seq 0, flag directed): seat claimant; a claim kind; c claim id; d spilled instance or 0; t now (READY, HURT_SELF, PIT, QUIT)"
+  },
+  {
+   "id": 14,
+   "name": "EATEN",
+   "fields": "PROVISIONAL (A5): seat victim; a eater; c claim id; t stamp; xyz eater position"
+  },
+  {
+   "id": 15,
+   "name": "RELEASED",
+   "fields": "PROVISIONAL (A5): seat victim; a eater; b 1 spit 2 swallow 3 escape 4 leave; c claim id (SPIT / SWALLOW / ESCAPE; 0 for a leave); t now"
+  }
+ ],
+ "deny_reasons": [
+  {
+   "id": 1,
+   "name": "STALE",
+   "note": "match not running, or the claim is older than history"
+  },
+  {
+   "id": 2,
+   "name": "GONE",
+   "note": "star missing / already taken / marker already broken"
+  },
+  {
+   "id": 3,
+   "name": "LOST",
+   "note": "contested: another seat's earlier stamp won (d = winner)"
+  },
+  {
+   "id": 4,
+   "name": "RANGE",
+   "note": "claimant / attacker too far from the target at that time"
+  },
+  {
+   "id": 5,
+   "name": "STATE",
+   "note": "claimant hurt / in a mouth / no-control, or not attacking"
+  },
+  {
+   "id": 6,
+   "name": "INVULN",
+   "note": "victim invincible, or already hit inside HIT_IMMUNE_MS"
+  },
+  {
+   "id": 7,
+   "name": "MISMATCH",
+   "note": "READY config differs from the match"
+  },
+  {
+   "id": 8,
+   "name": "UNSUPPORTED",
+   "note": "mode or claim kind not in this phase"
+  },
+  {
+   "id": 9,
+   "name": "BAD",
+   "note": "a field out of range"
+  },
+  {
+   "id": 10,
+   "name": "TOO_OLD",
+   "note": "lag compensation past COMP_MAX_MS"
+  },
+  {
+   "id": 11,
+   "name": "SELF",
+   "note": "target is the claimant, or not a seat in the match"
+  }
+ ],
+ "over_reasons": [
+  {
+   "id": 1,
+   "name": "TIME_UP"
+  },
+  {
+   "id": 2,
+   "name": "FIRST_TO_N"
+  },
+  {
+   "id": 3,
+   "name": "LAST_STANDING"
+  },
+  {
+   "id": 4,
+   "name": "EVERYONE_LEFT"
+  }
+ ],
+ "numbers": {
+  "FRAME_MS": 33.333333333333336,
+  "HEARTBEAT_HZ": 4,
+  "CLAIM_RESEND_MS": 60,
+  "VERDICT_TIMEOUT_MS": 500,
+  "HOLD_MAX_MS": 150,
+  "CAP_MARGIN_MS": 25,
+  "CAP_UNKNOWN_MS": 100,
+  "FUTURE_SLACK_MS": 5,
+  "COMP_MAX_MS": 200,
+  "HIT_IMMUNE_MS": 1000,
+  "TRADE_MS": 34,
+  "REACH_H": 250,
+  "REACH_V": 250,
+  "GRAB_R": 200,
+  "MARKER_R": 300,
+  "ATTACK_LOOKBACK_FRAMES": 10,
+  "PRESENCE_MS": 3000,
+  "START_WAIT_MS": 20000,
+  "COUNTDOWN_MS": 3000,
+  "OVER_LINGER_MS": 3000,
+  "SNAPSHOT_LAG_MS": 2000,
+  "HISTORY_FRAMES": 64,
+  "INVULN_CHEAT_MS": 300,
+  "STRIKE_WINDOW_MS": 10000,
+  "STRIKES_TO_KICK": 3,
+  "POS_LIMIT_UNITS": 32768,
+  "AMP_FACTOR": 3,
+  "AMP_CREDIT_CAP": 16384
+ },
+ "state_names": [
+  "St_LedgeHang",
+  "St_LedgeGrab",
+  "St_CeilingGrate",
+  "St_YoshiPower",
+  "St_Swallow",
+  "St_InYoshiMouth",
+  "St_SmallLaunchUp",
+  "St_Hurt",
+  "St_HurtWater",
+  "St_Electrocute",
+  "St_BurnFire",
+  "St_BurnLava",
+  "St_DeadHit",
+  "St_DeadPit",
+  "St_Walk",
+  "St_Wait",
+  "St_Grabbed",
+  "St_TurnAround",
+  "St_Jump",
+  "St_Fall",
+  "St_Thrown",
+  "St_SideFlip",
+  "St_SlideKickRecover",
+  "St_Fly",
+  "St_NoControl",
+  "St_Owl",
+  "St_DebugFly",
+  "St_WindCarry",
+  "St_Balloon",
+  "St_Teleport",
+  "St_TornadoSpin",
+  "St_Cannon",
+  "St_Squish",
+  "St_Shell",
+  "St_StomachSlide",
+  "St_ButtSlide",
+  "St_DizzyStars",
+  "St_HoldLight",
+  "St_Bonk",
+  "St_HoldHeavy",
+  "St_WallSlide",
+  "St_BowserEarthquake",
+  "St_WallJump",
+  "St_SlopeJump",
+  "St_StuckInGround",
+  "St_Land",
+  "St_OnWall",
+  "St_Spin",
+  "St_Talk",
+  "St_CrazedCrate",
+  "St_WaitQuicksand",
+  "St_LevelEnter",
+  "St_JumpQuicksand",
+  "St_Crouch",
+  "St_Respawn",
+  "St_Crawl",
+  "St_BackFlip",
+  "St_OpeningWakeUp",
+  "St_LongJump",
+  "St_PunchKick",
+  "St_EndingFly",
+  "St_GroundPound",
+  "St_Dive",
+  "St_Throw",
+  "St_GrabBowserTail",
+  "St_SwingPlayer",
+  "St_SweepKick",
+  "St_SlideKick",
+  "St_CameraZoom",
+  "St_Null",
+  "St_Swim",
+  "St_WaterJump",
+  "St_MetalWaterGround",
+  "St_MetalWaterWater",
+  "St_Climb",
+  "St_Headstand",
+  "St_WallJump",
+  "St_HeadstandJump"
+ ],
+ "attack_states": [
+  "St_YoshiPower",
+  "St_Spin",
+  "St_PunchKick",
+  "St_GroundPound",
+  "St_Dive",
+  "St_SweepKick",
+  "St_SlideKick",
+  "St_SlideKickRecover",
+  "St_Land",
+  "St_SwingPlayer"
+ ],
+ "disabled_states": [
+  "St_Hurt",
+  "St_HurtWater",
+  "St_Electrocute",
+  "St_BurnFire",
+  "St_BurnLava",
+  "St_DeadHit",
+  "St_DeadPit",
+  "St_InYoshiMouth",
+  "St_NoControl",
+  "St_Squish",
+  "St_DizzyStars",
+  "St_Respawn",
+  "St_Thrown",
+  "St_Grabbed"
+ ],
+ "clash_states": [
+  "St_PunchKick"
+ ],
+ "speed_classes": {
+  "walk": {
+   "limit": 50,
+   "states": [
+    "St_Walk",
+    "St_Wait",
+    "St_TurnAround",
+    "St_Crouch",
+    "St_Crawl",
+    "St_PunchKick",
+    "St_YoshiPower",
+    "St_HoldLight",
+    "St_HoldHeavy",
+    "St_Throw",
+    "St_Land",
+    "St_Talk",
+    "St_Spin"
+   ]
+  },
+  "slide": {
+   "limit": 125,
+   "states": [
+    "St_StomachSlide",
+    "St_ButtSlide",
+    "St_SlideKick",
+    "St_SlideKickRecover",
+    "St_Dive"
+   ]
+  },
+  "exempt": {
+   "limit": null,
+   "states": [
+    "St_InYoshiMouth",
+    "St_Respawn",
+    "St_Thrown",
+    "St_Teleport",
+    "St_Cannon",
+    "St_DeadPit",
+    "St_SmallLaunchUp",
+    "St_Swallow",
+    "St_LevelEnter"
+   ]
+  },
+  "air": {
+   "limit": 90,
+   "states": "everything else"
+  }
+ },
+ "speed_avg": {
+  "limit": 60,
+  "frames": 10
+ },
+ "star_orders": [
+  [
+   0,
+   1,
+   2,
+   3,
+   4,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  [
+   0,
+   1,
+   3,
+   2,
+   4,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  [
+   0,
+   2,
+   1,
+   3,
+   4,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  [
+   0,
+   2,
+   3,
+   1,
+   4,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  [
+   0,
+   3,
+   2,
+   1,
+   4,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  [
+   0,
+   3,
+   1,
+   2,
+   4,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ ],
+ "rules": [
+  "The referee sends a seat nothing, and counts no claim from it, until the seat's clock ping (SYNP 20) echoes the exact t_ref of a referee pong it received (echo_ref) with held_ms = how long it held that pong. Ping at 2 Hz from the moment the seat is paired; the second ping verifies it. After that the referee sends a seat at most 3x the bytes the seat sends it (SYNS / SYNO / SYNE / SYNP, banked up to 16 KB): keep SYNS flowing (10 Hz idle is plenty) from pairing on, or heartbeats pause until you send again (every SYNR re-carries the 8 newest events).",
+  "Claims are decided in STAMP order once referee time passes stamp + H, H = the largest back-dating cap among the other seats in the match (<= HOLD_MAX_MS). Exact stamp ties: fewer stars first, then the match seed's seat order.",
+  "A stamp is clamped into [arrival - cap, arrival] (cap = min(HOLD_MAX_MS, rtt_min/2 + CAP_MARGIN_MS); CAP_UNKNOWN_MS before any clock ping); clamps are counted per seat.",
+  "Every claim (seat, claim_id) gets exactly one terminal event naming it: MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, ACCEPTED or DENY. A resend after the verdict gets that same event again (directed if it left the 8-event window). DENY and ACCEPTED are directed records (seq 0) to the claimant alone, never in the stream; the others are stream events everyone hears. Resend a claim every CLAIM_RESEND_MS until named; no verdict in VERDICT_TIMEOUT_MS = treat as denied.",
+  "The claimant of an event: its seat for DENY, ACCEPTED, STAR_TAKEN and MARKER_BROKEN; its field a for HIT, CLASH and EATEN (seat = the victim); seat or a for RELEASED (escape: the victim; spit / swallow: the eater).",
+  "Every SYNR carries the 8 newest events (newest first). It goes out at once when events are made and as a HEARTBEAT_HZ heartbeat. Apply events in seq order exactly once and report the newest applied in SYNS.ack; a seat whose ack trails past the window gets the missed events again (directed, flag resend) while the referee still holds them, else a SNAPSHOT (directed SYNR parts, flag snapshot: START replay + STAR_STATE records + MATCH_OVER if over, seq 0); after the last part set applied = header newest_seq.",
+  "Every collect (order star or spilled star) advances progress p; the referee then wakes VS_STAR_SPAWN_ORDERS[row][p] as a new instance (STAR_WAKE), the ROM's own rule with the referee's row.",
+  "The ledger (header scores) is the only score. HIT = victim -1 and a SPILL (if it had any); leave / QUIT = all of that seat's stars spill; HURT_SELF and PIT (aux bit0) spill one.",
+  "MATCH_OVER only from the referee: first_to_n reached, referee time >= T0 + match_ms, one seat left of a match that had two or more, or everyone left. Winners = every seat on the top score.",
+  "A seat the referee dropped from the match (LEAVE naming itself) must send READY again to come back (JOIN mid-match, score 0, SNAPSHOT).",
+  "Phase A: classic mode only (READY mode != 0 is DENY UNSUPPORTED); EAT / SPIT / SWALLOW / ESCAPE are provisional for A5; speed strikes are logged, not kicked."
+ ]
+}

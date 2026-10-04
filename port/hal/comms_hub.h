@@ -75,6 +75,21 @@
 //   ping   'SYNP'  12            -        hub-internal (RTT per seat, 2 Hz)
 //   pong   'SYNQ'  12            -        hub-internal (byte 6 = pinger seat)
 // Anything else received is dropped and counted by reason.
+//
+// THE ARENA SHAPE (run mp1, lane ARENACORE1; hal/vs_arena.h). A VS console in
+// arena mode opens this same carrier through comms_hub_install_arena(): HELLO
+// v2 role 3 (arena member), the relay's "arena" session, the REFEREE in the
+// relay at seat mark 0xFE (port/tools/relay/arena_wire.h, lane REFEREE1).
+// The kinds then differ by shape: 'SYNG' is adventure only, and these four
+// plus two referee-clock sizes are arena only (everything else as above):
+//   state  'SYNS'  48            1        FIFO 64 + newest per seat (A0)
+//   object 'SYNO'  32            1        FIFO 64 (a star in flight, A3)
+//   ref    'SYNR'  272           1        FIFO 32; ONLY from the relay with
+//                                         byte 5 == 0xFE (the referee)
+//   claim  'SYNE'  24            1        send only (to the referee)
+//   rping  'SYNP'  20            2        hub-internal, byte 6 = 0xFE, 2 Hz
+//   rpong  'SYNQ'  20            2        hub-internal, ONLY from 0xFE: the
+//                                         referee clock (comms_hub_referee_clock)
 
 #ifndef PORT_HAL_COMMS_HUB_H
 #define PORT_HAL_COMMS_HUB_H
@@ -96,8 +111,14 @@ enum HubKind : int {
     kHubIdent = 1,   // 'SYNI'  W2 GHOSTWIRE1
     kHubChat  = 2,   // 'SYNT'  C1 CHATUI1
     kHubVoice = 3,   // 'SYNV'  V1 VOICE1
-    kHubKinds = 4,
+    // ARENA ONLY (lane ARENACORE1; hal/vs_arena.h)
+    kHubArenaState  = 4,   // 'SYNS'  A0 vs_arena.cpp (the only consumer)
+    kHubArenaObject = 5,   // 'SYNO'  A3 vs_arena_ref.cpp
+    kHubArenaRef    = 6,   // 'SYNR'  A3 vs_arena_ref.cpp (seat 0xFE)
+    kHubArenaClaim  = 7,   // 'SYNE'  A3 sends; never received
+    kHubKinds = 8,
 };
+enum : int { kHubRefereeSeat = 0xFE };   // byte 5 of what the referee sends
 
 // The tags as little-endian words (the first four bytes read as a u32).
 enum : unsigned {
@@ -107,6 +128,10 @@ enum : unsigned {
     kHubTagVoice = 0x564e5953u,   // 'S','Y','N','V'
     kHubTagPing  = 0x504e5953u,   // 'S','Y','N','P'
     kHubTagPong  = 0x514e5953u,   // 'S','Y','N','Q'
+    kHubTagArenaState  = 0x534e5953u,   // 'S','Y','N','S'
+    kHubTagArenaObject = 0x4f4e5953u,   // 'S','Y','N','O'
+    kHubTagArenaRef    = 0x524e5953u,   // 'S','Y','N','R'
+    kHubTagArenaClaim  = 0x454e5953u,   // 'S','Y','N','E'
 };
 
 // ---------------------------------------------------------------------------
@@ -206,6 +231,18 @@ enum : int {
 // call more than once.
 bool comms_hub_install_from_env();
 
+// THE ARENA SHAPE (hal/vs_arena.cpp calls it; nothing else should). Opens
+// the hub for a VS arena console: relay (SM64DS_COMMS_RELAY + _CODE) with
+// HELLO v2 role 3 asking for `want_seat` (0..15, or 0xFF any), or the test
+// mesh (SM64DS_HUB_PORT, binding base+want_seat first when one is pinned).
+// No adventure gate, no VS refusal: the caller decided. True when the hub owns
+// the session (opened, or failed after deciding to); false only when no
+// address is named at all. Safe to call more than once (first call decides).
+bool comms_hub_install_arena(int want_seat);
+
+// True when installed in the arena shape.
+bool comms_hub_arena();
+
 // True once installed (socket open), whether or not a peer has been heard.
 bool comms_hub_active();
 
@@ -240,6 +277,23 @@ bool comms_hub_send(const void *datagram, int len);
 // dropped (counted) and the next one is tried. Each kind has exactly one
 // consumer lane: ghost + ident W2, chat C1, voice V1.
 int comms_hub_recv(HubKind kind, void *buf, int cap, int *seat);
+
+// The same, plus *t_ms = the comms_hub_now_ms() at which the I/O thread took
+// the datagram off the socket (after any SM64DS_HUB_DELAY_MS hold).
+int comms_hub_recv_t(HubKind kind, void *buf, int cap, int *seat,
+                     unsigned *t_ms);
+
+// The hub's millisecond clock (performance counter), the one recv_t stamps.
+unsigned comms_hub_now_ms();
+
+// THE REFEREE CLOCK (arena, relay mode). The hub pings the referee ('SYNP' v2,
+// byte 6 = 0xFE) at 2 Hz and keeps the 8 newest pongs; the estimate comes from
+// the one with the smallest round trip (half the route asymmetry of error).
+// *ref_now_ms = the referee's ms right now; *rtt_ms = that sample's RTT;
+// *cap_ms (optional) = the referee's back-dating cap for my seat as it last
+// said. False before the first pong (and always in the mesh).
+bool comms_hub_referee_clock(unsigned *ref_now_ms, int *rtt_ms,
+                             int *cap_ms);
 
 // The NEWEST datagram of `kind` from `seat` (ghost: newest by seq). Does not
 // consume anything from the FIFO. Returns the length or 0; *age_ms (optional)
@@ -288,6 +342,10 @@ struct CommsHubStats {
                        drop_stale;        // SYNG older than the newest seq
     unsigned long long hellos, acks;
     unsigned long long joins, leaves;
+    // arena shape (lane ARENACORE1)
+    bool arena;
+    unsigned long long drop_shape;        // a kind the other shape owns
+    unsigned long long ref_pings, ref_pongs;
 };
 CommsHubStats comms_hub_stats();
 void comms_hub_report(const char *tag);   // one "[hub] ..." line to stderr

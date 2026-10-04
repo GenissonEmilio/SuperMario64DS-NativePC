@@ -418,6 +418,7 @@ static bool winapi_load(void)
 #include "hal/voice_chat.h"      /* lane VOICE: proximity voice chat */
 #include "hal/comms_loopback.h"   /* run mg16 lane MP2: the loopback carrier */
 #include "hal/comms_hub.h"        /* run mp1 lane HUB1: the adventure hub */
+#include "hal/vs_arena.h"         /* run mp1 lane ARENACORE1: arena-mode VS */
 #include "hal/adv_chat.h"         /* run mp1 lane CHATUI1: in-game text chat */
 /* run mg16 lane MP3: hal/comms_lockstep.h is RETIRED. Its transcription of
    src/func_0203ea5c.c existed only because that TU was in no slice; the TU is
@@ -11368,7 +11369,13 @@ int main(void)
        opens the hub instead: no DS session, no rounds, nobody waits. It
        returns false for every VS and solo run, which then takes the loopback
        install exactly as before. */
-    if (!port::comms_hub_install_from_env())
+    /* run mp1 lane ARENACORE1: a VS console in ARENA mode (the go plan's
+       netmode, SM64DS_VS_NETMODE=arena) opens the hub in its arena shape and
+       neither of the two below: no DS transport, no rounds. False for every
+       lockstep VS, adventure and solo run, which take the installs below
+       exactly as before. */
+    if (!port::vs_arena_install_from_env() &&
+        !port::comms_hub_install_from_env())
         port::comms_loopback_install_from_env();
     pacer_begin();
 #ifdef PORT_ROM_CLEAN
@@ -14189,6 +14196,11 @@ int main(void)
                 data_0209d50c = 0x17;
                 func_0203bc7c();
             } else if (!b5_transport) {
+                /* run mp1 lane ARENACORE1: in arena mode my key word reaches
+                   my slot's record only (the ROM's solo copy put it in all
+                   four), so the ROM's builder below gives every other body a
+                   zero pad. No-op outside arena. */
+                port::vs_arena_route_pads();
                 data_0209d50c = 0x17;
                 func_0203bc7c();
             }
@@ -16175,6 +16187,9 @@ int main(void)
                it is (it has to follow the scene pass; hal/player_bridges.cpp).
                No-op unless adventure-ghost mode is on. */
             port_adventure_ghost_hold();
+            /* run mp1 lane ARENACORE1: the arena's puppet hold (A1) hangs
+               here, before the walk ticks the bodies. No-op outside arena. */
+            port::vs_arena_before_walk(frame);
             port_vs_match_end_hold();
             {
                 const double rb_t = rb_probe_mode() ? rb_now_ms() : 0.0;
@@ -16668,6 +16683,11 @@ int main(void)
                rendered position is the smooth follower value and the ROM drift is
                overridden. No-op outside adventure mode. */
             port_adventure_ghost_follow();
+            /* run mp1 lane ARENACORE1: one arena frame AFTER the tick, so my
+               body's state is this frame's final one: send my 'SYNS', take
+               everyone else's into their rings, keep the roster. No-op
+               outside arena, except the SM64DS_ARENA_LATENCY readout. */
+            port::vs_arena_tick(frame);
             /* lane VOICE: one frame of proximity voice chat, immediately
                after the sync layer and for the same structural reason -- the
                input record is already on the wire, so a voice datagram cannot

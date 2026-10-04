@@ -78,6 +78,7 @@
 #include "dBgW_Kc.h"
 #include "dsstate_seg.h"
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: port::vs_player_count() */
+#include "hal/vs_arena.h"     /* run mp1 lane ARENACORE1: my seat is my body */
 #include "fBase_c.h"   /* SYNC4: moved up out of an extern "C" block */
 #include "dActor_c.h"  /* SYNC4: same, and it reaches math/Fix12.h now */
 #include "SharedFilePtr.h"   /* the twelve shared preloads' Release */
@@ -5475,6 +5476,13 @@ static void port_a2_seat_body(int make_stage)
        host's character. On the DS the menu joins before anything loads a
        level; this is that ordering, restored. No-op with no transport. */
     port::comms_wait_for_session(600);
+    /* run mp1 lane ARENACORE1: ARENA MODE HAS NO SESSION TO WAIT FOR, but it
+       has a seat: the relay names it, and it must be in the ROM's "my comms
+       slot" byte (data_020a0f10) before func_0203da9c is read below and by
+       Stage::InitResources, so body <seat> is mine. The body count is the
+       room's capacity (SM64DS_VS_PLAYERS, which vs_player_count reads first).
+       No-op outside arena. */
+    port::vs_arena_seat_world();
 
     const int vs_players = port::vs_player_count();
     /* ---- THE PER-PLAYER INPUT GATE (run mg16, lane MP3) -------------------

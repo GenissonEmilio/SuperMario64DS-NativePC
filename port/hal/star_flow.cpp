@@ -30,6 +30,12 @@
 
 #include "sdat/sdat.h"
 
+/* run mp1 lane STARREF1: the arena half of this file (the referee decides
+   stars, hits, the clock and the winner); every use below is gated on the
+   arena being installed with a referee. */
+#include "vs_arena.h"
+#include "vs_arena_ref.h"
+
 extern "C" {
 
 // ---- the game's own functions this file calls ------------------------------
@@ -960,6 +966,24 @@ enum {
 void port_luigi_countdown_drive(int frame)
 {
     if (data_0209f2d8 != 1) return;         /* VS only */
+    /* ARENA MODE (run mp1, lane STARREF1): the referee's T0 owns the whole
+       READY / 3 / 2 / 1 / GO. Every console holds the count at 3 until the
+       referee's START arrives, then counts down to T0 on the referee's clock, so
+       the match clock and the stars start together everywhere. The same four
+       writes and the same sounds this function makes for the Luigi mode. */
+    {
+        int a_count, a_f304, a_beep, a_music;
+        if (port::vs_ref_countdown(&a_count, &a_f304, &a_beep, &a_music)) {
+            data_0209f2bc = (unsigned char)a_count;
+            data_0209f304 = (unsigned short)a_f304;
+            if (a_beep) func_02012790((unsigned int)a_beep);
+            if (a_music) {
+                g_course_music = a_music;
+                _ZN5Sound22LoadAndSetMusic_Layer1Ei(a_music);
+            }
+            return;
+        }
+    }
     if (!port_luigi_enabled()) return;      /* a normal VS round never enters */
 
     /* THE HOLD STARTS AT FRAME 0, not at the first beep. The ROM's own
@@ -1076,7 +1100,11 @@ extern "C" void port_vs_census_view_leave(int saved);
 void port_luigi_countdown_render(void)
 {
     if (data_0209f2d8 != 1) return;
-    if (!port_luigi_enabled()) return;
+    /* ARENA: the READY? / 3 / 2 / 1 / START banner is drawn while the referee's
+       countdown runs (the same draw the Luigi mode uses). */
+    if (!port_luigi_enabled() && !(port::vs_ref_active() &&
+                                   (data_0209f2bc != 0 || data_0209f304 != 0)))
+        return;
     if (data_0209f5bc == 0) return;
     const int census = port_vs_census_view_enter();
     _ZN5Stage21RenderVsModeCountdownEv();
@@ -2303,6 +2331,10 @@ extern "C" void port_vs_match_end_hold(void)
         const char *e = std::getenv("SM64DS_VS_END_FREEZE");
         on = (e && e[0] == '0') ? 0 : 1;
     }
+    /* ARENA MODE (lane STARREF1): the referee client's pre-walk half -- the
+       stream, the claims, the stars and hits on this screen. Inert outside an
+       arena with a referee. */
+    port::vs_ref_pre_walk(0);
     vs_track_seats();
     if (!on || g_end_fired < 0 || data_0209f2d8 != 1)
         return;
@@ -2345,6 +2377,10 @@ extern "C" int port_vs_match_end_poll(int frame)
         g_king_armed = 0;
         return 0;
     }
+
+    /* ARENA MODE (lane STARREF1): the referee client's post-walk half, after
+       the actor walk and before vs_arena_tick sends this frame's state. */
+    port::vs_ref_post_walk(frame);
 
     static int on = -1, want_scene = -1, want_exit = -1, grace = -1,
                star_target = -1;
@@ -2461,6 +2497,44 @@ extern "C" int port_vs_match_end_poll(int frame)
         }
     }
 
+    if (g_end_fired < 0 && port::vs_ref_active()) {
+        /* ---- ARENA MODE: THE REFEREE ENDS THE MATCH (lane STARREF1) ---------
+         *
+         * One authority, so there can never be two winners. None of the five
+         * triggers below runs here: first-to-N, the clock, the last player left
+         * are all the referee's (referee.py _over), and the ROM's own time-up
+         * only tells the client layer to expect the verdict; the client gives up
+         * after 3 s with "connection lost". What arrives is MATCH_OVER with the
+         * final ledger; it feeds the same latches, the same grace window, the
+         * same marker and the same exit as every other end. */
+        if (data_ov002_02111188 == 0 && data_0209f204 != 0)
+            port::vs_ref_note_local_timeup(frame);
+        port::VsRefOver ov;
+        if (!port::vs_ref_match_over(&ov))
+            return 0;
+        const int np_arena = vs_players();
+        g_end_fired = frame;
+        g_end_by_luigi = 0;
+        g_end_by_king = 0;
+        g_end_by_last = 0;
+        g_end_by_target = (ov.reason == arena_wire::OVER_FIRST_TO_N);
+        g_vs_seen = (unsigned)ov.seen_mask;
+        g_vs_left = (unsigned)(ov.seen_mask & ~ov.roster_mask);
+        int total = 0;
+        for (int i = 0; i < np_arena && i < kPortMaxPlayers; ++i) {
+            g_end_scores[i] = vs_in_play(i) ? (int)ov.scores[i] : 0;
+            if (g_end_scores[i] > 0) total += g_end_scores[i];
+        }
+        g_end_total = total;
+        fprintf(stderr, "[vs] f%d ARENA MATCH OVER from the referee: reason=%d "
+                "winners=0x%04x scores %d,%d,%d,%d%s\n", frame, ov.reason,
+                (unsigned)ov.winners_mask, g_end_scores[0], g_end_scores[1],
+                g_end_scores[2], g_end_scores[3],
+                ov.local_timeout ? " (the referee never answered: connection lost)"
+                                 : "");
+        Sound::StopLoadedMusic_Layer1(0x3c);
+        return 0;
+    }
     if (g_end_fired < 0) {
         /* ---- TRIGGER ONE: the ROM's own. Stage::Behavior's guard, both
            halves, in its own order. */

@@ -11588,6 +11588,13 @@ list(APPEND SLICE_COMMS_SOURCES hal/comms_sync.cpp)
 # unless SM64DS_ADVENTURE is on AND a relay or SM64DS_HUB_PORT is named, so
 # linking it changes no behaviour; see hal/comms_hub.h.
 list(APPEND SLICE_COMMS_SOURCES hal/comms_hub.cpp)
+# Run mp1 lane ARENACORE1: arena-mode VS (no rounds; the referee is the relay).
+# INERT unless SM64DS_VS_NETMODE=arena with a VS map; see hal/vs_arena.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena.cpp)
+# Run mp1 lane STARREF1: the arena referee client (stars, hits, the clock and the
+# winner come from the referee in the relay). INERT unless arena mode is installed
+# in its relay shape; see hal/vs_arena_ref.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_ref.cpp)
 # Run mp1 lane CHATUI1: in-game text chat over the VS carrier's aux kinds and
 # the hub. Port-side only and INERT unless one of those carriers is installed,
 # so linking it changes no behaviour solo; see hal/adv_chat.h.
