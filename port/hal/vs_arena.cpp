@@ -1051,6 +1051,14 @@ void pup_before_walk() {
             g.nsfx = 2;
             g.send_now = true;
         }
+    // THE RING AT THIS INSTANT. A0 drains the hub once a frame, at the end of
+    // the tick, so a puppet drawn here would read a ring that is up to a whole
+    // frame stale: the sample that arrived since is in the hub's queue, and the
+    // draw time (which counts from the packet's own arrival stamp) sits ahead of
+    // every sample the ring holds (the REMOTE ERROR row: lag 0.5 frame behind
+    // ft in 'r' mode at every rtt, B never in play). Drain again first; an
+    // empty queue is a no-op.
+    drain();
     const unsigned now = comms_hub_now_ms();
     if (pup_log() && g.seat < kArenaSeats && data_0209f394[g.seat] && g.have_last) {
         // THE TRUTH LINE: my own body as the SYNS for frame g.frame carried it
