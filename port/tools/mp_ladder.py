@@ -2311,6 +2311,8 @@ def arena_rungs():
     R.append(Rung("arena4-cam-relay", "arenacam", 4, GATE, "relay2", needs=["A0", "A2"], delays=skew4))
     R.append(Rung("arena4-leave-kill-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=75, how="kill",
                   delays=skew4))
+    R.append(Rung("arena3-leave-kill-relay", "arenaleave", 3, GATE, "relay2", needs=A, time_s=75, how="kill",
+                  delays=(20, 35, 63)))
     R.append(Rung("arena4-leave-quit-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=75, how="close",
                   delays=skew4))
     R.append(Rung("arena4-rejoin-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
