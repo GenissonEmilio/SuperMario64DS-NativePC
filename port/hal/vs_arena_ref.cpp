@@ -98,6 +98,8 @@ extern void *port_hud_self;      /* hal/sub_actors.cpp: the live HUD (fBase acto
 // state objects: St_Hurt, St_Walk-or-Wait (the neutral state the ROM returns to
 // after a no-control sequence), St_NoControl
 extern unsigned char data_ov002_02110094[];
+extern unsigned char data_ov002_021100ac[];   // St_HurtWater (Init calls the star drop)
+extern unsigned char data_ov002_0211010c[];   // St_DeadHit (Main calls the star drop)
 extern unsigned char data_ov002_0211013c[];
 extern unsigned char data_ov002_0211022c[];
 }  // extern "C"
@@ -222,6 +224,9 @@ struct Ref {
     // wraps
     unsigned star5_orig = 0;
     unsigned hurt_orig = 0;
+    unsigned hurtwater_orig = 0;
+    unsigned swim_clear_at = 0;
+    unsigned deadhit_orig = 0;
     VsRefEventSink sink = nullptr;
     unsigned last_report = 0;
     bool log = false;
@@ -1124,6 +1129,7 @@ void star5_arena(char *c) {
     }
     if (i->result == 0 && now_ms() - i->hold_ms >= (unsigned)kHoldMs) {
         i->result = 3;                          // no verdict in time: denied
+        i->winner = -1;                         // nobody won it: the star is tossed back (REVSTARREF1 F2)
         std::fprintf(stderr, "[vsarena-ref] grab of inst %d: no verdict in %d ms; "
                      "treated as denied\n", (int)(i - g.inst), kHoldMs);
     }
@@ -1371,10 +1377,18 @@ void apply_hit_on_me(const RefEvent &e) {
     int v[3] = { e.x, e.y, e.z };
     char *ab = body_of(e.a);
     const unsigned param = ab ? (unsigned)s32r(ab, 8) : 3u;
+    // LAB (SM64DS_ARENA_SWIMHIT=1): the victim is in water, so the hit goes through
+    // St_HurtWater (whose Init also calls the ROM's star drop); mIsUnderwater is
+    // put back 90 frames later (hit_apply_tick)
+    static const bool swim = env_on("SM64DS_ARENA_SWIMHIT");
+    if (swim) { *u8p(me, 0x706) = 1; g.swim_clear_at = my_frame_now() + 90u; }
     // the ROM's own damage, from the attacker's position
     const int hr = _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(
         me, v, 1u, 0, 0u, (param + 1) & 0xffu, 1u);
     g.hit_applied_frame = my_frame_now();
+    if (g.log)
+        std::fprintf(stderr, "[vsarena-ref] hit applied on me: Hurt returned %d, my state idx now %d\n",
+                     hr, vs_arena_state_index(me));
     if (!hr) {
         std::fprintf(stderr, "[vsarena-ref] HIT verdict: Player::Hurt refused on my "
                      "body (already hurt?)\n");
@@ -1404,10 +1418,14 @@ void apply_hit_on_me(const RefEvent &e) {
 // St_Hurt's Main, wrapped: the ROM drops a star from inside it (func_ov002_020d94cc
 // reads my carried count and refuses at zero); in an arena the referee already
 // spilled it, so the count reads zero for that one call.
-int __fastcall vs_ref_hurt_main_face(void *self, void *edx) {
+// func_ov002_020d94cc has three callers: St_Hurt_Main, St_HurtWater_Init and
+// St_DeadHit_Main. Each state's entry is wrapped the same way, so a hit that lands
+// while swimming (or a fatal one) cannot give the victim a star of its own on top
+// of the referee's spill (REVSTARREF1 F1).
+int muted_state_call(unsigned orig, void *self, void *edx) {
     char *b = (char *)self;
     if (!g.active || b != my_body())
-        return ((int (__fastcall *)(void *, void *))(size_t)g.hurt_orig)(self, edx);
+        return ((int (__fastcall *)(void *, void *))(size_t)orig)(self, edx);
     const int idx = *u8p(b, 0x6d8);
     // (SM64DS_ARENA_NOMUTE=1 is the lab's NEGATIVE CONTROL for the star census:
     // the ROM's own drop runs, and the census then sees a star no referee
@@ -1415,14 +1433,27 @@ int __fastcall vs_ref_hurt_main_face(void *self, void *edx) {
     static const bool nomute = env_on("SM64DS_ARENA_NOMUTE");
     const signed char keep = idx < 16 ? data_0209f310[idx] : 0;
     if (idx < 16 && !nomute) data_0209f310[idx] = 0;
-    const int r = ((int (__fastcall *)(void *, void *))(size_t)g.hurt_orig)(self, edx);
+    const int r = ((int (__fastcall *)(void *, void *))(size_t)orig)(self, edx);
     if (idx < 16) data_0209f310[idx] = keep;
     return r;
+}
+int __fastcall vs_ref_hurt_main_face(void *self, void *edx) {
+    return muted_state_call(g.hurt_orig, self, edx);
+}
+int __fastcall vs_ref_hurtwater_init_face(void *self, void *edx) {
+    return muted_state_call(g.hurtwater_orig, self, edx);
+}
+int __fastcall vs_ref_deadhit_main_face(void *self, void *edx) {
+    return muted_state_call(g.deadhit_orig, self, edx);
 }
 
 void my_state_edges() {
     char *me = my_body();
     if (!me || !g.started || g.over) return;
+    if (g.swim_clear_at && (int)(my_frame_now() - g.swim_clear_at) >= 0) {
+        g.swim_clear_at = 0;
+        *u8p(me, 0x706) = 0;
+    }
     int st = vs_arena_state_index(me);
     if (st == 0xFF) return;
     const bool hurt_now = st == kStHurt || st == kStHurtWater ||
@@ -1973,6 +2004,16 @@ void init_once() {
         unsigned *cell = (unsigned *)(data_ov002_02110094 + 8);
         g.hurt_orig = cell[0];
         cell[0] = (unsigned)(size_t)&vs_ref_hurt_main_face;
+    }
+    if (!g.hurtwater_orig) {                       // Init is cell 0, Main cell 1 (8 bytes each)
+        unsigned *cell = (unsigned *)(data_ov002_021100ac + 0);
+        g.hurtwater_orig = cell[0];
+        cell[0] = (unsigned)(size_t)&vs_ref_hurtwater_init_face;
+    }
+    if (!g.deadhit_orig) {
+        unsigned *cell = (unsigned *)(data_ov002_0211010c + 8);
+        g.deadhit_orig = cell[0];
+        cell[0] = (unsigned)(size_t)&vs_ref_deadhit_main_face;
     }
     std::atexit(quit_at_exit);
     rig_parse();
