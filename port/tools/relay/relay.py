@@ -408,8 +408,12 @@ DEFAULT_IDLE_S = 90.0
 DEFAULT_STATS_S = 60.0
 DEFAULT_HUB_IDLE_S = 10.0
 # An arena seat whose console has been silent this long (no datagram, no HELLO)
-# is given to a console that asks for it by number; a live seat never is.
-SEAT_RECLAIM_S = 1.5
+# is given to a console that asks for it by number; a live seat never is. 3 s:
+# a 1.5-3 s Wi-Fi outage must not cost a player their seat to anyone who has the
+# room code, and a real restart takes 4+ s to its first HELLO. It is also the
+# game hub's presence timeout (comms_hub.cpp kHubPresenceMs), so by the time a
+# seat can be reclaimed every other console has already seen its holder leave.
+SEAT_RECLAIM_S = 3.0
 
 # ------------------------------------------------------------------- utils
 

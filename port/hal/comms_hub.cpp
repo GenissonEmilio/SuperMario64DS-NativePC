@@ -337,7 +337,7 @@ int g_mesh_base = 0;
 unsigned char g_code[8] = {};
 int g_want_seat = 0xFF;
 unsigned g_seat_taken_since = 0;   // arena: when the first status 4 came (0 = none)
-const unsigned kArenaSeatRetryMs = 5000;   // how long an arena pin is kept against status 4
+const unsigned kArenaSeatRetryMs = 6000;   // how long an arena pin is kept against status 4
 bool g_ever_paired = false;
 bool g_exit_full = false;   // set under the lock, acted on outside it
 volatile LONG g_stop = 0;   // process exit: the I/O thread returns
@@ -662,9 +662,10 @@ void on_ack(const unsigned char *p, unsigned now) {
         return;
     case 4:
         // ARENA: the seat is pinned to a body, and the relay holds a console's
-        // seat until it has been silent 1.5 s (relay.py HELLO role 3). A
-        // console that comes back faster than that is refused with 4 once or
-        // twice and is given its own seat as soon as the old one times out, so
+        // seat until it has been silent 3 s (relay.py SEAT_RECLAIM_S, HELLO role 3). A
+        // console that comes back faster than that (a restart is usually 4 s)
+        // is refused with 4 a few times and is given its own seat as soon as
+        // the old one times out, so
         // keep the pin and ask again (the HELLO repeats once a second). Bounded:
         // a seat that is still taken after kArenaSeatRetryMs is a live console,
         // and the old behaviour (ask for any free seat) takes over. Lockstep

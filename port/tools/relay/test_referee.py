@@ -998,11 +998,16 @@ def u_rejoin(mod):
     res.check(e.seat is None and e.got[-1][5] == 4,
               "silent 0.5 s: want_seat 3 is refused, seat taken (status 4)")
     res.check(sess.seats.get(3) == old_addr, "seat 3 still held by its console")
-    streaming(rig, [a, b, c], 1.5)          # now silent 2.0 s
+    streaming(rig, [a, b, c], 2.0)          # now silent 2.5 s: still held (reclaim is 3.0 s)
     rig.consoles.remove(e)
     e = Console(rig, code, want=3, ping=False)
+    res.check(e.seat is None and e.got[-1][5] == 4,
+              "silent 2.5 s: want_seat 3 still refused (a 1.5-3 s outage keeps its seat)")
+    rig.consoles.remove(e)
+    streaming(rig, [a, b, c], 1.0)          # now silent 3.5 s
+    e = Console(rig, code, want=3, ping=False)
     res.check(e.seat == 3 and e.got[-1][5] == 0 and e.got[-1][6] == 3,
-              "silent 2.0 s: want_seat 3 -> seat 3 back, ACK status 0")
+              "silent 3.5 s: want_seat 3 -> seat 3 back, ACK status 0")
     res.check(sess.seats.get(3) == e.addr and old_addr not in
               rig.relay.endpoints, "the old holder is gone, the new one holds it")
     rig.consoles.remove(d)
@@ -1038,15 +1043,15 @@ def u_rejoin(mod):
         res.check(h.seat is None and h.got[-1][5] == 4,
                   "holder that only sends its 1 Hz HELLO is live (t+%d)" % k)
         rig.consoles.remove(h)
-    # the boundary: heard 1.4 s ago = live, 1.6 s ago = reclaimable
+    # the boundary: heard 2.9 s ago = live, 3.1 s ago = reclaimable
     rig.send(b.addr, hello(code, 3, 1))
-    rig.advance(1.4, step=0.05)
+    rig.advance(2.9, step=0.05)
     h = Console(rig, code, want=1, ping=False)
-    res.check(h.seat is None, "silent 1.4 s: not yet")
+    res.check(h.seat is None, "silent 2.9 s: not yet")
     rig.consoles.remove(h)
     rig.advance(0.2, step=0.05)
     h = Console(rig, code, want=1, ping=False)
-    res.check(h.seat == 1, "silent 1.6 s: reclaimable")
+    res.check(h.seat == 1, "silent 3.1 s: reclaimable")
     rig.consoles.remove(h)
     # a console may not ask for a seat by taking WANT_ANY out of the bodies
     streaming(rig, [a, c, e], 0.2)
@@ -1083,7 +1088,7 @@ def u_rejoin(mod):
     rig4 = Rig(mod)
     s0 = Console(rig4, "SOLO0004")
     streaming(rig4, [s0], 0.5)
-    rig4.advance(2.0)
+    rig4.advance(3.5)
     s1 = Console(rig4, "SOLO0004", want=0, ping=False)
     res.check(s1.seat == 0 and rig4.session("SOLO0004") is not None
               and "SOLO0004" in rig4.relay.arenas
