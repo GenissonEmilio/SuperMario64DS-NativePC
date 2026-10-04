@@ -1373,6 +1373,23 @@ def u_eat(mod):
     esc = b.claim(CL["ESCAPE"], a.seat)
     streaming(rig, [a, b], 0.3)
     res.check(b.verdict(esc)["b"] == DENY["GONE"], "escape when free: GONE")
+    # an ESCAPE right after the EATEN is refused (no real escape is that fast);
+    # the mouthful is unchanged, and a later ESCAPE is released
+    streaming(rig, [a, b], 3.0)          # past the hit immunity of the first round
+    cid3 = a.claim(CL["EAT"], b.seat, ref_frame=b.frame - 2)
+    streaming(rig, [a, b], 0.05)
+    res.check(a.verdict(cid3) and a.verdict(cid3)["name"] == "EATEN", "eaten again")
+    early = b.claim(CL["ESCAPE"], a.seat, cid=201)
+    streaming(rig, [a, b], 0.1)
+    ve = b.verdict(early)
+    res.check(ve and ve["b"] == DENY["STATE"], "ESCAPE 0.1 s after the EATEN: DENY STATE (%s)" % ve)
+    res.check(rig.ref("ARENA01").seats[b.seat].eaten_by == a.seat,
+              "the early ESCAPE left the mouthful as it was")
+    streaming(rig, [a, b], 0.6)
+    late = b.claim(CL["ESCAPE"], a.seat, cid=202)
+    streaming(rig, [a, b], 0.3)
+    vl = b.verdict(late)
+    res.check(vl and vl["name"] == "RELEASED" and vl["b"] == 3, "ESCAPE 0.7 s after: RELEASED 3 (%s)" % vl)
     return res
 
 
