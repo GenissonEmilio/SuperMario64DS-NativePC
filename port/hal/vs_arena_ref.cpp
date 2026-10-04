@@ -92,6 +92,7 @@ extern unsigned short data_ov002_020ff29c[];
 // PowerStar_States.cpp seats its entries; entry 5 is the collect confirm)
 struct PortPmfRef { unsigned fn; int delta; };
 extern PortPmfRef data_ov002_021109d8[];
+extern void *port_hud_self;      /* hal/sub_actors.cpp: the live HUD (fBase actor) */
 
 // state objects: St_Hurt, St_Walk-or-Wait (the neutral state the ROM returns to
 // after a no-control sequence), St_NoControl
@@ -230,8 +231,12 @@ struct Ref {
     unsigned rig_next = 0;       // referee ms of the next scripted step
     int rig_press_frames = 0;
     int rig_inject = 0;
+    int rig_follow = 0;          // frames left to keep my body at rig_dist units from the victim's puppet
+    int rig_dist = 0;
     int rig_phase = 0;
     unsigned chain_hit_at = 0;   // referee ms (my base)
+    int rig_home[3] = {0, 0, 0}; // seat 1's spawn point: where seat 0's (unmoved) copy of it stands
+    bool rig_home_set = false;
 };
 Ref g;
 
@@ -562,6 +567,101 @@ const char *reason_name(int r) {
     return r >= 1 && r <= 11 ? n[r] : "?";
 }
 
+
+// ---------------------------------------------------------------------------
+// BOUNDS ON EVERYTHING THE WIRE GIVES US (the standing security law)
+//
+// The hub checks a SYNR / SYNO only for length, version and shape; what is IN
+// the fields is this layer's to check, before any of it indexes a table, spawns
+// a star, writes the ledger or hurts a body. A relay we trust still forwards
+// what a bug or a stranger's forged datagram puts in a field, so every field is
+// range-checked here and a frame / event / object frame that fails any check is
+// dropped whole and counted (VsRefStats frames_bad / events_bad / syno_bad).
+// An event dropped inside the ordered stream still advances the sequence (the
+// stream must not stall behind one bad record), it just changes nothing.
+// ---------------------------------------------------------------------------
+enum : int { kPosLim = 32768 };            // units, like arena_state_valid
+inline bool pos_ok(int v) { return v >= -(kPosLim << 12) && v <= (kPosLim << 12); }
+inline int seat_lim() { return g.bodies > 0 && g.bodies <= kArenaSeats ? g.bodies : 4; }
+inline bool seat_ok(unsigned s) { return s < (unsigned)seat_lim(); }
+inline bool seat_or_none(unsigned s) { return s == 0xFF || seat_ok(s); }
+inline bool score_ok(int v) { return v >= 0 && v <= 127; }   // the referee's ledger: never negative, capped at 127
+
+bool ref_event_valid(const RefEvent &e) {
+    const unsigned rmask = (1u << seat_lim()) - 1u;
+    switch (e.type) {
+    case EV_START:
+        return e.seat == 0xFF && e.a <= 5 && e.b <= 99 && e.c <= 3600 &&
+               (e.d & ~rmask) == 0 && e.e >= 1 && e.e <= 8 && e.y >= 0 && e.y <= 15;
+    case EV_STAR_WAKE:
+        return e.seat == 0xFF && e.a != 0 && e.b < 8 && e.c < 256;
+    case EV_MARKER_BROKEN:
+        return seat_ok(e.seat) && e.a != 0 && e.b < 8 && pos_ok(e.x) &&
+               pos_ok(e.y) && pos_ok(e.z);
+    case EV_STAR_TAKEN:
+        return seat_ok(e.seat) && e.a != 0 && score_ok(e.b) &&
+               e.e < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
+    case EV_DENY:
+        return seat_ok(e.seat) && e.a >= 1 && e.a <= 11 && e.b >= 1 && e.b <= 11 &&
+               (e.d == 0xFF || e.d < 16);
+    case EV_HIT:
+        return seat_ok(e.seat) && seat_ok(e.a) && e.b <= 1 && e.d <= 0x2000 &&
+               e.e < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
+    case EV_CLASH:
+        return seat_ok(e.seat) && seat_ok(e.a) && pos_ok(e.x) && pos_ok(e.y) &&
+               pos_ok(e.z);
+    case EV_SPILL:
+        return seat_or_none(e.seat) && e.a != 0 && e.b < 8 && e.c >= 1 && e.c <= 4 &&
+               score_ok(e.d) && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
+    case EV_MATCH_OVER:
+        return e.seat == 0xFF && e.a >= 1 && e.a <= 4 && e.b <= (unsigned)seat_lim() &&
+               (e.c & ~rmask) == 0;
+    case EV_LEAVE:
+        return seat_ok(e.seat) && e.a >= 1 && e.a <= 3 && e.d < 256;
+    case EV_JOIN:
+        return seat_ok(e.seat) && e.a <= 1;
+    case EV_STAR_STATE:
+        return seat_or_none(e.seat) && e.a != 0 && e.b >= 1 && e.b <= 2 &&
+               e.c < 8 && e.d < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
+    case EV_ACCEPTED:
+        return seat_ok(e.seat) && e.a >= 1 && e.a <= 11 && e.d < 256;
+    case EV_EATEN:
+    case EV_RELEASED:
+        return seat_ok(e.seat) && seat_ok(e.a) && e.b <= 4 && pos_ok(e.x) &&
+               pos_ok(e.y) && pos_ok(e.z);
+    default:
+        return false;
+    }
+}
+
+bool ref_frame_valid(const RefFrame &f) {
+    if (f.tag != kTagR || f.version != 1 || f.seat != kRefereeMark) return false;
+    if (f.zero != 0 || f.n_events > kSynrEvents || f.match_state > MS_OVER) return false;
+    if (f.flags & ~(SYNR_F_SNAPSHOT | SYNR_F_DIRECTED | SYNR_F_RESEND)) return false;
+    if (f.first_to_n > 99 || f.order_row > 5 || f.map > 15) return false;
+    if (f.match_ms > 3600u * 1000u) return false;
+    const unsigned rmask = (1u << seat_lim()) - 1u;
+    if (f.roster & ~rmask) return false;
+    for (int k = 0; k < 16; ++k) {
+        if (!score_ok(f.scores[k])) return false;
+        if (k >= seat_lim() && f.scores[k] != 0) return false;
+    }
+    const int idx = (f.part >> 4) & 0xF, cnt = f.part & 0xF;
+    if (f.flags & SYNR_F_SNAPSHOT) {
+        if (cnt < 1 || idx >= cnt) return false;
+    } else if (f.part != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool syno_valid(const ObjFrame &o, int seat) {
+    if (o.tag != kTagO || o.version != 1 || o.obj_class != 1) return false;
+    if (o.obj_id == 0 || !seat_ok((unsigned)seat)) return false;
+    if (o.state < 1 || o.state > 3 || (o.flags & ~1u)) return false;
+    return pos_ok(o.pos[0]) && pos_ok(o.pos[1]) && pos_ok(o.pos[2]);
+}
+
 void session_up(const char *why) {
     if (g.session_up) return;
     g.session_up = true;
@@ -744,6 +844,10 @@ void on_star_state(const RefEvent &e) {
 }
 
 void apply_event(const RefEvent &e, bool directed) {
+    if (!ref_event_valid(e)) {
+        ++g.st.events_bad;      // dropped whole; the stream's sequence still moves on
+        return;
+    }
     switch (e.type) {
     case EV_START:          on_start(e); break;
     case EV_STAR_WAKE:      on_wake(e); break;
@@ -779,7 +883,7 @@ void apply_event(const RefEvent &e, bool directed) {
 
 void apply_frame(const RefFrame &f) {
     ++g.st.frames_rx;
-    if (f.n_events > kSynrEvents) return;
+    if (!ref_frame_valid(f)) { ++g.st.frames_bad; return; }
     g.match_state = f.match_state;
     g.hdr_t0 = f.t0;
     g.hdr_match_ms = f.match_ms;
@@ -851,11 +955,10 @@ void process_synr() {
     unsigned short before = g.applied;
     while ((n = comms_hub_recv_t(kHubArenaRef, buf, (int)sizeof buf, &seat,
                                  &t)) > 0) {
-        if (n != kSynrBytes) continue;
+        if (n != kSynrBytes) { ++g.st.frames_bad; continue; }
         RefFrame f;
         std::memcpy(&f, buf, sizeof f);
-        if (f.tag != kTagR || f.version != 1 || f.seat != kRefereeMark) continue;
-        apply_frame(f);
+        apply_frame(f);       // checks the header and every field itself
     }
     if (g.applied != before || (g.adopted && !g.ready_sent)) {
         vs_arena_set_ack(g.applied);
@@ -867,7 +970,7 @@ void process_synr() {
 // READY
 // ---------------------------------------------------------------------------
 void read_hud_clock() {
-    char *hud = find_class(kClassHud, nullptr);
+    char *hud = (char *)port_hud_self;   // an fBase actor: not in the dActor list
     if (!hud) return;
     unsigned short &units = u16r(hud, 0x60);
     if (!g.hud_set) {
@@ -1172,17 +1275,14 @@ void syno_recv() {
     int n;
     while ((n = comms_hub_recv_t(kHubArenaObject, buf, (int)sizeof buf, &seat,
                                  &t)) > 0) {
-        if (n != kSynoBytes) continue;
+        if (n != kSynoBytes) { ++g.st.syno_bad; continue; }
         ObjFrame o;
         std::memcpy(&o, buf, sizeof o);
-        if (o.tag != kTagO || o.version != 1 || o.obj_class != 1) continue;
+        if (!syno_valid(o, seat)) { ++g.st.syno_bad; continue; }
         Inst *i = inst_by_id(o.obj_id);
         if (!i || i->state != 2) continue;
         if (i->owner != 0xFF && i->owner != (unsigned char)seat) continue;
         if (i->owner == g.seat) continue;
-        const int lim = 32768 << 12;
-        if (o.pos[0] > lim || o.pos[0] < -lim || o.pos[1] > lim || o.pos[1] < -lim ||
-            o.pos[2] > lim || o.pos[2] < -lim) continue;
         if (i->have_pos && o.frame <= i->rx_frame && i->rx_frame - o.frame < 300)
             continue;
         i->pos[0] = o.pos[0]; i->pos[1] = o.pos[1]; i->pos[2] = o.pos[2];
@@ -1228,7 +1328,8 @@ void hit_detect() {
         char *o = _ZN8dActor_c10FindWithIDEj(other);
         if (o != me) continue;
         if ((flags & ~0x1000u) == 0) continue;
-        if (vs_arena_body_held(k)) continue;
+        // (a lab rig's tongue eats the copy by itself; the rig still wants its hit claim)
+        if (!g.rig && vs_arena_body_held(k)) continue;
         if (fr - g.last_hit_claim_frame[k] < (unsigned)kHitRetryFrames &&
             g.last_hit_claim_frame[k]) continue;
         unsigned stamp;
@@ -1354,6 +1455,8 @@ void quit_at_exit() {
 // ---------------------------------------------------------------------------
 extern "C" char data_0209f49c[];
 extern "C" char data_0209f49e[];
+extern "C" char data_020a0e58[];   // PadData[4] {u16 held, u16 pressed}, the DS key words
+extern "C" char data_020a0e5a[];   // the split symbol: PadData[i].pressed
 
 unsigned rig_rand(unsigned seed, unsigned n) {
     unsigned x = seed * 2654435761u + n * 40503u + 12345u;
@@ -1367,6 +1470,7 @@ void rig_parse() {
     if (std::strncmp(e, "race", 4) == 0) g.rig = 1;
     else if (std::strncmp(e, "hit", 3) == 0) g.rig = 2;
     else if (std::strncmp(e, "chain", 5) == 0) g.rig = 3;
+    else if (std::strncmp(e, "fuzz", 4) == 0) g.rig = 4;
     const char *c = std::strchr(e, ':');
     if (c) g.rig_seed = (unsigned)std::strtoul(c + 1, nullptr, 10);
     if (g.rig)
@@ -1374,9 +1478,17 @@ void rig_parse() {
                      e, g.rig == 1 ? "contention" : g.rig == 2 ? "hit" : "chain", g.rig_seed);
 }
 
-void rig_press(int slot, unsigned short mask) {
-    *(short *)(data_0209f49c + slot * 0x18) |= (short)mask;
-    *(short *)(data_0209f49e + slot * 0x18) |= (short)mask;
+// A DS key (0x0001 = the DS A key, which this ROM maps to the attack button; 0x0002 is jump) into the slot's PadData, where
+// Stage::CheckInput (which runs inside the actor walk, AFTER this file's
+// pre-walk half) turns it into the ROM's own held / pressed words. Writing the
+// processed words (data_0209f49c / e) directly never worked: CheckInput rebuilds
+// them every frame. `edge` = the first frame of the press.
+void rig_press(int slot, unsigned short mask, bool edge) {
+    *(unsigned short *)(data_020a0e58 + slot * 4) |= mask;
+    if (edge) {
+        *(unsigned short *)(data_020a0e58 + slot * 4 + 2) |= mask;
+        *(unsigned short *)(data_020a0e5a + slot * 4) |= mask;
+    }
 }
 
 void rig_teleport(char *me, const int *to) {
@@ -1396,7 +1508,8 @@ void rig_race() {
         Inst &i = g.inst[k];
         if (!i.used || i.spilled) continue;
         if (i.state == 1 && g.seat == 0 && !i.rig_break_sent &&
-            now_ms() - i.born_ms > 2000 && g.vs_frames > 120) {
+            now_ms() - i.born_ms > 2000 && g.vs_frames > 120 &&
+            (int)(r - g.t0) > 500) {  /* claims count only once the clock runs */
             // the breaker: a claim straight to the referee (the glass breaks on
             // the event, everywhere)
             unsigned stamp;
@@ -1447,13 +1560,29 @@ void rig_punch_start(int dist_units) {
     s16r(me, 0x8e) = 0;               // facing +Z, toward the victim
     s16r(me, 0x94) = 0;
     g.rig_press_frames = 3;
+    g.rig_dist = dist_units;
+    g.rig_follow = 0;       // (kept for a walking victim; with the puppets folded in, set > 0: the ROM's tongue
+                            //  eats the copy and drags it along, which makes a follower run away from it)
 }
 
 void rig_punch_tick(bool inject_words) {
     char *me = my_body();
+    if (g.rig_follow > 0) {
+        --g.rig_follow;
+        char *vb = body_of(1);
+        if (me && vb) {
+            const int to[3] = { s32r(vb, 0x5c), s32r(vb, 0x60), s32r(vb, 0x64) - (g.rig_dist << 12) };
+            rig_teleport(me, to);
+        }
+    }
+    if (me && (g.rig_press_frames > 0 || g.rig_inject > 0))
+        std::fprintf(stderr, "[rig] press frame: my state idx %d, ctrl held=%04x pressed=%04x\n",
+                     vs_arena_state_index(me),
+                     (unsigned)*(unsigned short *)(data_0209f49c + g.seat * 0x18),
+                     (unsigned)*(unsigned short *)(data_0209f49e + g.seat * 0x18));
     if (g.rig_press_frames > 0) {
+        rig_press(g.seat, 0x0001, g.rig_press_frames == 3);
         --g.rig_press_frames;
-        rig_press(g.seat, 0x0002);
         if (g.rig_press_frames == 0 && inject_words) g.rig_inject = 3;
     } else if (g.rig_inject > 0 && --g.rig_inject == 0) {
         char *vb = body_of(1);
@@ -1473,6 +1602,22 @@ void rig_direct_hit_claim(const char *what) {
     std::fprintf(stderr, "[rig] hit: %s claim sent (id %u)\n", what, c ? c->cid : 0u);
 }
 
+// Until the puppets (lane PUPPET1) are folded in, seat 0's copy of seat 1 does not
+// move: it stands at seat 1's spawn point. A hit is range-checked by the referee
+// against seat 1's OWN reported position, so the rigs keep seat 1 at its spawn
+// point whenever seat 0 punches (the walking selftest would take it away).
+void rig_home_capture() {
+    char *me = my_body();
+    if (g.seat != 1 || g.rig_home_set || !me) return;
+    for (int a = 0; a < 3; ++a) g.rig_home[a] = s32r(me, 0x5c + 4 * a);
+    g.rig_home_set = true;
+}
+void rig_hold_home() {
+    char *me = my_body();
+    if (g.seat != 1 || !g.rig_home_set || !me) return;
+    rig_teleport(me, g.rig_home);
+}
+
 // hit rig: seat 0 hits seat 1, standing. phase 0 a valid punch; 1 a repeat claim
 // inside the hit immunity; 2 an attack from out of reach (a claim the referee
 // range-checks against both bodies' own reported positions); then again.
@@ -1482,10 +1627,12 @@ void rig_hit() {
     if (!ref_now(&r)) return;
     if (!my_body()) return;
     if (g.rig_next == 0) g.rig_next = g.t0 + 6000u;
+    rig_home_capture();
+    rig_hold_home();
     rig_punch_tick(true);
     if (g.seat != 0 || (int)(r - g.rig_next) < 0) return;
     if (g.rig_phase == 0) {
-        std::fprintf(stderr, "[rig] hit cycle %d: valid punch (B pressed, ref %u)\n", g.rig_n, r);
+        std::fprintf(stderr, "[rig] hit cycle %d: valid attack (attack button pressed, ref %u)\n", g.rig_n, r);
         rig_punch_start(90);
         g.rig_phase = 1;
         g.rig_next = r + 450u;
@@ -1494,7 +1641,7 @@ void rig_hit() {
         g.rig_phase = 2;
         g.rig_next = r + 3000u;
     } else if (g.rig_phase == 2) {
-        std::fprintf(stderr, "[rig] hit cycle %d: out of reach (600 units, B pressed)\n", g.rig_n);
+        std::fprintf(stderr, "[rig] hit cycle %d: out of reach (600 units, attack button pressed)\n", g.rig_n);
         rig_punch_start(600);
         g.rig_phase = 3;
         g.rig_next = r + 300u;
@@ -1516,11 +1663,16 @@ void rig_chain() {
     char *me = my_body();
     if (!me) return;
     rig_punch_tick(true);
+    rig_home_capture();
+    if (g.chain_hit_at && (int)(r - (g.chain_hit_at - 2000u)) >= 0 &&
+        (int)(r - (g.chain_hit_at + 1500u)) < 0)
+        rig_hold_home();            // seat 1 stands where seat 0's copy of it does
     for (int k = 1; k < kMaxInst; ++k) {
         Inst &i = g.inst[k];
         if (!i.used) continue;
         if (i.state == 1 && g.seat == 0 && !i.rig_break_sent && !i.spilled &&
-            now_ms() - i.born_ms > 2000 && g.vs_frames > 120) {
+            now_ms() - i.born_ms > 2000 && g.vs_frames > 120 &&
+            (int)(r - g.t0) > 500) {  /* claims count only once the clock runs */
             unsigned stamp;
             if (!stamp_for(now_ms(), &stamp)) continue;
             PClaim *c = make_claim(CLAIM_MARKER_BREAK, (unsigned char)k,
@@ -1556,10 +1708,201 @@ void rig_chain() {
     }
 }
 
+
+// NEGATIVE ROW (SM64DS_ARENA_RIG=fuzz): every kind of malformed referee frame /
+// event / object frame goes through the real receive path (apply_frame, the
+// directed-event path, syno_valid) and must be dropped and counted, the client's
+// state left exactly as it was; then a random-bytes and a mutated-frame sweep
+// runs through the validators alone (not applied) to show they never fault.
+unsigned fz_state_hash() {
+    unsigned h = 2166136261u;
+    auto mix = [&](unsigned v) { h = (h ^ v) * 16777619u; };
+    mix(g.applied); mix(g.started); mix(g.over); mix(g.progress); mix(g.roster);
+    mix(g.roster_now); mix(g.ever_roster); mix(g.match_state); mix(g.hdr_t0);
+    mix(g.hdr_match_ms); mix(g.ledger_seq);
+    for (int k = 0; k < 16; ++k) mix((unsigned char)g.ledger[k]);
+    int used = 0;
+    for (int k = 0; k < kMaxInst; ++k) if (g.inst[k].used) ++used;
+    mix((unsigned)used);
+    return h;
+}
+
+unsigned fz_rand(unsigned &st) {
+    st ^= st << 13; st ^= st >> 17; st ^= st << 5;
+    return st;
+}
+
+void fz_frame_template(RefFrame &f) {
+    std::memset(&f, 0, sizeof f);
+    f.tag = kTagR;
+    f.version = 1;
+    f.seat = kRefereeMark;
+    f.match_state = g.match_state;
+    f.newest_seq = g.ledger_seq;
+    f.roster = g.roster_now;
+    f.t0 = g.hdr_t0;
+    f.match_ms = g.hdr_match_ms;
+    std::memcpy(f.scores, g.ledger, 16);
+}
+
+void rig_fuzz() {
+    if (!g.started || g.over || g.rig_phase != 0) return;
+    if (!g.rig_next) g.rig_next = g.t0 + 4000u;
+    unsigned r;
+    if (!ref_now(&r) || (int)(r - g.rig_next) < 0) return;
+    g.rig_phase = 1;
+    const unsigned h0 = fz_state_hash();
+    int sent = 0, rejected = 0, leaked = 0;
+    auto inject = [&](const RefFrame &f, const char *what) {
+        const unsigned long long fb = g.st.frames_bad, eb = g.st.events_bad;
+        apply_frame(f);
+        ++sent;
+        if (g.st.frames_bad > fb || g.st.events_bad > eb) ++rejected;
+        else { ++leaked; std::fprintf(stderr, "[rig] fuzz LEAK: %s was NOT rejected\n", what); }
+    };
+    RefFrame f;
+#define BADFRAME(what, stmt) do { fz_frame_template(f); stmt; inject(f, what); } while (0)
+    BADFRAME("tag", f.tag = 0x41414141u);
+    BADFRAME("version", f.version = 2);
+    BADFRAME("referee mark", f.seat = 1);
+    BADFRAME("zero byte", f.zero = 1);
+    BADFRAME("n_events 9", f.n_events = 9);
+    BADFRAME("n_events 255", f.n_events = 255);
+    BADFRAME("match_state 4", f.match_state = 4);
+    BADFRAME("flags 0x80", f.flags = 0x80);
+    BADFRAME("first_to_n 100", f.first_to_n = 100);
+    BADFRAME("order_row 6", f.order_row = 6);
+    BADFRAME("map 16", f.map = 16);
+    BADFRAME("match_ms huge", f.match_ms = 3601u * 1000u);
+    BADFRAME("roster beyond the bodies", f.roster = (unsigned short)(f.roster | 0x8000));
+    BADFRAME("score -1", f.scores[0] = -1);
+    BADFRAME("score -100", f.scores[0] = -100);
+    BADFRAME("score of an absent seat", f.scores[15] = 1);
+    BADFRAME("part on a stream frame", f.part = 0x31);
+    BADFRAME("snapshot with no parts", f.flags = SYNR_F_SNAPSHOT; f.part = 0);
+    BADFRAME("snapshot part index >= count", f.flags = SYNR_F_SNAPSHOT; f.part = 0x32);
+    // events ride in a valid DIRECTED carrier (seq 0), so a drop leaves the
+    // stream's sequence alone
+#define BADEV(what, stmt) do { fz_frame_template(f); f.n_events = 1; f.flags = SYNR_F_DIRECTED; \
+        RefEvent &e = f.ev[0]; std::memset(&e, 0, sizeof e); e.seat = 0; stmt; inject(f, what); } while (0)
+    const int big = 0x7fffffff;
+    BADEV("START seat", e.type = EV_START; e.seat = 1; e.e = 5);
+    BADEV("START markers 0", e.type = EV_START; e.seat = 0xFF; e.e = 0);
+    BADEV("START time 3601", e.type = EV_START; e.seat = 0xFF; e.e = 5; e.c = 3601);
+    BADEV("START roster beyond", e.type = EV_START; e.seat = 0xFF; e.e = 5; e.d = 0x8000);
+    BADEV("WAKE instance 0", e.type = EV_STAR_WAKE; e.seat = 0xFF; e.a = 0);
+    BADEV("WAKE star id 8", e.type = EV_STAR_WAKE; e.seat = 0xFF; e.a = 1; e.b = 8);
+    BADEV("WAKE progress 256", e.type = EV_STAR_WAKE; e.seat = 0xFF; e.a = 1; e.c = 256);
+    BADEV("MARKER seat 15", e.type = EV_MARKER_BROKEN; e.seat = 15; e.a = 1);
+    BADEV("MARKER x huge", e.type = EV_MARKER_BROKEN; e.a = 1; e.x = big);
+    BADEV("MARKER z huge", e.type = EV_MARKER_BROKEN; e.a = 1; e.z = -big);
+    BADEV("TAKEN score 128", e.type = EV_STAR_TAKEN; e.a = 1; e.b = 128);
+    BADEV("TAKEN score 200", e.type = EV_STAR_TAKEN; e.a = 1; e.b = 200);
+    BADEV("TAKEN progress 300", e.type = EV_STAR_TAKEN; e.a = 1; e.e = 300);
+    BADEV("DENY kind 12", e.type = EV_DENY; e.a = 12; e.b = 1; e.d = 0xFF);
+    BADEV("DENY reason 0", e.type = EV_DENY; e.a = 3; e.b = 0; e.d = 0xFF);
+    BADEV("DENY winner 40", e.type = EV_DENY; e.a = 3; e.b = 3; e.d = 40);
+    BADEV("HIT victim 0xFF", e.type = EV_HIT; e.seat = 0xFF; e.a = 0);
+    BADEV("HIT attacker 9", e.type = EV_HIT; e.a = 9);
+    BADEV("HIT flags 0x2001", e.type = EV_HIT; e.a = 1; e.d = 0x2001);
+    BADEV("HIT spill inst 300", e.type = EV_HIT; e.a = 1; e.e = 300);
+    BADEV("HIT y huge", e.type = EV_HIT; e.a = 1; e.y = big);
+    BADEV("CLASH attacker 200", e.type = EV_CLASH; e.a = 200);
+    BADEV("SPILL cause 0", e.type = EV_SPILL; e.a = 1; e.c = 0);
+    BADEV("SPILL cause 5", e.type = EV_SPILL; e.a = 1; e.c = 5);
+    BADEV("SPILL marker 8", e.type = EV_SPILL; e.a = 1; e.b = 8; e.c = 1);
+    BADEV("SPILL score 200", e.type = EV_SPILL; e.a = 1; e.c = 1; e.d = 200);
+    BADEV("SPILL instance 0", e.type = EV_SPILL; e.a = 0; e.c = 1);
+    BADEV("SPILL origin huge", e.type = EV_SPILL; e.a = 1; e.c = 1; e.x = big);
+    BADEV("OVER reason 0", e.type = EV_MATCH_OVER; e.seat = 0xFF; e.a = 0);
+    BADEV("OVER reason 5", e.type = EV_MATCH_OVER; e.seat = 0xFF; e.a = 5);
+    BADEV("OVER winners mask beyond", e.type = EV_MATCH_OVER; e.seat = 0xFF; e.a = 1; e.c = 0xFFFF);
+    BADEV("OVER winner count 17", e.type = EV_MATCH_OVER; e.seat = 0xFF; e.a = 1; e.b = 17);
+    BADEV("LEAVE cause 0", e.type = EV_LEAVE; e.a = 0);
+    BADEV("LEAVE seat 15", e.type = EV_LEAVE; e.seat = 15; e.a = 1);
+    BADEV("JOIN mid 2", e.type = EV_JOIN; e.a = 2);
+    BADEV("STAR_STATE state 3", e.type = EV_STAR_STATE; e.seat = 0xFF; e.a = 1; e.b = 3);
+    BADEV("STAR_STATE marker 8", e.type = EV_STAR_STATE; e.seat = 0xFF; e.a = 1; e.b = 1; e.c = 8);
+    BADEV("STAR_STATE position", e.type = EV_STAR_STATE; e.seat = 0xFF; e.a = 1; e.b = 1; e.y = -big);
+    BADEV("ACCEPTED kind 0", e.type = EV_ACCEPTED; e.a = 0);
+    BADEV("ACCEPTED spill 300", e.type = EV_ACCEPTED; e.a = 3; e.d = 300);
+    BADEV("EATEN b 5", e.type = EV_EATEN; e.a = 1; e.b = 5);
+    BADEV("RELEASED eater 99", e.type = EV_RELEASED; e.a = 99);
+    BADEV("unknown type 0", e.type = 0);
+    BADEV("unknown type 16", e.type = 16);
+    BADEV("unknown type 255", e.type = 255);
+    BADEV("seat 16", e.type = EV_JOIN; e.seat = 16);
+#undef BADEV
+#undef BADFRAME
+    const unsigned h1 = fz_state_hash();
+    // the object frames, through the real validator
+    int ob_sent = 0, ob_bad = 0;
+    auto obj = [&](const char *what, const ObjFrame &o, int seat) {
+        ++ob_sent;
+        if (!syno_valid(o, seat)) ++ob_bad;
+        else std::fprintf(stderr, "[rig] fuzz LEAK: SYNO %s was NOT rejected\n", what);
+    };
+    ObjFrame base;
+    std::memset(&base, 0, sizeof base);
+    base.tag = kTagO; base.version = 1; base.seat = 0; base.obj_class = 1;
+    base.obj_id = 1; base.state = 2;
+    ObjFrame o;
+    o = base; o.tag = 0x41414141u;  obj("tag", o, 0);
+    o = base; o.version = 2;        obj("version", o, 0);
+    o = base; o.obj_class = 2;      obj("class", o, 0);
+    o = base; o.obj_id = 0;         obj("id 0", o, 0);
+    o = base; o.state = 0;          obj("state 0", o, 0);
+    o = base; o.state = 4;          obj("state 4", o, 0);
+    o = base; o.flags = 2;          obj("flags", o, 0);
+    o = base; o.pos[0] = big;       obj("x huge", o, 0);
+    o = base; o.pos[1] = -big;      obj("y huge", o, 0);
+    o = base; o.pos[2] = big;       obj("z huge", o, 0);
+    o = base;                       obj("seat 15", o, 15);
+    o = base;                       obj("seat -1", o, -1);
+    // the sweep: validators only, never applied
+    unsigned st = g.rig_seed * 2654435761u | 1u;
+    long rnd_pass = 0, mut_pass = 0, ev_pass = 0, ob_pass = 0;
+    const int N = 100000;
+    for (int n = 0; n < N; ++n) {
+        unsigned char b[kSynrBytes];
+        for (int k = 0; k < kSynrBytes; ++k) b[k] = (unsigned char)fz_rand(st);
+        RefFrame q;
+        std::memcpy(&q, b, sizeof q);
+        if (ref_frame_valid(q)) ++rnd_pass;
+        for (int k = 0; k < 8; ++k) if (ref_event_valid(q.ev[k])) ++ev_pass;
+        fz_frame_template(q);
+        q.n_events = 8;
+        for (int k = 0; k < 8; ++k) {
+            q.ev[k].type = (unsigned char)(1 + k);
+            q.ev[k].seat = 0; q.ev[k].a = 1; q.ev[k].c = 1; q.ev[k].e = 1;
+        }
+        unsigned char m[kSynrBytes];
+        std::memcpy(m, &q, sizeof m);
+        const int muts = 1 + (int)(fz_rand(st) % 6);
+        for (int k = 0; k < muts; ++k) m[fz_rand(st) % kSynrBytes] = (unsigned char)fz_rand(st);
+        std::memcpy(&q, m, sizeof q);
+        if (ref_frame_valid(q)) ++mut_pass;
+        unsigned char ob[kSynoBytes];
+        for (int k = 0; k < kSynoBytes; ++k) ob[k] = (unsigned char)fz_rand(st);
+        ObjFrame ro;
+        std::memcpy(&ro, ob, sizeof ro);
+        if (syno_valid(ro, (int)(fz_rand(st) % 24))) ++ob_pass;
+    }
+    std::fprintf(stderr, "[rig] fuzz negative: frames+events injected %d, rejected %d, "
+                 "leaked %d, state %s (hash %08x -> %08x); SYNO bad frames %d, rejected %d; "
+                 "sweep %d: random SYNR passing the frame check %ld (their events passing %ld of %d), "
+                 "mutated-valid SYNR passing %ld, random SYNO passing %ld; no fault\n",
+                 sent, rejected, leaked, h0 == h1 ? "UNCHANGED" : "CHANGED", h0, h1,
+                 ob_sent, ob_bad, N, rnd_pass, ev_pass, N * 8, mut_pass, ob_pass);
+    std::fprintf(stderr, "[rig] fuzz %s\n", (leaked == 0 && h0 == h1 && rejected == sent &&
+                 ob_bad == ob_sent) ? "PASS" : "FAIL");
+}
+
 void rig_step() {
     if (g.rig == 1) rig_race();
     else if (g.rig == 2) rig_hit();
     else if (g.rig == 3) rig_chain();
+    else if (g.rig == 4) rig_fuzz();
 }
 
 // ---------------------------------------------------------------------------
@@ -1776,12 +2119,13 @@ void vs_ref_report(const char *tag) {
     std::fprintf(stderr, "[vsarena-ref] %s seat=%d started=%d over=%d seq=%u "
                  "frames=%llu events=%llu dup=%llu gaps=%llu claims=%llu resent=%llu "
                  "verdicts=%llu denied=%llu taken=%llu hits=%llu/%llu/%llu spills=%llu "
-                 "syno=%llu/%llu ledger=%d,%d,%d,%d progress=%u\n", tag ? tag : "",
+                 "syno=%llu/%llu bad=%llu/%llu/%llu ledger=%d,%d,%d,%d progress=%u\n", tag ? tag : "",
                  g.seat, g.started, g.over, (unsigned)g.applied, g.st.frames_rx,
                  g.st.events_applied, g.st.events_dup, g.st.gaps, g.st.claims_sent,
                  g.st.claims_resent, g.st.verdicts, g.st.denied, g.st.stars_taken,
                  g.st.hits_claimed, g.st.hits_landed, g.st.hits_denied, g.st.spills,
-                 g.st.syno_tx, g.st.syno_rx, g.ledger[0], g.ledger[1], g.ledger[2],
+                 g.st.syno_tx, g.st.syno_rx, g.st.frames_bad, g.st.events_bad,
+                 g.st.syno_bad, g.ledger[0], g.ledger[1], g.ledger[2],
                  g.ledger[3], (unsigned)g.progress);
 }
 
