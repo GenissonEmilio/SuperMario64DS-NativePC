@@ -143,12 +143,12 @@ def run_rung(L, run, r, kit, Checks, Skip):
     import hashlib
     a = L.a
     exe = a.kit_exe if kit else L.exe
-    assets = a.e2e_assets or os.path.join(L.asset_root, "build", "assets")
+    assets = (a.kit_assets if kit else a.e2e_assets) or os.path.join(L.asset_root, "build", "assets")
     extracted = a.e2e_extracted or os.path.join(ROOT, "extracted")
     rom = a.e2e_rom or a.rom or ""
     ck = Checks()
     if not (os.path.exists(assets) and os.path.isdir(extracted) and os.path.exists(rom)):
-        raise Skip("needs --e2e-assets / --e2e-extracted / --e2e-rom (or --rom): assets %s extracted %s rom %s" % (
+        raise Skip("needs --e2e-assets (--kit-assets for the kit) / --e2e-extracted / --e2e-rom (or --rom): assets %s extracted %s rom %s" % (
             os.path.exists(assets), os.path.isdir(extracted), os.path.exists(rom)))
     secs = r.opts.get("secs", 75)
     name = r.name.replace("-", "_")

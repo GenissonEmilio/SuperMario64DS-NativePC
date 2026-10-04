@@ -2270,7 +2270,7 @@ def r_arenae2e(L, run, r):
         raise Skip("needs --launcher-repo (the private launcher checkout with tests/MpE2E built)")
     kit = r.opts.get("kit")
     if kit and not L.a.kit_exe:
-        raise Skip("needs --kit-exe (the kit-built walk_window.exe) and --e2e-assets for it")
+        raise Skip("needs --kit-exe (the kit-built walk_window.exe) and --kit-assets for it")
     return E.run_rung(L, run, r, kit, Checks, Skip)
 
 
@@ -2502,6 +2502,8 @@ def main(argv=None):
     ap.add_argument("--kit-exe", help="the kit-built (PORT_ROM_CLEAN) walk_window.exe for arena2-e2e-kit")
     ap.add_argument("--e2e-assets", help="build/assets dir for the e2e rungs (the kit exe needs the kit "
                     "build's own romdata pair); default: <asset root>/build/assets")
+    ap.add_argument("--kit-assets", help="build/assets dir holding the KIT build's own romdata pair "
+                    "(arena2-e2e-kit; the dev assets crash a kit exe)")
     ap.add_argument("--e2e-extracted", default="", help="extracted/ for the e2e peers' bundles")
     ap.add_argument("--e2e-rom", default="", help="the .nds for the e2e peers' bundles (default --rom)")
     ap.add_argument("--out")

@@ -146,6 +146,7 @@ def run_rows(base, tip, root, out):
         rows.append(("f3off", {"SM64DS_LEVEL": "1", "SM64DS_WINDOW_SELFTEST": "600"}, "md5"))
         rows.append(("rendereron", {"SM64DS_LEVEL": "1", "SM64DS_WINDOW_SELFTEST": "600",
                                     "SM64DS_RENDERER": "1"}, "md5"))
+        res = {}
         for name, extra, kind in rows:
             got = {}
             for which, exe in (("base", base), ("tip", tip)):
@@ -153,12 +154,20 @@ def run_rows(base, tip, root, out):
                 rc, t = run(exe, root, w, extra, which + name)
                 bmp = os.path.join(w, "walk_window_selftest.bmp")
                 got[which] = (rc, len(FAULT.findall(t)), sha(bmp) if kind == "sha" else md5(bmp))
+            res[name] = got
             same = got["base"] == got["tip"]
             ok_all &= same and got["tip"][0] == 0
             lines.append("%-16s base rc=%s faults=%d %s=%s | tip rc=%s faults=%d %s=%s  %s" % (
                 name, got["base"][0], got["base"][1], kind, got["base"][2][:12],
                 got["tip"][0], got["tip"][1], kind, got["tip"][2][:12],
                 "SAME" if same else "DIFFERENT"))
+        # MUST-FAIL CONTROL: the comparison can go red. The base's F3-off picture against the
+        # TIP's renderer-on picture are different images (4e4490c4 vs 289e9f3b on INT69B).
+        ctl = res["f3off"]["base"][2] != res["rendereron"]["tip"][2]
+        ok_all &= ctl
+        lines.append("control           base f3off %s vs tip rendereron %s  %s" % (
+            res["f3off"]["base"][2][:12], res["rendereron"]["tip"][2][:12],
+            "DIFFERENT (the compare can go red)" if ctl else "SAME: THE COMPARE CANNOT GO RED"))
         for name, extra in (("traps_absent", {"SM64DS_SCENE": "1", "SM64DS_SCENE_FRAMES": "300"}),
                             ("traps_all", {"SM64DS_SCENE": "1", "SM64DS_SCENE_FRAMES": "300",
                                            "SM64DS_RENDER_SCALE": "4", "SM64DS_SMOOTH_MODELS": "2",
