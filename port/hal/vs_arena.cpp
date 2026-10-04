@@ -703,6 +703,8 @@ enum : int {
     kPlayerBodyClsn = 0x2d4,  // mdCcAcPos_c
     kPlayerAttackClsn = 0x314,
     kPlayerBodyClsnOn = 0x713,
+    kStLevelEnter = 51,       // state_table.json: St_LevelEnter
+    kPupIntroMaxFrames = 900, // 30 s: take over a seat that never leaves the intro
 };
 
 struct PupDraw {
@@ -1088,6 +1090,26 @@ void pup_before_walk() {
         char *a = (char *)data_0209f394[k];
         if (!a || !data_0209fc5c[k] || g.ring[k].held) continue;
         Pup &pp = g_pup[k];
+        // THE INTRO RUNS FIRST. The ROM's VS level-entry state (St_LevelEnter,
+        // state_table.json idx 51) is released for the bodies by the level's own
+        // start, and a joiner's own body never left it when slot 0 was held from
+        // frame 0 (real entry path, ARENAGATE1 finding 1: St_LevelEnter for 1500+
+        // frames, A0 alone does not do it). So a puppet is left to the ROM, with
+        // its zero pad, until my own body AND this body are out of that state;
+        // the hold starts at the first frame both are. A seat that never leaves
+        // it (or a fixture without the intro) is taken over anyway after
+        // kPupIntroMaxFrames.
+        if (!pp.driven && g.frame < (unsigned)kPupIntroMaxFrames) {
+            const int mine = state_index_of(data_0209f394[g.seat]);
+            const int its = state_index_of(a);
+            if (mine == kStLevelEnter || its == kStLevelEnter) {
+                if (pup_log() && (g.frame % 30u) == 0)
+                    std::fprintf(stderr, "[pup-intro] f=%u seat=%d waits: my state %d, its "
+                                 "state %d
+", g.frame, k, mine, its);
+                continue;
+            }
+        }
         if (pup_log() && pp.driven) {
             const unsigned hf = *(const unsigned *)(a + kPlayerBodyClsn + 0x20);
             const unsigned ow = *(const unsigned *)(a + kPlayerBodyClsn + 0x24);
