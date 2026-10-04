@@ -1450,6 +1450,8 @@ void quit_at_exit() {
 // ---------------------------------------------------------------------------
 extern "C" char data_0209f49c[];
 extern "C" char data_0209f49e[];
+extern "C" char data_020a0e58[];   // PadData[4] {u16 held, u16 pressed}, the DS key words
+extern "C" char data_020a0e5a[];   // the split symbol: PadData[i].pressed
 
 unsigned rig_rand(unsigned seed, unsigned n) {
     unsigned x = seed * 2654435761u + n * 40503u + 12345u;
@@ -1471,9 +1473,17 @@ void rig_parse() {
                      e, g.rig == 1 ? "contention" : g.rig == 2 ? "hit" : "chain", g.rig_seed);
 }
 
-void rig_press(int slot, unsigned short mask) {
-    *(short *)(data_0209f49c + slot * 0x18) |= (short)mask;
-    *(short *)(data_0209f49e + slot * 0x18) |= (short)mask;
+// A DS key (0x0002 = B, the attack button) into the slot's PadData, where
+// Stage::CheckInput (which runs inside the actor walk, AFTER this file's
+// pre-walk half) turns it into the ROM's own held / pressed words. Writing the
+// processed words (data_0209f49c / e) directly never worked: CheckInput rebuilds
+// them every frame. `edge` = the first frame of the press.
+void rig_press(int slot, unsigned short mask, bool edge) {
+    *(unsigned short *)(data_020a0e58 + slot * 4) |= mask;
+    if (edge) {
+        *(unsigned short *)(data_020a0e58 + slot * 4 + 2) |= mask;
+        *(unsigned short *)(data_020a0e5a + slot * 4) |= mask;
+    }
 }
 
 void rig_teleport(char *me, const int *to) {
@@ -1549,9 +1559,14 @@ void rig_punch_start(int dist_units) {
 
 void rig_punch_tick(bool inject_words) {
     char *me = my_body();
+    if (me && (g.rig_press_frames > 0 || g.rig_inject > 0))
+        std::fprintf(stderr, "[rig] press frame: my state idx %d, ctrl held=%04x pressed=%04x\n",
+                     vs_arena_state_index(me),
+                     (unsigned)*(unsigned short *)(data_0209f49c + g.seat * 0x18),
+                     (unsigned)*(unsigned short *)(data_0209f49e + g.seat * 0x18));
     if (g.rig_press_frames > 0) {
+        rig_press(g.seat, 0x0002, g.rig_press_frames == 3);
         --g.rig_press_frames;
-        rig_press(g.seat, 0x0001);
         if (g.rig_press_frames == 0 && inject_words) g.rig_inject = 3;
     } else if (g.rig_inject > 0 && --g.rig_inject == 0) {
         char *vb = body_of(1);
