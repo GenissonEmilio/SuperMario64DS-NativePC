@@ -1493,7 +1493,8 @@ void rig_race() {
         Inst &i = g.inst[k];
         if (!i.used || i.spilled) continue;
         if (i.state == 1 && g.seat == 0 && !i.rig_break_sent &&
-            now_ms() - i.born_ms > 2000 && g.vs_frames > 120) {
+            now_ms() - i.born_ms > 2000 && g.vs_frames > 120 &&
+            (int)(r - g.t0) > 500)   // the referee takes claims only once the clock runs {
             // the breaker: a claim straight to the referee (the glass breaks on
             // the event, everywhere)
             unsigned stamp;
@@ -1617,7 +1618,8 @@ void rig_chain() {
         Inst &i = g.inst[k];
         if (!i.used) continue;
         if (i.state == 1 && g.seat == 0 && !i.rig_break_sent && !i.spilled &&
-            now_ms() - i.born_ms > 2000 && g.vs_frames > 120) {
+            now_ms() - i.born_ms > 2000 && g.vs_frames > 120 &&
+            (int)(r - g.t0) > 500)   // the referee takes claims only once the clock runs {
             unsigned stamp;
             if (!stamp_for(now_ms(), &stamp)) continue;
             PClaim *c = make_claim(CLAIM_MARKER_BREAK, (unsigned char)k,
