@@ -2561,6 +2561,12 @@ def main(argv=None):
                 miss.append("kit")
             if [x for x in r.opts.get("retired_by", ()) if feats.have.get(x)]:
                 miss = ["retired"]
+            if r.kind == "arenae2e" and not a.launcher_repo:
+                miss.append("--launcher-repo")
+            if r.kind == "arenae2e" and r.opts.get("kit") and not a.kit_exe:
+                miss.append("--kit-exe")
+            if r.kind == "arenasolo_gate" and not a.base_exe:
+                miss.append("--base-exe")
             print("%-34s %-40s %s" % (r.name, r.desc(), ("needs " + ",".join(miss)) if miss else "runs"))
         print("%d rungs in tier %s" % (len(rungs), a.tier))
         return 0
