@@ -2001,7 +2001,9 @@ void star_census() {
         const Inst &i = g.inst[k];
         if (!i.used || i.state != 2) continue;
         ++free_known;
-        if (!star_by_uid(i.uid)) ++missing;
+        // (an instance that never had an actor of its own is the ROM's: past the
+        // fifth star the order repeats a star id whose dormant copy is spent)
+        if ((i.spilled || i.uid) && !star_by_uid(i.uid)) ++missing;
     }
     static int cur[5], held = 0, shown[5] = {-1, -1, -1, -1, -1};
     const int now[5] = { live, orphans, free_known, missing, sum };
