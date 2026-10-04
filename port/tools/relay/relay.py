@@ -395,6 +395,9 @@ DEFAULT_BIND = "0.0.0.0"
 DEFAULT_IDLE_S = 90.0
 DEFAULT_STATS_S = 60.0
 DEFAULT_HUB_IDLE_S = 10.0
+# An arena seat whose console has been silent this long (no datagram, no HELLO)
+# is given to a console that asks for it by number; a live seat never is.
+SEAT_RECLAIM_S = 1.5
 
 # ------------------------------------------------------------------- utils
 
@@ -1004,12 +1007,50 @@ class RelayProtocol(asyncio.DatagramProtocol):
             else:
                 seat = want
         else:
+            # An arena session seats only as many consoles as the match has
+            # bodies (the referee learns that from the first READY's
+            # capacity; before it, the room is open to every hub seat). A
+            # seat with no body would be a console the game cannot seat.
+            top = HUB_SEATS
+            if kind == KIND_ARENA and session.referee is not None:
+                bodies = session.referee.body_count()
+                if bodies is not None:
+                    top = min(top, bodies)
             if want == WANT_ANY:
-                seat = session.free_seat(0, HUB_SEATS - 1)
+                seat = session.free_seat(0, top - 1)
                 if seat is None:
-                    status, why = STATUS_FULL, "hub full"
+                    status, why = STATUS_FULL, (
+                        "hub full" if top == HUB_SEATS else
+                        "all %d bodies of this arena are seated" % top)
+            elif want >= top:
+                status, why = STATUS_FULL, (
+                    "seat %d has no body (this arena has %d)" % (want, top))
             elif want in session.seats:
-                status, why = STATUS_SEAT_TAKEN, "seat %d taken" % want
+                holder = self.endpoints.get(session.seats[want])
+                if (kind == KIND_ARENA and holder is not None
+                        and (now - holder.last_seen) >= SEAT_RECLAIM_S):
+                    # The seat's console has gone silent (a crash and a quick
+                    # restart is a new source port). The returning console
+                    # takes its seat back now instead of waiting out the
+                    # idle expiry. The old holder leaves FIRST, so the
+                    # referee's leave / spill rules run before the join. A
+                    # live holder (heard within SEAT_RECLAIM_S) is never
+                    # displaced: that is the only thing standing between a
+                    # seat and anybody who knows the room code.
+                    log("session %s seat %d reclaimed from %s: silent %.1f s"
+                        % (code, want, short_addr(holder.addr),
+                           now - holder.last_seen))
+                    self._detach(holder, "seat reclaimed by a returning "
+                                 "console", now)
+                    if self.sessions.get(code) is not session:
+                        # the holder was the room's only member: the detach
+                        # expired the session, and the returning console is
+                        # its next member
+                        self.sessions[code] = session
+                        self.arenas[code] = session
+                    seat = want
+                else:
+                    status, why = STATUS_SEAT_TAKEN, "seat %d taken" % want
             else:
                 seat = want
         if status != STATUS_OK:
