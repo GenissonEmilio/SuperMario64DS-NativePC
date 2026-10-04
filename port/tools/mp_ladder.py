@@ -1829,8 +1829,9 @@ def pad_script(k, start=600, span=1800):
 
 
 def lat_pad(start=1000, gap=75, count=8):
-    """A presses spaced a landing apart, after the countdown: the latency probe."""
-    return ",".join("%04x@%d" % (BTN_A, start + gap * i) for i in range(count))
+    """SM64DS_PROBE_INPUT: A presses spaced a landing apart, after the countdown (the latency
+    probe reads the ROM's own key word, which SM64DS_HOST_PAD's XInput path did not reach)."""
+    return ",".join("%d:A" % (start + gap * i) for i in range(count))
 
 
 def arena_env(run, key, seat, n, relay, o, exe=None, asset_root=None):
@@ -1869,7 +1870,7 @@ def arena_env(run, key, seat, n, relay, o, exe=None, asset_root=None):
         e["SM64DS_ARENA_RIG"] = "race:%d" % (int(hashlib.md5(run.rung.name.encode()).hexdigest()[:4], 16) % 997)
     if o.get("lat"):
         e["SM64DS_ARENA_LATENCY"] = "1"
-        e["SM64DS_HOST_PAD"] = lat_pad()
+        e["SM64DS_PROBE_INPUT"] = lat_pad()
     elif o.get("pad", True):
         e["SM64DS_HOST_PAD"] = pad_script(seat)
     delays = o.get("delays")
@@ -2073,8 +2074,9 @@ def r_arenacam(L, run, r):
     texts = fl.texts()
     rcs = {k: (0 if fl.how.get(k) == "closed" else v) for k, v in fl.rcs.items()}
     ck = Checks()
-    judge_into(ck, AL.judge_camera(texts, rcs))
-    control(ck, "camera", lambda t: AL.judge_camera(t, rcs), AL.mutate("camera", texts))
+    am = bool(L.feats.have.get("A1"))
+    judge_into(ck, AL.judge_camera(texts, rcs, others_move=am))
+    control(ck, "camera", lambda t: AL.judge_camera(t, rcs, others_move=am), AL.mutate("camera", texts))
     relay_checks(ck, run)
     return ck, wall, rcs
 

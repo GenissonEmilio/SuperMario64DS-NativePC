@@ -394,8 +394,20 @@ def camera_votes(t):
     return (votes.most_common(1)[0][0] if votes else -1), dict(votes), nf
 
 
-def judge_camera(texts, rcs, min_frames=100):
-    """Each console films its OWN slot (the field bug: the child filmed slot 0)."""
+def body_positions(t):
+    """slot -> distinct positions its body took on THIS console (the [vs] probe)."""
+    pos = collections.defaultdict(set)
+    for f, s, x, y, z in BODY.findall(t):
+        pos[int(s)].add((x, y, z))
+    return {s: len(v) for s, v in pos.items()}
+
+
+def judge_camera(texts, rcs, min_frames=100, min_move=100, others_move=False):
+    """Each console films its OWN slot (the field bug: the child filmed slot 0), and
+    its OWN body moves (>= min_move distinct positions on its own screen: the
+    lockstep rungs' 'a motionless body cannot pass' rule; a frozen joiner body
+    passes a camera check on its own); with others_move (puppets landed) every
+    other slot's body moves on this screen too."""
     out = []
     seats = []
     for k in sorted(texts):
@@ -403,6 +415,14 @@ def judge_camera(texts, rcs, min_frames=100):
         m = SEATED.search(t)
         me = int(m.group(1)) if m else -1
         seats.append(me)
+        bp = body_positions(t)
+        out.append((bp.get(me, 0) >= min_move,
+                    "p%d own body (slot %d) moved on its own screen: %d distinct positions (>= %d)" % (
+                        k, me, bp.get(me, 0), min_move)))
+        if others_move:
+            low = {s: c for s, c in bp.items() if s != me and c < min_move // 2}
+            out.append((not low and len(bp) >= 2, "p%d sees every other body move (distinct positions %s)" % (
+                k, {s: c for s, c in sorted(bp.items())})))
         follows, votes, nf = camera_votes(t)
         out.append((rcs.get(k) in (0, None) and not FAULT.search(t), "p%d rc=%s faults=%d" % (k, rcs.get(k), len(FAULT.findall(t)))))
         out.append((me == k and follows == me and nf >= min_frames,
@@ -521,8 +541,8 @@ def _console(seat, n, reason=2, winners=1, scores=(3, 1, 0, 0), frame=700, up=Tr
     if cam:
         for f in range(200, 330):
             for s in range(n):
-                L.append("[vs] f%d slot%d actor=0 no=0 char=3 pos=(%d,0,0) touched=0 pad=0000" % (f, s, (s + 1) * 100 * 4096))
-            L.append("[camw] f%d mode=a at=(%d.0,0.0,0.0)" % (f, (seat + 1) * 100))
+                L.append("[vs] f%d slot%d actor=0 no=0 char=3 pos=(%d,0,0) touched=0 pad=0000" % (f, s, (s + 1) * 100 * 4096 + f * 4096))
+            L.append("[camw] f%d mode=a at=(%d.0,0.0,0.0)" % (f, (seat + 1) * 100 + f))
     return "\n".join(L) + "\n"
 
 
@@ -568,7 +588,9 @@ def selftest():
     expect("camera good", not red(judge_camera(TC, R)))
     m = mutate("camera", TC)
     expect("camera control", m is not None and red(judge_camera(m[1], R)))
-    TWRONG = {0: _console(0, 2, cam=True), 1: _console(1, 2, cam=True).replace("[camw] f", "[camw] f").replace("at=(200.0", "at=(100.0")}
+    TWRONG = {0: _console(0, 2, cam=True),
+              1: re.sub(r"(\[camw\] f\d+ mode=a at=\()(\d+)", lambda m: m.group(1) + str(int(m.group(2)) - 100),
+                        _console(1, 2, cam=True))}
     expect("camera on the wrong slot is red", red(judge_camera(TWRONG, R)))
     # leave: p2 held 2 stars when it left
     held_log = ("[vsarena-ref] STAR_TAKEN inst=4 winner=2 score=1 claim=1 progress=1 stamp=1\n"
