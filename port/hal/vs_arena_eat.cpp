@@ -106,6 +106,7 @@ struct EatE {                    // I am the eater
     int phase = 0;               // 0 waiting for the verdict, 1 EATEN
     unsigned t0_ms = 0;
     unsigned epoch = 0;          // the victim seat's join epoch when I ate it
+    unsigned seen = 0;           // the most SYNS ever counted from it (a smaller count = a new console)
 };
 struct EatV {                    // I am the victim
     bool active = false;
@@ -113,6 +114,7 @@ struct EatV {                    // I am the victim
     unsigned frame0 = 0;
     unsigned absent = 0;         // frames the eater's seat has been missing
     unsigned epoch = 0;          // the eater seat's join epoch when I was eaten
+    unsigned seen = 0;
 };
 
 struct Eat {
@@ -270,7 +272,9 @@ void e_monitor() {
         // the victim's console left and came back before the referee noticed (its seat was
         // reclaimed inside the presence window), or went quiet: the referee still has it in my mouth
         ArenaSeatView sv;
-        if (vs_arena_seat_view(g.e.k, &sv) && (sv.join_epoch != g.e.epoch || sv.newest_age_ms > (unsigned)kSilentMs)) {
+        if (vs_arena_seat_view(g.e.k, &sv) && sv.samples > g.e.seen) g.e.seen = sv.samples;
+        if (vs_arena_seat_view(g.e.k, &sv) && (sv.join_epoch != g.e.epoch || sv.newest_age_ms > (unsigned)kSilentMs ||
+                                               sv.samples + 4 < g.e.seen)) {
             e_drop_puppet("the victim's console re-joined or fell silent");
             if (g.e.phase == 1) vs_ref_claim(CLAIM_SPIT, (unsigned char)g.e.k, 0, 0, 0, 0);
             e_finish();
@@ -484,7 +488,9 @@ void v_monitor() {
         // the eater's console left and came back before the referee noticed: whatever now
         // sits in that seat holds nobody; the referee still has me in its mouth, so tell it
         ArenaSeatView sv;
-        if (vs_arena_seat_view(g.v.e, &sv) && (sv.join_epoch != g.v.epoch || sv.newest_age_ms > (unsigned)kSilentMs)) {
+        if (vs_arena_seat_view(g.v.e, &sv) && sv.samples > g.v.seen) g.v.seen = sv.samples;
+        if (vs_arena_seat_view(g.v.e, &sv) && (sv.join_epoch != g.v.epoch || sv.newest_age_ms > (unsigned)kSilentMs ||
+                                               sv.samples + 4 < g.v.seen)) {
             vs_ref_claim(CLAIM_ESCAPE, (unsigned char)g.v.e, 0, 0, 0, 0);
             v_release(4, "the eater's console re-joined or fell silent");
             return;
