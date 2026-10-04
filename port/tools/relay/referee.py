@@ -602,6 +602,11 @@ class Referee(object):
 
     # ---- the relay's hooks
 
+    def body_count(self):
+        """Bodies the match is set up for (the first READY's capacity), or None
+        while no READY has fixed it."""
+        return self.cfg[4] if self.cfg is not None else None
+
     def on_join(self, seat, now):
         # Nothing is sent yet: the seat hears the referee once its clock ping
         # proves its address (on_ping).

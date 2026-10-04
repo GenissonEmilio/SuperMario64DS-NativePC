@@ -326,13 +326,15 @@ def streaming(rig, consoles, secs, ping_every=0.5):
     rig.advance(secs, each=each)
 
 
-def match(n=2, first_to_n=0, time_s=120, markers=5, env=None, code="ARENA01"):
+def match(n=2, first_to_n=0, time_s=120, markers=5, env=None, code="ARENA01",
+          cap=None):
     """A rig with n consoles in a RUNNING match (countdown done)."""
     rig = Rig(env=env)
     cs = [Console(rig, code) for _ in range(n)]
     streaming(rig, cs, 0.6)
     for c in cs:
-        c.ready(cap=n, time_s=time_s, first_to_n=first_to_n, markers=markers)
+        c.ready(cap=cap or n, time_s=time_s, first_to_n=first_to_n,
+                markers=markers)
     streaming(rig, cs, 3.2)
     return rig, cs
 
@@ -878,7 +880,8 @@ def u_hits(mod):
 
 def u_reliability(mod):
     res = Result("reliability: resends, ack catch-up, snapshot, one verdict")
-    rig, (a, b) = match(2)
+    rig, (a, b) = match(2, cap=3)       # room for the late joiner below
+    streaming(rig, [a, b], 20.0)        # a 3-body match starts on 2 after 20 s
     ref = rig.ref("ARENA01")
     inst = a.find("STAR_WAKE")[-1]["a"]
     cid = a.claim(CL["MARKER_BREAK"], inst)
@@ -917,7 +920,7 @@ def u_reliability(mod):
     c = Console(rig, "ARENA01")
     c.syns_ack_zero = True
     streaming(rig, [a, b, c], 0.5)
-    c.ready(cap=2, time_s=120)
+    c.ready(cap=3, time_s=120)
     streaming(rig, [a, b, c], 0.5)
     joins = a.find("JOIN", seat=c.seat)
     res.check(joins and joins[-1]["a"] == 1, "late READY: JOIN mid-match")
@@ -976,6 +979,127 @@ def u_leave(mod):
     lv = d.find("LEAVE", seat=e.seat)
     res.check(lv and lv[-1]["a"] == 3, "relay detach -> LEAVE (detach)")
     res.check(d.find("MATCH_OVER"), "and last standing ends it")
+    return res
+
+
+def u_rejoin(mod):
+    res = Result("rejoin: a silent seat is reclaimed by number, a live one never; "
+                 "no seat past the body count")
+    # --- the quick rejoin: seat 3's console dies, a new process (new source
+    # port) asks for seat 3 about 2 s later, while the relay still holds it
+    rig, (a, b, c, d) = match(4, code="REJOIN01")
+    code = "REJOIN01"
+    ref = rig.ref(code)
+    sess = rig.session(code)
+    res.check(ref.body_count() == 4, "READY fixed the body count at 4")
+    old_addr = d.addr
+    streaming(rig, [a, b, c], 0.5)          # d silent for 0.5 s
+    e = Console(rig, code, want=3, ping=False)
+    res.check(e.seat is None and e.got[-1][5] == 4,
+              "silent 0.5 s: want_seat 3 is refused, seat taken (status 4)")
+    res.check(sess.seats.get(3) == old_addr, "seat 3 still held by its console")
+    streaming(rig, [a, b, c], 1.5)          # now silent 2.0 s
+    rig.consoles.remove(e)
+    e = Console(rig, code, want=3, ping=False)
+    res.check(e.seat == 3 and e.got[-1][5] == 0 and e.got[-1][6] == 3,
+              "silent 2.0 s: want_seat 3 -> seat 3 back, ACK status 0")
+    res.check(sess.seats.get(3) == e.addr and old_addr not in
+              rig.relay.endpoints, "the old holder is gone, the new one holds it")
+    rig.consoles.remove(d)
+    streaming(rig, [a, b, c, e], 0.3)
+    lv = a.find("LEAVE", seat=3)
+    res.check(lv, "the referee ran the old holder's leave (LEAVE event, "
+              "in order before the new join)")
+    res.check(3 not in ref.roster, "the old body is out of the match ledger")
+    # the old console, if it was only lagging, is a stranger now and is told
+    # no (its keepalive HELLO asks for seat 3, which is live again)
+    d_back = Console(rig, code, want=3, ping=False)
+    res.check(d_back.seat is None and d_back.got[-1][5] == 4,
+              "the displaced console cannot take the seat back from a live one")
+    rig.consoles.remove(d_back)
+    # --- HIJACK: a live seat's number from another console is refused, over
+    # and over, while the holder is heard (SYNS 30 Hz) or only keeps HELLOs
+    rig.relay.stats_line()
+    refused = 0
+    for k in range(40):
+        streaming(rig, [a, b, c, e], 0.25)
+        h = Console(rig, code, want=1, ping=False)
+        if h.seat is None and h.got[-1][5] == 4:
+            refused += 1
+        rig.consoles.remove(h)
+    res.check(refused == 40 and sess.seats.get(1) == b.addr,
+              "hijack x40 against a live seat (10 s of play): all refused, "
+              "the holder keeps seat 1 (%d)" % refused)
+    # only HELLO keepalives, 1 per second: still live
+    for k in range(6):
+        rig.send(b.addr, hello(code, 3, 1))
+        rig.advance(1.0, step=0.05)
+        h = Console(rig, code, want=1, ping=False)
+        res.check(h.seat is None and h.got[-1][5] == 4,
+                  "holder that only sends its 1 Hz HELLO is live (t+%d)" % k)
+        rig.consoles.remove(h)
+    # the boundary: heard 1.4 s ago = live, 1.6 s ago = reclaimable
+    rig.send(b.addr, hello(code, 3, 1))
+    rig.advance(1.4, step=0.05)
+    h = Console(rig, code, want=1, ping=False)
+    res.check(h.seat is None, "silent 1.4 s: not yet")
+    rig.consoles.remove(h)
+    rig.advance(0.2, step=0.05)
+    h = Console(rig, code, want=1, ping=False)
+    res.check(h.seat == 1, "silent 1.6 s: reclaimable")
+    rig.consoles.remove(h)
+    # a console may not ask for a seat by taking WANT_ANY out of the bodies
+    streaming(rig, [a, c, e], 0.2)
+    # --- no seat past the body count
+    rig2, (p0, p1) = match(2, code="BODY0002")
+    ref2 = rig2.ref("BODY0002")
+    res.check(ref2.body_count() == 2, "2 bodies")
+    x = Console(rig2, "BODY0002", want=0xFF, ping=False)
+    res.check(x.seat is None and x.got[-1][5] == 1,
+              "a third console asking for any seat in a 2-body arena: FULL "
+              "(status 1), never seat 2")
+    y = Console(rig2, "BODY0002", want=2, ping=False)
+    res.check(y.seat is None and y.got[-1][5] == 1,
+              "want_seat 2 in a 2-body arena: FULL (status 1)")
+    z = Console(rig2, "BODY0002", want=15, ping=False)
+    res.check(z.seat is None and z.got[-1][5] == 1, "want_seat 15: FULL")
+    res.check(sorted(rig2.session("BODY0002").seats) == [0, 1],
+              "seats still 0 and 1")
+    # free seat 0 by a relay detach: any-seat gives 0, still not 2
+    rig2.consoles.remove(p0)
+    rig2.relay._detach(rig2.relay.endpoints[p0.addr], "idle", rig2.now)
+    w = Console(rig2, "BODY0002", want=0xFF, ping=False)
+    res.check(w.seat == 0, "any-seat with seat 0 free -> seat 0")
+    w2 = Console(rig2, "BODY0002", want=0xFF, ping=False)
+    res.check(w2.seat is None and w2.got[-1][5] == 1, "and the next is FULL")
+    # before any READY the room is as open as it was (the body count is not
+    # known yet)
+    rig3 = Rig(mod)
+    q = [Console(rig3, "BODY0003", ping=False) for _ in range(6)]
+    res.check([k.seat for k in q] == list(range(6)) and
+              rig3.ref("BODY0003").body_count() is None,
+              "no READY yet: seats 0..5 given as before")
+    # --- the sole member's console restarts: the room survives the reclaim
+    rig4 = Rig(mod)
+    s0 = Console(rig4, "SOLO0004")
+    streaming(rig4, [s0], 0.5)
+    rig4.advance(2.0)
+    s1 = Console(rig4, "SOLO0004", want=0, ping=False)
+    res.check(s1.seat == 0 and rig4.session("SOLO0004") is not None
+              and "SOLO0004" in rig4.relay.arenas
+              and rig4.session("SOLO0004").seats.get(0) == s1.addr,
+              "a lone member restarting gets seat 0 and the room is kept")
+    # --- hubs are untouched: a silent hub member is not displaced by number
+    rig5 = Rig(mod)
+    h0 = Console.__new__(Console)
+    addr_a, addr_b = rig5.addr(), rig5.addr()
+    rig5.relay.on_datagram(hello("HUB00005", 2, 0), addr_a, rig5.now)
+    rig5.advance(5.0)
+    rig5.wire.sent = []
+    rig5.relay.on_datagram(hello("HUB00005", 2, 0), addr_b, rig5.now)
+    out = [d for d, ad in rig5.wire.sent if ad == addr_b]
+    res.check(out and out[-1][5] == 4,
+              "a hub seat is not reclaimed by number (status 4)")
     return res
 
 
@@ -1133,7 +1257,7 @@ def run_unit():
     mod = load_relay()
     tests = (u_contract, u_handshake, u_routes, u_match, u_timeup,
              u_contention, u_hits, u_reliability, u_leave, u_ready,
-             u_strikes, u_eat, u_rematch)
+             u_strikes, u_eat, u_rematch, u_rejoin)
     results = []
     for t in tests:
         try:
