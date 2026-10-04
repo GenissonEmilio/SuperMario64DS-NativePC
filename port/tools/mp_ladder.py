@@ -2191,47 +2191,59 @@ def r_arenasolo(L, run, r):
 
 def r_arenaleave(L, run, r):
     """A console leaves MID-MATCH holding stars (killed: a crash, or closed: a
-    player quitting) and the match goes on; with rejoin=True it comes back."""
+    player quitting) and the match goes on. The leaver is the first seat 1..n-1
+    that holds a star in the referee's ledger (so the leave has something to
+    spill; the rig decides who scores). rejoin=True: the same seat's console
+    comes back rejoin_after seconds later (the relay holds a dead hub seat for
+    its 10 s idle expiry, so 14 s lets the seat be named again); quick=True comes
+    back 4 s later, while the seat is still held: the game must not crash (it
+    may be given another seat or refuse)."""
     n, o = r.n, dict(r.opts)
-    leaver = n - 1
     relay = run.start_relay()
     fl = Fleet(run)
     o["rig"] = True
     for k in range(n):
         d, e = arena_env(run, k, k, n, relay, o)
         fl.add(k, e, d, 0.0 if k == 0 else 0.4 * k)
-    state = {"left_at": None, "rejoined": False}
+    state = {"left_at": None, "rejoined": False, "leaver": None}
+    after = o.get("rejoin_after", 4 if o.get("quick") else 14)
 
     def poll(f, t):
         if state["left_at"] is None:
-            # leave once the LEAVER holds a star in the referee's ledger (so a leave spills something)
             t0 = f.text(0) if 0 in f.dirs else ""
-            held = AL.ledger_before_leave(t0, leaver) if ("winner=%d " % leaver) in t0 else 0
-            if f.alive(leaver) and held >= 1 and "[vsarena] START" in t0 and t > 20:
-                (f.kill if o.get("how") == "kill" else f.close)(leaver)
-                state["left_at"] = t
-            elif t > o.get("giveup", o.get("time_s", 75) - 25) and f.alive(leaver):
-                f.kill(leaver)                          # never scored: the rung says so
+            if "[vsarena] START" in t0 and t > 15:
+                cand = [s for s in range(1, n) if f.alive(s) and ("winner=%d " % s) in t0
+                        and AL.ledger_before_leave(t0, s) >= 1]
+                if cand:
+                    state["leaver"] = cand[0]
+                    (f.kill if o.get("how") == "kill" else f.close)(cand[0])
+                    state["left_at"] = t
+            if state["left_at"] is None and t > o.get("giveup", o.get("time_s", 75) - 25) and f.alive(n - 1):
+                state["leaver"] = n - 1
+                f.kill(n - 1)                           # nobody but seat 0 scored: the rung says so
                 state["left_at"] = t
                 state["never"] = True
-        elif o.get("rejoin") and not state["rejoined"] and not f.alive(leaver) and t > state["left_at"] + 5:
+        elif o.get("rejoin") and not state["rejoined"] and t > state["left_at"] + after:
+            lv = state["leaver"]
             t0 = f.text(0)
-            if AL.LEAVE.search(t0) and "[vsarena] MATCH OVER ref" not in t0:
-                d, e = arena_env(run, 10 + leaver, leaver, n, relay, o)
-                f.start(10 + leaver, e, d)
+            if not f.alive(lv) and AL.LEAVE.search(t0) and "[vsarena] MATCH OVER ref" not in t0:
+                d, e = arena_env(run, 10 + lv, lv, n, relay, o)
+                f.start(10 + lv, e, d)
                 state["rejoined"] = True
     wall = fl.run_until(o.get("timeout", 300), poll)
     rt = stop_relay(run)
     texts, rcs = fl.texts(), fl.rcs
-    stay = list(range(n - 1))
+    leaver = state["leaver"] if state["leaver"] is not None else n - 1
+    stay = [k for k in range(n) if k != leaver]
     ck = Checks()
     ck.ok(state["left_at"] is not None and not state.get("never"),
-          "the leaver scored a star before it left (a leave with nothing to spill proves nothing)")
-    ck.ok(fl.how.get(leaver) in ("killed", "closed"), "the leaver went away on purpose (%s)" % fl.how.get(leaver))
+          "a seat other than the host scored a star and then left (a leave with nothing to spill proves nothing)")
+    ck.ok(fl.how.get(leaver) in ("killed", "closed"), "the leaver (seat %d) went away on purpose (%s)" % (
+        leaver, fl.how.get(leaver)))
     for k in stay:
         ck.ok(rcs.get(k) == 0, "p%d rc=%s" % (k, rcs.get(k)))
         ck.ok(not AL.FAULT.search(texts[k]), "p%d no fault" % k)
-    rej = leaver if o.get("rejoin") else None
+    rej = leaver if (o.get("rejoin") and not o.get("quick")) else None
     judge_into(ck, AL.judge_leave(texts, rcs, stay, leaver, rt=rt, rejoined=rej))
     # the staying consoles still end on ONE verdict (the relay's referee ends only one match)
     verdict_items = AL.judge_match({k: texts[k] for k in stay}, rcs, stay, {"reason": None}, rt=None,
@@ -2240,13 +2252,15 @@ def r_arenaleave(L, run, r):
                     or "never lost" in x[1]])
     if o.get("rejoin"):
         j = 10 + leaver
+        ck.ok(state["rejoined"], "the leaver's seat console was started again")
         ck.ok(j in texts and "[vsarena] installed" in texts.get(j, ""), "the returning console started and "
                                                                         "installed arena mode")
-        ck.ok(not AL.FAULT.search(texts.get(j, "")), "the returning console had no fault")
+        ck.ok(not AL.FAULT.search(texts.get(j, "")), "the returning console had no fault (a seat the arena has "
+                                                     "no body for must be refused cleanly, not crash)")
     control(ck, "no-spill", lambda t: AL.judge_leave(t, rcs, stay, leaver, rt=rt),
             AL.mutate("no-spill", {k: texts[k] for k in stay}))
     relay_checks(ck, run)
-    ck.note("leaver left at %.0fs (%s)" % (state["left_at"] or -1, fl.how.get(leaver)))
+    ck.note("leaver seat %d left at %.0fs (%s)" % (leaver, state["left_at"] or -1, fl.how.get(leaver)))
     return ck, wall, rcs
 
 
@@ -2319,6 +2333,8 @@ def arena_rungs():
                   delays=skew4))
     R.append(Rung("arena4-rejoin-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
                   rejoin=True, delays=skew4))
+    R.append(Rung("arena4-rejoin-quick-relay", "arenaleave", 4, GATE, "relay2", needs=A, time_s=90, how="kill",
+                  rejoin=True, quick=True, delays=skew4))
     R.append(Rung("arena-solo-alone", "arenasolo", 2, DEV, "relay2", needs=["A0", "A2"]))
     R.append(Rung("arena-solo-gate", "arenasolo_gate", 1, GATE, needs=["A0"]))
     R.append(Rung("arena2-time-kit", "arena", 2, GATE, "relay2", needs=A + ["kit"], time_s=30, rig=True,
