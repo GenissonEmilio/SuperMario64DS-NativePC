@@ -799,7 +799,7 @@ void vs_eat_before_walk(int frame) {
     if (g.rig == 3) rig_stale();
     if (data_0209f2d8 == 1) sanitize_mouth();
     clear_tongue_bits();             // part 1: a refused or an eating tongue is never a HIT
-    if (g.rig) rig_step();
+    if (g.rig && g.rig != 3) rig_step();      // (rig 3 is the dead-mouthful rig above)
 }
 
 void vs_eat_after_walk(int frame) {
