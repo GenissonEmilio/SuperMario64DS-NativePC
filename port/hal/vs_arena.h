@@ -257,6 +257,17 @@ bool vs_arena_referee_now(unsigned *ref_ms, int *rtt_ms);
 int vs_arena_state_index(const void *body);
 
 // ---------------------------------------------------------------------------
+// PUPPETS (A1 PUPPET1). The puppet half lives in vs_arena.cpp's PUPPET section
+// and runs from vs_arena_before_walk; the one call another file makes is the
+// sound seam: hal/sdat/sound_abi.cpp's flat Sound::Play hands every request to
+// port_vs_arena_sound (extern "C"), which lands here. A sound whose vector is
+// my own body's Player+0x74 goes out in my next SYNS (sfx[0] = a bank 0
+// effect id, sfx[1] = a bank 1 character voice id); the puppets replay them.
+// Lab knobs: SM64DS_PUPPET=0 (off), SM64DS_PUPPET_LOG=1, SM64DS_PUPPET_BUF_MS=n.
+// ---------------------------------------------------------------------------
+void vs_arena_sound_request(unsigned kind, unsigned id, const void *v);
+
+// ---------------------------------------------------------------------------
 // BODIES OF ABSENT SEATS. A seat with no console is taken out of play the way
 // the cartridge takes a lost player out (live byte 0, its "lost" bit) and
 // parked far from the arena (DROPOUT1's spot rule), so it is nobody's nearest
