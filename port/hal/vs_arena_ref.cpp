@@ -1473,7 +1473,7 @@ void rig_parse() {
                      e, g.rig == 1 ? "contention" : g.rig == 2 ? "hit" : "chain", g.rig_seed);
 }
 
-// A DS key (0x0002 = B, the attack button) into the slot's PadData, where
+// A DS key (0x0001 = the DS A key, which this ROM maps to the attack button; 0x0002 is jump) into the slot's PadData, where
 // Stage::CheckInput (which runs inside the actor walk, AFTER this file's
 // pre-walk half) turns it into the ROM's own held / pressed words. Writing the
 // processed words (data_0209f49c / e) directly never worked: CheckInput rebuilds
@@ -1565,7 +1565,7 @@ void rig_punch_tick(bool inject_words) {
                      (unsigned)*(unsigned short *)(data_0209f49c + g.seat * 0x18),
                      (unsigned)*(unsigned short *)(data_0209f49e + g.seat * 0x18));
     if (g.rig_press_frames > 0) {
-        rig_press(g.seat, 0x0002, g.rig_press_frames == 3);
+        rig_press(g.seat, 0x0001, g.rig_press_frames == 3);
         --g.rig_press_frames;
         if (g.rig_press_frames == 0 && inject_words) g.rig_inject = 3;
     } else if (g.rig_inject > 0 && --g.rig_inject == 0) {
