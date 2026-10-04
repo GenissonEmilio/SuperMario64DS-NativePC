@@ -1782,7 +1782,12 @@ void rig_chain() {
     }
     // seat 0 punches seat 1 three seconds after a star was taken by seat 1
     if (g.seat == 0 && g.chain_hit_at && (int)(r - g.chain_hit_at) >= 0) {
-        g.chain_hit_at = 0;
+        // SM64DS_RIG_HITMIN=n: only punch a victim that holds n stars or more (the
+        // duplicate-star rows need a victim that still holds one after the spill,
+        // which is what the ROM's own drop would be paid out of)
+        static const int hitmin = env_int("SM64DS_RIG_HITMIN", 1, 1, 8);
+        g.chain_hit_at = 0;                      // (the next star seat 1 takes arms it again)
+        if (g.ledger[1] < hitmin) return;
         const int dist = g.rig_real ? rig_real_dist() : 90;
         std::fprintf(stderr, "[rig] chain: seat 0 punches seat 1 (ref %u, from %d units, %s)\n", r, dist,
                      g.rig_real ? "real contact" : "injected pair-pass words");
