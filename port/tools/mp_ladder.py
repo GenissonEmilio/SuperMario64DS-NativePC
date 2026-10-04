@@ -2256,12 +2256,13 @@ def r_arenasolo_gate(L, run, r):
     import arena_solo_gate as G
     if not L.a.base_exe:
         raise Skip("needs --base-exe (the stage-5 / INT69B game build to compare against)")
+    t0 = time.time()
     lines, okk = G.run_rows(L.a.base_exe, L.exe, L.asset_root, run.dir)
     ck = Checks()
     for ln in lines:
         ck.note(ln)
     ck.ok(okk, "arena_solo_gate: every row identical to the base (%d rows)" % len(lines))
-    return ck, 0.0, {}
+    return ck, time.time() - t0, {}
 
 
 def r_arenae2e(L, run, r):

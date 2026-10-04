@@ -218,7 +218,10 @@ def judge_match(texts, rcs, stay, expect, rt=None, lane=None):
             lg = next(iter(legs.values()))
             w = re.search(r"winner=(-?\d+)", lg[2])
             if w and win:
-                ok(int(w.group(1)) in win, "the marker's winner=%s is one of the referee's winners %s" % (w.group(1), win))
+                if len(win) == 1:
+                    ok(int(w.group(1)) in win, "the marker's winner=%s is the referee's winner %s" % (w.group(1), win))
+                else:
+                    ok(int(w.group(1)) == -1, "a tie between %s: the marker says winner=-1 (draw), it says %s" % (win, w.group(1)))
     # the authority's own record (the relay's referee log) against what the consoles heard
     if rt is not None:
         rf = relay_facts(rt)
@@ -536,7 +539,8 @@ def _console(seat, n, reason=2, winners=1, scores=(3, 1, 0, 0), frame=700, up=Tr
             "[vs] MATCH OVER f%d win=%s scores=%d,%d,%d,%d players=%d total=%d pending_scene=0 "
             "results_screen=port winner=%d winner_name=p%d" % (
                 frame, "star-target" if reason == 2 else "time-up", *scores, n, sum(scores),
-                winners.bit_length() - 1, winners.bit_length() - 1)]
+                (winners.bit_length() - 1) if bin(winners).count("1") == 1 else -1,
+                (winners.bit_length() - 1) if bin(winners).count("1") == 1 else -1)]
     if lat is not None:
         for i, d in enumerate(lat):
             L.append("[vsarena-lat] press A at tick %d, my body (slot %d) answered at tick %d: %d frame(s) "

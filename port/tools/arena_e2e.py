@@ -29,8 +29,8 @@ on the exe), so this file judges the whole run again:
 
 The knobs added to every game (peer runner, after the launcher built its env) turn
 the rung-7 star recipe OFF (BREAKALL / STAR_TRIGGER: nobody may end the match early)
-and set ARENA_TIME_S so the clock ends it past 60 s, with the scripted pad so the
-bodies move.
+and set ARENA_TIME_S so the clock ends it past 60 s; the contention rig scores stars (>= 2
+must be awarded) so the match is not an empty one.
 """
 import glob
 import os
@@ -62,7 +62,7 @@ def run_e2e(launcher_repo, name, n, exe, assets, extracted, rom, relay_py, serve
     if game_tip:
         cmd += ["--game-tip", game_tip]
     for kv in ("SM64DS_VS_BREAKALL=0", "SM64DS_STAR_TRIGGER=0", "SM64DS_ARENA_TIME_S=%d" % secs,
-               "SM64DS_ARENA_REFLOG=1", "SM64DS_PUPPET_LOG=1", "SM64DS_HUB_REPORT_S=5"):
+               "SM64DS_ARENA_REFLOG=1", "SM64DS_ARENA_RIG=race:7", "SM64DS_PUPPET_LOG=1", "SM64DS_HUB_REPORT_S=5"):
         cmd += ["--knob", kv]
     t0 = time.time()
     logp = os.path.join(out, name + ".stdout.txt")
@@ -123,7 +123,7 @@ def judge_run(text, rundir, n, min_frame=1800):
         ok("SM64DS_LEVEL" not in penv.replace("CLEAR SM64DS_LEVEL", ""), "p%d's game env sets no SM64DS_LEVEL" % k)
         pl = read_all(os.path.join(rundir, "p%d.log" % k))
         ok("Match over" in pl, "p%d's room read the result" % k)
-    items = AL.judge_match(texts, rcs, list(range(n)), {"reason": 1, "exit0": False}, rt=None, lane={})
+    items = AL.judge_match(texts, rcs, list(range(n)), {"reason": 1, "exit0": False, "min_taken": 2}, rt=None, lane={})
     out += items
     # THE MATCH RAN PAST 60 s
     fr = []
