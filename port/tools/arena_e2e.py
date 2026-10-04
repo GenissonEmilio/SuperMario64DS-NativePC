@@ -123,7 +123,7 @@ def judge_run(text, rundir, n, min_frame=1800):
         ok("SM64DS_LEVEL" not in penv.replace("CLEAR SM64DS_LEVEL", ""), "p%d's game env sets no SM64DS_LEVEL" % k)
         pl = read_all(os.path.join(rundir, "p%d.log" % k))
         ok("Match over" in pl, "p%d's room read the result" % k)
-    items = AL.judge_match(texts, rcs, list(range(n)), {"reason": 1, "exit0": False}, rt=None, lane={})
+    items = AL.judge_match(texts, rcs, list(range(n)), {"reason": 1, "exit0": False, "seat_line": True}, rt=None, lane={})
     out += items
     # THE MATCH RAN PAST 60 s
     fr = []

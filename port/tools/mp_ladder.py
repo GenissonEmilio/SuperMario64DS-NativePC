@@ -2032,7 +2032,8 @@ def r_arena(L, run, r):
     texts, rcs = fl.texts(), fl.rcs
     ck = Checks()
     target = o.get("target", 0)
-    expect = {"reason": 2 if target else 1, "first_to": target, "min_taken": 2 if o.get("rig") else 0}
+    expect = {"reason": 2 if target else 1, "first_to": target, "min_taken": 2 if o.get("rig") else 0,
+              "seat_line": b"relay named my seat %d" in L.feats.blob}
     lane = {"A1": L.feats.have.get("A1")}
     judge_into(ck, AL.judge_match(texts, rcs, list(range(n)), expect, rt=rt, lane=lane))
     if not kit:

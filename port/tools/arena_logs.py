@@ -171,6 +171,10 @@ def judge_match(texts, rcs, stay, expect, rt=None, lane=None):
         ok(f["seat"] is not None, "p%d seated" % k)
         if f["seat"] is not None:
             seats[k] = f["seat"]
+        if expect.get("seat_line"):
+            n_sl = len(RELAY_SEAT.findall(texts[k]))
+            ok(n_sl == 1, "p%d printed '[vsarena] the relay named my seat' exactly once (%d): the launcher "
+                          "watchdog widens its window on it" % (k, n_sl))
         ok(f["up"] == 1, "p%d exactly one 'session up' (%d)" % (k, f["up"]))
         ok(len(f["start"]) == 1, "p%d exactly one START (%d)" % (k, len(f["start"])))
         ok(not f["conn_lost"], "p%d never lost the referee" % k)
