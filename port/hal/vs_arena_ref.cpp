@@ -231,6 +231,8 @@ struct Ref {
     unsigned rig_next = 0;       // referee ms of the next scripted step
     int rig_press_frames = 0;
     int rig_inject = 0;
+    int rig_follow = 0;          // frames left to keep my body at rig_dist units from the victim's puppet
+    int rig_dist = 0;
     int rig_phase = 0;
     unsigned chain_hit_at = 0;   // referee ms (my base)
 };
@@ -1555,10 +1557,20 @@ void rig_punch_start(int dist_units) {
     s16r(me, 0x8e) = 0;               // facing +Z, toward the victim
     s16r(me, 0x94) = 0;
     g.rig_press_frames = 3;
+    g.rig_dist = dist_units;
+    g.rig_follow = 20;      // the victim walks on; the attacker keeps pace so the range check is the row's subject
 }
 
 void rig_punch_tick(bool inject_words) {
     char *me = my_body();
+    if (g.rig_follow > 0) {
+        --g.rig_follow;
+        char *vb = body_of(1);
+        if (me && vb) {
+            const int to[3] = { s32r(vb, 0x5c), s32r(vb, 0x60), s32r(vb, 0x64) - (g.rig_dist << 12) };
+            rig_teleport(me, to);
+        }
+    }
     if (me && (g.rig_press_frames > 0 || g.rig_inject > 0))
         std::fprintf(stderr, "[rig] press frame: my state idx %d, ctrl held=%04x pressed=%04x\n",
                      vs_arena_state_index(me),
