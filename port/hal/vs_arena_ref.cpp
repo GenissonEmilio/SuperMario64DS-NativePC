@@ -77,6 +77,7 @@ void func_ov002_020e9448(unsigned char *p);
 void _ZN10StarMarker7CollectEv(void *self);
 short GetAngleToCamera(int i);
 void _ZN6Player11ChangeStateERNS_5StateE(void *self, void *state);
+void _ZN6Player18SetNewHatCharacterEjjb(void *self, unsigned a, unsigned b, bool c);
 int _ZN6Player7IsStateERNS_5StateE(void *self, void *state);
 int _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *self, const void *v,
         unsigned a, int knock, unsigned d, unsigned e, unsigned f);
@@ -230,6 +231,10 @@ struct Ref {
     int rig_n = 0;
     unsigned rig_next = 0;       // referee ms of the next scripted step
     int rig_press_frames = 0;
+    int rig_press_total = 3;
+    bool rig_real = false;       // chainr / hitr: no injected pair-pass words, a Mario-capped punch
+    int rig_real_n = 0;
+    unsigned rig_cap_frame = 0;
     int rig_inject = 0;
     int rig_follow = 0;          // frames left to keep my body at rig_dist units from the victim's puppet
     int rig_dist = 0;
@@ -1474,6 +1479,7 @@ void rig_parse() {
     if (std::strncmp(e, "race", 4) == 0) g.rig = 1;
     else if (std::strncmp(e, "hit", 3) == 0) g.rig = 2;
     else if (std::strncmp(e, "chain", 5) == 0) g.rig = 3;
+    if (g.rig == 2 || g.rig == 3) g.rig_real = e[g.rig == 2 ? 3 : 5] == 'r';   // hitr / chainr
     else if (std::strncmp(e, "fuzz", 4) == 0) g.rig = 4;
     const char *c = std::strchr(e, ':');
     if (c) g.rig_seed = (unsigned)std::strtoul(c + 1, nullptr, 10);
@@ -1563,10 +1569,34 @@ void rig_punch_start(int dist_units) {
     rig_teleport(me, to);
     s16r(me, 0x8e) = 0;               // facing +Z, toward the victim
     s16r(me, 0x94) = 0;
-    g.rig_press_frames = 3;
+    g.rig_press_total = g.rig_real ? 1 : 3;
+    g.rig_press_frames = g.rig_press_total;
     g.rig_dist = dist_units;
     g.rig_follow = 0;       // (kept for a walking victim; with the puppets folded in, set > 0: the ROM's tongue
                             //  eats the copy and drags it along, which makes a follower run away from it)
+}
+
+// THE REAL PUNCH (rigs hitr / chainr). Seat 0 wears Mario's cap (the ROM's own
+// SetNewHatCharacter, what a cap pickup calls: param1 0 = Mario) so the attack
+// button throws a punch whose attack cylinder really overlaps the puppet's body
+// cylinder; nothing is written onto the victim, the pair pass does it all.
+void rig_wear_cap() {
+    if (!g.rig_real || g.seat != 0) return;
+    char *me = my_body();
+    if (!me) return;
+    const unsigned fr = my_frame_now();
+    if (s32r(me, 8) == 0 || fr - g.rig_cap_frame < 30u) return;
+    g.rig_cap_frame = fr ? fr : 1;
+    _ZN6Player18SetNewHatCharacterEjjb(me, 0, 0, 0);
+    std::fprintf(stderr, "[rig] seat 0 puts on Mario's cap (param1 now %d)\n", s32r(me, 8));
+}
+
+// the distances a real punch is tried from: the first ones that touch decide
+int rig_real_dist() {
+    static const int tab[5] = { 55, 45, 65, 40, 75 };
+    const int ov = env_int("SM64DS_RIG_DIST", 0, 1, 400);
+    if (ov) return ov;
+    return tab[g.rig_real_n++ % 5];
 }
 
 void rig_punch_tick(bool inject_words) {
@@ -1585,7 +1615,7 @@ void rig_punch_tick(bool inject_words) {
                      (unsigned)*(unsigned short *)(data_0209f49c + g.seat * 0x18),
                      (unsigned)*(unsigned short *)(data_0209f49e + g.seat * 0x18));
     if (g.rig_press_frames > 0) {
-        rig_press(g.seat, 0x0001, g.rig_press_frames == 3);
+        rig_press(g.seat, 0x0001, g.rig_press_frames == g.rig_press_total);
         --g.rig_press_frames;
         if (g.rig_press_frames == 0 && inject_words) g.rig_inject = 3;
     } else if (g.rig_inject > 0 && --g.rig_inject == 0) {
@@ -1633,7 +1663,8 @@ void rig_hit() {
     if (g.rig_next == 0) g.rig_next = g.t0 + 6000u;
     rig_home_capture();
     rig_hold_home();
-    rig_punch_tick(true);
+    rig_wear_cap();
+    rig_punch_tick(!g.rig_real);
     if (g.seat != 0 || (int)(r - g.rig_next) < 0) return;
     if (g.rig_phase == 0) {
         std::fprintf(stderr, "[rig] hit cycle %d: valid attack (attack button pressed, ref %u)\n", g.rig_n, r);
@@ -1666,7 +1697,8 @@ void rig_chain() {
     if (!ref_now(&r)) return;
     char *me = my_body();
     if (!me) return;
-    rig_punch_tick(true);
+    rig_wear_cap();
+    rig_punch_tick(!g.rig_real);
     rig_home_capture();
     if (g.chain_hit_at && (int)(r - (g.chain_hit_at - 2000u)) >= 0 &&
         (int)(r - (g.chain_hit_at + 1500u)) < 0)
@@ -1707,8 +1739,10 @@ void rig_chain() {
     // seat 0 punches seat 1 three seconds after a star was taken by seat 1
     if (g.seat == 0 && g.chain_hit_at && (int)(r - g.chain_hit_at) >= 0) {
         g.chain_hit_at = 0;
-        std::fprintf(stderr, "[rig] chain: seat 0 punches seat 1 (ref %u)\n", r);
-        rig_punch_start(90);
+        const int dist = g.rig_real ? rig_real_dist() : 90;
+        std::fprintf(stderr, "[rig] chain: seat 0 punches seat 1 (ref %u, from %d units, %s)\n", r, dist,
+                     g.rig_real ? "real contact" : "injected pair-pass words");
+        rig_punch_start(dist);
     }
 }
 
