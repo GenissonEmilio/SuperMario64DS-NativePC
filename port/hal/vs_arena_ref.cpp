@@ -1328,7 +1328,8 @@ void hit_detect() {
         char *o = _ZN8dActor_c10FindWithIDEj(other);
         if (o != me) continue;
         if ((flags & ~0x1000u) == 0) continue;
-        if (vs_arena_body_held(k)) continue;
+        // (a lab rig's tongue eats the copy by itself; the rig still wants its hit claim)
+        if (!g.rig && vs_arena_body_held(k)) continue;
         if (fr - g.last_hit_claim_frame[k] < (unsigned)kHitRetryFrames &&
             g.last_hit_claim_frame[k]) continue;
         unsigned stamp;
