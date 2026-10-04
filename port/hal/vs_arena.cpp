@@ -696,6 +696,7 @@ enum : int {
     kPupBufMin = 50,          // B at 30 Hz: 1.5 send intervals (plan 2.5)
     kPupBufMax = 100,
     kPupReckonMs = 150,
+    kPupOffN = 10,            // samples the clock offset's minimum looks at
     kPupSwapAfter = 2,        // driven frames before a character swap
     kPupSwapEvery = 60,       // frames between two swap attempts
     kPlayerSound = 0x74,      // Player+0x74: the camera-space vector Player
@@ -800,14 +801,29 @@ bool pup_sample(int seat, unsigned now, Pup &pp, PupDraw *o, ArenaSample *ring,
     const int n = vs_arena_samples(seat, ring, kArenaRing);
     if (n <= 0) return false;
     *ring_n = n;
+    // THE CLOCK OFFSET, tracked fast. A0's seat view keeps the lower envelope
+    // over 8 s, which is right for a link but wrong for a SENDER that hitches
+    // (its frame clock then falls behind the wall clock for good, and an 8 s
+    // memory leaves the draw time that many frames ahead of what arrives: the
+    // puppet dead-reckons off the newest packet for seconds, up to 200 units
+    // off in the REMOTE ERROR row's tail). The offset used here is the minimum
+    // over the newest kPupOffN samples (about 0.3 s at 30 Hz); the jitter that
+    // sizes B is read against the minimum over the whole ring (about a second).
+    long long lo_n = 0, lo_all = 0;
+    for (int i = 0; i < n; ++i) {
+        const long long e = (long long)ring[i].recv_ms -
+                            (long long)((unsigned long long)ring[i].s.frame * 1000ull / 30ull);
+        if (i == 0 || e < lo_all) lo_all = e;
+        if (i < kPupOffN && (i == 0 || e < lo_n)) lo_n = e;
+    }
     if (pup_buf_pin() >= 0) {
         pp.buf_ms = pup_buf_pin();
     } else {
-        const double want = pup_target_buf(ring, n, v.clock_offset_ms);
+        const double want = pup_target_buf(ring, n, (int)(unsigned)lo_all);
         if (pp.buf_ms < want) pp.buf_ms = pp.buf_ms + 1.0 > want ? want : pp.buf_ms + 1.0;
         else if (pp.buf_ms > want) pp.buf_ms = pp.buf_ms - 1.0 < want ? want : pp.buf_ms - 1.0;
     }
-    const double ft = ((double)now - pp.buf_ms - (double)v.clock_offset_ms) * 30.0 / 1000.0;
+    const double ft = ((double)now - pp.buf_ms - (double)lo_n) * 30.0 / 1000.0;
     o->ft = ft;
     o->newest_frame = ring[0].s.frame;
     int ia = -1;
