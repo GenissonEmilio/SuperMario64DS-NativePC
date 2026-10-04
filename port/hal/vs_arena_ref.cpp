@@ -1668,7 +1668,7 @@ void rig_hit() {
     if (g.seat != 0 || (int)(r - g.rig_next) < 0) return;
     if (g.rig_phase == 0) {
         std::fprintf(stderr, "[rig] hit cycle %d: valid attack (attack button pressed, ref %u)\n", g.rig_n, r);
-        rig_punch_start(90);
+        rig_punch_start(g.rig_real ? rig_real_dist() : 90);
         g.rig_phase = 1;
         g.rig_next = r + 450u;
     } else if (g.rig_phase == 1) {
