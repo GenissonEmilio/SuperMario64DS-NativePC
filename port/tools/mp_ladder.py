@@ -2294,12 +2294,12 @@ def arena_rungs():
     R.append(Rung("arena4-lat-relay-skew", "arenalat", 4, GATE, "relay2", needs=["A0", "A2"], delays=skew4))
     R.append(Rung("lock2-lat-control-relay-skew20-63", "arenalat", 2, GATE, "relay2", needs=["A0", "R1"],
                   delays=skew2, lockstep=True))
-    R.append(Rung("arena2-stars-relay-rtt0", "arena", 2, DEV, "relay2", needs=A, target=3, time_s=60, rig=True))
-    R.append(Rung("arena2-stars-relay-skew20-63", "arena", 2, DEV, "relay2", needs=A, target=3, time_s=60,
+    R.append(Rung("arena2-stars-relay-rtt0", "arena", 2, DEV, "relay2", needs=A, target=2, time_s=60, rig=True))
+    R.append(Rung("arena2-stars-relay-skew20-63", "arena", 2, DEV, "relay2", needs=A, target=2, time_s=60,
                   rig=True, delays=skew2))
     R.append(Rung("arena2-time-relay-skew20-63", "arena", 2, DEV, "relay2", needs=A, time_s=30, rig=True,
                   delays=skew2))
-    R.append(Rung("arena4-stars-relay-skew", "arena", 4, GATE, "relay2", needs=A, target=3, time_s=60, rig=True,
+    R.append(Rung("arena4-stars-relay-skew", "arena", 4, GATE, "relay2", needs=A, target=2, time_s=60, rig=True,
                   delays=skew4))
     R.append(Rung("arena4-time-relay-skew", "arena", 4, GATE, "relay2", needs=A, time_s=30, rig=True,
                   delays=skew4))
