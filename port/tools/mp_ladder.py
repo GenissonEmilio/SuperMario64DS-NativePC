@@ -74,6 +74,17 @@ The later lanes' test knobs and log lines this ladder reads are collected in
 LANE CONTRACTS below: they are the ladder's proposal where design.txt names
 none, and the owning lane (or the fold) aligns them in one place.
 
+ARENA MODE (run mp1, lane ARENAGATE1, phase A6): the arena-* rungs prove the new VS
+(referee on the relay, own body at 0 frames, puppets, stars, hits, time-up / first-to-N,
+leave) and the lock2-lat-control rung is the lockstep latency control. They are listed
+and judged in the ARENA MODE RUNGS block below; every console on them is started with
+the launcher's own arena env (no SM64DS_LEVEL, no selftest), judged by arena_logs.py
+(each judge has a must-FAIL control run against the real logs), and the real-launcher
+rungs go through arena_e2e.py. Extra arguments: --base-exe (the solo gate's base build),
+--launcher-repo / --kit-exe / --e2e-assets / --e2e-extracted / --e2e-rom (the MpE2E
+rungs). The fold lane's arena gate is   --only '^(arena|lock2-lat)' --tier gate   plus
+the lockstep fallback rungs unchanged (--only '^(vs[24]-loop|match|timeup|leave4|latejoin|luigi4)').
+
 OUTPUT: <out>/<rung>/p<k>/{run.log,env.txt} per console (+ relay.log),
 <out>/summary.tsv and <out>/summary.txt. Default <out> is
 build/mp_ladder/<UTC stamp> under the repo root.
@@ -2193,7 +2204,7 @@ def r_arenaleave(L, run, r):
         if state["left_at"] is None:
             # leave once the LEAVER holds a star in the referee's ledger (so a leave spills something)
             t0 = f.text(0) if 0 in f.dirs else ""
-            held = AL.ledger_before_leave(t0, leaver)
+            held = AL.ledger_before_leave(t0, leaver) if ("winner=%d " % leaver) in t0 else 0
             if f.alive(leaver) and held >= 1 and "[vsarena] START" in t0 and t > 20:
                 (f.kill if o.get("how") == "kill" else f.close)(leaver)
                 state["left_at"] = t
