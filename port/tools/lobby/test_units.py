@@ -900,6 +900,7 @@ _FIELD_SAMPLES = {
     "game": "1.0.0",
     "luigi": 1,
     "voice": 1,
+    "netmode": "arena",
     "code": "K7QMR3AB",
     "skip": "K7QMR3AB",
 }
@@ -2602,6 +2603,25 @@ def test_result_and_rematch():
                           "scores": [0, 0, 0, 0]}, "10.0.0.1", 1020.0)
     check("a draw result is accepted", st == 200 and room.state == "lobby")
 
+    # run mp1: every end word the game's marker prints is a result, echoed in
+    # the event as posted (King of the Star, and Luigi Infection's two team
+    # ends, which the launcher names as a team).
+    for k, win in enumerate(("king-target", "luigi-all-infected",
+                             "survivor-timeout")):
+        t = 1030.0 + 20 * k
+        st, p3 = start(code, host["token"], now=t)
+        m = p3["match"]
+        ready(code, host["token"], m, now=t)
+        ready(code, guest["token"], m, who="10.0.0.2", now=t)
+        S.sweep(t + S.GO_GRACE_S + 0.1)
+        st, rr = S.do_result({"v": 5, "room": code, "token": host["token"],
+                              "match": m, "win": win,
+                              "scores": [2, 0, 0, 0]}, "10.0.0.1", t + 5)
+        ev = room.events[-1]
+        check("a %s result is accepted and echoed" % win,
+              st == 200 and room.state == "lobby" and ev["kind"] == "result"
+              and ev["win"] == win, (st, rr, ev.get("win")))
+
 
 
 # ---------------------------------------------------------------- v2 colours
@@ -3765,6 +3785,400 @@ def Member_fields(m):
     return [k for k in m.__slots__]
 
 
+# ------------------------------------------------------------- ARENA MODE
+#
+# run mp1, lane A4 (VSSYNC1 plan section 8): the go plan's `netmode`, the
+# digest that counts it, the host's pick, the build switch, and the one lobby
+# rule an arena match changes (it has no host in it).
+
+
+class arena(object):
+    """Run a block with the arena knobs set, the way a compose edit plus a
+    restart would: ARENA_GAME_IDS ("*" or a tuple of builds), the size limit,
+    RELAY_V and a new room's pick. Restores all of them after."""
+
+    def __init__(self, ids="*", max_players=4, relay_v=2, default="arena"):
+        self.ids = ids
+        self.max_players = max_players
+        self.relay_v = relay_v
+        self.default = default
+
+    def __enter__(self):
+        self.was = (S.ARENA_ANY, S.ARENA_GAME_IDS, S.ARENA_MAX_PLAYERS,
+                    S.RELAY_V, S.NETMODE_DEFAULT)
+        S.ARENA_ANY = self.ids == "*"
+        S.ARENA_GAME_IDS = () if self.ids == "*" else tuple(self.ids)
+        S.ARENA_MAX_PLAYERS = self.max_players
+        S.RELAY_V = self.relay_v
+        S.NETMODE_DEFAULT = self.default
+        return self
+
+    def __exit__(self, *exc):
+        (S.ARENA_ANY, S.ARENA_GAME_IDS, S.ARENA_MAX_PLAYERS, S.RELAY_V,
+         S.NETMODE_DEFAULT) = self.was
+        return False
+
+
+def test_arena_digest():
+    print("\n-- arena: the digest counts the netmode")
+    vectors = [
+        ((0, 2, "time", None, None, 0, 0), "arena",
+         "0|2|time|0|0|0|0|arena|2", 1565304087),
+        ((1, 4, "stars", 3, None, 0, 3735928559), "arena",
+         "1|4|stars|3|0|0|0|arena|2", 1476757693),
+        ((3, 3, "stars", 5, None, 0, 7), "arena",
+         "3|3|stars|5|0|0|0|arena|2", 1991793976),
+        ((0, 2, "time", None, None, 0, 0), "lockstep",
+         "0|2|time|0|0|0|0|lockstep|2", 1172137709),
+    ]
+    for args, nm, text, want in vectors:
+        check("canonical %s" % text,
+              S.session_canonical(*args, netmode=nm) == text,
+              S.session_canonical(*args, netmode=nm))
+        check("digest of %s is %d" % (text, want),
+              S.session_digest(*args, netmode=nm) == want,
+              S.session_digest(*args, netmode=nm))
+    check("the default netmode is still lockstep (every old caller unchanged)",
+          S.session_canonical(0, 2, "time", None, None, 0, 0)
+          == "0|2|time|0|0|0|0|lockstep|2")
+    check("an arena match and a lockstep match of the same settings never "
+          "share a digest",
+          S.session_digest(0, 2, "time", None, None, 0, 0, netmode="arena")
+          != S.session_digest(0, 2, "time", None, None, 0, 0))
+
+
+def test_arena_off_by_default():
+    print("\n-- arena: OFF until ARENA_GAME_IDS names the build")
+    reset()
+    check("the file default: no arena builds, not '*'",
+          S.ARENA_GAME_IDS == () and S.ARENA_ANY is False,
+          (S.ARENA_GAME_IDS, S.ARENA_ANY))
+    check("the file defaults: arena max 4, new rooms pick arena",
+          S.ARENA_MAX_PLAYERS == 4 and S.NETMODE_DEFAULT == "arena",
+          (S.ARENA_MAX_PLAYERS, S.NETMODE_DEFAULT))
+    code, room, toks, match = _running(2)
+    p0, p1 = S.member_plan(room, 1), S.member_plan(room, 2)
+    check("the room's pick is arena, but the build is not on the list",
+          room.netmode == "arena" and S.arena_ok(room) is False)
+    check("so the match plays lockstep", room.match_netmode == "lockstep",
+          room.match_netmode)
+    check("both plans say lockstep",
+          p0["netmode"] == p1["netmode"] == "lockstep",
+          (p0.get("netmode"), p1.get("netmode")))
+    check("and the digest is the lockstep one, unchanged from before arena",
+          p0["digest"] == S.session_digest(0, 2, "time", None, None,
+                                           room.match_luigi, room.match_seed)
+          and p0["digest"] == 1172137709, p0["digest"])
+    v = room.view(1)
+    check("the view: pick arena, arena_ok false, arena_now lockstep, "
+          "match_netmode lockstep",
+          v["netmode"] == "arena" and v["arena_ok"] is False
+          and v["arena_now"] == "lockstep" and v["match_netmode"] == "lockstep"
+          and v["arena_max"] == 4, v)
+
+
+def test_arena_plan():
+    print("\n-- arena: a listed build plays arena; the plan and the digest")
+    for ids in ("*", (GAME,)):
+        reset()
+        with arena(ids=ids):
+            st, h = create(nick="h", pre_ok=True)
+            code = h["room"]
+            st, g = join(code, "g", who="10.0.0.2", pre_ok=True)
+            room = S.ROOMS[code]
+            v = room.view(1)
+            check("[%s] lobby view: arena_ok, arena_now arena, no match yet"
+                  % (ids,), v["arena_ok"] is True and v["arena_now"] == "arena"
+                  and v["match_netmode"] is None and v["netmode"] == "arena", v)
+            st, p = start(code, h["token"])
+            check("[%s] start resolves arena" % (ids,),
+                  st == 200 and room.match_netmode == "arena",
+                  (st, room.match_netmode))
+            arm = [e for e in room.events if e["kind"] == "arming"][-1]
+            check("[%s] the arming event carries netmode arena" % (ids,),
+                  arm.get("netmode") == "arena", arm)
+            p0, p1 = S.member_plan(room, 1), S.member_plan(room, 2)
+            check("[%s] both plans say arena" % (ids,),
+                  p0["netmode"] == p1["netmode"] == "arena")
+            check("[%s] the digest counts arena: 0|2|time|0|0|0|0|arena|2"
+                  % (ids,), p0["digest"] == p1["digest"] == 1565304087,
+                  p0["digest"])
+            check("[%s] slot, want_seat and role are unchanged: host parent "
+                  "slot 0, guest child slot 1" % (ids,),
+                  (p0["role"], p0["slot"], p0["want_seat"]) == ("parent", 0, 0)
+                  and (p1["role"], p1["slot"], p1["want_seat"])
+                  == ("child", 1, 1), (p0, p1))
+            check("[%s] the code is fresh per match as always" % (ids,),
+                  p0["code"] == room.comms_code and len(p0["code"]) == 8)
+            check("[%s] the view says match_netmode arena" % (ids,),
+                  room.view(2)["match_netmode"] == "arena")
+            st, w = join(code, "w", who="10.0.0.3", pre_ok=True)
+            check("[%s] a waiting seat's plan is just playing:false" % (ids,),
+                  S.member_plan(room, w["member"]) == {"playing": False},
+                  S.member_plan(room, w["member"]))
+            for i, tok in enumerate([h["token"], g["token"]]):
+                ready(code, tok, room.match, who="10.0.0.%d" % (i + 1))
+            S.sweep(1000.0 + S.GO_GRACE_S + 0.1)
+            _result(code, h["token"], room.match)
+            check("[%s] after the result match_netmode is null again" % (ids,),
+                  room.state == "lobby" and room.match_netmode is None
+                  and room.view(1)["match_netmode"] is None)
+    reset()
+    with arena(ids=("1.0.0-otherbld",)):
+        code, room, toks, match = _running(2)
+        check("a build not on ARENA_GAME_IDS plays lockstep",
+              room.match_netmode == "lockstep"
+              and S.member_plan(room, 1)["netmode"] == "lockstep")
+    reset()
+    with arena():
+        st, a = create(nick="a", session_type="adventure")
+        room = S.ROOMS[a["room"]]
+        v = room.view(1)
+        check("an adventure room's view has no netmode keys",
+              not any(k in v for k in ("netmode", "arena_ok", "arena_max",
+                                       "arena_now", "match_netmode")), v)
+        check("and its plan has no netmode",
+              "netmode" not in S.member_plan(room, 1), S.member_plan(room, 1))
+
+
+def test_arena_when():
+    print("\n-- arena: which matches play arena (and the rest lockstep)")
+
+    def resolved(n=2, win="time", star=None, king=None, luigi=0,
+                 relay_v=2, max_players=4, pick=None):
+        reset()
+        with game_max(16, seats=16), arena(relay_v=relay_v,
+                                           max_players=max_players):
+            st, h = S.do_create({"v": 5, "game": GAME, "nick": "h",
+                                 "pre_ok": True}, "10.0.0.1", 1000.0)
+            code = h["room"]
+            for k in range(2, n + 1):
+                S.do_join({"v": 5, "game": GAME, "room": code,
+                           "nick": "g%d" % k, "pre_ok": True},
+                          "10.0.1.%d" % k, 1000.0)
+            extra = {}
+            if star is not None:
+                extra["star_target"] = star
+            if king is not None:
+                extra["king_target"] = king
+            if pick is not None:
+                extra["netmode"] = pick
+            st, out = _params(code, h["token"], win_mode=win,
+                              match_players=n, luigi=luigi, **extra)
+            assert st == 200, (st, out)
+            room = S.ROOMS[code]
+            now = room.view(1)["arena_now"]
+            st, p = start(code, h["token"])
+            assert st == 200, (st, p)
+            return room.match_netmode, now, S.member_plan(room, 1)
+
+    for n in (2, 3, 4):
+        nm, now, plan = resolved(n)
+        check("%d players, time: arena" % n, nm == "arena" and now == "arena"
+              and plan["netmode"] == "arena", (nm, now))
+    nm, now, plan = resolved(3, win="stars", star=5)
+    check("stars mode: arena", nm == "arena" and plan["star_target"] == 5)
+    nm, now, plan = resolved(5)
+    check("5 players with the phase-A limit 4: lockstep (and arena_now said "
+          "so before Start)", nm == "lockstep" and now == "lockstep",
+          (nm, now))
+    nm, now, plan = resolved(6, max_players=16)
+    check("6 players once the limit is 16: arena", nm == "arena")
+    nm, now, plan = resolved(2, win="king", king=30)
+    check("King of the Star: lockstep", nm == "lockstep")
+    nm, now, plan = resolved(2, luigi=1)
+    check("Luigi Infection: lockstep", nm == "lockstep" and plan["luigi"] == 1)
+    nm, now, plan = resolved(2, relay_v=1)
+    check("RELAY_V 1: lockstep", nm == "lockstep")
+    nm, now, plan = resolved(2, pick="lockstep")
+    check("the host picked lockstep (the fallback switch): lockstep, and the "
+          "lockstep digest",
+          nm == "lockstep" and now == "lockstep"
+          and plan["digest"] == S.session_digest(
+              0, 2, "time", None, None, 0, plan["seed"]), (nm, now))
+    nm, now, plan = resolved(2, pick="arena")
+    check("and picking arena again: arena", nm == "arena")
+
+
+def test_arena_params():
+    print("\n-- arena: the host's netmode pick on params")
+    reset()
+    with arena():
+        st, h = create(nick="h", pre_ok=True)
+        code = h["room"]
+        room = S.ROOMS[code]
+        st, g = join(code, "g", who="10.0.0.2", pre_ok=True)
+        check("a new room starts at NETMODE_DEFAULT (arena)",
+              room.netmode == "arena")
+        st, out = _params(code, h["token"], netmode="lockstep")
+        ev = room.events[-1]
+        check("netmode lockstep is accepted and rides the params event",
+              st == 200 and room.netmode == "lockstep"
+              and ev["kind"] == "params" and ev["netmode"] == "lockstep",
+              (st, out, ev))
+        st, out = _params(code, h["token"])
+        check("a params without netmode keeps the room's pick",
+              st == 200 and room.netmode == "lockstep", room.netmode)
+        for bad in ("ARENA", "rollback", "", 1, True, None, ["arena"],
+                    "arena ", "a" * 300):
+            st, out = _params(code, h["token"], netmode=bad)
+            check("netmode %r is 400 bad_netmode and changes nothing"
+                  % (bad if not isinstance(bad, str) else bad[:12],),
+                  st == 400 and out["error"] == "bad_netmode"
+                  and room.netmode == "lockstep", (st, out))
+        st, out = _params(code, g["token"], who="10.0.0.2", netmode="arena")
+        check("a guest cannot set it (403 not_host)",
+              st == 403 and out["error"] == "not_host"
+              and room.netmode == "lockstep", (st, out))
+        st, out = _params(code, h["token"], netmode="arena")
+        st, p = start(code, h["token"])
+        st, out = _params(code, h["token"], netmode="lockstep")
+        check("not while a match is arming (409 not_in_lobby)",
+              st == 409 and out["error"] == "not_in_lobby"
+              and room.netmode == "arena" and room.match_netmode == "arena",
+              (st, out))
+        st, a = create(nick="a", who="10.0.0.7", session_type="adventure")
+        st, out = _params(a["room"], a["token"], who="10.0.0.7",
+                          netmode="arena")
+        check("on an adventure room it is 400 bad_field",
+              st == 400 and out["error"] == "bad_field", (st, out))
+    reset()
+    with arena(default="lockstep"):
+        st, h = create(nick="h", pre_ok=True)
+        check("NETMODE_DEFAULT lockstep: a new room picks lockstep",
+              S.ROOMS[h["room"]].netmode == "lockstep")
+
+
+def test_arena_has_no_host_in_the_match():
+    print("\n-- arena: the host leaving or failing does not end the match")
+    # (1) the host leaves an arena match: left, host; the match runs on.
+    for state in ("go", "in_match"):
+        reset()
+        with game_max(4, seats=4), arena():
+            code, room, toks, match = _running(3, state=state)
+            st, j = join(code, "late", who="10.0.0.9", now=1010.0, pre_ok=True)
+            n_ev = len(room.events)
+            S.do_leave({"v": 5, "room": code, "token": toks[0]},
+                       "10.0.0.1", 1011.0)
+            kinds = [e["kind"] for e in room.events[n_ev:]]
+            check("[%s] events: left, host (no failed)" % state,
+                  kinds == ["left", "host"]
+                  and room.events[-1]["seat"] == 2, room.events[n_ev:])
+            check("[%s] the match runs on, same id and code" % state,
+                  room.state == state and room.match == match
+                  and room.comms_code is not None, (room.state, room.match))
+            check("[%s] the new host is seat 2, which played it" % state,
+                  room.host_seat == 2 and S.in_frozen_match(room, 2))
+            check("[%s] the waiting joiner is still waiting" % state,
+                  room.members[j["member"]].playing is False)
+            check("[%s] a re-sent plan keeps the roles: seat 2 is still the "
+                  "child in slot 1" % state,
+                  S.member_plan(room, 2)["role"] == "child"
+                  and S.member_plan(room, 2)["slot"] == 1,
+                  S.member_plan(room, 2))
+            st, r = _result(code, toks[2], match, who="10.0.0.3")
+            check("[%s] a guest's result is a vote (1 of 2 live)" % state,
+                  st == 200 and room.state == state, (st, r, room.state))
+            st, r = _result(code, toks[1], match, who="10.0.0.2")
+            check("[%s] the new host's result ends it" % state,
+                  st == 200 and room.state == "lobby"
+                  and room.events[-1]["kind"] == "result", room.events[-1])
+            check("[%s] then the joiner plays the next match" % state,
+                  room.members[j["member"]].playing is True)
+    # (2) the new host had already voted: the hand-over settles it.
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(3)
+        _result(code, toks[1], match, who="10.0.0.2")
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1011.0)
+        check("a host leaving after seat 2 voted: seat 2 is host, its "
+              "result ends the match", room.state == "lobby"
+              and [e["kind"] for e in room.events[-3:]]
+              == ["left", "host", "result"], room.events[-3:])
+    # (3) arming still ends it (nothing has spawned; the plan is remade).
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(3, state="arming")
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1011.0)
+        check("during arming the host leaving ends it as before (failed "
+              "host_left)", room.state == "lobby"
+              and any(e["kind"] == "failed" and e["reason"] == "host_left"
+                      for e in room.events[-3:]), room.events[-3:])
+    # (4) fewer than 2 left still ends an arena match.
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(2)
+        S.do_failed({"v": 5, "room": code, "token": toks[1], "match": match,
+                     "reason": "user_cancelled"}, "10.0.0.2", 1005.0)
+        check("a 2P arena match whose guest quit ends (fewer than 2 left)",
+              room.state == "lobby", room.state)
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(2)
+        S.do_leave({"v": 5, "room": code, "token": toks[1]}, "10.0.0.2",
+                   1005.0)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1",
+                   1006.0)
+        check("a 2P arena match whose guest left, then the host left: the "
+              "room closes (last member out)", room.state == "closed",
+              room.state)
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(2)
+        st, j = join(code, "late", who="10.0.0.9", now=1004.0, pre_ok=True)
+        S.do_leave({"v": 5, "room": code, "token": toks[1]}, "10.0.0.2",
+                   1005.0)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1",
+                   1006.0)
+        check("both players gone with a waiting joiner left: the match ends "
+              "(failed host_left) and the joiner is host",
+              room.state == "lobby" and room.host_seat == j["member"]
+              and any(e["kind"] == "failed" and e["reason"] == "host_left"
+                      for e in room.events[-3:]), (room.state,
+                                                   room.events[-3:]))
+    # (5) the host's failed drops only the host.
+    reset()
+    with game_max(4, seats=4), arena():
+        code, room, toks, match = _running(3)
+        st, f = S.do_failed({"v": 5, "room": code, "token": toks[0],
+                             "match": match, "reason": "user_cancelled"},
+                            "10.0.0.1", 1005.0)
+        ev = room.events[-1]
+        check("an arena host's failed drops only the host",
+              st == 200 and room.state == "in_match"
+              and (ev["kind"], ev["seat"], ev["reason"])
+              == ("dropped", 1, "user_cancelled")
+              and room.members[1].playing is False, (room.state, ev))
+        check("and the host keeps the room's host role", room.host_seat == 1)
+        st, r = _result(code, toks[0], match)
+        check("the dropped host cannot post a result (403 not_playing)",
+              st == 403 and r["error"] == "not_playing", (st, r))
+        _result(code, toks[1], match, who="10.0.0.2")
+        st, r = _result(code, toks[2], match, who="10.0.0.3")
+        check("the two left playing end it by a majority",
+              room.state == "lobby" and room.events[-1]["kind"] == "result",
+              room.events[-1])
+        check("and the host is playing again for the next match",
+              room.members[1].playing is True)
+    # (6) the SAME events in a lockstep match are unchanged.
+    reset()
+    with game_max(4, seats=4), arena(ids=()):
+        code, room, toks, match = _running(3)
+        S.do_leave({"v": 5, "room": code, "token": toks[0]}, "10.0.0.1", 1011.0)
+        check("lockstep: the host leaving still ends the match (failed "
+              "host_left)", room.state == "lobby"
+              and [e["kind"] for e in room.events[-3:]]
+              == ["left", "failed", "host"], room.events[-3:])
+    reset()
+    with game_max(4, seats=4), arena(ids=()):
+        code, room, toks, match = _running(3)
+        S.do_failed({"v": 5, "room": code, "token": toks[0], "match": match,
+                     "reason": "user_cancelled"}, "10.0.0.1", 1005.0)
+        check("lockstep: the host's failed still ends the match",
+              room.state == "lobby" and room.events[-1]["kind"] == "failed",
+              room.events[-1])
+
+
 def main():
     test_grammar()
     test_addresses()
@@ -3824,6 +4238,12 @@ def main():
     test_a_throttled_host_is_not_silent()
     test_host_silent_floor()
     test_server_line_width()
+    test_arena_digest()
+    test_arena_off_by_default()
+    test_arena_plan()
+    test_arena_when()
+    test_arena_params()
+    test_arena_has_no_host_in_the_match()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

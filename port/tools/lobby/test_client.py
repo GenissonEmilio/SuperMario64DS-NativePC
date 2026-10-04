@@ -8,6 +8,8 @@
     python3 test_client.py soak [--seconds N]    hold a room open under load
     python3 test_client.py negatives --out DIR   write one file per captured
                                                  refusal, for the proof folder
+    python3 test_client.py arena                 arena mode (netmode) over the
+                                                 wire, on a server of its own
 
 WHY IT SPEAKS HTTP BY HAND. Most of what is worth proving here is a MALFORMED
 request: a body with no Content-Length, a Content-Length that lies, a 5 KB
@@ -722,12 +724,192 @@ def digest_of(plan):
     text = "|".join(str(x) for x in (
         plan["map"], plan["players"], win, plan.get("star_target", 0),
         plan.get("king_target", 0), plan["luigi"],
-        plan["seed"] if plan["luigi"] else 0, "lockstep",
+        plan["seed"] if plan["luigi"] else 0,
+        plan.get("netmode", "lockstep"),
         2 if plan["players"] <= 4 else 3))
     h = 0x811C9DC5
     for b in text.encode("ascii"):
         h = ((h ^ b) * 0x01000193) % (1 << 32)
     return h
+
+
+def _arena_room(c, n):
+    """A room of n members of the test build, everyone pre_ok."""
+    status, host = c.post("create", {"v": 5, "game": GAME, "nick": "ah",
+                                     "pre_ok": True})
+    code = host["room"]
+    members = [host]
+    for k in range(2, n + 1):
+        status, g = c.post("join", {"v": 5, "game": GAME, "room": code,
+                                    "nick": "ag%d" % k, "pre_ok": True})
+        members.append(g)
+    return code, members
+
+
+def _arena_go(c, code, members):
+    """start + every ready; returns (armed answer, each member's plan)."""
+    status, armed = c.post("start", {"v": 5, "room": code,
+                                     "token": members[0]["token"]})
+    for m in members:
+        c.post("ready", {"v": 5, "room": code, "token": m["token"],
+                         "match": armed.get("match", "")})
+    plans = []
+    for m in members:
+        status, seen = c.post("poll", {"v": 5, "room": code,
+                                       "token": m["token"], "cursor": 0,
+                                       "wait": 0})
+        plans.append(seen.get("plan") or {})
+    return armed, plans
+
+
+def _view(c, code, m):
+    # Cursor 1 = everything since the room was made (its first event is 2).
+    status, seen = c.post("poll", {"v": 5, "room": code, "token": m["token"],
+                                   "cursor": 1, "wait": 0})
+    return seen.get("view") or {}, seen.get("events") or []
+
+
+def selftest_arena(c):
+    """ARENA MODE over the wire (run mp1 A4), on a server that lists the test
+    build on ARENA_GAME_IDS with an arena limit of 3: the view's arena keys,
+    the plan's netmode and its digest (recomputed here), the host's pick and
+    its refusals, the size limit, and the no-host rule of an arena match."""
+    print("\n-- arena: health, view, plan, digest")
+    status, health = c.get("health")
+    check("health reports one arena build, max 3, new rooms pick arena",
+          status == 200 and health.get("arena_game_ids") == 1
+          and health.get("arena_max") == 3
+          and health.get("netmode_default") == "arena", health)
+    code, ms = _arena_room(c, 2)
+    view, _ = _view(c, code, ms[0])
+    check("the lobby view: netmode arena, arena_ok, arena_now arena, "
+          "match_netmode null, arena_max 3",
+          view.get("netmode") == "arena" and view.get("arena_ok") is True
+          and view.get("arena_now") == "arena"
+          and view.get("match_netmode") is None
+          and view.get("arena_max") == 3, view)
+    armed, plans = _arena_go(c, code, ms)
+    check("both plans say netmode arena",
+          all(p.get("netmode") == "arena" for p in plans),
+          [p.get("netmode") for p in plans])
+    check("the digest matches an independent recomputation with arena",
+          plans[0].get("digest") == plans[1].get("digest")
+          == digest_of(plans[0]), (plans[0].get("digest"),
+                                   digest_of(plans[0])))
+    check("map 0, 2 players, time, Luigi off: the published 1565304087",
+          plans[0].get("digest") == 1565304087, plans[0].get("digest"))
+    check("roles, slots and seats as in lockstep",
+          (plans[0].get("role"), plans[0].get("slot"),
+           plans[0].get("want_seat")) == ("parent", 0, 0)
+          and (plans[1].get("role"), plans[1].get("slot"),
+               plans[1].get("want_seat")) == ("child", 1, 1), plans)
+    view, events = _view(c, code, ms[1])
+    arm = [e for e in events if e.get("kind") == "arming"]
+    check("the arming event and the view both say arena",
+          bool(arm) and arm[-1].get("netmode") == "arena"
+          and view.get("match_netmode") == "arena", (arm, view))
+    status, r = c.post("result", {"v": 5, "room": code,
+                                  "token": ms[0]["token"],
+                                  "match": armed.get("match", ""),
+                                  "win": "time-up", "scores": [1, 0, 0, 0]})
+    check("the host's result ends it", status == 200, r)
+
+    print("\n-- arena: the host's pick, and its refusals")
+    base = {"v": 5, "room": code, "token": ms[0]["token"], "map": 0,
+            "win_mode": "time"}
+    for bad in ("ARENA", "rollback", "", 7, None):
+        expect("netmode %r is 400 bad_netmode" % (bad,),
+               c.post("params", dict(base, netmode=bad)), 400, "bad_netmode")
+    expect("a guest setting it is 403 not_host",
+           c.post("params", dict(base, token=ms[1]["token"],
+                                 netmode="lockstep")), 403, "not_host")
+    status, body = c.post("params", dict(base, netmode="lockstep"))
+    view, events = _view(c, code, ms[1])
+    pe = [e for e in events if e.get("kind") == "params"]
+    check("the host picks lockstep: the view and the params event say so",
+          status == 200 and view.get("netmode") == "lockstep"
+          and view.get("arena_now") == "lockstep"
+          and bool(pe) and pe[-1].get("netmode") == "lockstep",
+          (status, view, pe))
+    armed, plans = _arena_go(c, code, ms)
+    check("the next match is lockstep, with the lockstep digest",
+          all(p.get("netmode") == "lockstep" for p in plans)
+          and plans[0].get("digest") == digest_of(plans[0])
+          and plans[0].get("digest") == 1172137709,
+          [(p.get("netmode"), p.get("digest")) for p in plans])
+    c.post("result", {"v": 5, "room": code, "token": ms[0]["token"],
+                      "match": armed.get("match", ""), "win": "time-up",
+                      "scores": [1, 0, 0, 0]})
+    c.post("params", dict(base, netmode="arena"))
+    status, adv = c.post("create", {"v": 5, "game": GAME, "nick": "aa",
+                                    "session_type": "adventure"})
+    expect("netmode on an adventure room is 400 bad_field",
+           c.post("params", {"v": 5, "room": adv["room"],
+                             "token": adv["token"], "map": 0,
+                             "win_mode": "time", "netmode": "arena"}),
+           400, "bad_field")
+    c.post("leave", {"v": 5, "room": adv["room"], "token": adv["token"]})
+    for m in ms:
+        c.post("leave", {"v": 5, "room": code, "token": m["token"]})
+
+    print("\n-- arena: the size limit and the modes it does not referee")
+    code, ms = _arena_room(c, 4)
+    c.post("params", {"v": 5, "room": code, "token": ms[0]["token"],
+                      "map": 2, "win_mode": "time", "match_players": 4})
+    view, _ = _view(c, code, ms[0])
+    check("4 players over the limit 3: arena_now lockstep",
+          view.get("arena_now") == "lockstep", view)
+    armed, plans = _arena_go(c, code, ms)
+    check("and the match plays lockstep",
+          all(p.get("netmode") == "lockstep" for p in plans)
+          and plans[0].get("digest") == digest_of(plans[0]),
+          [p.get("netmode") for p in plans])
+    c.post("result", {"v": 5, "room": code, "token": ms[0]["token"],
+                      "match": armed.get("match", ""), "win": "time-up",
+                      "scores": [1, 0, 0, 0]})
+    c.post("params", {"v": 5, "room": code, "token": ms[0]["token"],
+                      "map": 2, "win_mode": "king", "king_target": 30,
+                      "match_players": 3})
+    view, _ = _view(c, code, ms[0])
+    check("3 players, King of the Star: arena_now lockstep",
+          view.get("arena_now") == "lockstep", view)
+    c.post("params", {"v": 5, "room": code, "token": ms[0]["token"],
+                      "map": 2, "win_mode": "stars", "star_target": 3,
+                      "match_players": 3})
+    view, _ = _view(c, code, ms[0])
+    check("3 players, stars: arena_now arena",
+          view.get("arena_now") == "arena", view)
+
+    print("\n-- arena: the host leaving does not end an arena match")
+    armed, plans = _arena_go(c, code, ms)
+    playing = [m for m, p in zip(ms, plans) if p.get("playing")]
+    check("3 of the 4 play, arena, stars target 3",
+          len(playing) == 3 and all(p.get("netmode") == "arena"
+                                    for p in plans if p.get("playing"))
+          and plans[0].get("star_target") == 3,
+          [(p.get("playing"), p.get("netmode")) for p in plans])
+    status, out = c.post("leave", {"v": 5, "room": code,
+                                   "token": ms[0]["token"]})
+    view, events = _view(c, code, playing[1])
+    kinds = [e.get("kind") for e in events]
+    check("left then host, no failed; the room is still in the match",
+          status == 200 and "failed" not in kinds[-3:]
+          and kinds[-2:] == ["left", "host"]
+          and view.get("state") in ("go", "in_match")
+          and view.get("match") == armed.get("match"), (kinds[-3:], view))
+    check("the new host is a seat that plays the match",
+          view.get("host") == playing[1]["member"], view.get("host"))
+    status, r = c.post("result", {"v": 5, "room": code,
+                                  "token": playing[1]["token"],
+                                  "match": armed.get("match", ""),
+                                  "win": "star-target", "scores": [0, 3, 1, 0]})
+    view, events = _view(c, code, playing[2])
+    check("the new host's result ends the match",
+          status == 200 and view.get("state") == "lobby"
+          and [e.get("kind") for e in events][-1] == "result",
+          (status, view.get("state")))
+    for m in ms[1:]:
+        c.post("leave", {"v": 5, "room": code, "token": m["token"]})
 
 
 def _arm_and_plans(c, code, host, guest):
@@ -787,6 +969,10 @@ def selftest_one(c):
     check("the digest matches an independent recomputation from the plan",
           hp.get("digest") == gp.get("digest") == digest_of(hp),
           (hp.get("digest"), digest_of(hp)))
+    check("both plans say netmode lockstep (this server lists no arena "
+          "build, and Luigi is on)",
+          hp.get("netmode") == gp.get("netmode") == "lockstep",
+          (hp.get("netmode"), gp.get("netmode")))
     first_seed = hp.get("seed")
 
     status, r = c.post("result", {"v": 5, "room": code, "token": host["token"],
@@ -1693,7 +1879,8 @@ def parse_url(url):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=("selftest", "soak", "negatives", "dial"))
+    ap.add_argument("mode", choices=("selftest", "soak", "negatives", "dial",
+                                     "arena"))
     ap.add_argument("--url", default=None,
                     help="a server already running; default is to spawn one")
     ap.add_argument("--seconds", type=int, default=30)
@@ -1740,6 +1927,19 @@ def main():
             extra["RATE_BURST"] = "1000000"
             extra["BAD_LIMIT"] = "1000000"
             print("  (MAX_SEATS=4 GAME_MAX_PLAYERS=4, the deployed values)")
+        if args.mode == "arena":
+            # ARENA MODE (run mp1 A4): the deployed knobs, plus the test
+            # build on ARENA_GAME_IDS (what the relay redeploy writes) and
+            # an arena limit of 3 so the size rule is provable with 4 seats.
+            extra["MAX_SEATS"] = "4"
+            extra["GAME_MAX_PLAYERS"] = "4"
+            extra["ARENA_GAME_IDS"] = GAME
+            extra["ARENA_MAX_PLAYERS"] = "3"
+            extra["RATE_REQ_PER_S"] = "1000000"
+            extra["RATE_BURST"] = "1000000"
+            extra["BAD_LIMIT"] = "1000000"
+            extra["RATE_JOIN_PER_MIN"] = "100000"
+            print("  (ARENA_GAME_IDS=%s ARENA_MAX_PLAYERS=3, seats 4)" % GAME)
         spawned = Spawned(port, extra)
         c = spawned.wait_ready()
 
@@ -1750,6 +1950,8 @@ def main():
             negatives(c, args.out)
         elif args.mode == "dial":
             dial_deployed(c)
+        elif args.mode == "arena":
+            selftest_arena(c)
         else:
             soak(c, args.seconds, args.members)
     finally:
