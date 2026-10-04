@@ -336,6 +336,8 @@ sockaddr_in g_relay = {};
 int g_mesh_base = 0;
 unsigned char g_code[8] = {};
 int g_want_seat = 0xFF;
+unsigned g_seat_taken_since = 0;   // arena: when the first status 4 came (0 = none)
+const unsigned kArenaSeatRetryMs = 6000;   // how long an arena pin is kept against status 4
 bool g_ever_paired = false;
 bool g_exit_full = false;   // set under the lock, acted on outside it
 volatile LONG g_stop = 0;   // process exit: the I/O thread returns
@@ -641,6 +643,7 @@ void on_ack(const unsigned char *p, unsigned now) {
                          seat, g_ever_paired ? " (re-paired)" : "");
         if (g_seat >= 0 && seat != g_seat && g_seats[seat].present)
             seat_leave(seat, "that seat is mine now");
+        g_seat_taken_since = 0;
         g_seat = seat;
         g_state = kHubLive;
         g_ever_paired = true;
@@ -658,6 +661,31 @@ void on_ack(const unsigned char *p, unsigned now) {
         g_state = kHubFull;
         return;
     case 4:
+        // ARENA: the seat is pinned to a body, and the relay holds a console's
+        // seat until it has been silent 3 s (relay.py SEAT_RECLAIM_S, HELLO role 3). A
+        // console that comes back faster than that (a restart is usually 4 s)
+        // is refused with 4 a few times and is given its own seat as soon as
+        // the old one times out, so
+        // keep the pin and ask again (the HELLO repeats once a second). Bounded:
+        // a seat that is still taken after kArenaSeatRetryMs is a live console,
+        // and the old behaviour (ask for any free seat) takes over. Lockstep
+        // and adventure hubs never keep the pin.
+        if (g_arena && g_want_seat != 0xFF) {
+            if (g_seat_taken_since == 0) {
+                g_seat_taken_since = now ? now : 1;
+                std::fprintf(stderr, "[hub] seat %d is still held by the "
+                             "console that was here; asking again for it "
+                             "(up to %u ms)\n", g_want_seat,
+                             kArenaSeatRetryMs);
+                return;
+            }
+            if (now - g_seat_taken_since < kArenaSeatRetryMs) return;
+            std::fprintf(stderr, "[hub] seat %d is held by a live console; "
+                         "asking for any free seat\n", g_want_seat);
+            g_want_seat = 0xFF;
+            g_seat_taken_since = 0;
+            return;
+        }
         std::fprintf(stderr, "[hub] seat %d is taken; asking for any free "
                      "seat\n", g_want_seat);
         g_want_seat = 0xFF;
