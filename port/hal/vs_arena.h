@@ -29,8 +29,14 @@
 //                             fallback for one release). Anything else is
 //                             refused loudly and treated as lockstep.
 //   SM64DS_VS_MAP=<0..3>      required (a VS boot); arena is never adventure.
-//   SM64DS_VS_PLAYERS=<2..16> the bodies the arena boots with = the room's
-//                             capacity; body k belongs to seat k.
+//   SM64DS_VS_PLAYERS=<2..4>  the bodies the arena boots with = the room's
+//                             capacity; body k belongs to seat k. PHASE A IS
+//                             2..4: the ROM fills four slot records, so a seat
+//                             of 4 or more never gets its pad. More than 4
+//                             players, or a seat pin of 4 or more, prints one
+//                             "[vsarena] ERROR ..." line and arena mode is NOT
+//                             set up (the process plays as if the env were
+//                             absent). B1 widens this to 16.
 //   Address, the hub's own knobs (hal/comms_hub.h):
 //     SM64DS_COMMS_RELAY + SM64DS_COMMS_CODE   the relay (the real path), or
 //     SM64DS_HUB_PORT                          the loopback mesh (tests: no
