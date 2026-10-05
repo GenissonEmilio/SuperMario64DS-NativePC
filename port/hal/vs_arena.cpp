@@ -708,6 +708,7 @@ enum : int {
     kStLevelEnter = 51,       // state_table.json: St_LevelEnter
     kStInYoshiMouth = 5,      // state_table.json: St_InYoshiMouth
     kPlayerEatenBy = 0xd0,    // Player mEatingPlayer: whose mouth this body is in
+    kPlayerMouthObj = 0x360,  // Player mObjInMouth: the actor in this body's mouth
     kPlayerOpacity = 0x6f5,   // Player mOpacity (0 = Player::Render draws nothing)
     kPupIntroMaxFrames = 900, // 30 s: take over a seat that never leaves the intro
 };
@@ -1006,18 +1007,32 @@ void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
     // only thing that would keep it hidden, never runs. Opacity 0 also lifts the
     // drop shadow (func_ov002_020e444c below sets the latch when opacity and
     // vanish are both 0).
-    // In a mouth = the owner's stream says so (eaten_by, on every console but
-    // the victim's own, which has a live body), or, on the eater's console, the
-    // puppet sits in my mouth now (mEatingPlayer set and the mouth state): that
-    // is the 130 ms before the referee's verdict, when the stream has not caught
-    // up.
-    const bool in_mouth = d.eaten_by != 0 ||
-        (*(int *)(a + kPlayerEatenBy) != 0 && state_index_of(a) == kStInYoshiMouth);
-    if (pp.n_driven > 0 && pp.mouth_prev) {
+    // In a mouth = the owner's stream says so (eaten_by names the eater's seat),
+    // on every console but the victim's own, which has a live body. On the
+    // EATER's console the stream is the wrong clock: the ROM eats the puppet at
+    // once (about 130 ms before the referee's verdict and before the stream
+    // shows it) and lets it go at the spit, a round trip before the victim's
+    // stream stops saying eaten. There my own body's mouth (mObjInMouth, +0x360)
+    // is the truth: hidden exactly while it holds this puppet.
+    char *const mine_body = (g.seat >= 0 && g.seat < kArenaSeats) ? (char *)data_0209f394[g.seat] : nullptr;
+    const bool in_my_mouth = mine_body && *(char **)(mine_body + kPlayerMouthObj) == a;
+    const bool named_me = d.eaten_by && (int)d.eaten_by - 1 == g.seat;
+    const bool in_mouth = in_my_mouth || (d.eaten_by && !named_me);
+    // the transition frames (the ROM's own pull in and spit out) are the ROM's
+    // to draw; a frame counts only when the puppet was in a mouth at the last
+    // drive and still is
+    if (pp.n_driven > 0 && pp.mouth_prev && in_mouth) {
         // what the last frame drew: this is read before it is overwritten
         ++pp.mouth_frames;
-        if (*(unsigned char *)(a + kPlayerOpacity) != 0 && !(*(unsigned *)(a + 0xb0) & 0x10u))
+        if (*(unsigned char *)(a + kPlayerOpacity) != 0 && !(*(unsigned *)(a + 0xb0) & 0x10u)) {
             ++pp.mouth_drawn;
+            if (pp.mouth_drawn <= 8)
+                std::fprintf(stderr, "[puppet] f%u seat %d drawn in a mouth: opacity %u flags %08x "
+                             "state %d eaten_by %u d0 %s mine %d\n", g.frame, seat,
+                             (unsigned)*(unsigned char *)(a + kPlayerOpacity),
+                             *(unsigned *)(a + 0xb0), state_index_of(a), (unsigned)d.eaten_by,
+                             *(int *)(a + kPlayerEatenBy) ? "set" : "clear", in_my_mouth ? 1 : 0);
+        }
     }
     if (in_mouth != pp.mouth_prev) {
         if (in_mouth) ++pp.mouth_enters;
