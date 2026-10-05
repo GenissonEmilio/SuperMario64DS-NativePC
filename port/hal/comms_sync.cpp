@@ -1105,9 +1105,19 @@ void gw_reset_seat(GwSeat &z, bool keep_ident) {
     const unsigned bid = z.build_id;
     const bool he = z.have_epoch;
     const unsigned ep = z.epoch;
+    // GHOSTCHAR1: the exit summary's per-seat pose counts run for the whole
+    // session; a seat reset (a rejoin, a clock jump, a level reload) is not
+    // the end of the ghost
+    const unsigned long long sm_n = z.sm_n, sm_i = z.sm_interp,
+        sm_r = z.sm_reckon, sm_ho = z.sm_hold_old, sm_ht = z.sm_hold_tele,
+        sm_hs = z.sm_hold_still, sm_sw = z.sm_swaps;
+    const unsigned sm_mx = z.sm_streak_max;
     std::memset(&z, 0, sizeof z);
     z.have_epoch = he;
     z.epoch = ep;
+    z.sm_n = sm_n; z.sm_interp = sm_i; z.sm_reckon = sm_r;
+    z.sm_hold_old = sm_ho; z.sm_hold_tele = sm_ht; z.sm_hold_still = sm_hs;
+    z.sm_swaps = sm_sw; z.sm_streak_max = sm_mx;
     if (keep_ident && hi) {
         z.have_ident = true;
         std::memcpy(z.name, name, sizeof name);
@@ -1405,7 +1415,6 @@ inline int gw_lerp(int a, int b, long long num, long long den) {
     return a + (int)(((long long)(b - a) * num) / den);
 }
 
-// The seat's body as it was kGwInterpMs ago on the sender's own clock.
 // GHOSTCHAR1: 0 interpolated, 1 reckoned, 2 held (nothing older than the
 // oldest frame), 3 held (the next frame is a teleport), 4 held (paused or a
 // teleport frame is the newest).
@@ -1426,6 +1435,8 @@ void gw_count(int seat, int kind) {
     }
 }
 
+// The seat's body as it was kGwInterpMs ago on the sender's own clock (the
+// legacy follower, SM64DS_GHOST_LEGACY=1).
 bool gw_sample_legacy(int seat, unsigned now, GwSample *o) {
     const GwSeat &z = g_gw[seat];
     if (z.n == 0 || !z.have_off) return false;
@@ -3043,11 +3054,16 @@ static void gw_exit_pct(char *out, size_t cap, unsigned long long part,
 
 static void gw_exit_summary() {
     if (!g_hub) return;
-    unsigned long long tot = 0;
+    unsigned long long tot = 0, t_int = 0, t_rec = 0, t_hold = 0, t_sw = 0;
     int order[kHubMaxSeats], n = 0;
     for (int s = 0; s < kHubMaxSeats; ++s) {
         if (!g_gw[s].sm_n) continue;
         tot += g_gw[s].sm_n;
+        t_int += g_gw[s].sm_interp;
+        t_rec += g_gw[s].sm_reckon;
+        t_hold += g_gw[s].sm_hold_old + g_gw[s].sm_hold_tele +
+                  g_gw[s].sm_hold_still;
+        t_sw += g_gw[s].sm_swaps;
         int k = n++;
         while (k > 0 && g_gw[order[k - 1]].sm_n < g_gw[s].sm_n) {
             order[k] = order[k - 1];
@@ -3056,15 +3072,15 @@ static void gw_exit_summary() {
         order[k] = s;
     }
     char a[16], b[16], c[16];
-    gw_exit_pct(a, sizeof a, g_gws.interp, tot);
-    gw_exit_pct(b, sizeof b, g_gws.reckon, tot);
-    gw_exit_pct(c, sizeof c, g_gws.hold, tot);
+    gw_exit_pct(a, sizeof a, t_int, tot);
+    gw_exit_pct(b, sizeof b, t_rec, tot);
+    gw_exit_pct(c, sizeof c, t_hold, tot);
     std::fprintf(stderr,
                  "[ghost:exit] smoothness: %d ghost%s posed over %llu frames "
                  "(follower passes %u): interpolated %s, reckoned %s, held %s;"
                  " %llu char swaps; showing the %d busiest\n",
                  n, n == 1 ? "" : "s", tot, g_gw_follow_n, a, b, c,
-                 g_gws.charswaps, n < 4 ? n : 4);
+                 t_sw, n < 4 ? n : 4);
     for (int k = 0; k < n && k < 4; ++k) {
         const GwSeat &z = g_gw[order[k]];
         char pi[16], pr[16], ph[16];
