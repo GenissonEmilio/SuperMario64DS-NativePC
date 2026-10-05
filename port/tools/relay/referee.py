@@ -1382,7 +1382,14 @@ class Referee(object):
         if v.eat_target == c.seat and v.eat_stamp is not None and                 abs(c.stamp - v.eat_stamp) <= TRADE_MS:
             return True
         for p in self.pending:
-            if p.kind == C_EAT and p.seat == v.seat and p.target == c.seat                     and abs(c.stamp - p.stamp) <= TRADE_MS:
+            if (p.kind == C_EAT and p.seat == v.seat and p.target == c.seat
+                    and abs(c.stamp - p.stamp) <= TRADE_MS
+                    # a pending claim is unchecked: it shields only if the
+                    # eater's own samples show the tongue out around its frame
+                    # (the test _hit applies when it decides it), so a seat
+                    # cannot buy immunity by spamming dummy EAT claims
+                    and any(x.state in YOSHI_POWER_IDX for x in v.samples_between(
+                        p.frame - ATTACK_LOOKBACK_FRAMES, p.frame))):
                 return True
         return False
 

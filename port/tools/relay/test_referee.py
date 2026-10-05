@@ -1596,16 +1596,95 @@ def u_star_flight(mod):
               "touch while hurt: STATE (%s)" % (v and v["name"]))
     res.check(any("deny GRAB" in m and "STATE" in m and "state=St_Hurt" in m
                   for m in mod.LOGGED), "STATE line names the state")
-    # the journal is rate-limited per session
+    # the journal is rate-limited per session: a refused-claim spam at 20 / s
+    # for 3 s writes about 4 lines a second (literal numbers, not the constant,
+    # so raising DENY_LOG_PER_S cannot pass)
     n0 = len([m for m in mod.LOGGED if "deny GRAB" in m])
-    for i in range(30):
-        b.claim(CL["GRAB"], inst)
-    streaming(rig, [a, b], 0.3)
+    state = {"n": rig.now}
+
+    def spam():
+        if rig.now >= state["n"]:
+            state["n"] += 1 / 20.0
+            b.claim(CL["GRAB"], inst)
+            a.syns()
+            b.syns()
+    rig.advance(3.0, each=spam)
     n1 = len([m for m in mod.LOGGED if "deny GRAB" in m])
-    res.check(n1 - n0 <= R.DENY_LOG_PER_S * 2, "30 refused claims in 0.3 s "
-              "wrote %d journal lines (budget %d / s)" % (n1 - n0,
-                                                          R.DENY_LOG_PER_S))
+    res.check(R.DENY_LOG_PER_S == 4, "journal budget is 4 lines / s")
+    res.check(1 <= n1 - n0 <= 4 * 4, "60 refused claims in 3 s wrote %d journal "
+              "lines (at most 4 / s, 16 over the span)" % (n1 - n0))
     res.check(ref.invariants() == [], "invariants")
+    return res
+
+
+def u_eat_shield(mod):
+    """REVREFFIX2 F1: a pending EAT claim shields its sender from a HIT only
+    when the sender's own samples show the tongue out; a seat that stands in
+    St_Wait and spams dummy EAT claims at the attacker blocks nothing."""
+    res = Result("eat shield: dummy EAT claims block no honest hit, a real tongue still wins")
+    R = mod.referee
+    ST_POUND = R._IDX["St_GroundPound"]
+    for rate in (10, 20):
+        rig, (a, b) = match(2)
+        ref = rig.ref("ARENA01")
+        a.pos, b.pos = [0, 0, 0], [100, 0, 0]
+        a.state, b.state = ST_POUND, ST_WAIT          # b has no tongue out
+        streaming(rig, [a, b], 0.3)
+        landed = blocked = other = 0
+        # 12 honest pounds 1.3 s apart, a dummy EAT from b stamped within
+        # TRADE_MS of each, plus a continuous dummy stream at `rate` / s
+        state = {"n": rig.now, "f": rig.now}
+
+        def dummies():
+            if rig.now >= state["f"]:           # both consoles stream at 30 Hz
+                state["f"] += 1.0 / 30.0
+                a.syns()
+                b.syns()
+            if rig.now >= state["n"]:
+                state["n"] += 1.0 / rate
+                b.claim(CL["EAT"], a.seat, ref_frame=a.frame - 2)
+        for i in range(12):
+            t = rig.now
+            ch = a.claim(CL["HIT"], b.seat, aux=0x1400 >> 5, ref_frame=b.frame - 2,
+                         stamp=ref.ref_ms(t, a.seat) - 20)
+            rig.advance(0.05, each=dummies)
+            b.claim(CL["EAT"], a.seat, ref_frame=a.frame - 2,
+                    stamp=ref.ref_ms(t, b.seat) - 10)
+            rig.advance(1.3, each=dummies)
+            v = a.verdict(ch)
+            if v and v["name"] == "HIT":
+                landed += 1
+            elif v and v["name"] == "DENY" and v["b"] == DENY["INVULN"]:
+                blocked += 1
+            else:
+                other += 1
+        res.check(blocked == 0 and landed == 12,
+                  "dummy EAT spam at %d / s: honest pounds landed %d blocked %d "
+                  "other %d of 12" % (rate, landed, blocked, other))
+    # a real tongue (samples in St_YoshiPower around the claim frame) still
+    # wins the tie: covered by u_hit_eat; here the same shape with the tongue
+    # up only in the samples of the claim frame
+    ST_YOSHI = R._IDX["St_YoshiPower"]
+    rig, (a, b) = match(2)
+    rig.no_pings = True
+    ref = rig.ref("ARENA01")
+    for c in (a, b):
+        sc = ref.seats[c.seat]
+        sc.rtts.clear()
+        sc.rtts.append(125)
+        sc.rtt_min = 125
+    a.pos, b.pos = [0, 0, 0], [100, 0, 0]
+    a.state, b.state = ST_POUND, ST_YOSHI
+    streaming(rig, [a, b], 0.3)
+    t = rig.now
+    ch = a.claim(CL["HIT"], b.seat, aux=0x1400 >> 5, ref_frame=b.frame - 2,
+                 stamp=ref.ref_ms(t, a.seat) - 20)
+    ce = b.claim(CL["EAT"], a.seat, ref_frame=a.frame - 2,
+                 stamp=ref.ref_ms(t, b.seat) - 10)
+    streaming(rig, [a, b], 0.5)
+    res.check(b.verdict(ce)["name"] == "EATEN" and a.verdict(ch)["name"] == "DENY",
+              "a real tongue wins the tie (%s / %s)" % (b.verdict(ce)["name"],
+                                                         a.verdict(ch)["name"]))
     return res
 
 
@@ -1659,7 +1738,7 @@ def run_unit():
     tests = (u_contract, u_handshake, u_routes, u_match, u_timeup,
              u_contention, u_hits, u_hit_nc, u_reliability, u_leave, u_ready,
              u_strikes, u_eat, u_rematch, u_rejoin, u_hit_eat, u_star_flight,
-             u_land_speed)
+             u_eat_shield, u_land_speed)
     results = []
     for t in tests:
         try:
