@@ -102,9 +102,7 @@ int    g_bucket_gpu_on;
    choosing. Every course entry therefore looked like a hitch in a report, with
    a tick rate of about 26 and a card load of 45 to 112 percent, and none of
    it was the game working. Three things below keep it out:
-     - the interlude's own time is subtracted from the frame that held it
-       (g_adj_*; the pump can read one frame's span more than once before the
-       next frame closes, so the adjusted value is remembered by the raw one);
+     - the interlude's own time is subtracted from the frame that held it;
      - the rate-derived fields (fps, tick rate, cpu, the card's three) skip the
        frames until the rate windows have turned over (g_taint_until_ms), and
        are averaged over the frames that did count (g_nrate / g_ntick), so a
@@ -119,8 +117,8 @@ int    g_bucket_gpu_on;
 double g_starsel_ms;            /* taken out of this bucket */
 double g_pending_excl;          /* handed over, not yet taken off a frame */
 double g_taint_until_ms;        /* perf_now_ms() the rate windows are clean from */
-double g_adj_raw = -1.0;        /* the raw frame span that was adjusted ... */
-double g_adj_val;               /* ... and what it was adjusted to */
+double g_prev_raw = -1.0;       /* the last raw frame span seen (see g_nrepeat) */
+long long g_nrepeat;            /* pump reads that repeated a span: not frames */
 int    g_nrate, g_ntick;        /* frames that counted for the rate fields */
 double g_last_fps, g_last_tick, g_last_cpu;
 double g_last_gms, g_last_gpct, g_last_gread;
@@ -689,28 +687,39 @@ extern "C" void port_perf_log_frame(const struct PortPerfFrame *f)
 
     /* THE STAR SELECT (see the banner over g_starsel_ms). The interlude's
        milliseconds are handed over by hal/level_boot.cpp the moment it ends;
-       they come out of the next frame span that is long enough to hold them,
-       and that frame's span stays adjusted if the pump reads it again. */
+       they come out of the next frame span that is long enough to hold them.
+
+       ONE FRAME IS ONE READ. The pump runs about twice a game frame (the ROM's
+       wait turns once a VBlank, a course ticks at 30), and the span it reads,
+       the loop's PH_FRAME, only changes when the frame closes, so the second
+       read hands back the same number. Counted as a second frame it doubled
+       every sample's weight on it and, when the first read closed a bucket,
+       put a long frame into the NEXT bucket as well (the 5922 ms entry showed
+       in two samples). A span exactly equal to the one before it is the same
+       frame read again: it is not folded in at all (the bucket's end is still
+       tested below). Two real frames never share a span to the last bit of a
+       double of microsecond-scale clock readings. */
     double frame_ms = f->frame_ms;
     const double now_ms = perf_now_ms();
-    {
+    const int repeat = (f->frame_ms == g_prev_raw);
+    g_prev_raw = f->frame_ms;
+    if (repeat) {
+        ++g_nrepeat;
+    } else {
         const double ss = port_lvlperf_starsel_take();
         if (ss > 0.0) {
             g_pending_excl += ss;
             g_starsel_ms += ss;
             g_taint_until_ms = now_ms + 650.0;   /* the 0.5 s rate windows */
         }
-        if (frame_ms == g_adj_raw) {
-            frame_ms = g_adj_val;
-        } else if (g_pending_excl > 0.0 && frame_ms >= g_pending_excl) {
-            g_adj_raw = frame_ms;
+        if (g_pending_excl > 0.0 && frame_ms >= g_pending_excl) {
             frame_ms -= g_pending_excl;
-            g_adj_val = frame_ms;
             g_pending_excl = 0.0;
         }
     }
     const int rate_ok = now_ms >= g_taint_until_ms;
 
+    if (!repeat) {
     ++g_frames;
     g_sum_frame += frame_ms;
     if (frame_ms > g_max_frame) g_max_frame = frame_ms;
@@ -734,6 +743,7 @@ extern "C" void port_perf_log_frame(const struct PortPerfFrame *f)
         }
     }
     if (f->gpu_on) g_bucket_gpu_on = 1;
+    }   /* !repeat */
 
     const double t_s = (perf_now_ms() - g_t0_ms) / 1000.0;
     if (t_s < g_next_t_s) return;
