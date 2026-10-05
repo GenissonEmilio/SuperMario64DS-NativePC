@@ -18011,7 +18011,13 @@ int main(void)
            moves. A frame in those two modes is never held on the card
            (gx_card_present_allow above), so the tag pixels are ordinary
            opaque ones. */
-        if (!rb_skip_render()) nt_draw(ovl_surface(fb));
+        /* SM64DS_TAG_ORDER=old puts the tags back after the 2D (the control arm
+           of the layer proof, one binary): test only. */
+        static const int tag_old_order = [] {
+            const char *e = getenv("SM64DS_TAG_ORDER");
+            return (e && !strcmp(e, "old")) ? 1 : 0;
+        }();
+        if (!tag_old_order && !rb_skip_render()) nt_draw(ovl_surface(fb));
         pt_mark(PS_COMP_A);
         if (!rb_skip_render())
             port_message_composite_engine_a(&fb);
@@ -18170,6 +18176,7 @@ int main(void)
         /* THE NAME TAGS are no longer drawn here: they go in right after the
            3D, before the engine-A composite, so the HUD, the panel and the
            menus draw over them (run mp1, lane TAGLAYER1; see above). */
+        if (tag_old_order && !rb_skip_render()) nt_draw(surf);
         /* THE CHAT (run mp1, lane CHATUI1): over everything the game draws,
            under the menu. Pumped every presented frame whether or not this
            one renders. */

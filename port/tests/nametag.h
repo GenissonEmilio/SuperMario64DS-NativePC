@@ -603,6 +603,37 @@ static void nt_bubble_draw(const OvlSurface &fb, int cx, int y,
         }
 }
 
+/* TEST ONLY: SM64DS_TAG_AT="x,y;x,y;..." (per mille of the picture, anchor
+   point = the head the tag stands on) draws the first remote body's tag and
+   bubble ONCE AT EACH listed place instead of over its head, so a proof can
+   put a tag behind the HUD counters, the panel corner or a menu on purpose and
+   compare the picture with tags off (run mp1, lane TAGLAYER1). Unset: nothing
+   changes. */
+static int nt_test_at(float xs[8], float ys[8])
+{
+    static int n = -1;
+    static float x[8], y[8];
+    if (n < 0) {
+        n = 0;
+        const char *e = getenv("SM64DS_TAG_AT");
+        while (e && *e && n < 8) {
+            char *end = 0;
+            const float fx = (float)strtod(e, &end);
+            if (end == e || *end != ',') break;
+            e = end + 1;
+            const float fy = (float)strtod(e, &end);
+            if (end == e) break;
+            x[n] = fx;
+            y[n] = fy;
+            ++n;
+            e = end;
+            if (*e == ';') ++e;
+        }
+    }
+    for (int i = 0; i < n; ++i) { xs[i] = x[i]; ys[i] = y[i]; }
+    return n;
+}
+
 /* ---- the tags -------------------------------------------------------------
    Called once per frame, with the surface every other host overlay draws on.
    Reads only. */
@@ -678,6 +709,24 @@ static void nt_draw(const OvlSurface &fb)
         e.i = i;
         e.seat = seat;
         ++nb;
+    }
+    {
+        /* the test knob above: copies of the first remote body, one per place */
+        float tx[8], ty[8];
+        const int tn = nt_test_at(tx, ty);
+        int first = -1;
+        for (int k = 0; k < nb; ++k)
+            if (bodies[k].i != me) { first = k; break; }
+        if (tn > 0 && first >= 0) {
+            const NtBody src = bodies[first];
+            nb = 0;
+            for (int k = 0; k < tn; ++k) {
+                bodies[nb] = src;
+                bodies[nb].sx = tx[k] * 0.001f * (float)ntr::active_w;
+                bodies[nb].sy = ty[k] * 0.001f * (float)ntr::active_h;
+                ++nb;
+            }
+        }
     }
     /* FAR TO NEAR, so the nearest body's tag and bubble land on top (a plain
        insertion sort: at most sixteen) */
