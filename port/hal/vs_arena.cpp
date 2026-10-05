@@ -706,6 +706,9 @@ enum : int {
     kPlayerAttackClsn = 0x314,
     kPlayerBodyClsnOn = 0x713,
     kStLevelEnter = 51,       // state_table.json: St_LevelEnter
+    kStInYoshiMouth = 5,      // state_table.json: St_InYoshiMouth
+    kPlayerEatenBy = 0xd0,    // Player mEatingPlayer: whose mouth this body is in
+    kPlayerOpacity = 0x6f5,   // Player mOpacity (0 = Player::Render draws nothing)
     kPupIntroMaxFrames = 900, // 30 s: take over a seat that never leaves the intro
 };
 
@@ -718,6 +721,7 @@ struct PupDraw {
     unsigned char flags;
     unsigned char invuln;
     unsigned char power;
+    unsigned char eaten_by;   // seat + 1 of the mouth this body is in, 0 = none
     char mode;                // i interp, r reckon, h hold, t teleport hold,
                               // o older than the ring
     double ft;                // the sender frame the draw time maps to
@@ -734,10 +738,15 @@ struct Pup {
     unsigned swap_at = 0;
     unsigned long long frames = 0, interp = 0, reckon = 0, hold = 0, tele = 0,
                        older = 0, swaps = 0, sfx_played = 0, hits = 0;
+    // a puppet in somebody's mouth is not drawn (PUPEAT2)
+    bool mouth_prev = false;               // in a mouth at the last drive
+    unsigned long long mouth_frames = 0,   // frames driven in a mouth
+                       mouth_drawn = 0,    // of them, frames the body was drawn
+                       mouth_enters = 0;
 };
 Pup g_pup[kArenaSeats];
 struct PupCfg {
-    int enabled = -1, log = -1, solid = -1, buf = -2;
+    int enabled = -1, log = -1, solid = -1, buf = -2, nohide = -1;
 } g_pc;
 // my own sounds waiting for a free SYNS slot (a second sound of one kind in a
 // frame goes out one frame later)
@@ -760,6 +769,11 @@ bool pup_log() {
 bool pup_solid() {
     if (g_pc.solid < 0) g_pc.solid = env_on("SM64DS_PUPPET_SOLID") ? 1 : 0;
     return g_pc.solid != 0;
+}
+// LAB control: SM64DS_PUPPET_NOHIDE=1 draws an eaten puppet as build 4 did
+bool pup_nohide() {
+    if (g_pc.nohide < 0) g_pc.nohide = env_on("SM64DS_PUPPET_NOHIDE") ? 1 : 0;
+    return g_pc.nohide != 0;
 }
 int pup_buf_pin() {
     if (g_pc.buf == -2) g_pc.buf = env_int("SM64DS_PUPPET_BUF_MS", -1, 10, 400);
@@ -835,6 +849,7 @@ bool pup_sample(int seat, unsigned now, Pup &pp, PupDraw *o, ArenaSample *ring,
         o->x = s.x; o->y = s.y; o->z = s.z; o->yaw = s.yaw; o->anim = s.anim_id;
         o->cursor = (int)s.anim_cursor << 8; o->look = s.character;
         o->flags = s.flags; o->invuln = s.invuln; o->power = s.power;
+        o->eaten_by = s.eaten_by;
         o->mode = 'o';
         return true;
     }
@@ -842,6 +857,7 @@ bool pup_sample(int seat, unsigned now, Pup &pp, PupDraw *o, ArenaSample *ring,
     o->look = a.character;
     o->flags = a.flags;
     o->power = a.power;
+    o->eaten_by = a.eaten_by;
     const double since = ft - (double)a.frame;           // frames past a
     const int inv = (int)a.invuln - (int)since;
     o->invuln = (unsigned char)(inv > 0 ? inv : 0);
@@ -984,9 +1000,39 @@ void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
     }
     if (frames <= 0) return;                // nothing to pose
     // fully opaque to the ROM's own gates, not culled (BeforeBehavior is not
-    // writing the cull bits for a body that does not think)
-    *(unsigned char *)(a + 0x6f5) = 0x1f;
-    *(unsigned *)(a + 0xb0) &= ~0x38u;
+    // writing the cull bits for a body that does not think) EXCEPT while it is
+    // in somebody's mouth: the ROM hides an eaten player once (func_ov002_020d5ed0
+    // sets mOpacity 0 at the tongue's hit), and this puppet's own Behavior, the
+    // only thing that would keep it hidden, never runs. Opacity 0 also lifts the
+    // drop shadow (func_ov002_020e444c below sets the latch when opacity and
+    // vanish are both 0).
+    // In a mouth = the owner's stream says so (eaten_by, on every console but
+    // the victim's own, which has a live body), or, on the eater's console, the
+    // puppet sits in my mouth now (mEatingPlayer set and the mouth state): that
+    // is the 130 ms before the referee's verdict, when the stream has not caught
+    // up.
+    const bool in_mouth = d.eaten_by != 0 ||
+        (*(int *)(a + kPlayerEatenBy) != 0 && state_index_of(a) == kStInYoshiMouth);
+    if (pp.n_driven > 0 && pp.mouth_prev) {
+        // what the last frame drew: this is read before it is overwritten
+        ++pp.mouth_frames;
+        if (*(unsigned char *)(a + kPlayerOpacity) != 0 && !(*(unsigned *)(a + 0xb0) & 0x10u))
+            ++pp.mouth_drawn;
+    }
+    if (in_mouth != pp.mouth_prev) {
+        if (in_mouth) ++pp.mouth_enters;
+        std::fprintf(stderr, "[puppet] f%u seat %d %s a mouth (eaten_by %u, d0 %s)\n", g.frame,
+                     seat, in_mouth ? "into" : "out of", (unsigned)d.eaten_by,
+                     *(int *)(a + kPlayerEatenBy) ? "set" : "clear");
+        pp.mouth_prev = in_mouth;
+    }
+    if (in_mouth && !pup_nohide()) {
+        *(unsigned char *)(a + kPlayerOpacity) = 0;
+        *(unsigned *)(a + 0xb0) &= ~0x28u;
+    } else {
+        *(unsigned char *)(a + kPlayerOpacity) = 0x1f;
+        *(unsigned *)(a + 0xb0) &= ~0x38u;
+    }
     // THE BLINK: the draw gate reads the invincibility timer; the owner's value
     // at draw time reproduces its flicker
     *(unsigned short *)(a + 0x6a0) = d.invuln;
@@ -1208,6 +1254,8 @@ void pup_report() {
                      "hold=%llu teleport=%llu older=%llu swaps=%llu sfx_played=%llu hits=%llu "
                      "buf=%.0f\n", k, p.frames, p.interp, p.reckon, p.hold, p.tele,
                      p.older, p.swaps, p.sfx_played, p.hits, p.buf_ms);
+        std::fprintf(stderr, "[puppet] exit seat=%d mouths=%llu mouth_frames=%llu "
+                     "mouth_drawn=%llu\n", k, p.mouth_enters, p.mouth_frames, p.mouth_drawn);
     }
     std::fprintf(stderr, "[puppet] exit sfx_captured=%llu,%llu dropped=%llu\n",
                  g_sfx_cap[0], g_sfx_cap[1], g_sfx_drop);

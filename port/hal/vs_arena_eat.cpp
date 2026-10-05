@@ -355,6 +355,14 @@ int __fastcall eat_face(void *selfv, void *edx) {
     }
     if (s32r(self, 8) != 3) {
         // a capped player: the ROM's own answer (it aims at it and the tongue bounces)
+        static unsigned cap_log_f = ~0u;     // one line per touching frame
+        if (*(unsigned *)(self + 4) && *(unsigned *)(me + 0x338) == *(unsigned *)(self + 4) &&
+            cap_log_f != vs_arena_frame()) {
+            cap_log_f = vs_arena_frame();
+            std::fprintf(stderr, "[eat] f=%u tongue bounced off seat %d: victim look %d, my look %d "
+                         "(only a Yoshi, look 3, can be eaten; a cap changes the look): the ROM's "
+                         "own rule\n", vs_arena_frame(), k, s32r(self, 8), s32r(me, 8));
+        }
         return 1;
     }
     if (part2()) {
