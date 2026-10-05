@@ -79,6 +79,9 @@ int func_ov002_020d9298(char *stomper);                       // the stomper's b
 void func_ov002_020db8bc(unsigned char *victim, unsigned char val);   // the victim's squash
 void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned id, int x, int y, int z);
 void _ZN5Sound9PlayBank0EjRK7Vector3(unsigned id, const void *pos);
+unsigned _ZNK6Player14GetBodyModelIDEjb(void *self, unsigned a, int b);
+int _ZN10ModelAnim213Func_020162C4Eji5Fix12IiEt(void *self, unsigned a, int b, int c, unsigned short d);
+extern int data_ov002_020ff480[];
 }
 
 namespace port {
@@ -279,6 +282,26 @@ void link_pair(char *hb, char *vb, bool ready) {
     // victim's own body; a puppet never runs it)
     u32r(vb, kBodyClsnFlags) |= kClsnNoPush;
 }
+// The carry pose. The ROM's func_ov002_020dacb4 loads the holder's upper-body "carrying" animation
+// into its model's second layer (ModelAnim2::Func_020162C4 with the table entry for its character)
+// and the pose code then shows it while +0x358 is set (func_ov002_020e4990). A puppet's SYNS carries
+// only the main animation id, so a remote holder would stand with its arms down while the carried
+// body rides the hand: load the same layer on the puppet, as the ROM does for a real body.
+void puppet_carry_overlay(char *hb, char *vb) {
+    int offset = 0xc4;
+    if (u32r(vb, kFlags) & 0x8000) {
+        offset = 0x224;
+        if (s32r(hb, 8) == 2 && *(unsigned short *)(vb + 0xc) == 0xce) offset = 0xc4;
+    }
+    const int var = s32r(hb, 8);
+    if (var < 0 || var > 3) return;
+    const unsigned idx = _ZNK6Player14GetBodyModelIDEjb(hb, (unsigned)var & 0xffu, 0);
+    char *model = ptr(hb, 0xdc + (int)idx * 4);
+    const int rec = data_ov002_020ff480[offset + var];
+    if (!model || !rec) return;
+    _ZN10ModelAnim213Func_020162C4Eji5Fix12IiEt(model, (unsigned)*(int *)((char *)(size_t)rec + 4), 0, 0x1000, 0);
+}
+
 // ... and as func_ov002_020da95c / DropActor leave them when the hold ends
 void unlink_pair(char *hb, char *vb) {
     if (hb && ptr(hb, kHeldObj) == vb) ptr(hb, kHeldObj) = nullptr;
@@ -538,6 +561,7 @@ void v_enter(int holder, const RefEvent &ev) {
         f &= ~(0x400u | 0x2000u);
         f |= kFlagCarried | kFlagHeldOut;
     }
+    puppet_carry_overlay(hb, me);
     const int ok = func_ov002_020db5f4((char *)me, hb);
     g.v.active = true;
     g.v.h = holder;
@@ -662,7 +686,10 @@ void bystander_apply() {
         char *vb = body_of(v);
         if (!hb || !vb) continue;
         if (ptr(hb, kHeldObj) != vb || ptr(vb, kGrabbedBy) != hb) {
-            if (ptr(hb, kHeldObj) != vb) ++g.bystander_links;
+            if (ptr(hb, kHeldObj) != vb) {
+                ++g.bystander_links;
+                puppet_carry_overlay(hb, vb);
+            }
             link_pair(hb, vb, true);
         }
     }
@@ -691,13 +718,13 @@ void hold_probe() {
     if (!hb || !vb) return;
     last = fr;
     std::fprintf(stderr, "[grab] pos %s f=%u holder(seat %d)=(%d,%d,%d) carried(seat %d)=(%d,%d,%d) "
-                 "d=(%d,%d,%d) hold358=%d grab35c=%d flags=%08x st=%d/%d\n", role, fr, hs,
+                 "d=(%d,%d,%d) hold358=%d grab35c=%d flags=%08x st=%d/%d anim=%d/%d\n", role, fr, hs,
                  s32r(hb, 0x5c) >> 12, s32r(hb, 0x60) >> 12, s32r(hb, 0x64) >> 12, vs,
                  s32r(vb, 0x5c) >> 12, s32r(vb, 0x60) >> 12, s32r(vb, 0x64) >> 12,
                  (s32r(vb, 0x5c) - s32r(hb, 0x5c)) >> 12, (s32r(vb, 0x60) - s32r(hb, 0x60)) >> 12,
                  (s32r(vb, 0x64) - s32r(hb, 0x64)) >> 12, ptr(hb, kHeldObj) == vb ? 1 : 0,
                  ptr(vb, kGrabbedBy) == hb ? 1 : 0, u32r(vb, kFlags), vs_arena_state_index(hb),
-                 vs_arena_state_index(vb));
+                 vs_arena_state_index(vb), s32r(hb, 0x63c) >> 2, s32r(vb, 0x63c) >> 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -730,7 +757,7 @@ void on_grabbed(const RefEvent &ev) {
     } else {
         char *hb = body_of(holder);
         char *vb = body_of(victim);
-        if (hb && vb) { link_pair(hb, vb, true); ++g.bystander_links; }
+        if (hb && vb) { puppet_carry_overlay(hb, vb); link_pair(hb, vb, true); ++g.bystander_links; }
         std::fprintf(stderr, "[grab] seat %d is held by seat %d (bystander)\n", victim, holder);
     }
 }
