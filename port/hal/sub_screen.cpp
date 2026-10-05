@@ -365,18 +365,21 @@ void panel_trace(int w, int h);
  * (Stage::LC_Update, data_0209f20c != 0: SAVE & CONTINUE and two more, then
  * the "Saving file..." boxes). The level-clear buttons are slotted onto the
  * top screen at a size the PICTURE decides (swap_geom_for), so they never
- * moved with the map -- measured at 0.5, 1, 1.40625 and 2: one rectangle. The
+ * moved with the map -- measured at map sizes 1, 1.40625 and 2: one rectangle. The
  * pause screen has no such compose, and the level-clear one has none while
  * the option is off or in the states where the ROM puts a message box there.
  * Those frames are drawn by the corner panel, and the corner panel is the
  * MAP: its size is the player's MinimapScale, so a map shrunk to get out of
- * the way gave buttons twelve pixels tall that a stylus cannot hit, and a map
+ * the way gave buttons sixteen picture pixels tall, and a map
  * grown to read the terrain gave buttons the size of the picture.
  *
  * THE RULE. While either word is up the corner panel is the MENU'S, and it is
- * a size the PICTURE decides, the same way the compose's plates are: one third
- * of the picture's height, which is exactly the DS bottom screen at the 3x
- * picture (576 rows) and keeps its share of the picture at every other size.
+ * a size the PICTURE decides, the same way the compose's plates are: a quarter
+ * of the picture's height, which is a 192x144 map on the 3x picture of 576
+ * rows (close to the size his own map was set to when he reported this) and the
+ * same share of the picture at every other size. A quarter and not a third
+ * because at 16:9 a third reaches left over the end of the top screen's TOUCH
+ * TO SELECT line.
  * The player's MinimapScale is not read, not written and not touched while it
  * is up, and it is back the frame the menu closes. Everything that reads the
  * panel (the draw, the decoration, the arrows, the stylus inverse, the fade
@@ -387,11 +390,11 @@ int bottom_menu_up(void)
     return (data_0209f2c4 != 0 || data_0209f20c != 0) ? 1 : 0;
 }
 
-/* The menu panel's size in the grid's own units (den 256): one third of the
+/* The menu panel's size in the grid's own units (den 256): a quarter of the
    picture's height, as a fraction of a DS screen's 192 rows. */
 int bottom_menu_num(int h)
 {
-    int k = (int)((long long)h * 256 / (3 * ntr::SUB_H));
+    int k = (int)((long long)h * 256 / (4 * ntr::SUB_H));
     return k < 1 ? 1 : k;
 }
 
