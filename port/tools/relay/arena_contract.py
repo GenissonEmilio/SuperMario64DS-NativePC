@@ -386,7 +386,7 @@ SPEED_CLASSES = {
     "walk": {"limit": 50, "states": ["St_Walk", "St_Wait", "St_TurnAround",
                                      "St_Crouch", "St_Crawl", "St_PunchKick",
                                      "St_YoshiPower", "St_HoldLight",
-                                     "St_HoldHeavy", "St_Throw", "St_Land",
+                                     "St_HoldHeavy", "St_Throw",
                                      "St_Talk", "St_Spin"]},
     "slide": {"limit": 125, "states": ["St_StomachSlide", "St_ButtSlide",
                                        "St_SlideKick", "St_SlideKickRecover",

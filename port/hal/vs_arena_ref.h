@@ -111,6 +111,9 @@ struct VsRefStats {
                        stars_taken, hits_claimed, hits_landed, hits_denied,
                        spills, syno_tx, syno_rx,
                        frames_bad, events_bad, syno_bad;  // dropped by the field checks
+    // FIELD4 F9-b / F9-c: claims never made because the referee would refuse them
+    unsigned long long touches_gated;   // a star / marker touch while my body may not act
+    unsigned long long hits_gated;      // an attack contact on a puppet that cannot be hit
 };
 VsRefStats vs_ref_stats();
 void vs_ref_report(const char *tag);

@@ -52,6 +52,7 @@
 
 #include <windows.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -152,6 +153,7 @@ struct Inst {
     int result;                  // 0 pending, 1 mine, 2 lost, 3 timeout
     int winner;
     unsigned short grab_cid;
+    int deny_reason;             // the referee's reason for the last refused grab (F9-b log)
     unsigned hold_ms;
     int fly;                     // overrule fly-off frames left
     int fly_from[3], fly_to[3];
@@ -165,6 +167,8 @@ struct Inst {
     unsigned born_ms;
     unsigned t_broken;           // referee ms (my base) the glass was broken
     bool rig_break_sent, rig_race_done;
+    unsigned rig_hurt_ref;       // hurtgrab rig: referee ms seat 1 hurt itself on this star
+    bool rig_second;             // ... and went back for it
 };
 
 struct Ref {
@@ -285,6 +289,54 @@ char *my_body() {
 char *body_of(int seat) {
     if (seat < 0 || seat >= kArenaSeats) return nullptr;
     return (char *)data_0209f394[seat];
+}
+
+// ---------------------------------------------------------------------------
+// FIELD4 F9-b / F9-c: the referee's "may this body act / be hit" tests, mirrored
+// here so a console never starts what the referee will refuse (a collect pose
+// followed by a tossed-back star, a hit spark with no hit). The lists are
+// referee.py's DISABLED_STATES (state indices 5 7..13 16 20 24 32 36 54).
+// ---------------------------------------------------------------------------
+bool state_disabled(int st) {
+    switch (st) {
+    case 5: case 7: case 8: case 9: case 10: case 11: case 12: case 13:
+    case 16: case 20: case 24: case 32: case 36: case 54:
+        return true;
+    }
+    return false;
+}
+
+// May my own body collect a star / break a marker right now?  The same test the
+// referee runs on my SYNS sample (_usable): a disabled state (hurt, burning, a
+// mouth, the star-get pose ...), mIsTakingDamage, mIsNoControl or a body that
+// is inside somebody's mouth.
+bool my_body_may_act() {
+    char *me = my_body();
+    if (!me) return true;
+    const int st = vs_arena_state_index(me);
+    if (st != 0xFF && state_disabled(st)) return false;
+    if (*u8p(me, 0x708) || *u8p(me, 0x709)) return false;
+    if (*(void **)(me + 0xd0)) return false;
+    return true;
+}
+
+// Can a hit on this puppet land?  The referee's victim test (_hit) on the
+// sample of the frame I drew: disabled state, hurt / no-control, invulnerable,
+// mega / vanish / metal, or in a mouth.  Judged on the stream I already hold.
+bool puppet_hit_proof(int seat, unsigned drawn, int *why_st, int *why_inv) {
+    ArenaSample smp[kArenaRing];
+    const int n = vs_arena_samples(seat, smp, kArenaRing);
+    if (n <= 0) return false;
+    const ArenaState *best = &smp[n - 1].s;          // oldest, if none is old enough
+    for (int k = 0; k < n; ++k)
+        if (smp[k].s.frame <= drawn) { best = &smp[k].s; break; }   // newest first
+    *why_st = best->state_idx;
+    *why_inv = best->invuln;
+    return state_disabled(best->state_idx) ||
+           (best->flags & (kArenaInHurt | kArenaNoControl)) != 0 ||
+           best->invuln > 0 ||
+           (best->power & (kArenaMega | kArenaVanish | kArenaMetal)) != 0 ||
+           best->eaten_by != 0;
 }
 
 // every live actor of one class, by the ROM's own list walk (the same one the
@@ -422,7 +474,9 @@ void pump_claims() {
 
 void finish_claim(unsigned short cid, int result, int reason, int winner) {
     PClaim *c = claim_by_id(cid);
-    if (!c || c->result > 0) return;
+    // a verdict the referee repeats (it answers every resend of a claim) is
+    // counted once: a claim already named, or already denied, stays as it is
+    if (!c || c->result > 0 || (c->result < 0 && result < 0)) return;
     c->result = result;
     c->reason = reason;
     c->winner = winner;
@@ -761,17 +815,29 @@ void on_star_taken(const RefEvent &e) {
 void on_deny(const RefEvent &e) {
     if (e.seat != g.seat) return;
     const int kind = e.a, reason = e.b, cid = e.c, winner = e.d;
-    std::fprintf(stderr, "[vsarena-ref] DENY kind=%d reason=%s(%d) claim=%d "
-                 "winner=%d target=%d\n", kind, reason_name(reason), reason, cid,
-                 winner, e.e);
+    // The referee answers every RESEND of a claim with the same directed
+    // verdict (the client resends every 60 ms and the round trip can be longer):
+    // print and count each claim's denial once (FIELD4 F9-c).
+    static unsigned short seen[8];
+    static unsigned seen_n = 0;
+    bool first = true;
+    for (unsigned k = 0; k < 8 && k < seen_n; ++k)
+        if (seen[k] == (unsigned short)cid) first = false;
+    if (first) seen[seen_n++ & 7] = (unsigned short)cid;
+    if (first) {
+        std::fprintf(stderr, "[vsarena-ref] DENY kind=%d reason=%s(%d) claim=%d "
+                     "winner=%d target=%d\n", kind, reason_name(reason), reason, cid,
+                     winner, e.e);
+        if (kind == CLAIM_HIT) ++g.st.hits_denied;
+    }
     finish_claim((unsigned short)cid, -1, reason, winner);
     if (kind == CLAIM_GRAB)
         for (auto &i : g.inst)
             if (i.used && i.holding && i.grab_cid == cid) {
                 i.result = 2;
                 i.winner = winner;
+                i.deny_reason = reason;
             }
-    if (kind == CLAIM_HIT) ++g.st.hits_denied;
 }
 
 void on_accepted(const RefEvent &e) {
@@ -1049,7 +1115,21 @@ void neutralise_foreign_star_touches() {
         const unsigned flags = u32r(a, 0x130);
         if (!(flags & (kStarTouchMask | 0x8000))) return;
         char *o = _ZN8dActor_c10FindWithIDEj(u32r(a, 0x134));
-        if (!o || o == me || actor_class(o) != (unsigned)kClassPlayer) return;
+        if (!o || actor_class(o) != (unsigned)kClassPlayer) return;
+        if (o == me) {
+            // MY touch: let the ROM collect only if the referee would take it
+            // (F9-b: a hurt body that starts a collect gets the Yoshi star pose
+            // and then the star flung away when the claim is refused)
+            static const bool off = env_on("SM64DS_ARENA_NOTOUCHGATE");
+            if (off || my_body_may_act()) return;
+            ++g.st.touches_gated;
+            if (g.log && (g.st.touches_gated % 30) == 1)
+                std::fprintf(stderr, "[vsarena-ref] star touch held back: my body is in "
+                             "state %d (no_control %d, hurt %d); the referee would refuse "
+                             "the grab (%llu so far)\n", vs_arena_state_index(me),
+                             (int)*u8p(me, 0x709), (int)*u8p(me, 0x708),
+                             g.st.touches_gated);
+        }
         u32r(a, 0x130) &= ~(unsigned)(kStarTouchMask | 0x8000);
         u32r(a, 0x134) = 0;
     });
@@ -1068,6 +1148,11 @@ void marker_pass() {
         u32r(m, 0xf4) = 0;
         u32r(m, 0xf8) = 0;
         if (!o || o != me) return;
+        static const bool gate_off = env_on("SM64DS_ARENA_NOTOUCHGATE");
+        if (!gate_off && !my_body_may_act()) {
+            ++g.st.touches_gated;       // the referee refuses a hurt body's break (STATE)
+            return;
+        }
         if (!(*u8p(m, 0x1db) & 2)) return;          // not awake
         if (*u8p(m, 0x1db) & 1) return;             // already broken
         const int id = *u8p(m, 0x1d9);
@@ -1175,8 +1260,18 @@ void star5_arena(char *c) {
             s32r(c, 0x98) = 0xc000;
             func_ov002_020e9448((unsigned char *)c);
             s32r(c, 0x128) &= ~1;
+            // (the reason, and how far my body and the star were apart on my own
+            // screen: the referee's own line holds its copy of the same numbers)
+            const int *sp = (const int *)(c + 0x5c), *bp = (const int *)(me + 0x5c);
+            const double dx = (double)(((long long)sp[0] - bp[0]) >> 12),
+                         dy = (double)(((long long)sp[1] - bp[1]) >> 12),
+                         dz = (double)(((long long)sp[2] - bp[2]) >> 12);
             std::fprintf(stderr, "[vsarena-ref] DENIED grab of star %d (reason %s): "
-                         "tossed back\n", (int)(i - g.inst), "n/a");
+                         "tossed back; on my screen the star was %d units from my body "
+                         "(my state %d)\n", (int)(i - g.inst),
+                         i->result == 3 ? "TIMEOUT" : reason_name(i->deny_reason),
+                         (int)std::sqrt(dx * dx + dy * dy + dz * dz),
+                         vs_arena_state_index(me));
             return;
         }
     }
@@ -1356,6 +1451,20 @@ void hit_detect(const char *where) {
         if (!g.rig && vs_arena_body_held(k)) continue;
         if (fr - g.last_hit_claim_frame[k] < (unsigned)kHitRetryFrames &&
             g.last_hit_claim_frame[k]) continue;
+        // F9-c: the victim is inside its hit immunity (or hurt, or in a mouth) on
+        // the frame I drew: the referee would refuse (INVULN), so no claim and no
+        // false spark. A lab knob keeps the old behaviour for the control row.
+        {
+            static const bool gate_off = env_on("SM64DS_ARENA_NOIMMUNEGATE");
+            int why_st = 0, why_inv = 0;
+            if (!gate_off && puppet_hit_proof(k, drawn_frame(k), &why_st, &why_inv)) {
+                ++g.st.hits_gated;
+                if (g.log)
+                    std::fprintf(stderr, "[vsarena-ref] contact on seat %d not claimed: it cannot be "
+                                 "hit now (state %d, invuln %d)\n", k, why_st, why_inv);
+                continue;
+            }
+        }
         unsigned stamp;
         if (!stamp_for(g.last_post_ms ? g.last_post_ms : now_ms(), &stamp)) continue;
         PClaim *c = make_claim(CLAIM_HIT, (unsigned char)k,
@@ -1523,13 +1632,15 @@ void rig_parse() {
     if (std::strncmp(e, "race", 4) == 0) g.rig = 1;
     else if (std::strncmp(e, "hit", 3) == 0) g.rig = 2;
     else if (std::strncmp(e, "chain", 5) == 0) g.rig = 3;
+    else if (std::strncmp(e, "hurtgrab", 8) == 0) g.rig = 5;
     if (g.rig == 2 || g.rig == 3) g.rig_real = e[g.rig == 2 ? 3 : 5] == 'r';   // hitr / chainr
     else if (std::strncmp(e, "fuzz", 4) == 0) g.rig = 4;
     const char *c = std::strchr(e, ':');
     if (c) g.rig_seed = (unsigned)std::strtoul(c + 1, nullptr, 10);
     if (g.rig)
         std::fprintf(stderr, "[rig] SM64DS_ARENA_RIG=%s: scripted %s rig, seed %u\n",
-                     e, g.rig == 1 ? "contention" : g.rig == 2 ? "hit" : "chain", g.rig_seed);
+                     e, g.rig == 1 ? "contention" : g.rig == 2 ? "hit" : g.rig == 5 ? "hurtgrab" : "chain",
+                     g.rig_seed);
 }
 
 // A DS key (0x0001 = the DS A key, which this ROM maps to the attack button; 0x0002 is jump) into the slot's PadData, where
@@ -1716,7 +1827,16 @@ void rig_hit() {
         g.rig_phase = 1;
         g.rig_next = r + 450u;
     } else if (g.rig_phase == 1) {
-        rig_direct_hit_claim("repeat (inside the hit immunity)");
+        // SM64DS_RIG_REPUNCH=1 (real rigs): a second REAL punch inside the victim's hit
+        // immunity, the thing a player does when it keeps attacking (FIELD4 F9-c: the
+        // referee refuses it INVULN; with the gate no claim is made at all)
+        static const bool repunch = env_on("SM64DS_RIG_REPUNCH");
+        if (g.rig_real && repunch) {
+            std::fprintf(stderr, "[rig] hit cycle %d: second real punch inside the victim's immunity\n", g.rig_n);
+            rig_punch_start(rig_real_dist());
+        } else {
+            rig_direct_hit_claim("repeat (inside the hit immunity)");
+        }
         g.rig_phase = 2;
         g.rig_next = r + 3000u;
     } else if (g.rig_phase == 2) {
@@ -1773,11 +1893,15 @@ void rig_chain() {
         // seat 0 collects a dropped star 4.5 s after the spill
         if (i.state == 2 && i.spilled && !i.rig_race_done && g.seat == 0) {
             char *s = star_by_uid(i.uid);
-            if (!s || (int)(r - (i.t_broken + 4500u)) < 0) continue;
+            // SM64DS_RIG_REGRAB_MS: how long after the spill seat 0 stands on the dropped
+            // star (default 4.5 s, the star at rest; 500..2000 = still in flight)
+            static const int regrab = env_int("SM64DS_RIG_REGRAB_MS", 4500, 0, 20000);
+            if (!s || (int)(r - (i.t_broken + (unsigned)regrab)) < 0) continue;
             const int to[3] = { s32r(s, 0x5c), s32r(s, 0x60), s32r(s, 0x64) };
             rig_teleport(me, to);
             i.rig_race_done = true;
-            std::fprintf(stderr, "[rig] chain: seat 0 goes to the dropped star inst %d (ref %u)\n", k, r);
+            std::fprintf(stderr, "[rig] chain: seat 0 goes to the dropped star inst %d (ref %u, %d ms after "
+                         "the spill, star at (%d,%d,%d))\n", k, r, regrab, to[0] >> 12, to[1] >> 12, to[2] >> 12);
         }
     }
     // seat 0 punches seat 1 three seconds after a star was taken by seat 1
@@ -1995,11 +2119,67 @@ void rig_fuzz() {
                  ob_bad == ob_sent) ? "PASS" : "FAIL");
 }
 
+// HURT-GRAB RIG (SM64DS_ARENA_RIG=hurtgrab): FIELD4 F9-b's STATE refusal. Seat 0
+// breaks each marker; 3.5 s later seat 1 hurts itself (the ROM's own Player::Hurt)
+// and stands on the star in the same frame, so its body touches the star while it is
+// in St_Hurt. With the local gate the ROM never starts the collect (no star pose, no
+// toss) and the grab lands when the hurt state is over; with
+// SM64DS_ARENA_NOTOUCHGATE=1 (the control) the collect starts, the referee answers
+// STATE and the star is tossed back.
+void rig_hurtgrab() {
+    if (!g.started || g.over) return;
+    unsigned r;
+    if (!ref_now(&r)) return;
+    char *me = my_body();
+    if (!me) return;
+    for (int k = 1; k < kMaxInst; ++k) {
+        Inst &i = g.inst[k];
+        if (!i.used || i.spilled) continue;
+        if (i.state == 1 && g.seat == 0 && !i.rig_break_sent &&
+            now_ms() - i.born_ms > 2000 && g.vs_frames > 120 &&
+            (int)(r - g.t0) > 500) {
+            unsigned stamp;
+            if (!stamp_for(now_ms(), &stamp)) continue;
+            PClaim *c = make_claim(CLAIM_MARKER_BREAK, (unsigned char)k,
+                                   (unsigned short)GetAngleToCamera(g.seat), stamp,
+                                   my_frame_now(), 0);
+            if (c) { c->inst = (unsigned char)k; i.rig_break_sent = true; }
+            std::fprintf(stderr, "[rig] seat 0 breaks the marker of inst %d\n", k);
+        }
+        if (i.state == 2 && i.t_broken && !i.rig_race_done && g.seat == 1) {
+            char *s = star_by_uid(i.uid);
+            if (!s || (int)(r - (i.t_broken + 3500u)) < 0) continue;
+            const int to[3] = { s32r(s, 0x5c), s32r(s, 0x60), s32r(s, 0x64) };
+            int from[3] = { s32r(me, 0x5c) + 0x50000, s32r(me, 0x60), s32r(me, 0x64) };
+            const int hr = _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(me, from, 1u, 0, 0u, 4u, 1u);
+            g.hit_applied_frame = my_frame_now();      // (not a hazard: no HURT_SELF claim)
+            rig_teleport(me, to);
+            i.rig_race_done = true;
+            i.rig_hurt_ref = r ? r : 1;
+            ++g.rig_n;
+            std::fprintf(stderr, "[rig] hurtgrab: seat 1 hurt itself (Hurt returned %d, state %d) and "
+                         "stands on star inst %d (ref %u)\n", hr, vs_arena_state_index(me), k, r);
+        }
+        // 2.5 s later, healthy: stand on the star again (a legitimate grab must still land)
+        if (i.state == 2 && i.rig_hurt_ref && !i.rig_second && g.seat == 1 &&
+            (int)(r - (i.rig_hurt_ref + 2500u)) >= 0) {
+            char *s = star_by_uid(i.uid);
+            if (!s) continue;
+            const int to[3] = { s32r(s, 0x5c), s32r(s, 0x60), s32r(s, 0x64) };
+            rig_teleport(me, to);
+            i.rig_second = true;
+            std::fprintf(stderr, "[rig] hurtgrab: seat 1 healthy, stands on star inst %d again (ref %u, "
+                         "state %d)\n", k, r, vs_arena_state_index(me));
+        }
+    }
+}
+
 void rig_step() {
     if (g.rig == 1) rig_race();
     else if (g.rig == 2) rig_hit();
     else if (g.rig == 3) rig_chain();
     else if (g.rig == 4) rig_fuzz();
+    else if (g.rig == 5) rig_hurtgrab();
 }
 
 // ---------------------------------------------------------------------------
@@ -2268,14 +2448,14 @@ void vs_ref_report(const char *tag) {
     std::fprintf(stderr, "[vsarena-ref] %s seat=%d started=%d over=%d seq=%u "
                  "frames=%llu events=%llu dup=%llu gaps=%llu claims=%llu resent=%llu "
                  "verdicts=%llu denied=%llu taken=%llu hits=%llu/%llu/%llu spills=%llu "
-                 "syno=%llu/%llu bad=%llu/%llu/%llu ledger=%d,%d,%d,%d progress=%u\n", tag ? tag : "",
+                 "syno=%llu/%llu bad=%llu/%llu/%llu ledger=%d,%d,%d,%d progress=%u gated=%llu/%llu\n", tag ? tag : "",
                  g.seat, g.started, g.over, (unsigned)g.applied, g.st.frames_rx,
                  g.st.events_applied, g.st.events_dup, g.st.gaps, g.st.claims_sent,
                  g.st.claims_resent, g.st.verdicts, g.st.denied, g.st.stars_taken,
                  g.st.hits_claimed, g.st.hits_landed, g.st.hits_denied, g.st.spills,
                  g.st.syno_tx, g.st.syno_rx, g.st.frames_bad, g.st.events_bad,
                  g.st.syno_bad, g.ledger[0], g.ledger[1], g.ledger[2],
-                 g.ledger[3], (unsigned)g.progress);
+                 g.ledger[3], (unsigned)g.progress, g.st.touches_gated, g.st.hits_gated);
 }
 
 }  // namespace port
