@@ -1606,6 +1606,10 @@ static void hal_render_player_world_body(void *player);
    Stamped around the draw and put back after it, so nothing else that reads
    these material records ever sees the ghost's row. */
 extern "C" int port_adventure_ghost_palette(int slot);
+/* OWNCOLOR1: the same stamp for the LOCAL body, from the spare palette row
+   hal/comms_sync.cpp keeps his own pick in (-1: no pick / not the hub / not
+   Yoshi: the file's own row, untouched). */
+extern "C" int port_adventure_local_palette(void *body);
 static const unsigned kGhostStampMax = 64;
 struct GhostPalStamp {
     char *rec[2];
@@ -1762,6 +1766,9 @@ void hal_render_player_world(void *player)
     if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
         data_0209f394[slot] == player)
         pal = port_adventure_ghost_palette(slot);
+    else if (player == data_0209f394[data_0209f250] &&
+             port::adventure_ghost_mode())
+        pal = port_adventure_local_palette(player);
     GhostPalStamp st;
     st.n[0] = st.n[1] = 0;
     if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
