@@ -857,14 +857,16 @@ void vs_grab_before_walk(int frame) {
     (void)frame;
     if (!vs_arena_active()) return;
     init_once();
-    if (g.off || !vs_ref_active() || data_0209f2d8 != 1) return;
+    if (!vs_ref_active() || data_0209f2d8 != 1) return;
     static bool reg = false;
     if (!reg) { reg = true; std::atexit(report_at_exit); }
-    h_try_catch();
-    h_monitor();
-    v_monitor();
-    bystander_apply();
-    if (g.rig) rig_step();
+    if (!g.off) {
+        h_try_catch();
+        h_monitor();
+        v_monitor();
+        bystander_apply();
+    }
+    if (g.rig) rig_step();       // (the lab rig runs with the layer off too: the old behaviour's control row)
 }
 
 void vs_grab_after_walk(int frame) {
