@@ -1638,6 +1638,55 @@ static void ghost_unstamp(GhostPalStamp &st)
             *(int *)(st.rec[k] + i * 0x30 + 0x20) = st.old[k][i];
 }
 
+/* GHOSTCHAR1: SM64DS_GHOST_DRAW_PROBE=<stride>. What a hub ghost's draw really
+   has, for the black-shading field report (F7): once per <stride> draws of a
+   ghost, its character, the palette row it is stamped with and that row's
+   sixteen words (a zero among the ramp entries means a bad row), and how many
+   of the body's and the head's materials are in each polygon mode (mode 2 is
+   the toon / flash shading a swapped model can be left in). Off by default. */
+static void ghost_draw_probe(char *c, int slot, int pal)
+{
+    static int stride = -1;
+    static unsigned n[16];
+    if (stride < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_DRAW_PROBE");
+        stride = e ? std::atoi(e) : 0;
+    }
+    if (stride <= 0 || slot < 0 || slot >= 16) return;
+    if ((n[slot]++ % (unsigned)stride) != 0) return;
+    unsigned hist[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
+    const unsigned id =
+        _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
+    const unsigned hid = func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+    char *mdl[2] = {(char *)((ModelAnim **)(c + 0xdc))[id],
+                    (hid != 8 && hid != 9) ? ((char **)(c + 0x154))[hid] : 0};
+    for (int k = 0; k < 2; ++k) {
+        if (!mdl[k]) continue;
+        const int *p = (const int *)(mdl[k] + 8);
+        const unsigned char *hdr = (const unsigned char *)p[0];
+        const char *rec = (const char *)p[1];
+        if (!hdr || !rec) continue;
+        unsigned nm = 0;
+        std::memcpy(&nm, hdr + 0x24, 4);
+        if (nm > kGhostStampMax) nm = kGhostStampMax;
+        for (unsigned i = 0; i < nm; ++i)
+            ++hist[k][(*(const unsigned *)(rec + i * 0x30 + 0x24) >> 4) & 3];
+    }
+    const unsigned short *row =
+        pal >= 0 ? (const unsigned short *)(0x06880000u + (unsigned)pal * 16u)
+                 : 0;
+    std::fprintf(stderr,
+                 "[gwdraw] slot %d ch=%d body %u pal=%d modes body %u/%u/%u/%u "
+                 "head %u/%u/%u/%u row", slot, *(int *)(c + 8) & 0xff, id, pal,
+                 hist[0][0], hist[0][1], hist[0][2], hist[0][3], hist[1][0],
+                 hist[1][1], hist[1][2], hist[1][3]);
+    if (row)
+        for (int i = 0; i < 16; ++i) std::fprintf(stderr, " %04x", row[i]);
+    else
+        std::fprintf(stderr, " none");
+    std::fprintf(stderr, "\n");
+}
+
 void hal_render_player_world(void *player)
 {
     const int slot = (int)*(const unsigned char *)((const char *)player + 0x6d8);
@@ -1647,6 +1696,9 @@ void hal_render_player_world(void *player)
         pal = port_adventure_ghost_palette(slot);
     GhostPalStamp st;
     st.n[0] = st.n[1] = 0;
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+        data_0209f394[slot] == player && port::adventure_ghost_mode())
+        ghost_draw_probe((char *)player, slot, pal);
     if (pal >= 0) {
         char *c = (char *)player;
         const unsigned id =
