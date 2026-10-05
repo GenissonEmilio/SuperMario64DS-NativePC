@@ -897,7 +897,9 @@ void apply_event(const RefEvent &e, bool directed) {
         if (e.a == g.seat) finish_claim(e.c, 1, 0, 0xFF);
         break;
     case EV_THROWN:
-        if (e.a == g.seat || e.seat == g.seat) finish_claim(e.c, 1, 0, 0xFF);
+        // THROW / SWING are the holder's claims (a), BREAK the victim's (seat); a forced end has no claim
+        if (((e.b == 1 || e.b == 2) && e.a == g.seat) || (e.b == 3 && e.seat == g.seat))
+            finish_claim(e.c, 1, 0, 0xFF);
         break;
     default: break;
     }
