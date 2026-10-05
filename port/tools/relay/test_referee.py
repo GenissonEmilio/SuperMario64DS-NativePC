@@ -37,11 +37,11 @@ S_EVT = struct.Struct("<HBBBBHHHIiii")
 
 EV = dict(START=1, STAR_WAKE=2, MARKER_BROKEN=3, STAR_TAKEN=4, DENY=5, HIT=6,
           CLASH=7, SPILL=8, MATCH_OVER=9, LEAVE=10, JOIN=11, STAR_STATE=12,
-          ACCEPTED=13, EATEN=14, RELEASED=15, GRABBED=16, THROWN=17)
+          ACCEPTED=13, EATEN=14, RELEASED=15, GRABBED=16, THROWN=17, STOMPED=18)
 EVN = dict((v, k) for k, v in EV.items())
 CL = dict(READY=1, MARKER_BREAK=2, GRAB=3, HIT=4, HURT_SELF=5, PIT=6, QUIT=7,
           EAT=8, SPIT=9, SWALLOW=10, ESCAPE=11, CATCH=12, THROW=13, SWING=14,
-          BREAK=15)
+          BREAK=15, STOMP=16)
 DENY = dict(STALE=1, GONE=2, LOST=3, RANGE=4, STATE=5, INVULN=6, MISMATCH=7,
             UNSUPPORTED=8, BAD=9, TOO_OLD=10, SELF=11)
 
@@ -195,6 +195,7 @@ class Console(object):
         self.power = 0
         self.eaten_by = 0
         self.look = 3
+        self.vy = 0
         self.cid = 0
         self.headers = []
         self.offset = None      # referee clock estimate: ref = now_ms + offset
@@ -252,7 +253,7 @@ class Console(object):
             self.frame += 1
         d = S_SYNS.pack(b"SYNS", 1, 0xFF, self.flags, self.look, self.frame,
                         int(self.pos[0] * FIX), int(self.pos[1] * FIX),
-                        int(self.pos[2] * FIX), 0, 0, 0, self.yaw, 1, 0,
+                        int(self.pos[2] * FIX), 0, self.vy, 0, self.yaw, 1, 0,
                         self.state, 0, self.invuln, self.power, 0,
                         self.eaten_by, self.applied, 0, 0, 0)
         self.rig.send(self.addr, d)
@@ -297,7 +298,7 @@ class Console(object):
             n = e["name"]
             if n in ("DENY", "STAR_TAKEN", "MARKER_BROKEN", "ACCEPTED"):
                 who = (e["seat"],)
-            elif n in ("HIT", "CLASH", "EATEN", "GRABBED"):
+            elif n in ("HIT", "CLASH", "EATEN", "GRABBED", "STOMPED"):
                 who = (e["a"],)
             elif n in ("RELEASED", "THROWN"):
                 who = (e["seat"], e["a"])
@@ -1554,6 +1555,76 @@ def u_grab(mod):
 GRAB_SPEED_MAX_T = 0x40000
 
 
+def u_stomp(mod):
+    res = Result("stomp (GRAB1, F9-d): STOMP onto a player, refusals, one per pair per 250 ms")
+    rig, (a, b) = match(2)
+    ref = rig.ref("ARENA01")
+    a.pos, b.pos = [0, 60, 0], [20, 0, 0]
+    a.flags = 0x01                 # airborne
+    a.vy = -600
+    a.state = 18                   # St_Jump
+    b.state = ST_WAIT
+    streaming(rig, [a, b], 0.3)
+
+    def stomp(back=2):
+        cid = a.claim(CL["STOMP"], b.seat, ref_frame=b.frame - back)
+        streaming(rig, [a, b], 0.3)
+        return a.verdict(cid)
+
+    c1 = a.claim(CL["STOMP"], b.seat, ref_frame=b.frame - 2)
+    c2 = a.claim(CL["STOMP"], b.seat, ref_frame=b.frame - 2)
+    streaming(rig, [a, b], 0.4)
+    v, v2 = a.verdict(c1), a.verdict(c2)
+    res.check(v and v["name"] == "STOMPED" and v["seat"] == b.seat and v["a"] == a.seat,
+              "STOMP: STOMPED (%s)" % v)
+    res.check(ref.scores == [0] * 16, "no star moved")
+    res.check(v2 and v2["name"] == "DENY" and v2["b"] == DENY["STATE"],
+              "a second stomp inside 250 ms: DENY STATE (%s)" % v2)
+    streaming(rig, [a, b], 0.4)
+    v = stomp()
+    res.check(v and v["name"] == "STOMPED", "and one 0.4 s later is fine (%s)" % v)
+    # must-FAIL controls
+    streaming(rig, [a, b], 0.4)
+    a.flags = 0x03                 # grounded
+    streaming(rig, [a, b], 0.3)
+    v = stomp()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"], "stomper on the ground: DENY STATE (%s)" % v)
+    a.flags = 0x01
+    a.vy = 300                     # rising
+    streaming(rig, [a, b], 0.5)
+    v = stomp()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"], "stomper rising: DENY STATE (%s)" % v)
+    a.vy = -600
+    a.pos = [0, 5, 0]              # not above (the ROM's 10 units)
+    streaming(rig, [a, b], 0.4)
+    v = stomp()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["RANGE"], "not above: DENY RANGE (%s)" % v)
+    a.pos = [0, 60, 0]
+    b.pos = [400, 0, 0]
+    streaming(rig, [a, b], 0.4)
+    v = stomp()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["RANGE"], "400 units away: DENY RANGE (%s)" % v)
+    b.pos = [20, 0, 0]
+    b.flags = 0x43                 # no control
+    streaming(rig, [a, b], 0.4)
+    v = stomp()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["INVULN"], "victim in no-control: DENY INVULN (%s)" % v)
+    b.flags = 0x03
+    a.state = 61                   # a ground pound is not a stomp
+    streaming(rig, [a, b], 0.4)
+    v = stomp()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"], "ground pound: DENY STATE (%s)" % v)
+    a.state = 18
+    streaming(rig, [a, b], 0.4)
+    v = stomp()
+    res.check(v and v["name"] == "STOMPED", "and a real one again (%s)" % v)
+    sc = a.claim(CL["STOMP"], a.seat, ref_frame=a.frame)
+    streaming(rig, [a, b], 0.3)
+    res.check(a.verdict(sc)["b"] == DENY["SELF"], "stomp self: SELF")
+    res.check(ref.invariants() == [], "invariants")
+    return res
+
+
 def u_rematch(mod):
     res = Result("rematch in one session: linger, then a new match")
     rig, (a, b) = match(2, first_to_n=1, code="REMATCH1")
@@ -1585,7 +1656,7 @@ def run_unit():
     mod = load_relay()
     tests = (u_contract, u_handshake, u_routes, u_match, u_timeup,
              u_contention, u_hits, u_hit_nc, u_reliability, u_leave, u_ready,
-             u_strikes, u_eat, u_grab, u_rematch, u_rejoin)
+             u_strikes, u_eat, u_grab, u_stomp, u_rematch, u_rejoin)
     results = []
     for t in tests:
         try:
@@ -1790,7 +1861,7 @@ def run_fuzz(mod, rounds=150000, seed=1):
             c = rng.choice(cons)
             if c.seat is not None:
                 kind = (rng.choice([2, 2, 3, 3, 3, 4, 4, 5, 6, 8, 9, 10, 11,
-                                    12, 12, 13, 14, 15])
+                                    12, 12, 13, 14, 15, 16, 16])
                         if rng.random() > 0.003 else 7)
                 tgt = rng.choice([rng.randrange(0, 20),
                                   rng.choice(cons).seat or 0])
