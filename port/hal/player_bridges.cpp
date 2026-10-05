@@ -1735,10 +1735,20 @@ static void ghost_toon_off(char *c, int slot)
         !(head && ghost_models_in_toon(((char **)(c + 0x154))[hid])))
         return;
     /* TurnOffToonShading(j) clears the body of character j and the heads at
-       unk_154[j] and unk_154[j + 4] */
-    ((Player *)c)->Player::TurnOffToonShading(chr & 3);
-    if (head && (hid & 3) != (chr & 3))
-        ((Player *)c)->Player::TurnOffToonShading(hid & 3);
+       unk_154[j] and unk_154[j + 4], each with its saved colour table
+       (unk_27c[j], unk_28c[j], unk_28c[j + 4]): InitResources makes all of
+       them, but a call is only made when they are there */
+    for (int k = 0; k < 2; ++k) {
+        const unsigned j = (k == 0 ? chr : hid) & 3;
+        if (k == 1 && (!head || j == (chr & 3))) break;
+        if (!*(int *)(c + 0x27c + j * 4) || !*(int *)(c + 0x28c + j * 4) ||
+            !*(int *)(c + 0x28c + (j + 4) * 4) ||
+            !*(void **)(c + 0x154 + j * 4) ||
+            !*(void **)(c + 0x154 + (j + 4) * 4) ||
+            !*(void **)(c + 0xdc + _ZNK6Player14GetBodyModelIDEjb(c, j, 0) * 4))
+            continue;
+        ((Player *)c)->Player::TurnOffToonShading(j);
+    }
     if (slot >= 0 && slot < 16 && cleared[slot]++ < 3)
         std::fprintf(stderr, "[gwdraw] slot %d ch=%u: toon shading cleared on"
                              " the ghost's body and head models (%u)"
