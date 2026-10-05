@@ -1196,13 +1196,13 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat, unsigned t_arr) {
            leave a long memory behind. Here only: a step in the sender's clock
            bigger than kGwClockJumpMs is a restart. */
         double ts;
+        const unsigned st = (unsigned)f.reserved[0] |
+                            ((unsigned)f.reserved[1] << 8) |
+                            ((unsigned)f.reserved[2] << 16);
         if (f.flags & kGwFrameClock) {
             /* the sender's wall clock, 24 bits, taken on from the last frame
                (a step is read as signed, so the wrap at 4.6 hours costs
                nothing); never backwards, so a lerp's span is always > 0 */
-            const unsigned st = (unsigned)f.reserved[0] |
-                                ((unsigned)f.reserved[1] << 8) |
-                                ((unsigned)f.reserved[2] << 16);
             if (z.n == 0) {
                 ts = (double)st + 16777216.0;
             } else {
@@ -1233,6 +1233,7 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat, unsigned t_arr) {
                 ++g_gws.resets;
                 gw_reset_seat(z, true);
                 z.hz = hz;
+                if (f.flags & kGwFrameClock) ts = (double)st + 16777216.0;
             }
         }
         if (z.n == kGwRing) {
