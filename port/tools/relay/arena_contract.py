@@ -245,6 +245,17 @@ CLAIMS = [
     (9, "SPIT", "victim seat", "PROVISIONAL (A5): eater spits"),
     (10, "SWALLOW", "victim seat", "PROVISIONAL (A5): eater swallows (egg)"),
     (11, "ESCAPE", "eater seat", "PROVISIONAL (A5): victim got out on its own"),
+    (12, "CATCH", "victim seat",
+     "GRAB1: Wario catches a stunned player (the ROM's Player::TryGrab); "
+     "stamp; my_frame; ref_frame = the victim frame I drew"),
+    (13, "THROW", "victim seat (the one I hold)",
+     "GRAB1: let go / throw (vertical 0x10000); aux = my yaw (u16); "
+     "ref_frame = launch speed (Fix12)"),
+    (14, "SWING", "victim seat (the one I hold)",
+     "GRAB1: the spin throw (vertical 0x20000); aux = launch yaw (u16); "
+     "ref_frame = launch speed (Fix12)"),
+    (15, "BREAK", "holder seat",
+     "GRAB1: the victim struggled free of a hold"),
 ]
 
 EVENTS = [
@@ -288,6 +299,12 @@ EVENTS = [
     (15, "RELEASED", "PROVISIONAL (A5): seat victim; a eater; b 1 spit 2 "
                      "swallow 3 escape 4 leave; c claim id (SPIT / SWALLOW / "
                      "ESCAPE; 0 for a leave); t now"),
+    (16, "GRABBED", "GRAB1: seat victim; a holder; c claim id (CATCH); t "
+                    "stamp; xyz holder position (Fix12)"),
+    (17, "THROWN", "GRAB1: seat victim; a holder; b 1 throw 2 swing 3 break "
+                   "4 leave / forced; c claim id (THROW / SWING / BREAK; 0 "
+                   "for 4); d launch yaw (u16); t now; x launch speed "
+                   "(Fix12); yz 0"),
 ]
 
 DENY_REASONS = [
@@ -336,6 +353,10 @@ NUMBERS = {
     "POS_LIMIT_UNITS": 32768,
     "AMP_FACTOR": 3,
     "AMP_CREDIT_CAP": 16384,
+    "GRAB_STUN_MAX_MS": 5000,
+    "GRAB_RELEASE_MIN_MS": 500,
+    "GRAB_STUCK_MS": 3000,
+    "GRAB_SPEED_MAX": 0x40000,
 }
 
 # The 78 Player::State records in g_player_states order
@@ -430,8 +451,8 @@ RULES = [
     "rtt_min/2 + CAP_MARGIN_MS); CAP_UNKNOWN_MS before any clock ping); "
     "clamps are counted per seat.",
     "Every claim (seat, claim_id) gets exactly one terminal event naming it: "
-    "MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, ACCEPTED or "
-    "DENY. A resend "
+    "MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, GRABBED, "
+    "THROWN, ACCEPTED or DENY. A resend "
     "after the verdict gets that same event again (directed if it left the "
     "8-event window). DENY and ACCEPTED are directed records (seq 0) to the "
     "claimant alone, never in the stream; the others are stream events "
@@ -460,6 +481,15 @@ RULES = [
     "left. Winners = every seat on the top score.",
     "A seat the referee dropped from the match (LEAVE naming itself) must send "
     "READY again to come back (JOIN mid-match, score 0, SNAPSHOT).",
+    "GRAB1 (the Wario hold): CATCH is a HIT-shaped claim from a Wario "
+    "(SYNS character 2) in a punch or dive against a victim in the stun a "
+    "Wario hit leaves (St_Hurt within GRAB_STUN_MAX_MS of that hit, or "
+    "St_DizzyStars); verdict GRABBED (seat = victim, a = holder) or DENY. One "
+    "hold per holder and per victim; a held seat cannot be hit or eaten. THROW "
+    "and SWING (holder) and BREAK (victim) end a hold no sooner than "
+    "GRAB_RELEASE_MIN_MS after the GRABBED, as THROWN (b 1 throw, 2 swing, 3 "
+    "break, 4 forced: a leave, a quit, or the victim not in St_Grabbed for "
+    "GRAB_STUCK_MS); the launch speed is capped at GRAB_SPEED_MAX.",
     "Phase A: classic mode only (READY mode != 0 is DENY UNSUPPORTED); EAT / "
     "SPIT / SWALLOW / ESCAPE are provisional for A5; speed strikes are logged, "
     "not kicked.",
