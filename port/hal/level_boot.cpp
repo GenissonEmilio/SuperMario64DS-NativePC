@@ -2714,13 +2714,18 @@ extern "C" void port_message_archive_seat(void);
    Four QPC-bracketed spans, accumulated across one entry and printed as ONE
    stderr line (so it lands in the playlog) by port_lvlperf_emit:
 
-       [lvl-perf] teardown=Xms boot=Yms census=Zms print=Wms
+       [lvl-perf] teardown=Xms boot=Yms census=Zms print=Wms starsel=Vms
 
    teardown is the level-change pre-boot span (level_change.cpp, zero on a
    direct boot), boot is port_stage_a_boot below, census is port_actor_census,
    and print is the boot-dump probe block (port_level_probe +
    port_stage_a_probe) -- timed apart from the boot proper so time spent
-   INSIDE printf is its own number. That split is the point: the entry stall
+   INSIDE printf is its own number. A fifth figure, starsel, is the time the
+   player spent in the star select (level_change.cpp's scene interlude); it is
+   taken OUT of teardown and printed on its own, because the star select is a
+   person choosing, not the game working, and until run mp1 lane PROBES1 it
+   was counted as 1.5 to 5.9 s of teardown on every course entry. That split
+   is the point: the entry stall
    this line was built to watch was stdout itself (an unbuffered console
    costs 2-6ms PER LINE and a level entry prints ~248 of them; the setvbuf
    note in walk_window.cpp has the measurements). A handful of QPC reads per
@@ -2731,7 +2736,8 @@ QueryPerformanceCounter(long long *);
 extern "C" __declspec(dllimport) int __stdcall
 QueryPerformanceFrequency(long long *);
 
-static double g_lvlperf_ms[4];   /* teardown, boot, census, print */
+static double g_lvlperf_ms[5];   /* teardown, boot, census, print, starsel */
+static double g_lvlperf_starsel_pending;   /* see port_lvlperf_starsel_take */
 
 extern "C" double port_lvlperf_now(void)
 {
@@ -2745,16 +2751,31 @@ extern "C" double port_lvlperf_now(void)
 
 extern "C" void port_lvlperf_note(int span, double ms)
 {
-    if (span >= 0 && span < 4)
+    if (span >= 0 && span < 5)
         g_lvlperf_ms[span] += ms;
+    if (span == 4)
+        g_lvlperf_starsel_pending += ms;
+}
+
+/* The star-select time not yet handed to the performance report
+   (hal/perf_log.cpp), returned once and cleared. The report subtracts it from
+   the frame that held the interlude and ignores the rate windows that
+   straddled it, so a course entry no longer reads as a 1.5 s hitch. */
+extern "C" double port_lvlperf_starsel_take(void)
+{
+    const double v = g_lvlperf_starsel_pending;
+    g_lvlperf_starsel_pending = 0;
+    return v;
 }
 
 extern "C" void port_lvlperf_emit(void)
 {
     std::fprintf(stderr,
                  "[lvl-perf] teardown=%.1fms boot=%.1fms census=%.1fms "
-                 "print=%.1fms\n", g_lvlperf_ms[0], g_lvlperf_ms[1],
-                 g_lvlperf_ms[2], g_lvlperf_ms[3]);
+                 "print=%.1fms starsel=%.1fms\n", g_lvlperf_ms[0],
+                 g_lvlperf_ms[1], g_lvlperf_ms[2], g_lvlperf_ms[3],
+                 g_lvlperf_ms[4]);
+    g_lvlperf_ms[4] = 0;
     g_lvlperf_ms[0] = g_lvlperf_ms[1] = g_lvlperf_ms[2] = g_lvlperf_ms[3] = 0;
 }
 
