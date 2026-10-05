@@ -668,6 +668,38 @@ void bystander_apply() {
     }
 }
 
+// SM64DS_GRAB_LOG=1: where the carried body is against its carrier, every 10 frames of a hold (the
+// ROM places it at the holder's hand in the render path: the distance says whether that works on
+// this console)
+void hold_probe() {
+    if (!g.log) return;
+    static unsigned last = 0;
+    const unsigned fr = vs_arena_frame();
+    if (fr - last < 10u) return;
+    const int me = vs_arena_my_seat();
+    int hs = kSeatNone, vs = kSeatNone;
+    const char *role = nullptr;
+    if (g.h.active && g.h.phase == 1) { hs = me; vs = g.h.k; role = "H"; }
+    else if (g.v.active && !g.v.break_sent) { hs = g.v.h; vs = me; role = "V"; }
+    else {
+        for (int v = 0; v < kArenaSeats; ++v)
+            if (g.pair_h[v] != kSeatNone && v != me && g.pair_h[v] != me) { hs = g.pair_h[v]; vs = v; role = "B"; break; }
+    }
+    if (!role) return;
+    char *hb = body_of(hs);
+    char *vb = body_of(vs);
+    if (!hb || !vb) return;
+    last = fr;
+    std::fprintf(stderr, "[grab] pos %s f=%u holder(seat %d)=(%d,%d,%d) carried(seat %d)=(%d,%d,%d) "
+                 "d=(%d,%d,%d) hold358=%d grab35c=%d flags=%08x st=%d/%d\n", role, fr, hs,
+                 s32r(hb, 0x5c) >> 12, s32r(hb, 0x60) >> 12, s32r(hb, 0x64) >> 12, vs,
+                 s32r(vb, 0x5c) >> 12, s32r(vb, 0x60) >> 12, s32r(vb, 0x64) >> 12,
+                 (s32r(vb, 0x5c) - s32r(hb, 0x5c)) >> 12, (s32r(vb, 0x60) - s32r(hb, 0x60)) >> 12,
+                 (s32r(vb, 0x64) - s32r(hb, 0x64)) >> 12, ptr(hb, kHeldObj) == vb ? 1 : 0,
+                 ptr(vb, kGrabbedBy) == hb ? 1 : 0, u32r(vb, kFlags), vs_arena_state_index(hb),
+                 vs_arena_state_index(vb));
+}
+
 // ---------------------------------------------------------------------------
 // REFEREE EVENTS
 // ---------------------------------------------------------------------------
@@ -1039,6 +1071,7 @@ void vs_grab_before_walk(int frame) {
         v_monitor();
         bystander_apply();
         stomp_monitor();
+        hold_probe();
     }
     stomp_probe();
     if (g.rig) rig_step();       // (the lab rig runs with the layer off too: the old behaviour's control row)
