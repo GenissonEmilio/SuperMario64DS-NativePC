@@ -99,6 +99,10 @@ INVULN_CHEAT_MS = 300
 STRIKE_WINDOW_MS = 10000
 STRIKES_TO_KICK = 3
 POS_LIMIT_UNITS = 32768
+GRAB_STUN_MAX_MS = 5000         # a catch needs the Wario hit's stun this fresh
+GRAB_RELEASE_MIN_MS = 500       # a hold lasts at least this long
+GRAB_STUCK_MS = 3000            # a hold nobody reports for this long is let go
+GRAB_SPEED_MAX = 0x40000        # the fastest launch the ROM's throws can give
 
 FIX = 4096                      # Fix12
 POS_LIMIT = POS_LIMIT_UNITS * FIX
@@ -140,13 +144,15 @@ P_FIRE, P_WINGS, P_METAL, P_VANISH, P_MEGA = 0x01, 0x02, 0x04, 0x08, 0x10
 # claims
 C_READY, C_MARKER_BREAK, C_GRAB, C_HIT, C_HURT_SELF, C_PIT, C_QUIT = range(1, 8)
 C_EAT, C_SPIT, C_SWALLOW, C_ESCAPE = 8, 9, 10, 11
+C_CATCH, C_THROW, C_SWING, C_BREAK = 12, 13, 14, 15
 CLAIM_NAMES = {1: "READY", 2: "MARKER_BREAK", 3: "GRAB", 4: "HIT",
                5: "HURT_SELF", 6: "PIT", 7: "QUIT", 8: "EAT", 9: "SPIT",
-               10: "SWALLOW", 11: "ESCAPE"}
+               10: "SWALLOW", 11: "ESCAPE", 12: "CATCH", 13: "THROW",
+               14: "SWING", 15: "BREAK"}
 # events
 (EV_START, EV_STAR_WAKE, EV_MARKER_BROKEN, EV_STAR_TAKEN, EV_DENY, EV_HIT,
  EV_CLASH, EV_SPILL, EV_MATCH_OVER, EV_LEAVE, EV_JOIN, EV_STAR_STATE,
- EV_ACCEPTED, EV_EATEN, EV_RELEASED) = range(1, 16)
+ EV_ACCEPTED, EV_EATEN, EV_RELEASED, EV_GRABBED, EV_THROWN) = range(1, 18)
 # deny reasons
 (D_STALE, D_GONE, D_LOST, D_RANGE, D_STATE, D_INVULN, D_MISMATCH,
  D_UNSUPPORTED, D_BAD, D_TOO_OLD, D_SELF) = range(1, 12)
@@ -238,6 +244,16 @@ for _i, _n in enumerate(STATE_NAMES):
     else:
         SPEED_CLASS.append("air")
 HURT_IDX = _idx_set(["St_Hurt", "St_HurtWater"])
+# GRAB1: a catch needs a Wario in a punch or a dive, and a victim in the stun a
+# Wario hit leaves (St_Hurt, phase 2) or in St_DizzyStars; a hold shows as
+# St_HoldLight / St_SwingPlayer / St_Throw on the holder, St_Grabbed on the victim
+CATCH_ATTACK_IDX = _idx_set(["St_PunchKick", "St_Dive"])
+STUN_IDX = _idx_set(["St_Hurt", "St_DizzyStars"])
+HURT_STUN_IDX = _idx_set(["St_Hurt"])
+HOLDER_IDX = _idx_set(["St_HoldLight", "St_SwingPlayer", "St_Throw",
+                       "St_PunchKick", "St_Dive", "St_Swim"])
+GRABBED_IDX = _idx_set(["St_Grabbed", "St_Thrown"])
+LOOK_WARIO = 2
 YOSHI_POWER_IDX = _idx_set(["St_YoshiPower"])
 NC_ATTACK_IDX = _idx_set(NC_ATTACK_STATES)
 
@@ -270,7 +286,7 @@ def seq_after(a, b):
 
 class Sample(object):
     __slots__ = ("frame", "rt", "x", "y", "z", "yaw", "state", "step",
-                 "invuln", "power", "flags", "held", "eaten_by")
+                 "invuln", "power", "flags", "held", "eaten_by", "look")
 
 
 class Seat(object):
@@ -305,6 +321,9 @@ class Seat(object):
         self.sanction_until = -1e9
         self.eaten_by = None        # the referee's view (provisional, A5)
         self.eaten_at = -1e9        # referee ms of the EATEN that set it
+        self.grabbed_by = None      # GRAB1: the seat holding me (Wario hold)
+        self.grabbed_at = -1e9      # GRAB1: referee ms of the GRABBED that set it
+        self.holding = None         # GRAB1: the seat I hold
         self.speed_win = deque(maxlen=SPEED_AVG_FRAMES)
         self.speed_logged = -1e9
 
@@ -463,6 +482,8 @@ class Referee(object):
             s.pending_ids.clear()
             s.last_hit = None
             s.eaten_by = None
+            s.grabbed_by = None
+            s.holding = None
 
     def _start(self, rt):
         cfg = self.cfg
@@ -692,6 +713,7 @@ class Referee(object):
         smp.flags = f[3]
         smp.held = f[19]
         smp.eaten_by = f[20]
+        smp.look = f[4]
         s.hist.append(smp)
         if last is not None and self.state == MS_RUNNING and seat in self.roster:
             self._speed_check(s, last, smp, rt)
@@ -808,7 +830,8 @@ class Referee(object):
             s.clamps += 1
         c.stamp = st
         s.claims += 1
-        if kind in (C_HURT_SELF, C_PIT, C_QUIT, C_SPIT, C_SWALLOW, C_ESCAPE):
+        if kind in (C_HURT_SELF, C_PIT, C_QUIT, C_SPIT, C_SWALLOW, C_ESCAPE,
+                    C_THROW, C_SWING, C_BREAK):
             # nobody contends these: decide now
             self._decide(c, rt)
             self._flush(rt)
@@ -836,6 +859,7 @@ class Referee(object):
         if self.state == MS_RUNNING:
             self._presence(rt)
             self._hit_checks(rt)
+            self._grab_checks(rt)
             if self.match_ms and self.state == MS_RUNNING:
                 end = self.t0 + self.match_ms
                 if rt >= end + HOLD_MAX_MS:
@@ -1072,6 +1096,10 @@ class Referee(object):
             self._eat(c, rt)
         elif k in (C_SPIT, C_SWALLOW, C_ESCAPE):
             self._release(c, rt)
+        elif k == C_CATCH:
+            self._catch(c, rt)
+        elif k in (C_THROW, C_SWING, C_BREAK):
+            self._let_go(c, rt)
         else:
             self._deny(c, D_UNSUPPORTED, rt)
 
@@ -1294,6 +1322,131 @@ class Referee(object):
         ev = self._emit(EV_RELEASED, victim, eater, how, c.cid, 0, 0, int(rt))
         self._record(c, ev)
 
+    # ---- GRAB1: the Wario hold (catch, swing, throw, break)
+
+    def _catch(self, c, rt):
+        """A Wario in a punch or a dive caught a player in the stun a Wario hit
+        leaves.  The ROM's own gate (func_ov002_020d85fc): the victim in St_Hurt
+        (phase 2, mStateTimer set, actor flag 0x80) or St_DizzyStars, the
+        attacker's param1 2, Player::TryGrab(attacker, victim) (attacker in a
+        punch / dive / swim state, holding nothing).  The victim's own console
+        runs the last two checks again on the GRABBED event."""
+        victim = c.target
+        if victim == c.seat or victim not in self.roster or \
+                victim not in self.seats:
+            self._deny(c, D_SELF, rt)
+            return
+        a = self.seats[c.seat]
+        v = self.seats[victim]
+        if (a.holding is not None or a.grabbed_by is not None
+                or a.eaten_by is not None or v.grabbed_by is not None
+                or v.eaten_by is not None or v.holding is not None
+                or any(x.eaten_by == c.seat for x in self.seats.values())):
+            self._deny(c, D_STATE, rt)
+            return
+        att = a.sample_at(c.frame)
+        if att is None:
+            self._deny(c, D_STALE, rt)
+            return
+        smp, why = self._usable(a, c.frame, attack=True)
+        if why:
+            self._deny(c, why, rt)
+            return
+        if att.look != LOOK_WARIO:
+            self._deny(c, D_STATE, rt)
+            return
+        win = a.samples_between(c.frame - ATTACK_LOOKBACK_FRAMES, c.frame)
+        if not any(x.state in CATCH_ATTACK_IDX for x in win):
+            self._deny(c, D_STATE, rt)
+            return
+        vs = v.sample_at(c.ref_frame)
+        if vs is None:
+            self._deny(c, D_STALE, rt)
+            return
+        if c.stamp - vs.rt > COMP_MAX_MS + FRAME_MS:
+            self._deny(c, D_TOO_OLD, rt)
+            return
+        dh = math.hypot(att.x - vs.x, att.z - vs.z)
+        if dh > REACH_H * FIX or abs(att.y - vs.y) > REACH_V * FIX:
+            self._deny(c, D_RANGE, rt)
+            return
+        if vs.state not in STUN_IDX or vs.eaten_by or \
+                vs.power & (P_MEGA | P_VANISH | P_METAL):
+            self._deny(c, D_INVULN, rt)
+            return
+        if vs.state in HURT_STUN_IDX and (
+                v.last_hit is None or v.last_hit_by != c.seat
+                or not 0 <= c.stamp - v.last_hit <= GRAB_STUN_MAX_MS):
+            # the stun is the one a hit by THIS Wario leaves
+            self._deny(c, D_INVULN, rt)
+            return
+        v.grabbed_by = c.seat
+        v.grabbed_at = rt
+        a.holding = victim
+        v.sanction_until = rt + 2000
+        ev = self._emit(EV_GRABBED, victim, c.seat, 0, c.cid, 0, 0, c.stamp,
+                        att.x, att.y, att.z)
+        self._record(c, ev)
+
+    def _let_go(self, c, rt):
+        """THROW / SWING (the holder) and BREAK (the victim) end a hold."""
+        if c.kind == C_BREAK:
+            victim, holder = c.seat, c.target
+        else:
+            victim, holder = c.target, c.seat
+        v = self.seats.get(victim)
+        h = self.seats.get(holder)
+        if v is None or h is None or v.grabbed_by != holder:
+            self._deny(c, D_GONE, rt)
+            return
+        if rt - v.grabbed_at < GRAB_RELEASE_MIN_MS:
+            self._deny(c, D_STATE, rt)          # too soon to be a real throw / struggle
+            return
+        speed, angle = 0, 0
+        if c.kind != C_BREAK:
+            speed, angle = c.ref_frame, c.aux
+            if speed > GRAB_SPEED_MAX:
+                self._deny(c, D_BAD, rt)
+                return
+        v.grabbed_by = None
+        h.holding = None
+        v.sanction_until = rt + 2000
+        how = {C_THROW: 1, C_SWING: 2, C_BREAK: 3}[c.kind]
+        ev = self._emit(EV_THROWN, victim, holder, how, c.cid, angle, 0,
+                        int(rt), speed, 0, 0)
+        self._record(c, ev)
+
+    def _end_hold(self, victim, rt):
+        """A hold that cannot go on (a leave, a console that never showed it):
+        let the victim go, softly, and tell everyone."""
+        v = self.seats.get(victim)
+        if v is None or v.grabbed_by is None:
+            return
+        holder = v.grabbed_by
+        v.grabbed_by = None
+        v.sanction_until = rt + 2000
+        h = self.seats.get(holder)
+        if h is not None:
+            h.holding = None
+        self._emit(EV_THROWN, victim, holder, 4, 0, 0, 0, int(rt), 0, 0, 0)
+
+    def _grab_checks(self, rt):
+        """The failsafe: a hold whose victim does not report St_Grabbed (or
+        whose holder does not report a holding state) for GRAB_STUCK_MS is
+        let go, so no console is left parked in a state the other never saw."""
+        for v in list(self.seats.values()):
+            if v.grabbed_by is None or rt - v.grabbed_at < GRAB_STUCK_MS:
+                continue
+            h = self.seats.get(v.grabbed_by)
+            vn, hn = v.newest(), (h.newest() if h is not None else None)
+            if (vn is None or vn.state not in GRABBED_IDX
+                    or hn is None or hn.state not in HOLDER_IDX
+                    or rt - v.last_heard > GRAB_STUCK_MS
+                    or (h is not None and rt - h.last_heard > GRAB_STUCK_MS)):
+                self.log("arena %s hold of seat %d by seat %d dropped: not "
+                         "reported" % (self.code, v.seat, v.grabbed_by))
+                self._end_hold(v.seat, rt)
+
     # ---- stars
 
     def _alloc_inst(self):
@@ -1366,6 +1519,9 @@ class Referee(object):
                     self.scores[seat] = 0
                     break
                 n += 1
+        for s in list(self.seats.values()):
+            if s.grabbed_by == seat or s.seat == seat:
+                self._end_hold(s.seat, rt)
         self.roster.discard(seat)
         self._emit(EV_LEAVE, seat, why, 0, 0, n, 0, int(rt))
         for s in self.seats.values():
@@ -1412,7 +1568,8 @@ class Referee(object):
         if df <= 0 or df > 30:
             s.speed_win.clear()
             return
-        if rt < s.sanction_until or b.eaten_by or a.eaten_by:
+        if (rt < s.sanction_until or b.eaten_by or a.eaten_by
+                or s.grabbed_by is not None):
             s.speed_win.clear()
             return
         step = math.hypot(b.x - a.x, b.z - a.z) / FIX / df
@@ -1455,6 +1612,14 @@ class Referee(object):
                 bad.append("seat tables")
             if len(s.pending_ids) > PENDING_PER_SEAT:
                 bad.append("pending")
+            if s.grabbed_by is not None:
+                h = self.seats.get(s.grabbed_by)
+                if h is None or h.holding != s.seat or s.grabbed_by == s.seat:
+                    bad.append("grab pair")
+            if s.holding is not None:
+                o = self.seats.get(s.holding)
+                if o is None or o.grabbed_by != s.seat:
+                    bad.append("hold pair")
         if len(self.pending) > PENDING_PER_SEAT * SEATS:
             bad.append("pending queue")
         return bad

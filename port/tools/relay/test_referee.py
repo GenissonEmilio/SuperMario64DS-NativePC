@@ -37,16 +37,18 @@ S_EVT = struct.Struct("<HBBBBHHHIiii")
 
 EV = dict(START=1, STAR_WAKE=2, MARKER_BROKEN=3, STAR_TAKEN=4, DENY=5, HIT=6,
           CLASH=7, SPILL=8, MATCH_OVER=9, LEAVE=10, JOIN=11, STAR_STATE=12,
-          ACCEPTED=13, EATEN=14, RELEASED=15)
+          ACCEPTED=13, EATEN=14, RELEASED=15, GRABBED=16, THROWN=17)
 EVN = dict((v, k) for k, v in EV.items())
 CL = dict(READY=1, MARKER_BREAK=2, GRAB=3, HIT=4, HURT_SELF=5, PIT=6, QUIT=7,
-          EAT=8, SPIT=9, SWALLOW=10, ESCAPE=11)
+          EAT=8, SPIT=9, SWALLOW=10, ESCAPE=11, CATCH=12, THROW=13, SWING=14,
+          BREAK=15)
 DENY = dict(STALE=1, GONE=2, LOST=3, RANGE=4, STATE=5, INVULN=6, MISMATCH=7,
             UNSUPPORTED=8, BAD=9, TOO_OLD=10, SELF=11)
 
 # state indices (g_player_states order)
 ST_WALK, ST_WAIT, ST_PUNCH, ST_HURT, ST_DIVE = 14, 15, 59, 7, 62
 ST_JUMP, ST_SLIDE = 18, 35
+ST_GRABBED, ST_THROWN, ST_HOLDLIGHT, ST_SWING = 16, 20, 37, 65
 
 
 def load_relay(env=None):
@@ -192,6 +194,7 @@ class Console(object):
         self.invuln = 0
         self.power = 0
         self.eaten_by = 0
+        self.look = 3
         self.cid = 0
         self.headers = []
         self.offset = None      # referee clock estimate: ref = now_ms + offset
@@ -247,7 +250,7 @@ class Console(object):
     def syns(self, advance_frame=True):
         if advance_frame:
             self.frame += 1
-        d = S_SYNS.pack(b"SYNS", 1, 0xFF, self.flags, 3, self.frame,
+        d = S_SYNS.pack(b"SYNS", 1, 0xFF, self.flags, self.look, self.frame,
                         int(self.pos[0] * FIX), int(self.pos[1] * FIX),
                         int(self.pos[2] * FIX), 0, 0, 0, self.yaw, 1, 0,
                         self.state, 0, self.invuln, self.power, 0,
@@ -294,9 +297,9 @@ class Console(object):
             n = e["name"]
             if n in ("DENY", "STAR_TAKEN", "MARKER_BROKEN", "ACCEPTED"):
                 who = (e["seat"],)
-            elif n in ("HIT", "CLASH", "EATEN"):
+            elif n in ("HIT", "CLASH", "EATEN", "GRABBED"):
                 who = (e["a"],)
-            elif n == "RELEASED":
+            elif n in ("RELEASED", "THROWN"):
                 who = (e["seat"], e["a"])
             else:
                 continue
@@ -1393,6 +1396,164 @@ def u_eat(mod):
     return res
 
 
+def u_grab(mod):
+    res = Result("grab (GRAB1): CATCH, THROW, SWING, BREAK, leave, failsafe")
+    rig, (a, b) = match(2)
+    ref = rig.ref("ARENA01")
+    sa, sb = ref.seats[a.seat], ref.seats[b.seat]
+    a.pos, b.pos = [0, 0, 0], [100, 0, 0]
+    a.look = 2
+    a.state = ST_PUNCH
+    streaming(rig, [a, b], 0.3)
+
+    def catch(ref_back=2, who=None, victim=None):
+        who = who or a
+        victim = victim or b
+        cid = who.claim(CL["CATCH"], victim.seat, ref_frame=victim.frame - ref_back)
+        streaming(rig, [a, b], 0.3)
+        return who.verdict(cid)
+
+    # the victim is not stunned: refused (must-FAIL control for the accept below)
+    v = catch()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["INVULN"],
+              "victim in St_Wait: DENY INVULN (%s)" % v)
+    # a Wario hit puts it in the stun
+    h = a.claim(CL["HIT"], b.seat, aux=0x40 >> 5, ref_frame=b.frame - 2)
+    streaming(rig, [a, b], 0.3)
+    res.check(a.verdict(h)["name"] == "HIT", "the hit lands")
+    b.state = ST_HURT
+    b.flags |= 0x20
+    streaming(rig, [a, b], 0.3)
+    # not a Wario
+    a.look = 3
+    streaming(rig, [a, b], 0.2)
+    v = catch()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "attacker not Wario: DENY STATE (%s)" % v)
+    a.look = 2
+    # not attacking
+    a.state = ST_WALK
+    streaming(rig, [a, b], 0.5)
+    v = catch()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "attacker walking: DENY STATE (%s)" % v)
+    a.state = ST_PUNCH
+    # out of reach
+    b.pos = [700, 0, 0]
+    streaming(rig, [a, b], 0.3)
+    v = catch()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["RANGE"],
+              "700 units: DENY RANGE (%s)" % v)
+    b.pos = [100, 0, 0]
+    streaming(rig, [a, b], 0.3)
+    # the good one
+    cid = a.claim(CL["CATCH"], b.seat, ref_frame=b.frame - 2)
+    streaming(rig, [a, b], 0.12)
+    v = a.verdict(cid)
+    res.check(v and v["name"] == "GRABBED" and v["seat"] == b.seat
+              and v["a"] == a.seat, "CATCH: GRABBED (%s)" % v)
+    res.check(sb.grabbed_by == a.seat and sa.holding == b.seat, "pair recorded")
+    # THROW too soon is refused, the hold stays (must-FAIL control for the throw below)
+    early = a.claim(CL["THROW"], b.seat, aux=0x1234, ref_frame=0x30000)
+    streaming(rig, [a, b], 0.1)
+    ve = a.verdict(early)
+    res.check(ve and ve["name"] == "DENY" and ve["b"] == DENY["STATE"],
+              "THROW 0.1 s after the catch: DENY STATE (%s)" % ve)
+    res.check(sb.grabbed_by == a.seat, "the early THROW left the hold as it was")
+    # a hold is exclusive, and a held seat cannot be hit
+    v = catch()
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "second catch while holding: DENY STATE (%s)" % v)
+    a.state, b.state = ST_HOLDLIGHT, ST_GRABBED
+    b.flags &= ~0x20
+    streaming(rig, [a, b], 0.2)
+    ch = a.claim(CL["HIT"], b.seat, aux=2, ref_frame=b.frame - 2)
+    streaming(rig, [a, b], 0.3)
+    res.check(a.verdict(ch)["name"] == "DENY", "a held seat cannot be hit")
+    # a THROW from a seat that does not hold it, and a BREAK at the wrong seat
+    streaming(rig, [a, b], 0.6)
+    bad = b.claim(CL["THROW"], a.seat, aux=0, ref_frame=0x30000)
+    streaming(rig, [a, b], 0.3)
+    res.check(b.verdict(bad)["b"] == DENY["GONE"], "THROW by the victim: GONE")
+    # a launch above the cap
+    over = a.claim(CL["THROW"], b.seat, aux=0, ref_frame=GRAB_SPEED_MAX_T + 1)
+    streaming(rig, [a, b], 0.3)
+    res.check(a.verdict(over)["b"] == DENY["BAD"], "launch over the cap: BAD")
+    res.check(sb.grabbed_by == a.seat, "still held")
+    # the real throw
+    th = a.claim(CL["THROW"], b.seat, aux=0x1234, ref_frame=0x30000)
+    streaming(rig, [a, b], 0.3)
+    v = a.verdict(th)
+    res.check(v and v["name"] == "THROWN" and v["b"] == 1 and v["d"] == 0x1234
+              and v["x"] == 0x30000 and v["seat"] == b.seat and v["a"] == a.seat,
+              "THROW: THROWN how 1, yaw and speed carried (%s)" % v)
+    res.check(sb.grabbed_by is None and sa.holding is None, "pair cleared")
+    # throw again: GONE
+    again = a.claim(CL["THROW"], b.seat, aux=0, ref_frame=0x10000)
+    streaming(rig, [a, b], 0.3)
+    res.check(a.verdict(again)["b"] == DENY["GONE"], "THROW with no hold: GONE")
+    # a resend of the verdict is the same event
+    rig_events = len([e for e in a.events if e["name"] == "THROWN"])
+    res.check(rig_events == 1, "one THROWN in the stream")
+
+    # a second hold: SWING and BREAK
+    def new_hold(n):
+        b.state, b.flags = ST_WAIT, 0x03
+        a.state = ST_PUNCH
+        b.pos = [100, 0, 0]
+        streaming(rig, [a, b], 1.4)      # past the hit immunity
+        hh = a.claim(CL["HIT"], b.seat, aux=0x40 >> 5, ref_frame=b.frame - 2)
+        streaming(rig, [a, b], 0.3)
+        ok = a.verdict(hh)["name"] == "HIT"
+        b.state, b.flags = ST_HURT, 0x23
+        streaming(rig, [a, b], 0.3)
+        c2 = a.claim(CL["CATCH"], b.seat, ref_frame=b.frame - 2)
+        streaming(rig, [a, b], 0.3)
+        v2 = a.verdict(c2)
+        a.state, b.state = ST_HOLDLIGHT, ST_GRABBED
+        b.flags = 0x03
+        streaming(rig, [a, b], 0.7)
+        res.check(ok and v2 and v2["name"] == "GRABBED", "hold %d" % n)
+
+    new_hold(2)
+    a.state = ST_SWING
+    streaming(rig, [a, b], 0.2)
+    sw = a.claim(CL["SWING"], b.seat, aux=0xC000, ref_frame=0x2a000)
+    streaming(rig, [a, b], 0.3)
+    v = a.verdict(sw)
+    res.check(v and v["name"] == "THROWN" and v["b"] == 2 and v["d"] == 0xC000
+              and v["x"] == 0x2a000, "SWING: THROWN how 2 (%s)" % v)
+    new_hold(3)
+    br = b.claim(CL["BREAK"], a.seat)
+    streaming(rig, [a, b], 0.3)
+    v = b.verdict(br)
+    res.check(v and v["name"] == "THROWN" and v["b"] == 3 and v["seat"] == b.seat
+              and v["a"] == a.seat, "BREAK: THROWN how 3 (%s)" % v)
+    # an early BREAK is refused
+    new_hold(4)
+    # (the 0.7 s in new_hold already passed the minimum: make a fresh fast one)
+    res.check(sb.grabbed_by == a.seat, "hold 4 is live")
+    # the failsafe: the victim never reports St_Grabbed
+    b.state = ST_WAIT
+    streaming(rig, [a, b], 3.4)
+    res.check(sb.grabbed_by is None and sa.holding is None,
+              "failsafe: a hold the victim never shows is let go")
+    forced = [e for e in a.events if e["name"] == "THROWN" and e["b"] == 4]
+    res.check(len(forced) == 1 and forced[0]["c"] == 0, "THROWN how 4")
+    # the holder leaves (QUIT)
+    new_hold(5)
+    a.claim(CL["QUIT"], 0xFF)
+    streaming(rig, [b], 0.4)
+    forced = [e for e in b.events if e["name"] == "THROWN" and e["b"] == 4]
+    res.check(len(forced) == 2 and sb.grabbed_by is None,
+              "holder QUIT: the victim is let go (%d)" % len(forced))
+    res.check(ref.invariants() == [], "invariants %s" % ref.invariants())
+    return res
+
+
+GRAB_SPEED_MAX_T = 0x40000
+
+
 def u_rematch(mod):
     res = Result("rematch in one session: linger, then a new match")
     rig, (a, b) = match(2, first_to_n=1, code="REMATCH1")
@@ -1424,7 +1585,7 @@ def run_unit():
     mod = load_relay()
     tests = (u_contract, u_handshake, u_routes, u_match, u_timeup,
              u_contention, u_hits, u_hit_nc, u_reliability, u_leave, u_ready,
-             u_strikes, u_eat, u_rematch, u_rejoin)
+             u_strikes, u_eat, u_grab, u_rematch, u_rejoin)
     results = []
     for t in tests:
         try:
@@ -1628,7 +1789,8 @@ def run_fuzz(mod, rounds=150000, seed=1):
             # referee's logic, not just its parser)
             c = rng.choice(cons)
             if c.seat is not None:
-                kind = (rng.choice([2, 2, 3, 3, 3, 4, 4, 5, 6, 8, 9, 10, 11])
+                kind = (rng.choice([2, 2, 3, 3, 3, 4, 4, 5, 6, 8, 9, 10, 11,
+                                    12, 12, 13, 14, 15])
                         if rng.random() > 0.003 else 7)
                 tgt = rng.choice([rng.randrange(0, 20),
                                   rng.choice(cons).seat or 0])
@@ -1638,7 +1800,8 @@ def run_fuzz(mod, rounds=150000, seed=1):
                         frame=max(0, c.frame - rng.randrange(0, 20)),
                         ref_frame=max(0, rng.choice(cons).frame
                                       - rng.randrange(0, 20)))
-                c.state = rng.choice([14, 15, 59, 62, 3, 7, 35, 18])
+                c.state = rng.choice([14, 15, 59, 62, 3, 7, 35, 18, 16, 37, 65])
+                c.look = rng.choice([2, 2, 3, 0])
                 c.invuln = rng.choice([0, 0, 0, 10])
             continue
         if r < 0.75:
