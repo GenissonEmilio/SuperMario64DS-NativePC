@@ -886,6 +886,13 @@ void rig_step() {
         }
         const bool window = g.rig_var == 7 || cf >= 370u || cf <= 20u;
         const int st = vs_arena_state_index(mb);
+        if (st == kStHurt && !g.v.active && g.rig_var != 7) {
+            // a stunned victim that does not mash: the selftest's pad tape would shorten the stun
+            // (func_ov002_020d98b4 counts every button a frame off the stun timer)
+            data_020a0e58[2] = 0;
+            data_020a0e58[3] = 0;
+            *(unsigned short *)((char *)data_020a0e5a + 4) = 0;
+        }
         if (window && !g.v.active && st != kStHurt && st != kStGrabbed && st != 20) {
             for (int i = 0; i < 3; ++i) s32r(mb, 0x5c + 4 * i) = g.vp[i];
             s32r(mb, 0x98) = 0;
