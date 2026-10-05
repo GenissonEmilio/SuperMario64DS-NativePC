@@ -1420,11 +1420,246 @@ def u_rematch(mod):
     return res
 
 
+def u_hit_eat(mod):
+    """FIELD4 F9-a: a HIT and an EAT between the same two players at the same
+    instant used to both land (the victim of the pound was eaten AND its eater
+    lost a star).  Exactly one of the two lands now, in every order, and the
+    tongue wins a tie."""
+    res = Result("hit vs eat: one outcome in every order, the tongue wins a tie")
+    R = mod.referee
+    ST_YOSHI, ST_POUND = R._IDX["St_YoshiPower"], R._IDX["St_GroundPound"]
+
+    def pair(n=2):
+        rig, cs = match(n)
+        rig.no_pings = True
+        ref = rig.ref("ARENA01")
+        for c in cs:
+            sc = ref.seats[c.seat]
+            sc.rtts.clear()
+            sc.rtts.append(125)
+            sc.rtt_min = 125            # cap 87 ms, the referee's hold H
+        a, b = cs[0], cs[1]
+        # b holds a star, so a landed hit shows as a spill
+        inst = a.find("STAR_WAKE")[-1]["a"]
+        b.claim(CL["MARKER_BREAK"], inst)
+        streaming(rig, cs, 0.2)
+        b.claim(CL["GRAB"], inst)
+        streaming(rig, cs, 0.3)
+        a.pos, b.pos = [0, 0, 0], [100, 0, 0]
+        a.state, b.state = ST_POUND, ST_YOSHI       # a pounds, b's tongue is out
+        streaming(rig, cs, 0.3)
+        return rig, cs, ref
+
+    def outcome(a, b, ch, ce):
+        vh, ve = a.verdict(ch), b.verdict(ce)
+        return (vh["name"] if vh else None, ve["name"] if ve else None, vh, ve)
+
+    for label, delta in (("EAT 10 ms after the HIT", 10),
+                         ("EAT 10 ms before the HIT", -10),
+                         ("EAT and HIT on the same stamp", 0)):
+        rig, (a, b), ref = pair()
+        t = rig.now
+        ch = a.claim(CL["HIT"], b.seat, aux=0x1400 >> 5, ref_frame=b.frame - 2,
+                     stamp=ref.ref_ms(t, a.seat) - 20)
+        ce = b.claim(CL["EAT"], a.seat, ref_frame=a.frame - 2,
+                     stamp=ref.ref_ms(t, b.seat) - 20 + delta)
+        streaming(rig, [a, b], 0.5)
+        hn, en, vh, ve = outcome(a, b, ch, ce)
+        res.check(en == "EATEN" and hn == "DENY" and vh["b"] == DENY["INVULN"],
+                  "%s: the tongue lands, the pound is refused INVULN (%s / %s)"
+                  % (label, hn, en))
+        res.check(ref.scores[b.seat] == 1 and not a.find("SPILL"),
+                  "%s: the eater keeps its star, nothing spilled" % label)
+        res.check(ref.seats[a.seat].eaten_by == b.seat, "%s: a is in b's "
+                  "mouth" % label)
+    # the EAT reaches the referee after the HIT was already decided (HIT stamp
+    # first, EAT within TRADE_MS of it): the HIT stands and the EAT is refused,
+    # so still exactly one lands (it used to ride the HIT-vs-HIT trade rule)
+    rig, (a, b), ref = pair()
+    t = rig.now
+    ch = a.claim(CL["HIT"], b.seat, aux=0x1400 >> 5, ref_frame=b.frame - 2,
+                 stamp=ref.ref_ms(t, a.seat))
+    rig.advance(0.1)
+    ce = b.claim(CL["EAT"], a.seat, ref_frame=a.frame - 2,
+                 stamp=ref.ref_ms(t, b.seat) + 15)
+    streaming(rig, [a, b], 0.5)
+    hn, en, vh, ve = outcome(a, b, ch, ce)
+    res.check(hn == "HIT" and en == "DENY" and ve["b"] == DENY["STATE"],
+              "EAT arrives after the HIT landed: HIT stands, EAT STATE (%s / %s)"
+              % (hn, en))
+    res.check(ref.seats[a.seat].eaten_by is None and ref.scores[b.seat] == 0,
+              "... a is not eaten, b lost its star")
+    # well apart: the pound at one moment, the tongue 1.3 s later (the hit
+    # immunity is over): both are ordinary events and both land
+    streaming(rig, [a, b], 1.3)
+    a.state, b.state = ST_POUND, ST_YOSHI
+    streaming(rig, [a, b], 0.3)
+    ce = b.claim(CL["EAT"], a.seat, ref_frame=a.frame - 2)
+    streaming(rig, [a, b], 0.3)
+    res.check(b.verdict(ce) and b.verdict(ce)["name"] == "EATEN",
+              "a tongue 1.3 s after the hit it suffered: EATEN (no regression)")
+    # a victim that holds a mouthful cannot be hit at all, and can again
+    # after it spits
+    rig, (a, b, c), ref = pair(3)
+    c.pos = [100, 0, 100]
+    b.state, b.flags = ST_YOSHI, 0x03
+    streaming(rig, [a, b, c], 0.3)
+    ce = b.claim(CL["EAT"], c.seat, ref_frame=c.frame - 2)
+    streaming(rig, [a, b, c], 0.3)
+    res.check(b.verdict(ce)["name"] == "EATEN", "b eats c")
+    ch = a.claim(CL["HIT"], b.seat, aux=0x1400 >> 5, ref_frame=b.frame - 2)
+    streaming(rig, [a, b, c], 0.3)
+    v = a.verdict(ch)
+    res.check(v["name"] == "DENY" and v["b"] == DENY["INVULN"],
+              "a pound on an eater with a full mouth: INVULN (%s)" % v["name"])
+    b.claim(CL["SPIT"], c.seat)
+    streaming(rig, [a, b, c], 1.2)
+    a.state = ST_POUND
+    b.state = ST_WAIT
+    streaming(rig, [a, b, c], 0.3)
+    ch = a.claim(CL["HIT"], b.seat, aux=0x1400 >> 5, ref_frame=b.frame - 2)
+    streaming(rig, [a, b, c], 0.3)
+    res.check(a.verdict(ch)["name"] == "HIT", "after the spit the same pound "
+              "lands (%s)" % a.verdict(ch)["name"])
+    res.check(ref.invariants() == [], "invariants")
+    return res
+
+
+def u_star_flight(mod):
+    """FIELD4 F9-b: a star in flight is judged at GRAB_R + FLIGHT_SLACK against
+    the owner's newest SYNO; a star at rest, or one whose owner went quiet, at
+    GRAB_R; a claim from far away is refused either way."""
+    res = Result("star flight: a moving star gets slack, rest and cheats do not")
+    R = mod.referee
+    rig, (a, b) = match(2)
+    mod = rig.mod               # (every Rig loads its own relay + referee)
+    R = mod.referee
+    ref = rig.ref("ARENA01")
+    a.state = b.state = ST_WAIT
+    a.pos = [0, 0, 0]
+
+    def new_star(x, state):
+        """a breaks the next marker and streams the star at (x, 0, 0)."""
+        inst = a.find("STAR_WAKE")[-1]["a"]
+        a.claim(CL["MARKER_BREAK"], inst)
+        streaming(rig, [a, b], 0.3)
+        rig.send(a.addr, S_SYNO.pack(b"SYNO", 1, 0, 1, inst, a.frame,
+                                     x * FIX, 0, 0, 0, 0, 0, state, 0))
+        return inst
+
+    def grab(inst, at):
+        b.pos = [at, 0, 0]
+        streaming(rig, [a, b], 0.1)
+        cid = b.claim(CL["GRAB"], inst)
+        streaming(rig, [a, b], 0.3)
+        return b.verdict(cid)
+    # moving star, claimant 400 units off the referee's copy: inside the slack
+    inst = new_star(0, 1)
+    v = grab(inst, 400)
+    res.check(v and v["name"] == "STAR_TAKEN", "moving star, 400 units: taken "
+              "(%s)" % (v and v["name"]))
+    # the cheat control: 600 units from a moving star is still RANGE
+    inst = new_star(0, 1)
+    v = grab(inst, 600)
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["RANGE"],
+              "moving star, 600 units: RANGE (%s)" % (v and v["name"]))
+    # the same 400 units from a star AT REST: RANGE (the plain radius)
+    inst = new_star(0, 2)
+    v = grab(inst, 400)
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["RANGE"],
+              "resting star, 400 units: RANGE (%s)" % (v and v["name"]))
+    v = grab(inst, 150)
+    res.check(v and v["name"] == "STAR_TAKEN", "resting star, 150 units: taken")
+    # a "moving" report older than FLIGHT_STALE_MS proves nothing
+    inst = new_star(0, 1)
+    streaming(rig, [a, b], getattr(R, "FLIGHT_STALE_MS", 1000) / 1000.0 + 0.3)
+    v = grab(inst, 400)
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["RANGE"],
+              "moving SYNO 1.3 s old, 400 units: RANGE (%s)" % (v and v["name"]))
+    # the journal and the counters say what was refused and by how much
+    lines = [m for m in mod.LOGGED if "deny GRAB seat %d" % b.seat in m
+             and "RANGE" in m]
+    res.check(lines and "dist=" in lines[0] and "limit=" in lines[0]
+              and "flying=" in lines[0], "journal line names reason, distance, "
+              "limit (%s)" % (lines[0] if lines else None))
+    res.check(R.DENY_TOTALS.get((CL["GRAB"], DENY["RANGE"]), 0) >= 3,
+              "DENY_TOTALS counts GRAB.RANGE (%s)" % R.deny_totals_text())
+    tail = mod.RelayProtocol.stats_arena(rig.relay)
+    res.check("arena_deny=" in tail and "GRAB.RANGE:" in tail,
+              "the relay's stats line carries the per-reason counters")
+    # a hurt claimant is still refused STATE, and the line says why
+    inst = new_star(0, 2)
+    b.state = ST_HURT
+    streaming(rig, [a, b], 0.1)
+    v = grab(inst, 50)
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+              "touch while hurt: STATE (%s)" % (v and v["name"]))
+    res.check(any("deny GRAB" in m and "STATE" in m and "state=St_Hurt" in m
+                  for m in mod.LOGGED), "STATE line names the state")
+    # the journal is rate-limited per session
+    n0 = len([m for m in mod.LOGGED if "deny GRAB" in m])
+    for i in range(30):
+        b.claim(CL["GRAB"], inst)
+    streaming(rig, [a, b], 0.3)
+    n1 = len([m for m in mod.LOGGED if "deny GRAB" in m])
+    res.check(n1 - n0 <= R.DENY_LOG_PER_S * 2, "30 refused claims in 0.3 s "
+              "wrote %d journal lines (budget %d / s)" % (n1 - n0,
+                                                          R.DENY_LOG_PER_S))
+    res.check(ref.invariants() == [], "invariants")
+    return res
+
+
+def u_land_speed(mod):
+    """FIELD4 F9-e: a wing-cap run into a landing carries 53-54 units a frame;
+    St_Land is in the air class (limit 90) so it is no strike, while the same
+    speed walking still is."""
+    res = Result("speed: St_Land at 54/frame is not a strike, St_Walk is")
+    R = mod.referee
+    st_land = R._IDX["St_Land"]
+    res.check(R.SPEED_CLASS[st_land] == "air", "St_Land is in the air class")
+    rig, (a, b) = match(2)
+    ref = rig.ref("ARENA01")
+    sa = ref.seats[a.seat]
+    state = {"n": rig.now}
+
+    def each():
+        if rig.now >= state["n"]:
+            state["n"] += 1 / 30.0
+            a.pos[0] += 54
+            a.syns()
+            b.syns()
+    a.state = st_land
+    s0 = sa.strikes_total
+    rig.advance(0.5, each=each)
+    res.check(sa.strikes_total == s0, "54/frame in St_Land: no strike (%d)"
+              % (sa.strikes_total - s0))
+    a.state = ST_WALK
+    s0 = sa.strikes_total
+    rig.advance(0.5, each=each)
+    res.check(sa.strikes_total > s0, "54/frame in St_Walk: still a strike "
+              "(%d)" % (sa.strikes_total - s0))
+    a.state = st_land
+    state["n"] = rig.now
+    s0 = sa.strikes_total
+
+    def each2():
+        if rig.now >= state["n"]:
+            state["n"] += 1 / 30.0
+            a.pos[0] += 120
+            a.syns()
+            b.syns()
+    rig.advance(0.5, each=each2)
+    res.check(sa.strikes_total > s0, "120/frame in St_Land: a strike "
+              "(the limit is raised, not removed)")
+    return res
+
+
 def run_unit():
     mod = load_relay()
     tests = (u_contract, u_handshake, u_routes, u_match, u_timeup,
              u_contention, u_hits, u_hit_nc, u_reliability, u_leave, u_ready,
-             u_strikes, u_eat, u_rematch, u_rejoin)
+             u_strikes, u_eat, u_rematch, u_rejoin, u_hit_eat, u_star_flight,
+             u_land_speed)
     results = []
     for t in tests:
         try:

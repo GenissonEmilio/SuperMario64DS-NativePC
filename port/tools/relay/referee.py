@@ -84,6 +84,14 @@ HIT_IMMUNE_MS = 1000
 # eater lose a star one round trip after being eaten)
 ESCAPE_MIN_MS = int(15 * FRAME_MS)
 TRADE_MS = 34
+# A star in flight is judged looser than one at rest: the referee's copy of it
+# is the owner's newest SYNO (one trip old) and the claimant's own copy is a
+# second trip behind that, so while it moves the two can be several frames of
+# flight apart (FIELD4 F9-b). The slack is added to GRAB_R, never replaces it:
+# a claim from far outside both still fails (the cheat control).
+FLIGHT_SLACK = 300
+FLIGHT_STALE_MS = 1000          # a "moving" SYNO older than this proves nothing
+DENY_LOG_PER_S = 4              # journal lines for refused claims, per session
 REACH_H = 250
 REACH_V = 250
 GRAB_R = 200
@@ -150,6 +158,9 @@ CLAIM_NAMES = {1: "READY", 2: "MARKER_BREAK", 3: "GRAB", 4: "HIT",
 # deny reasons
 (D_STALE, D_GONE, D_LOST, D_RANGE, D_STATE, D_INVULN, D_MISMATCH,
  D_UNSUPPORTED, D_BAD, D_TOO_OLD, D_SELF) = range(1, 12)
+DENY_NAMES = {1: "STALE", 2: "GONE", 3: "LOST", 4: "RANGE", 5: "STATE",
+              6: "INVULN", 7: "MISMATCH", 8: "UNSUPPORTED", 9: "BAD",
+              10: "TOO_OLD", 11: "SELF"}
 # match-over reasons
 O_TIME_UP, O_FIRST_TO_N, O_LAST_STANDING, O_EVERYONE_LEFT = 1, 2, 3, 4
 # match states
@@ -201,7 +212,7 @@ NC_ATTACK_STATES = ["St_YoshiPower"]
 ATTACK_NC_MAX_FRAMES = 45       # the exemption lasts at most 1.5 s of one run
 SPEED_WALK = ["St_Walk", "St_Wait", "St_TurnAround", "St_Crouch", "St_Crawl",
               "St_PunchKick", "St_YoshiPower", "St_HoldLight", "St_HoldHeavy",
-              "St_Throw", "St_Land", "St_Talk", "St_Spin"]
+              "St_Throw", "St_Talk", "St_Spin"]
 SPEED_SLIDE = ["St_StomachSlide", "St_ButtSlide", "St_SlideKick",
                "St_SlideKickRecover", "St_Dive"]
 SPEED_EXEMPT = ["St_InYoshiMouth", "St_Respawn", "St_Thrown", "St_Teleport",
@@ -268,6 +279,18 @@ def seq_after(a, b):
 # ---------------------------------------------------------------- tables
 
 
+# Every refusal the referee has named since the process started, by claim kind
+# and reason: relay.py prints it on the stats line ("arena_deny=GRAB.RANGE:3,...")
+# so a field test can say which rule refused what without a guess.
+DENY_TOTALS = {}
+
+
+def deny_totals_text():
+    return ",".join("%s.%s:%d" % (CLAIM_NAMES.get(k, str(k)),
+                                  DENY_NAMES.get(r, str(r)), n)
+                    for (k, r), n in sorted(DENY_TOTALS.items()))
+
+
 class Sample(object):
     __slots__ = ("frame", "rt", "x", "y", "z", "yaw", "state", "step",
                  "invuln", "power", "flags", "held", "eaten_by")
@@ -305,6 +328,8 @@ class Seat(object):
         self.sanction_until = -1e9
         self.eaten_by = None        # the referee's view (provisional, A5)
         self.eaten_at = -1e9        # referee ms of the EATEN that set it
+        self.eat_stamp = None       # stamp of the last EAT this seat won ...
+        self.eat_target = None      # ... and whom it ate (HIT vs EAT order)
         self.speed_win = deque(maxlen=SPEED_AVG_FRAMES)
         self.speed_logged = -1e9
 
@@ -342,7 +367,7 @@ class Seat(object):
 
 class Star(object):
     __slots__ = ("inst", "state", "marker", "star_id", "x", "y", "z", "known",
-                 "owner", "since")
+                 "owner", "since", "moving", "syno_rt")
 
     def __init__(self, inst, state, marker, star_id, rt):
         self.inst = inst
@@ -353,6 +378,8 @@ class Star(object):
         self.known = False
         self.owner = 0xFF
         self.since = rt
+        self.moving = False     # the owner's newest SYNO said "in flight"
+        self.syno_rt = -1e9     # referee ms that SYNO arrived
 
 
 class Claim(object):
@@ -393,6 +420,9 @@ class Referee(object):
         self.n_starved = 0
         self.n_violations = 0
         self.last_beat = -1e9
+        self.deny_counts = {}       # (claim kind, reason) -> n, this session
+        self._dlog_t = -1e9         # journal budget for refusal lines
+        self._dlog_n = 0
 
     # ---- clocks
 
@@ -463,6 +493,7 @@ class Referee(object):
             s.pending_ids.clear()
             s.last_hit = None
             s.eaten_by = None
+            s.eat_stamp = s.eat_target = None
 
     def _start(self, rt):
         cfg = self.cfg
@@ -720,6 +751,8 @@ class Referee(object):
             return
         star.x, star.y, star.z = f[6], f[7], f[8]
         star.known = True
+        star.moving = f[12] == 1
+        star.syno_rt = self.rt(now)
         s = self.seats.get(seat)
         if s is not None:
             s.last_heard = self.rt(now)
@@ -1023,7 +1056,23 @@ class Referee(object):
         self._record(c, (0, rec))
         self._tx(c.seat, self._frame(rt, [rec], RF_DIRECTED, seat=c.seat))
 
-    def _deny(self, c, reason, rt, winner=0xFF):
+    def _deny(self, c, reason, rt, winner=0xFF, why=None):
+        key = (c.kind, reason)
+        self.deny_counts[key] = self.deny_counts.get(key, 0) + 1
+        DENY_TOTALS[key] = DENY_TOTALS.get(key, 0) + 1
+        # a refusal worth reading in the journal: what was refused, why and by
+        # how much. LOST / GONE / STALE are ordinary contention and stay in the
+        # counters. Rate-limited per session so a hostile seat cannot flood it.
+        if c.kind in (C_GRAB, C_MARKER_BREAK, C_HIT, C_EAT) and                 reason in (D_RANGE, D_STATE, D_INVULN, D_TOO_OLD):
+            if rt - self._dlog_t >= 1000:
+                self._dlog_t, self._dlog_n = rt, 0
+            if self._dlog_n < DENY_LOG_PER_S:
+                self._dlog_n += 1
+                self.log("arena %s deny %s seat %d target %d claim %d: %s%s"
+                         % (self.code, CLAIM_NAMES.get(c.kind, c.kind),
+                            c.seat, c.target, c.cid,
+                            DENY_NAMES.get(reason, reason),
+                            " (%s)" % why if why else ""))
         rec = self._snap_record(EV_DENY, c.seat, c.kind, reason, c.cid,
                                 winner, c.target, int(rt))
         self._direct(c, rec, rt)
@@ -1123,6 +1172,39 @@ class Referee(object):
             return smp, D_STATE
         return smp, 0
 
+    @staticmethod
+    def _why_state(s, smp):
+        """Journal words for a STATE refusal: what the claimant's sample says."""
+        if smp is None:
+            return "no sample near the claim frame"
+        return ("state=%s flags=0x%02x eaten_by=%d%s" % (
+            STATE_NAMES[smp.state] if smp.state < N_STATES else smp.state,
+            smp.flags, smp.eaten_by,
+            " referee-eaten" if s.eaten_by is not None else ""))
+
+    @staticmethod
+    def _in_flight(star, rt):
+        """May the referee's copy of this star still be a trip or two behind a
+        claimant's?  True while the owner's newest SYNO says it moves and is
+        not stale (a star at rest, or one whose owner went quiet, is judged at
+        the plain radius)."""
+        return star.moving and rt - star.syno_rt <= FLIGHT_STALE_MS
+
+    def _range_ok(self, c, smp, star, base_r, rt):
+        """(ok, journal words): the claimant's sample vs the star, GRAB_R /
+        MARKER_R plus FLIGHT_SLACK while the star is in flight."""
+        if not star.known:
+            return True, ""
+        flying = self._in_flight(star, rt)
+        limit = base_r + (FLIGHT_SLACK if flying else 0)
+        d = _dist3(smp, star) / FIX
+        if d > limit:
+            return False, ("dist=%d limit=%d flying=%d star_age=%dms "
+                           "syno_age=%dms" % (d, limit, 1 if flying else 0,
+                                              rt - star.since,
+                                              min(99999, rt - star.syno_rt)))
+        return True, ""
+
     def _grab(self, c, rt):
         star = self.stars.get(c.target)
         if star is None or star.state != ST_FREE:
@@ -1135,10 +1217,12 @@ class Referee(object):
         s = self.seats[c.seat]
         smp, why = self._usable(s, c.frame)
         if why:
-            self._deny(c, why, rt)
+            self._deny(c, why, rt, why=self._why_state(s, smp)
+                       if why == D_STATE else None)
             return
-        if star.known and _dist3(smp, star) > GRAB_R * FIX:
-            self._deny(c, D_RANGE, rt)
+        ok, words = self._range_ok(c, smp, star, GRAB_R, rt)
+        if not ok:
+            self._deny(c, D_RANGE, rt, why=words)
             return
         del self.stars[c.target]
         self._taken(c.target, c.seat, c.stamp)
@@ -1175,10 +1259,12 @@ class Referee(object):
         s = self.seats[c.seat]
         smp, why = self._usable(s, c.frame)
         if why:
-            self._deny(c, why, rt)
+            self._deny(c, why, rt, why=self._why_state(s, smp)
+                       if why == D_STATE else None)
             return
-        if star.known and _dist3(smp, star) > MARKER_R * FIX:
-            self._deny(c, D_RANGE, rt)
+        ok, words = self._range_ok(c, smp, star, MARKER_R, rt)
+        if not ok:
+            self._deny(c, D_RANGE, rt, why=words)
             return
         star.state = ST_FREE
         star.owner = c.seat
@@ -1205,15 +1291,33 @@ class Referee(object):
         trade = False
         if a.last_hit is not None:
             dt = c.stamp - a.last_hit
-            if abs(dt) <= TRADE_MS and a.last_hit_by == victim:
+            if eat:
+                # A tongue never trades with a hit (FIELD4 F9-a): an eater that
+                # was struck inside the window loses its catch, so exactly one
+                # of the two lands. (Before this an EAT stamped within
+                # TRADE_MS of the hit that struck its eater rode the HIT-vs-HIT
+                # trade rule: the victim was eaten AND the eater lost a star.)
+                if dt < HIT_IMMUNE_MS:
+                    self._deny(c, D_STATE, rt, why="the eater was hit %d ms "
+                               "before its tongue" % dt)
+                    return
+            elif abs(dt) <= TRADE_MS and a.last_hit_by == victim:
                 trade = True
             elif 0 <= dt < HIT_IMMUNE_MS:
                 self._deny(c, D_STATE, rt)
                 return
+        if not eat and self._victim_catching(v, c, rt):
+            # The ROM's tongue that has caught somebody (or is catching one
+            # at this very instant) has Player_DisableInteraction up: the
+            # pound / punch bounces off. Ties go to the tongue.
+            self._deny(c, D_INVULN, rt, why="the victim is eating or catching "
+                       "(an EAT within %d ms)" % TRADE_MS)
+            return
         if not trade:
             smp, why = self._usable(a, c.frame, attack=True)
             if why:
-                self._deny(c, why, rt)
+                self._deny(c, why, rt, why=self._why_state(a, smp)
+                           if why == D_STATE else None)
                 return
         want = YOSHI_POWER_IDX if eat else ATTACK_IDX
         win = a.samples_between(c.frame - ATTACK_LOOKBACK_FRAMES, c.frame)
@@ -1246,6 +1350,8 @@ class Referee(object):
         if eat:
             v.eaten_by = c.seat
             v.eaten_at = rt
+            a.eat_stamp = c.stamp
+            a.eat_target = victim
             v.sanction_until = rt + 60000
             ev = self._emit(EV_EATEN, victim, c.seat, 0, c.cid, 0, 0, c.stamp,
                             att.x, att.y, att.z)
@@ -1266,6 +1372,19 @@ class Referee(object):
         self._record(c, ev)
         if inst:
             self._emit_spill(inst, victim, SP_HIT, rt)
+
+    def _victim_catching(self, v, c, rt):
+        """Is the victim of HIT claim `c` an eater right now: it holds a
+        mouthful, won an EAT of the attacker within TRADE_MS of this claim's
+        stamp, or has such an EAT of its own waiting to be decided?"""
+        if any(x.eaten_by == v.seat for x in self.seats.values()):
+            return True
+        if v.eat_target == c.seat and v.eat_stamp is not None and                 abs(c.stamp - v.eat_stamp) <= TRADE_MS:
+            return True
+        for p in self.pending:
+            if p.kind == C_EAT and p.seat == v.seat and p.target == c.seat                     and abs(c.stamp - p.stamp) <= TRADE_MS:
+                return True
+        return False
 
     def _eat(self, c, rt):
         if self.seats[c.seat].eaten_by is not None:
