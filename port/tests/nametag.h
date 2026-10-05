@@ -603,8 +603,42 @@ static void nt_bubble_draw(const OvlSurface &fb, int cx, int y,
         }
 }
 
+/* TEST ONLY: SM64DS_TAG_AT="x,y;x,y;..." (per mille of the picture, anchor
+   point = the head the tag stands on) draws the first remote body's tag and
+   bubble ONCE AT EACH listed place instead of over its head, so a proof can
+   put a tag behind the HUD counters, the panel corner or a menu on purpose and
+   compare the picture with tags off (run mp1, lane TAGLAYER1). Unset: nothing
+   changes. */
+static int nt_test_at(float xs[8], float ys[8])
+{
+    static int n = -1;
+    static float x[8], y[8];
+    if (n < 0) {
+        n = 0;
+        const char *e = getenv("SM64DS_TAG_AT");
+        while (e && *e && n < 8) {
+            char *end = 0;
+            const float fx = (float)strtod(e, &end);
+            if (end == e || *end != ',') break;
+            e = end + 1;
+            const float fy = (float)strtod(e, &end);
+            if (end == e) break;
+            x[n] = fx;
+            y[n] = fy;
+            ++n;
+            e = end;
+            if (*e == ';') ++e;
+        }
+    }
+    for (int i = 0; i < n; ++i) { xs[i] = x[i]; ys[i] = y[i]; }
+    return n;
+}
+
 /* ---- the tags -------------------------------------------------------------
-   Called once per frame, with the surface every other host overlay draws on.
+   Called once per frame from the level loop, right after the 3D raster and
+   BEFORE the engine-A 2D composite (tests/walk_window.cpp), so the HUD, the
+   dialogue box, the bottom-screen panel and the fade draw over the tags and
+   bubbles; the chat box, the ping readout and the menus draw after, on top.
    Reads only. */
 struct NtBody {
     int i;               /* the body (player slot) */
@@ -626,11 +660,17 @@ static void nt_draw(const OvlSurface &fb)
     const int my_seat = port::chat_my_seat();
     if (!tags_on && my_seat < 0) return;
     if (!nt_font_build()) return;
+    /* This reads and blends real 3D pixels. Its two modes are never held on the
+       graphics card (the allow in the level loop), so this is a no-op today;
+       it keeps the draw safe if a third mode ever draws tags (CARD2 review
+       N5a). */
+    ntr::gx_card_settle_because("name tags and chat bubbles");
 
     const int me = (int)data_0209f250;
     const unsigned vs_live = adventure ? 0u : port_vs_seat_live_mask();
     NtBody bodies[kPortMaxPlayers];
     int nb = 0;
+    bool nt_test_pos = false;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
         const char *p = (const char *)data_0209f394[i];
         if (!p) continue;
@@ -673,6 +713,25 @@ static void nt_draw(const OvlSurface &fb)
         e.i = i;
         e.seat = seat;
         ++nb;
+    }
+    {
+        /* the test knob above: copies of the first remote body, one per place */
+        float tx[8], ty[8];
+        const int tn = nt_test_at(tx, ty);
+        nt_test_pos = tn > 0;
+        int first = -1;
+        for (int k = 0; k < nb; ++k)
+            if (bodies[k].i != me) { first = k; break; }
+        if (tn > 0 && first >= 0) {
+            const NtBody src = bodies[first];
+            nb = 0;
+            for (int k = 0; k < tn; ++k) {
+                bodies[nb] = src;
+                bodies[nb].sx = tx[k] * 0.001f * (float)ntr::active_w;
+                bodies[nb].sy = ty[k] * 0.001f * (float)ntr::active_h;
+                ++nb;
+            }
+        }
     }
     /* FAR TO NEAR, so the nearest body's tag and bubble land on top (a plain
        insertion sort: at most sixteen) */
@@ -721,6 +780,7 @@ static void nt_draw(const OvlSurface &fb)
             /* a hub ghost whose frames stopped fades with its body */
             alpha = alpha * port_adventure_ghost_fade(i) / 256;
             if (alpha <= 0) continue;   /* out of prox-chat range: no tag */
+            if (nt_test_pos) alpha = 255;   /* SM64DS_TAG_AT: a test places the tag, full strength */
         }
         /* OFF THE SCREEN ENTIRELY, with a whole tag's margin so a name that is
            half on does not flicker at the edge -- and TESTED IN FLOATS, BEFORE
@@ -800,7 +860,20 @@ static void nt_draw(const OvlSurface &fb)
            so a bubble never lands on the tag of a body standing where you
            stand. */
         port::ChatBubble bub;
-        const int have = e.seat >= 0 && port::chat_bubble(e.seat, &bub);
+        int have = e.seat >= 0 && port::chat_bubble(e.seat, &bub);
+        /* TEST ONLY: SM64DS_TAG_TEXT="..." gives every placed tag a full-strength bubble with that text, so a
+           proof does not depend on the chat's wall clock */
+        if (nt_test_pos && i != me) {
+            static const char *tt = getenv("SM64DS_TAG_TEXT");
+            if (tt && *tt) {
+                memset(&bub, 0, sizeof bub);
+                bub.has_text = true;
+                bub.alpha = 255;
+                bub.rgb = 0xFFFFFFFFu;
+                snprintf(bub.text, sizeof bub.text, "%s", tt);
+                have = 1;
+            }
+        }
         if (have) {
             const int bottom = y_top - 2 * scale;
             nt_bubble_draw(fb, cx, bottom, bub, scale, alpha,

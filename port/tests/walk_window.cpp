@@ -17994,6 +17994,30 @@ int main(void)
            there (BG3 + the cursor OBJ), so raster engine A's 2D and write only
            the covered pixels over the 3D framebuffer. Before the fade composite,
            so the box dims with the master-brightness blend the same as the DS. */
+        /* THE NAME TAGS AND CHAT BUBBLES (run mp1, lane TAGLAYER1) ARE PART OF
+           THE WORLD, SO THEY GO IN BEFORE THE 2D: straight over the finished
+           3D (and after the SmoothMotion 3D snapshot above, so the in-between
+           pictures carry them as tick N's own, with the 2D delta), and then the
+           engine-A composite below, the bottom-screen panel and the fade paint
+           over them. The HUD counters, the dialogue box, the level-clear menu
+           and the panel's plates hide a tag; the tag shows everywhere else.
+           They used to be painted after all of that, over the lives and star
+           counters, the map and the menus. The chat box, the ping readout, the
+           F3 overlay, the F5 menu and the toast stay last, on top of
+           everything. The surface is the framebuffer in both layouts: in the
+           stacked layout the image is composed from the finished framebuffer
+           after this point, so it carries the tags too. Returns at once
+           outside a VS match and a hub ghost session, so no solo picture
+           moves. A frame in those two modes is never held on the card
+           (gx_card_present_allow above), so the tag pixels are ordinary
+           opaque ones. */
+        /* SM64DS_TAG_ORDER=old puts the tags back after the 2D (the control arm
+           of the layer proof, one binary): test only. */
+        static const int tag_old_order = [] {
+            const char *e = getenv("SM64DS_TAG_ORDER");
+            return (e && !strcmp(e, "old")) ? 1 : 0;
+        }();
+        if (!tag_old_order && !rb_skip_render()) nt_draw(ovl_surface(fb));
         pt_mark(PS_COMP_A);
         if (!rb_skip_render())
             port_message_composite_engine_a(&fb);
@@ -18149,12 +18173,13 @@ int main(void)
             os.menu_paused = !game_ticked;
             ovl_draw(surf, os);
         }
-        /* THE NAME TAGS, before the menu and the banner so a menu the player
-           opened still sits over them. Returns immediately outside a VS match,
-           which is why no adventure selftest BMP moves. */
-        if (!rb_skip_render()) nt_draw(surf);
-        /* THE CHAT (run mp1, lane CHATUI1): over the tags, under the menu.
-           Pumped every presented frame whether or not this one renders. */
+        /* THE NAME TAGS are no longer drawn here: they go in right after the
+           3D, before the engine-A composite, so the HUD, the panel and the
+           menus draw over them (run mp1, lane TAGLAYER1; see above). */
+        if (tag_old_order && !rb_skip_render()) nt_draw(surf);
+        /* THE CHAT (run mp1, lane CHATUI1): over everything the game draws,
+           under the menu. Pumped every presented frame whether or not this
+           one renders. */
         chat_host_frame(surf, frame);
         if (!rb_skip_render()) {
         if (menu_on) menu_draw(surf);
