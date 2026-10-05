@@ -1687,6 +1687,64 @@ static void ghost_draw_probe(char *c, int slot, int pal)
     std::fprintf(stderr, "\n");
 }
 
+/* GHOSTCHAR1 (field test 4, F7): A HUB GHOST MUST NOT BE LEFT IN TOON SHADING.
+   The cap morph (Player::func_ov002_020be3b0, also started by
+   func_ov002_020beabc when InitResources spawns a body whose drawn character
+   differs from the real one, which is every hub ghost body on the castle
+   grounds) puts the body's and head's materials in polygon mode 2, the DS's
+   toon / highlight shading, and only its last stage (TurnOffToonShading) puts
+   them back. A ghost body never runs Player::Behavior (it is posed from the
+   wire), so the morph never finishes and the ghost is drawn in mode 2 for as
+   long as the level lasts. Mode 2 takes its colour from the toon table the
+   game last programmed, which is whatever the LOCAL player's own flash left:
+   after a character change that table is black below its upper entries, so a
+   ghost's shaded parts draw pure black with a hard edge (the black Yoshi in
+   the field report; measured: SM64DS_TOON_PROBE shows the table 000000 for
+   entries 0..16 with 912 mode-2 triangles, all of them the ghosts'). The ROM
+   would have run the morph out; this does what its last stage does, to the two
+   models the ghost is drawn with. Only ever a remote hub ghost, so solo and the
+   local body are untouched. */
+static unsigned ghost_models_in_toon(char *mdl)
+{
+    if (!mdl) return 0;
+    const int *p = (const int *)(mdl + 8);
+    const unsigned char *hdr = (const unsigned char *)p[0];
+    const char *rec = (const char *)p[1];
+    if (!hdr || !rec) return 0;
+    unsigned nm = 0, n2 = 0;
+    std::memcpy(&nm, hdr + 0x24, 4);
+    if (nm > kGhostStampMax) nm = kGhostStampMax;
+    for (unsigned i = 0; i < nm; ++i)
+        if (((*(const unsigned *)(rec + i * 0x30 + 0x24) >> 4) & 3) == 2) ++n2;
+    return n2;
+}
+
+static void ghost_toon_off(char *c, int slot)
+{
+    static int off = -1;
+    static unsigned cleared[16];
+    if (off < 0) off = std::getenv("SM64DS_GHOST_KEEP_TOON") ? 1 : 0;
+    if (off) return;      /* the A/B knob for the proof rows: the old behaviour */
+    /* the two models the ghost is drawn with, found the way the stamp finds them */
+    const unsigned chr = (unsigned)*(int *)(c + 8) & 0xff;
+    const unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, chr, 0);
+    const unsigned hid =
+        func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+    const bool head = hid != 8 && hid != 9 && hid < 8;
+    if (!ghost_models_in_toon((char *)((ModelAnim **)(c + 0xdc))[id]) &&
+        !(head && ghost_models_in_toon(((char **)(c + 0x154))[hid])))
+        return;
+    /* TurnOffToonShading(j) clears the body of character j and the heads at
+       unk_154[j] and unk_154[j + 4] */
+    ((Player *)c)->Player::TurnOffToonShading(chr & 3);
+    if (head && (hid & 3) != (chr & 3))
+        ((Player *)c)->Player::TurnOffToonShading(hid & 3);
+    if (slot >= 0 && slot < 16 && cleared[slot]++ < 3)
+        std::fprintf(stderr, "[gwdraw] slot %d ch=%u: toon shading cleared on"
+                             " the ghost's body and head models (%u)"
+                             "\n", slot, chr, cleared[slot]);
+}
+
 void hal_render_player_world(void *player)
 {
     const int slot = (int)*(const unsigned char *)((const char *)player + 0x6d8);
@@ -1697,8 +1755,10 @@ void hal_render_player_world(void *player)
     GhostPalStamp st;
     st.n[0] = st.n[1] = 0;
     if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
-        data_0209f394[slot] == player && port::adventure_ghost_mode())
+        data_0209f394[slot] == player && port::adventure_ghost_mode()) {
+        ghost_toon_off((char *)player, slot);
         ghost_draw_probe((char *)player, slot, pal);
+    }
     if (pal >= 0) {
         char *c = (char *)player;
         const unsigned id =
