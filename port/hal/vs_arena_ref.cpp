@@ -49,6 +49,7 @@
 
 #include "comms_hub.h"
 #include "vs_arena.h"
+#include "vs_arena_grab.h"
 
 #include <windows.h>
 
@@ -376,8 +377,9 @@ unsigned short new_cid() {
 const char *claim_name(int k) {
     static const char *n[] = {"?", "READY", "MARKER_BREAK", "GRAB", "HIT",
                               "HURT_SELF", "PIT", "QUIT", "EAT", "SPIT",
-                              "SWALLOW", "ESCAPE"};
-    return k >= 1 && k <= 11 ? n[k] : "?";
+                              "SWALLOW", "ESCAPE", "CATCH", "THROW", "SWING",
+                              "BREAK"};
+    return k >= 1 && k <= 15 ? n[k] : "?";
 }
 
 PClaim *make_claim(unsigned char kind, unsigned char target, unsigned short aux,
@@ -612,7 +614,7 @@ bool ref_event_valid(const RefEvent &e) {
         return seat_ok(e.seat) && e.a != 0 && score_ok(e.b) &&
                e.e < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
     case EV_DENY:
-        return seat_ok(e.seat) && e.a >= 1 && e.a <= 11 && e.b >= 1 && e.b <= 11 &&
+        return seat_ok(e.seat) && e.a >= 1 && e.a <= 15 && e.b >= 1 && e.b <= 11 &&
                (e.d == 0xFF || e.d < 16);
     case EV_HIT:
         return seat_ok(e.seat) && seat_ok(e.a) && e.b <= 1 && e.d <= 0x2000 &&
@@ -634,11 +636,17 @@ bool ref_event_valid(const RefEvent &e) {
         return seat_or_none(e.seat) && e.a != 0 && e.b >= 1 && e.b <= 2 &&
                e.c < 8 && e.d < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
     case EV_ACCEPTED:
-        return seat_ok(e.seat) && e.a >= 1 && e.a <= 11 && e.d < 256;
+        return seat_ok(e.seat) && e.a >= 1 && e.a <= 15 && e.d < 256;
     case EV_EATEN:
     case EV_RELEASED:
         return seat_ok(e.seat) && seat_ok(e.a) && e.b <= 4 && pos_ok(e.x) &&
                pos_ok(e.y) && pos_ok(e.z);
+    case EV_GRABBED:
+        return seat_ok(e.seat) && seat_ok(e.a) && e.seat != e.a && pos_ok(e.x) &&
+               pos_ok(e.y) && pos_ok(e.z);
+    case EV_THROWN:
+        return seat_ok(e.seat) && seat_ok(e.a) && e.seat != e.a && e.b >= 1 && e.b <= 4 &&
+               e.x >= 0 && e.x <= kGrabSpeedMax && e.y == 0 && e.z == 0;
     default:
         return false;
     }
@@ -885,10 +893,17 @@ void apply_event(const RefEvent &e, bool directed) {
     case EV_RELEASED:
         if (e.a == g.seat && e.type == EV_EATEN) finish_claim(e.c, 1, 0, 0xFF);
         break;
+    case EV_GRABBED:
+        if (e.a == g.seat) finish_claim(e.c, 1, 0, 0xFF);
+        break;
+    case EV_THROWN:
+        if (e.a == g.seat || e.seat == g.seat) finish_claim(e.c, 1, 0, 0xFF);
+        break;
     default: break;
     }
     ++g.st.events_applied;
     if (g.sink) g.sink(&e, g.seat, directed);
+    vs_grab_on_event(&e, g.seat, directed);       // GRAB1
 }
 
 void apply_frame(const RefFrame &f) {
@@ -1351,6 +1366,7 @@ void hit_detect(const char *where) {
         if (g.log)
             std::fprintf(stderr, "[vsarena-ref] contact: my attack touched the body of seat %d "
                          "(flags 0x%x, read in %s, frame %u)\n", k, flags, where, fr);
+        if (vs_grab_contact(k, flags)) continue;     // GRAB1: a Wario's catch, not a hit
         if ((flags & ~0x1000u) == 0) continue;
         // (a lab rig's tongue eats the copy by itself; the rig still wants its hit claim)
         if (!g.rig && vs_arena_body_held(k)) continue;
