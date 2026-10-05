@@ -918,7 +918,9 @@ void rig_step() {
             s16r(mb, kSwingSpeed) = 0x1800;
             std::fprintf(stderr, "[grab] rig: spin\n");
         }
-        if ((g.rig_var == 0 || g.rig_var == 1 || g.rig_var == 2) && g.rig_hold == (unsigned)g.rig_hold_at) {
+        // (pressed every 12 frames until the ROM lets go: the pickup and the spin's wind-up ignore the button)
+        if ((g.rig_var == 0 || g.rig_var == 1 || g.rig_var == 2) && g.rig_hold >= (unsigned)g.rig_hold_at &&
+            (g.rig_hold - (unsigned)g.rig_hold_at) % 12u == 0) {
             g.rig_mask = g.rig_var == 2 ? 0x0400 : 0x0001;
             g.rig_press = 3;
             std::fprintf(stderr, "[grab] rig: %s after %u frames of holding\n",
