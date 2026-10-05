@@ -1638,6 +1638,123 @@ static void ghost_unstamp(GhostPalStamp &st)
             *(int *)(st.rec[k] + i * 0x30 + 0x20) = st.old[k][i];
 }
 
+/* GHOSTCHAR1: SM64DS_GHOST_DRAW_PROBE=<stride>. What a hub ghost's draw really
+   has, for the black-shading field report (F7): once per <stride> draws of a
+   ghost, its character, the palette row it is stamped with and that row's
+   sixteen words (a zero among the ramp entries means a bad row), and how many
+   of the body's and the head's materials are in each polygon mode (mode 2 is
+   the toon / flash shading a swapped model can be left in). Off by default. */
+static void ghost_draw_probe(char *c, int slot, int pal)
+{
+    static int stride = -1;
+    static unsigned n[16];
+    if (stride < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_DRAW_PROBE");
+        stride = e ? std::atoi(e) : 0;
+    }
+    if (stride <= 0 || slot < 0 || slot >= 16) return;
+    if ((n[slot]++ % (unsigned)stride) != 0) return;
+    unsigned hist[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
+    const unsigned id =
+        _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
+    const unsigned hid = func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+    char *mdl[2] = {(char *)((ModelAnim **)(c + 0xdc))[id],
+                    (hid != 8 && hid != 9) ? ((char **)(c + 0x154))[hid] : 0};
+    for (int k = 0; k < 2; ++k) {
+        if (!mdl[k]) continue;
+        const int *p = (const int *)(mdl[k] + 8);
+        const unsigned char *hdr = (const unsigned char *)p[0];
+        const char *rec = (const char *)p[1];
+        if (!hdr || !rec) continue;
+        unsigned nm = 0;
+        std::memcpy(&nm, hdr + 0x24, 4);
+        if (nm > kGhostStampMax) nm = kGhostStampMax;
+        for (unsigned i = 0; i < nm; ++i)
+            ++hist[k][(*(const unsigned *)(rec + i * 0x30 + 0x24) >> 4) & 3];
+    }
+    const unsigned short *row =
+        pal >= 0 ? (const unsigned short *)(0x06880000u + (unsigned)pal * 16u)
+                 : 0;
+    std::fprintf(stderr,
+                 "[gwdraw] slot %d ch=%d body %u pal=%d modes body %u/%u/%u/%u "
+                 "head %u/%u/%u/%u row", slot, *(int *)(c + 8) & 0xff, id, pal,
+                 hist[0][0], hist[0][1], hist[0][2], hist[0][3], hist[1][0],
+                 hist[1][1], hist[1][2], hist[1][3]);
+    if (row)
+        for (int i = 0; i < 16; ++i) std::fprintf(stderr, " %04x", row[i]);
+    else
+        std::fprintf(stderr, " none");
+    std::fprintf(stderr, "\n");
+}
+
+/* GHOSTCHAR1 (field test 4, F7): A HUB GHOST MUST NOT BE LEFT IN TOON SHADING.
+   The cap morph (Player::func_ov002_020be3b0, also started by
+   func_ov002_020beabc when InitResources spawns a body whose drawn character
+   differs from the real one, which is every hub ghost body on the castle
+   grounds) puts the body's and head's materials in polygon mode 2, the DS's
+   toon / highlight shading, and only its last stage (TurnOffToonShading) puts
+   them back. A ghost body never runs Player::Behavior (it is posed from the
+   wire), so the morph never finishes and the ghost is drawn in mode 2 for as
+   long as the level lasts. Mode 2 takes its colour from the toon table the
+   game last programmed, which is whatever the LOCAL player's own flash left:
+   after a character change that table is black below its upper entries, so a
+   ghost's shaded parts draw pure black with a hard edge (the black Yoshi in
+   the field report; measured: SM64DS_TOON_PROBE shows the table 000000 for
+   entries 0..16 with 912 mode-2 triangles, all of them the ghosts'). The ROM
+   would have run the morph out; this does what its last stage does, to the two
+   models the ghost is drawn with. Only ever a remote hub ghost, so solo and the
+   local body are untouched. */
+static unsigned ghost_models_in_toon(char *mdl)
+{
+    if (!mdl) return 0;
+    const int *p = (const int *)(mdl + 8);
+    const unsigned char *hdr = (const unsigned char *)p[0];
+    const char *rec = (const char *)p[1];
+    if (!hdr || !rec) return 0;
+    unsigned nm = 0, n2 = 0;
+    std::memcpy(&nm, hdr + 0x24, 4);
+    if (nm > kGhostStampMax) nm = kGhostStampMax;
+    for (unsigned i = 0; i < nm; ++i)
+        if (((*(const unsigned *)(rec + i * 0x30 + 0x24) >> 4) & 3) == 2) ++n2;
+    return n2;
+}
+
+static void ghost_toon_off(char *c, int slot)
+{
+    static int off = -1;
+    static unsigned cleared[16];
+    if (off < 0) off = std::getenv("SM64DS_GHOST_KEEP_TOON") ? 1 : 0;
+    if (off) return;      /* the A/B knob for the proof rows: the old behaviour */
+    /* the two models the ghost is drawn with, found the way the stamp finds them */
+    const unsigned chr = (unsigned)*(int *)(c + 8) & 0xff;
+    const unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, chr, 0);
+    const unsigned hid =
+        func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+    const bool head = hid != 8 && hid != 9 && hid < 8;
+    if (!ghost_models_in_toon((char *)((ModelAnim **)(c + 0xdc))[id]) &&
+        !(head && ghost_models_in_toon(((char **)(c + 0x154))[hid])))
+        return;
+    /* TurnOffToonShading(j) clears the body of character j and the heads at
+       unk_154[j] and unk_154[j + 4], each with its saved colour table
+       (unk_27c[j], unk_28c[j], unk_28c[j + 4]): InitResources makes all of
+       them, but a call is only made when they are there */
+    for (int k = 0; k < 2; ++k) {
+        const unsigned j = (k == 0 ? chr : hid) & 3;
+        if (k == 1 && (!head || j == (chr & 3))) break;
+        if (!*(int *)(c + 0x27c + j * 4) || !*(int *)(c + 0x28c + j * 4) ||
+            !*(int *)(c + 0x28c + (j + 4) * 4) ||
+            !*(void **)(c + 0x154 + j * 4) ||
+            !*(void **)(c + 0x154 + (j + 4) * 4) ||
+            !*(void **)(c + 0xdc + _ZNK6Player14GetBodyModelIDEjb(c, j, 0) * 4))
+            continue;
+        ((Player *)c)->Player::TurnOffToonShading(j);
+    }
+    if (slot >= 0 && slot < 16 && cleared[slot]++ < 3)
+        std::fprintf(stderr, "[gwdraw] slot %d ch=%u: toon shading cleared on"
+                             " the ghost's body and head models (%u)"
+                             "\n", slot, chr, cleared[slot]);
+}
+
 void hal_render_player_world(void *player)
 {
     const int slot = (int)*(const unsigned char *)((const char *)player + 0x6d8);
@@ -1647,6 +1764,11 @@ void hal_render_player_world(void *player)
         pal = port_adventure_ghost_palette(slot);
     GhostPalStamp st;
     st.n[0] = st.n[1] = 0;
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+        data_0209f394[slot] == player && port::adventure_ghost_mode()) {
+        ghost_toon_off((char *)player, slot);
+        ghost_draw_probe((char *)player, slot, pal);
+    }
     if (pal >= 0) {
         char *c = (char *)player;
         const unsigned id =
@@ -2810,11 +2932,31 @@ static void port_legacy_set_character(void *player, unsigned ch)
    playable animation whether or not a cap was involved.
 
    SM64DS_SWAP_LEGACY=1 forces the old InitResources rebuild for an A/B. */
+extern "C" unsigned char data_0209cad2[];   /* save block; [0x0f] is caa0[0x41] */
+extern "C" int data_0209b478[];             /* voice-group byte (hal/actor_vtables.cpp) */
+extern "C" void func_ov002_020e6330(void *self);   /* src/func_ov002_020e6330.c */
+extern "C" void func_ov002_020e6350(char *self);   /* src/func_ov002_020e6350.c */
 extern "C" void port_player_set_character(void *player, unsigned ch)
 {
     static int legacy = -1;
     if (legacy < 0) legacy = std::getenv("SM64DS_SWAP_LEGACY") ? 1 : 0;
     if (legacy) { port_legacy_set_character(player, (int)(ch & 3)); return; }
+
+    /* SetRealCharacter is the LOCAL player's operation (the character doors):
+       besides the body it writes the SAVE FILE's character byte
+       (data_0209caa0[0x41]) and runs the voice-group setup that sets
+       data_0209b478. A ghost swap (a remote body changing to its sender's
+       character) must not touch any of that, or the watcher's own save
+       character becomes the last ghost character seen, and the next course
+       entered through the star select makes the watcher that character
+       (field test 4, F3). So for any body that is not the local one: keep
+       both bytes across the swap, and re-run the voice setup on the local
+       body, exactly what Player::InitResources does for the local slot. */
+    char *const localp = (char *)data_0209f394[data_0209f250];
+    const bool remote = player != 0 && player != (void *)localp;
+    unsigned char *const save_chr = &data_0209cad2[0x0f];  /* data_0209caa0[0x41] */
+    const unsigned char keep_save = *save_chr;
+    const unsigned char keep_voice = *(unsigned char *)data_0209b478;
 
     int rc = port_door_swap((char *)player, (int)(ch & 3));
     /* the door path can decline (no player, already that character); the codes
@@ -2822,6 +2964,28 @@ extern "C" void port_player_set_character(void *player, unsigned ch)
        rebuild rather than leaving the caller with nothing happening. */
     if (rc == 1)
         port_legacy_set_character(player, (int)(ch & 3));
+
+    if (remote) {
+        /* SM64DS_GHOSTCHAR_LEAK=1 keeps the old behaviour (the swap's write to
+           the save byte stands) so a proof row can show the leak next to the
+           fix in one exe. Test-only; nothing sets it for players. */
+        static int leak = -1;
+        if (leak < 0) leak = std::getenv("SM64DS_GHOSTCHAR_LEAK") ? 1 : 0;
+        if (!leak) {
+            *save_chr = keep_save;
+            *(unsigned char *)data_0209b478 = keep_voice;
+            if (localp && *(void **)(localp + 0xdc)) {
+                func_ov002_020e6330(localp);
+                func_ov002_020e6350(localp);
+            }
+        }
+        std::fprintf(stderr, "[chr] ghost swap on slot %d to %u: save character"
+                             " %u -> %u (%s), local body %u\n",
+                     player ? (int)*((unsigned char *)player + 0x6d8) : -1,
+                     (unsigned)(ch & 3), (unsigned)keep_save,
+                     (unsigned)*save_chr, leak ? "LEAK knob on" : "kept",
+                     localp ? (unsigned)(*(unsigned *)(localp + 8) & 0xff) : 99u);
+    }
 }
 
 /* ---- SM64DS_VS_CHARS: the lobby's per-slot character pick, applied post-boot -

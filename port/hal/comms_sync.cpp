@@ -778,6 +778,13 @@ struct GwSeat {
                              // seats new ones: the count starts again)
     unsigned  show_ms;       // GHOSTLOOK1: when it last came on show, and
     unsigned  show_n;        // the follower pass that last showed it
+    // GHOSTCHAR1: how this seat's ghost was posed, per follower frame
+    // (gw_sample), for the exit summary. A "hold" is a frame with no newer
+    // data to move to; the streak is how many of them ran back to back.
+    unsigned long long sm_n, sm_interp, sm_reckon;
+    unsigned long long sm_hold_old, sm_hold_tele, sm_hold_still;
+    unsigned  sm_streak, sm_streak_max;
+    unsigned long long sm_swaps;   // character swaps made on its body
 };
 
 GwSeat g_gw[kHubMaxSeats];
@@ -1020,9 +1027,19 @@ void gw_reset_seat(GwSeat &z, bool keep_ident) {
     const unsigned bid = z.build_id;
     const bool he = z.have_epoch;
     const unsigned ep = z.epoch;
+    // GHOSTCHAR1: the exit summary's per-seat pose counts run for the whole
+    // session; a seat reset (a rejoin, a clock jump, a level reload) is not
+    // the end of the ghost
+    const unsigned long long sm_n = z.sm_n, sm_i = z.sm_interp,
+        sm_r = z.sm_reckon, sm_ho = z.sm_hold_old, sm_ht = z.sm_hold_tele,
+        sm_hs = z.sm_hold_still, sm_sw = z.sm_swaps;
+    const unsigned sm_mx = z.sm_streak_max;
     std::memset(&z, 0, sizeof z);
     z.have_epoch = he;
     z.epoch = ep;
+    z.sm_n = sm_n; z.sm_interp = sm_i; z.sm_reckon = sm_r;
+    z.sm_hold_old = sm_ho; z.sm_hold_tele = sm_ht; z.sm_hold_still = sm_hs;
+    z.sm_swaps = sm_sw; z.sm_streak_max = sm_mx;
     if (keep_ident && hi) {
         z.have_ident = true;
         std::memcpy(z.name, name, sizeof name);
@@ -1236,6 +1253,26 @@ inline int gw_lerp(int a, int b, long long num, long long den) {
     return a + (int)(((long long)(b - a) * num) / den);
 }
 
+// GHOSTCHAR1: 0 interpolated, 1 reckoned, 2 held (nothing older than the
+// oldest frame), 3 held (the next frame is a teleport), 4 held (paused or a
+// teleport frame is the newest).
+void gw_count(int seat, int kind) {
+    GwSeat &m = g_gw[seat];
+    ++m.sm_n;
+    if (kind >= 2) {
+        ++g_gws.hold;
+        ++m.sm_streak;
+        if (m.sm_streak > m.sm_streak_max) m.sm_streak_max = m.sm_streak;
+        if (kind == 2) ++m.sm_hold_old;
+        else if (kind == 3) ++m.sm_hold_tele;
+        else ++m.sm_hold_still;
+    } else {
+        m.sm_streak = 0;
+        if (kind == 0) { ++g_gws.interp; ++m.sm_interp; }
+        else { ++g_gws.reckon; ++m.sm_reckon; }
+    }
+}
+
 // The seat's body as it was kGwInterpMs ago on the sender's own clock.
 bool gw_sample(int seat, unsigned now, GwSample *o) {
     const GwSeat &z = g_gw[seat];
@@ -1254,7 +1291,7 @@ bool gw_sample(int seat, unsigned now, GwSample *o) {
         o->anim = o0.f.anim_id; o->cursor = o0.f.anim_frame;
         o->character = o0.f.character;
         o->teleport = (o0.f.flags & kGhostTeleport) != 0;
-        ++g_gws.hold;
+        gw_count(seat, 2);
         return true;
     }
     o->character = a->f.character;
@@ -1283,7 +1320,7 @@ bool gw_sample(int seat, unsigned now, GwSample *o) {
                 o->cursor = (int)(a->f.anim_frame + num * 4096 / fms);
             }
         }
-        ++g_gws.interp;
+        gw_count(seat, 0);
         return true;
     }
     if (b) {
@@ -1291,7 +1328,7 @@ bool gw_sample(int seat, unsigned now, GwSample *o) {
         o->x = a->f.x; o->y = a->f.y; o->z = a->f.z; o->yaw = a->f.yaw;
         o->anim = a->f.anim_id; o->cursor = a->f.anim_frame;
         o->teleport = false;
-        ++g_gws.hold;
+        gw_count(seat, 3);
         return true;
     }
     /* PAST THE NEWEST FRAME: dead-reckon on the ground axes for at most
@@ -1309,9 +1346,9 @@ bool gw_sample(int seat, unsigned now, GwSample *o) {
         o->x += (int)((long long)nw.f.vx * ex / fms);
         o->z += (int)((long long)nw.f.vz * ex / fms);
         o->cursor += (int)(ex * 4096 / fms);
-        ++g_gws.reckon;
+        gw_count(seat, 1);
     } else {
-        ++g_gws.hold;
+        gw_count(seat, 4);
     }
     return true;
 }
@@ -2574,6 +2611,69 @@ namespace {
 // invisible Luigi. The follower clears it again on a ghost it shows.
 int g_gw_nopark = -1;
 unsigned g_gw_follow_n = 1;   // GHOSTLOOK1: follower passes, for show_n
+
+/* GHOSTCHAR1: THE GHOST SMOOTHNESS EXIT SUMMARY, for field tests. One header
+   line and one line per ghost seen (the four with the most frames; the rest
+   are counted in the header), printed once when the game exits normally:
+   how many follower frames each ghost was posed by interpolation between two
+   received frames (smooth), by dead reckoning past the newest frame (a guess,
+   fine for 250 ms), or held (no newer data to move to: the visible stutter),
+   and the longest run of held frames back to back. */
+static void gw_exit_pct(char *out, size_t cap, unsigned long long part,
+                        unsigned long long whole) {
+    const unsigned long long t = whole ? (part * 1000ull + whole / 2) / whole : 0;
+    std::snprintf(out, cap, "%llu.%llu%%", t / 10, t % 10);
+}
+
+static void gw_exit_summary() {
+    if (!g_hub) return;
+    unsigned long long tot = 0, t_int = 0, t_rec = 0, t_hold = 0, t_sw = 0;
+    int order[kHubMaxSeats], n = 0;
+    for (int s = 0; s < kHubMaxSeats; ++s) {
+        if (!g_gw[s].sm_n) continue;
+        tot += g_gw[s].sm_n;
+        t_int += g_gw[s].sm_interp;
+        t_rec += g_gw[s].sm_reckon;
+        t_hold += g_gw[s].sm_hold_old + g_gw[s].sm_hold_tele +
+                  g_gw[s].sm_hold_still;
+        t_sw += g_gw[s].sm_swaps;
+        int k = n++;
+        while (k > 0 && g_gw[order[k - 1]].sm_n < g_gw[s].sm_n) {
+            order[k] = order[k - 1];
+            --k;
+        }
+        order[k] = s;
+    }
+    char a[16], b[16], c[16];
+    gw_exit_pct(a, sizeof a, t_int, tot);
+    gw_exit_pct(b, sizeof b, t_rec, tot);
+    gw_exit_pct(c, sizeof c, t_hold, tot);
+    std::fprintf(stderr,
+                 "[ghost:exit] smoothness: %d ghost%s posed over %llu frames "
+                 "(follower passes %u): interpolated %s, reckoned %s, held %s;"
+                 " %llu char swaps; showing the %d busiest\n",
+                 n, n == 1 ? "" : "s", tot, g_gw_follow_n, a, b, c,
+                 t_sw, n < 4 ? n : 4);
+    for (int k = 0; k < n && k < 4; ++k) {
+        const GwSeat &z = g_gw[order[k]];
+        char pi[16], pr[16], ph[16];
+        gw_exit_pct(pi, sizeof pi, z.sm_interp, z.sm_n);
+        gw_exit_pct(pr, sizeof pr, z.sm_reckon, z.sm_n);
+        gw_exit_pct(ph, sizeof ph,
+                    z.sm_hold_old + z.sm_hold_tele + z.sm_hold_still, z.sm_n);
+        std::fprintf(stderr,
+                     "[ghost:exit] seat %d \"%s\": %llu frames, interp %llu "
+                     "(%s), reckon %llu (%s), hold %llu (%s: oldest %llu, "
+                     "teleport %llu, paused %llu), longest hold run %u, char "
+                     "swaps %llu\n",
+                     order[k], z.have_ident ? z.name : "", z.sm_n, z.sm_interp,
+                     pi, z.sm_reckon, pr,
+                     z.sm_hold_old + z.sm_hold_tele + z.sm_hold_still, ph,
+                     z.sm_hold_old, z.sm_hold_tele, z.sm_hold_still,
+                     z.sm_streak_max, z.sm_swaps);
+    }
+    std::fflush(stderr);
+}
                               // (from 1: a seat's show_n starts at 0)
 int g_drawpos_have[kCommsMaxPlayers];
 int g_gw_pal[kCommsMaxPlayers];   // GHOSTLOOK1: the row each body draws with
@@ -2606,6 +2706,11 @@ void gw_follow() {
     const bool in_cut = data_0209fc48 != 0;
     bool shown_any = false;
     ++g_gw_follow_n;
+    static bool exit_hooked = false;
+    if (!exit_hooked) {
+        exit_hooked = true;
+        std::atexit(gw_exit_summary);
+    }
     for (int i = 0; i < nb; ++i) {
         if (i == me) continue;
         void *a = data_0209f394[i];
@@ -2648,6 +2753,7 @@ void gw_follow() {
             z.char_try_ms = now;
             port_player_set_character(a, sm.character);
             ++g_gws.charswaps;
+            ++z.sm_swaps;
             std::fprintf(stderr, "[ghost] seat %d body %d character -> %u\n",
                          s, i, (unsigned)sm.character);
         }
