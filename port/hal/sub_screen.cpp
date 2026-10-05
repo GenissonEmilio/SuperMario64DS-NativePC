@@ -219,6 +219,11 @@ extern void *data_0209f318;      /* the Camera actor */
    data_0209f2d4 is that function's own state word. */
 extern unsigned char data_0209f20c;
 extern unsigned char data_0209f2d4;
+/* THE PAUSE SCREEN'S OWN WORD, the other half of "a menu owns the bottom
+   screen". Stage::Behavior runs Stage::PS_Update (src/_ZN5Stage9PS_UpdateEv.cpp,
+   four buttons: CONTINUE, CONTROLLER MODES, OPTIONS, EXIT COURSE) while it is
+   non-zero, and PS_Cleanup clears it. See bottom_menu_up. */
+extern unsigned char data_0209f2c4;
 /* the NEW COIN RECORD flag: LC_Update's case 1 sets it when the course's coin
    total beats the saved record, and LC_Render then draws the "HIGH SCORE"
    banner above the coin total (see kCoinRow0Rec) */
@@ -302,6 +307,11 @@ int g_size_force;
    swap_geom_for. */
 int g_swap;                      /* composed this frame? the compose's answer */
 int g_menu_up;                   /* the ROM pair's answer for this frame */
+/* A MENU'S BUTTONS ARE IN THE CORNER PANEL THIS FRAME, at the fixed menu size
+   and not at the map's. Set by hal_sub_panel_geometry, once a frame, and
+   zero whenever the improved map is off or the layout is stacked. See
+   bottom_menu_up. */
+int g_bmenu;
 
 /* THE LIFT/DRAW DRIFT DETECTOR, and it is one int. The engine-A compositor
    lifts the level-clear lettering and the coin sprites out of the picture on
@@ -343,14 +353,67 @@ void panel_trace(int w, int h);
  * scale. The old code answered "no room" by RETURNING WITHOUT DRAWING, which
  * for a player who picked the largest size was a map that silently did not
  * appear; a size one step smaller is a better answer than no map. */
+/* ---- A MENU'S BUTTONS DO NOT FOLLOW THE MAP'S SIZE (lane SUBSCREEN1) --------
+ *
+ * THE REPORT. "After getting a star, the save and continue and other 3
+ * buttons that show up scale with the minimap size, which they shouldn't."
+ *
+ * WHAT IS ACTUALLY ON THE BOTTOM SCREEN. Two screens of the cartridge put a
+ * stack of touch buttons there and nothing else but the map behind them: the
+ * pause screen (Stage::PS_Update, data_0209f2c4 != 0: CONTINUE, CONTROLLER
+ * MODES, OPTIONS, EXIT COURSE -- the four) and the level-clear screen
+ * (Stage::LC_Update, data_0209f20c != 0: SAVE & CONTINUE and two more, then
+ * the "Saving file..." boxes). The level-clear buttons are slotted onto the
+ * top screen at a size the PICTURE decides (swap_geom_for), so they never
+ * moved with the map -- measured at map sizes 1, 1.40625 and 2: one rectangle. The
+ * pause screen has no such compose, and the level-clear one has none while
+ * the option is off or in the states where the ROM puts a message box there.
+ * Those frames are drawn by the corner panel, and the corner panel is the
+ * MAP: its size is the player's MinimapScale, so a map shrunk to get out of
+ * the way gave buttons sixteen picture pixels tall, and a map
+ * grown to read the terrain gave buttons the size of the picture.
+ *
+ * THE RULE. While either word is up the corner panel is the MENU'S, and it is
+ * a size the PICTURE decides, the same way the compose's plates are: a quarter
+ * of the picture's height, which is a 192x144 map on the 3x picture of 576
+ * rows (close to the size his own map was set to when he reported this) and the
+ * same share of the picture at every other size. A quarter and not a third
+ * because at 16:9 a third reaches left over the end of the top screen's TOUCH
+ * TO SELECT line.
+ * The player's MinimapScale is not read, not written and not touched while it
+ * is up, and it is back the frame the menu closes. Everything that reads the
+ * panel (the draw, the decoration, the arrows, the stylus inverse, the fade
+ * rectangle) reads these same numbers, because they are THE numbers: there is
+ * still one arithmetic. */
+int bottom_menu_up(void)
+{
+    return (data_0209f2c4 != 0 || data_0209f20c != 0) ? 1 : 0;
+}
+
+/* The menu panel's size in the grid's own units (den 256): a quarter of the
+   picture's height, as a fraction of a DS screen's 192 rows. */
+int bottom_menu_num(int h)
+{
+    int k = (int)((long long)h * 256 / (4 * ntr::SUB_H));
+    return k < 1 ? 1 : k;
+}
+
 void hal_sub_panel_geometry(int w, int h)
 {
     int num = 1, den = g_div;
+    g_bmenu = 0;
     if (improved_map_on()) {
         host_setting_minimap_scale_ratio(&num, &den);
         /* the inset selftest walks every size through this function without
            touching the player's settings; zero at every other moment */
-        if (g_size_force > 0) num = g_size_force;
+        if (g_size_force > 0) {
+            num = g_size_force;
+        } else if (bottom_menu_up() && !hal_sub_screen_stacked()) {
+            /* A MENU OWNS THE BOTTOM SCREEN: see the banner above */
+            g_bmenu = 1;
+            num = bottom_menu_num(h);
+            den = 256;
+        }
     }
     if (num < 1) num = 1;
     if (den < 1) den = 1;
@@ -359,6 +422,8 @@ void hal_sub_panel_geometry(int w, int h)
        it existed, which is half a DS screen: num/den = 1/2 */
     const int on = improved_map_on() ? 1 : 0;
     const int nmin = on ? (den / 2 < 1 ? 1 : den / 2) : num;
+    /* a menu's panel is never smaller than the smallest map */
+    if (g_bmenu && num < nmin) num = nmin;
     int el = 0, et = 0, er = 0, eb = 0;
     for (;;) {
         g_pan_num = num;
@@ -1224,8 +1289,11 @@ int handle_rect(int *hx, int *hy, int *hs, int h)
     /* AND NOT WHILE THE PICTURE IS COMPOSED: the map is not on the picture
        at all for those frames, so there is no map corner to grab. One test,
        and it covers the draw and the press both, because both come through
-       here. */
-    if (g_swap) return 0;
+       here.
+       NOR WHILE A MENU HAS THE PANEL: it is at the menu's size, not the
+       map's, so a drag from this square would size the map off the wrong
+       number and the player would see nothing move. */
+    if (g_swap || g_bmenu) return 0;
     if (host_setting_mouse_capture()) return 0;
     PanelGeom g;
     panel_geom(&g);
@@ -1330,11 +1398,11 @@ void panel_trace(int w, int h)
     std::fprintf(stderr,
                  "[mmtrace] geom: picture %dx%d scale %.5f ratio %d/%d "
                  "map %d,%d %dx%d panel %d,%d %dx%d plaque %d,%d %dx%d "
-                 "handle %d,%d %d well %d,%d %dx%d gap %d,%d art %d\n",
+                 "handle %d,%d %d well %d,%d %dx%d gap %d,%d art %d menu %d\n",
                  w, h, 2.0 * g_pan_num / g_pan_den, g_pan_num, g_pan_den,
                  g_x0, g_y0, g_pan_w, g_pan_h, g.x0, g.y0, g.pw, g.ph,
                  g.tx, g.ty, g.tw, g.th, hx, hy, hs,
-                 g.wx, g.wy, g.ww, g.wh, g_art_gapx, g_art_gapy, art);
+                 g.wx, g.wy, g.ww, g.wh, g_art_gapx, g_art_gapy, art, g_bmenu);
 }
 
 /* ---- THE INSET MAP'S OWN SELFTEST -----------------------------------------
@@ -2856,8 +2924,13 @@ void poll_touch(void)
                camera arrows are not what the bottom screen is showing while
                the menu owns it, and the menu's own touch boxes are the only
                hit test running. g_menu_up is the ROM's own pair, taken once a
-               frame at the presentation seam. */
-            if (on_surface && improved_map_on() && !g_menu_up &&
+               frame at the presentation seam.
+               THE PAUSE SCREEN IS THE SAME CASE: its fourth button, EXIT
+               COURSE, is DS rows 0x98..0xb7 across x 8..0xf7, so the dead
+               zone took the bottom rows of that button's left and right
+               thirds too. g_bmenu is the pause and level-clear words taken
+               once a frame by the panel geometry. */
+            if (on_surface && improved_map_on() && !g_menu_up && !g_bmenu &&
                 g_cam_reader_at == g_tp_frame &&
                 in_camera_button_zone(fx, fy)) {
                 on_surface = 0;
