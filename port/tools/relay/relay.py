@@ -1396,8 +1396,12 @@ class RelayProtocol(asyncio.DatagramProtocol):
         kinds = ",".join("%s:%d/%d/%d" % ((tag.decode("ascii"),)
                                           + tuple(self.akstats[tag]))
                          for tag in ARENA_ORDER)
-        return " arenas=%d ref_tx=%d arena_drops=%s arena_kinds=%s" % (
-            len(self.arenas), self.n_ref_tx, drops, kinds)
+        # refusals the referee has named, by claim kind and reason (FIELD4):
+        # "GRAB.RANGE:3,HIT.INVULN:6"; absent until the first one
+        deny = referee.deny_totals_text() if referee is not None else ""
+        return " arenas=%d ref_tx=%d arena_drops=%s arena_kinds=%s%s" % (
+            len(self.arenas), self.n_ref_tx, drops, kinds,
+            " arena_deny=%s" % deny if deny else "")
 
 
 # ------------------------------------------------------------------- entry
