@@ -378,8 +378,8 @@ const char *claim_name(int k) {
     static const char *n[] = {"?", "READY", "MARKER_BREAK", "GRAB", "HIT",
                               "HURT_SELF", "PIT", "QUIT", "EAT", "SPIT",
                               "SWALLOW", "ESCAPE", "CATCH", "THROW", "SWING",
-                              "BREAK"};
-    return k >= 1 && k <= 15 ? n[k] : "?";
+                              "BREAK", "STOMP"};
+    return k >= 1 && k <= 16 ? n[k] : "?";
 }
 
 PClaim *make_claim(unsigned char kind, unsigned char target, unsigned short aux,
@@ -614,7 +614,7 @@ bool ref_event_valid(const RefEvent &e) {
         return seat_ok(e.seat) && e.a != 0 && score_ok(e.b) &&
                e.e < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
     case EV_DENY:
-        return seat_ok(e.seat) && e.a >= 1 && e.a <= 15 && e.b >= 1 && e.b <= 11 &&
+        return seat_ok(e.seat) && e.a >= 1 && e.a <= 16 && e.b >= 1 && e.b <= 11 &&
                (e.d == 0xFF || e.d < 16);
     case EV_HIT:
         return seat_ok(e.seat) && seat_ok(e.a) && e.b <= 1 && e.d <= 0x2000 &&
@@ -636,7 +636,7 @@ bool ref_event_valid(const RefEvent &e) {
         return seat_or_none(e.seat) && e.a != 0 && e.b >= 1 && e.b <= 2 &&
                e.c < 8 && e.d < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
     case EV_ACCEPTED:
-        return seat_ok(e.seat) && e.a >= 1 && e.a <= 15 && e.d < 256;
+        return seat_ok(e.seat) && e.a >= 1 && e.a <= 16 && e.d < 256;
     case EV_EATEN:
     case EV_RELEASED:
         return seat_ok(e.seat) && seat_ok(e.a) && e.b <= 4 && pos_ok(e.x) &&
@@ -647,6 +647,9 @@ bool ref_event_valid(const RefEvent &e) {
     case EV_THROWN:
         return seat_ok(e.seat) && seat_ok(e.a) && e.seat != e.a && e.b >= 1 && e.b <= 4 &&
                e.x >= 0 && e.x <= kGrabSpeedMax && e.y == 0 && e.z == 0;
+    case EV_STOMPED:
+        return seat_ok(e.seat) && seat_ok(e.a) && e.seat != e.a && pos_ok(e.x) &&
+               pos_ok(e.y) && pos_ok(e.z);
     default:
         return false;
     }
@@ -894,6 +897,9 @@ void apply_event(const RefEvent &e, bool directed) {
         if (e.a == g.seat && e.type == EV_EATEN) finish_claim(e.c, 1, 0, 0xFF);
         break;
     case EV_GRABBED:
+        if (e.a == g.seat) finish_claim(e.c, 1, 0, 0xFF);
+        break;
+    case EV_STOMPED:
         if (e.a == g.seat) finish_claim(e.c, 1, 0, 0xFF);
         break;
     case EV_THROWN:
