@@ -2810,11 +2810,31 @@ static void port_legacy_set_character(void *player, unsigned ch)
    playable animation whether or not a cap was involved.
 
    SM64DS_SWAP_LEGACY=1 forces the old InitResources rebuild for an A/B. */
+extern "C" unsigned char data_0209cad2[];   /* save block; [0x0f] is caa0[0x41] */
+extern "C" int data_0209b478[];             /* voice-group byte (hal/actor_vtables.cpp) */
+extern "C" void func_ov002_020e6330(void *self);   /* src/func_ov002_020e6330.c */
+extern "C" void func_ov002_020e6350(char *self);   /* src/func_ov002_020e6350.c */
 extern "C" void port_player_set_character(void *player, unsigned ch)
 {
     static int legacy = -1;
     if (legacy < 0) legacy = std::getenv("SM64DS_SWAP_LEGACY") ? 1 : 0;
     if (legacy) { port_legacy_set_character(player, (int)(ch & 3)); return; }
+
+    /* SetRealCharacter is the LOCAL player's operation (the character doors):
+       besides the body it writes the SAVE FILE's character byte
+       (data_0209caa0[0x41]) and runs the voice-group setup that sets
+       data_0209b478. A ghost swap (a remote body changing to its sender's
+       character) must not touch any of that, or the watcher's own save
+       character becomes the last ghost character seen, and the next course
+       entered through the star select makes the watcher that character
+       (field test 4, F3). So for any body that is not the local one: keep
+       both bytes across the swap, and re-run the voice setup on the local
+       body, exactly what Player::InitResources does for the local slot. */
+    char *const localp = (char *)data_0209f394[data_0209f250];
+    const bool remote = player != 0 && player != (void *)localp;
+    unsigned char *const save_chr = &data_0209cad2[0x0f];  /* data_0209caa0[0x41] */
+    const unsigned char keep_save = *save_chr;
+    const unsigned char keep_voice = *(unsigned char *)data_0209b478;
 
     int rc = port_door_swap((char *)player, (int)(ch & 3));
     /* the door path can decline (no player, already that character); the codes
@@ -2822,6 +2842,28 @@ extern "C" void port_player_set_character(void *player, unsigned ch)
        rebuild rather than leaving the caller with nothing happening. */
     if (rc == 1)
         port_legacy_set_character(player, (int)(ch & 3));
+
+    if (remote) {
+        /* SM64DS_GHOSTCHAR_LEAK=1 keeps the old behaviour (the swap's write to
+           the save byte stands) so a proof row can show the leak next to the
+           fix in one exe. Test-only; nothing sets it for players. */
+        static int leak = -1;
+        if (leak < 0) leak = std::getenv("SM64DS_GHOSTCHAR_LEAK") ? 1 : 0;
+        if (!leak) {
+            *save_chr = keep_save;
+            *(unsigned char *)data_0209b478 = keep_voice;
+            if (localp && *(void **)(localp + 0xdc)) {
+                func_ov002_020e6330(localp);
+                func_ov002_020e6350(localp);
+            }
+        }
+        std::fprintf(stderr, "[chr] ghost swap on slot %d to %u: save character"
+                             " %u -> %u (%s), local body %u\n",
+                     player ? (int)*((unsigned char *)player + 0x6d8) : -1,
+                     (unsigned)(ch & 3), (unsigned)keep_save,
+                     (unsigned)*save_chr, leak ? "LEAK knob on" : "kept",
+                     localp ? (unsigned)(*(unsigned *)(localp + 8) & 0xff) : 99u);
+    }
 }
 
 /* ---- SM64DS_VS_CHARS: the lobby's per-slot character pick, applied post-boot -
