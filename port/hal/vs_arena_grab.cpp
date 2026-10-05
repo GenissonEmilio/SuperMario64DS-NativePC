@@ -985,7 +985,10 @@ void report_at_exit() {
 
 bool vs_grab_contact(int victim, unsigned flags) {
     init_once();
-    if (!on() || !(flags & 0x1000u)) return false;
+    if (!on()) return false;
+    // what I carry is not a target of my own spin (the swing's attack cylinder touches it)
+    if (g.h.active && g.h.k == victim) return true;
+    if (!(flags & 0x1000u)) return false;
     char *me = my_body();
     if (!me) return false;
     ++g.contacts;
