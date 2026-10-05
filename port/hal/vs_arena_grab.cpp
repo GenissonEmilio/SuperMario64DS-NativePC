@@ -932,10 +932,21 @@ void rig_step() {
         return;
     }
     // the Wario (seat 0). Its look first: Wario is the metal-cap look (2).
-    if (!g.rig_look_set && g.rig_var != 5 && g.rig_frames >= 5) {
+    if (!g.rig_look_set && g.rig_frames >= 5) {
         g.rig_look_set = true;
         port_player_set_character(mb, kLookWario);
         std::fprintf(stderr, "[grab] rig: my look is now Wario\n");
+    }
+    if (g.rig_var == 5 && g.rig_look_set) {
+        // nowario: the stunning hit is a Wario's, then the catch is tried as a Mario (the referee must
+        // refuse: the claimant's SYNS character is not 2 at that frame), and the look is Wario again
+        // for the next cycle's hit
+        if (cf == 60u) {
+            port_player_set_character(mb, 0);
+            std::fprintf(stderr, "[grab] rig: my look is now Mario (the catch is tried as a Mario)\n");
+        } else if (cf == 210u) {
+            port_player_set_character(mb, kLookWario);
+        }
     }
     if (g.rig_pin > 0) {
         --g.rig_pin;
@@ -970,11 +981,11 @@ void rig_step() {
     }
     g.rig_hold = 0;
     if (g.rig_var == 7) {
-        // the stomp rig: every 60 frames drop onto the victim's puppet from 140 units up
+        // the stomp rig: every 60 frames drop onto the victim's puppet from 260 units up
         if (cf % 60u == 5u) {
             int *p = (int *)(mb + 0x5c);
             p[0] = s32r(vb, 0x5c);
-            p[1] = s32r(vb, 0x60) + (140 << 12);
+            p[1] = s32r(vb, 0x60) + (260 << 12);
             p[2] = s32r(vb, 0x64);
             s32r(mb, 0x98) = 0;
             s32r(mb, 0xa8) = -0x8000;
