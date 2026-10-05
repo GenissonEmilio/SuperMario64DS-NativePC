@@ -11598,6 +11598,9 @@ list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_ref.cpp)
 # Run mp1 lane EAT1: arena eating (the Yoshi tongue and a player in a mouth). INERT unless
 # arena mode is installed; see hal/vs_arena_eat.h.
 list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_eat.cpp)
+# Run mp1 lane GRAB1: the Wario hold (catch, carry, swing, throw a stunned player). INERT unless
+# arena mode is installed with a referee; see hal/vs_arena_grab.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_grab.cpp)
 # Run mp1 lane CHATUI1: in-game text chat over the VS carrier's aux kinds and
 # the hub. Port-side only and INERT unless one of those carriers is installed,
 # so linking it changes no behaviour solo; see hal/adv_chat.h.
