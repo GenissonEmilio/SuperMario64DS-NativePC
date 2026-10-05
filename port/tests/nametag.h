@@ -667,6 +667,7 @@ static void nt_draw(const OvlSurface &fb)
     const unsigned vs_live = adventure ? 0u : port_vs_seat_live_mask();
     NtBody bodies[kPortMaxPlayers];
     int nb = 0;
+    bool nt_test_pos = false;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
         const char *p = (const char *)data_0209f394[i];
         if (!p) continue;
@@ -714,6 +715,7 @@ static void nt_draw(const OvlSurface &fb)
         /* the test knob above: copies of the first remote body, one per place */
         float tx[8], ty[8];
         const int tn = nt_test_at(tx, ty);
+        nt_test_pos = tn > 0;
         int first = -1;
         for (int k = 0; k < nb; ++k)
             if (bodies[k].i != me) { first = k; break; }
@@ -775,6 +777,7 @@ static void nt_draw(const OvlSurface &fb)
             /* a hub ghost whose frames stopped fades with its body */
             alpha = alpha * port_adventure_ghost_fade(i) / 256;
             if (alpha <= 0) continue;   /* out of prox-chat range: no tag */
+            if (nt_test_pos) alpha = 255;   /* SM64DS_TAG_AT: a test places the tag, full strength */
         }
         /* OFF THE SCREEN ENTIRELY, with a whole tag's margin so a name that is
            half on does not flicker at the edge -- and TESTED IN FLOATS, BEFORE
@@ -854,7 +857,20 @@ static void nt_draw(const OvlSurface &fb)
            so a bubble never lands on the tag of a body standing where you
            stand. */
         port::ChatBubble bub;
-        const int have = e.seat >= 0 && port::chat_bubble(e.seat, &bub);
+        int have = e.seat >= 0 && port::chat_bubble(e.seat, &bub);
+        /* TEST ONLY: SM64DS_TAG_TEXT="..." gives every placed tag a full-strength bubble with that text, so a
+           proof does not depend on the chat's wall clock */
+        if (nt_test_pos && i != me) {
+            static const char *tt = getenv("SM64DS_TAG_TEXT");
+            if (tt && *tt) {
+                memset(&bub, 0, sizeof bub);
+                bub.has_text = true;
+                bub.alpha = 255;
+                bub.rgb = 0xFFFFFFFFu;
+                snprintf(bub.text, sizeof bub.text, "%s", tt);
+                have = 1;
+            }
+        }
         if (have) {
             const int bottom = y_top - 2 * scale;
             nt_bubble_draw(fb, cx, bottom, bub, scale, alpha,
