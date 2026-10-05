@@ -167,6 +167,8 @@ struct Inst {
     unsigned born_ms;
     unsigned t_broken;           // referee ms (my base) the glass was broken
     bool rig_break_sent, rig_race_done;
+    unsigned rig_hurt_ref;       // hurtgrab rig: referee ms seat 1 hurt itself on this star
+    bool rig_second;             // ... and went back for it
 };
 
 struct Ref {
@@ -2153,9 +2155,21 @@ void rig_hurtgrab() {
             g.hit_applied_frame = my_frame_now();      // (not a hazard: no HURT_SELF claim)
             rig_teleport(me, to);
             i.rig_race_done = true;
+            i.rig_hurt_ref = r ? r : 1;
             ++g.rig_n;
             std::fprintf(stderr, "[rig] hurtgrab: seat 1 hurt itself (Hurt returned %d, state %d) and "
                          "stands on star inst %d (ref %u)\n", hr, vs_arena_state_index(me), k, r);
+        }
+        // 2.5 s later, healthy: stand on the star again (a legitimate grab must still land)
+        if (i.state == 2 && i.rig_hurt_ref && !i.rig_second && g.seat == 1 &&
+            (int)(r - (i.rig_hurt_ref + 2500u)) >= 0) {
+            char *s = star_by_uid(i.uid);
+            if (!s) continue;
+            const int to[3] = { s32r(s, 0x5c), s32r(s, 0x60), s32r(s, 0x64) };
+            rig_teleport(me, to);
+            i.rig_second = true;
+            std::fprintf(stderr, "[rig] hurtgrab: seat 1 healthy, stands on star inst %d again (ref %u, "
+                         "state %d)\n", k, r, vs_arena_state_index(me));
         }
     }
 }
