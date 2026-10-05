@@ -54,6 +54,7 @@
 #include "host_settings.h"
 #include "player_fields.h"
 #include "vs_arena_eat.h"
+#include "vs_arena_grab.h"
 #include "voice_chat.h"
 
 #include <windows.h>
@@ -1528,6 +1529,8 @@ void vs_arena_before_walk(int frame) {
     pup_before_walk();
     // EAT1: the tongue never eats a player in an arena (hal/vs_arena_eat.cpp)
     vs_eat_before_walk(frame);
+    // GRAB1: the Wario hold (hal/vs_arena_grab.cpp)
+    vs_grab_before_walk(frame);
 }
 
 void vs_arena_tick(int frame) {
@@ -1535,6 +1538,7 @@ void vs_arena_tick(int frame) {
     if (!g.installed || g.seat < 0) return;
     if (data_0209f2d8 != 1) return;          // the VS level only
     vs_eat_after_walk(frame);                // EAT1: a held puppet stays on its eater
+    vs_grab_after_walk(frame);               // GRAB1: did the ROM let go of the puppet this frame
     if (!g.frame_started) {
         g.frame_started = true;
         std::fprintf(stderr, "[vsarena] first VS frame: seat %d, %d bodies "
