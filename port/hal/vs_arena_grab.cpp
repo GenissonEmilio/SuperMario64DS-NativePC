@@ -71,6 +71,13 @@ int func_ov002_020db5f4(char *victim, char *attacker);        // victim: St_Grab
 void func_ov002_020db54c(unsigned char *victim, int speed, int vert, short yaw);
 int _ZN6Player9DropActorEv(void *holder);                     // holder lets go
 void port_player_set_character(void *player, unsigned ch);    // hal/player_bridges.cpp
+char *_ZN8dActor_c10FindWithIDEj(unsigned id);
+int _ZN8dActor_c16JumpedOnByPlayerER5dCc_cR6Player(char *self, void *clsn, char *player);
+int _ZN6Player7IsInAirEv(char *player);
+int func_ov002_020d9298(char *stomper);                       // the stomper's bounce (+ its voice)
+void func_ov002_020db8bc(unsigned char *victim, unsigned char val);   // the victim's squash
+void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned id, int x, int y, int z);
+void _ZN5Sound9PlayBank0EjRK7Vector3(unsigned id, const void *pos);
 }
 
 namespace port {
@@ -108,6 +115,7 @@ enum : unsigned {
     kFlagPinned = 0x800,
     kFlagsHoldMask = 0x100 | 0x400 | 0x800 | 0x1000 | 0x2000 | 0x4000,
 };
+enum : unsigned { kAttackMask = 0x27fe0 };       // vs_arena_ref.cpp's: the hit flags of an attack
 
 struct Holder {                  // I am the holder
     bool active = false;
@@ -143,8 +151,19 @@ struct Pending {                 // a contact waiting for the next frame's walk
     unsigned frame = 0;
 };
 
+struct Stomp {                   // I stomped on the puppet of seat k and wait for the verdict
+    bool on = false;
+    int k = kSeatNone;
+    unsigned short cid = 0;
+    unsigned t0_ms = 0;
+};
+
 struct Grab {
     bool log = false;
+    bool stomp_off = false;
+    Stomp st;
+    unsigned stomp_cool = 0;
+    unsigned long long stomp_claims = 0, stomp_ok = 0, stomp_denied = 0, stomp_applied = 0;
     bool force = false;          // lab: the client's own catch gate off, the referee decides alone
     bool off = false;
     Holder h;
@@ -196,6 +215,7 @@ void init_once() {
     g.log = std::getenv("SM64DS_GRAB_LOG") && *std::getenv("SM64DS_GRAB_LOG") == '1';
     g.force = std::getenv("SM64DS_GRAB_FORCE") && *std::getenv("SM64DS_GRAB_FORCE") == '1';
     g.off = std::getenv("SM64DS_GRAB") && *std::getenv("SM64DS_GRAB") == '0';
+    g.stomp_off = std::getenv("SM64DS_STOMP") && *std::getenv("SM64DS_STOMP") == '0';
     if (const char *r = std::getenv("SM64DS_GRAB_RIG")) {
         g.rig = 1;
         if (std::strstr(r, "swing")) g.rig_var = 1;
@@ -696,6 +716,96 @@ void on_thrown(const RefEvent &ev) {
 }
 
 // ---------------------------------------------------------------------------
+// STOMPS (F9-d). The ROM resolves a stomp in the VICTIM's Behavior (func_ov002_020d869c,
+// the branch with no attack flag): dActor_c::JumpedOnByPlayer(victim body, attacker),
+// the attacker in the air, then func_ov002_020d9298 on the ATTACKER (its bounce and
+// voice) and func_ov002_020db8bc on the victim (the squash) with a puff and a sound.
+// A puppet's Behavior never runs, so a stomp on a puppet did nothing at all on either
+// screen. Here the stomper's own console runs the ROM's test against the puppet (the
+// pair pass has written the contact on the puppet's body cylinder), bounces at once and
+// claims STOMP; the referee's STOMPED event makes the victim's console squash.
+// ---------------------------------------------------------------------------
+bool seat_stompable(int seat) {
+    ArenaSample s[2];
+    if (vs_arena_samples(seat, s, 1) < 1) return false;
+    const ArenaState &a = s[0].s;
+    return (a.flags & kArenaLive) && !(a.flags & kArenaNoControl) && !a.eaten_by &&
+           a.state_idx != kStGrabbed;
+}
+
+void stomp_scan() {
+    if (g.stomp_off || g.st.on) return;
+    char *me = my_body();
+    if (!me || vs_arena_frame() < g.stomp_cool) return;
+    if (s32r(me, 0xa8) >= 0) return;                 // only a falling body can stomp (JumpedOnByPlayer)
+    const ArenaStats as = vs_arena_stats();
+    for (int k = 0; k < as.bodies && k < kArenaSeats; ++k) {
+        if (k == as.seat) continue;
+        char *pb = body_of(k);
+        if (!pb || vs_arena_body_held(k)) continue;
+        const unsigned other = u32r(pb, 0x2f8);
+        if (!other || (u32r(pb, 0x2f4) & kAttackMask)) continue;
+        if (_ZN8dActor_c10FindWithIDEj(other) != me) continue;
+        if (!seat_stompable(k) || ptr(pb, kGrabbedBy) != nullptr) continue;
+        if (!_ZN8dActor_c16JumpedOnByPlayerER5dCc_cR6Player(pb, pb + 0x2d4, me)) continue;
+        if (!_ZN6Player7IsInAirEv(me)) continue;
+        if (!func_ov002_020d9298(me)) continue;       // (a ground pound is not a stomp: it returns 0)
+        func_ov002_020db8bc((unsigned char *)pb, 0);  // the puppet squashes on my screen at once
+        const unsigned short cid = vs_ref_claim(CLAIM_STOMP, (unsigned char)k, 0, drawn_frame(k), 0,
+                                                vs_arena_frame());
+        g.stomp_cool = vs_arena_frame() + 10;
+        if (!cid) return;
+        g.st.on = true;
+        g.st.k = k;
+        g.st.cid = cid;
+        g.st.t0_ms = comms_hub_now_ms();
+        ++g.stomp_claims;
+        std::fprintf(stderr, "[grab] S: stomped on the puppet of seat %d: STOMP claim %u sent, bounced\n", k,
+                     (unsigned)cid);
+        return;
+    }
+}
+
+void stomp_monitor() {
+    if (!g.st.on) return;
+    int reason = 0, winner = 0;
+    const int r = vs_ref_claim_result(g.st.cid, &reason, &winner);
+    const unsigned age = comms_hub_now_ms() - g.st.t0_ms;
+    if (r == 1) {
+        ++g.stomp_ok;
+        std::fprintf(stderr, "[grab] S: STOMP verdict STOMPED for seat %d after %u ms\n", g.st.k, age);
+        g.st = Stomp();
+    } else if (r == -1 || (r == -2 && age > 700u)) {
+        ++g.stomp_denied;
+        if (reason >= 0 && reason < 16) ++g.deny_reason[reason];
+        std::fprintf(stderr, "[grab] S: STOMP claim %u %s (reason %d, %u ms)\n", (unsigned)g.st.cid,
+                     r == -1 ? "denied" : "unanswered", reason, age);
+        g.st = Stomp();
+    }
+}
+
+void on_stomped(const RefEvent &ev) {
+    const int victim = ev.seat, stomper = ev.a, me = vs_arena_my_seat();
+    char *vb = body_of(victim);
+    if (!vb) return;
+    if (victim == me) {
+        // the ROM's gate on the victim: not eaten, body collision on, not in no-control
+        if (s32r(vb, 0xd0) != 0 || *(unsigned char *)(vb + 0x713) == 0 || *(unsigned char *)(vb + 0x709) != 0) {
+            std::fprintf(stderr, "[grab] S: stomped by seat %d but my body cannot be squashed now\n", stomper);
+            return;
+        }
+        ++g.stomp_applied;
+        std::fprintf(stderr, "[grab] S: stomped by seat %d: squash\n", stomper);
+    }
+    func_ov002_020db8bc((unsigned char *)vb, 0);
+    if (victim == me) {
+        _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0xb2, s32r(vb, 0x5c), s32r(vb, 0x60) + 0x82000,
+                                                       s32r(vb, 0x64));
+        _ZN5Sound9PlayBank0EjRK7Vector3(0x12, vb + 0x74);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // LAB RIG, SM64DS_GRAB_RIG=throw | swing | letgo | struggle | hold | nowario | nostun [@frames]
 // ---------------------------------------------------------------------------
 void rig_press(int slot, unsigned short ctrl_mask, bool first) {
@@ -809,6 +919,8 @@ void rig_step() {
 }
 
 void report_at_exit() {
+    std::fprintf(stderr, "[grab] stomps claims=%llu ok=%llu denied=%llu applied=%llu\n", g.stomp_claims,
+                 g.stomp_ok, g.stomp_denied, g.stomp_applied);
     std::fprintf(stderr, "[grab] exit contacts=%llu tries=%llu claims=%llu confirmed=%llu denied=%llu "
                  "unwound=%llu thrown_sent=%llu throws=%llu swings=%llu | v_grabbed=%llu v_released=%llu "
                  "v_breaks=%llu v_refused=%llu throws_applied=%llu | h_dropped=%llu bystander_links=%llu "
@@ -851,6 +963,7 @@ void vs_grab_on_event(const RefEvent *ev, int my_seat, bool directed) {
     }
     if (ev->type == EV_GRABBED) on_grabbed(*ev);
     else if (ev->type == EV_THROWN) on_thrown(*ev);
+    else if (ev->type == EV_STOMPED) on_stomped(*ev);
 }
 
 void vs_grab_before_walk(int frame) {
@@ -865,6 +978,7 @@ void vs_grab_before_walk(int frame) {
         h_monitor();
         v_monitor();
         bystander_apply();
+        stomp_monitor();
     }
     if (g.rig) rig_step();       // (the lab rig runs with the layer off too: the old behaviour's control row)
 }
@@ -873,6 +987,7 @@ void vs_grab_after_walk(int frame) {
     (void)frame;
     if (g.off || !g.inited || !vs_ref_active()) return;
     h_after_walk();
+    stomp_scan();
 }
 
 VsGrabStats vs_grab_stats() {
