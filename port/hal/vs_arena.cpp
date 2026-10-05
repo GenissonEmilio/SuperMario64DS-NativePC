@@ -297,6 +297,7 @@ int body_seat(const void *ptr) {
 // ---------------------------------------------------------------------------
 // SAMPLING MY BODY into a SYNS frame (vs_arena.h for every field's source).
 // ---------------------------------------------------------------------------
+void pup_lab_forge(ArenaState *s);   // PUPEAT2 lab knob, defined with the puppet code
 void sample_body(void *body, ArenaState *s) {
     const char *b = (const char *)body;
     std::memset(s, 0, sizeof *s);
@@ -349,6 +350,7 @@ void sample_body(void *body, ArenaState *s) {
             : (mouth || carry) ? (unsigned char)kArenaHeldObject : 0;
     const int es = body_seat(eater);
     s->eaten_by = es >= 0 ? (unsigned char)(es + 1) : 0;
+    pup_lab_forge(s);
     unsigned char fl = 0;
     if (g.seat >= 0 && data_0209fc5c[g.seat]) fl |= kArenaLive;
     if (player::on_ground(body)) fl |= kArenaGrounded;
@@ -708,6 +710,7 @@ enum : int {
     kStLevelEnter = 51,       // state_table.json: St_LevelEnter
     kStInYoshiMouth = 5,      // state_table.json: St_InYoshiMouth
     kPlayerEatenBy = 0xd0,    // Player mEatingPlayer: whose mouth this body is in
+    kPupMouthTolMs = 400,     // 12 frames: pup_eater_confirms' window
     kPlayerMouthObj = 0x360,  // Player mObjInMouth: the actor in this body's mouth
     kPlayerOpacity = 0x6f5,   // Player mOpacity (0 = Player::Render draws nothing)
     kPupIntroMaxFrames = 900, // 30 s: take over a seat that never leaves the intro
@@ -727,6 +730,7 @@ struct PupDraw {
                               // o older than the ring
     double ft;                // the sender frame the draw time maps to
     unsigned newest_frame;
+    unsigned recv_ms;         // when the sample the draw stands on arrived
 };
 
 struct Pup {
@@ -743,7 +747,8 @@ struct Pup {
     bool mouth_prev = false;               // in a mouth at the last drive
     unsigned long long mouth_frames = 0,   // frames driven in a mouth
                        mouth_drawn = 0,    // of them, frames the body was drawn
-                       mouth_enters = 0;
+                       mouth_enters = 0,
+                       mouth_unconfirmed = 0;   // stream says eaten, the named eater does not hold it
 };
 Pup g_pup[kArenaSeats];
 struct PupCfg {
@@ -775,6 +780,42 @@ bool pup_solid() {
 bool pup_nohide() {
     if (g_pc.nohide < 0) g_pc.nohide = env_on("SM64DS_PUPPET_NOHIDE") ? 1 : 0;
     return g_pc.nohide != 0;
+}
+// LAB control: SM64DS_PUPPET_TRUSTEATEN=1 trusts a seat's own eaten_by with no
+// word from the eater (the first PUPEAT2 rule)
+bool pup_trust_eaten() {
+    static int v = -1;
+    if (v < 0) v = env_on("SM64DS_PUPPET_TRUSTEATEN") ? 1 : 0;
+    return v != 0;
+}
+// LAB forge row: SM64DS_PUPPET_FORGE_EATEN=<frame>:<seat> makes THIS console
+// report eaten_by = seat + 1 from that frame on, whatever its body does
+void pup_lab_forge(ArenaState *s) {
+    static int at = -2, seat = 0;
+    if (at == -2) {
+        const char *e = std::getenv("SM64DS_PUPPET_FORGE_EATEN");
+        at = e && *e ? std::atoi(e) : -1;
+        if (e) if (const char *c = std::strchr(e, ':')) seat = std::atoi(c + 1);
+    }
+    if (at >= 0 && (int)g.frame >= at && seat >= 0 && seat < kArenaSeats)
+        s->eaten_by = (unsigned char)(seat + 1);
+}
+// A seat says it is in the mouth of `eater`: believed only while the eater's own
+// stream says it holds that seat (held == seat + 1), at any sample that reached
+// me within kPupMouthTolMs of the sample being drawn. The eater's hold leads the
+// victim's eaten_by by the referee's round trip at the start and again at the
+// spit, so the window is generous in time and narrow in what it needs: a
+// console that claims a mouth nobody holds is simply drawn.
+bool pup_eater_confirms(int eater_seat, int victim_seat, unsigned recv_ms) {
+    if (eater_seat < 0 || eater_seat >= kArenaSeats) return false;
+    ArenaSample es[kArenaRing];
+    const int n = vs_arena_samples(eater_seat, es, kArenaRing);
+    for (int i = 0; i < n; ++i) {
+        const int dt = (int)(es[i].recv_ms - recv_ms);
+        if (dt > kPupMouthTolMs || dt < -kPupMouthTolMs) continue;
+        if (es[i].s.held == (unsigned char)(victim_seat + 1)) return true;
+    }
+    return false;
 }
 int pup_buf_pin() {
     if (g_pc.buf == -2) g_pc.buf = env_int("SM64DS_PUPPET_BUF_MS", -1, 10, 400);
@@ -851,6 +892,7 @@ bool pup_sample(int seat, unsigned now, Pup &pp, PupDraw *o, ArenaSample *ring,
         o->cursor = (int)s.anim_cursor << 8; o->look = s.character;
         o->flags = s.flags; o->invuln = s.invuln; o->power = s.power;
         o->eaten_by = s.eaten_by;
+        o->recv_ms = ring[n - 1].recv_ms;
         o->mode = 'o';
         return true;
     }
@@ -859,6 +901,7 @@ bool pup_sample(int seat, unsigned now, Pup &pp, PupDraw *o, ArenaSample *ring,
     o->flags = a.flags;
     o->power = a.power;
     o->eaten_by = a.eaten_by;
+    o->recv_ms = ring[ia].recv_ms;
     const double since = ft - (double)a.frame;           // frames past a
     const int inv = (int)a.invuln - (int)since;
     o->invuln = (unsigned char)(inv > 0 ? inv : 0);
@@ -1017,7 +1060,11 @@ void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
     char *const mine_body = (g.seat >= 0 && g.seat < kArenaSeats) ? (char *)data_0209f394[g.seat] : nullptr;
     const bool in_my_mouth = mine_body && *(char **)(mine_body + kPlayerMouthObj) == a;
     const bool named_me = d.eaten_by && (int)d.eaten_by - 1 == g.seat;
-    const bool in_mouth = in_my_mouth || (d.eaten_by && !named_me);
+    const bool named_other = d.eaten_by && !named_me;
+    const bool confirmed = named_other &&
+        (pup_trust_eaten() || pup_eater_confirms((int)d.eaten_by - 1, seat, d.recv_ms));
+    if (named_other && !confirmed) ++pp.mouth_unconfirmed;
+    const bool in_mouth = in_my_mouth || confirmed;
     // the transition frames (the ROM's own pull in and spit out) are the ROM's
     // to draw; a frame counts only when the puppet was in a mouth at the last
     // drive and still is
@@ -1270,7 +1317,8 @@ void pup_report() {
                      "buf=%.0f\n", k, p.frames, p.interp, p.reckon, p.hold, p.tele,
                      p.older, p.swaps, p.sfx_played, p.hits, p.buf_ms);
         std::fprintf(stderr, "[puppet] exit seat=%d mouths=%llu mouth_frames=%llu "
-                     "mouth_drawn=%llu\n", k, p.mouth_enters, p.mouth_frames, p.mouth_drawn);
+                     "mouth_drawn=%llu unconfirmed=%llu\n", k, p.mouth_enters, p.mouth_frames,
+                     p.mouth_drawn, p.mouth_unconfirmed);
     }
     std::fprintf(stderr, "[puppet] exit sfx_captured=%llu,%llu dropped=%llu\n",
                  g_sfx_cap[0], g_sfx_cap[1], g_sfx_drop);
