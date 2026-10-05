@@ -256,6 +256,10 @@ CLAIMS = [
      "ref_frame = launch speed (Fix12)"),
     (15, "BREAK", "holder seat",
      "GRAB1: the victim struggled free of a hold"),
+    (16, "STOMP", "victim seat",
+     "GRAB1: I landed on a player (the ROM's func_ov002_020d869c stomp: "
+     "JumpedOnByPlayer + func_ov002_020d9298); stamp; my_frame; ref_frame = "
+     "the victim frame I drew"),
 ]
 
 EVENTS = [
@@ -305,6 +309,9 @@ EVENTS = [
                    "4 leave / forced; c claim id (THROW / SWING / BREAK; 0 "
                    "for 4); d launch yaw (u16); t now; x launch speed "
                    "(Fix12); yz 0"),
+    (18, "STOMPED", "GRAB1: seat victim; a stomper; c claim id; t stamp; xyz "
+                    "stomper position (Fix12). No star, no hurt: the ROM's "
+                    "squash and the stomper's bounce"),
 ]
 
 DENY_REASONS = [
@@ -357,6 +364,7 @@ NUMBERS = {
     "GRAB_RELEASE_MIN_MS": 500,
     "GRAB_STUCK_MS": 3000,
     "GRAB_SPEED_MAX": 0x40000,
+    "STOMP_MIN_MS": 250,
 }
 
 # The 78 Player::State records in g_player_states order
@@ -452,7 +460,7 @@ RULES = [
     "clamps are counted per seat.",
     "Every claim (seat, claim_id) gets exactly one terminal event naming it: "
     "MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, GRABBED, "
-    "THROWN, ACCEPTED or DENY. A resend "
+    "THROWN, STOMPED, ACCEPTED or DENY. A resend "
     "after the verdict gets that same event again (directed if it left the "
     "8-event window). DENY and ACCEPTED are directed records (seq 0) to the "
     "claimant alone, never in the stream; the others are stream events "
@@ -489,7 +497,10 @@ RULES = [
     "and SWING (holder) and BREAK (victim) end a hold no sooner than "
     "GRAB_RELEASE_MIN_MS after the GRABBED, as THROWN (b 1 throw, 2 swing, 3 "
     "break, 4 forced: a leave, a quit, or the victim not in St_Grabbed for "
-    "GRAB_STUCK_MS); the launch speed is capped at GRAB_SPEED_MAX.",
+    "GRAB_STUCK_MS); the launch speed is capped at GRAB_SPEED_MAX. STOMP "
+    "(GRAB1, F9-d): an airborne claimant falling onto a player in reach, "
+    "STOMPED to everyone (the victim squashes, the stomper bounces); never "
+    "a star, never a hurt; one per pair per STOMP_MIN_MS.",
     "Phase A: classic mode only (READY mode != 0 is DENY UNSUPPORTED); EAT / "
     "SPIT / SWALLOW / ESCAPE are provisional for A5; speed strikes are logged, "
     "not kicked.",

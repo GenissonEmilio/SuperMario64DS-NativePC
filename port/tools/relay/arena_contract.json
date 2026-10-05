@@ -1050,6 +1050,12 @@
    "name": "BREAK",
    "target": "holder seat",
    "fields": "GRAB1: the victim struggled free of a hold"
+  },
+  {
+   "id": 16,
+   "name": "STOMP",
+   "target": "victim seat",
+   "fields": "GRAB1: I landed on a player (the ROM's func_ov002_020d869c stomp: JumpedOnByPlayer + func_ov002_020d9298); stamp; my_frame; ref_frame = the victim frame I drew"
   }
  ],
  "events": [
@@ -1137,6 +1143,11 @@
    "id": 17,
    "name": "THROWN",
    "fields": "GRAB1: seat victim; a holder; b 1 throw 2 swing 3 break 4 leave / forced; c claim id (THROW / SWING / BREAK; 0 for 4); d launch yaw (u16); t now; x launch speed (Fix12); yz 0"
+  },
+  {
+   "id": 18,
+   "name": "STOMPED",
+   "fields": "GRAB1: seat victim; a stomper; c claim id; t stamp; xyz stomper position (Fix12). No star, no hurt: the ROM's squash and the stomper's bounce"
   }
  ],
  "deny_reasons": [
@@ -1246,7 +1257,8 @@
   "GRAB_STUN_MAX_MS": 5000,
   "GRAB_RELEASE_MIN_MS": 500,
   "GRAB_STUCK_MS": 3000,
-  "GRAB_SPEED_MAX": 262144
+  "GRAB_SPEED_MAX": 262144,
+  "STOMP_MIN_MS": 250
  },
  "state_names": [
   "St_LedgeHang",
@@ -1501,14 +1513,14 @@
   "The referee sends a seat nothing, and counts no claim from it, until the seat's clock ping (SYNP 20) echoes the exact t_ref of a referee pong it received (echo_ref) with held_ms = how long it held that pong. Ping at 2 Hz from the moment the seat is paired; the second ping verifies it. After that the referee sends a seat at most 3x the bytes the seat sends it (SYNS / SYNO / SYNE / SYNP, banked up to 16 KB): keep SYNS flowing (10 Hz idle is plenty) from pairing on, or heartbeats pause until you send again (every SYNR re-carries the 8 newest events).",
   "Claims are decided in STAMP order once referee time passes stamp + H, H = the largest back-dating cap among the other seats in the match (<= HOLD_MAX_MS). Exact stamp ties: fewer stars first, then the match seed's seat order.",
   "A stamp is clamped into [arrival - cap, arrival] (cap = min(HOLD_MAX_MS, rtt_min/2 + CAP_MARGIN_MS); CAP_UNKNOWN_MS before any clock ping); clamps are counted per seat.",
-  "Every claim (seat, claim_id) gets exactly one terminal event naming it: MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, GRABBED, THROWN, ACCEPTED or DENY. A resend after the verdict gets that same event again (directed if it left the 8-event window). DENY and ACCEPTED are directed records (seq 0) to the claimant alone, never in the stream; the others are stream events everyone hears. Resend a claim every CLAIM_RESEND_MS until named; no verdict in VERDICT_TIMEOUT_MS = treat as denied.",
+  "Every claim (seat, claim_id) gets exactly one terminal event naming it: MARKER_BROKEN, STAR_TAKEN, HIT, CLASH, EATEN, RELEASED, GRABBED, THROWN, STOMPED, ACCEPTED or DENY. A resend after the verdict gets that same event again (directed if it left the 8-event window). DENY and ACCEPTED are directed records (seq 0) to the claimant alone, never in the stream; the others are stream events everyone hears. Resend a claim every CLAIM_RESEND_MS until named; no verdict in VERDICT_TIMEOUT_MS = treat as denied.",
   "The claimant of an event: its seat for DENY, ACCEPTED, STAR_TAKEN and MARKER_BROKEN; its field a for HIT, CLASH and EATEN (seat = the victim); seat or a for RELEASED (escape: the victim; spit / swallow: the eater).",
   "Every SYNR carries the 8 newest events (newest first). It goes out at once when events are made and as a HEARTBEAT_HZ heartbeat. Apply events in seq order exactly once and report the newest applied in SYNS.ack; a seat whose ack trails past the window gets the missed events again (directed, flag resend) while the referee still holds them, else a SNAPSHOT (directed SYNR parts, flag snapshot: START replay + STAR_STATE records + MATCH_OVER if over, seq 0); after the last part set applied = header newest_seq.",
   "Every collect (order star or spilled star) advances progress p; the referee then wakes VS_STAR_SPAWN_ORDERS[row][p] as a new instance (STAR_WAKE), the ROM's own rule with the referee's row.",
   "The ledger (header scores) is the only score. HIT = victim -1 and a SPILL (if it had any); leave / QUIT = all of that seat's stars spill; HURT_SELF and PIT (aux bit0) spill one.",
   "MATCH_OVER only from the referee: first_to_n reached, referee time >= T0 + match_ms, one seat left of a match that had two or more, or everyone left. Winners = every seat on the top score.",
   "A seat the referee dropped from the match (LEAVE naming itself) must send READY again to come back (JOIN mid-match, score 0, SNAPSHOT).",
-  "GRAB1 (the Wario hold): CATCH is a HIT-shaped claim from a Wario (SYNS character 2) in a punch or dive against a victim in the stun a Wario hit leaves (St_Hurt within GRAB_STUN_MAX_MS of that hit, or St_DizzyStars); verdict GRABBED (seat = victim, a = holder) or DENY. One hold per holder and per victim; a held seat cannot be hit or eaten. THROW and SWING (holder) and BREAK (victim) end a hold no sooner than GRAB_RELEASE_MIN_MS after the GRABBED, as THROWN (b 1 throw, 2 swing, 3 break, 4 forced: a leave, a quit, or the victim not in St_Grabbed for GRAB_STUCK_MS); the launch speed is capped at GRAB_SPEED_MAX.",
+  "GRAB1 (the Wario hold): CATCH is a HIT-shaped claim from a Wario (SYNS character 2) in a punch or dive against a victim in the stun a Wario hit leaves (St_Hurt within GRAB_STUN_MAX_MS of that hit, or St_DizzyStars); verdict GRABBED (seat = victim, a = holder) or DENY. One hold per holder and per victim; a held seat cannot be hit or eaten. THROW and SWING (holder) and BREAK (victim) end a hold no sooner than GRAB_RELEASE_MIN_MS after the GRABBED, as THROWN (b 1 throw, 2 swing, 3 break, 4 forced: a leave, a quit, or the victim not in St_Grabbed for GRAB_STUCK_MS); the launch speed is capped at GRAB_SPEED_MAX. STOMP (GRAB1, F9-d): an airborne claimant falling onto a player in reach, STOMPED to everyone (the victim squashes, the stomper bounces); never a star, never a hurt; one per pair per STOMP_MIN_MS.",
   "Phase A: classic mode only (READY mode != 0 is DENY UNSUPPORTED); EAT / SPIT / SWALLOW / ESCAPE are provisional for A5; speed strikes are logged, not kicked."
  ]
 }

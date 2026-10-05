@@ -51,6 +51,7 @@ enum Claim : unsigned char {
     CLAIM_THROW = 13,
     CLAIM_SWING = 14,
     CLAIM_BREAK = 15,
+    CLAIM_STOMP = 16,
 };
 
 enum Event : unsigned char {
@@ -71,6 +72,7 @@ enum Event : unsigned char {
     EV_RELEASED = 15,
     EV_GRABBED = 16,
     EV_THROWN = 17,
+    EV_STOMPED = 18,
 };
 
 enum Deny : unsigned char {
@@ -154,6 +156,7 @@ constexpr int kGrabStunMaxMs = 5000;
 constexpr int kGrabReleaseMinMs = 500;
 constexpr int kGrabStuckMs = 3000;
 constexpr int kGrabSpeedMax = 262144;
+constexpr int kStompMinMs = 250;
 
 #pragma pack(push, 1)
 struct RefClaim {
