@@ -3262,6 +3262,90 @@ extern "C" int port_adventure_ghost_palette(int slot) {
     return pal;
 }
 
+// OWNCOLOR1 (field test 4, F4): THE LOCAL PLAYER'S OWN YOSHI IN HIS OWN PICK, on
+// his own screen. GHOSTLOOK1 colours the ghosts (his friends' bodies) and sends
+// the pick, so everyone saw him in his colours but himself; his body draws with
+// the file's row 0, which is the SOURCE every ghost row is made from and what
+// the HUD's Yoshi icon reads, so it is never written. His pick goes into a
+// spare row of the sixteen the Yoshi file is grown to (rows 4..15 are
+// unreachable unless a body has a player number of 4 or more, and the hub
+// seats at most four): the same vs_palette_row out of the same row 0, the same
+// pair of env colours, written under the local body's own draw and stamped into
+// its materials around it by hal/player_bridges.cpp, as a ghost's is. Hub only
+// (g_hub), Yoshi only, and only with both colours set: solo, VS and a hub
+// console with no pick are the file's own row, byte for byte.
+//
+// The pick is the same for the whole run, so the row is one fixed address with
+// one fixed set of words: the soft raster's decode cache (keyed on the palette
+// base, the texture words and the first two words of the row) can never be
+// served another pick's decode for it, and nothing here needs the ghosts'
+// same-key hold (gw_row_drawable). A level load uploads the file's rows again,
+// so the row is written back whenever it no longer holds the pick.
+namespace {
+enum { kOwnRowNo = 15 };
+struct OwnRow {
+    bool have;                       // out is the row for src + the pick
+    unsigned short src[16], out[16];
+    unsigned writes, draws;
+};
+OwnRow g_own;
+
+int own_off() {
+    static int off = -1;
+    if (off < 0) off = std::getenv("SM64DS_OWN_COLOUR_OFF") ? 1 : 0;
+    return off;
+}
+}  // namespace
+
+extern "C" int port_adventure_local_palette(void *body) {
+    if (!g_hub || !body || own_off()) return -1;
+    gw_me_read();
+    if (!g_gw_me.colours) return -1;
+    if (gw_char(body) != 3u) return -1;
+    const char *c = (const char *)body;
+    const int me = (int)data_0209f250;
+    if (me < 0 || me >= kCommsMaxPlayers || data_0209f394[me] != body)
+        return -1;
+    if ((int)data_0209f21c > kOwnRowNo) return -1;   // a body could draw row 15
+    const int no = (int)*(const unsigned char *)(c + 0x6d8);
+    const int pal = *(const int *)(c + 0x61c);
+    if (no != me) return -1;
+    const int base = pal - (no << 1);                // row 0
+    const int own = base + (kOwnRowNo << 1);
+    const unsigned short *r0 = gw_pltt_row(base);
+    unsigned short *rp = gw_pltt_row(own);
+    if (!r0 || !rp) return -1;
+    if (!g_own.have || std::memcmp(g_own.src, r0, sizeof g_own.src) != 0) {
+        std::memcpy(g_own.src, r0, sizeof g_own.src);
+        vspal::vs_palette_row(g_own.src, g_gw_me.body, g_gw_me.shoes,
+                              g_own.out);
+        g_own.have = true;
+    }
+    if (std::memcmp(rp, g_own.out, sizeof g_own.out) != 0) {
+        std::memcpy(rp, g_own.out, sizeof g_own.out);
+        ++g_own.writes;
+    }
+    if (!g_own.draws++)
+        std::fprintf(stderr, "[own] my Yoshi draws in my pick %02x%02x%02x / "
+                     "%02x%02x%02x from palette row %d\n", g_gw_me.body[0],
+                     g_gw_me.body[1], g_gw_me.body[2], g_gw_me.shoes[0],
+                     g_gw_me.shoes[1], g_gw_me.shoes[2], (int)kOwnRowNo);
+    if (gw_look_probe() > 0 &&
+        (g_own.draws % (unsigned)gw_look_probe()) == 0) {
+        std::fprintf(stderr, "[gwlook] OWN body=%d pal=%d own=%d writes=%u "
+                     "draws=%u pick=%02x%02x%02x/%02x%02x%02x row0=%04x,%04x "
+                     "rowpal=%04x,%04x words", no, pal, own, g_own.writes,
+                     g_own.draws, g_gw_me.body[0], g_gw_me.body[1],
+                     g_gw_me.body[2], g_gw_me.shoes[0], g_gw_me.shoes[1],
+                     g_gw_me.shoes[2], r0[0], r0[1], rp[0], rp[1]);
+        for (int i = 0; i < 16; ++i) std::fprintf(stderr, " %04x", rp[i]);
+        std::fprintf(stderr, " src");
+        for (int i = 0; i < 16; ++i) std::fprintf(stderr, " %04x", r0[i]);
+        std::fprintf(stderr, "\n");
+    }
+    return own;
+}
+
 extern "C" void port_adventure_ghost_follow() {
     if (!adventure_ghost_mode()) return;
     static int fpct = -1;
