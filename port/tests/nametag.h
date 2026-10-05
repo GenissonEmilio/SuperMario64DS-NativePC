@@ -635,7 +635,10 @@ static int nt_test_at(float xs[8], float ys[8])
 }
 
 /* ---- the tags -------------------------------------------------------------
-   Called once per frame, with the surface every other host overlay draws on.
+   Called once per frame from the level loop, right after the 3D raster and
+   BEFORE the engine-A 2D composite (tests/walk_window.cpp), so the HUD, the
+   dialogue box, the bottom-screen panel and the fade draw over the tags and
+   bubbles; the chat box, the ping readout and the menus draw after, on top.
    Reads only. */
 struct NtBody {
     int i;               /* the body (player slot) */
