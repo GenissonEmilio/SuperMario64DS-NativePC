@@ -63,6 +63,7 @@ extern unsigned char data_ov002_0211034c[];      // St_DizzyStars
 extern unsigned char data_ov002_0211016c[];      // St_Grabbed
 extern unsigned char data_ov002_0211013c[];      // St_Walk
 extern unsigned char data_ov002_02110604[];      // St_SwingPlayer
+extern unsigned char data_ov002_021101b4[];      // St_Fall
 
 int _ZN6Player7IsStateERNS_5StateE(void *self, void *state);
 void _ZN6Player11ChangeStateERNS_5StateE(void *self, void *state);
@@ -166,6 +167,10 @@ struct Grab {
     Stomp st;
     unsigned stomp_cool = 0;
     unsigned long long stomp_claims = 0, stomp_ok = 0, stomp_denied = 0, stomp_applied = 0;
+    // the F9-d probe on the VICTIM's console: another body's contact on mine with no attack flag
+    // (what the ROM's own stomp test would see) and whether the squash flag ever went up
+    unsigned long long touch_on_me = 0, squash_seen = 0, rig_drops = 0;
+    bool squash_prev = false;
     bool force = false;          // lab: the client's own catch gate off, the referee decides alone
     bool off = false;
     Holder h;
@@ -226,6 +231,7 @@ void init_once() {
         else if (std::strstr(r, "hold")) g.rig_var = 4;
         else if (std::strstr(r, "nowario")) g.rig_var = 5;
         else if (std::strstr(r, "nostun")) g.rig_var = 6;
+        else if (std::strstr(r, "stomp")) g.rig_var = 7;
         if (const char *c = std::strchr(r, '@')) g.rig_hold_at = std::atoi(c + 1);
     }
     std::fprintf(stderr, "[grab] Wario hold %s%s%s\n", g.off ? "OFF (SM64DS_GRAB=0)" : "on",
@@ -842,6 +848,24 @@ void rig_place_behind(char *mb, char *vb) {
     s16r(mb, 0x94) = 0;
 }
 
+// F9-d probe: what my own body saw of another body this frame (no attack flag: the ROM's stomp test
+// reads exactly this) and whether func_ov002_020db8bc ever raised my squash flag
+void stomp_probe() {
+    char *me = my_body();
+    if (!me) return;
+    const unsigned other = u32r(me, 0x2d4 + 0x24);
+    if (other && !(u32r(me, 0x2d4 + 0x20) & kAttackMask)) {
+        char *o = _ZN8dActor_c10FindWithIDEj(other);
+        if (o && o != me && *(unsigned short *)(o + 0xc) == 0xbf) ++g.touch_on_me;
+    }
+    const bool sq = *(unsigned char *)(me + 0x6f2) != 0;
+    if (sq && !g.squash_prev) {
+        ++g.squash_seen;
+        std::fprintf(stderr, "[grab] S: my squash flag went up (func_ov002_020db8bc ran on my body)\n");
+    }
+    g.squash_prev = sq;
+}
+
 void rig_step() {
     const int me = vs_arena_my_seat();
     if (data_0209f2d8 != 1 || me < 0 || me > 1 || !vs_ref_stats().started) return;
@@ -860,7 +884,7 @@ void rig_step() {
             for (int i = 0; i < 3; ++i) g.vp[i] = s32r(mb, 0x5c + 4 * i);
             g.vp_set = true;
         }
-        const bool window = cf >= 370u || cf <= 20u;
+        const bool window = g.rig_var == 7 || cf >= 370u || cf <= 20u;
         const int st = vs_arena_state_index(mb);
         if (window && !g.v.active && st != kStHurt && st != kStGrabbed && st != 20) {
             for (int i = 0; i < 3; ++i) s32r(mb, 0x5c + 4 * i) = g.vp[i];
@@ -904,6 +928,20 @@ void rig_step() {
         return;
     }
     g.rig_hold = 0;
+    if (g.rig_var == 7) {
+        // the stomp rig: every 60 frames drop onto the victim's puppet from 140 units up
+        if (cf % 60u == 5u) {
+            int *p = (int *)(mb + 0x5c);
+            p[0] = s32r(vb, 0x5c);
+            p[1] = s32r(vb, 0x60) + (140 << 12);
+            p[2] = s32r(vb, 0x64);
+            s32r(mb, 0x98) = 0;
+            s32r(mb, 0xa8) = -0x8000;
+            _ZN6Player11ChangeStateERNS_5StateE(mb, data_ov002_021101b4);
+            ++g.rig_drops;
+        }
+        return;
+    }
     // the approach: a punch to stun, then punches at the stunned puppet until it is caught
     const bool victim_pinned_stun = cf >= 70u && cf < 200u;
     if (cf == 0u || cf == 2u) {
@@ -928,8 +966,9 @@ void rig_step() {
 }
 
 void report_at_exit() {
-    std::fprintf(stderr, "[grab] stomps claims=%llu ok=%llu denied=%llu applied=%llu\n", g.stomp_claims,
-                 g.stomp_ok, g.stomp_denied, g.stomp_applied);
+    std::fprintf(stderr, "[grab] stomps claims=%llu ok=%llu denied=%llu applied=%llu touch_on_me=%llu "
+                 "squash_seen=%llu rig_drops=%llu\n", g.stomp_claims, g.stomp_ok, g.stomp_denied,
+                 g.stomp_applied, g.touch_on_me, g.squash_seen, g.rig_drops);
     std::fprintf(stderr, "[grab] exit contacts=%llu tries=%llu claims=%llu confirmed=%llu denied=%llu "
                  "unwound=%llu thrown_sent=%llu throws=%llu swings=%llu | v_grabbed=%llu v_released=%llu "
                  "v_breaks=%llu v_refused=%llu throws_applied=%llu | h_dropped=%llu bystander_links=%llu "
@@ -989,6 +1028,7 @@ void vs_grab_before_walk(int frame) {
         bystander_apply();
         stomp_monitor();
     }
+    stomp_probe();
     if (g.rig) rig_step();       // (the lab rig runs with the layer off too: the old behaviour's control row)
 }
 
