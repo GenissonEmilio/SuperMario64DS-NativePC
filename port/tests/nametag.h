@@ -626,6 +626,11 @@ static void nt_draw(const OvlSurface &fb)
     const int my_seat = port::chat_my_seat();
     if (!tags_on && my_seat < 0) return;
     if (!nt_font_build()) return;
+    /* This reads and blends real 3D pixels. Its two modes are never held on the
+       graphics card (the allow in the level loop), so this is a no-op today;
+       it keeps the draw safe if a third mode ever draws tags (CARD2 review
+       N5a). */
+    ntr::gx_card_settle_because("name tags and chat bubbles");
 
     const int me = (int)data_0209f250;
     const unsigned vs_live = adventure ? 0u : port_vs_seat_live_mask();
