@@ -688,20 +688,27 @@ const int kDeathPlaneY = (int)0xf8ad0000;
 enum : int {
     kGwSendHz     = 15,      // design 6.1: the wall-clock rate of the old
                              // stream (SM64DS_GHOST_LEGACY=1 and old builds)
-    /* GHOSTSMOOTH1: THE FRAME CLOCK. A SYNG with this flag bit counts the
-       sender's GAME TICKS (30 a second) in seq, one frame per tick that moved,
-       so the receiver reads the sender's own game time off the number instead of
-       a wall tick that half the sender's frames missed. Old builds read any
-       flag outside 0x1f as a bad field and drop the frame (nothing is drawn
-       rather than a wrong timeline); a frame without the bit is the old 15 Hz
-       wall tick and is still taken, so an old sender still shows. */
+    /* GHOSTSMOOTH1: THE STAMPED FRAME. A SYNG with this flag bit is one frame
+       per game TICK that moved (30 a second): seq counts the sender's ticks (the
+       order, the duplicates) and reserved[0..2] carry the sender's own wall
+       clock at that tick, in ms, low 24 bits (little endian). The receiver
+       places each frame on the sender's real timeline, so a sender whose game
+       hitches (a stalled tick) is a slow stretch of its path, not a shift of its
+       whole clock, and no frame is taken at the wrong time the way the old wall
+       tick (15 a second, the first game tick after each boundary) took half of
+       them. Old builds read any flag outside 0x1f as a bad field and drop the
+       frame (nothing is drawn rather than a wrong timeline); a frame without the
+       bit is the old 15 Hz wall tick and is still taken, so an old sender still
+       shows. */
     kGwFrameClock = 0x20,
     kGwFrameHz    = 30,
     kGwPausedMs   = 500,     // 2 Hz while paused / in a menu
     kGwIdentMs    = 2000,    // SYNI every 2 s
     kGwIdentGapMs = 250,     // an extra SYNI (roster change) no sooner than this
     kGwInterpMs   = 100,     // draw a remote seat this far behind real time
-    kGwReckonMs   = 150,     // dead-reckon past the newest frame at most this
+    kGwReckonMs   = 66,      // dead-reckon past the newest frame at most this
+                             // (2 ticks: a late frame is covered, a stalled
+                             // sender is held, not carried on and pulled back)
     kGwReckonLegacyMs = 250, // ...and in the old (legacy) follower
     kGwOffN       = 10,      // frames the clock offset's minimum looks at
     kGwStillEvery = 3,       // a standing body is sent every 3rd tick (10 Hz)
@@ -767,6 +774,31 @@ bool gw_legacy() {
     }
     return v != 0;
 }
+// GHOSTSMOOTH1: HOW FAR A BODY MAY MOVE IN ONE TICK AND STILL BE A WALK. The
+// shared SM64DS_SYNC_SNAP (60 units, the sum of the three axes' steps) calls a
+// fast dive, a long jump or a fall at terminal speed a teleport, so the other
+// side held the ghost and then snapped it (measured: 12 of 2300 drawn frames in a
+// run / jump walk, 20 to 30 units off while held). A real warp (a door, a pipe,
+// a level change) is hundreds of units; 250 keeps those as snaps and lets every
+// walk, jump and fall interpolate. SM64DS_GHOST_SNAP=<units> sets it (60 = the
+// old rule); the legacy stream keeps the shared value.
+int gw_snap_units(int shared) {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_SNAP");
+        v = e ? std::atoi(e) : 250;
+        if (v < 10) v = 10;
+        if (v > 5000) v = 5000;
+    }
+    return gw_legacy() ? shared : v;
+}
+// SM64DS_GHOST_NO_PLAYOUT=1 draws at the offset-derived time with no rate
+// limit (the first GHOSTSMOOTH1 follower), for the A/B row.
+bool gw_playout() {
+    static int v = -1;
+    if (v < 0) v = std::getenv("SM64DS_GHOST_NO_PLAYOUT") ? 0 : 1;
+    return v != 0;
+}
 // SM64DS_GHOST_INTERP_MS pins the draw delay (ms behind the sender's clock);
 // -1 (unset) lets the follower size it from the link's own jitter.
 int gw_interp_pin() {
@@ -802,6 +834,9 @@ struct GwSeat {
     int       hz;            // GHOSTSMOOTH1: this seat's frame clock, 30 or 15
     double    buf_ms;        // ...and how far behind it is drawn (the jitter
                              // buffer B, slewed 1 ms a pass)
+    double    play;          // the draw time on the sender's clock (the playout
+    unsigned  play_t;        // clock), the wall clock it was last advanced at
+    bool      play_have;
     unsigned  last_ms;       // GetTickCount of the newest accepted frame
     bool      have_ident;
     char      name[kHubIdentNameMax + 1];
@@ -1109,7 +1144,8 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat, unsigned t_arr) {
     }
     if ((f.flags & ~(0x1fu | (unsigned)kGwFrameClock)) || f.character > 3 ||
         f.anim_id >= kPlayerAnimCount || f.level_id > 0xff ||
-        f.reserved[0] || f.reserved[1] || f.reserved[2] ||
+        (!(f.flags & kGwFrameClock) &&
+         (f.reserved[0] || f.reserved[1] || f.reserved[2])) ||
         f.x > kGwPosLimit || f.x < -kGwPosLimit ||
         f.y > kGwPosLimit || f.y < -kGwPosLimit ||
         f.z > kGwPosLimit || f.z < -kGwPosLimit) {
@@ -1159,7 +1195,25 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat, unsigned t_arr) {
            kGwOffN frames (gw_sample_fc), so a sender that hitches does not
            leave a long memory behind. Here only: a step in the sender's clock
            bigger than kGwClockJumpMs is a restart. */
-        const double ts = (double)ext * 1000.0 / (double)hz;
+        double ts;
+        if (f.flags & kGwFrameClock) {
+            /* the sender's wall clock, 24 bits, taken on from the last frame
+               (a step is read as signed, so the wrap at 4.6 hours costs
+               nothing); never backwards, so a lerp's span is always > 0 */
+            const unsigned st = (unsigned)f.reserved[0] |
+                                ((unsigned)f.reserved[1] << 8) |
+                                ((unsigned)f.reserved[2] << 16);
+            if (z.n == 0) {
+                ts = (double)st + 16777216.0;
+            } else {
+                const double last = z.ring[z.n - 1].ts;
+                const int step = ((int)((st - ((unsigned)last & 0xffffffu)) << 8)) >> 8;
+                ts = last + (double)step;
+                if (ts <= last) ts = last + 1.0;
+            }
+        } else {
+            ts = (double)ext * 1000.0 / (double)hz;
+        }
         const double d = (double)(int)t_arr - ts;
         /* A GAP FIRST (OPENCOUNT1's comeback rule, below in the legacy half
            too): a sender's load screen stops its frame clock for as long as the
@@ -1459,33 +1513,40 @@ bool gw_sample_legacy(int seat, unsigned now, GwSample *o) {
 // GHOSTSMOOTH1: THE FRAME-CLOCK FOLLOWER, the puppet follower (vs_arena.cpp
 // pup_sample) for a hub ghost. The seat's body as its console had it at the
 // draw time:
-//   * the clock offset is the minimum of (arrival - sender clock) over the newest
-//     kGwOffN frames, so the draw time follows a sender that hitched within about
-//     a third of a second instead of remembering its best moment for ever;
+//   * the clock offset is the minimum of (arrival - sender wall clock stamp) over
+//     the newest kGwOffN frames (the link's best recent delay, whatever the two
+//     machines' clocks read);
 //   * B, how far behind the newest frame the body is drawn, is 1.5 frame
-//     intervals (50 ms at 30 Hz), raised to the link's own delivery jitter p95
-//     plus one interval when the link is noisy (never above twice that floor),
-//     and moved by at most 1 ms a pass so a change never shows as a jump;
+//     intervals (50 ms at 30 Hz), raised to what interpolation needs when the
+//     stream is not that regular: per frame, the gap the sender left before it
+//     (a stalled tick, minus the ticks a standing body skips on purpose) plus how
+//     much later the link brought it than its best recent delivery; the 95th
+//     percentile of that over the ring, never above 120 ms; moved by at most
+//     1 ms a pass so a change never shows as a jump;
 //   * between two frames it interpolates; past the newest it dead-reckons the
 //     ground axes at the sender's own per-tick step for at most kGwReckonMs,
 //     then holds; a teleport frame is never smoothed across.
 // The pose half (animation, cursor, bones) is gw_follow's, unchanged.
 double gw_buf_target(const GwSeat &z, double lo_all, double fi) {
-    const double lo_b = 1.5 * fi, hi_b = 3.0 * fi;
+    const double lo_b = 1.5 * fi, hi_b = fi < 50.0 ? 120.0 : 200.0;
     if (z.n < 8) return lo_b;
     double ex[kGwRing];
-    const int n = z.n;
-    for (int i = 0; i < n; ++i) {
-        const double e = ((double)(int)z.ring[i].rt - z.ring[i].ts) - lo_all;
-        ex[i] = e < 0 ? 0 : e;
+    const int n = z.n - 1;                         // one need per frame after the first
+    for (int i = 1; i <= n; ++i) {
+        const GwFrame &a = z.ring[i - 1], &b = z.ring[i];
+        double gap = (b.ts - a.ts) - (double)(int)(b.ext - a.ext - 1) * fi;
+        if (gap < 0) gap = 0;
+        double e = ((double)(int)b.rt - b.ts) - lo_all;
+        if (e < 0) e = 0;
+        ex[i - 1] = gap + e;
     }
-    for (int i = 1; i < n; ++i) {                 // insertion sort, n <= 16
+    for (int i = 1; i < n; ++i) {                 // insertion sort, n <= 15
         const double v = ex[i];
         int j = i - 1;
         while (j >= 0 && ex[j] > v) { ex[j + 1] = ex[j]; --j; }
         ex[j + 1] = v;
     }
-    double b = ex[(n - 1) * 95 / 100] + fi;
+    double b = ex[(n - 1) * 95 / 100];
     if (b < lo_b) b = lo_b;
     if (b > hi_b) b = hi_b;
     return b;
@@ -1515,8 +1576,43 @@ bool gw_sample_fc(int seat, unsigned tnow, GwSample *o) {
         else if (z.buf_ms > want) z.buf_ms = z.buf_ms - 1.0 < want ? want : z.buf_ms - 1.0;
     }
     o->buf_ms = (int)(z.buf_ms + 0.5);
-    const double T = (double)(int)tnow - z.buf_ms - lo_n;
     const GwFrame &nw = z.ring[z.n - 1];
+    /* THE PLAYOUT CLOCK. The draw time the offset gives (target) jumps whenever
+       the offset's minimum does: a sender that hitched leaves the newest ten
+       frames' minimum stale for a third of a second, and the body is then drawn
+       ahead (reckoned) and a moment later pulled back across the same ground
+       (measured: 20 units forward, 8 back, on a 120 ms stall). The body is drawn
+       at a clock of its own instead, run at the wall rate and steered to the
+       target by at most 25 percent of that rate, so a step in the target is
+       walked off over a few frames, never jumped; it never runs past the newest
+       frame by more than the reckoning cap (a stalled sender is held, not
+       carried on); a target more than 250 ms away is a restart and is taken. */
+    const double target = (double)(int)tnow - z.buf_ms - lo_n;
+    double T = target;
+    if (gw_playout()) {
+        if (!z.play_have) {
+            z.play = target;
+            z.play_have = true;
+        } else {
+            double dtw = (double)(int)(tnow - z.play_t);
+            if (dtw < 0) dtw = 0;
+            if (dtw > 250) dtw = 250;
+            const double adv = z.play + dtw;          // where it stands after this pass
+            const double err = target - adv;
+            if (err > 250.0 || err < -250.0) {
+                z.play = target;
+            } else {
+                double adj = 0.25 * err;
+                const double lim = 0.25 * dtw;
+                if (adj > lim) adj = lim;
+                if (adj < -lim) adj = -lim;
+                z.play = adv + adj;
+            }
+        }
+        z.play_t = tnow;
+        if (z.play > nw.ts + kGwReckonMs) z.play = nw.ts + kGwReckonMs;
+        T = z.play;
+    }
     o->grounded = (nw.f.flags & kGhostGrounded) != 0;
     const GwFrame *a = 0, *b = 0;
     for (int k = z.n - 1; k >= 0; --k)
@@ -1866,7 +1962,7 @@ void gw_send(unsigned now) {
             const int step = (d[0] < 0 ? -d[0] : d[0]) +
                              (d[1] < 0 ? -d[1] : d[1]) +
                              (d[2] < 0 ? -d[2] : d[2]);
-            if (step > units(g_cfg.snap_units)) {
+            if (step > units(gw_snap_units(g_cfg.snap_units))) {
                 g_gw_warp = true;
                 g_gw_v[0] = g_gw_v[1] = g_gw_v[2] = 0;
             } else {
@@ -1956,6 +2052,12 @@ void gw_send(unsigned now) {
     f.area = 0;              // one level id per area on this game (data_0209f2f8)
     if (fc) {
         f.flags |= (unsigned char)kGwFrameClock;
+        {
+            const unsigned st = comms_hub_now_ms() & 0xffffffu;
+            f.reserved[0] = (unsigned char)(st & 0xff);
+            f.reserved[1] = (unsigned char)((st >> 8) & 0xff);
+            f.reserved[2] = (unsigned char)((st >> 16) & 0xff);
+        }
         const unsigned char look = (unsigned char)(kGhostGrounded | kGhostTalking |
                                                    kGhostPaused);
         const bool moved = !g_gw_sent_have || g_gw_warp ||
