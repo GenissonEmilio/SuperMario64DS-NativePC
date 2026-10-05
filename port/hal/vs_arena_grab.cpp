@@ -302,7 +302,7 @@ void h_try_catch() {
     char *me = my_body();
     char *pb = body_of(p.k);
     if (!me || !pb || g.h.active || g.v.active) return;
-    if ((s32r(me, 8) & 7) != kLookWario) return;
+    if ((s32r(me, 8) & 7) != kLookWario && !g.force) return;
     if (ptr(me, kHeldObj) != nullptr || ptr(me, 0x360) != nullptr) return;
     if (vs_arena_frame() < g.cool_until) return;
     if (!g.force && !seat_catchable(p.k)) return;
@@ -828,7 +828,7 @@ bool vs_grab_contact(int victim, unsigned flags) {
     if (!me) return false;
     ++g.contacts;
     if (g.p.on || g.h.active || g.v.active) return false;
-    if ((s32r(me, 8) & 7) != kLookWario) return false;
+    if ((s32r(me, 8) & 7) != kLookWario && !g.force) return false;
     if (!g.force && !seat_catchable(victim)) return false;
     g.p.on = true;
     g.p.k = victim;
