@@ -114,6 +114,8 @@ enum : unsigned {
     kFlagReleased = 0x2000,
     kFlagPinned = 0x800,
     kFlagsHoldMask = 0x100 | 0x400 | 0x800 | 0x1000 | 0x2000 | 0x4000,
+    kBodyClsnFlags = 0x2d4 + 0x18,   // the body cylinder's flags (dCc_c +0x18)
+    kClsnNoPush = 2,                 // St_Grabbed_Init sets it: this cylinder neither pushes nor is pushed
 };
 enum : unsigned { kAttackMask = 0x27fe0 };       // vs_arena_ref.cpp's: the hit flags of an attack
 
@@ -267,6 +269,9 @@ void link_pair(char *hb, char *vb, bool ready) {
     f &= ~(0x400u | 0x2000u);
     f |= kFlagCarried;
     if (ready) f |= kFlagHeldOut;
+    // the carried body does not push the carrier (St_Grabbed_Init does this on the
+    // victim's own body; a puppet never runs it)
+    u32r(vb, kBodyClsnFlags) |= kClsnNoPush;
 }
 // ... and as func_ov002_020da95c / DropActor leave them when the hold ends
 void unlink_pair(char *hb, char *vb) {
@@ -274,6 +279,7 @@ void unlink_pair(char *hb, char *vb) {
     if (vb) {
         if (ptr(vb, kGrabbedBy) == hb) ptr(vb, kGrabbedBy) = nullptr;
         u32r(vb, kFlags) &= ~kFlagsHoldMask;
+        u32r(vb, kBodyClsnFlags) &= ~(unsigned)kClsnNoPush;
     }
 }
 
@@ -559,8 +565,11 @@ void v_exit(const RefEvent &ev) {
         const int speed = ev.x < 0 ? 0 : ev.x;
         std::fprintf(stderr, "[grab] V: %s by seat %d: launch speed 0x%x vertical 0x%x yaw %u\n",
                      how == 2 ? "swung off" : "thrown", g.v.h, (unsigned)speed, vert, (unsigned)ev.d);
+        // func_ov002_020daa74's order: the carried flags first (a throw marks 0x400, which
+        // St_Thrown_Init reads), then the launch
+        u32r(me, kFlags) &= ~(kFlagHeldOut | kFlagCarried);
+        if (how == 1 && speed >= 0x30000) u32r(me, kFlags) |= kFlagThrown;
         func_ov002_020db54c((unsigned char *)me, speed, vert, (short)ev.d);
-        if (how == 1) u32r(me, kFlags) |= kFlagThrown;
         ++g.throws_applied;
     } else {
         std::fprintf(stderr, "[grab] V: let go of by seat %d (how %d)\n", g.v.h, how);
