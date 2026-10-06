@@ -1540,6 +1540,14 @@ port_configure_input("${CMAKE_CURRENT_SOURCE_DIR}/tools/tierscan.py")
 #     is a diagnostic string in fault dumps, and registering .git would
 #     reconfigure on every commit, which the house laws ask lanes to do often.
 #     Touch this file, or pass any argument to build-port.cmd, to refresh it.
+add_library(discord_presence STATIC hal/discord_presence.cpp)
+target_include_directories(discord_presence PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(discord_presence PUBLIC cxx_std_17)
+
+add_executable(discord_presence_probe tests/discord_presence_probe.cpp)
+target_link_libraries(discord_presence_probe PRIVATE discord_presence)
+target_compile_features(discord_presence_probe PRIVATE cxx_std_17)
+add_test(NAME discord_presence_probe COMMAND discord_presence_probe)
 
 # Gate 1: compile the manifest slice out of ../src plus the HAL, link the
 # smoke runner. 32-bit host only -- platform.h enforces it at compile time.
