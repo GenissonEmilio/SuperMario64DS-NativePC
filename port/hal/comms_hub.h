@@ -174,6 +174,9 @@ enum : unsigned char {
     kGhostPaused    = 0x08,    // paused / in a menu
     kGhostTalking   = 0x10,    // mic gate open (V1 exports it)
 };
+// BUILD 6 (lane GHOSTDOOR1, hal/ghost_door.h): the area byte, the low byte of
+// vy and flags bit 6 (0x40) carry the door / area / hidden look of a ghost.
+// The hub itself only copies flags / level_id / area into HubSeatInfo.
 struct HubGhostFrame {
     unsigned       tag;         // kHubTagGhost
     unsigned char  version;     // 1
