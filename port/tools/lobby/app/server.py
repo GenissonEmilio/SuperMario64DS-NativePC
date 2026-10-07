@@ -56,7 +56,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-REVISION = "lobby-5"
+REVISION = "lobby-6"
 
 # ------------------------------------------------------- the contract version
 #
