@@ -888,6 +888,59 @@ void shown_stars() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// CAP PROBE (lab only, SM64DS_CAP_CENSUS=1): every cap actor (class 269) with its
+// ROM fields, and one line whenever one is born, dies or changes its state
+// holder / the player it follows. The census the referee's cap table is cut from,
+// and the timeline of a pickup (follow state, put-on, respawn) on this console.
+// ---------------------------------------------------------------------------
+enum : int { kClassCap = 0x10d };
+struct CapSeen { unsigned uid; unsigned holder, follow; int type; bool live; };
+CapSeen g_cap_seen[48];
+
+void cap_probe() {
+    static const bool on = env_on("SM64DS_CAP_CENSUS");
+    if (!on) return;
+    bool seen_now[48] = {};
+    each_class(kClassCap, [&](char *a) {
+        const unsigned uid = actor_uid(a);
+        int slot = -1, freeslot = -1;
+        for (int k = 0; k < 48; ++k) {
+            if (g_cap_seen[k].live && g_cap_seen[k].uid == uid) { slot = k; break; }
+            if (!g_cap_seen[k].live && freeslot < 0) freeslot = k;
+        }
+        const unsigned holder = u32r(a, 0x3bc), follow = u32r(a, 0x3c0);
+        const int type = s32r(a, 0x3f0);
+        if (slot < 0 && freeslot >= 0) {
+            slot = freeslot;
+            g_cap_seen[slot] = { uid, ~0u, ~0u, type, true };
+            std::fprintf(stderr, "[cap] f=%u BORN uid=%u pos=(%d,%d,%d) param=0x%x type=%d model=%d area=%d "
+                         "death=%d unk400=%u timer=%u\n", my_frame_now(), uid, s32r(a, 0x5c) >> 12,
+                         s32r(a, 0x60) >> 12, s32r(a, 0x64) >> 12, u32r(a, 8), type, s32r(a, 0x3f4),
+                         (int)(signed char)*u8p(a, 0xcc), (int)(signed char)*u8p(a, 0xce),
+                         (unsigned)*u8p(a, 0x400), (unsigned)u16r(a, 0x100));
+        }
+        if (slot < 0) return;
+        seen_now[slot] = true;
+        CapSeen &c = g_cap_seen[slot];
+        if (c.holder != holder || c.follow != follow) {
+            std::fprintf(stderr, "[cap] f=%u uid=%u state holder %08x -> %08x follows=%08x (me=%08x) type=%d "
+                         "pos=(%d,%d,%d) timer=%u\n", my_frame_now(), uid,
+                         c.holder, holder, follow, (unsigned)(size_t)my_body(), type,
+                         s32r(a, 0x5c) >> 12, s32r(a, 0x60) >> 12, s32r(a, 0x64) >> 12,
+                         (unsigned)u16r(a, 0x100));
+            c.holder = holder;
+            c.follow = follow;
+        }
+    });
+    for (int k = 0; k < 48; ++k)
+        if (g_cap_seen[k].live && !seen_now[k]) {
+            std::fprintf(stderr, "[cap] f=%u DIED uid=%u type=%d\n", my_frame_now(), g_cap_seen[k].uid,
+                         g_cap_seen[k].type);
+            g_cap_seen[k].live = false;
+        }
+}
+
 void on_star_taken(const RefEvent &e) {
     Inst *i = inst_by_id(e.a);
     ++g.st.stars_taken;
@@ -2427,6 +2480,7 @@ void vs_ref_pre_walk(int frame) {
         marker_pass();
         puppet_stars();
         shown_stars();
+        cap_probe();
         hit_detect("pre-walk");
         rig_step();
     }
