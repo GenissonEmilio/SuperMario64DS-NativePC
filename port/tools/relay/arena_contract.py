@@ -263,8 +263,8 @@ CLAIMS = [
     (17, "CAP_TAKE", "cap id (1..31 a cap the arena places, 32..255 one a hit "
                      "knocked off)",
      "VSREF3: my body touched a cap and the ROM's pickup started; aux = the "
-     "cap's place hash (placed caps: (x_units & 0xFF) | (z_units & 0xFF) << 8, "
-     "0 for a knocked-off one); stamp; my_frame"),
+     "cap's place hash (placed caps: (slot & 0xFF) | ((x_units ^ z_units) & 0xFF) "
+     "<< 8, slot = the actor's death-table id, 0 for a knocked-off one); stamp; my_frame"),
     (18, "CAP_DROP", "the look (0 Mario, 1 Luigi, 2 Wario) of the cap that "
                      "came off",
      "VSREF3: my body was hurt and the ROM popped my cap (St_Hurt_Init -> "
@@ -537,8 +537,8 @@ RULES = [
     "(GRAB1, F9-d): an airborne claimant falling onto a player in reach, "
     "STOMPED to everyone (the victim squashes, the stomper bounces); never "
     "a star, never a hurt; one per pair per STOMP_MIN_MS.",
-    "VSREF3 (caps): a cap the arena places has an id 1..31 (the arena's cap "
-    "table, sorted by x, z, y) and a cap a hit knocks off has one the referee "
+    "VSREF3 (caps): a cap the arena places has an id 1..31 (its death-table "
+    "slot + 1: the arena's cap table) and a cap a hit knocks off has one the referee "
     "issues (32..255). CAP_TAKE is a claim like GRAB: the earliest stamp wins "
     "(DENY LOST d = winner for the others, GONE once the cap is not there), "
     "the claimant must be able to act (STATE) and within CAP_R of the cap "

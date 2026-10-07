@@ -288,11 +288,54 @@ YOSHI_POWER_IDX = _idx_set(["St_YoshiPower"])
 NC_ATTACK_IDX = _idx_set(NC_ATTACK_STATES)
 
 # The caps each arena map places, cut from the ROM's own level data (VSREF3
-# census): map -> [(x, y, z, param1)] in whole units, sorted by (x, z, y); the
-# cap's id is its 1-based index. param1 is the ROM's own (type | model << 8).
-# A map with no entry is judged without a table: the first claim names the cap
-# (its place hash) and nothing can be range-checked.
-CAP_MAPS = {}
+# census): map -> [(slot, x, y, z, param1)] in whole units; slot is the actor's
+# death-table id (Actor+0xce, distinct for every cap of a map, so five caps
+# stacked on one spot stay apart) and the cap's id is slot + 1. param1 is the
+# ROM's own (type | model << 8). A map with no entry is judged without a table:
+# the first claim names the cap (its place hash) and nothing can be range-checked.
+CAP_MAPS = {
+    0: [
+        (2, -1299, 729, 3236, 0x204),
+        (3, 6048, 449, 414, 0x004),
+        (4, 2292, 43, 4544, 0x104),
+        (5, -4562, 590, 4628, 0x204),
+        (6, 150, 964, 725, 0x004),
+        (7, 804, 647, 2974, 0x104),
+    ],
+    1: [
+        (5, -100, 853, -1900, 0x204),
+        (6, -900, 590, -1300, 0x104),
+        (7, 341, 356, -1106, 0x004),
+        (8, -2614, 158, 2208, 0x004),
+        (9, 297, 100, 3606, 0x104),
+        (10, 3700, 94, 300, 0x204),
+    ],
+    2: [
+        (0, 3750, 6008, -5800, 0x204),
+        (1, 3750, 6008, -5200, 0x104),
+        (2, 3750, 6000, -5500, 0x004),
+        (3, -6214, -4380, 5849, 0x204),
+        (4, -5938, -4380, 5361, 0x104),
+        (5, -6476, -4380, 5341, 0x004),
+        (6, -6214, -4380, 5849, 0x204),
+        (7, -5938, -4380, 5361, 0x104),
+        (8, -6476, -4380, 5341, 0x004),
+        (9, -6214, -4380, 5849, 0x204),
+        (10, -5938, -4380, 5361, 0x104),
+        (11, -6476, -4380, 5341, 0x004),
+        (12, -6214, -4380, 5849, 0x204),
+        (13, -5938, -4380, 5361, 0x104),
+        (14, -6476, -4380, 5341, 0x004),
+    ],
+    3: [
+        (5, -300, 0, -300, 0x004),
+        (6, -1050, 408, 1000, 0x104),
+        (7, 1000, 408, -1050, 0x204),
+        (8, -300, 0, -300, 0x004),
+        (9, -400, 0, 1800, 0x104),
+        (10, 1800, 0, -400, 0x204),
+    ],
+}
 CAP_PLACED_MAX = 31             # ids 1..31 are placed caps, 32..255 knocked-off ones
 CAP_DROP_BASE = 32
 CAP_POP_UP = 0x82000            # the ROM's pop point: the body's y + 130 units
@@ -612,21 +655,21 @@ class Referee(object):
     def _cap_table(self, map_id, rt):
         """The arena's placed caps, ids 1.. in table order."""
         self.caps = {}
-        for i, (x, y, z, param1) in enumerate(CAP_MAPS.get(map_id, ())):
-            if i + 1 > CAP_PLACED_MAX:
-                break
-            cap = Cap(i + 1, True, rt)
+        for (slot, x, y, z, param1) in CAP_MAPS.get(map_id, ()):
+            if not 0 <= slot < CAP_PLACED_MAX:
+                continue
+            cap = Cap(slot + 1, True, rt)
             cap.x, cap.y, cap.z = x * FIX, y * FIX, z * FIX
             cap.known = True
             look = (param1 >> 8) & 0xF
             cap.look = look if look < 3 else LOOK_NONE
-            cap.hash = self.cap_hash(x, z)
+            cap.hash = self.cap_hash(slot, x, z)
             self.caps[cap.cid] = cap
 
     @staticmethod
-    def cap_hash(x_units, z_units):
+    def cap_hash(slot, x_units, z_units):
         """The place hash a CAP_TAKE carries for a placed cap."""
-        return (int(x_units) & 0xFF) | ((int(z_units) & 0xFF) << 8)
+        return (int(slot) & 0xFF) | (((int(x_units) ^ int(z_units)) & 0xFF) << 8)
 
     @staticmethod
     def _rules_word(cfg):

@@ -1973,9 +1973,10 @@ def u_caps(mod):
     res = Result("caps (VSREF3): CAP_TAKE contention, forged claims, CAP_DROP, respawn, snapshot")
     rf = mod.referee
     saved = dict(rf.CAP_MAPS)
-    # three placed caps: Mario look at (-200, 0), Wario look at (0, 300), Luigi at (200, 0)
-    rf.CAP_MAPS[0] = [(-200, 0, 0, 0x004), (0, 0, 300, 0x204), (200, 0, 0, 0x104)]
-    H = rf.Referee.cap_hash
+    # three placed caps (slots 0, 1, 2): Mario look at (-200, 0), Wario look at (0, 300), Luigi at (200, 0)
+    rf.CAP_MAPS[0] = [(0, -200, 0, 0, 0x004), (1, 0, 0, 300, 0x204), (2, 200, 0, 0, 0x104)]
+    H0 = rf.Referee.cap_hash
+    H = lambda x, z, slot=0: H0(slot, x, z)
     try:
         rig, (a, b) = match(2, mod=mod)
         ref = rig.ref("ARENA01")
@@ -2317,8 +2318,8 @@ def run_fuzz(mod, rounds=150000, seed=1):
     rng = random.Random(seed)
     # (VSREF3) a cap table, so the cap claims below are judged against caps
     saved_caps = dict(mod.referee.CAP_MAPS)
-    mod.referee.CAP_MAPS[0] = [(-200, 0, 0, 0x004), (0, 0, 300, 0x204),
-                               (200, 0, 0, 0x104)]
+    mod.referee.CAP_MAPS[0] = [(0, -200, 0, 0, 0x004), (1, 0, 0, 300, 0x204),
+                               (2, 200, 0, 0, 0x104)]
     try:
         return _run_fuzz(mod, res, rounds, rng)
     finally:
