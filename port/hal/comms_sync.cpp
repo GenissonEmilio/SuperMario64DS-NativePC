@@ -3374,17 +3374,32 @@ void gw_follow() {
         *(int *)((char *)a + 0x98) = 0;
         *(int *)((char *)a + 0xa8) = 0;
         /* THE CHARACTER, through the game's own in-place swap (the door
-           path), once the body has been driven for a second and no more than
-           once every 2 s per seat. */
-        if (!no_swap && z.driven >= 30 &&
-            gw_char(a) != (unsigned)sm.character &&
-            (unsigned)(now - z.char_try_ms) >= 2000u) {
-            z.char_try_ms = now;
-            port_player_set_character(a, sm.character);
-            ++g_gws.charswaps;
-            ++z.sm_swaps;
-            std::fprintf(stderr, "[ghost] seat %d body %d character -> %u\n",
-                         s, i, (unsigned)sm.character);
+           path). GHOSTDOOR1: AT ONCE, on the first pass that wants it, and
+           the body is not drawn until it shows the right one (for at most
+           1.5 s, then it is drawn as it is). It used to wait for the body to
+           have been driven 30 frames and swapped once every 2 s, so after
+           every level entry each friend showed as MY character for about a
+           second. A swap that did not take is tried again after 250 ms. */
+        if (!no_swap && gw_char(a) != (unsigned)sm.character) {
+            if (!z.char_wait_ms) z.char_wait_ms = now ? now : 1u;
+            if ((int)(z.char_try_ms - z.char_wait_ms) < 0 ||
+                (unsigned)(now - z.char_try_ms) >= 250u) {
+                z.char_try_ms = now;
+                port_player_set_character(a, sm.character);
+                ++g_gws.charswaps;
+                ++z.sm_swaps;
+                std::fprintf(stderr, "[ghost] seat %d body %d character -> %u\n",
+                             s, i, (unsigned)sm.character);
+            }
+            if (gw_char(a) != (unsigned)sm.character &&
+                (unsigned)(now - z.char_wait_ms) < 1500u) {
+                ++g_gws.char_holds;
+                ghostdoor::watcher_release(s);
+                gw_park_body(a);
+                continue;
+            }
+        } else {
+            z.char_wait_ms = 0;
         }
         /* THE CURSOR. Player::SetAnim only lands its start frame when the
            animation CHANGES: that arm clears the ModelAnim's file word (+0x60,
