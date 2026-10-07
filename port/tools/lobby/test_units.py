@@ -800,19 +800,20 @@ def test_dial_range_is_server_enforced():
 
 
 def test_the_v5_floor():
-    """Contract v5 (lobby 1.0) is the only version this server answers.
+    """Contract v5 (lobby 1.0) is the floor; v6 (party and coop rooms) is the
+    ceiling and is additive.
 
     Launchers 0.3.x..0.5.x speak v1..v4 and map `bad_version` to "Check for an
     update", so the floor is how an old launcher is kept out of a 1.0 room
     instead of spawning a game that cannot pair with it.
     """
     print("\n-- contract v5 is the floor and the ceiling")
-    check("the version range is exactly 5..5",
-          (S.CONTRACT_MIN, S.CONTRACT_V) == (5, 5),
+    check("the version range is exactly 5..6",
+          (S.CONTRACT_MIN, S.CONTRACT_V) == (5, 6),
           (S.CONTRACT_MIN, S.CONTRACT_V))
     for verb, row in sorted(S.VERB_FIELDS.items()):
         body = {k: _FIELD_SAMPLES[k] for k in row[0]}
-        for ver in (1, 2, 3, 4, 6):
+        for ver in (1, 2, 3, 4, 7):
             body["v"] = ver
             check("%s: a v%d body is bad_version" % (verb, ver),
                   S.shape_for(verb, body) == "bad_version",
@@ -903,6 +904,7 @@ _FIELD_SAMPLES = {
     "netmode": "arena",
     "code": "K7QMR3AB",
     "skip": "K7QMR3AB",
+    "save_name": "My file",
 }
 
 
@@ -1516,7 +1518,14 @@ def test_session_type():
     check("and its view says so", host["view"]["session_type"] == "vs")
     check("a vs create answer carries no plan (VS plans come at go)",
           "plan" not in host, host)
-    for bad in ("bogus", "party", "", 1, None):
+    for kind in ("party", "coop"):
+        reset()
+        st, out = create(nick="host", session_type=kind)
+        check("a v5 create of a %s room is bad_session_type (Check for an "
+              "update), not a room" % kind,
+              st == 400 and out["error"] == "bad_session_type"
+              and not S.ROOMS, (st, out))
+    for bad in ("bogus", "", 1, None, "Party", "coop "):
         reset()
         st, out = create(nick="host", session_type=bad)
         check("session_type %r is bad_session_type" % (bad,),
@@ -4179,6 +4188,404 @@ def test_arena_has_no_host_in_the_match():
               room.events[-1])
 
 
+# ------------------------------------------------ v6: party and coop rooms
+
+
+def create6(nick="tango", who="10.0.0.1", now=1000.0, **extra):
+    body = {"v": 6, "nick": nick, "game": GAME}
+    body.update(extra)
+    return S.do_create(body, who, now)
+
+
+def join6(room, nick, who="10.0.0.2", now=1000.0, **extra):
+    body = {"v": 6, "room": room, "nick": nick, "game": GAME}
+    body.update(extra)
+    return S.do_join(body, who, now)
+
+
+def start6(code, token, who="10.0.0.1", now=1000.0, **extra):
+    body = {"v": 6, "room": code, "token": token}
+    body.update(extra)
+    return S.do_start(body, who, now)
+
+
+def poll6(code, token, cursor, who="10.0.0.1", now=1000.0):
+    return S.do_poll({"v": 6, "room": code, "token": token, "cursor": cursor,
+                      "wait": 0}, who, now)
+
+
+def leave6(code, token, who="10.0.0.1", now=1000.0):
+    return S.do_leave({"v": 6, "room": code, "token": token}, who, now)
+
+
+def _no_path_anywhere(obj):
+    """No key anywhere in an answer looks like a file path or a save path."""
+    text = json.dumps(obj)
+    return not any(w in text.lower() for w in
+                   ("save_path", "coopsav", "\\\\", "c:/", "/home/"))
+
+
+def test_party_and_coop_rooms():
+    """Contract v6 (run mp1 FIELD5, lane ROOMS1): party and coop rooms.
+    Hub rooms like an adventure room (one hub code for the room's life, a plan
+    at create/join and on every poll) with a host Start on top."""
+    print("\n-- v6 party and coop rooms: types, caps, plan, host Start")
+    check("the lobby speaks v5..v6", (S.CONTRACT_MIN, S.CONTRACT_V) == (5, 6))
+    check("party and coop are session types",
+          "party" in S.SESSION_TYPES and "coop" in S.SESSION_TYPES)
+    check("both hold four seats by default",
+          S.PARTY_SEATS == 4 and S.COOP_SEATS == 4)
+
+    for kind in ("party", "coop"):
+        reset()
+        extra = {"save_name": "Tango file"} if kind == "coop" else {}
+        st, host = create6(nick="host", session_type=kind, **extra)
+        check("%s: a v6 create makes a %s room" % (kind, kind),
+              st == 200 and S.ROOMS[host["room"]].session_type == kind,
+              (st, host))
+        code, token = host["room"], host["token"]
+        room = S.ROOMS[code]
+        plan = host.get("plan", {})
+        check("%s: the create answer carries the hub plan at once" % kind,
+              plan.get("playing") is True and plan.get("session_type") == kind
+              and plan.get("code") == room.comms_code
+              and plan.get("relay") == S.RELAY_ADDR
+              and plan.get("relay_v") == 2 and plan.get("want_seat") == 255,
+              plan)
+        check("%s: the plan is not started, launch 0, and this seat is the host"
+              % kind, plan.get("started") is False and plan.get("launch") == 0
+              and plan.get("host") is True and plan.get("room_seats") == 4,
+              plan)
+        check("%s: the hub code is 8 room-alphabet characters, not the room "
+              "code" % kind, len(plan["code"]) == 8 and plan["code"] != code
+              and all(ch in S.ROOM_ALPHABET for ch in plan["code"]))
+        check("%s: the plan names no VS field" % kind,
+              not any(k in plan for k in ("map", "players", "names", "slot",
+                                           "luigi", "seed", "digest", "role")),
+              plan)
+        check("%s: the view says kind, not started, 4 seats" % kind,
+              host["view"]["session_type"] == kind
+              and host["view"]["started"] is False
+              and host["view"]["launch"] == 0
+              and host["view"]["room_seats"] == 4, host["view"])
+        check("%s: the view has no VS arena fields" % kind,
+              "netmode" not in host["view"] and "arena_ok" not in host["view"])
+        check("%s: no path-like key anywhere in the answer" % kind,
+              _no_path_anywhere(host), host)
+        if kind == "coop":
+            check("coop: the save's display name rides plan and view",
+                  plan["save_name"] == "Tango file"
+                  and host["view"]["save_name"] == "Tango file")
+        else:
+            check("party: no save name anywhere",
+                  "save_name" not in plan and "save_name" not in host["view"])
+
+        # ---- fill the room: four seats, the fifth is room_full ----------
+        guests = []
+        for k in range(3):
+            st, g = join6(code, "g%d" % k, who="10.0.1.%d" % k)
+            guests.append(g)
+            check("%s: guest %d joins (seat %d)" % (kind, k, g.get("member", 0)),
+                  st == 200 and g["member"] == k + 2, (st, g))
+        check("%s: every joiner gets the SAME hub code" % kind,
+              all(g["plan"]["code"] == plan["code"] for g in guests))
+        check("%s: and none of them is the host" % kind,
+              all(g["plan"]["host"] is False for g in guests))
+        check("%s: everybody is playing (no dial in these rooms)" % kind,
+              all(m.playing for m in room.members.values()))
+        st, out = join6(code, "fifth", who="10.0.1.9")
+        check("%s: the fifth seat is 409 room_full" % kind,
+              st == 409 and out["error"] == "room_full", (st, out))
+        check("%s: and seated nobody" % kind, len(room.members) == 4)
+
+        # ---- the host's Play --------------------------------------------
+        st, out = start6(code, guests[0]["token"], who="10.0.1.0")
+        check("%s: a guest's start is 403 not_host" % kind,
+              st == 403 and out["error"] == "not_host", (st, out))
+        check("%s: and nothing started" % kind,
+              room.started is False and room.launch_no == 0)
+        cur = room.seq
+        st, out = start6(code, token)
+        check("%s: the host's start answers launch 1" % kind,
+              st == 200 and out["launch"] == 1, (st, out))
+        check("%s: the room is started and still in lobby state" % kind,
+              room.started is True and room.state == "lobby" and room.launch_no == 1)
+        check("%s: a started event reaches the ring" % kind,
+              room.events[-1]["kind"] == "started"
+              and room.events[-1]["launch"] == 1, room.events[-1])
+        for k, g in enumerate(guests):
+            st, out = poll6(code, g["token"], cur, who="10.0.1.%d" % k)
+            check("%s: guest %d's poll plan says started, launch 1" % (kind, k),
+                  out["plan"]["started"] is True and out["plan"]["launch"] == 1
+                  and out["plan"]["host"] is False, out.get("plan"))
+            check("%s: and the poll carries the started event" % kind,
+                  any(e["kind"] == "started" for e in out["events"]))
+
+        # ---- a later joiner is handed a started plan --------------------
+        S.do_leave({"v": 6, "room": code, "token": guests[2]["token"]},
+                   "10.0.1.2", 1001.0)
+        st, late = join6(code, "late", who="10.0.7.7", now=1002.0)
+        check("%s: a joiner after the Play is handed a STARTED plan (it "
+              "launches on joining)" % kind,
+              st == 200 and late["plan"]["started"] is True
+              and late["plan"]["launch"] == 1, (st, late))
+        # A second Play relaunches everybody.
+        st, out = start6(code, token, now=1003.0)
+        check("%s: a second start is launch 2" % kind,
+              st == 200 and out["launch"] == 2 and room.launch_no == 2, (st, out))
+
+        # ---- no VS machinery answers ------------------------------------
+        st, out = _params(code, token, now=1004.0)
+        check("%s: params is 409 not_vs (no match settings)" % kind,
+              st == 409 and out["error"] == "not_vs", (st, out))
+        st, out = S.do_ready({"v": 6, "room": code, "token": token,
+                              "match": "0" * 16}, "10.0.0.1", 1004.0)
+        check("%s: a forged ready is stale_match and changes nothing" % kind,
+              st == 409 and out["error"] == "stale_match"
+              and room.state == "lobby", (st, out))
+        st, out = S.do_result({"v": 6, "room": code, "token": token,
+                               "match": "0" * 16, "win": "draw",
+                               "scores": [0, 0, 0, 0]}, "10.0.0.1", 1004.0)
+        check("%s: a forged result is stale_match and posts nothing" % kind,
+              st == 409 and out["error"] == "stale_match"
+              and room.events[-1]["kind"] != "result", (st, out))
+        st, out = S.do_failed({"v": 6, "room": code, "token": token,
+                               "match": "0" * 16, "reason": "user_cancelled"},
+                              "10.0.0.1", 1004.0)
+        check("%s: a forged failed is stale_match and ends nothing" % kind,
+              st == 409 and out["error"] == "stale_match"
+              and room.state == "lobby", (st, out))
+        st, out = start6(code, token, now=1005.0, match="x")
+        check("%s: start with an unknown field is bad_field" % kind,
+              st == 400 and out["error"] == "bad_field", (st, out))
+
+        # ---- chat works like an adventure room's ------------------------
+        st, out = S.do_chat({"v": 6, "room": code, "token": token, "text": "hi"},
+                            "10.0.0.1", 1006.0)
+        check("%s: chat works" % kind, st == 200
+              and room.events[-1]["kind"] == "chat"
+              and room.events[-1]["text"] == "hi", (st, out))
+        check("%s: nothing in any plan or view is a path" % kind,
+              _no_path_anywhere([room.view(1), S.member_plan(room, 1),
+                                 room.events]))
+
+        # ---- the host leaving -------------------------------------------
+        if kind == "party":
+            seats = sorted(room.members)
+            st, out = leave6(code, token, now=1007.0)
+            check("party: the host leaves and the room stays open",
+                  st == 200 and room.state == "lobby")
+            check("party: the host role passes to the lowest seat in",
+                  room.host_seat == min(room.members), room.host_seat)
+            check("party: the new host's plan says host, the started room "
+                  "keeps its launch number",
+                  S.member_plan(room, room.host_seat)["host"] is True
+                  and room.launch_no == 2 and room.started)
+            new_host_tok = room.members[room.host_seat].token
+            st, out = start6(code, new_host_tok, who="10.0.9.9", now=1008.0)
+            check("party: the new host can press Play (launch 3)",
+                  st == 200 and out["launch"] == 3, (st, out))
+        else:
+            cur = room.seq
+            st, out = leave6(code, token, now=1007.0)
+            check("coop: the host leaves", st == 200)
+            check("coop: the room is CLOSED, why host_left",
+                  room.state == "closed" and room.why == "host_left",
+                  (room.state, room.why))
+            st, out = poll6(code, guests[0]["token"], cur, who="10.0.1.0",
+                            now=1008.0)
+            check("coop: a guest's next poll says closed with the reason",
+                  st == 200 and out["view"]["state"] == "closed"
+                  and any(e["kind"] == "closed" and e["why"] == "host_left"
+                          for e in out["events"]), (st, out))
+            st, out = join6(code, "toolate", who="10.0.8.8", now=1009.0)
+            check("coop: and nobody can join it any more",
+                  st == 404 and out["error"] == "no_such_room", (st, out))
+
+    # ---- a party room: empty, then closed by the reaper -----------------
+    reset()
+    st, host = create6(nick="host", session_type="party")
+    room = S.ROOMS[host["room"]]
+    leave6(host["room"], host["token"], now=1001.0)
+    S.sweep(1002.0)
+    S.sweep(1002.0 + S.ADV_EMPTY_S + 1)
+    check("party: an empty room closes after ADV_EMPTY_S like an adventure room",
+          room.state == "closed" and room.why == "idle", (room.state, room.why))
+
+    # ---- a party room is exempt from the idle timer while polled --------
+    reset()
+    st, host = create6(nick="host", session_type="party")
+    room = S.ROOMS[host["room"]]
+    t = 1000.0
+    while t < 1000.0 + S.ROOM_IDLE_S + 120:
+        t += 20.0
+        poll6(host["room"], host["token"], room.seq, now=t)
+        S.sweep(t)
+    check("party: a room whose member keeps polling outlives ROOM_IDLE_S",
+          room.state == "lobby", room.state)
+    # A member who goes silent is dropped like anywhere else; a coop host that
+    # goes silent ends the room.
+    reset()
+    st, host = create6(nick="host", session_type="coop", save_name="x")
+    st, g = join6(host["room"], "g")
+    room = S.ROOMS[host["room"]]
+    poll6(host["room"], g["token"], room.seq, who="10.0.0.2", now=1030.0)
+    S.sweep(1000.0 + S.MEMBER_TIMEOUT_S + 5)
+    check("coop: a host whose launcher goes silent ends the room (host_left)",
+          room.state == "closed" and room.why == "host_left",
+          (room.state, room.why))
+
+    # ---- the other kinds are exactly as they were ----------------------
+    reset()
+    st, vs = create6(nick="v")
+    check("a v6 VS create is a VS room, with no v6 view fields and no plan",
+          st == 200 and "started" not in vs["view"] and "plan" not in vs
+          and "room_seats" not in vs["view"], vs)
+    st, adv = create6(nick="a", session_type="adventure")
+    check("a v6 adventure create has the v5 plan and no v6 plan fields",
+          set(adv["plan"]) == {"playing", "session_type", "code", "relay",
+                               "relay_v", "want_seat"}, adv["plan"])
+    check("and no v6 view fields", "started" not in adv["view"])
+    st, out = start6(adv["room"], adv["token"])
+    check("start in an adventure room is still 409 not_vs",
+          st == 409 and out["error"] == "not_vs", (st, out))
+
+
+def test_v5_clients_and_party_coop():
+    """A v5 launcher keeps VS and world, and cannot create or join the new
+    kinds: it is refused with bad_session_type, which it words as "Check for
+    an update"."""
+    print("\n-- v5 clients: VS and world as before, party and coop refused")
+    for kind in ("party", "coop"):
+        reset()
+        extra = {"save_name": "f"} if kind == "coop" else {}
+        st, out = create6(nick="h", session_type=kind, **extra)
+        code = out["room"]
+        st, out = join(code, "old")          # a v5 join
+        check("%s: a v5 join is bad_session_type" % kind,
+              st == 400 and out["error"] == "bad_session_type", (st, out))
+        check("%s: and seated nobody" % kind, len(S.ROOMS[code].members) == 1)
+        st, out = create(nick="old", session_type=kind)
+        check("%s: a v5 create is bad_session_type" % kind,
+              st == 400 and out["error"] == "bad_session_type", (st, out))
+        st, out = create(nick="old", session_type=kind, save_name="f")
+        check("%s: a v5 create with save_name is bad_field (v6 field)" % kind,
+              st == 400 and out["error"] == "bad_field", (st, out))
+        # A v5 poll / chat / leave by a seat that is already in is fine: the
+        # caps and plan fields are additive.
+    reset()
+    st, vs = create(nick="host")
+    st, g = join(vs["room"], "friend")
+    check("a v5 VS room is untouched: create, join", st == 200 and g["member"] == 2)
+    # A v5 client may still create and join an adventure room.
+    reset()
+    st, adv = create(nick="a", session_type="adventure")
+    st, g = join(adv["room"], "b")
+    check("a v5 adventure room still creates and joins",
+          st == 200 and g["plan"]["session_type"] == "adventure", (st, g))
+
+
+def test_party_coop_malformed_input():
+    """Security law: every new field bounds-checked, names opaque and capped,
+    no path ever stored, a forged message grants nothing."""
+    print("\n-- party and coop: malformed and hostile input")
+    bad_names = [
+        ("", "bad_save_name"), ("   ", "bad_save_name"),
+        (" lead", "bad_save_name"), ("trail ", "bad_save_name"),
+        ("a" * 25, "too_long"), ("a" * 4000, "too_long"),
+        ("C:\\Users\\bob\\x.coopsav", "bad_save_name"),
+        ("save\\file", "bad_save_name"), ("a/b", "bad_save_name"),
+        ("../../etc", "bad_save_name"), ("what?", "bad_save_name"),
+        ("star*", "bad_save_name"), ('quo"te', "bad_save_name"),
+        ("a<b", "bad_save_name"), ("a>b", "bad_save_name"),
+        ("a|b", "bad_save_name"), ("tab\there", "bad_save_name"),
+        ("nl\nhere", "bad_save_name"), ("nul\x00x", "bad_save_name"),
+        ("del\x7fx", "bad_save_name"), ("caf\u00e9", "bad_save_name"),
+        ("\ud800", "bad_save_name"), (5, "bad_save_name"),
+        (None, "bad_save_name"), (["a"], "bad_save_name"),
+        ({"a": 1}, "bad_save_name"), (True, "bad_save_name"),
+    ]
+    for val, want in bad_names:
+        reset()
+        st, out = create6(nick="h", session_type="coop", save_name=val)
+        check("coop save_name %r is %s" % (str(val)[:20], want),
+              st == 400 and out["error"] == want and not S.ROOMS, (st, out))
+    for val in ("a", "My file", "a" * 24, "Tango's file", "co-op #2", "a,b"):
+        reset()
+        st, out = create6(nick="h", session_type="coop", save_name=val)
+        check("coop save_name %r is a legal display name" % val,
+              st == 200 and out["view"]["save_name"] == val, (st, out))
+    reset()
+    st, out = create6(nick="h", session_type="coop")
+    check("a coop create with no save_name is bad_save_name",
+          st == 400 and out["error"] == "bad_save_name", (st, out))
+    for kind in ("party", "vs", "adventure"):
+        reset()
+        st, out = create6(nick="h", session_type=kind, save_name="f")
+        check("%s with a save_name is bad_field" % kind,
+              st == 400 and out["error"] == "bad_field", (st, out))
+    # Fields the server must never take: a path under any plausible key.
+    for key in ("save_path", "path", "coop_save", "save", "file", "host",
+                "started", "launch", "room_kind", "party", "coop"):
+        reset()
+        st, out = create6(nick="h", session_type="coop", save_name="f",
+                          **{key: "C:\\x\\y.coopsav"})
+        check("coop create with an unknown key %r is bad_field" % key,
+              st == 400 and out["error"] == "bad_field" and not S.ROOMS,
+              (st, out))
+    # A join never takes a save name or a started flag.
+    reset()
+    st, h = create6(nick="h", session_type="coop", save_name="f")
+    for key in ("save_name", "save_path", "started", "host"):
+        st, out = join6(h["room"], "j", **{key: "x"})
+        check("a join carrying %r is bad_field" % key,
+              st == 400 and out["error"] == "bad_field", (st, out))
+    # start takes nothing but v/room/token; a guest cannot start by forging.
+    st, g = join6(h["room"], "j", who="10.0.0.9")
+    for extra in ({"launch": 5}, {"started": True}, {"host": True},
+                  {"seat": 1}):
+        st, out = start6(h["room"], g["token"], who="10.0.0.9", **extra)
+        check("a guest's start with %r is bad_field (shape before auth)"
+              % list(extra), st == 400 and out["error"] == "bad_field",
+              (st, out))
+    st, out = start6(h["room"], "0" * 32, who="10.0.0.9")
+    check("a start with an unseated token is refused (403)",
+          st == 403, (st, out))
+    st, out = start6("ABCDEF", h["token"], who="10.0.0.9")
+    check("a start in a room that does not exist is 404",
+          st == 404 and out["error"] == "no_such_room", (st, out))
+    check("the room never started through any of that",
+          S.ROOMS[h["room"]].started is False)
+    # Oversize / odd names reach party and coop rooms through the same nick rule.
+    st, out = join6(h["room"], "n" * 17, who="10.0.0.10")
+    check("a 17 byte nick into a coop room is too_long",
+          st == 400 and out["error"] == "too_long", (st, out))
+    st, out = join6(h["room"], "a,b", who="10.0.0.10")
+    check("a comma nick into a coop room is bad_nick",
+          st == 400 and out["error"] == "bad_nick", (st, out))
+    # A host with a stale token and kicked guests: the kick is the host's.
+    st, out = S.do_kick({"v": 6, "room": h["room"], "token": g["token"],
+                         "seat": 1}, "10.0.0.9", 1001.0)
+    check("a guest cannot kick the host of a coop room (403 not_host)",
+          st == 403 and out["error"] == "not_host", (st, out))
+    # The seat caps are knobs, clamped.
+    was = (S.PARTY_SEATS, S.COOP_SEATS)
+    try:
+        S.PARTY_SEATS = 2
+        reset()
+        st, h2 = create6(nick="h", session_type="party")
+        st, g2 = join6(h2["room"], "g")
+        st, out = join6(h2["room"], "x", who="10.0.0.5")
+        check("PARTY_SEATS=2 makes a two-seat party room (room_full on the "
+              "third)", st == 409 and out["error"] == "room_full"
+              and h2["view"]["room_seats"] == 2, (st, out))
+    finally:
+        S.PARTY_SEATS, S.COOP_SEATS = was
+        reset()
+    check("the env knobs are clamped to 2..16",
+          S.env_int("PARTY_SEATS_TEST_NOPE", 4, 2, S.DIAL_HARD_MAX) == 4)
+
+
 def main():
     test_grammar()
     test_addresses()
@@ -4244,6 +4651,9 @@ def main():
     test_arena_when()
     test_arena_params()
     test_arena_has_no_host_in_the_match()
+    test_party_and_coop_rooms()
+    test_v5_clients_and_party_coop()
+    test_party_coop_malformed_input()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:

@@ -133,16 +133,50 @@ REVISION = "lobby-5"
 #   * every go plan carries relay_v, want_seat, luigi, seed, voice, digest
 #   * adventure rooms: one hub code for the room's life, no start gate
 #   * the `world` and `world_ping` verbs
+# v6, PARTY AND COOP ROOMS (run mp1 FIELD5, lane ROOMS1). ADDITIVE: the floor
+# stays 5, so a launcher that speaks v5 keeps its VS rooms and its world exactly
+# as they were. What v6 adds, all of it, or it is not v6:
+#   * create's session_type may be "party" or "coop" (a v5 caller sending
+#     either is `bad_session_type`, the same refusal an unknown type always
+#     got, which the launcher words as "Check for an update");
+#   * create may carry `save_name` (coop only, required there): the display
+#     name of the host's co-op save. The save's PATH is never sent to this
+#     service, never stored, and a field that looks like one is refused;
+#   * joining a party or coop room needs v6 (a v5 launcher would boot it as a
+#     plain adventure room), same refusal;
+#   * party and coop rooms have a host Start (`start`), unlike adventure
+#     rooms: it releases the room, and the plan every member polls carries
+#     `started` / `launch` so a launcher can launch together, and a later
+#     joiner (who is handed a started plan) launches on joining.
 CONTRACT_MIN = 5
-CONTRACT_V = 5
+CONTRACT_V = 6
 V_SESSION = 4    # create.session_type
+V_ROOMS = 6      # session_type party / coop, create.save_name
 
 # The session types a room may be. "vs" is the versus match; "adventure" is the
 # ghost-presence session (design section 1): every console plays its own save
 # from the title, and the relay's hub rules carry only ghost frames, identity,
 # chat and voice between them. "party" (the shared rollback world) is NOT a 1.0
 # room type (Tango, 09-28): it is refused as an unknown value at do_create.
-SESSION_TYPES = ("vs", "adventure")
+SESSION_TYPES = ("vs", "adventure", "party", "coop")
+
+# Run mp1 FIELD5: "party" is now a 1.0-line room type, and so is "coop". Both are
+# HUB rooms like an adventure room (one relay hub code for the room's life, a
+# plan at create/join and on every poll, the room outlives nobody it should not)
+# with a host Start on top. NOT the old rollback "party" of the 09-02 slice,
+# which was a shared synced world; this one shares stars and bodies only, and
+# coop is the synced world. Neither type uses the VS dial, ready, go or result.
+ROOM_KINDS = ("party", "coop")
+HUB_TYPES = ("adventure", "party", "coop")
+
+# The longest and the allowed shape of a coop save's DISPLAY name. Opaque text
+# the lobby only stores and echoes. The characters that make a path (separators,
+# a drive colon, wildcards, quotes, pipes) are refused outright, so a launcher
+# bug or a hostile client cannot make this service carry a path, and the name
+# is safe to show anywhere. The launcher derives its own file name from it.
+SAVE_NAME_MAX = 24
+LAUNCH_NO_MAX = 1000000
+SAVE_NAME_BAD = "\\" + '/:*?"<>|'
 
 # v5 ADVENTURE ROOMS. The seat the plan asks the relay for: "any free seat".
 # The relay assigns the lowest free hub seat and stamps it; the lobby does not
@@ -194,6 +228,14 @@ DIAL_HARD_MAX = 16
 MAX_SEATS = env_int("MAX_SEATS", 4, 2, DIAL_HARD_MAX)
 GAME_MAX_PLAYERS = env_int("GAME_MAX_PLAYERS", 2, 1, DIAL_HARD_MAX)
 MAX_WAITERS = env_int("MAX_WAITERS", 96, 1, 4096)
+
+# SEATS IN A PARTY ROOM AND IN A COOP ROOM (run mp1 FIELD5: Tango ruled 4 for
+# both). Their own knobs, apart from MAX_SEATS (the VS dial's room size), so a
+# VS deployment raised to sixteen does not change them. The game's hub holds
+# four bodies today; the wire and this service are sized so eight or sixteen is
+# a later bump of these two numbers (and of the game), not a rewrite.
+PARTY_SEATS = env_int("PARTY_SEATS", 4, 2, DIAL_HARD_MAX)
+COOP_SEATS = env_int("COOP_SEATS", 4, 2, DIAL_HARD_MAX)
 
 # THE DIAL'S SERVER-ENFORCED UPPER BOUND, derived, never configured directly.
 # A host cannot pick a number bigger than the room holds, and cannot pick a
@@ -786,6 +828,14 @@ class Room(object):
         # than freezing a copy at arm. A v1..v3 create never carries the field
         # and so is always "vs".
         self.session_type = "vs"
+        # PARTY / COOP rooms (v6): the host's Start releases the room. `started`
+        # is False until then; `launch_no` counts the host's Starts (a second
+        # Start while nobody's game is up relaunches everyone), and rides every
+        # plan so a launcher launches ONCE per number. `save_name` is a coop
+        # room's display name for its save: the path is never here.
+        self.started = False
+        self.launch_no = 0
+        self.save_name = ""
         self.map = 0
         self.win_mode = "time"
         self.star_target = None
@@ -906,10 +956,20 @@ class Room(object):
         1, packed. Both are computable from this model and neither needs a
         change here. The packed reading is very probably the one the game wants.
         """
-        for n in range(1, MAX_SEATS + 1):
+        for n in range(1, self.seat_cap() + 1):
             if n not in self.members:
                 return n
         return None
+
+    def seat_cap(self):
+        """How many seats THIS room holds: MAX_SEATS for a VS or adventure
+        room, PARTY_SEATS / COOP_SEATS for those kinds (never above the
+        sixteen the hub holds)."""
+        if self.session_type == "party":
+            return PARTY_SEATS
+        if self.session_type == "coop":
+            return COOP_SEATS
+        return MAX_SEATS
 
     def playing_count(self):
         return sum(1 for m in self.members.values() if m.playing)
@@ -1040,6 +1100,15 @@ class Room(object):
             "members": [self.members[s].view() for s in sorted(self.members)],
             "match": self.match,
         }
+        if self.session_type in ROOM_KINDS:
+            # v6, additive like every field above: whether the host has
+            # released the room, how many times, how many seats it holds, and
+            # (coop) the save's display name.
+            v["started"] = self.started
+            v["launch"] = self.launch_no
+            v["room_seats"] = self.seat_cap()
+            if self.session_type == "coop":
+                v["save_name"] = self.save_name
         if self.session_type == "vs":
             # ARENA MODE (run mp1 A4), additive like every field above. The
             # host's pick; whether this room's build can play arena here at
@@ -1288,6 +1357,33 @@ def v_nick(body):
     return s, None
 
 
+def v_save_name(body):
+    """The display name of a coop room's save (contract v6).
+
+    Opaque, size-capped text the service stores and echoes and never reads
+    for meaning. 1..SAVE_NAME_MAX bytes of printable ASCII (commas allowed,
+    leading or trailing space not), and none of the characters that make a
+    path: a launcher that sent a file path here by mistake, or a client that
+    tried to make this service carry one, is refused rather than stored.
+    """
+    s, err = want_str(body, "save_name", "bad_save_name")
+    if err:
+        return None, err
+    n = byte_len(s)
+    if n > SAVE_NAME_MAX:
+        return None, "too_long"
+    if n < 1:
+        return None, "bad_save_name"
+    if not printable_ascii(s):
+        return None, "bad_save_name"
+    if s != s.strip(" "):
+        return None, "bad_save_name"
+    for ch in s:
+        if ch in SAVE_NAME_BAD:
+            return None, "bad_save_name"
+    return s, None
+
+
 def v_text(body):
     s, err = want_str(body, "text", "bad_text")
     if err:
@@ -1512,7 +1608,10 @@ VERB_FIELDS = {
                   # appear from v2. session_type is a v4 optional (ADVENTURE);
                   # do_create checks its value against SESSION_TYPES.
                   {"pre_ok": 1, "color": V_COLOR, "shoes": V_COLOR,
-                   "session_type": V_SESSION}),
+                   "session_type": V_SESSION,
+                   # v6: a coop room's save display name (do_create requires
+                   # it for coop and refuses it anywhere else).
+                   "save_name": V_ROOMS}),
     "join":      (("v", "room", "nick", "game"),
                   {"pre_ok": 1, "color": V_COLOR, "shoes": V_COLOR}),
     "poll":      (("v", "room", "token", "cursor"), {"wait": 1}),
@@ -1647,6 +1746,23 @@ def do_create(body, who, now):
         session_type = body["session_type"]
         if not isinstance(session_type, str) or session_type not in SESSION_TYPES:
             return 400, {"error": "bad_session_type"}
+        # v6: party and coop are v6 types. A v5 caller naming one gets the
+        # refusal an unknown type has always got (bad_session_type, which the
+        # launcher words as "Check for an update"), so a v5 client is exactly
+        # as it was.
+        if session_type in ROOM_KINDS and request_version(body) < V_ROOMS:
+            return 400, {"error": "bad_session_type"}
+    # v6: a coop room needs the display name of the host's save, and no other
+    # kind takes one. (shape_for has already refused the key below v6.)
+    save_name = ""
+    if session_type == "coop":
+        if "save_name" not in body:
+            return 400, {"error": "bad_save_name"}
+        save_name, err = v_save_name(body)
+        if err:
+            return 400, {"error": err}
+    elif "save_name" in body:
+        return 400, {"error": "bad_field"}
 
     if not BUCKETS.allow_create(who, now):
         return 429, {"error": "too_fast"}
@@ -1667,7 +1783,8 @@ def do_create(body, who, now):
     # narrow unless it says otherwise.
     room = Room(code, now, game)
     room.session_type = session_type
-    if session_type == "adventure":
+    room.save_name = save_name
+    if session_type in HUB_TYPES:
         # THE ROOM'S HUB CODE, minted once and kept for the room's life: an
         # adventure room is one relay hub session that people drop in and out
         # of, not a sequence of matches. Like a VS match's code it is never
@@ -1686,10 +1803,10 @@ def do_create(body, who, now):
     room.refresh_displays()
     ROOMS[code] = room
     log("room %s create %s by %s (1/%d)"
-        % (code, session_type, blunt_host(who), MAX_SEATS))
+        % (code, session_type, blunt_host(who), room.seat_cap()))
     out = {"room": code, "token": token, "member": 1,
            "cursor": room.seq, "view": room.view(1)}
-    if room.session_type == "adventure":
+    if room.session_type in HUB_TYPES:
         out["plan"] = member_plan(room, 1)
     return 200, out
 
@@ -1727,12 +1844,17 @@ def do_join(body, who, now):
     room.forget_old_kicks(now)
     if who in room.kicked_addr:
         return 403, {"error": "kicked"}
+    # v6: a party or coop room is joined by a v6 launcher only. A v5 launcher
+    # would boot it as a plain adventure room, so it is turned away at the door
+    # with the words "Check for an update" (bad_session_type, as a create is).
+    if room.session_type in ROOM_KINDS and request_version(body) < V_ROOMS:
+        return 400, {"error": "bad_session_type"}
     # v5: ONE GAME BUILD PER ROOM. Refused before the seat checks so a player
     # on the wrong build hears the reason that is actually theirs (somebody in
     # this room runs a different game version) rather than "room full".
     if game != room.game:
         return 409, {"error": "game_mismatch"}
-    if len(room.members) >= MAX_SEATS:
+    if len(room.members) >= room.seat_cap():
         return 409, {"error": "room_full"}
     # JOIN AT THE NEXT MATCH (Tango, 09-29; run mp1 L-J1). A VS room whose
     # match is arming, going or running used to refuse the door with 409
@@ -1770,10 +1892,10 @@ def do_join(body, who, now):
         % (code, blunt_host(who), seat,
            "playing" if playing else
            ("waiting" if room.state != "lobby" else "watching"),
-           len(room.members), MAX_SEATS))
+           len(room.members), room.seat_cap()))
     out = {"room": code, "token": token, "member": seat,
            "cursor": room.seq, "view": room.view(seat)}
-    if room.session_type == "adventure":
+    if room.session_type in HUB_TYPES:
         out["plan"] = member_plan(room, seat)
     return 200, out
 
@@ -1914,6 +2036,9 @@ def do_params(body, who, now):
         return 403, {"error": "not_host"}
     if room.state != "lobby":
         return 409, {"error": "not_in_lobby"}
+    # v6: a party or coop room has no match settings at all.
+    if room.session_type in ROOM_KINDS:
+        return 409, {"error": "not_vs"}
     # v5: Luigi Infection, the voice switch and the dial are VS match
     # settings. An adventure room has no match to put them in, so any of them
     # there is a field this room does not have: bad_field, like any undefined
@@ -2027,6 +2152,14 @@ def drop_member(room, seat, why):
     room.push("left", seat=seat, display=m.display, why=why)
     log("room %s leave seat %d (%s) (%d/%d)"
         % (room.code, seat, why, len(room.members), MAX_SEATS))
+    if room.session_type == "coop" and seat == room.host_seat:
+        # A COOP ROOM ENDS WITH ITS HOST (the FIELD5 default): the host's PC
+        # holds the save, and the world the guests stand in is the host's.
+        # Everyone left in the room reads the close reason on their next poll.
+        # (A PARTY room, which shares only stars and bodies, does outlive its
+        # creator: the host role passes on below.)
+        room.close("host_left")
+        return
     if room.session_type != "vs":
         # AN ADVENTURE ROOM OUTLIVES ITS CREATOR (design section 5). Nobody
         # hosts a hub session, so the host role is only the lobby's (kick):
@@ -2269,6 +2402,23 @@ def member_plan(room, seat):
     m = room.members.get(seat)
     if m is None or not m.playing:
         return {"playing": False}
+    if room.session_type in ROOM_KINDS:
+        # THE PARTY / COOP PLAN (v6). The same hub plan an adventure room has,
+        # plus what the launcher needs to launch everyone together: `started`
+        # and `launch` (the host's Start count: launch once per number, and a
+        # plan that arrives already started is a late joiner's cue to launch
+        # on joining), `host` (whose launcher holds the coop save), and the
+        # room's seat count. The coop save's display name rides it; its PATH
+        # does not exist on this side. The launcher turns this into the
+        # SM64DS_ROOM_KIND / SM64DS_PARTY / SM64DS_COOP* environment.
+        plan = {"playing": True, "session_type": room.session_type,
+                "code": room.comms_code, "relay": RELAY_ADDR,
+                "relay_v": RELAY_V, "want_seat": WANT_ANY_SEAT,
+                "host": seat == room.host_seat, "started": room.started,
+                "launch": room.launch_no, "room_seats": room.seat_cap()}
+        if room.session_type == "coop":
+            plan["save_name"] = room.save_name
+        return plan
     if room.session_type == "adventure":
         # THE ADVENTURE PLAN (v5, design section 5): the room's hub code, the
         # relay, and "any seat". The launcher boots the TITLE with
@@ -2561,6 +2711,22 @@ def do_start(body, who, now):
     room.members[seat].seen = now
     if seat != room.host_seat:
         return 403, {"error": "not_host"}
+    if room.session_type in ROOM_KINDS:
+        # THE HOST'S PLAY IN A PARTY OR COOP ROOM (v6). No arming, no ready,
+        # no match id: the room is released, every member's plan now says
+        # `started` with a new `launch` number, and each launcher launches its
+        # own game into the room's hub. Anyone who joins later is handed a
+        # started plan and launches on joining. Pressed again (nobody's game
+        # up any more) it relaunches everyone. Needs only the host: a coop
+        # host may start alone and have friends drop in.
+        if room.state != "lobby":
+            return 409, {"error": "not_in_lobby"}
+        room.started = True
+        room.launch_no = min(room.launch_no + 1, LAUNCH_NO_MAX)
+        room.push("started", launch=room.launch_no)
+        log("room %s start %s launch=%d (%d in)"
+            % (code, room.session_type, room.launch_no, len(room.members)))
+        return 200, {"cursor": room.seq, "launch": room.launch_no}
     if room.session_type != "vs":
         # No start gate in an adventure room (design section 5): every member
         # got its plan at create/join and presses Play whenever it likes.
@@ -3030,7 +3196,7 @@ def do_poll(body, who, now):
     # behind the ring and resynced (getting chat only, no `go` event) still has
     # its plan and can spawn. Belt and suspenders; the launcher prefers the
     # event's plan and falls back to this.
-    if room.state == "go" or (room.session_type == "adventure"
+    if room.state == "go" or (room.session_type in HUB_TYPES
                               and room.state != "closed"):
         out["plan"] = member_plan(room, seat)
     return 200, out
@@ -3225,7 +3391,7 @@ def sweep(now):
                     drop_member(room, seat, "timeout")
                     if room.state == "closed":
                         break
-            if room.session_type == "adventure":
+            if room.session_type in HUB_TYPES:
                 # Exempt from ROOM_IDLE_S; closed only after ADV_EMPTY_S empty.
                 if room.members:
                     room.empty_since = None
