@@ -112,6 +112,8 @@ struct VsRefStats {
                        spills, syno_tx, syno_rx,
                        frames_bad, events_bad, syno_bad;  // dropped by the field checks
     // FIELD4 F9-b / F9-c: claims never made because the referee would refuse them
+    unsigned long long stars_shown;     // VSREF3 V4: stars kept over another seat's head
+    unsigned long long shown_frames;    // ... and the frames they were drawn there
     unsigned long long touches_gated;   // a star / marker touch while my body may not act
     unsigned long long hits_gated;      // an attack contact on a puppet that cannot be hit
 };

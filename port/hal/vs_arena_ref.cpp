@@ -123,6 +123,12 @@ enum : int {
     kStarTouchMask = 0x400000,   // func_ov002_020e930c: a body touched it
     kHoldMs = 500,               // no verdict: treated as denied (4.3)
     kFlyoffFrames = 10,
+    kShowMaxMs = 3000,           // V4: a collected star stays over the winner's head this long at most
+    kShowMinMs = 700,            // ... and at least this long (the winner's pose reaches us a trip late)
+    kShowNoPoseMs = 1500,        // ... or until here when the winner's stream never shows the pose
+    kShowPoseGapFrames = 8,      // frames out of the pose that end it
+    kStarPoseState = 24,         // St_NoControl: the star-get pose (data_ov002_0211022c)
+    kHeadAbove = 0xc8000,        // the ROM's own hold offset over the head (star5_arena)
     kHitRetryFrames = 8,
     kLocalTimeupGraceMs = 3000,
     kReportMs = 10000,
@@ -170,6 +176,13 @@ struct Inst {
     bool rig_break_sent, rig_race_done;
     unsigned rig_hurt_ref;       // hurtgrab rig: referee ms seat 1 hurt itself on this star
     bool rig_second;             // ... and went back for it
+    // V4 (VSREF3): the star another seat took stays over that seat's head for its
+    // star-get dance (no cylinder, never collectible), then goes out
+    bool shown;
+    unsigned char shown_seat;
+    unsigned shown_ms;
+    bool shown_seen;             // the winner's stream has shown the star-get pose
+    int shown_off;               // frames since it left the pose
 };
 
 struct Ref {
@@ -802,6 +815,79 @@ void on_marker_broken(const RefEvent &e) {
     if (e.seat == g.seat) finish_claim(e.c, 1, 0, 0xFF);
 }
 
+// ---------------------------------------------------------------------------
+// V4: THE HELD STAR ON THE OTHER CONSOLES. The ROM draws the star over the
+// collector's head on every DS; here only the collector's console owns the
+// actor, and the others used to destroy theirs the instant the verdict named
+// the winner. Now they keep it, switch its cylinder off (nobody can touch it),
+// pin it to the winner's puppet at the ROM's own hold height and let it go out
+// when the winner's stream leaves the star-get pose (at most kShowMaxMs).
+// ---------------------------------------------------------------------------
+unsigned my_frame_now();
+
+bool winner_in_star_pose(int seat) {
+    ArenaSample smp[2];
+    if (vs_arena_samples(seat, smp, 1) <= 0) return false;
+    return (smp[0].s.flags & kArenaStarLock) != 0 ||
+           smp[0].s.state_idx == kStarPoseState;
+}
+
+bool show_star_start(Inst &i, char *s, int winner) {
+    static const bool off = env_on("SM64DS_ARENA_NOHELDSTAR");   // the control row: the old behaviour
+    if (off || !g.active) return false;
+    char *wb = body_of(winner);
+    if (!wb || winner == g.seat) return false;
+    // the marker lets go of the star at once, so a spill can use it again; the
+    // star's own effect actor is released when it goes out
+    if (char *m = _ZN8dActor_c10FindWithIDEj(u32r(s, 0x434)))
+        LinkSilverStarAndStarMarker(m, nullptr);
+    s32r(s, 0x128) |= 1;                  // its cylinder off
+    i.shown = true;
+    i.shown_seat = (unsigned char)winner;
+    i.shown_ms = now_ms();
+    i.shown_seen = false;
+    i.shown_off = 0;
+    ++g.st.stars_shown;
+    std::fprintf(stderr, "[vsarena-ref] HELD STAR inst=%d: kept over the head of seat %d "
+                 "(frame %u)\n", (int)(&i - g.inst), winner, my_frame_now());
+    return true;
+}
+
+void show_star_end(Inst &i, char *s, const char *why) {
+    i.shown = false;
+    std::fprintf(stderr, "[vsarena-ref] HELD STAR inst=%d out after %u ms (%s, pose seen %d)\n",
+                 (int)(&i - g.inst), now_ms() - i.shown_ms, why, i.shown_seen ? 1 : 0);
+    if (s) unlink_and_destroy_star(s);
+}
+
+void shown_stars() {
+    for (int k = 1; k < kMaxInst; ++k) {
+        Inst &i = g.inst[k];
+        if (!i.used || !i.shown) continue;
+        char *s = star_by_uid(i.uid);
+        if (!s) { i.shown = false; continue; }
+        char *wb = body_of(i.shown_seat);
+        const unsigned age = now_ms() - i.shown_ms;
+        if (!wb) { show_star_end(i, s, "winner gone"); continue; }
+        if (age >= (unsigned)kShowMaxMs) { show_star_end(i, s, "time limit"); continue; }
+        if (winner_in_star_pose(i.shown_seat)) { i.shown_seen = true; i.shown_off = 0; }
+        else if (i.shown_seen) ++i.shown_off;
+        if (age >= (unsigned)kShowMinMs &&
+            ((i.shown_seen && i.shown_off >= kShowPoseGapFrames) ||
+             (!i.shown_seen && age >= (unsigned)kShowNoPoseMs))) {
+            show_star_end(i, s, i.shown_seen ? "winner left the pose" : "pose never seen");
+            continue;
+        }
+        s32r(s, 0x5c) = s32r(wb, 0x5c);
+        s32r(s, 0x60) = s32r(wb, 0x60) + kHeadAbove;
+        s32r(s, 0x64) = s32r(wb, 0x64);
+        s32r(s, 0x98) = 0;
+        s32r(s, 0xa8) = 0;
+        s32r(s, 0x128) |= 1;
+        ++g.st.shown_frames;
+    }
+}
+
 void on_star_taken(const RefEvent &e) {
     Inst *i = inst_by_id(e.a);
     ++g.st.stars_taken;
@@ -819,8 +905,11 @@ void on_star_taken(const RefEvent &e) {
         else { i->result = 2; i->winner = e.seat; }
         return;
     }
-    // everybody else: the star is gone
-    if (char *s = star_by_uid(i->uid)) unlink_and_destroy_star(s);
+    // everybody else: the star is not collectible any more, but it is shown over
+    // the winner's head for the length of the star-get dance (V4)
+    if (char *s = star_by_uid(i->uid)) {
+        if (!show_star_start(*i, s, e.seat)) unlink_and_destroy_star(s);
+    }
 }
 
 void on_deny(const RefEvent &e) {
@@ -2337,6 +2426,7 @@ void vs_ref_pre_walk(int frame) {
         neutralise_foreign_star_touches();
         marker_pass();
         puppet_stars();
+        shown_stars();
         hit_detect("pre-walk");
         rig_step();
     }
@@ -2479,7 +2569,8 @@ void vs_ref_report(const char *tag) {
                  g.st.hits_claimed, g.st.hits_landed, g.st.hits_denied, g.st.spills,
                  g.st.syno_tx, g.st.syno_rx, g.st.frames_bad, g.st.events_bad,
                  g.st.syno_bad, g.ledger[0], g.ledger[1], g.ledger[2],
-                 g.ledger[3], (unsigned)g.progress, g.st.touches_gated, g.st.hits_gated);
+                 g.ledger[3], (unsigned)g.progress, g.st.touches_gated, g.st.hits_gated,
+                 g.st.stars_shown, g.st.shown_frames);
 }
 
 }  // namespace port
