@@ -884,6 +884,8 @@ struct GwStats {
                                    // cache drop (gw_row_drawable)
     unsigned long long pal_rows, pal_writes;   // GHOSTLOOK1: ghosts drawn in
                                                // their own colours; row writes
+    unsigned long long door_snaps;   // GHOSTDOOR1: door sequences flagged as a
+                                     // teleport on the first frame
 };
 GwStats g_gws;
 
@@ -906,6 +908,7 @@ bool     g_gw_prev_have = false;
 int      g_gw_prev[3];
 int      g_gw_prev_level = -1;
 bool     g_gw_warp = false;
+unsigned char g_gw_prev_dkind = 0;   // GHOSTDOOR1: the last tick's door kind
 int      g_gw_v[3];
 unsigned g_gw_last_report_ms = 0;
 unsigned g_gw_frame = 0;
@@ -1990,6 +1993,22 @@ void gw_send(unsigned now) {
         g_gw_prev_level = level;
     }
 
+    /* GHOSTDOOR1 (A3): THE DOOR TOUCH IS A TELEPORT. func_ov100_021451c4 ->
+       func_ov100_02145170 puts the player 100 units in front of (or behind)
+       the door and turns him to the door's heading in the SAME tick the door
+       takes him (CanEnterDoor -> the no-control state), up to ~175 units and
+       45 degrees from where he stood: under gw_snap_units, so it went out as
+       a walk and the others slid and spun him. The first tick of a door
+       sequence is flagged as a teleport, so they hold him and snap. */
+    const unsigned char dkind = gw_legacy() ? 0 : ghostdoor::sender_kind(a);
+    if (!gw_legacy()) ghostdoor::sender_probe(a, g_gw_frame, dkind);
+    if (dkind && !g_gw_prev_dkind) {
+        g_gw_warp = true;
+        g_gw_v[0] = g_gw_v[1] = g_gw_v[2] = 0;
+        ++g_gws.door_snaps;
+    }
+    g_gw_prev_dkind = dkind;
+
     if (gw_pose_probe() > 0 && (g_gw_frame % (unsigned)gw_pose_probe()) == 0)
         std::fprintf(stderr, "[gwpose] t=%u f=%u LOCAL seat=%d anim=%u cur=%d "
                      "hash=%08x\n", now, g_gw_frame, comms_hub_my_seat(),
@@ -2141,7 +2160,7 @@ void gw_report(const char *tag) {
                  "clamped=%llu target_ghost=%llu near_ghost=%llu seat_fix=%llu "
                  "adopted=%llu cut_nosend=%llu cut_frames=%llu cut_drawn=%llu "
                  "shown_frames=%llu comebacks=%llu pal_rows=%llu "
-                 "pal_writes=%llu pal_held=%llu cut=%d names=[%s]\n",
+                 "pal_writes=%llu pal_held=%llu door_snaps=%llu cut=%d names=[%s]\n",
                  tag ? tag : "-", comms_hub_my_seat(), (int)data_0209f2f8,
                  g_gws.syng_sent, g_gws.syng_paused, g_gws.syni_sent,
                  g_gws.send_fail, g_gws.syng_recvd, g_gws.syni_recvd,
@@ -2153,7 +2172,7 @@ void gw_report(const char *tag) {
                  g_gws.near_ghost, g_gws.seat_fix, g_gws.adopted,
                  g_gws.cut_nosend, g_gws.cut_frames, g_gws.cut_drawn,
                  g_gws.shown_frames, g_gws.comebacks, g_gws.pal_rows,
-                 g_gws.pal_writes, g_gws.pal_held,
+                 g_gws.pal_writes, g_gws.pal_held, g_gws.door_snaps,
                  data_0209fc48 != 0 ? 1 : 0, names);
 }
 
