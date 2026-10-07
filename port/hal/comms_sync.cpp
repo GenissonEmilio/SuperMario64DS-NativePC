@@ -67,6 +67,7 @@
 #include "voice_chat.h"      // run mp1 fold: the SYNG talking bit mirrors
                              // voice_talking() (VOICE1 exports it)
 #include "player_fields.h"
+#include "ghost_door.h"      // GHOSTDOOR1: door / area / hidden look of a hub ghost
 #include "host_settings.h"   // port::adventure_ghost_mode(): adventure runs this
                              // layer without SM64DS_SYNC
 
