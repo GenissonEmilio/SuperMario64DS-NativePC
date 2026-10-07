@@ -3502,6 +3502,11 @@ void gw_follow() {
         g_gw_pal_body[i] = a;
         ++z.driven;
         shown_any = true;
+        if (gw_err_log())
+            std::fprintf(stderr, "[gwshown] t=%u f=%u seat=%d body=%d bc=%u "
+                         "want=%u fade=%d\n", comms_hub_now_ms(), g_gw_frame,
+                         s, i, gw_char(a), (unsigned)sm.character,
+                         port_adventure_ghost_fade(i));
         if (gw_look_probe() > 0 &&
             (g_gw_frame % (unsigned)gw_look_probe()) == 0) {
             char *c = (char *)a;

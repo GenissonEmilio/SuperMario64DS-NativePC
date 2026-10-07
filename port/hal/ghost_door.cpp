@@ -118,6 +118,17 @@ unsigned char sender_frame(const void *body) {
 
 bool sender_hidden(const void *body) {
     if (!body) return false;
+    /* SM64DS_GHOST_TEST_HIDE=<a>-<b>: a TEST hook for the proof rows, inert
+       unset. Calls a..b of this function count as "hidden" (one call per
+       sent tick), standing in for a cannon or a pipe the script cannot reach. */
+    static int ta = -2, tb = 0, calls = 0;
+    if (ta == -2) {
+        const char *e = std::getenv("SM64DS_GHOST_TEST_HIDE");
+        ta = -1;
+        if (e && std::sscanf(e, "%d-%d", &ta, &tb) != 2) ta = -1;
+    }
+    ++calls;
+    if (ta >= 0 && calls >= ta && calls <= tb) return true;
     const char *c = (const char *)body;
     if (rb(c, 0x6f5) == 0) return true;                          // mOpacity
     if (*(const unsigned *)(c + 0xb0) & 0x10u) return true;      // held / eaten
