@@ -1180,7 +1180,9 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat, unsigned t_arr) {
         ++g_gws.drop_seat;
         return;
     }
-    if ((f.flags & ~(0x1fu | (unsigned)kGwFrameClock)) || f.character > 3 ||
+    if ((f.flags & ~(0x1fu | (unsigned)kGwFrameClock |
+                     (unsigned)ghostdoor::kFlagHidden)) || f.character > 3 ||
+        ((f.flags & ghostdoor::kFlagHidden) && !(f.flags & kGwFrameClock)) ||
         f.anim_id >= kPlayerAnimCount || f.level_id > 0xff ||
         (!(f.flags & kGwFrameClock) &&
          (f.reserved[0] || f.reserved[1] || f.reserved[2])) ||
@@ -1492,6 +1494,7 @@ struct GwSample {
     int  buf_ms;             // the draw delay behind the sender's clock
     unsigned char door_kind;   // GHOSTDOOR1: from the frame at the draw time
     unsigned char door_frame;
+    bool hidden;               // ...and: his own state hides his body
 };
 GwSample g_gw_last[kHubMaxSeats];   // GHOSTDOOR1: the last sample drawn per seat
 
@@ -1502,9 +1505,11 @@ inline void gw_look_of(const HubGhostFrame &f, GwSample *o) {
     if (f.flags & kGwFrameClock) {
         o->door_kind = (unsigned char)(f.area >> ghostdoor::kDoorShift);
         o->door_frame = o->door_kind ? (unsigned char)(f.vy & 0xff) : 0;
+        o->hidden = (f.flags & ghostdoor::kFlagHidden) != 0;
     } else {
         o->door_kind = 0;
         o->door_frame = 0;
+        o->hidden = false;
     }
 }
 
@@ -1805,6 +1810,7 @@ bool gw_sample_fc(int seat, unsigned tnow, GwSample *o) {
 bool gw_sample(int seat, unsigned now, GwSample *o) {
     o->door_kind = 0;
     o->door_frame = 0;
+    o->hidden = false;
     return gw_legacy() ? gw_sample_legacy(seat, now, o)
                        : gw_sample_fc(seat, now, o);
 }
@@ -2186,6 +2192,7 @@ void gw_send(unsigned now) {
            vy is a velocity the follower never reads */
         f.area = (unsigned char)((dkind << ghostdoor::kDoorShift) |
                                  ghostdoor::pack_area(data_02092120));
+        if (ghostdoor::sender_hidden(a)) f.flags |= ghostdoor::kFlagHidden;
 
         f.vy = dkind ? (short)ghostdoor::sender_frame(a) : (short)0;
         {
@@ -2195,7 +2202,8 @@ void gw_send(unsigned now) {
             f.reserved[2] = (unsigned char)((st >> 16) & 0xff);
         }
         const unsigned char look = (unsigned char)(kGhostGrounded | kGhostTalking |
-                                                   kGhostPaused);
+                                                   kGhostPaused |
+                                                   ghostdoor::kFlagHidden);
         const bool moved = !g_gw_sent_have || g_gw_warp ||
             f.x != g_gw_sent.x || f.y != g_gw_sent.y || f.z != g_gw_sent.z ||
             f.yaw != g_gw_sent.yaw || f.anim_id != g_gw_sent.anim_id ||
@@ -3322,6 +3330,14 @@ void gw_follow() {
         }
         if (sm.y < kDeathPlaneY) {         // falling out of the level: hidden
             ++g_gws.below;
+            ghostdoor::watcher_release(s);
+            gw_park_body(a);
+            continue;
+        }
+        if (sm.hidden && !g_gw[s].leaving) {
+            /* GHOSTDOOR1: his own state hides his body (a cannon, a pipe, a
+               warp): it is hidden here too, not left hovering at the mouth */
+            ++g_gws.hid_frames;
             ghostdoor::watcher_release(s);
             gw_park_body(a);
             continue;
