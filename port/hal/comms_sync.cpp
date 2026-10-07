@@ -3602,6 +3602,20 @@ void gw_target_probe() {
 }
 }  // namespace
 
+// GHOSTDOOR1 (queue drain): THE HUB IS DRAINED DURING MY OWN STAR SELECT.
+// A painting runs the star select as an interlude inside one level frame
+// (hal/level_change.cpp), where sync_tick never runs: the hub's 64-slot ghost
+// FIFO filled in about a second and the rest of the select's 15 to 20 s of
+// frames were dropped at the I/O thread (queue=284 on a field log), so every
+// friend jumped to a stale spot when the course began. Called once per
+// interlude frame (tests/walk_window.cpp port_interlude_frame), this keeps
+// each seat's ring on its newest frames instead; nothing is drawn or sent.
+extern "C" void port_adventure_ghost_interlude() {
+    if (!g_hub || gw_legacy()) return;
+    gw_recv();
+    ++g_gws.drains;
+}
+
 // hal/player_bridges.cpp's two faces: is this body a ghost body on the hub,
 // and park it (after its draw).
 extern "C" int port_adventure_hub_body(int slot) {
