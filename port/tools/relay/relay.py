@@ -1620,6 +1620,8 @@ async def run():
         % ("loaded" if referee is not None else "MISSING (arena off)",
            REFEREE_TICK_S * 1000,
            "on" if REFEREE_KICK else "off"))
+    log("party: roles 4 (party) and 5 (coop), seats=%d kinds=%s"
+        % (PARTY_SEATS, ",".join(t.decode("ascii") for t in PARTY_ORDER)))
 
     stop = asyncio.Event()
 
