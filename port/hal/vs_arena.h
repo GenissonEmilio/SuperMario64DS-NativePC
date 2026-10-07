@@ -267,6 +267,15 @@ int vs_arena_state_index(const void *body);
 // ---------------------------------------------------------------------------
 void vs_arena_sound_request(unsigned kind, unsigned id, const void *v);
 
+// VSPUP2 (V5): remote character sounds are heard near, fading with distance.
+// The distance is measured from MY body (not the camera) with the ROM's own
+// metric (x and z as they are, y doubled), in world units; both positions are
+// world 20.12 {x, y, z}. Gain is 1.0 up to the near range, 0.0 from the far
+// range on, linear between (defaults 90 and 450; SM64DS_PUPPET_SFX_RANGE=
+// <near>,<far> or "off"). Party sounds (PSND1) reuse these.
+double vs_puppet_sfx_distance(const int me[3], const int src[3]);
+float vs_puppet_sfx_gain(const int me[3], const int src[3]);
+
 // ---------------------------------------------------------------------------
 // BODIES OF ABSENT SEATS. A seat with no console is taken out of play the way
 // the cartridge takes a lost player out (live byte 0, its "lost" bit) and
