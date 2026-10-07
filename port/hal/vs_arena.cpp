@@ -793,6 +793,15 @@ unsigned long long g_sfx_cap[2] = {0, 0}, g_sfx_drop = 0;
 
 void pup_report();
 
+// the length the ROM's own fade should see for a puppet sound at distance
+// `dist` from my body: its full / none range is data_02099fa8 / data_02099fac
+// (90 / 550); the near..far ramp is mapped onto it
+double pup_sfx_romdist(double dist) {
+    const double rn = (double)data_02099fa8, rf = (double)data_02099fac;
+    if (dist <= g_pc.sfx_near) return dist < rn ? dist : rn;
+    return rn + (dist - g_pc.sfx_near) * (rf - rn) / (g_pc.sfx_far - g_pc.sfx_near);
+}
+
 bool pup_enabled() {
     if (g_pc.enabled < 0) {
         const char *e = std::getenv("SM64DS_PUPPET");
@@ -1355,9 +1364,7 @@ void pup_play_sounds(int seat, char *a, const PupDraw &d, Pup &pp,
                 }
                 // the length the ROM should see: same direction, a length whose
                 // ROM fade equals the near..far ramp from my body
-                const double rn = (double)data_02099fa8, rf = (double)data_02099fac;
-                romd = dist <= g_pc.sfx_near ? (dist < rn ? dist : rn)
-                                             : rn + (dist - g_pc.sfx_near) * (rf - rn) / (g_pc.sfx_far - g_pc.sfx_near);
+                romd = pup_sfx_romdist(dist);
                 const double tx = (double)(vec[0] >> 12), ty = (double)(vec[1] >> 12) * 2.0,
                              tz = (double)(vec[2] >> 12);
                 const double len = std::sqrt(tx * tx + ty * ty + tz * tz);
@@ -1390,6 +1397,35 @@ void pup_play_sounds(int seat, char *a, const PupDraw &d, Pup &pp,
 // One game frame's worth of puppet work, right before the actor walk.
 void pup_before_walk() {
     if (!pup_enabled() || g.seat < 0 || data_0209f2d8 != 1) return;
+    {
+        // LAB (VSPUP2 rows): SM64DS_PUPPET_SFX_RIG=<frame> makes MY body play one effect
+        // (kind 0, id 65) and one character voice (kind 1, id 252) at itself every 24
+        // frames from that frame, so a puppet sound is always in the stream.
+        static int rig = -2;
+        if (rig == -2) { const char *e = std::getenv("SM64DS_PUPPET_SFX_RIG"); rig = e && *e ? std::atoi(e) : -1; }
+        if (rig >= 0 && (int)g.frame >= rig && ((int)g.frame - rig) % 24 == 0 && g.seat < kArenaSeats &&
+            data_0209f394[g.seat]) {
+            char *me = (char *)data_0209f394[g.seat];
+            _ZN5Sound4PlayEjjRK7Vector3(0u, 65u, me + kPlayerSound);
+            _ZN5Sound4PlayEjjRK7Vector3(1u, 252u, me + kPlayerSound);
+        }
+    }
+    if (pup_sfx_log()) {
+        static bool table_done = false;      // the distance rule at 50 / 200 / 400 / 600 units, once
+        if (!table_done) {
+            table_done = true;
+            pup_sfx_cfg();
+            static const int dists[] = {50, 200, 400, 600};
+            for (int i = 0; i < 4; ++i) {
+                const int me[3] = {0, 0, 0}, src[3] = {dists[i] << 12, 0, 0};
+                const double dd = vs_puppet_sfx_distance(me, src);
+                std::fprintf(stderr, "[pup-sfx2] table dist=%d gain=%.2f %s romvec_len=%.0f (rule %.0f..%.0f, range %s)\n",
+                             dists[i], vs_puppet_sfx_gain(me, src), dd >= g_pc.sfx_far ? "SKIPPED" : "played",
+                             dd >= g_pc.sfx_far ? -1.0 : pup_sfx_romdist(dd), g_pc.sfx_near, g_pc.sfx_far,
+                             g_pc.sfx_range_on ? "on" : "OFF");
+            }
+        }
+    }
     // my own sounds that did not fit in last frame's SYNS go in this one's
     for (int k = 0; k < 2; ++k)
         if (g_sq[k].n > 0 && !g.sfx[k]) {
@@ -1434,12 +1470,15 @@ void pup_before_walk() {
                          "push=%d,%d,%d\n", g.frame, g.seat, hf, ow, pb[0], pb[1], pb[2]);
     }
     {
-        static int near_at = -2, near_units = 30;
+        static int near_at = -2, near_units = 30, near_dz = 0;
         static bool near_done = false;
         if (near_at == -2) {
             const char *e = std::getenv("SM64DS_PUPPET_NEAR");
             near_at = e && *e ? std::atoi(e) : -1;
-            if (e) if (const char *c = std::strchr(e, ':')) near_units = std::atoi(c + 1);
+            if (e) if (const char *c = std::strchr(e, ':')) {
+                near_units = std::atoi(c + 1);
+                if (const char *c2 = std::strchr(c + 1, ':')) near_dz = std::atoi(c2 + 1);   // VSPUP2: optional dz
+            }
         }
         if (near_at >= 0 && !near_done && (int)g.frame >= near_at && g.seat < kArenaSeats &&
             data_0209f394[g.seat]) {
@@ -1449,12 +1488,55 @@ void pup_before_walk() {
                 const char *pk = (const char *)data_0209f394[k];
                 *(int *)(me + 0x5c) = *(const int *)(pk + 0x5c) + (near_units << 12);
                 *(int *)(me + 0x60) = *(const int *)(pk + 0x60);
-                *(int *)(me + 0x64) = *(const int *)(pk + 0x64);
+                *(int *)(me + 0x64) = *(const int *)(pk + 0x64) + (near_dz << 12);
                 near_done = true;
                 std::fprintf(stderr, "[pup-near] f=%u my body placed %d units from the "
                              "puppet of seat %d\n", g.frame, near_units, k);
                 break;
             }
+        }
+    }
+    // LAB (VSPUP2 pictures): SM64DS_PUPPET_LOOK=<frame>[:<dx>:<dz>] pins MY body
+    // from that frame on, every frame, and turns it to face the first driven
+    // puppet, so my camera settles on a puppet that stands in front of it. With
+    // dx / dz (units) my body is first placed at puppet + (dx, dz); without them it
+    // stays where it stands.
+    {
+        static int look_at = -2, look_dx = 0, look_dz = 0;
+        static bool look_off = false, look_set = false;
+        static int look_pos[3];
+        if (look_at == -2) {
+            const char *e = std::getenv("SM64DS_PUPPET_LOOK");
+            look_at = e && *e ? std::atoi(e) : -1;
+            if (e) if (const char *c = std::strchr(e, ':')) {
+                look_off = std::sscanf(c + 1, "%d:%d", &look_dx, &look_dz) == 2;
+            }
+        }
+        int pk = -1;
+        for (int k = 0; k < g.bodies && k < kArenaSeats; ++k)
+            if (k != g.seat && g_pup[k].driven && data_0209f394[k]) { pk = k; break; }
+        if (look_at >= 0 && (int)g.frame >= look_at && g.seat < kArenaSeats && data_0209f394[g.seat] && pk >= 0) {
+            char *me = (char *)data_0209f394[g.seat];
+            const char *pb = (const char *)data_0209f394[pk];
+            if (!look_set) {
+                look_set = true;
+                for (int i = 0; i < 3; ++i) look_pos[i] = *(int *)(me + 0x5c + 4 * i);
+                if (look_off) {
+                    look_pos[0] = *(const int *)(pb + 0x5c) + (look_dx << 12);
+                    look_pos[1] = *(const int *)(pb + 0x60);
+                    look_pos[2] = *(const int *)(pb + 0x64) + (look_dz << 12);
+                }
+                std::fprintf(stderr, "[pup-look] f=%u my body pinned at %d,%d,%d facing the puppet of seat %d\n", g.frame,
+                             look_pos[0] >> 12, look_pos[1] >> 12, look_pos[2] >> 12, pk);
+            }
+            for (int i = 0; i < 3; ++i) *(int *)(me + 0x5c + 4 * i) = look_pos[i];
+            *(int *)(me + 0x98) = 0;
+            *(int *)(me + 0xa8) = 0;
+            const double ddx = (double)(*(const int *)(pb + 0x5c) - look_pos[0]);
+            const double ddz = (double)(*(const int *)(pb + 0x64) - look_pos[2]);
+            const int yaw = (int)(std::atan2(ddx, ddz) * 32768.0 / 3.14159265358979);
+            *(short *)(me + 0x8e) = (short)yaw;
+            *(short *)(me + 0x94) = (short)yaw;
         }
     }
     for (int k = 0; k < g.bodies && k < kArenaSeats; ++k) {
