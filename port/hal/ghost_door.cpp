@@ -12,6 +12,7 @@
 // (ModelAnim::Render -> UpdateVerts -> UpdateBones at currFrame), so writing
 // the cursor is the whole visual, with no game logic run at all.
 #include "ghost_door.h"
+#include "comms_hub.h"       // comms_hub_now_ms(): the probe lines' clock
 
 #include <cstdio>
 #include <cstdlib>
@@ -158,9 +159,9 @@ void sender_probe(const void *body, unsigned frame, unsigned char kind) {
         last_node = node;
         last_cur = cur;
         std::fprintf(stderr,
-                     "[gwdoor] f=%u kind=%u noctrl=%u step=%u big=%u pos=%d,%d,%d "
+                     "[gwdoor] t=%u f=%u kind=%u noctrl=%u step=%u big=%u pos=%d,%d,%d "
                      "yaw=%d anim=%u door=%p cursor=%d/%d node=%08x\n",
-                     frame, (unsigned)kind, (unsigned)rb(body, 0x70a),
+                     comms_hub_now_ms(), frame, (unsigned)kind, (unsigned)rb(body, 0x70a),
                      (unsigned)rb(body, 0x6e3), (unsigned)rb(body, 0x70b),
                      rd(body, 0x5c), rd(body, 0x60), rd(body, 0x64),
                      (int)*(const short *)((const char *)body + 0x8e),
@@ -229,6 +230,12 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
     d.written = f << 12;
     *(int *)((char *)d.door + kCursor) = d.written;
     ++g_stats.applied;
+    static int probe = -1;
+    if (probe < 0) probe = std::getenv("SM64DS_GHOST_DOOR_PROBE") ? 1 : 0;
+    if (probe)
+        std::fprintf(stderr, "[gwdoorw] t=%u seat=%d kind=%u frame=%u door=%p "
+                     "cursor=%d/%d\n", comms_hub_now_ms(), seat, (unsigned)kind,
+                     (unsigned)frame, d.door, f, n);
 }
 
 }  // namespace ghostdoor
