@@ -22,6 +22,11 @@ extern "C" {
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 extern int _ZN6Player7IsStateERNS_5StateE(void *p, void *st);
 extern char data_ov002_0211022c;      // Player's no-control state
+// TEST ONLY (SM64DS_GHOST_DOOR_UNSAFE): the door's own touch, below
+extern int func_ov100_021451c4(char *door, void *node, char *player);
+extern int data_ov100_021488f4[];
+extern void *data_0209f394[];
+extern unsigned char data_0209f250;
 extern signed char data_02092120;     // the area shown (-1 none)
 extern signed char data_0209f2f8;     // the level
 }
@@ -228,6 +233,19 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
         if (!d.door) { ++g_stats.no_door; return; }
         d.orig = rd(d.door, kCursor);
         d.written = d.orig;
+        /* THE MUST-FAIL CONTROL for the proof rows, inert unset: what the door
+           visual would be if it ran the door's REAL touch (the state logic the
+           header says it must not): the watcher's OWN body is taken into the
+           door sequence, snapped to the door and turned, and his area / level
+           follows. A row that holds the watcher's own position, level and
+           camera fixed fails on this arm. */
+        static int unsafe = -1;
+        if (unsafe < 0) unsafe = std::getenv("SM64DS_GHOST_DOOR_UNSAFE") ? 1 : 0;
+        if (unsafe) {
+            void *me = data_0209f394[data_0209f250];
+            std::fprintf(stderr, "[gwdoorw] UNSAFE: door touch on the LOCAL body\n");
+            if (me) func_ov100_021451c4((char *)d.door, data_ov100_021488f4, (char *)me);
+        }
     } else if (rd(d.door, kCursor) != d.written) {
         /* the local game (or another ghost's drive) moved it: the local
            player is using this door himself. Not ours to write. */
