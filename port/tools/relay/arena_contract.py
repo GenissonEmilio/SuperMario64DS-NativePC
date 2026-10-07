@@ -260,6 +260,17 @@ CLAIMS = [
      "GRAB1: I landed on a player (the ROM's func_ov002_020d869c stomp: "
      "JumpedOnByPlayer + func_ov002_020d9298); stamp; my_frame; ref_frame = "
      "the victim frame I drew"),
+    (17, "CAP_TAKE", "cap id (1..31 a cap the arena places, 32..255 one a hit "
+                     "knocked off)",
+     "VSREF3: my body touched a cap and the ROM's pickup started; aux = the "
+     "cap's place hash (placed caps: (x_units & 0xFF) | (z_units & 0xFF) << 8, "
+     "0 for a knocked-off one); stamp; my_frame"),
+    (18, "CAP_DROP", "the look (0 Mario, 1 Luigi, 2 Wario) of the cap that "
+                     "came off",
+     "VSREF3: my body was hurt and the ROM popped my cap (St_Hurt_Init -> "
+     "func_ov002_020d93ac); aux = my angle Y (u16); ref_frame = my angle X "
+     "(low 16) | my angle Z (high 16); my_frame = the frame it popped; the "
+     "pop position is the referee's own sample of me"),
 ]
 
 EVENTS = [
@@ -312,6 +323,22 @@ EVENTS = [
     (18, "STOMPED", "GRAB1: seat victim; a stomper; c claim id; t stamp; xyz "
                     "stomper position (Fix12). No star, no hurt: the ROM's "
                     "squash and the stomper's bounce"),
+    (19, "CAP_TAKEN", "VSREF3: seat taker; a cap id; b look (0..2); c claim "
+                      "id; d ms until a placed cap is back (0 = a knocked-off "
+                      "cap never comes back); t stamp; xyz taker position. "
+                      "Every other console deletes its copy of the cap; the "
+                      "taker keeps the ROM's own pickup"),
+    (20, "CAP_DROPPED", "VSREF3: seat victim; a new cap id (32..255); b look "
+                        "(0..2); c claim id; d angle Y; e angle X (angle Z "
+                        "is 0 on the wire); t stamp; xyz pop position "
+                        "(Fix12, already the ROM's +0x82000 above the body). "
+                        "Every console but the victim's spawns the cap the "
+                        "ROM spawns (actor 0x10d, param (look << 8) | 5, "
+                        "speed 0xb000)"),
+    (21, "CAP_STATE", "SNAPSHOT ONLY (seq 0): seat 0xFF; a cap id; b 1 a "
+                      "placed cap that is taken / 2 a knocked-off cap lying "
+                      "there; c ms until the placed cap is back / the "
+                      "knocked-off one expires; d look; xyz last position"),
 ]
 
 DENY_REASONS = [
@@ -365,6 +392,15 @@ NUMBERS = {
     "GRAB_STUCK_MS": 3000,
     "GRAB_SPEED_MAX": 0x40000,
     "STOMP_MIN_MS": 250,
+    "CAP_R": 200,
+    "CAP_FLIGHT_SLACK": 300,
+    "CAP_FLIGHT_MS": 2000,
+    "CAP_RESPAWN_MS": 1500,
+    "CAP_LIFE_MS": 7000,
+    "CAP_WORN_MS": 3000,
+    "CAP_HURT_EVIDENCE_MS": 1500,
+    "CAP_DROP_WAIT_MS": 150,
+    "CAP_DROP_MIN_MS": 1000,
 }
 
 # The 78 Player::State records in g_player_states order
@@ -501,6 +537,19 @@ RULES = [
     "(GRAB1, F9-d): an airborne claimant falling onto a player in reach, "
     "STOMPED to everyone (the victim squashes, the stomper bounces); never "
     "a star, never a hurt; one per pair per STOMP_MIN_MS.",
+    "VSREF3 (caps): a cap the arena places has an id 1..31 (the arena's cap "
+    "table, sorted by x, z, y) and a cap a hit knocks off has one the referee "
+    "issues (32..255). CAP_TAKE is a claim like GRAB: the earliest stamp wins "
+    "(DENY LOST d = winner for the others, GONE once the cap is not there), "
+    "the claimant must be able to act (STATE) and within CAP_R of the cap "
+    "(RANGE; a knocked-off cap flies for CAP_FLIGHT_MS and gets "
+    "CAP_FLIGHT_SLACK more). A taken placed cap is back CAP_RESPAWN_MS after "
+    "the stamp, on every console from the event time; a knocked-off cap lies "
+    "CAP_LIFE_MS. CAP_DROP is the hurt wearer's report that the ROM popped its "
+    "cap: granted only to a seat whose own SYNS showed that cap look within "
+    "CAP_WORN_MS and showed a hurt within CAP_HURT_EVIDENCE_MS, once per "
+    "wearing; the pop position is the referee's own sample of the seat, never "
+    "the claim's.",
     "Phase A: classic mode only (READY mode != 0 is DENY UNSUPPORTED); EAT / "
     "SPIT / SWALLOW / ESCAPE are provisional for A5; speed strikes are logged, "
     "not kicked.",
