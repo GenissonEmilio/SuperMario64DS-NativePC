@@ -11588,6 +11588,9 @@ list(APPEND SLICE_COMMS_SOURCES hal/comms_sync.cpp)
 # unless SM64DS_ADVENTURE is on AND a relay or SM64DS_HUB_PORT is named, so
 # linking it changes no behaviour; see hal/comms_hub.h.
 list(APPEND SLICE_COMMS_SOURCES hal/comms_hub.cpp)
+# Run mp1 wave 56 lane WIRE1: party / coop presence ('SYNL') and the hub_on_kind
+# pump. INERT unless a hub is live in a non-arena session; see hal/hub_presence.h.
+list(APPEND SLICE_COMMS_SOURCES hal/hub_presence.cpp)
 # Run mp1 lane ARENACORE1: arena-mode VS (no rounds; the referee is the relay).
 # INERT unless SM64DS_VS_NETMODE=arena with a VS map; see hal/vs_arena.h.
 list(APPEND SLICE_COMMS_SOURCES hal/vs_arena.cpp)
