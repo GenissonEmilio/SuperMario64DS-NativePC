@@ -1166,6 +1166,13 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat, unsigned t_arr) {
         ++g_gws.drop_field;
         return;
     }
+    /* GHOSTDOOR1: a build-6 frame names a door kind in the area byte's high
+       nibble; a kind we do not know is a bad field */
+    if ((f.flags & kGwFrameClock) &&
+        (unsigned)(f.area >> ghostdoor::kDoorShift) >= (unsigned)ghostdoor::kDoorKinds) {
+        ++g_gws.drop_field;
+        return;
+    }
     gw_epoch_check(seat);
     GwSeat &z = g_gw[seat];
     const unsigned now = GetTickCount();
@@ -1413,7 +1420,22 @@ struct GwSample {
     char mode;               // GHOSTSMOOTH1 probe: i interp, r reckon, o older
                              // than the ring, t / h held (see gw_count)
     int  buf_ms;             // the draw delay behind the sender's clock
+    unsigned char door_kind;   // GHOSTDOOR1: from the frame at the draw time
+    unsigned char door_frame;
 };
+
+// GHOSTDOOR1: the door look the frame carries (ghost_door.h). Only a
+// frame-clock frame (a build-6 sender) means it; the legacy 15 Hz stream's
+// vy is a real velocity.
+inline void gw_look_of(const HubGhostFrame &f, GwSample *o) {
+    if (f.flags & kGwFrameClock) {
+        o->door_kind = (unsigned char)(f.area >> ghostdoor::kDoorShift);
+        o->door_frame = o->door_kind ? (unsigned char)(f.vy & 0xff) : 0;
+    } else {
+        o->door_kind = 0;
+        o->door_frame = 0;
+    }
+}
 
 inline int gw_lerp(int a, int b, long long num, long long den) {
     return a + (int)(((long long)(b - a) * num) / den);
@@ -1639,11 +1661,13 @@ bool gw_sample_fc(int seat, unsigned tnow, GwSample *o) {
         o->anim = o0.f.anim_id; o->cursor = o0.f.anim_frame;
         o->character = o0.f.character;
         o->teleport = (o0.f.flags & kGhostTeleport) != 0;
+        gw_look_of(o0.f, o);
         o->mode = 'o';
         gw_count(seat, 2);
         return true;
     }
     o->character = a->f.character;
+    gw_look_of(a->f, o);
     if (b && !(b->f.flags & kGhostTeleport)) {
         const double num = T - a->ts, den = b->ts - a->ts;
         o->x = gw_lerpd(a->f.x, b->f.x, num, den);
@@ -1693,6 +1717,7 @@ bool gw_sample_fc(int seat, unsigned tnow, GwSample *o) {
     o->anim = nw.f.anim_id; o->cursor = nw.f.anim_frame;
     o->character = nw.f.character;
     o->teleport = (nw.f.flags & kGhostTeleport) != 0;
+    gw_look_of(nw.f, o);
     if (!still && ex > 0.0) {
         o->x += (int)((double)nw.f.vx * ex / fms);
         o->z += (int)((double)nw.f.vz * ex / fms);
@@ -1707,6 +1732,8 @@ bool gw_sample_fc(int seat, unsigned tnow, GwSample *o) {
 }
 
 bool gw_sample(int seat, unsigned now, GwSample *o) {
+    o->door_kind = 0;
+    o->door_frame = 0;
     return gw_legacy() ? gw_sample_legacy(seat, now, o)
                        : gw_sample_fc(seat, now, o);
 }
@@ -2081,9 +2108,13 @@ void gw_send(unsigned now) {
     f.anim_id = player::anim_id(a);
     f.anim_frame = player::anim_frame(a);
     f.stars = (unsigned short)NumStars();
-    f.area = 0;              // one level id per area on this game (data_0209f2f8)
+    f.area = 0;
     if (fc) {
         f.flags |= (unsigned char)kGwFrameClock;
+        /* GHOSTDOOR1: the door kind and the door's own frame (ghost_door.h);
+           vy is a velocity the follower never reads */
+        f.area = (unsigned char)(dkind << ghostdoor::kDoorShift);
+        f.vy = dkind ? (short)ghostdoor::sender_frame(a) : (short)0;
         {
             const unsigned st = comms_hub_now_ms() & 0xffffffu;
             f.reserved[0] = (unsigned char)(st & 0xff);
@@ -2098,6 +2129,7 @@ void gw_send(unsigned now) {
             f.character != g_gw_sent.character ||
             f.level_id != g_gw_sent.level_id ||
             f.stars != g_gw_sent.stars ||
+            f.area != g_gw_sent.area || f.vy != g_gw_sent.vy ||
             (f.flags & look) != (g_gw_sent.flags & look);
         const bool still_due = !g_gw_sent_have ||
             ((seq - g_gw_last_seq) & 0xffffu) >= (unsigned)kGwStillEvery;
@@ -3119,6 +3151,14 @@ static void gw_exit_summary() {
                      z.sm_hold_old, z.sm_hold_tele, z.sm_hold_still,
                      z.sm_streak_max, z.sm_swaps, z.hz, z.buf_ms);
     }
+    {
+        const ghostdoor::Stats &d = ghostdoor::stats();
+        std::fprintf(stderr, "[ghost:exit] doors: %llu sender door starts "
+                     "flagged as teleports; watcher door frames applied %llu, "
+                     "given back %llu, no door near %llu, local door left "
+                     "alone %llu\n", g_gws.door_snaps, d.applied, d.released,
+                     d.no_door, d.yielded);
+    }
     std::fflush(stderr);
 }
                               // (from 1: a seat's show_n starts at 0)
@@ -3174,11 +3214,13 @@ void gw_follow() {
         GwSample sm;
         if (s < 0 || !gw_visible(s) || party_member(i) || gw_cut() ||
             !gw_sample(s, tnow, &sm)) {
+            if (s >= 0) ghostdoor::watcher_release(s);
             gw_park_body(a);               // undriven: parked, not drawn
             continue;
         }
         if (sm.y < kDeathPlaneY) {         // falling out of the level: hidden
             ++g_gws.below;
+            ghostdoor::watcher_release(s);
             gw_park_body(a);
             continue;
         }
@@ -3200,6 +3242,11 @@ void gw_follow() {
         *player::facing(a) = sm.yaw;
         g_drawpos[i][0] = sm.x; g_drawpos[i][1] = sm.y; g_drawpos[i][2] = sm.z;
         g_drawpos_have[i] = 1;
+        /* GHOSTDOOR1 (A2): the door he is using opens on this screen too, by
+           its model animation alone (ghost_door.cpp says why only that) */
+        if (!gw_legacy())
+            ghostdoor::watcher_apply(s, sm.door_kind, sm.door_frame,
+                                     g_drawpos[i]);
         *(int *)((char *)a + 0x98) = 0;
         *(int *)((char *)a + 0xa8) = 0;
         /* THE CHARACTER, through the game's own in-place swap (the door
