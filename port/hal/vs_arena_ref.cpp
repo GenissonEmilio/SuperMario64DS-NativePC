@@ -96,6 +96,7 @@ extern unsigned short data_ov002_020ff29c[];
 struct PortPmfRef { unsigned fn; int delta; };
 extern PortPmfRef data_ov002_021109d8[];
 extern void *port_hud_self;      /* hal/sub_actors.cpp: the live HUD (fBase actor) */
+extern char data_ov002_0210df54;  /* the cap's "follows the player" state holder (the put-on) */
 
 // state objects: St_Hurt, St_Walk-or-Wait (the neutral state the ROM returns to
 // after a no-control sequence), St_NoControl
@@ -114,6 +115,10 @@ enum : int {
     kClassMarker = 0xb4,         // StarMarker
     kClassPlayer = 0xbf,
     kClassHud = 0x14e,
+    kClassCap = 0x10d,           // daObjMarioCap_c (VSREF3)
+    kMaxCaps = 256,
+    kCapPlacedMax = 31,
+    kCapDropBase = 32,
     kMaxInst = 256,
     kMaxClaims = 16,
     kStHurt = 7, kStHurtWater = 8, kStElectrocute = 9, kStBurnFire = 10,
@@ -185,6 +190,25 @@ struct Inst {
     int shown_off;               // frames since it left the pose
 };
 
+// One cap the referee knows by id (VSREF3): a cap the arena places (ids 1..31, cut
+// from the level at the match's start) or one a hit knocked off a head (32..255).
+struct CapRec {
+    bool used;
+    bool placed;
+    int origin[3];               // placed: the ROM's own respawn point (Fix12)
+    unsigned param1;             // placed: the param the ROM respawns it with
+    int area;
+    unsigned short hash;         // placed: the place hash a claim carries
+    unsigned char look;          // 0..2, 0xFF unknown
+    unsigned uid;                // the local actor, 0 none
+    bool gone;                   // taken by a seat: off the field until back_ms
+    unsigned back_ms;            // my ms the placed cap is spawned again (0 never)
+    bool mine;                   // my body's pickup of it waits for its verdict
+    unsigned short cid;          // ... and the claim that asked
+    unsigned claim_ms;
+    unsigned born_ms;
+};
+
 struct Ref {
     bool installed = false;
     bool active = false;         // arena + relay
@@ -248,6 +272,19 @@ struct Ref {
     VsRefEventSink sink = nullptr;
     unsigned last_report = 0;
     bool log = false;
+    // caps (VSREF3)
+    CapRec caps[kMaxCaps];
+    bool caps_ready = false;
+    int caps_n = 0;
+    int caps_try = 0;
+    bool caps_off = false;       // SM64DS_ARENA_NOCAPS=1: the old behaviour (the control row)
+    unsigned drop_uid = 0;       // the cap my own Hurt popped, until the referee names it
+    unsigned drop_cid = 0;
+    unsigned ignored[16];        // knocked-off caps seen and not mine (a ring)
+    unsigned ignored_n = 0;
+    unsigned prev_look = 3;
+    int rig_drop_id = 0;         // capdrop rig: the knocked-off cap seat 1 goes for
+    unsigned rig_drop_at = 0;
     // lab rigs (SM64DS_ARENA_RIG)
     int rig = 0;                 // 0 off, 1 race, 2 hit
     unsigned rig_seed = 1;
@@ -681,7 +718,7 @@ bool ref_event_valid(const RefEvent &e) {
         return seat_ok(e.seat) && e.a != 0 && score_ok(e.b) &&
                e.e < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
     case EV_DENY:
-        return seat_ok(e.seat) && e.a >= 1 && e.a <= 16 && e.b >= 1 && e.b <= 11 &&
+        return seat_ok(e.seat) && e.a >= 1 && e.a <= 18 && e.b >= 1 && e.b <= 11 &&
                (e.d == 0xFF || e.d < 16);
     case EV_HIT:
         return seat_ok(e.seat) && seat_ok(e.a) && e.b <= 1 && e.d <= 0x2000 &&
@@ -703,7 +740,18 @@ bool ref_event_valid(const RefEvent &e) {
         return seat_or_none(e.seat) && e.a != 0 && e.b >= 1 && e.b <= 2 &&
                e.c < 8 && e.d < 256 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
     case EV_ACCEPTED:
-        return seat_ok(e.seat) && e.a >= 1 && e.a <= 16 && e.d < 256;
+        return seat_ok(e.seat) && e.a >= 1 && e.a <= 18 && e.d < 256;
+    case EV_CAP_TAKEN:
+        return seat_ok(e.seat) && e.a != 0 && (e.b <= 2 || e.b == 0xFF) &&
+               e.d <= 10000 && pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
+    case EV_CAP_DROPPED:
+        return seat_ok(e.seat) && e.a >= kCapDropBase && e.b <= 2 &&
+               pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
+    case EV_CAP_STATE:
+        return e.seat == 0xFF && e.a != 0 &&
+               ((e.b == 1 && e.a <= kCapPlacedMax) || (e.b == 2 && e.a >= kCapDropBase)) &&
+               e.c <= 20000 && (e.d <= 2 || e.d == 0xFF) &&
+               pos_ok(e.x) && pos_ok(e.y) && pos_ok(e.z);
     case EV_EATEN:
     case EV_RELEASED:
         return seat_ok(e.seat) && seat_ok(e.a) && e.b <= 4 && pos_ok(e.x) &&
@@ -884,6 +932,10 @@ void shown_stars() {
         s32r(s, 0x98) = 0;
         s32r(s, 0xa8) = 0;
         s32r(s, 0x128) |= 1;
+        if (g.log && (g.st.shown_frames % 10) == 0)
+            std::fprintf(stderr, "[vsarena-ref] HELD STAR inst=%d frame +%u ms: star at (%d,%d,%d), winner's "
+                         "body at (%d,%d,%d)\n", k, age, s32r(s, 0x5c) >> 12, s32r(s, 0x60) >> 12,
+                         s32r(s, 0x64) >> 12, s32r(wb, 0x5c) >> 12, s32r(wb, 0x60) >> 12, s32r(wb, 0x64) >> 12);
         ++g.st.shown_frames;
     }
 }
@@ -894,7 +946,6 @@ void shown_stars() {
 // holder / the player it follows. The census the referee's cap table is cut from,
 // and the timeline of a pickup (follow state, put-on, respawn) on this console.
 // ---------------------------------------------------------------------------
-enum : int { kClassCap = 0x10d };
 struct CapSeen { unsigned uid; unsigned holder, follow; int type; bool live; };
 CapSeen g_cap_seen[48];
 
@@ -941,6 +992,427 @@ void cap_probe() {
         }
 }
 
+// ---------------------------------------------------------------------------
+// CAPS (VSREF3). The referee owns every cap the way it owns every star.
+//
+//   PLACED CAPS   The arena's caps get ids 1..31 at the match's start (sorted by
+//                 x, z, y, the order the referee's table is cut in). My own body
+//                 touching one runs the ROM's pickup at once (the optimistic
+//                 half) and sends CAP_TAKE; the referee grants the earliest
+//                 stamp. Everybody else's console deletes its copy on CAP_TAKEN,
+//                 and every console (the taker's too) spawns the cap again
+//                 CAP_TAKEN.d ms after the event's stamp, the ROM's own
+//                 respawn (its type 4 puts a new one at its origin when the
+//                 put-on is done) moved from "each console when its own
+//                 animation ends" to one instant they all agree on. The taker's
+//                 copy is changed to type 5 so the ROM does not respawn it twice.
+//   A PUPPET never picks a cap up on my screen: the contact a puppet's body
+//                 leaves on a cap cylinder is cleared before the walk.
+//   LOST RACE     The loser's console reverts: the cap that follows it goes, the
+//                 hat morph is undone.
+//   KNOCKED-OFF   My own Player::Hurt pops my cap (func_ov002_020d93ac, from
+//                 St_Hurt_Init / St_HurtWater_Init) on my console only. I see the
+//                 new cap actor appear over my head, claim CAP_DROP with the look
+//                 and the three angles, and when the referee names it (id 32..255)
+//                 every other console spawns the same cap with the ROM's own
+//                 parameters (param (look << 8) | 5, speed 0xb000). It is then a
+//                 cap like any other: first claim takes it, the rest delete theirs.
+// ---------------------------------------------------------------------------
+void release_my_yoshi();
+unsigned g_trace_uid = 0;      // lab: the knocked-off copy whose flight is traced
+int g_trace_n = 0;
+
+// the place hash a CAP_TAKE carries: the death-table slot and x ^ z in whole units
+// (referee.py cap_hash)
+unsigned short cap_hash16(int slot, const int *pos) {
+    return (unsigned short)((slot & 0xFF) | ((((pos[0] >> 12) ^ (pos[2] >> 12)) & 0xFF) << 8));
+}
+
+CapRec *cap_rec(unsigned id) {
+    if (id == 0 || id >= (unsigned)kMaxCaps) return nullptr;
+    return g.caps[id].used ? &g.caps[id] : nullptr;
+}
+
+CapRec *cap_rec_by_uid(unsigned uid) {
+    if (!uid) return nullptr;
+    for (int k = 1; k < kMaxCaps; ++k)
+        if (g.caps[k].used && g.caps[k].uid == uid) return &g.caps[k];
+    return nullptr;
+}
+
+// the record of a placed cap's actor: the actor I know by uid (registered, or spawned back
+// by me), else the level's own death-table slot (id = slot + 1)
+CapRec *cap_rec_of_actor(const char *a) {
+    if (CapRec *r = cap_rec_by_uid(actor_uid(a))) return r;
+    const int slot = (signed char)*(const unsigned char *)(a + 0xce);
+    if (slot >= 0 && slot < kCapPlacedMax && g.caps[slot + 1].used && g.caps[slot + 1].placed)
+        return &g.caps[slot + 1];
+    return nullptr;
+}
+
+char *cap_actor_of(const CapRec &r) {
+    char *a = star_by_uid(r.uid);
+    return a && actor_class(a) == (unsigned)kClassCap ? a : nullptr;
+}
+
+unsigned local_from_stamp(unsigned t) {
+    unsigned r;
+    if (!ref_now(&r)) return now_ms();
+    return now_ms() - (unsigned)(int)(r - t);
+}
+
+void cap_remove_actor(CapRec &r) {
+    if (char *a = cap_actor_of(r)) _ZN7fBase_c18MarkForDestructionEv(a);
+    r.uid = 0;
+}
+
+// the caps the level placed, once, when the match starts
+void caps_register() {
+    struct T { int o[3]; unsigned p1; int area; unsigned uid; unsigned char look; int slot; };
+    T t[48];
+    int n = 0;
+    each_class(kClassCap, [&](char *a) {
+        if (n >= 48) return;
+        const int type = s32r(a, 0x3f0);
+        if (type == 5 || type == 18) return;            // a knocked-off cap is not placed
+        T &x = t[n++];
+        x.o[0] = s32r(a, 0x3c4); x.o[1] = s32r(a, 0x3c8); x.o[2] = s32r(a, 0x3cc);
+        if (!x.o[0] && !x.o[1] && !x.o[2]) { x.o[0] = s32r(a, 0x5c); x.o[1] = s32r(a, 0x60); x.o[2] = s32r(a, 0x64); }
+        x.p1 = u32r(a, 8);
+        x.area = (signed char)*u8p(a, 0xcc);
+        x.uid = actor_uid(a);
+        x.look = (unsigned char)(s32r(a, 0x3f4) < 3 ? s32r(a, 0x3f4) : 0xFF);
+        x.slot = (signed char)*u8p(a, 0xce);
+    });
+    if (n == 0) { if (++g.caps_try > 300) g.caps_ready = true; return; }
+    g.caps_ready = true;
+    g.caps_n = 0;
+    for (int i = 0; i < n; ++i) {
+        // a cap's id is its death-table slot + 1 (distinct for every cap of a map; five
+        // caps stacked on one spot stay apart); a slot out of range takes a free id
+        int id = t[i].slot >= 0 && t[i].slot < kCapPlacedMax ? t[i].slot + 1 : 0;
+        if (id && g.caps[id].used) id = 0;
+        for (int k = 1; !id && k <= kCapPlacedMax; ++k)
+            if (!g.caps[k].used) id = k;
+        if (!id) continue;
+        CapRec &r = g.caps[id];
+        std::memset(&r, 0, sizeof r);
+        r.used = true;
+        r.placed = true;
+        std::memcpy(r.origin, t[i].o, sizeof r.origin);
+        r.param1 = t[i].p1;
+        r.area = t[i].area;
+        r.hash = cap_hash16(id - 1, r.origin);
+        r.look = t[i].look;
+        r.uid = t[i].uid;
+        ++g.caps_n;
+        std::fprintf(stderr, "[cap] TABLE id=%d slot=%d pos=(%d,%d,%d) param1=0x%x look=%d area=%d hash=0x%04x\n",
+                     id, t[i].slot, r.origin[0] >> 12, r.origin[1] >> 12, r.origin[2] >> 12, r.param1,
+                     (int)r.look, r.area, (unsigned)r.hash);
+    }
+    std::fprintf(stderr, "[cap] %d placed caps registered\n", g.caps_n);
+}
+
+// the cap actor of a placed record: its uid, or the one standing at its origin
+char *cap_find_placed(CapRec &r) {
+    if (char *a = cap_actor_of(r)) return a;
+    const int slot = (int)(&r - g.caps) - 1;
+    char *hit = nullptr;
+    each_class(kClassCap, [&](char *a) {
+        if (hit) return;
+        if (s32r(a, 0x3f0) == 5 || (signed char)*u8p(a, 0xce) != slot) return;
+        hit = a;
+    });
+    if (hit) r.uid = actor_uid(hit);
+    return hit;
+}
+
+// undo my ROM pickup: the cap that follows me goes, the hat morph stops, the look is
+// my own again
+void cap_revert(CapRec &r, const char *why) {
+    r.mine = false;
+    ++g.st.cap_lost;
+    char *me = my_body();
+    cap_remove_actor(r);
+    if (!me) return;
+    const unsigned real = *u8p(me, 0x6d9);
+    const unsigned look = (unsigned)(s32r(me, 8) & 0xff);
+    const unsigned flags = u16r(me, 0x73c);
+    u16r(me, 0x73c) = 0;                           // the hat morph's state machine stops
+    *u8p(me, 0x6dc) = (unsigned char)real;         // mPrevCharacter
+    *u8p(me, 0x6dd) = (unsigned char)real;         // mHatCharacter
+    if (look != real) port_player_set_character(me, real);
+    release_my_yoshi();
+    g.prev_look = real;
+    std::fprintf(stderr, "[vsarena-ref] CAP lost (%s): look %u -> %u, cap flags 0x%04x cleared, "
+                 "body state %d\n", why, look, (unsigned)(s32r(me, 8) & 0xff), flags,
+                 vs_arena_state_index(me));
+}
+
+void cap_on_deny(unsigned short cid, int reason, int winner) {
+    for (int k = 1; k < kMaxCaps; ++k) {
+        CapRec &r = g.caps[k];
+        if (r.used && r.mine && r.cid == cid) {
+            std::fprintf(stderr, "[vsarena-ref] CAP_TAKE of cap %d refused: %s (winner %d)\n", k,
+                         reason_name(reason), winner);
+            cap_revert(r, reason_name(reason));
+        }
+    }
+}
+
+void on_cap_taken(const RefEvent &e) {
+    ++g.st.cap_taken;
+    std::fprintf(stderr, "[vsarena-ref] CAP_TAKEN cap=%d by seat %d look=%d back_in=%d claim=%d stamp=%u\n",
+                 e.a, e.seat, (int)(signed char)e.b, e.d, e.c, e.t);
+    if (e.seat == g.seat) finish_claim(e.c, 1, 0, 0xFF);
+    CapRec *r = cap_rec(e.a);
+    if (g.caps_off) return;
+    if (!r) return;
+    r->gone = true;
+    if (e.b <= 2) r->look = (unsigned char)e.b;
+    if (e.seat == g.seat) {
+        r->mine = false;                           // my pickup stands; the follower finishes by itself
+    } else {
+        if (r->mine) cap_revert(*r, "taken by another seat");
+        if (cap_actor_of(*r) || (r->placed && cap_find_placed(*r))) {
+            cap_remove_actor(*r);
+            ++g.st.cap_removed;
+        }
+    }
+    if (r->placed) r->back_ms = e.d ? local_from_stamp(e.t) + e.d : 0;
+    else {
+        if (e.seat == g.seat) r->uid = 0;           // (a knocked-off cap I took: the follower dies alone)
+        std::memset(r, 0, sizeof *r);
+    }
+}
+
+char *spawn_cap_copy(unsigned look, const int *pos, int area, int angx, int angy) {
+    char *s = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
+        kClassCap, ((look & 3u) << 8) | 5u, pos, nullptr, area, -1);
+    if (!s) return nullptr;
+    s16r(s, 0x92) = (short)angx;
+    s16r(s, 0x94) = (short)angy;
+    s16r(s, 0x96) = 0;
+    s32r(s, 0x98) = 0xb000;
+    return s;
+}
+
+void on_cap_dropped(const RefEvent &e) {
+    ++g.st.cap_dropped;
+    std::fprintf(stderr, "[vsarena-ref] CAP_DROPPED cap=%d victim seat %d look=%d at (%d,%d,%d) claim=%d\n",
+                 e.a, e.seat, e.b, e.x >> 12, e.y >> 12, e.z >> 12, e.c);
+    if (e.seat == g.seat) finish_claim(e.c, 1, 0, 0xFF);
+    if (g.caps_off) return;
+    CapRec &r = g.caps[e.a];
+    std::memset(&r, 0, sizeof r);
+    r.used = true;
+    r.placed = false;
+    r.look = (unsigned char)e.b;
+    r.born_ms = now_ms();
+    if (e.seat == g.seat) {
+        r.uid = g.drop_uid;                         // the cap my own console popped
+        g.drop_uid = 0;
+        return;
+    }
+    char *vb = body_of(e.seat);
+    const int area = vb ? (signed char)*u8p(vb, 0xcc) : 0;
+    const int pos[3] = { e.x, e.y, e.z };
+    if (char *s = spawn_cap_copy(e.b, pos, area, (short)e.e, (short)e.d)) {
+        r.uid = actor_uid(s);
+        ++g.st.cap_copies;
+        g_trace_uid = r.uid;
+        g_trace_n = 0;
+    }
+    if (g.rig == 8) { g.rig_drop_id = e.a; g.rig_drop_at = now_ms() + 1600u; }
+}
+
+void on_cap_state(const RefEvent &e) {
+    if (g.caps_off) return;
+    CapRec *r = cap_rec(e.a);
+    if (e.b == 1) {                                 // a placed cap that is taken, back in e.c ms
+        if (!r) return;
+        r->gone = true;
+        cap_remove_actor(*r);
+        if (char *a = cap_find_placed(*r)) { _ZN7fBase_c18MarkForDestructionEv(a); r->uid = 0; }
+        r->back_ms = now_ms() + e.c;
+        return;
+    }
+    if (r && r->used) return;                       // a knocked-off cap I already know
+    CapRec &n = g.caps[e.a];
+    std::memset(&n, 0, sizeof n);
+    n.used = true;
+    n.look = (unsigned char)(e.d <= 2 ? e.d : 0xFF);
+    n.born_ms = now_ms();
+    const int pos[3] = { e.x, e.y, e.z };
+    if (char *s = spawn_cap_copy(n.look <= 2 ? n.look : 0, pos, 0, 0, 0)) {
+        n.uid = actor_uid(s);
+        s32r(s, 0x98) = 0;
+        ++g.st.cap_copies;
+    }
+}
+
+
+// LAB WATCH (SM64DS_CAP_WATCH=1, or REFLOG): is a cap still lying where another seat
+// just picked one up?  Triggered by the other seat's teleport flag (the lab rigs put
+// a body on a cap in one step); frames 15..42 later (0.5 s to 1.4 s, after the
+// referee's verdict and before the cap is back) it counts the frames a cap actor
+// stands within 120 units of that spot.  The old behaviour (every console keeps its
+// own copy) leaves the cap there for the whole window; the shared cap leaves none.
+// Also traces a knocked-off cap copy's flight.
+int caps_near(const int *loc) {
+    int n = 0;
+    each_class(kClassCap, [&](char *a) {
+        const long long dx = (long long)(s32r(a, 0x5c) - loc[0]) >> 12;
+        const long long dz = (long long)(s32r(a, 0x64) - loc[2]) >> 12;
+        const long long dy = (long long)(s32r(a, 0x60) - loc[1]) >> 12;
+        if (dx * dx + dz * dz <= 120 * 120 && dy > -300 && dy < 300) ++n;
+    });
+    return n;
+}
+
+void cap_watch() {
+    static const bool on = env_on("SM64DS_CAP_WATCH") || env_on("SM64DS_ARENA_REFLOG");
+    if (!on || !g.started) return;
+    struct W { bool active; int frames, near_frames, start_near; int loc[3]; unsigned f0; };
+    static W w[kArenaSeats];
+    static bool prev_tp[kArenaSeats];
+    for (int k = 0; k < g.bodies && k < kArenaSeats; ++k) {
+        if (k == g.seat) continue;
+        ArenaSample smp[1];
+        if (vs_arena_samples(k, smp, 1) <= 0) continue;
+        const bool tp = (smp[0].s.flags & kArenaTeleport) != 0;
+        W &x = w[k];
+        if (tp && !prev_tp[k] && !x.active) {
+            std::memset(&x, 0, sizeof x);
+            x.active = true;
+            x.loc[0] = smp[0].s.x; x.loc[1] = smp[0].s.y; x.loc[2] = smp[0].s.z;
+            x.f0 = my_frame_now();
+            x.start_near = caps_near(x.loc);
+        }
+        prev_tp[k] = tp;
+        if (!x.active) continue;
+        ++x.frames;
+        if (x.frames >= 15 && x.frames <= 42 && caps_near(x.loc) > 0) ++x.near_frames;
+        if (x.frames == 42) {
+            x.active = false;
+            std::fprintf(stderr, "[cap] WATCH seat=%d jumped at frame %u to (%d,%d,%d): caps within 120 units "
+                         "then=%d, frames 15..42 later with a cap there=%d of 28\n", k, x.f0,
+                         x.loc[0] >> 12, x.loc[1] >> 12, x.loc[2] >> 12, x.start_near, x.near_frames);
+        }
+    }
+    if (g_trace_uid) {
+        char *a = star_by_uid(g_trace_uid);
+        if (!a) { std::fprintf(stderr, "[cap] copy uid %u gone after %d frames\n", g_trace_uid, g_trace_n); g_trace_uid = 0; }
+        else if (g_trace_n % 4 == 0 || g_trace_n < 2) {
+            std::fprintf(stderr, "[cap] copy uid %u frame +%d pos=(%d,%d,%d) vy=%d speed=%d type=%d\n", g_trace_uid,
+                         g_trace_n, s32r(a, 0x5c) >> 12, s32r(a, 0x60) >> 12, s32r(a, 0x64) >> 12,
+                         s32r(a, 0xa8), s32r(a, 0x98), s32r(a, 0x3f0));
+        }
+        if (g_trace_uid && ++g_trace_n > 40) g_trace_uid = 0;
+    }
+}
+
+// once a frame, before the walk
+void caps_pass() {
+    if (!g.started) return;
+    if (!g.caps_ready) caps_register();      // (the lab rigs read the table too)
+    if (g.caps_off) return;
+    char *me = my_body();
+    // a puppet never picks a cap up on my screen: the contact its body left on the
+    // cap's cylinder is cleared (the referee orders who wears it)
+    each_class(kClassCap, [&](char *a) {
+        if (!u32r(a, 0x130) || !u32r(a, 0x134)) return;
+        char *o = _ZN8dActor_c10FindWithIDEj(u32r(a, 0x134));
+        if (!o || actor_class(o) != (unsigned)kClassPlayer || o == me) return;
+        u32r(a, 0x130) = 0;
+        u32r(a, 0x134) = 0;
+        ++g.st.cap_puppet_touches;
+    });
+    // the placed caps that are back
+    const unsigned now = now_ms();
+    for (int k = 1; k <= kCapPlacedMax; ++k) {
+        CapRec &r = g.caps[k];
+        if (!r.used || !r.placed || !r.gone) continue;
+        if (r.back_ms && (int)(now - r.back_ms) < 0) continue;
+        if (!r.back_ms) continue;                    // never comes back
+        if (cap_actor_of(r)) continue;               // the taker's follower is still putting it on
+        const int pos[3] = { r.origin[0], r.origin[1], r.origin[2] };
+        char *s = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(kClassCap, r.param1, pos,
+                                                                  nullptr, r.area, -1);
+        r.gone = false;
+        r.back_ms = 0;
+        if (s) {
+            r.uid = actor_uid(s);
+            ++g.st.cap_respawns;
+            std::fprintf(stderr, "[vsarena-ref] cap %d is back (spawned, frame %u)\n", k, my_frame_now());
+        }
+    }
+    // a pickup that never got a verdict is treated as granted (nothing was refused)
+    for (int k = 1; k < kMaxCaps; ++k) {
+        CapRec &r = g.caps[k];
+        if (r.used && r.mine && now - r.claim_ms > 2000u) r.mine = false;
+    }
+}
+
+// once a frame, after the walk: my own pickup, my own cap popping
+void caps_detect() {
+    if (g.caps_off || !g.caps_ready) return;
+    char *me = my_body();
+    if (!me) return;
+    each_class(kClassCap, [&](char *a) {
+        if (u32r(a, 0x3bc) != (unsigned)(size_t)&data_ov002_0210df54) return;   // not putting on
+        if ((char *)(size_t)u32r(a, 0x3c0) != me) return;
+        const bool knocked = s32r(a, 0x3f0) == 5;
+        CapRec *r = knocked ? cap_rec_by_uid(actor_uid(a)) : cap_rec_of_actor(a);
+        if (!r || r->mine || r->gone) return;
+        unsigned stamp;
+        if (!stamp_for(g.last_post_ms ? g.last_post_ms : now_ms(), &stamp)) return;
+        const unsigned id = (unsigned)(r - g.caps);
+        PClaim *c = make_claim(CLAIM_CAP_TAKE, (unsigned char)id, r->placed ? r->hash : 0, stamp,
+                              my_frame_now(), 0);
+        if (!c) return;
+        r->mine = true;
+        r->cid = c->cid;
+        r->claim_ms = now_ms();
+        r->uid = actor_uid(a);
+        ++g.st.cap_claims;
+        s32r(a, 0x3f0) = 5;                          // (the ROM's own respawn is the referee's now)
+        std::fprintf(stderr, "[vsarena-ref] CAP_TAKE claim %u for cap %u (look %d, frame %u)\n",
+                     (unsigned)c->cid, id, s32r(a, 0x3f4), my_frame_now());
+    });
+    // my own cap popping off: a new cap of my look appears over my head while I am hurt
+    const int st = vs_arena_state_index(me);
+    const int look = s32r(me, 8) & 0xff;
+    if (look <= 2 && (st == kStHurt || st == kStHurtWater || st == 12)) {
+        each_class(kClassCap, [&](char *a) {
+            if (g.drop_uid) return;
+            if (s32r(a, 0x3f0) != 5 || (s32r(a, 0x3f4) & 0xff) != look) return;
+            const unsigned uid = actor_uid(a);
+            if (cap_rec_by_uid(uid)) return;
+            for (unsigned k = 0; k < 16 && k < g.ignored_n; ++k)
+                if (g.ignored[k] == uid) return;
+            const long long dx = (long long)(s32r(a, 0x5c) - s32r(me, 0x5c)) >> 12;
+            const long long dy = (long long)(s32r(a, 0x60) - s32r(me, 0x60)) >> 12;
+            const long long dz = (long long)(s32r(a, 0x64) - s32r(me, 0x64)) >> 12;
+            g.ignored[g.ignored_n++ & 15] = uid;
+            if (dx * dx + dz * dz > 60 * 60 || dy < 60 || dy > 220) return;
+            unsigned stamp;
+            if (!stamp_for(g.last_post_ms ? g.last_post_ms : now_ms(), &stamp)) return;
+            const unsigned angy = (unsigned short)s16r(me, 0x94);
+            const unsigned angx = (unsigned short)s16r(me, 0x92), angz = (unsigned short)s16r(me, 0x96);
+            PClaim *c = make_claim(CLAIM_CAP_DROP, (unsigned char)look, (unsigned short)angy, stamp,
+                                  my_frame_now(), angx | (angz << 16));
+            if (!c) return;
+            g.drop_uid = uid;
+            g.drop_cid = c->cid;
+            ++g.st.cap_drop_claims;
+            std::fprintf(stderr, "[vsarena-ref] my cap popped (look %d): CAP_DROP claim %u, the cap is "
+                         "uid %u (frame %u)\n", look, (unsigned)c->cid, uid, my_frame_now());
+        });
+    }
+}
+
+
 void on_star_taken(const RefEvent &e) {
     Inst *i = inst_by_id(e.a);
     ++g.st.stars_taken;
@@ -984,6 +1456,7 @@ void on_deny(const RefEvent &e) {
         if (kind == CLAIM_HIT) ++g.st.hits_denied;
     }
     finish_claim((unsigned short)cid, -1, reason, winner);
+    if (kind == CLAIM_CAP_TAKE) cap_on_deny((unsigned short)cid, reason, winner);
     if (kind == CLAIM_GRAB)
         for (auto &i : g.inst)
             if (i.used && i.holding && i.grab_cid == cid) {
@@ -1100,6 +1573,9 @@ void apply_event(const RefEvent &e, bool directed) {
         break;
     case EV_STAR_STATE:     on_star_state(e); break;
     case EV_ACCEPTED:       on_accepted(e); break;
+    case EV_CAP_TAKEN:      on_cap_taken(e); break;
+    case EV_CAP_DROPPED:    on_cap_dropped(e); break;
+    case EV_CAP_STATE:      on_cap_state(e); break;
     case EV_EATEN:
     case EV_RELEASED:
         if (e.a == g.seat && e.type == EV_EATEN) finish_claim(e.c, 1, 0, 0xFF);
@@ -1799,13 +2275,19 @@ void rig_parse() {
     else if (std::strncmp(e, "hit", 3) == 0) g.rig = 2;
     else if (std::strncmp(e, "chain", 5) == 0) g.rig = 3;
     else if (std::strncmp(e, "hurtgrab", 8) == 0) g.rig = 5;
+    else if (std::strncmp(e, "caprace", 7) == 0) g.rig = 7;
+    else if (std::strncmp(e, "capdrop", 7) == 0) g.rig = 8;
+    else if (std::strncmp(e, "capforge", 8) == 0) g.rig = 9;
+    else if (std::strncmp(e, "cap", 3) == 0) g.rig = 6;
     if (g.rig == 2 || g.rig == 3) g.rig_real = e[g.rig == 2 ? 3 : 5] == 'r';   // hitr / chainr
     else if (std::strncmp(e, "fuzz", 4) == 0) g.rig = 4;
     const char *c = std::strchr(e, ':');
     if (c) g.rig_seed = (unsigned)std::strtoul(c + 1, nullptr, 10);
     if (g.rig)
         std::fprintf(stderr, "[rig] SM64DS_ARENA_RIG=%s: scripted %s rig, seed %u\n",
-                     e, g.rig == 1 ? "contention" : g.rig == 2 ? "hit" : g.rig == 5 ? "hurtgrab" : "chain",
+                     e, g.rig == 1 ? "contention" : g.rig == 2 ? "hit" : g.rig == 5 ? "hurtgrab" :
+                     g.rig == 6 ? "cap pickup" : g.rig == 7 ? "cap race" : g.rig == 8 ? "cap drop" :
+                     g.rig == 9 ? "cap forgery" : "chain",
                      g.rig_seed);
 }
 
@@ -2340,12 +2822,147 @@ void rig_hurtgrab() {
     }
 }
 
+
+// CAP RIGS (SM64DS_ARENA_RIG=cap | caprace | capdrop | capforge). Scripted consoles for
+// the proof rows. Every 6 s (9 s for capdrop) of referee time, from 4 s after the
+// match started, a cycle runs; the ROM and the referee do everything else.
+//   cap       seat 0 puts its body on cap 1 + (cycle % caps): a pickup.
+//   caprace   every seat puts its body on the same cap, a scripted gap apart
+//             (-160..+160 ms for two seats): exactly one may get it.
+//   capdrop   seat 0 takes a cap, 3.5 s later hurts itself (the ROM pops the cap), seat 1
+//             goes for the knocked-off cap 1.6 s after the event.
+//   capforge  seat 1 sends claims the referee must refuse (a cap that is not there, a cap
+//             too far away, a wrong place hash, id 0, a drop with no cap on).
+void rig_cap_goto(int id) {
+    CapRec *r = cap_rec(id);
+    char *me = my_body();
+    if (!r || !me) return;
+    const int to[3] = { r->origin[0], r->origin[1], r->origin[2] };
+    rig_teleport(me, to);
+    std::fprintf(stderr, "[rig] cap: seat %d goes to cap %d at (%d,%d,%d) (frame %u)\n", g.seat, id,
+                 to[0] >> 12, to[1] >> 12, to[2] >> 12, my_frame_now());
+}
+
+void rig_cap() {
+    if (!g.started || g.over || !g.caps_ready || g.caps_n <= 0) return;
+    unsigned r;
+    if (!ref_now(&r)) return;
+    if (!my_body()) return;
+    const int rel = (int)(r - g.t0) - 4000;
+    if (rel < 0) return;
+    const int period = 6000;
+    const int k = rel / period, within = rel % period;
+    static int did = -1;
+    int off = 0;
+    if (g.rig == 7) {
+        if (g.bodies == 2) {
+            static const int fixed = env_int("SM64DS_RIG_CAPGAP", -1000, -1000, 1000);
+            const int gap = fixed != -1000 ? (k % 2 ? -fixed : fixed)
+                                           : (int)(rig_rand(g.rig_seed, (unsigned)k) % 321u) - 160;
+            off = g.seat == 0 ? (gap < 0 ? -gap : 0) : (gap > 0 ? gap : 0);
+        } else {
+            off = (int)(rig_rand(g.rig_seed ^ ((unsigned)g.seat * 7919u), (unsigned)k) % 161u);
+        }
+    } else if (g.seat != 0) {
+        return;
+    }
+    if (k == did || within < off) return;
+    did = k;
+    rig_cap_goto(1 + (k % g.caps_n));
+    ++g.rig_n;
+}
+
+void rig_capdrop() {
+    if (!g.started || g.over || !g.caps_ready || g.caps_n <= 0) return;
+    unsigned r;
+    if (!ref_now(&r)) return;
+    char *me = my_body();
+    if (!me) return;
+    if (g.seat == 1) {
+        if (g.rig_drop_id && (int)(now_ms() - g.rig_drop_at) >= 0) {
+            CapRec *c = cap_rec(g.rig_drop_id);
+            char *a = c ? cap_actor_of(*c) : nullptr;
+            g.rig_drop_id = 0;
+            if (a) {
+                const int to[3] = { s32r(a, 0x5c), s32r(a, 0x60), s32r(a, 0x64) };
+                rig_teleport(me, to);
+                std::fprintf(stderr, "[rig] capdrop: seat 1 goes to the knocked-off cap at (%d,%d,%d)\n",
+                             to[0] >> 12, to[1] >> 12, to[2] >> 12);
+            } else {
+                std::fprintf(stderr, "[rig] capdrop: seat 1 has no actor for the knocked-off cap\n");
+            }
+        }
+        return;
+    }
+    if (g.seat != 0) return;
+    const int rel = (int)(r - g.t0) - 4000;
+    if (rel < 0) return;
+    const int period = 9000;
+    const int k = rel / period, within = rel % period;
+    static int took = -1, hurt = -1;
+    if (k != took && within >= 0) {
+        took = k;
+        rig_cap_goto(1 + (k % g.caps_n));
+    }
+    if (k != hurt && within >= 3500) {
+        hurt = k;
+        int from[3] = { s32r(me, 0x5c) + 0x50000, s32r(me, 0x60), s32r(me, 0x64) };
+        const int hr = _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(me, from, 1u, 0, 0u, 4u, 1u);
+        g.hit_applied_frame = my_frame_now();          // (not a hazard: no HURT_SELF claim)
+        ++g.rig_n;
+        std::fprintf(stderr, "[rig] capdrop: seat 0 hurts itself with the cap on (Hurt returned %d, look %d, "
+                     "state %d)\n", hr, s32r(me, 8) & 0xff, vs_arena_state_index(me));
+    }
+}
+
+void rig_capforge() {
+    if (!g.started || g.over || !g.caps_ready || g.caps_n <= 0 || g.seat != 1) return;
+    unsigned r;
+    if (!ref_now(&r)) return;
+    char *me = my_body();
+    if (!me) return;
+    const int rel = (int)(r - g.t0) - 5000;
+    if (rel < 0) return;
+    static int step = 0;
+    if (step >= 5 || rel < step * 700) return;
+    unsigned stamp;
+    if (!stamp_for(now_ms(), &stamp)) return;
+    unsigned char target = 0;
+    unsigned short aux = 0;
+    unsigned char kind = CLAIM_CAP_TAKE;
+    const char *what = "";
+    int far_id = 1;
+    long long far_d = -1;
+    for (int k = 1; k <= g.caps_n; ++k) {
+        const long long dx = (long long)(g.caps[k].origin[0] - s32r(me, 0x5c)) >> 12;
+        const long long dz = (long long)(g.caps[k].origin[2] - s32r(me, 0x64)) >> 12;
+        if (dx * dx + dz * dz > far_d) { far_d = dx * dx + dz * dz; far_id = k; }
+    }
+    switch (step) {
+    case 0: target = 99; what = "a cap that is not there (99): expect GONE"; break;
+    case 1: target = (unsigned char)far_id; aux = g.caps[far_id].hash;
+            what = "the cap farthest from my body, right hash: expect RANGE"; break;
+    case 2: target = 1; aux = (unsigned short)(g.caps[1].hash ^ 0x55);
+            what = "cap 1 with a wrong place hash: expect BAD"; break;
+    case 3: target = 0; what = "cap id 0: expect BAD"; break;
+    case 4: kind = CLAIM_CAP_DROP; target = 2; aux = 0x1234;
+            what = "CAP_DROP with no cap on and not hurt: expect STATE"; break;
+    }
+    PClaim *c = make_claim(kind, target, aux, stamp, my_frame_now(), 0);
+    std::fprintf(stderr, "[rig] capforge step %d: %s (claim %u)\n", step, what, c ? (unsigned)c->cid : 0u);
+    ++step;
+    ++g.rig_n;
+}
+
 void rig_step() {
     if (g.rig == 1) rig_race();
     else if (g.rig == 2) rig_hit();
     else if (g.rig == 3) rig_chain();
     else if (g.rig == 4) rig_fuzz();
     else if (g.rig == 5) rig_hurtgrab();
+    else if (g.rig == 6 || g.rig == 7) rig_cap();
+    else if (g.rig == 8) rig_capdrop();
+    else if (g.rig == 9) rig_capforge();
 }
 
 // ---------------------------------------------------------------------------
@@ -2445,6 +3062,7 @@ bool vs_ref_active() {
     g.installed = true;
     g.active = h.mode == 1;           // relay mode only: the mesh has no referee
     g.log = env_on("SM64DS_ARENA_REFLOG");
+    g.caps_off = env_on("SM64DS_ARENA_NOCAPS");
     for (int k = 0; k < 16; ++k) g.ledger[k] = 0;
     std::fprintf(stderr, "[vsarena] referee client %s (hub mode %d)\n",
                  g.active ? "ACTIVE: the referee in the relay decides stars, hits, "
@@ -2481,6 +3099,8 @@ void vs_ref_pre_walk(int frame) {
         puppet_stars();
         shown_stars();
         cap_probe();
+        caps_pass();
+        cap_watch();
         hit_detect("pre-walk");
         rig_step();
     }
@@ -2494,6 +3114,7 @@ void vs_ref_post_walk(int frame) {
             for (int k = 0; k < 16; ++k) data_0209f310[k] = g.ledger[k];
         hit_detect("post-walk");
         grab_detect();
+        caps_detect();
         syno_send();
         my_state_edges();
         star_census();
@@ -2625,6 +3246,11 @@ void vs_ref_report(const char *tag) {
                  g.st.syno_bad, g.ledger[0], g.ledger[1], g.ledger[2],
                  g.ledger[3], (unsigned)g.progress, g.st.touches_gated, g.st.hits_gated,
                  g.st.stars_shown, g.st.shown_frames);
+    std::fprintf(stderr, "[vsarena-ref] %s caps: claims=%llu lost=%llu taken=%llu removed=%llu "
+                 "dropped=%llu drop_claims=%llu copies=%llu respawns=%llu puppet_touches=%llu\n",
+                 tag ? tag : "", g.st.cap_claims, g.st.cap_lost, g.st.cap_taken, g.st.cap_removed,
+                 g.st.cap_dropped, g.st.cap_drop_claims, g.st.cap_copies, g.st.cap_respawns,
+                 g.st.cap_puppet_touches);
 }
 
 }  // namespace port
