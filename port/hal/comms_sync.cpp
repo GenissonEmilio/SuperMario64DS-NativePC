@@ -129,6 +129,8 @@ extern unsigned char data_0209caa0[];
 // it shares this console's level; the presence gate compares a received level
 // against it. signed char in the ROM (levels 0..51); read as int here.
 extern signed char data_0209f2f8;
+// GHOSTDOOR1: the area shown inside that level (-1 none): ChangeArea writes it
+extern signed char data_02092120;
 
 // GHOSTWIRE1. The ROM's ONE per-frame body pose (src/func_ov002_020e4768.cpp:
 // UpdateBones from the animation, the head/neck look angles, then
@@ -723,6 +725,14 @@ enum : int {
        one lost paused frame (a 1 s gap) still does not blink it. */
     kGwFadeMs     = 700,
     kGwAppearMs   = 300,     // GHOSTLOOK1: a ghost that comes on show fades in
+    /* GHOSTDOOR1: a ghost that leaves my level or my area (a door, a painting)
+       fades out in place over this long instead of vanishing in a frame; a
+       ghost whose newest frames have all been "paused" for kGwPauseFadeMs (a
+       friend left in the pause menu or a star select) fades out over
+       kGwPauseFadeLen and is gone, not left standing frozen. */
+    kGwLeaveMs    = 300,
+    kGwPauseFadeMs  = 2000,
+    kGwPauseFadeLen = 300,
     kGwDespawnMs  = 1200,
     kGwRing       = 16,      // frames kept per seat (~0.5 s at 30 Hz)
     kGwRingLegacy = 8,       // ...and in the legacy follower
@@ -854,6 +864,15 @@ struct GwSeat {
                              // seats new ones: the count starts again)
     unsigned  show_ms;       // GHOSTLOOK1: when it last came on show, and
     unsigned  show_n;        // the follower pass that last showed it
+    // GHOSTDOOR1
+    bool      paused_now;    // the newest frame is a paused one, and the run
+    unsigned  paused_ms;     // of paused frames began at this GetTickCount
+    unsigned  here_ms;       // the last GetTickCount it was really visible
+    bool      leaving;       // visible only as a fade-out in place (gw_visible)
+    int       leave_cut;     // 0..256 taken off its fade while it leaves
+    bool      last_have;     // g_gw_last holds a sample drawn in my level / area
+    int       last_lvl, last_area;
+    unsigned  char_wait_ms;  // when its body first showed the wrong character
     // GHOSTCHAR1: how this seat's ghost was posed, per follower frame
     // (gw_sample), for the exit summary. A "hold" is a frame with no newer
     // data to move to; the streak is how many of them ran back to back.
@@ -886,6 +905,11 @@ struct GwStats {
                                                // their own colours; row writes
     unsigned long long door_snaps;   // GHOSTDOOR1: door sequences flagged as a
                                      // teleport on the first frame
+    unsigned long long hid_frames;   // follower frames a ghost was hidden by its
+                                     // sender's own state
+    unsigned long long linger_frames;  // ...and drawn fading out in place
+    unsigned long long char_holds;   // ...and held back for the wrong character
+    unsigned long long drains;       // hub drains during my own star select
 };
 GwStats g_gws;
 
@@ -1267,6 +1291,11 @@ void gw_on_ghost(const unsigned char *buf, int n, int seat, unsigned t_arr) {
         z.ring[z.n].f = f;
         ++z.n;
         z.last_ms = now;
+        if (f.flags & kGhostPaused) {            // GHOSTDOOR1: a paused run
+            if (!z.paused_now) { z.paused_now = true; z.paused_ms = now; }
+        } else {
+            z.paused_now = false;
+        }
         ++g_gws.syng_recvd;
         return;
     }
@@ -1399,14 +1428,55 @@ bool gw_cut() {
     return !show && data_0209fc48 != 0;
 }
 
+// GHOSTDOOR1: 0 not here, 1 here, 2 in another level or another area of mine
+// (a ghost that was here a moment ago fades out in place: see gw_visible).
+int gw_here(const GwSeat &z) {
+    if (z.n == 0) return 0;
+    const unsigned now = GetTickCount();
+    if ((unsigned)(now - z.last_ms) > (unsigned)kGwDespawnMs) return 0;
+    const HubGhostFrame &nw = z.ring[z.n - 1].f;
+    if (nw.y < kDeathPlaneY) return 0;                      // fell out
+    /* a friend who has been in the pause menu / star select for 2 s fades
+       out and is gone, he does not stand frozen for as long as it lasts */
+    if (z.paused_now &&
+        (unsigned)(now - z.paused_ms) >=
+            (unsigned)(kGwPauseFadeMs + kGwPauseFadeLen))
+        return 0;
+    if ((int)nw.level_id != (int)data_0209f2f8) return 2;
+    if (nw.flags & kGwFrameClock) {
+        /* his area is not mine: HideArea hid that room's world for me, and a
+           friend in it would float in a room I cannot see */
+        const int ga = nw.area & ghostdoor::kAreaMask,
+                  ma = ghostdoor::pack_area(data_02092120);
+        if (ga >= 1 && ga <= 14 && ma >= 1 && ma <= 14 && ga != ma) return 2;
+    }
+    return 1;
+}
+
 bool gw_visible(int seat) {
     if (!g_hub || seat < 0 || seat >= kHubMaxSeats) return false;
-    const GwSeat &z = g_gw[seat];
-    if (z.n == 0) return false;
-    if ((unsigned)(GetTickCount() - z.last_ms) > (unsigned)kGwDespawnMs)
-        return false;
-    if (z.ring[z.n - 1].f.y < kDeathPlaneY) return false;   // fell out
-    return (int)z.ring[z.n - 1].f.level_id == (int)data_0209f2f8;
+    GwSeat &z = g_gw[seat];
+    const unsigned now = GetTickCount();
+    z.leaving = false;
+    const int h = gw_here(z);
+    if (h == 1) {
+        z.here_ms = now;
+        z.leave_cut = 0;
+        return true;
+    }
+    /* LEAVING: here a moment ago, drawn in this level and area, and now his
+       newest frame names another level or area: keep drawing his last
+       sample, fading out over kGwLeaveMs, so a door or a painting takes him
+       away instead of deleting him in a frame */
+    if (h == 2 && z.last_have && z.last_lvl == (int)data_0209f2f8 &&
+        z.last_area == (int)data_02092120 &&
+        (unsigned)(now - z.here_ms) < (unsigned)kGwLeaveMs) {
+        z.leaving = true;
+        z.leave_cut = (int)(256u * (now - z.here_ms) / (unsigned)kGwLeaveMs);
+        return true;
+    }
+    z.last_have = false;
+    return false;
 }
 
 struct GwSample {
@@ -1423,6 +1493,7 @@ struct GwSample {
     unsigned char door_kind;   // GHOSTDOOR1: from the frame at the draw time
     unsigned char door_frame;
 };
+GwSample g_gw_last[kHubMaxSeats];   // GHOSTDOOR1: the last sample drawn per seat
 
 // GHOSTDOOR1: the door look the frame carries (ghost_door.h). Only a
 // frame-clock frame (a build-6 sender) means it; the legacy 15 Hz stream's
@@ -2113,7 +2184,9 @@ void gw_send(unsigned now) {
         f.flags |= (unsigned char)kGwFrameClock;
         /* GHOSTDOOR1: the door kind and the door's own frame (ghost_door.h);
            vy is a velocity the follower never reads */
-        f.area = (unsigned char)(dkind << ghostdoor::kDoorShift);
+        f.area = (unsigned char)((dkind << ghostdoor::kDoorShift) |
+                                 ghostdoor::pack_area(data_02092120));
+
         f.vy = dkind ? (short)ghostdoor::sender_frame(a) : (short)0;
         {
             const unsigned st = comms_hub_now_ms() & 0xffffffu;
@@ -2960,11 +3033,27 @@ extern "C" int port_adventure_ghost_stars(int slot) {
 // body that is not a hub ghost, so VS, solo and the old path are untouched.
 namespace {
 int gw_fade_out(int s) {
-    const unsigned age = GetTickCount() - g_gw[s].last_ms;
-    if (age <= (unsigned)kGwFadeMs) return 256;
-    if (age >= (unsigned)kGwDespawnMs) return 0;
-    return (int)(256u * ((unsigned)kGwDespawnMs - age) /
-                 (unsigned)(kGwDespawnMs - kGwFadeMs));
+    const GwSeat &z = g_gw[s];
+    const unsigned now = GetTickCount();
+    const unsigned age = now - z.last_ms;
+    int f;
+    if (age <= (unsigned)kGwFadeMs) f = 256;
+    else if (age >= (unsigned)kGwDespawnMs) return 0;
+    else
+        f = (int)(256u * ((unsigned)kGwDespawnMs - age) /
+                  (unsigned)(kGwDespawnMs - kGwFadeMs));
+    /* GHOSTDOOR1: leaving my level / area, and a long pause */
+    if (z.leaving) f = f * (256 - z.leave_cut) / 256;
+    if (z.paused_now) {
+        const unsigned pe = now - z.paused_ms;
+        if (pe >= (unsigned)kGwPauseFadeMs) {
+            const unsigned into = pe - (unsigned)kGwPauseFadeMs;
+            if (into >= (unsigned)kGwPauseFadeLen) return 0;
+            f = (int)((unsigned)f * ((unsigned)kGwPauseFadeLen - into) /
+                      (unsigned)kGwPauseFadeLen);
+        }
+    }
+    return f;
 }
 // GHOSTLOOK1: and UP from nothing over kGwAppearMs once it comes on show (a
 // level entry, a player walking in from another level, a comeback after a
@@ -3158,6 +3247,11 @@ static void gw_exit_summary() {
                      "given back %llu, no door near %llu, local door left "
                      "alone %llu\n", g_gws.door_snaps, d.applied, d.released,
                      d.no_door, d.yielded);
+        std::fprintf(stderr, "[ghost:exit] look: hidden by his own state %llu "
+                     "frames, faded out in place (door / painting / room) "
+                     "%llu, held back for the wrong character %llu, hub "
+                     "drains during my star select %llu\n", g_gws.hid_frames,
+                     g_gws.linger_frames, g_gws.char_holds, g_gws.drains);
     }
     std::fflush(stderr);
 }
@@ -3212,8 +3306,16 @@ void gw_follow() {
         g_gw_pal[i] = -1;
         const int s = gw_seat_for_body(i);
         GwSample sm;
-        if (s < 0 || !gw_visible(s) || party_member(i) || gw_cut() ||
-            !gw_sample(s, tnow, &sm)) {
+        bool got = s >= 0 && gw_visible(s) && !party_member(i) && !gw_cut();
+        if (got) {
+            if (g_gw[s].leaving) {         // GHOSTDOOR1: fading out in place
+                sm = g_gw_last[s];
+                ++g_gws.linger_frames;
+            } else {
+                got = gw_sample(s, tnow, &sm);
+            }
+        }
+        if (!got) {
             if (s >= 0) ghostdoor::watcher_release(s);
             gw_park_body(a);               // undriven: parked, not drawn
             continue;
@@ -3225,6 +3327,12 @@ void gw_follow() {
             continue;
         }
         GwSeat &z = g_gw[s];
+        if (!z.leaving) {
+            g_gw_last[s] = sm;
+            z.last_have = true;
+            z.last_lvl = (int)data_0209f2f8;
+            z.last_area = (int)data_02092120;
+        }
         if (z.body_ptr != a) { z.body_ptr = a; z.driven = 0; }
         /* GHOSTLOOK1: on show from this pass; not shown on the last one
            means it is coming on show now, and fades in (gw_fade_in) */
