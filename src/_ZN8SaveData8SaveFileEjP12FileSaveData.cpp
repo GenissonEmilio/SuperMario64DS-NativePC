@@ -17,7 +17,7 @@
  * is 0x44 bytes, as the call below has always said.
  */
 #ifdef _MSC_VER
-extern "C" u8 data_0209caa0[]; /* the open file, as in SaveCurrentFile */
+extern "C" int data_0209caa0[]; /* the open file; int[] is the spelling most TUs use */
 #endif
 
 int SaveData::SaveFile(u32 fileID, FileSaveData* data)
