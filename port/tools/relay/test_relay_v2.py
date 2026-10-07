@@ -292,8 +292,8 @@ def u_refusals(mod):
             ("child wanting seat 16", hello("BADREQ03", ROLE_CHILD, 16)),
             ("member wanting seat 16", hello("BADREQ04", ROLE_MEMBER, 16)),
             ("member wanting seat 200", hello("BADREQ05", ROLE_MEMBER, 200)),
-            ("role 4 (unknown; 3 is an arena member)",
-             hello("BADREQ06", 4, 0)),
+            ("role 6 (unknown; 3 arena, 4 party, 5 coop)",
+             hello("BADREQ06", 6, 0)),
             ("arena wanting seat 16", hello("BADREQ07", 3, 16)),
             ("empty code", hello("", ROLE_MEMBER, ANY)),
             ("code with a space", hello("AB CD", ROLE_MEMBER, ANY))):
@@ -870,12 +870,477 @@ def u_host_mp2l_cap(mod):
     return res
 
 
+# ====================================== PARTY + COOP KINDS (lane WIRE1)
+#
+# The layouts are port/hal/hub_presence.h. These builders are the test's own
+# copy, so a drift between the header, relay.py and this file fails here.
+
+ROLE_PARTY, ROLE_COOP = 4, 5
+
+
+def pres(seat=0xFF, level=8, area=0xFF, act=1, char=0, flags=1, stars=3,
+         seq=1, clock=0, ver=1):
+    return (b"SYNL" + struct.pack("<BBHBBBBHHI", ver, seat, level, area, act,
+                                  char, flags, stars, seq, clock))
+
+
+def pstar(course=1, star=0, reserved=0, seq=1, seat=0xFF, ver=1):
+    return b"SYNX" + struct.pack("<BBBBHH", ver, seat, course, star,
+                                 reserved, seq)
+
+
+def phit(victim, kind=0, seq=1, yaw=0, x=0, y=0, z=0, seat=0xFF, ver=1):
+    return b"SYNH" + struct.pack("<BBBBHhiii", ver, seat, victim, kind, seq,
+                                 yaw, x, y, z)
+
+
+def coop(tag, subtype=0, payload=b"\x00" * 4, seq=1, flags=0, plen=None,
+         seat=0xFF, ver=1):
+    plen = len(payload) if plen is None else plen
+    return tag + struct.pack("<BBBBHH", ver, seat, subtype, flags, seq,
+                             plen) + payload
+
+
+def build_room(rig, code, role, n):
+    addrs = [rig.addr() for _ in range(n)]
+    for a in addrs:
+        rig.join(a, code, role, ANY)
+    rig.settle()
+    return addrs
+
+
+def u_party_coop_layouts(mod):
+    res = Result("party / coop layouts: sizes match hub_presence.h")
+    res.check(len(pres()) == 20, "SYNL is 20 bytes")
+    res.check(len(pstar()) == 12, "SYNX is 12 bytes")
+    res.check(len(phit(1)) == 24, "SYNH is 24 bytes")
+    res.check(len(coop(b"SYNW")) == 16, "the smallest SYNW is 16 bytes")
+    for tag in (b"SYNL", b"SYNX", b"SYNH", b"SYNW", b"SYNB"):
+        k = mod.PARTY_KINDS.get(tag)
+        res.check(k is not None, "%s is in PARTY_KINDS" % tag.decode())
+        res.check(tag not in mod.KINDS, "%s is not in the v2 design table"
+                  % tag.decode())
+    res.check(mod.PARTY_KINDS[b"SYNL"].length_ok(20)
+              and not mod.PARTY_KINDS[b"SYNL"].length_ok(16),
+              "SYNL exact 20")
+    res.check(mod.PARTY_KINDS[b"SYNW"].lo == 16
+              and mod.PARTY_KINDS[b"SYNW"].hi == 700, "SYNW 16..700")
+    res.check(mod.PARTY_KINDS[b"SYNB"].lo == 16
+              and mod.PARTY_KINDS[b"SYNB"].hi == 700, "SYNB 16..700")
+    res.check([mod.PARTY_KINDS[t].cap for t in
+               (b"SYNL", b"SYNX", b"SYNH", b"SYNW", b"SYNB")]
+              == [6, 2, 10, 40, 30], "caps 6 / 2 / 10 / 40 / 30")
+    res.check(mod.MAX_PAYLOAD == 700, "MAX_PAYLOAD stays 700")
+    return res
+
+
+def u_party_coop_rooms(mod):
+    res = Result("party / coop rooms: seats 0..3 only, kinds never mix")
+    rig = Rig(mod)
+    for name, role in (("party", ROLE_PARTY), ("coop", ROLE_COOP)):
+        code = name[:3].upper() + "ROOM1"
+        a = [rig.addr() for _ in range(6)]
+        seats = [rig.join(x, code, role, ANY) for x in a[:4]]
+        res.check([s[2] for s in seats] == [0, 1, 2, 3]
+                  and all(s[1] == ST_OK for s in seats),
+                  "%s: four members get seats 0..3 in order" % name)
+        res.check(rig.join(a[4], code, role, ANY)[:2] == (2, ST_FULL),
+                  "%s: the fifth member gets FULL" % name)
+        res.check(rig.join(a[4], code, role, 4)[:2] == (2, ST_FULL),
+                  "%s: naming seat 4 gets FULL (not a bad request)" % name)
+        res.check(rig.join(a[5], code, role, 15)[:2] == (2, ST_FULL),
+                  "%s: naming seat 15 gets FULL" % name)
+        res.check(rig.relay.sessions[code].capacity() == 4
+                  and len(rig.relay.sessions[code].seats) == 4,
+                  "%s: the session holds exactly four" % name)
+        # a keepalive from a seated member is idempotent
+        res.check(rig.join(a[1], code, role, ANY)[:3] == (2, ST_OK, 1),
+                  "%s: a re-HELLO keeps seat 1" % name)
+        code2 = name[:3].upper() + "ROOM2"
+        b = rig.addr()
+        res.check(rig.join(b, code2, role, 2)[:3] == (2, ST_OK, 2),
+                  "%s: a member naming seat 2 gets 2" % name)
+        res.check(rig.join(rig.addr(), code2, role, 2)[:2] == (2, ST_TAKEN),
+                  "%s: seat 2 twice -> SEAT TAKEN" % name)
+    # the room kinds never mix with each other, hubs or stars
+    rig.join(rig.addr(), "MIXCODE1", ROLE_PARTY, ANY)
+    for name, role in (("coop", ROLE_COOP), ("member", ROLE_MEMBER),
+                       ("arena", 3), ("parent", ROLE_PARENT),
+                       ("child", ROLE_CHILD)):
+        want = 0 if role == ROLE_PARENT else (1 if role == ROLE_CHILD
+                                              else ANY)
+        r = rig.join(rig.addr(), "MIXCODE1", role, want)
+        res.check(r and r[:2] == (2, ST_KIND),
+                  "a %s into a party room -> WRONG KIND (%r)" % (name, r))
+    rig.join(rig.addr(), "MIXCODE2", ROLE_MEMBER, ANY)
+    r = rig.join(rig.addr(), "MIXCODE2", ROLE_PARTY, ANY)
+    res.check(r and r[:2] == (2, ST_KIND), "a party member into a hub code "
+              "-> WRONG KIND")
+    r = rig.join(rig.addr(), "MIXCODE2", ROLE_COOP, ANY)
+    res.check(r and r[:2] == (2, ST_KIND), "a coop member into a hub code "
+              "-> WRONG KIND")
+    rig.join(rig.addr(), "MIXCODE3", ROLE_PARENT, 0)
+    r = rig.join(rig.addr(), "MIXCODE3", ROLE_PARTY, ANY)
+    res.check(r and r[:2] == (2, ST_KIND), "a party member into a star -> "
+              "WRONG KIND")
+    # v1 never sees the roles
+    out = rig.send(rig.addr(), hello("V1PARTY1", ROLE_PARTY, 0, version=1))
+    res.check(parse_ack(out[0][0])[:2] == (1, ST_BAD), "v1 HELLO role 4 -> "
+              "bad request")
+    # roles 6 / 7 / 255 stay malformed
+    for role in (6, 7, 255):
+        out = rig.send(rig.addr(), hello("BADROLE1", role, ANY))
+        res.check(parse_ack(out[0][0])[:2] == (2, ST_BAD),
+                  "role %d -> bad request" % role)
+    # a party room expires like a hub (10 s idle)
+    rig2 = Rig(mod)
+    build_room(rig2, "IDLEPRTY", ROLE_PARTY, 2)
+    rig2.now += 11.0
+    rig2.relay.sweep(rig2.now)
+    res.check("IDLEPRTY" not in rig2.relay.sessions, "an idle party room "
+              "expires at the hub's 10 s")
+    return res
+
+
+def u_party_coop_kinds(mod):
+    res = Result("party / coop kinds: gates, routes, stamps, caps, fields")
+    rig = Rig(mod)
+    r = rig.relay
+    party = build_room(rig, "KINDPRTY", ROLE_PARTY, 4)
+    cooper = build_room(rig, "KINDCOOP", ROLE_COOP, 4)
+    hub = build_hub(rig, "KINDHUB1", 4)
+    star = build_star(rig, "KINDSTAR", 3)
+
+    def fresh():
+        rig.settle(3.0)
+
+    # ---- the table: which kind goes where
+    good = {
+        b"SYNL": pres(), b"SYNX": pstar(), b"SYNH": phit(2),
+        b"SYNW": coop(b"SYNW"), b"SYNB": coop(b"SYNB"),
+    }
+    allowed = {  # session label -> tags that pass
+        "party": (b"SYNL", b"SYNX", b"SYNH"),
+        "coop": (b"SYNL", b"SYNW", b"SYNB"),
+        "hub": (b"SYNL",),
+        "star": (),
+    }
+    rooms = {"party": party, "coop": cooper, "hub": hub, "star": star}
+    for label, addrs in rooms.items():
+        for tag, data in good.items():
+            fresh()
+            before = dict(r.v2_drop)
+            out = rig.send(addrs[0], data)
+            ok = tag in allowed[label]
+            if tag == b"SYNH" and ok:
+                n_exp = 1                      # only the victim, seat 2
+            elif ok:
+                n_exp = len(addrs) - 1
+            else:
+                n_exp = 0
+            res.check(len(out) == n_exp,
+                      "%s %s: %d copies (expected %d)"
+                      % (label, tag.decode(), len(out), n_exp))
+            if not ok:
+                res.check(r.v2_drop["route"] == before["route"] + 1,
+                          "%s %s: dropped as a route violation"
+                          % (label, tag.decode()))
+    # ---- stamps: the sender cannot speak as another seat
+    for label, tag, mk in (("party", b"SYNL", lambda s: pres(seat=s)),
+                           ("party", b"SYNX", lambda s: pstar(seat=s)),
+                           ("coop", b"SYNW", lambda s: coop(b"SYNW", seat=s)),
+                           ("coop", b"SYNB", lambda s: coop(b"SYNB", seat=s)),
+                           ("hub", b"SYNL", lambda s: pres(seat=s))):
+        addrs = rooms[label]
+        fresh()
+        out = rig.send(addrs[2], mk(0))     # claims to be seat 0
+        res.check(out and all(d[5] == 2 for d, _ in out),
+                  "%s %s: seat spoof overwritten with the real seat 2"
+                  % (label, tag.decode()))
+        res.check(all(d[:5] + d[6:] == mk(0)[:5] + mk(0)[6:] for d, _ in out),
+                  "%s %s: nothing but byte 5 changed" % (label, tag.decode()))
+    # ---- SYNH reaches ONLY the victim, from any attacker
+    for atk in range(4):
+        for vic in range(4):
+            fresh()
+            out = rig.send(party[atk], phit(vic, x=-5, y=6, z=7, yaw=-3))
+            if vic == atk:
+                res.check(out == [], "hit %d -> %d (self) dropped"
+                          % (atk, vic))
+                continue
+            res.check(len(out) == 1 and out[0][1] == party[vic],
+                      "hit %d -> %d reaches seat %d only" % (atk, vic, vic))
+            res.check(out and out[0][0][5] == atk
+                      and out[0][0][6] == vic, "hit %d -> %d: attacker "
+                      "stamped %d, victim byte kept" % (atk, vic, atk))
+    # a victim seat that is empty: dropped as target
+    lone = build_room(rig, "KINDLONE", ROLE_PARTY, 2)
+    fresh()
+    before = r.v2_drop["target"]
+    out = rig.send(lone[0], phit(3))
+    res.check(out == [] and r.v2_drop["target"] == before + 1,
+              "hit to an empty seat 3: dropped as target")
+
+    # ---- field checks: dropped, counted, never forwarded
+    def drop_case(name, addr, data, tag):
+        fresh()
+        f0 = r.pc_field
+        k0 = list(r.kstats[tag])
+        out = rig.send(addr, data)
+        res.check(out == [], "%s: nothing forwarded" % name)
+        res.check(r.pc_field == f0 + 1 and r.kstats[tag][2] == k0[2] + 1,
+                  "%s: counted as a field drop" % name)
+
+    pa, ca = party[0], cooper[0]
+    drop_case("SYNL version 2", pa, pres(ver=2), b"SYNL")
+    drop_case("SYNL version 0", pa, pres(ver=0), b"SYNL")
+    drop_case("SYNL character 4", pa, pres(char=4), b"SYNL")
+    drop_case("SYNL character 255", pa, pres(char=255), b"SYNL")
+    drop_case("SYNL flags 0x20", pa, pres(flags=0x20), b"SYNL")
+    drop_case("SYNL flags 0x80", pa, pres(flags=0x80), b"SYNL")
+    drop_case("SYNX course 30", pa, pstar(course=30), b"SYNX")
+    drop_case("SYNX course 255", pa, pstar(course=255), b"SYNX")
+    drop_case("SYNX star 8", pa, pstar(star=8), b"SYNX")
+    drop_case("SYNX star 255", pa, pstar(star=255), b"SYNX")
+    drop_case("SYNX reserved 1", pa, pstar(reserved=1), b"SYNX")
+    drop_case("SYNX reserved 0x100", pa, pstar(reserved=0x100), b"SYNX")
+    drop_case("SYNX version 2", pa, pstar(ver=2), b"SYNX")
+    drop_case("SYNH victim 4", pa, phit(4), b"SYNH")
+    drop_case("SYNH victim 255", pa, phit(255), b"SYNH")
+    drop_case("SYNH victim = attacker", pa, phit(0), b"SYNH")
+    drop_case("SYNH hit_kind 1", pa, phit(1, kind=1), b"SYNH")
+    drop_case("SYNH hit_kind 255", pa, phit(1, kind=255), b"SYNH")
+    drop_case("SYNH version 0", pa, phit(1, ver=0), b"SYNH")
+    for tag in (b"SYNW", b"SYNB"):
+        t = tag.decode()
+        drop_case(t + " version 2", ca, coop(tag, ver=2), tag)
+        drop_case(t + " flags 1", ca, coop(tag, flags=1), tag)
+        drop_case(t + " payload_len too big", ca,
+                  coop(tag, payload=b"\x01" * 10, plen=11), tag)
+        drop_case(t + " payload_len too small", ca,
+                  coop(tag, payload=b"\x01" * 10, plen=9), tag)
+        drop_case(t + " payload_len 0 (datagram is 16)", ca,
+                  coop(tag, payload=b"\x01" * 4, plen=0), tag)
+        drop_case(t + " payload_len 65535", ca,
+                  coop(tag, payload=b"\x01" * 4, plen=0xFFFF), tag)
+        drop_case(t + " payload_len = datagram - 8 (the W56 reading)", ca,
+                  coop(tag, payload=b"\x01" * 20, plen=24), tag)
+
+    # ---- length gates (wrong length is a "length" drop)
+    def len_case(name, addr, data):
+        fresh()
+        l0 = r.v2_drop["length"]
+        out = rig.send(addr, data)
+        res.check(out == [] and r.v2_drop["length"] == l0 + 1,
+                  "%s: length drop" % name)
+
+    for n in (4, 12, 16, 19, 21, 24, 44):
+        len_case("SYNL len %d" % n, pa, (pres() + bytes(30))[:n])
+    for n in (4, 11, 13, 20, 24):
+        len_case("SYNX len %d" % n, pa, (pstar() + bytes(30))[:n])
+    for n in (4, 12, 23, 25, 48):
+        len_case("SYNH len %d" % n, pa, (phit(1) + bytes(40))[:n])
+    for tag in (b"SYNW", b"SYNB"):
+        for n in (4, 8, 12, 15, 701, 740, 1000):
+            len_case("%s len %d" % (tag.decode(), n), ca,
+                     (coop(tag, payload=bytes(700)) + bytes(400))[:n])
+    # the largest and the smallest legal
+    fresh()
+    out = rig.send(ca, coop(b"SYNW", payload=bytes(688)))
+    res.check(len(out) == 3 and all(len(d) == 700 for d, _ in out),
+              "SYNW 700 bytes (the max) goes to all three others")
+    out = rig.send(ca, coop(b"SYNB", payload=bytes(4)))
+    res.check(len(out) == 3 and all(len(d) == 16 for d, _ in out),
+              "SYNB 16 bytes (the min) goes to all three others")
+    out = rig.send(ca, coop(b"SYNB", payload=bytes(5)))
+    res.check(len(out) == 3, "SYNB 17 bytes passes")
+    out = rig.send(ca, coop(b"SYNB", payload=bytes(687)))
+    res.check(len(out) == 3, "SYNB 699 bytes passes")
+    # ---- caps: a burst passes exactly the per-kind cap, then releases
+    for label, addrs, tag, data, cap, who in (
+            ("party", party, b"SYNL", pres(), 6, 1),
+            ("coop", cooper, b"SYNL", pres(), 6, 1),
+            ("hub", hub, b"SYNL", pres(), 6, 1),
+            ("party", party, b"SYNX", pstar(), 2, 1),
+            ("party", party, b"SYNH", phit(1), 10, 2),
+            ("coop", cooper, b"SYNW", coop(b"SYNW"), 40, 1),
+            ("coop", cooper, b"SYNB", coop(b"SYNB"), 30, 1)):
+        fresh()
+        through = 0
+        c0 = r.v2_drop["cap"]
+        for i in range(cap + 12):
+            out = rig.send(addrs[who], data, dt=0.0001)
+            through += 1 if out else 0
+        res.check(through == cap, "%s %s: a burst passes exactly the cap %d "
+                  "(%d)" % (label, tag.decode(), cap, through))
+        res.check(r.v2_drop["cap"] == c0 + 12, "%s %s: the rest are cap "
+                  "drops" % (label, tag.decode()))
+        rig.settle(1.0)
+        res.check(len(rig.send(addrs[who], data)) > 0,
+                  "%s %s: the cap releases after a second"
+                  % (label, tag.decode()))
+    # a garbage datagram does not spend the cap
+    fresh()
+    for i in range(50):
+        rig.send(pa, pstar(course=99), dt=0.0001)
+    res.check(len(rig.send(pa, pstar())) == 3, "50 forged SYNX do not eat the "
+              "sender's real SYNX allowance")
+    # ---- a stranger can send none of it
+    res.check(rig.send(rig.addr(), pres()) == [],
+              "an unpaired address's SYNL gets nothing")
+    # ---- the arena session does not know them either
+    ar = rig.addr()
+    ack = rig.join(ar, "KINDARNA", 3, ANY)
+    if ack and ack[1] == ST_OK:
+        rig.join(rig.addr(), "KINDARNA", 3, ANY)
+        rig.settle(3.0)
+        a0 = r.a_drop["unknown"]
+        for data in good.values():
+            out = rig.send(ar, data)
+            res.check(out == [], "arena session: %s not forwarded"
+                      % data[:4].decode())
+        res.check(r.a_drop["unknown"] == a0 + len(good),
+                  "arena session: all five dropped as unknown")
+    else:
+        res.note("no referee loaded: arena rows skipped")
+    # ---- the stats line
+    line = r.stats_line()
+    res.check(" pc_rooms=party:" in line and "pc_kinds=SYNL:" in line,
+              "stats line carries the party / coop tail")
+    res.note(line.split(" pc_rooms=")[1])
+    return res
+
+
+def u_party_coop_fuzz(mod, rounds=40000):
+    res = Result("party / coop fuzz: %d random datagrams, nothing outside "
+                 "the gates leaves" % rounds)
+    rng = random.Random(0xC00B)
+    rig = Rig(mod)
+    rooms = {"party": build_room(rig, "FZPARTY1", ROLE_PARTY, 4),
+             "coop": build_room(rig, "FZCOOP01", ROLE_COOP, 4),
+             "hub": build_hub(rig, "FZHUB001", 4),
+             "star": build_star(rig, "FZSTAR01", 3)}
+    everyone = sum(rooms.values(), [])
+    seat_of = {}
+    for label, addrs in rooms.items():
+        for k, a in enumerate(addrs):
+            seat_of[a] = (label, k)
+    allowed = {"party": (b"SYNL", b"SYNX", b"SYNH"),
+               "coop": (b"SYNL", b"SYNW", b"SYNB"), "hub": (b"SYNL",),
+               "star": ()}
+    sizes = {b"SYNL": (20,), b"SYNX": (12,), b"SYNH": (24,)}
+    tags = list(sizes) + [b"SYNW", b"SYNB", b"SYNG", b"SYNP", b"SYNQ",
+                          b"SYNI", b"XXXX", b"SYNM"]
+    out_n, legal, bad = 0, 0, []
+    for i in range(rounds):
+        frm = rng.choice(everyone)
+        label, k = seat_of[frm]
+        tag = rng.choice(tags)
+        if tag in sizes and rng.random() < 0.7:
+            n = sizes[tag][0]
+        elif tag in (b"SYNW", b"SYNB") and rng.random() < 0.7:
+            n = rng.randrange(14, 705)
+        else:
+            n = rng.randrange(0, 760)
+        # biased bytes: mostly small values so a fair share are valid
+        head = bytes([1, 0xFF] + [rng.choice((0, 0, 0, 1, 2, 3, 4, 30, 255))
+                                  for _ in range(10)])
+        body = (tag + head + bytes(rng.randrange(256) for _ in range(20)))[:n]
+        body += bytes(max(0, n - len(body)))
+        if tag in (b"SYNW", b"SYNB") and rng.random() < 0.8 and n >= 12:
+            b2 = bytearray(body)
+            b2[4] = 1
+            b2[7] = 0
+            b2[10:12] = struct.pack("<H", n - 12)
+            body = bytes(b2)
+        if tag == b"SYNL" and n == 20 and rng.random() < 0.6:
+            b2 = bytearray(body)
+            b2[4] = 1
+            b2[10] &= 3
+            b2[11] &= 0x1F
+            body = bytes(b2)
+        if tag == b"SYNX" and n == 12 and rng.random() < 0.6:
+            b2 = bytearray(body)
+            b2[4] = 1
+            b2[6] %= 30
+            b2[7] &= 7
+            b2[8] = b2[9] = 0
+            body = bytes(b2)
+        if n == 16 and body[:4] == b"SMRC":
+            continue
+        rig.settle(0.5)
+        out = rig.send(frm, body, dt=rng.random() * 0.004)
+        for d, to in out:
+            out_n += 1
+            t = d[:4]
+            if t in (b"SYNG", b"SYNP", b"SYNQ", b"SYNI"):
+                continue            # the old kinds: the existing fuzz's job
+            if t not in allowed.get(label, ()):
+                bad.append("%r left a %s room" % (t, label))
+                continue
+            legal += 1
+            if t in sizes and len(d) not in sizes[t]:
+                bad.append("%r len %d" % (t, len(d)))
+            if d[5] != k:
+                bad.append("not stamped")
+            if seat_of.get(to, (None,))[0] != label:
+                bad.append("crossed sessions")
+            if to == frm:
+                bad.append("echo")
+            if t == b"SYNH" and (len(out) != 1 or d[6] >= 4 or d[6] == k):
+                bad.append("hit routed wrong")
+            if t in (b"SYNW", b"SYNB") and (
+                    d[4] != 1 or d[7] != 0 or not 16 <= len(d) <= 700
+                    or struct.unpack("<H", d[10:12])[0] != len(d) - 12):
+                bad.append("coop head not checked")
+            if t == b"SYNX" and (d[4] != 1 or d[6] > 29 or d[7] > 7
+                                 or d[8] or d[9]):
+                bad.append("SYNX fields not checked")
+            if t == b"SYNL" and (d[10] > 3 or d[11] & ~0x1F or d[4] != 1):
+                bad.append("SYNL fields not checked")
+            exp = bytearray(body)
+            exp[5] = k
+            if d != bytes(exp):
+                bad.append("bytes other than the stamp changed")
+    res.check(not bad, "violations: %d %s" % (len(bad), sorted(set(bad))[:5]))
+    res.check(legal > 500, "the fuzz forwarded plenty of legal new-kind "
+              "traffic (%d)" % legal)
+    res.note("forwarded %d; field drops %d; drops %s"
+             % (out_n, rig.relay.pc_field, rig.relay.v2_drop))
+    return res
+
+
+def u_party_coop_untouched(mod):
+    """Party traffic beside a hub and a star changes nothing for them."""
+    res = Result("party / coop rooms beside star / hub: neighbours untouched")
+    rig = Rig(mod)
+    party = build_room(rig, "NBRPARTY", ROLE_PARTY, 4)
+    hub = build_hub(rig, "NBRHUB01", 3)
+    star = build_star(rig, "NBRSTAR1", 3)
+    for i in range(200):
+        rig.send(party[i % 4], pres(), dt=0.01)
+        rig.send(party[(i + 1) % 4], pstar(course=i % 40), dt=0.01)
+    rig.settle(3.0)
+    out = rig.send(hub[0], dgram(b"SYNG", 44))
+    res.check(len(out) == 2 and {to for _, to in out} == set(hub[1:]),
+              "hub ghost frame still reaches exactly the other two hub seats")
+    out = rig.send(star[0], dgram(b"MP2L", 0x90))
+    res.check(len(out) == 2 and {to for _, to in out} == set(star[1:]),
+              "star lockstep still reaches the two children")
+    res.check(rig.relay.sessions["NBRHUB01"].kind == "hub"
+              and rig.relay.sessions["NBRPARTY"].kind == "party",
+              "session kinds kept apart")
+    return res
+
+
 def run_unit():
     mod = load_relay()
     results = []
     for t in (u_kind_table, u_hello_and_ack, u_refusals, u_routes_and_stamping,
               u_drop_reasons, u_rate_budget, u_idle, u_v1_untouched, u_fuzz,
-              u_session_budget, u_rehello_caps, u_host_mp2l_cap):
+              u_session_budget, u_rehello_caps, u_host_mp2l_cap,
+              u_party_coop_layouts, u_party_coop_rooms, u_party_coop_kinds,
+              u_party_coop_fuzz, u_party_coop_untouched):
         res = t(mod)
         res.report()
         results.append(res)
@@ -1248,9 +1713,85 @@ def s_session_budget():
     return res
 
 
+def s_party_coop():
+    res = Result("socket: party and coop rooms, SYNH to one seat, 700-byte "
+                 "SYNW")
+    with RelayProc() as relay:
+        party = [Sock(relay) for _ in range(4)]
+        cooper = [Sock(relay) for _ in range(4)]
+        extra = [Sock(relay), Sock(relay)]
+        try:
+            pa = [m.join("SOCKPRTY", ROLE_PARTY, ANY) for m in party]
+            ca = [m.join("SOCKCOOP", ROLE_COOP, ANY) for m in cooper]
+            res.check(all(a and a[1] == ST_OK for a in pa + ca)
+                      and [a[2] for a in pa] == [0, 1, 2, 3]
+                      and [a[2] for a in ca] == [0, 1, 2, 3],
+                      "party and coop rooms seated 0..3")
+            res.check(extra[0].join("SOCKPRTY", ROLE_PARTY, ANY)[1] == ST_FULL,
+                      "a fifth party member is refused FULL")
+            res.check(extra[1].join("SOCKCOOP", ROLE_COOP, 7)[1] == ST_FULL,
+                      "a coop member naming seat 7 is refused FULL")
+            for m in party + cooper:
+                m.recv_all(0.05)
+            party[1].send(pres(seat=3))                  # claims seat 3
+            party[0].send(phit(2, x=100, y=-200, z=300, yaw=-7))
+            party[3].send(pstar(course=29, star=7, seq=9))
+            cooper[2].send(coop(b"SYNW", subtype=5, payload=bytes(range(256))
+                                * 2 + bytes(176), seq=77))    # 700 bytes
+            cooper[0].send(pstar())                       # wrong room: gone
+            cooper[0].send(phit(1))                       # wrong room: gone
+            time.sleep(0.4)
+            got_p = [[d for d in m.recv_all(0.3)] for m in party]
+            got_c = [[d for d in m.recv_all(0.3)] for m in cooper]
+            hits = [[d for d in g if d[:4] == b"SYNH"] for g in got_p]
+            res.check([len(h) for h in hits] == [0, 0, 1, 0],
+                      "the hit reached only the victim, seat 2 (%s)"
+                      % [len(h) for h in hits])
+            h = hits[2][0]
+            res.check(len(h) == 24 and h[5] == 0 and h[6] == 2
+                      and struct.unpack("<h", h[10:12])[0] == -7,
+                      "the hit is stamped with attacker seat 0 and keeps "
+                      "its victim byte and yaw")
+            res.check(struct.unpack("<iii", h[12:24]) == (100, -200, 300),
+                      "the hit's position fields arrive untouched")
+            for k, g in enumerate(got_p):
+                pl = [d for d in g if d[:4] == b"SYNL"]
+                want = k != 1
+                res.check((len(pl) == 1) == want and all(d[5] == 1
+                                                         for d in pl),
+                          "party seat %d %s the SYNL, stamped seat 1"
+                          % (k, "got" if want else "did not get"))
+                st = [d for d in g if d[:4] == b"SYNX"]
+                res.check((len(st) == 1) == (k != 3) and all(d[5] == 3
+                                                             for d in st),
+                          "party seat %d %s the star" % (k, "got" if k != 3
+                                                         else "did not get"))
+            for k, g in enumerate(got_c):
+                w = [d for d in g if d[:4] == b"SYNW"]
+                res.check(len(w) == (0 if k == 2 else 1)
+                          and all(len(d) == 700 and d[5] == 2
+                                  and d[6] == 5 for d in w),
+                          "coop seat %d %s the 700-byte SYNW stamped seat 2"
+                          % (k, "did not send" if k == 2 else "got"))
+                res.check(not [d for d in g if d[:4] in (b"SYNX", b"SYNH")],
+                          "coop seat %d heard no party kind" % k)
+            line = relay.last_stats()
+            res.check(" pc_rooms=party:1,coop:1 " in line
+                      and "SYNH:2/1/1" in line,
+                      "stats line: 1 party + 1 coop room tail, SYNH rx 2 "
+                      "fwd 1 drop 1 (%s)" % (line.split(" pc_rooms=")[1]
+                                              if " pc_rooms=" in line
+                                              else line))
+        finally:
+            for m in party + cooper + extra:
+                m.close()
+    return res
+
+
 def run_socket():
     results = []
-    tests = [s_hub16, s_security, s_member_exits, s_session_budget]
+    tests = [s_hub16, s_security, s_member_exits, s_session_budget,
+             s_party_coop]
     if os.name == "nt":
         # the second line of defence on its own: the OS report left on
         tests.append(lambda: s_member_exits(
