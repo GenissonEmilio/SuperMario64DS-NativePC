@@ -1127,6 +1127,68 @@ extern "C" void port_hw_regions_copy_in(const void *src)
     ntr::gx_invalidate_textures();
 }
 
+/* ---- save-state capture of the two display engines' registers --------------
+   (run hunt8, lane SSFADE1.) The comment above is right that the per-frame
+   registers are rewritten by the game on the next tick, and wrong for the
+   ones a fader or a window setup writes ONCE and then leaves alone: BLDCNT /
+   BLDALPHA / BLDY / MASTER_BRIGHT, DISPCNT's window and layer bits, the window
+   rectangles. A restore that puts the world back but leaves those latches as
+   they were at the moment of the F9 leaves a restored scene under the old
+   scene's fade: an F9 taken while a wipe or the black load hold was up left the
+   whole picture black (the restored fader is idle, so nothing ever rewrote
+   BLDY), and the dialog box and minimap drawn solid black until they redrew.
+   The cartridge's own registers are part of the machine state a save state
+   freezes, so the display engines' register blocks go in with the video
+   memory they describe.
+
+   Engine A is 0x04000000, engine B 0x04001000. Captured per engine: DISPCNT
+   (0x00..0x03), BG/window/blend/mosaic (0x08..0x5F), MASTER_BRIGHT
+   (0x6C..0x6D). NOT captured: DISPSTAT/VCOUNT (0x04..0x07, owned by the frame
+   clock), DISP3DCNT, the capture unit and the main-memory FIFO (0x60..0x6B,
+   device state with side effects, not a picture latch). Raw copies: no model
+   hook runs, the way the video-memory restore runs none either. These are
+   separate hooks from port_hw_regions_* so the rollback ring, which shares
+   those, keeps its blob exactly as it was. */
+namespace ntr {
+namespace {
+struct DispSeg { uint32_t off; uint32_t len; };
+const DispSeg kDispSegs[] = { {0x00, 4}, {0x08, 0x58}, {0x6C, 2} };
+const uint32_t kDispEngines[] = { 0x04000000u, 0x04001000u };
+}  // namespace
+
+unsigned disp_regs_size()
+{
+    if (!g_io) return 0;
+    unsigned per = 0;
+    for (const DispSeg &sg : kDispSegs) per += sg.len;
+    return per * (unsigned)(sizeof kDispEngines / sizeof kDispEngines[0]);
+}
+
+void disp_regs_copy_out(void *dst)
+{
+    char *p = (char *)dst;
+    for (uint32_t eng : kDispEngines)
+        for (const DispSeg &sg : kDispSegs) {
+            std::memcpy(p, slot(eng + sg.off), sg.len);
+            p += sg.len;
+        }
+}
+
+void disp_regs_copy_in(const void *src)
+{
+    const char *p = (const char *)src;
+    for (uint32_t eng : kDispEngines)
+        for (const DispSeg &sg : kDispSegs) {
+            std::memcpy(slot(eng + sg.off), p, sg.len);
+            p += sg.len;
+        }
+}
+}  // namespace ntr
+
+extern "C" unsigned port_disp_regs_size(void) { return ntr::disp_regs_size(); }
+extern "C" void port_disp_regs_copy_out(void *dst) { ntr::disp_regs_copy_out(dst); }
+extern "C" void port_disp_regs_copy_in(const void *src) { ntr::disp_regs_copy_in(src); }
+
 #if defined(_WIN32)
 // ---------------------------------------------------------------------------
 // THE EARLY CLAIM.

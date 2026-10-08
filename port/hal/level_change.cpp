@@ -1627,7 +1627,9 @@ static int port_starsel_painting_on(void)
    interlude can read it. The decision is the ROM's own and nothing after the
    release is guaranteed to make it again, so the apply records it here and
    the interlude honours it. */
+extern "C" int port_fader_blend_state_sub(int *evy, int *toWhite);   /* hal/fader_wipes.cpp */
 static unsigned g_apply_pending_scene = 0x187;
+static int g_sel_done_dest = -1;   /* a star select ran to its end for this level (the hold below) */
 
 static void port_level_scene_interlude(void)
 {
@@ -1705,6 +1707,20 @@ static void port_level_scene_interlude(void)
             }
         } else {
             port_scene_tick(f, 1);
+        }
+        {
+            /* SM64DS_WHITE_WATCH=1: the engine-B blend the star select's own
+               wipe leaves on each interlude frame (the part of the white that
+               the level loop's FADE_WATCH never sees). Read only. */
+            static int ww = -1;
+            if (ww < 0) ww = std::getenv("SM64DS_WHITE_WATCH") != 0;
+            if (ww) {
+                int wevy = 0, wwhite = 0;
+                const int wb = port_fader_blend_state_sub(&wevy, &wwhite);
+                std::fprintf(stderr, "[whwatch] interlude f%d sub blend %d evy %d "
+                             "white %d asked %d killed %d\n", f, wb, wevy,
+                             wwhite, asked, (int)port_scene_killed());
+            }
         }
         if ((f % 300) == 0)
             std::fprintf(stderr, "  [starsel] f%d pending %u latch %u act %d "
@@ -1887,11 +1903,14 @@ static void port_level_scene_interlude(void)
        about the request, so it completes Scene::SpawnIfNecessary's other half
        exactly as the poll's own tail release does. */
     port_scene_request_release("the star-select interlude is over");
+    g_sel_done_dest = (!unfinished && !closed) ? (int)data_02092110 : -1;
 }
 
 static int g_crossed_scenes;
 extern "C" int port_level_crossed_scenes(void);
 extern "C" void *port_stage_create(void);   /* hal/stage_bridges.cpp */
+
+static void port_level_post_hold_arm(void);   /* the white hold after a star select, below */
 
 extern "C" int port_level_change_apply(void)
 {
@@ -2044,6 +2063,7 @@ extern "C" int port_level_change_apply(void)
     std::fprintf(stderr, "[lvl] root heap free: %u, level %d up\n",
                  port_level_root_heap_free(), (int)data_0209f2f8);
     port_lvlperf_emit();
+    port_level_post_hold_arm();
     return 1;
 }
 
@@ -2168,14 +2188,245 @@ static int port_level_exit_fade_pending(void)
     return 1;
 }
 
+/* ---- THE LOAD HOLD (run hunt8, lane BLACKHOLD1) ----------------------------
+   On the cartridge the level request is answered by a BLOCKING load: the exit
+   wipe has just reached its end (the screen is fully black), Scene::
+   SpawnIfNecessary replaces the Stage, and nothing is drawn and no game code
+   runs until the new level is up. Measured on the real ROM in melonDS
+   (headless melonDS tracer, 24 destinations): the top screen stays fully
+   black for about 50 frames, 38..64 by destination (castle rooms 51..60,
+   the tower exit 55, the level-34 exit 61) between the closing wipe and the
+   opening one. The port loads the next level in one frame, so it showed two
+   black frames there, which players see as a flash.
+
+   This is the port's stand-in for the cartridge's load time: when the exit
+   wipe is at its end and the screen is covered black, the change is answered
+   a per-destination number of frames later instead of at once, and the level
+   loop runs those frames FROZEN (port_level_hold_live, read by tests/walk_window.cpp
+   beside menu_on): the picture is presented, the pace and the sound go on, and
+   no game tick, fader step or frame clock runs, exactly like the blocked DS.
+   Only a black cover gets it: a change with no exit wipe (the debug warp, a
+   scene crossing) or a white cover (the painting entries) is answered at once
+   as before. SM64DS_BLACK_HOLD=<frames> forces one length for every
+   destination, 0 turns it off. */
+extern "C" int port_fader_blend_state_sub(int *evy, int *toWhite);   /* hal/fader_wipes.cpp */
+
+static int g_hold_left = -1;       /* -1 = idle, else frames of hold still owed */
+static int g_hold_live;            /* this frame is a hold frame */
+static int g_hold_white;           /* the held frames are WHITE (a painting cover), not black */
+static int g_hold_color;           /* this pending-hold frame is the white part */
+static int g_hold_tail;            /* the last frames of a white hold that are BLACK (the cartridge goes white, then black) */
+static int g_post_tail;
+
+/* The hold is live only while a real level change is pending. Anything that
+   drops the request without going through port_level_change_poll (an F9 / F8
+   state restore, a warp, a scene change) ends the hold here, read once per
+   frame by the level loop, so the frozen black can never outlive its change.
+   The post-select white hold (below) is not tied to a request: it has already
+   been answered, and it counts itself out. */
+static int g_post_left = -1;       /* frames of the white hold after a star select still owed */
+static int g_post_live;
+static int g_post_white;           /* this post-select frame is the white part (not the black tail) */
+
+extern "C" int port_level_hold_live(void)
+{
+    if (data_02092110 < 0) {
+        g_hold_left = -1;
+        g_hold_live = 0;
+    }
+    return g_hold_live || g_post_live;
+}
+
+/* the post-select hold is running: the level that is up must not move */
+extern "C" int port_level_post_hold_live(void) { return g_post_live; }
+
+/* what colour the held picture is: nonzero = white. */
+extern "C" int port_level_hold_white(void)
+{
+    return g_post_live ? g_post_white : (g_hold_white && g_hold_color);
+}
+
+/* THE CARTRIDGE'S BLACK, PER DESTINATION LEVEL: the number of fully black top
+   screen frames between the closing and the opening wipe, measured in melonDS
+   on the real ROM (headless tracer, an ExitLevel to each level from level 31).
+   It follows the size of what is being loaded:
+   the castle rooms and grounds 51..60, the other areas 38..64, and the
+   star-select courses (6..28, 41) only 14 (the select scene is next). The port
+   itself shows two black frames after the change (the wipe's own leftover
+   blend), so the hold is the measured black minus those two. A destination
+   not measured here gets the median, 50. */
+static const unsigned char kDsBlack[49] = {
+    0, 57, 58, 51, 55, 60, 14, 14, 14, 14, 14, 14,
+    14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+    14, 14, 14, 14, 14, 41, 41, 38, 47, 45, 50, 53,
+    50, 56, 50, 64, 54, 14, 45, 50, 58, 44, 53, 40,
+    50
+};
+
+/* THE CARTRIDGE'S WHITE (run hunt8, lane WHITEHOLD1): the same measurement for
+   a WHITE cover. The painting entries close on white, and the cartridge
+   then sits on that white while it loads: kDsWhite is the number of fully white
+   top screen frames from the closing wipe's end to the next picture, per
+   destination (a LoadLevel to each level from the castle, melonDS, WHITEHOLD1's
+   ds_white.tsv; the real painting walks in the hall agree with it: 6, 7, 8 and 10
+   all 13, the 29 and 50 paintings 45 and 46). kDsWhiteSel is the white AFTER the
+   star select: the select's own fader goes to white (dScStarSel_c::Behavior,
+   StartSceneFade(3, 0, 0) and data_0209f5e8[6] = 0x7fff) and the course is then
+   loaded behind it, and only the courses that have a select (6..28, 41) have
+   an entry; the others get no hold there. A destination with no cover entry
+   (none today) gets the median of the column. Each pair is {white frames,
+   black frames that follow the white}. */
+static const unsigned char kDsWhite[49][2] = {
+    {0, 0}, {53, 0}, {56, 0}, {43, 6}, {46, 6}, {52, 6},
+    {13, 0}, {13, 0}, {13, 0}, {13, 0}, {13, 0}, {13, 0},
+    {13, 0}, {13, 0}, {13, 0}, {13, 0}, {13, 0}, {13, 0},
+    {13, 0}, {13, 0}, {13, 0}, {13, 0}, {13, 0}, {13, 0},
+    {13, 0}, {13, 0}, {13, 0}, {13, 0}, {13, 0}, {45, 0},
+    {41, 4}, {43, 4}, {45, 6}, {45, 4}, {48, 6}, {51, 6},
+    {49, 4}, {54, 6}, {50, 4}, {61, 6}, {54, 4}, {13, 0},
+    {49, 0}, {54, 0}, {62, 0}, {48, 0}, {57, 0}, {44, 0},
+    {54, 0},
+};
+static const unsigned char kDsWhiteSel[49][2] = {
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {70, 0}, {78, 0}, {68, 0}, {46, 4}, {72, 0}, {55, 4},
+    {74, 0}, {80, 0}, {65, 0}, {54, 4}, {68, 0}, {64, 4},
+    {69, 0}, {67, 0}, {51, 0}, {72, 0}, {74, 0}, {53, 4},
+    {73, 0}, {67, 0}, {61, 0}, {67, 0}, {78, 0}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {40, 0},
+    {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0},
+};
+
+static int g_hold_forced_white = -2;
+/* white frames to hold, and the black tail after them, for one destination.
+   The measured fully white count minus the one white frame the port's own
+   wipe leaves; the black tail minus the black frames the new level's opening
+   shows by itself (none measured, so the tail is held as measured). */
+static int port_level_hold_frames_white(int dest, int after_select, int *tail)
+{
+    *tail = 0;
+    if (g_hold_forced_white == -2) {
+        const char *e = std::getenv("SM64DS_WHITE_HOLD");
+        g_hold_forced_white = e ? std::atoi(e) : -1;
+        if (g_hold_forced_white > 600) g_hold_forced_white = 600;
+    }
+    if (g_hold_forced_white >= 0)
+        return g_hold_forced_white;
+    const unsigned char (*t)[2] = after_select ? kDsWhiteSel : kDsWhite;
+    int white = after_select ? 0 : 49, k = 0;
+    if (dest >= 0 && dest < 49 && t[dest][0]) {
+        white = t[dest][0];
+        k = t[dest][1];
+    }
+    *tail = k > 0 ? k - 0 : 0;
+    return (white > 1 ? white - 1 : 0) + *tail;
+}
+
+static int port_level_hold_frames(int dest)
+{
+    static int forced = -2;
+    if (forced == -2) {
+        const char *e = std::getenv("SM64DS_BLACK_HOLD");
+        forced = e ? std::atoi(e) : -1;
+        if (forced > 600) forced = 600;
+    }
+    if (forced >= 0)
+        return forced;
+    int black = 50;
+    if (dest >= 0 && dest < (int)sizeof kDsBlack && kDsBlack[dest])
+        black = kDsBlack[dest];
+    return black > 2 ? black - 2 : 0;
+}
+
+/* the exit wipe is at its end (the same predicate the wait above uses, read
+   again) AND the covered screen is black or white on the sub engine, the engine
+   a wipe ramps (hal/fader_wipes.cpp port_fader_blend_state_sub). Sets
+   g_hold_white to the colour it found. */
+static int port_level_hold_due(void)
+{
+    const void *fader = data_0209f5bc;
+    if (!fader || !port_stage_object() || !port_level_is_mounted(data_02092110))
+        return 0;
+    if (*(const int *)((const char *)fader + 4) != 0x1000)
+        return 0;
+    int evy = 0, white = 0;
+    if (!port_fader_blend_state_sub(&evy, &white) || evy < 16)
+        return 0;
+    g_hold_white = white ? 1 : 0;
+    g_hold_tail = 0;
+    if (white)
+        return port_level_hold_frames_white(data_02092110, 0, &g_hold_tail);
+    return port_level_hold_frames(data_02092110);
+}
+
+/* THE HOLD AFTER A STAR SELECT. The select hands the course to the level with
+   a white wipe (the ask, then the scene's 0x1e-frame fade that the interlude
+   above runs to its end), and on the cartridge the course is loaded behind that
+   white. The port boots it in the same frame, so the apply arms this and the
+   level loop runs its first frames frozen under a white fill, exactly as the
+   pending-request hold does for the black and the painting covers. */
+static void port_level_post_hold_arm(void)
+{
+    const int dest = g_sel_done_dest;
+    g_sel_done_dest = -1;
+    g_post_left = -1;
+    g_post_live = 0;
+    if (dest < 0)
+        return;
+    g_post_left = port_level_hold_frames_white(dest, 1, &g_post_tail);
+    if (g_post_left)
+        std::fprintf(stderr, "  [lvl] load hold after the star select: level %d, "
+                     "%d frame(s) white then %d black (the cartridge's blocking "
+                     "load)\n", dest, g_post_left - g_post_tail, g_post_tail);
+    else
+        g_post_left = -1;
+}
+
+/* once per level-loop frame (tests/walk_window.cpp, where tick_frozen is
+   made): counts the post-select hold down and answers whether this frame is
+   held. The pending-request hold counts itself down in the poll. */
+extern "C" int port_level_hold_tick(void)
+{
+    if (g_post_left > 0) {
+        g_post_white = g_post_left > g_post_tail;
+        --g_post_left;
+        g_post_live = 1;
+    } else {
+        g_post_left = -1;
+        g_post_live = 0;
+    }
+    return port_level_hold_live();
+}
+
 extern "C" int port_level_change_poll(void)
 {
     if (data_02092110 < 0 && port_scene_crossing_due())
         port_level_scene_crossing();
-    if (data_02092110 < 0)
+    if (data_02092110 < 0) {
+        g_hold_left = -1;
+        g_hold_live = 0;
         return 0;
+    }
     if (port_level_exit_fade_pending())
         return 0;
+    if (g_hold_left < 0) {
+        g_hold_left = port_level_hold_due();
+        if (g_hold_left)
+            std::fprintf(stderr, "  [lvl] load hold: level %d, %d frame(s) %s "
+                         "(the cartridge's blocking load)\n", (int)data_02092110,
+                         g_hold_left, g_hold_white ? "white (then black tail)" : "black");
+    }
+    if (g_hold_left > 0) {
+        if (g_hold_white)
+            g_hold_color = g_hold_left > g_hold_tail;   /* white, then the black tail */
+        --g_hold_left;
+        g_hold_live = 1;
+        return 0;
+    }
+    g_hold_left = -1;
+    g_hold_live = 0;
     const int changed = port_level_change_apply();
     port_scene_request_release("the level change has been serviced (or "
                                "declined) and the port spawns no scene for it");

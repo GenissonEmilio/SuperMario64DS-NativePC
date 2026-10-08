@@ -2130,6 +2130,14 @@ void raster_obj(uint32_t dispcnt, const Blend &bl, const Windows &win,
 unsigned char *g_bm;
 bool g_bm_live;
 
+/* THE CORNER-INSET PANEL'S RECTANGLE FOR THIS FRAME, for port_engine_a_fade
+   (the inset takes engine B's brightness, not engine A's: see there). Set by
+   port_engine_a_bright_mask_rect, which hal_sub_screen_present calls on every
+   frame that drew the panel; cleared where the brightness mask is, at the top
+   of the compositor, so a frame that draws no panel never inherits one. */
+bool g_inset_fade_set;
+int g_inset_fade_rc[4];
+
 inline bool bm_off_env() {
     static int v = -1;
     if (v < 0) {
@@ -2324,11 +2332,16 @@ extern "C" const unsigned char *port_engine_a_bright_mask(void)
    anyway). Clipped to the live picture. */
 extern "C" void port_engine_a_bright_mask_rect(int x0, int y0, int x1, int y1)
 {
-    if (!g_bm_live || !g_bm) return;
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
     if (x1 > ntr::active_w) x1 = ntr::active_w;
     if (y1 > ntr::active_h) y1 = ntr::active_h;
+    /* the rectangle itself, for port_engine_a_fade, on every frame that drew
+       the panel (the mask below exists only on frames that built one) */
+    g_inset_fade_set = x1 > x0 && y1 > y0;
+    g_inset_fade_rc[0] = x0; g_inset_fade_rc[1] = y0;
+    g_inset_fade_rc[2] = x1; g_inset_fade_rc[3] = y1;
+    if (!g_bm_live || !g_bm) return;
     for (int y = y0; y < y1; ++y)
         for (int x = x0; x < x1; ++x)
             g_bm[(size_t)y * ntr::SCREEN_W + x] = 1;
@@ -2359,21 +2372,60 @@ extern "C" void port_engine_a_bright_mask_rect(int x0, int y0, int x1, int y1)
    EVY is the 0..16 coefficient: fade-to-black is rgb*(1 - evy/16),
    fade-to-white is rgb + (255-rgb)*evy/16, both per channel. */
 extern "C" int port_fader_blend_state(int *evy, int *toWhite);
-extern "C" void port_engine_a_fade(unsigned int *px, int w, int h)
+extern "C" int port_fader_blend_state_sub(int *evy, int *toWhite);
+extern "C" int port_fader_entrance_wipe_armed(void);   /* hal/fader_wipes.cpp */
+extern "C" void *data_0209f5bc;                  /* the installed fader */
+
+/* THE CORNER-INSET PANEL DURING A WIPE (run hunt8, lane FADEFLASH1).
+
+   The panel is engine B's picture, the DS's bottom screen, pasted into engine
+   A's framebuffer, and it has always taken ENGINE A'S blend here. Every plain
+   fade the fader drives writes both engines the same BLDCNT / BLDY, so for
+   those the two answers are one answer. A level wipe is the exception:
+   FaderWipe::AdvanceFade (src/engine/fader/_ZN9FaderWipe11AdvanceFadeEv.cpp)
+   switches engine A's effects OFF while the wipe mesh moves (the mesh darkens
+   the top screen itself) and ramps only engine B's BLDY with the interpolator
+   (G2x::SetBlendBrightness on 0x4001050), so on the cartridge the bottom
+   screen fades out WITH the closing wipe and back in with the opening one.
+   Measured on the real ROM (headless melonDS, the level 34 exit, one row per
+   frame): bottom screen mean luma 146.8 -> 0.0 across the closing, 0.0 through
+   the load, then 8.9 and rising as the opening starts. The port's panel stayed
+   at its full 145 -> 138 until engine A's cover frame took the whole picture
+   to black, and came back at full brightness on the first opening frame: a
+   bright box blinking out and in around the two black frames of every exit.
+
+   So while a level wipe is the installed fader, with engine A on the upper
+   screen and no partial-target mask in play (a message box or a pause dim
+   keeps its old whole-panel behaviour), the panel takes engine B's own blend
+   and engine A's blend covers everything else. Any frame where the two
+   engines hold the same values is untouched. SM64DS_INSET_B_FADE_OFF=1 keeps
+   the old behaviour on the same binary for a before / after. */
+static int inset_b_fade_off(void)
 {
-    int evy = 0, toWhite = 0;
-    if (!px || !port_fader_blend_state(&evy, &toWhite))
-        return;
-    if (evy > 16) evy = 16;
-    /* ONLY THE PIXELS THE DS BLENDS: the layer on top there is one of
-       BLDCNT's first targets and its window's effect bit is set. Null when
-       every pixel qualifies (a plain fade). */
-    const unsigned char *bm = port_engine_a_bright_mask();
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_INSET_B_FADE_OFF");
+        v = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return v;
+}
+
+/* brightness mode 2 / 3 at coefficient `evy` over px, inside (inside != 0) or
+   outside (inside == 0) the half-open host rectangle rc; `bm` is the per-pixel
+   mask or null */
+static void fade_pass(unsigned int *px, int w, int h, int evy, int toWhite,
+                      const unsigned char *bm, const int *rc, int inside)
+{
     for (int y = 0; y < h; ++y) {
         uint32_t *row = px + (size_t)y * ntr::SCREEN_W;
         const unsigned char *brow =
             bm ? bm + (size_t)y * ntr::SCREEN_W : nullptr;
+        const int yin = rc && y >= rc[1] && y < rc[3];
         for (int x = 0; x < w; ++x) {
+            if (rc) {
+                const int in = yin && x >= rc[0] && x < rc[2];
+                if (in != inside) continue;
+            }
             if (brow && !brow[x]) continue;
             uint32_t p = row[x];
             int r = (p >> 16) & 0xff, g = (p >> 8) & 0xff, b = p & 0xff;
@@ -2389,6 +2441,41 @@ extern "C" void port_engine_a_fade(unsigned int *px, int w, int h)
             row[x] = 0xFF000000u | ((uint32_t)r << 16) |
                      ((uint32_t)g << 8) | (uint32_t)b;
         }
+    }
+}
+
+extern "C" void port_engine_a_fade(unsigned int *px, int w, int h)
+{
+    int evy = 0, toWhite = 0;
+    const int a_on = px && port_fader_blend_state(&evy, &toWhite);
+    if (a_on && evy > 16) evy = 16;
+    /* the inset on engine B's blend (see above) */
+    int b_evy = 0, b_white = 0;
+    const int inset_b =
+        px && g_inset_fade_set && !g_bm_live && !inset_b_fade_off() &&
+        (*(volatile unsigned short *)0x4000304 & 0x8000u) &&   /* A upper */
+        port_fader_entrance_wipe_armed() &&
+        /* a wipe that is moving or closed; a parked open one (interp 0, which
+           is where every wipe sits through an ordinary level) leaves the
+           panel on the old rule */
+        data_0209f5bc && ((const int *)data_0209f5bc)[1] != 0;
+    if (inset_b && !port_fader_blend_state_sub(&b_evy, &b_white))
+        b_evy = 0;
+    if (!px || (!a_on && !(inset_b && b_evy)))
+        return;
+    /* ONLY THE PIXELS THE DS BLENDS: the layer on top there is one of
+       BLDCNT's first targets and its window's effect bit is set. Null when
+       every pixel qualifies (a plain fade). */
+    const unsigned char *bm = port_engine_a_bright_mask();
+    if (!inset_b) {
+        fade_pass(px, w, h, evy, toWhite, bm, nullptr, 0);
+        return;
+    }
+    if (a_on)
+        fade_pass(px, w, h, evy, toWhite, bm, g_inset_fade_rc, 0);
+    if (b_evy) {
+        if (b_evy > 16) b_evy = 16;
+        fade_pass(px, w, h, b_evy, b_white, nullptr, g_inset_fade_rc, 1);
     }
 }
 
@@ -2547,6 +2634,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     lc_overlay_begin();
     /* and the brightness mask's: off until this frame builds one */
     g_bm_live = false;
+    g_inset_fade_set = false;
 
     /* ---- func_02019144 LINE 46, THE ENGINE-A LAYER-MASK PUBLISH -----------
      *

@@ -1616,6 +1616,10 @@ void port_frame_phase2(void);
    which is the frame every pointer main() holds into the old one goes stale. */
 int port_level_change_poll(void);
 int port_level_change_pending(void);
+int port_level_hold_live(void);   /* hal/level_change.cpp: a load-hold frame (read only) */
+int port_level_hold_tick(void);   /* the same, counting the post-select hold down: once per frame */
+int port_level_hold_white(void);  /* the held picture is white, not black */
+int port_level_post_hold_live(void); /* the white hold after a star select: the NEW level is up and must not move */
 int port_level_is_mounted(int level);
 int port_level_overlay_id(int level);
 unsigned port_level_ds_overlay(int level);
@@ -12372,6 +12376,7 @@ int main(void)
         }
         double t_frame, t_phase;
         int game_ticked = 1;   /* cleared when a tick is skipped */
+        int tick_frozen = 0;   /* the F5 menu's freeze OR a level-change load hold */
         /* 1 = this frame's actor work is the ROM's func_02044120 at phase 4
            (lane K1LOOP): decided at the phase-4 point below, read by the
            camera block, the render block and the scene-tree point. */
@@ -15649,16 +15654,25 @@ int main(void)
            exactly as before. port_actor_frame_begin sets the frame's account
            apart from the teardown convergence that may already have walked the
            dying level's lists at phase 3 (hal/level_change.cpp). */
+        /* THE LOAD HOLD (run hunt8, lane BLACKHOLD1): the frames
+           hal/level_change.cpp's port_level_change_poll holds black between
+           the exit wipe and the new level run frozen like the F5 menu's,
+           because the cartridge is blocked in its load and runs no game code.
+           Presented, paced and sounded as any frame; no tick, no clock. */
+        {
+            const int hold_now = port_level_hold_tick();
+            tick_frozen = menu_on || hold_now;
+        }
         port_actor_frame_begin();
         {
             static int k1_no_actors = -1;
             if (k1_no_actors < 0)
                 k1_no_actors = getenv("SM64DS_NO_ACTORS") ? 1 : 0;
-            k1_rom = boot_spawns && !menu_on && real_camera && !k1_no_actors &&
+            k1_rom = boot_spawns && !tick_frozen && real_camera && !k1_no_actors &&
                      !rb_skip_actor_render() && !(selftest && frame == 0) &&
                      !port_actor_frame_split_forced();
         }
-        if (menu_on) {
+        if (tick_frozen) {
             game_ticked = 0;
         } else if (boot_spawns) {
             /* Nothing to undo before the tick any more. The view matrix is
@@ -16139,9 +16153,18 @@ int main(void)
            the pivot was stepped on Camera::Render's face, so neither hand
            call is made: the heading override and the echo below still are,
            after the Camera's Behavior as before. */
-        if (cam_mode == CAM_ANALOG && !rb_replaying() && !k1_rom) an_step_pivot(c);
+        /* THE POST-SELECT WHITE HOLD (run hunt8, lane WHITEHOLD1) stands the NEW
+           level still under the white: on the cartridge the course is being
+           loaded and nothing runs, the camera included. Off a ROM actor frame
+           the camera's Behavior and the analog pivot are hand calls made every
+           presented frame, so without this the camera settled for the whole
+           hold and the reveal opened on a different view than the ROM's own
+           first frames. The black hold and the F5 menu keep their old
+           behaviour (the old level is gone behind the black). */
+        const int cam_held = port_level_post_hold_live();
+        if (cam_mode == CAM_ANALOG && !rb_replaying() && !k1_rom && !cam_held) an_step_pivot(c);
         if (real_camera) {
-            if (!k1_rom)
+            if (!k1_rom && !cam_held)
                 hal_camera_behavior(cam);
             /* THE ONE THING THE RIG OVERRIDES BESIDES THE VIEW: the heading
                the walk steers by. Camera::Behavior has just put its own into
@@ -17465,7 +17488,7 @@ int main(void)
                snapshots. */
             const int ip_slow = ip_fit_commit();
             if (!ip_slow) ip_snap(g_ip_p3, fb);
-            const int ip_snapit = (menu_on || !k1_rom || stacked || ip_slow ||
+            const int ip_snapit = (tick_frozen || !k1_rom || stacked || ip_slow ||
                                    rb_skip_render() || rb_resim_skip_render())
                                       ? 1 : 0;
             ntr::GxInterpStats ist;
@@ -17510,6 +17533,21 @@ int main(void)
         if (!rb_skip_render())
         hal_sub_screen_present(&fb.px[0][0], ntr::active_w, ntr::active_h);
         pt_mark(PS_FADE_OVL);
+        /* THE LOAD HOLD'S PICTURE (run hunt8, lane BLACKHOLD1): the exit wipe's
+           last picture is whole-screen black on the DS (measured, both screens),
+           but the port reaches it through the wipe mesh plus engine A's blend
+           under the OLD level's window setup, which leaves the HUD and the sky
+           outside the iris lit while the level is still standing. The DS is
+           blocked in its load with that black on the glass; so the held
+           frames are black, edge to edge (the bottom screen is engine B's own
+           black blend, already). */
+        if (port_level_hold_live() && !rb_skip_render()) {
+            const unsigned hold_px = port_level_hold_white() ? 0xFFFFFFFFu
+                                                             : 0xFF000000u;
+            for (int y = 0; y < ntr::active_h; ++y)
+                for (int x = 0; x < ntr::active_w; ++x)
+                    fb.px[y][x] = hold_px;
+        }
         if (g_ip_on > 0 && g_ip_tick_ok) ip_snap(g_ip_p2, fb);
 
         /* THE FADE COMPOSITE, ENGINE A'S, now runs from the tail of
