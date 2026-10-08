@@ -2168,14 +2168,108 @@ static int port_level_exit_fade_pending(void)
     return 1;
 }
 
+/* ---- THE LOAD HOLD (run hunt8, lane BLACKHOLD1) ----------------------------
+   On the cartridge the level request is answered by a BLOCKING load: the exit
+   wipe has just reached its end (the screen is fully black), Scene::
+   SpawnIfNecessary replaces the Stage, and nothing is drawn and no game code
+   runs until the new level is up. Measured on the real ROM in melonDS
+   (headless melonDS tracer, 24 destinations): the top screen stays fully
+   black for about 50 frames, 38..64 by destination (castle rooms 51..60,
+   the tower exit 55, the level-34 exit 61) between the closing wipe and the
+   opening one. The port loads the next level in one frame, so it showed two
+   black frames there, which players see as a flash.
+
+   This is the port's stand-in for the cartridge's load time: when the exit
+   wipe is at its end and the screen is covered black, the change is answered
+   a per-destination number of frames later instead of at once, and the level
+   loop runs those frames FROZEN (port_level_hold_live, read by tests/walk_window.cpp
+   beside menu_on): the picture is presented, the pace and the sound go on, and
+   no game tick, fader step or frame clock runs, exactly like the blocked DS.
+   Only a black cover gets it: a change with no exit wipe (the debug warp, a
+   scene crossing) or a white cover (the painting entries) is answered at once
+   as before. SM64DS_BLACK_HOLD=<frames> forces one length for every
+   destination, 0 turns it off. */
+extern "C" int port_fader_blend_state_sub(int *evy, int *toWhite);   /* hal/fader_wipes.cpp */
+
+static int g_hold_left = -1;       /* -1 = idle, else frames of hold still owed */
+static int g_hold_live;            /* this frame is a hold frame */
+
+extern "C" int port_level_hold_live(void) { return g_hold_live; }
+
+/* THE CARTRIDGE'S BLACK, PER DESTINATION LEVEL: the number of fully black top
+   screen frames between the closing and the opening wipe, measured in melonDS
+   on the real ROM (headless tracer, an ExitLevel to each level from level 31).
+   It follows the size of what is being loaded:
+   the castle rooms and grounds 51..60, the other areas 38..64, and the
+   star-select courses (6..28, 41) only 14 (the select scene is next). The port
+   itself shows two black frames after the change (the wipe's own leftover
+   blend), so the hold is the measured black minus those two. A destination
+   not measured here gets the median, 50. */
+static const unsigned char kDsBlack[49] = {
+    0, 57, 58, 51, 55, 60, 14, 14, 14, 14, 14, 14,
+    14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+    14, 14, 14, 14, 14, 41, 41, 38, 47, 45, 50, 53,
+    50, 56, 50, 64, 54, 14, 45, 50, 58, 44, 53, 40,
+    50
+};
+
+static int port_level_hold_frames(int dest)
+{
+    static int forced = -2;
+    if (forced == -2) {
+        const char *e = std::getenv("SM64DS_BLACK_HOLD");
+        forced = e ? std::atoi(e) : -1;
+        if (forced > 600) forced = 600;
+    }
+    if (forced >= 0)
+        return forced;
+    int black = 50;
+    if (dest >= 0 && dest < (int)sizeof kDsBlack && kDsBlack[dest])
+        black = kDsBlack[dest];
+    return black > 2 ? black - 2 : 0;
+}
+
+/* the exit wipe is at its end (the same predicate the wait above uses, read
+   again) AND the covered screen is black on the sub engine, the engine a wipe
+   ramps (hal/fader_wipes.cpp port_fader_blend_state_sub) */
+static int port_level_hold_due(void)
+{
+    const void *fader = data_0209f5bc;
+    if (!fader || !port_stage_object() || !port_level_is_mounted(data_02092110))
+        return 0;
+    if (*(const int *)((const char *)fader + 4) != 0x1000)
+        return 0;
+    int evy = 0, white = 0;
+    if (!port_fader_blend_state_sub(&evy, &white) || evy < 16 || white)
+        return 0;
+    return port_level_hold_frames(data_02092110);
+}
+
 extern "C" int port_level_change_poll(void)
 {
     if (data_02092110 < 0 && port_scene_crossing_due())
         port_level_scene_crossing();
-    if (data_02092110 < 0)
+    if (data_02092110 < 0) {
+        g_hold_left = -1;
+        g_hold_live = 0;
         return 0;
+    }
     if (port_level_exit_fade_pending())
         return 0;
+    if (g_hold_left < 0) {
+        g_hold_left = port_level_hold_due();
+        if (g_hold_left)
+            std::fprintf(stderr, "  [lvl] load hold: level %d, %d frame(s) black "
+                         "(the cartridge's blocking load)\n", (int)data_02092110,
+                         g_hold_left);
+    }
+    if (g_hold_left > 0) {
+        --g_hold_left;
+        g_hold_live = 1;
+        return 0;
+    }
+    g_hold_left = -1;
+    g_hold_live = 0;
     const int changed = port_level_change_apply();
     port_scene_request_release("the level change has been serviced (or "
                                "declined) and the port spawns no scene for it");
