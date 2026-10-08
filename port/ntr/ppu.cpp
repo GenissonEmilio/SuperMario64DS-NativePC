@@ -685,7 +685,77 @@ uint32_t bank_home(unsigned block, uint8_t cnt) {
 
 }  // namespace
 
+/* ---- WHAT A BANK'S CONTENT IS, WHEN THE WINDOWS ARE FLAT (run hunt8, MGFLASH1)
+ *
+ * This port keeps ONE flat copy of each engine's VRAM window (0x06200000 for
+ * engine B BG, 0x06600000 for engine B OBJ) and the bank mapping only decides
+ * which captured block is carried into it. On the DS the windows are views of
+ * banks, and the dual-screen 3D minigames (Trampoline Time 384, Trampoline
+ * Terror 385, Bounce and Pounce 373, and 372) depend on two things that a
+ * single flat window cannot hold at once:
+ *
+ *   1. BANK I IS THE PAUSE MENU'S OWN STORAGE. src/actors/dScMgD3DBase_c.cpp
+ *      Virtual7C (slot 31) maps bank I as engine B OBJ (GX::SetBankForSubOBJ
+ *      (0x100) writes VRAMCNT_I = 0x82), loads the language's menu picture at
+ *      0x06600000 and 0x06602000, and maps the previous owner back. Bank I
+ *      keeps that picture while it is unmapped. OnAimedAtWithEgg (slot 29) maps
+ *      it again when the player pauses and the three buttons are drawn from it.
+ *      The capture publish below used to carry the last captured frame over the
+ *      same 0x06600000 window every other frame (bank D's home), so by the time
+ *      the player paused the window held a captured picture read as tiles: the
+ *      striped garbage where CONTINUE / QUIT / OPTIONS belong.
+ *   2. A CAPTURED BLOCK ONLY MATTERS TO THE SCENE THAT CAPTURED IT. Every scene
+ *      starts with Scene::ResetHardwareRegisters, which writes DISPCAPCNT =
+ *      0x80000000 (the enable bit, every field zero) and nothing else in the game
+ *      writes that exact word. The bookkeeping below was never cleared, so the
+ *      Rec Room reached from such a minigame mapped banks C and D to its own
+ *      engine B BG and OBJ (VRAMCNT 0x84 / 0x84) and the first publish after
+ *      that carried the minigame's last two captured frames over its tiles.
+ *
+ * So: the first 0x4000 bytes of the OBJ window are saved before the first
+ * capture is carried over them (that is the menu picture Virtual7C wrote, and
+ * the only thing the ROM puts there that this publish does not), and put back
+ * while bank I owns the window; and the bookkeeping is dropped at a scene
+ * boot. Neither changes a scene that never programs the capture unit. */
+namespace {
+constexpr uint32_t kObjWindow = 0x06600000u;
+constexpr uint32_t kBankIBytes = 0x4000u;   // bank I is 16 KB
+constexpr unsigned kVramCntI = 9;           // VRAMCNT_H is +8, VRAMCNT_I +9
+uint8_t g_bank_i[kBankIBytes];
+int g_bank_i_have;                          // g_bank_i holds bank I's content
+int g_bank_i_home;                          // bank I is engine B OBJ right now
+
+void capture_forget(void) {
+    for (unsigned b = 0; b < 4; ++b) {
+        g_cap[b].len = 0;
+        g_home_have[b] = 0;
+        g_home[b] = 0;
+    }
+    g_bank_i_have = 0;
+    g_bank_i_home = 0;
+}
+}  // namespace
+
 void ppu_vram_publish(void) {
+    /* A SCENE BOOT (see 2 above): drop what the last scene captured. Read
+       before anything else because this is the frame the new scene's banks are
+       mapped on, and ppu_display_capture clears the enable bit at the end of
+       this same frame. */
+    if (*reinterpret_cast<volatile uint32_t *>(kDispCapCnt) == 0x80000000u)
+        capture_forget();
+
+    /* BANK I OWNS THE OBJ WINDOW (VRAMCNT_I = 0x82, engine B OBJ at 0x06600000):
+       put its content back. Only once the menu picture has been saved. */
+    const uint8_t ci = *reinterpret_cast<volatile uint8_t *>(kVramCnt + kVramCntI);
+    const int i_home = (ci == 0x82) ? 1 : 0;
+    if (i_home != g_bank_i_home) {
+        if (i_home && g_bank_i_have)
+            std::memcpy(reinterpret_cast<void *>(kObjWindow), g_bank_i, kBankIBytes);
+        else if (!i_home && g_bank_i_have)
+            std::memcpy(g_bank_i, reinterpret_cast<const void *>(kObjWindow), kBankIBytes);
+        g_bank_i_home = i_home;
+    }
+
     for (unsigned b = 0; b < 4; ++b) {
         if (!g_cap[b].len) continue;         // never captured into
         const uint8_t cnt = *reinterpret_cast<volatile uint8_t *>(kVramCnt + b);
@@ -703,6 +773,13 @@ void ppu_vram_publish(void) {
         g_home[b] = home;
         if (!home) continue;                 // nowhere this program reads
         if (home == lcdc_addr(b)) continue;  // the bytes are already there
+        /* the window is about to be overwritten with a captured frame: what
+           the ROM put in bank I's first 16 KB is the one thing in it worth
+           keeping, and it is saved once, here, the first time */
+        if (home == kObjWindow && !g_bank_i_have && !g_bank_i_home) {
+            std::memcpy(g_bank_i, reinterpret_cast<const void *>(kObjWindow), kBankIBytes);
+            g_bank_i_have = 1;
+        }
         std::memcpy(reinterpret_cast<void *>(home + g_cap[b].off),
                     reinterpret_cast<const void *>(lcdc_addr(b) + g_cap[b].off),
                     g_cap[b].len);
