@@ -2933,7 +2933,24 @@ void rig_cap() {
             off = (int)(rig_rand(g.rig_seed ^ ((unsigned)g.seat * 7919u), (unsigned)k) % 161u);
         }
     } else if (g.seat != 0) {
+        // PICTURES (SM64DS_RIG_CAPOBS=1..4): the other seat waits 450 units from the cap
+        // (E, W, S, N) so its camera has the cap in view when seat 0 picks it up
+        static const int obs = env_int("SM64DS_RIG_CAPOBS", 0, 0, 4);
+        static int did_obs = -1;
+        if (g.rig == 6 && obs && k != did_obs && within >= 300) {
+            did_obs = k;
+            if (CapRec *c = cap_rec(rig_cap_id(k % g.caps_n))) {
+                static const int dx[4] = { 450, -450, 0, 0 }, dz[4] = { 0, 0, 450, -450 };
+                const int to[3] = { c->origin[0] + (dx[obs - 1] << 12), c->origin[1], c->origin[2] + (dz[obs - 1] << 12) };
+                rig_teleport(my_body(), to);
+                std::fprintf(stderr, "[rig] cap: observer %d waits 450 units from cap %d\n", g.seat, (int)(c - g.caps));
+            }
+        }
         return;
+    }
+    {
+        static const int obs = env_int("SM64DS_RIG_CAPOBS", 0, 0, 4);
+        if (g.rig == 6 && obs && g.seat == 0) off = 3500;
     }
     if (k == did || within < off) return;
     did = k;
@@ -2949,6 +2966,19 @@ void rig_capdrop() {
     char *me = my_body();
     if (!me) return;
     if (g.seat == 1) {
+        // PICTURES (SM64DS_RIG_CAPOBS=1..4): seat 1 stands 400 units from seat 0's body when it gets hurt
+        static const int obs = env_int("SM64DS_RIG_CAPOBS", 0, 0, 4);
+        static int did_obs = -1;
+        const int ko = ((int)(r - g.t0) - 4000) / 9000, wo = ((int)(r - g.t0) - 4000) % 9000;
+        if (obs && (int)(r - g.t0) >= 4000 && ko != did_obs && wo >= 2900) {
+            if (char *b0 = body_of(0)) {
+                did_obs = ko;
+                static const int dx[4] = { 400, -400, 0, 0 }, dz[4] = { 0, 0, 400, -400 };
+                const int to[3] = { s32r(b0, 0x5c) + (dx[obs - 1] << 12), s32r(b0, 0x60), s32r(b0, 0x64) + (dz[obs - 1] << 12) };
+                rig_teleport(me, to);
+                std::fprintf(stderr, "[rig] capdrop: observer seat 1 waits 400 units from seat 0\n");
+            }
+        }
         if (g.rig_drop_id && (int)(now_ms() - g.rig_drop_at) >= 0) {
             CapRec *c = cap_rec(g.rig_drop_id);
             char *a = c ? cap_actor_of(*c) : nullptr;
