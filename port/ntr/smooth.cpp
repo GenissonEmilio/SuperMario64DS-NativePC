@@ -1547,6 +1547,28 @@ int corner_of(const TopoTri &t, const int16_t p[3]) {
 // How much of its pull a joint corner keeps (see THE JOINT EASE).
 inline double topo_joint_pull() { return 0.5; }
 
+// A joint between two triangles that is sharper than kCreaseCos is still one
+// curved surface when the artist shaded it as one: the normals each side
+// authored at both ends of the shared edge continue into each other, and the
+// joint is not a right angle (a barrel's ring of 60 degree sides; a chest's box
+// corners are 90 degrees and stay creases whatever their normals say).
+inline double topo_joint_max_cos() { return 0.25881904510252074; }   // 75 degrees
+inline double topo_agree_cos() { return 0.94; }                      // about 20 degrees
+bool topo_edge_smooth(int ti, int k) {
+    const TopoTri &t = g_topo.tris[ti];
+    const int ui = t.nb[k];
+    if (ui < 0) return true;
+    const TopoTri &u = g_topo.tris[ui];
+    const double dc = dihedral_cos(t, u);
+    if (dc >= kCreaseCos) return true;
+    if (dc < topo_joint_max_cos()) return false;
+    const int kb = (k + 1) % 3;
+    const int ca = corner_of(u, t.p[k]), cb = corner_of(u, t.p[kb]);
+    if (ca < 0 || cb < 0) return false;
+    return d_dot(t.nrm[k], u.nrm[ca]) >= topo_agree_cos() &&
+           d_dot(t.nrm[kb], u.nrm[cb]) >= topo_agree_cos();
+}
+
 // The effective (welded) normal at corner c of triangle ti: the area weighted
 // sum of the face normals of every triangle reachable around that vertex
 // without crossing a joint sharper than kCreaseCos.
@@ -1567,7 +1589,7 @@ void topo_weld(int ti, int c, VertRing &vt, double out[3], int *joint) {
             bool dup = false;
             for (size_t q = 0; q < seen.size(); ++q) if (seen[q] == j) { dup = true; break; }
             if (dup) continue;
-            if (dihedral_cos(tx, g_topo.tris[j]) >= kCreaseCos) { seen.push_back(j); st.push_back(j); }
+            if (topo_edge_smooth(x, k)) { seen.push_back(j); st.push_back(j); }
         }
     }
     *joint = seen.size() < ring.size() ? 1 : 0;
@@ -1579,6 +1601,65 @@ void topo_weld(int ti, int c, VertRing &vt, double out[3], int *joint) {
     d_unit(s, out);
     if (out[0] == 0.0 && out[1] == 0.0 && out[2] == 0.0)
         for (int k = 0; k < 3; ++k) out[k] = t0.F[k];
+}
+
+
+// A RIM EDGE. Two flat faces meet at a real corner and neither bends along the
+// edge by its welded normals, but the artist's own normals at the two ends of
+// the edge may still say the edge is one stretch of a curve drawn on the broad
+// face (a chest's metal rim, a strap over the lid: each is cut into straight
+// bars, each bar its own mesh, and only the shading says they ring a curve).
+// The edge then bows INSIDE the plane of the broader of its two faces, with the
+// authored normals flattened into that plane, so nothing leaves the surface,
+// and only when those normals lean off the edge's perpendicular by less than
+// 40 degrees (a corner shaded as the average of three faces leans 45 degrees and
+// stays straight). Both triangles on the edge compute the same answer.
+bool topo_ring_edge(int ti, int k, double out[2][3]) {
+    const double lim = 0.6427876096865393;   // sin 40 degrees
+    const TopoTri &t = g_topo.tris[ti];
+    const int ui = t.nb[k];
+    if (ui < 0) return false;
+    const TopoTri &u = g_topo.tris[ui];
+    const bool pick_u = (u.area > t.area) || (u.area == t.area && ui < ti);
+    const int si = pick_u ? ui : ti;
+    const TopoTri &s = g_topo.tris[si];
+    int ks = -1;
+    if (!pick_u) ks = k;
+    else for (int j = 0; j < 3; ++j) if (s.nb[j] == ti) ks = j;
+    if (ks < 0) return false;
+    const int kb = (ks + 1) % 3;
+    double A[3], B[3], O[3], d[3];
+    topo_pos(s, ks, A); topo_pos(s, kb, B); topo_pos(s, (ks + 2) % 3, O);
+    d_sub(B, A, d);
+    const double dl = d_len(d);
+    if (dl <= 0.0) return false;
+    const double dh[3] = {d[0] / dl, d[1] / dl, d[2] / dl};
+    double np[2][3];
+    for (int e = 0; e < 2; ++e) {
+        const double *n = s.nrm[e == 0 ? ks : kb];
+        const double a = d_dot(n, s.F);
+        double r[3] = {n[0] - a * s.F[0], n[1] - a * s.F[1], n[2] - a * s.F[2]};
+        const double rl = d_len(r);
+        if (rl < 0.25) return false;
+        np[e][0] = r[0] / rl; np[e][1] = r[1] / rl; np[e][2] = r[2] / rl;
+    }
+    double eo[3], od[3];
+    d_cross(s.F, dh, eo);
+    d_sub(O, A, od);
+    if (d_dot(eo, od) > 0.0) { eo[0] = -eo[0]; eo[1] = -eo[1]; eo[2] = -eo[2]; }
+    // leaning outward on the face, away from the edge's middle, by a small angle
+    if (d_dot(np[0], eo) <= 0.0 || d_dot(np[1], eo) <= 0.0) return false;
+    const double a0 = d_dot(np[0], dh), a1 = d_dot(np[1], dh);
+    if (a0 > 0.0 || a1 < 0.0) return false;
+    if (fabs(a0) > lim || fabs(a1) > lim) return false;
+    if (!pick_u) {
+        for (int q = 0; q < 3; ++q) { out[0][q] = np[0][q]; out[1][q] = np[1][q]; }
+    } else if (same_pos(t.p[k], s.p[ks])) {
+        for (int q = 0; q < 3; ++q) { out[0][q] = np[0][q]; out[1][q] = np[1][q]; }
+    } else {
+        for (int q = 0; q < 3; ++q) { out[0][q] = np[1][q]; out[1][q] = np[0][q]; }
+    }
+    return true;
 }
 
 void topo_finalize_box(const std::vector<int> &mem) {
@@ -1604,11 +1685,30 @@ void topo_finalize_box(const std::vector<int> &mem) {
             topo_pos(t, k, A); topo_pos(t, kb, B);
             d_sub(B, A, d);
             const int u = t.nb[k];
-            if (u >= 0 && dihedral_cos(t, g_topo.tris[u]) < kCreaseCos) {
-                // A crease. Each side takes its own face normal for the edge:
-                // that is perpendicular to the edge, so the edge is the
-                // straight line from both sides and the two cannot part.
-                ca = cb = t.F;
+            double bn[2][3];
+            if (u >= 0 && !topo_edge_smooth(ti, k)) {
+                // A crease. Both sides must draw the edge as ONE curve. Each
+                // side's welded normals at the two ends say how its own surface
+                // runs along the edge; the side that bends along the edge
+                // (a lid's rim in the plane of its flat end, a barrel's ring)
+                // gives the curve, a flat side is perpendicular to it and gives
+                // a straight line. Two flat sides: the straight edge.
+                const TopoTri &tu = g_topo.tris[u];
+                const int cA = corner_of(tu, t.p[k]), cB = corner_of(tu, t.p[kb]);
+                const double dl = d_len(d);
+                const double bt = dl > 0.0 ? fabs(d_dot(d, t.eff[k])) + fabs(d_dot(d, t.eff[kb])) : 0.0;
+                double bu = 0.0;
+                if (cA >= 0 && cB >= 0 && dl > 0.0) bu = fabs(d_dot(d, tu.eff[cA])) + fabs(d_dot(d, tu.eff[cB]));
+                const bool take_u = (bu > bt) || (bu == bt && u < ti);
+                if ((bt <= 1e-3 * dl && bu <= 1e-3 * dl)) {
+                    ca = cb = t.F;
+                    if (topo_ring_edge(ti, k, bn)) { ca = bn[0]; cb = bn[1]; }
+                } else if (take_u && cA >= 0 && cB >= 0) {
+                    for (int q = 0; q < 3; ++q) { bn[0][q] = tu.eff[cA][q]; bn[1][q] = tu.eff[cB][q]; }
+                    ca = bn[0]; cb = bn[1];
+                } else {
+                    ca = t.eff[k]; cb = t.eff[kb];
+                }
             }
             for (int q = 0; q < 3; ++q) { t.en[k][0][q] = (float)ca[q]; t.en[k][1][q] = (float)cb[q]; }
             const double dl = d_len(d);
@@ -1633,7 +1733,17 @@ void topo_finalize_box(const std::vector<int> &mem) {
             if (dl <= 0.0) continue;
             const double dh[3] = {d[0] / dl, d[1] / dl, d[2] / dl};
             for (int sd = 0; sd < 2; ++sd) {
-                if (!t.cv[sd == 0 ? k : kb]) continue;
+                {
+                    // the same answer from both triangles on the edge
+                    const int cc = sd == 0 ? k : kb;
+                    int jt = t.cv[cc];
+                    const int uu = t.nb[k];
+                    if (uu >= 0) {
+                        const int cu = corner_of(g_topo.tris[uu], t.p[cc]);
+                        if (cu >= 0 && g_topo.tris[uu].cv[cu]) jt = 1;
+                    }
+                    if (!jt) continue;
+                }
                 double n[3] = {t.en[k][sd][0], t.en[k][sd][1], t.en[k][sd][2]};
                 const double a = d_dot(n, dh);
                 const double a2 = a * topo_joint_pull();
