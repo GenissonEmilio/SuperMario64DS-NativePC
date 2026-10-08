@@ -734,6 +734,13 @@ struct StackLayout {
                        // inverse all read one number. Equal to active_h on every
                        // aspect whose active_h is a whole multiple of 192 (native
                        // and 16:9), smaller on every other.
+    int top_h;         // the TOP picture's image height: the whole of engine A's
+                       // frame, active_h rows. Equal to pan_h wherever active_h is
+                       // a whole multiple of 192, taller where it is not (21:9 and
+                       // 32:9 with no RenderScale), so the rows the 3D layer and
+                       // the 2D layers share (the ending's letterbox bars carry
+                       // the subtitles) are not cut off at pan_h. The bottom panel
+                       // keeps pan_h.
 };
 
 enum { GAP_FILL_SOLID = 0, GAP_FILL_AMBIENT = 1, GAP_FILL_CUSTOM = 2 };
