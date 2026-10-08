@@ -232,7 +232,11 @@
 # ---- .rodata: the BTA descriptor's own targets (T2, above) -----------------
 data_ov032_021128f0 data_ov032_021128f4
 data_ov032_021128f8 data_ov032_021128fc
-data_ov032_0211291c data_ov032_02112aa4
+data_ov032_0211291c
+# The 91-entry int table of the BTA's scroll (91 * 4 = 0x16c, ending at 0x02112c10, the end of
+# .rodata). dsd's next symbol after 0x02112aa4 is a guess 4 bytes on, so the host array was
+# 4 bytes long and frames 1..90 of the water's texture scroll read zeros from the padding.
+data_ov032_02112aa4:0x16c
 
 # ---- .data: the material name 0x0211291c points at ------------------------
 data_ov032_02112edc

@@ -146,6 +146,13 @@
 # port/tools/inferred_stub_debt.txt and inferred_stub_baseline.txt name no
 # ov033 symbol at all, and the guard runs clean over this seat.
 
+# ---- .rodata 0x021116c8..0x021119e8: the two BTAs' tables (TextureTransformer) --
+# Two texture-scroll animations (descriptors 0x02111bb0 and 0x02111bc8), each a u16 table, an int
+# table, an entry and a 91-entry int table (0x02111710, 0x0211187c), back to back. The generated
+# gap block stopped at dsd's first guessed symbol, so the second table of each scroll read
+# other memory (the water texture jumped around). Pinned to the whole section.
+data_ov033_021116c8:0x320
+
 # ---- .data: the two SpawnInfo records, both pinned to the ROM's 0x1c -------
 g_profile_TT_FUTA:0x1c g_profile_TT_WATER:0x1c
 
