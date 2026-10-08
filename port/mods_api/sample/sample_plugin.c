@@ -3,7 +3,7 @@
      * logs when it loads and reads one player setting ("tint"),
      * counts frames and logs the count now and then,
      * logs every level load,
-     * edits Mario's model as the game loads it (his first palette becomes one
+     * edits Mario's model (or the BMD in the "file" setting) as the game loads it (his first palette becomes one
        colour, so the change is easy to see),
      * wraps one actor's spawn function (the coin, or the id in the "actor" setting) with one that logs the first spawns and
        then calls the original.
@@ -46,7 +46,7 @@ static void __cdecl on_level(int level_id, void *user)
     g_api->log(g_api, "level %d loaded (load #%u, after %u frames)", level_id, g_levels, g_frames);
 }
 
-/* Mario's model: header word at 0x1c is the palette count, 0x20 the offset of
+/* A BMD model (Mario's by default): header word at 0x1c is the palette count, 0x20 the offset of
    the palette records (name offset, data offset, byte size; 16 bytes each).
    Colours are 16-bit BGR555. Edit in place, return the same size. */
 static uint32_t __cdecl on_mario(const char *rom_path, uint8_t **data, uint32_t size, void *user)
@@ -93,7 +93,8 @@ SM64DS_MOD_EXPORT int __cdecl sm64ds_mod_main(const SM64DSModApi *api)
 
     api->on_frame(api, on_frame, 0);
     api->on_level_load(api, on_level, 0);
-    api->on_file(api, "data/player/mario_model.bmd", on_mario, 0);
+    tint = api->setting(api, "file");                            /* optional: edit another model's palette */
+    api->on_file(api, tint ? tint : "data/player/mario_model.bmd", on_mario, 0);
     tint = api->setting(api, "actor");                           /* optional: wrap another actor id */
     if (tint) g_actor = (unsigned)strtoul(tint, 0, 0);
     g_prev_coin = api->replace_actor(api, g_actor, coin_wrapper);

@@ -105,7 +105,11 @@ struct SM64DSModApi {
        "data/enemy/kuribo/kuribo_model.bmd", case-insensitive; archive members
        by their name inside the archive work too) as it is loaded. The filter
        runs after the files/ layer of every enabled mod, so it sees the bytes
-       the game would have used. Return 0 = OK, nonzero = no such ROM file. */
+       the game would have used. Return 0 = registered, nonzero = bad
+       arguments or too many registrations. A path that names no ROM file is
+       found out later, when the game first loads files: it is logged once and
+       ignored. The filter can run more than once for the same file (always
+       starting from the pristine bytes); keep it free of state. */
     int (__cdecl *on_file)(const SM64DSModApi *api, const char *rom_path,
                            SM64DSFileFn filter, void *user);
 

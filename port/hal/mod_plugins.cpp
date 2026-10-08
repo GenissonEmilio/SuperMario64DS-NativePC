@@ -334,11 +334,16 @@ void load_syms(void)
     DWORD n = GetModuleFileNameA(0, exe, sizeof exe);
     if (!n || n >= sizeof exe) return;
     std::string base = exe;
+    std::string dir = base.substr(0, base.find_last_of("\\/") + 1);
     base = base.substr(0, base.size() > 4 ? base.size() - 4 : base.size());
     g_sym_base = 0x400000;
+    /* the table is named for the exe; a bundle that renamed the exe still finds
+       the build's own name beside it. The map is the fallback. */
     bool from_tab = true;
     FILE *f = fopen((base + ".symtab").c_str(), "rb");
+    if (!f) f = fopen((dir + "walk_window.symtab").c_str(), "rb");
     if (!f) { f = fopen((base + ".map").c_str(), "rb"); from_tab = false; }
+    if (!f) { f = fopen((dir + "walk_window.map").c_str(), "rb"); from_tab = false; }
     if (!f) {
         fprintf(stderr, "[plugins] no walk_window.symtab or .map beside the exe: symbol() answers NULL\n");
         return;
