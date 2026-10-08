@@ -66,6 +66,9 @@ extern unsigned char data_0209f250[];
 extern unsigned char data_0209f2d8;
 extern signed char data_0209f310[];
 extern unsigned char data_0209f208;
+extern int data_0209f40c[];             /* the minimap's three marker arrays: 12 star markers, */
+extern unsigned char data_0209f3e8[];   /* 9 caps, */
+extern unsigned char data_0209f3a4[];   /* 8 spike bombs (Obj pointers, zeroed by Stage::InitResources) */
 extern unsigned char *data_0209f344;
 extern unsigned char data_0209f204;
 extern unsigned char data_0209fc5c[];
@@ -1064,6 +1067,49 @@ unsigned local_from_stamp(unsigned t) {
 void cap_remove_actor(CapRec &r) {
     if (char *a = cap_actor_of(r)) _ZN7fBase_c18MarkForDestructionEv(a);
     r.uid = 0;
+}
+
+// The minimap walks three marker arrays (stars, caps, spike bombs) of actor pointers and reads
+// each one's area byte (GetMinimapID).  An entry whose actor is gone, or whose area byte is not
+// one of the level's areas, crashes it (GetMinimapID+0x33).  The ROM takes an entry out when the
+// actor goes (dCapIcon_c::Unlink); the actors this layer makes and destroys on its own
+// (copies of other seats' caps, a held star kept after its verdict) must leave no entry behind
+// either.  Checked once a frame before the walk; SM64DS_CAP_SLOTS=1 logs every change,
+// SM64DS_CAP_NOSANITIZE=1 leaves a bad entry in place (the control).
+int g_marker_cleared = 0;
+
+void marker_slots_pass() {
+    static const bool log = env_on("SM64DS_CAP_SLOTS");
+    static const bool keep = env_on("SM64DS_CAP_NOSANITIZE");
+    static unsigned prev[29];
+    void **tabs[3] = { (void **)data_0209f40c, (void **)data_0209f3e8, (void **)data_0209f3a4 };
+    static const int cnt[3] = { 12, 9, 8 };
+    static const char *nm[3] = { "stars", "caps", "bombs" };
+    int base = 0;
+    for (int t = 0; t < 3; ++t) {
+        for (int i = 0; i < cnt[t]; ++i) {
+            char *p = (char *)tabs[t][i];
+            const unsigned pv = (unsigned)(size_t)p;
+            bool bad = false;
+            const char *why = "";
+            if (p) {
+                if (_ZN8dActor_c10FindWithIDEj(actor_uid(p)) != (void *)p) { bad = true; why = "actor gone"; }
+                else if ((signed char)*u8p(p, 0xcc) > 7) { bad = true; why = "area byte out of range"; }
+            }
+            if (log && pv != prev[base + i])
+                std::fprintf(stderr, "[cap] SLOT %s[%d] %08x -> %08x%s%s (frame %u)\n", nm[t], i, prev[base + i], pv,
+                             bad ? " BAD: " : "", why, my_frame_now());
+            prev[base + i] = pv;
+            if (bad && !keep) {
+                tabs[t][i] = nullptr;
+                prev[base + i] = 0;
+                ++g_marker_cleared;
+                std::fprintf(stderr, "[cap] SLOT %s[%d] held %08x (%s): taken out (%d so far, frame %u)\n", nm[t], i, pv,
+                             why, g_marker_cleared, my_frame_now());
+            }
+        }
+        base += cnt[t];
+    }
 }
 
 // the caps the level placed, once, when the match starts
@@ -3128,6 +3174,7 @@ void vs_ref_pre_walk(int frame) {
         puppet_stars();
         shown_stars();
         cap_probe();
+        marker_slots_pass();
         caps_pass();
         cap_watch();
         hit_detect("pre-walk");
