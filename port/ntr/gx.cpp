@@ -746,7 +746,20 @@ static inline float w_tie_q(const GxVertex &a, const GxVertex &b,
     const unsigned s = wsize > 16 ? wsize - 16 : 0;
     return (float)(1u << s) * (1.0f / 4096.0f);
 }
-static inline bool w_depth_fail(float z, float d, float q) {
+static inline bool w_depth_fail(float z, float d, float q, bool eq = false) {
+    if (eq) {
+        /* POLYGON_ATTR bit 14: the depth test is EQUAL, not LESS (melonDS
+           GPU3D_Soft.cpp DepthTest_Equal_W / _Equal_Z: |dst - z| <= 0xFF in
+           W-buffered depth units, 0x200 in Z). A pixel nothing has drawn
+           holds the far value and fails, as on the hardware. The W key is
+           -(1/w), so one raw W unit (q, the same 16-bit step the tie rule
+           uses) is q * d * d of key. The Z key is the post-divide z, whose
+           24-bit step is 2 / 2^24. */
+        if (d >= 0.0f) return true;
+        const float tol = q > 0.0f ? 255.0f * q * d * d : 512.0f * (2.0f / 16777216.0f);
+        const float diff = z - d;
+        return !(diff >= -tol && diff <= tol);
+    }
     return z >= (d < 0.0f ? d - q * d * d : d);
 }
 
@@ -768,6 +781,7 @@ void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
     t.alpha = static_cast<uint8_t>((g.poly_attr >> 16) & 31);
     t.mode = static_cast<uint8_t>((g.poly_attr >> 4) & 3);
     t.polyid = static_cast<uint8_t>((g.poly_attr >> 24) & 63);
+    t.depth_eq = static_cast<uint8_t>((g.poly_attr >> 14) & 1);
     t.wrap = g.tex_wrap;
     /* TEXIMAGE_PARAM bits 26-28 are the format; 1 (A3I5) and 6 (A5I3)
        are the two translucent-texture formats. Attr alpha 0 is wire and
@@ -4629,7 +4643,7 @@ void raster_ref(const RefArgs &ra, int tid, int nt) {
                 const float w0 = n0 / area, w1 = n1 / area, w2 = n2 / area;
                 const float l0 = w1, l1 = w2, l2 = w0;   // barycentric for a, b, c
                 const float z = wdepth ? -(l0 * iwa + l1 * iwb + l2 * iwc) : l0 * a.z + l1 * b.z + l2 * c.z;
-                if (w_depth_fail(z, drow[x], wq)) continue;
+                if (w_depth_fail(z, drow[x], wq, t.depth_eq != 0)) continue;
                 // Depth is written only after the texel passes the alpha test
                 // below -- a transparent texel must not occlude what is behind it.
                 // Texture first; the vertex colour modulates it. UVs are
@@ -5397,7 +5411,7 @@ void gx_render(Framebuffer &fb) {
                 const float w0 = n0 / area, w1 = n1 / area, w2 = n2 / area;
                 const float l0 = w1, l1 = w2, l2 = w0;   // barycentric for a, b, c
                 const float z = wdepth ? -(l0 * iwa + l1 * iwb + l2 * iwc) : l0 * a.z + l1 * b.z + l2 * c.z;
-                if (w_depth_fail(z, drow[x], wq)) continue;
+                if (w_depth_fail(z, drow[x], wq, t.depth_eq != 0)) continue;
                 // Depth is written only after the texel passes the alpha test
                 // below -- a transparent texel must not occlude what is behind it.
                 // Texture first; the vertex colour modulates it. UVs are
