@@ -144,6 +144,15 @@ unsigned port_hw_regions_size(void);
 void port_hw_regions_copy_out(void *dst);
 void port_hw_regions_copy_in(const void *src);
 
+// ntr/io.cpp: the two display engines' register latches (DISPCNT, windows,
+// BLDCNT/BLDALPHA/BLDY, MASTER_BRIGHT ...). Run hunt8, lane SSFADE1: a fader
+// writes BLDY once and then idles, so a restore that left these as they were at
+// the F9 left a restored scene under the old scene's black. They ride at the end
+// of the hardware blob (lk6_hw_blob_*), after the three content stores.
+unsigned port_disp_regs_size(void);
+void port_disp_regs_copy_out(void *dst);
+void port_disp_regs_copy_in(const void *src);
+
 // DS timer 0's counter and the timer model's bookkeeping (ntr/rt.cpp), which
 // the course timer and every OS tick read: copied into a .dsstate record just
 // before the capture below, put back just after the restore (run hunt3, lane
@@ -226,6 +235,32 @@ extern "C" void port_ss_rollguard_end(int began)
         g_rollguard_unstash();
 }
 
+// THE HARDWARE BLOB = the three content stores, then the display-register
+// latches. 0 when the stores are not reserved (the headless smokes), exactly as
+// before. lk7_persist.cpp writes and reads the same blob, so a disk state and
+// the in-memory slot can never disagree about its shape.
+extern "C" unsigned lk6_hw_blob_size(void)
+{
+    const unsigned h = port_hw_regions_size();
+    return h ? h + port_disp_regs_size() : 0;
+}
+
+extern "C" void lk6_hw_blob_copy_out(void *dst)
+{
+    const unsigned h = port_hw_regions_size();
+    if (!h) return;
+    port_hw_regions_copy_out(dst);
+    port_disp_regs_copy_out((char *)dst + h);
+}
+
+extern "C" void lk6_hw_blob_copy_in(const void *src)
+{
+    const unsigned h = port_hw_regions_size();
+    if (!h) return;
+    port_hw_regions_copy_in(src);            /* also drops the decode cache */
+    port_disp_regs_copy_in((const char *)src + h);
+}
+
 namespace {
 
 char  *dsstate_base() { return &dsstate_lo; }
@@ -284,7 +319,7 @@ int lk6_savestate_save(void)
     // build that reserves none of them (the headless smokes); when present,
     // they are captured with everything else, because a save that skipped them
     // is exactly the 0.2.1 cross-area texture bug.
-    size_t hsz = port_hw_regions_size();
+    size_t hsz = lk6_hw_blob_size();
 
     // Allocate first, commit second: if any malloc fails, keep the prior
     // slot untouched.
@@ -302,7 +337,7 @@ int lk6_savestate_save(void)
     port_timer0_state_save();
     memcpy(ng, dsstate_base(), gsz);
     if (hsz)
-        port_hw_regions_copy_out(nh);
+        lk6_hw_blob_copy_out(nh);
 
     free(g_slot.arena);
     free(g_slot.globals);
@@ -349,14 +384,14 @@ int lk6_savestate_load(void)
                 dsstate_size(), g_slot.globals_size);
         return 0;
     }
-    if (port_hw_regions_size() != g_slot.hw_size) {
+    if (lk6_hw_blob_size() != g_slot.hw_size) {
         // Same discipline for the hardware stores: the region set is fixed for
         // the process lifetime, so a mismatch means the slot came from a build
         // with a different capture shape. Refuse rather than restore a world
         // whose textures cannot be put back with it.
         fprintf(stderr, "[savestate] hw regions changed (%u vs saved %zu); "
                         "load refused\n",
-                port_hw_regions_size(), g_slot.hw_size);
+                lk6_hw_blob_size(), g_slot.hw_size);
         return 0;
     }
 
@@ -369,7 +404,7 @@ int lk6_savestate_load(void)
     port_timer0_state_load();
     port_ss_rollguard_end(norg);
     if (g_slot.hw_size)
-        port_hw_regions_copy_in(g_slot.hw);   /* also drops the decode cache */
+        lk6_hw_blob_copy_in(g_slot.hw);   /* also drops the decode cache */
     port_arena_set_cursor(g_slot.arena_cursor);
 
     // The audio path is the one thing that cannot be memcpy'd back cleanly:
