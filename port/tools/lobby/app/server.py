@@ -189,6 +189,9 @@ WANT_ANY_SEAT = 255
 # as three entries rather than as one number repeated.
 V_DIAL = 2       # params.match_players
 V_COLOR = 2      # create/join color+shoes, and the `color` verb itself
+# Voice chat is shelved: every room's voice is 0 and every plan says so. The
+# code paths stay; flip this to bring the host's switch back.
+VOICE_SHELVED = True
 V_ONE = 5        # the 1.0 fields: game, luigi, voice; the world verbs
 
 # ------------------------------------------------------------------ config
@@ -850,9 +853,11 @@ class Room(object):
         self.match_players = DIAL_MAX
         # v5 VS settings, host-set through `params` like map and win_mode.
         # luigi: Luigi Infection (0 off). voice: whether the match allows
-        # proximity voice (1, the default: the host has to turn it off).
+        # proximity voice. Voice chat is SHELVED (Tango, 10-08): the field and
+        # its wire stay, the value is always 0 (VOICE_SHELVED), so no go plan
+        # ever tells a game to open a microphone.
         self.luigi = 0
-        self.voice = 1
+        self.voice = 0 if VOICE_SHELVED else 1
         # ARENA MODE (run mp1 A4): the host's netmode pick, "arena" or
         # "lockstep". What a match actually plays is resolved at `start`
         # (arena_for) into match_netmode below.
@@ -2061,7 +2066,9 @@ def do_params(body, who, now):
     if luigi is not None:
         room.luigi = luigi
     if voice is not None:
-        room.voice = voice
+        # Parsed and bounds-checked above like before; the value is dropped
+        # while voice is shelved.
+        room.voice = 0 if VOICE_SHELVED else voice
     if netmode is not None:
         room.netmode = netmode
     # `match_players` rides the event as well as the view. Older launchers
@@ -2523,7 +2530,7 @@ def _reset_match(room):
     room.match_king_target = None
     room.match_dial = 0
     room.match_luigi = 0
-    room.match_voice = 1
+    room.match_voice = 0 if VOICE_SHELVED else 1
     room.match_seed = 0
     room.match_netmode = None
     room.names = ""

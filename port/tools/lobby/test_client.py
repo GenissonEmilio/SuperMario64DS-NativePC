@@ -952,8 +952,9 @@ def selftest_one(c):
             "win_mode": "time"}
     expect("luigi=2 is refused", c.post("params", dict(base, luigi=2)),
            400, "bad_field")
-    status, body = c.post("params", dict(base, luigi=1, voice=0))
-    check("the host turns Luigi on and voice off", status == 200, body)
+    status, body = c.post("params", dict(base, luigi=1, voice=1))
+    check("the host turns Luigi on and asks for voice (shelved: it stays off)",
+          status == 200, body)
 
     armed, (hp, gp) = _arm_and_plans(c, code, host, guest)
     check("the room went to go", hp.get("role") == "parent"

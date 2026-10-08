@@ -1755,19 +1755,20 @@ def test_vs_one_settings():
     reset()
     code, room, host, guest = _two_ready()
     tok = host["token"]
-    check("a fresh VS room has Luigi off and voice on",
-          room.luigi == 0 and room.voice == 1, (room.luigi, room.voice))
+    check("a fresh VS room has Luigi off and voice off (voice is shelved)",
+          room.luigi == 0 and room.voice == 0, (room.luigi, room.voice))
     view = room.view(1)
-    check("and the view says so", view["luigi"] == 0 and view["voice"] == 1,
+    check("and the view says so", view["luigi"] == 0 and view["voice"] == 0,
           view)
     for key in ("luigi", "voice"):
         for bad in (2, -1, True, False, "1", 1.0, None):
             st, out = _params(code, tok, **{key: bad})
             check("%s=%r is 400 bad_field" % (key, bad),
                   st == 400 and out["error"] == "bad_field", (st, out))
-    st, out = _params(code, tok, luigi=1, voice=0)
-    check("the host sets luigi=1 voice=0", st == 200 and room.luigi == 1
-          and room.voice == 0, (st, out, room.luigi, room.voice))
+    st, out = _params(code, tok, luigi=1, voice=1)
+    check("the host sets luigi=1 and asks for voice=1: voice stays 0 (shelved)",
+          st == 200 and room.luigi == 1 and room.voice == 0,
+          (st, out, room.luigi, room.voice))
     ev = room.events[-1]
     check("the params event carries both",
           ev["kind"] == "params" and ev["luigi"] == 1 and ev["voice"] == 0, ev)
@@ -1839,7 +1840,7 @@ def test_vs_one_settings():
             check("%s=%d on an adventure room is 400 bad_field" % (key, val),
                   st == 400 and out["error"] == "bad_field", (st, out))
     check("and the room did not take it",
-          S.ROOMS[code].luigi == 0 and S.ROOMS[code].voice == 1)
+          S.ROOMS[code].luigi == 0 and S.ROOMS[code].voice == 0)
 
 
 def world(nick="w", game=None, who=None, now=1000.0, **extra):
