@@ -56,6 +56,15 @@ data_ov029_0211306c
 # undersized-globals trap). It also reads data_ov029_02112fb8 (the BTA the
 # TextureTransformer prepares) and data_ov029_02112fec (its own CLPS_Block).
 data_ov029_02112b2c:0xc
+# WDW_Water's texture-scroll animation (BTA data_ov029_02112fb8; TextureTransformer reads it
+# every tick through func_020469e8) points at four blocks that are ONE run in the ROM:
+# u16 table 0x0211299c, int table 0x021129a0, the 0x1c-byte entry 0x021129a4 and the
+# 91-entry int table 0x021129c0 (91 * 4 = 0x16c), ending at 0x02112b2c. dsd cut that run
+# at its 'ambiguous' guesses (0x021129b4, 0x02112a6c ...), and the synthetic gap block the
+# pointer walk builds stops at the first one, 0xd0 bytes in, so the 91-entry table was
+# 43 entries long on the host and frames 43..90 of the scroll read other memory (the
+# water texture jumped around for about 48 ticks of every 91). Pinned to the whole run.
+data_ov029_0211299c:0x190
 data_ov029_02112fb8
 data_ov029_02112fec
 # FloatOnWaterPlatformWdwRectangle::InitResources reads data_ov029_02113fc4 and

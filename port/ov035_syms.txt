@@ -111,7 +111,11 @@
 # ---- the two animation descriptors, and the .rodata they point at ----------
 data_ov035_0211208c data_ov035_021120a4
 data_ov035_02111bd0 data_ov035_02111bd4 data_ov035_02111bd8 data_ov035_02111bdc
-data_ov035_02111be0 data_ov035_02111bfc data_ov035_02111c18 data_ov035_02111d84
+data_ov035_02111be0 data_ov035_02111bfc
+# The two 91-entry scroll tables of the two BTAs (91 * 4 = 0x16c each, the second ending at
+# 0x02111ef0 inside .rodata). dsd cuts each at a guess a few bytes in, so the host arrays were
+# 8 bytes long and the rest of every scroll read zeros from the padding.
+data_ov035_02111c18:0x16c data_ov035_02111d84:0x16c
 data_ov035_02112064
 #
 # ---- the ten CLPS collision blocks, 0x20 each by their own headers ---------

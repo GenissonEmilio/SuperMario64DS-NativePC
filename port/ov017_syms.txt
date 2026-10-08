@@ -116,6 +116,13 @@
 # ov064 class mount, the gate level_boot.cpp's own level-9 block describes)
 # retires it. Left unseated, level 9 keeps both the skip and the wrong water.
 
+# ---- .rodata 0x021114b8..0x0211198c: the water's BTA tables (TextureTransformer) --
+# The descriptor 0x02111a60 points at a u16 table, an int table, an entry and a 300-entry int
+# table (0x021114dc, 300 * 4 = 0x4b0) that fill the section. The generated gap block stopped at
+# dsd's first guessed symbol (0x0211150c), so the scroll read other memory after entry 12 (the
+# water texture jumped around). Pinned to the whole section.
+data_ov017_021114b8:0x4d4
+
 # ---- .data: the SpawnInfo record, pinned to the ROM's 0x1c ----------------
 g_profile_KS_MIZU:0x1c
 
