@@ -222,6 +222,11 @@ extern unsigned char data_0209f2d4;
    total beats the saved record, and LC_Render then draws the "HIGH SCORE"
    banner above the coin total (see kCoinRow0Rec) */
 extern unsigned char data_0209f2b0;
+/* WHICH COURSE THE LEVEL-CLEAR SCREEN IS FOR: Stage::Render and LC_Render both
+   place the coin total (and the HIGH SCORE banner) by SublevelToLevel of this
+   byte, see lc_total_is_high */
+extern char data_02092124;
+extern int SublevelToLevel(int i);
 /* and the button LC_Update's case 3 takes on Start: see hal_lc_menu_pad */
 extern unsigned char data_0209f2e0;
 }
@@ -1570,6 +1575,11 @@ struct SwapGeom {
        origin changes; what travels is the lifted glyph pixels alone. */
     int ty_src, ty_dst, t_h;     /* the course-clear text block, at the top */
     int cy_src, cy_dst, c_h;     /* the coin total, at the very bottom */
+    /* how many of the text band's t_h rows are LIFTED and drawn: all of them
+       unless the coin band starts inside the text band (a castle star, see
+       kCoinHighShift), where the text stops at the coin band's first row. The
+       plates' room keeps the full t_h. */
+    int t_lift_h;
 };
 SwapGeom g_sw;
 /* the picture size g_sw was last computed for, so the lift's question can
@@ -1678,7 +1688,25 @@ const int kCoinRow1 = 0x90;      /* 144 */
 const int kCoinRow0Rec = 0x77;   /* 119 */
 const int kCoinRow1Rec = 0xa0;   /* 160 */
 
-void swap_geom_for(int w, int h, SwapGeom *o, int record)
+/* THE COIN TOTAL OF A CASTLE STAR OR A SECRET COURSE SITS 0x10 ROWS HIGHER.
+   Stage::Render (src/_ZN5Stage6RenderEv.cpp:146) places the total at DS y 0x80
+   only for a course below 15 (SublevelToLevel of data_02092124); for course 15
+   and up -- every star collected in the castle itself, "ONE OF THE CASTLE'S
+   SECRET STARS!", and the secret courses -- it is y 0x70, and LC_Render draws
+   the banner at 0x70 there too. The two bands above were measured on a course
+   star only, so on these screens the total (measured at DS rows 113..125 with
+   the compose off, level-clear of sublevel 33) straddled the 122 edge: its
+   lower rows were lifted to the bottom and its upper rows stayed in the
+   picture, in the middle of the screen behind the SAVE & QUIT plate. The band
+   follows the total: the same rows, 0x10 higher. */
+const int kCoinHighShift = 0x10;
+
+int lc_total_is_high(void)
+{
+    return data_0209f20c != 0 && SublevelToLevel(data_02092124) >= 0xf;
+}
+
+void swap_geom_for(int w, int h, SwapGeom *o, int record, int high)
 {
     SwapGeom g;
     std::memset(&g, 0, sizeof g);
@@ -1700,8 +1728,8 @@ void swap_geom_for(int w, int h, SwapGeom *o, int record)
     int vs = h / ntr::SUB_H;
     if (vs < 1) vs = 1;
     g.t_h = (kTextRow1 - kTextRow0) * vs;
-    const int cr0 = record ? kCoinRow0Rec : kCoinRow0;
-    const int cr1 = record ? kCoinRow1Rec : kCoinRow1;
+    const int cr0 = (record ? kCoinRow0Rec : kCoinRow0) - (high ? kCoinHighShift : 0);
+    const int cr1 = (record ? kCoinRow1Rec : kCoinRow1) - (high ? kCoinHighShift : 0);
     g.c_h = (cr1 - cr0) * vs;
     if (g.t_h < 1) g.t_h = 1;
     if (g.c_h < 1) g.c_h = 1;
@@ -1719,6 +1747,17 @@ void swap_geom_for(int w, int h, SwapGeom *o, int record)
     if (g.cy_src + g.c_h > h) g.cy_src = h - g.c_h;
     if (g.cy_src < 0) g.cy_src = 0;
     g.cy_dst = h - g.c_h;
+    /* ONE OVERLAY BUFFER SERVES BOTH BANDS, and the text band's draw copies
+       every lifted pixel in its rows whatever layer put it there. Where the
+       coin band begins above the text band's last row (the 0x10 shift
+       above), the coin sprite's upper rows would be drawn a second time at
+       the top of the picture. The text block of those screens is the course
+       layout moved up the same 0x10 and ends well above the coin band
+       (measured, sublevel 33: DS rows 67..94), so the text band ends where
+       the coin band starts. */
+    g.t_lift_h = g.t_h;
+    if (g.cy_src > g.ty_src && g.cy_src < g.ty_src + g.t_h)
+        g.t_lift_h = g.cy_src - g.ty_src;
     /* THE MIDDLE, AND THE PLATES IN IT. The largest fraction that fits with
        256:112 kept: the width binds or the height does, and whichever binds
        is the fraction, reduced so the compose and the inverse are handed
@@ -1864,7 +1903,7 @@ void swap_present(unsigned *dst, int w, int h)
        shouldnt change, just slot it in". So nothing here blacks, clears,
        copies or scrolls the picture, and the only pixels written are plate
        and lifted glyph. */
-    swap_glyph_band(dst, w, h, g_sw.ty_src, g_sw.ty_dst, g_sw.t_h);
+    swap_glyph_band(dst, w, h, g_sw.ty_src, g_sw.ty_dst, g_sw.t_lift_h);
     swap_glyph_band(dst, w, h, g_sw.cy_src, g_sw.cy_dst, g_sw.c_h);
     /* THE THREE PLATES, nearest neighbour out of engine B's own raster, and
        only the plates. TWO TESTS, both on the SOURCE pixel, before the ROM's
@@ -1963,7 +2002,7 @@ void swap_layout_selftest(void)
             const int h = hs[hi];
             int w = asp[ai] > 0.0 ? (int)(h * asp[ai] + 0.5) : h * 4 / 3;
             w &= ~1;
-            swap_geom_for(w, h, &g_sw, 0);
+            swap_geom_for(w, h, &g_sw, 0, 0);
             const SwapGeom g = g_sw;
             char fails[8];
             int nf = 0, dx, dy, in, ok = 1;
@@ -4105,9 +4144,10 @@ extern "C" int hal_lc_compose_rows(int *text_r0, int *text_r1,
        present is about to use. */
     SwapGeom now = g_sw;
     if (g_sw_picw > 0 && g_sw_pich > 0)
-        swap_geom_for(g_sw_picw, g_sw_pich, &now, data_0209f2b0 != 0);
+        swap_geom_for(g_sw_picw, g_sw_pich, &now, data_0209f2b0 != 0,
+                      lc_total_is_high());
     *text_r0 = now.ty_src;
-    *text_r1 = now.ty_src + now.t_h;
+    *text_r1 = now.ty_src + now.t_lift_h;
     *coin_r0 = now.cy_src;
     *coin_r1 = now.cy_src + now.c_h;
     return 1;
@@ -4239,7 +4279,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
         static int swap_frame;
         g_sw_picw = w;
         g_sw_pich = h;
-        swap_geom_for(w, h, &g_sw, data_0209f2b0 != 0);
+        swap_geom_for(w, h, &g_sw, data_0209f2b0 != 0, lc_total_is_high());
         g_menu_up = save_menu_is_up();
         g_swap = swap_now();
         swap_trace(w, h, swap_frame++);
