@@ -1251,7 +1251,9 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
     // Player::SetAnim refuses ids below 0x11 or from 0x72 in a VS level (it
     // sets a bit in +0x6ce and returns): the previous pose stays. Say so once
     // per id instead of letting a stream value we cannot play do it silently.
-    if (d.anim < 0x11u || d.anim >= 0x72u) {
+    static int guard_on = -1;      // LAB: SM64DS_PUPPET_ANIM_GUARD=0 = build 5 (the ROM refuses it by itself, silently)
+    if (guard_on < 0) { const char *e = std::getenv("SM64DS_PUPPET_ANIM_GUARD"); guard_on = !(e && e[0] == '0' && !e[1]); }
+    if (guard_on && (d.anim < 0x11u || d.anim >= 0x72u)) {
         ++pp.anim_refused;
         if (pp.last_refused_id != d.anim) {
             pp.last_refused_id = d.anim;
