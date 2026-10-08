@@ -189,19 +189,44 @@ void sender_probe(const void *body, unsigned frame, unsigned char kind) {
 // ---------------------------------------------------------------------------
 // The watcher.
 namespace {
+/* A door is often two leaves (the front door, the star doors, the basement
+   doors): each leaf is its own Door actor, 150 units apart, and the ROM opens
+   both. The nearest leaf is the one the sender read its frame from; a second
+   Door actor within kPairR of it is driven with the same frame. */
+enum { kLeaves = 2, kPairR = 200 << 12 };
 struct Drive {
-    void *door;       // the door this seat is driving, or null
-    int   orig;       // its cursor before the first write (Fix12)
-    int   written;    // the cursor as last written
-    bool  yielded;    // the local game moved it: leave it alone until released
+    void *door[kLeaves];   // the doors this seat is driving (door[0] null: none)
+    int   orig[kLeaves];   // each one's cursor before the first write (Fix12)
+    int   written[kLeaves];  // ...and as last written
+    bool  yielded;         // the local game moved one: leave them alone until released
 };
 Drive g_drive[kMaxSeats];
 
+// The Door actor nearest to `d` (other than d) within kPairR, or null.
+void *pair_leaf(const void *d) {
+    void *best = 0;
+    long long bd = 0;
+    for (void *a = _ZN8dActor_c4NextEPKS_(0); a; a = _ZN8dActor_c4NextEPKS_(a)) {
+        if (a == d || !is_door(a)) continue;
+        const long long dx = (long long)(rd(a, 0x5c) - rd(d, 0x5c)),
+                        dz = (long long)(rd(a, 0x64) - rd(d, 0x64));
+        const int dy = rd(a, 0x60) - rd(d, 0x60);
+        if (dx > kPairR || dx < -kPairR || dz > kPairR || dz < -kPairR ||
+            dy > (100 << 12) || dy < -(100 << 12))
+            continue;
+        const long long q = (dx >> 4) * (dx >> 4) + (dz >> 4) * (dz >> 4);
+        if (!best || q < bd) { best = a; bd = q; }
+    }
+    return best;
+}
+
 void give_back(Drive &d) {
-    if (d.door && door_alive(d.door) && !d.yielded &&
-        rd(d.door, kCursor) == d.written)
-        *(int *)((char *)d.door + kCursor) = d.orig;
-    d.door = 0;
+    for (int k = 0; k < kLeaves; ++k) {
+        if (d.door[k] && door_alive(d.door[k]) && !d.yielded &&
+            rd(d.door[k], kCursor) == d.written[k])
+            *(int *)((char *)d.door[k] + kCursor) = d.orig[k];
+        d.door[k] = 0;
+    }
     d.yielded = false;
 }
 }  // namespace
@@ -209,7 +234,7 @@ void give_back(Drive &d) {
 void watcher_release(int seat) {
     if (seat < 0 || seat >= kMaxSeats) return;
     Drive &d = g_drive[seat];
-    if (!d.door && !d.yielded) return;
+    if (!d.door[0] && !d.yielded) return;
     give_back(d);
     ++g_stats.released;
 }
@@ -223,16 +248,20 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
         watcher_release(seat);
         return;
     }
-    if (d.door && !door_alive(d.door)) {           // a level change took it
-        d.door = 0;
+    if (d.door[0] && !door_alive(d.door[0])) {      // a level change took it
+        for (int k = 0; k < kLeaves; ++k) d.door[k] = 0;
         d.yielded = false;
     }
     if (d.yielded) return;
-    if (!d.door) {
-        d.door = nearest_door(pos[0], pos[1], pos[2]);
-        if (!d.door) { ++g_stats.no_door; return; }
-        d.orig = rd(d.door, kCursor);
-        d.written = d.orig;
+    if (!d.door[0]) {
+        d.door[0] = nearest_door(pos[0], pos[1], pos[2]);
+        if (!d.door[0]) { ++g_stats.no_door; return; }
+        d.door[1] = pair_leaf(d.door[0]);
+        for (int k = 0; k < kLeaves; ++k) {
+            if (!d.door[k]) continue;
+            d.orig[k] = rd(d.door[k], kCursor);
+            d.written[k] = d.orig[k];
+        }
         /* THE MUST-FAIL CONTROL for the proof rows, inert unset: what the door
            visual would be if it ran the door's REAL touch (the state logic the
            header says it must not): the watcher's OWN body is taken into the
@@ -244,27 +273,34 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
         if (unsafe) {
             void *me = data_0209f394[data_0209f250];
             std::fprintf(stderr, "[gwdoorw] UNSAFE: door touch on the LOCAL body\n");
-            if (me) func_ov100_021451c4((char *)d.door, data_ov100_021488f4, (char *)me);
+            if (me) func_ov100_021451c4((char *)d.door[0], data_ov100_021488f4, (char *)me);
         }
-    } else if (rd(d.door, kCursor) != d.written) {
-        /* the local game (or another ghost's drive) moved it: the local
-           player is using this door himself. Not ours to write. */
-        d.yielded = true;
-        ++g_stats.yielded;
-        return;
+    } else {
+        for (int k = 0; k < kLeaves; ++k) {
+            if (d.door[k] && rd(d.door[k], kCursor) != d.written[k]) {
+                /* the local game (or another ghost's drive) moved it: the
+                   local player is using this door himself. Not ours to write. */
+                d.yielded = true;
+                ++g_stats.yielded;
+                return;
+            }
+        }
     }
-    int f = (int)frame;
-    const int n = door_frames(d.door);
-    if (n > 0 && f >= n) f = n - 1;
-    d.written = f << 12;
-    *(int *)((char *)d.door + kCursor) = d.written;
-    ++g_stats.applied;
     static int probe = -1;
     if (probe < 0) probe = std::getenv("SM64DS_GHOST_DOOR_PROBE") ? 1 : 0;
-    if (probe)
-        std::fprintf(stderr, "[gwdoorw] t=%u seat=%d kind=%u frame=%u door=%p "
-                     "cursor=%d/%d\n", comms_hub_now_ms(), seat, (unsigned)kind,
-                     (unsigned)frame, d.door, f, n);
+    for (int k = 0; k < kLeaves; ++k) {
+        if (!d.door[k]) continue;
+        int f = (int)frame;
+        const int n = door_frames(d.door[k]);
+        if (n > 0 && f >= n) f = n - 1;
+        d.written[k] = f << 12;
+        *(int *)((char *)d.door[k] + kCursor) = d.written[k];
+        ++g_stats.applied;
+        if (probe)
+            std::fprintf(stderr, "[gwdoorw] t=%u seat=%d kind=%u frame=%u door=%p "
+                         "cursor=%d/%d leaf=%d\n", comms_hub_now_ms(), seat,
+                         (unsigned)kind, (unsigned)frame, d.door[k], f, n, k);
+    }
 }
 
 }  // namespace ghostdoor
