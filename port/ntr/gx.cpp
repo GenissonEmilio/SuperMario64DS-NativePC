@@ -1012,7 +1012,7 @@ bool store_eligible(const GxRaw &ra, const GxRaw &rb, const GxRaw &rc) {
    through to building the grid in view space. */
 int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
                      const GxRaw &rc, int tf, const SmoothPolicy &pol,
-                     int prof) {
+                     int prof, const SmoothOverride *ov = 0) {
     const Mat *xform = mtx_for_gen(rc.mgen);
     if (!xform) {
         smooth_store_count(SMOOTH_STORE_NONSIM, 1);
@@ -1032,7 +1032,9 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
         key.p[i][0] = r[i]->x; key.p[i][1] = r[i]->y; key.p[i][2] = r[i]->z;
         key.n[i] = r[i]->nrm;
     }
-    key.level = static_cast<uint32_t>(pol.level);
+    /* A patch built from the topology book's edge normals is a different
+       patch from the one the authored normals make for the same corners. */
+    key.level = static_cast<uint32_t>(pol.level) | (ov ? 0x100u : 0u);
 
     const long long t_sub = prof ? smooth_prof_ticks() : 0;
     const SmoothEntry *e = smooth_store_find(key);
@@ -1053,7 +1055,8 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
             raw_normal(r[i]->nrm, l[i].nx, l[i].ny, l[i].nz);
             l[i].u = 0.0f; l[i].v = 0.0f; l[i].color = 0;
         }
-        smooth_grid_positions(l[0], l[1], l[2], tf, pts);
+        if (ov) smooth_grid_positions_edges(l[0], l[1], l[2], ov->en, tf, pts);
+        else smooth_grid_positions(l[0], l[1], l[2], tf, pts);
         /* KEPT ON THE SECOND SIGHTING (ntr/smooth.h, smooth_store_miss). The
            goo painting's vertices move every frame, so its keys are new
            every picture and a grid kept for them is never asked for again;
@@ -1074,7 +1077,7 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
     }
     if (!grid) return 0;
 
-    if (smooth_abdiff_on()) {
+    if (smooth_abdiff_on() && !ov) {
         /* The audit arm: build the patch the old way as well and measure how
            far the two land apart. In exact arithmetic they are the same
            patch; this is the number that says how close the machine gets. */
@@ -1154,6 +1157,69 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
     if (prof) smooth_prof_add(SMOOTH_PROF_POLICY,
                               smooth_prof_ticks() - t_pol, 1);
     if (smooth_census_on()) smooth_census_tri(s[0], s[1], s[2], tf);
+
+    /* THE TOPOLOGY BOOK (ntr/smooth.h): is this triangle part of a hard-edged
+       box, a faceted solid or a flat polygon fan? Every lit triangle whose
+       corners share one matrix is entered (the book needs the whole mesh to
+       judge any of it); only one the plain verdict left alone for a shape
+       reason, or smoothed, is overridden. A triangle the size caps refused
+       stays refused. */
+    if (smooth_topo_on() && why != SMOOTH_WHY_NO_NORMAL &&
+        ra.has_normal && rb.has_normal && rc.has_normal &&
+        ra.nrm && rb.nrm && rc.nrm &&
+        ra.mgen == rb.mgen && rb.mgen == rc.mgen) {
+        const int16_t tp[3][3] = {{ra.x, ra.y, ra.z}, {rb.x, rb.y, rb.z},
+                                  {rc.x, rc.y, rc.z}};
+        const uint32_t tn[3] = {ra.nrm, rb.nrm, rc.nrm};
+        SmoothOverride ov;
+        if (smooth_topo_lookup(tp, tn, rc.mgen, &ov) &&
+            why != SMOOTH_WHY_EDGE && why != SMOOTH_WHY_RADIUS) {
+            if (ov.cls == SMOOTH_CLASS_FACET || ov.flat) {
+                /* Left as the DS drew it. */
+                if (tf > 1) smooth_topo_count(ov.cls == SMOOTH_CLASS_FACET
+                                              ? SMOOTH_TOPO_FACET : SMOOTH_TOPO_FLATKEEP);
+                return 0;
+            }
+            int level = pol.level;
+            if (level > SMOOTH_MAX_LEVEL) level = SMOOTH_MAX_LEVEL;
+            const int otf = 1 << level;
+            if (otf <= 1) return 0;
+            smooth_count(SMOOTH_COUNT_SUBDIVIDED, 1);
+            if (!g_ip_replaying) smooth_count(SMOOTH_COUNT_DEMAND, 1);
+            smooth_topo_count(ov.cls == SMOOTH_CLASS_FAN ? SMOOTH_TOPO_FAN : SMOOTH_TOPO_BOX);
+            if (!smooth_live_mode() && store_eligible(ra, rb, rc) &&
+                smooth_try_store(s, ra, rb, rc, otf, pol, prof, &ov))
+                return 1;
+            /* The stored path would not take it (a normal latched under an
+               older matrix, a matrix that has aged out of the ring): build
+               the patch in view space, turning the book's model-space edge
+               normals by the matrix each corner rode. */
+            const Mat *mm = mtx_for_gen(rc.mgen);
+            if (!mm) return 0;
+            float en[6][3];
+            for (int i = 0; i < 6; ++i) {
+                const Vec4 v = mul(Vec4{ov.en[i][0], ov.en[i][1], ov.en[i][2], 0.0f}, *mm);
+                const float l = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+                if (l <= 1e-20f) return 0;
+                en[i][0] = v.x / l; en[i][1] = v.y / l; en[i][2] = v.z / l;
+            }
+            float pts[SMOOTH_MAX_GRID * 3];
+            smooth_grid_positions_edges(s[0], s[1], s[2], en, otf, pts);
+            smooth_emit_grid(pts, otf, s, 0);
+            return 1;
+        }
+    }
+    /* A seam between two bones: the book cannot hold it, but beside a BOX
+       mesh it belongs to, it is left as the DS drew it. */
+    if (tf > 1 && smooth_topo_on() && ra.has_normal && rb.has_normal && rc.has_normal &&
+        !(ra.mgen == rb.mgen && rb.mgen == rc.mgen)) {
+        const int16_t tp[3][3] = {{ra.x, ra.y, ra.z}, {rb.x, rb.y, rb.z},
+                                  {rc.x, rc.y, rc.z}};
+        if (smooth_topo_cross(tp, ra.mgen, rb.mgen, rc.mgen)) {
+            smooth_topo_count(SMOOTH_TOPO_FLATKEEP);
+            return 0;
+        }
+    }
     if (tf <= 1) {
         smooth_counters_for(why);
         return 0;
