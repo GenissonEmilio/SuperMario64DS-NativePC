@@ -1097,8 +1097,9 @@ void marker_slots_pass() {
                 else if ((signed char)*u8p(p, 0xcc) > 7) { bad = true; why = "area byte out of range"; }
             }
             if (log && pv != prev[base + i])
-                std::fprintf(stderr, "[cap] SLOT %s[%d] %08x -> %08x%s%s (frame %u)\n", nm[t], i, prev[base + i], pv,
-                             bad ? " BAD: " : "", why, my_frame_now());
+                std::fprintf(stderr, "[cap] SLOT %s[%d] %08x -> %08x (class %u, area byte %d, type %d)%s%s (frame %u)\n", nm[t],
+                             i, prev[base + i], pv, p ? actor_class(p) : 0u, p ? (int)(signed char)*u8p(p, 0xcc) : 0,
+                             p ? s32r(p, 0x3f0) : 0, bad ? " BAD: " : "", why, my_frame_now());
             prev[base + i] = pv;
             if (bad && !keep) {
                 tabs[t][i] = nullptr;
