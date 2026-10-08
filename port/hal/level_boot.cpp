@@ -2650,6 +2650,8 @@ extern "C" void port_scene_canary(const char *where);
 extern "C" void port_particle_boot(void);   /* hal/particle_bridges.cpp */
 extern "C" void port_boot_course_sound(int level);   /* hal/star_flow.cpp:
                                             the InitResources sound-row block */
+extern "C" void port_boot_course_music(int level);   /* hal/star_flow.cpp:
+                                            its music statement, after the objects */
 extern "C" void port_stage_preload_shared_models(void);   /* below */
 /* The persistent actor-run mask Stage::InitResources:266 zeroes. Declared here
    as well as in the a2 seat's own block below because the per-boot body above
@@ -3999,6 +4001,11 @@ extern "C" void *port_stage_boot_body(void *mc, int spawn)
         o, (unsigned)data_0209f264[0], mc);
     port_intro_watch("after LoadClsnAndObjects");
     port_scene_canary("after LoadClsnAndObjects");
+    /* Stage::InitResources:386-391: the layer-1 music call sits after the
+       object load, so the Player exists when the song picks its variant
+       (hal/star_flow.cpp seat_course_music). */
+    if (spawn)
+        port_boot_course_music((int)data_0209f2f8);
     if (!intro_seen && std::getenv("SM64DS_INTRO_UNSEEN"))
         data_0209caa0[8] &= ~0x80;
 

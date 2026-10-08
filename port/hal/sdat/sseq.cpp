@@ -141,6 +141,13 @@ struct Track {
     int tie;
     int cmpFlag;
     int mono;
+    /* Allocated by the sequence's leading 0xFE mask at START and not opened
+       yet. The ARM7 builds those tracks (TrackInit) inside the START command
+       (0x037FE394), BEFORE the batch's TRACK_PARAM / MUTE commands run, and
+       the 0x93 open-track that comes later (0x037FCF44..0x037FCF6C) only
+       points the already-existing track at its code: no TrackInit, so a
+       volume or mute the game sent in the meantime survives. */
+    int allocd;
 };
 
 struct Player {
@@ -165,6 +172,26 @@ struct Player {
 };
 
 Player g_pl[SD_PLAYERS];
+
+/* TrackInit's defaults for a track opened by 0x93 on a sequence that did not
+   pre-allocate it (and the same values sd_seq_start gives track 0 and the
+   0xFE-allocated tracks). */
+static void track_init_open(Track &t2, sd_u32 off)
+{
+    memset(&t2, 0, sizeof t2);
+    t2.active = 1;
+    t2.pc = off;
+    t2.volume = 127; t2.expression = 127; t2.pan = 64;
+    // Opened tracks start at the player's base priority, the same
+    // as track 0; a 0xC6 in the opened track overrides it.
+    /* Same TrackInit default as track 0; 0xC6 overrides it. */
+    t2.bendRange = 2; t2.priority = 64; t2.noteWait = 1;
+    t2.portaKey = 60;       /* TrackInit, 0x037FDB28 */
+    t2.modSpeed = 16; t2.modRange = 1;      /* 0x037FBFBC */
+    t2.envAttack = t2.envDecay = 0xff;      /* 0x037FDB0C */
+    t2.envSustain = t2.envRelease = 0xff;
+    t2.prog = 0;
+}
 
 // A mixer channel while a TRACK owns it. This is SND_seq.c's channelLLHead
 // list turned inside out: the list is per track there, and here the ownership
@@ -922,20 +949,15 @@ int run_track(Player &pl, int pi, int ti)
             sd_u32 off = rd24(s + tk.pc); tk.pc += 3;
             if (condition && n > 0 && n < SD_TRACKS && !pl.tr[n].active) {
                 Track &t2 = pl.tr[n];
-                int keepActive = 1;
-                memset(&t2, 0, sizeof t2);
-                t2.active = keepActive;
-                t2.pc = off;
-                t2.volume = 127; t2.expression = 127; t2.pan = 64;
-                // Opened tracks start at the player's base priority, the same
-                // as track 0; a 0xC6 in the opened track overrides it.
-                /* Same TrackInit default as track 0; 0xC6 overrides it. */
-                t2.bendRange = 2; t2.priority = 64; t2.noteWait = 1;
-                t2.portaKey = 60;       /* TrackInit, 0x037FDB28 */
-                t2.modSpeed = 16; t2.modRange = 1;      /* 0x037FBFBC */
-                t2.envAttack = t2.envDecay = 0xff;      /* 0x037FDB0C */
-                t2.envSustain = t2.envRelease = 0xff;
-                t2.prog = 0;
+                if (t2.allocd) {
+                    // Built at START by the 0xFE mask: just point it at its
+                    // code, keep everything the game already wrote to it.
+                    t2.allocd = 0;
+                    t2.active = 1;
+                    t2.pc = off;
+                } else {
+                    track_init_open(t2, off);
+                }
             }
             break;
         }
@@ -1238,8 +1260,30 @@ int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
     t0.envSustain = t0.envRelease = 0xff;
 
     // A multi-track sequence opens with 0xFE <u16 mask>; track 0's own code
-    // follows the 0x93 open-track commands, so nothing special is needed
-    // here -- run_track walks them.
+    // follows the 0x93 open-track commands, run_track walks them.
+    //
+    // THE ARM7 BUILDS THE MASK'S TRACKS RIGHT HERE. The START command
+    // (0x037FE2C0) peeks the sequence's first byte and, when it is 0xFE, runs
+    // TrackInit on one track per mask bit 1..15 (loop at 0x037FE37C..0x037FE3A0)
+    // and files them in the player's track table, all before the next command
+    // of the batch. TRACK_PARAM and MUTE_TRACKS skip a track that is not in
+    // that table (GetPlayerTrack, 0x037FD9CC), so what the game sends in the
+    // same batch as the START reaches the tracks only because they already
+    // exist. Jolly Roger Bay / Dire Dire Docks send exactly that, a volume 0 and
+    // a mute for both layers, to start without the upbeat tracks.
+    {
+        const sd_u8 *q = seqBase + startOff;
+        if (q[0] == 0xfe) {
+            unsigned mask = (unsigned)q[1] | ((unsigned)q[2] << 8);
+            for (int t = 1; t < SD_TRACKS; t++) {
+                if (!(mask & (1u << t))) continue;
+                Track &tk = pl.tr[t];
+                track_init_open(tk, 0);
+                tk.active = 0;
+                tk.allocd = 1;
+            }
+        }
+    }
     return 1;
 }
 

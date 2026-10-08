@@ -175,6 +175,12 @@ int g_course_music = -1;
    either. */
 int g_music_prev_level = -1;
 
+/* What seat_course_sound worked out for the level music, kept for
+   seat_course_music: the ROM makes the music call later in
+   Stage::InitResources than the sound group / bank statements, so the two
+   halves run at two points of the boot. */
+int g_boot_group, g_boot_bank, g_boot_vs, g_boot_bgm;
+
 /* THE QUEUED SWAP TRAP. data_02092114 is the in-level character swap request
    and -1 means "nothing queued"; SetPlayerGlobals is the only thing that ever
    writes that -1. The port left the symbol zero-initialised, which reads as a
@@ -322,6 +328,34 @@ void seat_course_sound(int level)
         fprintf(stderr, "[course] SM64DS_COURSE_MUSIC=%d overrides the row\n",
                 bgm);
     }
+
+    g_boot_group = group;
+    g_boot_bank = bank;
+    g_boot_vs = vs;
+    g_boot_bgm = bgm;
+}
+
+/* THE LAYER-1 MUSIC CALL, WHERE STAGE::INITRESOURCES MAKES IT.
+ *
+ * src/_ZN5Stage13InitResourcesEv.cpp:380-391: the music statement comes AFTER
+ * Stage::LoadClsnAndObjects (the call that builds the level's actors, the
+ * Player among them), and the sound group / bank statements that
+ * seat_course_sound still makes up front come well before it. The port ran
+ * both together, before the Player existed. That matters for the songs whose
+ * variant follows the Player: LoadAndSetMusic_Layer1 ends in func_02011dcc,
+ * which asks func_02013078 for the variant and applies it at once with
+ * func_0204921c, and func_02013078 reads the Player (underwater flag, height)
+ * and answers -1 when there is none. So the cartridge starts Jolly Roger Bay
+ * and Dire Dire Docks (NCS_BGM_WATER, layer A = tracks 0-1, layer B = tracks
+ * 2-13) with the variant for where Mario is already in place, and the port
+ * started with every track at full volume (the upbeat mix) and only then let
+ * func_020132d8 ramp the unwanted layers down over about a hundred frames.
+ * Measured on both: the cartridge sends the INITMODE pair (volume 0 and a
+ * mute on each layer) in the frame of the START; the port sent none. */
+void seat_course_music(int level)
+{
+    const int group = g_boot_group, bank = g_boot_bank, vs = g_boot_vs;
+    const int bgm = g_boot_bgm;
 
     /* THE LAYER-1 CALL IS NOT PART OF THE VS ROW, AND THE PORT WAS MAKING IT.
      *
@@ -701,6 +735,13 @@ void port_boot_course_sound(int level)
        that puts the VS scoreboard and the match clock on screen; see its own
        block above for why it is the mask and not the HUD that was missing */
     seat_engine_a_layers();
+}
+
+/* The music half of the sound row, run after Stage::LoadClsnAndObjects (see
+   seat_course_music). level_boot.cpp calls it at that point of the boot. */
+void port_boot_course_music(int level)
+{
+    seat_course_music(level);
 }
 
 /* Stage::InitResources' prevLevel (:226), handed over by the port's latch
