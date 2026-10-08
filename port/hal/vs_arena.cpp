@@ -1589,7 +1589,14 @@ void pup_before_walk() {
         if (cap_at == -2) { const char *e = std::getenv("SM64DS_PUPPET_CAPRIG"); cap_at = e && *e ? std::atoi(e) : -1; }
         if (cap_at >= 0 && g.seat >= 0 && g.seat < kArenaSeats && data_0209f394[g.seat]) {
             char *me = (char *)data_0209f394[g.seat];
-            if (!cap_done && (int)g.frame >= cap_at) {
+            static const bool swap_rig = env_on("SM64DS_PUPPET_CAPRIG_SWAP");
+            if (swap_rig && !cap_done && (int)g.frame >= cap_at) {
+                // the ROM's own character swap (the door path): the stream look goes 3 -> 0 as it does on a real pickup
+                cap_done = true;
+                port_player_set_character(me, 0);
+                std::fprintf(stderr, "[pup-caprig] f=%u my body swapped to look %d (swap rig)\n", g.frame, *(int *)(me + 8) & 0xff);
+            }
+            if (!swap_rig && !cap_done && (int)g.frame >= cap_at) {
                 char *cap = nullptr;
                 for (int guard = 0; guard < 64; ++guard) {
                     cap = _ZN8dActor_c15FindWithActorIDEjPS_((unsigned)kClassMarioCap, cap);
