@@ -4274,6 +4274,94 @@ int raster_tile_rows() {
     return n;
 }
 
+/* A triangle with a vertex far outside the screen (a sky dome vertex at the near
+   plane lands millions of pixels away). The float edge values of such a
+   triangle are good to about a pixel only, so a row where the float test finds
+   no covered pixel can still hold pixels the exact test covers: a thin wedge
+   at the dome's pole is the case. big_row returns the pixel range of the
+   row that the triangle's exact scanline interval reaches (one pixel of
+   margin each side), joined with the range row_span found when it found one,
+   so those pixels get visited and go through the float test and edge_rescue
+   like any other pixel next to an edge. */
+inline bool big_tri_test(const GxVertex &a, const GxVertex &b,
+                         const GxVertex &c) {
+    const float lim = 65536.0f;
+    return std::fabs(a.x) > lim || std::fabs(a.y) > lim ||
+           std::fabs(b.x) > lim || std::fabs(b.y) > lim ||
+           std::fabs(c.x) > lim || std::fabs(c.y) > lim;
+}
+
+inline bool big_row(const GxVertex &a, const GxVertex &b, const GxVertex &c,
+                    float py, int minx, int maxx, bool have, int &xs,
+                    int &xe) {
+    const GxVertex *const v[3] = {&a, &b, &c};
+    const double y = (double)py;
+    double lo = 1e300, hi = -1e300;
+    for (int k = 0; k < 3; ++k) {
+        const GxVertex &p = *v[k];
+        const GxVertex &q = *v[(k + 1) % 3];
+        const double y0 = p.y, y1 = q.y, x0 = p.x, x1 = q.x;
+        if (!((y0 <= y && y <= y1) || (y1 <= y && y <= y0))) continue;
+        if (y0 == y1) {
+            lo = std::fmin(lo, std::fmin(x0, x1));
+            hi = std::fmax(hi, std::fmax(x0, x1));
+        } else {
+            const double x = x0 + (y - y0) * (x1 - x0) / (y1 - y0);
+            lo = std::fmin(lo, x);
+            hi = std::fmax(hi, x);
+        }
+    }
+    if (hi < lo) return have;
+    double flo = std::floor(lo) - 1.0, fhi = std::ceil(hi) + 1.0;
+    if (flo < (double)minx) flo = (double)minx;
+    if (fhi > (double)maxx) fhi = (double)maxx;
+    if (flo > fhi) return have;
+    const int l = (int)flo, h = (int)fhi;
+    if (have) {
+        if (l < xs) xs = l;
+        if (h > xe) xe = h;
+    } else {
+        xs = l;
+        xe = h;
+    }
+    return true;
+}
+
+/* THE SEAM RESCUE (run hunt8, lane SKYLINES1): a pixel centre that lies on, or
+   within rounding of, the edge two triangles share must land in at least one of
+   them. The float edge values above are measured from a different vertex in
+   each triangle (a for one, b for the other), and a sky dome vertex that sits
+   at the near plane projects millions of pixels off screen: measured from that
+   far vertex the float value of the edge is off by up to a pixel, while from
+   the near end it is exact. The two triangles then disagree about the pixels
+   along the shared edge, both refuse some of them, nothing covers them and the
+   clear colour shows through as a dotted black line, most visibly in the sky,
+   which has nothing behind it. The DS rasteriser steps every edge from one set
+   of integers, so a shared edge never opens. This redoes the test in double
+   precision for the pixels the float test just refused and that sit within the
+   float error of an edge. The vertex coordinates are floats and the coordinate
+   differences and their products fit a double exactly, so the value is the
+   same for both triangles of the pair whichever vertex it is measured from:
+   exactly one of them takes a pixel that is off the line, both take one that is
+   on it. Pixels the float test accepts are untouched. */
+inline bool edge_rescue(const GxVertex &a, const GxVertex &b,
+                        const GxVertex &c, float px, float py, float r0,
+                        float r1, float r2, float n0, float n1, float n2) {
+    const float t0 = 1e-6f * (std::fabs(r0) + std::fabs(r0 - n0)) + 0.01f;
+    const float t1 = 1e-6f * (std::fabs(r1) + std::fabs(r1 - n1)) + 0.01f;
+    const float t2 = 1e-6f * (std::fabs(r2) + std::fabs(r2 - n2)) + 0.01f;
+    if (!(std::fabs(n0) <= t0 || std::fabs(n1) <= t1 || std::fabs(n2) <= t2))
+        return false;
+    const double dpx = (double)px, dpy = (double)py;
+    const double d0 = ((double)b.x - (double)a.x) * (dpy - (double)a.y) -
+                      ((double)b.y - (double)a.y) * (dpx - (double)a.x);
+    const double d1 = ((double)c.x - (double)b.x) * (dpy - (double)b.y) -
+                      ((double)c.y - (double)b.y) * (dpx - (double)b.x);
+    const double d2 = ((double)a.x - (double)c.x) * (dpy - (double)c.y) -
+                      ((double)a.y - (double)c.y) * (dpx - (double)c.x);
+    return (d0 >= 0 && d1 >= 0 && d2 >= 0) || (d0 <= 0 && d1 <= 0 && d2 <= 0);
+}
+
 }  // namespace
 
 /* ---- SM64DS_RASTER_AB=1: THE OLD RASTER AGAINST THE NEW, ON EVERY FRAME ----
@@ -4537,7 +4625,8 @@ void raster_ref(const RefArgs &ra, int tid, int nt) {
                         const float n1 = r1 - eby * (px - b.x);
                         const float n2 = r2 - ecy * (px - c.x);
                         if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) ||
-                              (n0 <= 0 && n1 <= 0 && n2 <= 0)))
+                              (n0 <= 0 && n1 <= 0 && n2 <= 0)) &&
+                              !edge_rescue(a, b, c, px, py, r0, r1, r2, n0, n1, n2))
                             continue;
                         const float w0 = n0 / area, w1 = n1 / area,
                                     w2 = n2 / area;
@@ -4565,7 +4654,8 @@ void raster_ref(const RefArgs &ra, int tid, int nt) {
                         const float n1 = r1 - eby * (px - b.x);
                         const float n2 = r2 - ecy * (px - c.x);
                         if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) ||
-                              (n0 <= 0 && n1 <= 0 && n2 <= 0)))
+                              (n0 <= 0 && n1 <= 0 && n2 <= 0)) &&
+                              !edge_rescue(a, b, c, px, py, r0, r1, r2, n0, n1, n2))
                             continue;
                         if (!srow[x]) continue;
                         srow[x] = 0;
@@ -4638,7 +4728,7 @@ void raster_ref(const RefArgs &ra, int tid, int nt) {
                 const float n1 = r1 - eby * (px - b.x);
                 const float n2 = r2 - ecy * (px - c.x);
                 // Accept either winding; back-face culling is a POLYGON_ATTR job.
-                if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) || (n0 <= 0 && n1 <= 0 && n2 <= 0)))
+                if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) || (n0 <= 0 && n1 <= 0 && n2 <= 0)) && !edge_rescue(a, b, c, px, py, r0, r1, r2, n0, n1, n2))
                     continue;
                 const float w0 = n0 / area, w1 = n1 / area, w2 = n2 / area;
                 const float l0 = w1, l1 = w2, l2 = w0;   // barycentric for a, b, c
@@ -5224,6 +5314,7 @@ void gx_render(Framebuffer &fb) {
            slopes, the three vertices they are measured from and the
            reciprocals the crossing estimates use. */
         const bool use_span = maxx - minx >= 8 && span_ok(a, b, c);
+        const bool big_tri = big_tri_test(a, b, c);
         SpanTri st;
         if (use_span) {
             st.ey[0] = eay; st.ey[1] = eby; st.ey[2] = ecy;
@@ -5291,7 +5382,10 @@ void gx_render(Framebuffer &fb) {
                     const float *drow = depth[y];
                     uint8_t *srow = stencil[y];
                     int xs = minx, xe = maxx;
-                    if (use_span && !row_span(st, r0, r1, r2, minx, maxx, xs, xe))
+                    const bool sp_ok = !use_span || row_span(st, r0, r1, r2, minx, maxx, xs, xe);
+                    if (big_tri && !big_row(a, b, c, py, minx, maxx, sp_ok, xs, xe))
+                        continue;
+                    if (!big_tri && !sp_ok)
                         continue;
                     for (int x = xs; x <= xe; ++x) {
                         const float px = x + 0.5f;
@@ -5299,7 +5393,8 @@ void gx_render(Framebuffer &fb) {
                         const float n1 = r1 - eby * (px - b.x);
                         const float n2 = r2 - ecy * (px - c.x);
                         if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) ||
-                              (n0 <= 0 && n1 <= 0 && n2 <= 0)))
+                              (n0 <= 0 && n1 <= 0 && n2 <= 0)) &&
+                              !edge_rescue(a, b, c, px, py, r0, r1, r2, n0, n1, n2))
                             continue;
                         const float w0 = n0 / area, w1 = n1 / area,
                                     w2 = n2 / area;
@@ -5322,7 +5417,10 @@ void gx_render(Framebuffer &fb) {
                     const uint8_t *irow = attrid[y];
                     uint32_t *frow = fb.px[y];
                     int xs = minx, xe = maxx;
-                    if (use_span && !row_span(st, r0, r1, r2, minx, maxx, xs, xe))
+                    const bool sp_ok = !use_span || row_span(st, r0, r1, r2, minx, maxx, xs, xe);
+                    if (big_tri && !big_row(a, b, c, py, minx, maxx, sp_ok, xs, xe))
+                        continue;
+                    if (!big_tri && !sp_ok)
                         continue;
                     for (int x = xs; x <= xe; ++x) {
                         const float px = x + 0.5f;
@@ -5330,7 +5428,8 @@ void gx_render(Framebuffer &fb) {
                         const float n1 = r1 - eby * (px - b.x);
                         const float n2 = r2 - ecy * (px - c.x);
                         if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) ||
-                              (n0 <= 0 && n1 <= 0 && n2 <= 0)))
+                              (n0 <= 0 && n1 <= 0 && n2 <= 0)) &&
+                              !edge_rescue(a, b, c, px, py, r0, r1, r2, n0, n1, n2))
                             continue;
                         if (!srow[x]) continue;
                         srow[x] = 0;
@@ -5393,7 +5492,10 @@ void gx_render(Framebuffer &fb) {
             uint8_t *irow = attrid[y];
             uint8_t *trow = tlattr[y];
             int xs = minx, xe = maxx;
-            if (use_span && !row_span(st, r0, r1, r2, minx, maxx, xs, xe))
+            const bool sp_ok = !use_span || row_span(st, r0, r1, r2, minx, maxx, xs, xe);
+            if (big_tri && !big_row(a, b, c, py, minx, maxx, sp_ok, xs, xe))
+                continue;
+            if (!big_tri && !sp_ok)
                 continue;
             for (int x = xs; x <= xe; ++x) {
                 const float px = x + 0.5f;
@@ -5406,7 +5508,7 @@ void gx_render(Framebuffer &fb) {
                 const float n1 = r1 - eby * (px - b.x);
                 const float n2 = r2 - ecy * (px - c.x);
                 // Accept either winding; back-face culling is a POLYGON_ATTR job.
-                if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) || (n0 <= 0 && n1 <= 0 && n2 <= 0)))
+                if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) || (n0 <= 0 && n1 <= 0 && n2 <= 0)) && !edge_rescue(a, b, c, px, py, r0, r1, r2, n0, n1, n2))
                     continue;
                 const float w0 = n0 / area, w1 = n1 / area, w2 = n2 / area;
                 const float l0 = w1, l1 = w2, l2 = w0;   // barycentric for a, b, c
