@@ -61,6 +61,9 @@
 
 #include <chrono>
 #include <map>
+#include <utility>
+#include <string.h>
+#include <unordered_map>
 #include <vector>
 
 namespace ntr {
@@ -114,27 +117,23 @@ uint32_t bary_color(uint32_t c0, uint32_t c1, uint32_t c2,
 
 }  // namespace
 
-void smooth_build_patch(const SmoothVertex &p1, const SmoothVertex &p2,
-                        const SmoothVertex &p3, SmoothPatch &out) {
-    const float P1[3] = {p1.x, p1.y, p1.z};
-    const float P2[3] = {p2.x, p2.y, p2.z};
-    const float P3[3] = {p3.x, p3.y, p3.z};
-    float N1[3], N2[3], N3[3];
-    unit_normal(p1, N1);
-    unit_normal(p2, N2);
-    unit_normal(p3, N3);
-
+namespace {
+// The patch from its corners and its six edge normals (b210, b120, b021,
+// b012, b201, b102). The standard patch hands every edge the normals of its
+// two corners; the topology book hands some edges other ones.
+void build_patch_core(const float P1[3], const float P2[3], const float P3[3],
+                      const float en[6][3], SmoothPatch &out) {
     for (int k = 0; k < 3; ++k) {
         out.b[0][k] = P1[k];      // b300
         out.b[1][k] = P2[k];      // b030
         out.b[2][k] = P3[k];      // b003
     }
-    pn_edge(P1, P2, N1, out.b[3]);   // b210
-    pn_edge(P2, P1, N2, out.b[4]);   // b120
-    pn_edge(P2, P3, N2, out.b[5]);   // b021
-    pn_edge(P3, P2, N3, out.b[6]);   // b012
-    pn_edge(P1, P3, N1, out.b[7]);   // b201
-    pn_edge(P3, P1, N3, out.b[8]);   // b102
+    pn_edge(P1, P2, en[0], out.b[3]);   // b210
+    pn_edge(P2, P1, en[1], out.b[4]);   // b120
+    pn_edge(P2, P3, en[2], out.b[5]);   // b021
+    pn_edge(P3, P2, en[3], out.b[6]);   // b012
+    pn_edge(P1, P3, en[4], out.b[7]);   // b201
+    pn_edge(P3, P1, en[5], out.b[8]);   // b102
 
     // The standard PN centre lift: E is the mean of the six edge points, V the
     // vertex centroid, b111 = E + (E - V)/2.
@@ -144,6 +143,22 @@ void smooth_build_patch(const SmoothVertex &p1, const SmoothVertex &p2,
         const float v = (P1[k] + P2[k] + P3[k]) * (1.0f / 3.0f);
         out.b[9][k] = e + (e - v) * 0.5f;
     }
+}
+}  // namespace
+
+void smooth_build_patch(const SmoothVertex &p1, const SmoothVertex &p2,
+                        const SmoothVertex &p3, SmoothPatch &out) {
+    const float P1[3] = {p1.x, p1.y, p1.z};
+    const float P2[3] = {p2.x, p2.y, p2.z};
+    const float P3[3] = {p3.x, p3.y, p3.z};
+    float N1[3], N2[3], N3[3];
+    unit_normal(p1, N1);
+    unit_normal(p2, N2);
+    unit_normal(p3, N3);
+    const float en[6][3] = {
+        {N1[0], N1[1], N1[2]}, {N2[0], N2[1], N2[2]}, {N2[0], N2[1], N2[2]},
+        {N3[0], N3[1], N3[2]}, {N1[0], N1[1], N1[2]}, {N3[0], N3[1], N3[2]}};
+    build_patch_core(P1, P2, P3, en, out);
 }
 
 void smooth_eval_patch(const SmoothPatch &patch, float a, float b, float c,
@@ -332,6 +347,33 @@ int smooth_grid_positions(const SmoothVertex &p1, const SmoothVertex &p2,
     // tf is a power of two, so 1/tf is exact and ia*inv lands on 1.0 exactly
     // at the corner -- which is what makes corner preservation bit-exact
     // rather than merely close.
+    const float inv = 1.0f / (float)tf;
+    int n = 0;
+    for (int ia = 0; ia <= tf; ++ia) {
+        for (int ib = 0; ib <= tf - ia; ++ib, ++n) {
+            const float a = (float)ia * inv;
+            const float b = (float)ib * inv;
+            float c = 1.0f - a - b;
+            if (c < 0.0f) c = 0.0f;
+            smooth_eval_patch(patch, a, b, c, out + n * 3);
+        }
+    }
+    return n;
+}
+
+int smooth_grid_positions_edges(const SmoothVertex &p1, const SmoothVertex &p2,
+                                const SmoothVertex &p3, const float en[6][3],
+                                int tf, float *out) {
+    if (tf <= 1) {
+        out[0] = p1.x; out[1] = p1.y; out[2] = p1.z;
+        return 1;
+    }
+    if (tf > SMOOTH_MAX_TF) tf = SMOOTH_MAX_TF;
+    const float P1[3] = {p1.x, p1.y, p1.z};
+    const float P2[3] = {p2.x, p2.y, p2.z};
+    const float P3[3] = {p3.x, p3.y, p3.z};
+    SmoothPatch patch;
+    build_patch_core(P1, P2, P3, en, patch);
     const float inv = 1.0f / (float)tf;
     int n = 0;
     for (int ia = 0; ia <= tf; ++ia) {
@@ -1236,6 +1278,8 @@ void smooth_prof_add(int bucket, long long dt_ns, unsigned n) {
     g_prof_n[bucket] += n;
 }
 
+namespace { void topo_report(uint64_t frame); }
+
 void smooth_frame_mark() {
     ++g_counters.frames;
     /* The budget's one decision a picture, BEFORE the counters line so the
@@ -1243,7 +1287,7 @@ void smooth_frame_mark() {
        coming picture will be drawn at. */
     budget_pick();
     if (smooth_census_on()) census_report(g_counters.frames);
-    if (counters_on()) counters_report(g_counters.frames);
+    if (counters_on()) { counters_report(g_counters.frames); topo_report(g_counters.frames); }
     if (smooth_prof_on()) prof_report(g_counters.frames);
     /* HERE rather than inside counters_report, because the audit's own
        accumulators live with the store they audit, further up this file. */
@@ -1274,5 +1318,809 @@ void smooth_count(int which, uint64_t n) {
         default: break;
     }
 }
+
+
+// ---------------------------------------------------------------------------
+// THE TOPOLOGY BOOK. smooth.h has the contract; this is the bookkeeping.
+// Everything here is in the model's own space (raw VTX coordinates), so a
+// mesh is the same mesh wherever it is drawn. The book never forgets until
+// it is full, and a full book is emptied whole (an animated mesh whose
+// vertices move every frame would otherwise grow it without end), after which
+// every mesh is simply unknown again and is smoothed the ordinary way until
+// it has been seen to be complete again.
+// ---------------------------------------------------------------------------
+namespace {
+
+struct TriKey {
+    int16_t v[9];
+    bool operator==(const TriKey &o) const {
+        for (int i = 0; i < 9; ++i) if (v[i] != o.v[i]) return false;
+        return true;
+    }
+};
+struct EdgeKey {
+    int16_t v[6];
+    bool operator==(const EdgeKey &o) const {
+        for (int i = 0; i < 6; ++i) if (v[i] != o.v[i]) return false;
+        return true;
+    }
+};
+struct VertKey {
+    int16_t v[3];
+    bool operator==(const VertKey &o) const {
+        return v[0] == o.v[0] && v[1] == o.v[1] && v[2] == o.v[2];
+    }
+};
+template <class K, int N>
+struct KeyHash {
+    size_t operator()(const K &k) const {
+        uint32_t h = 2166136261u;
+        for (int i = 0; i < N; ++i) {
+            h ^= (uint16_t)k.v[i];
+            h *= 16777619u;
+        }
+        return (size_t)h;
+    }
+};
+typedef std::unordered_map<VertKey, std::vector<int>, KeyHash<VertKey, 3> > VertRing;
+
+struct TopoTri {
+    int16_t p[3][3];     // corners as first seen
+    double nrm[3][3];    // authored normals, unit
+    double F[3];         // unit face normal turned to the side the normals lean
+    double area;         // twice the triangle's area, model units squared
+    double alt;          // its smallest altitude
+    int cv[3];           // corner sits on a joint between smooth groups (BOX)
+    int nb[3];           // neighbour across edge k (corner k to k+1), -1 none
+    int parent;
+    double eff[3][3];    // effective corner normals (BOX)
+    float en[3][2][3];   // per edge: normal at its first, at its second corner
+    int flat;
+    int cls;             // the mesh's class once it is final, else -1
+};
+
+struct TopoBook {
+    std::vector<TopoTri> tris;
+    std::vector<std::vector<int> > members;       // at roots
+    std::vector<int> last_change;                 // at roots: frame of the last growth
+    std::vector<int> final_cls;                   // at roots: -1 = not yet finalized
+    std::unordered_map<TriKey, int, KeyHash<TriKey, 9> > by_tri;
+    std::unordered_map<EdgeKey, int, KeyHash<EdgeKey, 6> > by_edge;   // first triangle on the edge
+};
+TopoBook g_topo;
+int g_topo_on = -1;
+int g_topo_log = -1;
+uint64_t g_topo_n[4];
+const size_t kTopoMaxTris = 400000;
+const int kTopoSettle = 2;            // frames a mesh must hold still before it is judged
+const double kCreaseCos = 0.70710678; // 45 degrees: a joint sharper than this is a crease
+
+inline void d_sub(const double a[3], const double b[3], double o[3]) {
+    o[0] = a[0] - b[0]; o[1] = a[1] - b[1]; o[2] = a[2] - b[2];
+}
+inline double d_dot(const double a[3], const double b[3]) {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+inline void d_cross(const double a[3], const double b[3], double o[3]) {
+    o[0] = a[1] * b[2] - a[2] * b[1];
+    o[1] = a[2] * b[0] - a[0] * b[2];
+    o[2] = a[0] * b[1] - a[1] * b[0];
+}
+inline double d_len(const double a[3]) { return sqrt(d_dot(a, a)); }
+inline void d_unit(const double a[3], double o[3]) {
+    const double l = d_len(a);
+    if (l > 1e-30) { o[0] = a[0] / l; o[1] = a[1] / l; o[2] = a[2] / l; }
+    else { o[0] = o[1] = o[2] = 0.0; }
+}
+
+void topo_decode(uint32_t n, double o[3]) {
+    const int32_t a = static_cast<int32_t>(n << 22) >> 22;
+    const int32_t b = static_cast<int32_t>((n >> 10) << 22) >> 22;
+    const int32_t c = static_cast<int32_t>((n >> 20) << 22) >> 22;
+    const double v[3] = {a / 512.0, b / 512.0, c / 512.0};
+    d_unit(v, o);
+}
+
+void topo_pos(const TopoTri &t, int c, double o[3]) {
+    const double fx = 1.0 / 4096.0;
+    o[0] = t.p[c][0] * fx; o[1] = t.p[c][1] * fx; o[2] = t.p[c][2] * fx;
+}
+
+inline bool same_pos(const int16_t a[3], const int16_t b[3]) {
+    return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
+}
+
+int topo_find(int i) {
+    while (g_topo.tris[i].parent != i) {
+        g_topo.tris[i].parent = g_topo.tris[g_topo.tris[i].parent].parent;
+        i = g_topo.tris[i].parent;
+    }
+    return i;
+}
+
+void topo_union(int a, int b, int frame) {
+    a = topo_find(a); b = topo_find(b);
+    if (a == b) return;
+    if (g_topo.members[a].size() < g_topo.members[b].size()) { int t = a; a = b; b = t; }
+    g_topo.tris[b].parent = a;
+    g_topo.members[a].insert(g_topo.members[a].end(), g_topo.members[b].begin(), g_topo.members[b].end());
+    std::vector<int>().swap(g_topo.members[b]);
+    g_topo.last_change[a] = frame;
+    g_topo.final_cls[a] = -1;
+}
+
+void topo_clear() {
+    g_topo.tris.clear();
+    g_topo.members.clear();
+    g_topo.last_change.clear();
+    g_topo.final_cls.clear();
+    g_topo.by_tri.clear();
+    g_topo.by_edge.clear();
+}
+
+inline bool pos_gt(const int16_t a[3], const int16_t b[3]) {
+    return a[0] != b[0] ? a[0] > b[0] : (a[1] != b[1] ? a[1] > b[1] : a[2] > b[2]);
+}
+inline void sort3(const int16_t p[3][3], int ord[3]) {
+    ord[0] = 0; ord[1] = 1; ord[2] = 2;
+    for (int i = 0; i < 2; ++i)
+        for (int j = i + 1; j < 3; ++j)
+            if (pos_gt(p[ord[i]], p[ord[j]])) { int t = ord[i]; ord[i] = ord[j]; ord[j] = t; }
+}
+inline EdgeKey make_edge(const int16_t a[3], const int16_t b[3]) {
+    EdgeKey k;
+    const bool gt = pos_gt(a, b);
+    const int16_t *lo = gt ? b : a, *hi = gt ? a : b;
+    for (int i = 0; i < 3; ++i) { k.v[i] = lo[i]; k.v[3 + i] = hi[i]; }
+    return k;
+}
+
+int topo_register(const int16_t p[3][3], const uint32_t nrm[3], int frame) {
+    int ord[3];
+    sort3(p, ord);
+    TriKey tk;
+    for (int i = 0; i < 3; ++i) for (int k = 0; k < 3; ++k) tk.v[i * 3 + k] = p[ord[i]][k];
+    std::unordered_map<TriKey, int, KeyHash<TriKey, 9> >::iterator it = g_topo.by_tri.find(tk);
+    if (it != g_topo.by_tri.end()) return it->second;
+    if (g_topo.tris.size() >= kTopoMaxTris) topo_clear();
+
+    const int idx = (int)g_topo.tris.size();
+    g_topo.tris.push_back(TopoTri());
+    TopoTri &t = g_topo.tris.back();
+    memset(&t, 0, sizeof t);
+    for (int i = 0; i < 3; ++i) {
+        for (int k = 0; k < 3; ++k) t.p[i][k] = p[i][k];
+        topo_decode(nrm[i], t.nrm[i]);
+        t.nb[i] = -1;
+    }
+    t.parent = idx;
+    t.cls = -1;
+    double P[3][3], e1[3], e2[3], c[3];
+    for (int i = 0; i < 3; ++i) topo_pos(t, i, P[i]);
+    d_sub(P[1], P[0], e1); d_sub(P[2], P[0], e2);
+    d_cross(e1, e2, c);
+    t.area = d_len(c);
+    {
+        double L = 0, ee[3];
+        for (int a = 0; a < 3; ++a) { d_sub(P[(a + 1) % 3], P[a], ee); if (d_len(ee) > L) L = d_len(ee); }
+        t.alt = L > 0 ? t.area / L : 0.0;
+    }
+    d_unit(c, t.F);
+    double avg = 0.0;
+    for (int i = 0; i < 3; ++i) avg += d_dot(t.F, t.nrm[i]);
+    if (avg < 0.0) { t.F[0] = -t.F[0]; t.F[1] = -t.F[1]; t.F[2] = -t.F[2]; }
+    g_topo.by_tri[tk] = idx;
+    g_topo.members.push_back(std::vector<int>(1, idx));
+    g_topo.last_change.push_back(frame);
+    g_topo.final_cls.push_back(-1);
+
+    if (g_topo.tris[idx].area > 1e-12) {
+        for (int k = 0; k < 3; ++k) {
+            const EdgeKey ek = make_edge(g_topo.tris[idx].p[k], g_topo.tris[idx].p[(k + 1) % 3]);
+            std::unordered_map<EdgeKey, int, KeyHash<EdgeKey, 6> >::iterator ei = g_topo.by_edge.find(ek);
+            if (ei == g_topo.by_edge.end()) {
+                g_topo.by_edge[ek] = idx;
+            } else {
+                const int o = ei->second;
+                int ou = -1;
+                for (int j = 0; j < 3; ++j)
+                    if (make_edge(g_topo.tris[o].p[j], g_topo.tris[o].p[(j + 1) % 3]) == ek) ou = j;
+                if (ou >= 0 && g_topo.tris[o].nb[ou] < 0 && g_topo.tris[idx].nb[k] < 0) {
+                    g_topo.tris[o].nb[ou] = idx;
+                    g_topo.tris[idx].nb[k] = o;
+                    topo_union(idx, o, frame);
+                }
+            }
+        }
+    }
+    return idx;
+}
+
+inline double dihedral_cos(const TopoTri &a, const TopoTri &b) { return d_dot(a.F, b.F); }
+
+int corner_of(const TopoTri &t, const int16_t p[3]) {
+    for (int c = 0; c < 3; ++c)
+        if (same_pos(t.p[c], p)) return c;
+    return -1;
+}
+
+// How much of its pull a joint corner keeps (see THE JOINT EASE).
+inline double topo_joint_pull() { return 0.5; }
+
+// A joint between two triangles that is sharper than kCreaseCos is still one
+// curved surface when the artist shaded it as one: the normals each side
+// authored at both ends of the shared edge continue into each other, and the
+// joint is not a right angle (a barrel's ring of 60 degree sides; a chest's box
+// corners are 90 degrees and stay creases whatever their normals say).
+inline double topo_joint_max_cos() { return 0.25881904510252074; }   // 75 degrees
+inline double topo_agree_cos() { return 0.94; }                      // about 20 degrees
+bool topo_edge_smooth(int ti, int k) {
+    const TopoTri &t = g_topo.tris[ti];
+    const int ui = t.nb[k];
+    if (ui < 0) return true;
+    const TopoTri &u = g_topo.tris[ui];
+    const double dc = dihedral_cos(t, u);
+    if (dc >= kCreaseCos) return true;
+    if (dc < topo_joint_max_cos()) return false;
+    const int kb = (k + 1) % 3;
+    const int ca = corner_of(u, t.p[k]), cb = corner_of(u, t.p[kb]);
+    if (ca < 0 || cb < 0) return false;
+    return d_dot(t.nrm[k], u.nrm[ca]) >= topo_agree_cos() &&
+           d_dot(t.nrm[kb], u.nrm[cb]) >= topo_agree_cos();
+}
+
+// The effective (welded) normal at corner c of triangle ti: the area weighted
+// sum of the face normals of every triangle reachable around that vertex
+// without crossing a joint sharper than kCreaseCos.
+void topo_weld(int ti, int c, VertRing &vt, double out[3], int *joint) {
+    const TopoTri &t0 = g_topo.tris[ti];
+    const int16_t *vp = t0.p[c];
+    VertKey vk; for (int k = 0; k < 3; ++k) vk.v[k] = vp[k];
+    const std::vector<int> &ring = vt[vk];
+    std::vector<int> seen(1, ti), st(1, ti);
+    while (!st.empty()) {
+        const int x = st.back(); st.pop_back();
+        const TopoTri &tx = g_topo.tris[x];
+        for (int k = 0; k < 3; ++k) {
+            const int j = tx.nb[k];
+            if (j < 0) continue;
+            // only edges that run through this vertex
+            if (!same_pos(tx.p[k], vp) && !same_pos(tx.p[(k + 1) % 3], vp)) continue;
+            bool dup = false;
+            for (size_t q = 0; q < seen.size(); ++q) if (seen[q] == j) { dup = true; break; }
+            if (dup) continue;
+            if (topo_edge_smooth(x, k)) { seen.push_back(j); st.push_back(j); }
+        }
+    }
+    *joint = seen.size() < ring.size() ? 1 : 0;
+    double s[3] = {0, 0, 0};
+    for (size_t q = 0; q < seen.size(); ++q) {
+        const TopoTri &tj = g_topo.tris[seen[q]];
+        for (int k = 0; k < 3; ++k) s[k] += tj.F[k] * tj.area;
+    }
+    d_unit(s, out);
+    if (out[0] == 0.0 && out[1] == 0.0 && out[2] == 0.0)
+        for (int k = 0; k < 3; ++k) out[k] = t0.F[k];
+}
+
+
+// A RIM EDGE. Two flat faces meet at a real corner and neither bends along the
+// edge by its welded normals, but the artist's own normals at the two ends of
+// the edge may still say the edge is one stretch of a curve drawn on the broad
+// face (a chest's metal rim, a strap over the lid: each is cut into straight
+// bars, each bar its own mesh, and only the shading says they ring a curve).
+// The edge then bows INSIDE the plane of the broader of its two faces, with the
+// authored normals flattened into that plane, so nothing leaves the surface,
+// and only when those normals lean off the edge's perpendicular by less than
+// 40 degrees (a corner shaded as the average of three faces leans 45 degrees and
+// stays straight). Both triangles on the edge compute the same answer.
+bool topo_ring_edge(int ti, int k, double out[2][3]) {
+    const double lim = 0.6427876096865393;   // sin 40 degrees
+    const TopoTri &t = g_topo.tris[ti];
+    const int ui = t.nb[k];
+    if (ui < 0) return false;
+    const TopoTri &u = g_topo.tris[ui];
+    const bool pick_u = (u.area > t.area) || (u.area == t.area && ui < ti);
+    const int si = pick_u ? ui : ti;
+    const TopoTri &s = g_topo.tris[si];
+    int ks = -1;
+    if (!pick_u) ks = k;
+    else for (int j = 0; j < 3; ++j) if (s.nb[j] == ti) ks = j;
+    if (ks < 0) return false;
+    const int kb = (ks + 1) % 3;
+    double A[3], B[3], O[3], d[3];
+    topo_pos(s, ks, A); topo_pos(s, kb, B); topo_pos(s, (ks + 2) % 3, O);
+    d_sub(B, A, d);
+    const double dl = d_len(d);
+    if (dl <= 0.0) return false;
+    const double dh[3] = {d[0] / dl, d[1] / dl, d[2] / dl};
+    double np[2][3];
+    for (int e = 0; e < 2; ++e) {
+        const double *n = s.nrm[e == 0 ? ks : kb];
+        const double a = d_dot(n, s.F);
+        double r[3] = {n[0] - a * s.F[0], n[1] - a * s.F[1], n[2] - a * s.F[2]};
+        const double rl = d_len(r);
+        if (rl < 0.25) return false;
+        np[e][0] = r[0] / rl; np[e][1] = r[1] / rl; np[e][2] = r[2] / rl;
+    }
+    double eo[3], od[3];
+    d_cross(s.F, dh, eo);
+    d_sub(O, A, od);
+    if (d_dot(eo, od) > 0.0) { eo[0] = -eo[0]; eo[1] = -eo[1]; eo[2] = -eo[2]; }
+    // leaning outward on the face, away from the edge's middle, by a small angle
+    if (d_dot(np[0], eo) <= 0.0 || d_dot(np[1], eo) <= 0.0) return false;
+    const double a0 = d_dot(np[0], dh), a1 = d_dot(np[1], dh);
+    if (a0 > 0.0 || a1 < 0.0) return false;
+    if (fabs(a0) > lim || fabs(a1) > lim) return false;
+    if (!pick_u) {
+        for (int q = 0; q < 3; ++q) { out[0][q] = np[0][q]; out[1][q] = np[1][q]; }
+    } else if (same_pos(t.p[k], s.p[ks])) {
+        for (int q = 0; q < 3; ++q) { out[0][q] = np[0][q]; out[1][q] = np[1][q]; }
+    } else {
+        for (int q = 0; q < 3; ++q) { out[0][q] = np[1][q]; out[1][q] = np[0][q]; }
+    }
+    return true;
+}
+
+void topo_finalize_box(const std::vector<int> &mem) {
+    VertRing vt;   // kept for the ring lookups the weld wants
+    for (size_t m = 0; m < mem.size(); ++m) {
+        const TopoTri &t = g_topo.tris[mem[m]];
+        for (int c = 0; c < 3; ++c) {
+            VertKey vk; for (int k = 0; k < 3; ++k) vk.v[k] = t.p[c][k];
+            vt[vk].push_back(mem[m]);
+        }
+    }
+    for (size_t m = 0; m < mem.size(); ++m) {
+        for (int c = 0; c < 3; ++c) topo_weld(mem[m], c, vt, g_topo.tris[mem[m]].eff[c], &g_topo.tris[mem[m]].cv[c]);
+    }
+    for (size_t m = 0; m < mem.size(); ++m) {
+        const int ti = mem[m];
+        TopoTri &t = g_topo.tris[ti];
+        int flat = 1;
+        for (int k = 0; k < 3; ++k) {
+            const int kb = (k + 1) % 3;
+            const double *ca = t.eff[k], *cb = t.eff[kb];
+            double A[3], B[3], d[3];
+            topo_pos(t, k, A); topo_pos(t, kb, B);
+            d_sub(B, A, d);
+            const int u = t.nb[k];
+            double bn[2][3];
+            if (u >= 0 && !topo_edge_smooth(ti, k)) {
+                // A crease. Both sides must draw the edge as ONE curve. Each
+                // side's welded normals at the two ends say how its own surface
+                // runs along the edge; the side that bends along the edge
+                // (a lid's rim in the plane of its flat end, a barrel's ring)
+                // gives the curve, a flat side is perpendicular to it and gives
+                // a straight line. Two flat sides: the straight edge.
+                const TopoTri &tu = g_topo.tris[u];
+                const int cA = corner_of(tu, t.p[k]), cB = corner_of(tu, t.p[kb]);
+                const double dl = d_len(d);
+                const double bt = dl > 0.0 ? fabs(d_dot(d, t.eff[k])) + fabs(d_dot(d, t.eff[kb])) : 0.0;
+                double bu = 0.0;
+                if (cA >= 0 && cB >= 0 && dl > 0.0) bu = fabs(d_dot(d, tu.eff[cA])) + fabs(d_dot(d, tu.eff[cB]));
+                const bool take_u = (bu > bt) || (bu == bt && u < ti);
+                if ((bt <= 1e-3 * dl && bu <= 1e-3 * dl)) {
+                    ca = cb = t.F;
+                    if (topo_ring_edge(ti, k, bn)) { ca = bn[0]; cb = bn[1]; }
+                } else if (take_u && cA >= 0 && cB >= 0) {
+                    for (int q = 0; q < 3; ++q) { bn[0][q] = tu.eff[cA][q]; bn[1][q] = tu.eff[cB][q]; }
+                    ca = bn[0]; cb = bn[1];
+                } else {
+                    ca = t.eff[k]; cb = t.eff[kb];
+                }
+            }
+            for (int q = 0; q < 3; ++q) { t.en[k][0][q] = (float)ca[q]; t.en[k][1][q] = (float)cb[q]; }
+            const double dl = d_len(d);
+            if (dl > 0.0 && (fabs(d_dot(d, ca)) > 1e-3 * dl || fabs(d_dot(d, cb)) > 1e-3 * dl)) flat = 0;
+        }
+        t.flat = flat;
+    }
+
+    // THE JOINT EASE. A lid facet that runs from one end cap to the other has
+    // every corner on a joint, and the end caps (and the separate metal rim
+    // pieces over them) stay the flat polygon the DS drew. The full pull of
+    // such an edge would lift the lid's ends clear of that rim in a thin
+    // flare, so the pull at a joint corner is eased by kJointPull.
+    for (size_t m = 0; m < mem.size(); ++m) {
+        TopoTri &t = g_topo.tris[mem[m]];
+        for (int k = 0; k < 3; ++k) {
+            const int kb = (k + 1) % 3;
+            double A[3], B[3], d[3];
+            topo_pos(t, k, A); topo_pos(t, kb, B);
+            d_sub(B, A, d);
+            const double dl = d_len(d);
+            if (dl <= 0.0) continue;
+            const double dh[3] = {d[0] / dl, d[1] / dl, d[2] / dl};
+            for (int sd = 0; sd < 2; ++sd) {
+                {
+                    // the same answer from both triangles on the edge
+                    const int cc = sd == 0 ? k : kb;
+                    int jt = t.cv[cc];
+                    const int uu = t.nb[k];
+                    if (uu >= 0) {
+                        const int cu = corner_of(g_topo.tris[uu], t.p[cc]);
+                        if (cu >= 0 && g_topo.tris[uu].cv[cu]) jt = 1;
+                    }
+                    if (!jt) continue;
+                }
+                double n[3] = {t.en[k][sd][0], t.en[k][sd][1], t.en[k][sd][2]};
+                const double a = d_dot(n, dh);
+                const double a2 = a * topo_joint_pull();
+                double r[3] = {n[0] - a * dh[0], n[1] - a * dh[1], n[2] - a * dh[2]};
+                const double rl = d_len(r);
+                const double sc = rl > 1e-12 ? sqrt(1.0 - a2 * a2) / rl : 0.0;
+                for (int q = 0; q < 3; ++q) t.en[k][sd][q] = (float)(a2 * dh[q] + r[q] * sc);
+            }
+        }
+    }
+
+    // THE SLIVER GUARD. An edge's pull is |d . n| / 3 of its length, which is
+    // nothing on a roundish piece and a spike on a long thin triangle, whose
+    // whole width it can exceed. Both triangles on an edge cap it at half the
+    // smaller of their narrowest altitudes, the same number from either side,
+    // by turning the end normals towards perpendicular until the pull fits.
+    for (size_t m = 0; m < mem.size(); ++m) {
+        TopoTri &t = g_topo.tris[mem[m]];
+        for (int k = 0; k < 3; ++k) {
+            const int kb = (k + 1) % 3;
+            double A[3], B[3], d[3];
+            topo_pos(t, k, A); topo_pos(t, kb, B);
+            d_sub(B, A, d);
+            const double dl = d_len(d);
+            if (dl <= 0.0) continue;
+            const int u = t.nb[k];
+            double h = t.alt;
+            if (u >= 0 && g_topo.tris[u].alt < h) h = g_topo.tris[u].alt;
+            double amax = 1.5 * h / dl;           // |a| = |d . n| / |d|, pull = |d| |a| / 3 <= h / 2
+            if (amax >= 1.0) continue;
+            const double dh[3] = {d[0] / dl, d[1] / dl, d[2] / dl};
+            for (int sd = 0; sd < 2; ++sd) {
+                double n[3] = {t.en[k][sd][0], t.en[k][sd][1], t.en[k][sd][2]};
+                const double a = d_dot(n, dh);
+                if (fabs(a) <= amax) continue;
+                const double a2 = a < 0 ? -amax : amax;
+                double r[3] = {n[0] - a * dh[0], n[1] - a * dh[1], n[2] - a * dh[2]};
+                const double rl = d_len(r);
+                const double sc = rl > 1e-12 ? sqrt(1.0 - a2 * a2) / rl : 0.0;
+                for (int q = 0; q < 3; ++q) t.en[k][sd][q] = (float)(a2 * dh[q] + r[q] * sc);
+            }
+        }
+    }
+
+    // Flat is decided last: a triangle whose edges all ended up straight is
+    // the flat triangle, and the caller draws it as the DS did.
+    for (size_t m = 0; m < mem.size(); ++m) {
+        TopoTri &t = g_topo.tris[mem[m]];
+        int flat = 1;
+        for (int k = 0; k < 3 && flat; ++k) {
+            const int kb = (k + 1) % 3;
+            double A[3], B[3], d[3];
+            topo_pos(t, k, A); topo_pos(t, kb, B);
+            d_sub(B, A, d);
+            const double dl = d_len(d);
+            if (dl <= 0.0) continue;
+            for (int sd = 0; sd < 2; ++sd) {
+                const double n[3] = {t.en[k][sd][0], t.en[k][sd][1], t.en[k][sd][2]};
+                if (fabs(d_dot(d, n)) > 1e-3 * dl) flat = 0;
+            }
+        }
+        t.flat = flat;
+    }
+}
+
+int topo_finalize_fan(const std::vector<int> &mem) {
+    const int n = (int)mem.size();
+    // centre: the corner shared by every triangle
+    int16_t cen[3] = {0, 0, 0};
+    int found = 0;
+    const TopoTri &t0 = g_topo.tris[mem[0]];
+    for (int c = 0; c < 3 && !found; ++c) {
+        int all = 1;
+        for (int m = 1; m < n; ++m)
+            if (corner_of(g_topo.tris[mem[m]], t0.p[c]) < 0) { all = 0; break; }
+        if (all) { found = 1; for (int k = 0; k < 3; ++k) cen[k] = t0.p[c][k]; }
+    }
+    if (!found) return 0;
+    const double C[3] = {cen[0] / 4096.0, cen[1] / 4096.0, cen[2] / 4096.0};
+    const double Fp[3] = {t0.F[0], t0.F[1], t0.F[2]};
+    // an in-plane frame from the first rim corner
+    double r0[3] = {0, 0, 0};
+    for (int c = 0; c < 3; ++c)
+        if (!same_pos(t0.p[c], cen)) { double P[3]; topo_pos(t0, c, P); d_sub(P, C, r0); break; }
+    const double dp = d_dot(r0, Fp);
+    for (int k = 0; k < 3; ++k) r0[k] -= Fp[k] * dp;
+    double u1[3], u2[3];
+    d_unit(r0, u1);
+    d_cross(Fp, u1, u2);
+    // the rim in that frame (each rim corner is met twice: harmless)
+    std::vector<double> rx, ry;
+    for (int m = 0; m < n; ++m) {
+        const TopoTri &t = g_topo.tris[mem[m]];
+        for (int c = 0; c < 3; ++c) {
+            if (same_pos(t.p[c], cen)) continue;
+            double P[3], d[3]; topo_pos(t, c, P); d_sub(P, C, d);
+            rx.push_back(d_dot(d, u1)); ry.push_back(d_dot(d, u2));
+        }
+    }
+    if (rx.empty()) return 0;
+    double sxx = 0, syy = 0, sxy = 0;
+    for (size_t q = 0; q < rx.size(); ++q) { sxx += rx[q] * rx[q]; syy += ry[q] * ry[q]; sxy += rx[q] * ry[q]; }
+    const double th = 0.5 * atan2(2.0 * sxy, sxx - syy);
+    const double ct = cos(th), st = sin(th);
+    // the ellipse A x'^2 + B y'^2 = 1 through the rim, in its principal axes
+    double a11 = 0, a12 = 0, a22 = 0, b1 = 0, b2 = 0;
+    for (size_t q = 0; q < rx.size(); ++q) {
+        const double xp = rx[q] * ct + ry[q] * st, yp = -rx[q] * st + ry[q] * ct;
+        const double X = xp * xp, Y = yp * yp;
+        a11 += X * X; a12 += X * Y; a22 += Y * Y; b1 += X; b2 += Y;
+    }
+    double A = 0, B = 0;
+    const double det = a11 * a22 - a12 * a12;
+    if (fabs(det) > 1e-12 * (a11 * a22 + 1e-30)) { A = (b1 * a22 - b2 * a12) / det; B = (a11 * b2 - a12 * b1) / det; }
+    if (!(A > 0.0 && B > 0.0)) {
+        double r2 = 0;
+        for (size_t q = 0; q < rx.size(); ++q) r2 += rx[q] * rx[q] + ry[q] * ry[q];
+        r2 /= (double)rx.size();
+        A = B = 1.0 / r2;
+    }
+    for (int m = 0; m < n; ++m) {
+        TopoTri &t = g_topo.tris[mem[m]];
+        double rim[3][3]; int isrim[3];
+        for (int c = 0; c < 3; ++c) {
+            isrim[c] = !same_pos(t.p[c], cen);
+            double P[3], d[3]; topo_pos(t, c, P); d_sub(P, C, d);
+            const double x = d_dot(d, u1), y = d_dot(d, u2);
+            const double xp = x * ct + y * st, yp = -x * st + y * ct;
+            // the ellipse's outward normal, turned back from its axes into (u1, u2)
+            const double gx = A * xp * ct - B * yp * st;
+            const double gy = A * xp * st + B * yp * ct;
+            const double g[3] = {u1[0] * gx + u2[0] * gy, u1[1] * gx + u2[1] * gy, u1[2] * gx + u2[2] * gy};
+            d_unit(g, rim[c]);
+        }
+        for (int k = 0; k < 3; ++k) {
+            const int kb = (k + 1) % 3;
+            const int spoke = !(isrim[k] && isrim[kb]);
+            for (int q = 0; q < 3; ++q) {
+                t.en[k][0][q] = (float)(spoke ? Fp[q] : rim[k][q]);
+                t.en[k][1][q] = (float)(spoke ? Fp[q] : rim[kb][q]);
+            }
+        }
+        t.flat = 0;
+    }
+    return 1;
+}
+
+int topo_classify(const std::vector<int> &mem, double *o_cop, double *o_lb, double *o_lv) {
+    const int n = (int)mem.size();
+    *o_cop = *o_lb = *o_lv = 0.0;
+    if (n < 4 || n > 400) return SMOOTH_CLASS_NONE;
+    int edges = 0, cop = 0, allcop = 1;
+    int lb = 0, lv = 0;
+    std::unordered_map<VertKey, int, KeyHash<VertKey, 3> > vset;
+    for (int m = 0; m < n; ++m) {
+        const TopoTri &t = g_topo.tris[mem[m]];
+        double lean = 1.0;
+        for (int c = 0; c < 3; ++c) {
+            const double d = d_dot(t.F, t.nrm[c]);
+            if (d < lean) lean = d;
+            VertKey vk; for (int k = 0; k < 3; ++k) vk.v[k] = t.p[c][k];
+            vset[vk] = 1;
+        }
+        if (lean < 0.75) ++lb;
+        if (lean < 0.40) ++lv;
+        for (int k = 0; k < 3; ++k) {
+            const int u = t.nb[k];
+            if (u > mem[m]) {
+                const double dc = dihedral_cos(t, g_topo.tris[u]);
+                ++edges;
+                if (dc >= 0.99756) ++cop;           // within 4 degrees
+                if (dc < 0.99863) allcop = 0;       // beyond 3 degrees
+            }
+        }
+    }
+    const int nv = (int)vset.size();
+    const double fcop = edges ? (double)cop / edges : 0.0;
+    *o_cop = fcop; *o_lb = (double)lb / n; *o_lv = (double)lv / n;
+    if (n >= 8 && fcop >= 0.35 && *o_lb >= 0.5) return SMOOTH_CLASS_BOX;
+    if (n >= 10 && n <= 40 && *o_lv >= 0.9 && fcop < 0.35) return SMOOTH_CLASS_FACET;
+    if (n <= 12 && edges > 0 && allcop && nv == n + 1) return SMOOTH_CLASS_FAN;
+    return SMOOTH_CLASS_NONE;
+}
+
+void topo_finalize(int root) {
+    const std::vector<int> &mem = g_topo.members[root];
+    if (g_topo_log < 0) g_topo_log = getenv("SM64DS_SMOOTH_TOPO_LOG") ? 1 : 0;
+    double cop = 0, lb = 0, lv = 0;
+    int cls = topo_classify(mem, &cop, &lb, &lv);
+    if (cls == SMOOTH_CLASS_BOX) {
+        topo_finalize_box(mem);
+    } else if (cls == SMOOTH_CLASS_FAN) { if (!topo_finalize_fan(mem)) cls = SMOOTH_CLASS_NONE; }
+    for (size_t m = 0; m < mem.size(); ++m) g_topo.tris[mem[m]].cls = cls;
+    g_topo.final_cls[root] = cls;
+    if (g_topo_log < 0) g_topo_log = getenv("SM64DS_SMOOTH_TOPO_LOG") ? 1 : 0;
+    if (g_topo_log && (cls != SMOOTH_CLASS_NONE || mem.size() >= 8)) {
+        const TopoTri &t = g_topo.tris[mem[0]];
+        fprintf(stderr, "[smoothtopo] mesh of %d tris class %d (flat edges %.2f, lying %.2f, lying badly %.2f) first corner %d %d %d\n",
+                (int)mem.size(), cls, cop, lb, lv, t.p[0][0], t.p[0][1], t.p[0][2]);
+    }
+}
+
+}  // namespace
+
+int smooth_topo_on() {
+    if (g_topo_on < 0) {
+        const char *e = getenv("SM64DS_SMOOTH_TOPO");
+        g_topo_on = (e && e[0] == '0') ? 0 : 1;
+    }
+    return g_topo_on;
+}
+
+
+void smooth_topo_count(int what) {
+    if (what >= 0 && what < 4) ++g_topo_n[what];
+}
+
+namespace {
+// SAME DRAW, SAME MODEL. A chest is a box, a curved lid AND the metal straps
+// and rim pieces laid over it; those are meshes of their own, often two
+// triangles each, whose statistics say nothing, so on their own they stay
+// NONE and would be drawn puffed against the now flat chest. What ties them to
+// the chest is that they are drawn one after another in the same picture:
+// the game bumps the matrix generation for each piece of one model, so the
+// pieces of a model sit in a few consecutive generations. The first time a
+// BOX mesh is seen under a generation, every lying NONE mesh seen in that
+// picture within kNear generations of it is promoted to BOX for good.
+struct GroupInfo {
+    int frame;
+    std::map<uint32_t, int> box;                              // generations holding a BOX mesh
+    std::vector<std::pair<int, uint32_t> > pending;            // lying NONE meshes seen, with their generation
+};
+GroupInfo g_topo_groups;
+const uint32_t kNear = 3;
+
+// TRIANGLES STITCHED ACROSS TWO MATRICES (a seam between two bones) cannot be
+// entered in the book: their corners are in two different spaces. When one is
+// drawn right beside a BOX mesh it is a seam of that same model, and drawn
+// puffed it flares out of the flat box; so it is remembered by its corners
+// and left as the DS drew it, from the next picture on.
+std::unordered_map<TriKey, int, KeyHash<TriKey, 9> > g_topo_refuse;
+struct CrossPending { TriKey key; uint32_t g[3]; };
+std::vector<CrossPending> g_topo_cross_pending;
+int g_topo_cross_frame = -1;
+
+inline bool near_gen(uint32_t a, uint32_t b) { return a + kNear >= b && a <= b + kNear; }
+
+void topo_promote(int root) {
+    const std::vector<int> &mem = g_topo.members[root];
+    if (mem.size() < 1 || mem.size() > 400) return;
+    topo_finalize_box(mem);
+    for (size_t m = 0; m < mem.size(); ++m) g_topo.tris[mem[m]].cls = SMOOTH_CLASS_BOX;
+    g_topo.final_cls[root] = SMOOTH_CLASS_BOX;
+    if (g_topo_log < 0) g_topo_log = getenv("SM64DS_SMOOTH_TOPO_LOG") ? 1 : 0;
+    if (g_topo_log) {
+        const TopoTri &t = g_topo.tris[mem[0]];
+        fprintf(stderr, "[smoothtopo] mesh of %d tris promoted to box (drawn with a box) first corner %d %d %d\n",
+                (int)mem.size(), t.p[0][0], t.p[0][1], t.p[0][2]);
+    }
+}
+
+// Does the mesh at `root` lie about its normals enough to be worth promoting?
+int topo_lying(int root) {
+    const std::vector<int> &mem = g_topo.members[root];
+    if (mem.size() < 1 || mem.size() > 400) return 0;
+    int lb = 0;
+    for (size_t m = 0; m < mem.size(); ++m) {
+        const TopoTri &t = g_topo.tris[mem[m]];
+        double lean = 1.0;
+        for (int c = 0; c < 3; ++c) { const double d = d_dot(t.F, t.nrm[c]); if (d < lean) lean = d; }
+        if (lean < 0.75) ++lb;
+    }
+    return lb * 2 >= (int)mem.size();
+}
+}  // namespace
+
+int smooth_topo_lookup(const int16_t p[3][3], const uint32_t nrm[3], uint32_t group, SmoothOverride *out) {
+    const int frame = (int)g_counters.frames;
+    const int idx = topo_register(p, nrm, frame);
+    int root = topo_find(idx);
+    if (g_topo.final_cls[root] < 0) {
+        if (frame - g_topo.last_change[root] < kTopoSettle) return 0;
+        topo_finalize(root);
+    }
+    if (g_topo_groups.frame != frame) {
+        g_topo_groups.frame = frame;
+        g_topo_groups.box.clear();
+        g_topo_groups.pending.clear();
+    }
+    {
+        GroupInfo &gi = g_topo_groups;
+        const int fc = g_topo.final_cls[root];
+        if (fc == SMOOTH_CLASS_BOX) {
+            if (gi.box.find(group) == gi.box.end()) {
+                gi.box[group] = 1;
+                std::vector<std::pair<int, uint32_t> > keep;
+                for (size_t r = 0; r < gi.pending.size(); ++r) {
+                    const int rr = topo_find(gi.pending[r].first);
+                    const uint32_t pg = gi.pending[r].second;
+                    if (g_topo.final_cls[rr] != SMOOTH_CLASS_NONE) continue;
+                    if (pg + kNear >= group && pg <= group + kNear) topo_promote(rr);
+                    else keep.push_back(gi.pending[r]);
+                }
+                gi.pending.swap(keep);
+                for (size_t r = 0; r < g_topo_cross_pending.size(); ++r)
+                    for (int q = 0; q < 3; ++q)
+                        if (near_gen(g_topo_cross_pending[r].g[q], group)) { g_topo_refuse[g_topo_cross_pending[r].key] = 1; break; }
+            }
+        }
+        if (fc == SMOOTH_CLASS_NONE && topo_lying(root)) {
+            bool near_box = false;
+            std::map<uint32_t, int>::iterator it = gi.box.lower_bound(group > kNear ? group - kNear : 0);
+            if (it != gi.box.end() && it->first <= group + kNear) near_box = true;
+            if (near_box) topo_promote(root);
+            else if (gi.pending.size() < 256) gi.pending.push_back(std::make_pair(root, group));
+        }
+    }
+    const TopoTri &t = g_topo.tris[idx];
+    if (t.cls <= SMOOTH_CLASS_NONE) return 0;
+    out->cls = t.cls;
+    out->flat = t.flat;
+    if (t.cls == SMOOTH_CLASS_FACET) { memset(out->en, 0, sizeof out->en); return 1; }
+    // the six edge normals, in the order of the caller's corners
+    int rc[3];
+    for (int i = 0; i < 3; ++i) {
+        rc[i] = corner_of(t, p[i]);
+        if (rc[i] < 0) return 0;
+    }
+    static const int pk[6][2] = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {0, 2}, {2, 0}};
+    for (int s = 0; s < 6; ++s) {
+        const int ri = rc[pk[s][0]], rj = rc[pk[s][1]];
+        int k = -1;
+        if ((ri + 1) % 3 == rj) k = ri;
+        else if ((rj + 1) % 3 == ri) k = rj;
+        else return 0;
+        const int slot = (k == ri) ? 0 : 1;
+        for (int q = 0; q < 3; ++q) out->en[s][q] = t.en[k][slot][q];
+    }
+    return 1;
+}
+
+
+int smooth_topo_cross(const int16_t p[3][3], uint32_t g0, uint32_t g1, uint32_t g2) {
+    const int frame = (int)g_counters.frames;
+    int ord[3];
+    sort3(p, ord);
+    TriKey tk;
+    for (int i = 0; i < 3; ++i) for (int k = 0; k < 3; ++k) tk.v[i * 3 + k] = p[ord[i]][k];
+    if (g_topo_refuse.find(tk) != g_topo_refuse.end()) return 1;
+    if (g_topo_groups.frame != frame) {
+        g_topo_groups.frame = frame;
+        g_topo_groups.box.clear();
+        g_topo_groups.pending.clear();
+    }
+    if (g_topo_cross_frame != frame) { g_topo_cross_frame = frame; g_topo_cross_pending.clear(); }
+    const uint32_t gs[3] = {g0, g1, g2};
+    for (int q = 0; q < 3; ++q) {
+        std::map<uint32_t, int>::iterator it = g_topo_groups.box.lower_bound(gs[q] > kNear ? gs[q] - kNear : 0);
+        if (it != g_topo_groups.box.end() && it->first <= gs[q] + kNear) {
+            if (g_topo_refuse.size() < 200000) g_topo_refuse[tk] = 1;
+            return 1;
+        }
+    }
+    if (g_topo_cross_pending.size() < 1024) {
+        CrossPending cp; cp.key = tk; cp.g[0] = g0; cp.g[1] = g1; cp.g[2] = g2;
+        g_topo_cross_pending.push_back(cp);
+    }
+    return 0;
+}
+
+namespace {
+void topo_report(uint64_t frame) {
+    fprintf(stderr, "[smoothtopo] f%llu tris %llu box %llu facet %llu fan %llu flatkept %llu\n",
+            (unsigned long long)frame, (unsigned long long)g_topo.tris.size(),
+            (unsigned long long)g_topo_n[0], (unsigned long long)g_topo_n[1],
+            (unsigned long long)g_topo_n[2], (unsigned long long)g_topo_n[3]);
+}
+}  // namespace
 
 }  // namespace ntr

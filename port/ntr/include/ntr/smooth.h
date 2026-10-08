@@ -191,6 +191,55 @@ int smooth_shape_factor(const SmoothShape &sh, const SmoothPolicy &pol,
                         float scale, int *why);
 
 // ---------------------------------------------------------------------------
+// THE TOPOLOGY BOOK (SMOOTHBULGE1B). The per-triangle policy above cannot tell
+// a treasure chest from a character: both are low-poly meshes whose authored
+// corner normals lean far off their own faces, and the PN patch pillows both.
+// What tells them apart is the SHAPE OF THE WHOLE MESH, which one triangle
+// cannot see. So every triangle that reaches the smoother is entered once in
+// a book keyed on its raw model-space corners, triangles that share an edge
+// are joined into a mesh, and a mesh that has stopped growing is classified:
+//   BOX    flat faces meeting at hard edges whose authored normals lie (a
+//          chest, a cannon block). Flat faces stay exactly flat, the edges
+//          between faces and the curved parts stay sharp, curved parts (the
+//          chest lid, the cannon barrel) are smoothed from the GEOMETRY'S own
+//          welded normals instead of the lying authored ones.
+//   FACET  a small faceted solid whose every authored normal lies (the Power
+//          Star's body). It is left as the DS drew it.
+//   FAN    a small flat polygon fan (the Power Star's eyes). Its outline is
+//          rounded inside its own plane, so it never leaves the surface.
+// Everything else (every character, enemy and round prop) is NONE and is
+// smoothed exactly as before. A mesh that is not yet known to be complete is
+// NONE too. SM64DS_SMOOTH_TOPO=0 turns the whole book off.
+// ---------------------------------------------------------------------------
+enum {
+    SMOOTH_CLASS_NONE  = 0,
+    SMOOTH_CLASS_BOX   = 1,
+    SMOOTH_CLASS_FACET = 2,
+    SMOOTH_CLASS_FAN   = 3
+};
+struct SmoothOverride {
+    int cls;            // SMOOTH_CLASS_*
+    int flat;           // every edge is straight: the patch is the flat triangle
+    // The six edge normals in the model's own space, in the order of the
+    // corners the caller passed: b210, b120, b021, b012, b201, b102.
+    float en[6][3];
+};
+int smooth_topo_on();
+// Enter the triangle (once) and say what its mesh is. Returns 0 for NONE.
+int smooth_topo_lookup(const int16_t p[3][3], const uint32_t nrm[3],
+                       uint32_t group, SmoothOverride *out);
+// The grid positions of a patch whose six edge normals are given (model
+// space or any space the corners are in), same layout as smooth_grid_positions.
+int smooth_grid_positions_edges(const SmoothVertex &p1, const SmoothVertex &p2,
+                                const SmoothVertex &p3, const float en[6][3],
+                                int tf, float *out);
+// A triangle whose corners rode three different matrices: 1 when it is a seam
+// of a BOX model and should be drawn as the DS drew it.
+int smooth_topo_cross(const int16_t p[3][3], uint32_t g0, uint32_t g1, uint32_t g2);
+void smooth_topo_count(int what);
+enum { SMOOTH_TOPO_BOX = 0, SMOOTH_TOPO_FACET, SMOOTH_TOPO_FAN, SMOOTH_TOPO_FLATKEEP };
+
+// ---------------------------------------------------------------------------
 // THE ENGINE-FACING HALF. Everything above is pure geometry and is what the
 // standalone selftest exercises; everything below is the switch the port
 // turns on and the counters it is measured by. None of it allocates, none of
