@@ -1371,6 +1371,12 @@ void pup_play_sounds(int seat, char *a, const PupDraw &d, Pup &pp,
             int vec[3];
             std::memcpy(vec, a + kPlayerSound, sizeof vec);
             double dist = -1.0, gain = 1.0, romd = -1.0;
+            if (!g_pc.sfx_range_on && mine && pup_sfx_log()) {   // range off (build 5): measure for the log only
+                const int me[3] = {*(const int *)(mine + 0x5c), *(const int *)(mine + 0x60),
+                                   *(const int *)(mine + 0x64)};
+                const int src[3] = {d.x, d.y, d.z};
+                dist = vs_puppet_sfx_distance(me, src);
+            }
             if (g_pc.sfx_range_on && mine) {
                 const int me[3] = {*(const int *)(mine + 0x5c), *(const int *)(mine + 0x60),
                                    *(const int *)(mine + 0x64)};
