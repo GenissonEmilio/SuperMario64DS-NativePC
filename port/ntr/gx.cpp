@@ -6088,6 +6088,8 @@ struct IpGroup {
                          // that tells two instances of one model apart
     int match;           // group index in the previous record, or -1
     uint32_t ev0, ev1;   // event range [ev0, ev1)
+    int part;            // a particle (MTX_IDENTITY then one MULT_4x3)
+    double ps;           // its billboard scale, in the view matrix's units
 };
 
 struct IpRec {
@@ -6192,6 +6194,17 @@ double ip_tele_units() {
     return v;
 }
 
+/* SM64DS_PARTICLE_PAIR=0 pairs particles the old way (by view-space
+   translation), for a measurement. */
+bool ip_particle_pair() {
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_PARTICLE_PAIR");
+        on = (e && e[0] == '0') ? 0 : 1;
+    }
+    return on != 0;
+}
+
 void ip_rec_begin() {
     IpRec &r = g_ipr[g_ip_w];
     r.ev.clear();
@@ -6278,6 +6291,7 @@ void ip_build_groups(IpRec &r) {
             G.has_pos = 0; G.px = G.py = G.pz = 0;
             G.has_rel = 0; G.rx = G.ry = G.rz = 0;
             G.match = -1;
+            G.part = 0; G.ps = 0;
             G.ev0 = i; G.ev1 = i;
             r.groups.push_back(G);
             cur = static_cast<int>(r.groups.size()) - 1;
@@ -6317,6 +6331,25 @@ void ip_build_groups(IpRec &r) {
                 G.ry = (int32_t)q[o + 1] / 4096.0;
                 G.rz = (int32_t)q[o + 2] / 4096.0;
             }
+            /* A PARTICLE: func_0204be40 draws it as MTX_IDENTITY, then one
+               MULT_4x3 whose translation is the particle's position already
+               run through the view matrix and whose 2x2 is the billboard's
+               scale and turn. Its view-space translation moves with the
+               camera, so two ticks' translations cannot tell which particle
+               is which; its world position and its size can. */
+            if (G.nmtx == 1 && e.cmd == 0x19 && e.np == 12 &&
+                (e.mode == MTX_POS || e.mode == MTX_POSVEC) && i > 0 &&
+                r.ev[i - 1].kind == IPK_CMD && r.ev[i - 1].cmd == 0x15 &&
+                r.ev[i - 1].mode == e.mode && ip_particle_pair()) {
+                const uint32_t *q = &r.par[e.off];
+                double w[3];
+                ip_world(q, 12, r.view, w);
+                G.part = 1;
+                G.has_pos = 1; G.px = w[0]; G.py = w[1]; G.pz = w[2];
+                G.has_rel = 0; G.rx = G.ry = G.rz = 0;
+                const double a = (int32_t)q[0] / 4096.0, b = (int32_t)q[1] / 4096.0;
+                G.ps = std::sqrt(a * a + b * b);
+            }
         } else if (ip_is_geom(e.cmd)) {
             if (!geom) key_src = e.src;
             geom = true;
@@ -6340,6 +6373,12 @@ double ip_rel2(const IpGroup &a, const IpGroup &b) {
    have one, else the translations their first matrix commands carry, else how
    far apart they sit in the key's draw order. */
 double ip_unlike(const IpGroup &a, const IpGroup &b, int ia, int ib) {
+    /* two particles: how far the world position moved plus how much the
+       size changed (a puff does not turn into a speck between two ticks) */
+    if (a.part && b.part) {
+        const double ds = (a.ps - b.ps) * 3.0;
+        return ip_dist2(a, b) + ds * ds;
+    }
     const bool p = a.has_pos && b.has_pos, r = a.has_rel && b.has_rel;
     if (p || r) return (p ? ip_dist2(a, b) : 0.0) + (r ? ip_rel2(a, b) : 0.0);
     const double d = (double)(ia - ib);
@@ -6401,6 +6440,13 @@ void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st) {
             IpGroup &gc = C.groups[lc[i]];
             const IpGroup &gp = P.groups[pair[i]];
             if (gc.nmtx != gp.nmtx || gc.shape != gp.shape) { ++shapebad; continue; }
+            /* what is left over when one particle died and another was born
+               is a big old one and a tiny new one: not a pair */
+            if (gc.part && gp.part) {
+                const double hi = gc.ps > gp.ps ? gc.ps : gp.ps;
+                const double lo = gc.ps > gp.ps ? gp.ps : gc.ps;
+                if (hi > lo * 6.0) { ++shapebad; continue; }
+            }
             if (gc.has_pos && gp.has_pos && ip_dist2(gc, gp) > tele2) { ++tele; continue; }
             if (!(gc.has_pos && gp.has_pos) && gc.has_rel && gp.has_rel &&
                 ip_rel2(gc, gp) > 16.0 * tele2) { ++tele; continue; }
