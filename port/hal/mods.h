@@ -1,4 +1,4 @@
-/* hal/mods.h -- the mod list (run mods1, lane MODFILES1).
+/* hal/mods.h: the mod list (run mods1, lane MODFILES1).
 
    settings.json's "EnabledMods" is the ordered list of installed mods that are
    on. mods.cpp reads it ONCE, at boot (the first call to any function below

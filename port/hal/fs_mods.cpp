@@ -1954,7 +1954,7 @@ void pc_load(void)
         }
         f = palette_open_named(v, shown, sizeof shown);
         if (!f) {
-            fprintf(stderr, "[mods] %s %s: no palettes/%s.pal beside the "
+            fprintf(stderr, "[mods] %s %s: no palettes/%s.pal in an enabled mod, beside the "
                             "exe, the asset root, or the working directory; "
                             "%s keeps the ROM's colors\n",
                     PC_KEY[c], v, v, PC_WHO[c]);

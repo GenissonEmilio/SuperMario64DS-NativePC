@@ -2901,13 +2901,45 @@ extern "C" const char *host_setting_hd_textures_dir(void)
    settings.json is found and scanned, so the list is read by the same scanner
    and from the same file as every other key. Boot-latched there, not here.
 
+   json_value (above) cannot tell a top-level key from one nested under another
+   object: it steps through every string in the text. So the EnabledMods key is
+   found by top_level_value below, which tracks bracket depth and accepts the
+   key only at depth 1 of the settings object. The other keys keep json_value.
+
    bundle  gets the folder settings.json was found in (the folder holding the
            exe, the launcher and mods/), or, when there is no settings file,
-           SM64DS_ASSET_ROOT, or "." as the last resort -- the same three
+           SM64DS_ASSET_ROOT, or "." as the last resort, the same three
            places the other bundle folders (palettes/, textures_hd/) are found.
    arr     gets the raw text of the EnabledMods array ("[...]"), or an empty
            string when the key is absent or is not an array.
-   Returns 1 when an array was there, 0 otherwise. */
+   Returns 1 when an array was there, 0 when not, and -1 when the array is
+   longer than arr can hold (arr is then empty). */
+static const char *top_level_value(const char *s, const char *key)
+{
+    const size_t klen = strlen(key);
+    int depth = 0;
+    for (const char *p = s; *p; ++p) {
+        if (*p == '{' || *p == '[') { ++depth; continue; }
+        if (*p == '}' || *p == ']') { --depth; continue; }
+        if (*p != '"') continue;
+        const char *name = p + 1;
+        const char *end = name;
+        while (*end && *end != '"') end += (*end == '\\' && end[1]) ? 2 : 1;
+        if (*end != '"') return 0;
+        p = end;
+        if (depth != 1) continue;
+        const char *q = end + 1;
+        while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') ++q;
+        if (*q != ':') continue;
+        if ((size_t)(end - name) == klen && ieq(name, key, klen)) {
+            ++q;
+            while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') ++q;
+            return q;
+        }
+    }
+    return 0;
+}
+
 extern "C" int host_setting_enabled_mods(char *bundle, size_t bcap,
                                          char *arr, size_t acap)
 {
@@ -2936,7 +2968,7 @@ extern "C" int host_setting_enabled_mods(char *bundle, size_t bcap,
         char *text = slurp(path);
         if (text) {
             if (looks_like_json_object(text)) {
-                const char *v = json_value(text, "EnabledMods");
+                const char *v = top_level_value(text, "EnabledMods");
                 if (v && *v == '[') {
                     const char *e = json_value_end(v);
                     if ((size_t)(e - v) < acap) {
@@ -2945,6 +2977,8 @@ extern "C" int host_setting_enabled_mods(char *bundle, size_t bcap,
                         free(text);
                         return 1;
                     }
+                    free(text);
+                    return -1;
                 }
             }
             free(text);
