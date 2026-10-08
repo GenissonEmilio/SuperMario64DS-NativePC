@@ -2194,7 +2194,18 @@ extern "C" int port_fader_blend_state_sub(int *evy, int *toWhite);   /* hal/fade
 static int g_hold_left = -1;       /* -1 = idle, else frames of hold still owed */
 static int g_hold_live;            /* this frame is a hold frame */
 
-extern "C" int port_level_hold_live(void) { return g_hold_live; }
+/* The hold is live only while a real level change is pending. Anything that
+   drops the request without going through port_level_change_poll (an F9 / F8
+   state restore, a warp, a scene change) ends the hold here, read once per
+   frame by the level loop, so the frozen black can never outlive its change. */
+extern "C" int port_level_hold_live(void)
+{
+    if (data_02092110 < 0) {
+        g_hold_left = -1;
+        g_hold_live = 0;
+    }
+    return g_hold_live;
+}
 
 /* THE CARTRIDGE'S BLACK, PER DESTINATION LEVEL: the number of fully black top
    screen frames between the closing and the opening wipe, measured in melonDS
