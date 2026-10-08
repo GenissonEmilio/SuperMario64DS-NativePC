@@ -125,6 +125,7 @@ void func_ov002_020e4768(char *self);
 void port_player_set_character(void *player, unsigned ch);
 int _ZN6Player8HasNoCapEv(void *self);
 int _ZN6Player6IsAnimEj(void *self, unsigned id);
+char *_ZN8dActor_c15FindWithActorIDEjPS_(unsigned cls, char *prev);
 char *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(unsigned a, unsigned b,
         const void *pos, const void *v16, int area, int f);
 void _ZN9Animation7AdvanceEv(void *self);
@@ -1106,7 +1107,24 @@ bool pup_tongue_ready() {
 }
 
 // One puppet body, taken over and posed (see the banner).
-void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
+void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
+    PupDraw d = d0;
+    // LAB (VSPUP2 SetAnim row): SM64DS_PUPPET_ANIM_INJECT=<frame>:<id>[:<frames>] makes the
+    // stream say animation <id> for <frames> (default 90) frames from <frame>: an id the
+    // ROM's Player::SetAnim refuses in VS (below 0x11, from 0x72) must be skipped and logged.
+    {
+        static int inj_at = -2, inj_id = 0, inj_len = 90;
+        if (inj_at == -2) {
+            const char *e = std::getenv("SM64DS_PUPPET_ANIM_INJECT");
+            inj_at = -1;
+            if (e && *e) {
+                int f = 0, id = 0, n = 90;
+                if (std::sscanf(e, "%d:%d:%d", &f, &id, &n) >= 2) { inj_at = f; inj_id = id; inj_len = n > 0 ? n : 90; }
+            }
+        }
+        if (inj_at >= 0 && (int)g.frame >= inj_at && (int)g.frame < inj_at + inj_len)
+            d.anim = (unsigned short)inj_id;
+    }
     // BEHAVIOR SKIPPED, every frame (the scene pass clears the bit)
     *(a + 0x13) = (char)(*(a + 0x13) | 2);
     *player::pos_x(a) = d.x;
@@ -1208,7 +1226,12 @@ void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
         _ZN6Player7SetAnimEji5Fix12IiEj(a, d.anim, 0, 0x1000, (unsigned)(want_f & 0xffff));
         if (face_seq && pup_face_fix() && same_anim) {
             *(int *)(face_seq + 8) = face_saved;
+            static int force = -2;      // LAB: SM64DS_PUPPET_FACE_FORCE=<n> pins the face sequence at frame n
+            if (force == -2) { const char *e = std::getenv("SM64DS_PUPPET_FACE_FORCE"); force = e && *e ? std::atoi(e) : -1; }
             const unsigned len = *(unsigned *)(face_seq + 4) & ~0xc0000000u;
+            if (force >= 0 && len > 0) {
+                *(int *)(face_seq + 8) = ((unsigned)force % (len >> 12 ? len >> 12 : 1u)) << 12;
+            } else
             if (len > 0) {
                 static const unsigned kStill[] = {0x9a, 0x19, 0xac, 0x6b, 0x85, 0x94, 0x98, 0x99};
                 for (unsigned id : kStill)
@@ -1496,20 +1519,43 @@ void pup_before_walk() {
             }
         }
     }
+    // LAB (VSPUP2 put-on row): SM64DS_PUPPET_CAPRIG=<frame> puts MY body on the first cap in the
+    // level (the ROM's own touch then runs the pickup and the hat morph), once.
+    {
+        static int cap_at = -2;
+        static bool cap_done = false;
+        if (cap_at == -2) { const char *e = std::getenv("SM64DS_PUPPET_CAPRIG"); cap_at = e && *e ? std::atoi(e) : -1; }
+        if (cap_at >= 0 && !cap_done && (int)g.frame >= cap_at && g.seat >= 0 && g.seat < kArenaSeats &&
+            data_0209f394[g.seat]) {
+            char *me = (char *)data_0209f394[g.seat];
+            char *cap = nullptr;
+            for (int guard = 0; guard < 64; ++guard) {
+                cap = _ZN8dActor_c15FindWithActorIDEjPS_((unsigned)kClassMarioCap, cap);
+                if (!cap || *(int *)(cap + 0x3f0) == 4) break;    // a placed (type 4) cap
+            }
+            if (cap && *(int *)(cap + 0x3f0) == 4) {
+                cap_done = true;
+                for (int i = 0; i < 3; ++i) *(int *)(me + 0x5c + 4 * i) = *(int *)(cap + 0x5c + 4 * i);
+                *(int *)(me + 0x98) = 0;
+                std::fprintf(stderr, "[pup-caprig] f=%u my body put on the cap at %d,%d,%d\n", g.frame,
+                             *(int *)(cap + 0x5c) >> 12, *(int *)(cap + 0x60) >> 12, *(int *)(cap + 0x64) >> 12);
+            }
+        }
+    }
     // LAB (VSPUP2 pictures): SM64DS_PUPPET_LOOK=<frame>[:<dx>:<dz>] pins MY body
     // from that frame on, every frame, and turns it to face the first driven
     // puppet, so my camera settles on a puppet that stands in front of it. With
     // dx / dz (units) my body is first placed at puppet + (dx, dz); without them it
     // stays where it stands.
     {
-        static int look_at = -2, look_dx = 0, look_dz = 0;
+        static int look_at = -2, look_dx = 0, look_dz = 0, look_yaw = 0;
         static bool look_off = false, look_set = false;
         static int look_pos[3];
         if (look_at == -2) {
             const char *e = std::getenv("SM64DS_PUPPET_LOOK");
             look_at = e && *e ? std::atoi(e) : -1;
             if (e) if (const char *c = std::strchr(e, ':')) {
-                look_off = std::sscanf(c + 1, "%d:%d", &look_dx, &look_dz) == 2;
+                look_off = std::sscanf(c + 1, "%d:%d:%d", &look_dx, &look_dz, &look_yaw) >= 2;   // optional :yaw (degrees) turns my body off the puppet, for a side view
             }
         }
         int pk = -1;
@@ -1534,7 +1580,7 @@ void pup_before_walk() {
             *(int *)(me + 0xa8) = 0;
             const double ddx = (double)(*(const int *)(pb + 0x5c) - look_pos[0]);
             const double ddz = (double)(*(const int *)(pb + 0x64) - look_pos[2]);
-            const int yaw = (int)(std::atan2(ddx, ddz) * 32768.0 / 3.14159265358979);
+            const int yaw = (int)(std::atan2(ddx, ddz) * 32768.0 / 3.14159265358979) + (int)(look_yaw * 65536.0 / 360.0);
             *(short *)(me + 0x8e) = (short)yaw;
             *(short *)(me + 0x94) = (short)yaw;
         }
