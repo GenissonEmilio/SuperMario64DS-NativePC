@@ -1125,6 +1125,21 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
         if (inj_at >= 0 && (int)g.frame >= inj_at && (int)g.frame < inj_at + inj_len)
             d.anim = (unsigned short)inj_id;
     }
+    // LAB (VSPUP2 tongue pictures): SM64DS_PUPPET_TONGUE_FREEZE=<n> holds the first puppet
+    // that has driven <n> tongue frames on the sample it is posed from, so the end picture of a
+    // run shows the tongue out whatever frame the run ends on.
+    {
+        static int frz_n = -2, frz_seat = -1;
+        static PupDraw frz_d;
+        if (frz_n == -2) { const char *e = std::getenv("SM64DS_PUPPET_TONGUE_FREEZE"); frz_n = e && *e ? std::atoi(e) : -1; }
+        if (frz_n >= 0) {
+            if (frz_seat == seat) d = frz_d;
+            else if (frz_seat < 0 && pp.tongue_arg >= 0 && (int)pp.tongue_frames >= frz_n) {
+                frz_seat = seat; frz_d = d;
+                std::fprintf(stderr, "[pup-tongue] f%u seat %d held on its tongue frame (anim %u)\n", g.frame, seat, (unsigned)d.anim);
+            }
+        }
+    }
     // BEHAVIOR SKIPPED, every frame (the scene pass clears the bit)
     *(a + 0x13) = (char)(*(a + 0x13) | 2);
     *player::pos_x(a) = d.x;
@@ -1253,6 +1268,12 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
             if (hframes > 0) {
                 *(int *)(hm + 0x58) = (want_f % hframes) << 12;
                 ++pp.tongue_frames;
+                static int tp = -1;       // LAB: SM64DS_PUPPET_TONGUE_PROBE=1, a line per tongue frame
+                if (tp < 0) tp = env_on("SM64DS_PUPPET_TONGUE_PROBE") ? 1 : 0;
+                if (tp)
+                    std::fprintf(stderr, "[pup-tongue] f%u seat=%d arg=%d body_anim=%u body_frame=%d/%d head_frame=%d/%d\n",
+                                 g.frame, seat, pp.tongue_arg, (unsigned)d.anim, want_f % frames, frames,
+                                 *(int *)(hm + 0x58) >> 12, hframes);
             }
         }
     }
