@@ -1681,8 +1681,23 @@ static int __fastcall as_render(void *s, void *)
     port_actor_render_probe("ARROW_SIGN", (char *)s + 0xd4);
     return ((ArrowSignRight *)s)->ArrowSignRight::Render();
 }
+/* Slot 16, the sign's destructor, and the one AfterCleanupResources runs on
+   every sign that dies (a giant Mario's hit ends in Kill -> MarkForDestruction).
+   The host ArrowSignRight is the FLAT view (include/ArrowSignRight.h), which has
+   no base class, so ~ArrowSignRight() destroys only the Model, the collider and
+   the shadow. The ROM's ~ArrowSignRight ends by chaining to ~dActor_c, which is
+   what unlinks the sign's node from the global actor list (data_0209b468), and
+   without it the node stayed in the list while AfterCleanupResources freed the
+   block under it: the next spawn that landed on those bytes left the list with a
+   garbage owner, and the next walk of the list (any FindWithID, e.g. a coin's
+   bounce) faulted. So this face runs the base tail the same way the Coin face
+   does: the members first, then _ZN8dActor_cD2Ev. */
 static int __fastcall as_d1(void *s, void *)
-{ return (int)(size_t)_ZN14ArrowSignRightD1Ev((int *)s); }
+{
+    int r = (int)(size_t)_ZN14ArrowSignRightD1Ev((int *)s);
+    _ZN8dActor_cD2Ev(s);
+    return r;
+}
 static int __fastcall as_d0(void *s, void *)
 { return (int)(size_t)_ZN14ArrowSignRightD0Ev((int *)s); }
 /* Slot 27, OnHitByMegaChar(Player &). The sign has its OWN body (ov098
