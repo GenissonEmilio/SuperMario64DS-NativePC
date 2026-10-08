@@ -238,7 +238,7 @@ HubPresenceStats hub_presence_stats() {
 
 // THE ONE HOOK LINE (tests/walk_window.cpp, once a frame). Global, no
 // namespace, like the other port_* frame calls.
-void port_hub_presence_frame(void) {
+extern "C" void port_hub_presence_frame(void) {
     using namespace port;
     if (!comms_hub_active() || comms_hub_arena() ||
         comms_hub_state() != kHubLive) return;
