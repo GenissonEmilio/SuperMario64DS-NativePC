@@ -619,23 +619,22 @@ int sd_cnv_vol(int v)
 // and wave readers) sees the mod's bytes. Run before any pointer into the
 // image exists. A bad file is skipped with a log line; nothing here can fail
 // the boot.
-extern "C" int sdat_mods_none_count(void) { return 0; }
-extern "C" const char *sdat_mods_none_str(int) { return 0; }
-#ifdef _MSC_VER
-#pragma comment(linker, "/alternatename:_port_mods_count=_sdat_mods_none_count")
-#pragma comment(linker, "/alternatename:_port_mods_id=_sdat_mods_none_str")
-#pragma comment(linker, "/alternatename:_port_mods_folder=_sdat_mods_none_str")
-#endif
-extern "C" int port_mods_count(void);
-extern "C" const char *port_mods_id(int i);
-extern "C" const char *port_mods_folder(int i);
+// The mod list lives in hal/mods.cpp, which only the two game targets link;
+// hal/sdat_mods.cpp (same two targets) fills these three pointers at start-up.
+// Everywhere else they stay null and no mod is ever looked at.
+extern "C" {
+int (*g_sdat_mods_count)(void);
+const char *(*g_sdat_mods_id)(int);
+const char *(*g_sdat_mods_folder)(int);
+}
 
 static std::string lower_s(std::string s)
 { for (auto &c : s) if (c >= 'A' && c <= 'Z') c = (char)(c + 32); return s; }
 
 static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
 {
-    int nmods = port_mods_count();
+    if (!g_sdat_mods_count || !g_sdat_mods_id || !g_sdat_mods_folder) return buf;
+    int nmods = g_sdat_mods_count();
     if (nmods <= 0) return buf;
 
     static const struct { int kind; const char *ext; const char *magic; } kTypes[] = {
@@ -690,7 +689,7 @@ static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
     std::unordered_map<sd_u32, Rep> reps;
     std::vector<sd_u32> order;
     for (int m = 0; m < nmods; m++) {
-        const char *folder = port_mods_folder(m), *mid = port_mods_id(m);
+        const char *folder = g_sdat_mods_folder(m), *mid = g_sdat_mods_id(m);
         if (!folder || !mid) continue;
         std::string pat = std::string(folder) + "/sound/*";
         WIN32_FIND_DATAA fd;
