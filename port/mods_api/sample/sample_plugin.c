@@ -102,6 +102,7 @@ SM64DS_MOD_EXPORT int __cdecl sm64ds_mod_main(const SM64DSModApi *api)
         api->log(api, "could not wrap the spawn of actor %u", g_actor);
         return 2;
     }
-    api->log(api, "symbol _port_level_id = %p", api->symbol(api, "port_level_id"));
+    api->log(api, "symbol _port_level_id = %p, no_such_symbol = %p", api->symbol(api, "port_level_id"),
+             api->symbol(api, "no_such_symbol"));
     return 0;
 }
