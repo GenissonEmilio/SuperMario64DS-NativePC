@@ -1,4 +1,4 @@
-/* hal/mods.cpp -- mods that are folders: the list, and the files/ layer
+/* hal/mods.cpp: mods that are folders, the list, and the files/ layer
    (run mods1, lane MODFILES1). The contract is runs/mods1/in/MODS_CONTRACT.md;
    this file is its game side for files/. textures_hd/ is applied by
    ntr/hdtex.cpp and palettes/ by hal/fs_mods.cpp, both through the list below.
@@ -38,7 +38,16 @@
    A mod file that starts with "LZ77" (a file copied straight out of the
    extracted game is stored that way when the cartridge stores it that way) is
    decompressed here: the filter's contract is the DECOMPRESSED master, and
-   hal/fs.cpp re-wraps the result the way the stock file is held. */
+   hal/fs.cpp re-wraps the result the way the stock file is held.
+
+   KNOWN GAP, RECORDED NOT FIXED: save states. A state saved with one mod set
+   and loaded with another can mix resident files: the state holds the files
+   the game had loaded (a model, an animation) as they were when it was saved,
+   while the files the game loads after the restore come from the mod set the
+   running game booted with. A model from one set can then meet an animation
+   from the other. A future fix is a mods signature (the ordered list of ids
+   with each mod's version) in the save-state header, refused or warned about
+   on a load that does not match. Nothing here writes or checks one yet. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,12 +69,12 @@ typedef unsigned char u8;
 typedef unsigned int u32;
 
 extern "C" {
-int host_setting_enabled_mods(char *bundle, size_t bcap, char *arr, size_t acap);
+int host_setting_enabled_mods(char *bundle, size_t bcap, char *arr, size_t acap);  /* 1 got, 0 none, -1 too long */
 int host_json_is_object(const char *text);
 int host_json_string(const char *text, const char *key, char *out, size_t cap);
 const char *port_fs_catalog_path(unsigned file_id);   /* hal/fs.cpp */
-unsigned port_fs_interior_id(const char *want);       /* hal/fs.cpp */
-void DecompressLZ16(void *src, void *dst);            /* hal/fs.cpp */
+unsigned port_fs_interior_id_nocase(const char *want); /* hal/fs.cpp */
+unsigned port_fs_member_claim_cap(void);              /* hal/fs.cpp */
 extern unsigned (*port_fs_mod_map)(unsigned fileID);
 extern u32 (*port_fs_mod_filter)(unsigned fileID, u8 **data, u32 size);
 extern void (*port_fs_mod_claims)(void (*claim)(unsigned fileID));
@@ -144,7 +153,8 @@ void skip(const std::string &id, const char *why)
 
 void latch(void)
 {
-    char bundle[1024], arr[16384];
+    char bundle[1024];
+    static char arr[65536];   /* about 900 ids of 64 characters; static to keep the stack small */
     const char *kill;
     if (g_latched) return;
     g_latched = 1;
@@ -156,20 +166,34 @@ void latch(void)
     }
     const int have = host_setting_enabled_mods(bundle, sizeof bundle, arr, sizeof arr);
     g_bundle = bundle;
+    if (have < 0) {
+        fprintf(stderr, "[mods] EnabledMods too long (over %u characters); no mods are on this run (bundle %s)\n",
+                (unsigned)(sizeof arr - 1), bundle);
+        return;
+    }
     if (!have) {
         /* No EnabledMods: nothing on. Said once so a support log shows it. */
         fprintf(stderr, "[mods] none enabled (bundle %s)\n", bundle);
         return;
     }
 
+    /* Only string elements directly in the array count. Numbers, true, false
+       and null are passed over; a nested array or object is passed over whole,
+       with every string inside it. */
     std::vector<std::string> ids;
-    for (const char *p = arr; *p; ++p) {
-        if (*p != '"') continue;
-        const char *e = ++p;
-        while (*e && *e != '"') e += (*e == '\\' && e[1]) ? 2 : 1;
-        if (*e != '"') break;
-        ids.push_back(std::string(p, (size_t)(e - p)));
-        p = e;
+    {
+        int depth = 0;
+        for (const char *p = arr; *p; ++p) {
+            if (*p == '[' || *p == '{') { ++depth; continue; }
+            if (*p == ']' || *p == '}') { --depth; continue; }
+            if (*p != '"') continue;
+            const char *e = ++p;
+            while (*e && *e != '"') e += (*e == '\\' && e[1]) ? 2 : 1;
+            if (*e != '"') break;
+            if (depth == 1)
+                ids.push_back(std::string(p, (size_t)(e - p)));
+            p = e;
+        }
     }
 
     for (size_t i = 0; i < ids.size(); ++i) {
@@ -238,6 +262,12 @@ void walk(const std::string &root, const std::string &rel, std::vector<std::stri
         const std::string n = fd.cFileName;
         if (n == "." || n == "..") continue;
         const std::string r = rel.empty() ? n : rel + "/" + n;
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+            /* a junction or symlink inside a mod folder could point anywhere
+               on the disk; the mod's own files are real files and folders */
+            fprintf(stderr, "[mods] %s/%s is a link, skipped\n", root.c_str(), r.c_str());
+            continue;
+        }
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             if (depth < 12) walk(root, r, out, depth + 1);
         } else {
@@ -260,16 +290,18 @@ void build_overrides(void)
         if (cp) loose[lower(cp)] = id;
     }
     std::unordered_map<unsigned, std::string> owner;   /* id -> mod id, for the "wins" line */
+    unsigned total_members = 0;
+    int warned = 0;
     for (size_t m = 0; m < g_mods.size(); ++m) {
         const std::string root = g_mods[m].folder + "/files";
         std::vector<std::string> rels;
         walk(root, "", rels, 0);
-        unsigned used = 0, ignored = 0;
+        unsigned used = 0, ignored = 0, members = 0;
         for (size_t k = 0; k < rels.size(); ++k) {
             unsigned id = 0;
             std::unordered_map<std::string, unsigned>::const_iterator it = loose.find(lower(rels[k]));
             if (it != loose.end()) id = it->second;
-            else id = port_fs_interior_id(rels[k].c_str());
+            else id = port_fs_interior_id_nocase(rels[k].c_str());
             if (!id) {
                 fprintf(stderr, "[mods] %s: files/%s is not a ROM file, ignored\n",
                         g_mods[m].id.c_str(), rels[k].c_str());
@@ -280,6 +312,7 @@ void build_overrides(void)
             if (o != owner.end())
                 fprintf(stderr, "[mods] files/%s is replaced by %s and by %s; %s wins (later in the list)\n",
                         rels[k].c_str(), o->second.c_str(), g_mods[m].id.c_str(), g_mods[m].id.c_str());
+            if (id >= 0x8000 && !owner.count(id)) ++members;
             owner[id] = g_mods[m].id;
             g_override[id] = root + "/" + rels[k];
             ++used;
@@ -287,9 +320,65 @@ void build_overrides(void)
         if (used || ignored)
             fprintf(stderr, "[mods] %s: files/ replaces %u ROM file(s)%s\n", g_mods[m].id.c_str(), used,
                     ignored ? " (some ignored, see above)" : "");
+        total_members += members;
+        if (!warned && total_members > port_fs_member_claim_cap()) {
+            /* hal/fs.cpp holds this many archive members at once; the rest
+               keep the cartridge's bytes. One line, naming the mod whose files
+               went over, instead of one line per member. */
+            fprintf(stderr, "[mods] WARNING: %u archive members are replaced in all, more than the %u the game can hold; "
+                    "%s is the mod that went over, and its members past the limit keep the cartridge's bytes\n",
+                    total_members, port_fs_member_claim_cap(), g_mods[m].id.c_str());
+            warned = 1;
+        }
     }
     fprintf(stderr, "[mods] files layer: %u ROM file id(s) overridden in all\n", (unsigned)g_override.size());
     fflush(stderr);
+}
+
+/* The checked LZ77 (type 0x10) decoder for a mod's file. DecompressLZ16 trusts
+   its input and has no bounds, which is right for the cartridge's own files and
+   wrong for a file anyone can ship. This one needs the type byte 0x10, caps the
+   declared size at 64 MB, stops with a failure when the input runs out, and
+   rejects a back-reference that reaches before the start of the output.
+   `in` is the stream after the "LZ77" tag (the 0x10 header word first).
+   Returns a malloc'd buffer and its length, or 0. */
+const u32 LZ_MAX = 64u << 20;
+
+u8 *lz77_checked(const u8 *in, size_t n, u32 *len)
+{
+    if (n < 4 || in[0] != 0x10) return 0;
+    const u32 dec = in[1] | in[2] << 8 | (u32)in[3] << 16;
+    if (dec > LZ_MAX) return 0;
+    u8 *out = (u8 *)malloc(dec ? dec : 1);
+    if (!out) return 0;
+    size_t ip = 4;
+    u32 op = 0;
+    while (op < dec) {
+        if (ip >= n) goto bad;
+        {
+            const u8 flags = in[ip++];
+            for (int bit = 0; bit < 8 && op < dec; ++bit) {
+                if (flags & (0x80 >> bit)) {
+                    if (ip + 2 > n) goto bad;
+                    const u32 b1 = in[ip], b2 = in[ip + 1];
+                    ip += 2;
+                    const u32 cnt = (b1 >> 4) + 3;
+                    const u32 disp = ((b1 & 15) << 8 | b2) + 1;
+                    if (disp > op) goto bad;
+                    for (u32 k = 0; k < cnt && op < dec; ++k, ++op)
+                        out[op] = out[op - disp];
+                } else {
+                    if (ip >= n) goto bad;
+                    out[op++] = in[ip++];
+                }
+            }
+        }
+    }
+    *len = dec;
+    return out;
+bad:
+    free(out);
+    return 0;
 }
 
 /* The override's DECOMPRESSED bytes, malloc'd; 0 when unreadable. */
@@ -308,13 +397,9 @@ u8 *read_override(const std::string &path, u32 *len)
     if ((long)fread(raw, 1, (size_t)n, f) != n) { fclose(f); free(raw); return 0; }
     fclose(f);
     if (n > 8 && memcmp(raw, "LZ77", 4) == 0) {
-        const u32 dec = (raw[4] | raw[5] << 8 | raw[6] << 16 | (u32)raw[7] << 24) >> 8;
-        out = (u8 *)malloc(dec ? dec : 1);
-        if (!out) { free(raw); return 0; }
-        DecompressLZ16(raw + 4, out);
+        out = lz77_checked(raw + 4, (size_t)n - 4, len);
         free(raw);
-        *len = dec;
-        return out;
+        return out;   /* 0 for a malformed stream: the caller keeps the stock file */
     }
     *len = (u32)n;
     return raw;
@@ -336,7 +421,7 @@ u32 mods_filter(unsigned fileID, u8 **data, u32 size)
     u8 *b = read_override(it->second, &len);
     if (!b) {
         if (!g_said[fileID]++)
-            fprintf(stderr, "[mods] %s could not be read; file id %u keeps the stock file\n",
+            fprintf(stderr, "[mods] %s could not be read or decoded (bad LZ77?); file id %u keeps the stock file\n",
                     it->second.c_str(), fileID);
         return size;
     }
