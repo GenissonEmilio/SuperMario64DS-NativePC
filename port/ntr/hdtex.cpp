@@ -81,7 +81,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -223,7 +225,11 @@ int g_dump_on;
 int g_log;
 char g_pack_dir[1024];
 std::string *g_dump_dir;
-std::unordered_set<uint64_t> *g_names;   // the pack's PNG names
+// The pack's PNG names, each mapped to the index in g_dirs of the directory
+// that answers for it. g_dirs is highest priority first: every enabled mod's
+// textures_hd (the later mod first), then the main pack LAST as the fallback.
+std::unordered_map<uint64_t, int> *g_names;
+std::vector<std::string> *g_dirs;
 std::unordered_set<uint64_t> *g_dumped;  // names already written this run
 HdTexStats g_stats;
 
@@ -276,43 +282,85 @@ bool parse_name(const char *fn, uint64_t *out) {
 // texture costs one hash-set lookup and touches no file at all, which is what
 // keeps the pack off the per-bind path for the large majority of this game's
 // textures that a pack will never replace.
-void index_pack() {
-    g_names = new std::unordered_set<uint64_t>();
+// Returns how many NEW names the directory contributed (a name a directory of
+// higher priority already has keeps its entry).
+int index_dir(const std::string &dir, int dir_index, bool log_missing) {
+    int found = 0;
+    const char *dirc = dir.c_str();
+    auto add = [&](uint64_t n) {
+        if (g_names->emplace(n, dir_index).second) ++found;
+    };
 #if defined(_WIN32)
-    std::string pat = std::string(g_pack_dir) + "\\*.png";
+    std::string pat = dir + "\\*.png";
     WIN32_FIND_DATAA fd;
     HANDLE h = FindFirstFileA(pat.c_str(), &fd);
     if (h == INVALID_HANDLE_VALUE) {
-        if (g_log) std::printf("[hdtex] no pack at %s\n", g_pack_dir);
-        return;
+        if (g_log && log_missing) std::printf("[hdtex] no pack at %s\n", dirc);
+        return 0;
     }
     do {
         uint64_t n;
         if (std::strlen(fd.cFileName) == 20 && parse_name(fd.cFileName, &n))
-            g_names->insert(n);
+            add(n);
     } while (FindNextFileA(h, &fd));
     FindClose(h);
 #else
-    DIR *d = opendir(g_pack_dir);
+    DIR *d = opendir(dirc);
     if (!d) {
-        if (g_log) std::printf("[hdtex] no pack at %s\n", g_pack_dir);
-        return;
+        if (g_log && log_missing) std::printf("[hdtex] no pack at %s\n", dirc);
+        return 0;
     }
     for (struct dirent *e = readdir(d); e; e = readdir(d)) {
         uint64_t n;
         if (std::strlen(e->d_name) == 20 && parse_name(e->d_name, &n))
-            g_names->insert(n);
+            add(n);
     }
     closedir(d);
 #endif
+    return found;
+}
+
+// LIST THE DIRECTORIES ONCE, AT CONFIGURE. After this a bind of an unreplaced
+// texture costs one hash-map lookup and touches no file at all, which is what
+// keeps the pack off the per-bind path for the large majority of this game's
+// textures that a pack will never replace.
+//
+// Mods first, highest priority first, so a name a later mod has is claimed
+// before an earlier mod's or the main pack's.
+//
+// MOD TEXTURES DO NOT WAIT FOR THE HdTextures SETTING (run mods1, MODFILES1).
+// HdTextures says "show the optional HD pack"; a mod's textures_hd is the mod
+// author's picture and a player who switched the mod on expects to see it
+// whether or not they also run the big pack. So the mod directories are
+// indexed whenever the mods list has any, and the main pack only when the
+// setting is on (g_enabled). Tango's call later if he wants it gated.
+void index_pack() {
+    g_names = new std::unordered_map<uint64_t, int>();
+    g_dirs = new std::vector<std::string>();
+    if (hdtex_mod_dir_hook) {
+        char d[1024];
+        for (int i = 0; hdtex_mod_dir_hook(i, d, sizeof d); ++i) {
+            g_dirs->push_back(d);
+            const int n = index_dir(g_dirs->back(),
+                                    static_cast<int>(g_dirs->size()) - 1, false);
+            if (n > 0)
+                std::fprintf(stderr, "[mods] textures_hd: %s: %d texture(s)\n", d, n);
+        }
+    }
+    if (g_enabled) {
+        g_dirs->push_back(g_pack_dir);
+        index_dir(g_dirs->back(), static_cast<int>(g_dirs->size()) - 1, true);
+    }
     g_stats.pack_entries = static_cast<int>(g_names->size());
     // An empty directory is not a pack: leaving g_pack_indexed at 0 keeps the
     // whole feature off the bind path rather than asking an empty set about
     // every texture in the game.
     g_pack_indexed = g_stats.pack_entries > 0 ? 1 : 0;
     if (g_log)
-        std::printf("[hdtex] pack %s: %d texture(s) indexed\n", g_pack_dir,
-                    g_stats.pack_entries);
+        std::printf("[hdtex] pack %s: %d texture(s) indexed (%d director%s)\n",
+                    g_pack_dir, g_stats.pack_entries,
+                    static_cast<int>(g_dirs->size()),
+                    g_dirs->size() == 1 ? "y" : "ies");
 }
 
 // RGBA8 in file order -> the port's 0xAARRGGBB.
@@ -339,6 +387,8 @@ double now_ms() {
 }  // namespace
 
 // ----------------------------------------------------------------- the seam
+int (*hdtex_mod_dir_hook)(int i, char *out, unsigned cap);
+
 void hdtex_configure(int enabled, const char *pack_dir)
 {
     g_log = getenv("SM64DS_HD_TEXTURES_LOG") ? 1 : 0;
@@ -373,7 +423,7 @@ void hdtex_configure(int enabled, const char *pack_dir)
         }
     }
 
-    if (g_enabled) index_pack();
+    index_pack();
     if (g_log) {
         std::printf("[hdtex] enabled=%d pack=%s indexed=%d dump=%s\n",
                     g_enabled, g_pack_dir, g_pack_indexed,
@@ -583,14 +633,16 @@ int hdtex_lookup(uint64_t name, int width, int height,
                  std::vector<uint32_t> &out)
 {
     if (!g_pack_indexed || width <= 0 || height <= 0) return 0;
-    if (g_names->find(name) == g_names->end()) {
+    const auto found = g_names->find(name);
+    if (found == g_names->end()) {
         // THE COMMON CASE, and it is one hash-set lookup with no file I/O.
         ++g_stats.missing;
         return 0;
     }
 
     char path[1200];
-    std::snprintf(path, sizeof path, "%s/%016llx.png", g_pack_dir,
+    std::snprintf(path, sizeof path, "%s/%016llx.png",
+                  (*g_dirs)[found->second].c_str(),
                   static_cast<unsigned long long>(name));
 
     const double t0 = now_ms();
