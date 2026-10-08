@@ -29,8 +29,8 @@
 //     tag). Minimum datagram 16 (payload >= 4), maximum 700.
 // All fields are little-endian. All layouts are packed.
 //
-// WHICH ROM GLOBALS FEED SYNL (confirmed against the source, see the probe
-// note at the end of this file):
+// WHICH ROM GLOBALS FEED SYNL (confirmed against the source and measured; the
+// PROBE paragraph below has the numbers):
 //   level  = sublevel id, data_0209f2f8 (what SYNG.level_id carries)
 //   area   = data_02092120 (signed char, -1 = none; sent as 0xFF for none)
 //   act    = data_0209f220[0], the mission latched at stage boot
@@ -39,6 +39,14 @@
 //            select / level change: it already shows the next act while the
 //            console is still in the old level, so it is NOT the act of the
 //            level the player is in. 0 = no act (menu, title, hub grounds).
+//
+// PROBE (measured, two consoles through a local relay, SM64DS_PRESENCE_LOG=1,
+// the title path): a console booted with SM64DS_STAR_FILTER=3 sent act=3 with
+// pending data_0209f1f0=3, then act=3 with pending=1 (the latched mission
+// held while the pending word moved), then act=1 once a warp to level 2
+// latched again. Across a level 2 door whose open animation ends in
+// ChangeArea the area went 0 -> 1 and the peer heard (level 2, area 1, act 1).
+// So act is data_0209f220[0], not data_0209f1f0.
 //
 // SESSION GATES (the relay enforces them; a send into the wrong kind of room
 // is dropped and counted):
