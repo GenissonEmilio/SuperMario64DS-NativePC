@@ -1684,25 +1684,23 @@ void swap_geom_for(int w, int h, SwapGeom *o, int record)
     std::memset(&g, 0, sizeof g);
     if (w < 8 || h < 8) { *o = g; return; }
     /* THE TWO BANDS FIRST, because what is left over is the plates'.
-       A DS ROW OF THE TOP SCREEN IS (h / SUB_H) PICTURE ROWS, FLOORED, and
-       the floor is the correction of 09-21 rather than a rounding taste. That
-       integer is the scale engine A's own compositor draws its 2D at
-       (hal/message_compositor.cpp: sy = active_h / 192), so it is where the
-       lettering this band carries actually IS. The old form multiplied first
-       -- kTextRow0 * h / SUB_H -- which agrees at every picture whose height
-       is a whole multiple of 192 (the 512x384 default, RenderScale 4, 16:9)
-       and disagrees at the two that are not: at 21:9 the picture is 1024x440,
-       the 2D is drawn at 2x, and the old text band began at picture row 77
-       while the first glyph row is 72, so the top five rows of "COURSE N"
-       fell outside it; at 32:9 the coin band began at row 183 and the coin
-       total is drawn at 256..287, so it missed the coins entirely. Flooring
-       first puts every band on the rows the glyphs are on, at every shape. */
-    int vs = h / ntr::SUB_H;
-    if (vs < 1) vs = 1;
-    g.t_h = (kTextRow1 - kTextRow0) * vs;
+       THE BANDS FOLLOW THE ROWS THE GLYPHS ARE ON. Before the 2D was drawn
+       at the true ratio it was drawn at the floored integer active_h / 192,
+       and these bands floored with it (the 09-21 correction: at 21:9 the
+       picture is 1024x440, the 2D was 2x, and a multiply-first band began at
+       row 77 while the first glyph row was 72). The 2D now takes the same
+       rows as the 3D layer (ds_row_y0 in hal/message_compositor.cpp), so the
+       bands are taken at that mapping: hrow below. */
+    /* THE 2D IS DRAWN AT THE TRUE RATIO NOW (hal/message_compositor.cpp's
+       ds_row_y0: DS row r is the first host row at or after r * h / 192), the
+       same rows the 3D layer's viewport uses, so the first host row of a DS
+       row is that ceiling, which is r * (h / 192) at every whole multiple of 192 and
+       the glyphs' own row at 21:9 (1024x440) and 32:9 (1024x288) as well. */
+    auto hrow = [h](int r) { return (r * h + ntr::SUB_H - 1) / ntr::SUB_H; };
+    g.t_h = hrow(kTextRow1) - hrow(kTextRow0);
     const int cr0 = record ? kCoinRow0Rec : kCoinRow0;
     const int cr1 = record ? kCoinRow1Rec : kCoinRow1;
-    g.c_h = (cr1 - cr0) * vs;
+    g.c_h = hrow(cr1) - hrow(cr0);
     if (g.t_h < 1) g.t_h = 1;
     if (g.c_h < 1) g.c_h = 1;
     /* a picture too short to hold both bands and a plate between them gives
@@ -1711,11 +1709,11 @@ void swap_geom_for(int w, int h, SwapGeom *o, int record)
         g.t_h = h / 3;
         g.c_h = h / 3;
     }
-    g.ty_src = kTextRow0 * vs;
+    g.ty_src = hrow(kTextRow0);
     if (g.ty_src + g.t_h > h) g.ty_src = h - g.t_h;
     if (g.ty_src < 0) g.ty_src = 0;
     g.ty_dst = 0;
-    g.cy_src = cr0 * vs;
+    g.cy_src = hrow(cr0);
     if (g.cy_src + g.c_h > h) g.cy_src = h - g.c_h;
     if (g.cy_src < 0) g.cy_src = 0;
     g.cy_dst = h - g.c_h;
@@ -5019,8 +5017,8 @@ static void layout_log(const char *why)
         "present=(%d,%d,%d,%d) src=%dx%d "
         "touch=(%d,%d,%d,%d)\n",
         why, stacked ? "stacked" : "inset", ntr::active_w, ntr::active_h, lay.scale,
-        lay.w, lay.h, lay.head_h, lay.top_y, lay.w, lay.pan_h,
-        lay.pan_x0, lay.top_y, lay.pan_w, lay.pan_h, lay.band_y, lay.band_h,
+        lay.w, lay.h, lay.head_h, lay.top_y, lay.w, lay.top_h,
+        lay.pan_x0, lay.top_y, lay.pan_w, lay.top_h, lay.band_y, lay.band_h,
         lay.bottom_y, lay.w, lay.pan_h,
         lay.pan_x0, lay.bottom_y, lay.pan_w, lay.pan_h,
         g_pr_x, g_pr_y, g_pr_w, g_pr_h, g_pr_sw, g_pr_sh,
@@ -5074,10 +5072,10 @@ static void layout_selftest(void)
         int nfail = 0;
 
         /* A: no region beyond the pictures */
-        if (lay.h != lay.head_h + lay.pan_h * 2 + lay.band_h)
+        if (lay.h != lay.head_h + lay.top_h + lay.pan_h + lay.band_h)
             fails[nfail++] = 'A';
         /* B: the pictures are adjacent */
-        if (lay.band_y != lay.top_y + lay.pan_h ||
+        if (lay.band_y != lay.top_y + lay.top_h ||
             lay.bottom_y != lay.band_y + lay.band_h)
             fails[nfail++] = 'B';
         /* C: both pictures are 4:3 */
@@ -5156,7 +5154,7 @@ static void layout_selftest(void)
            picture's last row maps OUTSIDE. */
         {
             const long long ty0 = ry + (long long)lay.top_y * rh / lay.h;
-            const long long ty1 = ry + (long long)(lay.top_y + lay.pan_h) * rh / lay.h - 1;
+            const long long ty1 = ry + (long long)(lay.top_y + lay.top_h) * rh / lay.h - 1;
             int fx, fy, ok = 1;
             if (!hal_present_client_to_fb((int)bx0, (int)ty0, &fx, &fy)) ok = 0;
             if (!hal_present_client_to_fb((int)bx1, (int)ty0, &fx, &fy)) ok = 0;
@@ -5285,7 +5283,7 @@ int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy)
        the message_compositor band split belongs here; flagged for Tango. */
     const ntr::StackLayout &lay = *hal_screen_layout();
     const int inside = x >= 0 && y >= lay.top_y && x < ntr::active_w &&
-                       y < lay.top_y + (hal_sub_screen_stacked() ? lay.pan_h
+                       y < lay.top_y + (hal_sub_screen_stacked() ? lay.top_h
                                                                  : ntr::active_h);
     /* AND THE FRAMEBUFFER ROW IS THE SOURCE ROW MINUS top_y, which was a no-op
        for as long as top_y was zero and is not one any more: the gapless
@@ -5473,7 +5471,7 @@ void hal_touch_client_probe(void)
         if (sx >= 0 && sx < ssw) {
             if (lay.head_h > 0 && sy >= 0 && sy < lay.top_y)
                 where = "HEADROOM";
-            else if (sy >= lay.top_y && sy < lay.top_y + lay.pan_h)
+            else if (sy >= lay.top_y && sy < lay.top_y + lay.top_h)
                 where = "top screen";
             else if (lay.band_h > 0 && sy >= lay.band_y && sy < lay.bottom_y)
                 where = "GAP";

@@ -188,6 +188,26 @@ extern unsigned char data_ov002_0210c3a8[];
 
 namespace {
 
+/* WHICH HOST ROWS A DS ROW OCCUPIES. The 3D layer maps DS row y to host row
+   y * active_h / 192 (ntr/gx.cpp's viewport), a true ratio. The 2D layers used
+   the INTEGER active_h / 192, which is the same number at 4:3, 16:9 and every
+   whole render scale, and 2 against 2.29 at 21:9 with no render scale
+   (1024x440): the ending's letterbox bars are 3D rows, so the subtitle box,
+   drawn at 2 rows per DS row, sat over the bottom of the picture instead of on
+   the bar. ds_row_y0 is the first host row of DS row y and ds_row_of its
+   inverse (host row -> DS row); at a whole multiple of 192 they are y * sy and
+   hy / sy exactly. The height is present_h(): active_h, or the whole-multiple
+   native rectangle of a scene presented natively, which the 3D viewport uses
+   too. */
+inline int ds_row_y0(int y) { return (y * ntr::present_h() + 191) / 192; }
+inline int ds_row_of(int hy) { return hy * 192 / ntr::present_h(); }
+/* THE SAME RATIO ACROSS: in a widescreen picture a DS pixel is square (the one
+   uniform scale is active_h / 192), so DS column x starts at ds_col_x0(x) and
+   ds_col_of(d) is the DS column under a host column d past the centring
+   margin. At a whole multiple of 192 these are x * sy and d / sy exactly. */
+inline int ds_col_x0(int x) { return (x * ntr::present_h() + 191) / 192; }
+inline int ds_col_of(int d) { return d * 192 / ntr::present_h(); }
+
 // Engine A only.
 constexpr uint32_t kRegBase  = 0x04000000u;
 constexpr uint32_t kVramBase = 0x06000000u;
@@ -712,15 +732,15 @@ void hide_3d_outside_windows(uint32_t dispcnt, const Windows &w, ntr::Framebuffe
     uint8_t *const cover = const_cast<uint8_t *>(ntr::gx_coverage());
     uint32_t *const pre = ntr::gx_aa_preimage();
     const uint32_t bd = bgr555(rd16(kPlttBase));
-    const int sx = ntr::active_w / 256, sy = ntr::active_h / 192;
-    const int uni = sy, margin = ntr::active_w - 256 * uni;
+    const int sx = ntr::active_w / 256;
+    const int margin = ntr::active_w - ds_col_x0(256);
     for (int hy = 0; hy < ntr::active_h; ++hy) {
-        const int y = hy / sy;
+        const int y = ds_row_of(hy);
         for (int hx = 0; hx < ntr::active_w; ++hx) {
             int x;
             if (ntr::widescreen) {
                 const int d = hx - margin / 2;
-                x = d < 0 ? -1 : d / uni;
+                x = d < 0 ? -1 : ds_col_of(d);
             } else {
                 x = hx / sx;
             }
@@ -2171,8 +2191,8 @@ void bm_fill_default(uint32_t dispcnt, const Windows &w) {
             std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H));
         if (!g_bm) return;
     }
-    const int sx = ntr::active_w / 256, sy = ntr::active_h / 192;
-    const int uni = sy, margin = ntr::active_w - 256 * uni;
+    const int sx = ntr::active_w / 256;
+    const int margin = ntr::active_w - ds_col_x0(256);
     const bool shown3d = bg0_3d_shown(dispcnt);
     const uint8_t *cover = shown3d ? ntr::gx_coverage() : nullptr;
     /* CLEAR_COLOR bits 16-20: an opaque clear plane is still the 3D layer */
@@ -2180,13 +2200,13 @@ void bm_fill_default(uint32_t dispcnt, const Windows &w) {
         shown3d && ((rd32(0x04000350) >> 16) & 0x1F) != 0;
     const unsigned out_mask = w.any ? w.out : 0x3F;
     for (int hy = 0; hy < ntr::active_h; ++hy) {
-        const int y = hy / sy;
+        const int y = ds_row_of(hy);
         unsigned char *row = g_bm + (size_t)hy * ntr::SCREEN_W;
         for (int hx = 0; hx < ntr::active_w; ++hx) {
             int x;
             if (ntr::widescreen) {
                 const int d = hx - margin / 2;
-                x = d < 0 ? -1 : d / uni;
+                x = d < 0 ? -1 : ds_col_of(d);
             } else {
                 x = hx / sx;
             }
@@ -3003,7 +3023,6 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     // which is also why there is no colour blit for the 3D layer at all: its
     // pixels are already where they belong.
     const int sx = ntr::active_w / 256;
-    const int sy = ntr::active_h / 192;
     /* WIDESCREEN HUD REANCHOR (16:9). The DS composes the top HUD in its own
        256x192 space. On the 4:3 tiers sx == sy, so one integer scale fills the
        screen with no distortion. At 1024x576 sx (4) != sy (3): the old x*sx
@@ -3021,8 +3040,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        and the radar/minimap lives on the bottom (engine B) screen and is not
        touched here at all. See the report for the bands Tango may want to
        adjust per element. The 4:3 tiers keep the exact x*sx block. */
-    const int uni = sy;                            /* uniform native scale (3) */
-    const int margin = ntr::active_w - 256 * uni;  /* spare width (256; 0 at 4:3) */
+    const int margin = ntr::active_w - ds_col_x0(256);  /* spare width (256; 0 at 4:3) */
     /* THE SPLITS. 96 and 160 are the shipped values, chosen for where this
        game's HUD clusters actually sit, and SM64DS_HUD_BANDS=<l>,<r> moves
        them for one run without touching the build.
@@ -3091,7 +3109,8 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                byte-for-byte the old code. */
             int bw, hx0;
             if (ntr::widescreen) {
-            bw = uni;
+            const int ux0 = ds_col_x0(x);
+            bw = ds_col_x0(x + 1) - ux0;
             /* THE REANCHOR IS FOR A SPARSE HUD OVER A WIDE 3D VIEW, and only
                there. With a 3D layer in the picture (shown3d) the bands it opens
                between the HUD clusters are filled by the 3D field, so pushing the
@@ -3129,7 +3148,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                last arm is the original per-column band split instead, which
                is the control the before/after images are taken against. */
             hx0 = msg_layer_px(y, x)
-                          ? x * uni + margin / 2
+                          ? ux0 + margin / 2
                           /* A SCENE PRESENTED NATIVELY TAKES THE PILLARBOX ARM
                              whether or not a 3D layer is behind it. Tango's
                              ruling of 2026-09-17: a minigame presents exactly
@@ -3140,12 +3159,12 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                              and it is the bottom panel's pan_x0 too, so all
                              three layers line up. */
                           : (ntr::present_native() || !shown3d)
-                          ? x * uni + margin / 2
+                          ? ux0 + margin / 2
                           : !bandsplit
-                          ? x * uni + hudelem::g_off[hudelem::g_lbl[y][x]]
-                          : (x < band_l) ? x * uni
-                          : (x >= band_r) ? x * uni + margin
-                                          : x * uni + margin / 2;
+                          ? ux0 + hudelem::g_off[hudelem::g_lbl[y][x]]
+                          : (x < band_l) ? ux0
+                          : (x >= band_r) ? ux0 + margin
+                                          : ux0 + margin / 2;
             } else {
             bw = sx;
             hx0 = x * sx;
@@ -3162,6 +3181,11 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                would have seen at these rows. The capture copy keeps them at
                their own rows either way: the display capture unit is the ROM
                reading its own screen back and it is not part of this mod. */
+            /* THE HOST ROWS OF THIS DS ROW: the same rows the 3D layer's
+               viewport and the window test use (ds_row_y0), so a DS row is
+               one screen row in every layer whether or not active_h is a
+               whole multiple of 192. */
+            const int hy0 = ds_row_y0(y), hy1 = ds_row_y0(y + 1);
             const unsigned lcow = g_a[y][x].owner;
             const int lcv = lc_overlay_verdict(lcow);
             if (lcv == 2) continue;
@@ -3173,9 +3197,9 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 || !layer_behind_3d(g_a[y][x].owner, g_a[y][x].prio, p3d)) {
                 /* the owning 2D layer is in FRONT of the 3D layer (or there is
                    no 3D layer in the picture): the old unconditional write */
-                for (int dy = 0; dy < sy; ++dy)
+                for (int hy = hy0; hy < hy1; ++hy)
                     for (int dx = 0; dx < bw; ++dx) {
-                        const int hy = y * sy + dy, hx = hx0 + dx;
+                        const int hx = hx0 + dx;
                         if (cover && cover[hy * ntr::SCREEN_W + hx]) ++buried;
                         if (lcv && lc_overlay_in_band(lcow, hy)) {
                             lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c;
@@ -3190,9 +3214,9 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 continue;
             }
             /* BEHIND the 3D layer: it may only fill where 3D drew nothing */
-            for (int dy = 0; dy < sy; ++dy)
+            for (int hy = hy0; hy < hy1; ++hy)
                 for (int dx = 0; dx < bw; ++dx) {
-                    const int hy = y * sy + dy, hx = hx0 + dx;
+                    const int hx = hx0 + dx;
                     if (cover[hy * ntr::SCREEN_W + hx]) { ++kept; continue; }
                     if (lcv && lc_overlay_in_band(lcow, hy)) {
                         lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c;
@@ -3215,7 +3239,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         for (int hy = 0; hy < ntr::active_h; ++hy)
             for (int hx = 0; hx < ntr::active_w; ++hx)
                 if (cover[hy * ntr::SCREEN_W + hx]
-                    && !g_a[hy / sy][hx / sx].hit)
+                    && (ds_row_of(hy) >= 192 || !g_a[ds_row_of(hy)][hx / sx].hit))
                     ++kept;
     }
     g_kept3d = kept;

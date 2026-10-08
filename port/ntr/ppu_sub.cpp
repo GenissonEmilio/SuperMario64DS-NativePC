@@ -5048,10 +5048,11 @@ StackLayout stack_layout(int gap_ds, int head_ds, int obj_shift_ds,
        mappers read top_y / band_y / bottom_y and none of them recomputes them.
        With head_h zero all four are exactly what they were. */
     l.top_y = l.head_h;
-    l.band_y = l.head_h + l.pan_h;
+    l.top_h = present_h();   /* active_h, or a natively presented scene's rectangle */
+    l.band_y = l.head_h + l.top_h;
     l.band_h = gap_ds * l.scale;
     l.bottom_y = l.band_y + l.band_h;
-    l.h = l.head_h + l.pan_h * 2 + l.band_h;
+    l.h = l.head_h + l.top_h + l.pan_h + l.band_h;
     l.fill_mode = fill_mode == GAP_FILL_SOLID   ? GAP_FILL_SOLID
                   : fill_mode == GAP_FILL_CUSTOM ? GAP_FILL_CUSTOM
                                                  : GAP_FILL_AMBIENT;
@@ -5320,10 +5321,19 @@ void ppu_compose_stacked(const uint32_t *top, const SubFramebuffer &sub,
         const int px0 = lay.pan_x0, pw = lay.pan_w;
         const int ry = active_h / SUB_H;   /* uniform scale, both axes */
 
-        /* Engine A verbatim and full width, exactly as the square path does it. */
-        for (int y = 0; y < lay.pan_h; ++y)
+        /* Engine A verbatim and full width, exactly as the square path does it.
+           Its screen is top_h rows tall in the upper position (all of active_h)
+           and pan_h in the lower one (a swap), where the rest is not shown. */
+        const int a_rows = lay.main_lower ? lay.pan_h : lay.top_h;
+        for (int y = 0; y < a_rows; ++y)
             std::memcpy(dst + (size_t)(a_y + y) * dst_w,
                         top + (size_t)y * SCREEN_W, (size_t)active_w * 4);
+        /* the rows engine B's panel leaves in a taller upper screen (a swap) */
+        if (lay.main_lower)
+            for (int y = lay.pan_h; y < lay.top_h; ++y) {
+                uint32_t *out = dst + (size_t)(b_y + y) * dst_w;
+                for (int x = 0; x < active_w; ++x) out[x] = 0xFF000000u;
+            }
 
         /* Engine B, pillarboxed: black margins, uniform-scaled centred panel.
            sub.px already carries engine B's own BLDCNT/BLDY brightness --
