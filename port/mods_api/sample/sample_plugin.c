@@ -5,7 +5,7 @@
      * logs every level load,
      * edits Mario's model as the game loads it (his first palette becomes one
        colour, so the change is easy to see),
-     * wraps the coin's spawn function with one that logs the first spawns and
+     * wraps one actor's spawn function (the coin, or the id in the "actor" setting) with one that logs the first spawns and
        then calls the original.
    Build: see README.md. Not a template for anything clever, a template for the
    shape. */
@@ -18,6 +18,7 @@ static const SM64DSModApi *g_api;
 static unsigned g_frames;
 static unsigned g_levels;
 static unsigned g_coins;
+static unsigned g_actor = 288;                      /* 288 = COIN */
 static unsigned short g_tint = 0x03E0;              /* BGR555 green */
 static SM64DSActorFactory g_prev_coin;
 
@@ -70,7 +71,7 @@ static void *__cdecl coin_wrapper(void)
 {
     ++g_coins;
     if (g_coins <= 3)
-        g_api->log(g_api, "a coin is being spawned (#%u)", g_coins);
+        g_api->log(g_api, "actor %u is being spawned (#%u)", g_actor, g_coins);
     return g_prev_coin();
 }
 
@@ -93,9 +94,11 @@ SM64DS_MOD_EXPORT int __cdecl sm64ds_mod_main(const SM64DSModApi *api)
     api->on_frame(api, on_frame, 0);
     api->on_level_load(api, on_level, 0);
     api->on_file(api, "data/player/mario_model.bmd", on_mario, 0);
-    g_prev_coin = api->replace_actor(api, 288, coin_wrapper);   /* 288 = COIN */
+    tint = api->setting(api, "actor");                           /* optional: wrap another actor id */
+    if (tint) g_actor = (unsigned)strtoul(tint, 0, 0);
+    g_prev_coin = api->replace_actor(api, g_actor, coin_wrapper);
     if (!g_prev_coin) {
-        api->log(api, "could not wrap the coin spawn");
+        api->log(api, "could not wrap the spawn of actor %u", g_actor);
         return 2;
     }
     api->log(api, "symbol _port_level_id = %p", api->symbol(api, "port_level_id"));

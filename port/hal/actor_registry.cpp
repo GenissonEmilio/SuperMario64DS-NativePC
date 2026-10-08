@@ -452,6 +452,10 @@ extern "C" void port_actor_registry_install(void)
         if (k->fill) k->fill();
         ++n;
     }
+    /* run mods1: a plugin's replace_actor choices are written over the stock
+       factories every time the table is (re)written, i.e. every level boot. */
+    if (port_mod_hook_registry)
+        port_mod_hook_registry();
     data_020a4b58[0] = (int)(size_t)port_prespawn_hook;
     std::printf("[reg] %d actor classes registered, the gate is armed\n", n);
 }
