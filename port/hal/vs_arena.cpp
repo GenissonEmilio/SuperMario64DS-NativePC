@@ -1126,6 +1126,17 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
         if (inj_at >= 0 && (int)g.frame >= inj_at && (int)g.frame < inj_at + inj_len)
             d.anim = (unsigned short)inj_id;
     }
+    // LAB (VSPUP2 face pictures): SM64DS_PUPPET_FACE_TURN=1 turns every puppet to face my body, so a
+    // close-up always shows the face.
+    {
+        static int turn = -1;
+        if (turn < 0) turn = env_on("SM64DS_PUPPET_FACE_TURN") ? 1 : 0;
+        if (turn && g.seat >= 0 && g.seat < kArenaSeats && data_0209f394[g.seat]) {
+            const char *me = (const char *)data_0209f394[g.seat];
+            const double ddx = (double)(*(const int *)(me + 0x5c) - d.x), ddz = (double)(*(const int *)(me + 0x64) - d.z);
+            d.yaw = (short)(int)(std::atan2(ddx, ddz) * 32768.0 / 3.14159265358979);
+        }
+    }
     // LAB (VSPUP2 tongue pictures): SM64DS_PUPPET_TONGUE_FREEZE=<n> holds the first puppet
     // that has driven <n> tongue frames on the sample it is posed from, so the end picture of a
     // run shows the tongue out whatever frame the run ends on.
