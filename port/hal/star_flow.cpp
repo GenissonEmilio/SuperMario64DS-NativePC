@@ -434,8 +434,17 @@ void seat_course_music(int level)
             group, bank, bgm,
             skip ? skip : bgm < 0 ? "no layer-1 track" : "start",
             vs ? "VS arena" : "adventure table", (int)data_0209f220, prev);
-    if (!skip)
+    if (!skip) {
         _ZN5Sound22LoadAndSetMusic_Layer1Ei(bgm);
+        /* The ROM's next statement (src/_ZN5Stage13InitResourcesEv.cpp:
+           391-395): the local player index, and when that Player's byte
+           0x6ff is set (the cap-start sublevels) SetMusic(index, 0x33), the
+           cap song over the row song. Sublevel 31 ends on it. */
+        const unsigned char sndIdx = data_0209f250;
+        if (data_0209f394[sndIdx] &&
+            ((const unsigned char *)data_0209f394[sndIdx])[0x6ff] != 0)
+            _ZN5Sound8SetMusicEjj(sndIdx, 0x33);
+    }
     /* Push the START the music call just queued at the ARM9 half through the
        hosted ARM7, so the first frame already has voices allocated rather
        than a batch sitting in the ring. */
