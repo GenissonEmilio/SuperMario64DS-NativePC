@@ -2117,18 +2117,39 @@ def u_caps(mod):
         res.check(v and v["name"] == "CAP_DROPPED", "second honest drop: CAP_DROPPED (%s)" % v)
         id2 = v["a"] if v else 0
         a.state, a.flags, a.look = ST_WAIT, a.flags & ~0x20, 3
-        b.pos = [900, 0, 900]
-        streaming(rig, [a, b], 2.5)       # past the flight window
+        b.pos = [2500, 0, 2500]
+        streaming(rig, [a, b], 2.5)       # well past where a cap can slide to
         n5 = b.claim(CL["CAP_TAKE"], id2, aux=0)
         streaming(rig, [a, b], 0.3)
         v5 = b.verdict(n5)
-        res.check(v5 and v5["name"] == "DENY" and v5["b"] == DENY["RANGE"], "far from the knocked-off cap: DENY RANGE (%s)" % v5)
+        res.check(v5 and v5["name"] == "DENY" and v5["b"] == DENY["RANGE"], "far (3400 units) from the knocked-off cap: DENY RANGE (%s)" % v5)
         b.pos = [60, 0, 60]
         streaming(rig, [a, b], 5.0)       # it lies CAP_LIFE_MS (7 s) in all
         n6 = b.claim(CL["CAP_TAKE"], id2, aux=0)
         streaming(rig, [a, b], 0.3)
         v6 = b.verdict(n6)
         res.check(v6 and v6["name"] == "DENY" and v6["b"] == DENY["GONE"], "past its life: DENY GONE (%s)" % v6)
+
+        # ---- a knocked-off cap slides down a slope: found 1000 units from its pop point, it is still takeable
+        a.look = 2
+        streaming(rig, [a, b], 0.3)
+        a.state, a.flags = ST_HURT, a.flags | 0x20
+        streaming(rig, [a, b], 1.2)
+        n = a.claim(CL["CAP_DROP"], 2, aux=8)
+        streaming(rig, [a, b], 0.4)
+        v = a.verdict(n)
+        res.check(v and v["name"] == "CAP_DROPPED", "third honest drop: CAP_DROPPED (%s)" % v)
+        id3 = v["a"] if v else 0
+        a.state, a.flags, a.look = ST_WAIT, a.flags & ~0x20, 3
+        b.pos = [1100, 0, 60]
+        streaming(rig, [a, b], 1.5)
+        n7 = b.claim(CL["CAP_TAKE"], id3, aux=0)
+        streaming(rig, [a, b], 0.3)
+        v7 = b.verdict(n7)
+        res.check(v7 and v7["name"] == "CAP_TAKEN" and v7["a"] == id3,
+                  "1050 units from the pop point, 1.8 s later (it slid): CAP_TAKEN (%s)" % v7)
+        b.pos = [60, 0, 60]
+        streaming(rig, [a, b], 0.2)
 
         # ---- the snapshot a late console gets: a taken placed cap and a knocked-off one
         a.look = 2

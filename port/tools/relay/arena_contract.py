@@ -393,8 +393,8 @@ NUMBERS = {
     "GRAB_SPEED_MAX": 0x40000,
     "STOMP_MIN_MS": 250,
     "CAP_R": 200,
-    "CAP_FLIGHT_SLACK": 300,
-    "CAP_FLIGHT_MS": 2000,
+    "CAP_FLIGHT_SLACK": 1500,
+    "CAP_FLIGHT_MS": 7000,
     "CAP_RESPAWN_MS": 1500,
     "CAP_LIFE_MS": 7000,
     "CAP_WORN_MS": 3000,
@@ -542,8 +542,8 @@ RULES = [
     "issues (32..255). CAP_TAKE is a claim like GRAB: the earliest stamp wins "
     "(DENY LOST d = winner for the others, GONE once the cap is not there), "
     "the claimant must be able to act (STATE) and within CAP_R of the cap "
-    "(RANGE; a knocked-off cap flies for CAP_FLIGHT_MS and gets "
-    "CAP_FLIGHT_SLACK more). A taken placed cap is back CAP_RESPAWN_MS after "
+    "(RANGE; a knocked-off cap flies and slides for CAP_FLIGHT_MS and gets "
+    "CAP_FLIGHT_SLACK more, measured from its pop point). A taken placed cap is back CAP_RESPAWN_MS after "
     "the stamp, on every console from the event time; a knocked-off cap lies "
     "CAP_LIFE_MS. CAP_DROP is the hurt wearer's report that the ROM popped its "
     "cap: granted only to a seat whose own SYNS showed that cap look within "
