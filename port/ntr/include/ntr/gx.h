@@ -97,6 +97,9 @@ struct GxTriangle {
     // else it is recorded per pixel so a shadow can refuse to fall on its
     // own caster (equal IDs do not shadow).
     uint8_t polyid;
+    // POLYGON_ATTR bit 14: this polygon's depth test is EQUAL (within the
+    // hardware's tolerance) instead of LESS. See w_depth_fail in gx.cpp.
+    uint8_t depth_eq;
     uint32_t dbg_tex;      // TEXIMAGE_PARAM that was bound (diagnostics only)
 };
 
