@@ -2221,18 +2221,34 @@ def race_vectors(seed=7, races=200, rtts=((40, 125), (40, 40), (125, 125),
     return out
 
 
-def decide_race(mod, v):
+def decide_race(mod, v, caps=False):
     """Run one race through a real referee; returns the winning console
-    index (0 / 1)."""
-    rig, (a, b) = match(2, code="RACE0001")
+    index (0 / 1).  caps=True: the two consoles race for one cap (CAP_TAKE)
+    instead of a star (GRAB); the contention rule is the same."""
+    rf = mod.referee
+    saved = dict(rf.CAP_MAPS)
+    if caps:
+        rf.CAP_MAPS[0] = [(0, 0, 0, 0, 0x004)]
+    try:
+        return _decide_race(mod, v, caps)
+    finally:
+        rf.CAP_MAPS.clear()
+        rf.CAP_MAPS.update(saved)
+
+
+def _decide_race(mod, v, caps):
+    rig, (a, b) = match(2, code="RACE0001", mod=mod)
     ref = rig.ref("RACE0001")
     sa, sb = ref.seats[a.seat], ref.seats[b.seat]
     rig.no_pings = True
     sa.rtts.clear(); sa.rtts.append(v["rtt"][0]); sa.rtt_min = v["rtt"][0]
     sb.rtts.clear(); sb.rtts.append(v["rtt"][1]); sb.rtt_min = v["rtt"][1]
-    inst = a.find("STAR_WAKE")[-1]["a"]
-    a.claim(CL["MARKER_BREAK"], inst)
-    streaming(rig, [a, b], 0.3)
+    if caps:
+        inst = 1
+    else:
+        inst = a.find("STAR_WAKE")[-1]["a"]
+        a.claim(CL["MARKER_BREAK"], inst)
+        streaming(rig, [a, b], 0.3)
     # race times are relative to "now" in referee ms
     t_base = ref.rt(rig.now) + 100
     order = sorted([(v["arrive"][0], 0), (v["arrive"][1], 1)])
@@ -2244,12 +2260,14 @@ def decide_race(mod, v):
             rig.relay.tick(rig.now)
             rig.deliver()
         c = (a, b)[who]
-        cids[who] = c.claim(CL["GRAB"], inst,
+        cids[who] = c.claim(CL["CAP_TAKE"] if caps else CL["GRAB"], inst,
+                            aux=mod.referee.Referee.cap_hash(0, 0, 0) if caps else 0,
                             stamp=ref.seat_wire(c.seat, t_base
                                                 + v["stamp"][who] - 2000))
     streaming(rig, [a, b], 0.4)
     va, vb = a.verdict(cids[0]), b.verdict(cids[1])
-    wins = [va["name"] == "STAR_TAKEN", vb["name"] == "STAR_TAKEN"]
+    won = "CAP_TAKEN" if caps else "STAR_TAKEN"
+    wins = [va["name"] == won, vb["name"] == won]
     if sum(wins) != 1:
         return -1
     return 0 if wins[0] else 1
@@ -2259,6 +2277,9 @@ def run_vectors(mod, write=False, races=200):
     res = Result("contention vectors (M3 model, %d races per RTT pair)"
                  % races)
     vec = race_vectors(races=races)
+    capvec = race_vectors(seed=11, races=40)
+    for v in capvec:
+        v["winner"] = decide_race(mod, v, caps=True)
     by = {}
     two = 0
     for v in vec:
@@ -2274,6 +2295,11 @@ def run_vectors(mod, write=False, races=200):
                  % (k, ok, n, 100.0 * ok / n, 100.0 * aw / n))
         res.check(ok >= 0.95 * n, "rtt %s >= 95%% correct" % k)
     res.check(two == 0, "no race with two or zero winners (%d)" % two)
+    cap_two = sum(1 for v in capvec if v["winner"] < 0)
+    cap_ok = sum(1 for v in capvec if v["winner"] == v["truth"])
+    res.note("caps: %d/%d correct (%.1f%%)" % (cap_ok, len(capvec), 100.0 * cap_ok / len(capvec)))
+    res.check(cap_two == 0, "no cap race with two or zero winners (%d)" % cap_two)
+    res.check(cap_ok >= 0.95 * len(capvec), "cap races >= 95%% correct")
     if write:
         doc = {"about": "REFEREE1 contention vectors: two consoles race to "
                         "one star. Times in ms on one axis (the referee's "
@@ -2289,6 +2315,11 @@ def run_vectors(mod, write=False, races=200):
                      % json.dumps(doc["about"]))
             fh.write(",\n".join("  " + json.dumps(r, sort_keys=True)
                                 for r in vec))
+            fh.write("\n ],\n")
+            fh.write(' "cap_races_about": "VSREF3: the same model, two consoles race to one cap (CAP_TAKE)",\n')
+            fh.write(' "cap_races": [\n')
+            fh.write(",\n".join("  " + json.dumps(r, sort_keys=True)
+                                for r in capvec))
             fh.write("\n ]}\n")
         res.note("wrote %s (%d races)" % (os.path.basename(VECTORS),
                                           len(vec)))
@@ -2299,6 +2330,10 @@ def run_vectors(mod, write=False, races=200):
                     for r in doc["races"]] == [
                 (v["stamp"], v["arrive"], v["rtt"], v["winner"]) for v in vec]
             res.check(same, "arena_vectors.json matches this referee")
+            same_c = [(r["stamp"], r["arrive"], r["rtt"], r["winner"])
+                      for r in doc.get("cap_races", [])] == [
+                (v["stamp"], v["arrive"], v["rtt"], v["winner"]) for v in capvec]
+            res.check(same_c, "arena_vectors.json cap_races match this referee")
         except (OSError, ValueError, KeyError):
             res.check(False, "arena_vectors.json missing or unreadable")
     return res
