@@ -35,6 +35,9 @@
 #include <string.h>
 #include <unordered_map>
 #include <vector>
+#include <string>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 #ifndef PORT_REPO_ROOT
 #define PORT_REPO_ROOT "."
@@ -604,6 +607,160 @@ int sd_cnv_vol(int v)
     return lut[v];
 }
 
+// ---- mods: sound/ replacements (run mods1, lane MODSOUND1) ---------------
+//
+// Each enabled mod (hal/mods.h, index 0 = first, the LAST wins) may carry a
+// sound/ folder. A file there replaces one member of the archive, named by
+// the archive's own SYMB name plus the type's extension (NCS_BGM_PERFECT.sseq)
+// or, for a member the archive has no name for, by type and record number
+// (sseq_0042.sseq, sbnk_0007.sbnk). The new bytes are appended to the in-memory
+// image and the member's FAT record (offset, size) is repointed, so every
+// later read of that member (sdat_file, the ROM's residency fill, the sequence
+// and wave readers) sees the mod's bytes. Run before any pointer into the
+// image exists. A bad file is skipped with a log line; nothing here can fail
+// the boot.
+extern "C" int sdat_mods_none_count(void) { return 0; }
+extern "C" const char *sdat_mods_none_str(int) { return 0; }
+#ifdef _MSC_VER
+#pragma comment(linker, "/alternatename:_port_mods_count=_sdat_mods_none_count")
+#pragma comment(linker, "/alternatename:_port_mods_id=_sdat_mods_none_str")
+#pragma comment(linker, "/alternatename:_port_mods_folder=_sdat_mods_none_str")
+#endif
+extern "C" int port_mods_count(void);
+extern "C" const char *port_mods_id(int i);
+extern "C" const char *port_mods_folder(int i);
+
+static std::string lower_s(std::string s)
+{ for (auto &c : s) if (c >= 'A' && c <= 'Z') c = (char)(c + 32); return s; }
+
+static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
+{
+    int nmods = port_mods_count();
+    if (nmods <= 0) return buf;
+
+    static const struct { int kind; const char *ext; const char *magic; } kTypes[] = {
+        {0, "sseq", "SSEQ"}, {1, "ssar", "SSAR"}, {2, "sbnk", "SBNK"},
+        {3, "swar", "SWAR"}, {7, "strm", "STRM"} };
+    int nblocks = rd16(buf + 0x0e);
+    sd_u32 oSymb = 0, oInfo = 0, oFat = 0;
+    for (int i = 0; i < nblocks && i < 8; i++) {
+        sd_u32 off = rd32(buf + 0x10 + i * 8);
+        if (!off || off + 12 > len) continue;
+        if (!memcmp(buf + off, "SYMB", 4)) oSymb = off;
+        else if (!memcmp(buf + off, "INFO", 4)) oInfo = off;
+        else if (!memcmp(buf + off, "FAT ", 4)) oFat = off;
+    }
+    if (!oInfo || !oFat) return buf;
+    sd_u32 fatCount = rd32(buf + oFat + 8);
+
+    // name table: lowercase "<name>.<ext>" and "<ext>_<NNNN>.<ext>" -> file id
+    std::unordered_map<std::string, sd_u32> byName;
+    for (auto &t : kTypes) {
+        sd_u32 lo = rd32(buf + oInfo + 8 + t.kind * 4);
+        if (!lo || oInfo + lo + 4 > len) continue;
+        sd_u32 n = rd32(buf + oInfo + lo);
+        sd_u32 sl = 0, sn = 0;
+        if (oSymb) {
+            sl = rd32(buf + oSymb + 8 + t.kind * 4);
+            if (sl && oSymb + sl + 4 <= len) sn = rd32(buf + oSymb + sl);
+            else sl = 0;
+        }
+        for (sd_u32 i = 0; i < n && oInfo + lo + 4 + i * 4 + 4 <= len; i++) {
+            sd_u32 ro = rd32(buf + oInfo + lo + 4 + i * 4);
+            if (!ro || oInfo + ro + 4 > len) continue;
+            sd_u32 fid = rd32(buf + oInfo + ro) & 0xffffff;
+            if (fid >= fatCount) continue;
+            char num[32];
+            snprintf(num, sizeof num, "%s_%04u.%s", t.ext, i, t.ext);
+            byName.emplace(num, fid);
+            if (sl && i < sn) {
+                sd_u32 so = rd32(buf + oSymb + sl + 4 + i * 4);
+                if (so && oSymb + so < len) {
+                    const char *nm = (const char *)buf + oSymb + so;
+                    size_t maxl = len - (oSymb + so);
+                    size_t l = strnlen(nm, maxl);
+                    if (l && l < maxl)
+                        byName.emplace(lower_s(std::string(nm, l) + "." + t.ext), fid);
+                }
+            }
+        }
+    }
+
+    struct Rep { std::vector<sd_u8> data; std::string name, mod; };
+    std::unordered_map<sd_u32, Rep> reps;
+    std::vector<sd_u32> order;
+    for (int m = 0; m < nmods; m++) {
+        const char *folder = port_mods_folder(m), *mid = port_mods_id(m);
+        if (!folder || !mid) continue;
+        std::string pat = std::string(folder) + "/sound/*";
+        WIN32_FIND_DATAA fd;
+        HANDLE h = FindFirstFileA(pat.c_str(), &fd);
+        if (h == INVALID_HANDLE_VALUE) continue;
+        do {
+            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+            std::string fn = fd.cFileName, lf = lower_s(fn);
+            size_t dot = lf.rfind('.');
+            std::string ext = dot == std::string::npos ? "" : lf.substr(dot + 1);
+            const char *magic = 0;
+            for (auto &t : kTypes) if (ext == t.ext) magic = t.magic;
+            if (!magic) {
+                fprintf(stderr, "[mods] sound: %s/%s: not .sseq/.sbnk/.swar/.ssar/.strm, ignored\n", mid, fn.c_str());
+                continue;
+            }
+            auto it = byName.find(lf);
+            if (it == byName.end()) {
+                fprintf(stderr, "[mods] sound: %s/%s: no such member in the archive, ignored\n", mid, fn.c_str());
+                continue;
+            }
+            std::string full = std::string(folder) + "/sound/" + fn;
+            FILE *f = fopen(full.c_str(), "rb");
+            if (!f) { fprintf(stderr, "[mods] sound: %s/%s: cannot open, ignored\n", mid, fn.c_str()); continue; }
+            fseek(f, 0, SEEK_END); long fl = ftell(f); fseek(f, 0, SEEK_SET);
+            std::vector<sd_u8> d;
+            if (fl >= 0x10 && fl <= (32L << 20)) {
+                d.resize((size_t)fl);
+                if (fread(d.data(), 1, (size_t)fl, f) != (size_t)fl) d.clear();
+            }
+            fclose(f);
+            if (d.size() < 0x10 || memcmp(d.data(), magic, 4) != 0 || rd32(d.data() + 8) > d.size()) {
+                fprintf(stderr, "[mods] sound: %s/%s: not a valid %s file (magic or size), skipped\n", mid, fn.c_str(), magic);
+                continue;
+            }
+            sd_u32 fid = it->second;
+            if (!reps.count(fid)) order.push_back(fid);
+            Rep &r = reps[fid];
+            r.data.swap(d); r.name = fn; r.mod = mid;
+        } while (FindNextFileA(h, &fd));
+        FindClose(h);
+    }
+    if (order.empty()) {
+        fprintf(stderr, "[mods] sound: no members replaced\n");
+        return buf;
+    }
+    size_t total = (len + 3) & ~(size_t)3;
+    for (sd_u32 fid : order) total += (reps[fid].data.size() + 3) & ~(size_t)3;
+    sd_u8 *nb = (sd_u8 *)malloc(total);
+    if (!nb) { fprintf(stderr, "[mods] sound: out of memory, no members replaced\n"); return buf; }
+    memset(nb, 0, total);
+    memcpy(nb, buf, len);
+    size_t at = (len + 3) & ~(size_t)3;
+    std::string list;
+    for (sd_u32 fid : order) {
+        Rep &r = reps[fid];
+        memcpy(nb + at, r.data.data(), r.data.size());
+        sd_u8 *e = nb + oFat + 0xc + fid * 16;
+        e[0] = (sd_u8)at; e[1] = (sd_u8)(at >> 8); e[2] = (sd_u8)(at >> 16); e[3] = (sd_u8)(at >> 24);
+        sd_u32 sz = (sd_u32)r.data.size();
+        e[4] = (sd_u8)sz; e[5] = (sd_u8)(sz >> 8); e[6] = (sd_u8)(sz >> 16); e[7] = (sd_u8)(sz >> 24);
+        at += (r.data.size() + 3) & ~(size_t)3;
+        list += (list.empty() ? "" : ", ") + r.name + " (" + r.mod + ")";
+    }
+    free(buf);
+    len = total;
+    fprintf(stderr, "[mods] sound: replaced %u archive members: %s\n", (unsigned)order.size(), list.c_str());
+    return nb;
+}
+
 // ---- init ---------------------------------------------------------------
 
 int sdat_init(void)
@@ -640,6 +797,11 @@ int sdat_init(void)
         return 0;
     }
 
+    {
+        size_t mlen = (size_t)len;
+        buf = sdat_apply_mods(buf, mlen);
+        len = (long)mlen;
+    }
     g_sdat.base = buf;
     g_sdat.size = (size_t)len;
 
