@@ -13005,6 +13005,20 @@ int main(void)
         g_menu_host.real_camera = real_camera;
         menu_input(pad_live, &pad);
         menu_b_swallow_spend(pad_live, &pad);
+        /* THE MENU'S LOAD ROW RE-SEATS HERE, NOT ON THE NEXT FRAME (run hunt8,
+           lane SSCAMLOAD1). The row restored the world from inside menu_input,
+           which cannot reach `player` / `cam`, and left the re-seat to the top
+           of the next frame. But THIS frame still runs the camera tick and the
+           rest of the tick below with the pre-restore pointers: after a load
+           of a state from another course those name a Camera whose mode object
+           is null, and func_0200ca50 reads mode+0x24 (Camera::Behavior, the
+           "access 00000000 at 00000024" in the 0.5.6 crash dumps). F9 re-seats
+           at its call site, so it never ran a frame on stale pointers. */
+        if (ss_reseat_pending) {
+            ss_reseat_pending = 0;
+            ss_census("after the debug menu's load row", player, cam);
+            ss_reseat("after the debug menu's load row");
+        }
         /* MouseCapture, asked and acted on ONCE A FRAME and deliberately right
            here: after menu_input, so a menu opened by this frame's escape has
            already handed the pointer back before anything draws, and before the
