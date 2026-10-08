@@ -772,6 +772,7 @@ struct Pup {
                        anim_refused = 0, sfx_far = 0, sfx_near = 0;
     unsigned last_refused_id = 0xffffffffu;
     unsigned long long puton = 0;
+    unsigned puton_at = 0;                 // frame of the last put-on cap spawn (probe)
     // a puppet in somebody's mouth is not drawn (PUPEAT2)
     bool mouth_prev = false;               // in a mouth at the last drive
     unsigned long long mouth_frames = 0,   // frames driven in a mouth
@@ -1174,6 +1175,7 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
                 kClassMarioCap, (want_look << 8) | 0xau, cpos, nullptr,
                 (int)*(signed char *)(a + 0xcc), -1);
             ++pp.puton;
+            pp.puton_at = g.frame;
             std::fprintf(stderr, "[puppet] f%u seat %d put-on: cap look %u spawned %s\n", g.frame, seat,
                          want_look, cap ? "ok" : "REFUSED");
         }
@@ -1211,6 +1213,25 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
                 func_ov002_020d71a0(a);
             }
             pp.tongue_arg = targ;
+        }
+    }
+    // LAB: SM64DS_PUPPET_PUTON_PROBE=1, for 90 frames after a put-on cap spawn a line every 6
+    // frames: this puppet's body and every cap actor (position, type +0x3f0, holder +0x3bc, follows +0x3c0)
+    {
+        static int pr = -1;
+        if (pr < 0) pr = env_on("SM64DS_PUPPET_PUTON_PROBE") ? 1 : 0;
+        if (pr && pp.puton_at && g.frame >= pp.puton_at && g.frame < pp.puton_at + 90 && (g.frame % 6u) == 0) {
+            std::fprintf(stderr, "[pup-puton] f%u seat %d body %d,%d,%d look=%d anim=%u opacity=%u\n", g.frame, seat,
+                         d.x >> 12, d.y >> 12, d.z >> 12, *(int *)(a + 8) & 0xff, (unsigned)d.anim,
+                         (unsigned)*(unsigned char *)(a + kPlayerOpacity));
+            char *c = nullptr;
+            for (int guard = 0; guard < 32; ++guard) {
+                c = _ZN8dActor_c15FindWithActorIDEjPS_((unsigned)kClassMarioCap, c);
+                if (!c) break;
+                std::fprintf(stderr, "[pup-puton]   cap type=%d at %d,%d,%d holder=%08x follows=%08x\n", *(int *)(c + 0x3f0),
+                             *(int *)(c + 0x5c) >> 12, *(int *)(c + 0x60) >> 12, *(int *)(c + 0x64) >> 12,
+                             *(unsigned *)(c + 0x3bc), *(unsigned *)(c + 0x3c0));
+            }
         }
     }
     // V9 THE FACE. Player::SetAnim also restarts the face (eye) texture sequence
@@ -1549,23 +1570,36 @@ void pup_before_walk() {
     // LAB (VSPUP2 put-on row): SM64DS_PUPPET_CAPRIG=<frame> puts MY body on the first cap in the
     // level (the ROM's own touch then runs the pickup and the hat morph), once.
     {
-        static int cap_at = -2;
+        static int cap_at = -2, cap_hold = 0, cap_seen = 0;
+        static int cap_pos[3];
         static bool cap_done = false;
         if (cap_at == -2) { const char *e = std::getenv("SM64DS_PUPPET_CAPRIG"); cap_at = e && *e ? std::atoi(e) : -1; }
-        if (cap_at >= 0 && !cap_done && (int)g.frame >= cap_at && g.seat >= 0 && g.seat < kArenaSeats &&
-            data_0209f394[g.seat]) {
+        if (cap_at >= 0 && g.seat >= 0 && g.seat < kArenaSeats && data_0209f394[g.seat]) {
             char *me = (char *)data_0209f394[g.seat];
-            char *cap = nullptr;
-            for (int guard = 0; guard < 64; ++guard) {
-                cap = _ZN8dActor_c15FindWithActorIDEjPS_((unsigned)kClassMarioCap, cap);
-                if (!cap || *(int *)(cap + 0x3f0) == 4) break;    // a placed (type 4) cap
+            if (!cap_done && (int)g.frame >= cap_at) {
+                char *cap = nullptr;
+                for (int guard = 0; guard < 64; ++guard) {
+                    cap = _ZN8dActor_c15FindWithActorIDEjPS_((unsigned)kClassMarioCap, cap);
+                    if (!cap || *(int *)(cap + 0x3f0) == 4) break;    // a placed (type 4) cap
+                }
+                if (cap && *(int *)(cap + 0x3f0) == 4) {
+                    cap_done = true;
+                    cap_hold = 12;      // a one-frame contact can be missed: stay on it for 12 frames
+                    for (int i = 0; i < 3; ++i) cap_pos[i] = *(int *)(cap + 0x5c + 4 * i);
+                    std::fprintf(stderr, "[pup-caprig] f=%u my body put on the cap at %d,%d,%d (look %d)\n", g.frame,
+                                 cap_pos[0] >> 12, cap_pos[1] >> 12, cap_pos[2] >> 12, *(int *)(me + 8) & 0xff);
+                }
             }
-            if (cap && *(int *)(cap + 0x3f0) == 4) {
-                cap_done = true;
-                for (int i = 0; i < 3; ++i) *(int *)(me + 0x5c + 4 * i) = *(int *)(cap + 0x5c + 4 * i);
+            if (cap_hold > 0) {
+                --cap_hold;
+                for (int i = 0; i < 3; ++i) *(int *)(me + 0x5c + 4 * i) = cap_pos[i];
                 *(int *)(me + 0x98) = 0;
-                std::fprintf(stderr, "[pup-caprig] f=%u my body put on the cap at %d,%d,%d\n", g.frame,
-                             *(int *)(cap + 0x5c) >> 12, *(int *)(cap + 0x60) >> 12, *(int *)(cap + 0x64) >> 12);
+                *(int *)(me + 0xa8) = 0;
+            }
+            if (cap_done && cap_seen < 400 && (int)g.frame % 6 == 0) {
+                ++cap_seen;
+                std::fprintf(stderr, "[pup-caprig] f=%u look=%d state=%d\n", g.frame, *(int *)(me + 8) & 0xff,
+                             vs_arena_state_index(me));
             }
         }
     }
