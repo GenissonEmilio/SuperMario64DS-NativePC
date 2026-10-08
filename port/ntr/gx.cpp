@@ -1730,8 +1730,19 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
             // scale to the framebuffer so game-issued full-screen viewports
             // fill a hi-res target too. At 256x192 the factors are 1 and
             // this is exactly the old math.
-            const int x1 = p[0] & 0xFF, y1 = (p[0] >> 8) & 0xFF;
-            const int x2 = (p[0] >> 16) & 0xFF, y2 = (p[0] >> 24) & 0xFF;
+            /* THE DS COUNTS THIS REGISTER'S Y FROM THE BOTTOM: bits 8-15 are
+               the lowest screen row of the rectangle and bits 24-31 the
+               highest, so the top row on the picture is 191 - bits 24-31 and
+               the bottom row 191 - bits 8-15 (melonDS GPU3D.cpp, the 0x60
+               case: Viewport[1] = 191 - Y1, Viewport[3] = 191 - Y2). A full
+               screen (0 and 191) is its own mirror image, which is why this
+               was never seen until a scene asked for a smaller rectangle: the
+               ending's 16:9 letterbox writes 32 and 175 and the cartridge
+               puts the picture on rows 16..159, bars above and below. */
+            const int x1 = p[0] & 0xFF;
+            const int y1 = (191 - ((p[0] >> 24) & 0xFF)) & 0xFF;
+            const int x2 = (p[0] >> 16) & 0xFF;
+            const int y2 = (191 - ((p[0] >> 8) & 0xFF)) & 0xFF;
             /* Scaled into the PRESENT rectangle and offset by its origin, so
                a game-issued full-screen viewport fills the picture the host is
                presenting rather than the whole wide buffer. present_* is the
@@ -3482,6 +3493,31 @@ uint32_t gx_clear_argb()
     return out;
 }
 
+/* THE RASTER'S CLIP RECTANGLE, inclusive host pixels: the present rectangle
+   narrowed to the game's VIEWPORT. The 3D engine cannot put a pixel outside
+   the viewport (the polygon is clipped to the viewing volume, which the
+   viewport maps onto exactly that rectangle), and this raster has no side clip
+   of its own, so the box clamp is where the letterbox of the ending's Peach
+   scenes comes from. A full-screen viewport IS the present rectangle (vp_x /
+   vp_w are built from present_*), so every frame that never narrowed the
+   viewport clamps to the same four numbers as before. An empty or inverted
+   rectangle is ignored rather than drawn as nothing. */
+static void raster_clip(int &x0, int &y0, int &x1, int &y1)
+{
+    x0 = present_x(); y0 = present_y();
+    x1 = x0 + present_w() - 1; y1 = y0 + present_h() - 1;
+    if (g.vp_w <= 0 || g.vp_h <= 0) return;
+    const int vx1 = g.vp_x + g.vp_w - 1, vy1 = g.vp_y + g.vp_h - 1;
+    if (g.vp_x > x0) x0 = g.vp_x;
+    if (g.vp_y > y0) y0 = g.vp_y;
+    if (vx1 < x1) x1 = vx1;
+    if (vy1 < y1) y1 = vy1;
+    if (x1 < x0 || y1 < y0) {
+        x0 = present_x(); y0 = present_y();
+        x1 = x0 + present_w() - 1; y1 = y0 + present_h() - 1;
+    }
+}
+
 void gx_clear_fill(Framebuffer &fb)
 {
     const uint32_t c = gx_clear_argb();
@@ -4442,8 +4478,8 @@ void raster_ref(const RefArgs &ra, int tid, int nt) {
            a triangle that runs past the 4:3 edge would otherwise paint into
            the margin. present_* is (0,0,active_w,active_h) on every other run,
            so these are the same four compares as before. */
-        const int px0 = present_x(), py0 = present_y();
-        const int px1 = px0 + present_w() - 1, py1 = py0 + present_h() - 1;
+        int px0, py0, px1, py1;
+        raster_clip(px0, py0, px1, py1);
         if (minx < px0) minx = px0;
         if (miny < py0) miny = py0;
         if (maxx > px1) maxx = px1;
@@ -5188,8 +5224,8 @@ void gx_render(Framebuffer &fb) {
            a triangle that runs past the 4:3 edge would otherwise paint into
            the margin. present_* is (0,0,active_w,active_h) on every other run,
            so these are the same four compares as before. */
-        const int px0 = present_x(), py0 = present_y();
-        const int px1 = px0 + present_w() - 1, py1 = py0 + present_h() - 1;
+        int px0, py0, px1, py1;
+        raster_clip(px0, py0, px1, py1);
         if (minx < px0) minx = px0;
         if (miny < py0) miny = py0;
         if (maxx > px1) maxx = px1;
@@ -5538,8 +5574,8 @@ void gx_render(Framebuffer &fb) {
        as ONE tile the height of the allocation, which is the old
        single-thread walk. */
     {
-        const int px0 = present_x(), py0 = present_y();
-        const int px1 = px0 + present_w() - 1, py1 = py0 + present_h() - 1;
+        int px0, py0, px1, py1;
+        raster_clip(px0, py0, px1, py1);
         g_bin_tmp.clear();
         long long work = 0;
         for (size_t i = 0; i < g.tris.size(); ++i) {
@@ -5686,10 +5722,17 @@ void gx_render(Framebuffer &fb) {
         f.stride = SCREEN_W;
         f.cw = cw;
         f.ch = ch;
-        f.px0 = present_x();
-        f.py0 = present_y();
-        f.pw = present_w();
-        f.ph = present_h();
+        /* THE SCISSOR IS THE SAME CLIP RECTANGLE THE SOFTWARE RASTER USES: the
+           present rectangle narrowed to the game's viewport (raster_clip), so
+           the card draws the ending's letterbox the way the CPU path does. A
+           frame that never narrowed the viewport gets the present rectangle,
+           as before. */
+        int cx0, cy0, cx1, cy1;
+        raster_clip(cx0, cy0, cx1, cy1);
+        f.px0 = cx0;
+        f.py0 = cy0;
+        f.pw = cx1 - cx0 + 1;
+        f.ph = cy1 - cy0 + 1;
         f.want_attrid = want_id ? 1 : 0;
         /* THE DEPTH ONLY HAS TO COME BACK IF SOMETHING IS GOING TO READ IT,
            and at 4x that readback is three megabytes a frame. The translucent
