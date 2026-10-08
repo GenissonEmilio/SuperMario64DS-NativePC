@@ -17564,6 +17564,8 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # run mods1: the mods list (settings.json EnabledMods) and the files/ layer,
     # chained after stage_geom from .CRT$XCW. Same two targets, nowhere else.
     hal/mods.cpp
+    # run mods1: the plugin loader (code mods, API v1, mods_api/sm64ds_mod.h)
+    hal/mod_plugins.cpp
     # the scene's hand-drawn gap band and the band's per-scene continuity
     # table, both asked for at the same latch hal/screen_gap.cpp does
     hal/gap_art.cpp hal/gap_continuity.cpp
@@ -17931,6 +17933,16 @@ add_custom_command(TARGET walk_window POST_BUILD
     VERBATIM
     COMMENT "arm9_globals_guard: no ROM write runs past a hosted arm9 global")
 
+# run mods1 (plugin API v1): the compact name -> address table symbol() reads,
+# written next to the exe from the link map. It ships with the kit; a plugin is
+# only valid for the exact build whose table it was matched to.
+add_custom_command(TARGET walk_window POST_BUILD
+    COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/mk_symtab.py"
+            "$<TARGET_FILE_DIR:walk_window>/walk_window.map"
+            "$<TARGET_FILE_DIR:walk_window>/walk_window.symtab"
+    VERBATIM
+    COMMENT "mk_symtab: walk_window.symtab for the plugin API")
+
 # hires clone for screenshot sessions (4x resolution, ~1/16 the fps)
 add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_OV_DATA}
     # run link100 lane BOOT: same slice as walk_window, for the same reason --
@@ -18005,6 +18017,8 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # run mods1: the mods list (settings.json EnabledMods) and the files/ layer,
     # chained after stage_geom from .CRT$XCW. Same two targets, nowhere else.
     hal/mods.cpp
+    # run mods1: the plugin loader (code mods, API v1, mods_api/sm64ds_mod.h)
+    hal/mod_plugins.cpp
     # the scene's hand-drawn gap band and the band's per-scene continuity
     # table, both asked for at the same latch hal/screen_gap.cpp does
     hal/gap_art.cpp hal/gap_continuity.cpp

@@ -71,6 +71,7 @@
 #include "port_d16.h"
 
 #include <cstdio>
+#include "mod_hooks.h"   /* run mods1: the plugin seams */
 #include "vs_width.h"   /* run vs16: the port's player width */
 #include <cstdlib>
 #include <cstring>
@@ -2777,6 +2778,10 @@ void *port_stage_a_boot(void *mc, int spawn)
     g_boot_spawn = spawn;
     g_boot_result = 0;
     port_stage_lifecycle_boot();
+    /* run mods1: the level is up (every level boot and every level change come
+       through here); the plugins' on_level_load */
+    if (port_mod_hook_level)
+        port_mod_hook_level(port_level_id());
     return g_boot_result;
 }
 
