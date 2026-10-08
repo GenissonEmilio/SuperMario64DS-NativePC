@@ -2833,18 +2833,41 @@ void rig_hurtgrab() {
 //             goes for the knocked-off cap 1.6 s after the event.
 //   capforge  seat 1 sends claims the referee must refuse (a cap that is not there, a cap
 //             too far away, a wrong place hash, id 0, a drop with no cap on).
+// the n-th placed cap of this map (ids are the death-table slots + 1, so they do not start at 1)
+int rig_cap_id(int n) {
+    for (int k = 1; k <= kCapPlacedMax; ++k)
+        if (g.caps[k].used && g.caps[k].placed && n-- == 0) return k;
+    return 0;
+}
+
+int g_rig_cap_hold_id = 0, g_rig_cap_hold_left = 0;
+
+// the body lingers on the cap for a few frames (a one-frame contact can be missed)
+void rig_cap_hold_tick() {
+    if (g_rig_cap_hold_left <= 0) return;
+    --g_rig_cap_hold_left;
+    CapRec *r = cap_rec(g_rig_cap_hold_id);
+    char *me = my_body();
+    if (!r || !me || r->mine || r->gone) { g_rig_cap_hold_left = 0; return; }
+    const int to[3] = { r->origin[0], r->origin[1], r->origin[2] };
+    rig_teleport(me, to);
+}
+
 void rig_cap_goto(int id) {
     CapRec *r = cap_rec(id);
     char *me = my_body();
     if (!r || !me) return;
     const int to[3] = { r->origin[0], r->origin[1], r->origin[2] };
     rig_teleport(me, to);
+    g_rig_cap_hold_id = id;
+    g_rig_cap_hold_left = 12;
     std::fprintf(stderr, "[rig] cap: seat %d goes to cap %d at (%d,%d,%d) (frame %u)\n", g.seat, id,
                  to[0] >> 12, to[1] >> 12, to[2] >> 12, my_frame_now());
 }
 
 void rig_cap() {
     if (!g.started || g.over || !g.caps_ready || g.caps_n <= 0) return;
+    rig_cap_hold_tick();
     unsigned r;
     if (!ref_now(&r)) return;
     if (!my_body()) return;
@@ -2868,12 +2891,13 @@ void rig_cap() {
     }
     if (k == did || within < off) return;
     did = k;
-    rig_cap_goto(1 + (k % g.caps_n));
+    rig_cap_goto(rig_cap_id(k % g.caps_n));
     ++g.rig_n;
 }
 
 void rig_capdrop() {
     if (!g.started || g.over || !g.caps_ready || g.caps_n <= 0) return;
+    rig_cap_hold_tick();
     unsigned r;
     if (!ref_now(&r)) return;
     char *me = my_body();
@@ -2902,16 +2926,20 @@ void rig_capdrop() {
     static int took = -1, hurt = -1;
     if (k != took && within >= 0) {
         took = k;
-        rig_cap_goto(1 + (k % g.caps_n));
+        rig_cap_goto(rig_cap_id(k % g.caps_n));
     }
-    if (k != hurt && within >= 3500) {
-        hurt = k;
+    if (k != hurt && within >= 3500 && (within - 3500) % 100 < 34) {
+        // (retried for a few seconds: Player::Hurt answers 0 while the put-on is still running)
         int from[3] = { s32r(me, 0x5c) + 0x50000, s32r(me, 0x60), s32r(me, 0x64) };
         const int hr = _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(me, from, 1u, 0, 0u, 4u, 1u);
         g.hit_applied_frame = my_frame_now();          // (not a hazard: no HURT_SELF claim)
-        ++g.rig_n;
         std::fprintf(stderr, "[rig] capdrop: seat 0 hurts itself with the cap on (Hurt returned %d, look %d, "
-                     "state %d)\n", hr, s32r(me, 8) & 0xff, vs_arena_state_index(me));
+                     "state %d; gate 6a0=%x 703=%x 73c=%x 6fb=%x 708=%x 709=%x)\n", hr, s32r(me, 8) & 0xff,
+                     vs_arena_state_index(me), (unsigned)u16r(me, 0x6a0), (unsigned)*u8p(me, 0x703),
+                     (unsigned)u16r(me, 0x73c), (unsigned)*u8p(me, 0x6fb), (unsigned)*u8p(me, 0x708),
+                     (unsigned)*u8p(me, 0x709));
+        if (hr) { hurt = k; ++g.rig_n; }
+        else if (within > 8500) hurt = k;
     }
 }
 
@@ -2933,7 +2961,8 @@ void rig_capforge() {
     const char *what = "";
     int far_id = 1;
     long long far_d = -1;
-    for (int k = 1; k <= g.caps_n; ++k) {
+    for (int k = 1; k <= kCapPlacedMax; ++k) {
+        if (!g.caps[k].used || !g.caps[k].placed) continue;
         const long long dx = (long long)(g.caps[k].origin[0] - s32r(me, 0x5c)) >> 12;
         const long long dz = (long long)(g.caps[k].origin[2] - s32r(me, 0x64)) >> 12;
         if (dx * dx + dz * dz > far_d) { far_d = dx * dx + dz * dz; far_id = k; }
@@ -2942,8 +2971,8 @@ void rig_capforge() {
     case 0: target = 99; what = "a cap that is not there (99): expect GONE"; break;
     case 1: target = (unsigned char)far_id; aux = g.caps[far_id].hash;
             what = "the cap farthest from my body, right hash: expect RANGE"; break;
-    case 2: target = 1; aux = (unsigned short)(g.caps[1].hash ^ 0x55);
-            what = "cap 1 with a wrong place hash: expect BAD"; break;
+    case 2: target = (unsigned char)rig_cap_id(0); aux = (unsigned short)(g.caps[target].hash ^ 0x55);
+            what = "the first cap with a wrong place hash: expect BAD"; break;
     case 3: target = 0; what = "cap id 0: expect BAD"; break;
     case 4: kind = CLAIM_CAP_DROP; target = 2; aux = 0x1234;
             what = "CAP_DROP with no cap on and not hurt: expect STATE"; break;
