@@ -1161,6 +1161,28 @@ static int ss_cutscene_running(void)
     return data_0209fc48 != 0;
 }
 
+/* A SAVE STATE IS OF A COURSE, AND ONLY A COURSE (run hunt8, lane SSTITLE1).
+   The title, the file select and the other menu scenes run in the scene loop
+   with no Player in the world (data_0209f394[0] is null), and the debug menu's
+   two rows are reachable there. Measured on 0.5.6: the save row on the title
+   wrote the title's world over savestate.bin, so the course state the player
+   had was gone and the next F9 in a course was refused as having no Player;
+   the load row put a course's world into the title's scene loop, which kept
+   the two-screen layout and ran the title's own actors against it (a garbled
+   picture and a quarantined actor). The test is the one lk7_persist.cpp's
+   world check asks of a file: a Player in the arena. No Player, no save, and
+   no load either, except the one the title can serve properly (below). */
+static int ss_course_world(void)
+{
+    return data_0209f394[0] != 0;
+}
+/* The title's load row cannot restore a course into the title's own loop, so it
+   asks for the load to happen once a course exists: armed here, served by the
+   level loop's F9 block on its first frames after the player has picked a file
+   and the title has handed over to the level boot (which is where the one-screen
+   layout is chosen, host_layout_follow_scene). Process-local, never written. */
+static int g_ss_load_after_entry;
+
 /* The one save path: the F8 latch, the debug menu's save row and the scripted
    SM64DS_SS_SAVE all come through here, so a refusal cannot be true on one of
    them and false on another. Returns 1 if the world was snapshotted.
@@ -1178,6 +1200,15 @@ static int ss_save_state(const char *how, int to_disk)
                         "script has already moved past.\n",
                 how, (void *)(size_t)data_0209fc48);
         ss_note("no save states during cutscenes");
+        return 0;
+    }
+    if (!ss_course_world()) {
+        fprintf(stderr, "[savestate] %s refused: no course is running (the world "
+                        "has no Player, data_0209f394[0] is null), so this is a "
+                        "menu scene. Nothing was written to the slot or to disk "
+                        "-- a state without a Player cannot be loaded back.\n",
+                how);
+        ss_note("save states work inside a course");
         return 0;
     }
     if (!lk6_savestate_save()) {
@@ -1294,6 +1325,23 @@ static void ss_file_put_back(const SsFileKeep *k)
 }
 static int ss_load_state(void)
 {
+    if (!ss_course_world()) {
+        if (port_title_entry_armed() && !port_title_entry_taken() &&
+            (lk6_savestate_has() || lk7_persist_present())) {
+            g_ss_load_after_entry = 1;
+            fprintf(stderr, "[savestate] load asked on the title: a course state "
+                            "cannot be restored into the title's own loop, so it "
+                            "will be loaded when the course starts after a file "
+                            "is picked\n");
+            ss_note("state loads when the course starts");
+            return 0;
+        }
+        fprintf(stderr, "[savestate] load refused: no course is running (the "
+                        "world has no Player, data_0209f394[0] is null), so this "
+                        "is a menu scene. Nothing was changed.\n");
+        ss_note("save states work inside a course");
+        return 0;
+    }
     static SsFileKeep keep;
     ss_file_keep(&keep);
     if (lk6_savestate_has()) {
@@ -5850,6 +5898,21 @@ static void menu_draw(const OvlSurface &fb)
              lk6_savestate_has() ? "(restore slot)"
                                  : (lk7_persist_present() ? "(load from disk)"
                                                           : "(no state saved)"));
+    /* THE TWO STATE ROWS IN A MENU SCENE (lane SSTITLE1): said before they are
+       pressed, because the toast is not drawn on the title. The save row does
+       nothing there; the load row on the title waits for a course (see
+       ss_load_state), and anywhere else in a scene it does nothing. */
+    if (!ss_course_world()) {
+        snprintf(ln[MENU_SAVESTATE], sizeof ln[0],
+                 "save state        F8   (courses only)");
+        snprintf(ln[MENU_LOADSTATE], sizeof ln[0], "load state        F9   %s",
+                 g_ss_load_after_entry
+                     ? "(loads when the course starts)"
+                     : ((port_title_entry_armed() && !port_title_entry_taken() &&
+                         (lk6_savestate_has() || lk7_persist_present()))
+                            ? "(loads once you pick a file)"
+                            : "(courses only)"));
+    }
 
     /* THE FOUR ROWS A SCENE HAS NOTHING TO ACT ON, said before they are
        pressed. Everything above is written for a level and reads level state;
@@ -12473,7 +12536,15 @@ int main(void)
             const int load_now = key_live(VK_F9);
             if (save_now && !save_edge)
                 ss_save_state("F8", 1);
-            if (load_now && !load_edge) {
+            int do_load = load_now && !load_edge;
+            if (g_ss_load_after_entry && frame >= 2) {
+                /* the title's load row asked for this (ss_load_state) */
+                g_ss_load_after_entry = 0;
+                fprintf(stderr, "[savestate] f%d: serving the load the title "
+                                "asked for\n", frame);
+                do_load = 1;
+            }
+            if (do_load) {
                 if (ss_load_state()) {
                     an_pivot_live = 0;   /* no ease across */
                     ss_census("after an F9 restore", player, cam);
@@ -12934,6 +13005,20 @@ int main(void)
         g_menu_host.real_camera = real_camera;
         menu_input(pad_live, &pad);
         menu_b_swallow_spend(pad_live, &pad);
+        /* THE MENU'S LOAD ROW RE-SEATS HERE, NOT ON THE NEXT FRAME (run hunt8,
+           lane SSCAMLOAD1). The row restored the world from inside menu_input,
+           which cannot reach `player` / `cam`, and left the re-seat to the top
+           of the next frame. But THIS frame still runs the camera tick and the
+           rest of the tick below with the pre-restore pointers: after a load
+           of a state from another course those name a Camera whose mode object
+           is null, and func_0200ca50 reads mode+0x24 (Camera::Behavior, the
+           "access 00000000 at 00000024" in the 0.5.6 crash dumps). F9 re-seats
+           at its call site, so it never ran a frame on stale pointers. */
+        if (ss_reseat_pending) {
+            ss_reseat_pending = 0;
+            ss_census("after the debug menu's load row", player, cam);
+            ss_reseat("after the debug menu's load row");
+        }
         /* MouseCapture, asked and acted on ONCE A FRAME and deliberately right
            here: after menu_input, so a menu opened by this frame's escape has
            already handed the pointer back before anything draws, and before the
