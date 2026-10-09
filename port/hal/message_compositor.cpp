@@ -3397,7 +3397,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                    no 3D layer in the picture): the old unconditional write */
                 for (int hy = hy0; hy < hy1; ++hy)
                     for (int dx = 0; dx < bw; ++dx) {
-                        const int hy = y * sy + dy, hx = hx0 + dx;
+                        const int hx = hx0 + dx;
                         if (ovl3d) {
                             fb.px[hy][hx] = (c & 0x00FFFFFFu) | (GX_OV_FRONT << 24);
                             if (bm_on) {
@@ -3422,7 +3422,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
             /* BEHIND the 3D layer: it may only fill where 3D drew nothing */
             for (int hy = hy0; hy < hy1; ++hy)
                 for (int dx = 0; dx < bw; ++dx) {
-                    const int hy = y * sy + dy, hx = hx0 + dx;
+                    const int hx = hx0 + dx;
                     if (ovl3d) {
                         fb.px[hy][hx] = (c & 0x00FFFFFFu) | (GX_OV_BEHIND << 24);
                         if (bm_on) {
