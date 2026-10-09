@@ -21,7 +21,7 @@ on the exe), so this file judges the whole run again:
   - THE MATCH RAN PAST 60 s: its MATCH OVER frame is >= 1800 (30 fps), so the
     launcher's 60 s watchdog window was crossed with the game alive
   - the lobby never posted `failed` for the match (no_pairing / spawn_failed /
-    wrong_player_count) and posted ONE result whose win= is time-up
+    wrong_player_count) and posted ONE result whose win= is time-up (or draw: ROOMS1 posts a tie for a nobody-scores match)
   - every launcher's room read the result ('Match over')
   - the games' env was the arena plan's: SM64DS_VS_NETMODE=arena, the arena digest
   - must-FAIL control: the same judge on the logs with one console's referee
@@ -110,8 +110,9 @@ def judge_run(text, rundir, n, min_frame=1800):
     failed = re.findall(r"(?m)^.*room \S+ failed match=.*$", ll)
     ok(not failed, "the lobby never failed the match (%s)" % ((failed[:1] or ["-"])[0].strip()[:100]))
     res = re.findall(r"(?m)^.*room \S+ result match=.*$", ll)
-    ok(len(res) >= 1 and all("win=time-up" in x for x in res),
-       "the lobby posted a time-up result (%d line(s): %s)" % (len(res), (res[:1] or ["-"])[0].strip()[:100]))
+    # ROOMS1: a match nobody scores in posts win=draw (a tie), not time-up; both are the clock ending the match
+    ok(len(res) >= 1 and all(("win=time-up" in x or "win=draw" in x) for x in res),
+       "the lobby posted a time-up or draw result (%d line(s): %s)" % (len(res), (res[:1] or ["-"])[0].strip()[:100]))
     arm = re.findall(r"(?m)^.*room \S+ arm match=.*$", ll)
     ok(bool(arm) and "netmode=arena" in arm[-1], "the lobby armed the match as arena")
     for k in range(n):
