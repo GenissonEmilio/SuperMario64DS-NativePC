@@ -114,6 +114,15 @@ GRAB_SPEED_MAX = 0x40000        # the fastest launch the ROM's throws can give
 STOMP_MIN_MS = 250              # one stomp per stomper and victim per this long
 STOMP_REACH_H = 130             # body radii 40 + 40, a margin for the drawn frame
 STOMP_ABOVE_MIN = 10            # the ROM's 0xa000 (10 units): the stomper this far above
+CAP_R = 200                     # a cap is taken from this far (cap cylinder 50 + body 40, margin)
+CAP_FLIGHT_SLACK = 1500         # a knocked-off cap flies and slides (down a slope too): it is found this far from the pop point
+CAP_FLIGHT_MS = 7000            # ... for as long as it lies (CAP_LIFE_MS)
+CAP_RESPAWN_MS = 1500           # a taken placed cap is back this long after the stamp
+CAP_LIFE_MS = 7000              # a knocked-off cap lies this long (the ROM's 210 frames)
+CAP_WORN_MS = 3000              # CAP_DROP: the seat's own SYNS showed that cap this recently
+CAP_HURT_EVIDENCE_MS = 1500     # ... and showed a hurt this recently
+CAP_DROP_WAIT_MS = 150          # a CAP_DROP whose evidence has not arrived yet waits this long
+CAP_DROP_MIN_MS = 1000          # one CAP_DROP per seat per this long
 
 FIX = 4096                      # Fix12
 POS_LIMIT = POS_LIMIT_UNITS * FIX
@@ -156,15 +165,17 @@ P_FIRE, P_WINGS, P_METAL, P_VANISH, P_MEGA = 0x01, 0x02, 0x04, 0x08, 0x10
 C_READY, C_MARKER_BREAK, C_GRAB, C_HIT, C_HURT_SELF, C_PIT, C_QUIT = range(1, 8)
 C_EAT, C_SPIT, C_SWALLOW, C_ESCAPE = 8, 9, 10, 11
 C_CATCH, C_THROW, C_SWING, C_BREAK, C_STOMP = 12, 13, 14, 15, 16
+C_CAP_TAKE, C_CAP_DROP = 17, 18
 CLAIM_NAMES = {1: "READY", 2: "MARKER_BREAK", 3: "GRAB", 4: "HIT",
                5: "HURT_SELF", 6: "PIT", 7: "QUIT", 8: "EAT", 9: "SPIT",
                10: "SWALLOW", 11: "ESCAPE", 12: "CATCH", 13: "THROW",
-               14: "SWING", 15: "BREAK", 16: "STOMP"}
+               14: "SWING", 15: "BREAK", 16: "STOMP", 17: "CAP_TAKE",
+               18: "CAP_DROP"}
 # events
 (EV_START, EV_STAR_WAKE, EV_MARKER_BROKEN, EV_STAR_TAKEN, EV_DENY, EV_HIT,
  EV_CLASH, EV_SPILL, EV_MATCH_OVER, EV_LEAVE, EV_JOIN, EV_STAR_STATE,
  EV_ACCEPTED, EV_EATEN, EV_RELEASED, EV_GRABBED, EV_THROWN,
- EV_STOMPED) = range(1, 19)
+ EV_STOMPED, EV_CAP_TAKEN, EV_CAP_DROPPED, EV_CAP_STATE) = range(1, 22)
 # deny reasons
 (D_STALE, D_GONE, D_LOST, D_RANGE, D_STATE, D_INVULN, D_MISMATCH,
  D_UNSUPPORTED, D_BAD, D_TOO_OLD, D_SELF) = range(1, 12)
@@ -259,6 +270,9 @@ for _i, _n in enumerate(STATE_NAMES):
     else:
         SPEED_CLASS.append("air")
 HURT_IDX = _idx_set(["St_Hurt", "St_HurtWater"])
+# VSREF3: any state a hurt body is in (the ROM pops the cap from St_Hurt_Init)
+CAP_HURT_IDX = _idx_set(["St_Hurt", "St_HurtWater", "St_Electrocute",
+                         "St_BurnFire", "St_BurnLava", "St_DeadHit"])
 # GRAB1: a catch needs a Wario in a punch or a dive, and a victim in the stun a
 # Wario hit leaves (St_Hurt, phase 2) or in St_DizzyStars; a hold shows as
 # St_HoldLight / St_SwingPlayer / St_Throw on the holder, St_Grabbed on the victim
@@ -272,6 +286,60 @@ LOOK_WARIO = 2
 GROUND_POUND_IDX = _idx_set(["St_GroundPound"])
 YOSHI_POWER_IDX = _idx_set(["St_YoshiPower"])
 NC_ATTACK_IDX = _idx_set(NC_ATTACK_STATES)
+
+# The caps each arena map places, cut from the ROM's own level data (VSREF3
+# census): map -> [(slot, x, y, z, param1)] in whole units; slot is the actor's
+# death-table id (Actor+0xce, distinct for every cap of a map, so five caps
+# stacked on one spot stay apart) and the cap's id is slot + 1. param1 is the
+# ROM's own (type | model << 8). A map with no entry is judged without a table:
+# the first claim names the cap (its place hash) and nothing can be range-checked.
+CAP_MAPS = {
+    0: [
+        (2, -1299, 729, 3236, 0x204),
+        (3, 6048, 449, 414, 0x004),
+        (4, 2292, 43, 4544, 0x104),
+        (5, -4562, 590, 4628, 0x204),
+        (6, 150, 964, 725, 0x004),
+        (7, 804, 647, 2974, 0x104),
+    ],
+    1: [
+        (5, -100, 853, -1900, 0x204),
+        (6, -900, 590, -1300, 0x104),
+        (7, 341, 356, -1106, 0x004),
+        (8, -2614, 158, 2208, 0x004),
+        (9, 297, 100, 3606, 0x104),
+        (10, 3700, 94, 300, 0x204),
+    ],
+    2: [
+        (0, 3750, 6008, -5800, 0x204),
+        (1, 3750, 6008, -5200, 0x104),
+        (2, 3750, 6000, -5500, 0x004),
+        (3, -6214, -4380, 5849, 0x204),
+        (4, -5938, -4380, 5361, 0x104),
+        (5, -6476, -4380, 5341, 0x004),
+        (6, -6214, -4380, 5849, 0x204),
+        (7, -5938, -4380, 5361, 0x104),
+        (8, -6476, -4380, 5341, 0x004),
+        (9, -6214, -4380, 5849, 0x204),
+        (10, -5938, -4380, 5361, 0x104),
+        (11, -6476, -4380, 5341, 0x004),
+        (12, -6214, -4380, 5849, 0x204),
+        (13, -5938, -4380, 5361, 0x104),
+        (14, -6476, -4380, 5341, 0x004),
+    ],
+    3: [
+        (5, -300, 0, -300, 0x004),
+        (6, -1050, 408, 1000, 0x104),
+        (7, 1000, 408, -1050, 0x204),
+        (8, -300, 0, -300, 0x004),
+        (9, -400, 0, 1800, 0x104),
+        (10, 1800, 0, -400, 0x204),
+    ],
+}
+CAP_PLACED_MAX = 31             # ids 1..31 are placed caps, 32..255 knocked-off ones
+CAP_DROP_BASE = 32
+CAP_POP_UP = 0x82000            # the ROM's pop point: the body's y + 130 units
+LOOK_NONE = 0xFF
 
 STAR_ORDERS = [
     [0, 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0],
@@ -357,6 +425,10 @@ class Seat(object):
         self.eat_target = None      # ... and whom it ate (HIT vs EAT order)
         self.speed_win = deque(maxlen=SPEED_AVG_FRAMES)
         self.speed_logged = -1e9
+        self.worn_look = None       # VSREF3: the cap look my own SYNS showed last (0..2)
+        self.worn_rt = -1e9         # ... and when
+        self.drop_frame = -1        # my_frame of my last granted CAP_DROP
+        self.drop_rt = -1e9         # ... and when
 
     def cap(self):
         if self.rtt_min is None:
@@ -410,6 +482,28 @@ class Star(object):
 class Claim(object):
     __slots__ = ("seat", "kind", "target", "cid", "aux", "stamp", "frame",
                  "ref_frame", "arrival", "resolve_at", "order")
+
+
+class Cap(object):
+    """One cap the referee tracks: a cap the arena places (ids 1..31) or one a
+    hit knocked off a player's head (32..255)."""
+    __slots__ = ("cid", "placed", "x", "y", "z", "known", "look", "hash",
+                 "taken", "taken_by", "taken_stamp", "avail_at", "born",
+                 "expires")
+
+    def __init__(self, cid, placed, rt):
+        self.cid = cid
+        self.placed = placed
+        self.x = self.y = self.z = 0
+        self.known = False          # its position is on record (range checks)
+        self.look = LOOK_NONE
+        self.hash = 0
+        self.taken = False
+        self.taken_by = 0xFF
+        self.taken_stamp = 0
+        self.avail_at = 0
+        self.born = rt
+        self.expires = 0
 
 
 class Referee(object):
@@ -498,6 +592,9 @@ class Referee(object):
         self.scores = [0] * SEATS
         self.progress = 0
         self.stars = {}
+        self.caps = {}              # VSREF3: cap id -> Cap
+        self.cap_wait = []          # CAP_DROP claims waiting for their evidence
+        self.next_cap = CAP_DROP_BASE
         self.taken = {}             # inst -> (winner seat, stamp), recent
         self.taken_order = deque()
         self.broken = {}            # inst -> breaker seat
@@ -522,6 +619,8 @@ class Referee(object):
             s.holding = None
             s.last_stomp = {}
             s.eat_stamp = s.eat_target = None
+            s.worn_look, s.worn_rt, s.drop_frame, s.drop_rt = (
+                None, -1e9, -1, -1e9)
 
     def _start(self, rt):
         cfg = self.cfg
@@ -551,6 +650,26 @@ class Referee(object):
                  % (self.code, sorted(self.roster), cfg[0], cfg[1], cfg[2],
                     self.order_row))
         self._wake_next(rt)
+        self._cap_table(cfg[0], rt)
+
+    def _cap_table(self, map_id, rt):
+        """The arena's placed caps, ids 1.. in table order."""
+        self.caps = {}
+        for (slot, x, y, z, param1) in CAP_MAPS.get(map_id, ()):
+            if not 0 <= slot < CAP_PLACED_MAX:
+                continue
+            cap = Cap(slot + 1, True, rt)
+            cap.x, cap.y, cap.z = x * FIX, y * FIX, z * FIX
+            cap.known = True
+            look = (param1 >> 8) & 0xF
+            cap.look = look if look < 3 else LOOK_NONE
+            cap.hash = self.cap_hash(slot, x, z)
+            self.caps[cap.cid] = cap
+
+    @staticmethod
+    def cap_hash(slot, x_units, z_units):
+        """The place hash a CAP_TAKE carries for a placed cap."""
+        return (int(slot) & 0xFF) | (((int(x_units) ^ int(z_units)) & 0xFF) << 8)
 
     @staticmethod
     def _rules_word(cfg):
@@ -754,6 +873,9 @@ class Referee(object):
         smp.look = f[4]
         smp.vy = f[10]
         s.hist.append(smp)
+        if smp.look in (0, 1, 2) and frame > s.drop_frame:
+            s.worn_look = smp.look      # VSREF3: a cap on its head, by its own word
+            s.worn_rt = rt
         if last is not None and self.state == MS_RUNNING and seat in self.roster:
             self._speed_check(s, last, smp, rt)
 
@@ -872,7 +994,7 @@ class Referee(object):
         c.stamp = st
         s.claims += 1
         if kind in (C_HURT_SELF, C_PIT, C_QUIT, C_SPIT, C_SWALLOW, C_ESCAPE,
-                    C_THROW, C_SWING, C_BREAK):
+                    C_THROW, C_SWING, C_BREAK, C_CAP_DROP):
             # nobody contends these: decide now
             self._decide(c, rt)
             self._flush(rt)
@@ -901,6 +1023,7 @@ class Referee(object):
             self._presence(rt)
             self._hit_checks(rt)
             self._grab_checks(rt)
+            self._cap_checks(rt)
             if self.match_ms and self.state == MS_RUNNING:
                 end = self.t0 + self.match_ms
                 if rt >= end + HOLD_MAX_MS:
@@ -1010,6 +1133,16 @@ class Referee(object):
             recs.append(self._snap_record(
                 EV_STAR_STATE, st.owner, inst, st.state, st.marker,
                 st.star_id, 0, int(st.since), st.x, st.y, st.z))
+        for cid in sorted(self.caps):
+            cap = self.caps[cid]
+            if cap.placed and cap.taken and rt < cap.avail_at:
+                recs.append(self._snap_record(
+                    EV_CAP_STATE, 0xFF, cid, 1, int(cap.avail_at - rt),
+                    cap.look, 0, int(rt), cap.x, cap.y, cap.z))
+            elif not cap.placed:
+                recs.append(self._snap_record(
+                    EV_CAP_STATE, 0xFF, cid, 2, int(max(0, cap.expires - rt)),
+                    cap.look, 0, int(rt), cap.x, cap.y, cap.z))
         if self.over_event is not None:
             q, rec = self.over_event
             recs.append(rec[:0] + struct.pack("<H", 0) + rec[2:])
@@ -1159,6 +1292,10 @@ class Referee(object):
             self._let_go(c, rt)
         elif k == C_STOMP:
             self._stomp(c, rt)
+        elif k == C_CAP_TAKE:
+            self._cap_take(c, rt)
+        elif k == C_CAP_DROP:
+            self._cap_drop(c, rt)
         else:
             self._deny(c, D_UNSUPPORTED, rt)
 
@@ -1637,6 +1774,155 @@ class Referee(object):
                          "reported" % (self.code, v.seat, v.grabbed_by))
                 self._end_hold(v.seat, rt)
 
+    # ---- VSREF3: caps
+
+    def _cap_take(self, c, rt):
+        """A claimant's body touched a cap and its ROM pickup started.  The
+        earliest stamp wins (the pending queue orders them); a cap that is not
+        there, is taken, is out of reach or whose place hash differs is refused,
+        and so is a claimant that may not act."""
+        cid = c.target
+        if cid == 0:
+            self._deny(c, D_BAD, rt)
+            return
+        cap = self.caps.get(cid)
+        if cap is None:
+            if cid <= CAP_PLACED_MAX and not CAP_MAPS.get(
+                    self.cfg[0] if self.cfg else -1):
+                # a map with no table: the first claim names the cap
+                cap = Cap(cid, True, rt)
+                cap.hash = c.aux
+                cap.look = LOOK_NONE
+                self.caps[cid] = cap
+            else:
+                self._deny(c, D_GONE, rt)
+                return
+        if cap.placed and cap.known and c.aux != cap.hash:
+            self._deny(c, D_BAD, rt)
+            return
+        if cap.taken and c.stamp >= cap.avail_at:
+            cap.taken = False                   # it has come back
+        if cap.taken:
+            if c.stamp - cap.taken_stamp < 1000:
+                self._deny(c, D_LOST, rt, cap.taken_by)
+            else:
+                self._deny(c, D_GONE, rt)
+            return
+        s = self.seats[c.seat]
+        smp, why = self._usable(s, c.frame)
+        if why:
+            self._deny(c, why, rt, why=self._why_state(s, smp)
+                       if why == D_STATE else None)
+            return
+        if cap.known:
+            limit = CAP_R
+            if not cap.placed and rt - cap.born <= CAP_FLIGHT_MS:
+                limit += CAP_FLIGHT_SLACK
+            d = _dist3(smp, cap) / FIX
+            if d > limit:
+                self._deny(c, D_RANGE, rt, why="cap %d dist=%d limit=%d"
+                           % (cid, d, limit))
+                return
+        cap.taken = True
+        cap.taken_by = c.seat
+        cap.taken_stamp = c.stamp
+        respawn = 0
+        if cap.placed:
+            cap.avail_at = c.stamp + CAP_RESPAWN_MS
+            respawn = CAP_RESPAWN_MS
+        else:
+            del self.caps[cid]
+        if cap.look in (0, 1, 2):
+            s.worn_look, s.worn_rt = cap.look, rt
+        ev = self._emit(EV_CAP_TAKEN, c.seat, cid, cap.look, c.cid, respawn,
+                        0, c.stamp, smp.x, smp.y, smp.z)
+        self._record(c, ev)
+
+    def _cap_hurt_evidence(self, s, rt):
+        """Did this seat's own SYNS show a hurt lately?"""
+        for x in s.hist:
+            if rt - x.rt <= CAP_HURT_EVIDENCE_MS and (
+                    x.flags & F_IN_HURT or x.state in CAP_HURT_IDX):
+                return True
+        return False
+
+    def _cap_drop(self, c, rt, final=False):
+        """The ROM popped a hurt seat's cap (St_Hurt_Init).  Granted only to a
+        seat that wore that cap by its own word, was seen hurt, and has not
+        dropped one in the last CAP_DROP_MIN_MS; the pop point is the referee's
+        own sample of the seat, the angles are the claim's."""
+        s = self.seats[c.seat]
+        look = c.target
+        if look not in (0, 1, 2):
+            self._deny(c, D_BAD, rt)
+            return
+        if rt - s.drop_rt < CAP_DROP_MIN_MS:
+            self._deny(c, D_STATE, rt, why="a cap came off %d ms ago"
+                       % (rt - s.drop_rt))
+            return
+        if s.worn_look != look or rt - s.worn_rt > CAP_WORN_MS:
+            self._deny(c, D_STATE, rt, why="that cap is not on this seat's head")
+            return
+        if not self._cap_hurt_evidence(s, rt):
+            if not final:
+                self.cap_wait.append((rt + CAP_DROP_WAIT_MS, c))
+                s.pending_ids.add(c.cid)
+                return
+            self._deny(c, D_STATE, rt, why="not hurt")
+            return
+        smp = s.sample_at(c.frame) or s.newest()
+        if smp is None:
+            self._deny(c, D_STALE, rt)
+            return
+        cid = self._alloc_cap()
+        cap = Cap(cid, False, rt)
+        cap.x, cap.y, cap.z = smp.x, smp.y + CAP_POP_UP, smp.z
+        cap.known = True
+        cap.look = look
+        cap.expires = rt + CAP_LIFE_MS
+        self.caps[cid] = cap
+        s.worn_look, s.worn_rt = None, -1e9
+        s.drop_frame = c.frame
+        s.drop_rt = rt
+        ev = self._emit(EV_CAP_DROPPED, c.seat, cid, look, c.cid, c.aux,
+                        c.ref_frame & 0xFFFF, int(rt), cap.x, cap.y, cap.z)
+        self._record(c, ev)
+
+    def _alloc_cap(self):
+        for _ in range(256 - CAP_DROP_BASE):
+            cid = self.next_cap
+            self.next_cap += 1
+            if self.next_cap > 255:
+                self.next_cap = CAP_DROP_BASE
+            if cid not in self.caps:
+                return cid
+        # all taken (cannot happen at 7 s a life): the oldest goes
+        old = min((k for k in self.caps if k >= CAP_DROP_BASE),
+                  key=lambda k: self.caps[k].born)
+        del self.caps[old]
+        return old
+
+    def _cap_checks(self, rt):
+        """Knocked-off caps run out; a CAP_DROP waiting for its evidence is
+        decided when the wait is over."""
+        for cid in [k for k, v in self.caps.items()
+                    if not v.placed and rt >= v.expires]:
+            del self.caps[cid]
+        if self.cap_wait:
+            ready = [w for w in self.cap_wait if w[0] <= rt]
+            self.cap_wait = [w for w in self.cap_wait if w[0] > rt]
+            for _, c in ready:
+                s = self.seats.get(c.seat)
+                if s is None:
+                    continue
+                s.pending_ids.discard(c.cid)
+                if c.seat not in self.roster:
+                    continue
+                if self.state == MS_RUNNING:
+                    self._cap_drop(c, rt, final=True)
+                else:
+                    self._deny(c, D_STALE, rt)
+
     # ---- stars
 
     def _alloc_inst(self):
@@ -1812,6 +2098,15 @@ class Referee(object):
                     bad.append("hold pair")
         if len(self.pending) > PENDING_PER_SEAT * SEATS:
             bad.append("pending queue")
+        if len(self.caps) > 255 or len(self.cap_wait) > PENDING_PER_SEAT * SEATS:
+            bad.append("caps")
+        for cid, cap in self.caps.items():
+            if cap.cid != cid or not 1 <= cid <= 255:
+                bad.append("cap id")
+            if cap.placed != (cid <= CAP_PLACED_MAX):
+                bad.append("cap kind")
+            if cap.taken and not cap.placed:
+                bad.append("taken knocked-off cap kept")
         return bad
 
     def stats(self):

@@ -112,6 +112,18 @@ struct VsRefStats {
                        spills, syno_tx, syno_rx,
                        frames_bad, events_bad, syno_bad;  // dropped by the field checks
     // FIELD4 F9-b / F9-c: claims never made because the referee would refuse them
+    unsigned long long stars_shown;     // VSREF3 V4: stars kept over another seat's head
+    unsigned long long shown_frames;    // ... and the frames they were drawn there
+    // VSREF3 caps
+    unsigned long long cap_claims;      // CAP_TAKE claims I made (my body's pickups)
+    unsigned long long cap_lost;        // ... that lost and were undone
+    unsigned long long cap_taken;       // CAP_TAKEN events applied
+    unsigned long long cap_removed;     // ... that took a cap off my screen
+    unsigned long long cap_dropped;     // CAP_DROPPED events applied
+    unsigned long long cap_drop_claims; // CAP_DROP claims I made (my own cap popped)
+    unsigned long long cap_copies;      // knocked-off caps I spawned for another seat
+    unsigned long long cap_respawns;    // placed caps I put back
+    unsigned long long cap_puppet_touches;  // puppet contacts on a cap cleared
     unsigned long long touches_gated;   // a star / marker touch while my body may not act
     unsigned long long hits_gated;      // an attack contact on a puppet that cannot be hit
 };

@@ -37,11 +37,12 @@ S_EVT = struct.Struct("<HBBBBHHHIiii")
 
 EV = dict(START=1, STAR_WAKE=2, MARKER_BROKEN=3, STAR_TAKEN=4, DENY=5, HIT=6,
           CLASH=7, SPILL=8, MATCH_OVER=9, LEAVE=10, JOIN=11, STAR_STATE=12,
-          ACCEPTED=13, EATEN=14, RELEASED=15, GRABBED=16, THROWN=17, STOMPED=18)
+          ACCEPTED=13, EATEN=14, RELEASED=15, GRABBED=16, THROWN=17, STOMPED=18,
+          CAP_TAKEN=19, CAP_DROPPED=20, CAP_STATE=21)
 EVN = dict((v, k) for k, v in EV.items())
 CL = dict(READY=1, MARKER_BREAK=2, GRAB=3, HIT=4, HURT_SELF=5, PIT=6, QUIT=7,
           EAT=8, SPIT=9, SWALLOW=10, ESCAPE=11, CATCH=12, THROW=13, SWING=14,
-          BREAK=15, STOMP=16)
+          BREAK=15, STOMP=16, CAP_TAKE=17, CAP_DROP=18)
 DENY = dict(STALE=1, GONE=2, LOST=3, RANGE=4, STATE=5, INVULN=6, MISMATCH=7,
             UNSUPPORTED=8, BAD=9, TOO_OLD=10, SELF=11)
 
@@ -49,6 +50,7 @@ DENY = dict(STALE=1, GONE=2, LOST=3, RANGE=4, STATE=5, INVULN=6, MISMATCH=7,
 ST_WALK, ST_WAIT, ST_PUNCH, ST_HURT, ST_DIVE = 14, 15, 59, 7, 62
 ST_JUMP, ST_SLIDE = 18, 35
 ST_GRABBED, ST_THROWN, ST_HOLDLIGHT, ST_SWING = 16, 20, 37, 65
+ST_NOCONTROL = 24
 
 
 def load_relay(env=None):
@@ -296,7 +298,8 @@ class Console(object):
             if e["c"] != cid:
                 continue
             n = e["name"]
-            if n in ("DENY", "STAR_TAKEN", "MARKER_BROKEN", "ACCEPTED"):
+            if n in ("DENY", "STAR_TAKEN", "MARKER_BROKEN", "ACCEPTED",
+                     "CAP_TAKEN", "CAP_DROPPED"):
                 who = (e["seat"],)
             elif n in ("HIT", "CLASH", "EATEN", "GRABBED", "STOMPED"):
                 who = (e["a"],)
@@ -331,9 +334,9 @@ def streaming(rig, consoles, secs, ping_every=0.5):
 
 
 def match(n=2, first_to_n=0, time_s=120, markers=5, env=None, code="ARENA01",
-          cap=None):
+          cap=None, mod=None):
     """A rig with n consoles in a RUNNING match (countdown done)."""
-    rig = Rig(env=env)
+    rig = Rig(mod, env=env)
     cs = [Console(rig, code) for _ in range(n)]
     streaming(rig, cs, 0.6)
     for c in cs:
@@ -1965,12 +1968,228 @@ def u_land_speed(mod):
     return res
 
 
+
+def u_caps(mod):
+    res = Result("caps (VSREF3): CAP_TAKE contention, forged claims, CAP_DROP, respawn, snapshot")
+    rf = mod.referee
+    saved = dict(rf.CAP_MAPS)
+    # three placed caps (slots 0, 1, 2): Mario look at (-200, 0), Wario look at (0, 300), Luigi at (200, 0)
+    rf.CAP_MAPS[0] = [(0, -200, 0, 0, 0x004), (1, 0, 0, 300, 0x204), (2, 200, 0, 0, 0x104)]
+    H0 = rf.Referee.cap_hash
+    H = lambda x, z, slot=0: H0(slot, x, z)
+    try:
+        rig, (a, b) = match(2, mod=mod)
+        ref = rig.ref("ARENA01")
+        res.check(sorted(ref.caps) == [1, 2, 3], "the table makes ids 1..3 (%s)" % sorted(ref.caps))
+        res.check([ref.caps[i].look for i in (1, 2, 3)] == [0, 2, 1], "looks come from param1")
+        a.pos, b.pos = [-200, 0, 0], [-180, 0, 10]
+        streaming(rig, [a, b], 0.2)
+
+        def take(who, cid, aux=None, stamp=None, frame=None, wait=0.3):
+            n = who.claim(CL["CAP_TAKE"], cid, aux=H(-200, 0) if aux is None else aux,
+                          stamp=stamp, frame=frame)
+            streaming(rig, [a, b], wait)
+            return who.verdict(n)
+
+        # ---- forged claims first: none of them touches the cap
+        v = take(a, 0)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["BAD"], "cap id 0: DENY BAD (%s)" % v)
+        v = take(a, 9)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["GONE"], "a cap that is not there (9): DENY GONE (%s)" % v)
+        v = take(a, 250)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["GONE"], "cap 250 (never issued): DENY GONE (%s)" % v)
+        v = take(a, 1, aux=H(-200, 0) ^ 0x55)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["BAD"], "wrong place hash: DENY BAD (%s)" % v)
+        a.pos = [-200 + 700, 0, 0]
+        streaming(rig, [a, b], 0.3)
+        v = take(a, 1)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["RANGE"], "700 units from the cap: DENY RANGE (%s)" % v)
+        a.pos = [-200, 0, 0]
+        a.state = ST_HURT
+        a.flags |= 0x20
+        streaming(rig, [a, b], 0.3)
+        v = take(a, 1)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"], "a hurt claimant: DENY STATE (%s)" % v)
+        a.state = ST_WAIT
+        a.flags &= ~0x20
+        streaming(rig, [a, b], 0.3)
+        res.check(not ref.caps[1].taken, "no forged claim took cap 1")
+        res.check(not a.find("CAP_TAKEN") and not b.find("CAP_TAKEN"), "no CAP_TAKEN event yet")
+
+        # ---- the honest take, then the loser
+        v = take(a, 1)
+        res.check(v and v["name"] == "CAP_TAKEN" and v["a"] == 1 and v["b"] == 0 and v["d"] == rf.CAP_RESPAWN_MS
+                  and v["seat"] == a.seat, "a takes cap 1: CAP_TAKEN (%s)" % v)
+        res.check(b.find("CAP_TAKEN", a=1, seat=a.seat), "the other console hears it too")
+        v = take(b, 1)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["LOST"] and v["d"] == a.seat,
+                  "b, after a: DENY LOST naming a (%s)" % v)
+        streaming(rig, [a, b], 0.8)
+        v = take(b, 1)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["GONE"], "a second later: DENY GONE (%s)" % v)
+        # ---- it is back after CAP_RESPAWN_MS
+        streaming(rig, [a, b], 1.0)
+        v = take(b, 1)
+        res.check(v and v["name"] == "CAP_TAKEN" and v["seat"] == b.seat, "back after the respawn window: b takes it (%s)" % v)
+
+        # ---- a race: the earlier stamp wins even when its claim arrives second
+        streaming(rig, [a, b], 2.2)
+        sa = a.ref_now()
+        ca = a.claim(CL["CAP_TAKE"], 1, aux=H(-200, 0), stamp=sa)
+        cb = b.claim(CL["CAP_TAKE"], 1, aux=H(-200, 0), stamp=(b.ref_now() - 30) & 0xFFFFFFFF)
+        streaming(rig, [a, b], 0.4)
+        va, vb = a.verdict(ca), b.verdict(cb)
+        res.check(vb and vb["name"] == "CAP_TAKEN" and va and va["name"] == "DENY" and va["b"] == DENY["LOST"]
+                  and va["d"] == b.seat, "race: the earlier stamp (b) takes it, a is told LOST (%s / %s)" % (va, vb))
+        n_taken = len([e for e in a.events if e["name"] == "CAP_TAKEN" and e["seq"] >= vb["seq"]])
+        res.check(n_taken == 1, "exactly one CAP_TAKEN for that race (%d)" % n_taken)
+
+        # ---- CAP_DROP: forged first
+        a.look = 3
+        streaming(rig, [a, b], 0.3)
+        n = a.claim(CL["CAP_DROP"], 2, aux=0x1234)
+        streaming(rig, [a, b], 0.3)
+        v = a.verdict(n)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"], "CAP_DROP with no cap on: DENY STATE (%s)" % v)
+        a.look = 2
+        streaming(rig, [a, b], 0.3)
+        n = a.claim(CL["CAP_DROP"], 2, aux=0x1234)
+        streaming(rig, [a, b], 0.5)
+        v = a.verdict(n)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+                  "CAP_DROP while not hurt (waited, then refused): DENY STATE (%s)" % v)
+        n = a.claim(CL["CAP_DROP"], 3)
+        streaming(rig, [a, b], 0.2)
+        v = a.verdict(n)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["BAD"], "CAP_DROP look 3: DENY BAD (%s)" % v)
+        a.state, a.flags = ST_HURT, a.flags | 0x20
+        streaming(rig, [a, b], 0.1)
+        n = a.claim(CL["CAP_DROP"], 1, aux=0x1234)
+        streaming(rig, [a, b], 0.4)
+        v = a.verdict(n)
+        res.check(v and v["name"] == "DENY" and v["b"] == DENY["STATE"],
+                  "CAP_DROP naming a cap that is not the one worn (look 1 vs 2): DENY STATE (%s)" % v)
+        # the honest drop
+        a.pos = [50, 0, 60]
+        streaming(rig, [a, b], 0.2)
+        n = a.claim(CL["CAP_DROP"], 2, aux=0x1234, ref_frame=5 | (7 << 16))
+        streaming(rig, [a, b], 0.4)
+        v = a.verdict(n)
+        res.check(v and v["name"] == "CAP_DROPPED" and v["seat"] == a.seat and v["b"] == 2 and v["a"] >= 32
+                  and v["d"] == 0x1234 and v["e"] == 5, "hurt wearer: CAP_DROPPED (%s)" % v)
+        res.check(v and abs(v["x"] - 50 * FIX) <= 2 * FIX and abs(v["z"] - 60 * FIX) <= 2 * FIX
+                  and v["y"] == 0x82000, "the pop point is the referee's own sample + 0x82000 (%s)" % v)
+        drop_id = v["a"]
+        res.check(b.find("CAP_DROPPED", a=drop_id), "the other console hears it")
+        # a resend of the same claim gets the same verdict, never a second cap
+        a.claim(CL["CAP_DROP"], 2, aux=0x1234, ref_frame=5 | (7 << 16), cid=n)
+        streaming(rig, [a, b], 0.3)
+        res.check(len(a.find("CAP_DROPPED")) == 1, "a resend makes no second cap")
+        # a fresh claim straight after: refused (nothing worn, 1 s limit)
+        n2 = a.claim(CL["CAP_DROP"], 2, aux=1)
+        streaming(rig, [a, b], 0.4)
+        v2 = a.verdict(n2)
+        res.check(v2 and v2["name"] == "DENY" and v2["b"] == DENY["STATE"], "a second drop at once: DENY STATE (%s)" % v2)
+        # the knocked-off cap: anyone near it may take it, once, and it never comes back
+        a.state, a.flags, a.look = ST_WAIT, a.flags & ~0x20, 3
+        b.pos = [60, 0, 60]
+        streaming(rig, [a, b], 0.3)
+        n3 = b.claim(CL["CAP_TAKE"], drop_id, aux=0)
+        streaming(rig, [a, b], 0.3)
+        v3 = b.verdict(n3)
+        res.check(v3 and v3["name"] == "CAP_TAKEN" and v3["a"] == drop_id and v3["b"] == 2 and v3["d"] == 0,
+                  "b takes the knocked-off cap: CAP_TAKEN, no respawn (%s)" % v3)
+        n4 = a.claim(CL["CAP_TAKE"], drop_id, aux=0)
+        streaming(rig, [a, b], 0.3)
+        v4 = a.verdict(n4)
+        res.check(v4 and v4["name"] == "DENY" and v4["b"] == DENY["GONE"], "a, afterwards: DENY GONE (%s)" % v4)
+        res.check(drop_id not in ref.caps, "the knocked-off cap left the table")
+
+        # ---- a knocked-off cap too far from the pop point, and one that ran out
+        a.look = 2
+        streaming(rig, [a, b], 0.3)
+        a.state, a.flags = ST_HURT, a.flags | 0x20
+        streaming(rig, [a, b], 0.2)
+        streaming(rig, [a, b], 1.0)       # the one-per-second limit
+        n = a.claim(CL["CAP_DROP"], 2, aux=7)
+        streaming(rig, [a, b], 0.4)
+        v = a.verdict(n)
+        res.check(v and v["name"] == "CAP_DROPPED", "second honest drop: CAP_DROPPED (%s)" % v)
+        id2 = v["a"] if v else 0
+        a.state, a.flags, a.look = ST_WAIT, a.flags & ~0x20, 3
+        b.pos = [2500, 0, 2500]
+        streaming(rig, [a, b], 2.5)       # well past where a cap can slide to
+        n5 = b.claim(CL["CAP_TAKE"], id2, aux=0)
+        streaming(rig, [a, b], 0.3)
+        v5 = b.verdict(n5)
+        res.check(v5 and v5["name"] == "DENY" and v5["b"] == DENY["RANGE"], "far (3400 units) from the knocked-off cap: DENY RANGE (%s)" % v5)
+        b.pos = [60, 0, 60]
+        streaming(rig, [a, b], 5.0)       # it lies CAP_LIFE_MS (7 s) in all
+        n6 = b.claim(CL["CAP_TAKE"], id2, aux=0)
+        streaming(rig, [a, b], 0.3)
+        v6 = b.verdict(n6)
+        res.check(v6 and v6["name"] == "DENY" and v6["b"] == DENY["GONE"], "past its life: DENY GONE (%s)" % v6)
+
+        # ---- a knocked-off cap slides down a slope: found 1000 units from its pop point, it is still takeable
+        a.look = 2
+        streaming(rig, [a, b], 0.3)
+        a.state, a.flags = ST_HURT, a.flags | 0x20
+        streaming(rig, [a, b], 1.2)
+        n = a.claim(CL["CAP_DROP"], 2, aux=8)
+        streaming(rig, [a, b], 0.4)
+        v = a.verdict(n)
+        res.check(v and v["name"] == "CAP_DROPPED", "third honest drop: CAP_DROPPED (%s)" % v)
+        id3 = v["a"] if v else 0
+        a.state, a.flags, a.look = ST_WAIT, a.flags & ~0x20, 3
+        b.pos = [1100, 0, 60]
+        streaming(rig, [a, b], 1.5)
+        n7 = b.claim(CL["CAP_TAKE"], id3, aux=0)
+        streaming(rig, [a, b], 0.3)
+        v7 = b.verdict(n7)
+        res.check(v7 and v7["name"] == "CAP_TAKEN" and v7["a"] == id3,
+                  "1050 units from the pop point, 1.8 s later (it slid): CAP_TAKEN (%s)" % v7)
+        b.pos = [60, 0, 60]
+        streaming(rig, [a, b], 0.2)
+
+        # ---- the snapshot a late console gets: a taken placed cap and a knocked-off one
+        a.look = 2
+        streaming(rig, [a, b], 0.3)
+        a.state, a.flags = ST_HURT, a.flags | 0x20
+        streaming(rig, [a, b], 1.2)
+        n = a.claim(CL["CAP_DROP"], 2, aux=9)
+        streaming(rig, [a, b], 0.4)
+        a.state, a.flags, a.look = ST_WAIT, a.flags & ~0x20, 3
+        b.pos = [-200, 0, 0]
+        streaming(rig, [a, b], 0.3)
+        n7 = b.claim(CL["CAP_TAKE"], 1, aux=H(-200, 0))
+        streaming(rig, [a, b], 0.3)
+        a.snap = []
+        ref._snapshot(a.seat, ref.rt(rig.now))
+        rig.deliver()
+        kinds = sorted((e["a"], e["b"]) for e in a.snap if e["name"] == "CAP_STATE")
+        res.check(len(kinds) == 2 and kinds[0][1] == 1 and kinds[1][1] == 2,
+                  "snapshot: CAP_STATE for the taken cap and the knocked-off one (%s)" % kinds)
+        res.check(all(e["seq"] == 0 for e in a.snap if e["name"] == "CAP_STATE"), "snapshot records are seq 0")
+
+        # ---- a flood of claims: bounded, refused, no exception, invariants hold
+        for i in range(300):
+            a.claim(CL["CAP_TAKE"], (i % 40), aux=i & 0xFFFF)
+            a.claim(CL["CAP_DROP"], i % 5, aux=i & 0xFFFF)
+        streaming(rig, [a, b], 1.0)
+        res.check(ref.invariants() == [], "invariants after a flood (%s)" % ref.invariants())
+        res.check(len(ref.cap_wait) <= 16 * 16, "the CAP_DROP wait list is bounded (%d)" % len(ref.cap_wait))
+    finally:
+        rf.CAP_MAPS.clear()
+        rf.CAP_MAPS.update(saved)
+    return res
+
+
 def run_unit():
     mod = load_relay()
     tests = (u_contract, u_handshake, u_routes, u_match, u_timeup,
              u_contention, u_hits, u_hit_nc, u_reliability, u_leave, u_ready,
              u_strikes, u_eat, u_grab, u_stomp, u_rematch, u_rejoin, u_hit_eat, u_star_flight,
-             u_eat_shield, u_land_speed)
+             u_eat_shield, u_land_speed, u_caps)
     results = []
     for t in tests:
         try:
@@ -2023,18 +2242,34 @@ def race_vectors(seed=7, races=200, rtts=((40, 125), (40, 40), (125, 125),
     return out
 
 
-def decide_race(mod, v):
+def decide_race(mod, v, caps=False):
     """Run one race through a real referee; returns the winning console
-    index (0 / 1)."""
-    rig, (a, b) = match(2, code="RACE0001")
+    index (0 / 1).  caps=True: the two consoles race for one cap (CAP_TAKE)
+    instead of a star (GRAB); the contention rule is the same."""
+    rf = mod.referee
+    saved = dict(rf.CAP_MAPS)
+    if caps:
+        rf.CAP_MAPS[0] = [(0, 0, 0, 0, 0x004)]
+    try:
+        return _decide_race(mod, v, caps)
+    finally:
+        rf.CAP_MAPS.clear()
+        rf.CAP_MAPS.update(saved)
+
+
+def _decide_race(mod, v, caps):
+    rig, (a, b) = match(2, code="RACE0001", mod=mod)
     ref = rig.ref("RACE0001")
     sa, sb = ref.seats[a.seat], ref.seats[b.seat]
     rig.no_pings = True
     sa.rtts.clear(); sa.rtts.append(v["rtt"][0]); sa.rtt_min = v["rtt"][0]
     sb.rtts.clear(); sb.rtts.append(v["rtt"][1]); sb.rtt_min = v["rtt"][1]
-    inst = a.find("STAR_WAKE")[-1]["a"]
-    a.claim(CL["MARKER_BREAK"], inst)
-    streaming(rig, [a, b], 0.3)
+    if caps:
+        inst = 1
+    else:
+        inst = a.find("STAR_WAKE")[-1]["a"]
+        a.claim(CL["MARKER_BREAK"], inst)
+        streaming(rig, [a, b], 0.3)
     # race times are relative to "now" in referee ms
     t_base = ref.rt(rig.now) + 100
     order = sorted([(v["arrive"][0], 0), (v["arrive"][1], 1)])
@@ -2046,12 +2281,14 @@ def decide_race(mod, v):
             rig.relay.tick(rig.now)
             rig.deliver()
         c = (a, b)[who]
-        cids[who] = c.claim(CL["GRAB"], inst,
+        cids[who] = c.claim(CL["CAP_TAKE"] if caps else CL["GRAB"], inst,
+                            aux=mod.referee.Referee.cap_hash(0, 0, 0) if caps else 0,
                             stamp=ref.seat_wire(c.seat, t_base
                                                 + v["stamp"][who] - 2000))
     streaming(rig, [a, b], 0.4)
     va, vb = a.verdict(cids[0]), b.verdict(cids[1])
-    wins = [va["name"] == "STAR_TAKEN", vb["name"] == "STAR_TAKEN"]
+    won = "CAP_TAKEN" if caps else "STAR_TAKEN"
+    wins = [va["name"] == won, vb["name"] == won]
     if sum(wins) != 1:
         return -1
     return 0 if wins[0] else 1
@@ -2061,6 +2298,9 @@ def run_vectors(mod, write=False, races=200):
     res = Result("contention vectors (M3 model, %d races per RTT pair)"
                  % races)
     vec = race_vectors(races=races)
+    capvec = race_vectors(seed=11, races=40)
+    for v in capvec:
+        v["winner"] = decide_race(mod, v, caps=True)
     by = {}
     two = 0
     for v in vec:
@@ -2076,6 +2316,11 @@ def run_vectors(mod, write=False, races=200):
                  % (k, ok, n, 100.0 * ok / n, 100.0 * aw / n))
         res.check(ok >= 0.95 * n, "rtt %s >= 95%% correct" % k)
     res.check(two == 0, "no race with two or zero winners (%d)" % two)
+    cap_two = sum(1 for v in capvec if v["winner"] < 0)
+    cap_ok = sum(1 for v in capvec if v["winner"] == v["truth"])
+    res.note("caps: %d/%d correct (%.1f%%)" % (cap_ok, len(capvec), 100.0 * cap_ok / len(capvec)))
+    res.check(cap_two == 0, "no cap race with two or zero winners (%d)" % cap_two)
+    res.check(cap_ok >= 0.95 * len(capvec), "cap races >= 95%% correct")
     if write:
         doc = {"about": "REFEREE1 contention vectors: two consoles race to "
                         "one star. Times in ms on one axis (the referee's "
@@ -2091,6 +2336,11 @@ def run_vectors(mod, write=False, races=200):
                      % json.dumps(doc["about"]))
             fh.write(",\n".join("  " + json.dumps(r, sort_keys=True)
                                 for r in vec))
+            fh.write("\n ],\n")
+            fh.write(' "cap_races_about": "VSREF3: the same model, two consoles race to one cap (CAP_TAKE)",\n')
+            fh.write(' "cap_races": [\n')
+            fh.write(",\n".join("  " + json.dumps(r, sort_keys=True)
+                                for r in capvec))
             fh.write("\n ]}\n")
         res.note("wrote %s (%d races)" % (os.path.basename(VECTORS),
                                           len(vec)))
@@ -2101,6 +2351,10 @@ def run_vectors(mod, write=False, races=200):
                     for r in doc["races"]] == [
                 (v["stamp"], v["arrive"], v["rtt"], v["winner"]) for v in vec]
             res.check(same, "arena_vectors.json matches this referee")
+            same_c = [(r["stamp"], r["arrive"], r["rtt"], r["winner"])
+                      for r in doc.get("cap_races", [])] == [
+                (v["stamp"], v["arrive"], v["rtt"], v["winner"]) for v in capvec]
+            res.check(same_c, "arena_vectors.json cap_races match this referee")
         except (OSError, ValueError, KeyError):
             res.check(False, "arena_vectors.json missing or unreadable")
     return res
@@ -2118,6 +2372,18 @@ def run_fuzz(mod, rounds=150000, seed=1):
     datagram; a broken referee invariant."""
     res = Result("fuzz: %d datagrams at arena + hub sessions" % rounds)
     rng = random.Random(seed)
+    # (VSREF3) a cap table, so the cap claims below are judged against caps
+    saved_caps = dict(mod.referee.CAP_MAPS)
+    mod.referee.CAP_MAPS[0] = [(0, -200, 0, 0, 0x004), (1, 0, 0, 300, 0x204),
+                               (2, 200, 0, 0, 0x104)]
+    try:
+        return _run_fuzz(mod, res, rounds, rng)
+    finally:
+        mod.referee.CAP_MAPS.clear()
+        mod.referee.CAP_MAPS.update(saved_caps)
+
+
+def _run_fuzz(mod, res, rounds, rng):
     rig = Rig(mod)
     viol = []
     cons = [Console(rig, "FUZZ0001") for _ in range(4)]       # honest
@@ -2131,10 +2397,13 @@ def run_fuzz(mod, rounds=150000, seed=1):
     # Instrument the referee: every event it ever makes, for the ledger
     # conservation and one-winner checks below.
     log = []
+    cap_log = []          # (etype, cap id, stamp) for the cap conservation check
     real_emit = ref._emit
 
     def emit(etype, seat, a=0, b=0, c=0, d=0, e=0, t=0, x=0, y=0, z=0):
         log.append((etype, seat, a, b, c, d, e))
+        if etype in (19, 20):
+            cap_log.append((etype, a, t, seat))
         return real_emit(etype, seat, a, b, c, d, e, t, x, y, z)
     ref._emit = emit
     digest = [100]
@@ -2175,10 +2444,12 @@ def run_fuzz(mod, rounds=150000, seed=1):
             c = rng.choice(cons)
             if c.seat is not None:
                 kind = (rng.choice([2, 2, 3, 3, 3, 4, 4, 5, 6, 8, 9, 10, 11,
-                                    12, 12, 13, 14, 15, 16, 16])
+                                    12, 12, 13, 14, 15, 16, 16, 17, 17, 17,
+                                    18, 18])
                         if rng.random() > 0.003 else 7)
                 tgt = rng.choice([rng.randrange(0, 20),
-                                  rng.choice(cons).seat or 0])
+                                  rng.choice(cons).seat or 0,
+                                  rng.randrange(0, 4), rng.randrange(30, 40)])
                 c.claim(kind, tgt, aux=rng.randrange(65536),
                         stamp=(ref.ref_ms(rig.now, c.seat)
                                - rng.randrange(-50, 400)) & 0xFFFFFFFF,
@@ -2186,7 +2457,10 @@ def run_fuzz(mod, rounds=150000, seed=1):
                         ref_frame=max(0, rng.choice(cons).frame
                                       - rng.randrange(0, 20)))
                 c.state = rng.choice([14, 15, 59, 62, 3, 7, 35, 18, 16, 37, 65])
-                c.look = rng.choice([2, 2, 3, 0])
+                c.look = rng.choice([2, 2, 3, 0, 1])
+                if rng.random() < 0.3:
+                    c.pos = [rng.choice([-200, 0, 200, 600]) + rng.uniform(-30, 30),
+                             0, rng.choice([0, 300]) + rng.uniform(-30, 30)]
                 c.invuln = rng.choice([0, 0, 0, 10])
             continue
         if r < 0.75:
@@ -2312,6 +2586,23 @@ def run_fuzz(mod, rounds=150000, seed=1):
             overs += 1
             if overs > 1:
                 viol.append("two MATCH_OVER in one match")
+    # caps: a placed cap is never taken twice inside its respawn window and a
+    # knocked-off cap is taken at most once
+    last_take = {}
+    dropped = set()
+    for etype, cid, t_, seat_ in cap_log:
+        if etype == 20:
+            dropped.add(cid)
+        elif cid >= 32:
+            if cid not in dropped:
+                viol.append("a knocked-off cap %d taken but never dropped" % cid)
+            dropped.discard(cid)
+        else:
+            if cid in last_take and t_ - last_take[cid] < mod.referee.CAP_RESPAWN_MS                     and t_ >= last_take[cid]:
+                viol.append("cap %d taken twice inside its respawn window" % cid)
+            last_take[cid] = t_
+    res.note("caps: %d CAP_TAKEN, %d CAP_DROPPED" % (
+        sum(1 for e in cap_log if e[0] == 19), sum(1 for e in cap_log if e[0] == 20)))
     res.note("matches %d, events %d, claims decided %d, STAR_TAKEN %d, "
              "SPILL %d, HIT %d, DENY %d" % (
                  matches, len(log), ref.n_verdicts,
