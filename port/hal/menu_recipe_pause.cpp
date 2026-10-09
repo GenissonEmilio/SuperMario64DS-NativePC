@@ -9,7 +9,7 @@
  * only says where its pieces land on one picture.
  *
  * STATES (data_0209f248 = Stage pause state; src/_ZN5Stage9PS_UpdateEv.cpp and atlas section 1):
- *   variant 1 castle main (state 0 init, 1)      plates y 32/72/112/152, paging arrows when !data_0209f2f0
+ *   variant 1 castle main (state 0 init, 1)      plates drawn y 24/64/104/144 (touch boxes y 32/72/112/152, 8 lower, as the ROM has them), paging arrows when !data_0209f2f0
  *   variant 2 course main (states 2 init, 3)     plates y 24/64/104/144
  *   variant 3 controller modes (7, 8)            top diagram + 3 mode rows + OK + Back
  *   variant 4 controller modes via Select        same, no Back (data_0209f218 != 0: PS_Init :94)
@@ -147,10 +147,10 @@ MenuPiece top_piece(int sx, int sy, int sw, int sh, uint8_t layers, const Cols &
     return p;
 }
 
-MenuPiece sub_piece(int sx, int sy, int sw, int sh, const Cols &C, int dy, int touch)
+MenuPiece sub_piece(int sx, int sy, int sw, int sh, const Cols &C, int dy, int touch, uint8_t layers = MENU_L_BG0 | MENU_L_BG1 | MENU_L_OBJ)
 {
     MenuPiece p = menu_piece_make(SRC_SUB, sx, sy, sw, sh, MENU_AX_R, MENU_AY_T, -C.marg, dy, C.b.n, C.b.d);
-    p.layers = MENU_L_BG0 | MENU_L_BG1 | MENU_L_OBJ;     /* plates, labels, the ROM's own arrows and star; never the minimap */
+    p.layers = layers;     /* plates + labels (+ the ROM's own star / arrows OBJs where a page has them); never the minimap */
     p.key_backdrop = 1;
     p.touch = (uint8_t)touch;
     return p;
@@ -181,18 +181,17 @@ void ok_box(int controller, short *x, short *w)
 
 /* ---- the builders ---------------------------------------------------------- */
 
-const int kTextX = 32, kTextY = 24, kTextW = 192, kTextH = 136;   /* top text block (BG3 + OBJ), clear of the band at y >= 165 and of the OBJ arrows at x < 30 and x > 226 */
+const int kTextX = 20, kTextY = 24, kTextW = 216, kTextH = 136;   /* top text block (BG3 + OBJ). Measured on the reference exe (lifted rows 36..147, text columns 27..228), clear of the bouncing band (rows 166..184) and of the two OBJ course arrows (columns 4..19 and 236..251) */
 
-void build_plates(MenuLayout *L, int variant, int py, const Hs *hs, int nhs, int back, int with_arrows)
+void build_plates(MenuLayout *L, int variant, int py, int ph, const Hs *hs, int nhs, int back, int with_arrows)
 {
-    const int ph = nhs == 4 ? 152 : 112;
     const Cols C = make_cols(L, kTextW, 240);
     const int hT = ceil_mul(kTextH, C.a);
     const int hA = with_arrows ? ceil_mul(32, C.a) : 0;
     const int gap = with_arrows ? 6 : 0;
     const int dy = top_dy(hT + gap + hA);
     menu_add_piece(L, top_piece(kTextX, kTextY, kTextW, kTextH, MENU_L_BG3 | MENU_L_OBJ, C, dy));
-    const int pl = menu_add_piece(L, sub_piece(8, py, 240, ph, C, top_dy(ceil_mul(ph, C.b)), 1));
+    const int pl = menu_add_piece(L, sub_piece(8, py, 240, ph, C, top_dy(ceil_mul(ph, C.b)), 1, MENU_L_BG0 | MENU_L_BG1));
     int arrow_l = -1, arrow_r = -1;
     if (with_arrows) {
         /* the ROM's own arrows: bottom-screen OBJs in the corners, touch boxes x < 0x38 and x >= 0xc8,
@@ -282,9 +281,9 @@ void build_status(MenuLayout *L)
 /* don't save confirm (0x10, 0x11): the question and YES / NO (PS_Update.cpp :1370-1451) */
 void build_nosave(MenuLayout *L)
 {
-    const Cols C = make_cols(L, kTextW, 256);
+    const Cols C = make_cols(L, kTextW, 208);
     menu_add_piece(L, top_piece(kTextX, kTextY, kTextW, kTextH, MENU_L_BG3 | MENU_L_OBJ, C, top_dy(ceil_mul(kTextH, C.a))));
-    MenuPiece p = sub_piece(0, 40, 256, 152, C, 0, 1);
+    MenuPiece p = sub_piece(24, 64, 208, 128, C, 0, 1);
     p.ay = MENU_AY_M;
     const int ps = menu_add_piece(L, p);
     menu_add_hotspot(L, ps, 0x28, 0x98, 0x50, 0x20, -1);                 /* YES x 0x28..0x77 */
@@ -299,22 +298,22 @@ void pause_build(int variant, MenuLayout *L)
     switch (variant) {
     case V_CASTLE: {   /* PS_Update.cpp :224-321 */
         const Hs hs[4] = { { 8, 0x20, 240, 32, 0 }, { 8, 0x48, 240, 32, 1 }, { 8, 0x70, 240, 32, 2 }, { 8, 0x98, 240, 32, 3 } };
-        build_plates(L, variant, 0x20, hs, 4, 0, !data_0209f2f0);
+        build_plates(L, variant, 24, 160, hs, 4, 0, !data_0209f2f0);
         break;
     }
     case V_COURSE: {   /* :430-551 */
         const Hs hs[4] = { { 8, 0x18, 240, 32, 0 }, { 8, 0x40, 240, 32, 1 }, { 8, 0x68, 240, 32, 2 }, { 8, 0x90, 240, 32, 3 } };
-        build_plates(L, variant, 0x18, hs, 4, 0, 0);
+        build_plates(L, variant, 24, 160, hs, 4, 0, 0);
         break;
     }
     case V_SAVE: {     /* :1249-1339 */
         const Hs hs[3] = { { 8, 0x28, 240, 32, 0 }, { 8, 0x50, 240, 32, 1 }, { 8, 0x78, 240, 32, 2 } };
-        build_plates(L, variant, 0x28, hs, 3, 0, 0);
+        build_plates(L, variant, 40, 120, hs, 3, 0, 0);
         break;
     }
     case V_VS: {       /* :552-636 */
         const Hs hs[3] = { { 8, 0x28, 240, 32, 0 }, { 8, 0x50, 240, 32, 1 }, { 8, 0x78, 240, 32, 2 } };
-        build_plates(L, variant, 0x28, hs, 3, 0, 0);
+        build_plates(L, variant, 40, 120, hs, 3, 0, 0);
         break;
     }
     case V_CTL: build_ctl(L, 1); break;
