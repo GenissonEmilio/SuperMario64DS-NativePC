@@ -250,6 +250,7 @@ void build_main(MenuLayout *L, bool intro)
     const int side = cw > 256 ? (cw - 256 + 1) / 2 + 2 : 0;  /* the wide margin on each side, with an overlap */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
+    L->no_focus_paint = 1;      /* the ROM cursor, the lit plank and the arrow are the selection (ASSET3) */
     if (menu_hostimg_ready(MENU_IMG_LOGO)) {
         /* ASSET2: the sky is a smooth gradient at the window's own resolution, coloured from the DS logo screen's own sky
            (the mean of its leftmost 16 columns, per row; those columns hold no logo), and the "Super Mario 64 PC" logo is a

@@ -595,8 +595,10 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     int sel = (P.hl & 1);
     const int prs = (P.hl & 2) || (owns && g_q_real_held);
     int boost = 0, sink = 0;
+    /* the plank's brightness pulse (x1.14 .. x1.30) lightens the lettering at its peak and fights the arrows, so a selected plank is
+       held at the steady x1.14 lift; SM64DS_MENU_PULSE=1 brings the pulse back (round 3 picture comparison) */
     static int no_pulse = -1;
-    if (no_pulse < 0) { const char *e = getenv("SM64DS_MENU_NOPULSE"); no_pulse = (e && *e && *e != '0') ? 1 : 0; }
+    if (no_pulse < 0) { const char *e = getenv("SM64DS_MENU_PULSE"); no_pulse = (e && *e && *e != '0') ? 0 : 1; }
     if (P.hostimg >= MENU_IMG_BTN_MP && P.hostimg <= MENU_IMG_BTN_REC) {   /* the planks; the logo and the arrows are never lit */
         static const int pulse[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
         if (sel) boost = no_pulse ? 292 : 292 + pulse[g_frame & 7] * 10;    /* x1.14 .. x1.30 */
@@ -1043,7 +1045,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
     }
     if (g_cur.backdrop == MENU_BACKDROP_DIM_AUTO && S && !S->rom_dimming) menu_dim(dst, w, h, 8);
     for (int i = 0; i < g_cur.np; ++i) menu_piece_draw(&g_cur, i, S, dst, w, h);
-    if (g_cur.focus >= 0 && g_focus_shown && g_cur.focus < g_cur.nh && g_cur.p[g_cur.hs[g_cur.focus].piece].src != SRC_HOSTIMG)
+    if (g_cur.focus >= 0 && g_focus_shown && !g_cur.no_focus_paint && g_cur.focus < g_cur.nh && g_cur.p[g_cur.hs[g_cur.focus].piece].src != SRC_HOSTIMG)
         menu_highlight_paint(&g_cur, dst, w, h, g_frame);
     g_drawn = g_cur;
     g_drawn_valid = 1;

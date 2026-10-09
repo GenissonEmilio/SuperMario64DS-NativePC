@@ -134,7 +134,10 @@ struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; can
                     const MenuRecipe *recipe;
                     /* HOOK1 (appended): engine-A layers (MENU_L_* bits) the compositor drops from the picture
                        and draws nowhere (level-clear: BG2, "TOUCH TO SELECT") */
-                    uint8_t hide_owners; };
+                    uint8_t hide_owners;
+                    /* ASSET3 (appended): the recipe shows its own selection (arrows, a lit plank), so the generic focus outline
+                       of a hovered or pad-focused hotspot is not painted over it */
+                    uint8_t no_focus_paint; };
 
 enum { MENU_DRV_NATIVE = 0, MENU_DRV_ROM_CURSOR = 1, MENU_DRV_TOUCH = 2, MENU_DRV_MIXED = 3 };
 enum { MENU_KEY_NONE = 0, MENU_KEY_SAVE_MENU_ON_TOP = 1, MENU_KEY_ONE_SCREEN_MENUS = 2 };
