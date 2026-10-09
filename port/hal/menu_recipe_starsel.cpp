@@ -69,7 +69,12 @@ void build_starsel(int variant, MenuLayout *L)
         L->stage = MENU_STAGE_POST_FADE;
         return;
     }
-    MenuPiece p = menu_piece_make(SRC_SUB, 0, kRowY0, 256, kRowH, MENU_AX_C, MENU_AY_T, 0, 172, 3, 4);
+    /* 4:3 (narrow): three quarter size in the free band between the lives and the star counters (their inner
+       edges are at x 48 and 208), under the course name. Wide: the same band is 245 units across, so the row
+       stays at full size (the lives and the star counter ride the picture's edges there). */
+    const int wide = menu_wide(L);
+    MenuPiece p = menu_piece_make(SRC_SUB, 0, kRowY0, 256, kRowH, MENU_AX_C, MENU_AY_T, 0, wide ? 166 : 172,
+                                  wide ? 1 : 3, wide ? 1 : 4);
     p.layers = MENU_L_OBJ;
     p.key_backdrop = 1;
     p.touch = 1;
