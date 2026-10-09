@@ -3489,11 +3489,14 @@ void gw_follow() {
            ever, and bit 0x10 is one the draw gate honours. The follower
            decides a ghost is on show, so it clears them. */
         *(unsigned *)((char *)a + 0xb0) &= ~0x38u;
+        /* the park's vanish (+0x6fb) is off for every drawn ghost, fading or not:
+           the render latch copies it and Luigi's texture sequence turns it
+           into the vanish-cap stipple */
+        *((unsigned char *)a + 0x6fb) = 0;
         /* fading OUT only: a ghost fading in is placed like a shown one */
         if (gw_fade_out(s) >= 256) {
             if (sm.grounded) *(int *)((char *)a + 0x644) = sm.y;
             *((unsigned char *)a + 0x717) = 0;
-            *((unsigned char *)a + 0x6fb) = 0;   // the park's vanish, off
             func_ov002_020e444c((char *)a);
         }
         if (!no_repose) {
