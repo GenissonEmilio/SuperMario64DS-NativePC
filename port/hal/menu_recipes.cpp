@@ -21,6 +21,11 @@
  */
 #include "menu_compose.h"
 
+/* menu_recipe_pause.cpp (lane PAUSE1) */
+int menu_pause_up(int scene_id);
+void menu_pause_build(int variant, MenuLayout *L);
+int menu_pause_cursor(int dir, int *owns);
+
 namespace {
 
 int up_never(int) { return 0; }
@@ -90,7 +95,7 @@ void build_fallback(int, MenuLayout *L)
 /* name, up, build, rom_cursor, enable_key, driver, flags, nvariants */
 const MenuRecipe g_menu_recipes[] = {
     { "lc",       up_never, build_none, 0, MENU_KEY_SAVE_MENU_ON_TOP,  MENU_DRV_ROM_CURSOR, 0, 0 },
-    { "pause",    up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_MIXED,      0, 0 },
+    { "pause",    menu_pause_up, menu_pause_build, menu_pause_cursor, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_MIXED, 0, 9 },
     { "title",    up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
     { "starsel",  up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_NATIVE,     0, 0 },
     { "gameover", up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_NATIVE,     0, 0 },

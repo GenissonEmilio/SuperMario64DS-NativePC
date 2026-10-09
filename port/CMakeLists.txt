@@ -24229,3 +24229,9 @@ foreach(_tmenu1 walk_window walk_window_hires)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_compose.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipes.cpp")
 endforeach()
+
+# MENU1 / PAUSE1 (run menu1): the one-screen pause menu recipe (own file, own block).
+foreach(_tmenu1p walk_window walk_window_hires)
+    target_sources(${_tmenu1p} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_pause.cpp")
+endforeach()
