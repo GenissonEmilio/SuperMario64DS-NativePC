@@ -24230,3 +24230,9 @@ foreach(_tmenu1 walk_window walk_window_hires smoke_player)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipes.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_lc.cpp")
 endforeach()
+
+# MENU1 / STARGO1 (run menu1): the star select and game over one-screen recipes.
+foreach(_tstargo1 walk_window walk_window_hires smoke_player)
+    target_sources(${_tstargo1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_starsel.cpp")
+endforeach()

@@ -87,14 +87,23 @@ void build_fallback(int, MenuLayout *L)
 
 }  // namespace
 
+/* menu_recipe_starsel.cpp (lane STARGO1): the star select and game over rows */
+int  menu_starsel_up(int scene_id);
+void menu_starsel_build(int variant, MenuLayout *L);
+int  menu_gameover_up(int scene_id);
+void menu_gameover_build(int variant, MenuLayout *L);
+int  menu_gameover_rom_cursor(int dir, int *sel);
+int  menu_gameover_pad_ok(void);
+
 /* name, up, build, rom_cursor, enable_key, driver, flags, nvariants */
 const MenuRecipe g_menu_recipes[] = {
     { "lc",       menu_lc_up, menu_lc_build, menu_lc_rom_cursor, MENU_KEY_SAVE_MENU_ON_TOP, MENU_DRV_ROM_CURSOR, 0, 4,
       menu_lc_pad_ok },
     { "pause",    up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_MIXED,      0, 0 },
     { "title",    up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
-    { "starsel",  up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_NATIVE,     0, 0 },
-    { "gameover", up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_NATIVE,     0, 0 },
+    { "starsel",  menu_starsel_up, menu_starsel_build, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_NATIVE, 0, 2 },
+    { "gameover", menu_gameover_up, menu_gameover_build, menu_gameover_rom_cursor, MENU_KEY_ONE_SCREEN_MENUS,
+      MENU_DRV_ROM_CURSOR, 0, 1, menu_gameover_pad_ok },
     { "recroom",  up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
     { "vs",       up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
     { "fallback", up_never, build_fallback, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_TOUCH,   MENU_RF_FALLBACK, 1 },
