@@ -87,11 +87,12 @@ int variant_for(int top, int elem)
        (doodle, then 1/1, 2/1); the wrench is 8/0; file options 1/5; scores pick 3/5, copy 7/5, erase 9/5;
        the score table is 4/5 (loading) then 2/5. Transit states keep the last stable page. */
     if (top == 11) return V_ATTRACT;
+    if (top == 10) return V_MAIN;                 /* the logo arrives while the buttons slide in */
     if (elem == 1) return V_DOODLE;
     if (elem == 0) {
         if (top == 0) return V_MAIN;
         if (top == 8) return V_OPTIONS;
-        return g_last;                            /* 10, 1, 6, 4: easing in or out */
+        return g_last;                            /* 1, 6, 4: easing in or out */
     }
     if (top == 2) return V_TABLE;
     if (top == 4) return g_last;
@@ -165,7 +166,7 @@ void menu_title_build(int variant, MenuLayout *L)
         MenuPiece bar = menu_piece_make(SRC_TOP_PIC, 0, 138, 256, 54, MENU_AX_C, MENU_AY_B, 0, 0, 1, 1);
         bar.touch = 1;
         const int ibar = menu_add_piece(L, bar);
-        MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_L, MENU_AY_T, 6, 6, 1, 1);
+        MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_C, MENU_AY_T, -102, 6, 1, 1);   /* 6 units in from the 4:3 picture's left edge */
         wr.touch = 1;
         const int iwr = menu_add_piece(L, wr);
         static const int bar_ids[3] = { 1, 0, 2 };
@@ -188,7 +189,7 @@ void menu_title_build(int variant, MenuLayout *L)
            page), three tiles a side, so the list is not shown twice. */
         for (int side = 0; side < 2; ++side)
             for (int t = 0; t < 3; ++t) {
-                MenuPiece m = menu_piece_make(SRC_TOP_PIC, 0, 128, 44, 64, side ? MENU_AX_R : MENU_AX_L, MENU_AY_T, 0, t * 64, 1, 1);
+                MenuPiece m = menu_piece_make(SRC_TOP_PIC, 0, 128, 44, 64, MENU_AX_C, MENU_AY_T, side ? 106 : -106, t * 64, 1, 1);   /* flush with the 4:3 picture's edges */
                 m.bg = 1;
                 menu_add_piece(L, m);
             }
@@ -197,8 +198,8 @@ void menu_title_build(int variant, MenuLayout *L)
         MenuPiece low = menu_piece_make(SRC_TOP_PIC, 0, 12, 256, 108, MENU_AX_C, MENU_AY_T, 0, 118, 2, 3);
         low.touch = 1;
         menu_add_piece(L, low);
-        const int wide = L->canvas_w >= 360;      /* room beside the stacked lists (21:9 and wider) */
-        MenuPiece bk = menu_piece_make(SRC_TOP_PIC, 176, 136, 80, 44, MENU_AX_R, MENU_AY_B, -2, -2, 1, wide ? 1 : 2);
+        /* the back arrow at half size in the 4:3 picture's lower right corner (a 4:3 backdrop is centred on wide canvases) */
+        MenuPiece bk = menu_piece_make(SRC_TOP_PIC, 176, 136, 80, 44, MENU_AX_C, MENU_AY_B, 106, -2, 1, 2);
         bk.touch = 1;
         const int ibk = menu_add_piece(L, bk);
         static const int bk_ids[1] = { 20 };
