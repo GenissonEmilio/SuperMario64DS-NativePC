@@ -139,6 +139,7 @@ const MenuTopCell *port_menu_top2d_plane(void);
 unsigned int port_engine_a_fade_px(unsigned int argb, unsigned char bm);
 void port_engine_a_fade_px_prep(void);
 int port_scene_live_id(void);
+void hal_lc_trace(int w, int h, int frame, int composed);   /* hal/menu_recipe_lc.cpp */
 /* the two engines' brightness blends (hal/fader_wipes.cpp). The SUB one is what
    the sub framebuffer is composed with; the main one is still read by the inset
    path, where the panel is inside engine A's framebuffer when walk_window's own
