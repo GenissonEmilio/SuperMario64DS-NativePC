@@ -316,11 +316,11 @@ void build_main(MenuLayout *L, bool intro)
         if (!box_of(kPlateId[k], &bx)) continue;
         if (planks) {
             /* ASSET2: a plank drawn at the window's resolution over the ROM's own box (the 3D plate is not drawn: its
-               wallpaper object is skipped at submit and its sprite is not in any piece). 40 units tall at 1.05 x the box
-               height, centred on the box; clicks map proportionally into the box, so they reach the ROM exactly. */
+               wallpaper object is skipped at submit and its sprite is not in any piece). 40 units tall (the box height),
+               centred on the box, the three never overlap; clicks map proportionally into the box, so they reach the ROM exactly. */
             int iw = 1, ih = 1;
             menu_hostimg_size(kPlankImg[k], &iw, &ih);
-            const int bh = (bx.y1 - bx.y0) * 21 / 20;
+            const int bh = bx.y1 - bx.y0;
             const int dh = bh * L->unum / L->uden, dw = (int)((long long)dh * iw / ih);
             const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;   /* centre x from 128, centre y * 2 */
             MenuPiece pl = menu_piece_make(SRC_HOSTIMG, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);

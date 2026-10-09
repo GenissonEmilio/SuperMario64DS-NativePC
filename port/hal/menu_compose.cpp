@@ -568,12 +568,15 @@ void draw_hostgrad(const MenuLayout *L, int i, const MenuSources *S, uint32_t *d
         }
         uint32_t *row = dst + (size_t)py * stride;
         const int xa = d[0] < 0 ? 0 : d[0], xb = d[0] + d[2] > w ? w : d[0] + d[2];
-        for (int x = xa; x < xb; ++x) {
-            const float dz = (bayer[py & 3][x & 3] - 7.5f) / 16.f;
+        /* the 4x4 ordered dither repeats every 4 pixels: build the row's four colours once and tile them */
+        uint32_t pat[4];
+        for (int k = 0; k < 4; ++k) {
+            const float dz = (bayer[py & 3][k] - 7.5f) / 16.f;
             int ir = (int)(r + 0.5f + dz), ig = (int)(g + 0.5f + dz), ib = (int)(b + 0.5f + dz);
             ir = ir < 0 ? 0 : ir > 255 ? 255 : ir; ig = ig < 0 ? 0 : ig > 255 ? 255 : ig; ib = ib < 0 ? 0 : ib > 255 ? 255 : ib;
-            row[x] = 0xff000000u | ((uint32_t)ir << 16) | ((uint32_t)ig << 8) | (uint32_t)ib;
+            pat[k] = 0xff000000u | ((uint32_t)ir << 16) | ((uint32_t)ig << 8) | (uint32_t)ib;
         }
+        for (int x = xa; x < xb; ++x) row[x] = pat[x & 3];
     }
 }
 
@@ -606,6 +609,7 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
             const uint32_t c = sr[xx];
             const unsigned a = c >> 24;
             if (!a) continue;
+            if (a == 255 && f256 == 256 && !boost) { row[px] = c; continue; }   /* the common pixel: opaque, no fade, no lit plank */
             unsigned cr = ((c >> 16) & 255) * f256 >> 8, cg = ((c >> 8) & 255) * f256 >> 8, cb = (c & 255) * f256 >> 8;
             if (boost) {   /* brightened by boost/256 (a lit plank keeps its lettering dark), premultiplied, capped at alpha */
                 cr = cr * boost >> 8; cg = cg * boost >> 8; cb = cb * boost >> 8;
