@@ -55,8 +55,8 @@ int up_starsel(int scene_id)
    box is the whole top 0x28 rows. Rows 16..35 hold the icons and their selected pulse; the source
    rect must stay inside the ROM's box so a click anywhere on the piece is a hit the ROM tests. */
 const int kRowY0 = 16, kRowH = 20;
-/* the head and "TOUCH ME!" rows of the bottom screen: x 0x44..0xbb, y 56..191 */
-const int kHeadX0 = 0x44, kHeadW = 0x78, kHeadY0 = 56, kHeadH = 136;
+/* the head and "TOUCH ME!" rows of the bottom screen: x 0x20..0xdf (the German and French "TOUCH ME" lines are the widest), y 56..191 */
+const int kHeadX0 = 0x20, kHeadW = 0xc0, kHeadY0 = 56, kHeadH = 136;
 
 void build_starsel(int variant, MenuLayout *L)
 {
@@ -97,7 +97,7 @@ void build_starsel(int variant, MenuLayout *L)
        (src/func_ov003_020ae358.c: x in 0x58..0xa7 and y within 0x28 of the head's own centre row, the byte at
        +0x12b, which bobs). The head and its "TOUCH ME!" line are engine-B OBJs; they are set to the right of
        the course medal, at half size, where the upper screen is empty. */
-    MenuPiece h = menu_piece_make(SRC_SUB, kHeadX0, kHeadY0, kHeadW, kHeadH, MENU_AX_C, MENU_AY_T, 86, 94, 1, 2);
+    MenuPiece h = menu_piece_make(SRC_SUB, kHeadX0, kHeadY0, kHeadW, kHeadH, MENU_AX_C, MENU_AY_T, 80, 94, 1, 2);
     h.layers = MENU_L_OBJ;
     h.key_backdrop = 1;
     h.touch = 1;
