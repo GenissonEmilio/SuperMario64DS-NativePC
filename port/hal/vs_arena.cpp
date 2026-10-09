@@ -59,6 +59,7 @@
 
 #include <windows.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -123,6 +124,24 @@ void func_ov002_020e4768(char *self);
 // the in-place character change (hal/player_bridges.cpp, the door path)
 void port_player_set_character(void *player, unsigned ch);
 int _ZN6Player8HasNoCapEv(void *self);
+int _ZN6Player6IsAnimEj(void *self, unsigned id);
+char *_ZN8dActor_c15FindWithActorIDEjPS_(unsigned cls, char *prev);
+char *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(unsigned a, unsigned b,
+        const void *pos, const void *v16, int area, int f);
+void _ZN9Animation7AdvanceEv(void *self);
+// V8: the Yoshi tongue is the HEAD model's animation (func_ov002_020d71ec sets
+// the body anim and the head anim together; 020d71a0 puts the head back)
+void func_ov002_020d71ec(char *p, int arg);
+void func_ov002_020d71a0(char *p);
+int func_ov002_020bea7c(char *self);
+unsigned func_ov002_020becf4(char *self, unsigned idx, int flag);
+// the body anim ids of the tongue (arg 0 / 1) live in a two-word table
+extern unsigned char data_ov002_0210a34c[];
+extern unsigned char data_ov002_0210a084[];
+extern unsigned char data_ov002_0210eb88[];
+// the ROM's sound range (src/_ZN5Sound4PlayEjjRK7Vector3.cpp's culling): full
+// volume inside the first, linear to nothing at the second
+extern int data_02099fa8, data_02099fac;
 // the collision list: a body whose Behavior is skipped registers its own
 // cylinder, the two calls Player::Behavior ends with
 void _ZN5dCc_c5ClearEv(void *self);
@@ -714,6 +733,8 @@ enum : int {
     kPupMouthTolMs = 400,     // 12 frames: pup_eater_confirms' window
     kPlayerMouthObj = 0x360,  // Player mObjInMouth: the actor in this body's mouth
     kPlayerOpacity = 0x6f5,   // Player mOpacity (0 = Player::Render draws nothing)
+    kClassMarioCap = 0x10d,   // daObjMarioCap_c
+    kPupPutOnMinDriven = 30,  // a cap seen within this many frames of the take-over is not a put-on
     kPupIntroMaxFrames = 900, // 30 s: take over a seat that never leaves the intro
 };
 
@@ -744,6 +765,14 @@ struct Pup {
     unsigned swap_at = 0;
     unsigned long long frames = 0, interp = 0, reckon = 0, hold = 0, tele = 0,
                        older = 0, swaps = 0, sfx_played = 0, hits = 0;
+    // VSPUP2: the face (eye) sequence, the tongue (head animation), anims the
+    // ROM would refuse, and the puppet sounds the range kept out
+    int tongue_arg = -1;                   // 0 / 1 / 2 while the head plays the tongue, else -1
+    unsigned long long face_adv = 0, tongue_frames = 0, tongue_starts = 0,
+                       anim_refused = 0, sfx_far = 0, sfx_near = 0;
+    unsigned last_refused_id = 0xffffffffu;
+    unsigned long long puton = 0;
+    unsigned puton_at = 0;                 // frame of the last put-on cap spawn (probe)
     // a puppet in somebody's mouth is not drawn (PUPEAT2)
     bool mouth_prev = false;               // in a mouth at the last drive
     unsigned long long mouth_frames = 0,   // frames driven in a mouth
@@ -754,6 +783,10 @@ struct Pup {
 Pup g_pup[kArenaSeats];
 struct PupCfg {
     int enabled = -1, log = -1, solid = -1, buf = -2, nohide = -1;
+    // VSPUP2 (all default ON; the lab knobs below turn one fix off for a control row)
+    int face = -1, tongue = -1, face_probe = -1, sfx_log = -1, puton = -1;
+    double sfx_near = 90.0, sfx_far = 450.0;
+    int sfx_range_on = -1;
 } g_pc;
 // my own sounds waiting for a free SYNS slot (a second sound of one kind in a
 // frame goes out one frame later)
@@ -761,6 +794,15 @@ struct SfxQueue { unsigned char id[4]; int n = 0; } g_sq[2];
 unsigned long long g_sfx_cap[2] = {0, 0}, g_sfx_drop = 0;
 
 void pup_report();
+
+// the length the ROM's own fade should see for a puppet sound at distance
+// `dist` from my body: its full / none range is data_02099fa8 / data_02099fac
+// (90 / 550); the near..far ramp is mapped onto it
+double pup_sfx_romdist(double dist) {
+    const double rn = (double)data_02099fa8, rf = (double)data_02099fac;
+    if (dist <= g_pc.sfx_near) return dist < rn ? dist : rn;
+    return rn + (dist - g_pc.sfx_near) * (rf - rn) / (g_pc.sfx_far - g_pc.sfx_near);
+}
 
 bool pup_enabled() {
     if (g_pc.enabled < 0) {
@@ -788,6 +830,43 @@ bool pup_trust_eaten() {
     static int v = -1;
     if (v < 0) v = env_on("SM64DS_PUPPET_TRUSTEATEN") ? 1 : 0;
     return v != 0;
+}
+// VSPUP2 lab controls: SM64DS_PUPPET_FACE=0 (the build 5 face: SetAnim every
+// frame, the eye sequence never advances), SM64DS_PUPPET_TONGUE=0 (no head
+// animation), SM64DS_PUPPET_FACE_PROBE=1 (a [pup-face] line per puppet per second),
+// SM64DS_PUPPET_SFX_LOG=1 (a [pup-sfx2] line per puppet sound),
+// SM64DS_PUPPET_SFX_RANGE=<near>,<far> | off (off = build 5: the ROM's own
+// camera-measured range)
+bool pup_face_fix() {
+    if (g_pc.face < 0) { const char *e = std::getenv("SM64DS_PUPPET_FACE"); g_pc.face = !(e && e[0] == '0' && !e[1]); }
+    return g_pc.face != 0;
+}
+bool pup_tongue_fix() {
+    if (g_pc.tongue < 0) { const char *e = std::getenv("SM64DS_PUPPET_TONGUE"); g_pc.tongue = !(e && e[0] == '0' && !e[1]); }
+    return g_pc.tongue != 0;
+}
+bool pup_puton_fix() {   // SM64DS_PUPPET_PUTON=0: no cap put-on on a puppet (build 5)
+    if (g_pc.puton < 0) { const char *e = std::getenv("SM64DS_PUPPET_PUTON"); g_pc.puton = !(e && e[0] == '0' && !e[1]); }
+    return g_pc.puton != 0;
+}
+bool pup_face_probe() {
+    if (g_pc.face_probe < 0) g_pc.face_probe = env_on("SM64DS_PUPPET_FACE_PROBE") ? 1 : 0;
+    return g_pc.face_probe != 0;
+}
+bool pup_sfx_log() {
+    if (g_pc.sfx_log < 0) g_pc.sfx_log = env_on("SM64DS_PUPPET_SFX_LOG") ? 1 : 0;
+    return g_pc.sfx_log != 0;
+}
+void pup_sfx_cfg() {
+    if (g_pc.sfx_range_on >= 0) return;
+    g_pc.sfx_range_on = 1;
+    const char *e = std::getenv("SM64DS_PUPPET_SFX_RANGE");
+    if (!e || !*e) return;
+    if (!std::strcmp(e, "off")) { g_pc.sfx_range_on = 0; return; }
+    double n = 0, f = 0;
+    if (std::sscanf(e, "%lf,%lf", &n, &f) == 2 && n >= 0 && f > n && f < 100000) {
+        g_pc.sfx_near = n; g_pc.sfx_far = f;
+    }
 }
 // LAB forge row: SM64DS_PUPPET_FORGE_EATEN=<frame>:<seat> makes THIS console
 // report eaten_by = seat + 1 from that frame on, whatever its body does
@@ -1004,8 +1083,75 @@ void pup_cam_pos(char *c, const PupDraw &d) {
     p[0] = out[0]; p[1] = out[1]; p[2] = out[2];
 }
 
+// V8: the body anim ids of the two tongue anims are the first two words of a
+// table in the overlay (func_ov002_020d71ec's arr[0..1]); 0x6c is the pull back.
+// Ready = the ids make sense and the head files the ROM call reads exist, so
+// the call cannot read a null file.
+enum : unsigned { kTongueRetractAnim = 0x6c };
+unsigned g_tongue_id[2] = {0x6e, 0x6f};
+bool pup_tongue_ready() {
+    static int ok = -1;
+    if (ok >= 0) return ok != 0;
+    const unsigned *w = (const unsigned *)data_ov002_0210a34c;
+    const unsigned *h = (const unsigned *)data_ov002_0210a084;
+    ok = 1;
+    if (w[0] < 0x11u || w[0] >= 0x72u || w[1] < 0x11u || w[1] >= 0x72u) ok = 0;
+    for (int i = 0; ok && i < 2; ++i) {
+        const unsigned p = h[i];
+        if (!p || !*(const unsigned *)(p + 4)) ok = 0;
+    }
+    if (!*(const unsigned *)(data_ov002_0210eb88 + 4)) ok = 0;
+    if (ok) { g_tongue_id[0] = w[0]; g_tongue_id[1] = w[1]; }
+    std::fprintf(stderr, "[puppet] tongue anims %u %u + %u: %s\n", g_tongue_id[0], g_tongue_id[1],
+                 (unsigned)kTongueRetractAnim, ok ? "head files present" : "NOT USABLE here, tongue off");
+    return ok != 0;
+}
+
 // One puppet body, taken over and posed (see the banner).
-void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
+void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
+    PupDraw d = d0;
+    // LAB (VSPUP2 SetAnim row): SM64DS_PUPPET_ANIM_INJECT=<frame>:<id>[:<frames>] makes the
+    // stream say animation <id> for <frames> (default 90) frames from <frame>: an id the
+    // ROM's Player::SetAnim refuses in VS (below 0x11, from 0x72) must be skipped and logged.
+    {
+        static int inj_at = -2, inj_id = 0, inj_len = 90;
+        if (inj_at == -2) {
+            const char *e = std::getenv("SM64DS_PUPPET_ANIM_INJECT");
+            inj_at = -1;
+            if (e && *e) {
+                int f = 0, id = 0, n = 90;
+                if (std::sscanf(e, "%d:%d:%d", &f, &id, &n) >= 2) { inj_at = f; inj_id = id; inj_len = n > 0 ? n : 90; }
+            }
+        }
+        if (inj_at >= 0 && (int)g.frame >= inj_at && (int)g.frame < inj_at + inj_len)
+            d.anim = (unsigned short)inj_id;
+    }
+    // LAB (VSPUP2 face pictures): SM64DS_PUPPET_FACE_TURN=1 turns every puppet to face my body, so a
+    // close-up always shows the face.
+    {
+        static int turn = -1;
+        if (turn < 0) turn = env_on("SM64DS_PUPPET_FACE_TURN") ? 1 : 0;
+        if (turn && g.seat >= 0 && g.seat < kArenaSeats && data_0209f394[g.seat]) {
+            const char *me = (const char *)data_0209f394[g.seat];
+            const double ddx = (double)(*(const int *)(me + 0x5c) - d.x), ddz = (double)(*(const int *)(me + 0x64) - d.z);
+            d.yaw = (short)(int)(std::atan2(ddx, ddz) * 32768.0 / 3.14159265358979);
+        }
+    }
+    // LAB (VSPUP2 tongue pictures): SM64DS_PUPPET_TONGUE_FREEZE=<n> holds the first puppet
+    // that has driven <n> tongue frames on the sample it is posed from, so the end picture of a
+    // run shows the tongue out whatever frame the run ends on.
+    {
+        static int frz_n = -2, frz_seat = -1;
+        static PupDraw frz_d;
+        if (frz_n == -2) { const char *e = std::getenv("SM64DS_PUPPET_TONGUE_FREEZE"); frz_n = e && *e ? std::atoi(e) : -1; }
+        if (frz_n >= 0) {
+            if (frz_seat == seat) d = frz_d;
+            else if (frz_seat < 0 && pp.tongue_arg >= 0 && (int)pp.tongue_frames >= frz_n) {
+                frz_seat = seat; frz_d = d;
+                std::fprintf(stderr, "[pup-tongue] f%u seat %d held on its tongue frame (anim %u)\n", g.frame, seat, (unsigned)d.anim);
+            }
+        }
+    }
     // BEHAVIOR SKIPPED, every frame (the scene pass clears the bit)
     *(a + 0x13) = (char)(*(a + 0x13) | 2);
     *player::pos_x(a) = d.x;
@@ -1024,6 +1170,26 @@ void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
         pp.swap_at = g.frame + (unsigned)kPupSwapEvery;
         port_player_set_character(a, want_look);
         ++pp.swaps;
+        // V2 THE PUT-ON. The owner's body put a cap on (its stream look went from
+        // Yoshi to a cap character). On the owner's console the cap actor flies
+        // to the body and plays its put-on model (the ROM's own type 0xa cap: it
+        // follows the nearest player's position and angles and removes itself
+        // when its animation ends, src/actors/daObjMarioCap_c.cpp func_ov002_020b7330
+        // and func_ov002_020b7200). The swap above is the body half; this is the
+        // cap half, spawned the way the ROM spawns it for a hat swap
+        // (src/actors/Player.cpp, the data_02092114 branch). Not the cap object on
+        // the ground: who gets that cap is the referee's.
+        if (pup_puton_fix() && have_look == 3u && want_look <= 2u &&
+            pp.n_driven >= (unsigned)kPupPutOnMinDriven) {
+            const int cpos[3] = {d.x, d.y, d.z};
+            char *cap = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
+                kClassMarioCap, (want_look << 8) | 0xau, cpos, nullptr,
+                (int)*(signed char *)(a + 0xcc), -1);
+            ++pp.puton;
+            pp.puton_at = g.frame;
+            std::fprintf(stderr, "[puppet] f%u seat %d put-on: cap look %u spawned %s\n", g.frame, seat,
+                         want_look, cap ? "ok" : "REFUSED");
+        }
         std::fprintf(stderr, "[puppet] seat %d body look %u -> %u\n", seat,
                      have_look, want_look);
     }
@@ -1032,18 +1198,128 @@ void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
     // different frame make the ROM's own reset first.
     int want_f = d.cursor >> 12;
     if (want_f < 0) want_f = 0;
+    // V8 THE TONGUE. Yoshi's tongue is the HEAD model's animation, not the
+    // body's: func_ov002_020d71ec sets the body anim (two ids from a table, and
+    // 0x6c for the pull back) AND the head model's own animation together, and
+    // nothing else ever selects it. The puppet's body is posed from the stream,
+    // so when the stream says a tongue anim, make the ROM's own call once (it
+    // sets both) and then follow the body frame with the head frame; leaving
+    // the anims puts the head back (func_ov002_020d71a0).
+    const bool is_yoshi = (*(int *)(a + 8) & 0xff) == 3u;
+    {
+        int targ = -1;
+        if (pup_tongue_fix() && is_yoshi && pup_tongue_ready()) {
+            if (d.anim == g_tongue_id[0]) targ = 0;
+            else if (d.anim == g_tongue_id[1]) targ = 1;
+            else if (d.anim == kTongueRetractAnim) targ = 2;
+        }
+        if (targ != pp.tongue_arg) {
+            if (targ >= 0) {
+                func_ov002_020d71ec(a, targ);
+                ++pp.tongue_starts;
+                if (pup_log() || pup_sfx_log())
+                    std::fprintf(stderr, "[puppet] f%u seat %d tongue %d (anim %u)\n", g.frame, seat,
+                                 targ, (unsigned)d.anim);
+            } else if (pp.tongue_arg >= 0) {
+                func_ov002_020d71a0(a);
+            }
+            pp.tongue_arg = targ;
+        }
+    }
+    // LAB: SM64DS_PUPPET_PUTON_PROBE=1, for 90 frames after a put-on cap spawn a line every 6
+    // frames: this puppet's body and every cap actor (position, type +0x3f0, holder +0x3bc, follows +0x3c0)
+    {
+        static int pr = -1;
+        if (pr < 0) pr = env_on("SM64DS_PUPPET_PUTON_PROBE") ? 1 : 0;
+        if (pr && pp.puton_at && g.frame >= pp.puton_at && g.frame < pp.puton_at + 90 && (g.frame % 6u) == 0) {
+            std::fprintf(stderr, "[pup-puton] f%u seat %d body %d,%d,%d look=%d anim=%u opacity=%u\n", g.frame, seat,
+                         d.x >> 12, d.y >> 12, d.z >> 12, *(int *)(a + 8) & 0xff, (unsigned)d.anim,
+                         (unsigned)*(unsigned char *)(a + kPlayerOpacity));
+            char *c = nullptr;
+            for (int guard = 0; guard < 32; ++guard) {
+                c = _ZN8dActor_c15FindWithActorIDEjPS_((unsigned)kClassMarioCap, c);
+                if (!c) break;
+                std::fprintf(stderr, "[pup-puton]   cap type=%d at %d,%d,%d holder=%08x follows=%08x\n", *(int *)(c + 0x3f0),
+                             *(int *)(c + 0x5c) >> 12, *(int *)(c + 0x60) >> 12, *(int *)(c + 0x64) >> 12,
+                             *(unsigned *)(c + 0x3bc), *(unsigned *)(c + 0x3c0));
+            }
+        }
+    }
+    // V9 THE FACE. Player::SetAnim also restarts the face (eye) texture sequence
+    // at frame 0 (TextureSequence::SetFile ... 0), and the puppet called it EVERY
+    // frame, so the sequence never left frame 0 and never advanced. Keep its frame
+    // across the call and step it once, the way Player_AdvanceAnims does for a
+    // body that thinks. A change of animation still restarts it, as in the ROM.
+    const int face_idx = *(int *)(a + 8);
+    char *const face_seq = (face_idx >= 0 && face_idx <= 3) ? a + 0x1dc + face_idx * 0x14 : nullptr;
+    const bool same_anim = player::anim_id(a) == d.anim;
+    const int face_saved = face_seq ? *(int *)(face_seq + 8) : 0;
     {
         int *cur = player::anim_frame_ptr(a);
-        if (player::anim_id(a) == d.anim && cur && (*cur >> 12) != want_f)
+        if (same_anim && cur && (*cur >> 12) != want_f)
             if (void *m = player::body_model_anim(a)) *(int *)((char *)m + 0x60) = 0;
     }
-    _ZN6Player7SetAnimEji5Fix12IiEj(a, d.anim, 0, 0x1000, (unsigned)(want_f & 0xffff));
+    // Player::SetAnim refuses ids below 0x11 or from 0x72 in a VS level (it
+    // sets a bit in +0x6ce and returns): the previous pose stays. Say so once
+    // per id instead of letting a stream value we cannot play do it silently.
+    static int guard_on = -1;      // LAB: SM64DS_PUPPET_ANIM_GUARD=0 = build 5 (the ROM refuses it by itself, silently)
+    if (guard_on < 0) { const char *e = std::getenv("SM64DS_PUPPET_ANIM_GUARD"); guard_on = !(e && e[0] == '0' && !e[1]); }
+    if (guard_on && (d.anim < 0x11u || d.anim >= 0x72u)) {
+        ++pp.anim_refused;
+        if (pp.last_refused_id != d.anim) {
+            pp.last_refused_id = d.anim;
+            std::fprintf(stderr, "[puppet] f%u seat %d anim %u is outside what Player::SetAnim "
+                         "accepts in VS (0x11..0x71): pose kept\n", g.frame, seat, (unsigned)d.anim);
+        }
+    } else {
+        _ZN6Player7SetAnimEji5Fix12IiEj(a, d.anim, 0, 0x1000, (unsigned)(want_f & 0xffff));
+        if (face_seq && pup_face_fix() && same_anim) {
+            *(int *)(face_seq + 8) = face_saved;
+            static int force = -2;      // LAB: SM64DS_PUPPET_FACE_FORCE=<n> pins the face sequence at frame n
+            if (force == -2) { const char *e = std::getenv("SM64DS_PUPPET_FACE_FORCE"); force = e && *e ? std::atoi(e) : -1; }
+            const unsigned len = *(unsigned *)(face_seq + 4) & ~0xc0000000u;
+            if (force >= 0 && len > 0) {
+                *(int *)(face_seq + 8) = ((unsigned)force % (len >> 12 ? len >> 12 : 1u)) << 12;
+            } else
+            if (len > 0) {
+                static const unsigned kStill[] = {0x9a, 0x19, 0xac, 0x6b, 0x85, 0x94, 0x98, 0x99};
+                for (unsigned id : kStill)
+                    if (_ZN6Player6IsAnimEj(a, id)) { *(int *)(face_seq + 8) = 0; break; }
+                _ZN9Animation7AdvanceEv(face_seq);
+                ++pp.face_adv;
+            }
+        }
+    }
     int frames = 0;
     if (char *m = (char *)player::body_model_anim(a)) {
         frames = (*(int *)(m + 0x54) & ~(int)0xc0000000) >> 12;
         if (frames > 0) *(int *)(m + 0x58) = (want_f % frames) << 12;
     }
     if (frames <= 0) return;                // nothing to pose
+    if (pp.tongue_arg >= 0) {
+        if (char *hm = *(char **)(a + 0x160)) {
+            const int hframes = (*(int *)(hm + 0x54) & ~(int)0xc0000000) >> 12;
+            if (hframes > 0) {
+                *(int *)(hm + 0x58) = (want_f % hframes) << 12;
+                ++pp.tongue_frames;
+                static int tp = -1;       // LAB: SM64DS_PUPPET_TONGUE_PROBE=1, a line per tongue frame
+                if (tp < 0) tp = env_on("SM64DS_PUPPET_TONGUE_PROBE") ? 1 : 0;
+                if (tp)
+                    std::fprintf(stderr, "[pup-tongue] f%u seat=%d arg=%d body_anim=%u body_frame=%d/%d head_frame=%d/%d\n",
+                                 g.frame, seat, pp.tongue_arg, (unsigned)d.anim, want_f % frames, frames,
+                                 *(int *)(hm + 0x58) >> 12, hframes);
+            }
+        }
+    }
+    if (pup_face_probe() && (g.frame % 30u) == 0 && face_seq)
+        std::fprintf(stderr, "[pup-face] f%u seat=%d look=%d idx6db=%u anim=%u same=%d "
+                     "seq_len=%u seq_cur=%d seq_spd=%d t73c=%04x gate_bea7c=%d hid=%u op=%u "
+                     "tongue=%d\n", g.frame, seat, face_idx, (unsigned)*(unsigned char *)(a + 0x6db),
+                     (unsigned)d.anim, same_anim ? 1 : 0, *(unsigned *)(face_seq + 4) & ~0xc0000000u,
+                     *(int *)(face_seq + 8) >> 12, *(int *)(face_seq + 0xc),
+                     (unsigned)*(unsigned short *)(a + 0x73c), func_ov002_020bea7c(a),
+                     func_ov002_020becf4(a, (unsigned)*(unsigned char *)(a + 0x6db), 1),
+                     (unsigned)*(unsigned char *)(a + kPlayerOpacity), pp.tongue_arg);
     // fully opaque to the ROM's own gates, not culled (BeforeBehavior is not
     // writing the cull bits for a body that does not think) EXCEPT while it is
     // in somebody's mouth: the ROM hides an eaten player once (func_ov002_020d5ed0
@@ -1120,6 +1396,14 @@ void pup_drive(int seat, char *a, const PupDraw &d, Pup &pp) {
 
 // A puppet's sounds: every sample whose frame the drawn timeline has reached
 // since the last pass, once.
+//
+// V5 NEAR ONLY. The ROM plays a sound at a vector in camera space and fades it
+// by that vector's length (full under data_02099fa8 = 90, none from
+// data_02099fac = 550), so the listener is the CAMERA, which sits well behind
+// the player. A puppet's sound is judged here from MY body instead: farther
+// than the far range (450) it is not played at all, nearer it is handed to the
+// ROM with the same direction (the left / right pan) and a length that makes
+// the ROM's own fade reproduce the near..far ramp from my body.
 void pup_play_sounds(int seat, char *a, const PupDraw &d, Pup &pp,
                      const ArenaSample *ring, int n) {
     if (!pp.sfx_init) {
@@ -1130,6 +1414,8 @@ void pup_play_sounds(int seat, char *a, const PupDraw &d, Pup &pp,
             if ((double)ring[i].s.frame <= d.ft) { pp.sfx_frame = ring[i].s.frame; break; }
         return;
     }
+    pup_sfx_cfg();
+    const char *const mine = (g.seat >= 0 && g.seat < kArenaSeats) ? (const char *)data_0209f394[g.seat] : nullptr;
     for (int i = n - 1; i >= 0; --i) {          // oldest first
         const ArenaState &s = ring[i].s;
         if (s.frame <= pp.sfx_frame) continue;
@@ -1137,14 +1423,57 @@ void pup_play_sounds(int seat, char *a, const PupDraw &d, Pup &pp,
         pp.sfx_frame = s.frame;
         for (int k = 0; k < 2; ++k) {
             if (!s.sfx[k]) continue;
+            int vec[3];
+            std::memcpy(vec, a + kPlayerSound, sizeof vec);
+            double dist = -1.0, gain = 1.0, romd = -1.0;
+            if (!g_pc.sfx_range_on && mine && pup_sfx_log()) {   // range off (build 5): measure for the log only
+                const int me[3] = {*(const int *)(mine + 0x5c), *(const int *)(mine + 0x60),
+                                   *(const int *)(mine + 0x64)};
+                const int src[3] = {d.x, d.y, d.z};
+                dist = vs_puppet_sfx_distance(me, src);
+            }
+            if (g_pc.sfx_range_on && mine) {
+                const int me[3] = {*(const int *)(mine + 0x5c), *(const int *)(mine + 0x60),
+                                   *(const int *)(mine + 0x64)};
+                const int src[3] = {d.x, d.y, d.z};
+                dist = vs_puppet_sfx_distance(me, src);
+                gain = vs_puppet_sfx_gain(me, src);
+                if (dist >= g_pc.sfx_far) {
+                    ++pp.sfx_far;
+                    if (pup_sfx_log())
+                        std::fprintf(stderr, "[pup-sfx2] skip seat=%d f=%u kind=%d id=%u mydist=%.0f "
+                                     "gain=0.00 (beyond %.0f)\n", seat, s.frame, k, (unsigned)s.sfx[k],
+                                     dist, g_pc.sfx_far);
+                    continue;
+                }
+                // the length the ROM should see: same direction, a length whose
+                // ROM fade equals the near..far ramp from my body
+                romd = pup_sfx_romdist(dist);
+                const double tx = (double)(vec[0] >> 12), ty = (double)(vec[1] >> 12) * 2.0,
+                             tz = (double)(vec[2] >> 12);
+                const double len = std::sqrt(tx * tx + ty * ty + tz * tz);
+                if (len >= 1.0) {
+                    const double f = romd / len;
+                    vec[0] = (int)(vec[0] * f); vec[1] = (int)(vec[1] * f); vec[2] = (int)(vec[2] * f);
+                } else {
+                    vec[0] = 0; vec[1] = 0; vec[2] = (int)(romd * 4096.0);
+                }
+                ++pp.sfx_near;
+            }
             ++pp.sfx_played;
             if (pup_log()) {
-                const int *cv = (const int *)(a + kPlayerSound);
                 std::fprintf(stderr, "[pup-sfx] play seat=%d f=%u kind=%d id=%u "
                              "cam=%d,%d,%d\n", seat, s.frame, k, (unsigned)s.sfx[k],
-                             cv[0] >> 12, cv[1] >> 12, cv[2] >> 12);
+                             vec[0] >> 12, vec[1] >> 12, vec[2] >> 12);
             }
-            _ZN5Sound4PlayEjjRK7Vector3((unsigned)k, s.sfx[k], a + kPlayerSound);
+            if (pup_sfx_log()) {
+                const double tx = (double)(vec[0] >> 12), ty = (double)(vec[1] >> 12) * 2.0,
+                             tz = (double)(vec[2] >> 12);
+                std::fprintf(stderr, "[pup-sfx2] play seat=%d f=%u kind=%d id=%u mydist=%.0f gain=%.2f "
+                             "romvec_len=%.0f\n", seat, s.frame, k, (unsigned)s.sfx[k], dist, gain,
+                             std::sqrt(tx * tx + ty * ty + tz * tz));
+            }
+            _ZN5Sound4PlayEjjRK7Vector3((unsigned)k, s.sfx[k], vec);
         }
     }
 }
@@ -1152,6 +1481,35 @@ void pup_play_sounds(int seat, char *a, const PupDraw &d, Pup &pp,
 // One game frame's worth of puppet work, right before the actor walk.
 void pup_before_walk() {
     if (!pup_enabled() || g.seat < 0 || data_0209f2d8 != 1) return;
+    {
+        // LAB (VSPUP2 rows): SM64DS_PUPPET_SFX_RIG=<frame> makes MY body play one effect
+        // (kind 0, id 65) and one character voice (kind 1, id 252) at itself every 24
+        // frames from that frame, so a puppet sound is always in the stream.
+        static int rig = -2;
+        if (rig == -2) { const char *e = std::getenv("SM64DS_PUPPET_SFX_RIG"); rig = e && *e ? std::atoi(e) : -1; }
+        if (rig >= 0 && (int)g.frame >= rig && ((int)g.frame - rig) % 24 == 0 && g.seat < kArenaSeats &&
+            data_0209f394[g.seat]) {
+            char *me = (char *)data_0209f394[g.seat];
+            _ZN5Sound4PlayEjjRK7Vector3(0u, 65u, me + kPlayerSound);
+            _ZN5Sound4PlayEjjRK7Vector3(1u, 252u, me + kPlayerSound);
+        }
+    }
+    if (pup_sfx_log()) {
+        static bool table_done = false;      // the distance rule at 50 / 200 / 400 / 600 units, once
+        if (!table_done) {
+            table_done = true;
+            pup_sfx_cfg();
+            static const int dists[] = {50, 200, 400, 600};
+            for (int i = 0; i < 4; ++i) {
+                const int me[3] = {0, 0, 0}, src[3] = {dists[i] << 12, 0, 0};
+                const double dd = vs_puppet_sfx_distance(me, src);
+                std::fprintf(stderr, "[pup-sfx2] table dist=%d gain=%.2f %s romvec_len=%.0f (rule %.0f..%.0f, range %s)\n",
+                             dists[i], vs_puppet_sfx_gain(me, src), dd >= g_pc.sfx_far ? "SKIPPED" : "played",
+                             dd >= g_pc.sfx_far ? -1.0 : pup_sfx_romdist(dd), g_pc.sfx_near, g_pc.sfx_far,
+                             g_pc.sfx_range_on ? "on" : "OFF");
+            }
+        }
+    }
     // my own sounds that did not fit in last frame's SYNS go in this one's
     for (int k = 0; k < 2; ++k)
         if (g_sq[k].n > 0 && !g.sfx[k]) {
@@ -1196,12 +1554,15 @@ void pup_before_walk() {
                          "push=%d,%d,%d\n", g.frame, g.seat, hf, ow, pb[0], pb[1], pb[2]);
     }
     {
-        static int near_at = -2, near_units = 30;
+        static int near_at = -2, near_units = 30, near_dz = 0;
         static bool near_done = false;
         if (near_at == -2) {
             const char *e = std::getenv("SM64DS_PUPPET_NEAR");
             near_at = e && *e ? std::atoi(e) : -1;
-            if (e) if (const char *c = std::strchr(e, ':')) near_units = std::atoi(c + 1);
+            if (e) if (const char *c = std::strchr(e, ':')) {
+                near_units = std::atoi(c + 1);
+                if (const char *c2 = std::strchr(c + 1, ':')) near_dz = std::atoi(c2 + 1);   // VSPUP2: optional dz
+            }
         }
         if (near_at >= 0 && !near_done && (int)g.frame >= near_at && g.seat < kArenaSeats &&
             data_0209f394[g.seat]) {
@@ -1211,12 +1572,98 @@ void pup_before_walk() {
                 const char *pk = (const char *)data_0209f394[k];
                 *(int *)(me + 0x5c) = *(const int *)(pk + 0x5c) + (near_units << 12);
                 *(int *)(me + 0x60) = *(const int *)(pk + 0x60);
-                *(int *)(me + 0x64) = *(const int *)(pk + 0x64);
+                *(int *)(me + 0x64) = *(const int *)(pk + 0x64) + (near_dz << 12);
                 near_done = true;
                 std::fprintf(stderr, "[pup-near] f=%u my body placed %d units from the "
                              "puppet of seat %d\n", g.frame, near_units, k);
                 break;
             }
+        }
+    }
+    // LAB (VSPUP2 put-on row): SM64DS_PUPPET_CAPRIG=<frame> puts MY body on the first cap in the
+    // level (the ROM's own touch then runs the pickup and the hat morph), once.
+    {
+        static int cap_at = -2, cap_hold = 0, cap_seen = 0;
+        static int cap_pos[3];
+        static bool cap_done = false;
+        if (cap_at == -2) { const char *e = std::getenv("SM64DS_PUPPET_CAPRIG"); cap_at = e && *e ? std::atoi(e) : -1; }
+        if (cap_at >= 0 && g.seat >= 0 && g.seat < kArenaSeats && data_0209f394[g.seat]) {
+            char *me = (char *)data_0209f394[g.seat];
+            static const bool swap_rig = env_on("SM64DS_PUPPET_CAPRIG_SWAP");
+            if (swap_rig && !cap_done && (int)g.frame >= cap_at) {
+                // the ROM's own character swap (the door path): the stream look goes 3 -> 0 as it does on a real pickup
+                cap_done = true;
+                port_player_set_character(me, 0);
+                std::fprintf(stderr, "[pup-caprig] f=%u my body swapped to look %d (swap rig)\n", g.frame, *(int *)(me + 8) & 0xff);
+            }
+            if (!swap_rig && !cap_done && (int)g.frame >= cap_at) {
+                char *cap = nullptr;
+                for (int guard = 0; guard < 64; ++guard) {
+                    cap = _ZN8dActor_c15FindWithActorIDEjPS_((unsigned)kClassMarioCap, cap);
+                    if (!cap || *(int *)(cap + 0x3f0) == 4) break;    // a placed (type 4) cap
+                }
+                if (cap && *(int *)(cap + 0x3f0) == 4) {
+                    cap_done = true;
+                    cap_hold = 12;      // a one-frame contact can be missed: stay on it for 12 frames
+                    for (int i = 0; i < 3; ++i) cap_pos[i] = *(int *)(cap + 0x5c + 4 * i);
+                    std::fprintf(stderr, "[pup-caprig] f=%u my body put on the cap at %d,%d,%d (look %d)\n", g.frame,
+                                 cap_pos[0] >> 12, cap_pos[1] >> 12, cap_pos[2] >> 12, *(int *)(me + 8) & 0xff);
+                }
+            }
+            if (cap_hold > 0) {
+                --cap_hold;
+                for (int i = 0; i < 3; ++i) *(int *)(me + 0x5c + 4 * i) = cap_pos[i];
+                *(int *)(me + 0x98) = 0;
+                *(int *)(me + 0xa8) = 0;
+            }
+            if (cap_done && cap_seen < 400 && (int)g.frame % 6 == 0) {
+                ++cap_seen;
+                std::fprintf(stderr, "[pup-caprig] f=%u look=%d state=%d\n", g.frame, *(int *)(me + 8) & 0xff,
+                             vs_arena_state_index(me));
+            }
+        }
+    }
+    // LAB (VSPUP2 pictures): SM64DS_PUPPET_LOOK=<frame>[:<dx>:<dz>] pins MY body
+    // from that frame on, every frame, and turns it to face the first driven
+    // puppet, so my camera settles on a puppet that stands in front of it. With
+    // dx / dz (units) my body is first placed at puppet + (dx, dz); without them it
+    // stays where it stands.
+    {
+        static int look_at = -2, look_dx = 0, look_dz = 0, look_yaw = 0;
+        static bool look_off = false, look_set = false;
+        static int look_pos[3];
+        if (look_at == -2) {
+            const char *e = std::getenv("SM64DS_PUPPET_LOOK");
+            look_at = e && *e ? std::atoi(e) : -1;
+            if (e) if (const char *c = std::strchr(e, ':')) {
+                look_off = std::sscanf(c + 1, "%d:%d:%d", &look_dx, &look_dz, &look_yaw) >= 2;   // optional :yaw (degrees) turns my body off the puppet, for a side view
+            }
+        }
+        int pk = -1;
+        for (int k = 0; k < g.bodies && k < kArenaSeats; ++k)
+            if (k != g.seat && g_pup[k].driven && data_0209f394[k]) { pk = k; break; }
+        if (look_at >= 0 && (int)g.frame >= look_at && g.seat < kArenaSeats && data_0209f394[g.seat] && pk >= 0) {
+            char *me = (char *)data_0209f394[g.seat];
+            const char *pb = (const char *)data_0209f394[pk];
+            if (!look_set) {
+                look_set = true;
+                for (int i = 0; i < 3; ++i) look_pos[i] = *(int *)(me + 0x5c + 4 * i);
+                if (look_off) {
+                    look_pos[0] = *(const int *)(pb + 0x5c) + (look_dx << 12);
+                    look_pos[1] = *(const int *)(pb + 0x60);
+                    look_pos[2] = *(const int *)(pb + 0x64) + (look_dz << 12);
+                }
+                std::fprintf(stderr, "[pup-look] f=%u my body pinned at %d,%d,%d facing the puppet of seat %d\n", g.frame,
+                             look_pos[0] >> 12, look_pos[1] >> 12, look_pos[2] >> 12, pk);
+            }
+            for (int i = 0; i < 3; ++i) *(int *)(me + 0x5c + 4 * i) = look_pos[i];
+            *(int *)(me + 0x98) = 0;
+            *(int *)(me + 0xa8) = 0;
+            const double ddx = (double)(*(const int *)(pb + 0x5c) - look_pos[0]);
+            const double ddz = (double)(*(const int *)(pb + 0x64) - look_pos[2]);
+            const int yaw = (int)(std::atan2(ddx, ddz) * 32768.0 / 3.14159265358979) + (int)(look_yaw * 65536.0 / 360.0);
+            *(short *)(me + 0x8e) = (short)yaw;
+            *(short *)(me + 0x94) = (short)yaw;
         }
     }
     for (int k = 0; k < g.bodies && k < kArenaSeats; ++k) {
@@ -1317,6 +1764,9 @@ void pup_report() {
                      "hold=%llu teleport=%llu older=%llu swaps=%llu sfx_played=%llu hits=%llu "
                      "buf=%.0f\n", k, p.frames, p.interp, p.reckon, p.hold, p.tele,
                      p.older, p.swaps, p.sfx_played, p.hits, p.buf_ms);
+        std::fprintf(stderr, "[puppet] exit seat=%d face_adv=%llu tongue_starts=%llu tongue_frames=%llu "
+                     "anim_refused=%llu sfx_near=%llu sfx_far=%llu puton=%llu\n", k, p.face_adv,
+                     p.tongue_starts, p.tongue_frames, p.anim_refused, p.sfx_near, p.sfx_far, p.puton);
         std::fprintf(stderr, "[puppet] exit seat=%d mouths=%llu mouth_frames=%llu "
                      "mouth_drawn=%llu unconfirmed=%llu\n", k, p.mouth_enters, p.mouth_frames,
                      p.mouth_drawn, p.mouth_unconfirmed);
@@ -1330,6 +1780,23 @@ void pup_report() {
 // ===========================================================================
 // PUBLIC
 // ===========================================================================
+// V5: the distance rule for a remote player's character sounds. The ROM's own
+// metric (src/func_02049018.c: x and z as they are, y doubled, in world units),
+// measured from my body.
+double vs_puppet_sfx_distance(const int me[3], const int src[3]) {
+    const double dx = (double)((me[0] - src[0]) >> 12), dy = (double)((me[1] - src[1]) >> 12) * 2.0,
+                 dz = (double)((me[2] - src[2]) >> 12);
+    return std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+float vs_puppet_sfx_gain(const int me[3], const int src[3]) {
+    pup_sfx_cfg();
+    if (!g_pc.sfx_range_on) return 1.0f;
+    const double d = vs_puppet_sfx_distance(me, src);
+    if (d <= g_pc.sfx_near) return 1.0f;
+    if (d >= g_pc.sfx_far) return 0.0f;
+    return (float)((g_pc.sfx_far - d) / (g_pc.sfx_far - g_pc.sfx_near));
+}
+
 bool arena_state_valid(const ArenaState &s) {
     if (s.tag != kArenaTagState || s.version != 1) return false;
     if (s.seat >= kArenaSeats) return false;
