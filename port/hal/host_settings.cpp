@@ -1242,8 +1242,10 @@ int vsync_sanitise(int n)
 /* ---- THE RENDERER KEY'S BAND (run hd2, lane GPU2) -----------------------
      Renderer   0 the software rasteriser the port has always drawn the 3D
                 picture with, which is the default and the only byte-exact
-                reference; 1 Direct3D 11, which draws the opaque 3D pass on
-                the graphics card and reads it back. Absent, unparseable, 0
+                reference; 1 Direct3D 11, which draws the whole 3D picture on
+                the graphics card (the see-through polygons, the shadows and
+                the edge smoothing too, run cardfull) and, with PresentBackend
+                1, shows it straight from the card. Absent, unparseable, 0
                 itself and negative all land on 0; above 1 clamps to 1 rather
                 than being refused, the Aspect rule. The ceiling is 1 because
                 Direct3D 11 is the only other renderer that exists.
@@ -1962,14 +1964,14 @@ void load_once(void)
        a line of its own rather than a clause on the backend's, because the two
        settings are independent: either can be on without the other. */
     if (g_renderer)
-        fprintf(stderr, "[settings] Renderer 1 -- the solid part of the 3D "
-                        "picture is drawn by the graphics card instead of by "
-                        "the processor and handed straight back, so the "
-                        "see-through polygons, the shadows and everything "
-                        "after them carry on exactly as before. It is not "
-                        "pixel for pixel the same picture as the ordinary "
-                        "renderer, and it falls back to it if the card will "
-                        "not have it. (%s)\n", path);
+        fprintf(stderr, "[settings] Renderer 1 -- the whole 3D picture (the "
+                        "solid part, the see-through polygons, the shadows and "
+                        "the edge smoothing) is drawn by the graphics card "
+                        "instead of by the processor, and with PresentBackend "
+                        "1 it is shown straight from the card. The game itself "
+                        "runs exactly as before. It is not pixel for pixel the "
+                        "same picture as the ordinary renderer, and it falls "
+                        "back to it if the card will not have it. (%s)\n", path);
 }
 
 /* ---- the live re-read -----------------------------------------------------

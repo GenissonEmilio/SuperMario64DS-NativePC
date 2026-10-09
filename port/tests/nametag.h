@@ -414,6 +414,11 @@ static void nt_draw(const OvlSurface &fb)
     if (data_0209f2d8 != 1 && !adventure) return;
     if (!host_setting_name_tags()) return;
     if (!nt_font_build()) return;
+    /* this reads and blends the 3D's pixels: a frame held on the graphics card
+       (run cardfull) is made an ordinary one first. The card's one-frame
+       permission already excludes both modes that reach here, so this is the
+       tag protecting itself, as ovl_shade does. */
+    ntr::gx_card_settle();
 
     const int me = (int)data_0209f250;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
