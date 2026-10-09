@@ -85,9 +85,6 @@ struct MenuPiece {
      0..127): one sprite, or a set, alone, with its own transparency (alpha 0 where the entry drew nothing, as a
      key_backdrop piece reads it). Select by index; an index that churns between scenes is the recipe's to re-read. */
   uint8_t oam_on, oam_lo, oam_hi;
-  /* keyblack: an SRC_TOP_PIC piece also skips pure black pixels (the ROM's own wipe surround, which it draws as black
-     polygons: the title intro's star iris). Only for a page whose transition draws one. */
-  uint8_t keyblack;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */

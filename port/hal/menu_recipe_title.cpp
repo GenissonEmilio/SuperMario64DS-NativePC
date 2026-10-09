@@ -217,6 +217,10 @@ void build_main(MenuLayout *L, bool intro)
     bg.bg = 1;
     bg.layers = (uint8_t)tune(5, 0x0f);
     menu_add_piece(L, bg);
+    /* THE INTRO (top-state 10): the ROM opens the lower screen through a black star iris, drawn as 3D polygons with a thin
+       dark edge, and the plates and the head arrive inside it. On one screen the logo simply fades in alone and the
+       lower screen's art appears with the page itself, so nothing of the iris is drawn. */
+    if (intro) return;
     if (tune(6, -1) >= 0 && tune(7, -1) >= tune(6, -1)) {
         /* DEBUG (SM64DS_TITLE_TUNE index 6,7 = first,last engine-B OAM entry): the upper screen's OAM entries alone, keyed on
            their own transparency, drawn at the top of the picture: the proof of the OAM-range plane on a live screen */
@@ -229,23 +233,23 @@ void build_main(MenuLayout *L, bool intro)
        logo's DS like a mascot; the wrench sits in the top right corner of the canvas */
     const int hk = tune(0, 2), hd = tune(1, 3);
     MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
-    head.keycover = 1; head.touch = 1; head.keyblack = intro ? 1 : 0;
+    head.keycover = 1; head.touch = 1;
     menu_add_piece(L, head);
     static const int kStarX[3] = { 0, 176, 216 }, kStarY[3] = { 0, 0, 40 }, kStarW[3] = { 20, 40, 40 }, kStarH[3] = { 140, 140, 100 };
     for (int k = 0; k < 3; ++k) {
         MenuPiece st = menu_piece_make(SRC_TOP_PIC, kStarX[k], kStarY[k], kStarW[k], kStarH[k], MENU_AX_C, MENU_AY_T,
                                        kStarX[k] - 128 + kStarW[k] / 2, kStarY[k], 1, 1);
-        st.keycover = 1; st.keyblack = intro ? 1 : 0;
+        st.keycover = 1;
         menu_add_piece(L, st);
     }
     MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
-    wr.keycover = 1; wr.touch = 1; wr.keyblack = intro ? 1 : 0;
+    wr.keycover = 1; wr.touch = 1;
     const int iwr = menu_add_piece(L, wr);
     static const int kPlateX[3] = { 0, 70, 188 }, kPlateW[3] = { 70, 118, 68 };
     static const int kPlateId[3] = { 1, 0, 2 };
     for (int k = 0; k < 3; ++k) {
         MenuPiece pl = menu_piece_make(SRC_TOP_PIC, kPlateX[k], 140, kPlateW[k], 52, MENU_AX_C, MENU_AY_B, kPlateX[k] - 128 + kPlateW[k] / 2, 0, 1, 1);
-        pl.keycover = 1; pl.touch = 1; pl.keyblack = intro ? 1 : 0;
+        pl.keycover = 1; pl.touch = 1;
         const int ip = menu_add_piece(L, pl);
         hot(L, ip, &kPlateId[k], 1);
     }

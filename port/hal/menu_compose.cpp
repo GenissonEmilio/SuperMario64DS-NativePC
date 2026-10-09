@@ -539,7 +539,6 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
                 if (qx < 0) continue;
                 if (P.keycover) {
                     if (!S->pic_cover || !S->pic_cover[(size_t)qy * S->pic_stride + qx]) continue;
-                    if (P.keyblack && (prow[qx] & 0xffffffu) == 0) continue;
                 }
                 row[xx] = prow[qx] | 0xff000000u;
             }
