@@ -16,10 +16,9 @@
  *   bottom screen is the choice: drawn as a half-size panel (the fallback's shape).
  *
  * GAME OVER (scene 8, dScGameOver_c, src/actors/dScGameOver_c.cpp)
- *   The upper screen's gradient (BG2) is the picture; "TOUCH TO SELECT" (BG0) is hidden; the eight
- *   GAME OVER glyphs (engine-A OBJ) are lifted and set above the plates; the yes/no plates (engine-B
- *   BG0 labels + BG1 plates) sit under them. The ROM's touch boxes are x 8..0xf7 with y 0x38..0x57
- *   (Continue) and 0x68..0x87 (Quit) (:342, :364).
+ *   The upper screen stays the picture (GAME OVER lettering, gradient); the yes/no plates (engine-B BG0
+ *   labels + BG1 plates) are set under the lettering, one piece per plate. The ROM's touch boxes are
+ *   x 8..0xf7 with y 0x38..0x57 (Continue) and 0x68..0x87 (Quit) (:342, :364).
  *   Driver ROM_CURSOR: the ROM keeps a cursor byte (+0x91, 0 Continue, 1 Quit) that the plates'
  *   highlight (func_ov003_020b0730) paints, and a confirm (IsButtonInputValid) commits the CURRENT
  *   one. Only a touch ever moved it. Here the pad moves the byte and repaints through that same
@@ -97,29 +96,29 @@ const int kGoScene = 8;
 
 int up_gameover(int scene_id) { return scene_id == kGoScene ? 1 : 0; }
 
-/* the plate span, with the plates' edge rows (a plate is two rows taller than its touch box on each
-   side): Continue 0x38..0x57, Quit 0x68..0x87 */
-const int kPlY0 = 0x30, kPlH = 0x60;
-/* the glyph rows: the final landing rows are about 82..110; the piece starts above them so the drop-in
-   slides into view */
-const int kGlY0 = 64, kGlH = 56;
+/* THE LAYOUT. The upper screen stays the picture as the ROM draws it: the GAME OVER lettering sits at DS
+   rows 84..110 over the dark gradient and the "TOUCH TO SELECT" band at 167..183. The two plates go in the free
+   band between them (DS rows 112..165), one piece each so the 14 rows between them in the bottom screen are
+   not carried along: Continue is bottom rows 0x36..0x5a, Quit 0x66..0x8a (a plate is two rows taller than its
+   touch box on each side, dScGameOver_c::Behavior :342 / :364), each at 2/3 so 36 rows become 24.
+   (Lifting the lettering or hiding the band would leave the engine-A backdrop colour behind them: the
+   compositor keeps only the topmost layer per cell, so the gradient under a lifted sprite is gone.) */
+const int kPlYc = 0x36, kPlYq = 0x66, kPlH = 36;
 
 void build_gameover(int, MenuLayout *L)
 {
-    const int wide = menu_wide(L);
-    MenuPiece g = menu_piece_make(SRC_TOP_2D, 0, kGlY0, 256, kGlH, MENU_AX_C, MENU_AY_T, 0, 6, 1, 1);
-    g.layers = MENU_L_OBJ;
-    menu_add_piece(L, g);
-    (void)wide;
-    MenuPiece p = menu_piece_make(SRC_SUB, 0, kPlY0, 256, kPlH, MENU_AX_C, MENU_AY_T, 0, 92, 3, 4);
-    p.layers = MENU_L_BG0 | MENU_L_BG1;
-    p.key_backdrop = 1;
-    p.touch = 1;
-    const int pi = menu_add_piece(L, p);
-    menu_add_hotspot(L, pi, 8, 0x38, 0xf0, 0x20, 0);
-    menu_add_hotspot(L, pi, 8, 0x68, 0xf0, 0x20, 1);
-    L->lift_owners = MENU_L_OBJ;
-    L->hide_owners = MENU_L_BG0;
+    MenuPiece c = menu_piece_make(SRC_SUB, 0, kPlYc, 256, kPlH, MENU_AX_C, MENU_AY_T, 0, 113, 2, 3);
+    c.layers = MENU_L_BG0 | MENU_L_BG1;
+    c.key_backdrop = 1;
+    c.touch = 1;
+    const int pc = menu_add_piece(L, c);
+    MenuPiece q = menu_piece_make(SRC_SUB, 0, kPlYq, 256, kPlH, MENU_AX_C, MENU_AY_T, 0, 141, 2, 3);
+    q.layers = MENU_L_BG0 | MENU_L_BG1;
+    q.key_backdrop = 1;
+    q.touch = 1;
+    const int pq = menu_add_piece(L, q);
+    menu_add_hotspot(L, pc, 8, 0x38, 0xf0, 0x20, 0);
+    menu_add_hotspot(L, pq, 8, 0x68, 0xf0, 0x20, 1);
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
 }
