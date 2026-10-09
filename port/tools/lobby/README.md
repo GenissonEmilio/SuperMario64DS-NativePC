@@ -58,10 +58,11 @@ python3 test_client.py selftest --url https://tangos.dev/port/lobby
 
 ---
 
-## CONTRACT v5 (lobby 1.0): THE ONLY VERSION THIS SERVER SPEAKS
+## CONTRACT v5 (lobby 1.0) AND v6 (party and coop rooms)
 
-Multiplayer 1.0 (run mp1, NETARCH1 design section 5). **`CONTRACT_MIN =
-CONTRACT_V = 5`.** Every request that says `"v":1..4` is `400 bad_version`,
+Multiplayer 1.0 (run mp1, NETARCH1 design section 5). **`CONTRACT_MIN = 5`,
+`CONTRACT_V = 6`**: v5 is the floor, v6 is additive (see "PARTY AND COOP
+ROOMS" below). Every request that says `"v":1..4` is `400 bad_version`,
 which launchers 0.3.x..0.5.x already show as "This launcher and the lobby
 server do not agree on the rules. Check for an update." The floor moved with
 the version because the game under it changed: a 1.0 match needs a relay v2
@@ -79,13 +80,13 @@ What v5 is, all of it:
 | where | what |
 |---|---|
 | `create`, `join`, `world` | `game` REQUIRED: the game build id, `^[0-9A-Za-z._-]{1,24}$`, compared byte for byte, never parsed. A build not on the server's `GAME_IDS` allow list is **409 `unknown_game`** (check for an update). A room remembers its creator's build; a join from another listed build is **409 `game_mismatch`** ("someone in this room runs a different game version"), checked before `room_full` |
-| `create` | `session_type` `"vs"` (default) or `"adventure"`. `"party"` is not a 1.0 room: `400 bad_session_type` |
-| `params` (VS rooms) | optional `luigi` 0/1 (Luigi Infection, default 0) and `voice` 0/1 (the match allows proximity voice, default 1). Anything but the integer 0 or 1 is `400 bad_field`. On an adventure room `luigi`, `voice` or `match_players` is `400 bad_field`. Both ride the `view` and the `params` event |
+| `create` | `session_type` `"vs"` (default) or `"adventure"`; `"party"` and `"coop"` are v6 (below), and a v5 caller naming either gets `400 bad_session_type` |
+| `params` (VS rooms) | optional `luigi` 0/1 (Luigi Infection, default 0) and `voice` 0/1 (the match allows proximity voice; **voice chat is shelved since 10-08: the field is still checked, but the stored value is always 0 and every plan says `voice` 0**, `VOICE_SHELVED` in server.py). Anything but the integer 0 or 1 is `400 bad_field`. On an adventure room `luigi`, `voice` or `match_players` is `400 bad_field`. Both ride the `view` and the `params` event |
 | `start` (VS) | mints `seed` (u32, system RNG) and freezes `luigi`/`voice`/`seed` with the rest of the match. A new seed every match. `start` on an adventure room is **409 `not_vs`** |
 | VS go plan | gains `relay_v` (2), `want_seat` (= `slot`), `luigi`, `seed`, `voice`, `digest` |
 | adventure rooms | a hub code minted once at create for the room's life; the plan arrives in the create/join answer and on every poll; no start/ready gate; the room outlives its creator |
 | `world`, `world_ping` | the always-on world pool (below) |
-| `/health` | `contract_min` 5, `contract_v` 5, plus `relay_v`, `world_open`, `game_ids` (how many builds are listed), `worlds`, `world_seats`, `world_member_s`, `world_addr_tokens` |
+| `/health` | `contract_min` 5, `contract_v` 6, plus `relay_v`, `world_open`, `game_ids` (how many builds are listed), `worlds`, `world_seats`, `world_member_s`, `world_addr_tokens` |
 
 **The VS plan, and what the launcher exports from it** (v5 keys marked):
 
@@ -140,6 +141,27 @@ the host leaves, the host role (kick only) passes to the lowest seat still in,
 with a `host` event; the room stays open. An adventure room is exempt from
 `ROOM_IDLE_S` and closes only after `ADV_EMPTY_S` (600 s) with nobody in it.
 The heartbeat still applies, so a launcher keeps polling while its game runs.
+
+**PARTY AND COOP ROOMS (contract v6; run mp1 FIELD5, lane ROOMS1).** Two more
+hub rooms next to the adventure room, made for the launcher's "Create party
+room" and "Create coop room" buttons. A party room shares stars and bodies
+between friends; a coop room is a private world with the host's save and a
+fully synced world. The lobby carries neither idea: it seats up to four
+friends under a six-letter code, hands each one the room's hub code, and lets
+the host release the room.
+
+| where | what |
+|---|---|
+| `create` | `session_type:"party"` or `"coop"`, **v6 only** (a v5 caller gets `400 bad_session_type`, which every launcher words as "Check for an update"). A coop create also carries **`save_name`**, required there and `400 bad_field` anywhere else: 1 to 24 bytes of printable ASCII, no leading or trailing space, and none of `\ / : * ? " < > \|` (`400 bad_save_name`, or `too_long`). It is opaque display text; the save's **path never reaches this service** (a `save_path` or any other unknown key is `400 bad_field`), is never stored and is never in an answer |
+| seats | `PARTY_SEATS` and `COOP_SEATS` (both 4, 2..16), apart from `MAX_SEATS`. The fifth friend is `409 room_full`. The view carries `room_seats` |
+| `join` | a party or coop room needs v6 (`400 bad_session_type` for a v5 launcher, which would boot it as a plain adventure room); everything else is the VS and adventure join (`game_mismatch`, `unknown_game`, kicks, budgets) |
+| the plan | the create and join answers and every poll carry the hub plan, like an adventure room's, plus `host` (this seat is the host), `started`, `launch` and `room_seats`; coop adds `save_name`: `{"playing":true,"session_type":"coop","code":"Q4WXN8ZT","relay":"...","relay_v":2,"want_seat":255,"host":true,"started":false,"launch":0,"room_seats":4,"save_name":"Tango file"}` |
+| `start` (host only) | the host's **Play**. No arming, `ready`, `go` or match id. It sets `started`, adds one to `launch`, and pushes a `started` event `{"kind":"started","launch":n}`. A launcher launches its game once per `launch` number; a friend who **joins later** is handed a plan that is already `started` and launches on joining. The host may start alone. Pressed again it is launch n+1: everybody whose game is closed relaunches. A guest is `403 not_host`; extra fields are `400 bad_field` |
+| the other VS verbs | `params` is `409 not_vs`; `ready`, `result` and `failed` have no match to act on and are `409 stale_match` for anyone (a forged one changes nothing) |
+| the host leaves | **coop: the room ends**, `closed` with `why:"host_left"` (the host's PC holds the save; a guest keeps no copy). **Party: the room goes on** and the host role (Play, kick) passes to the lowest seat in, with a `host` event. Both also apply when the host's launcher goes silent for `MEMBER_TIMEOUT_S` |
+| idle | exempt from `ROOM_IDLE_S` while anybody polls; an empty party room closes after `ADV_EMPTY_S` |
+| the view | `started`, `launch`, `room_seats` (and coop `save_name`) are added to party and coop views only; VS and adventure views are byte-identical to v5 |
+| what the launcher exports | party: `SM64DS_ROOM_KIND=party`, `SM64DS_PARTY=1`; coop: `SM64DS_ROOM_KIND=coop`, `SM64DS_COOP=1`, `SM64DS_COOP_SAVE_NAME`, `SM64DS_SKIP_MENU=1`, `SM64DS_BOOT_FILE=0`, and on the host only `SM64DS_COOP_HOST=1` and `SM64DS_COOP_SAVE=<path the host chose, which only the host's launcher knows>`; on top of the adventure hub set (`SM64DS_ADVENTURE=1`, `SM64DS_COMMS_RELAY`, `SM64DS_COMMS_CODE`, identity). A world launch carries none of the party and coop names. The game reads them; the lobby never sees them |
 
 **VS joining, leaving and results (run mp1, L-J1).** Tango's rules for 1.0:
 a joiner waits in the room and is in from the next match; no mid-match drop-in;
@@ -209,7 +231,8 @@ New knobs (all in `docker-compose.yml` with these values):
 | `RELAY_V` | 2 | the relay protocol plans name; 1 if the relay v2 deploy is rolled back (the world pool is then off) |
 | `GAME_IDS` | empty | the game builds served, comma-separated; empty = any build for rooms, world pool OFF. The release step sets it |
 | `WORLD_ADDR_TOKENS` | 4 | live world members one client address may hold |
-| `ADV_EMPTY_S` | 600 | an empty adventure room closes after this |
+| `ADV_EMPTY_S` | 600 | an empty adventure or party room closes after this |
+| `PARTY_SEATS`, `COOP_SEATS` | 4, 4 | seats in a party room and in a coop room (2..16; the game's hub holds four bodies today) |
 | `WORLD_SEATS` | 16 | members per world |
 | `WORLD_MEMBER_S` | 30 | a world member unheard this long is not counted |
 | `WORLD_EMPTY_S` | 30 | a world with no live member is dropped after this |
@@ -840,7 +863,7 @@ seat that opens during a match is filled when the match ends.
 
 ```
 GET /port/lobby/health
-<- 200 {"ok":true,"ts":"...","revision":"lobby-5","contract_min":5,"contract_v":5,
+<- 200 {"ok":true,"ts":"...","revision":"lobby-6","contract_min":5,"contract_v":6,
         "dial_max":16,"relay_v":2,"world_open":true,"game_ids":1,"rooms":3,
         "members":7,"worlds":2,"world_seats":16,"world_member_s":30,
         "world_addr_tokens":4,"waiters":5}

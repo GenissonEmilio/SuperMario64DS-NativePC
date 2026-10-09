@@ -633,6 +633,7 @@ def selftest_match(c):
     selftest_colors(c)
     selftest_one(c)
     selftest_world(c)
+    selftest_rooms(c)
 
 
 def selftest_world(c):
@@ -951,8 +952,9 @@ def selftest_one(c):
             "win_mode": "time"}
     expect("luigi=2 is refused", c.post("params", dict(base, luigi=2)),
            400, "bad_field")
-    status, body = c.post("params", dict(base, luigi=1, voice=0))
-    check("the host turns Luigi on and voice off", status == 200, body)
+    status, body = c.post("params", dict(base, luigi=1, voice=1))
+    check("the host turns Luigi on and asks for voice (shelved: it stays off)",
+          status == 200, body)
 
     armed, (hp, gp) = _arm_and_plans(c, code, host, guest)
     check("the room went to go", hp.get("role") == "parent"
@@ -1015,11 +1017,128 @@ def selftest_one(c):
           and (seen.get("plan") or {}).get("code") == aplan.get("code"),
           (status, seen.get("view", {}).get("state"), seen.get("plan")))
     c.post("leave", {"v": 5, "room": adv["room"], "token": ag["token"]})
-    expect("party is not a 1.0 room type",
+    expect("party is not a room type for a v5 client (v6 adds it)",
            c.post("create", {"v": 5, "game": GAME, "nick": "p5",
                              "session_type": "party"}),
            400, "bad_session_type")
 
+
+
+
+def selftest_rooms(c):
+    """Contract v6 over the wire: party and coop rooms (run mp1 FIELD5, lane
+    ROOMS1). Every request below is a real HTTP request to a real server."""
+    print("\n-- v6: party and coop rooms over the wire")
+    status, health = c.get("health")
+    check("/health says contract 5..6",
+          status == 200 and health.get("contract_min") == 5
+          and health.get("contract_v") == 6, health)
+
+    for kind in ("party", "coop"):
+        body = {"v": 6, "game": GAME, "nick": "h6", "session_type": kind}
+        if kind == "coop":
+            body["save_name"] = "Wire file"
+        status, host = c.post("create", body)
+        check("%s: a v6 create makes the room" % kind,
+              status == 200 and host["view"]["session_type"] == kind, host)
+        plan = host.get("plan") or {}
+        check("%s: the create answer carries the hub plan, not started" % kind,
+              plan.get("session_type") == kind and len(plan.get("code", "")) == 8
+              and plan.get("relay_v") == 2 and plan.get("want_seat") == 255
+              and plan.get("started") is False and plan.get("host") is True,
+              plan)
+        code = host["room"]
+        status, g1 = c.post("join", {"v": 6, "game": GAME, "room": code,
+                                     "nick": "g1"})
+        check("%s: a v6 friend joins and gets the same hub code" % kind,
+              status == 200 and (g1.get("plan") or {}).get("code")
+              == plan.get("code") and g1["plan"]["host"] is False, g1)
+        expect("%s: a v5 friend is refused (Check for an update)" % kind,
+               c.post("join", {"v": 5, "game": GAME, "room": code,
+                               "nick": "old"}), 400, "bad_session_type")
+        expect("%s: a guest's start is 403 not_host" % kind,
+               c.post("start", {"v": 6, "room": code, "token": g1["token"]}),
+               403, "not_host")
+        status, st = c.post("start", {"v": 6, "room": code,
+                                      "token": host["token"]})
+        check("%s: the host's start answers launch 1" % kind,
+              status == 200 and st.get("launch") == 1, (status, st))
+        status, seen = c.post("poll", {"v": 6, "room": code,
+                                       "token": g1["token"],
+                                       "cursor": g1["cursor"], "wait": 0})
+        check("%s: the friend's poll carries started plan and started event"
+              % kind, status == 200 and seen["plan"]["started"] is True
+              and seen["plan"]["launch"] == 1
+              and any(e["kind"] == "started" for e in seen["events"]), seen)
+        cur1 = seen["cursor"]
+        status, late = c.post("join", {"v": 6, "game": GAME, "room": code,
+                                       "nick": "late"})
+        check("%s: a later joiner's plan is already started" % kind,
+              status == 200 and late["plan"]["started"] is True, late)
+        expect("%s: params is 409 not_vs" % kind,
+               c.post("params", {"v": 6, "room": code, "token": host["token"],
+                                 "map": 0, "win_mode": "time"}),
+               409, "not_vs")
+        status, g3 = c.post("join", {"v": 6, "game": GAME, "room": code,
+                                     "nick": "g3"})
+        expect("%s: the fifth seat is room_full" % kind,
+               c.post("join", {"v": 6, "game": GAME, "room": code,
+                               "nick": "g4"}), 409, "room_full")
+        if kind == "coop":
+            c.post("leave", {"v": 6, "room": code, "token": host["token"]})
+            status, seen = c.post("poll", {"v": 6, "room": code,
+                                           "token": g1["token"], "cursor": cur1,
+                                           "wait": 0})
+            check("coop: the host leaving closes the room for the guests",
+                  status == 200 and seen["view"]["state"] == "closed"
+                  and any(e.get("why") == "host_left" for e in seen["events"]),
+                  seen)
+        else:
+            c.post("leave", {"v": 6, "room": code, "token": host["token"]})
+            status, seen = c.post("poll", {"v": 6, "room": code,
+                                           "token": g1["token"], "cursor": 0,
+                                           "wait": 0})
+            check("party: the host leaving passes the room on, still open",
+                  status == 200 and seen["view"]["state"] == "lobby"
+                  and seen["view"]["host"] == 2, seen.get("view"))
+
+    # ---- hostile input over the wire -----------------------------------
+    expect("a coop create with no save_name is bad_save_name",
+           c.post("create", {"v": 6, "game": GAME, "nick": "h",
+                             "session_type": "coop"}), 400, "bad_save_name")
+    for bad in ("C:\\Users\\x\\a.coopsav", "a/b", "x" * 25, "", "caf\u00e9",
+                "nul\u0000x"):
+        status, out = c.post("create", {"v": 6, "game": GAME, "nick": "h",
+                                        "session_type": "coop",
+                                        "save_name": bad})
+        check("a coop save_name %r is refused" % bad[:12],
+              status == 400 and out.get("error") in ("bad_save_name",
+                                                     "too_long"), (status, out))
+    expect("a save PATH field is refused (bad_field)",
+           c.post("create", {"v": 6, "game": GAME, "nick": "h",
+                             "session_type": "coop", "save_name": "ok",
+                             "save_path": "C:\\x\\y.coopsav"}),
+           400, "bad_field")
+    expect("a save_name on a party create is bad_field",
+           c.post("create", {"v": 6, "game": GAME, "nick": "h",
+                             "session_type": "party", "save_name": "ok"}),
+           400, "bad_field")
+    expect("a v5 create naming a save_name is bad_field",
+           c.post("create", {"v": 5, "game": GAME, "nick": "h",
+                             "session_type": "coop", "save_name": "ok"}),
+           400, "bad_field")
+    expect("a v5 create of a coop room is bad_session_type",
+           c.post("create", {"v": 5, "game": GAME, "nick": "h",
+                             "session_type": "coop"}), 400, "bad_session_type")
+    expect("a v7 request is bad_version",
+           c.post("create", {"v": 7, "game": GAME, "nick": "h"}),
+           400, "bad_version")
+    # A byte-exact oversize body is refused by the transport, like any verb.
+    big = json.dumps({"v": 6, "game": GAME, "nick": "h",
+                      "session_type": "coop", "save_name": "z" * 5000}).encode()
+    status, text = c.raw("POST", c.prefix + "/create", big)
+    check("a 5 KB coop create body is refused before it is parsed (413)",
+          status == 413, (status, text[:80]))
 
 
 def selftest_colors(c):

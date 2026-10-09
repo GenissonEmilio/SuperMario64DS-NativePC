@@ -769,12 +769,129 @@ def arena_mode():
         sp.stop()
 
 
+def party_coop_rooms():
+    """Run mp1 FIELD5 (lane ROOMS1): contract v6 party and coop rooms, over raw
+    sockets with forged proxy addresses. A forged message must not start a
+    room, end one, carry a path, grant a seat, or crash the service."""
+    print("\n-- party and coop rooms (contract v6)")
+    env = dict(compose_env())
+    env["GAME_IDS"] = REAL + "," + REAL + "x"
+    sp = Spawned(pick_port(), env)
+    c = sp.wait_ready()
+    try:
+        ip = "198.51.100.90"
+        st, h = quick_post(c, "create", {"v": 6, "nick": "h", "game": REAL,
+                                         "session_type": "coop",
+                                         "save_name": "Sec file"}, ip)
+        code, tok = h["room"], h["token"]
+        check("(Pa) a v6 coop create works", st == 200 and "plan" in h, (st, h))
+
+        # A guest cannot start the room or end it; an outsider cannot join
+        # without the game string; a v5 caller cannot join at all.
+        st, g = quick_post(c, "join", {"v": 6, "room": code, "nick": "g",
+                                       "game": REAL}, "203.0.113.31")
+        gtok = g.get("token")
+        st, out = quick_post(c, "start", {"v": 6, "room": code, "token": gtok},
+                             "203.0.113.31")
+        check("(Pb) a guest's start is 403 not_host",
+              (st, out.get("error")) == (403, "not_host"), (st, out))
+        st, out = quick_post(c, "join", {"v": 5, "room": code, "nick": "old",
+                                         "game": REAL}, "203.0.113.32")
+        check("(Pc) a v5 join into a coop room is 400 bad_session_type",
+              (st, out.get("error")) == (400, "bad_session_type"), (st, out))
+        st, out = quick_post(c, "join", {"v": 6, "room": code, "nick": "x",
+                                         "game": REAL + "x"}, "203.0.113.33")
+        check("(Pd) another game build is 409 game_mismatch",
+              (st, out.get("error")) == (409, "game_mismatch"), (st, out))
+
+        # Hostile save names, over the wire, from forged addresses so the
+        # create budget of one address is not what refuses them.
+        answers = {}
+        for n, val in enumerate(("C:\\Users\\x\\a.coopsav", "..\\..\\x",
+                                 "/etc/passwd", "a" * 4000, "x\u0000y",
+                                 "\u00e9", {"a": 1}, [1, 2], -1, 1e308,
+                                 True, None, "")):
+            st, out = quick_post(c, "create", {"v": 6, "nick": "h",
+                                               "game": REAL,
+                                               "session_type": "coop",
+                                               "save_name": val},
+                                 "198.51.100.%d" % (100 + n))
+            answers[repr(val)[:14]] = (st, out.get("error"))
+        print("info  (Pe) hostile save_name values: %s" % answers)
+        check("(Pe) every hostile save_name is refused (400 / 413) and none "
+              "made a room",
+              all(st in (400, 413) for st, _ in answers.values())
+              and all(e in ("bad_save_name", "too_long", None)
+                      for st, e in answers.values()), answers)
+        st, out = quick_post(c, "create", {"v": 6, "nick": "h", "game": REAL,
+                                           "session_type": "coop",
+                                           "save_name": "ok",
+                                           "save_path": "C:\\x\\y.coopsav"},
+                             "198.51.100.150")
+        check("(Pf) a save PATH field is 400 bad_field and no room",
+              (st, out.get("error")) == (400, "bad_field"), (st, out))
+
+        # A forged result / failed / ready in a party or coop room changes
+        # nothing (there is no match to end).
+        got = {}
+        for verb, body in (("result", {"match": "0" * 16, "win": "draw",
+                                       "scores": [9, 0, 0, 0]}),
+                           ("failed", {"match": "0" * 16,
+                                       "reason": "user_cancelled"}),
+                           ("ready", {"match": "0" * 16})):
+            b = {"v": 6, "room": code, "token": gtok}
+            b.update(body)
+            st, out = quick_post(c, verb, b, "203.0.113.31")
+            got[verb] = (st, out.get("error"))
+        check("(Pg) a guest's forged result / failed / ready are 409 "
+              "stale_match", all(v == (409, "stale_match")
+                                 for v in got.values()), got)
+        st, v = quick_post(c, "poll", {"v": 6, "room": code, "token": tok,
+                                       "cursor": 0, "wait": 0}, ip)
+        kinds = [e.get("kind") for e in v.get("events", [])]
+        check("(Ph) the room is unmoved by all of it: lobby, not started, no "
+              "result or failed event",
+              v["view"]["state"] == "lobby" and v["view"]["started"] is False
+              and "result" not in kinds and "failed" not in kinds,
+              (v.get("view"), kinds))
+
+        # The host's launch is the only thing that moves `started`.
+        st, out = quick_post(c, "start", {"v": 6, "room": code, "token": tok},
+                             ip)
+        check("(Pi) the host's start works once and answers launch 1",
+              (st, out.get("launch")) == (200, 1), (st, out))
+        # The wire check: the plan/view never carry a path-looking value.
+        text = json.dumps([v, out])
+        check("(Pj) no answer carries a path", "coopsav" not in text
+              and "\\\\" not in text.replace("\\\\u", ""), text[:200])
+        # Oversize and lying bodies on the new type go through the same
+        # transport as every verb.
+        big = json.dumps({"v": 6, "nick": "h", "game": REAL,
+                          "session_type": "coop",
+                          "save_name": "z" * 6000}).encode()
+        stt, _ = c.raw("POST", "/port/lobby/create", big,
+                       extra=(("X-Forwarded-For", "198.51.100.200"),))
+        check("(Pk) a 6 KB coop create is refused before parsing (413)",
+              stt == 413, stt)
+        s = raw_head(sp.port, "create", 50, xff="198.51.100.201")
+        reply = read_reply(s, 12)
+        s.close()
+        check("(Pl) a coop create that announces 50 bytes and sends none is "
+              "dropped by the read deadline, the service stays up",
+              status_of(reply) in (0, 400, 408), reply[:40])
+        stt, hh = c.get("health")
+        check("(Pm) and the service still answers /health", stt == 200, stt)
+    finally:
+        sp.stop()
+
+
 def main():
     blocker1()
     blocker2()
     world_pool()
     waiting_seats()
     arena_mode()
+    party_coop_rooms()
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))
     for name in FAILED:
         print("  FAILED: %s" % name)
