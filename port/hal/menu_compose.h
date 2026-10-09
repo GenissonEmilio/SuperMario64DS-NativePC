@@ -50,7 +50,8 @@ enum { MENU_L_BG0 = 1, MENU_L_BG1 = 2, MENU_L_BG2 = 4, MENU_L_BG3 = 8, MENU_L_OB
 enum MenuSrc   { SRC_TOP_2D,      /* engine-A cells lifted out by layer owner, kept in DS space */
                  SRC_TOP_PIC,     /* the tick framebuffer (3D + 2D) at host resolution */
                  SRC_TOP_HOSTROW, /* legacy: lc_ov host-space band, moved by rows only */
-                 SRC_SUB };       /* engine-B scan-out with a layer mask */
+                 SRC_SUB,         /* engine-B scan-out with a layer mask */
+                 SRC_HOSTIMG };   /* ASSET2: a host picture (hal/menu_hostimg.h) scaled to the dest rect at host resolution */
 
 enum { MENU_AX_L = 0, MENU_AX_C = 1, MENU_AX_R = 2 };
 enum { MENU_AY_T = 0, MENU_AY_M = 1, MENU_AY_B = 2 };
@@ -85,6 +86,21 @@ struct MenuPiece {
      0..127): one sprite, or a set, alone, with its own transparency (alpha 0 where the entry drew nothing, as a
      key_backdrop piece reads it). Select by index; an index that churns between scenes is the recipe's to re-read. */
   uint8_t oam_on, oam_lo, oam_hi;
+  /* ASSET2 (appended): HOST-RESOLUTION ELEMENTS. Both are placed by the fixed host rect (fx, fy, fw, fh with lnum = lden = 1),
+     the recipe's own arithmetic, so a size is whatever the window is, never a DS-pixel multiple.
+     hostgrad: an SRC_SUB piece that draws a SMOOTH vertical gradient over its dest rect instead of copying pixels. The colours
+     are the engine-B plane's own (columns s.x .. s.x + s.w - 1 of the piece's layers, averaged per DS row, so a banded or
+     dithered DS gradient becomes its mean ramp); runs of equal rows become one stop at their centre and the ramp is linear
+     between stops, evaluated per HOST row with a 4x4 ordered dither of one 8-bit level, so no step is visible at any size.
+     It also publishes the frame's fade factor (sky luminance now over the brightest seen on this page) for hostimg pieces.
+     hostimg: an SRC_HOSTIMG piece; the id is a MENU_IMG_* of menu_hostimg.h. Drawn premultiplied over what is already there,
+     scaled by the fade factor (the picture fades with the engine-B screen it replaces). */
+  uint8_t hostgrad, hostimg;
+  /* hl: a hostimg plank's own look, since the ROM's 3D plate that used to show it is not drawn. bit 0 = selected (brightened,
+     pulsing on the ROM's 8-frame cadence), bit 1 = pressed (sunk and darkened). The compose also treats the piece as
+     selected while it owns the mouse focus, and pressed while the real stylus is held on it. A touch hostimg piece maps a
+     click proportionally into its source rect s (the ROM's own box), not 1:1. */
+  uint8_t hl;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */

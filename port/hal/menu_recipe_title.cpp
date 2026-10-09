@@ -38,6 +38,7 @@
  * (out/TITLE1/shots), not guessed from positions.
  */
 #include "menu_compose.h"
+#include "menu_hostimg.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -131,6 +132,23 @@ int tune(int idx, int dflt)          /* SM64DS_TITLE_TUNE=a,b,c,d,... integer kn
     return v[idx] == -9999 ? dflt : v[idx];
 }
 
+int ltune(int idx, int dflt)         /* SM64DS_MENU_LOGO_TUNE=top,height,dx in canvas units (the PC logo's place) */
+{
+    static int v[4], have = 0;
+    if (!have) {
+        have = 1;
+        for (int i = 0; i < 4; ++i) v[i] = -9999;
+        const char *e = getenv("SM64DS_MENU_LOGO_TUNE");
+        for (int i = 0; e && *e && i < 4; ++i) {
+            char *q;
+            v[i] = (int)strtol(e, &q, 10);
+            if (*q != ',') break;
+            e = q + 1;
+        }
+    }
+    return v[idx] == -9999 ? dflt : v[idx];
+}
+
 }  // namespace
 
 
@@ -140,6 +158,13 @@ int tune(int idx, int dflt)          /* SM64DS_TITLE_TUNE=a,b,c,d,... integer kn
    the ROM submits through func_ov007_020c421c (one call per object per frame). The port arm in that function asks
    this hook whether to draw. SM64DS_TITLE_DRAWTRACE=1 prints each call; SM64DS_TITLE_SKIPK=<hex> skips the calls whose
    per-frame index is a set bit (a probe for naming the objects). */
+extern "C" {
+extern unsigned char data_020a0e40;   /* the local player's slot */
+extern int data_020a0e58[];           /* PadData[i]: {u16 held, u16 pressed} */
+extern char *data_ov007_02103360;     /* the title's element-cursor struct (src/func_ov007_020b3708.c) */
+}
+static inline int *data_020a0e58_ref() { return data_020a0e58; }
+static inline int data_020a0e40_ref() { return data_020a0e40; }
 extern "C" {
 extern int (*g_port_title_draw_skip)(char *obj);
 extern int *data_ov007_0210342c;
@@ -188,6 +213,23 @@ int title_skip(char *o)
     return k < 32 && ((skipk >> k) & 1);
 }
 struct TitleHookInit { TitleHookInit() { g_port_title_draw_skip = title_skip; } } g_title_hook_init;
+/* The ROM's own cursor on the main menu (src/func_ov007_020b3708.c: the cursor element is the short at the head of the
+   struct data_ov007_02103360 points to; 0 = ADVENTURE, 1 = VS, 2 = REC ROOM, 0xff = the cursor is not shown yet: the ROM
+   shows it on the first non-B key, src/func_ov007_020b3190.c), and whether it is being pressed: the DS A key (0x0001, which
+   menu_title_pad_map writes into the held word) is down, or the page has already taken a choice (top-state request). */
+void rom_cursor(int *cursor, int *pressed)
+{
+    *cursor = -1; *pressed = 0;
+    if (!data_ov007_02103360) return;
+    const short *p0 = *(const short **)data_ov007_02103360;
+    if (!p0 || p0[0] < 0 || p0[0] > 2) return;
+    *cursor = p0[0];
+    int top, elem, req;
+    if (port_title_page_state(&top, &elem, &req) && top == 0 && req != -1) *pressed = 1;
+    const unsigned short *held = (const unsigned short *)((char *)data_020a0e58_ref() + data_020a0e40_ref() * 4);
+    if (*held & 0x0001) *pressed = 1;
+}
+
 /* THE MAIN MENU, built from the title's own art objects (run menu1, lane ASSET1; Tango, 10-09: "take the top screen
    and replace the bottom screen's background with it", and the stars stay).
    The lower screen is 3D (see the filter note above). With the wallpaper objects skipped at submit, the picture
@@ -205,6 +247,24 @@ void build_main(MenuLayout *L, bool intro)
     const int side = cw > 256 ? (cw - 256 + 1) / 2 + 2 : 0;  /* the wide margin on each side, with an overlap */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
+    if (menu_hostimg_ready(MENU_IMG_LOGO)) {
+        /* ASSET2: the sky is a smooth gradient at the window's own resolution, coloured from the DS logo screen's own sky
+           (the mean of its leftmost 16 columns, per row; those columns hold no logo), and the "Super Mario 64 PC" logo is a
+           host picture scaled to the window: the DS logo layer is not drawn at all. Both fill / centre on any aspect. */
+        MenuPiece gr = menu_piece_make(SRC_SUB, 0, 0, 16, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        gr.bg = 1; gr.hostgrad = 1; gr.layers = 0x0f;
+        gr.lden = 1; gr.lnum = 1; gr.fx = 0; gr.fy = 0; gr.fw = (short)L->w; gr.fh = (short)L->h;
+        menu_add_piece(L, gr);
+        int iw = 1, ih = 1;
+        menu_hostimg_size(MENU_IMG_LOGO, &iw, &ih);
+        const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
+        const int dh = lh * L->unum / L->uden, dw = (int)((long long)dh * iw / ih);
+        MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        lg.bg = 1; lg.hostimg = MENU_IMG_LOGO;
+        lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
+        lg.fx = (short)((L->w - dw) / 2 + ldx * L->unum / L->uden); lg.fy = (short)(lt * L->unum / L->uden);
+        menu_add_piece(L, lg);
+    } else {
     if (side > 0) {
         MenuPiece lf = menu_piece_make(SRC_SUB, 0, 0, 1, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         lf.bg = 1; lf.xfill = 1; lf.fill_w = (short)side; lf.layers = (uint8_t)tune(5, 0x0f);
@@ -217,6 +277,7 @@ void build_main(MenuLayout *L, bool intro)
     bg.bg = 1;
     bg.layers = (uint8_t)tune(5, 0x0f);
     menu_add_piece(L, bg);
+    }
     /* THE INTRO (top-state 10): the ROM opens the lower screen through a black star iris, drawn as 3D polygons with a thin
        dark edge, and the plates and the head arrive inside it. On one screen the logo simply fades in alone and the
        lower screen's art appears with the page itself, so nothing of the iris is drawn. */
@@ -245,9 +306,34 @@ void build_main(MenuLayout *L, bool intro)
     MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
     wr.keycover = 1; wr.touch = 1;
     const int iwr = menu_add_piece(L, wr);
-    static const int kPlateX[3] = { 0, 70, 188 }, kPlateW[3] = { 70, 118, 68 };
-    static const int kPlateId[3] = { 1, 0, 2 };
+    static const int kPlateId[3] = { 1, 0, 2 };                      /* the ROM's element ids: VS, ADVENTURE, REC ROOM */
+    static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
+    int cur, prs;
+    rom_cursor(&cur, &prs);
+    const bool planks = menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC);
     for (int k = 0; k < 3; ++k) {
+        Box bx;
+        if (!box_of(kPlateId[k], &bx)) continue;
+        if (planks) {
+            /* ASSET2: a plank drawn at the window's resolution over the ROM's own box (the 3D plate is not drawn: its
+               wallpaper object is skipped at submit and its sprite is not in any piece). 40 units tall at 1.05 x the box
+               height, centred on the box; clicks map proportionally into the box, so they reach the ROM exactly. */
+            int iw = 1, ih = 1;
+            menu_hostimg_size(kPlankImg[k], &iw, &ih);
+            const int bh = (bx.y1 - bx.y0) * 21 / 20;
+            const int dh = bh * L->unum / L->uden, dw = (int)((long long)dh * iw / ih);
+            const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;   /* centre x from 128, centre y * 2 */
+            MenuPiece pl = menu_piece_make(SRC_HOSTIMG, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            pl.hostimg = (uint8_t)kPlankImg[k]; pl.touch = 1;
+            pl.lden = 1; pl.lnum = 1; pl.fw = (short)dw; pl.fh = (short)dh;
+            pl.fx = (short)(L->w / 2 + cxu * L->unum / L->uden - dw / 2);
+            pl.fy = (short)(cyu2 * L->unum / (2 * L->uden) - dh / 2);
+            if (cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
+            const int ip = menu_add_piece(L, pl);
+            menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
+            continue;
+        }
+        static const int kPlateX[3] = { 0, 70, 188 }, kPlateW[3] = { 70, 118, 68 };
         MenuPiece pl = menu_piece_make(SRC_TOP_PIC, kPlateX[k], 140, kPlateW[k], 52, MENU_AX_C, MENU_AY_B, kPlateX[k] - 128 + kPlateW[k] / 2, 0, 1, 1);
         pl.keycover = 1; pl.touch = 1;
         const int ip = menu_add_piece(L, pl);

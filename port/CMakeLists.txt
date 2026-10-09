@@ -24438,3 +24438,11 @@ foreach(_tstargo1 walk_window walk_window_hires smoke_player)
     target_sources(${_tstargo1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_starsel.cpp")
 endforeach()
+
+# MENU1 / ASSET2 (run menu1): host-resolution picture + gradient elements for the one-screen menus
+# (the "Super Mario 64 PC" logo of the title main menu and its sky). Own block.
+foreach(_tasset2 walk_window walk_window_hires smoke_player)
+    target_sources(${_tasset2} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_hostimg.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_logo_data.cpp")
+endforeach()

@@ -13,10 +13,12 @@
  * SM64DS_MENU_TRACE=1 prints [menu] lines.
  */
 #include "menu_compose.h"
+#include "menu_hostimg.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <algorithm>
 #include <chrono>
 #include <vector>
 
@@ -83,6 +85,7 @@ int  g_drawn_valid;
 int  g_cur_recipe = -1;
 int  g_cur_variant;
 int  g_focus_shown;
+int  g_q_real_held;
 int  g_drag_piece = -1;
 int  g_netplay;
 int  g_fallback_frames;
@@ -303,7 +306,7 @@ static void piece_inv(const MenuLayout *L, int i, int bx, int by, int *dsx, int 
     const MenuPiece &P = L->p[i];
     const int *d = L->dest[i];
     int x, y;
-    if (P.lden > 0) {   /* the legacy rational: DS = floor(host * lden / lnum), swap_inverse's own arithmetic */
+    if (P.lden > 0 && P.src != SRC_HOSTIMG) {   /* the legacy rational: DS = floor(host * lden / lnum), swap_inverse's own arithmetic */
         const int ln = P.lnum > 0 ? P.lnum : 1;
         x = P.s.x + (int)fdiv((long long)(bx - d[0]) * P.lden, ln);
         y = P.s.y + (int)fdiv((long long)(by - d[1]) * P.lden, ln);
@@ -479,10 +482,153 @@ int menu_focus_move(MenuLayout *L, int dir)
 /* piece draw, backdrop, highlight, census                                */
 /* ====================================================================== */
 
+/* ---- ASSET2: host-resolution gradient and picture ------------------------------------------------------------- */
+namespace {
+float g_sky_ref = 0.f, g_fade = 1.f;     /* brightest sky luminance seen on this page, and this frame's fade factor */
+int   g_sky_frame = -1000;
+
+void draw_hostgrad(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
+{
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    const uint32_t *sp = sub_plane(&P, S);
+    if (!sp || d[2] <= 0 || d[3] <= 0) return;
+    /* the mean colour of each DS row over the sample columns */
+    float rr[192], gg[192], bb[192];
+    int n = P.s.w;
+    if (n < 1) n = 1;
+    for (int y = 0; y < 192; ++y) {
+        /* the MEDIAN of each channel over the sample columns: a few columns that catch the edge of an object (the DS logo's
+           left end, a black sprite pixel) are a minority and never reach the answer */
+        int r[256], g[256], b[256], c = 0;
+        for (int x = P.s.x; x < P.s.x + n && x < 256 && c < 256; ++x) {
+            if (x < 0) continue;
+            const uint32_t v = sp[y * 256 + x];
+            r[c] = (v >> 16) & 255; g[c] = (v >> 8) & 255; b[c] = v & 255; ++c;
+        }
+        if (!c) { r[0] = g[0] = b[0] = 0; c = 1; }
+        std::sort(r, r + c); std::sort(g, g + c); std::sort(b, b + c);
+        rr[y] = (float)r[c / 2]; gg[y] = (float)g[c / 2]; bb[y] = (float)b[c / 2];
+    }
+    /* The DS gradient is banded (runs of equal rows of uneven length, each channel stepping at its own rows). Smooth it: two
+       passes of a box of +-8 rows with odd reflection at both ends (so the end slopes are kept), which removes the band
+       lumps and keeps the ramp's overall shape and colours. Every DS row is then one stop at its centre. */
+    float sy[192], sr[192], sg[192], sb[192];
+    const int ns = 192;
+    {
+        float *ch[3] = { rr, gg, bb }, *out[3] = { sr, sg, sb };
+        for (int k = 0; k < 3; ++k) {
+            float cur[192], nxt[192];
+            memcpy(cur, ch[k], sizeof cur);
+            for (int pass = 0; pass < 2; ++pass) {
+                for (int y = 0; y < 192; ++y) {
+                    float acc = 0.f;
+                    for (int j = -8; j <= 8; ++j) {
+                        int q = y + j;
+                        float v;
+                        if (q < 0) v = 2.f * cur[0] - cur[-q > 191 ? 191 : -q];
+                        else if (q > 191) v = 2.f * cur[191] - cur[(382 - q) < 0 ? 0 : 382 - q];
+                        else v = cur[q];
+                        acc += v;
+                    }
+                    nxt[y] = acc / 17.f;
+                }
+                memcpy(cur, nxt, sizeof cur);
+            }
+            memcpy(out[k], cur, sizeof cur);
+        }
+        for (int y = 0; y < 192; ++y) sy[y] = y + 0.5f;
+    }
+    /* the fade factor: the middle of the sky now over the brightest it has been on this page */
+    {
+        const float lum = 0.3f * rr[96] + 0.59f * gg[96] + 0.11f * bb[96];
+        if ((int)g_frame - g_sky_frame > 30) g_sky_ref = 0.f;
+        g_sky_frame = (int)g_frame;
+        if (lum > g_sky_ref) g_sky_ref = lum;
+        g_fade = g_sky_ref > 8.f ? lum / g_sky_ref : 1.f;
+        if (g_fade > 1.f) g_fade = 1.f;
+        if (g_fade < 0.f) g_fade = 0.f;
+        if (hal_menu_trace_on() && (g_frame % 60) == 0)
+            MTRACE("hostgrad: %d stops (smoothed), mid rgb %.1f %.1f %.1f, fade %.3f", ns, rr[96], gg[96], bb[96], g_fade);
+    }
+    static const int bayer[4][4] = { { 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 } };
+    const size_t stride = (size_t)stride_of(w);
+    int seg = 0;
+    for (int yy = 0; yy < d[3]; ++yy) {
+        const int py = d[1] + yy;
+        if (py < 0 || py >= h) continue;
+        const float v = (yy + 0.5f) * 192.f / d[3];
+        while (seg + 1 < ns && sy[seg + 1] <= v) ++seg;
+        float r, g, b;
+        if (v <= sy[0] || ns == 1) { r = sr[0]; g = sg[0]; b = sb[0]; }
+        else if (seg + 1 >= ns) { r = sr[ns - 1]; g = sg[ns - 1]; b = sb[ns - 1]; }
+        else {
+            const float t = (v - sy[seg]) / (sy[seg + 1] - sy[seg]);
+            r = sr[seg] + (sr[seg + 1] - sr[seg]) * t; g = sg[seg] + (sg[seg + 1] - sg[seg]) * t; b = sb[seg] + (sb[seg + 1] - sb[seg]) * t;
+        }
+        uint32_t *row = dst + (size_t)py * stride;
+        const int xa = d[0] < 0 ? 0 : d[0], xb = d[0] + d[2] > w ? w : d[0] + d[2];
+        for (int x = xa; x < xb; ++x) {
+            const float dz = (bayer[py & 3][x & 3] - 7.5f) / 16.f;
+            int ir = (int)(r + 0.5f + dz), ig = (int)(g + 0.5f + dz), ib = (int)(b + 0.5f + dz);
+            ir = ir < 0 ? 0 : ir > 255 ? 255 : ir; ig = ig < 0 ? 0 : ig > 255 ? 255 : ig; ib = ib < 0 ? 0 : ib > 255 ? 255 : ib;
+            row[x] = 0xff000000u | ((uint32_t)ir << 16) | ((uint32_t)ig << 8) | (uint32_t)ib;
+        }
+    }
+}
+
+void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
+{
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    const uint32_t *src = menu_hostimg_scaled(P.hostimg, d[2], d[3]);
+    if (!src) return;
+    const size_t stride = (size_t)stride_of(w);
+    int f256 = P.hostimg == MENU_IMG_LOGO ? (int)(g_fade * 256.f + 0.5f) : 256;
+    /* the plank's own look: selected = lifted, pulsing on the ROM's 8-frame cadence; pressed = sunk and darker */
+    const int owns = L->focus >= 0 && L->focus < L->nh && L->hs[L->focus].piece == i;
+    int sel = (P.hl & 1) || (owns && g_focus_shown);
+    const int prs = (P.hl & 2) || (owns && g_q_real_held);
+    int boost = 0, sink = 0;
+    if (P.hostimg != MENU_IMG_LOGO) {
+        static const int pulse[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
+        if (sel) boost = 292 + pulse[g_frame & 7] * 10;    /* x1.14 .. x1.30 */
+        if (prs) { f256 = f256 * 216 / 256; boost = 0; sink = d[3] * 3 / 100; if (sink < 1) sink = 1; }
+    }
+    for (int yy = 0; yy < d[3]; ++yy) {
+        const int py = d[1] + yy + sink;
+        if (py < 0 || py >= h) continue;
+        uint32_t *row = dst + (size_t)py * stride;
+        const uint32_t *sr = src + (size_t)yy * d[2];
+        for (int xx = 0; xx < d[2]; ++xx) {
+            const int px = d[0] + xx;
+            if (px < 0 || px >= w) continue;
+            const uint32_t c = sr[xx];
+            const unsigned a = c >> 24;
+            if (!a) continue;
+            unsigned cr = ((c >> 16) & 255) * f256 >> 8, cg = ((c >> 8) & 255) * f256 >> 8, cb = (c & 255) * f256 >> 8;
+            if (boost) {   /* brightened by boost/256 (a lit plank keeps its lettering dark), premultiplied, capped at alpha */
+                cr = cr * boost >> 8; cg = cg * boost >> 8; cb = cb * boost >> 8;
+                if (cr > a) cr = a;
+                if (cg > a) cg = a;
+                if (cb > a) cb = a;
+            }
+            const uint32_t o = row[px];
+            const unsigned ia = 255 - a;
+            const unsigned orr = cr + (((o >> 16) & 255) * ia + 127) / 255, og = cg + (((o >> 8) & 255) * ia + 127) / 255,
+                           ob = cb + ((o & 255) * ia + 127) / 255;
+            row[px] = 0xff000000u | ((orr > 255 ? 255 : orr) << 16) | ((og > 255 ? 255 : og) << 8) | (ob > 255 ? 255 : ob);
+        }
+    }
+}
+}  // namespace
+
 void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
 {
     if (!S || !dst || i < 0 || i >= L->np) return;
     const MenuPiece &P = L->p[i];
+    if (P.src == SRC_HOSTIMG) { draw_hostimg(L, i, dst, w, h); return; }
+    if (P.hostgrad) { draw_hostgrad(L, i, S, dst, w, h); return; }
     const int *d = L->dest[i];
     const int x0 = d[0], y0 = d[1], dw = d[2], dh = d[3];
     if (dw <= 0 || dh <= 0) return;
@@ -632,7 +778,7 @@ int menu_seam_census(const MenuLayout *L, int piece, const MenuSources *S, int c
     counts[0] = counts[1] = counts[2] = counts[3] = 0;
     if (piece < 0 || piece >= L->np || !S) return 0;
     const MenuPiece &P = L->p[piece];
-    if (P.src == SRC_TOP_PIC) return 0;
+    if (P.src == SRC_TOP_PIC || P.src == SRC_HOSTIMG || P.hostgrad) return 0;
     const int pw = P.src == SRC_TOP_HOSTROW ? S->hostrow_w : 256;
     const int ph = P.src == SRC_TOP_HOSTROW ? S->hostrow_h : 192;
     const int sx0 = P.s.x, sy0 = P.s.y, sx1 = P.s.x + P.s.w - 1, sy1 = P.s.y + P.s.h - 1;
@@ -674,7 +820,6 @@ int menu_autocrop_rect(const MenuPiece *P, const MenuSources *S, DsRect *out)
 namespace {
 int g_q_state;          /* 0 idle, 1 press frame 1, 2 press frame 2, 3 release due */
 int g_q_x, g_q_y;
-int g_q_real_held;
 }
 
 int hal_menu_touch_queue_press(int dsx, int dsy)
@@ -890,7 +1035,8 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
     }
     if (g_cur.backdrop == MENU_BACKDROP_DIM_AUTO && S && !S->rom_dimming) menu_dim(dst, w, h, 8);
     for (int i = 0; i < g_cur.np; ++i) menu_piece_draw(&g_cur, i, S, dst, w, h);
-    if (g_cur.focus >= 0 && g_focus_shown) menu_highlight_paint(&g_cur, dst, w, h, g_frame);
+    if (g_cur.focus >= 0 && g_focus_shown && g_cur.focus < g_cur.nh && g_cur.p[g_cur.hs[g_cur.focus].piece].src != SRC_HOSTIMG)
+        menu_highlight_paint(&g_cur, dst, w, h, g_frame);
     g_drawn = g_cur;
     g_drawn_valid = 1;
     g_lift_pending = 0;      /* the draw honoured the lift */
@@ -1045,7 +1191,7 @@ void check_layout(const MenuLayout *L, Result *R)
             }
         }
         if (P.xfill) { /* a fill is not a scaled copy: its width is fill_w units */ }
-        if (P.touch && P.src != SRC_SUB && P.src != SRC_TOP_PIC) { R->corners = 0; sprintf(why, "piece %d touch but not SRC_SUB", i); }
+        if (P.touch && P.src != SRC_SUB && P.src != SRC_TOP_PIC && P.src != SRC_HOSTIMG) { R->corners = 0; sprintf(why, "piece %d touch but not SRC_SUB", i); }
         for (int j = i + 1; j < L->np; ++j) {
             if (P.bg || L->p[j].bg) continue;
             const int *e = L->dest[j];
