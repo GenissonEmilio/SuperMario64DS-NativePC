@@ -18,7 +18,22 @@ is read, and when an actor is spawned.
 * A plugin's own state is not part of a save state. F8/F9 restore the game and
   not your variables, so keep your state derivable from the game.
 * If a plugin crashes, the game switches it off for the rest of the run and keeps
-  going. The log says which plugin and where.
+  going. The log says which plugin and where. A file filter that crashes has the
+  file put back as it was.
+* The guard cannot stop a plugin that does not crash. If a callback never
+  returns, the plugin calls ExitProcess, or it deadlocks in DllMain, the game
+  freezes or exits and nothing can rescue it. Keep callbacks short and do not
+  start threads.
+* `replace_actor` returns NULL both when the game has no such actor and when the
+  replacement table is full (32 replacements across all plugins, 16 per plugin);
+  the log says which. When it returns NULL, nothing was changed: do not assume
+  your factory is installed.
+* Dev builds of the game report the version in their resource file (0.5.0 on the
+  current development base, not the next release number). A test mod built for a
+  dev exe puts that string in `mod.json` "game"; the shipped kit says its release.
+* The symbol table (`walk_window.symtab`) is stamped with the exe it was made
+  for. A table from another build is refused (one log line) and `symbol()`
+  answers NULL for everything, so ship the table that came with the exe.
 * Turn plugins off alone with `SM64DS_MOD_PLUGINS=0`, every mod with `SM64DS_MODS=0`.
 
 ## Folder layout

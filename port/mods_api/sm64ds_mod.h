@@ -28,9 +28,16 @@
      in time and your plugin does not: keep your state derivable from the game
      (re-read it every frame) rather than remembering it.
    * A PLUGIN THAT FAULTS IS SWITCHED OFF. Every call into a plugin is guarded.
-     If one crashes (access violation and the like), it is disabled for the rest
-     of the run, one line is logged, and the game carries on. A plugin that
-     corrupts the game's own memory before crashing cannot be cleaned up after.
+     If one crashes (access violation, stack overflow and the like), it is
+     disabled for the rest of the run, one line is logged, and the game carries
+     on. A file filter that faults has the file put back as it was before the
+     call. A plugin that corrupts the game's own memory before crashing cannot
+     be cleaned up after.
+   * THE GUARD CANNOT STOP A PLUGIN THAT DOES NOT FAULT. A plugin that blocks
+     (never returns from a callback, loops forever, waits on a lock), calls
+     ExitProcess or abort, or deadlocks inside DllMain freezes or ends the whole
+     game, and nothing in the game can stop it. The same goes for a thread it
+     starts. Keep every callback short, and do not start threads.
    * Callbacks run on the game's main thread. Do not block, and do not call the
      API from another thread.
 
@@ -72,6 +79,9 @@ typedef void (__cdecl *SM64DSLevelFn)(int level_id, void *user);
    unchanged, or return a different size with *data pointing at a new buffer
    from api->alloc (the game then frees the old buffer; do not free it
    yourself, and never put a buffer from anything but api->alloc in *data).
+   The game checks: a new buffer must be a live api->alloc block holding at
+   least the returned size, otherwise the file is left as it was and the plugin
+   is switched off. If the filter faults, the file's bytes are restored too.
    Return size and leave *data alone to change nothing. */
 typedef uint32_t (__cdecl *SM64DSFileFn)(const char *rom_path, uint8_t **data,
                                          uint32_t size, void *user);
@@ -116,20 +126,28 @@ struct SM64DSModApi {
     /* Replace the spawn function of actor `actor_id` with `factory`. Returns
        the function that was in place (the game's own, or an earlier plugin's)
        so the new one can wrap it, or NULL if the game has no such actor.
-       At most 16 replacements per plugin. */
+       At most 16 replacements per plugin (and 32 across all plugins). NULL
+       means "no such actor" OR "the replacement table is full" (a line in the
+       log says which); do not install your factory then, nothing was changed.
+       */
     SM64DSActorFactory (__cdecl *replace_actor)(const SM64DSModApi *api,
                                                 unsigned actor_id,
                                                 SM64DSActorFactory factory);
 
     /* The address of a game function or global by its name in this exact build
        (the linker map name, e.g. "_port_level_id" for a C function; C++ names
-       are the decorated "?..." names). NULL if unknown. A bare C name is also
+       are the decorated "?..." names). NULL if unknown, and NULL for every
+       name when the symbol table next to the exe was made for another build
+       (checked against the exe's timestamp and size; one log line). A bare C name is also
        tried with the leading underscore. Cast to the right signature yourself:
        the game is 32-bit, the C functions here are __cdecl unless they are
        __fastcall methods. */
     void *(__cdecl *symbol)(const SM64DSModApi *api, const char *name);
 
-    /* The only allocator that may cross the boundary (see SM64DSFileFn). */
+    /* The only allocator that may cross the boundary (see SM64DSFileFn). free
+       takes only a block from alloc that you still own; anything else (another
+       pointer, a block already freed or handed to the game) is ignored and
+       logged. */
     void *(__cdecl *alloc)(const SM64DSModApi *api, size_t size);
     void (__cdecl *free)(const SM64DSModApi *api, void *ptr);
 };

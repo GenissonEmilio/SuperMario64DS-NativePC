@@ -296,7 +296,12 @@ const SM64DSActorFactory kThunks[kMaxFactory] = { T16(0), T16(16) };
 SM64DSActorFactory __cdecl api_replace_actor(const SM64DSModApi *api, unsigned id, SM64DSActorFactory factory)
 {
     Plugin *p = of(api);
-    if (!factory || p->nfactory >= kMaxCb || g_nfs >= kMaxFactory) return 0;
+    if (!factory) return 0;
+    if (p->nfactory >= kMaxCb || g_nfs >= kMaxFactory) {
+        api_log(api, "replace_actor(%u): the replacement table is full (%d of %d for this plugin, %d of %d overall), nothing changed",
+                id, p->nfactory, (int)kMaxCb, g_nfs, (int)kMaxFactory);
+        return 0;
+    }
     SM64DSActorFactory prev = 0;
     size_t at = g_over.size();
     for (size_t i = 0; i < g_over.size(); ++i)
@@ -364,12 +369,29 @@ void load_syms(void)
         fprintf(stderr, "[plugins] no walk_window.symtab or .map beside the exe: symbol() answers NULL\n");
         return;
     }
+    /* the running image's identity, to compare with the table's */
+    unsigned run_stamp = 0, run_size = 0;
+    {
+        const unsigned char *im = (const unsigned char *)GetModuleHandleA(0);
+        const IMAGE_DOS_HEADER *dh = (const IMAGE_DOS_HEADER *)im;
+        const IMAGE_NT_HEADERS32 *nt = (const IMAGE_NT_HEADERS32 *)(im + dh->e_lfanew);
+        run_stamp = nt->FileHeader.TimeDateStamp;
+        run_size = nt->OptionalHeader.SizeOfImage;
+    }
+    bool have_stamp = false, stamp_ok = true;
     char line[4096];
     while (fgets(line, sizeof line, f)) {
         if (from_tab) {
             if (line[0] == '#') {
                 const char *b = strstr(line, "base=");
                 if (b) { unsigned v; if (hexval(std::string(b + 5, strspn(b + 5, "0123456789abcdefABCDEF")), &v)) g_sym_base = v; }
+                const char *ts = strstr(line, "stamp="), *sz = strstr(line, "size=");
+                unsigned t, z;
+                if (ts && sz && hexval(std::string(ts + 6, strspn(ts + 6, "0123456789abcdefABCDEF")), &t) &&
+                    hexval(std::string(sz + 5, strspn(sz + 5, "0123456789abcdefABCDEF")), &z)) {
+                    have_stamp = true;
+                    stamp_ok = (t == run_stamp && z == run_size);
+                }
                 continue;
             }
             char *tab = strchr(line, '\t');
@@ -389,6 +411,12 @@ void load_syms(void)
         }
     }
     fclose(f);
+    if (from_tab && (!have_stamp || !stamp_ok)) {
+        fprintf(stderr, "[plugins] walk_window.symtab %s: it was made for another build, symbol() answers NULL\n",
+                have_stamp ? "does not match this exe (timestamp or image size differ)" : "has no build stamp");
+        g_syms.clear();
+        return;
+    }
     fprintf(stderr, "[plugins] symbol table: %u names from %s\n", (unsigned)g_syms.size(),
             from_tab ? "walk_window.symtab" : "walk_window.map");
 }
@@ -489,8 +517,7 @@ u32 plugin_filter(unsigned fileID, u8 **data, u32 size)
                        the bytes claimed, may replace ours */
                     std::map<void *, size_t>::iterator ai = g_allocs.find(cur);
                     if (ai == g_allocs.end() || ret > ai->second) {
-                        fprintf(stderr, "[plugins] %s: filter for %s returned %s (%u bytes): ignored, file left as it was, plugin switched off
-",
+                        fprintf(stderr, "[plugins] %s: filter for %s returned %s (%u bytes): ignored, file left as it was, plugin switched off\n",
                                 p->id.c_str(), c.path.c_str(),
                                 ai == g_allocs.end() ? "a buffer that is not from api->alloc" : "a size larger than its api->alloc block",
                                 ret);

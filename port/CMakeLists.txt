@@ -17940,6 +17940,7 @@ add_custom_command(TARGET walk_window POST_BUILD
     COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/mk_symtab.py"
             "$<TARGET_FILE_DIR:walk_window>/walk_window.map"
             "$<TARGET_FILE_DIR:walk_window>/walk_window.symtab"
+            "$<TARGET_FILE:walk_window>"
     VERBATIM
     COMMENT "mk_symtab: walk_window.symtab for the plugin API")
 
