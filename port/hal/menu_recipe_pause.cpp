@@ -207,8 +207,8 @@ void build_plates(MenuLayout *L, int variant, int py, int ph, const Hs *hs, int 
     const int gap = with_arrows ? 6 : 0;
     const int dy = top_dy(hT + gap + hA);
     /* with the paging arrows up the ROM's two top-screen arrows (columns 15..29 and 229..241) sit at the
-       text rect's edges, so the rect narrows to columns 30..228 and keeps its place on the picture */
-    const int tx = with_arrows ? 30 : kTextX, tw = with_arrows ? 199 : kTextW;
+       text rect's edges, so the rect narrows to columns 30..227 (column 228 is the right arrow's black outline edge, a lifted bar if included) and keeps its place on the picture */
+    const int tx = with_arrows ? 30 : kTextX, tw = with_arrows ? 198 : kTextW;
     menu_add_piece(L, top_piece(tx, kTextY, tw, kTextH, MENU_L_BG3 | MENU_L_OBJ, C, dy, ceil_mul(tx - kTextX, C.a)));
     const int pl = menu_add_piece(L, sub_piece(8, py, 240, ph, C, top_dy(ceil_mul(ph, C.b)), 1, MENU_L_BG0 | MENU_L_BG1));
     int arrow_l = -1, arrow_r = -1;

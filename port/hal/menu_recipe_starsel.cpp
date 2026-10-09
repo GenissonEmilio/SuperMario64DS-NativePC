@@ -75,7 +75,7 @@ void build_starsel(int variant, MenuLayout *L)
        edges are at x 48 and 208), under the course name. Wide: the same band is 245 units across, so the row
        stays at full size (the lives and the star counter ride the picture's edges there). */
     const int wide = menu_wide(L);
-    MenuPiece p = menu_piece_make(SRC_SUB, 0, kRowY0, 256, kRowH, MENU_AX_C, MENU_AY_T, 0, wide ? 169 : 174,
+    MenuPiece p = menu_piece_make(SRC_SUB, 0, kRowY0, 256, kRowH, MENU_AX_C, MENU_AY_T, 0, wide ? 173 : 174,
                                   wide ? 1 : 3, wide ? 1 : 4);
     p.layers = MENU_L_OBJ;
     p.key_backdrop = 1;
@@ -103,10 +103,12 @@ void build_starsel(int variant, MenuLayout *L)
     h.touch = 1;
     const int ph = menu_add_piece(L, h);
     if (o && port_scene_live_id() == kStarScene) {
-        int y = (int)ob(o, 0x12b) - 0x28;
-        if (y < 0) y = 0;
-        if (y + 0x50 > 192) y = 192 - 0x50;
-        menu_add_hotspot(L, ph, 0x58, y, 0x50, 0x50, -1);
+        /* the ROM's box is the head's centre row +-0x28; keep the part that lies inside the piece's source rect
+           (rows kHeadY0..191) so a click on the placed piece is always inside the hotspot, even at the top of the bob */
+        int y0 = (int)ob(o, 0x12b) - 0x28, y1 = y0 + 0x50;
+        if (y0 < kHeadY0) y0 = kHeadY0;
+        if (y1 > kHeadY0 + kHeadH) y1 = kHeadY0 + kHeadH;
+        if (y1 > y0) menu_add_hotspot(L, ph, 0x58, y0, 0x50, y1 - y0, -1);
     }
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
