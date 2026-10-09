@@ -1,4 +1,4 @@
-/* hal/sdat_mods.cpp -- run mods1, lane MODSOUND1.
+/* hal/sdat_mods.cpp: run mods1, lane MODSOUND1.
 
    hal/sdat/sdat.cpp applies each enabled mod's sound/ folder to the SDAT
    archive, but it is also built into targets that do not link hal/mods.cpp.

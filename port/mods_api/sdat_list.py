@@ -3,9 +3,10 @@
 
 Usage: python sdat_list.py path/to/sound_data.sdat
 
-Each output line is: <file name to use in sound/>  <type>  <fat id>  <size in bytes>
+Each output line is: <file name to use in sound/>  <type>  <record>  <file id>  <size in bytes>
 The name is the archive's own symbol (SYMB block) plus the type's extension, or
-<type>_<NNNN>.<ext> (the record number, 4 digits) when the archive has no name for it.
+<type>_<NNNN>.<ext> when the archive has no name for it. <record> is the NNNN of that
+numbered form, which also works for named members (sseq_0003.sseq).
 """
 import struct, sys
 
@@ -36,8 +37,11 @@ def members(buf):
             if sl:
                 sl += symb
                 sn = struct.unpack_from("<I", buf, sl)[0]
+                # SEQARC (kind 1) name entries are 8 bytes (name offset, sub-table offset);
+                # SEQ, BANK, WAVEARC and STRM entries are 4 bytes (name offset)
+                stride = 8 if kind == 1 else 4
                 for i in range(min(n, sn)):
-                    so = struct.unpack_from("<I", buf, sl + 4 + i * 4)[0]
+                    so = struct.unpack_from("<I", buf, sl + 4 + i * stride)[0]
                     if so:
                         e = buf.index(b"\0", symb + so)
                         nm = buf[symb + so:e].decode("ascii", "replace")
@@ -58,14 +62,13 @@ def main():
     buf = open(sys.argv[1], "rb").read()
     if buf[:4] != b"SDAT":
         sys.exit("not an SDAT")
-    fat = [b for b in [None]]
     nblk = struct.unpack_from("<H", buf, 0x0e)[0]
     fo = [struct.unpack_from("<I", buf, 0x10 + i * 8)[0] for i in range(nblk)]
     fat = next(o for o in fo if buf[o:o + 4] == b"FAT ")
     for ext, suffix, i, name, fid in members(buf):
         size = struct.unpack_from("<I", buf, fat + 0xc + fid * 16 + 4)[0]
         fn = (name or "%s_%04d" % (ext, i)) + suffix
-        print("%-48s %-5s %5d %9d" % (fn, ext, fid, size))
+        print("%-48s %-5s %6d %6d %9d" % (fn, ext, i, fid, size))
 
 
 if __name__ == "__main__":
