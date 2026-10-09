@@ -188,7 +188,7 @@ void menu_title_build(int variant, MenuLayout *L)
         MenuPiece low = menu_piece_make(SRC_TOP_PIC, 0, 12, 256, 108, MENU_AX_C, MENU_AY_T, 0, 118, 2, 3);
         low.touch = 1;
         menu_add_piece(L, low);
-        const int wide = menu_wide(L);
+        const int wide = L->canvas_w >= 360;      /* room beside the stacked lists (21:9 and wider) */
         MenuPiece bk = menu_piece_make(SRC_TOP_PIC, 176, 136, 80, 44, MENU_AX_R, MENU_AY_B, -2, -2, 1, wide ? 1 : 2);
         bk.touch = 1;
         const int ibk = menu_add_piece(L, bk);
