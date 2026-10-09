@@ -93,7 +93,12 @@ void *port_gpu_card_compose(const unsigned int *overlay, int stride_px);
    ticks keeps its finished picture in the composite target; this is its view
    (null when it is gone). port_gpu_card_fade_recorded: the held frame has an
    engine A fade waiting for its composite. */
-void *port_gpu_card_retained_view(void);
+void *port_gpu_card_retained_view(int slot);   /* slot 1 the tick, 2 an in-between */
+/* run hunt8, lane GPUINTERP1: composite the frame just drawn and kept (a picture
+   between two ticks) with the retained tick's overlay into the in-between
+   target and return its view, or null (the caller then blends on the
+   processor). */
+void *port_gpu_card_compose_inter(const unsigned int *overlay, int stride_px);
 int port_gpu_card_fade_recorded(void);
 
 /* THE READBACK WAIT, summed in milliseconds over every frame the card has

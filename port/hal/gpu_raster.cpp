@@ -379,6 +379,13 @@ ID3D11Texture2D          *g_ov_tex, *g_comp_tex, *g_comp_stage, *g_bm_tex;
 bool                     g_comp_valid;   /* g_comp_tex holds a finished composite (run hunt8, CARDSM1) */
 ID3D11ShaderResourceView *g_ov_srv, *g_comp_srv, *g_bm_srv;
 ID3D11RenderTargetView   *g_comp_rtv;
+/* run hunt8, lane GPUINTERP1: the composite of a picture BETWEEN two ticks has
+   a target of its own, so the tick's composite (g_comp_tex) stays whole for the
+   tick's own present. g_comp2_valid: it holds a finished in-between. */
+ID3D11Texture2D          *g_comp2_tex;
+ID3D11ShaderResourceView *g_comp2_srv;
+ID3D11RenderTargetView   *g_comp2_rtv;
+bool                     g_comp2_valid;
 ID3D11Buffer             *g_comp_cb;
 ID3D11PixelShader        *g_ps_comp;
 int                       g_cp_w, g_cp_h;
@@ -764,6 +771,10 @@ void release_targets()
     g_comp_valid = false;
     if (g_comp_tex) { g_comp_tex->Release(); g_comp_tex = 0; }
     if (g_comp_stage) { g_comp_stage->Release(); g_comp_stage = 0; }
+    g_comp2_valid = false;
+    if (g_comp2_rtv) { g_comp2_rtv->Release(); g_comp2_rtv = 0; }
+    if (g_comp2_srv) { g_comp2_srv->Release(); g_comp2_srv = 0; }
+    if (g_comp2_tex) { g_comp2_tex->Release(); g_comp2_tex = 0; }
     g_cp_w = g_cp_h = 0;
     if (g_fa_srv) { g_fa_srv->Release(); g_fa_srv = 0; }
     if (g_fa_rtv) { g_fa_rtv->Release(); g_fa_rtv = 0; }
@@ -1939,6 +1950,7 @@ void cp_give_up(const char *why, HRESULT hr)
     if (g_cp_dead) return;
     g_cp_dead = 1;
     g_comp_valid = false;
+    g_comp2_valid = false;
     /* g_cp_held stays as it is: the frame in hand is still on the card and its
        settle still has to be able to read it */
     if (hr)
@@ -2793,7 +2805,10 @@ void cp_resolve(const uint32_t *ov, int ov_stride, uint32_t *dst, int dst_stride
    applied the same rule. 0 when the target is gone. */
 int card_ret_readback(const ntr::GxGpuFrame *f)
 {
-    if (!g_comp_valid || g_cp_dead || g_down || !g_ctx || !g_comp_tex || !f->fb)
+    /* slot 2 (run hunt8, lane GPUINTERP1): the in-between composite */
+    ID3D11Texture2D *const src_tex = f->slot == 2 ? g_comp2_tex : g_comp_tex;
+    const bool src_valid = f->slot == 2 ? g_comp2_valid : g_comp_valid;
+    if (!src_valid || g_cp_dead || g_down || !g_ctx || !src_tex || !f->fb)
         return 0;
     if (!g_comp_stage) {
         D3D11_TEXTURE2D_DESC d;
@@ -2807,7 +2822,7 @@ int card_ret_readback(const ntr::GxGpuFrame *f)
         d.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         if (FAILED(g_dev->CreateTexture2D(&d, 0, &g_comp_stage))) return 0;
     }
-    g_ctx->CopyResource(g_comp_stage, g_comp_tex);
+    g_ctx->CopyResource(g_comp_stage, src_tex);
     D3D11_MAPPED_SUBRESOURCE cm;
     memset(&cm, 0, sizeof cm);
     if (FAILED(g_ctx->Map(g_comp_stage, 0, D3D11_MAP_READ, 0, &cm))) return 0;
@@ -2906,6 +2921,10 @@ bool cp_ensure(int w, int h)
     if (g_comp_srv) { g_comp_srv->Release(); g_comp_srv = 0; }
     if (g_comp_tex) { g_comp_tex->Release(); g_comp_tex = 0; }
     if (g_comp_stage) { g_comp_stage->Release(); g_comp_stage = 0; }
+    g_comp2_valid = false;
+    if (g_comp2_rtv) { g_comp2_rtv->Release(); g_comp2_rtv = 0; }
+    if (g_comp2_srv) { g_comp2_srv->Release(); g_comp2_srv = 0; }
+    if (g_comp2_tex) { g_comp2_tex->Release(); g_comp2_tex = 0; }
     D3D11_TEXTURE2D_DESC d;
     memset(&d, 0, sizeof d);
     d.Width = (UINT)w;
@@ -2933,6 +2952,12 @@ bool cp_ensure(int w, int h)
     if (FAILED(hr)) { cp_give_up("no composite target view", hr); return false; }
     hr = g_dev->CreateShaderResourceView(g_comp_tex, 0, &g_comp_srv);
     if (FAILED(hr)) { cp_give_up("no composite target reader", hr); return false; }
+    hr = g_dev->CreateTexture2D(&d, 0, &g_comp2_tex);
+    if (FAILED(hr)) { cp_give_up("no in-between composite target", hr); return false; }
+    hr = g_dev->CreateRenderTargetView(g_comp2_tex, 0, &g_comp2_rtv);
+    if (FAILED(hr)) { cp_give_up("no in-between composite target view", hr); return false; }
+    hr = g_dev->CreateShaderResourceView(g_comp2_tex, 0, &g_comp2_srv);
+    if (FAILED(hr)) { cp_give_up("no in-between composite target reader", hr); return false; }
     g_cp_w = w;
     g_cp_h = h;
     return true;
@@ -2941,7 +2966,7 @@ bool cp_ensure(int w, int h)
 /* THE CHECK (SM64DS_PRESENT_FROM_CARD_CHECK=N, every Nth composite): read the
    card's composite back and compare every pixel with the processor's own copy
    of the rule over the same overlay. Zero differing pixels is the claim. */
-void cp_check(const uint32_t *overlay, int stride_px)
+void cp_check(const uint32_t *overlay, int stride_px, ID3D11Texture2D *tex = 0)
 {
     if (!g_comp_stage) {
         D3D11_TEXTURE2D_DESC d;
@@ -2955,7 +2980,7 @@ void cp_check(const uint32_t *overlay, int stride_px)
         d.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         if (FAILED(g_dev->CreateTexture2D(&d, 0, &g_comp_stage))) return;
     }
-    g_ctx->CopyResource(g_comp_stage, g_comp_tex);
+    g_ctx->CopyResource(g_comp_stage, tex ? tex : g_comp_tex);
     D3D11_MAPPED_SUBRESOURCE cm;
     memset(&cm, 0, sizeof cm);
     if (FAILED(g_ctx->Map(g_comp_stage, 0, D3D11_MAP_READ, 0, &cm))) return;
@@ -3073,6 +3098,81 @@ void *cp_compose(const uint32_t *overlay, int stride_px)
     g_cp_ms += ms_between(t0, qpc());
     if (g_cp_check && ((g_cp_composed - 1) % g_cp_check) == 0) cp_check(overlay, stride_px);
     return g_comp_srv;
+}
+
+/* run hunt8, lane GPUINTERP1: THE PICTURE BETWEEN TWO TICKS, COMPOSITED ON THE
+   CARD. The frame just drawn (kept, the replayed 3D) is composited with the
+   overlay the tick's own composite uploaded (g_ov_tex still holds it: nothing
+   uploads again until the next tick, so the 2D is composed once per tick) into
+   the in-between target g_comp2_tex, and its view is handed back. No fade and
+   no brightness mask: a tick with either is not composited ahead (SmoothMotion
+   settles it, or it is a snap tick) and takes the processor's blend instead.
+   Null (and nothing changed) when the tick's overlay is not there, the sizes
+   moved or the card has stopped; the caller then reads the 3D back and blends
+   on the processor as before. */
+void *cp_compose_inter(const uint32_t *overlay, int stride_px)
+{
+    if (!g_cp_held || g_cp_dead || g_down || !g_ctx || !g_comp_valid ||
+        !g_ov_tex || !g_comp2_tex || !g_ps_comp) return 0;
+    if (g_cp_w != g_cp_cw || g_cp_h != g_cp_ch) return 0;
+    if (g_cp_smoothed && !g_fa_srv) return 0;
+    const long long t0 = qpc();
+    D3D11_MAPPED_SUBRESOURCE cm;
+    memset(&cm, 0, sizeof cm);
+    HRESULT hr = g_ctx->Map(g_comp_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &cm);
+    if (FAILED(hr) || !cm.pData) return 0;
+    uint32_t *u = (uint32_t *)cm.pData;
+    u[0] = (uint32_t)g_cp_box[0];
+    u[1] = (uint32_t)g_cp_box[1];
+    u[2] = (uint32_t)g_cp_box[2];
+    u[3] = (uint32_t)g_cp_box[3];
+    u[4] = (uint32_t)g_cp_px0;
+    u[5] = (uint32_t)g_cp_py0;
+    u[6] = (uint32_t)g_cp_pw;
+    u[7] = (uint32_t)g_cp_ph;
+    u[8] = g_cp_clear;
+    u[9] = g_cp_outside;
+    u[10] = (g_cp_smoothed ? 1u : 0u) | (g_cp_shown3d ? 16u : 0u) |
+            (g_cp_clear_opaque ? 32u : 0u);
+    u[11] = 0;
+    g_ctx->Unmap(g_comp_cb, 0);
+
+    D3D11_VIEWPORT vp;
+    vp.TopLeftX = 0.0f;
+    vp.TopLeftY = 0.0f;
+    vp.Width = (float)g_cp_cw;
+    vp.Height = (float)g_cp_ch;
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    g_ctx->RSSetViewports(1, &vp);
+    D3D11_RECT sc;
+    sc.left = 0;
+    sc.top = 0;
+    sc.right = g_cp_cw;
+    sc.bottom = g_cp_ch;
+    g_ctx->RSSetScissorRects(1, &sc);
+    g_ctx->RSSetState(g_rast);
+    g_ctx->OMSetRenderTargets(1, &g_comp2_rtv, 0);
+    g_ctx->OMSetDepthStencilState(0, 0);
+    g_ctx->OMSetBlendState(0, 0, 0xffffffffu);
+    g_ctx->IASetInputLayout(0);
+    g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    g_ctx->VSSetShader(g_full_vs, 0, 0);
+    g_ctx->PSSetShader(g_ps_comp, 0, 0);
+    g_ctx->PSSetConstantBuffers(0, 1, &g_comp_cb);
+    ID3D11ShaderResourceView *srvs[4] = { g_col_srv, g_cp_smoothed ? g_fa_srv : 0,
+                                          g_ov_srv, 0 };
+    g_ctx->PSSetShaderResources(0, 4, srvs);
+    g_ctx->Draw(3, 0);
+    ID3D11ShaderResourceView *none[4] = { 0, 0, 0, 0 };
+    g_ctx->PSSetShaderResources(0, 4, none);
+    g_ctx->OMSetRenderTargets(0, 0, 0);
+    ++g_cp_composed;
+    g_comp2_valid = true;
+    g_cp_ms += ms_between(t0, qpc());
+    if (g_cp_check && overlay && (g_cp_composed % g_cp_check) == 0)
+        cp_check(overlay, stride_px, g_comp2_tex);
+    return g_comp2_srv;
 }
 
 int draw_frame(const ntr::GxGpuFrame *f)
@@ -3551,9 +3651,19 @@ extern "C" void *port_gpu_card_compose(const unsigned int *overlay, int stride_p
 
 /* The finished composite of the last tick composited ahead of the pictures
    drawn between ticks (run hunt8, lane CARDSM1), or null when it is gone. */
-extern "C" void *port_gpu_card_retained_view(void)
+extern "C" void *port_gpu_card_retained_view(int slot)
 {
+    if (slot == 2)
+        return (g_comp2_valid && !g_cp_dead && !g_down && g_comp2_srv) ? (void *)g_comp2_srv : 0;
     return (g_comp_valid && !g_cp_dead && !g_down && g_comp_srv) ? (void *)g_comp_srv : 0;
+}
+
+/* run hunt8, lane GPUINTERP1: composite the frame just drawn and kept (a picture
+   between two ticks) with the overlay of the tick composited ahead, into the
+   in-between target; the view, or null (see cp_compose_inter). */
+extern "C" void *port_gpu_card_compose_inter(const unsigned int *overlay, int stride_px)
+{
+    return cp_compose_inter((const uint32_t *)overlay, stride_px);
 }
 
 /* The recorded fade of the frame held now: 1 when one is waiting for the
@@ -3575,7 +3685,8 @@ int port_gpu_card_held(void) { return 0; }
 void port_gpu_card_set_fade(int, int) {}
 void port_gpu_card_set_mask(const unsigned char *, int, int, int) {}
 void *port_gpu_card_compose(const unsigned int *, int) { return 0; }
-void *port_gpu_card_retained_view(void) { return 0; }
+void *port_gpu_card_retained_view(int) { return 0; }
+void *port_gpu_card_compose_inter(const unsigned int *, int) { return 0; }
 int port_gpu_card_fade_recorded(void) { return 0; }
 
 #endif

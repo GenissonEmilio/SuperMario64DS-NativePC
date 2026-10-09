@@ -314,6 +314,9 @@ struct GxGpuFrame {
     //         (then the 3D of that one frame is the clear colour).
     int keep;
     int settle;
+    // slot    with settle 3 (run hunt8, lane GPUINTERP1): 1 the retained tick's
+    //         composite, 2 the retained picture between two ticks
+    int slot;
     // sink3d  with settle 1 (run hunt8, lane CARDSM1): when not null, the card's
     //         3D picture alone (smoothed when the frame was, no 2D, no fade) is
     //         also written here, SCREEN_W stride. SmoothMotion's snapshot of
@@ -435,7 +438,14 @@ void gx_card_note_behind();
 int gx_card_behind_seen();
 int gx_card_pre_needed();
 void gx_card_retire(const Framebuffer *fb);
-int gx_card_retained(const Framebuffer *fb);
+int gx_card_retained(const Framebuffer *fb);   // 0 no, 1 a retained tick, 2 a retained picture between ticks
+// run hunt8, lane GPUINTERP1: a picture between two ticks drawn on the card.
+// gx_card_interp_clear is gx_clear_fill for it (the card keeps the frame and
+// the framebuffer is not wiped; 0 = not kept, the classic fill was done);
+// gx_card_retire2 is gx_card_retire for it once port_gpu_card_compose_inter put
+// its picture in the in-between composite target.
+int gx_card_interp_clear(Framebuffer &fb);
+void gx_card_retire2(const Framebuffer *fb);
 void gx_card_settle_fb(Framebuffer &fb, const char *why);
 
 // THE TOON TABLE (GBATEK, DS 3D Toon/Edge/Fog: TOON_TABLE 0x04000380, 32

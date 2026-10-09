@@ -7373,14 +7373,14 @@ static void present_body(void)
        over the card's other targets, shows it from there. Where it cannot, the
        picture is read back into the framebuffer and presented the ordinary
        way. */
-    if (ntr::gx_card_retained(g_present_fb)) {
+    if (const int ret_slot = ntr::gx_card_retained(g_present_fb)) {
         if (gpu_offscreen && !g_present_stack &&
-            port_gpu_present_retained_offscreen(port_gpu_card_retained_view(),
+            port_gpu_present_retained_offscreen(port_gpu_card_retained_view(ret_slot),
                                                 ntr::active_w, ntr::active_h))
             return;
         if (cw > 0 && ch > 0 && !gpu_offscreen && !g_present_stack &&
             port_gpu_present_enabled()) {
-            void *view = port_gpu_card_retained_view();
+            void *view = port_gpu_card_retained_view(ret_slot);
             int cdw, cdh, cdx, cdy;
             hal_present_fit(cw, ch, ntr::active_w, ntr::active_h, &cdx, &cdy,
                             &cdw, &cdh);
@@ -7667,6 +7667,8 @@ static void ip_arm(const ntr::Framebuffer *level_fb)
 
 /* Build the blended picture for `alpha` into g_ip_fb. 0 when the tick has no
    blend to offer (a snap), and then nothing was drawn. */
+static int g_ip_card_ok = -1;   /* SM64DS_INTERP_CARD=0 puts the processor's blend back (A/B on one binary) */
+static unsigned long long g_ip_card_pics, g_ip_cpu_pics;
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -7674,11 +7676,38 @@ static int ip_build(double alpha)
     g_ip_sum_replay += ip_ms_since(t0);
     const long long t1 = ip_qpc();
     ntr::Framebuffer &o = *g_ip_fb;
-    ntr::gx_clear_fill(o);     /* the frame's own clear, as the tick's */
+    if (g_ip_card_ok < 0) {
+        const char *e = getenv("SM64DS_INTERP_CARD");
+        g_ip_card_ok = (e && atoi(e) == 0) ? 0 : 1;
+    }
+    /* run hunt8, lane GPUINTERP1: a tick composited on the card ahead of its
+       pictures (ip_retire_tick) has its 2D overlay uploaded already; the
+       replayed 3D is drawn on the card and composited with that overlay into
+       the in-between target, and the present shows it from there. No readback
+       and no pass over the picture on the processor. */
+    int card = 0;
+    if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
+        card = ntr::gx_card_interp_clear(o);
+    else
+        ntr::gx_clear_fill(o);     /* the frame's own clear, as the tick's */
     ntr::gx_render(o);
     ntr::gx_interp_end();
     g_ip_sum_raster += ip_ms_since(t1);
     const long long t2 = ip_qpc();
+    if (card && ntr::gx_card_overlay_active()) {
+        if (port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W)) {
+            ntr::gx_card_retire2(&o);
+            ++g_ip_card_pics;
+            g_ip_sum_compose += ip_ms_since(t2);
+            return 1;
+        }
+        /* the card could not composite it: read the 3D back (the buffer was
+           not wiped, so an overlay of zeros first) and blend as before */
+        for (int y = 0; y < ntr::active_h; ++y)
+            memset(o.px[y], 0, ntr::active_w * sizeof(uint32_t));
+        ntr::gx_card_settle_because("a picture between ticks could not be composited on the card");
+    }
+    ++g_ip_cpu_pics;
     for (int y = 0; y < ntr::active_h; ++y) {
         uint32_t *row = o.px[y];
         const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
@@ -8169,6 +8198,8 @@ static void ip_probe(int frame, int rom_frame)
         ntr::gx_polygons(tn);
         ntr::gx_interp_end();
         ip_build(alpha);
+        if (ntr::gx_card_retained(g_ip_fb))
+            ntr::gx_card_settle_fb(*g_ip_fb, "the SmoothMotion probe (a picture between ticks)");
         unsigned h = 2166136261u;
         for (int y = 0; y < ntr::active_h; ++y)
             for (int x = 0; x < ntr::active_w; ++x)
@@ -17718,8 +17749,13 @@ int main(void)
            a SNAP: every picture of it is the tick's own, already faded. */
         if (g_ip_on > 0 && g_ip_tick_ok) {
             int ip_evy = 0, ip_white = 0;
-            if (port_fader_blend_state(&ip_evy, &ip_white))
+            if (port_fader_blend_state(&ip_evy, &ip_white)) {
                 g_ip_tick_ok = 0;
+                if (ip_trace())
+                    fprintf(stderr, "[interp] tick f%d is a snap: engine A fade in "
+                            "motion (evy %d to %s)\n", port_rom_frame(), ip_evy,
+                            ip_white ? "white" : "black");
+            }
         }
 
         if (g_ip_on > 0 && g_ip_tick_ok) {

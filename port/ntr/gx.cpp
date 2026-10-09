@@ -3653,6 +3653,9 @@ static void (*g_cp_sink_done)(void);
 static int g_cp_behind;
 static int g_cp_pre_needed;
 static const Framebuffer *g_ret_fb;
+/* run hunt8, lane GPUINTERP1: the framebuffer standing for a picture between two
+   ticks whose finished picture lives in the in-between composite target */
+static const Framebuffer *g_ret_fb2;
 
 void gx_card_present_allow(int allow) { g_cp_allow = allow ? 1 : 0; }
 void gx_card_settle_sink(uint32_t *dst3d, void (*done)(void))
@@ -3671,12 +3674,39 @@ void gx_card_retire(const Framebuffer *fb)
     g_cp_sink_done = nullptr;
     g_ret_fb = fb;
 }
-int gx_card_retained(const Framebuffer *fb) { return fb && fb == g_ret_fb; }
+int gx_card_retained(const Framebuffer *fb)
+{
+    if (!fb) return 0;
+    return fb == g_ret_fb ? 1 : (fb == g_ret_fb2 ? 2 : 0);
+}
+void gx_card_retire2(const Framebuffer *fb)
+{
+    /* a picture between two ticks is composited: nothing of it is held */
+    g_cp_active = 0;
+    g_cp_sink = nullptr;
+    g_cp_sink_done = nullptr;
+    g_ret_fb2 = fb;
+}
 int gx_card_overlay_active() { return g_cp_active; }
 
 static void clear_fill_classic(Framebuffer &fb);
 
-void gx_clear_fill(Framebuffer &fb)
+static void clear_fill_impl(Framebuffer &fb, bool wipe);
+void gx_clear_fill(Framebuffer &fb) { clear_fill_impl(fb, true); }
+
+/* run hunt8, lane GPUINTERP1: the clear for a picture between two ticks that
+   the card is to keep. The same answer as gx_clear_fill after
+   gx_card_present_allow(1), except that a kept frame's framebuffer is not wiped
+   (nobody reads it: the composite owns the picture). 1 when the card will keep
+   the frame; 0 and the classic clear fill otherwise. */
+int gx_card_interp_clear(Framebuffer &fb)
+{
+    g_cp_allow = 1;
+    clear_fill_impl(fb, false);
+    return g_cp_pending;
+}
+
+static void clear_fill_impl(Framebuffer &fb, bool wipe)
 {
     /* a new frame: nothing from the last one is held any more */
     g_cp_active = 0;
@@ -3686,6 +3716,7 @@ void gx_clear_fill(Framebuffer &fb)
     g_cp_sink = nullptr;
     g_cp_sink_done = nullptr;
     if (g_ret_fb == &fb) g_ret_fb = nullptr;
+    if (g_ret_fb2 == &fb) g_ret_fb2 = nullptr;
     g_cp_fb = &fb;
     const int allow = g_cp_allow;
     g_cp_allow = 0;
@@ -3701,9 +3732,10 @@ void gx_clear_fill(Framebuffer &fb)
             /* THE TRANSPARENT FILL: alpha 0 everywhere, which says "no 2D
                here". The clear colour is the card's to draw. */
             const int w = active_w, h = active_h;
-            for (int y = 0; y < h && y < SCREEN_H; ++y)
-                std::memset(fb.px[y], 0, (size_t)(w < SCREEN_W ? w : SCREEN_W) *
-                                             sizeof(fb.px[0][0]));
+            if (wipe)
+                for (int y = 0; y < h && y < SCREEN_H; ++y)
+                    std::memset(fb.px[y], 0, (size_t)(w < SCREEN_W ? w : SCREEN_W) *
+                                                 sizeof(fb.px[0][0]));
             g_cp_pending = 1;
             return;
         }
@@ -3838,17 +3870,19 @@ void gx_card_settle_because(const char *why)
    is read back from the composite target. Anything else settles as before. */
 void gx_card_settle_fb(Framebuffer &fb, const char *why)
 {
-    if (g_ret_fb == &fb && g_gpu_opaque) {
+    const int slot = gx_card_retained(&fb);
+    if (slot && g_gpu_opaque) {
         GxGpuOut out;
         std::memset(&out, 0, sizeof out);
         GxGpuFrame f;
         std::memset(&f, 0, sizeof f);
         f.settle = 3;
+        f.slot = slot;
         f.fb = &fb.px[0][0];
         f.stride = SCREEN_W;
         f.out = &out;
         g_gpu_opaque(&f);
-        g_ret_fb = nullptr;      /* read back: an ordinary finished frame now */
+        if (slot == 2) g_ret_fb2 = nullptr; else g_ret_fb = nullptr;   /* read back: an ordinary finished frame now */
         return;
     }
     gx_card_settle_because(why);
