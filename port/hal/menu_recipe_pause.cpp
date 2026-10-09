@@ -142,9 +142,9 @@ Cols make_cols(const MenuLayout *L, int wa, int wb)
     return C;
 }
 
-MenuPiece top_piece(int sx, int sy, int sw, int sh, uint8_t layers, const Cols &C, int dy)
+MenuPiece top_piece(int sx, int sy, int sw, int sh, uint8_t layers, const Cols &C, int dy, int dx = 0)
 {
-    MenuPiece p = menu_piece_make(SRC_TOP_2D, sx, sy, sw, sh, MENU_AX_L, MENU_AY_T, C.marg, dy, C.a.n, C.a.d);
+    MenuPiece p = menu_piece_make(SRC_TOP_2D, sx, sy, sw, sh, MENU_AX_L, MENU_AY_T, C.marg + dx, dy, C.a.n, C.a.d);
     p.layers = layers;
     return p;
 }
@@ -183,16 +183,20 @@ void ok_box(int controller, short *x, short *w)
 
 /* ---- the builders ---------------------------------------------------------- */
 
+const int kUiW = 248;     /* every one-screen pause page sizes its two columns from the same widths, so the text and the controls keep one scale across pages */
 const int kTextX = 20, kTextY = 24, kTextW = 216, kTextH = 136;   /* top text block (BG3 + OBJ). Measured on the reference exe (lifted rows 36..147, text columns 27..228), clear of the bouncing band (rows 166..184) and of the two OBJ course arrows (columns 4..19 and 236..251) */
 
 void build_plates(MenuLayout *L, int variant, int py, int ph, const Hs *hs, int nhs, int back, int with_arrows)
 {
-    const Cols C = make_cols(L, kTextW, 240);
+    const Cols C = make_cols(L, kTextW, kUiW);
     const int hT = ceil_mul(kTextH, C.a);
     const int hA = with_arrows ? ceil_mul(32, C.a) : 0;
     const int gap = with_arrows ? 6 : 0;
     const int dy = top_dy(hT + gap + hA);
-    menu_add_piece(L, top_piece(kTextX, kTextY, kTextW, kTextH, MENU_L_BG3 | MENU_L_OBJ, C, dy));
+    /* with the paging arrows up the ROM's two top-screen arrows (columns 15..29 and 229..241) sit at the
+       text rect's edges, so the rect narrows to columns 30..228 and keeps its place on the picture */
+    const int tx = with_arrows ? 30 : kTextX, tw = with_arrows ? 199 : kTextW;
+    menu_add_piece(L, top_piece(tx, kTextY, tw, kTextH, MENU_L_BG3 | MENU_L_OBJ, C, dy, ceil_mul(tx - kTextX, C.a)));
     const int pl = menu_add_piece(L, sub_piece(8, py, 240, ph, C, top_dy(ceil_mul(ph, C.b)), 1, MENU_L_BG0 | MENU_L_BG1));
     int arrow_l = -1, arrow_r = -1;
     if (with_arrows) {
@@ -224,7 +228,7 @@ void build_plates(MenuLayout *L, int variant, int py, int ph, const Hs *hs, int 
 /* controller modes (7, 8): the diagram on the top screen, the mode rows + OK (+ Back) below */
 void build_ctl(MenuLayout *L, int with_back)
 {
-    const Cols C = make_cols(L, 252, 248);
+    const Cols C = make_cols(L, 252, kUiW);
     const MenuPiece d = [&] {
         MenuPiece p = menu_piece_make(SRC_TOP_2D, 2, 0, 252, 192, MENU_AX_L, MENU_AY_M, C.marg, 0, C.a.n, C.a.d);
         p.layers = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
@@ -249,7 +253,7 @@ void build_ctl(MenuLayout *L, int with_back)
 /* options (9, 0xa, 0xb): castle text left, sound + backlight + OK + Back right */
 void build_opt(MenuLayout *L)
 {
-    const Cols C = make_cols(L, kTextW, 248);
+    const Cols C = make_cols(L, kTextW, kUiW);
     menu_add_piece(L, top_piece(kTextX, kTextY, kTextW, kTextH, MENU_L_BG3 | MENU_L_OBJ, C, top_dy(ceil_mul(kTextH, C.a))));
     MenuPiece p = sub_piece(4, 28, 248, 160, C, 0, 1);
     p.ay = MENU_AY_M;
@@ -271,7 +275,7 @@ void build_opt(MenuLayout *L)
 /* saving status (0xe, 0xf): the box the ROM draws, nothing to press */
 void build_status(MenuLayout *L)
 {
-    const Cols C = make_cols(L, kTextW, 144);
+    const Cols C = make_cols(L, kTextW, kUiW);
     menu_add_piece(L, top_piece(kTextX, kTextY, kTextW, kTextH, MENU_L_BG3 | MENU_L_OBJ, C, top_dy(ceil_mul(kTextH, C.a))));
     MenuPiece p = sub_piece(56, 40, 144, 80, C, 0, 0);
     p.ay = MENU_AY_M;
@@ -286,7 +290,7 @@ void build_status(MenuLayout *L)
 /* don't save confirm (0x10, 0x11): the question and YES / NO (PS_Update.cpp :1370-1451) */
 void build_nosave(MenuLayout *L)
 {
-    const Cols C = make_cols(L, kTextW, 208);
+    const Cols C = make_cols(L, kTextW, kUiW);
     menu_add_piece(L, top_piece(kTextX, kTextY, kTextW, kTextH, MENU_L_BG3 | MENU_L_OBJ, C, top_dy(ceil_mul(kTextH, C.a))));
     MenuPiece p = sub_piece(24, 64, 208, 128, C, 0, 1);
     p.ay = MENU_AY_M;
