@@ -1011,13 +1011,13 @@ void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
     }
     GxTriangle tmpl{};
     fill_tri_state(tmpl);
+    GxTriangle t = tmpl;     // the state is the same for every sub-triangle: only the corners change
     const uint16_t *idx = smooth_grid_tri_index(tf);
     const int ntris = smooth_grid_tris(tf);
     uint64_t fast = 0;
     for (int i = 0; i < ntris; ++i) {
         const int i0 = idx[i * 3], i1 = idx[i * 3 + 1], i2 = idx[i * 3 + 2];
         if (isin[i0] && isin[i1] && isin[i2]) {
-            GxTriangle t = tmpl;
             t.v[0] = sv[i0]; t.v[1] = sv[i1]; t.v[2] = sv[i2];
             g.tris.push_back(t);
             ++fast;
