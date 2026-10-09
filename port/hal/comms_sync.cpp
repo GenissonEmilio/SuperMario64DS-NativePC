@@ -3040,6 +3040,17 @@ extern "C" int port_adventure_ghost_stars(int slot) {
 // (full to kGwFadeMs, then down to nothing at kGwDespawnMs). 256 for any
 // body that is not a hub ghost, so VS, solo and the old path are untouched.
 namespace {
+// SM64DS_GHOST_DOORTAG_OFF=1: the control arm of the door-tag rows (the tag and
+// body keep full strength through a door sequence, as in 97642ec0cd).
+bool gw_door_tag_fade() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_DOORTAG_OFF");
+        v = (e && std::atoi(e) != 0) ? 0 : 1;
+    }
+    return v != 0;
+}
+enum : unsigned { kGwDoorGoneFrom = 10, kGwDoorGoneTo = 15 };
 int gw_fade_out(int s) {
     const GwSeat &z = g_gw[s];
     const unsigned now = GetTickCount();
@@ -3052,6 +3063,21 @@ int gw_fade_out(int s) {
                   (unsigned)(kGwDespawnMs - kGwFadeMs));
     /* GHOSTDOOR1: leaving my level / area, and a long pause */
     if (z.leaving) f = f * (256 - z.leave_cut) / 256;
+    /* GHOSTDOOR1: through the door. His door sequence goes on (the area, the
+       level and the hidden state stay as they were) while his body is past the
+       door leaf and behind the wall: the body and the name tag over it fade
+       out together over frames kGwDoorGoneFrom..kGwDoorGoneTo of the door's
+       own animation, instead of the tag floating on at full strength with
+       nothing under it. The sample is the one the follower drew this frame. */
+    if (gw_door_tag_fade()) {
+        const GwSample &ls = g_gw_last[s];
+        if (z.last_have && ls.door_kind && ls.door_frame != ghostdoor::kDoorFrameNone &&
+            ls.door_frame >= kGwDoorGoneFrom) {
+            const int d = ls.door_frame >= kGwDoorGoneTo ? 0 :
+                (int)(kGwDoorGoneTo - ls.door_frame);
+            f = f * d / (int)(kGwDoorGoneTo - kGwDoorGoneFrom);
+        }
+    }
     if (z.paused_now) {
         const unsigned pe = now - z.paused_ms;
         if (pe >= (unsigned)kGwPauseFadeMs) {
