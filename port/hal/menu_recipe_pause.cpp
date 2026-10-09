@@ -82,7 +82,9 @@ int pause_variant(void)
 int pause_up(int scene_id)
 {
     int v = 0;
-    if (scene_id == 3) v = pause_variant();
+    /* the Stage is scene 3; a level boot that never runs the scene thunk answers -1 (hal_menu_hook_h1), and
+       the stacked layout is MENU_SCENE_GATED: no recipe */
+    if (scene_id == 3 || scene_id == -1) v = pause_variant();
     if (v != g_last_variant) g_cursor_shown = 0;
     g_last_variant = v;
     return v;
