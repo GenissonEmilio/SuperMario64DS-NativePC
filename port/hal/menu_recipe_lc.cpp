@@ -263,7 +263,10 @@ extern "C" void hal_lc_trace(int w, int h, int frame, int composed)
     const int now[4] = { (int)data_0209f20c, (int)data_0209f2d4, composed, (int)data_0209f2e0 };
     if (now[0] == last[0] && now[1] == last[1] && now[2] == last[2] && now[3] == last[3]) return;
     memcpy(last, now, sizeof last);
-    const LcGeom &g = g_geom;
+    /* the rectangles are computed fresh for this line, from this frame's ROM flags, exactly as the old swap trace
+       did every frame (g_geom is only the last BUILD's, and a frame that is not composed builds nothing) */
+    LcGeom g;
+    lc_geom_for(w, h, &g, data_0209f2b0 != 0, data_0209f20c != 0 && SublevelToLevel(data_02092124) >= 0xf);
     fprintf(stderr, "[compose] f%d f20c=%d f2d4=%d f2e0=%d composed=%d picture "
             "%dx%d text 0,%d %dx%d from row %d  plates %d,%d %dx%d "
             "(%d/%d)  coins 0,%d %dx%d from row %d\n", frame, now[0],
