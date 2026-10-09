@@ -81,6 +81,7 @@
 
 #include <windows.h>
 
+#include <chrono>        /* ASSET1: the menu cost line */
 #include <cstring>       /* run mg16 lane MP3: the touch-ring store */
 
 #include "ntr/ppu.h"
@@ -1552,6 +1553,11 @@ uint8_t *g_covsnap;                                  /* ASSET1: a copy of the 3D
 /* Hand the layer this frame's planes. Called right before hal_menu_present, at each of its two stages. */
 void menu_prepare_sources(unsigned *dst, int w, int h)
 {
+    const std::chrono::steady_clock::time_point t_prep = std::chrono::steady_clock::now();
+    struct PrepEnd {
+        std::chrono::steady_clock::time_point t;
+        ~PrepEnd() { hal_menu_note_cost(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t).count()); }
+    } prep_end = { t_prep };
     g_msub_n = 0;
     std::memset(&g_msrc, 0, sizeof g_msrc);
     g_msrc.sub = &g_sub.px[0][0];

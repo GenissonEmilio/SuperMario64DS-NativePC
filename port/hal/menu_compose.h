@@ -267,6 +267,7 @@ int  hal_menu_fallback_frames(void);
 const MenuLiftInfo *hal_menu_lift_info(void);   /* this frame's lift plan, null = lift nothing */
 int  hal_menu_uses_src(int src);                /* the live layout has a piece of this MenuSrc */
 int  hal_menu_uses_cover(void);                 /* ASSET1: the live layout has a keycover piece (the host then supplies pic_cover) */
+void hal_menu_note_cost(double prep_us);       /* ASSET1: the host adds its source-preparation time for the frame */
 int  hal_menu_enabled(int key);                 /* ASSET1: a MENU_KEY_* setting as the recipes see it */
 int  hal_menu_trace_on(void);                   /* SM64DS_MENU_TRACE or its alias SM64DS_SWAP_TRACE */
 void hal_menu_set_dst_stride(int stride);       /* pixels per row of the buffer hal_menu_present draws into; 0 = w */

@@ -92,7 +92,8 @@ int variant_for(int top, int elem)
     if (elem == 0) {
         if (top == 0) return V_MAIN;
         if (top == 8) return V_OPTIONS;
-        return g_last;                            /* 1, 6, 4: easing in or out */
+        if (top == 4) return V_DOODLE;            /* a press on the face: its page is already coming (the head squashes, the plates leave) */
+        return g_last;                            /* 1, 6: easing in or out */
     }
     if (top == 2) return V_TABLE;
     if (top == 4) return g_last;

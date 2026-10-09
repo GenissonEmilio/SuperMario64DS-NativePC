@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <chrono>
 #include <vector>
 
 namespace {
@@ -841,9 +842,26 @@ void hal_menu_frame_begin(int w, int h, int scene_id)
     }
 }
 
+/* ASSET1: what a menu frame costs, in microseconds, summed per process and printed (SM64DS_MENU_TRACE) every 120
+   drawn frames: the recipe's draw here, and the host's source preparation (hal_menu_note_cost, sub_screen.cpp). */
+static double g_cost_draw_us, g_cost_prep_us;
+static int g_cost_n;
+void hal_menu_note_cost(double prep_us) { g_cost_prep_us += prep_us; }
+
 void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 {
     if (!g_live || !dst || g_cur.stage != stage) return;
+    const std::chrono::steady_clock::time_point t_in = std::chrono::steady_clock::now();
+    struct CostEnd {
+        std::chrono::steady_clock::time_point t;
+        ~CostEnd()
+        {
+            g_cost_draw_us += std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t).count();
+            if (++g_cost_n % 120 == 0 && trace_on())
+                fprintf(stderr, "[menu] cost over %d drawn frames: draw %.0f us, source prep %.0f us per frame\n", g_cost_n,
+                        g_cost_draw_us / g_cost_n, g_cost_prep_us / g_cost_n);
+        }
+    } cost_end = { t_in };
     const MenuSources *S = g_src;
     g_nplanes = 0;
     if (g_cur.w != w || g_cur.h != h) {       /* the picture changed under the frame: solve again */
