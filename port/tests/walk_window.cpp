@@ -17497,6 +17497,10 @@ int main(void)
                snapshots. */
             const int ip_slow = ip_fit_commit();
             if (!ip_slow) ip_snap(g_ip_p3, fb);
+            /* hal_menu_live() is this frame's answer only from the composite below (H1); read here it is the previous
+               frame's, so the smooth-motion snap trails the menu by one frame at open and at close. A clean fix needs the
+               predicate split out of H1 without a second pass over its trace and fallback counters; left as is (menu1
+               HOOK1FIX decision), harmless to every picture row. */
             const int ip_snapit = (tick_frozen || !k1_rom || stacked || ip_slow ||
                                    hal_menu_live() ||
                                    rb_skip_render() || rb_resim_skip_render())

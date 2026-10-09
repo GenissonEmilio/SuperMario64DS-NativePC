@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 namespace {
 
@@ -479,50 +480,86 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
     if (dw <= 0 || dh <= 0) return;
     const size_t stride = (size_t)stride_of(w);
     const uint32_t *subp = P.src == SRC_SUB ? sub_plane(&P, S) : 0;
+    /* the visible column range, and one source index per column, computed once per piece */
+    const int xa = x0 < 0 ? -x0 : 0;
+    const int xb = (x0 + dw > w) ? w - x0 : dw;
+    if (xa >= xb) return;
+    static std::vector<int> colx;
+    if ((int)colx.size() < dw) colx.resize((size_t)dw);
+    int *cx = &colx[0];
+    if (P.src == SRC_TOP_PIC) {
+        if (!S->pic || S->pic_rw < 1 || S->pic_rh < 1) return;
+        for (int xx = xa; xx < xb; ++xx) {
+            /* exact rational map of the destination pixel into the host picture */
+            const long long ux = (long long)P.s.x * dw + (long long)xx * P.s.w;
+            const int qx = S->pic_rx + (int)fdiv(ux * S->pic_rw, 256LL * dw);
+            cx[xx] = (qx < 0 || qx >= S->pic_w) ? -1 : qx;
+        }
+    } else if (P.src != SRC_TOP_HOSTROW) {
+        const int lim = 256;
+        for (int xx = xa; xx < xb; ++xx) {
+            int sx = P.lden > 0 ? P.s.x + (int)fdiv((long long)xx * P.lden, P.lnum > 0 ? P.lnum : 1)
+                                : P.s.x + (int)fdiv((long long)xx * P.s.w, dw);
+            if (P.lden > 0 && sx > P.s.x + P.s.w - 1) sx = P.s.x + P.s.w - 1;
+            cx[xx] = (sx < 0 || sx >= lim) ? -1 : sx;
+        }
+    }
+    const uint32_t bd = S->sub_backdrop & 0xffffffu;
     for (int yy = 0; yy < dh; ++yy) {
         const int py = y0 + yy;
         if (py < 0 || py >= h) continue;
-        uint32_t *row = dst + (size_t)py * stride;
+        uint32_t *row = dst + (size_t)py * stride + x0;
         if (P.src == SRC_TOP_HOSTROW) {
             if (!S->hostrow) return;
             const int sy = P.s.y + yy;
             if (sy < 0 || sy >= S->hostrow_h) continue;
-            for (int xx = 0; xx < dw; ++xx) {
-                const int px = x0 + xx, sx = P.s.x + xx;
-                if (px < 0 || px >= w || sx < 0 || sx >= S->hostrow_w) continue;
+            for (int xx = xa; xx < xb; ++xx) {
+                const int sx = P.s.x + xx;
+                if (sx < 0 || sx >= S->hostrow_w) continue;
                 const uint32_t c = S->hostrow[(size_t)sy * S->hostrow_stride + sx];
-                if (c >> 24) row[px] = c | 0xff000000u;
+                if (c >> 24) row[xx] = c | 0xff000000u;
+            }
+            continue;
+        }
+        if (P.src == SRC_TOP_PIC) {
+            const long long uy = (long long)P.s.y * dh + (long long)yy * P.s.h;
+            const int qy = S->pic_ry + (int)fdiv(uy * S->pic_rh, 192LL * dh);
+            if (qy < 0 || qy >= S->pic_h) continue;
+            const uint32_t *prow = S->pic + (size_t)qy * S->pic_stride;
+            for (int xx = xa; xx < xb; ++xx) {
+                const int qx = cx[xx];
+                if (qx < 0) continue;
+                row[xx] = prow[qx] | 0xff000000u;
             }
             continue;
         }
         int sy = P.lden > 0 ? P.s.y + (int)fdiv((long long)yy * P.lden, P.lnum > 0 ? P.lnum : 1)
                             : P.s.y + (int)fdiv((long long)yy * P.s.h, dh);
         if (P.lden > 0 && sy > P.s.y + P.s.h - 1) sy = P.s.y + P.s.h - 1;
-        if (P.src != SRC_TOP_PIC && P.row_ok && !P.row_ok(sy)) continue;
-        for (int xx = 0; xx < dw; ++xx) {
-            const int px = x0 + xx;
-            if (px < 0 || px >= w) continue;
-            int sx = P.lden > 0 ? P.s.x + (int)fdiv((long long)xx * P.lden, P.lnum > 0 ? P.lnum : 1)
-                                : P.s.x + (int)fdiv((long long)xx * P.s.w, dw);
-            if (P.lden > 0 && sx > P.s.x + P.s.w - 1) sx = P.s.x + P.s.w - 1;
-            if (P.src == SRC_TOP_PIC) {
-                if (!S->pic || S->pic_rw < 1 || S->pic_rh < 1) return;
-                /* exact rational map of the destination pixel into the host picture */
-                const long long ux = (long long)P.s.x * dw + (long long)xx * P.s.w;
-                const long long uy = (long long)P.s.y * dh + (long long)yy * P.s.h;
-                int qx = S->pic_rx + (int)fdiv(ux * S->pic_rw, 256LL * dw);
-                int qy = S->pic_ry + (int)fdiv(uy * S->pic_rh, 192LL * dh);
-                if (qx < 0 || qy < 0 || qx >= S->pic_w || qy >= S->pic_h) continue;
-                row[px] = S->pic[(size_t)qy * S->pic_stride + qx] | 0xff000000u;
-            } else if (P.src == SRC_SUB) {
-                if (!subp || !src_opaque(&P, S, sx, sy)) continue;
-                row[px] = subp[sy * 256 + sx] | 0xff000000u;
-            } else {   /* SRC_TOP_2D */
-                if (!src_opaque(&P, S, sx, sy)) continue;
-                const MenuTopCell &c = S->top2d[sy * 256 + sx];
+        if (P.row_ok && !P.row_ok(sy)) continue;
+        if (sy < 0 || sy >= 192) continue;
+        if (P.src == SRC_SUB) {
+            if (!subp) continue;
+            const uint32_t *srow = subp + sy * 256;
+            for (int xx = xa; xx < xb; ++xx) {
+                const int sx = cx[xx];
+                if (sx < 0) continue;
+                const uint32_t c = srow[sx];
+                if (P.key_backdrop && (c & 0xffffffu) == bd) continue;
+                row[xx] = c | 0xff000000u;
+            }
+        } else {   /* SRC_TOP_2D */
+            if (!S->top2d) continue;
+            const MenuTopCell *trow = S->top2d + sy * 256;
+            for (int xx = xa; xx < xb; ++xx) {
+                const int sx = cx[xx];
+                if (sx < 0) continue;
+                const MenuTopCell &c = trow[sx];
+                if ((c.argb >> 24) == 0) continue;
+                if (c.owner > 4 || !((P.layers >> c.owner) & 1)) continue;
                 uint32_t col = c.argb;
                 if (S->bm_apply) col = S->bm_apply(col, c.bm);
-                row[px] = col | 0xff000000u;
+                row[xx] = col | 0xff000000u;
             }
         }
     }
@@ -669,6 +706,7 @@ void hal_menu_set_enable_fn(int (*fn)(int key)) { g_enable = fn; }
 void hal_menu_set_netplay(int on) { g_netplay = on ? 1 : 0; }
 void hal_menu_set_sources(const MenuSources *s) { g_src = s; g_nplanes = 0; }
 int  hal_menu_live(void) { return g_live; }
+int  hal_menu_draws_in(int stage) { return g_live && g_cur.stage == stage; }
 int  hal_menu_fallback_frames(void) { return g_fallback_frames; }
 const MenuLiftInfo *hal_menu_lift_info(void) { return g_lift_on ? &g_lift : 0; }
 int  hal_menu_trace_on(void) { return trace_on(); }

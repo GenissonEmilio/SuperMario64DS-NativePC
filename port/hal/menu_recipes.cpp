@@ -97,7 +97,7 @@ const MenuRecipe g_menu_recipes[] = {
     { "gameover", up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_NATIVE,     0, 0 },
     { "recroom",  up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
     { "vs",       up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
-    { "fallback", up_never, build_fallback, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_TOUCH,   MENU_RF_FALLBACK, 1 },
+    { "fallback", up_never, build_fallback, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_NATIVE,  MENU_RF_FALLBACK, 1 },
     { "test",     up_test,  build_test, 0, MENU_KEY_NONE,              MENU_DRV_TOUCH,      0, 2 },
 };
 const int g_menu_nrecipes = (int)(sizeof g_menu_recipes / sizeof g_menu_recipes[0]);

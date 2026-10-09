@@ -199,6 +199,7 @@ extern "C" {
 /* Once per DS frame at H1, before anything is lifted. Picks the recipe, builds the layout for (w, h). */
 void hal_menu_frame_begin(int w, int h, int scene_id);
 int  hal_menu_live(void);                       /* a recipe (or the fallback) owns this frame's picture */
+int  hal_menu_draws_in(int stage);                /* live AND the recipe draws at this stage (sources only need preparing then) */
 void hal_menu_set_sources(const MenuSources *s);
 /* H2. Draws the pieces whose layout stage matches `stage`; remembers the drawn layout for the inverse. */
 void hal_menu_present(uint32_t *dst, int w, int h, int stage);

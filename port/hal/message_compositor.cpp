@@ -947,6 +947,7 @@ struct LcOverlay {
     MenuTopCell *top;            /* the lifted SRC_TOP_2D cells, DS space 256x192 */
     const MenuLiftInfo *info;    /* this frame's lift plan, null = lift nothing */
     int live;                    /* col holds THIS frame's pixels */
+    int dirty_lo, dirty_hi;      /* host rows [lo, hi) that may be non-zero: col is zero everywhere else */
     int top_live;                /* top holds THIS frame's cells */
 };
 LcOverlay lc_ov;
@@ -966,8 +967,26 @@ void lc_overlay_begin(void)
             if (!c) { lc_ov.info = nullptr; return; }
             lc_ov.col = c;
             lc_ov.n = n;
+            std::memset(lc_ov.col, 0, (size_t)lc_ov.n * sizeof *lc_ov.col);
+            lc_ov.dirty_lo = lc_ov.dirty_hi = 0;
         }
-        std::memset(lc_ov.col, 0, (size_t)lc_ov.n * sizeof *lc_ov.col);
+        /* only the rows the last lifted frame could have written are cleared (a lift writes inside its bands only),
+           so a menu frame no longer pays for a whole-buffer memset */
+        if (lc_ov.dirty_hi > lc_ov.dirty_lo)
+            std::memset(lc_ov.col + (size_t)lc_ov.dirty_lo * ntr::SCREEN_W, 0,
+                        (size_t)(lc_ov.dirty_hi - lc_ov.dirty_lo) * ntr::SCREEN_W * sizeof *lc_ov.col);
+        {
+            int lo = ntr::SCREEN_H, hi = 0;
+            for (int i = 0; i < li->nbands; ++i) {
+                if (li->band[i].r0 < lo) lo = li->band[i].r0;
+                if (li->band[i].r1 > hi) hi = li->band[i].r1;
+            }
+            if (lo < 0) lo = 0;
+            if (hi > ntr::SCREEN_H) hi = ntr::SCREEN_H;
+            if (hi < lo) hi = lo;
+            lc_ov.dirty_lo = lo;
+            lc_ov.dirty_hi = hi;
+        }
         lc_ov.live = 1;
     }
     if (li->lift2d) {

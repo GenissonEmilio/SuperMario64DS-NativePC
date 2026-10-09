@@ -3833,8 +3833,10 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
         /* A MENU RECIPE OWNS THE PICTURE THIS FRAME. Nothing of the map panel is drawn: the recipe's pieces are the
            picture's menu, and the plate, the banner, the handle and the attention arrows are none of those. A
            PRE_FADE recipe (level-clear) draws here, before engine A's fade; a POST_FADE one in the wrapper below. */
-        menu_prepare_sources(dst, w, h);
-        hal_menu_present(dst, w, h, MENU_STAGE_PRE_FADE);
+        if (hal_menu_draws_in(MENU_STAGE_PRE_FADE)) {
+            menu_prepare_sources(dst, w, h);
+            hal_menu_present(dst, w, h, MENU_STAGE_PRE_FADE);
+        }
     } else if (!hal_sub_screen_stacked()) {
         /* THE DECORATIVE PANEL FIRST, because it goes BEHIND the map: the
            compose below writes the map over the middle of it and its own one
@@ -3960,7 +3962,7 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
                                        g_inset_rect[2], g_inset_rect[3]);
     port_engine_a_fade(dst, w, h);
     /* H2's second stage: the recipes that draw over the finished, faded picture */
-    if (hal_menu_live() && !hal_sub_screen_stacked()) {
+    if (hal_menu_draws_in(MENU_STAGE_POST_FADE) && !hal_sub_screen_stacked()) {
         menu_prepare_sources(dst, w, h);
         hal_menu_present(dst, w, h, MENU_STAGE_POST_FADE);
     }
