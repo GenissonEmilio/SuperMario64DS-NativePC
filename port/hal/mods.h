@@ -40,6 +40,12 @@ const char *port_mods_kind(int i);
    absent); only code mods need them. */
 const char *port_mods_game(int i);
 int port_mods_api(int i);
+/* 1 when this run is multiplayer: the launcher's lobby / VS match environment
+   (any of SM64DS_COMMS_ROLE/RELAY/HOST/CODE/SLOT, SM64DS_VS_MAP/MODE/PLAYERS
+   non-empty, SM64DS_PARTY nonzero) or the Adventure hub (settings.json
+   AdventureGhosts, SM64DS_ADVENTURE). Mods are for single player only: in that
+   case the mod list is empty for the whole run and the match runs the plain game. */
+int port_mods_multiplayer(void);
 /* The bundle folder mods/ sits in (the folder settings.json was found in). */
 const char *port_mods_bundle(void);
 

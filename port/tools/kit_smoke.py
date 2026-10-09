@@ -36,7 +36,8 @@ the way it can actually be proved:
 WHAT IT CHECKS, IN ORDER, STOPPING AT THE FIRST REFUSAL
 
   1. the kit directory holds a plausible kit: an exe, play.bat,
-     extract_assets.ps1, the romdata recipe and manifest.
+     extract_assets.ps1, the romdata recipe and manifest, and walk_window.symtab
+     (the code-mod plugin loader's symbol table, which must sit beside the exe).
   2. the exe is a PORT_ROM_CLEAN build. Same test package_kit.ps1 makes, for
      the same reason: a kit built without it embeds ROM bytes and must not
      ship, and it is also the build whose asset-root fallback is removed.
@@ -105,10 +106,10 @@ ROM_CLEAN_MARK = b"build/assets/romdata.bin"
 # at all). Which shape this kit is decides which list applies and whether the
 # play.bat freshness check below has a file to read.
 KIT_REQUIRED = ("play.bat", "extract_assets.ps1", "romdata.recipe.tsv",
-                "romdata.manifest")
+                "romdata.manifest", "walk_window.symtab")
 KIT_REQUIRED_LAUNCHER = ("SM64DSLauncher.exe", "extract_assets.ps1",
                          "romdata.recipe.tsv", "romdata.manifest",
-                         "version.json", "launcher_config.json")
+                         "version.json", "launcher_config.json", "walk_window.symtab")
 
 ASSET_STRING = re.compile(rb"build/assets/([A-Za-z0-9_.\-]+)")
 

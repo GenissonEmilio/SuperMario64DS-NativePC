@@ -14,7 +14,7 @@
    ProductVersion), with exactly one DLL in mods/<id>/plugin/. Anything else is
    skipped and the boot summary line says why. SM64DS_MOD_PLUGINS=0 turns the
    plugins off alone (SM64DS_MODS=0 turns every mod off). A multiplayer session
-   (the launcher's lobby / VS match env, see in_lobby() below) loads none: a
+   (the launcher's lobby / VS match env, see port_mods_multiplayer() in hal/mods.cpp, which empties the whole mod list) loads none: a
    plugin on one machine only would desync the match.
 
    WHERE EACH CALLBACK COMES FROM
@@ -588,19 +588,6 @@ bool env_set(const char *name)
     return v && *v;
 }
 
-/* The launcher's lobby / VS match start sets these (comms_loopback.cpp's role
-   and relay knobs, the party and VS-match knobs); any one of them means a
-   multiplayer session. */
-bool in_lobby(void)
-{
-    static const char *const K[] = {
-        "SM64DS_COMMS_ROLE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_HOST", "SM64DS_COMMS_CODE",
-        "SM64DS_COMMS_SLOT", "SM64DS_PARTY", "SM64DS_VS_MAP", "SM64DS_VS_MODE", "SM64DS_VS_PLAYERS", 0 };
-    for (int i = 0; K[i]; ++i)
-        if (env_set(K[i])) return true;
-    return false;
-}
-
 /* the one DLL in mods/<id>/plugin/; empty + a reason when there is not exactly one */
 std::string find_dll(const std::string &folder, std::string *why)
 {
@@ -728,10 +715,6 @@ extern "C" void port_mod_plugins_load(void)
     const char *off = getenv("SM64DS_MOD_PLUGINS");
     if (off && !strcmp(off, "0")) {
         fprintf(stderr, "[plugins] SM64DS_MOD_PLUGINS=0: %d code mod(s) not loaded\n", ncode);
-        return;
-    }
-    if (in_lobby()) {
-        fprintf(stderr, "[plugins] multiplayer session: plugins are not loaded (%d code mod(s) skipped, they would desync the match)\n", ncode);
         return;
     }
     const std::string release = PORT_GAME_VERSION;

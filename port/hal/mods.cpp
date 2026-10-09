@@ -69,6 +69,7 @@ typedef unsigned char u8;
 typedef unsigned int u32;
 
 extern "C" {
+int host_setting_adventure_ghosts(void);   /* hal/host_settings.cpp: settings.json AdventureGhosts, SM64DS_ADVENTURE */
 int host_setting_enabled_mods(char *bundle, size_t bcap, char *arr, size_t acap);  /* 1 got, 0 none, -1 too long */
 int host_json_is_object(const char *text);
 int host_json_string(const char *text, const char *key, char *out, size_t cap);
@@ -78,6 +79,30 @@ unsigned port_fs_member_claim_cap(void);              /* hal/fs.cpp */
 extern unsigned (*port_fs_mod_map)(unsigned fileID);
 extern u32 (*port_fs_mod_filter)(unsigned fileID, u8 **data, u32 size);
 extern void (*port_fs_mod_claims)(void (*claim)(unsigned fileID));
+}
+
+/* Mods are for single player only. A multiplayer session is any of: the
+   launcher's lobby / VS match env (comms role and relay knobs, the VS-match
+   knobs), SM64DS_PARTY set to a nonzero number (read the way comms_sync.cpp
+   reads it), or the Adventure hub (settings.json AdventureGhosts, or the
+   SM64DS_ADVENTURE override), which is the shared adventure with other players.
+   The ONE definition: the mod list below asks it, and the plugin loader only
+   sees the emptied list. host_setting_adventure_ghosts() runs the settings
+   loader (load_once), which reads the file itself and never calls back into
+   mods, and host_setting_enabled_mods() reads the file on its own, so there is
+   no loop, and load_once's one-shot guard makes any second call a no-op. */
+extern "C" int port_mods_multiplayer(void)
+{
+    static const char *const K[] = {
+        "SM64DS_COMMS_ROLE", "SM64DS_COMMS_RELAY", "SM64DS_COMMS_HOST", "SM64DS_COMMS_CODE",
+        "SM64DS_COMMS_SLOT", "SM64DS_VS_MAP", "SM64DS_VS_MODE", "SM64DS_VS_PLAYERS", 0 };
+    for (int i = 0; K[i]; ++i) {
+        const char *v = getenv(K[i]);
+        if (v && *v) return 1;
+    }
+    const char *party = getenv("SM64DS_PARTY");
+    if (party && atoi(party) != 0) return 1;
+    return host_setting_adventure_ghosts() != 0;
 }
 
 namespace {
@@ -162,6 +187,10 @@ void latch(void)
     kill = getenv("SM64DS_MODS");
     if (kill && strcmp(kill, "0") == 0) {
         fprintf(stderr, "[mods] SM64DS_MODS=0: every mod is off for this run\n");
+        return;
+    }
+    if (port_mods_multiplayer()) {
+        fprintf(stderr, "[mods] multiplayer match: every mod is off\n");
         return;
     }
     const int have = host_setting_enabled_mods(bundle, sizeof bundle, arr, sizeof arr);
