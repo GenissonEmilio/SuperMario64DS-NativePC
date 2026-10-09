@@ -1,0 +1,1097 @@
+/* menu_compose.cpp -- the one-screen menu compose layer (run menu1, lane P0CORE).
+ * See menu_compose.h for the model and runs/menu1/in/DESIGN.md sections B, C, F.
+ *
+ * NOTHING IN HERE TOUCHES THE ROM OR THE FRAME. It takes planes by pointer,
+ * writes an ARGB buffer it is handed, and keeps its own small state. It is
+ * linked into the exe and called by nobody until phase 1 wires the hooks, so
+ * with no environment variable set the exe behaves as before.
+ *
+ * MENU LAYOUT SELFTEST: SM64DS_MENU_SELFTEST=1 (a static initialiser in this
+ * file, so walk_window.cpp needs no edit: it runs before main, prints the
+ * table to stderr and, when SM64DS_MENU_SELFTEST_OUT names a file, to that file
+ * too, then exits 0 on all PASS and 1 otherwise).
+ * SM64DS_MENU_TRACE=1 prints [menu] lines.
+ */
+#include "menu_compose.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+namespace {
+
+/* ---- small arithmetic ---------------------------------------------------- */
+
+long long fdiv(long long a, long long b)       /* floor, b > 0 */
+{
+    long long q = a / b;
+    if ((a % b) != 0 && a < 0) --q;
+    return q;
+}
+
+int gcd_i(int a, int b)
+{
+    while (b) { const int t = a % b; a = b; b = t; }
+    return a < 0 ? -a : a;
+}
+
+int iabs(int a) { return a < 0 ? -a : a; }
+
+/* canvas units -> host pixels, floor, for the reduced fraction unum/uden */
+int u2h(const MenuLayout *L, int c) { return (int)fdiv((long long)c * L->unum, L->uden); }
+
+int trace_on(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("SM64DS_MENU_TRACE");
+        v = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return v;
+}
+
+#define MTRACE(...) do { if (trace_on()) { fprintf(stderr, "[menu] " __VA_ARGS__); fputc('\n', stderr); fflush(stderr); } } while (0)
+
+/* DS blend arithmetic in 5 bits per channel, the way the hardware does it:
+   toward white  c' = c + ((31 - c) * evy >> 4);  toward black  c' = c - (c * evy >> 4) */
+uint32_t blend_ch(uint32_t argb, int evy, int to_white)
+{
+    uint32_t out = argb & 0xff000000u;
+    for (int sh = 0; sh <= 16; sh += 8) {
+        int c5 = (int)((argb >> sh) & 0xff) >> 3;
+        c5 = to_white ? c5 + (((31 - c5) * evy) >> 4) : c5 - ((c5 * evy) >> 4);
+        const uint32_t c8 = (uint32_t)((c5 << 3) | (c5 >> 2));
+        out |= c8 << sh;
+    }
+    return out;
+}
+
+int luma(uint32_t argb)
+{
+    return (int)(((argb >> 16) & 0xff) * 3 + ((argb >> 8) & 0xff) * 6 + (argb & 0xff));
+}
+
+/* ---- module state ------------------------------------------------------- */
+
+MenuLayout g_cur;           /* this frame's layout (frame_begin) */
+MenuLayout g_drawn;         /* the layout last drawn (what the inverse reads) */
+int  g_live;
+int  g_drawn_valid;
+int  g_cur_recipe = -1;
+int  g_cur_variant;
+int  g_focus_shown;
+int  g_drag_piece = -1;
+int  g_netplay;
+int  g_fallback_frames;
+unsigned g_frame;
+int  (*g_enable)(int key);
+const MenuSources *g_src;
+DsRect g_latch[MENU_MAX_PIECES];     /* autocrop latches, by piece index of the live recipe/variant */
+uint8_t g_latched[MENU_MAX_PIECES];
+int  g_latch_recipe = -2, g_latch_variant;
+
+int enabled(int key)
+{
+    if (key == MENU_KEY_NONE) return 1;
+    return g_enable ? g_enable(key) : 0;
+}
+
+/* ---- source access ------------------------------------------------------ */
+
+int src_opaque(const MenuPiece *p, const MenuSources *s, int sx, int sy)
+{
+    if (!s) return 0;
+    switch (p->src) {
+    case SRC_SUB: {
+        if (!s->sub || sx < 0 || sy < 0 || sx >= 256 || sy >= 192) return 0;
+        if (p->row_ok && !p->row_ok(sy)) return 0;
+        const uint32_t c = s->sub[sy * 256 + sx];
+        if (p->key_backdrop && (c & 0xffffffu) == (s->sub_backdrop & 0xffffffu)) return 0;
+        return 1;
+    }
+    case SRC_TOP_2D: {
+        if (!s->top2d || sx < 0 || sy < 0 || sx >= 256 || sy >= 192) return 0;
+        const MenuTopCell &c = s->top2d[sy * 256 + sx];
+        if ((c.argb >> 24) == 0) return 0;
+        if (c.owner > 4 || !((p->layers >> c.owner) & 1)) return 0;
+        if (p->row_ok && !p->row_ok(sy)) return 0;
+        return 1;
+    }
+    case SRC_TOP_HOSTROW:
+        if (!s->hostrow || sx < 0 || sy < 0 || sx >= s->hostrow_w || sy >= s->hostrow_h) return 0;
+        return (s->hostrow[sy * s->hostrow_stride + sx] >> 24) != 0;
+    case SRC_TOP_PIC:
+    default:
+        return 0;   /* a picture has no "edge pixels" to cut: the census does not apply */
+    }
+}
+
+}  // namespace
+
+/* ====================================================================== */
+/* layout solver                                                          */
+/* ====================================================================== */
+
+int menu_wide(const MenuLayout *L) { return L->canvas_w >= MENU_WIDE_CANVAS; }
+
+int menu_scale_allowed(int n, int d)
+{
+    return (n == 1 && d == 1) || (n == 3 && d == 4) || (n == 2 && d == 3) || (n == 1 && d == 2);
+}
+
+void menu_layout_begin(MenuLayout *L, int w, int h)
+{
+    memset(L, 0, sizeof *L);
+    L->w = w;
+    L->h = h;
+    L->focus = -1;
+    L->back = -1;
+    if (w < 1 || h < 1) { L->unum = 1; L->uden = 192; L->canvas_w = 0; return; }
+    const int g = gcd_i(h, 192);
+    L->unum = h / g;
+    L->uden = 192 / g;
+    L->canvas_w = (int)((long long)w * 192 / h);
+}
+
+MenuPiece menu_piece_make(MenuSrc src, int sx, int sy, int sw, int sh, int ax, int ay, int dx, int dy,
+                          int knum, int kden)
+{
+    MenuPiece p;
+    memset(&p, 0, sizeof p);
+    p.src = src;
+    p.layers = MENU_L_ALL;
+    p.s.x = (short)sx; p.s.y = (short)sy; p.s.w = (short)sw; p.s.h = (short)sh;
+    p.ax = (uint8_t)ax; p.ay = (uint8_t)ay;
+    p.dx = (short)dx; p.dy = (short)dy;
+    p.knum = (uint8_t)knum; p.kden = (uint8_t)kden;
+    return p;
+}
+
+int menu_add_piece(MenuLayout *L, const MenuPiece &p)
+{
+    if (L->np >= MENU_MAX_PIECES) return -1;
+    L->p[L->np] = p;
+    return L->np++;
+}
+
+int menu_add_hotspot(MenuLayout *L, int piece, int bx, int by, int bw, int bh, int rom_index)
+{
+    if (L->nh >= MENU_MAX_HOTSPOTS) return -1;
+    MenuHotspot &h = L->hs[L->nh];
+    memset(&h, 0, sizeof h);
+    h.piece = (uint8_t)piece;
+    h.box.x = (short)bx; h.box.y = (short)by; h.box.w = (short)bw; h.box.h = (short)bh;
+    h.rom_index = (int8_t)rom_index;
+    for (int d = 0; d < 4; ++d) h.nav[d] = -2;
+    return L->nh++;
+}
+
+void menu_layout_dest(MenuLayout *L)
+{
+    /* the canvas is centred in the picture when w is not a whole number of canvas units */
+    int pad = (L->w - u2h(L, L->canvas_w)) / 2;
+    if (pad < 0) pad = 0;
+    for (int i = 0; i < L->np; ++i) {
+        const MenuPiece &P = L->p[i];
+        int *d = L->dest[i];
+        if (P.src == SRC_TOP_HOSTROW) {
+            /* host pixels, 1:1; anchors and offsets in host terms */
+            const int dw = P.s.w, dh = P.s.h;
+            int x0 = P.ax == MENU_AX_L ? 0 : (P.ax == MENU_AX_C ? (L->w - dw) / 2 : L->w - dw);
+            int y0 = P.ay == MENU_AY_T ? 0 : (P.ay == MENU_AY_M ? (L->h - dh) / 2 : L->h - dh);
+            x0 += u2h(L, P.dx);
+            y0 += u2h(L, P.dy);
+            d[0] = x0; d[1] = y0; d[2] = dw; d[3] = dh;
+            continue;
+        }
+        const int kn = P.knum ? P.knum : 1, kd = P.kden ? P.kden : 1;
+        const int cw = P.s.w * kn / kd, ch = P.s.h * kn / kd;
+        const int cx = P.ax == MENU_AX_L ? P.dx : (P.ax == MENU_AX_C ? (L->canvas_w - cw) / 2 + P.dx
+                                                                      : L->canvas_w - cw + P.dx);
+        const int cy = P.ay == MENU_AY_T ? P.dy : (P.ay == MENU_AY_M ? (192 - ch) / 2 + P.dy
+                                                                      : 192 - ch + P.dy);
+        const int x0 = pad + u2h(L, cx), x1 = pad + u2h(L, cx + cw);
+        const int y0 = u2h(L, cy), y1 = u2h(L, cy + ch);
+        d[0] = x0; d[1] = y0; d[2] = x1 - x0; d[3] = y1 - y0;
+    }
+}
+
+void menu_layout_solve(MenuLayout *L, const MenuRecipe *r, int variant, int w, int h)
+{
+    menu_layout_begin(L, w, h);
+    L->recipe = r;
+    L->variant = variant;
+    if (r && r->build && w >= 8 && h >= 8) r->build(variant, L);
+    menu_layout_dest(L);
+    if (L->focus >= L->nh) L->focus = -1;
+}
+
+/* ====================================================================== */
+/* inverse                                                                */
+/* ====================================================================== */
+
+static int dest_contains(const int *d, int bx, int by)
+{
+    return d[2] > 0 && d[3] > 0 && bx >= d[0] && bx < d[0] + d[2] && by >= d[1] && by < d[1] + d[3];
+}
+
+static void piece_inv(const MenuLayout *L, int i, int bx, int by, int *dsx, int *dsy)
+{
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    int x = P.s.x + (int)fdiv((long long)(bx - d[0]) * P.s.w, d[2] > 0 ? d[2] : 1);
+    int y = P.s.y + (int)fdiv((long long)(by - d[1]) * P.s.h, d[3] > 0 ? d[3] : 1);
+    if (x < P.s.x) x = P.s.x;
+    if (x > P.s.x + P.s.w - 1) x = P.s.x + P.s.w - 1;
+    if (y < P.s.y) y = P.s.y;
+    if (y > P.s.y + P.s.h - 1) y = P.s.y + P.s.h - 1;
+    *dsx = x;
+    *dsy = y;
+}
+
+int menu_hit(const MenuLayout *L, int bx, int by, int *piece, int *dsx, int *dsy)
+{
+    for (int i = L->np - 1; i >= 0; --i) {   /* topmost first: later pieces draw over earlier ones */
+        if (!L->p[i].touch) continue;
+        if (!dest_contains(L->dest[i], bx, by)) continue;
+        piece_inv(L, i, bx, by, dsx, dsy);
+        if (piece) *piece = i;
+        return 1;
+    }
+    return 0;
+}
+
+/* Outside every touch piece: clamp to the piece the drag started on (or, with
+   no drag, the nearest touch piece) and say in = 0, as swap_inverse does for
+   its plate rectangle. No touch piece at all: (-1, -1, 0). */
+void menu_inverse(const MenuLayout *L, int bx, int by, int *drag_piece, int *dsx, int *dsy, int *in)
+{
+    int pi = -1;
+    if (menu_hit(L, bx, by, &pi, dsx, dsy)) {
+        if (drag_piece) *drag_piece = pi;
+        *in = 1;
+        return;
+    }
+    *in = 0;
+    int best = -1;
+    if (drag_piece && *drag_piece >= 0 && *drag_piece < L->np && L->p[*drag_piece].touch) {
+        best = *drag_piece;
+    } else {
+        long long bd = -1;
+        for (int i = 0; i < L->np; ++i) {
+            if (!L->p[i].touch) continue;
+            const int *d = L->dest[i];
+            const int cx = bx < d[0] ? d[0] : (bx > d[0] + d[2] - 1 ? d[0] + d[2] - 1 : bx);
+            const int cy = by < d[1] ? d[1] : (by > d[1] + d[3] - 1 ? d[1] + d[3] - 1 : by);
+            const long long dd = (long long)(cx - bx) * (cx - bx) + (long long)(cy - by) * (cy - by);
+            if (bd < 0 || dd < bd) { bd = dd; best = i; }
+        }
+    }
+    if (best < 0) { *dsx = -1; *dsy = -1; return; }
+    const int *d = L->dest[best];
+    int cx = bx < d[0] ? d[0] : (bx > d[0] + d[2] - 1 ? d[0] + d[2] - 1 : bx);
+    int cy = by < d[1] ? d[1] : (by > d[1] + d[3] - 1 ? d[1] + d[3] - 1 : by);
+    piece_inv(L, best, cx, cy, dsx, dsy);
+}
+
+/* ====================================================================== */
+/* hotspots and the focus graph                                           */
+/* ====================================================================== */
+
+static int ds_to_host_x(const MenuLayout *L, int i, int dsx)
+{
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    return d[0] + (int)fdiv((long long)(dsx - P.s.x) * d[2], P.s.w > 0 ? P.s.w : 1);
+}
+
+static int ds_to_host_y(const MenuLayout *L, int i, int dsy)
+{
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    return d[1] + (int)fdiv((long long)(dsy - P.s.y) * d[3], P.s.h > 0 ? P.s.h : 1);
+}
+
+int menu_hotspot_rect(const MenuLayout *L, int hs, int r[4])
+{
+    r[0] = r[1] = r[2] = r[3] = 0;
+    if (hs < 0 || hs >= L->nh) return 0;
+    const MenuHotspot &H = L->hs[hs];
+    if (H.piece >= L->np) return 0;
+    const MenuPiece &P = L->p[H.piece];
+    int x0 = H.box.x, y0 = H.box.y, x1 = H.box.x + H.box.w, y1 = H.box.y + H.box.h;
+    if (x0 < P.s.x) x0 = P.s.x;
+    if (y0 < P.s.y) y0 = P.s.y;
+    if (x1 > P.s.x + P.s.w) x1 = P.s.x + P.s.w;
+    if (y1 > P.s.y + P.s.h) y1 = P.s.y + P.s.h;
+    if (x1 <= x0 || y1 <= y0) return 0;
+    const int hx0 = ds_to_host_x(L, H.piece, x0), hx1 = ds_to_host_x(L, H.piece, x1);
+    const int hy0 = ds_to_host_y(L, H.piece, y0), hy1 = ds_to_host_y(L, H.piece, y1);
+    r[0] = hx0; r[1] = hy0;
+    r[2] = hx1 > hx0 ? hx1 - hx0 : 1;
+    r[3] = hy1 > hy0 ? hy1 - hy0 : 1;
+    return 1;
+}
+
+void menu_hotspot_centre(const MenuLayout *L, int hs, int *hx, int *hy)
+{
+    int r[4];
+    menu_hotspot_rect(L, hs, r);
+    *hx = r[0] + r[2] / 2;
+    *hy = r[1] + r[3] / 2;
+}
+
+int menu_focus_hover(MenuLayout *L, int bx, int by)
+{
+    for (int i = L->nh - 1; i >= 0; --i) {
+        int r[4];
+        if (!menu_hotspot_rect(L, i, r)) continue;
+        if (dest_contains(r, bx, by)) { L->focus = i; return 1; }
+    }
+    return 0;
+}
+
+/* Automatic spatial navigation over the hotspots' placed centres: the nearest
+   hotspot in the pressed direction. Candidates inside the 45 degree cone of
+   the direction beat the ones outside it; within a class the score is
+   primary distance + twice the lateral distance; a tie goes to the larger
+   overlap of the two rects across the movement axis, then the lower index. */
+int menu_focus_move(MenuLayout *L, int dir)
+{
+    if (L->nh <= 0) return L->focus = -1;
+    if (L->focus < 0 || L->focus >= L->nh) return L->focus = 0;
+    const int f = L->focus;
+    const int n = L->hs[f].nav[dir & 3];
+    if (n >= 0 && n < L->nh) return L->focus = n;
+    if (n == -1) return f;
+    int fr[4], fcx, fcy;
+    menu_hotspot_rect(L, f, fr);
+    menu_hotspot_centre(L, f, &fcx, &fcy);
+    int best = -1, best_class = 2, best_score = 0, best_ov = -1;
+    for (int j = 0; j < L->nh; ++j) {
+        if (j == f) continue;
+        int jr[4], jcx, jcy;
+        if (!menu_hotspot_rect(L, j, jr)) continue;
+        menu_hotspot_centre(L, j, &jcx, &jcy);
+        const int dx = jcx - fcx, dy = jcy - fcy;
+        int prim, lat, ov;
+        switch (dir & 3) {
+        case MENU_DIR_UP:    prim = -dy; lat = iabs(dx); break;
+        case MENU_DIR_DOWN:  prim = dy;  lat = iabs(dx); break;
+        case MENU_DIR_LEFT:  prim = -dx; lat = iabs(dy); break;
+        default:             prim = dx;  lat = iabs(dy); break;
+        }
+        if (prim <= 0) continue;
+        if ((dir & 3) <= MENU_DIR_DOWN) {   /* movement is vertical: overlap along x */
+            const int a = fr[0] > jr[0] ? fr[0] : jr[0];
+            const int b = (fr[0] + fr[2]) < (jr[0] + jr[2]) ? (fr[0] + fr[2]) : (jr[0] + jr[2]);
+            ov = b - a;
+        } else {
+            const int a = fr[1] > jr[1] ? fr[1] : jr[1];
+            const int b = (fr[1] + fr[3]) < (jr[1] + jr[3]) ? (fr[1] + fr[3]) : (jr[1] + jr[3]);
+            ov = b - a;
+        }
+        const int cls = prim >= lat ? 0 : 1;
+        const int score = prim + 2 * lat;
+        int better = 0;
+        if (best < 0 || cls < best_class) better = 1;
+        else if (cls == best_class) {
+            if (score < best_score) better = 1;
+            else if (score == best_score && ov > best_ov) better = 1;
+        }
+        if (better) { best = j; best_class = cls; best_score = score; best_ov = ov; }
+    }
+    if (best >= 0) L->focus = best;
+    return L->focus;
+}
+
+/* ====================================================================== */
+/* piece draw, backdrop, highlight, census                                */
+/* ====================================================================== */
+
+void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
+{
+    if (!S || !dst || i < 0 || i >= L->np) return;
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    const int x0 = d[0], y0 = d[1], dw = d[2], dh = d[3];
+    if (dw <= 0 || dh <= 0) return;
+    for (int yy = 0; yy < dh; ++yy) {
+        const int py = y0 + yy;
+        if (py < 0 || py >= h) continue;
+        uint32_t *row = dst + (size_t)py * w;
+        if (P.src == SRC_TOP_HOSTROW) {
+            if (!S->hostrow) return;
+            const int sy = P.s.y + yy;
+            if (sy < 0 || sy >= S->hostrow_h) continue;
+            for (int xx = 0; xx < dw; ++xx) {
+                const int px = x0 + xx, sx = P.s.x + xx;
+                if (px < 0 || px >= w || sx < 0 || sx >= S->hostrow_w) continue;
+                const uint32_t c = S->hostrow[sy * S->hostrow_stride + sx];
+                if (c >> 24) row[px] = c | 0xff000000u;
+            }
+            continue;
+        }
+        const int sy = P.s.y + (int)fdiv((long long)yy * P.s.h, dh);
+        if (P.src != SRC_TOP_PIC && P.row_ok && !P.row_ok(sy)) continue;
+        for (int xx = 0; xx < dw; ++xx) {
+            const int px = x0 + xx;
+            if (px < 0 || px >= w) continue;
+            const int sx = P.s.x + (int)fdiv((long long)xx * P.s.w, dw);
+            if (P.src == SRC_TOP_PIC) {
+                if (!S->pic || S->pic_rw < 1 || S->pic_rh < 1) return;
+                /* exact rational map of the destination pixel into the host picture */
+                const long long ux = (long long)P.s.x * dw + (long long)xx * P.s.w;
+                const long long uy = (long long)P.s.y * dh + (long long)yy * P.s.h;
+                int qx = S->pic_rx + (int)fdiv(ux * S->pic_rw, 256LL * dw);
+                int qy = S->pic_ry + (int)fdiv(uy * S->pic_rh, 192LL * dh);
+                if (qx < 0 || qy < 0 || qx >= S->pic_w || qy >= S->pic_h) continue;
+                row[px] = S->pic[(size_t)qy * S->pic_stride + qx] | 0xff000000u;
+            } else if (P.src == SRC_SUB) {
+                if (!src_opaque(&P, S, sx, sy)) continue;
+                row[px] = S->sub[sy * 256 + sx] | 0xff000000u;
+            } else {   /* SRC_TOP_2D */
+                if (!src_opaque(&P, S, sx, sy)) continue;
+                const MenuTopCell &c = S->top2d[sy * 256 + sx];
+                uint32_t col = c.argb;
+                if (S->bm_apply) col = S->bm_apply(col, c.bm);
+                row[px] = col | 0xff000000u;
+            }
+        }
+    }
+}
+
+void menu_dim(uint32_t *dst, int w, int h, int evy)
+{
+    if (!dst || evy <= 0) return;
+    for (size_t i = 0, n = (size_t)w * h; i < n; ++i) dst[i] = blend_ch(dst[i], evy, 0);
+}
+
+/* The 8-frame pulse: evy 0,1,2,3,4,3,2,1 toward white; the outline is one
+   canvas unit (at least one pixel) in the darkest colour of the hotspot's own
+   rim, sampled before the outline is drawn. */
+void menu_highlight_paint(const MenuLayout *L, uint32_t *dst, int w, int h, unsigned frame)
+{
+    if (!dst || L->focus < 0 || L->focus >= L->nh) return;
+    int r[4];
+    if (!menu_hotspot_rect(L, L->focus, r)) return;
+    static const int pulse[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
+    const int evy = pulse[frame & 7];
+    const int x0 = r[0], y0 = r[1], x1 = r[0] + r[2], y1 = r[1] + r[3];
+    int t = u2h(L, 1);
+    if (t < 1) t = 1;
+    uint32_t dark = 0xff000000u;
+    int dl = 1 << 30;
+    for (int y = y0; y < y1; ++y) {
+        if (y < 0 || y >= h) continue;
+        for (int x = x0; x < x1; ++x) {
+            if (x < 0 || x >= w) continue;
+            uint32_t &px = dst[(size_t)y * w + x];
+            const int rim = (x < x0 + 1 || x >= x1 - 1 || y < y0 + 1 || y >= y1 - 1);
+            if (rim && (px >> 24)) {
+                const int l = luma(px);
+                if (l < dl) { dl = l; dark = px | 0xff000000u; }
+            }
+            if ((px >> 24) && evy) px = blend_ch(px, evy, 1);
+        }
+    }
+    for (int y = y0; y < y1; ++y) {
+        if (y < 0 || y >= h) continue;
+        for (int x = x0; x < x1; ++x) {
+            if (x < 0 || x >= w) continue;
+            if (x < x0 + t || x >= x1 - t || y < y0 + t || y >= y1 - t) dst[(size_t)y * w + x] = dark;
+        }
+    }
+}
+
+/* Opaque pixels on a source-rect edge that continue across it. An edge that
+   lies on the plane border cannot cut anything and is not counted. A pixel
+   counts when it is opaque inside the rect on the edge AND the pixel just
+   outside is opaque too: that is a glyph cut in two (an autocropped rect has
+   opaque edge pixels by construction and must still read 0). counts: top,
+   bottom, left, right. Returns the total. */
+int menu_seam_census(const MenuLayout *L, int piece, const MenuSources *S, int counts[4])
+{
+    counts[0] = counts[1] = counts[2] = counts[3] = 0;
+    if (piece < 0 || piece >= L->np || !S) return 0;
+    const MenuPiece &P = L->p[piece];
+    if (P.src == SRC_TOP_PIC) return 0;
+    const int pw = P.src == SRC_TOP_HOSTROW ? S->hostrow_w : 256;
+    const int ph = P.src == SRC_TOP_HOSTROW ? S->hostrow_h : 192;
+    const int sx0 = P.s.x, sy0 = P.s.y, sx1 = P.s.x + P.s.w - 1, sy1 = P.s.y + P.s.h - 1;
+    for (int x = sx0; x <= sx1; ++x) {
+        if (sy0 > 0 && src_opaque(&P, S, x, sy0) && src_opaque(&P, S, x, sy0 - 1)) ++counts[0];
+        if (sy1 < ph - 1 && src_opaque(&P, S, x, sy1) && src_opaque(&P, S, x, sy1 + 1)) ++counts[1];
+    }
+    for (int y = sy0; y <= sy1; ++y) {
+        if (sx0 > 0 && src_opaque(&P, S, sx0, y) && src_opaque(&P, S, sx0 - 1, y)) ++counts[2];
+        if (sx1 < pw - 1 && src_opaque(&P, S, sx1, y) && src_opaque(&P, S, sx1 + 1, y)) ++counts[3];
+    }
+    const int tot = counts[0] + counts[1] + counts[2] + counts[3];
+    if (tot) MTRACE("seam census: piece %d has %d cut pixels (top %d bottom %d left %d right %d)", piece, tot,
+                    counts[0], counts[1], counts[2], counts[3]);
+    return tot;
+}
+
+/* the opaque bounding box of the piece's layers inside its s; 0 if nothing is opaque */
+int menu_autocrop_rect(const MenuPiece *P, const MenuSources *S, DsRect *out)
+{
+    int x0 = 1 << 20, y0 = 1 << 20, x1 = -1, y1 = -1;
+    for (int y = P->s.y; y < P->s.y + P->s.h; ++y)
+        for (int x = P->s.x; x < P->s.x + P->s.w; ++x)
+            if (src_opaque(P, S, x, y)) {
+                if (x < x0) x0 = x;
+                if (x > x1) x1 = x;
+                if (y < y0) y0 = y;
+                if (y > y1) y1 = y;
+            }
+    if (x1 < 0) return 0;
+    out->x = (short)x0; out->y = (short)y0; out->w = (short)(x1 - x0 + 1); out->h = (short)(y1 - y0 + 1);
+    return 1;
+}
+
+/* ====================================================================== */
+/* the synthesised-touch queue                                            */
+/* ====================================================================== */
+
+namespace {
+int g_q_state;          /* 0 idle, 1 press frame 1, 2 press frame 2, 3 release due */
+int g_q_x, g_q_y;
+int g_q_real_held;
+}
+
+int hal_menu_touch_queue_press(int dsx, int dsy)
+{
+    if (g_q_state != 0 || g_q_real_held) return 0;
+    g_q_x = dsx;
+    g_q_y = dsy;
+    g_q_state = 1;
+    return 1;
+}
+
+int hal_menu_touch_queue_poll(int *dsx, int *dsy, int *down)
+{
+    if (g_q_state == 0) return 0;
+    if (g_q_real_held) { g_q_state = 0; return 0; }   /* a real stylus wins; the press is dropped */
+    *dsx = g_q_x;
+    *dsy = g_q_y;
+    if (g_q_state == 1 || g_q_state == 2) {
+        *down = 1;
+        ++g_q_state;
+        return 1;
+    }
+    *down = 0;      /* the release edge, then idle */
+    g_q_state = 0;
+    return 1;
+}
+
+void hal_menu_touch_real_held(int held) { g_q_real_held = held ? 1 : 0; }
+
+/* ====================================================================== */
+/* frame entry points                                                     */
+/* ====================================================================== */
+
+static int scene_is_menu(int scene)
+{
+    return scene == 1 || scene == 4 || scene == 5 || scene == 6 || scene == 8;
+}
+
+void hal_menu_set_enable_fn(int (*fn)(int key)) { g_enable = fn; }
+void hal_menu_set_netplay(int on) { g_netplay = on ? 1 : 0; }
+void hal_menu_set_sources(const MenuSources *s) { g_src = s; }
+int  hal_menu_live(void) { return g_live; }
+int  hal_menu_fallback_frames(void) { return g_fallback_frames; }
+
+void hal_menu_frame_begin(int w, int h, int scene_id)
+{
+    ++g_frame;
+    int pick = -1, variant = 0, fb = -1;
+    for (int i = 0; i < g_menu_nrecipes; ++i) {
+        const MenuRecipe &R = g_menu_recipes[i];
+        if (R.flags & MENU_RF_FALLBACK) { fb = i; continue; }
+        if (!R.up || !R.build || !enabled(R.enable_key)) continue;
+        const int v = R.up(scene_id);
+        if (v > 0) { pick = i; variant = v; break; }
+    }
+    int is_fb = 0;
+    if (pick < 0 && fb >= 0 && scene_is_menu(scene_id) && enabled(MENU_KEY_ONE_SCREEN_MENUS)) {
+        pick = fb;
+        variant = 1;
+        is_fb = 1;
+    }
+    if (pick < 0 || w < 8 || h < 8) {
+        if (g_live) MTRACE("recipe off (scene %d)", scene_id);
+        g_live = 0;
+        g_cur_recipe = -1;
+        g_focus_shown = 0;
+        g_drag_piece = -1;
+        g_latch_recipe = -2;
+        return;
+    }
+    const MenuRecipe *R = &g_menu_recipes[pick];
+    const int changed = pick != g_cur_recipe || variant != g_cur_variant || g_cur.w != w || g_cur.h != h;
+    int keep_focus = (pick == g_cur_recipe && variant == g_cur_variant) ? g_cur.focus : -1;
+    menu_layout_solve(&g_cur, R, variant, w, h);
+    g_cur.focus = keep_focus < g_cur.nh ? keep_focus : -1;
+    if (pick != g_latch_recipe || variant != g_latch_variant) {
+        memset(g_latched, 0, sizeof g_latched);
+        g_latch_recipe = pick;
+        g_latch_variant = variant;
+        g_focus_shown = 0;
+    }
+    for (int i = 0; i < g_cur.np; ++i)
+        if (g_latched[i]) { g_cur.p[i].s = g_latch[i]; }
+    menu_layout_dest(&g_cur);
+    g_live = g_cur.np > 0;
+    g_cur_recipe = pick;
+    g_cur_variant = variant;
+    if (is_fb) ++g_fallback_frames;
+    if (changed) {
+        MTRACE("recipe=%s variant=%d size=%dx%d unit=%d/%d canvas_w=%d %s stage=%d fallback_frames=%d", R->name,
+               variant, w, h, g_cur.unum, g_cur.uden, g_cur.canvas_w, menu_wide(&g_cur) ? "wide" : "narrow",
+               g_cur.stage, g_fallback_frames);
+        for (int i = 0; i < g_cur.np; ++i)
+            MTRACE("  piece %d src=%d s=(%d,%d,%d,%d) -> dest=(%d,%d,%d,%d) k=%d/%d touch=%d", i, (int)g_cur.p[i].src,
+                   g_cur.p[i].s.x, g_cur.p[i].s.y, g_cur.p[i].s.w, g_cur.p[i].s.h, g_cur.dest[i][0],
+                   g_cur.dest[i][1], g_cur.dest[i][2], g_cur.dest[i][3], g_cur.p[i].knum, g_cur.p[i].kden,
+                   g_cur.p[i].touch);
+        for (int i = 0; i < g_cur.nh; ++i) {
+            int r[4];
+            menu_hotspot_rect(&g_cur, i, r);
+            MTRACE("  hotspot %d piece=%d box=(%d,%d,%d,%d) host=(%d,%d,%d,%d) rom=%d", i, g_cur.hs[i].piece,
+                   g_cur.hs[i].box.x, g_cur.hs[i].box.y, g_cur.hs[i].box.w, g_cur.hs[i].box.h, r[0], r[1], r[2],
+                   r[3], g_cur.hs[i].rom_index);
+        }
+    }
+}
+
+void hal_menu_present(uint32_t *dst, int w, int h, int stage)
+{
+    if (!g_live || !dst || g_cur.stage != stage) return;
+    const MenuSources *S = g_src;
+    if (g_cur.w != w || g_cur.h != h) {       /* the picture changed under the frame: solve again */
+        const MenuRecipe *R = g_cur.recipe;
+        const int f = g_cur.focus;
+        menu_layout_solve(&g_cur, R, g_cur_variant, w, h);
+        g_cur.focus = f < g_cur.nh ? f : -1;
+        menu_layout_dest(&g_cur);
+    }
+    if (S) {   /* latch the autocrop rects the first frame their pieces have pixels */
+        int again = 0;
+        for (int i = 0; i < g_cur.np; ++i) {
+            if (!g_cur.p[i].autocrop || g_latched[i]) continue;
+            DsRect r;
+            if (menu_autocrop_rect(&g_cur.p[i], S, &r)) {
+                g_latch[i] = r;
+                g_latched[i] = 1;
+                g_cur.p[i].s = r;
+                again = 1;
+                MTRACE("autocrop latched piece %d -> (%d,%d,%d,%d)", i, r.x, r.y, r.w, r.h);
+            }
+        }
+        if (again) menu_layout_dest(&g_cur);
+    }
+    if (g_cur.backdrop == MENU_BACKDROP_DIM_AUTO && S && !S->rom_dimming) menu_dim(dst, w, h, 8);
+    for (int i = 0; i < g_cur.np; ++i) menu_piece_draw(&g_cur, i, S, dst, w, h);
+    if (g_cur.focus >= 0 && g_focus_shown) menu_highlight_paint(&g_cur, dst, w, h, g_frame);
+    g_drawn = g_cur;
+    g_drawn_valid = 1;
+}
+
+void hal_menu_touch_inverse(int bx, int by, int *dsx, int *dsy, int *in)
+{
+    if (!g_drawn_valid || !g_live) { *dsx = -1; *dsy = -1; *in = 0; return; }
+    menu_inverse(&g_drawn, bx, by, &g_drag_piece, dsx, dsy, in);
+    /* menu_inverse sets the drag piece only on a hit; MenuInverse is also what
+       a held stylus clamps to, so a miss keeps whatever piece it started on */
+}
+
+void hal_menu_touch_end(void) { g_drag_piece = -1; }
+
+int hal_menu_hover(int bx, int by)
+{
+    if (!g_live) return 0;
+    if (!menu_focus_hover(&g_cur, bx, by)) return 0;
+    g_focus_shown = 1;
+    return 1;
+}
+
+void hal_menu_pad(uint16_t *pressed)
+{
+    if (!g_live || !pressed || !g_cur.recipe) return;
+    const MenuRecipe *R = g_cur.recipe;
+    int drv = R->driver;
+    if (g_netplay && drv == MENU_DRV_ROM_CURSOR) drv = MENU_DRV_TOUCH;   /* never write local ROM state in a session */
+    if (g_netplay && drv == MENU_DRV_MIXED) drv = MENU_DRV_TOUCH;
+    if (drv == MENU_DRV_NATIVE) return;                                   /* the ROM reads the pad itself */
+    uint16_t k = *pressed;
+    int dir = -1;
+    if (k & MENU_PAD_UP) dir = MENU_DIR_UP;
+    else if (k & MENU_PAD_DOWN) dir = MENU_DIR_DOWN;
+    else if (k & MENU_PAD_LEFT) dir = MENU_DIR_LEFT;
+    else if (k & MENU_PAD_RIGHT) dir = MENU_DIR_RIGHT;
+
+    if (drv == MENU_DRV_ROM_CURSOR) {
+        if (dir >= 0 && R->rom_cursor) { int sel = 0; R->rom_cursor(dir, &sel); }
+        k = (uint16_t)(k & ~0xf0u);
+        if (k & MENU_PAD_CONFIRM) k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | MENU_PAD_START);
+        *pressed = k;
+        return;
+    }
+
+    /* TOUCH, and MIXED (vertical keys go to the ROM cursor when the recipe has one) */
+    int handled_dir = 0;
+    if (drv == MENU_DRV_MIXED && R->rom_cursor && (dir == MENU_DIR_UP || dir == MENU_DIR_DOWN)) {
+        int sel = 0;
+        R->rom_cursor(dir, &sel);
+        handled_dir = 1;
+    }
+    if (dir >= 0 && !handled_dir) {
+        if (!g_focus_shown) {          /* the first press only shows the cursor */
+            g_focus_shown = 1;
+            if (g_cur.focus < 0 && g_cur.nh > 0) g_cur.focus = 0;
+        } else {
+            menu_focus_move(&g_cur, dir);
+        }
+    }
+    if (k & MENU_PAD_CONFIRM) {
+        if (g_focus_shown && g_cur.focus >= 0 && g_cur.focus < g_cur.nh) {
+            const MenuHotspot &H = g_cur.hs[g_cur.focus];
+            hal_menu_touch_queue_press(H.box.x + H.box.w / 2, H.box.y + H.box.h / 2);
+        }
+        k = (uint16_t)(k & ~(unsigned)MENU_PAD_CONFIRM);
+    }
+    if ((k & MENU_PAD_BACK) && g_cur.back >= 0 && g_cur.back < g_cur.nh) {
+        const MenuHotspot &H = g_cur.hs[g_cur.back];
+        hal_menu_touch_queue_press(H.box.x + H.box.w / 2, H.box.y + H.box.h / 2);
+        k = (uint16_t)(k & ~(unsigned)MENU_PAD_BACK);
+    }
+    k = (uint16_t)(k & ~0xf0u);          /* direction bits are the port's while a recipe is up */
+    *pressed = k;
+}
+
+/* ====================================================================== */
+/* MENU LAYOUT SELFTEST                                                   */
+/* ====================================================================== */
+
+namespace {
+
+FILE *g_out;
+
+struct Aspect { const char *name; int aw, ah; };
+const Aspect kAspects[5] = { { "4:3", 4, 3 }, { "16:10", 16, 10 }, { "16:9", 16, 9 }, { "21:9", 21, 9 },
+                             { "32:9", 32, 9 } };
+
+void out(const char *s)
+{
+    fputs(s, stderr);
+    if (g_out) fputs(s, g_out);
+}
+
+/* every hotspot reaches every other by directions alone */
+int focus_connected(const MenuLayout *L, int *from, int *to)
+{
+    if (L->nh < 2) return 1;
+    for (int a = 0; a < L->nh; ++a) {
+        char seen[MENU_MAX_HOTSPOTS];
+        int stack[MENU_MAX_HOTSPOTS], sp = 0;
+        memset(seen, 0, sizeof seen);
+        seen[a] = 1;
+        stack[sp++] = a;
+        while (sp) {
+            const int c = stack[--sp];
+            for (int d = 0; d < 4; ++d) {
+                MenuLayout T = *L;
+                T.focus = c;
+                const int n = menu_focus_move(&T, d);
+                if (n >= 0 && !seen[n]) { seen[n] = 1; stack[sp++] = n; }
+            }
+        }
+        for (int b = 0; b < L->nh; ++b)
+            if (!seen[b]) { *from = a; *to = b; return 0; }
+    }
+    return 1;
+}
+
+struct Result { int scale, corners, outside, hot, bounds, overlap, focus; char why[96]; };
+
+void check_layout(const MenuLayout *L, Result *R)
+{
+    R->scale = R->corners = R->outside = R->hot = R->bounds = R->overlap = R->focus = 1;
+    R->why[0] = 0;
+    char *why = R->why;
+    for (int i = 0; i < L->np; ++i) {
+        const MenuPiece &P = L->p[i];
+        const int *d = L->dest[i];
+        if (P.src != SRC_TOP_HOSTROW && !menu_scale_allowed(P.knum, P.kden)) {
+            R->scale = 0; sprintf(why, "piece %d scale %d/%d", i, P.knum, P.kden);
+        }
+        if (d[2] < 1 || d[3] < 1 || d[0] < 0 || d[1] < 0 || d[0] + d[2] > L->w || d[1] + d[3] > L->h) {
+            R->bounds = 0; sprintf(why, "piece %d dest (%d,%d,%d,%d) outside %dx%d", i, d[0], d[1], d[2], d[3], L->w, L->h);
+        }
+        if (P.touch && P.src != SRC_SUB) { R->corners = 0; sprintf(why, "piece %d touch but not SRC_SUB", i); }
+        for (int j = i + 1; j < L->np; ++j) {
+            if (P.bg || L->p[j].bg) continue;
+            const int *e = L->dest[j];
+            if (d[0] < e[0] + e[2] && e[0] < d[0] + d[2] && d[1] < e[1] + e[3] && e[1] < d[1] + d[3]) {
+                R->overlap = 0; sprintf(why, "pieces %d and %d overlap", i, j);
+            }
+        }
+        if (!P.touch || d[2] < 1 || d[3] < 1) continue;
+        const int cx[4] = { d[0], d[0] + d[2] - 1, d[0], d[0] + d[2] - 1 };
+        const int cy[4] = { d[1], d[1], d[1] + d[3] - 1, d[1] + d[3] - 1 };
+        for (int c = 0; c < 4; ++c) {
+            int pi = -1, sx, sy;
+            const int in = menu_hit(L, cx[c], cy[c], &pi, &sx, &sy);
+            if (!in || pi != i || sx < P.s.x || sx >= P.s.x + P.s.w || sy < P.s.y || sy >= P.s.y + P.s.h) {
+                R->corners = 0; sprintf(why, "piece %d corner %d inverts to piece %d (%d,%d) in=%d", i, c, pi, sx, sy, in);
+            }
+        }
+        const int ox[4] = { d[0] - 1, d[0] + d[2], d[0] + d[2] / 2, d[0] + d[2] / 2 };
+        const int oy[4] = { d[1] + d[3] / 2, d[1] + d[3] / 2, d[1] - 1, d[1] + d[3] };
+        for (int c = 0; c < 4; ++c) {
+            int pi = -1, sx, sy;
+            if (menu_hit(L, ox[c], oy[c], &pi, &sx, &sy)) {
+                if (pi == i) { R->outside = 0; sprintf(why, "piece %d edge %d still inside", i, c); }
+                continue;   /* another touch piece owns that pixel: not this piece's to disown */
+            }
+            int dsx, dsy, in, drag = -1;
+            menu_inverse(L, ox[c], oy[c], &drag, &dsx, &dsy, &in);
+            if (in) { R->outside = 0; sprintf(why, "piece %d edge %d reads in", i, c); }
+        }
+    }
+    for (int k = 0; k < L->nh; ++k) {
+        const MenuHotspot &H = L->hs[k];
+        if (H.piece >= L->np || !L->p[H.piece].touch) { R->hot = 0; sprintf(why, "hotspot %d not on a touch piece", k); continue; }
+        const MenuPiece &P = L->p[H.piece];
+        if (H.box.x < P.s.x || H.box.y < P.s.y || H.box.x + H.box.w > P.s.x + P.s.w ||
+            H.box.y + H.box.h > P.s.y + P.s.h) {
+            R->hot = 0; sprintf(why, "hotspot %d box outside its piece source", k); continue;
+        }
+        int hx, hy, pi = -1, sx = -1, sy = -1;
+        menu_hotspot_centre(L, k, &hx, &hy);
+        const int in = menu_hit(L, hx, hy, &pi, &sx, &sy);
+        if (!in || pi != H.piece || sx < H.box.x || sx >= H.box.x + H.box.w || sy < H.box.y || sy >= H.box.y + H.box.h) {
+            R->hot = 0; sprintf(why, "hotspot %d centre (%d,%d) -> piece %d ds (%d,%d) in=%d", k, hx, hy, pi, sx, sy, in);
+        }
+    }
+    int a = 0, b = 0;
+    if (!focus_connected(L, &a, &b)) { R->focus = 0; sprintf(why, "hotspot %d cannot reach %d", a, b); }
+}
+
+int run_grid(void)
+{
+    int fails = 0, cases = 0;
+    static const int heights[2] = { 384, 768 };
+    char line[256];
+    out("MENU LAYOUT SELFTEST\n");
+    out("recipe     h    aspect  size       var wide np nh  scale corner outsd hot  bounds overlap focus  result\n");
+    for (int ri = 0; ri < g_menu_nrecipes; ++ri) {
+        const MenuRecipe &Rc = g_menu_recipes[ri];
+        if (Rc.nvariants == 0) {
+            sprintf(line, "%-10s stub (no layout yet): skipped\n", Rc.name);
+            out(line);
+            continue;
+        }
+        for (int v = 1; v <= Rc.nvariants; ++v)
+            for (int hi = 0; hi < 2; ++hi)
+                for (int ai = 0; ai < 5; ++ai) {
+                    const int h = heights[hi];
+                    const int w = (h * kAspects[ai].aw * 2 + kAspects[ai].ah) / (kAspects[ai].ah * 2);
+                    static MenuLayout L;
+                    menu_layout_solve(&L, &Rc, v, w, h);
+                    Result R;
+                    check_layout(&L, &R);
+                    const int ok = L.np > 0 && R.scale && R.corners && R.outside && R.hot && R.bounds && R.overlap && R.focus;
+                    ++cases;
+                    if (!ok) ++fails;
+                    sprintf(line, "%-10s %-4d %-7s %4dx%-5d %-3d %-4s %-2d %-2d  %-5s %-6s %-5s %-4s %-6s %-7s %-5s  %s%s%s\n",
+                            Rc.name, h, kAspects[ai].name, w, h, v, menu_wide(&L) ? "wide" : "nrw", L.np, L.nh,
+                            R.scale ? "ok" : "FAIL", R.corners ? "ok" : "FAIL", R.outside ? "ok" : "FAIL",
+                            R.hot ? "ok" : "FAIL", R.bounds ? "ok" : "FAIL", R.overlap ? "ok" : "FAIL",
+                            R.focus ? "ok" : "FAIL", ok ? "PASS" : "FAIL", ok ? "" : " : ", ok ? "" : R.why);
+                    out(line);
+                }
+    }
+    sprintf(line, "grid: %d cases, %d failed\n", cases, fails);
+    out(line);
+    return fails;
+}
+
+uint32_t t_bm(uint32_t argb, uint8_t bm) { return bm ? (argb & 0xfefefeu) | (argb & 0xff000000u) : argb; }
+int fn_enable_all(int) { return 1; }
+
+int check(const char *what, int ok)
+{
+    char line[160];
+    sprintf(line, "live: %-58s %s\n", what, ok ? "PASS" : "FAIL");
+    out(line);
+    return ok ? 0 : 1;
+}
+
+/* the frame path end to end: frame_begin, present, inverse, pad, queue, fallback, census, autocrop */
+int run_live(void)
+{
+    int fails = 0;
+    static uint32_t sub[256 * 192];
+    static MenuTopCell top[256 * 192];
+    static uint32_t pic[1024 * 768];
+    static uint32_t dst[1024 * 768];
+    const uint32_t kBack = 0xff102030u, kCol = 0xff336699u;
+    for (int i = 0; i < 256 * 192; ++i) sub[i] = kCol;
+    for (int y = 0; y < 192; ++y) for (int x = 0; x < 8; ++x) sub[y * 256 + x] = kBack;   /* keyed columns */
+    for (int y = 0; y < 192; ++y)
+        for (int x = 0; x < 256; ++x) {
+            MenuTopCell &c = top[y * 256 + x];
+            c.argb = 0;
+            c.owner = 3;
+            if (y >= 20 && y < 60 && x >= 30 && x < 90) { c.argb = 0xffeeeeefu; c.bm = 1; }   /* BG3, bm verdict set */
+            if (y >= 20 && y < 60 && x >= 120 && x < 160) { c.argb = 0xffffffffu; c.owner = 0; } /* BG0: not in the piece's mask */
+        }
+    for (int i = 0; i < 1024 * 768; ++i) pic[i] = 0xff202020u;
+    MenuSources S;
+    memset(&S, 0, sizeof S);
+    S.sub = sub; S.sub_backdrop = kBack; S.top2d = top; S.pic = pic;
+    S.pic_stride = 1024; S.pic_w = 1024; S.pic_h = 768; S.pic_rx = 128; S.pic_ry = 0; S.pic_rw = 768; S.pic_rh = 768;
+    S.bm_apply = t_bm;
+    hal_menu_set_sources(&S);
+    hal_menu_set_enable_fn(0);
+    hal_menu_frame_begin(1024, 768, 1);
+    fails += check("nothing enabled -> scene 1 not live (default build state)", !hal_menu_live());
+    hal_menu_frame_begin(1024, 768, 3);
+    fails += check("nothing enabled -> scene 3 not live", !hal_menu_live());
+    hal_menu_set_enable_fn(fn_enable_all);
+    hal_menu_frame_begin(1024, 768, MENU_SCENE_TEST);
+    fails += check("TEST recipe up at 1024x768", hal_menu_live() == 1);
+    for (int i = 0; i < 1024 * 768; ++i) dst[i] = 0xff808080u;
+    hal_menu_present(dst, 1024, 768, MENU_STAGE_PRE_FADE);
+    fails += check("wrong stage draws nothing", dst[0] == 0xff808080u);
+    hal_menu_present(dst, 1024, 768, MENU_STAGE_POST_FADE);
+    {
+        int hx, hy;
+        menu_hotspot_centre(&g_drawn, 0, &hx, &hy);
+        fails += check("hotspot 0 centre shows the sub colour", dst[hy * 1024 + hx] == kCol);
+        const uint32_t dimmed = blend_ch(0xff808080u, 8, 0);
+        fails += check("backdrop dimmed by evy 8 where no piece draws", dst[767 * 1024 + 1023] == dimmed);
+        int dsx, dsy, in;
+        hal_menu_touch_inverse(hx, hy, &dsx, &dsy, &in);
+        const MenuHotspot &H = g_drawn.hs[0];
+        fails += check("inverse of hotspot 0 centre is inside its DS box",
+                       in && dsx >= H.box.x && dsx < H.box.x + H.box.w && dsy >= H.box.y && dsy < H.box.y + H.box.h);
+        hal_menu_touch_inverse(0, 0, &dsx, &dsy, &in);
+        fails += check("a miss reads outside and is clamped to a piece", !in && dsx >= 0 && dsy >= 0);
+        hal_menu_touch_end();
+        /* keyed columns: p1's first source column is keyed backdrop, so dest x0 shows the dimmed backdrop */
+        const int *d = g_drawn.dest[1];
+        fails += check("key_backdrop drops engine-B backdrop pixels", dst[(d[1] + d[3] / 2) * 1024 + d[0]] == dimmed);
+        const int *e = g_drawn.dest[0];   /* TEST p0: s = (0,16,256,48) */
+        const int bxp = e[0] + (60 * e[2]) / 256, byp = e[1] + ((40 - 16) * e[3]) / 48;
+        const int gxp = e[0] + (140 * e[2]) / 256;
+        fails += check("TOP_2D: BG3 cell drawn with its bm verdict applied", dst[byp * 1024 + bxp] == 0xffeeeeeeu);
+        fails += check("TOP_2D: a BG0 cell is outside the piece's layer mask", dst[byp * 1024 + gxp] == dimmed);
+    }
+    {
+        uint16_t k = MENU_PAD_DOWN;
+        hal_menu_pad(&k);
+        fails += check("first direction press only shows the cursor, bit stripped", (k & MENU_PAD_DOWN) == 0 && g_cur.focus == 0);
+        k = MENU_PAD_RIGHT;
+        hal_menu_pad(&k);
+        fails += check("right moves focus", g_cur.focus != 0 && g_cur.focus > 0);
+        k = MENU_PAD_CONFIRM;
+        hal_menu_pad(&k);
+        int x, y, down;
+        fails += check("confirm queues a press and strips the bit", (k & MENU_PAD_CONFIRM) == 0 && g_q_state == 1);
+        fails += check("queue refuses a second press in flight", hal_menu_touch_queue_press(1, 1) == 0);
+        int ok = hal_menu_touch_queue_poll(&x, &y, &down) && down;
+        ok = ok && hal_menu_touch_queue_poll(&x, &y, &down) && down;
+        ok = ok && hal_menu_touch_queue_poll(&x, &y, &down) && !down;
+        ok = ok && !hal_menu_touch_queue_poll(&x, &y, &down);
+        fails += check("queue: press, press, release, idle", ok);
+        hal_menu_touch_real_held(1);
+        fails += check("queue refuses while a real stylus is held", hal_menu_touch_queue_press(5, 5) == 0);
+        hal_menu_touch_real_held(0);
+        fails += check("queue accepts again once released", hal_menu_touch_queue_press(5, 5) == 1);
+        hal_menu_touch_real_held(1);
+        fails += check("a real stylus cancels a queued press", hal_menu_touch_queue_poll(&x, &y, &down) == 0);
+        hal_menu_touch_real_held(0);
+    }
+    {   /* census and autocrop on the TOP_2D source */
+        MenuPiece P = menu_piece_make(SRC_TOP_2D, 0, 20, 256, 40, 0, 0, 0, 0, 1, 1);
+        P.layers = MENU_L_BG3;
+        MenuLayout L;
+        menu_layout_begin(&L, 512, 384);
+        int c[4];
+        menu_add_piece(&L, P);
+        fails += check("census: a rect holding the whole block reads 0", menu_seam_census(&L, 0, &S, c) == 0);
+        L.p[0].s.x = 0; L.p[0].s.y = 30; L.p[0].s.w = 256; L.p[0].s.h = 100;   /* y 30 cuts the block, 60 is its edge */
+        fails += check("census: a cut through the block counts > 0", menu_seam_census(&L, 0, &S, c) > 0);
+        DsRect r;
+        L.p[0].s.y = 0; L.p[0].s.h = 192;
+        fails += check("autocrop finds the opaque bbox (30,20,60,40)",
+                       menu_autocrop_rect(&L.p[0], &S, &r) && r.x == 30 && r.y == 20 && r.w == 60 && r.h == 40);
+        L.p[0].s = r;
+        fails += check("census: the autocropped rect reads 0", menu_seam_census(&L, 0, &S, c) == 0);
+    }
+    {   /* the checker itself must be able to fail: break a good layout three ways */
+        static MenuLayout B;
+        menu_layout_solve(&B, &g_menu_recipes[g_menu_nrecipes - 1], 1, 1024, 768);
+        Result R;
+        B.p[2].dy = -80;                      /* p2 rises under p1 */
+        menu_layout_dest(&B);
+        check_layout(&B, &R);
+        fails += check("checker: overlapping pieces are caught", !R.overlap);
+        menu_layout_solve(&B, &g_menu_recipes[g_menu_nrecipes - 1], 1, 1024, 768);
+        for (int d = 0; d < 4; ++d) B.hs[3].nav[d] = -1;
+        check_layout(&B, &R);
+        fails += check("checker: an unreachable hotspot is caught", !R.focus);
+        menu_layout_solve(&B, &g_menu_recipes[g_menu_nrecipes - 1], 1, 1024, 768);
+        B.p[3].dx = 80;                       /* p3 pushed off the right edge */
+        menu_layout_dest(&B);
+        check_layout(&B, &R);
+        fails += check("checker: a piece outside the picture is caught", !R.bounds);
+        menu_layout_solve(&B, &g_menu_recipes[g_menu_nrecipes - 1], 1, 1024, 768);
+        B.hs[0].box.x = 250;
+        check_layout(&B, &R);
+        fails += check("checker: a hotspot box outside its source is caught", !R.hot);
+    }
+    {   /* fallback in a one-screen scene with no recipe up */
+        hal_menu_frame_begin(1024, 768, 1);
+        fails += check("fallback live in scene 1 with OneScreenMenus on", hal_menu_live() == 1 && hal_menu_fallback_frames() == 1);
+        fails += check("fallback has the top backdrop and one touch panel", g_cur.np == 2 && g_cur.p[1].touch && g_cur.p[0].bg);
+        hal_menu_frame_begin(1024, 768, 2);
+        fails += check("a non-menu scene is not live", !hal_menu_live());
+    }
+    hal_menu_set_enable_fn(0);
+    hal_menu_set_sources(0);
+    return fails;
+}
+
+int selftest_all(void)
+{
+    const char *fn = getenv("SM64DS_MENU_SELFTEST_OUT");
+    if (fn && *fn) g_out = fopen(fn, "w");
+    int fails = run_grid();
+    fails += run_live();
+    char line[64];
+    sprintf(line, "MENU LAYOUT SELFTEST: %s (%d failed)\n", fails ? "FAIL" : "PASS", fails);
+    out(line);
+    if (g_out) fclose(g_out);
+    g_out = 0;
+    return fails;
+}
+
+struct SelftestHook {
+    SelftestHook()
+    {
+        const char *e = getenv("SM64DS_MENU_SELFTEST");
+        if (e && *e && *e != '0') {
+            const int f = selftest_all();
+            fflush(stderr);
+            exit(f ? 1 : 0);
+        }
+    }
+} g_selftest_hook;
+
+}  // namespace
+
+int menu_selftest(void) { return selftest_all(); }

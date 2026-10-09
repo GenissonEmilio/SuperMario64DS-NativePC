@@ -24218,3 +24218,14 @@ foreach(_xrel1_map IN LISTS OV_DATA_MAPS)
     math(EXPR _xrel1_mounts "${_xrel1_mounts} + 1")
 endforeach()
 message(STATUS "XREL1: ${_xrel1_mounts} ovdata mount(s) rebuild when their overlay's config changes")
+
+# MENU1 / P0CORE (run menu1): the one-screen menu compose core. New files only,
+# linked into the two game targets and called by nothing yet (phase 1 wires the
+# hooks). menu_compose.cpp holds MENU LAYOUT SELFTEST behind
+# SM64DS_MENU_SELFTEST=1 (a static initialiser, so walk_window.cpp is not
+# touched); with no variable set the exe behaves as before.
+foreach(_tmenu1 walk_window walk_window_hires)
+    target_sources(${_tmenu1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_compose.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipes.cpp")
+endforeach()
