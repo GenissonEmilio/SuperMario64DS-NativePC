@@ -637,6 +637,7 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
 {
     if (!S || !dst || i < 0 || i >= L->np) return;
     const MenuPiece &P = L->p[i];
+    if (P.nodraw) return;
     if (P.src == SRC_HOSTIMG) { draw_hostimg(L, i, dst, w, h); return; }
     if (P.hostgrad) { draw_hostgrad(L, i, S, dst, w, h); return; }
     const int *d = L->dest[i];
@@ -695,6 +696,10 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
                 if (qx < 0) continue;
                 if (P.keycover) {
                     if (!S->pic_cover || !S->pic_cover[(size_t)qy * S->pic_stride + qx]) continue;
+                    if (P.has_ex) {
+                        const int ex = (qx - S->pic_rx) * 256 / S->pic_rw, ey = (qy - S->pic_ry) * 192 / S->pic_rh;
+                        if (ex >= P.ex.x && ex < P.ex.x + P.ex.w && ey >= P.ex.y && ey < P.ex.y + P.ex.h) continue;
+                    }
                 }
                 row[xx] = prow[qx] | 0xff000000u;
             }
@@ -1044,6 +1049,48 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
         if (again) menu_layout_dest(&g_cur);
     }
     if (g_cur.backdrop == MENU_BACKDROP_DIM_AUTO && S && !S->rom_dimming) menu_dim(dst, w, h, 8);
+    {
+        /* ASSET4 measurement (SM64DS_MENU_COVBBOX=1): the 3D coverage bounding box per frame in lower-screen DS pixels, the
+           wrench's own 40 x 40 corner kept apart, with run-wide extremes and an 8 x 8 DS pixel occupancy grid of the union */
+        static int on = -1, from = 0;
+        if (on < 0) { const char *e = getenv("SM64DS_MENU_COVBBOX"); on = (e && *e && *e != '0') ? 1 : 0; from = on ? atoi(e) : 0; }
+        if (on && S && S->pic_cover && S->pic_rw > 0 && S->pic_rh > 0) {
+            static int mn_x = 9999, mn_y = 9999, mx_x = -1, mx_y = -1, nfr = 0;
+            static unsigned char grid[24][32];
+            int bx0 = 9999, by0 = 9999, bx1 = -1, by1 = -1;
+            for (int y = 0; y < S->pic_rh; ++y) {
+                const uint8_t *cr = S->pic_cover + (size_t)(S->pic_ry + y) * S->pic_stride + S->pic_rx;
+                const int dy = y * 192 / S->pic_rh;
+                for (int x = 0; x < S->pic_rw; ++x) {
+                    if (!cr[x]) continue;
+                    const int dx = x * 256 / S->pic_rw;
+                    if (dx >= 216 && dy < 40) continue;
+                    if (dx < bx0) bx0 = dx;
+                    if (dx > bx1) bx1 = dx;
+                    if (dy < by0) by0 = dy;
+                    if (dy > by1) by1 = dy;
+                    if (nfr + 1 >= from) grid[dy / 8][dx / 8] = 1;
+                }
+            }
+            ++nfr;
+            if (bx1 >= 0 && nfr >= from) {
+                if (bx0 < mn_x) mn_x = bx0;
+                if (by0 < mn_y) mn_y = by0;
+                if (bx1 > mx_x) mx_x = bx1;
+                if (by1 > mx_y) mx_y = by1;
+            }
+            fprintf(stderr, "[covbbox] f%d bbox x%d..%d y%d..%d | run x%d..%d y%d..%d\n", nfr, bx0, bx1, by0, by1, mn_x, mx_x, mn_y, mx_y);
+            if (nfr % 240 == 0) {
+                for (int gy = 0; gy < 24; ++gy) {
+                    char ln[40];
+                    for (int gx = 0; gx < 32; ++gx) ln[gx] = grid[gy][gx] ? '#' : '.';
+                    ln[32] = 0;
+                    fprintf(stderr, "[covgrid] %s\n", ln);
+                }
+            }
+            fflush(stderr);
+        }
+    }
     for (int i = 0; i < g_cur.np; ++i) menu_piece_draw(&g_cur, i, S, dst, w, h);
     if (g_cur.focus >= 0 && g_focus_shown && !g_cur.no_focus_paint && g_cur.focus < g_cur.nh && g_cur.p[g_cur.hs[g_cur.focus].piece].src != SRC_HOSTIMG)
         menu_highlight_paint(&g_cur, dst, w, h, g_frame);

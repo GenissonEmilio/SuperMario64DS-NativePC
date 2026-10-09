@@ -197,6 +197,11 @@ int title_skip(char *o)
        arrow (art cut from this very object: tools/extract_title_arrow.py), so it is not in the picture on the one-screen main menu */
     if (*(unsigned char *)(o + 0x4e) == 0x21 && wall_skip_active() && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
         menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC)) return 1;   /* only when our arrows will be drawn */
+    /* ASSET4: the three plate sprites (object id 0x1b at y >= 100; the wrench is the same id at y 20) are also left out of the
+       submit when the host planks are drawn, so the 3D layer holds only the face, star, sparkles and wrench and the face piece can be
+       the whole layer (the ROM's plate art no longer shows under the host planks, nothing below the chin is ever in it) */
+    if (*(unsigned char *)(o + 0x4e) == 0x1b && (((const int *)o)[2] >> 12) >= 100 && wall_skip_active() && menu_hostimg_ready(MENU_IMG_BTN_MP) &&
+        menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC)) return 1;
     static int trace = -1;
     static unsigned skipk;
     if (trace < 0) {
@@ -297,17 +302,20 @@ void build_main(MenuLayout *L, bool intro)
     /* the stars and sparkles stay where the ROM puts them on the 4:3 core (a piece anchored C with dx = srcx - 128 + w / 2
        lands at its own lower-screen x); the head is cut with room around it for a stretch, scaled 2/3 and set low over the
        logo's DS like a mascot; the wrench sits in the top right corner of the canvas */
+    /* ASSET4: THE FACE IS NEVER CUT. The title's lower 3D layer now holds only the head, the star, the sparkles and the wrench
+       (wallpaper, plates and the ROM's cursor arrow are skipped at submit), so the face piece is the WHOLE 256 x 192 layer minus
+       the wrench's own 40 x 40 corner (excluded by rect, so the two never overlap): whatever pose the idle animation or the
+       press squash takes, the head, cap, ears, chin, star and sparkles are inside the source. It keeps the round 3 scale and
+       place (a source x maps to centre - 83.33 + 2x/3 units, y to 46 + 2y/3, exactly the old 156 x 140 head piece's transform),
+       and stars and sparkles now share that transform so they stay where the ROM put them around the face. A touch-only piece
+       holds the old head rect (the ROM's face toy reads a touch on the head). */
     const int hk = tune(0, 2), hd = tune(1, 3);
+    MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
+    face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
+    menu_add_piece(L, face);
     MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
-    head.keycover = 1; head.touch = 1;
+    head.touch = 1; head.nodraw = 1;
     menu_add_piece(L, head);
-    static const int kStarX[3] = { 0, 176, 216 }, kStarY[3] = { 0, 0, 40 }, kStarW[3] = { 20, 40, 40 }, kStarH[3] = { 140, 140, 100 };
-    for (int k = 0; k < 3; ++k) {
-        MenuPiece st = menu_piece_make(SRC_TOP_PIC, kStarX[k], kStarY[k], kStarW[k], kStarH[k], MENU_AX_C, MENU_AY_T,
-                                       kStarX[k] - 128 + kStarW[k] / 2, kStarY[k], 1, 1);
-        st.keycover = 1;
-        menu_add_piece(L, st);
-    }
     MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
     wr.keycover = 1; wr.touch = 1;
     const int iwr = menu_add_piece(L, wr);
@@ -364,17 +372,14 @@ void build_main(MenuLayout *L, bool intro)
         if (cur == 7) {
             Box wb;
             if (!box_of(7, &wb)) wb = kBoxes[7];
-            ar.fx = (short)(L->w - (256 - (wb.x0 + wb.x1) / 2) * L->unum / L->uden - dw / 2);   /* the wrench sits on the right edge */
+            ar.fx = (short)(L->w - (256 - (wb.x0 + wb.x1) / 2) * L->unum / L->uden - dw / 2);
             ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * L->unum / (2 * L->uden));
         } else {
-            /* a pair, one over each end of the plank (the middle of ADVENTURE is Mario's face), both pointing down at it */
+            /* ASSET4 (Tango): ONE arrow, centred on the plank, pointing down with its tip just over the plank's top edge */
             Box bx;
             if (box_of(cur, &bx)) {
-                const int inset = 16;                       /* the arrow's centre, from the plank end, in canvas units */
-                ar.fy = (short)(((bx.y0 * 2 - 6 + bob2) * L->unum) / (2 * L->uden) - dh);
-                ar.fx = (short)(L->w / 2 + (bx.x0 + inset - 128) * L->unum / L->uden - dw / 2);
-                menu_add_piece(L, ar);
-                ar.fx = (short)(L->w / 2 + (bx.x1 - inset - 128) * L->unum / L->uden - dw / 2);
+                ar.fy = (short)(((bx.y0 * 2 + 2 + bob2) * L->unum) / (2 * L->uden) - dh);
+                ar.fx = (short)(L->w / 2 + ((bx.x0 + bx.x1) / 2 - 128) * L->unum / L->uden - dw / 2);
             } else {
                 ar.fx = -1000;
             }

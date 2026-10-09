@@ -101,6 +101,9 @@ struct MenuPiece {
      selected while it owns the mouse focus, and pressed while the real stylus is held on it. A touch hostimg piece maps a
      click proportionally into its source rect s (the ROM's own box), not 1:1. */
   uint8_t hl;
+  /* ASSET4 (appended): nodraw = a touch-only piece (maps clicks, draws nothing). has_ex / ex = a keycover piece skips the 3D pixels
+     inside the DS source rect ex (so a whole-layer piece never contains another piece's element, here the wrench). */
+  uint8_t nodraw, has_ex; DsRect ex;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
