@@ -145,8 +145,27 @@ extern int *data_ov007_0210342c;
 }
 namespace {
 int g_tk_frame = -1, g_tk_idx = 0;
+int g_up_stamp = -1;          /* the title Render counter at which menu_title_up last answered (the composite of that frame) */
+
+/* The wallpaper is dropped from the submit only while the one-screen main menu is the page, decided from the ROM's own
+   state at draw time. g_up_stamp proves the recipe ran for the PREVIOUS frame of this same page family (it is not called
+   when the setting is off or the layout is stacked), and the page is read live so the first frame of a page change is
+   already right. */
+bool wall_skip_active()
+{
+    if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return false;
+    return variant_for(top, elem) == V_MAIN;
+}
+
 int title_skip(char *o)
 {
+    if (data_ov007_0210342c) {
+        const char *g = (const char *)data_ov007_0210342c;
+        for (int i = 0; i < 3; ++i)
+            if (o == *(char *const *)(g + 0x108 + 4 * i)) return wall_skip_active() ? 1 : 0;
+    }
     static int trace = -1;
     static unsigned skipk;
     if (trace < 0) {
@@ -167,6 +186,58 @@ int title_skip(char *o)
     return k < 32 && ((skipk >> k) & 1);
 }
 struct TitleHookInit { TitleHookInit() { g_port_title_draw_skip = title_skip; } } g_title_hook_init;
+/* THE MAIN MENU, built from the title's own art objects (run menu1, lane ASSET1; Tango, 10-09: "take the top screen
+   and replace the bottom screen's background with it", and the stars stay).
+   The lower screen is 3D (see the filter note above). With the wallpaper objects skipped at submit, the picture
+   holds only the head, the star and sparkles, the three plates and the wrench, and the 3D coverage plane says
+   which pixels those are, so each piece below is cut keyed by coverage: transparent wherever the 3D engine drew
+   nothing, so no wallpaper tile, no clear colour and no box comes along. The upper screen (engine B: the logo on
+   its sky) is the backdrop, with its "TOUCH TO START" sprites left out (the plates stand where they were), and on
+   a wide canvas its sky is carried out to the edges by xfill columns, nothing stretched.
+   Source rects are in lower-screen DS pixels and tile the screen: head+star+sparkles (216 x 140, the whole upper
+   part; a drag on the face stays inside it), sparkles right of the wrench, the wrench, and the three plates. They
+   are placed at the lower screen's own positions on the 4:3 core; tune knobs (SM64DS_TITLE_TUNE) move the head. */
+void build_main(MenuLayout *L)
+{
+    const int cw = L->w * L->uden / L->unum;                 /* exact canvas width in units, floored */
+    const int side = cw > 256 ? (cw - 256 + 1) / 2 + 2 : 0;  /* the wide margin on each side, with an overlap */
+    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+    L->stage = MENU_STAGE_POST_FADE;
+    if (side > 0) {
+        MenuPiece lf = menu_piece_make(SRC_SUB, 0, 0, 1, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        lf.bg = 1; lf.xfill = 1; lf.fill_w = (short)side; lf.layers = (uint8_t)tune(5, 0x0f);
+        menu_add_piece(L, lf);
+        MenuPiece rt = menu_piece_make(SRC_SUB, 255, 0, 1, 192, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+        rt.bg = 1; rt.xfill = 1; rt.fill_w = (short)side; rt.layers = (uint8_t)tune(5, 0x0f);
+        menu_add_piece(L, rt);
+    }
+    MenuPiece bg = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
+    bg.bg = 1;
+    bg.layers = (uint8_t)tune(5, 0x0f);
+    menu_add_piece(L, bg);
+    /* x of a piece's left edge on the 4:3 core: AX_C centres, so dx is (srcx - 128 + w / 2) for the identity place */
+    const int hk = tune(0, 1), hd = tune(1, 1);
+    MenuPiece head = menu_piece_make(SRC_TOP_PIC, 0, 0, 216, 140, MENU_AX_C, MENU_AY_T, 0 - 128 + 108 + tune(2, 0), tune(3, 0), hk, hd);
+    head.keycover = 1; head.touch = 1;
+    menu_add_piece(L, head);
+    MenuPiece spk = menu_piece_make(SRC_TOP_PIC, 216, 40, 40, 100, MENU_AX_C, MENU_AY_T, 216 - 128 + 20, 40, 1, 1);
+    spk.keycover = 1;
+    menu_add_piece(L, spk);
+    MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_C, MENU_AY_T, 216 - 128 + 20, 0, 1, 1);
+    wr.keycover = 1; wr.touch = 1;
+    const int iwr = menu_add_piece(L, wr);
+    static const int kPlateX[3] = { 0, 70, 188 }, kPlateW[3] = { 70, 118, 68 };
+    static const int kPlateId[3] = { 1, 0, 2 };
+    for (int k = 0; k < 3; ++k) {
+        MenuPiece pl = menu_piece_make(SRC_TOP_PIC, kPlateX[k], 140, kPlateW[k], 52, MENU_AX_C, MENU_AY_B, kPlateX[k] - 128 + kPlateW[k] / 2, 0, 1, 1);
+        pl.keycover = 1; pl.touch = 1;
+        const int ip = menu_add_piece(L, pl);
+        hot(L, ip, &kPlateId[k], 1);
+    }
+    static const int wr_ids[1] = { 7 };
+    hot(L, iwr, wr_ids, 1);
+}
+
 }  // namespace
 
 int menu_title_up(int scene_id)
@@ -179,6 +250,7 @@ int menu_title_up(int scene_id)
         if (hal_menu_trace_on()) fprintf(stderr, "[menu] title page top=%d elem=%d req=%d\n", top, elem, req);
     }
     g_last = variant_for(top, elem);
+    if (data_ov007_0210342c) g_up_stamp = data_ov007_0210342c[0];
     return g_last;
 }
 
@@ -192,6 +264,10 @@ void menu_title_build(int variant, MenuLayout *L)
         L->stage = MENU_STAGE_POST_FADE;
         return;
     }
+    if (variant == V_MAIN) {
+        build_main(L);
+        return;
+    }
     /* the backdrop: the upper screen, whole */
     MenuPiece bg = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
     bg.bg = 1;
@@ -199,19 +275,6 @@ void menu_title_build(int variant, MenuLayout *L)
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
 
-    if (variant == V_MAIN) {
-        MenuPiece bar = menu_piece_make(SRC_TOP_PIC, 0, 138, 256, 54, MENU_AX_C, MENU_AY_B, 0, 0, 1, 1);
-        bar.touch = 1;
-        const int ibar = menu_add_piece(L, bar);
-        MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_C, MENU_AY_T, -102, 6, 1, 1);   /* 6 units in from the 4:3 picture's left edge */
-        wr.touch = 1;
-        const int iwr = menu_add_piece(L, wr);
-        static const int bar_ids[3] = { 1, 0, 2 };
-        hot(L, ibar, bar_ids, 3);
-        static const int wr_ids[1] = { 7 };
-        hot(L, iwr, wr_ids, 1);
-        return;
-    }
     const int kn = tune(0, 3), kd = tune(1, 4);
     if (variant == V_TABLE) {
         /* THE SCORE TABLE ON ONE PAGE (the N64 table players asked for): the DS shows the course

@@ -84,6 +84,7 @@
 #include <cstring>       /* run mg16 lane MP3: the touch-ring store */
 
 #include "ntr/ppu.h"
+#include "ntr/gx.h"       /* ASSET1: gx_coverage for keycover menu pieces */
 #include "hal/menu_compose.h"   /* run menu1 lane HOOK1: the one-screen menu compose layer */
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
@@ -1530,6 +1531,7 @@ const uint32_t *menu_sub_for(uint8_t layers)
 
 MenuSources g_msrc;
 uint32_t *g_picsnap;                                 /* a copy of the picture for SRC_TOP_PIC pieces */
+uint8_t *g_covsnap;                                  /* ASSET1: a copy of the 3D coverage plane, same frame, for keycover pieces */
 
 /* Hand the layer this frame's planes. Called right before hal_menu_present, at each of its two stages. */
 void menu_prepare_sources(unsigned *dst, int w, int h)
@@ -1558,6 +1560,17 @@ void menu_prepare_sources(unsigned *dst, int w, int h)
             g_msrc.pic_ry = ntr::present_y();
             g_msrc.pic_rw = ntr::present_w();
             g_msrc.pic_rh = ntr::present_h();
+            if (hal_menu_uses_cover()) {
+                /* ASSET1: where the 3D engine wrote a pixel. gx_coverage is valid right after gx_render and nothing
+                   rasterises between it and this draw. SCREEN_W stride, like the picture. */
+                const uint8_t *cv = ntr::gx_coverage();
+                if (!g_covsnap) g_covsnap = (uint8_t *)std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H);
+                if (cv && g_covsnap) {
+                    for (int y = 0; y < h; ++y)
+                        std::memcpy(g_covsnap + (size_t)y * ntr::SCREEN_W, cv + (size_t)y * ntr::SCREEN_W, (size_t)w);
+                    g_msrc.pic_cover = g_covsnap;
+                }
+            }
         }
     }
     port_engine_a_fade_px_prep();

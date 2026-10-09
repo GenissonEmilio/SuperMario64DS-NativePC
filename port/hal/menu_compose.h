@@ -38,7 +38,7 @@
 #include <stdint.h>
 
 #define MENU_WIDE_CANVAS 300      /* canvas_w at or above this takes the wide variant */
-#define MENU_MAX_PIECES  16
+#define MENU_MAX_PIECES  24
 #define MENU_MAX_HOTSPOTS 24
 
 /* layer bits for MenuPiece.layers and the owner byte of a MenuTopCell:
@@ -72,6 +72,15 @@ struct MenuPiece {
      are ignored, and a dest pixel (xx, yy) samples the source at s.x + floor(xx * lden / lnum) (clamped to
      s), draw and inverse alike. Zero in every other piece. */
   short fx, fy, fw, fh; int lnum, lden;
+  /* ASSET1 (appended): THE 3D LAYER AS ONE ELEMENT AND A FILL.
+     keycover: an SRC_TOP_PIC piece draws only the pixels the 3D engine wrote (MenuSources.pic_cover), so a sprite
+     object the ROM submitted as 3D quads (the title's plates, wrench, head, stars) arrives with its own
+     transparency and drags no background along. The ROM's draw filter (src/func_ov007_020c421c.c port arm) is what
+     keeps the objects that should not be in the picture (the wallpaper) out of it.
+     xfill: an SRC_SUB piece whose dest is fill_w canvas units wide (not s.w) and repeats source column s.x across
+     it, rows mapped normally: the sky gradient's edge carried out to the edge of a wide picture, nothing stretched
+     (a column of a vertical gradient is the same everywhere). */
+  uint8_t keycover, xfill; short fill_w;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
@@ -162,6 +171,7 @@ struct MenuSources {
   const uint32_t *pic;            /* SRC_TOP_PIC: host framebuffer, pic_stride pixels per row */
   int pic_stride, pic_w, pic_h;
   int pic_rx, pic_ry, pic_rw, pic_rh;  /* where the 256x192 top screen sits inside pic (host px) */
+  const uint8_t *pic_cover;       /* ASSET1: the 3D coverage plane of the same frame, same stride as pic; null = no key */
   const uint32_t *hostrow;        /* SRC_TOP_HOSTROW: host plane, same stride as the destination; s is in HOST pixels */
   int hostrow_stride, hostrow_w, hostrow_h;
   uint32_t (*bm_apply)(uint32_t argb, uint8_t bm);  /* engine-A fade/brightness verdict, null = identity */
@@ -250,6 +260,8 @@ int  hal_menu_fallback_frames(void);
 /* HOOK1 */
 const MenuLiftInfo *hal_menu_lift_info(void);   /* this frame's lift plan, null = lift nothing */
 int  hal_menu_uses_src(int src);                /* the live layout has a piece of this MenuSrc */
+int  hal_menu_uses_cover(void);                 /* ASSET1: the live layout has a keycover piece (the host then supplies pic_cover) */
+int  hal_menu_enabled(int key);                 /* ASSET1: a MENU_KEY_* setting as the recipes see it */
 int  hal_menu_trace_on(void);                   /* SM64DS_MENU_TRACE or its alias SM64DS_SWAP_TRACE */
 void hal_menu_set_dst_stride(int stride);       /* pixels per row of the buffer hal_menu_present draws into; 0 = w */
 void hal_menu_note_lift_drawn(void);            /* the draw honoured the lift promise (LIFT WITHOUT DRAW net) */

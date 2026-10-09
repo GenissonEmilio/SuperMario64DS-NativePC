@@ -252,7 +252,8 @@ void menu_layout_dest(MenuLayout *L)
             continue;
         }
         const int kn = P.knum ? P.knum : 1, kd = P.kden ? P.kden : 1;
-        const long long cw12 = (long long)P.s.w * kn * 12 / kd, ch12 = (long long)P.s.h * kn * 12 / kd;
+        const long long cw12 = P.xfill ? (long long)P.fill_w * 12 : (long long)P.s.w * kn * 12 / kd,
+                        ch12 = (long long)P.s.h * kn * 12 / kd;
         const long long dx12 = (long long)P.dx * 12, dy12 = (long long)P.dy * 12;
         const long long TW = (long long)L->w * UD * 12, TH = (long long)L->h * UD * 12;   /* the picture, in 1/(uden*12) px */
         const long long nx0 = P.ax == MENU_AX_L ? 2 * dx12 * UN
@@ -498,7 +499,7 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
     } else if (P.src != SRC_TOP_HOSTROW) {
         const int lim = 256;
         for (int xx = xa; xx < xb; ++xx) {
-            int sx = P.lden > 0 ? P.s.x + (int)fdiv((long long)xx * P.lden, P.lnum > 0 ? P.lnum : 1)
+            int sx = P.xfill ? P.s.x : P.lden > 0 ? P.s.x + (int)fdiv((long long)xx * P.lden, P.lnum > 0 ? P.lnum : 1)
                                 : P.s.x + (int)fdiv((long long)xx * P.s.w, dw);
             if (P.lden > 0 && sx > P.s.x + P.s.w - 1) sx = P.s.x + P.s.w - 1;
             cx[xx] = (sx < 0 || sx >= lim) ? -1 : sx;
@@ -529,6 +530,9 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
             for (int xx = xa; xx < xb; ++xx) {
                 const int qx = cx[xx];
                 if (qx < 0) continue;
+                if (P.keycover) {
+                    if (!S->pic_cover || !S->pic_cover[(size_t)qy * S->pic_stride + qx]) continue;
+                }
                 row[xx] = prow[qx] | 0xff000000u;
             }
             continue;
@@ -708,6 +712,14 @@ void hal_menu_set_sources(const MenuSources *s) { g_src = s; g_nplanes = 0; }
 int  hal_menu_live(void) { return g_live; }
 int  hal_menu_draws_in(int stage) { return g_live && g_cur.stage == stage; }
 int  hal_menu_fallback_frames(void) { return g_fallback_frames; }
+int  hal_menu_enabled(int key) { return enabled(key); }
+int  hal_menu_uses_cover(void)
+{
+    if (!g_live) return 0;
+    for (int i = 0; i < g_cur.np; ++i)
+        if (g_cur.p[i].keycover) return 1;
+    return 0;
+}
 const MenuLiftInfo *hal_menu_lift_info(void) { return g_lift_on ? &g_lift : 0; }
 int  hal_menu_trace_on(void) { return trace_on(); }
 void hal_menu_set_dst_stride(int stride) { g_dst_stride = stride; }
@@ -998,7 +1010,7 @@ void check_layout(const MenuLayout *L, Result *R)
         if (d[2] < 1 || d[3] < 1 || d[0] < 0 || d[1] < 0 || d[0] + d[2] > L->w || d[1] + d[3] > L->h) {
             R->bounds = 0; sprintf(why, "piece %d dest (%d,%d,%d,%d) outside %dx%d", i, d[0], d[1], d[2], d[3], L->w, L->h);
         }
-        if (P.src != SRC_TOP_HOSTROW && P.lden == 0) {
+        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !P.xfill) {
             /* the scale rule: dest size within one host pixel of the exact rational size */
             const double kn = P.knum ? P.knum : 1, kd = P.kden ? P.kden : 1, un = (double)L->unum / L->uden;
             const double ew = P.s.w * kn / kd * un, eh = P.s.h * kn / kd * un;
@@ -1008,6 +1020,7 @@ void check_layout(const MenuLayout *L, Result *R)
                 R->exact = 0; sprintf(why, "piece %d dest %dx%d vs exact %.2fx%.2f", i, d[2], d[3], ew, eh);
             }
         }
+        if (P.xfill) { /* a fill is not a scaled copy: its width is fill_w units */ }
         if (P.touch && P.src != SRC_SUB && P.src != SRC_TOP_PIC) { R->corners = 0; sprintf(why, "piece %d touch but not SRC_SUB", i); }
         for (int j = i + 1; j < L->np; ++j) {
             if (P.bg || L->p[j].bg) continue;
