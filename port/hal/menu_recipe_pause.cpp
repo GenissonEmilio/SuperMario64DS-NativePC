@@ -63,7 +63,6 @@ enum { V_CASTLE = 1, V_COURSE, V_CTL, V_CTL_SEL, V_OPT, V_SAVE, V_STATUS, V_NOSA
 /* ---- the variant, with hysteresis over the leaving states ---------------- */
 
 int g_last_variant;
-int g_cursor_shown;
 
 int pause_variant(void)
 {
@@ -90,7 +89,6 @@ int pause_up(int scene_id)
     /* the Stage is scene 3; a level boot that never runs the scene thunk answers -1 (hal_menu_hook_h1), and
        the stacked layout is MENU_SCENE_GATED: no recipe */
     if (scene_id == 3 || scene_id == -1) v = pause_variant();
-    if (v != g_last_variant) g_cursor_shown = 0;
     g_last_variant = v;
     if (hal_menu_trace_on()) {      /* SM64DS_MENU_TRACE: every change of the ROM's pause words, for the proof rows */
         static int last[10] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
@@ -371,10 +369,7 @@ int pause_cursor(int dir, int *owns)
     const int last = data_0209f2b4 ? data_0209f2b4 - 1 : 0;
     int sel = data_0209f2e0;
     int moved = 0;
-    if (!g_cursor_shown) {
-        g_cursor_shown = 1;
-        moved = 1;
-    } else if (dir == MENU_DIR_UP && sel > 0) {
+    if (dir == MENU_DIR_UP && sel > 0) {
         --sel;
         moved = 1;
     } else if (dir == MENU_DIR_DOWN && sel < last) {
