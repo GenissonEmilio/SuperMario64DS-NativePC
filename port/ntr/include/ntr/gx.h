@@ -242,6 +242,10 @@ struct GxGpuFrame {
     int stride;
     int cw, ch;            // the active picture inside the allocation
     int px0, py0, pw, ph;  // the present rectangle, which is the scissor
+    // the whole-frame path's scissor: the present rectangle narrowed to the game's
+    // viewport (raster_clip, run hunt8 lane CREDITCROP1), half-open; empty = none.
+    // px0..ph stays the present rectangle, which a held frame is composited by.
+    int clip_x0, clip_y0, clip_x1, clip_y1;
     int want_attrid;       // the frame has a shadow volume, so the ID is read
     int want_depth;        // a second pass will read the depth back
     int wdepth;            // this frame is W-buffered: depth is -(1/w), not z (gx_render's g_wdepth)

@@ -293,10 +293,24 @@ uint aa_ps(float4 pos : SV_Position) : SV_Target0
 //             alpha 0 instead.
 // ============================================================================
 
-void shade_full(VSOut i, out float3 c, out float sa, out float ta)
+// FILTERED = the texture is held premultiplied (16 bits a channel) and coverage
+// comes from a point sampler pinned to the top level: ps_filt above, run hunt7
+// lane FILTEREDGE1, applied to the whole-frame shaders by run hunt8 lane
+// CARDPORT1. Alpha 0 at the DS's own texel is no pixel, a fully opaque texel is
+// a fully opaque pixel, and only a texel with an alpha of its own keeps the
+// filtered alpha.
+void shade_full(VSOut i, bool filtered, out float3 c, out float sa, out float ta)
 {
     float4 t = tex0.Sample(smp0, i.uv);
-    ta = floor(t.a * 255.0 + 0.5);
+    if (filtered) {
+        float4 tp = tex0.SampleLevel(smpP, i.uv, 0.0);
+        float pa = floor(tp.a * 255.0 + 0.5);
+        float fa = floor(t.a * 255.0 + 0.5);
+        ta = (pa < 0.5) ? 0.0 : ((pa > 254.5) ? 255.0 : ((fa > 0.5) ? fa : pa));
+        t = float4(saturate(t.rgb / max(t.a, 1.0 / 65535.0)), t.a);
+    } else {
+        ta = floor(t.a * 255.0 + 0.5);
+    }
     sa = floor((i.attr.x * ta + 127.0) / 255.0);
     uint a = (uint)(i.attr.y + 0.5);
     uint m = a >> 6;
@@ -316,22 +330,22 @@ void shade_full(VSOut i, out float3 c, out float sa, out float ta)
 // even where gx.cpp's blend of a zero weight leaves the colour alone
 static const float kMinW = 1.0 / 1024.0;
 
-float4 ps_tl(VSOut i) : SV_TARGET0
+float4 tl_body(VSOut i, bool filtered)
 {
     float3 c;
     float sa, ta;
-    shade_full(i, c, sa, ta);
+    shade_full(i, filtered, c, sa, ta);
     clip(ta - 0.5);
     clip(30.5 - sa);
     return float4(c, max(sa * (1.0 / 31.0), kMinW));
 }
 
-PSOut ps_tlop(VSOut i)
+PSOut tlop_body(VSOut i, bool filtered)
 {
     PSOut o;
     float3 c;
     float sa, ta;
-    shade_full(i, c, sa, ta);
+    shade_full(i, filtered, c, sa, ta);
     clip(ta - 0.5);
     clip(sa - 30.5);
     o.col = float4(c, 1.0);
@@ -341,16 +355,23 @@ PSOut ps_tlop(VSOut i)
 
 Texture2D<uint> idtex : register(t1);
 
-float4 ps_shadow(VSOut i) : SV_TARGET0
+float4 shadow_body(VSOut i, bool filtered)
 {
     float3 c;
     float sa, ta;
-    shade_full(i, c, sa, ta);
+    shade_full(i, filtered, c, sa, ta);
     uint pid = (uint)(i.attr.y + 0.5) & 63u;
     uint under = idtex.Load(int3((int)i.pos.x, (int)i.pos.y, 0)) & 63u;
     if (under == pid || ta < 0.5) return float4(0.0, 0.0, 0.0, 0.0);
     return float4(c, max(sa * (1.0 / 31.0), kMinW));
 }
+
+float4 ps_tl(VSOut i) : SV_TARGET0 { return tl_body(i, false); }
+float4 ps_tl_f(VSOut i) : SV_TARGET0 { return tl_body(i, true); }
+PSOut ps_tlop(VSOut i) { return tlop_body(i, false); }
+PSOut ps_tlop_f(VSOut i) { return tlop_body(i, true); }
+float4 ps_shadow(VSOut i) : SV_TARGET0 { return shadow_body(i, false); }
+float4 ps_shadow_f(VSOut i) : SV_TARGET0 { return shadow_body(i, true); }
 
 // ----------------------------------------------------------------------------
 // THE EDGE SMOOTHING ON THE CARD'S OWN COLOUR TARGET. aa_band's rule exactly as

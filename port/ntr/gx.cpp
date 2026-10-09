@@ -5435,6 +5435,19 @@ static void capture_drill(bool after) {
     ++frame;
 }
 
+/* THE FRAME'S DEPTH KEY: W (-(1/w)) unless SM64DS_WDEPTH=0, an orthographic
+   frame or a game that did not ask for W. A card frame is W-buffered too:
+   hal/gpu_raster.cpp draws c/w with a GREATER test (GxGpuFrame::wdepth), whole
+   frames included, so the decision is made before the whole-frame hand-over. */
+static bool frame_wdepth() {
+    static int wd_env = -1;
+    if (wd_env < 0) {
+        const char *e = getenv("SM64DS_WDEPTH");
+        wd_env = (e && *e == '0') ? 0 : 1;
+    }
+    return wd_env && !g_frame_ortho && (g_swap_param & 2) != 0;
+}
+
 void gx_render(Framebuffer &fb) {
     capture_drill(false);
     /* run interp1: what reached the raster is the frame; seal its record. */
@@ -5602,7 +5615,8 @@ void gx_render(Framebuffer &fb) {
     int gpu_full = 0;
     GxGpuOut gpu_out;
     std::memset(&gpu_out, 0, sizeof gpu_out);
-    if (gpu_full_probe()) {
+    static const bool tex_only_env = getenv("SM64DS_TEX_ONLY") != nullptr;
+    if (gpu_full_probe() && !tex_only_env) {
         GxGpuFrame f;
         std::memset(&f, 0, sizeof f);
         f.tris = g.tris.data();
@@ -5618,6 +5632,18 @@ void gx_render(Framebuffer &fb) {
         f.py0 = present_y();
         f.pw = present_w();
         f.ph = present_h();
+        {
+            /* the software raster's clip: the present rectangle narrowed to
+               the game's viewport (the ending's letterbox); the card scissors
+               to it, the frame's own geometry stays the present rectangle */
+            int cx0, cy0, cx1, cy1;
+            raster_clip(cx0, cy0, cx1, cy1);
+            f.clip_x0 = cx0;
+            f.clip_y0 = cy0;
+            f.clip_x1 = cx1 + 1;
+            f.clip_y1 = cy1 + 1;
+        }
+        f.wdepth = frame_wdepth() ? 1 : 0;
         f.want_attrid = 0;
         f.want_depth = 0;
         f.tex_filter = g_tex_filter;
@@ -5756,18 +5782,7 @@ void gx_render(Framebuffer &fb) {
        drew sets the low bound to 1, so the band runs the translucent and
        shadow pass alone over the buffers the card filled. */
     int pass_lo = 0, pass_hi = 1;
-    {
-        static int wd_env = -1;
-        if (wd_env < 0) {
-            const char *e = getenv("SM64DS_WDEPTH");
-            wd_env = (e && *e == '0') ? 0 : 1;
-        }
-        /* a card frame is W-buffered too: hal/gpu_raster.cpp draws c/w with
-           a GREATER test and the readback hands the translucent pass the same
-           -(1/w) key this loop uses (GxGpuFrame::wdepth, set below) */
-        g_wdepth = wd_env && !g_frame_ortho &&
-                   (g_swap_param & 2) != 0;
-    }
+    g_wdepth = frame_wdepth();
     /* the tile shape, set below once the frame's work is known */
     int tile_h = SCREEN_H, ntiles = 1, nt = 1;
     auto band_impl = [&](int tile, auto ftag) {

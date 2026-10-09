@@ -295,8 +295,18 @@ UINT                  g_vb_verts;
    depth-stencil states and the blend that carries coverage in alpha */
 ID3D11VertexShader      *g_full_vs;
 ID3D11PixelShader       *g_ps_tl, *g_ps_tlop, *g_ps_shadow, *g_ps_faa;
-ID3D11DepthStencilState *g_dss_tl, *g_dss_tlop, *g_dss_mask, *g_dss_shadow,
-                        *g_dss_clrm;
+/* the second pass's three pixel shaders under TextureFilter 1 and 2 (_f: the
+   texture is held premultiplied and coverage comes from the point sampler, run
+   hunt7 lane FILTEREDGE1); the opaque pass takes g_ps / g_ps_filt as it always
+   did */
+ID3D11PixelShader       *g_ps_tl_f, *g_ps_tlop_f, *g_ps_shadow_f;
+/* depth-stencil states by depth rule, index (W frame ? 2 : 0) + (equal-test
+   polygon ? 1 : 0): LESS, LESS_EQUAL, GREATER, GREATER_EQUAL (run hunt8,
+   lane CARDPORT1: the W frame and the POLYGON_ATTR bit 14 test on the whole
+   frame path) */
+ID3D11DepthStencilState *g_dss_v[4];
+ID3D11DepthStencilState *g_dss_tl[4], *g_dss_tlop[4], *g_dss_mask[4],
+                        *g_dss_shadow[4], *g_dss_clrm;
 ID3D11BlendState        *g_blend_full;
 bool                     g_full_ready;
 /* the last frame drawn whole: whether there is one, and the box of pixels it
@@ -567,14 +577,15 @@ static D3D11_DEPTH_STENCILOP_DESC sop(D3D11_STENCIL_OP fail,
    card, so the two are the same rule). */
 static ID3D11DepthStencilState *make_dss(bool depth, bool depth_write,
                                          UINT8 rmask, UINT8 wmask,
-                                         D3D11_DEPTH_STENCILOP_DESC op)
+                                         D3D11_DEPTH_STENCILOP_DESC op,
+                                         D3D11_COMPARISON_FUNC fn = D3D11_COMPARISON_LESS)
 {
     D3D11_DEPTH_STENCIL_DESC dd;
     memset(&dd, 0, sizeof dd);
     dd.DepthEnable = depth ? TRUE : FALSE;
     dd.DepthWriteMask = depth_write ? D3D11_DEPTH_WRITE_MASK_ALL
                                     : D3D11_DEPTH_WRITE_MASK_ZERO;
-    dd.DepthFunc = D3D11_COMPARISON_LESS;
+    dd.DepthFunc = fn;
     dd.StencilEnable = TRUE;
     dd.StencilReadMask = rmask;
     dd.StencilWriteMask = wmask;
@@ -600,32 +611,61 @@ bool make_full_pipeline()
     if (FAILED(hr)) { full_give_up("the translucent-opaque pixel shader would not load", hr); return false; }
     hr = g_dev->CreatePixelShader(kGpuShadowPS, sizeof kGpuShadowPS, 0, &g_ps_shadow);
     if (FAILED(hr)) { full_give_up("the shadow pixel shader would not load", hr); return false; }
+    hr = g_dev->CreatePixelShader(kGpuTlFPS, sizeof kGpuTlFPS, 0, &g_ps_tl_f);
+    if (FAILED(hr)) { full_give_up("the filtered translucent pixel shader would not load", hr); return false; }
+    hr = g_dev->CreatePixelShader(kGpuTlopFPS, sizeof kGpuTlopFPS, 0, &g_ps_tlop_f);
+    if (FAILED(hr)) { full_give_up("the filtered translucent-opaque pixel shader would not load", hr); return false; }
+    hr = g_dev->CreatePixelShader(kGpuShadowFPS, sizeof kGpuShadowFPS, 0, &g_ps_shadow_f);
+    if (FAILED(hr)) { full_give_up("the filtered shadow pixel shader would not load", hr); return false; }
     hr = g_dev->CreatePixelShader(kGpuFullAaPS, sizeof kGpuFullAaPS, 0, &g_ps_faa);
     if (FAILED(hr)) { full_give_up("the smoothing pixel shader would not load", hr); return false; }
 
-    /* the translucent polygon: low seven stencil bits are 0x40 | polygon ID,
-       refuse the fragment when they already say this ID, else write them */
-    g_dss_tl = make_dss(true, false, 0x7F, 0x7F,
-        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
-            D3D11_STENCIL_OP_REPLACE, D3D11_COMPARISON_NOT_EQUAL));
-    /* its opaque half: depth written, the translucent record cleared */
-    g_dss_tlop = make_dss(true, true, 0xFF, 0x7F,
-        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
-            D3D11_STENCIL_OP_ZERO, D3D11_COMPARISON_ALWAYS));
-    /* the shadow mask: where the depth test FAILS set bit 7 (reference 0x80) */
-    g_dss_mask = make_dss(true, false, 0xFF, 0x80,
-        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_REPLACE,
-            D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_ALWAYS));
-    /* the drawn shadow: only where bit 7 is set, and every fragment that gets
-       that far clears it (reference 0x80 for the test, ZERO for the write) */
-    g_dss_shadow = make_dss(true, false, 0x80, 0x80,
-        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_ZERO,
-            D3D11_STENCIL_OP_ZERO, D3D11_COMPARISON_EQUAL));
+    static const D3D11_COMPARISON_FUNC kFn[4] = {
+        D3D11_COMPARISON_LESS, D3D11_COMPARISON_LESS_EQUAL,
+        D3D11_COMPARISON_GREATER, D3D11_COMPARISON_GREATER_EQUAL,
+    };
+    bool dss_ok = true;
+    for (int v = 0; v < 4; ++v) {
+        /* the opaque pass: depth written, no stencil (as g_dss) */
+        {
+            D3D11_DEPTH_STENCIL_DESC od;
+            memset(&od, 0, sizeof od);
+            od.DepthEnable = TRUE;
+            od.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+            od.DepthFunc = kFn[v];
+            od.StencilEnable = FALSE;
+            if (FAILED(g_dev->CreateDepthStencilState(&od, &g_dss_v[v]))) dss_ok = false;
+        }
+        /* the translucent polygon: low seven stencil bits are 0x40 | polygon
+           ID, refuse the fragment when they already say this ID, else write
+           them */
+        g_dss_tl[v] = make_dss(true, false, 0x7F, 0x7F,
+            sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
+                D3D11_STENCIL_OP_REPLACE, D3D11_COMPARISON_NOT_EQUAL), kFn[v]);
+        /* its opaque half: depth written, the translucent record cleared */
+        g_dss_tlop[v] = make_dss(true, true, 0xFF, 0x7F,
+            sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
+                D3D11_STENCIL_OP_ZERO, D3D11_COMPARISON_ALWAYS), kFn[v]);
+        /* the shadow mask: where the depth test FAILS set bit 7 (reference
+           0x80) */
+        g_dss_mask[v] = make_dss(true, false, 0xFF, 0x80,
+            sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_REPLACE,
+                D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_ALWAYS), kFn[v]);
+        /* the drawn shadow: only where bit 7 is set, and every fragment that
+           gets that far clears it (reference 0x80 for the test, ZERO for the
+           write) */
+        g_dss_shadow[v] = make_dss(true, false, 0x80, 0x80,
+            sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_ZERO,
+                D3D11_STENCIL_OP_ZERO, D3D11_COMPARISON_EQUAL), kFn[v]);
+        if (!g_dss_v[v] || !g_dss_tl[v] || !g_dss_tlop[v] || !g_dss_mask[v] ||
+            !g_dss_shadow[v])
+            dss_ok = false;
+    }
     /* a new mask group: clear bit 7 of everything the draw covers */
     g_dss_clrm = make_dss(false, false, 0xFF, 0x80,
         sop(D3D11_STENCIL_OP_ZERO, D3D11_STENCIL_OP_ZERO,
             D3D11_STENCIL_OP_ZERO, D3D11_COMPARISON_ALWAYS));
-    if (!g_dss_tl || !g_dss_tlop || !g_dss_mask || !g_dss_shadow || !g_dss_clrm) {
+    if (!dss_ok || !g_dss_clrm) {
         full_give_up("a depth-stencil state was refused", 0);
         return false;
     }
@@ -927,6 +967,7 @@ std::vector<GVert> g_scratch;
 struct Batch {
     const GTex *tex;
     int au, av;
+    int eq;                 /* the depth test is EQUAL (POLYGON_ATTR bit 14) */
     UINT first, count;
 };
 std::vector<Batch> g_batch;
@@ -1061,10 +1102,16 @@ void at_exit()
     if (g_ps_tl) { g_ps_tl->Release(); g_ps_tl = 0; }
     if (g_full_vs) { g_full_vs->Release(); g_full_vs = 0; }
     if (g_dss_clrm) { g_dss_clrm->Release(); g_dss_clrm = 0; }
-    if (g_dss_shadow) { g_dss_shadow->Release(); g_dss_shadow = 0; }
-    if (g_dss_mask) { g_dss_mask->Release(); g_dss_mask = 0; }
-    if (g_dss_tlop) { g_dss_tlop->Release(); g_dss_tlop = 0; }
-    if (g_dss_tl) { g_dss_tl->Release(); g_dss_tl = 0; }
+    for (int v = 0; v < 4; ++v) {
+        if (g_dss_shadow[v]) { g_dss_shadow[v]->Release(); g_dss_shadow[v] = 0; }
+        if (g_dss_mask[v]) { g_dss_mask[v]->Release(); g_dss_mask[v] = 0; }
+        if (g_dss_tlop[v]) { g_dss_tlop[v]->Release(); g_dss_tlop[v] = 0; }
+        if (g_dss_tl[v]) { g_dss_tl[v]->Release(); g_dss_tl[v] = 0; }
+        if (g_dss_v[v]) { g_dss_v[v]->Release(); g_dss_v[v] = 0; }
+    }
+    if (g_ps_shadow_f) { g_ps_shadow_f->Release(); g_ps_shadow_f = 0; }
+    if (g_ps_tlop_f) { g_ps_tlop_f->Release(); g_ps_tlop_f = 0; }
+    if (g_ps_tl_f) { g_ps_tl_f->Release(); g_ps_tl_f = 0; }
     if (g_blend_full) { g_blend_full->Release(); g_blend_full = 0; }
     g_full_ready = false;
     if (g_ps) { g_ps->Release(); g_ps = 0; }
@@ -1674,6 +1721,7 @@ struct Op {
     const GTex *tex;
     int au, av;
     int pid;                /* the stencil reference of a translucent draw */
+    int eq;                 /* the depth test is EQUAL (POLYGON_ATTR bit 14) */
     UINT first, count;
 };
 std::vector<GVert> g_scratch1;
@@ -1786,17 +1834,48 @@ void copy_ab_planes(const ntr::GxGpuFrame *f, int bx0, int by0, int bx1, int by1
         float *dprow = f->depth + (size_t)y * f->stride;
         uint8_t *idrow = f->attrid + (size_t)y * f->stride;
         for (int x = bx0; x < bx1; ++x) {
-            const float z = drow[(size_t)x * 2] * kDepthUnscale;
-            if (z < 1.999f) dprow[x] = z;
+            const float dv = drow[(size_t)x * 2];
+            if (g_frame_w) {
+                if (dv > 0.0f) dprow[x] = dv * kWDepthUnscale;   /* nothing drew: 0 */
+            } else {
+                const float z = dv * kDepthUnscale;
+                if (z < 1.999f) dprow[x] = z;
+            }
             if (irow[x] & 0x80u) idrow[x] = (uint8_t)(irow[x] & 0x3Fu);
         }
     }
 }
 
 /* one triangle's three vertices, the same arithmetic the opaque loop uses */
-void push_tri(const ntr::GxTriangle &t, const ntr::GxGpuFrame *f, bool textured,
-              float inv_cw, float inv_ch, std::vector<GVert> &dst)
+/* THE EQUAL DEPTH TEST (POLYGON_ATTR bit 14, run hunt8 lane BOWSERWAVE1; the
+   CPU raster's w_depth_fail is the reference). A polygon that asks for it
+   passes where its depth equals what is in the buffer to within the DS's
+   tolerance: 255 steps of the geometry engine's 16-significant-bit W in a W
+   frame (the same step w_tie_q finds from the triangle's largest W), 512 steps
+   of the 24-bit Z otherwise. The card cannot test "within", so the polygon is
+   moved TOWARD the viewer by the tolerance and tested LESS_EQUAL / GREATER_EQUAL
+   (the g_dss_* sets' odd entries), which passes the equal pixels and the ones
+   the tolerance allows. It also passes a pixel the polygon is nearer than by
+   more than the tolerance, which the DS refuses; the one place the card and the
+   DS differ for these polygons. The ring coplanar with the arena floor is the
+   case that matters. */
+float eq_w_step(const ntr::GxTriangle &t)
 {
+    float m = fabsf(t.v[0].w);
+    if (fabsf(t.v[1].w) > m) m = fabsf(t.v[1].w);
+    if (fabsf(t.v[2].w) > m) m = fabsf(t.v[2].w);
+    const float raw = m * 4096.0f;
+    const unsigned r = raw >= 4294967040.0f ? 0xFFFFFFFFu : (unsigned)raw;
+    unsigned wsize = 0;
+    while (wsize < 32 && (r >> wsize)) wsize += 4;
+    const unsigned s = wsize > 16 ? wsize - 16 : 0;
+    return (float)(1u << s) * (1.0f / 4096.0f);
+}
+
+void push_tri(const ntr::GxTriangle &t, const ntr::GxGpuFrame *f, bool textured,
+              float inv_cw, float inv_ch, std::vector<GVert> &dst, bool eq)
+{
+    const float qw = (eq && f->wdepth) ? eq_w_step(t) : 0.0f;
     const float tsc = (float)(t.tex_scale ? t.tex_scale : 1);
     const float iw = textured ? 1.0f / (float)t.tw : 0.0f;
     const float ih = textured ? 1.0f / (float)t.th : 0.0f;
@@ -1810,7 +1889,13 @@ void push_tri(const ntr::GxTriangle &t, const ntr::GxGpuFrame *f, bool textured,
         const float yn = 1.0f - (float)v.y * inv_ch;
         o.x = xn * v.w;
         o.y = yn * v.w;
-        o.z = v.z * kDepthScale * v.w;
+        if (f->wdepth)
+            /* W frame: c / w, nearer larger (kWDepthC); an equal-test polygon
+               is moved nearer by 255 steps of w: c / (w - 255 q) is
+               c / w * (1 + 255 q / w) to first order */
+            o.z = eq ? kWDepthC * (1.0f + 255.0f * qw / v.w) : kWDepthC;
+        else
+            o.z = (v.z * kDepthScale - (eq ? 512.0f / 16777216.0f : 0.0f)) * v.w;
         o.w = v.w;
         o.u = textured ? v.u * tsc * iw : 0.0f;
         o.v = textured ? v.v * tsc * ih : 0.0f;
@@ -1886,6 +1971,13 @@ int draw_full(const ntr::GxGpuFrame *f)
     if (!make_full_pipeline()) return -1;
     if (!ensure_targets(f->cw, f->ch, true)) return 0;
 
+    /* this frame's depth key (see kWDepthC): the vertex build, the clear, the
+       depth states and the A/B readback below all read these */
+    g_frame_w = f->wdepth != 0;
+    g_depth_unscale = g_frame_w ? kWDepthUnscale : kDepthUnscale;
+    const int dsi = g_frame_w ? 2 : 0;           /* index into the g_dss_* sets */
+    const bool filt_arm = f->tex_filter >= 1;
+
     const bool smooth = f->aa_mode && f->pre && f->out && !f->ab &&
                         g_aa_on_full != 0;
     const bool keep_pre = smooth && (f->pre_needed || g_aacheck);
@@ -1902,7 +1994,7 @@ int draw_full(const ntr::GxGpuFrame *f)
     g_batch.clear();
     g_ops.clear();
     const GTex *cur_tex = 0;
-    int cur_au = -1, cur_av = -1;
+    int cur_au = -1, cur_av = -1, cur_eq = -1;
     bool open = false;
     bool prev_mask = false, seen_mask_group = false;
 
@@ -1958,6 +2050,9 @@ int draw_full(const ntr::GxGpuFrame *f)
         }
 
         const bool textured = !is_mask && t.tex && t.tw > 0 && t.th > 0;
+        /* POLYGON_ATTR bit 14: the depth test is EQUAL; a shadow volume never
+           asks */
+        const int teq = (t.depth_eq && t.mode != 3) ? 1 : 0;
         const GTex *gt = 0;
         int au = 0, av = 0;
         if (textured) {
@@ -1970,22 +2065,25 @@ int draw_full(const ntr::GxGpuFrame *f)
         }
 
         if (!pass1) {
-            if (!open || gt != cur_tex || au != cur_au || av != cur_av) {
+            if (!open || gt != cur_tex || au != cur_au || av != cur_av ||
+                teq != cur_eq) {
                 if (open) g_batch.back().count =
                     (UINT)g_scratch.size() - g_batch.back().first;
                 Batch nb;
                 nb.tex = gt;
                 nb.au = au;
                 nb.av = av;
+                nb.eq = teq;
                 nb.first = (UINT)g_scratch.size();
                 nb.count = 0;
                 g_batch.push_back(nb);
                 cur_tex = gt;
                 cur_au = au;
                 cur_av = av;
+                cur_eq = teq;
                 open = true;
             }
-            push_tri(t, f, textured, inv_cw, inv_ch, g_scratch);
+            push_tri(t, f, textured, inv_cw, inv_ch, g_scratch, teq != 0);
             continue;
         }
 
@@ -1995,7 +2093,7 @@ int draw_full(const ntr::GxGpuFrame *f)
         const int pid = (kind == OP_A || kind == OP_AB) ? (int)t.polyid : 0;
         if (g_ops.empty() || g_ops.back().kind != kind || g_ops.back().tex != gt ||
             g_ops.back().au != au || g_ops.back().av != av ||
-            g_ops.back().pid != pid) {
+            g_ops.back().pid != pid || g_ops.back().eq != teq) {
             if (!g_ops.empty() && g_ops.back().kind != OP_CLRM)
                 g_ops.back().count = (UINT)g_scratch1.size() - g_ops.back().first;
             Op o;
@@ -2004,11 +2102,12 @@ int draw_full(const ntr::GxGpuFrame *f)
             o.au = au;
             o.av = av;
             o.pid = pid;
+            o.eq = teq;
             o.first = (UINT)g_scratch1.size();
             o.count = 0;
             g_ops.push_back(o);
         }
-        push_tri(t, f, textured, inv_cw, inv_ch, g_scratch1);
+        push_tri(t, f, textured, inv_cw, inv_ch, g_scratch1, teq != 0);
     }
     if (open)
         g_batch.back().count = (UINT)g_scratch.size() - g_batch.back().first;
@@ -2035,7 +2134,7 @@ int draw_full(const ntr::GxGpuFrame *f)
         g_ctx->ClearRenderTargetView(g_id_rtv, zero);
         g_ctx->ClearDepthStencilView(g_dep_dsv,
                                      D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
-                                     1.0f, 0);
+                                     g_frame_w ? 0.0f : 1.0f, 0);
 
         if (!ensure_vb(g_scratch.size() + g_scratch1.size())) return 0;
         D3D11_MAPPED_SUBRESOURCE ms;
@@ -2062,6 +2161,19 @@ int draw_full(const ntr::GxGpuFrame *f)
         sc.top = f->py0;
         sc.right = f->px0 + f->pw;
         sc.bottom = f->py0 + f->ph;
+        /* THE SCISSOR IS THE SOFTWARE RASTER'S CLIP RECTANGLE (run hunt8, lane
+           CREDITCROP1): the present rectangle narrowed to the game's viewport,
+           so the ending's letterbox bars stay the clear colour. The frame's
+           own geometry (px0..ph, which a held frame is composited by) stays
+           the present rectangle. */
+        if (f->clip_x1 > f->clip_x0 && f->clip_y1 > f->clip_y0) {
+            if (f->clip_x0 > sc.left) sc.left = f->clip_x0;
+            if (f->clip_y0 > sc.top) sc.top = f->clip_y0;
+            if (f->clip_x1 < sc.right) sc.right = f->clip_x1;
+            if (f->clip_y1 < sc.bottom) sc.bottom = f->clip_y1;
+            if (sc.right < sc.left) sc.right = sc.left;
+            if (sc.bottom < sc.top) sc.bottom = sc.top;
+        }
         g_ctx->RSSetScissorRects(1, &sc);
         g_ctx->RSSetState(g_rast);
         g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -2097,11 +2209,10 @@ int draw_full(const ntr::GxGpuFrame *f)
            keeps the largest alpha as coverage ------------------------------ */
         if (nopaque) {
             g_ctx->OMSetRenderTargets(2, rtv2, g_dep_dsv);
-            g_ctx->OMSetDepthStencilState(g_dss, 0);
             g_ctx->OMSetBlendState(g_blend_full, bf, 0xffffffffu);
             g_ctx->IASetInputLayout(g_layout);
             g_ctx->VSSetShader(g_vs, 0, 0);
-            g_ctx->PSSetShader(g_ps, 0, 0);
+            g_ctx->PSSetShader(filt_arm ? g_ps_filt : g_ps, 0, 0);
             for (size_t bi = 0; bi < g_batch.size(); ++bi) {
                 const Batch &bt = g_batch[bi];
                 if (!bt.count) continue;
@@ -2111,6 +2222,12 @@ int draw_full(const ntr::GxGpuFrame *f)
                 if (!smp) { fall_back("no sampler state", 0); return 0; }
                 g_ctx->PSSetShaderResources(0, 1, &srv);
                 g_ctx->PSSetSamplers(0, 1, &smp);
+                if (filt_arm) {
+                    ID3D11SamplerState *psm = bt.tex ? psampler(bt.au, bt.av) : psampler(0, 0);
+                    if (!psm) { fall_back("no point sampler state", 0); return 0; }
+                    g_ctx->PSSetSamplers(1, 1, &psm);
+                }
+                g_ctx->OMSetDepthStencilState(g_dss_v[dsi + bt.eq], 0);
                 g_ctx->Draw(bt.count, bt.first);
                 ++g_batches;
             }
@@ -2139,7 +2256,7 @@ int draw_full(const ntr::GxGpuFrame *f)
             g_ctx->VSSetShader(g_vs, 0, 0);
             if (op.kind == OP_MASK) {
                 g_ctx->OMSetRenderTargets(0, 0, g_dep_dsv);
-                g_ctx->OMSetDepthStencilState(g_dss_mask, 0x80);
+                g_ctx->OMSetDepthStencilState(g_dss_mask[dsi], 0x80);
                 g_ctx->OMSetBlendState(0, bf, 0xffffffffu);
                 g_ctx->PSSetShader(0, 0, 0);
                 g_ctx->Draw(op.count, nopaque + op.first);
@@ -2152,11 +2269,16 @@ int draw_full(const ntr::GxGpuFrame *f)
             if (!smp) { fall_back("no sampler state", 0); return 0; }
             g_ctx->PSSetShaderResources(0, 1, &srv);
             g_ctx->PSSetSamplers(0, 1, &smp);
+            if (filt_arm) {
+                ID3D11SamplerState *psm = op.tex ? psampler(op.au, op.av) : psampler(0, 0);
+                if (!psm) { fall_back("no point sampler state", 0); return 0; }
+                g_ctx->PSSetSamplers(1, 1, &psm);
+            }
             if (op.kind == OP_SHADOW) {
                 g_ctx->OMSetRenderTargets(1, rtv1, g_dep_dsv);
-                g_ctx->OMSetDepthStencilState(g_dss_shadow, 0x80);
+                g_ctx->OMSetDepthStencilState(g_dss_shadow[dsi], 0x80);
                 g_ctx->OMSetBlendState(g_blend_full, bf, 0xffffffffu);
-                g_ctx->PSSetShader(g_ps_shadow, 0, 0);
+                g_ctx->PSSetShader(filt_arm ? g_ps_shadow_f : g_ps_shadow, 0, 0);
                 g_ctx->PSSetShaderResources(1, 1, &g_id_srv);
                 id_bound = true;
                 g_ctx->Draw(op.count, nopaque + op.first);
@@ -2165,17 +2287,17 @@ int draw_full(const ntr::GxGpuFrame *f)
             }
             /* a translucent draw: the pixels under 31 first ... */
             g_ctx->OMSetRenderTargets(1, rtv1, g_dep_dsv);
-            g_ctx->OMSetDepthStencilState(g_dss_tl, (UINT)(0x40 | op.pid));
+            g_ctx->OMSetDepthStencilState(g_dss_tl[dsi + op.eq], (UINT)(0x40 | op.pid));
             g_ctx->OMSetBlendState(g_blend_full, bf, 0xffffffffu);
-            g_ctx->PSSetShader(g_ps_tl, 0, 0);
+            g_ctx->PSSetShader(filt_arm ? g_ps_tl_f : g_ps_tl, 0, 0);
             g_ctx->Draw(op.count, nopaque + op.first);
             ++g_batches;
             if (op.kind == OP_AB) {
                 /* ... then, for a polygon that can reach full alpha, the pixels
                    at 31, drawn as the opaque pixels gx.cpp calls them */
                 g_ctx->OMSetRenderTargets(2, rtv2, g_dep_dsv);
-                g_ctx->OMSetDepthStencilState(g_dss_tlop, 0);
-                g_ctx->PSSetShader(g_ps_tlop, 0, 0);
+                g_ctx->OMSetDepthStencilState(g_dss_tlop[dsi + op.eq], 0);
+                g_ctx->PSSetShader(filt_arm ? g_ps_tlop_f : g_ps_tlop, 0, 0);
                 g_ctx->Draw(op.count, nopaque + op.first);
                 ++g_batches;
             }
@@ -2905,14 +3027,18 @@ void *cp_compose(const uint32_t *overlay, int stride_px)
 
 int draw_frame(const ntr::GxGpuFrame *f)
 {
-    if (g_down || !f) return 0;
+    if (!f) return 0;
+    /* A SETTLE IS ANSWERED EVEN WITH THE RENDERER DOWN: the frame in hand is
+       held on the card and card_settle knows how to leave the clear colour
+       under the 2D when the card has gone (run cardfull, CARD2 review F1). */
+    if (f->settle) return card_settle(f);
+    if (g_down) return 0;
     /* THE PROBE (ntr/gx.h): would a frame offered whole be drawn whole? Costs
        three tests and touches nothing. 3 is "and held on the card". */
     if (f->probe) {
         if (!(g_full_on && !g_full_dead && f->full_ok == 2)) return 0;
         return (f->keep && cp_keep_ok()) ? 3 : 2;
     }
-    if (f->settle) return card_settle(f);
     if (f->planes) return fill_planes(f);
     g_last_full = false;                /* any other frame replaces that one */
     g_cp_held = false;
