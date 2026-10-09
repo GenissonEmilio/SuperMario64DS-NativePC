@@ -652,6 +652,57 @@ static int title_router_word(char *g)
  * The element list is the same one func_ov007_020aed98 walks: 24 records at
  * ctx+0x114, four bytes apart. Every dereference is guarded, because this can
  * be asked of a frame on which the page is half-built. */
+/* THE DECODER, SHARED (run menu1, lane TITLE1). The element walk below is the same arithmetic the dump
+   always had; it moved here so the one-screen title recipe (hal/menu_recipe_title.cpp) reads the ROM's own
+   boxes through the same code instead of a second copy. Fills up to `max` entries with the element slot, its
+   id and its box (touch-screen DS pixels, max edges as the ROM stores them); returns the count, -1 when the
+   scene global is not built yet. The dump's output is unchanged. */
+extern "C" int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1, int max)
+{
+    char *g = data_ov007_0210342c;
+    if (!g)
+        return -1;
+    int n = 0;
+    for (int i = 0; i < 24 && n < max; ++i) {
+        char **rec = *(char ***)(g + 0x114 + i * 4);
+        if (!rec)
+            continue;
+        char *obj = rec[0];
+        char *place = rec[1];
+        if (!obj || !place)
+            continue;
+        char *box = *(char **)(obj + 0x28);
+        if (!box)
+            continue;
+        const int px = *(int *)(place + 4) >> 12;
+        const int py = *(int *)(place + 8) >> 12;
+        slot[n] = i;
+        id[n] = (int)*(unsigned short *)obj;
+        x0[n] = *(int *)(box + 4) + px;
+        y0[n] = *(int *)(box + 8) + py;
+        x1[n] = *(int *)(box + 0xc) + px;
+        y1[n] = *(int *)(box + 0x10) + py;
+        ++n;
+    }
+    return n;
+}
+
+/* the page the title is on: the top-state and the element machine, -1 when not built */
+extern "C" int port_title_page_state(int *top, int *elem, int *req)
+{
+    char *g = data_ov007_0210342c;
+    if (!g)
+        return 0;
+    char *sp = *(char **)(g + 8);
+    char *ep = *(char **)(g + 4);
+    if (!sp || !ep)
+        return 0;
+    *top = (int)*(short *)sp;
+    *req = (int)*(short *)(sp + 2);
+    *elem = (int)*(short *)ep;
+    return 1;
+}
+
 extern "C" void port_title_elems_dump(int frame)
 {
     static int at = -2;
@@ -672,26 +723,13 @@ extern "C" void port_title_elems_dump(int frame)
     std::printf("[elems] f%d: top-state %d, element-machine %d, choice %d\n",
                 frame, sp ? (int)*(short *)sp : -1,
                 ep ? (int)*(short *)ep : -1, *(int *)(g + 0x10));
-    for (int i = 0; i < 24; ++i) {
-        char **rec = *(char ***)(g + 0x114 + i * 4);
-        if (!rec)
-            continue;
-        char *obj = rec[0];
-        char *place = rec[1];
-        if (!obj || !place)
-            continue;
-        char *box = *(char **)(obj + 0x28);
-        if (!box)
-            continue;
-        const int px = *(int *)(place + 4) >> 12;
-        const int py = *(int *)(place + 8) >> 12;
-        const int x0 = *(int *)(box + 4) + px, y0 = *(int *)(box + 8) + py;
-        const int x1 = *(int *)(box + 0xc) + px, y1 = *(int *)(box + 0x10) + py;
+    int slot[24], id[24], x0[24], y0[24], x1[24], y1[24];
+    const int n = port_title_elem_boxes(slot, id, x0, y0, x1, y1, 24);
+    for (int k = 0; k < n; ++k)
         std::printf("[elems]   slot %2d  id %3u  box x %4d..%-4d y %4d..%-4d"
                     "  centre (%d,%d)\n",
-                    i, (unsigned)*(unsigned short *)obj, x0, x1, y0, y1,
-                    (x0 + x1) / 2, (y0 + y1) / 2);
-    }
+                    slot[k], (unsigned)id[k], x0[k], x1[k], y0[k], y1[k],
+                    (x0[k] + x1[k]) / 2, (y0[k] + y1[k]) / 2);
     std::fflush(stdout);
 }
 

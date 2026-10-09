@@ -883,6 +883,7 @@ void hal_menu_pad(uint16_t *pressed, int host_back)
     if (!g_live || !pressed || !g_cur.recipe) return;
     const MenuRecipe *R = g_cur.recipe;
     if (R->pad_ok && !R->pad_ok()) return;      /* the ROM is not reading the menu this frame */
+    if (R->pad_map) { R->pad_map(pressed, host_back); return; }   /* TITLE1: a native recipe with its own key meaning */
     int drv = R->driver;
     if (g_netplay && drv == MENU_DRV_ROM_CURSOR) drv = MENU_DRV_TOUCH;   /* never write local ROM state in a session */
     if (g_netplay && drv == MENU_DRV_MIXED) drv = MENU_DRV_TOUCH;
@@ -1003,7 +1004,7 @@ void check_layout(const MenuLayout *L, Result *R)
                 R->exact = 0; sprintf(why, "piece %d dest %dx%d vs exact %.2fx%.2f", i, d[2], d[3], ew, eh);
             }
         }
-        if (P.touch && P.src != SRC_SUB) { R->corners = 0; sprintf(why, "piece %d touch but not SRC_SUB", i); }
+        if (P.touch && P.src != SRC_SUB && P.src != SRC_TOP_PIC) { R->corners = 0; sprintf(why, "piece %d touch but not SRC_SUB", i); }
         for (int j = i + 1; j < L->np; ++j) {
             if (P.bg || L->p[j].bg) continue;
             const int *e = L->dest[j];
@@ -1248,8 +1249,8 @@ int run_live(void)
         fails += check("checker: a hotspot box outside its source is caught", !R.hot);
     }
     {   /* fallback in a one-screen scene with no recipe up */
-        hal_menu_frame_begin(1024, 768, 1);
-        fails += check("fallback live in scene 1 with OneScreenMenus on", hal_menu_live() == 1 && hal_menu_fallback_frames() == 1);
+        hal_menu_frame_begin(1024, 768, 6);
+        fails += check("fallback live in scene 6 (VS lobby, no recipe yet) with OneScreenMenus on", hal_menu_live() == 1 && hal_menu_fallback_frames() == 1);
         fails += check("fallback has the top backdrop and one touch panel", g_cur.np == 2 && g_cur.p[1].touch && g_cur.p[0].bg);
         hal_menu_frame_begin(1024, 768, 2);
         fails += check("a non-menu scene is not live", !hal_menu_live());
@@ -1270,7 +1271,7 @@ int run_live(void)
                        g_cur.back >= 0 && g_q_state == 1 && g_q_x == BH.box.x + BH.box.w / 2 && g_q_y == BH.box.y + BH.box.h / 2);
         while (hal_menu_touch_queue_poll(&x, &y, &down)) {}
         /* the drawn layout is invalidated on a recipe change */
-        hal_menu_frame_begin(1024, 768, 1);   /* fallback replaces test */
+        hal_menu_frame_begin(1024, 768, 6);   /* fallback replaces test */
         int dsx = 5, dsy = 5, in = 1;
         hal_menu_touch_inverse(512, 600, &dsx, &dsy, &in);
         fails += check("stale: new recipe's first tick does not invert through old rects", !in && dsx == -1 && dsy == -1);

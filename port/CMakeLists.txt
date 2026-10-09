@@ -24230,3 +24230,9 @@ foreach(_tmenu1 walk_window walk_window_hires smoke_player)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipes.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_lc.cpp")
 endforeach()
+
+# MENU1 / TITLE1 (run menu1): the title family's one-screen recipe.
+foreach(_ttitle1 walk_window walk_window_hires smoke_player)
+    target_sources(${_ttitle1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_title.cpp")
+endforeach()

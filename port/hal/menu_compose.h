@@ -125,6 +125,11 @@ struct MenuRecipe {
      right now": hal_menu_pad then touches nothing (no strip, no A -> Start). Called once a frame while the
      recipe is live, so it is also where a ROM_CURSOR driver forgets its cursor when the menu goes away. */
   int  (*pad_ok)(void);
+  /* TITLE1 (appended): a native recipe's pad translation. Non-null: hal_menu_pad hands it the pressed word
+     and the host back flag and returns (no focus, no synthesised back touch, no strip). It exists for a
+     ROM that reads the pad itself but with a different key meaning than the port's (the title's confirm
+     is the DS A key, 0x0001; the port's confirm is 0x0002). */
+  void (*pad_map)(uint16_t *pressed, int host_back);
 };
 
 /* the level-clear recipe's functions (menu_recipe_lc.cpp), named by the table */
@@ -132,6 +137,12 @@ int  menu_lc_up(int scene_id);
 void menu_lc_build(int variant, MenuLayout *L);
 int  menu_lc_rom_cursor(int dir, int *sel);
 int  menu_lc_pad_ok(void);
+
+/* the title family's recipe (menu_recipe_title.cpp), run menu1 lane TITLE1 */
+int  menu_title_up(int scene_id);
+void menu_title_build(int variant, MenuLayout *L);
+void menu_title_pad_map(uint16_t *pressed, int host_back);
+#define MENU_TITLE_NVARIANTS 6
 
 /* the ONE static table (menu_recipes.cpp) */
 extern const MenuRecipe g_menu_recipes[];
