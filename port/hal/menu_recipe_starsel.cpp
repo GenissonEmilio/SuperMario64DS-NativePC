@@ -52,9 +52,9 @@ int up_starsel(int scene_id)
 }
 
 /* The icon rows: the ROM's icons are 16 px sprites centred on x_i, drawn about y 20..32; the touch
-   box is the whole top 0x28 rows. Rows 14..38 hold the icons and their selected pulse; the source
+   box is the whole top 0x28 rows. Rows 16..35 hold the icons and their selected pulse; the source
    rect must stay inside the ROM's box so a click anywhere on the piece is a hit the ROM tests. */
-const int kRowY0 = 14, kRowH = 24;
+const int kRowY0 = 16, kRowH = 20;
 /* the head and "TOUCH ME!" rows of the bottom screen: x 0x44..0xbb, y 56..191 */
 const int kHeadX0 = 0x44, kHeadW = 0x78, kHeadY0 = 56, kHeadH = 136;
 
@@ -75,7 +75,7 @@ void build_starsel(int variant, MenuLayout *L)
        edges are at x 48 and 208), under the course name. Wide: the same band is 245 units across, so the row
        stays at full size (the lives and the star counter ride the picture's edges there). */
     const int wide = menu_wide(L);
-    MenuPiece p = menu_piece_make(SRC_SUB, 0, kRowY0, 256, kRowH, MENU_AX_C, MENU_AY_T, 0, wide ? 166 : 172,
+    MenuPiece p = menu_piece_make(SRC_SUB, 0, kRowY0, 256, kRowH, MENU_AX_C, MENU_AY_T, 0, wide ? 169 : 174,
                                   wide ? 1 : 3, wide ? 1 : 4);
     p.layers = MENU_L_OBJ;
     p.key_backdrop = 1;
