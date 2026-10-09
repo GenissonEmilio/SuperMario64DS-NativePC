@@ -160,6 +160,33 @@ void smooth_grid_attrs(const SmoothVertex &p1, const SmoothVertex &p2,
                        const SmoothVertex &p3, float a, float b, float c,
                        SmoothVertex &out);
 
+// THE ATTRIBUTE ARITHMETIC, inline. smooth_grid_attrs (smooth.cpp) is this
+// function behind a call, so the engine's per-vertex loop (gx.cpp,
+// smooth_emit_grid) can run the very same expressions without a call per grid
+// vertex and the two cannot drift apart.
+inline uint32_t smooth_bary_color(uint32_t c0, uint32_t c1, uint32_t c2,
+                                  float a, float b, float c) {
+    uint32_t out = 0;
+    for (int s = 0; s < 32; s += 8) {
+        const float ch = (float)((c0 >> s) & 0xFF) * a
+                       + (float)((c1 >> s) & 0xFF) * b
+                       + (float)((c2 >> s) & 0xFF) * c;
+        const int i = (int)(ch + 0.5f);
+        out |= (uint32_t)(i < 0 ? 0 : (i > 255 ? 255 : i)) << s;
+    }
+    return out;
+}
+inline void smooth_grid_attrs_inline(const SmoothVertex &p1, const SmoothVertex &p2,
+                                     const SmoothVertex &p3, float a, float b,
+                                     float c, SmoothVertex &o) {
+    o.u = p1.u * a + p2.u * b + p3.u * c;
+    o.v = p1.v * a + p2.v * b + p3.v * c;
+    o.color = smooth_bary_color(p1.color, p2.color, p3.color, a, b, c);
+    o.nx = p1.nx * a + p2.nx * b + p3.nx * c;
+    o.ny = p1.ny * a + p2.ny * b + p3.ny * c;
+    o.nz = p1.nz * a + p2.nz * b + p3.nz * c;
+}
+
 // ---------------------------------------------------------------------------
 // THE POLICY, SPLIT. smooth_tess_factor answers two different questions at
 // once: is this triangle CURVED (a property of its own shape, the same in any

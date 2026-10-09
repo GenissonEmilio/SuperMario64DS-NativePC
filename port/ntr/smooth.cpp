@@ -392,15 +392,8 @@ void smooth_grid_attrs(const SmoothVertex &p1, const SmoothVertex &p2,
                        const SmoothVertex &p3, float a, float b, float c,
                        SmoothVertex &o) {
     // Linear in barycentrics: textures never swim, and a corner gets its own
-    // coordinate back bit for bit.
-    o.u = p1.u * a + p2.u * b + p3.u * c;
-    o.v = p1.v * a + p2.v * b + p3.v * c;
-    o.color = bary_color(p1.color, p2.color, p3.color, a, b, c);
-    // Carried for a future relighting pass; nothing reads it today (the
-    // colour above is the lighting, already baked at NORMAL).
-    o.nx = p1.nx * a + p2.nx * b + p3.nx * c;
-    o.ny = p1.ny * a + p2.ny * b + p3.ny * c;
-    o.nz = p1.nz * a + p2.nz * b + p3.nz * c;
+    // coordinate back bit for bit. The arithmetic is smooth.h's inline copy.
+    smooth_grid_attrs_inline(p1, p2, p3, a, b, c, o);
 }
 
 int smooth_subdivide(const SmoothVertex &p1, const SmoothVertex &p2,

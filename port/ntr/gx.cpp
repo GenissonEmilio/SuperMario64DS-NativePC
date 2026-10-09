@@ -763,13 +763,12 @@ static inline bool w_depth_fail(float z, float d, float q, bool eq = false) {
     return z >= (d < 0.0f ? d - q * d * d : d);
 }
 
-void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
-    if (g.proj.m[3] == 0.0f && g.proj.m[7] == 0.0f && g.proj.m[11] == 0.0f)
-        g_frame_ortho = true;
-    /* value-initialised: smoke_gx memcmps whole GxTriangles between the two
-       submit paths, so the padding has to be deterministic */
-    GxTriangle t{};
-    t.v[0] = a; t.v[1] = b; t.v[2] = c;
+/* THE STATE HALF OF A POLYGON-LIST ENTRY: everything push_screen_tri stamps
+   on a triangle except its three vertices. It depends only on the live
+   material state, so a smoothed grid (smooth_emit_grid) builds it once and
+   copies it for each of its sub-triangles instead of rebuilding it 64 times.
+   `t` must be value-initialised by the caller (padding stays deterministic). */
+static inline void fill_tri_state(GxTriangle &t) {
     t.tex = g.tex_rgba; t.tw = g.tw; t.th = g.th;
     /* the bound texture's host-pixels-per-texel travels with the triangle
        exactly as its dimensions do; 1 unless a pack replaced the image */
@@ -795,6 +794,16 @@ void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
         (t.tex && (fmt == 1 || fmt == 6)) ||
         t.mode == 3);
     t.dbg_tex = g_teximage;
+}
+
+void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
+    if (g.proj.m[3] == 0.0f && g.proj.m[7] == 0.0f && g.proj.m[11] == 0.0f)
+        g_frame_ortho = true;
+    /* value-initialised: smoke_gx memcmps whole GxTriangles between the two
+       submit paths, so the padding has to be deterministic */
+    GxTriangle t{};
+    t.v[0] = a; t.v[1] = b; t.v[2] = c;
+    fill_tri_state(t);
     g.tris.push_back(t);
     /* MDL: what actually reached the polygon list. Paired with
        SMOOTH_COUNT_IN in emit_tri, this is the submitted-versus-emitted row
@@ -933,6 +942,13 @@ void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
                       const Mat *xform) {
     GxVertex v[SMOOTH_MAX_GRID];
     const float inv = 1.0f / (float)tf;
+    /* view_to_clip's widen, read once for the grid: present_w()/present_h()
+       cannot change between two vertices of one triangle's grid, and the
+       expression is view_to_clip's own, so every clip.x is the same float. */
+    const bool persp = g.proj.m[3] != 0.0f || g.proj.m[7] != 0.0f ||
+                       g.proj.m[11] != 0.0f;
+    const float widen = persp
+        ? (4.0f / 3.0f) * ((float)present_h() / (float)present_w()) : 1.0f;
     int n = 0;
     for (int ia = 0; ia <= tf; ++ia) {
         for (int ib = 0; ib <= tf - ia; ++ib, ++n) {
@@ -940,20 +956,59 @@ void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
             const float b = (float)ib * inv;
             float c = 1.0f - a - b;
             if (c < 0.0f) c = 0.0f;
+            Vec4 view;
             if (xform) {
                 const Vec4 l{pts[n * 3], pts[n * 3 + 1], pts[n * 3 + 2], 1.0f};
-                const Vec4 w = mul(l, *xform);
-                const float vp[3] = {w.x, w.y, w.z};
-                smooth_grid_vertex(vp, a, b, c, s, v[n]);
+                view = mul(l, *xform);
+                view.w = 1.0f;
             } else {
-                smooth_grid_vertex(pts + n * 3, a, b, c, s, v[n]);
+                view = Vec4{pts[n * 3], pts[n * 3 + 1], pts[n * 3 + 2], 1.0f};
             }
+            Vec4 clip = mul(view, g.proj);
+            if (persp) clip.x *= widen;
+            GxVertex &o = v[n];
+            o.x = clip.x; o.y = clip.y; o.z = clip.z; o.w = clip.w;
+            o.vx = view.x; o.vy = view.y; o.vz = view.z; o.vw = view.w;
+            SmoothVertex at;
+            smooth_grid_attrs_inline(s[0], s[1], s[2], a, b, c, at);
+            o.u = at.u; o.v = at.v; o.color = at.color;
+            o.nx = at.nx; o.ny = at.ny; o.nz = at.nz;
         }
     }
+    /* THE BULK. Each grid vertex goes to screen space ONCE (it used to be
+       once per sub-triangle that touched it, up to six times), and a
+       sub-triangle whose three corners are all in front of the near plane
+       needs no clip, so it is assembled straight from those screen vertices:
+       the same floats emit_tri_near would have produced for it (it keeps a
+       whole triangle's corners untouched and runs to_screen on each), pushed
+       with the same state. A sub-triangle with a corner behind the plane
+       takes emit_tri_near exactly as before. */
+    GxVertex sv[SMOOTH_MAX_GRID];
+    unsigned char isin[SMOOTH_MAX_GRID];
+    for (int i = 0; i < n; ++i) {
+        isin[i] = near_dist(v[i], persp) >= 0.0f;
+        if (isin[i]) sv[i] = to_screen(v[i]);
+    }
+    GxTriangle tmpl{};
+    fill_tri_state(tmpl);
     const uint16_t *idx = smooth_grid_tri_index(tf);
     const int ntris = smooth_grid_tris(tf);
-    for (int i = 0; i < ntris; ++i)
-        emit_tri_near(v[idx[i * 3]], v[idx[i * 3 + 1]], v[idx[i * 3 + 2]]);
+    uint64_t fast = 0;
+    for (int i = 0; i < ntris; ++i) {
+        const int i0 = idx[i * 3], i1 = idx[i * 3 + 1], i2 = idx[i * 3 + 2];
+        if (isin[i0] && isin[i1] && isin[i2]) {
+            GxTriangle t = tmpl;
+            t.v[0] = sv[i0]; t.v[1] = sv[i1]; t.v[2] = sv[i2];
+            g.tris.push_back(t);
+            ++fast;
+        } else {
+            emit_tri_near(v[i0], v[i1], v[i2]);
+        }
+    }
+    if (fast) {
+        if (!persp) g_frame_ortho = true;
+        smooth_count(SMOOTH_COUNT_OUT, fast);
+    }
 }
 
 /* The NORMAL command's 30-bit payload back out as three floats, decoded
