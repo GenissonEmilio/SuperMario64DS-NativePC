@@ -297,6 +297,9 @@ ID3D11VertexShader      *g_full_vs;
 ID3D11PixelShader       *g_ps_tl, *g_ps_tlop, *g_ps_shadow, *g_ps_faa;
 ID3D11DepthStencilState *g_dss_tl, *g_dss_tlop, *g_dss_mask, *g_dss_shadow,
                         *g_dss_clrm;
+/* the ghost layer's two states (run mp1, lane GHOSTLAYER1): depth only, and
+   colour at depth EQUAL with a one-fragment-per-pixel stencil */
+ID3D11DepthStencilState *g_dss_gz, *g_dss_gc;
 ID3D11BlendState        *g_blend_full;
 bool                     g_full_ready;
 /* the last frame drawn whole: whether there is one, and the box of pixels it
@@ -567,15 +570,18 @@ static D3D11_DEPTH_STENCILOP_DESC sop(D3D11_STENCIL_OP fail,
    card, so the two are the same rule). */
 static ID3D11DepthStencilState *make_dss(bool depth, bool depth_write,
                                          UINT8 rmask, UINT8 wmask,
-                                         D3D11_DEPTH_STENCILOP_DESC op)
+                                         D3D11_DEPTH_STENCILOP_DESC op,
+                                         D3D11_COMPARISON_FUNC dfn =
+                                             D3D11_COMPARISON_LESS,
+                                         bool stencil = true)
 {
     D3D11_DEPTH_STENCIL_DESC dd;
     memset(&dd, 0, sizeof dd);
     dd.DepthEnable = depth ? TRUE : FALSE;
     dd.DepthWriteMask = depth_write ? D3D11_DEPTH_WRITE_MASK_ALL
                                     : D3D11_DEPTH_WRITE_MASK_ZERO;
-    dd.DepthFunc = D3D11_COMPARISON_LESS;
-    dd.StencilEnable = TRUE;
+    dd.DepthFunc = dfn;
+    dd.StencilEnable = stencil ? TRUE : FALSE;
     dd.StencilReadMask = rmask;
     dd.StencilWriteMask = wmask;
     dd.FrontFace = op;
@@ -625,6 +631,23 @@ bool make_full_pipeline()
     g_dss_clrm = make_dss(false, false, 0xFF, 0x80,
         sop(D3D11_STENCIL_OP_ZERO, D3D11_STENCIL_OP_ZERO,
             D3D11_STENCIL_OP_ZERO, D3D11_COMPARISON_ALWAYS));
+    /* THE GHOST LAYER: the figure's depth alone (LESS against the frame's depth
+       and the figure's own, written, stencil untouched), then its colour where
+       the depth is EQUAL to what that pass left, and only on the first fragment
+       to get there: the stencil, which the second pass is done with by now and
+       is cleared before each figure, counts one per pixel */
+    g_dss_gz = make_dss(true, true, 0xFF, 0x00,
+        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
+            D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_ALWAYS),
+        D3D11_COMPARISON_LESS, false);
+    g_dss_gc = make_dss(true, false, 0xFF, 0xFF,
+        sop(D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
+            D3D11_STENCIL_OP_INCR_SAT, D3D11_COMPARISON_EQUAL),
+        D3D11_COMPARISON_EQUAL, true);
+    if (!g_dss_gz || !g_dss_gc) {
+        full_give_up("a ghost depth-stencil state was refused", 0);
+        return false;
+    }
     if (!g_dss_tl || !g_dss_tlop || !g_dss_mask || !g_dss_shadow || !g_dss_clrm) {
         full_give_up("a depth-stencil state was refused", 0);
         return false;
@@ -1678,6 +1701,17 @@ struct Op {
 };
 std::vector<GVert> g_scratch1;
 std::vector<Op> g_ops;
+/* the ghost figures' vertices (after the second pass's in the one buffer) and
+   their draws, figure by figure, farthest first */
+std::vector<GVert> g_scratch2;
+struct GhostDraw {
+    const GTex *tex;
+    int au, av;
+    UINT first, count;
+};
+std::vector<GhostDraw> g_gdraws;
+std::vector<size_t> g_gfig;      /* index in g_gdraws where each figure starts */
+long long g_gh_frames, g_gh_tris;
 
 /* the smoothing's own result target and the readback copy of it, made when the
    first frame that smooths asks (and again whenever the picture's size moves,
@@ -1795,12 +1829,14 @@ void copy_ab_planes(const ntr::GxGpuFrame *f, int bx0, int by0, int bx1, int by1
 
 /* one triangle's three vertices, the same arithmetic the opaque loop uses */
 void push_tri(const ntr::GxTriangle &t, const ntr::GxGpuFrame *f, bool textured,
-              float inv_cw, float inv_ch, std::vector<GVert> &dst)
+              float inv_cw, float inv_ch, std::vector<GVert> &dst,
+              float pa_cap = 31.0f)
 {
     const float tsc = (float)(t.tex_scale ? t.tex_scale : 1);
     const float iw = textured ? 1.0f / (float)t.tw : 0.0f;
     const float ih = textured ? 1.0f / (float)t.th : 0.0f;
-    const float pa = (float)((t.alpha >= 31 || t.alpha == 0) ? 31u : t.alpha);
+    float pa = (float)((t.alpha >= 31 || t.alpha == 0) ? 31u : t.alpha);
+    if (pa > pa_cap) pa = pa_cap;
     const float pid = (float)(t.polyid +
         ((t.mode == 2 && f->toon_shade) ? 64 * f->toon_shade : 0));
     for (int k = 0; k < 3; ++k) {
@@ -1899,6 +1935,9 @@ int draw_full(const ntr::GxGpuFrame *f)
        draws in submission order -------------------------------------------- */
     g_scratch.clear();
     g_scratch1.clear();
+    g_scratch2.clear();
+    g_gdraws.clear();
+    g_gfig.clear();
     g_batch.clear();
     g_ops.clear();
     const GTex *cur_tex = 0;
@@ -2015,9 +2054,101 @@ int draw_full(const ntr::GxGpuFrame *f)
     if (!g_ops.empty() && g_ops.back().kind != OP_CLRM)
         g_ops.back().count = (UINT)g_scratch1.size() - g_ops.back().first;
 
+    /* ---- the ghost figures (run mp1, lane GHOSTLAYER1): one group per figure
+       number, farthest first (largest mean w), drawn as batches by texture ---- */
+    if (f->ghost_tris && f->ghost_count) {
+        struct Fig { int id; double w; long n; };
+        Fig figs[8];
+        int nfig = 0;
+        for (size_t i = 0; i < f->ghost_count; ++i) {
+            const ntr::GxTriangle &t = f->ghost_tris[i];
+            int k = 0;
+            while (k < nfig && figs[k].id != t.ghost) ++k;
+            if (k == nfig) {
+                if (nfig >= 8) continue;
+                figs[nfig].id = t.ghost;
+                figs[nfig].w = 0.0;
+                figs[nfig].n = 0;
+                ++nfig;
+            }
+            figs[k].w += (double)t.v[0].w + (double)t.v[1].w + (double)t.v[2].w;
+            figs[k].n += 3;
+        }
+        for (int k = 0; k < nfig; ++k) figs[k].w /= (double)(figs[k].n ? figs[k].n : 1);
+        for (int a2 = 1; a2 < nfig; ++a2)             /* far (large w) first */
+            for (int b2 = a2; b2 > 0 && figs[b2].w > figs[b2 - 1].w; --b2) {
+                const Fig tmp = figs[b2];
+                figs[b2] = figs[b2 - 1];
+                figs[b2 - 1] = tmp;
+            }
+        for (int k = 0; k < nfig; ++k) {
+            g_gfig.push_back(g_gdraws.size());
+            const GTex *ctex = 0;
+            int cau = -1, cav = -1;
+            bool gopen = false;
+            for (size_t i = 0; i < f->ghost_count; ++i) {
+                const ntr::GxTriangle &t = f->ghost_tris[i];
+                if (t.ghost != figs[k].id) continue;
+                const ntr::GxVertex &a = t.v[0], &b = t.v[1], &c = t.v[2];
+                const float area =
+                    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+                if (area < 1e-6f && area > -1e-6f) continue;
+                const bool backface = area > 0.0f;
+                if (backface && !(t.cull & 1)) continue;
+                if (!backface && !(t.cull & 2)) continue;
+                for (int q = 0; q < 3; ++q) {
+                    const float vx = t.v[q].x, vy = t.v[q].y;
+                    if (!(vx > -1e20f && vx < 1e20f && vy > -1e20f && vy < 1e20f)) {
+                        bwide = true;
+                        continue;
+                    }
+                    if (vx < bminx) bminx = vx;
+                    if (vx > bmaxx) bmaxx = vx;
+                    if (vy < bminy) bminy = vy;
+                    if (vy > bmaxy) bmaxy = vy;
+                }
+                const bool textured = t.tex && t.tw > 0 && t.th > 0;
+                const GTex *gt = 0;
+                int au = 0, av = 0;
+                if (textured) {
+                    gt = upload_texture(t.tex_id, t.tex, t.tw, t.th, f->tex_filter);
+                    if (!gt) return 0;
+                    const bool rep_s = (t.wrap & 1) != 0, rep_t = (t.wrap & 2) != 0;
+                    const bool flip_s = (t.wrap & 4) != 0, flip_t = (t.wrap & 8) != 0;
+                    au = rep_s ? (flip_s ? 2 : 1) : 0;
+                    av = rep_t ? (flip_t ? 2 : 1) : 0;
+                }
+                if (!gopen || gt != ctex || au != cau || av != cav) {
+                    if (gopen)
+                        g_gdraws.back().count =
+                            (UINT)g_scratch2.size() - g_gdraws.back().first;
+                    GhostDraw d;
+                    d.tex = gt;
+                    d.au = au;
+                    d.av = av;
+                    d.first = (UINT)g_scratch2.size();
+                    d.count = 0;
+                    g_gdraws.push_back(d);
+                    ctex = gt;
+                    cau = au;
+                    cav = av;
+                    gopen = true;
+                }
+                push_tri(t, f, textured, inv_cw, inv_ch, g_scratch2, 30.0f);
+            }
+            if (gopen)
+                g_gdraws.back().count =
+                    (UINT)g_scratch2.size() - g_gdraws.back().first;
+        }
+        g_gfig.push_back(g_gdraws.size());          /* the end sentinel */
+        ++g_gh_frames;
+        g_gh_tris += (long long)(g_scratch2.size() / 3);
+    }
+
     const long long t1 = qpc();
 
-    const bool nothing = g_scratch.empty() && g_scratch1.empty();
+    const bool nothing = g_scratch.empty() && g_scratch1.empty() &&
+                         g_scratch2.empty();
     const UINT nopaque = (UINT)g_scratch.size();
 
     if (!nothing) port_gpu_timer_span_begin(PORT_GPU_SPAN_OPAQUE);
@@ -2037,7 +2168,8 @@ int draw_full(const ntr::GxGpuFrame *f)
                                      D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
                                      1.0f, 0);
 
-        if (!ensure_vb(g_scratch.size() + g_scratch1.size())) return 0;
+        if (!ensure_vb(g_scratch.size() + g_scratch1.size() + g_scratch2.size()))
+            return 0;
         D3D11_MAPPED_SUBRESOURCE ms;
         memset(&ms, 0, sizeof ms);
         HRESULT hr = g_ctx->Map(g_vb, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms);
@@ -2047,6 +2179,9 @@ int draw_full(const ntr::GxGpuFrame *f)
         if (!g_scratch1.empty())
             memcpy((GVert *)ms.pData + g_scratch.size(), &g_scratch1[0],
                    g_scratch1.size() * sizeof(GVert));
+        if (!g_scratch2.empty())
+            memcpy((GVert *)ms.pData + g_scratch.size() + g_scratch1.size(),
+                   &g_scratch2[0], g_scratch2.size() * sizeof(GVert));
         g_ctx->Unmap(g_vb, 0);
 
         D3D11_VIEWPORT vp;
@@ -2180,6 +2315,55 @@ int draw_full(const ntr::GxGpuFrame *f)
                 ++g_batches;
             }
         }
+        /* ---- the ghost figures: each one a depth-only pass and then one
+           blended colour pass at depth EQUAL, so a pixel takes exactly one
+           fragment of the figure, farthest figure first. The figure's depth is
+           left in the depth target, as an opaque ghost's always was. -------- */
+        if (g_gfig.size() > 1) {
+            const UINT gbase = (UINT)(g_scratch.size() + g_scratch1.size());
+            g_ctx->IASetInputLayout(g_layout);
+            g_ctx->VSSetShader(g_vs, 0, 0);
+            for (size_t fi = 0; fi + 1 < g_gfig.size(); ++fi) {
+                const size_t d0 = g_gfig[fi], d1 = g_gfig[fi + 1];
+                /* (a) depth */
+                g_ctx->OMSetRenderTargets(0, 0, g_dep_dsv);
+                g_ctx->OMSetDepthStencilState(g_dss_gz, 0);
+                g_ctx->OMSetBlendState(0, bf, 0xffffffffu);
+                g_ctx->PSSetShader(g_ps, 0, 0);
+                for (size_t di = d0; di < d1; ++di) {
+                    const GhostDraw &gd = g_gdraws[di];
+                    if (!gd.count) continue;
+                    ID3D11ShaderResourceView *srv =
+                        gd.tex ? gd.tex->srv : g_white_srv;
+                    ID3D11SamplerState *smp = gd.tex ? sampler(f->tex_filter, gd.au, gd.av)
+                                                     : sampler(0, 0, 0);
+                    if (!smp) { fall_back("no sampler state", 0); return 0; }
+                    g_ctx->PSSetShaderResources(0, 1, &srv);
+                    g_ctx->PSSetSamplers(0, 1, &smp);
+                    g_ctx->Draw(gd.count, gbase + gd.first);
+                    ++g_batches;
+                }
+                /* (b) colour */
+                g_ctx->ClearDepthStencilView(g_dep_dsv, D3D11_CLEAR_STENCIL, 1.0f, 0);
+                g_ctx->OMSetRenderTargets(1, rtv1, g_dep_dsv);
+                g_ctx->OMSetDepthStencilState(g_dss_gc, 0);
+                g_ctx->OMSetBlendState(g_blend_full, bf, 0xffffffffu);
+                g_ctx->PSSetShader(g_ps_tl, 0, 0);
+                for (size_t di = d0; di < d1; ++di) {
+                    const GhostDraw &gd = g_gdraws[di];
+                    if (!gd.count) continue;
+                    ID3D11ShaderResourceView *srv =
+                        gd.tex ? gd.tex->srv : g_white_srv;
+                    ID3D11SamplerState *smp = gd.tex ? sampler(f->tex_filter, gd.au, gd.av)
+                                                     : sampler(0, 0, 0);
+                    if (!smp) { fall_back("no sampler state", 0); return 0; }
+                    g_ctx->PSSetShaderResources(0, 1, &srv);
+                    g_ctx->PSSetSamplers(0, 1, &smp);
+                    g_ctx->Draw(gd.count, gbase + gd.first);
+                    ++g_batches;
+                }
+            }
+        }
         ID3D11ShaderResourceView *nones[2] = { 0, 0 };
         g_ctx->PSSetShaderResources(0, 2, nones);
         g_ctx->OMSetRenderTargets(0, 0, 0);
@@ -2239,7 +2423,7 @@ int draw_full(const ntr::GxGpuFrame *f)
         if (!nothing) port_gpu_timer_span_end(PORT_GPU_SPAN_OPAQUE);
         const long long t2 = qpc();
         ++g_frames;
-        const size_t kverts = g_scratch.size() + g_scratch1.size();
+        const size_t kverts = g_scratch.size() + g_scratch1.size() + g_scratch2.size();
         g_tris += (long long)(kverts / 3);
         g_verts += (long long)kverts;
         g_ms_build += ms_between(t0, t1);
@@ -2431,7 +2615,7 @@ int draw_full(const ntr::GxGpuFrame *f)
 
     const long long t3 = qpc();
     ++g_frames;
-    const size_t nverts = g_scratch.size() + g_scratch1.size();
+    const size_t nverts = g_scratch.size() + g_scratch1.size() + g_scratch2.size();
     g_tris += (long long)(nverts / 3);
     g_verts += (long long)nverts;
     g_ms_build += ms_between(t0, t1);

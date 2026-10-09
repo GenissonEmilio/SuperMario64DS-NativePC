@@ -716,6 +716,10 @@ GxVertex clip_lerp(const GxVertex &a, const GxVertex &b, float t) {
    old Z key, for an A/B on one binary. */
 static bool g_frame_ortho;
 static bool g_wdepth;
+/* THE GHOST LAYER SWITCH (gx_set_ghost_layer, ntr/gx.h): while it is on, a
+   triangle submitted under a POLYGON_ATTR with bits 21-23 set carries that
+   number as GxTriangle::ghost. Off, the bits are never read. */
+static bool g_ghost_layer_on;
 
 /* THE W-BUFFER'S TIE RULE (run hunt7, lane POLES1). The depth key above is
    exact to a float ulp, and the cartridge's is not: its geometry engine cuts
@@ -768,6 +772,8 @@ void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
     t.alpha = static_cast<uint8_t>((g.poly_attr >> 16) & 31);
     t.mode = static_cast<uint8_t>((g.poly_attr >> 4) & 3);
     t.polyid = static_cast<uint8_t>((g.poly_attr >> 24) & 63);
+    t.ghost = g_ghost_layer_on
+                  ? static_cast<uint8_t>((g.poly_attr >> 21) & 7) : 0;
     t.wrap = g.tex_wrap;
     /* TEXIMAGE_PARAM bits 26-28 are the format; 1 (A3I5) and 6 (A5I3)
        are the two translucent-texture formats. Attr alpha 0 is wire and
@@ -2388,6 +2394,9 @@ void gx_configure_texture_filter(int mode) {
 }
 
 int gx_texture_filter() { return g_tex_filter; }
+
+void gx_set_ghost_layer(int on) { g_ghost_layer_on = on != 0; }
+int gx_ghost_layer() { return g_ghost_layer_on ? 1 : 0; }
 
 /* SM64DS_TEX_MIPS=1: how much the chains are holding, once every 300 frames,
    which is the answer to "what does trilinear cost in memory over a level".
@@ -5230,6 +5239,262 @@ static void cover_dump(const char *path, int cw, int ch) {
     std::fclose(f);
 }
 
+namespace {
+/* ==== THE GHOST LAYER, ON THE PROCESSOR (run mp1, lane GHOSTLAYER1) ==========
+ *
+ * A figure the game draws see-through (the adventure hub's other players) is NOT
+ * drawn by the opaque and translucent passes. gx_render lifts its polygons
+ * (GxTriangle::ghost != 0) out of the frame first, draws everything else as it
+ * always did, and calls this once the translucent pass is finished and before
+ * the edge smoothing runs.
+ *
+ * WHY: the DS draws a see-through polygon without writing depth, and refuses it
+ * on a pixel that already took a see-through fragment of the same polygon id.
+ * One body is many polygons under one id, so its far arm shows through its own
+ * chest and parts of it vanish. This pass makes a figure ONE surface instead:
+ * for every pixel only the NEAREST fragment of the figure survives (its depth is
+ * tested against the frame's depth and the figure's own), and that fragment,
+ * shaded exactly as the opaque pass would have shaded it, is blended once over
+ * what the frame already holds, at the polygon's alpha. Nothing of the figure
+ * compounds against itself, whatever the polygon order.
+ *
+ * AFTERWARDS the frame's planes hold what an opaque ghost always left in them:
+ * the figure's depth in the depth plane (a name tag behind it hides), its
+ * polygon id, and its pixels in the coverage plane. Pixels the figure does not
+ * reach are never written, which keeps every non-ghost pixel the frame it was.
+ *
+ * Several figures go farthest first, each a layer of its own over the previous:
+ * a ghost standing behind another shows through it. One thread does the lot;
+ * a ghost fills a few thousand pixels.
+ */
+std::vector<float> g_gh_z;
+std::vector<uint32_t> g_gh_col;
+std::vector<uint8_t> g_gh_sa, g_gh_id;
+unsigned long long g_gh_frames, g_gh_tris, g_gh_px;
+double g_gh_ms;
+
+template <int FILTER>
+void ghost_group_cpu(Framebuffer &fb, const std::vector<GxTriangle> &gt,
+                     const std::vector<int> &idx, bool want_id)
+{
+    const int px0 = present_x(), py0 = present_y();
+    const int px1 = px0 + present_w() - 1, py1 = py0 + present_h() - 1;
+    int bx0 = px1 + 1, by0 = py1 + 1, bx1 = px0 - 1, by1 = py0 - 1;
+    for (int i : idx) {
+        const GxTriangle &t = gt[(size_t)i];
+        const GxVertex &a = t.v[0], &b = t.v[1], &c = t.v[2];
+        int minx = (int)std::floor(std::fmin(a.x, std::fmin(b.x, c.x)));
+        int maxx = (int)std::ceil(std::fmax(a.x, std::fmax(b.x, c.x)));
+        int miny = (int)std::floor(std::fmin(a.y, std::fmin(b.y, c.y)));
+        int maxy = (int)std::ceil(std::fmax(a.y, std::fmax(b.y, c.y)));
+        if (minx < px0) minx = px0;
+        if (miny < py0) miny = py0;
+        if (maxx > px1) maxx = px1;
+        if (maxy > py1) maxy = py1;
+        if (maxx < minx || maxy < miny) continue;
+        if (minx < bx0) bx0 = minx;
+        if (miny < by0) by0 = miny;
+        if (maxx > bx1) bx1 = maxx;
+        if (maxy > by1) by1 = maxy;
+    }
+    if (bx1 < bx0 || by1 < by0) return;
+    const int bw = bx1 - bx0 + 1, bh = by1 - by0 + 1;
+    const size_t n = (size_t)bw * (size_t)bh;
+    g_gh_z.assign(n, 1e30f);
+    g_gh_col.resize(n);
+    g_gh_sa.resize(n);
+    g_gh_id.resize(n);
+    const bool wdepth = g_wdepth;
+    DepthRow *const depth = g_depth;
+
+    for (int ti : idx) {
+        const GxTriangle &t = gt[(size_t)ti];
+        const GxVertex &a = t.v[0], &b = t.v[1], &c = t.v[2];
+        const float area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+        if (std::fabs(area) < 1e-6f) continue;
+        const bool backface = area > 0.0f;
+        if (backface && !(t.cull & 1)) continue;
+        if (!backface && !(t.cull & 2)) continue;
+        int minx = (int)std::floor(std::fmin(a.x, std::fmin(b.x, c.x)));
+        int maxx = (int)std::ceil(std::fmax(a.x, std::fmax(b.x, c.x)));
+        int miny = (int)std::floor(std::fmin(a.y, std::fmin(b.y, c.y)));
+        int maxy = (int)std::ceil(std::fmax(a.y, std::fmax(b.y, c.y)));
+        if (minx < px0) minx = px0;
+        if (miny < py0) miny = py0;
+        if (maxx > px1) maxx = px1;
+        if (maxy > py1) maxy = py1;
+        const float eax = b.x - a.x, eay = b.y - a.y;
+        const float ebx = c.x - b.x, eby = c.y - b.y;
+        const float ecx = a.x - c.x, ecy = a.y - c.y;
+        const float iwa = (std::fabs(a.w) > 1e-6f) ? 1.0f / a.w : 0.0f;
+        const float iwb = (std::fabs(b.w) > 1e-6f) ? 1.0f / b.w : 0.0f;
+        const float iwc = (std::fabs(c.w) > 1e-6f) ? 1.0f / c.w : 0.0f;
+        const bool textured = t.tex && t.tw > 0 && t.th > 0;
+        const bool rep_s = (t.wrap & 1) != 0, rep_t = (t.wrap & 2) != 0;
+        const bool flip_s = (t.wrap & 4) != 0, flip_t = (t.wrap & 8) != 0;
+        const float tsc = (float)(t.tex_scale ? t.tex_scale : 1);
+        TriTex tt{nullptr, 0, 0.0f};
+        if (FILTER == 2 && textured) tt = lod_for(t, area);
+        const float acol[3] = {(float)((a.color >> 16) & 0xFF),
+                               (float)((a.color >> 8) & 0xFF),
+                               (float)(a.color & 0xFF)};
+        const float bcol[3] = {(float)((b.color >> 16) & 0xFF),
+                               (float)((b.color >> 8) & 0xFF),
+                               (float)(b.color & 0xFF)};
+        const float ccol[3] = {(float)((c.color >> 16) & 0xFF),
+                               (float)((c.color >> 8) & 0xFF),
+                               (float)(c.color & 0xFF)};
+        /* the layer's opacity is the polygon's alpha, 1..30 (31 is allowed: the
+           figure then simply replaces what is under it) */
+        const uint32_t poly_a = (t.alpha >= 31 || t.alpha == 0) ? 31u : t.alpha;
+        const int toon = (t.mode == 2) ? g_toon_shade : 0;
+        for (int y = miny; y <= maxy; ++y) {
+            const float py = y + 0.5f;
+            const float r0 = eax * (py - a.y);
+            const float r1 = ebx * (py - b.y);
+            const float r2 = ecx * (py - c.y);
+            const float *drow = depth[y];
+            const size_t row = (size_t)(y - by0) * (size_t)bw;
+            for (int x = minx; x <= maxx; ++x) {
+                const float px = x + 0.5f;
+                const float n0 = r0 - eay * (px - a.x);
+                const float n1 = r1 - eby * (px - b.x);
+                const float n2 = r2 - ecy * (px - c.x);
+                if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) ||
+                      (n0 <= 0 && n1 <= 0 && n2 <= 0)))
+                    continue;
+                const float w0 = n0 / area, w1 = n1 / area, w2 = n2 / area;
+                const float l0 = w1, l1 = w2, l2 = w0;
+                const float z = wdepth ? -(l0 * iwa + l1 * iwb + l2 * iwc)
+                                       : l0 * a.z + l1 * b.z + l2 * c.z;
+                if (z >= drow[x]) continue;
+                const size_t o = row + (size_t)(x - bx0);
+                if (z >= g_gh_z[o]) continue;
+                uint32_t texel = 0xFFFFFFFFu;
+                if (textured) {
+                    const float iw = l0 * iwa + l1 * iwb + l2 * iwc;
+                    float uu, vv;
+                    if (iw > 1e-9f) {
+                        uu = (l0 * a.u * iwa + l1 * b.u * iwb + l2 * c.u * iwc) / iw;
+                        vv = (l0 * a.v * iwa + l1 * b.v * iwb + l2 * c.v * iwc) / iw;
+                    } else {
+                        uu = l0 * a.u + l1 * b.u + l2 * c.u;
+                        vv = l0 * a.v + l1 * b.v + l2 * c.v;
+                    }
+                    if constexpr (FILTER == 0) {
+                        const int ui = tex_coord(uu * tsc, t.tw, rep_s, flip_s);
+                        const int vi = tex_coord(vv * tsc, t.th, rep_t, flip_t);
+                        texel = t.tex[vi * t.tw + ui];
+                    } else {
+                        texel = sample_filtered<FILTER>(
+                            tt, t.tex, t.tw, t.th, uu * tsc, vv * tsc, rep_s,
+                            rep_t, flip_s, flip_t);
+                    }
+                    if ((texel >> 24) == 0) continue;
+                }
+                const float *te = nullptr;
+                if (toon)
+                    te = &g_toon8[toon_index(l0 * acol[0] + l1 * bcol[0] +
+                                             l2 * ccol[0]) * 3];
+                auto ch = [&](int k, int sh) {
+                    const int kv = toon == 2 ? 0 : k;
+                    const float v = toon == 1
+                        ? te[k]
+                        : l0 * acol[kv] + l1 * bcol[kv] + l2 * ccol[kv];
+                    const float m = inv255.v[(texel >> sh) & 0xFF];
+                    int i = static_cast<int>(v * m + 0.5f);
+                    if (toon == 2) i += static_cast<int>(te[k]);
+                    return static_cast<uint32_t>(i < 0 ? 0 : (i > 255 ? 255 : i));
+                };
+                const uint32_t tex_a = texel >> 24;
+                const uint32_t sa = (poly_a * tex_a + 127) / 255;
+                g_gh_z[o] = z;
+                g_gh_col[o] = (ch(0, 16) << 16) | (ch(1, 8) << 8) | ch(2, 0);
+                g_gh_sa[o] = (uint8_t)(sa > 31 ? 31 : sa);
+                g_gh_id[o] = t.polyid;
+            }
+        }
+    }
+
+    unsigned long long px = 0;
+    for (int y = by0; y <= by1; ++y) {
+        const size_t row = (size_t)(y - by0) * (size_t)bw;
+        uint32_t *frow = fb.px[y];
+        for (int x = bx0; x <= bx1; ++x) {
+            const size_t o = row + (size_t)(x - bx0);
+            const float z = g_gh_z[o];
+            if (z >= 1e29f) continue;
+            const uint32_t sa = g_gh_sa[o];
+            const uint32_t col = g_gh_col[o];
+            if (sa >= 31) {
+                frow[x] = 0xFF000000u | col;
+            } else {
+                const uint32_t dst = frow[x];
+                auto bl = [&](int sh) {
+                    const uint32_t s = (col >> sh) & 0xFF;
+                    const uint32_t d = (dst >> sh) & 0xFF;
+                    return ((s * sa + d * (31 - sa)) / 31) & 0xFF;
+                };
+                frow[x] = 0xFF000000u | (bl(16) << 16) | (bl(8) << 8) | bl(0);
+            }
+            depth[y][x] = z;
+            g_cover[y][x] = 1;
+            if (want_id) g_attrid[y][x] = g_gh_id[o];
+            ++px;
+        }
+    }
+    g_gh_px += px;
+}
+
+void ghost_pass_cpu(Framebuffer &fb, const std::vector<GxTriangle> &gt,
+                    bool want_id)
+{
+    if (gt.empty()) return;
+    const bool tm = std::getenv("SM64DS_GHOST_LAYER_PROBE") != nullptr;
+    const std::chrono::steady_clock::time_point t0 =
+        tm ? std::chrono::steady_clock::now()
+           : std::chrono::steady_clock::time_point();
+    /* one group per figure number, farthest (largest mean w) first */
+    struct Grp { int id; double w; long n; std::vector<int> idx; };
+    std::vector<Grp> grp;
+    for (size_t i = 0; i < gt.size(); ++i) {
+        const GxTriangle &t = gt[i];
+        Grp *g2 = nullptr;
+        for (Grp &q : grp)
+            if (q.id == t.ghost) { g2 = &q; break; }
+        if (!g2) {
+            grp.push_back(Grp{t.ghost, 0.0, 0, {}});
+            g2 = &grp.back();
+        }
+        g2->idx.push_back((int)i);
+        g2->w += (double)t.v[0].w + (double)t.v[1].w + (double)t.v[2].w;
+        g2->n += 3;
+    }
+    for (Grp &q : grp) q.w /= (double)(q.n ? q.n : 1);
+    std::sort(grp.begin(), grp.end(),
+              [](const Grp &x, const Grp &y) { return x.w > y.w; });
+    for (const Grp &q : grp) {
+        switch (g_tex_filter) {
+        case 1: ghost_group_cpu<1>(fb, gt, q.idx, want_id); break;
+        case 2: ghost_group_cpu<2>(fb, gt, q.idx, want_id); break;
+        default: ghost_group_cpu<0>(fb, gt, q.idx, want_id); break;
+        }
+    }
+    ++g_gh_frames;
+    g_gh_tris += gt.size();
+    if (tm) {
+        g_gh_ms += std::chrono::duration<double, std::milli>(
+                       std::chrono::steady_clock::now() - t0).count();
+        if ((g_gh_frames % 60) == 1)
+            std::fprintf(stderr, "[ghostlayer] cpu pass: frames %llu figures %zu "
+                         "tris %llu pixels %llu mean %.3f ms\n", g_gh_frames,
+                         grp.size(), g_gh_tris, g_gh_px,
+                         g_gh_ms / (double)g_gh_frames);
+    }
+}
+
+}  // namespace
+
 void gx_render(Framebuffer &fb) {
     capture_drill(false);
     /* run interp1: what reached the raster is the frame; seal its record. */
@@ -5239,6 +5504,52 @@ void gx_render(Framebuffer &fb) {
        function never finished would otherwise sample the frame before it. */
     g_aa_pre_valid = 0;
     g_planes_stale = 0;
+    /* THE GHOST LAYER: lift the ghost figures out of the frame (run mp1, lane
+       GHOSTLAYER1; see ghost_pass_cpu). They are put back at the end, so the
+       list is the one the frame was submitted as for whatever reads it after. */
+    static std::vector<GxTriangle> s_ghost;
+    s_ghost.clear();
+    if (g_ghost_layer_on) {
+        bool any = false;
+        for (const GxTriangle &t : g.tris)
+            if (t.ghost) { any = true; break; }
+        if (any) {
+            size_t w = 0;
+            for (size_t i = 0; i < g.tris.size(); ++i) {
+                if (g.tris[i].ghost) {
+                    s_ghost.push_back(g.tris[i]);
+                } else {
+                    if (w != i) g.tris[w] = g.tris[i];
+                    ++w;
+                }
+            }
+            g.tris.resize(w);
+        }
+    }
+    /* SM64DS_GHOST_LAYER_PROBE: one line a second or so with the figures'
+       screen box (the proof rows find the ghost in the picture with it);
+       SM64DS_GHOST_LAYER_HIDE: leave the figures out of the picture entirely,
+       which is the background the proof rows compare the layer against.
+       Neither does anything unless the variable is set. */
+    if (!s_ghost.empty()) {
+        static const int probe = std::getenv("SM64DS_GHOST_LAYER_PROBE") ? 1 : 0;
+        static const int hide = std::getenv("SM64DS_GHOST_LAYER_HIDE") ? 1 : 0;
+        static unsigned long long nprobe;
+        if (probe && (nprobe++ % 40) == 0) {
+            float x0 = 1e30f, y0 = 1e30f, x1 = -1e30f, y1 = -1e30f;
+            for (const GxTriangle &t : s_ghost)
+                for (int k = 0; k < 3; ++k) {
+                    if (t.v[k].x < x0) x0 = t.v[k].x;
+                    if (t.v[k].x > x1) x1 = t.v[k].x;
+                    if (t.v[k].y < y0) y0 = t.v[k].y;
+                    if (t.v[k].y > y1) y1 = t.v[k].y;
+                }
+            std::fprintf(stderr, "[ghostlayer] box %d %d %d %d tris %zu\n",
+                         (int)x0, (int)y0, (int)x1, (int)y1, s_ghost.size());
+        }
+        if (hide) s_ghost.clear();
+    }
+    const bool have_ghost = !s_ghost.empty();
     const int tm = frame_ms();
     std::chrono::steady_clock::time_point t_enter;
     if (tm) t_enter = std::chrono::steady_clock::now();
@@ -5344,6 +5655,8 @@ void gx_render(Framebuffer &fb) {
         size_t n2 = 0;
         for (const GxTriangle &t : g.tris)
             if (t.mode == 2) ++n2;
+        for (const GxTriangle &t : s_ghost)
+            if (t.mode == 2) ++n2;
         if (n2) g_toon_shade = gx_toon_table(g_toon8);
         static const int tprobe = std::getenv("SM64DS_TOON_PROBE") ? 1 : 0;
         if (tprobe && n2) {
@@ -5425,6 +5738,8 @@ void gx_render(Framebuffer &fb) {
         f.out = &gpu_out;
         f.keep = g_cp_pending;
         f.outside_argb = kOldClear;
+        f.ghost_tris = s_ghost.data();
+        f.ghost_count = s_ghost.size();
         if (g_aa_mode && aa_scratch_alloc()) {
             f.aa_mode = 1;
             f.pre = g_aa_src;
@@ -6126,7 +6441,8 @@ void gx_render(Framebuffer &fb) {
            and at 4x that readback is three megabytes a frame. The translucent
            and shadow pass is the only reader, so a frame with neither skips
            it. The A/B reads it too, and says so. */
-        f.want_depth = (have_translucent || have_shadow || ab_mode()) ? 1 : 0;
+        f.want_depth = (have_translucent || have_shadow || have_ghost ||
+                        ab_mode()) ? 1 : 0;
         f.wdepth = g_wdepth ? 1 : 0;
         f.tex_filter = filt;
         f.tex_generation = g_tex_generation;
@@ -6144,6 +6460,10 @@ void gx_render(Framebuffer &fb) {
         f.full_ok = ab_mode() ? 1 : 0;
         f.ab = ab_mode();
         f.out = &gpu_out;
+        if (!ab_mode()) {
+            f.ghost_tris = s_ghost.data();
+            f.ghost_count = s_ghost.size();
+        }
 
         if (!ab_mode()) {
             const int r = g_gpu_opaque(&f);
@@ -6437,6 +6757,10 @@ void gx_render(Framebuffer &fb) {
     /* the second pass: skipped when the card drew it (run cardfull) */
     if (!gpu_full) run_checked(gpu_drew ? 1 : 0, 1);
 
+    /* the ghost figures, as layers over the finished frame, before the edge
+       smoothing reads it (a whole-frame card draws them itself) */
+    if (have_ghost && !gpu_full) ghost_pass_cpu(fb, s_ghost, want_id);
+
     if (tm) t_pass1 = std::chrono::steady_clock::now();
 
     /* EDGE SMOOTHING, LAST, AND STILL INSIDE gx_render (run hd2). Here rather
@@ -6465,6 +6789,7 @@ void gx_render(Framebuffer &fb) {
     }
     aa_report();
     capture_drill(true);
+    if (have_ghost) g.tris.insert(g.tris.end(), s_ghost.begin(), s_ghost.end());
 
     if (tm) t_aa1 = std::chrono::steady_clock::now();
 

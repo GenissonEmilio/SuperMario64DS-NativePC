@@ -30,7 +30,7 @@ extern "C" int __fastcall port_player_st_crazedcrate_cleanup(void *self, void *)
 /* the geometry-engine polygon buffer, for the tongue render self-check
    (SM64DS_WINGS_PROBE); same forward decl cxxname_bridge.cpp uses so the
    header's wider surface does not have to come in here */
-namespace ntr { struct GxTriangle; const GxTriangle *gx_polygons(std::size_t &n); }
+namespace ntr { struct GxTriangle; const GxTriangle *gx_polygons(std::size_t &n); void gx_set_ghost_layer(int on); }
 
 /* how many times hal_call_state_fn fell off the end of its switch this run --
    read by the F3 overlay in port/tests/walk_window.cpp */
@@ -376,29 +376,52 @@ extern void *data_0209f394[];         /* per-slot Player* */
 extern unsigned char data_0209f250;   /* local player index */
 }
 
-/* ---- THE GHOST ALPHA -------------------------------------------------------
+/* ---- THE GHOST ALPHA AND THE GHOST LAYER ------------------------------------
    The DS polygon alpha is 5 bits (0..31); func_02046208 writes it into the
    0x1f0000 field of every material's polygon attribute. 31 is fully opaque and
    1 is nearly gone; 0 is NOT invisible, it is the DS's wireframe mode, so the
-   floor here is 1. SM64DS_ADVENTURE_ALPHA tunes it for the visual check
-   without a rebuild.
-   run mp1 lane GHOSTLOOK1: THE DEFAULT IS SOLID (31), the value
-   Player::Render itself stamps every frame (ModelBase::ApplyOpacity(model,
-   mOpacity), src/_ZN6Player6RenderEv.cpp, and the follower holds a shown
-   ghost's mOpacity at 0x1f). It was a ghostly 12, and a see-through Yoshi is
-   drawn the DS's translucent way: no depth written, and a translucent pixel
-   never lands on one of the same polygon id, so the far arm and leg showed
-   through the body and parts of the body vanished behind itself (the field
-   report's "clipping / transparency"). The fade below still takes it down
-   while a ghost appears or goes. */
+   floor here is 1.
+
+   run mp1 lane GHOSTLAYER1: A GHOST IS DRAWN AS ONE LAYER. Painting the
+   body's polygons see-through one by one is what the DS does, and it is wrong
+   for a figure: a see-through polygon writes no depth and is refused on a pixel
+   that already took a see-through fragment of the same polygon id, so the far
+   arm showed through the body and parts of it vanished (the reason GHOSTLOOK1
+   made ghosts solid). So the alpha written here is the LAYER'S opacity and the
+   materials also carry the figure number in POLYGON_ATTR bits 21-23 (unused by
+   the DS), and ntr/gx.cpp draws every marked polygon in a pass of its own:
+   only the nearest surface of the figure is kept and blended once (see
+   ghost_pass_cpu there and the card renderer's copy of it in
+   hal/gpu_raster.cpp). The mark is put on for the draw and taken off again
+   after it (ghost_marks_release), so no other draw of these models, and no
+   other player, sees it.
+
+   SM64DS_GHOST_ALPHA=<1..30> tunes the layer's opacity for the visual check
+   without a rebuild. SM64DS_GHOST_LAYER=0 is the proof control: no layer, the
+   alpha goes on each polygon as it did before (and SM64DS_GHOST_ALPHA /
+   SM64DS_ADVENTURE_ALPHA then show the old overlap defect); with neither set
+   that is the solid ghost build 5 drew. */
+static int ghost_layer_on()
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_LAYER");
+        on = (e && *e == '0') ? 0 : 1;
+    }
+    return on;
+}
+
 static unsigned ghost_alpha()
 {
     static int a = -1;
     if (a < 0) {
-        const char *e = std::getenv("SM64DS_ADVENTURE_ALPHA");
-        a = e ? std::atoi(e) : 31;
+        const char *e = std::getenv("SM64DS_GHOST_ALPHA");
+        if (!e) e = std::getenv("SM64DS_ADVENTURE_ALPHA");
+        a = e ? std::atoi(e) : (ghost_layer_on() ? 17 : 31);
         if (a < 1) a = 1;
-        if (a > 31) a = 31;
+        /* the layer's opacity is a see-through one; the old per-polygon
+           path keeps its whole range */
+        if (a > (ghost_layer_on() ? 30 : 31)) a = ghost_layer_on() ? 30 : 31;
     }
     return (unsigned)a;
 }
@@ -413,6 +436,51 @@ extern "C" void _ZN9ModelBase12ApplyOpacityEj(void *self, unsigned a);
    out before it is despawned (hal/comms_sync.cpp, 0..256; 256 for every body
    that is not a hub ghost, so the old path and the probes are unchanged). */
 extern "C" int port_adventure_ghost_fade(int slot);
+
+/* the models whose materials carry the figure mark right now (at most the
+   body, balloon body, head, wings and the sleep model of ONE player), each with
+   the three bits it had, so the release puts back exactly what was there */
+static const unsigned kGhostMarkMax_ = 64;
+struct GhostMark {
+    unsigned *flags;
+    unsigned old;
+};
+static GhostMark g_ghost_marks[5 * 64];
+static unsigned g_ghost_nmarks;
+
+static void ghost_marks_release()
+{
+    while (g_ghost_nmarks) {
+        const GhostMark &m = g_ghost_marks[--g_ghost_nmarks];
+        *m.flags = (*m.flags & ~0x00E00000u) | m.old;
+    }
+}
+
+/* put the figure number on every material of `model` (the record array is the
+   one ghost_models_in_toon reads: model + 8 holds the header and the records,
+   0x30 apart, the polygon attribute at +0x24) */
+static void ghost_mark_model(void *model, int slot)
+{
+    if (!model) return;
+    const int *p = (const int *)((char *)model + 8);
+    const unsigned char *hdr = (const unsigned char *)p[0];
+    char *rec = (char *)p[1];
+    if (!hdr || !rec) return;
+    unsigned nm = 0;
+    std::memcpy(&nm, hdr + 0x24, 4);
+    if (nm > kGhostMarkMax_) nm = kGhostMarkMax_;
+    const unsigned fig = (unsigned)((slot < 0 ? 0 : slot) % 7) + 1u;
+    for (unsigned i = 0; i < nm; ++i) {
+        unsigned *fl = (unsigned *)(rec + i * 0x30 + 0x24);
+        if (g_ghost_nmarks >= sizeof g_ghost_marks / sizeof g_ghost_marks[0])
+            return;
+        g_ghost_marks[g_ghost_nmarks].flags = fl;
+        g_ghost_marks[g_ghost_nmarks].old = *fl & 0x00E00000u;
+        ++g_ghost_nmarks;
+        *fl = (*fl & ~0x00E00000u) | (fig << 21);
+    }
+}
+
 static void ghost_opacity(void *model, int slot)
 {
     if (!model) return;
@@ -423,6 +491,10 @@ static void ghost_opacity(void *model, int slot)
         if (a < 1) a = 1;              /* 0 is the DS's wireframe, not clear */
     }
     _ZN9ModelBase12ApplyOpacityEj(model, a);
+    if (ghost_layer_on()) {
+        ntr::gx_set_ghost_layer(1);
+        ghost_mark_model(model, slot);
+    }
 }
 
 /* ---- THE NO-COLLISION HALF OF THE GHOST PASS ------------------------------
@@ -2072,6 +2144,7 @@ static void hal_render_player_world_body(void *player)
                Model::Render, the same dispatch the head's own draw makes. */
             if (func_ov002_020d225c(c)) {
                 char *m = *(char **)(c + 0x1d8);
+                if (m && ghost) ghost_opacity(m, party_slot);
                 if (m)
                     ((void(__fastcall *)(void *, void *, const void *))(
                         ((void ***)m)[0][5]))(m, 0, c + 0x56c);
@@ -2168,6 +2241,7 @@ static void hal_render_player_world_body(void *player)
             char *bones = *(char **)((char *)ma + 0x14);
             const int *src;
             _ZN9ModelBase12ApplyOpacityEj(m4, *(const unsigned char *)(c + 0x6f5));
+            if (ghost) ghost_opacity(m4, party_slot);
             if (*(unsigned char *)(c + 0x6db) == 3) {
                 Matrix4x3_FromTranslation(&data_020a0e68, -0x1b33, -0x666, 0);
                 Matrix4x3_ApplyInPlaceToRotationZ(&data_020a0e68, 0x4000);
@@ -2197,6 +2271,10 @@ static void hal_render_player_world_body(void *player)
                                        c + 0x80);
         }
     }
+
+    /* the figure mark comes off every model it went on, now that all of this
+       player's geometry has been submitted */
+    ghost_marks_release();
 
     /* LAST, after every draw this function makes, so the latch it reads is the
        one this player's geometry was submitted under. */
