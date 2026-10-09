@@ -11,8 +11,17 @@
  *
  * THE UNIT. One canvas unit is one DS pixel scaled by h / 192, kept as the
  * reduced fraction unum / uden (as swap_geom_for does) so the draw and the
- * inverse are handed small numbers. canvas_w = w * 192 / h: 256 at 4:3, 307 at
- * 16:10, 341 at 16:9, 448 at 21:9, 683 at 32:9. The canvas is 192 units tall.
+ * inverse are handed small numbers. canvas_w = w * 192 / h (floored, only used
+ * to pick the narrow or wide variant): 256 at 4:3, 307 at 16:10, 341 at 16:9,
+ * 448 at 21:9, 683 at 32:9. The canvas is 192 units tall and spans the whole
+ * picture; placement uses the exact w * uden / unum units wide, not canvas_w.
+ *
+ * SCALE RULE. A piece is s.w * knum / kden units wide (kden/knum from the
+ * allowed steps 1, 3/4, 2/3, 1/2), exactly, and both its edges are the floor of
+ * the exact host position (menu_layout_dest), so its dest size is within one
+ * host pixel of the exact size and pieces that meet on a canvas edge share a
+ * host edge. A piece that overruns the picture by no more than one canvas unit
+ * plus a pixel (rounding of an odd size such as 1022x767) is clamped to it.
  * A recipe builds a NARROW layout below MENU_WIDE_CANVAS (300) and a WIDE one
  * at or above it; wide spreads through anchors and offsets, it never stretches.
  *
@@ -77,6 +86,9 @@ struct MenuRecipe;
 struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; canvas_w = w*192/h */
                     MenuPiece p[MENU_MAX_PIECES]; int np; MenuHotspot hs[MENU_MAX_HOTSPOTS]; int nh;
                     int dest[MENU_MAX_PIECES][4]; int focus; uint8_t lift_owners; uint8_t stage; uint8_t backdrop;
+                    /* lift_owners is a MASK of MENU_L_* layer bits: phase 1 lifts an engine-A cell into
+                       the top2d plane when (lift_owners >> owner) & 1, where MenuTopCell.owner is the layer
+                       INDEX 0..4 (BG0..BG3, OBJ). MenuPiece.layers is a mask in the same bit order. */
                     /* P0CORE additions (never removed, only appended) */
                     int8_t back;                  /* hotspot the B / Backspace key presses, -1 none */
                     int variant;                  /* what build() was asked for */
@@ -102,6 +114,7 @@ struct MenuRecipe {
 extern const MenuRecipe g_menu_recipes[];
 extern const int        g_menu_nrecipes;
 #define MENU_SCENE_TEST (-77)               /* the TEST recipe is up for this scene id only */
+#define MENU_SCENE_TEST_CROP (-78)          /* the TEST recipe, variant 2 (its top band autocrops) */
 
 /* ---- the planes the real buffers arrive in (phase 1 fills these) ---------
    All pointers are borrowed for the frame. A null plane means "that source is
@@ -158,8 +171,27 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage);
 void hal_menu_touch_inverse(int bx, int by, int *dsx, int *dsy, int *in);
 int  hal_menu_hover(int bx, int by);            /* mouse hover sets focus and shows the cursor; 1 if over a hotspot */
 void hal_menu_touch_end(void);                  /* the stylus came up: forget the drag piece */
-/* H4. `pressed` is the PadData pressed word; the recipe's driver decides what is consumed. */
-void hal_menu_pad(uint16_t *pressed);
+/* H4. `pressed` is one PadData pressed word; the recipe's driver decides what is consumed.
+   `host_back` is a HOST flag, not a pad bit: phase 1 passes 1 on the frame Backspace or the bound
+   B-equivalent key goes down. The ROM has no pad "back" at all (every ROM back control is a touch
+   box) and the DS A key (0x0001) is a ROM confirm on the title (IsButtonInputValid mask 0xf; the
+   title Behavior tests pressed & 9), so no pad bit can carry it. When the live recipe names a back
+   hotspot (MenuLayout.back) the flag queues a synthesised touch at that hotspot's DS centre; with
+   no back hotspot it does nothing. Bit 0x0001 is neither read nor stripped here.
+
+   PHASE 1 MUST (both reviewer findings, REVP0CORE 2 and 6):
+   - The ROM reads the pressed bits in TWO words: data_020a0e58 + slot*4 + 2 and the split
+     spelling data_020a0e5a + slot*4 (IsButtonInputValid reads only the split one, see
+     src/IsButtonInputValid.c). hal_lc_menu_pad (hal/sub_screen.cpp) writes BOTH and uses the
+     local slot data_020a0e40. The hook must do the same: k = *pressed; hal_menu_pad(&k, back);
+     *pressed = k; *split = k. Calling with only one word updated lets the ROM see the old bits.
+   - Skip the call in a netplay transport session, exactly as hal_lc_menu_pad is skipped
+     (!b5_transport, walk_window.cpp near :13744): a pad rewrite in a session desyncs. A session's
+     menus are mouse/touch only; hal_menu_set_netplay stays as a second guard (ROM_CURSOR and MIXED
+     then act as TOUCH).
+   - The held word (data_020a0e58 + 0) is not touched by this call, so a TOUCH menu still sees
+     held direction bits there; only the pressed bits are rewritten. */
+void hal_menu_pad(uint16_t *pressed, int host_back);
 /* settings seam: key -> enabled. Default (no function set) = everything off. */
 void hal_menu_set_enable_fn(int (*fn)(int key));
 void hal_menu_set_netplay(int on);              /* in a transport session ROM_CURSOR is refused; TOUCH is used */
@@ -174,7 +206,8 @@ int  hal_menu_fallback_frames(void);
 
 /* pad bits as hal_lc_menu_pad uses them (hal/sub_screen.cpp): DS key word, PadData pressed */
 #define MENU_PAD_CONFIRM 0x0002  /* the port's jump binding (pad A, Space, Enter), cited at hal_lc_menu_pad */
-#define MENU_PAD_BACK    0x0001  /* ASSUMPTION for phase 1 to verify: the other face button */
+/* there is deliberately no MENU_PAD_BACK: 0x0001 is the DS A key (the port's punch), a ROM confirm
+   on the title. Back is the host_back argument of hal_menu_pad. */
 #define MENU_PAD_START   0x0008
 #define MENU_PAD_RIGHT   0x0010
 #define MENU_PAD_LEFT    0x0020

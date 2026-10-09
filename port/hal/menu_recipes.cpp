@@ -26,7 +26,7 @@ namespace {
 int up_never(int) { return 0; }
 void build_none(int, MenuLayout *) {}
 
-int up_test(int scene_id) { return scene_id == MENU_SCENE_TEST ? 1 : 0; }
+int up_test(int scene_id) { return scene_id == MENU_SCENE_TEST ? 1 : (scene_id == MENU_SCENE_TEST_CROP ? 2 : 0); }
 
 /* TEST layout. Source rects are DS pixels of the sub screen; the canvas is
    192 units tall. NARROW (canvas_w < 300):
@@ -36,11 +36,12 @@ int up_test(int scene_id) { return scene_id == MENU_SCENE_TEST ? 1 : 0; }
      p3 right pad       (128,96,128,96) at 2/3 R,B  y 124..188, x 167..252
    WIDE (canvas_w >= 300): p1 at 1 (y 52..140), p2 and p3 at 1/2, pushed to the
    corners, so the extra width is spent on margins, not on stretching. */
-void build_test(int, MenuLayout *L)
+void build_test(int variant, MenuLayout *L)
 {
     const int wide = menu_wide(L);
     MenuPiece p0 = menu_piece_make(SRC_TOP_2D, 0, 16, 256, 48, MENU_AX_C, MENU_AY_T, 0, 4, 1, 1);
     p0.layers = MENU_L_BG3 | MENU_L_OBJ;
+    p0.autocrop = variant == 2;      /* variant 2 (MENU_SCENE_TEST_CROP) exercises the autocrop latch */
     menu_add_piece(L, p0);
 
     MenuPiece p1 = menu_piece_make(SRC_SUB, 0, 0, 256, 88, MENU_AX_C, MENU_AY_T, 0, wide ? 52 : 56,
@@ -96,6 +97,6 @@ const MenuRecipe g_menu_recipes[] = {
     { "recroom",  up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
     { "vs",       up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
     { "fallback", up_never, build_fallback, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_TOUCH,   MENU_RF_FALLBACK, 1 },
-    { "test",     up_test,  build_test, 0, MENU_KEY_NONE,              MENU_DRV_TOUCH,      0, 1 },
+    { "test",     up_test,  build_test, 0, MENU_KEY_NONE,              MENU_DRV_TOUCH,      0, 2 },
 };
 const int g_menu_nrecipes = (int)(sizeof g_menu_recipes / sizeof g_menu_recipes[0]);
