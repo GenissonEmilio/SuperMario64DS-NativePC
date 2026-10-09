@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <climits>
 #include <cstring>
+#include <emmintrin.h>
 #include <map>
 #include <mutex>
 #include <thread>
@@ -941,7 +942,6 @@ void smooth_grid_vertex(const float p[3], float a, float b, float c,
 void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
                       const Mat *xform) {
     GxVertex v[SMOOTH_MAX_GRID];
-    const float inv = 1.0f / (float)tf;
     /* view_to_clip's widen, read once for the grid: present_w()/present_h()
        cannot change between two vertices of one triangle's grid, and the
        expression is view_to_clip's own, so every clip.x is the same float. */
@@ -949,31 +949,51 @@ void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
                        g.proj.m[11] != 0.0f;
     const float widen = persp
         ? (4.0f / 3.0f) * ((float)present_h() / (float)present_w()) : 1.0f;
-    int n = 0;
-    for (int ia = 0; ia <= tf; ++ia) {
-        for (int ib = 0; ib <= tf - ia; ++ib, ++n) {
-            const float a = (float)ia * inv;
-            const float b = (float)ib * inv;
-            float c = 1.0f - a - b;
-            if (c < 0.0f) c = 0.0f;
-            Vec4 view;
-            if (xform) {
-                const Vec4 l{pts[n * 3], pts[n * 3 + 1], pts[n * 3 + 2], 1.0f};
-                view = mul(l, *xform);
-                view.w = 1.0f;
-            } else {
-                view = Vec4{pts[n * 3], pts[n * 3 + 1], pts[n * 3 + 2], 1.0f};
-            }
-            Vec4 clip = mul(view, g.proj);
-            if (persp) clip.x *= widen;
-            GxVertex &o = v[n];
-            o.x = clip.x; o.y = clip.y; o.z = clip.z; o.w = clip.w;
-            o.vx = view.x; o.vy = view.y; o.vz = view.z; o.vw = view.w;
-            SmoothVertex at;
-            smooth_grid_attrs_inline(s[0], s[1], s[2], a, b, c, at);
-            o.u = at.u; o.v = at.v; o.color = at.color;
-            o.nx = at.nx; o.ny = at.ny; o.nz = at.nz;
+    /* The barycentric weights of every grid point, from the kernel's table:
+       the floats the old loop recomputed (ia * (1/tf), 1 - a - b clamped). */
+    const SmoothGridTable &T = *smooth_grid_table(tf);
+    const int n = T.n;
+    /* mul(v, m) is ((v.x*m0 + v.y*m4) + v.z*m8) + v.w*m12 per column; here
+       the four columns are the four lanes, with the same multiplies and adds
+       in the same order and no fused op, so every float is mul()'s. */
+    const __m128 pr0 = _mm_loadu_ps(g.proj.m), pr1 = _mm_loadu_ps(g.proj.m + 4),
+                 pr2 = _mm_loadu_ps(g.proj.m + 8), pr3 = _mm_loadu_ps(g.proj.m + 12);
+    __m128 xr0 = _mm_setzero_ps(), xr1 = xr0, xr2 = xr0, xr3 = xr0;
+    if (xform) {
+        xr0 = _mm_loadu_ps(xform->m); xr1 = _mm_loadu_ps(xform->m + 4);
+        xr2 = _mm_loadu_ps(xform->m + 8); xr3 = _mm_loadu_ps(xform->m + 12);
+    }
+    const __m128 one = _mm_set1_ps(1.0f);
+    for (int i = 0; i < n; ++i) {
+        __m128 vw;                                   // the view-space point, w = 1
+        if (xform) {
+            const __m128 r = _mm_add_ps(_mm_add_ps(_mm_add_ps(
+                _mm_mul_ps(_mm_set1_ps(pts[i * 3]), xr0),
+                _mm_mul_ps(_mm_set1_ps(pts[i * 3 + 1]), xr1)),
+                _mm_mul_ps(_mm_set1_ps(pts[i * 3 + 2]), xr2)),
+                _mm_mul_ps(one, xr3));
+            float t[4];
+            _mm_storeu_ps(t, r);
+            vw = _mm_setr_ps(t[0], t[1], t[2], 1.0f);
+        } else {
+            vw = _mm_setr_ps(pts[i * 3], pts[i * 3 + 1], pts[i * 3 + 2], 1.0f);
         }
+        const __m128 cl = _mm_add_ps(_mm_add_ps(_mm_add_ps(
+            _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0x00), pr0),
+            _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0x55), pr1)),
+            _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0xAA), pr2)),
+            _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0xFF), pr3));
+        float cv[4], vv[4];
+        _mm_storeu_ps(cv, cl);
+        _mm_storeu_ps(vv, vw);
+        GxVertex &o = v[i];
+        o.x = persp ? cv[0] * widen : cv[0];
+        o.y = cv[1]; o.z = cv[2]; o.w = cv[3];
+        o.vx = vv[0]; o.vy = vv[1]; o.vz = vv[2]; o.vw = vv[3];
+        SmoothVertex at;
+        smooth_grid_attrs_inline(s[0], s[1], s[2], T.a[i], T.b[i], T.c[i], at);
+        o.u = at.u; o.v = at.v; o.color = at.color;
+        o.nx = at.nx; o.ny = at.ny; o.nz = at.nz;
     }
     /* THE BULK. Each grid vertex goes to screen space ONCE (it used to be
        once per sub-triangle that touched it, up to six times), and a

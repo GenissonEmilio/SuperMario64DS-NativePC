@@ -152,6 +152,18 @@ const uint16_t *smooth_grid_tri_index(int tf);
 // (ia, ib) order the index table is written against. Returns the point count.
 int smooth_grid_positions(const SmoothVertex &p1, const SmoothVertex &p2,
                           const SmoothVertex &p3, int tf, float *out);
+// THE GRID TABLE. For each tessellation factor (2, 4, 8) the barycentric
+// weights of every grid point (a, b, c) and its ten Bernstein weights, as
+// smooth_eval_patch computes them, built once and kept. A patch evaluation is
+// then ten multiply-adds per coordinate per point with nothing recomputed,
+// the same floats in the same order as smooth_eval_patch.
+struct SmoothGridTable {
+    int n;
+    float a[SMOOTH_MAX_GRID], b[SMOOTH_MAX_GRID], c[SMOOTH_MAX_GRID];
+    float w[SMOOTH_MAX_GRID][10];
+};
+// Null for tf that is not 2, 4 or 8.
+const SmoothGridTable *smooth_grid_table(int tf);
 // Everything about a grid point that is NOT its position: texel coordinates
 // and colour linear in the barycentric weights, and the normal carried for a
 // future relighting pass. Writes u, v, color, nx, ny, nz and nothing else.
