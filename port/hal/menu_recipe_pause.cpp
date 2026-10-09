@@ -31,6 +31,7 @@
  */
 #include "menu_compose.h"
 
+#include <stdio.h>
 #include <string.h>
 
 extern "C" {
@@ -46,6 +47,7 @@ extern unsigned char data_0209f2b4;    /* how many plates */
 extern unsigned char data_0209f22c;    /* press hold ticks */
 extern unsigned char data_0209f244;    /* press flash ticks */
 extern unsigned char data_0209f300;    /* input lock after open */
+extern unsigned char data_0209f2c8;    /* the course the card shows */
 int GetOwnerLanguage(void);
 void _ZN5Stage17UpdateMenuButtonsEb(int b);
 void func_02012790(int id);
@@ -87,6 +89,16 @@ int pause_up(int scene_id)
     if (scene_id == 3 || scene_id == -1) v = pause_variant();
     if (v != g_last_variant) g_cursor_shown = 0;
     g_last_variant = v;
+    if (hal_menu_trace_on()) {      /* SM64DS_MENU_TRACE: every change of the ROM's pause words, for the proof rows */
+        static int last[7] = { -1, -1, -1, -1, -1, -1, -1 };
+        const int now[7] = { v, data_0209f2c4, data_0209f248, data_0209f1ec, data_0209f2c8, data_0209f2e0, data_0209f218 };
+        if (memcmp(now, last, sizeof now) != 0) {
+            memcpy(last, now, sizeof last);
+            fprintf(stderr, "[pause] variant=%d f2c4=%d f248=%d f1ec=%d course=%d sel=%d select=%d
+", now[0], now[1], now[2],
+                    now[3], now[4], now[5], now[6]);
+        }
+    }
     return v;
 }
 
