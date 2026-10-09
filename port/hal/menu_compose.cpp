@@ -910,11 +910,13 @@ void hal_menu_pad(uint16_t *pressed, int host_back)
     }
 
     /* TOUCH, and MIXED (vertical keys go to the ROM cursor when the recipe has one) */
-    int handled_dir = 0;
-    if (drv == MENU_DRV_MIXED && R->rom_cursor && (dir == MENU_DIR_UP || dir == MENU_DIR_DOWN)) {
-        int sel = 0;
-        R->rom_cursor(dir, &sel);
-        handled_dir = 1;
+    int handled_dir = 0, owns = 0;
+    if (drv == MENU_DRV_MIXED && R->rom_cursor) {
+        /* PAUSE1 contract (status\PAUSE1.md): called every pad frame (dir -1 = none pressed); a nonzero
+           return consumes the direction; owns = 1 means this page's plates are the ROM cursor, so A is
+           the ROM's own confirm (Start), exactly as the ROM_CURSOR driver does it */
+        const int r = R->rom_cursor(dir, &owns);
+        if (dir >= 0 && r) handled_dir = 1;
     }
     if (dir >= 0 && !handled_dir) {
         if (!g_focus_shown) {          /* the first press only shows the cursor */
@@ -924,7 +926,9 @@ void hal_menu_pad(uint16_t *pressed, int host_back)
             menu_focus_move(&g_cur, dir);
         }
     }
-    if (k & MENU_PAD_CONFIRM) {
+    if ((k & MENU_PAD_CONFIRM) && owns) {
+        k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | MENU_PAD_START);
+    } else if (k & MENU_PAD_CONFIRM) {
         if (g_focus_shown && g_cur.focus >= 0 && g_cur.focus < g_cur.nh) {
             const MenuHotspot &H = g_cur.hs[g_cur.focus];
             hal_menu_touch_queue_press(H.box.x + H.box.w / 2, H.box.y + H.box.h / 2);

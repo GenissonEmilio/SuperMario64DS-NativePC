@@ -145,9 +145,11 @@ if(PORT_TEST_HOOKS)
         "fault-injection hook and are TEST ONLY. Do not ship them.")
 endif()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE PORT-SIDE CALL TRACE (run link100, lane TRACEPORT)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Lane ROMTRACE built an instrumented melonDS that writes down every function
 # call the REAL cartridge's ARM9 makes and resolves the addresses to this
@@ -4614,7 +4616,8 @@ list(APPEND PORT_ACTOR_OVERLAYS ov096)
 # heads are pinned and all five phantoms left out of the list. See
 # port/ov074_syms.txt and port/slice_ov074.txt.
 list(APPEND PORT_ACTOR_OVERLAYS ov074)
-# ============================================================================
+# =====================================================================endforeach()
+
 # RUN REL0215 WAVE 2, LANE CAST-SWEEP2 -- four level overlays, one per commit.
 # This region grows by one list(APPEND) per overlay; the source-list region far
 # below grows by one block per overlay and feeds ONE ${SWEEP2_SOURCES} into the
@@ -8340,9 +8343,11 @@ foreach(_qb_rel IN LISTS PORT_QUESTIONBLOCK_HOSTABI_SOURCES)
         "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/QuestionBlock_HostAbi.h")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # Run link100 lane CRASH9: THE dBgW VTABLE IS THE ROM'S SHAPE, NOT MSVC'S.
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Same /FI mechanism as the four blocks above, but this one fixes a vtable
 # SHAPE rather than a field offset. It moves no field: a virtual adds no data
@@ -10439,7 +10444,8 @@ endforeach()
 # them; CMake appends every list to the same targets and dedupes identical
 # absolute paths, so nothing is compiled twice.
 #
-# ================= THE TRAMPOLINE PAIR'S SHARED LIGHT BODY =================
+# ================= THE TRAMPOLINE PAIR'S SHARED LIGHT BODY ==========endforeach()
+
 #
 # func_ov006_020d09e0 IS LISTED IN BOTH slice_tti.txt AND slice_tte.txt, and it
 # is one of the geometry-register bodies both scenes need substituted.  That
@@ -12793,7 +12799,8 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV19daObjKm1_Ukishima_c;VT1=_ZTV10dBgActor_c")
 
-# ============================================================================
+# =====================================================================endforeach()
+
 # lane SEAT-BDW: ov043's remaining cast -- RICKSHAW_BDW (137),
 # RICKSHAW_PLATFORM_BDW (136), STAIRS_BDW (134). The ov047 152/151/153 shape
 # (Bowser in the Sky's identical siblings) applied to ov043, so every -D bind
@@ -14578,7 +14585,8 @@ set_source_files_properties(
 
 
 
-# ============================================================================
+# =====================================================================endforeach()
+
 # RUN REL0215 WAVE 1, LANE CAST-SWEEP1 -- the small-cast sweep.
 #
 # Six level overlays whose whole cast is one or two classes with a tiny vtable
@@ -15649,7 +15657,8 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS "func_ov074_021222e0=data_ov070_021222e0")
 
 
-# ============================================================================
+# =====================================================================endforeach()
+
 # RUN REL0215 WAVE 2, LANE CAST-SWEEP2 -- the four-overlay cast sweep.
 #
 # ov032 (24), ov034 (26), ov047 (39), ov055 (47), each landing as its own
@@ -17007,12 +17016,14 @@ foreach(dup IN ITEMS src/func_ov001_020aa6b0.c src/func_ov001_020aa6cc.c
     endif()
 endforeach()
 
-# ============================================================================
+# =====================================================================endforeach()
+
 # ov029: level 21's own eight actors (water_city, Dire Dire Docks city).
 # The fill is hal/actor_classes_ov029.cpp; the matched src closure is
 # port/slice_ov029.txt; the SpawnInfo/resource/bss mount is port/ov029_syms.txt
 # (ov029 is on PORT_ACTOR_OVERLAYS). Every consumer target gets ${OV029_SOURCES}.
-# ============================================================================
+# =====================================================================endforeach()
+
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_ov029.txt" SLICE_OV029_LINES)
 set(SLICE_OV029_SOURCES "")
 foreach(line IN LISTS SLICE_OV029_LINES)
@@ -18445,7 +18456,8 @@ if(WIN32)
     target_sources(walk_window_hires PRIVATE res/walk_window.rc)
 endif()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # run mg15 lane MP1: THE SLEEP/WAKE PROBE.
 #
 # runs/mg15/out/MP/FRONTIER.md section 10.2 names the ROM wireless lockstep's
@@ -18852,9 +18864,11 @@ foreach(_g225 _ZN3IRQ11Dma0HandlerEv _ZN3IRQ11Dma1HandlerEv
         "func_02056cc0=_ZN3IRQ13DmaTimHandlerEj")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # GATE 226 -- the seven guessed slots of _ZTV16daObjPushblock_c, ruled and seated
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Gate 224 above hosts six ov002 base tables and fills every slot it has a body
 # for. On 0x021096b0 (daObjPushblock_c) it had to leave SEVEN calling
@@ -18933,9 +18947,11 @@ set_source_files_properties(
     # object with an /alternatename, which is the same binding the linker had.
     "VT0=port_vt_daObjPushblock_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # GATE 227 -- ten more ruled bodies, on four hosted tables and one trap pair
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Gate 226 above seated the seven slots of one ov002 table. This seats ten more
 # out of the same ruling set: the four tail slots of _ZTV8SignPost, one tail
@@ -19002,9 +19018,11 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "VT=_ZTV8Painting;HEAP=data_020a0eac")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # GATE 228 -- eleven more ruled bodies, nine of them over a hand thunk
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # The same ruling set as gate 227. What is different is what these replace:
 # nine of the eleven sit on slots hal already dispatched through a destructor
@@ -19078,9 +19096,11 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV11daObjPile_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # GATE 229 -- three more ruled bodies, all deleting destructors
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # The same ruling set as gates 227 and 228 (lane STUBADJ's REAL_DECOMP rows in
 # port/tools/inferred_stub_adjudicated.txt). What is left in that set after
@@ -19124,9 +19144,11 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV17daObjFl_Amilift_c;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # GATE 230 -- actor id 192, daObjPushblock_c, joins the registry
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Not a decomp gate: the class's nine own bodies are all linked already and
 # its vtable is filled with no traps (gate 226). This links the FACTORY and
@@ -19160,7 +19182,8 @@ endforeach()
 #    PROPERTIES COMPILE_DEFINITIONS
 #    "_ZTV16daObjPushblock_c=_ZTV16daObjPushblock_c")
 # GATE SLOT5 -- the thirty Render bodies the destructor fold kept unlinked
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # mwccarm spends TWO vtable entries on `virtual ~X()` (the Itanium D1/D0 pair)
 # and MSVC folds them into one, so every virtual declared after the destructor
@@ -19195,10 +19218,12 @@ foreach(_tslot5 walk_window walk_window_hires smoke_player)
     target_sources(${_tslot5} PRIVATE ${SLICE_SLOT5_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # GATE 231 (run link100, lane SPAWN2) -- two actor classes the port had never
 # been able to register, and their ruled bodies
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Both classes were held out by the same reading and both are released by the
 # same ruling. Their lifecycle bodies carry the "recovered from vtable slot
@@ -19274,10 +19299,12 @@ set_source_files_properties(
 # that is the host array; its D1 and D0 rows already exist above (the D0's is
 # corrected in place for the missing G0).
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # GATE 232 (run link100, lane SPAWN2) -- ov010's TRAP (actor 36) is bound to
 # the WRONG vtable, and this is the correction
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # hal/actor_classes.cpp binds /alternatename:__ZTV14daObjC1_Trap_c=__ZTV4Trap on
 # the reading that one ov010 table wears three names. The ROM says two tables of
@@ -19372,7 +19399,8 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "data_ov010_02112d28=port_trap36_states")
 # LANE UNMATCH, batch 1: four host copies whose reason died with the unfold
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Lane SLOT5F respelled the ROM's D1/D0 destructor pair as two plain virtuals
 # under _MSC_VER, so every host model-family table is ROM-numbered again and
@@ -19405,10 +19433,12 @@ foreach(_tunmatch walk_window walk_window_hires smoke_player)
     target_sources(${_tunmatch} PRIVATE ${SLICE_UNMATCH_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # LANE UNMATCH, batch 2: the two tables nothing re-seated, and the one
 # dispatcher shape no seat in this tree served
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Lane PMF3 landed twenty member-pointer host copies and named three families
 # it would not force. None of the three was a width or a form problem -- all
@@ -19449,9 +19479,11 @@ foreach(_tunmatch2 walk_window walk_window_hires smoke_player)
                    "${CMAKE_CURRENT_SOURCE_DIR}/hal/unmatch_aliases.cpp")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # LANE FOLD2, batch 1: the ov006 minigame host copies the unfold retired
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Nine host copies whose ONLY stated reason was the MSVC destructor fold. Lane
 # SLOT5F respelled the ROM's D1/D0 pair as two plain virtuals under _MSC_VER in
@@ -19508,9 +19540,11 @@ foreach(_tfold2 walk_window walk_window_hires smoke_player)
     target_sources(${_tfold2} PRIVATE ${SLICE_FOLD2_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # LANE EXCEPT, batch 1: two rows off the documented host-ABI exception queue
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # The census these came from is out/EXCEPT/census.md in the run directory:
 # every one of the 414 rows `port/tools/linkage.py --exceptions` prints,
@@ -19548,9 +19582,11 @@ foreach(_texcept walk_window walk_window_hires smoke_player)
     target_sources(${_texcept} PRIVATE ${SLICE_EXCEPT_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # LANE EXCEPT, batch 2: the slot-5 family, seventeen Renders
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Seventeen matched Render TUs across sixteen actor classes whose documented
 # host-ABI reason is a vtable numbering THAT NO LONGER EXISTS. Lane SLOT5F
@@ -19591,9 +19627,11 @@ foreach(_texcept2 walk_window walk_window_hires smoke_player)
     target_sources(${_texcept2} PRIVATE ${SLICE_EXCEPT2_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # LANE FACEF: the calling-convention-face rows (family F + family E leftovers)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # out/EXCEPT/census.md ranked the port's 414 documented host-ABI exceptions by
 # the mechanism each row's own tag states, and left family F -- "calling-
@@ -19625,9 +19663,11 @@ foreach(_tfacef walk_window walk_window_hires smoke_player)
     target_sources(${_tfacef} PRIVATE ${SLICE_FACEF_SOURCES} ${TTE_HOSTGEN_GEN})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # R10a, run link100 lane PMFB2: THE SEATED-TABLE ROWS
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Rows that were host-copied only because the DATA under them held a DS code
 # word, taken off their host copies once a boot-time installer puts a host
@@ -19692,9 +19732,11 @@ foreach(_tpmfb2 walk_window walk_window_hires smoke_player)
     target_sources(${_tpmfb2} PRIVATE ${SLICE_PMFB2_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # R10b, run link100 lane PMFB3: dScMgSound_c's THIRTEEN LEVEL-2 DISPATCHERS
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # The rows block R10a's own text left for the next lane: "the thirteen level-2
 # tables the sub-dispatchers read. Their code words are still DS addresses and
@@ -19731,9 +19773,11 @@ foreach(_tpmfb3 walk_window walk_window_hires smoke_player)
     target_sources(${_tpmfb3} PRIVATE ${SLICE_PMFB3_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # R10c, run link100 lane PMFB4: THE CALL-SHAPE ROWS OVER UNSEATED TABLES
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Blocks R10a and R10b took the family-C rows whose table already had an
 # installing seat, and then the rest of one class's tables one level down. This
@@ -19767,9 +19811,11 @@ foreach(_tpmfb4 walk_window walk_window_hires smoke_player)
     target_sources(${_tpmfb4} PRIVATE ${SLICE_PMFB4_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # R10d, run link100 lane MGWRITER: THE OBJECT-FIELD ROWS AND THEIR WRITER
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Blocks R10a, R10b and R10c took rows that read a TABLE. This block takes rows
 # that read an OBJECT FIELD: there is no table for a boot installer to verify
@@ -19812,9 +19858,11 @@ foreach(_tmgw walk_window walk_window_hires smoke_player)
     target_sources(${_tmgw} PRIVATE ${SLICE_MGWRITER_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # R10d, run link100 lane PMFB5: THE REMAINING SINGLE-ROW TABLES
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Block R10c took the call-shape rows whose table had no seat, grouped by the
 # file that owns several tables at once. This block takes what it left: the
@@ -19848,9 +19896,11 @@ foreach(_tpmfb5 walk_window walk_window_hires smoke_player)
     target_sources(${_tpmfb5} PRIVATE ${SLICE_PMFB5_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # R10e, run link100 lane FWD: THE MEMBER-DEFINING Behavior ROWS
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Blocks R10a through R10d took rows whose matched TU defines the FLAT C symbol
 # the port's face calls. This block takes the nine that do not: their matched
@@ -19892,9 +19942,11 @@ foreach(_tfwd walk_window walk_window_hires smoke_player)
     target_sources(${_tfwd} PRIVATE ${SLICE_FWD_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # R10f, run link100 lane PMFB6: THE TEN CUTSCENE_OBJECT STATE DISPATCHERS
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/hal/cutscene_states_link100.cpp hosted all ten readers of
 # CUTSCENE_OBJECT's ten pointer-to-member state tables as an ADDRESS SWITCH,
@@ -19950,9 +20002,11 @@ foreach(_tpmfb6 walk_window walk_window_hires smoke_player)
     target_sources(${_tpmfb6} PRIVATE ${SLICE_PMFB6_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE WIRELESS PLAN, RUNG W0 (run link100, lane WM1)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # src/func_02040714.c and src/func_02040704.c: the two bodies of the radio seam
 # that touch no radio. Each is one global read, and both globals are hosted --
@@ -19987,9 +20041,11 @@ endforeach()
 # link, and into hal/comms_seam.cpp, which it does.)
 target_sources(mp_comms_seam PRIVATE ${SLICE_WM1_SOURCES})
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE WIRELESS PLAN, RUNG W1 (run link100, lane WM2)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # src/func_020408b0.c and the eleven TUs its closure reaches: the ROM's own WM
 # bring-up, up to and including WM_Init registering the ARM9's channel-0xa
@@ -20165,9 +20221,11 @@ foreach(_tseat4 walk_window walk_window_hires smoke_player)
                    "${CMAKE_CURRENT_SOURCE_DIR}/hal/pmf_seat4.cpp")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE WIRELESS PLAN, RUNGS W4 AND W5 (run link100, lane WM3)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # src/func_02040820.c and src/func_02040790.c -- the ROM's own become-parent and
 # become-child state machines -- src/func_02040724.c (leave), and the 128 TUs
@@ -20208,9 +20266,11 @@ endforeach()
 target_compile_definitions(mp_comms_seam PRIVATE
     PORT_COMMS_SEAM_PROBE_FACES_W4)
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE WIRELESS PLAN, RUNG W2 (run link100, lane WM4)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # src/func_0204068c.c and src/func_02062778.c: the ROM's own MP receive
 # unpacker. The list and the argument are in port/slice_wm4.txt's own header;
@@ -20238,9 +20298,11 @@ endforeach()
 target_compile_definitions(mp_comms_seam PRIVATE
     PORT_COMMS_SEAM_PROBE_FACE_0204068C)
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE WIRELESS PLAN, RUNG W6 (run link100, lane WM5)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # src/func_02040c34.c -- the ROM's own wireless worker-thread bring-up -- and
 # nineteen more from its call closure. The list, the eleven TUs it refuses and
@@ -20294,9 +20356,11 @@ foreach(_twm5f mp_comms_seam smoke_player)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/wm_thread_face.cpp")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE WIRELESS PLAN, RUNG W7 (run link100, lane WM8)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # The eleven TUs of the 0x02063E-0x020655 message-layer band that rung W6 left
 # behind four faces in hal/wm_thread.cpp. Why they were refused, why the
@@ -20362,9 +20426,11 @@ foreach(_twm8 walk_window walk_window_hires)
     target_sources(${_twm8} PRIVATE ${SLICE_WM8_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # ONE COMPILE OF THE TIER-INDEPENDENT SLICE
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # THE PROBLEM. Three targets compile the whole matched slice: walk_window,
 # walk_window_hires and smoke_player. Their command lines are byte-identical
@@ -20619,9 +20685,11 @@ if(_share_n GREATER 1)
 endif()
 
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # LANE FOLD2 hostgen: the three ov006 draws that also poke the light registers
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # WHY THIS BLOCK IS BELOW THE TIER-INDEPENDENT SECTION AND NOT ABOVE IT. That
 # section reads each target's SOURCES property back and rewrites it, and it
@@ -20673,9 +20741,11 @@ foreach(_tfold2g walk_window walk_window_hires smoke_player)
     target_sources(${_tfold2g} PRIVATE ${FOLD2_HOSTGEN_GEN})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # LANE EXCEPT hostgen: dScMgSnowball_c's Render, ROM vtable slot 9
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # WHY THIS BLOCK IS BELOW THE TIER-INDEPENDENT SECTION. The same reason lane
 # FOLD2's block above it is: the source does not exist at configure time, it
@@ -20739,10 +20809,12 @@ foreach(_texceptg walk_window walk_window_hires smoke_player)
     target_sources(${_texceptg} PRIVATE ${EXCEPT_HOSTGEN_GEN})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE ROM'S OWN main() AS THE PORT'S BOOT SPINE (run link100, lanes BOOTSCOUT
 # and BOOTR1).
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # src/main.c is the ROM's eighteen-line main at arm9 0x02007000. The port's
 # tests/walk_window.cpp defines main() for Windows, so until this block the
@@ -20798,9 +20870,11 @@ foreach(_tromframe walk_window walk_window_hires smoke_player)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/rom_frame.cpp")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE REFUSED ARMS OF func_0201a054 (run link100, lane R2ABC, rungs R2a-R2c)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # hal/rom_main.cpp left main's fifth call -- func_0201a054 -- as a seam that
 # only counted its hits, because hal/boot_os.cpp's transcription of that body
@@ -20968,10 +21042,12 @@ endforeach()
 target_sources(smoke_player PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/func_0205ac28.c")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SEAT2 -- the ROM's second destructor word for four cartridge vtables
 # (run link100 wave 7, census batch B2 DTOR-THUNK-VTABLES)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_seat2.txt is the derivation and hal/vtables_seat2.cpp carries the
 # seat, the ROM addresses each word was read at, and the refusals.  Three
@@ -21072,9 +21148,11 @@ foreach(_tseat2s smoke_player walk_window_hires)
         "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN5Stage19BeforeInitResourcesEv.cpp")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # Run link100 wave 7, lane SEAT6: BATCH B6, SLOT-DISPATCH (families E and F)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Seventeen rows of the eighteen out/REMAIN2/BATCHES.md section B6 lists, each
 # derived from the ROM one at a time. The per-row evidence -- the vtable word
@@ -21246,9 +21324,11 @@ message(STATUS "CONFIGURE DEPS: ${_PORT_CONFIGURE_DEPS_N} configure-time inputs 
 # substitution with one hit from an early slice and none from a late one passed
 # here while the late slice went on compiling the raw TU.
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # INT BODIES THAT FALL OFF THE END (C4716), PER SOURCE
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # mwccarm lets a non-void function reach its closing brace without a return:
 # the caller reads whatever r0 holds. MSVC reports the same shape as C4716,
@@ -21394,9 +21474,11 @@ foreach(_foe_rel IN LISTS PORT_FALLS_OFF_END_SOURCES)
     endforeach()
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # DSSTATE FORCE-INCLUDE (run link100 wave 9c, lane LINK21)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # THE FIRST BUILD IN THIS CAMPAIGN THAT REACHED A LINK ran dsstate_guard for the
 # first time. That guard reads build/port/walk_window.map, which has been zero
@@ -21471,9 +21553,11 @@ if(MSVC)
     endforeach()
 endif()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE CONSOLIDATION GAP, BATCH 1 (run link100, lane SLICE1)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Translation units that exist in src/ on this branch, own at least one of the
 # flat ROM names walk_window.exe reported unresolved in the first link after the
@@ -21594,9 +21678,11 @@ foreach(_tslice1 walk_window walk_window_hires smoke_player)
     target_sources(${_tslice1} PRIVATE ${SLICE_SLICE1_SOURCES} ${TITLEQUAD_GEN})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE CONSOLIDATION GAP, THE SEAT HALF (lane FACES2, the same sync)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Lane SLICE1's batch 1 continued, against the wall that is left after lane
 # FACES1's 1464 generated faces. The rule is the same and so is the shape: a
@@ -21629,9 +21715,11 @@ foreach(_tfaces2 walk_window walk_window_hires smoke_player)
     target_sources(${_tfaces2} PRIVATE ${SLICE_FACES2_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SLICE HOSTGEN4 (run link100, lane HOSTGEN4)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # One translation unit, src/actors/daMky_c.cpp, seated through the whole-TU
 # hostgen substitution declared near the top of this file. It answers fourteen
@@ -21708,9 +21796,11 @@ endforeach()
 target_sources(walk_window PRIVATE ${SLICE_DTORS_A_SOURCES})
 
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # THE WAVE-9c DESTRUCTOR FORWARDERS (run link100 wave 9c, lane DTORS2)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Seventeen more flat Itanium destructor rows off walk_window's own wall, in one
 # generated file beside lane DTORS-A's two.  Same generator (tools/dtorfwd.py),
@@ -21744,9 +21834,11 @@ endforeach()
 target_sources(walk_window PRIVATE ${SLICE_DTORS2_SOURCES})
 
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SEATS, BOTTOM-UP: GATE 3 (run link100 wave 9b, lane SEATS2, staged by INT3)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Two one-row seats a SOURCE-SIDE sweep found, and the name-bridge translation
 # unit they need.  Neither goes through hostgen.  Gates 1 and 2 of that lane
@@ -21772,9 +21864,11 @@ foreach(_tseats2 walk_window walk_window_hires smoke_player)
     target_sources(${_tseats2} PRIVATE ${SLICE_SEATS2_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # LANE SEATS3, run link100 wave 9c: the last four class/member seats
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Four translation units on no live slice row and the name-bridge file they
 # need. port/slice_seats3.txt carries the derivation and the measured counts
@@ -21810,9 +21904,11 @@ endforeach()
 
 
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SLICE FACES4 (run link100, lane FACES4, wave 9c)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # One host file, port/hal/faces4_rows.cpp, carrying thirty NAME rows of
 # walk_window's wall: twenty-three destructor adapters the main -> port sync
@@ -21836,9 +21932,11 @@ foreach(_tfaces4 walk_window walk_window_hires smoke_player)
     target_sources(${_tfaces4} PRIVATE ${SLICE_FACES4_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SLICE INT4 (run link100 wave 9c, lane INT4, the fold)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Two per-function structor translation units nobody claimed, seated so lane
 # DTORS2's out-of-line forwarder premise reaches KnockDownPlank and TowerStep.
@@ -21859,9 +21957,11 @@ endforeach()
 target_sources(walk_window PRIVATE ${SLICE_INT4_SOURCES})
 
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SLICE VTD1 (run link100 wave 14, lane SEAT14C, BATCH 2)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Vtable-held destructor pairs in small overlays. port/slice_vtd1.txt carries
 # the per-row derivation, including the two rows of BATCH 2 that are REFUSED
@@ -21891,9 +21991,11 @@ foreach(_tvtd1 walk_window walk_window_hires smoke_player)
 endforeach()
 
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SLICE OV2T (run link100 wave 14, lane SEAT14C, BATCH 6)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # ov002 data-table roots. port/slice_ov2t.txt carries the per-row derivation
 # and the three rows of BATCH 6 that are refused there rather than seated.
@@ -21919,9 +22021,11 @@ foreach(_tov2t walk_window walk_window_hires smoke_player)
 endforeach()
 
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SLICE LINK21 (run link100 wave 9c, lane LINK21, the last lane before the link)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # The two bannered NONMATCHING drafts main gained today, and this lane's own hal
 # rows. port/slice_link21.txt carries the derivation, the four wall rows the two
@@ -21947,9 +22051,11 @@ foreach(_tlink21 walk_window walk_window_hires smoke_player)
     target_sources(${_tlink21} PRIVATE ${SLICE_LINK21_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SLICE L15STALE (run link100 wave 15, lane SEAT15A, BATCH 1)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # THE STALE-BANNER HARVEST, ROUND 2. Two port host copies whose own banners
 # said "no matched TU of this name exists" while src/ on this tip has one.
@@ -21983,9 +22089,11 @@ foreach(_tl15stale walk_window walk_window_hires smoke_player)
     target_sources(${_tl15stale} PRIVATE ${SLICE_L15STALE_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SLICE L15ENAB (run link100 wave 15, lane SEAT15A, BATCH 2)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # THE NAMED-ENABLER ROWS. One slice row, one reference fix, and one enabler
 # that turned out not to exist:
@@ -22018,10 +22126,12 @@ foreach(_tl15enab walk_window walk_window_hires smoke_player)
     target_sources(${_tl15enab} PRIVATE ${SLICE_L15ENAB_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # R-L15B3 (run link100 wave 15, lane SEAT15A, BATCH 3): THE ov063 -> ov055
 # CROSS-OVERLAY EDGE, resolved by disassembly. The 22nd symscope crossing.
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # THE AMBIGUITY. config/arm9/overlays/ov063/relocs.txt line 184 reads
 #     from:0x02118004 kind:arm_call to:0x02111264 module:overlays(27,55)
@@ -22190,9 +22300,11 @@ target_sources(smoke_player PRIVATE
 # out/SMOKELINK5B/bugs.md carries this finding with the measured call list.
 
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # SLICE L15FS (run link100 wave 15, lane SEAT15C, LINK15 BATCH 2)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # The arm9 SharedFilePtr / FS veneer family. port/slice_l15fs.txt carries the
 # per-row re-read: every one of these was host-copied over an ARM register
@@ -22221,9 +22333,11 @@ foreach(_tl15fs walk_window walk_window_hires smoke_player)
     target_sources(${_tl15fs} PRIVATE ${SLICE_L15FS_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W23-4 OS ARENA (LINK15 batch W23-4)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Run linkfull wave 23, lane OSARENA1. Three NitroSDK OS arena accessors
 # (func_02058eb4 OS_GetArenaHi, func_02058d58 OS_SetArenaLo, func_02058cd0
@@ -22266,7 +22380,8 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/os_arena.cpp" APPEND PROPER
     "$<$<IN_LIST:$<TARGET_PROPERTY:NAME>,port_slice_shared;walk_window;walk_window_hires;smoke_player>:SM64DS_OS_ARENA_ROM=1>")
 
 # W23-6 HOSTGEN REFUSALS (LINK15 batch W23-6)
-# ===========================================================================
+# ====================================================================endforeach()
+
 # run linkfull wave 23, lane HGFRONT1. Four matched TUs whose host copies were
 # held by a PORT_HOST_ABI tag naming an MSVC front-end refusal: three of those
 # refusals are gone from the synced src, and the fourth is answered by
@@ -22327,9 +22442,11 @@ foreach(_hgt_rel IN LISTS PORT_HOSTGEN_TU)
                    "${PORT_HOSTGEN_TU_HITS_${_hgt_rel}} slice row(s)")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # TAIL-PADDING HOST ABI (run link100, lane OVERRIDE24)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # THE DEFECT. The Itanium ABI that mwccarm implements lets a derived class put
 # its own fields in its base class's TAIL PADDING: it starts them at the base's
@@ -22576,9 +22693,11 @@ endif()
 target_sources(walk_window PRIVATE hal/narrow_return.cpp)
 
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W23-3 STALE BANNERS 3 (LINK15 batch W23-3, run linkfull, lane BANNER3)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Six re-read rows from LINK15's stale-banner sweep; four seat here. The
 # fifth (fdiv) does NOT seat -- BLOCKED, see hal/cstd_div.c's comment: its
@@ -22607,9 +22726,11 @@ foreach(_tw23s3 smoke_player walk_window walk_window_hires)
     target_sources(${_tw23s3} PRIVATE ${SLICE_W23_STALE3_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W23-2 D0 ARM PILOT (LINK15 batch W23-2)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Run linkfull, lane D0ARM1. Five per-function src D0 TUs that define their own
 # flat ROM name under MSVC now, through the Model family's `#ifdef _MSC_VER`
@@ -22684,9 +22805,11 @@ foreach(_lw235 ntr_wide_rt ntr_hires)
     target_compile_definitions(${_lw235} PRIVATE NTR_ROM_IRQ_TABLE)
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # CAMP1 D0 ARM CAMPAIGN (run linkfull, batches D0ARM-01/02/03)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Run linkfull, lane CAMP1. The remaining per-function src D0 TUs from the
 # reviewed-safe campaign plan (out/D0ARM1/campaign_recipe.txt,
@@ -22714,9 +22837,11 @@ foreach(_tw24camp1 walk_window walk_window_hires smoke_player)
     target_sources(${_tw24camp1} PRIVATE ${SLICE_W24_CAMP1_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W24 CAMP2 D0 ARM CAMPAIGN (batches D0ARM-04, D0ARM-05, D0ARM-06)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Run linkfull, lane CAMP2, following the D0-arm campaign recipe banked by
 # lane D0ARM1 (reviewed SAFE by REVD0ARM1). Per-function src D0 TUs across
@@ -22745,9 +22870,11 @@ foreach(_tw24camp2 walk_window walk_window_hires smoke_player)
     target_sources(${_tw24camp2} PRIVATE ${SLICE_W24_CAMP2_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W24 CAMP3 D0 ARM CAMPAIGN (LINK15 batches D0ARM-07/08/09)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Run linkfull, lane CAMP3. Continues D0ARM1's pilot (reviewed PASS by
 # REVD0ARM1, campaign_recipe.txt / campaign_batches.txt): per-function src D0
@@ -22775,7 +22902,8 @@ foreach(_tw24camp3 walk_window walk_window_hires smoke_player)
 endforeach()
 
 # W24 FACEFLIP1 (run linkfull wave 24, lane FACEFLIP1)
-# ===========================================================================
+# ====================================================================endforeach()
+
 # Matched TUs that a FORWARD row in port/faces_sync.txt held out of the link:
 # each of those rows is flipped to REVERSE and its host copy retired, so the
 # matched body runs as the game's own code. port/slice_w24_faceflip.txt
@@ -22797,9 +22925,11 @@ foreach(_w24ff_t walk_window walk_window_hires smoke_player)
     target_sources(${_w24ff_t} PRIVATE ${SLICE_W24_FACEFLIP_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # D0ARM10 THE REFUSED D0 ROWS (run linkfull, lane D0ARM10)
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # Run linkfull, lane D0ARM10. Per-function src D0 TUs the D0-arm campaign's
 # generator had refused on a shape check (out/D0ARM1/refusal_groups.txt),
@@ -22879,9 +23009,11 @@ foreach(_tw25mg walk_window walk_window_hires smoke_player)
     target_sources(${_tw25mg} PRIVATE ${SLICEW25MG_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # VARIANT2 (run linkfull, lane VARIANT2): D0 FILES A dtorfwd FORWARDER ANSWERED
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w26_variant2.txt carries per-function src D0 TUs whose flat ROM
 # name port/tools/dtorfwd.py used to generate as a forwarder
@@ -22906,9 +23038,11 @@ foreach(_tw26v2 walk_window walk_window_hires smoke_player)
     target_sources(${_tw26v2} PRIVATE ${SLICE_W26_VARIANT2_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # V3A (run linkfull, lane V3A): THE ADJUSTOR-THUNK ROWS
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w27_v3a.txt carries the per-function src TUs of the ROM's
 # this-adjusting destructor thunks (_ZThn<N>_...). Each file's `#ifdef
@@ -22937,9 +23071,11 @@ target_sources(smoke_modelanim PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZThn80_N14BlendModelAnimD0Ev.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZThn80_N14BlendModelAnimD1Ev.cpp")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # RUN LINKFULL WAVE 27, LANE V3B: THE VARIANT ROWS THAT WAITED ON HAL FILES
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w27_v3b.txt carries per-function src destructor TUs that now
 # define the ROM's flat name themselves, in their `#ifdef _MSC_VER` arm, where
@@ -22963,9 +23099,11 @@ foreach(_tw27v3b walk_window walk_window_hires smoke_player)
     target_sources(${_tw27v3b} PRIVATE ${SLICE_W27_V3B_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # PMF2 (run linkfull, lane PMF2): MEMBER-POINTER ROWS, SECOND WAVE
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w27_pmf2.txt carries the matched TUs this lane arms. A line whose
 # path is followed by the word `hostgen` compiles its build/host-src copy made
@@ -23003,10 +23141,12 @@ foreach(_tw27pmf2 walk_window walk_window_hires smoke_player)
     target_sources(${_tw27pmf2} PRIVATE ${SLICE_W27_PMF2_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # S1 (run linkfull wave 27, lane S1): THE CLOSESTPLAYER RECEIVER FAMILY,
 # THE FIRST MAIN -> PORT FILE SYNC
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w28_s1.txt seats five matched TUs whose host copies are retired
 # in the same commit (port/unmatched/Actor_ClosestPlayerWrappers.cpp keeps only
@@ -23032,19 +23172,23 @@ foreach(_tw28s1 walk_window walk_window_hires smoke_player)
     target_sources(${_tw28s1} PRIVATE ${SLICE_W28_S1_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # PSYCHE1 (run linkfull, lane PSYCHE1): THE MINIGAME EXIT PATH -- its
 # force-included seam on src/minigames/d_s_mg_base.cpp
 # (unmatched/MgBase_Slot5_HostAbi.h) is RETIRED (run linkfull, lane RS2PORT):
 # the TU passes func_0203cbc0 the block it frees itself now (main
 # 59013376ce's one call), so the rename, its configure check and the /FI
 # are gone. PSYCHE1's other three fixes need no CMake.
-# ===========================================================================
+# ====================================================================endforeach()
 
-# ===========================================================================
+
+# ====================================================================endforeach()
+
 # RS2PORT (run linkfull, lane RS2PORT): MAIN'S ARGUMENT RE-SPELLS (#3092) INTO
 # THE PORT, AND THE ROWS WHOSE HOST REASONS WERE STALE
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w28_rs2port.txt seats matched TUs whose host copies are retired
 # in the same commits; each row group's commit says which body left and why its
@@ -23099,10 +23243,12 @@ if(NOT _rs2_cbc0_into)
 endif()
 message(STATUS "RS2PORT: src/func_0203cbc0.c joins ${_rs2_cbc0_into}")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W27 SMALLS1 (run linkfull wave 27, lane SMALLS1): cstd::fdiv,
 # IRQ::ClearInterrupts, OS_GetArenaLo, OS_InitAlloc
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w27_smalls1.txt carries the rows. A row goes on all three hosting
 # targets (walk_window, walk_window_hires, smoke_player) unless it is named in
@@ -23176,10 +23322,12 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/cstd_div.c" APPEND PROPERTY
     COMPILE_DEFINITIONS
     "$<$<IN_LIST:$<TARGET_PROPERTY:NAME>,port_slice_shared;walk_window;walk_window_hires;smoke_player>:SM64DS_PORT_FDIV_SEATED=1>")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # P1 (run linkfull wave 27, lane P1): SIX MATCHED TUs WHOSE HOST REASONS WENT
 # STALE
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w28_p1.txt seats matched TUs whose host copies retire in the same
 # commits (one commit per row group; the list names each row's host file and
@@ -23221,10 +23369,12 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/model_host.cpp" APPEND PROP
     COMPILE_DEFINITIONS
     "$<$<IN_LIST:$<TARGET_PROPERTY:NAME>,port_slice_shared;walk_window;walk_window_hires;smoke_player>:SM64DS_DMA_GXFIFO_ROM=1>")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W28 S4CARD (run linkfull, lane S4CARD): the game card's read path and
 # bring-up
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # ntr/card.cpp is the cartridge on the far side of ROMCTRL (0x040001A4), the
 # command latch (0x040001A8) and the data port (0x04100010): it registers two
@@ -23275,9 +23425,11 @@ foreach(_tw28c walk_window walk_window_hires)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/card_globals.cpp")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # DPAD1 (run linkfull, lane DPAD1): THE TITLE MENU'S D-PAD FAULT
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # A D-pad press on the file-select menu of scene 1 (dScDSMT_c) faulted in
 # func_ov007_020b3d30, which indexed its tables with a word of its caller's
@@ -23339,10 +23491,12 @@ foreach(_tw28dpad1 walk_window walk_window_hires smoke_player)
     target_sources(${_tw28dpad1} PRIVATE ${SLICE_W28_DPAD1_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # BOOBRICK1 (run linkfull, lane BOOBRICK1), R3: KING BOO'S GATE READS THE
 # ov055 WORD MIRROR LUIGI WRITES
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # src/unnamed/ov063/func_ov063_02117cdc.c is King Boo's cutscene (ov063
 # 0x02117cdc). Its step 5 waits for (&data_ov008_02111b6c)[0] == 0x1f000
@@ -23372,9 +23526,11 @@ set_property(SOURCE
     APPEND PROPERTY COMPILE_DEFINITIONS
     "data_ov008_02111b6c=data_ov055_02111b6c")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # BOOBRICK1 (run linkfull, lane BOOBRICK1), R7: THE BRICK'S OWN SLOT 22
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # _ZTV13daObjBlockL_c (ov002 0x02108adc) is the table BRICK_BLOCK (15),
 # BIG_BRICK_BLOCK (16), BLACK_BRICK_BLOCK (17), BRICK_BLOCK_SWITCH_ACTIVATED
@@ -23423,9 +23579,11 @@ foreach(_tboobrick1 walk_window walk_window_hires smoke_player)
     target_sources(${_tboobrick1} PRIVATE ${SLICE_BOOBRICK1_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # VARIANT4 (run linkfull, lane VARIANT4): THE LAST D0 ROWS THE CAMPAIGN HELD
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w31_variant4.txt carries per-function src D0 TUs in the D0-arm
 # campaign's shape: each file's `#ifdef _MSC_VER` arm defines the flat ROM D0
@@ -23451,9 +23609,11 @@ foreach(_tw31v4 walk_window walk_window_hires smoke_player)
     target_sources(${_tw31v4} PRIVATE ${SLICE_W31_VARIANT4_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W31 SMALLS2 (run linkfull wave 31, lane SMALLS2)
-# ===========================================================================
+# ====================================================================endforeach()
+
 # Matched TUs the linkage census listed as MSVC front-end refusals. Each
 # refusal is gone from the synced src and each TU compiles clean here; what
 # held it out was a FORWARD row in port/faces_sync.txt, which defined the
@@ -23530,9 +23690,11 @@ foreach(_w31s2hg_t walk_window walk_window_hires smoke_player)
     target_sources(${_w31s2hg_t} PRIVATE ${SLICE_W31_SMALLS2_HG_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W31 S4OV0 (run linkfull wave 31, lane S4OV0): THE OV0 HANDLE TABLE
-# ===========================================================================
+# ====================================================================endforeach()
+
 # The cartridge builds its handle -> file id table at boot with ov000's own
 # entry. port/slice_w31_s4ov0.txt carries the entry, its three helpers and the
 # reader src/func_02018a24.c; hal/s4ov0_ov0table.cpp hosts the two words the
@@ -23601,9 +23763,11 @@ if(MSVC)
     endforeach()
 endif()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W31 S4ARC (run linkfull wave 31, lane S4ARC): THE ARCHIVE LOADER
-# ===========================================================================
+# ====================================================================endforeach()
+
 # The cartridge mounts and unmounts its thirteen NARC archives itself; the port
 # published them as permanently resident from a static initialiser in
 # hal/card_mount.cpp. That publish is retired, the ROM's own LoadArchive mounts
@@ -23640,10 +23804,12 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/fs.cpp" APPEND PROPERTY
     COMPILE_DEFINITIONS
     "$<$<IN_LIST:$<TARGET_PROPERTY:NAME>,port_slice_shared;walk_window;walk_window_hires;smoke_player>:SM64DS_LOADAT_ROM=1>")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # ASMCPORT (run linkfull, lane ASMCPORT): ROM ROUTINES THE PORT HOSTED FOR
 # THEIR OLD src SPELLINGS, BUILT AS THE ROM'S OWN BODIES
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # A1. src/MultiCopyHalf.c, the halfword block copy (C since main #3167), on the
 # three targets that compile hal/cxx_aliases.cpp. It is compiled under a
@@ -23681,9 +23847,11 @@ foreach(_tasmc3 walk_window walk_window_hires smoke_player smoke_actor
         "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN6Memory16operator_delete2EPv.cpp")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W31 S4FILE (run linkfull wave 31, lane S4FILE): THE FILE LOADER, PART A
-# ===========================================================================
+# ====================================================================endforeach()
+
 # The game's own LoadFile, func_0201817c and the func_0201818c they share, with
 # the archive-member lookup behind it (func_020186c0, func_0204ede8), in place
 # of hal/level_boot.cpp's host LoadFile (a SharedFilePtr load plus a per-handle
@@ -23717,9 +23885,11 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/hal/fs.cpp" APPEND PROPERTY
     COMPILE_DEFINITIONS
     "$<$<IN_LIST:$<TARGET_PROPERTY:NAME>,port_slice_shared;walk_window;walk_window_hires;smoke_player>:SM64DS_LOADFILE_ROM=1>")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # W32 FILEB (run linkfull wave 32, lane FILEB): THE FILE LOADER, PART B
-# ===========================================================================
+# ====================================================================endforeach()
+
 # The game's own SharedFilePtr::Load in place of hal/fs.cpp's host Load and its
 # decoded-file cache: an archive member comes out of the NARC the ROM's
 # LoadArchive mounted, a loose file off the card (hal/fs_names.cpp's image).
@@ -23768,9 +23938,11 @@ foreach(_tb5input walk_window walk_window_hires)
     target_sources(${_tb5input} PRIVATE ${SLICE_B5INPUT_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # PMF3 (run linkfull, lane PMF3): THE LAST MEMBER-POINTER ROWS
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w31_pmf3.txt carries the matched TUs this lane arms, each in place
 # of a host stand-in the same commit retires (the slice file names which). A
@@ -23810,9 +23982,11 @@ foreach(_tw31pmf3 walk_window walk_window_hires smoke_player)
     target_sources(${_tw31pmf3} PRIVATE ${SLICE_W31_PMF3_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # RS5A (run linkfull, lane RS5A), R9: THE BRICK'S OWN SLOT 23
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # _ZTV13daObjBlockL_c (ov002 0x02108adc), the table the brick-block family
 # installs, holds 0x020b3788 at slot 23 (0x02108b38,
@@ -23853,10 +24027,12 @@ foreach(_trs5a walk_window walk_window_hires smoke_player)
     target_sources(${_trs5a} PRIVATE ${SLICE_W31_RS5A_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # RS5B (run linkfull wave 31B, lane RS5B): OPERATOR NEW, STAGE::UPDATEMESSAGE
 # AND THE SPHERE PASS RUN AS THE ROM'S OWN BODIES
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # R3. port/slice_w31_rs5b.txt: src/_Znwj.cpp, the DS global operator new with
 # its real signature (main #1394). hal/cxxname_bridge.cpp's host body of the
@@ -23957,10 +24133,12 @@ foreach(_trs5bhg smoke_clsn smoke_actor smoke_savestate smoke_persist
     target_sources(${_trs5bhg} PRIVATE ${SLICE_W31_RS5B_HG_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # S42D (run linkfull, wave 31B): THE PAUSE SCREEN, THE LEVEL-CLEAR BANNER AND
 # THE CONTROLLER-MODE CAPTIONS
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w31_s42d.txt carries the four matched TUs this lane arms, each in
 # place of a host stand-in the same commit retires (the slice file names
@@ -23992,9 +24170,11 @@ foreach(_tw31s42d walk_window walk_window_hires smoke_player)
     target_sources(${_tw31s42d} PRIVATE ${SLICE_W31_S42D_ALL_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # RESET2 (run linkfull, lane RESET2): THE GAME LOOP'S OWN PHASE 2
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w31b_reset2.txt carries func_02019390, the ROM's frame phase 2
 # (src/func_020197b8.c: `data_0209d50c = 2; func_02019390();`), and the four
@@ -24031,9 +24211,11 @@ foreach(_tw31breset2 walk_window walk_window_hires smoke_player)
     target_sources(${_tw31breset2} PRIVATE ${SLICE_W31B_RESET2_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # VARIANT5 (run linkfull, lane VARIANT5): THE TWO ABSTRACT BASE TABLES
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # _ZTV13daObjMaruta_c (ov080 0x02128338) and _ZTV16daObjFallBlock_c (ov098
 # 0x0213c5bc) leave their per-symbol mounts (port/ov080_syms.txt,
@@ -24078,9 +24260,11 @@ foreach(_tw31v5c2 walk_window walk_window_hires smoke_player smoke_actor
     target_sources(${_tw31v5c2} PRIVATE "${VARIANT5_C2_SRC}")
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # LOOPIN2 (run linkfull, lane LOOPIN2): THE END OF PHASE 0x17, AND PHASE 7
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w31_loopin2.txt carries func_02023498 (the ROM's soft-reset latch,
 # the last call of src/func_020197b8.c's phase 0x17) with the two clears it
@@ -24105,9 +24289,11 @@ foreach(_tw31loopin2 walk_window walk_window_hires smoke_player)
 endforeach()
 target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/b5input_globals.cpp")
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # K1LOOP (run linkfull, lane K1LOOP): THE ROM'S ACTOR FRAME AT PHASE 4
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w32_k1loop.txt carries func_02044120 (the ROM's phase-4 actor
 # frame, called by hal/actor_registry.cpp's port_actor_frame from both host
@@ -24128,9 +24314,11 @@ foreach(_tw32k1loop walk_window walk_window_hires smoke_player)
     target_sources(${_tw32k1loop} PRIVATE ${SLICE_W32_K1LOOP_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # K2RENDER (run linkfull, lane K2RENDER): THE ROM'S PHASE 5
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # port/slice_w32_k2render.txt carries func_02019404 (the ROM's phase-5 step,
 # the graphics block's word 1, called by hal/rom_frame.cpp's port_frame_phase5
@@ -24151,9 +24339,11 @@ foreach(_tw32k2render walk_window walk_window_hires smoke_player)
     target_sources(${_tw32k2render} PRIVATE ${SLICE_W32_K2RENDER_SOURCES})
 endforeach()
 
-# ===========================================================================
+# ====================================================================endforeach()
+
 # CROSSPATCH1 (run hunt4): THE PER-LOADED-LEVEL CROSS-POINTER SEAT
-# ===========================================================================
+# ====================================================================endforeach()
+
 #
 # hal/cross_level_seat.cpp re-patches, on every level mount, the cross-mount
 # words ovdata.py --cross has to leave raw (their target window is shared by
@@ -24235,4 +24425,16 @@ endforeach()
 foreach(_ttitle1 walk_window walk_window_hires smoke_player)
     target_sources(${_ttitle1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_title.cpp")
+endforeach()
+
+# MENU1 / PAUSE1 (run menu1): the one-screen pause menu recipe (own file, own block).
+foreach(_tmenu1p walk_window walk_window_hires)
+    target_sources(${_tmenu1p} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_pause.cpp")
+endforeach()
+
+# MENU1 / STARGO1 (run menu1): the star select and game over one-screen recipes.
+foreach(_tstargo1 walk_window walk_window_hires smoke_player)
+    target_sources(${_tstargo1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_starsel.cpp")
 endforeach()
