@@ -10719,6 +10719,7 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
  * The frame number handed to the scripted pad and the scripted stylus continues
  * the level loop's own count (port_last_frame + f), so a fixture numbers the
  * interlude's frames the way it numbers every other frame of the session. */
+extern "C" void port_adventure_ghost_interlude(void);   /* hal/comms_sync.cpp */
 extern "C" int port_interlude_frame(int f)
 {
     static XPad ipad;
@@ -10735,6 +10736,7 @@ extern "C" int port_interlude_frame(int f)
     g_present_fb = &sfb;
     int quit = scene_host_input_frame(g_present_hwnd, port_last_frame + f,
                                       &ipad, &ifocus);
+    port_adventure_ghost_interlude();
     if (!quit) {
         port_scene_tick(f, !menu_on);
         scene_host_present_frame(g_present_hwnd, stacked, sfb);
