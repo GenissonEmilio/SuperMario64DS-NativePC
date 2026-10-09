@@ -50,7 +50,7 @@ int port_title_page_state(int *top, int *elem, int *req);
 
 namespace {
 
-enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6 };
+enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7 };
 
 /* the 24 element boxes as dumped on the shipped ROM (SM64DS_TITLE_ELEMS, identical at f299, f419, f650,
    f719): id, x0, y0, x1, y1 in touch-screen DS pixels. The live decoder wins when it answers. */
@@ -87,7 +87,7 @@ int variant_for(int top, int elem)
        (doodle, then 1/1, 2/1); the wrench is 8/0; file options 1/5; scores pick 3/5, copy 7/5, erase 9/5;
        the score table is 4/5 (loading) then 2/5. Transit states keep the last stable page. */
     if (top == 11) return V_ATTRACT;
-    if (top == 10) return V_MAIN;                 /* the logo arrives while the buttons slide in */
+    if (top == 10) return V_INTRO;                /* the logo arrives while the buttons come in through the ROM's star iris */
     if (elem == 1) return V_DOODLE;
     if (elem == 0) {
         if (top == 0) return V_MAIN;
@@ -157,7 +157,8 @@ bool wall_skip_active()
     if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
     int top, elem, req;
     if (!port_title_page_state(&top, &elem, &req)) return false;
-    return variant_for(top, elem) == V_MAIN;
+    const int v = variant_for(top, elem);
+    return v == V_MAIN || v == V_INTRO;
 }
 
 int title_skip(char *o)
@@ -198,7 +199,7 @@ struct TitleHookInit { TitleHookInit() { g_port_title_draw_skip = title_skip; } 
    Source rects are in lower-screen DS pixels and tile the screen: head+star+sparkles (216 x 140, the whole upper
    part; a drag on the face stays inside it), sparkles right of the wrench, the wrench, and the three plates. They
    are placed at the lower screen's own positions on the 4:3 core; tune knobs (SM64DS_TITLE_TUNE) move the head. */
-void build_main(MenuLayout *L)
+void build_main(MenuLayout *L, bool intro)
 {
     const int cw = L->w * L->uden / L->unum;                 /* exact canvas width in units, floored */
     const int side = cw > 256 ? (cw - 256 + 1) / 2 + 2 : 0;  /* the wide margin on each side, with an overlap */
@@ -216,28 +217,35 @@ void build_main(MenuLayout *L)
     bg.bg = 1;
     bg.layers = (uint8_t)tune(5, 0x0f);
     menu_add_piece(L, bg);
+    if (tune(6, -1) >= 0 && tune(7, -1) >= tune(6, -1)) {
+        /* DEBUG (SM64DS_TITLE_TUNE index 6,7 = first,last engine-B OAM entry): the upper screen's OAM entries alone, keyed on
+           their own transparency, drawn at the top of the picture: the proof of the OAM-range plane on a live screen */
+        MenuPiece op = menu_piece_make(SRC_SUB, 0, 150, 256, 40, MENU_AX_C, MENU_AY_T, 0, 4, 1, 1);
+        op.layers = MENU_L_OBJ; op.oam_on = 1; op.oam_lo = (uint8_t)tune(6, 0); op.oam_hi = (uint8_t)tune(7, 0); op.key_backdrop = 1;
+        menu_add_piece(L, op);
+    }
     /* the stars and sparkles stay where the ROM puts them on the 4:3 core (a piece anchored C with dx = srcx - 128 + w / 2
        lands at its own lower-screen x); the head is cut with room around it for a stretch, scaled 2/3 and set low over the
        logo's DS like a mascot; the wrench sits in the top right corner of the canvas */
     const int hk = tune(0, 2), hd = tune(1, 3);
     MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
-    head.keycover = 1; head.touch = 1;
+    head.keycover = 1; head.touch = 1; head.keyblack = intro ? 1 : 0;
     menu_add_piece(L, head);
     static const int kStarX[3] = { 0, 176, 216 }, kStarY[3] = { 0, 0, 40 }, kStarW[3] = { 20, 40, 40 }, kStarH[3] = { 140, 140, 100 };
     for (int k = 0; k < 3; ++k) {
         MenuPiece st = menu_piece_make(SRC_TOP_PIC, kStarX[k], kStarY[k], kStarW[k], kStarH[k], MENU_AX_C, MENU_AY_T,
                                        kStarX[k] - 128 + kStarW[k] / 2, kStarY[k], 1, 1);
-        st.keycover = 1;
+        st.keycover = 1; st.keyblack = intro ? 1 : 0;
         menu_add_piece(L, st);
     }
     MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
-    wr.keycover = 1; wr.touch = 1;
+    wr.keycover = 1; wr.touch = 1; wr.keyblack = intro ? 1 : 0;
     const int iwr = menu_add_piece(L, wr);
     static const int kPlateX[3] = { 0, 70, 188 }, kPlateW[3] = { 70, 118, 68 };
     static const int kPlateId[3] = { 1, 0, 2 };
     for (int k = 0; k < 3; ++k) {
         MenuPiece pl = menu_piece_make(SRC_TOP_PIC, kPlateX[k], 140, kPlateW[k], 52, MENU_AX_C, MENU_AY_B, kPlateX[k] - 128 + kPlateW[k] / 2, 0, 1, 1);
-        pl.keycover = 1; pl.touch = 1;
+        pl.keycover = 1; pl.touch = 1; pl.keyblack = intro ? 1 : 0;
         const int ip = menu_add_piece(L, pl);
         hot(L, ip, &kPlateId[k], 1);
     }
@@ -271,8 +279,8 @@ void menu_title_build(int variant, MenuLayout *L)
         L->stage = MENU_STAGE_POST_FADE;
         return;
     }
-    if (variant == V_MAIN) {
-        build_main(L);
+    if (variant == V_MAIN || variant == V_INTRO) {
+        build_main(L, variant == V_INTRO);
         return;
     }
     /* the backdrop: the upper screen, whole */
