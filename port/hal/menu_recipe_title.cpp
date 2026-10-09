@@ -177,7 +177,7 @@ void menu_title_build(int variant, MenuLayout *L)
     }
     const int kn = tune(0, 3), kd = tune(1, 4);
     if (variant == V_TABLE) {
-        /* THE SCORE TABLE ON ONE PAGE (the N64 table players asked for, in204137_02): the DS shows the course
+        /* THE SCORE TABLE ON ONE PAGE (the N64 table players asked for): the DS shows the course
            list over TWO screens, courses 1..9 on the upper and 10..15 + the castle secret stars on the lower.
            Both halves are cut along their empty rows and STACKED at 2/3, upper half first, so it reads
            top to bottom as one list; the back arrow keeps its own piece in the right margin. The dimmed
