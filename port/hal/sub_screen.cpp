@@ -3632,8 +3632,8 @@ extern "C" void hal_menu_pad_seam(void)
     }
     if (!hal_menu_live()) return;
     /* ASSET3: MOUSE HOVER. A menu recipe's hotspots take the mouse focus when the pointer moves onto them (hal_menu_hover had no
-       caller): the pointer in client pixels -> picture pixels, the same inverse the stylus uses. SM64DS_MENU_HOVER_AT=x,y (client
-       pixels, from live frame N on: x,y@N) stands in for the pointer on a scripted run. Only a pointer that moved since the last frame counts, so a pointer left
+       caller): the pointer in client pixels -> picture pixels, the same inverse the stylus uses. SM64DS_MENU_HOVER_AT=x,y@N (picture
+       pixels, from the Nth live frame on) stands in for the pointer on a scripted run. Only a pointer that moved since the last frame counts, so a pointer left
        resting on a plate does not keep overriding the pad. */
     {
         static LONG last_x = -1, last_y = -1;
@@ -3653,7 +3653,8 @@ extern "C" void hal_menu_pad_seam(void)
         if (got && (p.x != last_x || p.y != last_y)) {
             last_x = p.x; last_y = p.y;
             int hbx = -1, hby = -1;
-            if (hal_present_client_to_fb((int)p.x, (int)p.y, &hbx, &hby)) hal_menu_hover(hbx, hby);
+            if (env_on) hal_menu_hover((int)p.x, (int)p.y);          /* the scripted point is already a picture pixel */
+            else if (hal_present_client_to_fb((int)p.x, (int)p.y, &hbx, &hby)) hal_menu_hover(hbx, hby);
         }
     }
     const int slot = data_020a0e40;

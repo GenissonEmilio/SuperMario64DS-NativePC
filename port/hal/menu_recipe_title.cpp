@@ -365,13 +365,16 @@ void build_main(MenuLayout *L, bool intro)
             ar.fx = (short)(L->w - (256 - (wb.x0 + wb.x1) / 2) * L->unum / L->uden - dw / 2);   /* the wrench sits on the right edge */
             ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * L->unum / (2 * L->uden));
         } else {
+            /* a pair, one over each end of the plank (the middle of ADVENTURE is Mario's face), both pointing down at it */
             Box bx;
             if (box_of(cur, &bx)) {
-                const int cxu = (bx.x0 + bx.x1) / 2 - 128;
-                ar.fx = (short)(L->w / 2 + cxu * L->unum / L->uden - dw / 2);
+                const int inset = 16;                       /* the arrow's centre, from the plank end, in canvas units */
                 ar.fy = (short)(((bx.y0 * 2 - 6 + bob2) * L->unum) / (2 * L->uden) - dh);
+                ar.fx = (short)(L->w / 2 + (bx.x0 + inset - 128) * L->unum / L->uden - dw / 2);
+                menu_add_piece(L, ar);
+                ar.fx = (short)(L->w / 2 + (bx.x1 - inset - 128) * L->unum / L->uden - dw / 2);
             } else {
-                ar.fx = ar.fy = -1000;
+                ar.fx = -1000;
             }
         }
         if (ar.fx > -1000) menu_add_piece(L, ar);
