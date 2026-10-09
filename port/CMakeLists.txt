@@ -17564,6 +17564,8 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp "${OV002D
     # run mods1: the mods list (settings.json EnabledMods) and the files/ layer,
     # chained after stage_geom from .CRT$XCW. Same two targets, nowhere else.
     hal/mods.cpp
+    # sound/ layer of the mods (run mods1, MODSOUND1): hands hal/mods.cpp to the SDAT loader.
+    hal/sdat_mods.cpp
     # the scene's hand-drawn gap band and the band's per-scene continuity
     # table, both asked for at the same latch hal/screen_gap.cpp does
     hal/gap_art.cpp hal/gap_continuity.cpp
@@ -18005,6 +18007,8 @@ add_executable(walk_window_hires tests/walk_window.cpp "${OV002DATA_C}" ${LEVEL_
     # run mods1: the mods list (settings.json EnabledMods) and the files/ layer,
     # chained after stage_geom from .CRT$XCW. Same two targets, nowhere else.
     hal/mods.cpp
+    # sound/ layer of the mods (run mods1, MODSOUND1): hands hal/mods.cpp to the SDAT loader.
+    hal/sdat_mods.cpp
     # the scene's hand-drawn gap band and the band's per-scene continuity
     # table, both asked for at the same latch hal/screen_gap.cpp does
     hal/gap_art.cpp hal/gap_continuity.cpp
