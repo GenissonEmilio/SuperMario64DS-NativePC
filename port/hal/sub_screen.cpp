@@ -3631,6 +3631,31 @@ extern "C" void hal_menu_pad_seam(void)
         back_was = 0;
     }
     if (!hal_menu_live()) return;
+    /* ASSET3: MOUSE HOVER. A menu recipe's hotspots take the mouse focus when the pointer moves onto them (hal_menu_hover had no
+       caller): the pointer in client pixels -> picture pixels, the same inverse the stylus uses. SM64DS_MENU_HOVER_AT=x,y (client
+       pixels, from live frame N on: x,y@N) stands in for the pointer on a scripted run. Only a pointer that moved since the last frame counts, so a pointer left
+       resting on a plate does not keep overriding the pad. */
+    {
+        static LONG last_x = -1, last_y = -1;
+        static int env_read, env_on, env_at, calls;
+        static POINT env_pt;
+        ++calls;
+        if (!env_read) {
+            env_read = 1;
+            const char *e = getenv("SM64DS_MENU_HOVER_AT");
+            if (e && sscanf(e, "%ld,%ld@%d", &env_pt.x, &env_pt.y, &env_at) >= 2) env_on = 1;
+        }
+        POINT p;
+        int got = 0;
+        if (env_on) { p = env_pt; got = calls >= env_at; }
+        else if (!g_headless && GetCursorPos_ && ScreenToClient_ && hal_window_focused())
+            got = (GetCursorPos_(&p) && ScreenToClient_(g_hwnd, &p)) ? 1 : 0;
+        if (got && (p.x != last_x || p.y != last_y)) {
+            last_x = p.x; last_y = p.y;
+            int hbx = -1, hby = -1;
+            if (hal_present_client_to_fb((int)p.x, (int)p.y, &hbx, &hby)) hal_menu_hover(hbx, hby);
+        }
+    }
     const int slot = data_020a0e40;
     unsigned short *pressed = (unsigned short *)((char *)data_020a0e58 + slot * 4 + 2);
     unsigned short *split = (unsigned short *)((char *)data_020a0e5a + slot * 4);

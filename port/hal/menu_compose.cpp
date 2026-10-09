@@ -590,12 +590,16 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     int f256 = P.hostimg == MENU_IMG_LOGO ? (int)(g_fade * 256.f + 0.5f) : 256;
     /* the plank's own look: selected = lifted, pulsing on the ROM's 8-frame cadence; pressed = sunk and darker */
     const int owns = L->focus >= 0 && L->focus < L->nh && L->hs[L->focus].piece == i;
-    int sel = (P.hl & 1) || (owns && g_focus_shown);
+    /* ASSET3: the recipe's hl bit is the one selection (the ROM cursor, which a mouse hover now drives), so a plank the mouse
+       merely sits over is not lit a second time when the pad has moved the cursor elsewhere */
+    int sel = (P.hl & 1);
     const int prs = (P.hl & 2) || (owns && g_q_real_held);
     int boost = 0, sink = 0;
-    if (P.hostimg != MENU_IMG_LOGO) {
+    static int no_pulse = -1;
+    if (no_pulse < 0) { const char *e = getenv("SM64DS_MENU_NOPULSE"); no_pulse = (e && *e && *e != '0') ? 1 : 0; }
+    if (P.hostimg >= MENU_IMG_BTN_MP && P.hostimg <= MENU_IMG_BTN_REC) {   /* the planks; the logo and the arrows are never lit */
         static const int pulse[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
-        if (sel) boost = 292 + pulse[g_frame & 7] * 10;    /* x1.14 .. x1.30 */
+        if (sel) boost = no_pulse ? 292 : 292 + pulse[g_frame & 7] * 10;    /* x1.14 .. x1.30 */
         if (prs) { f256 = f256 * 216 / 256; boost = 0; sink = d[3] * 3 / 100; if (sink < 1) sink = 1; }
     }
     for (int yy = 0; yy < d[3]; ++yy) {
@@ -1056,11 +1060,24 @@ void hal_menu_touch_inverse(int bx, int by, int *dsx, int *dsy, int *in)
 
 void hal_menu_touch_end(void) { g_drag_piece = -1; }
 
+static unsigned g_hover_stamp;     /* ASSET3: counts the mouse moves that landed on a hotspot */
 int hal_menu_hover(int bx, int by)
 {
     if (!g_live) return 0;
     if (!menu_focus_hover(&g_cur, bx, by)) return 0;
     g_focus_shown = 1;
+    ++g_hover_stamp;
+    return 1;
+}
+
+/* ASSET3: the hotspot the mouse last landed on, for a native recipe that mirrors it into the ROM's own cursor. Returns 1 and the
+   hotspot's DS box origin when a hover exists and has not been read at this stamp yet; *stamp changes on every new hover event. */
+int hal_menu_hover_box(int *x, int *y, unsigned *stamp)
+{
+    if (!g_live || !g_focus_shown || g_cur.focus < 0 || g_cur.focus >= g_cur.nh) return 0;
+    *x = g_cur.hs[g_cur.focus].box.x;
+    *y = g_cur.hs[g_cur.focus].box.y;
+    *stamp = g_hover_stamp;
     return 1;
 }
 

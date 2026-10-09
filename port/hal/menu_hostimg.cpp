@@ -8,8 +8,8 @@
 #include <string.h>
 #include <vector>
 
-extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[];
-extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len;
+extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[];
+extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len;
 
 namespace {
 
@@ -27,6 +27,8 @@ const Src kSrc[MENU_IMG_COUNT] = {
     { "btn_mp.png", g_menu_png_btn_mp, &g_menu_png_btn_mp_len },
     { "btn_adventure.png", g_menu_png_btn_adventure, &g_menu_png_btn_adventure_len },
     { "btn_rec.png", g_menu_png_btn_rec, &g_menu_png_btn_rec_len },
+    { "arrow_up.png", g_menu_png_arrow_up, &g_menu_png_arrow_up_len },
+    { "arrow_down.png", g_menu_png_arrow_down, &g_menu_png_arrow_down_len },
 };
 
 bool take(const unsigned char *rgba, int w, int h, Img *I)

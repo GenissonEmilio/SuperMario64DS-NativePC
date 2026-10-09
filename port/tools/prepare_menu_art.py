@@ -24,6 +24,7 @@ from scipy import ndimage as ndi
 Image.MAX_IMAGE_PIXELS = None
 BROWN, DARK, GOLD = (152, 80, 64), (108, 56, 44), (224, 168, 72)
 H = 320                                   # every button is this tall
+ADV_FW, ADV_FH = float(os.environ.get("SM64DS_ADV_FW", "0.90")), 0.44   # the ADVENTURE lettering box, as a fraction of the plank
 SIZES = {"mp": 496, "adventure": 944, "rec": 512}   # ROM plate footprints 62 : 118 : 64 wide at 40 tall, x 8
 
 
@@ -125,15 +126,20 @@ def label(font_path, lines, box_w, box_h):
 def main():
     ap = argparse.ArgumentParser()
     for n in ("logo", "orange", "tan", "green", "font"):
-        ap.add_argument("--" + n, required=True)
+        ap.add_argument("--" + n, required=False)
+    ap.add_argument("--only", default="", help="write just this one plank (mp, adventure, rec); the logo is skipped too")
     ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "..", "res", "menu"))
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
-    clean_logo(a.logo, os.path.join(a.out, "logo_sm64_pc.png"))
-    green_ref = Image.open(a.green)
-    jobs = [("mp", a.orange, None, ["MP"], 0.62, 0.50), ("adventure", a.tan, None, ["ADVENTURE"], 0.80, 0.36),
-            ("rec", a.tan, hue_to(green_ref), ["REC", "ROOM"], 0.70, 0.62)]
+    if not a.only:
+        clean_logo(a.logo, os.path.join(a.out, "logo_sm64_pc.png"))
+    green_ref = Image.open(a.green) if a.green else None
+    # ADVENTURE's lettering fills 0.90 of the plank (round 3; it was 0.80), MP and REC ROOM are unchanged
+    jobs = [("mp", a.orange, None, ["MP"], 0.62, 0.50), ("adventure", a.tan, None, ["ADVENTURE"], ADV_FW, ADV_FH),
+            ("rec", a.tan, hue_to(green_ref) if green_ref else None, ["REC", "ROOM"], 0.70, 0.62)]
     for name, src, rec, lines, fw, fh in jobs:
+        if a.only and name != a.only:
+            continue
         w = SIZES[name]
         im = plank(src, w, rec)
         lab = label(a.font, lines, w * fw, H * fh)

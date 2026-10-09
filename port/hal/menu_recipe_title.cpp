@@ -193,6 +193,9 @@ int title_skip(char *o)
         for (int i = 0; i < 3; ++i)
             if (o == *(char *const *)(g + 0x108 + 4 * i)) return wall_skip_active() ? 1 : 0;
     }
+    /* ASSET3: the ROM's own cursor arrow (object id 0x21, drawn only while the cursor is shown) is replaced by the host's own pixel
+       arrow (art cut from this very object: tools/extract_title_arrow.py), so it is not in the picture on the one-screen main menu */
+    if (*(unsigned char *)(o + 0x4e) == 0x21 && wall_skip_active()) return 1;
     static int trace = -1;
     static unsigned skipk;
     if (trace < 0) {
@@ -214,7 +217,7 @@ int title_skip(char *o)
 }
 struct TitleHookInit { TitleHookInit() { g_port_title_draw_skip = title_skip; } } g_title_hook_init;
 /* The ROM's own cursor on the main menu (src/func_ov007_020b3708.c: the cursor element is the short at the head of the
-   struct data_ov007_02103360 points to; 0 = ADVENTURE, 1 = VS, 2 = REC ROOM, 0xff = the cursor is not shown yet: the ROM
+   struct data_ov007_02103360 points to; 0 = ADVENTURE, 1 = VS, 2 = REC ROOM, 7 = the wrench, 0xff = the cursor is not shown yet: the ROM
    shows it on the first non-B key, src/func_ov007_020b3190.c), and whether it is being pressed: the DS A key (0x0001, which
    menu_title_pad_map writes into the held word) is down, or the page has already taken a choice (top-state request). */
 void rom_cursor(int *cursor, int *pressed)
@@ -222,7 +225,7 @@ void rom_cursor(int *cursor, int *pressed)
     *cursor = -1; *pressed = 0;
     if (!data_ov007_02103360) return;
     const short *p0 = *(const short **)data_ov007_02103360;
-    if (!p0 || p0[0] < 0 || p0[0] > 2) return;
+    if (!p0 || (p0[0] != 7 && (p0[0] < 0 || p0[0] > 2))) return;      /* 7 = the wrench (ASSET3) */
     *cursor = p0[0];
     int top, elem, req;
     if (port_title_page_state(&top, &elem, &req) && top == 0 && req != -1) *pressed = 1;
@@ -341,6 +344,38 @@ void build_main(MenuLayout *L, bool intro)
     }
     static const int wr_ids[1] = { 7 };
     hot(L, iwr, wr_ids, 1);
+    /* ASSET3: THE SELECTION ARROW. The ROM's own cursor arrow (a small blue triangle, drawn as a 3D object and skipped at submit
+       above) is drawn again from its own art at the window's resolution: pointing down at the selected plank from above, or up at the
+       wrench from below, bobbing on the ROM's 8-frame cadence. Pieces here are backdrop-class (no touch): a click goes through to
+       the plank under it. */
+    if (planks && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
+        static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* the plank pulse's cadence, in half units */
+        const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
+        const int bob2 = kBob[fr & 7];
+        const int aimg = cur == 7 ? MENU_IMG_ARROW_UP : MENU_IMG_ARROW_DOWN;
+        int iw = 1, ih = 1;
+        menu_hostimg_size(aimg, &iw, &ih);
+        const int au = ltune(3, 18);                                  /* the arrow's width in canvas units (the DS art is 22 x 15 pixels) */
+        const int dw = au * L->unum / L->uden, dh = (int)((long long)dw * ih / iw);
+        MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ar.bg = 1; ar.hostimg = (uint8_t)aimg; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
+        if (cur == 7) {
+            Box wb;
+            if (!box_of(7, &wb)) wb = kBoxes[7];
+            ar.fx = (short)(L->w - (256 - (wb.x0 + wb.x1) / 2) * L->unum / L->uden - dw / 2);   /* the wrench sits on the right edge */
+            ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * L->unum / (2 * L->uden));
+        } else {
+            Box bx;
+            if (box_of(cur, &bx)) {
+                const int cxu = (bx.x0 + bx.x1) / 2 - 128;
+                ar.fx = (short)(L->w / 2 + cxu * L->unum / L->uden - dw / 2);
+                ar.fy = (short)(((bx.y0 * 2 - 6 + bob2) * L->unum) / (2 * L->uden) - dh);
+            } else {
+                ar.fx = ar.fy = -1000;
+            }
+        }
+        if (ar.fx > -1000) menu_add_piece(L, ar);
+    }
 }
 
 }  // namespace
@@ -440,8 +475,41 @@ extern unsigned char data_020a0e40;   /* the local player's slot */
 extern int data_020a0e58[];           /* PadData[i]: {u16 held, u16 pressed} */
 }
 
+/* ASSET3: THE ROM CURSOR, STARTED AND FOLLOWING THE MOUSE.
+   The ROM shows its cursor on the first non-B key and starts it on ADVENTURE (src/func_ov007_020b3190.c: it writes the target
+   element 0 into the cursor struct's second short; the cursor machinery of func_ov007_020b2e64 does the rest). On the one-screen main
+   menu the port does that same write once the arrival has settled, so ADVENTURE is selected without a first press. A mouse hover
+   (hal_menu_hover_box) writes the hovered element the same way, so the ROM's cursor, the lit plank and the arrow always name the
+   element a confirm will press. 1 = VS (MP), 0 = ADVENTURE, 2 = REC ROOM, 7 = the wrench. Only on the settled main page with no
+   choice taken. */
+static void title_cursor_assist()
+{
+    static int stable;
+    static unsigned hov_seen;
+    int top, elem, req;
+    if (!data_ov007_02103360 || !port_title_page_state(&top, &elem, &req) || top != 0 || elem != 0 || req != -1) { stable = 0; return; }
+    short *p0 = *(short **)data_ov007_02103360;
+    if (!p0) return;
+    if (stable < 20) { ++stable; return; }
+    int hx, hy;
+    unsigned st;
+    if (hal_menu_hover_box(&hx, &hy, &st) && st != hov_seen) {
+        hov_seen = st;
+        static const int ids[4] = { 1, 0, 2, 7 };
+        for (int k = 0; k < 4; ++k) {
+            Box b;
+            if (box_of(ids[k], &b) && b.x0 == hx && b.y0 == hy) {
+                if (p0[0] != ids[k]) p0[1] = (short)ids[k];
+                return;
+            }
+        }
+    }
+    if (p0[0] == 0xff) p0[1] = 0;
+}
+
 void menu_title_pad_map(uint16_t *pressed, int host_back)
 {
+    title_cursor_assist();
     /* The ROM's key record (src/func_ov007_020b3190.c: `*(u16*)p & ~*(u16*)(p+2)`, and the repeat counters of
        func_ov007_020b2e64) is built from the HELD word, so the pressed word alone is not enough: the held
        word moves 0x0002 -> 0x0001 too, and a host back is a one-frame B in it. */

@@ -7,13 +7,14 @@
  *
  * WHERE THE FILE COMES FROM, first hit wins:
  *   SM64DS_MENU_LOGO=<path>        outright; a path that cannot be read means "no logo" (the DS logo is then drawn)
- *   <asset root>/menu/<name>.png         the kit file beside the exe (logo_sm64_pc.png, btn_mp.png, btn_adventure.png, btn_rec.png)
+ *   <asset root>/menu/<name>.png         the kit file beside the exe (logo_sm64_pc.png, btn_mp.png, btn_adventure.png, btn_rec.png,
+ *                                 arrow_up.png, arrow_down.png)
  *   the copy embedded in the exe (hal/menu_logo_data.cpp, generated from res/menu/logo_sm64_pc.png)
  * Nothing here can fail loudly: no picture = menu_hostimg_ready() is 0 and the recipe keeps the DS logo layer. */
 #ifndef MENU_HOSTIMG_H
 #define MENU_HOSTIMG_H
 #include <stdint.h>
-enum { MENU_IMG_LOGO = 1, MENU_IMG_BTN_MP = 2, MENU_IMG_BTN_ADV = 3, MENU_IMG_BTN_REC = 4, MENU_IMG_COUNT = 5 };
+enum { MENU_IMG_LOGO = 1, MENU_IMG_BTN_MP = 2, MENU_IMG_BTN_ADV = 3, MENU_IMG_BTN_REC = 4, MENU_IMG_ARROW_UP = 5, MENU_IMG_ARROW_DOWN = 6, MENU_IMG_COUNT = 7 };
 #ifdef __cplusplus
 extern "C" {
 #endif
