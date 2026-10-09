@@ -81,6 +81,10 @@ struct MenuPiece {
      it, rows mapped normally: the sky gradient's edge carried out to the edge of a wide picture, nothing stretched
      (a column of a vertical gradient is the same everywhere). */
   uint8_t keycover, xfill; short fill_w;
+  /* oam_on: an SRC_SUB piece (layers should be MENU_L_OBJ) draws only engine-B OAM entries oam_lo..oam_hi (inclusive,
+     0..127): one sprite, or a set, alone, with its own transparency (alpha 0 where the entry drew nothing, as a
+     key_backdrop piece reads it). Select by index; an index that churns between scenes is the recipe's to re-read. */
+  uint8_t oam_on, oam_lo, oam_hi;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
@@ -180,6 +184,8 @@ struct MenuSources {
      already engine-B bright, 256x192 ARGB; null = use `sub`. The host makes at most two extra scan-outs a
      frame and reuses the live one when the mask equals the live enables. */
   const uint32_t *(*sub_for)(uint8_t layers);
+  /* ASSET1: the same with an engine-B OAM index range (inclusive); counts against the same two-scan-out cap */
+  const uint32_t *(*sub_for_oam)(uint8_t layers, int lo, int hi);
 };
 
 /* HOOK1: what the engine-A compositor must lift this frame (H1b). Null when nothing is lifted. */

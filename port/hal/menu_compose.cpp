@@ -93,7 +93,7 @@ MenuLiftInfo g_lift;                 /* HOOK1: this frame's lift plan (hal_menu_
 int  g_lift_on;
 int  g_lift_pending;                 /* the lift was promised and the draw has not honoured it yet */
 /* the engine-B planes by layer mask, made by the host callback at most once per mask per generation */
-struct PlaneEnt { uint8_t layers; const uint32_t *p; };
+struct PlaneEnt { uint8_t layers, oam_on, lo, hi; const uint32_t *p; };
 PlaneEnt g_planes[4];
 int  g_nplanes;
 DsRect g_latch[MENU_MAX_PIECES];     /* autocrop latches, by piece index of the live recipe/variant */
@@ -107,10 +107,16 @@ const uint32_t *sub_plane(const MenuPiece *p, const MenuSources *s)
 {
     if (!s) return 0;
     if (s->sub_for) {
+        const int oam = p->oam_on && s->sub_for_oam;
         for (int i = 0; i < g_nplanes; ++i)
-            if (g_planes[i].layers == p->layers) return g_planes[i].p ? g_planes[i].p : s->sub;
-        const uint32_t *q = s->sub_for(p->layers);
-        if (g_nplanes < 4) { g_planes[g_nplanes].layers = p->layers; g_planes[g_nplanes].p = q; ++g_nplanes; }
+            if (g_planes[i].layers == p->layers && g_planes[i].oam_on == (oam ? 1 : 0) &&
+                (!oam || (g_planes[i].lo == p->oam_lo && g_planes[i].hi == p->oam_hi)))
+                return g_planes[i].p ? g_planes[i].p : s->sub;
+        const uint32_t *q = oam ? s->sub_for_oam(p->layers, p->oam_lo, p->oam_hi) : s->sub_for(p->layers);
+        if (g_nplanes < 4) {
+            PlaneEnt &e = g_planes[g_nplanes++];
+            e.layers = p->layers; e.oam_on = oam ? 1 : 0; e.lo = p->oam_lo; e.hi = p->oam_hi; e.p = q;
+        }
         return q ? q : s->sub;
     }
     return s->sub;
@@ -1242,6 +1248,67 @@ int run_live(void)
                        menu_autocrop_rect(&L.p[0], &S, &r) && r.x == 30 && r.y == 20 && r.w == 60 && r.h == 40);
         L.p[0].s = r;
         fails += check("census: the autocropped rect reads 0", menu_seam_census(&L, 0, &S, c) == 0);
+    }
+    {   /* ASSET1: a 3D-keyed picture piece, a column fill and an OAM-range plane */
+        static int g_oam_lo = -1, g_oam_hi = -1;
+        struct F {
+            static const uint32_t *sub_for(uint8_t) { return 0; }
+            static const uint32_t *sub_for_oam(uint8_t, int lo, int hi)
+            {
+                g_oam_lo = lo; g_oam_hi = hi;
+                static uint32_t plane[256 * 192];
+                for (int i = 0; i < 256 * 192; ++i) plane[i] = 0xff445566u;
+                return plane;
+            }
+        };
+        uint8_t *cover = (uint8_t *)calloc(1024 * 768, 1);
+        uint32_t *pic2 = (uint32_t *)calloc(1024 * 768, sizeof(uint32_t));
+        uint32_t *d2 = (uint32_t *)calloc(1024 * 768, sizeof(uint32_t));
+        if (cover && pic2 && d2) {
+            for (int i = 0; i < 1024 * 768; ++i) { pic2[i] = 0xff112233u; d2[i] = 0xff000000u; }
+            for (int y = 100; y < 200; ++y) for (int x = 100; x < 200; ++x) cover[y * 1024 + x] = 1;
+            MenuSources S2 = S;
+            S2.pic = pic2; S2.pic_cover = cover; S2.pic_stride = 1024; S2.pic_w = 1024; S2.pic_h = 768;
+            S2.pic_rx = 0; S2.pic_ry = 0; S2.pic_rw = 1024; S2.pic_rh = 768;
+            MenuLayout L;
+            menu_layout_begin(&L, 1024, 768);
+            MenuPiece kp = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            kp.keycover = 1;
+            menu_add_piece(&L, kp);
+            menu_layout_dest(&L);
+            menu_piece_draw(&L, 0, &S2, d2, 1024, 768);
+            fails += check("keycover: a covered pixel shows the picture", d2[150 * 1024 + 150] == 0xff112233u);
+            fails += check("keycover: an uncovered pixel stays untouched (own transparency)", d2[50 * 1024 + 50] == 0xff000000u &&
+                           d2[150 * 1024 + 250] == 0xff000000u && d2[250 * 1024 + 150] == 0xff000000u);
+            S2.pic_cover = 0;
+            for (int i = 0; i < 1024 * 768; ++i) d2[i] = 0xff000000u;
+            menu_piece_draw(&L, 0, &S2, d2, 1024, 768);
+            fails += check("keycover: no coverage plane draws nothing", d2[150 * 1024 + 150] == 0xff000000u);
+            menu_layout_begin(&L, 1024, 768);
+            MenuPiece xf = menu_piece_make(SRC_SUB, 8, 0, 1, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            xf.xfill = 1; xf.fill_w = 100; xf.bg = 1;
+            menu_add_piece(&L, xf);
+            menu_layout_dest(&L);
+            S2.sub_for = 0;
+            fails += check("xfill: dest is fill_w units wide", L.dest[0][2] == 400 && L.dest[0][3] == 768);
+            for (int i = 0; i < 1024 * 768; ++i) d2[i] = 0xff000000u;
+            menu_piece_draw(&L, 0, &S2, d2, 1024, 768);
+            fails += check("xfill: every column of the fill reads the one source column", d2[300 * 1024] == kCol && d2[300 * 1024 + 399] == kCol &&
+                           d2[300 * 1024 + 400] == 0xff000000u);
+            menu_layout_begin(&L, 1024, 768);
+            MenuPiece op = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            op.layers = MENU_L_OBJ; op.oam_on = 1; op.oam_lo = 3; op.oam_hi = 5;
+            menu_add_piece(&L, op);
+            menu_layout_dest(&L);
+            S2.sub_for = F::sub_for; S2.sub_for_oam = F::sub_for_oam;
+            g_nplanes = 0;
+            menu_piece_draw(&L, 0, &S2, d2, 1024, 768);
+            fails += check("oam range: the host is asked for entries 3..5 and the piece draws that plane",
+                           g_oam_lo == 3 && g_oam_hi == 5 && d2[300 * 1024 + 300] == 0xff445566u);
+        } else {
+            fails += check("ASSET1 selftest buffers allocate", 0);
+        }
+        free(cover); free(pic2); free(d2);
     }
     {   /* the checker itself must be able to fail: break a good layout three ways */
         static MenuLayout B;

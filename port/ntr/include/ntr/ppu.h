@@ -411,6 +411,12 @@ long ppu_sub_obj_veto_count(void);
  * is the behaviour this file shipped with.  */
 void ppu_sub_set_bg_suppress(uint32_t mask);
 
+/* ASSET1 (run menu1): ENGINE B DRAWS ONLY SOME OAM ENTRIES. mask4 is a 128-bit set (bit i of word i / 32 is OAM entry i);
+   an entry outside it is skipped exactly as the camera-button veto skips one (obj_decide's skip[], so the scan-out cache
+   and the reference raster agree). Null = every entry, the behaviour this file shipped with. Read-only on the ROM's OAM;
+   set it around one masked ppu_scanout_sub and clear it after, the way ppu_sub_set_bg_suppress is used. */
+void ppu_sub_set_obj_select(const uint32_t *mask4);
+
 // ---- the stacked presentation -----------------------------------------------
 //
 // BOTH DS SCREENS AT THE SAME SIZE, top above bottom, which is the shape a

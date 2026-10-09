@@ -215,15 +215,21 @@ void build_main(MenuLayout *L)
     bg.bg = 1;
     bg.layers = (uint8_t)tune(5, 0x0f);
     menu_add_piece(L, bg);
-    /* x of a piece's left edge on the 4:3 core: AX_C centres, so dx is (srcx - 128 + w / 2) for the identity place */
-    const int hk = tune(0, 1), hd = tune(1, 1);
-    MenuPiece head = menu_piece_make(SRC_TOP_PIC, 0, 0, 216, 140, MENU_AX_C, MENU_AY_T, 0 - 128 + 108 + tune(2, 0), tune(3, 0), hk, hd);
+    /* the stars and sparkles stay where the ROM puts them on the 4:3 core (a piece anchored C with dx = srcx - 128 + w / 2
+       lands at its own lower-screen x); the head is cut with room around it for a stretch, scaled 2/3 and set low over the
+       logo's DS like a mascot; the wrench sits in the top right corner of the canvas */
+    const int hk = tune(0, 2), hd = tune(1, 3);
+    MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
     head.keycover = 1; head.touch = 1;
     menu_add_piece(L, head);
-    MenuPiece spk = menu_piece_make(SRC_TOP_PIC, 216, 40, 40, 100, MENU_AX_C, MENU_AY_T, 216 - 128 + 20, 40, 1, 1);
-    spk.keycover = 1;
-    menu_add_piece(L, spk);
-    MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_C, MENU_AY_T, 216 - 128 + 20, 0, 1, 1);
+    static const int kStarX[3] = { 0, 176, 216 }, kStarY[3] = { 0, 0, 40 }, kStarW[3] = { 20, 40, 40 }, kStarH[3] = { 140, 140, 100 };
+    for (int k = 0; k < 3; ++k) {
+        MenuPiece st = menu_piece_make(SRC_TOP_PIC, kStarX[k], kStarY[k], kStarW[k], kStarH[k], MENU_AX_C, MENU_AY_T,
+                                       kStarX[k] - 128 + kStarW[k] / 2, kStarY[k], 1, 1);
+        st.keycover = 1;
+        menu_add_piece(L, st);
+    }
+    MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
     wr.keycover = 1; wr.touch = 1;
     const int iwr = menu_add_piece(L, wr);
     static const int kPlateX[3] = { 0, 70, 188 }, kPlateW[3] = { 70, 118, 68 };

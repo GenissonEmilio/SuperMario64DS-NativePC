@@ -1529,6 +1529,22 @@ const uint32_t *menu_sub_for(uint8_t layers)
     return &buf.px[0][0];
 }
 
+/* ASSET1: the same masked scan-out with only OAM entries lo..hi drawn (one sprite or a set, alone). */
+const uint32_t *menu_sub_for_oam(uint8_t layers, int lo, int hi)
+{
+    if (g_msub_n >= 2) return &g_sub.px[0][0];
+    ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
+    ++g_msub_n;
+    uint32_t sel[4] = { 0, 0, 0, 0 };
+    for (int i = lo < 0 ? 0 : lo; i <= hi && i < 128; ++i) sel[i >> 5] |= 1u << (i & 31);
+    ntr::ppu_sub_set_bg_suppress((~(unsigned)layers & 0x1fu) << 8);
+    ntr::ppu_sub_set_obj_select(sel);
+    ntr::ppu_scanout_sub(buf);
+    ntr::ppu_sub_set_obj_select(0);
+    ntr::ppu_sub_set_bg_suppress(inset_bg_suppress());
+    return &buf.px[0][0];
+}
+
 MenuSources g_msrc;
 uint32_t *g_picsnap;                                 /* a copy of the picture for SRC_TOP_PIC pieces */
 uint8_t *g_covsnap;                                  /* ASSET1: a copy of the 3D coverage plane, same frame, for keycover pieces */
@@ -1580,6 +1596,7 @@ void menu_prepare_sources(unsigned *dst, int w, int h)
         g_msrc.rom_dimming = (port_fader_blend_state(&evy, &white) && evy > 0) ? 1 : 0;
     }
     g_msrc.sub_for = menu_sub_for;
+    g_msrc.sub_for_oam = menu_sub_for_oam;
     hal_menu_set_sources(&g_msrc);
     hal_menu_set_dst_stride(ntr::SCREEN_W);
 }
