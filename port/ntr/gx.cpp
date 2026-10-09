@@ -2504,9 +2504,38 @@ void gx_mip_report() {
     std::fflush(stderr);
 }
 
+/* SM64DS_SMOOTH_TRIHASH=1: one line per frame with the count and an FNV-1a
+   hash of the polygon list the frame ended with (every vertex float, the
+   texture identity and the state bytes; not the texture pointer). It is how a
+   change to the smoothing's emit path is shown bit-identical to the one it
+   replaces without comparing pictures. Off, it is one compare. */
+static void smooth_trihash_frame() {
+    static int on = -1;
+    if (on < 0) on = std::getenv("SM64DS_SMOOTH_TRIHASH") ? 1 : 0;
+    if (!on) return;
+    uint64_t h = 1469598103934665603ull;
+    auto mix = [&h](const void *p, size_t n) {
+        const unsigned char *b = static_cast<const unsigned char *>(p);
+        for (size_t i = 0; i < n; ++i) { h ^= b[i]; h *= 1099511628211ull; }
+    };
+    for (const GxTriangle &t : g.tris) {
+        mix(t.v, sizeof t.v);
+        mix(&t.tw, sizeof t.tw); mix(&t.th, sizeof t.th);
+        mix(&t.tex_scale, 1); mix(&t.tex_id, sizeof t.tex_id);
+        mix(&t.cull, 1); mix(&t.alpha, 1); mix(&t.wrap, 1);
+        mix(&t.translucent, 1); mix(&t.mode, 1); mix(&t.polyid, 1);
+        mix(&t.depth_eq, 1); mix(&t.dbg_tex, sizeof t.dbg_tex);
+    }
+    static unsigned long long frame_no = 0;
+    std::fprintf(stderr, "[trihash] r%llu n=%zu h=%016llx\n",
+                 frame_no++, g.tris.size(),
+                 (unsigned long long)h);
+}
+
 void gx_reset() {
     ++g_resets;
     g_frame_ortho = false;
+    smooth_trihash_frame();
     /* MDL. gx_reset is the host's own "begin a frame's command stream" (see
        the long note below), so it is the frame boundary the smoother's
        counters and its crack census are keyed to. It is also the flush point
