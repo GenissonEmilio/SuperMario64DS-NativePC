@@ -183,6 +183,15 @@ void menu_title_build(int variant, MenuLayout *L)
            castle both screens show is the page's own backdrop (the lower screen whole). */
         L->p[0] = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
         L->p[0].bg = 1;                         /* replaces the upper-screen backdrop added above */
+        /* The lower screen whole still carries its own list text; the two margins beside the stacked lists
+           are covered with a clean strip of that same screen (rows 128..191, left edge, no text on the score
+           page), three tiles a side, so the list is not shown twice. */
+        for (int side = 0; side < 2; ++side)
+            for (int t = 0; t < 3; ++t) {
+                MenuPiece m = menu_piece_make(SRC_TOP_PIC, 0, 128, 44, 64, side ? MENU_AX_R : MENU_AX_L, MENU_AY_T, 0, t * 64, 1, 1);
+                m.bg = 1;
+                menu_add_piece(L, m);
+            }
         MenuPiece top = menu_piece_make(SRC_SUB, 0, 10, 256, 174, MENU_AX_C, MENU_AY_T, 0, 2, 2, 3);
         menu_add_piece(L, top);
         MenuPiece low = menu_piece_make(SRC_TOP_PIC, 0, 12, 256, 108, MENU_AX_C, MENU_AY_T, 0, 118, 2, 3);
