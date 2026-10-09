@@ -162,10 +162,10 @@ void menu_title_build(int variant, MenuLayout *L)
     L->stage = MENU_STAGE_POST_FADE;
 
     if (variant == V_MAIN) {
-        MenuPiece bar = menu_piece_make(SRC_TOP_PIC, 0, 134, 256, 58, MENU_AX_C, MENU_AY_B, 0, 0, 1, 1);
+        MenuPiece bar = menu_piece_make(SRC_TOP_PIC, 0, 138, 256, 54, MENU_AX_C, MENU_AY_B, 0, 0, 1, 1);
         bar.touch = 1;
         const int ibar = menu_add_piece(L, bar);
-        MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 212, 0, 44, 44, MENU_AX_L, MENU_AY_T, 6, 6, 1, 1);
+        MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_L, MENU_AY_T, 6, 6, 1, 1);
         wr.touch = 1;
         const int iwr = menu_add_piece(L, wr);
         static const int bar_ids[3] = { 1, 0, 2 };
@@ -220,8 +220,21 @@ void menu_title_build(int variant, MenuLayout *L)
    right/left/up/down 0x10/0x20/0x40/0x80). The port's confirm (pad A, Space, Enter) arrives as 0x0002;
    the title ROM confirms on A (0x0001) and treats B as back, so confirm moves to 0x0001 and the host
    back key (Backspace / the bound B-equivalent) becomes the ROM's B. */
+extern "C" {
+extern unsigned char data_020a0e40;   /* the local player's slot */
+extern int data_020a0e58[];           /* PadData[i]: {u16 held, u16 pressed} */
+}
+
 void menu_title_pad_map(uint16_t *pressed, int host_back)
 {
+    /* The ROM's key record (src/func_ov007_020b3190.c: `*(u16*)p & ~*(u16*)(p+2)`, and the repeat counters of
+       func_ov007_020b2e64) is built from the HELD word, so the pressed word alone is not enough: the held
+       word moves 0x0002 -> 0x0001 too, and a host back is a one-frame B in it. */
+    unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+    unsigned short h = *held;
+    if (h & MENU_PAD_CONFIRM) h = (unsigned short)((h & ~(unsigned)MENU_PAD_CONFIRM) | 0x0001);
+    if (host_back) h = (unsigned short)(h | 0x0002);
+    *held = h;
     uint16_t k = *pressed;
     if (k & MENU_PAD_CONFIRM) k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | 0x0001);
     if (host_back) k = (uint16_t)(k | 0x0002);
