@@ -367,6 +367,8 @@ int       g_cp_box[4];           /* x0 y0 x1 y1 of the pixels the card drew in *
 int       g_cp_cw, g_cp_ch, g_cp_px0, g_cp_py0, g_cp_pw, g_cp_ph;
 uint32_t  g_cp_clear, g_cp_outside;
 int       g_cp_fade, g_cp_evy, g_cp_white;
+int       g_cpt_fade, g_cpt_evy, g_cpt_white, g_cpt_shown3d, g_cpt_clear_opaque, g_cpt_mask_stride;
+const uint8_t *g_cpt_mask;   /* the last composited tick's fade (FADEINTERP1) */
 long long g_cp_composed, g_cp_checked, g_cp_bad_frames, g_cp_bad_px;
 long long g_cp_settled, g_cp_captured;
 double    g_cp_ms;
@@ -3061,6 +3063,15 @@ void *cp_compose(const uint32_t *overlay, int stride_px)
             (g_cp_shown3d ? 16u : 0u) | (g_cp_clear_opaque ? 32u : 0u);
     u[11] = (uint32_t)g_cp_evy;
     g_ctx->Unmap(g_comp_cb, 0);
+    /* run hunt8, lane FADEINTERP1: the fade this tick was composited with, kept
+       for the pictures drawn between ticks (cp_compose_inter) */
+    g_cpt_fade = g_cp_fade;
+    g_cpt_evy = g_cp_evy;
+    g_cpt_white = g_cp_white;
+    g_cpt_mask = g_cp_mask;
+    g_cpt_mask_stride = g_cp_mask_stride;
+    g_cpt_shown3d = g_cp_shown3d;
+    g_cpt_clear_opaque = g_cp_clear_opaque;
 
     D3D11_VIEWPORT vp;
     vp.TopLeftX = 0.0f;
@@ -3104,9 +3115,11 @@ void *cp_compose(const uint32_t *overlay, int stride_px)
    CARD. The frame just drawn (kept, the replayed 3D) is composited with the
    overlay the tick's own composite uploaded (g_ov_tex still holds it: nothing
    uploads again until the next tick, so the 2D is composed once per tick) into
-   the in-between target g_comp2_tex, and its view is handed back. No fade and
-   no brightness mask: a tick with either is not composited ahead (SmoothMotion
-   settles it, or it is a snap tick) and takes the processor's blend instead.
+   the in-between target g_comp2_tex, and its view is handed back. The tick's
+   engine A fade, when it held still (run hunt8, lane FADEINTERP1), is applied
+   to this picture too, with the same integers; a per-pixel brightness mask is
+   not replayed (a tick with one is a snap tick) and takes the processor's
+   blend instead.
    Null (and nothing changed) when the tick's overlay is not there, the sizes
    moved or the card has stopped; the caller then reads the 3D back and blends
    on the processor as before. */
@@ -3132,9 +3145,11 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
     u[7] = (uint32_t)g_cp_ph;
     u[8] = g_cp_clear;
     u[9] = g_cp_outside;
-    u[10] = (g_cp_smoothed ? 1u : 0u) | (g_cp_shown3d ? 16u : 0u) |
-            (g_cp_clear_opaque ? 32u : 0u);
-    u[11] = 0;
+    u[10] = (g_cp_smoothed ? 1u : 0u) | (g_cpt_shown3d ? 16u : 0u) |
+            (g_cpt_clear_opaque ? 32u : 0u) | (g_cpt_fade ? 2u : 0u) |
+            ((g_cpt_fade && g_cpt_white) ? 4u : 0u) |
+            ((g_cpt_fade && g_cpt_mask) ? 8u : 0u);
+    u[11] = (uint32_t)(g_cpt_fade ? g_cpt_evy : 0);
     g_ctx->Unmap(g_comp_cb, 0);
 
     D3D11_VIEWPORT vp;
@@ -3161,12 +3176,23 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
     g_ctx->PSSetShader(g_ps_comp, 0, 0);
     g_ctx->PSSetConstantBuffers(0, 1, &g_comp_cb);
     ID3D11ShaderResourceView *srvs[4] = { g_col_srv, g_cp_smoothed ? g_fa_srv : 0,
-                                          g_ov_srv, 0 };
+                                          g_ov_srv,
+                                          (g_cpt_fade && g_cpt_mask) ? g_bm_srv : 0 };
     g_ctx->PSSetShaderResources(0, 4, srvs);
     g_ctx->Draw(3, 0);
     ID3D11ShaderResourceView *none[4] = { 0, 0, 0, 0 };
     g_ctx->PSSetShaderResources(0, 4, none);
     g_ctx->OMSetRenderTargets(0, 0, 0);
+    /* the picture now carries the tick's fade: a later settle or the check
+       resolves it the same way (set only now, so a refusal above leaves the
+       processor's blend to apply the fade itself) */
+    g_cp_fade = g_cpt_fade;
+    g_cp_evy = g_cpt_evy;
+    g_cp_white = g_cpt_white;
+    g_cp_mask = g_cpt_fade ? g_cpt_mask : 0;
+    g_cp_mask_stride = g_cpt_mask_stride;
+    g_cp_shown3d = g_cpt_shown3d;
+    g_cp_clear_opaque = g_cpt_clear_opaque;
     ++g_cp_composed;
     g_comp2_valid = true;
     g_cp_ms += ms_between(t0, qpc());

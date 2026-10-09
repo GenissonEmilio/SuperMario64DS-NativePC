@@ -7568,6 +7568,26 @@ static void present_body(void)
 static ntr::Framebuffer *g_ip_fb, *g_ip_p3, *g_ip_p2, *g_ip_p4, *g_ip_p5;
 static const ntr::Framebuffer *g_ip_level_fb;
 static int g_ip_fade_on, g_ip_fade_evy, g_ip_fade_white;
+/* run hunt8, lane FADEINTERP1: the engine A fade of the previous tick, to tell
+   a fade that holds still (blendable) from one in motion (a snap). */
+static int g_ip_prev_fade, g_ip_prev_evy, g_ip_prev_white, g_ip_fade_masked;
+static unsigned long long g_ip_fade_const_ticks, g_ip_fade_move_ticks;
+/* engine A's brightness blend on one pixel, the integers cp_fade and
+   fade_pass use */
+static inline uint32_t ip_fade_px(uint32_t p, int evy, int toWhite)
+{
+    int r = (p >> 16) & 0xff, g = (p >> 8) & 0xff, b = p & 0xff;
+    if (toWhite) {
+        r += ((255 - r) * evy) >> 4;
+        g += ((255 - g) * evy) >> 4;
+        b += ((255 - b) * evy) >> 4;
+    } else {
+        r -= (r * evy) >> 4;
+        g -= (g * evy) >> 4;
+        b -= (b * evy) >> 4;
+    }
+    return 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+}
 static int g_ip_rate_ok;
 
 /* The blended pictures' own cost, for SM64DS_INTERP_TRACE's line and the
@@ -7708,31 +7728,32 @@ static int ip_build(double alpha)
         ntr::gx_card_settle_because("a picture between ticks could not be composited on the card");
     }
     ++g_ip_cpu_pics;
-    for (int y = 0; y < ntr::active_h; ++y) {
-        uint32_t *row = o.px[y];
-        const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
-        for (int x = 0; x < ntr::active_w; ++x)
-            if (a[x] != b[x]) row[x] = b[x];
-    }
-    if (g_ip_fade_on) {
+    if (g_ip_fade_on && g_ip_fade_masked) {
+        /* the fade only some pixels take, and the card could not composite this
+           picture: the tick's own finished picture stands in for it */
+        for (int y = 0; y < ntr::active_h; ++y)
+            memcpy(o.px[y], g_ip_p4->px[y], ntr::active_w * sizeof(uint32_t));
+    } else if (g_ip_fade_on) {
+        /* run hunt8, lane FADEINTERP1: a CONSTANT engine A fade (the same
+           coefficient on this tick and the one before). The tick's snapshots
+           p2 / p4 / p5 already carry it, so the replayed 3D takes it first and
+           the tick's 2D goes back over it wherever p2 differs from the faded
+           3D layer, the same test the unfaded case makes against p3. */
         const int evy = g_ip_fade_evy, toWhite = g_ip_fade_white;
         for (int y = 0; y < ntr::active_h; ++y) {
             uint32_t *row = o.px[y];
+            const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
             for (int x = 0; x < ntr::active_w; ++x) {
-                uint32_t p = row[x];
-                int r = (p >> 16) & 0xff, g = (p >> 8) & 0xff, b = p & 0xff;
-                if (toWhite) {
-                    r += ((255 - r) * evy) >> 4;
-                    g += ((255 - g) * evy) >> 4;
-                    b += ((255 - b) * evy) >> 4;
-                } else {
-                    r -= (r * evy) >> 4;
-                    g -= (g * evy) >> 4;
-                    b -= (b * evy) >> 4;
-                }
-                row[x] = 0xFF000000u | ((uint32_t)r << 16) |
-                         ((uint32_t)g << 8) | (uint32_t)b;
+                const uint32_t pf = ip_fade_px(a[x], evy, toWhite);
+                row[x] = (pf != b[x]) ? b[x] : ip_fade_px(row[x], evy, toWhite);
             }
+        }
+    } else {
+        for (int y = 0; y < ntr::active_h; ++y) {
+            uint32_t *row = o.px[y];
+            const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
+            for (int x = 0; x < ntr::active_w; ++x)
+                if (a[x] != b[x]) row[x] = b[x];
         }
     }
     for (int y = 0; y < ntr::active_h; ++y) {
@@ -17720,6 +17741,25 @@ int main(void)
            or an engine A fade the composite has yet to apply, cannot be put
            over a replayed 3D layer from that, so such a tick is settled here
            and the snapshots are the finished picture. */
+        /* run hunt8, lane FADEINTERP1: is engine A's brightness fade this tick
+           one that HOLDS STILL? The same mode and coefficient as the tick
+           before and no per-pixel mask: then it is no motion, the tick is
+           blendable, and a picture between ticks takes the same fade the tick
+           did. Anything else (a fade moving, starting or stopping, or one
+           that only some pixels take) still snaps. Updated every tick. */
+        int ip_fade_const = 0, ip_fe = 0, ip_fw = 0;
+        if (g_ip_on > 0) {
+            const int fnow = port_fader_blend_state(&ip_fe, &ip_fw);
+            ip_fade_const = fnow && g_ip_prev_fade && g_ip_prev_evy == ip_fe &&
+                            g_ip_prev_white == ip_fw;
+            g_ip_prev_fade = fnow;
+            g_ip_prev_evy = ip_fe;
+            g_ip_prev_white = ip_fw;
+            if (fnow) {
+                if (ip_fade_const) ++g_ip_fade_const_ticks;
+                else ++g_ip_fade_move_ticks;
+            }
+        }
         if (g_ip_on > 0 && g_ip_tick_ok && ntr::gx_card_overlay_active()) {
             if (ntr::gx_card_behind_seen())
                 ntr::gx_card_settle_because("SmoothMotion: a 2D layer behind the 3D");
@@ -17729,7 +17769,7 @@ int main(void)
                    fade on the card); only a fade that stays a blendable tick
                    needs the finished picture for its snapshots */
                 int fe = 0, fw = 0;
-                if (!port_fader_blend_state(&fe, &fw))
+                if (!port_fader_blend_state(&fe, &fw) && !ip_fade_const)
                     ntr::gx_card_settle_because("SmoothMotion: an engine A fade");
             }
         }
@@ -17749,12 +17789,27 @@ int main(void)
            a SNAP: every picture of it is the tick's own, already faded. */
         if (g_ip_on > 0 && g_ip_tick_ok) {
             int ip_evy = 0, ip_white = 0;
-            if (port_fader_blend_state(&ip_evy, &ip_white)) {
+            /* a fade only some pixels take (the brightness mask) is blendable
+               only while the tick is held on the card: the composite decides
+               the mask per pixel against the picture it draws */
+            if (ip_fade_const && port_engine_a_bright_mask() &&
+                !ntr::gx_card_overlay_active())
+                ip_fade_const = 0;
+            if (ip_fade_const) {
+                /* a fade that holds still is not motion: blend, and give the
+                   pictures between ticks the same fade */
+                g_ip_fade_masked = port_engine_a_bright_mask() ? 1 : 0;
+                g_ip_fade_on = 1;
+                g_ip_fade_evy = ip_fe;
+                g_ip_fade_white = ip_fw;
+            } else if (port_fader_blend_state(&ip_evy, &ip_white)) {
                 g_ip_tick_ok = 0;
                 if (ip_trace())
                     fprintf(stderr, "[interp] tick f%d is a snap: engine A fade in "
-                            "motion (evy %d to %s)\n", port_rom_frame(), ip_evy,
-                            ip_white ? "white" : "black");
+                            "motion (evy %d to %s) mask %d prev %d/%d/%d\n",
+                            port_rom_frame(), ip_evy, ip_white ? "white" : "black",
+                            port_engine_a_bright_mask() ? 1 : 0,
+                            g_ip_prev_fade, g_ip_prev_evy, g_ip_prev_white);
             }
         }
 
