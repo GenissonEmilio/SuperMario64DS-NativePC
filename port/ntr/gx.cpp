@@ -439,7 +439,7 @@ int g_mtx_similar = 0;       // pos is a similarity AND vec agrees with it
    primitive ever spans, and a slot is used only while its generation still
    matches, so a matrix that has aged out is a miss and never a wrong
    answer. */
-enum { MTX_RING = 8 };
+enum { MTX_RING = 64 };
 Mat g_mtx_ring[MTX_RING];
 uint32_t g_mtx_ring_gen[MTX_RING];
 int g_mtx_ring_sim[MTX_RING];
