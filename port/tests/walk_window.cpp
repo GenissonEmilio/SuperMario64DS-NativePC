@@ -1617,9 +1617,7 @@ void port_frame_phase2(void);
 int port_level_change_poll(void);
 int port_level_change_pending(void);
 int port_level_hold_live(void);   /* hal/level_change.cpp: a load-hold frame (read only) */
-int port_level_hold_tick(void);   /* the same, counting the post-select hold down: once per frame */
 int port_level_hold_white(void);  /* the held picture is white, not black */
-int port_level_post_hold_live(void); /* the white hold after a star select: the NEW level is up and must not move */
 int port_level_is_mounted(int level);
 int port_level_overlay_id(int level);
 unsigned port_level_ds_overlay(int level);
@@ -15659,10 +15657,7 @@ int main(void)
            the exit wipe and the new level run frozen like the F5 menu's,
            because the cartridge is blocked in its load and runs no game code.
            Presented, paced and sounded as any frame; no tick, no clock. */
-        {
-            const int hold_now = port_level_hold_tick();
-            tick_frozen = menu_on || hold_now;
-        }
+        tick_frozen = menu_on || port_level_hold_live();
         port_actor_frame_begin();
         {
             static int k1_no_actors = -1;
@@ -16153,18 +16148,9 @@ int main(void)
            the pivot was stepped on Camera::Render's face, so neither hand
            call is made: the heading override and the echo below still are,
            after the Camera's Behavior as before. */
-        /* THE POST-SELECT WHITE HOLD (run hunt8, lane WHITEHOLD1) stands the NEW
-           level still under the white: on the cartridge the course is being
-           loaded and nothing runs, the camera included. Off a ROM actor frame
-           the camera's Behavior and the analog pivot are hand calls made every
-           presented frame, so without this the camera settled for the whole
-           hold and the reveal opened on a different view than the ROM's own
-           first frames. The black hold and the F5 menu keep their old
-           behaviour (the old level is gone behind the black). */
-        const int cam_held = port_level_post_hold_live();
-        if (cam_mode == CAM_ANALOG && !rb_replaying() && !k1_rom && !cam_held) an_step_pivot(c);
+        if (cam_mode == CAM_ANALOG && !rb_replaying() && !k1_rom) an_step_pivot(c);
         if (real_camera) {
-            if (!k1_rom && !cam_held)
+            if (!k1_rom)
                 hal_camera_behavior(cam);
             /* THE ONE THING THE RIG OVERRIDES BESIDES THE VIEW: the heading
                the walk steers by. Camera::Behavior has just put its own into
