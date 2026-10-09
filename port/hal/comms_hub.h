@@ -74,6 +74,17 @@
 //   voice  'SYNV'  176 or 340    1        FIFO 32 (hal/voice_chat.h format)
 //   ping   'SYNP'  12            -        hub-internal (RTT per seat, 2 Hz)
 //   pong   'SYNQ'  12            -        hub-internal (byte 6 = pinger seat)
+// PARTY AND COOP ROOMS (run mp1 wave 56, lane WIRE1; layouts in
+// hal/hub_presence.h, the room gates are the relay's and are mirrored here):
+//   presence 'SYNL' 20          1        FIFO 16; world, party, coop rooms
+//   pstar    'SYNX' 12          1        FIFO 16; party rooms only
+//   phit     'SYNH' 24          1        FIFO 16; party only, to ONE seat (the
+//                                         victim, byte 6; the relay routes it)
+//   cworld   'SYNW' 16..700     1        FIFO 32; coop rooms only
+//   cctl     'SYNB' 16..700     1        FIFO 32; coop rooms only
+// A party or coop room holds seats 0..3 (the ROM seats four bodies); the room
+// kind is SM64DS_ROOM_KIND = world | party | coop (default world) and picks the
+// HELLO role (2 / 4 / 5). hub_on_kind() below plugs a consumer into a kind.
 // Anything else received is dropped and counted by reason.
 //
 // THE ARENA SHAPE (run mp1, lane ARENACORE1; hal/vs_arena.h). A VS console in
@@ -96,12 +107,15 @@
 
 #include <cstddef>
 
+#include "hub_presence.h"
+
 namespace port {
 
 enum : int {
     kHubMaxSeats     = 16,
     kHubEnvelopeBytes = 8,
-    kHubMaxDatagram  = 340,     // the largest kind (voice)
+    kHubMaxDatagram  = 700,     // the largest kind (coop world / control);
+                                // was 340 (voice) before wave 56
     kHubPresenceMs   = 3000,    // a seat unheard this long has left
 };
 
@@ -116,7 +130,13 @@ enum HubKind : int {
     kHubArenaObject = 5,   // 'SYNO'  A3 vs_arena_ref.cpp
     kHubArenaRef    = 6,   // 'SYNR'  A3 vs_arena_ref.cpp (seat 0xFE)
     kHubArenaClaim  = 7,   // 'SYNE'  A3 sends; never received
-    kHubKinds = 8,
+    // PARTY / COOP (lane WIRE1; hal/hub_presence.h)
+    kHubPresence  = 8,     // 'SYNL'  hub_presence.cpp
+    kHubPartyStar = 9,     // 'SYNX'  party only
+    kHubPartyHit  = 10,    // 'SYNH'  party only, to one seat
+    kHubCoopWorld = 11,    // 'SYNW'  coop only
+    kHubCoopCtl   = 12,    // 'SYNB'  coop only
+    kHubKinds = 13,
 };
 enum : int { kHubRefereeSeat = 0xFE };   // byte 5 of what the referee sends
 
@@ -154,6 +174,9 @@ enum : unsigned char {
     kGhostPaused    = 0x08,    // paused / in a menu
     kGhostTalking   = 0x10,    // mic gate open (V1 exports it)
 };
+// BUILD 6 (lane GHOSTDOOR1, hal/ghost_door.h): the area byte, the low byte of
+// vy and flags bit 6 (0x40) carry the door / area / hidden look of a ghost.
+// The hub itself only copies flags / level_id / area into HubSeatInfo.
 struct HubGhostFrame {
     unsigned       tag;         // kHubTagGhost
     unsigned char  version;     // 1
@@ -295,6 +318,29 @@ unsigned comms_hub_now_ms();
 bool comms_hub_referee_clock(unsigned *ref_now_ms, int *rtt_ms,
                              int *cap_ms);
 
+// WHAT KIND OF ROOM THIS HUB IS IN (hal/hub_presence.h HubRoomKind): world
+// (the default, the old hub), party or coop, from SM64DS_ROOM_KIND at install.
+// Decides the HELLO role and which kinds this console may send and take.
+// kHubRoomWorld when the hub is not installed.
+HubRoomKind comms_hub_room_kind();
+
+// PLUG A CONSUMER INTO A KIND (the five party / coop kinds only). The
+// handler runs on the CALLER of comms_hub_pump(), never on the I/O thread, so
+// a consumer's own state needs no lock. One handler per kind; registering
+// again replaces it (false for any other kind). With no handler a kind just
+// queues (comms_hub_recv works as for every kind), oldest dropped when full.
+// `data` is the whole datagram, byte 5 = the sender seat, already validated
+// by the hub (tag, version, fixed fields, room gate, and for 'SYNH' that I am
+// the victim).
+typedef void (*HubKindFn)(int seat, const unsigned char *data, int len,
+                          void *user);
+bool hub_on_kind(HubKind kind, HubKindFn fn, void *user = nullptr);
+
+// Deliver everything queued for kinds that have a handler; returns how many
+// datagrams were delivered. Call once a frame (hub_presence's frame hook
+// does, port_hub_presence_frame). Bounded: at most 64 per kind per call.
+int comms_hub_pump();
+
 // The NEWEST datagram of `kind` from `seat` (ghost: newest by seq). Does not
 // consume anything from the FIFO. Returns the length or 0; *age_ms (optional)
 // gets how long ago it arrived.
@@ -346,6 +392,10 @@ struct CommsHubStats {
     bool arena;
     unsigned long long drop_shape;        // a kind the other shape owns
     unsigned long long ref_pings, ref_pongs;
+    // party / coop rooms (lane WIRE1)
+    int room;                             // HubRoomKind
+    unsigned long long drop_field;        // a fixed field out of range
+    unsigned long long dispatched;        // delivered to a hub_on_kind handler
 };
 CommsHubStats comms_hub_stats();
 void comms_hub_report(const char *tag);   // one "[hub] ..." line to stderr

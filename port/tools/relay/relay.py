@@ -148,6 +148,16 @@ KIND_HUB = "hub"
 HUB_SEATS = 16              # a hub session holds seats 0..15, nobody hosts
 ROLE_ARENA = 3              # an arena member (hub-shaped, refereed)
 KIND_ARENA = "arena"
+# ---- party and coop rooms (run mp1 wave 56, lane WIRE1) --------------------
+# Hub-shaped sessions that hold seats 0..3 only (the ROM seats four player
+# bodies). A HELLO v2 with role 4 opens or joins a PARTY room, role 5 a COOP
+# room. An older relay answers both with status 2 (bad request), so a new
+# client against an old relay is refused, never mis-seated.
+ROLE_PARTY = 4
+ROLE_COOP = 5
+KIND_PARTY = "party"
+KIND_COOP = "coop"
+PARTY_SEATS = 4
 
 # ---- THE KIND TABLE (design section 3) --------------------------------------
 #
@@ -175,9 +185,10 @@ R_UP = "up"
 
 class Kind(object):
     __slots__ = ("tag", "name", "lo", "hi", "exact", "star", "hub", "cap",
-                 "stamp")
+                 "stamp", "sessions")
 
-    def __init__(self, tag, name, lengths, star, hub, cap, stamp):
+    def __init__(self, tag, name, lengths, star, hub, cap, stamp,
+                 sessions=None):
         self.tag = tag
         self.name = name
         if isinstance(lengths, range):
@@ -189,6 +200,9 @@ class Kind(object):
         self.hub = hub
         self.cap = cap
         self.stamp = stamp
+        # None: every session shape that has a route for it. Else the set of
+        # session kinds that accept it (party / coop kinds, see PARTY_KINDS).
+        self.sessions = sessions
 
     def length_ok(self, n):
         if self.exact is not None:
@@ -212,6 +226,66 @@ for _k in (
     KINDS[_k.tag] = _k
 del _k
 KIND_ORDER = tuple(KINDS)   # stats line order, the table's own
+
+# ---- THE PARTY / COOP KINDS (run mp1 wave 56, lane WIRE1) ------------------
+#
+# Kept apart from KINDS on purpose: KINDS above is the version 2 design table
+# and nothing in it moved. These five are additive. Each is accepted only in
+# the session kinds named in `sessions`; anywhere else it is a "route" drop.
+# All are hub-shaped (R_ALL, or R_SEAT6 for the hit: byte 6 names the victim)
+# and the relay stamps the sender's seat at byte 5 like every SYN kind.
+#
+#   SYNL presence      20 fixed        party, coop, world   cap  6/s
+#   SYNX party star    12 fixed        party                cap  2/s
+#   SYNH party hit     24 fixed        party, ONE seat      cap 10/s
+#   SYNW coop world    16..700         coop                 cap 40/s
+#   SYNB coop control  16..700         coop                 cap 30/s
+#
+# The layouts are port/hal/hub_presence.h; the field checks are party_field_ok
+# below. SYNW / SYNB are 12 bytes of head (tag + 8) then payload_len bytes.
+PARTY_KINDS = {}
+for _k in (
+        #     tag      name       lengths            star  hub     cap stamp sessions
+        Kind(b"SYNL", "presence", (20,),             None, R_ALL,   6, 5,
+             frozenset((KIND_HUB, KIND_PARTY, KIND_COOP))),
+        Kind(b"SYNX", "partystar", (12,),            None, R_ALL,   2, 5,
+             frozenset((KIND_PARTY,))),
+        Kind(b"SYNH", "partyhit", (24,),             None, R_SEAT6, 10, 5,
+             frozenset((KIND_PARTY,))),
+        Kind(b"SYNW", "coopworld", range(16, 701),   None, R_ALL,  40, 5,
+             frozenset((KIND_COOP,))),
+        Kind(b"SYNB", "coopctl",  range(16, 701),    None, R_ALL,  30, 5,
+             frozenset((KIND_COOP,))),
+):
+    PARTY_KINDS[_k.tag] = _k
+del _k
+PARTY_ORDER = tuple(PARTY_KINDS)
+PRES_FLAGS_MASK = 0x1F      # hub_presence.h kPresFlagsMask
+PARTY_COURSES = 30          # SYNX course 0..29
+PARTY_STARS = 8             # SYNX star 0..7
+HIT_KINDS = 1               # SYNH hit_kind 0 (shove) only
+COOP_HEAD = 12              # SYNW / SYNB: tag + 8-byte header
+
+
+def party_field_ok(tag, data, seat):
+    """The field checks for the party / coop kinds: a datagram that passes
+    the length gate but is not what the kind says is dropped (counted as
+    "field"), never forwarded. `seat` is the sender's seat, for the checks
+    that depend on it. Bounds are the table's exact lengths (checked first)."""
+    if data[4] != 1:                       # version, byte 4 for every kind
+        return False
+    if tag == b"SYNL":
+        return data[10] <= 3 and (data[11] & ~PRES_FLAGS_MASK) == 0
+    if tag == b"SYNX":
+        return (data[6] < PARTY_COURSES and data[7] < PARTY_STARS
+                and data[8] == 0 and data[9] == 0)
+    if tag == b"SYNH":
+        return (data[6] < PARTY_SEATS and data[6] != seat
+                and data[7] < HIT_KINDS)
+    # SYNW / SYNB
+    return (data[7] == 0
+            and int.from_bytes(data[10:12], "little") == len(data)
+            - COOP_HEAD)
 
 # The reasons a version 2 datagram is dropped, in stats line order.
 DROP_REASONS = ("unknown", "length", "route", "cap", "target", "session_cap")
@@ -594,6 +668,8 @@ class SessionV2(object):
         return len(self.seats)
 
     def capacity(self):
+        if self.kind in (KIND_PARTY, KIND_COOP):
+            return PARTY_SEATS
         if self.kind in (KIND_HUB, KIND_ARENA):
             return HUB_SEATS
         return MAX_ENDPOINTS_PER_SESSION
@@ -647,7 +723,12 @@ class RelayProtocol(asyncio.DatagramProtocol):
         self.n_vmix = 0
         self.n_wrong_kind = 0
         self.v2_drop = dict((r, 0) for r in DROP_REASONS)
-        self.kstats = dict((tag, [0, 0, 0]) for tag in KIND_ORDER)
+        self.kstats = dict((tag, [0, 0, 0])
+                           for tag in KIND_ORDER + PARTY_ORDER)
+        # party / coop kinds (WIRE1): field-check drops, and whether any of
+        # them has been seen (the stats line grows a tail only then)
+        self.pc_field = 0
+        self.pc_seen = False
         # socket errors the OS reported (error_received), logged once
         self.n_reset = 0
         self.reset_logged = False
@@ -956,6 +1037,11 @@ class RelayProtocol(asyncio.DatagramProtocol):
             ok = (0 <= want < HUB_SEATS) or want == WANT_ANY
         elif role == ROLE_ARENA and referee is not None:
             ok = (0 <= want < HUB_SEATS) or want == WANT_ANY
+        elif role in (ROLE_PARTY, ROLE_COOP):
+            # a party / coop room holds seats 0..3: the want grammar is the
+            # hub's, and a seat past the bodies is refused below with
+            # status 1 (full), not as a malformed request
+            ok = (0 <= want < HUB_SEATS) or want == WANT_ANY
         else:
             ok = False
         if not ok:
@@ -963,6 +1049,10 @@ class RelayProtocol(asyncio.DatagramProtocol):
             return
         if role == ROLE_ARENA:
             kind = KIND_ARENA
+        elif role == ROLE_PARTY:
+            kind = KIND_PARTY
+        elif role == ROLE_COOP:
+            kind = KIND_COOP
         else:
             kind = KIND_HUB if role == ROLE_MEMBER else KIND_STAR
 
@@ -1027,7 +1117,7 @@ class RelayProtocol(asyncio.DatagramProtocol):
             # bodies (the referee learns that from the first READY's
             # capacity; before it, the room is open to every hub seat). A
             # seat with no body would be a console the game cannot seat.
-            top = HUB_SEATS
+            top = PARTY_SEATS if kind in (KIND_PARTY, KIND_COOP) else HUB_SEATS
             if kind == KIND_ARENA and session.referee is not None:
                 bodies = session.referee.body_count()
                 if bodies is not None:
@@ -1037,10 +1127,14 @@ class RelayProtocol(asyncio.DatagramProtocol):
                 if seat is None:
                     status, why = STATUS_FULL, (
                         "hub full" if top == HUB_SEATS else
+                        "all %d seats of this %s room are taken" % (top, kind)
+                        if kind in (KIND_PARTY, KIND_COOP) else
                         "all %d bodies of this arena are seated" % top)
             elif want >= top:
                 status, why = STATUS_FULL, (
-                    "seat %d has no body (this arena has %d)" % (want, top))
+                    "seat %d has no body (this %s has %d)"
+                    % (want, "room" if kind in (KIND_PARTY, KIND_COOP)
+                       else "arena", top))
             elif want in session.seats:
                 holder = self.endpoints.get(session.seats[want])
                 if (kind == KIND_ARENA and holder is not None
@@ -1081,7 +1175,8 @@ class RelayProtocol(asyncio.DatagramProtocol):
             caps=self.kind_caps.setdefault(addr, {}))
         log("session %s join %s as %s seat %d (%d/%d) v2"
             % (code, short_addr(addr),
-               ("parent", "child", "member", "arena")[role], seat,
+               ("parent", "child", "member", "arena", "party", "coop")[role],
+               seat,
                session.size(), session.capacity()))
         self._send_ack(addr, STATUS_OK, code_raw, n, version=PROTO_V2,
                        seat=seat)
@@ -1120,6 +1215,8 @@ class RelayProtocol(asyncio.DatagramProtocol):
             self._forward_arena(data, addr, now, endpoint)
             return
         kind = KINDS.get(bytes(data[:4])) if n >= 4 else None
+        if kind is None and n >= 4:
+            kind = PARTY_KINDS.get(bytes(data[:4]))
         if kind is None:
             self._drop_v2("unknown")
             return
@@ -1133,11 +1230,21 @@ class RelayProtocol(asyncio.DatagramProtocol):
             self.n_drop_unpaired += 1
             kstat[2] += 1
             return
-        route = kind.hub if session.kind == KIND_HUB else kind.star
+        hubby = session.kind in (KIND_HUB, KIND_PARTY, KIND_COOP)
+        route = kind.hub if hubby else kind.star
+        if kind.sessions is not None and session.kind not in kind.sessions:
+            route = None            # a party / coop kind in the wrong room
+        if kind.tag in PARTY_KINDS:
+            self.pc_seen = True
         if route is None:
             self._drop_v2("route", kstat)
             return
         seat = endpoint.seat
+        if kind.tag in PARTY_KINDS and not party_field_ok(kind.tag, data,
+                                                          seat):
+            self.pc_field += 1
+            kstat[2] += 1
+            return
         if route == R_STAR:
             if seat == 0:
                 targets = [a for s, a in session.seats.items() if s != 0]
@@ -1336,7 +1443,8 @@ class RelayProtocol(asyncio.DatagramProtocol):
     def sweep(self, now):
         for addr, endpoint in list(self.endpoints.items()):
             idle = self.idle_s
-            if (endpoint.role in (ROLE_MEMBER, ROLE_ARENA)
+            if (endpoint.role in (ROLE_MEMBER, ROLE_ARENA, ROLE_PARTY,
+                                  ROLE_COOP)
                     and endpoint.version == PROTO_V2):
                 idle = self.hub_idle_s
             if (now - endpoint.last_seen) > idle:
@@ -1385,7 +1493,24 @@ class RelayProtocol(asyncio.DatagramProtocol):
         kinds = " ".join("%s=%d/%d/%d" % ((tag.decode("ascii"),)
                                           + tuple(self.kstats[tag]))
                          for tag in KIND_ORDER)
-        return "%s %s %s%s" % (head, drops, kinds, self.stats_arena())
+        return "%s %s %s%s%s" % (head, drops, kinds, self.stats_arena(),
+                                 self.stats_party())
+
+    def stats_party(self):
+        """The party / coop tail (WIRE1): rooms by shape, field drops, and
+        per kind rx/fwd/drop. Absent until a party or coop kind, or room,
+        has been seen, so a relay carrying none prints the line it always
+        did."""
+        rooms = [sum(1 for s in self.sessions.values()
+                     if s.version == PROTO_V2 and s.kind == k)
+                 for k in (KIND_PARTY, KIND_COOP)]
+        if not (self.pc_seen or rooms[0] or rooms[1]):
+            return ""
+        kinds = ",".join("%s:%d/%d/%d" % ((tag.decode("ascii"),)
+                                          + tuple(self.kstats[tag]))
+                         for tag in PARTY_ORDER)
+        return " pc_rooms=party:%d,coop:%d pc_field=%d pc_kinds=%s" % (
+            rooms[0], rooms[1], self.pc_field, kinds)
 
     def stats_arena(self):
         """The arena tail: sessions, referee sends, drops by reason, and per
@@ -1495,6 +1620,8 @@ async def run():
         % ("loaded" if referee is not None else "MISSING (arena off)",
            REFEREE_TICK_S * 1000,
            "on" if REFEREE_KICK else "off"))
+    log("party: roles 4 (party) and 5 (coop), seats=%d kinds=%s"
+        % (PARTY_SEATS, ",".join(t.decode("ascii") for t in PARTY_ORDER)))
 
     stop = asyncio.Event()
 

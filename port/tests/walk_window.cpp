@@ -618,6 +618,9 @@ void port_adventure_presence_probe(int frame);
 /* the party render-boundary proof; no-op unless SM64DS_PARTY_PROBE (or the
    SM64DS_PARTY_DIAG stride) is set. */
 void port_party_probe(int frame);
+/* run mp1 wave 56 lane WIRE1: hub presence ('SYNL') and the party / coop kind
+   pump (hal/hub_presence.cpp). No-op unless a hub is live outside an arena. */
+void port_hub_presence_frame(void);
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
 extern char data_0209f4a0[];
@@ -16399,6 +16402,7 @@ int main(void)
            the same-level filter and the spawn/despawn transitions. Inert unless
            SM64DS_ADVENTURE_PRESENCE is set. */
         port_adventure_presence_probe(frame);
+        port_hub_presence_frame();
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
            Reads the render pass's own per-slot record (set just below in the

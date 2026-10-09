@@ -176,6 +176,52 @@ ignores that address for 10 seconds. A 1.0 game that falls back to version 1
 on that answer should expect its first version 1 HELLOs to go unanswered for
 those 10 seconds (or send them from a fresh socket).
 
+## Party and coop rooms (run mp1, wave 56, lane WIRE1)
+
+Two more hub-shaped session kinds, for the party and coop modes. They are
+additive: an arena, VS or world session behaves byte for byte as before (checked
+by replaying 22957 mixed datagrams through the previous relay and this one and
+comparing every byte sent, every counter and the stats line).
+
+**Roles.** HELLO v2 role 4 opens or joins a PARTY room, role 5 a COOP room
+(want_seat as for a member, but a room holds seats 0..3 only: a want_seat of
+4 or more, or a fifth member, is answered status 1, full). A party room, a coop
+room, a world hub, an arena and a star never share a code: the second kind to
+ask gets status 5. An older relay answers a role it does not know with status 2
+(bad request), so a new game against an old relay is refused, never mis-seated.
+Idle expiry is the hub's (10 s).
+
+**Kinds.** Everything in the hub table above is forwarded in a party or coop
+room as in a world hub (ghost, identity, chat, voice, ping, pong), plus the
+five kinds below. Layouts are `port/hal/hub_presence.h`; every datagram begins
+with the 4-byte tag, byte 4 is the version (1) and byte 5 the sender's seat,
+written by the relay. The relay checks the fields listed; a datagram that has
+the right tag and length but fails a field check is dropped and counted
+(`pc_field`), never forwarded.
+
+| kind          | tag    | length    | accepted in          | goes to                | cap/s | fields the relay checks                                           |
+|---------------|--------|-----------|----------------------|------------------------|-------|-------------------------------------------------------------------|
+| presence      | `SYNL` | 20        | world, party, coop   | every other seat       | 6     | character 0..3, flags inside 0x1f                                 |
+| party star    | `SYNX` | 12        | party                | every other seat       | 2     | course 0..29, star 0..7, reserved (bytes 8, 9) 0                  |
+| party hit     | `SYNH` | 24        | party                | ONE seat: byte 6       | 10    | victim (byte 6) 0..3 and not the sender, hit_kind 0               |
+| coop world    | `SYNW` | 16..700   | coop                 | every other seat       | 40    | flags (byte 7) 0, payload_len (bytes 10, 11) == length - 12       |
+| coop control  | `SYNB` | 16..700   | coop                 | every other seat       | 30    | the same head                                                     |
+
+A kind sent into a room that does not accept it is a `route` drop (counted per
+kind). The hit is routed by byte 6 like a pong, to the victim only; the victim
+byte is bounds-checked (0..3) and an empty seat is a `target` drop. The cap is
+spent only on a datagram that passes every check, so forged traffic cannot eat
+a seat's allowance.
+
+**Stats line.** After the arena tail the line grows ` pc_rooms=party:N,coop:N
+pc_field=N pc_kinds=SYNL:rx/fwd/drop,...`, only once a party or coop room or
+kind has been seen, so a relay carrying none prints the line it always did.
+
+**Session budget.** `SM64DS_RELAY_SESSION_FWD_PPS` is unchanged (code default
+15000; the live box overrides it to 20000 in a systemd drop-in). The new kinds
+in a four-seat room at their caps are at most (40 + 30 + 6) x 3 recipients x 4
+seats = 912 copies a second, far below it.
+
 ## Arena sessions: a referee inside the relay
 
 Arena mode is the VS netcode where every console runs its own arena world and
