@@ -132,6 +132,44 @@ int tune(int idx, int dflt)          /* SM64DS_TITLE_TUNE=a,b,c,d,... integer kn
 
 }  // namespace
 
+
+/* ---- THE TITLE'S SPRITE-OBJECT FILTER (run menu1, lane ASSET1) ------------------------------------------
+   The lower screen of the title is NOT 2D: engine A has no BG pixels and no sprites there (SM64DS_MSG_COMPOSITE_DEBUG:
+   composited 0 px, OAM A 0 placed). Everything on it, the wallpaper, the plates, the wrench, the stars, is a 3D quad
+   the ROM submits through func_ov007_020c421c (one call per object per frame). The port arm in that function asks
+   this hook whether to draw. SM64DS_TITLE_DRAWTRACE=1 prints each call; SM64DS_TITLE_SKIPK=<hex> skips the calls whose
+   per-frame index is a set bit (a probe for naming the objects). */
+extern "C" {
+extern int (*g_port_title_draw_skip)(char *obj);
+extern int *data_ov007_0210342c;
+}
+namespace {
+int g_tk_frame = -1, g_tk_idx = 0;
+int title_skip(char *o)
+{
+    static int trace = -1;
+    static unsigned skipk;
+    if (trace < 0) {
+        const char *e = getenv("SM64DS_TITLE_DRAWTRACE");
+        trace = (e && *e && *e != '0') ? 1 : 0;
+        e = getenv("SM64DS_TITLE_SKIPK");
+        skipk = e ? (unsigned)strtoul(e, 0, 16) : 0;
+    }
+    if (!trace && !skipk) return 0;
+    const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
+    if (fr != g_tk_frame) { g_tk_frame = fr; g_tk_idx = 0; }
+    const int k = g_tk_idx++;
+    if (trace && (fr == 300 || fr == 480 || fr == 600)) {
+        const int *w = (const int *)o;
+        fprintf(stderr, "[tdraw] f%d k%d obj=%p flags=%08x p4=%d p8=%d tex=%04x id=%02x a=%d
+", fr, k, (void *)o, w[0], w[1], w[2],
+                (unsigned)*(unsigned short *)(o + 0x44), (unsigned)*(unsigned char *)(o + 0x4e), (w[0x50 / 4] >> 12) & 0xff);
+    }
+    return k < 32 && ((skipk >> k) & 1);
+}
+struct TitleHookInit { TitleHookInit() { g_port_title_draw_skip = title_skip; } } g_title_hook_init;
+}  // namespace
+
 int menu_title_up(int scene_id)
 {
     if (scene_id != 1) return 0;
