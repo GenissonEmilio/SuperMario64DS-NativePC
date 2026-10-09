@@ -6689,9 +6689,9 @@ void gx_render(Framebuffer &fb) {
        when the setting is on, and the perf line should say so. */
     {
         static const char *cd = getenv("SM64DS_COVER_DUMP");
-        if (cd && *cd) cover_dump(cd, cw, ch);
+        /* the card's frame has no coverage mask on the processor to dump */
+        if (cd && *cd && !gpu_full) cover_dump(cd, cw, ch);
     }
-    aa_pass(fb, cw, ch, nt);
     if (gpu_full && gpu_out.aa_done) {
         /* the card smoothed the picture and left aa_pass's own bookkeeping to
            be done here: the frame count, the pixels moved, and whether the
