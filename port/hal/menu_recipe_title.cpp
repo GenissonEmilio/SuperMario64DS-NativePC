@@ -161,8 +161,7 @@ int title_skip(char *o)
     const int k = g_tk_idx++;
     if (trace && (fr == 300 || fr == 480 || fr == 600)) {
         const int *w = (const int *)o;
-        fprintf(stderr, "[tdraw] f%d k%d obj=%p flags=%08x p4=%d p8=%d tex=%04x id=%02x a=%d
-", fr, k, (void *)o, w[0], w[1], w[2],
+        fprintf(stderr, "[tdraw] f%d k%d obj=%p flags=%08x p4=%d p8=%d tex=%04x id=%02x a=%d\n", fr, k, (void *)o, w[0], w[1], w[2],
                 (unsigned)*(unsigned short *)(o + 0x44), (unsigned)*(unsigned char *)(o + 0x4e), (w[0x50 / 4] >> 12) & 0xff);
     }
     return k < 32 && ((skipk >> k) & 1);
