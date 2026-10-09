@@ -389,15 +389,28 @@ void *__cdecl api_symbol(const SM64DSModApi *api, const char *name)
     return (void *)(size_t)(it->second - g_sym_base + (unsigned)(size_t)GetModuleHandleA(0));
 }
 
+/* every live api->alloc block and the size it was asked for: a file filter may
+   only hand back a buffer that is in this set (and returns no more bytes than
+   it holds), so a pointer from anywhere else never reaches the game's free() */
+std::map<void *, size_t> g_allocs;
+
 void *__cdecl api_alloc(const SM64DSModApi *api, size_t size)
 {
     (void)api;
-    return malloc(size ? size : 1);
+    void *r = malloc(size ? size : 1);
+    if (r) g_allocs[r] = size;
+    return r;
 }
 
 void __cdecl api_free(const SM64DSModApi *api, void *ptr)
 {
-    (void)api;
+    if (!ptr) return;
+    std::map<void *, size_t>::iterator it = g_allocs.find(ptr);
+    if (it == g_allocs.end()) {
+        api_log(api, "free(%p): not a block from api->alloc (or already freed or handed to the game), ignored", ptr);
+        return;
+    }
+    g_allocs.erase(it);
     free(ptr);
 }
 
@@ -453,7 +466,20 @@ u32 plugin_filter(unsigned fileID, u8 **data, u32 size)
             if (seh_file(c.fn, c.path.c_str(), &cur, size, c.user)) {
                 const u32 ret = g_file_ret;
                 if (cur != old) {
-                    /* a buffer from the API's alloc replaces ours */
+                    /* only a live block from the API's alloc, holding at least
+                       the bytes claimed, may replace ours */
+                    std::map<void *, size_t>::iterator ai = g_allocs.find(cur);
+                    if (ai == g_allocs.end() || ret > ai->second) {
+                        fprintf(stderr, "[plugins] %s: filter for %s returned %s (%u bytes): ignored, file left as it was, plugin switched off
+",
+                                p->id.c_str(), c.path.c_str(),
+                                ai == g_allocs.end() ? "a buffer that is not from api->alloc" : "a size larger than its api->alloc block",
+                                ret);
+                        *data = old;
+                        p->dead = true;
+                        continue;
+                    }
+                    g_allocs.erase(ai);        /* the game owns it from here */
                     free(old);
                     *data = cur;
                     size = ret;
