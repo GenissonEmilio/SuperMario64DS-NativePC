@@ -145,11 +145,13 @@ void build_gameover(int, MenuLayout *L)
     L->stage = MENU_STAGE_POST_FADE;
 }
 
+int g_go_shown;      /* the pad cursor has painted its highlight on this screen */
+
 /* The ROM reads the pad only once the intro is in (+0x94 >= 2) and while its FSM waits (+0x90 == 0). */
 int pad_ok_gameover(void)
 {
     const void *o = port_scene_live_object();
-    if (!o || port_scene_live_id() != kGoScene) return 0;
+    if (!o || port_scene_live_id() != kGoScene) { g_go_shown = 0; return 0; }
     return ob(o, 0x94) >= 2 && ob(o, 0x90) == 0;
 }
 
@@ -162,7 +164,8 @@ int rom_cursor_gameover(int dir, int *sel_out)
     unsigned char *s = (unsigned char *)o;
     const int want = (dir == MENU_DIR_UP || dir == MENU_DIR_LEFT) ? 0 : 1;
     int moved = 0;
-    if (s[0x91] != want) {
+    if (s[0x91] != want || !g_go_shown) {
+        g_go_shown = 1;      /* the plates show no highlight until something paints one: the first press always does */
         s[0x91] = (unsigned char)want;
         func_ov003_020b0730(o, 0);
         func_02012790(0x12e);
