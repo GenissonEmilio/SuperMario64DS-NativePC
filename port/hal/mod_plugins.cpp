@@ -463,6 +463,9 @@ u32 plugin_filter(unsigned fileID, u8 **data, u32 size)
             if (c.id != fileID) continue;
             u8 *old = *data;
             u8 *cur = old;
+            /* the filter may edit in place and then fault or misbehave: keep
+               the bytes it was given so the file can be put back */
+            const std::vector<u8> pristine(old, old + size);
             if (seh_file(c.fn, c.path.c_str(), &cur, size, c.user)) {
                 const u32 ret = g_file_ret;
                 if (cur != old) {
@@ -475,6 +478,7 @@ u32 plugin_filter(unsigned fileID, u8 **data, u32 size)
                                 p->id.c_str(), c.path.c_str(),
                                 ai == g_allocs.end() ? "a buffer that is not from api->alloc" : "a size larger than its api->alloc block",
                                 ret);
+                        if (size) memcpy(old, &pristine[0], size);
                         *data = old;
                         p->dead = true;
                         continue;
@@ -490,8 +494,9 @@ u32 plugin_filter(unsigned fileID, u8 **data, u32 size)
                             p->id.c_str(), c.path.c_str(), ret, size);
                 }
             } else {
+                if (size) memcpy(old, &pristine[0], size);   /* undo a half-finished edit */
                 *data = old;
-                kill_plugin(p, "a file filter");
+                kill_plugin(p, "a file filter (file restored)");
             }
         }
     }
