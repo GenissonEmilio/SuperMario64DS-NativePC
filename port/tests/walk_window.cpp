@@ -1829,8 +1829,11 @@ int hal_window_focused(void);
 void hal_sub_screen_frame_begin(void);
 void hal_sub_screen_present(unsigned int *dst, int w, int h);
 void hal_sub_screen_probe(void);
-/* the level-clear save menu's pad step: up / down / A on the pressed word */
-void hal_lc_menu_pad(void);
+/* the one-screen menu compose layer's pad step (run menu1, hal/sub_screen.cpp): the live recipe's driver on the
+   pressed word, in both spellings the ROM reads; inert with no recipe live */
+void hal_menu_pad_seam(void);
+/* and its one predicate for the frame (hal/menu_compose.cpp): a recipe owns this frame's picture */
+int hal_menu_live(void);
 /* the camera buttons drawn on the bottom screen, hit-tested against the touch
    record the panel fills (hal/sub_screen.cpp wraps Stage::CheckCameraInput
    with the split-symbol bridge the host Ctrl block needs) */
@@ -8636,7 +8639,7 @@ static int mo_capture_want(int selftest, int stacked)
        and fenced out of the corner panel cannot reach any of them. So the
        pointer is handed back for those frames and taken again afterwards,
        which is the same bargain the scene path and the stacked window get. */
-    if (hal_save_menu_up()) return 0;
+    if (hal_save_menu_up() || hal_menu_live()) return 0;
     if (g_rebind_capture) return 0;     /* a key is being chosen */
     if (g_padlearn) return 0;           /* a pad is being taught */
     if (rb_replaying()) return 0;       /* a rewound window is being re-run */
@@ -10080,6 +10083,10 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
             *(unsigned short *)((char *)data_020a0e58 + 2) = scene_edge;
             *(unsigned short *)((char *)data_020a0e5a + 0) = scene_edge;
             scene_raw_prev = scene_raw_all;
+            /* the menu compose layer's pad step, the scene loop's seam (the title, the star select, the menus);
+               single player only, as the level loop's is */
+            if (!port::comms_transport())
+                hal_menu_pad_seam();
         }
         btn_was = btn;
     }
@@ -13738,11 +13745,13 @@ int main(void)
                 for (int b5_i = 0; b5_i < 4; ++b5_i)
                     *(unsigned short *)((char *)data_020a0e5a + b5_i * 4) =
                         *(unsigned short *)((char *)data_020a0e58 + b5_i * 4 + 2);
-            /* the level-clear save menu's pad step (hal/sub_screen.cpp's
-               banner over hal_lc_menu_pad): on the pressed word the ROM just
-               built, before the tick reads it; inert outside that menu */
+            /* the menu compose layer's pad step (hal/sub_screen.cpp's banner
+               over hal_menu_pad_seam; the level-clear save menu's cursor and
+               A-as-Start live in its recipe): on the pressed word the ROM just
+               built, before the tick reads it; inert with no recipe live, and
+               never in a transport session (a pad rewrite desyncs it) */
             if (!b5_transport)
-                hal_lc_menu_pad();
+                hal_menu_pad_seam();
             if (b5_transport && !b5_fan) {
                 /* THE LOCAL SLOT, not always slot 0. PadData strides 4 bytes per
                    player ({u16 held, u16 pressed}); on the child data_0209f250 is
@@ -17489,6 +17498,7 @@ int main(void)
             const int ip_slow = ip_fit_commit();
             if (!ip_slow) ip_snap(g_ip_p3, fb);
             const int ip_snapit = (tick_frozen || !k1_rom || stacked || ip_slow ||
+                                   hal_menu_live() ||
                                    rb_skip_render() || rb_resim_skip_render())
                                       ? 1 : 0;
             ntr::GxInterpStats ist;

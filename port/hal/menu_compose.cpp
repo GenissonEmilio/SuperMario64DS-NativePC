@@ -45,6 +45,7 @@ int trace_on(void)
     static int v = -1;
     if (v < 0) {
         const char *e = getenv("SM64DS_MENU_TRACE");
+        if (!e || !*e) e = getenv("SM64DS_SWAP_TRACE");   /* the level-clear compose's old name, kept as an alias */
         v = (e && *e && *e != '0') ? 1 : 0;
     }
     return v;
@@ -86,9 +87,33 @@ int  g_fallback_frames;
 unsigned g_frame;
 int  (*g_enable)(int key);
 const MenuSources *g_src;
+int  g_dst_stride;                   /* HOOK1: pixels per row of the dst buffer; 0 = the picture width */
+MenuLiftInfo g_lift;                 /* HOOK1: this frame's lift plan (hal_menu_lift_info) */
+int  g_lift_on;
+int  g_lift_pending;                 /* the lift was promised and the draw has not honoured it yet */
+/* the engine-B planes by layer mask, made by the host callback at most once per mask per generation */
+struct PlaneEnt { uint8_t layers; const uint32_t *p; };
+PlaneEnt g_planes[4];
+int  g_nplanes;
 DsRect g_latch[MENU_MAX_PIECES];     /* autocrop latches, by piece index of the live recipe/variant */
 uint8_t g_latched[MENU_MAX_PIECES];
 int  g_latch_recipe = -2, g_latch_variant;
+
+int stride_of(int w) { return g_dst_stride > 0 ? g_dst_stride : w; }
+
+/* the sub plane a piece reads: the host's masked scan-out for its layers, else the one plane */
+const uint32_t *sub_plane(const MenuPiece *p, const MenuSources *s)
+{
+    if (!s) return 0;
+    if (s->sub_for) {
+        for (int i = 0; i < g_nplanes; ++i)
+            if (g_planes[i].layers == p->layers) return g_planes[i].p ? g_planes[i].p : s->sub;
+        const uint32_t *q = s->sub_for(p->layers);
+        if (g_nplanes < 4) { g_planes[g_nplanes].layers = p->layers; g_planes[g_nplanes].p = q; ++g_nplanes; }
+        return q ? q : s->sub;
+    }
+    return s->sub;
+}
 
 int enabled(int key)
 {
@@ -103,9 +128,10 @@ int src_opaque(const MenuPiece *p, const MenuSources *s, int sx, int sy)
     if (!s) return 0;
     switch (p->src) {
     case SRC_SUB: {
-        if (!s->sub || sx < 0 || sy < 0 || sx >= 256 || sy >= 192) return 0;
+        const uint32_t *sp = sub_plane(p, s);
+        if (!sp || sx < 0 || sy < 0 || sx >= 256 || sy >= 192) return 0;
         if (p->row_ok && !p->row_ok(sy)) return 0;
-        const uint32_t c = s->sub[sy * 256 + sx];
+        const uint32_t c = sp[sy * 256 + sx];
         if (p->key_backdrop && (c & 0xffffffu) == (s->sub_backdrop & 0xffffffu)) return 0;
         return 1;
     }
@@ -210,6 +236,10 @@ void menu_layout_dest(MenuLayout *L)
     for (int i = 0; i < L->np; ++i) {
         const MenuPiece &P = L->p[i];
         int *d = L->dest[i];
+        if (P.lden > 0) {   /* HOOK1: the recipe placed it in host pixels */
+            d[0] = P.fx; d[1] = P.fy; d[2] = P.fw; d[3] = P.fh;
+            continue;
+        }
         if (P.src == SRC_TOP_HOSTROW) {
             /* host pixels, 1:1; anchors and offsets in host terms */
             const int dw = P.s.w, dh = P.s.h;
@@ -263,8 +293,15 @@ static void piece_inv(const MenuLayout *L, int i, int bx, int by, int *dsx, int 
 {
     const MenuPiece &P = L->p[i];
     const int *d = L->dest[i];
-    int x = P.s.x + (int)fdiv((long long)(bx - d[0]) * P.s.w, d[2] > 0 ? d[2] : 1);
-    int y = P.s.y + (int)fdiv((long long)(by - d[1]) * P.s.h, d[3] > 0 ? d[3] : 1);
+    int x, y;
+    if (P.lden > 0) {   /* the legacy rational: DS = floor(host * lden / lnum), swap_inverse's own arithmetic */
+        const int ln = P.lnum > 0 ? P.lnum : 1;
+        x = P.s.x + (int)fdiv((long long)(bx - d[0]) * P.lden, ln);
+        y = P.s.y + (int)fdiv((long long)(by - d[1]) * P.lden, ln);
+    } else {
+        x = P.s.x + (int)fdiv((long long)(bx - d[0]) * P.s.w, d[2] > 0 ? d[2] : 1);
+        y = P.s.y + (int)fdiv((long long)(by - d[1]) * P.s.h, d[3] > 0 ? d[3] : 1);
+    }
     if (x < P.s.x) x = P.s.x;
     if (x > P.s.x + P.s.w - 1) x = P.s.x + P.s.w - 1;
     if (y < P.s.y) y = P.s.y;
@@ -440,10 +477,12 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
     const int *d = L->dest[i];
     const int x0 = d[0], y0 = d[1], dw = d[2], dh = d[3];
     if (dw <= 0 || dh <= 0) return;
+    const size_t stride = (size_t)stride_of(w);
+    const uint32_t *subp = P.src == SRC_SUB ? sub_plane(&P, S) : 0;
     for (int yy = 0; yy < dh; ++yy) {
         const int py = y0 + yy;
         if (py < 0 || py >= h) continue;
-        uint32_t *row = dst + (size_t)py * w;
+        uint32_t *row = dst + (size_t)py * stride;
         if (P.src == SRC_TOP_HOSTROW) {
             if (!S->hostrow) return;
             const int sy = P.s.y + yy;
@@ -451,17 +490,21 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
             for (int xx = 0; xx < dw; ++xx) {
                 const int px = x0 + xx, sx = P.s.x + xx;
                 if (px < 0 || px >= w || sx < 0 || sx >= S->hostrow_w) continue;
-                const uint32_t c = S->hostrow[sy * S->hostrow_stride + sx];
+                const uint32_t c = S->hostrow[(size_t)sy * S->hostrow_stride + sx];
                 if (c >> 24) row[px] = c | 0xff000000u;
             }
             continue;
         }
-        const int sy = P.s.y + (int)fdiv((long long)yy * P.s.h, dh);
+        int sy = P.lden > 0 ? P.s.y + (int)fdiv((long long)yy * P.lden, P.lnum > 0 ? P.lnum : 1)
+                            : P.s.y + (int)fdiv((long long)yy * P.s.h, dh);
+        if (P.lden > 0 && sy > P.s.y + P.s.h - 1) sy = P.s.y + P.s.h - 1;
         if (P.src != SRC_TOP_PIC && P.row_ok && !P.row_ok(sy)) continue;
         for (int xx = 0; xx < dw; ++xx) {
             const int px = x0 + xx;
             if (px < 0 || px >= w) continue;
-            const int sx = P.s.x + (int)fdiv((long long)xx * P.s.w, dw);
+            int sx = P.lden > 0 ? P.s.x + (int)fdiv((long long)xx * P.lden, P.lnum > 0 ? P.lnum : 1)
+                                : P.s.x + (int)fdiv((long long)xx * P.s.w, dw);
+            if (P.lden > 0 && sx > P.s.x + P.s.w - 1) sx = P.s.x + P.s.w - 1;
             if (P.src == SRC_TOP_PIC) {
                 if (!S->pic || S->pic_rw < 1 || S->pic_rh < 1) return;
                 /* exact rational map of the destination pixel into the host picture */
@@ -472,8 +515,8 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
                 if (qx < 0 || qy < 0 || qx >= S->pic_w || qy >= S->pic_h) continue;
                 row[px] = S->pic[(size_t)qy * S->pic_stride + qx] | 0xff000000u;
             } else if (P.src == SRC_SUB) {
-                if (!src_opaque(&P, S, sx, sy)) continue;
-                row[px] = S->sub[sy * 256 + sx] | 0xff000000u;
+                if (!subp || !src_opaque(&P, S, sx, sy)) continue;
+                row[px] = subp[sy * 256 + sx] | 0xff000000u;
             } else {   /* SRC_TOP_2D */
                 if (!src_opaque(&P, S, sx, sy)) continue;
                 const MenuTopCell &c = S->top2d[sy * 256 + sx];
@@ -488,7 +531,9 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
 void menu_dim(uint32_t *dst, int w, int h, int evy)
 {
     if (!dst || evy <= 0) return;
-    for (size_t i = 0, n = (size_t)w * h; i < n; ++i) dst[i] = blend_ch(dst[i], evy, 0);
+    const size_t st = (size_t)stride_of(w);
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x) dst[y * st + x] = blend_ch(dst[y * st + x], evy, 0);
 }
 
 /* The 8-frame pulse: evy 0,1,2,3,4,3,2,1 toward white; the outline is one
@@ -510,7 +555,7 @@ void menu_highlight_paint(const MenuLayout *L, uint32_t *dst, int w, int h, unsi
         if (y < 0 || y >= h) continue;
         for (int x = x0; x < x1; ++x) {
             if (x < 0 || x >= w) continue;
-            uint32_t &px = dst[(size_t)y * w + x];
+            uint32_t &px = dst[(size_t)y * stride_of(w) + x];
             const int rim = (x < x0 + 1 || x >= x1 - 1 || y < y0 + 1 || y >= y1 - 1);
             if (rim && (px >> 24)) {
                 const int l = luma(px);
@@ -523,7 +568,7 @@ void menu_highlight_paint(const MenuLayout *L, uint32_t *dst, int w, int h, unsi
         if (y < 0 || y >= h) continue;
         for (int x = x0; x < x1; ++x) {
             if (x < 0 || x >= w) continue;
-            if (x < x0 + t || x >= x1 - t || y < y0 + t || y >= y1 - t) dst[(size_t)y * w + x] = dark;
+            if (x < x0 + t || x >= x1 - t || y < y0 + t || y >= y1 - t) dst[(size_t)y * stride_of(w) + x] = dark;
         }
     }
 }
@@ -622,13 +667,39 @@ static int scene_is_menu(int scene)
 
 void hal_menu_set_enable_fn(int (*fn)(int key)) { g_enable = fn; }
 void hal_menu_set_netplay(int on) { g_netplay = on ? 1 : 0; }
-void hal_menu_set_sources(const MenuSources *s) { g_src = s; }
+void hal_menu_set_sources(const MenuSources *s) { g_src = s; g_nplanes = 0; }
 int  hal_menu_live(void) { return g_live; }
 int  hal_menu_fallback_frames(void) { return g_fallback_frames; }
+const MenuLiftInfo *hal_menu_lift_info(void) { return g_lift_on ? &g_lift : 0; }
+int  hal_menu_trace_on(void) { return trace_on(); }
+void hal_menu_set_dst_stride(int stride) { g_dst_stride = stride; }
+void hal_menu_note_lift_drawn(void) { g_lift_pending = 0; }
+int  hal_menu_uses_src(int src)
+{
+    if (!g_live) return 0;
+    for (int i = 0; i < g_cur.np; ++i)
+        if ((int)g_cur.p[i].src == src) return 1;
+    return 0;
+}
 
 void hal_menu_frame_begin(int w, int h, int scene_id)
 {
     ++g_frame;
+    g_nplanes = 0;
+    /* THE LIFT PROMISE FROM LAST FRAME, CHECKED (the net under the whole lift/draw mechanism, kept from the
+       level-clear compose: the 0.4.1 defect was text lifted out of the picture and never drawn back). Once per
+       process, to stderr, never fatal. */
+    if (g_lift_pending) {
+        static int said;
+        if (!said) {
+            said = 1;
+            fprintf(stderr, "[compose] LIFT WITHOUT DRAW: a menu recipe lifted engine-A pixels out of a frame its "
+                    "draw never reached; the frame predicate is missing a term the draw depends on\n");
+            fflush(stderr);
+        }
+        g_lift_pending = 0;
+    }
+    g_lift_on = 0;
     int pick = -1, variant = 0, fb = -1;
     for (int i = 0; i < g_menu_nrecipes; ++i) {
         const MenuRecipe &R = g_menu_recipes[i];
@@ -638,7 +709,8 @@ void hal_menu_frame_begin(int w, int h, int scene_id)
         if (v > 0) { pick = i; variant = v; break; }
     }
     int is_fb = 0;
-    if (pick < 0 && fb >= 0 && scene_is_menu(scene_id) && enabled(MENU_KEY_ONE_SCREEN_MENUS)) {
+    if (pick < 0 && fb >= 0 && scene_id != MENU_SCENE_GATED && scene_is_menu(scene_id) &&
+        enabled(MENU_KEY_ONE_SCREEN_MENUS)) {
         pick = fb;
         variant = 1;
         is_fb = 1;
@@ -679,6 +751,21 @@ void hal_menu_frame_begin(int w, int h, int scene_id)
     g_cur_recipe = pick;
     g_cur_variant = variant;
     if (is_fb) ++g_fallback_frames;
+    /* the lift plan for the engine-A compositor, one truth for the frame */
+    memset(&g_lift, 0, sizeof g_lift);
+    if (g_live) {
+        g_lift.lift2d = g_cur.lift_owners;
+        g_lift.hide = g_cur.hide_owners;
+        for (int i = 0; i < g_cur.np && g_lift.nbands < 4; ++i)
+            if (g_cur.p[i].src == SRC_TOP_HOSTROW) {
+                g_lift.band[g_lift.nbands].layers = g_cur.p[i].layers;
+                g_lift.band[g_lift.nbands].r0 = g_cur.p[i].s.y;
+                g_lift.band[g_lift.nbands].r1 = g_cur.p[i].s.y + g_cur.p[i].s.h;
+                ++g_lift.nbands;
+            }
+        g_lift_on = (g_lift.lift2d | g_lift.hide | g_lift.nbands) != 0;
+        g_lift_pending = (g_lift.lift2d | g_lift.nbands) != 0;
+    }
     if (changed) {
         MTRACE("recipe=%s variant=%d size=%dx%d unit=%d/%d canvas_w=%d %s stage=%d fallback_frames=%d", R->name,
                variant, w, h, g_cur.unum, g_cur.uden, g_cur.canvas_w, menu_wide(&g_cur) ? "wide" : "narrow",
@@ -702,6 +789,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 {
     if (!g_live || !dst || g_cur.stage != stage) return;
     const MenuSources *S = g_src;
+    g_nplanes = 0;
     if (g_cur.w != w || g_cur.h != h) {       /* the picture changed under the frame: solve again */
         const MenuRecipe *R = g_cur.recipe;
         const int f = g_cur.focus;
@@ -731,6 +819,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
     if (g_cur.focus >= 0 && g_focus_shown) menu_highlight_paint(&g_cur, dst, w, h, g_frame);
     g_drawn = g_cur;
     g_drawn_valid = 1;
+    g_lift_pending = 0;      /* the draw honoured the lift */
 }
 
 void hal_menu_touch_inverse(int bx, int by, int *dsx, int *dsy, int *in)
@@ -755,6 +844,7 @@ void hal_menu_pad(uint16_t *pressed, int host_back)
 {
     if (!g_live || !pressed || !g_cur.recipe) return;
     const MenuRecipe *R = g_cur.recipe;
+    if (R->pad_ok && !R->pad_ok()) return;      /* the ROM is not reading the menu this frame */
     int drv = R->driver;
     if (g_netplay && drv == MENU_DRV_ROM_CURSOR) drv = MENU_DRV_TOUCH;   /* never write local ROM state in a session */
     if (g_netplay && drv == MENU_DRV_MIXED) drv = MENU_DRV_TOUCH;
@@ -859,13 +949,13 @@ void check_layout(const MenuLayout *L, Result *R)
     for (int i = 0; i < L->np; ++i) {
         const MenuPiece &P = L->p[i];
         const int *d = L->dest[i];
-        if (P.src != SRC_TOP_HOSTROW && !menu_scale_allowed(P.knum, P.kden)) {
+        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !menu_scale_allowed(P.knum, P.kden)) {
             R->scale = 0; sprintf(why, "piece %d scale %d/%d", i, P.knum, P.kden);
         }
         if (d[2] < 1 || d[3] < 1 || d[0] < 0 || d[1] < 0 || d[0] + d[2] > L->w || d[1] + d[3] > L->h) {
             R->bounds = 0; sprintf(why, "piece %d dest (%d,%d,%d,%d) outside %dx%d", i, d[0], d[1], d[2], d[3], L->w, L->h);
         }
-        if (P.src != SRC_TOP_HOSTROW) {
+        if (P.src != SRC_TOP_HOSTROW && P.lden == 0) {
             /* the scale rule: dest size within one host pixel of the exact rational size */
             const double kn = P.knum ? P.knum : 1, kd = P.kden ? P.kden : 1, un = (double)L->unum / L->uden;
             const double ew = P.s.w * kn / kd * un, eh = P.s.h * kn / kd * un;

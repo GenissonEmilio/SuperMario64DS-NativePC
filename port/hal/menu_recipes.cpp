@@ -89,7 +89,8 @@ void build_fallback(int, MenuLayout *L)
 
 /* name, up, build, rom_cursor, enable_key, driver, flags, nvariants */
 const MenuRecipe g_menu_recipes[] = {
-    { "lc",       up_never, build_none, 0, MENU_KEY_SAVE_MENU_ON_TOP,  MENU_DRV_ROM_CURSOR, 0, 0 },
+    { "lc",       menu_lc_up, menu_lc_build, menu_lc_rom_cursor, MENU_KEY_SAVE_MENU_ON_TOP, MENU_DRV_ROM_CURSOR, 0, 4,
+      menu_lc_pad_ok },
     { "pause",    up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_MIXED,      0, 0 },
     { "title",    up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
     { "starsel",  up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_NATIVE,     0, 0 },

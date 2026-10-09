@@ -24224,8 +24224,9 @@ message(STATUS "XREL1: ${_xrel1_mounts} ovdata mount(s) rebuild when their overl
 # hooks). menu_compose.cpp holds MENU LAYOUT SELFTEST behind
 # SM64DS_MENU_SELFTEST=1 (a static initialiser, so walk_window.cpp is not
 # touched); with no variable set the exe behaves as before.
-foreach(_tmenu1 walk_window walk_window_hires)
+foreach(_tmenu1 walk_window walk_window_hires smoke_player)
     target_sources(${_tmenu1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_compose.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipes.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipes.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_lc.cpp")
 endforeach()
