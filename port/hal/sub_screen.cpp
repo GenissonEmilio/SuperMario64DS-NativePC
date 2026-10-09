@@ -113,6 +113,7 @@ public:
 };
 
 extern "C" {
+int port_level_id(void);   /* hal/level_boot.cpp */
 /* the present rectangle, defined at the bottom of this file */
 void hal_present_set_rect(int x, int y, int w, int h, int src_w, int src_h);
 /* THE FIT, the one copy of it; tests/walk_window.cpp's present() and the
@@ -3216,10 +3217,25 @@ extern "C" void hal_sub_screen_level_init(void)
         const unsigned char saved = data_0209caa0[8];
         if (std::getenv("SM64DS_GFX2D_PREINTRO"))
             data_0209caa0[8] &= ~0x80;
-        Stage::LoadGraphics2D(false, data_0209f2f8);
+        /* THE LEVEL HANDED TO LoadGraphics2D IS THE ONE BEING ENTERED. The
+           ROM latches data_0209f2f8 = data_02092110 first (InitResources:227)
+           and LoadGraphics2D's tail asks SublevelToLevel(it) == 0x1d: on the
+           castle it loads file 0x22f (the pause card's tilemap) at engine A
+           BG screen block 0x10 and 0x25c (TOUCH TO SELECT) at block 0x12,
+           which is where PS_Update's BG2CNT 0x1010 / BG1CNT 0x1210 look. This
+           host call runs before level_boot writes data_0209f2f8 (it does so
+           after hal_sub_screen_level_init), so on the first entry of a
+           process that entered by a direct boot (SM64DS_LEVEL, the battery)
+           the argument was still 0: the course branch ran, TOUCH TO SELECT
+           landed in block 0x10 and the castle pause drew no card at all. A
+           title-to-level crossing and every later level change had latched
+           already, so they were right. port_level_id() is the value
+           level_boot writes into data_0209f2f8 a few lines later. */
+        const int entering = (int)port_level_id();
+        Stage::LoadGraphics2D(false, entering);
         data_0209caa0[8] = saved;
         std::printf("[sub] Stage::LoadGraphics2D(0, %d) done, layer mask "
-                    "data_0209d454 = %02x\n", (int)data_0209f2f8,
+                    "data_0209d454 = %02x\n", entering,
                     data_0209d454);
     }
 }
