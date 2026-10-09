@@ -654,6 +654,7 @@ void sdat_host_tick(void);           /* hal/sdat/consumer.cpp */
 void out_set_volume_pct(int);        /* hal/sdat/out_win.cpp */
 int host_settings_poll(void);        /* hal/host_settings.cpp, the live re-read */
 int host_setting_volume(void);       /* same */
+int host_setting_one_screen_menus(void);   /* same: OneScreenMenus (run menu1) */
 void port_scene_mg_seat_sound(int scene_id); /* hal/scene_mg_sound.cpp */
 
 extern int data_020a4b6c[8];         /* the scene tree: head, callback, 0 */
@@ -3366,6 +3367,15 @@ static unsigned g_sc_beh_ticks;
 extern "C" void port_scene_killed_reset(void) { g_sc_killed = 0; g_sc_obj = 0; }
 extern "C" int  port_scene_killed(void)       { return g_sc_killed; }
 extern "C" void *port_scene_live_object(void) { return g_sc_obj; }
+/* THE LIVE SCENE'S ID (run menu1): the actorID u16 at +0x0c of the object the behaviour thunk latched
+   (include/fBase_c.h), or -1 when no scene is live or it is being torn down. Read by the menu compose layer's frame
+   predicate (hal/sub_screen.cpp hal_menu_hook_h1); a level path that never runs this thunk answers -1. */
+extern "C" int port_scene_live_id(void)
+{
+    if (!g_sc_obj || g_sc_killed)
+        return -1;
+    return (int)*(const unsigned short *)((const char *)g_sc_obj + 0x0c);
+}
 extern "C" unsigned port_scene_behavior_ticks(void) { return g_sc_beh_ticks; }
 
 /* What fBase_c::MarkForDestruction does, on the object the ROM made: set
@@ -5960,8 +5970,20 @@ static bool scene_layout_mg_wide(void)
     return e && *e && *e != '0';
 }
 
+/* THE MENU SCENES the one-screen menu overhaul re-places (run menu1, DESIGN G): the title and file select (1), the
+   star select (4), Rec Room (5), the VS lobby (6) and game over (8). Minigames and scene 7 are not menus here. */
+extern "C" int port_scene_is_menu(int scene)
+{
+    return scene == 1 || scene == 4 || scene == 5 || scene == 6 || scene == 8;
+}
+
 extern "C" int port_scene_layout_two_screen(int scene)
 {
+    /* OneScreenMenus (host_settings): the menu scenes are one picture; every one stays reachable through the menu
+       layer's fallback recipe until its own recipe lands. SM64DS_DUAL_SCREEN still overrides, in the sub-screen
+       latch that takes this as a proposal. */
+    if (scene >= 0 && port_scene_is_menu(scene) && host_setting_one_screen_menus())
+        return 0;
     return scene >= 0 &&
            (IsMinigameActorID((unsigned)scene) || scene == 1 ||
             (ntr::widescreen && !scene_layout_mg_wide()));

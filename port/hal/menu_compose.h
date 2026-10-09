@@ -66,6 +66,12 @@ struct MenuPiece {
   uint8_t knum, kden;                               /* scale (1/1 = native DS size); allowed 1, 3/4, 2/3, 1/2 */
   uint8_t touch;                                    /* clicks on it map through to a DS touch (SRC_SUB only) */
   uint8_t bg;                                       /* P0CORE: a backdrop piece; exempt from the no-overlap rule */
+  /* HOOK1 (appended): LEGACY FIXED PLACEMENT, for the level-clear plates, whose placement and sampling are
+     swap_geom_for's own rational (pnum/pden DS pixels per host pixel, not one of the allowed steps). When
+     lden > 0 the recipe set the dest rect itself in HOST pixels (fx, fy, fw, fh), the anchors and the scale
+     are ignored, and a dest pixel (xx, yy) samples the source at s.x + floor(xx * lden / lnum) (clamped to
+     s), draw and inverse alike. Zero in every other piece. */
+  short fx, fy, fw, fh; int lnum, lden;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
@@ -81,6 +87,10 @@ enum { MENU_BACKDROP_TOP_AS_IS = 0,   /* pause: the ROM already dims */
 
 enum { MENU_STAGE_PRE_FADE = 0, MENU_STAGE_POST_FADE = 1 };
 
+/* hal_menu_frame_begin's scene_id when the host's frame gate is closed (the stacked layout): no recipe
+   may match, the fallback included. */
+#define MENU_SCENE_GATED (-2)
+
 struct MenuRecipe;
 
 struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; canvas_w = w*192/h */
@@ -92,7 +102,10 @@ struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; can
                     /* P0CORE additions (never removed, only appended) */
                     int8_t back;                  /* hotspot the B / Backspace key presses, -1 none */
                     int variant;                  /* what build() was asked for */
-                    const MenuRecipe *recipe; };
+                    const MenuRecipe *recipe;
+                    /* HOOK1 (appended): engine-A layers (MENU_L_* bits) the compositor drops from the picture
+                       and draws nowhere (level-clear: BG2, "TOUCH TO SELECT") */
+                    uint8_t hide_owners; };
 
 enum { MENU_DRV_NATIVE = 0, MENU_DRV_ROM_CURSOR = 1, MENU_DRV_TOUCH = 2, MENU_DRV_MIXED = 3 };
 enum { MENU_KEY_NONE = 0, MENU_KEY_SAVE_MENU_ON_TOP = 1, MENU_KEY_ONE_SCREEN_MENUS = 2 };
@@ -108,7 +121,17 @@ struct MenuRecipe {
   /* P0CORE additions */
   uint8_t flags;                            /* MENU_RF_* */
   uint8_t nvariants;                        /* variant ids 1..nvariants build something; 0 = stub (selftest skips) */
+  /* HOOK1 (appended): the pad gate. Non-null and returning 0 means "the ROM is not reading the menu
+     right now": hal_menu_pad then touches nothing (no strip, no A -> Start). Called once a frame while the
+     recipe is live, so it is also where a ROM_CURSOR driver forgets its cursor when the menu goes away. */
+  int  (*pad_ok)(void);
 };
+
+/* the level-clear recipe's functions (menu_recipe_lc.cpp), named by the table */
+int  menu_lc_up(int scene_id);
+void menu_lc_build(int variant, MenuLayout *L);
+int  menu_lc_rom_cursor(int dir, int *sel);
+int  menu_lc_pad_ok(void);
 
 /* the ONE static table (menu_recipes.cpp) */
 extern const MenuRecipe g_menu_recipes[];
@@ -132,6 +155,18 @@ struct MenuSources {
   int hostrow_stride, hostrow_w, hostrow_h;
   uint32_t (*bm_apply)(uint32_t argb, uint8_t bm);  /* engine-A fade/brightness verdict, null = identity */
   int rom_dimming;                /* the ROM is already dimming the game (BACKDROP_DIM_AUTO then draws nothing) */
+  /* HOOK1 (appended): the engine-B scan-out for a piece's layer mask (MENU_L_* bits, BG0..BG3, OBJ=bit 4),
+     already engine-B bright, 256x192 ARGB; null = use `sub`. The host makes at most two extra scan-outs a
+     frame and reuses the live one when the mask equals the live enables. */
+  const uint32_t *(*sub_for)(uint8_t layers);
+};
+
+/* HOOK1: what the engine-A compositor must lift this frame (H1b). Null when nothing is lifted. */
+struct MenuLiftInfo {
+  uint8_t lift2d;                 /* owner bits sent to the DS-space top2d plane instead of the picture */
+  uint8_t hide;                   /* owner bits drawn nowhere */
+  int nbands;                     /* host-row bands, SRC_TOP_HOSTROW pieces: owner bits in layers, rows [r0, r1) */
+  struct { uint8_t layers; int r0, r1; } band[4];
 };
 
 /* ---- the core (C++), also what the selftest drives ---------------------- */
@@ -200,6 +235,13 @@ int  hal_menu_touch_queue_press(int dsx, int dsy);  /* 1 queued; 0 refused (in f
 int  hal_menu_touch_queue_poll(int *dsx, int *dsy, int *down); /* once per poll; 1 = drive the stylus: down 1 held, 0 the release edge */
 void hal_menu_touch_real_held(int held);        /* poll_touch tells the queue the real stylus state each poll */
 int  hal_menu_fallback_frames(void);
+/* HOOK1 */
+const MenuLiftInfo *hal_menu_lift_info(void);   /* this frame's lift plan, null = lift nothing */
+int  hal_menu_uses_src(int src);                /* the live layout has a piece of this MenuSrc */
+int  hal_menu_trace_on(void);                   /* SM64DS_MENU_TRACE or its alias SM64DS_SWAP_TRACE */
+void hal_menu_set_dst_stride(int stride);       /* pixels per row of the buffer hal_menu_present draws into; 0 = w */
+void hal_menu_note_lift_drawn(void);            /* the draw honoured the lift promise (LIFT WITHOUT DRAW net) */
+int  hal_menu_lc_selftest(void);                /* menu_recipe_lc.cpp: COMPOSED LAYOUT SELFTEST, 0 = PASS */
 #ifdef __cplusplus
 }
 #endif

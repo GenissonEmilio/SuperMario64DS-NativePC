@@ -212,7 +212,8 @@ void build_plates(MenuLayout *L, int variant, int py, int ph, const Hs *hs, int 
         menu_add_hotspot(L, arrow_r, 0xc8, 0, 0x38, 0x20, -1);
     }
     L->back = (int8_t)back;
-    L->lift_owners = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
+    L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
+    L->hide_owners = MENU_L_BG2;   /* the "TOUCH TO SELECT" band: drawn nowhere */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
     (void)variant;
@@ -259,7 +260,8 @@ void build_opt(MenuLayout *L)
     ok_box(0, &ox, &ow);
     menu_add_hotspot(L, ps, ox, 0x98, ow, 0x20, -1);
     L->back = (int8_t)menu_add_hotspot(L, ps, 0xd8, 0x98, 0x20, 0x20, -1);
-    L->lift_owners = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
+    L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
+    L->hide_owners = MENU_L_BG2;   /* the "TOUCH TO SELECT" band: drawn nowhere */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
 }
@@ -273,7 +275,8 @@ void build_status(MenuLayout *L)
     p.ay = MENU_AY_M;
     menu_add_piece(L, p);
     L->back = -1;
-    L->lift_owners = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
+    L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
+    L->hide_owners = MENU_L_BG2;   /* the "TOUCH TO SELECT" band: drawn nowhere */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
 }
@@ -288,7 +291,8 @@ void build_nosave(MenuLayout *L)
     const int ps = menu_add_piece(L, p);
     menu_add_hotspot(L, ps, 0x28, 0x98, 0x50, 0x20, -1);                 /* YES x 0x28..0x77 */
     L->back = (int8_t)menu_add_hotspot(L, ps, 0x88, 0x98, 0x50, 0x20, -1);   /* NO x 0x88..0xd7 */
-    L->lift_owners = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
+    L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
+    L->hide_owners = MENU_L_BG2;   /* the "TOUCH TO SELECT" band: drawn nowhere */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
 }
@@ -369,3 +373,4 @@ int pause_cursor(int dir, int *owns)
 int menu_pause_up(int scene_id) { return pause_up(scene_id); }
 void menu_pause_build(int variant, MenuLayout *L) { pause_build(variant, L); }
 int menu_pause_cursor(int dir, int *owns) { return pause_cursor(dir, owns); }
+int menu_pause_pad_ok(void) { return data_0209f2c4 != 0 && data_0209f20c == 0; }

@@ -1314,6 +1314,12 @@ int g_improved_minimap = 1;   /* ABSENT MEANS ON: the owner's order */
    mod the owner asked for and recommended on. 0 is the picture the port drew
    before it existed. */
 int g_save_menu_on_top = 1;   /* ABSENT MEANS ON: the owner's recommendation */
+/* OneScreenMenus (run menu1): the title, star select, Rec Room, VS lobby and game over
+   scenes use the one-screen compose layer instead of two stacked DS screens. ABSENT MEANS
+   OFF while the recipes land. HudLayout: 0 = the DS row, 1 = the N64 row; parsed only,
+   the HUD lane reads it later. */
+int g_one_screen_menus = 0;
+int g_hud_layout = 0;
 double g_minimap_scale = 1.0; /* the multiplier, 1 or more */
 /* A HAND HAS MOVED THE SIZE THIS RUN. Set by the drag's own write and by
    nothing else; read in host_setting_minimap_scale_value, where the block
@@ -1694,6 +1700,10 @@ void load_once(void)
            bool and a player editing by hand may write 1. */
         g_save_menu_on_top = (json_int(text, "SaveMenuOnTop", 1) != 0 &&
                               json_bool(text, "SaveMenuOnTop", 1) != 0) ? 1 : 0;
+        /* ONE SCREEN MENUS: absent is OFF, both spellings of the toggle */
+        g_one_screen_menus = (json_int(text, "OneScreenMenus", 0) != 0 ||
+                              json_bool(text, "OneScreenMenus", 0) != 0) ? 1 : 0;
+        g_hud_layout = json_int(text, "HudLayout", 0) == 1 ? 1 : 0;
         {
             int snapped = 0;
             const double want = json_num(text, "MinimapScale", 1.0);
@@ -2757,6 +2767,36 @@ extern "C" int host_setting_save_menu_on_top(void)
         return 0;
     load_once();
     return g_save_menu_on_top;
+}
+
+/* ONE SCREEN MENUS, the SaveMenuOnTop pattern: the environment disposes in both directions
+   and outranks the pin, the comparator routes are pinned OFF so every recorded baseline
+   holds, then settings.json, and ABSENT MEANS OFF. */
+extern "C" int host_setting_one_screen_menus(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_ONE_SCREEN_MENUS");
+        env = e ? ((e[0] == 0 || (e[0] == '0' && e[1] == 0)) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    if (getenv("SM64DS_WINDOW_SELFTEST") || getenv("SM64DS_SCENE_FRAMES"))
+        return 0;
+    load_once();
+    return g_one_screen_menus;
+}
+
+/* HUD LAYOUT, parsed only (0 DS, 1 N64). SM64DS_HUD_LAYOUT outranks the file. */
+extern "C" int host_setting_hud_layout(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_HUD_LAYOUT");
+        env = (e && e[0]) ? (e[0] == '1' ? 1 : 0) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_hud_layout;
 }
 
 extern "C" double host_setting_minimap_scale_value(void)

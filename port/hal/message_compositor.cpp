@@ -114,6 +114,7 @@
 #include "ntr/gx.h"
 #include "ntr/ppu.h"
 #include "ntr/rt.h"
+#include "menu_compose.h"   /* run menu1 lane HOOK1: the lift plan (H1) */
 
 /* THE TOP ENGINE'S OBJ DISPLAY SHIFT, in DS rows, from hal/screen_gap.cpp.
  *
@@ -161,15 +162,12 @@ extern "C" {
    C linkage because that file's whole tail is one extern "C" block. */
 int hal_minimap_arrow_reanchor_on(void);
 
-/* THE LEVEL-CLEAR COMPOSE'S TWO SOURCE BANDS, asked once a frame. Returns 0
-   whenever the composed level-clear picture is not being drawn, which is every
-   frame of every ordinary run, and then this file does exactly what it did
-   before the overlay existed. With it on it fills the two DS row spans the
-   compose lifts off the top screen and redraws elsewhere: the course-clear
-   text block and the coin total. The banner is over hal/sub_screen.cpp's own
-   definition, which owns the option, the trigger and the rectangles; this file
-   owns the layers. */
-int hal_lc_compose_rows(int *text_r0, int *text_r1, int *coin_r0, int *coin_r1);
+/* H1 OF THE MENU COMPOSE (hal/sub_screen.cpp, hal/menu_compose.cpp): the frame's one predicate, asked at the head of
+   the composite. Returns the lift plan, null on every frame no menu recipe lifts anything (every frame of an
+   ordinary run), and then this file does exactly what it did before the layer existed. With a plan it fills the
+   planes below: host-row bands (the level-clear lettering) and the DS-space top2d cells (recipes that rearrange
+   the top screen's own layers). */
+extern "C" const MenuLiftInfo *hal_menu_hook_h1(int w, int h);
 
 /* Stage::RenderBouncingArrows' own sprite template, ov001 0x020abd88, mounted
    by name (port/ov001_syms.txt) and bound to the matched body's func_020abd88
@@ -944,64 +942,70 @@ inline bool layer_behind_3d(unsigned owner, int prio, int p3d) {
  * allocated, and every per-pixel test below short-circuits on a zero that was
  * read once for the whole frame. */
 struct LcOverlay {
-    uint32_t *col;               /* the lifted pixels, framebuffer-shaped */
-    uint8_t *msk;                /* 1 where a lifted pixel was written */
+    uint32_t *col;               /* the lifted SRC_TOP_HOSTROW pixels, framebuffer-shaped ARGB, alpha 0 = nothing */
     int n;                       /* allocated pixels */
-    unsigned lift;               /* owner bits sent to the overlay this frame */
-    unsigned hide;               /* owner bits drawn nowhere this frame */
-    int t0, t1;                  /* the text band, HOST rows [t0, t1) */
-    int c0, c1;                  /* the coin band, HOST rows [c0, c1) */
-    int live;                    /* the overlay holds THIS frame's pixels */
+    MenuTopCell *top;            /* the lifted SRC_TOP_2D cells, DS space 256x192 */
+    const MenuLiftInfo *info;    /* this frame's lift plan, null = lift nothing */
+    int live;                    /* col holds THIS frame's pixels */
+    int top_live;                /* top holds THIS frame's cells */
 };
 LcOverlay lc_ov;
 
-/* Asked once a frame, at the head of the composite. Everything the overlay
-   does is behind the answer. */
+/* Asked once a frame, at the head of the composite (H1). Everything the lift does is behind the answer. */
 void lc_overlay_begin(void)
 {
-    lc_ov.lift = 0;
-    lc_ov.hide = 0;
     lc_ov.live = 0;
-    if (!hal_lc_compose_rows(&lc_ov.t0, &lc_ov.t1, &lc_ov.c0, &lc_ov.c1))
-        return;
-    const int n = ntr::SCREEN_W * ntr::SCREEN_H;
-    if (lc_ov.n < n) {
-        uint32_t *c = (uint32_t *)std::realloc(lc_ov.col, (size_t)n * sizeof *c);
-        if (!c) return;
-        lc_ov.col = c;
-        uint8_t *m = (uint8_t *)std::realloc(lc_ov.msk, (size_t)n);
-        if (!m) return;
-        lc_ov.msk = m;
-        lc_ov.n = n;
+    lc_ov.top_live = 0;
+    lc_ov.info = hal_menu_hook_h1(ntr::active_w, ntr::active_h);
+    const MenuLiftInfo *li = lc_ov.info;
+    if (!li) return;
+    if (li->nbands) {
+        const int n = ntr::SCREEN_W * ntr::SCREEN_H;
+        if (lc_ov.n < n) {
+            uint32_t *c = (uint32_t *)std::realloc(lc_ov.col, (size_t)n * sizeof *c);
+            if (!c) { lc_ov.info = nullptr; return; }
+            lc_ov.col = c;
+            lc_ov.n = n;
+        }
+        std::memset(lc_ov.col, 0, (size_t)lc_ov.n * sizeof *lc_ov.col);
+        lc_ov.live = 1;
     }
-    std::memset(lc_ov.msk, 0, (size_t)n);
-    lc_ov.lift = (1u << 3) | (1u << kOwnerObj);   /* BG3 and the sprites */
-    lc_ov.hide = (1u << 2);                       /* BG2, "TOUCH TO SELECT" */
-    lc_ov.live = 1;
+    if (li->lift2d) {
+        if (!lc_ov.top) lc_ov.top = (MenuTopCell *)std::malloc(256 * 192 * sizeof(MenuTopCell));
+        if (lc_ov.top) {
+            std::memset(lc_ov.top, 0, 256 * 192 * sizeof(MenuTopCell));
+            lc_ov.top_live = 1;
+        }
+    }
 }
 
-/* What to do with a composited pixel's LAYER: 0 draw it, 1 lift it on its own
-   band, 2 hide it. Zero for everything while the compose is off, on one test
-   of a word that was written once for the frame. */
+/* What to do with a composited pixel's LAYER: 0 draw it, 1 lift it on its host-row band (when its row is inside the
+   band), 2 hide it, 3 lift it into the DS-space top2d plane. Zero for everything while no recipe lifts, on one
+   test of a pointer that was written once for the frame. */
 inline int lc_overlay_verdict(unsigned owner)
 {
-    if (!(lc_ov.lift | lc_ov.hide)) return 0;
+    const MenuLiftInfo *li = lc_ov.info;
+    if (!li) return 0;
     const unsigned b = 1u << owner;
-    if (b & lc_ov.hide) return 2;
-    return (b & lc_ov.lift) ? 1 : 0;
+    if (b & li->hide) return 2;
+    if ((b & li->lift2d) && lc_ov.top_live) return 3;
+    if (!lc_ov.live) return 0;
+    for (int i = 0; i < li->nbands; ++i)
+        if (li->band[i].layers & b) return 1;
+    return 0;
 }
 
-/* AND THE BAND THAT LAYER IS LIFTED ON, IN HOST ROWS, which is the same
-   rectangle the compose redraws it into. Host rows and not DS rows, and the
-   band is the compose's own: the lift and the redraw then cover EXACTLY the
-   same pixels, so a glyph can never be taken out of the picture and then
-   fall outside the band that puts it back. A pixel of a lifted layer outside
-   its band is left in the picture where the game put it -- which is the lives
-   counter, a sprite far above the coin band. */
+/* AND THE HOST ROWS THAT LAYER IS LIFTED ON: the band is the layout's own rectangle, so the lift and the redraw cover
+   EXACTLY the same pixels and a glyph can never be taken out of the picture and then fall outside the band that puts
+   it back. A pixel of a lifted layer outside its band is left in the picture where the game put it (the lives
+   counter, a sprite far above the coin band). */
 inline bool lc_overlay_in_band(unsigned owner, int hy)
 {
-    return (owner == 3) ? (hy >= lc_ov.t0 && hy < lc_ov.t1)
-                        : (hy >= lc_ov.c0 && hy < lc_ov.c1);
+    const MenuLiftInfo *li = lc_ov.info;
+    const unsigned b = 1u << owner;
+    for (int i = 0; i < li->nbands; ++i)
+        if ((li->band[i].layers & b) && hy >= li->band[i].r0 && hy < li->band[i].r1) return true;
+    return false;
 }
 
 // ---- PER-ELEMENT HUD ANCHORING (widescreen) --------------------------------
@@ -3281,6 +3285,22 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                puts on screen (ENGINE A'S BRIGHTNESS TARGETS) */
             const unsigned char bmv =
                 bm_on ? bm_verdict(lcow, window_mask(win, x, y)) : 0;
+            if (lcv == 3) {
+                /* LIFTED INTO THE DS-SPACE PLANE: not written to the picture at all. A cell the 3D layer covers (when
+                   the layer is behind it) is not lifted. The pre-smoothing copy still gets it. */
+                const bool behind = honour3d && layer_behind_3d(g_a[y][x].owner, g_a[y][x].prio, p3d);
+                if (!(behind && cover[hy0 * ntr::SCREEN_W + hx0])) {
+                    MenuTopCell &tc = lc_ov.top[y * 256 + x];
+                    tc.argb = c | 0xff000000u;
+                    tc.bm = bm_on ? bmv : 1;      /* 1 = the ROM's fade/brightness applies to this pixel */
+                    tc.owner = (uint8_t)lcow;
+                }
+                if (pre)
+                    for (int hy = hy0; hy < hy1; ++hy)
+                        for (int dx = 0; dx < bw; ++dx)
+                            pre[(size_t)hy * ntr::SCREEN_W + hx0 + dx] = c;
+                continue;
+            }
             if (!honour3d
                 || !layer_behind_3d(g_a[y][x].owner, g_a[y][x].prio, p3d)) {
                 /* the owning 2D layer is in FRONT of the 3D layer (or there is
@@ -3290,8 +3310,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                         const int hx = hx0 + dx;
                         if (cover && cover[hy * ntr::SCREEN_W + hx]) ++buried;
                         if (lcv && lc_overlay_in_band(lcow, hy)) {
-                            lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c;
-                            lc_ov.msk[(size_t)hy * ntr::SCREEN_W + hx] = 1;
+                            lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c | 0xff000000u;
                         } else {
                             fb.px[hy][hx] = c;
                             if (bm_on)
@@ -3307,8 +3326,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                     const int hx = hx0 + dx;
                     if (cover[hy * ntr::SCREEN_W + hx]) { ++kept; continue; }
                     if (lcv && lc_overlay_in_band(lcow, hy)) {
-                        lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c;
-                        lc_ov.msk[(size_t)hy * ntr::SCREEN_W + hx] = 1;
+                        lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c | 0xff000000u;
                     } else {
                         fb.px[hy][hx] = c;
                         if (bm_on)
@@ -3334,31 +3352,47 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     g_buried3d = buried;
 }
 
-/* ---- WHAT THE COMPOSE READS BACK -----------------------------------------
+/* ---- WHAT THE MENU COMPOSE READS BACK ---------------------------------------
  *
- * The three the level-clear compose in hal/sub_screen.cpp calls, and nothing
- * else in the program calls any of them. The buffers are framebuffer-shaped:
- * one entry per host pixel at a stride of ntr::SCREEN_W, exactly the way
- * ntr::Framebuffer and every drawing helper in that file index dst, so the
- * compose moves a lifted pixel by adding rows to its index and never by
- * re-deriving where it was.
- *
- * `live` is this frame's own answer and not a latch: the composite above
- * clears it on every frame the compose is not up and sets it on every frame it
- * is, above its own early returns, so a compose that asks on a frame this unit
- * declined is told the overlay is empty instead of being handed the last
- * frame's glyphs. */
-extern "C" int hal_lc_overlay_live(void)
+ * The planes are framebuffer-shaped (host plane: one ARGB entry per host pixel at a stride of ntr::SCREEN_W) or DS
+ * shaped (top2d). `live` is this frame's own answer and not a latch: the composite above clears it on every frame no
+ * recipe lifts and sets it on every frame one does, above its own early returns, so a draw that asks on a frame this
+ * unit declined is told the plane is empty instead of being handed the last frame's glyphs. */
+extern "C" const unsigned int *port_menu_hostrow_plane(void)
 {
-    return lc_ov.live && lc_ov.msk && lc_ov.col ? 1 : 0;
+    return lc_ov.live && lc_ov.col ? lc_ov.col : nullptr;
 }
 
-extern "C" const unsigned int *hal_lc_overlay_colour(void)
+extern "C" const MenuTopCell *port_menu_top2d_plane(void)
 {
-    return lc_ov.col;
+    return lc_ov.top_live && lc_ov.top ? lc_ov.top : nullptr;
 }
 
-extern "C" const unsigned char *hal_lc_overlay_mask(void)
+/* ENGINE A'S FADE FOR ONE LIFTED PIXEL, for a recipe drawn AFTER port_engine_a_fade: the same arithmetic as fade_pass,
+   with the verdict the pixel carried out of the compositor (bm 1 = the ROM's brightness applies to it). Prep reads
+   the blend state once for the frame. */
+static int g_fpx_evy, g_fpx_white;
+extern "C" void port_engine_a_fade_px_prep(void)
 {
-    return lc_ov.msk;
+    int evy = 0, white = 0;
+    const int on = port_fader_blend_state(&evy, &white);
+    if (on && evy > 16) evy = 16;
+    g_fpx_evy = on ? evy : 0;
+    g_fpx_white = white;
+}
+
+extern "C" unsigned int port_engine_a_fade_px(unsigned int p, unsigned char bm)
+{
+    if (!g_fpx_evy || !bm) return p;
+    int r = (p >> 16) & 0xff, g = (p >> 8) & 0xff, b = p & 0xff;
+    if (g_fpx_white) {
+        r += ((255 - r) * g_fpx_evy) >> 4;
+        g += ((255 - g) * g_fpx_evy) >> 4;
+        b += ((255 - b) * g_fpx_evy) >> 4;
+    } else {
+        r -= (r * g_fpx_evy) >> 4;
+        g -= (g * g_fpx_evy) >> 4;
+        b -= (b * g_fpx_evy) >> 4;
+    }
+    return 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
 }

@@ -84,6 +84,7 @@
 #include <cstring>       /* run mg16 lane MP3: the touch-ring store */
 
 #include "ntr/ppu.h"
+#include "hal/menu_compose.h"   /* run menu1 lane HOOK1: the one-screen menu compose layer */
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
 #include "hal/screen_gap.h"
@@ -130,18 +131,15 @@ int hal_window_focused(void);
    the ordinary case: the ROM raises the cue only on a map event. */
 void port_bounce_arrows_present(unsigned int *dst, int dst_w, int dst_h,
                                 int px0, int py0, int pw, int ph);
-/* THE LEVEL-CLEAR GLYPH OVERLAY (hal/message_compositor.cpp, which owns engine
-   A's layers; this file owns the compose that reads it). While the composed
-   level-clear picture is up, that unit sends the pixels of the layers carrying
-   the menu's own lettering into these two framebuffer-shaped buffers instead
-   of into the picture, so what the picture holds is the game's own frame with
-   the lettering lifted off it -- no row moved and no region copied -- and this
-   file draws the lifted pixels where the owner asked for them. `live` is that
-   unit's answer for THIS frame; the buffers are indexed at a stride of
-   ntr::SCREEN_W, the same as dst. See the banner over swap_present. */
-int hal_lc_overlay_live(void);
-const unsigned int *hal_lc_overlay_colour(void);
-const unsigned char *hal_lc_overlay_mask(void);
+/* THE MENU COMPOSE'S PLANES (hal/message_compositor.cpp, which owns engine A's layers; this file feeds them to
+   hal/menu_compose.cpp). The host-row plane holds the lifted SRC_TOP_HOSTROW pixels (ARGB, alpha 0 = nothing, SCREEN_W
+   stride); the top2d plane holds the lifted SRC_TOP_2D cells in DS space. Null on a frame that lifted nothing there. */
+const unsigned int *port_menu_hostrow_plane(void);
+const MenuTopCell *port_menu_top2d_plane(void);
+unsigned int port_engine_a_fade_px(unsigned int argb, unsigned char bm);
+void port_engine_a_fade_px_prep(void);
+int port_scene_live_id(void);
+void hal_lc_trace(int w, int h, int frame, int composed);   /* hal/menu_recipe_lc.cpp */
 /* the two engines' brightness blends (hal/fader_wipes.cpp). The SUB one is what
    the sub framebuffer is composed with; the main one is still read by the inset
    path, where the panel is inside engine A's framebuffer when walk_window's own
@@ -304,19 +302,8 @@ int g_size_force;
    the rest. Zero in every frame that is not a level-clear save menu, and
    zero for the whole of every run with the option off. See the banner over
    swap_geom_for. */
-int g_swap;                      /* composed this frame? the compose's answer */
 int g_menu_up;                   /* the ROM pair's answer for this frame */
 
-/* THE LIFT/DRAW DRIFT DETECTOR, and it is one int. The engine-A compositor
-   lifts the level-clear lettering and the coin sprites out of the picture on
-   every frame hal_lc_compose_rows answers 1 for, and swap_present is the only
-   thing that draws them again. This word is set where the lift is promised
-   and cleared where the draw honours it, and hal_lc_compose_rows says so once
-   per process if a promise was ever left unhonoured. It costs one store and
-   one test a frame and it is the net under the whole mechanism: the 0.4.1
-   gate's red row was exactly that drift, silent, with the pixels simply gone
-   from the picture. */
-int g_lc_lift_pending;
 
 /* SM64DS_MINIMAP_TRACE=1: every rectangle the geometry above and the panel's
    own settled on, printed when one of them changes. It exists so that a
@@ -1229,7 +1216,7 @@ int handle_rect(int *hx, int *hy, int *hs, int h)
        at all for those frames, so there is no map corner to grab. One test,
        and it covers the draw and the press both, because both come through
        here. */
-    if (g_swap) return 0;
+    if (hal_menu_live()) return 0;
     if (host_setting_mouse_capture()) return 0;
     PanelGeom g;
     panel_geom(&g);
@@ -1438,153 +1425,18 @@ void inset_map_selftest(int w, int h)
 }
 
 
-/* ---- THE LEVEL-CLEAR SAVE MENU, COMPOSED ONTO THE TOP SCREEN --------------
+/* ---- THE MENU COMPOSE, HOST SIDE (run menu1, lane HOOK1) -------------------
  *
- * WHAT IT IS, in the owner's own words, on being shown the first version of
- * this (the two screens trading places): "I wanted those to show up on the
- * top screen. move the course 2 all that text up to the top of the screen,
- * put the coins total very bottom, remove touch to select and slot the
- * buttons in where the space gets freed up in the middle. All of this on the
- * top screen."
- *
- * SO THE BIG PICTURE IS COMPOSED OUT OF BOTH SCREENS while the menu is up,
- * rather than swapped with one of them. Three things are drawn and there is
- * no fourth:
- *
- *   1. the TOP screen's course-clear text block at the TOP of the picture,
- *   2. the BOTTOM screen's three button plates in the MIDDLE, as large as the
- *      space between (1) and (3) allows with their proportions kept,
- *   3. the TOP screen's coin total at the VERY BOTTOM.
- *
- * AND THE PICTURE UNDER ALL THREE IS THE TOP SCREEN'S OWN FRAME, UNMOVED.
- * That sentence is the correction of 09-21 and it is the whole of this block's
- * third cut. The first two cuts moved RECTANGLES OF THE FINISHED PICTURE: the
- * text band copied picture rows 68..231 up to rows 0..163 and the coin band
- * copied rows 244..287 down to 340..383, and each of those carried the 3D
- * scene behind the glyphs along with them. The picture's own top 68 rows were
- * therefore never drawn and its rows 164..231 and 244..287 were drawn twice,
- * which is what the owner saw: "why is the background picture like stretched?
- * The screen height shouldnt change, just slot it in."
- *
- * So no row of the picture moves any more. hal/message_compositor.cpp lifts
- * the LAYERS that carry the menu's lettering out of the frame as it composites
- * engine A -- the glyphs alone, not the scene behind them -- and this file
- * draws those lifted pixels at the top and at the bottom over the picture's
- * own rows. The two bands below are now destinations for an overlay and no
- * longer copies of anything. The banner over LcOverlay in that file carries
- * the per-layer census that says which layers those are (BG3 the course text,
- * the sprites the coin total, BG2 the "TOUCH TO SELECT" band, which is hidden
- * because the owner asked for it gone).
- *
- * Everything else of both screens -- the course scenery, the bottom screen's
- * map, and the backdrop the plates sit on -- is not drawn at all, and the
- * middle of the picture is the game's own, so what the player sees is three
- * buttons floating over it. The lives counter in the top-left corner is the
- * top screen's own and STAYS WHERE IT IS: it is not re-slotted anywhere, the
- * picture's own top rows are in the picture now, and it does not touch the
- * lettering (the counter is x 12..95, the text x 96..393). The frame the menu
- * is answered the picture goes back to the ordinary one.
- * The ROM draws exactly what it drew before: THIS IS COMPOSITING OF THE TWO
- * FRAMES THE GAME ALREADY PRODUCED, and nothing else changes.
- *
- * THE TRIGGER IS THE ROM'S OWN STATE AND NEVER A TIMER, and it is a PAIR:
- *
- *      data_0209f20c != 0   AND   data_0209f2d4 between 1 and 3
- *
- * Read straight out of src/_ZN5Stage9LC_UpdateEv.cpp. Case 0 calls
- * Stage::UpdateMenuButtons(1) -- the call that recolours BG1's screen entries
- * into the three plates -- and sets data_0209f2d4 = 1 in the same statement
- * block, so the compose is up from the frame that word becomes 1. Every one
- * of the three answer arms in case 3 calls Stage::UpdateMenuButtons(0) and
- * moves the state to 4 or to 6 in the same tick, so the compose is down from
- * the frame the answer is taken. The word is 0 before case 0 runs and is put
- * back to 0 by case 6.
- *
- * THE PLATES ARE NOT VISIBLE FROM STATE 1, THOUGH: the ROM enables the two
- * layers they live on only in case 2 (`data_0209d454 |= 3`, state 3), and
- * states 1 and 2 are the coin count with the level map still on engine B. So
- * the compose draws engine B's menu layers alone (g_sub_menu, below), which
- * are empty until case 2 and the buttons from then on.
- *
- * WHY THE PAIR AND NOT THE STATE ALONE: data_0209f2d4 is only a state word
- * while the level-clear machinery is running at all, and what says it is
- * running is data_0209f20c -- Stage::Behavior's own gate.
- *
- * WHERE THE RECTANGLES COME FROM: this one place, once a frame, exactly the
- * way hal_sub_panel_geometry is the one place that decides where the map
- * panel is. The compose draws these rectangles and poll_touch's inverse reads
- * these same rectangles; neither recomputes the other's arithmetic. That is
- * the rule this file already lives by and the compose gets no exception.
- *
- * WHICH ROWS OF THE TOP SCREEN, AND THEY ARE MEASURED. A pixel census of the
- * top screen taken while the menu is up (the star row, the stacked layout so
- * the picture is the top screen alone at 512x384, frame 900):
- *
- *   the message glyphs are drawn in exactly one colour, (144,144,144), and in
- *   columns 110..400 they fall in four bands -- picture rows 72..93 the
- *   "COURSE N" line, 104..125 the course's name, 168..189 the star's name (or
- *   the silver-star line), 200..221 "CLEAR!". The blank line slot between
- *   them at 126..167 is the cartridge's own layout and is kept, because this
- *   is a composite of what the game drew and not a re-typesetting of it. Five
- *   line slots of 16 DS rows from DS row 36 -- so the block is DS rows
- *   36..115, and kTextRow0/kTextRow1 take one row of margin either side.
- *
- *   the coin total is drawn in orange, picture rows 251..283 (the coin sprite
- *   and the "x N" beside it): DS rows 125..141, and kCoinRow0/kCoinRow1 take
- *   the margin the same way.
- *
- *   AND "TOUCH TO SELECT" IS ON THE TOP SCREEN, not on the bottom one: it is
- *   an orange band low on the picture, and the per-layer census of 09-21 puts
- *   it exactly at picture rows 336..367, x 54..457, on engine A's BG2 and
- *   nothing else. With the picture no longer cropped it would be back in view,
- *   so the compose now HIDES that layer outright while it is up. That is the
- *   whole of "remove touch to select".
- *
- *   The same census re-measured the other two, and these are the numbers this
- *   block's row constants answer to: the course text is engine A's BG3, every
- *   one of its 5971 pixels the colour (144,144,144), picture rows 72..221,
- *   x 96..393; the coin total is a sprite, picture rows 256..287, x 196..271.
- *   Both lie inside the bands below, which is what makes the lift lossless.
- *
- * THE TWO BANDS ARE WHERE THE LIFTED GLYPHS GO, row for row, at the size the
- * top screen was already drawn at -- the same number of picture rows out as
- * in, the full picture width, no resampling of any kind. So the text is the
- * size the player is used to seeing it, at every render scale and every
- * aspect, because it is literally the same pixels moved up or down the
- * picture. What they are drawn OVER is the picture's own rows, untouched.
- *
- * THE PLATES TAKE WHAT IS LEFT. DS rows 0x28..0x97 of the bottom screen --
- * the three touch boxes at 0x28, 0x50 and 0x78, each 0x20 tall, and the two
- * eight-row gaps the cartridge leaves between them -- scaled by the largest
- * fraction that fits the band between the two text bands with 256:112 kept,
- * and centred in it. Nearest neighbour, because the plates are pixel art.
- * MEASURED AGAINST THE ALTERNATIVE rather than assumed: at the default
- * 512x384 picture the band is 176 rows, so the largest INTEGER multiple that
- * fits is 1 (a 256x112 rectangle, 32 per cent of the band) against the fitted
- * 11/7 (402x176, 90 per cent of it, and the full height). The integer fit
- * wastes two thirds of the space the owner asked the buttons to be slotted
- * into, so the fitted fraction is what is drawn.
- */
-struct SwapGeom {
-    /* the three plates: the only part of the bottom screen that is drawn, and
-       the only part of the picture a stylus reaches */
-    int px, py, pw, ph;
-    int pnum, pden;              /* their size as a fraction of DS pixels */
-    /* the two bands of the top screen's LETTERING. A band is a straight row
-       move, so its height is the same number on both sides and only its
-       origin changes; what travels is the lifted glyph pixels alone. */
-    int ty_src, ty_dst, t_h;     /* the course-clear text block, at the top */
-    int cy_src, cy_dst, c_h;     /* the coin total, at the very bottom */
-    /* how many of the text band's t_h rows are LIFTED and drawn: all of them
-       unless the coin band starts inside the text band (a castle star, see
-       kCoinHighShift), where the text stops at the coin band's first row. The
-       plates' room keeps the full t_h. */
-    int t_lift_h;
-};
-SwapGeom g_sw;
-/* the picture size g_sw was last computed for, so the lift's question can
-   recompute it with THIS frame's record flag (see hal_lc_compose_rows) */
-int g_sw_picw, g_sw_pich;
+ * The level-clear save menu (SaveMenuOnTop) used to live here as swap_geom_for, swap_present, swap_inverse
+ * and swap_now. It is recipe "lc" of the generic compose layer now (hal/menu_recipe_lc.cpp, hal/menu_compose.cpp)
+ * and this file is the HOST side of that layer: it decides the frame's one predicate, feeds the layer the real
+ * engine-B planes, draws it at the two seams (before and after engine A's fade), and runs the stylus and pad
+ * seams. The rule that survives from the swap: ONE PREDICATE PER FRAME. hal_menu_hook_h1 asks once at the head of
+ * engine A's composite, everything that lifts, draws or reads input for this frame reads hal_menu_live().
+ * The 0.4.1 "lift without draw" defect (text lifted from the picture and never drawn back) cannot recur as the
+ * panel option any more: the draw does not depend on g_on (the scan-out is forced when a menu is live), and the
+ * layer keeps the once-per-process LIFT WITHOUT DRAW net. */
+extern ntr::SubFramebuffer g_sub;
 
 /* The option, asked once per process and latched, like the improved map's. */
 int save_menu_on_top(void)
@@ -1594,42 +1446,22 @@ int save_menu_on_top(void)
     return v;
 }
 
-/* THE PAIR. See the banner. */
+/* THE PAIR: the level-clear screen owns the game and LC_Update is in a state that draws the menu. */
 int save_menu_is_up(void)
 {
     return data_0209f20c != 0 && data_0209f2d4 >= 1 && data_0209f2d4 <= 3;
 }
 
-/* The bottom screen's plate span: the first plate's top row, and the row one
-   past the third plate. The three offsets are LC_Update's own, out of case
-   3's touch tests. */
-const int kMenuFirstRow = 0x28;
-const int kMenuLastRow = 0x78 + 0x20;
-const int kMenuRows = kMenuLastRow - kMenuFirstRow;
-
-/* AND THE PLATES INSIDE THAT SPAN, because the span is not all plate. The
-   three touch boxes are 0x20 rows on a 0x28 pitch, so six rows of every
-   forty belong to neither box -- and a census of the bottom screen's own
-   raster while the menu is up says what is in them: THE LEVEL MAP. Engine B
-   draws the course map behind the menu, and rows 0x4a..0x4f carry 169 to 172
-   pixels of it each at x 45..216, rows 0x72..0x77 the same at x 41..213.
-   They are not backdrop and no colour key can reach them.
-
-   A PLATE IS TWO ROWS TALLER THAN ITS TOUCH BOX. Under each box's last body
-   row the cartridge draws a solid black edge and a rounded shadow row under
-   that -- a full-width run at 0x48 and a 238-wide one at 0x49, and the same
-   pair at 0x70/0x71 and at 0x98/0x99 -- matching the rounded top edge at
-   0x28. Both rows are plate and both are drawn, so a plate is 0x22 rows from
-   its box's first row. The third plate's pair falls past kMenuLastRow and
-   stays clipped away, which is what the span has always done with it. */
-const int kPlatePitch = 0x28;
-const int kPlateRows = 0x22;
-
-/* Is this bottom-screen row one of the three plates' own rows? */
-int menu_plate_row(int sy)
+/* key -> enabled, for hal_menu_set_enable_fn */
+int menu_enable(int key)
 {
-    const int o = sy - kMenuFirstRow;
-    return o >= 0 && o < kMenuRows && o % kPlatePitch < kPlateRows;
+    static int one = -1;
+    if (key == MENU_KEY_SAVE_MENU_ON_TOP) return save_menu_on_top();
+    if (key == MENU_KEY_ONE_SCREEN_MENUS) {
+        if (one < 0) one = host_setting_one_screen_menus() ? 1 : 0;
+        return one;
+    }
+    return 0;
 }
 
 /* THE COLOUR THE PLATES SIT ON, read off the machine rather than guessed.
@@ -1670,452 +1502,73 @@ unsigned menu_backdrop_px(void)
     return ((unsigned)r << 16) | ((unsigned)g << 8) | (unsigned)b;
 }
 
-/* The top screen's two bands, in DS rows. Both measured; see the banner. */
-const int kTextRow0 = 0x22;      /* 34: one row above the COURSE N line */
-const int kTextRow1 = 0x74;      /* 116: one row below CLEAR! */
-const int kCoinRow0 = 0x7a;      /* 122 */
-const int kCoinRow1 = 0x90;      /* 144 */
-/* THE COIN BAND WHEN THE COURSE HAS A NEW COIN RECORD. LC_Render
-   (src/_ZN5Stage9LC_RenderEv.cpp) then draws the "HIGH SCORE" banner as an
-   OBJ sprite at DS y 0x80 and Stage::Render moves the coin total down under
-   it, so the block the top screen carries is no longer 125..141. Measured on
-   the star row (level 6, a record of 12 coins, the compose off): the pixels
-   that differ from the same frame with no record span picture rows 240..319
-   at 512x384, DS rows 120..159. The 122..144 band cut that block in two:
-   the banner's top rows and the total's lower half stayed in the picture
-   behind the plates while the middle was lifted to the bottom. One row of
-   margin either side, the same as the plain band. */
-const int kCoinRow0Rec = 0x77;   /* 119 */
-const int kCoinRow1Rec = 0xa0;   /* 160 */
-
-/* THE COIN TOTAL OF A CASTLE STAR OR A SECRET COURSE SITS 0x10 ROWS HIGHER.
-   Stage::Render (src/_ZN5Stage6RenderEv.cpp:146) places the total at DS y 0x80
-   only for a course below 15 (SublevelToLevel of data_02092124); for course 15
-   and up -- every star collected in the castle itself, "ONE OF THE CASTLE'S
-   SECRET STARS!", and the secret courses -- it is y 0x70, and LC_Render draws
-   the banner at 0x70 there too. The two bands above were measured on a course
-   star only, so on these screens the total (measured at DS rows 113..125 with
-   the compose off, level-clear of sublevel 33) straddled the 122 edge: its
-   lower rows were lifted to the bottom and its upper rows stayed in the
-   picture, in the middle of the screen behind the SAVE & QUIT plate. The band
-   follows the total: the same rows, 0x10 higher. */
-const int kCoinHighShift = 0x10;
-
-int lc_total_is_high(void)
-{
-    return data_0209f20c != 0 && SublevelToLevel(data_02092124) >= 0xf;
-}
-
-void swap_geom_for(int w, int h, SwapGeom *o, int record, int high)
-{
-    SwapGeom g;
-    std::memset(&g, 0, sizeof g);
-    if (w < 8 || h < 8) { *o = g; return; }
-    /* THE TWO BANDS FIRST, because what is left over is the plates'.
-       THE BANDS FOLLOW THE ROWS THE GLYPHS ARE ON. Before the 2D was drawn
-       at the true ratio it was drawn at the floored integer active_h / 192,
-       and these bands floored with it (the 09-21 correction: at 21:9 the
-       picture is 1024x440, the 2D was 2x, and a multiply-first band began at
-       row 77 while the first glyph row was 72). The 2D now takes the same
-       rows as the 3D layer (ds_row_y0 in hal/message_compositor.cpp), so the
-       bands are taken at that mapping: hrow below. */
-    /* THE 2D IS DRAWN AT THE TRUE RATIO NOW (hal/message_compositor.cpp's
-       ds_row_y0: DS row r is the first host row at or after r * h / 192), the
-       same rows the 3D layer's viewport uses, so the first host row of a DS
-       row is that ceiling, which is r * (h / 192) at every whole multiple of 192 and
-       the glyphs' own row at 21:9 (1024x440) and 32:9 (1024x288) as well. */
-    auto hrow = [h](int r) { return (r * h + ntr::SUB_H - 1) / ntr::SUB_H; };
-    g.t_h = hrow(kTextRow1) - hrow(kTextRow0);
-    const int cr0 = (record ? kCoinRow0Rec : kCoinRow0) - (high ? kCoinHighShift : 0);
-    const int cr1 = (record ? kCoinRow1Rec : kCoinRow1) - (high ? kCoinHighShift : 0);
-    g.c_h = hrow(cr1) - hrow(cr0);
-    if (g.t_h < 1) g.t_h = 1;
-    if (g.c_h < 1) g.c_h = 1;
-    /* a picture too short to hold both bands and a plate between them gives
-       each band a third of it rather than drawing them over each other */
-    if (g.t_h + g.c_h > h - 4) {
-        g.t_h = h / 3;
-        g.c_h = h / 3;
-    }
-    g.ty_src = hrow(kTextRow0);
-    if (g.ty_src + g.t_h > h) g.ty_src = h - g.t_h;
-    if (g.ty_src < 0) g.ty_src = 0;
-    g.ty_dst = 0;
-    g.cy_src = hrow(cr0);
-    if (g.cy_src + g.c_h > h) g.cy_src = h - g.c_h;
-    if (g.cy_src < 0) g.cy_src = 0;
-    g.cy_dst = h - g.c_h;
-    /* ONE OVERLAY BUFFER SERVES BOTH BANDS, and the text band's draw copies
-       every lifted pixel in its rows whatever layer put it there. Where the
-       coin band begins above the text band's last row (the 0x10 shift
-       above), the coin sprite's upper rows would be drawn a second time at
-       the top of the picture. The text block of those screens is the course
-       layout moved up the same 0x10 and ends well above the coin band
-       (measured, sublevel 33: DS rows 67..94), so the text band ends where
-       the coin band starts. */
-    g.t_lift_h = g.t_h;
-    if (g.cy_src > g.ty_src && g.cy_src < g.ty_src + g.t_h)
-        g.t_lift_h = g.cy_src - g.ty_src;
-    /* THE MIDDLE, AND THE PLATES IN IT. The largest fraction that fits with
-       256:112 kept: the width binds or the height does, and whichever binds
-       is the fraction, reduced so the compose and the inverse are handed
-       small numbers. */
-    const int my0 = g.t_h, mh = g.cy_dst - my0;
-    if (mh < 4) { *o = g; return; }
-    int num, den;
-    if ((long long)w * kMenuRows <= (long long)mh * ntr::SUB_W) {
-        num = w;
-        den = ntr::SUB_W;
-    } else {
-        num = mh;
-        den = kMenuRows;
-    }
-    if (num < 1) num = 1;
-    if (den < 1) den = 1;
-    {
-        int a = num, b = den;
-        while (b) { const int t = a % b; a = b; b = t; }
-        if (a > 1) { num /= a; den /= a; }
-    }
-    g.pnum = num;
-    g.pden = den;
-    g.pw = ntr::SUB_W * num / den;
-    g.ph = kMenuRows * num / den;
-    if (g.pw > w) g.pw = w;
-    if (g.ph > mh) g.ph = mh;
-    g.px = (w - g.pw) / 2;
-    g.py = my0 + (mh - g.ph) / 2;
-    if (g.px < 0) g.px = 0;
-    if (g.py < my0) g.py = my0;
-    *o = g;
-}
-
-/* SM64DS_SWAP_TRACE=1: every change of the ROM's two words and of the
-   compose's own answer, with the rectangles this frame settled on. It exists
-   so that a capture can be measured against the numbers the program actually
-   drew, and so that the frame the compose begins can be joined to the frame
-   the plates turn on, rather than to a restatement of this arithmetic
-   somewhere else. The env name is the one the tools already pass through. */
-void swap_trace(int w, int h, int frame)
-{
-    static int on = -1;
-    static int last[4] = { -1, -1, -1, -1 };
-    if (on < 0) on = std::getenv("SM64DS_SWAP_TRACE") ? 1 : 0;
-    if (!on) return;
-    const int now[4] = { (int)data_0209f20c, (int)data_0209f2d4, g_swap,
-                         (int)data_0209f2e0 };
-    if (now[0] == last[0] && now[1] == last[1] && now[2] == last[2] &&
-        now[3] == last[3])
-        return;
-    last[0] = now[0];
-    last[1] = now[1];
-    last[2] = now[2];
-    last[3] = now[3];
-    std::fprintf(stderr, "[compose] f%d f20c=%d f2d4=%d f2e0=%d composed=%d picture "
-                 "%dx%d text 0,%d %dx%d from row %d  plates %d,%d %dx%d "
-                 "(%d/%d)  coins 0,%d %dx%d from row %d\n", frame, now[0],
-                 now[1], now[3], now[2], w, h, g_sw.ty_dst, w, g_sw.t_h,
-                 g_sw.ty_src, g_sw.px, g_sw.py, g_sw.pw, g_sw.ph, g_sw.pnum,
-                 g_sw.pden, g_sw.cy_dst, w, g_sw.c_h, g_sw.cy_src);
-    std::fflush(stderr);
-}
-
-/* engine B's own raster target, defined with the rest of the raster state
-   further down this file and named here because the composed present is above
-   it. Same object, same internal linkage. */
-extern ntr::SubFramebuffer g_sub;
-
-/* ENGINE B'S MENU LAYERS ALONE: the only source the plates are drawn from.
- *
- * THE BUTTONS ARE TWO BACKGROUNDS AND THE MAP IS THE REST, and the ROM says
- * which is which. Stage::LC_Update's case 2 (src/_ZN5Stage9LC_UpdateEv.cpp)
- * turns the menu on with `data_0209d454 |= 3`: sub BG0 and BG1, the layer
- * mask this file publishes into DISPCNT_B bits 8..12. Case 0 points sub BG1
- * at the plates' screen block (0x0400100A, base 0xd) and case 4 at the save
- * box's (base 0xe). What a course keeps on engine B the rest of the time is
- * the level map, BG3, and its sprites, OBJ -- the in-course mask is 0x18 --
- * with BG2 the touch marker (see ppu_sub_set_bg_suppress's banner).
- *
- * The finished raster, g_sub, carries all of them, and it is what the plates
- * used to be copied out of. Two things followed, both measured on the 0.5.0
- * build (the star row, level 6, SM64DS_SAVE_MENU_ON_TOP=1):
- *   - the compose is up from state 1 (the coin count, frame 368) but the ROM
- *     enables the menu layers only in case 2 (state 3, frame 415), so for
- *     every frame in between the three plate bands on the top screen were the
- *     course map: three horizontal strips of it across the middle of the
- *     picture;
- *   - once the buttons are on, every plate-row pixel the button art leaves
- *     uncovered is still the map, and the backdrop key below cannot reach it.
- * So the plates come from a second scan-out of engine B with every layer but
- * BG0 and BG1 treated as off. The ROM's registers are not written (the
- * suppression is read-only, see ntr/ppu.h) and the game reads back exactly
- * what it wrote. Before case 2 that scan-out is empty and no plate is drawn;
- * after it, it is the buttons and nothing else. */
-const uint32_t kMenuLayerSuppress = (1u << 10) | (1u << 11) | (1u << 12);
-ntr::SubFramebuffer g_sub_menu;
-
-/* The same suppression hal_sub_screen_present installs for the corner-inset
-   layout every frame (the improved map's touch-marker removal), put back
-   after the menu scan-out so nothing later in the frame sees the menu's. */
+/* The same suppression hal_sub_screen_present installs for the corner-inset layout every frame (the improved map's
+   touch-marker removal), put back after a masked scan-out so nothing later in the frame sees the menu's. */
 uint32_t inset_bg_suppress(void)
 {
     return improved_map_on() ? (1u << 10) : 0u;
 }
 
-/* One band of the LIFTED LETTERING, moved up or down the picture. Both the
-   overlay and the framebuffer are indexed at a stride of SCREEN_W -- the
-   overlay is written by hal/message_compositor.cpp's own blit, at the host
-   pixels that blit would have written -- so a band is a row offset and
-   nothing else, and only the pixels the overlay marks opaque are drawn. What
-   is not marked is left alone, which is how the game's own picture comes
-   through between the glyphs. */
-void swap_glyph_band(unsigned *dst, int w, int h, int src_y, int dst_y,
-                     int rows)
-{
-    if (rows < 1 || src_y < 0 || dst_y < 0) return;
-    if (src_y + rows > h || dst_y + rows > h) return;
-    if (!hal_lc_overlay_live()) return;
-    const unsigned *col = hal_lc_overlay_colour();
-    const unsigned char *msk = hal_lc_overlay_mask();
-    if (!col || !msk) return;
-    for (int y = 0; y < rows; ++y) {
-        const size_t s = (size_t)(src_y + y) * ntr::SCREEN_W;
-        const size_t d = (size_t)(dst_y + y) * ntr::SCREEN_W;
-        for (int x = 0; x < w; ++x)
-            if (msk[s + x]) dst[d + x] = col[s + x];
-    }
-}
+/* ENGINE B'S MASKED SCAN-OUTS, the only source a SRC_SUB piece is drawn from (see the level-clear plates: the buttons
+   are BG0 and BG1, the course map behind them is BG3 and OBJ, and a colour key cannot tell them apart). One extra
+   scan-out per distinct layer mask, at most two a frame; the ROM's registers are not written (the suppression is
+   read-only, ntr/ppu.h). The core caches the answer per mask, so this runs at most once per mask per drawn frame. */
+ntr::SubFramebuffer g_sub_menu;
+ntr::SubFramebuffer g_sub_menu2;
+int g_msub_n;
 
-/* THE COMPOSED PRESENT. The picture is already the game's own frame with the
-   menu's lettering lifted out of it, so nothing here moves a row of it: the
-   two bands below put the lifted glyphs at the top and at the bottom, and the
-   three plates go over the middle. */
-void swap_present(unsigned *dst, int w, int h)
+const uint32_t *menu_sub_for(uint8_t layers)
 {
-    if (w <= 0 || h <= 0 || g_sw.pnum <= 0) return;
-    /* the lift's promise, honoured: see g_lc_lift_pending's banner */
-    g_lc_lift_pending = 0;
-    /* WHAT IS UNDER ALL THREE IS THE GAME'S OWN PICTURE, EVERY ROW OF IT
-       WHERE THE GAME PUT IT. The owner's two rulings are one ruling: "I want
-       just the buttons not the whole background" and "the screen height
-       shouldnt change, just slot it in". So nothing here blacks, clears,
-       copies or scrolls the picture, and the only pixels written are plate
-       and lifted glyph. */
-    swap_glyph_band(dst, w, h, g_sw.ty_src, g_sw.ty_dst, g_sw.t_lift_h);
-    swap_glyph_band(dst, w, h, g_sw.cy_src, g_sw.cy_dst, g_sw.c_h);
-    /* THE THREE PLATES, nearest neighbour out of engine B's own raster, and
-       only the plates. TWO TESTS, both on the SOURCE pixel, before the ROM's
-       own fade reaches the finished picture, and neither of them moves a
-       rectangle: a source row between two plates is not drawn at all (it is
-       the course map, see the banner over kPlateRows), and a source pixel
-       still carrying the backdrop is not drawn either (the eight columns of
-       margin either side of every plate, and the rounded corners). What
-       lands on the picture is the plate, its outline and its lettering.
-       THE SOURCE IS THE MENU LAYERS' OWN SCAN-OUT, never g_sub: see the
-       banner over g_sub_menu. */
-    ntr::ppu_sub_set_bg_suppress(kMenuLayerSuppress);
-    ntr::ppu_scanout_sub(g_sub_menu);
+    if (g_msub_n >= 2) return &g_sub.px[0][0];       /* over the cap: the live scan-out */
+    ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
+    ++g_msub_n;
+    ntr::ppu_sub_set_bg_suppress((~(unsigned)layers & 0x1fu) << 8);
+    ntr::ppu_scanout_sub(buf);
     ntr::ppu_sub_set_bg_suppress(inset_bg_suppress());
-    const unsigned key = menu_backdrop_px();
-    for (int y = 0; y < g_sw.ph; ++y) {
-        int sy = kMenuFirstRow + (int)(((long long)y * g_sw.pden) / g_sw.pnum);
-        if (sy >= kMenuLastRow) sy = kMenuLastRow - 1;
-        if (!menu_plate_row(sy)) continue;
-        const unsigned *srow = g_sub_menu.px[sy];
-        for (int x = 0; x < g_sw.pw; ++x) {
-            int sx = (int)(((long long)x * g_sw.pden) / g_sw.pnum);
-            if (sx >= ntr::SUB_W) sx = ntr::SUB_W - 1;
-            const unsigned c = srow[sx] & 0x00FFFFFFu;
-            if (c == key) continue;
-            px_put(dst, w, h, g_sw.px + x, g_sw.py + y, 0xFF000000u | c);
+    return &buf.px[0][0];
+}
+
+MenuSources g_msrc;
+uint32_t *g_picsnap;                                 /* a copy of the picture for SRC_TOP_PIC pieces */
+
+/* Hand the layer this frame's planes. Called right before hal_menu_present, at each of its two stages. */
+void menu_prepare_sources(unsigned *dst, int w, int h)
+{
+    g_msub_n = 0;
+    std::memset(&g_msrc, 0, sizeof g_msrc);
+    g_msrc.sub = &g_sub.px[0][0];
+    g_msrc.sub_backdrop = menu_backdrop_px();
+    g_msrc.top2d = port_menu_top2d_plane();
+    g_msrc.hostrow = port_menu_hostrow_plane();
+    g_msrc.hostrow_stride = ntr::SCREEN_W;
+    g_msrc.hostrow_w = w;
+    g_msrc.hostrow_h = h;
+    if (hal_menu_uses_src(SRC_TOP_PIC)) {
+        if (!g_picsnap) g_picsnap = (uint32_t *)std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H * sizeof(uint32_t));
+        if (g_picsnap) {
+            /* source and destination overlap (the backdrop piece is the whole picture), so the layer reads a copy */
+            for (int y = 0; y < h; ++y)
+                std::memcpy(g_picsnap + (size_t)y * ntr::SCREEN_W, dst + (size_t)y * ntr::SCREEN_W,
+                            (size_t)w * sizeof(uint32_t));
+            g_msrc.pic = g_picsnap;
+            g_msrc.pic_stride = ntr::SCREEN_W;
+            g_msrc.pic_w = w;
+            g_msrc.pic_h = h;
+            g_msrc.pic_rx = ntr::present_x();
+            g_msrc.pic_ry = ntr::present_y();
+            g_msrc.pic_rw = ntr::present_w();
+            g_msrc.pic_rh = ntr::present_h();
         }
     }
-}
-
-/* THE INVERSE, and it is the one arithmetic. A client point that has already
-   been put into framebuffer pixels comes in; the DS pixel the ROM will see
-   goes out, read off the very rectangle the compose just drew. A point off
-   the plates is refused (inside = 0) rather than mapped, because nothing else
-   on the composed picture is a touch surface: not the course text, not the
-   coin row, and not the game's own picture either side of the plates. */
-void swap_inverse(int bx, int by, int *dsx, int *dsy, int *inside)
-{
-    const SwapGeom &g = g_sw;
-    int qx = bx, qy = by, on = 1;
-    if (g.pnum < 1 || g.pw < 1 || g.ph < 1) {
-        *dsx = -1;
-        *dsy = -1;
-        *inside = 0;
-        return;
+    port_engine_a_fade_px_prep();
+    g_msrc.bm_apply = port_engine_a_fade_px;
+    {
+        int evy = 0, white = 0;
+        g_msrc.rom_dimming = (port_fader_blend_state(&evy, &white) && evy > 0) ? 1 : 0;
     }
-    if (qx < g.px) { qx = g.px; on = 0; }
-    if (qx >= g.px + g.pw) { qx = g.px + g.pw - 1; on = 0; }
-    if (qy < g.py) { qy = g.py; on = 0; }
-    if (qy >= g.py + g.ph) { qy = g.py + g.ph - 1; on = 0; }
-    int x = fdiv((qx - g.px) * g.pden, g.pnum);
-    int y = kMenuFirstRow + fdiv((qy - g.py) * g.pden, g.pnum);
-    if (x < 0) x = 0;
-    if (x >= ntr::SUB_W) x = ntr::SUB_W - 1;
-    if (y < kMenuFirstRow) y = kMenuFirstRow;
-    if (y >= kMenuLastRow) y = kMenuLastRow - 1;
-    *dsx = x;
-    *dsy = y;
-    *inside = on;
-}
-
-
-/* ---- THE COMPOSED ARM OF SM64DS_LAYOUT_SELFTEST ---------------------------
- *
- * The third arm of the same selftest. The stacked arm asserts the stacked
- * layout and the inset arm asserts the map panel; this one asserts the
- * composed picture, over the shapes the option can be asked for: both
- * framebuffer tiers and the five aspects the launcher offers. It runs the
- * SAME two functions the compose and the stylus inverse run -- nothing here
- * restates that arithmetic -- and it needs no game state, because the
- * rectangles depend only on the picture.
- *
- *   S1 the four corners of the PLATE rectangle, run back through
- *      swap_inverse, land within ONE DS pixel of DS (0,0x28), (255,0x28),
- *      (0,0x97) and (255,0x97) and read INSIDE.
- *   S2 one pixel outside each of its four edges reads OUTSIDE.
- *   S3 the plate rectangle keeps 256:112 within a pixel, fits in the band
- *      between the two text bands, and the three bands neither overlap each
- *      other nor leave the picture.
- *   S4 THE THREE BUTTON RECTS: each of the menu's own touch boxes (DS rows
- *      0x28, 0x50 and 0x78, each 0x20 tall) lands as a whole rectangle inside
- *      the plate rectangle, and the centre of each maps back into that same
- *      DS box -- which is the click a player makes, asserted through the
- *      inverse rather than described.
- */
-void swap_layout_selftest(void)
-{
-    const char *env = std::getenv("SM64DS_LAYOUT_SELFTEST");
-    if (!env || !*env) return;
-    static const double asp[5] = { 0.0, 1.7777778, 2.3333333, 3.5555556, 4.0 };
-    static const int hs[2] = { 384, 768 };
-    const SwapGeom saved = g_sw;
-    int passed = 0, total = 0;
-    for (int hi = 0; hi < 2; ++hi) {
-        for (int ai = 0; ai < 5; ++ai) {
-            const int h = hs[hi];
-            int w = asp[ai] > 0.0 ? (int)(h * asp[ai] + 0.5) : h * 4 / 3;
-            w &= ~1;
-            swap_geom_for(w, h, &g_sw, 0, 0);
-            const SwapGeom g = g_sw;
-            char fails[8];
-            int nf = 0, dx, dy, in, ok = 1;
-            const int x1 = g.px + g.pw - 1, y1 = g.py + g.ph - 1;
-            swap_inverse(g.px, g.py, &dx, &dy, &in);
-            if (!in || dx > 1 || dy > kMenuFirstRow + 1) ok = 0;
-            swap_inverse(x1, g.py, &dx, &dy, &in);
-            if (!in || dx < ntr::SUB_W - 2 || dy > kMenuFirstRow + 1) ok = 0;
-            swap_inverse(g.px, y1, &dx, &dy, &in);
-            if (!in || dx > 1 || dy < kMenuLastRow - 2) ok = 0;
-            swap_inverse(x1, y1, &dx, &dy, &in);
-            if (!in || dx < ntr::SUB_W - 2 || dy < kMenuLastRow - 2) ok = 0;
-            if (!ok) fails[nf++] = '1';
-            ok = 1;
-            swap_inverse(g.px - 1, g.py, &dx, &dy, &in);
-            if (in) ok = 0;
-            swap_inverse(g.px, g.py - 1, &dx, &dy, &in);
-            if (in) ok = 0;
-            swap_inverse(x1 + 1, g.py, &dx, &dy, &in);
-            if (in) ok = 0;
-            swap_inverse(g.px, y1 + 1, &dx, &dy, &in);
-            if (in) ok = 0;
-            if (!ok) fails[nf++] = '2';
-            ok = 1;
-            if (g.pw < 1 || g.ph < 1) ok = 0;
-            else {
-                const long long l = (long long)g.pw * kMenuRows;
-                const long long r = (long long)g.ph * ntr::SUB_W;
-                const long long tol = (long long)ntr::SUB_W + kMenuRows;
-                if (l - r > tol || r - l > tol) ok = 0;
-            }
-            if (g.px < 0 || g.py < g.t_h || g.px + g.pw > w ||
-                g.py + g.ph > g.cy_dst)
-                ok = 0;
-            if (g.t_h < 1 || g.c_h < 1 || g.ty_dst != 0 ||
-                g.cy_dst + g.c_h != h || g.ty_src + g.t_h > h ||
-                g.cy_src + g.c_h > h)
-                ok = 0;
-            if (!ok) fails[nf++] = '3';
-            ok = 1;
-            for (int b = 0; b < 3; ++b) {
-                const int d0 = kMenuFirstRow + b * 0x28;
-                const int d1 = d0 + 0x20 - 1;
-                const int r0 = g.py + (d0 - kMenuFirstRow) * g.pnum / g.pden;
-                const int r1 = g.py + (d1 + 1 - kMenuFirstRow) * g.pnum /
-                                      g.pden - 1;
-                if (r0 < g.py || r1 > g.py + g.ph - 1 || r1 < r0) ok = 0;
-                swap_inverse(g.px + g.pw / 2, (r0 + r1) / 2, &dx, &dy, &in);
-                if (!in || dy < d0 || dy > d1 || dx < 0 || dx >= ntr::SUB_W)
-                    ok = 0;
-            }
-            if (!ok) fails[nf++] = '4';
-            fails[nf] = 0;
-            ++total;
-            if (!nf) {
-                ++passed;
-                std::fprintf(stderr, "[composest] picture %dx%d: text 0,0 "
-                             "%dx%d from row %d  plates %d,%d %dx%d (%d/%d)  "
-                             "coins 0,%d %dx%d from row %d  S1..S4 PASS\n",
-                             w, h, w, g.t_h, g.ty_src, g.px, g.py, g.pw, g.ph,
-                             g.pnum, g.pden, g.cy_dst, w, g.c_h, g.cy_src);
-            } else {
-                std::fprintf(stderr, "[composest] picture %dx%d: text 0,0 "
-                             "%dx%d from row %d  plates %d,%d %dx%d (%d/%d)  "
-                             "coins 0,%d %dx%d from row %d  FAIL S%s\n",
-                             w, h, w, g.t_h, g.ty_src, g.px, g.py, g.pw, g.ph,
-                             g.pnum, g.pden, g.cy_dst, w, g.c_h, g.cy_src,
-                             fails);
-            }
-        }
-    }
-    g_sw = saved;
-    std::fprintf(stderr, "COMPOSED LAYOUT SELFTEST: %s %d/%d\n",
-                 passed == total ? "PASS" : "FAIL", passed, total);
-    std::fflush(stderr);
-}
-
-/* Is the picture COMPOSED right now, for a reader that is not the compose?
-   The rectangles are recomputed every frame whatever the answer, so a reader
-   asking this on the same frame the plates come on gets the rectangles that
-   frame's compose is using.
-
-   THIS IS THE COMPOSE'S ONE TRUTH, AND EVERY TERM THE DRAW DEPENDS ON HAS TO
-   BE IN IT. The engine-A compositor asks this question -- through
-   hal_lc_compose_rows, below -- to decide whether to LIFT the level-clear
-   lettering and the coin sprites out of the picture, and swap_present is what
-   puts them back. The two halves are one mechanism, so a condition that stops
-   the draw without stopping the lift takes those pixels out of the picture
-   and never puts them back.
-
-   g_on -- the bottom-screen panel option, SM64DS_SUB_PANEL -- was exactly
-   such a term. hal_sub_screen_present has one early return, `if (!g_on)
-   return;`, and the compose's call to swap_present is below it, so with the
-   panel off the lift ran and the draw did not: the course text, the coin
-   total and "TOUCH TO SELECT" came out of the top screen and nothing was
-   drawn back. That is the 0.4.1 gate's one red row -- the level-clear picture
-   went course-independent, the same picture for Jolly Roger Bay and for
-   Bob-omb Battlefield, and its whole difference from the game's own picture
-   was BG3's 5971 glyph pixels plus the coin sprites' 1792 plus BG2's 8556,
-   with nothing drawn in their place.
-
-   Hoisting the draw above that early return is the other repair and it is the
-   wrong one: with the panel off engine B is never scanned out at all (the
-   `if (g_on) ppu_scanout_sub` a few lines above the return), so the plates
-   would have no source to draw from. With the panel off the compose does not
-   happen and the player keeps the game's own untouched top screen, text,
-   coins and all.
-
-   Anything added to hal_sub_screen_present that can skip swap_present belongs
-   in this predicate too. The one-shot note in hal_lc_compose_rows below is
-   the net for the day somebody forgets. */
-int swap_now(void)
-{
-    return save_menu_on_top() && save_menu_is_up() &&
-           !hal_sub_screen_stacked() && g_on && g_sw.pnum > 0;
+    g_msrc.sub_for = menu_sub_for;
+    hal_menu_set_sources(&g_msrc);
+    hal_menu_set_dst_stride(ntr::SCREEN_W);
 }
 
 /* The square itself, drawn in the pass above the map so nothing covers it. */
@@ -2785,7 +2238,7 @@ void poll_touch(void)
         btn = 1;
     } else {
         static int raw_was, focus_was, hold_ok;
-        const int raw = (!g_headless && g_on && GetAsyncKeyState_ &&
+        const int raw = (!g_headless && (g_on || hal_menu_live()) && GetAsyncKeyState_ &&
                          (GetAsyncKeyState_(VK_LBUTTON) & 0x8000)) ? 1 : 0;
         const int foc = hal_window_focused();
         if (!raw)              hold_ok = 0;
@@ -2844,25 +2297,12 @@ void poll_touch(void)
                    of its four sides. Harmless while the map was a bare inset
                    over the 3D view; not harmless with the artist's frame
                    drawn on exactly those pixels. */
-                if (g_swap) {
-                    /* THE PICTURE IS COMPOSED: the only touch surface on it
-                       is the block of three plates in the middle, so the
-                       inverse reads the very rectangle the compose just drew
-                       -- the same numbers, the same floor divide, one
-                       arithmetic -- and every other pixel of the picture
-                       answers nothing.
-                       WHAT ANSWERS NOTHING, said plainly, because all three
-                       are things a player may have learned to click: the
-                       course text at the top and the coin row at the bottom
-                       are the TOP screen and no stylus has ever reached it;
-                       the picture either side of the plates is the game's
-                       own and not a screen at all; and the corner panel's
-                       old three button points --
-                       and the old full-picture swapped ones -- are not on the
-                       plates any more, which is the honest answer, because
-                       the buttons are not there any more. */
+                if (hal_menu_live()) {
+                    /* A MENU RECIPE OWNS THE PICTURE: the only touch surface on it is its touch pieces, so the
+                       inverse reads the very rectangles the layer drew LAST frame (hal_menu_touch_inverse) and every
+                       other pixel answers nothing. A drag that started on a piece stays clamped to it. */
                     int in = 0;
-                    swap_inverse(bx, by, &fx, &fy, &in);
+                    hal_menu_touch_inverse(bx, by, &fx, &fy, &in);
                     if (!in) on_picture = 0;
                 } else {
                     fx = fdiv((bx - g_x0) * g_pan_den, g_pan_num);
@@ -2893,7 +2333,7 @@ void poll_touch(void)
                the menu owns it, and the menu's own touch boxes are the only
                hit test running. g_menu_up is the ROM's own pair, taken once a
                frame at the presentation seam. */
-            if (on_surface && improved_map_on() && !g_menu_up &&
+            if (on_surface && improved_map_on() && !g_menu_up && !hal_menu_live() &&
                 g_cam_reader_at == g_tp_frame &&
                 in_camera_button_zone(fx, fy)) {
                 on_surface = 0;
@@ -2994,6 +2434,18 @@ void poll_touch(void)
             down = 1;
             sx = (unsigned char)fx;
             sy = (unsigned char)fy;
+        }
+    }
+    /* THE MENU LAYER'S SYNTHESISED PRESS (a pad or key confirm on a touch hotspot): a separate single-producer queue,
+       consumed here beside the forced tap and never through SKIP_MENU's globals. The layer is told whether a real
+       stylus is held and refuses to start (or drops) a press while one is. */
+    {
+        int qx = 0, qy = 0, qdown = 0;
+        hal_menu_touch_real_held(down ? 1 : 0);
+        if (hal_menu_touch_queue_poll(&qx, &qy, &qdown) && qdown) {
+            down = 1;
+            sx = (unsigned char)qx;
+            sy = (unsigned char)qy;
         }
     }
 
@@ -3287,9 +2739,9 @@ void poll_touch(void)
                          f, live_cx, live_cy,
                          live_handle
                              ? "the map's corner handle took it"
-                             : (g_swap
-                                    ? "the composed level-clear picture takes "
-                                      "a click on the three buttons and "
+                             : (hal_menu_live()
+                                    ? "the composed menu picture takes "
+                                      "a click on its touch pieces and "
                                       "nowhere else"
                                     : (on_top ? "it is on the TOP screen"
                                               : "it is in a letterbox bar")));
@@ -4097,146 +3549,62 @@ extern "C" int hal_save_menu_up(void)
     return save_menu_is_up() ? 1 : 0;
 }
 
-/* THE COMPOSE'S TWO SOURCE BANDS, for hal/message_compositor.cpp, asked once
-   at the head of engine A's composite. It is the ONE question that file asks
-   this one, and it is the whole of the gate: off, it answers 0 and that file
-   allocates nothing, clears nothing and changes no pixel.
-   The rows are HOST rows of the picture, out of the very rectangles this
-   frame's compose will draw into, so the pixels engine A lifts out are the
-   pixels the compose puts back, and the two cannot drift apart.
-   ASKED BEFORE hal_sub_screen_present HAS RUN THIS FRAME, which is why the
-   rectangles read here are last frame's. They depend only on the picture's
-   size, which does not change inside a frame, and swap_geom_for runs every
-   frame whatever the answer -- so the numbers are right from the first
-   composed frame. swap_now's own g_sw.pnum > 0 term is what keeps this quiet
-   before the first frame's geometry exists. */
-extern "C" int hal_lc_compose_rows(int *text_r0, int *text_r1,
-                                   int *coin_r0, int *coin_r1)
+/* ---- H1: THE FRAME'S ONE PREDICATE, asked at the head of engine A's composite -------------------------------
+ *
+ * hal/message_compositor.cpp calls this first thing in port_message_composite_engine_a. It picks the frame's recipe
+ * once (hal_menu_frame_begin) and hands back the lift plan; everything else this frame reads hal_menu_live().
+ * The gate is the layout: a stacked scene (minigames) shows both screens whole and no recipe may match, the
+ * fallback included (MENU_SCENE_GATED). The corner-panel option g_on is deliberately NOT a term: a live menu forces
+ * its own engine-B scan-out. */
+extern "C" const MenuLiftInfo *hal_menu_hook_h1(int w, int h)
 {
-    /* THE PROMISE FROM LAST FRAME, CHECKED. If the lift was armed and
-       swap_present never ran, the lettering and the coin total were taken out
-       of that frame's picture and nothing put them back -- the defect this
-       file's swap_now banner describes. It cannot happen while every term the
-       draw depends on is in swap_now, which is the point of saying so here
-       rather than trusting the two to stay in step. Once per process, to
-       stderr, never fatal: a sweep row that trips it stays readable. */
-    if (g_lc_lift_pending) {
-        static int said;
-        if (!said) {
-            said = 1;
-            std::fprintf(stderr, "[compose] LIFT WITHOUT DRAW: the level-clear "
-                         "lettering was lifted out of a frame swap_present "
-                         "never reached; swap_now is missing a term the draw "
-                         "depends on\n");
-            std::fflush(stderr);
-        }
-        g_lc_lift_pending = 0;
+    static int init;
+    if (!init) {
+        init = 1;
+        hal_menu_set_enable_fn(menu_enable);
     }
-    if (!swap_now()) return 0;
-    g_lc_lift_pending = 1;
-    /* THE RECORD FLAG CAN FLIP BETWEEN THE LAST PRESENT AND THIS LIFT (the game
-       tick sets it, the present has not run yet), and a band taken from last
-       frame's rectangles would lift the plain coin rows on the one frame the
-       banner first appears. So the bands are recomputed here with this
-       frame's flag, from the same function and the same picture size the
-       present is about to use. */
-    SwapGeom now = g_sw;
-    if (g_sw_picw > 0 && g_sw_pich > 0)
-        swap_geom_for(g_sw_picw, g_sw_pich, &now, data_0209f2b0 != 0,
-                      lc_total_is_high());
-    *text_r0 = now.ty_src;
-    *text_r1 = now.ty_src + now.t_lift_h;
-    *coin_r0 = now.cy_src;
-    *coin_r1 = now.cy_src + now.c_h;
-    return 1;
+    hal_menu_set_netplay(port::comms_transport() != 0);
+    const int scene = hal_sub_screen_stacked() ? MENU_SCENE_GATED : port_scene_live_id();
+    hal_menu_frame_begin(w, h, scene);
+    return hal_menu_lift_info();
 }
 
-/* ---- THE LEVEL-CLEAR MENU FROM A CONTROLLER OR THE KEYBOARD ---------------
+/* ---- H4: THE PAD, from a controller or the keyboard -----------------------------------------------------
  *
- * WHAT THE CARTRIDGE DOES. Stage::LC_Update's case 3 (src/_ZN5Stage9LC_
- * UpdateEv.cpp) answers the menu two ways: a stylus tap on one of the three
- * touch boxes, or IsButtonInputValid() for the button that is ALREADY chosen,
- * data_0209f2e0 (0, Save and Continue, from case 0). With the level-clear
- * flag up, IsButtonInputValid (src/IsButtonInputValid.c) takes only Start or
- * Select (pressed & 0xc) and answers every other key -- the D-pad and A among
- * them -- with sound 0xe, the refusal buzz. Nothing in LC_Update ever moves
- * data_0209f2e0 from a key. So on the DS this menu is touch, plus Start for
- * the first button.
- *
- * WHAT THE PORT ADDS, for a player with a pad or a keyboard and no stylus:
- * up and down move the choice, A presses it. It is written in the idiom the
- * cartridge uses where it does take a D-pad cursor, the star select
- * (src/_ZN12dScStarSel_c8BehaviorEv.cpp, its button arm): the first press
- * only shows the cursor, later presses move it one step and stop at either
- * end, and each of those plays sound 0x12e. The cursor is the game's own:
- * Stage::UpdateMenuButtons(0) puts the chosen plate on BG1 palette 2 and the
- * other two on palette 1 -- the same call, and so the same look, the
- * cartridge gives a plate the moment it is tapped.
- *
- * AND THE ANSWER IS STILL THE ROM'S. A is handed to LC_Update as Start in
- * the pressed word. The port's A is its jump binding (pad A, Space), and
- * that reaches PadData as the DS key word's bit 1 (host_btn_to_raw_keys in
- * tests/walk_window.cpp: jump is raw 0x0002), so bit 1 is the one turned
- * into Start (0x0008). It is then the ROM's own `data_0209f2e0 == N &&
- * IsButtonInputValid()` arm that takes the choice, plays that choice's own
- * sound and moves the state on. The four direction bits are taken out of the
- * pressed word while the menu is waiting, so the cursor keys do not also buzz.
- *
- * WHEN: the one state the ROM reads the answer in -- the level-clear flag up,
- * the state word 3, and no wait (data_0209f22c) running, which is exactly when
- * LC_Update reaches case 3. Called from the frame loop right after the ROM's
- * own PadData build (func_0203bc7c), before the tick reads it; single player
- * only. The mouse is untouched: a click is TouchInfo, and case 3 reads that
- * first. */
+ * Called from the frame loop right after the ROM's own PadData build, before the tick reads it (level loop:
+ * tests/walk_window.cpp, scene loop: scene_host_input_frame), single player only. The pressed bits are rewritten in
+ * BOTH spellings the ROM reads, data_020a0e58 + slot * 4 + 2 and the split data_020a0e5a + slot * 4 (IsButtonInputValid
+ * reads only the split one, src/IsButtonInputValid.c), on the LOCAL slot data_020a0e40. What happens to them is the live
+ * recipe's driver (hal_menu_pad); with no recipe live this does nothing. host_back is the Backspace key's down edge:
+ * the ROM has no pad "back" (every ROM back control is a touch box), and the pad bit 0x0001 is the DS A key, a confirm. */
 extern "C" {
-extern unsigned char data_0209f2b4;   /* how many buttons the menu has */
-extern unsigned char data_0209f22c;   /* LC_Update's own wait */
-extern unsigned char data_0209f244;   /* the chosen plate's blink */
 extern unsigned char data_020a0e40;   /* the local player's slot */
 extern int data_020a0e58[];           /* PadData[i]: {u16 held, u16 pressed} */
 extern int data_020a0e5a[];           /* the split spelling of .pressed */
-void _ZN5Stage17UpdateMenuButtonsEb(int b);
-void func_02012790(int id);
 }
 
-extern "C" void hal_lc_menu_pad(void)
+extern "C" void hal_menu_pad_seam(void)
 {
-    static int cursor_shown;
-    if (data_0209f20c == 0 || data_0209f2d4 != 3) {
-        cursor_shown = 0;
-        return;
+    static int back_was;
+    int back = 0;
+    if (!g_headless && GetAsyncKeyState_ && hal_window_focused()) {
+        const int d = (GetAsyncKeyState_(VK_BACK) & 0x8000) ? 1 : 0;
+        back = d && !back_was;
+        back_was = d;
+    } else {
+        back_was = 0;
     }
-    if (data_0209f22c != 0 || data_0209f244 != 0) return;
+    if (!hal_menu_live()) return;
     const int slot = data_020a0e40;
-    unsigned short *pressed =
-        (unsigned short *)((char *)data_020a0e58 + slot * 4 + 2);
-    unsigned short *split =
-        (unsigned short *)((char *)data_020a0e5a + slot * 4);
-    unsigned short keys = *pressed;
-    if (keys & 0xc0) {
-        const int last = data_0209f2b4 ? data_0209f2b4 - 1 : 0;
-        int sel = data_0209f2e0;
-        int moved = 0;
-        if (!cursor_shown) {
-            cursor_shown = 1;
-            moved = 1;
-        } else if ((keys & 0x40) && sel > 0) {
-            --sel;
-            moved = 1;
-        } else if ((keys & 0x80) && sel < last) {
-            ++sel;
-            moved = 1;
-        }
-        if (moved) {
-            data_0209f2e0 = (unsigned char)sel;
-            _ZN5Stage17UpdateMenuButtonsEb(0);
-            func_02012790(0x12e);
-        }
+    unsigned short *pressed = (unsigned short *)((char *)data_020a0e58 + slot * 4 + 2);
+    unsigned short *split = (unsigned short *)((char *)data_020a0e5a + slot * 4);
+    uint16_t k = *pressed;
+    const uint16_t k0 = k;
+    hal_menu_pad(&k, back);
+    if (k != k0) {
+        *pressed = k;
+        *split = k;
     }
-    keys &= (unsigned short)~0xf0u;
-    if (keys & 2) keys = (unsigned short)((keys & ~2u) | 8u);
-    *pressed = keys;
-    *split = keys;
 }
 
 /* Bottom of the frame: upload the shadows the game filled, rasterise engine B,
@@ -4275,12 +3643,8 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
        this frame's numbers on the very frame the plates come on. */
     {
         static int swap_frame;
-        g_sw_picw = w;
-        g_sw_pich = h;
-        swap_geom_for(w, h, &g_sw, data_0209f2b0 != 0, lc_total_is_high());
         g_menu_up = save_menu_is_up();
-        g_swap = swap_now();
-        swap_trace(w, h, swap_frame++);
+        hal_lc_trace(w, h, swap_frame++, hal_menu_live());
     }
     /* the inset arm of SM64DS_LAYOUT_SELFTEST, once per process and only in a
        course, which is the only place this map exists */
@@ -4289,7 +3653,8 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
         if (!done && !hal_sub_screen_stacked()) {
             done = 1;
             inset_map_selftest(w, h);
-            swap_layout_selftest();
+            const char *lst = std::getenv("SM64DS_LAYOUT_SELFTEST");
+            if (lst && *lst) hal_menu_lc_selftest();
         }
     }
     /* THE TOUCH TARGET, not presented with the option on. Measured on this
@@ -4446,7 +3811,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
     ntr::ppu_vram_publish();
     ntr::ppu_display_capture(dst, w, h);
 
-    if (g_on) ntr::ppu_scanout_sub(g_sub);
+    if (g_on || hal_menu_live()) ntr::ppu_scanout_sub(g_sub);   /* a live menu forces its own scan-out */
     /* THE LATE UPLOAD, and it is now the OPT-IN arm. port_frame_oam_upload
        above already ran this frame's OAM::Load at func_02019144's own line,
        ahead of both rasters; this block is what SM64DS_OAM_LOAD_LATE=1 gets
@@ -4455,7 +3820,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
         ntr::ppu_seam_oam_mark();
         _ZN3OAM4LoadEv();
     }
-    if (!g_on) return;
+    if (!g_on && !hal_menu_live()) return;
     /* THE STACKED LAYOUT WRITES NOTHING INTO dst HERE, and that is the whole
        trick. dst is the framebuffer, the scan-out above is everything the
        bottom screen needs, and the stacked image is built downstream by
@@ -4464,13 +3829,12 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
        the framebuffer this function is handed comes out of a stacked frame
        byte-for-byte identical to a panel-off frame, which is what keeps every
        ppu_write_bmp site in the tree at 512x384 and unmoved. */
-    if (!hal_sub_screen_stacked() && g_swap) {
-        /* THE PICTURE IS COMPOSED OUT OF BOTH SCREENS THIS FRAME. Nothing of
-           the map panel is drawn: the picture is two bands of the top screen,
-           the three plates, and the game's own picture under them, and the
-           plate, the banner, the handle and the attention arrows are none of
-           those. */
-        swap_present(dst, w, h);
+    if (!hal_sub_screen_stacked() && hal_menu_live()) {
+        /* A MENU RECIPE OWNS THE PICTURE THIS FRAME. Nothing of the map panel is drawn: the recipe's pieces are the
+           picture's menu, and the plate, the banner, the handle and the attention arrows are none of those. A
+           PRE_FADE recipe (level-clear) draws here, before engine A's fade; a POST_FADE one in the wrapper below. */
+        menu_prepare_sources(dst, w, h);
+        hal_menu_present(dst, w, h, MENU_STAGE_PRE_FADE);
     } else if (!hal_sub_screen_stacked()) {
         /* THE DECORATIVE PANEL FIRST, because it goes BEHIND the map: the
            compose below writes the map over the middle of it and its own one
@@ -4595,6 +3959,11 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
         port_engine_a_bright_mask_rect(g_inset_rect[0], g_inset_rect[1],
                                        g_inset_rect[2], g_inset_rect[3]);
     port_engine_a_fade(dst, w, h);
+    /* H2's second stage: the recipes that draw over the finished, faded picture */
+    if (hal_menu_live() && !hal_sub_screen_stacked()) {
+        menu_prepare_sources(dst, w, h);
+        hal_menu_present(dst, w, h, MENU_STAGE_POST_FADE);
+    }
 }
 
 /* ---- the stacked layout ----------------------------------------------------
