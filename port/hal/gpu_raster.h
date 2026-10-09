@@ -89,6 +89,13 @@ void port_gpu_card_set_mask(const unsigned char *mask, int stride, int shown3d,
    after the one plain line that says why the card cannot. */
 void *port_gpu_card_compose(const unsigned int *overlay, int stride_px);
 
+/* run hunt8, lane CARDSM1: a tick composited ahead of the pictures between two
+   ticks keeps its finished picture in the composite target; this is its view
+   (null when it is gone). port_gpu_card_fade_recorded: the held frame has an
+   engine A fade waiting for its composite. */
+void *port_gpu_card_retained_view(void);
+int port_gpu_card_fade_recorded(void);
+
 /* THE READBACK WAIT, summed in milliseconds over every frame the card has
  * drawn. This is the CPU side of the opaque pass: the copy out of the render
  * targets, the Map -- which is synchronous and therefore waits for the card

@@ -597,7 +597,7 @@ bool ppu_write_bmp_px(const char *path, const uint32_t *px, int w, int h) {
 bool ppu_write_bmp(const char *path, const Framebuffer &fb) {
     // A frame held on the graphics card (run cardfull, lane CARD2) is only its
     // 2D in the framebuffer: read the 3D back first, so a dump is the picture.
-    gx_card_settle_because("a picture dump");
+    gx_card_settle_fb(const_cast<Framebuffer &>(fb), "a picture dump");
     // The framebuffer's live image is active_w x active_h. On every fixed tier
     // (and on NTR_WIDE_RT with the toggle on) that equals the row stride, so the
     // buffer is already tight and this is the byte-identical old call.

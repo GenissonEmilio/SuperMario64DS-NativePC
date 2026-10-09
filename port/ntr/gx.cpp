@@ -3644,8 +3644,34 @@ static int g_cp_active;
 static Framebuffer *g_cp_fb;
 static struct { int cw, ch, px0, py0, pw, ph; } g_cp_geo;
 static uint32_t *g_cp_scratch;      /* the capture's picture, SCREEN_W stride */
+/* run hunt8, lane CARDSM1: SmoothMotion with a held tick. The settle's sink for
+   the 3D layer, the caller's note of the settle, the 2D-behind-3D flag, the
+   frame's pre-smoothing-copy flag and the framebuffer whose finished picture
+   lives in the composite target (see gx.h). */
+static uint32_t *g_cp_sink;
+static void (*g_cp_sink_done)(void);
+static int g_cp_behind;
+static int g_cp_pre_needed;
+static const Framebuffer *g_ret_fb;
 
 void gx_card_present_allow(int allow) { g_cp_allow = allow ? 1 : 0; }
+void gx_card_settle_sink(uint32_t *dst3d, void (*done)(void))
+{
+    g_cp_sink = dst3d;
+    g_cp_sink_done = done;
+}
+void gx_card_note_behind() { g_cp_behind = 1; }
+int gx_card_behind_seen() { return g_cp_active && g_cp_behind; }
+int gx_card_pre_needed() { return g_cp_active && g_cp_pre_needed; }
+void gx_card_retire(const Framebuffer *fb)
+{
+    /* the tick is composited: nothing of it is held for a later settle */
+    g_cp_active = 0;
+    g_cp_sink = nullptr;
+    g_cp_sink_done = nullptr;
+    g_ret_fb = fb;
+}
+int gx_card_retained(const Framebuffer *fb) { return fb && fb == g_ret_fb; }
 int gx_card_overlay_active() { return g_cp_active; }
 
 static void clear_fill_classic(Framebuffer &fb);
@@ -3655,6 +3681,11 @@ void gx_clear_fill(Framebuffer &fb)
     /* a new frame: nothing from the last one is held any more */
     g_cp_active = 0;
     g_cp_pending = 0;
+    g_cp_behind = 0;
+    g_cp_pre_needed = 0;
+    g_cp_sink = nullptr;
+    g_cp_sink_done = nullptr;
+    if (g_ret_fb == &fb) g_ret_fb = nullptr;
     g_cp_fb = &fb;
     const int allow = g_cp_allow;
     g_cp_allow = 0;
@@ -3792,9 +3823,35 @@ void gx_card_settle_because(const char *why)
     f.aa_mode = g_aa_mode;
     f.pre = g_aa_src;
     f.out = &out;
+    f.sink3d = g_cp_sink;
+    void (*const done)(void) = g_cp_sink_done;
+    g_cp_sink = nullptr;
+    g_cp_sink_done = nullptr;
     g_gpu_opaque(&f);
     g_aa_pre_valid = out.pre_valid ? 1 : 0;
     g_planes_stale = 1;
+    if (done) done();
+}
+
+/* A picture dump or a present that cannot take the picture from the card, for a
+   framebuffer that may be a composited SmoothMotion tick: its finished picture
+   is read back from the composite target. Anything else settles as before. */
+void gx_card_settle_fb(Framebuffer &fb, const char *why)
+{
+    if (g_ret_fb == &fb && g_gpu_opaque) {
+        GxGpuOut out;
+        std::memset(&out, 0, sizeof out);
+        GxGpuFrame f;
+        std::memset(&f, 0, sizeof f);
+        f.settle = 3;
+        f.fb = &fb.px[0][0];
+        f.stride = SCREEN_W;
+        f.out = &out;
+        g_gpu_opaque(&f);
+        g_ret_fb = nullptr;      /* read back: an ordinary finished frame now */
+        return;
+    }
+    gx_card_settle_because(why);
 }
 
 const uint32_t *gx_card_capture_picture()
@@ -5666,6 +5723,7 @@ void gx_render(Framebuffer &fb) {
             g_planes_stale = 1;
             if (g_cp_pending && gpu_out.kept) {
                 g_cp_active = 1;
+                g_cp_pre_needed = f.pre_needed;
                 g_cp_geo.cw = cw;
                 g_cp_geo.ch = ch;
                 g_cp_geo.px0 = f.px0;

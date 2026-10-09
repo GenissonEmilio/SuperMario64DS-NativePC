@@ -1237,6 +1237,46 @@ extern "C" int port_gpu_present_card_frame(void *hwnd, const void *overlay,
                         frame_rate_key, srv);
 }
 
+/* The offscreen proof mode's version of the above (run hunt8, lane CARDSM1):
+   the retained composite goes through the offscreen quad as it is, with no
+   readback, except on the frames the proof compares, which return 0 so the
+   caller reads the tick back and takes the ordinary offscreen path. */
+extern "C" int port_gpu_present_retained_offscreen(const void *view, int src_w,
+                                                   int src_h)
+{
+    if (!port_gpu_present_offscreen_mode() || !view) return 0;
+    if (src_w <= 0 || src_h <= 0) return 0;
+    if (!start()) return 0;
+    if (g_off_every == 1 || (g_off_frames + 1) % g_off_every == 1) return 0;
+    if (g_fail_after && g_off_frames >= g_fail_after) return 0;
+    const int dw = g_off_w ? g_off_w : src_w;
+    const int dh = g_off_h ? g_off_h : src_h;
+    if (!ensure_offscreen(dw, dh)) return 0;
+    port_gpu_timer_span_begin(PORT_GPU_SPAN_PRESENT);
+    if (!set_params(0, 0, dw, dh, dw, dh, src_w, src_h, g_filter)) return 0;
+    draw_quad(g_off_rtv, dw, dh, g_filter, (ID3D11ShaderResourceView *)view);
+    port_gpu_timer_span_end(PORT_GPU_SPAN_PRESENT);
+    g_ctx->Flush();
+    ++g_cost_n;
+    ++g_off_frames;
+    return 1;
+}
+
+extern "C" int port_gpu_present_retained_frame(void *hwnd, const void *view,
+                                               int src_w, int src_h, int dst_x,
+                                               int dst_y, int dst_w, int dst_h,
+                                               int client_w, int client_h,
+                                               double budget_ms,
+                                               int frame_rate_key)
+{
+    if (!port_gpu_present_enabled() || !view) return 0;
+    if (!start()) return 0;
+    static const unsigned int nothing = 0;     /* present_impl wants a pointer */
+    return present_impl(hwnd, &nothing, 1, src_w, src_h, dst_x, dst_y, dst_w,
+                        dst_h, client_w, client_h, budget_ms, frame_rate_key,
+                        (void *)view);
+}
+
 static int present_impl(void *hwnd, const void *pixels, int stride_px,
                         int src_w, int src_h, int dst_x, int dst_y, int dst_w,
                         int dst_h, int client_w, int client_h,
@@ -1324,6 +1364,12 @@ int port_gpu_present_card_frame(void *, const void *, int, int, int, int, int,
     return 0;
 }
 int port_gpu_present_card_offscreen(const void *, int, int, int) { return 0; }
+int port_gpu_present_retained_frame(void *, const void *, int, int, int, int,
+                                    int, int, int, int, double, int)
+{
+    return 0;
+}
+int port_gpu_present_retained_offscreen(const void *, int, int) { return 0; }
 void port_gpu_present_offscreen_frame(const void *, int, int, int) {}
 
 #endif

@@ -3420,6 +3420,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 continue;
             }
             /* BEHIND the 3D layer: it may only fill where 3D drew nothing */
+            if (ovl3d) ntr::gx_card_note_behind();
             for (int hy = hy0; hy < hy1; ++hy)
                 for (int dx = 0; dx < bw; ++dx) {
                     const int hx = hx0 + dx;

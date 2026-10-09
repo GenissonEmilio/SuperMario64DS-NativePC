@@ -314,6 +314,11 @@ struct GxGpuFrame {
     //         (then the 3D of that one frame is the clear colour).
     int keep;
     int settle;
+    // sink3d  with settle 1 (run hunt8, lane CARDSM1): when not null, the card's
+    //         3D picture alone (smoothed when the frame was, no 2D, no fade) is
+    //         also written here, SCREEN_W stride. SmoothMotion's snapshot of
+    //         the 3D layer, for a tick that had to be settled after all.
+    uint32_t *sink3d;
     // outside_argb  what the framebuffer holds outside the present rectangle
     //               (the pillarbox constant), for the composite and the settle
     uint32_t outside_argb;
@@ -409,6 +414,29 @@ void gx_card_settle();
 // at exit, which is how a frame that reads the picture back stays visible.
 void gx_card_settle_because(const char *why);
 const uint32_t *gx_card_capture_picture();
+
+// ---- A HELD TICK UNDER SMOOTHMOTION (run hunt8, lane CARDSM1) ----------------
+// With the SmoothMotion key on, the pictures between two ticks are drawn from
+// the tick's recorded geometry into a framebuffer of their own and the card's
+// targets are reused by them, so a tick held on the card must be composited
+// BEFORE the first of them. gx_card_retire does that bookkeeping after the
+// caller composited the tick (port_gpu_card_compose): the tick's finished
+// picture then lives in the composite target, gx_card_retained says whether a
+// framebuffer is such a tick, and gx_card_settle_fb reads it back into that
+// framebuffer (a picture dump, a present that cannot take it from the card).
+//   gx_card_settle_sink: for the frame being held, a settle also writes the
+//   card's 3D alone into dst3d and then calls done (the caller keeps its own
+//   snapshots of the tick in step). One frame only.
+//   gx_card_behind_seen: a 2D layer behind the 3D wrote a pixel this frame;
+//   gx_card_pre_needed: the display capture may read this frame's copy from
+//   before the smoothing. Either one makes SmoothMotion settle instead.
+void gx_card_settle_sink(uint32_t *dst3d, void (*done)(void));
+void gx_card_note_behind();
+int gx_card_behind_seen();
+int gx_card_pre_needed();
+void gx_card_retire(const Framebuffer *fb);
+int gx_card_retained(const Framebuffer *fb);
+void gx_card_settle_fb(Framebuffer &fb, const char *why);
 
 // THE TOON TABLE (GBATEK, DS 3D Toon/Edge/Fog: TOON_TABLE 0x04000380, 32
 // BGR555 halfwords; DS 3D Polygon Attributes: mode 2). A mode-2 polygon's

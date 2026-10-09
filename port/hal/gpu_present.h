@@ -113,6 +113,17 @@ int port_gpu_present_card_frame(void *hwnd, const void *overlay, int stride_px,
                                 int client_h, double budget_ms,
                                 int frame_rate_key);
 
+/* run hunt8, lane CARDSM1: the same, for a tick whose composite was made ahead
+   of the pictures drawn between ticks (SmoothMotion): `view` is that composite
+   (hal/gpu_raster.h, port_gpu_card_retained_view) and nothing is composited
+   here. Returns as above. */
+int port_gpu_present_retained_frame(void *hwnd, const void *view, int src_w,
+                                    int src_h, int dst_x, int dst_y, int dst_w,
+                                    int dst_h, int client_w, int client_h,
+                                    double budget_ms, int frame_rate_key);
+
+int port_gpu_present_retained_offscreen(const void *view, int src_w, int src_h);
+
 /* The offscreen proof mode's version of the above, for a frame held on the
    card: composite, draw the quad into the offscreen target and, on the frames
    the mode checks, settle the frame and compare. 1 when it handled the

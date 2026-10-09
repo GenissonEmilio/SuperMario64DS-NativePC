@@ -376,6 +376,7 @@ double    g_cp_ms;
 const uint8_t *g_cp_mask;
 int       g_cp_mask_stride, g_cp_shown3d, g_cp_clear_opaque;
 ID3D11Texture2D          *g_ov_tex, *g_comp_tex, *g_comp_stage, *g_bm_tex;
+bool                     g_comp_valid;   /* g_comp_tex holds a finished composite (run hunt8, CARDSM1) */
 ID3D11ShaderResourceView *g_ov_srv, *g_comp_srv, *g_bm_srv;
 ID3D11RenderTargetView   *g_comp_rtv;
 ID3D11Buffer             *g_comp_cb;
@@ -760,6 +761,7 @@ void release_targets()
     if (g_bm_tex) { g_bm_tex->Release(); g_bm_tex = 0; }
     if (g_comp_rtv) { g_comp_rtv->Release(); g_comp_rtv = 0; }
     if (g_comp_srv) { g_comp_srv->Release(); g_comp_srv = 0; }
+    g_comp_valid = false;
     if (g_comp_tex) { g_comp_tex->Release(); g_comp_tex = 0; }
     if (g_comp_stage) { g_comp_stage->Release(); g_comp_stage = 0; }
     g_cp_w = g_cp_h = 0;
@@ -1936,6 +1938,7 @@ void cp_give_up(const char *why, HRESULT hr)
 {
     if (g_cp_dead) return;
     g_cp_dead = 1;
+    g_comp_valid = false;
     /* g_cp_held stays as it is: the frame in hand is still on the card and its
        settle still has to be able to read it */
     if (hr)
@@ -2783,8 +2786,45 @@ void cp_resolve(const uint32_t *ov, int ov_stride, uint32_t *dst, int dst_stride
    the ordinary finished frame in place (fade included when one was recorded),
    fills the coverage plane and, for a smoothed frame, the copy before the
    smoothing. 2 writes the picture the display capture reads into f->pre. */
+/* SETTLE 3 (run hunt8, lane CARDSM1): the finished picture of a tick that was
+   composited on the card ahead of the pictures drawn between ticks, read back
+   from the composite target into f->fb (alpha forced opaque). It is the same
+   picture settle 1 would have made, fade included, because the composite
+   applied the same rule. 0 when the target is gone. */
+int card_ret_readback(const ntr::GxGpuFrame *f)
+{
+    if (!g_comp_valid || g_cp_dead || g_down || !g_ctx || !g_comp_tex || !f->fb)
+        return 0;
+    if (!g_comp_stage) {
+        D3D11_TEXTURE2D_DESC d;
+        memset(&d, 0, sizeof d);
+        d.Width = (UINT)g_cp_w;
+        d.Height = (UINT)g_cp_h;
+        d.MipLevels = d.ArraySize = 1;
+        d.SampleDesc.Count = 1;
+        d.Usage = D3D11_USAGE_STAGING;
+        d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        d.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        if (FAILED(g_dev->CreateTexture2D(&d, 0, &g_comp_stage))) return 0;
+    }
+    g_ctx->CopyResource(g_comp_stage, g_comp_tex);
+    D3D11_MAPPED_SUBRESOURCE cm;
+    memset(&cm, 0, sizeof cm);
+    if (FAILED(g_ctx->Map(g_comp_stage, 0, D3D11_MAP_READ, 0, &cm))) return 0;
+    for (int y = 0; y < g_cp_h; ++y) {
+        const uint32_t *src = (const uint32_t *)
+            ((const unsigned char *)cm.pData + (size_t)y * cm.RowPitch);
+        uint32_t *dst = f->fb + (size_t)y * f->stride;
+        for (int x = 0; x < g_cp_w; ++x) dst[x] = 0xFF000000u | (src[x] & 0x00FFFFFFu);
+    }
+    g_ctx->Unmap(g_comp_stage, 0);
+    ++g_cp_settled;
+    return 1;
+}
+
 int card_settle(const ntr::GxGpuFrame *f)
 {
+    if (f->settle == 3) return card_ret_readback(f);
     if (!g_cp_held || !f->fb) return 0;
     const bool one = f->settle == 1;
     const bool sm = g_cp_smoothed;
@@ -2814,6 +2854,14 @@ int card_settle(const ntr::GxGpuFrame *f)
     }
     const int stride = f->stride;
     if (one) {
+        /* the 3D alone, for SmoothMotion's snapshot (run hunt8, CARDSM1): an
+           overlay of zeros says "no 2D", no fade */
+        if (f->sink3d) {
+            static std::vector<uint32_t> zero_row;
+            if ((int)zero_row.size() < g_cp_cw) zero_row.assign((size_t)g_cp_cw, 0u);
+            cp_resolve(&zero_row[0], 0, f->sink3d, stride, 0, 0, stride, false,
+                       sm, m);
+        }
         cp_resolve(f->fb, stride, f->fb, stride, f->cover,
                    (sm && f->pre) ? f->pre : 0, stride, g_cp_fade != 0, sm, m);
         if (f->out) f->out->pre_valid = (sm && f->pre) ? 1 : 0;
@@ -2849,6 +2897,7 @@ bool cp_ensure(int w, int h)
         if (FAILED(hr)) { cp_give_up("no composite parameters buffer", hr); return false; }
     }
     if (g_ov_tex && g_cp_w == w && g_cp_h == h) return true;
+    g_comp_valid = false;
     if (g_ov_srv) { g_ov_srv->Release(); g_ov_srv = 0; }
     if (g_ov_tex) { g_ov_tex->Release(); g_ov_tex = 0; }
     if (g_bm_srv) { g_bm_srv->Release(); g_bm_srv = 0; }
@@ -3020,6 +3069,7 @@ void *cp_compose(const uint32_t *overlay, int stride_px)
     g_ctx->OMSetRenderTargets(0, 0, 0);
 
     ++g_cp_composed;
+    g_comp_valid = true;
     g_cp_ms += ms_between(t0, qpc());
     if (g_cp_check && ((g_cp_composed - 1) % g_cp_check) == 0) cp_check(overlay, stride_px);
     return g_comp_srv;
@@ -3499,6 +3549,20 @@ extern "C" void *port_gpu_card_compose(const unsigned int *overlay, int stride_p
     return cp_compose((const uint32_t *)overlay, stride_px);
 }
 
+/* The finished composite of the last tick composited ahead of the pictures
+   drawn between ticks (run hunt8, lane CARDSM1), or null when it is gone. */
+extern "C" void *port_gpu_card_retained_view(void)
+{
+    return (g_comp_valid && !g_cp_dead && !g_down && g_comp_srv) ? (void *)g_comp_srv : 0;
+}
+
+/* The recorded fade of the frame held now: 1 when one is waiting for the
+   composite (SmoothMotion settles such a tick, its snapshots carry no fade). */
+extern "C" int port_gpu_card_fade_recorded(void)
+{
+    return g_cp_held && g_cp_fade ? 1 : 0;
+}
+
 #else   /* not Windows: the port ships on Windows and there is no card here */
 
 #include "hal/gpu_raster.h"
@@ -3511,5 +3575,7 @@ int port_gpu_card_held(void) { return 0; }
 void port_gpu_card_set_fade(int, int) {}
 void port_gpu_card_set_mask(const unsigned char *, int, int, int) {}
 void *port_gpu_card_compose(const unsigned int *, int) { return 0; }
+void *port_gpu_card_retained_view(void) { return 0; }
+int port_gpu_card_fade_recorded(void) { return 0; }
 
 #endif
