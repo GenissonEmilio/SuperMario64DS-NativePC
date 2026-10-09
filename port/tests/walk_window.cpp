@@ -1678,6 +1678,7 @@ void port_actor_scene_pass(void);    /* phase 1: scene-tree housekeeping */
 void port_actor_frame(int level_camera);
 void port_actor_frame_begin(void);
 void port_actor_frame_end(int frame, const char *loop);
+void port_mod_plugins_load(void);   /* hal/mod_plugins.cpp */
 int port_actor_frame_split_forced(void);
 /* the host rig's seat on Camera::Render's face (hal/camera_bridges.cpp) */
 extern void (*port_level_camera_render_hook)(void *cam);
@@ -10849,6 +10850,10 @@ int main(void)
        ran yesterday. Placed after io_init because the seam's boot indicator
        writes through the 0x027ff000 mapping io_init reserves. */
     port::comms_loopback_install_from_env();
+    /* run mods1 (plugin API v1): load the enabled code mods' DLLs now that io_init
+       holds the DS ranges and before any file or actor is touched. Never loads in a
+       lobby or VS match; SM64DS_MOD_PLUGINS=0 / SM64DS_MODS=0 skip it. */
+    port_mod_plugins_load();
     pacer_begin();
 #ifdef PORT_ROM_CLEAN
     /* ROM-CLEAN: load + verify the ROM tables from romdata.bin FIRST, before
