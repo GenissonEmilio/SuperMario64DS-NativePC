@@ -1935,8 +1935,11 @@ int topo_classify(const std::vector<int> &mem, double *o_cop, double *o_lb, doub
        eyes. Left as drawn, like the in-level star, whose 20 facets are the same
        thing with more extreme normals. BOX is asked first, so a hard-edged box
        keeps its own treatment, and a round solid (a sphere has no edge past 45
-       degrees) is nowhere near the hard-edge share. */
-    if (n >= 12 && n <= 80 && open_edges == 0 && edges > 0 && *o_lb >= 0.5 && fcop < 0.35 &&
+       degrees) is nowhere near the hard-edge share. The 48 floor keeps the
+       smaller rounded parts out of it (Luigi's gloves are 24 triangles, Yoshi's
+       shoes and heel 32, 32 and 24, the odd bird or token 12 to 18): they pass
+       the other tests and must keep their round puffed treatment. */
+    if (n >= 48 && n <= 80 && open_edges == 0 && edges > 0 && *o_lb >= 0.5 && fcop < 0.35 &&
         hard * 20 >= edges * 3) return SMOOTH_CLASS_FACET;
     if (n <= 12 && edges > 0 && allcop && nv == n + 1) return SMOOTH_CLASS_FAN;
     return SMOOTH_CLASS_NONE;
