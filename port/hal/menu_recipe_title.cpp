@@ -195,7 +195,8 @@ int title_skip(char *o)
     }
     /* ASSET3: the ROM's own cursor arrow (object id 0x21, drawn only while the cursor is shown) is replaced by the host's own pixel
        arrow (art cut from this very object: tools/extract_title_arrow.py), so it is not in the picture on the one-screen main menu */
-    if (*(unsigned char *)(o + 0x4e) == 0x21 && wall_skip_active()) return 1;
+    if (*(unsigned char *)(o + 0x4e) == 0x21 && wall_skip_active() && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
+        menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC)) return 1;   /* only when our arrows will be drawn */
     static int trace = -1;
     static unsigned skipk;
     if (trace < 0) {
