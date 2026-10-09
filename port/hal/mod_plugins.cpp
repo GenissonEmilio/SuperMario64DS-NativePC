@@ -50,6 +50,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <malloc.h>
 
 #include <string>
 #include <vector>
@@ -60,6 +61,12 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#ifndef LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
+#define LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR 0x00000100
+#endif
+#ifndef LOAD_LIBRARY_SEARCH_SYSTEM32
+#define LOAD_LIBRARY_SEARCH_SYSTEM32 0x00000800
+#endif
 
 #include "mods.h"
 #include "mod_hooks.h"
@@ -126,39 +133,48 @@ int fault_filter(unsigned long code)
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
+/* runs in the __except block, after the stack has unwound: a stack overflow
+   consumed the guard page, and without this the next overflow (in any plugin,
+   or in the game) is a plain crash */
+void after_fault(void)
+{
+    if (g_fault_code == EXCEPTION_STACK_OVERFLOW)
+        _resetstkoflw();
+}
+
 int g_main_rc;
 typedef int (__cdecl *MainFn)(const SM64DSModApi *);
 
 bool seh_main(MainFn fn, const SM64DSModApi *api)
 {
     __try { g_main_rc = fn(api); return true; }
-    __except (fault_filter(GetExceptionCode())) { return false; }
+    __except (fault_filter(GetExceptionCode())) { after_fault(); return false; }
 }
 
 bool seh_frame(SM64DSFrameFn fn, void *user)
 {
     __try { fn(user); return true; }
-    __except (fault_filter(GetExceptionCode())) { return false; }
+    __except (fault_filter(GetExceptionCode())) { after_fault(); return false; }
 }
 
 bool seh_level(SM64DSLevelFn fn, int level, void *user)
 {
     __try { fn(level, user); return true; }
-    __except (fault_filter(GetExceptionCode())) { return false; }
+    __except (fault_filter(GetExceptionCode())) { after_fault(); return false; }
 }
 
 u32 g_file_ret;
 bool seh_file(SM64DSFileFn fn, const char *path, u8 **data, u32 size, void *user)
 {
     __try { g_file_ret = fn(path, data, size, user); return true; }
-    __except (fault_filter(GetExceptionCode())) { return false; }
+    __except (fault_filter(GetExceptionCode())) { after_fault(); return false; }
 }
 
 void *g_fac_ret;
 bool seh_factory(SM64DSActorFactory fn)
 {
     __try { g_fac_ret = fn(); return true; }
-    __except (fault_filter(GetExceptionCode())) { return false; }
+    __except (fault_filter(GetExceptionCode())) { after_fault(); return false; }
 }
 
 void kill_plugin(Plugin *p, const char *where)
@@ -579,6 +595,28 @@ std::string find_dll(const std::string &folder, std::string *why)
     return found;
 }
 
+/* The plugin is loaded by its full path, and only the DLL's own folder and
+   System32 are searched for what it imports (so a stray DLL in the game's
+   folder or the working directory is never picked up in its place). Windows
+   without those flags (before KB2533623) fall back to the altered search path,
+   which is the same full-path load with the DLL's folder first. */
+HMODULE load_plugin_dll(const std::string &dll)
+{
+    char full[MAX_PATH * 2];
+    DWORD n = GetFullPathNameA(dll.c_str(), sizeof full, full, 0);
+    std::string path = (n && n < sizeof full) ? std::string(full) : dll;
+    for (size_t i = 0; i < path.size(); ++i)
+        if (path[i] == '/') path[i] = '\\';
+    const bool have_flags = GetProcAddress(GetModuleHandleA("kernel32.dll"), "AddDllDirectory") != 0;
+    HMODULE h = 0;
+    if (have_flags) {
+        h = LoadLibraryExA(path.c_str(), 0, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+        if (!h && GetLastError() != ERROR_INVALID_PARAMETER) return 0;
+    }
+    if (!h) h = LoadLibraryExA(path.c_str(), 0, LOAD_WITH_ALTERED_SEARCH_PATH);
+    return h;
+}
+
 void load_one(int i, const std::string &release)
 {
     const std::string id = port_mods_id(i);
@@ -597,7 +635,7 @@ void load_one(int i, const std::string &release)
     const std::string dll = find_dll(folder, &why);
     if (dll.empty()) { say_skip(id, why); return; }
 
-    HMODULE h = LoadLibraryExA(dll.c_str(), 0, LOAD_WITH_ALTERED_SEARCH_PATH);
+    HMODULE h = load_plugin_dll(dll);
     if (!h) {
         char b[96];
         sprintf(b, "LoadLibrary failed (error %lu)", GetLastError());
