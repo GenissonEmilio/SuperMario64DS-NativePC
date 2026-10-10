@@ -203,10 +203,10 @@ bool follow(void *a, int body, int seat) {
     }
     if (g_log > 0 && (g_pass % 60u) == 0)
         std::fprintf(stderr, "[party] t=%u seat=%d body=%d solid_frames=%llu registers=%llu guard_skips=%llu "
-                     "gate(hide=%llu level=%llu area=%llu) listnodes_at_follow=%llu pairs_body=%llu pairs_other=%llu assists=%llu\n",
+                     "gate(hide=%llu level=%llu area=%llu) listnodes_at_follow=%llu pairs_body=%llu pairs_other=%llu assists=%llu detached=%llu\n",
                      comms_hub_now_ms(), seat, body, g_st.solid_frames, g_st.registers, g_st.guard_skips,
                      g_st.gate_hide, g_st.gate_level, g_st.gate_area, g_st.audit_nodes, g_st.pairs_body,
-                     g_st.pairs_other, g_st.assists);
+                     g_st.pairs_other, g_st.assists, g_st.detached);
     return reg;
 }
 
