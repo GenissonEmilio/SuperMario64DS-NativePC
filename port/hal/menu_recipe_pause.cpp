@@ -92,19 +92,27 @@ int pause_variant(void)
    frame (perf trace, 1024x768). The recipe's up() runs every tick, so once the level has been running a moment and the pause is not up it
    solves each variant once on a scratch layout and scales every picture to the size that variant will draw at (one variant per tick, so no
    tick pays for more than a few pictures). The cache keeps the size; a window resize warms again. */
-int g_idle_ticks, g_warm_step, g_warm_w, g_warm_h;
+int g_idle_ticks, g_warm_v, g_warm_p, g_warm_w, g_warm_h;
 
-void warm_variant(int v, int w, int h)
+/* one picture per tick: variant g_warm_v, its g_warm_p-th host picture (decode on first use, then scale to its draw size) */
+void warm_one(int w, int h)
 {
     static MenuLayout W;
     const MenuRecipe *R = 0;
     for (int i = 0; i < g_menu_nrecipes; ++i)
         if (!strcmp(g_menu_recipes[i].name, "pause")) R = &g_menu_recipes[i];
-    if (!R) return;
-    menu_layout_solve(&W, R, v, w, h);
-    for (int i = 0; i < W.np; ++i)
-        if (W.p[i].src == SRC_HOSTIMG && W.p[i].hostimg && W.dest[i][2] > 0 && W.dest[i][3] > 0)
-            menu_hostimg_scaled(W.p[i].hostimg, W.dest[i][2], W.dest[i][3]);
+    if (!R) { g_warm_v = V_VS; return; }
+    menu_layout_solve(&W, R, g_warm_v, w, h);
+    int k = 0;
+    for (int i = 0; i < W.np; ++i) {
+        if (W.p[i].src != SRC_HOSTIMG || !W.p[i].hostimg || W.dest[i][2] <= 0 || W.dest[i][3] <= 0) continue;
+        if (k++ < g_warm_p) continue;
+        menu_hostimg_scaled(W.p[i].hostimg, W.dest[i][2], W.dest[i][3]);
+        ++g_warm_p;
+        return;
+    }
+    ++g_warm_v;      /* that variant is done */
+    g_warm_p = 0;
 }
 
 void warm_tick(int scene_id)
@@ -112,9 +120,10 @@ void warm_tick(int scene_id)
     if (scene_id != 3 && scene_id != -1) { g_idle_ticks = 0; return; }
     int w, h;
     if (!hal_menu_last_size(&w, &h)) return;
-    if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_step = 0; g_idle_ticks = 0; }
-    if (++g_idle_ticks < 45 || g_warm_step >= V_VS) return;
-    warm_variant(++g_warm_step, w, h);
+    if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_v = 1; g_warm_p = 0; g_idle_ticks = 0; }
+    if (g_warm_v == 0) g_warm_v = 1;
+    if (++g_idle_ticks < 45 || g_warm_v >= V_VS) return;
+    warm_one(w, h);
 }
 
 int pause_up(int scene_id)
