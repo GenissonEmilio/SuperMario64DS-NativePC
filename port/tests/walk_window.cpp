@@ -2802,6 +2802,7 @@ static int g_ip_tick_late;          /* a blend of this tick ran past its end */
    is clamped to tick N itself, so it is a raster that shows nothing new. */
 static int g_ip_w_after_slot, g_ip_w_after_tick;
 static int ip_present_slot(long long t, long long deadline);
+static int ip_owns_picture(void);
 static void ip_flush_deferred(void);
 
 /* THE PICTURE COUNT. Every picture this program hands to the window goes
@@ -2958,18 +2959,50 @@ extern "C" double port_present_clock(long long now, long long deadline,
 
     while (g_pic_due < deadline) {
         LARGE_INTEGER at;
+        /* run hunt8, lane PRESENTER1B: TIMED PICTURES. With the presenter thread
+           showing the pictures and SmoothMotion drawing them, every picture is
+           made FOR a display moment (this slot's, g_pic_due) and carries it;
+           the presenter shows, at each refresh, the picture made for that
+           refresh. So the pictures of the rest of the tick are drawn at once,
+           ahead of their moment, into the presenter's ring, instead of each
+           one at its own moment (a burst after a long tick used to leave the
+           presenter only the newest and the others were thrown away). */
+        const bool ahead = presenter_timed() && ip_owns_picture();
         /* run hunt8, lane PRESENTER1: with the presenter thread showing the
-           pictures, slew this clock so each picture is finished halfway between
-           two of its turns; two free-running 144 Hz clocks beat against each
-           other and one picture in six was never shown. An eighth of the error
-           per slot, so a hitch moves it gently. */
+           pictures, slew this clock to its turns; two free-running 144 Hz
+           clocks beat against each other and one picture in six was never
+           shown. An eighth of the error per slot, so a hitch moves it gently.
+           Timed: a slot's moment is the moment of one of the presenter's
+           turns (less the display delay). Not timed: each picture is finished
+           halfway between two turns. */
         if (const long long ph = presenter_phase_qpc()) {
-            long long e = (g_pic_due - ph - step / 2) % step;
+            long long e;
+            if (ahead) {
+                const long long dq = (long long)(presenter_delay_ms() * (double)qpf / 1000.0);
+                e = (g_pic_due - (ph - dq)) % step;
+            } else {
+                e = (g_pic_due - ph - step / 2) % step;
+            }
             if (e < 0) e += step;
             if (e >= step / 2) e -= step;
             g_pic_due -= e / 8;
         }
-        port_sleep_until(g_pic_due, qpf);
+        if (ahead) {
+            /* a slot more than half a refresh behind the moment the next
+               refresh will show is never the nearest picture to any refresh
+               (the presenter takes the one nearest): it is not drawn */
+            QueryPerformanceCounter(&at);
+            const long long dq = (long long)(presenter_delay_ms() * (double)qpf / 1000.0);
+            if (g_pic_due + step / 2 <= at.QuadPart - dq) {
+                ++g_pic_late;
+                g_pic_due += step;
+                continue;
+            }
+            /* no free texture in the ring: wait for this slot's own moment */
+            if (!presenter_room()) port_sleep_until(g_pic_due, qpf);
+        } else {
+            port_sleep_until(g_pic_due, qpf);
+        }
         /* 0 back only with SmoothMotion on, for a slot it had no time to
            draw: nothing was presented, so nothing is counted */
         if (ip_present_slot(g_pic_due, deadline)) {
@@ -7839,6 +7872,17 @@ static void ip_cost_sample(double ms)
     g_ip_cost_min = s[0];
 }
 
+/* run hunt8, lane PRESENTER1B: a test aid. With the presenter statistics on,
+   the eye of the view this picture shows goes to the statistics, so a run can
+   measure how far the view moved from one shown picture to the next. */
+static void ip_note_cam(double alpha)
+{
+    if (!presenter_stats_on()) return;
+    float eye[3];
+    ntr::gx_interp_view((float)alpha, eye);
+    presenter_note_cam(eye);
+}
+
 /* One picture: blended when this tick can, the tick's own frame otherwise. */
 static void ip_present_alpha(double alpha)
 {
@@ -7856,6 +7900,7 @@ static void ip_present_alpha(double alpha)
     pt_push(PS_SMOOTH);
     const int ip_built = ip_build(alpha);
     pt_pop();
+    ip_note_cam(ip_built ? alpha : 1.0);
     if (!ip_built) {
         ++g_ip_plain;
         present();
@@ -7907,7 +7952,13 @@ static void ip_present_plain_or_skip(int *presented, long long deadline)
         const long long t0 = ip_qpc();
         ++g_ip_pictures;
         ++g_ip_plain;
+        ip_note_cam(1.0);
+        /* run hunt8, lane PRESENTER1B: the tick's own picture follows whatever
+           was drawn ahead for this tick (-1), or is shown at once when
+           nothing is waiting */
+        if (presenter_timed()) presenter_set_target(-1);
         present();
+        if (presenter_timed()) presenter_set_target(0);
         g_ip_plain_ms = g_ip_plain_ms * 0.8 + ip_ms_since(t0) * 0.2;
         g_ip_tick_shown = 1;
         g_ip_tick_final = 1;
@@ -7961,7 +8012,6 @@ static int ip_measure_now(long long deadline)
    the clock even when the grid does not. */
 static int ip_present_slot(long long t, long long deadline)
 {
-    (void)t;
     if (!ip_owns_picture()) {
         g_present_repeat = 1;
         present();
@@ -7975,9 +8025,23 @@ static int ip_present_slot(long long t, long long deadline)
         ip_present_plain_or_skip(&shown, deadline);
         return shown;
     }
-    const double alpha = (double)(ip_qpc() - g_ip_tick_t0) / (double)g_ip_tick_len;
-    if (alpha >= 1.0) ++g_ip_w_after_slot;
+    double alpha = (double)(ip_qpc() - g_ip_tick_t0) / (double)g_ip_tick_len;
+    /* run hunt8, lane PRESENTER1B: with the presenter showing timed pictures the
+       blend is the one for the slot's moment `t`, not for the moment it is
+       drawn at (it may be drawn ahead of it, or a little after), and the
+       picture carries that moment. A moment at or past the tick's end is the
+       next tick's to draw. */
+    const bool timed = presenter_timed();
+    if (timed) {
+        alpha = (double)(t - g_ip_tick_t0) / (double)g_ip_tick_len;
+        if (alpha < 0.0) alpha = 0.0;
+        if (alpha >= 1.0) return 0;
+        presenter_set_target(t);
+    } else if (alpha >= 1.0) {
+        ++g_ip_w_after_slot;
+    }
     ip_present_alpha(alpha);
+    if (timed) presenter_set_target(0);
     g_ip_tick_shown = 1;
     return 1;
 }
@@ -7996,6 +8060,7 @@ static void ip_present_tick(void)
         QueryPerformanceFrequency(&f);
         const double w = (now.QuadPart - g_ip_tick_t0) * 1000.0 / (double)f.QuadPart;
         g_ip_work_ms = g_ip_work_ms * 0.8 + w * 0.2;
+        presenter_note_work(w);
     }
     if (!ip_owns_picture()) { present(); return; }
     if (g_ip_pace_seen && now.QuadPart - g_ip_pace_seen < 2 * g_ip_tick_len) {

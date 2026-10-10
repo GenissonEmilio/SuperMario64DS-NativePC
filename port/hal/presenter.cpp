@@ -14,17 +14,40 @@
  *    done with it, and the sources (the upload texture, the card's composite
  *    targets) are rewritten by the very next picture.
  *
- * 2. THE HAND-OVER. Three textures, one lock-free mailbox (g_latest, one
- *    interlocked exchange per side): the game owns g_main_idx, the presenter
- *    owns g_pres_idx, the mailbox holds the third, with a flag bit that says
- *    "newer than what the presenter has". Publishing swaps the game's texture
- *    into the mailbox and takes whatever was in it back; taking does the same
- *    for the presenter. Neither side ever waits for the other and a texture is
- *    never written while it is being shown, with no mutex at all. The GPU side
- *    is ordered by the one immediate context: the game's draw is submitted
- *    before the publish, the presenter's copy after the take, so the copy sees
- *    the whole picture; and the game's next draw into a texture the presenter
- *    has finished with is submitted after that copy.
+ * 2. THE HAND-OVER, AND THE CLOCK OF THE PICTURES (run hunt8, lane
+ *    PRESENTER1B). A ring of textures (5 to 12, by picture size) and a queue
+ *    of the published ones in the order they were made, guarded by a spin lock
+ *    held for a few instructions (never across a GPU call or a wait). Every
+ *    picture SmoothMotion makes carries the display moment it is FOR (its
+ *    target: the tick's start plus the blend's alpha times the tick's length,
+ *    in the game thread's QPC). The game thread may draw the rest of a tick's
+ *    pictures at once, ahead of their moments. At each of its turns the
+ *    presenter takes the queued picture whose target is closest to the
+ *    turn's moment less the display delay D, never one more than half a
+ *    refresh early, never one older than what is on show; the rest it passes
+ *    over. The first presenter showed the newest picture of each turn, which
+ *    threw away the in-between pictures of every burst after a long tick (98
+ *    to 116 distinct pictures a second against 131 to 141 on the old path).
+ *    A picture with no moment (a menu, a scene, a tick picture drawn at
+ *    once) is shown at the next turn and everything older is dropped.
+ *    SM64DS_PRESENTER_TIMED=0 puts the newest-wins rule and a ring of three
+ *    back.
+ *
+ *    THE DELAY D. During the 7 to 14 ms the game thread spends in a tick, the
+ *    tick's own pictures do not exist yet, so a refresh in that stretch can
+ *    only repeat the last picture, and the catch-up after it is a double
+ *    step: the 144 Hz picture judders at the tick rate. Showing the pictures
+ *    D later than their moments lets those refreshes show the end of the tick
+ *    before. D follows the tick work (the second largest of the last 32
+ *    ticks, plus half a millisecond) and is capped at one refresh by default
+ *    (SM64DS_PRESENTER_DELAY_CAP_MS raises it; SM64DS_PRESENTER_DELAY_MS pins
+ *    it). Each step of D is at most 0.1 ms per refresh, so nothing visibly
+ *    shifts.
+ *
+ *    The GPU side is ordered by the one immediate context: the game's draw is
+ *    submitted before the publish, the presenter's copy after the take, so the
+ *    copy sees the whole picture; a texture is never written while it is
+ *    being copied (the keyed mutex between the two devices).
  *
  * 3. THE DEVICE LOCK. The immediate context is not free-threaded, so the
  *    device is put in multithread-protected mode at start. Present is called
@@ -68,7 +91,10 @@
 
 namespace {
 
-enum { NS = 3, NEWBIT = 0x100 };
+enum { NSMAX = 12 };
+const double RING_BUDGET = 96.0 * 1024.0 * 1024.0;    /* bytes of ring textures at most (never fewer than 5 slots) */
+const double DEFAULT_DELAY_MS = 0.0;
+const long STEP_US = 100;                             /* adaptive D moves at most this much per refresh */
 
 struct Slot {
     ID3D11Texture2D *tex;          /* on the game thread's device: the picture is drawn into it */
@@ -80,6 +106,9 @@ struct Slot {
     long long gen;                 /* which distinct picture this is */
     long long t_pub;               /* QPC when that picture was complete */
     long long serial;              /* publish ordinal */
+    long long target;              /* QPC of the display moment this picture is for (0 = none: show at once) */
+    int state;                     /* 0 free, 1 the game thread is drawing it, 2 queued for the presenter */
+    float cam[3];                  /* test: the eye this picture was made from */
 };
 
 typedef HANDLE (WINAPI *CreateWaitableTimerExW_t)(LPSECURITY_ATTRIBUTES, LPCWSTR, DWORD, DWORD);
@@ -92,14 +121,27 @@ ID3D11Texture2D *g_shown;       /* the picture on show, on g_dev2 */
 int g_main_held;                /* the game thread holds the keyed mutex of g_slot[g_main_idx] */
 HMODULE g_d3d11;
 IDXGISwapChain *g_sc;
-Slot g_slot[NS];
+Slot g_slot[NSMAX];
+int g_ns = 3;                  /* ring size in use */
+int g_q[NSMAX];                /* queued slots, oldest first */
+int g_qn;
+volatile long g_ql;            /* spin lock over g_q and the slot states (held for a few instructions) */
+long long g_ptarget;           /* the target of the next publish (set by the game thread) */
+long long g_last_target;       /* the newest timed target published so far */
+volatile long g_delay_us;      /* the display delay D now: refresh k shows the picture made for the moment k minus D */
+volatile long g_goal_us;       /* where D is heading (adaptive mode) */
+long g_cap_us;                 /* adaptive D never goes above this */
+int g_fixed_delay;             /* SM64DS_PRESENTER_DELAY_MS set: D is that value and stays */
+double g_work[32];             /* the last ticks' own work, milliseconds */
+int g_work_n, g_work_at;
+int g_timed = -1;              /* 1 unless SM64DS_PRESENTER_TIMED=0 */
+int g_qmax;                    /* test: deepest queue seen */
 int g_w, g_h;
 int g_mode;                  /* 1 Present(1), 0 timer grid */
 double g_period_ms = 6.944;
 long long g_qpf;
 
-volatile long g_latest;      /* slot index, | NEWBIT when the presenter has not taken it */
-int g_main_idx, g_pres_idx;  /* each touched by one side only */
+int g_main_idx;              /* the slot the game thread is drawing (game thread only) */
 volatile long g_stop;
 volatile long g_err;
 volatile long g_published;   /* publishes so far (any picture) */
@@ -122,7 +164,8 @@ double ms_since(long long a, long long b) { return (double)(b - a) * 1000.0 / (d
 
 /* ---- statistics, shared with the old path ------------------------------- */
 
-struct Ev { long long t; float age; unsigned char nw; };
+struct Ev { long long t; float age; unsigned char nw; float cam[3]; long long serial; float tg; };
+float g_pcam[3];                 /* test: set by the game thread for the next picture */
 Ev *g_ev;
 int g_ev_n, g_ev_cap = 1 << 18;
 int g_ev_printed;
@@ -210,7 +253,21 @@ extern "C" int presenter_stats_on(void)
     return g_stats;
 }
 
+extern "C" void presenter_note_cam(const float eye[3])
+{
+    g_pcam[0] = eye[0];
+    g_pcam[1] = eye[1];
+    g_pcam[2] = eye[2];
+}
+
+static void stat_note_ex(long long t_pub, int new_pic, const float *cam, long long serial, long long target);
+
 extern "C" void presenter_stat_note(long long t_pub, int new_pic)
+{
+    stat_note_ex(t_pub, new_pic, g_pcam, 0, 0);
+}
+
+static void stat_note_ex(long long t_pub, int new_pic, const float *cam, long long serial, long long target)
 {
     if (!presenter_stats_on()) return;
     const long long t = qpc();
@@ -219,10 +276,15 @@ extern "C" void presenter_stat_note(long long t_pub, int new_pic)
     e.t = t;
     e.nw = (unsigned char)(new_pic ? 1 : 0);
     e.age = (float)(t_pub ? ms_since(t_pub, t) : 0.0);
+    e.cam[0] = cam[0];
+    e.cam[1] = cam[1];
+    e.cam[2] = cam[2];
+    e.serial = serial;
+    e.tg = (float)(target ? ms_since(target, t) : 0.0);
     if (!g_ev_t0) g_ev_t0 = t;
     if (g_dump)
-        fprintf(g_dump, "%.3f %d %.3f\n", ms_since(g_ev_t0, t), new_pic ? 1 : 0,
-                (double)e.age);
+        fprintf(g_dump, "%.3f %d %.3f %.3f %.3f %.3f %lld %.3f\n", ms_since(g_ev_t0, t), new_pic ? 1 : 0,
+                (double)e.age, (double)cam[0], (double)cam[1], (double)cam[2], serial, (double)e.tg);
     if (!g_last_print) g_last_print = t;
     if (ms_since(g_last_print, t) >= 5000.0) {
         g_last_print = t;
@@ -306,12 +368,18 @@ typedef HRESULT (WINAPI *D3D11CreateDevice_t)(IDXGIAdapter *, D3D_DRIVER_TYPE,
 int g_dev2_failed;
 volatile long g_shown_serial_dbg;
 int g_main_key;                    /* the key to acquire g_slot[g_main_idx] with */
-unsigned long long g_drops;
+unsigned long long g_drops, g_dropped;
 volatile long long g_phase;           /* QPC of the thread's last turn (its take of a picture, one per refresh) */
+
+void qlock()
+{
+    while (_InterlockedCompareExchange(&g_ql, 1, 0) != 0) YieldProcessor();
+}
+void qunlock() { _InterlockedExchange(&g_ql, 0); }
 
 void release_ring()
 {
-    for (int i = 0; i < NS; ++i) {
+    for (int i = 0; i < g_ns; ++i) {
         Slot &s = g_slot[i];
         if (s.km2) { s.km2->Release(); s.km2 = 0; }
         if (s.tex2) { s.tex2->Release(); s.tex2 = 0; }
@@ -325,7 +393,7 @@ void release_ring()
 
 bool make_ring(int w, int h)
 {
-    for (int i = 0; i < NS; ++i) {
+    for (int i = 0; i < g_ns; ++i) {
         Slot &s = g_slot[i];
         D3D11_TEXTURE2D_DESC d;
         memset(&d, 0, sizeof d);
@@ -353,6 +421,8 @@ bool make_ring(int w, int h)
             return false;
         }
         s.key = 0;
+        s.state = 0;
+        s.target = 0;
         s.gen = 0;
         s.t_pub = 0;
         s.serial = 0;
@@ -406,7 +476,8 @@ DWORD WINAPI thread_main(LPVOID)
     const long long period = (long long)(g_period_ms * (double)g_qpf / 1000.0);
     long long next = qpc();
     long long last_start = 0, last_gen = -1;
-    long long shown_gen = 0, shown_t_pub = 0, shown_serial = 0;
+    long long shown_gen = 0, shown_t_pub = 0, shown_serial = 0, shown_target = 0;
+    float shown_cam[3] = {0, 0, 0};
     int have = 0, occluded = 0;
     while (!g_stop) {
         if (g_mode == 0) {
@@ -420,13 +491,71 @@ DWORD WINAPI thread_main(LPVOID)
             wait_until(last_start + gap);
         }
         if (g_stop) break;
-        /* take the newest finished picture, if there is one; otherwise the
-           picture on show stays */
-        const long v = g_latest;
-        if (v & NEWBIT) {
-            const long old = _InterlockedExchange(&g_latest, (long)g_pres_idx);
-            g_pres_idx = (int)(old & 0xff);
-            Slot &s = g_slot[g_pres_idx];
+        /* WHICH PICTURE THIS REFRESH SHOWS. Every queued picture says which
+           display moment it was made for (its target). This refresh is the
+           moment `sel_t` (now, less the display delay D); it shows the queued
+           picture whose target is closest to that moment, never one more than
+           half a refresh ahead of it, never one older than what is on show.
+           Pictures it passes over are dropped. A picture with no target
+           (a menu, a scene, a tick picture drawn at once) is shown at once and
+           everything older is dropped. With nothing newer the picture on show
+           stays (a repeat). Timed mode off (SM64DS_PRESENTER_TIMED=0): the
+           newest queued picture, the first presenter's rule. */
+        const long long sel_t = qpc();
+        g_phase = sel_t;
+        if (!g_fixed_delay) {
+            const long dl = g_goal_us - g_delay_us;
+            g_delay_us += dl > STEP_US ? STEP_US : (dl < -STEP_US ? -STEP_US : dl);
+        }
+        const long long want = sel_t - (long long)((double)g_delay_us * (double)g_qpf / 1e6);
+        const long long half = period / 2;
+        int pick = -1;
+        int drop[NSMAX], ndrop = 0;
+        qlock();
+        {
+            int bi = -1;
+            if (!g_timed) {
+                bi = g_qn - 1;
+            } else {
+                for (int i = g_qn - 1; i >= 0; --i)
+                    if (!g_slot[g_q[i]].target) { bi = i; break; }
+                if (bi < 0) {
+                    long long bd = 0;
+                    for (int i = 0; i < g_qn; ++i) {
+                        const long long tg = g_slot[g_q[i]].target;
+                        if (tg > want + half) break;           /* the queue is in target order */
+                        if (tg < shown_target) continue;       /* never backwards */
+                        const long long d = tg > want ? tg - want : want - tg;
+                        if (bi < 0 || d <= bd) { bi = i; bd = d; }
+                    }
+                    /* pictures older than what is on show can never be shown */
+                    if (bi < 0) {
+                        int k = 0;
+                        while (k < g_qn && g_slot[g_q[k]].target < shown_target) ++k;
+                        for (int i = 0; i < k; ++i) drop[ndrop++] = g_q[i];
+                        for (int i = k; i < g_qn; ++i) g_q[i - k] = g_q[i];
+                        g_qn -= k;
+                    }
+                }
+            }
+            if (bi >= 0) {
+                for (int i = 0; i < bi; ++i) drop[ndrop++] = g_q[i];
+                pick = g_q[bi];
+                for (int i = bi + 1; i < g_qn; ++i) g_q[i - bi - 1] = g_q[i];
+                g_qn -= bi + 1;
+            }
+        }
+        qunlock();
+        for (int i = 0; i < ndrop; ++i) {
+            Slot &d = g_slot[drop[i]];
+            if (d.km2->AcquireSync(1, 100) == S_OK) d.km2->ReleaseSync(0);
+            ++g_dropped;
+            qlock();
+            d.state = 0;
+            qunlock();
+        }
+        if (pick >= 0) {
+            Slot &s = g_slot[pick];
             HRESULT hr = s.km2->AcquireSync(1, 100);
             if (hr != S_OK) {
                 _InterlockedExchange(&g_err, hr ? (long)hr : (long)E_FAIL);
@@ -437,14 +566,20 @@ DWORD WINAPI thread_main(LPVOID)
             shown_gen = s.gen;
             shown_t_pub = s.t_pub;
             shown_serial = s.serial;
+            shown_target = s.target;
+            shown_cam[0] = s.cam[0];
+            shown_cam[1] = s.cam[1];
+            shown_cam[2] = s.cam[2];
             have = 1;
+            qlock();
+            s.state = 0;
+            qunlock();
         }
         if (!have) {
             Sleep(1);
             continue;
         }
         last_start = qpc();
-        g_phase = last_start;
         ID3D11Texture2D *bb = 0;
         HRESULT hr = g_sc->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **)&bb);
         if (FAILED(hr) || !bb) { _InterlockedExchange(&g_err, hr ? (long)hr : (long)E_FAIL); break; }
@@ -459,7 +594,7 @@ DWORD WINAPI thread_main(LPVOID)
         occluded = (hr == DXGI_STATUS_OCCLUDED);
         const int fresh = (shown_gen != last_gen);
         last_gen = shown_gen;
-        presenter_stat_note(shown_t_pub, fresh);
+        stat_note_ex(shown_t_pub, fresh, shown_cam, shown_serial, shown_target);
     }
     return 0;
 }
@@ -533,6 +668,36 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
     g_dev = (ID3D11Device *)dev;
     g_ctx = (ID3D11DeviceContext *)ctx;
     g_sc = (IDXGISwapChain *)swapchain;
+    if (g_timed < 0) {
+        const char *e = getenv("SM64DS_PRESENTER_TIMED");
+        g_timed = (e && e[0] == '0' && !e[1]) ? 0 : 1;
+        g_delay_us = (long)(DEFAULT_DELAY_MS * 1000.0);
+        g_goal_us = 0;
+        g_fixed_delay = 0;
+        g_cap_us = (long)(1000000.0 / (grid_hz < 24.0 ? 60.0 : grid_hz));   /* one refresh */
+        if ((e = getenv("SM64DS_PRESENTER_DELAY_CAP_MS")) != 0 && *e) g_cap_us = (long)(atof(e) * 1000.0);
+        if ((e = getenv("SM64DS_PRESENTER_DELAY_MS")) != 0 && *e) {
+            g_delay_us = (long)(atof(e) * 1000.0);
+            g_fixed_delay = 1;
+        }
+        if (g_cap_us < 0) g_cap_us = 0;
+        if (g_cap_us > 40000) g_cap_us = 40000;
+        if (g_delay_us < 0) g_delay_us = 0;
+        if (g_delay_us > 40000) g_delay_us = 40000;
+        g_work_n = g_work_at = 0;
+    }
+    /* the ring: the pictures made ahead for the rest of a tick, the display
+       delay's worth, and the one being drawn. Fewer on a very large picture. */
+    {
+        int ns = 3;
+        if (g_timed) {
+            const double bytes = (double)w * (double)h * 4.0;
+            ns = (int)(RING_BUDGET / (bytes > 1.0 ? bytes : 1.0));
+            if (ns > NSMAX) ns = NSMAX;
+            if (ns < 5) ns = 5;
+        }
+        g_ns = ns;
+    }
     if (!make_ring(w, h)) {
         fprintf(stderr, "[presenter] the picture ring could not be shared between the two devices; the old present path stays\n");
         return 0;
@@ -543,8 +708,10 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
     if (grid_hz < 24.0) grid_hz = 60.0;
     g_period_ms = 1000.0 / grid_hz;
     g_main_idx = 0;
-    g_pres_idx = 1;
-    g_latest = 2;
+    g_qn = 0;
+    g_ql = 0;
+    g_ptarget = 0;
+    g_last_target = 0;
     g_main_key = 0;
     g_main_held = 0;
     g_stop = 0;
@@ -565,8 +732,9 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
     }
     g_running = 1;
     if (presenter_stats_on())
-        fprintf(stderr, "[presenter] thread started: %dx%d, %s, grid %.2f ms\n", w, h,
-                g_mode ? "Present(1)" : "timer grid, Present(0)", g_period_ms);
+        fprintf(stderr, "[presenter] thread started: %dx%d, %s, grid %.2f ms, %s, ring %d, delay %.2f ms\n", w, h,
+                g_mode ? "Present(1)" : "timer grid, Present(0)", g_period_ms,
+                g_timed ? (g_fixed_delay ? "timed" : "timed, adaptive delay") : "newest-wins", g_ns, g_delay_us / 1000.0);
     return 1;
 }
 
@@ -581,13 +749,13 @@ extern "C" void presenter_end(void)
     }
     if (g_timer) { CloseHandle(g_timer); g_timer = 0; }
     if (g_main_held) {
-        g_slot[g_main_idx].km1->ReleaseSync(g_main_key);
+        g_slot[g_main_idx].km1->ReleaseSync(0);
         g_main_held = 0;
     }
     release_ring();
     g_running = 0;
     if (presenter_stats_on())
-        fprintf(stderr, "[presenter] game thread published %lld picture(s), %lld distinct, %llu dropped (ring busy)\n", g_serial, g_gen, g_drops);
+        fprintf(stderr, "[presenter] game thread published %lld picture(s), %lld distinct, %llu not drawn (ring full), %llu passed over by the presenter, deepest queue %d\n", g_serial, g_gen, g_drops, g_dropped, g_qmax);
     stat_flush();
 }
 
@@ -598,12 +766,60 @@ extern "C" void presenter_end(void)
 extern "C" void *presenter_target(void)
 {
     if (!g_running) return 0;
-    Slot &s = g_slot[g_main_idx];
     if (!g_main_held) {
-        if (s.km1->AcquireSync(g_main_key, 8) != S_OK) { ++g_drops; return 0; }
+        int idx = -1;
+        qlock();
+        for (int i = 0; i < g_ns; ++i)
+            if (g_slot[i].state == 0) { idx = i; g_slot[i].state = 1; break; }
+        qunlock();
+        if (idx < 0) { ++g_drops; return 0; }
+        if (g_slot[idx].km1->AcquireSync(0, 8) != S_OK) {
+            qlock();
+            g_slot[idx].state = 0;
+            qunlock();
+            ++g_drops;
+            return 0;
+        }
+        g_main_idx = idx;
         g_main_held = 1;
     }
-    return (void *)s.rtv;
+    return (void *)g_slot[g_main_idx].rtv;
+}
+
+/* The display moment the next published picture is made for (QPC); 0 = none,
+   show it at once. Consumed by that publish. */
+extern "C" void presenter_set_target(long long qpc_target) { g_ptarget = qpc_target; }
+extern "C" double presenter_delay_ms(void) { return g_running && g_timed ? g_delay_us / 1000.0 : 0.0; }
+/* One tick's own work, in milliseconds (the game thread, once per tick). The
+   delay D the presenter keeps is what lets every refresh during that work show
+   a picture of the tick before; it follows the second largest of the last
+   thirty-two ticks' work (plus half a millisecond), up to the cap, and moves
+   by a tenth of a millisecond per refresh at most so nothing visibly shifts. */
+extern "C" void presenter_note_work(double ms)
+{
+    if (!g_running || !g_timed || g_fixed_delay) return;
+    g_work[g_work_at] = ms;
+    g_work_at = (g_work_at + 1) % 32;
+    if (g_work_n < 32) ++g_work_n;
+    if (g_work_n < 8) return;
+    double v[32];
+    for (int i = 0; i < g_work_n; ++i) v[i] = g_work[i];
+    qsort(v, (size_t)g_work_n, sizeof(double), cmpd);
+    long goal = (long)((v[g_work_n >= 2 ? g_work_n - 2 : 0] + 0.5) * 1000.0);   /* the second largest: 31 ticks of 32 are covered */
+    if (goal > g_cap_us) goal = g_cap_us;
+    if (goal < 0) goal = 0;
+    g_goal_us = goal;
+}
+extern "C" int presenter_timed(void) { return g_running && g_timed; }
+/* Free slots in the ring (the game thread may draw ahead into them). */
+extern "C" int presenter_room(void)
+{
+    int n = 0;
+    if (!g_running) return 0;
+    qlock();
+    for (int i = 0; i < g_ns; ++i) if (g_slot[i].state == 0) ++n;
+    qunlock();
+    return n;
 }
 
 extern "C" void presenter_publish(int repeat)
@@ -612,9 +828,27 @@ extern "C" void presenter_publish(int repeat)
     const long long t = qpc();
     if (!repeat || !g_gen) { ++g_gen; g_gen_t = t; }
     Slot &s = g_slot[g_main_idx];
+    long long tg = g_timed ? g_ptarget : 0;
+    g_ptarget = 0;
+    if (tg == -1) {
+        /* follows what is still waiting: one refresh after the last of it, or
+           at once when nothing timed is waiting */
+        qlock();
+        const int waiting = g_qn > 0 && g_slot[g_q[g_qn - 1]].target != 0;
+        qunlock();
+        tg = waiting ? g_last_target + (long long)(g_period_ms * (double)g_qpf / 1000.0) : 0;
+    }
+    if (tg) {
+        if (tg < g_last_target) tg = g_last_target;       /* targets only go forward */
+        g_last_target = tg;
+    }
     s.gen = g_gen;
     s.t_pub = g_gen_t;
     s.serial = ++g_serial;
+    s.target = tg;
+    s.cam[0] = g_pcam[0];
+    s.cam[1] = g_pcam[1];
+    s.cam[2] = g_pcam[2];
     if (presenter_hash_on())
         presenter_hash_log("main", s.serial, presenter_hash_texture(g_dev, g_ctx, s.tex, 0));
     g_pub_w = g_w;
@@ -622,9 +856,11 @@ extern "C" void presenter_publish(int repeat)
     s.km1->ReleaseSync(1);          /* the picture is whole: the presenter may take it */
     g_main_held = 0;
     _InterlockedExchange(&g_published, g_published + 1);
-    const long old = _InterlockedExchange(&g_latest, (long)(g_main_idx | NEWBIT));
-    g_main_idx = (int)(old & 0xff);
-    g_main_key = (old & NEWBIT) ? 1 : 0;   /* a picture that was never shown still holds key 1 */
+    qlock();
+    s.state = 2;
+    g_q[g_qn++] = g_main_idx;
+    if (g_qn > g_qmax) g_qmax = g_qn;
+    qunlock();
 }
 
 extern "C" int presenter_have_picture(int w, int h)

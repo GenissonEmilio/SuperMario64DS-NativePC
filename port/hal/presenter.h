@@ -9,19 +9,19 @@
  * WHAT IT IS NOW. The game thread still makes every picture (the tick's own
  * and the pictures drawn between two ticks) and draws each finished one,
  * through the same quad, fit and filter as always, into a texture of a small
- * ring the presenter owns. It then publishes that texture's index through one
- * lock-free slot and goes back to the game. The presenter thread owns the
- * swap chain: on its own clock (Present(1) when VSync is on, a high-resolution
- * timer grid at the refresh rate when it is off) it takes the newest published
- * texture, or keeps the last one if nothing new arrived, copies it into the
+ * ring the presenter owns. It then publishes that texture, with the display
+ * moment the picture is for, through a short queue and goes back to the game.
+ * The presenter thread owns the swap chain: on its own clock (Present(1) when
+ * VSync is on, a high-resolution timer grid at the refresh rate when it is
+ * off) it takes the queued picture made for that refresh (see the top of
+ * presenter.cpp), or keeps the last one if there is none, copies it into the
  * swap chain's back buffer and presents. It never waits for the game thread
  * and the game thread never waits for it.
  *
  * THE PICTURE IS NEVER HALF MADE. A texture is published only after its draw
  * has been issued, and the immediate context executes in submission order, so
- * the presenter's copy always sees a whole picture. Three textures make the
- * hand-over safe without a lock: one the game is drawing into, one the
- * presenter is showing, one waiting.
+ * the presenter's copy always sees a whole picture. A keyed mutex on each
+ * texture keeps the game from drawing into one the presenter is copying.
  *
  * THREADING OF THE CARD. The device's immediate context is shared by the two
  * threads, so the device is switched to multithread-protected (ID3D11Multithread);
@@ -76,6 +76,21 @@ void *presenter_target(void);
 void *presenter_target_texture(void);
 void presenter_publish(int repeat);
 
+/* TIMED PICTURES (run hunt8, lane PRESENTER1B). The game thread says which
+   display moment (QPC) the next published picture is made for; the presenter
+   shows, at each refresh, the picture made for that refresh. 0 = no moment,
+   show it at once; -1 = right after the last picture still waiting (the
+   tick's own picture following the ones drawn ahead of it). */
+void presenter_set_target(long long qpc_target);
+/* The display delay in milliseconds (0 unless asked for), and whether the
+   presenter takes timed pictures. */
+double presenter_delay_ms(void);
+int presenter_timed(void);
+/* One tick's own work in milliseconds, once per tick: the display delay follows it. */
+void presenter_note_work(double ms);
+/* Free textures in the ring, for drawing ahead. */
+int presenter_room(void);
+
 /* 1 when a picture of this swap-chain size is already published, so a repeat
    of it can be skipped altogether. */
 int presenter_have_picture(int w, int h);
@@ -88,6 +103,9 @@ long presenter_error(void);
    t_pub is the QPC at which the picture was complete. */
 void presenter_stat_note(long long t_pub, int new_pic);
 int presenter_stats_on(void);
+/* Test only (stats on): the camera eye the next published picture was made
+   from, so a run can tell how far the view moved between two shown pictures. */
+void presenter_note_cam(const float eye[3]);
 
 /* Test: FNV hash of a texture's pixels (staging readback), 0 when off. */
 unsigned presenter_hash_texture(void *dev, void *ctx, void *tex, int who);
