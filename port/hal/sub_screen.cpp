@@ -120,6 +120,10 @@ void hal_present_set_rect(int x, int y, int w, int h, int src_w, int src_h);
    layout selftest below both call this rather than each spelling it. */
 void hal_present_fit(int cw, int ch, int sw, int sh, int *x, int *y, int *w, int *h);
 int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy);
+/* SETMENU1: the in-game settings page (hal/settings_page_hooks.cpp) */
+extern "C" int settings_page_hook_pad(uint16_t *pressed);
+extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, unsigned char sy);
+extern "C" int settings_page_swallow_back(void);
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
 int hal_sub_screen_stacked(void);
@@ -2513,6 +2517,10 @@ void poll_touch(void)
         }
     }
 
+    /* SETMENU1: the in-game settings page takes the stylus (the press on the title's wrench / the pause menu's Options plate that opens
+       it, and every touch while it is up): the ROM sees no press. Single player only, as the pad half is. */
+    if (!port::comms_transport() && settings_page_hook_touch(down, sx, sy)) down = 0;
+
     /* ASSET6: a stylus / click / queued press going into the ROM gives the title attract its hidden save words back first */
     if (down) port_title_press_seen();
 
@@ -3668,6 +3676,16 @@ extern int data_020a0e58[];           /* PadData[i]: {u16 held, u16 pressed} */
 extern int data_020a0e5a[];           /* the split spelling of .pressed */
 }
 
+/* SETMENU1: where the pointer is over the picture, in picture pixels (the settings page's mouse); 0 when the window is not focused or the
+   pointer is off the picture. SM64DS_SETPAGE_SCRIPT stands in for it on a scripted run (settings_page_scripted). */
+extern "C" int hal_window_cursor_fb(int *fx, int *fy)
+{
+    if (g_headless || !GetCursorPos_ || !ScreenToClient_ || !hal_window_focused()) return 0;
+    POINT p;
+    if (!GetCursorPos_(&p) || !ScreenToClient_(g_hwnd, &p)) return 0;
+    return hal_present_client_to_fb((int)p.x, (int)p.y, fx, fy) ? 1 : 0;
+}
+
 extern "C" void hal_menu_pad_seam(void)
 {
     static int back_was;
@@ -3678,6 +3696,7 @@ extern "C" void hal_menu_pad_seam(void)
         if (!d && !g_headless && GetAsyncKeyState_ && hal_window_focused()) d = (GetAsyncKeyState_(VK_BACK) & 0x8000) ? 1 : 0;
         back = d && !back_was;
         back_was = d;
+        if (back && settings_page_swallow_back()) back = 0;   /* SETPAGEFIX1: the Backspace that is the page's Back is not the ROM's */
     }
     if (!hal_menu_live()) return;
     /* ASSET3: MOUSE HOVER. A menu recipe's hotspots take the mouse focus when the pointer moves onto them (hal_menu_hover had no
@@ -3711,6 +3730,7 @@ extern "C" void hal_menu_pad_seam(void)
     unsigned short *split = (unsigned short *)((char *)data_020a0e5a + slot * 4);
     uint16_t k = *pressed;
     const uint16_t k0 = k;
+    settings_page_hook_pad(&k);      /* SETMENU1: the confirm on the wrench / the Options plate opens the settings page, the ROM never sees it */
     hal_menu_pad(&k, back);
     if (k != k0) {
         *pressed = k;

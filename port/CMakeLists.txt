@@ -24470,3 +24470,15 @@ target_compile_definitions(smoke_settings_live PRIVATE SM64DS_PLATFORM_PC)
 if(MSVC)
     target_compile_options(smoke_settings_live PRIVATE /wd4311 /wd4312 /wd4068)
 endif()
+
+# MENU1 / SETMENU1 (run menu1): the in-game settings page (hal/settings_page.h), drawn at window resolution in the launcher's look, with its
+# font renderer (hal/ui_text.h) and art (res/menu/settings, embedded by tools/embed_settings_art.py). Own block.
+foreach(_tsetmenu1 walk_window walk_window_hires)
+    target_sources(${_tsetmenu1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_hooks.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/ui_text.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_art_data.cpp")
+endforeach()
+# smoke_player (EXCLUDE_FROM_ALL) links hal/sub_screen.cpp, which calls the page seams: no-op stubs keep it linking without the page.
+target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_stubs.cpp")
