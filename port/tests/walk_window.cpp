@@ -415,6 +415,7 @@ static bool winapi_load(void)
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
+#include "hal/menu_starsel_api.h"   /* run menu1 STARHOOK1: the star select big-star rects (debug outline) */
 #include "hal/perf_log.h"        /* run perf1: the player performance report */
 #include "hal/comms_seam.h"       /* run mg15 lane MP1: the radio seam */
 #include "hal/voice_chat.h"      /* lane VOICE: proximity voice chat */
@@ -7300,6 +7301,10 @@ static unsigned short host_menu_raw_keys(int pad_live, const XPad *pad)
    by both loops because it is the only channel the menu's refusals have. */
 static void toast_draw(const OvlSurface &fb)
 {
+#ifndef PORT_ROM_CLEAN
+    /* STARHOOK1 (proof only): SM64DS_STARSEL_RECT_DEBUG=1 outlines the star select's big-star rects (hal/menu_starsel_api.h) */
+    hal_menu_starsel_debug_draw(fb.px, fb.stride);
+#endif
     if (ss_toast_left <= 0)
         return;
     --ss_toast_left;

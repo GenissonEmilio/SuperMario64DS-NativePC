@@ -58,7 +58,7 @@ int up_starsel(int scene_id)
 /* THE UPPER SCREEN ONLY (Tango 10-10: the "TOUCH ME!" head and the row of small star icons on the lower screen are
    not drawn; they were redundant with the big stars and the head is a touch control). The ROM still runs them: they
    are engine-B sprites nobody sees, and a click is turned into the touch the ROM's own boxes read.
-   THE BIG STARS are 3D models (src/_ZN12dScStarSel_c6RenderEv.cpp:80-95): centred on x = 0, 0x18000 apart, at one
+   THE BIG STARS are 3D models (src/_ZN12dScStarSel_c6RenderEv.cpp:90-101)80-95): centred on x = 0, 0x18000 apart, at one
    depth, so their screen x is linear in the index. Measured on the 4:3 picture: centres at DS x 128 + (i - (n-1)/2) * 34.8
    (kStarDx10 tenths), centre row y 32, about 34 units across. A click on big star i is mapped to the ROM's icon box i
    (x_i - 8 .. x_i + 7, y < 0x28: :187) and on the star that is already selected to the head's box (func_ov003_020ae358.c:
@@ -82,6 +82,31 @@ void starsel_facts(MenuFacts *f)
     f->spare[0] = 1 + ob(o, 0x115);       /* the selected act index + 1 (0 = nothing read) */
     { static int calls; f->spare[2] = ++calls; }     /* a per-tick counter for the pointer's bob */
     f->spare[1] = ob(o, 0x135);           /* the input phase: 0 intro, 1 waiting for the pad to come up, 2 live */
+}
+
+/* STARHOOK1: the big stars' rects for hal/menu_starsel_api.cpp (run menu1, for mp1's players-in-stars heads). The upper screen is
+   the same picture whether OneScreenMenus is on or off (the recipe keeps it as the ROM draws it), so the rects are in
+   TICK-FRAMEBUFFER pixels (w x h = the picture size, unit = h / 192) and do not depend on the layout. Reads no ROM: only the facts.
+   WHERE THE STARS ARE. The ROM places star i in the world at x = (i - (n-1)/2) * 0x18000, y 0x28000 (src/_ZN12dScStarSel_c6RenderEv.cpp:90-101) and InitResources writes the matching icon column bytes starsel_x[i] = 0x92 (n even) or 0x80 (n odd) - (n/2) * 0x23 + i * 0x23
+   (src/_ZN12dScStarSel_c13InitResourcesEv.cpp:324-328), 35 DS pixels apart, centred on 128. Measured on the 4:3 picture (STARSEL2 shots,
+   n = 1..6): the big star's centre column is exactly starsel_x[i] and its centre row 34.5 (0x28000 through the fixed camera; the 16:9 and
+   21:9 pictures give the same numbers in units of h / 192, within 0.6 percent of a unit per star). The idle star is 30 x 28.5 DS pixels
+   across; the selected one is drawn 1.25x (Render :93-96, scale 0x1400 / 0x1000) and turns about its vertical axis, so its width
+   varies and the rect is the widest it gets. Half extents in tenths of a DS pixel. */
+const int kBigHalfW10 = 150, kBigHalfH10 = 145, kBigSelHalfW10 = 188, kBigSelHalfH10 = 181, kBigCy10 = 345;
+
+bool big_star_rect(const MenuFacts &F, int w, int h, int star, int out[4])
+{
+    if (!F.starsel_valid || star < 0 || star >= F.starsel_n || star >= 8 || w <= 0 || h <= 0) return false;
+    const int cur = F.spare[0] - 1;
+    const int hw10 = (star == cur) ? kBigSelHalfW10 : kBigHalfW10, hh10 = (star == cur) ? kBigSelHalfH10 : kBigHalfH10;
+    const long long cx10 = (long long)(F.starsel_x[star] - 128) * 10;     /* tenths of a DS unit from the centre column */
+    /* host = centre + tenths * h / 1920 (one DS unit is h / 192 host pixels); the width and height are exact */
+    out[0] = w / 2 + (int)(((cx10 - hw10) * h) / 1920);
+    out[1] = (int)((((long long)kBigCy10 - hh10) * h) / 1920);
+    out[2] = (int)((2LL * hw10 * h) / 1920);
+    out[3] = (int)((2LL * hh10 * h) / 1920);
+    return true;
 }
 
 void build_starsel(int variant, MenuLayout *L)
@@ -270,4 +295,5 @@ void menu_gameover_build(int variant, MenuLayout *L) { build_gameover(variant, L
 int  menu_gameover_rom_cursor(int dir, int *sel) { return rom_cursor_gameover(dir, sel); }
 int  menu_gameover_pad_ok(void) { return pad_ok_gameover(); }
 void menu_gameover_facts(MenuFacts *f) { gameover_facts(f); }
+int  menu_starsel_big_rect(const MenuFacts *F, int w, int h, int star, int out[4]) { return big_star_rect(*F, w, h, star, out) ? 1 : 0; }
 }

@@ -24482,3 +24482,9 @@ foreach(_tsetmenu1 walk_window walk_window_hires)
 endforeach()
 # smoke_player (EXCLUDE_FROM_ALL) links hal/sub_screen.cpp, which calls the page seams: no-op stubs keep it linking without the page.
 target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_stubs.cpp")
+
+# MENU1 / STARHOOK1 (run menu1): the star select big-star rect query for mp1 (hal/menu_starsel_api.h). Own block.
+foreach(_tstarhook1 walk_window walk_window_hires smoke_player)
+    target_sources(${_tstarhook1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_starsel_api.cpp")
+endforeach()
