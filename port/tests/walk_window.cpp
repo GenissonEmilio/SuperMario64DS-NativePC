@@ -8592,6 +8592,8 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
         fprintf(stderr, "[setlive] f%d bind jump key %d run key %d jump pad %d | run mode %d\n",
                 frame, key_act(HOST_KEY_JUMP), g_run_key && key_live(g_run_key),
                 *pad_live ? pad_act(pad, HOST_PAD_JUMP) : 0, g_run_mode);
+    if (trace)
+        fprintf(stderr, "[setlive] f%d cam_turn %d\n", frame, g_cam_turn);
     if (trace && (sl_capture_active() || sl_capture_refused()[0]))
         fprintf(stderr, "[setlive] f%d capture id %d armed %d refused '%s'\n", frame,
                 sl_capture_id(), g_rebind_capture, sl_capture_refused());

@@ -347,6 +347,17 @@ static int child(const char *which)
         check_eq(host_setting_stick_digital(), 4000, "digital threshold floored at 4000");
         check_eq(sl_set(SL_STICK_DEADZONE, 24), 1, "dead zone 24");
         check_eq(host_setting_stick_digital(), 12000, "digital back to 12000");
+        /* SETFIX1 G2: a write that fails keeps the queue and retries on the tick */
+        sl_flush();
+        SetFileAttributesA("settings.json", FILE_ATTRIBUTE_READONLY);
+        sl_set(SL_VOLUME, 71);
+        check_eq(sl_flush(), 0, "the write fails on a read-only file");
+        check_eq(host_settings_save_pending() > 0, 1, "the failed value stays queued");
+        SetFileAttributesA("settings.json", FILE_ATTRIBUTE_NORMAL);
+        Sleep(600);
+        host_settings_save_tick();
+        check_eq(host_settings_save_pending(), 0, "the retry on the next tick lands");
+        check_has(slurp("settings.json"), "\"Volume\": 71");
         /* the last good copy follows every good save */
         sl_set(SL_VOLUME, 37);
         sl_flush();
