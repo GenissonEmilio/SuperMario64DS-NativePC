@@ -469,10 +469,11 @@ void build_main(MenuLayout *L, bool intro)
             ar.fx = (short)(L->w - (256 - (wb.x0 + wb.x1) / 2) * L->unum / L->uden - dw / 2);
             ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * L->unum / (2 * L->uden));
         } else {
-            /* ASSET4 (Tango): ONE arrow, centred on the plank, pointing down with its tip just over the plank's top edge */
+            /* ASSET4 (Tango): ONE arrow, centred on the plank, pointing down. ARROWFIX1: raised 2 units so the flat tip no longer sinks into the
+               plank's dark top border and reads as cut off (it bobs from 1 unit above the border to 1 unit into it) */
             Box bx;
             if (box_of(cur, &bx)) {
-                ar.fy = (short)(((bx.y0 * 2 + 2 + bob2) * L->unum) / (2 * L->uden) - dh);
+                ar.fy = (short)(((bx.y0 * 2 - 2 + bob2) * L->unum) / (2 * L->uden) - dh);
                 ar.fx = (short)(L->w / 2 + ((bx.x0 + bx.x1) / 2 - 128) * L->unum / L->uden - dw / 2);
             } else {
                 ar.fx = -1000;
@@ -902,7 +903,7 @@ void build_main_pc(MenuLayout *L, bool intro)
             } else {
                 Box bx;
                 if (box_of(cur, &bx)) {
-                    ar.fy = (short)(((bx.y0 * 2 + 2 + bob2) * un) / (2 * ud) - dh);
+                    ar.fy = (short)(((bx.y0 * 2 - 2 + bob2) * un) / (2 * ud) - dh);
                     ar.fx = (short)(w / 2 + ((bx.x0 + bx.x1) / 2 - 128) * un / ud - dw / 2);
                     menu_add_piece(L, ar);
                 }
