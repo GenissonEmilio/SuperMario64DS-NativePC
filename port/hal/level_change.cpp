@@ -1209,6 +1209,7 @@ static void port_level_sublevel_clear(void)
    nothing else; every course sublevel falls through the switch, leaves the
    key slot at its -1 and returns 0. */
 extern "C" void port_music_note_prev_level(int level);   /* hal/star_flow.cpp */
+extern "C" void port_coop_world_level_latched(void);     /* hal/coop_world.cpp */
 static void port_level_latch(void)
 {
     /* :188-218 first, because the two words below are its inputs. */
@@ -1228,6 +1229,7 @@ static void port_level_latch(void)
     data_0209f264[0] = data_0209f268;
     data_0209f220[0] = data_0209f1f0;
     data_02092110 = -1;
+    port_coop_world_level_latched();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
 }
 
 /* THE SAME LATCH, FOR A BOOT RATHER THAN A CHANGE (run lvled, title entry).
