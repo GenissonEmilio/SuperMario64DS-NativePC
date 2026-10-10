@@ -37,6 +37,7 @@ extern int data_0209f220[];
 extern int data_0209f4f8[];
 signed char GetLevelPart(int idx);
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
+void LoadLevelNoReturn(unsigned level, unsigned entrance, unsigned star, unsigned unk);
 void _ZN8dActor_c24KillAndTrackInDeathTableEv(void *self);
 }
 
@@ -96,6 +97,8 @@ int      g_nreg_ctl = 0, g_nreg_world = 0;
 struct KillKnob { unsigned frame; int id; int n; bool done; };
 KillKnob g_kill[8]; int g_nkill = 0;
 unsigned g_goto_frame = 0; int g_goto_id = -1; bool g_goto_done = false;
+struct WarpKnob { unsigned frame; int level; int act; bool done; };
+WarpKnob g_warp[4]; int g_nwarp = 0;
 struct ForgeKnob { unsigned frame; char name[16]; bool done; };
 ForgeKnob g_forge[12]; int g_nforge = 0;
 
@@ -118,6 +121,17 @@ void read_env() {
             }
             while (*p == ';' || *p == ',' || *p == ' ') ++p;
             if (used <= 0) break;
+        }
+    }
+    if (const char *w = std::getenv("SM64DS_COOP_WARP")) {
+        // F:level:act[;F:level:act]  (F = frames since the world core came on)
+        const char *p = w;
+        while (*p && g_nwarp < 4) {
+            unsigned f = 0; int lv = 0, ac = 1, used = 0;
+            if (std::sscanf(p, "%u:%i:%i%n", &f, &lv, &ac, &used) < 3 || used <= 0) break;
+            g_warp[g_nwarp++] = {f, lv, ac, false};
+            p += used;
+            while (*p == ';' || *p == ',' || *p == ' ') ++p;
         }
     }
     if (const char *g = std::getenv("SM64DS_COOP_GOTO")) {
@@ -764,6 +778,14 @@ extern "C" void port_coop_world_frame(void) {
         const CoopKey rk((int)data_0209f2f8, data_0209f220[0] & 0xff);
         if ((!g_key.valid() || rk != g_key) && rk != g_rejected) join_group(rk);
     }
+    // Proof knob: the game's own level-change call with a chosen act (the scripted warp
+    // chain of the harness always asks for act 1).
+    for (int i = 0; in_level && i < g_nwarp; ++i)
+        if (!g_warp[i].done && g_frame >= g_warp[i].frame) {
+            g_warp[i].done = true;
+            std::fprintf(stderr, "[coop-knob] warp to level %d act %d\n", g_warp[i].level, g_warp[i].act);
+            LoadLevelNoReturn((unsigned)g_warp[i].level, 0, (unsigned)g_warp[i].act, 1);
+        }
     g_grp.update(now);
     if (in_level && g_key.valid() && g_part >= 0 && g_grp.established()) tick_est(now);
 }
