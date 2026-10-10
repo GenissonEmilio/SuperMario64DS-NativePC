@@ -1147,40 +1147,65 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
        sub-triangle. A corner within a hair of the plane sends the grid to the
        processor path, which decides each vertex exactly as it always did. */
     float sx0 = 1e30f, sy0 = 1e30f, sx1 = -1e30f, sy1 = -1e30f;
-    for (int c = 0; c < 8; ++c) {
-        const float px = (c & 1) ? hi[0] : lo[0];
-        const float py = (c & 2) ? hi[1] : lo[1];
-        const float pz = (c & 4) ? hi[2] : lo[2];
-        float vx = px, vy = py, vz = pz;
-        if (xform) {
-            const float *m = xform->m;
-            vx = px * m[0] + py * m[4] + pz * m[8] + m[12];
-            vy = px * m[1] + py * m[5] + pz * m[9] + m[13];
-            vz = px * m[2] + py * m[6] + pz * m[10] + m[14];
+    {
+        /* run hunt8 SMOOTHCPU2: the eight corners four to a vector. Every lane
+           runs the scalar loop's own operations in its own order (separate
+           multiplies and adds, no fused op, an exact divide), so each float is
+           the one the scalar loop made; the corner order does not matter to a
+           min / max. A corner that fails a test sends the grid to the processor
+           path exactly as before (the near count only when persp). */
+        float PX[8], PY[8], PZ[8];
+        for (int c = 0; c < 8; ++c) {
+            PX[c] = (c & 1) ? hi[0] : lo[0];
+            PY[c] = (c & 2) ? hi[1] : lo[1];
+            PZ[c] = (c & 4) ? hi[2] : lo[2];
         }
-        const float *m = pj.m;
-        float cx = vx * m[0] + vy * m[4] + vz * m[8] + m[12];
-        const float cy = vx * m[1] + vy * m[5] + vz * m[9] + m[13];
-        const float cz = vx * m[2] + vy * m[6] + vz * m[10] + m[14];
-        const float cw = vx * m[3] + vy * m[7] + vz * m[11] + m[15];
-        if (persp) cx *= widen;
-        if (persp) {
-            const float nd = cz + cw;
-            if (!(nd >= 1e-4f * (std::fabs(cz) + std::fabs(cw))) || !(cw > 1e-3f)) {
-                ++g_gd_near;
-                return false;
+        const float *xm = xform ? xform->m : 0;
+        const float *pm = pj.m;
+#define S4(v) _mm_set1_ps(v)
+        const __m128 absmask = _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff));
+        for (int h = 0; h < 8; h += 4) {
+            __m128 vx = _mm_loadu_ps(PX + h), vy = _mm_loadu_ps(PY + h), vz = _mm_loadu_ps(PZ + h);
+            if (xm) {
+                const __m128 px = vx, py = vy, pz = vz;
+                vx = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(px, S4(xm[0])), _mm_mul_ps(py, S4(xm[4]))), _mm_mul_ps(pz, S4(xm[8]))), S4(xm[12]));
+                vy = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(px, S4(xm[1])), _mm_mul_ps(py, S4(xm[5]))), _mm_mul_ps(pz, S4(xm[9]))), S4(xm[13]));
+                vz = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(px, S4(xm[2])), _mm_mul_ps(py, S4(xm[6]))), _mm_mul_ps(pz, S4(xm[10]))), S4(xm[14]));
             }
-        } else {
-            if (!(cw - 1e-3f >= 0.0f) || !(cw > 1e-3f)) return false;
+            __m128 cx = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(vx, S4(pm[0])), _mm_mul_ps(vy, S4(pm[4]))), _mm_mul_ps(vz, S4(pm[8]))), S4(pm[12]));
+            const __m128 cy = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(vx, S4(pm[1])), _mm_mul_ps(vy, S4(pm[5]))), _mm_mul_ps(vz, S4(pm[9]))), S4(pm[13]));
+            const __m128 cz = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(vx, S4(pm[2])), _mm_mul_ps(vy, S4(pm[6]))), _mm_mul_ps(vz, S4(pm[10]))), S4(pm[14]));
+            const __m128 cw = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(vx, S4(pm[3])), _mm_mul_ps(vy, S4(pm[7]))), _mm_mul_ps(vz, S4(pm[11]))), S4(pm[15]));
+            if (persp) cx = _mm_mul_ps(cx, S4(widen));
+            if (persp) {
+                const __m128 nd = _mm_add_ps(cz, cw);
+                const __m128 thr = _mm_mul_ps(S4(1e-4f), _mm_add_ps(_mm_and_ps(cz, absmask), _mm_and_ps(cw, absmask)));
+                const int ok = _mm_movemask_ps(_mm_and_ps(_mm_cmpge_ps(nd, thr), _mm_cmpgt_ps(cw, S4(1e-3f))));
+                if (ok != 0xF) {
+                    ++g_gd_near;
+                    return false;
+                }
+            } else {
+                const int ok = _mm_movemask_ps(_mm_and_ps(_mm_cmpge_ps(_mm_sub_ps(cw, S4(1e-3f)), _mm_setzero_ps()), _mm_cmpgt_ps(cw, S4(1e-3f))));
+                if (ok != 0xF) return false;
+            }
+            const __m128 iw = _mm_div_ps(S4(1.0f), cw);
+            const __m128 vsx = _mm_add_ps(_mm_mul_ps(_mm_mul_ps(_mm_add_ps(_mm_mul_ps(cx, iw), S4(1.0f)), S4(0.5f)), S4((float)g.vp_w)), S4((float)g.vp_x));
+            const __m128 vsy = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(S4(1.0f), _mm_mul_ps(_mm_add_ps(_mm_mul_ps(cy, iw), S4(1.0f)), S4(0.5f))), S4((float)g.vp_h)), S4((float)g.vp_y));
+            const __m128 inr = _mm_and_ps(_mm_and_ps(_mm_cmpgt_ps(vsx, S4(-1e7f)), _mm_cmplt_ps(vsx, S4(1e7f))),
+                                          _mm_and_ps(_mm_cmpgt_ps(vsy, S4(-1e7f)), _mm_cmplt_ps(vsy, S4(1e7f))));
+            if (_mm_movemask_ps(inr) != 0xF) return false;
+            float ax[4], ay[4];
+            _mm_storeu_ps(ax, vsx);
+            _mm_storeu_ps(ay, vsy);
+            for (int k = 0; k < 4; ++k) {
+                if (ax[k] < sx0) sx0 = ax[k];
+                if (ax[k] > sx1) sx1 = ax[k];
+                if (ay[k] < sy0) sy0 = ay[k];
+                if (ay[k] > sy1) sy1 = ay[k];
+            }
         }
-        const float iw = 1.0f / cw;
-        const float sx = (cx * iw + 1.0f) * 0.5f * (float)g.vp_w + (float)g.vp_x;
-        const float sy = (1.0f - (cy * iw + 1.0f) * 0.5f) * (float)g.vp_h + (float)g.vp_y;
-        if (!(sx > -1e7f && sx < 1e7f && sy > -1e7f && sy < 1e7f)) return false;
-        if (sx < sx0) sx0 = sx;
-        if (sx > sx1) sx1 = sx;
-        if (sy < sy0) sy0 = sy;
-        if (sy > sy1) sy1 = sy;
+#undef S4
     }
 
     g.grids.emplace_back();
