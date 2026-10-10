@@ -1645,6 +1645,15 @@ int hal_menu_hover_box(int *x, int *y, unsigned *stamp)
     return 1;
 }
 
+/* PAUSE2: the picture size of the decide in progress (up() runs inside it), for a recipe's idle cache warm-up */
+int hal_menu_last_size(int *w, int *h)
+{
+    const MenuDecision &D = g_pub[g_pub_i];
+    if (D.w < 8 || D.h < 8) return 0;
+    *w = D.w; *h = D.h;
+    return 1;
+}
+
 void hal_menu_pad(uint16_t *pressed, int host_back)
 {
     if (!g_live || !pressed || !g_cur.recipe) return;

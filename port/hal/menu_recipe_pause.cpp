@@ -88,6 +88,35 @@ int pause_variant(void)
     return v;
 }
 
+/* THE FIRST-OPEN HITCH. Decoding and scaling the pause's planks, card and arrows on the first frame the pause is up cost ~95 ms in one
+   frame (perf trace, 1024x768). The recipe's up() runs every tick, so once the level has been running a moment and the pause is not up it
+   solves each variant once on a scratch layout and scales every picture to the size that variant will draw at (one variant per tick, so no
+   tick pays for more than a few pictures). The cache keeps the size; a window resize warms again. */
+int g_idle_ticks, g_warm_step, g_warm_w, g_warm_h;
+
+void warm_variant(int v, int w, int h)
+{
+    static MenuLayout W;
+    const MenuRecipe *R = 0;
+    for (int i = 0; i < g_menu_nrecipes; ++i)
+        if (!strcmp(g_menu_recipes[i].name, "pause")) R = &g_menu_recipes[i];
+    if (!R) return;
+    menu_layout_solve(&W, R, v, w, h);
+    for (int i = 0; i < W.np; ++i)
+        if (W.p[i].src == SRC_HOSTIMG && W.p[i].hostimg && W.dest[i][2] > 0 && W.dest[i][3] > 0)
+            menu_hostimg_scaled(W.p[i].hostimg, W.dest[i][2], W.dest[i][3]);
+}
+
+void warm_tick(int scene_id)
+{
+    if (scene_id != 3 && scene_id != -1) { g_idle_ticks = 0; return; }
+    int w, h;
+    if (!hal_menu_last_size(&w, &h)) return;
+    if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_step = 0; g_idle_ticks = 0; }
+    if (++g_idle_ticks < 45 || g_warm_step >= V_VS) return;
+    warm_variant(++g_warm_step, w, h);
+}
+
 int pause_up(int scene_id)
 {
     int v = 0;
@@ -95,6 +124,7 @@ int pause_up(int scene_id)
        the stacked layout is MENU_SCENE_GATED: no recipe */
     if (scene_id == 3 || scene_id == -1) v = pause_variant();
     g_last_variant = v;
+    if (!v) warm_tick(scene_id);
     if (hal_menu_trace_on()) {      /* SM64DS_MENU_TRACE: every change of the ROM's pause words, for the proof rows */
         static int last[10] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
         const int now[10] = { v, data_0209f2c4, data_0209f248, data_0209f1ec, data_0209f2c8, data_0209f2e0, data_0209f218,
