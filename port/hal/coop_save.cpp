@@ -510,8 +510,7 @@ extern "C" void port_coop_save_boot(void) {
     if (ms <= 0) ms = 3000;
     if (!coop_save_fetch(ms)) {
         std::fprintf(stderr, "[coopsave] the host did not answer for the save; "
-                     "exiting with code 6
-");
+                     "exiting with code 6\n");
         std::fflush(stderr);
         ExitProcess(6);
     }
