@@ -56,6 +56,7 @@
 #include "ntr/smooth.h"
 
 #include <emmintrin.h>
+#include <intrin.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -986,11 +987,14 @@ uint32_t key_hash(const SmoothKey &k) {
     // FNV-1a over the key's own bytes. The hash only picks a slot; every
     // candidate slot is then checked against the WHOLE key, so a collision
     // costs a compare and can never hand back another triangle's grid.
-    const unsigned char *p = (const unsigned char *)&k;
+    // run hunt8 SMOOTHCPU2: a word at a time (the key is nine words, padding
+    // zeroed by the caller as before); the slot choice is not observable.
+    static_assert(sizeof(SmoothKey) % 4 == 0, "key is whole words");
+    const uint32_t *p = (const uint32_t *)&k;
     uint32_t h = 2166136261u;
-    for (size_t i = 0; i < sizeof(SmoothKey); ++i) {
-        h ^= p[i];
-        h *= 16777619u;
+    for (size_t i = 0; i < sizeof(SmoothKey) / 4; ++i) {
+        h = (h ^ p[i]) * 0x9E3779B1u;
+        h ^= h >> 15;
     }
     return h;
 }
@@ -1027,6 +1031,7 @@ const float *smooth_store_pool(size_t *n) {
 }
 uint32_t smooth_store_generation() { return g_st_gen; }
 uint32_t smooth_store_entry_off(const SmoothEntry *e) { return e->off; }
+const float *smooth_store_entry_box(const SmoothEntry *e) { return e->box; }
 
 void smooth_store_clear() {
     if (g_st_clear_hook && !g_st_pool.empty()) g_st_clear_hook();
@@ -1094,6 +1099,7 @@ SmoothEntry &store_append(const SmoothKey &k) {
     e.tf = 0;
     e.off = 0;
     e.pic = 0;
+    for (int i = 0; i < 6; ++i) e.box[i] = 0.0f;
     g_st_entry.push_back(e);
     uint32_t s = key_hash(k) & g_st_mask;
     while (g_st_table[s] >= 0) s = (s + 1) & g_st_mask;
@@ -1193,6 +1199,19 @@ const SmoothEntry *smooth_store_add(const SmoothKey &k, int tf,
     e.tf = npts ? tf : 1;
     e.off = (uint32_t)g_st_pool.size();
     if (npts) g_st_pool.insert(g_st_pool.end(), grid, grid + npts * 3);
+    {
+        float lo[3] = {0, 0, 0}, hi[3] = {0, 0, 0};
+        if (npts) {
+            for (int k = 0; k < 3; ++k) lo[k] = hi[k] = grid[k];
+            for (int i = 1; i < npts; ++i)
+                for (int k = 0; k < 3; ++k) {
+                    const float v = grid[i * 3 + k];
+                    if (v < lo[k]) lo[k] = v;
+                    if (v > hi[k]) hi[k] = v;
+                }
+        }
+        for (int k = 0; k < 3; ++k) { e.box[k] = lo[k]; e.box[3 + k] = hi[k]; }
+    }
 
     ++g_st.inserts;
     g_st.entries = g_st_entry.size();
@@ -1297,6 +1316,24 @@ void prof_report(uint64_t frame) {
             (double)(g_prof_ns[SMOOTH_PROF_SUBDIV]
                    - g_prof_ns[SMOOTH_PROF_SINK]) / 1e6,
             (double)g_prof_ns[SMOOTH_PROF_SINK] / 1e6);
+    fprintf(stderr,
+            "[smoothprof2] f%llu topo %.3f ms (%llu) try %.3f ms (%llu) near %.3f ms (%llu)\n",
+            (unsigned long long)frame,
+            (double)(g_prof_ns[SMOOTH_PROF_TOPO] - prev_ns[SMOOTH_PROF_TOPO]) / 1e6,
+            g_prof_n[SMOOTH_PROF_TOPO] - prev_n[SMOOTH_PROF_TOPO],
+            (double)(g_prof_ns[SMOOTH_PROF_TRY] - prev_ns[SMOOTH_PROF_TRY]) / 1e6,
+            g_prof_n[SMOOTH_PROF_TRY] - prev_n[SMOOTH_PROF_TRY],
+            (double)(g_prof_ns[SMOOTH_PROF_NEAR] - prev_ns[SMOOTH_PROF_NEAR]) / 1e6,
+            g_prof_n[SMOOTH_PROF_NEAR] - prev_n[SMOOTH_PROF_NEAR]);
+    fprintf(stderr,
+            "[smoothprof3] f%llu pre %.3f ms (%llu) find %.3f ms (%llu) emit %.3f ms (%llu)\n",
+            (unsigned long long)frame,
+            (double)(g_prof_ns[SMOOTH_PROF_PRE] - prev_ns[SMOOTH_PROF_PRE]) / 1e6,
+            g_prof_n[SMOOTH_PROF_PRE] - prev_n[SMOOTH_PROF_PRE],
+            (double)(g_prof_ns[SMOOTH_PROF_FIND] - prev_ns[SMOOTH_PROF_FIND]) / 1e6,
+            g_prof_n[SMOOTH_PROF_FIND] - prev_n[SMOOTH_PROF_FIND],
+            (double)(g_prof_ns[SMOOTH_PROF_EMIT] - prev_ns[SMOOTH_PROF_EMIT]) / 1e6,
+            g_prof_n[SMOOTH_PROF_EMIT] - prev_n[SMOOTH_PROF_EMIT]);
     for (int i = 0; i < SMOOTH_PROF_BUCKETS; ++i) {
         prev_ns[i] = g_prof_ns[i];
         prev_n[i] = g_prof_n[i];
@@ -1314,9 +1351,24 @@ int smooth_prof_on() {
     return g_prof;
 }
 
+/* run hunt8 SMOOTHCPU2: the profiler clock is the processor's cycle counter
+   (about 7 ns a read against 25 for steady_clock), scaled to nanoseconds by a
+   2 ms calibration against steady_clock on first use. Still only a difference
+   is meaningful. */
 long long smooth_prof_ticks() {
-    return (long long)std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
+    static double ns_per_cyc = 0.0;
+    static unsigned long long c0 = 0;
+    static long long n0 = 0;
+    if (ns_per_cyc == 0.0) {
+        auto now = []() { return (long long)std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count(); };
+        const long long a = now(); const unsigned long long ca = __rdtsc();
+        while (now() - a < 2000000) {}
+        const long long b = now(); const unsigned long long cb = __rdtsc();
+        ns_per_cyc = (double)(b - a) / (double)(cb - ca);
+        c0 = cb; n0 = b;
+    }
+    return n0 + (long long)((double)(__rdtsc() - c0) * ns_per_cyc);
 }
 
 void smooth_prof_add(int bucket, long long dt_ns, unsigned n) {
@@ -1433,6 +1485,7 @@ struct TopoBook {
     std::vector<int> final_cls;                   // at roots: -1 = not yet finalized
     std::unordered_map<TriKey, int, KeyHash<TriKey, 9> > by_tri;
     std::unordered_map<EdgeKey, int, KeyHash<EdgeKey, 6> > by_edge;   // first triangle on the edge
+    std::vector<signed char> lying;               // at roots: topo_lying's answer, -1 = not computed
 };
 TopoBook g_topo;
 int g_topo_on = -1;
@@ -1485,6 +1538,41 @@ int topo_find(int i) {
     return i;
 }
 
+/* run hunt8, lane SMOOTHCPU2: A DIRECT-MAPPED FRONT FOR by_tri. topo_register
+   used to sort the corners, build a nine-short key and walk an
+   unordered_map (node chasing, FNV over eighteen bytes) for every lit
+   triangle of every pass, hit or miss alike. Nothing about the answer changes:
+   a triangle the book already holds is found by its corner positions, in any
+   order, and its index never changes until topo_clear. This table remembers
+   the index under the corners AS SUBMITTED (no sort), checks all nine shorts
+   before it believes a slot, and is emptied by topo_clear. A miss falls
+   through to the unchanged lookup. */
+/* kind 1 = "this triangle's mesh is final, plain (class NONE) and not lying:
+   smooth_topo_lookup answers 0 and touches nothing else", valid while
+   `epoch` equals g_topo_epoch. Every write to a class, a finalized flag or a
+   mesh's membership bumps the epoch (topo_union, topo_clear, topo_finalize,
+   topo_promote), so a kept answer can never outlive the state it read. */
+struct TopoFast { int16_t p[9]; int idx; uint32_t epoch; int kind; };
+uint32_t g_topo_epoch = 1;
+int topo_register_slow(const int16_t p[3][3], const uint32_t nrm[3], int frame);
+void topo_fast_clear();
+enum { TOPO_FAST_N = 1 << 15 };
+TopoFast *g_topo_fast = 0;
+void topo_fast_clear() {
+    if (g_topo_fast)
+        for (int i = 0; i < TOPO_FAST_N; ++i) { g_topo_fast[i].idx = -1; g_topo_fast[i].kind = 0; }
+}
+inline uint32_t topo_fast_slot(const int16_t *q) {
+    uint32_t h = 0x9E3779B1u;
+    const uint32_t *w = (const uint32_t *)q;     // eighteen bytes: four words and one short
+    h = (h ^ w[0]) * 0x85EBCA6Bu; h ^= h >> 15;
+    h = (h ^ w[1]) * 0xC2B2AE35u; h ^= h >> 13;
+    h = (h ^ w[2]) * 0x27D4EB2Fu; h ^= h >> 15;
+    h = (h ^ w[3]) * 0x165667B1u; h ^= h >> 16;
+    h = (h ^ (uint32_t)(uint16_t)q[8]) * 0x9E3779B1u; h ^= h >> 15;
+    return h & (TOPO_FAST_N - 1);
+}
+
 void topo_union(int a, int b, int frame) {
     a = topo_find(a); b = topo_find(b);
     if (a == b) return;
@@ -1494,6 +1582,9 @@ void topo_union(int a, int b, int frame) {
     std::vector<int>().swap(g_topo.members[b]);
     g_topo.last_change[a] = frame;
     g_topo.final_cls[a] = -1;
+    ++g_topo_epoch;
+    g_topo.lying[a] = -1;       // the members changed
+    g_topo.lying[b] = -1;
 }
 
 void topo_clear() {
@@ -1503,6 +1594,9 @@ void topo_clear() {
     g_topo.final_cls.clear();
     g_topo.by_tri.clear();
     g_topo.by_edge.clear();
+    g_topo.lying.clear();
+    ++g_topo_epoch;
+    topo_fast_clear();
 }
 
 inline bool pos_gt(const int16_t a[3], const int16_t b[3]) {
@@ -1523,6 +1617,21 @@ inline EdgeKey make_edge(const int16_t a[3], const int16_t b[3]) {
 }
 
 int topo_register(const int16_t p[3][3], const uint32_t nrm[3], int frame) {
+    if (!g_topo_fast) {
+        g_topo_fast = (TopoFast *)malloc(sizeof(TopoFast) * TOPO_FAST_N);
+        topo_fast_clear();
+    }
+    TopoFast &fs = g_topo_fast[topo_fast_slot(&p[0][0])];
+    if (fs.idx >= 0 && memcmp(fs.p, &p[0][0], sizeof fs.p) == 0) return fs.idx;
+    const int idx_found = topo_register_slow(p, nrm, frame);
+    memcpy(fs.p, &p[0][0], sizeof fs.p);
+    fs.idx = idx_found;
+    fs.kind = 0;
+    fs.epoch = 0;
+    return idx_found;
+}
+
+int topo_register_slow(const int16_t p[3][3], const uint32_t nrm[3], int frame) {
     int ord[3];
     sort3(p, ord);
     TriKey tk;
@@ -1560,6 +1669,7 @@ int topo_register(const int16_t p[3][3], const uint32_t nrm[3], int frame) {
     g_topo.members.push_back(std::vector<int>(1, idx));
     g_topo.last_change.push_back(frame);
     g_topo.final_cls.push_back(-1);
+    g_topo.lying.push_back(-1);
 
     if (g_topo.tris[idx].area > 1e-12) {
         for (int k = 0; k < 3; ++k) {
@@ -2002,6 +2112,7 @@ void topo_finalize(int root) {
     } else if (cls == SMOOTH_CLASS_FAN) { if (!topo_finalize_fan(mem)) cls = SMOOTH_CLASS_NONE; }
     for (size_t m = 0; m < mem.size(); ++m) g_topo.tris[mem[m]].cls = cls;
     g_topo.final_cls[root] = cls;
+    ++g_topo_epoch;
     if (g_topo_log < 0) g_topo_log = getenv("SM64DS_SMOOTH_TOPO_LOG") ? 1 : 0;
     if (g_topo_log && (cls != SMOOTH_CLASS_NONE || mem.size() >= 8)) {
         const TopoTri &t = g_topo.tris[mem[0]];
@@ -2042,6 +2153,10 @@ struct GroupInfo {
 };
 GroupInfo g_topo_groups;
 const uint32_t kNear = 3;
+// run hunt8 SMOOTHCPU2: the last generation known to be in g_topo_groups.box,
+// so consecutive triangles of one piece skip the map lookup. Cleared with it.
+uint32_t g_box_last = 0;
+bool g_box_last_ok = false;
 
 // TRIANGLES STITCHED ACROSS TWO MATRICES (a seam between two bones) cannot be
 // entered in the book: their corners are in two different spaces. When one is
@@ -2061,6 +2176,7 @@ void topo_promote(int root) {
     topo_finalize_box(mem);
     for (size_t m = 0; m < mem.size(); ++m) g_topo.tris[mem[m]].cls = SMOOTH_CLASS_BOX;
     g_topo.final_cls[root] = SMOOTH_CLASS_BOX;
+    ++g_topo_epoch;
     if (g_topo_log < 0) g_topo_log = getenv("SM64DS_SMOOTH_TOPO_LOG") ? 1 : 0;
     if (g_topo_log) {
         const TopoTri &t = g_topo.tris[mem[0]];
@@ -2070,7 +2186,16 @@ void topo_promote(int root) {
 }
 
 // Does the mesh at `root` lie about its normals enough to be worth promoting?
+// (run hunt8 SMOOTHCPU2: the answer is kept per root; it only depends on the
+// members, and every change to them clears it in topo_union.)
+int topo_lying_calc(int root);
 int topo_lying(int root) {
+    if (g_topo.lying[root] >= 0) return g_topo.lying[root];
+    const int r = topo_lying_calc(root);
+    g_topo.lying[root] = (signed char)r;
+    return r;
+}
+int topo_lying_calc(int root) {
     const std::vector<int> &mem = g_topo.members[root];
     if (mem.size() < 1 || mem.size() > 400) return 0;
     int lb = 0;
@@ -2085,6 +2210,12 @@ int topo_lying(int root) {
 }  // namespace
 
 int smooth_topo_lookup(const int16_t p[3][3], const uint32_t nrm[3], uint32_t group, SmoothOverride *out) {
+    /* run hunt8 SMOOTHCPU2: the kept "plain mesh" answer (see TopoFast) */
+    if (g_topo_fast) {
+        const TopoFast &kf = g_topo_fast[topo_fast_slot(&p[0][0])];
+        if (kf.kind == 1 && kf.epoch == g_topo_epoch && memcmp(kf.p, &p[0][0], sizeof kf.p) == 0)
+            return 0;
+    }
     const int frame = (int)g_counters.frames;
     const int idx = topo_register(p, nrm, frame);
     int root = topo_find(idx);
@@ -2095,12 +2226,13 @@ int smooth_topo_lookup(const int16_t p[3][3], const uint32_t nrm[3], uint32_t gr
     if (g_topo_groups.frame != frame) {
         g_topo_groups.frame = frame;
         g_topo_groups.box.clear();
+        g_box_last_ok = false;
         g_topo_groups.pending.clear();
     }
     {
         GroupInfo &gi = g_topo_groups;
         const int fc = g_topo.final_cls[root];
-        if (fc == SMOOTH_CLASS_BOX) {
+        if (fc == SMOOTH_CLASS_BOX && !(g_box_last_ok && g_box_last == group)) {
             if (gi.box.find(group) == gi.box.end()) {
                 gi.box[group] = 1;
                 std::vector<std::pair<int, uint32_t> > keep;
@@ -2116,6 +2248,8 @@ int smooth_topo_lookup(const int16_t p[3][3], const uint32_t nrm[3], uint32_t gr
                     for (int q = 0; q < 3; ++q)
                         if (near_gen(g_topo_cross_pending[r].g[q], group)) { g_topo_refuse[g_topo_cross_pending[r].key] = 1; break; }
             }
+            g_box_last = group;
+            g_box_last_ok = true;
         }
         if (fc == SMOOTH_CLASS_NONE && topo_lying(root)) {
             bool near_box = false;
@@ -2126,7 +2260,16 @@ int smooth_topo_lookup(const int16_t p[3][3], const uint32_t nrm[3], uint32_t gr
         }
     }
     const TopoTri &t = g_topo.tris[idx];
-    if (t.cls <= SMOOTH_CLASS_NONE) return 0;
+    if (t.cls <= SMOOTH_CLASS_NONE) {
+        if (g_topo.final_cls[root] == SMOOTH_CLASS_NONE && !topo_lying(root)) {
+            TopoFast &kf = g_topo_fast[topo_fast_slot(&p[0][0])];
+            if (kf.idx == idx && memcmp(kf.p, &p[0][0], sizeof kf.p) == 0) {
+                kf.kind = 1;
+                kf.epoch = g_topo_epoch;
+            }
+        }
+        return 0;
+    }
     out->cls = t.cls;
     out->flat = t.flat;
     if (t.cls == SMOOTH_CLASS_FACET) { memset(out->en, 0, sizeof out->en); return 1; }
@@ -2160,6 +2303,7 @@ int smooth_topo_cross(const int16_t p[3][3], uint32_t g0, uint32_t g1, uint32_t 
     if (g_topo_groups.frame != frame) {
         g_topo_groups.frame = frame;
         g_topo_groups.box.clear();
+        g_box_last_ok = false;
         g_topo_groups.pending.clear();
     }
     if (g_topo_cross_frame != frame) { g_topo_cross_frame = frame; g_topo_cross_pending.clear(); }

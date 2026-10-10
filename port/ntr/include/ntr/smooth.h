@@ -408,6 +408,12 @@ enum {
     SMOOTH_PROF_POLICY = 0,   // smooth_tess_factor: accept/refuse + the factor
     SMOOTH_PROF_SUBDIV,       // smooth_subdivide as a whole, sink calls included
     SMOOTH_PROF_SINK,         // one sub-triangle: project, near-clip, push
+    SMOOTH_PROF_TOPO,         // run hunt8 SMOOTHCPU2: the topology book's lookup / seam test
+    SMOOTH_PROF_TRY,          // the whole of smooth_try, whatever it decided
+    SMOOTH_PROF_NEAR,         // emit_tri_near for a triangle smooth_try left alone
+    SMOOTH_PROF_PRE,          // smooth_try's entry checks and the corner copy, up to the policy
+    SMOOTH_PROF_FIND,         // the shape store's lookup (key build and probe)
+    SMOOTH_PROF_EMIT,         // smooth_emit_grid: the grid record, or the sub-triangles
     SMOOTH_PROF_BUCKETS
 };
 // 1 times the policy and the tessellation, which is the pair an A/B between
@@ -462,6 +468,7 @@ struct SmoothEntry {
     int32_t tf;          // the factor the grid was built at; 0 = seen once, no grid yet
     uint32_t off;        // first float of this entry's grid in the pool
     uint32_t pic;        // the picture that first saw it (smooth_store_miss)
+    float box[6];        // run hunt8 SMOOTHCPU2: model-space min xyz then max xyz of the grid
 };
 
 // A SHAPE IS KEPT ON ITS SECOND SIGHTING, NOT ITS FIRST. The castle
@@ -514,6 +521,9 @@ const float *smooth_store_grid(const SmoothEntry *e);
 const float *smooth_store_pool(size_t *n);
 uint32_t smooth_store_generation();
 uint32_t smooth_store_entry_off(const SmoothEntry *e);
+// The six floats (min xyz, max xyz) of the grid points of `e`, kept with the
+// entry so the card path does not re-scan up to 45 points per grid per picture.
+const float *smooth_store_entry_box(const SmoothEntry *e);
 // Called at the head of smooth_store_clear while the old pool is still intact,
 // so the engine can turn any grid it has deferred and that points into the pool
 // into ordinary triangles before the pool is thrown away.

@@ -952,7 +952,8 @@ void smooth_grid_vertex(const float p[3], float a, float b, float c,
 /* THE GRID DEFERRAL (run hunt8, SMOOTHGPU1), declared here and defined after
    the emit it replaces. */
 static bool grid_defer_try(const float *pts, long pool_off, int tf,
-                           const SmoothVertex s[3], const Mat *xform);
+                           const SmoothVertex s[3], const Mat *xform,
+                           const float *box6);
 static int g_grid_defer = 0;     // this frame's grids may be kept for the card
 
 static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[3],
@@ -1053,8 +1054,9 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
 }
 
 void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
-                      const Mat *xform, long pool_off = -1) {
-    if (g_grid_defer && grid_defer_try(pts, pool_off, tf, s, xform)) return;
+                      const Mat *xform, long pool_off = -1,
+                      const float *box6 = 0) {
+    if (g_grid_defer && grid_defer_try(pts, pool_off, tf, s, xform, box6)) return;
     smooth_emit_grid_cpu(pts, tf, s, xform, 0, 0, 0, true);
 }
 
@@ -1108,7 +1110,8 @@ static void grid_stats_frame() {
                  g_gd_why[0], g_gd_why[1], g_gd_why[2], g_gd_why[3], g_gd_why[4], g_gd_why[5], g_gd_why[6], g_gd_why[7]);
 }
 static bool grid_defer_try(const float *pts, long pool_off, int tf,
-                           const SmoothVertex s[3], const Mat *xform) {
+                           const SmoothVertex s[3], const Mat *xform,
+                           const float *box6) {
     ++g_gd_try;
     const SmoothGridTable *Tp = smooth_grid_table(tf);
     if (!Tp) return false;
@@ -1119,12 +1122,18 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
     if (g.grids.size() >= 0x3FFFFFu) return false;
 
     /* the model-space box of the points */
+    /* run hunt8 SMOOTHCPU2: a shape the store holds has its box kept with it
+       (min and max are exact, so this is the very floats the loop makes) */
     float lo[3] = {pts[0], pts[1], pts[2]}, hi[3] = {pts[0], pts[1], pts[2]};
-    for (int i = 1; i < n; ++i) {
-        const float *q = pts + i * 3;
-        for (int k = 0; k < 3; ++k) {
-            if (q[k] < lo[k]) lo[k] = q[k];
-            if (q[k] > hi[k]) hi[k] = q[k];
+    if (box6) {
+        for (int k = 0; k < 3; ++k) { lo[k] = box6[k]; hi[k] = box6[3 + k]; }
+    } else {
+        for (int i = 1; i < n; ++i) {
+            const float *q = pts + i * 3;
+            for (int k = 0; k < 3; ++k) {
+                if (q[k] < lo[k]) lo[k] = q[k];
+                if (q[k] > hi[k]) hi[k] = q[k];
+            }
         }
     }
     const Mat &pj = g.proj;
@@ -1138,40 +1147,65 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
        sub-triangle. A corner within a hair of the plane sends the grid to the
        processor path, which decides each vertex exactly as it always did. */
     float sx0 = 1e30f, sy0 = 1e30f, sx1 = -1e30f, sy1 = -1e30f;
-    for (int c = 0; c < 8; ++c) {
-        const float px = (c & 1) ? hi[0] : lo[0];
-        const float py = (c & 2) ? hi[1] : lo[1];
-        const float pz = (c & 4) ? hi[2] : lo[2];
-        float vx = px, vy = py, vz = pz;
-        if (xform) {
-            const float *m = xform->m;
-            vx = px * m[0] + py * m[4] + pz * m[8] + m[12];
-            vy = px * m[1] + py * m[5] + pz * m[9] + m[13];
-            vz = px * m[2] + py * m[6] + pz * m[10] + m[14];
+    {
+        /* run hunt8 SMOOTHCPU2: the eight corners four to a vector. Every lane
+           runs the scalar loop's own operations in its own order (separate
+           multiplies and adds, no fused op, an exact divide), so each float is
+           the one the scalar loop made; the corner order does not matter to a
+           min / max. A corner that fails a test sends the grid to the processor
+           path exactly as before (the near count only when persp). */
+        float PX[8], PY[8], PZ[8];
+        for (int c = 0; c < 8; ++c) {
+            PX[c] = (c & 1) ? hi[0] : lo[0];
+            PY[c] = (c & 2) ? hi[1] : lo[1];
+            PZ[c] = (c & 4) ? hi[2] : lo[2];
         }
-        const float *m = pj.m;
-        float cx = vx * m[0] + vy * m[4] + vz * m[8] + m[12];
-        const float cy = vx * m[1] + vy * m[5] + vz * m[9] + m[13];
-        const float cz = vx * m[2] + vy * m[6] + vz * m[10] + m[14];
-        const float cw = vx * m[3] + vy * m[7] + vz * m[11] + m[15];
-        if (persp) cx *= widen;
-        if (persp) {
-            const float nd = cz + cw;
-            if (!(nd >= 1e-4f * (std::fabs(cz) + std::fabs(cw))) || !(cw > 1e-3f)) {
-                ++g_gd_near;
-                return false;
+        const float *xm = xform ? xform->m : 0;
+        const float *pm = pj.m;
+#define S4(v) _mm_set1_ps(v)
+        const __m128 absmask = _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff));
+        for (int h = 0; h < 8; h += 4) {
+            __m128 vx = _mm_loadu_ps(PX + h), vy = _mm_loadu_ps(PY + h), vz = _mm_loadu_ps(PZ + h);
+            if (xm) {
+                const __m128 px = vx, py = vy, pz = vz;
+                vx = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(px, S4(xm[0])), _mm_mul_ps(py, S4(xm[4]))), _mm_mul_ps(pz, S4(xm[8]))), S4(xm[12]));
+                vy = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(px, S4(xm[1])), _mm_mul_ps(py, S4(xm[5]))), _mm_mul_ps(pz, S4(xm[9]))), S4(xm[13]));
+                vz = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(px, S4(xm[2])), _mm_mul_ps(py, S4(xm[6]))), _mm_mul_ps(pz, S4(xm[10]))), S4(xm[14]));
             }
-        } else {
-            if (!(cw - 1e-3f >= 0.0f) || !(cw > 1e-3f)) return false;
+            __m128 cx = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(vx, S4(pm[0])), _mm_mul_ps(vy, S4(pm[4]))), _mm_mul_ps(vz, S4(pm[8]))), S4(pm[12]));
+            const __m128 cy = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(vx, S4(pm[1])), _mm_mul_ps(vy, S4(pm[5]))), _mm_mul_ps(vz, S4(pm[9]))), S4(pm[13]));
+            const __m128 cz = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(vx, S4(pm[2])), _mm_mul_ps(vy, S4(pm[6]))), _mm_mul_ps(vz, S4(pm[10]))), S4(pm[14]));
+            const __m128 cw = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(vx, S4(pm[3])), _mm_mul_ps(vy, S4(pm[7]))), _mm_mul_ps(vz, S4(pm[11]))), S4(pm[15]));
+            if (persp) cx = _mm_mul_ps(cx, S4(widen));
+            if (persp) {
+                const __m128 nd = _mm_add_ps(cz, cw);
+                const __m128 thr = _mm_mul_ps(S4(1e-4f), _mm_add_ps(_mm_and_ps(cz, absmask), _mm_and_ps(cw, absmask)));
+                const int ok = _mm_movemask_ps(_mm_and_ps(_mm_cmpge_ps(nd, thr), _mm_cmpgt_ps(cw, S4(1e-3f))));
+                if (ok != 0xF) {
+                    ++g_gd_near;
+                    return false;
+                }
+            } else {
+                const int ok = _mm_movemask_ps(_mm_and_ps(_mm_cmpge_ps(_mm_sub_ps(cw, S4(1e-3f)), _mm_setzero_ps()), _mm_cmpgt_ps(cw, S4(1e-3f))));
+                if (ok != 0xF) return false;
+            }
+            const __m128 iw = _mm_div_ps(S4(1.0f), cw);
+            const __m128 vsx = _mm_add_ps(_mm_mul_ps(_mm_mul_ps(_mm_add_ps(_mm_mul_ps(cx, iw), S4(1.0f)), S4(0.5f)), S4((float)g.vp_w)), S4((float)g.vp_x));
+            const __m128 vsy = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(S4(1.0f), _mm_mul_ps(_mm_add_ps(_mm_mul_ps(cy, iw), S4(1.0f)), S4(0.5f))), S4((float)g.vp_h)), S4((float)g.vp_y));
+            const __m128 inr = _mm_and_ps(_mm_and_ps(_mm_cmpgt_ps(vsx, S4(-1e7f)), _mm_cmplt_ps(vsx, S4(1e7f))),
+                                          _mm_and_ps(_mm_cmpgt_ps(vsy, S4(-1e7f)), _mm_cmplt_ps(vsy, S4(1e7f))));
+            if (_mm_movemask_ps(inr) != 0xF) return false;
+            float ax[4], ay[4];
+            _mm_storeu_ps(ax, vsx);
+            _mm_storeu_ps(ay, vsy);
+            for (int k = 0; k < 4; ++k) {
+                if (ax[k] < sx0) sx0 = ax[k];
+                if (ax[k] > sx1) sx1 = ax[k];
+                if (ay[k] < sy0) sy0 = ay[k];
+                if (ay[k] > sy1) sy1 = ay[k];
+            }
         }
-        const float iw = 1.0f / cw;
-        const float sx = (cx * iw + 1.0f) * 0.5f * (float)g.vp_w + (float)g.vp_x;
-        const float sy = (1.0f - (cy * iw + 1.0f) * 0.5f) * (float)g.vp_h + (float)g.vp_y;
-        if (!(sx > -1e7f && sx < 1e7f && sy > -1e7f && sy < 1e7f)) return false;
-        if (sx < sx0) sx0 = sx;
-        if (sx > sx1) sx1 = sx;
-        if (sy < sy0) sy0 = sy;
-        if (sy > sy1) sy1 = sy;
+#undef S4
     }
 
     g.grids.emplace_back();
@@ -1360,7 +1394,9 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
     key.level = static_cast<uint32_t>(pol.level) | (ov ? 0x100u : 0u);
 
     const long long t_sub = prof ? smooth_prof_ticks() : 0;
+    const long long t_fd = prof ? smooth_prof_ticks() : 0;
     const SmoothEntry *e = smooth_store_find(key);
+    if (prof) smooth_prof_add(SMOOTH_PROF_FIND, smooth_prof_ticks() - t_fd, 1);
     float pts[SMOOTH_MAX_GRID * 3];
     const float *grid;
     if (!e) {
@@ -1422,8 +1458,11 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
                           std::sqrt(e0[0]*e0[0] + e0[1]*e0[1] + e0[2]*e0[2]));
     }
 
+    const long long t_em = prof ? smooth_prof_ticks() : 0;
     smooth_emit_grid(grid, tf, s, xform,
-                     grid == pts ? -1L : (long)smooth_store_entry_off(e));
+                     grid == pts ? -1L : (long)smooth_store_entry_off(e),
+                     grid == pts ? 0 : smooth_store_entry_box(e));
+    if (prof) smooth_prof_add(SMOOTH_PROF_EMIT, smooth_prof_ticks() - t_em, 1);
     if (prof) smooth_prof_add(SMOOTH_PROF_SUBDIV,
                               smooth_prof_ticks() - t_sub, 1);
     return 1;
@@ -1432,6 +1471,7 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
 int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                const GxRaw &ra, const GxRaw &rb, const GxRaw &rc) {
     const SmoothPolicy &pol = smooth_policy();
+    const long long t_pre = smooth_prof_on() ? smooth_prof_ticks() : 0;
 
     /* A mode-3 polygon is a shadow volume. Its stencil protocol compares the
        mask pass against the draw pass PIXEL FOR PIXEL, so both have to be the
@@ -1477,7 +1517,37 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
        caps are too tight". */
     int why = SMOOTH_WHY_OK;
     const long long t_pol = prof ? smooth_prof_ticks() : 0;
-    const int tf = smooth_tess_factor(s[0], s[1], s[2], pol, &why);
+    if (prof) smooth_prof_add(SMOOTH_PROF_PRE, t_pol - t_pre, 1);
+    /* run hunt8 SMOOTHCPU2: THREE CORNERS THAT CARRY ONE RAW NORMAL UNDER ONE
+       MATRIX ARE FLAT, and the policy need not be asked. The three view-space
+       normals are the same floats (same payload, same vector matrix), so the
+       three unit normals are the same floats and their dot products are the
+       sum of squares of one unit vector, 1 to within a few ulp, which is above
+       flat_cos by a margin no rounding reaches. smooth_shape returns the same
+       "flat" for that triangle after three square roots and three divides; the
+       one test kept is the length floor it applies first (a normal too short
+       to normalise is a no-normal corner, not a flat one). The verify arm
+       (SM64DS_SMOOTH_FASTFLAT_CHECK=1) asks both and counts disagreements. */
+    int tf;
+    {
+        static int chk = -1;
+        if (chk < 0) chk = std::getenv("SM64DS_SMOOTH_FASTFLAT_CHECK") ? 1 : 0;
+        const float l2 = s[0].nx * s[0].nx + s[0].ny * s[0].ny + s[0].nz * s[0].nz;
+        const bool fast = pol.level > 0 && ra.has_normal && rb.has_normal && rc.has_normal &&
+                          ra.nrm && ra.nrm == rb.nrm && rb.nrm == rc.nrm &&
+                          ra.ngen == rb.ngen && rb.ngen == rc.ngen && l2 > 1e-16f;
+        if (fast && !chk) {
+            tf = 1;
+            why = SMOOTH_WHY_FLAT;
+        } else {
+            tf = smooth_tess_factor(s[0], s[1], s[2], pol, &why);
+            if (fast && chk && (tf != 1 || why != SMOOTH_WHY_FLAT)) {
+                static unsigned bad = 0;
+                if (++bad <= 20)
+                    std::fprintf(stderr, "[fastflat] DISAGREE tf %d why %d\n", tf, why);
+            }
+        }
+    }
     if (prof) smooth_prof_add(SMOOTH_PROF_POLICY,
                               smooth_prof_ticks() - t_pol, 1);
     if (smooth_census_on()) smooth_census_tri(s[0], s[1], s[2], tf);
@@ -1496,7 +1566,10 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                                   {rc.x, rc.y, rc.z}};
         const uint32_t tn[3] = {ra.nrm, rb.nrm, rc.nrm};
         SmoothOverride ov;
-        if (smooth_topo_lookup(tp, tn, rc.mgen, &ov) &&
+        const long long t_tp = prof ? smooth_prof_ticks() : 0;
+        const int tp_hit = smooth_topo_lookup(tp, tn, rc.mgen, &ov);
+        if (prof) smooth_prof_add(SMOOTH_PROF_TOPO, smooth_prof_ticks() - t_tp, 1);
+        if (tp_hit &&
             why != SMOOTH_WHY_EDGE && why != SMOOTH_WHY_RADIUS) {
             if (ov.cls == SMOOTH_CLASS_FACET || ov.flat) {
                 /* Left as the DS drew it. */
@@ -1587,7 +1660,19 @@ void emit_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c,
     /* OFF IS ONE COMPARE. smooth_level() is a load of a file-scope int that
        walk_window sets once at boot; with the setting absent it is 0 and this
        function is the same call it always was. */
-    if (smooth_level() > 0 && smooth_try(a, b, c, ra, rb, rc)) return;
+    if (smooth_level() > 0) {
+        const int pf = smooth_prof_on();
+        const long long t0 = pf ? smooth_prof_ticks() : 0;
+        const int took = smooth_try(a, b, c, ra, rb, rc);
+        if (pf) smooth_prof_add(SMOOTH_PROF_TRY, smooth_prof_ticks() - t0, 1);
+        if (took) return;
+        if (pf) {
+            const long long t1 = smooth_prof_ticks();
+            emit_tri_near(a, b, c);
+            smooth_prof_add(SMOOTH_PROF_NEAR, smooth_prof_ticks() - t1, 1);
+            return;
+        }
+    }
     emit_tri_near(a, b, c);
 }
 
