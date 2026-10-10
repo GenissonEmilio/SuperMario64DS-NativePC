@@ -434,6 +434,20 @@ extern "C" void port_coop_boot_begin(void) {
     } else {
         guest_gate();
     }
+    // PROOF KNOB: a slow machine. Sit here (still pumping, so beats and save
+    // answers go on) before the ROM loads.
+    if (const int d = env_int("SM64DS_COOPBOOT_TEST_DELAY_MS", 0)) {
+        LOG("test delay %d ms before the boot", d);
+        const ULONGLONG t0 = tick();
+        while ((int)(tick() - t0) < d) {
+            comms_hub_pump();
+            if (C.host && comms_hub_state() == kHubLive) {
+                if (tick() - C.last_beat >= kBeatMs) send_state();
+                port_coop_save_frame();
+            }
+            Sleep(10);
+        }
+    }
 }
 
 extern "C" int port_coop_boot_scene_frame(void) {
@@ -509,6 +523,12 @@ extern "C" int port_coop_boot_frame(void) {
     if (hold != C.holding) {
         C.holding = hold;
         LOG(hold ? "HOLD: %s" : "RELEASED (first tick now)%s", hold ? why : "");
+    }
+    if (!hold && C.released) {
+        static int ticked;
+        ++ticked;
+        if (ticked == 1 || ticked == 120 || ticked == 600)
+            LOG("ticked frame %d since the release", ticked);
     }
     return hold ? 1 : 0;
 }
