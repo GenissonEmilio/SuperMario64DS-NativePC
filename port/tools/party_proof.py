@@ -23,7 +23,9 @@ import re
 import sys
 import time
 
-RIG = os.environ.get("PBODY_RIG", "C:/tmp/pbody1/scripts")
+RIG = os.environ.get("PBODY_RIG")
+if not RIG:
+    sys.exit("set PBODY_RIG to the directory holding lgc.py, r3gw.py and deskspawn.py")
 sys.path.insert(0, RIG)
 import lgc as G  # noqa: E402
 import r3gw as R  # noqa: E402
@@ -47,7 +49,7 @@ def kv(s):
     return dict(x.split("=", 1) for x in s.split(";") if x)
 
 
-def env_for(i, relay, kind, o):
+def env_for(i, relay, kind, o, row="row"):
     e = G.hubenv(i, {}, relay=relay)
     e["GC_SAVE"] = G.SEED
     e["SM64DS_ROOM_KIND"] = kind
@@ -81,6 +83,10 @@ def env_for(i, relay, kind, o):
         e["SM64DS_HOST_PAD"] = pad.replace(";", ",").replace("+", ",")
     else:
         e["SM64DS_SELFTEST_IDLE"] = "1"
+    sa = o.get("shotat%d" % i, o.get("shotat"))        # shotat=<frame>: the presented picture (both screens) at that frame
+    if sa:
+        e["SM64DS_DUAL_SCREEN"] = "1"
+        e["SM64DS_STACK_BMP"] = os.path.join(SHOTS, "%s_p%d_f%s.bmp" % (row, i, sa)).replace("\\", "/") + ",%s" % sa
     if o.get("log", "1") != "0":
         e["SM64DS_PARTY_LOG"] = "1"
     if o.get("sep", "1") != "0":
@@ -116,7 +122,7 @@ def run_room(kind, n, tag, o):
         wait = float(o.get("delay%d" % i, "0")) - (time.time() - t_start)     # delay<i>=<seconds after the first start>
         if wait > 0:
             time.sleep(wait)
-        e = env_for(i, relay, kind, o)
+        e = env_for(i, relay, kind, o, row)
         if kind == "world":
             e.pop("SM64DS_PARTY", None)
             e.pop("SM64DS_COOP", None)
@@ -185,6 +191,16 @@ def row_room(kind, n, tag, o):
         info("%s console %d rc=%s faults=%d exe=%s" % (row, i, c.rc, len(G.faults(texts[i])), c.exe_md5[:8]))
         if o.get("shot", "1") != "0":
             shot(c, "%s_p%d" % (row, i))
+    for i in range(len(cons)):
+        sa = o.get("shotat%d" % i, o.get("shotat"))
+        if sa:
+            bmp = os.path.join(SHOTS, "%s_p%d_f%s.bmp" % (row, i, sa))
+            if os.path.exists(bmp):
+                from PIL import Image
+                png = bmp[:-4] + ".png"
+                Image.open(bmp).save(png)
+                os.remove(bmp)
+                info("picture %s" % png)
     say(all(c.rc == 0 and not G.faults(t) for c, t in zip(cons, texts)), "%s: every console exited 0, no fault" % row)
     return row, cons, texts
 
@@ -206,6 +222,39 @@ def judge_spike(row, texts, o):
     return ll, changed, done, sh
 
 
+def judge_push(row, texts, o):
+    """The push rows: rest separation (median of samples 100..250) and the minimum after the settle, per console."""
+    for i, t in enumerate(texts):
+        ps = partysep(t)
+        h = [x[3] for x in ps]
+        if len(h) < 300:
+            info("%s p%d: only %d [partysep] lines" % (row, i, len(h)))
+            continue
+        rest = sorted(h[100:250])[75]
+        after = h[200:]
+        contact = [x for x in after if x < 140]
+        info("%s p%d: rest separation %.1f, after the settle min %.1f (radius sum %.0f), %d contact frames, min contact %.1f"
+             % (row, i, rest, min(after), RADSUM, len(contact), min(contact) if contact else -1))
+        say(min(after) >= RADSUM - 8, "%s p%d: separation never below the radius sum minus one running step (min %.1f)" % (row, i, min(after)))
+
+
+def judge_timeline(row, texts, o):
+    """When each console had a solid body: intervals of [partysep] lines (a gap over 700 ms ends one)."""
+    for i, t in enumerate(texts):
+        ts = [int(m) for m in re.findall(r"\[partysep\] t=(\d+) ", t)]
+        iv, start, prev = [], None, None
+        for x in ts:
+            if prev is None or x - prev > 700:
+                if start is not None:
+                    iv.append((start, prev))
+                start = x
+            prev = x
+        if start is not None:
+            iv.append((start, prev))
+        t0 = ts[0] if ts else 0
+        info("%s p%d: solid body intervals (s from the first): %s" % (row, i, [(round((a - t0) / 1000.0, 1), round((b - t0) / 1000.0, 1)) for a, b in iv]))
+
+
 def main(argv):
     for a in argv:
         p = a.split(":")
@@ -216,6 +265,10 @@ def main(argv):
             j = o.get("judge", "")
             if j == "spike":
                 judge_spike(row, texts, o)
+            if j == "push":
+                judge_push(row, texts, o)
+            if j == "timeline":
+                judge_timeline(row, texts, o)
             for i, t in enumerate(texts):
                 ps = partysep(t)
                 if ps:
