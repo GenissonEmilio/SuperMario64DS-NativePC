@@ -24480,3 +24480,5 @@ foreach(_tsetmenu1 walk_window walk_window_hires)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/ui_text.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_art_data.cpp")
 endforeach()
+# smoke_player (EXCLUDE_FROM_ALL) links hal/sub_screen.cpp, which calls the page seams: no-op stubs keep it linking without the page.
+target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_stubs.cpp")

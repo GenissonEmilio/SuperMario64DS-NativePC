@@ -44,11 +44,14 @@ void settings_page_request(void);                    /* ask for it to open on th
 int  settings_page_pending(void);                    /* a request is waiting (cleared by settings_page_open_now) */
 void settings_page_clear_request(void);               /* drop a request that cannot be honoured (the debug menu holds the pause) */
 void settings_page_open_now(int from);               /* from: 0 pause, 1 title, 2 other; starts on CONTROLS, cursor on the first row */
+int  settings_page_swallow_back(void);               /* 1 while open and for two frames after it closes: the seam drops Backspace's Back */
 void settings_page_close(void);                      /* flushes the settings file */
 /* One logic frame with this frame's device state. Returns 1 while the page is still up, 0 on the frame it closed. */
 int  settings_page_frame(const SpInput *in);
 /* draw onto an opaque 32 bit picture (0x00RRGGBB or 0xFFRRGGBB pixels) of w x h with `stride` pixels per row */
 void settings_page_draw(uint32_t *px, int stride, int w, int h);
+void settings_page_idle_tick(int idle_frames, int w, int h);   /* hooks.cpp: warms the caches once, when OneScreenMenus is on */
+void settings_page_warm(int w, int h);              /* one throwaway draw of the closed page: builds the caches before the first open */
 /* the stylus filter of the touch path: 1 when the page swallows this frame's touch (it is open, or a press that opened it is
    still held), and the touch must read as not pressed */
 int  settings_page_swallow_touch(int touch_down);

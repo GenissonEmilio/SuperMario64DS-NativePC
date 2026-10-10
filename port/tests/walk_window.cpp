@@ -6036,6 +6036,7 @@ static int sp_frame(int pad_live, const XPad *pad)
     if (settings_page_open() && !menu_on) settings_page_close();       /* something else took the pause away */
     if (!settings_page_open()) {
         ++g_sp_idle;
+        settings_page_idle_tick(g_sp_idle, ntr::active_w, ntr::active_h);
         const int at = settings_page_env_open_at();
         const int env = at >= 0 && !g_sp_env_done && g_sp_idle >= at;
         if (!settings_page_pending() && !env) return 0;
@@ -6074,6 +6075,7 @@ static int sp_frame(int pad_live, const XPad *pad)
     if (in.inject_key && g_rebind_capture) g_rebind_key = in.inject_key;   /* SETPAGE_SCRIPT key:<vk>: what the window procedure would have seen */
     if (!settings_page_frame(&in)) {
         menu_on = 0;
+        key_stale[VK_ESCAPE] = 1; key_stale[VK_F5] = 1;       /* the Escape that closed it is still down: not a fresh F5 for the debug menu */
         if ((in.keys & SPK_BACK) && pad_live && (pad->buttons & 0x2000)) menu_b_swallow = 1;   /* the B that closed it is not a punch */
         fprintf(stderr, "[settings] page closed\n");
     }

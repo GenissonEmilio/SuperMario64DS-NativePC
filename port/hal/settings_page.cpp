@@ -423,7 +423,7 @@ const Row *rows_of(int tab, int *n)
 }
 
 struct State {
-    int open, pending, hold_touch;
+    int open, pending, hold_touch, settle, settle_n, swallow_back;
     int tab, sel, col;                 /* sel == nrows: the Reset plank */
     int scroll;                        /* body pixels scrolled */
     int dd_open, dd_hi;                /* a drop-down list is open on row sel */
@@ -781,6 +781,14 @@ extern "C" void settings_page_close(void)
     sl_flush();
     S.open = 0; S.pending = 0; S.hold_touch = 1;
     S.dd_open = 0; S.drag = -1;
+    S.swallow_back = 2;          /* the Backspace that closed it must not reach the ROM on the frames around the close */
+}
+
+extern "C" int settings_page_swallow_back(void)
+{
+    if (S.open) return 1;
+    if (S.swallow_back > 0) { --S.swallow_back; return 1; }
+    return 0;
 }
 
 extern "C" int settings_page_swallow_touch(int touch_down)
@@ -799,7 +807,9 @@ extern "C" int settings_page_frame(const SpInput *in)
     ++S.pf;
     if (S.note_t > 0 && --S.note_t == 0) S.note[0] = 0;
     compute_layout(S.w, S.h);
-    const unsigned held = in->keys;
+    /* after a rebind ends, a still-held pad button (LB, RB, A, B, Y are page keys too) is not a press: keys read as up until all are released */
+    if (S.settle && (in->keys == 0 || ++S.settle_n > 120)) S.settle = 0;
+    const unsigned held = S.settle ? 0u : in->keys;
     const int mx = in->mouse_x, my = in->mouse_y;
     const int mvalid = in->mouse_valid;
     const int l_edge = in->mouse_l && !S.ml_prev;
@@ -814,14 +824,15 @@ extern "C" int settings_page_frame(const SpInput *in)
         ++S.cap_frames;
         const int st = sl_capture_state();
         const char *why = sl_capture_refused();
-        if (st == SL_CAP_BOUND) { S.cap_active = 0; note(""); }
-        else if (st == SL_CAP_CANCELLED) { S.cap_active = 0; note("Kept the old binding"); }
-        else if (!sl_capture_active()) { S.cap_active = 0; }
+        if (st == SL_CAP_BOUND) { S.cap_active = 0; S.settle = 1; S.settle_n = 0; note(""); }
+        else if (st == SL_CAP_CANCELLED) { S.cap_active = 0; S.settle = 1; S.settle_n = 0; note("Kept the old binding"); }
+        else if (!sl_capture_active()) { S.cap_active = 0; S.settle = 1; S.settle_n = 0; }
         else {
             if (why && *why) note(why);
             if (((held & SPK_CAP_CANCEL) && edge_only(9, held)) || l_edge || r_edge || S.cap_frames > 900) {
                 sl_capture_cancel();
                 S.cap_active = 0;
+                S.settle = 1; S.settle_n = 0;
                 note("Kept the old binding");
             }
         }
@@ -1003,6 +1014,20 @@ void draw_slider(const Surf &s, int x, int cy, int rail_w, int v, int vmin, int 
 
 }  // namespace
 
+static int g_warming;
+
+/* Draw the closed page once into a throwaway buffer so the first real open does not pay for the piece and glyph caches (about 50 ms). */
+extern "C" void settings_page_warm(int w, int h)
+{
+    if (S.open || w < 64 || h < 64 || w > 8192 || h > 8192) return;
+    std::vector<uint32_t> buf((size_t)w * (size_t)h, 0u);
+    g_warming = 1;
+    S.open = 1;
+    settings_page_draw(buf.data(), w, w, h);
+    S.open = 0;
+    g_warming = 0;
+}
+
 extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
 {
     if (!S.open || !px || w < 64 || h < 64) return;
@@ -1149,9 +1174,12 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
     S.draw_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
     {   /* SM64DS_SETPAGE_COST=1: the cost of the page's draw, a line every 120 frames (proof rows only) */
         static int on = -1, cnt;
+#ifdef PORT_ROM_CLEAN
+        on = 0;
+#endif
         static double sum, mn = 1e9, mx;
         if (on < 0) on = getenv("SM64DS_SETPAGE_COST") != 0;
-        if (on) {
+        if (on && !g_warming) {
             sum += S.draw_ms; ++cnt;
             if (S.draw_ms < mn) mn = S.draw_ms;
             if (S.draw_ms > mx) mx = S.draw_ms;
@@ -1168,6 +1196,9 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
 extern "C" int settings_page_env_open_at(void)
 {
     static int read, at = -1;
+#ifdef PORT_ROM_CLEAN
+    return -1;        /* the proof seams are not in a shipping build */
+#endif
     if (!read) {
         read = 1;
         const char *e = getenv("SM64DS_SETPAGE_AT");
@@ -1184,6 +1215,10 @@ extern "C" int settings_page_scripted(SpInput *in, int pf)
     struct Step { int f; char cmd[16]; int a, b; };
     static Step st[256];
     static int mx = -1, my = -1, ml, mr;
+#ifdef PORT_ROM_CLEAN
+    (void)in; (void)pf;
+    return 0;         /* the proof seams are not in a shipping build */
+#endif
     if (!read) {
         read = 1;
         const char *e = getenv("SM64DS_SETPAGE_SCRIPT");

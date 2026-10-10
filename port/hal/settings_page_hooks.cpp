@@ -113,3 +113,12 @@ extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, un
     }
     return 0;
 }
+
+/* SETPAGEFIX1: called once a frame from the idle side of the page's frame; builds the page's caches a moment after start, so the first
+   open does not stall. Nothing at all when OneScreenMenus is off. */
+extern "C" void settings_page_idle_tick(int idle_frames, int w, int h)
+{
+    if (idle_frames != 120) return;
+    if (!hal_menu_enabled(MENU_KEY_ONE_SCREEN_MENUS)) return;
+    settings_page_warm(w, h);
+}

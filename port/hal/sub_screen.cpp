@@ -123,6 +123,7 @@ int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy);
 /* SETMENU1: the in-game settings page (hal/settings_page_hooks.cpp) */
 extern "C" int settings_page_hook_pad(uint16_t *pressed);
 extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, unsigned char sy);
+extern "C" int settings_page_swallow_back(void);
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
 int hal_sub_screen_stacked(void);
@@ -3695,6 +3696,7 @@ extern "C" void hal_menu_pad_seam(void)
         if (!d && !g_headless && GetAsyncKeyState_ && hal_window_focused()) d = (GetAsyncKeyState_(VK_BACK) & 0x8000) ? 1 : 0;
         back = d && !back_was;
         back_was = d;
+        if (back && settings_page_swallow_back()) back = 0;   /* SETPAGEFIX1: the Backspace that is the page's Back is not the ROM's */
     }
     if (!hal_menu_live()) return;
     /* ASSET3: MOUSE HOVER. A menu recipe's hotspots take the mouse focus when the pointer moves onto them (hal_menu_hover had no
