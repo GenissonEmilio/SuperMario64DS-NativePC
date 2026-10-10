@@ -692,7 +692,20 @@ def row_timeout():
     m = re.search(r"fetch TIMEOUT after (\d+) ms \(budget (\d+)\)", t)
     info("timeout: %s rc=%s wall %.1f s" % (m.group(0) if m else "no timeout line", c.rc, (c.t_end or time.time()) - c.t0))
     say(c.rc == 6 and m is not None and 1500 <= int(m.group(1)) <= 1500 + 600, "timeout: the guest gives up after the %s ms budget (measured %s ms) and exits with code %s" % (m.group(2) if m else "?", m.group(1) if m else "?", c.rc))
-    say(not any(n.startswith("sm64ds-coop-") and os.path.exists(os.path.join(gtmp, n, "guest.coopsav")) and False for n in os.listdir(gtmp)), "timeout: no save was written for the failed join")
+    left = []
+    for n in os.listdir(gtmp):
+        for f in os.listdir(os.path.join(gtmp, n)):
+            left.append((n, f, os.path.getsize(os.path.join(gtmp, n, f))))
+    info("timeout: temp folder after the failed join: %s" % left)
+    say(not any(sz > 0 and f.endswith(".coopsav") and open(os.path.join(gtmp, n, f), "rb").read() != bytes([255]) * CHIP for n, f, sz in left),
+        "timeout: no save record was written for the failed join")
+    # MUST-FAIL control: the BASE exe has no coop fetch, so it never gives up with 6
+    rp, rf, port, rlog = start_relay("timeout_base")
+    relay = ("127.0.0.1:%d" % port, "CU%d" % (PID % 1000))
+    cb = Con("timeout", "guest_base", ARGS.base, coop_env(1, relay, False, None, {"SM64DS_COOPSAVE_BOOT_FETCH": "1500", "SM64DS_COOP_TEMP_ROOT": gtmp}), 400, ARGS.root, ARGS.out)
+    wait_all([cb], 200)
+    stop_relay(rp, rf)
+    say(cb.rc != 6 and "fetch TIMEOUT" not in cb.text(), "timeout MUST-FAIL: the BASE exe with the same env does not time out (rc %s): it would play on with no host record" % cb.rc)
 
 
 def main():
