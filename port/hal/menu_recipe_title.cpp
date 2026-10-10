@@ -87,7 +87,7 @@ struct TitleFacts {
     int vis, s48;             /* the fade manager's iris sprite: shown, scale */
     Chore ch;                 /* the choreography clock as of this tick */
     int toy_e;                /* FACE1: ticks since the press page handed over to the drawing page (top 0 / 1, elem 1) while it still shows our picture */
-    int toy_v;                /* FACE1: the face press page's own frame counter (the page object's +0xc) while top 4 / elem 0 is up, else -1 */
+    int toy_v;                /* FACE1: the face press page's own frame counter (the page object's +0xc) PLUS ONE while top 4 / elem 0 is up, 0 = not the press page (a zeroed blob is not the press page) */
 };
 static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
 thread_local const TitleFacts *t_f = 0;     /* set for the length of one build() */
@@ -772,7 +772,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         /* the face (the whole lower 3D layer minus the wrench corner, round 4's piece) at the swap's alpha */
         const FaceK fk = face_k();
         const int hk = fk.n, hd = fk.d;
-        const int tv = t_f ? t_f->toy_v : -1;      /* FACE1: >= 0 on the face press page */
+        const int tv = t_f ? t_f->toy_v - 1 : -1;      /* FACE1: >= 0 on the face press page */
         const bool toy = tv >= 0;
         const int fa = toy ? 255 : c.face_a;
         if (toy) {
@@ -879,7 +879,7 @@ void build_main_pc(MenuLayout *L, bool intro)
             }
         }
     }
-    if (t_f && t_f->toy_v >= 0 && t_f->toy_e > 0) {      /* FACE1: the hand-over to the drawing page: our picture dips to black as the ROM's own fade takes over */
+    if (t_f && t_f->toy_v > 0 && t_f->toy_e > 0) {      /* FACE1: the hand-over to the drawing page: our picture dips to black as the ROM's own fade takes over */
         MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
         ir.ir16 = 0;
@@ -988,17 +988,18 @@ void menu_title_facts(MenuFacts *f)
     tf.frame = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
     rom_iris(&tf.vis, &tf.s48);
     tf.ch = g_ch;
-    tf.toy_v = -1;
+    tf.toy_v = 0;
     {
         static int last_v = -1, last_e = 0;
         int top = -1, elem = -1, req = -1;
         if (port_title_page_state(&top, &elem, &req) && top == 4 && elem == 0 && data_ov007_0210342c) {
             const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
-            tf.toy_v = sp ? *(const int *)(sp + 0xc) : 0;
+            tf.toy_v = (sp ? *(const int *)(sp + 0xc) : 0);
             if (tf.toy_v < 0) tf.toy_v = 0;
+            tf.toy_v += 1;
             last_v = tf.toy_v; last_e = 0;
         } else if (last_v >= 0 && elem == 1 && (top == 0 || top == 1)) {   /* the ROM's hand-over: its own fade, the drawing page not up yet */
-            tf.toy_v = 1000; tf.toy_e = ++last_e;
+            tf.toy_v = 1001; tf.toy_e = ++last_e;
         } else {
             last_v = -1; last_e = 0;
         }
@@ -1195,7 +1196,7 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
         }
         return;
     }
-    if (variant == V_MAIN || variant == V_INTRO || (variant == V_TOY && t_f && t_f->toy_v >= 0 && pc_assets_ready())) {
+    if (variant == V_MAIN || variant == V_INTRO || (variant == V_TOY && t_f && t_f->toy_v > 0 && pc_assets_ready())) {
         build_main_sel(L, variant == V_INTRO);
         return;
     }
