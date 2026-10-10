@@ -854,8 +854,9 @@ def row_waitreal(nosafe=False):
             v = dict((k, int(x)) for k, x in re.findall(r"(?:^|[ |])(msg|clear|fade|cut|sel|pause)=(\d+)", w))
             return any(v.values())
         busy = [w for w in wb if "why=own-star-hold" in w and open_windows(w)]
-        say(len(lb) == 1 and ms[0] < 3000 and bool(busy),
-            "waitreal MUST-FAIL: with the safe-frame rule switched off B was not held by the ROM's windows (fade / cutscene words nonzero in %d wait lines, none of them a block) and took A's star after %s ms, against 5 s or more with the rule on" % (len(busy), ms))
+        blocked_by_rom = [w for w in wb if re.search(r"why=(message|levelclear|fade|cutscene|starselect|pause|levelchange|d4b0|mode|timer|fc68)", w)]
+        say(len(lb) == 1 and bool(busy) and not blocked_by_rom,
+            "waitreal MUST-FAIL: with the safe-frame rule switched off B was not held by the ROM's windows (fade / cutscene words nonzero in %d wait lines, none of them a block) and took A's star after %s ms (on the same run with the rule on the reasons were message / levelclear / fade)" % (len(busy), ms))
         return r
     m = re.search(r"\[pstar\] tx course=(\d+) star=(\d+)", tb)
     wb = re.findall(r"(?m)^\[pstar\] wait .*$", tb)
