@@ -9,6 +9,10 @@
 //   y 42). Rows are (font + 2) tall, up to four. The chat log is bottom-left
 //   and the ping box bottom-right, so the top-left strip is free; a row that
 //   would touch the corner map panel is not drawn and is not clickable.
+//   THE CHAT RISES FROM THE BOTTOM and is only capped by the picture's top
+//   (six messages of up to three rows each), so a long burst of long lines
+//   can climb into this strip. The list is drawn BEFORE the chat so that, in
+//   that rare ten seconds, the chat stays readable on top of it.
 // Draw-only: it writes overlay pixels after the game has finished the frame.
 
 #ifndef PORT_HAL_PLAYER_LIST_PAINT_H
