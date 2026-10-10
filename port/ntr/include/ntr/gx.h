@@ -236,6 +236,9 @@ void gx_enable_lights(uint32_t mask);           // bits 0..3
 
 // Polygons emitted since the last gx_reset / SWAP_BUFFERS.
 const GxTriangle *gx_polygons(size_t &count);
+// The polygon count only: the triangles the list holds plus the ones its kept
+// smoothed grids stand for, without turning the grids back into triangles.
+size_t gx_polygon_count();
 
 // Bumped every time gx_invalidate_textures throws the decode cache away, so a
 // backend holding copies of those textures knows to drop them.

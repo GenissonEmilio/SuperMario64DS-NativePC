@@ -1091,14 +1091,21 @@ void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
 /* SM64DS_SMOOTH_GPU_STATS=1: every 150 frames, how many grids were offered, kept
    and why the rest were not */
 static unsigned long long g_gd_try, g_gd_ok, g_gd_state, g_gd_near, g_gd_frames;
+static unsigned long long g_gd_mat_calls, g_gd_mat_grids, g_gd_mat_tris;
+static double g_gd_mat_ms;
+static unsigned long long g_gd_why[8];
 static void grid_stats_frame() {
     static int on = -1;
     if (on < 0) on = std::getenv("SM64DS_SMOOTH_GPU_STATS") ? 1 : 0;
     if (!on) return;
     if ((++g_gd_frames % 150) != 0) return;
     std::fprintf(stderr, "[smoothgpu] frame %llu: grids offered %llu kept %llu "
-                 "(polygon state refused %llu, near plane %llu), defer now %d\n",
-                 g_gd_frames, g_gd_try, g_gd_ok, g_gd_state, g_gd_near, g_grid_defer);
+                 "(polygon state refused %llu, near plane %llu), defer now %d; "
+                 "materialized %llu calls %llu grids %llu tris %.2f ms\n",
+                 g_gd_frames, g_gd_try, g_gd_ok, g_gd_state, g_gd_near, g_grid_defer,
+                 g_gd_mat_calls, g_gd_mat_grids, g_gd_mat_tris, g_gd_mat_ms);
+    std::fprintf(stderr, "[smoothgpu] materialize callers: other %llu trihash %llu polygons %llu render-probe %llu render-nogpu %llu groupbox %llu pool-hook %llu pool-hook2 %llu\n",
+                 g_gd_why[0], g_gd_why[1], g_gd_why[2], g_gd_why[3], g_gd_why[4], g_gd_why[5], g_gd_why[6], g_gd_why[7]);
 }
 static bool grid_defer_try(const float *pts, long pool_off, int tf,
                            const SmoothVertex s[3], const Mat *xform) {
@@ -1209,8 +1216,13 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
 
 /* Turn every kept grid of the live state into the triangles the processor path
    makes, in place in the list. A no-op when there are none. */
-static void grids_materialize() {
+static void grids_materialize_w(int why);
+static void grids_materialize() { grids_materialize_w(0); }
+static void grids_materialize_w(int why) {
     if (g.grids.empty()) return;
+    const auto gd_t0 = std::chrono::steady_clock::now();
+    ++g_gd_why[why & 7];
+    ++g_gd_mat_calls; g_gd_mat_grids += g.grids.size(); g_gd_mat_tris += g.tris.size();
     std::vector<GxTriangle> src = std::move(g.tris);
     g.tris.clear();
     g.tris.reserve(src.size() + g.grid_subtris);
@@ -1250,6 +1262,7 @@ static void grids_materialize() {
     g.grid_subtris = 0;
     g.grid_translucent = 0;
     g.grid_mode2 = 0;
+    g_gd_mat_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - gd_t0).count();
 }
 
 /* The NORMAL command's 30-bit payload back out as three floats, decoded
@@ -2847,7 +2860,7 @@ static void smooth_trihash_frame() {
     static int on = -1;
     if (on < 0) on = std::getenv("SM64DS_SMOOTH_TRIHASH") ? 1 : 0;
     if (!on) return;
-    grids_materialize();     // the list the frame ended with, grids included
+    grids_materialize_w(1);     // the list the frame ended with, grids included
     uint64_t h = 1469598103934665603ull;
     auto mix = [&h](const void *p, size_t n) {
         const unsigned char *b = static_cast<const unsigned char *>(p);
@@ -3078,8 +3091,12 @@ void gx_matrix_stack_levels(unsigned &pos_level, unsigned &proj_level) {
     proj_level = (unsigned)q;
 }
 
+size_t gx_polygon_count() {
+    return g.tris.size() + (size_t)g.grid_subtris;
+}
+
 const GxTriangle *gx_polygons(size_t &count) {
-    grids_materialize();     // a caller that reads the list gets the triangles
+    grids_materialize_w(2);     // a caller that reads the list gets the triangles
     count = g.tris.size();
     return g.tris.empty() ? nullptr : g.tris.data();
 }
@@ -5916,7 +5933,7 @@ void gx_render(Framebuffer &fb) {
     /* kept grids stay kept only for a frame the card draws whole */
     if (!g.grids.empty() &&
         !(grid_env_ok() && g_gpu_opaque && !ab_mode() && gpu_grid_probe()))
-        grids_materialize();
+        grids_materialize_w(3);
     capture_drill(false);
     /* run interp1: what reached the raster is the frame; seal its record. */
     if (g_ip_rec) ip_rec_seal();
@@ -6150,7 +6167,7 @@ void gx_render(Framebuffer &fb) {
         }
     }
     /* a frame the card did not draw whole needs its triangles */
-    if (!gpu_full) grids_materialize();
+    if (!gpu_full) grids_materialize_w(4);
     /* A frame the card did not keep goes on as an ordinary one: the CPU passes
        draw into the clear colour, which the transparent fill did not leave */
     if (g_cp_pending && !g_cp_active) clear_fill_classic(fb);
@@ -8008,7 +8025,7 @@ void gx_interp_end() {
 }
 
 int gx_interp_group_box(int group, float box[4]) {
-    grids_materialize();     // the group ranges are triangle counts; they hold once the grids are triangles
+    grids_materialize_w(5);     // the group ranges are triangle counts; they hold once the grids are triangles
     if (group < 0 || (size_t)group >= g_ip_group_tri0.size()) return 0;
     const uint32_t a = g_ip_group_tri0[group], b = g_ip_group_tri1[group];
     if (b <= a || b > g.tris.size()) return 0;
@@ -8029,10 +8046,10 @@ int gx_interp_group_box(int group, float box[4]) {
    points into it (the live frame's, and the tick a SmoothMotion replay has put
    aside) into triangles first. */
 static void grid_pool_clear_hook() {
-    grids_materialize();
+    grids_materialize_w(6);
     if (g_ip_open && !g_ip_saved.g.grids.empty()) {
         std::swap(g, g_ip_saved.g);
-        grids_materialize();
+        grids_materialize_w(7);
         std::swap(g, g_ip_saved.g);
     }
 }
