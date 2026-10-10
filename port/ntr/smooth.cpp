@@ -1896,6 +1896,7 @@ int topo_classify(const std::vector<int> &mem, double *o_cop, double *o_lb, doub
     *o_cop = *o_lb = *o_lv = 0.0;
     if (n < 4 || n > 400) return SMOOTH_CLASS_NONE;
     int edges = 0, cop = 0, allcop = 1;
+    int open_edges = 0, hard = 0;
     int lb = 0, lv = 0;
     std::unordered_map<VertKey, int, KeyHash<VertKey, 3> > vset;
     for (int m = 0; m < n; ++m) {
@@ -1911,10 +1912,12 @@ int topo_classify(const std::vector<int> &mem, double *o_cop, double *o_lb, doub
         if (lean < 0.40) ++lv;
         for (int k = 0; k < 3; ++k) {
             const int u = t.nb[k];
+            if (u < 0 && t.area > 1e-12) ++open_edges;
             if (u > mem[m]) {
                 const double dc = dihedral_cos(t, g_topo.tris[u]);
                 ++edges;
                 if (dc >= 0.99756) ++cop;           // within 4 degrees
+                if (dc <= 0.5) ++hard;              // a 60 degree edge or sharper
                 if (dc < 0.99863) allcop = 0;       // beyond 3 degrees
             }
         }
@@ -1924,6 +1927,20 @@ int topo_classify(const std::vector<int> &mem, double *o_cop, double *o_lb, doub
     *o_cop = fcop; *o_lb = (double)lb / n; *o_lv = (double)lv / n;
     if (n >= 8 && fcop >= 0.35 && *o_lb >= 0.5) return SMOOTH_CLASS_BOX;
     if (n >= 10 && n <= 40 && *o_lv >= 0.9 && fcop < 0.35) return SMOOTH_CLASS_FACET;
+    /* A SMALL CLOSED SOLID WITH HARD EDGES, SHADED SMOOTH: the title screen
+       star (60 triangles, every edge shared, 30 edges 45 degrees or sharper and
+       the authored normals agreeing across all 90). The artist rounded the
+       shading of a faceted shape, so the normals lean far off the faces and the
+       curved patch pillows every facet out past its own plane, over the flat
+       eyes. Left as drawn, like the in-level star, whose 20 facets are the same
+       thing with more extreme normals. BOX is asked first, so a hard-edged box
+       keeps its own treatment, and a round solid (a sphere has no edge past 45
+       degrees) is nowhere near the hard-edge share. The 48 floor keeps the
+       smaller rounded parts out of it (Luigi's gloves are 24 triangles, Yoshi's
+       shoes and heel 32, 32 and 24, the odd bird or token 12 to 18): they pass
+       the other tests and must keep their round puffed treatment. */
+    if (n >= 48 && n <= 80 && open_edges == 0 && edges > 0 && *o_lb >= 0.5 && fcop < 0.35 &&
+        hard * 20 >= edges * 3) return SMOOTH_CLASS_FACET;
     if (n <= 12 && edges > 0 && allcop && nv == n + 1) return SMOOTH_CLASS_FAN;
     return SMOOTH_CLASS_NONE;
 }
