@@ -54,6 +54,7 @@ enum : unsigned {
     kSnapResend   = 250,
     kSnapGiveUpMs = 5000,
     kPresenceMs   = 4000,
+    kGraceMs      = 8000,    // a member whose hello or deltas for MY group still arrive stays a member this long
     kReconcileEvery = 20,
 };
 enum : int { kOutMax = 256, kSnapChunks = 2 };
@@ -71,8 +72,8 @@ CoopGroups g_grp;
 CoopWorldStats g_st = {};
 bool g_env_read = false, g_on = false, g_log = false, g_sync = true;
 bool g_handlers = false;
-// proof-only control: SM64DS_COOP_LEGACY=star,trust,retry,clear,flush switches the matching follow-up fix off (the 1451d2e257 behaviour)
-bool g_leg_star = false, g_leg_trust = false, g_leg_retry = false, g_leg_clear = false, g_leg_flush = false;
+// proof-only control: SM64DS_COOP_LEGACY=star,trust,retry,clear,flush,grace switches the matching follow-up fix off (the 1451d2e257 behaviour)
+bool g_leg_star = false, g_leg_trust = false, g_leg_retry = false, g_leg_clear = false, g_leg_flush = false, g_leg_grace = false;
 struct ReviveKnob { unsigned frame; int slot; int cls; bool done; };
 ReviveKnob g_revive = {0, -1, 0, true};
 int  g_my = -1;
@@ -102,6 +103,7 @@ unsigned char g_snap_buf[kCoopSnapChunkMax];
 int      g_snap_owner = -1;
 unsigned g_ack_last = 0;
 Job      g_job[CoopGroups::kSeats];
+unsigned g_heard[CoopGroups::kSeats];   // when a seat last sent me something for my own group (0 = never)
 
 unsigned g_hello_t = 0, g_full_t = 0;
 unsigned g_seq_ctl = 0, g_seq_world = 0;
@@ -144,6 +146,7 @@ void read_env() {
         g_leg_retry = std::strstr(lg, "retry") != nullptr;
         g_leg_clear = std::strstr(lg, "clear") != nullptr;
         g_leg_flush = std::strstr(lg, "flush") != nullptr;
+        g_leg_grace = std::strstr(lg, "grace") != nullptr;
     }
     if (const char *rv = std::getenv("SM64DS_COOP_REVIVE")) {
         unsigned f = 0; int sl = 0, cl = 0;
@@ -340,6 +343,7 @@ void on_ctl(int seat, const unsigned char *d, int len, void *) {
         std::memcpy(&w, p, sizeof w);
         key_from_wire(w.key, &k);
         ++g_st.recv_hello;
+        if (k == g_key) g_heard[seat] = now | 1u;
         g_grp.note_hello(seat, k, w.established != 0, w.owner == kCoopNoSeat ? -1 : (int)w.owner, now);
         return;
     }
@@ -434,6 +438,7 @@ void on_world(int seat, const unsigned char *d, int len, void *) {
         key_from_wire(w.key, &k);
         ++g_st.recv_delta;
         if (!for_me(k)) { ++g_st.drop_group; return; }
+        g_heard[seat] = comms_hub_now_ms() | 1u;
         if (!g_leg_trust && !g_grp.is_member(seat)) { ++g_st.drop_trust; return; }   // members of this group only
         for (int i = 0; i < (int)w.count; ++i) {
             uint16_t s; std::memcpy(&s, p + sizeof w + 2 * i, 2);
@@ -478,8 +483,13 @@ void refresh_presence(unsigned now) {
     for (int s = 0; s < kCoopSeats; ++s) {
         if (s == g_my) continue;
         HubPresence p; unsigned age = 0;
-        const bool have = hub_presence_get(s, &p, &age) && age < kPresenceMs && p.in_level();
-        g_grp.note_presence(s, have, have ? CoopKey(p.level, p.act) : CoopKey(), now);
+        const bool got = hub_presence_get(s, &p, &age) && p.in_level();
+        const bool fresh = got && age < kPresenceMs;
+        // Heavy loss: presence packets go missing for seconds while the seat's hello and deltas for this very group still
+        // arrive. That is proof it is here: keep it a member instead of dropping it and giving up on its kills.
+        const bool graced = got && !fresh && !g_leg_grace && g_heard[s] != 0 && (unsigned)(now - g_heard[s]) < kGraceMs;
+        const bool have = fresh || graced;
+        g_grp.note_presence(s, have, graced ? g_key : have ? CoopKey(p.level, p.act) : CoopKey(), now);
     }
 }
 
@@ -528,6 +538,7 @@ void join_group(const CoopKey &nk) {
     std::memset(g_star_seen, 0, sizeof g_star_seen);
     g_star_n = 0;
     std::memset(g_job, 0, sizeof g_job);
+    std::memset(g_heard, 0, sizeof g_heard);
     g_snap_waiting = false; g_snap_done = false; g_snap_total = 0; g_snap_mask = 0; g_snap_owner = -1;
     g_recon_dirty = false;
     g_est_frames = 0;
