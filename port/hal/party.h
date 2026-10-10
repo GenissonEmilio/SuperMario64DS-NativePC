@@ -65,8 +65,9 @@ struct Stats {
     unsigned long long registers;       // cylinders put in the collision list
     unsigned long long guard_skips;     // frames a cylinder was withheld by the audit
     unsigned long long gate_hide, gate_level, gate_area;
-    unsigned long long audit_nodes;     // list nodes examined by the audit
-    unsigned long long shared_nodes;    // nodes that would pair with the party cylinder (non-player)
+    unsigned long long audit_nodes;     // list nodes seen when the follower runs (0: the pair pass already ran)
+    unsigned long long pairs_body;      // frames the party cylinder was paired with a body cylinder
+    unsigned long long pairs_other, shared_nodes;   // frames it was paired with anything else (must stay 0)
 };
 const Stats &stats();
 Stats &stats_rw();            // for hal/party_cyl.cpp
@@ -76,9 +77,9 @@ int  log_level();             // SM64DS_PARTY_LOG
 // Put body `a`'s cylinder in the collision list for this frame's pair pass.
 // Returns false when the audit withheld it.
 bool cyl_register(void *a);
-// The audit alone: how many nodes of the live list would pair with the party
-// cylinder (the player bodies' own are not counted). Logs the first few.
-int cyl_audit(void *local_body);
+// The audit: what the last pair pass left on the party node (1 = it paired with
+// a cylinder that is not a body's). Runs before each registration.
+int cyl_audit(void *a);
 // SM64DS_PARTY_LAB: the spike's sweep (moves the first solid body over every actor
 // of the level in turn and reports what changed). Called by follow(); a no-op
 // without the knob.

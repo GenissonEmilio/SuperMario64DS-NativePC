@@ -133,18 +133,22 @@ bool follow(void *a, int body, int seat) {
             }
             r = lo;                                  // Fix12 / 16
             std::fprintf(stderr, "[partysep] t=%u seat=%d body=%d horiz=%d.%02d dy=%d me=(%d,%d,%d) "
-                         "p=(%d,%d,%d) reg=%d\n", comms_hub_now_ms(), seat, body,
+                         "p=(%d,%d,%d) reg=%d push=(%d,%d,%d) hit=%x own=%u\n", comms_hub_now_ms(), seat, body,
                          (int)(r * 16 / 4096), (int)((r * 16 * 100 / 4096) % 100), (int)(dy >> 12),
                          *player::pos_x(mb) >> 12, *player::pos_y(mb) >> 12, *player::pos_z(mb) >> 12,
                          *player::pos_x(a) >> 12, *player::pos_y(a) >> 12, *player::pos_z(a) >> 12,
-                         reg ? 1 : 0);
+                         reg ? 1 : 0,
+                         *(const int *)((const char *)mb + 0x2e0), *(const int *)((const char *)mb + 0x2e4),
+                         *(const int *)((const char *)mb + 0x2e8), *(const unsigned *)((const char *)mb + 0x2f4),
+                         *(const unsigned *)((const char *)mb + 0x2f8));
         }
     }
     if (g_log > 0 && (g_pass % 60u) == 0)
         std::fprintf(stderr, "[party] t=%u seat=%d body=%d solid_frames=%llu registers=%llu guard_skips=%llu "
-                     "gate(hide=%llu level=%llu area=%llu) audit_nodes=%llu shared_nodes=%llu\n",
+                     "gate(hide=%llu level=%llu area=%llu) listnodes_at_follow=%llu pairs_body=%llu pairs_other=%llu\n",
                      comms_hub_now_ms(), seat, body, g_st.solid_frames, g_st.registers, g_st.guard_skips,
-                     g_st.gate_hide, g_st.gate_level, g_st.gate_area, g_st.audit_nodes, g_st.shared_nodes);
+                     g_st.gate_hide, g_st.gate_level, g_st.gate_area, g_st.audit_nodes, g_st.pairs_body,
+                     g_st.pairs_other);
     return reg;
 }
 

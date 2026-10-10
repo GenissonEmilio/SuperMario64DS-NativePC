@@ -3481,7 +3481,8 @@ void gw_follow() {
         ++z.driven;
         shown_any = true;
         /* PBODY1: a party friend in my level and area, fully shown, is a solid body */
-        if (pseat && !z.leaving && gw_fade_out(s) >= 256 && party::gate(s) == party::kGateOk)
+        if (pseat && !z.leaving && !sm.door_kind && gw_fade_out(s) >= 256 &&
+            party::gate(s) == party::kGateOk)
             party::follow(a, i, s);
         if (gw_err_log())
             std::fprintf(stderr, "[gwshown] t=%u f=%u seat=%d body=%d bc=%u "

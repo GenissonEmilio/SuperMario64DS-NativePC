@@ -57,6 +57,7 @@ extern unsigned char data_0209f250;
 extern unsigned char data_0209f21c;
 extern signed char data_0209f2f8;
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
+void *_ZN8dActor_c10FindWithIDEj(unsigned id);
 short NumCoins(void);
 unsigned char NumStars(void);
 signed char NumRedCoins(void);
@@ -110,54 +111,50 @@ bool readable(const void *p, unsigned n) {
     return p && !::IsBadReadPtr(p, n);
 }
 
-// Is `node` one of the cylinders of a Player body (mine, or a party body's)?
-bool player_node(const char *node) {
-    const int nb = (int)data_0209f21c < 16 ? (int)data_0209f21c : 16;
-    for (int i = 0; i < nb; ++i) {
-        const char *b = (const char *)data_0209f394[i];
-        if (!b) continue;
-        if (node >= b + 0x100 && node < b + 0x360) return true;   // the body's own cylinders
-    }
-    return false;
-}
-
-void describe(const char *n, unsigned fl, unsigned vu) {
-    unsigned cls = 0xffff, uid = 0;
-    const char *owner = readable(n + 0x30, 4) ? *(const char *const *)(n + 0x30) : nullptr;
-    if (readable(owner, 0x10)) {
-        cls = *(const unsigned short *)(owner + 0xc);
-        uid = *(const unsigned *)(owner + 4);
-    }
-    std::fprintf(stderr, "[partycyl] SHARED node=%p flags=%08x vuln=%08x owner_class=0x%x uid=%u\n",
-                 (const void *)n, fl, vu, cls, uid);
-}
-
 unsigned party_flags() { return g_r.masked ? kPartyFlags : kBodyFlags; }
 unsigned party_vuln() { return g_r.masked ? kPartyVuln : kBodyVuln; }
 
 }  // namespace
 
-// How many nodes of the live list would pair with the party cylinder. A Player
-// body's own cylinders are expected to (that is the push) and are not counted.
-int cyl_audit(void *) {
+// THE AUDIT. Stage::Render's CylinderClsn::Process runs inside the game tick, before
+// the follower (SPIKE.md "the frame order"), so the collision list is already empty
+// when this runs: the world's nodes cannot be read before they are paired. What can be
+// read is what the last pair pass left on the party node itself: dCc_c::Process
+// writes the partner's `flags` into the node's hitFlags (+0x20) and its owner into
+// otherOwner (+0x24). A body's own cylinder carries flags 0x400008; anything else
+// that is left there paired with a world node. It is counted, the first few are
+// named, and the cylinder is withheld for kWithholdFrames (the world node was handed
+// hitFlags 0 by that pair, which nothing treats as a hit, so the one frame it already
+// had cannot have done anything; the withhold stops it recurring).
+enum { kWithholdFrames = 90 };
+bool g_reg_last[16];
+int g_holdoff[16];
+
+int cyl_audit(void *a) {
     read_rules();
     Stats &st = stats_rw();
-    const unsigned pf = party_flags(), pv = party_vuln();
-    int shared = 0, walked = 0;
+    const char *node = (const char *)a + kBodyClsn;
+    int walked = 0;
     for (const char *n = (const char *)data_0209cee8; n && walked < 4096;
-         n = *(const char *const *)(n + 0x2c), ++walked) {
-        ++st.audit_nodes;
-        if (player_node(n)) continue;
-        const unsigned fl = *(const unsigned *)(n + 0x18);
-        const unsigned vu = *(const unsigned *)(n + 0x1c);
-        if (((pf & vu) | (pv & fl)) != 0) {
-            ++shared;
-            ++st.shared_nodes;
-            static int said = 0;
-            if (said < 12) { ++said; describe(n, fl, vu); }
+         n = *(const char *const *)(n + 0x2c), ++walked)
+        ++st.audit_nodes;                // nodes in the list when the follower runs: 0 when the pair pass already ran
+    const unsigned hf = *(const unsigned *)(node + 0x20);
+    const unsigned oo = *(const unsigned *)(node + 0x24);
+    if (hf == 0) return 0;
+    if (hf == kBodyFlags) { ++st.pairs_body; return 0; }
+    ++st.shared_nodes;
+    ++st.pairs_other;
+    static int said = 0;
+    if (said < 12) {
+        ++said;
+        unsigned cls = 0xffff;
+        if (oo) {
+            const char *o = (const char *)_ZN8dActor_c10FindWithIDEj(oo);
+            if (readable(o, 0x10)) cls = *(const unsigned short *)(o + 0xc);
         }
+        std::fprintf(stderr, "[partycyl] PAIRED a world cylinder: hitFlags=%08x owner uid=%u class=0x%x\n", hf, oo, cls);
     }
-    return shared;
+    return 1;
 }
 
 bool cyl_register(void *a) {
@@ -165,13 +162,19 @@ bool cyl_register(void *a) {
     Stats &st = stats_rw();
     char *c = (char *)a;
     char *node = c + kBodyClsn;
-    if (g_r.guard && cyl_audit(a) > 0) {
-        // withheld: make sure no stale link of this node survives
+    int body = -1;
+    for (int i = 0; i < 16; ++i)
+        if (data_0209f394[i] == a) { body = i; break; }
+    if (body >= 0 && g_reg_last[body] && g_r.guard && cyl_audit(a) > 0) g_holdoff[body] = kWithholdFrames;
+    if (body >= 0 && g_holdoff[body] > 0) {
+        --g_holdoff[body];
+        g_reg_last[body] = false;
         unlink_node(node);
         unlink_node(c + kAttackClsn);
         ++st.guard_skips;
         return false;
     }
+    if (body >= 0) g_reg_last[body] = true;
     *(int *)(node + 0x04) = kRadius + g_r.pad * 0x1000;
     *(int *)(node + 0x08) = kHeight;
     unsigned *fl = (unsigned *)(node + 0x18);
@@ -180,9 +183,9 @@ bool cyl_register(void *a) {
     *(unsigned char *)(c + kBodyClsnOn) = 1;
     static const int zero[3] = {0, 0, 0};
     _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(node, zero);
-    // Unlink first: Process empties the list every frame, and a frame that did
-    // not run it must not leave this node in the list when Update runs again (a
-    // node linked to itself loops the pair pass for ever).
+    // Unlink first: a frame that did not run the pair pass must not leave this node in
+    // the list when Update runs again (a node linked to itself loops the pair pass for
+    // ever). Unlink of an unlinked node is a no-op.
     unlink_node(node);
     _ZN5dCc_c5ClearEv(node);
     _ZN5dCc_c6UpdateEv(node);
@@ -328,8 +331,8 @@ void lab_before_register(void *a, int body) {
                          g_lab.mode == kLabSweep ? "sweep" : "far", g_lab.nt, g_lab.changed);
             for (int i = 0; i < g_lab.nchanged_cls; ++i)
                 std::fprintf(stderr, "%s0x%x", i ? "," : "", g_lab.changed_cls[i]);
-            std::fprintf(stderr, "] guard_skips=%llu registers=%llu shared_nodes=%llu\n",
-                         stats().guard_skips, stats().registers, stats().shared_nodes);
+            std::fprintf(stderr, "] guard_skips=%llu registers=%llu pairs_other=%llu\n",
+                         stats().guard_skips, stats().registers, stats().pairs_other);
         }
         *px = 0x7fffff00 & ~0xfff; *py = 0; *pz = 0;     // park far
         return;
