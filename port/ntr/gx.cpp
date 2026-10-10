@@ -952,7 +952,8 @@ void smooth_grid_vertex(const float p[3], float a, float b, float c,
 /* THE GRID DEFERRAL (run hunt8, SMOOTHGPU1), declared here and defined after
    the emit it replaces. */
 static bool grid_defer_try(const float *pts, long pool_off, int tf,
-                           const SmoothVertex s[3], const Mat *xform);
+                           const SmoothVertex s[3], const Mat *xform,
+                           const float *box6);
 static int g_grid_defer = 0;     // this frame's grids may be kept for the card
 
 static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[3],
@@ -1053,8 +1054,9 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
 }
 
 void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
-                      const Mat *xform, long pool_off = -1) {
-    if (g_grid_defer && grid_defer_try(pts, pool_off, tf, s, xform)) return;
+                      const Mat *xform, long pool_off = -1,
+                      const float *box6 = 0) {
+    if (g_grid_defer && grid_defer_try(pts, pool_off, tf, s, xform, box6)) return;
     smooth_emit_grid_cpu(pts, tf, s, xform, 0, 0, 0, true);
 }
 
@@ -1108,7 +1110,8 @@ static void grid_stats_frame() {
                  g_gd_why[0], g_gd_why[1], g_gd_why[2], g_gd_why[3], g_gd_why[4], g_gd_why[5], g_gd_why[6], g_gd_why[7]);
 }
 static bool grid_defer_try(const float *pts, long pool_off, int tf,
-                           const SmoothVertex s[3], const Mat *xform) {
+                           const SmoothVertex s[3], const Mat *xform,
+                           const float *box6) {
     ++g_gd_try;
     const SmoothGridTable *Tp = smooth_grid_table(tf);
     if (!Tp) return false;
@@ -1119,12 +1122,18 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
     if (g.grids.size() >= 0x3FFFFFu) return false;
 
     /* the model-space box of the points */
+    /* run hunt8 SMOOTHCPU2: a shape the store holds has its box kept with it
+       (min and max are exact, so this is the very floats the loop makes) */
     float lo[3] = {pts[0], pts[1], pts[2]}, hi[3] = {pts[0], pts[1], pts[2]};
-    for (int i = 1; i < n; ++i) {
-        const float *q = pts + i * 3;
-        for (int k = 0; k < 3; ++k) {
-            if (q[k] < lo[k]) lo[k] = q[k];
-            if (q[k] > hi[k]) hi[k] = q[k];
+    if (box6) {
+        for (int k = 0; k < 3; ++k) { lo[k] = box6[k]; hi[k] = box6[3 + k]; }
+    } else {
+        for (int i = 1; i < n; ++i) {
+            const float *q = pts + i * 3;
+            for (int k = 0; k < 3; ++k) {
+                if (q[k] < lo[k]) lo[k] = q[k];
+                if (q[k] > hi[k]) hi[k] = q[k];
+            }
         }
     }
     const Mat &pj = g.proj;
@@ -1423,7 +1432,8 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
     }
 
     smooth_emit_grid(grid, tf, s, xform,
-                     grid == pts ? -1L : (long)smooth_store_entry_off(e));
+                     grid == pts ? -1L : (long)smooth_store_entry_off(e),
+                     grid == pts ? 0 : smooth_store_entry_box(e));
     if (prof) smooth_prof_add(SMOOTH_PROF_SUBDIV,
                               smooth_prof_ticks() - t_sub, 1);
     return 1;
@@ -1496,7 +1506,10 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                                   {rc.x, rc.y, rc.z}};
         const uint32_t tn[3] = {ra.nrm, rb.nrm, rc.nrm};
         SmoothOverride ov;
-        if (smooth_topo_lookup(tp, tn, rc.mgen, &ov) &&
+        const long long t_tp = prof ? smooth_prof_ticks() : 0;
+        const int tp_hit = smooth_topo_lookup(tp, tn, rc.mgen, &ov);
+        if (prof) smooth_prof_add(SMOOTH_PROF_TOPO, smooth_prof_ticks() - t_tp, 1);
+        if (tp_hit &&
             why != SMOOTH_WHY_EDGE && why != SMOOTH_WHY_RADIUS) {
             if (ov.cls == SMOOTH_CLASS_FACET || ov.flat) {
                 /* Left as the DS drew it. */
@@ -1587,7 +1600,19 @@ void emit_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c,
     /* OFF IS ONE COMPARE. smooth_level() is a load of a file-scope int that
        walk_window sets once at boot; with the setting absent it is 0 and this
        function is the same call it always was. */
-    if (smooth_level() > 0 && smooth_try(a, b, c, ra, rb, rc)) return;
+    if (smooth_level() > 0) {
+        const int pf = smooth_prof_on();
+        const long long t0 = pf ? smooth_prof_ticks() : 0;
+        const int took = smooth_try(a, b, c, ra, rb, rc);
+        if (pf) smooth_prof_add(SMOOTH_PROF_TRY, smooth_prof_ticks() - t0, 1);
+        if (took) return;
+        if (pf) {
+            const long long t1 = smooth_prof_ticks();
+            emit_tri_near(a, b, c);
+            smooth_prof_add(SMOOTH_PROF_NEAR, smooth_prof_ticks() - t1, 1);
+            return;
+        }
+    }
     emit_tri_near(a, b, c);
 }
 
