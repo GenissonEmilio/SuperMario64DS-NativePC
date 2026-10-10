@@ -234,7 +234,7 @@ const char *unsafe_reason() {
     PS_UN(kUnFade, rd32(data_0209b454) != 0, "fade");       // fade / scene change
     PS_UN(kUnCutscene, rd32(data_0209fc48) != 0, "cutscene");   // cutscene
     PS_UN(kUnChange, (signed char)data_02092110[0] >= 0, "levelchange");   // level change pending
-    PS_UN(kUnFc68, rd32(data_0209fc68) != 0, "fc68");
+    PS_UN(kUnFc68, rd32(data_0209fc68) == 6, "fc68");       // 1 is the ordinary adventure value; 6 is the ending hold
     PS_UN(kUnTimer, data_0209f22c[0] != 0, "timer");
 #undef PS_UN
     return nullptr;

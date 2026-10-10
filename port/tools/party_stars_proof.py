@@ -276,7 +276,11 @@ def penv(i, relay, kind="party", extra=None):
          "SM64DS_PRESENCE_LOG": "1", "SM64DS_PARTY_STARS_LOG": "1", "SM64DS_HUB_SEAT": str(i)}
     if kind == "party":
         e["SM64DS_PARTY"] = "1"
+    # the first entry into BOB shows a story message that waits for a button: tap A (XInput 0x1000) a few times
+    e["SM64DS_HOST_PAD"] = "1000@420,1000@450,1000@480,1000@510,1000@540"
     e.update(OPENING)
+    if os.environ.get("PSTAR_SKIP"):
+        e["SM64DS_PARTY_STARS_SKIP"] = os.environ["PSTAR_SKIP"]
     if extra:
         e.update(extra)
     return e
