@@ -470,6 +470,24 @@ void wait_until(long long target)
     }
 }
 
+/* Test knobs (off unless set), to drill the two failure paths:
+   SM64DS_PRESENTER_TEST_DROPFAIL=N  the Nth drop of a picture behaves as if
+       its AcquireSync(1,100) timed out.
+   */
+int test_old()
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_PRESENTER_TEST_OLD"); v = e && e[0] == '1'; }
+    return v;
+}
+
+int test_fail_drop()
+{
+    static int want = -2, seen = 0;
+    if (want == -2) { const char *e = getenv("SM64DS_PRESENTER_TEST_DROPFAIL"); want = e ? atoi(e) : 0; }
+    return want > 0 && ++seen == want;
+}
+
 DWORD WINAPI thread_main(LPVOID)
 {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
@@ -509,7 +527,7 @@ DWORD WINAPI thread_main(LPVOID)
         }
         const long long want = sel_t - (long long)((double)g_delay_us * (double)g_qpf / 1e6);
         const long long half = period / 2;
-        int pick = -1;
+        int pick = -1, err_stop = 0;
         int drop[NSMAX], ndrop = 0;
         qlock();
         {
@@ -548,12 +566,26 @@ DWORD WINAPI thread_main(LPVOID)
         qunlock();
         for (int i = 0; i < ndrop; ++i) {
             Slot &d = g_slot[drop[i]];
-            if (d.km2->AcquireSync(1, 100) == S_OK) d.km2->ReleaseSync(0);
+            HRESULT dhr = test_fail_drop() ? (HRESULT)WAIT_TIMEOUT : d.km2->AcquireSync(1, 100);
+            if (dhr != S_OK) {
+                /* Key 1 is still held by the picture: freeing the slot would
+                   leave the game thread's AcquireSync(0) failing on it for good.
+                   Same answer as the pick path: stop, the game thread sees the
+                   error and presents from its own thread. The slot stays used. */
+                if (!test_old()) {          /* TEST_OLD=1: the earlier behaviour, for the before-run of the drill */
+                    _InterlockedExchange(&g_err, dhr ? (long)dhr : (long)E_FAIL);
+                    err_stop = 1;
+                    break;
+                }
+            } else {
+                d.km2->ReleaseSync(0);
+            }
             ++g_dropped;
             qlock();
             d.state = 0;
             qunlock();
         }
+        if (err_stop) break;
         if (pick >= 0) {
             Slot &s = g_slot[pick];
             HRESULT hr = s.km2->AcquireSync(1, 100);
