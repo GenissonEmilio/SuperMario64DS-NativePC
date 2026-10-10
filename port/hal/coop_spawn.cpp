@@ -106,7 +106,7 @@ struct Net {
 };
 Net g_net[kNetMax];
 uint16_t g_counter = 0;
-struct Lnk { bool used, taken; char *a; unsigned uid; short mslot; bool seen; int gsends; unsigned gnext; };
+struct Lnk { bool used, taken; char *a; unsigned uid; short mslot; int area; bool seen; int gsends; unsigned gnext; };
 Lnk g_lnk[kLnkMax];
 bool g_lnk_gone[kSpSlots];
 struct Ack { bool on; uint8_t origin; uint16_t counter; unsigned t; };
@@ -494,7 +494,7 @@ void scan(unsigned now) {
                     if (cls == 178 && linked_to_placed_marker(a, &mslot)) {
                         Lnk *l = lnk_alloc();
                         if (l) {
-                            *l = Lnk(); l->used = true; l->a = a; l->uid = uid; l->mslot = mslot; l->seen = true;
+                            *l = Lnk(); l->used = true; l->a = a; l->uid = uid; l->mslot = mslot; l->area = a_area(a); l->seen = true;
                             if (g_log)
                                 std::fprintf(stderr, "[coopspawn] linked star cls=%u marker slot=%d uid=%u pos=%d,%d,%d frame=%u wall=%lld\n",
                                              cls, (int)mslot, uid, ((const int *)(a + 0x5c))[0] >> 12, ((const int *)(a + 0x5c))[1] >> 12,
@@ -518,24 +518,31 @@ void scan(unsigned now) {
     }
 
     // ---- gone: announced and linked ----------------------------------------
+    // A copy that vanishes while its area is not the one I am standing in was unloaded with the area, not taken:
+    // the others still have theirs, so nothing is sent.
+    const char *me_pl = my_player();
+    const int my_area = me_pl ? a_area(me_pl) : -1;
     for (Net &n : g_net) {
         if (!n.used || n.gone || n.seen) continue;
         n.gone = true; n.gsends = 0; n.gnext = now;
-        if (!n.remote) {
-            ++g_st.gone_local;
-            if (g_log) std::fprintf(stderr, "[coopspawn] gone local cls=%u id=%d/%d frame=%u wall=%lld\n", (unsigned)n.cls, (int)n.origin, (int)n.counter, g_frames, wall_ms());
-        } else {
-            // a remote copy that left on this console: the others hear it (first claim wins)
-            ++g_st.gone_local;
-            if (g_log) std::fprintf(stderr, "[coopspawn] gone local (remote copy) cls=%u id=%d/%d frame=%u wall=%lld\n", (unsigned)n.cls, (int)n.origin, (int)n.counter, g_frames, wall_ms());
+        if (n.area >= 0 && my_area >= 0 && n.area != my_area) {
+            n.gsends = 3;
+            if (g_log) std::fprintf(stderr, "[coopspawn] unloaded with its area cls=%u id=%d/%d area=%d mine=%d frame=%u wall=%lld
+", (unsigned)n.cls, (int)n.origin, (int)n.counter, n.area, my_area, g_frames, wall_ms());
+            continue;
         }
+        ++g_st.gone_local;
+        if (g_log) std::fprintf(stderr, "[coopspawn] gone local%s cls=%u id=%d/%d frame=%u wall=%lld
+", n.remote ? " (remote copy)" : "", (unsigned)n.cls, (int)n.origin, (int)n.counter, g_frames, wall_ms());
         ack_add(n.origin, n.counter, now);
     }
     for (Lnk &l : g_lnk) {
         if (!l.used || l.taken || l.seen) continue;
         l.taken = true; l.gsends = 0; l.gnext = now;
+        if (l.area >= 0 && my_area >= 0 && l.area != my_area) { l.gsends = 3; continue; }
         ++g_st.gone_local;
-        if (g_log) std::fprintf(stderr, "[coopspawn] gone local linked star marker slot=%d frame=%u wall=%lld\n", (int)l.mslot, g_frames, wall_ms());
+        if (g_log) std::fprintf(stderr, "[coopspawn] gone local linked star marker slot=%d frame=%u wall=%lld
+", (int)l.mslot, g_frames, wall_ms());
     }
 
     // ---- red coins gone ------------------------------------------------------
