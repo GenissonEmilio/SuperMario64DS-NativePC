@@ -566,7 +566,7 @@ def snap_guest(c, tmp, store):
             pass
 
 
-def pair(row, host_extra, guest_extra, host_seed_stars, frames_h=1700, frames_g=1600, gap=0.5, exe=None):
+def pair(row, host_extra, guest_extra, host_seed_stars, frames_h=1700, frames_g=1600, gap=0.5, exe=None, guest2_extra=None):
     """-> (host con, guest con, host file path, guest snapshots, events dict)"""
     shutil.rmtree(os.path.join(ARGS.out, row), ignore_errors=True)
     sav = os.path.join(ARGS.out, row, "hostinstall", "save", "coop", "Pair Room.coopsav")
@@ -580,9 +580,20 @@ def pair(row, host_extra, guest_extra, host_seed_stars, frames_h=1700, frames_g=
     cg = Con(row, "guest", exe or ARGS.exe, coop_env(1, relay, False, None, dict(guest_extra, SM64DS_COOP_TEMP_ROOT=gtmp)), frames_g, ARGS.root, ARGS.out)
     snaps = []
     ev = {}
+    cg2 = None
+    snaps2 = []
+    gtmp2 = os.path.join(ARGS.out, row, "guesttemp2")
+    if guest2_extra is not None:
+        os.makedirs(gtmp2, exist_ok=True)
+        time.sleep(gap)
+        cg2 = Con(row, "guest2", exe or ARGS.exe, coop_env(2, relay, False, None, dict(guest2_extra, SM64DS_COOP_TEMP_ROOT=gtmp2)), frames_g, ARGS.root, ARGS.out)
+    ev["guest2"] = cg2
+    ev["snaps2"] = snaps2
     last_host = [open(sav, "rb").read()]
     def tick():
         snap_guest(cg, gtmp, snaps)
+        if cg2 is not None:
+            snap_guest(cg2, gtmp2, snaps2)
         now = time.time()
         gt = cg.text()
         if "t_probe" not in ev and "PROBE star" in gt:
@@ -598,7 +609,7 @@ def pair(row, host_extra, guest_extra, host_seed_stars, frames_h=1700, frames_g=
             except Exception:
                 pass
             last_host[0] = cur
-    wait_all([ch, cg], 900, tick)
+    wait_all([ch, cg] + ([cg2] if cg2 is not None else []), 900, tick)
     stop_relay(rp, rf)
     ev["relay_log"] = rlog
     return ch, cg, sav, snaps, ev
@@ -651,6 +662,59 @@ def row_pair():
     say(hx in gst and gx in gst, "pair: the guest temp image ends with BOTH stars %s (host's came over the wire): %s" % ([gx, hx], gst))
     say(re.search(r"guest took \d+ bits from the host record", tg) is not None, "pair: guest log shows it took the host's bits")
     return ch, cg
+
+
+def row_pair3():
+    """host + TWO guests: each guest collects a different star; every console must end with all of them."""
+    seed = [(0, 0)]
+    g1, g2, hx = (1, 2), (3, 4), (2, 3)
+    ch, cg, sav, snaps, ev = pair("pair3", {"SM64DS_COOPSAVE_PROBE": "star:%d:%d@1300" % hx},
+                                  {"SM64DS_COOPSAVE_PROBE": "star:%d:%d@700" % g1}, seed, frames_h=2200, frames_g=1900,
+                                  guest2_extra={"SM64DS_COOPSAVE_PROBE": "star:%d:%d@1000" % g2})
+    cg2, snaps2 = ev["guest2"], ev["snaps2"]
+    say(ch.rc == 0 and cg.rc == 0 and cg2.rc == 0, "pair3: all three consoles exited 0 (rc %s %s %s)" % (ch.rc, cg.rc, cg2.rc))
+    want = {(0, 0), g1, g2, hx}
+    st = set(stars_of(parse(open(sav, "rb").read())[(0, 0)][2]))
+    say(st == want, "pair3: the host .coopsav holds all four stars (seed, guest 1, guest 2, host): %s" % sorted(st))
+    for n, sn in (("guest 1", snaps), ("guest 2", snaps2)):
+        last = sorted(stars_of(parse(sn[-1][1])[(0, 0)][2])) if sn else []
+        say(set(last) == want, "pair3: %s ends with the same four stars through the host rebroadcast: %s" % (n, last))
+    say(len(snaps2) > 0 and len(snaps) > 0 and sha(os.path.join(ARGS.out, "pair3", "hostinstall", "save", "coop", "Pair Room.coopsav")) != "none",
+        "pair3: both guests ran on their own temp image (%d / %d snapshots)" % (len(snaps), len(snaps2)))
+
+
+def row_swap():
+    """The file swapped under a running coop host: refused before the next write (exit 8), file left as the swapper put it."""
+    d = os.path.join(ARGS.out, "swap")
+    shutil.rmtree(d, ignore_errors=True)
+    for kind in ("normal", "coop"):
+        sav = os.path.join(d, "files", kind, "Swap.coopsav")
+        write(sav, image(TAG_C, payload(stars=[(0, 0)])))
+        e = {"SM64DS_SCENE_WINDOW": "1", "SM64DS_SCENE_FRAMES": "100000", "SM64DS_SKIP_MENU": "1", "SM64DS_BOOT_FILE": "0",
+             "SM64DS_COOP": "1", "SM64DS_COOP_HOST": "1", "SM64DS_COOP_SAVE": sav, "SM64DS_COOP_SAVE_NAME": "Swap",
+             "SM64DS_COOPSAVE_PROBE": "star:1:1@1400", "SM64DS_SAVE_TRACE": "1"}
+        c = Con("swap", kind, ARGS.exe, e, 1800, ARGS.root, ARGS.out)
+        dl = time.time() + 120
+        while time.time() < dl and "[backup] loaded" not in c.text() and c.poll() is None:
+            time.sleep(0.2)
+        loaded = "[backup] loaded" in c.text()
+        time.sleep(2.0)
+        other = image(TAG_N if kind == "normal" else TAG_C, payload(stars=[(7, 7)]))
+        tmp = sav + ".swap"
+        write(tmp, other)
+        os.replace(tmp, sav)
+        after_swap = sha(sav)
+        info("swap %s: the game had loaded the file before the swap: %s" % (kind, loaded))
+        wait_all([c], 300)
+        t = c.text()
+        fin = open(sav, "rb").read()
+        if kind == "normal":
+            say(c.rc == 8 and FENCE.search(t) is not None and sha(sav) == after_swap,
+                "swap: a NORMAL image swapped under the running coop host -> refused before the next write (exit %s), the swapped file untouched" % c.rc)
+        else:
+            st = stars_of(parse(fin)[(0, 0)][2])
+            say(c.rc == 0 and FENCE.search(t) is None and (1, 1) in st,
+                "swap CONTROL: a COOP image swapped in is accepted and the game saves into it (exit %s, stars %s)" % (c.rc, st))
 
 
 def row_forge():
@@ -729,7 +793,7 @@ def main():
     ARGS.base = os.path.abspath(ARGS.base)
     os.makedirs(ARGS.out, exist_ok=True)
     table = {"unit": row_unit, "fence": row_fence, "host": row_host, "guest": row_guest,
-             "timeout": row_timeout, "pair": row_pair, "forge": row_forge}
+             "timeout": row_timeout, "pair": row_pair, "forge": row_forge, "pair3": row_pair3, "swap": row_swap}
     for r in ARGS.rows:
         table[r]()
     bad = [r for r in RES if r.startswith("FAIL")]
