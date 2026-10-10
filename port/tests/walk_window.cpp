@@ -4375,6 +4375,7 @@ static int host_key_script(int vk)
         fprintf(stderr, "[hostkey] f%d vk %02x %s\n", g_host_key_frame, vk,
                 now ? "down" : "up");
         prev[vk] = (unsigned char)now;
+        if (now) key_stale[vk] = 0;        /* a fresh scripted press is a new press: the stale latch (SETPAGEFIX1) only holds the old one */
     }
     return now;
 }
@@ -4383,7 +4384,7 @@ extern "C" int port_host_key_script(int vk) { return host_key_script(vk); }   /*
 
 static int key_live(int vk)
 {
-    if (host_key_script(vk)) return 1;
+    if (host_key_script(vk)) return ((unsigned)vk < 256 && key_stale[vk]) ? 0 : 1;
     if (g_selftest) return 0;
     if (g_rebind_capture) return 0;
     if (g_padlearn) return 0;           /* a pad is being taught */
@@ -6075,7 +6076,9 @@ static int sp_frame(int pad_live, const XPad *pad)
     if (in.inject_key && g_rebind_capture) g_rebind_key = in.inject_key;   /* SETPAGE_SCRIPT key:<vk>: what the window procedure would have seen */
     if (!settings_page_frame(&in)) {
         menu_on = 0;
-        key_stale[VK_ESCAPE] = 1; key_stale[VK_F5] = 1;       /* the Escape that closed it is still down: not a fresh F5 for the debug menu */
+        /* the Escape or Backspace that closed it is still down: not a fresh F5 for the debug menu, not a fresh Select for the ROM */
+        key_stale[VK_ESCAPE] = 1; key_stale[VK_F5] = 1; key_stale[VK_BACK] = 1;
+        if (g_key[HOST_KEY_SELECT] > 0 && g_key[HOST_KEY_SELECT] < 256) key_stale[g_key[HOST_KEY_SELECT]] = 1;
         if ((in.keys & SPK_BACK) && pad_live && (pad->buttons & 0x2000)) menu_b_swallow = 1;   /* the B that closed it is not a punch */
         fprintf(stderr, "[settings] page closed\n");
     }
