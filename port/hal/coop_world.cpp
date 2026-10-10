@@ -71,8 +71,8 @@ CoopGroups g_grp;
 CoopWorldStats g_st = {};
 bool g_env_read = false, g_on = false, g_log = false, g_sync = true;
 bool g_handlers = false;
-// proof-only control: SM64DS_COOP_LEGACY=star,trust,retry,clear switches the matching follow-up fix off (the 1451d2e257 behaviour)
-bool g_leg_star = false, g_leg_trust = false, g_leg_retry = false, g_leg_clear = false;
+// proof-only control: SM64DS_COOP_LEGACY=star,trust,retry,clear,flush switches the matching follow-up fix off (the 1451d2e257 behaviour)
+bool g_leg_star = false, g_leg_trust = false, g_leg_retry = false, g_leg_clear = false, g_leg_flush = false;
 struct ReviveKnob { unsigned frame; int slot; int cls; bool done; };
 ReviveKnob g_revive = {0, -1, 0, true};
 int  g_my = -1;
@@ -143,6 +143,7 @@ void read_env() {
         g_leg_trust = std::strstr(lg, "trust") != nullptr;
         g_leg_retry = std::strstr(lg, "retry") != nullptr;
         g_leg_clear = std::strstr(lg, "clear") != nullptr;
+        g_leg_flush = std::strstr(lg, "flush") != nullptr;
     }
     if (const char *rv = std::getenv("SM64DS_COOP_REVIVE")) {
         unsigned f = 0; int sl = 0, cl = 0;
@@ -492,8 +493,34 @@ void dump_bits(const char *why) {
     std::fprintf(stderr, "[coopbits] %s level=%d act=%d part=%d n=%d bits=%s\n", why, g_key.level, g_key.act, g_part, n, hex);
 }
 
+// My unconfirmed kills, once more under the OLD group key, before the key changes: the retry loop
+// stops when I leave, and the others would never hear them. Three copies back to back (the loss
+// model is per datagram; the owner's apply is idempotent).
+void flush_on_leave() {
+    if (!g_sync || !g_key.valid() || g_part < 0 || !g_grp.established() || g_grp.others() <= 0) return;
+    int total = 0;
+    for (int i = 0; i < g_out_n;) {
+        uint16_t slots[kCoopMaxDelta]; int n = 0;
+        for (; i < g_out_n && n < kCoopMaxDelta; ++i)
+            if (g_out[i].sent != 255) slots[n++] = g_out[i].slot;
+        if (n == 0) break;
+        unsigned char buf[sizeof(CoopDeltaWire) + 2 * kCoopMaxDelta];
+        CoopDeltaWire h; std::memset(&h, 0, sizeof h); h.key = wire_key(g_key); h.count = (uint8_t)n;
+        std::memcpy(buf, &h, sizeof h);
+        std::memcpy(buf + sizeof h, slots, (size_t)n * 2);
+        for (int c = 0; c < 3; ++c)
+            if (send_kind(kHubTagCoopWorld, kWorldDeathDelta, buf, (int)sizeof h + 2 * n)) ++g_st.sent_delta;
+        total += n;
+    }
+    if (total > 0) {
+        comms_hub_pump();
+        if (g_log) std::fprintf(stderr, "[coop] leave flush: %d unconfirmed kills resent under the old key\n", total);
+    }
+}
+
 void join_group(const CoopKey &nk) {
     const unsigned now = comms_hub_now_ms();
+    if (!g_leg_flush) flush_on_leave();
     g_grp.leave();
     g_out_n = 0;
     std::memset(g_remote, 0, sizeof g_remote);
