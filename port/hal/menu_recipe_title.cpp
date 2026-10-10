@@ -807,7 +807,7 @@ void build_main_pc(MenuLayout *L, bool intro)
             face.alpha = (uint8_t)(fa >= 255 ? 0 : fa);
             menu_add_piece(L, face);
         }
-        MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, face_dx(fk) - (30 * hk + hd / 2) / hd, face_dy(fk), hk, hd);
+        MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 134, MENU_AX_C, MENU_AY_T, face_dx(fk) - (30 * hk + hd / 2) / hd, face_dy(fk), hk, hd);
         head.touch = 1; head.nodraw = 1;
         menu_add_piece(L, head);
         MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
