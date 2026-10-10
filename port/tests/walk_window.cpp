@@ -425,6 +425,7 @@ static bool winapi_load(void)
 #include "hal/editor_channel.h"   /* run lvled lane B: the editor control channel */
 #include "hal/gpu_present.h"      /* run hd2 lane GPU1: the optional D3D11 present */
 #include "hal/presenter.h"        /* run hunt8 lane PRESENTER1: the presenter thread's clock */
+#include "hal/screen_gap.h"       /* run hunt8 lane SCENEINTERP1: the stacked layout, read live */
 #include "hal/gpu_raster.h"       /* run hd2 lane GPU2: the optional D3D11 renderer */
 #include "hal/gpu_device.h"       /* the shared device, and the card's own clock */
 
@@ -7623,6 +7624,24 @@ static void present_body(void)
  * as before. */
 static ntr::Framebuffer *g_ip_fb, *g_ip_p3, *g_ip_p2, *g_ip_p4, *g_ip_p5;
 static const ntr::Framebuffer *g_ip_level_fb;
+/* run hunt8, lane SCENEINTERP1: SMOOTH MOTION ON THE SCENE PATH. The scene
+   loop (scene_window_run, the title, the menus, the file select, the star
+   select, the minigames) serves the same interpolator the level loop does.
+   g_ip_skip_p5: the pictures between ticks need no "host overlay" snapshot
+   (p5) because on the scene path the overlays are put on the stacked image
+   instead (see ip_stack_for_blend). g_ip_stack_*: the stacked layout's tick
+   picture is kept in a buffer of its own, because the image
+   hal_sub_screen_stacked_image hands back is rewritten by every compose,
+   blended pictures included. */
+static int g_ip_skip_p5;
+static int g_ip_stack_on;               /* this tick's stacked image is kept in g_ip_stack_snap */
+static int g_ip_stack_ui;               /* host UI is painted on it (F3, F5, toast) */
+static int g_ip_stack_fast;             /* this tick's blends overwrite only engine A's rows of the kept image */
+static const uint32_t *g_ip_stack_final; /* the tick's own stacked image (hal's buffer), untouched while fast */
+static uint32_t *g_ip_stack_snap, *g_ip_stack_pre;
+static size_t g_ip_stack_cap, g_ip_stack_n;
+static double g_si_ms[6];   /* ms summed: hook stage 1, stage 2, kept-image copy (per tick); stacked compose (per blend) */
+static unsigned g_si_blend_n;
 static int g_ip_fade_on, g_ip_fade_evy, g_ip_fade_white;
 /* run hunt8, lane FADEINTERP1: the engine A fade of the previous tick, to tell
    a fade that holds still (blendable) from one in motion (a snap). */
@@ -7738,7 +7757,16 @@ static void ip_retire_tick(ntr::Framebuffer &fb)
    is g_ip_rate_ok, set at each commit. */
 static void ip_arm(const ntr::Framebuffer *level_fb)
 {
-    if (g_ip_on >= 0) return;
+    if (g_ip_on >= 0) {
+        /* run hunt8, lane SCENEINTERP1: the scene loop may have armed it for
+           the scene's framebuffer; the level loop takes it back */
+        if (g_ip_on > 0) {
+            g_ip_level_fb = level_fb;
+            g_ip_skip_p5 = 0;
+            g_ip_stack_on = 0;
+        }
+        return;
+    }
     const int rate = port_frame_rate_target();
     g_ip_on = (host_setting_smooth_motion() && rate > 0) ? 1 : 0;
     if (!g_ip_on) return;
@@ -7839,6 +7867,7 @@ static int ip_build(double alpha)
                 if (a[x] != b[x]) row[x] = b[x];
         }
     }
+    if (!g_ip_skip_p5)
     for (int y = 0; y < ntr::active_h; ++y) {
         uint32_t *row = o.px[y];
         const uint32_t *a = g_ip_p4->px[y], *b = g_ip_p5->px[y];
@@ -7928,6 +7957,144 @@ static void ip_note_cam(double alpha)
     presenter_note_cam(eye);
 }
 
+/* run hunt8, lane SCENEINTERP1: PROOF INSTRUMENTS (inert unless asked for).
+   SM64DS_SCENE_PICHASH=1       one "[pichash] t<tick> <hash>" line per scene
+                                tick: the tick's own presented picture (the
+                                stacked image with the host UI, or the
+                                framebuffer in the inset layout).
+   SM64DS_SCENE_PICDUMP=<dir>:<from>:<count>
+                                from scene tick <from>, write <count> of the
+                                pictures the scene path hands the window, the
+                                tick's own (t) and the blended ones (b), as
+                                BMPs in <dir>, with a "[pic]" line each.
+   SM64DS_SCENE_RAMHASH=1       one "[scene-ramhash] f<frame> <main> <arena>"
+                                line per tick, the game's whole state; with
+                                SM64DS_SCENE_RAMMASK=<file> (u32 word indices
+                                into the arena, zeroed before hashing) the words
+                                that differ between two identical runs are
+                                masked out. SM64DS_SCENE_RAMDUMP=<frame>:<path>
+                                writes the arena of that tick, to build a mask. */
+static unsigned si_fnv(const void *p, size_t bytes)
+{
+    const unsigned *w = (const unsigned *)p;
+    unsigned long long h = 14695981039346656037ull;
+    for (size_t i = 0; i < bytes / 4; ++i) {
+        h ^= w[i];
+        h *= 1099511628211ull;
+    }
+    return (unsigned)(h ^ (h >> 32));
+}
+static unsigned si_hash_px(const uint32_t *px, int w, int h, int stride)
+{
+    unsigned long long a = 14695981039346656037ull;
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x) {
+            a ^= px[(size_t)y * stride + x];
+            a *= 1099511628211ull;
+        }
+    return (unsigned)(a ^ (a >> 32));
+}
+static unsigned g_si_pic_tick;      /* the scene tick number the pictures belong to */
+static int g_si_pic_seq;
+static void si_pic(char kind, double alpha, const ntr::Framebuffer *fb, const uint32_t *stack)
+{
+    static int init;
+    static char dir[400];
+    static int from, count;
+    static int hash_on;
+    if (!init) {
+        init = 1;
+        const char *e = getenv("SM64DS_SCENE_PICDUMP");
+        if (e) {
+            /* <dir>:<from>:<count>, parsed from the end (a drive letter has a colon) */
+            const char *b = strrchr(e, ':');
+            const char *a = (b && b > e) ? (const char *)memchr(e, 0, 0) : 0;
+            if (b) {
+                for (const char *q = b - 1; q > e; --q)
+                    if (*q == ':') { a = q; break; }
+            }
+            if (a && b && a > e) {
+                size_t n = (size_t)(a - e);
+                if (n >= sizeof dir) n = sizeof dir - 1;
+                memcpy(dir, e, n);
+                dir[n] = 0;
+                from = atoi(a + 1);
+                count = atoi(b + 1);
+                CreateDirectoryA(dir, 0);
+            }
+        }
+    }
+    if (!dir[0] || (int)g_si_pic_tick < from || g_si_pic_seq >= count) return;
+    int w = 0, h = 0;
+    unsigned hs;
+    if (stack) {
+        hal_sub_screen_stacked_size(&w, &h);
+        hs = si_hash_px(stack, w, h, w);
+    } else {
+        w = ntr::active_w;
+        h = ntr::active_h;
+        hs = si_hash_px(&fb->px[0][0], w, h, ntr::SCREEN_W);
+    }
+    char path[520];
+    _snprintf(path, sizeof path, "%s/pic_%04d_t%u_%c.bmp", dir, g_si_pic_seq,
+              g_si_pic_tick, kind);
+    /* a tick's own picture is written only when asked (SM64DS_SCENE_PICDUMP_T=1):
+       the write is slow enough to make the tick late and so starve the blends */
+    static int dump_t = -1;
+    if (dump_t < 0) dump_t = getenv("SM64DS_SCENE_PICDUMP_T") ? 1 : 0;
+    int ok = (kind == 't' && !dump_t) ? 0
+           : stack ? ntr::ppu_write_bmp_px(path, stack, w, h)
+                   : ntr::ppu_write_bmp(path, *fb);
+    fprintf(stderr, "[pic] seq %d tick %u %c alpha %.4f hash %08x %s\n", g_si_pic_seq,
+            g_si_pic_tick, kind, alpha, hs, ok ? "written" : "NOT written");
+    ++g_si_pic_seq;
+}
+
+/* run hunt8, lane SCENEINTERP1: a picture between ticks in the stacked layout.
+   The blended top screen (g_ip_fb) is composed with the tick's bottom screen
+   into the shared stacked buffer, the tick's host UI (F3, F5 menu, toast) is
+   put back over it wherever the tick's final image differs from the image
+   before the UI went on, and the present is pointed at it. The caller puts
+   g_present_stack back to the tick's kept image afterwards. */
+static void ip_stack_for_blend(void)
+{
+    const long long t0 = ip_qpc();
+    if (g_ip_stack_fast) {
+        /* Everything in the stacked image except engine A's picture is the
+           tick's own and constant between ticks (the bottom or top engine B
+           panel, the black margins); ppu_compose_stacked puts engine A in
+           with a row copy first of all, so that is all that is redone. The
+           caller has checked there is no gap band and no headroom, the only
+           parts of the layout that read engine A's pixels. */
+        const ntr::StackLayout &lay = *hal_screen_layout();
+        const int a_y = lay.main_lower ? lay.bottom_y : lay.top_y;
+        const int rows = lay.pan_x0 > 0 ? (lay.main_lower ? lay.pan_h : lay.top_h)
+                                        : ntr::active_h;
+        uint32_t *W = g_ip_stack_snap;
+        for (int y = 0; y < rows; ++y)
+            memcpy(W + (size_t)(a_y + y) * lay.w, &g_ip_fb->px[y][0],
+                   (size_t)ntr::active_w * sizeof(uint32_t));
+        if (g_ip_stack_ui) {
+            const size_t i0 = (size_t)a_y * lay.w, i1 = (size_t)(a_y + rows) * lay.w;
+            for (size_t i = i0; i < i1; ++i)
+                if (g_ip_stack_final[i] != g_ip_stack_pre[i]) W[i] = g_ip_stack_final[i];
+        }
+        ++g_si_blend_n;
+        g_si_ms[3] += ip_ms_since(t0);
+        g_present_stack = W;
+        return;
+    }
+    uint32_t *img = hal_sub_screen_stacked_image(&g_ip_fb->px[0][0]);
+    if (!img) return;
+    ++g_si_blend_n;
+    g_si_ms[3] += ip_ms_since(t0);
+    if (g_ip_stack_ui) {
+        for (size_t i = 0; i < g_ip_stack_n; ++i)
+            if (g_ip_stack_snap[i] != g_ip_stack_pre[i]) img[i] = g_ip_stack_snap[i];
+    }
+    g_present_stack = img;
+}
+
 /* One picture: blended when this tick can, the tick's own frame otherwise. */
 static void ip_present_alpha(double alpha)
 {
@@ -7953,9 +8120,13 @@ static void ip_present_alpha(double alpha)
     }
     QueryPerformanceCounter(&q1);
     const ntr::Framebuffer *was = g_present_fb;
+    const uint32_t *was_stack = g_present_stack;
     g_present_fb = g_ip_fb;
+    if (g_ip_stack_on) ip_stack_for_blend();
+    si_pic('b', alpha, g_ip_fb, g_ip_stack_on ? g_present_stack : 0);
     present();
     g_present_fb = was;
+    g_present_stack = was_stack;
     QueryPerformanceCounter(&q2);
     ++g_ip_blended;
     ++g_ip_tick_blends;
@@ -8276,6 +8447,430 @@ static int ip_fit_commit(void)
         g_ip_w_after_slot = g_ip_w_after_tick = 0;
     }
     return this_slow;
+}
+
+/* ---- SMOOTH MOTION ON THE SCENE PATH (run hunt8, lane SCENEINTERP1) ----------
+ *
+ * The title, the main menu, the file select, the star select and the minigames
+ * run through hal/scene_boot.cpp's port_scene_tick, and until now drew exactly
+ * the tick's own picture: the presenter repeated it two or three times, so the
+ * title sat at about 60 distinct pictures a second while a course made 140.
+ * This is the scene loop's half of the level loop's SmoothMotion. It is the
+ * SAME machinery, not a second interpolator: ip_fit_commit, gx_interp_commit,
+ * the snapshots, ip_build, the slot presenter and the pacer's presentation
+ * clock all run unchanged. What is new is where the tick reports its moments
+ * (scene_ip_hook, called from port_scene_tick: stage 1 after the 3D, stage 2
+ * after the 2D and the bottom screen) and the stacked layout's picture, which
+ * is composed on the processor from the blended top screen and the tick's
+ * bottom screen (ip_stack_for_blend).
+ *
+ * THE 2D IS NEVER RE-RUN. A picture between ticks is the replayed 3D, with
+ * the tick's 2D put back over it wherever the 2D differs from the 3D layer
+ * (p3 against p2), exactly as on a level. The bottom screen is the tick's own.
+ *
+ * SNAP RULES (every picture of the tick is the tick's own, as before):
+ *   paused    tick_game is 0 (the F5 menu holds the scene still)
+ *   debug     the F5 menu is up
+ *   menu1     hal_menu_live(): a one-screen menu owns the picture
+ *   early     the first two ticks of the scene
+ *   slow      ip_fit_commit's fallback (a blend does not fit on this machine)
+ *   layout    the stacked layout changed size this tick
+ *   swap      the screens swapped (POWCNT1 bit 15 moved since the last tick)
+ *   fade      an engine A fade in motion, or engine B's fade in motion
+ *   minigame  a Rec Room minigame (scene ids 0x169..0x186) unless
+ *             SM64DS_SCENE_INTERP_MG=1
+ *   commit    gx_interp_commit's own reasons: no previous tick, a camera cut,
+ *             the texture cache dropped, no sealed record
+ * SM64DS_SCENE_INTERP=0 turns the whole thing off (the scene path as before). */
+extern "C" int IsMinigameActorID(unsigned int id);
+extern "C" int hal_menu_live(void);
+extern "C" int port_fader_blend_state_sub(int *evy, int *toWhite);
+extern "C" void (*port_scene_ip_hook)(int stage, void *fb, int frame, int tick_game);
+extern "C" int port_scene_env_want(void);
+
+enum { SI_PAUSED, SI_DEBUG, SI_MENU, SI_EARLY, SI_SLOW, SI_LAYOUT, SI_SWAP,
+       SI_FADE, SI_SUBFADE, SI_MG, SI_COMMIT, SI_TWOD, SI_UI, SI_N };
+static unsigned g_si_count[SI_N];
+static unsigned g_si_ticks, g_si_ok;
+static const char *const g_si_name[SI_N] = {
+    "paused", "debug", "menu1", "early", "slow", "layout", "swap", "fade",
+    "subfade", "minigame", "commit", "twod", "ui" };
+
+static void scene_ip_note(int why)
+{
+    if (why >= 0 && why < SI_N) ++g_si_count[why];
+}
+
+static void scene_ip_report(void)
+{
+    if (!g_si_ticks) return;
+    fprintf(stderr, "[scene-interp] %u scene ticks, %u blendable; snaps:", g_si_ticks,
+            g_si_ok);
+    for (int i = 0; i < SI_N; ++i)
+        if (g_si_count[i]) fprintf(stderr, " %s %u", g_si_name[i], g_si_count[i]);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "[scene-interp] per tick ms: hook stage 1 %.2f, stage 2 %.2f, kept-image copy %.2f (of stage 1: p3 snapshot %.2f, commit %.2f) | per blend: stacked compose %.2f (%u blends)\n",
+            g_si_ms[0] / g_si_ticks, g_si_ms[1] / g_si_ticks, g_si_ms[2] / g_si_ticks, g_si_ms[4] / g_si_ticks, g_si_ms[5] / g_si_ticks,
+            g_si_blend_n ? g_si_ms[3] / g_si_blend_n : 0.0, g_si_blend_n);
+    fflush(stderr);
+}
+
+static int scene_ip_enabled(void)
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_SCENE_INTERP");
+        on = (e && e[0] == '0' && e[1] == '\0') ? 0 : 1;
+    }
+    return on;
+}
+
+static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game);
+static void scene_ip_hook(int stage, void *fbp, int frame, int tick_game)
+{
+    const long long t0 = ip_qpc();
+    scene_ip_hook_body(stage, fbp, frame, tick_game);
+    g_si_ms[stage == 1 ? 0 : 1] += ip_ms_since(t0);
+}
+static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
+{
+    /* the interlude and any other scene tick that is not this loop's own */
+    if (g_ip_on <= 0 || !g_ip_level_fb || g_present_fb != g_ip_level_fb) return;
+    ntr::Framebuffer &fb = *(ntr::Framebuffer *)fbp;
+    static int prev_pow = -1, prev_gen_set;
+    static unsigned prev_gen;
+    static int sub_prev_on, sub_prev_evy, sub_prev_white;
+    if (stage == 1) {
+        ++g_si_ticks;
+        g_ip_tick_ok = 0;
+        /* a scene tick is never held on the card (the stacked layout is not
+           allowed, the inset scenes never asked): if one is, read it back */
+        if (ntr::gx_card_overlay_active())
+            ntr::gx_card_settle_because("the scene path (SmoothMotion)");
+        const int ip_slow = ip_fit_commit();
+        if (!ip_slow) {
+            const long long ts = ip_qpc();
+            ip_snap(g_ip_p3, fb);
+            g_si_ms[4] += ip_ms_since(ts);
+            g_ip_snapstage = 1;
+        }
+        int why = -1;
+        if (!tick_game) why = SI_PAUSED;
+        else if (menu_on) why = SI_DEBUG;
+        else if (hal_menu_live()) why = SI_MENU;
+        else if (frame < 2) why = SI_EARLY;
+        else if (ip_slow) why = SI_SLOW;
+        else {
+            const unsigned gen = hal_sub_screen_stacked_generation();
+            const int pow = *(volatile unsigned short *)0x04000304 & 0x8000 ? 1 : 0;
+            if (prev_gen_set && gen != prev_gen) why = SI_LAYOUT;
+            else if (prev_pow >= 0 && pow != prev_pow) why = SI_SWAP;
+            prev_gen = gen;
+            prev_gen_set = 1;
+            prev_pow = pow;
+            if (why < 0) {
+                static int mg_ok = -1;
+                if (mg_ok < 0) {
+                    const char *e = getenv("SM64DS_SCENE_INTERP_MG");
+                    mg_ok = (e && e[0] == '1') ? 1 : 0;
+                }
+                const int sc = port_scene_env_want();
+                if (!mg_ok && sc >= 0 && IsMinigameActorID((unsigned)sc))
+                    why = SI_MG;
+            }
+        }
+        if (why >= 0) scene_ip_note(why);
+        ntr::GxInterpStats ist;
+        const long long tcm = ip_qpc();
+        g_ip_tick_ok = ntr::gx_interp_commit(data_0209b3ec, why >= 0 ? 1 : 0, &ist);
+        g_si_ms[5] += ip_ms_since(tcm);
+        if (why < 0 && !g_ip_tick_ok) scene_ip_note(SI_COMMIT);
+        ++g_ip_serial;
+        g_ip_tick_shown = 0;
+        g_ip_tick_final = 0;
+        g_ip_tick_blends = 0;
+        g_ip_tick_refused = 0;
+        g_ip_tick_late = 0;
+        g_ip_rate_ok = port_frame_rate_target() * port_frame_divider() > 60;
+        {
+            LARGE_INTEGER qf;
+            QueryPerformanceFrequency(&qf);
+            g_ip_tick_t0 = g_ip_t0;
+            g_ip_tick_len = (long long)(PORT_VBLANK_MS * port_frame_divider() *
+                                        (double)qf.QuadPart / 1000.0 + 0.5);
+        }
+        g_ip_fade_on = 0;
+        g_ip_fade_masked = 0;
+        if (ip_trace())
+            fprintf(stderr, "[interp] scene tick f%d groups %d matched %d "
+                    "unmatched %d teleport %d shape %d snap %d (%s) eye_step "
+                    "%.3f turn %.2f moved %.3f\n", port_rom_frame(), ist.groups,
+                    ist.matched, ist.unmatched, ist.teleport, ist.shape, ist.snap,
+                    why >= 0 ? g_si_name[why] : "-", ist.eye_step, ist.turn_deg,
+                    ist.max_moved);
+        return;
+    }
+    /* stage 2: the 2D, the bottom screen and engine A's fade are in fb */
+    if (!g_ip_tick_ok) return;
+    if (port_gpu_twod_live()) {
+        g_ip_tick_ok = 0;
+        scene_ip_note(SI_TWOD);
+        return;
+    }
+    int fe = 0, fw = 0;
+    const int fnow = port_fader_blend_state(&fe, &fw);
+    int fade_const = fnow && g_ip_prev_fade && g_ip_prev_evy == fe &&
+                     g_ip_prev_white == fw;
+    g_ip_prev_fade = fnow;
+    g_ip_prev_evy = fe;
+    g_ip_prev_white = fw;
+    int se = 0, sw = 0;
+    const int son = port_fader_blend_state_sub(&se, &sw);
+    const int sub_moving = (son != sub_prev_on) ||
+                           (son && (se != sub_prev_evy || sw != sub_prev_white));
+    sub_prev_on = son;
+    sub_prev_evy = se;
+    sub_prev_white = sw;
+    if (fade_const && port_engine_a_bright_mask()) fade_const = 0;
+    if (fade_const) {
+        /* a fade that holds still is not motion: blend, and give the pictures
+           between ticks the same fade (FADEINTERP1) */
+        g_ip_fade_masked = 0;
+        g_ip_fade_on = 1;
+        g_ip_fade_evy = fe;
+        g_ip_fade_white = fw;
+    } else if (fnow) {
+        g_ip_tick_ok = 0;
+        scene_ip_note(SI_FADE);
+        return;
+    }
+    if (sub_moving) {
+        g_ip_tick_ok = 0;
+        scene_ip_note(SI_SUBFADE);
+        return;
+    }
+    ++g_si_ok;
+    ip_snap(g_ip_p2, fb);
+    /* p4 (the picture after the fade) is read only by a masked fade, which
+       snaps above, and by the host-UI diff of the inset layout */
+    if (!hal_sub_screen_stacked()) ip_snap(g_ip_p4, fb);
+    g_ip_snapstage = 2;
+    if ((g_si_ticks % 240) == 0 && (ip_trace() || getenv("SM64DS_SCENE_INTERP_TRACE")))
+        scene_ip_report();
+}
+
+/* The stacked image before the host's own UI goes on it. Kept only while there
+   is UI to put back over a blended picture (F3, the F5 menu, a toast). */
+static size_t g_ip_pre_n;
+static int ip_stack_reserve(size_t n)
+{
+    if (n > g_ip_stack_cap) {
+        free(g_ip_stack_snap);
+        free(g_ip_stack_pre);
+        g_ip_stack_snap = (uint32_t *)malloc(n * sizeof(uint32_t));
+        g_ip_stack_pre = (uint32_t *)malloc(n * sizeof(uint32_t));
+        g_ip_stack_cap = (g_ip_stack_snap && g_ip_stack_pre) ? n : 0;
+    }
+    return g_ip_stack_cap >= n;
+}
+static void ip_scene_stack_pre(int stacked, const uint32_t *stack_img, int host_ui)
+{
+    g_ip_pre_n = 0;
+    if (!stacked || !stack_img || !host_ui || g_ip_on <= 0 ||
+        !g_ip_level_fb || g_present_fb != g_ip_level_fb || !g_ip_tick_ok)
+        return;
+    int w = 0, h = 0;
+    hal_sub_screen_stacked_size(&w, &h);
+    const size_t n = (size_t)w * (size_t)h;
+    if (!n || !ip_stack_reserve(n)) return;
+    memcpy(g_ip_stack_pre, stack_img, n * sizeof(uint32_t));
+    g_ip_pre_n = n;
+}
+
+/* The scene tick's own picture, right after its work: the same hand-off the
+   level loop makes (ip_present_tick), with the stacked image kept aside so the
+   pictures between ticks can be composed without losing it. */
+static unsigned *g_si_mask;
+static size_t g_si_mask_n;
+extern "C" void *port_arena_base(void);
+extern "C" void *port_arena_end(void);
+static void si_ram_hash(int frame)
+{
+    static int on = -1, dump_frame = -1;
+    static const char *dump_path;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_SCENE_RAMHASH");
+        on = (e && atoi(e) > 0) ? 1 : 0;
+        e = getenv("SM64DS_SCENE_RAMDUMP");
+        if (e && strchr(e, ':')) {
+            dump_frame = atoi(e);
+            dump_path = strchr(e, ':') + 1;
+            on = 1;
+        }
+        e = getenv("SM64DS_SCENE_RAMMASK");
+        if (e && *e) {
+            if (FILE *f = fopen(e, "rb")) {
+                fseek(f, 0, SEEK_END);
+                long n = ftell(f);
+                fseek(f, 0, SEEK_SET);
+                g_si_mask = (unsigned *)malloc((size_t)n);
+                if (g_si_mask && fread(g_si_mask, 1, (size_t)n, f) == (size_t)n)
+                    g_si_mask_n = (size_t)n / 4;
+                fclose(f);
+            }
+        }
+    }
+    if (!on) return;
+    char *ab = (char *)port_arena_base();
+    char *ae = (char *)port_arena_end();
+    if (dump_frame >= 0 && frame == dump_frame && dump_path && ab && ae > ab) {
+        char p[600];
+        _snprintf(p, sizeof p, "%s.arena", dump_path);
+        if (FILE *f = fopen(p, "wb")) { fwrite(ab, 1, (size_t)(ae - ab), f); fclose(f); }
+    }
+    const unsigned m = si_fnv((const void *)(size_t)0x02000000u, 0x400000u);
+    unsigned a = 0;
+    if (ab && ae > ab) {
+        const size_t bytes = (size_t)(ae - ab);
+        static unsigned *copy;
+        static size_t copy_bytes;
+        if (copy_bytes != bytes) {
+            free(copy);
+            copy = (unsigned *)malloc(bytes);
+            copy_bytes = copy ? bytes : 0;
+        }
+        if (copy) {
+            memcpy(copy, ab, bytes);
+            for (size_t i = 0; i < g_si_mask_n; ++i)
+                if ((size_t)g_si_mask[i] * 4 < bytes) copy[g_si_mask[i]] = 0;
+            a = si_fnv(copy, bytes);
+        }
+    }
+    fprintf(stderr, "[scene-ramhash] f%d %08x %08x\n", frame, m, a);
+}
+
+/* SM64DS_SCENE_INTERP_FORCE=<k> (a proof instrument, inert unless set): after
+   each blendable scene tick, build k pictures at alpha j/k (j = 1..k) off the
+   pacer, in the same way the pacer does, and print each one's hash. The last
+   (alpha 1) must be the tick's own picture, bit for bit: the line says so. It
+   makes the replay run on every tick whatever the pacer has time for, which is
+   what a state proof needs. */
+static void ip_scene_force(int stacked, unsigned tick_hash)
+{
+    static int k = -1;
+    if (k < 0) {
+        const char *e = getenv("SM64DS_SCENE_INTERP_FORCE");
+        k = e ? atoi(e) : 0;
+    }
+    if (k <= 0 || g_ip_on <= 0 || !g_ip_tick_ok) return;
+    for (int j = 1; j <= k; ++j) {
+        const double alpha = (double)j / k;
+        if (!ip_build(alpha)) {
+            fprintf(stderr, "[blendhash] t%u j%d/%d SNAP" "\n", g_si_pic_tick, j, k);
+            continue;
+        }
+        unsigned hs;
+        const uint32_t *was_stack = g_present_stack;
+        if (stacked && g_ip_stack_on) {
+            ip_stack_for_blend();
+            int w = 0, h = 0;
+            hal_sub_screen_stacked_size(&w, &h);
+            hs = si_hash_px(g_present_stack, w, h, w);
+            si_pic('b', alpha, g_ip_fb, g_present_stack);
+            g_present_stack = was_stack;
+        } else {
+            hs = si_hash_px(&g_ip_fb->px[0][0], ntr::active_w, ntr::active_h, ntr::SCREEN_W);
+            si_pic('b', alpha, g_ip_fb, 0);
+        }
+        fprintf(stderr, "[blendhash] t%u j%d/%d alpha %.4f %08x%s" "\n", g_si_pic_tick, j, k,
+                alpha, hs, j == k ? (hs == tick_hash ? " == the tick's picture" : " DIFFERS from the tick's picture") : "");
+    }
+}
+
+static void ip_scene_present(int stacked, uint32_t *stack_img,
+                             ntr::Framebuffer &fb, int host_ui)
+{
+    unsigned tick_hash = 0;
+    g_ip_stack_fast = 0;
+    {
+        static unsigned tick_no;
+        static int hash_on = -1;
+        if (hash_on < 0) hash_on = (getenv("SM64DS_SCENE_PICHASH") || getenv("SM64DS_SCENE_INTERP_FORCE")) ? 1 : 0;
+        g_si_pic_tick = tick_no++;
+        if (hash_on) {
+            int w = 0, h = 0;
+            unsigned hs;
+            if (stacked && stack_img) {
+                hal_sub_screen_stacked_size(&w, &h);
+                hs = si_hash_px(stack_img, w, h, w);
+            } else {
+                hs = si_hash_px(&fb.px[0][0], ntr::active_w, ntr::active_h, ntr::SCREEN_W);
+            }
+            tick_hash = hs;
+            fprintf(stderr, "[pichash] t%u %08x\n", g_si_pic_tick, hs);
+        }
+        si_pic('t', 1.0, &fb, (stacked && stack_img) ? stack_img : 0);
+    }
+    g_ip_stack_on = 0;
+    if (g_ip_on > 0 && g_ip_tick_ok && g_ip_level_fb && g_present_fb == g_ip_level_fb) {
+        if (stacked) {
+            int w = 0, h = 0;
+            hal_sub_screen_stacked_size(&w, &h);
+            const size_t n = (size_t)w * (size_t)h;
+            if (!stack_img || !n || !ip_stack_reserve(n) ||
+                (host_ui && g_ip_pre_n != n)) {
+                g_ip_tick_ok = 0;
+                scene_ip_note(SI_UI);
+            } else {
+                const long long tc = ip_qpc();
+                memcpy(g_ip_stack_snap, stack_img, n * sizeof(uint32_t));
+                g_si_ms[2] += ip_ms_since(tc);
+                g_ip_stack_n = n;
+                g_ip_stack_ui = host_ui;
+                g_ip_stack_on = 1;
+                g_ip_skip_p5 = 1;
+                const ntr::StackLayout &lay = *hal_screen_layout();
+                g_ip_stack_fast = (lay.band_h == 0 && lay.head_h == 0 &&
+                                   lay.w == w && lay.h == h && !getenv("SM64DS_SCENE_INTERP_FULLCOMPOSE"));
+                g_ip_stack_final = stack_img;
+                /* fast: hal's buffer stays the tick's picture and the blends
+                   work in the kept copy; otherwise the kept copy is the tick's
+                   picture and the blends compose into hal's buffer */
+                if (!g_ip_stack_fast) g_present_stack = g_ip_stack_snap;
+            }
+        } else {
+            g_ip_skip_p5 = host_ui ? 0 : 1;
+            if (host_ui) ip_snap(g_ip_p5, fb);
+        }
+        ip_scene_force(stacked, tick_hash);
+    }
+    ip_present_tick();
+}
+
+/* Scene loop entry / exit: arm the interpolator for the scene's framebuffer,
+   and put everything back when the loop ends. */
+static void ip_scene_begin(ntr::Framebuffer &fb)
+{
+    if (!scene_ip_enabled()) return;
+    ip_arm(&fb);
+    if (g_ip_on > 0) {
+        g_ip_level_fb = &fb;
+        port_scene_ip_hook = scene_ip_hook;
+    }
+}
+
+static void ip_scene_end(void)
+{
+    port_scene_ip_hook = 0;
+    if (g_ip_on > 0) {
+        scene_ip_report();
+        g_ip_tick_ok = 0;
+        g_ip_deferred = 0;
+        g_ip_skip_p5 = 0;
+        g_ip_stack_on = 0;
+        g_ip_stack_fast = 0;
+        g_ip_fade_on = 0;
+    }
 }
 
 /* SM64DS_INTERP_PROBE=<k> (with SM64DS_INTERP_PROBE_FROM / _TO, ROM frames):
@@ -10391,6 +10986,10 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
             ? hal_sub_screen_stacked_image(&fb.px[0][0]) : 0;
     const OvlSurface surf =
         stacked ? ovl_surface_stacked(stack_img, fb) : ovl_surface(fb);
+    /* run hunt8, lane SCENEINTERP1: the image as it is before the host's UI
+       goes on, kept while there is UI to put back over a blended picture */
+    const int host_ui = (g_overlay_on || menu_on || ss_toast_left > 0) ? 1 : 0;
+    ip_scene_stack_pre(stacked, stack_img, host_ui);
 
     /* THE STATS OVERLAY ON THE SCENE PATH (run link100, lane FPSSTATS1). It
        had one draw site, in the level loop, so the title, the file select, the
@@ -10410,7 +11009,7 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
 
     if (stacked && !rb_skip_render())
         stack_present_arm(stack_img, hwnd);
-    present();
+    ip_scene_present(stacked, stack_img, fb, host_ui);
     /* the click flag is true for exactly the frame it landed on; the hold
        in g_mouse_left_down is what outlives it */
     g_mouse_click_new = 0;
@@ -10528,6 +11127,7 @@ static int scene_window_run(void)
     g_present_bi = &g_bi;
     g_present_fb = (const ntr::Framebuffer *)port_scene_framebuffer();
     ntr::Framebuffer &fb = *(ntr::Framebuffer *)port_scene_framebuffer();
+    ip_scene_begin(fb);   /* run hunt8, lane SCENEINTERP1: SmoothMotion on scenes */
 
     /* A BUDGET ONLY IF ONE WAS NAMED. With no SM64DS_SCENE_FRAMES this runs
        until the window closes, which is what a session is; with one -- which
@@ -10603,6 +11203,7 @@ static int scene_window_run(void)
            same switch the level loop's game_ticked is */
         pt_mark(PS_SCENE_TICK);
         port_scene_tick(port_rom_frame_checked(frame, "scene-tick"), !menu_on);
+        si_ram_hash(frame);
 
         pt_mark(PS_SCENE_PRESENT);
         scene_host_present_frame(hwnd, stacked, fb);
@@ -10682,6 +11283,7 @@ static int scene_window_run(void)
 #ifndef PORT_ROM_CLEAN
     click_test_finish();
 #endif
+    ip_scene_end();
     fprintf(stderr, "[scene] window closed after %d frame(s)\n",
             port_rom_frame_checked(frame, "scene-closed"));
     port_rom_frame_report();   /* R3a: this loop's frame account, one line */

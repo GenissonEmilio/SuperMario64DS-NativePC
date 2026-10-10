@@ -7626,6 +7626,21 @@ extern "C" void func_02023498(void);
 extern "C" void func_0201a4bc(void);
 static unsigned g_loopin2_sc_p17, g_loopin2_sc_p7;
 
+/* run hunt8, lane SCENEINTERP1: SMOOTH MOTION ON THE SCENE PATH.
+   tests/walk_window.cpp's windowed scene loop installs this hook (it is null
+   in every headless and smoke run, so nothing below changes them). The tick
+   reports two of its moments to the interpolator that already serves the
+   level loop (ip_* in walk_window.cpp, ntr/gx.cpp's geometry replay):
+     stage 1  the tick's 3D is final (right after gx_render), before the 2D
+              goes over it: the tick's recorded geometry is keyed and paired
+              with the previous tick's, and the 3D layer is snapshotted;
+     stage 2  the tick's 2D, the bottom screen and the engine A fade are in
+              the framebuffer: the 2D snapshots are taken, or the tick is
+              declared a snap.
+   The hook only reads; it never touches game state. */
+extern "C" void (*port_scene_ip_hook)(int stage, void *fb, int frame,
+                                      int tick_game) = 0;
+
 extern "C" void port_scene_tick(int frame, int tick_game)
 {
     ntr::Framebuffer &fb = scn_fb;
@@ -7937,6 +7952,7 @@ extern "C" void port_scene_tick(int frame, int tick_game)
             ntr::gx_clear_fill(fb);
             if (trace) std::fprintf(stderr, "[scene-trace] f%d gx_render\n", frame);
             ntr::gx_render(fb);
+            if (port_scene_ip_hook) port_scene_ip_hook(1, &fb, frame, tick_game);
             if (trace) std::fprintf(stderr, "[scene-trace] f%d composite\n", frame);
             /* run mg12 TITLE lane experiment, DEFAULT OFF. HERE and not at the
                head of the tick: the Render slot above is what BUILDS the two
@@ -7960,6 +7976,7 @@ extern "C" void port_scene_tick(int frame, int tick_game)
             port_message_composite_engine_a(&fb);
             if (trace) std::fprintf(stderr, "[scene-trace] f%d sub_present\n", frame);
             hal_sub_screen_present(&fb.px[0][0], ntr::active_w, ntr::active_h);
+            if (port_scene_ip_hook) port_scene_ip_hook(2, &fb, frame, tick_game);
             if (trace) std::fprintf(stderr, "[scene-trace] f%d render done\n", frame);
             hal_widen_probe_scene_frame(frame, "post");
         }
