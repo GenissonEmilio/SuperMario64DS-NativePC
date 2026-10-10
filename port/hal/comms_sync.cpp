@@ -68,6 +68,7 @@
                              // voice_talking() (VOICE1 exports it)
 #include "player_fields.h"
 #include "ghost_door.h"      // GHOSTDOOR1: door / area / hidden look of a hub ghost
+#include "party.h"           // PBODY1: solid party bodies (membership by seat)
 #include "host_settings.h"   // port::adventure_ghost_mode(): adventure runs this
                              // layer without SM64DS_SYNC
 
@@ -619,16 +620,6 @@ int      g_peer_level[kCommsMaxPlayers];
 unsigned g_peer_seen_ms[kCommsMaxPlayers];
 bool     g_peer_present[kCommsMaxPlayers];
 
-// PARTY co-op (party slice): the per-slot party-member flag. This resolves the
-// COOP_PARTY.md first-slice detail "which slot field carries is-party-member":
-// a dedicated per-slot host array in the SAME presence block that already keeps
-// the per-slot level and liveness. A remote slot marked party is a shared-world
-// member -- rendered SOLID and COLLIDING, driven by the shipped rollback sim,
-// NOT eased by the ghost follower or held non-colliding. A remote slot NOT
-// marked party stays a translucent, pass-through adventure ghost. The flag is
-// per-slot (not a whole-session mode) precisely so the two treatments can
-// coexist in one level: some peers are party members, some are ghosts.
-bool     g_peer_party[kCommsMaxPlayers];
 
 // Item 2's sender-side velocity sample: the local body's position last frame,
 // differenced each frame. Seeded on first sight so the first frame's
@@ -3115,64 +3106,16 @@ extern "C" unsigned port_adventure_ghost_rgb(int slot) {
 }
 
 // ---------------------------------------------------------------------------
-// PARTY co-op (party slice): the per-slot party-member predicate, the ONE
-// authority the render boundary consults (the render pass's solid-vs-ghost
-// choice, the hold that skips party members, the follower that leaves them to
-// the sim). A slot is a party member when:
-//   - the wire/lobby marked it (g_peer_party[slot]), OR
-//   - the deterministic proof named it: SM64DS_PARTY_MEMBERS="1,2" marks
-//     exactly those slots party and leaves all other remotes as ghosts -- the
-//     mixed run where a solid party body and a translucent ghost coexist, OR
-//   - SM64DS_PARTY=1 marks the WHOLE session a party: every valid remote slot
-//     is a member (the pure party session, no ghosts).
-// The local slot is never a "party member" in this sense -- it is the owner's
-// own body, already solid and interactive; this predicate is only ever asked
-// about REMOTE slots.
+// PARTY (run mp1 lane PBODY1): membership is by SEAT and lives in hal/party.cpp.
+// A party body is a hub ghost body that is shown solid and collides: the follower
+// below hands it to party::follow() and the render pass asks port_party_member()
+// (defined in hal/party.cpp) whether body `slot` is solid this frame. Nothing here
+// is a membership flag any more: with SM64DS_PARTY unset every call below is a
+// no-op and a ghost is exactly what it was.
 // ---------------------------------------------------------------------------
 namespace {
-// -1 unread, 0 no env list, 1 env list present. When present, env_party_mask
-// holds the named slots and env membership is authoritative (proof override).
-int  g_party_env_read = -1;
-int  g_party_env_all  = 0;      // SM64DS_PARTY=1: all remotes are party
-unsigned g_party_env_mask = 0;  // SM64DS_PARTY_MEMBERS bitmask (slots 0..31)
-int  g_party_env_have_list = 0;
-void party_env_once() {
-    if (g_party_env_read >= 0) return;
-    g_party_env_read = 1;
-    if (const char *e = std::getenv("SM64DS_PARTY"))
-        g_party_env_all = std::atoi(e) != 0;
-    if (const char *e = std::getenv("SM64DS_PARTY_MEMBERS")) {
-        g_party_env_have_list = 1;
-        for (const char *q = e; *q;) {
-            char *end;
-            const long v = std::strtol(q, &end, 10);
-            if (end == q) break;
-            if (v >= 0 && v < 32) g_party_env_mask |= (1u << (unsigned)v);
-            q = *end == ',' ? end + 1 : end;
-        }
-    }
-}
-bool party_member(int slot) {
-    party_env_once();
-    if (slot < 0 || slot >= kCommsMaxPlayers) return false;
-    if (slot == (int)data_0209f250) return false;    // never the local body
-    if (g_party_env_have_list) return (g_party_env_mask >> slot) & 1u;
-    if (g_party_env_all) return true;
-    return g_peer_party[slot];
-}
+bool party_member(int body) { return party::body_solid(body); }
 }  // namespace
-
-extern "C" int port_party_member(int slot) {
-    return party_member(slot) ? 1 : 0;
-}
-
-// Wire/lobby setter: mark (or clear) a remote slot's party membership. The
-// first slice drives membership from the proof env above; this is the seam the
-// invite path writes when a joiner accepts the party (COOP_PARTY.md step 1).
-extern "C" void port_party_set_member(int slot, int on) {
-    if (slot < 0 || slot >= kCommsMaxPlayers) return;
-    g_peer_party[slot] = on != 0;
-}
 
 // ---------------------------------------------------------------------------
 // GHOSTWIRE1: THE HUB FOLLOWER, and the G4 fix (the walking pose).
@@ -3338,9 +3281,15 @@ void gw_follow() {
         if (!a) continue;
         g_drawpos_have[i] = 0;
         g_gw_pal[i] = -1;
+        party::clear(i);
         const int s = gw_seat_for_body(i);
         GwSample sm;
-        bool got = s >= 0 && gw_visible(s) && !party_member(i) && !gw_cut();
+        bool got = s >= 0 && gw_visible(s) && !gw_cut();
+        /* PBODY1: a party seat in a menu / star select / cutscene has no body at
+           all here; one in another level or area is drawn the way a ghost is (it
+           fades out as it leaves) but is never solid (party::follow below) */
+        const bool pseat = got && party::seat_is_party(s);
+        if (pseat && party::gate(s) == party::kGateHide) got = false;
         if (got) {
             if (g_gw[s].leaving) {         // GHOSTDOOR1: fading out in place
                 sm = g_gw_last[s];
@@ -3531,6 +3480,9 @@ void gw_follow() {
         g_gw_pal_body[i] = a;
         ++z.driven;
         shown_any = true;
+        /* PBODY1: a party friend in my level and area, fully shown, is a solid body */
+        if (pseat && !z.leaving && gw_fade_out(s) >= 256 && party::gate(s) == party::kGateOk)
+            party::follow(a, i, s);
         if (gw_err_log())
             std::fprintf(stderr, "[gwshown] t=%u f=%u seat=%d body=%d bc=%u "
                          "want=%u fade=%d\n", comms_hub_now_ms(), g_gw_frame,
