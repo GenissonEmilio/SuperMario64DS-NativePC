@@ -8517,7 +8517,10 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
                 int id = -1;
                 for (int i = 0; i < SL_COUNT; ++i)
                     if (!strcmp(sl_info(i)->key, key)) id = i;
-                const int ok = id >= 0 ? sl_set(id, (int)v) : 0;
+                int ok;
+                if (!strcmp(key, "CaptureStart")) ok = sl_capture_start((int)v);
+                else if (!strcmp(key, "CaptureCancel")) { sl_capture_cancel(); ok = 1; }
+                else ok = id >= 0 ? sl_set(id, (int)v) : 0;
                 fprintf(stderr, "[setlive] f%d set %s=%ld -> %s\n", frame, key,
                         v, ok ? "ok" : "REFUSED");
             }
@@ -8574,6 +8577,9 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
         fprintf(stderr, "[setlive] f%d bind jump key %d run key %d jump pad %d | run mode %d\n",
                 frame, key_act(HOST_KEY_JUMP), g_run_key && key_live(g_run_key),
                 *pad_live ? pad_act(pad, HOST_PAD_JUMP) : 0, g_run_mode);
+    if (trace && (sl_capture_active() || sl_capture_refused()[0]))
+        fprintf(stderr, "[setlive] f%d capture id %d armed %d refused '%s'\n", frame,
+                sl_capture_id(), g_rebind_capture, sl_capture_refused());
     if (exit_at >= 0 && frame >= exit_at) {
         fprintf(stderr, "[setlive] f%d exit\n", frame);
         fflush(stderr);
@@ -10140,6 +10146,7 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
     int pad_live = port_pad_poll(pad);
     pad_focus_gate(&pad_live, pad);
     pad_test_apply(frame, &pad_live, pad);
+    setlive_test_apply(frame, &pad_live, pad);
     controls_refresh();
     rebind_capture_frame(&pad_live, pad);
     /* the pad layout learn flow, the same call the level loop makes;
