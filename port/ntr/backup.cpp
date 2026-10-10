@@ -199,6 +199,9 @@
 #  include <unistd.h>
 #endif
 
+/* defined in the ROM-side block at the foot of this file */
+extern "C" unsigned char data_020a4b40[8];
+
 namespace ntr {
 namespace backup {
 namespace {
@@ -208,6 +211,191 @@ bool          g_fresh = true;      // no file existed: this is a new cartridge
 char          g_path[1024];
 unsigned char g_image[kSize];
 Stats         g_stats;
+
+bool env_on(const char *name)
+{
+    const char *e = std::getenv(name);
+    return e && *e && *e != '0';
+}
+
+bool coop_mode() { static int v = -1; if (v < 0) v = env_on("SM64DS_COOP") ? 1 : 0; return v != 0; }
+bool coop_host() { static int v = -1; if (v < 0) v = env_on("SM64DS_COOP_HOST") ? 1 : 0; return v != 0; }
+
+/* The ROM copies "ds mario" into data_020a4b40 at boot (func_02042f68, run by
+   hal/boot_arms.cpp R2c), after this file static init. A coop room therefore
+   puts its own tag back before the first card access and before every write. */
+void coop_assert_tag()
+{
+    if (coop_mode() && std::memcmp(data_020a4b40, "ds coop!", 8) != 0)
+        std::memcpy(data_020a4b40, "ds coop!", 8);
+}
+
+const unsigned char kTagNormal[8] = { 'd', 's', ' ', 'm', 'a', 'r', 'i', 'o' };
+const unsigned char kTagCoop[8]   = { 'd', 's', ' ', 'c', 'o', 'o', 'p', '!' };
+
+bool ends_with_coopsav(const char *p)
+{
+    size_t n = std::strlen(p);
+    if (n < 8) return false;
+    const char *e = p + n - 8;
+    static const char want[] = ".coopsav";
+    for (int i = 0; i < 8; ++i) {
+        char c = e[i];
+        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+        if (c != want[i]) return false;
+    }
+    return true;
+}
+
+[[noreturn]] void fence_die(int code, const char *what, const char *why)
+{
+    std::fprintf(stderr,
+                 "[backup] COOP FENCE REFUSED (%s): %s -- nothing was read as a "
+                 "save and nothing was written. Exiting with code %d.\n",
+                 what, why, code);
+    std::fflush(stderr);
+    std::fflush(stdout);
+#ifdef _WIN32
+    ExitProcess((UINT)code);
+    for (;;) {}
+#else
+    _exit(code);
+#endif
+}
+
+struct ImageKind { int normal; int coop; bool all_erased; };
+
+ImageKind classify(const unsigned char *img)
+{
+    ImageKind k = { 0, 0, true };
+    for (int i = 0; i < kSize; ++i)
+        if (img[i] != kErased) { k.all_erased = false; break; }
+    for (int slot = 0; slot < 4; ++slot) {
+        for (int copy = 0; copy < 2; ++copy) {
+            const unsigned char *t = img + (copy ? kSize / 2 : 0) + (slot << 7) + 2;
+            if (std::memcmp(t, kTagNormal, 8) == 0) ++k.normal;
+            else if (std::memcmp(t, kTagCoop, 8) == 0) ++k.coop;
+        }
+    }
+    return k;
+}
+
+// The kind of save this process is: refuse an image that is the other kind.
+void fence_image(const unsigned char *img, const char *path, bool partial = false)
+{
+    ImageKind k = classify(img);
+    if (!coop_mode()) {
+        if (k.coop)
+            fence_die(7, path, "this is a COOP save and this is the normal game");
+    } else {
+        if (k.normal)
+            fence_die(8, path, "this is a NORMAL save and this is a coop room");
+        if (!partial && !k.coop && !k.all_erased)
+            fence_die(8, path, "this file is not a coop save");
+    }
+}
+
+// Names: normal mode never opens a *.coopsav, coop mode only does.
+void fence_path(const char *path)
+{
+    const bool cs = ends_with_coopsav(path);
+    if (!coop_mode() && cs)
+        fence_die(7, path, "a *.coopsav is a coop save and this is the normal game");
+    if (coop_mode() && !cs)
+        fence_die(8, path, "a coop room only opens a *.coopsav file");
+}
+
+#ifdef _WIN32
+char g_guest_dir[1024];
+
+bool pid_alive(unsigned long pid)
+{
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
+    if (!h) return GetLastError() == ERROR_ACCESS_DENIED;
+    DWORD code = 0;
+    BOOL ok = GetExitCodeProcess(h, &code);
+    CloseHandle(h);
+    return ok && code == STILL_ACTIVE;
+}
+
+void remove_guest_dir(const char *dir)
+{
+    char pat[1100];
+    std::snprintf(pat, sizeof pat, "%s\\*", dir);
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA(pat, &fd);
+    if (h != INVALID_HANDLE_VALUE) {
+        do {
+            if (fd.cFileName[0] == '.') continue;
+            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+            char f[1200];
+            std::snprintf(f, sizeof f, "%s\\%s", dir, fd.cFileName);
+            DeleteFileA(f);
+        } while (FindNextFileA(h, &fd));
+        FindClose(h);
+    }
+    RemoveDirectoryA(dir);
+}
+
+void guest_tmp_root(char *out, size_t cap)
+{
+    const char *o = std::getenv("SM64DS_COOP_TEMP_ROOT");
+    if (o && *o && std::strlen(o) + 1 < cap) { std::snprintf(out, cap, "%s", o); return; }
+    DWORD n = GetTempPathA((DWORD)cap, out);
+    if (n == 0 || n >= cap) std::snprintf(out, cap, ".");
+    size_t l = std::strlen(out);
+    while (l > 1 && (out[l - 1] == '\\' || out[l - 1] == '/')) out[--l] = '\0';
+}
+
+// Remove every sm64ds-coop-<pid> folder whose process is gone.
+void sweep_stale_guest_dirs(const char *root)
+{
+    char pat[1100];
+    std::snprintf(pat, sizeof pat, "%s\\sm64ds-coop-*", root);
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA(pat, &fd);
+    if (h == INVALID_HANDLE_VALUE) return;
+    do {
+        if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+        const char *num = fd.cFileName + std::strlen("sm64ds-coop-");
+        char *end = nullptr;
+        unsigned long pid = std::strtoul(num, &end, 10);
+        if (!*num || *end || pid == 0) continue;
+        if (pid == (unsigned long)GetCurrentProcessId() || pid_alive(pid)) continue;
+        char d[1200];
+        std::snprintf(d, sizeof d, "%s\\%s", root, fd.cFileName);
+        remove_guest_dir(d);
+        std::fprintf(stderr, "[backup] swept a stale guest save folder (pid %lu)\n", pid);
+    } while (FindNextFileA(h, &fd));
+    FindClose(h);
+}
+
+void guest_cleanup_atexit()
+{
+    if (g_guest_dir[0]) remove_guest_dir(g_guest_dir);
+    g_guest_dir[0] = '\0';
+}
+
+void resolve_guest_path()
+{
+    char root[900];
+    guest_tmp_root(root, sizeof root);
+    sweep_stale_guest_dirs(root);
+    char dir[1000];
+    std::snprintf(dir, sizeof dir, "%s\\sm64ds-coop-%lu", root,
+                  (unsigned long)GetCurrentProcessId());
+    CreateDirectoryA(dir, NULL);
+    std::snprintf(g_guest_dir, sizeof g_guest_dir, "%s", dir);
+    std::snprintf(g_path, sizeof g_path, "%s\\guest.coopsav", dir);
+    std::atexit(guest_cleanup_atexit);
+}
+#else
+void resolve_guest_path()
+{
+    std::snprintf(g_path, sizeof g_path, "/tmp/sm64ds-coop-%lu.coopsav",
+                  (unsigned long)getpid());
+}
+#endif
 
 bool trace_on()
 {
@@ -228,6 +416,23 @@ void make_dir(const char *dir)
 // Fill g_path. Candidate order is documented in the header block above.
 void resolve_path()
 {
+    /* COOP (section 6): a guest runs on its own temp image; the host on the
+       file the launcher named. The fence refuses a coop room with no file. */
+    if (coop_mode()) {
+        if (!coop_host()) { resolve_guest_path(); return; }
+        const char *c = std::getenv("SM64DS_COOP_SAVE");
+        if (!c || !*c) c = std::getenv("SM64DS_SAVE_PATH");
+        if (!c || !*c || std::strlen(c) + 1 >= sizeof g_path)
+            fence_die(8, "(none)", "a coop host has no SM64DS_COOP_SAVE file");
+        std::snprintf(g_path, sizeof g_path, "%s", c);
+        char parent[sizeof g_path];
+        std::snprintf(parent, sizeof parent, "%s", g_path);
+        char *bs = std::strrchr(parent, '\\');
+        char *fs = std::strrchr(parent, '/');
+        if (fs && (!bs || fs > bs)) bs = fs;
+        if (bs && bs != parent) { *bs = '\0'; make_dir(parent); }
+        return;
+    }
     const char *env = std::getenv("SM64DS_SAVE_PATH");
     if (env && *env && std::strlen(env) + 1 < sizeof g_path) {
         std::snprintf(g_path, sizeof g_path, "%s", env);
@@ -286,10 +491,12 @@ void resolve_path()
 // never be read as half a save and is never silently deleted.
 void open_once()
 {
+    coop_assert_tag();
     if (g_open) return;
     g_open = true;
 
     resolve_path();
+    fence_path(g_path);
     std::memset(g_image, kErased, sizeof g_image);
     g_fresh = true;
 
@@ -303,6 +510,8 @@ void open_once()
     size_t got = std::fread(buf, 1, sizeof buf, f);
     int extra = (std::fgetc(f) != EOF);
     std::fclose(f);
+    if (coop_mode() && (got != (size_t)kSize || extra))
+        fence_die(8, g_path, "the coop save is not a whole 8192-byte image");
     if (got != (size_t)kSize || extra) {
         std::fprintf(stderr,
                      "[backup] %s is %u bytes%s, not %u -- treating this run as a "
@@ -310,6 +519,7 @@ void open_once()
                      g_path, (unsigned)got, extra ? "+" : "", (unsigned)kSize);
         return;
     }
+    fence_image(buf, g_path);
     std::memcpy(g_image, buf, sizeof g_image);
     g_fresh = false;
     if (trace_on())
@@ -413,6 +623,7 @@ void refresh_from_disk()
     std::fclose(f);
     if (got != (size_t)kSize || extra) return;
     if (std::memcmp(g_image, buf, sizeof g_image) != 0) {
+        fence_image(buf, g_path);   /* a file swapped under a running game */
         std::memcpy(g_image, buf, sizeof g_image);
         if (trace_on())
             std::fprintf(stderr, "[backup] the file changed on disk since this "
@@ -529,6 +740,17 @@ bool write(unsigned addr, const void *src, unsigned len)
     if (!src || !span_ok(addr, len)) return false;
     MediumLock lock;
     refresh_from_disk();
+    coop_assert_tag();
+    {
+        /* the safety net: a write that would leave a record of the other
+           kind in the image is refused before it reaches the disk */
+        unsigned char cand[kSize];
+        std::memcpy(cand, g_image, sizeof cand);
+        std::memcpy(cand + addr, src, len);
+        /* a record is written in pieces (checksum, tag, payload), so only the
+           other kind's tag can be judged here, not "neither" */
+        fence_image(cand, g_path, true);
+    }
     std::memcpy(g_image + addr, src, len);
     ++g_stats.writes;
     if (trace_on())
@@ -601,6 +823,19 @@ extern "C" unsigned char data_020a8180[60];
 // 64 73 20 6d 61 72 69 6f) eight bytes at a time, stopping at the first zero;
 // there are no zeros in the eight, so all eight land.
 unsigned char data_020a4b40[8] = { 'd', 's', ' ', 'm', 'a', 'r', 'i', 'o' };
+
+/* COOP (section 6, layer 2): a coop room frames every record with "ds coop!".
+   Constant-initialised above, patched here before main. */
+namespace {
+struct PortCoopTag {
+    PortCoopTag() {
+        const char *e = std::getenv("SM64DS_COOP");
+        if (e && *e && *e != '0')
+            std::memcpy(data_020a4b40, "ds coop!", 8);
+    }
+};
+PortCoopTag g_port_coop_tag;
+}  // namespace
 
 // The 32-byte command block the ARM9 and the ARM7 share. src/func_0206002c.c
 // zeroes it, flushes it out of the data cache and hangs it off the work object.
