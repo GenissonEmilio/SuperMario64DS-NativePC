@@ -1048,7 +1048,7 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
     if (variant == V_ATTRACT) {
         add_black_under(L);
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
-        p.touch = 1;
+        p.touch = 1; p.key_backdrop = 1;
         menu_add_piece(L, p);
         L->backdrop = MENU_BACKDROP_TOP_AS_IS;
         L->stage = MENU_STAGE_POST_FADE;
@@ -1059,7 +1059,7 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
         /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
            as the ROM draws them until its iris sprite appears */
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
-        p.touch = 1;
+        p.touch = 1; p.key_backdrop = 1;
         menu_add_piece(L, p);
         L->backdrop = MENU_BACKDROP_TOP_AS_IS;
         L->stage = MENU_STAGE_POST_FADE;

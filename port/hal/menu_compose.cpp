@@ -894,6 +894,8 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
                     row[xx] = 0xff000000u | (r << 16) | (g << 8) | b;
                     continue;
                 }
+                /* INT2: key_backdrop on a picture piece turns the ROM 3D clear colour (0x101820, the dark navy of the title's lower screen) to pure black */
+                if (P.key_backdrop && (prow[qx] & 0xffffffu) == 0x101820u) { row[xx] = 0xff000000u; continue; }
                 row[xx] = prow[qx] | 0xff000000u;
             }
             continue;
