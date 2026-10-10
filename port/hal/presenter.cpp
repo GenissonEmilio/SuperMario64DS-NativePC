@@ -143,6 +143,9 @@ long long g_qpf;
 
 int g_main_idx;              /* the slot the game thread is drawing (game thread only) */
 volatile long g_stop;
+int g_flush = 1;              /* SM64DS_PRESENTER_FLUSH=0 turns the flush off (A/B only) */
+long long g_flush_qpc, g_flush_n;
+int g_leaked;                 /* a stuck thread still owns the ring: nothing is freed or restarted */
 volatile long g_err;
 volatile long g_published;   /* publishes so far (any picture) */
 volatile long g_pub_w, g_pub_h;
@@ -470,6 +473,40 @@ void wait_until(long long target)
     }
 }
 
+/* Test knobs (off unless set), to drill the two failure paths:
+   SM64DS_PRESENTER_TEST_DROPFAIL=N  the Nth drop of a picture behaves as if
+       its AcquireSync(1,100) timed out.
+   SM64DS_PRESENTER_TEST_HANG=N:MS   the Nth Present hangs for MS milliseconds
+       (the thread ignores the stop flag meanwhile, like a stuck driver call). */
+int test_old()
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_PRESENTER_TEST_OLD"); v = e && e[0] == '1'; }
+    return v;
+}
+
+int test_fail_drop()
+{
+    static int want = -2, seen = 0;
+    if (want == -2) { const char *e = getenv("SM64DS_PRESENTER_TEST_DROPFAIL"); want = e ? atoi(e) : 0; }
+    return want > 0 && ++seen == want;
+}
+
+void test_hang_present()
+{
+    static int at = -2, ms = 0, seen = 0;
+    if (at == -2) {
+        const char *e = getenv("SM64DS_PRESENTER_TEST_HANG");
+        at = e ? atoi(e) : 0;
+        const char *c = e ? strchr(e, ':') : 0;
+        ms = c ? atoi(c + 1) : 0;
+    }
+    if (at > 0 && ++seen == at) {
+        fprintf(stderr, "[presenter] TEST: Present %d hangs for %d ms\n", at, ms);
+        Sleep((DWORD)ms);
+    }
+}
+
 DWORD WINAPI thread_main(LPVOID)
 {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
@@ -509,7 +546,7 @@ DWORD WINAPI thread_main(LPVOID)
         }
         const long long want = sel_t - (long long)((double)g_delay_us * (double)g_qpf / 1e6);
         const long long half = period / 2;
-        int pick = -1;
+        int pick = -1, err_stop = 0;
         int drop[NSMAX], ndrop = 0;
         qlock();
         {
@@ -548,12 +585,26 @@ DWORD WINAPI thread_main(LPVOID)
         qunlock();
         for (int i = 0; i < ndrop; ++i) {
             Slot &d = g_slot[drop[i]];
-            if (d.km2->AcquireSync(1, 100) == S_OK) d.km2->ReleaseSync(0);
+            HRESULT dhr = test_fail_drop() ? (HRESULT)WAIT_TIMEOUT : d.km2->AcquireSync(1, 100);
+            if (dhr != S_OK) {
+                /* Key 1 is still held by the picture: freeing the slot would
+                   leave the game thread's AcquireSync(0) failing on it for good.
+                   Same answer as the pick path: stop, the game thread sees the
+                   error and presents from its own thread. The slot stays used. */
+                if (!test_old()) {          /* TEST_OLD=1: the earlier behaviour, for the before-run of the drill */
+                    _InterlockedExchange(&g_err, dhr ? (long)dhr : (long)E_FAIL);
+                    err_stop = 1;
+                    break;
+                }
+            } else {
+                d.km2->ReleaseSync(0);
+            }
             ++g_dropped;
             qlock();
             d.state = 0;
             qunlock();
         }
+        if (err_stop) break;
         if (pick >= 0) {
             Slot &s = g_slot[pick];
             HRESULT hr = s.km2->AcquireSync(1, 100);
@@ -588,6 +639,7 @@ DWORD WINAPI thread_main(LPVOID)
             presenter_hash_log("show", shown_serial,
                                presenter_hash_texture(g_dev2, g_ctx2, bb, 1));
         bb->Release();
+        test_hang_present();
         hr = g_sc->Present(g_mode == 1 ? 1 : 0, 0);
         if (hr == PRES_STILL_DRAWING) hr = S_OK;
         if (FAILED(hr)) { _InterlockedExchange(&g_err, (long)hr); break; }
@@ -652,6 +704,7 @@ extern "C" void *presenter_swap_device(void *dev1)
 extern "C" void presenter_shutdown(void)
 {
     presenter_end();
+    if (g_leaked) return;           /* the stuck thread still uses them */
     if (g_ctx2) { g_ctx2->Release(); g_ctx2 = 0; }
     if (g_dev2) { g_dev2->Release(); g_dev2 = 0; }
 }
@@ -660,6 +713,7 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
                                int h, int interval_mode, double grid_hz)
 {
     if (g_running) return 1;
+    if (g_leaked) return 0;
     if (!presenter_enabled() || !dev || !ctx || !swapchain || !g_dev2 || w <= 0 || h <= 0)
         return 0;
     LARGE_INTEGER f;
@@ -716,6 +770,8 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
     g_main_held = 0;
     g_stop = 0;
     g_err = 0;
+    { const char *fe = getenv("SM64DS_PRESENTER_FLUSH"); g_flush = !(fe && fe[0] == '0' && !fe[1]); }
+    g_flush_qpc = g_flush_n = 0;
     g_published = 0;
     g_pub_w = g_pub_h = 0;
     g_gen = 0;
@@ -743,7 +799,21 @@ extern "C" void presenter_end(void)
     if (!g_running) return;
     _InterlockedExchange(&g_stop, 1);
     if (g_thread) {
-        WaitForSingleObject(g_thread, 2000);
+        if (WaitForSingleObject(g_thread, 2000) != WAIT_OBJECT_0 && !test_old()) {
+            /* The thread is stuck (a Present that does not return). It still
+               touches the ring, the swap chain, the timer and its context, so
+               none of them is freed: they are leaked on purpose, the swap chain
+               gets an extra reference so the game thread's release leaves it
+               alone, and the presenter never starts again this run. */
+            fprintf(stderr, "[presenter] the thread did not stop in 2 s; its ring and swap chain are left alone (leaked) and this run presents from the game thread\n");
+            g_leaked = 1;
+            if (g_sc) g_sc->AddRef();
+            CloseHandle(g_thread);
+            g_thread = 0;
+            g_main_held = 0;
+            g_running = 0;
+            return;
+        }
         CloseHandle(g_thread);
         g_thread = 0;
     }
@@ -756,6 +826,8 @@ extern "C" void presenter_end(void)
     g_running = 0;
     if (presenter_stats_on())
         fprintf(stderr, "[presenter] game thread published %lld picture(s), %lld distinct, %llu not drawn (ring full), %llu passed over by the presenter, deepest queue %d\n", g_serial, g_gen, g_drops, g_dropped, g_qmax);
+    if (presenter_stats_on() && g_flush_n)
+        fprintf(stderr, "[presenter] flush before publish: %lld calls, %.4f ms each\n", g_flush_n, (double)g_flush_qpc * 1000.0 / (double)g_qpf / (double)g_flush_n);
     stat_flush();
 }
 
@@ -853,6 +925,10 @@ extern "C" void presenter_publish(int repeat)
         presenter_hash_log("main", s.serial, presenter_hash_texture(g_dev, g_ctx, s.tex, 0));
     g_pub_w = g_w;
     g_pub_h = g_h;
+    /* The keyed-mutex release is the hand-over, and the presenter's device
+       reads the memory the moment it has the key: the writes are submitted to
+       the card first, not left in the driver's batch. */
+    if (g_flush) { const long long f0 = qpc(); g_ctx->Flush(); g_flush_qpc += qpc() - f0; ++g_flush_n; }
     s.km1->ReleaseSync(1);          /* the picture is whole: the presenter may take it */
     g_main_held = 0;
     _InterlockedExchange(&g_published, g_published + 1);
