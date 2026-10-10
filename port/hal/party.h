@@ -74,6 +74,10 @@ Stats &stats_rw();            // for hal/party_cyl.cpp
 int  log_level();             // SM64DS_PARTY_LOG
 
 // --- hal/party_cyl.cpp ------------------------------------------------------
+// PHIT1: extra vulnerability bits for the party cylinder (the attack kinds a shove can be claimed
+// by). Zero until a lane that reads the party node's hit flags asks for more; the audit counts any
+// pairing with a non-player cylinder that results.
+void set_extra_vuln(unsigned bits);
 // Put body `a`'s cylinder in the collision list for this frame's pair pass.
 // Returns false when the audit withheld it.
 bool cyl_register(void *a);
@@ -84,6 +88,8 @@ int cyl_audit(void *a);
 // of the level in turn and reports what changed). Called by follow(); a no-op
 // without the knob.
 void lab_before_register(void *a, int body);
+// The lab's per-pass clock (party::clear calls it): steps the sweep, samples the world.
+void lab_tick(int body);
 
 }  // namespace party
 }  // namespace port

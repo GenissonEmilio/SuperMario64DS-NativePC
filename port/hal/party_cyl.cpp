@@ -82,7 +82,8 @@ enum : unsigned {
 struct Rules {
     bool masked = true;
     bool guard = true;
-    int pad = 0;
+    bool cyl = true;             // SM64DS_PARTY_CYL=0: no cylinder at all (the lab's control)
+    int pad = 8;                 // radius pad, units: see SPIKE.md / the push rows
     bool read = false;
 };
 Rules g_r;
@@ -93,6 +94,7 @@ void read_rules() {
     if (const char *e = std::getenv("SM64DS_PARTY_CYL_MASK")) g_r.masked = std::atoi(e) != 0;
     if (const char *e = std::getenv("SM64DS_PARTY_GUARD")) g_r.guard = std::atoi(e) != 0;
     if (const char *e = std::getenv("SM64DS_PARTY_PAD")) g_r.pad = std::atoi(e);
+    if (const char *e = std::getenv("SM64DS_PARTY_CYL")) g_r.cyl = std::atoi(e) != 0;
 }
 
 // dCc_c::Unlink (src/_ZN5dCc_c6UnlinkEv.cpp, which has no flat host name): take a
@@ -112,7 +114,8 @@ bool readable(const void *p, unsigned n) {
 }
 
 unsigned party_flags() { return g_r.masked ? kPartyFlags : kBodyFlags; }
-unsigned party_vuln() { return g_r.masked ? kPartyVuln : kBodyVuln; }
+unsigned g_extra_vuln = 0;
+unsigned party_vuln() { return g_r.masked ? (kPartyVuln | g_extra_vuln) : kBodyVuln; }
 
 }  // namespace
 
@@ -141,27 +144,31 @@ int cyl_audit(void *a) {
     const unsigned hf = *(const unsigned *)(node + 0x20);
     const unsigned oo = *(const unsigned *)(node + 0x24);
     if (hf == 0) return 0;
-    if (hf == kBodyFlags) { ++st.pairs_body; return 0; }
+    // a Player body (class 0xbf) is the expected partner whatever state flags it carries
+    unsigned cls = 0xffff;
+    if (oo) {
+        const char *o = (const char *)_ZN8dActor_c10FindWithIDEj(oo);
+        if (readable(o, 0x10)) cls = *(const unsigned short *)(o + 0xc);
+    }
+    if (cls == 0xbf && (hf & 0x400000u)) { ++st.pairs_body; return 0; }
     ++st.shared_nodes;
     ++st.pairs_other;
     static int said = 0;
     if (said < 12) {
         ++said;
-        unsigned cls = 0xffff;
-        if (oo) {
-            const char *o = (const char *)_ZN8dActor_c10FindWithIDEj(oo);
-            if (readable(o, 0x10)) cls = *(const unsigned short *)(o + 0xc);
-        }
         std::fprintf(stderr, "[partycyl] PAIRED a world cylinder: hitFlags=%08x owner uid=%u class=0x%x\n", hf, oo, cls);
     }
     return 1;
 }
+
+void set_extra_vuln(unsigned bits) { g_extra_vuln = bits; }
 
 bool cyl_register(void *a) {
     read_rules();
     Stats &st = stats_rw();
     char *c = (char *)a;
     char *node = c + kBodyClsn;
+    if (!g_r.cyl) { unlink_node(node); unlink_node(c + kAttackClsn); return false; }
     int body = -1;
     for (int i = 0; i < 16; ++i)
         if (data_0209f394[i] == a) { body = i; break; }
@@ -202,7 +209,7 @@ bool cyl_register(void *a) {
 // ---------------------------------------------------------------------------
 namespace {
 
-enum Lab { kLabOff = 0, kLabSweep, kLabFar, kLabAt };
+enum Lab { kLabOff = 0, kLabSweep, kLabFar, kLabNone, kLabAt };
 
 struct Target {
     unsigned uid;
@@ -214,6 +221,7 @@ struct Snap {
     int n;
     unsigned uid[kSnapMax];
     unsigned short cls[kSnapMax];
+    int pos[kSnapMax][3];
 };
 struct Metrics {
     int coins, stars, red, actors, level;
@@ -237,6 +245,8 @@ struct LabState {
     int done = 0;
     unsigned changed_cls[64];
     int nchanged_cls = 0;
+    bool have_pos = false;      // this pass has a position for the driver body
+    int pos[3] = {0, 0, 0};
 };
 LabState g_lab;
 
@@ -245,8 +255,8 @@ void lab_read() {
     g_lab.read = true;
     const char *e = std::getenv("SM64DS_PARTY_LAB");
     if (!e || !*e) return;
-    if (!std::strncmp(e, "sweep", 5) || !std::strncmp(e, "far", 3)) {
-        g_lab.mode = (e[0] == 's') ? kLabSweep : kLabFar;
+    if (!std::strncmp(e, "sweep", 5) || !std::strncmp(e, "far", 3) || !std::strncmp(e, "none", 4)) {
+        g_lab.mode = (e[0] == 's') ? kLabSweep : (e[0] == 'f') ? kLabFar : kLabNone;
         const char *q = std::strchr(e, ':');
         unsigned v[3] = {300, 8, 400};
         for (int i = 0; i < 3 && q; ++i) {
@@ -283,6 +293,9 @@ Metrics sample(unsigned watch_uid, Snap *snap = nullptr) {
         if (snap && snap->n < kSnapMax) {
             snap->uid[snap->n] = *(const unsigned *)(a + 4);
             snap->cls[snap->n] = *(const unsigned short *)(a + 0xc);
+            snap->pos[snap->n][0] = *(const int *)(a + 0x5c) >> 12;
+            snap->pos[snap->n][1] = *(const int *)(a + 0x60) >> 12;
+            snap->pos[snap->n][2] = *(const int *)(a + 0x64) >> 12;
             ++snap->n;
         }
         if (watch_uid && *(const unsigned *)(a + 4) == watch_uid) m.alive = true;
@@ -308,19 +321,23 @@ void snapshot_targets() {
                  g_lab.step, (int)(unsigned char)data_0209f2f8);
 }
 
-// what appeared and what went between two snapshots (uids are unique per actor)
+// what appeared and what went between two snapshots (uids are unique per actor), with where
 void snap_diff(const Snap &a, const Snap &b, char *out, int cap) {
     int o = 0;
     out[0] = 0;
-    for (int i = 0; i < a.n && o < cap - 24; ++i) {
+    for (int i = 0; i < a.n && o < cap - 48; ++i) {
         bool found = false;
         for (int j = 0; j < b.n; ++j) if (b.uid[j] == a.uid[i]) { found = true; break; }
-        if (!found) o += std::snprintf(out + o, (size_t)(cap - o), " -0x%x/%u", a.cls[i], a.uid[i]);
+        if (!found)
+            o += std::snprintf(out + o, (size_t)(cap - o), " -0x%x/%u@(%d,%d,%d)", a.cls[i], a.uid[i],
+                               a.pos[i][0], a.pos[i][1], a.pos[i][2]);
     }
-    for (int j = 0; j < b.n && o < cap - 24; ++j) {
+    for (int j = 0; j < b.n && o < cap - 48; ++j) {
         bool found = false;
         for (int i = 0; i < a.n; ++i) if (a.uid[i] == b.uid[j]) { found = true; break; }
-        if (!found) o += std::snprintf(out + o, (size_t)(cap - o), " +0x%x/%u", b.cls[j], b.uid[j]);
+        if (!found)
+            o += std::snprintf(out + o, (size_t)(cap - o), " +0x%x/%u@(%d,%d,%d)", b.cls[j], b.uid[j],
+                               b.pos[j][0], b.pos[j][1], b.pos[j][2]);
     }
 }
 
@@ -330,17 +347,24 @@ void lab_note_class(unsigned cls) {
     if (g_lab.nchanged_cls < 64) g_lab.changed_cls[g_lab.nchanged_cls++] = cls;
 }
 
+const char *lab_mode_name() {
+    return g_lab.mode == kLabSweep ? "sweep" : g_lab.mode == kLabFar ? "far" : g_lab.mode == kLabNone ? "none" : "at";
+}
+
 }  // namespace
 
-void lab_before_register(void *a, int body) {
+// Once per follower pass, from party::clear() of the first remote body: the lab's own
+// clock. It does not depend on a party body being shown (the control row has none).
+void lab_tick(int body) {
     lab_read();
-    if (g_lab.mode == kLabOff || !a) return;
+    if (g_lab.mode == kLabOff) return;
     if (g_lab.driver < 0) g_lab.driver = body;
     if (body != g_lab.driver) return;
+    g_lab.have_pos = false;
     const unsigned n = g_lab.calls++;
-    int *px = player::pos_x(a), *py = player::pos_y(a), *pz = player::pos_z(a);
     if (g_lab.mode == kLabAt) {
-        *px = g_lab.at[0] << 12; *py = g_lab.at[1] << 12; *pz = g_lab.at[2] << 12;
+        g_lab.pos[0] = g_lab.at[0] << 12; g_lab.pos[1] = g_lab.at[1] << 12; g_lab.pos[2] = g_lab.at[2] << 12;
+        g_lab.have_pos = true;
         return;
     }
     if (n < g_lab.start) return;
@@ -356,14 +380,15 @@ void lab_before_register(void *a, int body) {
     if (k >= g_lab.nt) {
         if (!g_lab.done) {
             g_lab.done = 1;
-            std::fprintf(stderr, "[partylab] DONE mode=%s targets=%d changed=%d classes=[",
-                         g_lab.mode == kLabSweep ? "sweep" : "far", g_lab.nt, g_lab.changed);
+            std::fprintf(stderr, "[partylab] DONE mode=%s targets=%d changed=%d classes=[", lab_mode_name(),
+                         g_lab.nt, g_lab.changed);
             for (int i = 0; i < g_lab.nchanged_cls; ++i)
                 std::fprintf(stderr, "%s0x%x", i ? "," : "", g_lab.changed_cls[i]);
             std::fprintf(stderr, "] guard_skips=%llu registers=%llu pairs_other=%llu\n",
                          stats().guard_skips, stats().registers, stats().pairs_other);
         }
-        *px = 0x7fffff00 & ~0xfff; *py = 0; *pz = 0;     // park far
+        g_lab.pos[0] = 0x40000000; g_lab.pos[1] = 0; g_lab.pos[2] = 0x40000000;
+        g_lab.have_pos = true;                              // far
         return;
     }
     if (phase == 0 && k > 0) {
@@ -372,7 +397,7 @@ void lab_before_register(void *a, int body) {
         Snap now_snap;
         const Metrics m = sample(pt.uid, &now_snap);
         const Metrics &p = g_lab.m_prev;
-        char diff[200];
+        char diff[240];
         snap_diff(g_lab.snap_prev, now_snap, diff, (int)sizeof diff);
         const bool ch = m.coins != p.coins || m.stars != p.stars || m.red != p.red ||
                         m.actors != p.actors || m.level != p.level || !m.alive;
@@ -386,16 +411,28 @@ void lab_before_register(void *a, int body) {
                      p.level, m.level, m.alive ? 1 : 0, ch ? "CHANGED" : "-", diff);
         g_lab.m_prev = sample(g_lab.t[k].uid, &g_lab.snap_prev);
     }
+    if (g_lab.mode == kLabNone) return;                    // the control: sample, never place
     if (g_lab.mode == kLabFar) {
-        *px = 0x40000000; *py = 0; *pz = 0x40000000;
+        g_lab.pos[0] = 0x40000000; g_lab.pos[1] = 0; g_lab.pos[2] = 0x40000000;
+        g_lab.have_pos = true;
         return;
     }
     // three altitudes in turn, so a cylinder that sits above or below its actor's
     // origin is crossed too
     static const int alt[3] = {0, -80, 60};
     const Target &t = g_lab.t[k];
-    *px = t.x; *pz = t.z;
-    *py = t.y + (alt[(phase / 2) % 3] << 12);
+    g_lab.pos[0] = t.x; g_lab.pos[2] = t.z;
+    g_lab.pos[1] = t.y + (alt[(phase / 2) % 3] << 12);
+    g_lab.have_pos = true;
+}
+
+// Called by party::follow() on a shown solid body: put it where the lab wants it.
+void lab_before_register(void *a, int body) {
+    lab_read();
+    if (g_lab.mode == kLabOff || !a || body != g_lab.driver || !g_lab.have_pos) return;
+    *player::pos_x(a) = g_lab.pos[0];
+    *player::pos_y(a) = g_lab.pos[1];
+    *player::pos_z(a) = g_lab.pos[2];
 }
 
 }  // namespace party

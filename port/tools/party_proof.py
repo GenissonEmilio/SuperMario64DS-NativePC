@@ -111,7 +111,11 @@ def run_room(kind, n, tag, o):
     rp, rf, port, rlog = R.start_relay(row)
     relay = ("127.0.0.1:%d" % port, "PB%d" % (G.PID % 1000))
     cons = []
+    t_start = time.time()
     for i in range(n):
+        wait = float(o.get("delay%d" % i, "0")) - (time.time() - t_start)     # delay<i>=<seconds after the first start>
+        if wait > 0:
+            time.sleep(wait)
         e = env_for(i, relay, kind, o)
         if kind == "world":
             e.pop("SM64DS_PARTY", None)

@@ -103,6 +103,7 @@ int gate(int seat) {
 
 void clear(int body) {
     if (body >= 0 && body < kMaxBodies) g_solid[body] = false;
+    lab_tick(body);
 }
 
 bool body_solid(int body) {
