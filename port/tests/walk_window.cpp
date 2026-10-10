@@ -622,6 +622,7 @@ void port_party_probe(int frame);
    pump (hal/hub_presence.cpp). No-op unless a hub is live outside an arena. */
 void port_hub_presence_frame(void);
 void port_coop_save_frame(void);
+void port_coop_save_boot(void);
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
 extern char data_0209f4a0[];
@@ -11483,6 +11484,7 @@ int main(void)
         !port::comms_hub_install_from_env())
         port::comms_loopback_install_from_env();
     pacer_begin();
+    port_coop_save_boot();
 #ifdef PORT_ROM_CLEAN
     /* ROM-CLEAN: load + verify the ROM tables from romdata.bin FIRST, before
        any table is read. Loud FATAL if the file is missing, short, or fails its
