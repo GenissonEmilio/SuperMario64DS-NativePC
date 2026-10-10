@@ -413,6 +413,7 @@ static bool winapi_load(void)
 #include "fault_probe.h"
 #include "overlay_font.h"
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
+#include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/perf_log.h"        /* run perf1: the player performance report */
 #include "hal/comms_seam.h"       /* run mg15 lane MP1: the radio seam */
 #include "hal/voice_chat.h"      /* lane VOICE: proximity voice chat */
@@ -4202,6 +4203,48 @@ static void bindings_load(void)
     for (int i = 0; i < HOST_PAD_COUNT; ++i) g_pad[i] = host_setting_pad(i);
 }
 
+/* ---- LIVE SETTINGS REFRESH (run menu1, lane SETLIVE1) ----------------------
+   hal/settings_live.h changes bindings, run mode, camera mode and the control
+   numbers while the game runs. The frame loops call this once a frame: a
+   counter compare, and only when host_settings_ctl_gen moved (an in-game page
+   set, or a launcher edit the poll saw) does it re-copy this file's working
+   values. The first call just records the counters, so the boot values and the
+   environment's camera overrides stand. A CameraMode SET (not an F1 cycle) is
+   handed to the camera block as g_cam_req. */
+static int g_ctl_seen = -1, g_cam_seen = -1;
+static int g_cam_req = -1;
+/* SETFIX1 (G5): the camera turn sign is a file-level value written here, so a
+   SwapCameraTurnDirection change lands from either loop (the star-select
+   interlude runs inside the level loop but calls only the scene frame). */
+static int g_cam_turn = 1;
+/* SETFIX1 (G1): the settings queue is written when a level or scene changes,
+   at both loop exits, at the main return (atexit) and when the page closes. */
+static void settings_flush_atexit(void) { host_settings_save_flush(); }
+static int controls_refresh(void)
+{
+    static int last_lvl = -2;
+    {
+        const int lvl = port_level_id();
+        if (last_lvl != -2 && lvl != last_lvl && host_settings_save_pending())
+            host_settings_save_flush();
+        last_lvl = lvl;
+    }
+    const int g = host_settings_ctl_gen();
+    if (g == g_ctl_seen) return 0;
+    const int first = g_ctl_seen < 0;
+    g_ctl_seen = g;
+    g_bindings_loaded = 0;
+    bindings_load();
+    g_run_mode = host_setting_run_mode();
+    g_run_key = host_setting_run_key();
+    g_run_pad = host_setting_run_pad();
+    g_cam_turn = host_camera_turn_sign();
+    const int cg = host_settings_cam_gen();
+    if (!first && cg != g_cam_seen) g_cam_req = host_setting_camera_mode();
+    g_cam_seen = cg;
+    return 1;
+}
+
 /* THE REBIND CAPTURE, armed from the menu's rebind row and read by the window
    procedure. A capture has to swallow the press it is capturing, or binding
    run to F3 would also toggle the overlay on the way past. So the capture
@@ -4460,47 +4503,7 @@ static void pad_focus_gate(int *pad_live, XPad *pad)
     pad->buttons = (unsigned short)((unsigned)pad->buttons & ~stale);
 }
 
-/* Keys and pad buttons this program has already spoken for. Binding run to
-   one of them would not produce a conflict a player could see and undo; it
-   would produce a menu that cannot be closed, or one that opens every time you
-   start running. So the capture refuses them and says so, which is the one
-   case where refusing is friendlier than obeying. */
-static int run_key_reserved(int vk)
-{
-    if (vk == VK_ESCAPE || vk == VK_RETURN) return 1;   /* menu open, menu act */
-    /* the port's own row. F10 is in it because Windows itself takes F10 as
-       the menu-bar activator, so a run bound to it would open the system
-       menu on every step; F11 and F12 are the fullscreen toggle. */
-    if (vk >= VK_F1 && vk <= VK_F12) return 1;
-    if (vk >= VK_LEFT && vk <= VK_DOWN) return 1;       /* menu navigation */
-    /* and every key bound to another action -- the walk keys (which are also
-       menu navigation), jump, attack, crouch, start, select. A run that is
-       also a jump is not a conflict a player could see and undo from here,
-       and the same key doing two things is settings.json's to say, not the
-       capture's. The run slot itself is skipped: rebinding run to the key it
-       already is must not be refused. */
-    bindings_load();
-    for (int i = 0; i < HOST_KEY_COUNT; ++i)
-        if (i != HOST_KEY_RUN && g_key[i] && g_key[i] == vk) return 1;
-    /* the bottom-screen panel, and it is read in hal/sub_screen.cpp rather
-       than through this file's key_live -- so a binding on it would fire the
-       panel from outside every gate here */
-    if (vk == VK_TAB) return 1;
-    return 0;
-}
-static int run_pad_reserved(unsigned mask)
-{
-    /* the d-pad (0x000f) and A (0x1000) drive the menu, BACK (0x0020) opens
-       it and B (0x2000) closes it, and the right stick's click (0x0080) is
-       the freecam toggle */
-    if (mask & 0x30afu) return 1;
-    /* and, like the keyboard half, any button bound to another action */
-    bindings_load();
-    for (int i = 0; i < HOST_PAD_COUNT; ++i)
-        if (i != HOST_PAD_RUN && g_pad[i] && (mask & (unsigned)g_pad[i]))
-            return 1;
-    return 0;
-}
+/* (the reserved-key and conflict rules for a rebind live in hal/settings_live.cpp) */
 
 /* A printable name for a binding. The letters and digits are their own ASCII
    so they need no table, and everything a player is likely to reach for is
@@ -6502,14 +6505,10 @@ static void menu_input(int pad_live, const XPad *pad)
                    back to, and a row that changed a binding by being
                    scrolled past would be a trap. */
                 if (edge & (1u << 5)) {
-                    g_rebind_capture = 1;
-                    g_rebind_key = 0;
-                    /* enter is still physically down. Marking every
-                       key stale here is what stops it being read as
-                       the binding on the very next frame; the window
-                       procedure ignores its auto-repeat for the same
-                       reason. */
-                    memset(key_stale, 1, sizeof key_stale);
+                    /* the same engine the settings page rebinds through;
+                       rebind_capture_frame arms the window's capture on the
+                       next frame and marks the held enter stale */
+                    sl_capture_start_run();
                     ss_note("press the new run button (esc cancels)");
                 }
                 break;
@@ -6628,6 +6627,8 @@ static unsigned pad_script_mask(const char *spec, int frame)
     }
     return mask;
 }
+
+static int g_setlive_mag = -2;       /* the last analog-injected magnitude, -2 none, -1 inside the dead zone */
 
 /* SM64DS_HOST_PAD: SM64DS_PAD_TEST's grammar, and the ONE difference is that a
    SELFTEST MAY USE IT (run link100, lane STARSEL5).
@@ -8478,6 +8479,136 @@ static int mo_wheel;             /* accumulated notches, forward positive */
    keys are: the frame loop asks this question every frame and the answer may
    only move when the watcher says the file moved. */
 static int mo_capture_opt;
+
+/* SM64DS_SETLIVE_*: THE SETTINGS ENGINE'S PROOF HARNESS (run menu1, lane
+   SETLIVE1). Test scaffolding like SM64DS_PAD_TEST, inert unless one of the
+   variables is set and unreachable from a selftest (a selftest reads no live
+   pad). It drives the LEVEL loop's stick, mouse and settings so a headless
+   run can show each setting's in-game effect:
+
+     SM64DS_SETLIVE_PAD    "f0-f1:lx,ly,rx,ry;..."   the sticks (+-32767) on
+                           those frames; the pad counts as live then
+     SM64DS_SETLIVE_MOUSE  "f0-f1:dx,dy;..."          pixels of mouse look per
+                           frame (the look is held, as with the right button)
+     SM64DS_SETLIVE_SET    "f:Key=value;..."          sl_set by settings.json
+                           key name on that frame, the way the page would
+     SM64DS_SETLIVE_EXIT   frame: leave the loop after printing that frame
+     SM64DS_SETLIVE_TRACE  =1: one line a frame with the sticks, the Ctrl
+                           magnitude the analog injection wrote last frame,
+                           the camera rig's heading / elevation and mode
+
+   The trace line for frame N shows the effect of frame N-1's input. */
+#ifndef PORT_ROM_CLEAN
+static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
+{
+    static int init;
+    static const char *e_pad, *e_mouse, *e_set;
+    static int trace, exit_at = -1;
+    if (!init) {
+        init = 1;
+        if (g_selftest) return;
+        e_pad = getenv("SM64DS_SETLIVE_PAD");
+        e_mouse = getenv("SM64DS_SETLIVE_MOUSE");
+        e_set = getenv("SM64DS_SETLIVE_SET");
+        trace = getenv("SM64DS_SETLIVE_TRACE") != 0;
+        const char *x = getenv("SM64DS_SETLIVE_EXIT");
+        if (x) exit_at = atoi(x);
+    }
+    if (g_selftest) return;
+    if (!e_pad && !e_mouse && !e_set && !trace && exit_at < 0) return;
+    if (e_set) {
+        const char *p = e_set;
+        while (*p) {
+            char *q;
+            const long f = strtol(p, &q, 10);
+            if (*q != 58 /* ':' */) break;
+            p = q + 1;
+            char key[48];
+            int n = 0;
+            while (*p && *p != 61 /* '=' */ && n < 47) key[n++] = *p++;
+            key[n] = 0;
+            if (*p == 61) ++p;
+            const long v = strtol(p, &q, 10);
+            p = q;
+            if (f == frame) {
+                int id = -1;
+                for (int i = 0; i < SL_COUNT; ++i)
+                    if (!strcmp(sl_info(i)->key, key)) id = i;
+                int ok;
+                if (!strcmp(key, "CaptureStart")) ok = sl_capture_start((int)v);
+                else if (!strcmp(key, "CaptureCancel")) { sl_capture_cancel(); ok = 1; }
+                else ok = id >= 0 ? sl_set(id, (int)v) : 0;
+                fprintf(stderr, "[setlive] f%d set %s=%ld -> %s\n", frame, key,
+                        v, ok ? "ok" : "REFUSED");
+            }
+            while (*p && *p != 59 /* ';' */) ++p;
+            if (*p == 59) ++p;
+        }
+    }
+    int lx = 0, ly = 0, rx = 0, ry = 0, have = 0;
+    if (e_pad) {
+        const char *p = e_pad;
+        while (*p) {
+            char *q;
+            const long f0 = strtol(p, &q, 10);
+            long f1 = f0;
+            p = q;
+            if (*p == 45 /* '-' */) { f1 = strtol(p + 1, &q, 10); p = q; }
+            if (*p != 58) break;
+            const long a = strtol(p + 1, &q, 10); p = q;
+            const long b = strtol(p + 1, &q, 10); p = q;
+            const long c = strtol(p + 1, &q, 10); p = q;
+            const long d = strtol(p + 1, &q, 10); p = q;
+            if (frame >= f0 && frame <= f1) { lx = (int)a; ly = (int)b; rx = (int)c; ry = (int)d; have = 1; }
+            while (*p && *p != 59) ++p;
+            if (*p == 59) ++p;
+        }
+    }
+    if (have) {
+        if (!*pad_live) { memset(pad, 0, sizeof *pad); *pad_live = 1; }
+        pad->lx = (short)lx; pad->ly = (short)ly;
+        pad->rx = (short)rx; pad->ry = (short)ry;
+    }
+    if (e_mouse) {
+        const char *p = e_mouse;
+        while (*p) {
+            char *q;
+            const long f0 = strtol(p, &q, 10);
+            long f1 = f0;
+            p = q;
+            if (*p == 45) { f1 = strtol(p + 1, &q, 10); p = q; }
+            if (*p != 58) break;
+            const long a = strtol(p + 1, &q, 10); p = q;
+            const long b = strtol(p + 1, &q, 10); p = q;
+            if (frame >= f0 && frame <= f1) { mo_look = 1; mo_dx += (int)a; mo_dy += (int)b; }
+            while (*p && *p != 59) ++p;
+            if (*p == 59) ++p;
+        }
+    }
+    if (trace)
+        fprintf(stderr, "[setlive] f%d stick %d,%d rx,ry %d,%d | mag %d | yaw %d pitch %d mode %d gen %d | mcap %d mm %.3f vol %d\n",
+                frame, lx, ly, rx, ry, g_setlive_mag, (int)fc_yaw, (int)fc_pitch,
+                cam_mode, host_settings_ctl_gen(), mo_capture_opt,
+                host_setting_minimap_scale_value(), host_setting_volume());
+    if (trace)
+        fprintf(stderr, "[setlive] f%d bind jump key %d run key %d jump pad %d | run mode %d\n",
+                frame, key_act(HOST_KEY_JUMP), g_run_key && key_live(g_run_key),
+                *pad_live ? pad_act(pad, HOST_PAD_JUMP) : 0, g_run_mode);
+    if (trace)
+        fprintf(stderr, "[setlive] f%d cam_turn %d\n", frame, g_cam_turn);
+    if (trace && (sl_capture_active() || sl_capture_refused()[0]))
+        fprintf(stderr, "[setlive] f%d capture id %d armed %d refused '%s'\n", frame,
+                sl_capture_id(), g_rebind_capture, sl_capture_refused());
+    if (exit_at >= 0 && frame >= exit_at) {
+        fprintf(stderr, "[setlive] f%d exit\n", frame);
+        fflush(stderr);
+        W.PostQuitMessage_(0);   /* SETFIX1: leave through the real quit path (the loops flush) */
+    }
+}
+#else
+static void setlive_test_apply(int, int *, XPad *) {}
+#endif
+
 static int mo_captured;
 static POINT mo_capture_home;
 static int mo_capture_home_ok;
@@ -9807,6 +9938,75 @@ static void port_startup_error_show(const char *text)
         mb(0, text, "Super Mario 64 DS could not start", 0x10 /* MB_ICONERROR */);
 }
 
+/* THE REBIND CAPTURE, once a frame, for BOTH frame loops (the title and the
+   scenes run in the scene loop, the courses in the level loop, and the
+   in-game settings page can be opened in either). It arms a capture the
+   settings engine asked for (sl_capture_start), hands the key the window
+   procedure saw or the pad button just pressed to the engine's reserved-key
+   and conflict rules, and while armed leaves the frame deaf: pad_live is
+   cleared, the way the one line inside key_live clears the keyboard, so the
+   button being bound cannot also open the menu or nudge the camera. The old
+   F5 run row goes through the same engine (sl_capture_start_run). */
+static void rebind_capture_frame(int *pad_live, const XPad *pad)
+{
+    static unsigned bind_pad_prev = ~0u;   /* first frame: no edges */
+    if (sl_capture_take_arm() && !g_rebind_capture) {
+        g_rebind_capture = 1;
+        g_rebind_key = 0;
+        bind_pad_prev = ~0u;
+        /* the press that armed it is still down: stale, so it cannot read
+           as the binding on the very next frame */
+        memset(key_stale, 1, sizeof key_stale);
+    }
+    int done = 0;
+    if (sl_capture_take_cancel() || (g_rebind_capture && !sl_capture_active()))
+        done = 1;
+    else if (g_rebind_capture) {
+        const unsigned now = *pad_live ? pad_word_with_triggers(pad) : 0u;
+        const unsigned fresh = now & ~bind_pad_prev;
+        bind_pad_prev = now;
+        const int id = sl_capture_id();
+        const char *refused = "";
+        if (g_rebind_key) {
+            const int vk = g_rebind_key;
+            g_rebind_key = 0;
+            if (sl_capture_offer_key(vk)) {
+                done = 1;
+                if (vk == VK_ESCAPE) ss_note("rebind cancelled");
+                else {
+                    char kb[16], msg[96];
+                    snprintf(msg, sizeof msg, "%s is now %s",
+                             sl_info(id)->key, run_key_name(vk, kb, sizeof kb));
+                    ss_note(msg);
+                }
+            } else refused = sl_capture_refused();
+        } else if (fresh) {
+            /* one button per press: the lowest set bit, so a thumb that
+               lands on two at once binds one of them instead of a mask
+               that no single press can ever reproduce */
+            const unsigned bit = fresh & (unsigned)(-(int)fresh);
+            if (sl_capture_offer_pad(bit)) {
+                done = 1;
+                char pb[16], msg[96];
+                snprintf(msg, sizeof msg, "%s is now %s", sl_info(id)->key,
+                         run_pad_name((int)bit, pb, sizeof pb));
+                ss_note(msg);
+            } else refused = sl_capture_refused();
+        }
+        if (refused[0]) ss_note(refused);
+    }
+    if (g_rebind_capture) *pad_live = 0;
+    if (done) {
+        g_rebind_capture = 0;
+        bind_pad_prev = ~0u;
+        /* every key that is down right now is marked stale, the same trick
+           the focus-regained edge uses: the key just bound is still
+           physically held, and without this it would read as a fresh press
+           the instant the capture ends */
+        memset(key_stale, 1, sizeof key_stale);
+    }
+}
+
 /* ---- DOES THIS SCENE RUN GET A WINDOW? (port mod, run link60 SW1) ---------
 
    A scene run is WINDOWED unless it names a frame budget or is a selftest.
@@ -9965,6 +10165,9 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
     int pad_live = port_pad_poll(pad);
     pad_focus_gate(&pad_live, pad);
     pad_test_apply(frame, &pad_live, pad);
+    setlive_test_apply(frame, &pad_live, pad);
+    controls_refresh();
+    rebind_capture_frame(&pad_live, pad);
     /* the pad layout learn flow, the same call the level loop makes;
        inert unless the menu's row armed it */
     padlearn_frame(&pad_live);
@@ -10405,6 +10608,7 @@ static int scene_window_run(void)
 #ifndef PORT_ROM_CLEAN
     click_test_finish();
 #endif
+    host_settings_save_flush();   /* SETFIX1 (G1) */
     fprintf(stderr, "[scene] window closed after %d frame(s)\n",
             port_rom_frame_checked(frame, "scene-closed"));
     port_rom_frame_report();   /* R3a: this loop's frame account, one line */
@@ -10637,16 +10841,21 @@ extern "C" void port_frame_ctrl_publish(void)
             const int analog_mode = force_analog || run_mode() == RUN_ANALOG;
             if (!selftest && analog_mode && pad_live && !menu_on &&
                 !(port::comms_transport() && comms_fanout_on())) {
-                const int DEAD = 7849;      /* XInput's left-stick floor */
+                const int DEAD = host_setting_stick_deadzone_raw();   /* 7849 by default: XInput's left-stick floor */
                 const int FULL = 32767;
                 const int dxs = pad.lx;
                 const int dys = -pad.ly;    /* stick up is touch-screen up */
                 double len = sqrt((double)dxs * dxs + (double)dys * dys);
                 if (len > FULL) len = FULL;
+                g_setlive_mag = -1;
                 if (len > DEAD) {
                     int mag = (int)(4096.0 * (len - DEAD) / (FULL - DEAD));
                     if (mag > 0x1000) mag = 0x1000;
                     if (mag < 0) mag = 0;
+                    /* the player's run point lands on the ROM's own
+                       (identity at the default; settings_live.h) */
+                    mag = host_setting_run_remap(mag);
+                    g_setlive_mag = mag;
                     /* THE LOCAL SLOT, at the 0x18 Ctrl stride. Each split array
                        (f4a0/f4a2/f4a4/f4a6/f4ac) is 0x18 * kPortMaxPlayers, and
                        the ROM reads player N's fields at symbol + N*0x18 (see the
@@ -10807,6 +11016,7 @@ int main(void)
     static char stdout_buf[1 << 16];
     setvbuf(stdout, stdout_buf, _IOFBF, sizeof stdout_buf);
     atexit(stdout_flush_atexit);
+    atexit(settings_flush_atexit);   /* SETFIX1 (G1): the last queued setting always lands */
     /* FLIGHT RECORDER (Tango's ask): every diagnostic this program
        writes to stderr -- unhosted states, spawn skips, fault dumps
        with registers and stack, the traces below -- lands in a
@@ -12086,7 +12296,8 @@ int main(void)
        right. See port/hal/host_settings.h for the measurement the default
        comes from; the DS has none of these controls, so there was never a
        hardware binding to be faithful to. */
-    const int cam_turn = host_camera_turn_sign();
+    g_cam_turn = host_camera_turn_sign();   /* SETLIVE1/SETFIX1: refreshed live in controls_refresh */
+    int &cam_turn = g_cam_turn;
     /* HOW RUNNING WORKS, read once at boot beside the camera setting and for
        the same reason: a change takes effect the next time the player presses
        Play, except that this one can also be changed from the menu, which
@@ -12391,7 +12602,7 @@ int main(void)
            camera block, the render block and the scene-tree point. */
         int k1_rom = 0;
         while (W.PeekMessageA_(&msg, 0, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT) return 0;
+            if (msg.message == WM_QUIT) { host_settings_save_flush(); return 0; }
             W.TranslateMessage_(&msg);
             W.DispatchMessageA_(&msg);
         }
@@ -12420,6 +12631,7 @@ int main(void)
                path -- it just changes what that test answers. */
             mo_capture_opt = host_setting_mouse_capture();
         }
+        controls_refresh();
         ph_begin(&t_frame);
         pt_frame_begin(0, port_level_id());
         pt_mark(PS_HOST_IN);
@@ -12867,8 +13079,9 @@ int main(void)
                of MouseCapture as far as the camera is concerned: same
                variables, same constants, same rig. */
             if ((mo_look || mo_captured) && !selftest && !rb_replaying()) {
-                mouse_dyaw = mo_dx * MOUSE_YAW;
-                mouse_dpitch = mo_dy * MOUSE_PITCH;
+                const int ms = host_setting_mouse_sensitivity();   /* percent, 100 = today */
+                mouse_dyaw = mo_dx * MOUSE_YAW * ms / 100;
+                mouse_dpitch = mo_dy * MOUSE_PITCH * ms / 100;
             }
             mo_dx = mo_dy = 0;
             if (!selftest) mouse_wheel = mo_wheel;
@@ -12937,6 +13150,7 @@ int main(void)
            set and unreachable from a selftest; see its banner. */
         pad_test_apply(port_rom_frame_checked(frame, "pad-test"),
                        &pad_live, &pad);
+        setlive_test_apply(frame, &pad_live, &pad);
 #ifndef PORT_ROM_CLEAN
         /* SM64DS_CLICK_TEST: the scripted stylus, the same call the windowed
            scene loop makes and for the same reason -- the level path is where
@@ -12953,57 +13167,7 @@ int main(void)
            inside key_live: past this point the frame sees no pad at all, so
            the button being bound cannot also open the menu, toggle the freecam
            or nudge the camera on its way to becoming a binding. */
-        if (g_rebind_capture) {
-            static unsigned bind_pad_prev = ~0u;   /* first frame: no edges */
-            const unsigned now = pad_live ? pad_word_with_triggers(&pad) : 0u;
-            const unsigned fresh = now & ~bind_pad_prev;
-            bind_pad_prev = now;
-            int done = 0;
-            if (g_rebind_key) {
-                const int vk = g_rebind_key;
-                g_rebind_key = 0;
-                if (vk == VK_ESCAPE) {
-                    ss_note("rebind cancelled");
-                    done = 1;
-                } else if (run_key_reserved(vk)) {
-                    ss_note("that key belongs to the window, pick another");
-                } else {
-                    char kb[16], msg[64];
-                    g_run_key = vk;
-                    host_setting_save_run(g_run_mode, g_run_key, g_run_pad);
-                    snprintf(msg, sizeof msg, "run is now %s",
-                             run_key_name(vk, kb, sizeof kb));
-                    ss_note(msg);
-                    done = 1;
-                }
-            } else if (fresh) {
-                /* one button per press: the lowest set bit, so a thumb that
-                   lands on two at once binds one of them instead of a mask
-                   that no single press can ever reproduce */
-                const unsigned bit = fresh & (unsigned)(-(int)fresh);
-                if (run_pad_reserved(bit)) {
-                    ss_note("that pad button drives the menu, pick another");
-                } else {
-                    char pb[16], msg[64];
-                    g_run_pad = (int)bit;
-                    host_setting_save_run(g_run_mode, g_run_key, g_run_pad);
-                    snprintf(msg, sizeof msg, "run is now %s",
-                             run_pad_name((int)bit, pb, sizeof pb));
-                    ss_note(msg);
-                    done = 1;
-                }
-            }
-            if (done) {
-                g_rebind_capture = 0;
-                bind_pad_prev = ~0u;
-                /* every key that is down right now is marked stale, the same
-                   trick the focus-regained edge uses: the key just bound is
-                   still physically held, and without this it would read as a
-                   fresh press the instant the capture ends */
-                memset(key_stale, 1, sizeof key_stale);
-            }
-            pad_live = 0;
-        }
+        rebind_capture_frame(&pad_live, &pad);
         /* the pad layout learn flow (the menu's "pad layout" row), the same
            shape: it eats the frame's pad while it runs */
         padlearn_frame(&pad_live);
@@ -13084,6 +13248,16 @@ int main(void)
                 if (getenv("SM64DS_FREECAM")) cam_mode = CAM_FREE;
                 if (cam_mode != CAM_DS) fc_seed(cam);
             }
+            /* the settings page (or a launcher edit) set the camera mode */
+            if (g_cam_req >= 0) {
+                if (!selftest && g_cam_req != cam_mode) {
+                    cam_mode = g_cam_req;
+                    if (cam_mode != CAM_DS) fc_seed(cam);
+                    if (cam_mode == CAM_ANALOG) an_pivot_live = 0;
+                    fprintf(stderr, "[cam] mode %s (settings)\n", cam_mode_name(cam_mode));
+                }
+                g_cam_req = -1;
+            }
             int now = key_live(VK_F1) ||
                       (pad_live && (pad.buttons & 0x0080));
             if (selftest && getenv("SM64DS_SELFTEST_FREECAM")) {
@@ -13115,13 +13289,16 @@ int main(void)
             {
                 /* stick and mouse are both a rightward push measured to the
                    right, so both take cam_turn as-is */
-                const int r = (fc_stick_rate(stick_rx, CAM_STEP) + mouse_dyaw)
+                const int cs = host_setting_camera_sensitivity();   /* percent, 100 = today */
+                const int r = (fc_stick_rate(stick_rx, CAM_STEP * cs / 100) + mouse_dyaw)
                               * cam_turn;
                 if (r) { fc_yaw = (short)(fc_yaw + r); rig_touched = 1; }
             }
             {
-                int t = fc_pitch - fc_stick_rate(stick_ry, CAM_STEP / 2)
-                        + mouse_dpitch;
+                const int cs = host_setting_camera_sensitivity();
+                const int inv = host_setting_invert_camera_y() ? -1 : 1;
+                int t = fc_pitch - inv * fc_stick_rate(stick_ry, (CAM_STEP / 2) * cs / 100)
+                        + inv * mouse_dpitch;
                 if (mouse_dpitch) rig_touched = 1;
                 if (key_live('R')) t += 0x80;
                 if (key_live('F')) t -= 0x80;
@@ -13132,7 +13309,7 @@ int main(void)
             {
                 /* Q pushes left, E pushes right, off the same sign as the
                    stick so the keyboard and the pad cannot disagree */
-                const int qe = (CAM_STEP / 2) * cam_turn;
+                const int qe = ((CAM_STEP / 2) * host_setting_camera_sensitivity() / 100) * cam_turn;
                 if (key_live('Q')) { fc_yaw = (short)(fc_yaw - qe); rig_touched = 1; }
                 if (key_live('E')) { fc_yaw = (short)(fc_yaw + qe); rig_touched = 1; }
             }
@@ -13180,10 +13357,11 @@ int main(void)
             }
         }
         if (pad_live) {
-            if (pad.ly > 12000 || (pad.buttons & 1)) dz += 1;
-            if (pad.ly < -12000 || (pad.buttons & 2)) dz -= 1;
-            if (pad.lx < -12000 || (pad.buttons & 4)) dx -= 1;
-            if (pad.lx > 12000 || (pad.buttons & 8)) dx += 1;
+            const int dig = host_setting_stick_digital();   /* 12000 by default */
+            if (pad.ly > dig || (pad.buttons & 1)) dz += 1;
+            if (pad.ly < -dig || (pad.buttons & 2)) dz -= 1;
+            if (pad.lx < -dig || (pad.buttons & 4)) dx -= 1;
+            if (pad.lx > dig || (pad.buttons & 8)) dx += 1;
             if (pad.rx < -10000 || pad.rx > 10000) {
                 cam_yaw += cam_turn * 0.045f * (pad.rx / 32768.0f);
                 orbiting = 1;
@@ -13340,13 +13518,13 @@ int main(void)
                to button there) or with the menu open. */
             if (run_mode() == RUN_ANALOG && !menu_on && pad_live &&
                 port::comms_transport() && comms_fanout_on()) {
-                const int DEAD = 7849;      /* the same XInput floor as above */
+                const int DEAD = host_setting_stick_deadzone_raw();   /* the same floor as above */
                 const int FULL = 32767;
                 const double len = sqrt((double)pad.lx * pad.lx +
                                         (double)pad.ly * pad.ly);
                 const double norm = len > FULL ? 1.0
                                   : (len - DEAD) / (double)(FULL - DEAD);
-                if (norm >= 0.87) btn |= 0x800;
+                if (norm >= host_setting_run_norm()) btn |= 0x800;
             }
             /* selftest: synthetic hop at frame 30 (walking start speed) */
             if (selftest && frame >= 30 && frame <= 33 &&
