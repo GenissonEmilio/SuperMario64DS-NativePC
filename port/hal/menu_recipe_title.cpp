@@ -257,7 +257,13 @@ int title_skip(char *o)
     const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
     if (fr != g_tk_frame) { g_tk_frame = fr; g_tk_idx = 0; }
     const int k = g_tk_idx++;
-    if (trace && (fr == 300 || fr == 480 || fr == 600)) {
+    static int trlo = -2, trhi = -2;
+    if (trlo == -2) {
+        trlo = trhi = -1;
+        const char *e = getenv("SM64DS_TITLE_TRACEFR");      /* FACE1: a-b = trace every object call of those title frames */
+        if (e) { char *q; trlo = (int)strtol(e, &q, 10); trhi = *q == '-' ? (int)strtol(q + 1, 0, 10) : trlo; }
+    }
+    if (trace && (fr == 300 || fr == 480 || fr == 600 || (fr >= trlo && fr <= trhi))) {
         const int *w = (const int *)o;
         fprintf(stderr, "[tdraw] f%d k%d obj=%p flags=%08x p4=%d p8=%d tex=%04x id=%02x a=%d\n", fr, k, (void *)o, w[0], w[1], w[2],
                 (unsigned)*(unsigned short *)(o + 0x44), (unsigned)*(unsigned char *)(o + 0x4e), (w[0x50 / 4] >> 12) & 0xff);
@@ -870,6 +876,14 @@ int menu_title_up(int scene_id)
         if (hal_menu_trace_on()) fprintf(stderr, "[menu] title page top=%d elem=%d req=%d\n", top, elem, req);
     }
     g_last = variant_for(top, elem);
+    if (hal_menu_trace_on() && getenv("SM64DS_HEAD_TRACE") && data_ov007_0210342c) {   /* FACE1 probe: the head object's three lerped fields */
+        const char *g = (const char *)data_ov007_0210342c;
+        const char *m = *(const char *const *)(g + 0x30);
+        if (m) fprintf(stderr, "[head] f%d top=%d elem=%d x=%d y=%d z=%d s=%d  f20=%d v=%d
+", data_ov007_0210342c[0], top, elem, *(const int *)(m + 0x14),
+                       *(const int *)(m + 0x18), *(const int *)(m + 0x1c), *(const int *)(m + 0x2c), *(const int *)(g + 0x20),
+                       *(const int *)(*(const char *const *)(g + 8) + 0xc));
+    }
     if (data_ov007_0210342c) g_up_stamp = data_ov007_0210342c[0];
     chore_step(g_last, top, elem, req);
     chore_rom_writes(top, req);
