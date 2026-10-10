@@ -512,8 +512,7 @@ void process(unsigned now) {
             if (was >= 0) {
                 ++g_st.owner_changes;
                 if (g_log && g_st.owner_changes <= 400)
-                    std::fprintf(stderr, "[coopmove] owner slot=%d cls=%d %d->%d mycd=%u wall=%lld
-", slot, (int)p.id, was, nown, my_cd, wall_ms());
+                    std::fprintf(stderr, "[coopmove] owner slot=%d cls=%d %d->%d mycd=%u wall=%lld\n", slot, (int)p.id, was, nown, my_cd, wall_ms());
             }
         }
         // 2. apply what the owner (or a snapshot) sent
