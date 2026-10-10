@@ -626,7 +626,7 @@ void do_dump(unsigned at) {
     for (int slot = 0; slot < kSlots; ++slot) {
         const Slot &s = g_slot[slot];
         if (!s.a) continue;
-        char line[kFieldHi * 2 + 96]; int n = std::snprintf(line, sizeof line, "[mvd] lf=%u slot=%d cls=%d w=", at, slot, (int)g_prof[s.prof].id);
+        char line[kFieldHi * 2 + 96]; int n = std::snprintf(line, sizeof line, "[mvd] lv=%d lf=%u slot=%d cls=%d w=", g_key.level, at, slot, (int)g_prof[s.prof].id);
         for (int off = kFieldLo; off < kFieldHi; off += 4) n += std::snprintf(line + n, sizeof line - n, "%08x", (unsigned)rd32(s.a, off));
         std::fprintf(stderr, "%s\n", line);
     }
