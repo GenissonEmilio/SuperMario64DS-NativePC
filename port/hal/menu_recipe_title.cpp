@@ -500,7 +500,7 @@ void file_pages_build(int variant, MenuLayout *L)
         MenuPiece up = menu_piece_make(SRC_SUB, 0, us, 256, uh, MENU_AX_C, MENU_AY_T, dx, dy0, kn, kd);
         up.layers = (uint8_t)ftune(9, MENU_L_BG1); up.key_backdrop = 1;   /* BG1 is the text; engine B's OBJ layer holds a few stray sprite pixels beside two rows (measured) */
         menu_add_piece(L, up);
-        MenuPiece lo = menu_piece_make(SRC_TOP_2D, 0, ls, 256, lh, MENU_AX_C, MENU_AY_T, dx, dy0 + uh * kn / kd, kn, kd);
+        MenuPiece lo = menu_piece_make(SRC_TOP_2D, 0, ls, 256, lh, MENU_AX_C, MENU_AY_T, dx, dy0 + (uh * kn + kd - 1) / kd, kn, kd);   /* rounded up so the two never overlap */
         lo.layers = L->lift_owners;
         menu_add_piece(L, lo);
         static const int bk_ids[1] = { 20 };
