@@ -17,8 +17,7 @@
  *                         the bar. The Mario head is the one thing not kept (it is a decoration and a
  *                         hidden doodle button; there is no room for it beside the logo).
  *   file pages (3..6)    the lower screen whole (the page IS the DS lower screen); see THE FILE PAGES below (run menu1, FILE1).
- * Wide canvases keep the same arrangement centred: the extra width is the host's ambient fill (the
- * menu stays 4:3 native, DESIGN G); nothing is stretched.
+ * Wide canvases keep the same arrangement centred; nothing is stretched.
  *
  * DRIVER. NATIVE. The ROM reads the pad on every title page (src/func_ov007_020b3190.c: any non-B key
  * shows its own cursor, the D-pad moves it through func_ov007_020b3708's table, a confirm key presses
@@ -495,14 +494,14 @@ void file_pages_build(int variant, MenuLayout *L)
     if (variant == V_TABLE) {
         L->lift_owners = (uint8_t)ftune(0, MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ);
         const int kn = ftune(5, 2), kd = ftune(6, 3);
-        const int us = ftune(1, 8), uh = ftune(2, 178), ls = ftune(3, 12), lh = ftune(4, 108);
+        const int us = ftune(1, 10), uh = ftune(2, 176), ls = ftune(3, 12), lh = ftune(4, 108);
         const int dx = ftune(7, -39);                         /* the piece's centre from the canvas centre: the text sits at the left of the 4:3 area */
-        const int dy0 = ftune(8, 2);
+        const int dy0 = ftune(8, 0);
         MenuPiece up = menu_piece_make(SRC_SUB, 0, us, 256, uh, MENU_AX_C, MENU_AY_T, dx, dy0, kn, kd);
-        up.layers = (uint8_t)ftune(9, MENU_L_BG1 | MENU_L_OBJ); up.key_backdrop = 1;
+        up.layers = (uint8_t)ftune(9, MENU_L_BG1); up.key_backdrop = 1;   /* BG1 is the text; engine B's OBJ layer holds a few stray sprite pixels beside two rows (measured) */
         menu_add_piece(L, up);
         MenuPiece lo = menu_piece_make(SRC_TOP_2D, 0, ls, 256, lh, MENU_AX_C, MENU_AY_T, dx, dy0 + uh * kn / kd, kn, kd);
-        lo.layers = (uint8_t)(MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ);
+        lo.layers = L->lift_owners;
         menu_add_piece(L, lo);
         static const int bk_ids[1] = { 20 };
         hot(L, ip, bk_ids, 1);
