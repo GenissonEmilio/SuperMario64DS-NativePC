@@ -32,6 +32,8 @@
  */
 #include "menu_compose.h"
 #include "menu_hostimg.h"
+#include "ntr/gx.h"
+#include "ntr/ppu.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -90,6 +92,7 @@ struct TitleFacts {
     int dd_e;                 /* FACE2: ticks since the face press handed over to the drawing page (1 on the first hand-over tick), 0 = not reached from the press (no crossfade) */
     int dd_dead;              /* FACE2: 1 while the drawing page's own picture is not the page yet (the ROM's black hand-over frames): no strokes or buttons are cut from it */
     int out_e;                /* FACE2: ticks since the drawing page was left (1 on the first tick of the next page), 0 = not leaving it */
+    int wide3d;               /* FILE2: this tick's 3D frame covered the whole wide frame (the page background was zoomed in the 3D itself: no margin pieces) */
     int toy_v;                /* FACE1: the face press page's own frame counter (the page object's +0xc) PLUS ONE while top 4 / elem 0 is up, 0 = not the press page (a zeroed blob is not the press page) */
 };
 static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
@@ -249,7 +252,7 @@ bool wall_skip_active()
     int top, elem, req;
     if (!port_title_page_state(&top, &elem, &req)) return false;
     const int v = variant_for(top, elem);
-    if (v == V_TOY) return pc_assets_ready();
+    if (v == V_TOY || v == V_OPTIONS) return pc_assets_ready();   /* FILE2: the sound / backlight page draws the same moving PC pattern */
     return v == V_MAIN || v == V_INTRO;
 }
 
@@ -1058,6 +1061,7 @@ void menu_title_facts(MenuFacts *f)
     tf.frame = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
     rom_iris(&tf.vis, &tf.s48);
     tf.ch = g_ch;
+    tf.wide3d = ntr::gx_menu_wide_active() ? 1 : 0;
     tf.toy_v = 0;
     {
         static int last_v = -1, last_e = 0, dd_chain = 0, dd_e = 0, was_dd = 0, out_e = 0;
@@ -1149,7 +1153,15 @@ bool table_skip_active()
     if (!port_title_page_state(&top, &elem, &req)) return false;
     return variant_for(top, elem) == V_TABLE;
 }
+int file_skip_inner(char *o);
 int file_skip(char *o)
+{
+    const int r = file_skip_inner(o);
+    if (!r) ntr::gx_menu_sprite(1);      /* FILE2: this object is drawn: its triangles are sprite objects, not the page model */
+    return r;
+}
+void file_draw_end() { ntr::gx_menu_sprite(0); }
+int file_skip_inner(char *o)
 {
     if (table_skip_active()) {
         const int y = *(const int *)(o + 8) >> 12;
@@ -1162,7 +1174,42 @@ int file_skip(char *o)
     }
     return g_file_prev_skip ? g_file_prev_skip(o) : 0;
 }
-struct FileHookInit { FileHookInit() { g_file_prev_skip = g_port_title_draw_skip; g_port_title_draw_skip = file_skip; } } g_file_hook_init;
+}  // namespace
+extern "C" {
+extern void (*g_port_title_draw_end)(void);
+}
+namespace {
+/* FILE2: THE WIDE BACKGROUND. On the pages whose lower screen is the castle reflection (file select, file options, scores pick,
+   copy, erase, the score table) the 3D layer of a wide window covers the whole frame: the page model (the reflection) is zoomed
+   in the 3D about the frame's centre so it fills the width (the top and bottom crop), while the plates, glyphs and the back arrow
+   (sprite objects) are drawn by the same pass at their DS places in the centred 4:3 area, at their DS size. Asked once per frame
+   by ntr/gx.cpp at the first 3D command, in the ROM's Render, so the page is the ROM's live page. */
+bool file_wide_cb(float *zoom, float *dy)
+{
+    static int off = -1;
+    if (off < 0) { const char *e = getenv("SM64DS_FILE_WIDE"); off = (e && *e == '0') ? 1 : 0; }
+    if (off || !ntr::widescreen || ntr::active_h <= 0) return false;
+    if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return false;
+    const int v = variant_for(top, elem);
+    if (v != V_FILES && v != V_TABLE) return false;
+    const float z = (float)ntr::active_w * 192.0f / ((float)ntr::active_h * 256.0f);   /* the canvas width over the DS width */
+    if (z <= 1.001f) return false;
+    int zp = 1000, dp = 0;      /* SM64DS_FILE_WIDE_TUNE=zoom permille of the fit, vertical shift permille of the half height */
+    if (const char *e = getenv("SM64DS_FILE_WIDE_TUNE")) sscanf(e, "%d,%d", &zp, &dp);
+    *zoom = z * ((float)zp / 1000.0f);
+    *dy = (float)dp / 1000.0f;
+    return true;
+}
+struct FileHookInit {
+    FileHookInit()
+    {
+        g_file_prev_skip = g_port_title_draw_skip; g_port_title_draw_skip = file_skip;
+        g_port_title_draw_end = file_draw_end;
+        ntr::gx_set_menu_wide_cb(file_wide_cb);
+    }
+} g_file_hook_init;
 
 /* the margins of a wide canvas: the picture's outermost column carried across, one piece a side, under the page */
 void file_fills(MenuLayout *L)
@@ -1180,14 +1227,35 @@ void file_fills(MenuLayout *L)
     menu_add_piece(L, rt);
 }
 
+/* FILE2: the moving PC pattern wallpaper of the main menu (gradient + the "Super Mario 64 PC" pattern, the OG's scale and drift), full canvas */
+void add_pc_wall(MenuLayout *L)
+{
+    const int un = L->unum, ud = L->uden;
+    MenuPiece wl = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    wl.bg = 1; wl.wall = 1; wl.lden = 1; wl.lnum = 1; wl.fx = 0; wl.fy = 0; wl.fw = (short)L->w; wl.fh = (short)L->h;
+    const int tu = ctune(5, 64);
+    wl.wtw = (short)(tu * un / ud);
+    wl.wth = (short)((int)((long long)wl.wtw * 730 / 410));
+    wl.wox = (short)((ctune(6, -6) * un) / ud);
+    wl.woy = (short)((ctune(7, -11) * un) / ud);
+    wl.wink = (uint8_t)ctune(8, 107);
+    menu_add_piece(L, wl);
+}
+
 void file_pages_build(int variant, MenuLayout *L)
 {
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
-    file_fills(L);
+    /* FILE2: the sound / backlight page: the ROM's wallpaper objects are not submitted (wall_skip_active), the moving PC pattern is
+       drawn full width under the page's own 3D objects (the head, the sliders, the plates), cut by the 3D coverage so nothing
+       but those objects comes along. The reflection pages with a wide 3D frame already carry their background to the edges. */
+    const bool pat = variant == V_OPTIONS && pc_assets_ready();
+    if (pat) add_pc_wall(L);
+    else if (!(t_f && t_f->wide3d)) file_fills(L);
     /* the page: the whole lower screen, 1/1, centred (4:3: the whole window) */
     MenuPiece pg = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
     pg.bg = 1; pg.touch = 1;
+    if (pat) pg.keycover = 1;
     const int ip = menu_add_piece(L, pg);
     if (variant == V_TABLE) {
         L->lift_owners = (uint8_t)ftune(0, MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ);
