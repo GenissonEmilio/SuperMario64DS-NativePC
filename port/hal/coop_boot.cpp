@@ -516,8 +516,9 @@ void guest_gate() {
     }
     if (tick() - w0 > 100) LOG("the opening ended; entering after %u ms", (unsigned)(tick() - w0));
     // A gate beat can be the host's last pump before it loads the ROM, so the
-    // save may only be served once the host is running: same 15 s as above.
-    const int fetch_ms = env_int("SM64DS_COOPBOOT_FETCH_MS", 15000);
+    // save is only served once the host is running (seen: 30 s on a loaded
+    // box). The host is known to exist here, so wait for it generously.
+    const int fetch_ms = env_int("SM64DS_COOPBOOT_FETCH_MS", 45000);
     if (!coop_save_fetch(fetch_ms)) {
         char why[64];
         std::snprintf(why, sizeof why, "the host did not send the save in %d s", fetch_ms / 1000);
