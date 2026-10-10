@@ -89,21 +89,21 @@ def short_plank(plank):
     return o
 
 
-def card(w=1500, h=1000):
+def card(w=1500, h=1000, k=1.0):
     """the course card: cream paper, a gold frame with a light inner bevel and a dark outer line (the DS card, redrawn at window resolution)"""
     S = 2
     W, H = w * S, h * S
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
-    r = 26 * S
+    r = int(26 * k * S)
     d.rounded_rectangle((0, 0, W - 1, H - 1), r, fill=(92, 62, 20, 255))                                   # outer dark line
-    t = 6 * S
+    t = max(1, int(6 * k * S))
     d.rounded_rectangle((t, t, W - 1 - t, H - 1 - t), r - t, fill=(222, 182, 92, 255))                      # gold band
-    b = 30 * S
+    b = int(30 * k * S)
     d.rounded_rectangle((b, b, W - 1 - b, H - 1 - b), max(2, r - b), fill=(246, 226, 150, 255))            # light bevel
-    c = 38 * S
+    c = int(38 * k * S)
     d.rounded_rectangle((c, c, W - 1 - c, H - 1 - c), max(2, r - c), fill=(150, 112, 48, 255))             # inner dark line
-    p = 42 * S
+    p = int(42 * k * S)
     paper = np.zeros((H, W, 4), np.uint8)
     for y in range(H):
         f = y / H
@@ -199,7 +199,7 @@ def main():
     card().save(os.path.join(a.out, "card.png"), optimize=True)
     arrow(True).save(os.path.join(a.out, "arrow_l.png"), optimize=True)
     arrow(False).save(os.path.join(a.out, "arrow_r.png"), optimize=True)
-    card(1500, 300).save(os.path.join(a.out, "banner.png"), optimize=True)
+    card(1500, 300, 0.4).save(os.path.join(a.out, "banner.png"), optimize=True)
     status_card(a.font, "Saving file...").save(os.path.join(a.out, "saving.png"), optimize=True)
     status_card(a.font, "File saved.").save(os.path.join(a.out, "saved.png"), optimize=True)
 
