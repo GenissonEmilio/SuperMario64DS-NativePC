@@ -221,6 +221,15 @@ bool ap_fall(char *a, int, int) {
     *(unsigned char *)(a + 0x33c) = 1;
     return true;
 }
+// The big "?" switch (HATENA_SWITCH 26): the shared fact is bit 31 of the save record word [1]
+// (the ? blocks read it); the press itself is +0x71a with the 8-frame countdown at +0x718.
+int r_hatena(const char *) { return (int)((*(const unsigned *)(data_0209caa0 + 4)) >> 31); }
+bool ap_hatena(char *a, int, int) {
+    if ((*(const unsigned *)(data_0209caa0 + 4)) & 0x80000000u) return false;
+    *(unsigned char *)(a + 0x718) = 0;
+    *(unsigned char *)(a + 0x71a) = 1;
+    return true;
+}
 int r_water(const char *a) { return rd_i32(a, 0x334); }
 bool ap_water(char *a, int, int value) {
     if (rd_i32(a, 0x334) == value) return false;
@@ -232,6 +241,7 @@ const Watch kWatch[] = {
     {11,  kSwKindPress, "EXCL_SWITCH",  r_starsw, ap_starsw},
     {12,  kSwKindPress, "STAR_SWITCH",  r_starsw, ap_starsw},
     {126, kSwKindKick,  "DONUT_BLOCK",  r_donut,  ap_donut},
+    {26,  kSwKindKick,  "HATENA_SWITCH", r_hatena, ap_hatena},
     {45,  kSwKindKick,  "FALL_BLOCK_WF",  r_fall, ap_fall},
     {66,  kSwKindKick,  "FALL_BLOCK_BBH", r_fall, ap_fall},
     {83,  kSwKindKick,  "FALL_BLOCK_LLL", r_fall, ap_fall},
@@ -712,6 +722,16 @@ void knob_press(PressKnob &k) {
     std::fprintf(stderr, "[coopsw-knob] press %s slot=%d (candidate %d of %d) did=%d wall=%lld\n", w->name, (int)a_slot(a), k.nth % n, n, (int)did, wall_ms());
 }
 
+unsigned g_rec_flags = 0; bool g_rec_flags_init = false;
+void watch_record() {
+    const unsigned f = *(const unsigned *)(data_0209caa0 + 4);
+    if (!g_rec_flags_init) { g_rec_flags_init = true; g_rec_flags = f; return; }
+    if (f != g_rec_flags) {
+        if (g_log) std::fprintf(stderr, "[coopsw] record flags %08x -> %08x frame=%u wall=%lld\n", g_rec_flags, f, g_frames, wall_ms());
+        g_rec_flags = f;
+    }
+}
+
 void watch_field(unsigned) {
     if (g_watch.cls < 0) return;
     for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
@@ -849,6 +869,7 @@ void on_frame(unsigned now) {
         if (!g_forge[i].done && g_armed && g_frames >= g_forge[i].frame) { g_forge[i].done = true; knob_forge(g_forge[i].name, now); }
     for (int i = 0; i < g_npress; ++i)
         if (!g_press[i].done && g_armed && g_frames >= g_press[i].frame) { g_press[i].done = true; knob_press(g_press[i]); }
+    watch_record();
     watch_field(now);
     if (g_rec_on) {
         for (int i = 0; i < 3; ++i) if (g_rec_n == i && g_frames >= g_rec[i]) { rec_take(i); ++g_rec_n; if (i == 2) rec_report(); }
