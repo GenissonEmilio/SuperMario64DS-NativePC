@@ -333,18 +333,29 @@ bool coop_save_prepare() {
     return GetFileAttributesA(g_sav) != INVALID_FILE_ATTRIBUTES;
 }
 
+// One line per drop, the first 24 only (a hostile peer must not fill a log).
+static bool drop(unsigned *counter, int seat, const char *why) {
+    static unsigned said = 0;
+    ++*counter;
+    if (said < 24) {
+        ++said;
+        std::fprintf(stderr, "[coopsave] DROP seat %d: %s\n", seat, why);
+    }
+    return true;
+}
+
 bool coop_save_handle(int seat, const unsigned char *d, int len) {
     if (!d || len < kHubCoopHeaderBytes) return false;
     const int sub = d[6];
     if (sub < kCoopSaveSubLo || sub > kCoopSaveSubHi) return false;
     if (!coop()) return true;
-    if (!hub_coop_validate(kHubTagCoopCtl, d, len)) { ++g_st.dropped_bad; return true; }
+    if (!hub_coop_validate(kHubTagCoopCtl, d, len))
+        return drop(&g_st.dropped_bad, seat, "bad SYNB head");
     const uint8_t *pl = d + kHubCoopHeaderBytes;
     const int plen = len - kHubCoopHeaderBytes;
     if (sub == kCoopSaveSubReq) {
         if (plen != kCoopReqPayload || (pl[0] | pl[1] | pl[2] | pl[3])) {
-            ++g_st.dropped_bad;
-            return true;
+            return drop(&g_st.dropped_bad, seat, "malformed SAVE_REQ");
         }
         if (host()) { ++g_st.req_recv; g_answer = true; }
         return true;
@@ -353,9 +364,11 @@ bool coop_save_handle(int seat, const unsigned char *d, int len) {
         bool blank = false;
         uint8_t rec[kCoopRecBytes];
         int r = coop_rec_decode(pl, plen, &blank, rec);
-        if (r < 0) { ++g_st.dropped_bad; return true; }
-        if (!blank && std::memcmp(rec, kMagic, 4) != 0) { ++g_st.dropped_bad; return true; }
-        if ((r == 0) != host()) { ++g_st.dropped_role; return true; }
+        if (r < 0) return drop(&g_st.dropped_bad, seat, "malformed SAVE_REC");
+        if (!blank && std::memcmp(rec, kMagic, 4) != 0)
+            return drop(&g_st.dropped_bad, seat, "SAVE_REC without the file magic");
+        if ((r == 0) != host())
+            return drop(&g_st.dropped_role, seat, "SAVE_REC for the other role");
         if (r == 0) {
             ++g_st.rec_recv_guest;
             if (!g_pending_have) std::memset(g_pending, 0, sizeof g_pending);
@@ -373,8 +386,7 @@ bool coop_save_handle(int seat, const unsigned char *d, int len) {
         }
         return true;
     }
-    ++g_st.dropped_subtype;
-    return true;
+    return drop(&g_st.dropped_subtype, seat, "unknown sub-type in 0x20-0x2f");
 }
 
 bool coop_save_fetch(int timeout_ms) {
