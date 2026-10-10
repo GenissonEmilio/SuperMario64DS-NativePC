@@ -1109,7 +1109,7 @@ inline bool lc_overlay_in_band(unsigned owner, int hy)
    Absent or 0 = nothing here runs: one int read per frame. */
 extern "C" int host_setting_hud_layout(void);
 static const int kHudZoneX0 = 188, kHudZoneY0 = 20, kHudZoneY1 = 36;   /* the coin counter's DS rectangle */
-static const int kHudCoinDxMin = 52, kHudCoinDy = 18;
+static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudStarGap = 8;
 static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
 static bool g_hud_row_live;
 
@@ -3215,13 +3215,36 @@ extern "C" void port_message_composite_engine_a(void *fbp)
             for (int x = 160; x < kHudZoneX0; ++x)
                 if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { timer_up = true; break; }
         if (!timer_up) {
-        /* The counter ends 6 DS pixels short of the star counter's leftmost pixel (a three digit star count reaches
-           x 189), but never further right than kHudCoinDxMin puts it, so the two rows cannot overlap. */
+        /* THE STAR COUNTER'S LEFT EDGE. The ROM blinks the counter on a star collect (src/_ZN3HUD15RenderStarCountEv.cpp,
+           data_020a0db0 & 0x18) so a frame can show it blank or shifted: keep the smallest left edge seen (a count only grows
+           within a level) and let a larger one replace it after 120 frames of agreeing, so the coin block never hops. */
         int star_left = 256;
         for (int y = 0; y < kHudZoneY0 - 1; ++y)
             for (int x = 180; x < star_left; ++x)
                 if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { star_left = x; break; }
-        const int dx_move = (254 - star_left > kHudCoinDxMin) ? 254 - star_left : kHudCoinDxMin;
+        static int s_star_left = 256, s_star_larger = 0;
+        if (star_left < 256) {
+            if (star_left <= s_star_left) { s_star_left = star_left; s_star_larger = 0; }
+            else if (++s_star_larger >= 120) { s_star_left = star_left; s_star_larger = 0; }
+        }
+        star_left = s_star_left;
+        /* THE POWER METER's rightmost OBJ pixel in the rows the coin block lands on (x 80..187), and the coin block's own
+           left edge before the move. The block keeps kHudMeterGap clear pixels from the meter when the star counter allows. */
+        int meter_right = -1, blk_left = 256;
+        for (int y = kHudZoneY0 - kHudCoinDy; y <= kHudZoneY1 - kHudCoinDy; ++y)
+            for (int x = 187; x >= 80; --x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { if (x > meter_right) meter_right = x; break; }
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = kHudZoneX0; x < blk_left; ++x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj && !g_a[y][x].msgcur) { blk_left = x; break; }
+        /* Default: the block's right end sits kHudStarGap pixels short of the star counter. Never closer than 4 to it. */
+        int dx_move = 255 - (star_left - kHudStarGap);
+        if (dx_move < kHudCoinDxMin) dx_move = kHudCoinDxMin;
+        const int dx_hard = 255 - (star_left - 4);
+        if (meter_right >= 0 && blk_left - dx_move < meter_right + 1 + kHudMeterGap) {
+            int d = blk_left - (meter_right + 1 + kHudMeterGap);
+            dx_move = d > dx_hard ? d : dx_hard;
+        }
         static Cell tmp[kHudZoneY1 - kHudZoneY0 + 1][256 - kHudZoneX0];
         for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
             for (int x = kHudZoneX0; x < 256; ++x) {

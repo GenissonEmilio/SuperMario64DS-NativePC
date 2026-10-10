@@ -1703,7 +1703,8 @@ void load_once(void)
         /* ONE SCREEN MENUS: absent is OFF, both spellings of the toggle */
         g_one_screen_menus = (json_int(text, "OneScreenMenus", 0) != 0 ||
                               json_bool(text, "OneScreenMenus", 0) != 0) ? 1 : 0;
-        g_hud_layout = json_int(text, "HudLayout", 0) == 1 ? 1 : 0;
+        g_hud_layout = (json_int(text, "HudLayout", 0) == 1 ||
+                        json_bool(text, "HudLayout", 0) != 0) ? 1 : 0;
         {
             int snapped = 0;
             const double want = json_num(text, "MinimapScale", 1.0);
