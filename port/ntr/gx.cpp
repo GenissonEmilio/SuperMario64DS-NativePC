@@ -184,6 +184,10 @@ struct State {
        rectangle it cannot attribute. */
     int vp_writes = 0;
 
+    /* MENU WIDE 3D (run menu1, lane FILE2): evaluated at most once per frame, see menu_wide(). */
+    int mw_eval = 0, mw_on = 0;
+    float mw_zoom = 1.0f, mw_dy = 0.0f;
+
     // Lighting state. diffuse/ambient/specular/emission are 0..1 per channel.
     float diffuse[3] = {1, 1, 1}, ambient[3] = {0, 0, 0};
     float emission[3] = {0, 0, 0};
@@ -537,6 +541,27 @@ const Mat *mtx_for_gen(uint32_t gen) {
     return &g_mtx_ring[slot];
 }
 
+/* MENU WIDE 3D (run menu1, lane FILE2; the only change in this file for it, see also the VIEWPORT case, raster_clip and
+   gx_clear_fill). A scene is presented at the DS's own centred 4:3 rectangle, so a one-screen menu page whose background
+   should fill a wide window had nothing to draw it into. A host callback (null on every run that never installs one, which is
+   the whole of the old behaviour: menu_wide() is then one test of a null pointer) says, once per frame and from the ROM's own
+   page state, "this frame's 3D covers the whole wide frame". The sprite objects the title submits through
+   func_ov007_020c421c (plates, glyphs, arrows: gx_menu_sprite brackets each submit) land exactly where they do natively;
+   everything else (the page model: the castle reflection) is zoomed by the callback's factor about the frame centre. */
+bool (*g_menu_wide_cb)(float *zoom, float *dy);
+int g_menu_sprite;
+bool menu_wide() {
+    if (!g_menu_wide_cb) return false;
+    if (!g.mw_eval) {
+        g.mw_eval = 1;
+        float z = 1.0f, dy = 0.0f;
+        g.mw_on = g_menu_wide_cb(&z, &dy) ? 1 : 0;
+        g.mw_zoom = z; g.mw_dy = dy;
+        if (g.mw_on) { g.vp_x = 0; g.vp_y = 0; g.vp_w = active_w; g.vp_h = active_h; }
+    }
+    return g.mw_on != 0;
+}
+
 /* VIEW SPACE -> CLIP SPACE, factored out of project() and out of nothing
    else. The model smoother (ntr/smooth.h) projects the vertices it invents
    through THIS function rather than through a copy of these six lines, so a
@@ -546,6 +571,18 @@ const Mat *mtx_for_gen(uint32_t gen) {
    inline before, same expression, same order. */
 Vec4 view_to_clip(const Vec4 &view) {
     Vec4 c = mul(view, g.proj);
+    if (menu_wide()) {
+        /* MENU WIDE 3D: the viewport is the whole wide frame, so EVERY projection (ortho included) is squeezed to where the
+           native 4:3 rectangle sits in it; the page's background alone is then zoomed about the frame's centre (a camera
+           zoom: clipping crops it, the texels stay sharp), the sprite objects are not. */
+        c.x *= (float)present_w() / (float)active_w;
+        c.y *= (float)present_h() / (float)active_h;
+        if (!g_menu_sprite && (g.mw_zoom != 1.0f || g.mw_dy != 0.0f)) {
+            c.x *= g.mw_zoom;
+            c.y = c.y * g.mw_zoom + g.mw_dy * c.w;
+        }
+        return c;
+    }
     if (g.proj.m[3] != 0.0f || g.proj.m[7] != 0.0f || g.proj.m[11] != 0.0f) {
         const float widen =
             (4.0f / 3.0f) * ((float)present_h() / (float)present_w());
@@ -1828,10 +1865,13 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
                presenting rather than the whole wide buffer. present_* is the
                active extent at the origin on every other run, so this is the
                same math as before. */
-            g.vp_x = present_x() + x1 * present_w() / 256;
-            g.vp_y = present_y() + y1 * present_h() / 192;
-            g.vp_w = (x2 - x1 + 1) * present_w() / 256;
-            g.vp_h = (y2 - y1 + 1) * present_h() / 192;
+            const bool mw = menu_wide();      /* MENU WIDE 3D: the whole wide frame is the viewport's 256 x 192 */
+            const int px = mw ? 0 : present_x(), py = mw ? 0 : present_y();
+            const int pw = mw ? active_w : present_w(), ph = mw ? active_h : present_h();
+            g.vp_x = px + x1 * pw / 256;
+            g.vp_y = py + y1 * ph / 192;
+            g.vp_w = (x2 - x1 + 1) * pw / 256;
+            g.vp_h = (y2 - y1 + 1) * ph / 192;
             ++g.vp_writes;
             break;
         }
@@ -3586,6 +3626,7 @@ static void raster_clip(int &x0, int &y0, int &x1, int &y1)
 {
     x0 = present_x(); y0 = present_y();
     x1 = x0 + present_w() - 1; y1 = y0 + present_h() - 1;
+    if (menu_wide()) { x0 = 0; y0 = 0; x1 = active_w - 1; y1 = active_h - 1; }   /* MENU WIDE 3D */
     if (g.vp_w <= 0 || g.vp_h <= 0) return;
     const int vx1 = g.vp_x + g.vp_w - 1, vy1 = g.vp_y + g.vp_h - 1;
     if (g.vp_x > x0) x0 = g.vp_x;
@@ -3595,6 +3636,7 @@ static void raster_clip(int &x0, int &y0, int &x1, int &y1)
     if (x1 < x0 || y1 < y0) {
         x0 = present_x(); y0 = present_y();
         x1 = x0 + present_w() - 1; y1 = y0 + present_h() - 1;
+        if (menu_wide()) { x0 = 0; y0 = 0; x1 = active_w - 1; y1 = active_h - 1; }
     }
 }
 
@@ -3603,8 +3645,9 @@ void gx_clear_fill(Framebuffer &fb)
     const uint32_t c = gx_clear_argb();
     const int w = active_w, h = active_h;
     if (w <= 0 || h <= 0) return;
-    const int x0 = present_x(), y0 = present_y();
-    const int x1 = x0 + present_w(), y1 = y0 + present_h();
+    const bool mw = menu_wide();          /* MENU WIDE 3D: the clear colour covers the whole wide frame */
+    const int x0 = mw ? 0 : present_x(), y0 = mw ? 0 : present_y();
+    const int x1 = mw ? active_w : x0 + present_w(), y1 = mw ? active_h : y0 + present_h();
     /* row 0 carries the present rectangle's columns if row 0 is inside it;
        the rest are copies of one of two template rows, built once */
     for (int x = 0; x < w; ++x)
@@ -3628,6 +3671,11 @@ void gx_clear_fill(Framebuffer &fb)
         }
     }
 }
+
+/* MENU WIDE 3D (run menu1, lane FILE2): the two seams, see menu_wide() */
+void gx_set_menu_wide_cb(bool (*cb)(float *zoom, float *dy)) { g_menu_wide_cb = cb; }
+void gx_menu_sprite(int on) { g_menu_sprite = on; }
+bool gx_menu_wide_active() { return menu_wide(); }
 
 void gx_configure_anti_aliasing(int mode) {
     g_aa_mode = mode < 0 ? 0 : (mode > 1 ? 1 : mode);

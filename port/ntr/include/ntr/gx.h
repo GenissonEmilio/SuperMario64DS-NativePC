@@ -300,6 +300,15 @@ void gx_render(Framebuffer &fb);
 uint32_t gx_clear_argb();
 void gx_clear_fill(Framebuffer &fb);
 
+/* MENU WIDE 3D (run menu1, lane FILE2). A menu page whose 3D background should fill a wide window installs a callback
+   (null = never, the whole of the old behaviour). Once per frame, the first time the frame's 3D asks, it answers true when
+   this frame's 3D covers the whole active frame instead of the centred native rectangle; *zoom (1 = none) and *dy (clip
+   units) then zoom everything the frame draws OUTSIDE a gx_menu_sprite(1) .. gx_menu_sprite(0) bracket about the frame's
+   centre. Sprite objects land where they do natively. gx_menu_wide_active() is this frame's answer. */
+void gx_set_menu_wide_cb(bool (*cb)(float *zoom, float *dy));
+void gx_menu_sprite(int on);
+bool gx_menu_wide_active();
+
 // THE TOON TABLE (GBATEK, DS 3D Toon/Edge/Fog: TOON_TABLE 0x04000380, 32
 // BGR555 halfwords; DS 3D Polygon Attributes: mode 2). A mode-2 polygon's
 // vertex RED picks one of the 32 entries, per pixel, from the interpolated
