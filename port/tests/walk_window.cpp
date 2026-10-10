@@ -13138,7 +13138,6 @@ int main(void)
            inside key_live: past this point the frame sees no pad at all, so
            the button being bound cannot also open the menu, toggle the freecam
            or nudge the camera on its way to becoming a binding. */
-        controls_refresh();
         rebind_capture_frame(&pad_live, &pad);
         /* the pad layout learn flow (the menu's "pad layout" row), the same
            shape: it eats the frame's pad while it runs */
