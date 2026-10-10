@@ -660,7 +660,7 @@ def row_forge():
     for mode, what in (("clear", "a record with every bit clear"), ("hostclear", "a fake HOST record with every bit clear"),
                        ("badlen", "a 40-byte payload"), ("badflags", "non-zero reserved bytes"),
                        ("badrole", "from_host = 2"), ("badreq", "a SAVE_REQ with a non-zero payload")):
-        ch, cg, sav, snaps, ev = pair("forge_" + mode, {}, {"SM64DS_COOPSAVE_FORGE": "%s@900" % mode}, seed, frames_h=1300, frames_g=1200)
+        ch, cg, sav, snaps, ev = pair("forge_" + mode, {}, {"SM64DS_COOPSAVE_FORGE": "%s@450" % mode}, seed, frames_h=2000, frames_g=1100)
         th, tg = ch.text(), cg.text()
         final = open(sav, "rb").read()
         pr = parse(final)
@@ -677,7 +677,7 @@ def row_forge():
         if mode == "hostclear":
             say(len(drops) >= 1, "forge hostclear: a record claiming to be the host's is refused by the host (role) (%d drop lines)" % len(drops))
     # the honest limit: a guest CAN add bits
-    ch, cg, sav, snaps, ev = pair("forge_setall", {}, {"SM64DS_COOPSAVE_FORGE": "setall@900"}, seed, frames_h=1300, frames_g=1200)
+    ch, cg, sav, snaps, ev = pair("forge_setall", {}, {"SM64DS_COOPSAVE_FORGE": "setall@450"}, seed, frames_h=2000, frames_g=1100)
     pr = parse(open(sav, "rb").read())
     st = stars_of(pr[(0, 0)][2])
     say(len(st) == 240 and pr[(0, 0)][1], "forge setall (the honest limit): a guest can ADD bits, it set every star byte (%d stars) and nothing else broke" % len(st))
