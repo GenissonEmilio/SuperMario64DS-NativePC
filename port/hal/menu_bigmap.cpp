@@ -182,24 +182,24 @@ extern "C" void menu_bigmap_draw(const uint32_t *sub, uint32_t *dst, int w, int 
     const int x0 = (w - tw) / 2, y0 = (h - th) / 2;
     const int bw = th / 96 > 2 ? th / 96 : 2;                 /* frame width */
 
-    /* the picture dimmed behind it: half */
+    /* the picture dimmed behind it: half. Only outside the map's own rectangle (the map is drawn over the rest), and the frame
+       is the ring between the two rectangles: nothing is written twice. */
+    const int fx0 = x0 - bw, fy0 = y0 - bw, fx1 = x0 + tw + bw, fy1 = y0 + th + bw;   /* the frame's outer rectangle */
     for (int y = 0; y < h; ++y) {
         uint32_t *row = dst + y * stride;
-        for (int x = 0; x < w; ++x) {
-            const uint32_t p = row[x];
-            row[x] = 0xFF000000u | ((p & 0xFEFEFEu) >> 1);
-        }
-    }
-    /* the frame: a light line next to the map and a dark one outside it, drawn as a block under the map */
-    for (int y = y0 - bw; y < y0 + th + bw; ++y) {
-        if (y < 0 || y >= h) continue;
-        uint32_t *row = dst + y * stride;
-        for (int x = x0 - bw; x < x0 + tw + bw; ++x) {
-            if (x < 0 || x >= w) continue;
-            const int dx = x < x0 ? x0 - x : (x >= x0 + tw ? x - (x0 + tw) + 1 : 0);
+        const int in_band = y >= fy0 && y < fy1;
+        const int xa = in_band ? (fx0 > 0 ? fx0 : 0) : w;                 /* dim [0, xa) and [xb, w) */
+        const int xb = in_band ? (fx1 < w ? fx1 : w) : w;
+        for (int x = 0; x < xa; ++x) row[x] = 0xFF000000u | ((row[x] & 0xFEFEFEu) >> 1);
+        for (int x = xb; x < w; ++x) row[x] = 0xFF000000u | ((row[x] & 0xFEFEFEu) >> 1);
+        if (in_band) {
             const int dy = y < y0 ? y0 - y : (y >= y0 + th ? y - (y0 + th) + 1 : 0);
-            const int d = dx > dy ? dx : dy;                  /* 1 = next to the map */
-            row[x] = d <= 1 ? 0xFFF0F0E8u : 0xFF101010u;
+            for (int x = xa; x < xb; ++x) {
+                if (dy == 0 && x >= x0 && x < x0 + tw) { x = x0 + tw - 1; continue; }   /* the map's own pixels */
+                const int dx = x < x0 ? x0 - x : (x >= x0 + tw ? x - (x0 + tw) + 1 : 0);
+                const int d = dx > dy ? dx : dy;                  /* 1 = next to the map: a light line, then a dark one */
+                row[x] = d <= 1 ? 0xFFF0F0E8u : 0xFF101010u;
+            }
         }
     }
 
@@ -207,11 +207,17 @@ extern "C" void menu_bigmap_draw(const uint32_t *sub, uint32_t *dst, int w, int 
     static int axn = 0, ayn = 0;
     if (axn != tw) { free(ax); ax = (Axis *)malloc(sizeof(Axis) * tw); build_axis(ax, tw, 256); axn = tw; }
     if (ayn != th) { free(ay); ay = (Axis *)malloc(sizeof(Axis) * th); build_axis(ay, th, 192); ayn = th; }
+    int prev_i0 = -1;
     for (int y = 0; y < th; ++y) {
+        uint32_t *out = dst + (y0 + y) * stride + x0;
+        const int wy = ay[y].w;
+        if (wy == 0 && ay[y].i0 == prev_i0 && y > 0 && ay[y - 1].w == 0) {   /* the same source row again: copy the row just made */
+            memcpy(out, out - stride, (size_t)tw * 4);
+            continue;
+        }
+        prev_i0 = ay[y].i0;
         const uint32_t *r0 = sub + ay[y].i0 * 256;
         const uint32_t *r1 = sub + ay[y].i1 * 256;
-        const int wy = ay[y].w;
-        uint32_t *out = dst + (y0 + y) * stride + x0;
         for (int x = 0; x < tw; ++x) {
             const int a = ax[x].i0, b = ax[x].i1, wx = ax[x].w;
             uint32_t p;
