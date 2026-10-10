@@ -68,8 +68,9 @@ def env_for(i, relay, kind, o):
     if o.get("handler"):
         e["SM64DS_PLIST_TEST_HANDLER"] = "1"
     if o.get("chat"):
-        e["SM64DS_CHAT_TEST"] = ("420:hello from the castle grounds, this line is long enough to wrap around the log;"
-                                 "450:second line;480:third line")
+        f = int(o.get("frames", "900")) - 400      # late enough to still be on screen at the last frame
+        e["SM64DS_CHAT_TEST"] = ("%d:hello from the castle grounds, this line is long enough to wrap around the log;"
+                                 "%d:second line;%d:third line" % (f, f + 30, f + 60))
     # the seeded save plays Yoshi; SM64DS_SWITCH picks another character at the first stage boot, so four consoles
     # show all four heads: seat 0 Yoshi, seat 1 Mario, seat 2 Luigi, seat 3 Wario
     sw = o.get("char%d" % i, ("", "0", "1", "2")[i])
