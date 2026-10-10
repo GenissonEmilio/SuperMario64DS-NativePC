@@ -17,6 +17,7 @@
 // src/ changes.
 
 #include "coop_world.h"
+#include "coop_boot.h"
 #include "coop_groups.h"
 #include "coop_wire.h"
 #include "comms_hub.h"
@@ -929,8 +930,10 @@ extern "C" void port_coop_world_frame(void) {
         if ((!g_key.valid() || rk != g_key) && rk != g_rejected) join_group(rk);
     }
     // Proof knob: the game's own level-change call with a chosen act (the scripted warp
-    // chain of the harness always asks for act 1).
-    for (int i = 0; in_level && i < g_nwarp; ++i)
+    // chain of the harness always asks for act 1). Never while the boot barrier holds this
+    // console: a level load with no game tick behind it faults the renderer.
+    const bool boot_held = coop_boot_active() && !coop_boot_released();
+    for (int i = 0; in_level && !boot_held && i < g_nwarp; ++i)
         if (!g_warp[i].done && g_frame >= g_warp[i].frame) {
             g_warp[i].done = true;
             std::fprintf(stderr, "[coop-knob] warp to level %d act %d\n", g_warp[i].level, g_warp[i].act);
