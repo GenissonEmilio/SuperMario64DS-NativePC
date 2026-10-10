@@ -2290,7 +2290,7 @@ void poll_touch(void)
         btn = 1;
     } else {
         static int raw_was, focus_was, hold_ok;
-        const int raw = (!g_headless && (g_on || hal_menu_live()) && GetAsyncKeyState_ &&
+        const int raw = (!g_headless && (g_on || hal_menu_live()) && !menu_bigmap_up() && GetAsyncKeyState_ &&   /* MAP1: no stylus under the big map */
                          (GetAsyncKeyState_(VK_LBUTTON) & 0x8000)) ? 1 : 0;
         const int foc = hal_window_focused();
         if (!raw)              hold_ok = 0;

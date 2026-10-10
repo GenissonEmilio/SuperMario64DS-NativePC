@@ -83,6 +83,15 @@ extern "C" int menu_bigmap_pad_seam(void)
     ++g_tick;
     const int scene = port_scene_live_id();
     const int lvl = port_level_id();
+    if (trace_on()) {
+        static int last_scene = -99, last_stacked = -99;
+        const int st = hal_sub_screen_stacked();
+        if (scene != last_scene || st != last_stacked) {
+            last_scene = scene; last_stacked = st;
+            fprintf(stderr, "[bigmap] tick %u scene %d level %d stacked %d
+", g_tick, scene, lvl, st);
+        }
+    }
     /* a level only: scene 3, or -1 where the level path never runs the scene thunk; never the stacked layout */
     if ((scene != 3 && scene != -1) || hal_sub_screen_stacked()) { g_up = 0; return 0; }
     if (lvl != g_level_was) {            /* a new level always starts with the map away */
