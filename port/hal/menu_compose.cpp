@@ -803,7 +803,8 @@ void hal_menu_decide(int w, int h, int scene_id)
         return;
     }
     const MenuRecipe *R = &g_menu_recipes[pick];
-    if (pick != g_cur_recipe || variant != g_cur_variant) {
+    const int new_menu = pick != g_cur_recipe || variant != g_cur_variant;
+    if (new_menu) {
         /* a new recipe or variant: an old drag belongs to the old rects, and an old press (aimed at the old rects)
            is dropped */
         g_drag_piece = -1;
@@ -855,7 +856,9 @@ void hal_menu_decide(int w, int h, int scene_id)
     {   /* the input-side record: the layout this decision's picture will show */
         std::lock_guard<std::mutex> lk(g_mu);
         g_seen = g_cur;
-        g_seen_valid = g_live;
+        /* a new menu is not clickable until the draw has put its first picture up (hal_menu_present acks it): the
+           player must never press a button he has not seen, and never through the previous menu's rects */
+        g_seen_valid = g_live && g_seen_valid && !new_menu;
     }
     if (changed) {
         MTRACE("recipe=%s variant=%d size=%dx%d unit=%d/%d canvas_w=%d %s stage=%d fallback_frames=%d", R->name,
@@ -930,6 +933,13 @@ static void latch_publish(const MenuDecision &D, int i, const DsRect &r)
     g_slatch.on |= (uint16_t)(1u << i);
 }
 
+/* the draw put this decision's menu on the picture: the input may now invert through it */
+static void seen_ack(const MenuDecision &D)
+{
+    std::lock_guard<std::mutex> lk(g_mu);
+    if (g_live && g_seen.recipe == D.L.recipe && g_seen.variant == D.L.variant) g_seen_valid = 1;
+}
+
 static void seen_amend(const MenuDecision &D)
 {
     std::lock_guard<std::mutex> lk(g_mu);
@@ -979,6 +989,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
     if (D.L.backdrop == MENU_BACKDROP_DIM_AUTO && S && !S->rom_dimming) menu_dim(dst, w, h, 8);
     for (int i = 0; i < D.L.np; ++i) menu_piece_draw(&D.L, i, S, dst, w, h);
     if (D.L.focus >= 0 && D.focus_shown) menu_highlight_paint(&D.L, dst, w, h, D.serial);
+    seen_ack(D);
     if (amended) seen_amend(D);
     g_dd_lift_pending = 0;      /* the draw honoured the lift */
 }

@@ -260,9 +260,11 @@ extern "C" {
  *       the engine-B backdrop colour. They are hardware state, not ROM program memory, and the render thread snapshots them
  *       with the rest of the frame. NO ROM address, ROM function or scene object is read on this side.
  *
- *   THE ONE FEEDBACK from the draw to the logic thread is small and locked: an autocrop rect latched the first frame a
- *   piece has pixels (applied by the next decide), and an amendment of the seen layout when the draw had to re-solve for a
- *   different picture size or latched a rect. Both are layout geometry, not draw state.
+ *   THE FEEDBACK from the draw to the logic thread is small, locked and layout-only: an autocrop rect latched the first
+ *   frame a piece has pixels (applied by the next decide); an amendment of the seen layout when the draw had to re-solve
+ *   for a different picture size or latched a rect; and an ack that a NEW menu's first picture is up (until then the
+ *   input does not invert through the new layout: a click never reaches a button the player has not seen, nor goes through
+ *   the previous menu's rects). Nothing else flows back: no draw state is ever read by the input.
  *
  *   hal_menu_frame_begin(w, h, scene_id) = hal_menu_decide + hal_menu_draw_frame_begin(null): what a one-thread build
  *   calls at H1, unchanged for callers that predate the split.
