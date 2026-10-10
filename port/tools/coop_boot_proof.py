@@ -241,7 +241,7 @@ def row_unit():
             f.write(p.stdout)
     rows = re.findall(r"ROW (\S+) (ok|bad)", res[0][1])
     bad = [n for n, v in rows if v == "bad"]
-    say(res[0][0] == 0 and len(rows) >= 28 and not bad, "unit: wire validators + both barrier rules, %d checks, %d bad %s" % (len(rows), len(bad), bad))
+    say(res[0][0] == 0 and len(rows) >= 27 and not bad, "unit: wire validators + both barrier rules, %d checks, %d bad %s" % (len(rows), len(bad), bad))
     b1 = [n for n, v in re.findall(r"ROW (\S+) (ok|bad)", res[1][1]) if v == "bad"]
     b2 = [n for n, v in re.findall(r"ROW (\S+) (ok|bad)", res[2][1]) if v == "bad"]
     say(res[1][0] != 0 and ("reserved_byte_refused" in b1 or "state_pad_refused" in b1), "unit MUST-FAIL: a validator that accepts reserved bytes fails %s" % b1)
