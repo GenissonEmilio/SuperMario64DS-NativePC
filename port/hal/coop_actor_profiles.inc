@@ -1,0 +1,86 @@
+// COOP PHASE 2 CLASS PROFILES. Run mp1, lane COOPMOVE1. Included once by coop_actors.cpp.
+//
+// One row per actor class id that is kept in step between consoles. Columns:
+//   id          actor class id (+0x0c), the registry's number
+//   name        for logs
+//   period_ms   how often the owner publishes a moving actor (a still one heartbeats at 1.5 s)
+//   band        world units: inside it a receiver leaves its own copy alone
+//   snap        world units: past it a receiver writes the owner's pose; between band and snap it eases 25 percent
+//   flags       kFPhase = the class has counters that must be written WITH the pose (every record applies)
+//   nf, f[]     phase fields: {offset into the actor, width 1/2/4}; offsets 0xd0..0x47f, aligned to the width
+//
+// The field lists are DATA FOUND BY DISCOVERY, not guesses: SM64DS_COOP_MOVE_DUMP dumps every synced actor's
+// words at two ticks and coop_drift.py's `fields` command keeps the words that change with level age and are not
+// pointers. SM64DS_COOP_MOVE_PROFILE=<file> overrides or adds rows at run time (same columns, one per line:
+// `id period band snap flags nf off:size ...`), which is how the discovery is iterated without a rebuild.
+// A class that is not in this table is not touched.
+//
+// Registry names are the port's (hal/actor_classes.inc); several ids run a sibling class (the "name shift"), so a
+// header's field list is only trusted after the discovery run agrees.
+
+// ---- enemies: they chase, bounce and decide; owner by proximity, 10 Hz near ----
+ROW(200, "GOOMBA",              100, 40, 400, 0, 0)
+ROW(201, "GOOMBA_SMALL",        100, 40, 400, 0, 0)
+ROW(202, "GOOMBA_LARGE",        100, 40, 400, 0, 0)
+ROW(206, "BOB_OMB",             100, 40, 400, 0, 0)
+ROW(219, "CHAIN_CHOMP",         100, 40, 400, 0, 0)
+ROW(337, "UNCHAINED_CHOMP",     100, 40, 400, 0, 0)
+ROW(270, "FLAME_CHOMP",         100, 40, 400, 0, 0)
+ROW(230, "SKEETER",             100, 40, 400, 0, 0)
+ROW(312, "SPINDRIFT",           100, 40, 400, 0, 0)
+ROW(255, "SCUTTLEBUG",          100, 40, 400, 0, 0)
+ROW(232, "FLY_GUY",             100, 40, 400, 0, 0)
+ROW(215, "BULLY",               100, 40, 400, 0, 0)
+ROW(260, "SPINY",               100, 40, 400, 0, 0)
+ROW(237, "SWOOP",               100, 40, 400, 0, 0)
+ROW(223, "MR_BLIZZARD",         100, 40, 400, 0, 0)
+ROW(310, "MONTY_MOLE",          100, 40, 400, 0, 0)
+ROW(220, "ROLLING_IRON_BALL",   200, 24, 200, 0, 0)
+ROW(214, "LAVA_BUBBLE",         200, 24, 200, 0, 0)
+ROW(266, "AMP",                 200, 24, 200, 0, 0)
+// ---- movers on a fixed route: deterministic, phase fields first, 1 Hz ----
+ROW(29,  "ROTATING_UP_DOWN_PLATFORM", 1000, 8, 150, 0, 0)
+ROW(30,  "ROTATING_UP_DOWN_PLATFORM_UTM", 1000, 8, 150, 0, 0)
+ROW(31,  "PATH_LIFT",           1000, 8, 150, 0, 0)
+ROW(32,  "UP_DOWN_LIFT_BBH",    1000, 8, 150, 0, 0)
+ROW(33,  "UP_DOWN_LIFT_HMC",    1000, 8, 150, 0, 0)
+ROW(52,  "TOWER_STEP",          1000, 8, 150, 0, 0)
+ROW(55,  "SLIDING_PLATFORM_WF", 1000, 8, 150, 0, 0)
+ROW(53,  "MOVING_BAR_BIG",      1000, 8, 150, 0, 0)
+ROW(54,  "MOVING_BAR_SMALL",    1000, 8, 150, 0, 0)
+ROW(73,  "LAVA_BRIDGE",         1000, 8, 150, 0, 0)
+ROW(77,  "LAVA_SEESAW",         1000, 8, 150, 0, 0)
+ROW(81,  "ROTATING_FIREBAR",    1000, 8, 150, 0, 0)
+ROW(88,  "PYRAMID_LIFT",        1000, 8, 150, 0, 0)
+ROW(124, "SLIDING_PLATFORM_RR", 1000, 8, 150, 0, 0)
+ROW(131, "UP_DOWN_LIFT_RR",     1000, 8, 150, 0, 0)
+ROW(138, "SLIDING_PLATFORM_BDW", 1000, 8, 150, 0, 0)
+ROW(144, "SQUARE_METAL_NET_LIFT", 1000, 8, 150, 0, 0)
+ROW(146, "SLIDING_PLATFORM_BFS_RECTANGLE", 1000, 8, 150, 0, 0)
+ROW(147, "SLIDING_PLATFORM_BFS_SQUARE", 1000, 8, 150, 0, 0)
+ROW(154, "SLIDING_PLATFORM_BS_WIDE", 1000, 8, 150, 0, 0)
+ROW(155, "SLIDING_PLATFORM_BS_LONG", 1000, 8, 150, 0, 0)
+ROW(157, "ARROW_PATH_LIFT",     1000, 8, 150, 0, 0)
+ROW(148, "EXTENDING_PLATFORM",  1000, 8, 150, 0, 0)
+ROW(173, "BIG_MOVING_ICE_BLOCK", 1000, 8, 150, 0, 0)
+ROW(174, "BOBBING_LOG_EMM",     1000, 8, 150, 0, 0)
+ROW(175, "SQUARE_PATH_LIFT",    1000, 8, 150, 0, 0)
+ROW(63,  "SKI_LIFT",            1000, 8, 150, 0, 0)
+ROW(68,  "WORK_ELEVATOR",       1000, 8, 150, 0, 0)
+ROW(74,  "FLOAT_ON_LAVA_PLATFORM", 1000, 8, 150, 0, 0)
+ROW(318, "FLAMETHROWER",        1000, 8, 150, 0, 0)
+// ---- TTC and clock mechanisms (rotators: the angles are the state) ----
+ROW(108, "TTC_ROTATING_CUBE",   1000, 8, 150, 0, 0)
+ROW(109, "TTC_ROTATING_PRISM",  1000, 8, 150, 0, 0)
+ROW(110, "TTC_PENDULUM",        1000, 8, 150, 0, 0)
+ROW(113, "TTC_MOVING_BAR",      1000, 8, 150, 0, 0)
+ROW(114, "TTC_ROTATING_GEAR",   1000, 8, 150, 0, 0)
+ROW(115, "TTC_ROTATING_TRIANGLE", 1000, 8, 150, 0, 0)
+ROW(116, "TTC_MOVING_CUBE_A",   1000, 8, 150, 0, 0)
+ROW(117, "TTC_MOVING_CUBE_B",   1000, 8, 150, 0, 0)
+ROW(119, "ROTATING_CLOCK_HAND", 1000, 8, 150, 0, 0)
+ROW(120, "SPINNING_PLATFORM",   1000, 8, 150, 0, 0)
+ROW(121, "ROTATING_COG_BIG",    1000, 8, 150, 0, 0)
+ROW(122, "ROTATING_COG_SMALL",  1000, 8, 150, 0, 0)
+ROW(127, "SWINGING_PLATFORM",   1000, 8, 150, 0, 0)
+ROW(294, "CLOCK_PENDULUM",      1000, 8, 150, 0, 0)
