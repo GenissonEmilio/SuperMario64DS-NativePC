@@ -102,6 +102,7 @@ void menu_gameover_build(int variant, MenuLayout *L);
 int  menu_gameover_rom_cursor(int dir, int *sel);
 int  menu_gameover_pad_ok(void);
 void menu_starsel_facts(MenuFacts *f);
+void menu_gameover_facts(MenuFacts *f);
 
 /* menu_recipe_recroom.cpp (lane RECROOM1): the Rec Room select */
 int  menu_recroom_up(int scene_id);
@@ -120,7 +121,8 @@ const MenuRecipe g_menu_recipes[] = {
     { "starsel",  menu_starsel_up, menu_starsel_build, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_NATIVE, 0, 2, 0,
       menu_starsel_facts },
     { "gameover", menu_gameover_up, menu_gameover_build, menu_gameover_rom_cursor, MENU_KEY_ONE_SCREEN_MENUS,
-      MENU_DRV_ROM_CURSOR, 0, 1, menu_gameover_pad_ok },
+      MENU_DRV_ROM_CURSOR, 0, 1, menu_gameover_pad_ok,
+      menu_gameover_facts },
     { "recroom",  menu_recroom_up, menu_recroom_build, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_TOUCH, 0, 1,
       menu_recroom_pad_ok, menu_recroom_facts },
     { "vs",       up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },

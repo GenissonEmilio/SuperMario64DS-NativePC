@@ -31,6 +31,8 @@
 #include <string.h>
 
 extern "C" {
+int  SublevelToLevel(int);
+extern signed char data_02092110;
 void *port_scene_live_object(void);
 int  port_scene_live_id(void);
 void func_ov003_020b0730(void *self, int arg);
@@ -69,6 +71,9 @@ void starsel_facts(MenuFacts *f)
 {
     const void *o = port_scene_live_object();
     if (!o || port_scene_live_id() != kStarScene) return;
+    /* Bowser and secret courses: InitResources gates the star count, mask and selection on the course (level <= 0xe,
+       src/_ZN12dScStarSel_c13InitResourcesEv.cpp:280), so those bytes are not set there; the ROM draws no star row. */
+    if (SublevelToLevel(data_02092110) > 0xe) return;
     f->starsel_valid = 1;
     f->starsel_n = ob(o, 0x114);
     f->starsel_mask = ob(o, 0x131);
@@ -94,9 +99,11 @@ void build_starsel(int variant, MenuLayout *L)
     }
     const MenuFacts &F = L->facts;       /* the live object's fields, read once per tick by starsel_facts */
     L->no_focus_paint = 1;
-    if (F.starsel_valid) {
-        const int n = F.starsel_n, cur = F.spare[0] - 1;
-        const unsigned mask = F.starsel_mask;
+    {
+        /* no live facts (the layout selftest, a course without a star row): one invisible touch rect on the centre star,
+           so the layout is never empty */
+        const int n = F.starsel_valid ? F.starsel_n : 1, cur = F.starsel_valid ? F.spare[0] - 1 : 0;
+        const unsigned mask = F.starsel_valid ? F.starsel_mask : 1u;
         const long long UN = L->unum, UD = L->uden;
         for (int i = 0; i < n && i < 8; ++i) {
             if (!((mask >> i) & 1)) continue;
@@ -108,11 +115,11 @@ void build_starsel(int variant, MenuLayout *L)
             int sx, sy, sw, sh;
             if (i == cur) {
                 /* the head's box, kept inside the part the ROM tests */
-                int hy = F.starsel_head_y;
+                int hy = F.starsel_valid ? F.starsel_head_y : 0x28;
                 sx = 0x60; sw = 0x40; sy = hy - 0x20; sh = 0x40;
                 if (sy < 0) sy = 0;
             } else {
-                sx = (int)F.starsel_x[i] - 8; if (sx < 0) sx = 0; if (sx > 240) sx = 240;
+                sx = (F.starsel_valid ? (int)F.starsel_x[i] : 128) - 8; if (sx < 0) sx = 0; if (sx > 240) sx = 240;
                 sy = 0; sw = 16; sh = 0x28;
             }
             MenuPiece p = menu_piece_make(SRC_HOSTIMG, sx, sy, sw, sh, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
@@ -123,7 +130,7 @@ void build_starsel(int variant, MenuLayout *L)
         }
         /* THE POINTER: the game's own small blue triangle (menu_hostimg.h) over the selected star, bobbing on the
            8-frame cadence. It is a backdrop piece: a click goes through to the star under it. */
-        if (cur >= 0 && cur < n && menu_hostimg_ready(MENU_IMG_ARROW_DOWN)) {
+        if (F.starsel_valid && cur >= 0 && cur < n && menu_hostimg_ready(MENU_IMG_ARROW_DOWN)) {
             static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* half units */
             int iw = 1, ih = 1;
             menu_hostimg_size(MENU_IMG_ARROW_DOWN, &iw, &ih);
@@ -169,7 +176,7 @@ void build_gameover(int, MenuLayout *L)
         const int sy = k == 0 ? 0 : (k <= 5 ? 172 : 184), sh = k == 0 ? 174 : (k <= 5 ? 2 : 8),
                   dy = k == 0 ? 0 : (k <= 5 ? 174 + (k - 1) * 2 : 184);
         MenuPiece g = menu_piece_make(SRC_TOP_2D, kGradCol, sy, 1, sh, MENU_AX_C, MENU_AY_T, 0, dy, 1, 1);
-        g.layers = MENU_L_BG2; g.bg = 1; g.xfill = 1; g.fill_w = (short)(L->canvas_w + 8);
+        g.layers = MENU_L_BG2; g.bg = 1; g.xfill = 1; g.fill_w = (short)L->canvas_w;
         menu_add_piece(L, g);
     }
     MenuPiece t = menu_piece_make(SRC_TOP_2D, 0, 0, 256, 136, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
@@ -187,10 +194,39 @@ void build_gameover(int, MenuLayout *L)
     const int pq = menu_add_piece(L, q);
     menu_add_hotspot(L, pc, 8, 0x38, 0xf0, 0x20, 0);
     menu_add_hotspot(L, pq, 8, 0x68, 0xf0, 0x20, 1);
+    /* THE CURSOR: the ROM has none (it only paints the selected plate pale yellow after the first pad press), so one of the
+       game's own small triangles points at the selected plate from the first frame, centred, its tip just inside the
+       plate's top edge (for Quit it overlaps the lower edge of the Continue plate). A backdrop piece: a click goes to the
+       plate. Only down / up arrows exist; a side-pointing one is an artist ask. */
+    if (L->facts.spare[0] > 0 && menu_hostimg_ready(MENU_IMG_ARROW_DOWN)) {
+        static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* half units */
+        const long long UN = L->unum, UD = L->uden;
+        int iw = 1, ih = 1;
+        menu_hostimg_size(MENU_IMG_ARROW_DOWN, &iw, &ih);
+        const int dw = 14 * (int)UN / (int)UD, dh = (int)((long long)dw * ih / iw);
+        MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_DOWN; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
+        ar.fx = (short)(L->w / 2 - dw / 2);
+        const int plate_top = L->facts.spare[0] == 1 ? 118 : 150;
+        int top = (int)(((long long)(2 * (plate_top - 2) + kBob[L->facts.spare[2] & 7]) * UN) / (2 * UD)) - dh;
+        if (top < 0) top = 0;
+        ar.fy = (short)top;
+        menu_add_piece(L, ar);
+    }
     L->lift_owners = MENU_L_BG2 | MENU_L_OBJ;
     L->hide_owners = MENU_L_BG0;
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
+}
+
+/* MENUSPLIT1 facts for the game over cursor: the ROM's own cursor byte (+0x91, 0 Continue, 1 Quit) once the intro is in
+   (+0x94 >= 2); spare[0] = 1 + the selected plate, spare[2] = a per-tick counter for the arrow's bob. */
+void gameover_facts(MenuFacts *f)
+{
+    const void *o = port_scene_live_object();
+    if (!o || port_scene_live_id() != kGoScene) return;
+    if (ob(o, 0x94) >= 2) f->spare[0] = 1 + (ob(o, 0x91) ? 1 : 0);
+    { static int calls; f->spare[2] = ++calls; }
 }
 
 int g_go_shown;      /* the pad cursor has painted its highlight on this screen */
@@ -233,4 +269,5 @@ int  menu_gameover_up(int scene_id) { return up_gameover(scene_id); }
 void menu_gameover_build(int variant, MenuLayout *L) { build_gameover(variant, L); }
 int  menu_gameover_rom_cursor(int dir, int *sel) { return rom_cursor_gameover(dir, sel); }
 int  menu_gameover_pad_ok(void) { return pad_ok_gameover(); }
+void menu_gameover_facts(MenuFacts *f) { gameover_facts(f); }
 }
