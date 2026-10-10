@@ -247,7 +247,7 @@ def row_table():
     root = os.environ.get("SM64DS_ASSET_ROOT", TREE)
     arm9 = open(os.path.join(root, "extracted", "arm9_dec.bin"), "rb").read()
     tab = struct.unpack_from("<52b", arm9, 0x02075298 - 0x02004000)
-    src = open(os.path.join(TREE, "port", "hal", "player_list.cpp")).read()
+    src = open(os.environ.get("PLIST_TABLE_SRC", os.path.join(TREE, "port", "hal", "player_list.cpp"))).read()
     rows = re.findall(r'\{"([A-Z0-9?-]+)", (true|false)\},\s*//\s*(\d+)', src)
     say(len(rows) == 52, "table: 52 rows in player_list.cpp (found %d)" % len(rows))
     code_of_course, bad = {}, []
