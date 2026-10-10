@@ -37,6 +37,7 @@
 #ifndef NTR_SMOOTH_H
 #define NTR_SMOOTH_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 namespace ntr {
@@ -152,6 +153,18 @@ const uint16_t *smooth_grid_tri_index(int tf);
 // (ia, ib) order the index table is written against. Returns the point count.
 int smooth_grid_positions(const SmoothVertex &p1, const SmoothVertex &p2,
                           const SmoothVertex &p3, int tf, float *out);
+// THE GRID TABLE. For each tessellation factor (2, 4, 8) the barycentric
+// weights of every grid point (a, b, c) and its ten Bernstein weights, as
+// smooth_eval_patch computes them, built once and kept. A patch evaluation is
+// then ten multiply-adds per coordinate per point with nothing recomputed,
+// the same floats in the same order as smooth_eval_patch.
+struct SmoothGridTable {
+    int n;
+    float a[SMOOTH_MAX_GRID], b[SMOOTH_MAX_GRID], c[SMOOTH_MAX_GRID];
+    float w[SMOOTH_MAX_GRID][10];
+};
+// Null for tf that is not 2, 4 or 8.
+const SmoothGridTable *smooth_grid_table(int tf);
 // Everything about a grid point that is NOT its position: texel coordinates
 // and colour linear in the barycentric weights, and the normal carried for a
 // future relighting pass. Writes u, v, color, nx, ny, nz and nothing else.
@@ -159,6 +172,33 @@ int smooth_grid_positions(const SmoothVertex &p1, const SmoothVertex &p2,
 void smooth_grid_attrs(const SmoothVertex &p1, const SmoothVertex &p2,
                        const SmoothVertex &p3, float a, float b, float c,
                        SmoothVertex &out);
+
+// THE ATTRIBUTE ARITHMETIC, inline. smooth_grid_attrs (smooth.cpp) is this
+// function behind a call, so the engine's per-vertex loop (gx.cpp,
+// smooth_emit_grid) can run the very same expressions without a call per grid
+// vertex and the two cannot drift apart.
+inline uint32_t smooth_bary_color(uint32_t c0, uint32_t c1, uint32_t c2,
+                                  float a, float b, float c) {
+    uint32_t out = 0;
+    for (int s = 0; s < 32; s += 8) {
+        const float ch = (float)((c0 >> s) & 0xFF) * a
+                       + (float)((c1 >> s) & 0xFF) * b
+                       + (float)((c2 >> s) & 0xFF) * c;
+        const int i = (int)(ch + 0.5f);
+        out |= (uint32_t)(i < 0 ? 0 : (i > 255 ? 255 : i)) << s;
+    }
+    return out;
+}
+inline void smooth_grid_attrs_inline(const SmoothVertex &p1, const SmoothVertex &p2,
+                                     const SmoothVertex &p3, float a, float b,
+                                     float c, SmoothVertex &o) {
+    o.u = p1.u * a + p2.u * b + p3.u * c;
+    o.v = p1.v * a + p2.v * b + p3.v * c;
+    o.color = smooth_bary_color(p1.color, p2.color, p3.color, a, b, c);
+    o.nx = p1.nx * a + p2.nx * b + p3.nx * c;
+    o.ny = p1.ny * a + p2.ny * b + p3.ny * c;
+    o.nz = p1.nz * a + p2.nz * b + p3.nz * c;
+}
 
 // ---------------------------------------------------------------------------
 // THE POLICY, SPLIT. smooth_tess_factor answers two different questions at
@@ -467,6 +507,17 @@ const SmoothEntry *smooth_store_find(const SmoothKey &k);
 const SmoothEntry *smooth_store_add(const SmoothKey &k, int tf,
                                     const float *grid);
 const float *smooth_store_grid(const SmoothEntry *e);
+// run hunt8, lane SMOOTHGPU1: the pool the grids live in, for the card to
+// mirror. The pool only ever grows by appending until smooth_store_clear, which
+// bumps the generation; a mirror therefore uploads the tail it has not seen and
+// starts again when the generation moves. `n` receives the float count.
+const float *smooth_store_pool(size_t *n);
+uint32_t smooth_store_generation();
+uint32_t smooth_store_entry_off(const SmoothEntry *e);
+// Called at the head of smooth_store_clear while the old pool is still intact,
+// so the engine can turn any grid it has deferred and that points into the pool
+// into ordinary triangles before the pool is thrown away.
+void smooth_store_set_clear_hook(void (*fn)());
 // Drop everything. Called when the level changes, since a level is the
 // natural end of a set of models, and by the cap when the pool is full.
 void smooth_store_clear();

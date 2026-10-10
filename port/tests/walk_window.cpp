@@ -3741,9 +3741,8 @@ static void ovl_draw(const OvlSurface &fb, const OvlStats &s)
    `player` is null. */
 static void ovl_fill_common(OvlStats &os)
 {
-    size_t tn = 0;
+    size_t tn = ntr::gx_polygon_count();
     int actors = 0;
-    ntr::gx_polygons(tn);
     for (int *node = (int *)(size_t)data_020a4b78[0];
          node && actors < 4096; node = (int *)(size_t)node[1])
         if (node[2]) ++actors;
@@ -8326,8 +8325,7 @@ static void perf_log_frame(int scene)
            scans the hosted-level table and port_scene_env_want caches, and a
            bucket is the finest granularity the report has anyway. */
         pf.level = scene ? -1 - port_scene_env_want() : port_level_id();
-        size_t tn = 0;
-        ntr::gx_polygons(tn);
+        const size_t tn = ntr::gx_polygon_count();
         pf.tris = (int)tn;
         int actors = 0;
         for (int *node = (int *)(size_t)data_020a4b78[0];
@@ -17234,7 +17232,9 @@ int main(void)
                 size_t before = 0, after = 0;
                 /* a ROM actor frame's buffer opened empty at phase 4 and holds
                    exactly what its render walk submitted, so `before` is 0 */
-                if (selftest && !k1_rom) ntr::gx_polygons(before);
+                if (selftest && !k1_rom &&
+                    (frame == 0 || getenv("SM64DS_TRACE_ACTOR_TRIS")))
+                    ntr::gx_polygons(before);
                 /* the tick-only re-sim (hal/rollback.cpp): a replayed frame
                    skips the actors' Render bodies; status/ROLLBACK_SHIP.md
                    has the audit that says they write nothing a tick reads.
@@ -17292,8 +17292,8 @@ int main(void)
                 if (!stage9_rendered())
                     port_particle_frame();
                 if (selftest) {
-                    const ntr::GxTriangle *at = ntr::gx_polygons(after);
                     if (frame == 0 || getenv("SM64DS_TRACE_ACTOR_TRIS")) {
+                        const ntr::GxTriangle *at = ntr::gx_polygons(after);
                         float mnx = 1e30f, mxx = -1e30f, mny = 1e30f,
                               mxy = -1e30f, mnz = 1e30f, mxz = -1e30f;
                         for (size_t i = before; i < after; ++i)
@@ -17639,7 +17639,10 @@ int main(void)
         /* the frame's account: one shape, each list once (lane K1LOOP) */
         port_actor_frame_end(frame, "level");
         size_t tris_before = 0;
-        if (selftest) ntr::gx_polygons(tris_before);
+        /* the box line below is read for frame 0 (or on asking); each call
+           turns the frame's kept smoothed grids back into triangles */
+        const bool w_box = selftest && (frame == 0 || getenv("SM64DS_W_BOX"));
+        if (w_box) ntr::gx_polygons(tris_before);
         /* run mg16 lane MP3: DRAW EVERY PLAYER, not just the local one.
            This line drew data_0209f394[0] and nothing else, which was correct
            while the port asserted there was exactly one player. With a second
@@ -17748,7 +17751,7 @@ int main(void)
             }
         }
         ph_end(PH_SUBMIT, t_phase);
-        if (selftest) {
+        if (w_box) {
             size_t tn = 0;
             const ntr::GxTriangle *ta2 = ntr::gx_polygons(tn);
             float mnx = 1e30f, mxx = -1e30f, mny = 1e30f, mxy = -1e30f;

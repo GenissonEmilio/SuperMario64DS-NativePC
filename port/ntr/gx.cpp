@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <climits>
 #include <cstring>
+#include <emmintrin.h>
 #include <map>
 #include <mutex>
 #include <thread>
@@ -191,6 +192,16 @@ struct State {
     uint32_t light_mask = 0;
 
     std::vector<GxTriangle> tris;
+    /* run hunt8, lane SMOOTHGPU1: smoothed grids kept whole for the card (see
+       GxGrid in ntr/gx.h). grid_pts is the frame arena the points of a grid that
+       is not in the shape store's pool are copied to. grid_subtris is how many
+       triangles the grids stand for, so a count of the frame's polygons is
+       tris.size() + grid_subtris. */
+    std::vector<GxGrid> grids;
+    std::vector<float> grid_pts;
+    uint32_t grid_subtris = 0;
+    uint8_t grid_translucent = 0;
+    uint32_t grid_mode2 = 0;
 };
 
 State g;
@@ -438,7 +449,7 @@ int g_mtx_similar = 0;       // pos is a similarity AND vec agrees with it
    primitive ever spans, and a slot is used only while its generation still
    matches, so a matrix that has aged out is a miss and never a wrong
    answer. */
-enum { MTX_RING = 8 };
+enum { MTX_RING = 64 };
 Mat g_mtx_ring[MTX_RING];
 uint32_t g_mtx_ring_gen[MTX_RING];
 int g_mtx_ring_sim[MTX_RING];
@@ -763,13 +774,12 @@ static inline bool w_depth_fail(float z, float d, float q, bool eq = false) {
     return z >= (d < 0.0f ? d - q * d * d : d);
 }
 
-void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
-    if (g.proj.m[3] == 0.0f && g.proj.m[7] == 0.0f && g.proj.m[11] == 0.0f)
-        g_frame_ortho = true;
-    /* value-initialised: smoke_gx memcmps whole GxTriangles between the two
-       submit paths, so the padding has to be deterministic */
-    GxTriangle t{};
-    t.v[0] = a; t.v[1] = b; t.v[2] = c;
+/* THE STATE HALF OF A POLYGON-LIST ENTRY: everything push_screen_tri stamps
+   on a triangle except its three vertices. It depends only on the live
+   material state, so a smoothed grid (smooth_emit_grid) builds it once and
+   copies it for each of its sub-triangles instead of rebuilding it 64 times.
+   `t` must be value-initialised by the caller (padding stays deterministic). */
+static inline void fill_tri_state(GxTriangle &t) {
     t.tex = g.tex_rgba; t.tw = g.tw; t.th = g.th;
     /* the bound texture's host-pixels-per-texel travels with the triangle
        exactly as its dimensions do; 1 unless a pack replaced the image */
@@ -795,6 +805,16 @@ void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
         (t.tex && (fmt == 1 || fmt == 6)) ||
         t.mode == 3);
     t.dbg_tex = g_teximage;
+}
+
+void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
+    if (g.proj.m[3] == 0.0f && g.proj.m[7] == 0.0f && g.proj.m[11] == 0.0f)
+        g_frame_ortho = true;
+    /* value-initialised: smoke_gx memcmps whole GxTriangles between the two
+       submit paths, so the padding has to be deterministic */
+    GxTriangle t{};
+    t.v[0] = a; t.v[1] = b; t.v[2] = c;
+    fill_tri_state(t);
     g.tris.push_back(t);
     /* MDL: what actually reached the polygon list. Paired with
        SMOOTH_COUNT_IN in emit_tri, this is the submitted-versus-emitted row
@@ -929,31 +949,320 @@ void smooth_grid_vertex(const float p[3], float a, float b, float c,
    that reach the near clip are the same vertices in the same order, each
    computed by the same arithmetic, so this is not an approximation of the
    old path: it is the old path with the repeats taken out. */
-void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
-                      const Mat *xform) {
+/* THE GRID DEFERRAL (run hunt8, SMOOTHGPU1), declared here and defined after
+   the emit it replaces. */
+static bool grid_defer_try(const float *pts, long pool_off, int tf,
+                           const SmoothVertex s[3], const Mat *xform);
+static int g_grid_defer = 0;     // this frame's grids may be kept for the card
+
+static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[3],
+                                 const Mat *xform, const GxTriangle *st_in,
+                                 const Mat *proj_in, const float *widen_in,
+                                 bool count_out) {
     GxVertex v[SMOOTH_MAX_GRID];
-    const float inv = 1.0f / (float)tf;
-    int n = 0;
-    for (int ia = 0; ia <= tf; ++ia) {
-        for (int ib = 0; ib <= tf - ia; ++ib, ++n) {
-            const float a = (float)ia * inv;
-            const float b = (float)ib * inv;
-            float c = 1.0f - a - b;
-            if (c < 0.0f) c = 0.0f;
-            if (xform) {
-                const Vec4 l{pts[n * 3], pts[n * 3 + 1], pts[n * 3 + 2], 1.0f};
-                const Vec4 w = mul(l, *xform);
-                const float vp[3] = {w.x, w.y, w.z};
-                smooth_grid_vertex(vp, a, b, c, s, v[n]);
-            } else {
-                smooth_grid_vertex(pts + n * 3, a, b, c, s, v[n]);
-            }
-        }
+    /* view_to_clip's widen, read once for the grid: present_w()/present_h()
+       cannot change between two vertices of one triangle's grid, and the
+       expression is view_to_clip's own, so every clip.x is the same float.
+       A grid kept for the card and turned back into triangles later hands in
+       the projection, the widen and the polygon state it was recorded under. */
+    const Mat &pj = proj_in ? *proj_in : g.proj;
+    const bool persp = pj.m[3] != 0.0f || pj.m[7] != 0.0f ||
+                       pj.m[11] != 0.0f;
+    const float widen = widen_in ? *widen_in : persp
+        ? (4.0f / 3.0f) * ((float)present_h() / (float)present_w()) : 1.0f;
+    /* The barycentric weights of every grid point, from the kernel's table:
+       the floats the old loop recomputed (ia * (1/tf), 1 - a - b clamped). */
+    const SmoothGridTable &T = *smooth_grid_table(tf);
+    const int n = T.n;
+    /* mul(v, m) is ((v.x*m0 + v.y*m4) + v.z*m8) + v.w*m12 per column; here
+       the four columns are the four lanes, with the same multiplies and adds
+       in the same order and no fused op, so every float is mul()'s. */
+    const __m128 pr0 = _mm_loadu_ps(pj.m), pr1 = _mm_loadu_ps(pj.m + 4),
+                 pr2 = _mm_loadu_ps(pj.m + 8), pr3 = _mm_loadu_ps(pj.m + 12);
+    __m128 xr0 = _mm_setzero_ps(), xr1 = xr0, xr2 = xr0, xr3 = xr0;
+    if (xform) {
+        xr0 = _mm_loadu_ps(xform->m); xr1 = _mm_loadu_ps(xform->m + 4);
+        xr2 = _mm_loadu_ps(xform->m + 8); xr3 = _mm_loadu_ps(xform->m + 12);
     }
+    const __m128 one = _mm_set1_ps(1.0f);
+    for (int i = 0; i < n; ++i) {
+        __m128 vw;                                   // the view-space point, w = 1
+        if (xform) {
+            const __m128 r = _mm_add_ps(_mm_add_ps(_mm_add_ps(
+                _mm_mul_ps(_mm_set1_ps(pts[i * 3]), xr0),
+                _mm_mul_ps(_mm_set1_ps(pts[i * 3 + 1]), xr1)),
+                _mm_mul_ps(_mm_set1_ps(pts[i * 3 + 2]), xr2)),
+                _mm_mul_ps(one, xr3));
+            float t[4];
+            _mm_storeu_ps(t, r);
+            vw = _mm_setr_ps(t[0], t[1], t[2], 1.0f);
+        } else {
+            vw = _mm_setr_ps(pts[i * 3], pts[i * 3 + 1], pts[i * 3 + 2], 1.0f);
+        }
+        const __m128 cl = _mm_add_ps(_mm_add_ps(_mm_add_ps(
+            _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0x00), pr0),
+            _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0x55), pr1)),
+            _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0xAA), pr2)),
+            _mm_mul_ps(_mm_shuffle_ps(vw, vw, 0xFF), pr3));
+        float cv[4], vv[4];
+        _mm_storeu_ps(cv, cl);
+        _mm_storeu_ps(vv, vw);
+        GxVertex &o = v[i];
+        o.x = persp ? cv[0] * widen : cv[0];
+        o.y = cv[1]; o.z = cv[2]; o.w = cv[3];
+        o.vx = vv[0]; o.vy = vv[1]; o.vz = vv[2]; o.vw = vv[3];
+        SmoothVertex at;
+        smooth_grid_attrs_inline(s[0], s[1], s[2], T.a[i], T.b[i], T.c[i], at);
+        o.u = at.u; o.v = at.v; o.color = at.color;
+        o.nx = at.nx; o.ny = at.ny; o.nz = at.nz;
+    }
+    /* THE BULK. Each grid vertex goes to screen space ONCE (it used to be
+       once per sub-triangle that touched it, up to six times), and a
+       sub-triangle whose three corners are all in front of the near plane
+       needs no clip, so it is assembled straight from those screen vertices:
+       the same floats emit_tri_near would have produced for it (it keeps a
+       whole triangle's corners untouched and runs to_screen on each), pushed
+       with the same state. A sub-triangle with a corner behind the plane
+       takes emit_tri_near exactly as before. */
+    GxVertex sv[SMOOTH_MAX_GRID];
+    unsigned char isin[SMOOTH_MAX_GRID];
+    for (int i = 0; i < n; ++i) {
+        isin[i] = near_dist(v[i], persp) >= 0.0f;
+        if (isin[i]) sv[i] = to_screen(v[i]);
+    }
+    GxTriangle tmpl{};
+    if (st_in) tmpl = *st_in; else fill_tri_state(tmpl);
+    GxTriangle t = tmpl;     // the state is the same for every sub-triangle: only the corners change
     const uint16_t *idx = smooth_grid_tri_index(tf);
     const int ntris = smooth_grid_tris(tf);
-    for (int i = 0; i < ntris; ++i)
-        emit_tri_near(v[idx[i * 3]], v[idx[i * 3 + 1]], v[idx[i * 3 + 2]]);
+    uint64_t fast = 0;
+    for (int i = 0; i < ntris; ++i) {
+        const int i0 = idx[i * 3], i1 = idx[i * 3 + 1], i2 = idx[i * 3 + 2];
+        if (isin[i0] && isin[i1] && isin[i2]) {
+            t.v[0] = sv[i0]; t.v[1] = sv[i1]; t.v[2] = sv[i2];
+            g.tris.push_back(t);
+            ++fast;
+        } else {
+            emit_tri_near(v[i0], v[i1], v[i2]);
+        }
+    }
+    if (fast) {
+        if (!persp) g_frame_ortho = true;
+        if (count_out) smooth_count(SMOOTH_COUNT_OUT, fast);
+    }
+}
+
+void smooth_emit_grid(const float *pts, int tf, const SmoothVertex s[3],
+                      const Mat *xform, long pool_off = -1) {
+    if (g_grid_defer && grid_defer_try(pts, pool_off, tf, s, xform)) return;
+    smooth_emit_grid_cpu(pts, tf, s, xform, 0, 0, 0, true);
+}
+
+/* ===========================================================================
+   SMOOTHED GRIDS KEPT WHOLE FOR THE CARD (run hunt8, lane SMOOTHGPU1)
+
+   WHAT IT REPLACES. smooth_emit_grid_cpu above writes up to 64 sub-triangle
+   records (208 bytes each) for every smoothed source triangle, 50,000 of them
+   a picture at Smooth 3, and the card path then reads every one of them again
+   to build its vertex buffer. When the card is going to draw the whole frame
+   (gx_render hands it the list, GxGpuFrame::grids), the grid is instead kept
+   as ONE record: the points, the three source corners' attributes, the
+   matrices and the polygon state, a few hundred bytes. The card's vertex stage
+   evaluates the sub-triangles from it with the same arithmetic.
+
+   THE ORDER IS KEPT. A grid records `at`, the length of the ordinary list when
+   it was submitted, so its sub-triangles sit exactly where the processor path
+   would have put them. Translucent and shadow polygons, and equal-depth ties,
+   depend on that order and nothing else about the list changes.
+
+   WHAT STAYS ON THE PROCESSOR PATH, so that the card never has to guess:
+     - a grid with any corner of its model-space box near or behind the near
+       plane (the clip changes the triangles; the processor path clips)
+     - a shadow-volume polygon (mode 3) and an equal-depth polygon (bit 14),
+       which the card's grid stage does not take
+     - every frame the card is not going to draw whole (Renderer 0, the A/B, a
+       debug probe that reads the polygon list)
+   and grids_materialize turns any kept grid into the very triangles the
+   processor path makes, by running the same function, whenever something other
+   than the card wants the list. That is the proof that nothing was lost: the
+   polygon-list hash (SM64DS_SMOOTH_TRIHASH) of a materialized frame equals the
+   hash of the frame drawn without any deferral.
+   =========================================================================== */
+/* SM64DS_SMOOTH_GPU_STATS=1: every 150 frames, how many grids were offered, kept
+   and why the rest were not */
+static unsigned long long g_gd_try, g_gd_ok, g_gd_state, g_gd_near, g_gd_frames;
+static unsigned long long g_gd_mat_calls, g_gd_mat_grids, g_gd_mat_tris;
+static double g_gd_mat_ms;
+static unsigned long long g_gd_why[8];
+static void grid_stats_frame() {
+    static int on = -1;
+    if (on < 0) on = std::getenv("SM64DS_SMOOTH_GPU_STATS") ? 1 : 0;
+    if (!on) return;
+    if ((++g_gd_frames % 150) != 0) return;
+    std::fprintf(stderr, "[smoothgpu] frame %llu: grids offered %llu kept %llu "
+                 "(polygon state refused %llu, near plane %llu), defer now %d; "
+                 "materialized %llu calls %llu grids %llu tris %.2f ms\n",
+                 g_gd_frames, g_gd_try, g_gd_ok, g_gd_state, g_gd_near, g_grid_defer,
+                 g_gd_mat_calls, g_gd_mat_grids, g_gd_mat_tris, g_gd_mat_ms);
+    std::fprintf(stderr, "[smoothgpu] materialize callers: other %llu trihash %llu polygons %llu render-probe %llu render-nogpu %llu groupbox %llu pool-hook %llu pool-hook2 %llu\n",
+                 g_gd_why[0], g_gd_why[1], g_gd_why[2], g_gd_why[3], g_gd_why[4], g_gd_why[5], g_gd_why[6], g_gd_why[7]);
+}
+static bool grid_defer_try(const float *pts, long pool_off, int tf,
+                           const SmoothVertex s[3], const Mat *xform) {
+    ++g_gd_try;
+    const SmoothGridTable *Tp = smooth_grid_table(tf);
+    if (!Tp) return false;
+    const int n = Tp->n;
+    GxTriangle st{};
+    fill_tri_state(st);
+    if (st.mode == 3 || st.depth_eq) { ++g_gd_state; return false; }
+    if (g.grids.size() >= 0x3FFFFFu) return false;
+
+    /* the model-space box of the points */
+    float lo[3] = {pts[0], pts[1], pts[2]}, hi[3] = {pts[0], pts[1], pts[2]};
+    for (int i = 1; i < n; ++i) {
+        const float *q = pts + i * 3;
+        for (int k = 0; k < 3; ++k) {
+            if (q[k] < lo[k]) lo[k] = q[k];
+            if (q[k] > hi[k]) hi[k] = q[k];
+        }
+    }
+    const Mat &pj = g.proj;
+    const bool persp = pj.m[3] != 0.0f || pj.m[7] != 0.0f || pj.m[11] != 0.0f;
+    const float widen = persp
+        ? (4.0f / 3.0f) * ((float)present_h() / (float)present_w()) : 1.0f;
+    /* the eight corners of the box through the position matrix and the
+       projection: near-plane test and the screen box in one pass. The box of
+       a set of points that is wholly in front of the near plane projects to a
+       convex region, so the eight corners bound every point and so every
+       sub-triangle. A corner within a hair of the plane sends the grid to the
+       processor path, which decides each vertex exactly as it always did. */
+    float sx0 = 1e30f, sy0 = 1e30f, sx1 = -1e30f, sy1 = -1e30f;
+    for (int c = 0; c < 8; ++c) {
+        const float px = (c & 1) ? hi[0] : lo[0];
+        const float py = (c & 2) ? hi[1] : lo[1];
+        const float pz = (c & 4) ? hi[2] : lo[2];
+        float vx = px, vy = py, vz = pz;
+        if (xform) {
+            const float *m = xform->m;
+            vx = px * m[0] + py * m[4] + pz * m[8] + m[12];
+            vy = px * m[1] + py * m[5] + pz * m[9] + m[13];
+            vz = px * m[2] + py * m[6] + pz * m[10] + m[14];
+        }
+        const float *m = pj.m;
+        float cx = vx * m[0] + vy * m[4] + vz * m[8] + m[12];
+        const float cy = vx * m[1] + vy * m[5] + vz * m[9] + m[13];
+        const float cz = vx * m[2] + vy * m[6] + vz * m[10] + m[14];
+        const float cw = vx * m[3] + vy * m[7] + vz * m[11] + m[15];
+        if (persp) cx *= widen;
+        if (persp) {
+            const float nd = cz + cw;
+            if (!(nd >= 1e-4f * (std::fabs(cz) + std::fabs(cw))) || !(cw > 1e-3f)) {
+                ++g_gd_near;
+                return false;
+            }
+        } else {
+            if (!(cw - 1e-3f >= 0.0f) || !(cw > 1e-3f)) return false;
+        }
+        const float iw = 1.0f / cw;
+        const float sx = (cx * iw + 1.0f) * 0.5f * (float)g.vp_w + (float)g.vp_x;
+        const float sy = (1.0f - (cy * iw + 1.0f) * 0.5f) * (float)g.vp_h + (float)g.vp_y;
+        if (!(sx > -1e7f && sx < 1e7f && sy > -1e7f && sy < 1e7f)) return false;
+        if (sx < sx0) sx0 = sx;
+        if (sx > sx1) sx1 = sx;
+        if (sy < sy0) sy0 = sy;
+        if (sy > sy1) sy1 = sy;
+    }
+
+    g.grids.emplace_back();
+    GxGrid &gr = g.grids.back();
+    gr.st = st;
+    static_assert(sizeof(GxGridCorner) == sizeof(SmoothVertex), "corner layout");
+    std::memcpy(gr.s, s, sizeof gr.s);
+    if (xform) {
+        std::memcpy(gr.xform, xform->m, sizeof gr.xform);
+        gr.has_xform = 1;
+    } else {
+        for (int i = 0; i < 16; ++i) gr.xform[i] = (i % 5 == 0) ? 1.0f : 0.0f;
+        gr.has_xform = 0;
+    }
+    std::memcpy(gr.proj, pj.m, sizeof gr.proj);
+    gr.widen = widen;
+    gr.vp[0] = g.vp_x; gr.vp[1] = g.vp_y; gr.vp[2] = g.vp_w; gr.vp[3] = g.vp_h;
+    for (int k = 0; k < 3; ++k) { gr.lo[k] = lo[k]; gr.hi[k] = hi[k]; }
+    gr.sbox[0] = sx0; gr.sbox[1] = sy0; gr.sbox[2] = sx1; gr.sbox[3] = sy1;
+    gr.at = (uint32_t)g.tris.size();
+    gr.tf = (uint8_t)tf;
+    gr.persp = persp ? 1 : 0;
+    if (pool_off >= 0) {
+        gr.from_pool = 1;
+        gr.off = (uint32_t)pool_off;
+        gr.pool_gen = smooth_store_generation();
+    } else {
+        gr.from_pool = 0;
+        gr.off = (uint32_t)g.grid_pts.size();
+        gr.pool_gen = 0;
+        g.grid_pts.insert(g.grid_pts.end(), pts, pts + (size_t)n * 3);
+    }
+    const int ntris = smooth_grid_tris(tf);
+    g.grid_subtris += (uint32_t)ntris;
+    if (st.translucent) g.grid_translucent = 1;
+    if (st.mode == 2) g.grid_mode2 += (uint32_t)ntris;
+    if (!persp) g_frame_ortho = true;
+    smooth_count(SMOOTH_COUNT_OUT, (uint64_t)ntris);
+    ++g_gd_ok;
+    return true;
+}
+
+/* Turn every kept grid of the live state into the triangles the processor path
+   makes, in place in the list. A no-op when there are none. */
+static void grids_materialize_w(int why);
+static void grids_materialize() { grids_materialize_w(0); }
+static void grids_materialize_w(int why) {
+    if (g.grids.empty()) return;
+    const auto gd_t0 = std::chrono::steady_clock::now();
+    ++g_gd_why[why & 7];
+    ++g_gd_mat_calls; g_gd_mat_grids += g.grids.size(); g_gd_mat_tris += g.tris.size();
+    std::vector<GxTriangle> src = std::move(g.tris);
+    g.tris.clear();
+    g.tris.reserve(src.size() + g.grid_subtris);
+    const Mat proj_save = g.proj;
+    const int vp_save[4] = {g.vp_x, g.vp_y, g.vp_w, g.vp_h};
+    size_t at = 0;
+    size_t npool = 0;
+    const float *pool = smooth_store_pool(&npool);
+    const uint32_t gen = smooth_store_generation();
+    for (const GxGrid &gr : g.grids) {
+        if (gr.at > at) {
+            g.tris.insert(g.tris.end(), src.begin() + at, src.begin() + gr.at);
+            at = gr.at;
+        }
+        const float *pts = 0;
+        if (gr.from_pool) {
+            if (gr.pool_gen == gen && pool && gr.off < npool) pts = pool + gr.off;
+        } else if (gr.off < g.grid_pts.size()) {
+            pts = g.grid_pts.data() + gr.off;
+        }
+        if (!pts) continue;      // a pool that went away: the clear hook runs first, so never
+        std::memcpy(g.proj.m, gr.proj, sizeof gr.proj);
+        g.vp_x = gr.vp[0]; g.vp_y = gr.vp[1]; g.vp_w = gr.vp[2]; g.vp_h = gr.vp[3];
+        SmoothVertex sv[3];
+        std::memcpy(sv, gr.s, sizeof sv);
+        Mat xf;
+        if (gr.has_xform) std::memcpy(xf.m, gr.xform, sizeof xf.m);
+        smooth_emit_grid_cpu(pts, gr.tf, sv, gr.has_xform ? &xf : 0, &gr.st,
+                             &g.proj, &gr.widen, false);
+    }
+    if (src.size() > at)
+        g.tris.insert(g.tris.end(), src.begin() + at, src.end());
+    g.proj = proj_save;
+    g.vp_x = vp_save[0]; g.vp_y = vp_save[1]; g.vp_w = vp_save[2]; g.vp_h = vp_save[3];
+    g.grids.clear();
+    g.grid_pts.clear();
+    g.grid_subtris = 0;
+    g.grid_translucent = 0;
+    g.grid_mode2 = 0;
+    g_gd_mat_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - gd_t0).count();
 }
 
 /* The NORMAL command's 30-bit payload back out as three floats, decoded
@@ -1113,7 +1422,8 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
                           std::sqrt(e0[0]*e0[0] + e0[1]*e0[1] + e0[2]*e0[2]));
     }
 
-    smooth_emit_grid(grid, tf, s, xform);
+    smooth_emit_grid(grid, tf, s, xform,
+                     grid == pts ? -1L : (long)smooth_store_entry_off(e));
     if (prof) smooth_prof_add(SMOOTH_PROF_SUBDIV,
                               smooth_prof_ticks() - t_sub, 1);
     return 1;
@@ -2456,6 +2766,43 @@ uint32_t gx_texture_generation() { return g_tex_generation; }
    this file's own unnamed namespace. */
 namespace { int ab_mode(); }
 
+/* ---- WHETHER THIS FRAME'S SMOOTHED GRIDS MAY BE KEPT FOR THE CARD (SMOOTHGPU1)
+   SM64DS_SMOOTH_GPU=0 turns it off for a run (an A/B on one binary); the
+   debug dumps that walk the polygon list (the TRI_LOG / TEXPX reports, the
+   per-texture and per-pixel probes) turn it off too, because they would read a
+   list with the grids missing. Everything else is the card's own say: the probe
+   below is asked every frame and answers 2 only when the registered backend
+   will draw the whole frame AND takes grids. */
+static void grid_pool_clear_hook();
+static bool grid_env_ok() {
+    static int v = -1;
+    if (v < 0) {
+        v = 1;
+        const char *k = std::getenv("SM64DS_SMOOTH_GPU");
+        if (k && *k == '0') v = 0;
+        static const char *const dbg[] = {"SM64DS_TRI_LOG", "SM64DS_TEXPX",
+                                          "SM64DS_TEX_ONLY", "SM64DS_PROBE_PX"};
+        for (const char *d : dbg)
+            if (std::getenv(d)) v = 0;
+    }
+    return v != 0;
+}
+static bool gpu_grid_probe() {
+    GxGpuFrame f;
+    std::memset(&f, 0, sizeof f);
+    f.probe = 1;
+    f.full_ok = 2;
+    f.probe_grids = 1;
+    return g_gpu_opaque(&f) == 2;
+}
+static bool grid_defer_wanted() {
+    static bool hooked = false;
+    if (!hooked) { hooked = true; smooth_store_set_clear_hook(&grid_pool_clear_hook); }
+    if (!grid_env_ok() || smooth_level() <= 0 || !g_gpu_opaque || ab_mode())
+        return false;
+    return gpu_grid_probe();
+}
+
 void gx_set_gpu_opaque(GxGpuOpaqueFn fn) {
     g_gpu_opaque = fn;
     ab_mode();
@@ -2504,9 +2851,40 @@ void gx_mip_report() {
     std::fflush(stderr);
 }
 
+/* SM64DS_SMOOTH_TRIHASH=1: one line per frame with the count and an FNV-1a
+   hash of the polygon list the frame ended with (every vertex float, the
+   texture identity and the state bytes; not the texture pointer). It is how a
+   change to the smoothing's emit path is shown bit-identical to the one it
+   replaces without comparing pictures. Off, it is one compare. */
+static void smooth_trihash_frame() {
+    static int on = -1;
+    if (on < 0) on = std::getenv("SM64DS_SMOOTH_TRIHASH") ? 1 : 0;
+    if (!on) return;
+    grids_materialize_w(1);     // the list the frame ended with, grids included
+    uint64_t h = 1469598103934665603ull;
+    auto mix = [&h](const void *p, size_t n) {
+        const unsigned char *b = static_cast<const unsigned char *>(p);
+        for (size_t i = 0; i < n; ++i) { h ^= b[i]; h *= 1099511628211ull; }
+    };
+    for (const GxTriangle &t : g.tris) {
+        mix(t.v, sizeof t.v);
+        mix(&t.tw, sizeof t.tw); mix(&t.th, sizeof t.th);
+        mix(&t.tex_scale, 1); mix(&t.tex_id, sizeof t.tex_id);
+        mix(&t.cull, 1); mix(&t.alpha, 1); mix(&t.wrap, 1);
+        mix(&t.translucent, 1); mix(&t.mode, 1); mix(&t.polyid, 1);
+        mix(&t.depth_eq, 1); mix(&t.dbg_tex, sizeof t.dbg_tex);
+    }
+    static unsigned long long frame_no = 0;
+    std::fprintf(stderr, "[trihash] r%llu n=%zu h=%016llx\n",
+                 frame_no++, g.tris.size(),
+                 (unsigned long long)h);
+}
+
 void gx_reset() {
     ++g_resets;
     g_frame_ortho = false;
+    grid_stats_frame();
+    smooth_trihash_frame();
     /* MDL. gx_reset is the host's own "begin a frame's command stream" (see
        the long note below), so it is the frame boundary the smoother's
        counters and its crack census are keyed to. It is also the flush point
@@ -2572,6 +2950,10 @@ void gx_reset() {
 
     std::vector<GxVertex> strip = std::move(g.strip);
     std::vector<GxTriangle> tris = std::move(g.tris);
+    std::vector<GxGrid> grids = std::move(g.grids);
+    std::vector<float> grid_pts = std::move(g.grid_pts);
+    grids.clear();
+    grid_pts.clear();
     /* the raw strip rides with the strip it mirrors, for the same reason */
     std::vector<GxRaw> strip_raw = std::move(g.strip_raw);
     strip.clear();
@@ -2660,6 +3042,9 @@ void gx_reset() {
     if (!proj_carry_off) g.proj = proj_keep;
     g.strip = std::move(strip);
     g.tris = std::move(tris);
+    g.grids = std::move(grids);
+    g.grid_pts = std::move(grid_pts);
+    g_grid_defer = grid_defer_wanted();
     g.strip_raw = std::move(strip_raw);
     for (int i = 0; i < 4; ++i) g.lights[i] = lights[i];
     g.light_mask = light_mask;
@@ -2706,7 +3091,12 @@ void gx_matrix_stack_levels(unsigned &pos_level, unsigned &proj_level) {
     proj_level = (unsigned)q;
 }
 
+size_t gx_polygon_count() {
+    return g.tris.size() + (size_t)g.grid_subtris;
+}
+
 const GxTriangle *gx_polygons(size_t &count) {
+    grids_materialize_w(2);     // a caller that reads the list gets the triangles
     count = g.tris.size();
     return g.tris.empty() ? nullptr : g.tris.data();
 }
@@ -5540,6 +5930,10 @@ static bool frame_wdepth() {
 }
 
 void gx_render(Framebuffer &fb) {
+    /* kept grids stay kept only for a frame the card draws whole */
+    if (!g.grids.empty() &&
+        !(grid_env_ok() && g_gpu_opaque && !ab_mode() && gpu_grid_probe()))
+        grids_materialize_w(3);
     capture_drill(false);
     /* run interp1: what reached the raster is the frame; seal its record. */
     if (g_ip_rec) ip_rec_seal();
@@ -5644,13 +6038,14 @@ void gx_render(Framebuffer &fb) {
         if (t.translucent) have_translucent = true;
         if (have_shadow && have_translucent) break;
     }
+    if (g.grid_translucent) have_translucent = true;
     /* THE TOON TABLE AND DISP3DCNT's SHADING BIT, read once for the frame and
        only when a mode-2 polygon is in it (see gx_toon_table in ntr/gx.h). A
        frame without one leaves g_toon_shade 0 and every band below takes the
        plain modulation it always took. */
     g_toon_shade = 0;
     {
-        size_t n2 = 0;
+        size_t n2 = g.grid_mode2;
         for (const GxTriangle &t : g.tris)
             if (t.mode == 2) ++n2;
         if (n2) g_toon_shade = gx_toon_table(g_toon8);
@@ -5712,6 +6107,10 @@ void gx_render(Framebuffer &fb) {
         std::memset(&f, 0, sizeof f);
         f.tris = g.tris.data();
         f.count = g.tris.size();
+        f.grids = g.grids.data();
+        f.ngrids = g.grids.size();
+        f.arena = g.grid_pts.data();
+        f.arena_floats = g.grid_pts.size();
         f.fb = &fb.px[0][0];
         f.depth = &g_depth[0][0];
         f.cover = &g_cover[0][0];
@@ -5767,6 +6166,8 @@ void gx_render(Framebuffer &fb) {
             }
         }
     }
+    /* a frame the card did not draw whole needs its triangles */
+    if (!gpu_full) grids_materialize_w(4);
     /* A frame the card did not keep goes on as an ordinary one: the CPU passes
        draw into the clear colour, which the transparent fill did not leave */
     if (g_cp_pending && !g_cp_active) clear_fill_classic(fb);
@@ -6932,6 +7333,8 @@ double g_ip_prev_disp[3] = {0, 0, 0};
 
 /* The replay's own buffers, kept so a picture does not reallocate them. */
 std::vector<GxTriangle> g_ip_tris;
+std::vector<GxGrid> g_ip_grids;
+std::vector<float> g_ip_grid_pts;
 std::vector<GxVertex> g_ip_strip;
 std::vector<GxRaw> g_ip_strip_raw;
 
@@ -6949,6 +7352,7 @@ struct IpSaved {
     int rec;
 };
 IpSaved g_ip_saved;
+int g_ip_grid_defer_saved = 0;
 
 /* Per group, the triangles one replay produced: [begin, end) into g.tris. The
    probe reads it to measure how a group moved picture to picture. */
@@ -7504,6 +7908,15 @@ int gx_interp_begin(float alpha) {
 
     g = C.start;
     g.tris = std::move(g_ip_tris);
+    g.grids = std::move(g_ip_grids);
+    g.grid_pts = std::move(g_ip_grid_pts);
+    g.grids.clear();
+    g.grid_pts.clear();
+    g.grid_subtris = 0;
+    g.grid_translucent = 0;
+    g.grid_mode2 = 0;
+    g_ip_grid_defer_saved = g_grid_defer;
+    g_grid_defer = grid_defer_wanted();
     g.strip = std::move(g_ip_strip);
     g.strip_raw = std::move(g_ip_strip_raw);
     g.tris.clear();
@@ -7522,8 +7935,8 @@ int gx_interp_begin(float alpha) {
         const IpEv &e = C.ev[i];
         const int gi = C.ev_group[i];
         if (gi != last_group) {
-            if (last_group >= 0) g_ip_group_tri1[last_group] = (uint32_t)g.tris.size();
-            if (gi >= 0) g_ip_group_tri0[gi] = (uint32_t)g.tris.size();
+            if (last_group >= 0) g_ip_group_tri1[last_group] = (uint32_t)g.tris.size() + g.grid_subtris;
+            if (gi >= 0) g_ip_group_tri0[gi] = (uint32_t)g.tris.size() + g.grid_subtris;
             last_group = gi;
         }
         switch (e.kind) {
@@ -7581,7 +7994,7 @@ int gx_interp_begin(float alpha) {
         default: break;
         }
     }
-    if (last_group >= 0) g_ip_group_tri1[last_group] = (uint32_t)g.tris.size();
+    if (last_group >= 0) g_ip_group_tri1[last_group] = (uint32_t)g.tris.size() + g.grid_subtris;
     g_ip_replaying = 0;
     return 1;
 }
@@ -7590,6 +8003,9 @@ void gx_interp_end() {
     if (!g_ip_open) return;
     IpSaved &s = g_ip_saved;
     g_ip_tris = std::move(g.tris);
+    g_ip_grids = std::move(g.grids);
+    g_ip_grid_pts = std::move(g.grid_pts);
+    g_grid_defer = g_ip_grid_defer_saved;
     g_ip_strip = std::move(g.strip);
     g_ip_strip_raw = std::move(g.strip_raw);
     g = std::move(s.g);
@@ -7609,6 +8025,7 @@ void gx_interp_end() {
 }
 
 int gx_interp_group_box(int group, float box[4]) {
+    grids_materialize_w(5);     // the group ranges are triangle counts; they hold once the grids are triangles
     if (group < 0 || (size_t)group >= g_ip_group_tri0.size()) return 0;
     const uint32_t a = g_ip_group_tri0[group], b = g_ip_group_tri1[group];
     if (b <= a || b > g.tris.size()) return 0;
@@ -7623,6 +8040,18 @@ int gx_interp_group_box(int group, float box[4]) {
         }
     box[0] = mnx; box[1] = mny; box[2] = mxx; box[3] = mxy;
     return (int)(b - a);
+}
+
+/* The shape store is about to throw its pool away: turn every kept grid that
+   points into it (the live frame's, and the tick a SmoothMotion replay has put
+   aside) into triangles first. */
+static void grid_pool_clear_hook() {
+    grids_materialize_w(6);
+    if (g_ip_open && !g_ip_saved.g.grids.empty()) {
+        std::swap(g, g_ip_saved.g);
+        grids_materialize_w(7);
+        std::swap(g, g_ip_saved.g);
+    }
 }
 
 int gx_interp_group_count() {

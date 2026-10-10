@@ -55,6 +55,7 @@
 
 #include "ntr/smooth.h"
 
+#include <emmintrin.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -333,6 +334,66 @@ const uint16_t *smooth_grid_tri_index(int tf) {
     return g_tri_index[l];
 }
 
+namespace {
+SmoothGridTable g_grid_tab[SMOOTH_MAX_LEVEL + 1];
+int g_grid_tab_built[SMOOTH_MAX_LEVEL + 1];
+
+void build_grid_table(int tf, SmoothGridTable &T) {
+    const float inv = 1.0f / (float)tf;
+    int n = 0;
+    for (int ia = 0; ia <= tf; ++ia) {
+        for (int ib = 0; ib <= tf - ia; ++ib, ++n) {
+            const float a = (float)ia * inv;
+            const float b = (float)ib * inv;
+            float c = 1.0f - a - b;
+            if (c < 0.0f) c = 0.0f;
+            T.a[n] = a; T.b[n] = b; T.c[n] = c;
+            float *w = T.w[n];
+            w[0] = a * a * a;          // b300
+            w[1] = b * b * b;          // b030
+            w[2] = c * c * c;          // b003
+            w[3] = 3.0f * a * a * b;   // b210
+            w[4] = 3.0f * a * b * b;   // b120
+            w[5] = 3.0f * b * b * c;   // b021
+            w[6] = 3.0f * b * c * c;   // b012
+            w[7] = 3.0f * a * a * c;   // b201
+            w[8] = 3.0f * a * c * c;   // b102
+            w[9] = 6.0f * a * b * c;   // b111
+        }
+    }
+    T.n = n;
+}
+
+/* The whole grid from a patch: out[k] = (((0 + b0*w0) + b1*w1) + ...) per
+   coordinate, which is smooth_eval_patch's own accumulation, with the three
+   coordinates in three lanes. Separate multiply and add, no fused op, so
+   every float is the one the scalar loop made. */
+void eval_grid(const SmoothPatch &patch, const SmoothGridTable &T, float *out) {
+    __m128 B[10];
+    for (int i = 0; i < 10; ++i)
+        B[i] = _mm_setr_ps(patch.b[i][0], patch.b[i][1], patch.b[i][2], 0.0f);
+    for (int n = 0; n < T.n; ++n) {
+        __m128 acc = _mm_setzero_ps();
+        const float *w = T.w[n];
+        for (int i = 0; i < 10; ++i)
+            acc = _mm_add_ps(acc, _mm_mul_ps(B[i], _mm_set1_ps(w[i])));
+        float t[4];
+        _mm_storeu_ps(t, acc);
+        out[n * 3] = t[0]; out[n * 3 + 1] = t[1]; out[n * 3 + 2] = t[2];
+    }
+}
+}  // namespace
+
+const SmoothGridTable *smooth_grid_table(int tf) {
+    const int l = level_of_tf(tf);
+    if (l <= 0) return 0;
+    if (!g_grid_tab_built[l]) {
+        build_grid_table(tf, g_grid_tab[l]);
+        g_grid_tab_built[l] = 1;
+    }
+    return &g_grid_tab[l];
+}
+
 int smooth_grid_positions(const SmoothVertex &p1, const SmoothVertex &p2,
                           const SmoothVertex &p3, int tf, float *out) {
     if (tf <= 1) {
@@ -347,18 +408,9 @@ int smooth_grid_positions(const SmoothVertex &p1, const SmoothVertex &p2,
     // tf is a power of two, so 1/tf is exact and ia*inv lands on 1.0 exactly
     // at the corner -- which is what makes corner preservation bit-exact
     // rather than merely close.
-    const float inv = 1.0f / (float)tf;
-    int n = 0;
-    for (int ia = 0; ia <= tf; ++ia) {
-        for (int ib = 0; ib <= tf - ia; ++ib, ++n) {
-            const float a = (float)ia * inv;
-            const float b = (float)ib * inv;
-            float c = 1.0f - a - b;
-            if (c < 0.0f) c = 0.0f;
-            smooth_eval_patch(patch, a, b, c, out + n * 3);
-        }
-    }
-    return n;
+    const SmoothGridTable *T = smooth_grid_table(tf);
+    eval_grid(patch, *T, out);
+    return T->n;
 }
 
 int smooth_grid_positions_edges(const SmoothVertex &p1, const SmoothVertex &p2,
@@ -374,33 +426,17 @@ int smooth_grid_positions_edges(const SmoothVertex &p1, const SmoothVertex &p2,
     const float P3[3] = {p3.x, p3.y, p3.z};
     SmoothPatch patch;
     build_patch_core(P1, P2, P3, en, patch);
-    const float inv = 1.0f / (float)tf;
-    int n = 0;
-    for (int ia = 0; ia <= tf; ++ia) {
-        for (int ib = 0; ib <= tf - ia; ++ib, ++n) {
-            const float a = (float)ia * inv;
-            const float b = (float)ib * inv;
-            float c = 1.0f - a - b;
-            if (c < 0.0f) c = 0.0f;
-            smooth_eval_patch(patch, a, b, c, out + n * 3);
-        }
-    }
-    return n;
+    const SmoothGridTable *T = smooth_grid_table(tf);
+    eval_grid(patch, *T, out);
+    return T->n;
 }
 
 void smooth_grid_attrs(const SmoothVertex &p1, const SmoothVertex &p2,
                        const SmoothVertex &p3, float a, float b, float c,
                        SmoothVertex &o) {
     // Linear in barycentrics: textures never swim, and a corner gets its own
-    // coordinate back bit for bit.
-    o.u = p1.u * a + p2.u * b + p3.u * c;
-    o.v = p1.v * a + p2.v * b + p3.v * c;
-    o.color = bary_color(p1.color, p2.color, p3.color, a, b, c);
-    // Carried for a future relighting pass; nothing reads it today (the
-    // colour above is the lighting, already baked at NORMAL).
-    o.nx = p1.nx * a + p2.nx * b + p3.nx * c;
-    o.ny = p1.ny * a + p2.ny * b + p3.ny * c;
-    o.nz = p1.nz * a + p2.nz * b + p3.nz * c;
+    // coordinate back bit for bit. The arithmetic is smooth.h's inline copy.
+    smooth_grid_attrs_inline(p1, p2, p3, a, b, c, o);
 }
 
 int smooth_subdivide(const SmoothVertex &p1, const SmoothVertex &p2,
@@ -983,7 +1019,18 @@ void store_rehash(size_t want) {
 
 }  // namespace
 
+namespace { void (*g_st_clear_hook)(); uint32_t g_st_gen = 1; }
+void smooth_store_set_clear_hook(void (*fn)()) { g_st_clear_hook = fn; }
+const float *smooth_store_pool(size_t *n) {
+    if (n) *n = g_st_pool.size();
+    return g_st_pool.empty() ? 0 : &g_st_pool[0];
+}
+uint32_t smooth_store_generation() { return g_st_gen; }
+uint32_t smooth_store_entry_off(const SmoothEntry *e) { return e->off; }
+
 void smooth_store_clear() {
+    if (g_st_clear_hook && !g_st_pool.empty()) g_st_clear_hook();
+    ++g_st_gen;
     g_st_entry.clear();
     g_st_pool.clear();
     g_st_table.clear();
