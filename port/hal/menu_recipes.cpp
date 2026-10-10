@@ -111,7 +111,15 @@ int  menu_recroom_pad_ok(void);
 void menu_recroom_facts(MenuFacts *f);
 
 /* name, up, build, rom_cursor, enable_key, driver, flags, nvariants, pad_ok, facts */
+/* menu_recipe_lc.cpp (lane SAVE2): the save screen in N64 order, behind OneScreenMenus; listed BEFORE lc so it wins when both are on */
+int  menu_lc2_up(int scene_id);
+void menu_lc2_build(int variant, MenuLayout *L);
+int  menu_lc2_rom_cursor(int dir, int *sel);
+void menu_lc2_facts(MenuFacts *f);
+
 const MenuRecipe g_menu_recipes[] = {
+    { "lc2",      menu_lc2_up, menu_lc2_build, menu_lc2_rom_cursor, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_ROM_CURSOR, 0, 4,
+      menu_lc_pad_ok, menu_lc2_facts },
     { "lc",       menu_lc_up, menu_lc_build, menu_lc_rom_cursor, MENU_KEY_SAVE_MENU_ON_TOP, MENU_DRV_ROM_CURSOR, 0, 4,
       menu_lc_pad_ok },
     { "pause",    menu_pause_up, menu_pause_build, menu_pause_cursor, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_MIXED, 0, 9,

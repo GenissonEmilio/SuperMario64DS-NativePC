@@ -265,7 +265,7 @@ struct MenuLiftInfo {
   uint8_t lift2d;                 /* owner bits sent to the DS-space top2d plane instead of the picture */
   uint8_t hide;                   /* owner bits drawn nowhere */
   int nbands;                     /* host-row bands, SRC_TOP_HOSTROW pieces: owner bits in layers, rows [r0, r1) */
-  struct { uint8_t layers; int r0, r1; } band[4];
+  struct { uint8_t layers; int r0, r1; } band[8];   /* SAVE2: eight (the new save layout lifts and hides six) */
 };
 
 /* MENUSPLIT1: ONE TICK'S MENU DECISION. A plain-old-data record (no pointers into ROM memory, only into the static

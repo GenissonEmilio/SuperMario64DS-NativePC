@@ -8,8 +8,8 @@
 #include <string.h>
 #include <vector>
 
-extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[], g_menu_png_pattern[], g_menu_png_title_star[];
-extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len, g_menu_png_pattern_len, g_menu_png_title_star_len;
+extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[], g_menu_png_pattern[], g_menu_png_title_star[], g_menu_png_btn_save_cont[], g_menu_png_btn_save_quit[], g_menu_png_btn_cont[];
+extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len, g_menu_png_pattern_len, g_menu_png_title_star_len, g_menu_png_btn_save_cont_len, g_menu_png_btn_save_quit_len, g_menu_png_btn_cont_len;
 
 namespace {
 
@@ -36,6 +36,9 @@ const Src kSrc[MENU_IMG_COUNT] = {
     { "arrow_down.png", g_menu_png_arrow_down, &g_menu_png_arrow_down_len },
     { "pattern.png", g_menu_png_pattern, &g_menu_png_pattern_len },
     { "title_star.png", g_menu_png_title_star, &g_menu_png_title_star_len },
+    { "btn_save_cont.png", g_menu_png_btn_save_cont, &g_menu_png_btn_save_cont_len },
+    { "btn_save_quit.png", g_menu_png_btn_save_quit, &g_menu_png_btn_save_quit_len },
+    { "btn_cont.png", g_menu_png_btn_cont, &g_menu_png_btn_cont_len },
 };
 
 bool take(const unsigned char *rgba, int w, int h, Img *I)
