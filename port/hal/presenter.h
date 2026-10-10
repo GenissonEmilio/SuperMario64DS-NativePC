@@ -23,12 +23,12 @@
  * the presenter's copy always sees a whole picture. A keyed mutex on each
  * texture keeps the game from drawing into one the presenter is copying.
  *
- * THREADING OF THE CARD. The device's immediate context is shared by the two
- * threads, so the device is switched to multithread-protected (ID3D11Multithread);
- * each call of either thread then takes the device's own lock for the length of
- * that call. The game thread does a few dozen calls per picture and the
- * presenter three per refresh, so contention is small. Present is called by the
- * presenter only.
+ * THREADING OF THE CARD. No context is shared. The game thread uses only its
+ * own device and context (the ring draw, the keyed-mutex hand-over); the
+ * presenter thread uses only its own device and context (the copy out of the
+ * ring and the Present). The textures are shared memory, and a keyed mutex on
+ * each one decides who may touch it. The game thread flushes its context just
+ * before it releases the key, so the picture's writes are on the card by then.
  *
  * OFF: SM64DS_PRESENTER=0 puts the old path back (the game thread draws into
  * the back buffer and presents). Any failure of the thread (a lost device, a
