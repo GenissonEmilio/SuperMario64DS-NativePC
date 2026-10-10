@@ -24218,3 +24218,14 @@ foreach(_xrel1_map IN LISTS OV_DATA_MAPS)
     math(EXPR _xrel1_mounts "${_xrel1_mounts} + 1")
 endforeach()
 message(STATUS "XREL1: ${_xrel1_mounts} ovdata mount(s) rebuild when their overlay's config changes")
+
+# run hunt8, lane PRESENTER1: the presenter thread (hal/presenter.cpp), which owns
+# the swap chain and shows the newest finished picture on the display's own
+# clock. Called from hal/gpu_present.cpp, so every target that compiles that
+# file gets it. Windows-only like gpu_present; every entry point it needs that
+# the exe did not already import is reached through GetProcAddress.
+foreach(_pres1_t IN ITEMS walk_window walk_window_hires)
+    if(TARGET ${_pres1_t})
+        target_sources(${_pres1_t} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/presenter.cpp")
+    endif()
+endforeach()

@@ -137,6 +137,13 @@ int port_gpu_present_card_offscreen(const void *overlay, int stride_px,
 void port_gpu_present_offscreen_frame(const void *pixels, int stride_px,
                                       int src_w, int src_h);
 
+/* run hunt8, lane PRESENTER1: the picture about to be presented is the
+   pacer's repeat of the one already up (1) or a new one (0, the default). With
+   the presenter thread running (hal/presenter.h) a repeat is skipped:
+   port_gpu_present_repeat_skip says so for this client size. */
+void port_gpu_present_set_repeat(int on);
+int port_gpu_present_repeat_skip(int client_w, int client_h);
+
 #ifdef __cplusplus
 }
 #endif
