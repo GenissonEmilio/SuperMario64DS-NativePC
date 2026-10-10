@@ -1097,6 +1097,22 @@ inline bool lc_overlay_in_band(unsigned owner, int hy)
 // plus a sparse extent walk. It runs ONLY when the aspect is wide; at the
 // native aspect the whole block is skipped and the placement is the byte-for-
 // byte original x*sx, so the default build pays nothing at all.
+/* THE N64 HUD ROW (HudLayout = 1; run menu1 lane HUD1). The DS stacks the coin counter under the star counter at the top
+   right (digits y 20..36 against the star row's y 2..18). The N64 puts lives, coins and stars on ONE row, so this
+   moves the coin counter, as one block (icon, x and digits, never a split glyph), up onto the star row and left into
+   the middle of the screen: DS pixel (x, y) of the counter (x >= 188, y 20..36) goes to (x - dx, y - kHudCoinDy), dx = 52 normally, wider when a three digit star count needs the room. It is done in the
+   DS 256x192 plane BEFORE the widescreen element pass, so the position is a canvas position in every aspect (4:3 plain
+   x*sx, wide through the anchors below). Wide, the moved block is held out of the element labelling (it would bridge
+   into the star counter) and takes the CENTRE anchor, the same one the power meter has, so the row spreads out
+   (lives left edge, coins centre, stars right edge) instead of stretching. The red coin row and the silver star row
+   already sit bottom left on the DS top screen (y 157..173, RenderRedCoins / RenderSilverStars), they stay.
+   Absent or 0 = nothing here runs: one int read per frame. */
+extern "C" int host_setting_hud_layout(void);
+static const int kHudZoneX0 = 188, kHudZoneY0 = 20, kHudZoneY1 = 36;   /* the coin counter's DS rectangle */
+static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudMeterGapMin = 2, kHudEdgeGap = 1, kHudStarGap = 6, kHudStarGapMin = 3;
+static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
+static bool g_hud_row_live;
+
 namespace hudelem {
 
 // The dilation radii, in DS pixels. See the bridge discussion above.
@@ -1148,13 +1164,13 @@ void resolve(int band_l, int band_r, int margin)
     for (int y = 0; y < 192; ++y) {
         int run = kBridgeX + 1;
         for (int x = 0; x < 256; ++x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x);
+            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_row_live && g_hud_row[y][x]);
             run = on ? 0 : (run + 1);
             dil[y][x] = (run <= kBridgeX) ? 1 : 0;
         }
         run = kBridgeX + 1;
         for (int x = 255; x >= 0; --x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x);
+            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_row_live && g_hud_row[y][x]);
             run = on ? 0 : (run + 1);
             if (run <= kBridgeX) dil[y][x] = 1;
         }
@@ -1230,7 +1246,7 @@ void resolve(int band_l, int band_r, int margin)
             if (!l) continue;
             const int r = find_root(l);
             g_lbl[y][x] = (int16_t)r;
-            if (!g_a[y][x].hit || msg_layer_px(y, x)) continue;
+            if (!g_a[y][x].hit || msg_layer_px(y, x) || (g_hud_row_live && g_hud_row[y][x])) continue;
             if (x < x0[r]) x0[r] = x;
             if (x > x1[r]) x1[r] = x;
         }
@@ -3187,6 +3203,121 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        to anchor -- and skipped when the band-split control is armed, which is
        what lets that control be the OLD code path and not a re-derivation of
        it. */
+    /* THE N64 ROW, once per frame: only in a 3D scene shown at its own layout, never under a level-clear lift. */
+    g_hud_row_live = false;
+    if (host_setting_hud_layout() == 1 && bg0_3d_shown(dispcnt) && !ntr::present_native()
+        && !lc_ov.live && !lc_ov.top_live) {
+        /* THE RACE TIMER (src/_ZN3HUD15RenderTimeTimerEv.cpp: x 0xa4..0xf0, y 0x16 / 0x1e) shares these rows, and its
+           pixels are not the coin counter's. The counter itself never reaches left of x 191 (icon of a three digit
+           count), so any sprite pixel at x 160..187 in the zone rows is the timer: leave the DS placement alone then. */
+        bool timer_up = false;
+        for (int y = kHudZoneY0; y <= kHudZoneY1 && !timer_up; ++y)
+            for (int x = 160; x < kHudZoneX0; ++x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { timer_up = true; break; }
+        if (!timer_up) {
+        /* THE STAR COUNTER'S LEFT EDGE. The ROM blinks the counter on a star collect (src/_ZN3HUD15RenderStarCountEv.cpp,
+           data_020a0db0 & 0x18) so a frame can show it blank or shifted: keep the smallest left edge seen (a count only grows
+           within a level) and let a larger one replace it after 120 frames of agreeing, so the coin block never hops. */
+        /* Proof arm (SM64DS_HUD_BLINK_SIM=1): blank the star counter for 8 frames in 16, the way the ROM's collect blink does,
+           so a strip can show the coin block does not hop. Never set in play. */
+        static const bool blink_sim = std::getenv("SM64DS_HUD_BLINK_SIM") != nullptr;
+        static unsigned blink_n = 0;
+        if (blink_sim && ((blink_n++ >> 3) & 1))
+            for (int y = 0; y < kHudZoneY0 - 1; ++y)
+                for (int x = 180; x < 256; ++x)
+                    if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) g_a[y][x].hit = false;
+        int star_left = 256;
+        for (int y = 0; y < kHudZoneY0 - 1; ++y)
+            for (int x = 180; x < star_left; ++x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { star_left = x; break; }
+        const int star_raw = star_left;
+        static int s_star_left = 256, s_star_larger = 0, s_star_right = -1;
+        if (star_left < 256) {
+            if (star_left <= s_star_left) { s_star_left = star_left; s_star_larger = 0; }
+            else if (++s_star_larger >= 120) { s_star_left = star_left; s_star_larger = 0; s_star_right = -1; }
+        }
+        star_left = s_star_left;
+        /* THE POWER METER's rightmost OBJ pixel in the rows the coin block lands on (x 80..187), and the coin block's own
+           left edge before the move. The block keeps kHudMeterGap clear pixels from the meter when the star counter allows. */
+        int meter_right = -1, blk_left = 256;
+        for (int y = kHudZoneY0 - kHudCoinDy; y <= kHudZoneY1 - kHudCoinDy; ++y)
+            for (int x = 187; x >= 80; --x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { if (x > meter_right) meter_right = x; break; }
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = kHudZoneX0; x < blk_left; ++x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj && !g_a[y][x].msgcur) { blk_left = x; break; }
+        int blk_right = -1;
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = 255; x > blk_right; --x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj && !g_a[y][x].msgcur) { blk_right = x; break; }
+        /* THE STAR COUNTER'S RIGHT EDGE (the largest seen, reset when the left edge is replaced). */
+        int star_right = -1;
+        for (int y = 0; y < kHudZoneY0 - 1; ++y)
+            for (int x = 255; x > star_right; --x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { star_right = x; break; }
+        if (star_right > s_star_right) s_star_right = star_right;
+        star_right = s_star_right;
+        /* The block goes as far right as the DS plane lets it: its right end star_gap pixels short of the star counter.
+           It never goes to a second line. At 4:3 the DS plane is the screen, so if the meter is closer than the wanted gap, make room in the smallest steps:
+             1. squeeze the star gap from kHudStarGap toward kHudStarGapMin;
+             2. shrink the meter gap from kHudMeterGap toward kHudMeterGapMin (at 4:3 only; wide, the meter is on the
+                centre anchor and the block on the right, so the screen gap is larger than the plane gap);
+             3. at 4:3, slide the star counter (and the block with it) right, up to the plane edge less kHudEdgeGap.
+           Wide, the meter sits on the centre anchor and the block on the right one, so the screen gap is always larger than the
+           plane gap and the meter test is skipped. If even that leaves the meter touched, nothing moves and the numbers are printed (SM64DS_HUD_DBG). */
+        int dx_move = 0, star_gap = kHudStarGap, meter_gap = kHudMeterGap, star_shift = 0;
+        const bool wide = ntr::widescreen;
+        bool fits = blk_right >= 0;
+        if (fits) {
+            const int star_room = (wide || star_right < 0 || star_left >= 256) ? 0 : (255 - kHudEdgeGap - star_right);
+            bool ok = false;
+            for (int sh = 0; sh <= (star_room > 0 ? star_room : 0) && !ok; ++sh)
+                for (int mg = kHudMeterGap; mg >= (wide ? 1 : kHudMeterGapMin) && !ok; --mg) {
+                    if (sh > 0 && mg != kHudMeterGapMin) continue;
+                    for (int sg = kHudStarGap; sg >= kHudStarGapMin && !ok; --sg) {
+                        if (sh > 0 && sg != kHudStarGapMin) continue;
+                        int d = blk_right - (star_left + sh - sg);
+                        if (d < kHudCoinDxMin) d = kHudCoinDxMin;
+                        if (wide || meter_right < 0 || blk_left - d >= meter_right + 1 + mg) {
+                            ok = true; dx_move = d; star_gap = sg; meter_gap = mg; star_shift = sh;
+                        }
+                    }
+                }
+            fits = ok;
+        }
+        static const bool dbg = std::getenv("SM64DS_HUD_DBG") != nullptr;
+        if (dbg) std::fprintf(stderr, "[hudrow] star_raw=%d star_left=%d star_right=%d meter_right=%d blk=%d..%d dx=%d star_gap=%d meter_gap=%d star_shift=%d fits=%d\n",
+                              star_raw, star_left, star_right, meter_right, blk_left, blk_right, dx_move, star_gap, meter_gap, star_shift, (int)fits);
+        if (fits && star_shift > 0) {
+            /* slide the star counter right by star_shift DS pixels (same cells, still on the right anchor) */
+            for (int y = 0; y < kHudZoneY0 - 1; ++y)
+                for (int x = 255 - star_shift; x >= 180; --x) {
+                    Cell &c = g_a[y][x];
+                    if (c.hit && c.owner == kOwnerObj) { g_a[y][x + star_shift] = c; c.hit = false; }
+                }
+        }
+        if (fits) {
+        static Cell tmp[kHudZoneY1 - kHudZoneY0 + 1][256 - kHudZoneX0];
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = kHudZoneX0; x < 256; ++x) {
+                Cell &c = g_a[y][x];
+                const bool mv = c.hit && c.owner == kOwnerObj && !c.msgcur;
+                tmp[y - kHudZoneY0][x - kHudZoneX0] = c;
+                tmp[y - kHudZoneY0][x - kHudZoneX0].hit = mv;
+                if (mv) c.hit = false;
+            }
+        std::memset(g_hud_row, 0, sizeof(g_hud_row));
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = kHudZoneX0; x < 256; ++x) {
+                const Cell &c = tmp[y - kHudZoneY0][x - kHudZoneX0];
+                if (!c.hit) continue;
+                g_a[y - kHudCoinDy][x - dx_move] = c;
+                g_hud_row[y - kHudCoinDy][x - dx_move] = 1;
+                g_hud_row_live = true;
+            }
+        }
+        }
+    }
     const bool bandsplit = hud_bandsplit_env();
     if (ntr::widescreen && !bandsplit) hudelem::resolve(band_l, band_r, margin);
     /* TWO QUESTIONS, KEPT APART SO THE A/B ARM STILL MEASURES. `shown3d` is
@@ -3271,6 +3402,8 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                              three layers line up. */
                           : (ntr::present_native() || !shown3d)
                           ? ux0 + margin / 2
+                          : (g_hud_row_live && g_hud_row[y][x])
+                          ? ux0 + margin   /* the moved coin block rides the right edge with the star counter */
                           : !bandsplit
                           ? ux0 + hudelem::g_off[hudelem::g_lbl[y][x]]
                           : (x < band_l) ? ux0
