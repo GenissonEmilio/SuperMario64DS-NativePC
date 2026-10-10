@@ -3285,11 +3285,13 @@ void gw_follow() {
         const int s = gw_seat_for_body(i);
         GwSample sm;
         bool got = s >= 0 && gw_visible(s) && !gw_cut();
-        /* PBODY1: a party seat in a menu / star select / cutscene has no body at
-           all here; one in another level or area is drawn the way a ghost is (it
-           fades out as it leaves) but is never solid (party::follow below) */
+        /* PBODY1: a party seat in a menu / star select / cutscene (SYNL), or whose
+           newest ghost frame says his game is paused (the pause menu, a star select
+           and a loading hold send those at 2 Hz), has no body at all here; one
+           in another level or area is drawn the way a ghost is (it fades out
+           as it leaves) but is never solid (party::follow below) */
         const bool pseat = got && party::seat_is_party(s);
-        if (pseat && party::gate(s) == party::kGateHide) got = false;
+        if (pseat && (party::gate(s) == party::kGateHide || g_gw[s].paused_now)) got = false;
         if (got) {
             if (g_gw[s].leaving) {         // GHOSTDOOR1: fading out in place
                 sm = g_gw_last[s];
