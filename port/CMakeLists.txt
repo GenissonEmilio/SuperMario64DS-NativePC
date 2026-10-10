@@ -24482,3 +24482,9 @@ foreach(_tsetmenu1 walk_window walk_window_hires)
 endforeach()
 # smoke_player (EXCLUDE_FROM_ALL) links hal/sub_screen.cpp, which calls the page seams: no-op stubs keep it linking without the page.
 target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_stubs.cpp")
+
+# MENU1 / MAP1 (run menu1): Select shows the bottom-screen map big over the picture (hal/menu_bigmap.h). Own block.
+foreach(_tmap1 walk_window walk_window_hires smoke_player)
+    target_sources(${_tmap1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_bigmap.cpp")
+endforeach()

@@ -87,6 +87,7 @@
 #include "ntr/ppu.h"
 #include "ntr/gx.h"       /* ASSET1: gx_coverage for keycover menu pieces */
 #include "hal/menu_compose.h"   /* run menu1 lane HOOK1: the one-screen menu compose layer */
+#include "hal/menu_bigmap.h"    /* run menu1 lane MAP1: Select shows the big map */
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
 #include "hal/screen_gap.h"
@@ -3698,6 +3699,7 @@ extern "C" void hal_menu_pad_seam(void)
         back_was = d;
         if (back && settings_page_swallow_back()) back = 0;   /* SETPAGEFIX1: the Backspace that is the page's Back is not the ROM's */
     }
+    menu_bigmap_pad_seam();   /* MAP1: Select shows / hides the big map; the ROM never sees that Select (OneScreenMenus on) */
     if (!hal_menu_live()) return;
     /* ASSET3: MOUSE HOVER. A menu recipe's hotspots take the mouse focus when the pointer moves onto them (hal_menu_hover had no
        caller): the pointer in client pixels -> picture pixels, the same inverse the stylus uses. SM64DS_MENU_HOVER_AT=x,y@N (picture
@@ -3934,7 +3936,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
     ntr::ppu_vram_publish();
     ntr::ppu_display_capture(dst, w, h);
 
-    if (g_on || hal_menu_draw_live()) ntr::ppu_scanout_sub(g_sub);   /* a live menu forces its own scan-out */
+    if (g_on || hal_menu_draw_live() || menu_bigmap_up()) ntr::ppu_scanout_sub(g_sub);   /* a live menu, or the big map (MAP1), forces its own scan-out */
     /* THE LATE UPLOAD, and it is now the OPT-IN arm. port_frame_oam_upload
        above already ran this frame's OAM::Load at func_02019144's own line,
        ahead of both rasters; this block is what SM64DS_OAM_LOAD_LATE=1 gets
@@ -3943,7 +3945,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
         ntr::ppu_seam_oam_mark();
         _ZN3OAM4LoadEv();
     }
-    if (!g_on && !hal_menu_draw_live()) return;
+    if (!g_on && !hal_menu_draw_live() && !menu_bigmap_up()) return;
     /* THE STACKED LAYOUT WRITES NOTHING INTO dst HERE, and that is the whole
        trick. dst is the framebuffer, the scan-out above is everything the
        bottom screen needs, and the stacked image is built downstream by
@@ -3960,6 +3962,11 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
             menu_prepare_sources(dst, w, h);
             hal_menu_present(dst, w, h, MENU_STAGE_PRE_FADE);
         }
+    } else if (!hal_sub_screen_stacked() && menu_bigmap_up()) {
+        /* MAP1: SELECT SHOWS THE BIG MAP. The bottom screen's scan-out, big and centred over the dimmed picture, instead of the corner
+           panel. The rectangle is handed to engine A's fade like the panel's, so the map is not dimmed with the fade. */
+        menu_bigmap_draw(&g_sub.px[0][0], dst, w, h, ntr::SCREEN_W, g_inset_rect);
+        g_inset_live = 1;
     } else if (!hal_sub_screen_stacked()) {
         /* THE DECORATIVE PANEL FIRST, because it goes BEHIND the map: the
            compose below writes the map over the middle of it and its own one
