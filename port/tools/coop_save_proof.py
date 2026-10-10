@@ -593,6 +593,10 @@ def pair(row, host_extra, guest_extra, host_seed_stars, frames_h=1700, frames_g=
             cur = last_host[0]
         if cur != last_host[0]:
             ev.setdefault("t_file_changes", []).append(now)
+            try:
+                ev.setdefault("changes", []).append((now, set(stars_of(parse(cur)[(0, 0)][2]))))
+            except Exception:
+                pass
             last_host[0] = cur
     wait_all([ch, cg], 900, tick)
     stop_relay(rp, rf)
@@ -628,13 +632,14 @@ def row_pair():
     want = {(0x14 + gx[0] - 0, 0, 1 << gx[1]), (0x14 + hx[0], 0, 1 << hx[1])}
     got = set(paydiff)
     say(got == want, "pair: the ONLY payload bytes that changed are the two star bytes %s" % sorted(want))
-    outside = [i for i, a, b in diff if not (0 <= i < 0x80 or 0x1000 <= i < 0x1080)]
-    say(not outside and prf[(0, 0)][1] and prf[(0, 1)][1], "pair: nothing outside slot 0's two records changed; both copies' checksums valid")
+    # slot 3 (minigames, 0x180 / 0x1180, up to 0x2e4+10 bytes) is the HOST's own probe: SaveCurrentFile writes it too
+    outside = [i for i, a, b in diff if not (0 <= i < 0x80 or 0x1000 <= i < 0x1080 or 0x180 <= i < 0x180 + 0x2f0 or 0x1180 <= i < 0x1180 + 0x2f0)]
+    say(not outside and prf[(0, 0)][1] and prf[(0, 1)][1], "pair: nothing outside slot 0's two records (and the host's own minigame block) changed; both copies' checksums valid")
     # latency: guest probe to a host file change
-    if "t_probe" in ev and ev.get("t_file_changes"):
-        later = [t for t in ev["t_file_changes"] if t >= ev["t_probe"] - 0.5]
+    if "t_probe" in ev and ev.get("changes"):
+        later = [t for t, st2 in ev["changes"] if gx in st2]
         lat = (later[0] - ev["t_probe"]) if later else None
-        info("pair: guest star collected at +0.0 s, host file first changed %s s later (poll 0.1 s; includes the 1.0 s throttle-free path)" % (None if lat is None else round(lat, 2)))
+        info("pair: guest star logged at +0.0 s, the host file first held it %s s later (0.1 s poll, log read lags up to 0.1 s; changes seen: %s)" % (None if lat is None else round(lat, 2), [(round(t - ev["t_probe"], 2), sorted(st2)) for t, st2 in ev["changes"]]))
         say(lat is not None and lat <= 3.0, "pair: the guest's star reached the host's file within 3 s (%s s)" % (None if lat is None else round(lat, 2)))
     else:
         say(False, "pair: could not time the guest star (no probe / no file change seen)")
