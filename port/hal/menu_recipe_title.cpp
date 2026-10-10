@@ -87,6 +87,9 @@ struct TitleFacts {
     int vis, s48;             /* the fade manager's iris sprite: shown, scale */
     Chore ch;                 /* the choreography clock as of this tick */
     int toy_e;                /* FACE1: ticks since the press page handed over to the drawing page (top 0 / 1, elem 1) while it still shows our picture */
+    int dd_e;                 /* FACE2: ticks since the face press handed over to the drawing page (1 on the first hand-over tick), 0 = not reached from the press (no crossfade) */
+    int dd_dead;              /* FACE2: 1 while the drawing page's own picture is not the page yet (the ROM's black hand-over frames): no strokes or buttons are cut from it */
+    int out_e;                /* FACE2: ticks since the drawing page was left (1 on the first tick of the next page), 0 = not leaving it */
     int toy_v;                /* FACE1: the face press page's own frame counter (the page object's +0xc) PLUS ONE while top 4 / elem 0 is up, 0 = not the press page (a zeroed blob is not the press page) */
 };
 static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
@@ -131,6 +134,7 @@ int variant_for(int top, int elem)
        the score table is 4/5 (loading) then 2/5. Transit states keep the last stable page. */
     if (top == 11) return elem == 0 ? V_ATTRACT : g_last;   /* ASSET5: top 11 with the file machine up (elem 5) is the return from a file page, not the first attract */
     if (top == 10) return V_INTRO;                /* the logo arrives while the buttons come in through the ROM's star iris */
+    if (elem == 2 && g_last == V_DOODLE) return V_DOODLE;   /* FACE2: the ROM's drawing mode proper (elem 2) is the same page as the face tracing (elem 1) */
     if (elem == 1) return ((top == 0 || top == 1) && g_last == V_TOY) ? V_TOY : V_DOODLE;     /* FACE1: the hand-over frames keep our picture */
     if (elem == 0) {
         if (top == 0) return V_MAIN;
@@ -229,6 +233,16 @@ bool pc_assets_ready()
            menu_hostimg_ready(MENU_IMG_PATTERN);
 }
 
+/* FACE2: the drawing page's two paper sprite objects (ids 0x18 and 0x17) are not submitted on the one-screen drawing page: our own paper is
+   drawn, and the 3D layer then holds only the strokes and the two buttons, so each is cut by coverage and placed on its own */
+bool doodle_skip_active()
+{
+    if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return false;
+    return variant_for(top, elem) == V_DOODLE;
+}
+
 bool wall_skip_active()
 {
     if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
@@ -246,6 +260,7 @@ int title_skip(char *o)
         for (int i = 0; i < 3; ++i)
             if (o == *(char *const *)(g + 0x108 + 4 * i)) return wall_skip_active() ? 1 : 0;
     }
+    if ((*(unsigned char *)(o + 0x4e) == 0x18 || *(unsigned char *)(o + 0x4e) == 0x17) && doodle_skip_active()) return 1;
     /* ASSET3: the ROM's own cursor arrow (object id 0x21, drawn only while the cursor is shown) is replaced by the host's own pixel
        arrow (art cut from this very object: tools/extract_title_arrow.py), so it is not in the picture on the one-screen main menu */
     if (*(unsigned char *)(o + 0x4e) == 0x21 && wall_skip_active() && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
@@ -709,6 +724,23 @@ float toy_grow(int v)
     return t * t * (3.f - 2.f * t);
 }
 
+/* the dest rect (host pixels) of the whole 3D layer when its head is where the main menu draws it, at growth (1 + 0.345 * growth_t) of the
+   ROM's own press animation (see toy_grow); growth_t 1 = the toy's rest pose, which is also the size the drawing page's strokes were
+   traced at (measured: the outline of the drawing page laid over the press page's rest pose follows the head's face, hat to chin) */
+void toy_dest(const MenuLayout *L, float growth_t, int *ox, int *oy, int *ow, int *oh)
+{
+    const FaceK fk = face_k();
+    const float k0 = (float)fk.n / (float)fk.d, gr = 1.f + 0.345f * growth_t, k = k0 / gr;
+    const float ax = 123.3f, ay = 27.8f + (24.2f - 27.8f) * growth_t;                            /* the layer point that stays on the cap */
+    const float cxu = (256.f - 256.f * k0) / 2.f + 123.3f * k0 + (float)face_dx(fk);             /* where the main menu puts it (canvas units) */
+    const float cyu = (float)face_dy(fk) + 27.8f * k0;
+    const float upx = (float)L->unum / (float)L->uden;
+    const float hostx0 = (float)L->w / 2.f + (cxu - ax * k - 128.f) * upx, hosty0 = (cyu - ay * k) * upx;
+    const int x0 = (int)(hostx0 + 0.5f), y0 = (int)(hosty0 + 0.5f);
+    *ox = x0; *oy = y0;
+    *ow = (int)(hostx0 + 256.f * k * upx + 0.5f) - x0; *oh = (int)(hosty0 + 192.f * k * upx + 0.5f) - y0;
+}
+
 void build_main_pc(MenuLayout *L, bool intro)
 {
     Chore c = t_f ? t_f->ch : Chore();      /* a copy: build() never writes the clock */
@@ -776,18 +808,13 @@ void build_main_pc(MenuLayout *L, bool intro)
         const bool toy = tv >= 0;
         const int fa = toy ? 255 : c.face_a;
         if (toy) {
-            const float k0 = (float)hk / (float)hd, gr = 1.f + 0.345f * toy_grow(tv), k = k0 / gr;
-            const float ax = 123.3f, ay = 27.8f + (24.2f - 27.8f) * toy_grow(tv);                     /* the layer point that stays on the cap */
-            const float cxu = (256.f - 256.f * k0) / 2.f + 123.3f * k0 + (float)face_dx(fk);             /* where the main menu puts it (canvas units) */
-            const float cyu = (float)face_dy(fk) + 27.8f * k0;
-            const float upx = (float)un / (float)ud;
             MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
             face.fixdest = 1; face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
-            const float hostx0 = (float)w / 2.f + (cxu - ax * k - 128.f) * upx, hosty0 = (cyu - ay * k) * upx;
-            const int x0 = (int)(hostx0 + 0.5f), y0 = (int)(hosty0 + 0.5f);
-            face.fx = (short)x0; face.fy = (short)y0;
-            face.fw = (short)((int)(hostx0 + 256.f * k * upx + 0.5f) - x0); face.fh = (short)((int)(hosty0 + 192.f * k * upx + 0.5f) - y0);
+            int x0, y0, fw, fh;
+            toy_dest(L, toy_grow(tv), &x0, &y0, &fw, &fh);
+            face.fx = (short)x0; face.fy = (short)y0; face.fw = (short)fw; face.fh = (short)fh;
             menu_add_piece(L, face);
+            if (tv <= 93) L->snap_save = 1;      /* FACE2: the held frame of the crossfade into the drawing page (the ROM's own fade-out dims the picture from counter 94) */
             MenuPiece head = face;                      /* the page reads touches over the whole layer; the same transform inverts them */
             head.keycover = 0; head.has_ex = 0; head.bg = 0; head.touch = 1; head.nodraw = 1;
             menu_add_piece(L, head);
@@ -879,14 +906,6 @@ void build_main_pc(MenuLayout *L, bool intro)
             }
         }
     }
-    if (t_f && t_f->toy_v > 0 && t_f->toy_e > 0) {      /* FACE1: the hand-over to the drawing page: our picture dips to black as the ROM's own fade takes over */
-        MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-        ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
-        ir.ir16 = 0;
-        const int a = 100 * t_f->toy_e;
-        ir.alpha = (uint8_t)(a >= 255 ? 0 : a);
-        menu_add_piece(L, ir);
-    }
     /* the iris: black outside the star while the ROM's iris is up (and all black before it shows), a veil on a returning page */
     if (c.mode == CH_INTRO && !c.iris_covered && c.ct <= ctune(0, CH_LOGO_POP) + 60) {
         const int vis = t_f ? t_f->vis : 0, s48 = t_f ? t_f->s48 : 0;
@@ -919,6 +938,56 @@ void build_main_sel(MenuLayout *L, bool intro)
         build_main_pc(L, intro);
     else
         build_main(L, intro);
+}
+
+/* FACE2: THE DRAWING PAGE (top 0..2 / elem 1, then elem 2: Mario traces his face, then the player draws). Built from pieces:
+     the held main menu frame, crossfaded out while the paper fades in (the first DD_XF ticks after the press page hands over),
+     the paper (the ROM's own tile, edge to edge, no side bars),
+     the strokes: the 3D layer's pixels, keyed by coverage, at the SAME size and place as the head on the main menu (toy_dest at the
+       toy's rest pose; the strokes were traced over that pose), so the outline lands on the head it replaces; a drag on it maps through
+       the same transform to the ROM's canvas,
+     the Yoshi button and the pencil, cut from the same layer by their own boxes and anchored to the left and right edges at their DS rows
+       (4:3: exactly where the DS puts them; wide: the same offsets from the edges), each its own touch piece in the ROM's own box. */
+enum { DD_XF = 18 };       /* the crossfade, in DS ticks: 0.3 s */
+
+void build_doodle(MenuLayout *L)
+{
+    const int w = L->w, h = L->h;
+    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+    L->stage = MENU_STAGE_POST_FADE;
+    L->no_focus_paint = 1;
+    const int e = (t_f && t_f->dd_e > 0) ? t_f->dd_e : 1000;
+    const bool live = !(t_f && t_f->dd_dead);
+    if (live) L->snap_save = 1;                  /* the held frame of the way out */
+    if (e < DD_XF) {
+        MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)w; sn.fh = (short)h;
+        menu_add_piece(L, sn);
+    }
+    {
+        MenuPiece pp = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        pp.bg = 1; pp.paper = 1; pp.lden = 1; pp.lnum = 1; pp.fx = 0; pp.fy = 0; pp.fw = (short)w; pp.fh = (short)h;
+        const int a = e >= DD_XF ? 255 : 255 * e / DD_XF;
+        pp.alpha = (uint8_t)(a >= 255 ? 0 : (a < 1 ? 1 : a));
+        menu_add_piece(L, pp);
+    }
+    if (!live) return;
+    static const DsRect kYo = { 0, 132, 48, 60 }, kPen = { 208, 132, 48, 60 };     /* the buttons' rows of the lower screen: boxes x 4..44 / 212..252, y 148..188, with the slide-in path below */
+    int x0, y0, fw, fh;
+    toy_dest(L, 1.f, &x0, &y0, &fw, &fh);
+    MenuPiece st = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
+    st.fixdest = 1; st.keycover = 1; st.bg = 1; st.has_ex = 1; st.ex = kYo; st.has_ex2 = 1; st.ex2 = kPen;
+    st.fx = (short)x0; st.fy = (short)y0; st.fw = (short)fw; st.fh = (short)fh;
+    menu_add_piece(L, st);
+    MenuPiece tc = st;                           /* the touch twin: the same transform inverts a click on the strokes' area to the ROM's canvas */
+    tc.keycover = 0; tc.has_ex = 0; tc.has_ex2 = 0; tc.bg = 0; tc.touch = 1; tc.nodraw = 1;
+    menu_add_piece(L, tc);
+    MenuPiece yo = menu_piece_make(SRC_TOP_PIC, kYo.x, kYo.y, kYo.w, kYo.h, MENU_AX_L, MENU_AY_B, 0, 0, 1, 1);
+    yo.keycover = 1; yo.touch = 1;
+    menu_add_piece(L, yo);
+    MenuPiece pe = menu_piece_make(SRC_TOP_PIC, kPen.x, kPen.y, kPen.w, kPen.h, MENU_AX_R, MENU_AY_B, 0, 0, 1, 1);
+    pe.keycover = 1; pe.touch = 1;
+    menu_add_piece(L, pe);
 }
 
 }  // namespace
@@ -990,18 +1059,29 @@ void menu_title_facts(MenuFacts *f)
     tf.ch = g_ch;
     tf.toy_v = 0;
     {
-        static int last_v = -1, last_e = 0;
+        static int last_v = -1, last_e = 0, dd_chain = 0, dd_e = 0, was_dd = 0, out_e = 0;
         int top = -1, elem = -1, req = -1;
-        if (port_title_page_state(&top, &elem, &req) && top == 4 && elem == 0 && data_ov007_0210342c) {
+        const bool st = port_title_page_state(&top, &elem, &req) != 0;
+        if (st && top == 4 && elem == 0 && data_ov007_0210342c) {
             const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
             tf.toy_v = (sp ? *(const int *)(sp + 0xc) : 0);
             if (tf.toy_v < 0) tf.toy_v = 0;
             tf.toy_v += 1;
             last_v = tf.toy_v; last_e = 0;
+            dd_chain = 1; dd_e = 0; was_dd = 0; out_e = 0;
         } else if (last_v >= 0 && elem == 1 && (top == 0 || top == 1)) {   /* the ROM's hand-over: its own fade, the drawing page not up yet */
             tf.toy_v = 1001; tf.toy_e = ++last_e;
         } else {
             last_v = -1; last_e = 0;
+        }
+        /* FACE2: the drawing page chain (g_last is this tick's page) */
+        if (g_last == V_DOODLE || (g_last == V_TOY && tf.toy_v >= 1000)) {
+            if (dd_chain) { dd_e = tf.toy_v >= 1000 ? tf.toy_e : dd_e + 1; tf.dd_e = dd_e; }
+            tf.dd_dead = (tf.toy_v >= 1000 || (elem == 1 && top != 2)) ? 1 : 0;
+            was_dd = 1; out_e = 0;
+        } else if (was_dd) {
+            tf.out_e = ++out_e;
+            if (out_e >= DD_XF + 2) { was_dd = 0; out_e = 0; dd_chain = 0; }
         }
     }
     memcpy(f->blob, &tf, sizeof tf);
@@ -1154,6 +1234,13 @@ void menu_title_build(int variant, MenuLayout *L)
 {
     TitleFactsScope scope((const TitleFacts *)L->facts.blob);
     menu_title_build_impl(variant, L);
+    if (t_f && t_f->out_e > 0 && t_f->out_e < DD_XF && variant != V_DOODLE) {     /* FACE2: the drawing page's last frame fades out over the page that follows */
+        MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)L->w; sn.fh = (short)L->h;
+        const int a = 255 - 255 * t_f->out_e / DD_XF;
+        sn.alpha = (uint8_t)(a >= 255 ? 0 : (a < 1 ? 1 : a));
+        menu_add_piece(L, sn);
+    }
 }
 
 static void menu_title_build_impl(int variant, MenuLayout *L)
@@ -1194,6 +1281,10 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
                 menu_add_piece(L, st);
             }
         }
+        return;
+    }
+    if (variant == V_DOODLE || (variant == V_TOY && t_f && t_f->toy_v >= 1000)) {   /* FACE2: the hand-over frames are the crossfade, not a main menu with a dip */
+        build_doodle(L);
         return;
     }
     if (variant == V_MAIN || variant == V_INTRO || (variant == V_TOY && t_f && t_f->toy_v > 0 && pc_assets_ready())) {

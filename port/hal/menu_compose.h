@@ -120,6 +120,13 @@ struct MenuPiece {
      (draw and inverse as for any scaled piece, no lden rational): an arbitrary, per-frame scale, which the allowed steps cannot give. The
      face follows the ROM head object's own lerp in the press transition with it, so the head stays where the main menu drew it. */
   uint8_t fixdest;
+  /* FACE2 (appended): paper = an SRC_HOSTIMG piece that is the drawing page's canvas paper (the DS title's paper texture, a 32 x 32 tile
+     measured off the ROM's own render, repeated edge to edge from the 256 x 192 area's corner and smoothed at window resolution), drawn
+     over the whole fixed host rect (fx, fy, fw, fh) at the piece's alpha. snap = an SRC_HOSTIMG piece that draws the last saved snapshot of
+     the composed picture (MenuLayout.snap_save) over the whole rect at the piece's alpha: the held frame a crossfade starts from or ends on.
+     has_ex2 / ex2 = a second skipped rect for a keycover piece (as has_ex / ex). */
+  uint8_t paper, snap, has_ex2;
+  DsRect ex2;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
@@ -176,7 +183,10 @@ struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; can
 
                     /* ASSET3 (appended): the recipe shows its own selection (arrows, a lit plank), so the generic focus outline
                        of a hovered or pad-focused hotspot is not painted over it */
-                    uint8_t no_focus_paint; };
+                    uint8_t no_focus_paint;
+
+                    /* FACE2 (appended): save the composed picture after this frame's pieces are drawn (the snapshot a snap piece draws) */
+                    uint8_t snap_save; };
 
 enum { MENU_DRV_NATIVE = 0, MENU_DRV_ROM_CURSOR = 1, MENU_DRV_TOUCH = 2, MENU_DRV_MIXED = 3 };
 enum { MENU_KEY_NONE = 0, MENU_KEY_SAVE_MENU_ON_TOP = 1, MENU_KEY_ONE_SCREEN_MENUS = 2 };
