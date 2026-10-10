@@ -4736,9 +4736,9 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
                     *(const int *)(p + 0x5c), *(const int *)(p + 0x60),
                     *(const int *)(p + 0x64), typing);
     }
+    if (!rb_skip_render()) player_list_draw(surf);   /* under the chat: a long chat burst wins the pixels */
     if (!rb_skip_render()) chat_draw(surf);
     if (!rb_skip_render()) net_hud_draw(surf);
-    if (!rb_skip_render()) player_list_draw(surf);
 }
 
 /* The pad's half of the chat box: while the player is typing the controller
