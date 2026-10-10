@@ -344,10 +344,12 @@ bool seat_ok(int seat) {
 
 void on_ctl(int seat, const unsigned char *d, int len, void *) {
     if (!coop_world_active()) { ++g_st.drop_not_coop; return; }
-    if (!g_sync) { ++g_st.drop_sync_off; return; }
     if (!hub_coop_validate(kHubTagCoopCtl, d, len)) { ++g_st.drop_bad; return; }
     if (!seat_ok(seat)) return;
     const int sub = d[6];
+    // The sync-off control switches off the WORLD kinds only; the save and boot ranges registered by the other
+    // lanes keep running (the boot barrier needs its GO to get a console out of the title).
+    if (!g_sync && sub >= kCtlGroupHello && sub <= kCtlOwnerChange) { ++g_st.drop_sync_off; return; }
     const unsigned char *p = d + kHubCoopHeaderBytes;
     const int pl = len - kHubCoopHeaderBytes;
     const unsigned now = comms_hub_now_ms();
