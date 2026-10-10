@@ -260,6 +260,7 @@ int rom_cursor_lc(int dir, int *sel_out)
      BG3 [35,64)   COURSE n and the course name        (glyph rows 36..46 and 52..62, measured)
      BG3 [82,95)   the star line with its star icon    (glyph rows 83..93)
      BG3 [97,114)  CLEAR!                              lifted and not drawn: the N64 order has no such line
+                   (a castle star or secret course: no COURSE lines; the star line is [66,80) and CLEAR! [82,98))
      OBJ banner    the ROM's own HIGH SCORE art (LC_Render, the OAM at DS y 0x80; its flashing is the ROM's own palette
                    rotation, LC_Render's LoadOBJPltt on data_0209f2a8), only when data_0209f2b0 says the record was beaten
      OBJ coins     the coin total (Stage::Render: COIN, TIMES and the number, DS y 0x80, +0x10 under the banner)
@@ -268,7 +269,7 @@ int rom_cursor_lc(int dir, int *sel_out)
    (Rows measured on the 4x picture of the base exe, lvl6 star, with and without a record.)
 
    THE PLANKS replace the ROM's BG1 plates (not drawn). English only: the lettering is the DS font pre-rendered by
-   tools/prepare_lc_art.py; any other language keeps the ROM's own plates (the localised lettering), scaled to 2/3, in the
+   tools/prepare_lc_art.py; any other language keeps the ROM's own plates (the localised lettering), scaled to 1/2, in the
    same place. Clicks map proportionally into the ROM's own three boxes (LC_Update case 3: x 8..247, rows 0x28, 0x50, 0x78,
    0x20 tall), so they reach the ROM exactly as the stylus would. The pad moves the ROM's own chosen plate
    (data_0209f2e0 through Stage::UpdateMenuButtons); the mouse does the same by hover (facts() below, logic thread). The
@@ -330,6 +331,7 @@ void facts_lc2(MenuFacts *f)
     }
     f->spare[0] = data_0209f2e0;
     f->spare[1] = ++g_lc2_frame;
+    f->spare[2] = data_0209f2d4;       /* the ROM's state word: the plates exist from state 2 on (case 1 is the coin count) */
 }
 
 void build_lc2(int variant, MenuLayout *L)
@@ -340,30 +342,34 @@ void build_lc2(int variant, MenuLayout *L)
     auto U = [L](int u) { return (int)((long long)u * L->unum / L->uden); };
     auto hrow = [H](int r) { return (r * H + SUB_H - 1) / SUB_H; };
     const int sh = high ? kCoinHighShift : 0;
-    const bool planks = L->facts.language <= 1 && menu_hostimg_ready(MENU_IMG_BTN_SAVE_CONT) &&
-                        menu_hostimg_ready(MENU_IMG_BTN_SAVE_QUIT) && menu_hostimg_ready(MENU_IMG_BTN_CONT);
+    const bool art = L->facts.language <= 1 && menu_hostimg_ready(MENU_IMG_BTN_SAVE_CONT) &&
+                     menu_hostimg_ready(MENU_IMG_BTN_SAVE_QUIT) && menu_hostimg_ready(MENU_IMG_BTN_CONT);   /* our planks, else the ROM's plates */
     const bool arrow = menu_hostimg_ready(MENU_IMG_ARROW_DOWN);
     const int sel = (L->facts.spare[0] >= 0 && L->facts.spare[0] <= 2) ? L->facts.spare[0] : 0;
+    const bool show = L->facts.spare[2] != 1;   /* state 1 counts the coins: text and total only, no plates yet (0 = unknown, as in the selftest) */
+    const bool planks = show && art;
 
     /* the source bands, DS rows */
-    const int a0 = 35, a1 = 64, b0 = 82, b1 = 95, c0 = 97, c1 = 114;
+    /* a castle star or secret course has no COURSE / name lines: just the star line (glyph rows 67..78) and CLEAR! (84..94) */
+    const int a0 = 35, a1 = 64;
+    const int b0 = high ? 66 : 82, b1 = high ? 80 : 95, c0 = high ? 82 : 97, c1 = high ? 98 : 114;
     const int ban0 = 0x77 - sh, ban1 = 0x8d - sh;                       /* HIGH SCORE (record only) */
     const int coin0 = (record ? 0x8d : 0x7a) - sh, coin1 = (record ? 0xa1 : 0x90) - sh;
     const int arr0 = 162, arr1 = 192;
-    const int hA = hrow(a1) - hrow(a0), hB = hrow(b1) - hrow(b0);
+    const int hA = high ? 0 : hrow(a1) - hrow(a0), hB = hrow(b1) - hrow(b0);
     const int hBan = record ? hrow(ban1) - hrow(ban0) : 0, hCoin = hrow(coin1) - hrow(coin0);
     /* the plates: one size, a stack */
-    const int pw = U(140), ph = pw * 2 / 15, pgap = U(6);
+    const int pw = U(104), ph = pw * 2 / 15, pgap = U(5);
     int plates_h;
     int fbw = 0, fbh = 0;                                               /* the ROM plates' dest size (non-English) */
-    if (planks) {
+    if (art) {
         plates_h = 3 * ph + 2 * pgap;
     } else {
-        fbw = U(256) * 2 / 3;
-        fbh = U(kMenuRows) * 2 / 3;
+        fbw = U(256) / 2;
+        fbh = U(kMenuRows) / 2;
         plates_h = fbh;
     }
-    const int g1 = U(3), g2 = U(3), g3 = U(5), g4 = U(7);
+    const int g1 = U(3), g2 = high ? 0 : U(3), g3 = U(5), g4 = U(9);
     int T = hA + g2 + hB + g3 + hCoin + g4 + plates_h;
     if (record) T += hBan + g1;
     int y = (H - T) / 2;
@@ -381,14 +387,16 @@ void build_lc2(int variant, MenuLayout *L)
     band(MENU_L_OBJ, arr0, arr1, 0, false);                             /* the touch-screen arrows */
     int yy = y;
     if (record) { band(MENU_L_OBJ, ban0, ban1, yy, true); yy += hBan + g1; }
-    band(MENU_L_BG3, a0, a1, yy, true); yy += hA + g2;
+    if (!high) { band(MENU_L_BG3, a0, a1, yy, true); yy += hA + g2; }
     band(MENU_L_BG3, b0, b1, yy, true); yy += hB + g3;
     band(MENU_L_OBJ, coin0, coin1, yy, true); yy += hCoin + g4;
     const int py0 = yy;
 
     int hs_top[3] = { 0, 0, 0 };
     const int hs_cx = W / 2;
-    if (planks) {
+    if (!show) {
+        /* the coin count: no plates and no arrow yet */
+    } else if (planks) {
         static const int kImg[3] = { MENU_IMG_BTN_SAVE_CONT, MENU_IMG_BTN_SAVE_QUIT, MENU_IMG_BTN_CONT };
         for (int k = 0; k < 3; ++k) {
             MenuPiece pl = menu_piece_make(SRC_HOSTIMG, 8, kMenuFirstRow + k * kPlatePitch, 240, 0x20, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
@@ -404,26 +412,26 @@ void build_lc2(int variant, MenuLayout *L)
             menu_add_hotspot(L, ip, 8, kMenuFirstRow + k * kPlatePitch, 240, 0x20, k);
         }
     } else {
-        /* the ROM's own plates at 2/3, host-fixed like lc's: dest pixel -> source = floor(pixel * 3 uden / (2 unum)) */
+        /* the ROM's own plates at 1/2, host-fixed like lc's: dest pixel -> source = floor(pixel * 2 uden / unum) */
         MenuPiece p = menu_piece_make(SRC_SUB, 0, kMenuFirstRow, SUB_W, kMenuRows, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         p.layers = MENU_L_BG0 | MENU_L_BG1;
         p.key_backdrop = 1;
         p.row_ok = menu_plate_row;
         p.touch = 1;
         p.fx = (short)((W - fbw) / 2); p.fy = (short)py0; p.fw = (short)fbw; p.fh = (short)fbh;
-        p.lnum = 2 * L->unum; p.lden = 3 * L->uden;
+        p.lnum = L->unum; p.lden = 2 * L->uden;
         const int pi = menu_add_piece(L, p);
         for (int b = 0; b < 3; ++b) {
             menu_add_hotspot(L, pi, 0, kMenuFirstRow + b * kPlatePitch, SUB_W, 0x20, b);
             hs_top[b] = py0 + (b * kPlatePitch) * fbh / kMenuRows;
         }
     }
-    if (arrow) {
+    if (arrow && show) {
         static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
         const int bob2 = kBob[L->facts.spare[1] & 7];
         int iw = 1, ih = 1;
         menu_hostimg_size(MENU_IMG_ARROW_DOWN, &iw, &ih);
-        const int aw = U(14), ah = (int)((long long)aw * ih / iw);
+        const int aw = U(10), ah = (int)((long long)aw * ih / iw);
         MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_DOWN; ar.lden = 1; ar.lnum = 1; ar.fw = (short)aw; ar.fh = (short)ah;
         ar.fx = (short)(hs_cx - aw / 2);
