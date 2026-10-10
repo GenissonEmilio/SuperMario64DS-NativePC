@@ -607,7 +607,7 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     /* ASSET3: the recipe's hl bit is the one selection (the ROM cursor, which a mouse hover now drives), so a plank the mouse
        merely sits over is not lit a second time when the pad has moved the cursor elsewhere */
     int sel = (P.hl & 1);
-    const int prs = (P.hl & 2) || (owns && g_q_real_held);
+    const int prs = (P.hl & 2) || (owns && g_dd.real_held);
     int boost = 0, sink = 0;
     /* the plank's brightness pulse (x1.14 .. x1.30) lightens the lettering at its peak and fights the arrows, so a selected plank is
        held at the steady x1.14 lift; SM64DS_MENU_PULSE=1 brings the pulse back (round 3 picture comparison) */
@@ -1131,6 +1131,7 @@ void hal_menu_decide(int w, int h, int scene_id)
     D.w = w;
     D.h = h;
     D.focus_shown = 0;
+    D.real_held = 0;
     D.latched = 0;
     D.lift_on = 0;
     int pick = -1, variant = 0, fb = -1;
@@ -1201,6 +1202,7 @@ void hal_menu_decide(int w, int h, int scene_id)
     D.variant = variant;
     D.fallback = is_fb;
     D.focus_shown = g_focus_shown;
+    D.real_held = g_q_real_held;
     if (g_live) {
         D.L = g_cur;
         D.lift.lift2d = g_cur.lift_owners;

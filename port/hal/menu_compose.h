@@ -268,6 +268,7 @@ struct MenuDecision {
   uint16_t latched;           /* bit i: piece i's autocrop rect is latched and already applied to L.p[i].s */
   int lift_on;                /* the compositor must lift per `lift` this tick */
   MenuLiftInfo lift;
+  int real_held;              /* INT2: a real stylus is down (the draw sinks a pressed plank from this, not from the input state) */
   MenuLayout L;               /* solved for (w, h), latches applied, L.facts = the ROM facts of this tick */
 };
 
