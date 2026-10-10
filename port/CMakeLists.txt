@@ -24446,3 +24446,9 @@ foreach(_tasset2 walk_window walk_window_hires smoke_player)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_hostimg.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_logo_data.cpp")
 endforeach()
+
+# MENU1 / RECROOM1 (run menu1): the Rec Room select one-screen recipe (own file, own block).
+foreach(_trecroom1 walk_window walk_window_hires)
+    target_sources(${_trecroom1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_recroom.cpp")
+endforeach()
