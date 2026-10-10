@@ -199,6 +199,9 @@
 #  include <unistd.h>
 #endif
 
+/* defined in the ROM-side block at the foot of this file */
+extern "C" unsigned char data_020a4b40[8];
+
 namespace ntr {
 namespace backup {
 namespace {
@@ -217,6 +220,15 @@ bool env_on(const char *name)
 
 bool coop_mode() { static int v = -1; if (v < 0) v = env_on("SM64DS_COOP") ? 1 : 0; return v != 0; }
 bool coop_host() { static int v = -1; if (v < 0) v = env_on("SM64DS_COOP_HOST") ? 1 : 0; return v != 0; }
+
+/* The ROM copies "ds mario" into data_020a4b40 at boot (func_02042f68, run by
+   hal/boot_arms.cpp R2c), after this file static init. A coop room therefore
+   puts its own tag back before the first card access and before every write. */
+void coop_assert_tag()
+{
+    if (coop_mode() && std::memcmp(data_020a4b40, "ds coop!", 8) != 0)
+        std::memcpy(data_020a4b40, "ds coop!", 8);
+}
 
 const unsigned char kTagNormal[8] = { 'd', 's', ' ', 'm', 'a', 'r', 'i', 'o' };
 const unsigned char kTagCoop[8]   = { 'd', 's', ' ', 'c', 'o', 'o', 'p', '!' };
@@ -479,6 +491,7 @@ void resolve_path()
 // never be read as half a save and is never silently deleted.
 void open_once()
 {
+    coop_assert_tag();
     if (g_open) return;
     g_open = true;
 
@@ -727,6 +740,15 @@ bool write(unsigned addr, const void *src, unsigned len)
     if (!src || !span_ok(addr, len)) return false;
     MediumLock lock;
     refresh_from_disk();
+    coop_assert_tag();
+    {
+        /* the safety net: a write that would leave a record of the other
+           kind in the image is refused before it reaches the disk */
+        unsigned char cand[kSize];
+        std::memcpy(cand, g_image, sizeof cand);
+        std::memcpy(cand + addr, src, len);
+        fence_image(cand, g_path);
+    }
     std::memcpy(g_image + addr, src, len);
     ++g_stats.writes;
     if (trace_on())

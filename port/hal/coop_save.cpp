@@ -34,6 +34,7 @@
 
 extern "C" {
 extern unsigned char data_0209caa0[];
+extern unsigned char data_020a4b40[8];     // the record tag (ntr/backup.cpp section 6)
 int  _ZN8SaveData8SaveFileEjP12FileSaveData(unsigned fileID, void *data);
 int  _ZN8SaveData15SaveCurrentFileEv(void);
 void CollectStar(int course, int star);
@@ -430,6 +431,8 @@ extern "C" void port_coop_save_frame(void) {
     if (!coop()) return;
     ensure_init();
     ++g_frame;
+    /* the ROM puts "ds mario" back at boot; a coop room keeps its own tag */
+    if (std::memcmp(data_020a4b40, kCoopTag, 8) != 0) std::memcpy(data_020a4b40, kCoopTag, 8);
     run_probe();
     run_forge();
     const ULONGLONG now = GetTickCount64();
