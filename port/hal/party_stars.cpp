@@ -115,6 +115,15 @@ struct State {
 };
 State g;
 
+bool party_env() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_PARTY");
+        v = (e && *e && !(e[0] == '0' && e[1] == 0)) ? 1 : 0;
+    }
+    return v == 1;
+}
+
 bool env_flag(const char *name, bool dflt) {
     const char *e = std::getenv(name);
     if (!e || !*e) return dflt;
@@ -168,7 +177,7 @@ void init_once() {
 
 // Is this console in a live party room?
 bool party_room() {
-    if (!env_flag("SM64DS_PARTY", false)) return false;
+    if (!party_env()) return false;
     if (!comms_hub_active() || comms_hub_arena() ||
         comms_hub_state() != kHubLive) return false;
     return comms_hub_room_kind() == kHubRoomParty;
@@ -343,6 +352,9 @@ void rebaseline() {
     g.obs_have = true;
     g.gone_frames = 0;
     ++g.st.rebaselines;
+    if (g.log)
+        std::fprintf(stderr, "[pstar] baseline f=%u slot=%d stars=%d\n", g.frame,
+                     g.obs_slot, (int)NumStars());
 }
 
 void apply_one(unsigned now) {
@@ -508,7 +520,7 @@ bool party_stars_enabled() { return g.inited && party_room(); }
 // port_hub_presence_frame). Global, no namespace, like the other port_* calls.
 extern "C" void port_party_stars_frame(void) {
     using namespace port;
-    if (!env_flag("SM64DS_PARTY", false)) return;     // not a party launch: nothing runs
+    if (!party_env()) return;                         // not a party launch: nothing runs
     init_once();
     if (!g.report_hooked) {
         g.report_hooked = true;

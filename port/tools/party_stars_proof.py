@@ -387,41 +387,68 @@ def wait_cons(cons, timeout, tick=None):
     return False
 
 
-def room(row, specs, kind="party", forger_role=None, forger_script=None, exe=None, root=None, timeout=1500, relay_rate="240"):
-    """specs: list of dict(frames=, extra={}, stars=[], delay=0.0, exe=None, seed=None). forger_script(forger, cons) runs in
-    the main thread while consoles live. -> dict(cons, relay_log, forger)"""
+class Ctx(object):
+    pass
+
+
+def room(row, specs, kind="party", forger_role=None, script=None, exe=None, root=None, timeout=1500, relay_rate="240"):
+    """specs: list of dict(frames=, extra={}, stars=[], delay=0.0, exe=None, seed=None, late=True). A spec with late=True is
+    not started here: script(ctx) starts it with ctx.spawn(i). script runs in the main thread while the consoles live.
+    -> the Ctx (cons, relay_log, forger, relay)"""
     chill_check()
     L = lock()
     shutil.rmtree(os.path.join(ARGS.out, row), ignore_errors=True)
     rp, rf, port, rlog = start_relay(row, relay_rate)
     relay = ("127.0.0.1:%d" % port, "PS%d" % (PID % 1000))
-    cons = []
-    fg = None
+    ctx = Ctx()
+    ctx.cons = [None] * len(specs)
+    ctx.relay_log, ctx.relay, ctx.forger, ctx.port = rlog, relay, None, port
+
+    def spawn(i):
+        sp = specs[i]
+        ex = penv(sp.get("seat", i), relay, kind, sp.get("extra"))
+        c = Con(row, "p%d" % i, ex, sp.get("frames", 3000), sp.get("exe") or exe or ARGS.exe,
+                root or ARGS.root, stars=sp.get("stars", ()), seed_img=sp.get("seed"))
+        ctx.cons[i] = c
+        return c
+    ctx.spawn = spawn
     try:
         for i, sp in enumerate(specs):
+            if sp.get("late"):
+                continue
             if sp.get("delay"):
                 time.sleep(sp["delay"])
-            ex = penv(i, relay, kind, sp.get("extra"))
-            c = Con(row, "p%d" % i, ex, sp.get("frames", 3000), sp.get("exe") or exe or ARGS.exe,
-                    root or ARGS.root, stars=sp.get("stars", ()), seed_img=sp.get("seed"))
-            cons.append(c)
+            spawn(i)
             time.sleep(0.6)
         if forger_role is not None:
-            fg = Forger(port, relay[1].encode(), role=forger_role)
-            fg.join()
-        if forger_script:
-            forger_script(fg, cons)
-        wait_cons(cons, timeout)
+            ctx.forger = Forger(port, relay[1].encode(), role=forger_role)
+            ctx.forger.join()
+        if script:
+            script(ctx)
+        wait_cons([c for c in ctx.cons if c], timeout)
     finally:
-        for c in cons:
-            if c.poll() is None:
+        for c in ctx.cons:
+            if c and c.poll() is None:
                 c.kill()
-        if fg:
-            fg.close()
+        if ctx.forger:
+            ctx.forger.close()
         stop_relay(rp, rf)
         if L:
             L[0].release(L[1])
-    return dict(cons=cons, relay_log=rlog, forger=fg, relay=relay)
+    ctx.cons = [c for c in ctx.cons if c]
+    return ctx
+
+
+def wait_text(c, pat, timeout=600):
+    """block until the console's log shows `pat` (or it exits / the timeout); True when seen"""
+    dl = time.time() + timeout
+    while time.time() < dl:
+        if pat in c.text():
+            return True
+        if c.poll() is not None:
+            return pat in c.text()
+        time.sleep(0.3)
+    return False
 
 
 def lands(t):
@@ -520,7 +547,7 @@ def share_rows(row, exe=None, root=None, kit=False, frames=None, label=""):
              dict(frames=f, extra=warp(300)),
              dict(frames=f, extra=warp(300))]
     r = room(row, specs, exe=exe, root=root)
-    cons = r["cons"]
+    cons = r.cons
     for c in cons:
         c.seed_pay = parse(c.seed)[(0, 0)][2]
     common(row, cons)
@@ -547,7 +574,7 @@ def row_base():
     specs = [dict(frames=f, extra=dict(warp(300), **probe(1100, *STAR)), exe=ARGS.base),
              dict(frames=f, extra=warp(300), exe=ARGS.base), dict(frames=f, extra=warp(300), exe=ARGS.base)]
     r = room(row, specs)
-    cons = r["cons"]
+    cons = r.cons
     common(row, cons)
     for c in cons[1:]:
         t = c.text()
@@ -670,6 +697,323 @@ def row_unit():
         say(res[k].returncode != 0 and bool(bad), "unit MUST-FAIL: %s is caught by %s" % (what, bad[:5]))
 
 
+
+def level_of_course():
+    """course -> one sublevel id, from the ROM's own SUBLEVEL_LEVEL_TABLE (arm9 0x02075298, 52 entries)"""
+    d = open(os.path.join(REPO, "extracted", "arm9_dec.bin"), "rb").read()
+    o = 0x02075298 - 0x02004000
+    out = {}
+    for i in range(52):
+        c = d[o + i]
+        if c < 30 and c not in out:
+            out[c] = i
+    return out
+
+
+def snap_cmd(e, row, i, frame):
+    e["SM64DS_DUAL_SCREEN"] = "1"
+    e["SM64DS_STACK_BMP"] = os.path.join(ARGS.out, row, "p%d" % i, "stack_end.bmp") + ",%d" % frame
+
+
+def row_share_pics():
+    """share, with C photographed BEFORE the star (frame 1050) and B AFTER (the end): the HUD star count and the line"""
+    row = "sharepic"
+    f = frames_for(55)
+    eb, ec, ea = dict(warp(300)), dict(warp(300)), dict(warp(300), **probe(1100, *STAR))
+    snap_cmd(eb, row, 1, f - 4)
+    snap_cmd(ec, row, 2, 1050)
+    snap_cmd(ea, row, 0, f - 4)
+    specs = [dict(frames=f, extra=ea), dict(frames=f, extra=eb), dict(frames=f, extra=ec)]
+    r = room(row, specs)
+    common(row, r.cons)
+    for c in r.cons:
+        c.seed_pay = parse(c.seed)[(0, 0)][2]
+    byte_check(row, "B", r.cons[1], [STAR])
+    shot(r.cons[0], "share_A_after")
+    shot(r.cons[1], "share_B_after")
+    shot(r.cons[2], "share_C_before")
+    return r
+
+
+def row_real():
+    """A is dropped on a placed PowerStar (SM64DS_STAR_DROP): the star's own collision runs the collect, the star-get, the
+    save and the exit. B and C wait in BOB. The collected star is whatever bit the ROM set; B and C must read back exactly it."""
+    row = "real"
+    f = frames_for(75)
+    idx = os.environ.get("PSTAR_STAR_IDX", "0")
+    ea = dict(warp(300), SM64DS_STAR_PROBE="1", SM64DS_STAR_DROP="#%s,1100,150" % idx, SM64DS_EXIT_WATCH="1")
+    specs = [dict(frames=f, extra=ea), dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300))]
+    r = room(row, specs)
+    common(row, r.cons)
+    a, b, c = r.cons
+    ta = a.text()
+    tx = txs(ta)
+    info("real: A star lines %s" % re.findall(r"(?m)^\[star\].*$", ta)[:4])
+    info("real: A tx %s" % tx)
+    m = re.search(r"tx course=(\d+) star=(\d+)", ta)
+    say(len(tx) == 1 and m is not None, "real: the ROM's own star collect made exactly one announcement on A: %s" % tx)
+    if m:
+        got = (int(m.group(1)), int(m.group(2)))
+        for x in (a, b, c):
+            x.seed_pay = parse(x.seed)[(0, 0)][2]
+        say(len(lands(b.text())) == 1 and len(lands(c.text())) == 1, "real: it landed once on B and once on C")
+        byte_check(row, "B", b, [got])
+        byte_check(row, "C", c, [got])
+    return r
+
+
+def row_waits():
+    row = "waits"
+    f = frames_for(70)
+    # B collects its OWN star (BOB 2) just before A's star (BOB 1) arrives: A's has to wait out B's hold
+    eb = dict(warp(300), **probe(1090, 0, 1))
+    ea = dict(warp(300), **probe(1100, *STAR))
+    # C is forced unsafe (a stand-in for a menu / star-get) across the arrival and a while after
+    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="1000:600")
+    r = room(row, [dict(frames=f, extra=ea), dict(frames=f, extra=eb), dict(frames=f, extra=ec)])
+    common(row, r.cons)
+    a, b, c = r.cons
+    for x in r.cons:
+        x.seed_pay = parse(x.seed)[(0, 0)][2]
+    tb, tc = b.text(), c.text()
+    lb, lc = lands(tb), lands(tc)
+    wb = re.findall(r"(?m)^\[pstar\] wait .*$", tb)
+    wc = re.findall(r"(?m)^\[pstar\] wait .*$", tc)
+    info("waits: B waits %s | lands %s" % (wb[:3], lb))
+    info("waits: C waits %s | lands %s" % (wc[:3], lc))
+    ms = lambda l: int(re.search(r"waited_ms=(\d+)", l).group(1))
+    say(len(lb) == 1 and bool(wb) and ms(lb[0]) > 1500, "waits: B had just collected its own star: A's star waited (%s ms, wait lines %d) and then landed" % (ms(lb[0]) if lb else "-", len(wb)))
+    say(len(lc) == 1 and bool(wc) and "why=forced" in " ".join(wc) and ms(lc[0]) > 3000, "waits: C was held unsafe across the arrival: it waited (%s ms, why=forced seen) and then landed" % (ms(lc[0]) if lc else "-"))
+    byte_check(row, "B", b, [STAR, (0, 1)])
+    byte_check(row, "C", c, [STAR])
+    return r
+
+
+def row_slot():
+    row = "slot"
+    f = frames_for(60)
+    ea = dict(warp(300), **probe(1100, *STAR))
+    # B: unsafe for ever -> a star waits in its queue and the console exits with it (nothing may be written)
+    eb = dict(warp(300), SM64DS_PARTY_STARS_HOLD="900:100000")
+    # C: unsafe, then the open file slot byte changes: the queue is dropped, nothing written, slot 1 untouched
+    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="900:100000", SM64DS_PARTY_STARS_SLOTSWAP="1500")
+    r = room(row, [dict(frames=f, extra=ea), dict(frames=f, extra=eb), dict(frames=f, extra=ec)])
+    common(row, r.cons)
+    a, b, c = r.cons
+    tb, tc = b.text(), c.text()
+    say(md5(b.save) == hashlib.md5(b.seed).hexdigest() and not lands(tb) and counter(tb, "queued") == 1,
+        "slot: B exited with a star still queued (queued=%d, q=%s): its save file is byte-identical to its seed, nothing landed" % (counter(tb, "queued"), re.findall(r"\bq=(\d+)", report(tb))[-1:]))
+    dropped = re.findall(r"(?m)^\[pstar\] queue dropped: slot (\d+) -> (\d+) \((\d+) stars\)$", tc)
+    say(md5(c.save) == hashlib.md5(c.seed).hexdigest() and not lands(tc) and dropped == [("0", "1", "1")],
+        "slot: C's open file slot changed under a queued star: the queue was dropped (%s), nothing written, the file is byte-identical to its seed" % dropped)
+    return r
+
+
+def row_late():
+    row = "late"
+    f = frames_for(60)
+    ea = dict(warp(300), **probe(1100, *STAR))
+    specs = [dict(frames=f, extra=ea), dict(frames=f, extra=warp(300)), dict(frames=f - 600, extra=warp(300), late=True)]
+
+    def script(ctx):
+        a = ctx.cons[0]
+        wait_text(a, "[pstar] tx", 900)
+        time.sleep(8)           # every copy is long gone
+        ctx.spawn(2)
+    r = room(row, specs, script=script)
+    common(row, r.cons)
+    a, b, c = r.cons
+    for x in r.cons:
+        x.seed_pay = parse(x.seed)[(0, 0)][2]
+    tc = c.text()
+    say(len(lands(b.text())) == 1, "late: B, in the room before the star, got it")
+    say(counter(tc, "recv") == 0 and not lands(tc) and md5(c.save) == hashlib.md5(c.seed).hexdigest() and "[pstar] on:" in tc,
+        "late: C joined after the star: it received %d star messages, landed 0, its save file is byte-identical to its seed" % counter(tc, "recv"))
+    return r
+
+
+def row_toggles():
+    row = "toggles"
+    f = frames_for(55)
+    # share off on A: nothing leaves; B and C see nothing
+    ea = dict(warp(300), SM64DS_PARTY_SHARE_STARS="0", **probe(1100, *STAR))
+    r = room(row + "_share", [dict(frames=f, extra=ea), dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300))])
+    common(row + "_share", r.cons)
+    a, b, c = r.cons
+    say(not txs(a.text()) and "collected, not shared" in a.text(), "toggles: share off -> A announced nothing (and logged that the star was collected, not shared)")
+    say(counter(b.text(), "recv") == 0 and counter(c.text(), "recv") == 0 and md5(b.save) == hashlib.md5(b.seed).hexdigest() and md5(c.save) == hashlib.md5(c.seed).hexdigest(),
+        "toggles: share off -> B and C received nothing and their files are byte-identical to their seeds")
+    # accept off on B: A sends, B drops it, C takes it
+    eb = dict(warp(300), SM64DS_PARTY_ACCEPT_STARS="0")
+    ea = dict(warp(300), **probe(1100, *STAR))
+    r = room(row + "_accept", [dict(frames=f, extra=ea), dict(frames=f, extra=eb), dict(frames=f, extra=warp(300))])
+    common(row + "_accept", r.cons)
+    a, b, c = r.cons
+    for x in r.cons:
+        x.seed_pay = parse(x.seed)[(0, 0)][2]
+    tb = b.text()
+    say(len(txs(a.text())) == 1 and not lands(tb) and counter(tb, "accept") >= 1 and md5(b.save) == hashlib.md5(b.seed).hexdigest(),
+        "toggles: accept off -> B heard it (accept drops %d), landed nothing, file byte-identical to its seed" % counter(tb, "accept"))
+    say(len(lands(c.text())) == 1, "toggles: accept off on B did not stop C: C landed it")
+    byte_check(row + "_accept", "C", c, [STAR])
+    return r
+
+
+kSeatMax = 6
+
+
+def forged_flood(ctx, per_sec=2.0, total=150):
+    """a bare member sends `total` valid stars: it announces a course by a SYNL at the sublevel that holds it, then that course's 8 stars"""
+    fg = ctx.forger
+    lvl = level_of_course()
+    time.sleep(8)           # the consoles are in BOB and the roster has settled
+    sent = 0
+    order = [0] + [c for c in range(30) if c != 0 and c in lvl]
+    gap = 1.0 / per_sec
+    for c in order:
+        fg.say(lvl[c])
+        time.sleep(0.9)
+        for b in range(8):
+            if sent >= total:
+                break
+            fg.synx(c, b)
+            sent += 1
+            time.sleep(gap)
+        if sent >= total:
+            break
+    ctx.sent = sent
+    time.sleep(6)
+
+
+def row_flood():
+    row = "flood"
+    f = frames_for(150)
+    specs = [dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300))]
+    r = room(row, specs, forger_role=T.ROLE_PARTY, script=forged_flood, timeout=900)
+    common(row, r.cons)
+    n = [len(lands(c.text())) for c in r.cons]
+    info("flood: forger seat %s sent %d stars; lands per console %s; reports %s" % (r.forger.seat, r.sent, n,
+                                                                                    [report(c.text())[8:] for c in r.cons]))
+    say(r.sent >= 140 and all(1 <= x <= kSeatMax for x in n), "flood: %d valid stars sent from one seat; each console landed %s (limit 6 per 10 min per seat, 1 per 10 s)" % (r.sent, n))
+    # the control: limiter off lands far more
+    specs = [dict(frames=f, extra=dict(warp(300), SM64DS_PARTY_STARS_NO_LIMIT="1")), dict(frames=f, extra=warp(300))]
+    r2 = room(row + "_nolimit", specs, forger_role=T.ROLE_PARTY, script=forged_flood, timeout=900)
+    common(row + "_nolimit", r2.cons)
+    n2 = [len(lands(c.text())) for c in r2.cons]
+    say(n2[0] > 3 * kSeatMax and n2[1] <= kSeatMax, "flood MUST-FAIL: with the limiter off (test knob) console 0 landed %d stars from the same flood (console 1, limiter on: %d)" % (n2[0], n2[1]))
+    return r
+
+
+def row_forge():
+    row = "forge"
+    f = frames_for(70)
+    specs = [dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300))]
+
+    def script(ctx):
+        fg = ctx.forger
+        time.sleep(8)
+        fg.synx(0, 0)                   # this seat has sent no presence yet
+        time.sleep(1.5)
+        fg.say(BOB)
+        time.sleep(1.2)
+        for k in range(3):              # a course the sender never visited
+            fg.synx(5, 2)
+            time.sleep(0.6)
+        raw = [("short", T.pstar(0, 3)[:11]), ("long", T.pstar(0, 3) + b"\0"), ("course30", T.pstar(course=30, star=1)),
+               ("star8", T.pstar(course=0, star=8)), ("reserved", T.pstar(course=0, star=4, reserved=1)),
+               ("version2", T.pstar(course=0, star=5, ver=2))]
+        for name, d in raw:
+            fg.raw(d)
+            time.sleep(0.6)
+        time.sleep(6)
+    r = room(row, specs, forger_role=T.ROLE_PARTY, script=script, timeout=600)
+    common(row, r.cons)
+    for c in r.cons:
+        t = c.text()
+        why = {}
+        for x in rxs(t):
+            why[x[3]] = why.get(x[3], 0) + 1
+        info("forge: %s decisions %s" % (c.inst, why))
+    say(all(not lands(c.text()) and md5(c.save) == hashlib.md5(c.seed).hexdigest() for c in r.cons),
+        "forge: a star before any presence, a star for a course never visited (x3), and six malformed SYNX: landed 0 on both consoles, files byte-identical to their seeds")
+    say(all(counter(c.text(), "course") >= 3 for c in r.cons),
+        "forge: the game itself refused the never-visited course with a reason (course drops %s, nopres %s)" % (
+            [counter(c.text(), "course") for c in r.cons], [counter(c.text(), "nopres") for c in r.cons]))
+    rl = open(r.relay_log, "r", errors="replace").read()
+    m = re.findall(r"SYNX:(\d+)/(\d+)/(\d+)", rl)
+    info("forge: relay SYNX rx/fwd/drop (last stats) %s" % (m[-1:],))
+    say(bool(m) and int(m[-1][2]) >= 6, "forge: the relay dropped the malformed ones before any console saw them (SYNX rx/fwd/drop %s)" % (m[-1:],))
+    # a world (non-party) room: SYNX is not a kind there
+    f2 = frames_for(50)
+    specs = [dict(frames=f2, extra=dict(warp(300), SM64DS_PARTY="1")), dict(frames=f2, extra=dict(warp(300), SM64DS_PARTY="1"))]
+
+    def script2(ctx):
+        fg = ctx.forger
+        time.sleep(8)
+        fg.say(BOB)
+        time.sleep(1.2)
+        for b in range(5):
+            fg.synx(0, b)
+            time.sleep(0.6)
+        time.sleep(5)
+    r2 = room(row + "_world", specs, kind="world", forger_role=T.ROLE_MEMBER, script=script2, timeout=600)
+    common(row + "_world", r2.cons)
+    say(all(not lands(c.text()) and counter(c.text(), "recv") == 0 and md5(c.save) == hashlib.md5(c.seed).hexdigest() for c in r2.cons),
+        "forge: SYNX into a world (non-party) room: landed 0, received 0, files byte-identical to their seeds")
+    rl = open(r2.relay_log, "r", errors="replace").read()
+    m = re.findall(r"SYNX:(\d+)/(\d+)/(\d+)", rl)
+    info("forge world: relay SYNX rx/fwd/drop (last stats) %s" % (m[-1:],))
+    return r
+
+
+def row_host():
+    row = "host"
+    f = frames_for(75)
+    ea = dict(warp(300))
+    eb = dict(warp(300), **probe(2000, *STAR))
+    specs = [dict(frames=frames_for(30), extra=ea), dict(frames=f, extra=eb), dict(frames=f - 900, extra=warp(300)),
+             dict(frames=f - 1200, extra=warp(300), late=True)]
+    specs[3]["seat"] = 0
+
+    def script(ctx):
+        a = ctx.cons[0]
+        wait_cons([a], 900)
+        info("host: seat 0 (the first console, the room's host) exited rc=%s" % a.rc)
+        time.sleep(1.0)
+        ctx.spawn(3)                    # a new console takes the free seat 0
+    r = room(row, specs, script=script)
+    common(row, r.cons)
+    b, cc, d = r.cons[1], r.cons[2], r.cons[3]
+    for x in r.cons:
+        x.seed_pay = parse(x.seed)[(0, 0)][2]
+    say(len(txs(b.text())) == 1, "host: seat 1 collected after seat 0 left and announced it")
+    say(len(lands(cc.text())) == 1, "host: seat 2 got it with seat 0 gone")
+    say(len(lands(d.text())) == 1, "host: the console that took the free seat 0 got it too")
+    byte_check(row, "seat 2", cc, [STAR])
+    byte_check(row, "new seat 0", d, [STAR])
+    return r
+
+
+def row_alone():
+    row = "alone"
+    f = frames_for(45)
+    r = room(row, [dict(frames=f, extra=dict(warp(300), **probe(1100, *STAR)))])
+    common(row, r.cons)
+    a = r.cons[0]
+    t = a.text()
+    a.seed_pay = parse(a.seed)[(0, 0)][2]
+    say(len(txs(t)) == 1 and not lands(t) and counter(t, "landed") == 0, "alone: a party room of one: the star was announced (to nobody), nothing landed, no fault")
+    byte_check(row, "A", a, [STAR])
+    return r
+
+
+def row_kit():
+    if not ARGS.kit:
+        say(False, "kit: no --kit given")
+        return
+    return share_rows("kit", exe=ARGS.kit, root=ARGS.kitroot, kit=True)
+
+
 ROWS = {}
 
 
@@ -699,7 +1043,9 @@ def main():
     return 1 if bad else 0
 
 
-ROWS.update(unit=row_unit, share=row_share, base=row_base)
+ROWS.update(unit=row_unit, share=row_share, base=row_base, sharepic=row_share_pics, real=row_real, waits=row_waits,
+            slot=row_slot, late=row_late, toggles=row_toggles, flood=row_flood, forge=row_forge, host=row_host,
+            alone=row_alone, kit=row_kit)
 
 if __name__ == "__main__":
     sys.exit(main())
