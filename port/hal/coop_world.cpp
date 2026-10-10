@@ -501,17 +501,24 @@ void join_group(const CoopKey &nk) {
 // Proof knobs (inert unless named).
 // ---------------------------------------------------------------------------
 void knob_kill(const KillKnob &k) {
-    struct C { short slot; char *a; };
+    // Nearest to the local player first (a proof wants the kill on screen).
+    struct C { short slot; char *a; long long d2; };
     C c[128]; int n = 0;
+    const char *pl = (const char *)data_0209f394[data_0209f250 & 15];
     for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a && n < 128; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
         if (*(const unsigned short *)(a + 0x0c) != (unsigned)k.id) continue;
         const short slot = *(const short *)(a + 0xce);
         if (slot < 0 || slot >= kCoopSlots) continue;
         if (*(const unsigned char *)(a + 0x0f) || *(const unsigned char *)(a + 0x0e) == 2) continue;
         if (is_player_ptr(a)) continue;
-        c[n++] = {slot, a};
+        long long d2 = 0;
+        if (pl) for (int q = 0; q < 3; ++q) {
+            const long long dd = (long long)*(const int *)(a + 0x5c + 4 * q) - *(const int *)(pl + 0x5c + 4 * q);
+            d2 += (dd >> 8) * (dd >> 8);
+        }
+        c[n++] = {slot, a, d2};
     }
-    std::sort(c, c + n, [](const C &x, const C &y) { return x.slot < y.slot; });
+    std::sort(c, c + n, [](const C &x, const C &y) { return x.d2 != y.d2 ? x.d2 < y.d2 : x.slot < y.slot; });
     int killed = 0;
     for (int i = 0; i < n && killed < k.n; ++i, ++killed) {
         std::fprintf(stderr, "[coop-knob] kill class=%d slot=%d\n", k.id, (int)c[i].slot);
