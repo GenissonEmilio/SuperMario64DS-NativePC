@@ -146,6 +146,9 @@ struct Rx {
     int16_t  ax, ay, az;
     uint8_t  rflags, nf;
     uint32_t f[kMoverMaxFields];
+    bool     pvalid;          // the previous record of this slot from this seat (velocity for the lead)
+    int32_t  px, py, pz;
+    unsigned pt;
 };
 struct Job { bool on; int passes; unsigned next; int cursor; };
 
@@ -170,6 +173,7 @@ unsigned long long g_snap_base = 0;
 bool g_hold = false;              // a joiner publishes nothing until the group's snapshot is in (or it gave up)
 double g_tokens = 6.0; unsigned g_tok_t = 0;
 unsigned g_stat_t = 0;
+int g_lead_ms = 40;               // receivers aim this far ahead along the owner's last velocity
 int g_hp_prev = -99;
 
 long long wall_ms() {
@@ -186,6 +190,7 @@ void read_env() {
     g_snap_on = flag("SM64DS_COOP_MOVE_SNAP", true);
     g_hyst = flag("SM64DS_COOP_MOVE_HYST", true);
     g_stale_on = flag("SM64DS_COOP_MOVE_STALE", true);
+    if (const char *ld = std::getenv("SM64DS_COOP_MOVE_LEAD")) g_lead_ms = std::atoi(ld);
     if (const char *s = std::getenv("SM64DS_COOP_MOVE_SAMPLE")) g_sample_every = (unsigned)std::strtoul(s, nullptr, 0);
     if (const char *d = std::getenv("SM64DS_COOP_MOVE_DUMP")) {
         const char *p = d;
@@ -282,7 +287,7 @@ void refill(unsigned now) {
     if (g_tok_t == 0) g_tok_t = now;
     const unsigned dt = now - g_tok_t;
     g_tok_t = now;
-    g_tokens = (std::min)(6.0, g_tokens + dt * 0.020);      // 20 datagrams per second, burst 6
+    g_tokens = (std::min)(8.0, g_tokens + dt * 0.028);      // 28 datagrams per second, burst 8
 }
 
 int fill_rec(unsigned char *out, int slot, const Slot &s, unsigned my_cd, bool frozen) {
@@ -344,6 +349,7 @@ void on_world(int seat, int sub, const unsigned char *p, int len, void *) {
     for (int i = 0; i < (int)h.count; ++i) {
         MoverRec r; std::memcpy(&r, p + off, sizeof r);
         Rx &x = g_rx[r.slot][seat];
+        if (x.valid && !(h.flags & 1) && !x.snap) { x.pvalid = true; x.px = x.x; x.py = x.y; x.pz = x.z; x.pt = x.t; } else x.pvalid = false;
         x.valid = true; x.fresh = true; x.snap = (h.flags & 1) != 0; x.t = now;
         x.cls = r.cls; x.cd = r.cd; x.x = r.x; x.y = r.y; x.z = r.z;
         x.ax = r.ax; x.ay = r.ay; x.az = r.az; x.rflags = r.rflags; x.nf = r.nf;
@@ -402,35 +408,52 @@ int ang_err(int16_t a, int16_t b) {
     return d;
 }
 
+void ease_angle(char *a, int off, int16_t cur, int16_t want) {
+    const int e = ang_err(cur, want);
+    if (e > 0x2000) wr16(a, off, want);
+    else if (e > 0x400) wr16(a, off, (int16_t)(cur + (int16_t)(want - cur) / 2));
+}
+
 void apply_rec(int slot, Slot &s, Rx &x) {
     const Prof &p = g_prof[s.prof];
     char *a = s.a;
     if (x.cls != p.id || x.nf != p.nf) { ++g_st.cls_mismatch; return; }
     if (skip_state(a, p)) { ++g_st.skipped_state; return; }
-    const double err = dist3(a, x.x, x.y, x.z);
     const bool force = x.snap;
+    const bool phase = (p.flags & kFPhase) && p.nf > 0;
+    // aim a little ahead of the owner's last pose along its last velocity (a chaser is 2 to 6 frames old on arrival)
+    int32_t tx = x.x, ty = x.y, tz = x.z;
+    if (!force && !phase && x.pvalid && g_lead_ms > 0) {
+        const int dt = (int)(x.t - x.pt);
+        if (dt >= 30 && dt <= 400) {
+            const long long lim = 80LL * 4096;
+            tx += (int32_t)(std::max)(-lim, (std::min)(lim, (long long)(x.x - x.px) * g_lead_ms / dt));
+            ty += (int32_t)(std::max)(-lim, (std::min)(lim, (long long)(x.y - x.py) * g_lead_ms / dt));
+            tz += (int32_t)(std::max)(-lim, (std::min)(lim, (long long)(x.z - x.pz) * g_lead_ms / dt));
+        }
+    }
+    const double err = dist3(a, tx, ty, tz);
     if (!force && err > 6000.0) { ++g_st.drop_far; return; }
     if (force && err > 20000.0) { ++g_st.drop_far; return; }
-    const int aerr = (std::max)({ ang_err(rd16(a, 0x8c), x.ax), ang_err(rd16(a, 0x8e), x.ay), ang_err(rd16(a, 0x90), x.az) });
-    const bool phase = (p.flags & kFPhase) && p.nf > 0;
+    const int16_t cax = rd16(a, 0x8c), cay = rd16(a, 0x8e), caz = rd16(a, 0x90);
+    const int aerr = (std::max)({ ang_err(cax, x.ax), ang_err(cay, x.ay), ang_err(caz, x.az) });
     if (!force && !phase && err <= p.band && aerr <= 0x400) { ++g_st.in_band; return; }
-    const bool write = force || phase || err > p.snap || aerr > 0x2000;
+    const bool write = force || phase || err > p.snap;
     if (write) {
-        wr32(a, 0x5c, clampi(x.x, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
-        wr32(a, 0x60, clampi(x.y, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
-        wr32(a, 0x64, clampi(x.z, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
+        wr32(a, 0x5c, clampi(tx, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
+        wr32(a, 0x60, clampi(ty, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
+        wr32(a, 0x64, clampi(tz, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
         wr16(a, 0x8c, x.ax); wr16(a, 0x8e, x.ay); wr16(a, 0x90, x.az);
         for (int k = 0; k < p.nf; ++k) write_field(a, p.f[k], x.f[k]);
         ++g_st.applied_write;
         if (force) ++g_st.snap_applied;
     } else {
-        // inside the snap radius: close a quarter of the gap per record
-        wr32(a, 0x5c, rd32(a, 0x5c) + (int32_t)(((long long)x.x - rd32(a, 0x5c)) / 4));
-        wr32(a, 0x60, rd32(a, 0x60) + (int32_t)(((long long)x.y - rd32(a, 0x60)) / 4));
-        wr32(a, 0x64, rd32(a, 0x64) + (int32_t)(((long long)x.z - rd32(a, 0x64)) / 4));
-        const int16_t cy = rd16(a, 0x8e);
-        const int16_t dy = (int16_t)(x.ay - cy);
-        if (ang_err(cy, x.ay) > 0x400) wr16(a, 0x8e, (int16_t)(cy + dy / 4));
+        if (err > p.band) {      // inside the snap radius: close half of the gap per record
+            wr32(a, 0x5c, rd32(a, 0x5c) + (int32_t)(((long long)tx - rd32(a, 0x5c)) / 2));
+            wr32(a, 0x60, rd32(a, 0x60) + (int32_t)(((long long)ty - rd32(a, 0x60)) / 2));
+            wr32(a, 0x64, rd32(a, 0x64) + (int32_t)(((long long)tz - rd32(a, 0x64)) / 2));
+        }
+        ease_angle(a, 0x8c, cax, x.ax); ease_angle(a, 0x8e, cay, x.ay); ease_angle(a, 0x90, caz, x.az);
         ++g_st.applied_ease;
     }
     s.lvalid = false;           // the actor was moved under the publisher's cache
@@ -548,7 +571,8 @@ void process(unsigned now) {
             }
         }
     }
-    // publish, most overdue first
+    // publish, most overdue first (every third tick, so a datagram carries a whole batch)
+    if ((g_lf % 3) != 0) ndue = 0;
     std::sort(due, due + ndue, [](const Due &a, const Due &b) { return a.age > b.age; });
     int i = 0;
     while (i < ndue) {
