@@ -280,12 +280,27 @@ namespace {
 int g_lc2_frame;
 unsigned g_lc2_hov_seen;
 
+int g_lc2_last;     /* the variant of the last live call; 0 when the screen is not up */
+int g_lc2_hold;     /* 1 on the one frame the layout is held after the ROM's screen flag fell */
+
 int up_lc2(int scene_id)
 {
-    /* up through the save itself (LC_Update states 4 and 5): the ROM shows "Saving file..." on the bottom screen then, and the old
-       two-screen top (CLEAR!, the touch arrows) must not come back for those two seconds */
-    if (scene_id == MENU_SCENE_GATED || data_0209f20c == 0 || data_0209f2d4 < 1 || data_0209f2d4 > 5) return 0;
-    return 1 + (data_0209f2b0 != 0) + 2 * (SublevelToLevel(data_02092124) >= 0xf);
+    /* up through the save itself (LC_Update states 4 and 5) and the closing state 6: the old two-screen top (CLEAR!, the touch
+       arrows) must not come back for any of them */
+    g_lc2_hold = 0;
+    if (scene_id != MENU_SCENE_GATED && data_0209f20c != 0 && data_0209f2d4 >= 1 && data_0209f2d4 <= 6) {
+        g_lc2_last = 1 + (data_0209f2b0 != 0) + 2 * (SublevelToLevel(data_02092124) >= 0xf);
+        return g_lc2_last;
+    }
+    /* the screen flag falls one frame before the picture has changed back: hold the layout for exactly that frame, once */
+    if (g_lc2_last && scene_id != MENU_SCENE_GATED && data_0209f20c == 0) {
+        const int v = g_lc2_last;
+        g_lc2_last = 0;
+        g_lc2_hold = 1;
+        return v;
+    }
+    g_lc2_last = 0;
+    return 0;
 }
 
 /* the ROM reads the pad in LC_Update case 3 only (see pad_ok_lc); the same gate for the hover cursor */
@@ -320,7 +335,7 @@ int rom_cursor_lc2(int dir, int *sel_out)
     return moved;
 }
 
-void facts_lc2(MenuFacts *f)
+void lc2_facts(MenuFacts *f)
 {
     f->language = (int16_t)GetOwnerLanguage();
     /* MOUSE HOVER: a pointer that moved onto a hotspot makes its plate the ROM's chosen one (silent), so the lit plank, the
@@ -333,6 +348,7 @@ void facts_lc2(MenuFacts *f)
     }
     f->spare[0] = data_0209f2e0;
     f->spare[1] = ++g_lc2_frame;
+    f->spare[3] = g_lc2_hold;          /* the held last frame after the screen flag fell: text and total only */
     f->spare[2] = data_0209f2d4;       /* the ROM's state word: the plates exist from state 2 on (case 1 is the coin count) */
 }
 
@@ -350,7 +366,7 @@ void build_lc2(int variant, MenuLayout *L)
     const int sel = (L->facts.spare[0] >= 0 && L->facts.spare[0] <= 2) ? L->facts.spare[0] : 0;
     const int state = L->facts.spare[2];         /* the ROM's LC_Update state; 0 = unknown, as in the selftest */
     const bool saving = state == 5;              /* the save runs: the ROM's status box instead of the plates (state 4, 9 frames after the press, still has the plates) */
-    const bool show = state != 1 && !saving;     /* state 1 counts the coins: text and total only, no plates yet */
+    const bool show = state != 1 && state != 6 && !saving && !L->facts.spare[3];   /* state 1 counts the coins and 6 closes: text and total only, no plates */
     const bool planks = show && art;
 
     /* the source bands, DS rows */
@@ -382,7 +398,7 @@ void build_lc2(int variant, MenuLayout *L)
     auto band = [&](uint8_t layers, int r0, int r1, int dest_y, bool draw) {
         MenuPiece b = menu_piece_make(SRC_TOP_HOSTROW, 0, hrow(r0), W, hrow(r1) - hrow(r0), MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         b.layers = layers;
-        b.bg = 1;                      /* a moved band is backdrop-class: the hidden ones sit on the others' rows and are never drawn */
+        b.bg = draw ? 0 : 1;           /* the hidden bands sit on the others' rows and are never drawn, so they alone are exempt from the overlap rule */
         b.nodraw = draw ? 0 : 1;
         b.lden = 1; b.lnum = 1;
         b.fx = 0; b.fy = (short)dest_y; b.fw = (short)W; b.fh = (short)b.s.h;
@@ -464,7 +480,7 @@ void build_lc2(int variant, MenuLayout *L)
 int  menu_lc2_up(int scene_id) { return up_lc2(scene_id); }
 void menu_lc2_build(int variant, MenuLayout *L) { build_lc2(variant, L); }
 int  menu_lc2_rom_cursor(int dir, int *sel) { return rom_cursor_lc2(dir, sel); }
-void menu_lc2_facts(MenuFacts *f) { facts_lc2(f); }
+void menu_lc2_facts(MenuFacts *f) { lc2_facts(f); }
 
 /* the recipe's four functions, named in the table by menu_recipes.cpp (function pointers, so the table stays a
    constant initialiser and nothing here depends on static-initialisation order) */
