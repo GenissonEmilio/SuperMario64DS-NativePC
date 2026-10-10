@@ -824,13 +824,15 @@ def row_waits():
     return r
 
 
-def row_waitreal():
+def row_waitreal(nosafe=False):
     """B collects a star through the ROM's own star handler (star-get, message, level clear, exit): a friend's star that
     arrives in the middle of it must wait for the ROM's own windows to close and then land"""
-    row = "waitreal"
+    row = "waitreal" + ("_nosafe" if nosafe else "")
     f = frames_for(90)
     taps = ",".join("1000@%d" % x for x in range(1030, 3400, 40))
     eb = dict(warp(300), SM64DS_STAR_TRIGGER="1000", SM64DS_STAR_PROBE="1", SM64DS_HOST_PAD="1000@420,1000@450,1000@480,1000@510,1000@540," + taps)
+    if nosafe:
+        eb["SM64DS_PARTY_STARS_SKIP"] = "0x3ffb"     # every safe-frame condition ignored but the forced one: the MUST-FAIL control
 
     def script(ctx):
         in_bob(ctx, [0, 1, 2], settle=2.0)
@@ -843,6 +845,18 @@ def row_waitreal():
     for x in r.cons:
         x.seed_pay = parse(x.seed)[(0, 0)][2]
     tb = b.text()
+    if nosafe:
+        lb = lands(tb)
+        ms = [int(re.search(r"waited_ms=(\d+)", l).group(1)) for l in lb]
+        wb = re.findall(r"(?m)^\[pstar\] wait .*$", tb)
+        info("waitreal_nosafe: B lands %s waits %s" % (lb, wb[:2]))
+        def open_windows(w):
+            v = dict((k, int(x)) for k, x in re.findall(r"(?:^|[ |])(msg|clear|fade|cut|sel|pause)=(\d+)", w))
+            return any(v.values())
+        busy = [w for w in wb if "why=own-star-hold" in w and open_windows(w)]
+        say(len(lb) == 1 and ms[0] < 3000 and bool(busy),
+            "waitreal MUST-FAIL: with the safe-frame rule switched off B was not held by the ROM's windows (fade / cutscene words nonzero in %d wait lines, none of them a block) and took A's star after %s ms, against 5 s or more with the rule on" % (len(busy), ms))
+        return r
     m = re.search(r"\[pstar\] tx course=(\d+) star=(\d+)", tb)
     wb = re.findall(r"(?m)^\[pstar\] wait .*$", tb)
     reasons = sorted(set(re.findall(r"why=(\w[\w-]*)", " ".join(wb))))
@@ -1203,7 +1217,7 @@ def main():
     return 1 if bad else 0
 
 
-ROWS.update(four=row_four, repeat=row_repeat, stale=row_stale, waitreal=row_waitreal, unit=row_unit, share=row_share, base=row_base, sharepic=row_share_pics, real=row_real, waits=row_waits,
+ROWS.update(waitreal_nosafe=lambda: row_waitreal(True), four=row_four, repeat=row_repeat, stale=row_stale, waitreal=row_waitreal, unit=row_unit, share=row_share, base=row_base, sharepic=row_share_pics, real=row_real, waits=row_waits,
             slot=row_slot, late=row_late, toggles=row_toggles, flood=row_flood, forge=row_forge, host=row_host,
             alone=row_alone, kit=row_kit)
 
