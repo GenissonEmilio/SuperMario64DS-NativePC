@@ -937,6 +937,9 @@ int host_setting_hud_layout(void);
    of the numbers below changes, by a set or by a launcher edit seen by the
    poll. A frame loop that compares it with the last value it saw knows when to
    re-copy its working values. */
+int host_setting_run_mode(void);   /* 0 button, 1 analog, 2 auto */
+int host_setting_run_key(void);
+int host_setting_run_pad(void);
 int host_settings_ctl_gen(void);
 int host_settings_cam_gen(void);   /* moves when CameraMode is set or reloaded, not on F1 */
 void host_settings_save_tick(void);
