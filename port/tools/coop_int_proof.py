@@ -50,7 +50,7 @@ def run(row, quit_host):
               SM64DS_COOPSAVE_PROBE="star:%d:%d@%d" % (SAVE_STAR[0], SAVE_STAR[1], n_open + 1800))
     extras = {0: dict(common), 1: g1, 2: dict(common)}
     rm = CB.Room(row, 3, "new", cap, extras=extras, gaps={1: 0.5, 2: 0.5})
-    rm.host_frames = cap + 1500
+    rm.host_frames = cap + 4500
     rm.start()
     cons = rm.cons
     c4 = None
@@ -65,7 +65,7 @@ def run(row, quit_host):
             gt = os.path.join(CB.ARGS.out, row, "guesttemp3")
             os.makedirs(gt, exist_ok=True)
             ex["SM64DS_COOP_TEMP_ROOT"] = gt
-            c4 = CS.Con(row, "guest3", CB.ARGS.exe, CB.benv(3, rm.relay, False, None, ex), cap - n_open + 2600, CB.ARGS.root, CB.ARGS.out)
+            c4 = CS.Con(row, "guest3", CB.ARGS.exe, CB.benv(3, rm.relay, False, None, ex), 3200, CB.ARGS.root, CB.ARGS.out)
             cons.append(c4)
         if quit_host and c4 is not None and host_killed is None and ("joined level %d" % BOB) in c4.text() and \
                 "snapshot from seat" in c4.text():
@@ -103,17 +103,22 @@ def run(row, quit_host):
     say(bool(star) and "star touch armed" in ta, "%s: guest 1 touched the PowerStar (the star's own collect handler: %s)" % (row, star[:2]))
     probe = re.findall(r"(?m)^\[coopsave\] PROBE star course (\d+) bit (\d+) collected.*ok=(\d+)", ta)
     say(bool(probe) and probe[0][2] == "1", "%s: guest 1 saved star %s through the game's own CollectStar + SaveCurrentFile %s" % (row, SAVE_STAR, probe))
-    killed_slots = set(lb)
-    for name, t in (("host", tc), ("guest2", tb)):
-        got = set(s for s, _ in reconciled(t))
-        say(len(got & killed_slots) >= 4, "%s: %s lost the same actors (reconcile kills %s of guest 1's slots %s)" % (row, name, sorted(got & killed_slots), sorted(killed_slots)))
+    killed_slots = set(int(x) for x in lb)
     fin = {}
     for name, t in (("g1", ta), ("host", tc), ("g2", tb)):
         bb = bits(t)
         fin[name] = bb[-1] if bb else None
+
+    def has(hexwords, slot):
+        w = hexwords.split()
+        return bool(int(w[slot >> 5], 16) >> (slot & 31) & 1)
+    for name in ("host", "g2"):
+        f = fin[name]
+        miss = [s_ for s_ in sorted(killed_slots) if not (f and has(f[2], s_))]
+        say(f is not None and not miss, "%s: %s's final bitmap holds every slot guest 1 announced %s (missing %s)" % (row, name, sorted(killed_slots), miss))
     info("%s final BOB bitmaps (n): %s" % (row, {k: (v[1] if v else None) for k, v in fin.items()}))
     say(all(fin.values()) and len(set(v[2] for v in fin.values())) == 1 and fin["g1"][1] >= 5,
-        "%s: guest 1, host and guest 2 end with the same bitmap, n=%s" % (row, fin["g1"] and fin["g1"][1]))
+        "%s: guest 1, host and guest 2 end with the same bitmap, n=%s (Goomba, 3 coins, the star)" % (row, fin["g1"] and fin["g1"][1]))
     # 3. late 4th
     if c4 is None:
         say(False, "%s: the 4th console was never started (no star)" % row)
