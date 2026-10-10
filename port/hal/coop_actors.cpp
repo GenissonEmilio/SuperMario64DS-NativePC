@@ -160,6 +160,7 @@ Rx   g_rx[kSlots][kSeats];
 Job  g_job[kSeats];
 unsigned g_req_nonce = 0, g_req_last = 0; int g_req_tries = 0; bool g_req_done = false;
 unsigned long long g_snap_base = 0;
+bool g_hold = false;              // a joiner publishes nothing until the group's snapshot is in (or it gave up)
 double g_tokens = 6.0; unsigned g_tok_t = 0;
 unsigned g_stat_t = 0;
 
@@ -438,7 +439,7 @@ void reset_level() {
     std::memset(g_rx, 0, sizeof g_rx);
     std::memset(g_job, 0, sizeof g_job);
     g_lf = 0; g_spawned = false; g_spawn_lf = 0; g_ents = 0;
-    g_req_done = false; g_req_tries = 0; g_req_last = 0; g_req_nonce = 0; g_snap_base = g_st.snap_applied;
+    g_req_done = false; g_req_tries = 0; g_req_last = 0; g_req_nonce = 0; g_snap_base = g_st.snap_applied; g_hold = g_snap_on;
     for (int i = 0; i < g_nforge; ++i) g_forge[i].done = false;
 }
 
@@ -529,7 +530,7 @@ void process(unsigned now) {
         }
         // 3. publish if I own it
         if (!g_act) continue;
-        if (s.owner == g_my && s.seen >= 3 && !skip_state(s.a) && !frozen_state(s.a)) {
+        if (!g_hold && s.owner == g_my && s.seen >= 3 && !skip_state(s.a) && !frozen_state(s.a)) {
             const unsigned age = now - s.last_pub;
             if (age >= p.period) {
                 bool changed = !s.lvalid || rd32(s.a, 0x5c) != s.lx || rd32(s.a, 0x60) != s.ly || rd32(s.a, 0x64) != s.lz;
@@ -601,10 +602,10 @@ void process(unsigned now) {
 void maybe_request(unsigned now) {
     if (!g_snap_on || !g_act || g_req_done || !g_spawned) return;
     if (g_lf < g_spawn_lf + 1) return;
-    if (coop_group_member_mask() == 0) { g_req_done = true; return; }   // alone: nobody to ask
+    if (coop_group_member_mask() == 0) { g_req_done = true; g_hold = false; return; }   // alone: nobody to ask
     // any snapshot record taken counts as an answer
-    if (g_st.snap_applied > g_snap_base) { g_req_done = true; return; }
-    if (g_req_tries >= 5) { g_req_done = true; return; }
+    if (g_st.snap_applied > g_snap_base) { g_req_done = true; g_hold = false; return; }
+    if (g_req_tries >= 5 && (unsigned)(now - g_req_last) >= 300u) { g_req_done = true; g_hold = false; return; }
     if (g_req_tries > 0 && (unsigned)(now - g_req_last) < 300u) return;
     MoverSnapReq q; std::memset(&q, 0, sizeof q);
     q.key = wire_key(); q.nonce = ++g_req_nonce;
