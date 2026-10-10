@@ -36,6 +36,7 @@ struct SpInput {
     int mouse_valid, mouse_x, mouse_y;   /* the pointer over the picture, in picture pixels */
     int mouse_l, mouse_r;                /* buttons held */
     int wheel;                           /* notches since the last frame, forward positive */
+    int inject_key;                      /* proof runs only (SM64DS_SETPAGE_SCRIPT key:<vk>): a key the window procedure would have seen, for the rebind capture */
 };
 
 int  settings_page_open(void);                       /* 1 while the page is up */

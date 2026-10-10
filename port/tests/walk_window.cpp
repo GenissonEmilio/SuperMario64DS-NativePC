@@ -6071,6 +6071,7 @@ static int sp_frame(int pad_live, const XPad *pad)
         in.wheel = g_sp_wheel;
     }
     g_sp_wheel = 0;
+    if (in.inject_key && g_rebind_capture) g_rebind_key = in.inject_key;   /* SETPAGE_SCRIPT key:<vk>: what the window procedure would have seen */
     if (!settings_page_frame(&in)) {
         menu_on = 0;
         if ((in.keys & SPK_BACK) && pad_live && (pad->buttons & 0x2000)) menu_b_swallow = 1;   /* the B that closed it is not a punch */

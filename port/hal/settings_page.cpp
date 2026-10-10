@@ -753,6 +753,7 @@ extern "C" void settings_page_open_now(int from)
     S.w = w ? w : 1024; S.h = h ? h : 768;
     S.open = 1; S.drag = -1; S.hold_touch = 1;
     S.tab = T_CONTROLS;
+    S.cursor_shown = 1;          /* the arrow stands on the first row from the start, whoever opened it */
     S.ensure_vis = 1;
     S.held_prev = ~0u;           /* the press that opened it is still down: no edges on the first frame */
     for (int i = 0; i < 16; ++i) S.hold_age[i] = 1;
@@ -792,7 +793,7 @@ extern "C" int settings_page_frame(const SpInput *in)
     const int mvalid = in->mouse_valid;
     const int l_edge = in->mouse_l && !S.ml_prev;
     const int r_edge = in->mouse_r && !S.mr_prev;
-    const int moved = mvalid && (!S.mouse_known || mx != S.mx_prev || my != S.my_prev);
+    const int moved = mvalid && S.mouse_known && (mx != S.mx_prev || my != S.my_prev);   /* a pointer resting where the page opened does not pick a row */
     int n = 0;
     const Row *rows = rows_of(S.tab, &n);
     int closing = 0;
@@ -894,7 +895,7 @@ extern "C" int settings_page_frame(const SpInput *in)
                         if (R.t == R_SLIDER) {
                             if (mx >= L.ctl_x - P(10) && mx < L.ctl_x + L.rail_w + P(10)) { S.drag = over_row; drag_slider(R, mx); }
                         } else if (R.t == R_CHECK) {
-                            if (mx >= L.lab_x && mx < L.ctl_x + P(60)) adjust(R, 1, 0);
+                            if (mx >= L.lab_x && mx < L.ctl_x + L.ctl_w) adjust(R, 1, 0);
                         } else if (R.t == R_CHOICE) {
                             if (mx >= L.ctl_x && mx < L.ctl_x + L.ctl_w) activate(R, 0);
                         } else if (R.t == R_BIND) {
@@ -1037,7 +1038,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             text_mid(s, (float)L.lab_x, (float)(cy + P(6)), R.label, (float)P(26), C_QUIET, 255, clip);
             continue;
         }
-        text_mid(s, (float)L.lab_x, (float)cy, R.label, (float)P(30), app ? C_TEXT : C_QUIET, alpha, clip);
+        if (R.t != R_CHECK) text_mid(s, (float)L.lab_x, (float)cy, R.label, (float)P(30), app ? C_TEXT : C_QUIET, alpha, clip);
         char buf[32];
         switch (R.t) {
         case R_CHOICE: {
@@ -1059,8 +1060,10 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             break;
         }
         case R_CHECK: {
+            /* a check box reads box first, then its words, as the launcher's do */
             const int sz = P(38);
-            draw_check(s, L.ctl_x, cy - sz / 2, sz, sl_get(R.id) != 0, sel, alpha, clip);
+            draw_check(s, L.lab_x, cy - sz / 2, sz, sl_get(R.id) != 0, sel, alpha, clip);
+            text_mid(s, (float)(L.lab_x + sz + P(18)), (float)cy, R.label, (float)P(30), app ? C_TEXT : C_QUIET, alpha, clip);
             break;
         }
         case R_BIND: {
@@ -1194,6 +1197,7 @@ extern "C" int settings_page_scripted(SpInput *in, int pf)
         else if (!strcmp(c, "rdown")) mr = 1;
         else if (!strcmp(c, "rup")) mr = 0;
         else if (!strcmp(c, "wheel")) in->wheel += st[i].a;
+        else if (!strcmp(c, "key")) in->inject_key = st[i].a;
     }
     in->mouse_valid = mx >= 0; in->mouse_x = mx; in->mouse_y = my; in->mouse_l = ml; in->mouse_r = mr;
     return 1;
