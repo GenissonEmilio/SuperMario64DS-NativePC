@@ -86,6 +86,7 @@ struct TitleFacts {
     int frame;                /* the title Render counter (data_ov007_0210342c[0]) */
     int vis, s48;             /* the fade manager's iris sprite: shown, scale */
     Chore ch;                 /* the choreography clock as of this tick */
+    int toy_e;                /* FACE1: ticks since the press page handed over to the drawing page (top 0 / 1, elem 1) while it still shows our picture */
     int toy_v;                /* FACE1: the face press page's own frame counter (the page object's +0xc) while top 4 / elem 0 is up, else -1 */
 };
 static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
@@ -130,7 +131,7 @@ int variant_for(int top, int elem)
        the score table is 4/5 (loading) then 2/5. Transit states keep the last stable page. */
     if (top == 11) return elem == 0 ? V_ATTRACT : g_last;   /* ASSET5: top 11 with the file machine up (elem 5) is the return from a file page, not the first attract */
     if (top == 10) return V_INTRO;                /* the logo arrives while the buttons come in through the ROM's star iris */
-    if (elem == 1) return V_DOODLE;
+    if (elem == 1) return ((top == 0 || top == 1) && g_last == V_TOY) ? V_TOY : V_DOODLE;     /* FACE1: the hand-over frames keep our picture */
     if (elem == 0) {
         if (top == 0) return V_MAIN;
         if (top == 8) return V_OPTIONS;
@@ -878,6 +879,14 @@ void build_main_pc(MenuLayout *L, bool intro)
             }
         }
     }
+    if (t_f && t_f->toy_v >= 0 && t_f->toy_e > 0) {      /* FACE1: the hand-over to the drawing page: our picture dips to black as the ROM's own fade takes over */
+        MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
+        ir.ir16 = 0;
+        const int a = 100 * t_f->toy_e;
+        ir.alpha = (uint8_t)(a >= 255 ? 0 : a);
+        menu_add_piece(L, ir);
+    }
     /* the iris: black outside the star while the ROM's iris is up (and all black before it shows), a veil on a returning page */
     if (c.mode == CH_INTRO && !c.iris_covered && c.ct <= ctune(0, CH_LOGO_POP) + 60) {
         const int vis = t_f ? t_f->vis : 0, s48 = t_f ? t_f->s48 : 0;
@@ -981,11 +990,17 @@ void menu_title_facts(MenuFacts *f)
     tf.ch = g_ch;
     tf.toy_v = -1;
     {
+        static int last_v = -1, last_e = 0;
         int top = -1, elem = -1, req = -1;
         if (port_title_page_state(&top, &elem, &req) && top == 4 && elem == 0 && data_ov007_0210342c) {
             const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
             tf.toy_v = sp ? *(const int *)(sp + 0xc) : 0;
             if (tf.toy_v < 0) tf.toy_v = 0;
+            last_v = tf.toy_v; last_e = 0;
+        } else if (last_v >= 0 && elem == 1 && (top == 0 || top == 1)) {   /* the ROM's hand-over: its own fade, the drawing page not up yet */
+            tf.toy_v = 1000; tf.toy_e = ++last_e;
+        } else {
+            last_v = -1; last_e = 0;
         }
     }
     memcpy(f->blob, &tf, sizeof tf);
