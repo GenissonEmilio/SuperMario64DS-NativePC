@@ -125,6 +125,19 @@ void draw_diag(void *a) {
     const char *mdl = *(const char *const *)(c + 0xdc + id * 4);
     int mx = 0, my = 0, mz = 0;
     if (mdl) { mx = *(const int *)(mdl + 0x1c + 36) >> 12; my = *(const int *)(mdl + 0x1c + 40) >> 12; mz = *(const int *)(mdl + 0x1c + 44) >> 12; }
+    // the polygon attribute word of the first materials of the body model (alpha bits 16-20, mode 4-5, cull 6-7, id 24-29)
+    unsigned attr[4] = {0, 0, 0, 0};
+    unsigned nmat = 0;
+    if (mdl) {
+        const int *mp = (const int *)(mdl + 8);
+        const unsigned char *hdr = (const unsigned char *)mp[0];
+        const char *rec = (const char *)mp[1];
+        if (hdr && rec) {
+            std::memcpy(&nmat, hdr + 0x24, 4);
+            for (unsigned i = 0; i < 4 && i < nmat; ++i) std::memcpy(&attr[i], rec + i * 0x30 + 0x24, 4);
+        }
+    }
+    std::fprintf(stderr, "[partydraw] materials=%u attr=%08x,%08x,%08x,%08x ", nmat, attr[0], attr[1], attr[2], attr[3]);
     const int pal = port_adventure_ghost_palette((int)*(const unsigned char *)(c + 0x6d8));
     const unsigned short *row = pal >= 0 ? (const unsigned short *)(0x06880000u + (unsigned)pal * 16u) : nullptr;
     std::fprintf(stderr, "[partydraw] pal=%d row=%04x,%04x,%04x,%04x ", pal, row ? row[0] : 0u, row ? row[1] : 0u,
