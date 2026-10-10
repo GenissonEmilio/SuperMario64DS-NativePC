@@ -45,7 +45,7 @@ int port_title_page_state(int *top, int *elem, int *req);
 
 namespace {
 
-enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7 };
+enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7, V_TOY = 8 };   /* V_TOY: the face press (top 4, elem 0), FACE1 */
 
 /* the 24 element boxes as dumped on the shipped ROM (SM64DS_TITLE_ELEMS, identical at f299, f419, f650,
    f719): id, x0, y0, x1, y1 in touch-screen DS pixels. The live decoder wins when it answers. */
@@ -86,6 +86,7 @@ struct TitleFacts {
     int frame;                /* the title Render counter (data_ov007_0210342c[0]) */
     int vis, s48;             /* the fade manager's iris sprite: shown, scale */
     Chore ch;                 /* the choreography clock as of this tick */
+    int toy_v;                /* FACE1: the face press page's own frame counter (the page object's +0xc) while top 4 / elem 0 is up, else -1 */
 };
 static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
 thread_local const TitleFacts *t_f = 0;     /* set for the length of one build() */
@@ -133,7 +134,7 @@ int variant_for(int top, int elem)
     if (elem == 0) {
         if (top == 0) return V_MAIN;
         if (top == 8) return V_OPTIONS;
-        if (top == 4) return V_DOODLE;            /* a press on the face: its page is already coming (the head squashes, the plates leave) */
+        if (top == 4) return V_TOY;               /* a press on the face: the head squashes and jumps, the plates leave (FACE1: drawn on the main menu's own wallpaper) */
         if ((top == 1 || top == 5) && g_last == V_FILES) return V_MAIN;   /* ASSET5: coming back from a file page: the ROM walks the head in, so
                                                                               this is the main family (face fade, no walk-in of the file page's own head) */
         return g_last;                            /* 1, 6: easing in or out */
@@ -220,12 +221,20 @@ int g_up_stamp = -1;          /* the title Render counter at which menu_title_up
    state at draw time. g_up_stamp proves the recipe ran for the PREVIOUS frame of this same page family (it is not called
    when the setting is off or the layout is stacked), and the page is read live so the first frame of a page change is
    already right. */
+bool pc_assets_ready()
+{
+    return menu_hostimg_ready(MENU_IMG_LOGO) && menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) &&
+           menu_hostimg_ready(MENU_IMG_BTN_REC) && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
+           menu_hostimg_ready(MENU_IMG_PATTERN);
+}
+
 bool wall_skip_active()
 {
     if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
     int top, elem, req;
     if (!port_title_page_state(&top, &elem, &req)) return false;
     const int v = variant_for(top, elem);
+    if (v == V_TOY) return pc_assets_ready();
     return v == V_MAIN || v == V_INTRO;
 }
 
@@ -687,6 +696,18 @@ float logo_bounce(int tb)
 }
 
 /* THE MAIN MENU WITH OUR ART (logo, planks, arrows and wallpaper all loaded). intro = the ROM is not at rest yet (top-state 10 / 1). */
+/* FACE1: THE FACE PRESS PAGE (top 4, elem 0). The ROM plays its press animation on the head (it squashes, jumps off the top and lands back)
+   while growing it to 1.345 times the main menu's size (the red cap measured 74 DS px wide on the first frame, 99.5 from frame 60 on, centre
+   x 123.2 throughout, cap top at layer y 27.8 and 24.2; shots in out/FACE1/shots). Drawing the layer at the main menu's own transform would
+   make the head pop up 1.345 times; instead the layer is drawn at the main menu's step divided by that growth (a smoothstep over 56 frames
+   fitted to the cap widths) and anchored on the cap, so the head keeps the main menu's size and place for the whole animation and the toy's
+   rest pose. Only the layer's own transform changes, so the ROM's squash and jump are still its own. */
+float toy_grow(int v)
+{
+    const float t = v <= 0 ? 0.f : v >= 56 ? 1.f : (float)v / 56.f;
+    return t * t * (3.f - 2.f * t);
+}
+
 void build_main_pc(MenuLayout *L, bool intro)
 {
     Chore c = t_f ? t_f->ch : Chore();      /* a copy: build() never writes the clock */
@@ -750,7 +771,35 @@ void build_main_pc(MenuLayout *L, bool intro)
         /* the face (the whole lower 3D layer minus the wrench corner, round 4's piece) at the swap's alpha */
         const FaceK fk = face_k();
         const int hk = fk.n, hd = fk.d;
-        const int fa = c.face_a;
+        const int tv = t_f ? t_f->toy_v : -1;      /* FACE1: >= 0 on the face press page */
+        const bool toy = tv >= 0;
+        const int fa = toy ? 255 : c.face_a;
+        if (toy) {
+            const float k0 = (float)hk / (float)hd, gr = 1.f + 0.345f * toy_grow(tv), k = k0 / gr;
+            const float ax = 123.3f, ay = 27.8f + (24.2f - 27.8f) * toy_grow(tv);                     /* the layer point that stays on the cap */
+            const float cxu = (256.f - 256.f * k0) / 2.f + 123.3f * k0 + (float)face_dx(fk);             /* where the main menu puts it (canvas units) */
+            const float cyu = (float)face_dy(fk) + 27.8f * k0;
+            const float upx = (float)un / (float)ud;
+            MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
+            face.fixdest = 1; face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
+            const float hostx0 = (float)w / 2.f + (cxu - ax * k - 128.f) * upx, hosty0 = (cyu - ay * k) * upx;
+            const int x0 = (int)(hostx0 + 0.5f), y0 = (int)(hosty0 + 0.5f);
+            face.fx = (short)x0; face.fy = (short)y0;
+            face.fw = (short)((int)(hostx0 + 256.f * k * upx + 0.5f) - x0); face.fh = (short)((int)(hosty0 + 192.f * k * upx + 0.5f) - y0);
+            menu_add_piece(L, face);
+            MenuPiece head = face;                      /* the page reads touches over the whole layer; the same transform inverts them */
+            head.keycover = 0; head.has_ex = 0; head.bg = 0; head.touch = 1; head.nodraw = 1;
+            menu_add_piece(L, head);
+            {
+                /* the wrench leaves with the planks */
+                const int wa = tv >= 10 ? 0 : 255 - 255 * tv / 10;
+                if (wa > 0) {
+                    MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+                    wr.keycover = 1; wr.alpha = (uint8_t)(wa >= 255 ? 0 : wa);
+                    menu_add_piece(L, wr);
+                }
+            }
+        } else {
         if (fa > 0) {
             MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, face_dx(fk), face_dy(fk), hk, hd);
             face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
@@ -768,6 +817,7 @@ void build_main_pc(MenuLayout *L, bool intro)
             static const int wr_ids[1] = { 7 };
             hot(L, iwr, wr_ids, 1);
         }
+        }
         /* the planks, each rising from the bottom edge with an overshoot, staggered */
         static const int kPlateId[3] = { 1, 0, 2 };
         static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
@@ -777,22 +827,28 @@ void build_main_pc(MenuLayout *L, bool intro)
             Box bx;
             if (!box_of(kPlateId[k], &bx)) continue;
             const int pt = c.sw_t - (CH_PLANK_START + CH_PLANK_GAP * k);
-            if (c.sw_t < 0 || (pt < 0 && !c.skip)) continue;
+            if (!toy && (c.sw_t < 0 || (pt < 0 && !c.skip))) continue;
             float rise = 0.f;                                       /* canvas units below the resting place */
-            if (!c.skip && pt < CH_PLANK_DUR) rise = (1.f - ease_out_back((float)pt / CH_PLANK_DUR)) * 72.f;
+            int plank_a = 255;
+            if (toy) {                                              /* FACE1: the planks leave downward, fading, as the head starts to squash */
+                const int u = tv - 2 * k;
+                if (u >= 14) continue;
+                if (u > 0) { const float e = (float)u / 14.f; rise = e * e * 72.f; plank_a = 255 - 255 * u / 14; }
+            } else if (!c.skip && pt < CH_PLANK_DUR) rise = (1.f - ease_out_back((float)pt / CH_PLANK_DUR)) * 72.f;
             int pw = 1, ph = 1;
             menu_hostimg_size(kPlankImg[k], &pw, &ph);
             const int bh = bx.y1 - bx.y0;
             const int dh = bh * un / ud, dw = (int)((long long)dh * pw / ph);
             const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;
             MenuPiece pl = menu_piece_make(SRC_HOSTIMG, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-            pl.hostimg = (uint8_t)kPlankImg[k]; pl.touch = 1;
+            pl.hostimg = (uint8_t)kPlankImg[k]; pl.touch = toy ? 0 : 1;
             pl.lden = 1; pl.lnum = 1; pl.fw = (short)dw; pl.fh = (short)dh;
             pl.fx = (short)(w / 2 + cxu * un / ud - dw / 2);
             pl.fy = (short)(cyu2 * un / (2 * ud) - dh / 2 + Uf(rise));
+            if (plank_a < 255) pl.alpha = (uint8_t)(plank_a < 1 ? 1 : plank_a);
             if (landed && cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
             const int ip = menu_add_piece(L, pl);
-            menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
+            if (!toy) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
         }
         /* the selection arrow, once the planks have landed */
         if (landed && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
@@ -923,6 +979,15 @@ void menu_title_facts(MenuFacts *f)
     tf.frame = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
     rom_iris(&tf.vis, &tf.s48);
     tf.ch = g_ch;
+    tf.toy_v = -1;
+    {
+        int top = -1, elem = -1, req = -1;
+        if (port_title_page_state(&top, &elem, &req) && top == 4 && elem == 0 && data_ov007_0210342c) {
+            const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
+            tf.toy_v = sp ? *(const int *)(sp + 0xc) : 0;
+            if (tf.toy_v < 0) tf.toy_v = 0;
+        }
+    }
     memcpy(f->blob, &tf, sizeof tf);
 }
 
@@ -1043,7 +1108,7 @@ void file_pages_build(int variant, MenuLayout *L)
         hot(L, ip, bk_ids, 1);
         return;
     }
-    if (variant == V_DOODLE) return;
+    if (variant == V_DOODLE || variant == V_TOY) return;
     if (variant == V_OPTIONS) {
         static const int ids[6] = { 10, 9, 11, 12, 13, 8 };
         hot(L, ip, ids, 6);
@@ -1115,7 +1180,7 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
         }
         return;
     }
-    if (variant == V_MAIN || variant == V_INTRO) {
+    if (variant == V_MAIN || variant == V_INTRO || (variant == V_TOY && t_f && t_f->toy_v >= 0 && pc_assets_ready())) {
         build_main_sel(L, variant == V_INTRO);
         return;
     }
@@ -1188,7 +1253,7 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
     /* ASSET6: PAD B (the port's punch binding, DS A bit 0x0001 natively; pad A arrives as 0x0002) is the back arrow on every page that has one
        (file select, file options, scores, copy / erase, doodle): the ROM has only a touch back, so it is the same host back Backspace gives.
        On the main page and the attract 0x0001 stays a confirm. */
-    if ((g_last == V_FILES || g_last == V_OPTIONS || g_last == V_TABLE || g_last == V_DOODLE) && ((*pressed | h) & 0x0001)) {
+    if ((g_last == V_FILES || g_last == V_OPTIONS || g_last == V_TABLE || g_last == V_DOODLE || g_last == V_TOY) && ((*pressed | h) & 0x0001)) {
         if (*pressed & 0x0001) host_back = 1;
         *pressed = (uint16_t)(*pressed & ~0x0001u);
         h = (unsigned short)(h & ~0x0001u);
