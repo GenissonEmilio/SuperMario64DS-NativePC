@@ -578,6 +578,7 @@ void chore_step(int variant, int top, int elem, int req)
 static unsigned char g_sv_b[3];
 static int g_sv_i;
 static int g_sv_faked;
+static char *g_sv_q;       /* INT2: the record the words were taken from; the words only go back into that same record (a torn-down title scene never gets a stale write) */
 static char *sv_rec()
 {
     if (!data_ov007_0210342c) return 0;
@@ -590,6 +591,7 @@ static void sv_fake()
     if (!q || g_sv_faked) return;
     memcpy(g_sv_b, q + 0xb, 3);
     g_sv_i = *(int *)(q + 4);
+    g_sv_q = q;
     if (!g_sv_b[0] && !g_sv_b[1] && !g_sv_b[2] && !g_sv_i) return;     /* already empty: the ROM waits by itself */
     memset(q + 0xb, 0, 3);
     *(int *)(q + 4) = 0;
@@ -600,8 +602,9 @@ static void sv_restore()
 {
     if (!g_sv_faked) return;
     char *q = sv_rec();
-    if (q) { memcpy(q + 0xb, g_sv_b, 3); *(int *)(q + 4) = g_sv_i; }
+    if (q && q == g_sv_q) { memcpy(q + 0xb, g_sv_b, 3); *(int *)(q + 4) = g_sv_i; }
     g_sv_faked = 0;
+    g_sv_q = 0;
     if (hal_menu_trace_on()) fprintf(stderr, "[chore] press: save words given back\n");
 }
 extern "C" void port_title_press_seen(void) { if (g_ch.attract_t >= 6) sv_restore(); }   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
