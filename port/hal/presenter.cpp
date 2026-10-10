@@ -143,6 +143,7 @@ long long g_qpf;
 
 int g_main_idx;              /* the slot the game thread is drawing (game thread only) */
 volatile long g_stop;
+int g_leaked;                 /* a stuck thread still owns the ring: nothing is freed or restarted */
 volatile long g_err;
 volatile long g_published;   /* publishes so far (any picture) */
 volatile long g_pub_w, g_pub_h;
@@ -473,7 +474,8 @@ void wait_until(long long target)
 /* Test knobs (off unless set), to drill the two failure paths:
    SM64DS_PRESENTER_TEST_DROPFAIL=N  the Nth drop of a picture behaves as if
        its AcquireSync(1,100) timed out.
-   */
+   SM64DS_PRESENTER_TEST_HANG=N:MS   the Nth Present hangs for MS milliseconds
+       (the thread ignores the stop flag meanwhile, like a stuck driver call). */
 int test_old()
 {
     static int v = -1;
@@ -486,6 +488,21 @@ int test_fail_drop()
     static int want = -2, seen = 0;
     if (want == -2) { const char *e = getenv("SM64DS_PRESENTER_TEST_DROPFAIL"); want = e ? atoi(e) : 0; }
     return want > 0 && ++seen == want;
+}
+
+void test_hang_present()
+{
+    static int at = -2, ms = 0, seen = 0;
+    if (at == -2) {
+        const char *e = getenv("SM64DS_PRESENTER_TEST_HANG");
+        at = e ? atoi(e) : 0;
+        const char *c = e ? strchr(e, ':') : 0;
+        ms = c ? atoi(c + 1) : 0;
+    }
+    if (at > 0 && ++seen == at) {
+        fprintf(stderr, "[presenter] TEST: Present %d hangs for %d ms\n", at, ms);
+        Sleep((DWORD)ms);
+    }
 }
 
 DWORD WINAPI thread_main(LPVOID)
@@ -620,6 +637,7 @@ DWORD WINAPI thread_main(LPVOID)
             presenter_hash_log("show", shown_serial,
                                presenter_hash_texture(g_dev2, g_ctx2, bb, 1));
         bb->Release();
+        test_hang_present();
         hr = g_sc->Present(g_mode == 1 ? 1 : 0, 0);
         if (hr == PRES_STILL_DRAWING) hr = S_OK;
         if (FAILED(hr)) { _InterlockedExchange(&g_err, (long)hr); break; }
@@ -684,6 +702,7 @@ extern "C" void *presenter_swap_device(void *dev1)
 extern "C" void presenter_shutdown(void)
 {
     presenter_end();
+    if (g_leaked) return;           /* the stuck thread still uses them */
     if (g_ctx2) { g_ctx2->Release(); g_ctx2 = 0; }
     if (g_dev2) { g_dev2->Release(); g_dev2 = 0; }
 }
@@ -692,6 +711,7 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
                                int h, int interval_mode, double grid_hz)
 {
     if (g_running) return 1;
+    if (g_leaked) return 0;
     if (!presenter_enabled() || !dev || !ctx || !swapchain || !g_dev2 || w <= 0 || h <= 0)
         return 0;
     LARGE_INTEGER f;
@@ -775,7 +795,21 @@ extern "C" void presenter_end(void)
     if (!g_running) return;
     _InterlockedExchange(&g_stop, 1);
     if (g_thread) {
-        WaitForSingleObject(g_thread, 2000);
+        if (WaitForSingleObject(g_thread, 2000) != WAIT_OBJECT_0 && !test_old()) {
+            /* The thread is stuck (a Present that does not return). It still
+               touches the ring, the swap chain, the timer and its context, so
+               none of them is freed: they are leaked on purpose, the swap chain
+               gets an extra reference so the game thread's release leaves it
+               alone, and the presenter never starts again this run. */
+            fprintf(stderr, "[presenter] the thread did not stop in 2 s; its ring and swap chain are left alone (leaked) and this run presents from the game thread\n");
+            g_leaked = 1;
+            if (g_sc) g_sc->AddRef();
+            CloseHandle(g_thread);
+            g_thread = 0;
+            g_main_held = 0;
+            g_running = 0;
+            return;
+        }
         CloseHandle(g_thread);
         g_thread = 0;
     }
