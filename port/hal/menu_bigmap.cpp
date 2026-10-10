@@ -174,12 +174,12 @@ extern "C" void menu_bigmap_draw(const uint32_t *sub, uint32_t *dst, int w, int 
     const int x0 = (w - tw) / 2, y0 = (h - th) / 2;
     const int bw = th / 96 > 2 ? th / 96 : 2;                 /* frame width */
 
-    /* the picture dimmed behind it: half plus an eighth (about 62 percent) */
+    /* the picture dimmed behind it: half */
     for (int y = 0; y < h; ++y) {
         uint32_t *row = dst + y * stride;
         for (int x = 0; x < w; ++x) {
             const uint32_t p = row[x];
-            row[x] = 0xFF000000u | (((p & 0xFEFEFEu) >> 1) + ((p & 0xF8F8F8u) >> 3));
+            row[x] = 0xFF000000u | ((p & 0xFEFEFEu) >> 1);
         }
     }
     /* the frame: a light line next to the map and a dark one outside it, drawn as a block under the map */

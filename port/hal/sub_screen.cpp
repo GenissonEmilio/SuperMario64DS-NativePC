@@ -1903,7 +1903,7 @@ int cam_button_veto(unsigned short a2)
     const unsigned short key = (unsigned short)(a2 & 0xF3FFu);
     for (int k = 0; k < g_cam_tiles_n; ++k)
         if (g_cam_tiles[k] == key)
-            return improved_map_on() ? 3 : 1;
+            return (improved_map_on() || menu_bigmap_up()) ? 3 : 1;   /* MAP1: the big map has no camera buttons either */
     return 0;
 }
 int g_zoom = 1;
@@ -3796,7 +3796,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
        played on and BG2 is nobody's marker. Zero otherwise, which is the
        raster's own old behaviour. */
     ntr::ppu_sub_set_bg_suppress(
-        (improved_map_on() && !hal_sub_screen_stacked()) ? (1u << 10) : 0u);
+        ((improved_map_on() || menu_bigmap_up()) && !hal_sub_screen_stacked()) ? (1u << 10) : 0u);   /* MAP1: nor the touch marker */
     /* THE MAP'S BLACK OUTLINE, and where it comes from. It is not the
        cartridge's: the DS bottom screen's own outermost rows and columns are
        whatever the game drew there. It is this port's, one pixel wide, drawn
