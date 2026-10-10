@@ -29,6 +29,8 @@
 #include "menu_compose.h"
 #include "menu_hostimg.h"
 
+#include <string.h>
+
 extern "C" {
 void *port_scene_live_object(void);
 int  port_scene_live_id(void);
@@ -46,6 +48,18 @@ const int kScene = 5;
 int g_foc_have, g_foc_x, g_foc_y;      /* the focused hotspot's box origin, read once a frame by menu_recroom_pad_ok (the core resets the focus while it solves the layout, so build cannot ask for it) */
 const int kBackX = 0xd8, kBackY = 0x90, kBackW = 0x21, kBackH = 0x21;   /* src/func_ov005_020c0250.cpp:25-31 */
 
+/* INT2 (the decide / draw split): what build() needs of the live scene, read once per tick by menu_recroom_facts on the logic thread
+   (MenuLayout.facts.blob); build() reads this and no ROM address. */
+struct RecFacts {
+    int have;            /* the live scene object answered */
+    int mode;            /* data_0209b304[0] */
+    int cells;           /* bit i: the ROM accepts the cell (mode 0: row * 3 + col; else col) */
+    int arrow;           /* the page arrow is drawn and accepted */
+    int foc_have, foc_x, foc_y;
+    int calls;           /* a per-tick counter for the arrow's bob */
+};
+static_assert(sizeof(RecFacts) <= sizeof(MenuFacts::blob), "RecFacts must fit MenuFacts.blob");
+
 inline int ow(const void *o, int off) { return *(const int *)((const char *)o + off); }
 inline int ob(const void *o, int off) { return *(const unsigned char *)((const char *)o + off); }
 
@@ -58,9 +72,35 @@ int menu_recroom_up(int scene_id)
     return scene_id == kScene ? 1 : 0;
 }
 
+void menu_recroom_facts(MenuFacts *f)
+{
+    static int calls;
+    RecFacts r;
+    memset(&r, 0, sizeof r);
+    const void *o = port_scene_live_id() == kScene ? port_scene_live_object() : 0;
+    r.have = o != 0;
+    r.mode = o ? data_0209b304[0] : 0;
+    const int base = o ? data_0208a170 : 0;
+    if (o) {
+        if (r.mode == 0) {
+            for (int row = 0; row < 2; ++row)
+                for (int col = 0; col < 3; ++col)
+                    if (func_ov005_020c00b4((void *)o, base + row * 0xc + col * 4)) r.cells |= 1 << (row * 3 + col);
+        } else {
+            for (int col = 0; col < 3; ++col)
+                if (func_ov005_020c00b4((void *)o, base + 0x18 + col * 4)) r.cells |= 1 << col;
+        }
+        r.arrow = ob(o, 0x54) == 0 && (r.mode != 0 || func_ov005_020c00e4((void *)o) != 0);
+    }
+    r.foc_have = g_foc_have; r.foc_x = g_foc_x; r.foc_y = g_foc_y;
+    r.calls = ++calls;
+    memcpy(f->blob, &r, sizeof r);
+}
+
 void menu_recroom_build(int, MenuLayout *L)
 {
-    const void *o = port_scene_live_id() == kScene ? port_scene_live_object() : 0;
+    const RecFacts &R = *(const RecFacts *)L->facts.blob;
+    const bool o = R.have != 0;
     const int cw = L->w * L->uden / L->unum;               /* exact canvas width in units, floored */
 
     const bool one = cw <= 256;     /* the DS screen's own width (4:3): the screen itself is the whole picture */
@@ -103,24 +143,23 @@ void menu_recroom_build(int, MenuLayout *L)
     L->back = (int8_t)menu_add_hotspot(L, pm, kBackX, kBackY, kBackW, kBackH, -1);
 
     /* no live object (the layout selftest): the 2 x 3 page with every card and the next-page arrow */
-    const int mode = o ? data_0209b304[0] : 0;
-    const int base = o ? data_0208a170 : 0;
+    const int mode = R.mode;
     /* game cells (src/func_ov005_020c0378.cpp:77-90): the ROM accepts a cell whose game is unlocked (c00b4) */
     if (mode == 0) {
         for (int row = 0; row < 2; ++row)
             for (int col = 0; col < 3; ++col) {
-                if (o && !func_ov005_020c00b4((void *)o, base + row * 0xc + col * 4)) continue;
+                if (o && !((R.cells >> (row * 3 + col)) & 1)) continue;
                 menu_add_hotspot(L, pm, 0x40 + 0x30 * col, 0x18 + 0x48 * row, 0x30, 0x48, -1);
             }
     } else {
         for (int col = 0; col < 3; ++col) {
-            if (o && !func_ov005_020c00b4((void *)o, base + 0x18 + col * 4)) continue;
+            if (o && !((R.cells >> col) & 1)) continue;
             menu_add_hotspot(L, pm, 0x60 + 0x30 * col, 0x38, 0x30, 0x48, -1);
         }
     }
     /* page arrow: drawn only while no flip is running and, on the first page, only if some page two exists
        (src/_ZN11dScMiniGm_c6RenderEv.cpp:84-110); boxes src/func_ov005_020c06cc.c:30-45 */
-    const bool arrow = !o || (ob(o, 0x54) == 0 && (mode != 0 || func_ov005_020c00e4((void *)o) != 0));
+    const bool arrow = !o || R.arrow;
     if (arrow) {
         if (mode == 0) menu_add_hotspot(L, pm, 0xd8, 0x40, 0x21, 0x41, -1);
         else menu_add_hotspot(L, pm, 0x38, 0x40, 0x21, 0x41, -1);
@@ -129,10 +168,8 @@ void menu_recroom_build(int, MenuLayout *L)
        cut from the ROM's cursor object) points down at the focused item from above, its tip a little way into the item's
        top edge, bobbing on the 8-frame cadence; pulled down into the picture where the item is at the top edge. The core
        also brightens and outlines the item itself. Backdrop class, so a click goes through to the item below it. */
-    const int fx = g_foc_x, fy = g_foc_y;
-    static int calls;
-    ++calls;
-    if (g_foc_have && menu_hostimg_ready(MENU_IMG_ARROW_DOWN)) {
+    const int fx = R.foc_x, fy = R.foc_y, calls = R.calls;
+    if (R.foc_have && menu_hostimg_ready(MENU_IMG_ARROW_DOWN)) {
         for (int j = 0; j < L->nh; ++j) {
             const MenuHotspot &H = L->hs[j];
             if (H.box.x != fx || H.box.y != fy) continue;

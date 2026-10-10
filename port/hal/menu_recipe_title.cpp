@@ -59,12 +59,58 @@ const Box kBoxes[24] = {
     { 20, 180, 140, 252, 176 }, { 21, 28, 140, 156, 176 }, { 22, 54, 108, 126, 148 }, { 23, 130, 108, 202, 148 },
 };
 
-bool box_of(int id, Box *out)
+enum { CH_NONE = 0, CH_INTRO = 1, CH_RETURN = 2 };
+enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 10, CH_LOGO_IN = 14, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
+       CH_PLANK_START = 4, CH_FLY = 14, CH_SWAP_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_VEIL = 10 };
+struct Chore {
+    int mode;            /* CH_* */
+    int in_fam;          /* the main family (V_INTRO / V_MAIN) is the page */
+    int prev_variant;
+    int ct;              /* frames since the ROM's iris sprite first showed (-1 = not yet) */
+    int fam_t;           /* frames since the family was entered */
+    int sw_t;            /* frames since the swap began (-1 = not yet) */
+    int face_a;          /* 0..255 */
+    int skip;            /* a confirm press asked for the resting state */
+    int iris_covered;    /* the iris covered the picture on the last drawn frame */
+    int ff2_done;
+    int attract_t;       /* the ROM's attract counter as last read */
+    int fly_t;           /* ASSET6: frames since the press, while the star flies off the top (state 10 before the iris) */
+} g_ch;
+
+/* INT2 (the decide / draw split): the ROM values build() needs, read once per tick by menu_title_facts on the logic thread and carried in
+   MenuLayout.facts.blob. build() and everything it calls read this and never a ROM address. */
+struct TitleFacts {
+    int nbox;                 /* the live element decoder's answer (0 = it said nothing: the dumped boxes stand in) */
+    short bx[24][5];          /* id, x0, y0, x1, y1 */
+    int cur, prs;             /* rom_cursor(): the cursor element and whether it is being pressed */
+    int frame;                /* the title Render counter (data_ov007_0210342c[0]) */
+    int vis, s48;             /* the fade manager's iris sprite: shown, scale */
+    Chore ch;                 /* the choreography clock as of this tick */
+};
+static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
+thread_local const TitleFacts *t_f = 0;     /* set for the length of one build() */
+int g_iris_cov_req;                         /* build() saw the picture covered: folded into g_ch.iris_covered by the next chore_step (a one-way flag) */
+bool box_of(int id, Box *out);
+
+bool box_of_live(int id, Box *out)
 {
     int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
     const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
     for (int k = 0; k < n; ++k)
         if (ids[k] == id) { out->id = id; out->x0 = x0[k]; out->y0 = y0[k]; out->x1 = x1[k]; out->y1 = y1[k]; return true; }
+    for (int k = 0; k < 24; ++k)
+        if (kBoxes[k].id == id) { *out = kBoxes[k]; return true; }
+    return false;
+}
+
+bool box_of(int id, Box *out)      /* build()'s view: this tick's facts, else the dumped boxes */
+{
+    if (t_f)
+        for (int k = 0; k < t_f->nbox; ++k)
+            if (t_f->bx[k][0] == id) {
+                out->id = id; out->x0 = t_f->bx[k][1]; out->y0 = t_f->bx[k][2]; out->x1 = t_f->bx[k][3]; out->y1 = t_f->bx[k][4];
+                return true;
+            }
     for (int k = 0; k < 24; ++k)
         if (kBoxes[k].id == id) { *out = kBoxes[k]; return true; }
     return false;
@@ -318,8 +364,7 @@ void build_main(MenuLayout *L, bool intro)
     const int iwr = menu_add_piece(L, wr);
     static const int kPlateId[3] = { 1, 0, 2 };                      /* the ROM's element ids: VS, ADVENTURE, REC ROOM */
     static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
-    int cur, prs;
-    rom_cursor(&cur, &prs);
+    const int cur = t_f ? t_f->cur : -1, prs = t_f ? t_f->prs : 0;
     const bool planks = menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC);
     for (int k = 0; k < 3; ++k) {
         Box bx;
@@ -357,7 +402,7 @@ void build_main(MenuLayout *L, bool intro)
        the plank under it. */
     if (planks && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
         static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* the plank pulse's cadence, in half units */
-        const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
+        const int fr = t_f ? t_f->frame : 0;
         const int bob2 = kBob[fr & 7];
         const int aimg = cur == 7 ? MENU_IMG_ARROW_UP : MENU_IMG_ARROW_DOWN;
         int iw = 1, ih = 1;
@@ -420,23 +465,6 @@ void build_main(MenuLayout *L, bool intro)
      - a return from a file page (the ROM walks the head in again) skips the iris and the big logo: the small logo is there, the page fades in from
        black over 10 frames, and the same swap runs for the face and the planks.
    ==================================================================================================================== */
-enum { CH_NONE = 0, CH_INTRO = 1, CH_RETURN = 2 };
-enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 10, CH_LOGO_IN = 14, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
-       CH_PLANK_START = 4, CH_FLY = 14, CH_SWAP_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_VEIL = 10 };
-struct Chore {
-    int mode;            /* CH_* */
-    int in_fam;          /* the main family (V_INTRO / V_MAIN) is the page */
-    int prev_variant;
-    int ct;              /* frames since the ROM's iris sprite first showed (-1 = not yet) */
-    int fam_t;           /* frames since the family was entered */
-    int sw_t;            /* frames since the swap began (-1 = not yet) */
-    int face_a;          /* 0..255 */
-    int skip;            /* a confirm press asked for the resting state */
-    int iris_covered;    /* the iris covered the picture on the last drawn frame */
-    int ff2_done;
-    int attract_t;       /* the ROM's attract counter as last read */
-    int fly_t;           /* ASSET6: frames since the press, while the star flies off the top (state 10 before the iris) */
-} g_ch;
 
 int ff_on()
 {
@@ -503,6 +531,7 @@ void chore_step(int variant, int top, int elem, int req)
         if (hal_menu_trace_on()) fprintf(stderr, "[chore] enter family mode=%s top=%d\n", c.mode == CH_INTRO ? "intro" : "return", top);
     }
     ++c.fam_t;
+    if (g_iris_cov_req) { g_iris_cov_req = 0; c.iris_covered = 1; }      /* build() saw the picture covered */
     const bool rest = top == 0 && elem == 0 && req == -1;
     int vis = 0, s48 = 0;
     rom_iris(&vis, &s48);
@@ -633,7 +662,7 @@ float logo_bounce(int tb)
 /* THE MAIN MENU WITH OUR ART (logo, planks, arrows and wallpaper all loaded). intro = the ROM is not at rest yet (top-state 10 / 1). */
 void build_main_pc(MenuLayout *L, bool intro)
 {
-    Chore &c = g_ch;
+    Chore c = t_f ? t_f->ch : Chore();      /* a copy: build() never writes the clock */
     const int w = L->w, h = L->h, un = L->unum, ud = L->uden;
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
@@ -714,8 +743,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         /* the planks, each rising from the bottom edge with an overshoot, staggered */
         static const int kPlateId[3] = { 1, 0, 2 };
         static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
-        int cur, prs;
-        rom_cursor(&cur, &prs);
+        const int cur = t_f ? t_f->cur : -1, prs = t_f ? t_f->prs : 0;
         const bool landed = c.sw_t >= CH_SWAP_END - 4 || c.skip;
         for (int k = 0; k < 3; ++k) {
             Box bx;
@@ -741,7 +769,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         /* the selection arrow, once the planks have landed */
         if (landed && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
             static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
-            const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
+            const int fr = t_f ? t_f->frame : 0;
             const int bob2 = kBob[fr & 7];
             const int aimg = cur == 7 ? MENU_IMG_ARROW_UP : MENU_IMG_ARROW_DOWN;
             int aw = 1, ah = 1;
@@ -768,8 +796,7 @@ void build_main_pc(MenuLayout *L, bool intro)
     }
     /* the iris: black outside the star while the ROM's iris is up (and all black before it shows), a veil on a returning page */
     if (c.mode == CH_INTRO && !c.iris_covered && c.ct <= ctune(0, CH_LOGO_POP) + 60) {
-        int vis = 0, s48 = 0;
-        rom_iris(&vis, &s48);
+        const int vis = t_f ? t_f->vis : 0, s48 = t_f ? t_f->s48 : 0;
         MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
         float Rds = 0.f;
@@ -779,7 +806,7 @@ void build_main_pc(MenuLayout *L, bool intro)
         ir.icx = w / 2;
         ir.icy = (int)((96.f + 0.0864f * Rds) * (float)h / 192.f + 0.5f);
         ir.ir16 = (int)(Rpx * 16.f);
-        if (c.iris_covered || (Rpx > 0.f && menu_iris_covers(w, h, (float)ir.icx, (float)ir.icy, Rpx))) { c.iris_covered = 1; }
+        if (c.iris_covered || (Rpx > 0.f && menu_iris_covers(w, h, (float)ir.icx, (float)ir.icy, Rpx))) { c.iris_covered = 1; g_iris_cov_req = 1; }
         else menu_add_piece(L, ir);
     } else if (c.mode == CH_RETURN && c.fam_t <= CH_VEIL) {
         MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
@@ -844,6 +871,24 @@ int menu_title_up(int scene_id)
     chore_step(g_last, top, elem, req);
     chore_rom_writes(top, req);
     return g_last;
+}
+
+/* INT2: THE TITLE'S ROM FACTS for build(), once per tick on the logic thread after menu_title_up (so the choreography clock is this tick's) */
+void menu_title_facts(MenuFacts *f)
+{
+    TitleFacts tf;
+    memset(&tf, 0, sizeof tf);
+    int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
+    const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
+    tf.nbox = n > 0 ? (n > 24 ? 24 : n) : 0;
+    for (int k = 0; k < tf.nbox; ++k) {
+        tf.bx[k][0] = (short)ids[k]; tf.bx[k][1] = (short)x0[k]; tf.bx[k][2] = (short)y0[k]; tf.bx[k][3] = (short)x1[k]; tf.bx[k][4] = (short)y1[k];
+    }
+    rom_cursor(&tf.cur, &tf.prs);
+    tf.frame = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
+    rom_iris(&tf.vis, &tf.s48);
+    tf.ch = g_ch;
+    memcpy(f->blob, &tf, sizeof tf);
 }
 
 /* ---- THE FILE PAGES (run menu1, lane FILE1) ----------------------------------------------------------------
@@ -974,7 +1019,18 @@ void file_pages_build(int variant, MenuLayout *L)
 }
 }  // namespace
 
+namespace {
+struct TitleFactsScope { TitleFactsScope(const TitleFacts *f) { t_f = f; } ~TitleFactsScope() { t_f = 0; } };
+}
+
+static void menu_title_build_impl(int variant, MenuLayout *L);
 void menu_title_build(int variant, MenuLayout *L)
+{
+    TitleFactsScope scope((const TitleFacts *)L->facts.blob);
+    menu_title_build_impl(variant, L);
+}
+
+static void menu_title_build_impl(int variant, MenuLayout *L)
 {
     if (variant == V_ATTRACT) {
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
@@ -984,7 +1040,7 @@ void menu_title_build(int variant, MenuLayout *L)
         L->stage = MENU_STAGE_POST_FADE;
         return;
     }
-    if (variant == V_INTRO && g_ch.mode == CH_INTRO && g_ch.ct < 0 && !getenv("SM64DS_CHORE_BLACK")) {
+    if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && !getenv("SM64DS_CHORE_BLACK")) {
         /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
            as the ROM draws them until its iris sprite appears */
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
@@ -995,9 +1051,9 @@ void menu_title_build(int variant, MenuLayout *L)
         /* the star: the ROM takes its own off the picture on the press frame, so ours (cut from the ROM's render, res/menu/title_star.png)
            takes its place and flies up off the top edge, accelerating (the ROM's flight measured 16 frames from the middle of the screen
            to off the top) */
-        if (menu_hostimg_ready(MENU_IMG_STAR) && g_ch.fly_t >= 0) {
+        if (menu_hostimg_ready(MENU_IMG_STAR) && t_f->ch.fly_t >= 0) {
             const int un = L->unum, ud = L->uden;
-            const float ft = (float)g_ch.fly_t;
+            const float ft = (float)t_f->ch.fly_t;
             const float cy = 91.6f - 0.55f * ft * ft;                  /* DS pixels, the star's centre */
             int sw = 1, sh = 1;
             menu_hostimg_size(MENU_IMG_STAR, &sw, &sh);
@@ -1051,7 +1107,7 @@ static void title_cursor_assist()
         static const int ids[4] = { 1, 0, 2, 7 };
         for (int k = 0; k < 4; ++k) {
             Box b;
-            if (box_of(ids[k], &b) && b.x0 == hx && b.y0 == hy) {
+            if (box_of_live(ids[k], &b) && b.x0 == hx && b.y0 == hy) {
                 if (p0[0] != ids[k]) p0[1] = (short)ids[k];
                 return;
             }

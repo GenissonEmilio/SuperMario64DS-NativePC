@@ -151,6 +151,7 @@ struct MenuFacts {
   uint8_t starsel_x[8];     /* star select: +0x11a.., the icon x bytes */
   uint8_t starsel_head_y;   /* star select: +0x12b, the Mario head's centre row (it bobs) */
   int32_t spare[8];         /* recipes added later */
+  uint8_t blob[512];        /* INT2: a recipe's own plain-data facts (the title and the Rec Room keep a struct here); zero = nothing read */
 };
 
 struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; canvas_w = w*192/h */

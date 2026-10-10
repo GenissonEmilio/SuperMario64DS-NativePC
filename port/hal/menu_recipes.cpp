@@ -107,6 +107,7 @@ void menu_starsel_facts(MenuFacts *f);
 int  menu_recroom_up(int scene_id);
 void menu_recroom_build(int variant, MenuLayout *L);
 int  menu_recroom_pad_ok(void);
+void menu_recroom_facts(MenuFacts *f);
 
 /* name, up, build, rom_cursor, enable_key, driver, flags, nvariants, pad_ok, facts */
 const MenuRecipe g_menu_recipes[] = {
@@ -121,7 +122,7 @@ const MenuRecipe g_menu_recipes[] = {
     { "gameover", menu_gameover_up, menu_gameover_build, menu_gameover_rom_cursor, MENU_KEY_ONE_SCREEN_MENUS,
       MENU_DRV_ROM_CURSOR, 0, 1, menu_gameover_pad_ok },
     { "recroom",  menu_recroom_up, menu_recroom_build, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_TOUCH, 0, 1,
-      menu_recroom_pad_ok },
+      menu_recroom_pad_ok, menu_recroom_facts },
     { "vs",       up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
     { "fallback", up_never, build_fallback, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_NATIVE,  MENU_RF_FALLBACK, 1 },
     { "test",     up_test,  build_test, 0, MENU_KEY_NONE,              MENU_DRV_TOUCH,      0, 2 },
