@@ -45,6 +45,7 @@ void *port_debug_spawn(unsigned id, unsigned param);
 }
 
 namespace port {
+void coop_api_test_register();
 namespace {
 
 enum : unsigned {
@@ -68,6 +69,14 @@ struct Out { uint16_t slot; uint8_t sent; unsigned next; };
 enum : int { kOwnerTries = 3, kGuestTries = 40, kStarSeen = 16 };
 struct Job { bool on; uint32_t nonce; CoopKey key; unsigned start, last; };
 struct Reg { int lo, hi; CoopSubFn fn; void *user; };
+enum : int { kMaxRegs = 8, kMaxCbs = 8 };
+// STEP-0 callback registries (the phase-2 lanes hang off these; no walk_window lines)
+void (*g_cb_frame[kMaxCbs])(unsigned); int g_n_frame = 0;
+void (*g_cb_latched[kMaxCbs])(int, int); int g_n_latched = 0;
+void (*g_cb_estab[kMaxCbs])(int, int); int g_n_estab = 0;
+void (*g_cb_snapreq[kMaxCbs])(int, unsigned); int g_n_snapreq = 0;
+void (*g_cb_gone[kMaxCbs])(int); int g_n_gone = 0;
+unsigned g_prev_members = 0;
 
 CoopGroups g_grp;
 CoopWorldStats g_st = {};
@@ -109,7 +118,7 @@ unsigned g_heard[CoopGroups::kSeats];   // when a seat last sent me something fo
 
 unsigned g_hello_t = 0, g_full_t = 0;
 unsigned g_seq_ctl = 0, g_seq_world = 0;
-Reg      g_reg_ctl[4], g_reg_world[4];
+Reg      g_reg_ctl[8], g_reg_world[4];
 int      g_nreg_ctl = 0, g_nreg_world = 0;
 
 // proof knobs
@@ -269,7 +278,7 @@ void serve_snapshot(int seat, const Job &j) {
         CoopSnapWire h; std::memset(&h, 0, sizeof h);
         h.target = (uint8_t)seat; h.n = (uint8_t)n; h.total = (uint8_t)kSnapChunks;
         h.key = wire_key(g_key); h.nonce = j.nonce;
-        h.level_clock = 0; h.rng_seed = 0;   // phase 2
+        h.level_clock = g_est_frames; h.rng_seed = 0;   // level_clock: frames since this group state was established here
         std::memcpy(buf, &h, sizeof h);
         std::memcpy(buf + sizeof h, reinterpret_cast<const unsigned char *>(t) + n * clen, (size_t)clen);
         if (send_kind(kHubTagCoopCtl, kCtlSnapPart, buf, (int)sizeof h + clen)) ++g_st.sent_snap;
@@ -366,6 +375,7 @@ void on_ctl(int seat, const unsigned char *d, int len, void *) {
         j.on = true; j.nonce = w.nonce; j.key = k; j.start = now; j.last = now;
         serve_snapshot(seat, j);
         ++g_st.snaps_served;
+        for (int i = 0; i < g_n_snapreq; ++i) g_cb_snapreq[i](seat, w.nonce);
         return;
     }
     case kCtlSnapPart: {
@@ -477,6 +487,7 @@ void ensure_handlers() {
     hub_on_kind(kHubCoopCtl, on_ctl, nullptr);
     hub_on_kind(kHubCoopWorld, on_world, nullptr);
     g_handlers = true;
+    coop_api_test_register();
     g_my = comms_hub_my_seat();
     g_grp.reset(g_my);
     if (g_log) std::atexit([] { stats_line(); });
@@ -608,7 +619,9 @@ void join_group(const CoopKey &nk) {
     g_grp.establish(comms_hub_now_ms(), hint);
     g_grp.update(comms_hub_now_ms());
     g_hello_t = 0; g_full_t = comms_hub_now_ms();
+    g_prev_members = g_grp.member_mask();
     dump_bits("established");
+    for (int i = 0; i < g_n_estab; ++i) g_cb_estab[i](nk.level, nk.act);
 }
 
 // ---------------------------------------------------------------------------
@@ -926,7 +939,7 @@ static bool register_range(Reg *arr, int *n, int lo, int hi, int mine_lo, int mi
     if (!(hi < mine_lo || lo > mine_hi)) return false;
     for (int i = 0; i < *n; ++i)
         if (!(hi < arr[i].lo || lo > arr[i].hi)) return false;
-    if (*n >= 4) return false;
+    if (*n >= kMaxRegs) return false;
     arr[(*n)++] = {lo, hi, fn, user};
     return true;
 }
@@ -935,6 +948,49 @@ bool coop_ctl_register(int lo, int hi, CoopSubFn fn, void *user) {
 }
 bool coop_world_register(int lo, int hi, CoopSubFn fn, void *user) {
     return register_range(g_reg_world, &g_nreg_world, lo, hi, kWorldDeathDelta, kWorldDeathFull, fn, user);
+}
+bool coop_group_key(int *level, int *act) {
+    if (!coop_world_active() || !g_key.valid()) return false;
+    if (level) *level = g_key.level;
+    if (act) *act = g_key.act;
+    return true;
+}
+bool coop_group_established() { return coop_world_active() && g_key.valid() && g_grp.established(); }
+int coop_group_owner() { return coop_group_established() ? g_grp.owner() : -1; }
+bool coop_group_i_am_owner() { return coop_group_established() && g_grp.i_am_owner(); }
+unsigned coop_group_member_mask() { return coop_group_established() ? g_grp.member_mask() : 0u; }
+template <class F, int N> static bool add_cb(F (&arr)[N], int *n, F fn) {
+    if (!fn || *n >= N) return false;
+    for (int i = 0; i < *n; ++i) if (arr[i] == fn) return false;
+    arr[(*n)++] = fn;
+    return true;
+}
+bool coop_on_frame(void (*fn)(unsigned now_ms)) { return add_cb(g_cb_frame, &g_n_frame, fn); }
+bool coop_on_group_latched(void (*fn)(int level, int act)) { return add_cb(g_cb_latched, &g_n_latched, fn); }
+bool coop_on_group_established(void (*fn)(int level, int act)) { return add_cb(g_cb_estab, &g_n_estab, fn); }
+bool coop_on_snapshot_request(void (*fn)(int seat, unsigned nonce)) { return add_cb(g_cb_snapreq, &g_n_snapreq, fn); }
+bool coop_on_member_gone(void (*fn)(int seat)) { return add_cb(g_cb_gone, &g_n_gone, fn); }
+
+// Proof only: SM64DS_COOP_API_TEST=1 registers one callback of each kind and logs what the registries hand out.
+static void api_t_frame(unsigned) {
+    static unsigned n; ++n;
+    if (n == 1) std::fprintf(stderr, "[coop-api] frame callback runs\n");
+}
+static void api_t_latched(int l, int a) { std::fprintf(stderr, "[coop-api] latched %d %d est=%d\n", l, a, (int)coop_group_established()); }
+static void api_t_estab(int l, int a) {
+    int kl = -1, ka = -1; coop_group_key(&kl, &ka);
+    std::fprintf(stderr, "[coop-api] established %d %d key=%d/%d owner=%d iam=%d members=%x\n", l, a, kl, ka, coop_group_owner(), (int)coop_group_i_am_owner(), coop_group_member_mask());
+}
+static void api_t_snap(int seat, unsigned nonce) { std::fprintf(stderr, "[coop-api] snapshot request from seat %d nonce %u\n", seat, nonce); }
+static void api_t_gone(int seat) { std::fprintf(stderr, "[coop-api] member gone seat %d\n", seat); }
+void coop_api_test_register() {
+    const char *e = std::getenv("SM64DS_COOP_API_TEST");
+    if (!(e && *e && *e != '0')) return;
+    bool r = coop_on_frame(api_t_frame) && coop_on_group_latched(api_t_latched) && coop_on_group_established(api_t_estab)
+          && coop_on_snapshot_request(api_t_snap) && coop_on_member_gone(api_t_gone);
+    bool dup = coop_on_frame(api_t_frame);     // a repeat is refused
+    bool nul = coop_on_frame(nullptr);
+    std::fprintf(stderr, "[coop-api] registered %d, duplicate refused %d, null refused %d\n", (int)r, (int)!dup, (int)!nul);
 }
 bool coop_send_ctl(int subtype, const void *payload, int payload_len) {
     return coop_world_active() && send_kind(kHubTagCoopCtl, subtype, payload, payload_len);
@@ -950,6 +1006,8 @@ extern "C" void port_coop_world_level_latched(void) {
     if (!coop_world_active()) return;
     ensure_handlers();
     join_group(CoopKey((int)data_0209f2f8, data_0209f220[0] & 0xff));
+    if (g_key.valid())
+        for (int i = 0; i < g_n_latched; ++i) g_cb_latched[i](g_key.level, g_key.act);
 }
 
 extern "C" void port_coop_world_frame(void) {
@@ -961,6 +1019,16 @@ extern "C" void port_coop_world_frame(void) {
     if (ticking) ++g_kframe;
     const unsigned now = comms_hub_now_ms();
     refresh_presence(now);
+    for (int i = 0; i < g_n_frame; ++i) g_cb_frame[i](now);
+    {   // members that left my group since last frame
+        g_grp.update(now);
+        const unsigned m = g_grp.member_mask();
+        const unsigned gone = g_prev_members & ~m;
+        g_prev_members = m;
+        for (int sdx = 0; gone && sdx < 16; ++sdx)
+            if ((gone >> sdx) & 1u)
+                for (int i = 0; i < g_n_gone; ++i) g_cb_gone[i](sdx);
+    }
     const int me = (int)data_0209f250;
     const bool in_level = me >= 0 && me < 16 && data_0209f394[me] != nullptr;
     if (in_level) {

@@ -41,6 +41,20 @@ struct CoopWorldStats {
 };
 CoopWorldStats coop_world_stats();
 
+// STEP-0 API for the phase-2 lanes (run mp1, COOPINT1). All inert (false / -1 / 0) outside a coop room.
+bool coop_group_key(int *level, int *act);     // my current group's sublevel and act
+bool coop_group_established();                 // I hold the group's state (snapshot taken, level live)
+int  coop_group_owner();                       // owner seat, -1 none
+bool coop_group_i_am_owner();
+unsigned coop_group_member_mask();             // other consoles in my group, bit = seat
+// Callback registries (up to 8 each; false when full, null or already added).
+bool coop_on_frame(void (*fn)(unsigned now_ms));                    // each frame, after the presence refresh
+bool coop_on_group_latched(void (*fn)(int level, int act));         // end of the level latch, before any object spawns
+bool coop_on_group_established(void (*fn)(int level, int act));     // snapshot taken, level live
+bool coop_on_snapshot_request(void (*fn)(int seat, unsigned nonce));// owner side: a LEVEL_ENTER arrived and was answered
+bool coop_on_member_gone(void (*fn)(int seat));                     // a member left my group
+
+
 }  // namespace port
 
 // The two hook lines: once a frame (tests/walk_window.cpp) and once per level
