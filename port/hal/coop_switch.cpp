@@ -385,6 +385,7 @@ void set_word_bit(int b, int v) {
 
 unsigned next_stamp() {
     if (g_counter < 0xFFF) ++g_counter;
+    else if (g_log) std::fprintf(stderr, "[coopsw] stamp counter exhausted (4095 changes in this course): later changes may not win\n");
     return sw_stamp_make(g_counter, g_my);
 }
 
