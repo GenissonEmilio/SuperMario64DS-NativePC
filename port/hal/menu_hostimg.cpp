@@ -172,6 +172,9 @@ extern "C" int menu_hostimg_size(int id, int *w, int *h)
     if (!menu_hostimg_ready(id)) return 0;
     Img *I = img_of(id);
     *w = I->w; *h = I->h;
+    /* ARROWART1: the selection arrows are drawn in the fixed 22 x 15 footprint of the ROM's art (its aspect, tip at the bottom or top
+       centre), whatever the PNG's own pixel size: a hi-res picture of the same drawing drops in with no code change */
+    if (id == MENU_IMG_ARROW_UP || id == MENU_IMG_ARROW_DOWN) { *w = 22; *h = 15; }
     return 1;
 }
 
