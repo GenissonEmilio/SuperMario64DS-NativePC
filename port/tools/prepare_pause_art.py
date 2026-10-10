@@ -199,6 +199,7 @@ def main():
     card().save(os.path.join(a.out, "card.png"), optimize=True)
     arrow(True).save(os.path.join(a.out, "arrow_l.png"), optimize=True)
     arrow(False).save(os.path.join(a.out, "arrow_r.png"), optimize=True)
+    card(1500, 300).save(os.path.join(a.out, "banner.png"), optimize=True)
     status_card(a.font, "Saving file...").save(os.path.join(a.out, "saving.png"), optimize=True)
     status_card(a.font, "File saved.").save(os.path.join(a.out, "saved.png"), optimize=True)
 

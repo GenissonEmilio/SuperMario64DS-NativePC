@@ -205,8 +205,8 @@ void ok_box(int controller, int lang, short *x, short *w)
    LEFT column (kLeftW): [arrow][card][arrow], the course card (gold frame + cream paper, our art, drawn behind the ROM's own top text) with
    the course paging arrows (our art) at its sides. RIGHT column (kUiW): the planks. */
 const int kUiW = 240;
-const int kTextX = 20, kTextY = 24, kTextW = 216, kTextH = 136;   /* top text block (BG3 + OBJ). Measured on the reference exe (lifted rows 36..147, text columns 27..228), clear of the bouncing band (rows 166..184) and of the two OBJ course arrows (columns 4..19 and 236..251) */
-const int kPadH = 6, kPadV = 6;               /* card paper around the text rect */
+const int kTextX = 20, kTextY = 30, kTextW = 216, kTextH = 124;   /* top text block (BG3 + OBJ). Measured on the reference exe (lifted rows 36..147, text columns 27..228; the rect keeps 6 empty rows above and below), clear of the bouncing band (rows 166..184) and of the two OBJ course arrows (columns 4..19 and 236..251) */
+const int kPadH = 6, kPadV = 5;               /* card paper around the text rect */
 const int kAw = 14, kAh = 21, kAgap = 2;      /* paging arrow art size and its gap to the card */
 const int kLeftW = 2 * (kAw + kAgap) + kTextW + 2 * kPadH;   /* 260: wide enough for the full text rect (no paging arrows up) */
 const int kLeftX = kAw + kAgap + kPadH;       /* the text rect's offset from the column's left edge */
@@ -318,7 +318,7 @@ void build_plates(MenuLayout *L, int variant, int py, int ph, const Hs *hs, int 
     }
     L->back = (int8_t)back;
     L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
-    L->hide_owners = MENU_L_BG2;   /* the "TOUCH TO SELECT" band: drawn nowhere */
+    L->hide_owners = MENU_L_BG1 | MENU_L_BG2;   /* the card (BG2, ours replaces it) and the "TOUCH TO SELECT" band (BG1; the castle card fix 15707787b5 makes the ROM load both): drawn nowhere */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
     if (pk) {
@@ -401,7 +401,7 @@ void build_opt(MenuLayout *L)
     menu_add_hotspot(L, ps, ox, 0x98, ow, 0x20, -1);
     L->back = (int8_t)menu_add_hotspot(L, ps, 0xd8, 0x98, 0x20, 0x20, -1);
     L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
-    L->hide_owners = MENU_L_BG2;   /* the "TOUCH TO SELECT" band: drawn nowhere */
+    L->hide_owners = MENU_L_BG1 | MENU_L_BG2;   /* the card (BG2, ours replaces it) and the "TOUCH TO SELECT" band (BG1; the castle card fix 15707787b5 makes the ROM load both): drawn nowhere */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
 }
@@ -425,7 +425,7 @@ void build_status(MenuLayout *L)
     }
     L->back = -1;
     L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
-    L->hide_owners = MENU_L_BG2;   /* the "TOUCH TO SELECT" band: drawn nowhere */
+    L->hide_owners = MENU_L_BG1 | MENU_L_BG2;   /* the card (BG2, ours replaces it) and the "TOUCH TO SELECT" band (BG1; the castle card fix 15707787b5 makes the ROM load both): drawn nowhere */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
 }
@@ -437,11 +437,20 @@ void build_nosave(MenuLayout *L)
     int card;
     build_left(L, C, 0, !in_course(L), &card);
     if (planks_on(L)) {
-        const int hp = ceil_mul(32, C.b);
-        const int top = top_dy(hp);
-        add_plank(L, C, MENU_IMG_P_PK_YES, 0x28, 0x98, 0x50, 0x20, top, -1, 0);                   /* YES x 0x28..0x77 */
-        L->back = (int8_t)add_plank(L, C, MENU_IMG_P_PK_NO, 0x88, 0x98, 0x50, 0x20, top, -1, 0);   /* NO x 0x88..0xd7; the piece index, fixed below */
-        L->back = (int8_t)(L->nh - 1);                                                             /* the hotspot of NO */
+        /* the question (the ROM's own bottom screen text, DS art) on our banner, the two planks under it */
+        const int hb = ceil_mul(32, C.b), gap = ur(8, C.b.n, C.b.d);
+        const int top = top_dy(2 * hb + gap);
+        if (have(MENU_IMG_P_BANNER)) {
+            MenuPiece bn = menu_piece_make(SRC_HOSTIMG, 24, 60, 208, 32, MENU_AX_R, MENU_AY_T, -C.marg - ur(248 - 232, C.b.n, C.b.d), top, C.b.n, C.b.d);
+            bn.hostimg = (uint8_t)MENU_IMG_P_BANNER; bn.bg = 1;
+            menu_add_piece(L, bn);
+            MenuPiece q = sub_piece(24, 68, 208, 20, C, top + ur(6, C.b.n, C.b.d), 0);
+            q.dx = (short)(-C.marg - ur(248 - 232, C.b.n, C.b.d));
+            menu_add_piece(L, q);
+        }
+        add_plank(L, C, MENU_IMG_P_PK_YES, 0x28, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                   /* YES x 0x28..0x77 */
+        add_plank(L, C, MENU_IMG_P_PK_NO, 0x88, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                     /* NO x 0x88..0xd7 */
+        L->back = (int8_t)(L->nh - 1);                                                                       /* the hotspot of NO */
     } else {
         MenuPiece p = sub_piece(24, 64, 208, 128, C, 0, 1);
         p.ay = MENU_AY_M;
@@ -450,7 +459,7 @@ void build_nosave(MenuLayout *L)
         L->back = (int8_t)menu_add_hotspot(L, ps, 0x88, 0x98, 0x50, 0x20, -1);   /* NO x 0x88..0xd7 */
     }
     L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
-    L->hide_owners = MENU_L_BG2;   /* the "TOUCH TO SELECT" band: drawn nowhere */
+    L->hide_owners = MENU_L_BG1 | MENU_L_BG2;   /* the card (BG2, ours replaces it) and the "TOUCH TO SELECT" band (BG1; the castle card fix 15707787b5 makes the ROM load both): drawn nowhere */
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
 }

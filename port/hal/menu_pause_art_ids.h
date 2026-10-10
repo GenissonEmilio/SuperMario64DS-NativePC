@@ -20,5 +20,6 @@ enum {
     MENU_IMG_P_ARROW_R = 47,
     MENU_IMG_P_SAVING = 48,
     MENU_IMG_P_SAVED = 49,
-    MENU_IMG_P_END = 50 };
+    MENU_IMG_P_BANNER = 50,
+    MENU_IMG_P_END = 51 };
 #endif

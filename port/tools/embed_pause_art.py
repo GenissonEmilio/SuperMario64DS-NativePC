@@ -4,7 +4,7 @@ import os
 here = os.path.dirname(os.path.abspath(__file__))
 res = os.path.join(here, "..", "res", "menu", "pause")
 names = ["pk_continue", "pk_ctl", "pk_options", "pk_quit", "pk_exit", "pk_save", "pk_dontsave", "pk_standard", "pk_touch", "pk_dual",
-         "pk_ok", "pk_yes", "pk_no", "card", "arrow_l", "arrow_r", "saving", "saved"]
+         "pk_ok", "pk_yes", "pk_no", "card", "arrow_l", "arrow_r", "saving", "saved", "banner"]
 out = ["/* menu_pause_art_data.cpp -- the pause menu art PNGs of res/menu/pause as bytes (tools/embed_pause_art.py). Generated; do not edit. */"]
 for n in names:
     d = open(os.path.join(res, n + ".png"), "rb").read()
