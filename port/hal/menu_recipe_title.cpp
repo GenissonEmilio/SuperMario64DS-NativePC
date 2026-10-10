@@ -1024,7 +1024,7 @@ static void title_timeline(int top, int elem, int req)
 
 int menu_title_up(int scene_id)
 {
-    if (scene_id != 1) return 0;
+    if (scene_id != 1) { g_up_stamp = -1; return 0; }   /* FILEFIX1: out of the title scene no stale stamp can match the title counter (file_wide_cb runs on every frame's first 3D command) */
     int top, elem, req;
     if (!port_title_page_state(&top, &elem, &req)) return g_last;   /* not built yet: the attract */
     title_timeline(top, elem, req);
@@ -1189,6 +1189,7 @@ bool file_wide_cb(float *zoom, float *dy)
     static int off = -1;
     if (off < 0) { const char *e = getenv("SM64DS_FILE_WIDE"); off = (e && *e == '0') ? 1 : 0; }
     if (off || !ntr::widescreen || ntr::active_h <= 0) return false;
+    if (!hal_menu_live()) return false;      /* FILEFIX1: no recipe owns the picture (setting off, gameplay): never walk the title's pointers */
     if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
     int top, elem, req;
     if (!port_title_page_state(&top, &elem, &req)) return false;
@@ -1198,8 +1199,11 @@ bool file_wide_cb(float *zoom, float *dy)
        its edge is a dark zigzag outline beyond that), so the page is zoomed exactly as much as keeps the plane's content on both
        edges (288 = a little inside it) and never more; 256 would be the fit-the-width zoom, 9999 no zoom at all (a true wide field,
        which shows the empty plane edge) */
-    int wc = 288, dp = 0;       /* SM64DS_FILE_WIDE_TUNE=content width in DS units, vertical shift permille of the half height */
-    if (const char *e = getenv("SM64DS_FILE_WIDE_TUNE")) sscanf(e, "%d,%d", &wc, &dp);
+    static int wc = 288, dp = 0, tuned = 0;       /* SM64DS_FILE_WIDE_TUNE=content width in DS units, vertical shift permille of the half height; read once */
+    if (!tuned) {
+        tuned = 1;
+        if (const char *e = getenv("SM64DS_FILE_WIDE_TUNE")) sscanf(e, "%d,%d", &wc, &dp);
+    }
     const float cwu = (float)ntr::active_w * 192.0f / (float)(ntr::present_h() > 0 ? ntr::present_h() : 192);   /* the canvas width in DS units (192 rows = one DS screen) */
     float z = cwu / (float)(wc > 64 ? wc : 64);
     if (z < 1.0f) z = 1.0f;
