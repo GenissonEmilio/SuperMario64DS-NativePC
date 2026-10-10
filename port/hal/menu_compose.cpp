@@ -1214,6 +1214,9 @@ static void piece_draw_2d(const MenuLayout *L, int i, const MenuSources *S, uint
     const uint32_t bd = S->sub_backdrop & 0xffffffu;
     uint32_t crow[257];
     crow[256] = 0;
+    /* the runs of a source row (dest column ranges whose source column is drawn): a row of the same source row as the row above is those
+       runs copied from the row above, whatever is transparent in between is left alone, as the reference leaves it */
+    static std::vector<int> runs;
     int last_sy = -1000, last_full = 0, last_py = -1000, all_rows = 1, ever_full = 1;
     for (int yy = 0; yy < dh; ++yy) {
         const int py = y0 + yy;
@@ -1223,11 +1226,6 @@ static void piece_draw_2d(const MenuLayout *L, int i, const MenuSources *S, uint
                             : P.s.y + (int)fdiv((long long)yy * P.s.h, dh);
         if (P.lden > 0 && sy > P.s.y + P.s.h - 1) sy = P.s.y + P.s.h - 1;
         if ((P.row_ok && !P.row_ok(sy)) || sy < 0 || sy >= 192) { all_rows = 0; continue; }
-        if (sy == last_sy && last_full && last_py == py - 1) {      /* the row above was this source row, complete: copy it */
-            memcpy(row + xa, row - stride + xa, (size_t)(xb - xa) * 4);
-            last_py = py;
-            continue;
-        }
         if (sy != last_sy) {
             if (P.src == SRC_SUB) {
                 const uint32_t *srow = subp + sy * 256;
@@ -1243,19 +1241,33 @@ static void piece_draw_2d(const MenuLayout *L, int i, const MenuSources *S, uint
                     crow[sx] = col | 0xff000000u;
                 }
             }
-            last_sy = sy;
             last_full = 1;
             for (int k = 0; k < nu; ++k) if (!crow[ulist[k]]) { last_full = 0; break; }
             if (!last_full) ever_full = 0;
+            runs.clear();
+            if (!P.xfill) {
+                if (last_full) { runs.push_back(xa); runs.push_back(xb); }
+                else {
+                    int xx = xa;
+                    while (xx < xb) {
+                        while (xx < xb && !crow[cx[xx]]) ++xx;
+                        const int a = xx;
+                        while (xx < xb && crow[cx[xx]]) ++xx;
+                        if (xx > a) { runs.push_back(a); runs.push_back(xx); }
+                    }
+                }
+            }
         }
         if (P.xfill) {
             const uint32_t v = crow[cx[xa]];
             if (v) std::fill(row + xa, row + xb, v);
-        } else if (last_full) {
-            for (int xx = xa; xx < xb; ++xx) row[xx] = crow[cx[xx]];
+        } else if (sy == last_sy && last_py == py - 1) {      /* the row above was this source row: copy its drawn runs */
+            for (size_t k = 0; k + 1 < runs.size(); k += 2) memcpy(row + runs[k], row - stride + runs[k], (size_t)(runs[k + 1] - runs[k]) * 4);
         } else {
-            for (int xx = xa; xx < xb; ++xx) { const uint32_t c = crow[cx[xx]]; row[xx] = c ? c : row[xx]; }
+            for (size_t k = 0; k + 1 < runs.size(); k += 2)
+                for (int xx = runs[k]; xx < runs[k + 1]; ++xx) row[xx] = crow[cx[xx]];
         }
+        last_sy = sy;
         last_py = py;
     }
     if (g_rep.enable && !clipped && all_rows && ever_full) {
