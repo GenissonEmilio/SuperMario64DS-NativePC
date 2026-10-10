@@ -28,6 +28,8 @@
 //     player_list_set_click_handler(fn)   fn(seat) runs on a click on a row.
 //     player_list_click(fb_x, fb_y)       the mouse hook: true = CONSUMED.
 //     player_list_hit_test(fb_x, fb_y)    the seat under that pixel or -1.
+// YOUR OWN ROW IS NOT A BUTTON: it never hits, never highlights and a click on it
+// goes on to the game like any other click.
 // A click on a row is consumed ONLY while a handler is set. With no handler
 // (party) the click goes on to the game exactly as it did before. The list
 // never draws over the corner map panel (rows that would overlap it are not

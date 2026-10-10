@@ -93,16 +93,27 @@ def find_windows(pid):
     return out
 
 
-def post_click(pid, cx, cy):
-    """a real left-button down + up message at CLIENT pixel (cx, cy)"""
+def post_click(pid, fx, fy, fbw, fbh):
+    """a real left-button down + up message at FRAMEBUFFER pixel (fx, fy): the picture (fbw x fbh) is fitted and
+    centred in the window's client area, so the client point is the forward map of that fit"""
     hs = find_windows(pid)
     if not hs:
-        return False
+        return None
+    r = wt.RECT()
+    U32.GetClientRect(hs[0], ctypes.byref(r))
+    cw, ch = r.right - r.left, r.bottom - r.top
+    if cw <= 0 or ch <= 0:
+        # a minimized window reports no client area; the game still presents into the size it was created with
+        # (measured: client pixel = 2 x framebuffer pixel at the default 1024 x 768), so use that
+        cw, ch = int(os.environ.get("PLIST_CLIENT_W", "1024")), int(os.environ.get("PLIST_CLIENT_H", "768"))
+    k = min(cw / float(fbw), ch / float(fbh))
+    ox, oy = (cw - fbw * k) / 2.0, (ch - fbh * k) / 2.0
+    cx, cy = int(ox + (fx + 0.5) * k), int(oy + (fy + 0.5) * k)
     lp = (cy << 16) | (cx & 0xFFFF)
     for h in hs:
         U32.PostMessageW(h, WM_LBUTTONDOWN, 1, lp)
         U32.PostMessageW(h, WM_LBUTTONUP, 0, lp)
-    return True
+    return (cx, cy, cw, ch)
 
 
 ROWRE = re.compile(r"^\[plist\] t=(\d+) rows=(\d+)(.*)$", re.M)
@@ -164,8 +175,9 @@ def run_room(kind, n, tag, o):
             if i not in seen_at and ("rows=%d" % n) in cons[i].text():
                 seen_at[i] = time.time()       # the list now holds every player: clicks count from here
             if i in seen_at and time.time() - seen_at[i] >= pc[0]:
-                ok = post_click(cons[i].p.pid, pc[2][0], pc[2][1])
-                info("%s: posted a left click to console %d at client %s -> %s" % (row, i, pc[2], ok))
+                rs = int(o.get("scale", "1"))
+                ok = post_click(cons[i].p.pid, pc[2][0], pc[2][1], 512 * rs, 384 * rs * (2 if o.get("stacked") else 1))
+                info("%s: posted a left click to console %d at framebuffer %s -> client (x, y, w, h) %s" % (row, i, pc[2], ok))
                 pending.remove(pc)
         time.sleep(0.5)
     G.finish(cons, 60)

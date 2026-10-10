@@ -147,7 +147,7 @@ static void player_list_draw(const OvlSurface &fb)
         const bool hot = port::player_list_hovered(r.seat);
         ovl_shade(fb, x0, ry, w, row_h);
         if (hot) ovl_shade(fb, x0, ry, w, row_h);       /* deeper shade = hover */
-        port::player_list_layout_row(r.seat, x0, ry, w, row_h);
+        if (!r.me) port::player_list_layout_row(r.seat, x0, ry, w, row_h);   /* your own row is not a button */
         const int alpha = r.same_place ? 255 : 110;
         const int hx = x0 + gap, hy = ry + (row_h - head) / 2;
         plist_head(fb, hx, hy, scale, port::head_icon(r.character), alpha);
