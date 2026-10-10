@@ -33,6 +33,8 @@
 //                                ROM setter does (data_0209f34c bit) locally
 //   SM64DS_SW_FORGE=F:name       one forged datagram: bit32, slot, class,
 //                                short, long, badkey, count, state, zero
+//   SM64DS_SW_PRESS=F:cls[:nth] at group frame F press / kick the nth live actor of the class
+//                                (the switch's own ROM entry, the same body slot 21 reaches)
 //   SM64DS_SW_WATCH=cls:off:size log every change of that field of every actor
 //                                of the class (the proof's view of a target)
 //   SM64DS_COOP_REC=f0:f1:f2     press recorder: samples at group frames f0,

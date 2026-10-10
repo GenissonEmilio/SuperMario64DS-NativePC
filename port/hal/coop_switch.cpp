@@ -100,6 +100,8 @@ struct Knob { unsigned frame; int bit; bool set; bool done; };
 Knob g_knob[8]; int g_nknob = 0;
 struct Forge { unsigned frame; char name[12]; bool done; };
 Forge g_forge[8]; int g_nforge = 0;
+struct PressKnob { unsigned frame; int cls; int nth; bool done; };
+PressKnob g_press[4]; int g_npress = 0;
 struct WatchK { int cls, off, size; };
 WatchK g_watch = {-1, 0, 0};
 struct WatchTrk { void *a; unsigned v; bool valid; };
@@ -142,6 +144,20 @@ void read_env() {
             g_forge[g_nforge].done = false; ++g_nforge;
             p += used;
             while (*p == ',' || *p == ';' || *p == ' ') ++p;
+        }
+    }
+    if (const char *pk = std::getenv("SM64DS_SW_PRESS")) {
+        // F:cls[:nth][;F:cls[:nth]]  press the nth (lowest slot first) live actor of the class at group frame F
+        const char *p = pk;
+        while (*p && g_npress < 4) {
+            unsigned f = 0; int c = 0, n = 0, used = 0;
+            if (std::sscanf(p, "%u:%i:%i%n", &f, &c, &n, &used) < 3 || used <= 0) {
+                used = 0;
+                if (std::sscanf(p, "%u:%i%n", &f, &c, &used) < 2 || used <= 0) break;
+            }
+            g_press[g_npress++] = {f, c, n, false};
+            p += used;
+            while (*p == ';' || *p == ',' || *p == ' ') ++p;
         }
     }
     if (const char *w = std::getenv("SM64DS_SW_WATCH")) {
@@ -671,6 +687,20 @@ void knob_forge(const char *name, unsigned now) {
     (void)now;
 }
 
+void knob_press(PressKnob &k) {
+    const Watch *w = find_watch(k.cls);
+    char *c[64]; int n = 0;
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a && n < 64; a = (char *)_ZN8dActor_c4NextEPKS_(a))
+        if (a_cls(a) == k.cls && a_slot(a) >= 0 && !a_dead(a) && !is_player_ptr(a)) c[n++] = a;
+    std::sort(c, c + n, [](char *x, char *y) { return a_slot(x) < a_slot(y); });
+    if (!w || n == 0) { std::fprintf(stderr, "[coopsw-knob] press cls=%d: no live actor
+", k.cls); return; }
+    char *a = c[k.nth % n];
+    const bool did = w->apply(a, 1, 0);
+    std::fprintf(stderr, "[coopsw-knob] press %s slot=%d (candidate %d of %d) did=%d wall=%lld
+", w->name, (int)a_slot(a), k.nth % n, n, (int)did, wall_ms());
+}
+
 void watch_field(unsigned) {
     if (g_watch.cls < 0) return;
     for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
@@ -721,6 +751,7 @@ void new_level() {
     g_word_t = 0;
     for (int i = 0; i < g_nknob; ++i) g_knob[i].done = false;
     for (int i = 0; i < g_nforge; ++i) g_forge[i].done = false;
+    for (int i = 0; i < g_npress; ++i) g_press[i].done = false;
     g_rec_n = 0;
     g_new_level = false;
     for (int i = 0; i < 2; ++i) g_early[i] = keep[i];
@@ -805,6 +836,8 @@ void on_frame(unsigned now) {
         }
     for (int i = 0; i < g_nforge; ++i)
         if (!g_forge[i].done && g_armed && g_frames >= g_forge[i].frame) { g_forge[i].done = true; knob_forge(g_forge[i].name, now); }
+    for (int i = 0; i < g_npress; ++i)
+        if (!g_press[i].done && g_armed && g_frames >= g_press[i].frame) { g_press[i].done = true; knob_press(g_press[i]); }
     watch_field(now);
     if (g_rec_on) {
         for (int i = 0; i < 3; ++i) if (g_rec_n == i && g_frames >= g_rec[i]) { rec_take(i); ++g_rec_n; if (i == 2) rec_report(); }
