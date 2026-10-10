@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <algorithm>
 #include <chrono>
 #include <vector>
@@ -587,7 +588,8 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     const uint32_t *src = menu_hostimg_scaled(P.hostimg, d[2], d[3]);
     if (!src) return;
     const size_t stride = (size_t)stride_of(w);
-    int f256 = P.hostimg == MENU_IMG_LOGO ? (int)(g_fade * 256.f + 0.5f) : 256;
+    int f256 = (P.hostimg == MENU_IMG_LOGO && !P.nofade) ? (int)(g_fade * 256.f + 0.5f) : 256;
+    const unsigned af = P.alpha ? P.alpha : 255u;     /* ASSET5: the piece's own fade (premultiplied: colour and alpha scale together) */
     /* the plank's own look: selected = lifted, pulsing on the ROM's 8-frame cadence; pressed = sunk and darker */
     const int owns = L->focus >= 0 && L->focus < L->nh && L->hs[L->focus].piece == i;
     /* ASSET3: the recipe's hl bit is the one selection (the ROM cursor, which a mouse hover now drives), so a plank the mouse
@@ -613,10 +615,11 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
             const int px = d[0] + xx;
             if (px < 0 || px >= w) continue;
             const uint32_t c = sr[xx];
-            const unsigned a = c >> 24;
+            unsigned a = c >> 24;
             if (!a) continue;
-            if (a == 255 && f256 == 256 && !boost) { row[px] = c; continue; }   /* the common pixel: opaque, no fade, no lit plank */
+            if (a == 255 && f256 == 256 && !boost && af == 255) { row[px] = c; continue; }   /* the common pixel: opaque, no fade, no lit plank */
             unsigned cr = ((c >> 16) & 255) * f256 >> 8, cg = ((c >> 8) & 255) * f256 >> 8, cb = (c & 255) * f256 >> 8;
+            if (af != 255) { a = (a * af + 127) / 255; cr = (cr * af + 127) / 255; cg = (cg * af + 127) / 255; cb = (cb * af + 127) / 255; }
             if (boost) {   /* brightened by boost/256 (a lit plank keeps its lettering dark), premultiplied, capped at alpha */
                 cr = cr * boost >> 8; cg = cg * boost >> 8; cb = cb * boost >> 8;
                 if (cr > a) cr = a;
@@ -631,13 +634,183 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
         }
     }
 }
+
+/* ---- ASSET5: THE WALLPAPER ------------------------------------------------------------------------------
+   The title lower screen (the touch screen) is a vertical blue gradient with a tiled SUPER MARIO DS outline logo over it (the ROM's three
+   wallpaper sprite objects). The gradient was measured off the ROM's own render (the lower screen at the settled main menu, background
+   pixels only: blue channel at its 255 ceiling, red and green ramping): a straight line from (99, 123, 255) on the top row to
+   (164, 228, 255) on the bottom row (row 96 predicted 131.5, 175.5 against 131.7, 175.4 measured). The pattern is our Super Mario 64 PC
+   art tiled over it at the OG scale (the DS pattern repeats every 64 DS pixels; ours is one 64 unit wide tile) and tinted with the OG ink
+   (measured: ink = bg * 0.58 + (0, 143, 155) * 0.42). The OG wallpaper does not move (identical pixels over 200 frames of the settled
+   menu and through the arrival), so neither does this. Built once per size and parameters, copied per frame. */
+std::vector<uint32_t> g_wall_cache;
+int g_wall_key[10];
+
+void draw_wall(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
+{
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    if (d[2] <= 0 || d[3] <= 0) return;
+    static int kr = -1, kg = 0, kb = 0, kmode = 1;
+    if (kr < 0) {
+        kr = 0; kg = 143; kb = 155;
+        const char *e = getenv("SM64DS_MENU_WALL_INK");     /* r,g,b,mode: tuning (mode 0 = the art's own colours) */
+        if (e && *e) {
+            int a, b, c, m;
+            if (sscanf(e, "%d,%d,%d,%d", &a, &b, &c, &m) == 4) { kr = a; kg = b; kb = c; kmode = m; }
+        }
+    }
+    int key[10] = { d[2], d[3], P.wtw, P.wth, P.wox, P.woy, P.wink, kr, kg * 256 + kb, kmode };
+    if (g_wall_cache.size() != (size_t)d[2] * d[3] || memcmp(key, g_wall_key, sizeof key) != 0) {
+        memcpy(g_wall_key, key, sizeof key);
+        g_wall_cache.assign((size_t)d[2] * d[3], 0xff000000u);
+        static const int bayer[4][4] = { { 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 } };
+        const uint32_t *tile = (P.wtw > 0 && P.wth > 0) ? menu_hostimg_scaled(MENU_IMG_PATTERN, P.wtw, P.wth) : 0;
+        for (int y = 0; y < d[3]; ++y) {
+            const float v = (y + 0.5f) / d[3];
+            const float gr = 99.f + 65.f * v, gg = 123.f + 105.f * v, gb = 255.f;
+            const int ty = tile ? (((y - P.woy) % P.wth) + P.wth) % P.wth : 0;
+            for (int x = 0; x < d[2]; ++x) {
+                const float dz = (bayer[y & 3][x & 3] - 7.5f) / 16.f;
+                float r = gr + dz, g = gg + dz, b = gb + dz;
+                if (tile) {
+                    const int tx = (((x - P.wox) % P.wtw) + P.wtw) % P.wtw;
+                    const uint32_t tp = tile[(size_t)ty * P.wtw + tx];
+                    const unsigned ta = tp >> 24;
+                    if (ta) {
+                        const float m = ta * (float)P.wink / (255.f * 255.f);
+                        if (kmode == 0) {   /* the art's own colours (premultiplied) over the gradient */
+                            const float pa = m;
+                            r = r * (1.f - pa) + (float)((tp >> 16) & 255) * (float)P.wink / 255.f;
+                            g = g * (1.f - pa) + (float)((tp >> 8) & 255) * (float)P.wink / 255.f;
+                            b = b * (1.f - pa) + (float)(tp & 255) * (float)P.wink / 255.f;
+                        } else {
+                            r += (kr - r) * m; g += (kg - g) * m; b += (kb - b) * m;
+                        }
+                    }
+                }
+                int ir = (int)(r + 0.5f), ig = (int)(g + 0.5f), ib = (int)(b + 0.5f);
+                ir = ir < 0 ? 0 : ir > 255 ? 255 : ir; ig = ig < 0 ? 0 : ig > 255 ? 255 : ig; ib = ib < 0 ? 0 : ib > 255 ? 255 : ib;
+                g_wall_cache[(size_t)y * d[2] + x] = 0xff000000u | ((uint32_t)ir << 16) | ((uint32_t)ig << 8) | (uint32_t)ib;
+            }
+        }
+    }
+    const size_t stride = (size_t)stride_of(w);
+    for (int yy = 0; yy < d[3]; ++yy) {
+        const int py = d[1] + yy;
+        if (py < 0 || py >= h) continue;
+        const int xa = d[0] < 0 ? -d[0] : 0, xb = d[0] + d[2] > w ? w - d[0] : d[2];
+        if (xb > xa) memcpy(dst + (size_t)py * stride + d[0] + xa, &g_wall_cache[(size_t)yy * d[2] + xa], (size_t)(xb - xa) * 4);
+    }
+}
+
+/* ---- ASSET5: THE STAR IRIS ------------------------------------------------------------------------------
+   Black outside a five-pointed star, the title iris. The ROM draws it as a 3D sprite whose edge carries a dark seam; this is the same shape
+   (measured off the ROM frames: outer / inner vertex ratio 0.5306, one point straight up, the star centre a little below its pivot because
+   the sprite geometry sits off its origin, fitted to 1.7 percent edge error) drawn at the window's own resolution with a clean
+   anti-aliased edge: 4 sub-rows per pixel row, exact horizontal span coverage. Pixels inside keep what is under them. */
+void draw_iris(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
+{
+    const MenuPiece &P = L->p[i];
+    const size_t stride = (size_t)stride_of(w);
+    const float R = P.ir16 / 16.f;
+    if (R <= 0.f) {   /* nothing open yet: all black, or (alpha 1..254) a black veil of that opacity (the fade in of a returning page) */
+        const unsigned k = P.alpha && P.alpha < 255 ? 255u - P.alpha : 0u;
+        for (int y = 0; y < h; ++y) {
+            uint32_t *row = dst + (size_t)y * stride;
+            if (!k) { for (int x = 0; x < w; ++x) row[x] = 0xff000000u; continue; }
+            for (int x = 0; x < w; ++x) {
+                const uint32_t o = row[x];
+                row[x] = 0xff000000u | ((((o >> 16) & 255) * k / 255) << 16) | ((((o >> 8) & 255) * k / 255) << 8) | ((o & 255) * k / 255);
+            }
+        }
+        return;
+    }
+    const float rho = 0.5306f;
+    float vx[10], vy[10];
+    for (int k = 0; k < 10; ++k) {
+        const float a = (-90.f + 36.f * k) * 3.14159265f / 180.f, rad = (k & 1) ? R * rho : R;
+        vx[k] = P.icx + rad * cosf(a);
+        vy[k] = P.icy + rad * sinf(a);
+    }
+    float ymin = vy[0], ymax = vy[0];
+    for (int k = 1; k < 10; ++k) { if (vy[k] < ymin) ymin = vy[k]; if (vy[k] > ymax) ymax = vy[k]; }
+    static std::vector<float> cov;
+    if ((int)cov.size() < w) cov.resize((size_t)w);
+    const int SS = 4;
+    for (int y = 0; y < h; ++y) {
+        uint32_t *row = dst + (size_t)y * stride;
+        if (y + 1 <= ymin || y >= ymax) {       /* the whole row is outside the star */
+            for (int x = 0; x < w; ++x) row[x] = 0xff000000u;
+            continue;
+        }
+        std::fill(cov.begin(), cov.begin() + w, 0.f);
+        for (int s = 0; s < SS; ++s) {
+            const float sy = y + (s + 0.5f) / SS;
+            float xs[10]; int n = 0;
+            for (int k = 0; k < 10; ++k) {
+                const int k2 = (k + 1) % 10;
+                const float y0 = vy[k], y1 = vy[k2];
+                if ((y0 <= sy && y1 > sy) || (y1 <= sy && y0 > sy)) xs[n++] = vx[k] + (sy - y0) * (vx[k2] - vx[k]) / (y1 - y0);
+            }
+            std::sort(xs, xs + n);
+            for (int q = 0; q + 1 < n; q += 2) {
+                float a = xs[q], b = xs[q + 1];
+                if (b <= 0.f || a >= (float)w) continue;
+                if (a < 0.f) a = 0.f;
+                if (b > (float)w) b = (float)w;
+                const int ia = (int)a, ib = (int)b;
+                if (ia == ib) { cov[ia] += (b - a) / SS; continue; }
+                cov[ia] += ((ia + 1) - a) / SS;
+                for (int x = ia + 1; x < ib; ++x) cov[x] += 1.f / SS;
+                if (ib < w) cov[ib] += (b - ib) / SS;
+            }
+        }
+        for (int x = 0; x < w; ++x) {
+            const float c = cov[x];
+            if (c >= 0.999f) continue;
+            if (c <= 0.001f) { row[x] = 0xff000000u; continue; }
+            const uint32_t o = row[x];
+            const unsigned k = (unsigned)(c * 256.f + 0.5f);
+            row[x] = 0xff000000u | ((((o >> 16) & 255) * k >> 8) << 16) | ((((o >> 8) & 255) * k >> 8) << 8) | ((o & 255) * k >> 8);
+        }
+    }
+}
 }  // namespace
+
+/* the star's own geometry, shared by the draw and the coverage test: outer vertex radius R, inner vertex radius R * rho, one point straight up */
+static int iris_star_inside(float px, float py, float cx, float cy, float R)
+{
+    const float rho = 0.5306f, pi = 3.14159265f;
+    const float dx = px - cx, dy = py - cy;
+    const float r = sqrtf(dx * dx + dy * dy);
+    if (r < 1e-3f) return 1;
+    float phi = atan2f(dx, -dy);                       /* 0 = up, clockwise */
+    const float sector = 2.f * pi / 5.f;
+    phi = fmodf(phi + 20.f * pi, sector);
+    if (phi > sector * 0.5f) phi = sector - phi;       /* 0 .. 36 degrees from the nearest point's axis */
+    const float p0x = R, p0y = 0.f, p1x = rho * R * cosf(sector * 0.5f), p1y = rho * R * sinf(sector * 0.5f);
+    const float ux = cosf(phi), uy = sinf(phi), ex = p1x - p0x, ey = p1y - p0y;
+    const float den = ux * ey - uy * ex;
+    if (den > -1e-6f && den < 1e-6f) return 1;
+    return r <= (p0x * ey - p0y * ex) / den;
+}
+
+extern "C++" int menu_iris_covers(int w, int h, float cx, float cy, float R)
+{
+    if (R <= 0.f) return 0;
+    for (int x = 0; x <= w; x += 4) if (!iris_star_inside((float)x, 0.f, cx, cy, R) || !iris_star_inside((float)x, (float)h, cx, cy, R)) return 0;
+    for (int y = 0; y <= h; y += 4) if (!iris_star_inside(0.f, (float)y, cx, cy, R) || !iris_star_inside((float)w, (float)y, cx, cy, R)) return 0;
+    return iris_star_inside((float)w, (float)h, cx, cy, R) && iris_star_inside(0.f, 0.f, cx, cy, R);
+}
 
 void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
 {
     if (!S || !dst || i < 0 || i >= L->np) return;
     const MenuPiece &P = L->p[i];
     if (P.nodraw) return;
+    if (P.src == SRC_HOSTIMG && P.wall) { draw_wall(L, i, dst, w, h); return; }
+    if (P.src == SRC_HOSTIMG && P.iris) { draw_iris(L, i, dst, w, h); return; }
     if (P.src == SRC_HOSTIMG) { draw_hostimg(L, i, dst, w, h); return; }
     if (P.hostgrad) { draw_hostgrad(L, i, S, dst, w, h); return; }
     const int *d = L->dest[i];
@@ -700,6 +873,14 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
                         const int ex = (qx - S->pic_rx) * 256 / S->pic_rw, ey = (qy - S->pic_ry) * 192 / S->pic_rh;
                         if (ex >= P.ex.x && ex < P.ex.x + P.ex.w && ey >= P.ex.y && ey < P.ex.y + P.ex.h) continue;
                     }
+                }
+                if (P.alpha && P.alpha < 255) {   /* ASSET5: a faded piece (the face fade-in) blends over what is there */
+                    const uint32_t c = prow[qx], o = row[xx];
+                    const unsigned pa = P.alpha, ia = 255 - pa;
+                    const unsigned r = (((c >> 16) & 255) * pa + ((o >> 16) & 255) * ia + 127) / 255, g = (((c >> 8) & 255) * pa + ((o >> 8) & 255) * ia + 127) / 255,
+                                   b = ((c & 255) * pa + (o & 255) * ia + 127) / 255;
+                    row[xx] = 0xff000000u | (r << 16) | (g << 8) | b;
+                    continue;
                 }
                 row[xx] = prow[qx] | 0xff000000u;
             }
@@ -1008,6 +1189,59 @@ static double g_cost_draw_us, g_cost_prep_us;
 static int g_cost_n;
 void hal_menu_note_cost(double prep_us) { g_cost_prep_us += prep_us; }
 
+/* ASSET5 proof knob (SM64DS_MENU_SHOTS=a,b,c or a-b:step): the menu picture as drawn (after the pieces, before the focus outline) is written
+   as shot_<core frame>.bmp (24-bit, top-down) in the working directory on those core frames (hal_menu_frame_begin count, 1 = the first
+   frame). Off unless the variable is set; one cached getenv otherwise. */
+static void menu_shot_maybe(const uint32_t *dst, int w, int h)
+{
+    static int parsed = 0;
+    static int lo[16], hi[16], st[16], n = 0;
+    if (!parsed) {
+        parsed = 1;
+        const char *e = getenv("SM64DS_MENU_SHOTS");
+        while (e && *e && n < 16) {
+            char *q;
+            const int a = (int)strtol(e, &q, 10);
+            if (q == e) break;
+            lo[n] = hi[n] = a; st[n] = 1;
+            if (*q == '-') { e = q + 1; hi[n] = (int)strtol(e, &q, 10); st[n] = 1; if (*q == ':') { e = q + 1; st[n] = (int)strtol(e, &q, 10); if (st[n] < 1) st[n] = 1; } }
+            ++n;
+            if (*q != ',') break;
+            e = q + 1;
+        }
+    }
+    if (!n) return;
+    int hit = 0;
+    for (int k = 0; k < n; ++k)
+        if ((int)g_frame >= lo[k] && (int)g_frame <= hi[k] && ((int)g_frame - lo[k]) % st[k] == 0) hit = 1;
+    if (!hit) return;
+    const int stride = g_dst_stride > 0 ? g_dst_stride : w;
+    char name[64];
+    snprintf(name, sizeof name, "shot_%04u.bmp", g_frame);
+    FILE *f = fopen(name, "wb");
+    if (!f) return;
+    const int rowb = (w * 3 + 3) & ~3;
+    unsigned char hd[54] = { 'B', 'M' };
+    const unsigned sz = 54u + (unsigned)rowb * (unsigned)h;
+    memcpy(hd + 2, &sz, 4);
+    const unsigned off = 54; memcpy(hd + 10, &off, 4);
+    const unsigned bi = 40; memcpy(hd + 14, &bi, 4);
+    memcpy(hd + 18, &w, 4);
+    const int nh = -h; memcpy(hd + 22, &nh, 4);
+    hd[26] = 1; hd[28] = 24;
+    fwrite(hd, 1, 54, f);
+    unsigned char *row = (unsigned char *)calloc(1, (size_t)rowb);
+    for (int y = 0; y < h && row; ++y) {
+        for (int x = 0; x < w; ++x) {
+            const uint32_t p = dst[(size_t)y * stride + x];
+            row[x * 3] = (unsigned char)p; row[x * 3 + 1] = (unsigned char)(p >> 8); row[x * 3 + 2] = (unsigned char)(p >> 16);
+        }
+        fwrite(row, 1, (size_t)rowb, f);
+    }
+    free(row);
+    fclose(f);
+}
+
 void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 {
     if (!g_live || !dst || g_cur.stage != stage) return;
@@ -1092,6 +1326,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
         }
     }
     for (int i = 0; i < g_cur.np; ++i) menu_piece_draw(&g_cur, i, S, dst, w, h);
+    menu_shot_maybe(dst, w, h);
     if (g_cur.focus >= 0 && g_focus_shown && !g_cur.no_focus_paint && g_cur.focus < g_cur.nh && g_cur.p[g_cur.hs[g_cur.focus].piece].src != SRC_HOSTIMG)
         menu_highlight_paint(&g_cur, dst, w, h, g_frame);
     g_drawn = g_cur;

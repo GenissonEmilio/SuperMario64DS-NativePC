@@ -104,6 +104,18 @@ struct MenuPiece {
   /* ASSET4 (appended): nodraw = a touch-only piece (maps clicks, draws nothing). has_ex / ex = a keycover piece skips the 3D pixels
      inside the DS source rect ex (so a whole-layer piece never contains another piece's element, here the wrench). */
   uint8_t nodraw, has_ex; DsRect ex;
+  /* ASSET5 (appended): THE TITLE CHOREOGRAPHY.
+     alpha: 0 = opaque; 1..254 = a hostimg or keycover piece is drawn at alpha/255 (the logo's fades, the face's fade-in).
+     nofade: a hostimg piece ignores the engine-B sky fade factor (the sky is no longer engine B's).
+     wall: an SRC_HOSTIMG piece that is the WALLPAPER (dest = the fixed host rect fx, fy, fw, fh): the DS lower screen's own gradient
+     (measured from the ROM's render, a straight ramp top to bottom, dithered) with the "Super Mario 64 PC" pattern tiled over it.
+     The pattern tile is wtw x wth host pixels, its origin wox, woy from the dest rect's corner; wink is the ink's opacity (0..255).
+     The finished wallpaper is cached per size and copied per frame.
+     iris: a piece that blackens everything OUTSIDE a five-pointed star (the title's star iris, drawn clean at the window's resolution
+     with an anti-aliased edge): centre icx, icy in host pixels, outer radius ir16 in 1/16 host pixels (0 = all black). */
+  uint8_t alpha, nofade, wall, iris, wink;
+  short wtw, wth, wox, woy;
+  int icx, icy, ir16;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
@@ -240,6 +252,9 @@ int  menu_autocrop_rect(const MenuPiece *p, const MenuSources *src, DsRect *out)
 void menu_dim(uint32_t *dst, int w, int h, int evy);
 int  menu_wide(const MenuLayout *L);                                 /* canvas_w >= MENU_WIDE_CANVAS */
 int  menu_selftest(void);                                            /* 0 = all PASS */
+/* ASSET5: 1 when the star of the iris piece (outer radius R host pixels, centre cx, cy) contains the whole w x h picture
+   (the star is star-shaped about its centre, so it contains the picture exactly when it contains the picture's border) */
+int  menu_iris_covers(int w, int h, float cx, float cy, float R);
 
 #ifdef __cplusplus
 extern "C" {

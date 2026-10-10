@@ -8,16 +8,21 @@
 #include <string.h>
 #include <vector>
 
-extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[];
-extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len;
+extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[], g_menu_png_pattern[];
+extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len, g_menu_png_pattern_len;
 
 namespace {
 
 struct Img {
     int tried = 0, w = 0, h = 0;
     std::vector<uint32_t> px;           /* premultiplied, source size */
-    int cw = 0, ch = 0;                 /* the cached scaled size */
+    /* ASSET5: TWO cached scaled sizes (the title's logo is drawn big and, after the choreography, small; a size change must not
+       cost a rescale every frame) */
+    int cw = 0, ch = 0;                 /* the cached scaled size, slot 0 */
     std::vector<uint32_t> scaled;
+    int cw1 = 0, ch1 = 0;               /* slot 1 */
+    std::vector<uint32_t> scaled1;
+    int last_slot = 0;                  /* the slot filled last (the other one is replaced next) */
 };
 Img g_img[MENU_IMG_COUNT];
 struct Src { const char *file; const unsigned char *emb; const unsigned *len; };
@@ -29,6 +34,7 @@ const Src kSrc[MENU_IMG_COUNT] = {
     { "btn_rec.png", g_menu_png_btn_rec, &g_menu_png_btn_rec_len },
     { "arrow_up.png", g_menu_png_arrow_up, &g_menu_png_arrow_up_len },
     { "arrow_down.png", g_menu_png_arrow_down, &g_menu_png_arrow_down_len },
+    { "pattern.png", g_menu_png_pattern, &g_menu_png_pattern_len },
 };
 
 bool take(const unsigned char *rgba, int w, int h, Img *I)
@@ -105,7 +111,7 @@ void taps(int sn, int dn, std::vector<Tap> *out)
     }
 }
 
-void scale_to(Img *I, int dw, int dh)
+void scale_to(Img *I, int dw, int dh, std::vector<uint32_t> *outv)
 {
     std::vector<Tap> tx, ty;
     taps(I->w, dw, &tx);
@@ -125,7 +131,7 @@ void scale_to(Img *I, int dw, int dh)
             m[0] = a; m[1] = r; m[2] = g; m[3] = b;
         }
     }
-    I->scaled.assign((size_t)dw * dh, 0);
+    outv->assign((size_t)dw * dh, 0);
     for (int y = 0; y < dh; ++y) {
         const Tap &t = ty[y];
         for (int x = 0; x < dw; ++x) {
@@ -140,10 +146,9 @@ void scale_to(Img *I, int dw, int dh)
             if (ir > ia) ir = ia;
             if (ig > ia) ig = ia;
             if (ib > ia) ib = ia;
-            I->scaled[(size_t)y * dw + x] = ((uint32_t)ia << 24) | ((uint32_t)ir << 16) | ((uint32_t)ig << 8) | (uint32_t)ib;
+            (*outv)[(size_t)y * dw + x] = ((uint32_t)ia << 24) | ((uint32_t)ir << 16) | ((uint32_t)ig << 8) | (uint32_t)ib;
         }
     }
-    I->cw = dw; I->ch = dh;
 }
 
 Img *img_of(int id) { return id >= 1 && id < MENU_IMG_COUNT ? &g_img[id] : 0; }
@@ -170,6 +175,10 @@ extern "C" const uint32_t *menu_hostimg_scaled(int id, int dw, int dh)
 {
     if (!menu_hostimg_ready(id) || dw < 1 || dh < 1 || dw > 8192 || dh > 8192) return 0;
     Img *I = img_of(id);
-    if (I->cw != dw || I->ch != dh || I->scaled.empty()) scale_to(I, dw, dh);
+    if (I->cw == dw && I->ch == dh && !I->scaled.empty()) return &I->scaled[0];
+    if (I->cw1 == dw && I->ch1 == dh && !I->scaled1.empty()) return &I->scaled1[0];
+    /* a miss replaces the slot that was not filled last */
+    if (I->last_slot == 0) { scale_to(I, dw, dh, &I->scaled1); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; return &I->scaled1[0]; }
+    scale_to(I, dw, dh, &I->scaled); I->cw = dw; I->ch = dh; I->last_slot = 0;
     return &I->scaled[0];
 }
