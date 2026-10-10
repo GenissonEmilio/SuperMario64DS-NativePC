@@ -398,9 +398,17 @@ void check_host_gone() {
     if (C.host_left_msg) leave_host_left();
     if (C.host_seat >= 0 && comms_hub_state() == kHubLive) {
         HubSeatInfo si;
+        static ULONGLONG gone_since;
         if (comms_hub_seat_info(C.host_seat, &si) && !si.present) {
-            LOG("the host's seat %d is gone", C.host_seat);
-            leave_host_left();
+            // a console that stalled for a few seconds drops every seat for a
+            // moment and gets them straight back: only a seat that stays gone counts
+            if (!gone_since) gone_since = tick();
+            if (tick() - gone_since >= 1500ULL) {
+                LOG("the host's seat %d is gone", C.host_seat);
+                leave_host_left();
+            }
+        } else {
+            gone_since = 0;
         }
     }
 }
@@ -622,6 +630,7 @@ extern "C" int port_coop_boot_frame(void) {
     service();
     if (C.released) run_forge();
     bool hold = false;
+    static bool said_end;
     const char *why = nullptr;
     if (!C.released) { hold = true; why = "start barrier"; }
     else if (C.arrived && !C.closed) {
@@ -630,6 +639,9 @@ extern "C" int port_coop_boot_frame(void) {
         // faulted the renderer), so the freeze starts after kWarmFrames.
         if (C.warm < kWarmFrames) ++C.warm;
         else { hold = true; why = "opening end barrier"; }
+    } else if (C.arrived && C.closed && !said_end) {
+        said_end = true;
+        if (!C.holding) LOG("RELEASED (end barrier closed before the freeze)");
     }
     if (hold && !C.host) {
         // a guest never waits for ever on a host that is still alive but silent
@@ -646,7 +658,7 @@ extern "C" int port_coop_boot_frame(void) {
     if (hold != C.holding) {
         C.holding = hold;
         LOG(hold ? "HOLD: %s" : "RELEASED (first tick now)%s", hold ? why : "");
-        if (!hold) said_release = true;
+        if (!hold) { said_release = true; if (C.arrived) said_end = true; }
     }
     if (!hold && C.released) {
         if (!said_release) {
