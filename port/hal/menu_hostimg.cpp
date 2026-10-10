@@ -24,7 +24,7 @@ struct Img {
     std::vector<uint32_t> scaled1;
     int last_slot = 0;                  /* the slot filled last (the other one is replaced next) */
 };
-Img g_img[MENU_IMG_COUNT];
+Img g_img[MENU_IMG_EXT_END];
 struct Src { const char *file; const unsigned char *emb; const unsigned *len; };
 const Src kSrc[MENU_IMG_COUNT] = {
     { 0, 0, 0 },
@@ -65,23 +65,29 @@ void load_img(int id)
        means "no picture" (the recipe keeps the DS art) and the embedded copy is NOT used, so the fallback can be proven */
     const char *over = id == MENU_IMG_LOGO ? getenv("SM64DS_MENU_LOGO") : 0;
     const char *dir = getenv("SM64DS_MENU_ART_DIR");
+    const char *efile = 0; const unsigned char *eemb = 0; unsigned elen = 0;
+    const bool ext = id >= MENU_IMG_EXT_BASE && menu_ext_art_src(id, &efile, &eemb, &elen);
+    if (id >= MENU_IMG_COUNT && !ext) return;
+    const char *fname = ext ? efile : kSrc[id].file;
+    const unsigned char *femb = ext ? eemb : kSrc[id].emb;
+    const unsigned flen = ext ? elen : (kSrc[id].len ? *kSrc[id].len : 0);
     if (over && *over) {
         p = stbi_load(over, &w, &h, &comp, 4);
         fprintf(stderr, "[menu] art %d: SM64DS_MENU_LOGO=%s -> %s\n", id, over, p ? "loaded" : "unreadable, DS art kept");
     } else if (dir && *dir && strlen(dir) + 40 < sizeof path) {
-        snprintf(path, sizeof path, "%s/%s", dir, kSrc[id].file);
+        snprintf(path, sizeof path, "%s/%s", dir, fname);
         p = stbi_load(path, &w, &h, &comp, 4);
         fprintf(stderr, "[menu] art %d: %s -> %s\n", id, path, p ? "loaded" : "unreadable, DS art kept");
     } else {
         const char *root = getenv("SM64DS_ASSET_ROOT");
         if (root && *root && strlen(root) + 40 < sizeof path) {
-            snprintf(path, sizeof path, "%s/menu/%s", root, kSrc[id].file);
+            snprintf(path, sizeof path, "%s/menu/%s", root, fname);
             p = stbi_load(path, &w, &h, &comp, 4);
             if (p) fprintf(stderr, "[menu] art %d: kit file %s (%dx%d)\n", id, path, w, h);
         }
         if (!p) {
-            p = stbi_load_from_memory(kSrc[id].emb, (int)*kSrc[id].len, &w, &h, &comp, 4);
-            if (p) fprintf(stderr, "[menu] art %d: embedded copy %s (%dx%d)\n", id, kSrc[id].file, w, h);
+            p = stbi_load_from_memory(femb, (int)flen, &w, &h, &comp, 4);
+            if (p) fprintf(stderr, "[menu] art %d: embedded copy %s (%dx%d)\n", id, fname, w, h);
         }
     }
     if (p) {
@@ -155,7 +161,7 @@ void scale_to(Img *I, int dw, int dh, std::vector<uint32_t> *outv)
     }
 }
 
-Img *img_of(int id) { return id >= 1 && id < MENU_IMG_COUNT ? &g_img[id] : 0; }
+Img *img_of(int id) { return id >= 1 && id < MENU_IMG_EXT_END ? &g_img[id] : 0; }
 
 }  // namespace
 
@@ -185,4 +191,10 @@ extern "C" const uint32_t *menu_hostimg_scaled(int id, int dw, int dh)
     if (I->last_slot == 0) { scale_to(I, dw, dh, &I->scaled1); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; return &I->scaled1[0]; }
     scale_to(I, dw, dh, &I->scaled); I->cw = dw; I->ch = dh; I->last_slot = 0;
     return &I->scaled[0];
+}
+
+/* PAUSE2: the ids the compose treats as planks (lit when selected, sunk when pressed) */
+extern "C" int menu_hostimg_is_plank(int id)
+{
+    return (id >= MENU_IMG_BTN_MP && id <= MENU_IMG_BTN_REC) || (id >= MENU_IMG_BTN_SAVE_CONT && id <= MENU_IMG_BTN_CONT) || menu_ext_art_is_plank(id);
 }

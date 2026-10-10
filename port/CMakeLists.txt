@@ -24482,3 +24482,11 @@ foreach(_tsetmenu1 walk_window walk_window_hires)
 endforeach()
 # smoke_player (EXCLUDE_FROM_ALL) links hal/sub_screen.cpp, which calls the page seams: no-op stubs keep it linking without the page.
 target_sources(smoke_player PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_page_stubs.cpp")
+
+# MENU1 / PAUSE2 (run menu1): the pause menu's host-resolution art (res/menu/pause, embedded by tools/embed_pause_art.py) and its
+# registry behind hostimg's extension ids. Own block.
+foreach(_tpause2 walk_window walk_window_hires)
+    target_sources(${_tpause2} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art_data.cpp")
+endforeach()
