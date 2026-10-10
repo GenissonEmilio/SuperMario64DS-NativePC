@@ -532,6 +532,20 @@ bool flush()
     // Once per process: a failing medium must not spam a play log.
     static bool said = false;
 
+    // PROOF KNOB (coop save retry rows): SM64DS_COOPSAVE_FAIL_WRITES=N makes the
+    // first N flushes of this process fail the way a locked temp file does.
+    static int forced_left = -1;
+    if (forced_left < 0) {
+        const char *fw = std::getenv("SM64DS_COOPSAVE_FAIL_WRITES");
+        forced_left = (fw && *fw) ? std::atoi(fw) : 0;
+    }
+    if (forced_left > 0) {
+        --forced_left;
+        ++g_stats.flush_failures;
+        std::fprintf(stderr, "[backup] FORCED flush failure (%d left)\n", forced_left);
+        return false;
+    }
+
     char tmp[1088];
 #ifdef _WIN32
     unsigned long pid = (unsigned long)GetCurrentProcessId();

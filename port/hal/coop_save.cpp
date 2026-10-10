@@ -67,6 +67,12 @@ ULONGLONG g_last_send_ms = 0, g_last_req_ms = 0, g_json_ms = 0;
 bool     g_json_dirty = false;
 unsigned g_seq = 0;
 bool     g_probe_done = false, g_forge_done = false, g_fetched = false;
+// host: a save that did not reach the disk is retried until it does
+bool     g_save_retry = false, g_atexit = false;
+unsigned g_retry_frame = 0, g_fail_seen = 0, g_retry_tries = 0;
+ULONGLONG g_retry_ms = 0;
+constexpr unsigned kRetryFrames = 30;     // bounded backoff: every 30 frames
+constexpr unsigned kRetryMs = 2000;       // and at least every 2 s tick
 
 bool coop() { if (g_coop < 0) g_coop = env_on("SM64DS_COOP") ? 1 : 0; return g_coop == 1; }
 bool host() { if (g_host < 0) g_host = env_on("SM64DS_COOP_HOST") ? 1 : 0; return g_host == 1; }
@@ -209,11 +215,16 @@ void on_ctl(int seat, const unsigned char *d, int len, void *) {
     coop_save_handle(seat, d, len);
 }
 
+void exit_save();
+
 void ensure_init() {
     if (g_init) return;
     g_init = true;
     if (!coop()) return;
-    if (host()) coop_save_prepare();
+    if (host()) {
+        coop_save_prepare();
+        if (!g_atexit) { g_atexit = true; std::atexit(exit_save); }
+    }
     if (!g_external && !g_registered)
         g_registered = hub_on_kind(kHubCoopCtl, on_ctl, nullptr);
     std::fprintf(stderr, "[coopsave] init role=%s handler=%s file=%s\n",
@@ -240,12 +251,60 @@ void write_guest_seed(const uint8_t *host68) {
     ntr::backup::write(0x1000u, img, sizeof img);
 }
 
+bool retry_off() {
+    static int off = -1;
+    if (off < 0) { const char *e = std::getenv("SM64DS_COOPSAVE_NO_RETRY"); off = (e && *e == '1') ? 1 : 0; }
+    return off == 1;
+}
+
+void mark_retry() {
+    if (retry_off()) return;
+    g_save_retry = true;
+    g_retry_frame = g_frame + kRetryFrames;
+    g_retry_ms = GetTickCount64();
+}
+
 void save_live() {
     int ok = _ZN8SaveData8SaveFileEjP12FileSaveData(0, data_0209caa0);
     ++g_st.saves_written;
     std::fprintf(stderr, "[coopsave] saved slot 0 through SaveFile ok=%d stars=%d\n",
                  ok, coop_record_stars(data_0209caa0));
     g_json_dirty = true;
+    g_fail_seen = ntr::backup::stats().flush_failures;
+    if (!ok) {
+        mark_retry();
+    } else if (g_save_retry) {
+        g_save_retry = false;
+        std::fprintf(stderr, "[coopsave] save retry landed after %u tries\n", g_retry_tries);
+        g_retry_tries = 0;
+    }
+}
+
+// A flush that failed anywhere (the ROM's own SaveCurrentFile included) leaves
+// the disk behind the live record: arm the retry.
+void watch_flush_failures() {
+    const unsigned fs = ntr::backup::stats().flush_failures;
+    if (fs != g_fail_seen) {
+        g_fail_seen = fs;
+        if (!g_save_retry) {
+            std::fprintf(stderr, "[coopsave] a save did not reach the disk, will retry\n");
+            mark_retry();
+        }
+    }
+}
+
+// Last synchronous attempt at exit (exit() runs atexit callbacks).
+void exit_save() {
+    if (!coop() || !host() || retry_off()) return;
+    if (live_valid()) {
+        watch_flush_failures();
+        if (g_save_retry) {
+            save_live();
+            if (g_save_retry)
+                std::fprintf(stderr, "[coopsave] EXIT: the coop save did NOT reach the disk "
+                             "(%s); the last merged progress is lost\n", g_sav);
+        }
+    }
 }
 
 // ---- proof drivers ---------------------------------------------------------
@@ -458,6 +517,13 @@ extern "C" void port_coop_save_frame(void) {
             }
         }
         g_host_dirty = false;
+        if (host() && !retry_off()) {
+            watch_flush_failures();
+            if (g_save_retry && (g_frame >= g_retry_frame || GetTickCount64() - g_retry_ms >= kRetryMs)) {
+                ++g_retry_tries;
+                save_live();
+            }
+        }
         uint8_t sn[kCoopRecBytes];
         mask_record(sn, data_0209caa0);
         if (host()) {
