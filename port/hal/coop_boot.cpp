@@ -121,12 +121,57 @@ void send_state() {
 }
 
 // ---- the popup line and the exit -------------------------------------------
+// EVERY user32 / gdi32 CALL HERE IS BOUND AT RUN TIME. A new static DLL import
+// anywhere in walk_window can map over the DS fixed addresses before the TLS
+// callback claims them and break every run (memory: static import trap), so
+// nothing in this file adds an import-table entry.
+struct Gui {
+    HMODULE u = nullptr, g = nullptr;
+    HWND (WINAPI *CreateWindowExA_)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID) = nullptr;
+    BOOL (WINAPI *PeekMessageA_)(LPMSG, HWND, UINT, UINT, UINT) = nullptr;
+    BOOL (WINAPI *TranslateMessage_)(const MSG *) = nullptr;
+    LRESULT (WINAPI *DispatchMessageA_)(const MSG *) = nullptr;
+    BOOL (WINAPI *ShowWindow_)(HWND, int) = nullptr;
+    BOOL (WINAPI *UpdateWindow_)(HWND) = nullptr;
+    int (WINAPI *GetSystemMetrics_)(int) = nullptr;
+    LRESULT (WINAPI *SendMessageA_)(HWND, UINT, WPARAM, LPARAM) = nullptr;
+    HDC (WINAPI *GetDC_)(HWND) = nullptr;
+    int (WINAPI *ReleaseDC_)(HWND, HDC) = nullptr;
+    BOOL (WINAPI *PrintWindow_)(HWND, HDC, UINT) = nullptr;
+    BOOL (WINAPI *GetWindowRect_)(HWND, LPRECT) = nullptr;
+    HFONT (WINAPI *CreateFontA_)(int, int, int, int, int, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, LPCSTR) = nullptr;
+    HDC (WINAPI *CreateCompatibleDC_)(HDC) = nullptr;
+    HBITMAP (WINAPI *CreateDIBSection_)(HDC, const BITMAPINFO *, UINT, void **, HANDLE, DWORD) = nullptr;
+    HGDIOBJ (WINAPI *SelectObject_)(HDC, HGDIOBJ) = nullptr;
+    BOOL (WINAPI *DeleteObject_)(HGDIOBJ) = nullptr;
+    BOOL (WINAPI *DeleteDC_)(HDC) = nullptr;
+    bool ok = false;
+};
+Gui G;
+
+bool gui_load() {
+    if (G.ok) return true;
+    G.u = LoadLibraryA("user32.dll");
+    G.g = LoadLibraryA("gdi32.dll");
+    if (!G.u || !G.g) return false;
+#define BIND(m, f) G.f##_ = reinterpret_cast<decltype(G.f##_)>(GetProcAddress(m, #f)); if (!G.f##_) return false
+    BIND(G.u, CreateWindowExA); BIND(G.u, PeekMessageA); BIND(G.u, TranslateMessage);
+    BIND(G.u, DispatchMessageA); BIND(G.u, ShowWindow); BIND(G.u, UpdateWindow);
+    BIND(G.u, GetSystemMetrics); BIND(G.u, SendMessageA); BIND(G.u, GetDC);
+    BIND(G.u, ReleaseDC); BIND(G.u, PrintWindow); BIND(G.u, GetWindowRect);
+    BIND(G.g, CreateFontA); BIND(G.g, CreateCompatibleDC); BIND(G.g, CreateDIBSection);
+    BIND(G.g, SelectObject); BIND(G.g, DeleteObject); BIND(G.g, DeleteDC);
+#undef BIND
+    G.ok = true;
+    return true;
+}
+
 bool save_window_bmp(HWND w, const char *path) {
     RECT r;
-    if (!GetWindowRect(w, &r)) return false;
+    if (!G.GetWindowRect_(w, &r)) return false;
     const int W = r.right - r.left, H = r.bottom - r.top;
-    HDC sdc = GetDC(nullptr);
-    HDC mdc = CreateCompatibleDC(sdc);
+    HDC sdc = G.GetDC_(nullptr);
+    HDC mdc = G.CreateCompatibleDC_(sdc);
     BITMAPINFO bi;
     std::memset(&bi, 0, sizeof bi);
     bi.bmiHeader.biSize = sizeof bi.bmiHeader;
@@ -135,19 +180,18 @@ bool save_window_bmp(HWND w, const char *path) {
     bi.bmiHeader.biPlanes = 1;
     bi.bmiHeader.biBitCount = 32;
     void *bits = nullptr;
-    HBITMAP bm = CreateDIBSection(sdc, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    HBITMAP bm = G.CreateDIBSection_(sdc, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
     bool ok = false;
     if (bm && bits) {
-        HGDIOBJ old = SelectObject(mdc, bm);
-        ok = PrintWindow(w, mdc, 2 /*PW_RENDERFULLCONTENT*/) != 0;
-        SelectObject(mdc, old);
+        HGDIOBJ old = G.SelectObject_(mdc, bm);
+        ok = G.PrintWindow_(w, mdc, 2 /*PW_RENDERFULLCONTENT*/) != 0;
+        G.SelectObject_(mdc, old);
         if (ok) {
             BITMAPFILEHEADER fh;
             std::memset(&fh, 0, sizeof fh);
             fh.bfType = 0x4D42;
             fh.bfOffBits = sizeof fh + sizeof bi.bmiHeader;
             fh.bfSize = fh.bfOffBits + (DWORD)(W * H * 4);
-            bi.bmiHeader.biHeight = -H;
             if (std::FILE *f = std::fopen(path, "wb")) {
                 std::fwrite(&fh, sizeof fh, 1, f);
                 std::fwrite(&bi.bmiHeader, sizeof bi.bmiHeader, 1, f);
@@ -156,43 +200,46 @@ bool save_window_bmp(HWND w, const char *path) {
             } else ok = false;
         }
     }
-    if (bm) DeleteObject(bm);
-    DeleteDC(mdc);
-    ReleaseDC(nullptr, sdc);
+    if (bm) G.DeleteObject_(bm);
+    G.DeleteDC_(mdc);
+    G.ReleaseDC_(nullptr, sdc);
     return ok;
 }
 
 // One plain line on top of everything for 3 s, then the process ends. The
-// proofs park it off screen (SM64DS_COOPBOOT_POPUP_POS=x,y) and read it back
-// with SM64DS_COOPBOOT_POPUP_SHOT=<bmp path>.
+// proofs read it back with SM64DS_COOPBOOT_POPUP_SHOT=<bmp path>.
 [[noreturn]] void leave(int code, const char *line) {
     if (C.exiting) ExitProcess((UINT)code);
     C.exiting = true;
     LOG("%s (exit code %d)", line, code);
-    int x = 0, y = 0;
-    const int W = 460, H = 64;
-    x = (GetSystemMetrics(SM_CXSCREEN) - W) / 2;
-    y = (GetSystemMetrics(SM_CYSCREEN) - H) / 2;
-    if (const char *p = std::getenv("SM64DS_COOPBOOT_POPUP_POS")) std::sscanf(p, "%d,%d", &x, &y);
-    HWND w = CreateWindowExA(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, "STATIC", line,
-                             WS_POPUP | WS_VISIBLE | WS_BORDER | SS_CENTER | SS_CENTERIMAGE,
-                             x, y, W, H, nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
-    if (w) {
-        HFONT f = CreateFontA(26, 0, 0, 0, FW_BOLD, 0, 0, 0, DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, "Segoe UI");
-        if (f) SendMessageA(w, WM_SETFONT, (WPARAM)f, TRUE);
-        ShowWindow(w, SW_SHOWNOACTIVATE);
-        UpdateWindow(w);
+    const bool gui = gui_load();
+    HWND w = nullptr;
+    if (gui) {
+        const int W = 460, H = 64;
+        int x = (G.GetSystemMetrics_(SM_CXSCREEN) - W) / 2;
+        int y = (G.GetSystemMetrics_(SM_CYSCREEN) - H) / 2;
+        w = G.CreateWindowExA_(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, "STATIC", line,
+                               WS_POPUP | WS_VISIBLE | WS_BORDER | SS_CENTER | SS_CENTERIMAGE,
+                               x, y, W, H, nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
+        if (w) {
+            HFONT f = G.CreateFontA_(26, 0, 0, 0, FW_BOLD, 0, 0, 0, DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, "Segoe UI");
+            if (f) G.SendMessageA_(w, WM_SETFONT, (WPARAM)f, TRUE);
+            G.ShowWindow_(w, SW_SHOWNOACTIVATE);
+            G.UpdateWindow_(w);
+        }
     }
     const ULONGLONG t0 = tick();
     bool shot = false;
     while (tick() - t0 < 3000) {
-        MSG m;
-        while (PeekMessageA(&m, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&m); DispatchMessageA(&m); }
-        if (w && !shot && tick() - t0 > 400) {
-            shot = true;
-            if (const char *s = std::getenv("SM64DS_COOPBOOT_POPUP_SHOT")) {
-                bool ok = save_window_bmp(w, s);
-                LOG("popup picture %s", ok ? "saved" : "FAILED");
+        if (gui) {
+            MSG m;
+            while (G.PeekMessageA_(&m, nullptr, 0, 0, PM_REMOVE)) { G.TranslateMessage_(&m); G.DispatchMessageA_(&m); }
+            if (w && !shot && tick() - t0 > 400) {
+                shot = true;
+                if (const char *s = std::getenv("SM64DS_COOPBOOT_POPUP_SHOT")) {
+                    bool ok = save_window_bmp(w, s);
+                    LOG("popup picture %s", ok ? "saved" : "FAILED");
+                }
             }
         }
         Sleep(15);
