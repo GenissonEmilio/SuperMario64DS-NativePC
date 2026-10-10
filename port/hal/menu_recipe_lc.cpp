@@ -25,6 +25,7 @@
  *               ROM's own Stage::UpdateMenuButtons, A is handed to LC_Update as Start.
  */
 #include "menu_compose.h"
+#include "menu_hostimg.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,6 +43,7 @@ extern unsigned char data_0209f22c;   /* LC_Update's own wait */
 extern unsigned char data_0209f244;   /* the chosen plate's blink */
 void _ZN5Stage17UpdateMenuButtonsEb(int b);
 void func_02012790(int id);
+int GetOwnerLanguage(void);
 }
 
 namespace {
@@ -245,6 +247,201 @@ int rom_cursor_lc(int dir, int *sel_out)
 }
 
 }  // namespace
+
+/* ====================================================================================================================
+   RECIPE lc2: THE SAVE SCREEN IN N64 ORDER (run menu1, lane SAVE2), behind OneScreenMenus. SaveMenuOnTop alone is recipe lc
+   above and is not touched.
+
+   Tango: COURSE n, the star line, the coin total centred, the ROM's HIGH SCORE banner above when the coin record is beaten,
+   then the three choices as high-res planks (the DS font, our art) underneath, smaller so the game shows through.
+
+   WHAT IS MOVED, per layer, as host-row bands (the same mechanism as lc: hal/message_compositor.cpp lifts a band's pixels out
+   of the picture and the compose puts them back where this recipe says; only rows move, the glyphs are the ROM's own):
+     BG3 [35,64)   COURSE n and the course name        (glyph rows 36..46 and 52..62, measured)
+     BG3 [82,95)   the star line with its star icon    (glyph rows 83..93)
+     BG3 [97,114)  CLEAR!                              lifted and not drawn: the N64 order has no such line
+     OBJ banner    the ROM's own HIGH SCORE art (LC_Render, the OAM at DS y 0x80; its flashing is the ROM's own palette
+                   rotation, LC_Render's LoadOBJPltt on data_0209f2a8), only when data_0209f2b0 says the record was beaten
+     OBJ coins     the coin total (Stage::Render: COIN, TIMES and the number, DS y 0x80, +0x10 under the banner)
+     OBJ [162,192) the two bouncing arrows that point at the touch screen: lifted and not drawn (there is no touch screen)
+   A castle star or secret course (SublevelToLevel >= 0xf) puts the total 0x10 rows higher (src/_ZN5Stage6RenderEv.cpp:146).
+   (Rows measured on the 4x picture of the base exe, lvl6 star, with and without a record.)
+
+   THE PLANKS replace the ROM's BG1 plates (not drawn). English only: the lettering is the DS font pre-rendered by
+   tools/prepare_lc_art.py; any other language keeps the ROM's own plates (the localised lettering), scaled to 2/3, in the
+   same place. Clicks map proportionally into the ROM's own three boxes (LC_Update case 3: x 8..247, rows 0x28, 0x50, 0x78,
+   0x20 tall), so they reach the ROM exactly as the stylus would. The pad moves the ROM's own chosen plate
+   (data_0209f2e0 through Stage::UpdateMenuButtons); the mouse does the same by hover (facts() below, logic thread). The
+   game's small arrow stands over the chosen plank, centred.
+   ==================================================================================================================== */
+namespace {
+
+int g_lc2_frame;
+unsigned g_lc2_hov_seen;
+
+int up_lc2(int scene_id)
+{
+    if (scene_id == MENU_SCENE_GATED || !lc_pair()) return 0;
+    return 1 + (data_0209f2b0 != 0) + 2 * (SublevelToLevel(data_02092124) >= 0xf);
+}
+
+/* the ROM reads the pad in LC_Update case 3 only (see pad_ok_lc); the same gate for the hover cursor */
+int lc2_cursor_live(void)
+{
+    return data_0209f20c != 0 && data_0209f2d4 == 3 && data_0209f22c == 0 && data_0209f244 == 0;
+}
+
+void set_chosen(int sel)
+{
+    const int last = data_0209f2b4 ? data_0209f2b4 - 1 : 0;
+    if (sel < 0 || sel > last || sel == (int)data_0209f2e0) return;
+    data_0209f2e0 = (unsigned char)sel;
+    _ZN5Stage17UpdateMenuButtonsEb(0);
+}
+
+/* the cursor starts on Save and Continue (the ROM's own: LC_Update case 0 sets data_0209f2e0 = 0), so the first press already moves */
+int rom_cursor_lc2(int dir, int *sel_out)
+{
+    if (dir != MENU_DIR_UP && dir != MENU_DIR_DOWN) return 0;
+    const int last = data_0209f2b4 ? data_0209f2b4 - 1 : 0;
+    int sel = data_0209f2e0;
+    int moved = 0;
+    if (dir == MENU_DIR_UP && sel > 0) { --sel; moved = 1; }
+    else if (dir == MENU_DIR_DOWN && sel < last) { ++sel; moved = 1; }
+    if (moved) {
+        data_0209f2e0 = (unsigned char)sel;
+        _ZN5Stage17UpdateMenuButtonsEb(0);
+        func_02012790(0x12e);
+    }
+    if (sel_out) *sel_out = sel;
+    return moved;
+}
+
+void facts_lc2(MenuFacts *f)
+{
+    f->language = (int16_t)GetOwnerLanguage();
+    /* MOUSE HOVER: a pointer that moved onto a hotspot makes its plate the ROM's chosen one (silent), so the lit plank, the
+       arrow and a later Enter all name the same plate */
+    int hx, hy;
+    unsigned st;
+    if (hal_menu_hover_box(&hx, &hy, &st) && st != g_lc2_hov_seen) {
+        g_lc2_hov_seen = st;
+        if (lc2_cursor_live() && hy >= kMenuFirstRow && hy < kMenuLastRow) set_chosen((hy - kMenuFirstRow) / kPlatePitch);
+    }
+    f->spare[0] = data_0209f2e0;
+    f->spare[1] = ++g_lc2_frame;
+}
+
+void build_lc2(int variant, MenuLayout *L)
+{
+    const int record = (variant - 1) & 1, high = ((variant - 1) >> 1) & 1;
+    const int W = L->w, H = L->h;
+    if (W < 96 || H < 96) return;
+    auto U = [L](int u) { return (int)((long long)u * L->unum / L->uden); };
+    auto hrow = [H](int r) { return (r * H + SUB_H - 1) / SUB_H; };
+    const int sh = high ? kCoinHighShift : 0;
+    const bool planks = L->facts.language <= 1 && menu_hostimg_ready(MENU_IMG_BTN_SAVE_CONT) &&
+                        menu_hostimg_ready(MENU_IMG_BTN_SAVE_QUIT) && menu_hostimg_ready(MENU_IMG_BTN_CONT);
+    const bool arrow = menu_hostimg_ready(MENU_IMG_ARROW_DOWN);
+    const int sel = (L->facts.spare[0] >= 0 && L->facts.spare[0] <= 2) ? L->facts.spare[0] : 0;
+
+    /* the source bands, DS rows */
+    const int a0 = 35, a1 = 64, b0 = 82, b1 = 95, c0 = 97, c1 = 114;
+    const int ban0 = 0x77 - sh, ban1 = 0x8d - sh;                       /* HIGH SCORE (record only) */
+    const int coin0 = (record ? 0x8d : 0x7a) - sh, coin1 = (record ? 0xa1 : 0x90) - sh;
+    const int arr0 = 162, arr1 = 192;
+    const int hA = hrow(a1) - hrow(a0), hB = hrow(b1) - hrow(b0);
+    const int hBan = record ? hrow(ban1) - hrow(ban0) : 0, hCoin = hrow(coin1) - hrow(coin0);
+    /* the plates: one size, a stack */
+    const int pw = U(140), ph = pw * 2 / 15, pgap = U(6);
+    int plates_h;
+    int fbw = 0, fbh = 0;                                               /* the ROM plates' dest size (non-English) */
+    if (planks) {
+        plates_h = 3 * ph + 2 * pgap;
+    } else {
+        fbw = U(256) * 2 / 3;
+        fbh = U(kMenuRows) * 2 / 3;
+        plates_h = fbh;
+    }
+    const int g1 = U(3), g2 = U(3), g3 = U(5), g4 = U(7);
+    int T = hA + g2 + hB + g3 + hCoin + g4 + plates_h;
+    if (record) T += hBan + g1;
+    int y = (H - T) / 2;
+    if (y < U(4)) y = U(4);
+
+    auto band = [&](uint8_t layers, int r0, int r1, int dest_y, bool draw) {
+        MenuPiece b = menu_piece_make(SRC_TOP_HOSTROW, 0, hrow(r0), W, hrow(r1) - hrow(r0), MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        b.layers = layers;
+        b.nodraw = draw ? 0 : 1;
+        b.lden = 1; b.lnum = 1;
+        b.fx = 0; b.fy = (short)dest_y; b.fw = (short)W; b.fh = (short)b.s.h;
+        menu_add_piece(L, b);
+    };
+    band(MENU_L_BG3, c0, c1, 0, false);                                 /* CLEAR! */
+    band(MENU_L_OBJ, arr0, arr1, 0, false);                             /* the touch-screen arrows */
+    int yy = y;
+    if (record) { band(MENU_L_OBJ, ban0, ban1, yy, true); yy += hBan + g1; }
+    band(MENU_L_BG3, a0, a1, yy, true); yy += hA + g2;
+    band(MENU_L_BG3, b0, b1, yy, true); yy += hB + g3;
+    band(MENU_L_OBJ, coin0, coin1, yy, true); yy += hCoin + g4;
+    const int py0 = yy;
+
+    int hs_top[3] = { 0, 0, 0 };
+    const int hs_cx = W / 2;
+    if (planks) {
+        static const int kImg[3] = { MENU_IMG_BTN_SAVE_CONT, MENU_IMG_BTN_SAVE_QUIT, MENU_IMG_BTN_CONT };
+        for (int k = 0; k < 3; ++k) {
+            MenuPiece pl = menu_piece_make(SRC_HOSTIMG, 8, kMenuFirstRow + k * kPlatePitch, 240, 0x20, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            pl.hostimg = (uint8_t)kImg[k];
+            pl.touch = 1;
+            pl.lden = 1; pl.lnum = 1;
+            pl.fw = (short)pw; pl.fh = (short)ph;
+            pl.fx = (short)((W - pw) / 2);
+            pl.fy = (short)(py0 + k * (ph + pgap));
+            hs_top[k] = pl.fy;
+            if (k == sel) pl.hl = 1;
+            const int ip = menu_add_piece(L, pl);
+            menu_add_hotspot(L, ip, 8, kMenuFirstRow + k * kPlatePitch, 240, 0x20, k);
+        }
+    } else {
+        /* the ROM's own plates at 2/3, host-fixed like lc's: dest pixel -> source = floor(pixel * 3 uden / (2 unum)) */
+        MenuPiece p = menu_piece_make(SRC_SUB, 0, kMenuFirstRow, SUB_W, kMenuRows, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        p.layers = MENU_L_BG0 | MENU_L_BG1;
+        p.key_backdrop = 1;
+        p.row_ok = menu_plate_row;
+        p.touch = 1;
+        p.fx = (short)((W - fbw) / 2); p.fy = (short)py0; p.fw = (short)fbw; p.fh = (short)fbh;
+        p.lnum = 2 * L->unum; p.lden = 3 * L->uden;
+        const int pi = menu_add_piece(L, p);
+        for (int b = 0; b < 3; ++b) {
+            menu_add_hotspot(L, pi, 0, kMenuFirstRow + b * kPlatePitch, SUB_W, 0x20, b);
+            hs_top[b] = py0 + (b * kPlatePitch) * fbh / kMenuRows;
+        }
+    }
+    if (arrow) {
+        static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
+        const int bob2 = kBob[L->facts.spare[1] & 7];
+        int iw = 1, ih = 1;
+        menu_hostimg_size(MENU_IMG_ARROW_DOWN, &iw, &ih);
+        const int aw = U(14), ah = (int)((long long)aw * ih / iw);
+        MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_DOWN; ar.lden = 1; ar.lnum = 1; ar.fw = (short)aw; ar.fh = (short)ah;
+        ar.fx = (short)(hs_cx - aw / 2);
+        ar.fy = (short)(hs_top[sel] + (2 + bob2) * L->unum / (2 * L->uden) - ah);
+        menu_add_piece(L, ar);
+    }
+    L->no_focus_paint = 1;                 /* the lit plank and the arrow are the selection */
+    L->hide_owners = MENU_L_BG2;           /* "TOUCH TO SELECT" */
+    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+    L->stage = MENU_STAGE_POST_FADE;
+}
+
+}  // namespace
+
+int  menu_lc2_up(int scene_id) { return up_lc2(scene_id); }
+void menu_lc2_build(int variant, MenuLayout *L) { build_lc2(variant, L); }
+int  menu_lc2_rom_cursor(int dir, int *sel) { return rom_cursor_lc2(dir, sel); }
+void menu_lc2_facts(MenuFacts *f) { facts_lc2(f); }
 
 /* the recipe's four functions, named in the table by menu_recipes.cpp (function pointers, so the table stays a
    constant initialiser and nothing here depends on static-initialisation order) */

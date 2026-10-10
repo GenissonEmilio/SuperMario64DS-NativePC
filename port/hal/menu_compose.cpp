@@ -613,7 +613,7 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
        held at the steady x1.14 lift; SM64DS_MENU_PULSE=1 brings the pulse back (round 3 picture comparison) */
     static int no_pulse = -1;
     if (no_pulse < 0) { const char *e = getenv("SM64DS_MENU_PULSE"); no_pulse = (e && *e && *e != '0') ? 0 : 1; }
-    if (P.hostimg >= MENU_IMG_BTN_MP && P.hostimg <= MENU_IMG_BTN_REC) {   /* the planks; the logo and the arrows are never lit */
+    if ((P.hostimg >= MENU_IMG_BTN_MP && P.hostimg <= MENU_IMG_BTN_REC) || (P.hostimg >= MENU_IMG_BTN_SAVE_CONT && P.hostimg <= MENU_IMG_BTN_CONT)) {   /* the planks; the logo and the arrows are never lit */
         static const int pulse[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
         if (sel) boost = no_pulse ? 292 : 292 + pulse[g_draw_frame & 7] * 10;    /* x1.14 .. x1.30 */
         if (prs) { f256 = f256 * 216 / 256; boost = 0; sink = d[3] * 3 / 100; if (sink < 1) sink = 1; }
@@ -1207,7 +1207,7 @@ void hal_menu_decide(int w, int h, int scene_id)
         D.L = g_cur;
         D.lift.lift2d = g_cur.lift_owners;
         D.lift.hide = g_cur.hide_owners;
-        for (int i = 0; i < g_cur.np && D.lift.nbands < 4; ++i)
+        for (int i = 0; i < g_cur.np && D.lift.nbands < 8; ++i)
             if (g_cur.p[i].src == SRC_TOP_HOSTROW) {
                 D.lift.band[D.lift.nbands].layers = g_cur.p[i].layers;
                 D.lift.band[D.lift.nbands].r0 = g_cur.p[i].s.y;
