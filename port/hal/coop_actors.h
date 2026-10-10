@@ -97,7 +97,7 @@ static_assert(sizeof(MoverSnapReq) == 8, "snap request is 8 bytes");
 struct CoopMoveStats {
     unsigned long long ticks, ents, batches_sent, recs_sent, snap_batches_sent, snap_recs_sent, req_sent, req_served;
     unsigned long long batches_rx, recs_rx, applied_write, applied_ease, in_band, skipped_state, cls_mismatch,
-                       snap_applied, no_ent, owner_changes, owner_stale, throttled;
+                       snap_applied, no_ent, owner_changes, owner_stale, throttled, slaved;
     unsigned long long drop_bad, drop_group, drop_member, drop_ver, drop_far, drop_off, drop_seat;
 };
 CoopMoveStats coop_move_stats();

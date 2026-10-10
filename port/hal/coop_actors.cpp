@@ -32,7 +32,7 @@ namespace {
 // ---------------------------------------------------------------------------
 // Profiles.
 // ---------------------------------------------------------------------------
-enum : unsigned { kFPhase = 1u };
+enum : unsigned { kFPhase = 1u, kFSlave = 2u };   // kFSlave: the non-owner pins the pose every frame to the owner's, extrapolated
 struct Field { uint16_t off; uint8_t size; };
 struct Prof {
     uint16_t id;
@@ -61,7 +61,8 @@ enum : int {
 
 bool field_ok(const Field &f) {
     if (f.size != 1 && f.size != 2 && f.size != 4) return false;
-    if (f.off < kFieldLo || (int)f.off + f.size > kFieldHi) return false;
+    const bool speed_words = f.off >= 0x98 && (int)f.off + f.size <= 0xb0;       // mHorzSpeed .. unk_0ac
+    if (!speed_words && (f.off < kFieldLo || (int)f.off + f.size > kFieldHi)) return false;
     return (f.off % f.size) == 0;
 }
 
@@ -148,6 +149,7 @@ struct Rx {
     uint32_t f[kMoverMaxFields];
     bool     pvalid;          // the previous record of this slot from this seat (velocity for the lead)
     int32_t  px, py, pz;
+    int16_t  pax, pay, paz;
     unsigned pt;
 };
 struct Job { bool on; int passes; unsigned next; int cursor; };
@@ -349,7 +351,7 @@ void on_world(int seat, int sub, const unsigned char *p, int len, void *) {
     for (int i = 0; i < (int)h.count; ++i) {
         MoverRec r; std::memcpy(&r, p + off, sizeof r);
         Rx &x = g_rx[r.slot][seat];
-        if (x.valid && !(h.flags & 1) && !x.snap) { x.pvalid = true; x.px = x.x; x.py = x.y; x.pz = x.z; x.pt = x.t; } else x.pvalid = false;
+        if (x.valid && !(h.flags & 1) && !x.snap) { x.pvalid = true; x.px = x.x; x.py = x.y; x.pz = x.z; x.pax = x.ax; x.pay = x.ay; x.paz = x.az; x.pt = x.t; } else x.pvalid = false;
         x.valid = true; x.fresh = true; x.snap = (h.flags & 1) != 0; x.t = now;
         x.cls = r.cls; x.cd = r.cd; x.x = r.x; x.y = r.y; x.z = r.z;
         x.ax = r.ax; x.ay = r.ay; x.az = r.az; x.rflags = r.rflags; x.nf = r.nf;
@@ -434,11 +436,18 @@ void apply_rec(int slot, Slot &s, Rx &x) {
     }
     const double err = dist3(a, tx, ty, tz);
     if (!force && err > 6000.0) { ++g_st.drop_far; return; }
+    if (!force && (p.flags & kFSlave) && p.nf == 0) { ++g_st.in_band; return; }   // pinned every frame by slave()
     if (force && err > 20000.0) { ++g_st.drop_far; return; }
     const int16_t cax = rd16(a, 0x8c), cay = rd16(a, 0x8e), caz = rd16(a, 0x90);
     const int aerr = (std::max)({ ang_err(cax, x.ax), ang_err(cay, x.ay), ang_err(caz, x.az) });
     if (!force && !phase && err <= p.band && aerr <= 0x400) { ++g_st.in_band; return; }
     const bool write = force || phase || err > p.snap;
+    if (!force && phase && (p.flags & kFSlave)) {            // slave() owns the pose; the counters are written here
+        for (int k = 0; k < p.nf; ++k) write_field(a, p.f[k], x.f[k]);
+        ++g_st.applied_write;
+        s.lvalid = false;
+        return;
+    }
     if (write) {
         wr32(a, 0x5c, clampi(tx, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
         wr32(a, 0x60, clampi(ty, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
@@ -514,6 +523,42 @@ void send_batch(bool snap, const unsigned char *recs, int nrecs, int bytes) {
     }
 }
 
+// The non-owner pins a slaved actor to the owner's pose every frame: the owner's last record plus its last velocity
+// times (age of the record + the lead). The actor's own Behavior still runs (collision, carrying, sounds, animation);
+// this only overwrites where it ended up.
+int16_t ang_extrap(int16_t cur, int16_t prev, long long lead, int dt) {
+    const int d = (int)(int16_t)(cur - prev);
+    long long v = (long long)d * lead / dt;
+    if (v > 0x2000) v = 0x2000; else if (v < -0x2000) v = -0x2000;
+    return (int16_t)(cur + (int16_t)v);
+}
+void slave(Slot &s, const Rx &x, unsigned now) {
+    const Prof &p = g_prof[s.prof];
+    if (x.snap || !x.valid || x.cls != p.id || x.nf != p.nf) return;
+    const unsigned age = now - x.t;
+    if (age > 700u) return;                                  // the owner went quiet: let the local copy run
+    char *a = s.a;
+    if (skip_state(a, p)) return;
+    int32_t tx = x.x, ty = x.y, tz = x.z;
+    int16_t tax = x.ax, tay = x.ay, taz = x.az;
+    const long long lead = (long long)age + g_lead_ms;
+    const int dt = x.pvalid ? (int)(x.t - x.pt) : 0;
+    if (x.pvalid && dt >= 30 && dt <= 400) {
+        const long long lim = 100LL * 4096;
+        tx += (int32_t)(std::max)(-lim, (std::min)(lim, (long long)(x.x - x.px) * lead / dt));
+        ty += (int32_t)(std::max)(-lim, (std::min)(lim, (long long)(x.y - x.py) * lead / dt));
+        tz += (int32_t)(std::max)(-lim, (std::min)(lim, (long long)(x.z - x.pz) * lead / dt));
+        tax = ang_extrap(x.ax, x.pax, lead, dt); tay = ang_extrap(x.ay, x.pay, lead, dt); taz = ang_extrap(x.az, x.paz, lead, dt);
+    }
+    if (dist3(a, tx, ty, tz) > 6000.0) return;
+    wr32(a, 0x5c, clampi(tx, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
+    wr32(a, 0x60, clampi(ty, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
+    wr32(a, 0x64, clampi(tz, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
+    wr16(a, 0x8c, tax); wr16(a, 0x8e, tay); wr16(a, 0x90, taz);
+    s.lvalid = false;
+    ++g_st.slaved;
+}
+
 // Ownership, apply, publish: one pass over the slots that exist here.
 void process(unsigned now) {
     char *pl = local_player();
@@ -560,6 +605,7 @@ void process(unsigned now) {
             apply_rec(slot, s, x);
             x.fresh = false;
         }
+        if (g_act && (p.flags & kFSlave) && s.owner >= 0 && s.owner != g_my && s.seen >= 2) slave(s, g_rx[slot][s.owner], now);
         // 3. publish if I own it
         if (!g_act) continue;
         if (!g_hold && s.owner == g_my && s.seen >= 3 && !skip_state(s.a, p) && !frozen_state(s.a)) {
@@ -730,10 +776,10 @@ void stats_line() {
     const CoopMoveStats &s = g_st;
     std::fprintf(stderr,
         "[movestat] seat=%d ents=%llu sent b%llu r%llu sb%llu sr%llu req%llu served%llu rx b%llu r%llu applied w%llu e%llu band%llu "
-        "skip%llu clsmis%llu snapapp%llu noent%llu owner_ch%llu stale%llu thr%llu drop bad%llu group%llu member%llu ver%llu far%llu off%llu seat%llu\n",
+        "skip%llu clsmis%llu snapapp%llu noent%llu owner_ch%llu stale%llu thr%llu slv%llu drop bad%llu group%llu member%llu ver%llu far%llu off%llu seat%llu\n",
         g_my, s.ents, s.batches_sent, s.recs_sent, s.snap_batches_sent, s.snap_recs_sent, s.req_sent, s.req_served,
         s.batches_rx, s.recs_rx, s.applied_write, s.applied_ease, s.in_band, s.skipped_state, s.cls_mismatch, s.snap_applied,
-        s.no_ent, s.owner_changes, s.owner_stale, s.throttled, s.drop_bad, s.drop_group, s.drop_member, s.drop_ver, s.drop_far,
+        s.no_ent, s.owner_changes, s.owner_stale, s.throttled, s.slaved, s.drop_bad, s.drop_group, s.drop_member, s.drop_ver, s.drop_far,
         s.drop_off, s.drop_seat);
 }
 
