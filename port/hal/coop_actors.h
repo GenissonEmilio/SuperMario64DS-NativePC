@@ -1,0 +1,2 @@
+// stub, replaced
+#pragma once
