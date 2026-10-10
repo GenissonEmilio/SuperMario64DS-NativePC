@@ -1109,7 +1109,7 @@ inline bool lc_overlay_in_band(unsigned owner, int hy)
    Absent or 0 = nothing here runs: one int read per frame. */
 extern "C" int host_setting_hud_layout(void);
 static const int kHudZoneX0 = 188, kHudZoneY0 = 20, kHudZoneY1 = 36;   /* the coin counter's DS rectangle */
-static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudStarGap = 8;
+static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudStarGap = 6, kHudStarGapMin = 3;
 static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
 static bool g_hud_row_live;
 
@@ -3222,6 +3222,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         for (int y = 0; y < kHudZoneY0 - 1; ++y)
             for (int x = 180; x < star_left; ++x)
                 if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { star_left = x; break; }
+        const int star_raw = star_left;
         static int s_star_left = 256, s_star_larger = 0;
         if (star_left < 256) {
             if (star_left <= s_star_left) { s_star_left = star_left; s_star_larger = 0; }
@@ -3237,14 +3238,28 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
             for (int x = kHudZoneX0; x < blk_left; ++x)
                 if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj && !g_a[y][x].msgcur) { blk_left = x; break; }
-        /* Default: the block's right end sits kHudStarGap pixels short of the star counter. Never closer than 4 to it. */
-        int dx_move = 255 - (star_left - kHudStarGap);
-        if (dx_move < kHudCoinDxMin) dx_move = kHudCoinDxMin;
-        const int dx_hard = 255 - (star_left - 4);
-        if (meter_right >= 0 && blk_left - dx_move < meter_right + 1 + kHudMeterGap) {
-            int d = blk_left - (meter_right + 1 + kHudMeterGap);
-            dx_move = d > dx_hard ? d : dx_hard;
+        int blk_right = -1;
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = 255; x > blk_right; --x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj && !g_a[y][x].msgcur) { blk_right = x; break; }
+        /* The block goes as far right as the DS plane lets it: its right end kHudStarGap pixels short of the star counter
+           (they share rows and cells, so they never overlap in the plane; wide, the star counter's right anchor adds more gap
+           on screen). If the meter is then closer than kHudMeterGap, squeeze the star gap toward kHudStarGapMin. If there is
+           still no room (a three digit count on a meter level at 4:3) the block keeps its DS placement under the star counter. */
+        int dx_move = 0, star_gap = kHudStarGap;
+        bool fits = blk_right >= 0;
+        if (fits) {
+            for (; star_gap >= kHudStarGapMin; --star_gap) {
+                dx_move = blk_right - (star_left - star_gap);
+                if (dx_move < kHudCoinDxMin) dx_move = kHudCoinDxMin;
+                if (meter_right < 0 || blk_left - dx_move >= meter_right + 1 + kHudMeterGap) break;
+            }
+            if (star_gap < kHudStarGapMin) fits = false;
         }
+        static const bool dbg = std::getenv("SM64DS_HUD_DBG") != nullptr;
+        if (dbg) std::fprintf(stderr, "[hudrow] star_raw=%d star_left=%d meter_right=%d blk=%d..%d dx=%d star_gap=%d fits=%d\n",
+                              star_raw, star_left, meter_right, blk_left, blk_right, dx_move, star_gap, (int)fits);
+        if (fits) {
         static Cell tmp[kHudZoneY1 - kHudZoneY0 + 1][256 - kHudZoneX0];
         for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
             for (int x = kHudZoneX0; x < 256; ++x) {
@@ -3263,6 +3278,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 g_hud_row[y - kHudCoinDy][x - dx_move] = 1;
                 g_hud_row_live = true;
             }
+        }
         }
     }
     const bool bandsplit = hud_bandsplit_env();
@@ -3350,7 +3366,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                           : (ntr::present_native() || !shown3d)
                           ? ux0 + margin / 2
                           : (g_hud_row_live && g_hud_row[y][x])
-                          ? ux0 + margin / 2
+                          ? ux0 + margin   /* the moved coin block rides the right edge with the star counter */
                           : !bandsplit
                           ? ux0 + hudelem::g_off[hudelem::g_lbl[y][x]]
                           : (x < band_l) ? ux0
