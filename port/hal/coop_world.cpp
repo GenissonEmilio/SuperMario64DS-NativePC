@@ -180,7 +180,7 @@ void send_hello(unsigned now) {
     w.key = wire_key(g_key);
     w.established = g_grp.established() ? 1 : 0;
     w.owner = g_grp.owner() >= 0 ? (uint8_t)g_grp.owner() : (uint8_t)kCoopNoSeat;
-    w.rank = (uint8_t)std::min(16, g_grp.established_count() + 1);
+    w.rank = (uint8_t)(std::min)(16, g_grp.established_count() + 1);
     if (send_kind(kHubTagCoopCtl, kCtlGroupHello, &w, sizeof w)) { ++g_st.sent_hello; g_hello_t = now; }
 }
 void send_owner_change() {
@@ -589,8 +589,7 @@ void census_line() {
     }
     std::fprintf(stderr, "[coop] census level=%d act=%d actors=%d slotted=%d classes:", g_key.level, g_key.act, total, slotted);
     for (int i = 0; i < 1024; ++i) if (cnt[i]) std::fprintf(stderr, " %d:%d", i, cnt[i]);
-    std::fprintf(stderr, "
-");
+    std::fputc('\n', stderr);
 }
 
 void stats_line() {
