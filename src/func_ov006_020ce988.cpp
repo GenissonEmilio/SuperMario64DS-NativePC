@@ -25,6 +25,15 @@ extern "C" void func_ov006_020ce988(char* c){
     {
         void* o = *(void**)(c+0x190);
         VtO* vt = *(VtO**)o;
+#ifdef _MSC_VER
+        /* Slot 5 of this object's table is Model::Render(const Vector3 *scale), a member
+           function: on the DS the call is r0 = this, r1 = scale. A plain (void*, void*)
+           call hands the host body `this` in ecx and the model pointer itself as `scale`,
+           so the scale was the model's first words (vptr, 0, pointer) and any sparkle
+           element went out at a size set by where the exe's sections landed. */
+        ((void (__thiscall *)(void*, void*))vt->f)(o, c+0x68);
+#else
         vt->f(o, c+0x68);
+#endif
     }
 }
