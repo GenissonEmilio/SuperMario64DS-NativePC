@@ -1513,6 +1513,30 @@ static void menu_shot_maybe(const uint32_t *dst, int w, int h, unsigned frame)
     fclose(f);
 }
 
+/* MENUCOST1: per recipe and variant cost windows (SM64DS_MENU_TRACE): the first draw, then the mean and the worst of every 60 drawn
+   frames of that recipe and variant. */
+static void cost_window(const char *name, int variant, double us)
+{
+    struct Slot { const char *name; int variant; int n; double sum, mx; };
+    static Slot slot[32];
+    static int ns = 0;
+    int k = 0;
+    while (k < ns && !(slot[k].name == name && slot[k].variant == variant)) ++k;
+    if (k == ns) {
+        if (ns == 32) return;
+        slot[ns++] = Slot { name, variant, 0, 0.0, 0.0 };
+        fprintf(stderr, "[menu] cost2 %s v%d first draw %.0f us
+", name, variant, us);
+    }
+    Slot &S = slot[k];
+    S.sum += us; if (us > S.mx) S.mx = us;
+    if (++S.n == 60) {
+        fprintf(stderr, "[menu] cost2 %s v%d: 60 frames mean %.0f us max %.0f us
+", name, variant, S.sum / 60, S.mx);
+        S.n = 0; S.sum = 0; S.mx = 0;
+    }
+}
+
 void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 {
     MenuDecision &D = g_dd;
@@ -1520,14 +1544,17 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
     const std::chrono::steady_clock::time_point t_in = std::chrono::steady_clock::now();
     struct CostEnd {
         std::chrono::steady_clock::time_point t;
+        const char *name; int variant;
         ~CostEnd()
         {
-            g_cost_draw_us += std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t).count();
+            const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t).count();
+            g_cost_draw_us += us;
+            if (trace_on()) cost_window(name, variant, us);
             if (++g_cost_n % 120 == 0 && trace_on())
                 fprintf(stderr, "[menu] cost over %d drawn frames: draw %.0f us, source prep %.0f us per frame\n", g_cost_n,
                         g_cost_draw_us / g_cost_n, g_cost_prep_us / g_cost_n);
         }
-    } cost_end = { t_in };
+    } cost_end = { t_in, D.L.recipe ? D.L.recipe->name : "?", D.L.variant };
     const MenuSources *S = g_src;
     g_nplanes = 0;
     int amended = 0;
