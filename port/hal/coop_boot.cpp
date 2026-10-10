@@ -490,11 +490,17 @@ void gate() {
 }
 
 void guest_gate() {
-    const int hear_ms = env_int("SM64DS_COOPBOOT_HEAR_MS", 3000);
+    // 15 s: a guest launched right after the host hears nothing while the
+    // host loads the ROM (it only answers once its title runs).
+    const int hear_ms = env_int("SM64DS_COOPBOOT_HEAR_MS", 15000);
     const ULONGLONG t0 = tick();
     while (!C.state_heard) {
         comms_hub_pump();
-        if ((int)(tick() - t0) >= hear_ms) guest_fail("no word from the host in 3 s");
+        if ((int)(tick() - t0) >= hear_ms) {
+            char why[64];
+            std::snprintf(why, sizeof why, "no word from the host in %d s", hear_ms / 1000);
+            guest_fail(why);
+        }
         Sleep(10);
     }
     LOG("host heard after %u ms (phase %d go %d closed %d)", (unsigned)(tick() - t0), C.hs.phase, C.hs.go, C.hs.closed);
@@ -509,7 +515,14 @@ void guest_gate() {
         Sleep(20);
     }
     if (tick() - w0 > 100) LOG("the opening ended; entering after %u ms", (unsigned)(tick() - w0));
-    if (!coop_save_fetch(env_int("SM64DS_COOPBOOT_FETCH_MS", 3000))) guest_fail("the host did not send the save in 3 s");
+    // A gate beat can be the host's last pump before it loads the ROM, so the
+    // save may only be served once the host is running: same 15 s as above.
+    const int fetch_ms = env_int("SM64DS_COOPBOOT_FETCH_MS", 15000);
+    if (!coop_save_fetch(fetch_ms)) {
+        char why[64];
+        std::snprintf(why, sizeof why, "the host did not send the save in %d s", fetch_ms / 1000);
+        guest_fail(why);
+    }
 }
 
 // The state of the title/menu words, for calibrating nothing at run time: kept

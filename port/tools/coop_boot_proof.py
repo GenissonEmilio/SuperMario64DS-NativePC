@@ -16,7 +16,7 @@ coop_save_proof.py (same rig: Con, relay, images).
             barrier, everyone released together
   newfile   a new coop file, 2 consoles: all play the opening, the closing
             barrier holds the early console, everyone released together
-  nohost    a guest with no host exits with code 6 inside ~3.5 s
+  nohost    a guest with no host exits with code 6 after ~15 s
   hostleft  the host is killed mid-level (and, second variant, quits): guests
             show the line and exit with code 7; BASE exe control keeps running
   joiner    a guest that arrives while the opening is running waits at its gate
@@ -330,9 +330,9 @@ def row_nohost():
     t_exit = first(c, r"exiting with code 6")
     dt = (t_exit - t_begin) if (t_begin and t_exit) else None
     info("%s: rc %s, begin %s exit %s => %s ms; stderr line: %s" % (row, c.rc, t_begin, t_exit, dt, re.findall(r"Could not reach the host.*", t)[:1]))
-    say(c.rc == 6 and dt is not None and 2900 <= dt <= 3500 and "Could not reach the host" in t,
-        "%s: a guest with no host exits with code 6 %s ms after its gate began (limit 3500) and says 'Could not reach the host'" % (row, dt))
-    say(c.t_end - c.t0 < 12, "%s: process wall time %.1f s" % (row, c.t_end - c.t0))
+    say(c.rc == 6 and dt is not None and 14900 <= dt <= 15600 and "Could not reach the host" in t,
+        "%s: a guest with no host exits with code 6 %s ms after its gate began (limit 15600) and says 'Could not reach the host'" % (row, dt))
+    say(c.t_end - c.t0 < 30, "%s: process wall time %.1f s" % (row, c.t_end - c.t0))
     cb = CS.Con(row, "guest_base", ARGS.base, benv(1, relay, False, None, {"SM64DS_COOP_TEMP_ROOT": gt}), 400, ARGS.root, ARGS.out)
     CS.wait_all([cb], 120)
     CS.stop_relay(rp, rf)
