@@ -483,8 +483,8 @@ void build_nosave(MenuLayout *L)
             MenuPiece bn = menu_piece_make(SRC_HOSTIMG, 24, 60, 208, 32, MENU_AX_R, MENU_AY_T, -C.marg - ur(248 - 232, C.b.n, C.b.d), top, C.b.n, C.b.d);
             bn.hostimg = (uint8_t)MENU_IMG_P_BANNER; bn.bg = 1;
             menu_add_piece(L, bn);
-            MenuPiece q = sub_piece(34, 68, 188, 20, C, top + ur(6, C.b.n, C.b.d), 0);   /* clear of the ROM box edges at x 24..27 and 228..231 */
-            q.dx = (short)(-C.marg - ur(248 - 222, C.b.n, C.b.d));
+            MenuPiece q = sub_piece(34, 68, 178, 20, C, top + ur(6, C.b.n, C.b.d), 0);   /* clear of the ROM box edges (a bar at the right end showed up to x 222) */
+            q.dx = (short)(-C.marg - ur(248 - 212, C.b.n, C.b.d));
             menu_add_piece(L, q);
         }
         add_plank(L, C, MENU_IMG_P_PK_YES, 0x28, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                   /* YES x 0x28..0x77 */
