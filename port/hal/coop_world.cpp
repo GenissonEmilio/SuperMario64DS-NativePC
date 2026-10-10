@@ -96,7 +96,7 @@ int      g_nreg_ctl = 0, g_nreg_world = 0;
 // proof knobs
 struct KillKnob { unsigned frame; int id; int n; bool done; };
 KillKnob g_kill[8]; int g_nkill = 0;
-unsigned g_goto_frame = 0; int g_goto_id = -1; bool g_goto_done = false;
+unsigned g_goto_frame = 0; int g_goto_id = -1; bool g_goto_done = false; int g_goto_tries = 0;
 struct WarpKnob { unsigned frame; int level; int act; bool done; };
 WarpKnob g_warp[4]; int g_nwarp = 0;
 struct ForgeKnob { unsigned frame; char name[16]; bool done; };
@@ -466,6 +466,7 @@ void join_group(const CoopKey &nk) {
     g_est_frames = 0;
     for (int i = 0; i < g_nkill; ++i) g_kill[i].done = false;
     g_goto_done = false;
+    g_goto_tries = 0;
     g_rejected = CoopKey();
     g_key = nk;
     g_part = part_of_level(nk.level);
@@ -551,17 +552,24 @@ void knob_kill(const KillKnob &k) {
     std::fprintf(stderr, "[coop-knob] kill class=%d asked %d did %d (live candidates %d)\n", k.id, k.n, killed, n);
 }
 
-void knob_goto(int id) {
+void knob_goto(int id, int tries) {
+    // Put the local player on the (tries % n)-th live actor of class `id`, lowest slot first, so the ROM's own touch
+    // runs. Called again every 90 frames while the player is still in the course, trying the next candidate.
     void *pl = data_0209f394[data_0209f250 & 15];
     if (!pl) return;
-    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+    char *c[32]; int n = 0;
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a && n < 32; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
         if (*(const unsigned short *)(a + 0x0c) != (unsigned)id || is_player_ptr(a)) continue;
         if (*(const unsigned char *)(a + 0x0f) || *(const unsigned char *)(a + 0x0e) == 2) continue;
-        std::memcpy((char *)pl + 0x5c, a + 0x5c, 12);
-        std::fprintf(stderr, "[coop-knob] goto class=%d slot=%d\n", id, (int)*(const short *)(a + 0xce));
-        return;
+        c[n++] = a;
     }
-    std::fprintf(stderr, "[coop-knob] goto class=%d: no live actor\n", id);
+    std::sort(c, c + n, [](char *x, char *y) { return *(const short *)(x + 0xce) < *(const short *)(y + 0xce); });
+    if (n == 0) { std::fprintf(stderr, "[coop-knob] goto class=%d: no live actor\n", id); return; }
+    char *a = c[tries % n];
+    std::memcpy((char *)pl + 0x5c, a + 0x5c, 12);
+    std::fprintf(stderr, "[coop-knob] goto class=%d try %d: candidate %d of %d slot=%d pos=%d,%d,%d\n", id, tries,
+                 tries % n, n, (int)*(const short *)(a + 0xce), *(const int *)(a + 0x5c) >> 12,
+                 *(const int *)(a + 0x60) >> 12, *(const int *)(a + 0x64) >> 12);
 }
 
 void knob_forge(const char *name) {
@@ -703,7 +711,7 @@ void tick_est(unsigned now) {
     // 6. proof knobs
     for (int i = 0; i < g_nkill; ++i)
         if (!g_kill[i].done && g_est_frames >= g_kill[i].frame) { g_kill[i].done = true; knob_kill(g_kill[i]); }
-    if (g_goto_id >= 0 && !g_goto_done && g_est_frames >= g_goto_frame) { g_goto_done = true; knob_goto(g_goto_id); }
+    if (g_goto_id >= 0 && g_goto_tries < 6 && g_est_frames >= g_goto_frame + 90u * (unsigned)g_goto_tries) knob_goto(g_goto_id, g_goto_tries++);
     for (int i = 0; i < g_nforge; ++i)
         if (!g_forge[i].done && g_est_frames >= g_forge[i].frame) { g_forge[i].done = true; knob_forge(g_forge[i].name); }
     // 7. log
