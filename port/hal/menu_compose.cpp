@@ -184,7 +184,7 @@ int menu_wide(const MenuLayout *L) { return L->canvas_w >= MENU_WIDE_CANVAS; }
 
 int menu_scale_allowed(int n, int d)
 {
-    return (n == 1 && d == 1) || (n == 3 && d == 4) || (n == 2 && d == 3) || (n == 1 && d == 2);
+    return (n == 1 && d == 1) || (n == 5 && d == 6) || (n == 3 && d == 4) || (n == 2 && d == 3) || (n == 1 && d == 2);
 }
 
 void menu_layout_begin(MenuLayout *L, int w, int h)
@@ -238,7 +238,7 @@ int menu_add_hotspot(MenuLayout *L, int piece, int bx, int by, int bw, int bh, i
 
 /* SCALE AND PLACEMENT RULE (P0COREFIX). A piece's canvas size is the EXACT
    rational s.w * knum / kden (and s.h likewise), held in twelfths of a canvas
-   unit (12 is divisible by every allowed kden 1, 2, 3, 4). The canvas spans
+   unit (12 is divisible by every allowed kden 1, 2, 3, 4, 6). The canvas spans
    the picture exactly: one unit is unum / uden host pixels and the canvas is
    w * uden / unum units wide, so a centred piece sits at (w - width) / 2 with
    no floored canvas_w in the way. Both edges of a piece are the floor of the
@@ -260,7 +260,7 @@ void menu_layout_dest(MenuLayout *L)
     for (int i = 0; i < L->np; ++i) {
         const MenuPiece &P = L->p[i];
         int *d = L->dest[i];
-        if (P.lden > 0) {   /* HOOK1: the recipe placed it in host pixels */
+        if (P.lden > 0 || P.fixdest) {   /* HOOK1 / FACE1: the recipe placed it in host pixels */
             d[0] = P.fx; d[1] = P.fy; d[2] = P.fw; d[3] = P.fh;
             continue;
         }
@@ -716,6 +716,134 @@ void draw_wall(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     }
 }
 
+/* ---- FACE2: THE DRAWING PAGE'S PAPER AND THE HELD FRAME -------------------------------------------------
+   The paper is the ROM's own texture: the title's two paper sprite objects (ids 0x17 / 0x18, hal/menu_recipe_title.cpp skips them on
+   the one-screen drawing page) show a 32 x 32 texel tile repeated across the lower screen, six colours (measured: every pixel of the
+   cream page at full brightness not covered by a stroke or a button agrees with its tile cell, 0 conflicts over the 256 x 192 area).
+   Here it is repeated edge to edge from the corner of the 256 x 192 area of the canvas and sampled with a wrapped bilinear filter, so it
+   is smooth at any window size and has no side bars. Built once per size, copied per frame. */
+const uint8_t k_paper_pal[6][3] = { { 255, 231, 206 }, { 255, 239, 206 }, { 255, 247, 214 }, { 255, 255, 231 }, { 255, 255, 239 }, { 255, 255, 247 } };
+const char *const k_paper_tile[32] = {
+    "01111111111111302211111311112110",
+    "11131111111131113222143334111111",
+    "34333333333333434433333433333443",
+    "33345443435543335554433533444553",
+    "43001112132100344342110301124344",
+    "12111210112111211100110101100111",
+    "55544434555445555555545450055555",
+    "55103554155111555555543434055555",
+    "13350011030001111111111111100101",
+    "13145101133333314341343234314041",
+    "05554554141455545544555555544500",
+    "00443434444344433335333333353330",
+    "13311112222223313201133333100231",
+    "12212010012233200011110301111111",
+    "44033333333334443114334543343434",
+    "53332244445555555545555555554555",
+    "12233333333333331433112321133421",
+    "11110101102211111011121112111011",
+    "41134333330333434442222455411444",
+    "33333344433333334445434443454443",
+    "12122201133333211114443111221011",
+    "30031012100003033111111334333433",
+    "33333333333333333441113434334433",
+    "33334333443433332253333433345353",
+    "33322223333333333222214141333333",
+    "00111110111011033333233023331300",
+    "13114333113433313344455455441111",
+    "33331113333111445555455555433333",
+    "41111013111331111111101110114444",
+    "01111101044444101100111111100110",
+    "33544453444444445555555555555553",
+    "33433434433222223333344444333333"
+};
+std::vector<uint32_t> g_paper_cache;
+int g_paper_key[4];
+
+inline int paper_ci(char c) { return c <= '9' ? c - '0' : c - 'a' + 10; }
+
+void draw_paper(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
+{
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    if (d[2] <= 0 || d[3] <= 0) return;
+    const int key[4] = { d[2], d[3], L->unum, L->uden };
+    if (g_paper_cache.size() != (size_t)d[2] * d[3] || memcmp(key, g_paper_key, sizeof key) != 0) {
+        memcpy(g_paper_key, key, sizeof key);
+        g_paper_cache.assign((size_t)d[2] * d[3], 0xffffffffu);
+        const float s = (float)L->unum / (float)L->uden;                    /* host pixels per DS pixel */
+        const float ox = ((float)L->w - 256.f * s) * 0.5f;                  /* the 256 x 192 area's corner, so 4:3 lines up with the ROM's own paper */
+        for (int y = 0; y < d[3]; ++y) {
+            const float v = ((float)(y + d[1]) + 0.5f) / s - 0.5f;
+            const int v0 = (int)floorf(v);
+            const float fv = v - (float)v0;
+            const int ya = ((v0 % 32) + 32) % 32, yb = (ya + 1) % 32;
+            for (int x = 0; x < d[2]; ++x) {
+                const float u = (((float)(x + d[0]) + 0.5f) - ox) / s - 0.5f;
+                const int u0 = (int)floorf(u);
+                const float fu = u - (float)u0;
+                const int xa = ((u0 % 32) + 32) % 32, xb = (xa + 1) % 32;
+                const int c00 = paper_ci(k_paper_tile[ya][xa]), c10 = paper_ci(k_paper_tile[ya][xb]);
+                const int c01 = paper_ci(k_paper_tile[yb][xa]), c11 = paper_ci(k_paper_tile[yb][xb]);
+                int ch[3];
+                for (int k = 0; k < 3; ++k) {
+                    const float t0 = k_paper_pal[c00][k] + (k_paper_pal[c10][k] - k_paper_pal[c00][k]) * fu;
+                    const float t1 = k_paper_pal[c01][k] + (k_paper_pal[c11][k] - k_paper_pal[c01][k]) * fu;
+                    ch[k] = (int)(t0 + (t1 - t0) * fv + 0.5f);
+                }
+                g_paper_cache[(size_t)y * d[2] + x] = 0xff000000u | ((uint32_t)ch[0] << 16) | ((uint32_t)ch[1] << 8) | (uint32_t)ch[2];
+            }
+        }
+    }
+    const size_t stride = (size_t)stride_of(w);
+    const unsigned pa = P.alpha ? P.alpha : 255u, ia = 255u - pa;
+    const int xa = d[0] < 0 ? -d[0] : 0, xb = d[0] + d[2] > w ? w - d[0] : d[2];
+    for (int yy = 0; yy < d[3]; ++yy) {
+        const int py = d[1] + yy;
+        if (py < 0 || py >= h || xb <= xa) continue;
+        uint32_t *row = dst + (size_t)py * stride + d[0];
+        const uint32_t *sr = &g_paper_cache[(size_t)yy * d[2]];
+        if (pa == 255u) { memcpy(row + xa, sr + xa, (size_t)(xb - xa) * 4); continue; }
+        for (int xx = xa; xx < xb; ++xx) {
+            const uint32_t c = sr[xx], o = row[xx];
+            const unsigned r = (((c >> 16) & 255) * pa + ((o >> 16) & 255) * ia + 127) / 255, g = (((c >> 8) & 255) * pa + ((o >> 8) & 255) * ia + 127) / 255,
+                           b = ((c & 255) * pa + (o & 255) * ia + 127) / 255;
+            row[xx] = 0xff000000u | (r << 16) | (g << 8) | b;
+        }
+    }
+}
+
+/* the held frame: the composed picture as of the last frame that asked for it (MenuLayout.snap_save), draw thread only */
+std::vector<uint32_t> g_snap;
+int g_snap_w, g_snap_h;
+
+void snap_save(const uint32_t *dst, int w, int h)
+{
+    const size_t stride = (size_t)stride_of(w);
+    g_snap.resize((size_t)w * h);
+    for (int y = 0; y < h; ++y) memcpy(&g_snap[(size_t)y * w], dst + (size_t)y * stride, (size_t)w * 4);
+    g_snap_w = w; g_snap_h = h;
+}
+
+void draw_snap(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
+{
+    if (g_snap_w != w || g_snap_h != h || g_snap.empty()) return;     /* the window changed size: no held frame, the page just appears */
+    const MenuPiece &P = L->p[i];
+    const size_t stride = (size_t)stride_of(w);
+    const unsigned pa = P.alpha ? P.alpha : 255u, ia = 255u - pa;
+    for (int y = 0; y < h; ++y) {
+        uint32_t *row = dst + (size_t)y * stride;
+        const uint32_t *sr = &g_snap[(size_t)y * w];
+        if (pa == 255u) { memcpy(row, sr, (size_t)w * 4); continue; }
+        for (int x = 0; x < w; ++x) {
+            const uint32_t c = sr[x], o = row[x];
+            const unsigned r = (((c >> 16) & 255) * pa + ((o >> 16) & 255) * ia + 127) / 255, g = (((c >> 8) & 255) * pa + ((o >> 8) & 255) * ia + 127) / 255,
+                           b = ((c & 255) * pa + (o & 255) * ia + 127) / 255;
+            row[x] = 0xff000000u | (r << 16) | (g << 8) | b;
+        }
+    }
+}
+
 /* ---- ASSET5: THE STAR IRIS ------------------------------------------------------------------------------
    Black outside a five-pointed star, the title iris. The ROM draws it as a 3D sprite whose edge carries a dark seam; this is the same shape
    (measured off the ROM frames: outer / inner vertex ratio 0.5306, one point straight up, the star centre a little below its pivot because
@@ -823,6 +951,8 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
     if (P.nodraw) return;
     if (P.src == SRC_HOSTIMG && P.wall) { draw_wall(L, i, dst, w, h); return; }
     if (P.src == SRC_HOSTIMG && P.iris) { draw_iris(L, i, dst, w, h); return; }
+    if (P.src == SRC_HOSTIMG && P.paper) { draw_paper(L, i, dst, w, h); return; }
+    if (P.src == SRC_HOSTIMG && P.snap) { draw_snap(L, i, dst, w, h); return; }
     if (P.src == SRC_HOSTIMG) { draw_hostimg(L, i, dst, w, h); return; }
     if (P.hostgrad) { draw_hostgrad(L, i, S, dst, w, h); return; }
     const int *d = L->dest[i];
@@ -884,6 +1014,7 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
                     if (P.has_ex) {
                         const int ex = (qx - S->pic_rx) * 256 / S->pic_rw, ey = (qy - S->pic_ry) * 192 / S->pic_rh;
                         if (ex >= P.ex.x && ex < P.ex.x + P.ex.w && ey >= P.ex.y && ey < P.ex.y + P.ex.h) continue;
+                        if (P.has_ex2 && ex >= P.ex2.x && ex < P.ex2.x + P.ex2.w && ey >= P.ex2.y && ey < P.ex2.y + P.ex2.h) continue;
                     }
                 }
                 if (P.alpha && P.alpha < 255) {   /* ASSET5: a faded piece (the face fade-in) blends over what is there */
@@ -1466,6 +1597,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
         }
     }
     for (int i = 0; i < D.L.np; ++i) menu_piece_draw(&D.L, i, S, dst, w, h);
+    if (D.L.snap_save) snap_save(dst, w, h);
     menu_shot_maybe(dst, w, h, D.serial);
     if (D.L.focus >= 0 && D.focus_shown && !D.L.no_focus_paint && D.L.focus < D.L.nh &&
         D.L.p[D.L.hs[D.L.focus].piece].src != SRC_HOSTIMG)
@@ -1621,13 +1753,13 @@ void check_layout(const MenuLayout *L, Result *R)
     for (int i = 0; i < L->np; ++i) {
         const MenuPiece &P = L->p[i];
         const int *d = L->dest[i];
-        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !menu_scale_allowed(P.knum, P.kden)) {
+        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !P.fixdest && !menu_scale_allowed(P.knum, P.kden)) {
             R->scale = 0; sprintf(why, "piece %d scale %d/%d", i, P.knum, P.kden);
         }
         if (d[2] < 1 || d[3] < 1 || d[0] < 0 || d[1] < 0 || d[0] + d[2] > L->w || d[1] + d[3] > L->h) {
             R->bounds = 0; sprintf(why, "piece %d dest (%d,%d,%d,%d) outside %dx%d", i, d[0], d[1], d[2], d[3], L->w, L->h);
         }
-        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !P.xfill) {
+        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !P.xfill && !P.fixdest) {
             /* the scale rule: dest size within one host pixel of the exact rational size */
             const double kn = P.knum ? P.knum : 1, kd = P.kden ? P.kden : 1, un = (double)L->unum / L->uden;
             const double ew = P.s.w * kn / kd * un, eh = P.s.h * kn / kd * un;
@@ -1987,6 +2119,22 @@ int run_live(void)
         menu_layout_dest(&T);
         fails += check("scale: 128x96 at 2/3 on 1024x768 is 341 or 342 by 256", (T.dest[0][2] == 341 || T.dest[0][2] == 342) && T.dest[0][3] == 256);
         fails += check("scale: 127x95 at 1/2 is 254 by 190 (47.5 units)", T.dest[1][2] == 254 && T.dest[1][3] == 190 && T.dest[1][0] + 254 == 1024 && T.dest[1][1] + 190 == 768);
+        /* FACE1: the 5/6 step is exact (256 at 5/6 on 1024x768 is 213.33 units = 853 or 854 px), and a fixdest piece keeps its host rect and inverts through it */
+        menu_layout_begin(&T, 1024, 768);
+        menu_add_piece(&T, menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 5, 6));
+        {
+            MenuPiece fx = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            fx.fixdest = 1; fx.touch = 1; fx.fx = 100; fx.fy = 50; fx.fw = 400; fx.fh = 300;
+            menu_add_piece(&T, fx);
+        }
+        menu_layout_dest(&T);
+        fails += check("scale: 256x192 at 5/6 on 1024x768 is 853 or 854 by 640, centred", (T.dest[0][2] == 853 || T.dest[0][2] == 854) && T.dest[0][3] == 640 && T.dest[0][1] == 64);
+        {
+            int pi = -1, sx = 0, sy = 0;
+            const int in = menu_hit(&T, 300, 200, &pi, &sx, &sy);
+            fails += check("fixdest: a click inverts through the recipe's own host rect (400x300 over 256x192)", in && pi == 1 && sx == 128 && sy == 96 &&
+                           T.dest[1][0] == 100 && T.dest[1][2] == 400);
+        }
         menu_layout_begin(&T, 1022, 767);
         menu_add_piece(&T, menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1));
         menu_layout_dest(&T);
