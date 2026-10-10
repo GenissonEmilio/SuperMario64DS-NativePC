@@ -1124,15 +1124,13 @@ void at_exit()
         fprintf(stderr, "[renderer] 2D drawn on the card: %lld tick(s), %lld cell(s) "
                 "(%.3f ms each tick on the processor's clock), %lld merge(s) of the "
                 "processor's own pixels (%.3f ms each), %lld settled back to the "
-                "processor.
-", g_tw_ticks, g_tw_rects,
+                "processor.\n", g_tw_ticks, g_tw_rects,
                 g_tw_ms / (double)g_tw_ticks, g_tw_flushes,
                 g_tw_flushes ? g_tw_flush_ms / (double)g_tw_flushes : 0.0, g_tw_folds);
     if (g_tw_checks)
         fprintf(stderr, "[renderer-twodcheck] %lld stage(s) compared with the "
                 "processor's own host loops: %lld differed (%lld overlay and %lld "
-                "mask pixel(s)).
-", g_tw_checks, g_tw_bad, g_tw_bad_px_ov, g_tw_bad_px_bm);
+                "mask pixel(s)).\n", g_tw_checks, g_tw_bad, g_tw_bad_px_ov, g_tw_bad_px_bm);
     aa_at_exit();
     release_textures();
     release_targets();
