@@ -88,8 +88,7 @@ extern "C" int menu_bigmap_pad_seam(void)
         const int st = hal_sub_screen_stacked();
         if (scene != last_scene || st != last_stacked) {
             last_scene = scene; last_stacked = st;
-            fprintf(stderr, "[bigmap] tick %u scene %d level %d stacked %d
-", g_tick, scene, lvl, st);
+            fprintf(stderr, "[bigmap] tick %u scene %d level %d stacked %d\n", g_tick, scene, lvl, st);
         }
     }
     /* a level only: scene 3, or -1 where the level path never runs the scene thunk; never the stacked layout */
