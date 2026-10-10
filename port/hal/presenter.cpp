@@ -143,6 +143,8 @@ long long g_qpf;
 
 int g_main_idx;              /* the slot the game thread is drawing (game thread only) */
 volatile long g_stop;
+int g_flush = 1;              /* SM64DS_PRESENTER_FLUSH=0 turns the flush off (A/B only) */
+long long g_flush_qpc, g_flush_n;
 int g_leaked;                 /* a stuck thread still owns the ring: nothing is freed or restarted */
 volatile long g_err;
 volatile long g_published;   /* publishes so far (any picture) */
@@ -768,6 +770,8 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
     g_main_held = 0;
     g_stop = 0;
     g_err = 0;
+    { const char *fe = getenv("SM64DS_PRESENTER_FLUSH"); g_flush = !(fe && fe[0] == '0' && !fe[1]); }
+    g_flush_qpc = g_flush_n = 0;
     g_published = 0;
     g_pub_w = g_pub_h = 0;
     g_gen = 0;
@@ -822,6 +826,8 @@ extern "C" void presenter_end(void)
     g_running = 0;
     if (presenter_stats_on())
         fprintf(stderr, "[presenter] game thread published %lld picture(s), %lld distinct, %llu not drawn (ring full), %llu passed over by the presenter, deepest queue %d\n", g_serial, g_gen, g_drops, g_dropped, g_qmax);
+    if (presenter_stats_on() && g_flush_n)
+        fprintf(stderr, "[presenter] flush before publish: %lld calls, %.4f ms each\n", g_flush_n, (double)g_flush_qpc * 1000.0 / (double)g_qpf / (double)g_flush_n);
     stat_flush();
 }
 
@@ -919,6 +925,10 @@ extern "C" void presenter_publish(int repeat)
         presenter_hash_log("main", s.serial, presenter_hash_texture(g_dev, g_ctx, s.tex, 0));
     g_pub_w = g_w;
     g_pub_h = g_h;
+    /* The keyed-mutex release is the hand-over, and the presenter's device
+       reads the memory the moment it has the key: the writes are submitted to
+       the card first, not left in the driver's batch. */
+    if (g_flush) { const long long f0 = qpc(); g_ctx->Flush(); g_flush_qpc += qpc() - f0; ++g_flush_n; }
     s.km1->ReleaseSync(1);          /* the picture is whole: the presenter may take it */
     g_main_held = 0;
     _InterlockedExchange(&g_published, g_published + 1);
