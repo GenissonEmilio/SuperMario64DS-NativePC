@@ -282,7 +282,9 @@ unsigned g_lc2_hov_seen;
 
 int up_lc2(int scene_id)
 {
-    if (scene_id == MENU_SCENE_GATED || !lc_pair()) return 0;
+    /* up through the save itself (LC_Update states 4 and 5): the ROM shows "Saving file..." on the bottom screen then, and the old
+       two-screen top (CLEAR!, the touch arrows) must not come back for those two seconds */
+    if (scene_id == MENU_SCENE_GATED || data_0209f20c == 0 || data_0209f2d4 < 1 || data_0209f2d4 > 5) return 0;
     return 1 + (data_0209f2b0 != 0) + 2 * (SublevelToLevel(data_02092124) >= 0xf);
 }
 
@@ -346,7 +348,9 @@ void build_lc2(int variant, MenuLayout *L)
                      menu_hostimg_ready(MENU_IMG_BTN_SAVE_QUIT) && menu_hostimg_ready(MENU_IMG_BTN_CONT);   /* our planks, else the ROM's plates */
     const bool arrow = menu_hostimg_ready(MENU_IMG_ARROW_DOWN);
     const int sel = (L->facts.spare[0] >= 0 && L->facts.spare[0] <= 2) ? L->facts.spare[0] : 0;
-    const bool show = L->facts.spare[2] != 1;   /* state 1 counts the coins: text and total only, no plates yet (0 = unknown, as in the selftest) */
+    const int state = L->facts.spare[2];         /* the ROM's LC_Update state; 0 = unknown, as in the selftest */
+    const bool saving = state == 4 || state == 5; /* the save runs: the status box instead of the plates */
+    const bool show = state != 1 && !saving;     /* state 1 counts the coins: text and total only, no plates yet */
     const bool planks = show && art;
 
     /* the source bands, DS rows */
@@ -378,6 +382,7 @@ void build_lc2(int variant, MenuLayout *L)
     auto band = [&](uint8_t layers, int r0, int r1, int dest_y, bool draw) {
         MenuPiece b = menu_piece_make(SRC_TOP_HOSTROW, 0, hrow(r0), W, hrow(r1) - hrow(r0), MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         b.layers = layers;
+        b.bg = 1;                      /* a moved band is backdrop-class: the hidden ones sit on the others' rows and are never drawn */
         b.nodraw = draw ? 0 : 1;
         b.lden = 1; b.lnum = 1;
         b.fx = 0; b.fy = (short)dest_y; b.fw = (short)W; b.fh = (short)b.s.h;
@@ -437,6 +442,16 @@ void build_lc2(int variant, MenuLayout *L)
         ar.fx = (short)(hs_cx - aw / 2);
         ar.fy = (short)(hs_top[sel] + (2 + bob2) * L->unum / (2 * L->uden) - ah);
         menu_add_piece(L, ar);
+    }
+    if (saving) {
+        /* the ROM's own "Saving file..." box, bottom screen (56,40,144,80, the same box the pause menu's save shows), at 2/3 where the plates were */
+        MenuPiece sp = menu_piece_make(SRC_SUB, 56, 40, 144, 80, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        sp.layers = MENU_L_BG0 | MENU_L_BG1 | MENU_L_OBJ;   /* the box and its text; never the minimap behind it */
+        sp.key_backdrop = 1;
+        const int sw = U(144) * 2 / 3, sh2 = U(80) * 2 / 3;
+        sp.fx = (short)((W - sw) / 2); sp.fy = (short)(py0 + (plates_h - sh2) / 2); sp.fw = (short)sw; sp.fh = (short)sh2;
+        sp.lnum = 2 * L->unum; sp.lden = 3 * L->uden;
+        menu_add_piece(L, sp);
     }
     L->no_focus_paint = 1;                 /* the lit plank and the arrow are the selection */
     L->hide_owners = MENU_L_BG2;           /* "TOUCH TO SELECT" */

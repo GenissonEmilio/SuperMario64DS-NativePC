@@ -1223,7 +1223,13 @@ void hal_menu_decide(int w, int h, int scene_id)
            player must never press a button he has not seen, and never through the previous menu's rects */
         g_seen_valid = g_live && g_seen_valid && !new_menu;
     }
-    if (changed) {
+    /* SAVE2: a layout whose piece or hotspot count changed under the same recipe, variant and size (the save screen's plates
+       appear a few frames after its text) is traced like a new one, so the capture tools read the hotspots that are really up */
+    static int last_shape = -1;
+    const int shape = g_cur.np * 64 + g_cur.nh;
+    const int traced = changed || shape != last_shape;
+    last_shape = shape;
+    if (traced) {
         MTRACE("recipe=%s variant=%d size=%dx%d unit=%d/%d canvas_w=%d %s stage=%d fallback_frames=%d", R->name,
                variant, w, h, g_cur.unum, g_cur.uden, g_cur.canvas_w, menu_wide(&g_cur) ? "wide" : "narrow",
                g_cur.stage, g_fallback_frames);
