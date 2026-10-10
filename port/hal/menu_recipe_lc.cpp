@@ -349,7 +349,7 @@ void build_lc2(int variant, MenuLayout *L)
     const bool arrow = menu_hostimg_ready(MENU_IMG_ARROW_DOWN);
     const int sel = (L->facts.spare[0] >= 0 && L->facts.spare[0] <= 2) ? L->facts.spare[0] : 0;
     const int state = L->facts.spare[2];         /* the ROM's LC_Update state; 0 = unknown, as in the selftest */
-    const bool saving = state == 4 || state == 5; /* the save runs: the status box instead of the plates */
+    const bool saving = state == 5;              /* the save runs: the ROM's status box instead of the plates (state 4, 9 frames after the press, still has the plates) */
     const bool show = state != 1 && !saving;     /* state 1 counts the coins: text and total only, no plates yet */
     const bool planks = show && art;
 
