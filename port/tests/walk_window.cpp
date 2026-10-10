@@ -3519,6 +3519,9 @@ static OvlSurface ovl_surface_stacked(uint32_t *img, ntr::Framebuffer &fb)
 
 static void ovl_shade(const OvlSurface &fb, int x0, int y0, int w, int h)
 {
+    /* the overlay reads and writes real pixels: a frame held on the graphics
+       card (run cardfull, lane CARD2) is read back first */
+    ntr::gx_card_settle_because("a host overlay (shade)");
     /* half-strength darken of what is already there, so the text reads over
        sky and over stone without hiding the frame behind it */
     for (int y = y0; y < y0 + h; ++y) {
@@ -3535,6 +3538,7 @@ static void ovl_shade(const OvlSurface &fb, int x0, int y0, int w, int h)
 static int ovl_text(const OvlSurface &fb, int x0, int y0, const char *s,
                     uint32_t rgb)
 {
+    ntr::gx_card_settle_because("a host overlay (text)");
     int x = x0;
     for (; *s; ++s) {
         const unsigned char ch = (unsigned char)*s;
@@ -7355,6 +7359,66 @@ static void present_body(void)
        than with a second present() is deliberate: a resize feature that lives
        in one of two copies of this function is a resize feature that works in
        one layout. */
+    /* A FRAME HELD ON THE GRAPHICS CARD (run cardfull, lane CARD2): the
+       framebuffer is only its 2D, and the card composites that with the 3D it
+       still holds and presents the result through the same fit, filter and
+       swap chain. Anything that cannot (no client area, the offscreen proof
+       mode, a present that stood down) reads the frame back first and takes
+       the ordinary path below, so no picture is ever lost to it. */
+    /* A TICK COMPOSITED AHEAD OF THE PICTURES BETWEEN TWO TICKS (run hunt8, lane
+       CARDSM1, SmoothMotion): its finished picture is in the composite target;
+       this present, which may come after any number of blended pictures drew
+       over the card's other targets, shows it from there. Where it cannot, the
+       picture is read back into the framebuffer and presented the ordinary
+       way. */
+    if (const int ret_slot = ntr::gx_card_retained(g_present_fb)) {
+        if (gpu_offscreen && !g_present_stack &&
+            port_gpu_present_retained_offscreen(port_gpu_card_retained_view(ret_slot),
+                                                ntr::active_w, ntr::active_h))
+            return;
+        if (cw > 0 && ch > 0 && !gpu_offscreen && !g_present_stack &&
+            port_gpu_present_enabled()) {
+            void *view = port_gpu_card_retained_view(ret_slot);
+            int cdw, cdh, cdx, cdy;
+            hal_present_fit(cw, ch, ntr::active_w, ntr::active_h, &cdx, &cdy,
+                            &cdw, &cdh);
+            if (view && port_gpu_present_retained_frame(
+                            g_present_hwnd, view, ntr::active_w, ntr::active_h,
+                            cdx, cdy, cdw, cdh, cw, ch,
+                            PORT_VBLANK_MS * port_frame_divider(),
+                            port_frame_rate_target())) {
+                hal_present_set_rect(cdx, cdy, cdw, cdh, ntr::active_w,
+                                     ntr::active_h);
+                return;
+            }
+        }
+        ntr::gx_card_settle_fb(const_cast<ntr::Framebuffer &>(*g_present_fb),
+                               "the present could not take the tick from the card");
+    }
+    if (ntr::gx_card_overlay_active()) {
+        if (gpu_offscreen && !g_present_stack &&
+            port_gpu_present_card_offscreen(&g_present_fb->px[0][0],
+                                            g_present_bi->bmiHeader.biWidth,
+                                            ntr::active_w, ntr::active_h))
+            return;
+        if (cw > 0 && ch > 0 && !gpu_offscreen && !g_present_stack &&
+            port_gpu_present_enabled()) {
+            int cdw, cdh, cdx, cdy;
+            hal_present_fit(cw, ch, ntr::active_w, ntr::active_h, &cdx, &cdy,
+                            &cdw, &cdh);
+            if (port_gpu_present_card_frame(
+                    g_present_hwnd, &g_present_fb->px[0][0],
+                    g_present_bi->bmiHeader.biWidth, ntr::active_w,
+                    ntr::active_h, cdx, cdy, cdw, cdh, cw, ch,
+                    PORT_VBLANK_MS * port_frame_divider(),
+                    port_frame_rate_target())) {
+                hal_present_set_rect(cdx, cdy, cdw, cdh, ntr::active_w,
+                                     ntr::active_h);
+                return;
+            }
+        }
+        ntr::gx_card_settle_because("the present could not take it from the card");
+    }
     const uint32_t *bits;
     const BITMAPINFO *bi;
     int sw, sh;
@@ -7502,6 +7566,26 @@ static void present_body(void)
 static ntr::Framebuffer *g_ip_fb, *g_ip_p3, *g_ip_p2, *g_ip_p4, *g_ip_p5;
 static const ntr::Framebuffer *g_ip_level_fb;
 static int g_ip_fade_on, g_ip_fade_evy, g_ip_fade_white;
+/* run hunt8, lane FADEINTERP1: the engine A fade of the previous tick, to tell
+   a fade that holds still (blendable) from one in motion (a snap). */
+static int g_ip_prev_fade, g_ip_prev_evy, g_ip_prev_white, g_ip_fade_masked;
+static unsigned long long g_ip_fade_const_ticks, g_ip_fade_move_ticks;
+/* engine A's brightness blend on one pixel, the integers cp_fade and
+   fade_pass use */
+static inline uint32_t ip_fade_px(uint32_t p, int evy, int toWhite)
+{
+    int r = (p >> 16) & 0xff, g = (p >> 8) & 0xff, b = p & 0xff;
+    if (toWhite) {
+        r += ((255 - r) * evy) >> 4;
+        g += ((255 - g) * evy) >> 4;
+        b += ((255 - b) * evy) >> 4;
+    } else {
+        r -= (r * evy) >> 4;
+        g -= (g * evy) >> 4;
+        b -= (b * evy) >> 4;
+    }
+    return 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+}
 static int g_ip_rate_ok;
 
 /* The blended pictures' own cost, for SM64DS_INTERP_TRACE's line and the
@@ -7543,6 +7627,54 @@ static void ip_snap(ntr::Framebuffer *dst, const ntr::Framebuffer &src)
         memcpy(dst->px[y], src.px[y], ntr::active_w * sizeof(uint32_t));
 }
 
+/* run hunt8, lane TWODGPU1: a tick whose 2D the card drew itself (the overlay
+   target, hal/gpu_raster.h) has nothing to snapshot on the processor: the
+   framebuffer holds only what the processor wrote on its own, and the pictures
+   between ticks are composited from the overlay target. A settle of such a tick
+   folds the overlay into the framebuffer first, and ip_settled takes the
+   snapshots then. */
+static void ip_snap_2d(ntr::Framebuffer *dst, const ntr::Framebuffer &src)
+{
+    if (port_gpu_twod_live()) return;
+    ip_snap(dst, src);
+}
+
+/* run hunt8, lane CARDSM1: SmoothMotion with a tick held on the card.
+   g_ip_snapstage is how far this tick's snapshots have got (0 none, 1 the 3D
+   layer, 2 the 2D and the fade). ip_settled runs after a settle of the held
+   tick: the settle wrote the 3D layer's snapshot itself, and when the 2D
+   snapshots were taken already they are the finished picture as it is now (a
+   host overlay settles before it draws, so this is the picture without it). */
+static int g_ip_snapstage;
+static int ip_owns_picture(void);
+static void ip_settled(void)
+{
+    if (g_ip_snapstage >= 2 && g_ip_level_fb) {
+        ip_snap(g_ip_p2, *g_ip_level_fb);
+        ip_snap(g_ip_p4, *g_ip_level_fb);
+        ip_snap(g_ip_p5, *g_ip_level_fb);   /* run hunt8, lane TWODFIX1: not left from an older tick */
+    }
+}
+
+/* The end of the tick's drawing, just before its picture is handed to the
+   pacer. A held tick whose blended pictures will follow is composited on the
+   card now (port_gpu_card_compose into the composite target, which the blends
+   do not touch) and retired: its present, whenever it comes, shows that
+   target. The display capture unit reads the card's pre-smoothing copy, which
+   a blend would overwrite, so a frame that kept it is settled instead. */
+static void ip_retire_tick(ntr::Framebuffer &fb)
+{
+    if (!ntr::gx_card_overlay_active() || !ip_owns_picture()) return;
+    if (ntr::gx_card_pre_needed()) {
+        ntr::gx_card_settle_because("the display capture may read it (SmoothMotion)");
+        return;
+    }
+    if (port_gpu_card_compose(&fb.px[0][0], ntr::SCREEN_W))
+        ntr::gx_card_retire(&fb);
+    else
+        ntr::gx_card_settle_because("the tick could not be composited on the card");
+}
+
 /* Arm once, at the level loop's first turn. Needs FrameRate on (a rate the
    pacer presents at) and the key; the per-tick test against the tick rate
    is g_ip_rate_ok, set at each commit. */
@@ -7566,6 +7698,8 @@ static void ip_arm(const ntr::Framebuffer *level_fb)
 
 /* Build the blended picture for `alpha` into g_ip_fb. 0 when the tick has no
    blend to offer (a snap), and then nothing was drawn. */
+static int g_ip_card_ok = -1;   /* SM64DS_INTERP_CARD=0 puts the processor's blend back (A/B on one binary) */
+static unsigned long long g_ip_card_pics, g_ip_cpu_pics;
 static int ip_build(double alpha)
 {
     const long long t0 = ip_qpc();
@@ -7573,36 +7707,78 @@ static int ip_build(double alpha)
     g_ip_sum_replay += ip_ms_since(t0);
     const long long t1 = ip_qpc();
     ntr::Framebuffer &o = *g_ip_fb;
-    ntr::gx_clear_fill(o);     /* the frame's own clear, as the tick's */
+    if (g_ip_card_ok < 0) {
+        const char *e = getenv("SM64DS_INTERP_CARD");
+        g_ip_card_ok = (e && atoi(e) == 0) ? 0 : 1;
+    }
+    /* run hunt8, lane GPUINTERP1: a tick composited on the card ahead of its
+       pictures (ip_retire_tick) has its 2D overlay uploaded already; the
+       replayed 3D is drawn on the card and composited with that overlay into
+       the in-between target, and the present shows it from there. No readback
+       and no pass over the picture on the processor. */
+    int card = 0;
+    if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
+        card = ntr::gx_card_interp_clear(o);
+    else
+        ntr::gx_clear_fill(o);     /* the frame's own clear, as the tick's */
     ntr::gx_render(o);
     ntr::gx_interp_end();
     g_ip_sum_raster += ip_ms_since(t1);
     const long long t2 = ip_qpc();
-    for (int y = 0; y < ntr::active_h; ++y) {
-        uint32_t *row = o.px[y];
-        const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
-        for (int x = 0; x < ntr::active_w; ++x)
-            if (a[x] != b[x]) row[x] = b[x];
+    if (card && ntr::gx_card_overlay_active()) {
+        if (port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W)) {
+            ntr::gx_card_retire2(&o);
+            ++g_ip_card_pics;
+            g_ip_sum_compose += ip_ms_since(t2);
+            return 1;
+        }
+        /* the card could not composite it: read the 3D back (the buffer was
+           not wiped, so an overlay of zeros first) and blend as before */
+        for (int y = 0; y < ntr::active_h; ++y)
+            memset(o.px[y], 0, ntr::active_w * sizeof(uint32_t));
+        ntr::gx_card_settle_because("a picture between ticks could not be composited on the card");
     }
-    if (g_ip_fade_on) {
+    /* run hunt8, lane TWODGPU1: the tick's 2D lives on the card and the
+       processor has no snapshot of it to blend with. Lane TWODFIX1: the card
+       did not blend this picture (SM64DS_INTERP_CARD=0, or its composite
+       failed), so fold the overlay into the tick's framebuffer once and take
+       the three 2D snapshots from it, as a tick whose 2D the processor drew
+       itself has them; the processor's blend below then runs as ever. A fold
+       the card could not give leaves the old answer: the tick's own picture. */
+    if (port_gpu_twod_live()) {
+        port_gpu_twod_fold(const_cast<uint32_t *>(&g_ip_level_fb->px[0][0]), ntr::SCREEN_W);
+        if (port_gpu_twod_live()) return 0;
+        ip_snap(g_ip_p2, *g_ip_level_fb);
+        ip_snap(g_ip_p4, *g_ip_level_fb);
+        ip_snap(g_ip_p5, *g_ip_level_fb);
+    }
+    ++g_ip_cpu_pics;
+    if (g_ip_fade_on && g_ip_fade_masked) {
+        /* the fade only some pixels take, and the card could not composite this
+           picture: the tick's own finished picture stands in for it */
+        for (int y = 0; y < ntr::active_h; ++y)
+            memcpy(o.px[y], g_ip_p4->px[y], ntr::active_w * sizeof(uint32_t));
+    } else if (g_ip_fade_on) {
+        /* run hunt8, lane FADEINTERP1: a CONSTANT engine A fade (the same
+           coefficient on this tick and the one before). The tick's snapshots
+           p2 / p4 / p5 already carry it, so the replayed 3D takes it first and
+           the tick's 2D goes back over it wherever p2 differs from the faded
+           3D layer, the same test the unfaded case makes against p3. */
         const int evy = g_ip_fade_evy, toWhite = g_ip_fade_white;
         for (int y = 0; y < ntr::active_h; ++y) {
             uint32_t *row = o.px[y];
+            const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
             for (int x = 0; x < ntr::active_w; ++x) {
-                uint32_t p = row[x];
-                int r = (p >> 16) & 0xff, g = (p >> 8) & 0xff, b = p & 0xff;
-                if (toWhite) {
-                    r += ((255 - r) * evy) >> 4;
-                    g += ((255 - g) * evy) >> 4;
-                    b += ((255 - b) * evy) >> 4;
-                } else {
-                    r -= (r * evy) >> 4;
-                    g -= (g * evy) >> 4;
-                    b -= (b * evy) >> 4;
-                }
-                row[x] = 0xFF000000u | ((uint32_t)r << 16) |
-                         ((uint32_t)g << 8) | (uint32_t)b;
+                const uint32_t pf = ip_fade_px(a[x], evy, toWhite);
+                row[x] = (pf != b[x]) ? b[x] : ip_fade_px(row[x], evy, toWhite);
             }
+        }
+    } else {
+        for (int y = 0; y < ntr::active_h; ++y) {
+            uint32_t *row = o.px[y];
+            const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
+            for (int x = 0; x < ntr::active_w; ++x)
+                if (a[x] != b[x]) row[x] = b[x];
         }
     }
     for (int y = 0; y < ntr::active_h; ++y) {
@@ -7929,6 +8105,12 @@ static int ip_fit_commit(void)
     static unsigned late_bits;
     static int w_ticks, w_ready, w_blend, w_slow, w_refused, w_blends, w_late;
     static int w_unshown, w_meas, w_meas_drawn;
+    /* SM64DS_INTERP_FORCE_FIT=1 (a proof instrument, run hunt8 lane CARDSM1):
+       every tick counts as fitting, so a paced run with the probe or a slow
+       box still draws its blends and the proof rows see the same ticks */
+    static int force_fit = -1;
+    if (force_fit < 0) force_fit = getenv("SM64DS_INTERP_FORCE_FIT") ? 1 : 0;
+    if (force_fit) return 0;
     /* the tick that just ended: was it ready to blend, and did it? Only a
        tick the pacer gave a start can have drawn a blend at all; an unpaced
        run (a selftest, the SM64DS_INTERP_PROBE instrument) has none, and its
@@ -8024,6 +8206,11 @@ static void ip_probe(int frame, int rom_frame)
         bmps = e ? atoi(e) : 1;
     }
     if (k <= 0 || rom_frame < from || rom_frame > to) return;
+    /* run hunt8, lane CARDSM1: an unpaced probe builds its pictures before the
+       tick's own present, over the card's targets, so a tick still held there
+       is read back first (a paced run composites it ahead, ip_retire_tick) */
+    if (ntr::gx_card_overlay_active())
+        ntr::gx_card_settle_because("the SmoothMotion probe");
     if (!g_ip_tick_ok) {
         /* a SNAP tick: there is no blend, every picture of it is the tick's
            own frame (the pacer presents fb unchanged) */
@@ -8057,6 +8244,8 @@ static void ip_probe(int frame, int rom_frame)
         ntr::gx_polygons(tn);
         ntr::gx_interp_end();
         ip_build(alpha);
+        if (ntr::gx_card_retained(g_ip_fb))
+            ntr::gx_card_settle_fb(*g_ip_fb, "the SmoothMotion probe (a picture between ticks)");
         unsigned h = 2166136261u;
         for (int y = 0; y < ntr::active_h; ++y)
             for (int x = 0; x < ntr::active_w; ++x)
@@ -8074,8 +8263,13 @@ static void ip_probe(int frame, int rom_frame)
             for (int y = 0; y < ntr::active_h; ++y)
                 for (int x = 0; x < ntr::active_w; ++x)
                     if (g_ip_fb->px[y][x] != g_ip_p5->px[y][x]) ++diff;
-            fprintf(stderr, "[interp] probe f%d alpha 1 vs the tick's own "
-                    "picture: %ld pixel(s) differ\n", rom_frame, diff);
+            if (ntr::gx_card_retained(g_ip_level_fb))
+                fprintf(stderr, "[interp] probe f%d alpha 1: not compared (the "
+                        "tick is composited on the card; its snapshots are the "
+                        "2D overlay)\n", rom_frame);
+            else
+                fprintf(stderr, "[interp] probe f%d alpha 1 vs the tick's own "
+                        "picture: %ld pixel(s) differ\n", rom_frame, diff);
         }
         if (bmps) {
             char nm[64];
@@ -17589,6 +17783,22 @@ int main(void)
            raster, the engine-A composite, the fade and the overlays below
            all stand down with it (rb_skip_render); they write host pixels
            only, and they were a third of a replayed frame's cost */
+        /* THE PICTURE MAY STAY ON THE GRAPHICS CARD (run cardfull, lane CARD2).
+           With Renderer 1, PresentBackend 1 and SM64DS_PRESENT_FROM_CARD the
+           3D is not read back: the 2D below writes only its own pixels and the
+           present composites the two on the card (ntr/gx.h, GX_OV_*). With
+           SmoothMotion on (run hunt8, lane CARDSM1) the tick is held too and
+           composited before the pictures between ticks draw (ip_retire_tick);
+           not in the stacked layout, in a replayed frame, or in an online
+           match (the name tags and the chat draw over the 3D). Everything else that reads or draws
+           over the picture settles it first, so the answer here is only "may
+           the card keep it". */
+        ntr::gx_card_present_allow(!hal_sub_screen_stacked() &&
+                                   !rb_resim_skip_render() && !rb_skip_render() &&
+                                   data_0209f2d8 != 1 &&
+                                   !port::adventure_ghost_mode());
+        g_ip_snapstage = 0;
+        port_gpu_twod_reset();     /* run hunt8, lane TWODGPU1: a new tick's overlay */
         if (!rb_skip_render()) ntr::gx_clear_fill(fb);
         /* the rollback probe's re-run skips the rasteriser (SM64DS_ROLLBACK_DET_SKIP) */
         if (!rb_resim_skip_render() && !rb_skip_render())
@@ -17603,7 +17813,13 @@ int main(void)
                ip_fit_commit. A tick in the slow fallback snaps without the
                snapshots. */
             const int ip_slow = ip_fit_commit();
-            if (!ip_slow) ip_snap(g_ip_p3, fb);
+            if (!ip_slow) {
+                ip_snap(g_ip_p3, fb);
+                g_ip_snapstage = 1;
+                /* a tick held on the card has only its 2D in fb; if it is
+                   settled after all, the 3D layer's snapshot is the card's */
+                ntr::gx_card_settle_sink(&g_ip_p3->px[0][0], ip_settled);
+            }
             const int ip_snapit = (tick_frozen || !k1_rom || stacked || ip_slow ||
                                    rb_skip_render() || rb_resim_skip_render())
                                       ? 1 : 0;
@@ -17664,7 +17880,44 @@ int main(void)
                 for (int x = 0; x < ntr::active_w; ++x)
                     fb.px[y][x] = hold_px;
         }
-        if (g_ip_on > 0 && g_ip_tick_ok) ip_snap(g_ip_p2, fb);
+        /* run hunt8, lane CARDSM1: the snapshots of a tick held on the card are
+           its overlay (alpha = ntr/gx.h's verdict). A 2D layer behind the 3D,
+           or an engine A fade the composite has yet to apply, cannot be put
+           over a replayed 3D layer from that, so such a tick is settled here
+           and the snapshots are the finished picture. */
+        /* run hunt8, lane FADEINTERP1: is engine A's brightness fade this tick
+           one that HOLDS STILL? The same mode and coefficient as the tick
+           before and no per-pixel mask: then it is no motion, the tick is
+           blendable, and a picture between ticks takes the same fade the tick
+           did. Anything else (a fade moving, starting or stopping, or one
+           that only some pixels take) still snaps. Updated every tick. */
+        int ip_fade_const = 0, ip_fe = 0, ip_fw = 0;
+        if (g_ip_on > 0) {
+            const int fnow = port_fader_blend_state(&ip_fe, &ip_fw);
+            ip_fade_const = fnow && g_ip_prev_fade && g_ip_prev_evy == ip_fe &&
+                            g_ip_prev_white == ip_fw;
+            g_ip_prev_fade = fnow;
+            g_ip_prev_evy = ip_fe;
+            g_ip_prev_white = ip_fw;
+            if (fnow) {
+                if (ip_fade_const) ++g_ip_fade_const_ticks;
+                else ++g_ip_fade_move_ticks;
+            }
+        }
+        if (g_ip_on > 0 && g_ip_tick_ok && ntr::gx_card_overlay_active()) {
+            if (ntr::gx_card_behind_seen())
+                ntr::gx_card_settle_because("SmoothMotion: a 2D layer behind the 3D");
+            else if (port_gpu_card_fade_recorded()) {
+                /* a fader blend in motion makes this a SNAP tick just below
+                   (every picture of it is the tick's own, composited with its
+                   fade on the card); only a fade that stays a blendable tick
+                   needs the finished picture for its snapshots */
+                int fe = 0, fw = 0;
+                if (!port_fader_blend_state(&fe, &fw) && !ip_fade_const)
+                    ntr::gx_card_settle_because("SmoothMotion: an engine A fade");
+            }
+        }
+        if (g_ip_on > 0 && g_ip_tick_ok) ip_snap_2d(g_ip_p2, fb);
 
         /* THE FADE COMPOSITE, ENGINE A'S, now runs from the tail of
            hal_sub_screen_present just above (hal/message_compositor.cpp,
@@ -17680,11 +17933,34 @@ int main(void)
            a SNAP: every picture of it is the tick's own, already faded. */
         if (g_ip_on > 0 && g_ip_tick_ok) {
             int ip_evy = 0, ip_white = 0;
-            if (port_fader_blend_state(&ip_evy, &ip_white))
+            /* a fade only some pixels take (the brightness mask) is blendable
+               only while the tick is held on the card: the composite decides
+               the mask per pixel against the picture it draws */
+            if (ip_fade_const && port_engine_a_bright_mask() &&
+                !ntr::gx_card_overlay_active())
+                ip_fade_const = 0;
+            if (ip_fade_const) {
+                /* a fade that holds still is not motion: blend, and give the
+                   pictures between ticks the same fade */
+                g_ip_fade_masked = port_engine_a_bright_mask() ? 1 : 0;
+                g_ip_fade_on = 1;
+                g_ip_fade_evy = ip_fe;
+                g_ip_fade_white = ip_fw;
+            } else if (port_fader_blend_state(&ip_evy, &ip_white)) {
                 g_ip_tick_ok = 0;
+                if (ip_trace())
+                    fprintf(stderr, "[interp] tick f%d is a snap: engine A fade in "
+                            "motion (evy %d to %s) mask %d prev %d/%d/%d\n",
+                            port_rom_frame(), ip_evy, ip_white ? "white" : "black",
+                            port_engine_a_bright_mask() ? 1 : 0,
+                            g_ip_prev_fade, g_ip_prev_evy, g_ip_prev_white);
+            }
         }
 
-        if (g_ip_on > 0 && g_ip_tick_ok) ip_snap(g_ip_p4, fb);   /* run interp1 */
+        if (g_ip_on > 0 && g_ip_tick_ok) {
+            ip_snap_2d(g_ip_p4, fb);   /* run interp1 */
+            g_ip_snapstage = 2;
+        }
 
         /* SM64DS_FADE_WATCH=<from>[-<to>] (ROM frames): one line per frame of
            the picture a player would be looking at, beside every register that
@@ -17710,6 +17986,7 @@ int main(void)
             if (fw_lo >= 0) {
                 const int rf = port_rom_frame_checked(frame, "fade-watch");
                 if (rf >= fw_lo && rf <= fw_hi) {
+                    ntr::gx_card_settle();     /* it reads the picture's pixels */
                     unsigned long long sum = 0;
                     unsigned dark = 0, n = 0;
                     for (int y = 0; y < ntr::active_h; ++y) {
@@ -17836,9 +18113,13 @@ int main(void)
         if (!rb_skip_render())
             toast_draw(surf);
 
+        /* run hunt8, lane CARDSM1: a tick held on the card whose pictures
+           between ticks will follow is composited NOW, before the first of
+           them draws over the card's targets */
+        if (g_ip_on > 0 && g_ip_tick_ok) ip_retire_tick(fb);
         /* run interp1: the tick's finished picture, the last of the four
            snapshots, and the proof probe (inert unless asked for) */
-        if (g_ip_on > 0 && g_ip_tick_ok) ip_snap(g_ip_p5, fb);
+        if (g_ip_on > 0 && g_ip_tick_ok) ip_snap_2d(g_ip_p5, fb);
         if (g_ip_on > 0) ip_probe(frame, port_rom_frame());
         if (stacked && !rb_skip_render())
             stack_present_arm(stack_img, hwnd);

@@ -881,6 +881,14 @@ def seat_tables(img, extents):
     for rva, end, name, obj in extents:
         if DATASKIP.search(name):
             continue
+        # romdata.c.obj holds the ROM's own DS-side bytes, never a seat: its
+        # words are packed script fields, DS addresses (0x02xxxxxx) and plain
+        # numbers. One of them equal to an x86 text address (or to the data
+        # address of an ECX-dispatched record) in some build layout is a
+        # coincidence, and would refuse a good build (data_02088c2c+0x10 ==
+        # ppu_compose_stacked+0x472 in the TWODGPU1 layout).
+        if obj and obj.startswith("romdata.c"):
+            continue
         o = img.off(rva)
         if o is None:
             continue

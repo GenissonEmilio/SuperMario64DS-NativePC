@@ -100,6 +100,37 @@ int port_gpu_present_frame(void *hwnd, const void *pixels, int stride_px,
                            int dst_w, int dst_h, int client_w, int client_h,
                            double budget_ms, int frame_rate_key);
 
+/* THE PICTURE PRESENTED FROM THE CARD (run cardfull, lane CARD2). Same
+   arguments as port_gpu_present_frame, but `overlay` is a framebuffer holding
+   only the 2D of a frame whose 3D is still on the card (ntr/gx.h, GX_OV_*, and
+   hal/gpu_raster.h): the card composites the two and the result goes through
+   the same quad and swap chain. Returns 1 when the picture was presented; 0
+   when nothing was, and the caller then settles the frame (gx_card_settle) and
+   presents it the ordinary way. */
+int port_gpu_present_card_frame(void *hwnd, const void *overlay, int stride_px,
+                                int src_w, int src_h, int dst_x, int dst_y,
+                                int dst_w, int dst_h, int client_w,
+                                int client_h, double budget_ms,
+                                int frame_rate_key);
+
+/* run hunt8, lane CARDSM1: the same, for a tick whose composite was made ahead
+   of the pictures drawn between ticks (SmoothMotion): `view` is that composite
+   (hal/gpu_raster.h, port_gpu_card_retained_view) and nothing is composited
+   here. Returns as above. */
+int port_gpu_present_retained_frame(void *hwnd, const void *view, int src_w,
+                                    int src_h, int dst_x, int dst_y, int dst_w,
+                                    int dst_h, int client_w, int client_h,
+                                    double budget_ms, int frame_rate_key);
+
+int port_gpu_present_retained_offscreen(const void *view, int src_w, int src_h);
+
+/* The offscreen proof mode's version of the above, for a frame held on the
+   card: composite, draw the quad into the offscreen target and, on the frames
+   the mode checks, settle the frame and compare. 1 when it handled the
+   picture, 0 when the caller must settle and present the ordinary way. */
+int port_gpu_present_card_offscreen(const void *overlay, int stride_px,
+                                    int src_w, int src_h);
+
 /* The offscreen proof mode's per-frame call. Same upload, same quad, same
    filter, into a render target of this file's own instead of a swap chain,
    then read back and compared. Does nothing unless the mode is on. */

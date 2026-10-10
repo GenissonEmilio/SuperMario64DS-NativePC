@@ -94,6 +94,8 @@
 #include <string.h>
 
 #include "hal/gpu_device.h"
+#include "hal/gpu_raster.h"
+#include "ntr/gx.h"
 #include "hal/gpu_present.h"
 #include "hal/gpu_present_shaders.h"
 #include "hal/host_settings.h"
@@ -234,6 +236,7 @@ void fall_back(const char *why, HRESULT hr)
 {
     if (g_down) return;
     g_down = 1;
+    port_gpu_raster_present_down();
     if (hr)
         fprintf(stderr, "[present] the graphics card path stopped working (%s, "
                         "code %08x). This run goes back to the ordinary Windows "
@@ -436,8 +439,9 @@ bool set_params(int dst_x, int dst_y, int dst_w, int dst_h, int target_w,
    rectangle is whatever ClearRenderTargetView left there, which is the same
    black the GDI path paints with four PatBlts. */
 void draw_quad(ID3D11RenderTargetView *rtv, int target_w, int target_h,
-               int filter)
+               int filter, ID3D11ShaderResourceView *srv = 0)
 {
+    if (!srv) srv = g_srv;
     const float black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     g_ctx->ClearRenderTargetView(rtv, black);
     g_ctx->OMSetRenderTargets(1, &rtv, 0);
@@ -458,10 +462,14 @@ void draw_quad(ID3D11RenderTargetView *rtv, int target_w, int target_h,
     g_ctx->VSSetConstantBuffers(0, 1, &g_cb);
     g_ctx->PSSetShader(g_ps, 0, 0);
     g_ctx->PSSetConstantBuffers(0, 1, &g_cb);
-    g_ctx->PSSetShaderResources(0, 1, &g_srv);
+    g_ctx->PSSetShaderResources(0, 1, &srv);
     ID3D11SamplerState *smp = (filter == 0) ? g_smp_point : g_smp_linear;
     g_ctx->PSSetSamplers(0, 1, &smp);
     g_ctx->Draw(4, 0);
+    /* the view may be the card renderer's own composite target, which is a
+       render target again on the next picture: do not leave it bound */
+    ID3D11ShaderResourceView *none = 0;
+    g_ctx->PSSetShaderResources(0, 1, &none);
 }
 
 /* ---- the swap chain ------------------------------------------------------ */
@@ -1145,11 +1153,134 @@ extern "C" void port_gpu_present_offscreen_frame(const void *pixels,
                           dw, dh);
 }
 
+/* THE PRESENT ITSELF, shared by the two ways a picture arrives: `pixels` is the
+   processor's finished framebuffer, uploaded here; or `from_card` is the view
+   of a picture the card composited itself (run cardfull, lane CARD2) and
+   nothing is uploaded. Everything from the swap chain on is the same. */
+static int present_impl(void *hwnd, const void *pixels, int stride_px,
+                        int src_w, int src_h, int dst_x, int dst_y, int dst_w,
+                        int dst_h, int client_w, int client_h,
+                        double budget_ms, int frame_rate_key,
+                        void *from_card);
+
+/* THE OFFSCREEN PROOF MODE, FOR A FRAME HELD ON THE CARD (run cardfull, lane
+   CARD2). The card composites the held frame with the overlay and the same quad
+   draws the result into the offscreen target; on the frames the proof mode
+   checks, the frame is then settled (read back and resolved by the processor's
+   own copy of the rule) and the target is compared with that picture exactly
+   as for any other frame. Returns 1 when it handled the picture, 0 when the
+   caller must settle the frame and present it the ordinary way. */
+extern "C" int port_gpu_present_card_offscreen(const void *overlay, int stride_px,
+                                               int src_w, int src_h)
+{
+    if (!port_gpu_present_offscreen_mode() || !port_gpu_card_held()) return 0;
+    if (!overlay || src_w <= 0 || src_h <= 0) return 0;
+    if (!start()) return 0;
+    /* the device-lost drill, as the ordinary offscreen frame has it */
+    if (g_fail_after && g_off_frames >= g_fail_after) {
+        fprintf(stderr, "[present] SM64DS_PRESENT_FAIL_AFTER=%d reached after "
+                "%d picture(s); forcing the fallback on purpose\n",
+                g_fail_after, g_off_frames);
+        fall_back("a test asked for it", 0);
+        return 0;
+    }
+    const int dw = g_off_w ? g_off_w : src_w;
+    const int dh = g_off_h ? g_off_h : src_h;
+    if (!ensure_offscreen(dw, dh)) return 0;
+    void *srv = port_gpu_card_compose((const unsigned int *)overlay, stride_px);
+    if (!srv) return 0;
+    port_gpu_timer_span_begin(PORT_GPU_SPAN_PRESENT);
+    if (!set_params(0, 0, dw, dh, dw, dh, src_w, src_h, g_filter)) return 0;
+    draw_quad(g_off_rtv, dw, dh, g_filter, (ID3D11ShaderResourceView *)srv);
+    port_gpu_timer_span_end(PORT_GPU_SPAN_PRESENT);
+    g_ctx->Flush();
+    ++g_cost_n;
+    ++g_off_frames;
+    if (g_off_frames % g_off_every == 1 || g_off_every == 1) {
+        ntr::gx_card_settle();
+        offscreen_compare((const unsigned char *)overlay, stride_px, src_w,
+                          src_h, dw, dh);
+    }
+    return 1;
+}
+
 extern "C" int port_gpu_present_frame(void *hwnd, const void *pixels,
                                       int stride_px, int src_w, int src_h,
                                       int dst_x, int dst_y, int dst_w,
                                       int dst_h, int client_w, int client_h,
                                       double budget_ms, int frame_rate_key)
+{
+    return present_impl(hwnd, pixels, stride_px, src_w, src_h, dst_x, dst_y,
+                        dst_w, dst_h, client_w, client_h, budget_ms,
+                        frame_rate_key, 0);
+}
+
+/* THE PICTURE PRESENTED FROM THE CARD (run cardfull, lane CARD2): `overlay` is
+   the framebuffer holding only the 2D, hal/gpu_raster.h composites it with the
+   3D the card still holds, and the result goes through the same quad, filter
+   and swap chain as any other picture. 0 means nothing was presented and the
+   caller must settle the frame and fall through to the ordinary present. */
+extern "C" int port_gpu_present_card_frame(void *hwnd, const void *overlay,
+                                           int stride_px, int src_w, int src_h,
+                                           int dst_x, int dst_y, int dst_w,
+                                           int dst_h, int client_w,
+                                           int client_h, double budget_ms,
+                                           int frame_rate_key)
+{
+    if (!port_gpu_present_enabled() || !port_gpu_card_held()) return 0;
+    if (!overlay || src_w <= 0 || src_h <= 0) return 0;
+    if (!start()) return 0;
+    void *srv = port_gpu_card_compose((const unsigned int *)overlay, stride_px);
+    if (!srv) return 0;
+    return present_impl(hwnd, overlay, stride_px, src_w, src_h, dst_x, dst_y,
+                        dst_w, dst_h, client_w, client_h, budget_ms,
+                        frame_rate_key, srv);
+}
+
+/* The offscreen proof mode's version of the above (run hunt8, lane CARDSM1):
+   the retained composite goes through the offscreen quad as it is, with no
+   readback, except on the frames the proof compares, which return 0 so the
+   caller reads the tick back and takes the ordinary offscreen path. */
+extern "C" int port_gpu_present_retained_offscreen(const void *view, int src_w,
+                                                   int src_h)
+{
+    if (!port_gpu_present_offscreen_mode() || !view) return 0;
+    if (src_w <= 0 || src_h <= 0) return 0;
+    if (!start()) return 0;
+    if (g_off_every == 1 || (g_off_frames + 1) % g_off_every == 1) return 0;
+    if (g_fail_after && g_off_frames >= g_fail_after) return 0;
+    const int dw = g_off_w ? g_off_w : src_w;
+    const int dh = g_off_h ? g_off_h : src_h;
+    if (!ensure_offscreen(dw, dh)) return 0;
+    port_gpu_timer_span_begin(PORT_GPU_SPAN_PRESENT);
+    if (!set_params(0, 0, dw, dh, dw, dh, src_w, src_h, g_filter)) return 0;
+    draw_quad(g_off_rtv, dw, dh, g_filter, (ID3D11ShaderResourceView *)view);
+    port_gpu_timer_span_end(PORT_GPU_SPAN_PRESENT);
+    g_ctx->Flush();
+    ++g_cost_n;
+    ++g_off_frames;
+    return 1;
+}
+
+extern "C" int port_gpu_present_retained_frame(void *hwnd, const void *view,
+                                               int src_w, int src_h, int dst_x,
+                                               int dst_y, int dst_w, int dst_h,
+                                               int client_w, int client_h,
+                                               double budget_ms,
+                                               int frame_rate_key)
+{
+    if (!port_gpu_present_enabled() || !view) return 0;
+    if (!start()) return 0;
+    static const unsigned int nothing = 0;     /* present_impl wants a pointer */
+    return present_impl(hwnd, &nothing, 1, src_w, src_h, dst_x, dst_y, dst_w,
+                        dst_h, client_w, client_h, budget_ms, frame_rate_key,
+                        (void *)view);
+}
+
+static int present_impl(void *hwnd, const void *pixels, int stride_px,
+                        int src_w, int src_h, int dst_x, int dst_y, int dst_w,
+                        int dst_h, int client_w, int client_h,
+                        double budget_ms, int frame_rate_key, void *from_card)
 {
     if (!port_gpu_present_enabled()) return 0;
     if (!pixels || src_w <= 0 || src_h <= 0 || client_w <= 0 || client_h <= 0)
@@ -1187,12 +1318,13 @@ extern "C" int port_gpu_present_frame(void *hwnd, const void *pixels,
        monitor's wait, not the card's work, and folding it in would make the
        overlay's card line read as a vsync meter. */
     port_gpu_timer_span_begin(PORT_GPU_SPAN_PRESENT);
-    if (!upload(pixels, stride_px, src_w, src_h)) return 0;
+    if (!from_card && !upload(pixels, stride_px, src_w, src_h)) return 0;
     const long long t1 = qpc();
     if (!set_params(dst_x, dst_y, dst_w, dst_h, client_w, client_h, src_w,
                     src_h, g_filter))
         return 0;
-    draw_quad(g_scrtv, client_w, client_h, g_filter);
+    draw_quad(g_scrtv, client_w, client_h, g_filter,
+              (ID3D11ShaderResourceView *)from_card);
     port_gpu_timer_span_end(PORT_GPU_SPAN_PRESENT);
     const long long t2 = qpc();
 
@@ -1226,6 +1358,18 @@ int port_gpu_present_frame(void *, const void *, int, int, int, int, int, int,
 {
     return 0;
 }
+int port_gpu_present_card_frame(void *, const void *, int, int, int, int, int,
+                                int, int, int, int, double, int)
+{
+    return 0;
+}
+int port_gpu_present_card_offscreen(const void *, int, int, int) { return 0; }
+int port_gpu_present_retained_frame(void *, const void *, int, int, int, int,
+                                    int, int, int, int, double, int)
+{
+    return 0;
+}
+int port_gpu_present_retained_offscreen(const void *, int, int) { return 0; }
 void port_gpu_present_offscreen_frame(const void *, int, int, int) {}
 
 #endif
