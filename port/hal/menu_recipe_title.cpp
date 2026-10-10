@@ -90,7 +90,7 @@ int variant_for(int top, int elem)
         return g_last;                            /* 1, 6: easing in or out */
     }
     if (top == 2) return V_TABLE;
-    if (top == 4) return g_last;
+    if (top == 4) return V_TABLE;                 /* the table loading (4/5): its list already types in, FILE1 */
     return V_FILES;                               /* 0, 1, 3, 7, 9 on the file machine */
 }
 
