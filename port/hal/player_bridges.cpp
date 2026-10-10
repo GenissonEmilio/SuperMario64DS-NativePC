@@ -524,10 +524,11 @@ extern "C" void port_adventure_ghost_hold()
     for (int i = 0; i < kPortMaxPlayers; ++i) {
         if (i == me) continue;
         if (data_0209fc5c[i] == 0) continue;   /* slot not live */
-        /* PARTY: a party member is a shared-world body that COLLIDES and
-           interacts -- do NOT hold it non-colliding. Only non-party remotes
-           (adventure ghosts) get the pass-through hold. */
-        if (port_party_member(i)) continue;
+        /* PARTY (PBODY1): a party body is held and parked like any hub ghost
+           body. It is the follower that makes it solid for the one pass that
+           needs it: it registers the body's cylinder after the last hold of the
+           frame (hal/party_cyl.cpp), and the render pass draws it without the
+           ghost layer (port_party_member, below). */
         if (void *a = data_0209f394[i]) {
             port::player::disable_interaction(a);
             /* run mp1 lane GHOSTWIRE1: ON THE HUB A GHOST BODY RUNS NO GAME
