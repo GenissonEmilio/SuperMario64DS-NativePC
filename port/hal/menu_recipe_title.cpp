@@ -1027,6 +1027,16 @@ struct TitleFactsScope { TitleFactsScope(const TitleFacts *f) { t_f = f; } ~Titl
 }
 
 static void menu_title_build_impl(int variant, MenuLayout *L);
+/* INT2: the attract and the first frames of the intro are pure black edge to edge: the side areas of a wide canvas would otherwise show the
+   ROM's upper-screen backdrop (a lighter blue-grey) around the black 4:3 lower screen. A full-canvas black veil goes under the picture. */
+static void add_black_under(MenuLayout *L)
+{
+    MenuPiece bk = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    bk.bg = 1; bk.iris = 1; bk.lden = 1; bk.lnum = 1; bk.fx = 0; bk.fy = 0; bk.fw = (short)L->w; bk.fh = (short)L->h;
+    bk.ir16 = 0;
+    menu_add_piece(L, bk);
+}
+
 void menu_title_build(int variant, MenuLayout *L)
 {
     TitleFactsScope scope((const TitleFacts *)L->facts.blob);
@@ -1036,6 +1046,7 @@ void menu_title_build(int variant, MenuLayout *L)
 static void menu_title_build_impl(int variant, MenuLayout *L)
 {
     if (variant == V_ATTRACT) {
+        add_black_under(L);
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
         p.touch = 1;
         menu_add_piece(L, p);
@@ -1044,6 +1055,7 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
         return;
     }
     if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && !getenv("SM64DS_CHORE_BLACK")) {
+        add_black_under(L);
         /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
            as the ROM draws them until its iris sprite appears */
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
