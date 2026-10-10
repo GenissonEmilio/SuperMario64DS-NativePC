@@ -24,9 +24,10 @@
  * TOUCH: the pad / keys move a focus over the hotspots (automatic spatial navigation), A synthesises the touch at
  * the focused box's centre, B / Backspace presses the back arrow (MenuLayout.back). Mouse clicks map through the touch
  * piece to the ROM's boxes exactly (1:1). Focus highlight: the core's own (the focused item's pixels brightened and
- * outlined), no new art.
+ * outlined) plus the title's blue arrow over it (the game's own art).
  */
 #include "menu_compose.h"
+#include "menu_hostimg.h"
 
 extern "C" {
 void *port_scene_live_object(void);
@@ -42,6 +43,7 @@ extern int data_0208a170;               /* the highlighted group's base index (0
 namespace {
 
 const int kScene = 5;
+int g_foc_have, g_foc_x, g_foc_y;      /* the focused hotspot's box origin, read once a frame by menu_recroom_pad_ok (the core resets the focus while it solves the layout, so build cannot ask for it) */
 const int kBackX = 0xd8, kBackY = 0x90, kBackW = 0x21, kBackH = 0x21;   /* src/func_ov005_020c0250.cpp:25-31 */
 
 inline int ow(const void *o, int off) { return *(const int *)((const char *)o + off); }
@@ -65,12 +67,20 @@ void menu_recroom_build(int, MenuLayout *L)
        repeats every 32 columns and 224 = 7 x 32, so a copy joins the next seamlessly; the leftmost 8 source columns are
        not part of the repeat (measured, they differ from columns 32..39) and are never used */
     for (int x = 0; x < cw; x += 224) {
-        int sw = cw - x + 1;                               /* one unit past the exact edge: clamped, never a sliver */
-        if (sw > 224) sw = 224;
+        const int sw = cw - x < 224 ? cw - x : 224;        /* whole units: the last copy ends on a whole unit <= the edge */
         MenuPiece t = menu_piece_make(SRC_SUB, 32, 0, sw, 192, MENU_AX_L, MENU_AY_T, x, 0, 1, 1);
         t.layers = MENU_L_BG3;
         t.bg = 1;
         menu_add_piece(L, t);
+    }
+    /* the picture is rarely a whole number of units wide; the sliver past the last whole unit (under one unit) is
+       covered by a 2 unit piece on the right edge, so no strip of the hidden upper screen shows. Its source columns
+       are the pattern's phase at that place modulo its 32 column period (the join is within a fraction of a unit). */
+    {
+        MenuPiece e = menu_piece_make(SRC_SUB, 32 + (cw - 2) % 32, 0, 2, 192, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+        e.layers = MENU_L_BG3;
+        e.bg = 1;
+        menu_add_piece(L, e);
     }
 
     /* the menu itself: tab column, cards, stickers, star counts, arrows (BG0, BG2, OBJ), centred */
@@ -110,6 +120,33 @@ void menu_recroom_build(int, MenuLayout *L)
         if (mode == 0) menu_add_hotspot(L, pm, 0xd8, 0x40, 0x21, 0x41, -1);
         else menu_add_hotspot(L, pm, 0x38, 0x40, 0x21, 0x41, -1);
     }
+    /* THE FOCUS ARROW (a pad or key focus, or the mouse hovering): the title's own blue triangle (menu_hostimg.h, the art
+       cut from the ROM's cursor object) points down at the focused item from above, its tip a little way into the item's
+       top edge, bobbing on the 8-frame cadence; pulled down into the picture where the item is at the top edge. The core
+       also brightens and outlines the item itself. Backdrop class, so a click goes through to the item below it. */
+    const int fx = g_foc_x, fy = g_foc_y;
+    static int calls;
+    ++calls;
+    if (g_foc_have && menu_hostimg_ready(MENU_IMG_ARROW_DOWN)) {
+        for (int j = 0; j < L->nh; ++j) {
+            const MenuHotspot &H = L->hs[j];
+            if (H.box.x != fx || H.box.y != fy) continue;
+            static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* half units */
+            int iw = 1, ih = 1;
+            menu_hostimg_size(MENU_IMG_ARROW_DOWN, &iw, &ih);
+            const int dw = 14 * L->unum / L->uden, dh = (int)((long long)dw * ih / iw);
+            MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_DOWN; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
+            const int cxu2 = 2 * H.box.x + H.box.w - 256;                  /* centre x from 128, times 2 */
+            ar.fx = (short)(L->w / 2 + cxu2 * L->unum / (2 * L->uden) - dw / 2);
+            int top = ((2 * H.box.y + 6 + kBob[calls & 7]) * L->unum) / (2 * L->uden) - dh;
+            if (top < 0) top = 0;
+            if (top + dh > L->h) top = L->h - dh;
+            ar.fy = (short)top;
+            menu_add_piece(L, ar);
+            break;
+        }
+    }
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
 }
@@ -123,7 +160,11 @@ void menu_recroom_build(int, MenuLayout *L)
 int menu_recroom_pad_ok(void)
 {
     const void *o = port_scene_live_object();
-    if (!o || port_scene_live_id() != kScene) return 0;
+    if (!o || port_scene_live_id() != kScene) { g_foc_have = 0; return 0; }
+    {
+        unsigned st;
+        g_foc_have = hal_menu_hover_box(&g_foc_x, &g_foc_y, &st);
+    }
     if (ob(o, 0xac) != 0 || ob(o, 0x54) == 1) return 0;
     if (ow(o, 0x90) > 0 || ow(o, 0x94) > 0 || ow(o, 0x98) > 0) return 0;
     unsigned short *pressed = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4 + 2);
