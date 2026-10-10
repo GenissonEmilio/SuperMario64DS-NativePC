@@ -159,7 +159,7 @@ bool g_env = false, g_log = false, g_act = true, g_snap_on = true, g_hyst = true
 unsigned g_sample_every = 0;
 unsigned g_dump_at[4]; int g_ndump = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
-ForgeKnob g_forge[8]; int g_nforge = 0;
+ForgeKnob g_forge[12]; int g_nforge = 0;
 
 bool g_regd = false;
 int  g_my = -1;
@@ -207,7 +207,7 @@ void read_env() {
     }
     if (const char *f = std::getenv("SM64DS_COOP_MOVE_FORGE")) {
         const char *p = f;
-        while (*p && g_nforge < 8) {
+        while (*p && g_nforge < 12) {
             unsigned fr = 0; char nm[12] = {}; int used = 0;
             if (std::sscanf(p, "%u:%11[a-z]%n", &fr, nm, &used) < 2 || used <= 0) break;
             g_forge[g_nforge].tick = fr;
