@@ -56,6 +56,7 @@ def env_for(i, relay, kind, o):
     if kind == "coop":
         e["SM64DS_COOP"] = "1"
     e["SM64DS_PRESENCE_LOG"] = "1"
+    e["SM64DS_PACE_SELFTEST"] = "1"      # real-time pacing: the relay and the ghost rings run in wall-clock time
     e["SM64DS_PLAYER_NAME"] = ("Tango", "Opie", "Kirb", "MoMo")[i]
     e["SM64DS_PLAYER_COLOR"] = ("e04040", "40c060", "e0c030", "60a0f0")[i]
     w = o.get("warp%d" % i, o.get("warp", "1@300"))
@@ -70,6 +71,11 @@ def env_for(i, relay, kind, o):
     if sw != "":
         e["SM64DS_SWITCH"] = sw
     pad = o.get("pad%d" % i)
+    tap = o.get("tap%d" % i, o.get("tap"))     # tap=<from>-<to>-<every>: A taps (a course opens with a message box that needs them)
+    if tap:
+        a, b, k = [int(v) for v in tap.split("-")]
+        taps = "+".join("1000@%d-%d" % (f, f + 4) for f in range(a, b, k))
+        pad = (pad + "+" + taps) if pad else taps
     if pad:
         e["SM64DS_SELFTEST_IDLE"] = "1"
         e["SM64DS_HOST_PAD"] = pad.replace(";", ",").replace("+", ",")

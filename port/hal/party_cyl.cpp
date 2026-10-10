@@ -209,6 +209,12 @@ struct Target {
     unsigned cls;
     int x, y, z;
 };
+enum { kSnapMax = 1024 };
+struct Snap {
+    int n;
+    unsigned uid[kSnapMax];
+    unsigned short cls[kSnapMax];
+};
 struct Metrics {
     int coins, stars, red, actors, level;
     bool alive;
@@ -225,6 +231,7 @@ struct LabState {
     int nt = 0;
     Target t[600];
     Metrics m_prev;
+    Snap snap_prev;
     bool have_prev = false;
     int changed = 0;
     int done = 0;
@@ -260,8 +267,9 @@ bool is_body(const void *a) {
     return false;
 }
 
-Metrics sample(unsigned watch_uid) {
+Metrics sample(unsigned watch_uid, Snap *snap = nullptr) {
     Metrics m;
+    if (snap) snap->n = 0;
     m.coins = NumCoins();
     m.stars = NumStars();
     m.red = NumRedCoins();
@@ -272,6 +280,11 @@ Metrics sample(unsigned watch_uid) {
     for (const char *a = (const char *)_ZN8dActor_c4NextEPKS_(0); a && guard < 8192;
          a = (const char *)_ZN8dActor_c4NextEPKS_(a), ++guard) {
         ++m.actors;
+        if (snap && snap->n < kSnapMax) {
+            snap->uid[snap->n] = *(const unsigned *)(a + 4);
+            snap->cls[snap->n] = *(const unsigned short *)(a + 0xc);
+            ++snap->n;
+        }
         if (watch_uid && *(const unsigned *)(a + 4) == watch_uid) m.alive = true;
     }
     return m;
@@ -293,6 +306,22 @@ void snapshot_targets() {
     }
     std::fprintf(stderr, "[partylab] sweep begins: %d actors, step %u passes, level %d\n", g_lab.nt,
                  g_lab.step, (int)(unsigned char)data_0209f2f8);
+}
+
+// what appeared and what went between two snapshots (uids are unique per actor)
+void snap_diff(const Snap &a, const Snap &b, char *out, int cap) {
+    int o = 0;
+    out[0] = 0;
+    for (int i = 0; i < a.n && o < cap - 24; ++i) {
+        bool found = false;
+        for (int j = 0; j < b.n; ++j) if (b.uid[j] == a.uid[i]) { found = true; break; }
+        if (!found) o += std::snprintf(out + o, (size_t)(cap - o), " -0x%x/%u", a.cls[i], a.uid[i]);
+    }
+    for (int j = 0; j < b.n && o < cap - 24; ++j) {
+        bool found = false;
+        for (int i = 0; i < a.n; ++i) if (a.uid[i] == b.uid[j]) { found = true; break; }
+        if (!found) o += std::snprintf(out + o, (size_t)(cap - o), " +0x%x/%u", b.cls[j], b.uid[j]);
+    }
 }
 
 void lab_note_class(unsigned cls) {
@@ -318,7 +347,7 @@ void lab_before_register(void *a, int body) {
     if (!g_lab.snapped) {
         g_lab.snapped = true;
         snapshot_targets();
-        g_lab.m_prev = sample(g_lab.nt ? g_lab.t[0].uid : 0);
+        g_lab.m_prev = sample(g_lab.nt ? g_lab.t[0].uid : 0, &g_lab.snap_prev);
         g_lab.have_prev = true;
     }
     const unsigned rel = n - g_lab.start;
@@ -340,8 +369,11 @@ void lab_before_register(void *a, int body) {
     if (phase == 0 && k > 0) {
         // what the previous target's dwell changed, read before the body moves on
         const Target &pt = g_lab.t[k - 1];
-        const Metrics m = sample(pt.uid);
+        Snap now_snap;
+        const Metrics m = sample(pt.uid, &now_snap);
         const Metrics &p = g_lab.m_prev;
+        char diff[200];
+        snap_diff(g_lab.snap_prev, now_snap, diff, (int)sizeof diff);
         const bool ch = m.coins != p.coins || m.stars != p.stars || m.red != p.red ||
                         m.actors != p.actors || m.level != p.level || !m.alive;
         if (ch) {
@@ -349,10 +381,10 @@ void lab_before_register(void *a, int body) {
             lab_note_class(pt.cls);
         }
         std::fprintf(stderr, "[partylab] k=%d cls=0x%x uid=%u pos=(%d,%d,%d) coins %d>%d stars %d>%d red %d>%d "
-                     "actors %d>%d level %d>%d alive=%d %s\n", k - 1, pt.cls, pt.uid, pt.x >> 12, pt.y >> 12,
+                     "actors %d>%d level %d>%d alive=%d %s%s\n", k - 1, pt.cls, pt.uid, pt.x >> 12, pt.y >> 12,
                      pt.z >> 12, p.coins, m.coins, p.stars, m.stars, p.red, m.red, p.actors, m.actors,
-                     p.level, m.level, m.alive ? 1 : 0, ch ? "CHANGED" : "-");
-        g_lab.m_prev = sample(g_lab.t[k].uid);
+                     p.level, m.level, m.alive ? 1 : 0, ch ? "CHANGED" : "-", diff);
+        g_lab.m_prev = sample(g_lab.t[k].uid, &g_lab.snap_prev);
     }
     if (g_lab.mode == kLabFar) {
         *px = 0x40000000; *py = 0; *pz = 0x40000000;
