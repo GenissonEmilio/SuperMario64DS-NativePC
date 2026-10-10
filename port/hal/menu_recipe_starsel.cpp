@@ -162,9 +162,15 @@ const int kGradCol = 16;      /* a column clear of the arrows (x 0..12), the tex
 
 void build_gameover(int, MenuLayout *L)
 {
-    MenuPiece g = menu_piece_make(SRC_TOP_2D, kGradCol, 0, 1, 192, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
-    g.layers = MENU_L_BG2; g.bg = 1; g.xfill = 1; g.fill_w = (short)(L->canvas_w + 8);
-    menu_add_piece(L, g);
+    /* BG2 rows 176..183 hold a navy and brown strip the ROM hides under the text band; the gradient is drawn from
+       rows 0..175, then rows 174..175 repeat over the strip's 8 rows, then rows 184..191 as they are. */
+    for (int k = 0; k < 6; k++) {
+        const int sy = k == 0 ? 0 : (k <= 4 ? 174 : 184), sh = k == 0 ? 176 : (k <= 4 ? 2 : 8),
+                  dy = k == 0 ? 0 : (k <= 4 ? 176 + (k - 1) * 2 : 184);
+        MenuPiece g = menu_piece_make(SRC_TOP_2D, kGradCol, sy, 1, sh, MENU_AX_C, MENU_AY_T, 0, dy, 1, 1);
+        g.layers = MENU_L_BG2; g.bg = 1; g.xfill = 1; g.fill_w = (short)(L->canvas_w + 8);
+        menu_add_piece(L, g);
+    }
     MenuPiece t = menu_piece_make(SRC_TOP_2D, 0, 0, 256, 136, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
     t.layers = MENU_L_OBJ; t.bg = 1;
     menu_add_piece(L, t);
