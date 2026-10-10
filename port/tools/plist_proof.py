@@ -8,7 +8,7 @@ process's PID). Point PLIST_RIG at the directory holding them. Other environment
   PLIST_EXE     the exe to run (default: the rig's)        PLIST_RELAY   relay.py (default: this tree's)
   PLIST_OUT     where the console folders go               PLIST_SHOTS   where pictures go
   PLIST_ASSET_ROOT  a kit install's asset root (kit rows)
-  PLIST_LOCK    ladder lock to hold while consoles run (default C:/tmp/mp1/ladder2.lock; "" = none)
+  PLIST_LOCK    ladder lock to hold while consoles run (a lock file path; default none)
 
   python plist_proof.py room:<kind>:<n>:<tag>[:k=v;k=v]       kind party | coop | world
     options  frames=900  scale=1|2|3  stacked=1  chat=1  handler=1  env_<NAME>=value  warp<i>=6@300  star<i>=1  click<i>=<seconds after the list shows every player (abs=1: after the start)>@<x>,<y>[|<seconds>@<x>,<y>...]
@@ -198,7 +198,7 @@ def RIGOUT(row, i):
 
 
 def lock():
-    p = os.environ.get("PLIST_LOCK", "C:/tmp/mp1/ladder2.lock")
+    p = os.environ.get("PLIST_LOCK", "")
     if not p:
         return None
     os.environ["SM64DS_BUILD_LOCK_PATH"] = p
