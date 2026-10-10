@@ -185,6 +185,7 @@
 #include "hal/gpu_raster_shaders.h"
 #include "hal/host_settings.h"
 #include "ntr/gx.h"
+#include "ntr/smooth.h"
 
 namespace {
 
@@ -982,6 +983,10 @@ struct Batch {
     int au, av;
     int eq;                 /* the depth test is EQUAL (POLYGON_ATTR bit 14) */
     UINT first, count;
+    /* a run of smoothed grids (run hunt8, SMOOTHGPU1): first and count are
+       instances, drawn at grid level lvl by DrawInstanced */
+    bool is_grid = false;
+    int lvl = 0;
 };
 std::vector<Batch> g_batch;
 
@@ -1736,6 +1741,8 @@ struct Op {
     int pid;                /* the stencil reference of a translucent draw */
     int eq;                 /* the depth test is EQUAL (POLYGON_ATTR bit 14) */
     UINT first, count;
+    bool is_grid = false;   /* as Batch */
+    int lvl = 0;
 };
 std::vector<GVert> g_scratch1;
 std::vector<Op> g_ops;
@@ -1981,10 +1988,305 @@ bool cp_keep_ok()
    buffers are untouched and gx.cpp draws everything), and -1 when the
    whole-frame mode cannot run at all (it has given up, nothing was touched,
    and the caller carries on with the opaque-only path). */
+/* ==== SMOOTHED GRIDS EXPANDED ON THE CARD (run hunt8, lane SMOOTHGPU1) =======
+ *
+ * ntr/gx.cpp keeps a smoothed source triangle as one GxGrid record instead of
+ * up to 64 sub-triangles (ntr/gx.h has the contract) when this backend says it
+ * takes them. Here a grid becomes one INSTANCE of a draw whose vertex shader
+ * (vs_grid in gpu_raster.hlsl) rebuilds every sub-triangle corner from:
+ *   - the grid's points, in the shape store's pool (mirrored here once and
+ *     appended to as the store grows) or in the frame's arena (the grids the
+ *     store did not keep),
+ *   - the three source corners' texel coordinates and colours,
+ *   - the matrices and the polygon state the grid was recorded under,
+ *   - the weight and index tables of its level, uploaded once.
+ * Consecutive grids with the same texture, wrap, polygon class and level are
+ * ONE draw, so a model costs a handful of draws and not one per triangle.
+ *
+ * WHAT THE CARD DECIDES THAT THE PROCESSOR PATH DECIDED: the back-face cull and
+ * the degenerate test (per sub-triangle, from the same screen area, in the
+ * vertex stage). Everything else the processor decided before the grid was
+ * kept: gx.cpp only keeps a grid whose model-space box is wholly in front of
+ * the near plane, so no clip is ever needed, and it keeps no shadow-volume or
+ * equal-depth polygon.
+ *
+ * SM64DS_SMOOTH_GPU=0 asks for the processor path (read by gx.cpp, which then
+ * never keeps a grid; read here as well so a backend started without it says
+ * no to the probe). */
+
+struct GInst {
+    float xf[16];
+    float pj[16];
+    float vp[4];
+    uint32_t info[4];
+    float a0[4], a1[4], a2[4];
+    float st[4];
+    float tx[4];
+};
+static_assert(sizeof(GInst) == 240, "GInst must match gpu_raster.hlsl");
+
+int g_grid_env = -1;                       /* SM64DS_SMOOTH_GPU */
+int g_grid_dead;                           /* a grid resource failed: processor path from now on */
+long long g_grid_frames, g_grid_insts, g_grid_draws;
+ID3D11VertexShader        *g_vs_grid;
+ID3D11Buffer              *g_gi_buf;       /* instances, dynamic */
+ID3D11ShaderResourceView  *g_gi_srv;
+UINT                       g_gi_cap;
+ID3D11Buffer              *g_gp_buf;       /* the mirror of the shape store's pool, default usage */
+ID3D11ShaderResourceView  *g_gp_srv;
+size_t                     g_gp_cap, g_gp_have;
+uint32_t                   g_gp_gen;
+ID3D11Buffer              *g_ga_buf;       /* the frame arena, dynamic */
+ID3D11ShaderResourceView  *g_ga_srv;
+size_t                     g_ga_cap;
+ID3D11Buffer              *g_gt_abc, *g_gt_idx;
+ID3D11ShaderResourceView  *g_gt_abc_srv, *g_gt_idx_srv;
+UINT                       g_gt_abc_off[3], g_gt_idx_off[3], g_gt_tris[3];
+ID3D11Buffer              *g_gcb_frame, *g_gcb_draw;
+bool                       g_grid_ready;
+std::vector<GInst>         g_ginst;
+
+bool grid_supported()
+{
+    if (g_grid_env < 0) {
+        const char *e = getenv("SM64DS_SMOOTH_GPU");
+        g_grid_env = (e && *e == '0') ? 0 : 1;
+    }
+    return g_grid_env && !g_grid_dead;
+}
+
+void grid_give_up(const char *why, HRESULT hr)
+{
+    if (g_grid_dead) return;
+    g_grid_dead = 1;
+    if (hr) fprintf(stderr, "[renderer] smoothed grids on the card: %s (0x%08lx). "
+                    "They are expanded on the processor from now on.\n", why, (unsigned long)hr);
+    else fprintf(stderr, "[renderer] smoothed grids on the card: %s. They are "
+                 "expanded on the processor from now on.\n", why);
+}
+
+ID3D11ShaderResourceView *grid_make_srv(ID3D11Buffer *b, UINT elems)
+{
+    D3D11_SHADER_RESOURCE_VIEW_DESC sd;
+    memset(&sd, 0, sizeof sd);
+    sd.Format = DXGI_FORMAT_UNKNOWN;
+    sd.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+    sd.Buffer.FirstElement = 0;
+    sd.Buffer.NumElements = elems;
+    ID3D11ShaderResourceView *v = 0;
+    if (FAILED(g_dev->CreateShaderResourceView(b, &sd, &v))) return 0;
+    return v;
+}
+
+/* a structured buffer of `elems` elements of `stride` bytes */
+bool grid_make_buf(ID3D11Buffer **buf, ID3D11ShaderResourceView **srv, UINT stride,
+                   UINT elems, bool dynamic, const void *init)
+{
+    if (*srv) { (*srv)->Release(); *srv = 0; }
+    if (*buf) { (*buf)->Release(); *buf = 0; }
+    D3D11_BUFFER_DESC bd;
+    memset(&bd, 0, sizeof bd);
+    bd.ByteWidth = stride * elems;
+    bd.Usage = dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT;
+    bd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    bd.CPUAccessFlags = dynamic ? D3D11_CPU_ACCESS_WRITE : 0;
+    bd.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+    bd.StructureByteStride = stride;
+    D3D11_SUBRESOURCE_DATA sdat;
+    memset(&sdat, 0, sizeof sdat);
+    sdat.pSysMem = init;
+    if (FAILED(g_dev->CreateBuffer(&bd, init ? &sdat : 0, buf)) || !*buf) return false;
+    *srv = grid_make_srv(*buf, elems);
+    return *srv != 0;
+}
+
+bool grid_start()
+{
+    if (g_grid_ready) return true;
+    if (!grid_supported()) return false;
+    HRESULT hr = g_dev->CreateVertexShader(kGpuGridVS, sizeof kGpuGridVS, 0, &g_vs_grid);
+    if (FAILED(hr)) { grid_give_up("the grid vertex shader would not load", hr); return false; }
+    /* the weights and the index lists of the three levels, back to back */
+    std::vector<float> abc;
+    std::vector<uint32_t> idx;
+    static const int kTf[3] = {2, 4, 8};
+    for (int l = 0; l < 3; ++l) {
+        const ntr::SmoothGridTable *T = ntr::smooth_grid_table(kTf[l]);
+        if (!T) { grid_give_up("a grid level has no table", 0); return false; }
+        g_gt_abc_off[l] = (UINT)(abc.size() / 4);
+        for (int i = 0; i < T->n; ++i) {
+            abc.push_back(T->a[i]); abc.push_back(T->b[i]); abc.push_back(T->c[i]);
+            abc.push_back(0.0f);
+        }
+        const int nt = ntr::smooth_grid_tris(kTf[l]);
+        const uint16_t *ix = ntr::smooth_grid_tri_index(kTf[l]);
+        g_gt_tris[l] = (UINT)nt;
+        g_gt_idx_off[l] = (UINT)idx.size();
+        for (int i = 0; i < nt * 3; ++i) idx.push_back(ix[i]);
+    }
+    if (!grid_make_buf(&g_gt_abc, &g_gt_abc_srv, 16, (UINT)(abc.size() / 4), false, &abc[0]) ||
+        !grid_make_buf(&g_gt_idx, &g_gt_idx_srv, 4, (UINT)idx.size(), false, &idx[0])) {
+        grid_give_up("the grid tables would not upload", 0);
+        return false;
+    }
+    D3D11_BUFFER_DESC cb;
+    memset(&cb, 0, sizeof cb);
+    cb.ByteWidth = 32;
+    cb.Usage = D3D11_USAGE_DYNAMIC;
+    cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    cb.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    if (FAILED(g_dev->CreateBuffer(&cb, 0, &g_gcb_frame)) ||
+        FAILED(g_dev->CreateBuffer(&cb, 0, &g_gcb_draw))) {
+        grid_give_up("no grid constant buffers", 0);
+        return false;
+    }
+    g_gp_cap = 0; g_gp_have = 0; g_gp_gen = 0;
+    g_grid_ready = true;
+    return true;
+}
+
+/* the pool mirror, the arena and the instances, for one frame */
+bool grid_upload(const ntr::GxGpuFrame *f)
+{
+    /* ---- the shape store's pool: append what the card has not seen -------- */
+    size_t n = 0;
+    const float *pool = ntr::smooth_store_pool(&n);
+    const uint32_t gen = ntr::smooth_store_generation();
+    if (gen != g_gp_gen) { g_gp_gen = gen; g_gp_have = 0; }
+    if (n > g_gp_have || !g_gp_buf) {
+        if (n > g_gp_cap || !g_gp_buf) {
+            size_t cap = g_gp_cap ? g_gp_cap : (size_t)1 << 20;
+            while (cap < n) cap *= 2;
+            ID3D11Buffer *old = g_gp_buf;
+            ID3D11ShaderResourceView *oldv = g_gp_srv;
+            g_gp_buf = 0; g_gp_srv = 0;
+            if (!grid_make_buf(&g_gp_buf, &g_gp_srv, 4, (UINT)cap, false, 0)) {
+                grid_give_up("the pool mirror would not allocate", 0);
+                if (old) old->Release();
+                if (oldv) oldv->Release();
+                return false;
+            }
+            if (old && g_gp_have) {
+                D3D11_BOX b;
+                b.left = 0; b.right = (UINT)(g_gp_have * 4); b.top = 0; b.bottom = 1;
+                b.front = 0; b.back = 1;
+                g_ctx->CopySubresourceRegion(g_gp_buf, 0, 0, 0, 0, old, 0, &b);
+            }
+            if (old) old->Release();
+            if (oldv) oldv->Release();
+            g_gp_cap = cap;
+        }
+        if (n > g_gp_have) {
+            D3D11_BOX b;
+            b.left = (UINT)(g_gp_have * 4); b.right = (UINT)(n * 4); b.top = 0;
+            b.bottom = 1; b.front = 0; b.back = 1;
+            g_ctx->UpdateSubresource(g_gp_buf, 0, &b, pool + g_gp_have, 0, 0);
+            g_gp_have = n;
+        }
+    }
+    /* ---- the frame arena ---------------------------------------------------- */
+    {
+        const size_t need = f->arena_floats ? f->arena_floats : 3;
+        if (need > g_ga_cap || !g_ga_buf) {
+            size_t cap = g_ga_cap ? g_ga_cap : (size_t)1 << 16;
+            while (cap < need) cap *= 2;
+            if (!grid_make_buf(&g_ga_buf, &g_ga_srv, 4, (UINT)cap, true, 0)) {
+                grid_give_up("the grid arena would not allocate", 0);
+                return false;
+            }
+            g_ga_cap = cap;
+        }
+        if (f->arena_floats) {
+            D3D11_MAPPED_SUBRESOURCE ms;
+            if (FAILED(g_ctx->Map(g_ga_buf, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms))) {
+                grid_give_up("the grid arena would not open", 0);
+                return false;
+            }
+            memcpy(ms.pData, f->arena, f->arena_floats * sizeof(float));
+            g_ctx->Unmap(g_ga_buf, 0);
+        }
+    }
+    /* ---- the instances ------------------------------------------------------- */
+    {
+        const UINT need = (UINT)g_ginst.size();
+        if (need > g_gi_cap || !g_gi_buf) {
+            UINT cap = g_gi_cap ? g_gi_cap : 1024;
+            while (cap < need) cap *= 2;
+            if (!grid_make_buf(&g_gi_buf, &g_gi_srv, (UINT)sizeof(GInst), cap, true, 0)) {
+                grid_give_up("the grid instances would not allocate", 0);
+                return false;
+            }
+            g_gi_cap = cap;
+        }
+        D3D11_MAPPED_SUBRESOURCE ms;
+        if (FAILED(g_ctx->Map(g_gi_buf, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms))) {
+            grid_give_up("the grid instances would not open", 0);
+            return false;
+        }
+        memcpy(ms.pData, &g_ginst[0], g_ginst.size() * sizeof(GInst));
+        g_ctx->Unmap(g_gi_buf, 0);
+    }
+    /* ---- the frame constants ------------------------------------------------ */
+    {
+        D3D11_MAPPED_SUBRESOURCE ms;
+        if (FAILED(g_ctx->Map(g_gcb_frame, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms))) {
+            grid_give_up("the grid constants would not open", 0);
+            return false;
+        }
+        float *p = (float *)ms.pData;
+        uint32_t *u = (uint32_t *)ms.pData;
+        p[0] = 2.0f / (float)f->cw;
+        p[1] = 2.0f / (float)f->ch;
+        p[2] = kWDepthC;
+        p[3] = kDepthScale;
+        u[4] = f->wdepth ? 1u : 0u;
+        u[5] = u[6] = u[7] = 0;
+        g_ctx->Unmap(g_gcb_frame, 0);
+    }
+    return true;
+}
+
+/* the vertex stage's state for a grid draw */
+void grid_bind()
+{
+    ID3D11ShaderResourceView *v[5] = {g_gi_srv, g_gp_srv, g_ga_srv, g_gt_abc_srv, g_gt_idx_srv};
+    ID3D11Buffer *cb[2] = {g_gcb_frame, g_gcb_draw};
+    g_ctx->IASetInputLayout(0);
+    g_ctx->VSSetShader(g_vs_grid, 0, 0);
+    g_ctx->VSSetConstantBuffers(0, 2, cb);
+    g_ctx->VSSetShaderResources(0, 5, v);
+}
+
+void grid_unbind()
+{
+    ID3D11ShaderResourceView *none[5] = {0, 0, 0, 0, 0};
+    g_ctx->VSSetShaderResources(0, 5, none);
+}
+
+/* one instanced draw: `count` consecutive instances from `first`, level `lvl` */
+bool grid_draw(UINT first, UINT count, int lvl)
+{
+    D3D11_MAPPED_SUBRESOURCE ms;
+    if (FAILED(g_ctx->Map(g_gcb_draw, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms))) return false;
+    uint32_t *u = (uint32_t *)ms.pData;
+    u[0] = first;
+    u[1] = g_gt_abc_off[lvl];
+    u[2] = g_gt_idx_off[lvl];
+    u[3] = 0;
+    g_ctx->Unmap(g_gcb_draw, 0);
+    g_ctx->DrawInstanced(g_gt_tris[lvl] * 3u, count, 0, 0);
+    ++g_grid_draws;
+    return true;
+}
+
 int draw_full(const ntr::GxGpuFrame *f)
 {
     if (!make_full_pipeline()) return -1;
     if (!ensure_targets(f->cw, f->ch, true)) return 0;
+    /* grids need their own resources; without them the frame is handed back
+       undrawn and gx_render turns the grids into triangles */
+    if (f->ngrids && !grid_start()) return 0;
+    g_ginst.clear();
 
     /* this frame's depth key (see kWDepthC): the vertex build, the clear, the
        depth states and the A/B readback below all read these */
@@ -2018,7 +2320,94 @@ int draw_full(const ntr::GxGpuFrame *f)
     float bminx = 1e30f, bminy = 1e30f, bmaxx = -1e30f, bmaxy = -1e30f;
     bool bwide = false;
 
+    /* ONE SMOOTHED GRID, in list order (see the section above). It joins the
+       batch or the second-pass draw in progress when everything but the
+       instances agrees, and starts a new one otherwise. */
+    auto emit_grid = [&](const ntr::GxGrid &gr) -> bool {
+        const ntr::GxTriangle &t = gr.st;
+        if (!(t.cull & 3)) return true;             /* every sub-triangle culled */
+        const bool pass1 = t.translucent != 0;
+        if (pass1) prev_mask = false;
+        if (gr.sbox[0] < bminx) bminx = gr.sbox[0];
+        if (gr.sbox[2] > bmaxx) bmaxx = gr.sbox[2];
+        if (gr.sbox[1] < bminy) bminy = gr.sbox[1];
+        if (gr.sbox[3] > bmaxy) bmaxy = gr.sbox[3];
+        const bool textured = t.tex && t.tw > 0 && t.th > 0;
+        const GTex *gt = 0;
+        int au = 0, av = 0;
+        if (textured) {
+            gt = upload_texture(t.tex_id, t.tex, t.tw, t.th, f->tex_filter);
+            if (!gt) return false;
+            const bool rep_s = (t.wrap & 1) != 0, rep_t = (t.wrap & 2) != 0;
+            const bool flip_s = (t.wrap & 4) != 0, flip_t = (t.wrap & 8) != 0;
+            au = rep_s ? (flip_s ? 2 : 1) : 0;
+            av = rep_t ? (flip_t ? 2 : 1) : 0;
+        }
+        GInst I;
+        memset(&I, 0, sizeof I);
+        memcpy(I.xf, gr.xform, sizeof I.xf);
+        memcpy(I.pj, gr.proj, sizeof I.pj);
+        for (int k = 0; k < 4; ++k) I.vp[k] = (float)gr.vp[k];
+        I.info[0] = gr.off;
+        I.info[1] = (gr.from_pool ? 1u : 0u) | (gr.has_xform ? 2u : 0u) | (gr.persp ? 4u : 0u);
+        I.info[2] = t.cull;
+        const ntr::GxGridCorner *cs[3] = {&gr.s[0], &gr.s[1], &gr.s[2]};
+        float *as[3] = {I.a0, I.a1, I.a2};
+        for (int k = 0; k < 3; ++k) {
+            as[k][0] = cs[k]->u;
+            as[k][1] = cs[k]->v;
+            memcpy(&as[k][2], &cs[k]->color, 4);
+        }
+        I.st[0] = gr.widen;
+        I.st[1] = (float)((t.alpha >= 31 || t.alpha == 0) ? 31u : t.alpha);
+        I.st[2] = (float)(t.polyid + ((t.mode == 2 && f->toon_shade) ? 64 * f->toon_shade : 0));
+        I.tx[0] = (float)(t.tex_scale ? t.tex_scale : 1);
+        I.tx[1] = textured ? 1.0f / (float)t.tw : 0.0f;
+        I.tx[2] = textured ? 1.0f / (float)t.th : 0.0f;
+        I.tx[3] = textured ? 1.0f : 0.0f;
+        const UINT inst = (UINT)g_ginst.size();
+        g_ginst.push_back(I);
+        const int lvl = gr.tf == 2 ? 0 : (gr.tf == 4 ? 1 : 2);
+        if (!pass1) {
+            if (open && !g_batch.back().is_grid)
+                g_batch.back().count = (UINT)g_scratch.size() - g_batch.back().first;
+            if (open && g_batch.back().is_grid && g_batch.back().tex == gt &&
+                g_batch.back().au == au && g_batch.back().av == av &&
+                g_batch.back().lvl == lvl) {
+                ++g_batch.back().count;
+                return true;
+            }
+            Batch nb;
+            nb.tex = gt; nb.au = au; nb.av = av; nb.eq = 0;
+            nb.first = inst; nb.count = 1;
+            nb.is_grid = true; nb.lvl = lvl;
+            g_batch.push_back(nb);
+            cur_tex = gt; cur_au = au; cur_av = av; cur_eq = 0;
+            open = true;
+            return true;
+        }
+        const int kind = (t.alpha >= 31 || t.alpha == 0) ? OP_AB : OP_A;
+        const int pid = (int)t.polyid;
+        if (!g_ops.empty() && g_ops.back().kind != OP_CLRM && !g_ops.back().is_grid)
+            g_ops.back().count = (UINT)g_scratch1.size() - g_ops.back().first;
+        if (!g_ops.empty() && g_ops.back().is_grid && g_ops.back().kind == kind &&
+            g_ops.back().tex == gt && g_ops.back().au == au && g_ops.back().av == av &&
+            g_ops.back().pid == pid && g_ops.back().lvl == lvl) {
+            ++g_ops.back().count;
+            return true;
+        }
+        Op o;
+        o.kind = kind; o.tex = gt; o.au = au; o.av = av; o.pid = pid; o.eq = 0;
+        o.first = inst; o.count = 1;
+        o.is_grid = true; o.lvl = lvl;
+        g_ops.push_back(o);
+        return true;
+    };
+    size_t gnext = 0;
+
     for (size_t i = 0; i < f->count; ++i) {
+        while (gnext < f->ngrids && f->grids[gnext].at <= i)
+            if (!emit_grid(f->grids[gnext++])) return 0;
         const ntr::GxTriangle &t = f->tris[i];
         const bool pass1 = t.translucent != 0;
         if (!pass1 && t.mode == 3) continue;        /* never happens; as before */
@@ -2030,7 +2419,8 @@ int draw_full(const ntr::GxGpuFrame *f)
             if (is_mask && !prev_mask) {
                 if (seen_mask_group) {
                     /* close the draw in progress before the clear splits it */
-                    if (!g_ops.empty() && g_ops.back().kind != OP_CLRM)
+                    if (!g_ops.empty() && g_ops.back().kind != OP_CLRM &&
+                        !g_ops.back().is_grid)
                         g_ops.back().count =
                             (UINT)g_scratch1.size() - g_ops.back().first;
                     Op c;
@@ -2080,9 +2470,9 @@ int draw_full(const ntr::GxGpuFrame *f)
         }
 
         if (!pass1) {
-            if (!open || gt != cur_tex || au != cur_au || av != cur_av ||
-                teq != cur_eq) {
-                if (open) g_batch.back().count =
+            if (!open || g_batch.back().is_grid || gt != cur_tex || au != cur_au ||
+                av != cur_av || teq != cur_eq) {
+                if (open && !g_batch.back().is_grid) g_batch.back().count =
                     (UINT)g_scratch.size() - g_batch.back().first;
                 Batch nb;
                 nb.tex = gt;
@@ -2106,10 +2496,11 @@ int draw_full(const ntr::GxGpuFrame *f)
         if (t.mode == 3) kind = is_mask ? OP_MASK : OP_SHADOW;
         else kind = (t.alpha >= 31 || t.alpha == 0) ? OP_AB : OP_A;
         const int pid = (kind == OP_A || kind == OP_AB) ? (int)t.polyid : 0;
-        if (g_ops.empty() || g_ops.back().kind != kind || g_ops.back().tex != gt ||
+        if (g_ops.empty() || g_ops.back().is_grid || g_ops.back().kind != kind ||
+            g_ops.back().tex != gt ||
             g_ops.back().au != au || g_ops.back().av != av ||
             g_ops.back().pid != pid || g_ops.back().eq != teq) {
-            if (!g_ops.empty() && g_ops.back().kind != OP_CLRM)
+            if (!g_ops.empty() && g_ops.back().kind != OP_CLRM && !g_ops.back().is_grid)
                 g_ops.back().count = (UINT)g_scratch1.size() - g_ops.back().first;
             Op o;
             o.kind = kind;
@@ -2124,14 +2515,21 @@ int draw_full(const ntr::GxGpuFrame *f)
         }
         push_tri(t, f, textured, inv_cw, inv_ch, g_scratch1, teq != 0);
     }
-    if (open)
+    while (gnext < f->ngrids)
+        if (!emit_grid(f->grids[gnext++])) return 0;
+    if (open && !g_batch.back().is_grid)
         g_batch.back().count = (UINT)g_scratch.size() - g_batch.back().first;
-    if (!g_ops.empty() && g_ops.back().kind != OP_CLRM)
+    if (!g_ops.empty() && g_ops.back().kind != OP_CLRM && !g_ops.back().is_grid)
         g_ops.back().count = (UINT)g_scratch1.size() - g_ops.back().first;
+
+    /* the grids' instances, the pool mirror and the constants: on any failure
+       the frame goes back undrawn and gx_render expands the grids itself */
+    if (!g_ginst.empty() && !grid_upload(f)) return 0;
+    if (!g_ginst.empty()) { ++g_grid_frames; g_grid_insts += (long long)g_ginst.size(); }
 
     const long long t1 = qpc();
 
-    const bool nothing = g_scratch.empty() && g_scratch1.empty();
+    const bool nothing = g_scratch.empty() && g_scratch1.empty() && g_ginst.empty();
     const UINT nopaque = (UINT)g_scratch.size();
 
     if (!nothing) port_gpu_timer_span_begin(PORT_GPU_SPAN_OPAQUE);
@@ -2222,12 +2620,13 @@ int draw_full(const ntr::GxGpuFrame *f)
 
         /* ---- the opaque pass: unchanged apart from the blend, which also
            keeps the largest alpha as coverage ------------------------------ */
-        if (nopaque) {
+        if (!g_batch.empty()) {
             g_ctx->OMSetRenderTargets(2, rtv2, g_dep_dsv);
             g_ctx->OMSetBlendState(g_blend_full, bf, 0xffffffffu);
             g_ctx->IASetInputLayout(g_layout);
             g_ctx->VSSetShader(g_vs, 0, 0);
             g_ctx->PSSetShader(filt_arm ? g_ps_filt : g_ps, 0, 0);
+            bool grid_on = false;
             for (size_t bi = 0; bi < g_batch.size(); ++bi) {
                 const Batch &bt = g_batch[bi];
                 if (!bt.count) continue;
@@ -2243,7 +2642,20 @@ int draw_full(const ntr::GxGpuFrame *f)
                     g_ctx->PSSetSamplers(1, 1, &psm);
                 }
                 g_ctx->OMSetDepthStencilState(g_dss_v[dsi + bt.eq], 0);
-                g_ctx->Draw(bt.count, bt.first);
+                if (bt.is_grid) {
+                    if (!grid_on) { grid_bind(); grid_on = true; }
+                    if (!grid_draw(bt.first, bt.count, bt.lvl)) {
+                        grid_give_up("the grid draw constants would not open", 0);
+                        return 0;
+                    }
+                } else {
+                    if (grid_on) {
+                        g_ctx->IASetInputLayout(g_layout);
+                        g_ctx->VSSetShader(g_vs, 0, 0);
+                        grid_on = false;
+                    }
+                    g_ctx->Draw(bt.count, bt.first);
+                }
                 ++g_batches;
             }
         }
@@ -2269,6 +2681,12 @@ int draw_full(const ntr::GxGpuFrame *f)
             if (!op.count) continue;
             g_ctx->IASetInputLayout(g_layout);
             g_ctx->VSSetShader(g_vs, 0, 0);
+            if (op.is_grid) grid_bind();
+            auto draw_op = [&]() -> bool {
+                if (op.is_grid) return grid_draw(op.first, op.count, op.lvl);
+                g_ctx->Draw(op.count, nopaque + op.first);
+                return true;
+            };
             if (op.kind == OP_MASK) {
                 g_ctx->OMSetRenderTargets(0, 0, g_dep_dsv);
                 g_ctx->OMSetDepthStencilState(g_dss_mask[dsi], 0x80);
@@ -2305,7 +2723,7 @@ int draw_full(const ntr::GxGpuFrame *f)
             g_ctx->OMSetDepthStencilState(g_dss_tl[dsi + op.eq], (UINT)(0x40 | op.pid));
             g_ctx->OMSetBlendState(g_blend_full, bf, 0xffffffffu);
             g_ctx->PSSetShader(filt_arm ? g_ps_tl_f : g_ps_tl, 0, 0);
-            g_ctx->Draw(op.count, nopaque + op.first);
+            if (!draw_op()) { grid_give_up("the grid draw constants would not open", 0); return 0; }
             ++g_batches;
             if (op.kind == OP_AB) {
                 /* ... then, for a polygon that can reach full alpha, the pixels
@@ -2313,13 +2731,18 @@ int draw_full(const ntr::GxGpuFrame *f)
                 g_ctx->OMSetRenderTargets(2, rtv2, g_dep_dsv);
                 g_ctx->OMSetDepthStencilState(g_dss_tlop[dsi + op.eq], 0);
                 g_ctx->PSSetShader(filt_arm ? g_ps_tlop_f : g_ps_tlop, 0, 0);
-                g_ctx->Draw(op.count, nopaque + op.first);
+                if (!draw_op()) { grid_give_up("the grid draw constants would not open", 0); return 0; }
                 ++g_batches;
             }
         }
         ID3D11ShaderResourceView *nones[2] = { 0, 0 };
         g_ctx->PSSetShaderResources(0, 2, nones);
         g_ctx->OMSetRenderTargets(0, 0, 0);
+        if (!g_ginst.empty()) {
+            grid_unbind();
+            g_ctx->IASetInputLayout(g_layout);
+            g_ctx->VSSetShader(g_vs, 0, 0);
+        }
     }
 
     /* the box the readback needs: the triangles' own screen box plus a pixel of
@@ -3187,6 +3610,7 @@ int draw_frame(const ntr::GxGpuFrame *f)
        three tests and touches nothing. 3 is "and held on the card". */
     if (f->probe) {
         if (!(g_full_on && !g_full_dead && f->full_ok == 2)) return 0;
+        if (f->probe_grids && !grid_supported()) return 0;
         return (f->keep && cp_keep_ok()) ? 3 : 2;
     }
     if (f->planes) return fill_planes(f);

@@ -103,6 +103,44 @@ struct GxTriangle {
     uint32_t dbg_tex;      // TEXIMAGE_PARAM that was bound (diagnostics only)
 };
 
+// ---- A SMOOTHED TRIANGLE'S GRID, KEPT WHOLE FOR THE CARD (run hunt8, SMOOTHGPU1)
+//
+// With SmoothModels on, one source triangle becomes a grid of up to 64
+// sub-triangles, and writing those 208-byte records is most of what the
+// processor spends on smoothing. When the card is going to draw the whole
+// frame, gx.cpp keeps the grid instead: the model-space points (already built,
+// or read out of the shape store), the three source corners' texel coordinates
+// and colours, the matrices the corners rode, and the polygon state. The card
+// expands it. `at` is where in the ordinary triangle list the grid's
+// sub-triangles belong, so the order translucent and shadow polygons depend on
+// is the order the game submitted them in. A frame the card does not take (it
+// fell back, a debug probe wants the triangles, gx_polygons asks) has every
+// grid turned into the triangles it always was before anything reads them:
+// gx.cpp's grids_materialize, which runs the very code the processor path runs.
+struct GxGridCorner {
+    float x, y, z;          // view-space position
+    float nx, ny, nz;       // view-space normal
+    float u, v;             // texel coordinates
+    uint32_t color;         // 0xAARRGGBB
+};
+struct GxGrid {
+    GxTriangle st;          // the polygon state, corners zeroed
+    GxGridCorner s[3];      // the source triangle
+    float xform[16];        // model space -> view space (has_xform), else identity
+    float proj[16];         // the projection the grid was drawn under
+    float widen;            // view_to_clip's x factor (1 when orthographic)
+    int32_t vp[4];          // the viewport (x, y, w, h) to_screen mapped through
+    float lo[3], hi[3];     // model-space box of the points
+    float sbox[4];          // screen box that holds every sub-triangle (x0 y0 x1 y1)
+    uint32_t at;            // triangle-list index this grid sits before
+    uint32_t off;           // first float of the points (pool or frame arena)
+    uint32_t pool_gen;      // the shape store's generation when `off` was taken
+    uint8_t tf;             // grid divisions: 2, 4 or 8
+    uint8_t has_xform;
+    uint8_t persp;
+    uint8_t from_pool;      // points are in the shape store's pool, else the frame arena
+};
+
 // Feed the engine. `gx_write_port` takes a geometry-port address in
 // 0x4000440..0x40005FF; `gx_write_fifo` takes a word pushed at 0x4000400.
 void gx_write_port(uint32_t addr, uint32_t value);
@@ -325,6 +363,20 @@ struct GxGpuFrame {
     // outside_argb  what the framebuffer holds outside the present rectangle
     //               (the pillarbox constant), for the composite and the settle
     uint32_t outside_argb;
+
+    // ---- SMOOTHED GRIDS (run hunt8, SMOOTHGPU1) -----------------------------
+    // grids / ngrids  the frame's deferred grids, in list order; each sits
+    //                 before tris[grids[i].at]. Only handed over with full_ok 2
+    //                 (and never in the A/B). A backend that does not take them
+    //                 returns 0 and gx_render turns them into triangles.
+    // arena           the frame arena the points of a non-pool grid live in
+    const GxGrid *grids;
+    size_t ngrids;
+    const float *arena;
+    size_t arena_floats;
+    // probe_grids     set with probe: the backend answers 2 only if it can take
+    //                 grids too (so gx.cpp knows whether to keep them)
+    int probe_grids;
 };
 // The return value of the callback: 0 the card drew nothing (gx_render runs
 // both passes), 1 the opaque pass only (the old contract), 2 the whole frame

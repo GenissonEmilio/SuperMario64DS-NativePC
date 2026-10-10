@@ -37,6 +37,7 @@
 #ifndef NTR_SMOOTH_H
 #define NTR_SMOOTH_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 namespace ntr {
@@ -506,6 +507,17 @@ const SmoothEntry *smooth_store_find(const SmoothKey &k);
 const SmoothEntry *smooth_store_add(const SmoothKey &k, int tf,
                                     const float *grid);
 const float *smooth_store_grid(const SmoothEntry *e);
+// run hunt8, lane SMOOTHGPU1: the pool the grids live in, for the card to
+// mirror. The pool only ever grows by appending until smooth_store_clear, which
+// bumps the generation; a mirror therefore uploads the tail it has not seen and
+// starts again when the generation moves. `n` receives the float count.
+const float *smooth_store_pool(size_t *n);
+uint32_t smooth_store_generation();
+uint32_t smooth_store_entry_off(const SmoothEntry *e);
+// Called at the head of smooth_store_clear while the old pool is still intact,
+// so the engine can turn any grid it has deferred and that points into the pool
+// into ordinary triangles before the pool is thrown away.
+void smooth_store_set_clear_hook(void (*fn)());
 // Drop everything. Called when the level changes, since a level is the
 // natural end of a set of models, and by the cap when the pool is full.
 void smooth_store_clear();

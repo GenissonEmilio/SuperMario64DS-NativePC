@@ -1019,7 +1019,18 @@ void store_rehash(size_t want) {
 
 }  // namespace
 
+namespace { void (*g_st_clear_hook)(); uint32_t g_st_gen = 1; }
+void smooth_store_set_clear_hook(void (*fn)()) { g_st_clear_hook = fn; }
+const float *smooth_store_pool(size_t *n) {
+    if (n) *n = g_st_pool.size();
+    return g_st_pool.empty() ? 0 : &g_st_pool[0];
+}
+uint32_t smooth_store_generation() { return g_st_gen; }
+uint32_t smooth_store_entry_off(const SmoothEntry *e) { return e->off; }
+
 void smooth_store_clear() {
+    if (g_st_clear_hook && !g_st_pool.empty()) g_st_clear_hook();
+    ++g_st_gen;
     g_st_entry.clear();
     g_st_pool.clear();
     g_st_table.clear();

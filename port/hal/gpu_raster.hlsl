@@ -531,3 +531,156 @@ float4 comp_ps(float4 pos : SV_Position) : SV_Target0
     }
     return float4((float)r / 255.0, (float)g / 255.0, (float)b / 255.0, 1.0);
 }
+
+// ============================================================================
+// SMOOTHED GRIDS EXPANDED ON THE CARD (run hunt8, lane SMOOTHGPU1). One
+// instance is one smoothed source triangle; one vertex is one corner of one of
+// its sub-triangles. ntr/gx.cpp's smooth_emit_grid_cpu is the reference and
+// this is a copy of it, operation for operation: the model-space point goes
+// through the position matrix, the projection (and the widescreen widen on x),
+// the divide and the viewport exactly as to_screen does, the texel coordinates
+// and the colour are the barycentric blend of the three source corners at the
+// same weights, and then hal/gpu_raster.cpp's push_tri turns that into the
+// vertex the pixel stage reads. Every product and sum is `precise`, so the
+// compiler cannot fuse a multiply-add or reassociate a sum; the only
+// difference left from the processor is the divide, which Direct3D rounds
+// within 1 ulp.
+//
+// CULLING moves here with the vertex: each vertex re-derives the screen area of
+// its own sub-triangle from all three corners, applies the cull rule and the
+// 1e-6 degenerate test, and a dropped triangle is sent out as three coincident
+// points, which the rasteriser discards.
+struct GInst {
+    float4 xf0, xf1, xf2, xf3;   // model -> view, rows of the 4x4 (identity when the points are in view space)
+    float4 pj0, pj1, pj2, pj3;   // the projection
+    float4 vp;                   // viewport x, y, w, h
+    uint4  info;                 // x: first float of the points, y: flags (1 pool, 2 has xform, 4 perspective), z: cull bits, w: unused
+    float4 a0, a1, a2;           // the source corners: u, v, red/green/blue packed in .zw as asfloat of the 0xAARRGGBB colour (.z) and 0 (.w)
+    float4 st;                   // widen, polygon alpha, polygon ID, unused
+    float4 tx;                   // texel scale, 1/width, 1/height, textured (1/0)
+};
+StructuredBuffer<GInst> g_insts : register(t0);
+StructuredBuffer<float> g_pool  : register(t1);
+StructuredBuffer<float> g_arena : register(t2);
+StructuredBuffer<float4> g_abc  : register(t3);   // a, b, c of every grid point, the three levels back to back
+StructuredBuffer<uint> g_idx    : register(t4);   // the sub-triangle corner indices, the three levels back to back
+
+cbuffer GFrame : register(b0)
+{
+    float gf_inv_cw;
+    float gf_inv_ch;
+    float gf_wdepthc;
+    float gf_depthscale;
+    uint  gf_wdepth;
+    uint  gf_pad0;
+    uint  gf_pad1;
+    uint  gf_pad2;
+};
+cbuffer GDraw : register(b1)
+{
+    uint gd_base;       // first instance of this draw
+    uint gd_abc_off;    // this level's first row in g_abc
+    uint gd_idx_off;    // this level's first entry in g_idx
+    uint gd_pad;
+};
+
+// view-space point -> screen x, y, z and clip w, as view_to_clip + to_screen
+void grid_point(GInst I, uint vi, out float3 scr, out float cw)
+{
+    uint o = I.info.x + vi * 3u;
+    precise float3 P;
+    if (I.info.y & 1u) { P = float3(g_pool[o], g_pool[o + 1u], g_pool[o + 2u]); }
+    else               { P = float3(g_arena[o], g_arena[o + 1u], g_arena[o + 2u]); }
+    precise float4 vw;
+    if (I.info.y & 2u) {
+        precise float4 t0 = P.x * I.xf0;
+        precise float4 t1 = P.y * I.xf1;
+        precise float4 t2 = P.z * I.xf2;
+        precise float4 r = ((t0 + t1) + t2) + I.xf3;
+        vw = float4(r.x, r.y, r.z, 1.0);
+    } else {
+        vw = float4(P.x, P.y, P.z, 1.0);
+    }
+    precise float4 c0 = vw.x * I.pj0;
+    precise float4 c1 = vw.y * I.pj1;
+    precise float4 c2 = vw.z * I.pj2;
+    precise float4 c3 = vw.w * I.pj3;
+    precise float4 cl = ((c0 + c1) + c2) + c3;
+    precise float cx = cl.x;
+    if (I.info.y & 4u) cx = cx * I.st.x;
+    cw = cl.w;
+    precise float iw = (abs(cw) > 1e-6) ? (1.0 / cw) : 0.0;
+    precise float ax = cx * iw;
+    precise float ay = cl.y * iw;
+    precise float az = cl.z * iw;
+    precise float sx = ((ax + 1.0) * 0.5) * I.vp.z + I.vp.x;
+    precise float sy = (1.0 - ((ay + 1.0) * 0.5)) * I.vp.w + I.vp.y;
+    precise float sz = (az + 1.0) * 0.5;
+    scr = float3(sx, sy, sz);
+}
+
+VSOut vs_grid(uint vid : SV_VertexID, uint iid : SV_InstanceID)
+{
+    GInst I = g_insts[gd_base + iid];
+    uint tri = vid / 3u;
+    uint cor = vid - tri * 3u;
+    uint i0 = g_idx[gd_idx_off + tri * 3u];
+    uint i1 = g_idx[gd_idx_off + tri * 3u + 1u];
+    uint i2 = g_idx[gd_idx_off + tri * 3u + 2u];
+    float3 s0, s1, s2;
+    float w0, w1, w2;
+    grid_point(I, i0, s0, w0);
+    grid_point(I, i1, s1, w1);
+    grid_point(I, i2, s2, w2);
+
+    VSOut o;
+    o.uv = float2(0.0, 0.0);
+    o.col = float3(0.0, 0.0, 0.0);
+    o.attr = float2(I.st.y, I.st.z);
+
+    precise float area = (s1.x - s0.x) * (s2.y - s0.y) - (s1.y - s0.y) * (s2.x - s0.x);
+    bool drop = (area < 1e-6 && area > -1e-6);
+    bool back = area > 0.0;
+    if (back && !(I.info.z & 1u)) drop = true;
+    if (!back && !(I.info.z & 2u)) drop = true;
+    if (drop) {
+        o.pos = float4(0.0, 0.0, 0.0, 0.0);
+        return o;
+    }
+
+    uint vi = (cor == 0u) ? i0 : ((cor == 1u) ? i1 : i2);
+    float3 sc = (cor == 0u) ? s0 : ((cor == 1u) ? s1 : s2);
+    float wc = (cor == 0u) ? w0 : ((cor == 1u) ? w1 : w2);
+    float4 abc = g_abc[gd_abc_off + vi];
+    precise float ga = abc.x;
+    precise float gb = abc.y;
+    precise float gc = abc.z;
+
+    precise float xn = sc.x * gf_inv_cw - 1.0;
+    precise float yn = 1.0 - sc.y * gf_inv_ch;
+    precise float px = xn * wc;
+    precise float py = yn * wc;
+    precise float pz;
+    if (gf_wdepth != 0u) pz = gf_wdepthc;
+    else pz = (sc.z * gf_depthscale - 0.0) * wc;
+    o.pos = float4(px, py, pz, wc);
+
+    // texel coordinates: p1.u * a + p2.u * b + p3.u * c, then v * scale * (1 / size)
+    precise float u = I.a0.x * ga + I.a1.x * gb + I.a2.x * gc;
+    precise float v = I.a0.y * ga + I.a1.y * gb + I.a2.y * gc;
+    if (I.tx.w != 0.0) {
+        precise float us = u * I.tx.x;
+        precise float vs = v * I.tx.x;
+        o.uv = float2(us * I.tx.y, vs * I.tx.z);
+    }
+    // colour: smooth_bary_color, each byte blended in float and rounded
+    uint c0 = asuint(I.a0.z), c1 = asuint(I.a1.z), c2 = asuint(I.a2.z);
+    precise float3 ch;
+    ch.x = (float)((c0 >> 16) & 255u) * ga + (float)((c1 >> 16) & 255u) * gb + (float)((c2 >> 16) & 255u) * gc;
+    ch.y = (float)((c0 >> 8) & 255u) * ga + (float)((c1 >> 8) & 255u) * gb + (float)((c2 >> 8) & 255u) * gc;
+    ch.z = (float)(c0 & 255u) * ga + (float)(c1 & 255u) * gb + (float)(c2 & 255u) * gc;
+    int3 ci = (int3)(ch + 0.5);
+    ci = clamp(ci, int3(0, 0, 0), int3(255, 255, 255));
+    o.col = float3((float)ci.x, (float)ci.y, (float)ci.z);
+    return o;
+}
