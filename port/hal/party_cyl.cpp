@@ -84,8 +84,8 @@ struct Rules {
     bool masked = true;
     bool guard = true;
     bool cyl = true;             // SM64DS_PARTY_CYL=0: no cylinder at all (the lab's control)
-    bool assist = true;          // SM64DS_PARTY_ASSIST=0: the ROM's half push only (the push rows' control)
-    int pad = 8;                 // radius pad, units: see SPIKE.md / the push rows
+    bool assist = false;         // SM64DS_PARTY_ASSIST=1: my body also takes the half the friend's would (off: both consoles share the push)
+    int pad = 16;                // radius pad, units: the push rows (a running body goes 2 steps into the half push)
     bool read = false;
 };
 Rules g_r;
