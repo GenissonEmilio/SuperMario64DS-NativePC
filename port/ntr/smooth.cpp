@@ -56,6 +56,7 @@
 #include "ntr/smooth.h"
 
 #include <emmintrin.h>
+#include <intrin.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1324,6 +1325,15 @@ void prof_report(uint64_t frame) {
             g_prof_n[SMOOTH_PROF_TRY] - prev_n[SMOOTH_PROF_TRY],
             (double)(g_prof_ns[SMOOTH_PROF_NEAR] - prev_ns[SMOOTH_PROF_NEAR]) / 1e6,
             g_prof_n[SMOOTH_PROF_NEAR] - prev_n[SMOOTH_PROF_NEAR]);
+    fprintf(stderr,
+            "[smoothprof3] f%llu pre %.3f ms (%llu) find %.3f ms (%llu) emit %.3f ms (%llu)\n",
+            (unsigned long long)frame,
+            (double)(g_prof_ns[SMOOTH_PROF_PRE] - prev_ns[SMOOTH_PROF_PRE]) / 1e6,
+            g_prof_n[SMOOTH_PROF_PRE] - prev_n[SMOOTH_PROF_PRE],
+            (double)(g_prof_ns[SMOOTH_PROF_FIND] - prev_ns[SMOOTH_PROF_FIND]) / 1e6,
+            g_prof_n[SMOOTH_PROF_FIND] - prev_n[SMOOTH_PROF_FIND],
+            (double)(g_prof_ns[SMOOTH_PROF_EMIT] - prev_ns[SMOOTH_PROF_EMIT]) / 1e6,
+            g_prof_n[SMOOTH_PROF_EMIT] - prev_n[SMOOTH_PROF_EMIT]);
     for (int i = 0; i < SMOOTH_PROF_BUCKETS; ++i) {
         prev_ns[i] = g_prof_ns[i];
         prev_n[i] = g_prof_n[i];
@@ -1341,9 +1351,24 @@ int smooth_prof_on() {
     return g_prof;
 }
 
+/* run hunt8 SMOOTHCPU2: the profiler clock is the processor's cycle counter
+   (about 7 ns a read against 25 for steady_clock), scaled to nanoseconds by a
+   2 ms calibration against steady_clock on first use. Still only a difference
+   is meaningful. */
 long long smooth_prof_ticks() {
-    return (long long)std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
+    static double ns_per_cyc = 0.0;
+    static unsigned long long c0 = 0;
+    static long long n0 = 0;
+    if (ns_per_cyc == 0.0) {
+        auto now = []() { return (long long)std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count(); };
+        const long long a = now(); const unsigned long long ca = __rdtsc();
+        while (now() - a < 2000000) {}
+        const long long b = now(); const unsigned long long cb = __rdtsc();
+        ns_per_cyc = (double)(b - a) / (double)(cb - ca);
+        c0 = cb; n0 = b;
+    }
+    return n0 + (long long)((double)(__rdtsc() - c0) * ns_per_cyc);
 }
 
 void smooth_prof_add(int bucket, long long dt_ns, unsigned n) {
@@ -1522,14 +1547,20 @@ int topo_find(int i) {
    the index under the corners AS SUBMITTED (no sort), checks all nine shorts
    before it believes a slot, and is emptied by topo_clear. A miss falls
    through to the unchanged lookup. */
-struct TopoFast { int16_t p[9]; int idx; };
+/* kind 1 = "this triangle's mesh is final, plain (class NONE) and not lying:
+   smooth_topo_lookup answers 0 and touches nothing else", valid while
+   `epoch` equals g_topo_epoch. Every write to a class, a finalized flag or a
+   mesh's membership bumps the epoch (topo_union, topo_clear, topo_finalize,
+   topo_promote), so a kept answer can never outlive the state it read. */
+struct TopoFast { int16_t p[9]; int idx; uint32_t epoch; int kind; };
+uint32_t g_topo_epoch = 1;
 int topo_register_slow(const int16_t p[3][3], const uint32_t nrm[3], int frame);
 void topo_fast_clear();
 enum { TOPO_FAST_N = 1 << 15 };
 TopoFast *g_topo_fast = 0;
 void topo_fast_clear() {
     if (g_topo_fast)
-        for (int i = 0; i < TOPO_FAST_N; ++i) g_topo_fast[i].idx = -1;
+        for (int i = 0; i < TOPO_FAST_N; ++i) { g_topo_fast[i].idx = -1; g_topo_fast[i].kind = 0; }
 }
 inline uint32_t topo_fast_slot(const int16_t *q) {
     uint32_t h = 0x9E3779B1u;
@@ -1551,6 +1582,7 @@ void topo_union(int a, int b, int frame) {
     std::vector<int>().swap(g_topo.members[b]);
     g_topo.last_change[a] = frame;
     g_topo.final_cls[a] = -1;
+    ++g_topo_epoch;
     g_topo.lying[a] = -1;       // the members changed
     g_topo.lying[b] = -1;
 }
@@ -1563,6 +1595,7 @@ void topo_clear() {
     g_topo.by_tri.clear();
     g_topo.by_edge.clear();
     g_topo.lying.clear();
+    ++g_topo_epoch;
     topo_fast_clear();
 }
 
@@ -1593,6 +1626,8 @@ int topo_register(const int16_t p[3][3], const uint32_t nrm[3], int frame) {
     const int idx_found = topo_register_slow(p, nrm, frame);
     memcpy(fs.p, &p[0][0], sizeof fs.p);
     fs.idx = idx_found;
+    fs.kind = 0;
+    fs.epoch = 0;
     return idx_found;
 }
 
@@ -2060,6 +2095,7 @@ void topo_finalize(int root) {
     } else if (cls == SMOOTH_CLASS_FAN) { if (!topo_finalize_fan(mem)) cls = SMOOTH_CLASS_NONE; }
     for (size_t m = 0; m < mem.size(); ++m) g_topo.tris[mem[m]].cls = cls;
     g_topo.final_cls[root] = cls;
+    ++g_topo_epoch;
     if (g_topo_log < 0) g_topo_log = getenv("SM64DS_SMOOTH_TOPO_LOG") ? 1 : 0;
     if (g_topo_log && (cls != SMOOTH_CLASS_NONE || mem.size() >= 8)) {
         const TopoTri &t = g_topo.tris[mem[0]];
@@ -2123,6 +2159,7 @@ void topo_promote(int root) {
     topo_finalize_box(mem);
     for (size_t m = 0; m < mem.size(); ++m) g_topo.tris[mem[m]].cls = SMOOTH_CLASS_BOX;
     g_topo.final_cls[root] = SMOOTH_CLASS_BOX;
+    ++g_topo_epoch;
     if (g_topo_log < 0) g_topo_log = getenv("SM64DS_SMOOTH_TOPO_LOG") ? 1 : 0;
     if (g_topo_log) {
         const TopoTri &t = g_topo.tris[mem[0]];
@@ -2156,6 +2193,12 @@ int topo_lying_calc(int root) {
 }  // namespace
 
 int smooth_topo_lookup(const int16_t p[3][3], const uint32_t nrm[3], uint32_t group, SmoothOverride *out) {
+    /* run hunt8 SMOOTHCPU2: the kept "plain mesh" answer (see TopoFast) */
+    if (g_topo_fast) {
+        const TopoFast &kf = g_topo_fast[topo_fast_slot(&p[0][0])];
+        if (kf.kind == 1 && kf.epoch == g_topo_epoch && memcmp(kf.p, &p[0][0], sizeof kf.p) == 0)
+            return 0;
+    }
     const int frame = (int)g_counters.frames;
     const int idx = topo_register(p, nrm, frame);
     int root = topo_find(idx);
@@ -2200,7 +2243,16 @@ int smooth_topo_lookup(const int16_t p[3][3], const uint32_t nrm[3], uint32_t gr
         }
     }
     const TopoTri &t = g_topo.tris[idx];
-    if (t.cls <= SMOOTH_CLASS_NONE) return 0;
+    if (t.cls <= SMOOTH_CLASS_NONE) {
+        if (g_topo.final_cls[root] == SMOOTH_CLASS_NONE && !topo_lying(root)) {
+            TopoFast &kf = g_topo_fast[topo_fast_slot(&p[0][0])];
+            if (kf.idx == idx && memcmp(kf.p, &p[0][0], sizeof kf.p) == 0) {
+                kf.kind = 1;
+                kf.epoch = g_topo_epoch;
+            }
+        }
+        return 0;
+    }
     out->cls = t.cls;
     out->flat = t.flat;
     if (t.cls == SMOOTH_CLASS_FACET) { memset(out->en, 0, sizeof out->en); return 1; }

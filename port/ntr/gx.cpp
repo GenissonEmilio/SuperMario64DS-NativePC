@@ -1369,7 +1369,9 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
     key.level = static_cast<uint32_t>(pol.level) | (ov ? 0x100u : 0u);
 
     const long long t_sub = prof ? smooth_prof_ticks() : 0;
+    const long long t_fd = prof ? smooth_prof_ticks() : 0;
     const SmoothEntry *e = smooth_store_find(key);
+    if (prof) smooth_prof_add(SMOOTH_PROF_FIND, smooth_prof_ticks() - t_fd, 1);
     float pts[SMOOTH_MAX_GRID * 3];
     const float *grid;
     if (!e) {
@@ -1431,9 +1433,11 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
                           std::sqrt(e0[0]*e0[0] + e0[1]*e0[1] + e0[2]*e0[2]));
     }
 
+    const long long t_em = prof ? smooth_prof_ticks() : 0;
     smooth_emit_grid(grid, tf, s, xform,
                      grid == pts ? -1L : (long)smooth_store_entry_off(e),
                      grid == pts ? 0 : smooth_store_entry_box(e));
+    if (prof) smooth_prof_add(SMOOTH_PROF_EMIT, smooth_prof_ticks() - t_em, 1);
     if (prof) smooth_prof_add(SMOOTH_PROF_SUBDIV,
                               smooth_prof_ticks() - t_sub, 1);
     return 1;
@@ -1442,6 +1446,7 @@ int smooth_try_store(const SmoothVertex s[3], const GxRaw &ra, const GxRaw &rb,
 int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
                const GxRaw &ra, const GxRaw &rb, const GxRaw &rc) {
     const SmoothPolicy &pol = smooth_policy();
+    const long long t_pre = smooth_prof_on() ? smooth_prof_ticks() : 0;
 
     /* A mode-3 polygon is a shadow volume. Its stencil protocol compares the
        mask pass against the draw pass PIXEL FOR PIXEL, so both have to be the
@@ -1487,7 +1492,37 @@ int smooth_try(const GxVertex &a, const GxVertex &b, const GxVertex &c,
        caps are too tight". */
     int why = SMOOTH_WHY_OK;
     const long long t_pol = prof ? smooth_prof_ticks() : 0;
-    const int tf = smooth_tess_factor(s[0], s[1], s[2], pol, &why);
+    if (prof) smooth_prof_add(SMOOTH_PROF_PRE, t_pol - t_pre, 1);
+    /* run hunt8 SMOOTHCPU2: THREE CORNERS THAT CARRY ONE RAW NORMAL UNDER ONE
+       MATRIX ARE FLAT, and the policy need not be asked. The three view-space
+       normals are the same floats (same payload, same vector matrix), so the
+       three unit normals are the same floats and their dot products are the
+       sum of squares of one unit vector, 1 to within a few ulp, which is above
+       flat_cos by a margin no rounding reaches. smooth_shape returns the same
+       "flat" for that triangle after three square roots and three divides; the
+       one test kept is the length floor it applies first (a normal too short
+       to normalise is a no-normal corner, not a flat one). The verify arm
+       (SM64DS_SMOOTH_FASTFLAT_CHECK=1) asks both and counts disagreements. */
+    int tf;
+    {
+        static int chk = -1;
+        if (chk < 0) chk = std::getenv("SM64DS_SMOOTH_FASTFLAT_CHECK") ? 1 : 0;
+        const float l2 = s[0].nx * s[0].nx + s[0].ny * s[0].ny + s[0].nz * s[0].nz;
+        const bool fast = pol.level > 0 && ra.has_normal && rb.has_normal && rc.has_normal &&
+                          ra.nrm && ra.nrm == rb.nrm && rb.nrm == rc.nrm &&
+                          ra.ngen == rb.ngen && rb.ngen == rc.ngen && l2 > 1e-16f;
+        if (fast && !chk) {
+            tf = 1;
+            why = SMOOTH_WHY_FLAT;
+        } else {
+            tf = smooth_tess_factor(s[0], s[1], s[2], pol, &why);
+            if (fast && chk && (tf != 1 || why != SMOOTH_WHY_FLAT)) {
+                static unsigned bad = 0;
+                if (++bad <= 20)
+                    std::fprintf(stderr, "[fastflat] DISAGREE tf %d why %d\n", tf, why);
+            }
+        }
+    }
     if (prof) smooth_prof_add(SMOOTH_PROF_POLICY,
                               smooth_prof_ticks() - t_pol, 1);
     if (smooth_census_on()) smooth_census_tri(s[0], s[1], s[2], tf);

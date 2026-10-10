@@ -411,6 +411,9 @@ enum {
     SMOOTH_PROF_TOPO,         // run hunt8 SMOOTHCPU2: the topology book's lookup / seam test
     SMOOTH_PROF_TRY,          // the whole of smooth_try, whatever it decided
     SMOOTH_PROF_NEAR,         // emit_tri_near for a triangle smooth_try left alone
+    SMOOTH_PROF_PRE,          // smooth_try's entry checks and the corner copy, up to the policy
+    SMOOTH_PROF_FIND,         // the shape store's lookup (key build and probe)
+    SMOOTH_PROF_EMIT,         // smooth_emit_grid: the grid record, or the sub-triangles
     SMOOTH_PROF_BUCKETS
 };
 // 1 times the policy and the tessellation, which is the pair an A/B between
