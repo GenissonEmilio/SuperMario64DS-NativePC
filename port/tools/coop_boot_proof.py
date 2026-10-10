@@ -505,7 +505,9 @@ def row_joiner():
     info("%s joiner lines %s" % (row, [s for t, s in L][:10]))
     say(bool(wait) and enter is not None, "%s: the joiner arrived mid-opening and waited at its gate (%d wait lines), then entered when the host's opening was over" % (row, len(wait)))
     say(not own, "%s: the joiner did NOT play its own opening" % row)
-    say(c3.rc in (0, None) or c3.rc == 0, "%s: joiner rc %s" % (row, c3.rc))
+    # the joiner started late, so the host's frame cap ends first: the joiner then rightly exits with the host-left code (7)
+    host_left = "The host left. Room closed." in c3.text()
+    say(c3.rc == 0 or (c3.rc == 7 and host_left and enter is not None), "%s: joiner rc %s (0, or 7 after entering once the host's run ended)" % (row, c3.rc))
 
 
 # ---------------------------------------------------------------- forged datagrams
