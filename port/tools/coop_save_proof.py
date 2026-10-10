@@ -717,6 +717,46 @@ def row_swap():
                 "swap CONTROL: a COOP image swapped in is accepted and the game saves into it (exit %s, stars %s)" % (c.rc, st))
 
 
+def row_retry():
+    """A host save that fails (forced: the first N flushes) is retried until it lands; quit right after; the no-retry control."""
+    d = os.path.join(ARGS.out, "retry")
+    shutil.rmtree(d, ignore_errors=True)
+
+    def run(tag, fails, frames, no_retry=False, probe_frame=1400):
+        sav = os.path.join(d, "files", tag, "Retry.coopsav")
+        write(sav, image(TAG_C, payload(stars=[(0, 0)])))
+        e = {"SM64DS_SCENE_WINDOW": "1", "SM64DS_SCENE_FRAMES": "100000", "SM64DS_SKIP_MENU": "1", "SM64DS_BOOT_FILE": "0",
+             "SM64DS_COOP": "1", "SM64DS_COOP_HOST": "1", "SM64DS_COOP_SAVE": sav, "SM64DS_COOP_SAVE_NAME": "Retry",
+             "SM64DS_COOPSAVE_PROBE": "star:1:1@%d" % probe_frame, "SM64DS_COOPSAVE_FAIL_WRITES": str(fails)}
+        if no_retry:
+            e["SM64DS_COOPSAVE_NO_RETRY"] = "1"
+        c = Con("retry", tag, ARGS.exe, e, frames, ARGS.root, ARGS.out)
+        wait_all([c], 400)
+        t = c.text()
+        pr = parse(open(sav, "rb").read())
+        both = all(pr[(0, k)][1] and (1, 1) in stars_of(pr[(0, k)][2]) for k in (0, 1))
+        info("%s: rc %s copies valid %s stars %s | forced %d, retry landed %d, EXIT-lost %d" % (
+            tag, c.rc, [pr[(0, k)][1] for k in (0, 1)], [stars_of(pr[(0, k)][2]) for k in (0, 1)],
+            t.count("FORCED flush failure"), t.count("save retry landed"), t.count("EXIT: the coop save did NOT")))
+        return c, t, both
+
+    c, t, both = run("n1", 1, 1900)
+    say(c.rc == 0 and "FORCED flush failure" in t and "save retry landed" in t and both,
+        "retry N=1: the first flush fails, a later retry lands, both copies valid with the star")
+    c, t, both = run("n3", 3, 1900)
+    say(c.rc == 0 and t.count("FORCED flush failure") == 3 and "save retry landed" in t and both,
+        "retry N=3: three failed flushes, still retried until it lands, both copies valid with the star")
+    c, t, both = run("quit", 1, 1403)
+    say(c.rc == 0 and "FORCED flush failure" in t and "save retry landed" in t and both,
+        "quit right after a failure (3 frames, inside the backoff): the exit attempt lands, both copies valid with the star")
+    c, t, both = run("quitfail", 1000, 1403)
+    say("EXIT: the coop save did NOT reach the disk" in t and not both,
+        "quit with a disk that never works: the clear EXIT line is printed, no mixed image is claimed (file still the old valid one)")
+    c, t, both = run("noretry", 1, 1900, no_retry=True)
+    say("FORCED flush failure" in t and "save retry landed" not in t and not both,
+        "MUST-FAIL control (retry switched off = the old behaviour): the file stays stale or the mirror invalid")
+
+
 def row_forge():
     # a host with stars; the guest sends forged records; the host file must keep every bit
     seed = [(0, 0), (4, 6)]
@@ -793,7 +833,7 @@ def main():
     ARGS.base = os.path.abspath(ARGS.base)
     os.makedirs(ARGS.out, exist_ok=True)
     table = {"unit": row_unit, "fence": row_fence, "host": row_host, "guest": row_guest,
-             "timeout": row_timeout, "pair": row_pair, "forge": row_forge, "pair3": row_pair3, "swap": row_swap}
+             "timeout": row_timeout, "pair": row_pair, "forge": row_forge, "pair3": row_pair3, "swap": row_swap, "retry": row_retry}
     for r in ARGS.rows:
         table[r]()
     bad = [r for r in RES if r.startswith("FAIL")]
