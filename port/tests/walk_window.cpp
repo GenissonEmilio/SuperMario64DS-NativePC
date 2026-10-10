@@ -414,6 +414,7 @@ static bool winapi_load(void)
 #include "overlay_font.h"
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
+#include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
 #include "hal/perf_log.h"        /* run perf1: the player performance report */
 #include "hal/comms_seam.h"       /* run mg15 lane MP1: the radio seam */
 #include "hal/voice_chat.h"      /* lane VOICE: proximity voice chat */
@@ -1833,6 +1834,8 @@ void hal_sub_screen_probe(void);
 /* the one-screen menu compose layer's pad step (run menu1, hal/sub_screen.cpp): the live recipe's driver on the
    pressed word, in both spellings the ROM reads; inert with no recipe live */
 void hal_menu_pad_seam(void);
+/* the pointer over the picture, for the settings page (hal/sub_screen.cpp) */
+extern "C" int hal_window_cursor_fb(int *fx, int *fy);
 /* and its one predicate for the frame (hal/menu_compose.cpp): a recipe owns this frame's picture */
 int hal_menu_live(void);
 /* the camera buttons drawn on the bottom screen, hit-tested against the touch
@@ -5731,6 +5734,11 @@ static char *menu_live_player()
 
 static void menu_draw(const OvlSurface &fb)
 {
+    /* SETMENU1: the in-game settings page holds the pause (menu_on) and is what this overlay draws then */
+    if (settings_page_open()) {
+        settings_page_draw(fb.px, fb.stride, ntr::active_w, ntr::active_h);
+        return;
+    }
     /* 96, not 72: the level-select row now carries a name as well as the row,
        id, entrance, overlay and mount state, and at 72 the unmounted form of
        the longest-named row truncated silently (the 86-into-71 defect the row
@@ -6010,8 +6018,70 @@ static void menu_draw(const OvlSurface &fb)
    is g_menu_host above, filled by whichever loop is running, and every row
    that needs one of those refuses in words when a scene is underneath it.
    Nothing else about the block changed. */
+/* ---- THE IN-GAME SETTINGS PAGE'S FRAME (run menu1, lane SETMENU1) ------------------------------------------------------
+   hal/settings_page.cpp is the page; this is its seat in the two frame loops. It borrows the debug menu's pause: opening sets menu_on, so the
+   game stands still exactly as it does under the F5 menu (the tick, the pad words, the mouse capture and the camera all already read menu_on),
+   and closing clears it. Opening is a request: the title's wrench or the pause menu's Options plate was pressed (hal/settings_page_hooks.cpp,
+   called from the pad seam and poll_touch, which also take the press away from the ROM), or SM64DS_SETPAGE_AT=<frame> on a proof run. While the
+   page is up this returns 1 and menu_input does nothing else, so F5 / Escape do not toggle the debug menu; Escape is the page's Back.
+   The raw device state is read here, behind the same gates every other reader uses (key_live: focus, stale keys, rebind capture). */
+static int g_sp_wheel;           /* notches from WM_MOUSEWHEEL for the page (the camera drains mo_wheel before this runs) */
+static int g_sp_pf;              /* page frames since it opened (SM64DS_SETPAGE_SCRIPT counts them) */
+static int g_sp_idle;            /* frames before it was ever open (SM64DS_SETPAGE_AT counts them) */
+static int g_sp_env_done;
+extern int g_mouse_left_down;
+
+static int sp_frame(int pad_live, const XPad *pad)
+{
+    if (settings_page_open() && !menu_on) settings_page_close();       /* something else took the pause away */
+    if (!settings_page_open()) {
+        ++g_sp_idle;
+        const int at = settings_page_env_open_at();
+        const int env = at >= 0 && !g_sp_env_done && g_sp_idle >= at;
+        if (!settings_page_pending() && !env) return 0;
+        if (env) g_sp_env_done = 1;
+        if (menu_on) { settings_page_clear_request(); return 0; }       /* the debug menu is up: no page */
+        settings_page_open_now(env ? 2 : 0);
+        menu_on = 1;
+        g_sp_pf = 0;
+        g_sp_wheel = 0;
+        fprintf(stderr, "[settings] page open\n");
+    }
+    SpInput in;
+    memset(&in, 0, sizeof in);
+    if (!settings_page_scripted(&in, ++g_sp_pf)) {
+        unsigned k = 0;
+        const int pl = pad_live != 0;
+        if (key_live(VK_UP) || key_act(HOST_KEY_UP) || (pl && ((pad->buttons & 0x0001) || pad->ly > 16000))) k |= SPK_UP;
+        if (key_live(VK_DOWN) || key_act(HOST_KEY_DOWN) || (pl && ((pad->buttons & 0x0002) || pad->ly < -16000))) k |= SPK_DOWN;
+        if (key_live(VK_LEFT) || key_act(HOST_KEY_LEFT) || (pl && ((pad->buttons & 0x0004) || pad->lx < -16000))) k |= SPK_LEFT;
+        if (key_live(VK_RIGHT) || key_act(HOST_KEY_RIGHT) || (pl && ((pad->buttons & 0x0008) || pad->lx > 16000))) k |= SPK_RIGHT;
+        if (key_live(VK_RETURN) || key_live(VK_SPACE) || (pl && (pad->buttons & 0x1000))) k |= SPK_ACCEPT;
+        if (key_live(VK_ESCAPE) || key_live(VK_BACK) || (pl && (pad->buttons & 0x2000))) k |= SPK_BACK;
+        const int shift = key_live(VK_SHIFT);
+        if ((pl && (pad->buttons & 0x0100)) || key_live(VK_PRIOR) || (key_live(VK_TAB) && shift)) k |= SPK_TABL;
+        if ((pl && (pad->buttons & 0x0200)) || key_live(VK_NEXT) || (key_live(VK_TAB) && !shift)) k |= SPK_TABR;
+        if (key_live(VK_DELETE) || (pl && (pad->buttons & 0x8000))) k |= SPK_CLEAR;
+        if (sl_capture_active() && (pad->buttons & 0x0020)) k |= SPK_CAP_CANCEL;     /* pad BACK gives up a rebind: A and B are bindable */
+        in.keys = k;
+        int fx = 0, fy = 0;
+        if (hal_window_cursor_fb(&fx, &fy)) { in.mouse_valid = 1; in.mouse_x = fx; in.mouse_y = fy; }
+        in.mouse_l = g_mouse_left_down ? 1 : 0;
+        in.mouse_r = (hal_window_focused() && W.GetAsyncKeyState_(VK_RBUTTON) < 0) ? 1 : 0;
+        in.wheel = g_sp_wheel;
+    }
+    g_sp_wheel = 0;
+    if (!settings_page_frame(&in)) {
+        menu_on = 0;
+        if ((in.keys & SPK_BACK) && pad_live && (pad->buttons & 0x2000)) menu_b_swallow = 1;   /* the B that closed it is not a punch */
+        fprintf(stderr, "[settings] page closed\n");
+    }
+    return 1;
+}
+
 static void menu_input(int pad_live, const XPad *pad)
 {
+    if (sp_frame(pad_live, pad)) return;
     if (g_selftest) return;
     static unsigned menu_prev;
     unsigned held = 0;
@@ -8943,6 +9013,7 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
         return 0;
     case WM_MOUSEWHEEL:
         mo_wheel += (short)HIWORD(w) / WHEEL_DELTA;
+        g_sp_wheel += (short)HIWORD(w) / WHEEL_DELTA;    /* the settings page's own count (the camera drains mo_wheel first) */
         return 0;
     /* ---- the resize seam ------------------------------------------------
        A drag on the sizing border runs a MODAL loop inside DefWindowProc:
