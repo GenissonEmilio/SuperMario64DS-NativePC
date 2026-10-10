@@ -211,6 +211,16 @@ bool ap_donut(char *a, int state, int) {
     *(unsigned char *)(a + 0x4ea) = (unsigned char)state;
     return true;
 }
+// daObjFallBlock_c family (WF 45, BBH 66, LLL 83): state at +0x33c, idle 0; the shake starts from
+// case 0 of its own Behavior (ready off, timer 4, state 1), which is what the replay does.
+int r_fall(const char *a) { return rd_u8(a, 0x33c); }
+bool ap_fall(char *a, int, int) {
+    if (rd_u8(a, 0x33c) != 0) return false;
+    *(unsigned char *)(a + 0x340) = 0;
+    *(unsigned short *)(a + 0x33a) = 4;
+    *(unsigned char *)(a + 0x33c) = 1;
+    return true;
+}
 int r_water(const char *a) { return rd_i32(a, 0x334); }
 bool ap_water(char *a, int, int value) {
     if (rd_i32(a, 0x334) == value) return false;
@@ -222,6 +232,9 @@ const Watch kWatch[] = {
     {11,  kSwKindPress, "EXCL_SWITCH",  r_starsw, ap_starsw},
     {12,  kSwKindPress, "STAR_SWITCH",  r_starsw, ap_starsw},
     {126, kSwKindKick,  "DONUT_BLOCK",  r_donut,  ap_donut},
+    {45,  kSwKindKick,  "FALL_BLOCK_WF",  r_fall, ap_fall},
+    {66,  kSwKindKick,  "FALL_BLOCK_BBH", r_fall, ap_fall},
+    {83,  kSwKindKick,  "FALL_BLOCK_LLL", r_fall, ap_fall},
     {101, kSwKindField, "WDW_WATER",    r_water,  ap_water},
 };
 const Watch *find_watch(int cls) {
