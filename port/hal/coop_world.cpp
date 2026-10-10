@@ -142,6 +142,8 @@ int part_of_level(int level) {
 
 int popcnt(unsigned v) { int n = 0; for (; v; v &= v - 1) ++n; return n; }
 
+void stats_line();
+
 bool is_player_ptr(const void *a) {
     for (int i = 0; i < 16; ++i)
         if (data_0209f394[i] == a) return true;
@@ -405,6 +407,7 @@ void ensure_handlers() {
     g_handlers = true;
     g_my = comms_hub_my_seat();
     g_grp.reset(g_my);
+    if (g_log) std::atexit([] { stats_line(); });
     std::fprintf(stderr, "[coop] world core on: seat %d, sync %s\n", g_my, g_sync ? "on" : "OFF (control)");
 }
 
@@ -564,6 +567,25 @@ void knob_forge(const char *name) {
     }
 }
 
+void census_line() {
+    // Placed actors by class (those with a death-table slot): the proof reads
+    // class ids for its kill / goto knobs from this.
+    int cnt[1024]; std::memset(cnt, 0, sizeof cnt);
+    int slotted = 0, total = 0;
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+        ++total;
+        const short slot = *(const short *)(a + 0xce);
+        if (slot < 0 || slot >= kCoopSlots) continue;
+        const unsigned id = *(const unsigned short *)(a + 0x0c);
+        ++slotted;
+        if (id < 1024) ++cnt[id];
+    }
+    std::fprintf(stderr, "[coop] census level=%d act=%d actors=%d slotted=%d classes:", g_key.level, g_key.act, total, slotted);
+    for (int i = 0; i < 1024; ++i) if (cnt[i]) std::fprintf(stderr, " %d:%d", i, cnt[i]);
+    std::fprintf(stderr, "
+");
+}
+
 void stats_line() {
     if (!g_log) return;
     const CoopWorldStats &s = g_st;
@@ -649,6 +671,7 @@ void tick_est(unsigned now) {
     if (g_goto_id >= 0 && !g_goto_done && g_est_frames >= g_goto_frame) { g_goto_done = true; knob_goto(g_goto_id); }
     if (g_forge_frame && !g_forge_done && g_est_frames >= g_forge_frame) { g_forge_done = true; knob_forge(g_forge_name); }
     // 7. log
+    if (g_log && g_est_frames == 40) census_line();
     if (g_log) {
         const unsigned *t = tbl(g_part);
         unsigned h = 2166136261u;
