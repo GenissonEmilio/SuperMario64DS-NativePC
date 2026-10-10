@@ -63,6 +63,8 @@ void menu_recroom_build(int, MenuLayout *L)
     const void *o = port_scene_live_id() == kScene ? port_scene_live_object() : 0;
     const int cw = L->w * L->uden / L->unum;               /* exact canvas width in units, floored */
 
+    const bool one = cw <= 256;     /* the DS screen's own width (4:3): the screen itself is the whole picture */
+    if (!one) {
     /* the star pattern, BG3 alone, tiled from the left edge in 224 column copies of source columns 32..255: the pattern
        repeats every 32 columns and 224 = 7 x 32, so a copy joins the next seamlessly; the leftmost 8 source columns are
        not part of the repeat (measured, they differ from columns 32..39) and are never used */
@@ -82,11 +84,14 @@ void menu_recroom_build(int, MenuLayout *L)
         e.bg = 1;
         menu_add_piece(L, e);
     }
+    }
 
-    /* the menu itself: tab column, cards, stickers, star counts, arrows (BG0, BG2, OBJ), centred */
+    /* the menu itself: tab column, cards, stickers, star counts, arrows, centred. Wide: BG0 + BG2 + OBJ with the
+       engine-B backdrop keyed out, over the pattern. 4:3: every layer the ROM has on (BG0, BG2, BG3, OBJ = the live
+       enables, so no extra scan-out), opaque, the DS screen as it is. */
     MenuPiece m = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
-    m.layers = MENU_L_BG0 | MENU_L_BG2 | MENU_L_OBJ;
-    m.key_backdrop = 1;
+    m.layers = one ? (MENU_L_BG0 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ) : (MENU_L_BG0 | MENU_L_BG2 | MENU_L_OBJ);
+    m.key_backdrop = one ? 0 : 1;
     m.touch = 1;
     m.bg = 1;                                              /* it overlaps the pattern pieces by design */
     const int pm = menu_add_piece(L, m);
