@@ -1077,6 +1077,55 @@ def row_stale():
     return r
 
 
+def row_four():
+    """a full party of four: A collects, B C and D all land it (one byte diff each), the seats are 0..3"""
+    row = "four"
+    f = frames_for(60)
+
+    def script(ctx):
+        in_bob(ctx, [0, 1, 2, 3])
+        ctx.fire(0, *STAR)
+    r = room(row, [dict(frames=f, extra=warp(300)) for _ in range(4)], script=script)
+    common(row, r.cons)
+    for x in r.cons:
+        x.seed_pay = parse(x.seed)[(0, 0)][2]
+    a = r.cons[0]
+    say(len(txs(a.text())) == 1 and all(len(lands(x.text())) == 1 for x in r.cons[1:]),
+        "four: A announced once; B, C and D each landed it once (lands %s)" % [len(lands(x.text())) for x in r.cons])
+    for i, x in enumerate(r.cons):
+        byte_check(row, "console %d" % i, x, [STAR])
+    return r
+
+
+def row_repeat():
+    """a friend's star that is already in my save is ignored (the 'have' reason), not written twice and not counted against the limits"""
+    row = "repeat"
+    f = frames_for(70)
+
+    def script(ctx):
+        fg = ctx.forger
+        in_bob(ctx, [0, 1], settle=3.0)
+        fg.say(BOB)
+        time.sleep(1.5)
+        fg.synx(0, 2)
+        time.sleep(12)                  # past the 10 s gap: the second one is judged on its merits
+        fg.synx(0, 2)                   # same star, new sequence number
+        time.sleep(1)
+        fg.synx(0, 2)
+        time.sleep(5)
+    r = room(row, [dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300))], forger_role=T.ROLE_PARTY, script=script, timeout=600)
+    common(row, r.cons)
+    for x in r.cons:
+        x.seed_pay = parse(x.seed)[(0, 0)][2]
+        dec = [(y[1], y[2], y[3]) for y in rxs(x.text())]
+        info("repeat: %s decisions %s" % (x.inst, dec))
+    say(all(len(lands(x.text())) == 1 and counter(x.text(), "have") == 2 and counter(x.text(), "gap") == 0 and counter(x.text(), "seatcap") == 0 for x in r.cons),
+        "repeat: the star landed once; its two repeats were ignored as 'have' (no gap or cap drop)")
+    for x in r.cons:
+        byte_check(row, x.inst, x, [(0, 2)])
+    return r
+
+
 def row_host():
     row = "host"
     f = frames_for(75)
@@ -1154,7 +1203,7 @@ def main():
     return 1 if bad else 0
 
 
-ROWS.update(stale=row_stale, waitreal=row_waitreal, unit=row_unit, share=row_share, base=row_base, sharepic=row_share_pics, real=row_real, waits=row_waits,
+ROWS.update(four=row_four, repeat=row_repeat, stale=row_stale, waitreal=row_waitreal, unit=row_unit, share=row_share, base=row_base, sharepic=row_share_pics, real=row_real, waits=row_waits,
             slot=row_slot, late=row_late, toggles=row_toggles, flood=row_flood, forge=row_forge, host=row_host,
             alone=row_alone, kit=row_kit)
 
