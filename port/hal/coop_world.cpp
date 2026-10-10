@@ -115,6 +115,7 @@ int      g_nreg_ctl = 0, g_nreg_world = 0;
 // proof knobs
 struct KillKnob { unsigned frame; int id; int n; bool done; };
 KillKnob g_kill[8]; int g_nkill = 0;
+unsigned g_star_frame = 0; bool g_star_done = true, g_star_spawned = false;   // SM64DS_COOP_STAR=<est frame>: the local player touches a PowerStar
 unsigned g_goto_frame = 0; int g_goto_id = -1; bool g_goto_done = false; int g_goto_tries = 0;
 struct WarpKnob { unsigned frame; int level; int act; bool done; };
 WarpKnob g_warp[4]; int g_nwarp = 0;
@@ -164,6 +165,10 @@ void read_env() {
             p += used;
             while (*p == ';' || *p == ',' || *p == ' ') ++p;
         }
+    }
+    if (const char *st = std::getenv("SM64DS_COOP_STAR")) {
+        unsigned f = 0;
+        if (std::sscanf(st, "%u", &f) == 1 && f > 0) { g_star_frame = f; g_star_done = false; }
     }
     if (const char *g = std::getenv("SM64DS_COOP_GOTO")) {
         unsigned f = 0; int id = 0;
@@ -549,6 +554,8 @@ void join_group(const CoopKey &nk) {
     for (int i = 0; i < g_nkill; ++i) g_kill[i].done = false;
     g_goto_done = false;
     g_goto_tries = 0;
+    g_star_done = g_star_frame == 0;
+    g_star_spawned = false;
     g_rejected = CoopKey();
     g_key = nk;
     g_part = part_of_level(nk.level);
@@ -607,6 +614,35 @@ void join_group(const CoopKey &nk) {
 // ---------------------------------------------------------------------------
 // Proof knobs (inert unless named).
 // ---------------------------------------------------------------------------
+// The local player touches a PowerStar: the same two words the harness probe writes
+// (SM64DS_STAR_TRIGGER, hal/input_probe.cpp), so the star's own collect handler runs.
+// Counted in frames since this level was established, so it works after a new file's opening.
+void knob_star() {
+    const int me = (int)data_0209f250;
+    char *player = (me >= 0 && me < 16) ? (char *)data_0209f394[me] : nullptr;
+    if (!player) return;
+    char *star = nullptr, *any = nullptr;
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+        if (*(const unsigned short *)(a + 0x0c) != 178) continue;
+        if (!any) any = a;
+        const int st = *(const int *)(a + 0x440);
+        if (st == 4 || st == 8) { star = a; break; }
+    }
+    if (!star) star = any;
+    if (!star) {
+        if (!g_star_spawned) {
+            g_star_spawned = true;
+            port_debug_spawn(178, 0);
+            std::fprintf(stderr, "[coop-knob] no live PowerStar: spawned one\n");
+        }
+        return;
+    }
+    *(unsigned *)(star + 0x134) = *(const unsigned *)(player + 4);
+    *(unsigned *)(star + 0x130) |= 0x400000;
+    g_star_done = true;
+    std::fprintf(stderr, "[coop-knob] star touch armed (star state %d)\n", *(const int *)(star + 0x440));
+}
+
 void knob_kill(const KillKnob &k) {
     // Nearest to the local player first (a proof wants the kill on screen).
     struct C { short slot; char *a; long long d2; };
@@ -856,6 +892,7 @@ void tick_est(unsigned now) {
     for (int i = 0; i < g_nkill; ++i)
         if (!g_kill[i].done && g_est_frames >= g_kill[i].frame) { g_kill[i].done = true; knob_kill(g_kill[i]); }
     if (g_goto_id >= 0 && g_goto_tries < 6 && g_est_frames >= g_goto_frame + 90u * (unsigned)g_goto_tries) knob_goto(g_goto_id, g_goto_tries++);
+    if (!g_star_done && g_est_frames >= g_star_frame) knob_star();
     for (int i = 0; i < g_nforge; ++i)
         if (!g_forge[i].done && g_est_frames >= g_forge[i].frame) { g_forge[i].done = true; knob_forge(g_forge[i].name); }
     // 7. log
