@@ -65,7 +65,7 @@ uint8_t  g_last_sent[kCoopRecBytes]; bool g_last_have = false;
 ULONGLONG g_last_send_ms = 0, g_last_req_ms = 0, g_json_ms = 0;
 bool     g_json_dirty = false;
 unsigned g_seq = 0;
-bool     g_probe_done = false, g_forge_done = false;
+bool     g_probe_done = false, g_forge_done = false, g_fetched = false;
 
 bool coop() { if (g_coop < 0) g_coop = env_on("SM64DS_COOP") ? 1 : 0; return g_coop == 1; }
 bool host() { if (g_host < 0) g_host = env_on("SM64DS_COOP_HOST") ? 1 : 0; return g_host == 1; }
@@ -379,6 +379,7 @@ bool coop_save_handle(int seat, const unsigned char *d, int len) {
 
 bool coop_save_fetch(int timeout_ms) {
     if (!coop() || host()) { if (host()) coop_save_prepare(); return true; }
+    if (g_fetched) return true;
     ensure_init();
     const ULONGLONG t0 = GetTickCount64();
     ULONGLONG last_req = 0;
@@ -400,6 +401,7 @@ bool coop_save_fetch(int timeout_ms) {
     }
     if (!g_host_blank) write_guest_seed(g_hostrec);
     ++g_st.fetch_ok;
+    g_fetched = true;
     std::fprintf(stderr, "[coopsave] fetch ok in %llu ms: %s, stars %d\n",
                  (unsigned long long)(GetTickCount64() - t0),
                  g_host_blank ? "new file (blank)" : "host record seeded into slot 0",
@@ -477,5 +479,27 @@ extern "C" void port_coop_save_frame(void) {
         uint8_t z[kCoopReqPayload] = {0, 0, 0, 0};
         if (send_ctl(kCoopSaveSubReq, z, sizeof z)) ++g_st.req_sent;
         g_last_req_ms = now;
+    }
+}
+
+// BOOT HOOK (one line in tests/walk_window.cpp's main, after the hub install).
+// A host prepares its file; a guest fetches the host record when
+// SM64DS_COOPSAVE_BOOT_FETCH=<ms> is set (the proof rows set it; COOPBOOT1 owns
+// the real boot and calls coop_save_fetch itself, which is idempotent, and
+// decides the exit). Inert outside a coop room.
+extern "C" void port_coop_save_boot(void) {
+    using namespace port;
+    if (!coop()) return;
+    ensure_init();
+    const char *e = std::getenv("SM64DS_COOPSAVE_BOOT_FETCH");
+    if (host() || !e || !*e) return;
+    int ms = std::atoi(e);
+    if (ms <= 0) ms = 3000;
+    if (!coop_save_fetch(ms)) {
+        std::fprintf(stderr, "[coopsave] the host did not answer for the save; "
+                     "exiting with code 6
+");
+        std::fflush(stderr);
+        ExitProcess(6);
     }
 }

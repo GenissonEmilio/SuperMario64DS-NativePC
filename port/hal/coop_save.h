@@ -67,5 +67,6 @@ CoopSaveStats coop_save_stats();
 }  // namespace port
 
 extern "C" void port_coop_save_frame(void);
+extern "C" void port_coop_save_boot(void);
 
 #endif  // PORT_HAL_COOP_SAVE_H
