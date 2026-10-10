@@ -87,12 +87,12 @@ struct Pend { bool on; uint8_t kind; uint16_t slot, cls; uint8_t state; int32_t 
 Pend g_pend[kPendMax];
 
 // the owner's answers to snapshot requests
-struct Job { bool on; int seat; uint32_t nonce; int sent; unsigned next; };
+struct Job { bool on; int seat; uint32_t nonce; int sent; unsigned next; unsigned born; };
 Job g_job[kCoopMaxSeats];
 unsigned g_states_t = 0;
 
 // an early GLOBALS / STATES from a sender not yet a member
-struct Early { bool on; int seat; int kind; unsigned char buf[sizeof(SwStatesHead) + kSwMaxStateEnt * sizeof(SwStateEntry)]; int len; };
+struct Early { bool on; int seat; int kind; int lvl, act; unsigned char buf[sizeof(SwStatesHead) + kSwMaxStateEnt * sizeof(SwStateEntry)]; int len; };
 Early g_early[2];
 
 // proof knobs
@@ -446,7 +446,8 @@ void put_pending(const SwStateEntry &e) {
 // ---------------------------------------------------------------------------
 // Receiving.
 // ---------------------------------------------------------------------------
-bool key_is_mine(const CoopKeyWire &k) { return g_have_key && (int)k.level == g_lvl && (int)k.act == g_act; }
+bool live_key_is(const CoopKeyWire &k) { int l = -1, a = 0; return coop_group_key(&l, &a) && (int)k.level == l && (int)k.act == a; }
+bool ready_for(const CoopKeyWire &k) { return g_have_key && (int)k.level == g_lvl && (int)k.act == g_act; }
 bool is_member(int seat) { return seat >= 0 && seat < kCoopMaxSeats && ((coop_group_member_mask() >> seat) & 1u); }
 
 void apply_globals(const SwGlobalsWire &w) {
@@ -483,9 +484,9 @@ void on_ctl(int seat, int sub, const unsigned char *p, int len, void *) {
         if (!sw_globals_validate(p, len)) { ++g_st.drop_bad; return; }
         SwGlobalsWire w; std::memcpy(&w, p, sizeof w);
         if (seat == g_my || w.target != g_my) return;
-        if (!key_is_mine(w.key)) { ++g_st.drop_group; return; }
-        if (!is_member(seat)) {          // not known as a member yet: keep the newest, take it when it is
-            Early &e = g_early[0]; e.on = true; e.seat = seat; e.kind = sub; e.len = len; std::memcpy(e.buf, p, (size_t)len);
+        if (!live_key_is(w.key)) { ++g_st.drop_group; return; }
+        if (!ready_for(w.key) || !is_member(seat)) {   // still loading, or the sender is not a known member yet: keep the newest
+            Early &e = g_early[0]; e.on = true; e.seat = seat; e.kind = sub; e.lvl = w.key.level; e.act = w.key.act; e.len = len; std::memcpy(e.buf, p, (size_t)len);
             return;
         }
         apply_globals(w);
@@ -496,9 +497,9 @@ void on_ctl(int seat, int sub, const unsigned char *p, int len, void *) {
         if (!sw_states_validate(p, len)) { ++g_st.drop_bad; return; }
         SwStatesHead h; std::memcpy(&h, p, sizeof h);
         if (seat == g_my || h.target != g_my) return;
-        if (!key_is_mine(h.key)) { ++g_st.drop_group; return; }
-        if (!is_member(seat)) {
-            Early &e = g_early[1]; e.on = true; e.seat = seat; e.kind = sub; e.len = len; std::memcpy(e.buf, p, (size_t)len);
+        if (!live_key_is(h.key)) { ++g_st.drop_group; return; }
+        if (!ready_for(h.key) || !is_member(seat)) {
+            Early &e = g_early[1]; e.on = true; e.seat = seat; e.kind = sub; e.lvl = h.key.level; e.act = h.key.act; e.len = len; std::memcpy(e.buf, p, (size_t)len);
             return;
         }
         apply_states(p, len);
@@ -515,7 +516,7 @@ void on_world(int seat, int sub, const unsigned char *p, int len, void *) {
         ++g_st.recv_bit;
         if (!sw_bit_validate(p, len)) { ++g_st.drop_bad; return; }
         SwBitHead h; std::memcpy(&h, p, sizeof h);
-        if (!key_is_mine(h.key)) { ++g_st.drop_group; return; }
+        if (!live_key_is(h.key)) { ++g_st.drop_group; return; }
         if (!is_member(seat)) { ++g_st.drop_member; return; }
         if (g_off.word) { ++g_st.drop_off; return; }
         for (int i = 0; i < (int)h.count; ++i) {
@@ -530,7 +531,7 @@ void on_world(int seat, int sub, const unsigned char *p, int len, void *) {
         ++g_st.recv_word;
         if (!sw_word_validate(p, len)) { ++g_st.drop_bad; return; }
         SwWordWire w; std::memcpy(&w, p, sizeof w);
-        if (!key_is_mine(w.key)) { ++g_st.drop_group; return; }
+        if (!live_key_is(w.key)) { ++g_st.drop_group; return; }
         if (!is_member(seat)) { ++g_st.drop_member; return; }
         if (g_off.word) { ++g_st.drop_off; return; }
         const unsigned before = (unsigned)data_0209f34c;
@@ -544,7 +545,7 @@ void on_world(int seat, int sub, const unsigned char *p, int len, void *) {
         if (kind == kSwKindPress) ++g_st.recv_press; else if (kind == kSwKindKick) ++g_st.recv_kick; else ++g_st.recv_field;
         if (!sw_obj_validate(kind, p, len)) { ++g_st.drop_bad; return; }
         SwObjWire w; std::memcpy(&w, p, sizeof w);
-        if (!key_is_mine(w.key)) { ++g_st.drop_group; return; }
+        if (!live_key_is(w.key)) { ++g_st.drop_group; return; }
         if (!is_member(seat)) { ++g_st.drop_member; return; }
         if ((kind == kSwKindPress && g_off.press) || (kind == kSwKindKick && g_off.kick) || (kind == kSwKindField && g_off.field)) { ++g_st.drop_off; return; }
         uint16_t &last = g_lastseq[seat][w.slot];
@@ -705,6 +706,8 @@ void stats_line() {
 // Level lifecycle and the frame.
 // ---------------------------------------------------------------------------
 void new_level() {
+    Early keep[2];
+    for (int i = 0; i < 2; ++i) { keep[i] = g_early[i]; if (keep[i].on && !(keep[i].lvl == g_lvl && keep[i].act == g_act)) keep[i].on = false; }
     std::memset(g_bit, 0, sizeof g_bit);
     std::memset(g_pb, 0, sizeof g_pb);
     std::memset(g_trk, 0, sizeof g_trk);
@@ -712,7 +715,6 @@ void new_level() {
     std::memset(g_pend, 0, sizeof g_pend);
     std::memset(g_lastseq, 0, sizeof g_lastseq);
     std::memset(g_job, 0, sizeof g_job);
-    std::memset(g_early, 0, sizeof g_early);
     std::memset(g_wtrk, 0, sizeof g_wtrk);
     g_counter = 0; g_frames = 0; g_armed = false; g_have_globals = false;
     g_shadow = (unsigned)data_0209f34c;
@@ -721,6 +723,7 @@ void new_level() {
     for (int i = 0; i < g_nforge; ++i) g_forge[i].done = false;
     g_rec_n = 0;
     g_new_level = false;
+    for (int i = 0; i < 2; ++i) g_early[i] = keep[i];
 }
 
 void on_latched(int level, int act) {
@@ -741,7 +744,7 @@ void on_established(int level, int act) {
 void on_snapshot_request(int seat, unsigned nonce) {
     if (!coop_world_active() || seat < 0 || seat >= kCoopMaxSeats || seat == g_my) return;
     Job &j = g_job[seat];
-    j.on = true; j.seat = seat; j.nonce = nonce; j.sent = 0; j.next = 0;
+    j.on = true; j.seat = seat; j.nonce = nonce; j.sent = 0; j.next = 0; j.born = comms_hub_now_ms();
 }
 
 void on_member_gone(int seat) {
@@ -775,6 +778,7 @@ void on_frame(unsigned now) {
     for (Early &e : g_early) {
         if (!e.on || !is_member(e.seat)) continue;
         e.on = false;
+        if (e.lvl != g_lvl || e.act != g_act) continue;
         if (e.kind == kSwCtlGlobals) { SwGlobalsWire w; std::memcpy(&w, e.buf, sizeof w); apply_globals(w); }
         else apply_states(e.buf, e.len);
     }
@@ -813,7 +817,7 @@ void on_frame(unsigned now) {
     if (coop_group_i_am_owner())
         for (Job &j : g_job) {
             if (!j.on || (int)(now - j.next) < 0) continue;
-            if (!is_member(j.seat)) { j.on = false; continue; }
+            if (!is_member(j.seat)) { if ((unsigned)(now - j.born) > 5000u) j.on = false; continue; }
             serve_job(j);
             ++j.sent;
             if (j.sent >= 4) j.on = false; else j.next = now + (j.sent == 1 ? kJobMs : 300u);
