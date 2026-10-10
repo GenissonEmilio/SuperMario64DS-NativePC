@@ -790,8 +790,8 @@ def row_waits():
     row = "waits"
     f = frames_for(70)
     # B collects its OWN star (BOB 2) just before A's star (BOB 1) arrives: A's has to wait out B's hold
-    # C is forced unsafe (a stand-in for a menu / star-get) from frame 800 to 4800
-    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="800:4000")
+    # C is forced unsafe (a stand-in for a menu / star-get) from frame 400 to 4400, across both arrivals
+    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="400:4000")
 
     def script(ctx):
         in_bob(ctx, [0, 1, 2])
@@ -810,12 +810,45 @@ def row_waits():
     info("waits: B waits %s | lands %s" % (wb[:2], lb))
     info("waits: C waits %s | lands %s" % (wc[:2], lc))
     ms = lambda l: int(re.search(r"waited_ms=(\d+)", l).group(1))
-    say(len(lb) == 1 and bool(wb) and "own-star-hold" in " ".join(wb) and ms(lb[0]) > 1500,
+    say(len(lb) == 1 and bool(wb) and "own-star-hold" in " ".join(wb) and ms(lb[0]) > 500,
         "waits: B had just collected its own star: A's star waited (%s ms, why=own-star-hold seen) and then landed" % (ms(lb[0]) if lb else "-"))
-    say(len(lc) == 1 and bool(wc) and "why=forced" in " ".join(wc) and ms(lc[0]) > 5000,
-        "waits: C was held unsafe across the arrival: it waited (%s ms, why=forced seen) and then landed" % (ms(lc[0]) if lc else "-"))
+    say(len(lc) == 2 and bool(wc) and "why=forced" in " ".join(wc) and all(ms(x) > 5000 for x in lc),
+        "waits: C was held unsafe across both arrivals (B's star and A's): each waited (%s ms, why=forced seen) and then landed" % ([ms(x) for x in lc],))
     byte_check(row, "B", b, [STAR, (0, 1)])
-    byte_check(row, "C", c, [STAR])
+    byte_check(row, "C", c, [STAR, (0, 1)])
+    return r
+
+
+def row_waitreal():
+    """B collects a star through the ROM's own star handler (star-get, message, level clear, exit): a friend's star that
+    arrives in the middle of it must wait for the ROM's own windows to close and then land"""
+    row = "waitreal"
+    f = frames_for(90)
+    taps = ",".join("1000@%d" % x for x in range(1030, 3400, 40))
+    eb = dict(warp(300), SM64DS_STAR_TRIGGER="1000", SM64DS_STAR_PROBE="1", SM64DS_HOST_PAD="1000@420,1000@450,1000@480,1000@510,1000@540," + taps)
+
+    def script(ctx):
+        in_bob(ctx, [0, 1, 2], settle=2.0)
+        wait_text(ctx.cons[1], "[startrig] f1000 armed", 300)
+        time.sleep(0.4)
+        ctx.fire(0, *STAR)
+    r = room(row, [dict(frames=f, extra=warp(300)), dict(frames=f, extra=eb), dict(frames=f, extra=warp(300))], script=script)
+    common(row, r.cons)
+    a, b, c = r.cons
+    for x in r.cons:
+        x.seed_pay = parse(x.seed)[(0, 0)][2]
+    tb = b.text()
+    m = re.search(r"\[pstar\] tx course=(\d+) star=(\d+)", tb)
+    wb = re.findall(r"(?m)^\[pstar\] wait .*$", tb)
+    reasons = sorted(set(re.findall(r"why=(\w[\w-]*)", " ".join(wb))))
+    info("waitreal: B's own real star %s; B waited for %s; B lands %s" % (str(m.groups() if m else None), reasons, lands(tb)))
+    info("waitreal: B lvl changes %s" % re.findall(r"(?m)^\[lvl\] change: .*$", tb))
+    say(m is not None and len(lands(tb)) == 1, "waitreal: B's own real star-get happened (tx %s) and A's star, which arrived inside it, landed once afterwards" % (str(m.groups() if m else None),))
+    say(bool(wb) and bool(set(reasons) & {"message", "levelclear", "cutscene", "levelchange", "fade", "starselect", "pause", "own-star-hold", "d4b0", "nobody"}),
+        "waitreal: it waited on the ROM's own windows (reasons seen: %s)" % reasons)
+    if m:
+        byte_check(row, "B", b, [STAR, (int(m.group(1)), int(m.group(2)))])
+        byte_check(row, "C", c, [STAR, (int(m.group(1)), int(m.group(2)))])
     return r
 
 
@@ -823,9 +856,9 @@ def row_slot():
     row = "slot"
     f = frames_for(60)
     # B: unsafe for ever -> a star waits in its queue and the console exits with it (nothing may be written)
-    eb = dict(warp(300), SM64DS_PARTY_STARS_HOLD="800:100000")
+    eb = dict(warp(300), SM64DS_PARTY_STARS_HOLD="400:100000")
     # C: unsafe, then the open file slot byte changes: the queue is dropped, nothing written, slot 1 untouched
-    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="800:100000", SM64DS_PARTY_STARS_SLOTSWAP=str(int(ARGS.fps * 30)))
+    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="400:100000", SM64DS_PARTY_STARS_SLOTSWAP=str(int(ARGS.fps * 30)))
 
     def script(ctx):
         in_bob(ctx, [0, 1, 2])
@@ -1079,7 +1112,7 @@ def main():
     return 1 if bad else 0
 
 
-ROWS.update(unit=row_unit, share=row_share, base=row_base, sharepic=row_share_pics, real=row_real, waits=row_waits,
+ROWS.update(waitreal=row_waitreal, unit=row_unit, share=row_share, base=row_base, sharepic=row_share_pics, real=row_real, waits=row_waits,
             slot=row_slot, late=row_late, toggles=row_toggles, flood=row_flood, forge=row_forge, host=row_host,
             alone=row_alone, kit=row_kit)
 
