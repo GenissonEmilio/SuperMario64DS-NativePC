@@ -527,13 +527,11 @@ void scan(unsigned now) {
         n.gone = true; n.gsends = 0; n.gnext = now;
         if (n.area >= 0 && my_area >= 0 && n.area != my_area) {
             n.gsends = 3;
-            if (g_log) std::fprintf(stderr, "[coopspawn] unloaded with its area cls=%u id=%d/%d area=%d mine=%d frame=%u wall=%lld
-", (unsigned)n.cls, (int)n.origin, (int)n.counter, n.area, my_area, g_frames, wall_ms());
+            if (g_log) std::fprintf(stderr, "[coopspawn] unloaded with its area cls=%u id=%d/%d area=%d mine=%d frame=%u wall=%lld\n", (unsigned)n.cls, (int)n.origin, (int)n.counter, n.area, my_area, g_frames, wall_ms());
             continue;
         }
         ++g_st.gone_local;
-        if (g_log) std::fprintf(stderr, "[coopspawn] gone local%s cls=%u id=%d/%d frame=%u wall=%lld
-", n.remote ? " (remote copy)" : "", (unsigned)n.cls, (int)n.origin, (int)n.counter, g_frames, wall_ms());
+        if (g_log) std::fprintf(stderr, "[coopspawn] gone local%s cls=%u id=%d/%d frame=%u wall=%lld\n", n.remote ? " (remote copy)" : "", (unsigned)n.cls, (int)n.origin, (int)n.counter, g_frames, wall_ms());
         ack_add(n.origin, n.counter, now);
     }
     for (Lnk &l : g_lnk) {
@@ -541,8 +539,7 @@ void scan(unsigned now) {
         l.taken = true; l.gsends = 0; l.gnext = now;
         if (l.area >= 0 && my_area >= 0 && l.area != my_area) { l.gsends = 3; continue; }
         ++g_st.gone_local;
-        if (g_log) std::fprintf(stderr, "[coopspawn] gone local linked star marker slot=%d frame=%u wall=%lld
-", (int)l.mslot, g_frames, wall_ms());
+        if (g_log) std::fprintf(stderr, "[coopspawn] gone local linked star marker slot=%d frame=%u wall=%lld\n", (int)l.mslot, g_frames, wall_ms());
     }
 
     // ---- red coins gone ------------------------------------------------------
