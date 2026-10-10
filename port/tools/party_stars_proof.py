@@ -215,6 +215,7 @@ class Con:
             r = self.p.poll()
             if r is not None:
                 self.rc = r
+                self.t_end = time.time()
                 try:
                     self.p._logfile.close()
                 except Exception:
@@ -495,7 +496,7 @@ def shot(c, tag):
 def common(row, cons):
     for c in cons:
         t = c.text()
-        info("%s %s rc=%s exe=%s faults=%d tx=%d rx=%d land=%d | %s" % (row, c.inst, c.rc, c.exe_md5[:8], len(faults(t)),
+        info("%s %s rc=%s %.0fs exe=%s faults=%d tx=%d rx=%d land=%d | %s" % (row, c.inst, c.rc, getattr(c, "t_end", time.time()) - c.t0, c.exe_md5[:8], len(faults(t)),
                                                                         len(txs(t)), len(rxs(t)), len(lands(t)),
                                                                         report(t)[8:200]))
     say(all(c.rc == 0 and not faults(c.text()) for c in cons), "%s: every console exited 0, no fault" % row)

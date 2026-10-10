@@ -62,6 +62,13 @@
 //       star-get / menu has to wait)
 //   SM64DS_PARTY_STARS_SLOTSWAP=<frame>
 //       flip the open file slot byte at that frame (the queue must drop)
+//   SM64DS_PARTY_STARS_TRIGGER=<path>
+//       when that file exists its first line "<course> <bit>" is collected like
+//       a probe and the file is removed (a proof script sequences consoles by
+//       wall clock with it)
+//   SM64DS_PARTY_STARS_SKIP=<mask>
+//       ignore the safe-frame conditions whose bit is set (frame_is_safe's
+//       enum), to find which one blocks
 //   SM64DS_PARTY_STARS_NO_LIMIT=1  MUST-FAIL control: switch the limiter off
 //
 // LOG LINES (stderr): "[pstar] tx ..." per star sent, "[pstar] rx seat=.. ..."

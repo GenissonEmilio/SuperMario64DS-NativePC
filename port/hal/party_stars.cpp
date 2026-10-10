@@ -106,6 +106,8 @@ struct State {
     // test knobs
     struct Probe { bool used, done; int course, bit, frame; } probe[8];
     int  force_unsafe_from, force_unsafe_n;
+    unsigned skip_mask;      // test: conditions of unsafe_reason to ignore
+    const char *trigger_path;   // test: a file that, once it exists, collects a star
     int  slotswap_frame;     // test: flip the open file slot byte at this frame
     bool slotswap_done;
     unsigned last_wait_log;
@@ -146,6 +148,9 @@ void init_once() {
     g.q.reset();
     g.force_unsafe_from = -1;
     g.slotswap_frame = -1;
+    g.trigger_path = std::getenv("SM64DS_PARTY_STARS_TRIGGER");
+    if (g.trigger_path && !*g.trigger_path) g.trigger_path = nullptr;
+    if (const char *e = std::getenv("SM64DS_PARTY_STARS_SKIP")) g.skip_mask = (unsigned)std::strtoul(e, nullptr, 0);
     if (const char *e = std::getenv("SM64DS_PARTY_STARS_SLOTSWAP")) g.slotswap_frame = std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PARTY_STARS_HOLD")) {
         int f = 0, n = 0;
@@ -206,23 +211,32 @@ unsigned rd32(const unsigned char *p) {
 // SAFE FRAME: the ROM's own "may the pause menu open" test (Stage::Behavior)
 // plus a normal play mode. Nothing here moves for a star-get, a level clear, a
 // save prompt, a menu, a fade, a cutscene or a pending level change.
+// The conditions, one bit each in SM64DS_PARTY_STARS_SKIP (a test knob: a bit
+// set there ignores that condition, so a proof can tell which one is blocking).
+enum : unsigned {
+    kUnBody, kUnBehavior, kUnForced, kUnMode, kUnMessage, kUnD4b0, kUnStarSel,
+    kUnPause, kUnClear, kUnFade, kUnCutscene, kUnChange, kUnFc68, kUnTimer,
+};
 const char *unsafe_reason() {
-    if (!body_alive()) return "nobody";
-    if (g.beh_still >= 2) return "behavior";                // Stage::Behavior is not running
+    const unsigned skip = g.skip_mask;
+#define PS_UN(bit, cond, name) if (!(skip & (1u << (bit))) && (cond)) return name
+    PS_UN(kUnBody, !body_alive(), "nobody");
+    PS_UN(kUnBehavior, g.beh_still >= 2, "behavior");       // Stage::Behavior is not running
     if (g.force_unsafe_from >= 0 && (int)g.frame >= g.force_unsafe_from &&
         (int)g.frame < g.force_unsafe_from + g.force_unsafe_n)
         return "forced";
-    if (data_0209f2d8[0] != 1) return "mode";               // normal play
-    if (data_0209d660[0] != 0) return "message";            // message window
-    if (rd32(data_0209d4b0) != 0) return "d4b0";
-    if (data_0209f294[0] != 0) return "starselect";         // star select
-    if (data_0209f2c4[0] != 0) return "pause";              // pause menu
-    if (data_0209f20c[0] != 0) return "levelclear";         // level clear
-    if (rd32(data_0209b454) != 0) return "fade";            // fade / scene change
-    if (rd32(data_0209fc48) != 0) return "cutscene";        // cutscene
-    if ((signed char)data_02092110[0] >= 0) return "levelchange";   // level change pending
-    if (rd32(data_0209fc68) != 0) return "fc68";
-    if (data_0209f22c[0] != 0) return "timer";
+    PS_UN(kUnMode, data_0209f2d8[0] == 2, "mode");          // 2 = the no-pause mode (cutscene / ending)
+    PS_UN(kUnMessage, data_0209d660[0] != 0, "message");    // message window
+    PS_UN(kUnD4b0, rd32(data_0209d4b0) != 0, "d4b0");
+    PS_UN(kUnStarSel, data_0209f294[0] != 0, "starselect"); // star select
+    PS_UN(kUnPause, data_0209f2c4[0] != 0, "pause");        // pause menu
+    PS_UN(kUnClear, data_0209f20c[0] != 0, "levelclear");   // level clear
+    PS_UN(kUnFade, rd32(data_0209b454) != 0, "fade");       // fade / scene change
+    PS_UN(kUnCutscene, rd32(data_0209fc48) != 0, "cutscene");   // cutscene
+    PS_UN(kUnChange, (signed char)data_02092110[0] >= 0, "levelchange");   // level change pending
+    PS_UN(kUnFc68, rd32(data_0209fc68) != 0, "fc68");
+    PS_UN(kUnTimer, data_0209f22c[0] != 0, "timer");
+#undef PS_UN
     return nullptr;
 }
 bool frame_is_safe() { return unsafe_reason() == nullptr; }
@@ -407,9 +421,14 @@ void tick_apply(unsigned now, bool safe) {
         if (g.log && (unsigned)(g.frame - g.last_wait_log) >= 60) {
             g.last_wait_log = g.frame;
             const char *why = unsafe_reason();
-            std::fprintf(stderr, "[pstar] wait f=%u q=%d why=%s safe_run=%d hold=%d\n", g.frame, g.q.n,
+            std::fprintf(stderr, "[pstar] wait f=%u q=%d why=%s safe_run=%d hold=%d | mode=%u msg=%u d4b0=%u sel=%u "
+                         "pause=%u clear=%u fade=%u cut=%u chg=%d fc68=%u tmr=%u beh=%u\n", g.frame, g.q.n,
                          why ? why : (g.hold_left > 0 ? "own-star-hold" : (g.safe_run < kPsSafeFrames ? "settling" : "gap")),
-                         g.safe_run, g.hold_left);
+                         g.safe_run, g.hold_left, (unsigned)data_0209f2d8[0], (unsigned)data_0209d660[0],
+                         rd32(data_0209d4b0), (unsigned)data_0209f294[0], (unsigned)data_0209f2c4[0],
+                         (unsigned)data_0209f20c[0], rd32(data_0209b454), rd32(data_0209fc48),
+                         (int)(signed char)data_02092110[0], rd32(data_0209fc68), (unsigned)data_0209f22c[0],
+                         g.beh_still);
         }
         return;
     }
@@ -494,6 +513,25 @@ void run_probes() {
                      "(CollectStar + SaveCurrentFile ok=%d) stars=%d slot=%d\n",
                      p.course, p.bit, ok, (int)NumStars(), file_slot());
         break;                                  // one a frame
+    }
+    // SM64DS_PARTY_STARS_TRIGGER=<path>: when that file exists (a proof script
+    // makes it) its first line "<course> <bit>" is collected the same way and
+    // the file is removed. Wall-clock sequencing between consoles.
+    if (g.trigger_path && (g.frame % 15u) == 0 && body_alive() && file_open()) {
+        std::FILE *f = std::fopen(g.trigger_path, "rb");
+        if (f) {
+            int c = -1, b = -1;
+            const int n = std::fscanf(f, "%d %d", &c, &b);
+            std::fclose(f);
+            std::remove(g.trigger_path);
+            if (n == 2 && c >= 0 && c < kPsCourses && b >= 0 && b < kPsStarBits) {
+                CollectStar(c, b);
+                const int ok = _ZN8SaveData15SaveCurrentFileEv();
+                std::fprintf(stderr, "[pstar] TRIGGER star course %d bit %d collected "
+                             "(CollectStar + SaveCurrentFile ok=%d) stars=%d slot=%d\n",
+                             c, b, ok, (int)NumStars(), file_slot());
+            }
+        }
     }
 }
 
