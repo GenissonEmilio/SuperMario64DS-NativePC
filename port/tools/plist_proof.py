@@ -7,6 +7,7 @@ It rides the run's console rig (lgc.py / r3gw.py / deskspawn.py: a private deskt
 process's PID). Point PLIST_RIG at the directory holding them. Other environment:
   PLIST_EXE     the exe to run (default: the rig's)        PLIST_RELAY   relay.py (default: this tree's)
   PLIST_OUT     where the console folders go               PLIST_SHOTS   where pictures go
+  PLIST_ASSET_ROOT  a kit install's asset root (kit rows)
   PLIST_LOCK    ladder lock to hold while consoles run (default C:/tmp/mp1/ladder2.lock; "" = none)
 
   python plist_proof.py room:<kind>:<n>:<tag>[:k=v;k=v]       kind party | coop | world
@@ -29,6 +30,9 @@ sys.path.insert(0, RIG)
 import lgc as G  # noqa: E402
 import r3gw as R  # noqa: E402
 import deskspawn as D  # noqa: E402
+
+if os.environ.get("PLIST_ASSET_ROOT"):
+    G.ROOT = os.environ["PLIST_ASSET_ROOT"]     # the kit rows: a kit install's asset root (no ROM-derived repo tree)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TREE = os.path.dirname(os.path.dirname(HERE))
