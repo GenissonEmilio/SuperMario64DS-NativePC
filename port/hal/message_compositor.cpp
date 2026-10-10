@@ -1097,6 +1097,22 @@ inline bool lc_overlay_in_band(unsigned owner, int hy)
 // plus a sparse extent walk. It runs ONLY when the aspect is wide; at the
 // native aspect the whole block is skipped and the placement is the byte-for-
 // byte original x*sx, so the default build pays nothing at all.
+/* THE N64 HUD ROW (HudLayout = 1; run menu1 lane HUD1). The DS stacks the coin counter under the star counter at the top
+   right (digits y 20..36 against the star row's y 2..18). The N64 puts lives, coins and stars on ONE row, so this
+   moves the coin counter, as one block (icon, x and digits, never a split glyph), up onto the star row and left into
+   the middle of the screen: DS pixel (x, y) of the counter (x >= 188, y 20..36) goes to (x - dx, y - kHudCoinDy), dx = 52 normally, wider when a three digit star count needs the room. It is done in the
+   DS 256x192 plane BEFORE the widescreen element pass, so the position is a canvas position in every aspect (4:3 plain
+   x*sx, wide through the anchors below). Wide, the moved block is held out of the element labelling (it would bridge
+   into the star counter) and takes the CENTRE anchor, the same one the power meter has, so the row spreads out
+   (lives left edge, coins centre, stars right edge) instead of stretching. The red coin row and the silver star row
+   already sit bottom left on the DS top screen (y 157..173, RenderRedCoins / RenderSilverStars), they stay.
+   Absent or 0 = nothing here runs: one int read per frame. */
+extern "C" int host_setting_hud_layout(void);
+static const int kHudZoneX0 = 188, kHudZoneY0 = 20, kHudZoneY1 = 36;   /* the coin counter's DS rectangle */
+static const int kHudCoinDxMin = 52, kHudCoinDy = 18;
+static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
+static bool g_hud_row_live;
+
 namespace hudelem {
 
 // The dilation radii, in DS pixels. See the bridge discussion above.
@@ -1148,13 +1164,13 @@ void resolve(int band_l, int band_r, int margin)
     for (int y = 0; y < 192; ++y) {
         int run = kBridgeX + 1;
         for (int x = 0; x < 256; ++x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x);
+            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_row_live && g_hud_row[y][x]);
             run = on ? 0 : (run + 1);
             dil[y][x] = (run <= kBridgeX) ? 1 : 0;
         }
         run = kBridgeX + 1;
         for (int x = 255; x >= 0; --x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x);
+            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_row_live && g_hud_row[y][x]);
             run = on ? 0 : (run + 1);
             if (run <= kBridgeX) dil[y][x] = 1;
         }
@@ -1230,7 +1246,7 @@ void resolve(int band_l, int band_r, int margin)
             if (!l) continue;
             const int r = find_root(l);
             g_lbl[y][x] = (int16_t)r;
-            if (!g_a[y][x].hit || msg_layer_px(y, x)) continue;
+            if (!g_a[y][x].hit || msg_layer_px(y, x) || (g_hud_row_live && g_hud_row[y][x])) continue;
             if (x < x0[r]) x0[r] = x;
             if (x > x1[r]) x1[r] = x;
         }
@@ -3187,6 +3203,45 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        to anchor -- and skipped when the band-split control is armed, which is
        what lets that control be the OLD code path and not a re-derivation of
        it. */
+    /* THE N64 ROW, once per frame: only in a 3D scene shown at its own layout, never under a level-clear lift. */
+    g_hud_row_live = false;
+    if (host_setting_hud_layout() == 1 && bg0_3d_shown(dispcnt) && !ntr::present_native()
+        && !lc_ov.live && !lc_ov.top_live) {
+        /* THE RACE TIMER (src/_ZN3HUD15RenderTimeTimerEv.cpp: x 0xa4..0xf0, y 0x16 / 0x1e) shares these rows, and its
+           pixels are not the coin counter's. The counter itself never reaches left of x 191 (icon of a three digit
+           count), so any sprite pixel at x 160..187 in the zone rows is the timer: leave the DS placement alone then. */
+        bool timer_up = false;
+        for (int y = kHudZoneY0; y <= kHudZoneY1 && !timer_up; ++y)
+            for (int x = 160; x < kHudZoneX0; ++x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { timer_up = true; break; }
+        if (!timer_up) {
+        /* The counter ends 6 DS pixels short of the star counter's leftmost pixel (a three digit star count reaches
+           x 189), but never further right than kHudCoinDxMin puts it, so the two rows cannot overlap. */
+        int star_left = 256;
+        for (int y = 0; y < kHudZoneY0 - 1; ++y)
+            for (int x = 180; x < star_left; ++x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { star_left = x; break; }
+        const int dx_move = (254 - star_left > kHudCoinDxMin) ? 254 - star_left : kHudCoinDxMin;
+        static Cell tmp[kHudZoneY1 - kHudZoneY0 + 1][256 - kHudZoneX0];
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = kHudZoneX0; x < 256; ++x) {
+                Cell &c = g_a[y][x];
+                const bool mv = c.hit && c.owner == kOwnerObj && !c.msgcur;
+                tmp[y - kHudZoneY0][x - kHudZoneX0] = c;
+                tmp[y - kHudZoneY0][x - kHudZoneX0].hit = mv;
+                if (mv) c.hit = false;
+            }
+        std::memset(g_hud_row, 0, sizeof(g_hud_row));
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = kHudZoneX0; x < 256; ++x) {
+                const Cell &c = tmp[y - kHudZoneY0][x - kHudZoneX0];
+                if (!c.hit) continue;
+                g_a[y - kHudCoinDy][x - dx_move] = c;
+                g_hud_row[y - kHudCoinDy][x - dx_move] = 1;
+                g_hud_row_live = true;
+            }
+        }
+    }
     const bool bandsplit = hud_bandsplit_env();
     if (ntr::widescreen && !bandsplit) hudelem::resolve(band_l, band_r, margin);
     /* TWO QUESTIONS, KEPT APART SO THE A/B ARM STILL MEASURES. `shown3d` is
@@ -3270,6 +3325,8 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                              and it is the bottom panel's pan_x0 too, so all
                              three layers line up. */
                           : (ntr::present_native() || !shown3d)
+                          ? ux0 + margin / 2
+                          : (g_hud_row_live && g_hud_row[y][x])
                           ? ux0 + margin / 2
                           : !bandsplit
                           ? ux0 + hudelem::g_off[hudelem::g_lbl[y][x]]
