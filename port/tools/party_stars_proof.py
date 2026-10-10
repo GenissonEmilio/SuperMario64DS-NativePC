@@ -1035,6 +1035,43 @@ def row_forge():
     return r
 
 
+def row_stale():
+    """the sender's presence has to have put it in the course within the last 60 s: it was in BOB, then left for 64 s -> dropped;
+    back in BOB a second -> a star for BOB lands (the control)"""
+    row = "stale"
+    f = frames_for(150)
+    specs = [dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300))]
+    lvl = level_of_course()
+
+    def script(ctx):
+        fg = ctx.forger
+        in_bob(ctx, [0, 1], settle=3.0)
+        fg.say(BOB)
+        time.sleep(1.5)
+        fg.say(1)                       # the castle grounds (course 29)
+        t0 = time.time()
+        info("stale: the forger left BOB (course 0) for the castle at t=0")
+        time.sleep(64)
+        fg.synx(0, 3)                   # 64 s after it was last in BOB
+        info("stale: sent BOB star 4 after %.0f s away" % (time.time() - t0))
+        time.sleep(3)
+        fg.say(BOB)
+        time.sleep(1.5)
+        fg.synx(0, 4)                   # back in BOB
+        time.sleep(5)
+    r = room(row, specs, forger_role=T.ROLE_PARTY, script=script, timeout=900)
+    common(row, r.cons)
+    for c in r.cons:
+        t = c.text()
+        dec = [(x[1], x[2], x[3]) for x in rxs(t)]
+        info("stale: %s decisions %s" % (c.inst, dec))
+    say(all((("0", "3", "course") in [(x[1], x[2], x[3]) for x in rxs(c.text())]) for c in r.cons),
+        "stale: a star for BOB 64 s after the sender last stood in BOB was dropped with the reason 'course' on both consoles")
+    say(all(len(lands(c.text())) == 1 and "course=0 star=4" in lands(c.text())[0] for c in r.cons),
+        "stale: the same sender, back in BOB, landed exactly its BOB star 5 on both consoles (the control)")
+    return r
+
+
 def row_host():
     row = "host"
     f = frames_for(75)
@@ -1112,7 +1149,7 @@ def main():
     return 1 if bad else 0
 
 
-ROWS.update(waitreal=row_waitreal, unit=row_unit, share=row_share, base=row_base, sharepic=row_share_pics, real=row_real, waits=row_waits,
+ROWS.update(stale=row_stale, waitreal=row_waitreal, unit=row_unit, share=row_share, base=row_base, sharepic=row_share_pics, real=row_real, waits=row_waits,
             slot=row_slot, late=row_late, toggles=row_toggles, flood=row_flood, forge=row_forge, host=row_host,
             alone=row_alone, kit=row_kit)
 
