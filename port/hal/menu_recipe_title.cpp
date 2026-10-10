@@ -958,7 +958,7 @@ void build_doodle(MenuLayout *L)
     L->no_focus_paint = 1;
     const int e = (t_f && t_f->dd_e > 0) ? t_f->dd_e : 1000;
     const bool live = !(t_f && t_f->dd_dead);
-    if (live) L->snap_save = 1;                  /* the held frame of the way out */
+    if (live && e >= DD_XF) L->snap_save = 1;                  /* the held frame of the way out */
     if (e < DD_XF) {
         MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)w; sn.fh = (short)h;
@@ -1235,7 +1235,7 @@ void menu_title_build(int variant, MenuLayout *L)
 {
     TitleFactsScope scope((const TitleFacts *)L->facts.blob);
     menu_title_build_impl(variant, L);
-    if (t_f && t_f->out_e > 0 && t_f->out_e < DD_XF && variant != V_DOODLE) {     /* FACE2: the drawing page's last frame fades out over the page that follows */
+    if (t_f && t_f->out_e > 0 && t_f->out_e < DD_XF && variant != V_DOODLE && (variant == V_MAIN || variant == V_TOY)) {     /* FACE2: the drawing page's last frame fades out over the page that follows */
         MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)L->w; sn.fh = (short)L->h;
         const int a = 255 - 255 * t_f->out_e / DD_XF;
