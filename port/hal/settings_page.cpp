@@ -1023,9 +1023,15 @@ extern "C" void settings_page_warm(int w, int h)
     std::vector<uint32_t> buf((size_t)w * (size_t)h, 0u);
     g_warming = 1;
     S.open = 1;
+    const auto t0 = std::chrono::steady_clock::now();
     settings_page_draw(buf.data(), w, w, h);
     S.open = 0;
     g_warming = 0;
+#ifndef PORT_ROM_CLEAN
+    if (getenv("SM64DS_SETPAGE_COST"))
+        fprintf(stderr, "[settings] warm-up %dx%d: %.2f ms
+", w, h, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+#endif
 }
 
 extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
