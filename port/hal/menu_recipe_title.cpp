@@ -981,6 +981,7 @@ void build_doodle(MenuLayout *L)
     menu_add_piece(L, st);
     MenuPiece tc = st;                           /* the touch twin: the same transform inverts a click on the strokes' area to the ROM's canvas */
     tc.keycover = 0; tc.has_ex = 0; tc.has_ex2 = 0; tc.bg = 0; tc.touch = 1; tc.nodraw = 1;
+    tc.s.h = 130; tc.fh = (short)((fh * 130 + 96) / 192);     /* ends above the button rows so it never meets the buttons' own touch boxes */
     menu_add_piece(L, tc);
     MenuPiece yo = menu_piece_make(SRC_TOP_PIC, kYo.x, kYo.y, kYo.w, kYo.h, MENU_AX_L, MENU_AY_B, 0, 0, 1, 1);
     yo.keycover = 1; yo.touch = 1;
