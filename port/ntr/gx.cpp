@@ -6776,7 +6776,6 @@ void gx_render(Framebuffer &fb) {
         static const char *cd = getenv("SM64DS_COVER_DUMP");
         if (cd && *cd) cover_dump(cd, cw, ch);
     }
-    aa_pass(fb, cw, ch, nt);
     if (gpu_full && gpu_out.aa_done) {
         /* the card smoothed the picture and left aa_pass's own bookkeeping to
            be done here: the frame count, the pixels moved, and whether the
