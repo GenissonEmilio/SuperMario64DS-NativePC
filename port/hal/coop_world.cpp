@@ -79,6 +79,7 @@ struct ReviveKnob { unsigned frame; int slot; int cls; bool done; };
 ReviveKnob g_revive = {0, -1, 0, true};
 int  g_my = -1;
 unsigned g_frame = 0, g_est_frames = 0;
+unsigned g_kframe = 0;             // proof-knob clock: frames that really ticked (released, no barrier, no opening playing)
 
 CoopKey  g_key;
 CoopKey  g_rejected;           // a level the death table has no part for: never retried
@@ -154,7 +155,7 @@ void read_env() {
         if (std::sscanf(rv, "%u:%i:%i", &f, &sl, &cl) == 3) g_revive = {f, sl, cl, false};
     }
     if (const char *w = std::getenv("SM64DS_COOP_WARP")) {
-        // F:level:act[;F:level:act]  (F = frames since the world core came on)
+        // F:level:act[;F:level:act]  (F = ticked frames since the boot release / the end of a new file's opening)
         const char *p = w;
         while (*p && g_nwarp < 4) {
             unsigned f = 0; int lv = 0, ac = 1, used = 0;
@@ -919,6 +920,8 @@ extern "C" void port_coop_world_frame(void) {
     if (!coop_world_active()) return;
     ensure_handlers();
     ++g_frame;
+    const bool ticking = coop_boot_ticking();
+    if (ticking) ++g_kframe;
     const unsigned now = comms_hub_now_ms();
     refresh_presence(now);
     const int me = (int)data_0209f250;
@@ -930,11 +933,11 @@ extern "C" void port_coop_world_frame(void) {
         if ((!g_key.valid() || rk != g_key) && rk != g_rejected) join_group(rk);
     }
     // Proof knob: the game's own level-change call with a chosen act (the scripted warp
-    // chain of the harness always asks for act 1). Never while the boot barrier holds this
-    // console: a level load with no game tick behind it faults the renderer.
-    const bool boot_held = coop_boot_active() && !coop_boot_released();
-    for (int i = 0; in_level && !boot_held && i < g_nwarp; ++i)
-        if (!g_warp[i].done && g_frame >= g_warp[i].frame) {
+    // chain of the harness always asks for act 1). Counted in ticked frames (g_kframe): never
+    // while a boot barrier holds this console (a level load with no game tick behind it
+    // faults the renderer) and not during a new file's opening.
+    for (int i = 0; in_level && ticking && i < g_nwarp; ++i)
+        if (!g_warp[i].done && g_kframe >= g_warp[i].frame) {
             g_warp[i].done = true;
             std::fprintf(stderr, "[coop-knob] warp to level %d act %d\n", g_warp[i].level, g_warp[i].act);
             LoadLevelNoReturn((unsigned)g_warp[i].level, 0, (unsigned)g_warp[i].act, 1);

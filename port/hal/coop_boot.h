@@ -55,6 +55,7 @@ enum CoopExit : int {
 bool coop_boot_active();     // coop room member with the boot gate running
 bool coop_boot_released();   // GO has been given (or heard) on this console
 bool coop_boot_holding();    // a barrier is holding this console right now
+bool coop_boot_ticking();    // game frames really tick: released, no barrier, no opening playing (true when not a coop room)
 
 struct CoopBootStats {
     unsigned ready_sent, ready_recv, state_sent, state_recv;

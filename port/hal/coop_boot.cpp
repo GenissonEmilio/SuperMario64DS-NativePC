@@ -535,6 +535,7 @@ void guest_gate() {
 bool coop_boot_active() { return C.on; }
 bool coop_boot_released() { return C.released; }
 bool coop_boot_holding() { return C.holding; }
+bool coop_boot_ticking() { return !C.on || (C.released && !C.holding && port_adventure_hub_opening_held() == 0); }
 CoopBootStats coop_boot_stats() { return C.st; }
 
 }  // namespace port
