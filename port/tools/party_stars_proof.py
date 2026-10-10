@@ -193,6 +193,8 @@ class Con:
         e["SM64DS_SAVE_PATH"] = self.save
         e["SM64DS_NO_PLAYLOG"] = "1"
         e.pop("SM64DS_LEVEL", None)
+        self.trig = os.path.join(self.dir, "trigger.txt")
+        e["SM64DS_PARTY_STARS_TRIGGER"] = self.trig
         for k, v in extra.items():
             if v is None:
                 e.pop(k, None)
@@ -413,6 +415,15 @@ def room(row, specs, kind="party", forger_role=None, script=None, exe=None, root
         ctx.cons[i] = c
         return c
     ctx.spawn = spawn
+
+    def fire(i, course, bit):
+        c = ctx.cons[i]
+        tmp = c.trig + ".tmp"
+        with open(tmp, "w") as f:
+            f.write("%d %d" % (course, bit) + chr(10))
+        os.replace(tmp, c.trig)
+        info("%s: fired the star trigger on %s (course %d bit %d)" % (row, c.inst, course, bit))
+    ctx.fire = fire
     try:
         for i, sp in enumerate(specs):
             if sp.get("late"):
@@ -450,6 +461,14 @@ def wait_text(c, pat, timeout=600):
             return pat in c.text()
         time.sleep(0.3)
     return False
+
+
+def in_bob(ctx, idxs, settle=4.0, timeout=600):
+    """block until every named console is in BOB (its level change line) and the roster has had `settle` seconds"""
+    for i in idxs:
+        if not wait_text(ctx.cons[i], "-> 6, entrance", timeout):
+            info("in_bob: console %d never reached BOB" % i)
+    time.sleep(settle)
 
 
 def lands(t):
@@ -722,7 +741,7 @@ def row_share_pics():
     f = frames_for(55)
     eb, ec, ea = dict(warp(300)), dict(warp(300)), dict(warp(300), **probe(1100, *STAR))
     snap_cmd(eb, row, 1, f - 4)
-    snap_cmd(ec, row, 2, 1050)
+    snap_cmd(ec, row, 2, 900)
     snap_cmd(ea, row, 0, f - 4)
     specs = [dict(frames=f, extra=ea), dict(frames=f, extra=eb), dict(frames=f, extra=ec)]
     r = room(row, specs)
@@ -767,11 +786,15 @@ def row_waits():
     row = "waits"
     f = frames_for(70)
     # B collects its OWN star (BOB 2) just before A's star (BOB 1) arrives: A's has to wait out B's hold
-    eb = dict(warp(300), **probe(1090, 0, 1))
-    ea = dict(warp(300), **probe(1100, *STAR))
-    # C is forced unsafe (a stand-in for a menu / star-get) across the arrival and a while after
-    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="1000:600")
-    r = room(row, [dict(frames=f, extra=ea), dict(frames=f, extra=eb), dict(frames=f, extra=ec)])
+    # C is forced unsafe (a stand-in for a menu / star-get) from frame 800 to 4800
+    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="800:4000")
+
+    def script(ctx):
+        in_bob(ctx, [0, 1, 2])
+        ctx.fire(1, 0, 1)
+        time.sleep(0.5)
+        ctx.fire(0, *STAR)
+    r = room(row, [dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300)), dict(frames=f + 3000, extra=ec)], script=script)
     common(row, r.cons)
     a, b, c = r.cons
     for x in r.cons:
@@ -780,11 +803,13 @@ def row_waits():
     lb, lc = lands(tb), lands(tc)
     wb = re.findall(r"(?m)^\[pstar\] wait .*$", tb)
     wc = re.findall(r"(?m)^\[pstar\] wait .*$", tc)
-    info("waits: B waits %s | lands %s" % (wb[:3], lb))
-    info("waits: C waits %s | lands %s" % (wc[:3], lc))
+    info("waits: B waits %s | lands %s" % (wb[:2], lb))
+    info("waits: C waits %s | lands %s" % (wc[:2], lc))
     ms = lambda l: int(re.search(r"waited_ms=(\d+)", l).group(1))
-    say(len(lb) == 1 and bool(wb) and ms(lb[0]) > 1500, "waits: B had just collected its own star: A's star waited (%s ms, wait lines %d) and then landed" % (ms(lb[0]) if lb else "-", len(wb)))
-    say(len(lc) == 1 and bool(wc) and "why=forced" in " ".join(wc) and ms(lc[0]) > 3000, "waits: C was held unsafe across the arrival: it waited (%s ms, why=forced seen) and then landed" % (ms(lc[0]) if lc else "-"))
+    say(len(lb) == 1 and bool(wb) and "own-star-hold" in " ".join(wb) and ms(lb[0]) > 1500,
+        "waits: B had just collected its own star: A's star waited (%s ms, why=own-star-hold seen) and then landed" % (ms(lb[0]) if lb else "-"))
+    say(len(lc) == 1 and bool(wc) and "why=forced" in " ".join(wc) and ms(lc[0]) > 5000,
+        "waits: C was held unsafe across the arrival: it waited (%s ms, why=forced seen) and then landed" % (ms(lc[0]) if lc else "-"))
     byte_check(row, "B", b, [STAR, (0, 1)])
     byte_check(row, "C", c, [STAR])
     return r
@@ -793,12 +818,15 @@ def row_waits():
 def row_slot():
     row = "slot"
     f = frames_for(60)
-    ea = dict(warp(300), **probe(1100, *STAR))
     # B: unsafe for ever -> a star waits in its queue and the console exits with it (nothing may be written)
-    eb = dict(warp(300), SM64DS_PARTY_STARS_HOLD="900:100000")
+    eb = dict(warp(300), SM64DS_PARTY_STARS_HOLD="800:100000")
     # C: unsafe, then the open file slot byte changes: the queue is dropped, nothing written, slot 1 untouched
-    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="900:100000", SM64DS_PARTY_STARS_SLOTSWAP="1500")
-    r = room(row, [dict(frames=f, extra=ea), dict(frames=f, extra=eb), dict(frames=f, extra=ec)])
+    ec = dict(warp(300), SM64DS_PARTY_STARS_HOLD="800:100000", SM64DS_PARTY_STARS_SLOTSWAP=str(int(ARGS.fps * 30)))
+
+    def script(ctx):
+        in_bob(ctx, [0, 1, 2])
+        ctx.fire(0, *STAR)
+    r = room(row, [dict(frames=f, extra=warp(300)), dict(frames=f, extra=eb), dict(frames=f, extra=ec)], script=script)
     common(row, r.cons)
     a, b, c = r.cons
     tb, tc = b.text(), c.text()
@@ -813,12 +841,12 @@ def row_slot():
 def row_late():
     row = "late"
     f = frames_for(60)
-    ea = dict(warp(300), **probe(1100, *STAR))
-    specs = [dict(frames=f, extra=ea), dict(frames=f, extra=warp(300)), dict(frames=f - 600, extra=warp(300), late=True)]
+    specs = [dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300), late=True)]
 
     def script(ctx):
-        a = ctx.cons[0]
-        wait_text(a, "[pstar] tx", 900)
+        in_bob(ctx, [0, 1])
+        ctx.fire(0, *STAR)
+        wait_text(ctx.cons[0], "[pstar] tx", 120)
         time.sleep(8)           # every copy is long gone
         ctx.spawn(2)
     r = room(row, specs, script=script)
@@ -836,9 +864,13 @@ def row_late():
 def row_toggles():
     row = "toggles"
     f = frames_for(55)
+
+    def script(ctx):
+        in_bob(ctx, [0, 1, 2])
+        ctx.fire(0, *STAR)
     # share off on A: nothing leaves; B and C see nothing
-    ea = dict(warp(300), SM64DS_PARTY_SHARE_STARS="0", **probe(1100, *STAR))
-    r = room(row + "_share", [dict(frames=f, extra=ea), dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300))])
+    ea = dict(warp(300), SM64DS_PARTY_SHARE_STARS="0")
+    r = room(row + "_share", [dict(frames=f, extra=ea), dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300))], script=script)
     common(row + "_share", r.cons)
     a, b, c = r.cons
     say(not txs(a.text()) and "collected, not shared" in a.text(), "toggles: share off -> A announced nothing (and logged that the star was collected, not shared)")
@@ -846,8 +878,7 @@ def row_toggles():
         "toggles: share off -> B and C received nothing and their files are byte-identical to their seeds")
     # accept off on B: A sends, B drops it, C takes it
     eb = dict(warp(300), SM64DS_PARTY_ACCEPT_STARS="0")
-    ea = dict(warp(300), **probe(1100, *STAR))
-    r = room(row + "_accept", [dict(frames=f, extra=ea), dict(frames=f, extra=eb), dict(frames=f, extra=warp(300))])
+    r = room(row + "_accept", [dict(frames=f, extra=warp(300)), dict(frames=f, extra=eb), dict(frames=f, extra=warp(300))], script=script)
     common(row + "_accept", r.cons)
     a, b, c = r.cons
     for x in r.cons:
@@ -970,18 +1001,18 @@ def row_forge():
 def row_host():
     row = "host"
     f = frames_for(75)
-    ea = dict(warp(300))
-    eb = dict(warp(300), **probe(2000, *STAR))
-    specs = [dict(frames=frames_for(30), extra=ea), dict(frames=f, extra=eb), dict(frames=f - 900, extra=warp(300)),
-             dict(frames=f - 1200, extra=warp(300), late=True)]
-    specs[3]["seat"] = 0
+    specs = [dict(frames=int(ARGS.fps * 28), extra=warp(300)), dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300)),
+             dict(frames=f, extra=warp(300), late=True, seat=0)]
 
     def script(ctx):
         a = ctx.cons[0]
+        in_bob(ctx, [0, 1, 2], settle=1.0)
         wait_cons([a], 900)
         info("host: seat 0 (the first console, the room's host) exited rc=%s" % a.rc)
         time.sleep(1.0)
-        ctx.spawn(3)                    # a new console takes the free seat 0
+        d = ctx.spawn(3)                    # a new console takes the free seat 0
+        in_bob(ctx, [3], settle=5.0)
+        ctx.fire(1, *STAR)
     r = room(row, specs, script=script)
     common(row, r.cons)
     b, cc, d = r.cons[1], r.cons[2], r.cons[3]
