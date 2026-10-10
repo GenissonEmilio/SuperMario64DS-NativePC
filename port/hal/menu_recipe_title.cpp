@@ -288,6 +288,24 @@ void rom_cursor(int *cursor, int *pressed)
     if (*held & 0x0001) *pressed = 1;
 }
 
+/* FACE1: THE FACE'S SCALE ON THE MAIN MENU. The head (the whole 3D layer minus the wrench corner) is drawn at kn/kd of the DS layer, its chin
+   (source y 134.5, measured on the ROM's own render) kept at canvas y 135.7 and its centre (source x 127.8) on the canvas centre, so a bigger
+   head grows upward between the small logo and the wrench and never reaches the planks. SM64DS_FACE_K=n,d picks the step (1,1 / 5,6 / 3,4 / 2,3). */
+struct FaceK { int n, d; };
+FaceK face_k()
+{
+    static FaceK k = { 0, 0 };
+    if (!k.n) {
+        k.n = 5; k.d = 6;
+        const char *e = getenv("SM64DS_FACE_K");
+        int a = 0, b = 0;
+        if (e && sscanf(e, "%d,%d", &a, &b) == 2 && a > 0 && b > 0 && a <= 255 && b <= 255) { k.n = a; k.d = b; }
+    }
+    return k;
+}
+inline int face_dx(const FaceK &) { return 0; }
+inline int face_dy(const FaceK &k) { return (int)(135.7 - 134.5 * k.n / k.d + 0.5); }     /* canvas units of the layer's source y = 0 */
+
 /* THE MAIN MENU, built from the title's own art objects (run menu1, lane ASSET1; Tango, 10-09: "take the top screen
    and replace the bottom screen's background with it", and the stars stay).
    The lower screen is 3D (see the filter note above). With the wallpaper objects skipped at submit, the picture
@@ -730,15 +748,16 @@ void build_main_pc(MenuLayout *L, bool intro)
     }
     if (!intro) {
         /* the face (the whole lower 3D layer minus the wrench corner, round 4's piece) at the swap's alpha */
-        const int hk = tune(0, 2), hd = tune(1, 3);
+        const FaceK fk = face_k();
+        const int hk = fk.n, hd = fk.d;
         const int fa = c.face_a;
         if (fa > 0) {
-            MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
+            MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, face_dx(fk), face_dy(fk), hk, hd);
             face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
             face.alpha = (uint8_t)(fa >= 255 ? 0 : fa);
             menu_add_piece(L, face);
         }
-        MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
+        MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, face_dx(fk) - (30 * hk + hd / 2) / hd, face_dy(fk), hk, hd);
         head.touch = 1; head.nodraw = 1;
         menu_add_piece(L, head);
         MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);

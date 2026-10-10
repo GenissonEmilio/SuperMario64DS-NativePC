@@ -184,7 +184,7 @@ int menu_wide(const MenuLayout *L) { return L->canvas_w >= MENU_WIDE_CANVAS; }
 
 int menu_scale_allowed(int n, int d)
 {
-    return (n == 1 && d == 1) || (n == 3 && d == 4) || (n == 2 && d == 3) || (n == 1 && d == 2);
+    return (n == 1 && d == 1) || (n == 5 && d == 6) || (n == 3 && d == 4) || (n == 2 && d == 3) || (n == 1 && d == 2);
 }
 
 void menu_layout_begin(MenuLayout *L, int w, int h)
@@ -238,7 +238,7 @@ int menu_add_hotspot(MenuLayout *L, int piece, int bx, int by, int bw, int bh, i
 
 /* SCALE AND PLACEMENT RULE (P0COREFIX). A piece's canvas size is the EXACT
    rational s.w * knum / kden (and s.h likewise), held in twelfths of a canvas
-   unit (12 is divisible by every allowed kden 1, 2, 3, 4). The canvas spans
+   unit (12 is divisible by every allowed kden 1, 2, 3, 4, 6). The canvas spans
    the picture exactly: one unit is unum / uden host pixels and the canvas is
    w * uden / unum units wide, so a centred piece sits at (w - width) / 2 with
    no floored canvas_w in the way. Both edges of a piece are the floor of the
@@ -260,7 +260,7 @@ void menu_layout_dest(MenuLayout *L)
     for (int i = 0; i < L->np; ++i) {
         const MenuPiece &P = L->p[i];
         int *d = L->dest[i];
-        if (P.lden > 0) {   /* HOOK1: the recipe placed it in host pixels */
+        if (P.lden > 0 || P.fixdest) {   /* HOOK1 / FACE1: the recipe placed it in host pixels */
             d[0] = P.fx; d[1] = P.fy; d[2] = P.fw; d[3] = P.fh;
             continue;
         }
@@ -1621,13 +1621,13 @@ void check_layout(const MenuLayout *L, Result *R)
     for (int i = 0; i < L->np; ++i) {
         const MenuPiece &P = L->p[i];
         const int *d = L->dest[i];
-        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !menu_scale_allowed(P.knum, P.kden)) {
+        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !P.fixdest && !menu_scale_allowed(P.knum, P.kden)) {
             R->scale = 0; sprintf(why, "piece %d scale %d/%d", i, P.knum, P.kden);
         }
         if (d[2] < 1 || d[3] < 1 || d[0] < 0 || d[1] < 0 || d[0] + d[2] > L->w || d[1] + d[3] > L->h) {
             R->bounds = 0; sprintf(why, "piece %d dest (%d,%d,%d,%d) outside %dx%d", i, d[0], d[1], d[2], d[3], L->w, L->h);
         }
-        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !P.xfill) {
+        if (P.src != SRC_TOP_HOSTROW && P.lden == 0 && !P.xfill && !P.fixdest) {
             /* the scale rule: dest size within one host pixel of the exact rational size */
             const double kn = P.knum ? P.knum : 1, kd = P.kden ? P.kden : 1, un = (double)L->unum / L->uden;
             const double ew = P.s.w * kn / kd * un, eh = P.s.h * kn / kd * un;
@@ -1987,6 +1987,22 @@ int run_live(void)
         menu_layout_dest(&T);
         fails += check("scale: 128x96 at 2/3 on 1024x768 is 341 or 342 by 256", (T.dest[0][2] == 341 || T.dest[0][2] == 342) && T.dest[0][3] == 256);
         fails += check("scale: 127x95 at 1/2 is 254 by 190 (47.5 units)", T.dest[1][2] == 254 && T.dest[1][3] == 190 && T.dest[1][0] + 254 == 1024 && T.dest[1][1] + 190 == 768);
+        /* FACE1: the 5/6 step is exact (256 at 5/6 on 1024x768 is 213.33 units = 853 or 854 px), and a fixdest piece keeps its host rect and inverts through it */
+        menu_layout_begin(&T, 1024, 768);
+        menu_add_piece(&T, menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 5, 6));
+        {
+            MenuPiece fx = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            fx.fixdest = 1; fx.touch = 1; fx.fx = 100; fx.fy = 50; fx.fw = 400; fx.fh = 300;
+            menu_add_piece(&T, fx);
+        }
+        menu_layout_dest(&T);
+        fails += check("scale: 256x192 at 5/6 on 1024x768 is 853 or 854 by 640, centred", (T.dest[0][2] == 853 || T.dest[0][2] == 854) && T.dest[0][3] == 640 && T.dest[0][1] == 64);
+        {
+            int pi = -1, sx = 0, sy = 0;
+            const int in = menu_hit(&T, 300, 200, &pi, &sx, &sy);
+            fails += check("fixdest: a click inverts through the recipe's own host rect (400x300 over 256x192)", in && pi == 1 && sx == 128 && sy == 96 &&
+                           T.dest[1][0] == 100 && T.dest[1][2] == 400);
+        }
         menu_layout_begin(&T, 1022, 767);
         menu_add_piece(&T, menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1));
         menu_layout_dest(&T);

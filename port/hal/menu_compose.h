@@ -17,7 +17,7 @@
  * picture; placement uses the exact w * uden / unum units wide, not canvas_w.
  *
  * SCALE RULE. A piece is s.w * knum / kden units wide (kden/knum from the
- * allowed steps 1, 3/4, 2/3, 1/2), exactly, and both its edges are the floor of
+ * allowed steps 1, 5/6, 3/4, 2/3, 1/2), exactly, and both its edges are the floor of
  * the exact host position (menu_layout_dest), so its dest size is within one
  * host pixel of the exact size and pieces that meet on a canvas edge share a
  * host edge. A piece that overruns the picture by no more than one canvas unit
@@ -64,7 +64,7 @@ struct MenuPiece {
   uint8_t key_backdrop;                             /* drop engine-B backdrop pixels */
   int (*row_ok)(int sy);                            /* optional row filter (menu_plate_row today); nonzero = draw the row */
   uint8_t ax, ay; short dx, dy;                     /* anchor (L/C/R, T/M/B) + offset in canvas units (DS px) */
-  uint8_t knum, kden;                               /* scale (1/1 = native DS size); allowed 1, 3/4, 2/3, 1/2 */
+  uint8_t knum, kden;                               /* scale (1/1 = native DS size); allowed 1, 5/6, 3/4, 2/3, 1/2 */
   uint8_t touch;                                    /* clicks on it map through to a DS touch (SRC_SUB only) */
   uint8_t bg;                                       /* P0CORE: a backdrop piece; exempt from the no-overlap rule */
   /* HOOK1 (appended): LEGACY FIXED PLACEMENT, for the level-clear plates, whose placement and sampling are
@@ -116,6 +116,10 @@ struct MenuPiece {
   uint8_t alpha, nofade, wall, iris, wink;
   short wtw, wth, wox, woy;
   int icx, icy, ir16;
+  /* FACE1 (appended): fixdest = the recipe set the dest rect in HOST pixels (fx, fy, fw, fh) and the source rect s is stretched over it exactly
+     (draw and inverse as for any scaled piece, no lden rational): an arbitrary, per-frame scale, which the allowed steps cannot give. The
+     face follows the ROM head object's own lerp in the press transition with it, so the head stays where the main menu drew it. */
+  uint8_t fixdest;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
