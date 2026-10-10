@@ -26,6 +26,7 @@
 #include "coop_boot.h"
 #include "coop_boot_wire.h"
 #include "coop_save.h"
+#include "coop_wire.h"
 #include "comms_hub.h"
 #include "hub_presence.h"
 
@@ -77,7 +78,6 @@ struct Ctl {
     ULONGLONG last_beat = 0, last_ready = 0;
     ULONGLONG t_boot = 0;
     CoopBootStats st;
-    CoopWorldCtlFn world = nullptr;
 } C;
 
 ULONGLONG tick() { return GetTickCount64(); }
@@ -312,19 +312,43 @@ void handle_mine(int seat, const unsigned char *d, int len) {
     }
 }
 
-void on_ctl(int seat, const unsigned char *d, int len, void *) {
+// SYNB ARRIVES IN TWO WAYS. COOPWORLD1 (hal/coop_world.cpp) owns the one hub
+// handler for the kind and fans a datagram out by sub-type to whoever called
+// coop_ctl_register; it installs that handler at the first level frame. Until
+// then (the gate and the title) THIS file holds a stand-in handler that does
+// the same fan-out for the two ranges it needs, so the save fetch and the
+// barriers work before any level exists. Both paths end in the same two
+// functions below.
+void rebuild_and_run(int seat, int sub, const unsigned char *payload, int plen, bool save) {
+    // the sub-type handlers want the whole datagram: rebuild the 12-byte head
+    unsigned char dg[kHubCoopMaxDatagram];
+    if (plen < 0 || plen + kHubCoopHeaderBytes > (int)sizeof dg) { ++C.st.dropped_bad; return; }
+    HubCoopHead h;
+    std::memset(&h, 0, sizeof h);
+    h.tag = kHubTagCoopCtl; h.version = 1; h.seat = (uint8_t)seat; h.subtype = (uint8_t)sub;
+    h.payload_len = (uint16_t)plen;
+    std::memcpy(dg, &h, sizeof h);
+    if (plen) std::memcpy(dg + kHubCoopHeaderBytes, payload, (size_t)plen);
+    const int len = kHubCoopHeaderBytes + plen;
+    if (save) {
+        if (sub == 0x20 && seat >= 0 && seat < 4) { C.req_seen |= 1u << seat; C.last_req_ms = tick(); }
+        coop_save_handle(seat, dg, len);
+    } else {
+        handle_mine(seat, dg, len);
+    }
+}
+
+void sub_save(int seat, int sub, const unsigned char *p, int plen, void *) { rebuild_and_run(seat, sub, p, plen, true); }
+void sub_boot(int seat, int sub, const unsigned char *p, int plen, void *) { rebuild_and_run(seat, sub, p, plen, false); }
+
+void gate_on_ctl(int seat, const unsigned char *d, int len, void *) {
     if (!d || len < kHubCoopHeaderBytes) { ++C.st.dropped_bad; return; }
     const int sub = d[6];
-    if (sub >= 0x20 && sub <= 0x2f) {
-        if (sub == 0x20 && seat >= 0 && seat < 4) { C.req_seen |= 1u << seat; C.last_req_ms = tick(); }
-        coop_save_handle(seat, d, len);
-    } else if (coop_boot_sub_mine(sub)) {
-        handle_mine(seat, d, len);
-    } else if (sub <= 0x1f) {
-        if (C.world) C.world(seat, d, len); else ++C.st.dropped_world;
-    } else {
-        ++C.st.dropped_unknown;
-    }
+    const unsigned char *p = d + kHubCoopHeaderBytes;
+    const int plen = len - kHubCoopHeaderBytes;
+    if (sub >= 0x20 && sub <= 0x2f) rebuild_and_run(seat, sub, p, plen, true);
+    else if (coop_boot_sub_mine(sub)) rebuild_and_run(seat, sub, p, plen, false);
+    else ++C.st.dropped_world;   // a world sub-type before any level group exists
 }
 
 // ---- host exit ---------------------------------------------------------------
@@ -484,7 +508,6 @@ void guest_gate() {
 }  // namespace
 
 // ---- public ------------------------------------------------------------------
-void coop_boot_set_world_handler(CoopWorldCtlFn fn) { C.world = fn; }
 bool coop_boot_active() { return C.on; }
 bool coop_boot_released() { return C.released; }
 bool coop_boot_holding() { return C.holding; }
@@ -508,7 +531,10 @@ extern "C" void port_coop_boot_begin(void) {
     LOG("coop boot: role=%s, SKIP_MENU=1 BOOT_FILE=0 forced, SKIP_INTRO cleared", C.host ? "host" : "guest");
     // 2. THE ONE SYNB HANDLER
     coop_save_set_external_dispatch(true);
-    hub_on_kind(kHubCoopCtl, on_ctl, nullptr);
+    hub_on_kind(kHubCoopCtl, gate_on_ctl, nullptr);
+    const bool r1 = coop_ctl_register(0x20, 0x2f, sub_save, nullptr);
+    const bool r2 = coop_ctl_register(kCoopBootSubLo, kCoopBootSubHi, sub_boot, nullptr);
+    LOG("SYNB ranges registered with the world core: 0x20-0x2f %d, 0x30-0x3f %d", r1 ? 1 : 0, r2 ? 1 : 0);
     if (C.host) {
         coop_save_prepare();
         std::atexit(host_atexit);

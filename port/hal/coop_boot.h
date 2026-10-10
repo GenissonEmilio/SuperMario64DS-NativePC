@@ -31,17 +31,16 @@
 //   3 session mismatch   4 room full   6 could not reach the host
 //   7 the host left, room closed       8 coop save fence refusal (COOPSAVE1)
 //
-// SYNB IS ONE HANDLER. This file registers the dispatcher for kHubCoopCtl:
-//   0x00-0x1f  the world handler (COOPWORLD1 plugs in with
-//              coop_boot_set_world_handler; until then they are counted and
-//              dropped)
-//   0x20-0x2f  port::coop_save_handle() (COOPSAVE1)
-//   0x30-0x3f  this lane
-//   others     dropped and counted
+// SYNB IS ONE HANDLER, COOPWORLD1's (hal/coop_world.cpp, coop_wire.h). This
+// file registers two ranges with coop_ctl_register: 0x20-0x2f is routed to
+// port::coop_save_handle() (COOPSAVE1; coop_save_set_external_dispatch(true)
+// is called so it does not install its own handler), 0x30-0x3f is this lane.
+// The world core installs its handler at the first level frame; until then
+// (guest gate, title) a stand-in handler here fans the same two ranges out.
 //
 // HOOKS (tests/walk_window.cpp, one line each):
 //   port_coop_boot_begin()        in main before port_coop_save_boot()
-//   port_coop_boot_scene_frame()  returns 1 = hold this title tick
+//   port_coop_boot_scene_frame()  pumps the hub while the title runs (no hold)
 //   port_coop_boot_frame()        returns 1 = hold this level tick
 #ifndef PORT_HAL_COOP_BOOT_H
 #define PORT_HAL_COOP_BOOT_H
@@ -52,11 +51,6 @@ enum CoopExit : int {
     kCoopExitNoHost   = 6,   // no host STATE or no save answer in 3 s
     kCoopExitHostLeft = 7,   // the host left (or vanished): room closed
 };
-
-// A COOPWORLD1 handler for SYNB 0x00-0x1f: whole datagram, seat, like
-// HubKindFn. Null clears it. Call before the first frame.
-typedef void (*CoopWorldCtlFn)(int seat, const unsigned char *data, int len);
-void coop_boot_set_world_handler(CoopWorldCtlFn fn);
 
 bool coop_boot_active();     // coop room member with the boot gate running
 bool coop_boot_released();   // GO has been given (or heard) on this console
