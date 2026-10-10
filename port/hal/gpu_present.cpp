@@ -97,6 +97,7 @@
 #include "hal/gpu_raster.h"
 #include "ntr/gx.h"
 #include "hal/gpu_present.h"
+#include "hal/presenter.h"
 #include "hal/gpu_present_shaders.h"
 #include "hal/host_settings.h"
 
@@ -130,6 +131,8 @@ int g_backend;          /* PresentBackend */
 int g_filter;           /* PresentFilter */
 int g_vsync_key;        /* VSync */
 int g_down;             /* this run has fallen back to GDI for good */
+int g_pres_off;         /* the presenter thread would not start: the old path for this run */
+int g_repeat;           /* the picture being presented is the previous one again (statistics, elision) */
 int g_offscreen;        /* the proof mode */
 int g_off_w, g_off_h;   /* its target size, 0 for "the source's own" */
 int g_off_every = 30;   /* check every Nth frame */
@@ -183,6 +186,7 @@ HMODULE g_user32;
    The two pointers below are that device, borrowed for the life of the run;
    this file creates none of it and releases none of it. */
 ID3D11Device           *g_dev;
+ID3D11Device           *g_sc_dev;      /* the device the swap chain lives on: g_dev, or the presenter's own */
 ID3D11DeviceContext    *g_ctx;
 int                     g_tried_device;
 ID3D11VertexShader     *g_vs;
@@ -236,6 +240,7 @@ void fall_back(const char *why, HRESULT hr)
 {
     if (g_down) return;
     g_down = 1;
+    presenter_end();
     port_gpu_raster_present_down();
     if (hr)
         fprintf(stderr, "[present] the graphics card path stopped working (%s, "
@@ -502,7 +507,7 @@ bool make_backbuffer_view()
 bool make_swapchain(HWND hwnd, int w, int h)
 {
     IDXGIDevice *dxdev = 0;
-    if (FAILED(g_dev->QueryInterface(__uuidof(IDXGIDevice), (void **)&dxdev)) ||
+    if (FAILED((g_sc_dev ? g_sc_dev : g_dev)->QueryInterface(__uuidof(IDXGIDevice), (void **)&dxdev)) ||
         !dxdev) { fall_back("the device has no DXGI side", 0); return false; }
     IDXGIAdapter *ad = 0;
     if (FAILED(dxdev->GetAdapter(&ad)) || !ad) {
@@ -533,13 +538,13 @@ bool make_swapchain(HWND hwnd, int w, int h)
         d.Scaling = DXGI_SCALING_STRETCH;
         d.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         d.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
-        hr = f2->CreateSwapChainForHwnd(g_dev, hwnd, &d, 0, 0, &g_sc1);
+        hr = f2->CreateSwapChainForHwnd(g_sc_dev ? g_sc_dev : g_dev, hwnd, &d, 0, 0, &g_sc1);
         if (FAILED(hr) || !g_sc1) {
             /* an old compositor refuses the flip model; the blit model is
                still a swap chain and still vsyncs */
             d.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
             d.BufferCount = 1;
-            hr = f2->CreateSwapChainForHwnd(g_dev, hwnd, &d, 0, 0, &g_sc1);
+            hr = f2->CreateSwapChainForHwnd(g_sc_dev ? g_sc_dev : g_dev, hwnd, &d, 0, 0, &g_sc1);
         }
         if (SUCCEEDED(hr) && g_sc1)
             g_sc1->QueryInterface(__uuidof(IDXGISwapChain), (void **)&g_sc);
@@ -560,7 +565,7 @@ bool make_swapchain(HWND hwnd, int w, int h)
         d.OutputWindow = hwnd;
         d.Windowed = TRUE;
         d.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-        hr = f1->CreateSwapChain(g_dev, &d, &g_sc);
+        hr = f1->CreateSwapChain(g_sc_dev ? g_sc_dev : g_dev, &d, &g_sc);
         f1->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
         f1->Release();
     }
@@ -993,7 +998,9 @@ void vsync_watch(double period_ms, double block_ms, double budget_ms)
 
 void release_all()
 {
+    presenter_end();
     release_swapchain();
+    presenter_shutdown();
     if (g_off_rtv) { g_off_rtv->Release(); g_off_rtv = 0; }
     if (g_off_stage) { g_off_stage->Release(); g_off_stage = 0; }
     if (g_off_rt) { g_off_rt->Release(); g_off_rt = 0; }
@@ -1204,6 +1211,18 @@ extern "C" int port_gpu_present_card_offscreen(const void *overlay, int stride_p
     return 1;
 }
 
+/* The pacer's repeat of the picture already up (hal/presenter.h): flagged by
+   the caller around the present. With the presenter running a repeat is not
+   drawn at all (it would put the same pixels in the ring again); the caller
+   asks first. */
+extern "C" void port_gpu_present_set_repeat(int on) { g_repeat = on; }
+extern "C" int port_gpu_present_repeat_skip(int client_w, int client_h)
+{
+    return g_repeat && presenter_running() && !g_down &&
+           presenter_have_picture(client_w, client_h) &&
+           client_w == g_sc_w && client_h == g_sc_h;
+}
+
 extern "C" int port_gpu_present_frame(void *hwnd, const void *pixels,
                                       int stride_px, int src_w, int src_h,
                                       int dst_x, int dst_y, int dst_w,
@@ -1297,20 +1316,80 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
         return 0;
     }
 
-    if (!g_sc || g_sc_hwnd != (HWND)hwnd) {
-        release_swapchain();
-        if (!make_swapchain((HWND)hwnd, client_w, client_h)) return 0;
-    } else if (g_sc_w != client_w || g_sc_h != client_h) {
-        /* the window changed size: a drag on the border, a maximise, or the
-           F12 borderless toggle. The back buffers follow it. */
-        if (g_scrtv) { g_scrtv->Release(); g_scrtv = 0; }
-        const HRESULT hr = g_sc->ResizeBuffers(0, (UINT)client_w, (UINT)client_h,
-                                               DXGI_FORMAT_UNKNOWN, 0);
-        if (FAILED(hr)) { fall_back("the window could not be resized", hr); return 0; }
-        g_sc_w = client_w;
-        g_sc_h = client_h;
-        if (!make_backbuffer_view()) return 0;
+    /* THE PRESENTER THREAD (run hunt8, lane PRESENTER1): the swap chain lives
+       on the presenter's own device and belongs to its thread; this thread
+       draws each finished picture into a texture of the presenter's ring and
+       hands it over. See hal/presenter.h. Any trouble puts this run back on
+       the game thread's own present, below. */
+    for (int again = 0; again < 2; ++again) {
+        const bool want_pres = presenter_enabled() && !g_pres_off;
+        if (!g_sc || g_sc_hwnd != (HWND)hwnd) {
+            presenter_end();
+            release_swapchain();
+            g_sc_dev = g_dev;
+            if (want_pres) {
+                if (void *d2 = presenter_swap_device(g_dev)) g_sc_dev = (ID3D11Device *)d2;
+                else g_pres_off = 1;
+            }
+            if (!make_swapchain((HWND)hwnd, client_w, client_h)) return 0;
+        } else if (g_sc_w != client_w || g_sc_h != client_h) {
+            /* the window changed size: a drag on the border, a maximise, or the
+               F12 borderless toggle. The back buffers follow it. The presenter
+               thread holds a back buffer and textures of the old size, so it is
+               ended first and started again below. */
+            presenter_end();
+            if (g_scrtv) { g_scrtv->Release(); g_scrtv = 0; }
+            const HRESULT hr = g_sc->ResizeBuffers(0, (UINT)client_w, (UINT)client_h,
+                                                   DXGI_FORMAT_UNKNOWN, 0);
+            if (FAILED(hr)) { fall_back("the window could not be resized", hr); return 0; }
+            g_sc_w = client_w;
+            g_sc_h = client_h;
+            if (!make_backbuffer_view()) return 0;
+        }
+        if (!want_pres || g_pres_off || g_sc_dev == g_dev) break;
+        if (const long perr = presenter_error()) {
+            presenter_end();
+            g_pres_off = 1;
+            fall_back("the picture could not be handed over", (HRESULT)perr);
+            return 0;
+        }
+        if (!presenter_running()) {
+            const int vs = g_vsync_key ? 1 : 0;
+            const int rhz = g_refresh_hz > 0 ? g_refresh_hz : 60;
+            const double hz = vs ? rhz : (frame_rate_key > 0 ? frame_rate_key : rhz);
+            if (!presenter_begin(g_dev, g_ctx, g_sc, client_w, client_h, vs, hz)) {
+                g_pres_off = 1;
+                fprintf(stderr, "[present] the presenter thread would not start; this run presents from the game thread\n");
+                /* the swap chain is on the presenter's device: make one on ours */
+                release_swapchain();
+                g_sc_dev = g_dev;
+                continue;
+            }
+        }
+        break;
     }
+    if (presenter_running()) {
+        const long long p0 = qpc();
+        ID3D11RenderTargetView *prt = (ID3D11RenderTargetView *)presenter_target();
+        if (!prt) return 1;     /* the ring had no free texture: this picture is dropped, the one on show stays */
+        port_gpu_timer_span_begin(PORT_GPU_SPAN_PRESENT);
+        if (!from_card && !upload(pixels, stride_px, src_w, src_h)) return 0;
+        const long long p1 = qpc();
+        if (!set_params(dst_x, dst_y, dst_w, dst_h, client_w, client_h, src_w,
+                        src_h, g_filter))
+            return 0;
+        draw_quad(prt, client_w, client_h, g_filter,
+                  (ID3D11ShaderResourceView *)from_card);
+        port_gpu_timer_span_end(PORT_GPU_SPAN_PRESENT);
+        const long long p2 = qpc();
+        presenter_publish(g_repeat);
+        ++g_presents;
+        g_up_ms += ms_between(p0, p1);
+        g_draw_ms += ms_between(p1, p2);
+        ++g_cost_n;
+        return 1;
+    }
+    if (g_scrtv == 0 && g_sc && !make_backbuffer_view()) return 0;
 
     const long long t0 = qpc();
     /* The card's own clock over the handover: the upload and the quad. The
@@ -1327,6 +1406,14 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
               (ID3D11ShaderResourceView *)from_card);
     port_gpu_timer_span_end(PORT_GPU_SPAN_PRESENT);
     const long long t2 = qpc();
+    if (presenter_hash_on()) {
+        static long long old_serial;
+        ID3D11Texture2D *bb = 0;
+        if (SUCCEEDED(g_sc->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **)&bb)) && bb) {
+            presenter_hash_log("main", ++old_serial, presenter_hash_texture(g_dev, g_ctx, bb, 0));
+            bb->Release();
+        }
+    }
 
     const int interval = vsync_interval(budget_ms, frame_rate_key);
     const HRESULT hr = g_sc->Present((UINT)interval, 0);
@@ -1336,6 +1423,7 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
        and not a reason to fall back. */
     if (FAILED(hr)) { fall_back("the picture could not be handed over", hr); return 0; }
 
+    presenter_stat_note(t2, !g_repeat);
     ++g_presents;
     g_up_ms += ms_between(t0, t1);
     g_draw_ms += ms_between(t1, t2);

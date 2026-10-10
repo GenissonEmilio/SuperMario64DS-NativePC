@@ -424,6 +424,7 @@ static bool winapi_load(void)
 #include "hal/instance_tag.h"     /* run mg16 lane MP2: per-instance filenames */
 #include "hal/editor_channel.h"   /* run lvled lane B: the editor control channel */
 #include "hal/gpu_present.h"      /* run hd2 lane GPU1: the optional D3D11 present */
+#include "hal/presenter.h"        /* run hunt8 lane PRESENTER1: the presenter thread's clock */
 #include "hal/gpu_raster.h"       /* run hd2 lane GPU2: the optional D3D11 renderer */
 #include "hal/gpu_device.h"       /* the shared device, and the card's own clock */
 
@@ -2957,6 +2958,17 @@ extern "C" double port_present_clock(long long now, long long deadline,
 
     while (g_pic_due < deadline) {
         LARGE_INTEGER at;
+        /* run hunt8, lane PRESENTER1: with the presenter thread showing the
+           pictures, slew this clock so each picture is finished halfway between
+           two of its turns; two free-running 144 Hz clocks beat against each
+           other and one picture in six was never shown. An eighth of the error
+           per slot, so a hitch moves it gently. */
+        if (const long long ph = presenter_phase_qpc()) {
+            long long e = (g_pic_due - ph - step / 2) % step;
+            if (e < 0) e += step;
+            if (e >= step / 2) e -= step;
+            g_pic_due -= e / 8;
+        }
         port_sleep_until(g_pic_due, qpf);
         /* 0 back only with SmoothMotion on, for a slot it had no time to
            draw: nothing was presented, so nothing is counted */
@@ -7304,8 +7316,13 @@ static const BITMAPINFO *g_present_stack_bi;
    built for, so this is 4:3 at every tier -- and STACK_W/STACK_H are the same
    panel twice, stacked, so the stacked fit is 2:3. */
 static void present_body(void);
+/* run hunt8, lane PRESENTER1: set by the pacer's slot when it presents the
+   picture already up again (nothing drawn since). The presenter thread
+   repeats pictures on its own clock, so a repeat is skipped when it runs. */
+static int g_present_repeat;
 static void present(void)
 {
+    port_gpu_present_set_repeat(g_present_repeat);
     /* run perf2: charge the blit to present, or to present_x when the
        pacer is the caller (FrameRate's repeated pictures) */
     if (g_pt_on > 0) {
@@ -7313,6 +7330,7 @@ static void present(void)
         const int k = g_pt_kind > 0 ? 1 : 0;
         pt_push(g_pt_stage == PS_PACE ? PS_PRESENT_X : PS_PRESENT);
         present_body();
+        port_gpu_present_set_repeat(0);
         pt_pop();
         if (!first[k] && g_pt_kind >= 0) {
             first[k] = 1;
@@ -7321,6 +7339,7 @@ static void present(void)
         return;
     }
     present_body();
+    port_gpu_present_set_repeat(0);
 }
 
 static void present_body(void)
@@ -7354,6 +7373,13 @@ static void present_body(void)
        return it has always been. */
     const int gpu_offscreen = port_gpu_present_offscreen_mode();
     if ((cw <= 0 || ch <= 0) && !gpu_offscreen) return;
+    /* run hunt8, lane PRESENTER1: a repeat of the picture already up is not
+       drawn when the presenter thread is showing it; the thread repeats it
+       on the display's clock. Nothing else about the picture moved, so the
+       input mapping (hal_present_set_rect) is the one the last draw set. */
+    if (g_present_repeat && !gpu_offscreen && cw > 0 && ch > 0 &&
+        !g_present_stack && port_gpu_present_repeat_skip(cw, ch))
+        return;
 
     /* WHICH IMAGE IS BEING PRESENTED. Everything below is the same fit, the
        same bars and the same blit whichever it is; only the source pointer,
@@ -7936,7 +7962,12 @@ static int ip_measure_now(long long deadline)
 static int ip_present_slot(long long t, long long deadline)
 {
     (void)t;
-    if (!ip_owns_picture()) { present(); return 1; }
+    if (!ip_owns_picture()) {
+        g_present_repeat = 1;
+        present();
+        g_present_repeat = 0;
+        return 1;
+    }
     if (g_ip_tick_final) return 0;   /* tick N is up; a blend would step back */
     if (!ip_measure_now(deadline) && !ip_fits(deadline)) {
         int shown = 0;
