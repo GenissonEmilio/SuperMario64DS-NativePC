@@ -3056,7 +3056,7 @@ extern "C" int host_setting_save_run(int mode, int key, int pad)
     queue_save("KeyRun", vkey);
     queue_save("RunButtonPad", vpad);
     queue_save("PadRun", vpad);
-    return 1;
+    return pending_flush();   /* a menu row persists on the spot, behind anything queued */
 }
 
 /* The camera row's twin of the above: the live mode moves whether or not the
@@ -3068,8 +3068,8 @@ extern "C" int host_setting_save_camera_mode(int mode)
     g_camera_mode = mode;
     char v[24];
     snprintf(v, sizeof v, "\"%s\"", CAMERA_MODE_KEY[mode]);
-    queue_save("CameraMode", v);   /* SETFIX1 (G3): through the queue */
-    return 1;
+    queue_save("CameraMode", v);   /* SETFIX1 (G3): through the queue, then on the spot */
+    return pending_flush();
 }
 
 /* ---- PadLayouts -----------------------------------------------------------

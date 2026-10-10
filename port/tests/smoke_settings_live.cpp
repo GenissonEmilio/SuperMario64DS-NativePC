@@ -365,8 +365,8 @@ static int child(const char *which)
         check(m != 0, "mutex created");
         HANDLE th = CreateThread(0, 0, hold_thread, (void *)(size_t)300, 0, 0);
         Sleep(50);
-        sl_set(SL_VOLUME, 41);
         const DWORD t0 = GetTickCount();
+        sl_set(SL_VOLUME, 41);   /* may write at once: the wait can be in here */
         check_eq(sl_flush(), 1, "flush with the lock held elsewhere");
         const DWORD dt = GetTickCount() - t0;
         printf("  flush waited %lu ms behind a 300 ms holder\n", (unsigned long)dt);
@@ -376,8 +376,8 @@ static int child(const char *which)
         /* a holder that never lets go: the save proceeds after about 500 ms */
         th = CreateThread(0, 0, hold_thread, (void *)(size_t)2500, 0, 0);
         Sleep(50);
-        sl_set(SL_VOLUME, 42);
         const DWORD t1 = GetTickCount();
+        sl_set(SL_VOLUME, 42);
         check_eq(sl_flush(), 1, "flush proceeds after the timeout");
         const DWORD dt2 = GetTickCount() - t1;
         printf("  flush gave up waiting after %lu ms\n", (unsigned long)dt2);
