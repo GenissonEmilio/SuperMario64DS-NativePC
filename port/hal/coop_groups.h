@@ -14,7 +14,10 @@
 // remaining established seat takes over and announces it. A console that is
 // still loading (not established) is never an owner and never counted as one.
 // Two consoles that both claim it (they entered in the same breath) settle on
-// the lower seat. Everything the owner does is idempotent, so a moment of
+// the lower seat, but only when both claims show up within kTieMs of each
+// other. A claim that arrives later never displaces an owner the group
+// already has (a late lower-seat claimant is not a tie), and the owner a
+// joiner took its state from is never displaced while it lives. Everything the owner does is idempotent, so a moment of
 // disagreement costs nothing.
 
 #ifndef PORT_HAL_COOP_GROUPS_H
@@ -36,7 +39,7 @@ struct CoopKey {
 
 class CoopGroups {
 public:
-    enum { kSeats = 16, kEvidenceMs = 3500 };
+    enum { kSeats = 16, kEvidenceMs = 3500, kTieMs = 4000 };
 
     void reset(int my_seat);
     int  my_seat() const { return me_; }
@@ -78,12 +81,15 @@ private:
         bool est;
         int  claim;          // this seat said it owns the group, else -1
         unsigned hello_ms;
+        unsigned claim_ms;   // when this seat's standing claim was first heard
+        bool pinned;         // the owner I took my state from: nobody displaces it while it lives
     };
     int me_ = -1;
     CoopKey key_;
     bool est_ = false;
     int owner_ = -1;
     bool announce_ = false;
+    unsigned own_ms_ = 0;     // when I became owner
     Seat s_[kSeats] = {};
 };
 
