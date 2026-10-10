@@ -219,9 +219,82 @@ def row_room(kind, n, tag, o):
     return row, cons, texts
 
 
+def lz10(b):
+    n = b[1] | b[2] << 8 | b[3] << 16
+    o, out = 4, bytearray()
+    while len(out) < n:
+        f = b[o]
+        o += 1
+        for k in range(8):
+            if len(out) >= n:
+                break
+            if f & (0x80 >> k):
+                x = b[o] << 8 | b[o + 1]
+                o += 2
+                for _ in range((x >> 12) + 3):
+                    out.append(out[-((x & 0xfff) + 1)])
+            else:
+                out.append(b[o])
+                o += 1
+    return bytes(out)
+
+
+def row_table():
+    """The stage code table against the ROM itself: the course value of every sublevel id (SUBLEVEL_LEVEL_TABLE in
+    arm9) must agree with the table's course flag and with its sharing of codes, and the course names the table's
+    comments quote must be in the game's own message file."""
+    import struct
+    root = os.environ.get("SM64DS_ASSET_ROOT", TREE)
+    arm9 = open(os.path.join(root, "extracted", "arm9_dec.bin"), "rb").read()
+    tab = struct.unpack_from("<52b", arm9, 0x02075298 - 0x02004000)
+    src = open(os.path.join(TREE, "port", "hal", "player_list.cpp")).read()
+    rows = re.findall(r'\{"([A-Z0-9?-]+)", (true|false)\},\s*//\s*(\d+)', src)
+    say(len(rows) == 52, "table: 52 rows in player_list.cpp (found %d)" % len(rows))
+    code_of_course, bad = {}, []
+    for code, crs, idx in rows:
+        i = int(idx)
+        course = tab[i]
+        want_course_flag = course not in (29, -1) and code != "TST"
+        if course == -1 and code not in ("TST", "---"):
+            bad.append((i, code, "course -1"))
+        if (crs == "true") != want_course_flag and code not in ("TST", "---"):
+            bad.append((i, code, "course flag", crs, course))
+        if course >= 0 and course != 29:
+            if code_of_course.setdefault(course, code) != code:
+                bad.append((i, code, "same course, two codes", code_of_course[course]))
+    codes = {}
+    for c, code in code_of_course.items():
+        if codes.setdefault(code, c) != c:
+            bad.append((code, "two courses share one code", codes[code], c))
+    say(not bad, "table: every sublevel's course flag agrees with SUBLEVEL_LEVEL_TABLE, one code per course, no two "
+                 "courses share a code %s" % (bad or ""))
+    msg = lz10(open(os.path.join(root, "extracted", "dsd", "files", "data", "message", "msg_data_eng.bin"), "rb").read()[4:])
+
+    def dec(b):
+        r = ""
+        for c in b:
+            r += (str(c) if c < 10 else chr(97 + c - 10) if c < 36 else chr(65 + c - 36) if c < 62 else
+                  " " if c == 0x4d else "'" if c == 0x49 else "-" if c == 0x47 else "|" if c in (0, 0xfe, 0xff) else "?")
+        return r
+    text = dec(msg)
+    names = {21: "princess's secret slide", 22: "secret aquarium", 23: "? switch", 24: "secret under the moat",
+             25: "behind the waterfall", 26: "over the rainbows", 27: "sunshine isles", 28: "secret of battle fort"}
+    miss = []
+    for course, nm in names.items():
+        if nm.replace("?", "C") not in text and nm.replace("? ", "C ") not in text:
+            miss.append((course, nm))
+    say(not miss, "table: the eight courses behind ids 29-34 and 42-43 are named in the game's own message file %s"
+        % (miss or ""))
+    for course in sorted(names):
+        ids = [i for i in range(52) if tab[i] == course]
+        info("table: course %d (%s) = sublevel id(s) %s = code %s" % (course, names[course], ids, code_of_course.get(course)))
+
+
 def main(argv):
     for a in argv:
         p = a.split(":")
+        if p[0] == "table":
+            row_table()
         if p[0] == "room":
             kind, n, tag = p[1], int(p[2]), p[3]
             o = kv(p[4]) if len(p) > 4 else {}
