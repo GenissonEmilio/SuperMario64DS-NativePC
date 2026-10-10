@@ -187,7 +187,7 @@ void log_if_changed(const PlayerListView &v) {
     if (same) return;
     g_last_logged = v;
     g_have_logged = true;
-    std::fprintf(stderr, "[plist] rows=%d", v.n);
+    std::fprintf(stderr, "[plist] t=%u rows=%d", comms_hub_now_ms(), v.n);
     for (int i = 0; i < v.n; ++i)
         std::fprintf(stderr, " | seat=%d%s name=%s char=%d code=%s %s",
                      v.row[i].seat, v.row[i].me ? "(me)" : "", v.row[i].name,
