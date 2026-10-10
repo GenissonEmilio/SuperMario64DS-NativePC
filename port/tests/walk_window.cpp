@@ -9909,41 +9909,6 @@ static void port_startup_error_show(const char *text)
         mb(0, text, "Super Mario 64 DS could not start", 0x10 /* MB_ICONERROR */);
 }
 
-/* ---- DOES THIS SCENE RUN GET A WINDOW? (port mod, run link60 SW1) ---------
-
-   A scene run is WINDOWED unless it names a frame budget or is a selftest.
-
-   The tempting rule is "a scene that is not a selftest gets a window", and it
-   is wrong here for a measured reason: port/tools/battery.py's scene_env DOES
-   NOT SET SM64DS_WINDOW_SELFTEST. It sets SM64DS_SCENE, SM64DS_SCENE_FRAMES
-   and SM64DS_FAULTS_FATAL, and pops every other scene knob so an inherited
-   variable cannot decide what the code under test does. Under that rule every
-   battery scene row would open a window and hal/sub_screen.cpp's g_headless
-   would go false under all of them -- which puts the live mouse into
-   poll_touch and a machine-global TAB into the panel toggle, in the one place
-   that has to be deterministic. That is the exact non-determinism g_headless
-   was added for, arriving through the door it was built to shut.
-
-   A FRAME BUDGET IS A MEASUREMENT AND ITS ABSENCE IS A SESSION. Nobody sitting
-   down to play curling says how many frames to play it for, and no automated
-   run in this tree omits the number: counted rather than asserted, all 24
-   command lines in port/ that set SM64DS_SCENE set SM64DS_SCENE_FRAMES on the
-   same line, and battery.py's scene_env sets it for every scene row. The
-   SM64DS_SCENE mentions that do not are prose about the variable rather than
-   commands. port/scene_window.txt section 3b has the per-file count.
-
-   So NEITHER SIDE NEEDED AN EDIT. The battery stays headless because it always
-   named a count, and DBG1's minigame picker gets a window because it never
-   did: it sets SM64DS_SCENE and SM64DS_DUAL_SCREEN and nothing else.
-
-   SM64DS_SCENE_WINDOW=1/0 overrides, and it is not decoration. It is the only
-   way to give a WINDOWED run a frame budget, which is the only way a pad or a
-   touch claim about this path can be proved from a script instead of by hand:
-   =1 with SM64DS_SCENE_FRAMES and SM64DS_PAD_TEST is a live window, driven by
-   a script, that ends by itself. It can never turn a window ON under a
-   selftest -- that floor is checked first, and it is the same floor
-   SM64DS_PAD_TEST has.
-
 /* THE REBIND CAPTURE, once a frame, for BOTH frame loops (the title and the
    scenes run in the scene loop, the courses in the level loop, and the
    in-game settings page can be opened in either). It arms a capture the
@@ -10012,6 +9977,41 @@ static void rebind_capture_frame(int *pad_live, const XPad *pad)
         memset(key_stale, 1, sizeof key_stale);
     }
 }
+
+/* ---- DOES THIS SCENE RUN GET A WINDOW? (port mod, run link60 SW1) ---------
+
+   A scene run is WINDOWED unless it names a frame budget or is a selftest.
+
+   The tempting rule is "a scene that is not a selftest gets a window", and it
+   is wrong here for a measured reason: port/tools/battery.py's scene_env DOES
+   NOT SET SM64DS_WINDOW_SELFTEST. It sets SM64DS_SCENE, SM64DS_SCENE_FRAMES
+   and SM64DS_FAULTS_FATAL, and pops every other scene knob so an inherited
+   variable cannot decide what the code under test does. Under that rule every
+   battery scene row would open a window and hal/sub_screen.cpp's g_headless
+   would go false under all of them -- which puts the live mouse into
+   poll_touch and a machine-global TAB into the panel toggle, in the one place
+   that has to be deterministic. That is the exact non-determinism g_headless
+   was added for, arriving through the door it was built to shut.
+
+   A FRAME BUDGET IS A MEASUREMENT AND ITS ABSENCE IS A SESSION. Nobody sitting
+   down to play curling says how many frames to play it for, and no automated
+   run in this tree omits the number: counted rather than asserted, all 24
+   command lines in port/ that set SM64DS_SCENE set SM64DS_SCENE_FRAMES on the
+   same line, and battery.py's scene_env sets it for every scene row. The
+   SM64DS_SCENE mentions that do not are prose about the variable rather than
+   commands. port/scene_window.txt section 3b has the per-file count.
+
+   So NEITHER SIDE NEEDED AN EDIT. The battery stays headless because it always
+   named a count, and DBG1's minigame picker gets a window because it never
+   did: it sets SM64DS_SCENE and SM64DS_DUAL_SCREEN and nothing else.
+
+   SM64DS_SCENE_WINDOW=1/0 overrides, and it is not decoration. It is the only
+   way to give a WINDOWED run a frame budget, which is the only way a pad or a
+   touch claim about this path can be proved from a script instead of by hand:
+   =1 with SM64DS_SCENE_FRAMES and SM64DS_PAD_TEST is a live window, driven by
+   a script, that ends by itself. It can never turn a window ON under a
+   selftest -- that floor is checked first, and it is the same floor
+   SM64DS_PAD_TEST has.
 
    port/scene_window.txt is the derivation. */
 static int port_scene_want_window(void)
