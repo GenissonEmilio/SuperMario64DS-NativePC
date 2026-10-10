@@ -25,6 +25,9 @@ extern unsigned char data_0209f250;
 extern unsigned char data_0209f21c;
 extern signed char data_0209f2f8;
 extern signed char data_02092120;
+unsigned _ZNK6Player14GetBodyModelIDEjb(void *self, unsigned a, int b);
+int port_player_render_hidden(const void *player);
+int port_adventure_ghost_palette(int slot);
 }
 
 namespace port {
@@ -99,6 +102,41 @@ int gate(int seat) {
         return kGateArea;
     }
     return kGateOk;
+}
+
+void prepare(void *a) {
+    char *c = (char *)a;
+    // mAttachedActor (+0x35c): func_ov002_020e3f90 (called by the placement, func_ov002_020e444c) takes the body's
+    // matrix from that actor instead of from the body's own position. A body seated at a level entrance that
+    // attaches the player (a door, a painting, a pad) and then stops running keeps it for ever.
+    if (*(void **)(c + 0x35c)) {
+        *(void **)(c + 0x35c) = nullptr;
+        ++g_st.detached;
+    }
+}
+
+void draw_diag(void *a) {
+    read_env();
+    if (g_log < 2 || !a) return;
+    static unsigned n = 0;
+    if ((n++ % 45u) != 0) return;
+    const char *c = (const char *)a;
+    const unsigned id = _ZNK6Player14GetBodyModelIDEjb(const_cast<char *>(c), *(const int *)(c + 8) & 0xff, 0);
+    const char *mdl = *(const char *const *)(c + 0xdc + id * 4);
+    int mx = 0, my = 0, mz = 0;
+    if (mdl) { mx = *(const int *)(mdl + 0x1c + 36) >> 12; my = *(const int *)(mdl + 0x1c + 40) >> 12; mz = *(const int *)(mdl + 0x1c + 44) >> 12; }
+    const int pal = port_adventure_ghost_palette((int)*(const unsigned char *)(c + 0x6d8));
+    const unsigned short *row = pal >= 0 ? (const unsigned short *)(0x06880000u + (unsigned)pal * 16u) : nullptr;
+    std::fprintf(stderr, "[partydraw] pal=%d row=%04x,%04x,%04x,%04x ", pal, row ? row[0] : 0u, row ? row[1] : 0u,
+                 row ? row[2] : 0u, row ? row[3] : 0u);
+    std::fprintf(stderr, "[partydraw] t=%u slot=%u pos=(%d,%d,%d) matrix_t=(%d,%d,%d) opacity=%u vanish=%u flags_b0=%08x "
+                 "scale=(%d,%d,%d) attached=%p inv=%u off68c=(%d,%d,%d) model=%p hidden=%d\n", comms_hub_now_ms(),
+                 (unsigned)*(const unsigned char *)(c + 0x6d8), *(const int *)(c + 0x5c) >> 12, *(const int *)(c + 0x60) >> 12,
+                 *(const int *)(c + 0x64) >> 12, mx, my, mz, (unsigned)*(const unsigned char *)(c + 0x6f5),
+                 (unsigned)*(const unsigned char *)(c + 0x6fb), *(const unsigned *)(c + 0xb0), *(const int *)(c + 0x80),
+                 *(const int *)(c + 0x84), *(const int *)(c + 0x88), *(void *const *)(c + 0x35c),
+                 (unsigned)*(const unsigned short *)(c + player::kInvincibleTimer), *(const int *)(c + 0x68c),
+                 *(const int *)(c + 0x690), *(const int *)(c + 0x694), (const void *)mdl, port_player_render_hidden(c));
 }
 
 void clear(int body) {

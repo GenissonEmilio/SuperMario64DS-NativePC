@@ -47,6 +47,12 @@ enum Gate : int {
 };
 int gate(int seat);
 
+// Before the follower places body `a` for a party seat: the things a body that stopped running at
+// its level entry can still carry that would keep it from being drawn where its friend stands.
+void prepare(void *a);
+// Log-level 2 only: where the party body is and what the draw reads, once a second (the push line's twin).
+void draw_diag(void *a);
+
 // Per follower pass: forget that body `body` was solid last frame.
 void clear(int body);
 
@@ -65,6 +71,7 @@ struct Stats {
     unsigned long long registers;       // cylinders put in the collision list
     unsigned long long guard_skips;     // frames a cylinder was withheld by the audit
     unsigned long long assists;         // frames my body took the second half of a push
+    unsigned long long detached;        // bodies that were still attached to an actor (+0x35c) and were let go
     unsigned long long gate_hide, gate_level, gate_area;
     unsigned long long audit_nodes;     // list nodes seen when the follower runs (0: the pair pass already ran)
     unsigned long long pairs_body;      // frames the party cylinder was paired with a body cylinder

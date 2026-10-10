@@ -17,6 +17,7 @@
 #include "player_fields.h"   /* run mg16 lane MP4: the one place field offsets live */
 #include "host_settings.h"   /* port::adventure_ghost_mode() for the ghost pass */
 #include "comms_seam.h"      /* port::sync_stats(): the local-write witness */
+#include "party.h"           /* PBODY1: solid party bodies */
 #include "ShadowModel.h"
 #include "TextureSequence.h"
 #include "Heap.h"
@@ -531,6 +532,10 @@ extern "C" void port_adventure_ghost_hold()
            ghost layer (port_party_member, below). */
         if (void *a = data_0209f394[i]) {
             port::player::disable_interaction(a);
+            /* PBODY1: ...but its collider flags are the party rule's (hal/party_cyl.cpp), and
+               the immovable bit the hold just raised is not part of it */
+            if (port_party_member(i))
+                *(unsigned *)((char *)a + port::player::kBodyColliderFlags) &= ~4u;
             /* run mp1 lane GHOSTWIRE1: ON THE HUB A GHOST BODY RUNS NO GAME
                LOGIC AT ALL. fBase_c::BeforeBehavior returns 0 while pauseFlags
                & 2 is set (src/_ZN7fBase_c14BeforeBehaviorEv.cpp), so the
@@ -1952,6 +1957,7 @@ static void hal_render_player_world_body(void *player)
         return;
     }
 
+    port::party::draw_diag(c);          /* PBODY1: log level 2 only */
     unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
     ModelAnim *ma = ((ModelAnim **)(c + 0xdc))[id];
     if (!ma) return;

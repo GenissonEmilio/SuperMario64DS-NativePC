@@ -3433,6 +3433,7 @@ void gw_follow() {
            the draw gate (port_player_render_hidden) and the shadow skip it.
            The see-through look is the render's ghost alpha, not this. */
         *((unsigned char *)a + 0x6f5) = 0x1f;
+        if (pseat) party::prepare(a);       /* PBODY1: nothing attached to it, so the placement below reads its own position */
         /* ...and not culled. dActor_c::BeforeBehavior writes the camera cull
            bits 0x38 of Actor mFlags (+0xb0) every frame an actor ticks
            (src/_ZN8dActor_c14BeforeBehaviorEv.cpp); a ghost's tick is
