@@ -634,11 +634,17 @@ extern "C" int port_coop_boot_frame(void) {
             hold = false;
         }
     }
+    static bool said_release;
     if (hold != C.holding) {
         C.holding = hold;
         LOG(hold ? "HOLD: %s" : "RELEASED (first tick now)%s", hold ? why : "");
+        if (!hold) said_release = true;
     }
     if (!hold && C.released) {
+        if (!said_release) {
+            said_release = true;
+            LOG("RELEASED (first tick now)%s", " never held");
+        }
         static int ticked;
         ++ticked;
         if (ticked == 1 || ticked == 120 || ticked == 600)
