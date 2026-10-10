@@ -7,7 +7,8 @@ its own save file, on a PRIVATE desktop (hidden, muted), through a LOCAL relay c
 SM64DS_WARP_SEQ only moves a console to a level at a chosen frame. Ports come from this process id, never 51765.
 Only processes this script spawned are ever killed, by their own handle.
 
-Needs the console rig's deskspawn.py (PSTAR_RIG = the directory holding it; default beside this run's scripts).
+Needs the console rig's deskspawn.py (PSTAR_RIG = the directory holding it) and PSTAR_SEED (a valid save image, slot 0, no stars).
+PSTAR_LOCK = a ladder lock file to hold while consoles run; PSTAR_SKIP = a SM64DS_PARTY_STARS_SKIP mask for experiments.
 
   python party_stars_proof.py --exe NEW.exe --base BASE.exe [--root ASSETROOT] [--out DIR] [--kit KIT.exe --kitroot ROOT] row ...
 
@@ -46,13 +47,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "relay"))
-RIG = os.environ.get("PSTAR_RIG", "scripts")
+RIG = os.environ.get("PSTAR_RIG")
+if not RIG:
+    sys.exit("set PSTAR_RIG to the directory holding deskspawn.py (the console rig: private desktop spawn)")
 sys.path.insert(0, RIG)
 import mp2_proof as M  # noqa: E402
 import deskspawn as D  # noqa: E402
 import test_relay_v2 as T  # noqa: E402
 
-SEED = os.environ.get("PSTAR_SEED", "field/tango_sm64ds.sav")
+SEED = os.environ.get("PSTAR_SEED")        # an 8 KB save image with a valid slot 0 and no stars (set it to a copy of one)
 PID = os.getpid()
 BASEPORT = 30000 + (PID % 400) * 40
 if BASEPORT <= 51765 < BASEPORT + 40:
@@ -123,7 +126,9 @@ def stars_of(pay):
 
 
 def seeded(stars=(), char=None):
-    """the Tango seed with slot 0 holding exactly `stars` (both copies, checksums redone)"""
+    """the seed image with slot 0 holding exactly `stars` (both copies, checksums redone)"""
+    if not SEED:
+        sys.exit("set PSTAR_SEED to a valid save image (8 KB, slot 0 present, no stars)")
     img = bytearray(open(SEED, "rb").read())
     for copy in (0, 1):
         off = (CHIP // 2 if copy else 0)
@@ -744,7 +749,7 @@ def row_share_pics():
     row = "sharepic"
     f = frames_for(55)
     eb, ec, ea = dict(warp(300)), dict(warp(300)), dict(warp(300), **probe(1100, *STAR))
-    snap_cmd(eb, row, 1, f - 4)
+    snap_cmd(eb, row, 1, 1300)
     snap_cmd(ec, row, 2, 900)
     snap_cmd(ea, row, 0, f - 4)
     specs = [dict(frames=f, extra=ea), dict(frames=f, extra=eb), dict(frames=f, extra=ec)]
