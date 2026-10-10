@@ -531,3 +531,133 @@ float4 comp_ps(float4 pos : SV_Position) : SV_Target0
     }
     return float4((float)r / 255.0, (float)g / 255.0, (float)b / 255.0, 1.0);
 }
+
+// ============================================================================
+// ---- TWODGPU1 (run hunt8, lane TWODGPU1): ENGINE A'S 2D, COMPOSED ON THE CARD
+// ============================================================================
+// Everything below belongs to hal/gpu_raster.cpp's twod_* section. The
+// processor still rasterises the 256x192 DS layers into its cell plane
+// (hal/message_compositor.cpp); what used to be a host-resolution loop there is
+// done here instead, with the same integer rules, into the overlay target
+// (R32_UINT, 0xAARRGGBB, alpha = ntr/gx.h's GX_OV_* verdict) and the brightness
+// mask target (R8_UINT, the encoding in message_compositor.cpp) that comp_ps
+// reads. Keep this section self-contained so a fold can merge and regenerate.
+//
+// tw0: active_w, active_h, present_h, flags (bit 0 widescreen, bit 2 the window
+//      plane is uniform: every cell answers tw1.w)
+// tw1: sx (the 4:3 integer scale), half margin, backdrop colour, outside mask
+// tw2: target w, target h, BLDCNT first-target bits, 0
+// tw3: box x0, y0, x1, y1 (the box passes)
+cbuffer TwParams : register(b0)
+{
+    uint4 tw0;
+    uint4 tw1;
+    uint4 tw2;
+    uint4 tw3;
+};
+
+Buffer<uint4>     tw_inst : register(t4);   // one rect per 2D cell (see tw_rect_vs)
+Texture2D<uint>   tw_wm   : register(t5);   // the window mask of every DS cell, 256x192
+Texture2D<uint>   tw_up   : register(t6);   // pixels the processor wrote itself
+
+// The window mask message_compositor.cpp's bm_fill_default / hide_3d_outside_windows
+// give a host pixel: the host row's DS row, the host column's DS column the way
+// the message layer is placed, and WINOUT (or all layers) outside the DS panel.
+uint tw_wmask(uint hx, uint hy)
+{
+    uint y = (hy * 192u) / tw0.z;
+    uint x;
+    bool xin = true;
+    if (tw0.w & 1u) {
+        int d = (int)hx - (int)tw1.y;
+        xin = d >= 0;
+        x = xin ? (((uint)d * 192u) / tw0.z) : 0u;
+    } else {
+        x = hx / tw1.x;
+    }
+    if (!(xin && x < 256u && y < 192u)) return tw1.w;
+    if (tw0.w & 4u) return tw1.w;
+    return tw_wm.Load(int3((int)x, (int)y, 0));
+}
+
+uint tw_bmv(uint layer, uint wm)
+{
+    return ((wm & 0x20u) != 0u && (tw2.z & (1u << layer)) != 0u) ? 1u : 0u;
+}
+
+uint tw_hide_ps(float4 pos : SV_Position) : SV_Target0
+{
+    uint wm = tw_wmask((uint)pos.x, (uint)pos.y);
+    if (wm & 1u) discard;
+    return tw1.z;
+}
+
+uint tw_bmdef_ps(float4 pos : SV_Position) : SV_Target0
+{
+    uint wm = tw_wmask((uint)pos.x, (uint)pos.y);
+    return tw_bmv(0u, wm) | (tw_bmv(5u, wm) << 1);
+}
+
+struct TwV {
+    float4 pos : SV_Position;
+    nointerpolation uint iid : TEXCOORD0;
+};
+
+float4 tw_ndc(float x, float y)
+{
+    return float4(x * 2.0 / (float)tw2.x - 1.0, 1.0 - y * 2.0 / (float)tw2.y, 0.0, 1.0);
+}
+
+// instance: x = x0 | y0 << 16, y = w | h << 16, z = colour | verdict << 24, w = bit 0 bmv
+TwV tw_rect_vs(uint vid : SV_VertexID, uint iid : SV_InstanceID)
+{
+    uint4 a = tw_inst[iid];
+    float cx = (float)(vid & 1u), cy = (float)(vid >> 1);
+    float x0 = (float)(a.x & 0xFFFFu), y0 = (float)(a.x >> 16);
+    float w = (float)(a.y & 0xFFFFu), h = (float)(a.y >> 16);
+    TwV o;
+    o.pos = tw_ndc(x0 + cx * w, y0 + cy * h);
+    o.iid = iid;
+    return o;
+}
+
+struct TwOut {
+    uint c0 : SV_Target0;
+    uint c1 : SV_Target1;
+};
+
+TwOut tw_rect_ps(TwV i)
+{
+    uint4 a = tw_inst[i.iid];
+    uint wm = tw_wmask((uint)i.pos.x, (uint)i.pos.y);
+    TwOut o;
+    o.c0 = a.z;
+    o.c1 = (tw_bmv(0u, wm) | (tw_bmv(5u, wm) << 1)) | ((a.w & 1u) != 0u ? 4u : 0u) |
+           ((a.z >> 24) == 0xFFu ? 8u : 16u);
+    return o;
+}
+
+TwV tw_box_vs(uint vid : SV_VertexID)
+{
+    float cx = (float)(vid & 1u), cy = (float)(vid >> 1);
+    TwV o;
+    o.pos = tw_ndc((float)tw3.x + cx * (float)(tw3.z - tw3.x),
+                   (float)tw3.y + cy * (float)(tw3.w - tw3.y));
+    o.iid = 0u;
+    return o;
+}
+
+// the inset panel's one verdict: a 2D pixel in front, taken by the fade
+uint tw_inset_ps(TwV i) : SV_Target0
+{
+    uint wm = tw_wmask((uint)i.pos.x, (uint)i.pos.y);
+    return (tw_bmv(0u, wm) | (tw_bmv(5u, wm) << 1)) | 4u | 8u;
+}
+
+// the pixels the processor wrote itself over the target (zero alpha = untouched)
+uint tw_boxup_ps(TwV i) : SV_Target0
+{
+    uint v = tw_up.Load(int3((int)i.pos.x, (int)i.pos.y, 0));
+    if ((v >> 24) == 0u) discard;
+    return v;
+}

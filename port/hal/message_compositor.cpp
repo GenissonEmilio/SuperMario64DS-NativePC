@@ -187,6 +187,16 @@ extern unsigned char data_ov002_0210c3a0[];
 extern unsigned char data_ov002_0210c3a8[];
 }
 
+/* TWODGPU1 (run hunt8): menu1's "a menu owns this tick's picture" switch
+   (hal/menu_compose.cpp, branch menu1-hook1). Until that unit is in the tree the
+   default below answers 0; once it is, its own definition wins and nothing here
+   changes (the linker takes /alternatename only for a symbol nobody defines). */
+extern "C" int hal_menu_live(void);
+extern "C" int twodgpu_menu_live_default(void) { return 0; }
+#if defined(_MSC_VER) && defined(_M_IX86)
+#pragma comment(linker, "/alternatename:_hal_menu_live=_twodgpu_menu_live_default")
+#endif
+
 namespace {
 
 /* WHICH HOST ROWS A DS ROW OCCUPIES. The 3D layer maps DS row y to host row
@@ -2297,6 +2307,102 @@ void bm_card_to_classic() {
     }
 }
 
+/* ---- TWODGPU1 (run hunt8): THE HOST-RESOLUTION HALF OF THIS UNIT ON THE CARD ----
+ *
+ * On a tick the graphics card holds (ntr/gx.h, GX_OV_*) the three loops that run
+ * over the whole picture -- the 3D layer's window hide, the brightness mask's
+ * default pass and the placement of every 2D cell -- are done by the card
+ * (hal/gpu_raster.cpp, the section of the same name) into the overlay and mask
+ * targets the composite reads, with the same integer rules. What stays here is
+ * the DS-space half: the cell plane, the window masks, the per-cell verdicts.
+ *
+ * THE CPU PATH STAYS: a tick composes on the processor when any of these holds
+ * (the switch is twod_wanted): Renderer 0 or a frame not held on the card, a
+ * menu1 menu owns the picture (hal_menu_live), the level-clear overlay is live,
+ * a test drill is armed, SM64DS_TWOD_CARD=0. A frame the card gave up on
+ * between the begin and the blit, or that something settled in between (a
+ * sprite blended over the 3D), goes down the processor's loops too.
+ * SM64DS_TWOD_CARD_CHECK=1 runs the processor's loops beside the card's and
+ * compares them (hal/gpu_raster.cpp, port_gpu_twod_check). */
+unsigned char *g_tw_wm;       /* window masks of the 256x192 DS cells (heap: no new host global of size) */
+uint32_t *g_tw_inst;          /* one rect per hit cell, four words each */
+int g_tw_n;
+
+inline bool twod_check_env() {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_TWOD_CARD_CHECK");
+        v = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return v != 0;
+}
+
+/* the switch: may this tick's host-resolution work go to the card? */
+bool twod_wanted() {
+    if (!port_gpu_twod_ready()) return false;
+    if (!ntr::gx_card_overlay_active()) return false;
+    if (lc_ov.live) return false;
+    if (settle_drill()) return false;
+    if (hal_menu_live()) return false;
+    return true;
+}
+
+/* Start the tick's overlay on the card: it takes the 3D layer's window hide and
+   the brightness mask's default pass (bm_on says the mask is live, with the
+   state bm_fill_default would have left). False when the card has nothing for
+   this tick; nothing has been touched then. */
+bool twod_begin(uint32_t dispcnt, const Windows &w, ntr::Framebuffer &fb, bool &bm_on)
+{
+    bm_on = false;
+    if (!g_tw_wm) g_tw_wm = static_cast<unsigned char *>(std::malloc(256 * 192));
+    if (!g_tw_inst) g_tw_inst = static_cast<uint32_t *>(std::malloc(256 * 192 * 16));
+    if (!g_tw_wm || !g_tw_inst) return false;
+    const bool hide_cond = w.any && !hide3d_off_env() && bg0_3d_shown(dispcnt);
+    const bool bm_cond = bm_needed(w);
+    PortTwodFrame p;
+    std::memset(&p, 0, sizeof p);
+    p.active_w = ntr::active_w;
+    p.active_h = ntr::active_h;
+    p.present_h = ntr::present_h();
+    p.widescreen = ntr::widescreen ? 1 : 0;
+    p.sx = ntr::active_w / 256;
+    p.half_margin = (ntr::active_w - ds_col_x0(256)) / 2;
+    p.backdrop = bgr555(rd16(kPlttBase));
+    p.out_mask = w.any ? (int)w.out : 0x3F;
+    p.first = (int)(rd16(kRegBase + 0x50) & 0x3F);
+    bool any_hidden = false;
+    if (w.any && (hide_cond || bm_cond)) {
+        for (int y = 0; y < 192; ++y)
+            for (int x = 0; x < 256; ++x) {
+                const unsigned m = window_mask(w, x, y);
+                g_tw_wm[y * 256 + x] = (unsigned char)m;
+                if (!(m & 1u)) any_hidden = true;
+            }
+        p.wm = g_tw_wm;
+    }
+    const bool out_hidden = w.any && (w.out & 1u) == 0;
+    p.hide = (hide_cond && (any_hidden || out_hidden)) ? 1 : 0;
+    p.bm_on = bm_cond ? 1 : 0;
+    if (bm_cond && !g_bm) {
+        g_bm = static_cast<unsigned char *>(
+            std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H));
+        if (!g_bm) return false;
+    }
+    if (!port_gpu_twod_begin(&p, bm_cond ? g_bm : nullptr, ntr::SCREEN_W,
+                             &fb.px[0][0]))
+        return false;
+    g_tw_n = 0;
+    if (bm_cond) {
+        const bool shown3d = bg0_3d_shown(dispcnt);
+        g_bm_card = true;
+        g_bm_shown3d = shown3d;
+        g_bm_clear_opaque = shown3d && ((rd32(0x04000350) >> 16) & 0x1F) != 0;
+        g_bm_live = true;
+        bm_on = true;
+    }
+    return true;
+}
+
 /* ---- lane TWOD: engine A's BG loop, the old one kept as the reference -------
  *
  * bg_loop_ref is the BG loop of port_message_composite_engine_a as it shipped
@@ -2430,6 +2536,11 @@ extern "C" void port_engine_a_bright_mask_rect(int x0, int y0, int x1, int y1)
     g_inset_fade_set = x1 > x0 && y1 > y0;
     g_inset_fade_rc[0] = x0; g_inset_fade_rc[1] = y0;
     g_inset_fade_rc[2] = x1; g_inset_fade_rc[3] = y1;
+    /* TWODGPU1: a mask that lives on the card gets the panel's verdict there */
+    if (g_bm_live && port_gpu_twod_live()) {
+        port_gpu_twod_bm_rect(x0, y0, x1, y1);
+        if (!twod_check_env()) return;
+    }
     if (!g_bm_live || !g_bm) return;
     for (int y = y0; y < y1; ++y)
         for (int x = x0; x < x1; ++x) {
@@ -2438,6 +2549,9 @@ extern "C" void port_engine_a_bright_mask_rect(int x0, int y0, int x1, int y1)
                a 2D pixel in front of the 3D layer that the fade takes */
             m = g_bm_card ? (unsigned char)((m & 3u) | 4u | 8u) : 1;
         }
+    if (port_gpu_twod_live() && twod_check_env())
+        port_gpu_twod_check(reinterpret_cast<const unsigned *>(g_bm), ntr::SCREEN_W, g_bm,
+                            ntr::SCREEN_W, 1);
 }
 
 /* THE FADE COMPOSITE, ENGINE A'S, for both frame loops.
@@ -2750,11 +2864,16 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     g_bm_live = false;
     g_inset_fade_set = false;
     g_bm_card = false;
+    /* TWODGPU1: the previous tick's overlay on the card is not this tick's */
+    port_gpu_twod_reset();
     /* A FRAME HELD ON THE GRAPHICS CARD (run cardfull, lane CARD2) carries only
        this unit's 2D in the framebuffer, as an overlay (ntr/gx.h, GX_OV_*). The
        level-clear compose lifts pixels out of the picture it drew under them,
        so it needs the real 3D pixels: make the frame an ordinary one first. */
     if (lc_ov.live) ntr::gx_card_settle_because("the level-clear compose");
+    /* TWODGPU1: may this tick's host-resolution half go to the card? (after
+       menu1's decision, which lc_overlay_begin above asks for) */
+    const bool tw_try = twod_wanted();
 
     /* ---- func_02019144 LINE 46, THE ENGINE-A LAYER-MASK PUBLISH -----------
      *
@@ -2976,8 +3095,15 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         read_windows(dispcnt, w0);
         w0.obj_on = false;
         w0.any = w0.on[0] || w0.on[1];
-        hide_3d_outside_windows(dispcnt, w0, fb);
-        if (bm_needed(w0)) bm_fill_default(dispcnt, w0);
+        bool tw_bm0 = false;
+        const bool tw_took0 = tw_try && twod_begin(dispcnt, w0, fb, tw_bm0);
+        if (!tw_took0 || twod_check_env()) {
+            hide_3d_outside_windows(dispcnt, w0, fb);
+            if (bm_needed(w0)) bm_fill_default(dispcnt, w0);
+        }
+        if (tw_took0 && twod_check_env())
+            port_gpu_twod_check(&fb.px[0][0], ntr::SCREEN_W,
+                                g_bm_live ? g_bm : nullptr, ntr::SCREEN_W, 0);
         return;
     }
 
@@ -2991,13 +3117,23 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     read_windows(dispcnt, win);
     /* the 3D layer is a layer like the others: WINOUT / WININ bit 0 gate it
        (see hide_3d_outside_windows) */
-    hide_3d_outside_windows(dispcnt, win, fb);
+    /* TWODGPU1: on a tick the card holds, the card does this and the default
+       pass below (twod_begin); SM64DS_TWOD_CARD_CHECK also runs the loops */
+    bool tw_bm = false;
+    const bool tw_took = tw_try && twod_begin(dispcnt, win, fb, tw_bm);
+    const bool tw_chk = tw_took && twod_check_env();
+    bool bm_on = false;
+    if (!tw_took || tw_chk)
+        hide_3d_outside_windows(dispcnt, win, fb);
     /* the brightness targets' default pass (see ENGINE A'S BRIGHTNESS
        TARGETS); the final blit below fills in every 2D pixel */
-    bool bm_on = false;
-    if (bm_needed(win)) {
-        bm_fill_default(dispcnt, win);
-        bm_on = g_bm_live;
+    if (!tw_took || tw_chk) {
+        if (bm_needed(win)) {
+            bm_fill_default(dispcnt, win);
+            bm_on = g_bm_live;
+        }
+    } else {
+        bm_on = tw_bm;
     }
 
     // Clear the hit buffer, then BGs by priority (lower priority drawn last so
@@ -3286,6 +3422,9 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        is an ordinary one from here: the mask has to be one too */
     if (g_bm_card && !ovl3d) bm_card_to_classic();
     const uint8_t *cover = (shown3d && !ovl3d) ? ntr::gx_coverage() : nullptr;
+    /* TWODGPU1: the card places the cells (a settle since the begin, a card
+       that stopped or a frame that is no longer held send them down the loops) */
+    const bool gpu_blit = tw_took && ovl3d && port_gpu_twod_live();
     /* THE PRE-SMOOTHING COPY OF THIS FRAME, or null when the AntiAliasing
        setting is off -- which is the default and is every run that has not
        asked for it. See ntr/gx.h's gx_aa_preimage: the game reads its own top
@@ -3391,6 +3530,23 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                puts on screen (ENGINE A'S BRIGHTNESS TARGETS) */
             const unsigned char bmv =
                 bm_on ? bm_verdict(lcow, window_mask(win, x, y)) : 0;
+            if (gpu_blit && g_tw_n < 256 * 192) {
+                /* the cell as one rect for the card: this loop's own placement
+                   (hx0, bw, the host rows of the DS row), the verdict the
+                   branches below would write, the mask bit */
+                const bool front = !honour3d
+                    || !layer_behind_3d(g_a[y][x].owner, g_a[y][x].prio, p3d);
+                if (!front) ntr::gx_card_note_behind();
+                if (hx0 >= 0 && bw > 0 && hy1 > hy0) {
+                    uint32_t *r = g_tw_inst + (size_t)g_tw_n * 4;
+                    r[0] = (uint32_t)hx0 | ((uint32_t)hy0 << 16);
+                    r[1] = (uint32_t)bw | ((uint32_t)(hy1 - hy0) << 16);
+                    r[2] = (c & 0x00FFFFFFu) | ((front ? GX_OV_FRONT : GX_OV_BEHIND) << 24);
+                    r[3] = bmv ? 1u : 0u;
+                    ++g_tw_n;
+                }
+                if (!tw_chk) continue;
+            }
             if (!honour3d
                 || !layer_behind_3d(g_a[y][x].owner, g_a[y][x].prio, p3d)) {
                 /* the owning 2D layer is in FRONT of the 3D layer (or there is
@@ -3444,6 +3600,12 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                     if (pre) pre[(size_t)hy * ntr::SCREEN_W + hx] = c;
                 }
         }
+    }
+    if (gpu_blit) {
+        port_gpu_twod_rects(g_tw_inst, g_tw_n);
+        if (tw_chk)
+            port_gpu_twod_check(&fb.px[0][0], ntr::SCREEN_W, g_bm_live ? g_bm : nullptr,
+                                ntr::SCREEN_W, 0);
     }
     /* Pixels the 3D engine drew that NO 2D layer covered at all were never in
        the loop above; they are kept too, and counting them is what makes the

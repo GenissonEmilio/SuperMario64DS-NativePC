@@ -111,6 +111,52 @@ int port_gpu_card_fade_recorded(void);
  * folded into it. 0.0 with the setting off. */
 double port_gpu_raster_readback_ms(void);
 
+/* ---- ENGINE A'S 2D ON THE CARD (run hunt8, lane TWODGPU1) --------------------
+ * On a tick the card holds (port_gpu_card_held), the processor still rasterises
+ * engine A's DS-space 256x192 cell plane (hal/message_compositor.cpp); the host
+ * resolution half of that unit -- the window hide of the 3D layer, the
+ * brightness mask's default pass and the placement of every cell on the
+ * picture -- is done here, into the overlay and mask targets comp_ps reads, so
+ * nothing the size of the picture is written or uploaded by the processor. The
+ * overlay target is an R32_UINT texture of the picture's size (0xAARRGGBB,
+ * alpha = ntr/gx.h's GX_OV_* verdict), the mask target an R8_UINT texture of
+ * the same size (hal/message_compositor.cpp's card encoding). SM64DS_TWOD_CARD=0
+ * turns the whole route off; SM64DS_TWOD_CARD_CHECK=1 runs the processor's own
+ * host loops beside it and compares the two. */
+typedef struct PortTwodFrame {
+    int active_w, active_h, present_h;
+    int widescreen;          /* 1 when the 16:9 reanchor mapping is in force */
+    int sx;                  /* active_w / 256 */
+    int half_margin;         /* margin / 2 */
+    unsigned backdrop;       /* BG palette entry 0, 0xFFRRGGBB */
+    int out_mask;            /* window mask outside the DS panel (WINOUT, or 0x3F with no window) */
+    int first;               /* BLDCNT & 0x3F */
+    const unsigned char *wm; /* window mask of every DS cell (192 rows of 256), null when all are out_mask */
+    int hide;                /* run the 3D layer's window hide */
+    int bm_on;               /* run the brightness mask's default pass */
+} PortTwodFrame;
+/* 1 when the route is on and a held frame can take it this tick */
+int port_gpu_twod_ready(void);
+/* forget the previous tick's overlay (a new tick is starting) */
+void port_gpu_twod_reset(void);
+/* start the tick's overlay: clear the targets, run the hide and default passes.
+   `fbpx` is the framebuffer the tick's other 2D (the inset panel) is drawn into
+   on the processor; `cpu_mask` (SCREEN_W stride) is where a settle puts the
+   mask. 1 when the card has the tick's 2D, 0 when nothing was drawn. */
+int port_gpu_twod_begin(const PortTwodFrame *p, unsigned char *cpu_mask,
+                        int mask_stride, const unsigned *fbpx);
+/* n cells, four words each (x0 | y0 << 16, w | h << 16, colour | verdict << 24,
+   bit 0 = the brightness mask takes it), drawn in order */
+void port_gpu_twod_rects(const unsigned *inst, int n);
+/* the inset panel's one brightness verdict over a host rectangle */
+void port_gpu_twod_bm_rect(int x0, int y0, int x1, int y1);
+/* the tick's overlay is on the card (processor-written pixels still to merge) */
+int port_gpu_twod_live(void);
+/* the SM64DS_TWOD_CARD_CHECK compare of the card's overlay and mask with the
+   processor's own (the same tick, same stage); `bm` may be null */
+void port_gpu_twod_check(const unsigned *fb, int stride_px, const unsigned char *bm,
+                         int bm_stride, int what);
+
 #ifdef __cplusplus
 }
 #endif

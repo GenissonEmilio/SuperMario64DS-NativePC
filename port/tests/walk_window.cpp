@@ -7629,6 +7629,18 @@ static void ip_snap(ntr::Framebuffer *dst, const ntr::Framebuffer &src)
         memcpy(dst->px[y], src.px[y], ntr::active_w * sizeof(uint32_t));
 }
 
+/* run hunt8, lane TWODGPU1: a tick whose 2D the card drew itself (the overlay
+   target, hal/gpu_raster.h) has nothing to snapshot on the processor: the
+   framebuffer holds only what the processor wrote on its own, and the pictures
+   between ticks are composited from the overlay target. A settle of such a tick
+   folds the overlay into the framebuffer first, and ip_settled takes the
+   snapshots then. */
+static void ip_snap_2d(ntr::Framebuffer *dst, const ntr::Framebuffer &src)
+{
+    if (port_gpu_twod_live()) return;
+    ip_snap(dst, src);
+}
+
 /* run hunt8, lane CARDSM1: SmoothMotion with a tick held on the card.
    g_ip_snapstage is how far this tick's snapshots have got (0 none, 1 the 3D
    layer, 2 the 2D and the fade). ip_settled runs after a settle of the held
@@ -7727,6 +7739,9 @@ static int ip_build(double alpha)
             memset(o.px[y], 0, ntr::active_w * sizeof(uint32_t));
         ntr::gx_card_settle_because("a picture between ticks could not be composited on the card");
     }
+    /* run hunt8, lane TWODGPU1: the tick's 2D lives on the card and the
+       processor has no snapshot of it to blend with: show the tick's picture */
+    if (port_gpu_twod_live()) return 0;
     ++g_ip_cpu_pics;
     if (g_ip_fade_on && g_ip_fade_masked) {
         /* the fade only some pixels take, and the card could not composite this
@@ -17655,6 +17670,7 @@ int main(void)
                                    data_0209f2d8 != 1 &&
                                    !port::adventure_ghost_mode());
         g_ip_snapstage = 0;
+        port_gpu_twod_reset();     /* run hunt8, lane TWODGPU1: a new tick's overlay */
         if (!rb_skip_render()) ntr::gx_clear_fill(fb);
         /* the rollback probe's re-run skips the rasteriser (SM64DS_ROLLBACK_DET_SKIP) */
         if (!rb_resim_skip_render() && !rb_skip_render())
@@ -17773,7 +17789,7 @@ int main(void)
                     ntr::gx_card_settle_because("SmoothMotion: an engine A fade");
             }
         }
-        if (g_ip_on > 0 && g_ip_tick_ok) ip_snap(g_ip_p2, fb);
+        if (g_ip_on > 0 && g_ip_tick_ok) ip_snap_2d(g_ip_p2, fb);
 
         /* THE FADE COMPOSITE, ENGINE A'S, now runs from the tail of
            hal_sub_screen_present just above (hal/message_compositor.cpp,
@@ -17814,7 +17830,7 @@ int main(void)
         }
 
         if (g_ip_on > 0 && g_ip_tick_ok) {
-            ip_snap(g_ip_p4, fb);   /* run interp1 */
+            ip_snap_2d(g_ip_p4, fb);   /* run interp1 */
             g_ip_snapstage = 2;
         }
 
@@ -17975,7 +17991,7 @@ int main(void)
         if (g_ip_on > 0 && g_ip_tick_ok) ip_retire_tick(fb);
         /* run interp1: the tick's finished picture, the last of the four
            snapshots, and the proof probe (inert unless asked for) */
-        if (g_ip_on > 0 && g_ip_tick_ok) ip_snap(g_ip_p5, fb);
+        if (g_ip_on > 0 && g_ip_tick_ok) ip_snap_2d(g_ip_p5, fb);
         if (g_ip_on > 0) ip_probe(frame, port_rom_frame());
         if (stacked && !rb_skip_render())
             stack_present_arm(stack_img, hwnd);

@@ -392,6 +392,30 @@ ID3D11Buffer             *g_comp_cb;
 ID3D11PixelShader        *g_ps_comp;
 int                       g_cp_w, g_cp_h;
 
+/* ---- ENGINE A'S 2D ON THE CARD (run hunt8, lane TWODGPU1; the section is
+   "TWODGPU1" below cp_compose_inter, the shaders' are marked the same in
+   gpu_raster.hlsl). The overlay (g_ov_tex) and the brightness mask (g_bm_tex)
+   are also render targets, so the passes of that section can draw the tick's
+   2D into the textures comp_ps already reads. */
+ID3D11RenderTargetView   *g_ov_rtv, *g_bm_rtv;
+ID3D11Texture2D          *g_tw_wm_tex, *g_tw_up_tex, *g_tw_st_ov, *g_tw_st_bm;
+ID3D11ShaderResourceView *g_tw_wm_srv, *g_tw_up_srv, *g_tw_inst_srv;
+ID3D11Buffer             *g_tw_inst_buf, *g_tw_cb;
+ID3D11PixelShader        *g_tw_ps_hide, *g_tw_ps_bmdef, *g_tw_ps_rect, *g_tw_ps_inset, *g_tw_ps_boxup;
+ID3D11VertexShader       *g_tw_vs_rect, *g_tw_vs_box;
+int                       g_tw_w, g_tw_h;          /* size g_tw_up_tex was made for */
+int                       g_tw_env = -1;           /* SM64DS_TWOD_CARD (default on) */
+int                       g_tw_check_on = -1;      /* SM64DS_TWOD_CARD_CHECK */
+bool                      g_tw_live;               /* the tick's overlay is in g_ov_tex */
+bool                      g_tw_bm;                 /* ... and its mask in g_bm_tex */
+PortTwodFrame             g_tw_p;
+unsigned char            *g_tw_cpu_mask;
+int                       g_tw_cpu_mask_stride;
+const uint32_t           *g_tw_fb;                 /* the framebuffer whose other 2D is merged at the composite */
+long long                 g_tw_ticks, g_tw_rects, g_tw_flushes, g_tw_folds, g_tw_checks, g_tw_bad;
+long long                 g_tw_bad_px_ov, g_tw_bad_px_bm;
+double                    g_tw_ms, g_tw_flush_ms;
+
 /* ---- the texture cache on the card --------------------------------------- */
 
 struct GTex {
@@ -768,6 +792,14 @@ void release_targets()
     if (g_ov_tex) { g_ov_tex->Release(); g_ov_tex = 0; }
     if (g_bm_srv) { g_bm_srv->Release(); g_bm_srv = 0; }
     if (g_bm_tex) { g_bm_tex->Release(); g_bm_tex = 0; }
+    g_tw_live = false;
+    if (g_ov_rtv) { g_ov_rtv->Release(); g_ov_rtv = 0; }
+    if (g_bm_rtv) { g_bm_rtv->Release(); g_bm_rtv = 0; }
+    if (g_tw_up_srv) { g_tw_up_srv->Release(); g_tw_up_srv = 0; }
+    if (g_tw_up_tex) { g_tw_up_tex->Release(); g_tw_up_tex = 0; }
+    if (g_tw_st_ov) { g_tw_st_ov->Release(); g_tw_st_ov = 0; }
+    if (g_tw_st_bm) { g_tw_st_bm->Release(); g_tw_st_bm = 0; }
+    g_tw_w = g_tw_h = 0;
     if (g_comp_rtv) { g_comp_rtv->Release(); g_comp_rtv = 0; }
     if (g_comp_srv) { g_comp_srv->Release(); g_comp_srv = 0; }
     g_comp_valid = false;
@@ -1088,9 +1120,34 @@ void at_exit()
         fprintf(stderr, "[renderer-cpcheck] %lld composite(s) compared with the "
                 "processor's copy of the rule: %lld differed (%lld pixel(s)).\n",
                 g_cp_checked, g_cp_bad_frames, g_cp_bad_px);
+    if (g_tw_ticks)
+        fprintf(stderr, "[renderer] 2D drawn on the card: %lld tick(s), %lld cell(s) "
+                "(%.3f ms each tick on the processor's clock), %lld merge(s) of the "
+                "processor's own pixels (%.3f ms each), %lld settled back to the "
+                "processor.
+", g_tw_ticks, g_tw_rects,
+                g_tw_ms / (double)g_tw_ticks, g_tw_flushes,
+                g_tw_flushes ? g_tw_flush_ms / (double)g_tw_flushes : 0.0, g_tw_folds);
+    if (g_tw_checks)
+        fprintf(stderr, "[renderer-twodcheck] %lld stage(s) compared with the "
+                "processor's own host loops: %lld differed (%lld overlay and %lld "
+                "mask pixel(s)).
+", g_tw_checks, g_tw_bad, g_tw_bad_px_ov, g_tw_bad_px_bm);
     aa_at_exit();
     release_textures();
     release_targets();
+    if (g_tw_ps_hide) { g_tw_ps_hide->Release(); g_tw_ps_hide = 0; }
+    if (g_tw_ps_bmdef) { g_tw_ps_bmdef->Release(); g_tw_ps_bmdef = 0; }
+    if (g_tw_ps_rect) { g_tw_ps_rect->Release(); g_tw_ps_rect = 0; }
+    if (g_tw_ps_inset) { g_tw_ps_inset->Release(); g_tw_ps_inset = 0; }
+    if (g_tw_ps_boxup) { g_tw_ps_boxup->Release(); g_tw_ps_boxup = 0; }
+    if (g_tw_vs_rect) { g_tw_vs_rect->Release(); g_tw_vs_rect = 0; }
+    if (g_tw_vs_box) { g_tw_vs_box->Release(); g_tw_vs_box = 0; }
+    if (g_tw_cb) { g_tw_cb->Release(); g_tw_cb = 0; }
+    if (g_tw_inst_srv) { g_tw_inst_srv->Release(); g_tw_inst_srv = 0; }
+    if (g_tw_inst_buf) { g_tw_inst_buf->Release(); g_tw_inst_buf = 0; }
+    if (g_tw_wm_srv) { g_tw_wm_srv->Release(); g_tw_wm_srv = 0; }
+    if (g_tw_wm_tex) { g_tw_wm_tex->Release(); g_tw_wm_tex = 0; }
     if (g_ps_comp) { g_ps_comp->Release(); g_ps_comp = 0; }
     if (g_comp_cb) { g_comp_cb->Release(); g_comp_cb = 0; }
     if (g_vb) { g_vb->Release(); g_vb = 0; }
@@ -2805,6 +2862,13 @@ void cp_resolve(const uint32_t *ov, int ov_stride, uint32_t *dst, int dst_stride
    from the composite target into f->fb (alpha forced opaque). It is the same
    picture settle 1 would have made, fade included, because the composite
    applied the same rule. 0 when the target is gone. */
+/* TWODGPU1: the section below cp_compose_inter. tw_fold turns the tick's overlay
+   on the card into the ordinary one in `fb` (and the mask in the processor's
+   buffer), tw_flush merges what the processor wrote into `ov` itself. */
+void tw_fold(uint32_t *fb, int stride, bool finish);
+void tw_flush(const uint32_t *ov, int stride_px);
+bool tw_check_on();
+
 int card_ret_readback(const ntr::GxGpuFrame *f)
 {
     /* slot 2 (run hunt8, lane GPUINTERP1): the in-between composite */
@@ -2843,6 +2907,9 @@ int card_settle(const ntr::GxGpuFrame *f)
 {
     if (f->settle == 3) return card_ret_readback(f);
     if (!g_cp_held || !f->fb) return 0;
+    /* TWODGPU1: this tick's 2D is in the overlay target, not in the framebuffer */
+    if (g_tw_live && (const uint32_t *)f->fb == g_tw_fb)
+        tw_fold(f->fb, f->stride, f->settle == 1);
     const bool one = f->settle == 1;
     const bool sm = g_cp_smoothed;
     CpMaps m;
@@ -2919,6 +2986,14 @@ bool cp_ensure(int w, int h)
     if (g_ov_tex) { g_ov_tex->Release(); g_ov_tex = 0; }
     if (g_bm_srv) { g_bm_srv->Release(); g_bm_srv = 0; }
     if (g_bm_tex) { g_bm_tex->Release(); g_bm_tex = 0; }
+    g_tw_live = false;
+    if (g_ov_rtv) { g_ov_rtv->Release(); g_ov_rtv = 0; }
+    if (g_bm_rtv) { g_bm_rtv->Release(); g_bm_rtv = 0; }
+    if (g_tw_up_srv) { g_tw_up_srv->Release(); g_tw_up_srv = 0; }
+    if (g_tw_up_tex) { g_tw_up_tex->Release(); g_tw_up_tex = 0; }
+    if (g_tw_st_ov) { g_tw_st_ov->Release(); g_tw_st_ov = 0; }
+    if (g_tw_st_bm) { g_tw_st_bm->Release(); g_tw_st_bm = 0; }
+    g_tw_w = g_tw_h = 0;
     if (g_comp_rtv) { g_comp_rtv->Release(); g_comp_rtv = 0; }
     if (g_comp_srv) { g_comp_srv->Release(); g_comp_srv = 0; }
     if (g_comp_tex) { g_comp_tex->Release(); g_comp_tex = 0; }
@@ -2935,17 +3010,21 @@ bool cp_ensure(int w, int h)
     d.SampleDesc.Count = 1;
     d.Usage = D3D11_USAGE_DEFAULT;
     d.Format = DXGI_FORMAT_R32_UINT;
-    d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    d.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;   /* TWODGPU1: also drawn into */
     HRESULT hr = g_dev->CreateTexture2D(&d, 0, &g_ov_tex);
     if (FAILED(hr)) { cp_give_up("no overlay texture", hr); return false; }
     hr = g_dev->CreateShaderResourceView(g_ov_tex, 0, &g_ov_srv);
     if (FAILED(hr)) { cp_give_up("no overlay texture view", hr); return false; }
+    hr = g_dev->CreateRenderTargetView(g_ov_tex, 0, &g_ov_rtv);
+    if (FAILED(hr)) { cp_give_up("no overlay texture target", hr); return false; }
     d.Format = DXGI_FORMAT_R8_UINT;
-    d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    d.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
     hr = g_dev->CreateTexture2D(&d, 0, &g_bm_tex);
     if (FAILED(hr)) { cp_give_up("no brightness mask texture", hr); return false; }
     hr = g_dev->CreateShaderResourceView(g_bm_tex, 0, &g_bm_srv);
     if (FAILED(hr)) { cp_give_up("no brightness mask texture view", hr); return false; }
+    hr = g_dev->CreateRenderTargetView(g_bm_tex, 0, &g_bm_rtv);
+    if (FAILED(hr)) { cp_give_up("no brightness mask texture target", hr); return false; }
     d.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     d.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
     hr = g_dev->CreateTexture2D(&d, 0, &g_comp_tex);
@@ -3038,10 +3117,19 @@ void *cp_compose(const uint32_t *overlay, int stride_px)
     ob.bottom = (UINT)h;
     ob.front = 0;
     ob.back = 1;
-    g_ctx->UpdateSubresource(g_ov_tex, 0, &ob, overlay, (UINT)stride_px * 4u, 0);
-    if (g_cp_mask)
-        g_ctx->UpdateSubresource(g_bm_tex, 0, &ob, g_cp_mask,
-                                 (UINT)g_cp_mask_stride, 0);
+    /* TWODGPU1: a tick whose 2D the card drew itself needs only the pixels the
+       processor wrote on its own merged in (a different framebuffer than the
+       tick's is the classic upload) */
+    if (g_tw_live && overlay != g_tw_fb) g_tw_live = false;
+    const bool tw_now = g_tw_live;
+    if (tw_now) {
+        tw_flush(overlay, stride_px);
+    } else {
+        g_ctx->UpdateSubresource(g_ov_tex, 0, &ob, overlay, (UINT)stride_px * 4u, 0);
+        if (g_cp_mask)
+            g_ctx->UpdateSubresource(g_bm_tex, 0, &ob, g_cp_mask,
+                                     (UINT)g_cp_mask_stride, 0);
+    }
 
     D3D11_MAPPED_SUBRESOURCE cm;
     memset(&cm, 0, sizeof cm);
@@ -3107,7 +3195,8 @@ void *cp_compose(const uint32_t *overlay, int stride_px)
     ++g_cp_composed;
     g_comp_valid = true;
     g_cp_ms += ms_between(t0, qpc());
-    if (g_cp_check && ((g_cp_composed - 1) % g_cp_check) == 0) cp_check(overlay, stride_px);
+    if (g_cp_check && ((g_cp_composed - 1) % g_cp_check) == 0 && (!tw_now || tw_check_on()))
+        cp_check(overlay, stride_px);
     return g_comp_srv;
 }
 
@@ -3196,9 +3285,286 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
     ++g_cp_composed;
     g_comp2_valid = true;
     g_cp_ms += ms_between(t0, qpc());
-    if (g_cp_check && overlay && (g_cp_composed % g_cp_check) == 0)
+    if (g_cp_check && overlay && (g_cp_composed % g_cp_check) == 0 &&
+        (!g_tw_live || tw_check_on()))
         cp_check(overlay, stride_px, g_comp2_tex);
     return g_comp2_srv;
+}
+
+/* ---- TWODGPU1 (run hunt8, lane TWODGPU1): ENGINE A'S 2D COMPOSED ON THE CARD
+   See the banner in gpu_raster.h and the section of the same name in
+   gpu_raster.hlsl. The picture-sized loops of hal/message_compositor.cpp (the
+   3D layer's window hide, the brightness mask's default pass, the placement of
+   every 2D cell) are passes into g_ov_tex / g_bm_tex here, with the same
+   integer rules; the processor keeps the 256x192 cell plane and writes only the
+   pixels it always wrote itself (the inset panel), which tw_flush merges. Any
+   failure here is one line and the route stays off for the rest of the run
+   (the classic loops then run, exactly as before). */
+bool tw_env_on()
+{
+    if (g_tw_env < 0) {
+        const char *e = getenv("SM64DS_TWOD_CARD");
+        g_tw_env = (e && *e == '0') ? 0 : 1;
+    }
+    return g_tw_env != 0;
+}
+
+bool tw_check_on()
+{
+    if (g_tw_check_on < 0) {
+        const char *e = getenv("SM64DS_TWOD_CARD_CHECK");
+        g_tw_check_on = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return g_tw_check_on != 0;
+}
+
+void tw_fail(const char *why, HRESULT hr)
+{
+    fprintf(stderr, "[renderer] 2D on the card: %s (0x%08lx); engine A's 2D goes back "
+            "to the processor for the rest of the run.\n", why, (unsigned long)hr);
+    g_tw_env = 0;
+    g_tw_live = false;
+}
+
+enum { TW_MAX_CELLS = 256 * 192 };
+
+bool tw_ensure(int w, int h)
+{
+    if (!g_tw_ps_hide) {
+        HRESULT hr = g_dev->CreatePixelShader(kGpuTwHidePS, sizeof kGpuTwHidePS, 0, &g_tw_ps_hide);
+        if (SUCCEEDED(hr)) hr = g_dev->CreatePixelShader(kGpuTwBmdefPS, sizeof kGpuTwBmdefPS, 0, &g_tw_ps_bmdef);
+        if (SUCCEEDED(hr)) hr = g_dev->CreatePixelShader(kGpuTwRectPS, sizeof kGpuTwRectPS, 0, &g_tw_ps_rect);
+        if (SUCCEEDED(hr)) hr = g_dev->CreatePixelShader(kGpuTwInsetPS, sizeof kGpuTwInsetPS, 0, &g_tw_ps_inset);
+        if (SUCCEEDED(hr)) hr = g_dev->CreatePixelShader(kGpuTwBoxupPS, sizeof kGpuTwBoxupPS, 0, &g_tw_ps_boxup);
+        if (SUCCEEDED(hr)) hr = g_dev->CreateVertexShader(kGpuTwRectVS, sizeof kGpuTwRectVS, 0, &g_tw_vs_rect);
+        if (SUCCEEDED(hr)) hr = g_dev->CreateVertexShader(kGpuTwBoxVS, sizeof kGpuTwBoxVS, 0, &g_tw_vs_box);
+        if (FAILED(hr)) { tw_fail("the shaders would not load", hr); return false; }
+        D3D11_BUFFER_DESC bd;
+        memset(&bd, 0, sizeof bd);
+        bd.ByteWidth = 64;
+        bd.Usage = D3D11_USAGE_DYNAMIC;
+        bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        hr = g_dev->CreateBuffer(&bd, 0, &g_tw_cb);
+        if (FAILED(hr)) { tw_fail("no parameters buffer", hr); return false; }
+        memset(&bd, 0, sizeof bd);
+        bd.ByteWidth = TW_MAX_CELLS * 16;
+        bd.Usage = D3D11_USAGE_DYNAMIC;
+        bd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        hr = g_dev->CreateBuffer(&bd, 0, &g_tw_inst_buf);
+        if (FAILED(hr)) { tw_fail("no cell buffer", hr); return false; }
+        D3D11_SHADER_RESOURCE_VIEW_DESC sv;
+        memset(&sv, 0, sizeof sv);
+        sv.Format = DXGI_FORMAT_R32G32B32A32_UINT;
+        sv.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+        sv.Buffer.FirstElement = 0;
+        sv.Buffer.NumElements = TW_MAX_CELLS;
+        hr = g_dev->CreateShaderResourceView(g_tw_inst_buf, &sv, &g_tw_inst_srv);
+        if (FAILED(hr)) { tw_fail("no cell buffer view", hr); return false; }
+        D3D11_TEXTURE2D_DESC d;
+        memset(&d, 0, sizeof d);
+        d.Width = 256;
+        d.Height = 192;
+        d.MipLevels = d.ArraySize = 1;
+        d.SampleDesc.Count = 1;
+        d.Usage = D3D11_USAGE_DEFAULT;
+        d.Format = DXGI_FORMAT_R8_UINT;
+        d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        hr = g_dev->CreateTexture2D(&d, 0, &g_tw_wm_tex);
+        if (SUCCEEDED(hr)) hr = g_dev->CreateShaderResourceView(g_tw_wm_tex, 0, &g_tw_wm_srv);
+        if (FAILED(hr)) { tw_fail("no window plane", hr); return false; }
+    }
+    if (!g_tw_up_tex || g_tw_w != w || g_tw_h != h) {
+        if (g_tw_up_srv) { g_tw_up_srv->Release(); g_tw_up_srv = 0; }
+        if (g_tw_up_tex) { g_tw_up_tex->Release(); g_tw_up_tex = 0; }
+        D3D11_TEXTURE2D_DESC d;
+        memset(&d, 0, sizeof d);
+        d.Width = (UINT)w;
+        d.Height = (UINT)h;
+        d.MipLevels = d.ArraySize = 1;
+        d.SampleDesc.Count = 1;
+        d.Usage = D3D11_USAGE_DEFAULT;
+        d.Format = DXGI_FORMAT_R32_UINT;
+        d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        HRESULT hr = g_dev->CreateTexture2D(&d, 0, &g_tw_up_tex);
+        if (SUCCEEDED(hr)) hr = g_dev->CreateShaderResourceView(g_tw_up_tex, 0, &g_tw_up_srv);
+        if (FAILED(hr)) { tw_fail("no merge texture", hr); return false; }
+        g_tw_w = w;
+        g_tw_h = h;
+    }
+    return true;
+}
+
+/* the parameters of every pass of the tick (box = the box passes' rectangle) */
+bool tw_cb(int bx0, int by0, int bx1, int by1)
+{
+    D3D11_MAPPED_SUBRESOURCE cm;
+    memset(&cm, 0, sizeof cm);
+    HRESULT hr = g_ctx->Map(g_tw_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &cm);
+    if (FAILED(hr) || !cm.pData) { tw_fail("the parameters were refused", hr); return false; }
+    uint32_t *u = (uint32_t *)cm.pData;
+    const PortTwodFrame &p = g_tw_p;
+    u[0] = (uint32_t)p.active_w;
+    u[1] = (uint32_t)p.active_h;
+    u[2] = (uint32_t)(p.present_h > 0 ? p.present_h : 1);
+    u[3] = (p.widescreen ? 1u : 0u) | (p.wm ? 0u : 4u);
+    u[4] = (uint32_t)(p.sx > 0 ? p.sx : 1);
+    u[5] = (uint32_t)p.half_margin;
+    u[6] = p.backdrop;
+    u[7] = (uint32_t)p.out_mask;
+    u[8] = (uint32_t)g_cp_w;
+    u[9] = (uint32_t)g_cp_h;
+    u[10] = (uint32_t)p.first;
+    u[11] = 0;
+    u[12] = (uint32_t)bx0;
+    u[13] = (uint32_t)by0;
+    u[14] = (uint32_t)bx1;
+    u[15] = (uint32_t)by1;
+    g_ctx->Unmap(g_tw_cb, 0);
+    return true;
+}
+
+/* the state every pass of this section shares: the whole target as viewport, a
+   scissor of the live picture, no blend, no depth, the parameters on b0 */
+void tw_state(int n_rtv, ID3D11RenderTargetView *r0, ID3D11RenderTargetView *r1,
+              int sc_w, int sc_h, D3D11_PRIMITIVE_TOPOLOGY topo)
+{
+    D3D11_VIEWPORT vp;
+    vp.TopLeftX = 0.0f;
+    vp.TopLeftY = 0.0f;
+    vp.Width = (float)g_cp_w;
+    vp.Height = (float)g_cp_h;
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    g_ctx->RSSetViewports(1, &vp);
+    D3D11_RECT sc;
+    sc.left = 0;
+    sc.top = 0;
+    sc.right = sc_w < g_cp_w ? sc_w : g_cp_w;
+    sc.bottom = sc_h < g_cp_h ? sc_h : g_cp_h;
+    g_ctx->RSSetScissorRects(1, &sc);
+    g_ctx->RSSetState(g_rast);
+    ID3D11RenderTargetView *rt[2] = { r0, r1 };
+    g_ctx->OMSetRenderTargets((UINT)n_rtv, rt, 0);
+    g_ctx->OMSetDepthStencilState(0, 0);
+    g_ctx->OMSetBlendState(0, 0, 0xffffffffu);
+    g_ctx->IASetInputLayout(0);
+    g_ctx->IASetPrimitiveTopology(topo);
+    g_ctx->VSSetConstantBuffers(0, 1, &g_tw_cb);
+    g_ctx->PSSetConstantBuffers(0, 1, &g_tw_cb);
+}
+
+void tw_unbind()
+{
+    ID3D11ShaderResourceView *none[3] = { 0, 0, 0 };
+    g_ctx->PSSetShaderResources(4, 3, none);
+    g_ctx->VSSetShaderResources(4, 1, none);
+    g_ctx->OMSetRenderTargets(0, 0, 0);
+}
+
+/* the processor's pixels written into `ov` over the card's overlay: the box of
+   non-zero words, uploaded and drawn with zero alpha discarded (a held tick has
+   no processor write of alpha 0: whatever settles a frame first folds it, see
+   tw_fold) */
+void tw_flush(const uint32_t *ov, int stride_px)
+{
+    const long long t0 = qpc();
+    const int w = g_cp_w, h = g_cp_h;
+    int bx0 = w, bx1 = 0, by0 = h, by1 = 0;
+    for (int y = 0; y < h; ++y) {
+        const uint32_t *row = ov + (size_t)y * stride_px;
+        int x = 0;
+        while (x + 8 <= w) {
+            if (row[x] | row[x + 1] | row[x + 2] | row[x + 3] |
+                row[x + 4] | row[x + 5] | row[x + 6] | row[x + 7]) break;
+            x += 8;
+        }
+        while (x < w && !row[x]) ++x;
+        if (x >= w) continue;
+        const int first = x;
+        int last = w - 1;
+        while (last - 8 >= first) {
+            if (row[last] | row[last - 1] | row[last - 2] | row[last - 3] |
+                row[last - 4] | row[last - 5] | row[last - 6] | row[last - 7]) break;
+            last -= 8;
+        }
+        while (last > first && !row[last]) --last;
+        if (first < bx0) bx0 = first;
+        if (last + 1 > bx1) bx1 = last + 1;
+        if (y < by0) by0 = y;
+        by1 = y + 1;
+    }
+    ++g_tw_flushes;
+    if (bx1 <= bx0 || by1 <= by0) { g_tw_flush_ms += ms_between(t0, qpc()); return; }
+    D3D11_BOX ub;
+    ub.left = (UINT)bx0;
+    ub.right = (UINT)bx1;
+    ub.top = (UINT)by0;
+    ub.bottom = (UINT)by1;
+    ub.front = 0;
+    ub.back = 1;
+    g_ctx->UpdateSubresource(g_tw_up_tex, 0, &ub, ov + (size_t)by0 * stride_px + bx0,
+                             (UINT)stride_px * 4u, 0);
+    if (!tw_cb(bx0, by0, bx1, by1)) return;
+    tw_state(1, g_ov_rtv, 0, g_cp_w, g_cp_h, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    g_ctx->VSSetShader(g_tw_vs_box, 0, 0);
+    g_ctx->PSSetShader(g_tw_ps_boxup, 0, 0);
+    ID3D11ShaderResourceView *srv[3] = { 0, 0, g_tw_up_srv };
+    g_ctx->PSSetShaderResources(4, 3, srv);
+    g_ctx->Draw(4, 0);
+    tw_unbind();
+    g_tw_flush_ms += ms_between(t0, qpc());
+}
+
+bool tw_stage()
+{
+    if (g_tw_st_ov && g_tw_st_bm) return true;
+    D3D11_TEXTURE2D_DESC d;
+    memset(&d, 0, sizeof d);
+    d.Width = (UINT)g_cp_w;
+    d.Height = (UINT)g_cp_h;
+    d.MipLevels = d.ArraySize = 1;
+    d.SampleDesc.Count = 1;
+    d.Usage = D3D11_USAGE_STAGING;
+    d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    d.Format = DXGI_FORMAT_R32_UINT;
+    if (!g_tw_st_ov && FAILED(g_dev->CreateTexture2D(&d, 0, &g_tw_st_ov))) return false;
+    d.Format = DXGI_FORMAT_R8_UINT;
+    if (!g_tw_st_bm && FAILED(g_dev->CreateTexture2D(&d, 0, &g_tw_st_bm))) return false;
+    return true;
+}
+
+/* the overlay (and mask) of the tick read back into the processor's buffers:
+   `fb` keeps every word it holds, the card's fills the rest. finish = the frame
+   is an ordinary one from here. */
+void tw_fold(uint32_t *fb, int stride, bool finish)
+{
+    if (!g_tw_live || !g_ctx || !g_ov_tex || !tw_stage()) return;
+    const int w = g_cp_w, h = g_cp_h;
+    g_ctx->CopyResource(g_tw_st_ov, g_ov_tex);
+    D3D11_MAPPED_SUBRESOURCE cm;
+    memset(&cm, 0, sizeof cm);
+    if (FAILED(g_ctx->Map(g_tw_st_ov, 0, D3D11_MAP_READ, 0, &cm))) return;
+    for (int y = 0; y < h; ++y) {
+        const uint32_t *src = (const uint32_t *)((const unsigned char *)cm.pData + (size_t)y * cm.RowPitch);
+        uint32_t *dst = fb + (size_t)y * stride;
+        for (int x = 0; x < w; ++x)
+            if (!dst[x]) dst[x] = src[x];
+    }
+    g_ctx->Unmap(g_tw_st_ov, 0);
+    if (g_tw_p.bm_on && g_tw_cpu_mask) {
+        g_ctx->CopyResource(g_tw_st_bm, g_bm_tex);
+        memset(&cm, 0, sizeof cm);
+        if (SUCCEEDED(g_ctx->Map(g_tw_st_bm, 0, D3D11_MAP_READ, 0, &cm))) {
+            for (int y = 0; y < h; ++y)
+                memcpy(g_tw_cpu_mask + (size_t)y * g_tw_cpu_mask_stride,
+                       (const unsigned char *)cm.pData + (size_t)y * cm.RowPitch, (size_t)w);
+            g_ctx->Unmap(g_tw_st_bm, 0);
+        }
+    }
+    ++g_tw_folds;
+    if (finish) g_tw_live = false;
 }
 
 int draw_frame(const ntr::GxGpuFrame *f)
@@ -3699,6 +4065,166 @@ extern "C" int port_gpu_card_fade_recorded(void)
     return g_cp_held && g_cp_fade ? 1 : 0;
 }
 
+/* ---- TWODGPU1: the entry points of the section above ---------------------- */
+extern "C" int port_gpu_twod_ready(void)
+{
+    return (tw_env_on() && g_cp_held && !g_cp_dead && !g_down && g_ctx) ? 1 : 0;
+}
+
+extern "C" void port_gpu_twod_reset(void)
+{
+    g_tw_live = false;
+}
+
+extern "C" int port_gpu_twod_live(void)
+{
+    return g_tw_live ? 1 : 0;
+}
+
+extern "C" int port_gpu_twod_begin(const PortTwodFrame *p, unsigned char *cpu_mask,
+                                   int mask_stride, const unsigned *fbpx)
+{
+    g_tw_live = false;
+    if (!p || !port_gpu_twod_ready()) return 0;
+    const long long t0 = qpc();
+    if (!cp_ensure(g_cp_cw, g_cp_ch)) return 0;
+    if (!tw_ensure(g_cp_cw, g_cp_ch)) return 0;
+    g_tw_p = *p;
+    g_tw_p.wm = 0;                       /* a pointer valid for this call only */
+    if (p->wm) {
+        g_tw_p.wm = (const unsigned char *)1;   /* "a plane is bound" for tw_cb */
+        g_ctx->UpdateSubresource(g_tw_wm_tex, 0, 0, p->wm, 256, 0);
+    }
+    g_tw_cpu_mask = cpu_mask;
+    g_tw_cpu_mask_stride = mask_stride;
+    g_tw_fb = (const uint32_t *)fbpx;
+    const float zero[4] = { 0, 0, 0, 0 };
+    g_ctx->ClearRenderTargetView(g_ov_rtv, zero);
+    g_ctx->ClearRenderTargetView(g_bm_rtv, zero);
+    if (!tw_cb(0, 0, 0, 0)) return 0;
+    ID3D11ShaderResourceView *srv[3] = { 0, g_tw_wm_srv, 0 };
+    if (p->hide) {
+        tw_state(1, g_ov_rtv, 0, p->active_w, p->active_h, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        g_ctx->VSSetShader(g_full_vs, 0, 0);
+        g_ctx->PSSetShader(g_tw_ps_hide, 0, 0);
+        g_ctx->PSSetShaderResources(4, 3, srv);
+        g_ctx->Draw(3, 0);
+        tw_unbind();
+    }
+    if (p->bm_on) {
+        tw_state(1, g_bm_rtv, 0, p->active_w, p->active_h, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        g_ctx->VSSetShader(g_full_vs, 0, 0);
+        g_ctx->PSSetShader(g_tw_ps_bmdef, 0, 0);
+        g_ctx->PSSetShaderResources(4, 3, srv);
+        g_ctx->Draw(3, 0);
+        tw_unbind();
+    }
+    g_tw_live = true;
+    ++g_tw_ticks;
+    g_tw_ms += ms_between(t0, qpc());
+    return 1;
+}
+
+extern "C" void port_gpu_twod_rects(const unsigned *inst, int n)
+{
+    if (!g_tw_live || n <= 0 || !inst) return;
+    const long long t0 = qpc();
+    if (n > TW_MAX_CELLS) n = TW_MAX_CELLS;
+    D3D11_MAPPED_SUBRESOURCE cm;
+    memset(&cm, 0, sizeof cm);
+    HRESULT hr = g_ctx->Map(g_tw_inst_buf, 0, D3D11_MAP_WRITE_DISCARD, 0, &cm);
+    if (FAILED(hr) || !cm.pData) { tw_fail("the cells were refused", hr); return; }
+    memcpy(cm.pData, inst, (size_t)n * 16u);
+    g_ctx->Unmap(g_tw_inst_buf, 0);
+    if (!tw_cb(0, 0, 0, 0)) return;
+    tw_state(2, g_ov_rtv, g_bm_rtv, g_tw_p.active_w, g_tw_p.active_h,
+             D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    g_ctx->VSSetShader(g_tw_vs_rect, 0, 0);
+    g_ctx->PSSetShader(g_tw_ps_rect, 0, 0);
+    ID3D11ShaderResourceView *srv[3] = { g_tw_inst_srv, g_tw_wm_srv, 0 };
+    g_ctx->VSSetShaderResources(4, 1, srv);
+    g_ctx->PSSetShaderResources(4, 3, srv);
+    g_ctx->DrawInstanced(4, (UINT)n, 0, 0);
+    tw_unbind();
+    g_tw_rects += n;
+    g_tw_ms += ms_between(t0, qpc());
+}
+
+extern "C" void port_gpu_twod_bm_rect(int x0, int y0, int x1, int y1)
+{
+    if (!g_tw_live) return;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > g_cp_w) x1 = g_cp_w;
+    if (y1 > g_cp_h) y1 = g_cp_h;
+    if (x1 <= x0 || y1 <= y0) return;
+    if (!tw_cb(x0, y0, x1, y1)) return;
+    tw_state(1, g_bm_rtv, 0, g_cp_w, g_cp_h, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    g_ctx->VSSetShader(g_tw_vs_box, 0, 0);
+    g_ctx->PSSetShader(g_tw_ps_inset, 0, 0);
+    ID3D11ShaderResourceView *srv[3] = { 0, g_tw_wm_srv, 0 };
+    g_ctx->PSSetShaderResources(4, 3, srv);
+    g_ctx->Draw(4, 0);
+    tw_unbind();
+}
+
+/* what = 0 the overlay and the mask at the end of engine A's compositor, 1 the
+   mask once the inset panel has been drawn (the overlay then still lacks the
+   processor-written pixels) */
+extern "C" void port_gpu_twod_check(const unsigned *fb, int stride_px,
+                                    const unsigned char *bm, int bm_stride, int what)
+{
+    if (!g_tw_live || !g_ctx || !g_ov_tex || !fb || !tw_stage()) return;   /* fb: any non-null for what 1 */
+    const int w = g_tw_p.active_w < g_cp_w ? g_tw_p.active_w : g_cp_w;
+    const int h = g_tw_p.active_h < g_cp_h ? g_tw_p.active_h : g_cp_h;
+    long long bad_ov = 0, bad_bm = 0;
+    int fx = -1, fy = -1;
+    unsigned fgot = 0, fwant = 0;
+    D3D11_MAPPED_SUBRESOURCE cm;
+    if (what == 0) {
+        g_ctx->CopyResource(g_tw_st_ov, g_ov_tex);
+        memset(&cm, 0, sizeof cm);
+        if (FAILED(g_ctx->Map(g_tw_st_ov, 0, D3D11_MAP_READ, 0, &cm))) return;
+        for (int y = 0; y < h; ++y) {
+            const uint32_t *src = (const uint32_t *)((const unsigned char *)cm.pData + (size_t)y * cm.RowPitch);
+            const uint32_t *ref = fb + (size_t)y * stride_px;
+            for (int x = 0; x < w; ++x)
+                if (src[x] != ref[x]) {
+                    if (!bad_ov) { fx = x; fy = y; fgot = src[x]; fwant = ref[x]; }
+                    ++bad_ov;
+                }
+        }
+        g_ctx->Unmap(g_tw_st_ov, 0);
+    }
+    if (bm && g_tw_p.bm_on) {
+        g_ctx->CopyResource(g_tw_st_bm, g_bm_tex);
+        memset(&cm, 0, sizeof cm);
+        if (SUCCEEDED(g_ctx->Map(g_tw_st_bm, 0, D3D11_MAP_READ, 0, &cm))) {
+            for (int y = 0; y < h; ++y) {
+                const unsigned char *src = (const unsigned char *)cm.pData + (size_t)y * cm.RowPitch;
+                const unsigned char *ref = bm + (size_t)y * bm_stride;
+                for (int x = 0; x < w; ++x)
+                    if (src[x] != ref[x]) {
+                        if (!bad_bm && !bad_ov) { fx = x; fy = y; fgot = src[x]; fwant = ref[x]; }
+                        ++bad_bm;
+                    }
+            }
+            g_ctx->Unmap(g_tw_st_bm, 0);
+        }
+    }
+    ++g_tw_checks;
+    if (bad_ov || bad_bm) {
+        ++g_tw_bad;
+        g_tw_bad_px_ov += bad_ov;
+        g_tw_bad_px_bm += bad_bm;
+        if (g_tw_bad <= 8)
+            fprintf(stderr, "[renderer-twodcheck] stage %d: %lld overlay and %lld mask "
+                    "pixel(s) differ from the processor's (first at %d,%d: card %08x "
+                    "processor %08x)\n", what, bad_ov, bad_bm, fx, fy, fgot, fwant);
+    }
+}
+
+
 #else   /* not Windows: the port ships on Windows and there is no card here */
 
 #include "hal/gpu_raster.h"
@@ -3714,5 +4240,12 @@ void *port_gpu_card_compose(const unsigned int *, int) { return 0; }
 void *port_gpu_card_retained_view(int) { return 0; }
 void *port_gpu_card_compose_inter(const unsigned int *, int) { return 0; }
 int port_gpu_card_fade_recorded(void) { return 0; }
+int port_gpu_twod_ready(void) { return 0; }
+void port_gpu_twod_reset(void) {}
+int port_gpu_twod_begin(const PortTwodFrame *, unsigned char *, int, const unsigned *) { return 0; }
+void port_gpu_twod_rects(const unsigned *, int) {}
+void port_gpu_twod_bm_rect(int, int, int, int) {}
+int port_gpu_twod_live(void) { return 0; }
+void port_gpu_twod_check(const unsigned *, int, const unsigned char *, int, int) {}
 
 #endif
