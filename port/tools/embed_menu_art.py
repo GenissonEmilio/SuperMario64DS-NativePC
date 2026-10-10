@@ -4,7 +4,7 @@ import os
 here = os.path.dirname(os.path.abspath(__file__))
 res = os.path.join(here, "..", "res", "menu")
 names = [("logo", "logo_sm64_pc.png"), ("btn_mp", "btn_mp.png"), ("btn_adventure", "btn_adventure.png"), ("btn_rec", "btn_rec.png"),
-         ("arrow_up", "arrow_up.png"), ("arrow_down", "arrow_down.png"), ("pattern", "pattern.png")]
+         ("arrow_up", "arrow_up.png"), ("arrow_down", "arrow_down.png"), ("pattern", "pattern.png"), ("title_star", "title_star.png")]
 out = ["/* menu_logo_data.cpp -- the menu art PNGs of res/menu as bytes (tools/embed_menu_art.py). Generated; do not edit. */"]
 for tag, f in names:
     d = open(os.path.join(res, f), "rb").read()

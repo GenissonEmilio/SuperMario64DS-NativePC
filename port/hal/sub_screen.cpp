@@ -430,6 +430,8 @@ void hal_sub_panel_geometry(int w, int h)
 extern "C" const unsigned char *port_fs_archive_member(unsigned fileID,
                                                        unsigned *len_out);
 extern "C" void DecompressLZ16(void *src, void *dst);
+extern "C" void port_title_press_seen(void);   /* hal/menu_recipe_title.cpp */
+extern "C" int port_host_key_script(int vk);   /* tests/walk_window.cpp: SM64DS_HOST_KEY, 0 when unset */
 
 const unsigned kWallScreen = 0x8401, kWallTiles = 0x8402, kWallPltt = 0x8406;
 const int kWallBank = 2;          /* measured; see the banner above */
@@ -2502,6 +2504,9 @@ void poll_touch(void)
         }
     }
 
+    /* ASSET6: a stylus / click / queued press going into the ROM gives the title attract its hidden save words back first */
+    if (down) port_title_press_seen();
+
     /* ---- BYTE +1 IS THE ROM'S CHANGE EDGE, NOT "HELD FOR TWO FRAMES" ------
      *
      * This is link 5 of the chain port/touch_map.txt maps, and the ROM's own
@@ -3623,12 +3628,12 @@ extern "C" void hal_menu_pad_seam(void)
 {
     static int back_was;
     int back = 0;
-    if (!g_headless && GetAsyncKeyState_ && hal_window_focused()) {
-        const int d = (GetAsyncKeyState_(VK_BACK) & 0x8000) ? 1 : 0;
+    {
+        /* ASSET6: SM64DS_HOST_KEY=08@f scripts the Backspace here too (a scripted run has no focused window to read the key from) */
+        int d = port_host_key_script(VK_BACK);
+        if (!d && !g_headless && GetAsyncKeyState_ && hal_window_focused()) d = (GetAsyncKeyState_(VK_BACK) & 0x8000) ? 1 : 0;
         back = d && !back_was;
         back_was = d;
-    } else {
-        back_was = 0;
     }
     if (!hal_menu_live()) return;
     /* ASSET3: MOUSE HOVER. A menu recipe's hotspots take the mouse focus when the pointer moves onto them (hal_menu_hover had no

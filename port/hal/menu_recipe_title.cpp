@@ -429,7 +429,7 @@ void build_main(MenuLayout *L, bool intro)
    ==================================================================================================================== */
 enum { CH_NONE = 0, CH_INTRO = 1, CH_RETURN = 2 };
 enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 10, CH_LOGO_IN = 14, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
-       CH_PLANK_START = 4, CH_SWAP_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_VEIL = 10 };
+       CH_PLANK_START = 4, CH_FLY = 14, CH_SWAP_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_VEIL = 10 };
 struct Chore {
     int mode;            /* CH_* */
     int in_fam;          /* the main family (V_INTRO / V_MAIN) is the page */
@@ -442,6 +442,7 @@ struct Chore {
     int iris_covered;    /* the iris covered the picture on the last drawn frame */
     int ff2_done;
     int attract_t;       /* the ROM's attract counter as last read */
+    int fly_t;           /* ASSET6: frames since the press, while the star flies off the top (state 10 before the iris) */
 } g_ch;
 
 int ff_on()
@@ -505,7 +506,7 @@ void chore_step(int variant, int top, int elem, int req)
     if (!c.in_fam) {              /* entering the main family */
         c.in_fam = 1;
         c.mode = (c.prev_variant == V_ATTRACT) ? CH_INTRO : CH_RETURN;
-        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0;
+        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0;
         if (hal_menu_trace_on()) fprintf(stderr, "[chore] enter family mode=%s top=%d\n", c.mode == CH_INTRO ? "intro" : "return", top);
     }
     ++c.fam_t;
@@ -515,6 +516,7 @@ void chore_step(int variant, int top, int elem, int req)
     if (c.mode == CH_INTRO) {
         if (c.ct >= 0 && !vis && !c.iris_covered) c.iris_covered = 1;      /* the ROM's iris is gone: nothing left to draw */
         if (c.ct < 0) {
+            if (top == 10 && !vis) ++c.fly_t;
             if (vis && top == 10) { c.ct = 0; if (hal_menu_trace_on()) fprintf(stderr, "[chore] iris starts (s48 %d)\n", s48); }
             else if (top == 1 || top == 0) c.ct = ctune(0, CH_LOGO_POP) + ctune(1, CH_BOUNCE_LEN);   /* no iris came: the intro is over */
         } else {
@@ -523,8 +525,9 @@ void chore_step(int variant, int top, int elem, int req)
     }
     const int bounce_end = ctune(0, CH_LOGO_POP) + ctune(1, CH_BOUNCE_LEN);
     const bool bounced = c.mode == CH_RETURN || c.skip || (c.ct >= bounce_end);
+    const bool arriving = c.mode == CH_RETURN && top == 1 && elem == 0;      /* ASSET6: the ROM's head is on its way in */
     if (c.sw_t < 0) {
-        if (rest && bounced) {
+        if ((rest || arriving) && bounced) {
             c.sw_t = 0;
             if (hal_menu_trace_on()) fprintf(stderr, "[chore] swap starts (ct %d, fam_t %d)\n", c.ct, c.fam_t);
         }
@@ -534,7 +537,7 @@ void chore_step(int variant, int top, int elem, int req)
     if (c.skip && c.sw_t >= 0 && c.sw_t < CH_SWAP_END) c.sw_t = CH_SWAP_END;
     /* the face: faded in once the ROM is at rest and the swap began; faded out quickly when the ROM leaves rest (it walks out) */
     if (c.sw_t < 0) c.face_a = 0;
-    else if (rest) {
+    else if (rest || arriving) {
         const int step = c.skip || c.sw_t >= CH_SWAP_END ? 255 : 255 / CH_FACE_FADE + 1;
         c.face_a += step; if (c.face_a > 255) c.face_a = 255;
     } else {
@@ -544,16 +547,73 @@ void chore_step(int variant, int top, int elem, int req)
 }
 
 /* ROM state the choreography writes (SM64DS_TITLE_FF=0 turns all of it off). Called from menu_title_up. */
+/* ASSET6: THE ATTRACT WAITS FOR THE PLAYER. The ROM (src/func_ov007_020b0a20.c) plays the star's flight and leaves the attract by itself
+   when a save exists (func_ov007_020aebac == 0): the animation ends and it asks for state 10. With no save it picks the other animation
+   (the star idling over TOUCH TO START) and waits. Tango asked for the waiting picture whatever the save, so while the attract is up the
+   port shows the ROM the empty-save words (func_ov007_020aebac reads bytes +0xb..+0xd and the word +4 of the record at g+0x28), and puts the
+   real words back on the frame the player presses (pad key, click or touch) so the ROM's own gate takes that press. Restored too whenever the
+   attract is left. Nothing else reads those words on the attract page. */
+static unsigned char g_sv_b[3];
+static int g_sv_i;
+static int g_sv_faked;
+static char *sv_rec()
+{
+    if (!data_ov007_0210342c) return 0;
+    char **pp = *(char ***)((char *)data_ov007_0210342c + 0x28);
+    return pp ? *pp : 0;
+}
+static void sv_fake()
+{
+    char *q = sv_rec();
+    if (!q || g_sv_faked) return;
+    memcpy(g_sv_b, q + 0xb, 3);
+    g_sv_i = *(int *)(q + 4);
+    if (!g_sv_b[0] && !g_sv_b[1] && !g_sv_b[2] && !g_sv_i) return;     /* already empty: the ROM waits by itself */
+    memset(q + 0xb, 0, 3);
+    *(int *)(q + 4) = 0;
+    g_sv_faked = 1;
+    if (hal_menu_trace_on()) fprintf(stderr, "[chore] attract holds: save words hidden from the ROM until a press\n");
+}
+static void sv_restore()
+{
+    if (!g_sv_faked) return;
+    char *q = sv_rec();
+    if (q) { memcpy(q + 0xb, g_sv_b, 3); *(int *)(q + 4) = g_sv_i; }
+    g_sv_faked = 0;
+    if (hal_menu_trace_on()) fprintf(stderr, "[chore] press: save words given back\n");
+}
+extern "C" void port_title_press_seen(void) { if (g_ch.attract_t >= 6) sv_restore(); }   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
+
 void chore_rom_writes(int top, int req)
 {
-    if (!ff_on() || !data_ov007_0210342c) return;
+    if (!data_ov007_0210342c) return;
+    if (top == 11 && g_ch.attract_t >= 0 && !g_sv_faked && g_ch.attract_t < 8 && g_last == V_ATTRACT) sv_fake();
+    else if (top != 11) sv_restore();
+    if (!ff_on()) return;
     char *g = (char *)data_ov007_0210342c;
     char *sp = *(char **)(g + 8);
     if (!sp) return;
     int *t = (int *)(sp + 0xc);
+    /* ASSET6: a return from a file page runs the ROM's star iris backwards (top-state 5, 69 frames) over a page we show as a short veil: the
+       iris is told it is finished once the veil is up, so the head's arrival (top-state 1) follows at once */
+    if (top == 5 && g_ch.mode == CH_RETURN && g_ch.fam_t >= CH_VEIL && !g_ch.ff2_done && data_ov007_02104bd8) {
+        char *o6 = *(char **)data_ov007_02104bd8;
+        if (o6 && *(int *)(o6 + 8) == 1) {
+            const int step = *(int *)(o6 + 0x18);
+            const int want = 0x1000 - step + 1;
+            if (*(int *)(o6 + 0x14) < want) *(int *)(o6 + 0x14) = want;
+            g_ch.ff2_done = 1;
+            if (hal_menu_trace_on()) fprintf(stderr, "[chore] return: ROM iris progress finished early\n");
+        }
+    }
+    /* ASSET6: leaving a file page the ROM idles 30 frames (state 11, element machine 5) before its star iris closes over the page: skipped once its own 6 frame fade-in is over (an iris asked for while that fade runs is dropped) */
+    if (top == 11 && g_elem == 5 && *t >= 9 && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] file page exit: idle counter skipped\n"); }
     if (top == 10 && g_ch.mode == CH_INTRO) {
         /* the ROM's iris starts at t = 60; before it the lower screen is black and nothing is keyed on t after the t = 30 sound */
-        if (*t >= 31 && *t < 58) { *t = 58; if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t jumped to 58\n"); }
+        /* ASSET6: the star has flown off the top (CH_FLY frames after the press); the counter skips to 29 (the t = 30 sound still plays), then to
+           58 once past it, so the iris (t = 60) follows within a few frames */
+        if (*t >= ctune(9, CH_FLY) && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t jumped to 29\n"); }
+        else if (*t >= 31 && *t < 58) { *t = 58; if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t jumped to 58\n"); }
         /* once our iris covers the picture the ROM's iris is finished: progress to its last step so the callback asks for the arrival */
         if (g_ch.iris_covered && !g_ch.ff2_done && data_ov007_02104bd8) {
             char *o6 = *(char **)data_ov007_02104bd8;
@@ -803,6 +863,34 @@ void menu_title_build(int variant, MenuLayout *L)
         L->stage = MENU_STAGE_POST_FADE;
         return;
     }
+    if (variant == V_INTRO && g_ch.mode == CH_INTRO && g_ch.ct < 0 && !getenv("SM64DS_CHORE_BLACK")) {
+        /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
+           as the ROM draws them until its iris sprite appears */
+        MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
+        p.touch = 1;
+        menu_add_piece(L, p);
+        L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+        L->stage = MENU_STAGE_POST_FADE;
+        /* the star: the ROM takes its own off the picture on the press frame, so ours (cut from the ROM's render, res/menu/title_star.png)
+           takes its place and flies up off the top edge, accelerating (the ROM's flight measured 16 frames from the middle of the screen
+           to off the top) */
+        if (menu_hostimg_ready(MENU_IMG_STAR) && g_ch.fly_t >= 0) {
+            const int un = L->unum, ud = L->uden;
+            const float ft = (float)g_ch.fly_t;
+            const float cy = 91.6f - 0.55f * ft * ft;                  /* DS pixels, the star's centre */
+            int sw = 1, sh = 1;
+            menu_hostimg_size(MENU_IMG_STAR, &sw, &sh);
+            const int dw = 25 * un / ud, dh = (int)((long long)dw * sh / sw);
+            if (cy > -16.f) {
+                MenuPiece st = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+                st.bg = 1; st.hostimg = MENU_IMG_STAR; st.nofade = 1; st.lden = 1; st.lnum = 1; st.fw = (short)dw; st.fh = (short)dh;
+                st.fx = (short)(L->w / 2 + (int)((127.6f - 128.f) * (float)un / (float)ud) - dw / 2);
+                st.fy = (short)((int)(cy * (float)un / (float)ud) - dh / 2 + (L->h - 192 * un / ud) / 2);
+                menu_add_piece(L, st);
+            }
+        }
+        return;
+    }
     if (variant == V_MAIN || variant == V_INTRO) {
         build_main_sel(L, variant == V_INTRO);
         return;
@@ -911,12 +999,13 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
     title_cursor_assist();
     /* ASSET5: THE ATTRACT'S TOUCH-TO-START, given by the port once the star is off the top of the lower screen (counter 56; SM64DS_TITLE_FF=0
        turns it off), for one frame as the DS A key edge the ROM's own skip reads; and a confirm during the swap finishes the choreography. */
-    static int skip_sent;
     int inject = 0;
     {
         int top, elem, req;
-        if (port_title_page_state(&top, &elem, &req) && top == 11 && ff_on() && g_ch.attract_t >= 56 && !skip_sent) { skip_sent = 1; inject = 1; }
-        if (top != 11) skip_sent = 0;
+        if (port_title_page_state(&top, &elem, &req) && top == 11 && g_sv_faked && g_ch.attract_t >= 6 && (*pressed & (MENU_PAD_CONFIRM | 0x0001 | 0x0008))) {
+            sv_restore();
+            inject = 1;      /* the held word gets the A edge too, so a Start / Enter / Space press is an edge the ROM's gate reads */
+        }
         if (g_ch.in_fam && g_ch.sw_t < CH_SWAP_END && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
             if (!g_ch.skip && hal_menu_trace_on()) fprintf(stderr, "[chore] confirm during the choreography: finishing it\n");
             g_ch.skip = 1;
@@ -927,6 +1016,14 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
        word moves 0x0002 -> 0x0001 too, and a host back is a one-frame B in it. */
     unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
     unsigned short h = *held;
+    /* ASSET6: PAD B (the port's punch binding, DS A bit 0x0001 natively; pad A arrives as 0x0002) is the back arrow on every page that has one
+       (file select, file options, scores, copy / erase, doodle): the ROM has only a touch back, so it is the same host back Backspace gives.
+       On the main page and the attract 0x0001 stays a confirm. */
+    if ((g_last == V_FILES || g_last == V_OPTIONS || g_last == V_TABLE || g_last == V_DOODLE) && ((*pressed | h) & 0x0001)) {
+        if (*pressed & 0x0001) host_back = 1;
+        *pressed = (uint16_t)(*pressed & ~0x0001u);
+        h = (unsigned short)(h & ~0x0001u);
+    }
     if (h & MENU_PAD_CONFIRM) h = (unsigned short)((h & ~(unsigned)MENU_PAD_CONFIRM) | 0x0001);
     if (inject) h = (unsigned short)(h | 0x0001);
     if (host_back) h = (unsigned short)(h | 0x0002);
