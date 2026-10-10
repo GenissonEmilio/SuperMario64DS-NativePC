@@ -926,6 +926,48 @@ int host_setting_save_menu_on_top(void);
 int host_setting_one_screen_menus(void);
 int host_setting_hud_layout(void);
 
+/* ---- LIVE SETTINGS (run menu1, lane SETLIVE1) -----------------------------
+   The setters below change a value in the running game at once and queue the
+   settings.json write (about every half second at most while a slider moves;
+   host_settings_save_flush forces it). hal/settings_live.h is the id-based
+   API the in-game page uses; these are what it stands on. Each set returns 1
+   when the value was accepted, 0 when it was out of range (nothing changed).
+
+   host_settings_ctl_gen moves whenever a binding, run mode, camera mode or one
+   of the numbers below changes, by a set or by a launcher edit seen by the
+   poll. A frame loop that compares it with the last value it saw knows when to
+   re-copy its working values. */
+int host_settings_ctl_gen(void);
+int host_settings_cam_gen(void);   /* moves when CameraMode is set or reloaded, not on F1 */
+void host_settings_save_tick(void);
+int host_settings_save_pending(void);
+int host_settings_save_flush(void);
+
+int host_setting_set_key(int action, int vk);
+int host_setting_set_pad(int action, int mask);
+int host_setting_set_run_mode(int mode);
+int host_setting_set_camera_mode(int mode);
+int host_setting_set_swap_camera_turn(int on);
+int host_setting_set_invert_camera_y(int on);
+int host_setting_set_stick_deadzone(int pct);          /* 0..50, 24 = today */
+int host_setting_set_run_threshold(int pct);           /* 30..100, 89 = ROM */
+int host_setting_set_camera_sensitivity(int pct);      /* 10..400, 100 = today */
+int host_setting_set_mouse_sensitivity(int pct);       /* 10..400, 100 = today */
+int host_setting_set_mouse_capture(int on);
+int host_setting_set_volume(int pct);                  /* 0..100 */
+int host_setting_set_minimap_scale(double s);
+
+int host_setting_stick_deadzone_raw(void);   /* of 32767; 7849 by default */
+int host_setting_stick_deadzone_pct(void);   /* 24 by default */
+int host_setting_stick_digital(void);        /* 12000 by default, scales with it */
+int host_setting_run_threshold_pct(void);    /* 89 by default */
+int host_setting_run_threshold_is_default(void);
+int host_setting_run_remap(int mag);         /* 0..0x1000 in, 0..0x1000 out */
+double host_setting_run_norm(void);          /* 0.87 by default (MP fold) */
+int host_setting_invert_camera_y(void);
+int host_setting_camera_sensitivity(void);
+int host_setting_mouse_sensitivity(void);
+
 #ifdef __cplusplus
 }
 #endif

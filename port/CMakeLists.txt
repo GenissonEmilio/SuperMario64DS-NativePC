@@ -24446,3 +24446,21 @@ foreach(_tasset2 walk_window walk_window_hires smoke_player)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_hostimg.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_logo_data.cpp")
 endforeach()
+
+# MENU1 / SETLIVE1 (run menu1): the in-game settings engine (live, saved settings through one
+# small API; hal/settings_live.h). Own block. walk_window.cpp calls it from both frame loops.
+foreach(_tsetlive1 walk_window walk_window_hires)
+    target_sources(${_tsetlive1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/settings_live.cpp")
+endforeach()
+
+# The same engine proved on the file alone (no ROM, no window): tests/smoke_settings_live.cpp.
+add_executable(smoke_settings_live tests/smoke_settings_live.cpp hal/host_settings.cpp
+    hal/settings_live.cpp hal/pad_backend.cpp)
+target_include_directories(smoke_settings_live PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_compile_definitions(smoke_settings_live PRIVATE SM64DS_PLATFORM_PC)
+if(MSVC)
+    target_compile_options(smoke_settings_live PRIVATE /wd4311 /wd4312 /wd4068)
+endif()
