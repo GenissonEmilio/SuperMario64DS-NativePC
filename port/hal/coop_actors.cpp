@@ -507,7 +507,15 @@ void process(unsigned now) {
         int nown = decide_owner(s.owner, g_my, my_cd, cur_fresh, cur_cd, best, best_cd, g_hyst);
         if (g_hyst && was != nown && was >= 0 && (unsigned)(now - s.owner_t) < (unsigned)kDwellMs && (was == g_my || cur_fresh))
             nown = was;                                            // dwell: no flip within a second
-        if (nown != was) { s.owner = nown; s.owner_t = now; if (was >= 0) ++g_st.owner_changes; }
+        if (nown != was) {
+            s.owner = nown; s.owner_t = now;
+            if (was >= 0) {
+                ++g_st.owner_changes;
+                if (g_log && g_st.owner_changes <= 400)
+                    std::fprintf(stderr, "[coopmove] owner slot=%d cls=%d %d->%d mycd=%u wall=%lld
+", slot, (int)p.id, was, nown, my_cd, wall_ms());
+            }
+        }
         // 2. apply what the owner (or a snapshot) sent
         for (int q = 0; q < kSeats; ++q) {
             if (q == g_my) continue;
@@ -708,7 +716,7 @@ void on_frame(unsigned now) {
 }
 
 void on_member_gone(int seat) {
-    if (seat < 0 || seat >= kSeats) return;
+    if (seat < 0 || seat >= kSeats || !g_stale_on) return;     // (the stale control keeps a dead owner)
     for (int i = 0; i < kSlots; ++i) {
         g_rx[i][seat].valid = false; g_rx[i][seat].fresh = false;
         if (g_slot[i].owner == seat) { g_slot[i].owner = -1; g_slot[i].owner_t = 0; }
