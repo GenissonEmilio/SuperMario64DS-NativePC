@@ -75,6 +75,7 @@ const char *const sdlshim_names[] = {
     "ResetEvent",
     "SHGetFolderPathW",
     "SelectObject",
+    "SetConsoleCtrlHandler",
     "SetErrorMode",
     "SetEvent",
     "SetHandleInformation",
@@ -176,6 +177,7 @@ const char *const sdlshim_dlls[] = {
     "kernel32.dll",
     "kernel32.dll",
     "kernel32.dll",
+    "kernel32.dll",
     "gdi32.dll",
     "user32.dll",
     "user32.dll",
@@ -193,4 +195,4 @@ const char *const sdlshim_dlls[] = {
     "winmm.dll",
     "winmm.dll",
 };
-const unsigned sdlshim_count = 95;
+const unsigned sdlshim_count = 96;

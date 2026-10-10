@@ -30,6 +30,10 @@ for line in open(symtxt, errors="replace"):
         m = re.search(r"__imp__(\w+)@(\d+)\b", line)
         if m:
             need.add((m.group(1), int(m.group(2))))
+# Imports the STATIC CRT adds on SDL's behalf, which the SDL library's own undefined-symbol
+# list cannot show: SDL_quit.c calls signal(), whose CRT body calls SetConsoleCtrlHandler.
+# Left alone it becomes the 156th KERNEL32 import and moves the import-table hash.
+need |= {("SetConsoleCtrlHandler", 8)}
 shim = sorted(n for n in need if n[0] not in have)
 
 # decorated symbol -> dll, from the short-form members of the SDK import libs

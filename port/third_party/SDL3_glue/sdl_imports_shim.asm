@@ -154,46 +154,48 @@ PUBLIC __imp__SHGetFolderPathW@20
 __imp__SHGetFolderPathW@20 dd thunk_73
 PUBLIC __imp__SelectObject@8
 __imp__SelectObject@8 dd thunk_74
+PUBLIC __imp__SetConsoleCtrlHandler@8
+__imp__SetConsoleCtrlHandler@8 dd thunk_75
 PUBLIC __imp__SetErrorMode@4
-__imp__SetErrorMode@4 dd thunk_75
+__imp__SetErrorMode@4 dd thunk_76
 PUBLIC __imp__SetEvent@4
-__imp__SetEvent@4 dd thunk_76
+__imp__SetEvent@4 dd thunk_77
 PUBLIC __imp__SetHandleInformation@12
-__imp__SetHandleInformation@12 dd thunk_77
+__imp__SetHandleInformation@12 dd thunk_78
 PUBLIC __imp__SetNamedPipeHandleState@16
-__imp__SetNamedPipeHandleState@16 dd thunk_78
+__imp__SetNamedPipeHandleState@16 dd thunk_79
 PUBLIC __imp__SetPixel@16
-__imp__SetPixel@16 dd thunk_79
+__imp__SetPixel@16 dd thunk_80
 PUBLIC __imp__SetPropW@12
-__imp__SetPropW@12 dd thunk_80
+__imp__SetPropW@12 dd thunk_81
 PUBLIC __imp__SetTimer@16
-__imp__SetTimer@16 dd thunk_81
+__imp__SetTimer@16 dd thunk_82
 PUBLIC __imp__ShellExecuteW@24
-__imp__ShellExecuteW@24 dd thunk_82
+__imp__ShellExecuteW@24 dd thunk_83
 PUBLIC __imp__SysFreeString@4
-__imp__SysFreeString@4 dd thunk_83
+__imp__SysFreeString@4 dd thunk_84
 PUBLIC __imp__SystemTimeToFileTime@8
-__imp__SystemTimeToFileTime@8 dd thunk_84
+__imp__SystemTimeToFileTime@8 dd thunk_85
 PUBLIC __imp__SystemTimeToTzSpecificLocalTime@12
-__imp__SystemTimeToTzSpecificLocalTime@12 dd thunk_85
+__imp__SystemTimeToTzSpecificLocalTime@12 dd thunk_86
 PUBLIC __imp__TranslateMessage@4
-__imp__TranslateMessage@4 dd thunk_86
+__imp__TranslateMessage@4 dd thunk_87
 PUBLIC __imp__TryEnterCriticalSection@4
-__imp__TryEnterCriticalSection@4 dd thunk_87
+__imp__TryEnterCriticalSection@4 dd thunk_88
 PUBLIC __imp__UnregisterClassA@8
-__imp__UnregisterClassA@8 dd thunk_88
+__imp__UnregisterClassA@8 dd thunk_89
 PUBLIC __imp__UnregisterClassW@8
-__imp__UnregisterClassW@8 dd thunk_89
+__imp__UnregisterClassW@8 dd thunk_90
 PUBLIC __imp__UnregisterDeviceNotification@4
-__imp__UnregisterDeviceNotification@4 dd thunk_90
+__imp__UnregisterDeviceNotification@4 dd thunk_91
 PUBLIC __imp__VerSetConditionMask@16
-__imp__VerSetConditionMask@16 dd thunk_91
+__imp__VerSetConditionMask@16 dd thunk_92
 PUBLIC __imp__VerifyVersionInfoW@16
-__imp__VerifyVersionInfoW@16 dd thunk_92
+__imp__VerifyVersionInfoW@16 dd thunk_93
 PUBLIC __imp__timeBeginPeriod@4
-__imp__timeBeginPeriod@4 dd thunk_93
+__imp__timeBeginPeriod@4 dd thunk_94
 PUBLIC __imp__timeEndPeriod@4
-__imp__timeEndPeriod@4 dd thunk_94
+__imp__timeEndPeriod@4 dd thunk_95
 .code
 thunk_0:
     push 0
@@ -954,7 +956,7 @@ thunk_75:
     jmp eax
 fail_75:
     xor eax, eax
-    ret 4
+    ret 8
 thunk_76:
     push 76
     call _sdlshim_resolve
@@ -974,7 +976,7 @@ thunk_77:
     jmp eax
 fail_77:
     xor eax, eax
-    ret 12
+    ret 4
 thunk_78:
     push 78
     call _sdlshim_resolve
@@ -984,7 +986,7 @@ thunk_78:
     jmp eax
 fail_78:
     xor eax, eax
-    ret 16
+    ret 12
 thunk_79:
     push 79
     call _sdlshim_resolve
@@ -1004,7 +1006,7 @@ thunk_80:
     jmp eax
 fail_80:
     xor eax, eax
-    ret 12
+    ret 16
 thunk_81:
     push 81
     call _sdlshim_resolve
@@ -1014,7 +1016,7 @@ thunk_81:
     jmp eax
 fail_81:
     xor eax, eax
-    ret 16
+    ret 12
 thunk_82:
     push 82
     call _sdlshim_resolve
@@ -1024,7 +1026,7 @@ thunk_82:
     jmp eax
 fail_82:
     xor eax, eax
-    ret 24
+    ret 16
 thunk_83:
     push 83
     call _sdlshim_resolve
@@ -1034,7 +1036,7 @@ thunk_83:
     jmp eax
 fail_83:
     xor eax, eax
-    ret 4
+    ret 24
 thunk_84:
     push 84
     call _sdlshim_resolve
@@ -1044,7 +1046,7 @@ thunk_84:
     jmp eax
 fail_84:
     xor eax, eax
-    ret 8
+    ret 4
 thunk_85:
     push 85
     call _sdlshim_resolve
@@ -1054,7 +1056,7 @@ thunk_85:
     jmp eax
 fail_85:
     xor eax, eax
-    ret 12
+    ret 8
 thunk_86:
     push 86
     call _sdlshim_resolve
@@ -1064,7 +1066,7 @@ thunk_86:
     jmp eax
 fail_86:
     xor eax, eax
-    ret 4
+    ret 12
 thunk_87:
     push 87
     call _sdlshim_resolve
@@ -1084,7 +1086,7 @@ thunk_88:
     jmp eax
 fail_88:
     xor eax, eax
-    ret 8
+    ret 4
 thunk_89:
     push 89
     call _sdlshim_resolve
@@ -1104,7 +1106,7 @@ thunk_90:
     jmp eax
 fail_90:
     xor eax, eax
-    ret 4
+    ret 8
 thunk_91:
     push 91
     call _sdlshim_resolve
@@ -1114,7 +1116,7 @@ thunk_91:
     jmp eax
 fail_91:
     xor eax, eax
-    ret 16
+    ret 4
 thunk_92:
     push 92
     call _sdlshim_resolve
@@ -1134,7 +1136,7 @@ thunk_93:
     jmp eax
 fail_93:
     xor eax, eax
-    ret 4
+    ret 16
 thunk_94:
     push 94
     call _sdlshim_resolve
@@ -1143,6 +1145,16 @@ thunk_94:
     jz fail_94
     jmp eax
 fail_94:
+    xor eax, eax
+    ret 4
+thunk_95:
+    push 95
+    call _sdlshim_resolve
+    add esp, 4
+    test eax, eax
+    jz fail_95
+    jmp eax
+fail_95:
     xor eax, eax
     ret 4
 end

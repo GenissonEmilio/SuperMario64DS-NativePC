@@ -97,8 +97,12 @@ static void open_pad(SDL_JoystickID id)
     /* a pad the player taught a layout stays with the DirectInput backend that layout
        is written for */
     if (g_learned && vid && g_learned(vid, pid)) {
-        fprintf(stderr, "[pad] SDL: leaving %04x:%04x to DirectInput (learned layout)\n", vid, pid);
-        fflush(stderr);
+        static SDL_JoystickID said;
+        if (said != id) {
+            said = id;
+            fprintf(stderr, "[pad] SDL: leaving %04x:%04x to DirectInput (learned layout)\n", vid, pid);
+            fflush(stderr);
+        }
         return;
     }
     SDL_Gamepad *g = SDL_OpenGamepad(id);
