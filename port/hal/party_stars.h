@@ -60,6 +60,8 @@
 //   SM64DS_PARTY_STARS_HOLD=<frames>:<n>
 //       force "not safe" for n frames from <frame> (a star landing during a
 //       star-get / menu has to wait)
+//   SM64DS_PARTY_STARS_SLOTSWAP=<frame>
+//       flip the open file slot byte at that frame (the queue must drop)
 //   SM64DS_PARTY_STARS_NO_LIMIT=1  MUST-FAIL control: switch the limiter off
 //
 // LOG LINES (stderr): "[pstar] tx ..." per star sent, "[pstar] rx seat=.. ..."
