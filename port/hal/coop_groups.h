@@ -60,6 +60,9 @@ public:
     bool     i_am_owner() const { return est_ && owner_ == me_; }
     bool     is_member(int seat) const;                       // present, same key
     bool     is_established(int seat) const;                  // member whose hello says so
+    // True only for the owner I believe in (a present member). A seat that merely
+    // claims ownership is not trusted until update() makes it the owner. FULL bitmaps trust this.
+    bool     owner_claimed_by(int seat) const;
     unsigned member_mask() const;                             // others in my group, bit = seat
     int      others() const;                                  // count of those
     int      established_count() const;                       // established others
