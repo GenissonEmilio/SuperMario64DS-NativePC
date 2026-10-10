@@ -99,8 +99,7 @@ bool g_installed_log = false;
 //   SM64DS_PLIST_TEST_HANDLER=1   a handler that logs "[plist] handler seat=N"
 //                                 and marks every row of the OTHER seats "TP"
 void test_handler(int seat) {
-    std::fprintf(stderr, "[plist] handler seat=%d
-", seat);
+    std::fprintf(stderr, "[plist] t=%u handler seat=%d\n", comms_hub_now_ms(), seat);
 }
 const char *test_extra(int seat) { return seat == comms_hub_my_seat() ? "" : "TP"; }
 bool g_test_checked = false;
@@ -249,8 +248,7 @@ void player_list_view(PlayerListView *out) {
         if (e && *e && *e != '0') {
             g_click = test_handler;
             g_extra = test_extra;
-            std::fprintf(stderr, "[plist] TEST handler installed
-");
+            std::fprintf(stderr, "[plist] TEST handler installed\n");
         }
     }
 #endif
@@ -354,15 +352,15 @@ bool player_list_click(int fb_x, int fb_y) {
     if (!g_click) {
         ++g_st.passed;
         if (logging())
-            std::fprintf(stderr, "[plist] click %d,%d row seat=%d NOT consumed "
-                         "(no handler)\n", fb_x, fb_y, seat);
+            std::fprintf(stderr, "[plist] t=%u click %d,%d row seat=%d NOT consumed "
+                         "(no handler)\n", comms_hub_now_ms(), fb_x, fb_y, seat);
         return false;
     }
     ++g_st.consumed;
     ++g_st.handler_calls;
     if (logging())
-        std::fprintf(stderr, "[plist] click %d,%d row seat=%d CONSUMED\n",
-                     fb_x, fb_y, seat);
+        std::fprintf(stderr, "[plist] t=%u click %d,%d row seat=%d CONSUMED\n",
+                     comms_hub_now_ms(), fb_x, fb_y, seat);
     g_click(seat);
     return true;
 }
