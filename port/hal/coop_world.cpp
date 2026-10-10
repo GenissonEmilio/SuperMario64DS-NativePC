@@ -504,8 +504,8 @@ void dump_bits(const char *why) {
 }
 
 // My unconfirmed kills, once more under the OLD group key, before the key changes: the retry loop
-// stops when I leave, and the others would never hear them. Three copies back to back (the loss
-// model is per datagram; the owner's apply is idempotent).
+// stops when I leave, and the others would never hear them. Eight copies 20 ms apart (loss is per
+// datagram, the owner's apply is idempotent, and 8 in 160 ms stays inside the 40 pps seat cap).
 void flush_on_leave() {
     if (!g_sync || !g_key.valid() || g_part < 0 || !g_grp.established() || g_grp.others() <= 0) return;
     int total = 0;
@@ -518,8 +518,10 @@ void flush_on_leave() {
         CoopDeltaWire h; std::memset(&h, 0, sizeof h); h.key = wire_key(g_key); h.count = (uint8_t)n;
         std::memcpy(buf, &h, sizeof h);
         std::memcpy(buf + sizeof h, slots, (size_t)n * 2);
-        for (int c = 0; c < 3; ++c)
+        for (int c = 0; c < 8; ++c) {
+            if (c) ::Sleep(20);
             if (send_kind(kHubTagCoopWorld, kWorldDeathDelta, buf, (int)sizeof h + 2 * n)) ++g_st.sent_delta;
+        }
         total += n;
     }
     if (total > 0) {
