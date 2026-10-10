@@ -36,7 +36,8 @@ struct CoopWorldStats {
                        snaps_applied, first_in, snap_timeouts, local_bits;
     unsigned long long drop_bad, drop_group, drop_target, drop_nonce,
                        drop_unknown_sub, drop_not_coop, drop_seat,
-                       drop_sync_off;
+                       drop_sync_off, drop_trust;
+    unsigned long long star_collects, local_clears, out_resends;
 };
 CoopWorldStats coop_world_stats();
 

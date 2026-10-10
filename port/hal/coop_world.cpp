@@ -39,6 +39,8 @@ signed char GetLevelPart(int idx);
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 void LoadLevelNoReturn(unsigned level, unsigned entrance, unsigned star, unsigned unk);
 void _ZN8dActor_c24KillAndTrackInDeathTableEv(void *self);
+void *_ZN8dActor_c10FindWithIDEj(unsigned id);
+void *port_debug_spawn(unsigned id, unsigned param);
 }
 
 namespace port {
@@ -57,6 +59,7 @@ enum : unsigned {
 enum : int { kOutMax = 256, kSnapChunks = 2 };
 
 struct Out { uint16_t slot; uint8_t sent; unsigned next; };
+enum : int { kOwnerTries = 3, kGuestTries = 40, kStarSeen = 16 };
 struct Job { bool on; uint32_t nonce; CoopKey key; unsigned start, last; };
 struct Reg { int lo, hi; CoopSubFn fn; void *user; };
 
@@ -64,6 +67,10 @@ CoopGroups g_grp;
 CoopWorldStats g_st = {};
 bool g_env_read = false, g_on = false, g_log = false, g_sync = true;
 bool g_handlers = false;
+// proof-only control: SM64DS_COOP_LEGACY=star,trust,retry,clear switches the matching follow-up fix off (the 1451d2e257 behaviour)
+bool g_leg_star = false, g_leg_trust = false, g_leg_retry = false, g_leg_clear = false;
+struct ReviveKnob { unsigned frame; int slot; int cls; bool done; };
+ReviveKnob g_revive = {0, -1, 0, true};
 int  g_my = -1;
 unsigned g_frame = 0, g_est_frames = 0;
 
@@ -71,6 +78,10 @@ CoopKey  g_key;
 CoopKey  g_rejected;           // a level the death table has no part for: never retried
 int      g_part = -1;
 unsigned g_prev[kCoopWords];       // shadow of my part: what I have already announced or taken
+unsigned g_sticky[kCoopWords];     // stars collected here: part of what I hand out, whatever the ROM clears later
+void    *g_star_seen[kStarSeen];   // star actors whose collect I already announced
+int      g_star_n = 0;
+unsigned g_enter_nonce = 0;        // the nonce I asked a snapshot for (0 = never asked)
 unsigned g_remote[kCoopWords];     // bits that came from other consoles
 bool     g_recon_dirty = false;
 unsigned g_last_bits_hash = 0;
@@ -122,6 +133,16 @@ void read_env() {
             while (*p == ';' || *p == ',' || *p == ' ') ++p;
             if (used <= 0) break;
         }
+    }
+    if (const char *lg = std::getenv("SM64DS_COOP_LEGACY")) {
+        g_leg_star = std::strstr(lg, "star") != nullptr;
+        g_leg_trust = std::strstr(lg, "trust") != nullptr;
+        g_leg_retry = std::strstr(lg, "retry") != nullptr;
+        g_leg_clear = std::strstr(lg, "clear") != nullptr;
+    }
+    if (const char *rv = std::getenv("SM64DS_COOP_REVIVE")) {
+        unsigned f = 0; int sl = 0, cl = 0;
+        if (std::sscanf(rv, "%u:%i:%i", &f, &sl, &cl) == 3) g_revive = {f, sl, cl, false};
     }
     if (const char *w = std::getenv("SM64DS_COOP_WARP")) {
         // F:level:act[;F:level:act]  (F = frames since the world core came on)
@@ -195,6 +216,7 @@ bool key_from_wire(const CoopKeyWire &w, CoopKey *k) {
 
 void send_enter() {
     CoopEnterWire w; w.key = wire_key(g_key); w.nonce = g_nonce;
+    g_enter_nonce = g_nonce;
     if (send_kind(kHubTagCoopCtl, kCtlLevelEnter, &w, sizeof w)) ++g_st.sent_enter;
 }
 void send_hello(unsigned now) {
@@ -218,14 +240,15 @@ void send_ack(int owner, uint32_t nonce) {
 void send_full(unsigned now) {
     if (g_part < 0) return;
     CoopFullWire w; w.key = wire_key(g_key);
-    std::memcpy(w.words, tbl(g_part), sizeof w.words);
+    for (int i = 0; i < kCoopWords; ++i) w.words[i] = tbl(g_part)[i] | g_sticky[i];
     if (send_kind(kHubTagCoopWorld, kWorldDeathFull, &w, sizeof w)) { ++g_st.sent_full; g_full_t = now; }
 }
 
 void serve_snapshot(int seat, const Job &j) {
     if (g_part < 0) return;
     unsigned char buf[sizeof(CoopSnapWire) + kCoopSnapChunkMax];
-    const unsigned *t = tbl(g_part);
+    unsigned t[kCoopWords];
+    for (int i = 0; i < kCoopWords; ++i) t[i] = tbl(g_part)[i] | g_sticky[i];
     const int clen = kCoopSnapChunkMax / kSnapChunks;
     for (int n = 0; n < kSnapChunks; ++n) {
         CoopSnapWire h; std::memset(&h, 0, sizeof h);
@@ -250,6 +273,12 @@ void merge_remote_word(int w, unsigned bits) {
     g_remote[w] |= fresh;
     g_st.bits_applied += (unsigned)popcnt(fresh);
     g_recon_dirty = true;
+}
+
+// The owner's full bitmap shows a bit: a guest's pending announcement of it is done.
+void ack_out(const unsigned *words) {
+    for (int i = 0; i < g_out_n; ++i)
+        if ((words[g_out[i].slot >> 5] >> (g_out[i].slot & 31)) & 1u) g_out[i].sent = 255;
 }
 
 bool for_me(const CoopKey &k) {
@@ -331,7 +360,8 @@ void on_ctl(int seat, const unsigned char *d, int len, void *) {
         if (w.target != g_my) { ++g_st.drop_target; return; }
         key_from_wire(w.key, &k);
         if (!for_me(k)) { ++g_st.drop_group; return; }
-        if (w.nonce != g_nonce) { ++g_st.drop_nonce; return; }
+        if (w.nonce != g_nonce || (!g_leg_trust && g_enter_nonce != g_nonce)) { ++g_st.drop_nonce; return; }   // an answer to MY enter only
+        if (!g_leg_trust && !g_grp.is_member(seat)) { ++g_st.drop_trust; return; }
         if (g_snap_done) {                      // a resend after we already have it: re-ack, rate limited
             if ((unsigned)(now - g_ack_last) >= 100u) { send_ack(seat, g_nonce); g_ack_last = now; }
             return;
@@ -399,6 +429,7 @@ void on_world(int seat, const unsigned char *d, int len, void *) {
         key_from_wire(w.key, &k);
         ++g_st.recv_delta;
         if (!for_me(k)) { ++g_st.drop_group; return; }
+        if (!g_leg_trust && !g_grp.is_member(seat)) { ++g_st.drop_trust; return; }   // members of this group only
         for (int i = 0; i < (int)w.count; ++i) {
             uint16_t s; std::memcpy(&s, p + sizeof w + 2 * i, 2);
             merge_remote_word(s >> 5, 1u << (s & 31));
@@ -411,7 +442,9 @@ void on_world(int seat, const unsigned char *d, int len, void *) {
         key_from_wire(w.key, &k);
         ++g_st.recv_full;
         if (!for_me(k)) { ++g_st.drop_group; return; }
+        if (!g_leg_trust && !g_grp.owner_claimed_by(seat)) { ++g_st.drop_trust; return; }   // the group owner only
         for (int i = 0; i < kCoopWords; ++i) merge_remote_word(i, w.words[i]);
+        ack_out(w.words);
         return;
     }
     for (int i = 0; i < g_nreg_world; ++i)
@@ -460,6 +493,9 @@ void join_group(const CoopKey &nk) {
     g_grp.leave();
     g_out_n = 0;
     std::memset(g_remote, 0, sizeof g_remote);
+    std::memset(g_sticky, 0, sizeof g_sticky);
+    std::memset(g_star_seen, 0, sizeof g_star_seen);
+    g_star_n = 0;
     std::memset(g_job, 0, sizeof g_job);
     g_snap_waiting = false; g_snap_done = false; g_snap_total = 0; g_snap_mask = 0; g_snap_owner = -1;
     g_recon_dirty = false;
@@ -632,25 +668,76 @@ void census_line() {
 void stats_line() {
     if (!g_log) return;
     const CoopWorldStats &s = g_st;
+    int rn = 0;
+    for (int i = 0; i < kCoopWords; ++i) rn += popcnt(g_remote[i]);
     std::fprintf(stderr,
         "[coopstat] seat=%d owner=%d est=%d members=%u sent h%llu e%llu s%llu a%llu o%llu d%llu f%llu "
         "recv h%llu e%llu s%llu a%llu o%llu d%llu f%llu applied=%llu recon=%llu local=%llu served=%llu "
         "snaps=%llu firstin=%llu timeouts=%llu drop bad=%llu group=%llu target=%llu nonce=%llu sub=%llu "
-        "notcoop=%llu seat=%llu syncoff=%llu\n",
+        "notcoop=%llu seat=%llu syncoff=%llu trust=%llu stars=%llu clears=%llu resends=%llu remote=%d\n",
         g_my, g_grp.owner(), (int)g_grp.established(), g_grp.member_mask(),
         s.sent_hello, s.sent_enter, s.sent_snap, s.sent_ack, s.sent_owner, s.sent_delta, s.sent_full,
         s.recv_hello, s.recv_enter, s.recv_snap, s.recv_ack, s.recv_owner, s.recv_delta, s.recv_full,
         s.bits_applied, s.reconcile_kills, s.local_bits, s.snaps_served, s.snaps_applied, s.first_in,
         s.snap_timeouts, s.drop_bad, s.drop_group, s.drop_target, s.drop_nonce, s.drop_unknown_sub,
-        s.drop_not_coop, s.drop_seat, s.drop_sync_off);
+        s.drop_not_coop, s.drop_seat, s.drop_sync_off, s.drop_trust, s.star_collects, s.local_clears, s.out_resends, rn);
+}
+
+// A star the local player just collected. The ROM only records it in the death
+// table when the whole star-get flow completes (func_ov002_020e8ef0, the
+// TrackInDeathTable after the message), and the grabber's course exit can clear
+// the table first, so the others kept seeing a star somebody took. The collect
+// itself is visible at once: the handler (e8ef0) sets the star's state word
+// (+0x440) to 5 and its toucher (+0x438) to the player. Raise the star's own
+// slot (and the linked actor's, when the ROM would track that one too) in my
+// table now; the ordinary local-bit path announces it. The bits are also kept
+// sticky so a snapshot or full bitmap I hand out holds them even if the ROM
+// clears them again later.
+void watch_stars() {
+    unsigned *t = tbl(g_part);
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+        const unsigned cls = *(const unsigned short *)(a + 0x0c);
+        if (cls != 0xb2 && cls != 0xb3) continue;
+        if (*(const unsigned *)(a + 0x440) != 5u) continue;
+        if (!is_player_ptr(*(void *const *)(a + 0x438))) continue;
+        bool seen = false;
+        for (int i = 0; i < g_star_n; ++i) seen = seen || g_star_seen[i] == a;
+        if (seen || g_star_n >= kStarSeen) continue;
+        g_star_seen[g_star_n++] = a;
+        int slots[2] = { (int)*(const short *)(a + 0xce), -1 };
+        char *found = (char *)_ZN8dActor_c10FindWithIDEj(*(const unsigned *)(a + 0x434));
+        if (found && ((*(const unsigned short *)(a + 0x4a2) >> 12) & 1u)) slots[1] = (int)*(const short *)(found + 0xce);
+        for (int i = 0; i < 2; ++i) {
+            const int sl = slots[i];
+            if (sl < 0 || sl >= kCoopSlots) continue;
+            t[sl >> 5] |= 1u << (sl & 31);
+            g_sticky[sl >> 5] |= 1u << (sl & 31);
+        }
+        ++g_st.star_collects;
+        std::fprintf(stderr, "[coop] star collected: class=%u slot=%d linked slot=%d\n", cls, slots[0], slots[1]);
+    }
 }
 
 void tick_est(unsigned now) {
     ++g_est_frames;
+    if (g_sync && !g_leg_star) watch_stars();
     // 1. what I killed or collected since last frame
     if (g_sync) {
         unsigned *t = tbl(g_part);
         for (int w = 0; w < kCoopWords; ++w) {
+            // Bits the game cleared on its own (a respawned cap enemy, a StarMarker going away): that is
+            // the new truth for my copy. Stop treating them as remote kills, stop announcing them.
+            unsigned cl = g_prev[w] & ~t[w] & ~g_sticky[w];
+            if (g_leg_clear) cl = 0;
+            if (cl) {
+                g_remote[w] &= ~cl;
+                for (int i = 0; i < g_out_n; ++i)
+                    if ((g_out[i].slot >> 5) == w && ((cl >> (g_out[i].slot & 31)) & 1u)) g_out[i].sent = 255;
+                g_st.local_clears += (unsigned long long)popcnt(cl);
+                if (g_log)
+                    for (int b = 0; b < 32; ++b)
+                        if ((cl >> b) & 1u) std::fprintf(stderr, "[coop] local clear slot=%d\n", w * 32 + b);
+            }
             unsigned nb = t[w] & ~g_prev[w];
             while (nb) {
                 const unsigned bit = nb & (~nb + 1u);
@@ -681,13 +768,16 @@ void tick_est(unsigned now) {
                 for (int i = 0; i < n; ++i) {
                     Out &o = g_out[idx[i]];
                     ++o.sent;
-                    o.next = now + (o.sent == 1 ? 120u : 240u);
+                    o.next = now + (o.sent == 1 ? 120u : o.sent == 2 ? 240u : 250u);
+                    if (o.sent > kOwnerTries) ++g_st.out_resends;
                 }
             }
         }
         // retire the finished ones (compact)
         int k = 0;
-        for (int i = 0; i < g_out_n; ++i) if (g_out[i].sent < 3) g_out[k++] = g_out[i];
+        // The owner's 1 Hz full bitmap carries the rest; a guest keeps telling until that bitmap shows the bit.
+        const int limit = (g_grp.i_am_owner() || g_leg_retry) ? (int)kOwnerTries : (int)kGuestTries;
+        for (int i = 0; i < g_out_n; ++i) if (g_out[i].sent < limit) g_out[k++] = g_out[i];
         if (g_grp.others() == 0) k = 0;      // nobody to tell: the owner-less table is the whole truth
         g_out_n = k;
     }
@@ -709,6 +799,14 @@ void tick_est(unsigned now) {
         reconcile();
     }
     // 6. proof knobs
+    if (!g_revive.done && g_est_frames >= g_revive.frame && g_revive.slot >= 0 && g_revive.slot < kCoopSlots) {
+        // What a cap-enemy respawn does: the ROM clears the death-table bit and a live actor stands in that slot again.
+        g_revive.done = true;
+        tbl(g_part)[g_revive.slot >> 5] &= ~(1u << (g_revive.slot & 31));
+        char *na = (char *)port_debug_spawn((unsigned)g_revive.cls, 0);
+        if (na) *(short *)(na + 0xce) = (short)g_revive.slot;
+        std::fprintf(stderr, "[coop-knob] revive slot=%d class=%d actor=%s\n", g_revive.slot, g_revive.cls, na ? "yes" : "no");
+    }
     for (int i = 0; i < g_nkill; ++i)
         if (!g_kill[i].done && g_est_frames >= g_kill[i].frame) { g_kill[i].done = true; knob_kill(g_kill[i]); }
     if (g_goto_id >= 0 && g_goto_tries < 6 && g_est_frames >= g_goto_frame + 90u * (unsigned)g_goto_tries) knob_goto(g_goto_id, g_goto_tries++);

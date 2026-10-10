@@ -89,6 +89,12 @@ bool CoopGroups::is_established(int seat) const {
     return is_member(seat) && s_[seat].hello && s_[seat].est;
 }
 
+bool CoopGroups::owner_claimed_by(int seat) const {
+    if (!est_ || seat < 0 || seat >= kSeats || seat == me_) return false;
+    if (seat == owner_) return is_member(seat);
+    return is_established(seat) && s_[seat].claim == seat;
+}
+
 unsigned CoopGroups::member_mask() const {
     unsigned m = 0;
     for (int i = 0; i < kSeats; ++i)
