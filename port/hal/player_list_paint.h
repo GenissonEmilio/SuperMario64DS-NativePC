@@ -20,6 +20,21 @@ extern "C" const char *port_fs_catalog_path(unsigned file_id);   /* hal/fs.cpp *
 #include "hal/head_icons.h"
 #include "hal/player_list.h"
 
+/* A FAT file id -> the readable file under the asset root, or null. The same
+   place hal/fs.cpp reads (<root>/extracted/dsd/files/<catalog path>); with no
+   SM64DS_ASSET_ROOT there is nothing to look under and the hand-made heads stay. */
+static const char *plist_rom_path(unsigned id)
+{
+    static char buf[4][600];
+    static int k;
+    const char *rel = port_fs_catalog_path(id);
+    const char *root = getenv("SM64DS_ASSET_ROOT");
+    if (!rel || !root || !*root) return 0;
+    char *b = buf[k++ & 3];
+    snprintf(b, 600, "%s/extracted/dsd/files/%s", root, rel);
+    return b;
+}
+
 static uint32_t plist_readable(uint32_t rgb)
 {
     unsigned r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
@@ -91,7 +106,7 @@ static void player_list_draw(const OvlSurface &fb)
         static int tries, got;
         if (got < 4 && tries < 6) {
             ++tries;
-            got = port::head_icons_load_rom(port_fs_catalog_path);
+            got = port::head_icons_load_rom(plist_rom_path);
             fprintf(stderr, "[plist] head art: %d of 4 from the ROM (try %d)\n", got, tries);
         }
     }

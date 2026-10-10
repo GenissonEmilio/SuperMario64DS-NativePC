@@ -10,7 +10,7 @@ process's PID). Point PLIST_RIG at the directory holding them. Other environment
   PLIST_LOCK    ladder lock to hold while consoles run (default C:/tmp/mp1/ladder2.lock; "" = none)
 
   python plist_proof.py room:<kind>:<n>:<tag>[:k=v;k=v]       kind party | coop | world
-    options  frames=900  scale=1|2|3  stacked=1  chat=1  handler=1  warp<i>=6@300  star<i>=1  click<i>=<seconds>@<x>,<y>
+    options  frames=900  scale=1|2|3  stacked=1  chat=1  handler=1  warp<i>=6@300  star<i>=1  click<i>=<seconds after the list shows every player>@<x>,<y>[|<seconds>@<x>,<y>...]
              (handler=1 installs the TEST click handler on every console; click<i> posts a real left-button message to
               console i's window <seconds> after it started, at framebuffer pixel x,y)
   python plist_proof.py table                                 the stage code table checks (no game)
@@ -152,16 +152,20 @@ def run_room(kind, n, tag, o):
     # scripted clicks
     pending = []
     for i in range(n):
-        c = o.get("click%d" % i)
-        if c:
-            secs, _, xy = c.partition("@")
-            pending.append([float(secs), i, [int(v) for v in xy.split(",")]])
+        for c in (o.get("click%d" % i) or "").split("|"):
+            if c:
+                secs, _, xy = c.partition("@")
+                pending.append([float(secs), i, [int(v) for v in xy.split(",")]])
     dl = time.time() + 1700
+    seen_at = {}
     while any(c.p.poll() is None for c in cons) and time.time() < dl:
         for pc in list(pending):
-            if time.time() - t0 >= pc[0]:
-                ok = post_click(cons[pc[1]].p.pid, pc[2][0], pc[2][1])
-                info("%s: posted a left click to console %d at client %s -> %s" % (row, pc[1], pc[2], ok))
+            i = pc[1]
+            if i not in seen_at and ("rows=%d" % n) in cons[i].text():
+                seen_at[i] = time.time()       # the list now holds every player: clicks count from here
+            if i in seen_at and time.time() - seen_at[i] >= pc[0]:
+                ok = post_click(cons[i].p.pid, pc[2][0], pc[2][1])
+                info("%s: posted a left click to console %d at client %s -> %s" % (row, i, pc[2], ok))
                 pending.remove(pc)
         time.sleep(0.5)
     G.finish(cons, 60)
