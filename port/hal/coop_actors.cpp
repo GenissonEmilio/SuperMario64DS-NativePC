@@ -39,6 +39,7 @@ struct Prof {
     uint16_t period, band, snap;
     uint8_t flags, nf;
     Field f[kMoverMaxFields];
+    uint16_t hold;          // 0 = none; else a pointer word that is non-zero while something carries the actor
 };
 
 #define ROW(id, name, period, band, snap, flags, nf, ...) { id, name, period, band, snap, flags, nf, { __VA_ARGS__ } },
@@ -74,6 +75,10 @@ void prof_index() {
         if (!ok) { std::fprintf(stderr, "[coopmove] profile row %d (class %d) rejected\n", i, (int)p.id); p.id = 0; continue; }
         g_prof_of[p.id] = (short)i;
     }
+    // classes a player can pick up: their pose is the carrier's, not the Behavior's
+    static const struct { uint16_t id, off; } kHold[] = { { 206, 0x390 } };
+    for (const auto &h : kHold)
+        if (h.id < 1024 && g_prof_of[h.id] >= 0 && g_prof[g_prof_of[h.id]].hold == 0) g_prof[g_prof_of[h.id]].hold = h.off;
 }
 
 // SM64DS_COOP_MOVE_PROFILE=<file>: lines `id period band snap flags nf off:size ...`, '#' comments.
@@ -99,6 +104,7 @@ void load_profile_file(const char *path) {
             np.f[k].off = (uint16_t)off; np.f[k].size = (uint8_t)sz;
             if (!field_ok(np.f[k])) { ok = false; break; }
         }
+        if (ok) if (const char *h = std::strstr(p, "hold=")) np.hold = (uint16_t)std::strtoul(h + 5, nullptr, 0);
         if (!ok) { std::fprintf(stderr, "[coopmove] profile file: bad row for class %d\n", id); continue; }
         int at = -1;
         for (int i = 0; i < g_nprof; ++i) if (g_prof[i].id == id) at = i;
@@ -238,7 +244,8 @@ double dist3(const char *a, int32_t x, int32_t y, int32_t z) {
 }
 
 // Dead, dying, being eaten or being carried: the actor's position is not its Behavior's business.
-bool skip_state(const char *a) {
+bool skip_state(const char *a, const Prof &p) {
+    if (p.hold && p.hold + 4 <= 0x480 && rd32(a, p.hold) != 0) return true;
     if (*(const unsigned char *)(a + 0x0f) || *(const unsigned char *)(a + 0x0e) == 2) return true;
     const unsigned fl = (unsigned)rd32(a, 0xb0);
     if (fl & 0x60000u) return true;                       // yoshi mouth states
@@ -397,7 +404,7 @@ void apply_rec(int slot, Slot &s, Rx &x) {
     const Prof &p = g_prof[s.prof];
     char *a = s.a;
     if (x.cls != p.id || x.nf != p.nf) { ++g_st.cls_mismatch; return; }
-    if (skip_state(a)) { ++g_st.skipped_state; return; }
+    if (skip_state(a, p)) { ++g_st.skipped_state; return; }
     const double err = dist3(a, x.x, x.y, x.z);
     const bool force = x.snap;
     if (!force && err > 6000.0) { ++g_st.drop_far; return; }
@@ -530,7 +537,7 @@ void process(unsigned now) {
         }
         // 3. publish if I own it
         if (!g_act) continue;
-        if (!g_hold && s.owner == g_my && s.seen >= 3 && !skip_state(s.a) && !frozen_state(s.a)) {
+        if (!g_hold && s.owner == g_my && s.seen >= 3 && !skip_state(s.a, p) && !frozen_state(s.a)) {
             const unsigned age = now - s.last_pub;
             if (age >= p.period) {
                 bool changed = !s.lvalid || rd32(s.a, 0x5c) != s.lx || rd32(s.a, 0x60) != s.ly || rd32(s.a, 0x64) != s.lz;
@@ -575,7 +582,7 @@ void process(unsigned now) {
             while (j.cursor < kSlots && nrec < kMoverMaxRecs) {
                 Slot &s = g_slot[j.cursor];
                 const int slot = j.cursor;
-                bool mine = s.a && s.seen >= 3 && !skip_state(s.a) && s.owner == g_my && (s.heard || coop_group_i_am_owner());
+                bool mine = s.a && s.seen >= 3 && !skip_state(s.a, g_prof[s.prof]) && s.owner == g_my && (s.heard || coop_group_i_am_owner());
                 if (mine && bytes + rec_bytes(s.prof) + (int)sizeof(MoverBatchHead) > kPayloadMax) break;
                 ++j.cursor;
                 if (!mine) continue;
