@@ -693,12 +693,10 @@ void knob_press(PressKnob &k) {
     for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a && n < 64; a = (char *)_ZN8dActor_c4NextEPKS_(a))
         if (a_cls(a) == k.cls && a_slot(a) >= 0 && !a_dead(a) && !is_player_ptr(a)) c[n++] = a;
     std::sort(c, c + n, [](char *x, char *y) { return a_slot(x) < a_slot(y); });
-    if (!w || n == 0) { std::fprintf(stderr, "[coopsw-knob] press cls=%d: no live actor
-", k.cls); return; }
+    if (!w || n == 0) { std::fprintf(stderr, "[coopsw-knob] press cls=%d: no live actor\n", k.cls); return; }
     char *a = c[k.nth % n];
     const bool did = w->apply(a, 1, 0);
-    std::fprintf(stderr, "[coopsw-knob] press %s slot=%d (candidate %d of %d) did=%d wall=%lld
-", w->name, (int)a_slot(a), k.nth % n, n, (int)did, wall_ms());
+    std::fprintf(stderr, "[coopsw-knob] press %s slot=%d (candidate %d of %d) did=%d wall=%lld\n", w->name, (int)a_slot(a), k.nth % n, n, (int)did, wall_ms());
 }
 
 void watch_field(unsigned) {
