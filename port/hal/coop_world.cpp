@@ -58,6 +58,10 @@ enum : unsigned {
 };
 enum : int { kOutMax = 256, kSnapChunks = 2 };
 
+long long wall_ms() {   // proof logs: one clock for every console on this machine
+    FILETIME ft; GetSystemTimeAsFileTime(&ft);
+    return (long long)((((unsigned long long)ft.dwHighDateTime << 32) | ft.dwLowDateTime) / 10000ull);
+}
 struct Out { uint16_t slot; uint8_t sent; unsigned next; };
 enum : int { kOwnerTries = 3, kGuestTries = 40, kStarSeen = 16 };
 struct Job { bool on; uint32_t nonce; CoopKey key; unsigned start, last; };
@@ -303,8 +307,8 @@ int reconcile() {
         _ZN8dActor_c24KillAndTrackInDeathTableEv(a);
         ++kills;
         if (g_log)
-            std::fprintf(stderr, "[coop] reconcile kill slot=%d actor=%u\n", (int)slot,
-                         (unsigned)*(const unsigned short *)(a + 0x0c));
+            std::fprintf(stderr, "[coop] reconcile kill slot=%d actor=%u wall=%lld\n", (int)slot,
+                         (unsigned)*(const unsigned short *)(a + 0x0c), wall_ms());
     }
     g_st.reconcile_kills += (unsigned)kills;
     return kills;
@@ -442,7 +446,7 @@ void on_world(int seat, const unsigned char *d, int len, void *) {
         key_from_wire(w.key, &k);
         ++g_st.recv_full;
         if (!for_me(k)) { ++g_st.drop_group; return; }
-        if (!g_leg_trust && !g_grp.owner_claimed_by(seat)) { ++g_st.drop_trust; return; }   // the group owner only
+        if (!g_leg_trust) { g_grp.update(comms_hub_now_ms()); if (!g_grp.owner_claimed_by(seat)) { ++g_st.drop_trust; return; } }   // the group owner only
         for (int i = 0; i < kCoopWords; ++i) merge_remote_word(i, w.words[i]);
         ack_out(w.words);
         return;
@@ -714,7 +718,7 @@ void watch_stars() {
             g_sticky[sl >> 5] |= 1u << (sl & 31);
         }
         ++g_st.star_collects;
-        std::fprintf(stderr, "[coop] star collected: class=%u slot=%d linked slot=%d\n", cls, slots[0], slots[1]);
+        std::fprintf(stderr, "[coop] star collected: class=%u slot=%d linked slot=%d wall=%lld\n", cls, slots[0], slots[1], wall_ms());
     }
 }
 
