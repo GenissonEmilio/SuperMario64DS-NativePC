@@ -9,8 +9,8 @@ rows ask. Pure log analysis: it starts no process and needs no ROM.
         the pose of B with A's pose interpolated to B's sample wall time. Prints, per class, the position error
         (world units) and the angle error (16-bit units) as p50 / p95 / max, and the M1 verdict: p95 <= 24 units for
         path movers and rotators, <= 80 for enemies, angles <= 0x800 (p95).
-  coop_drift.py first  LOG_A LOG_B [--frames N]
-        M2: the error of B's first N samples after its first sample, per class (late joiner in band at its first frame).
+  coop_drift.py first  LOG_A LOG_B [--frames N] [--skip K]
+        M2: the error of B's samples from tick K to K+N after its first sample (the snapshot lands a few ticks in, inside the fade), per class (late joiner in band at its first frame).
   coop_drift.py fields RUN1 RUN2 [--min-off 0x318] [--enemy-min-off 0x110] [--max 12] [--out FILE]
         Phase-field discovery from two runs' [mvd] dumps (SM64DS_COOP_MOVE_DUMP=a,b): a word is a phase field when it
         changes between the two ticks of a run and has the same value in both runs at the same tick (so it is neither a
@@ -158,7 +158,8 @@ def cmd_drift(args):
 def cmd_first(args):
     A, B = load_samples(args.a), load_samples(args.b)
     firstB = min(s[0][0] for s in B.values())
-    per = compare(A, B, firstB, firstB + args.frames * 1000 // 60 + 1)
+    t0 = firstB + args.skip * 1000 // 60
+    per = compare(A, B, t0, t0 + args.frames * 1000 // 60 + 1)
     bad, allp = report(per, "B's first %d frames vs A" % args.frames)
     print("%s  first-frames: %d paired samples, worst %.1f units" % ("PASS" if allp and not bad else "FAIL", len(allp), max(allp) if allp else -1))
     return 0 if allp and not bad else 1
@@ -243,7 +244,7 @@ def main():
     d.add_argument("--settle", type=int, default=4000); d.add_argument("--from-wall", type=int, default=0)
     d.add_argument("--to-wall", type=int, default=0); d.add_argument("--min-pairs", type=int, default=200)
     d.add_argument("--json", action="store_true"); d.set_defaults(fn=cmd_drift)
-    f = sub.add_parser("first"); f.add_argument("a"); f.add_argument("b"); f.add_argument("--frames", type=int, default=6)
+    f = sub.add_parser("first"); f.add_argument("a"); f.add_argument("b"); f.add_argument("--frames", type=int, default=6); f.add_argument("--skip", type=int, default=4)
     f.set_defaults(fn=cmd_first)
     p = sub.add_parser("fields"); p.add_argument("run1"); p.add_argument("run2")
     p.add_argument("--min-off", type=lambda s: int(s, 0), default=0x318)

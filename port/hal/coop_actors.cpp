@@ -515,7 +515,7 @@ void process(unsigned now) {
             if (!x.valid || !x.fresh) continue;
             if ((unsigned)(now - x.t) > (unsigned)kRxKeepMs) { x.fresh = false; continue; }
             if (x.snap) {
-                if (s.seen < 3) continue;                           // let the object finish its first ticks
+                if (s.seen < 2) continue;                           // let the object finish its first tick
             } else if (s.owner != q) { x.fresh = false; continue; }
             apply_rec(slot, s, x);
             x.fresh = false;
@@ -593,7 +593,7 @@ void process(unsigned now) {
 // ---------------------------------------------------------------------------
 void maybe_request(unsigned now) {
     if (!g_snap_on || !g_act || g_req_done || !g_spawned) return;
-    if (g_lf < g_spawn_lf + 3) return;
+    if (g_lf < g_spawn_lf + 1) return;
     if (coop_group_member_mask() == 0) { g_req_done = true; return; }   // alone: nobody to ask
     // any snapshot record taken counts as an answer
     if (g_st.snap_applied > g_snap_base) { g_req_done = true; return; }
