@@ -4079,6 +4079,11 @@ extern "C" int port_gpu_twod_live(void)
     return g_tw_live ? 1 : 0;
 }
 
+extern "C" void port_gpu_twod_fold(unsigned *fb, int stride_px)
+{
+    if (fb) tw_fold((uint32_t *)fb, stride_px, true);
+}
+
 extern "C" int port_gpu_twod_begin(const PortTwodFrame *p, unsigned char *cpu_mask,
                                    int mask_stride, const unsigned *fbpx)
 {
@@ -4244,6 +4249,7 @@ int port_gpu_twod_begin(const PortTwodFrame *, unsigned char *, int, const unsig
 void port_gpu_twod_rects(const unsigned *, int) {}
 void port_gpu_twod_bm_rect(int, int, int, int) {}
 int port_gpu_twod_live(void) { return 0; }
+void port_gpu_twod_fold(unsigned *, int) {}
 void port_gpu_twod_check(const unsigned *, int, const unsigned char *, int, int) {}
 
 #endif

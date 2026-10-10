@@ -7654,6 +7654,7 @@ static void ip_settled(void)
     if (g_ip_snapstage >= 2 && g_ip_level_fb) {
         ip_snap(g_ip_p2, *g_ip_level_fb);
         ip_snap(g_ip_p4, *g_ip_level_fb);
+        ip_snap(g_ip_p5, *g_ip_level_fb);   /* run hunt8, lane TWODFIX1: not left from an older tick */
     }
 }
 
@@ -7740,8 +7741,19 @@ static int ip_build(double alpha)
         ntr::gx_card_settle_because("a picture between ticks could not be composited on the card");
     }
     /* run hunt8, lane TWODGPU1: the tick's 2D lives on the card and the
-       processor has no snapshot of it to blend with: show the tick's picture */
-    if (port_gpu_twod_live()) return 0;
+       processor has no snapshot of it to blend with. Lane TWODFIX1: the card
+       did not blend this picture (SM64DS_INTERP_CARD=0, or its composite
+       failed), so fold the overlay into the tick's framebuffer once and take
+       the three 2D snapshots from it, as a tick whose 2D the processor drew
+       itself has them; the processor's blend below then runs as ever. A fold
+       the card could not give leaves the old answer: the tick's own picture. */
+    if (port_gpu_twod_live()) {
+        port_gpu_twod_fold(const_cast<uint32_t *>(&g_ip_level_fb->px[0][0]), ntr::SCREEN_W);
+        if (port_gpu_twod_live()) return 0;
+        ip_snap(g_ip_p2, *g_ip_level_fb);
+        ip_snap(g_ip_p4, *g_ip_level_fb);
+        ip_snap(g_ip_p5, *g_ip_level_fb);
+    }
     ++g_ip_cpu_pics;
     if (g_ip_fade_on && g_ip_fade_masked) {
         /* the fade only some pixels take, and the card could not composite this

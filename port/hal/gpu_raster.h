@@ -152,6 +152,9 @@ void port_gpu_twod_rects(const unsigned *inst, int n);
 void port_gpu_twod_bm_rect(int x0, int y0, int x1, int y1);
 /* the tick's overlay is on the card (processor-written pixels still to merge) */
 int port_gpu_twod_live(void);
+/* fold the tick's overlay into `fb` (words it already holds stay) and end the
+   overlay: the tick is an ordinary finished frame on the processor from here */
+void port_gpu_twod_fold(unsigned *fb, int stride_px);
 /* the SM64DS_TWOD_CARD_CHECK compare of the card's overlay and mask with the
    processor's own (the same tick, same stage); `bm` may be null */
 void port_gpu_twod_check(const unsigned *fb, int stride_px, const unsigned char *bm,
