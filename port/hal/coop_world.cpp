@@ -67,6 +67,7 @@ int  g_my = -1;
 unsigned g_frame = 0, g_est_frames = 0;
 
 CoopKey  g_key;
+CoopKey  g_rejected;           // a level the death table has no part for: never retried
 int      g_part = -1;
 unsigned g_prev[kCoopWords];       // shadow of my part: what I have already announced or taken
 unsigned g_remote[kCoopWords];     // bits that came from other consoles
@@ -451,11 +452,13 @@ void join_group(const CoopKey &nk) {
     g_est_frames = 0;
     for (int i = 0; i < g_nkill; ++i) g_kill[i].done = false;
     g_goto_done = false;
+    g_rejected = CoopKey();
     g_key = nk;
     g_part = part_of_level(nk.level);
     g_grp.enter(nk, now);
     ++g_nonce;
     if (g_part < 0) {   // not a level the table covers: stay out of any group
+        g_rejected = nk;
         g_key = CoopKey();
         return;
     }
@@ -759,7 +762,7 @@ extern "C" void port_coop_world_frame(void) {
         // A boot that did not come through the latch (a direct level boot, or a
         // missed hook): join now. The snapshot, if one comes, merges live.
         const CoopKey rk((int)data_0209f2f8, data_0209f220[0] & 0xff);
-        if (!g_key.valid() || rk != g_key) join_group(rk);
+        if ((!g_key.valid() || rk != g_key) && rk != g_rejected) join_group(rk);
     }
     g_grp.update(now);
     if (in_level && g_key.valid() && g_part >= 0 && g_grp.established()) tick_est(now);
