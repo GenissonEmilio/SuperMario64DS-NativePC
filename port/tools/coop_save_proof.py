@@ -672,6 +672,9 @@ def row_forge():
         info("forge %s: sent=%s, host stars after %s, drop lines %s" % (mode, sent.group(1) if sent else "?", st, [d[-60:] for d in drops][:3]))
         say(sent is not None and sent.group(1) == "1" and keep and okfile and ch.rc == 0 and cg.rc == 0,
             "forge %s (%s): sent; host file keeps every seeded bit %s; checksums valid; both consoles exit 0" % (mode, what, seed))
+        if mode == "clear":
+            say("host heard seat 1 record, 0 new bits queued (stars in it 0)" in th,
+                "forge clear: the host really received the empty record and merged 0 bits (so the kept stars are the merge rule, not a lost packet)")
         if mode in ("badlen", "badflags", "badrole", "badreq"):
             say(len(drops) >= 1, "forge %s: the receiver DROPPED it and logged the reason (%d drop lines)" % (mode, len(drops)))
         if mode == "hostclear":
