@@ -474,10 +474,12 @@ void file_fills(MenuLayout *L)
     const int cw = L->w * L->uden / L->unum;
     const int side = cw > 256 ? (cw - 256 + 1) / 2 + 2 : 0;       /* each margin, with an overlap under the page */
     if (side <= 0) return;
-    MenuPiece lf = menu_piece_make(SRC_TOP_PIC, 0, 0, 1, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    /* source width 0: the draw maps every margin pixel to ONE host column of the edge DS column (width 1 would spread the margin
+       over that DS column's four host columns in vertical steps) */
+    MenuPiece lf = menu_piece_make(SRC_TOP_PIC, 0, 0, 0, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
     lf.bg = 1; lf.xfill = 1; lf.fill_w = (short)side;
     menu_add_piece(L, lf);
-    MenuPiece rt = menu_piece_make(SRC_TOP_PIC, 255, 0, 1, 192, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+    MenuPiece rt = menu_piece_make(SRC_TOP_PIC, 255, 0, 0, 192, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
     rt.bg = 1; rt.xfill = 1; rt.fill_w = (short)side;
     menu_add_piece(L, rt);
 }
