@@ -152,7 +152,7 @@ static void player_list_draw(const OvlSurface &fb)
         ovl_shade(fb, x0, ry, w, row_h);
         if (hot) ovl_shade(fb, x0, ry, w, row_h);       /* deeper shade = hover */
         if (!r.me) port::player_list_layout_row(r.seat, x0, ry, w, row_h);   /* your own row is not a button */
-        const int alpha = r.same_place ? 255 : 110;
+        const int alpha = r.same_place ? 255 : 170;
         const int hx = x0 + gap, hy = ry + (row_h - head) / 2;
         plist_head(fb, hx, hy, scale, port::head_icon(r.character), alpha);
         char nm[port::kPlistNameShown + 1];
@@ -169,10 +169,11 @@ static void player_list_draw(const OvlSurface &fb)
         }
         chat_text(fb, nx, ty, nm, (int)strlen(nm), rom, scale, ncol, 1, alpha);
         chat_text(fb, cx, ty, r.code, (int)strlen(r.code), rom, scale, ccol, 1, alpha);
+        /* the TP badge is a button: never dimmed */
         if (r.badge[0]) {
             const int bx = cx + code_w + 2 * gap;
-            if (rom) chat_text(fb, bx, ty, r.badge, (int)strlen(r.badge), rom, scale, 0xFFFFE070u, 0, alpha);
-            chat_text(fb, bx, ty, r.badge, (int)strlen(r.badge), rom, scale, 0xFFFFE070u, 1, alpha);
+            if (rom) chat_text(fb, bx, ty, r.badge, (int)strlen(r.badge), rom, scale, 0xFFFFE070u, 0, 255);
+            chat_text(fb, bx, ty, r.badge, (int)strlen(r.badge), rom, scale, 0xFFFFE070u, 1, 255);
         }
     }
 }
