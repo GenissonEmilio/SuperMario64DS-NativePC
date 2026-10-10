@@ -10,7 +10,7 @@ process's PID). Point PLIST_RIG at the directory holding them. Other environment
   PLIST_LOCK    ladder lock to hold while consoles run (default C:/tmp/mp1/ladder2.lock; "" = none)
 
   python plist_proof.py room:<kind>:<n>:<tag>[:k=v;k=v]       kind party | coop | world
-    options  frames=900  scale=1|2|3  stacked=1  chat=1  handler=1  warp<i>=6@300  star<i>=1  click<i>=<seconds after the list shows every player>@<x>,<y>[|<seconds>@<x>,<y>...]
+    options  frames=900  scale=1|2|3  stacked=1  chat=1  handler=1  env_<NAME>=value  warp<i>=6@300  star<i>=1  click<i>=<seconds after the list shows every player>@<x>,<y>[|<seconds>@<x>,<y>...]
              (handler=1 installs the TEST click handler on every console; click<i> posts a real left-button message to
               console i's window <seconds> after it started, at framebuffer pixel x,y)
   python plist_proof.py table                                 the stage code table checks (no game)
@@ -76,6 +76,9 @@ def env_for(i, relay, kind, o):
     sw = o.get("char%d" % i, ("", "0", "1", "2")[i])
     if sw != "":
         e["SM64DS_SWITCH"] = sw
+    for k, v in o.items():            # env_<NAME>=value: any extra environment, on every console
+        if k.startswith("env_"):
+            e[k[4:]] = v
     return e
 
 
