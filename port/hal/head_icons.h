@@ -18,8 +18,14 @@ enum : int { kHeadIconSize = 16 };
 // kHeadIconSize x kHeadIconSize. Never null. Stable for the process.
 const uint32_t *head_icon(int character);
 
-// 0 = hand-made fallback, 1 = decoded from the ROM's HUD art.
+// 0 = hand-made fallback, 1 = decoded from the ROM's character-select art.
 int head_icon_source(int character);
+
+// Replace the hand-made heads with the ROM's own portraits where the files
+// can be read. `path_for_id` maps a FAT file id to a readable path (hal/fs.cpp
+// port_fs_catalog_path) or null. Returns how many of the four are now ROM art.
+// Safe to call again (it only retries the ones still hand-made).
+int head_icons_load_rom(const char *(*path_for_id)(unsigned file_id));
 
 }  // namespace port
 

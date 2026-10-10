@@ -16,6 +16,7 @@
 
 #ifdef OVL_SCALE
 
+extern "C" const char *port_fs_catalog_path(unsigned file_id);   /* hal/fs.cpp */
 #include "hal/head_icons.h"
 #include "hal/player_list.h"
 
@@ -37,7 +38,9 @@ static void plist_head(const OvlSurface &fb, int x0, int y0, int scale,
     for (int j = 0; j < S; ++j)
         for (int i = 0; i < S; ++i) {
             const uint32_t p = px[j * S + i];
-            if (!(p >> 24)) continue;
+            const int pa = (int)(p >> 24);
+            if (!pa) continue;
+            const int a = pa * alpha / 255;
             for (int sy = 0; sy < scale; ++sy)
                 for (int sx = 0; sx < scale; ++sx) {
                     const int qx = x0 + i * scale + sx, qy = y0 + j * scale + sy;
@@ -45,7 +48,7 @@ static void plist_head(const OvlSurface &fb, int x0, int y0, int scale,
                         qy >= ntr::active_h)
                         continue;
                     const size_t idx = (size_t)qy * (size_t)fb.stride + qx;
-                    fb.px[idx] = nt_blend(fb.px[idx], 0xFF000000u | p, alpha);
+                    fb.px[idx] = nt_blend(fb.px[idx], 0xFF000000u | p, a);
                 }
         }
 }
@@ -84,6 +87,14 @@ static void player_list_draw(const OvlSurface &fb)
     port::PlayerListView v;
     port::player_list_view(&v);
     if (v.n <= 0) return;
+    {   /* the ROM's own portraits, once the game files can be read; retried a few times */
+        static int tries, got;
+        if (got < 4 && tries < 6) {
+            ++tries;
+            got = port::head_icons_load_rom(port_fs_catalog_path);
+            fprintf(stderr, "[plist] head art: %d of 4 from the ROM (try %d)\n", got, tries);
+        }
+    }
     plist_pointer();
     const int rom = chat_font_build();
     const int scale = OVL_SCALE;
