@@ -252,7 +252,7 @@ def row_unit():
 def row_exist(n):
     row = "exist%d" % n
     frames = 1400
-    gaps = {i: 0.5 for i in range(1, n)}
+    gaps = {i: 0.2 for i in range(1, n)}
     rm = Room(row, n, [(0, 0)], frames, gaps=gaps)
     rm.start()
     rm.wait(900)

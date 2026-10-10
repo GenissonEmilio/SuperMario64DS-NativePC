@@ -45,6 +45,7 @@ namespace port {
 namespace {
 
 enum : unsigned { kBeatGatherMs = 250, kBeatMs = 500 };
+enum { kWarmFrames = 4 };
 
 struct Ctl {
     bool init = false;
@@ -73,6 +74,7 @@ struct Ctl {
     // both
     bool intro_seen = false;
     bool arrived = false;
+    int warm = 0;   // frames ticked since the closing load, before the end barrier freezes the tick
     bool closed = false;
     unsigned seq = 0;
     ULONGLONG last_beat = 0, last_ready = 0;
@@ -622,7 +624,13 @@ extern "C" int port_coop_boot_frame(void) {
     bool hold = false;
     const char *why = nullptr;
     if (!C.released) { hold = true; why = "start barrier"; }
-    else if (C.arrived && !C.closed) { hold = true; why = "opening end barrier"; }
+    else if (C.arrived && !C.closed) {
+        // The load's first frames must tick (the camera, the actors and the
+        // draw lists are only valid after a few ticks; a frozen first frame
+        // faulted the renderer), so the freeze starts after kWarmFrames.
+        if (C.warm < kWarmFrames) ++C.warm;
+        else { hold = true; why = "opening end barrier"; }
+    }
     if (hold && !C.host) {
         // a guest never waits for ever on a host that is still alive but silent
         static ULONGLONG since;
