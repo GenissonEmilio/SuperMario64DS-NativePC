@@ -6611,6 +6611,8 @@ static unsigned pad_script_mask(const char *spec, int frame)
     return mask;
 }
 
+static int g_setlive_mag = -2;       /* the last analog-injected magnitude, -2 none, -1 inside the dead zone */
+
 /* SM64DS_HOST_PAD: SM64DS_PAD_TEST's grammar, and the ONE difference is that a
    SELFTEST MAY USE IT (run link100, lane STARSEL5).
  *
@@ -8460,6 +8462,124 @@ static int mo_wheel;             /* accumulated notches, forward positive */
    keys are: the frame loop asks this question every frame and the answer may
    only move when the watcher says the file moved. */
 static int mo_capture_opt;
+
+/* SM64DS_SETLIVE_*: THE SETTINGS ENGINE'S PROOF HARNESS (run menu1, lane
+   SETLIVE1). Test scaffolding like SM64DS_PAD_TEST, inert unless one of the
+   variables is set and unreachable from a selftest (a selftest reads no live
+   pad). It drives the LEVEL loop's stick, mouse and settings so a headless
+   run can show each setting's in-game effect:
+
+     SM64DS_SETLIVE_PAD    "f0-f1:lx,ly,rx,ry;..."   the sticks (+-32767) on
+                           those frames; the pad counts as live then
+     SM64DS_SETLIVE_MOUSE  "f0-f1:dx,dy;..."          pixels of mouse look per
+                           frame (the look is held, as with the right button)
+     SM64DS_SETLIVE_SET    "f:Key=value;..."          sl_set by settings.json
+                           key name on that frame, the way the page would
+     SM64DS_SETLIVE_EXIT   frame: leave the loop after printing that frame
+     SM64DS_SETLIVE_TRACE  =1: one line a frame with the sticks, the Ctrl
+                           magnitude the analog injection wrote last frame,
+                           the camera rig's heading / elevation and mode
+
+   The trace line for frame N shows the effect of frame N-1's input. */
+#ifndef PORT_ROM_CLEAN
+static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
+{
+    static int init;
+    static const char *e_pad, *e_mouse, *e_set;
+    static int trace, exit_at = -1;
+    if (!init) {
+        init = 1;
+        if (g_selftest) return;
+        e_pad = getenv("SM64DS_SETLIVE_PAD");
+        e_mouse = getenv("SM64DS_SETLIVE_MOUSE");
+        e_set = getenv("SM64DS_SETLIVE_SET");
+        trace = getenv("SM64DS_SETLIVE_TRACE") != 0;
+        const char *x = getenv("SM64DS_SETLIVE_EXIT");
+        if (x) exit_at = atoi(x);
+    }
+    if (g_selftest) return;
+    if (!e_pad && !e_mouse && !e_set && !trace && exit_at < 0) return;
+    if (e_set) {
+        const char *p = e_set;
+        while (*p) {
+            char *q;
+            const long f = strtol(p, &q, 10);
+            if (*q != 58 /* ':' */) break;
+            p = q + 1;
+            char key[48];
+            int n = 0;
+            while (*p && *p != 61 /* '=' */ && n < 47) key[n++] = *p++;
+            key[n] = 0;
+            if (*p == 61) ++p;
+            const long v = strtol(p, &q, 10);
+            p = q;
+            if (f == frame) {
+                int id = -1;
+                for (int i = 0; i < SL_COUNT; ++i)
+                    if (!strcmp(sl_info(i)->key, key)) id = i;
+                const int ok = id >= 0 ? sl_set(id, (int)v) : 0;
+                fprintf(stderr, "[setlive] f%d set %s=%ld -> %s\n", frame, key,
+                        v, ok ? "ok" : "REFUSED");
+            }
+            while (*p && *p != 59 /* ';' */) ++p;
+            if (*p == 59) ++p;
+        }
+    }
+    int lx = 0, ly = 0, rx = 0, ry = 0, have = 0;
+    if (e_pad) {
+        const char *p = e_pad;
+        while (*p) {
+            char *q;
+            const long f0 = strtol(p, &q, 10);
+            long f1 = f0;
+            p = q;
+            if (*p == 45 /* '-' */) { f1 = strtol(p + 1, &q, 10); p = q; }
+            if (*p != 58) break;
+            const long a = strtol(p + 1, &q, 10); p = q;
+            const long b = strtol(p + 1, &q, 10); p = q;
+            const long c = strtol(p + 1, &q, 10); p = q;
+            const long d = strtol(p + 1, &q, 10); p = q;
+            if (frame >= f0 && frame <= f1) { lx = (int)a; ly = (int)b; rx = (int)c; ry = (int)d; have = 1; }
+            while (*p && *p != 59) ++p;
+            if (*p == 59) ++p;
+        }
+    }
+    if (have) {
+        if (!*pad_live) { memset(pad, 0, sizeof *pad); *pad_live = 1; }
+        pad->lx = (short)lx; pad->ly = (short)ly;
+        pad->rx = (short)rx; pad->ry = (short)ry;
+    }
+    if (e_mouse) {
+        const char *p = e_mouse;
+        while (*p) {
+            char *q;
+            const long f0 = strtol(p, &q, 10);
+            long f1 = f0;
+            p = q;
+            if (*p == 45) { f1 = strtol(p + 1, &q, 10); p = q; }
+            if (*p != 58) break;
+            const long a = strtol(p + 1, &q, 10); p = q;
+            const long b = strtol(p + 1, &q, 10); p = q;
+            if (frame >= f0 && frame <= f1) { mo_look = 1; mo_dx += (int)a; mo_dy += (int)b; }
+            while (*p && *p != 59) ++p;
+            if (*p == 59) ++p;
+        }
+    }
+    if (trace)
+        fprintf(stderr, "[setlive] f%d stick %d,%d rx,ry %d,%d | mag %d | yaw %d pitch %d mode %d gen %d | mcap %d mm %.3f vol %d\n",
+                frame, lx, ly, rx, ry, g_setlive_mag, (int)fc_yaw, (int)fc_pitch,
+                cam_mode, host_settings_ctl_gen(), mo_capture_opt,
+                host_setting_minimap_scale_value(), host_setting_volume());
+    if (exit_at >= 0 && frame >= exit_at) {
+        fprintf(stderr, "[setlive] f%d exit\n", frame);
+        fflush(stderr);
+        ExitProcess(0);
+    }
+}
+#else
+static void setlive_test_apply(int, int *, XPad *) {}
+#endif
+
 static int mo_captured;
 static POINT mo_capture_home;
 static int mo_capture_home_ok;
@@ -10696,6 +10816,7 @@ extern "C" void port_frame_ctrl_publish(void)
                 const int dys = -pad.ly;    /* stick up is touch-screen up */
                 double len = sqrt((double)dxs * dxs + (double)dys * dys);
                 if (len > FULL) len = FULL;
+                g_setlive_mag = -1;
                 if (len > DEAD) {
                     int mag = (int)(4096.0 * (len - DEAD) / (FULL - DEAD));
                     if (mag > 0x1000) mag = 0x1000;
@@ -10703,6 +10824,7 @@ extern "C" void port_frame_ctrl_publish(void)
                     /* the player's run point lands on the ROM's own
                        (identity at the default; settings_live.h) */
                     mag = host_setting_run_remap(mag);
+                    g_setlive_mag = mag;
                     /* THE LOCAL SLOT, at the 0x18 Ctrl stride. Each split array
                        (f4a0/f4a2/f4a4/f4a6/f4ac) is 0x18 * kPortMaxPlayers, and
                        the ROM reads player N's fields at symbol + N*0x18 (see the
@@ -12995,6 +13117,7 @@ int main(void)
            set and unreachable from a selftest; see its banner. */
         pad_test_apply(port_rom_frame_checked(frame, "pad-test"),
                        &pad_live, &pad);
+        setlive_test_apply(frame, &pad_live, &pad);
 #ifndef PORT_ROM_CLEAN
         /* SM64DS_CLICK_TEST: the scripted stylus, the same call the windowed
            scene loop makes and for the same reason -- the level path is where
