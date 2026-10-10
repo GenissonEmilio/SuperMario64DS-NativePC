@@ -113,6 +113,11 @@ bool body_solid(int body) {
 bool follow(void *a, int body, int seat) {
     read_env();
     if (!a || body < 0 || body >= kMaxBodies) return false;
+    // The invincibility timer (+0x6a0) is not counted down on a body whose Behavior never runs, and
+    // a course entry leaves it set: the ROM's blink gate (port_player_render_hidden, bit 0) then hides
+    // the body on every frame when the value is odd. A party body is not hurt here, so it carries none.
+    const unsigned inv = *(const unsigned short *)((const char *)a + player::kInvincibleTimer);
+    *(unsigned short *)((char *)a + player::kInvincibleTimer) = 0;
     lab_before_register(a, body);
     g_solid[body] = true;
     ++g_st.solid_frames;
@@ -135,14 +140,14 @@ bool follow(void *a, int body, int seat) {
             }
             r = lo;                                  // Fix12 / 16
             std::fprintf(stderr, "[partysep] t=%u seat=%d body=%d horiz=%d.%02d dy=%d me=(%d,%d,%d) "
-                         "p=(%d,%d,%d) reg=%d push=(%d,%d,%d) hit=%x own=%u\n", comms_hub_now_ms(), seat, body,
+                         "p=(%d,%d,%d) reg=%d push=(%d,%d,%d) hit=%x own=%u inv=%u\n", comms_hub_now_ms(), seat, body,
                          (int)(r * 16 / 4096), (int)((r * 16 * 100 / 4096) % 100), (int)(dy >> 12),
                          *player::pos_x(mb) >> 12, *player::pos_y(mb) >> 12, *player::pos_z(mb) >> 12,
                          *player::pos_x(a) >> 12, *player::pos_y(a) >> 12, *player::pos_z(a) >> 12,
                          reg ? 1 : 0,
                          *(const int *)((const char *)mb + 0x2e0), *(const int *)((const char *)mb + 0x2e4),
                          *(const int *)((const char *)mb + 0x2e8), *(const unsigned *)((const char *)mb + 0x2f4),
-                         *(const unsigned *)((const char *)mb + 0x2f8));
+                         *(const unsigned *)((const char *)mb + 0x2f8), inv);
         }
     }
     if (g_log > 0 && (g_pass % 60u) == 0)
