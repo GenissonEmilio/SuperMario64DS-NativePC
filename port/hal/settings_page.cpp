@@ -1100,7 +1100,10 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
                           : (S.cap_active ? (S.cap_id < SL_PAD_BASE ? "Press a key. Esc keeps the old one." : "Press a button. BACK keeps the old one.") : "");
         const int fy = L.reset[1] + L.reset[3] / 2;
         if (msg[0]) {
-            const float em = (float)P(24);
+            float em = (float)P(24);
+            const float room = (float)(L.reset[0] - P(16) - L.lab_x);   /* the note stops short of the Reset plank: a long one shrinks to fit */
+            const float need = ui_text_width(msg, em);
+            if (room > 0 && need > room) em *= room / need;
             ui_text_draw(&s, (float)L.lab_x, fy + ui_text_cap_height(em) * 0.5f, msg, em, S.note[0] ? 0x9A2A10 : C_QUIET, 255, 0);
         } else if (S.cursor_shown && S.sel < n && rows[S.sel].t == R_BIND) {
             const float em = (float)P(22);
