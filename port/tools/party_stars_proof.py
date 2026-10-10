@@ -756,12 +756,12 @@ def row_share_pics():
 
 
 def row_real():
-    """A is dropped on a placed PowerStar (SM64DS_STAR_DROP): the star's own collision runs the collect, the star-get, the
-    save and the exit. B and C wait in BOB. The collected star is whatever bit the ROM set; B and C must read back exactly it."""
+    """A collects a star through the ROM's own star handler (SM64DS_STAR_TRIGGER arms the touch gate on a spawned PowerStar: the
+    collect handler, the star-get, the message and the save are the cartridge's own). B and C wait in BOB. The collected star is whatever bit the ROM set; B and C must read back exactly it."""
     row = "real"
     f = frames_for(75)
     idx = os.environ.get("PSTAR_STAR_IDX", "0")
-    ea = dict(warp(300), SM64DS_STAR_PROBE="1", SM64DS_STAR_DROP="#%s,1100,150" % idx, SM64DS_EXIT_WATCH="1")
+    ea = dict(warp(300), SM64DS_STAR_TRIGGER="1100", SM64DS_STAR_PROBE="1", SM64DS_EXIT_WATCH="1")
     specs = [dict(frames=f, extra=ea), dict(frames=f, extra=warp(300)), dict(frames=f, extra=warp(300))]
     r = room(row, specs)
     common(row, r.cons)
