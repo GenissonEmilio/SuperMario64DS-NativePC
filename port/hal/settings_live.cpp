@@ -117,6 +117,9 @@ int sl_applicable(int id)
 
 int sl_flush(void) { return host_settings_save_flush(); }
 
+/* why the last sl_set was refused ("" when it was not) */
+const char *sl_set_refused(void) { return host_setting_refusal(); }
+
 /* ---- the rebind capture ---------------------------------------------------- */
 static int g_cap_id = -1;
 static int g_cap_either;          /* the F5 run row: key or pad */
@@ -192,9 +195,13 @@ static int key_reserved(int action, int vk, const char **why)
 
 static int pad_reserved(int action, unsigned bit, const char **why)
 {
-    /* the d-pad, A, B, BACK and the right stick's click drive the menus and
-       the camera mode toggle */
-    if (bit & 0x30afu) { *why = "that button drives the menus"; return 1; }
+    /* the d-pad, BACK and the right stick's click drive the menus and the
+       camera mode toggle. SETFIX1 (G4): A and B (0x1000 / 0x2000) may be bound
+       to the gameplay actions, so a player can bind A back to Jump; they stay
+       out of the menu slots (Start, Select). */
+    unsigned blocked = 0x30afu;
+    if (action != HOST_PAD_START && action != HOST_PAD_SELECT) blocked &= ~0x3000u;
+    if (bit & blocked) { *why = "that button drives the menus"; return 1; }
     for (int i = 0; i < HOST_PAD_COUNT; ++i)
         if (i != action && (host_setting_pad(i) & (int)bit)) {
             *why = "already used by another control";

@@ -4213,8 +4213,22 @@ static void bindings_load(void)
    handed to the camera block as g_cam_req. */
 static int g_ctl_seen = -1, g_cam_seen = -1;
 static int g_cam_req = -1;
+/* SETFIX1 (G5): the camera turn sign is a file-level value written here, so a
+   SwapCameraTurnDirection change lands from either loop (the star-select
+   interlude runs inside the level loop but calls only the scene frame). */
+static int g_cam_turn = 1;
+/* SETFIX1 (G1): the settings queue is written when a level or scene changes,
+   at both loop exits, at the main return (atexit) and when the page closes. */
+static void settings_flush_atexit(void) { host_settings_save_flush(); }
 static int controls_refresh(void)
 {
+    static int last_lvl = -2;
+    {
+        const int lvl = port_level_id();
+        if (last_lvl != -2 && lvl != last_lvl && host_settings_save_pending())
+            host_settings_save_flush();
+        last_lvl = lvl;
+    }
     const int g = host_settings_ctl_gen();
     if (g == g_ctl_seen) return 0;
     const int first = g_ctl_seen < 0;
@@ -4224,6 +4238,7 @@ static int controls_refresh(void)
     g_run_mode = host_setting_run_mode();
     g_run_key = host_setting_run_key();
     g_run_pad = host_setting_run_pad();
+    g_cam_turn = host_camera_turn_sign();
     const int cg = host_settings_cam_gen();
     if (!first && cg != g_cam_seen) g_cam_req = host_setting_camera_mode();
     g_cam_seen = cg;
@@ -8583,7 +8598,7 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
     if (exit_at >= 0 && frame >= exit_at) {
         fprintf(stderr, "[setlive] f%d exit\n", frame);
         fflush(stderr);
-        ExitProcess(0);
+        W.PostQuitMessage_(0);   /* SETFIX1: leave through the real quit path (the loops flush) */
     }
 }
 #else
@@ -10589,6 +10604,7 @@ static int scene_window_run(void)
 #ifndef PORT_ROM_CLEAN
     click_test_finish();
 #endif
+    host_settings_save_flush();   /* SETFIX1 (G1) */
     fprintf(stderr, "[scene] window closed after %d frame(s)\n",
             port_rom_frame_checked(frame, "scene-closed"));
     port_rom_frame_report();   /* R3a: this loop's frame account, one line */
@@ -10996,6 +11012,7 @@ int main(void)
     static char stdout_buf[1 << 16];
     setvbuf(stdout, stdout_buf, _IOFBF, sizeof stdout_buf);
     atexit(stdout_flush_atexit);
+    atexit(settings_flush_atexit);   /* SETFIX1 (G1): the last queued setting always lands */
     /* FLIGHT RECORDER (Tango's ask): every diagnostic this program
        writes to stderr -- unhosted states, spawn skips, fault dumps
        with registers and stack, the traces below -- lands in a
@@ -12275,7 +12292,8 @@ int main(void)
        right. See port/hal/host_settings.h for the measurement the default
        comes from; the DS has none of these controls, so there was never a
        hardware binding to be faithful to. */
-    int cam_turn = host_camera_turn_sign();   /* SETLIVE1: refreshed live below */
+    g_cam_turn = host_camera_turn_sign();   /* SETLIVE1/SETFIX1: refreshed live in controls_refresh */
+    int &cam_turn = g_cam_turn;
     /* HOW RUNNING WORKS, read once at boot beside the camera setting and for
        the same reason: a change takes effect the next time the player presses
        Play, except that this one can also be changed from the menu, which
@@ -12580,7 +12598,7 @@ int main(void)
            camera block, the render block and the scene-tree point. */
         int k1_rom = 0;
         while (W.PeekMessageA_(&msg, 0, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT) return 0;
+            if (msg.message == WM_QUIT) { host_settings_save_flush(); return 0; }
             W.TranslateMessage_(&msg);
             W.DispatchMessageA_(&msg);
         }
@@ -12609,7 +12627,7 @@ int main(void)
                path -- it just changes what that test answers. */
             mo_capture_opt = host_setting_mouse_capture();
         }
-        if (controls_refresh()) cam_turn = host_camera_turn_sign();
+        controls_refresh();
         ph_begin(&t_frame);
         pt_frame_begin(0, port_level_id());
         pt_mark(PS_HOST_IN);

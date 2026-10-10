@@ -106,6 +106,18 @@ static int new_mag(double len)
     return host_setting_run_remap(mag);
 }
 
+/* a thread that takes the named settings mutex and holds it for `ms` */
+static char g_lock_name[96];
+static DWORD WINAPI hold_thread(void *arg)
+{
+    HANDLE m = CreateMutexA(0, FALSE, g_lock_name);
+    WaitForSingleObject(m, 1000);
+    Sleep((DWORD)(size_t)arg);
+    ReleaseMutex(m);
+    CloseHandle(m);
+    return 0;
+}
+
 static int child(const char *which)
 {
     if (!strcmp(which, "defaults")) {
@@ -304,6 +316,77 @@ static int child(const char *which)
         (void)t;   /* KeyStart stayed 13, an unchanged value writes nothing */
         return fails;
     }
+    if (!strcmp(which, "fixes")) {
+        /* SETFIX1 G4: A and B bind back to a gameplay action, never to Start */
+        sl_capture_start(SL_PAD_BASE + HOST_PAD_JUMP);
+        check_eq(sl_capture_offer_pad(0x0100), 1, "jump moves to LB");
+        sl_capture_state();
+        sl_capture_start(SL_PAD_BASE + HOST_PAD_JUMP);
+        check_eq(sl_capture_offer_pad(0x1000), 1, "A binds back to Jump");
+        check_eq(sl_get(SL_PAD_BASE + HOST_PAD_JUMP), 0x1000, "jump is A");
+        sl_capture_state();
+        sl_capture_start(SL_PAD_BASE + HOST_PAD_ATTACK);
+        check_eq(sl_capture_offer_pad(0x1000), 0, "A is taken by Jump");
+        check_eq(sl_capture_offer_pad(0x2000), 1, "B binds to Attack");
+        sl_capture_state();
+        sl_capture_start(SL_PAD_BASE + HOST_PAD_START);
+        check_eq(sl_capture_offer_pad(0x2000), 0, "B refused for Start");
+        check_eq(sl_capture_offer_pad(0x0004), 0, "d-pad still refused");
+        sl_capture_cancel();
+        /* Start keeps one of its two bindings */
+        check_eq(sl_set(SL_KEY_BASE + HOST_KEY_START, 0), 1, "Start key can go while the pad has Start");
+        check_eq(sl_set(SL_PAD_BASE + HOST_PAD_START, 0), 0, "Start pad cannot go too");
+        check(sl_set_refused()[0] != 0, "a reason is given");
+        check_eq(sl_get(SL_PAD_BASE + HOST_PAD_START), 0x10, "Start pad stays");
+        check_eq(sl_set(SL_KEY_BASE + HOST_KEY_START, 0x0d), 1, "key back");
+        check_eq(sl_set(SL_PAD_BASE + HOST_PAD_START, 0), 1, "pad can go while the key has Start");
+        check_eq(sl_set(SL_KEY_BASE + HOST_KEY_START, 0), 0, "now the key cannot go");
+        check_eq(sl_get(SL_KEY_BASE + HOST_KEY_START), 0x0d, "Start key stays");
+        /* the digital walk threshold has a floor */
+        check_eq(sl_set(SL_STICK_DEADZONE, 0), 1, "dead zone 0");
+        check_eq(host_setting_stick_digital(), 4000, "digital threshold floored at 4000");
+        check_eq(sl_set(SL_STICK_DEADZONE, 24), 1, "dead zone 24");
+        check_eq(host_setting_stick_digital(), 12000, "digital back to 12000");
+        /* the last good copy follows every good save */
+        sl_set(SL_VOLUME, 37);
+        sl_flush();
+        check_has(slurp("settings.json.lastgood"), "\"Volume\": 37");
+        return fails;
+    }
+    if (!strcmp(which, "mutex")) {
+        /* SETFIX1 L1: the save waits for the shared mutex, then proceeds */
+        char full[MAX_PATH], name[96];
+        GetFullPathNameA("settings.json", MAX_PATH, full, 0);
+        host_settings_lock_name(full, name, sizeof name);
+        snprintf(g_lock_name, sizeof g_lock_name, "%s", name);
+        check(strncmp(name, "Local\\SM64DSPort.settings.", 26) == 0, "mutex name shape");
+        printf("  mutex name for %s: %s\n", full, name);
+        HANDLE m = CreateMutexA(0, FALSE, name);
+        check(m != 0, "mutex created");
+        HANDLE th = CreateThread(0, 0, hold_thread, (void *)(size_t)300, 0, 0);
+        Sleep(50);
+        sl_set(SL_VOLUME, 41);
+        const DWORD t0 = GetTickCount();
+        check_eq(sl_flush(), 1, "flush with the lock held elsewhere");
+        const DWORD dt = GetTickCount() - t0;
+        printf("  flush waited %lu ms behind a 300 ms holder\n", (unsigned long)dt);
+        check(dt >= 200, "the save waited for the holder");
+        check_has(slurp("settings.json"), "\"Volume\": 41");
+        WaitForSingleObject(th, 3000);
+        /* a holder that never lets go: the save proceeds after about 500 ms */
+        th = CreateThread(0, 0, hold_thread, (void *)(size_t)2500, 0, 0);
+        Sleep(50);
+        sl_set(SL_VOLUME, 42);
+        const DWORD t1 = GetTickCount();
+        check_eq(sl_flush(), 1, "flush proceeds after the timeout");
+        const DWORD dt2 = GetTickCount() - t1;
+        printf("  flush gave up waiting after %lu ms\n", (unsigned long)dt2);
+        check(dt2 >= 400 && dt2 < 1500, "short timeout, no hang");
+        check_has(slurp("settings.json"), "\"Volume\": 42");
+        WaitForSingleObject(th, 5000);
+        CloseHandle(m);
+        return fails;
+    }
     if (!strcmp(which, "remap")) {
         check_eq(sl_set(SL_RUN_THRESHOLD, 70), 1, "70");
         const int T = 70 * 4096 / 100;
@@ -411,6 +494,8 @@ int main(int argc, char **argv)
     bad |= run_case(exe, dir, "livereload", launcher, 0);
     bad |= run_case(exe, dir, "capture", launcher, 0);
     bad |= run_case(exe, dir, "remap", launcher, 0);
+    bad |= run_case(exe, dir, "fixes", launcher, 0);
+    bad |= run_case(exe, dir, "mutex", launcher, 0);
     _rmdir(dir);
     printf(bad ? "smoke_settings_live: FAILED\n" : "smoke_settings_live: all ok\n");
     return bad;

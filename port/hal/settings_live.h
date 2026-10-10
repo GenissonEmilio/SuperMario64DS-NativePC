@@ -73,14 +73,19 @@ int sl_applicable(int id);
 /* Write anything still queued (mouse-up on a slider, closing the page). */
 int sl_flush(void);
 
+/* "" or the reason the last sl_set was refused (Start cannot lose both its key
+   and its button, or the pause could not open) */
+const char *sl_set_refused(void);
+
 /* ---- rebinding: the run-rebind capture, for any binding --------------------
    sl_capture_start arms a capture for a KEY id (waits for a keyboard press) or
    a PAD id (waits for a pad button or trigger pull). Escape, or sl_capture_cancel,
    backs out. Keys the window owns (escape, F1..F12, tab, the arrows for any
    action but the four arrow slots, enter for any action but Start) and any
    key/button already bound to ANOTHER action are refused: the capture stays
-   armed and sl_capture_refused says why. The pad's d-pad, A, B, BACK and the
-   right stick's click are reserved (the menu and the camera mode toggle). */
+   armed and sl_capture_refused says why. The pad's d-pad, BACK and the right
+   stick's click are reserved (the menu and the camera mode toggle); A and B
+   bind to the gameplay actions but not to Start / Select. */
 enum { SL_CAP_IDLE = 0, SL_CAP_WAITING, SL_CAP_BOUND, SL_CAP_CANCELLED };
 int sl_capture_start(int id);
 void sl_capture_cancel(void);

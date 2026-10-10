@@ -2623,6 +2623,71 @@ extern "C" int host_settings_poll(void)
    write is carried across untouched (see json_set). Says why on stderr when
    the write fails; the in-memory values are the caller's to have moved
    already. */
+/* SETFIX1 (L1): the settings file's cross-process lock. The launcher and the
+   game both read-modify-write the same settings.json; without a lock a launcher
+   save landing between the game's read and its rename is overwritten (and the
+   game then re-reads the stale value). A NAMED mutex, shared with the launcher,
+   held around the whole read-modify-write-rename. The name is derived from the
+   file's full path so two installs do not share it:
+
+     "Local\\SM64DSPort.settings." + 8 hex digits of FNV-1a (32 bit) over the
+     UTF-16 code units of the full path, A-Z lowered and '/' turned into '\\'.
+
+   The launcher (Settings.cs) computes the same name. A short timeout (500 ms)
+   then proceed: a stuck holder can never hang a frame; the game takes the
+   lock only when it saves (the debounced tick), never per frame. */
+#ifdef _WIN32
+namespace {
+void settings_lock_name(const char *path, char *out, size_t cap)
+{
+    wchar_t wide[1100], full[1100];
+    unsigned h = 2166136261u;
+    full[0] = 0;
+    if (MultiByteToWideChar(CP_ACP, 0, path, -1, wide, 1100) &&
+        GetFullPathNameW(wide, 1100, full, 0)) {
+        for (const wchar_t *c = full; *c; ++c) {
+            unsigned ch = *c;
+            if (ch >= 'A' && ch <= 'Z') ch += 32;
+            if (ch == '/') ch = '\\';
+            h = (h ^ ch) * 16777619u;
+        }
+    }
+    snprintf(out, cap, "Local\\SM64DSPort.settings.%08x", h);
+}
+struct SettingsLock {
+    HANDLE m;
+    explicit SettingsLock(const char *path) : m(0)
+    {
+        char name[96];
+        settings_lock_name(path, name, sizeof name);
+        m = CreateMutexA(0, FALSE, name);
+        if (m && WaitForSingleObject(m, 500) == WAIT_TIMEOUT) {
+            CloseHandle(m);   /* proceed without it: never hang a frame */
+            m = 0;
+        }
+    }
+    ~SettingsLock()
+    {
+        if (m) { ReleaseMutex(m); CloseHandle(m); }
+    }
+    int held() const { return m != 0; }
+};
+}  /* namespace */
+#else
+namespace {
+struct SettingsLock { explicit SettingsLock(const char *) {} int held() const { return 0; } };
+}
+#endif
+/* test seam for the smoke program: the lock name for a path */
+extern "C" void host_settings_lock_name(const char *path, char *out, int cap)
+{
+#ifdef _WIN32
+    settings_lock_name(path, out, (size_t)cap);
+#else
+    snprintf(out, (size_t)cap, "%s", path);
+#endif
+}
+
 namespace {
 int save_keys(const char *const *keys, const char *const *vals, int n,
               const char *what)
@@ -2630,10 +2695,19 @@ int save_keys(const char *const *keys, const char *const *vals, int n,
     char path[1024];
     if (!settings_write_path(path, sizeof path)) return 0;
 
+    SettingsLock lock(path);   /* held to the end: read, edit, rename, last-good */
     char *doc = slurp(path);
     if (doc && !looks_like_json_object(doc)) {
         /* a file that will not parse is one the loader is already ignoring,
-           so replacing it loses nothing a reader was going to honour */
+           so replacing it loses nothing a reader was going to honour. SETFIX1:
+           but keep what it held once, beside it, so nothing is lost for good. */
+#ifdef _WIN32
+        {
+            char bad[1100];
+            snprintf(bad, sizeof bad, "%s.bad", path);
+            CopyFileA(path, bad, TRUE);   /* keeps an earlier .bad */
+        }
+#endif
         free(doc);
         doc = 0;
     }
@@ -2650,6 +2724,13 @@ int save_keys(const char *const *keys, const char *const *vals, int n,
         if (!doc) ok = 0;
     }
     if (ok) ok = write_text(path, doc);
+#ifdef _WIN32
+    if (ok) {   /* SETFIX1 (L2): the last good file, for the launcher's cold start */
+        char lg[1100];
+        snprintf(lg, sizeof lg, "%s.lastgood", path);
+        CopyFileA(path, lg, FALSE);
+    }
+#endif
     free(doc);
     if (!ok)
         fprintf(stderr, "[settings] could not write %s -- the %s is set for "
@@ -2689,7 +2770,8 @@ int pending_flush(void)
     const char *vals[24];
     for (int i = 0; i < g_npend; ++i) { keys[i] = g_pend[i].key; vals[i] = g_pend[i].val; }
     const int ok = save_keys(keys, vals, g_npend, "live settings");
-    g_npend = 0;
+    /* SETFIX1 (G2): a failed write keeps the queue, retried on the next tick */
+    if (ok) g_npend = 0;
     g_last_write_ms = now_ms();
     return ok;
 }
@@ -2700,7 +2782,11 @@ void queue_save(const char *key, const char *val)
     for (i = 0; i < g_npend; ++i)
         if (strcmp(g_pend[i].key, key) == 0) break;
     if (i == g_npend) {
-        if (g_npend >= 24) pending_flush();
+        if (g_npend >= 24 && !pending_flush()) {
+            /* still full after a failed write: drop the oldest */
+            memmove(&g_pend[0], &g_pend[1], sizeof(Pend) * (24 - 1));
+            --g_npend;
+        }
         i = g_npend++;
     }
     snprintf(g_pend[i].key, sizeof g_pend[i].key, "%s", key);
@@ -2727,10 +2813,21 @@ extern "C" int host_settings_save_flush(void) { return pending_flush(); }
 extern "C" int host_settings_ctl_gen(void) { return g_ctl_gen; }
 extern "C" int host_settings_cam_gen(void) { return g_cam_gen; }
 
+/* SETFIX1 (G4): the pause must stay reachable, so Start cannot be unbound on
+   the keyboard and the pad at the same time. The reason is kept for the page. */
+namespace { char g_refusal[96]; }
+extern "C" const char *host_setting_refusal(void) { return g_refusal; }
+
 extern "C" int host_setting_set_key(int action, int vk)
 {
     load_once();
+    g_refusal[0] = 0;
     if (action < 0 || action >= HOST_KEY_COUNT || vk < 0 || vk > 0xff) return 0;
+    if (action == HOST_KEY_START && vk == 0 && g_pad[HOST_PAD_START] == 0) {
+        snprintf(g_refusal, sizeof g_refusal, "%s",
+                 "Start needs a key or a button, or the pause cannot open");
+        return 0;
+    }
     if (g_key[action] == vk) return 1;
     g_key[action] = vk;
     if (action == HOST_KEY_RUN) {
@@ -2745,7 +2842,13 @@ extern "C" int host_setting_set_key(int action, int vk)
 extern "C" int host_setting_set_pad(int action, int mask)
 {
     load_once();
+    g_refusal[0] = 0;
     if (action < 0 || action >= HOST_PAD_COUNT || mask < 0 || mask > HOST_PAD_MASK_MAX) return 0;
+    if (action == HOST_PAD_START && mask == 0 && g_key[HOST_KEY_START] == 0) {
+        snprintf(g_refusal, sizeof g_refusal, "%s",
+                 "Start needs a key or a button, or the pause cannot open");
+        return 0;
+    }
     if (g_pad[action] == mask) return 1;
     g_pad[action] = mask;
     if (action == HOST_PAD_RUN) {
@@ -2873,7 +2976,10 @@ extern "C" int host_setting_stick_digital(void)
     load_once();
     if (g_stick_dead == STICK_DEAD_DEFAULT) return 12000;
     const long long v = (long long)12000 * g_stick_dead / STICK_DEAD_DEFAULT;
-    return v < 1 ? 1 : v > 30000 ? 30000 : (int)v;
+    /* SETFIX1: never below 4000 of 32767, so stick drift cannot walk Mario in
+       button / auto run mode at Deadzone 0 (the analog injection may still
+       use the raw zero dead zone) */
+    return v < 4000 ? 4000 : v > 30000 ? 30000 : (int)v;
 }
 extern "C" int host_setting_run_threshold_pct(void)
 {
@@ -2943,10 +3049,14 @@ extern "C" int host_setting_save_run(int mode, int key, int pad)
     snprintf(vmode, sizeof vmode, "\"%s\"", RUN_MODE_KEY[mode]);
     snprintf(vkey, sizeof vkey, "%d", key);
     snprintf(vpad, sizeof vpad, "%d", pad);
-    const char *const keys[5] = { "RunMode", "RunButtonKey", "KeyRun",
-                                  "RunButtonPad", "PadRun" };
-    const char *const vals[5] = { vmode, vkey, vkey, vpad, vpad };
-    return save_keys(keys, vals, 5, "run mode");
+    /* SETFIX1 (G3): through the queue, so an older page value still pending
+       cannot be flushed over this one afterwards */
+    queue_save("RunMode", vmode);
+    queue_save("RunButtonKey", vkey);
+    queue_save("KeyRun", vkey);
+    queue_save("RunButtonPad", vpad);
+    queue_save("PadRun", vpad);
+    return 1;
 }
 
 /* The camera row's twin of the above: the live mode moves whether or not the
@@ -2958,9 +3068,8 @@ extern "C" int host_setting_save_camera_mode(int mode)
     g_camera_mode = mode;
     char v[24];
     snprintf(v, sizeof v, "\"%s\"", CAMERA_MODE_KEY[mode]);
-    const char *const keys[1] = { "CameraMode" };
-    const char *const vals[1] = { v };
-    return save_keys(keys, vals, 1, "camera mode");
+    queue_save("CameraMode", v);   /* SETFIX1 (G3): through the queue */
+    return 1;
 }
 
 /* ---- PadLayouts -----------------------------------------------------------

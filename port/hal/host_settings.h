@@ -947,6 +947,12 @@ int host_settings_save_pending(void);
 int host_settings_save_flush(void);
 
 int host_setting_set_key(int action, int vk);
+/* why the last set_key / set_pad was refused ("" if it was not): Start cannot
+   lose both its key and its button */
+const char *host_setting_refusal(void);
+/* the name of the cross-process mutex around settings.json read-modify-write
+   (the launcher takes the same one); for the smoke test */
+void host_settings_lock_name(const char *path, char *out, int cap);
 int host_setting_set_pad(int action, int mask);
 int host_setting_set_run_mode(int mode);
 int host_setting_set_camera_mode(int mode);
