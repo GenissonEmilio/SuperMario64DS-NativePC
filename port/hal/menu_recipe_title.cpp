@@ -1194,11 +1194,16 @@ bool file_wide_cb(float *zoom, float *dy)
     if (!port_title_page_state(&top, &elem, &req)) return false;
     const int v = variant_for(top, elem);
     if (v != V_FILES && v != V_TABLE) return false;
-    const float z = (float)ntr::active_w * 192.0f / ((float)ntr::active_h * 256.0f);   /* the canvas width over the DS width */
-    if (z <= 1.001f) return false;
-    int zp = 1000, dp = 0;      /* SM64DS_FILE_WIDE_TUNE=zoom permille of the fit, vertical shift permille of the half height */
-    if (const char *e = getenv("SM64DS_FILE_WIDE_TUNE")) sscanf(e, "%d,%d", &zp, &dp);
-    *zoom = z * ((float)zp / 1000.0f);
+    /* the canvas width in DS units over the width of real page content: the reflection plane is about 292 DS units wide (measured,
+       its edge is a dark zigzag outline beyond that), so the page is zoomed exactly as much as keeps the plane's content on both
+       edges (288 = a little inside it) and never more; 256 would be the fit-the-width zoom, 9999 no zoom at all (a true wide field,
+       which shows the empty plane edge) */
+    int wc = 288, dp = 0;       /* SM64DS_FILE_WIDE_TUNE=content width in DS units, vertical shift permille of the half height */
+    if (const char *e = getenv("SM64DS_FILE_WIDE_TUNE")) sscanf(e, "%d,%d", &wc, &dp);
+    const float cwu = (float)ntr::active_w * 192.0f / (float)(ntr::present_h() > 0 ? ntr::present_h() : 192);   /* the canvas width in DS units (192 rows = one DS screen) */
+    float z = cwu / (float)(wc > 64 ? wc : 64);
+    if (z < 1.0f) z = 1.0f;
+    *zoom = z;
     *dy = (float)dp / 1000.0f;
     return true;
 }
@@ -1256,7 +1261,16 @@ void file_pages_build(int variant, MenuLayout *L)
     MenuPiece pg = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
     pg.bg = 1; pg.touch = 1;
     if (pat) pg.keycover = 1;
+    if (t_f && t_f->wide3d) pg.nodraw = 1;      /* FILE2: the wide 3D frame already is the picture, in place: this piece only maps clicks */
     const int ip = menu_add_piece(L, pg);
+    if (pat) {
+        /* the page's own 2D layer (the SOUND and BACKLIGHT labels, the star) is lifted out of the picture and drawn over the 3D objects,
+           in place, with its own transparency */
+        L->lift_owners = MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
+        MenuPiece tx = menu_piece_make(SRC_TOP_2D, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
+        tx.layers = L->lift_owners;
+        menu_add_piece(L, tx);
+    }
     if (variant == V_TABLE) {
         L->lift_owners = (uint8_t)ftune(0, MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ);
         const int kn = ftune(5, 2), kd = ftune(6, 3);
