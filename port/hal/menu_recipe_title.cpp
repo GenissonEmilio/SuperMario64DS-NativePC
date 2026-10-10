@@ -1,0 +1,1035 @@
+/* menu_recipe_title.cpp -- the TITLE family as one-screen menu recipe "title" (run menu1, lane TITLE1).
+ *
+ * WHAT THE TITLE IS. Scene 1 (dScDSMT_c, ov007). On this family the two engines are swapped
+ * (POWCNT1 bit 15 clear): ENGINE A is the physical LOWER screen (wallpaper, the 3D Mario head, the
+ * buttons, the file plates, all touchable) and ENGINE B is the physical UPPER screen (logo, castle
+ * photo, the prompt banner). In the compose layer's words the "top picture" (SRC_TOP_PIC) is therefore
+ * the touch screen and SRC_SUB is the picture screen. Neither can be lifted by layer (P0ATLAS 0.3), so
+ * every piece is cut from a FINISHED picture along rows and columns that are empty.
+ *
+ * THE LAYOUT, per page (canvas = 192 units tall, 256 wide at 4:3; pieces never stretch):
+ *   attract (variant 1)   the lower screen as it is (star, TOUCH TO START) fills the picture; a click
+ *                         anywhere is the touch the ROM wants.
+ *   main menu (2)         the upper screen (logo on sky) is the BACKDROP, full size. The button bar of the
+ *                         lower screen (VS / ADVENTURE / REC ROOM, rows 134..191, wallpaper between the
+ *                         plates) sits on the bottom edge over the upper screen's "TOUCH TO START" banner,
+ *                         which means nothing on this page; the wrench plate moves to the right edge above
+ *                         the bar. The Mario head is the one thing not kept (it is a decoration and a
+ *                         hidden doodle button; there is no room for it beside the logo).
+ *   file pages (3)        backdrop = the upper screen (castle photo + the page's own banner: TOUCH TO
+ *                         START / FILE OPTIONS / COPY WHICH FILE? ...). The lower screen's page content
+ *                         (rows 36..181: the plates and the back arrow) is one panel at 3/4 scale in the
+ *                         upper part of the picture, so the banner on the upper screen's lower edge
+ *                         stays readable.
+ *   options (4)           the sound / backlight page: same, with the page rows 16..183.
+ *   doodle (5)            the "draw a picture" page: the lower screen whole, at 3/4, under the banner.
+ * Wide canvases keep the same arrangement centred: the extra width is the host's ambient fill (the
+ * menu stays 4:3 native, DESIGN G); nothing is stretched.
+ *
+ * DRIVER. NATIVE. The ROM reads the pad on every title page (src/func_ov007_020b3190.c: any non-B key
+ * shows its own cursor, the D-pad moves it through func_ov007_020b3708's table, a confirm key presses
+ * the focused element). Only the key MEANING differs: the port's confirm is DS bit 0x0002 (jump), which
+ * is the ROM's B; the ROM's confirm is A, 0x0001. menu_title_pad_map swaps them. Mouse clicks reach the
+ * ROM as the stylus through the touch pieces (core H3); hover shows the port's focus outline.
+ *
+ * HOTSPOTS. The ROM's own element boxes through port_title_elem_boxes (hal/title_entry.cpp, the shared
+ * decoder, arithmetic of src/func_ov007_020b46b0.c), with the dumped boxes as the fallback when the
+ * scene global is not built (the layout selftest). Which ids a page shows is read off the pictures
+ * (out/TITLE1/shots), not guessed from positions.
+ */
+#include "menu_compose.h"
+#include "menu_hostimg.h"
+
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+extern "C" {
+int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1, int max);
+int port_title_page_state(int *top, int *elem, int *req);
+}
+
+namespace {
+
+enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7 };
+
+/* the 24 element boxes as dumped on the shipped ROM (SM64DS_TITLE_ELEMS, identical at f299, f419, f650,
+   f719): id, x0, y0, x1, y1 in touch-screen DS pixels. The live decoder wins when it answers. */
+struct Box { int id, x0, y0, x1, y1; };
+const Box kBoxes[24] = {
+    { 0, 72, 148, 184, 188 },  { 1, 2, 148, 66, 188 },    { 2, 190, 148, 254, 188 }, { 3, 212, 148, 252, 188 },
+    { 4, 212, 148, 252, 188 }, { 5, 88, 172, 168, 188 },  { 6, 4, 148, 44, 188 },    { 7, 216, 0, 256, 40 },
+    { 8, 96, 148, 160, 180 },  { 9, 112, 25, 232, 57 },   { 10, 86, 25, 118, 57 },   { 11, 224, 25, 256, 57 },
+    { 12, 112, 73, 168, 105 }, { 13, 176, 73, 232, 105 }, { 14, 8, 44, 80, 92 },     { 15, 92, 68, 164, 116 },
+    { 16, 176, 44, 248, 92 },  { 17, 14, 96, 86, 132 },   { 18, 92, 96, 164, 132 },  { 19, 170, 96, 242, 132 },
+    { 20, 180, 140, 252, 176 }, { 21, 28, 140, 156, 176 }, { 22, 54, 108, 126, 148 }, { 23, 130, 108, 202, 148 },
+};
+
+bool box_of(int id, Box *out)
+{
+    int slot[24], ids[24], x0[24], y0[24], x1[24], y1[24];
+    const int n = port_title_elem_boxes(slot, ids, x0, y0, x1, y1, 24);
+    for (int k = 0; k < n; ++k)
+        if (ids[k] == id) { out->id = id; out->x0 = x0[k]; out->y0 = y0[k]; out->x1 = x1[k]; out->y1 = y1[k]; return true; }
+    for (int k = 0; k < 24; ++k)
+        if (kBoxes[k].id == id) { *out = kBoxes[k]; return true; }
+    return false;
+}
+
+/* the page the ROM is on -> a variant. top-state and element machine are the ROM's own words
+   (src/func_ov007_020b0548 dispatcher); the table below is what the traces showed. */
+int g_last = V_ATTRACT;
+int g_top = -1, g_elem = -1;
+
+int variant_for(int top, int elem)
+{
+    /* THE TRACE (SM64DS_MENU_TRACE, windowed scene runs): attract 11 -> intro 10 -> arrival 1/0 -> main 0/0;
+       a choice leaves through 6/0 (file select) or 4/0 (the doodle) and lands on 0/5 (file select) or 0/1
+       (doodle, then 1/1, 2/1); the wrench is 8/0; file options 1/5; scores pick 3/5, copy 7/5, erase 9/5;
+       the score table is 4/5 (loading) then 2/5. Transit states keep the last stable page. */
+    if (top == 11) return elem == 0 ? V_ATTRACT : g_last;   /* ASSET5: top 11 with the file machine up (elem 5) is the return from a file page, not the first attract */
+    if (top == 10) return V_INTRO;                /* the logo arrives while the buttons come in through the ROM's star iris */
+    if (elem == 1) return V_DOODLE;
+    if (elem == 0) {
+        if (top == 0) return V_MAIN;
+        if (top == 8) return V_OPTIONS;
+        if (top == 4) return V_DOODLE;            /* a press on the face: its page is already coming (the head squashes, the plates leave) */
+        if ((top == 1 || top == 5) && g_last == V_FILES) return V_MAIN;   /* ASSET5: coming back from a file page: the ROM walks the head in, so
+                                                                              this is the main family (face fade, no walk-in of the file page's own head) */
+        return g_last;                            /* 1, 6: easing in or out */
+    }
+    if (top == 2) return V_TABLE;
+    if (top == 4) return g_last;
+    return V_FILES;                               /* 0, 1, 3, 7, 9 on the file machine */
+}
+
+/* piece + hotspots helper: a hotspot per id, boxes clamped into the piece's source rect */
+void hot(MenuLayout *L, int piece, const int *ids, int n)
+{
+    const DsRect &s = L->p[piece].s;
+    for (int k = 0; k < n; ++k) {
+        Box b;
+        if (!box_of(ids[k], &b)) continue;
+        int x0 = b.x0 < s.x ? s.x : b.x0, y0 = b.y0 < s.y ? s.y : b.y0;
+        int x1 = b.x1 > s.x + s.w ? s.x + s.w : b.x1, y1 = b.y1 > s.y + s.h ? s.y + s.h : b.y1;
+        if (x1 <= x0 || y1 <= y0) continue;
+        menu_add_hotspot(L, piece, x0, y0, x1 - x0, y1 - y0, -1);
+    }
+}
+
+int tune(int idx, int dflt)          /* SM64DS_TITLE_TUNE=a,b,c,d,... integer knobs for layout iteration */
+{
+    static int v[8], have = -1;
+    if (have < 0) {
+        have = 0;
+        for (int i = 0; i < 8; ++i) v[i] = -9999;
+        const char *e = getenv("SM64DS_TITLE_TUNE");
+        for (int i = 0; e && *e && i < 8; ++i) {
+            char *q;
+            v[i] = (int)strtol(e, &q, 10);
+            if (*q != ',') break;
+            e = q + 1;
+        }
+    }
+    return v[idx] == -9999 ? dflt : v[idx];
+}
+
+int ltune(int idx, int dflt)         /* SM64DS_MENU_LOGO_TUNE=top,height,dx in canvas units (the PC logo's place) */
+{
+    static int v[4], have = 0;
+    if (!have) {
+        have = 1;
+        for (int i = 0; i < 4; ++i) v[i] = -9999;
+        const char *e = getenv("SM64DS_MENU_LOGO_TUNE");
+        for (int i = 0; e && *e && i < 4; ++i) {
+            char *q;
+            v[i] = (int)strtol(e, &q, 10);
+            if (*q != ',') break;
+            e = q + 1;
+        }
+    }
+    return v[idx] == -9999 ? dflt : v[idx];
+}
+
+}  // namespace
+
+
+/* ---- THE TITLE'S SPRITE-OBJECT FILTER (run menu1, lane ASSET1) ------------------------------------------
+   The lower screen of the title is NOT 2D: engine A has no BG pixels and no sprites there (SM64DS_MSG_COMPOSITE_DEBUG:
+   composited 0 px, OAM A 0 placed). Everything on it, the wallpaper, the plates, the wrench, the stars, is a 3D quad
+   the ROM submits through func_ov007_020c421c (one call per object per frame). The port arm in that function asks
+   this hook whether to draw. SM64DS_TITLE_DRAWTRACE=1 prints each call; SM64DS_TITLE_SKIPK=<hex> skips the calls whose
+   per-frame index is a set bit (a probe for naming the objects). */
+extern "C" {
+extern unsigned char data_020a0e40;   /* the local player's slot */
+extern int data_020a0e58[];           /* PadData[i]: {u16 held, u16 pressed} */
+extern char *data_ov007_02103360;     /* the title's element-cursor struct (src/func_ov007_020b3708.c) */
+}
+static inline int *data_020a0e58_ref() { return data_020a0e58; }
+static inline int data_020a0e40_ref() { return data_020a0e40; }
+extern "C" {
+extern int (*g_port_title_draw_skip)(char *obj);
+extern int *data_ov007_0210342c;
+extern char *data_ov007_02104bd8;     /* the title's screen-fade manager (src/func_ov007_020bf690.c) */
+}
+namespace {
+int g_tk_frame = -1, g_tk_idx = 0;
+int g_up_stamp = -1;          /* the title Render counter at which menu_title_up last answered (the composite of that frame) */
+
+/* The wallpaper is dropped from the submit only while the one-screen main menu is the page, decided from the ROM's own
+   state at draw time. g_up_stamp proves the recipe ran for the PREVIOUS frame of this same page family (it is not called
+   when the setting is off or the layout is stacked), and the page is read live so the first frame of a page change is
+   already right. */
+bool wall_skip_active()
+{
+    if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return false;
+    const int v = variant_for(top, elem);
+    return v == V_MAIN || v == V_INTRO;
+}
+
+int title_skip(char *o)
+{
+    if (data_ov007_0210342c) {
+        const char *g = (const char *)data_ov007_0210342c;
+        for (int i = 0; i < 3; ++i)
+            if (o == *(char *const *)(g + 0x108 + 4 * i)) return wall_skip_active() ? 1 : 0;
+    }
+    /* ASSET3: the ROM's own cursor arrow (object id 0x21, drawn only while the cursor is shown) is replaced by the host's own pixel
+       arrow (art cut from this very object: tools/extract_title_arrow.py), so it is not in the picture on the one-screen main menu */
+    if (*(unsigned char *)(o + 0x4e) == 0x21 && wall_skip_active() && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
+        menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC)) return 1;   /* only when our arrows will be drawn */
+    /* ASSET4: the three plate sprites (object id 0x1b at y >= 100; the wrench is the same id at y 20) are also left out of the
+       submit when the host planks are drawn, so the 3D layer holds only the face, star, sparkles and wrench and the face piece can be
+       the whole layer (the ROM's plate art no longer shows under the host planks, nothing below the chin is ever in it) */
+    if (*(unsigned char *)(o + 0x4e) == 0x1b && (((const int *)o)[2] >> 12) >= 100 && wall_skip_active() && menu_hostimg_ready(MENU_IMG_BTN_MP) &&
+        menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC)) return 1;
+    static int trace = -1;
+    static unsigned skipk;
+    if (trace < 0) {
+        const char *e = getenv("SM64DS_TITLE_DRAWTRACE");
+        trace = (e && *e && *e != '0') ? 1 : 0;
+        e = getenv("SM64DS_TITLE_SKIPK");
+        skipk = e ? (unsigned)strtoul(e, 0, 16) : 0;
+    }
+    if (!trace && !skipk) return 0;
+    const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
+    if (fr != g_tk_frame) { g_tk_frame = fr; g_tk_idx = 0; }
+    const int k = g_tk_idx++;
+    if (trace && (fr == 300 || fr == 480 || fr == 600)) {
+        const int *w = (const int *)o;
+        fprintf(stderr, "[tdraw] f%d k%d obj=%p flags=%08x p4=%d p8=%d tex=%04x id=%02x a=%d\n", fr, k, (void *)o, w[0], w[1], w[2],
+                (unsigned)*(unsigned short *)(o + 0x44), (unsigned)*(unsigned char *)(o + 0x4e), (w[0x50 / 4] >> 12) & 0xff);
+    }
+    return k < 32 && ((skipk >> k) & 1);
+}
+struct TitleHookInit { TitleHookInit() { g_port_title_draw_skip = title_skip; } } g_title_hook_init;
+/* The ROM's own cursor on the main menu (src/func_ov007_020b3708.c: the cursor element is the short at the head of the
+   struct data_ov007_02103360 points to; 0 = ADVENTURE, 1 = VS, 2 = REC ROOM, 7 = the wrench, 0xff = the cursor is not shown yet: the ROM
+   shows it on the first non-B key, src/func_ov007_020b3190.c), and whether it is being pressed: the DS A key (0x0001, which
+   menu_title_pad_map writes into the held word) is down, or the page has already taken a choice (top-state request). */
+void rom_cursor(int *cursor, int *pressed)
+{
+    *cursor = -1; *pressed = 0;
+    if (!data_ov007_02103360) return;
+    const short *p0 = *(const short **)data_ov007_02103360;
+    if (!p0 || (p0[0] != 7 && (p0[0] < 0 || p0[0] > 2))) return;      /* 7 = the wrench (ASSET3) */
+    *cursor = p0[0];
+    int top, elem, req;
+    if (port_title_page_state(&top, &elem, &req) && top == 0 && req != -1) *pressed = 1;
+    const unsigned short *held = (const unsigned short *)((char *)data_020a0e58_ref() + data_020a0e40_ref() * 4);
+    if (*held & 0x0001) *pressed = 1;
+}
+
+/* THE MAIN MENU, built from the title's own art objects (run menu1, lane ASSET1; Tango, 10-09: "take the top screen
+   and replace the bottom screen's background with it", and the stars stay).
+   The lower screen is 3D (see the filter note above). With the wallpaper objects skipped at submit, the picture
+   holds only the head, the star and sparkles, the three plates and the wrench, and the 3D coverage plane says
+   which pixels those are, so each piece below is cut keyed by coverage: transparent wherever the 3D engine drew
+   nothing, so no wallpaper tile, no clear colour and no box comes along. The upper screen (engine B: the logo on
+   its sky) is the backdrop, with its "TOUCH TO START" sprites left out (the plates stand where they were), and on
+   a wide canvas its sky is carried out to the edges by xfill columns, nothing stretched.
+   Source rects are in lower-screen DS pixels and tile the screen: head+star+sparkles (216 x 140, the whole upper
+   part; a drag on the face stays inside it), sparkles right of the wrench, the wrench, and the three plates. They
+   are placed at the lower screen's own positions on the 4:3 core; tune knobs (SM64DS_TITLE_TUNE) move the head. */
+void build_main(MenuLayout *L, bool intro)
+{
+    const int cw = L->w * L->uden / L->unum;                 /* exact canvas width in units, floored */
+    const int side = cw > 256 ? (cw - 256 + 1) / 2 + 2 : 0;  /* the wide margin on each side, with an overlap */
+    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+    L->stage = MENU_STAGE_POST_FADE;
+    L->no_focus_paint = 1;      /* the ROM cursor, the lit plank and the arrow are the selection (ASSET3) */
+    if (menu_hostimg_ready(MENU_IMG_LOGO)) {
+        /* ASSET2: the sky is a smooth gradient at the window's own resolution, coloured from the DS logo screen's own sky
+           (the mean of its leftmost 16 columns, per row; those columns hold no logo), and the "Super Mario 64 PC" logo is a
+           host picture scaled to the window: the DS logo layer is not drawn at all. Both fill / centre on any aspect. */
+        MenuPiece gr = menu_piece_make(SRC_SUB, 0, 0, 16, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        gr.bg = 1; gr.hostgrad = 1; gr.layers = 0x0f;
+        gr.lden = 1; gr.lnum = 1; gr.fx = 0; gr.fy = 0; gr.fw = (short)L->w; gr.fh = (short)L->h;
+        menu_add_piece(L, gr);
+        int iw = 1, ih = 1;
+        menu_hostimg_size(MENU_IMG_LOGO, &iw, &ih);
+        const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
+        const int dh = lh * L->unum / L->uden, dw = (int)((long long)dh * iw / ih);
+        MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        lg.bg = 1; lg.hostimg = MENU_IMG_LOGO;
+        lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
+        lg.fx = (short)((L->w - dw) / 2 + ldx * L->unum / L->uden); lg.fy = (short)(lt * L->unum / L->uden);
+        menu_add_piece(L, lg);
+    } else {
+    if (side > 0) {
+        MenuPiece lf = menu_piece_make(SRC_SUB, 0, 0, 1, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        lf.bg = 1; lf.xfill = 1; lf.fill_w = (short)side; lf.layers = (uint8_t)tune(5, 0x0f);
+        menu_add_piece(L, lf);
+        MenuPiece rt = menu_piece_make(SRC_SUB, 255, 0, 1, 192, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+        rt.bg = 1; rt.xfill = 1; rt.fill_w = (short)side; rt.layers = (uint8_t)tune(5, 0x0f);
+        menu_add_piece(L, rt);
+    }
+    MenuPiece bg = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
+    bg.bg = 1;
+    bg.layers = (uint8_t)tune(5, 0x0f);
+    menu_add_piece(L, bg);
+    }
+    /* THE INTRO (top-state 10): the ROM opens the lower screen through a black star iris, drawn as 3D polygons with a thin
+       dark edge, and the plates and the head arrive inside it. On one screen the logo simply fades in alone and the
+       lower screen's art appears with the page itself, so nothing of the iris is drawn. */
+    if (intro) return;
+    if (tune(6, -1) >= 0 && tune(7, -1) >= tune(6, -1)) {
+        /* DEBUG (SM64DS_TITLE_TUNE index 6,7 = first,last engine-B OAM entry): the upper screen's OAM entries alone, keyed on
+           their own transparency, drawn at the top of the picture: the proof of the OAM-range plane on a live screen */
+        MenuPiece op = menu_piece_make(SRC_SUB, 0, 150, 256, 40, MENU_AX_C, MENU_AY_T, 0, 4, 1, 1);
+        op.layers = MENU_L_OBJ; op.oam_on = 1; op.oam_lo = (uint8_t)tune(6, 0); op.oam_hi = (uint8_t)tune(7, 0); op.key_backdrop = 1;
+        menu_add_piece(L, op);
+    }
+    /* the stars and sparkles stay where the ROM puts them on the 4:3 core (a piece anchored C with dx = srcx - 128 + w / 2
+       lands at its own lower-screen x); the head is cut with room around it for a stretch, scaled 2/3 and set low over the
+       logo's DS like a mascot; the wrench sits in the top right corner of the canvas */
+    /* ASSET4: THE FACE IS NEVER CUT. The title's lower 3D layer now holds only the head, the star, the sparkles and the wrench
+       (wallpaper, plates and the ROM's cursor arrow are skipped at submit), so the face piece is the WHOLE 256 x 192 layer minus
+       the wrench's own 40 x 40 corner (excluded by rect, so the two never overlap): whatever pose the idle animation or the
+       press squash takes, the head, cap, ears, chin, star and sparkles are inside the source. It keeps the round 3 scale and
+       place (a source x maps to centre - 83.33 + 2x/3 units, y to 46 + 2y/3, exactly the old 156 x 140 head piece's transform),
+       and stars and sparkles now share that transform so they stay where the ROM put them around the face. A touch-only piece
+       holds the old head rect (the ROM's face toy reads a touch on the head). */
+    const int hk = tune(0, 2), hd = tune(1, 3);
+    MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
+    face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
+    menu_add_piece(L, face);
+    MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
+    head.touch = 1; head.nodraw = 1;
+    menu_add_piece(L, head);
+    MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+    wr.keycover = 1; wr.touch = 1;
+    const int iwr = menu_add_piece(L, wr);
+    static const int kPlateId[3] = { 1, 0, 2 };                      /* the ROM's element ids: VS, ADVENTURE, REC ROOM */
+    static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
+    int cur, prs;
+    rom_cursor(&cur, &prs);
+    const bool planks = menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) && menu_hostimg_ready(MENU_IMG_BTN_REC);
+    for (int k = 0; k < 3; ++k) {
+        Box bx;
+        if (!box_of(kPlateId[k], &bx)) continue;
+        if (planks) {
+            /* ASSET2: a plank drawn at the window's resolution over the ROM's own box (the 3D plate is not drawn: its
+               wallpaper object is skipped at submit and its sprite is not in any piece). 40 units tall (the box height),
+               centred on the box, the three never overlap; clicks map proportionally into the box, so they reach the ROM exactly. */
+            int iw = 1, ih = 1;
+            menu_hostimg_size(kPlankImg[k], &iw, &ih);
+            const int bh = bx.y1 - bx.y0;
+            const int dh = bh * L->unum / L->uden, dw = (int)((long long)dh * iw / ih);
+            const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;   /* centre x from 128, centre y * 2 */
+            MenuPiece pl = menu_piece_make(SRC_HOSTIMG, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            pl.hostimg = (uint8_t)kPlankImg[k]; pl.touch = 1;
+            pl.lden = 1; pl.lnum = 1; pl.fw = (short)dw; pl.fh = (short)dh;
+            pl.fx = (short)(L->w / 2 + cxu * L->unum / L->uden - dw / 2);
+            pl.fy = (short)(cyu2 * L->unum / (2 * L->uden) - dh / 2);
+            if (cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
+            const int ip = menu_add_piece(L, pl);
+            menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
+            continue;
+        }
+        static const int kPlateX[3] = { 0, 70, 188 }, kPlateW[3] = { 70, 118, 68 };
+        MenuPiece pl = menu_piece_make(SRC_TOP_PIC, kPlateX[k], 140, kPlateW[k], 52, MENU_AX_C, MENU_AY_B, kPlateX[k] - 128 + kPlateW[k] / 2, 0, 1, 1);
+        pl.keycover = 1; pl.touch = 1;
+        const int ip = menu_add_piece(L, pl);
+        hot(L, ip, &kPlateId[k], 1);
+    }
+    static const int wr_ids[1] = { 7 };
+    hot(L, iwr, wr_ids, 1);
+    /* ASSET3: THE SELECTION ARROW. The ROM's own cursor arrow (a small blue triangle, drawn as a 3D object and skipped at submit
+       above) is drawn again from its own art at the window's resolution: pointing down at the selected plank from above, or up at the
+       wrench from below, bobbing on the ROM's 8-frame cadence. Pieces here are backdrop-class (no touch): a click goes through to
+       the plank under it. */
+    if (planks && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
+        static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };       /* the plank pulse's cadence, in half units */
+        const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
+        const int bob2 = kBob[fr & 7];
+        const int aimg = cur == 7 ? MENU_IMG_ARROW_UP : MENU_IMG_ARROW_DOWN;
+        int iw = 1, ih = 1;
+        menu_hostimg_size(aimg, &iw, &ih);
+        const int au = ltune(3, 18);                                  /* the arrow's width in canvas units (the DS art is 22 x 15 pixels) */
+        const int dw = au * L->unum / L->uden, dh = (int)((long long)dw * ih / iw);
+        MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ar.bg = 1; ar.hostimg = (uint8_t)aimg; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
+        if (cur == 7) {
+            Box wb;
+            if (!box_of(7, &wb)) wb = kBoxes[7];
+            ar.fx = (short)(L->w - (256 - (wb.x0 + wb.x1) / 2) * L->unum / L->uden - dw / 2);
+            ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * L->unum / (2 * L->uden));
+        } else {
+            /* ASSET4 (Tango): ONE arrow, centred on the plank, pointing down with its tip just over the plank's top edge */
+            Box bx;
+            if (box_of(cur, &bx)) {
+                ar.fy = (short)(((bx.y0 * 2 + 2 + bob2) * L->unum) / (2 * L->uden) - dh);
+                ar.fx = (short)(L->w / 2 + ((bx.x0 + bx.x1) / 2 - 128) * L->unum / L->uden - dw / 2);
+            } else {
+                ar.fx = -1000;
+            }
+        }
+        if (ar.fx > -1000) menu_add_piece(L, ar);
+    }
+}
+
+
+/* ====================================================================================================================
+   ASSET5: THE TITLE CHOREOGRAPHY (one-screen mode only). Tango, 10-09: the attract shows the bottom screen as the DS does, the star flies off the
+   top, the star iris opens on our menu, the PC logo drops and bounces, the face fades in, the logo fades out and back in small at the top
+   left while MP / ADVENTURE / REC ROOM bounce in.
+
+   WHAT THE ROM DOES (measured with SM64DS_TITLE_TL, every frame of the trace is a line; 60 frames a second):
+     top-state 11 (attract): the star flies up the lower screen and off its top edge (about frame 52 of a run with no input), the sparkle trail
+        follows; the ROM goes on to show the logo on the UPPER screen, which one screen does not show.
+     top-state 10: counter t from 0. The lower screen is black (the ROM faded it, RequestScreenFade(3, 10)); sound events at t = 30 and t = 128;
+        at t = 60 the fade manager (data_ov007_02104bd8) raises its star sprite (the iris): sprite scale s grows by 1889.5 a frame, the star's
+        outer radius is 0.004382 * s DS pixels, it covers the whole lower screen after about 35 frames, and the ROM lets it run 68 frames
+        (progress at +60 a frame to 4096), then calls func_ov007_020b16f0 which asks for top-state 1.
+     top-state 1 (arrival): 30 frames, the head and plates come in; top-state 0 (the settled main menu) follows.
+   The DS logo (upper screen) pops in with a vertical damped bounce: centre y 78 +- 20 DS pixels, period 8 frames, amplitude falling 0.78 every 4
+   frames (rigid translation, scale 1, x fixed; measured by template matching 20 frames of the engine-B picture).
+
+   WHAT THIS DOES WITH IT. All timing below is in 60 Hz frames.
+     - the attract is the lower screen as it is (V_ATTRACT); in one-screen mode, once the star and its first sparkles are off the top of the
+       lower screen (attract counter 56), the port gives the ROM the touch-to-start edge it would have taken from the player (the same path the
+       ROM's own skip takes: the upper-screen logo reveal that follows is not on this picture anyway). SM64DS_TITLE_FF=0 turns this and the
+       next two off.
+     - state 10: the picture is black until the ROM's iris sprite appears; the dead 27 frames of the counter between its t = 31 and t = 58 are skipped
+       (t is written once; the t = 30 sound has played; nothing is keyed on a t in between).
+     - the iris: this file reads the ROM's own sprite scale every frame, so the pacing is the ROM's, and draws the star clean over the wallpaper
+       (menu_compose.cpp draw_iris). Once it covers the picture the ROM's own iris is told it is finished (progress set to its end) so the arrival
+       follows at once instead of 33 frames later.
+     - the PC logo pops in 22 frames after the iris appears (about two thirds open) with the DS logo's own bounce.
+     - the swap starts when the logo has bounced and the ROM is at rest (top-state 0, the face is where it is on the 4:3 screen): the face fades in over
+       24 frames (it is never drawn before: no walk in from off screen), the big logo fades out over 10, the small logo fades in at the top left over 14,
+       and the planks come up from the bottom edge with an overshoot, 6 frames apart, 28 frames each. Input is live as soon as the ROM is at rest.
+       A confirm press during the swap finishes it at once and still goes to the ROM (it shows the cursor on ADVENTURE).
+     - a return from a file page (the ROM walks the head in again) skips the iris and the big logo: the small logo is there, the page fades in from
+       black over 10 frames, and the same swap runs for the face and the planks.
+   ==================================================================================================================== */
+enum { CH_NONE = 0, CH_INTRO = 1, CH_RETURN = 2 };
+enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 10, CH_LOGO_IN = 14, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
+       CH_PLANK_START = 4, CH_FLY = 14, CH_SWAP_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_VEIL = 10 };
+struct Chore {
+    int mode;            /* CH_* */
+    int in_fam;          /* the main family (V_INTRO / V_MAIN) is the page */
+    int prev_variant;
+    int ct;              /* frames since the ROM's iris sprite first showed (-1 = not yet) */
+    int fam_t;           /* frames since the family was entered */
+    int sw_t;            /* frames since the swap began (-1 = not yet) */
+    int face_a;          /* 0..255 */
+    int skip;            /* a confirm press asked for the resting state */
+    int iris_covered;    /* the iris covered the picture on the last drawn frame */
+    int ff2_done;
+    int attract_t;       /* the ROM's attract counter as last read */
+    int fly_t;           /* ASSET6: frames since the press, while the star flies off the top (state 10 before the iris) */
+} g_ch;
+
+int ff_on()
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_TITLE_FF"); v = (e && *e == '0') ? 0 : 1; }
+    return v;
+}
+
+int ctune(int idx, int dflt)         /* SM64DS_CHORE_TUNE=a,b,c,... integer knobs for timing / look iteration */
+{
+    static int v[12], have = 0;
+    if (!have) {
+        have = 1;
+        for (int i = 0; i < 12; ++i) v[i] = -9999;
+        const char *e = getenv("SM64DS_CHORE_TUNE");
+        for (int i = 0; e && *e && i < 12; ++i) {
+            char *q;
+            v[i] = (int)strtol(e, &q, 10);
+            if (*q != ',') break;
+            e = q + 1;
+        }
+    }
+    return v[idx] == -9999 ? dflt : v[idx];
+}
+
+/* the ROM's iris sprite: visible flag and scale (the fade manager's sprite, offsets +0x94 and +0x48) and its progress object */
+bool rom_iris(int *vis, int *s48)
+{
+    *vis = 0; *s48 = 0;
+    const char *F = data_ov007_02104bd8;
+    if (!F) return false;
+    const char *sub = *(const char *const *)(F + 4);
+    if (!sub) return false;
+    *vis = *(const int *)(sub + 0x94) != 0;
+    *s48 = *(const int *)(sub + 0x48);
+    return true;
+}
+
+float ease_out_back(float t)         /* 0..1 -> 0..1 with a 9 percent overshoot that settles at 1 */
+{
+    if (t <= 0.f) return 0.f;
+    if (t >= 1.f) return 1.f;
+    const float c1 = 1.70158f * 0.8f, c3 = c1 + 1.f, u = t - 1.f;
+    return 1.f + c3 * u * u * u + c1 * u * u;
+}
+
+/* one frame of the choreography clock, from menu_title_up (once per DS frame, after the ROM ran its tick) */
+void chore_step(int variant, int top, int elem, int req)
+{
+    Chore &c = g_ch;
+    const bool fam = variant == V_INTRO || variant == V_MAIN;
+    if (!fam) {
+        c.in_fam = 0; c.mode = CH_NONE; c.prev_variant = variant;
+        if (variant == V_ATTRACT && data_ov007_0210342c) {
+            const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
+            c.attract_t = sp ? *(const int *)(sp + 0xc) : 0;
+        }
+        return;
+    }
+    if (!c.in_fam) {              /* entering the main family */
+        c.in_fam = 1;
+        c.mode = (c.prev_variant == V_ATTRACT) ? CH_INTRO : CH_RETURN;
+        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0;
+        if (hal_menu_trace_on()) fprintf(stderr, "[chore] enter family mode=%s top=%d\n", c.mode == CH_INTRO ? "intro" : "return", top);
+    }
+    ++c.fam_t;
+    const bool rest = top == 0 && elem == 0 && req == -1;
+    int vis = 0, s48 = 0;
+    rom_iris(&vis, &s48);
+    if (c.mode == CH_INTRO) {
+        if (c.ct >= 0 && !vis && !c.iris_covered) c.iris_covered = 1;      /* the ROM's iris is gone: nothing left to draw */
+        if (c.ct < 0) {
+            if (top == 10 && !vis) ++c.fly_t;
+            if (vis && top == 10) { c.ct = 0; if (hal_menu_trace_on()) fprintf(stderr, "[chore] iris starts (s48 %d)\n", s48); }
+            else if (top == 1 || top == 0) c.ct = ctune(0, CH_LOGO_POP) + ctune(1, CH_BOUNCE_LEN);   /* no iris came: the intro is over */
+        } else {
+            ++c.ct;
+        }
+    }
+    const int bounce_end = ctune(0, CH_LOGO_POP) + ctune(1, CH_BOUNCE_LEN);
+    const bool bounced = c.mode == CH_RETURN || c.skip || (c.ct >= bounce_end);
+    const bool arriving = c.mode == CH_RETURN && top == 1 && elem == 0;      /* ASSET6: the ROM's head is on its way in */
+    if (c.sw_t < 0) {
+        if ((rest || arriving) && bounced) {
+            c.sw_t = 0;
+            if (hal_menu_trace_on()) fprintf(stderr, "[chore] swap starts (ct %d, fam_t %d)\n", c.ct, c.fam_t);
+        }
+    } else {
+        ++c.sw_t;
+    }
+    if (c.skip && c.sw_t >= 0 && c.sw_t < CH_SWAP_END) c.sw_t = CH_SWAP_END;
+    /* the face: faded in once the ROM is at rest and the swap began; faded out quickly when the ROM leaves rest (it walks out) */
+    if (c.sw_t < 0) c.face_a = 0;
+    else if (rest || arriving) {
+        const int step = c.skip || c.sw_t >= CH_SWAP_END ? 255 : 255 / CH_FACE_FADE + 1;
+        c.face_a += step; if (c.face_a > 255) c.face_a = 255;
+    } else {
+        c.face_a -= 40; if (c.face_a < 0) c.face_a = 0;
+    }
+    c.prev_variant = variant;
+}
+
+/* ROM state the choreography writes (SM64DS_TITLE_FF=0 turns all of it off). Called from menu_title_up. */
+/* ASSET6: THE ATTRACT WAITS FOR THE PLAYER. The ROM (src/func_ov007_020b0a20.c) plays the star's flight and leaves the attract by itself
+   when a save exists (func_ov007_020aebac == 0): the animation ends and it asks for state 10. With no save it picks the other animation
+   (the star idling over TOUCH TO START) and waits. Tango asked for the waiting picture whatever the save, so while the attract is up the
+   port shows the ROM the empty-save words (func_ov007_020aebac reads bytes +0xb..+0xd and the word +4 of the record at g+0x28), and puts the
+   real words back on the frame the player presses (pad key, click or touch) so the ROM's own gate takes that press. Restored too whenever the
+   attract is left. Nothing else reads those words on the attract page. */
+static unsigned char g_sv_b[3];
+static int g_sv_i;
+static int g_sv_faked;
+static char *sv_rec()
+{
+    if (!data_ov007_0210342c) return 0;
+    char **pp = *(char ***)((char *)data_ov007_0210342c + 0x28);
+    return pp ? *pp : 0;
+}
+static void sv_fake()
+{
+    char *q = sv_rec();
+    if (!q || g_sv_faked) return;
+    memcpy(g_sv_b, q + 0xb, 3);
+    g_sv_i = *(int *)(q + 4);
+    if (!g_sv_b[0] && !g_sv_b[1] && !g_sv_b[2] && !g_sv_i) return;     /* already empty: the ROM waits by itself */
+    memset(q + 0xb, 0, 3);
+    *(int *)(q + 4) = 0;
+    g_sv_faked = 1;
+    if (hal_menu_trace_on()) fprintf(stderr, "[chore] attract holds: save words hidden from the ROM until a press\n");
+}
+static void sv_restore()
+{
+    if (!g_sv_faked) return;
+    char *q = sv_rec();
+    if (q) { memcpy(q + 0xb, g_sv_b, 3); *(int *)(q + 4) = g_sv_i; }
+    g_sv_faked = 0;
+    if (hal_menu_trace_on()) fprintf(stderr, "[chore] press: save words given back\n");
+}
+extern "C" void port_title_press_seen(void) { if (g_ch.attract_t >= 6) sv_restore(); }   /* the ROM's gate reads input from its frame 4 on */     /* sub_screen.cpp: a touch / click is going into the ROM this frame */
+
+void chore_rom_writes(int top, int req)
+{
+    if (!data_ov007_0210342c) return;
+    if (top == 11 && g_ch.attract_t >= 0 && !g_sv_faked && g_ch.attract_t < 8 && g_last == V_ATTRACT) sv_fake();
+    else if (top != 11) sv_restore();
+    if (!ff_on()) return;
+    char *g = (char *)data_ov007_0210342c;
+    char *sp = *(char **)(g + 8);
+    if (!sp) return;
+    int *t = (int *)(sp + 0xc);
+    /* ASSET6: a return from a file page runs the ROM's star iris backwards (top-state 5, 69 frames) over a page we show as a short veil: the
+       iris is told it is finished once the veil is up, so the head's arrival (top-state 1) follows at once */
+    if (top == 5 && g_ch.mode == CH_RETURN && g_ch.fam_t >= CH_VEIL && !g_ch.ff2_done && data_ov007_02104bd8) {
+        char *o6 = *(char **)data_ov007_02104bd8;
+        if (o6 && *(int *)(o6 + 8) == 1) {
+            const int step = *(int *)(o6 + 0x18);
+            const int want = 0x1000 - step + 1;
+            if (*(int *)(o6 + 0x14) < want) *(int *)(o6 + 0x14) = want;
+            g_ch.ff2_done = 1;
+            if (hal_menu_trace_on()) fprintf(stderr, "[chore] return: ROM iris progress finished early\n");
+        }
+    }
+    /* ASSET6: leaving a file page the ROM idles 30 frames (state 11, element machine 5) before its star iris closes over the page: skipped once its own 6 frame fade-in is over (an iris asked for while that fade runs is dropped) */
+    if (top == 11 && g_elem == 5 && *t >= 9 && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] file page exit: idle counter skipped\n"); }
+    if (top == 10 && g_ch.mode == CH_INTRO) {
+        /* the ROM's iris starts at t = 60; before it the lower screen is black and nothing is keyed on t after the t = 30 sound */
+        /* ASSET6: the star has flown off the top (CH_FLY frames after the press); the counter skips to 29 (the t = 30 sound still plays), then to
+           58 once past it, so the iris (t = 60) follows within a few frames */
+        if (*t >= ctune(9, CH_FLY) && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t jumped to 29\n"); }
+        else if (*t >= 31 && *t < 58) { *t = 58; if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t jumped to 58\n"); }
+        /* once our iris covers the picture the ROM's iris is finished: progress to its last step so the callback asks for the arrival */
+        if (g_ch.iris_covered && !g_ch.ff2_done && data_ov007_02104bd8) {
+            char *o6 = *(char **)data_ov007_02104bd8;
+            if (o6 && *(int *)(o6 + 8) == 1) {
+                const int step = *(int *)(o6 + 0x18);
+                const int want = 0x1000 - step + 1;
+                if (*(int *)(o6 + 0x14) < want) *(int *)(o6 + 0x14) = want;
+                g_ch.ff2_done = 1;
+                if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM iris progress finished early\n");
+            }
+        }
+    }
+}
+
+/* the DS logo's bounce, measured (above): offset in canvas units after the pop, tb frames since it (down is positive) */
+float logo_bounce(int tb)
+{
+    if (tb < 0) return 0.f;
+    const float amp = 21.f * expf(-(tb - 2.f) / 16.1f);
+    const float a = (amp > 21.f ? 21.f : amp) * sinf(6.2831853f * tb / 8.f);
+    return -a;
+}
+
+/* THE MAIN MENU WITH OUR ART (logo, planks, arrows and wallpaper all loaded). intro = the ROM is not at rest yet (top-state 10 / 1). */
+void build_main_pc(MenuLayout *L, bool intro)
+{
+    Chore &c = g_ch;
+    const int w = L->w, h = L->h, un = L->unum, ud = L->uden;
+    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+    L->stage = MENU_STAGE_POST_FADE;
+    L->no_focus_paint = 1;
+    auto U = [&](int units) { return units * un / ud; };
+    auto Uf = [&](float units) { return (int)(units * (float)un / (float)ud + (units < 0 ? -0.5f : 0.5f)); };
+    /* the wallpaper: gradient plus the PC pattern at the OG's scale (64 units a tile wide) */
+    {
+        MenuPiece wl = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        wl.bg = 1; wl.wall = 1; wl.lden = 1; wl.lnum = 1; wl.fx = 0; wl.fy = 0; wl.fw = (short)w; wl.fh = (short)h;
+        const int tu = ctune(5, 64);
+        wl.wtw = (short)(tu * un / ud);
+        wl.wth = (short)((int)((long long)wl.wtw * 730 / 410));
+        wl.wox = (short)((ctune(6, -6) * un) / ud);
+        wl.woy = (short)((ctune(7, -11) * un) / ud);
+        wl.wink = (uint8_t)ctune(8, 107);
+        menu_add_piece(L, wl);
+    }
+    int iw = 1, ih = 1;
+    menu_hostimg_size(MENU_IMG_LOGO, &iw, &ih);
+    /* the logos: big (centred, as the main menu used to have it) and small (top left) */
+    int big_a = 0, small_a = 0;
+    float dy = 0.f;
+    if (c.mode == CH_INTRO) {
+        const int tb = c.ct - ctune(0, CH_LOGO_POP);
+        if (c.ct >= 0 && tb >= 0) {
+            big_a = tb >= 3 ? 255 : 255 * (tb + 1) / 4;
+            dy = logo_bounce(tb);
+        }
+        if (c.sw_t >= 0) {
+            const int o = c.sw_t;
+            if (o < CH_LOGO_OUT) big_a = big_a * (CH_LOGO_OUT - o) / CH_LOGO_OUT; else big_a = 0;
+            if (o >= CH_LOGO_OUT) small_a = o >= CH_LOGO_OUT + CH_LOGO_IN ? 255 : 255 * (o - CH_LOGO_OUT + 1) / (CH_LOGO_IN + 1);
+        }
+    } else {
+        small_a = 255;
+    }
+    if (c.skip) { big_a = 0; small_a = 255; }
+    if (big_a > 0) {
+        const int lt = ltune(0, 26), lh = ltune(1, 112), ldx = ltune(2, 0);
+        const int dh = U(lh), dw = (int)((long long)dh * iw / ih);
+        MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(big_a >= 255 ? 0 : big_a);
+        lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
+        lg.fx = (short)((w - dw) / 2 + U(ldx)); lg.fy = (short)(U(lt) + Uf(dy));
+        menu_add_piece(L, lg);
+    }
+    if (small_a > 0) {
+        const int lh = ctune(2, 40), mx = ctune(3, 6), my = ctune(4, 6);
+        const int dh = U(lh), dw = (int)((long long)dh * iw / ih);
+        MenuPiece lg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        lg.bg = 1; lg.hostimg = MENU_IMG_LOGO; lg.nofade = 1; lg.alpha = (uint8_t)(small_a >= 255 ? 0 : small_a);
+        lg.lden = 1; lg.lnum = 1; lg.fw = (short)dw; lg.fh = (short)dh;
+        lg.fx = (short)U(mx); lg.fy = (short)U(my);
+        menu_add_piece(L, lg);
+    }
+    if (!intro) {
+        /* the face (the whole lower 3D layer minus the wrench corner, round 4's piece) at the swap's alpha */
+        const int hk = tune(0, 2), hd = tune(1, 3);
+        const int fa = c.face_a;
+        if (fa > 0) {
+            MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, tune(2, -18) + 20, tune(3, 46), hk, hd);
+            face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
+            face.alpha = (uint8_t)(fa >= 255 ? 0 : fa);
+            menu_add_piece(L, face);
+        }
+        MenuPiece head = menu_piece_make(SRC_TOP_PIC, 20, 0, 156, 140, MENU_AX_C, MENU_AY_T, tune(2, -18), tune(3, 46), hk, hd);
+        head.touch = 1; head.nodraw = 1;
+        menu_add_piece(L, head);
+        MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+        wr.keycover = 1; wr.touch = 1; wr.alpha = (uint8_t)(fa >= 255 ? 0 : fa);
+        wr.nodraw = fa <= 0;
+        {
+            const int iwr = menu_add_piece(L, wr);
+            static const int wr_ids[1] = { 7 };
+            hot(L, iwr, wr_ids, 1);
+        }
+        /* the planks, each rising from the bottom edge with an overshoot, staggered */
+        static const int kPlateId[3] = { 1, 0, 2 };
+        static const int kPlankImg[3] = { MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC };
+        int cur, prs;
+        rom_cursor(&cur, &prs);
+        const bool landed = c.sw_t >= CH_SWAP_END - 4 || c.skip;
+        for (int k = 0; k < 3; ++k) {
+            Box bx;
+            if (!box_of(kPlateId[k], &bx)) continue;
+            const int pt = c.sw_t - (CH_PLANK_START + CH_PLANK_GAP * k);
+            if (c.sw_t < 0 || (pt < 0 && !c.skip)) continue;
+            float rise = 0.f;                                       /* canvas units below the resting place */
+            if (!c.skip && pt < CH_PLANK_DUR) rise = (1.f - ease_out_back((float)pt / CH_PLANK_DUR)) * 72.f;
+            int pw = 1, ph = 1;
+            menu_hostimg_size(kPlankImg[k], &pw, &ph);
+            const int bh = bx.y1 - bx.y0;
+            const int dh = bh * un / ud, dw = (int)((long long)dh * pw / ph);
+            const int cxu = (bx.x0 + bx.x1) / 2 - 128, cyu2 = bx.y0 + bx.y1;
+            MenuPiece pl = menu_piece_make(SRC_HOSTIMG, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            pl.hostimg = (uint8_t)kPlankImg[k]; pl.touch = 1;
+            pl.lden = 1; pl.lnum = 1; pl.fw = (short)dw; pl.fh = (short)dh;
+            pl.fx = (short)(w / 2 + cxu * un / ud - dw / 2);
+            pl.fy = (short)(cyu2 * un / (2 * ud) - dh / 2 + Uf(rise));
+            if (landed && cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
+            const int ip = menu_add_piece(L, pl);
+            menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
+        }
+        /* the selection arrow, once the planks have landed */
+        if (landed && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) && (cur == 7 || (cur >= 0 && cur <= 2))) {
+            static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
+            const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
+            const int bob2 = kBob[fr & 7];
+            const int aimg = cur == 7 ? MENU_IMG_ARROW_UP : MENU_IMG_ARROW_DOWN;
+            int aw = 1, ah = 1;
+            menu_hostimg_size(aimg, &aw, &ah);
+            const int au = ltune(3, 18);
+            const int dw = au * un / ud, dh = (int)((long long)dw * ah / aw);
+            MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+            ar.bg = 1; ar.hostimg = (uint8_t)aimg; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
+            if (cur == 7) {
+                Box wb;
+                if (!box_of(7, &wb)) wb = kBoxes[7];
+                ar.fx = (short)(w - (256 - (wb.x0 + wb.x1) / 2) * un / ud - dw / 2);
+                ar.fy = (short)((wb.y1 * 2 + 2 + bob2) * un / (2 * ud));
+                menu_add_piece(L, ar);
+            } else {
+                Box bx;
+                if (box_of(cur, &bx)) {
+                    ar.fy = (short)(((bx.y0 * 2 + 2 + bob2) * un) / (2 * ud) - dh);
+                    ar.fx = (short)(w / 2 + ((bx.x0 + bx.x1) / 2 - 128) * un / ud - dw / 2);
+                    menu_add_piece(L, ar);
+                }
+            }
+        }
+    }
+    /* the iris: black outside the star while the ROM's iris is up (and all black before it shows), a veil on a returning page */
+    if (c.mode == CH_INTRO && !c.iris_covered && c.ct <= ctune(0, CH_LOGO_POP) + 60) {
+        int vis = 0, s48 = 0;
+        rom_iris(&vis, &s48);
+        MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
+        float Rds = 0.f;
+        if (vis && c.ct >= 0) Rds = 0.004382f * (float)s48;
+        if (c.ct >= 0 && !vis) c.iris_covered = 1;
+        const float Rpx = Rds * (float)h / 192.f;
+        ir.icx = w / 2;
+        ir.icy = (int)((96.f + 0.0864f * Rds) * (float)h / 192.f + 0.5f);
+        ir.ir16 = (int)(Rpx * 16.f);
+        if (c.iris_covered || (Rpx > 0.f && menu_iris_covers(w, h, (float)ir.icx, (float)ir.icy, Rpx))) { c.iris_covered = 1; }
+        else menu_add_piece(L, ir);
+    } else if (c.mode == CH_RETURN && c.fam_t <= CH_VEIL) {
+        MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
+        ir.ir16 = 0;
+        ir.alpha = (uint8_t)(255 * c.fam_t / (CH_VEIL + 1));
+        if (ir.alpha == 0) ir.alpha = 1;
+        menu_add_piece(L, ir);
+    }
+}
+
+void build_main_sel(MenuLayout *L, bool intro)
+{
+    if (menu_hostimg_ready(MENU_IMG_LOGO) && menu_hostimg_ready(MENU_IMG_BTN_MP) && menu_hostimg_ready(MENU_IMG_BTN_ADV) &&
+        menu_hostimg_ready(MENU_IMG_BTN_REC) && menu_hostimg_ready(MENU_IMG_ARROW_UP) && menu_hostimg_ready(MENU_IMG_ARROW_DOWN) &&
+        menu_hostimg_ready(MENU_IMG_PATTERN))
+        build_main_pc(L, intro);
+    else
+        build_main(L, intro);
+}
+
+}  // namespace
+
+extern "C" char *data_ov007_02104bd8;     /* the title's screen-fade manager (src/func_ov007_020bf690.c): {obj6, iris sprite, flags, _, request} */
+
+/* ASSET5 measurement (SM64DS_TITLE_TL=1): one line per DS frame with the page, the page's own counter and the fade manager's
+   fields (the star iris is the manager's sprite: scale at +0x40/+0x48, drawn while +0x94 is set) */
+static void title_timeline(int top, int elem, int req)
+{
+    static int on = -1;
+    if (on < 0) { const char *e = getenv("SM64DS_TITLE_TL"); on = (e && *e && *e != '0') ? 1 : 0; }
+    if (!on || !data_ov007_0210342c) return;
+    const char *g = (const char *)data_ov007_0210342c;
+    const char *sp = *(const char *const *)(g + 8);
+    const int t = sp ? *(const int *)(sp + 0xc) : -1;
+    int f10 = -1, o8 = -1, o10 = -1, o14 = -1, o18 = -1, o1c = -1, fl = -1, vis = -1, s40 = 0, s48 = 0, rot = 0;
+    int px = 0, py = 0, pz = 0;
+    const char *F = data_ov007_02104bd8;
+    if (F) {
+        const char *o6 = *(const char *const *)F, *sub = *(const char *const *)(F + 4);
+        f10 = *(const int *)(F + 0x10); fl = *(const int *)(F + 8);
+        if (o6) { o8 = *(const int *)(o6 + 8); o10 = *(const int *)(o6 + 0x10); o14 = *(const int *)(o6 + 0x14); o18 = *(const int *)(o6 + 0x18); o1c = *(const int *)(o6 + 0x1c); }
+        if (sub) { vis = *(const int *)(sub + 0x94); s40 = *(const int *)(sub + 0x40); s48 = *(const int *)(sub + 0x48); rot = *(const short *)(sub + 0x4c);
+                   px = *(const int *)(sub + 0x34); py = *(const int *)(sub + 0x38); pz = *(const int *)(sub + 0x3c); }
+    }
+    fprintf(stderr, "[tl] f%d top=%d elem=%d req=%d t=%d | fade f10=%d fl8=%d o6{8=%d 10=%d 14=%d 18=%d 1c=%d} iris vis=%d s40=%d s48=%d rot=%d pos=%d,%d,%d\n",
+            data_ov007_0210342c[0], top, elem, req, t, f10, fl, o8, o10, o14, o18, o1c, vis, s40, s48, rot, px, py, pz);
+}
+
+int menu_title_up(int scene_id)
+{
+    if (scene_id != 1) return 0;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return g_last;   /* not built yet: the attract */
+    title_timeline(top, elem, req);
+    if (top != g_top || elem != g_elem) {
+        g_top = top; g_elem = elem;
+        if (hal_menu_trace_on()) fprintf(stderr, "[menu] title page top=%d elem=%d req=%d\n", top, elem, req);
+    }
+    g_last = variant_for(top, elem);
+    if (data_ov007_0210342c) g_up_stamp = data_ov007_0210342c[0];
+    chore_step(g_last, top, elem, req);
+    chore_rom_writes(top, req);
+    return g_last;
+}
+
+void menu_title_build(int variant, MenuLayout *L)
+{
+    if (variant == V_ATTRACT) {
+        MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
+        p.touch = 1;
+        menu_add_piece(L, p);
+        L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+        L->stage = MENU_STAGE_POST_FADE;
+        return;
+    }
+    if (variant == V_INTRO && g_ch.mode == CH_INTRO && g_ch.ct < 0 && !getenv("SM64DS_CHORE_BLACK")) {
+        /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
+           as the ROM draws them until its iris sprite appears */
+        MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
+        p.touch = 1;
+        menu_add_piece(L, p);
+        L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+        L->stage = MENU_STAGE_POST_FADE;
+        /* the star: the ROM takes its own off the picture on the press frame, so ours (cut from the ROM's render, res/menu/title_star.png)
+           takes its place and flies up off the top edge, accelerating (the ROM's flight measured 16 frames from the middle of the screen
+           to off the top) */
+        if (menu_hostimg_ready(MENU_IMG_STAR) && g_ch.fly_t >= 0) {
+            const int un = L->unum, ud = L->uden;
+            const float ft = (float)g_ch.fly_t;
+            const float cy = 91.6f - 0.55f * ft * ft;                  /* DS pixels, the star's centre */
+            int sw = 1, sh = 1;
+            menu_hostimg_size(MENU_IMG_STAR, &sw, &sh);
+            const int dw = 25 * un / ud, dh = (int)((long long)dw * sh / sw);
+            if (cy > -16.f) {
+                MenuPiece st = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+                st.bg = 1; st.hostimg = MENU_IMG_STAR; st.nofade = 1; st.lden = 1; st.lnum = 1; st.fw = (short)dw; st.fh = (short)dh;
+                st.fx = (short)(L->w / 2 + (int)((127.6f - 128.f) * (float)un / (float)ud) - dw / 2);
+                st.fy = (short)((int)(cy * (float)un / (float)ud) - dh / 2 + (L->h - 192 * un / ud) / 2);
+                menu_add_piece(L, st);
+            }
+        }
+        return;
+    }
+    if (variant == V_MAIN || variant == V_INTRO) {
+        build_main_sel(L, variant == V_INTRO);
+        return;
+    }
+    /* the backdrop: the upper screen, whole */
+    MenuPiece bg = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
+    bg.bg = 1;
+    menu_add_piece(L, bg);
+    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+    L->stage = MENU_STAGE_POST_FADE;
+
+    const int kn = tune(0, 3), kd = tune(1, 4);
+    if (variant == V_TABLE) {
+        /* THE SCORE TABLE ON ONE PAGE (the N64 table players asked for): the DS shows the course
+           list over TWO screens, courses 1..9 on the upper and 10..15 + the castle secret stars on the lower.
+           Both halves are cut along their empty rows and STACKED at 2/3, upper half first, so it reads
+           top to bottom as one list; the back arrow keeps its own piece in the right margin. The dimmed
+           castle both screens show is the page's own backdrop (the lower screen whole). */
+        L->p[0] = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
+        L->p[0].bg = 1;                         /* replaces the upper-screen backdrop added above */
+        /* The lower screen whole still carries its own list text; the two margins beside the stacked lists
+           are covered with a clean strip of that same screen (rows 128..191, left edge, no text on the score
+           page), three tiles a side, so the list is not shown twice. */
+        for (int side = 0; side < 2; ++side)
+            for (int t = 0; t < 3; ++t) {
+                MenuPiece m = menu_piece_make(SRC_TOP_PIC, 0, 128, 44, 64, MENU_AX_C, MENU_AY_T, side ? 106 : -106, t * 64, 1, 1);   /* flush with the 4:3 picture's edges */
+                m.bg = 1;
+                menu_add_piece(L, m);
+            }
+        MenuPiece top = menu_piece_make(SRC_SUB, 0, 10, 256, 174, MENU_AX_C, MENU_AY_T, 0, 2, 2, 3);
+        menu_add_piece(L, top);
+        MenuPiece low = menu_piece_make(SRC_TOP_PIC, 0, 12, 256, 108, MENU_AX_C, MENU_AY_T, 0, 118, 2, 3);
+        low.touch = 1;
+        menu_add_piece(L, low);
+        /* the back arrow at half size in the 4:3 picture's lower right corner (a 4:3 backdrop is centred on wide canvases) */
+        MenuPiece bk = menu_piece_make(SRC_TOP_PIC, 176, 136, 80, 44, MENU_AX_C, MENU_AY_B, 106, -2, 1, 2);
+        bk.touch = 1;
+        const int ibk = menu_add_piece(L, bk);
+        static const int bk_ids[1] = { 20 };
+        hot(L, ibk, bk_ids, 1);
+        return;
+    }
+    if (variant == V_DOODLE) {
+        MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, 0, tune(3, 4), kn, kd);
+        p.touch = 1;
+        menu_add_piece(L, p);
+        return;
+    }
+    /* V_FILES and V_OPTIONS: ONE panel size and place for every page, so the picture does not jump between
+       file select, file options, scores, copy and erase */
+    MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 4, 256, 180, MENU_AX_C, MENU_AY_T, 0, tune(3, 4), kn, kd);
+    p.touch = 1;
+    const int ip = menu_add_piece(L, p);
+    if (variant == V_OPTIONS) {
+        static const int ids[6] = { 10, 9, 11, 12, 13, 8 };
+        hot(L, ip, ids, 6);
+        return;
+    }
+    static const int fids[8] = { 14, 15, 16, 17, 18, 19, 21, 20 };
+    hot(L, ip, fids, 8);
+}
+
+/* THE KEY MEANING. pressed is one PadData pressed word (DS key bits: A 0x0001, B 0x0002, Start 0x0008,
+   right/left/up/down 0x10/0x20/0x40/0x80). The port's confirm (pad A, Space, Enter) arrives as 0x0002;
+   the title ROM confirms on A (0x0001) and treats B as back, so confirm moves to 0x0001 and the host
+   back key (Backspace / the bound B-equivalent) becomes the ROM's B. */
+extern "C" {
+extern unsigned char data_020a0e40;   /* the local player's slot */
+extern int data_020a0e58[];           /* PadData[i]: {u16 held, u16 pressed} */
+}
+
+/* ASSET3: THE ROM CURSOR, STARTED AND FOLLOWING THE MOUSE.
+   The ROM shows its cursor on the first non-B key and starts it on ADVENTURE (src/func_ov007_020b3190.c: it writes the target
+   element 0 into the cursor struct's second short; the cursor machinery of func_ov007_020b2e64 does the rest). On the one-screen main
+   menu the port does that same write once the arrival has settled, so ADVENTURE is selected without a first press. A mouse hover
+   (hal_menu_hover_box) writes the hovered element the same way, so the ROM's cursor, the lit plank and the arrow always name the
+   element a confirm will press. 1 = VS (MP), 0 = ADVENTURE, 2 = REC ROOM, 7 = the wrench. Only on the settled main page with no
+   choice taken. */
+static void title_cursor_assist()
+{
+    static int stable;
+    static unsigned hov_seen;
+    int top, elem, req;
+    if (!data_ov007_02103360 || !port_title_page_state(&top, &elem, &req) || top != 0 || elem != 0 || req != -1) { stable = 0; return; }
+    short *p0 = *(short **)data_ov007_02103360;
+    if (!p0) return;
+    if (stable < 20) { ++stable; return; }
+    int hx, hy;
+    unsigned st;
+    if (hal_menu_hover_box(&hx, &hy, &st) && st != hov_seen) {
+        hov_seen = st;
+        static const int ids[4] = { 1, 0, 2, 7 };
+        for (int k = 0; k < 4; ++k) {
+            Box b;
+            if (box_of(ids[k], &b) && b.x0 == hx && b.y0 == hy) {
+                if (p0[0] != ids[k]) p0[1] = (short)ids[k];
+                return;
+            }
+        }
+    }
+    if (p0[0] == 0xff) p0[1] = 0;
+}
+
+void menu_title_pad_map(uint16_t *pressed, int host_back)
+{
+    title_cursor_assist();
+    /* ASSET5: THE ATTRACT'S TOUCH-TO-START, given by the port once the star is off the top of the lower screen (counter 56; SM64DS_TITLE_FF=0
+       turns it off), for one frame as the DS A key edge the ROM's own skip reads; and a confirm during the swap finishes the choreography. */
+    int inject = 0;
+    {
+        int top, elem, req;
+        if (port_title_page_state(&top, &elem, &req) && top == 11 && g_sv_faked && g_ch.attract_t >= 6 && (*pressed & (MENU_PAD_CONFIRM | 0x0001 | 0x0008))) {
+            sv_restore();
+            inject = 1;      /* the held word gets the A edge too, so a Start / Enter / Space press is an edge the ROM's gate reads */
+        }
+        if (g_ch.in_fam && g_ch.sw_t < CH_SWAP_END && ((*pressed & MENU_PAD_CONFIRM) || g_ch.skip)) {
+            if (!g_ch.skip && hal_menu_trace_on()) fprintf(stderr, "[chore] confirm during the choreography: finishing it\n");
+            g_ch.skip = 1;
+        }
+    }
+    /* The ROM's key record (src/func_ov007_020b3190.c: `*(u16*)p & ~*(u16*)(p+2)`, and the repeat counters of
+       func_ov007_020b2e64) is built from the HELD word, so the pressed word alone is not enough: the held
+       word moves 0x0002 -> 0x0001 too, and a host back is a one-frame B in it. */
+    unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
+    unsigned short h = *held;
+    /* ASSET6: PAD B (the port's punch binding, DS A bit 0x0001 natively; pad A arrives as 0x0002) is the back arrow on every page that has one
+       (file select, file options, scores, copy / erase, doodle): the ROM has only a touch back, so it is the same host back Backspace gives.
+       On the main page and the attract 0x0001 stays a confirm. */
+    if ((g_last == V_FILES || g_last == V_OPTIONS || g_last == V_TABLE || g_last == V_DOODLE) && ((*pressed | h) & 0x0001)) {
+        if (*pressed & 0x0001) host_back = 1;
+        *pressed = (uint16_t)(*pressed & ~0x0001u);
+        h = (unsigned short)(h & ~0x0001u);
+    }
+    if (h & MENU_PAD_CONFIRM) h = (unsigned short)((h & ~(unsigned)MENU_PAD_CONFIRM) | 0x0001);
+    if (inject) h = (unsigned short)(h | 0x0001);
+    if (host_back) h = (unsigned short)(h | 0x0002);
+    *held = h;
+    uint16_t k = *pressed;
+    if (k & MENU_PAD_CONFIRM) k = (uint16_t)((k & ~(unsigned)MENU_PAD_CONFIRM) | 0x0001);
+    if (host_back) k = (uint16_t)(k | 0x0002);
+    *pressed = k;
+}

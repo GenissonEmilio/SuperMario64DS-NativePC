@@ -81,9 +81,11 @@
 
 #include <windows.h>
 
+#include <chrono>        /* ASSET1: the menu cost line */
 #include <cstring>       /* run mg16 lane MP3: the touch-ring store */
 
 #include "ntr/ppu.h"
+#include "ntr/gx.h"       /* ASSET1: gx_coverage for keycover menu pieces */
 #include "hal/menu_compose.h"   /* run menu1 lane HOOK1: the one-screen menu compose layer */
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
@@ -428,6 +430,8 @@ void hal_sub_panel_geometry(int w, int h)
 extern "C" const unsigned char *port_fs_archive_member(unsigned fileID,
                                                        unsigned *len_out);
 extern "C" void DecompressLZ16(void *src, void *dst);
+extern "C" void port_title_press_seen(void);   /* hal/menu_recipe_title.cpp */
+extern "C" int port_host_key_script(int vk);   /* tests/walk_window.cpp: SM64DS_HOST_KEY, 0 when unset */
 
 const unsigned kWallScreen = 0x8401, kWallTiles = 0x8402, kWallPltt = 0x8406;
 const int kWallBank = 2;          /* measured; see the banner above */
@@ -1534,12 +1538,34 @@ const uint32_t *menu_sub_for(uint8_t layers)
     return &buf.px[0][0];
 }
 
+/* ASSET1: the same masked scan-out with only OAM entries lo..hi drawn (one sprite or a set, alone). */
+const uint32_t *menu_sub_for_oam(uint8_t layers, int lo, int hi)
+{
+    if (g_msub_n >= 2) return &g_sub.px[0][0];
+    ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
+    ++g_msub_n;
+    uint32_t sel[4] = { 0, 0, 0, 0 };
+    for (int i = lo < 0 ? 0 : lo; i <= hi && i < 128; ++i) sel[i >> 5] |= 1u << (i & 31);
+    ntr::ppu_sub_set_bg_suppress((~(unsigned)layers & 0x1fu) << 8);
+    ntr::ppu_sub_set_obj_select(sel);
+    ntr::ppu_scanout_sub(buf);
+    ntr::ppu_sub_set_obj_select(0);
+    ntr::ppu_sub_set_bg_suppress(inset_bg_suppress());
+    return &buf.px[0][0];
+}
+
 MenuSources g_msrc;
 uint32_t *g_picsnap;                                 /* a copy of the picture for SRC_TOP_PIC pieces */
+uint8_t *g_covsnap;                                  /* ASSET1: a copy of the 3D coverage plane, same frame, for keycover pieces */
 
 /* Hand the layer this frame's planes. Called right before hal_menu_present, at each of its two stages. */
 void menu_prepare_sources(unsigned *dst, int w, int h)
 {
+    const std::chrono::steady_clock::time_point t_prep = std::chrono::steady_clock::now();
+    struct PrepEnd {
+        std::chrono::steady_clock::time_point t;
+        ~PrepEnd() { hal_menu_note_cost(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t).count()); }
+    } prep_end = { t_prep };
     g_msub_n = 0;
     std::memset(&g_msrc, 0, sizeof g_msrc);
     g_msrc.sub = &g_sub.px[0][0];
@@ -1564,6 +1590,17 @@ void menu_prepare_sources(unsigned *dst, int w, int h)
             g_msrc.pic_ry = ntr::present_y();
             g_msrc.pic_rw = ntr::present_w();
             g_msrc.pic_rh = ntr::present_h();
+            if (hal_menu_uses_cover()) {
+                /* ASSET1: where the 3D engine wrote a pixel. gx_coverage is valid right after gx_render and nothing
+                   rasterises between it and this draw. SCREEN_W stride, like the picture. */
+                const uint8_t *cv = ntr::gx_coverage();
+                if (!g_covsnap) g_covsnap = (uint8_t *)std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H);
+                if (cv && g_covsnap) {
+                    for (int y = 0; y < h; ++y)
+                        std::memcpy(g_covsnap + (size_t)y * ntr::SCREEN_W, cv + (size_t)y * ntr::SCREEN_W, (size_t)w);
+                    g_msrc.pic_cover = g_covsnap;
+                }
+            }
         }
     }
     port_engine_a_fade_px_prep();
@@ -1573,6 +1610,7 @@ void menu_prepare_sources(unsigned *dst, int w, int h)
         g_msrc.rom_dimming = (port_fader_blend_state(&evy, &white) && evy > 0) ? 1 : 0;
     }
     g_msrc.sub_for = menu_sub_for;
+    g_msrc.sub_for_oam = menu_sub_for_oam;
     hal_menu_set_sources(&g_msrc);
     hal_menu_set_dst_stride(ntr::SCREEN_W);
 }
@@ -2473,6 +2511,9 @@ void poll_touch(void)
             sy = (unsigned char)iy;
         }
     }
+
+    /* ASSET6: a stylus / click / queued press going into the ROM gives the title attract its hidden save words back first */
+    if (down) port_title_press_seen();
 
     /* ---- BYTE +1 IS THE ROM'S CHANGE EDGE, NOT "HELD FOR TWO FRAMES" ------
      *
@@ -3615,14 +3656,40 @@ extern "C" void hal_menu_pad_seam(void)
 {
     static int back_was;
     int back = 0;
-    if (!g_headless && GetAsyncKeyState_ && hal_window_focused()) {
-        const int d = (GetAsyncKeyState_(VK_BACK) & 0x8000) ? 1 : 0;
+    {
+        /* ASSET6: SM64DS_HOST_KEY=08@f scripts the Backspace here too (a scripted run has no focused window to read the key from) */
+        int d = port_host_key_script(VK_BACK);
+        if (!d && !g_headless && GetAsyncKeyState_ && hal_window_focused()) d = (GetAsyncKeyState_(VK_BACK) & 0x8000) ? 1 : 0;
         back = d && !back_was;
         back_was = d;
-    } else {
-        back_was = 0;
     }
     if (!hal_menu_live()) return;
+    /* ASSET3: MOUSE HOVER. A menu recipe's hotspots take the mouse focus when the pointer moves onto them (hal_menu_hover had no
+       caller): the pointer in client pixels -> picture pixels, the same inverse the stylus uses. SM64DS_MENU_HOVER_AT=x,y@N (picture
+       pixels, from the Nth live frame on) stands in for the pointer on a scripted run. Only a pointer that moved since the last frame counts, so a pointer left
+       resting on a plate does not keep overriding the pad. */
+    {
+        static LONG last_x = -1, last_y = -1;
+        static int env_read, env_on, env_at, calls;
+        static POINT env_pt;
+        ++calls;
+        if (!env_read) {
+            env_read = 1;
+            const char *e = getenv("SM64DS_MENU_HOVER_AT");
+            if (e && sscanf(e, "%ld,%ld@%d", &env_pt.x, &env_pt.y, &env_at) >= 2) env_on = 1;
+        }
+        POINT p;
+        int got = 0;
+        if (env_on) { p = env_pt; got = calls >= env_at; }
+        else if (!g_headless && GetCursorPos_ && ScreenToClient_ && hal_window_focused())
+            got = (GetCursorPos_(&p) && ScreenToClient_(g_hwnd, &p)) ? 1 : 0;
+        if (got && (p.x != last_x || p.y != last_y)) {
+            last_x = p.x; last_y = p.y;
+            int hbx = -1, hby = -1;
+            if (env_on) hal_menu_hover((int)p.x, (int)p.y);          /* the scripted point is already a picture pixel */
+            else if (hal_present_client_to_fb((int)p.x, (int)p.y, &hbx, &hby)) hal_menu_hover(hbx, hby);
+        }
+    }
     const int slot = data_020a0e40;
     unsigned short *pressed = (unsigned short *)((char *)data_020a0e58 + slot * 4 + 2);
     unsigned short *split = (unsigned short *)((char *)data_020a0e5a + slot * 4);

@@ -38,7 +38,7 @@
 #include <stdint.h>
 
 #define MENU_WIDE_CANVAS 300      /* canvas_w at or above this takes the wide variant */
-#define MENU_MAX_PIECES  16
+#define MENU_MAX_PIECES  24
 #define MENU_MAX_HOTSPOTS 24
 
 /* layer bits for MenuPiece.layers and the owner byte of a MenuTopCell:
@@ -50,7 +50,8 @@ enum { MENU_L_BG0 = 1, MENU_L_BG1 = 2, MENU_L_BG2 = 4, MENU_L_BG3 = 8, MENU_L_OB
 enum MenuSrc   { SRC_TOP_2D,      /* engine-A cells lifted out by layer owner, kept in DS space */
                  SRC_TOP_PIC,     /* the tick framebuffer (3D + 2D) at host resolution */
                  SRC_TOP_HOSTROW, /* legacy: lc_ov host-space band, moved by rows only */
-                 SRC_SUB };       /* engine-B scan-out with a layer mask */
+                 SRC_SUB,         /* engine-B scan-out with a layer mask */
+                 SRC_HOSTIMG };   /* ASSET2: a host picture (hal/menu_hostimg.h) scaled to the dest rect at host resolution */
 
 enum { MENU_AX_L = 0, MENU_AX_C = 1, MENU_AX_R = 2 };
 enum { MENU_AY_T = 0, MENU_AY_M = 1, MENU_AY_B = 2 };
@@ -72,6 +73,49 @@ struct MenuPiece {
      are ignored, and a dest pixel (xx, yy) samples the source at s.x + floor(xx * lden / lnum) (clamped to
      s), draw and inverse alike. Zero in every other piece. */
   short fx, fy, fw, fh; int lnum, lden;
+  /* ASSET1 (appended): THE 3D LAYER AS ONE ELEMENT AND A FILL.
+     keycover: an SRC_TOP_PIC piece draws only the pixels the 3D engine wrote (MenuSources.pic_cover), so a sprite
+     object the ROM submitted as 3D quads (the title's plates, wrench, head, stars) arrives with its own
+     transparency and drags no background along. The ROM's draw filter (src/func_ov007_020c421c.c port arm) is what
+     keeps the objects that should not be in the picture (the wallpaper) out of it.
+     xfill: an SRC_SUB piece whose dest is fill_w canvas units wide (not s.w) and repeats source column s.x across
+     it, rows mapped normally: the sky gradient's edge carried out to the edge of a wide picture, nothing stretched
+     (a column of a vertical gradient is the same everywhere). */
+  uint8_t keycover, xfill; short fill_w;
+  /* oam_on: an SRC_SUB piece (layers should be MENU_L_OBJ) draws only engine-B OAM entries oam_lo..oam_hi (inclusive,
+     0..127): one sprite, or a set, alone, with its own transparency (alpha 0 where the entry drew nothing, as a
+     key_backdrop piece reads it). Select by index; an index that churns between scenes is the recipe's to re-read. */
+  uint8_t oam_on, oam_lo, oam_hi;
+  /* ASSET2 (appended): HOST-RESOLUTION ELEMENTS. Both are placed by the fixed host rect (fx, fy, fw, fh with lnum = lden = 1),
+     the recipe's own arithmetic, so a size is whatever the window is, never a DS-pixel multiple.
+     hostgrad: an SRC_SUB piece that draws a SMOOTH vertical gradient over its dest rect instead of copying pixels. The colours
+     are the engine-B plane's own (columns s.x .. s.x + s.w - 1 of the piece's layers, averaged per DS row, so a banded or
+     dithered DS gradient becomes its mean ramp); runs of equal rows become one stop at their centre and the ramp is linear
+     between stops, evaluated per HOST row with a 4x4 ordered dither of one 8-bit level, so no step is visible at any size.
+     It also publishes the frame's fade factor (sky luminance now over the brightest seen on this page) for hostimg pieces.
+     hostimg: an SRC_HOSTIMG piece; the id is a MENU_IMG_* of menu_hostimg.h. Drawn premultiplied over what is already there,
+     scaled by the fade factor (the picture fades with the engine-B screen it replaces). */
+  uint8_t hostgrad, hostimg;
+  /* hl: a hostimg plank's own look, since the ROM's 3D plate that used to show it is not drawn. bit 0 = selected (brightened,
+     pulsing on the ROM's 8-frame cadence), bit 1 = pressed (sunk and darkened). The compose also treats the piece as
+     selected while it owns the mouse focus, and pressed while the real stylus is held on it. A touch hostimg piece maps a
+     click proportionally into its source rect s (the ROM's own box), not 1:1. */
+  uint8_t hl;
+  /* ASSET4 (appended): nodraw = a touch-only piece (maps clicks, draws nothing). has_ex / ex = a keycover piece skips the 3D pixels
+     inside the DS source rect ex (so a whole-layer piece never contains another piece's element, here the wrench). */
+  uint8_t nodraw, has_ex; DsRect ex;
+  /* ASSET5 (appended): THE TITLE CHOREOGRAPHY.
+     alpha: 0 = opaque; 1..254 = a hostimg or keycover piece is drawn at alpha/255 (the logo's fades, the face's fade-in).
+     nofade: a hostimg piece ignores the engine-B sky fade factor (the sky is no longer engine B's).
+     wall: an SRC_HOSTIMG piece that is the WALLPAPER (dest = the fixed host rect fx, fy, fw, fh): the DS lower screen's own gradient
+     (measured from the ROM's render, a straight ramp top to bottom, dithered) with the "Super Mario 64 PC" pattern tiled over it.
+     The pattern tile is wtw x wth host pixels, its origin wox, woy from the dest rect's corner; wink is the ink's opacity (0..255).
+     The finished wallpaper is cached per size and copied per frame.
+     iris: a piece that blackens everything OUTSIDE a five-pointed star (the title's star iris, drawn clean at the window's resolution
+     with an anti-aliased edge): centre icx, icy in host pixels, outer radius ir16 in 1/16 host pixels (0 = all black). */
+  uint8_t alpha, nofade, wall, iris, wink;
+  short wtw, wth, wox, woy;
+  int icx, icy, ir16;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
@@ -123,7 +167,11 @@ struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; can
                        and draws nowhere (level-clear: BG2, "TOUCH TO SELECT") */
                     uint8_t hide_owners;
                     /* MENUSPLIT1 (appended): this tick's ROM facts for build(); preserved by menu_layout_begin */
-                    MenuFacts facts; };
+                    MenuFacts facts;
+
+                    /* ASSET3 (appended): the recipe shows its own selection (arrows, a lit plank), so the generic focus outline
+                       of a hovered or pad-focused hotspot is not painted over it */
+                    uint8_t no_focus_paint; };
 
 enum { MENU_DRV_NATIVE = 0, MENU_DRV_ROM_CURSOR = 1, MENU_DRV_TOUCH = 2, MENU_DRV_MIXED = 3 };
 enum { MENU_KEY_NONE = 0, MENU_KEY_SAVE_MENU_ON_TOP = 1, MENU_KEY_ONE_SCREEN_MENUS = 2 };
@@ -146,6 +194,11 @@ struct MenuRecipe {
   /* MENUSPLIT1 (appended): fills the ROM facts build() needs. Called once per tick by the decide step (logic thread),
      only for the recipe that was picked. Null = the recipe's build() reads no ROM (lc, the fallback, the test row). */
   void (*facts)(MenuFacts *f);
+  /* TITLE1 (appended): a native recipe's pad translation. Non-null: hal_menu_pad hands it the pressed word
+     and the host back flag and returns (no focus, no synthesised back touch, no strip). It exists for a
+     ROM that reads the pad itself but with a different key meaning than the port's (the title's confirm
+     is the DS A key, 0x0001; the port's confirm is 0x0002). */
+  void (*pad_map)(uint16_t *pressed, int host_back);
 };
 
 /* the level-clear recipe's functions (menu_recipe_lc.cpp), named by the table */
@@ -153,6 +206,13 @@ int  menu_lc_up(int scene_id);
 void menu_lc_build(int variant, MenuLayout *L);
 int  menu_lc_rom_cursor(int dir, int *sel);
 int  menu_lc_pad_ok(void);
+
+/* the title family's recipe (menu_recipe_title.cpp), run menu1 lane TITLE1 */
+int  menu_title_up(int scene_id);
+void menu_title_build(int variant, MenuLayout *L);
+void menu_title_pad_map(uint16_t *pressed, int host_back);
+void menu_title_facts(MenuFacts *f);
+#define MENU_TITLE_NVARIANTS 7
 
 /* the ONE static table (menu_recipes.cpp) */
 extern const MenuRecipe g_menu_recipes[];
@@ -172,6 +232,7 @@ struct MenuSources {
   const uint32_t *pic;            /* SRC_TOP_PIC: host framebuffer, pic_stride pixels per row */
   int pic_stride, pic_w, pic_h;
   int pic_rx, pic_ry, pic_rw, pic_rh;  /* where the 256x192 top screen sits inside pic (host px) */
+  const uint8_t *pic_cover;       /* ASSET1: the 3D coverage plane of the same frame, same stride as pic; null = no key */
   const uint32_t *hostrow;        /* SRC_TOP_HOSTROW: host plane, same stride as the destination; s is in HOST pixels */
   int hostrow_stride, hostrow_w, hostrow_h;
   uint32_t (*bm_apply)(uint32_t argb, uint8_t bm);  /* engine-A fade/brightness verdict, null = identity */
@@ -180,6 +241,8 @@ struct MenuSources {
      already engine-B bright, 256x192 ARGB; null = use `sub`. The host makes at most two extra scan-outs a
      frame and reuses the live one when the mask equals the live enables. */
   const uint32_t *(*sub_for)(uint8_t layers);
+  /* ASSET1: the same with an engine-B OAM index range (inclusive); counts against the same two-scan-out cap */
+  const uint32_t *(*sub_for_oam)(uint8_t layers, int lo, int hi);
 };
 
 /* HOOK1: what the engine-A compositor must lift this frame (H1b). Null when nothing is lifted. */
@@ -229,6 +292,9 @@ int  menu_autocrop_rect(const MenuPiece *p, const MenuSources *src, DsRect *out)
 void menu_dim(uint32_t *dst, int w, int h, int evy);
 int  menu_wide(const MenuLayout *L);                                 /* canvas_w >= MENU_WIDE_CANVAS */
 int  menu_selftest(void);                                            /* 0 = all PASS */
+/* ASSET5: 1 when the star of the iris piece (outer radius R host pixels, centre cx, cy) contains the whole w x h picture
+   (the star is star-shaped about its centre, so it contains the picture exactly when it contains the picture's border) */
+int  menu_iris_covers(int w, int h, float cx, float cy, float R);
 
 #ifdef __cplusplus
 extern "C" {
@@ -310,6 +376,7 @@ void hal_menu_touch_end(void);                  /* the stylus came up: forget th
 void hal_menu_pad(uint16_t *pressed, int host_back);
 /* settings seam: key -> enabled. Default (no function set) = everything off. */
 void hal_menu_set_enable_fn(int (*fn)(int key));
+int  hal_menu_hover_box(int *x, int *y, unsigned *stamp);   /* ASSET3: the hovered hotspot's DS box origin; stamp changes per hover event */
 void hal_menu_set_netplay(int on);              /* in a transport session ROM_CURSOR is refused; TOUCH is used */
 /* the synthesised-touch queue: single producer (hal_menu_pad), single consumer (poll_touch) */
 int  hal_menu_touch_queue_press(int dsx, int dsy);  /* 1 queued; 0 refused (in flight or a real stylus is held) */
@@ -319,6 +386,9 @@ int  hal_menu_fallback_frames(void);
 /* HOOK1 */
 const MenuLiftInfo *hal_menu_lift_info(void);   /* this frame's lift plan, null = lift nothing */
 int  hal_menu_uses_src(int src);                /* the live layout has a piece of this MenuSrc */
+int  hal_menu_uses_cover(void);                 /* ASSET1: the live layout has a keycover piece (the host then supplies pic_cover) */
+void hal_menu_note_cost(double prep_us);       /* ASSET1: the host adds its source-preparation time for the frame */
+int  hal_menu_enabled(int key);                 /* ASSET1: a MENU_KEY_* setting as the recipes see it */
 int  hal_menu_trace_on(void);                   /* SM64DS_MENU_TRACE or its alias SM64DS_SWAP_TRACE */
 void hal_menu_set_dst_stride(int stride);       /* pixels per row of the buffer hal_menu_present draws into; 0 = w */
 void hal_menu_note_lift_drawn(void);            /* the draw honoured the lift promise (LIFT WITHOUT DRAW net) */

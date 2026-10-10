@@ -24421,6 +24421,12 @@ foreach(_tmenu1 walk_window walk_window_hires smoke_player)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_lc.cpp")
 endforeach()
 
+# MENU1 / TITLE1 (run menu1): the title family's one-screen recipe.
+foreach(_ttitle1 walk_window walk_window_hires smoke_player)
+    target_sources(${_ttitle1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_title.cpp")
+endforeach()
+
 # MENU1 / PAUSE1 (run menu1): the one-screen pause menu recipe (own file, own block).
 foreach(_tmenu1p walk_window walk_window_hires)
     target_sources(${_tmenu1p} PRIVATE
@@ -24431,4 +24437,12 @@ endforeach()
 foreach(_tstargo1 walk_window walk_window_hires smoke_player)
     target_sources(${_tstargo1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_recipe_starsel.cpp")
+endforeach()
+
+# MENU1 / ASSET2 (run menu1): host-resolution picture + gradient elements for the one-screen menus
+# (the "Super Mario 64 PC" logo of the title main menu and its sky). Own block.
+foreach(_tasset2 walk_window walk_window_hires smoke_player)
+    target_sources(${_tasset2} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_hostimg.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_logo_data.cpp")
 endforeach()

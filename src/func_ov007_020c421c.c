@@ -1,6 +1,11 @@
 
 extern void func_ov007_020c42f8(char *self);
 extern void func_ov007_020c4684(void *a, int b, int c, int d, int e, void *f);
+#ifdef _MSC_VER
+/* PORT ONLY (mwccarm never sees this arm): the one-screen title menu draws the title's sprite
+   objects selectively. hal/menu_recipe_title.cpp sets the hook; null draws everything. */
+int (*g_port_title_draw_skip)(char *obj);
+#endif
 struct Vec3s
 {
   short x;
@@ -13,6 +18,12 @@ void func_ov007_020c421c(char *r4)
   int diff;
   int t78;
   int t74;
+#ifdef _MSC_VER
+  if (g_port_title_draw_skip && g_port_title_draw_skip(r4))
+  {
+    return;
+  }
+#endif
   v.z = 0;
   v.y = v.z;
   v.x = v.y;

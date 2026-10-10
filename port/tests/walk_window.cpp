@@ -4333,6 +4333,8 @@ static int host_key_script(int vk)
     return now;
 }
 
+extern "C" int port_host_key_script(int vk) { return host_key_script(vk); }   /* ASSET6: the menu seam's Backspace */
+
 static int key_live(int vk)
 {
     if (host_key_script(vk)) return 1;
