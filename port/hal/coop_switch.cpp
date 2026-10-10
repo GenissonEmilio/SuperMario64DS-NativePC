@@ -221,6 +221,14 @@ bool ap_fall(char *a, int, int) {
     *(unsigned char *)(a + 0x33c) = 1;
     return true;
 }
+// CANNON_HATCH (14): +0x32c mOpening starts the slide (what func_ov002_020bc990 stores after the sound;
+// the cannon-unlocked save bit itself travels with the save record).
+int r_hatch(const char *a) { return rd_u8(a, 0x32c); }
+bool ap_hatch(char *a, int, int) {
+    if (rd_u8(a, 0x32c) != 0) return false;
+    *(unsigned char *)(a + 0x32c) = 1;
+    return true;
+}
 // The big "?" switch (HATENA_SWITCH 26): the shared fact is bit 31 of the save record word [1]
 // (the ? blocks read it); the press itself is +0x71a with the 8-frame countdown at +0x718.
 int r_hatena(const char *) { return (int)((*(const unsigned *)(data_0209caa0 + 4)) >> 31); }
@@ -241,6 +249,7 @@ const Watch kWatch[] = {
     {11,  kSwKindPress, "EXCL_SWITCH",  r_starsw, ap_starsw},
     {12,  kSwKindPress, "STAR_SWITCH",  r_starsw, ap_starsw},
     {126, kSwKindKick,  "DONUT_BLOCK",  r_donut,  ap_donut},
+    {14,  kSwKindKick,  "CANNON_HATCH",   r_hatch, ap_hatch},
     {26,  kSwKindKick,  "HATENA_SWITCH", r_hatena, ap_hatena},
     {45,  kSwKindKick,  "FALL_BLOCK_WF",  r_fall, ap_fall},
     {66,  kSwKindKick,  "FALL_BLOCK_BBH", r_fall, ap_fall},
@@ -497,10 +506,11 @@ void apply_globals(const SwGlobalsWire &w) {
         if (!s) continue;
         adopt_bit(i, (w.word >> i) & 1u, s);
     }
+    const bool first = !g_have_globals;
     g_have_globals = true;
     ++g_st.globals_applied;
-    log_word("globals");
-    if (g_log)
+    if (first) log_word("globals");
+    if (g_log && first)
         std::fprintf(stderr, "[coopsw] globals applied: f2c0=%d,%d,%d,%d wall=%lld\n", data_0209f2c0[0], data_0209f2c0[1], data_0209f2c0[2], data_0209f2c0[3], wall_ms());
 }
 
@@ -558,12 +568,13 @@ void on_world(int seat, int sub, const unsigned char *p, int len, void *) {
         if (!live_key_is(h.key)) { ++g_st.drop_group; return; }
         if (!is_member(seat)) { ++g_st.drop_member; return; }
         if (g_off.word) { ++g_st.drop_off; return; }
+        const unsigned before = (unsigned)data_0209f34c;
         for (int i = 0; i < (int)h.count; ++i) {
             SwBitEntry e; std::memcpy(&e, p + sizeof h + i * sizeof e, sizeof e);
             if ((e.stamp & 15u) != (unsigned)seat) { ++g_st.drop_bad; continue; }   // a stamp names its sender
             adopt_bit(e.bit, e.value, e.stamp);
         }
-        log_word("remote");
+        if ((unsigned)data_0209f34c != before) log_word("remote");
         return;
     }
     case kSwWorldWord: {
