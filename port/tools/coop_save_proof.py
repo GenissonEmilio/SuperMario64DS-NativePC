@@ -785,7 +785,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--exe", required=True)
     ap.add_argument("--base", required=True)
-    ap.add_argument("--root", default="C:/tmp/sm64ds-wire1", help="a tree with the ROM-derived assets (SM64DS_ASSET_ROOT)")
+    ap.add_argument("--root", default=REPO, help="a tree or kit install with the ROM-derived assets (SM64DS_ASSET_ROOT)")
     ap.add_argument("--out", default=os.path.join(REPO, "build", "coop_save_proof"))
     ap.add_argument("rows", nargs="+")
     ARGS = ap.parse_args()
