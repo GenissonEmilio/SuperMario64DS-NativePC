@@ -93,6 +93,18 @@ const StageRow kStage[52] = {
 const unsigned kDefaultRgb[4] = {0xE04040u, 0x40C060u, 0xE0C030u, 0x60A0F0u};
 
 bool g_installed_log = false;
+#ifndef PORT_ROM_CLEAN
+// TEST ONLY, compiled out of a PORT_ROM_CLEAN (shipping) build: the click proofs
+// need a handler the way coop's TP lane will install one.
+//   SM64DS_PLIST_TEST_HANDLER=1   a handler that logs "[plist] handler seat=N"
+//                                 and marks every row of the OTHER seats "TP"
+void test_handler(int seat) {
+    std::fprintf(stderr, "[plist] handler seat=%d
+", seat);
+}
+const char *test_extra(int seat) { return seat == comms_hub_my_seat() ? "" : "TP"; }
+bool g_test_checked = false;
+#endif
 PlayerListClickFn g_click = nullptr;
 PlayerListExtraFn g_extra = nullptr;
 
@@ -230,6 +242,18 @@ void player_list_view(PlayerListView *out) {
     }
     const int my_seat = comms_hub_my_seat();
     if (my_seat < 0 || my_seat >= kHubPartySeats) return;
+#ifndef PORT_ROM_CLEAN
+    if (!g_test_checked) {
+        g_test_checked = true;
+        const char *e = std::getenv("SM64DS_PLIST_TEST_HANDLER");
+        if (e && *e && *e != '0') {
+            g_click = test_handler;
+            g_extra = test_extra;
+            std::fprintf(stderr, "[plist] TEST handler installed
+");
+        }
+    }
+#endif
 
     Place mine;
     int mychar;
