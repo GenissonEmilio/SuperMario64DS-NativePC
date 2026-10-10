@@ -1029,8 +1029,7 @@ extern "C" void settings_page_warm(int w, int h)
     g_warming = 0;
 #ifndef PORT_ROM_CLEAN
     if (getenv("SM64DS_SETPAGE_COST"))
-        fprintf(stderr, "[settings] warm-up %dx%d: %.2f ms
-", w, h, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+        fprintf(stderr, "[settings] warm-up %dx%d: %.2f ms\n", w, h, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
 #endif
 }
 
