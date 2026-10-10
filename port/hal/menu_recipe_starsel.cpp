@@ -58,6 +58,18 @@ const int kRowY0 = 16, kRowH = 20;
 /* the head and "TOUCH ME!" rows of the bottom screen: x 0x20..0xdf (the German and French "TOUCH ME" lines are the widest), y 56..191 */
 const int kHeadX0 = 0x20, kHeadW = 0xc0, kHeadY0 = 56, kHeadH = 136;
 
+/* MENUSPLIT1: everything build_starsel needs from the live scene object, read once per tick by the decide step */
+void starsel_facts(MenuFacts *f)
+{
+    const void *o = port_scene_live_object();
+    if (!o || port_scene_live_id() != kStarScene) return;
+    f->starsel_valid = 1;
+    f->starsel_n = ob(o, 0x114);
+    f->starsel_mask = ob(o, 0x131);
+    for (int i = 0; i < 8; ++i) f->starsel_x[i] = ob(o, 0x11a + i);
+    f->starsel_head_y = ob(o, 0x12b);
+}
+
 void build_starsel(int variant, MenuLayout *L)
 {
     if (variant == 2) {
@@ -81,13 +93,13 @@ void build_starsel(int variant, MenuLayout *L)
     p.key_backdrop = 1;
     p.touch = 1;
     const int pi = menu_add_piece(L, p);
-    const void *o = port_scene_live_object();
-    if (o && port_scene_live_id() == kStarScene) {
-        const int n = ob(o, 0x114);
-        const unsigned mask = ob(o, 0x131);
+    const MenuFacts &F = L->facts;       /* the live object's fields, read once per tick by starsel_facts */
+    if (F.starsel_valid) {
+        const int n = F.starsel_n;
+        const unsigned mask = F.starsel_mask;
         for (int i = 0; i < n && i < 8; ++i) {
             if (!((mask >> i) & 1)) continue;
-            int x = ob(o, 0x11a + i) - 8;
+            int x = F.starsel_x[i] - 8;
             if (x < 0) x = 0;
             if (x > 240) x = 240;
             menu_add_hotspot(L, pi, x, kRowY0, 16, kRowH, -1);
@@ -102,10 +114,10 @@ void build_starsel(int variant, MenuLayout *L)
     h.key_backdrop = 1;
     h.touch = 1;
     const int ph = menu_add_piece(L, h);
-    if (o && port_scene_live_id() == kStarScene) {
+    if (F.starsel_valid) {
         /* the ROM's box is the head's centre row +-0x28; keep the part that lies inside the piece's source rect
            (rows kHeadY0..191) so a click on the placed piece is always inside the hotspot, even at the top of the bob */
-        int y0 = (int)ob(o, 0x12b) - 0x28, y1 = y0 + 0x50;
+        int y0 = (int)F.starsel_head_y - 0x28, y1 = y0 + 0x50;
         if (y0 < kHeadY0) y0 = kHeadY0;
         if (y1 > kHeadY0 + kHeadH) y1 = kHeadY0 + kHeadH;
         if (y1 > y0) menu_add_hotspot(L, ph, 0x58, y0, 0x50, y1 - y0, -1);
@@ -182,6 +194,7 @@ int rom_cursor_gameover(int dir, int *sel_out)
 extern "C++" {
 int  menu_starsel_up(int scene_id) { return up_starsel(scene_id); }
 void menu_starsel_build(int variant, MenuLayout *L) { build_starsel(variant, L); }
+void menu_starsel_facts(MenuFacts *f) { starsel_facts(f); }
 int  menu_gameover_up(int scene_id) { return up_gameover(scene_id); }
 void menu_gameover_build(int variant, MenuLayout *L) { build_gameover(variant, L); }
 int  menu_gameover_rom_cursor(int dir, int *sel) { return rom_cursor_gameover(dir, sel); }

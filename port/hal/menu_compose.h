@@ -93,6 +93,22 @@ enum { MENU_STAGE_PRE_FADE = 0, MENU_STAGE_POST_FADE = 1 };
 
 struct MenuRecipe;
 
+/* MENUSPLIT1: the ROM values a recipe's build() may depend on, read ONCE per tick by the recipe's own facts
+   function (MenuRecipe.facts) on the logic thread inside the decide step, and carried in MenuLayout.facts. build()
+   reads these and nothing else of the ROM; so the draw thread can re-solve a layout (the picture changed size under
+   the frame) without touching ROM memory. A field is a raw copy of the ROM value, named for the recipe that reads it.
+   Zero = "the ROM said 0 / nothing", which is what the selftests (no game state) get. Append only. */
+struct MenuFacts {
+  int16_t language;         /* pause: GetOwnerLanguage() (the OK boxes' width differs in German / Italian) */
+  uint8_t pause_f2f0;       /* pause: data_0209f2f0, 1 = no card pages, the ROM hides the course arrows */
+  uint8_t starsel_valid;    /* star select: the live scene object answered (scene 4) */
+  uint8_t starsel_n;        /* star select: +0x114, the icon count */
+  uint8_t starsel_mask;     /* star select: +0x131, which icons are available */
+  uint8_t starsel_x[8];     /* star select: +0x11a.., the icon x bytes */
+  uint8_t starsel_head_y;   /* star select: +0x12b, the Mario head's centre row (it bobs) */
+  int32_t spare[8];         /* recipes added later */
+};
+
 struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; canvas_w = w*192/h */
                     MenuPiece p[MENU_MAX_PIECES]; int np; MenuHotspot hs[MENU_MAX_HOTSPOTS]; int nh;
                     int dest[MENU_MAX_PIECES][4]; int focus; uint8_t lift_owners; uint8_t stage; uint8_t backdrop;
@@ -105,7 +121,9 @@ struct MenuLayout { int w, h, unum, uden, canvas_w; /* unit = h/192 reduced; can
                     const MenuRecipe *recipe;
                     /* HOOK1 (appended): engine-A layers (MENU_L_* bits) the compositor drops from the picture
                        and draws nowhere (level-clear: BG2, "TOUCH TO SELECT") */
-                    uint8_t hide_owners; };
+                    uint8_t hide_owners;
+                    /* MENUSPLIT1 (appended): this tick's ROM facts for build(); preserved by menu_layout_begin */
+                    MenuFacts facts; };
 
 enum { MENU_DRV_NATIVE = 0, MENU_DRV_ROM_CURSOR = 1, MENU_DRV_TOUCH = 2, MENU_DRV_MIXED = 3 };
 enum { MENU_KEY_NONE = 0, MENU_KEY_SAVE_MENU_ON_TOP = 1, MENU_KEY_ONE_SCREEN_MENUS = 2 };
@@ -125,6 +143,9 @@ struct MenuRecipe {
      right now": hal_menu_pad then touches nothing (no strip, no A -> Start). Called once a frame while the
      recipe is live, so it is also where a ROM_CURSOR driver forgets its cursor when the menu goes away. */
   int  (*pad_ok)(void);
+  /* MENUSPLIT1 (appended): fills the ROM facts build() needs. Called once per tick by the decide step (logic thread),
+     only for the recipe that was picked. Null = the recipe's build() reads no ROM (lc, the fallback, the test row). */
+  void (*facts)(MenuFacts *f);
 };
 
 /* the level-clear recipe's functions (menu_recipe_lc.cpp), named by the table */
@@ -169,6 +190,23 @@ struct MenuLiftInfo {
   struct { uint8_t layers; int r0, r1; } band[4];
 };
 
+/* MENUSPLIT1: ONE TICK'S MENU DECISION. A plain-old-data record (no pointers into ROM memory, only into the static
+   recipe table and static row filters), made by hal_menu_decide on the logic thread and consumed by the draw side. It is
+   copied by value into the frame packet (hal_menu_decision_copy) and bound on the draw thread
+   (hal_menu_draw_frame_begin). About 3 KB. */
+struct MenuDecision {
+  unsigned serial;            /* decide count, 1 up; 0 = never decided */
+  int live;                   /* a recipe (or the fallback) owns this tick's picture; the rest is valid only when set */
+  int recipe, variant;        /* g_menu_recipes index, the recipe's variant id */
+  int fallback;               /* the fallback recipe is up */
+  int w, h;                   /* the picture size the layout was solved for */
+  int focus_shown;            /* the pad / hover cursor is showing (input state as of the decide) */
+  uint16_t latched;           /* bit i: piece i's autocrop rect is latched and already applied to L.p[i].s */
+  int lift_on;                /* the compositor must lift per `lift` this tick */
+  MenuLiftInfo lift;
+  MenuLayout L;               /* solved for (w, h), latches applied, L.facts = the ROM facts of this tick */
+};
+
 /* ---- the core (C++), also what the selftest drives ---------------------- */
 void menu_layout_begin(MenuLayout *L, int w, int h);                 /* zero it, unit + canvas_w */
 void menu_layout_dest(MenuLayout *L);                                /* piece dest rects from anchors */
@@ -196,12 +234,52 @@ int  menu_selftest(void);                                            /* 0 = all 
 extern "C" {
 #endif
 /* ---- what phase 1 calls ---------------------------------------------------*/
-/* Once per DS frame at H1, before anything is lifted. Picks the recipe, builds the layout for (w, h). */
+
+/* THE DECIDE / DRAW CONTRACT (MENUSPLIT1, run menu1; the render-thread work RENDERTHREAD1 depends on it)
+ *
+ *   LOGIC THREAD (owns every read of ROM memory, the live scene object, the pad, the mouse):
+ *     hal_menu_decide(w, h, scene_id)   once per tick, AFTER the ROM tick, BEFORE the frame packet is handed off.
+ *       Picks the recipe and variant (MenuRecipe.up, hysteresis), reads the recipe's ROM facts (MenuRecipe.facts),
+ *       solves the layout for the picture size (w, h) (MenuRecipe.build sees only L->facts), carries the cursor, applies
+ *       the autocrop latches, and builds the lift plan. Publishes the result as a MenuDecision and as the input-side
+ *       record of "the layout the player saw".
+ *     hal_menu_decision_copy(&d)        the decision to put in the frame packet (a value copy).
+ *     hal_menu_live()                   the latest decision is live (the input side, and hunt8's "compose this tick on
+ *                                       the CPU" switch). Never reads draw state.
+ *     hal_menu_pad, hal_menu_hover, hal_menu_touch_inverse, the synthesised-touch queue: read the latest decision's
+ *       layout (hal_menu_touch_inverse: the layout last committed, plus the draw's autocrop / resize amendments), never
+ *       the draw's working copy.
+ *
+ *   DRAW THREAD (today the same thread, right after the decide; the render thread later):
+ *     hal_menu_draw_frame_begin(&d)     bind this frame's decision (null = take the in-process one). Once, at the head of
+ *                                       the 2D compose (H1).
+ *     hal_menu_draw_live(), hal_menu_draws_in(stage), hal_menu_uses_src(src), hal_menu_lift_info(),
+ *     hal_menu_set_sources(), hal_menu_present(dst, w, h, stage): read ONLY the bound decision and the frame's planes.
+ *       THE FRAME'S PLANES are the frame packet's job, not the decision's: the engine-B scan-outs (VRAM / OAM / palette /
+ *       engine registers), the lifted top2d / hostrow planes, the picture copy and present rect, the engine-A fade state,
+ *       the engine-B backdrop colour. They are hardware state, not ROM program memory, and the render thread snapshots them
+ *       with the rest of the frame. NO ROM address, ROM function or scene object is read on this side.
+ *
+ *   THE ONE FEEDBACK from the draw to the logic thread is small and locked: an autocrop rect latched the first frame a
+ *   piece has pixels (applied by the next decide), and an amendment of the seen layout when the draw had to re-solve for a
+ *   different picture size or latched a rect. Both are layout geometry, not draw state.
+ *
+ *   hal_menu_frame_begin(w, h, scene_id) = hal_menu_decide + hal_menu_draw_frame_begin(null): what a one-thread build
+ *   calls at H1, unchanged for callers that predate the split.
+ *
+ *   SM64DS_MENU_DRAW_LATE=1 (debug): the draw binds the PREVIOUS tick's decision (the render thread's lateness, simulated
+ *   on one thread). A tick whose decision differs from the previous one (a menu opening, closing or changing variant or
+ *   size) draws no menu and lifts nothing, so the picture is the plain one, never a lift without its draw. */
+void hal_menu_decide(int w, int h, int scene_id);          /* logic thread */
+unsigned hal_menu_decision_copy(MenuDecision *out);        /* logic thread; returns the serial (0 = nothing decided yet) */
+void hal_menu_draw_frame_begin(const MenuDecision *d);     /* draw thread; null = this process's latest (or previous, DRAW_LATE) */
+int  hal_menu_draw_live(void);                  /* the bound decision is live */
+/* Once per DS frame at H1, before anything is lifted: decide + bind. Picks the recipe, builds the layout for (w, h). */
 void hal_menu_frame_begin(int w, int h, int scene_id);
-int  hal_menu_live(void);                       /* a recipe (or the fallback) owns this frame's picture */
-int  hal_menu_draws_in(int stage);                /* live AND the recipe draws at this stage (sources only need preparing then) */
+int  hal_menu_live(void);                       /* the latest decision: a recipe (or the fallback) owns the picture */
+int  hal_menu_draws_in(int stage);                /* bound decision live AND the recipe draws at this stage */
 void hal_menu_set_sources(const MenuSources *s);
-/* H2. Draws the pieces whose layout stage matches `stage`; remembers the drawn layout for the inverse. */
+/* H2. Draws the pieces whose layout stage matches `stage` from the bound decision and the planes. */
 void hal_menu_present(uint32_t *dst, int w, int h, int stage);
 /* H3. Last frame's DRAWN layout. in = 1 only inside a touch piece. */
 void hal_menu_touch_inverse(int bx, int by, int *dsx, int *dsy, int *in);

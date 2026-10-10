@@ -1431,8 +1431,9 @@ void inset_map_selftest(int w, int h)
  * and swap_now. It is recipe "lc" of the generic compose layer now (hal/menu_recipe_lc.cpp, hal/menu_compose.cpp)
  * and this file is the HOST side of that layer: it decides the frame's one predicate, feeds the layer the real
  * engine-B planes, draws it at the two seams (before and after engine A's fade), and runs the stylus and pad
- * seams. The rule that survives from the swap: ONE PREDICATE PER FRAME. hal_menu_hook_h1 asks once at the head of
- * engine A's composite, everything that lifts, draws or reads input for this frame reads hal_menu_live().
+ * seams. The rule that survives from the swap: ONE PREDICATE PER FRAME. hal_menu_decide_tick asks once per tick (at the
+ * head of engine A's composite on one thread), the compose and the draw read the bound decision (hal_menu_draw_live),
+ * the input paths read the latest one (hal_menu_live).
  * The 0.4.1 "lift without draw" defect (text lifted from the picture and never drawn back) cannot recur as the
  * panel option any more: the draw does not depend on g_on (the scan-out is forced when a menu is live), and the
  * layer keeps the once-per-process LIFT WITHOUT DRAW net. */
@@ -1464,6 +1465,11 @@ int menu_enable(int key)
     return 0;
 }
 
+/* ===== MENU DRAW PATH BEGIN (MENUSPLIT1) =====================================================================
+   Everything between this banner and the END banner runs on the DRAW side of the decide / draw split: it reads the bound
+   MenuDecision and the frame's planes (engine-B VRAM / OAM / palette / registers, the lifted planes, the fade state),
+   never ROM program memory, the live scene object or a ROM function. tools-free audit: the grep in
+   runs/menu1/out/MENUSPLIT1 (draw_audit.py) scans this region and menu_compose.cpp's draw functions. */
 /* THE COLOUR THE PLATES SIT ON, read off the machine rather than guessed.
    The PPU's backdrop is entry 0 of the engine's own BG palette -- engine B's
    is at 0x05000400 -- and it is the colour ppu_scanout_sub starts every
@@ -1570,6 +1576,8 @@ void menu_prepare_sources(unsigned *dst, int w, int h)
     hal_menu_set_sources(&g_msrc);
     hal_menu_set_dst_stride(ntr::SCREEN_W);
 }
+
+/* ===== MENU DRAW PATH END ===== */
 
 /* The square itself, drawn in the pass above the map so nothing covers it. */
 void hal_sub_panel_handle(unsigned *dst, int w, int h)
@@ -3556,7 +3564,11 @@ extern "C" int hal_save_menu_up(void)
  * The gate is the layout: a stacked scene (minigames) shows both screens whole and no recipe may match, the
  * fallback included (MENU_SCENE_GATED). The corner-panel option g_on is deliberately NOT a term: a live menu forces
  * its own engine-B scan-out. */
-extern "C" const MenuLiftInfo *hal_menu_hook_h1(int w, int h)
+/* THE DECIDE STEP OF THE TICK (logic thread; MENUSPLIT1). Everything here reads the ROM or host settings: the recipe
+   pick through hal_menu_decide, the level-clear pair for the touch seams, the level-clear trace. A render thread
+   (RENDERTHREAD1) calls this at the end of the tick, after the ROM tick and before the frame packet is handed off, and
+   puts hal_menu_decision_copy in the packet. */
+extern "C" void hal_menu_decide_tick(int w, int h)
 {
     static int init;
     if (!init) {
@@ -3565,7 +3577,23 @@ extern "C" const MenuLiftInfo *hal_menu_hook_h1(int w, int h)
     }
     hal_menu_set_netplay(port::comms_transport() != 0);
     const int scene = hal_sub_screen_stacked() ? MENU_SCENE_GATED : port_scene_live_id();
-    hal_menu_frame_begin(w, h, scene);
+    hal_menu_decide(w, h, scene);
+    /* THE COMPOSE'S OWN ANSWER AND ITS RECTANGLES, once a frame, by the same rule: one place decides, everybody else
+       reads. They are computed whatever the answer is, so poll_touch's inverse has this frame's numbers on the very
+       frame the plates come on. (These two lines read the ROM, so they live on the decide side; they used to sit in
+       the present body.) */
+    {
+        static int swap_frame;
+        g_menu_up = save_menu_is_up();
+        hal_lc_trace(w, h, swap_frame++, hal_menu_live());
+    }
+}
+
+/* H1 for a one-thread build: decide, then bind the decision for the draw, then hand back the lift plan. */
+extern "C" const MenuLiftInfo *hal_menu_hook_h1(int w, int h)
+{
+    hal_menu_decide_tick(w, h);
+    hal_menu_draw_frame_begin(0);
     return hal_menu_lift_info();
 }
 
@@ -3637,15 +3665,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
         }
     }
     hal_sub_panel_geometry(w, h);
-    /* THE COMPOSE'S OWN ANSWER AND ITS RECTANGLES, once a frame, beside the
-       panel's and by the same rule: one place decides, everybody else reads.
-       They are computed whatever the answer is, so poll_touch's inverse has
-       this frame's numbers on the very frame the plates come on. */
-    {
-        static int swap_frame;
-        g_menu_up = save_menu_is_up();
-        hal_lc_trace(w, h, swap_frame++, hal_menu_live());
-    }
+    /* (the menu's per-frame answer and its trace are the decide step now: hal_menu_decide_tick above) */
     /* the inset arm of SM64DS_LAYOUT_SELFTEST, once per process and only in a
        course, which is the only place this map exists */
     {
@@ -3811,7 +3831,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
     ntr::ppu_vram_publish();
     ntr::ppu_display_capture(dst, w, h);
 
-    if (g_on || hal_menu_live()) ntr::ppu_scanout_sub(g_sub);   /* a live menu forces its own scan-out */
+    if (g_on || hal_menu_draw_live()) ntr::ppu_scanout_sub(g_sub);   /* a live menu forces its own scan-out */
     /* THE LATE UPLOAD, and it is now the OPT-IN arm. port_frame_oam_upload
        above already ran this frame's OAM::Load at func_02019144's own line,
        ahead of both rasters; this block is what SM64DS_OAM_LOAD_LATE=1 gets
@@ -3820,7 +3840,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
         ntr::ppu_seam_oam_mark();
         _ZN3OAM4LoadEv();
     }
-    if (!g_on && !hal_menu_live()) return;
+    if (!g_on && !hal_menu_draw_live()) return;
     /* THE STACKED LAYOUT WRITES NOTHING INTO dst HERE, and that is the whole
        trick. dst is the framebuffer, the scan-out above is everything the
        bottom screen needs, and the stacked image is built downstream by
@@ -3829,7 +3849,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
        the framebuffer this function is handed comes out of a stacked frame
        byte-for-byte identical to a panel-off frame, which is what keeps every
        ppu_write_bmp site in the tree at 512x384 and unmoved. */
-    if (!hal_sub_screen_stacked() && hal_menu_live()) {
+    if (!hal_sub_screen_stacked() && hal_menu_draw_live()) {
         /* A MENU RECIPE OWNS THE PICTURE THIS FRAME. Nothing of the map panel is drawn: the recipe's pieces are the
            picture's menu, and the plate, the banner, the handle and the attention arrows are none of those. A
            PRE_FADE recipe (level-clear) draws here, before engine A's fade; a POST_FADE one in the wrapper below. */

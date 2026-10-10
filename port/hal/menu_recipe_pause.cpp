@@ -180,9 +180,8 @@ void add_hs(MenuLayout *L, int piece, const Hs &h)
 
 /* ---- language dependent boxes (PS_Update.cpp :704-718 controller, :944-961 options) ------------- */
 
-void ok_box(int controller, short *x, short *w)
+void ok_box(int controller, int lang, short *x, short *w)
 {
-    const int lang = GetOwnerLanguage();
     if (controller) {
         if (lang == 5) { *x = 0x44; *w = 0x64; }
         else if (lang == 3) { *x = 0x3c; *w = 0x74; }
@@ -253,7 +252,7 @@ void build_ctl(MenuLayout *L, int with_back)
     const Hs rows[3] = { { 8, 32, 240, 32, -1 }, { 8, 72, 240, 32, -1 }, { 8, 112, 240, 32, -1 } };
     for (int i = 0; i < 3; ++i) add_hs(L, ps, rows[i]);
     short ox, ow;
-    ok_box(1, &ox, &ow);
+    ok_box(1, L->facts.language, &ox, &ow);
     const int ok = menu_add_hotspot(L, ps, ox, 0x98, ow, 0x20, -1);
     int back = ok;
     if (with_back) back = menu_add_hotspot(L, ps, 0xd8, 0x98, 0x20, 0x20, -1);
@@ -276,7 +275,7 @@ void build_opt(MenuLayout *L)
                        { 0x70, 0x58, 0x38, 0x20, -1 }, { 0xb0, 0x58, 0x38, 0x20, -1 } };
     for (int i = 0; i < 4; ++i) add_hs(L, ps, hs[i]);
     short ox, ow;
-    ok_box(0, &ox, &ow);
+    ok_box(0, L->facts.language, &ox, &ow);
     menu_add_hotspot(L, ps, ox, 0x98, ow, 0x20, -1);
     L->back = (int8_t)menu_add_hotspot(L, ps, 0xd8, 0x98, 0x20, 0x20, -1);
     L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
@@ -321,7 +320,7 @@ void pause_build(int variant, MenuLayout *L)
     switch (variant) {
     case V_CASTLE: {   /* PS_Update.cpp :224-321 */
         const Hs hs[4] = { { 8, 0x20, 240, 32, 0 }, { 8, 0x48, 240, 32, 1 }, { 8, 0x70, 240, 32, 2 }, { 8, 0x98, 240, 32, 3 } };
-        build_plates(L, variant, 24, 160, hs, 4, 0, !data_0209f2f0);
+        build_plates(L, variant, 24, 160, hs, 4, 0, !L->facts.pause_f2f0);
         break;
     }
     case V_COURSE: {   /* :430-551 */
@@ -384,9 +383,19 @@ int pause_cursor(int dir, int *owns)
     return 1;
 }
 
+
+
+/* MENUSPLIT1: the ROM values build() needs, read once per tick by the decide step. build() reads nothing else. */
+void pause_facts(MenuFacts *f)
+{
+    f->language = (int16_t)GetOwnerLanguage();
+    f->pause_f2f0 = data_0209f2f0;
+}
+
 }  // namespace
 
 int menu_pause_up(int scene_id) { return pause_up(scene_id); }
+void menu_pause_facts(MenuFacts *f) { pause_facts(f); }
 void menu_pause_build(int variant, MenuLayout *L) { pause_build(variant, L); }
 int menu_pause_cursor(int dir, int *owns) { return pause_cursor(dir, owns); }
 int menu_pause_pad_ok(void) { return data_0209f2c4 != 0 && data_0209f20c == 0; }

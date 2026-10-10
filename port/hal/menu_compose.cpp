@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+#include <mutex>
 
 namespace {
 
@@ -75,30 +76,38 @@ int luma(uint32_t argb)
 
 /* ---- module state ------------------------------------------------------- */
 
-MenuLayout g_cur;           /* this frame's layout (frame_begin) */
-MenuLayout g_drawn;         /* the layout last drawn (what the inverse reads) */
-int  g_live;
-int  g_drawn_valid;
+/* LOGIC-THREAD STATE (the decide step and every input path). Nothing here is read by the draw. */
+MenuLayout g_cur;           /* the working layout: the latest decision's, with the live cursor (L.focus is input state) */
+int  g_live;                /* the latest decision is live */
 int  g_cur_recipe = -1;
 int  g_cur_variant;
 int  g_focus_shown;
 int  g_drag_piece = -1;
 int  g_netplay;
 int  g_fallback_frames;
-unsigned g_frame;
+unsigned g_frame;           /* decide count = MenuDecision.serial */
 int  (*g_enable)(int key);
+MenuDecision g_pub[2];      /* the last two decisions, g_pub[g_pub_i] the latest (logic thread only) */
+int  g_pub_i;
+
+/* The one small locked structure shared with the draw thread: what the input reads as "the layout the player saw", and
+   the autocrop latches the draw finds. */
+std::mutex g_mu;
+MenuLayout g_seen;          /* the latest decision's layout plus the draw's amendments (inverse reads this) */
+int  g_seen_valid;
+struct SharedLatch { int recipe, variant; DsRect r[MENU_MAX_PIECES]; uint16_t on; };
+SharedLatch g_slatch = { -2, 0, {}, 0 };
+
+/* DRAW-THREAD STATE. The bound decision is a private copy; the draw never reads the logic thread's variables above. */
+MenuDecision g_dd;
+MenuDecision g_dead;        /* all zero: "no menu this frame" */
 const MenuSources *g_src;
 int  g_dst_stride;                   /* HOOK1: pixels per row of the dst buffer; 0 = the picture width */
-MenuLiftInfo g_lift;                 /* HOOK1: this frame's lift plan (hal_menu_lift_info) */
-int  g_lift_on;
-int  g_lift_pending;                 /* the lift was promised and the draw has not honoured it yet */
+int  g_dd_lift_pending;              /* the lift was promised and the draw has not honoured it yet */
 /* the engine-B planes by layer mask, made by the host callback at most once per mask per generation */
 struct PlaneEnt { uint8_t layers; const uint32_t *p; };
 PlaneEnt g_planes[4];
 int  g_nplanes;
-DsRect g_latch[MENU_MAX_PIECES];     /* autocrop latches, by piece index of the live recipe/variant */
-uint8_t g_latched[MENU_MAX_PIECES];
-int  g_latch_recipe = -2, g_latch_variant;
 
 int stride_of(int w) { return g_dst_stride > 0 ? g_dst_stride : w; }
 
@@ -168,7 +177,9 @@ int menu_scale_allowed(int n, int d)
 
 void menu_layout_begin(MenuLayout *L, int w, int h)
 {
+    const MenuFacts facts = L->facts;      /* the ROM facts of this tick survive a re-solve (MENUSPLIT1) */
     memset(L, 0, sizeof *L);
+    L->facts = facts;
     L->w = w;
     L->h = h;
     L->focus = -1;
@@ -705,39 +716,62 @@ static int scene_is_menu(int scene)
 void hal_menu_set_enable_fn(int (*fn)(int key)) { g_enable = fn; }
 void hal_menu_set_netplay(int on) { g_netplay = on ? 1 : 0; }
 void hal_menu_set_sources(const MenuSources *s) { g_src = s; g_nplanes = 0; }
-int  hal_menu_live(void) { return g_live; }
-int  hal_menu_draws_in(int stage) { return g_live && g_cur.stage == stage; }
+int  hal_menu_live(void) { return g_live; }                                       /* the latest decision (input side) */
+int  hal_menu_draw_live(void) { return g_dd.live; }                               /* the bound decision (draw side) */
+int  hal_menu_draws_in(int stage) { return g_dd.live && g_dd.L.stage == stage; }
 int  hal_menu_fallback_frames(void) { return g_fallback_frames; }
-const MenuLiftInfo *hal_menu_lift_info(void) { return g_lift_on ? &g_lift : 0; }
+const MenuLiftInfo *hal_menu_lift_info(void) { return g_dd.live && g_dd.lift_on ? &g_dd.lift : 0; }
 int  hal_menu_trace_on(void) { return trace_on(); }
 void hal_menu_set_dst_stride(int stride) { g_dst_stride = stride; }
-void hal_menu_note_lift_drawn(void) { g_lift_pending = 0; }
+void hal_menu_note_lift_drawn(void) { g_dd_lift_pending = 0; }
 int  hal_menu_uses_src(int src)
 {
-    if (!g_live) return 0;
-    for (int i = 0; i < g_cur.np; ++i)
-        if ((int)g_cur.p[i].src == src) return 1;
+    if (!g_dd.live) return 0;
+    for (int i = 0; i < g_dd.L.np; ++i)
+        if ((int)g_dd.L.p[i].src == src) return 1;
     return 0;
 }
 
-void hal_menu_frame_begin(int w, int h, int scene_id)
+/* SM64DS_MENU_DRAW_LATE=1: the draw binds the previous tick's decision (debug; simulates the render thread's lateness) */
+static int draw_late(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("SM64DS_MENU_DRAW_LATE");
+        v = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return v;
+}
+
+/* a decision is copied whole while it is live; a dead one needs only its head */
+static void dec_copy(MenuDecision *dst, const MenuDecision *src)
+{
+    if (src->live) {
+        memcpy(dst, src, sizeof *dst);
+    } else {
+        const size_t head = (size_t)((const char *)&src->L - (const char *)src);
+        memcpy(dst, src, head);
+    }
+}
+
+/* THE DECIDE STEP. Logic thread, once per tick after the ROM tick. Everything that reads the ROM happens here (up(), the
+   recipe's facts(), build() through L->facts, and the rom_cursor / pad_ok the input paths call), and the answer is a
+   MenuDecision the draw side consumes by value. */
+void hal_menu_decide(int w, int h, int scene_id)
 {
     ++g_frame;
-    g_nplanes = 0;
-    /* THE LIFT PROMISE FROM LAST FRAME, CHECKED (the net under the whole lift/draw mechanism, kept from the
-       level-clear compose: the 0.4.1 defect was text lifted out of the picture and never drawn back). Once per
-       process, to stderr, never fatal. */
-    if (g_lift_pending) {
-        static int said;
-        if (!said) {
-            said = 1;
-            fprintf(stderr, "[compose] LIFT WITHOUT DRAW: a menu recipe lifted engine-A pixels out of a frame its "
-                    "draw never reached; the frame predicate is missing a term the draw depends on\n");
-            fflush(stderr);
-        }
-        g_lift_pending = 0;
-    }
-    g_lift_on = 0;
+    g_pub_i ^= 1;
+    MenuDecision &D = g_pub[g_pub_i];
+    D.serial = g_frame;
+    D.live = 0;
+    D.recipe = -1;
+    D.variant = 0;
+    D.fallback = 0;
+    D.w = w;
+    D.h = h;
+    D.focus_shown = 0;
+    D.latched = 0;
+    D.lift_on = 0;
     int pick = -1, variant = 0, fb = -1;
     for (int i = 0; i < g_menu_nrecipes; ++i) {
         const MenuRecipe &R = g_menu_recipes[i];
@@ -759,50 +793,69 @@ void hal_menu_frame_begin(int w, int h, int scene_id)
         g_cur_recipe = -1;
         g_focus_shown = 0;
         g_drag_piece = -1;
-        g_latch_recipe = -2;
-        g_drawn_valid = 0;      /* the drawn layout is the old menu's: never invert through it */
         g_q_state = 0;          /* a queued synthesised press must not fire into the next scene */
+        {
+            std::lock_guard<std::mutex> lk(g_mu);
+            g_slatch.recipe = -2;
+            g_seen_valid = 0;   /* the seen layout is the old menu's: never invert through it */
+        }
+        memset(&D.lift, 0, sizeof D.lift);
         return;
     }
     const MenuRecipe *R = &g_menu_recipes[pick];
     if (pick != g_cur_recipe || variant != g_cur_variant) {
-        /* a new recipe or variant: the first tick must not read the old rects, and an
-           old press (aimed at the old rects) is dropped */
-        g_drawn_valid = 0;
+        /* a new recipe or variant: an old drag belongs to the old rects, and an old press (aimed at the old rects)
+           is dropped */
         g_drag_piece = -1;
         g_q_state = 0;
     }
     const int changed = pick != g_cur_recipe || variant != g_cur_variant || g_cur.w != w || g_cur.h != h;
     int keep_focus = (pick == g_cur_recipe && variant == g_cur_variant) ? g_cur.focus : -1;
+    /* the ROM facts, read once, before build() */
+    memset(&g_cur.facts, 0, sizeof g_cur.facts);
+    if (R->facts) R->facts(&g_cur.facts);
     menu_layout_solve(&g_cur, R, variant, w, h);
     g_cur.focus = keep_focus < g_cur.nh ? keep_focus : -1;
-    if (pick != g_latch_recipe || variant != g_latch_variant) {
-        memset(g_latched, 0, sizeof g_latched);
-        g_latch_recipe = pick;
-        g_latch_variant = variant;
-        g_focus_shown = 0;
+    {
+        std::lock_guard<std::mutex> lk(g_mu);
+        if (pick != g_slatch.recipe || variant != g_slatch.variant) {
+            memset(&g_slatch, 0, sizeof g_slatch);
+            g_slatch.recipe = pick;
+            g_slatch.variant = variant;
+            g_focus_shown = 0;
+        }
+        for (int i = 0; i < g_cur.np; ++i)
+            if ((g_slatch.on >> i) & 1) { g_cur.p[i].s = g_slatch.r[i]; D.latched |= (uint16_t)(1u << i); }
     }
-    for (int i = 0; i < g_cur.np; ++i)
-        if (g_latched[i]) { g_cur.p[i].s = g_latch[i]; }
     menu_layout_dest(&g_cur);
     g_live = g_cur.np > 0;
     g_cur_recipe = pick;
     g_cur_variant = variant;
     if (is_fb) ++g_fallback_frames;
-    /* the lift plan for the engine-A compositor, one truth for the frame */
-    memset(&g_lift, 0, sizeof g_lift);
+    /* the decision: the layout by value, the lift plan (one truth for the frame), the cursor as of now */
+    memset(&D.lift, 0, sizeof D.lift);
+    D.live = g_live;
+    D.recipe = pick;
+    D.variant = variant;
+    D.fallback = is_fb;
+    D.focus_shown = g_focus_shown;
     if (g_live) {
-        g_lift.lift2d = g_cur.lift_owners;
-        g_lift.hide = g_cur.hide_owners;
-        for (int i = 0; i < g_cur.np && g_lift.nbands < 4; ++i)
+        D.L = g_cur;
+        D.lift.lift2d = g_cur.lift_owners;
+        D.lift.hide = g_cur.hide_owners;
+        for (int i = 0; i < g_cur.np && D.lift.nbands < 4; ++i)
             if (g_cur.p[i].src == SRC_TOP_HOSTROW) {
-                g_lift.band[g_lift.nbands].layers = g_cur.p[i].layers;
-                g_lift.band[g_lift.nbands].r0 = g_cur.p[i].s.y;
-                g_lift.band[g_lift.nbands].r1 = g_cur.p[i].s.y + g_cur.p[i].s.h;
-                ++g_lift.nbands;
+                D.lift.band[D.lift.nbands].layers = g_cur.p[i].layers;
+                D.lift.band[D.lift.nbands].r0 = g_cur.p[i].s.y;
+                D.lift.band[D.lift.nbands].r1 = g_cur.p[i].s.y + g_cur.p[i].s.h;
+                ++D.lift.nbands;
             }
-        g_lift_on = (g_lift.lift2d | g_lift.hide | g_lift.nbands) != 0;
-        g_lift_pending = (g_lift.lift2d | g_lift.nbands) != 0;
+        D.lift_on = (D.lift.lift2d | D.lift.hide | D.lift.nbands) != 0;
+    }
+    {   /* the input-side record: the layout this decision's picture will show */
+        std::lock_guard<std::mutex> lk(g_mu);
+        g_seen = g_cur;
+        g_seen_valid = g_live;
     }
     if (changed) {
         MTRACE("recipe=%s variant=%d size=%dx%d unit=%d/%d canvas_w=%d %s stage=%d fallback_frames=%d", R->name,
@@ -823,47 +876,118 @@ void hal_menu_frame_begin(int w, int h, int scene_id)
     }
 }
 
+unsigned hal_menu_decision_copy(MenuDecision *out)
+{
+    if (!out) return g_pub[g_pub_i].serial;
+    dec_copy(out, &g_pub[g_pub_i]);
+    return out->serial;
+}
+
+/* BIND A DECISION ON THE DRAW SIDE. d = null: this process's latest (the one-thread build), or with SM64DS_MENU_DRAW_LATE
+   the previous tick's. */
+void hal_menu_draw_frame_begin(const MenuDecision *d)
+{
+    /* THE LIFT PROMISE FROM LAST FRAME, CHECKED (the net under the whole lift/draw mechanism, kept from the
+       level-clear compose: the 0.4.1 defect was text lifted out of the picture and never drawn back). Once per
+       process, to stderr, never fatal. */
+    if (g_dd_lift_pending) {
+        static int said;
+        if (!said) {
+            said = 1;
+            fprintf(stderr, "[compose] LIFT WITHOUT DRAW: a menu recipe lifted engine-A pixels out of a frame its "
+                    "draw never reached; the frame predicate is missing a term the draw depends on\n");
+            fflush(stderr);
+        }
+        g_dd_lift_pending = 0;
+    }
+    g_nplanes = 0;
+    if (!d) {
+        const MenuDecision &cur = g_pub[g_pub_i];
+        const MenuDecision &prev = g_pub[g_pub_i ^ 1];
+        d = &cur;
+        if (draw_late()) {
+            const bool same = cur.live && prev.live && cur.recipe == prev.recipe && cur.variant == prev.variant &&
+                              cur.w == prev.w && cur.h == prev.h;
+            d = same ? &prev : &g_dead;
+        }
+    }
+    dec_copy(&g_dd, d);
+    g_dd_lift_pending = g_dd.live && (g_dd.lift.lift2d | g_dd.lift.nbands) != 0;
+}
+
+void hal_menu_frame_begin(int w, int h, int scene_id)
+{
+    hal_menu_decide(w, h, scene_id);
+    hal_menu_draw_frame_begin(0);
+}
+
+/* the draw's two pieces of feedback, both layout geometry */
+static void latch_publish(const MenuDecision &D, int i, const DsRect &r)
+{
+    std::lock_guard<std::mutex> lk(g_mu);
+    if (g_slatch.recipe != D.recipe || g_slatch.variant != D.variant) return;   /* a stale decision: the menu changed */
+    g_slatch.r[i] = r;
+    g_slatch.on |= (uint16_t)(1u << i);
+}
+
+static void seen_amend(const MenuDecision &D)
+{
+    std::lock_guard<std::mutex> lk(g_mu);
+    if (!g_seen_valid || g_seen.recipe != D.L.recipe || g_seen.variant != D.L.variant || g_seen.np != D.L.np) return;
+    g_seen.w = D.L.w; g_seen.h = D.L.h; g_seen.unum = D.L.unum; g_seen.uden = D.L.uden; g_seen.canvas_w = D.L.canvas_w;
+    for (int i = 0; i < D.L.np; ++i) {
+        g_seen.p[i].s = D.L.p[i].s;
+        memcpy(g_seen.dest[i], D.L.dest[i], sizeof g_seen.dest[i]);
+    }
+}
+
 void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 {
-    if (!g_live || !dst || g_cur.stage != stage) return;
+    MenuDecision &D = g_dd;
+    if (!D.live || !dst || D.L.stage != stage) return;
     const MenuSources *S = g_src;
     g_nplanes = 0;
-    if (g_cur.w != w || g_cur.h != h) {       /* the picture changed under the frame: solve again */
-        const MenuRecipe *R = g_cur.recipe;
-        const int f = g_cur.focus;
-        menu_layout_solve(&g_cur, R, g_cur_variant, w, h);
-        g_cur.focus = f < g_cur.nh ? f : -1;
-        for (int i = 0; i < g_cur.np; ++i)       /* the latched autocrops belong to this open, not to one size */
-            if (g_latched[i]) g_cur.p[i].s = g_latch[i];
-        menu_layout_dest(&g_cur);
+    int amended = 0;
+    if (D.L.w != w || D.L.h != h) {       /* the picture changed under the frame: solve again (build sees L.facts only) */
+        const MenuRecipe *R = D.L.recipe;
+        const int f = D.L.focus;
+        DsRect keep[MENU_MAX_PIECES];
+        for (int i = 0; i < D.L.np; ++i) keep[i] = D.L.p[i].s;
+        menu_layout_solve(&D.L, R, D.variant, w, h);
+        D.L.focus = f < D.L.nh ? f : -1;
+        for (int i = 0; i < D.L.np; ++i)       /* the latched autocrops belong to this open, not to one size */
+            if ((D.latched >> i) & 1) D.L.p[i].s = keep[i];
+        menu_layout_dest(&D.L);
+        amended = 1;
+        MTRACE("draw re-solved %dx%d -> %dx%d", D.w, D.h, w, h);
     }
     if (S) {   /* latch the autocrop rects the first frame their pieces have pixels */
         int again = 0;
-        for (int i = 0; i < g_cur.np; ++i) {
-            if (!g_cur.p[i].autocrop || g_latched[i]) continue;
+        for (int i = 0; i < D.L.np; ++i) {
+            if (!D.L.p[i].autocrop || ((D.latched >> i) & 1)) continue;
             DsRect r;
-            if (menu_autocrop_rect(&g_cur.p[i], S, &r)) {
-                g_latch[i] = r;
-                g_latched[i] = 1;
-                g_cur.p[i].s = r;
+            if (menu_autocrop_rect(&D.L.p[i], S, &r)) {
+                D.latched |= (uint16_t)(1u << i);
+                D.L.p[i].s = r;
+                latch_publish(D, i, r);
                 again = 1;
                 MTRACE("autocrop latched piece %d -> (%d,%d,%d,%d)", i, r.x, r.y, r.w, r.h);
             }
         }
-        if (again) menu_layout_dest(&g_cur);
+        if (again) { menu_layout_dest(&D.L); amended = 1; }
     }
-    if (g_cur.backdrop == MENU_BACKDROP_DIM_AUTO && S && !S->rom_dimming) menu_dim(dst, w, h, 8);
-    for (int i = 0; i < g_cur.np; ++i) menu_piece_draw(&g_cur, i, S, dst, w, h);
-    if (g_cur.focus >= 0 && g_focus_shown) menu_highlight_paint(&g_cur, dst, w, h, g_frame);
-    g_drawn = g_cur;
-    g_drawn_valid = 1;
-    g_lift_pending = 0;      /* the draw honoured the lift */
+    if (D.L.backdrop == MENU_BACKDROP_DIM_AUTO && S && !S->rom_dimming) menu_dim(dst, w, h, 8);
+    for (int i = 0; i < D.L.np; ++i) menu_piece_draw(&D.L, i, S, dst, w, h);
+    if (D.L.focus >= 0 && D.focus_shown) menu_highlight_paint(&D.L, dst, w, h, D.serial);
+    if (amended) seen_amend(D);
+    g_dd_lift_pending = 0;      /* the draw honoured the lift */
 }
 
 void hal_menu_touch_inverse(int bx, int by, int *dsx, int *dsy, int *in)
 {
-    if (!g_drawn_valid || !g_live) { *dsx = -1; *dsy = -1; *in = 0; return; }
-    menu_inverse(&g_drawn, bx, by, &g_drag_piece, dsx, dsy, in);
+    std::lock_guard<std::mutex> lk(g_mu);
+    if (!g_seen_valid || !g_live) { *dsx = -1; *dsy = -1; *in = 0; return; }
+    menu_inverse(&g_seen, bx, by, &g_drag_piece, dsx, dsy, in);
     /* menu_inverse sets the drag piece only on a hit; MenuInverse is also what
        a held stylus clamps to, so a miss keeps whatever piece it started on */
 }
@@ -1166,22 +1290,22 @@ int run_live(void)
     hal_menu_present(dst, 1024, 768, MENU_STAGE_POST_FADE);
     {
         int hx, hy;
-        menu_hotspot_centre(&g_drawn, 0, &hx, &hy);
+        menu_hotspot_centre(&g_seen, 0, &hx, &hy);
         fails += check("hotspot 0 centre shows the sub colour", dst[hy * 1024 + hx] == kCol);
         const uint32_t dimmed = blend_ch(0xff808080u, 8, 0);
         fails += check("backdrop dimmed by evy 8 where no piece draws", dst[767 * 1024 + 1023] == dimmed);
         int dsx, dsy, in;
         hal_menu_touch_inverse(hx, hy, &dsx, &dsy, &in);
-        const MenuHotspot &H = g_drawn.hs[0];
+        const MenuHotspot &H = g_seen.hs[0];
         fails += check("inverse of hotspot 0 centre is inside its DS box",
                        in && dsx >= H.box.x && dsx < H.box.x + H.box.w && dsy >= H.box.y && dsy < H.box.y + H.box.h);
         hal_menu_touch_inverse(0, 0, &dsx, &dsy, &in);
         fails += check("a miss reads outside and is clamped to a piece", !in && dsx >= 0 && dsy >= 0);
         hal_menu_touch_end();
         /* keyed columns: p1's first source column is keyed backdrop, so dest x0 shows the dimmed backdrop */
-        const int *d = g_drawn.dest[1];
+        const int *d = g_seen.dest[1];
         fails += check("key_backdrop drops engine-B backdrop pixels", dst[(d[1] + d[3] / 2) * 1024 + d[0]] == dimmed);
-        const int *e = g_drawn.dest[0];   /* TEST p0: s = (0,16,256,48) */
+        const int *e = g_seen.dest[0];   /* TEST p0: s = (0,16,256,48) */
         const int bxp = e[0] + (60 * e[2]) / 256, byp = e[1] + ((40 - 16) * e[3]) / 48;
         const int gxp = e[0] + (140 * e[2]) / 256;
         fails += check("TOP_2D: BG3 cell drawn with its bm verdict applied", dst[byp * 1024 + bxp] == 0xffeeeeeeu);
@@ -1302,11 +1426,20 @@ int run_live(void)
         /* autocrop latches survive a resize before the next draw */
         hal_menu_frame_begin(1024, 768, MENU_SCENE_TEST_CROP);
         hal_menu_present(dst, 1024, 768, MENU_STAGE_POST_FADE);
-        fails += check("autocrop: latched at open to (30,20,60,40)", g_cur.p[0].s.x == 30 && g_cur.p[0].s.y == 20 && g_cur.p[0].s.w == 60 && g_cur.p[0].s.h == 40);
+        fails += check("autocrop: latched at open to (30,20,60,40)", g_dd.L.p[0].s.x == 30 && g_dd.L.p[0].s.y == 20 && g_dd.L.p[0].s.w == 60 && g_dd.L.p[0].s.h == 40);
         hal_menu_present(dst, 800, 600, MENU_STAGE_POST_FADE);   /* the picture changed under the frame */
         fails += check("autocrop: the resize re-solve draws with the latched rect",
-                       g_drawn.w == 800 && g_drawn.p[0].s.x == 30 && g_drawn.p[0].s.w == 60 && g_drawn.p[0].s.h == 40 &&
-                       g_drawn.dest[0][2] >= 187 && g_drawn.dest[0][2] <= 188);
+                       g_seen.w == 800 && g_seen.p[0].s.x == 30 && g_seen.p[0].s.w == 60 && g_seen.p[0].s.h == 40 &&
+                       g_seen.dest[0][2] >= 187 && g_seen.dest[0][2] <= 188);
+        /* MENUSPLIT1: the next decide applies the draw's latch, and the decision carries it by value */
+        hal_menu_frame_begin(1024, 768, MENU_SCENE_TEST_CROP);
+        {
+            MenuDecision cd;
+            hal_menu_decision_copy(&cd);
+            fails += check("decide applies the latch the draw published (decision copy)",
+                           cd.live && (cd.latched & 1) && cd.L.p[0].s.x == 30 && cd.L.p[0].s.w == 60 &&
+                           g_dd.L.p[0].s.x == 30);
+        }
         hal_menu_frame_begin(1024, 768, 2);
     }
     hal_menu_set_enable_fn(0);
