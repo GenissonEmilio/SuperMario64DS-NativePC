@@ -1048,6 +1048,17 @@ bool chat_bubble(int seat, ChatBubble *out) {
 
 int chat_my_seat() { return g.carrier == kNone ? -1 : g.my_seat; }
 
+// A note from this program in the overlay (gray, no name): hal/party_stars.cpp
+// says which friend's star just landed. Printable ASCII is passed through the
+// same cleaner as chat text. Works whether or not a chat carrier is up.
+void chat_system_line(const char *text) {
+    if (!text) return;
+    char shown[kChatTextMax + 1];
+    clean((const unsigned char *)text, (int)std::strlen(text), shown,
+          (int)sizeof shown, nullptr);
+    add_line(-1, shown);
+}
+
 void chat_report(const char *tag) {
     if (!g.said_carrier) return;
     std::fprintf(stderr,
@@ -1070,3 +1081,9 @@ void chat_report(const char *tag) {
 }
 
 }  // namespace port
+
+// The C name hal/party_stars.cpp links to (resolved there through /alternatename
+// until this exists).
+extern "C" void port_chat_system_line(const char *text) {
+    port::chat_system_line(text);
+}
