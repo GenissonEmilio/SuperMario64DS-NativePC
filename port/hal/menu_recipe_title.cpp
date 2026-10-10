@@ -88,13 +88,15 @@ int variant_for(int top, int elem)
        a choice leaves through 6/0 (file select) or 4/0 (the doodle) and lands on 0/5 (file select) or 0/1
        (doodle, then 1/1, 2/1); the wrench is 8/0; file options 1/5; scores pick 3/5, copy 7/5, erase 9/5;
        the score table is 4/5 (loading) then 2/5. Transit states keep the last stable page. */
-    if (top == 11) return V_ATTRACT;
+    if (top == 11) return elem == 0 ? V_ATTRACT : g_last;   /* ASSET5: top 11 with the file machine up (elem 5) is the return from a file page, not the first attract */
     if (top == 10) return V_INTRO;                /* the logo arrives while the buttons come in through the ROM's star iris */
     if (elem == 1) return V_DOODLE;
     if (elem == 0) {
         if (top == 0) return V_MAIN;
         if (top == 8) return V_OPTIONS;
         if (top == 4) return V_DOODLE;            /* a press on the face: its page is already coming (the head squashes, the plates leave) */
+        if ((top == 1 || top == 5) && g_last == V_FILES) return V_MAIN;   /* ASSET5: coming back from a file page: the ROM walks the head in, so
+                                                                              this is the main family (face fade, no walk-in of the file page's own head) */
         return g_last;                            /* 1, 6: easing in or out */
     }
     if (top == 2) return V_TABLE;
