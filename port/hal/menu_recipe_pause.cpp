@@ -483,7 +483,7 @@ void build_nosave(MenuLayout *L)
             MenuPiece bn = menu_piece_make(SRC_HOSTIMG, 24, 60, 208, 32, MENU_AX_R, MENU_AY_T, -C.marg - ur(248 - 232, C.b.n, C.b.d), top, C.b.n, C.b.d);
             bn.hostimg = (uint8_t)MENU_IMG_P_BANNER; bn.bg = 1;
             menu_add_piece(L, bn);
-            MenuPiece q = sub_piece(46, 68, 166, 20, C, top + ur(6, C.b.n, C.b.d), 0, MENU_L_BG0 | MENU_L_BG1);   /* the ROM's message strip has a bar tile at x 34..40 and one near x 222: the text sits at x 61..195 */   /* clear of the ROM box edges (a bar at the right end showed up to x 222) */
+            MenuPiece q = sub_piece(46, 68, 166, 20, C, top + ur(6, C.b.n, C.b.d), 0, MENU_L_BG0 | MENU_L_BG1);   /* the ROM's message strip has a bar tile at x 34..40 and one near x 222: the text sits at x 61..195 */
             q.dx = (short)(-C.marg - ur(248 - 212, C.b.n, C.b.d));
             menu_add_piece(L, q);
         }
@@ -582,7 +582,7 @@ int pause_cursor(int dir, int *owns)
 unsigned g_hov_seen;
 int g_frame;
 
-int plates_live(void)
+int pause_cursor_live(void)
 {
     const unsigned st = data_0209f248;
     return (st == 1 || st == 3 || st == 5 || st == 0xd) && data_0209f300 == 0 && data_0209f22c == 0 && data_0209f244 == 0;
@@ -606,7 +606,7 @@ void pause_facts(MenuFacts *f)
     unsigned st;
     if (hal_menu_hover_box(&hx, &hy, &st) && st != g_hov_seen) {
         g_hov_seen = st;
-        if (plates_live()) {
+        if (pause_cursor_live()) {
             const int y0 = data_0209f248 == 1 ? 0x20 : (data_0209f248 == 3 ? 0x18 : 0x28);
             if (hy >= y0 && (hy - y0) % 0x28 == 0) set_chosen((hy - y0) / 0x28);
         }
