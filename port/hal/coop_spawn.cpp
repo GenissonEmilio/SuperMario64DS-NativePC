@@ -591,8 +591,8 @@ void apply_block(int seat, const SpBlockWire &w) {
     t.a = a; t.uid = a_uid(a); t.last = *(const int *)(a + 0x3e8); t.valid = true;
     ++g_st.block_applied;
     if (g_log)
-        std::fprintf(stderr, "[coopspawn] block replay slot=%d cls=%d from seat %d hitter=%d pos=%d,%d,%d frame=%u wall=%lld\n", (int)w.slot, (int)w.cls,
-                     seat, ch, ((const int *)(a + 0x5c))[0] >> 12, ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, g_frames, wall_ms());
+        std::fprintf(stderr, "[coopspawn] block replay slot=%d cls=%d from seat %d hitter=%d state=%d pos=%d,%d,%d frame=%u wall=%lld\n", (int)w.slot, (int)w.cls,
+                     seat, ch, *(const int *)(a + 0x3e8), ((const int *)(a + 0x5c))[0] >> 12, ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, g_frames, wall_ms());
 }
 
 bool near_same(const char *a, const SpSpawnWire &w) {
@@ -784,14 +784,21 @@ void serve_job(Job &j) {
         std::fprintf(stderr, "[coopspawn] serve join to seat %d: red sum=%d live announced=%d wall=%lld\n", j.seat, s, n, wall_ms());
 }
 
+int live_class(unsigned cls) {
+    int n = 0;
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a))
+        if (a_cls(a) == cls && !a_dead(a) && !is_player_ptr(a)) ++n;
+    return n;
+}
+
 void stats_line() {
     if (!g_log) return;
     const CoopSpawnStats &s = g_st;
     std::fprintf(stderr,
-        "[coopspawnstat] seat=%d armed=%d redsum=%d sent spawn%llu gone%llu block%llu red%llu recv spawn%llu gone%llu block%llu red%llu "
+        "[coopspawnstat] seat=%d armed=%d redsum=%d stars=%d sent spawn%llu gone%llu block%llu red%llu recv spawn%llu gone%llu block%llu red%llu "
         "block local=%llu applied=%llu busy=%llu nf=%llu spawn local=%llu applied=%llu adopted=%llu dup=%llu failed=%llu "
         "gone local=%llu applied=%llu unk=%llu red remote=%llu snap=%llu nativestar=%llu drop bad=%llu group=%llu member=%llu class=%llu old=%llu off=%llu rate=%llu full=%llu\n",
-        g_my, (int)g_armed, red_sum(), s.sent_spawn, s.sent_gone, s.sent_block, s.sent_red, s.recv_spawn, s.recv_gone, s.recv_block, s.recv_red,
+        g_my, (int)g_armed, red_sum(), live_class(178), s.sent_spawn, s.sent_gone, s.sent_block, s.sent_red, s.recv_spawn, s.recv_gone, s.recv_block, s.recv_red,
         s.block_local, s.block_applied, s.block_busy, s.block_notfound, s.spawn_local, s.spawn_applied, s.spawn_adopted, s.spawn_dup, s.spawn_failed,
         s.gone_local, s.gone_applied, s.gone_unknown, s.red_remote, s.red_snap_applied, s.star_spawn_native,
         s.drop_bad, s.drop_group, s.drop_member, s.drop_class, s.drop_old, s.drop_off, s.drop_rate, s.drop_full);
