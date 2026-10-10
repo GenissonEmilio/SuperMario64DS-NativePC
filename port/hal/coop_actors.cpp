@@ -22,6 +22,7 @@
 extern "C" {
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;
+extern short data_02092144[];
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 }
 
@@ -169,6 +170,7 @@ unsigned long long g_snap_base = 0;
 bool g_hold = false;              // a joiner publishes nothing until the group's snapshot is in (or it gave up)
 double g_tokens = 6.0; unsigned g_tok_t = 0;
 unsigned g_stat_t = 0;
+int g_hp_prev = -99;
 
 long long wall_ms() {
     FILETIME ft; GetSystemTimeAsFileTime(&ft);
@@ -683,6 +685,23 @@ void do_forge(const char *name) {
     coop_send_world(kWorldMoverBatch, b, len > 0 ? len : 1);
 }
 
+// Proof line: the local player lost health. Enemies hurt players in coop (the ROM's own damage is never touched here);
+// the line names the nearest synced actor and who owns it, so a row can show a non-owner console taking the hit once.
+void watch_hurt(char *pl) {
+    const int hp = (int)(signed char)(data_02092144[data_0209f250 & 15] >> 8);
+    if (g_hp_prev != -99 && hp < g_hp_prev) {
+        int bs = -1; double bd = 1e18;
+        for (int i = 0; i < kSlots; ++i)
+            if (g_slot[i].a) {
+                const double d = dist3(g_slot[i].a, rd32(pl, 0x5c), rd32(pl, 0x60), rd32(pl, 0x64));
+                if (d < bd) { bd = d; bs = i; }
+            }
+        std::fprintf(stderr, "[coopmove] hurt hp %d->%d nearest slot=%d cls=%d dist=%.0f owner=%d me=%d wall=%lld\n", g_hp_prev, hp, bs,
+                     bs >= 0 ? (int)g_prof[g_slot[bs].prof].id : -1, bd < 1e17 ? bd : -1.0, bs >= 0 ? g_slot[bs].owner : -1, g_my, wall_ms());
+    }
+    g_hp_prev = hp;
+}
+
 void stats_line() {
     const CoopMoveStats &s = g_st;
     std::fprintf(stderr,
@@ -712,6 +731,7 @@ void on_frame(unsigned now) {
     if (!g_spawned && g_ents > 0) { g_spawned = true; g_spawn_lf = g_lf; }
     maybe_request(now);
     process(now);
+    if (g_log) watch_hurt(pl);
     if (g_spawned) {
         const unsigned since = g_lf - g_spawn_lf;
         if (g_sample_every && (since % g_sample_every) == 0) do_sample();

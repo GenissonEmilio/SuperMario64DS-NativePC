@@ -15,6 +15,12 @@
 // `id period band snap flags nf off:size ...`), which is how the discovery is iterated without a rebuild.
 // A class that is not in this table is not touched.
 //
+// ADDING A CLASS (COOPCASTLE1: Boo 209, MIPS 187, ...): append one ROW(...) line in the section that fits, enemies
+// {period 100, band 40, snap 400, flags 0, nf 0}; a Boo or rabbit that flees or hides keeps the same numbers. No code change
+// is needed: ownership, publish, apply, snapshot and the carried-test (profile column `hold`, set in prof_index) are generic.
+// To try a row without a rebuild put it in an SM64DS_COOP_MOVE_PROFILE file. The actor is never touched when it is dead,
+// carried, in a yoshi mouth, and its damage to the local player is never suppressed (enemies hurt players in coop).
+//
 // Registry names are the port's (hal/actor_classes.inc); several ids run a sibling class (the "name shift"), so a
 // header's field list is only trusted after the discovery run agrees.
 
