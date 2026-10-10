@@ -116,7 +116,9 @@ class Room:
             g = self.gaps.get(i, 0.5 if i else 0)
             if i and g:
                 time.sleep(g)
-            self.launch(i)
+            # the host may be given a longer run than the guests (host_frames), so a guest that was held
+            # back by a barrier still reaches its own last frame (its picture) before the host's run ends
+            self.launch(i, self.host_frames if (i == 0 and getattr(self, "host_frames", None)) else None)
 
     def wait(self, timeout=900, tick=None):
         CS.wait_all(self.cons, timeout, tick)
@@ -342,6 +344,7 @@ def row_newfile(n=2):
     row = "newfile"
     frames = 5200
     rm = Room(row, n, "new", frames, extras={1: {"SM64DS_COOPBOOT_TEST_SLOW_MS": "3000", "SM64DS_INTRO_WATCH": "1"}, 0: {"SM64DS_INTRO_WATCH": "1"}})
+    rm.host_frames = frames + 1000
     rm.start()
     rm.wait(1500)
     rm.stop()
