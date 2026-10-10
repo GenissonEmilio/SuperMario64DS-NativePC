@@ -64,6 +64,7 @@ struct Stats {
     unsigned long long solid_frames;    // bodies marked solid, summed over frames
     unsigned long long registers;       // cylinders put in the collision list
     unsigned long long guard_skips;     // frames a cylinder was withheld by the audit
+    unsigned long long assists;         // frames my body took the second half of a push
     unsigned long long gate_hide, gate_level, gate_area;
     unsigned long long audit_nodes;     // list nodes seen when the follower runs (0: the pair pass already ran)
     unsigned long long pairs_body;      // frames the party cylinder was paired with a body cylinder
@@ -80,7 +81,10 @@ int  log_level();             // SM64DS_PARTY_LOG
 void set_extra_vuln(unsigned bits);
 // Put body `a`'s cylinder in the collision list for this frame's pair pass.
 // Returns false when the audit withheld it.
-bool cyl_register(void *a);
+bool cyl_register(void *a, int seat);
+// The other half of the push (my body takes what the friend's body would have), before the
+// node is registered again.
+void cyl_assist(void *a);
 // The audit: what the last pair pass left on the party node (1 = it paired with
 // a cylinder that is not a body's). Runs before each registration.
 int cyl_audit(void *a);

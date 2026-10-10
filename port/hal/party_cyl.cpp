@@ -41,6 +41,7 @@
 
 #include <windows.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -83,6 +84,7 @@ struct Rules {
     bool masked = true;
     bool guard = true;
     bool cyl = true;             // SM64DS_PARTY_CYL=0: no cylinder at all (the lab's control)
+    bool assist = true;          // SM64DS_PARTY_ASSIST=0: the ROM's half push only (the push rows' control)
     int pad = 8;                 // radius pad, units: see SPIKE.md / the push rows
     bool read = false;
 };
@@ -95,6 +97,7 @@ void read_rules() {
     if (const char *e = std::getenv("SM64DS_PARTY_GUARD")) g_r.guard = std::atoi(e) != 0;
     if (const char *e = std::getenv("SM64DS_PARTY_PAD")) g_r.pad = std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PARTY_CYL")) g_r.cyl = std::atoi(e) != 0;
+    if (const char *e = std::getenv("SM64DS_PARTY_ASSIST")) g_r.assist = std::atoi(e) != 0;
 }
 
 // dCc_c::Unlink (src/_ZN5dCc_c6UnlinkEv.cpp, which has no flat host name): take a
@@ -163,7 +166,46 @@ int cyl_audit(void *a) {
 
 void set_extra_vuln(unsigned bits) { g_extra_vuln = bits; }
 
-bool cyl_register(void *a) {
+// THE OTHER HALF OF THE PUSH. The ROM pushes each of two overlapping movable cylinders by half
+// the overlap (src/_ZN5dCc_c7ProcessEv.cpp:156-165), which is right for two bodies on one
+// console and leaves a friend's body half-way inside mine at a run: the friend's console
+// pushes the friend by half as well, but only after the packets cross. Here my body is the
+// only one that moves, so the half the friend's cylinder would have taken is added to the
+// pushback my cylinder already carries from the pair pass (it is consumed by my next Behavior,
+// func_ov002_020bf36c): my body leaves the overlap in one frame. Geometry is read from the
+// node as the pair pass saw it (position, radius), not from where the body is now.
+void cyl_assist(void *a) {
+    read_rules();
+    if (!g_r.assist || !g_r.cyl) return;
+    int body = -1;
+    for (int i = 0; i < 16; ++i)
+        if (data_0209f394[i] == a) { body = i; break; }
+    if (body < 0 || !g_reg_last[body] || g_holdoff[body] > 0) return;
+    const int me = (int)data_0209f250;
+    char *mb = (me >= 0 && me < 16) ? (char *)data_0209f394[me] : nullptr;
+    if (!mb || mb == (char *)a) return;
+    if (*(const int *)(mb + 0x37c) != 0) return;          // the Player does not integrate its position then
+    const char *pn = (const char *)a + kBodyClsn;          // the party node as the pair pass saw it
+    const char *mn = mb + kBodyClsn;
+    const long long pr = *(const int *)(pn + 0x04), mr = *(const int *)(mn + 0x04);
+    const long long ph = *(const int *)(pn + 0x08), mh = *(const int *)(mn + 0x08);
+    const long long dx = (long long)*(const int *)(mn + 0x34) - *(const int *)(pn + 0x34);
+    const long long dy = (long long)*(const int *)(mn + 0x38) - *(const int *)(pn + 0x38);
+    const long long dz = (long long)*(const int *)(mn + 0x3c) - *(const int *)(pn + 0x3c);
+    if (dy >= ph || -dy >= mh) return;                     // no vertical overlap: the pair pass skipped it too
+    const double dist = std::sqrt((double)dx * (double)dx + (double)dz * (double)dz);
+    const double rsum = (double)(pr + mr);
+    if (dist >= rsum) return;
+    double ux = -1.0, uz = 0.0;                             // the pair pass's own answer for dist == 0: me pushed -x
+    if (dist >= 1.0) { ux = (double)dx / dist; uz = (double)dz / dist; }
+    double half = (rsum - dist) * 0.5;
+    if (half > (double)(pr + mr) * 0.5) half = (double)(pr + mr) * 0.5;
+    *(int *)(mb + 0x2e0) += (int)(ux * half);
+    *(int *)(mb + 0x2e8) += (int)(uz * half);
+    ++stats_rw().assists;
+}
+
+bool cyl_register(void *a, int seat) {
     read_rules();
     Stats &st = stats_rw();
     char *c = (char *)a;
@@ -190,6 +232,11 @@ bool cyl_register(void *a) {
     *(unsigned char *)(c + kBodyClsnOn) = 1;
     static const int zero[3] = {0, 0, 0};
     _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(node, zero);
+    // Two bodies on exactly the same spot (a shared entrance) are pushed the same way by the pair
+    // pass on both consoles (its answer for a zero distance is +x) and would drift together. One
+    // unit of offset, opposite on the two consoles, breaks the tie: the lower seat's body goes one
+    // way, the higher the other.
+    *(int *)(node + 0x34) += ((seat > comms_hub_my_seat()) ? 1 : -1) * 0x1000;
     // Unlink first: a frame that did not run the pair pass must not leave this node in
     // the list when Update runs again (a node linked to itself loops the pair pass for
     // ever). Unlink of an unlinked node is a no-op.
