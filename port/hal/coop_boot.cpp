@@ -204,28 +204,34 @@ bool save_window_bmp(HWND w, const char *path) {
 void leave_host_left() { leave(kCoopExitHostLeft, "The host left. Room closed."); }
 
 // ---- receive -----------------------------------------------------------------
+void drop_role(int seat, int sub) {
+    ++C.st.dropped_role;
+    static int said;
+    if (said < 24) { ++said; LOG("DROP seat %d: SYNB 0x%02x is not for this role", seat, sub); }
+}
+
 void handle_mine(int seat, const unsigned char *d, int len) {
     const int sub = coop_boot_validate(d, len);
     if (sub < 0) { ++C.st.dropped_bad; LOG("DROP seat %d: malformed SYNB 0x%02x len %d", seat, len > 6 ? d[6] : 0, len); return; }
     if (seat < 0 || seat > 3 || seat == my_seat()) { ++C.st.dropped_bad; return; }
     switch (sub) {
     case kCoopBootSubReady:
-        if (!C.host) { ++C.st.dropped_role; return; }
+        if (!C.host) { drop_role(seat, sub); return; }
         ++C.st.ready_recv;
         if (!(C.ready_mask & (1u << seat))) LOG("READY from seat %d", seat);
         C.ready_mask |= 1u << seat;
         break;
     case kCoopBootSubArrived:
-        if (!C.host) { ++C.st.dropped_role; return; }
+        if (!C.host) { drop_role(seat, sub); return; }
         ++C.st.arrived_recv;
         if (!(C.arrived_mask & (1u << seat))) LOG("ARRIVED from seat %d", seat);
         C.arrived_mask |= 1u << seat;
         if (!C.any_arrived) { C.any_arrived = true; C.first_arrive_ms = tick(); }
         break;
     case kCoopBootSubState: {
-        if (C.host) { ++C.st.dropped_role; return; }
+        if (C.host) { drop_role(seat, sub); return; }
         if (C.host_seat < 0) { C.host_seat = seat; LOG("host is seat %d", seat); }
-        if (seat != C.host_seat) { ++C.st.dropped_role; return; }
+        if (seat != C.host_seat) { drop_role(seat, sub); return; }
         CoopBootState s;
         if (!coop_boot_decode_state(d, len, &s)) { ++C.st.dropped_bad; return; }
         ++C.st.state_recv;
@@ -244,13 +250,13 @@ void handle_mine(int seat, const unsigned char *d, int len) {
         break;
     }
     case kCoopBootSubClose:
-        if (C.host || seat != C.host_seat) { ++C.st.dropped_role; return; }
+        if (C.host || seat != C.host_seat) { drop_role(seat, sub); return; }
         ++C.st.close_recv;
         if (!C.closed) LOG("CLOSE heard");
         C.closed = true;
         break;
     case kCoopBootSubHostLeft:
-        if (C.host || seat != C.host_seat) { ++C.st.dropped_role; return; }
+        if (C.host || seat != C.host_seat) { drop_role(seat, sub); return; }
         ++C.st.hostleft_recv;
         C.host_left_msg = true;
         LOG("HOST_LEFT heard");
@@ -282,6 +288,35 @@ void host_atexit() {
         Sleep(40);
     }
     LOG("host exiting: HOST_LEFT sent %u times", C.st.hostleft_sent);
+}
+
+// ---- proof knobs ------------------------------------------------------------
+// SM64DS_COOPBOOT_FORGE=<mode>[,<mode>...]: once, after the release, send one
+// hand-made datagram per mode. The receivers must drop it (and say so).
+void run_forge() {
+    static bool done;
+    if (done) return;
+    const char *e = std::getenv("SM64DS_COOPBOOT_FORGE");
+    done = true;
+    if (!e || !*e) return;
+    char buf[160];
+    std::snprintf(buf, sizeof buf, "%s", e);
+    for (char *m = std::strtok(buf, ","); m; m = std::strtok(nullptr, ",")) {
+        unsigned char dg[64];
+        unsigned char pl[16] = {0};
+        int plen = 4, sub = kCoopBootSubReady;
+        if (!std::strcmp(m, "badlen")) plen = 8;
+        else if (!std::strcmp(m, "reserved")) pl[0] = 1;
+        else if (!std::strcmp(m, "state_from_guest")) { sub = kCoopBootSubState; pl[0] = 1; pl[1] = 3; pl[2] = 1; }
+        else if (!std::strcmp(m, "unknown_subtype")) sub = 0x3a;
+        else if (!std::strcmp(m, "hostleft_from_guest")) sub = kCoopBootSubHostLeft;
+        else if (!std::strcmp(m, "ready_from_host")) sub = kCoopBootSubReady;
+        else if (!std::strcmp(m, "state_pad")) { sub = kCoopBootSubState; pl[3] = 9; }
+        else continue;
+        int n = hub_coop_encode(kHubTagCoopCtl, sub, ++C.seq, pl, plen, dg, sizeof dg);
+        bool ok = n > 0 && comms_hub_send(dg, n);
+        LOG("FORGE %s sent=%d len=%d", m, ok ? 1 : 0, n);
+    }
 }
 
 // ---- the per-frame engine ------------------------------------------------------
@@ -487,6 +522,11 @@ extern "C" int port_coop_boot_frame(void) {
         if (C.host && C.phase != kCoopPhaseIntro) C.phase = kCoopPhaseIntro;
     } else if (C.intro_seen && !C.arrived) {
         C.arrived = true;
+        if (const int slow = env_int("SM64DS_COOPBOOT_TEST_SLOW_MS", 0)) {
+            LOG("test: a slow console, %d ms before it announces", slow);
+            const ULONGLONG t0 = tick();
+            while ((int)(tick() - t0) < slow) { comms_hub_pump(); Sleep(10); }
+        }
         const ULONGLONG now = tick();
         LOG("ARRIVED at the opening's closing load");
         if (C.host) {
@@ -505,6 +545,7 @@ extern "C" int port_coop_boot_frame(void) {
         C.phase = kCoopPhaseSettled;
     }
     service();
+    if (C.released) run_forge();
     bool hold = false;
     const char *why = nullptr;
     if (!C.released) { hold = true; why = "start barrier"; }
