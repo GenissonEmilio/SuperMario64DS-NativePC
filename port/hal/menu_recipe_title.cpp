@@ -898,8 +898,7 @@ int menu_title_up(int scene_id)
     if (hal_menu_trace_on() && getenv("SM64DS_HEAD_TRACE") && data_ov007_0210342c) {   /* FACE1 probe: the head object's three lerped fields */
         const char *g = (const char *)data_ov007_0210342c;
         const char *m = *(const char *const *)(g + 0x30);
-        if (m) fprintf(stderr, "[head] f%d top=%d elem=%d x=%d y=%d z=%d s=%d  f20=%d v=%d
-", data_ov007_0210342c[0], top, elem, *(const int *)(m + 0x14),
+        if (m) fprintf(stderr, "[head] f%d top=%d elem=%d x=%d y=%d z=%d s=%d  f20=%d v=%d\n", data_ov007_0210342c[0], top, elem, *(const int *)(m + 0x14),
                        *(const int *)(m + 0x18), *(const int *)(m + 0x1c), *(const int *)(m + 0x2c), *(const int *)(g + 0x20),
                        *(const int *)(*(const char *const *)(g + 8) + 0xc));
     }
