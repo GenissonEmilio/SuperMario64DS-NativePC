@@ -1875,10 +1875,17 @@ def main():
     # The last two are the BG2 TILEMAP, data_ov007_020dbdbc, an NCSC screen file:
     # they overwrote map entries 524 to 527 of a row that otherwise runs 0x0204
     # to 0x0214 without a break.
+    # The ninth is the TITLE LOGO's lower-screen glint (run hunt8, lane LAYOUTREAD1).
+    # 0x020eddc8 is four pixels of an 8bpp tile row, 0f 0f 0d 02 (overlay_0007.bin at
+    # 0x40768: `... 0e 02 13 01 01 10 42 62 | 0f 0f 0d 02 11 01 01 18 ...`), which read as
+    # 0x020d0f0f, an address inside ov007's rodata. The rebase wrote the HOST address
+    # of data_ov007_020d0f0f over them, so the glint pixel at DS lower-screen (217, 71)
+    # took its colour from the exe's section layout (four builds, four colours).
     FALSE_RELOC_SITES = {
         "ov007": {0x020f4530, 0x020f7cc8, 0x020f7ce0,
                   0x020f84f8, 0x020f85bc, 0x020f8d20,
-                  0x020dc1fc, 0x020dc200},
+                  0x020dc1fc, 0x020dc200,
+                  0x020eddc8},
     }
 
     patches = []
