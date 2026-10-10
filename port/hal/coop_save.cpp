@@ -387,8 +387,9 @@ bool coop_save_fetch(int timeout_ms) {
         const ULONGLONG now = GetTickCount64();
         if ((long long)(now - t0) >= timeout_ms) {
             ++g_st.fetch_timeout;
-            std::fprintf(stderr, "[coopsave] fetch TIMEOUT after %d ms: the host did "
-                         "not answer\n", timeout_ms);
+            std::fprintf(stderr, "[coopsave] fetch TIMEOUT after %llu ms (budget %d): "
+                         "the host did not answer\n",
+                         (unsigned long long)(now - t0), timeout_ms);
             return false;
         }
         if (comms_hub_state() == kHubLive && now - last_req >= 250) {
