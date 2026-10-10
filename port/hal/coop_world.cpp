@@ -95,7 +95,8 @@ int      g_nreg_ctl = 0, g_nreg_world = 0;
 struct KillKnob { unsigned frame; int id; int n; bool done; };
 KillKnob g_kill[8]; int g_nkill = 0;
 unsigned g_goto_frame = 0; int g_goto_id = -1; bool g_goto_done = false;
-unsigned g_forge_frame = 0; char g_forge_name[16]; bool g_forge_done = false;
+struct ForgeKnob { unsigned frame; char name[16]; bool done; };
+ForgeKnob g_forge[12]; int g_nforge = 0;
 
 void read_env() {
     if (g_env_read) return;
@@ -123,11 +124,17 @@ void read_env() {
         if (std::sscanf(g, "%u:%i", &f, &id) == 2) { g_goto_frame = f; g_goto_id = id; }
     }
     if (const char *f = std::getenv("SM64DS_COOP_FORGE")) {
-        unsigned fr = 0; char nm[16] = {};
-        if (std::sscanf(f, "%u:%15s", &fr, nm) == 2) {
-            g_forge_frame = fr;
-            std::memcpy(g_forge_name, nm, sizeof g_forge_name);
-            g_forge_name[15] = 0;
+        // F:name[,F:name...]
+        const char *p = f;
+        while (*p && g_nforge < 12) {
+            unsigned fr = 0; char nm[16] = {}; int used = 0;
+            if (std::sscanf(p, "%u:%15[a-z]%n", &fr, nm, &used) < 2 || used <= 0) break;
+            g_forge[g_nforge].frame = fr;
+            std::memcpy(g_forge[g_nforge].name, nm, sizeof nm);
+            g_forge[g_nforge].done = false;
+            ++g_nforge;
+            p += used;
+            while (*p == ',' || *p == ';' || *p == ' ') ++p;
         }
     }
 }
@@ -565,6 +572,11 @@ void knob_forge(const char *name) {
         w.key.level = (uint16_t)((k.level + 1) & 0x7f);
         std::memcpy(b, &w, sizeof w);
         send_kind(kHubTagCoopCtl, kCtlSnapPart, b, (int)sizeof w + 32);
+    } else if (!std::strcmp(name, "snapnonce")) { // a whole valid snapshot for the right group with a nonce nobody asked for
+        CoopSnapWire w; std::memset(&w, 0, sizeof w); w.target = (uint8_t)(g_my ^ 1); w.n = 0; w.total = 2; w.key = k;
+        w.nonce = 0xdeadbeefu;
+        std::memcpy(b, &w, sizeof w);
+        send_kind(kHubTagCoopCtl, kCtlSnapPart, b, (int)sizeof w + 32);
     } else if (!std::strcmp(name, "sub")) {    // a SYNB sub-type nobody owns
         send_kind(kHubTagCoopCtl, 0x1e, b, 4);
     } else if (!std::strcmp(name, "trunc")) {  // a delta cut short (head says 3 slots, 1 follows)
@@ -675,9 +687,10 @@ void tick_est(unsigned now) {
     for (int i = 0; i < g_nkill; ++i)
         if (!g_kill[i].done && g_est_frames >= g_kill[i].frame) { g_kill[i].done = true; knob_kill(g_kill[i]); }
     if (g_goto_id >= 0 && !g_goto_done && g_est_frames >= g_goto_frame) { g_goto_done = true; knob_goto(g_goto_id); }
-    if (g_forge_frame && !g_forge_done && g_est_frames >= g_forge_frame) { g_forge_done = true; knob_forge(g_forge_name); }
+    for (int i = 0; i < g_nforge; ++i)
+        if (!g_forge[i].done && g_est_frames >= g_forge[i].frame) { g_forge[i].done = true; knob_forge(g_forge[i].name); }
     // 7. log
-    if (g_log && g_est_frames == 40) census_line();
+    if (g_log && (g_est_frames == 40 || g_est_frames == 300 || g_est_frames == 800)) census_line();
     if (g_log) {
         const unsigned *t = tbl(g_part);
         unsigned h = 2166136261u;
