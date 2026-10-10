@@ -10412,6 +10412,115 @@ static int scene_window_run(void)
    host process needs its own main() to open the window and pump frames; the
    ROM's void main(void) links as a decomp TU that the host boot path calls,
    not as the process entry point. */
+/* ---- THE STICK'S NOTCHES (run hunt8, lane STICK1) ---------------------------
+   The game was made for a D-pad, and the N64 version for an eight-gate stick:
+   both give you "straight left / right / up / down" as a place the stick can
+   rest. A modern stick has no gate, so a thumb turning on a pole drifts a few
+   degrees below level and Player::St_Climb_Main reads that as DOWN (it slides
+   when the record's y passes 0x200, about seven degrees below level at full
+   tilt), and St_Headstand_Main does the same. Two helpers, one idea:
+
+     stick_notch_snap   the ANALOG path. Within STICK_NOTCH_DEG of each axis
+                        the direction snaps exactly onto that axis (the minor
+                        component becomes 0, the major takes the whole length,
+                        so the deflection is unchanged). Everywhere else the
+                        stick stays fully analog and is not touched.
+     stick_dpad_bits    the BUTTON path (RunMode buttons, and the D-pad bits
+                        the stick feeds when analog is off): a radial dead zone,
+                        then eight sectors of 45 degrees centred on the eight
+                        directions, so DOWN needs the stick in one of the three
+                        lower sectors rather than one axis passing 12000.
+
+   Inputs are in stick space: x right, y UP (XInput's lx / ly). */
+enum { STICK_NOTCH_DEG = 15 };
+
+/* SM64DS_STICK_NOTCH=0 puts the stick back to the pre-notch behaviour (test
+   only, for the before/after proofs; unset or anything else = notches on). */
+static int stick_notch_on(void)
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_STICK_NOTCH");
+        on = (e && atoi(e) == 0) ? 0 : 1;
+    }
+    return on;
+}
+
+static void stick_notch_snap(int *x, int *y)
+{
+    if (!stick_notch_on()) return;
+    const double ax = fabs((double)*x), ay = fabs((double)*y);
+    const double len = sqrt(ax * ax + ay * ay);
+    if (len <= 0.0) return;
+    const double deg = atan2(ay, ax) * (180.0 / 3.14159265358979323846);
+    /* 0.05 degrees of slack: an integer stick sample at exactly 15 degrees
+       lands a few thousandths either side of it */
+    if (deg <= STICK_NOTCH_DEG + 0.05) {
+        *x = (int)(*x < 0 ? -len : len);
+        *y = 0;
+    } else if (deg >= 90.0 - STICK_NOTCH_DEG - 0.05) {
+        *y = (int)(*y < 0 ? -len : len);
+        *x = 0;
+    }
+}
+
+static void stick_dpad_bits(int lx, int ly, int *dx, int *dz)
+{
+    if (!stick_notch_on()) {
+        if (ly > 12000) *dz += 1;
+        if (ly < -12000) *dz -= 1;
+        if (lx < -12000) *dx -= 1;
+        if (lx > 12000) *dx += 1;
+        return;
+    }
+    const double len = sqrt((double)lx * lx + (double)ly * ly);
+    if (len <= 12000.0) return;
+    const double a = atan2((double)ly, (double)lx) * (180.0 / 3.14159265358979323846);
+    const double aa = fabs(a);
+    if (aa < 67.5)  *dx += 1;            /* E, NE, SE */
+    if (aa > 112.5) *dx -= 1;            /* W, NW, SW */
+    if (a > 22.5 && a < 157.5)   *dz += 1;   /* N, NE, NW */
+    if (a < -22.5 && a > -157.5) *dz -= 1;   /* S, SE, SW */
+}
+
+/* SM64DS_STICK_SCRIPT="<f0>[-<f1>]:<lx>:<ly>,..." (TEST ONLY, inert unset): a
+   scripted LEFT stick, entering at the same seam a real controller does (after
+   port_pad_poll / pad_focus_gate, into the XPad the frame is about to read).
+   A selftest may use it, like SM64DS_HOST_PAD. Without -<f1> an entry holds one
+   frame. */
+static int stick_script_apply(int frame, int *pad_live, XPad *pad)
+{
+    static const char *env = (const char *)1;
+    if (env == (const char *)1) env = getenv("SM64DS_STICK_SCRIPT");
+    if (!env) return 0;
+    int hit = 0, lx = 0, ly = 0;
+    const char *p = env;
+    while (*p) {
+        char *q;
+        const long f0 = strtol(p, &q, 10);
+        long f1 = f0;
+        p = q;
+        if (*p == '-') { f1 = strtol(p + 1, &q, 10); p = q; }
+        long x = 0, y = 0;
+        if (*p == ':') { x = strtol(p + 1, &q, 10); p = q; }
+        if (*p == ':') { y = strtol(p + 1, &q, 10); p = q; }
+        if (frame >= f0 && frame <= f1) { hit = 1; lx = (int)x; ly = (int)y; }
+        while (*p && *p != ',') ++p;
+        if (*p == ',') ++p;
+    }
+    if (!hit) return 0;
+    if (!*pad_live) { memset(pad, 0, sizeof *pad); *pad_live = 1; }
+    pad->lx = (short)lx;
+    pad->ly = (short)ly;
+    return 1;
+}
+static int stick_script_on(void)
+{
+    static int on = -1;
+    if (on < 0) on = getenv("SM64DS_STICK_SCRIPT") ? 1 : 0;
+    return on;
+}
+
 /* ---- THE Ctrl BRIDGE, PUBLISHED AT THE ROM'S OWN BOUNDARY ----------------
    (run link100, lane FRAME.)
 
@@ -10624,12 +10733,14 @@ extern "C" void port_frame_ctrl_publish(void)
             if (force_analog < 0)
                 force_analog = getenv("SM64DS_FORCE_ANALOG") ? 1 : 0;
             const int analog_mode = force_analog || run_mode() == RUN_ANALOG;
-            if (!selftest && analog_mode && pad_live && !menu_on &&
+            if ((!selftest || stick_script_on()) && analog_mode && pad_live && !menu_on &&
                 !(port::comms_transport() && comms_fanout_on())) {
                 const int DEAD = 7849;      /* XInput's left-stick floor */
                 const int FULL = 32767;
-                const int dxs = pad.lx;
-                const int dys = -pad.ly;    /* stick up is touch-screen up */
+                int snx = pad.lx, sny = pad.ly;
+                stick_notch_snap(&snx, &sny);   /* notches near the four axes */
+                const int dxs = snx;
+                const int dys = -sny;       /* stick up is touch-screen up */
                 double len = sqrt((double)dxs * dxs + (double)dys * dys);
                 if (len > FULL) len = FULL;
                 if (len > DEAD) {
@@ -12926,6 +13037,8 @@ int main(void)
            set and unreachable from a selftest; see its banner. */
         pad_test_apply(port_rom_frame_checked(frame, "pad-test"),
                        &pad_live, &pad);
+        stick_script_apply(port_rom_frame_checked(frame, "stick-script"),
+                           &pad_live, &pad);
 #ifndef PORT_ROM_CLEAN
         /* SM64DS_CLICK_TEST: the scripted stylus, the same call the windowed
            scene loop makes and for the same reason -- the level path is where
@@ -13169,10 +13282,11 @@ int main(void)
             }
         }
         if (pad_live) {
-            if (pad.ly > 12000 || (pad.buttons & 1)) dz += 1;
-            if (pad.ly < -12000 || (pad.buttons & 2)) dz -= 1;
-            if (pad.lx < -12000 || (pad.buttons & 4)) dx -= 1;
-            if (pad.lx > 12000 || (pad.buttons & 8)) dx += 1;
+            stick_dpad_bits(pad.lx, pad.ly, &dx, &dz);
+            if (pad.buttons & 1) dz += 1;
+            if (pad.buttons & 2) dz -= 1;
+            if (pad.buttons & 4) dx -= 1;
+            if (pad.buttons & 8) dx += 1;
             if (pad.rx < -10000 || pad.rx > 10000) {
                 cam_yaw += cam_turn * 0.045f * (pad.rx / 32768.0f);
                 orbiting = 1;
@@ -16410,6 +16524,22 @@ int main(void)
                     ma ? (*(unsigned *)(ma + 0x54)) >> 30 : 0,
                     ma ? *(int *)(ma + 0x58) / 4096.0f : 0.0f, bh,
                     *(unsigned *)(c + 0x670));
+            if (stick_script_on()) {
+                const int so = (int)data_0209f250 * 0x18;
+                fprintf(stderr,
+                        "[stick] f%03d lx=%d ly=%d yaw=%04x y=%.2f st=%08x "
+                        "mag=%d nx=%d ny=%d ang=%04x an=%d\n",
+                        port_rom_frame_checked(frame, "stick-log"),
+                        g_fc_pad.lx, g_fc_pad.ly,
+                        (unsigned)(unsigned short)*(short *)(c + 0x8e),
+                        *(int *)(c + 0x60) / 4096.0f,
+                        st ? *(unsigned *)st : 0u,
+                        *(short *)((char *)data_0209f4a0 + so),
+                        *(short *)((char *)data_0209f4a2 + so),
+                        *(short *)((char *)data_0209f4a4 + so),
+                        (unsigned)(unsigned short)*(short *)((char *)data_0209f4a6 + so),
+                        *((unsigned char *)data_0209f4ac + so));
+            }
             if (frame <= 2) {
                 fprintf(stderr,
                         "[clip] minZ=%d maxZ=%d p0=(%d,%d,%d) cam nf=(%d,%d,%d)\n",
