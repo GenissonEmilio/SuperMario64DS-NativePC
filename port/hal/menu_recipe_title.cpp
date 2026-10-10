@@ -16,13 +16,7 @@
  *                         which means nothing on this page; the wrench plate moves to the right edge above
  *                         the bar. The Mario head is the one thing not kept (it is a decoration and a
  *                         hidden doodle button; there is no room for it beside the logo).
- *   file pages (3)        backdrop = the upper screen (castle photo + the page's own banner: TOUCH TO
- *                         START / FILE OPTIONS / COPY WHICH FILE? ...). The lower screen's page content
- *                         (rows 36..181: the plates and the back arrow) is one panel at 3/4 scale in the
- *                         upper part of the picture, so the banner on the upper screen's lower edge
- *                         stays readable.
- *   options (4)           the sound / backlight page: same, with the page rows 16..183.
- *   doodle (5)            the "draw a picture" page: the lower screen whole, at 3/4, under the banner.
+ *   file pages (3..6)    the lower screen whole (the page IS the DS lower screen); see THE FILE PAGES below (run menu1, FILE1).
  * Wide canvases keep the same arrangement centred: the extra width is the host's ambient fill (the
  * menu stays 4:3 native, DESIGN G); nothing is stretched.
  *
@@ -399,6 +393,132 @@ int menu_title_up(int scene_id)
     return g_last;
 }
 
+/* ---- THE FILE PAGES (run menu1, lane FILE1) ----------------------------------------------------------------
+   File select, file options, the scores pick, copy, erase, the sound / backlight page and the doodle page ARE the DS lower
+   screen (Tango, 10-09: "nothing really needs to change at all, just make the bottom screen fit 4:3 and widescreen"). The
+   lower screen is engine A's picture (the title's engines are swapped), so each page is that picture whole:
+     4:3     one piece, the whole 256 x 192 lower screen at 1/1, which is the whole window. No castle photo, no banner,
+             no panel.
+     wide    the same piece, centred at its own size (the DS arrangement of plates, back arrow and rows is untouched,
+             nothing is stretched), and the margins on both sides carry the page's own background out: the picture's
+             leftmost / rightmost column repeated across the margin (xfill), which is the page's colour per row
+             (the reflection of the castle, or the SUPER MARIO DS wallpaper, fades into itself at the edge).
+   WHAT THE BACKGROUND IS (measured, SM64DS_TITLE_DRAWTRACE + a probe that skipped every submitted sprite object): on the
+   file select family the lower screen is a 3D reflection of the castle (two 256 x 256 textures, drawn by the page's own
+   model, NOT by func_ov007_020c421c) with the plates and glyphs on top as sprite objects; the wallpaper objects k0..k2
+   of the main menu are not drawn there at all. The sound / backlight and doodle pages show the SUPER MARIO DS pattern
+   wallpaper objects. Both stay in the picture. TODO(ASSET5): once the moving "Super Mario 64 PC" pattern background of
+   the main menu is built, the options and doodle pages should draw it in place of the wallpaper objects, and the
+   file pages' margins could take its colour.
+   Hotspots are the ROM's own element boxes in lower-screen DS pixels (piece 1:1), so a click lands in the box the ROM
+   hit-tests (src/func_ov007_020b46b0.c arithmetic through port_title_elem_boxes).
+   THE SCORE TABLE is two screens of text in the ROM: courses 1..9 and the header on the upper screen (engine B), courses
+   10..15 and the castle's secret stars on the lower (engine A, a 2D BG layer that types in), over the file plates,
+   which the ROM never removes, so on the DS they show through the list. On one page:
+     background  the lower screen's own picture (reflection tinted by the page, the back arrow where the ROM puts it),
+                 with the three file plates and their star / number glyphs not submitted (the sprite-object filter
+                 below) and engine A's text layers lifted out of the picture (lift_owners) so they are drawn as text
+                 alone;
+     the list    two text pieces stacked at 2/3, the upper screen's text layers alone (keyed on the backdrop colour,
+                 own transparency) and the lower screen's lifted text cells (own alpha), one list top to bottom like the
+                 N64 table, in the left of the 4:3 area so the back arrow keeps its own place at the lower right.
+   Nothing is cut from a finished picture except the background itself. */
+extern "C" {
+extern int (*g_port_title_draw_skip)(char *obj);
+}
+namespace {
+int ftune(int idx, int dflt)          /* SM64DS_FILE_TUNE=a,b,c,... integer knobs for layout iteration (FILE1) */
+{
+    static int v[10], have = 0;
+    if (!have) {
+        have = 1;
+        for (int i = 0; i < 10; ++i) v[i] = -9999;
+        const char *e = getenv("SM64DS_FILE_TUNE");
+        for (int i = 0; e && *e && i < 10; ++i) {
+            char *q;
+            v[i] = (int)strtol(e, &q, 10);
+            if (*q != ',') break;
+            e = q + 1;
+        }
+    }
+    return v[idx] == -9999 ? dflt : v[idx];
+}
+
+/* the score table's page: its plates (and their glyphs) are not submitted. They sit above DS row 130; the back arrow
+   (y 158) and every other object stays. Chained in front of the main menu's filter. */
+int (*g_file_prev_skip)(char *obj);
+bool table_skip_active()
+{
+    if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return false;
+    return variant_for(top, elem) == V_TABLE;
+}
+int file_skip(char *o)
+{
+    if (table_skip_active()) {
+        const int y = *(const int *)(o + 8) >> 12;
+        static int tr = -1;
+        if (tr < 0) { const char *e = getenv("SM64DS_FILE_TRACE"); tr = (e && *e && *e != '0') ? 1 : 0; }
+        if (tr && (data_ov007_0210342c[0] % 120) == 0)
+            fprintf(stderr, "[file] table obj id=%02x x=%d y=%d %s\n", (unsigned)*(unsigned char *)(o + 0x4e), *(const int *)(o + 4) >> 12, y,
+                    y < 130 ? "skipped" : "kept");
+        if (y < 130) return 1;
+    }
+    return g_file_prev_skip ? g_file_prev_skip(o) : 0;
+}
+struct FileHookInit { FileHookInit() { g_file_prev_skip = g_port_title_draw_skip; g_port_title_draw_skip = file_skip; } } g_file_hook_init;
+
+/* the margins of a wide canvas: the picture's outermost column carried across, one piece a side, under the page */
+void file_fills(MenuLayout *L)
+{
+    const int cw = L->w * L->uden / L->unum;
+    const int side = cw > 256 ? (cw - 256 + 1) / 2 + 2 : 0;       /* each margin, with an overlap under the page */
+    if (side <= 0) return;
+    MenuPiece lf = menu_piece_make(SRC_TOP_PIC, 0, 0, 1, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    lf.bg = 1; lf.xfill = 1; lf.fill_w = (short)side;
+    menu_add_piece(L, lf);
+    MenuPiece rt = menu_piece_make(SRC_TOP_PIC, 255, 0, 1, 192, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+    rt.bg = 1; rt.xfill = 1; rt.fill_w = (short)side;
+    menu_add_piece(L, rt);
+}
+
+void file_pages_build(int variant, MenuLayout *L)
+{
+    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+    L->stage = MENU_STAGE_POST_FADE;
+    file_fills(L);
+    /* the page: the whole lower screen, 1/1, centred (4:3: the whole window) */
+    MenuPiece pg = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
+    pg.bg = 1; pg.touch = 1;
+    const int ip = menu_add_piece(L, pg);
+    if (variant == V_TABLE) {
+        L->lift_owners = (uint8_t)ftune(0, MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ);
+        const int kn = ftune(5, 2), kd = ftune(6, 3);
+        const int us = ftune(1, 8), uh = ftune(2, 178), ls = ftune(3, 12), lh = ftune(4, 108);
+        const int dx = ftune(7, -39);                         /* the piece's centre from the canvas centre: the text sits at the left of the 4:3 area */
+        const int dy0 = ftune(8, 2);
+        MenuPiece up = menu_piece_make(SRC_SUB, 0, us, 256, uh, MENU_AX_C, MENU_AY_T, dx, dy0, kn, kd);
+        up.layers = (uint8_t)ftune(9, MENU_L_BG1 | MENU_L_OBJ); up.key_backdrop = 1;
+        menu_add_piece(L, up);
+        MenuPiece lo = menu_piece_make(SRC_TOP_2D, 0, ls, 256, lh, MENU_AX_C, MENU_AY_T, dx, dy0 + uh * kn / kd, kn, kd);
+        lo.layers = (uint8_t)(MENU_L_BG1 | MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ);
+        menu_add_piece(L, lo);
+        static const int bk_ids[1] = { 20 };
+        hot(L, ip, bk_ids, 1);
+        return;
+    }
+    if (variant == V_DOODLE) return;
+    if (variant == V_OPTIONS) {
+        static const int ids[6] = { 10, 9, 11, 12, 13, 8 };
+        hot(L, ip, ids, 6);
+        return;
+    }
+    static const int fids[8] = { 14, 15, 16, 17, 18, 19, 21, 20 };
+    hot(L, ip, fids, 8);
+}
+}  // namespace
+
 void menu_title_build(int variant, MenuLayout *L)
 {
     if (variant == V_ATTRACT) {
@@ -413,62 +533,7 @@ void menu_title_build(int variant, MenuLayout *L)
         build_main(L, variant == V_INTRO);
         return;
     }
-    /* the backdrop: the upper screen, whole */
-    MenuPiece bg = menu_piece_make(SRC_SUB, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
-    bg.bg = 1;
-    menu_add_piece(L, bg);
-    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
-    L->stage = MENU_STAGE_POST_FADE;
-
-    const int kn = tune(0, 3), kd = tune(1, 4);
-    if (variant == V_TABLE) {
-        /* THE SCORE TABLE ON ONE PAGE (the N64 table players asked for): the DS shows the course
-           list over TWO screens, courses 1..9 on the upper and 10..15 + the castle secret stars on the lower.
-           Both halves are cut along their empty rows and STACKED at 2/3, upper half first, so it reads
-           top to bottom as one list; the back arrow keeps its own piece in the right margin. The dimmed
-           castle both screens show is the page's own backdrop (the lower screen whole). */
-        L->p[0] = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
-        L->p[0].bg = 1;                         /* replaces the upper-screen backdrop added above */
-        /* The lower screen whole still carries its own list text; the two margins beside the stacked lists
-           are covered with a clean strip of that same screen (rows 128..191, left edge, no text on the score
-           page), three tiles a side, so the list is not shown twice. */
-        for (int side = 0; side < 2; ++side)
-            for (int t = 0; t < 3; ++t) {
-                MenuPiece m = menu_piece_make(SRC_TOP_PIC, 0, 128, 44, 64, MENU_AX_C, MENU_AY_T, side ? 106 : -106, t * 64, 1, 1);   /* flush with the 4:3 picture's edges */
-                m.bg = 1;
-                menu_add_piece(L, m);
-            }
-        MenuPiece top = menu_piece_make(SRC_SUB, 0, 10, 256, 174, MENU_AX_C, MENU_AY_T, 0, 2, 2, 3);
-        menu_add_piece(L, top);
-        MenuPiece low = menu_piece_make(SRC_TOP_PIC, 0, 12, 256, 108, MENU_AX_C, MENU_AY_T, 0, 118, 2, 3);
-        low.touch = 1;
-        menu_add_piece(L, low);
-        /* the back arrow at half size in the 4:3 picture's lower right corner (a 4:3 backdrop is centred on wide canvases) */
-        MenuPiece bk = menu_piece_make(SRC_TOP_PIC, 176, 136, 80, 44, MENU_AX_C, MENU_AY_B, 106, -2, 1, 2);
-        bk.touch = 1;
-        const int ibk = menu_add_piece(L, bk);
-        static const int bk_ids[1] = { 20 };
-        hot(L, ibk, bk_ids, 1);
-        return;
-    }
-    if (variant == V_DOODLE) {
-        MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, 0, tune(3, 4), kn, kd);
-        p.touch = 1;
-        menu_add_piece(L, p);
-        return;
-    }
-    /* V_FILES and V_OPTIONS: ONE panel size and place for every page, so the picture does not jump between
-       file select, file options, scores, copy and erase */
-    MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 4, 256, 180, MENU_AX_C, MENU_AY_T, 0, tune(3, 4), kn, kd);
-    p.touch = 1;
-    const int ip = menu_add_piece(L, p);
-    if (variant == V_OPTIONS) {
-        static const int ids[6] = { 10, 9, 11, 12, 13, 8 };
-        hot(L, ip, ids, 6);
-        return;
-    }
-    static const int fids[8] = { 14, 15, 16, 17, 18, 19, 21, 20 };
-    hot(L, ip, fids, 8);
+    file_pages_build(variant, L);
 }
 
 /* THE KEY MEANING. pressed is one PadData pressed word (DS key bits: A 0x0001, B 0x0002, Start 0x0008,
