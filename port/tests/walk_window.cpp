@@ -8570,6 +8570,10 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
                 frame, lx, ly, rx, ry, g_setlive_mag, (int)fc_yaw, (int)fc_pitch,
                 cam_mode, host_settings_ctl_gen(), mo_capture_opt,
                 host_setting_minimap_scale_value(), host_setting_volume());
+    if (trace)
+        fprintf(stderr, "[setlive] f%d bind jump key %d run key %d jump pad %d | run mode %d\n",
+                frame, key_act(HOST_KEY_JUMP), g_run_key && key_live(g_run_key),
+                *pad_live ? pad_act(pad, HOST_PAD_JUMP) : 0, g_run_mode);
     if (exit_at >= 0 && frame >= exit_at) {
         fprintf(stderr, "[setlive] f%d exit\n", frame);
         fflush(stderr);
