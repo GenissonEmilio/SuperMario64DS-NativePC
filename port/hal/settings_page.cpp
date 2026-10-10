@@ -6,6 +6,9 @@
 #include "menu_hostimg.h"
 #include "../third_party/stb/stb_image.h"
 
+#if defined(_MSC_VER) || defined(__SSE2__)
+#include <emmintrin.h>
+#endif
 #include <chrono>
 #include <deque>
 #include <math.h>
@@ -238,7 +241,15 @@ void dim_all(const Surf &s)
 {
     for (int y = 0; y < s.h; ++y) {
         uint32_t *row = s.px + (size_t)y * s.stride;
-        for (int x = 0; x < s.w; ++x) row[x] = 0xFF000000u | ((row[x] >> 1) & 0x007F7F7Fu);
+        int x = 0;
+#if defined(_MSC_VER) || defined(__SSE2__)
+        const __m128i keep = _mm_set1_epi32(0x007F7F7F), opaque = _mm_set1_epi32((int)0xFF000000u);
+        for (; x + 4 <= s.w; x += 4) {          /* four pixels a step: half of every channel, alpha forced opaque */
+            const __m128i v = _mm_loadu_si128((const __m128i *)(row + x));
+            _mm_storeu_si128((__m128i *)(row + x), _mm_or_si128(_mm_and_si128(_mm_srli_epi32(v, 1), keep), opaque));
+        }
+#endif
+        for (; x < s.w; ++x) row[x] = 0xFF000000u | ((row[x] >> 1) & 0x007F7F7Fu);
     }
 }
 
@@ -1136,6 +1147,21 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         }
     }
     S.draw_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    {   /* SM64DS_SETPAGE_COST=1: the cost of the page's draw, a line every 120 frames (proof rows only) */
+        static int on = -1, cnt;
+        static double sum, mn = 1e9, mx;
+        if (on < 0) on = getenv("SM64DS_SETPAGE_COST") != 0;
+        if (on) {
+            sum += S.draw_ms; ++cnt;
+            if (S.draw_ms < mn) mn = S.draw_ms;
+            if (S.draw_ms > mx) mx = S.draw_ms;
+            if (cnt == 120) {
+                fprintf(stderr, "[settings] page draw %dx%d: %d frames, mean %.2f ms, min %.2f, max %.2f
+", w, h, cnt, sum / cnt, mn, mx);
+                cnt = 0; sum = 0; mn = 1e9; mx = 0;
+            }
+        }
+    }
 }
 
 /* ============================================================ scripted input (proof rows) ============================== */
