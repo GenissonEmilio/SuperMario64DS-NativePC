@@ -1156,8 +1156,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             if (S.draw_ms < mn) mn = S.draw_ms;
             if (S.draw_ms > mx) mx = S.draw_ms;
             if (cnt == 120) {
-                fprintf(stderr, "[settings] page draw %dx%d: %d frames, mean %.2f ms, min %.2f, max %.2f
-", w, h, cnt, sum / cnt, mn, mx);
+                fprintf(stderr, "[settings] page draw %dx%d: %d frames, mean %.2f ms, min %.2f, max %.2f\n", w, h, cnt, sum / cnt, mn, mx);
                 cnt = 0; sum = 0; mn = 1e9; mx = 0;
             }
         }
