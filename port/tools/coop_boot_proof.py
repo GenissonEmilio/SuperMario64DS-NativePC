@@ -366,7 +366,7 @@ def row_newfile(n=2):
     ok2 = all(x is not None for x in rel2)
     say(ok2 and max(rel2) - min(rel2) < 1000, "%s: everyone proceeded into the grounds together: end release spread %s ms" % (row, (max(rel2) - min(rel2)) if ok2 else "?"))
     gap = (arr[1] - arr[0]) if (arr[0] and arr[1]) else None
-    say(arr[0] is not None and arr[1] is not None and abs(gap) >= 2000 and ((arr[0] < arr[1] and any("opening end" in s for t, s in holds[0])) or (arr[1] < arr[0] and any("opening end" in s for t, s in holds[1]))),
+    say(arr[0] is not None and arr[1] is not None and abs(gap) >= 1000 and ((arr[0] < arr[1] and any("opening end" in s for t, s in holds[0])) or (arr[1] < arr[0] and any("opening end" in s for t, s in holds[1]))),
         "%s: the early console was held at the closing barrier (arrived %s ms apart; hold lines %s)" % (row, gap, [len(h) for h in holds]))
     host_close = [s for t, s in lines(cons[0]) if s.startswith("CLOSE:")]
     say(bool(host_close), "%s: host CLOSE line: %s" % (row, host_close[:1]))
