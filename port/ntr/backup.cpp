@@ -281,7 +281,7 @@ ImageKind classify(const unsigned char *img)
 }
 
 // The kind of save this process is: refuse an image that is the other kind.
-void fence_image(const unsigned char *img, const char *path)
+void fence_image(const unsigned char *img, const char *path, bool partial = false)
 {
     ImageKind k = classify(img);
     if (!coop_mode()) {
@@ -290,7 +290,7 @@ void fence_image(const unsigned char *img, const char *path)
     } else {
         if (k.normal)
             fence_die(8, path, "this is a NORMAL save and this is a coop room");
-        if (!k.coop && !k.all_erased)
+        if (!partial && !k.coop && !k.all_erased)
             fence_die(8, path, "this file is not a coop save");
     }
 }
@@ -747,7 +747,9 @@ bool write(unsigned addr, const void *src, unsigned len)
         unsigned char cand[kSize];
         std::memcpy(cand, g_image, sizeof cand);
         std::memcpy(cand + addr, src, len);
-        fence_image(cand, g_path);
+        /* a record is written in pieces (checksum, tag, payload), so only the
+           other kind's tag can be judged here, not "neither" */
+        fence_image(cand, g_path, true);
     }
     std::memcpy(g_image + addr, src, len);
     ++g_stats.writes;
