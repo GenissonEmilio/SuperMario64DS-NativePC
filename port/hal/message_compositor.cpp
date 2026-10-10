@@ -1111,7 +1111,9 @@ extern "C" int host_setting_hud_layout(void);
 static const int kHudZoneX0 = 188, kHudZoneY0 = 20, kHudZoneY1 = 36;   /* the coin counter's DS rectangle */
 static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudMeterGapMin = 2, kHudEdgeGap = 1, kHudStarGap = 6, kHudStarGapMin = 3;
 static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
+static Cell g_hud_cells[192][256];    /* the moved coin counter's cells, a plane of their own so they never replace a cell of g_a (the POWER label) */
 static bool g_hud_row_live;
+static bool g_hud_erase;   /* PROOF ARM (env SM64DS_HUD_ERASE_PROOF, off by default): the pre-fix behaviour, kept only to photograph the cause */
 
 namespace hudelem {
 
@@ -1164,13 +1166,13 @@ void resolve(int band_l, int band_r, int margin)
     for (int y = 0; y < 192; ++y) {
         int run = kBridgeX + 1;
         for (int x = 0; x < 256; ++x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_row_live && g_hud_row[y][x]);
+            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_erase && g_hud_row_live && g_hud_row[y][x]);
             run = on ? 0 : (run + 1);
             dil[y][x] = (run <= kBridgeX) ? 1 : 0;
         }
         run = kBridgeX + 1;
         for (int x = 255; x >= 0; --x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_row_live && g_hud_row[y][x]);
+            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_erase && g_hud_row_live && g_hud_row[y][x]);
             run = on ? 0 : (run + 1);
             if (run <= kBridgeX) dil[y][x] = 1;
         }
@@ -1246,7 +1248,7 @@ void resolve(int band_l, int band_r, int margin)
             if (!l) continue;
             const int r = find_root(l);
             g_lbl[y][x] = (int16_t)r;
-            if (!g_a[y][x].hit || msg_layer_px(y, x) || (g_hud_row_live && g_hud_row[y][x])) continue;
+            if (!g_a[y][x].hit || msg_layer_px(y, x) || (g_hud_erase && g_hud_row_live && g_hud_row[y][x])) continue;
             if (x < x0[r]) x0[r] = x;
             if (x > x1[r]) x1[r] = x;
         }
@@ -3205,6 +3207,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        it. */
     /* THE N64 ROW, once per frame: only in a 3D scene shown at its own layout, never under a level-clear lift. */
     g_hud_row_live = false;
+    { static const bool e = std::getenv("SM64DS_HUD_ERASE_PROOF") != nullptr; g_hud_erase = e; }
     if (host_setting_hud_layout() == 1 && bg0_3d_shown(dispcnt) && !ntr::present_native()
         && !lc_ov.live && !lc_ov.top_live) {
         /* THE RACE TIMER (src/_ZN3HUD15RenderTimeTimerEv.cpp: x 0xa4..0xf0, y 0x16 / 0x1e) shares these rows, and its
@@ -3307,14 +3310,27 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 if (mv) c.hit = false;
             }
         std::memset(g_hud_row, 0, sizeof(g_hud_row));
+        int hud_erased = 0;
+        static uint8_t mask_buf[192 * 256];
+        uint8_t *const mask_out = (dbg && std::getenv("SM64DS_HUD_MASK_OUT")) ? (std::memset(mask_buf, 0, sizeof(mask_buf)), mask_buf) : nullptr;
         for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
             for (int x = kHudZoneX0; x < 256; ++x) {
                 const Cell &c = tmp[y - kHudZoneY0][x - kHudZoneX0];
                 if (!c.hit) continue;
-                g_a[y - kHudCoinDy][x - dx_move] = c;
+                g_hud_cells[y - kHudCoinDy][x - dx_move] = c;   /* never g_a: the cell there may be a letter of POWER */
+                const bool under = g_a[y - kHudCoinDy][x - dx_move].hit;   /* a live DS plane cell (a letter of POWER) sits where this moved cell lands */
+                if (under) ++hud_erased;
+                if (mask_out) mask_out[(y - kHudCoinDy) * 256 + (x - dx_move)] = under ? 2 : 1;
+                if (g_hud_erase) g_a[y - kHudCoinDy][x - dx_move] = c;   /* PROOF ARM (env only): the pre-fix behaviour, the moved cell REPLACES the plane cell under it */
                 g_hud_row[y - kHudCoinDy][x - dx_move] = 1;
                 g_hud_row_live = true;
             }
+        if (mask_out) {   /* debug: the moved block's plane mask, 1 = coin cell, 2 = coin cell landing on a live plane cell; P5, 256x192 */
+            if (FILE *mf = std::fopen(std::getenv("SM64DS_HUD_MASK_OUT"), "wb")) {
+                std::fputs("P5 256 192 255 ", mf); std::fwrite(mask_buf, 1, sizeof(mask_buf), mf); std::fclose(mf);
+            }
+        }
+        if (g_hud_erase || dbg) std::fprintf(stderr, "[hudrow] moved cells landing on a live DS plane cell: %d (proof arm %d)\n", hud_erased, (int)g_hud_erase);
         }
         }
     }
@@ -3340,10 +3356,16 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        store per composited pixel, and only when the setting is on. */
     uint32_t *const pre = ntr::gx_aa_preimage();
     uint32_t kept = 0, buried = 0;
+    for (int pass = 0; pass < 2; ++pass) {
+    if (pass && !g_hud_row_live) break;
+    /* pass 0 = the DS plane, pass 1 = the moved coin block's own plane (drawn after, so it covers what is under it) */
     for (int y = 0; y < 192; ++y) {
         for (int x = 0; x < 256; ++x) {
-            if (!g_a[y][x].hit) continue;
-            const uint32_t c = g_a[y][x].color;
+            const Cell &gc = pass ? g_hud_cells[y][x] : g_a[y][x];
+            if (!gc.hit) continue;
+            if (pass && !g_hud_row[y][x]) continue;   /* g_hud_cells is not cleared per frame: only this frame's moved cells */
+            if (!pass && g_hud_erase && g_hud_row_live && g_hud_row[y][x]) continue;
+            const uint32_t c = gc.color;
             /* horizontal placement of this DS column's block. In 4:3 (toggle
                off) ntr::widescreen is false and this is the plain x*sx block; in
                16:9 it reanchors. The wide arm also self-normalises -- margin is 0
@@ -3402,7 +3424,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                              three layers line up. */
                           : (ntr::present_native() || !shown3d)
                           ? ux0 + margin / 2
-                          : (g_hud_row_live && g_hud_row[y][x])
+                          : pass
                           ? ux0 + margin   /* the moved coin block rides the right edge with the star counter */
                           : !bandsplit
                           ? ux0 + hudelem::g_off[hudelem::g_lbl[y][x]]
@@ -3430,7 +3452,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                one screen row in every layer whether or not active_h is a
                whole multiple of 192. */
             const int hy0 = ds_row_y0(y), hy1 = ds_row_y0(y + 1);
-            const unsigned lcow = g_a[y][x].owner;
+            const unsigned lcow = gc.owner;
             const int lcv = lc_overlay_verdict(lcow);
             if (lcv == 2) continue;
             /* this 2D layer's brightness verdict, for every host pixel it
@@ -3440,7 +3462,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
             if (lcv == 3) {
                 /* LIFTED INTO THE DS-SPACE PLANE: not written to the picture at all. A cell the 3D layer covers (when
                    the layer is behind it) is not lifted. The pre-smoothing copy still gets it. */
-                const bool behind = honour3d && layer_behind_3d(g_a[y][x].owner, g_a[y][x].prio, p3d);
+                const bool behind = honour3d && layer_behind_3d(gc.owner, gc.prio, p3d);
                 if (!(behind && cover[hy0 * ntr::SCREEN_W + hx0])) {
                     MenuTopCell &tc = lc_ov.top[y * 256 + x];
                     tc.argb = c | 0xff000000u;
@@ -3454,7 +3476,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 continue;
             }
             if (!honour3d
-                || !layer_behind_3d(g_a[y][x].owner, g_a[y][x].prio, p3d)) {
+                || !layer_behind_3d(gc.owner, gc.prio, p3d)) {
                 /* the owning 2D layer is in FRONT of the 3D layer (or there is
                    no 3D layer in the picture): the old unconditional write */
                 for (int hy = hy0; hy < hy1; ++hy)
@@ -3487,6 +3509,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                     if (pre) pre[(size_t)hy * ntr::SCREEN_W + hx] = c;
                 }
         }
+    }
     }
     /* Pixels the 3D engine drew that NO 2D layer covered at all were never in
        the loop above; they are kept too, and counting them is what makes the
