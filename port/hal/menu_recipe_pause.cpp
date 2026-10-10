@@ -483,7 +483,7 @@ void build_nosave(MenuLayout *L)
             MenuPiece bn = menu_piece_make(SRC_HOSTIMG, 24, 60, 208, 32, MENU_AX_R, MENU_AY_T, -C.marg - ur(248 - 232, C.b.n, C.b.d), top, C.b.n, C.b.d);
             bn.hostimg = (uint8_t)MENU_IMG_P_BANNER; bn.bg = 1;
             menu_add_piece(L, bn);
-            MenuPiece q = sub_piece(34, 68, 178, 20, C, top + ur(6, C.b.n, C.b.d), 0);   /* clear of the ROM box edges (a bar at the right end showed up to x 222) */
+            MenuPiece q = sub_piece(34, 68, 178, 20, C, top + ur(6, C.b.n, C.b.d), 0, MENU_L_BG0 | MENU_L_BG1);   /* no OBJ: the bar at the strip's left end is a sprite */   /* clear of the ROM box edges (a bar at the right end showed up to x 222) */
             q.dx = (short)(-C.marg - ur(248 - 212, C.b.n, C.b.d));
             menu_add_piece(L, q);
         }
