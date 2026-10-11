@@ -382,8 +382,7 @@ void do_hit_knob(HitKnob &k) {
             Boss &b = g_boss[slot];
             if (!b.a || hp_of(b) <= 0) continue;
             k.armed = true; k.slot = slot; k.hp0 = hp_of(b);
-            std::fprintf(stderr, "[cbs-knob] hit armed slot=%d cls=%u hp=%d w=%lld
-", slot, (unsigned)b.d->cls, k.hp0, wall_ms());
+            std::fprintf(stderr, "[cbs-knob] hit armed slot=%d cls=%u hp=%d w=%lld\n", slot, (unsigned)b.d->cls, k.hp0, wall_ms());
             break;
         }
         if (!k.armed) return;
