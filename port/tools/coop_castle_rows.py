@@ -91,7 +91,8 @@ def row_boo(ctl=False):
     """castle Boos (level LV): three consoles, the same Boos in the same place (drift p95 inside the enemy band)"""
     row = "castle_boo" + ("_ctl" if ctl else "")
     n = 3
-    cons = run(row, sp(LV, ACT, [], ctl, n))
+    chase = os.environ.get("CASTLE_BOOCHASE", "500:1500:209:300")
+    cons = run(row, sp(LV, ACT, [{"SM64DS_CASTLE_CHASE": chase}], ctl, n))
     for j, c in enumerate(cons):
         v = cc(c.text())
         info("%s %s boo counts seen: %s" % (row, NAMES[j], sorted(set(x[2] for x in v))))

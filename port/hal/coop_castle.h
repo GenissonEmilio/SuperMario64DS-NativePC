@@ -15,7 +15,7 @@
 // INERT unless SM64DS_COOP is set AND the group is established. Knobs (all optional):
 //   SM64DS_COOP_CASTLE_LOG=1       [coopcastle] lines, one per second
 //   SM64DS_CASTLE_HUNT=1           set the save bit that wakes the rabbits (data_0209caa0[2] & 0x20000), as the LakituBro intro does
-//   SM64DS_CASTLE_CHASE=F:N        from group frame F for N frames keep the local player 150 units from the nearest MIPS
+//   SM64DS_CASTLE_CHASE=F:N[:cls[:d]]  from group frame F for N frames keep the local player d (150) units from the nearest MIPS (cls 187) or Boo (209)
 //   (catching uses the existing SM64DS_RABBIT_TRIGGER=<frame> stand-in for the grab cylinder, hal/input_probe.cpp)
 
 #ifndef PORT_HAL_COOP_CASTLE_H

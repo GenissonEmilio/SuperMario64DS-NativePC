@@ -23,7 +23,7 @@ namespace {
 enum : unsigned { kClsBoo = 209, kClsMip = 187, kClsMipKey = 229 };
 
 bool g_env = false, g_log = false, g_hunt = false;
-unsigned g_chase_f = 0, g_chase_n = 0;
+unsigned g_chase_f = 0, g_chase_n = 0, g_chase_cls = kClsMip, g_chase_d = 150;
 bool g_established = false;
 unsigned g_frames = 0;
 int g_prev_keys = 0;
@@ -42,8 +42,12 @@ void read_env() {
     const char *h = std::getenv("SM64DS_CASTLE_HUNT");
     g_hunt = h && *h && *h != '0';
     if (const char *c = std::getenv("SM64DS_CASTLE_CHASE")) {
-        unsigned f = 0, n = 0;
-        if (std::sscanf(c, "%u:%u", &f, &n) == 2) { g_chase_f = f; g_chase_n = n > 6000 ? 6000 : n; }
+        unsigned f = 0, n = 0, cl = kClsMip, d = 150;
+        if (std::sscanf(c, "%u:%u:%u:%u", &f, &n, &cl, &d) >= 2) {
+            g_chase_f = f; g_chase_n = n > 6000 ? 6000 : n;
+            if (cl == kClsMip || cl == kClsBoo) g_chase_cls = cl;
+            if (d >= 50 && d <= 2000) g_chase_d = d;
+        }
     }
 }
 
@@ -55,10 +59,10 @@ bool is_player(const void *a) {
 }
 bool live(const char *a) { return !*(const unsigned char *)(a + 0x0f) && *(const unsigned char *)(a + 0x0e) != 2; }
 
-char *nearest_mip(const char *pl) {
+char *nearest_cls(const char *pl, unsigned cls) {
     char *best = nullptr; double bd = 1e30;
     for (char *a = (char *)_ZN8dActor_c4NextEPKS_(nullptr); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
-        if (*(const unsigned short *)(a + 0x0c) != kClsMip || is_player(a) || !live(a)) continue;
+        if (*(const unsigned short *)(a + 0x0c) != cls || is_player(a) || !live(a)) continue;
         const double dx = (rd32(a, 0x5c) - rd32(pl, 0x5c)) / 4096.0, dz = (rd32(a, 0x64) - rd32(pl, 0x64)) / 4096.0;
         const double d = dx * dx + dz * dz;
         if (d < bd) { bd = d; best = a; }
@@ -77,9 +81,9 @@ void on_frame(unsigned) {
     char *pl = (char *)data_0209f394[data_0209f250 & 15];
     if (g_hunt && pl && (data_0209caa0[2] & 0x20000) == 0) { data_0209caa0[2] |= 0x20000; ++g_st.hunt_sets; }
     if (g_chase_n && pl && g_frames >= g_chase_f && g_frames < g_chase_f + g_chase_n && (g_frames % 20u) == 0) {
-        if (char *m = nearest_mip(pl)) {
+        if (char *m = nearest_cls(pl, g_chase_cls)) {
             // stand 150 units to the +x side of the rabbit, same height: it has to run from the player
-            const int off = 150 << 12;
+            const int off = (int)g_chase_d << 12;
             const int dx = rd32(pl, 0x5c) - rd32(m, 0x5c);
             const int sx = dx >= 0 ? 1 : -1;
             const int nx = rd32(m, 0x5c) + sx * off;
