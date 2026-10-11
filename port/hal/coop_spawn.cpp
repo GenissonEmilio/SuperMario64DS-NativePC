@@ -897,8 +897,12 @@ void knob_take(TakeKnob &) {
         const unsigned c = a_cls(a);
         if ((c != 178 && c != 282) || a_slot(a) != -1 || a_dead(a) || is_player_ptr(a)) continue;
         std::memcpy(pl + 0x5c, a + 0x5c, 12);
+        if (c == 178) {                      // the same two words the harness probe writes: the star's own collect handler runs
+            *(unsigned *)(a + 0x134) = *(const unsigned *)(pl + 4);
+            *(unsigned *)(a + 0x130) |= 0x400000;
+        }
         if (c == 282) _ZN7fBase_c18MarkForDestructionEv(a);      // a key is destroyed when its pickup animation ends; the harness stands in for the animation
-        std::fprintf(stderr, "[coopspawn-knob] take goto cls=%u pos=%d,%d,%d wall=%lld\n", c, ((const int *)(a + 0x5c))[0] >> 12,
+        std::fprintf(stderr, "[coopspawn-knob] take goto cls=%u state=%d pos=%d,%d,%d wall=%lld\n", c, *(const int *)(a + 0x440), ((const int *)(a + 0x5c))[0] >> 12,
                      ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, wall_ms());
         return;
     }
