@@ -49,6 +49,7 @@ struct BDesc {
     int8_t hp;        // index of the HP field (min wins), -1 none
     int8_t state;     // index of the state field, -1 none
     int8_t pos;       // index of the first of three position fields (x, y, z), -1 none
+    uint16_t hit_who; // 0, or the offset where the ROM keeps the pointer of the player that hit (the proof knob must set it too)
     uint16_t hit_off; // 0, or the offset of a byte the class's own handler turns into one HP (the proof knob sets it)
 };
 
@@ -60,14 +61,14 @@ const BDesc kDescs[] = {
       { { 0x3b0, 4, kPlain }, { 0x401, 1, kPlain }, { 0x40c, 1, kPlain }, { 0x407, 1, kPlain }, { 0x3fc, 2, kVol },
         { 0x100, 2, kVol }, { 0x324, 4, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
         { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
-      1, 0, 7, 0x402 },
+      1, 0, 7, 0x3ac, 0x402 },
     // King Bob-omb (daBombking_c): state record pointer +0x420 (mapped to a table id), HP mHealth +0x500 (3), mPhase +0x4a0,
     // the two timers +0x504 / +0x505, mAnimSpeed +0x4fc, +0x499.
     { 189, "KING_BOB_OMB", 14,
       { { 0x420, 4, kStatePtr }, { 0x500, 4, kPlain }, { 0x4a0, 4, kPlain }, { 0x504, 1, kVol }, { 0x505, 1, kVol },
         { 0x4fc, 4, kPlain }, { 0x499, 1, kPlain }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
         { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
-      1, 0, 7, 0 },
+      1, 0, 7, 0, 0 },
 };
 const int kNumDescs = (int)(sizeof kDescs / sizeof kDescs[0]);
 
@@ -434,8 +435,10 @@ void do_hit_knob(HitKnob &k) {
         std::fprintf(stderr, "[cbs-knob] hit taken slot=%d hp %d->%d st=%u w=%lld\n", k.slot, k.hp0, hp_of(b), state_of(b), wall_ms());
         return;
     }
-    if (b.d->hit_off) b.a[b.d->hit_off] = 1;
-    else { write_field(b.a, *b.d, b.d->hp, (uint32_t)(k.hp0 - 1)); }
+    if (b.d->hit_off) {
+        if (b.d->hit_who && data_0209f394[data_0209f250 & 15]) { void *me = data_0209f394[data_0209f250 & 15]; std::memcpy(b.a + b.d->hit_who, &me, sizeof me); }
+        b.a[b.d->hit_off] = 1;
+    } else { write_field(b.a, *b.d, b.d->hp, (uint32_t)(k.hp0 - 1)); }
 }
 
 void do_forge(const char *name) {
