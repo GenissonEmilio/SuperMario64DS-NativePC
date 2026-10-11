@@ -349,6 +349,7 @@ struct ForgeKnob { unsigned tick; char name[12]; bool done; };
 ForgeKnob g_forge[8]; int g_nforge = 0;
 unsigned g_stand_tick = 0, g_stand_every = 0; int g_stand_dist = 0; bool g_stand_done = true, g_god = false;
 bool g_deadmark = true;   // SM64DS_COOP_BOSS_DEADMARK=0: must-fail control, a defeated boss is not marked
+bool g_face = false;   // bossfix1: SM64DS_COOP_BOSS_FACE=1: while Bowser is in his defeat state the local player stands 300 units from him, facing him (step 2 of the ROM's defeat asks for exactly that)
 bool g_bomb = false;   // bossfix1: SM64DS_COOP_BOSS_BOMB=1: Bowser's proof hit is a REAL bomb hit (the ROM's own detection)
 unsigned g_behind_tick = 0, g_behind_every = 0; int g_behind_dist = 0; bool g_behind_done = true;   // bossdesc2: the local player behind the boss, facing his way (the grab proof)
 bool g_regd = false;
@@ -518,6 +519,7 @@ void read_env() {
     }
     g_god = flag("SM64DS_COOP_BOSS_GOD", false);
     g_bomb = flag("SM64DS_COOP_BOSS_BOMB", false);
+    g_face = flag("SM64DS_COOP_BOSS_FACE", false);
     check_descriptors();
     g_deadmark = flag("SM64DS_COOP_BOSS_DEADMARK", true);
     if (const char *f = std::getenv("SM64DS_COOP_BOSS_FORGE")) {
@@ -1193,6 +1195,22 @@ void on_frame(unsigned now) {
         }
     }
     pump_dead(now);
+    if (g_face && g_nb > 0 && (g_ticks % 12) == 0) {
+        for (int slot = 0; slot < kSlots; ++slot) {
+            Boss &b = g_boss[slot];
+            const int me = (int)data_0209f250;
+            if (!b.a || b.d->cls != 279 || state_of(b) != 4u || me < 0 || me >= 16 || !data_0209f394[me]) continue;
+            char *pl = (char *)data_0209f394[me];
+            const int32_t bx = rd32(b.a, 0x5c), by = rd32(b.a, 0x60), bz = rd32(b.a, 0x64);
+            const int32_t px = bx - (300 << 12), pz = bz;
+            const int16_t ang = (int16_t)(std::atan2((double)(bx - px), (double)(bz - pz)) * 32768.0 / 3.14159265358979323846);
+            const int32_t py = by + 0x4000, zero = 0;
+            std::memcpy(pl + 0x5c, &px, 4); std::memcpy(pl + 0x60, &py, 4); std::memcpy(pl + 0x64, &pz, 4);
+            std::memcpy(pl + 0x98, &zero, 4); std::memcpy(pl + 0x8e, &ang, 2);
+            if (g_log && (g_ticks % 120) == 0) std::fprintf(stderr, "[cbs-knob] face: local player put 300 units from Bowser, facing him (step %d) w=%lld\n", (int)(unsigned char)b.a[0x423], wall_ms());
+            break;
+        }
+    }
     if (g_nb > 0) {
         process(now);
         for (int i = 0; i < g_nhit; ++i)
