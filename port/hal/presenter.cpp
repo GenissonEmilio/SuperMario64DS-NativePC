@@ -131,6 +131,7 @@ long long g_ptarget;           /* the target of the next publish (set by the gam
 long long g_last_target;       /* the newest timed target published so far */
 volatile long g_delay_us;      /* the display delay D now: refresh k shows the picture made for the moment k minus D */
 volatile long g_goal_us;       /* where D is heading (adaptive mode) */
+volatile long g_goal_work_us, g_goal_ready_us;   /* its two parts: the tick's work, the first in-between's readiness (MENUPACE1) */
 long g_cap_us;                 /* adaptive D never goes above this */
 int g_fixed_delay;             /* SM64DS_PRESENTER_DELAY_MS set: D is that value and stays */
 double g_work[32];             /* the last ticks' own work, milliseconds */
@@ -922,7 +923,34 @@ extern "C" void presenter_note_work(double ms)
     long goal = (long)((v[g_work_n >= 2 ? g_work_n - 2 : 0] + 0.5) * 1000.0);   /* the second largest: 31 ticks of 32 are covered */
     if (goal > g_cap_us) goal = g_cap_us;
     if (goal < 0) goal = 0;
-    g_goal_us = goal;
+    g_goal_work_us = goal;
+    g_goal_us = goal > g_goal_ready_us ? goal : g_goal_ready_us;
+}
+/* run hunt8, lane MENUPACE1: WHEN THE FIRST IN-BETWEEN OF A TICK IS READY. The delay above covers the tick's own work, but the pictures
+   drawn ahead for the rest of the tick are published only after the first in-between has been built too (tick work + one blend, 11 ms on
+   the main menu's 30k-triangle head), so the one made for the earliest refresh of the tick was published after its display moment had
+   passed; the next refresh then found it and its successor both older than the moment it showed and kept the later, and a quarter of the
+   pictures drawn were never on screen (measured). `ms` is the time from the tick's start to the end of the tick's first in-between; the
+   delay follows the second largest of the last thirty-two (plus half a millisecond), up to two refreshes. Only the scene path calls this
+   (SM64DS_MENU_READY_DELAY=0 turns it off), so a level's delay is the one above. */
+extern "C" void presenter_note_ready(double ms)
+{
+    if (!g_running || !g_timed || g_fixed_delay) return;
+    static double r[32];
+    static int at, n;
+    r[at] = ms;
+    at = (at + 1) % 32;
+    if (n < 32) ++n;
+    if (n < 8) return;
+    double v[32];
+    for (int i = 0; i < n; ++i) v[i] = r[i];
+    qsort(v, (size_t)n, sizeof(double), cmpd);
+    long goal = (long)((v[n >= 2 ? n - 2 : 0] + 0.5) * 1000.0);
+    const long cap2 = 2 * (g_cap_us > 0 ? g_cap_us : 6944);
+    if (goal > cap2) goal = cap2;
+    if (goal < 0) goal = 0;
+    g_goal_ready_us = goal;
+    g_goal_us = g_goal_work_us > goal ? g_goal_work_us : goal;
 }
 extern "C" int presenter_timed(void) { return g_running && g_timed; }
 /* Free slots in the ring (the game thread may draw ahead into them). */

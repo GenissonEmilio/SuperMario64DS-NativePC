@@ -2798,6 +2798,7 @@ static int g_ip_tick_shown;         /* this tick has put a picture up */
 static int g_ip_tick_final;
 static int g_ip_tick_blends;        /* blended pictures this tick drew */
 static int g_ip_tick_refused;       /* a slot of this tick had no room for one */
+static int g_ip_scene_tick;         /* MENUPACE1: this tick belongs to the scene path (the level path clears it) */
 static double g_ip_plain_ms = 1.0;  /* running average cost of a plain present */
 static double g_ip_work_ms;         /* running average of a tick's own work */
 static int g_ip_tick_probe;         /* the slow fallback's retry tick */
@@ -8274,6 +8275,12 @@ static void ip_present_alpha(double alpha)
     QueryPerformanceCounter(&q2);
     ++g_ip_blended;
     ++g_ip_tick_blends;
+    /* MENUPACE1: the scene path tells the presenter when its first in-between was ready (see presenter_note_ready) */
+    if (g_ip_scene_tick && g_ip_tick_blends == 1 && g_ip_tick_t0 > 0) {
+        static int rd = -1;
+        if (rd < 0) { const char *e = getenv("SM64DS_MENU_READY_DELAY"); rd = (e && e[0] == '0' && !e[1]) ? 0 : 1; }
+        if (rd) presenter_note_ready((q2.QuadPart - g_ip_tick_t0) * 1000.0 / (double)qf.QuadPart);
+    }
     const double cost = (q2.QuadPart - q0.QuadPart) * 1000.0 / (double)qf.QuadPart;
     ip_cost_sample(cost);
     /* finished past the tick's end: this blend made the game late */
@@ -8760,6 +8767,7 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
         g_ip_tick_final = 0;
         g_ip_tick_blends = 0;
         g_ip_tick_refused = 0;
+        g_ip_scene_tick = 1;
         g_ip_tick_late = 0;
         g_ip_rate_ok = port_frame_rate_target() * port_frame_divider() > 60;
         {
@@ -18944,6 +18952,7 @@ int main(void)
             g_ip_tick_final = 0;
             g_ip_tick_blends = 0;
             g_ip_tick_refused = 0;
+            g_ip_scene_tick = 0;
             g_ip_tick_late = 0;
             g_ip_rate_ok = port_frame_rate_target() * port_frame_divider() > 60;
             {
