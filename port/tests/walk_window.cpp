@@ -8348,7 +8348,11 @@ static double ip_left_ms(long long deadline)
    end makes the game itself late. */
 static int ip_fits(long long deadline)
 {
-    const double c = g_ip_tick_probe ? g_ip_cost_min : g_ip_cost_ms;
+    double c = g_ip_tick_probe ? g_ip_cost_min : g_ip_cost_ms;
+    /* MENUPACE1 proof aid: SM64DS_SLOT_COST=<ms> makes the rule read that cost, to study the pacer's structure on a loaded box */
+    static double ovc = -2.0;
+    if (ovc < -1.0) { const char *e = getenv("SM64DS_SLOT_COST"); ovc = e ? atof(e) : -1.0; }
+    if (ovc > 0.0) c = ovc;
     return ip_left_ms(deadline) >= c * 1.2 + 0.5;
 }
 /* The fallback's measuring retry: its first blend is drawn whatever the cost
