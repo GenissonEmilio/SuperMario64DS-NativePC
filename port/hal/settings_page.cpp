@@ -10,6 +10,9 @@
 #include <emmintrin.h>
 #endif
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 #include <deque>
 #include <math.h>
 #include <stdio.h>
@@ -1015,13 +1018,78 @@ void draw_slider(const Surf &s, int x, int cy, int rail_w, int v, int vmin, int 
 }  // namespace
 
 static int g_warming;
+static int g_ws_r0, g_ws_r1;       /* PAUSEFIX1: while warming, the draw does only rows [r0, r1) of the tab (the chrome is always drawn) */
 
 /* PAUSEFIX1: the page's caches built in small steps, one per call, never more than about 2 ms of work a call (the old one-shot warm-up was one
    55 ms frame in every level). Stages: layout, the parchment tile, the sheet in row slices, the title and back pictures, then one throwaway
    draw per tab (glyphs, key caps, boxes). The caller (hooks.cpp) claims the shared warm-up slot first. Returns 1 when everything is cached
    for this picture size (a resize starts again). */
 static std::vector<uint32_t> g_ws_tile, g_ws_buf;
-static int g_ws_stage, g_ws_w, g_ws_h, g_ws_y, g_ws_tilesz, g_ws_u100, g_ws_tile_ok;
+static int g_ws_stage, g_ws_w, g_ws_h, g_ws_y, g_ws_tilesz, g_ws_u100, g_ws_tile_ok, g_ws_tab, g_ws_row;
+
+/* The page's pictures are decoded on a worker thread (a 7 ms decode on the game thread is a visible tick). One request at a time; the game
+   thread installs the finished picture into g_im (a vector move). Same decode and premultiply as load_im. */
+namespace {
+struct WDec {
+    std::mutex m;
+    std::condition_variable cv;
+    int req = -1, done = -1;
+    Img img;
+    bool started = false;
+};
+WDec *g_wd;
+
+void wdec_main(WDec *W)
+{
+    const unsigned char *const emb[IM_COUNT] = { g_setart_png_parchment, g_setart_png_title, g_setart_png_back, g_setart_png_key, g_setart_png_plank,
+                                                 g_setart_png_dd_top, g_setart_png_dd_mid, g_setart_png_dd_bot, g_setart_png_dd_arrow };
+    const unsigned len[IM_COUNT] = { g_setart_png_parchment_len, g_setart_png_title_len, g_setart_png_back_len, g_setart_png_key_len,
+                                     g_setart_png_plank_len, g_setart_png_dd_top_len, g_setart_png_dd_mid_len, g_setart_png_dd_bot_len, g_setart_png_dd_arrow_len };
+    for (;;) {
+        int id;
+        {
+            std::unique_lock<std::mutex> lk(W->m);
+            W->cv.wait(lk, [W] { return W->req >= 0; });
+            id = W->req;
+        }
+        Img t;
+        int w = 0, h = 0, comp = 0;
+        unsigned char *p = stbi_load_from_memory(emb[id], (int)len[id], &w, &h, &comp, 4);
+        if (p) {
+            t.w = w; t.h = h; t.px.resize((size_t)w * h);
+            for (int i = 0; i < w * h; ++i) {
+                const unsigned r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], a = p[i * 4 + 3];
+                t.px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
+            }
+            stbi_image_free(p);
+        }
+        std::lock_guard<std::mutex> lk(W->m);
+        W->img = std::move(t);
+        W->req = -1;
+        W->done = id;
+    }
+}
+
+/* 1 when picture id is loaded (decoded here or by the worker); otherwise asks the worker and answers 0 */
+int wdec_ready(int id)
+{
+    if (g_im[id].tried) return 1;
+    if (!g_wd) g_wd = new WDec();
+    WDec *W = g_wd;
+    std::lock_guard<std::mutex> lk(W->m);
+    if (W->done == id) {
+        g_im[id].tried = 1; g_im[id].w = W->img.w; g_im[id].h = W->img.h; g_im[id].px = std::move(W->img.px);
+        W->done = -1;
+        return 1;
+    }
+    if (W->req < 0 && W->done < 0) {
+        if (!W->started) { W->started = true; std::thread(wdec_main, W).detach(); }
+        W->req = id;
+        W->cv.notify_one();
+    }
+    return 0;
+}
+}  // namespace
 
 static double ws_ms(const std::chrono::steady_clock::time_point &t0)
 {
@@ -1033,12 +1101,12 @@ extern "C" int settings_page_warm_step(int w, int h)
     if (w < 64 || h < 64 || w > 8192 || h > 8192) return 1;
     if (S.open) return 0;
     if (w != g_ws_w || h != g_ws_h) {
-        g_ws_w = w; g_ws_h = h; g_ws_stage = 0; g_ws_y = 0;
+        g_ws_w = w; g_ws_h = h; g_ws_stage = 0; g_ws_y = 0; g_ws_tab = 0; g_ws_row = -1;
         std::vector<uint32_t>().swap(g_ws_tile); std::vector<uint32_t>().swap(g_ws_buf);
     }
     /* stage order: layout; each picture decoded alone; the parchment tile scaled; the sheet in row slices (built in a hidden cache entry, kind 102,
        renamed when whole); title and back scaled; one throwaway draw per tab */
-    enum { ST_LAYOUT = 0, ST_DEC, ST_TILE = ST_DEC + IM_COUNT, ST_SHEET, ST_TITLE, ST_BACK, ST_TAB0, ST_DONE = ST_TAB0 + T_COUNT };
+    enum { ST_LAYOUT = 0, ST_DEC, ST_TILE = ST_DEC + IM_COUNT, ST_SHEET, ST_TITLE, ST_BACK, ST_TAB, ST_DONE };
     if (g_ws_stage >= ST_DONE) return 1;
     const auto t0 = std::chrono::steady_clock::now();
     while (g_ws_stage < ST_DONE) {
@@ -1050,7 +1118,7 @@ extern "C" int settings_page_warm_step(int w, int h)
             g_ws_tilesz = (int)(380 * (g_ws_u100 / 100.0) + 0.5);
             ++g_ws_stage;
         } else if (st < ST_TILE) {
-            load_im(st - ST_DEC);
+            if (!wdec_ready(st - ST_DEC)) return 0;       /* the worker is decoding it: come back next call */
             ++g_ws_stage;
         } else if (st == ST_TILE) {
             const Piece *tp = find_piece(2, L.sw, L.sh, g_ws_u100) ? 0 : scaled_im(IM_PARCH, g_ws_tilesz, g_ws_tilesz);
@@ -1104,16 +1172,22 @@ extern "C" int settings_page_warm_step(int w, int h)
             scaled_im(IM_BACK, L.back[2], L.back[3]);
             ++g_ws_stage;
         } else {
-            /* one throwaway draw of a tab: its glyph, key cap, box and plank pieces. The tab and cursor are put back after. */
+            /* a throwaway draw of one tab, in pieces: the chrome (tabs, title, footer), then two rows at a time: their glyph, key cap, box and
+               plank pieces. The tab and cursor are put back after. */
             const int tab0 = S.tab;
             if (g_ws_buf.empty()) g_ws_buf.assign((size_t)w * h, 0u);
+            int nrows = 0;
+            rows_of(g_ws_tab, &nrows);
             g_warming = 1;
-            S.open = 1; S.tab = st - ST_TAB0;
+            S.open = 1; S.tab = g_ws_tab;
+            if (g_ws_row < 0) { g_ws_r0 = g_ws_r1 = 0; }
+            else { g_ws_r0 = g_ws_row; g_ws_r1 = g_ws_row + 2; }
             settings_page_draw(g_ws_buf.data(), w, w, h);
             S.open = 0; S.tab = tab0;
             g_warming = 0;
-            ++g_ws_stage;
-            if (g_ws_stage >= ST_DONE) std::vector<uint32_t>().swap(g_ws_buf);
+            g_ws_row = g_ws_row < 0 ? 0 : g_ws_row + 2;
+            if (g_ws_row >= nrows) { g_ws_row = -1; ++g_ws_tab; }
+            if (g_ws_tab >= T_COUNT) { g_ws_stage = ST_DONE; std::vector<uint32_t>().swap(g_ws_buf); }
         }
 #ifndef PORT_ROM_CLEAN
         static int trace = -1;
@@ -1160,6 +1234,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
     }
     const int *clip = L.body;
     for (int i = 0; i < n && i < 24; ++i) {
+        if (g_warming && (i < g_ws_r0 || i >= g_ws_r1)) continue;
         const Row &R = rows[i];
         const int y = L.r[i].y, rh = L.r[i].h;
         if (y + rh < L.body[1] || y > L.body[3]) continue;
