@@ -421,6 +421,9 @@ static bool winapi_load(void)
 #include "hal/comms_seam.h"       /* run mg15 lane MP1: the radio seam */
 #include "hal/voice_chat.h"      /* lane VOICE: proximity voice chat */
 #include "hal/comms_loopback.h"   /* run mg16 lane MP2: the loopback carrier */
+#include "hal/comms_hub.h"        /* run mp1 lane HUB1: the adventure hub */
+#include "hal/vs_arena.h"         /* run mp1 lane ARENACORE1: arena-mode VS */
+#include "hal/adv_chat.h"         /* run mp1 lane CHATUI1: in-game text chat */
 /* run mg16 lane MP3: hal/comms_lockstep.h is RETIRED. Its transcription of
    src/func_0203ea5c.c existed only because that TU was in no slice; the TU is
    linked now and drives itself. Its lessons live in comms_seam.h's frozen
@@ -601,6 +604,11 @@ void hal_render_player_world(void *p);
 /* ADVENTURE GHOSTS: the per-frame no-collision hold over remote slots
    (hal/player_bridges.cpp). No-op unless adventure-ghost mode is on. */
 void port_adventure_ghost_hold(void);
+/* run mp1 lane OPENCOUNT1: the hub's new-file opening on the one-player seat
+   (hal/comms_sync.cpp); begin answers 1 when it took the hold. */
+int port_adventure_hub_opening_begin(void);
+int port_adventure_hub_opening_held(void);
+int port_intro_suppressed(void);   /* hal/level_boot.cpp */
 /* the headless M1 proof; no-op unless SM64DS_ADVENTURE_PROBE is set. */
 void port_adventure_probe(int frame);
 /* ADVENTURE GHOSTS: the per-render-frame pure-follower step (hal/comms_sync.cpp).
@@ -616,6 +624,9 @@ void port_adventure_presence_probe(int frame);
 /* the party render-boundary proof; no-op unless SM64DS_PARTY_PROBE (or the
    SM64DS_PARTY_DIAG stride) is set. */
 void port_party_probe(int frame);
+/* run mp1 wave 56 lane WIRE1: hub presence ('SYNL') and the party / coop kind
+   pump (hal/hub_presence.cpp). No-op unless a hub is live outside an arena. */
+void port_hub_presence_frame(void);
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
 extern char data_0209f4a0[];
@@ -768,6 +779,7 @@ int func_ov002_020d82f0(void *c);   /* its second gate, logged on a refusal */
    anything reads them. Loud FATAL if the file is missing/corrupt. Runs ahead of
    port_ov002_patch and every sinit -- see hal/romdata_loader.cpp. */
 extern "C" void port_romdata_load(void);
+extern "C" void port_nitrofs_rekey_after_romdata(void);
 #endif
 void port_ov002_patch(void);
 /* the pointers that leave their own mount, ovdata.py --cross. Order does not
@@ -1188,6 +1200,57 @@ static int ss_course_world(void)
    and the title has handed over to the level boot (which is where the one-screen
    layout is chosen, host_layout_follow_scene). Process-local, never written. */
 static int g_ss_load_after_entry;
+/* ---- SAVE STATES ARE OFF ONLINE (run mp1, lane SSGATE1) -------------------
+
+   A save state is ONE console's world. Loaded on one console of a VS lockstep
+   match it rewinds that console alone, and the session desyncs on the spot:
+   the other consoles did not load anything. In an adventure hub it teleports
+   that player under everyone's ghosts and puts back a world the room has
+   moved past. A save is refused too, so nothing taken online can be loaded
+   later (the disk mirror included).
+
+   ANY ONE OF THREE TESTS MAKES THIS CONSOLE ONLINE:
+   - the VS carrier is installed: comms_loopback_stats().installed, the same
+     test that keeps the F5 menu shut in a VS session;
+   - the adventure hub is installed: comms_hub_state() != kHubOff, whether it
+     is pairing, live, or failed after its install (the hub owns the session
+     even when it cannot reach anyone);
+   - the process was LAUNCHED for a session (a role, a relay, a room code or a
+     hub mesh port in its environment) but no carrier is installed, or its
+     install turned the env away: a lobby-launched game before its session is
+     up is still somebody's online game.
+   A solo run has none of the three, so every solo path is unchanged; the
+   test is only read when a save or a load is asked for. */
+static const char *ss_online_why(void)
+{
+    if (port::comms_loopback_stats().installed)
+        return "a VS session is installed";
+    if (port::comms_hub_state() != port::kHubOff)
+        return "the adventure hub is installed";
+    static const char *const ONLINE_ENV[] = {
+        "SM64DS_COMMS_ROLE", "SM64DS_COMMS_RELAY",
+        "SM64DS_COMMS_CODE", "SM64DS_HUB_PORT",
+    };
+    for (unsigned i = 0; i < sizeof ONLINE_ENV / sizeof *ONLINE_ENV; ++i) {
+        const char *v = getenv(ONLINE_ENV[i]);
+        if (v && *v)
+            return "this game was launched for an online session";
+    }
+    return 0;
+}
+
+/* 1 when an online session refuses the save or load `how` names: one log
+   line and the toast, nothing written, nothing restored. */
+static int ss_online_refused(const char *how)
+{
+    const char *why = ss_online_why();
+    if (!why)
+        return 0;
+    fprintf(stderr, "[savestate] %s refused: save states are off online "
+                    "(%s). Nothing was saved or loaded.\n", how, why);
+    ss_note("save states are off online");
+    return 1;
+}
 
 /* The one save path: the F8 latch, the debug menu's save row and the scripted
    SM64DS_SS_SAVE all come through here, so a refusal cannot be true on one of
@@ -1199,6 +1262,8 @@ static int g_ss_load_after_entry;
    no file behind. */
 static int ss_save_state(const char *how, int to_disk)
 {
+    if (ss_online_refused(how))
+        return 0;
     if (ss_cutscene_running()) {
         fprintf(stderr, "[savestate] %s refused: a cutscene script is running "
                         "(%p). Nothing was written to the slot or to disk -- a "
@@ -1329,7 +1394,7 @@ static void ss_file_put_back(const SsFileKeep *k)
                       : "kept (the snapshot is of another file)",
             stars_back);
 }
-static int ss_load_state(void)
+static int ss_load_state(const char *how)
 {
     if (!ss_course_world()) {
         if (port_title_entry_armed() && !port_title_entry_taken() &&
@@ -1349,6 +1414,9 @@ static int ss_load_state(void)
         return 0;
     }
     static SsFileKeep keep;
+    /* before the slot and before the disk: online, neither is read */
+    if (ss_online_refused(how))
+        return 0;
     ss_file_keep(&keep);
     if (lk6_savestate_has()) {
         if (lk6_savestate_load()) {
@@ -2167,6 +2235,7 @@ static void r3e_census(const char *when)
    with the install must read vbl_dispatch=N framepump=N. That pair is the
    whole of both rungs' evidence and it cannot be a build difference. */
 extern "C" void port_install_host_frame_pump(int (*pump)(unsigned));
+extern "C" void port_install_frame_pump_paces(int (*paces)(void));
 static int r3d_wait_probe_left;    /* frames of phase 7 still owed to the wait */
 static int r3d_wait_probe_taken;   /* frames of phase 7 the wait actually took */
 namespace port { void thread_sched_report(const char *tag); }
@@ -3191,6 +3260,13 @@ static void fpslive_tick_tools(void)
         ++si;
     }
 }
+/* THE LAGGARD RULE'S CATCH-UP (multiplayer 1.0, NETARCH1 design 4.2 rule c;
+   hal/comms_loopback.cpp). A VS child that hitched holds complete rounds it
+   has not played yet; while it holds more than two, frame_pace below skips
+   its sleep so the console runs at its unpaced speed until it is back in step
+   with the room, then paces again. Every other console (the host, solo,
+   adventure) is answered 0 and paces exactly as before. */
+extern "C" int port_comms_rounds_ahead(void);
 
 static void frame_pace(void)
 {
@@ -3253,7 +3329,6 @@ static void frame_pace(void)
     } else {
         next.QuadPart += step;
         if (next.QuadPart <= now.QuadPart) {
-
             /* THE OVERRUN, AND WHICH TURN SEES IT (run hunt5, lane PACE1).
                The tick's work ran before its first turn, so a tick that takes
                longer than one VBLANK arrives here on turn 1 with `next` behind.
@@ -3278,6 +3353,9 @@ static void frame_pace(void)
                caller. SM64DS_PACE_FIX=0 keeps the per-turn reset. */
             if (last || !fix)
                 next.QuadPart = now.QuadPart;   /* overran: reset, do not sprint */
+        } else if (port_comms_rounds_ahead() > 2) {
+            /* behind the VS room: this frame is not slept (see above) */
+            next.QuadPart = now.QuadPart;
         } else {
             const double ms =
                 (next.QuadPart - now.QuadPart) * 1000.0 / (double)qpf.QuadPart;
@@ -3625,6 +3703,16 @@ static void ovl_gpu_sample(void)
    player actually had whether or not they ever pressed F3. */
 static void perf_log_frame(int scene);
 
+/* Whether the call below sleeps the halt out to the next VBlank deadline.
+   hal/boot2_thread.cpp asks it (port_halt_paced_by_frame_pump) on behalf of
+   the radio pump that runs earlier in the same halt, so a connected VS session
+   spends each VBlank once, here, instead of once in each pump. */
+static int frame_pump_paces(void)
+{
+    return (!rb_replaying() || rb_presented_frame()) &&
+           (!g_selftest_frames || port_pace_selftest());
+}
+
 extern "C" int port_host_frame_pump(unsigned spin)
 {
     (void)spin;
@@ -3638,8 +3726,7 @@ extern "C" int port_host_frame_pump(unsigned spin)
        what ends the frame, one whole game frame per call while this loop is. */
     r3e_heap_watch("inside the frame pump (an idle turn)");
     g_pace_div_override = port_rom_loop_enabled() ? 1 : 0;
-    if ((!rb_replaying() || rb_presented_frame()) &&
-        (!g_selftest_frames || port_pace_selftest())) frame_pace();
+    if (frame_pump_paces()) frame_pace();
     g_pace_div_override = 0;
     return 1;
 }
@@ -3793,6 +3880,217 @@ static int ovl_text(const OvlSurface &fb, int x0, int y0, const char *s,
    OvlSurface and sizes itself off OVL_SCALE, both of which are above; its own
    banner carries the font decode, the projection and the slot rules. */
 #include "nametag.h"
+
+/* ---- THE CHAT OVERLAY (run mp1, lane CHATUI1) ------------------------------
+   hal/adv_chat.cpp owns the messages and the rules; this is the pixels. The
+   last lines sit bottom-left above the toast, each one "NAME: text" with the
+   name in the sender's colour, and the open box ("SAY: ...") under them.
+
+   THE GLYPHS ARE THE NAME TAGS' GLYPHS: the ROM's message font, read out of
+   its own file through tests/nametag.h's nt_font_sheet and decoded with that
+   file's decode (Message::AddChar is the authority, see that banner). This
+   atlas is the chat's own copy, built through chat_font_code, so the one table
+   that decides which characters the cleaner lets through is also the one that
+   decides which glyphs get decoded; the tags' atlas is untouched. The ping
+   readout (hal/net_hud.h) draws through it too. It is NOT read from VRAM: on
+   the launcher's path the first draw is over the title, where VRAM holds the
+   title's graphics (run mp1 FONTFIELD1, nametag.h says more). When the file
+   cannot be read the overlay's own 5x7 font draws the same text instead. */
+static NtGlyph g_chat_glyph[NT_LAST - NT_FIRST + 1];
+static int g_chat_font_ready;
+
+static int chat_font_build(void)
+{
+    if (g_chat_font_ready) return 1;
+    const unsigned char *sheet = nt_font_sheet();   /* checked there: A has ink */
+    if (!sheet) return 0;
+    const uintptr_t base = (uintptr_t)sheet;
+    for (int a = NT_FIRST; a <= NT_LAST; ++a) {
+        NtGlyph &gl = g_chat_glyph[a - NT_FIRST];
+        gl.have = 0;
+        gl.adv = 6;
+        const int c = port::chat_font_code((unsigned char)a);
+        if (c < 0) continue;
+        const unsigned off = (unsigned)(((c & 0x1f) + ((c & 0xe0) << 1)) << 5);
+        const unsigned char *top = (const unsigned char *)(base + off);
+        const unsigned char *bot = top + 0x400;
+        for (int r = 0; r < NT_GH; ++r) {
+            const unsigned char *t = (r < 8 ? top : bot) + (r & 7) * 4;
+            for (int x = 0; x < NT_GW; ++x) {
+                const unsigned char b = t[x >> 1];
+                gl.ink[r][x] = (unsigned char)((x & 1) ? (b >> 4) : (b & 0x0f));
+            }
+        }
+        const unsigned w = data_0208f074[c];
+        gl.adv = (unsigned char)((w >= 1 && w <= 16) ? w : 6);
+        gl.have = 1;
+    }
+    g_chat_font_ready = 1;
+    return 1;
+}
+
+/* Width of one character at `scale`, in whichever font is drawing. */
+static int chat_adv(unsigned char ch, int rom, int scale)
+{
+    if (!rom) return OVL_ADVANCE * OVL_SCALE;
+    if (ch < NT_FIRST || ch > NT_LAST) return 6 * scale;
+    return (int)g_chat_glyph[ch - NT_FIRST].adv * scale;
+}
+
+/* n characters of s at (x0, y0); returns the width. pass 0 outline, 1 ink
+   (ROM font); the 5x7 font has no outline and paints on pass 1 only. */
+static int chat_text(const OvlSurface &fb, int x0, int y0, const char *s,
+                     int n, int rom, int scale, uint32_t rgb, int pass,
+                     int alpha)
+{
+    ntr::gx_card_settle();     /* see ovl_shade */
+    int x = x0;
+    for (int i = 0; i < n && s[i]; ++i) {
+        const unsigned char a = (unsigned char)s[i];
+        const int adv = chat_adv(a, rom, scale);
+        if (!rom) {
+            if (pass == 1) {
+                char one[2] = {(char)a, 0};
+                ovl_text(fb, x, y0 + (NT_GH * scale - OVL_GLYPH_H * OVL_SCALE) / 2,
+                         one, rgb);
+            }
+            x += adv;
+            continue;
+        }
+        if (a < NT_FIRST || a > NT_LAST || !g_chat_glyph[a - NT_FIRST].have) {
+            x += adv;
+            continue;
+        }
+        const NtGlyph &gl = g_chat_glyph[a - NT_FIRST];
+        for (int r = 0; r < NT_GH; ++r)
+            for (int c = 0; c < NT_GW; ++c) {
+                if (!gl.ink[r][c]) continue;
+                for (int sy = 0; sy < scale; ++sy)
+                    for (int sx = 0; sx < scale; ++sx)
+                        for (int oy = -1; oy <= 1; ++oy)
+                            for (int ox = -1; ox <= 1; ++ox) {
+                                if (pass == 1 && (ox || oy)) continue;
+                                if (pass == 0 && !ox && !oy) continue;
+                                const int qx = x + c * scale + sx + ox * scale;
+                                const int qy = y0 + r * scale + sy + oy * scale;
+                                if (qx < 0 || qx >= ntr::active_w || qy < 0 ||
+                                    qy >= ntr::active_h)
+                                    continue;
+                                const size_t idx =
+                                    (size_t)qy * (size_t)fb.stride + qx;
+                                fb.px[idx] = nt_blend(fb.px[idx],
+                                    pass ? rgb : 0xFF000000u, alpha);
+                            }
+            }
+        x += adv;
+    }
+    return x - x0;
+}
+
+/* One message, word-wrapped to `width`, bottom row at y_bottom; returns the
+   number of rows it used (drawing upward), at most `max_rows`. */
+struct ChatRow { int start, len, indent; };
+static int chat_layout(const char *name, const char *text, int rom, int scale,
+                       int width, ChatRow *rows, int max_rows)
+{
+    /* the name and its ": " on row 0; text continues after it and wraps at
+       spaces where it can, mid-word where a word is wider than a row */
+    int name_w = 0;
+    for (const char *p = name; *p; ++p) name_w += chat_adv((unsigned char)*p, rom, scale);
+    if (*name) name_w += chat_adv(':', rom, scale) + chat_adv(' ', rom, scale);
+    int n = 0, i = 0;
+    const int len = (int)strlen(text);
+    while (i < len && n < max_rows) {
+        const int indent = n == 0 ? name_w : 0;
+        int w = indent, j = i, last_space = -1;
+        while (j < len) {
+            const int a = chat_adv((unsigned char)text[j], rom, scale);
+            if (w + a > width && j > i) break;
+            if (text[j] == ' ') last_space = j;
+            w += a;
+            ++j;
+        }
+        if (j < len && last_space > i) j = last_space + 1;
+        rows[n].start = i;
+        rows[n].len = j - i;
+        rows[n].indent = indent;
+        ++n;
+        i = j;
+    }
+    if (n == 0 && max_rows > 0) { rows[0].start = 0; rows[0].len = 0; rows[0].indent = name_w; n = 1; }
+    return n;
+}
+
+static void chat_draw(const OvlSurface &fb)
+{
+    port::ChatView v;
+    port::chat_view(&v);
+    if (v.n == 0 && !v.open) return;
+    const int rom = chat_font_build();
+    const int scale = OVL_SCALE;
+    const int row_h = rom ? (NT_GH + 2) * scale : OVL_LINE;
+    const int left = 6 * scale;
+    const int width = ntr::active_w - 2 * left;
+    /* clear of the bottom corners: the save-state toast's row and the HUD's
+       corner icon on the left, the inset touch panel on the right (the box
+       never reaches it: the counter follows the text instead of the edge) */
+    int y = ntr::active_h - 40 * scale - row_h;
+
+    if (v.open) {
+        char cnt[16];
+        snprintf(cnt, sizeof cnt, "%d", port::kChatTextMax - v.box_bytes);
+        int cw = 0;
+        for (const char *p = cnt; *p; ++p) cw += chat_adv((unsigned char)*p, rom, scale);
+        char line[160];
+        snprintf(line, sizeof line, "SAY: %s%s", v.box, v.caret ? "_" : " ");
+        /* the tail of a long line, so the caret stays on screen; the room
+           left over the text is shown after it, dimmed */
+        const char *s = line;
+        int w = 0;
+        for (const char *p = s; *p; ++p) w += chat_adv((unsigned char)*p, rom, scale);
+        const int room = width - cw - 8 * scale;
+        while (*s && w > room) { w -= chat_adv((unsigned char)*s, rom, scale); ++s; }
+        ovl_shade(fb, left - 2 * scale, y - scale, w + cw + 12 * scale, row_h);
+        if (rom) chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 0, 255);
+        chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 1, 255);
+        const int cx = left + w + 8 * scale;
+        if (rom) chat_text(fb, cx, y, cnt, (int)strlen(cnt), rom, scale, 0xFFA0A0A0u, 0, 255);
+        chat_text(fb, cx, y, cnt, (int)strlen(cnt), rom, scale, 0xFFA0A0A0u, 1, 255);
+        y -= row_h + 2 * scale;
+    }
+
+    /* newest at the bottom: walk the lines newest first, drawing upward */
+    for (int k = v.n - 1; k >= 0; --k) {
+        const port::ChatViewLine &l = v.line[k];
+        ChatRow rows[3];
+        const int nr = chat_layout(l.name, l.text, rom, scale, width, rows, 3);
+        const int top = y - (nr - 1) * row_h;
+        if (top < 0) break;
+        for (int r = 0; r < nr; ++r) {
+            const int ry = top + r * row_h;
+            int rw = rows[r].indent;
+            for (int q = 0; q < rows[r].len; ++q)
+                rw += chat_adv((unsigned char)l.text[rows[r].start + q], rom, scale);
+            if (l.alpha > 96) ovl_shade(fb, left - 2 * scale, ry - scale, rw + 4 * scale, row_h);
+            for (int pass = rom ? 0 : 1; pass <= 1; ++pass) {
+                if (r == 0 && l.name[0]) {
+                    const int nw = chat_text(fb, left, ry, l.name, (int)strlen(l.name),
+                                             rom, scale, l.rgb, pass, l.alpha);
+                    chat_text(fb, left + nw, ry, ": ", 2, rom, scale, l.rgb, pass,
+                              l.alpha);
+                }
+                chat_text(fb, left + rows[r].indent, ry, l.text + rows[r].start,
+                          rows[r].len, rom, scale,
+                          l.name[0] ? 0xFFFFFFFFu : 0xFFC0C0C0u, pass, l.alpha);
+            }
+        }
+        y = top - row_h - scale;
+    }
+}
+
+/* THE ONLINE PING READOUT (run mp1, lane PINGHUD1): its painter draws with the
+   chat's glyphs above, so it comes in here; drawn next to the chat below. */
+#include "hal/net_hud.h"
 
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
    1-second exponential average, so the numbers are readable instead of
@@ -4600,20 +4898,174 @@ static int host_key_script(int vk)
 
 extern "C" int port_host_key_script(int vk) { return host_key_script(vk); }   /* ASSET6: the menu seam's Backspace */
 
+/* SM64DS_CHAT_KEY_TEST (run mp1, lane CHATUI1): A PHYSICAL KEY, SCRIPTED.
+   TEST ONLY, and compiled out of a PORT_ROM_CLEAN (shipping) build.
+
+   SM64DS_HOST_KEY cannot prove what the chat box does to the keys around it:
+   its keys enter key_live ABOVE the stale latch, so a key the box has just
+   let go of reads as pressed whatever the latch says, and it posts no window
+   message, so the box never sees it at all. A player's key does both: it is
+   down to GetAsyncKeyState from the moment it is pressed, and its WM_KEYDOWN
+   reaches the window procedure at the next pump. This knob is that key.
+   Items, comma separated, any of them repeated (16 at most), frames in
+   g_host_key_frame (the level loop's frame):
+     <vk-hex>@<f0>-<f1>  the key is physically down f0..f1: key_live reads it
+                         in place of GetAsyncKeyState, BELOW the stale latch,
+                         the selftest gate and the focus gate (the rebind,
+                         pad-learn and replay gates still apply), and at f0 its
+                         WM_KEYDOWN is posted to the window, so the frame
+                         loop's own pump delivers it (and TranslateMessage its
+                         WM_CHAR) on the next frame, where a real one arrives
+     box@<f>             opens the chat box at f with "hi" typed in it
+     rebind@<f>          arms the rebind capture at f, the two lines the
+                         menu's run row runs
+   Every scripted key is read once a frame at chat_pad_gate (after the pump,
+   ahead of the menu and the button reads) and each change is logged:
+     [chat] keytest f<frame> vk <vk> held=<0|1> game=<0|1> box=<0|1>
+   game=1 is the game seeing the key down. Inert unless set. */
+#ifndef PORT_ROM_CLEAN
+struct ChatKeyHold { int vk, f0, f1; };   /* vk -1 is box@, -2 rebind@ */
+static ChatKeyHold g_ckt_hold[16];
+static int g_ckt_holds;
+static int chat_key_test_on(void)
+{
+    static int on = -1;
+    if (on >= 0) return on;
+    on = 0;
+    const char *env = getenv("SM64DS_CHAT_KEY_TEST");
+    if (!env || !*env) return 0;
+    on = 1;
+    const char *p = env;
+    while (*p) {
+        char *q;
+        const int act = !strncmp(p, "box@", 4) ? -1
+                      : !strncmp(p, "rebind@", 7) ? -2 : 0;
+        if (act) {
+            const int at = (int)strtol(p + (act == -1 ? 4 : 7), &q, 10);
+            p = q;
+            if (at >= 0 && g_ckt_holds < 16) {
+                g_ckt_hold[g_ckt_holds].vk = act;
+                g_ckt_hold[g_ckt_holds].f0 = at;
+                g_ckt_hold[g_ckt_holds].f1 = at;
+                ++g_ckt_holds;
+            }
+        } else {
+            const int vk = (int)strtoul(p, &q, 16);
+            p = q;
+            int f0 = -1, f1 = -1;
+            if (*p == '@') { f0 = f1 = (int)strtol(p + 1, &q, 10); p = q; }
+            if (*p == '-') { f1 = (int)strtol(p + 1, &q, 10); p = q; }
+            if (vk > 0 && vk < 256 && f0 >= 0 && g_ckt_holds < 16) {
+                g_ckt_hold[g_ckt_holds].vk = vk;
+                g_ckt_hold[g_ckt_holds].f0 = f0;
+                g_ckt_hold[g_ckt_holds].f1 = f1;
+                ++g_ckt_holds;
+            }
+        }
+        while (*p && *p != ',') ++p;
+        if (*p == ',') ++p;
+    }
+    fprintf(stderr, "[chat] keytest SM64DS_CHAT_KEY_TEST=%s (%d items)\n", env,
+            g_ckt_holds);
+    return 1;
+}
+/* 1 when vk is a scripted key; *down is then its physical state this frame */
+static int chat_key_test_down(int vk, int *down)
+{
+    if (!chat_key_test_on()) return 0;
+    int mine = 0;
+    for (int i = 0; i < g_ckt_holds; ++i) {
+        if (g_ckt_hold[i].vk != vk) continue;
+        mine = 1;
+        if (g_host_key_frame >= g_ckt_hold[i].f0 &&
+            g_host_key_frame <= g_ckt_hold[i].f1)
+            *down = 1;
+    }
+    return mine;
+}
+#else
+static int chat_key_test_down(int, int *) { return 0; }
+#endif
+
 static int key_live(int vk)
 {
+    /* THE CHAT BOX (run mp1, lane CHATUI1). While a player is typing, every
+       key reads released to the game, the scripted ones included: the letters
+       are going into the box, not into Mario. LOCAL ONLY -- in VS this
+       console's pad record still goes out every round, with nothing held. */
+    if (port::chat_typing()) return 0;
     if (host_key_script(vk)) return ((unsigned)vk < 256 && key_stale[vk]) ? 0 : 1;
-    if (g_selftest) return 0;
+    int down = 0;
+    const int scripted = chat_key_test_down(vk, &down);   /* TEST ONLY */
+    if (g_selftest && !scripted) return 0;
     if (g_rebind_capture) return 0;
     if (g_padlearn) return 0;           /* a pad is being taught */
     if (rb_replaying()) return 0;       /* a rewound window is being re-run */
-    if (!hal_window_focused()) return 0;
-    const int down = W.GetAsyncKeyState_(vk) < 0;
+    if (!scripted) {
+        if (!hal_window_focused()) return 0;
+        down = W.GetAsyncKeyState_(vk) < 0;
+    }
     if ((unsigned)vk < 256) {
         if (!down) { key_stale[vk] = 0; return 0; }
         if (key_stale[vk]) return 0;
     }
     return down;
+}
+
+/* ---- CHAT, ONCE A PRESENTED FRAME (run mp1, lane CHATUI1) ------------------
+   Both frame loops call this where they paint their host overlays. It pumps
+   the chat (hal/adv_chat.cpp: sends, receives, the scripted test knobs) and
+   draws it. When the box closes, every key goes STALE the way it does on the
+   focus-regained edge, so the Enter that sent the line, the Escape that
+   cancelled it or a letter still held reads released to the game until it is
+   let go -- none of them is a fresh press for Mario or the menu. A close by
+   Enter or Escape marks them in the window procedure, before this frame's
+   readers; the mark here covers a close that no key made. Solo, the
+   tick returns on its first line and there is nothing to draw. `frame` is the
+   level loop's frame number (the one the [vs] probe prints), -1 on the scene
+   path; it only labels the two edge lines. */
+static void chat_host_frame(const OvlSurface &surf, int frame)
+{
+    static int was_typing;
+    port::chat_tick();
+    const int typing = port::chat_typing();
+    if (typing != was_typing) {
+        if (!typing) memset(key_stale, 1, sizeof key_stale);
+        fprintf(stderr, "[chat] box %s at f%d%s\n", typing ? "open" : "closed",
+                frame, typing ? " (game input released locally)" : "");
+    }
+    was_typing = typing;
+    /* TEST ONLY: under SM64DS_CHAT_TYPE_TEST, the local body's position every
+       level frame, so a rung can show the walk stopping while the box is open
+       and resuming after (the ladder's proof of the local input gate). */
+    {
+        static int trace = -1;
+        if (trace < 0)
+            trace = (getenv("SM64DS_CHAT_TYPE_TEST") ||
+                     getenv("SM64DS_CHAT_KEY_TEST")) ? 1 : 0;
+        const unsigned me = data_0209f250;
+        const char *p = (trace && frame >= 0 && me < 16)
+                ? (const char *)data_0209f394[me] : 0;
+        if (p)
+            fprintf(stderr, "[chat] me f%d pos=(%d,%d,%d) typing=%d\n", frame,
+                    *(const int *)(p + 0x5c), *(const int *)(p + 0x60),
+                    *(const int *)(p + 0x64), typing);
+    }
+    if (!rb_skip_render()) chat_draw(surf);
+    if (!rb_skip_render()) net_hud_draw(surf);
+}
+
+/* The pad's half of the chat box: while the player is typing the controller
+   is neutral too. Called after pad_focus_gate and before pad_test_apply at
+   both read sites, the focus gate's own position, so a scripted pad still
+   drives an automated run. */
+static void chat_key_test_frame(void);   /* SM64DS_CHAT_KEY_TEST, test only */
+static void chat_pad_gate(int *pad_live, XPad *pad)
+{
+    chat_key_test_frame();
+    if (!port::chat_typing()) return;
+    memset(pad, 0, sizeof *pad);
+    *pad_live = 0;
 }
 
 /* The bound key for an action, through key_live and so behind all three
@@ -6122,7 +6574,13 @@ static void menu_draw(const OvlSurface &fb)
     /* the disk suffix tells the player whether a save will outlive the run: it
        does only when the arena is at its fixed base, which is what lets a disk
        state's pointers relocate on the next launch (hal/lk7_persist.cpp). */
-    if (ss_cutscene_running())
+    /* online (the hub leaves this menu openable) both rows say they are off,
+       so the row agrees with what enter will do */
+    const int ss_off_online = ss_online_why() != 0;
+    if (ss_off_online)
+        snprintf(ln[MENU_SAVESTATE], sizeof ln[0],
+                 "save state        F8   (off online)");
+    else if (ss_cutscene_running())
         snprintf(ln[MENU_SAVESTATE], sizeof ln[0],
                  "save state        F8   (not during cutscenes)");
     else
@@ -6134,6 +6592,7 @@ static void menu_draw(const OvlSurface &fb)
        has an empty slot and a full disk -- and the row used to answer that with
        "(no state saved)", which is exactly wrong. */
     snprintf(ln[MENU_LOADSTATE], sizeof ln[0], "load state        F9   %s",
+             ss_off_online ? "(off online)" :
              lk6_savestate_has() ? "(restore slot)"
                                  : (lk7_persist_present() ? "(load from disk)"
                                                           : "(no state saved)"));
@@ -6869,7 +7328,7 @@ static void menu_input(int pad_live, const XPad *pad)
                 /* enter/right only: restore the slot. A no-op with no
                    saved state. */
                 if (edge & (1u << 5)) {
-                    if (ss_load_state()) {
+                    if (ss_load_state("the menu's load row")) {
                         an_pivot_live = 0;
                         ss_reseat_pending = 1;
                     }
@@ -7634,6 +8093,79 @@ static HWND g_present_hwnd;
 static HDC g_present_hdc;
 static const BITMAPINFO *g_present_bi;
 static const ntr::Framebuffer *g_present_fb;
+
+/* SM64DS_CHAT_KEY_TEST's once-a-frame half (the grammar is at key_live), here
+   because the key's messages go to g_present_hwnd, the window both frame
+   loops present into. Called from chat_pad_gate: after the frame's pump,
+   ahead of the menu and the button reads. */
+static void chat_key_test_frame(void)
+{
+#ifndef PORT_ROM_CLEAN
+    if (!chat_key_test_on()) return;
+    const int f = g_host_key_frame;
+    static int last_f = -0x7fffffff;
+    if (f == last_f) return;
+    last_f = f;
+    for (int i = 0; i < g_ckt_holds; ++i) {
+        if (g_ckt_hold[i].vk >= 0 || f != g_ckt_hold[i].f0) continue;
+        if (g_ckt_hold[i].vk == -1) {
+            const bool ok = port::chat_open();
+            if (ok) { port::chat_char_ansi('h'); port::chat_char_ansi('i'); }
+            fprintf(stderr, "[chat] keytest f%d box %s\n", f,
+                    ok ? "opened, typed \"hi\"" : "REFUSED (no chat carrier)");
+        } else {
+            g_rebind_capture = 1;     /* the menu's run row, :6539 */
+            g_rebind_key = 0;
+            fprintf(stderr, "[chat] keytest f%d rebind capture armed\n", f);
+        }
+    }
+    static int run_was = -1;
+    if (g_run_key != run_was) {
+        fprintf(stderr, "[chat] keytest f%d run key %02x\n", f, g_run_key);
+        run_was = g_run_key;
+    }
+    typedef BOOL(WINAPI *PostFn)(HWND, UINT, WPARAM, LPARAM);
+    typedef UINT(WINAPI *MapFn)(UINT, UINT);
+    static PostFn post;
+    static MapFn map;
+    if (!post) {
+        HMODULE u = GetModuleHandleA("user32.dll");
+        post = u ? (PostFn)GetProcAddress(u, "PostMessageA") : 0;
+        map = u ? (MapFn)GetProcAddress(u, "MapVirtualKeyA") : 0;
+    }
+    static unsigned char seen[256];   /* 1 + held + 2 game + 4 box, per vk */
+    for (int i = 0; i < g_ckt_holds; ++i) {
+        const ChatKeyHold &k = g_ckt_hold[i];
+        if (k.vk <= 0) continue;
+        const LPARAM scan = map ? (LPARAM)(map((UINT)k.vk, 0) & 0xff) << 16 : 0;
+        if (f == k.f0 && post && g_present_hwnd) {
+            post(g_present_hwnd, WM_KEYDOWN, (WPARAM)k.vk, 1 | scan);
+            fprintf(stderr, "[chat] keytest f%d vk %02x WM_KEYDOWN posted\n",
+                    f, k.vk);
+        }
+        if (f == k.f1 + 1 && post && g_present_hwnd)
+            post(g_present_hwnd, WM_KEYUP, (WPARAM)k.vk,
+                 1 | scan | (LPARAM)0xC0000000u);
+    }
+    for (int i = 0; i < g_ckt_holds; ++i) {
+        const int vk = g_ckt_hold[i].vk;
+        if (vk <= 0) continue;
+        int first = 1;
+        for (int j = 0; j < i; ++j) first &= g_ckt_hold[j].vk != vk;
+        if (!first) continue;     /* one probe per key */
+        int held = 0;
+        chat_key_test_down(vk, &held);
+        const int game = key_live(vk);
+        const int box = port::chat_typing() ? 1 : 0;
+        const unsigned char now =
+            (unsigned char)(1 + held + 2 * game + 4 * box);
+        if (now != seen[vk])
+            fprintf(stderr, "[chat] keytest f%d vk %02x held=%d game=%d box=%d\n",
+                    f, vk, held, game, box);
+        seen[vk] = now;
+    }
+#endif
+}
 /* THE STACKED SOURCE, when there is one. Set by the frame loop to the tall
    image hal_sub_screen_stacked_image built, with its own BITMAPINFO because
    the DIB height is part of the header rather than an argument. Null in the
@@ -10180,6 +10712,53 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
         if (!(l & (1 << 30))) g_rebind_key = (int)w;
         return 0;
     }
+    /* THE CHAT BOX (run mp1, lane CHATUI1), after the rebind capture and ahead
+       of everything else. While it is open every WM_KEYDOWN and WM_CHAR is the
+       box's: Enter sends, Escape cancels, Backspace deletes, characters type.
+       (Alt combinations are WM_SYSKEYDOWN and pass, so alt+F4 still closes.)
+       Closed, a fresh T opens it -- only while a chat carrier is up, the menu
+       is shut and nobody is choosing a binding, so solo T is an ordinary key.
+       TranslateMessage has already queued the WM_CHAR for that T by the time
+       this runs, so the one character after the opening press is swallowed if
+       it is the t. */
+    {
+        static int chat_swallow_t;
+        if (m == WM_KEYDOWN && port::chat_typing()) {
+            if (!(l & (1 << 30)) || w == VK_BACK) port::chat_key((int)w);
+            /* The Enter that sent or the Escape that cancelled is still
+               physically down, and this is the pump: the menu, Start and the
+               buttons read the keys later in this same frame. Every key goes
+               stale NOW, so none of them reads as a press until it is let go
+               (chat_host_frame's own mark at the end of the frame is too late
+               for this one). */
+            if (!port::chat_typing()) memset(key_stale, 1, sizeof key_stale);
+            return 0;
+        }
+        if (m == WM_CHAR && port::chat_typing()) {
+            if (chat_swallow_t) {
+                chat_swallow_t = 0;
+                if (w == 't' || w == 'T') return 0;
+            }
+            port::chat_char_ansi((unsigned char)w);
+            return 0;
+        }
+        /* T is unbound by default; a player who bound a game action to it
+           keeps that action (no chat box on T for them). The run key is read
+           out of g_run_key, not g_key[]: the menu's rebind row writes only
+           that one while the game runs, so it is asked separately. It is the
+           one key the session can rebind; the rest change on a relaunch. */
+        int t_bound = 0;
+        if (m == WM_KEYDOWN && w == 'T') {
+            bindings_load();
+            for (int i = 0; i < HOST_KEY_COUNT; ++i) t_bound |= g_key[i] == 'T';
+            t_bound |= g_run_key == 'T';
+        }
+        if (m == WM_KEYDOWN && w == 'T' && !(l & (1 << 30)) && !menu_on &&
+            !g_padlearn && !t_bound && port::chat_open()) {
+            chat_swallow_t = 1;
+            return 0;
+        }
+    }
     /* THERE IS NO ESCAPE BRANCH HERE ANY MORE (run mg10, lane ESC), and its
        absence is the feature. It read
            if (m == WM_KEYDOWN && w == VK_ESCAPE) { mo_release(); quit; }
@@ -11536,6 +12115,7 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
 
     int pad_live = port_pad_poll(pad);
     pad_focus_gate(&pad_live, pad);
+    chat_pad_gate(&pad_live, pad);        /* the chat box, run mp1 CHATUI1 */
     pad_test_apply(frame, &pad_live, pad);
     setlive_test_apply(frame, &pad_live, pad);
     controls_refresh();
@@ -11706,6 +12286,9 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
         os.menu_paused = menu_on;
         ovl_draw(surf, os);
     }
+    /* THE CHAT on the scene path too (title, file select, star select), so an
+       adventure room's lines are seen before a course is entered. */
+    chat_host_frame(surf, -1);
     if (menu_on) menu_draw(surf);
     if (!rb_skip_render())
         toast_draw(surf);
@@ -11755,6 +12338,7 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
  * The frame number handed to the scripted pad and the scripted stylus continues
  * the level loop's own count (port_last_frame + f), so a fixture numbers the
  * interlude's frames the way it numbers every other frame of the session. */
+extern "C" void port_adventure_ghost_interlude(void);   /* hal/comms_sync.cpp */
 extern "C" int port_interlude_frame(int f)
 {
     static XPad ipad;
@@ -11771,6 +12355,7 @@ extern "C" int port_interlude_frame(int f)
     g_present_fb = &sfb;
     int quit = scene_host_input_frame(g_present_hwnd, port_last_frame + f,
                                       &ipad, &ifocus);
+    port_adventure_ghost_interlude();
     if (!quit) {
         port_scene_tick(f, !menu_on);
         scene_host_present_frame(g_present_hwnd, stacked, sfb);
@@ -12626,7 +13211,18 @@ int main(void)
        the seam keeps its own solo answers, and every path below is the one that
        ran yesterday. Placed after io_init because the seam's boot indicator
        writes through the 0x027ff000 mapping io_init reserves. */
-    port::comms_loopback_install_from_env();
+    /* run mp1 lane HUB1: an ADVENTURE console with a relay (or a test mesh)
+       opens the hub instead: no DS session, no rounds, nobody waits. It
+       returns false for every VS and solo run, which then takes the loopback
+       install exactly as before. */
+    /* run mp1 lane ARENACORE1: a VS console in ARENA mode (the go plan's
+       netmode, SM64DS_VS_NETMODE=arena) opens the hub in its arena shape and
+       neither of the two below: no DS transport, no rounds. False for every
+       lockstep VS, adventure and solo run, which take the installs below
+       exactly as before. */
+    if (!port::vs_arena_install_from_env() &&
+        !port::comms_hub_install_from_env())
+        port::comms_loopback_install_from_env();
     pacer_begin();
 #ifdef PORT_ROM_CLEAN
     /* ROM-CLEAN: load + verify the ROM tables from romdata.bin FIRST, before
@@ -12636,6 +13232,8 @@ int main(void)
        bytes exactly as they would over baked-in ones. */
     pt_milestone("io + winapi + pacer ready");
     port_romdata_load();
+    /* the "rom" archive was named before its name bytes existed: hal/fs_names.cpp */
+    port_nitrofs_rekey_after_romdata();
     pt_milestone("romdata loaded");
 #endif
     /* SM64DS_DUMP_LEVEL_NAMES=1: print the debug level-select rows exactly as
@@ -12712,6 +13310,7 @@ int main(void)
                         "nothing (rung D1's program, on rung D2's binary)\n");
     } else {
         port_install_host_frame_pump(port_host_frame_pump);
+        port_install_frame_pump_paces(frame_pump_paces);
         fprintf(stderr, "[r3d] the host frame pump is installed; step 1b of "
                         "the ROM's wait (hal/boot2_thread.cpp) runs the frame's "
                         "own duties from now on\n");
@@ -12922,6 +13521,18 @@ int main(void)
             return scene_rc;
         fprintf(stderr, "[title-entry] scene run over; falling through to the "
                         "level boot in this process\n");
+        /* run mp1 lane OPENCOUNT1: THE HUB'S NEW-FILE OPENING BOOTS ON THE
+           ONE-PLAYER SEAT. The file just picked plays the opening when the
+           ROM's intro gate will take it (hal/level_boot.cpp's
+           port_intro_wants_play: single-file mode, the opening-seen bit clear,
+           not suppressed). On the adventure hub the bring-up seated four
+           bodies before the title, so this boot would spawn four for a
+           one-player cutscene; hal/comms_sync.cpp takes the count StartFile
+           left instead, until the opening's own closing level load. A no-op
+           off the hub. */
+        if (data_0209f2d8 == 0 && !(data_0209caa0[2] & 0x80) &&
+            !port_intro_suppressed())
+            port_adventure_hub_opening_begin();
         /* AND THE PRESENTATION FOLLOWS IT. The title is a two-screen scene and
            says so (hal/scene_boot.cpp's port_scene_layout_propose names it
            beside the minigames, on the owner's ruling); an adventure is the
@@ -13579,7 +14190,15 @@ int main(void)
        is exactly what the VS probe measured: the boot log said "2 players" and
        the probe reported count=1 with slot1 NULL on every frame of a 300-frame
        run. Two seats for one fact, and the later one silently won. */
-    data_0209f21c = (unsigned char)port::vs_player_count();
+    /* run mp1 lane OPENCOUNT1: not while the hub's new-file opening holds
+       the one-player seat (the title fall-through above); the opening's
+       closing level load seats the hub's bodies. */
+    if (!port_adventure_hub_opening_held())
+        data_0209f21c = (unsigned char)port::vs_player_count();
+    else if (data_0209fc48 == 0)
+        fprintf(stderr, "[ghost] hub: the opening hold is on but no opening "
+                        "script runs; this level has one body until the next "
+                        "level load\n");
     data_0209f350[0] = 0;
     /* run mg16 lane MPBTN: THE REAL REMAP MAPS, and retiring the zeros that
        sat here. This line used to point all four entries at a zero map,
@@ -14022,7 +14641,10 @@ int main(void)
                         "menu's load row) to load it\n");
     }
 
-    if (getenv("SM64DS_SS_DISKLOAD") && lk7_persist_available()) {
+    /* the boot read is a load like any other: an online launch refuses it
+       (ss_online_refused, which reads the carriers installed above) */
+    if (getenv("SM64DS_SS_DISKLOAD") && lk7_persist_available() &&
+        !ss_online_refused("the boot-time SM64DS_SS_DISKLOAD read")) {
         if (lk7_persist_read()) {
             an_pivot_live = 0;   /* no ease across the load */
             ss_census("after the boot-time disk restore", player, cam);
@@ -14273,7 +14895,7 @@ int main(void)
                 do_load = 1;
             }
             if (do_load) {
-                if (ss_load_state()) {
+                if (ss_load_state("F9")) {
                     an_pivot_live = 0;   /* no ease across */
                     ss_census("after an F9 restore", player, cam);
                     ss_reseat("after an F9 restore");
@@ -14506,7 +15128,7 @@ int main(void)
                    slot is empty, and what has to be proven is that the
                    PLAYER's key finds the file. It can only be proven on the
                    player's own function. */
-                if (ss_load_state()) {
+                if (ss_load_state("the scripted SM64DS_SS_LOAD")) {
                     an_pivot_live = 0;
                     ss_census("after the scripted SM64DS_SS_LOAD restore",
                                    player, cam);
@@ -14646,6 +15268,7 @@ int main(void)
         static XPad pad;
         int pad_live = !selftest && !rb_replaying() && port_pad_poll(&pad);
         pad_focus_gate(&pad_live, &pad);
+        chat_pad_gate(&pad_live, &pad);   /* the chat box, run mp1 CHATUI1 */
         int orbiting = 0;
         /* SM64DS_PAD_TEST: DBG1's scripted pad, at file scope now so the
            windowed scene loop gets the same one. Inert unless the variable is
@@ -15431,6 +16054,11 @@ int main(void)
                 data_0209d50c = 0x17;
                 func_0203bc7c();
             } else if (!b5_transport) {
+                /* run mp1 lane ARENACORE1: in arena mode my key word reaches
+                   my slot's record only (the ROM's solo copy put it in all
+                   four), so the ROM's builder below gives every other body a
+                   zero pad. No-op outside arena. */
+                port::vs_arena_route_pads();
                 data_0209d50c = 0x17;
                 func_0203bc7c();
             }
@@ -17425,6 +18053,18 @@ int main(void)
                a VS match has been won; see hal/star_flow.cpp for why this holds
                the input rather than skipping the tick the way the debug menu
                does (the comms exchange lives inside the tick). */
+            /* ADVENTURE GHOSTS, BEFORE THE WALK TOO: a level seats its Player
+               bodies between frames (level boot, a level change), so without
+               this the first actor walk after every level entry found the hub
+               ghost bodies standing at their entrance spots, not paused and not
+               parked: enemies could pick them (dActor_c::ClosestPlayer) and each
+               ran one Player::Behavior tick. The hold after the walk stays where
+               it is (it has to follow the scene pass; hal/player_bridges.cpp).
+               No-op unless adventure-ghost mode is on. */
+            port_adventure_ghost_hold();
+            /* run mp1 lane ARENACORE1: the arena's puppet hold (A1) hangs
+               here, before the walk ticks the bodies. No-op outside arena. */
+            port::vs_arena_before_walk(frame);
             port_vs_match_end_hold();
             {
                 const double rb_t = rb_probe_mode() ? rb_now_ms() : 0.0;
@@ -17526,6 +18166,7 @@ int main(void)
            the same-level filter and the spawn/despawn transitions. Inert unless
            SM64DS_ADVENTURE_PRESENCE is set. */
         port_adventure_presence_probe(frame);
+        port_hub_presence_frame();
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
            Reads the render pass's own per-slot record (set just below in the
@@ -17918,6 +18559,11 @@ int main(void)
                rendered position is the smooth follower value and the ROM drift is
                overridden. No-op outside adventure mode. */
             port_adventure_ghost_follow();
+            /* run mp1 lane ARENACORE1: one arena frame AFTER the tick, so my
+               body's state is this frame's final one: send my 'SYNS', take
+               everyone else's into their rings, keep the roster. No-op
+               outside arena, except the SM64DS_ARENA_LATENCY readout. */
+            port::vs_arena_tick(frame);
             /* lane VOICE: one frame of proximity voice chat, immediately
                after the sync layer and for the same structural reason -- the
                input record is already on the wire, so a voice datagram cannot
@@ -19262,6 +19908,30 @@ int main(void)
            there (BG3 + the cursor OBJ), so raster engine A's 2D and write only
            the covered pixels over the 3D framebuffer. Before the fade composite,
            so the box dims with the master-brightness blend the same as the DS. */
+        /* THE NAME TAGS AND CHAT BUBBLES (run mp1, lane TAGLAYER1) ARE PART OF
+           THE WORLD, SO THEY GO IN BEFORE THE 2D: straight over the finished
+           3D (and after the SmoothMotion 3D snapshot above, so the in-between
+           pictures carry them as tick N's own, with the 2D delta), and then the
+           engine-A composite below, the bottom-screen panel and the fade paint
+           over them. The HUD counters, the dialogue box, the level-clear menu
+           and the panel's plates hide a tag; the tag shows everywhere else.
+           They used to be painted after all of that, over the lives and star
+           counters, the map and the menus. The chat box, the ping readout, the
+           F3 overlay, the F5 menu and the toast stay last, on top of
+           everything. The surface is the framebuffer in both layouts: in the
+           stacked layout the image is composed from the finished framebuffer
+           after this point, so it carries the tags too. Returns at once
+           outside a VS match and a hub ghost session, so no solo picture
+           moves. A frame in those two modes is never held on the card
+           (gx_card_present_allow above), so the tag pixels are ordinary
+           opaque ones. */
+        /* SM64DS_TAG_ORDER=old puts the tags back after the 2D (the control arm
+           of the layer proof, one binary): test only. */
+        static const int tag_old_order = [] {
+            const char *e = getenv("SM64DS_TAG_ORDER");
+            return (e && !strcmp(e, "old")) ? 1 : 0;
+        }();
+        if (!tag_old_order && !rb_skip_render()) nt_draw(ovl_surface(fb));
         pt_mark(PS_COMP_A);
         if (!rb_skip_render())
             port_message_composite_engine_a(&fb);
@@ -19559,11 +20229,15 @@ int main(void)
             os.menu_paused = !game_ticked;
             ovl_draw(surf, os);
         }
-        /* THE NAME TAGS, before the menu and the banner so a menu the player
-           opened still sits over them. Returns immediately outside a VS match,
-           which is why no adventure selftest BMP moves. */
+        /* THE NAME TAGS are no longer drawn here: they go in right after the
+           3D, before the engine-A composite, so the HUD, the panel and the
+           menus draw over them (run mp1, lane TAGLAYER1; see above). */
+        if (tag_old_order && !rb_skip_render()) nt_draw(surf);
+        /* THE CHAT (run mp1, lane CHATUI1): over everything the game draws,
+           under the menu. Pumped every presented frame whether or not this
+           one renders. */
+        chat_host_frame(surf, frame);
         if (!rb_skip_render()) {
-        nt_draw(surf);
         if (menu_on) menu_draw(surf);
         }
         /* THE WINNER, once a VS match is over. Centred, over everything, for

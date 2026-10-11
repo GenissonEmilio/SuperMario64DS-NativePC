@@ -49,6 +49,10 @@
 #define PORT_GAME_VERSION ""
 #endif
 
+/* hal/level_boot.cpp: the star-select time since the last call, in ms (then
+   cleared). See THE STAR SELECT below. */
+extern "C" double port_lvlperf_starsel_take(void);
+
 namespace {
 
 /* ---- the clock ---------------------------------------------------------
@@ -88,6 +92,36 @@ double g_sum_in, g_sum_cam, g_sum_sub, g_sum_ras, g_sum_blit;
 double g_sum_fps, g_sum_tick, g_sum_cpu;
 double g_sum_gms, g_sum_gpct, g_sum_gread;
 int    g_bucket_gpu_on;
+
+/* ---- THE STAR SELECT IS NOT A SLOW FRAME (run mp1, lane PROBES1) -------
+   A course entered from the castle runs the star select INSIDE one level
+   frame (hal/level_change.cpp's scene interlude: the whole host frame loops
+   there, paced, until the player has chosen). On the frame clock that is one
+   frame of 1.4 to 5.9 s, and the card's and the tick counter's half-second
+   windows that straddle it divide their totals by the seconds a person spent
+   choosing. Every course entry therefore looked like a hitch in a report, with
+   a tick rate of about 26 and a card load of 45 to 112 percent, and none of
+   it was the game working. Three things below keep it out:
+     - the interlude's own time is subtracted from the frame that held it;
+     - the rate-derived fields (fps, tick rate, cpu, the card's three) skip the
+       frames until the rate windows have turned over (g_taint_until_ms), and
+       are averaged over the frames that did count (g_nrate / g_ntick), so a
+       bucket that holds a course entry still says what the game ran at;
+     - the milliseconds taken out go on the sample as "starselMs" (written only
+       when non-zero, so every other line is byte for byte what it was).
+   The tick rate is also not allowed to go negative: the ROM frame counter is
+   rebased when the opening hands over to the first level, the half-second
+   window that straddles it divides a negative step, and the report read -10
+   to -160 ticks a second at the start of every adventure. A negative window
+   is skipped the same way. */
+double g_starsel_ms;            /* taken out of this bucket */
+double g_pending_excl;          /* handed over, not yet taken off a frame */
+double g_taint_until_ms;        /* perf_now_ms() the rate windows are clean from */
+double g_prev_raw = -1.0;       /* the last raw frame span seen (see g_nrepeat) */
+long long g_nrepeat;            /* pump reads that repeated a span: not frames */
+int    g_nrate, g_ntick;        /* frames that counted for the rate fields */
+double g_last_fps, g_last_tick, g_last_cpu;
+double g_last_gms, g_last_gpct, g_last_gread;
 
 /* the snapshot fields, kept from the last frame that filled them */
 int      g_level;
@@ -440,6 +474,8 @@ void bucket_reset(void)
     g_sum_fps = g_sum_tick = g_sum_cpu = 0.0;
     g_sum_gms = g_sum_gpct = g_sum_gread = 0.0;
     g_bucket_gpu_on = 0;
+    g_starsel_ms = 0.0;
+    g_nrate = g_ntick = 0;
 }
 
 int cmp_double(const void *a, const void *b)
@@ -463,11 +499,22 @@ double bucket_p95(void)
 void perf_write_sample(double t_s)
 {
     const double n = g_frames > 0 ? (double)g_frames : 1.0;
+    /* the rate-derived fields average over the frames whose rate windows were
+       clean (THE STAR SELECT IS NOT A SLOW FRAME, above); a bucket with none
+       repeats the last good figure rather than writing a made-up zero */
+    if (g_nrate > 0) {
+        g_last_fps = g_sum_fps / g_nrate;
+        g_last_cpu = g_sum_cpu / g_nrate;
+        g_last_gms = g_sum_gms / g_nrate;
+        g_last_gpct = g_sum_gpct / g_nrate;
+        g_last_gread = g_sum_gread / g_nrate;
+    }
+    if (g_ntick > 0) g_last_tick = g_sum_tick / g_ntick;
     fprintf(g_fp, "{\"type\":\"sample\"");
     key_f1(g_fp, "t", t_s);
     key_i(g_fp, "level", g_level);
-    key_f1(g_fp, "fps", g_sum_fps / n);
-    key_f1(g_fp, "tickRate", g_sum_tick / n);
+    key_f1(g_fp, "fps", g_last_fps);
+    key_f1(g_fp, "tickRate", g_last_tick);
     key_f1(g_fp, "frameMs", g_sum_frame / n);
     key_f1(g_fp, "frameMsP95", bucket_p95());
     key_f1(g_fp, "frameMsMax", g_max_frame);
@@ -476,17 +523,20 @@ void perf_write_sample(double t_s)
     key_f1(g_fp, "submitMs", g_sum_sub / n);
     key_f1(g_fp, "rasterMs", g_sum_ras / n);
     key_f1(g_fp, "blitMs", g_sum_blit / n);
-    key_f1(g_fp, "cpuPct", g_sum_cpu / n);
+    key_f1(g_fp, "cpuPct", g_last_cpu);
     key_i(g_fp, "gpuOn", g_bucket_gpu_on);
-    key_f1(g_fp, "gpuMsPerTick", g_sum_gms / n);
-    key_f1(g_fp, "gpuPct", g_sum_gpct / n);
-    key_f1(g_fp, "gpuReadMs", g_sum_gread / n);
+    key_f1(g_fp, "gpuMsPerTick", g_last_gms);
+    key_f1(g_fp, "gpuPct", g_last_gpct);
+    key_f1(g_fp, "gpuReadMs", g_last_gread);
     key_i(g_fp, "gpuDropped", (long long)g_bucket_dropped);
     key_i(g_fp, "tris", g_tris);
     key_i(g_fp, "actors", g_actors);
     key_i(g_fp, "memKb", g_mem_kb);
     key_i(g_fp, "windowW", g_win_w);
     key_i(g_fp, "windowH", g_win_h);
+    /* only on a bucket that held a star select, so every other line is what
+       it always was */
+    if (g_starsel_ms > 0.0) key_f1(g_fp, "starselMs", g_starsel_ms);
     fprintf(g_fp, "}\n");
 }
 
@@ -635,23 +685,65 @@ extern "C" void port_perf_log_frame(const struct PortPerfFrame *f)
     }
     if (boot_line) perf_write_boot();
 
+    /* THE STAR SELECT (see the banner over g_starsel_ms). The interlude's
+       milliseconds are handed over by hal/level_boot.cpp the moment it ends;
+       they come out of the next frame span that is long enough to hold them.
+
+       ONE FRAME IS ONE READ. The pump runs about twice a game frame (the ROM's
+       wait turns once a VBlank, a course ticks at 30), and the span it reads,
+       the loop's PH_FRAME, only changes when the frame closes, so the second
+       read hands back the same number. Counted as a second frame it doubled
+       every sample's weight on it and, when the first read closed a bucket,
+       put a long frame into the NEXT bucket as well (the 5922 ms entry showed
+       in two samples). A span exactly equal to the one before it is the same
+       frame read again: it is not folded in at all (the bucket's end is still
+       tested below). Two real frames never share a span to the last bit of a
+       double of microsecond-scale clock readings. */
+    double frame_ms = f->frame_ms;
+    const double now_ms = perf_now_ms();
+    const int repeat = (f->frame_ms == g_prev_raw);
+    g_prev_raw = f->frame_ms;
+    if (repeat) {
+        ++g_nrepeat;
+    } else {
+        const double ss = port_lvlperf_starsel_take();
+        if (ss > 0.0) {
+            g_pending_excl += ss;
+            g_starsel_ms += ss;
+            g_taint_until_ms = now_ms + 650.0;   /* the 0.5 s rate windows */
+        }
+        if (g_pending_excl > 0.0 && frame_ms >= g_pending_excl) {
+            frame_ms -= g_pending_excl;
+            g_pending_excl = 0.0;
+        }
+    }
+    const int rate_ok = now_ms >= g_taint_until_ms;
+
+    if (!repeat) {
     ++g_frames;
-    g_sum_frame += f->frame_ms;
-    if (f->frame_ms > g_max_frame) g_max_frame = f->frame_ms;
-    g_ring[g_ring_n < RING_N ? g_ring_n : (g_frames - 1) % RING_N] = f->frame_ms;
+    g_sum_frame += frame_ms;
+    if (frame_ms > g_max_frame) g_max_frame = frame_ms;
+    g_ring[g_ring_n < RING_N ? g_ring_n : (g_frames - 1) % RING_N] = frame_ms;
     if (g_ring_n < RING_N) ++g_ring_n;
     g_sum_in += f->input_ms;
     g_sum_cam += f->camera_ms;
     g_sum_sub += f->submit_ms;
     g_sum_ras += f->raster_ms;
     g_sum_blit += f->blit_ms;
-    g_sum_fps += f->fps;
-    g_sum_tick += f->tick_rate;
-    g_sum_cpu += f->cpu_pct;
-    g_sum_gms += f->gpu_ms_tick;
-    g_sum_gpct += f->gpu_pct;
-    g_sum_gread += f->gpu_read_ms;
+    if (rate_ok) {
+        ++g_nrate;
+        g_sum_fps += f->fps;
+        g_sum_cpu += f->cpu_pct;
+        g_sum_gms += f->gpu_ms_tick;
+        g_sum_gpct += f->gpu_pct;
+        g_sum_gread += f->gpu_read_ms;
+        if (f->tick_rate >= 0.0) {          /* a rebased ROM counter reads <0 */
+            ++g_ntick;
+            g_sum_tick += f->tick_rate;
+        }
+    }
     if (f->gpu_on) g_bucket_gpu_on = 1;
+    }   /* !repeat */
 
     const double t_s = (perf_now_ms() - g_t0_ms) / 1000.0;
     if (t_s < g_next_t_s) return;

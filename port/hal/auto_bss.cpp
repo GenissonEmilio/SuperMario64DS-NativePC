@@ -472,7 +472,15 @@ int data_0209d47c[4];
 int data_0209d494[4];
 int data_0209d498[4];
 unsigned char data_020a0f00[4];
-unsigned short data_0209f368[8];
+/* The per-slot camera-button latch. Stage::CheckCameraInput walks it over
+   data_0209f21c seats and writes 0 to data_0209f368[i] on every frame a slot is
+   not touching the screen, so it has to be as wide as the seat (run mp1, lane
+   VSNP1). At eight u16s a VS match of nine or more zeroed the host objects that
+   follow it every frame: data_ov002_02111180 at seat 8, data_0209f320 (the
+   Stage's ModelComponents pointer) at 10-11, data_0209f228 at 12-13 and the
+   player count data_0209fc50 at seat 14. That last one is why a 15- or 16-player
+   match used to start while 5 to 14 did not (hal/stage_frame.cpp's census). */
+unsigned short data_0209f368[kPortMaxPlayers];
 unsigned char data_ov002_02111180[4];
 /* gate 26, the boot spine: Stage::LoadModel's last line parks the Stage's own
    ModelComponents pointer (Stage+0x874) here, and CopyTexPalFromLevelModel

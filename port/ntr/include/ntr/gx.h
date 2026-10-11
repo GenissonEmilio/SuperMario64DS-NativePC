@@ -100,6 +100,12 @@ struct GxTriangle {
     // POLYGON_ATTR bit 14: this polygon's depth test is EQUAL (within the
     // hardware's tolerance) instead of LESS. See w_depth_fail in gx.cpp.
     uint8_t depth_eq;
+    // POLYGON_ATTR bits 21-23 (unused by the DS) while the ghost layer is armed
+    // (gx_set_ghost_layer): 0 = an ordinary polygon, 1..7 = the polygon belongs
+    // to ghost figure N. A ghost figure is drawn by gx_render in its own pass
+    // AFTER the opaque and translucent passes, as one see-through layer (see
+    // the comment above gx_set_ghost_layer), never in the passes themselves.
+    uint8_t ghost;
     uint32_t dbg_tex;      // TEXIMAGE_PARAM that was bound (diagnostics only)
 };
 
@@ -233,6 +239,21 @@ void gx_set_matrix_slot(int slot, const float m[16]);
 void gx_set_material(uint32_t dif_amb, uint32_t spe_emi);
 void gx_set_light(int index, float dx, float dy, float dz, uint32_t bgr555);
 void gx_enable_lights(uint32_t mask);           // bits 0..3
+
+// THE GHOST LAYER (run mp1, lane GHOSTLAYER1). The adventure hub draws every
+// other player's body as a see-through ghost. On the DS a see-through polygon
+// writes no depth and is refused on a pixel that already took a translucent
+// fragment of the same polygon id, so a figure of many polygons under one id
+// shows its far arm through its own body and loses parts of itself. Instead the
+// host marks the ghost's materials with a figure number in POLYGON_ATTR bits
+// 21-23 (the DS ignores them; the mark rides the recorded geometry stream, so
+// the in-between pictures of SmoothMotion see it too) and arms this switch.
+// With it armed, gx_render takes the marked polygons out of the frame, draws
+// the rest exactly as it always did, and then draws each figure as one layer.
+// Off (the default, and every run outside the hub): the bits are not read and
+// nothing is different.
+void gx_set_ghost_layer(int on);
+int gx_ghost_layer();
 
 // Polygons emitted since the last gx_reset / SWAP_BUFFERS.
 const GxTriangle *gx_polygons(size_t &count);
@@ -380,6 +401,19 @@ struct GxGpuFrame {
     // probe_grids     set with probe: the backend answers 2 only if it can take
     //                 grids too (so gx.cpp knows whether to keep them)
     int probe_grids;
+
+    // ---- THE GHOST LAYER (run mp1, lane GHOSTLAYER1) ------------------------
+    // The ghost figures of the frame (GxTriangle::ghost != 0), kept OUT of
+    // `tris`. A backend draws them after its translucent pass and before its
+    // edge smoothing, one figure at a time, nearest last: a depth-only pass
+    // of the figure's polygons (against the depth the frame has made), then its
+    // colour with the depth test EQUAL so each pixel takes exactly one fragment
+    // of the figure, blended at the polygon's alpha (1..30). The figure's depth
+    // stays in the frame's depth, as an opaque ghost's always did. Null / 0 on
+    // every frame without a ghost, which is every frame outside the adventure
+    // hub.
+    const GxTriangle *ghost_tris;
+    size_t ghost_count;
 };
 // The return value of the callback: 0 the card drew nothing (gx_render runs
 // both passes), 1 the opaque pass only (the old contract), 2 the whole frame

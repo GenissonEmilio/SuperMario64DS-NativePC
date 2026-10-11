@@ -160,6 +160,10 @@ int   port_tree_link_refusals(void);
 void port_actor_scene_pass(void);
 void *port_stage_object(void);
 void *port_stage_a_boot(void *mc, int spawn);
+/* run mp1 lane OPENCOUNT1: the adventure hub's bodies, seated again by the
+   level load that ends the new-file opening (hal/comms_sync.cpp). A no-op
+   unless the hub's opening hold is on. */
+void port_adventure_hub_level_seat(void);
 void port_level_reset_host(void);        /* hal/level_boot.cpp (also captures the
                                             outgoing level's orphaned KCL image --
                                             the ~108KB re-entry leak -- for
@@ -182,8 +186,9 @@ int  port_course_loop_live(void);
 const char *port_actor_class_name(unsigned id);   /* hal/star_flow.cpp: live loop handles */
 void port_level_stage_reseat(void *stage);
 /* hal/level_boot.cpp: the [lvl-perf] level-entry spans. This file owns span
-   0 (teardown, everything between the change firing and the boot call) and
-   the emit on the warp path; the direct boot emits from walk_window. */
+   0 (teardown, everything between the change firing and the boot call,
+   less the star select) and span 4 (the star select itself) and the emit on
+   the warp path; the direct boot emits from walk_window. */
 double port_lvlperf_now(void);
 void port_lvlperf_note(int span, double ms);
 void port_lvlperf_emit(void);
@@ -2019,7 +2024,12 @@ extern "C" int port_level_change_apply(void)
        between them and not before or after: the ROM's own decision is
        written from inside the teardown, and the latch below consumes the
        level request the star select has to read. */
+    /* [lvl-perf] span 4: the star select, a person choosing. Timed here and
+       taken out of the teardown span below. */
+    const double lvlperf_il0 = port_lvlperf_now();
     port_level_scene_interlude();
+    const double lvlperf_il_ms = port_lvlperf_now() - lvlperf_il0;
+    port_lvlperf_note(4, lvlperf_il_ms);
     port_level_latch();
     /* Point the boot at the level the latch just made current. Without this the
        boot's mount resolved to the env-cached level and the warp re-booted the
@@ -2047,7 +2057,11 @@ extern "C" int port_level_change_apply(void)
     }
     port_level_stage_reseat(stage);
     /* [lvl-perf] span 0: everything between the change firing and the boot */
-    port_lvlperf_note(0, port_lvlperf_now() - lvlperf_t0);
+    port_lvlperf_note(0, port_lvlperf_now() - lvlperf_t0 - lvlperf_il_ms);
+    /* run mp1 lane OPENCOUNT1: the hub's new-file opening played on the
+       one-player seat (tests/walk_window.cpp's title fall-through); its closing
+       level load is this one, and it spawns the hub's four bodies. */
+    port_adventure_hub_level_seat();
     port_stage_a_boot((char *)stage + 0x91c, 1);
 
     g_crossed_scenes = 0;

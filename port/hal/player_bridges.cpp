@@ -30,7 +30,7 @@ extern "C" int __fastcall port_player_st_crazedcrate_cleanup(void *self, void *)
 /* the geometry-engine polygon buffer, for the tongue render self-check
    (SM64DS_WINGS_PROBE); same forward decl cxxname_bridge.cpp uses so the
    header's wider surface does not have to come in here */
-namespace ntr { struct GxTriangle; const GxTriangle *gx_polygons(std::size_t &n); }
+namespace ntr { struct GxTriangle; const GxTriangle *gx_polygons(std::size_t &n); void gx_set_ghost_layer(int on); }
 
 /* how many times hal_call_state_fn fell off the end of its switch this run --
    read by the F3 overlay in port/tests/walk_window.cpp */
@@ -376,20 +376,52 @@ extern void *data_0209f394[];         /* per-slot Player* */
 extern unsigned char data_0209f250;   /* local player index */
 }
 
-/* ---- THE GHOST ALPHA -------------------------------------------------------
+/* ---- THE GHOST ALPHA AND THE GHOST LAYER ------------------------------------
    The DS polygon alpha is 5 bits (0..31); func_02046208 writes it into the
    0x1f0000 field of every material's polygon attribute. 31 is fully opaque and
    1 is nearly gone; 0 is NOT invisible, it is the DS's wireframe mode, so the
-   floor here is 1. The default is a ghostly ~40%. SM64DS_ADVENTURE_ALPHA tunes
-   it for the visual check without a rebuild. */
+   floor here is 1.
+
+   run mp1 lane GHOSTLAYER1: A GHOST IS DRAWN AS ONE LAYER. Painting the
+   body's polygons see-through one by one is what the DS does, and it is wrong
+   for a figure: a see-through polygon writes no depth and is refused on a pixel
+   that already took a see-through fragment of the same polygon id, so the far
+   arm showed through the body and parts of it vanished (the reason GHOSTLOOK1
+   made ghosts solid). So the alpha written here is the LAYER'S opacity and the
+   materials also carry the figure number in POLYGON_ATTR bits 21-23 (unused by
+   the DS), and ntr/gx.cpp draws every marked polygon in a pass of its own:
+   only the nearest surface of the figure is kept and blended once (see
+   ghost_pass_cpu there and the card renderer's copy of it in
+   hal/gpu_raster.cpp). The mark is put on for the draw and taken off again
+   after it (ghost_marks_release), so no other draw of these models, and no
+   other player, sees it.
+
+   SM64DS_GHOST_ALPHA=<1..30> tunes the layer's opacity for the visual check
+   without a rebuild. SM64DS_GHOST_LAYER=0 is the proof control: no layer, the
+   alpha goes on each polygon as it did before (and SM64DS_GHOST_ALPHA /
+   SM64DS_ADVENTURE_ALPHA then show the old overlap defect); with neither set
+   that is the solid ghost build 5 drew. */
+static int ghost_layer_on()
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_LAYER");
+        on = (e && *e == '0') ? 0 : 1;
+    }
+    return on;
+}
+
 static unsigned ghost_alpha()
 {
     static int a = -1;
     if (a < 0) {
-        const char *e = std::getenv("SM64DS_ADVENTURE_ALPHA");
-        a = e ? std::atoi(e) : 12;
+        const char *e = std::getenv("SM64DS_GHOST_ALPHA");
+        if (!e) e = std::getenv("SM64DS_ADVENTURE_ALPHA");
+        a = e ? std::atoi(e) : (ghost_layer_on() ? 17 : 31);
         if (a < 1) a = 1;
-        if (a > 31) a = 31;
+        /* the layer's opacity is a see-through one; the old per-polygon
+           path keeps its whole range */
+        if (a > (ghost_layer_on() ? 30 : 31)) a = ghost_layer_on() ? 30 : 31;
     }
     return (unsigned)a;
 }
@@ -400,9 +432,69 @@ static unsigned ghost_alpha()
    Player::Render makes on the wings. Re-applied every frame because the
    material flags are rebuilt by the per-frame update. */
 extern "C" void _ZN9ModelBase12ApplyOpacityEj(void *self, unsigned a);
-static void ghost_opacity(void *model)
+/* run mp1 lane GHOSTWIRE1: a hub ghost whose frames have stopped coming fades
+   out before it is despawned (hal/comms_sync.cpp, 0..256; 256 for every body
+   that is not a hub ghost, so the old path and the probes are unchanged). */
+extern "C" int port_adventure_ghost_fade(int slot);
+
+/* the models whose materials carry the figure mark right now (at most the
+   body, balloon body, head, wings and the sleep model of ONE player), each with
+   the three bits it had, so the release puts back exactly what was there */
+static const unsigned kGhostMarkMax_ = 64;
+struct GhostMark {
+    unsigned *flags;
+    unsigned old;
+};
+static GhostMark g_ghost_marks[5 * 64];
+static unsigned g_ghost_nmarks;
+
+static void ghost_marks_release()
 {
-    if (model) _ZN9ModelBase12ApplyOpacityEj(model, ghost_alpha());
+    while (g_ghost_nmarks) {
+        const GhostMark &m = g_ghost_marks[--g_ghost_nmarks];
+        *m.flags = (*m.flags & ~0x00E00000u) | m.old;
+    }
+}
+
+/* put the figure number on every material of `model` (the record array is the
+   one ghost_models_in_toon reads: model + 8 holds the header and the records,
+   0x30 apart, the polygon attribute at +0x24) */
+static void ghost_mark_model(void *model, int slot)
+{
+    if (!model) return;
+    const int *p = (const int *)((char *)model + 8);
+    const unsigned char *hdr = (const unsigned char *)p[0];
+    char *rec = (char *)p[1];
+    if (!hdr || !rec) return;
+    unsigned nm = 0;
+    std::memcpy(&nm, hdr + 0x24, 4);
+    if (nm > kGhostMarkMax_) nm = kGhostMarkMax_;
+    const unsigned fig = (unsigned)((slot < 0 ? 0 : slot) % 7) + 1u;
+    for (unsigned i = 0; i < nm; ++i) {
+        unsigned *fl = (unsigned *)(rec + i * 0x30 + 0x24);
+        if (g_ghost_nmarks >= sizeof g_ghost_marks / sizeof g_ghost_marks[0])
+            return;
+        g_ghost_marks[g_ghost_nmarks].flags = fl;
+        g_ghost_marks[g_ghost_nmarks].old = *fl & 0x00E00000u;
+        ++g_ghost_nmarks;
+        *fl = (*fl & ~0x00E00000u) | (fig << 21);
+    }
+}
+
+static void ghost_opacity(void *model, int slot)
+{
+    if (!model) return;
+    unsigned a = ghost_alpha();
+    const int f = port_adventure_ghost_fade(slot);
+    if (f < 256) {
+        a = a * (unsigned)(f < 0 ? 0 : f) / 256u;
+        if (a < 1) a = 1;              /* 0 is the DS's wireframe, not clear */
+    }
+    _ZN9ModelBase12ApplyOpacityEj(model, a);
+    if (ghost_layer_on()) {
+        ntr::gx_set_ghost_layer(1);
+        ghost_mark_model(model, slot);
+    }
 }
 
 /* ---- THE NO-COLLISION HALF OF THE GHOST PASS ------------------------------
@@ -415,9 +507,19 @@ static void ghost_opacity(void *model)
    interactive. Gated on the mode, so VS and solo are byte-unaffected. Called
    from the per-frame tick in tests/walk_window.cpp, beside sync_tick. */
 extern "C" int port_party_member(int slot);   /* hal/comms_sync.cpp */
+/* run mp1 lane GHOSTWIRE1: 1 when this body is a ghost body on the adventure
+   hub (hal/comms_sync.cpp), and the park that keeps it out of the local game
+   between draws. */
+extern "C" int port_adventure_hub_body(int slot);
+extern "C" void port_adventure_ghost_park(void *body);
+/* run mp1 lane GHOSTCUT1: the hub's spare bodies seated on the title path,
+   where the ROM's StartFile left the count at 1 (hal/comms_sync.cpp). First,
+   so the hold below finds every spare body in the seat table. */
+extern "C" void port_adventure_hub_seat();
 extern "C" void port_adventure_ghost_hold()
 {
     if (!port::adventure_ghost_mode()) return;
+    port_adventure_hub_seat();
     const int me = (int)data_0209f250;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
         if (i == me) continue;
@@ -426,8 +528,30 @@ extern "C" void port_adventure_ghost_hold()
            interacts -- do NOT hold it non-colliding. Only non-party remotes
            (adventure ghosts) get the pass-through hold. */
         if (port_party_member(i)) continue;
-        if (void *a = data_0209f394[i])
+        if (void *a = data_0209f394[i]) {
             port::player::disable_interaction(a);
+            /* run mp1 lane GHOSTWIRE1: ON THE HUB A GHOST BODY RUNS NO GAME
+               LOGIC AT ALL. fBase_c::BeforeBehavior returns 0 while pauseFlags
+               & 2 is set (src/_ZN7fBase_c14BeforeBehaviorEv.cpp), so the
+               actor list skips its Player::Behavior: no state machine, so no
+               pit death (func_ov002_020c5d60 -> ST_DEAD_PIT -> HitDeathPlane
+               restarted the WATCHER's level whenever a ghost went below the
+               death plane), no damage, no exit, no shadow of its own. The
+               ghost is posed, placed and shadowed by hal/comms_sync.cpp's
+               follower instead. Re-asserted every frame like the flags above,
+               and for a reason of its own: the ROM's scene pass that follows
+               the actor walk (phase 1, func_020441cc over the scene tree)
+               clears bit 2 again every frame (REVGHOSTWIRE1-R3 measured it set
+               at the start of every walk and clear at the end of it on 3594 of
+               3597 body-checks). The skip holds only because this hold runs
+               AFTER that pass and BEFORE the next walk: keep it there. */
+            if (port_adventure_hub_body(i)) {
+                *((unsigned char *)a + 0x13) |= 2;
+                /* and parked, from the first frame after the level seats it:
+                   the follower brings back only the ghosts it draws */
+                port_adventure_ghost_park(a);
+            }
+        }
     }
 }
 
@@ -1535,7 +1659,213 @@ extern "C" int port_player_render_hidden(const void *player)
     return 0;
 }
 
+static void hal_render_player_world_body(void *player);
+
+/* run mp1 lane GHOSTWIRE1: a hub ghost is PARKED again the moment it has been
+   drawn, so the next frame's actor phase never finds it where the player it
+   shows is standing (hal/comms_sync.cpp port_adventure_ghost_park: enemies
+   pick targets with dActor_c::ClosestPlayer over every seated body).
+   run mp1 lane GHOSTCUT1: only the body that IS that slot's seat. The
+   new-file opening's cast are Player actors with player numbers 0..2 that no
+   seat names, drawn by hal/level_boot.cpp's ps_render; parking them by number
+   threw the cast's Luigi and Wario 200000 units up after every draw, and they
+   fell back through the opening over and over with their landing sounds. */
+/* run mp1 lane GHOSTLOOK1: A HUB GHOST IN ITS PLAYER'S OWN COLOURS. The VS
+   statement of Player::Render (src/_ZN6Player6RenderEv.cpp, the
+   data_0209f2d8 == 1 arm, hal_player_vs_palette here) points every material
+   of the body and of the head at the row Player+0x61c names; hal/comms_sync.cpp
+   has written that row with the ghost's own pick and says which row to name.
+   Stamped around the draw and put back after it, so nothing else that reads
+   these material records ever sees the ghost's row. */
+extern "C" int port_adventure_ghost_palette(int slot);
+/* OWNCOLOR1: the same stamp for the LOCAL body, from the spare palette row
+   hal/comms_sync.cpp keeps his own pick in (-1: no pick / not the hub / not
+   Yoshi: the file's own row, untouched). */
+extern "C" int port_adventure_local_palette(void *body);
+static const unsigned kGhostStampMax = 64;
+struct GhostPalStamp {
+    char *rec[2];
+    unsigned n[2];
+    int old[2][kGhostStampMax];
+};
+static void ghost_stamp_one(GhostPalStamp &st, int k, char *mdl, int pal)
+{
+    st.rec[k] = 0;
+    st.n[k] = 0;
+    if (!mdl) return;
+    const int *p = (const int *)(mdl + 8);  /* ModelComponents at +0x8 */
+    const unsigned char *hdr = (const unsigned char *)p[0];  /* BMD_File */
+    char *rec = (char *)p[1];                                /* materials */
+    if (!hdr || !rec) return;
+    unsigned n = 0;
+    std::memcpy(&n, hdr + 0x24, 4);         /* BMD_File::numMaterials */
+    if (n == 0 || n > kGhostStampMax) return;
+    for (unsigned i = 0; i < n; ++i) {
+        st.old[k][i] = *(int *)(rec + i * 0x30 + 0x20);
+        *(int *)(rec + i * 0x30 + 0x20) = pal;
+    }
+    st.rec[k] = rec;
+    st.n[k] = n;
+}
+static void ghost_unstamp(GhostPalStamp &st)
+{
+    for (int k = 1; k >= 0; --k)
+        for (unsigned i = 0; i < st.n[k]; ++i)
+            *(int *)(st.rec[k] + i * 0x30 + 0x20) = st.old[k][i];
+}
+
+/* GHOSTCHAR1: SM64DS_GHOST_DRAW_PROBE=<stride>. What a hub ghost's draw really
+   has, for the black-shading field report (F7): once per <stride> draws of a
+   ghost, its character, the palette row it is stamped with and that row's
+   sixteen words (a zero among the ramp entries means a bad row), and how many
+   of the body's and the head's materials are in each polygon mode (mode 2 is
+   the toon / flash shading a swapped model can be left in). Off by default. */
+static void ghost_draw_probe(char *c, int slot, int pal)
+{
+    static int stride = -1;
+    static unsigned n[16];
+    if (stride < 0) {
+        const char *e = std::getenv("SM64DS_GHOST_DRAW_PROBE");
+        stride = e ? std::atoi(e) : 0;
+    }
+    if (stride <= 0 || slot < 0 || slot >= 16) return;
+    if ((n[slot]++ % (unsigned)stride) != 0) return;
+    unsigned hist[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
+    const unsigned id =
+        _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
+    const unsigned hid = func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+    char *mdl[2] = {(char *)((ModelAnim **)(c + 0xdc))[id],
+                    (hid != 8 && hid != 9) ? ((char **)(c + 0x154))[hid] : 0};
+    for (int k = 0; k < 2; ++k) {
+        if (!mdl[k]) continue;
+        const int *p = (const int *)(mdl[k] + 8);
+        const unsigned char *hdr = (const unsigned char *)p[0];
+        const char *rec = (const char *)p[1];
+        if (!hdr || !rec) continue;
+        unsigned nm = 0;
+        std::memcpy(&nm, hdr + 0x24, 4);
+        if (nm > kGhostStampMax) nm = kGhostStampMax;
+        for (unsigned i = 0; i < nm; ++i)
+            ++hist[k][(*(const unsigned *)(rec + i * 0x30 + 0x24) >> 4) & 3];
+    }
+    const unsigned short *row =
+        pal >= 0 ? (const unsigned short *)(0x06880000u + (unsigned)pal * 16u)
+                 : 0;
+    std::fprintf(stderr,
+                 "[gwdraw] slot %d ch=%d body %u pal=%d modes body %u/%u/%u/%u "
+                 "head %u/%u/%u/%u row", slot, *(int *)(c + 8) & 0xff, id, pal,
+                 hist[0][0], hist[0][1], hist[0][2], hist[0][3], hist[1][0],
+                 hist[1][1], hist[1][2], hist[1][3]);
+    if (row)
+        for (int i = 0; i < 16; ++i) std::fprintf(stderr, " %04x", row[i]);
+    else
+        std::fprintf(stderr, " none");
+    std::fprintf(stderr, "\n");
+}
+
+/* GHOSTCHAR1 (field test 4, F7): A HUB GHOST MUST NOT BE LEFT IN TOON SHADING.
+   The cap morph (Player::func_ov002_020be3b0, also started by
+   func_ov002_020beabc when InitResources spawns a body whose drawn character
+   differs from the real one, which is every hub ghost body on the castle
+   grounds) puts the body's and head's materials in polygon mode 2, the DS's
+   toon / highlight shading, and only its last stage (TurnOffToonShading) puts
+   them back. A ghost body never runs Player::Behavior (it is posed from the
+   wire), so the morph never finishes and the ghost is drawn in mode 2 for as
+   long as the level lasts. Mode 2 takes its colour from the toon table the
+   game last programmed, which is whatever the LOCAL player's own flash left:
+   after a character change that table is black below its upper entries, so a
+   ghost's shaded parts draw pure black with a hard edge (the black Yoshi in
+   the field report; measured: SM64DS_TOON_PROBE shows the table 000000 for
+   entries 0..16 with 912 mode-2 triangles, all of them the ghosts'). The ROM
+   would have run the morph out; this does what its last stage does, to the two
+   models the ghost is drawn with. Only ever a remote hub ghost, so solo and the
+   local body are untouched. */
+static unsigned ghost_models_in_toon(char *mdl)
+{
+    if (!mdl) return 0;
+    const int *p = (const int *)(mdl + 8);
+    const unsigned char *hdr = (const unsigned char *)p[0];
+    const char *rec = (const char *)p[1];
+    if (!hdr || !rec) return 0;
+    unsigned nm = 0, n2 = 0;
+    std::memcpy(&nm, hdr + 0x24, 4);
+    if (nm > kGhostStampMax) nm = kGhostStampMax;
+    for (unsigned i = 0; i < nm; ++i)
+        if (((*(const unsigned *)(rec + i * 0x30 + 0x24) >> 4) & 3) == 2) ++n2;
+    return n2;
+}
+
+static void ghost_toon_off(char *c, int slot)
+{
+    static int off = -1;
+    static unsigned cleared[16];
+    if (off < 0) off = std::getenv("SM64DS_GHOST_KEEP_TOON") ? 1 : 0;
+    if (off) return;      /* the A/B knob for the proof rows: the old behaviour */
+    /* the two models the ghost is drawn with, found the way the stamp finds them */
+    const unsigned chr = (unsigned)*(int *)(c + 8) & 0xff;
+    const unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, chr, 0);
+    const unsigned hid =
+        func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+    const bool head = hid != 8 && hid != 9 && hid < 8;
+    if (!ghost_models_in_toon((char *)((ModelAnim **)(c + 0xdc))[id]) &&
+        !(head && ghost_models_in_toon(((char **)(c + 0x154))[hid])))
+        return;
+    /* TurnOffToonShading(j) clears the body of character j and the heads at
+       unk_154[j] and unk_154[j + 4], each with its saved colour table
+       (unk_27c[j], unk_28c[j], unk_28c[j + 4]): InitResources makes all of
+       them, but a call is only made when they are there */
+    for (int k = 0; k < 2; ++k) {
+        const unsigned j = (k == 0 ? chr : hid) & 3;
+        if (k == 1 && (!head || j == (chr & 3))) break;
+        if (!*(int *)(c + 0x27c + j * 4) || !*(int *)(c + 0x28c + j * 4) ||
+            !*(int *)(c + 0x28c + (j + 4) * 4) ||
+            !*(void **)(c + 0x154 + j * 4) ||
+            !*(void **)(c + 0x154 + (j + 4) * 4) ||
+            !*(void **)(c + 0xdc + _ZNK6Player14GetBodyModelIDEjb(c, j, 0) * 4))
+            continue;
+        ((Player *)c)->Player::TurnOffToonShading(j);
+    }
+    if (slot >= 0 && slot < 16 && cleared[slot]++ < 3)
+        std::fprintf(stderr, "[gwdraw] slot %d ch=%u: toon shading cleared on"
+                             " the ghost's body and head models (%u)"
+                             "\n", slot, chr, cleared[slot]);
+}
+
 void hal_render_player_world(void *player)
+{
+    const int slot = (int)*(const unsigned char *)((const char *)player + 0x6d8);
+    int pal = -1;
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+        data_0209f394[slot] == player)
+        pal = port_adventure_ghost_palette(slot);
+    else if (player == data_0209f394[data_0209f250] &&
+             port::adventure_ghost_mode())
+        pal = port_adventure_local_palette(player);
+    GhostPalStamp st;
+    st.n[0] = st.n[1] = 0;
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+        data_0209f394[slot] == player && port::adventure_ghost_mode()) {
+        ghost_toon_off((char *)player, slot);
+        ghost_draw_probe((char *)player, slot, pal);
+    }
+    if (pal >= 0) {
+        char *c = (char *)player;
+        const unsigned id =
+            _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
+        ghost_stamp_one(st, 0, (char *)((ModelAnim **)(c + 0xdc))[id], pal);
+        const unsigned hid =
+            func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
+        if (hid != 8 && hid != 9)
+            ghost_stamp_one(st, 1, ((char **)(c + 0x154))[hid], pal);
+    }
+    hal_render_player_world_body(player);
+    if (pal >= 0) ghost_unstamp(st);
+    if (player != data_0209f394[data_0209f250] && slot >= 0 && slot < 16 &&
+        data_0209f394[slot] == player && port_adventure_hub_body(slot))
+        port_adventure_ghost_park(player);
+}
+
+static void hal_render_player_world_body(void *player)
 {
     char *c = (char *)player;
     /* ADVENTURE GHOSTS: a REMOTE body drawn see-through. This is the render
@@ -1550,7 +1880,14 @@ void hal_render_player_world(void *player)
        between the two treatments; everything else about the ghost pass is
        unchanged. The slot is the Player number at +0x6d8. */
     const int party_slot = (int)*(const unsigned char *)(c + 0x6d8);
-    const bool remote = player != data_0209f394[data_0209f250];
+    /* run mp1 lane GHOSTCUT1: and a REMOTE PLAYER'S body, which is the body
+       the seat table holds for that slot. The new-file opening's cast (Mario,
+       Luigi and Wario as Player actors, drawn through hal/level_boot.cpp's
+       ps_render) carry player numbers 0..2 too but are nobody's seat, and in
+       solo they draw solid; in adventure they were drawn see-through. */
+    const bool remote = player != data_0209f394[data_0209f250] &&
+                        party_slot >= 0 && party_slot < 16 &&
+                        data_0209f394[party_slot] == player;
     const bool ghost = port::adventure_ghost_mode() && remote &&
                        !port_party_member(party_slot);
     if (party_slot >= 0 && party_slot < 16)
@@ -1705,7 +2042,7 @@ void hal_render_player_world(void *player)
     /* see-through, last before the draw so the per-frame material rebuild
        (UpdateVerts, the palette stamp) is already done and the alpha is what
        the raster reads. */
-    if (ghost) ghost_opacity(ma);
+    if (ghost) ghost_opacity(ma, party_slot);
     /* THE ROM'S BODY DRAW, WHOLE. src/_ZN6Player6RenderEv.cpp:79 is one
        statement carrying two facts, and the port used to get both of them
        wrong with `ma->ModelAnim::Render(0)`:
@@ -1750,7 +2087,7 @@ void hal_render_player_world(void *player)
     if (balloon) {
         ModelAnim *m3 = (ModelAnim *)(c + 0xf0);    /* mModelAnim3 */
         _ZN9ModelBase12ApplyOpacityEj(m3, *(const unsigned char *)(c + 0x6f5));
-        if (ghost) ghost_opacity(m3);
+        if (ghost) ghost_opacity(m3, party_slot);
         m3->Render((const Vector3 *)(c + 0x80));    /* virtual, as the ROM's */
     } else {
         if (hsink_on()) ntr::gx_polygons(hsink_t0);
@@ -1772,7 +2109,7 @@ void hal_render_player_world(void *player)
                         (const int *)(c + 0x80),
                         hid, (int)(hsink_t1 - hsink_t0));
             hal_player_vs_palette(c, head);
-            if (ghost) ghost_opacity(head);
+            if (ghost) ghost_opacity(head, party_slot);
             hal_render_head_group(c, head, hid, ma, scene);
             hal_player_texseq_head(c, hid);
             /* THE MIRROR, once for the body (above) and once here for the
@@ -1807,6 +2144,7 @@ void hal_render_player_world(void *player)
                Model::Render, the same dispatch the head's own draw makes. */
             if (func_ov002_020d225c(c)) {
                 char *m = *(char **)(c + 0x1d8);
+                if (m && ghost) ghost_opacity(m, party_slot);
                 if (m)
                     ((void(__fastcall *)(void *, void *, const void *))(
                         ((void ***)m)[0][5]))(m, 0, c + 0x56c);
@@ -1903,6 +2241,7 @@ void hal_render_player_world(void *player)
             char *bones = *(char **)((char *)ma + 0x14);
             const int *src;
             _ZN9ModelBase12ApplyOpacityEj(m4, *(const unsigned char *)(c + 0x6f5));
+            if (ghost) ghost_opacity(m4, party_slot);
             if (*(unsigned char *)(c + 0x6db) == 3) {
                 Matrix4x3_FromTranslation(&data_020a0e68, -0x1b33, -0x666, 0);
                 Matrix4x3_ApplyInPlaceToRotationZ(&data_020a0e68, 0x4000);
@@ -1932,6 +2271,10 @@ void hal_render_player_world(void *player)
                                        c + 0x80);
         }
     }
+
+    /* the figure mark comes off every model it went on, now that all of this
+       player's geometry has been submitted */
+    ghost_marks_release();
 
     /* LAST, after every draw this function makes, so the latch it reads is the
        one this player's geometry was submitted under. */
@@ -2674,11 +3017,31 @@ static void port_legacy_set_character(void *player, unsigned ch)
    playable animation whether or not a cap was involved.
 
    SM64DS_SWAP_LEGACY=1 forces the old InitResources rebuild for an A/B. */
+extern "C" unsigned char data_0209cad2[];   /* save block; [0x0f] is caa0[0x41] */
+extern "C" int data_0209b478[];             /* voice-group byte (hal/actor_vtables.cpp) */
+extern "C" void func_ov002_020e6330(void *self);   /* src/func_ov002_020e6330.c */
+extern "C" void func_ov002_020e6350(char *self);   /* src/func_ov002_020e6350.c */
 extern "C" void port_player_set_character(void *player, unsigned ch)
 {
     static int legacy = -1;
     if (legacy < 0) legacy = std::getenv("SM64DS_SWAP_LEGACY") ? 1 : 0;
     if (legacy) { port_legacy_set_character(player, (int)(ch & 3)); return; }
+
+    /* SetRealCharacter is the LOCAL player's operation (the character doors):
+       besides the body it writes the SAVE FILE's character byte
+       (data_0209caa0[0x41]) and runs the voice-group setup that sets
+       data_0209b478. A ghost swap (a remote body changing to its sender's
+       character) must not touch any of that, or the watcher's own save
+       character becomes the last ghost character seen, and the next course
+       entered through the star select makes the watcher that character
+       (field test 4, F3). So for any body that is not the local one: keep
+       both bytes across the swap, and re-run the voice setup on the local
+       body, exactly what Player::InitResources does for the local slot. */
+    char *const localp = (char *)data_0209f394[data_0209f250];
+    const bool remote = player != 0 && player != (void *)localp;
+    unsigned char *const save_chr = &data_0209cad2[0x0f];  /* data_0209caa0[0x41] */
+    const unsigned char keep_save = *save_chr;
+    const unsigned char keep_voice = *(unsigned char *)data_0209b478;
 
     int rc = port_door_swap((char *)player, (int)(ch & 3));
     /* the door path can decline (no player, already that character); the codes
@@ -2686,6 +3049,28 @@ extern "C" void port_player_set_character(void *player, unsigned ch)
        rebuild rather than leaving the caller with nothing happening. */
     if (rc == 1)
         port_legacy_set_character(player, (int)(ch & 3));
+
+    if (remote) {
+        /* SM64DS_GHOSTCHAR_LEAK=1 keeps the old behaviour (the swap's write to
+           the save byte stands) so a proof row can show the leak next to the
+           fix in one exe. Test-only; nothing sets it for players. */
+        static int leak = -1;
+        if (leak < 0) leak = std::getenv("SM64DS_GHOSTCHAR_LEAK") ? 1 : 0;
+        if (!leak) {
+            *save_chr = keep_save;
+            *(unsigned char *)data_0209b478 = keep_voice;
+            if (localp && *(void **)(localp + 0xdc)) {
+                func_ov002_020e6330(localp);
+                func_ov002_020e6350(localp);
+            }
+        }
+        std::fprintf(stderr, "[chr] ghost swap on slot %d to %u: save character"
+                             " %u -> %u (%s), local body %u\n",
+                     player ? (int)*((unsigned char *)player + 0x6d8) : -1,
+                     (unsigned)(ch & 3), (unsigned)keep_save,
+                     (unsigned)*save_chr, leak ? "LEAK knob on" : "kept",
+                     localp ? (unsigned)(*(unsigned *)(localp + 8) & 0xff) : 99u);
+    }
 }
 
 /* ---- SM64DS_VS_CHARS: the lobby's per-slot character pick, applied post-boot -

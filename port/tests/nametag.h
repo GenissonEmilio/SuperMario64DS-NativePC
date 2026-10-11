@@ -26,10 +26,23 @@
  *     (src/LoadFont3D.c) both MultiCopy_Int file 0x980e -- 0x4000 bytes -- to
  *     func_02054d88(), which is engine A's BG character base in VRAM. VS mode
  *     takes the LoadFont3D arm (Stage::LoadGraphics2D(b=1),
- *     src/_ZN5Stage14LoadGraphics2DEbi.cpp:75). The port maps DS VRAM at its
- *     real address (ntr/mmio.h VRAM_BASE 0x06000000), so the font the game is
- *     itself reading is readable here, at the same address, with no second
- *     copy and no file load of our own.
+ *     src/_ZN5Stage14LoadGraphics2DEbi.cpp:75). So the sheet is READ FROM THAT
+ *     FILE (nt_font_sheet), not from VRAM: file 0x980e is c2d.narc member 14,
+ *     0x4000 bytes stored raw, and hal/fs.cpp's port_fs_archive_member hands
+ *     it over read-only out of the archive image the game itself mounts. That
+ *     is the very source of the bytes LoadFont copies, so the glyphs are the
+ *     same ones the game draws with.
+ *
+ *     IT USED TO BE VRAM, AND THAT WAS THE FIELD BUG (run mp1, FONTFIELD1). The
+ *     overlays draw over the TITLE and the file select too when the launcher
+ *     starts the game (a windowed title), and there engine A's BG character
+ *     base holds the title's own graphics, not the font. The "letter A is not
+ *     blank" probe passed on those tiles, the atlas was decoded from them once
+ *     and kept for the session: the ping readout and the chat lines came out
+ *     as scrambled tile pieces while the tags, first built later in a level,
+ *     were fine. Every scripted proof ran the title headless (a selftest), so
+ *     the first draw always landed in a level and none of them saw it. A file
+ *     cannot hold the wrong thing at the wrong moment.
  *
  *   WHERE A GLYPH IS INSIDE THEM.  Message::AddChar
  *     (src/_ZN7Message7AddCharEc.cpp) is the authority, and it is exact:
@@ -115,11 +128,28 @@
  * port_vs_slot_name and port_vs_slot_stars rather than being read here, so the
  * tag and the end-of-match banner cannot disagree about either -- including
  * about the lobby's known slot-order caveat, which that file states.
+ *
+ * ---- THE CHAT BUBBLE (run mp1, lane BUBBLE1) -------------------------------
+ *
+ * Over the two tag lines, what that player said last (5 s, fading over the
+ * last one) or "." ".." "..." in his colour while his chat box is open. The
+ * state is hal/adv_chat.cpp's (port::chat_bubble, per chat seat); this draws
+ * it with the same projection, the same cull and the same ROM font -- but
+ * through adv_chat's chat_font_code, the one table that decides which
+ * characters a chat line can hold, so a '.' or a ',' in a line is the font's
+ * own glyph and not the tag decode's space. Body -> seat: in VS the body's
+ * slot IS its chat seat; an adventure ghost's seat is port_adventure_ghost_seat.
+ * Your own bubble is drawn over your own body too (Tango's call), at the same
+ * height with no tag under it. The Name Tags setting switches the two tag lines only: bubbles
+ * still draw with it off. Bodies are drawn far to near so the nearest bubble
+ * sits on top; a far body (past the tag's close step) gets a one-row bubble.
  */
 #ifndef PORT_TESTS_NAMETAG_H
 #define PORT_TESTS_NAMETAG_H
 
 #include <math.h>   /* the ghost tag's distance fade (nt_draw) */
+
+#include "hal/adv_chat.h"   /* port::chat_bubble, chat_font_code (BUBBLE1) */
 
 extern "C" {
 /* the settings key and its env override (hal/host_settings.cpp) */
@@ -127,8 +157,9 @@ int host_setting_name_tags(void);
 /* the two facts, from hal/star_flow.cpp */
 const char *port_vs_slot_name(int slot);
 int port_vs_slot_stars(int slot);
-/* engine A's BG character base: where LoadFont/LoadFont3D put file 0x980e */
-int func_02054d88(void);
+/* the message font's own file, read-only out of the mounted archive image
+   (hal/fs.cpp; LoadFont / LoadFont3D copy exactly these bytes to VRAM) */
+const unsigned char *port_fs_archive_member(unsigned fileID, unsigned *len_out);
 /* the ROM's per-character advance table (romdata.py NAMED) */
 extern unsigned char data_0208f074[];
 /* per-slot "this slot is live", Player::Render's own guard */
@@ -137,6 +168,17 @@ extern unsigned char data_0209fc5c[];
    in this console's level (hal/comms_sync.cpp). The tag loop skips a peer in
    another level so no name floats over a body that is not drawn. */
 int port_adventure_peer_visible(int slot);
+/* run mp1 lane GHOSTWIRE1: a hub ghost's own facts, off its SYNI / SYNG
+   (hal/comms_sync.cpp). seat -1 means "not a hub ghost": use the VS facts. */
+int port_adventure_ghost_seat(int slot);
+const char *port_adventure_ghost_name(int slot);
+int port_adventure_ghost_stars(int slot);
+unsigned port_adventure_ghost_rgb(int slot);
+int port_adventure_ghost_fade(int slot);
+int port_adventure_ghost_drawpos(int slot, int out[3]);
+/* the VS round's seat mask, the same on every console at the same frame
+   (hal/comms_loopback.cpp; 0 = no VS carrier session, no information) */
+unsigned port_vs_seat_live_mask(void);
 }
 
 /* ADVENTURE GHOSTS: the same head tags label the ghosts in an adventure
@@ -158,6 +200,8 @@ struct NtGlyph {
 };
 
 static NtGlyph g_nt_glyph[NT_LAST - NT_FIRST + 1];
+/* the bubble's atlas: the same sheet, decoded through port::chat_font_code */
+static NtGlyph g_nt_bglyph[NT_LAST - NT_FIRST + 1];
 static int g_nt_font_ready;
 static int g_nt_font_said;
 
@@ -172,34 +216,58 @@ static int nt_code_for(unsigned char a)
     return -1;
 }
 
-/* Build the atlas if the font is up. Returns 1 once it is built. Cheap to call
-   every frame: one compare after the first success, and one VRAM probe before
-   it (the font is not in VRAM until the scene's LoadGraphics2D has run). */
+/* THE SHEET: file 0x980e itself, the 0x4000 bytes LoadFont / LoadFont3D copy
+   to engine A's BG character base. Looked up once and kept (the archive image
+   it points into is cached for the process and never released); 0 if the file
+   cannot be had, and then nothing draws in the ROM font (the chat falls back
+   to the overlay's 5x7 font, the tags and bubbles stay off) rather than
+   drawing whatever VRAM holds. Shared by all three atlases: the tags', the
+   bubbles' and the chat / ping readout's (walk_window chat_font_build). */
+enum { NT_FONT_FILE = 0x980e, NT_FONT_BYTES = 0x4000 };
+
+static const unsigned char *nt_font_sheet(void)
+{
+    static const unsigned char *sheet;
+    static int tried;
+    if (tried) return sheet;
+    tried = 1;
+    unsigned n = 0;
+    const unsigned char *p = port_fs_archive_member(NT_FONT_FILE, &n);
+    /* THE LETTER A MUST HAVE INK: a member of the wrong size or a blank one is
+       not the font, and is refused the same way a missing one is. */
+    int any = 0;
+    if (p && n >= NT_FONT_BYTES) {
+        const unsigned off =
+            (unsigned)(((0x0a & 0x1f) + ((0x0a & 0xe0) << 1)) << 5);
+        for (int i = 0; i < 32 && !any; ++i) any = p[off + i] != 0;
+    }
+    if (!any) {
+        fprintf(stderr, "[font] the ROM's message font (file 0x%x) is not "
+                "readable (%u bytes): host text uses the overlay font\n",
+                NT_FONT_FILE, p ? n : 0u);
+        return 0;
+    }
+    sheet = p;
+    return sheet;
+}
+
+/* Build the atlas from the sheet. Returns 1 once it is built. Cheap to call
+   every frame: one compare after the first call. */
 static int nt_font_build(void)
 {
     if (g_nt_font_ready) return 1;
 
-    const unsigned base = (unsigned)func_02054d88();
-    if (!base) return 0;                 /* no BG char base in this mode */
+    const unsigned char *sheet = nt_font_sheet();
+    if (!sheet) return 0;
+    const uintptr_t base = (uintptr_t)sheet;
 
-    /* THE PROBE IS THE LETTER A, not the base pointer. func_02054d88 answers an
-       address whenever the display is in a mode that has one, whether or not
-       anybody has loaded a font into it, so a build that trusted the pointer
-       would cache 96 blank glyphs on the first frame and never look again. */
-    {
-        const unsigned off =
-            (unsigned)(((0x0a & 0x1f) + ((0x0a & 0xe0) << 1)) << 5);
-        const unsigned char *t = (const unsigned char *)(base + off);
-        int any = 0;
-        for (int i = 0; i < 32 && !any; ++i) any = t[i] != 0;
-        if (!any) return 0;
-    }
-
-    for (int a = NT_FIRST; a <= NT_LAST; ++a) {
-        NtGlyph &g = g_nt_glyph[a - NT_FIRST];
+    for (int a = NT_FIRST; a <= NT_LAST; ++a)
+    for (int atlas = 0; atlas < 2; ++atlas) {
+        NtGlyph &g = (atlas ? g_nt_bglyph : g_nt_glyph)[a - NT_FIRST];
         g.have = 0;
         g.adv = 6;
-        const int c = nt_code_for((unsigned char)a);
+        const int c = atlas ? port::chat_font_code((unsigned char)a)
+                            : nt_code_for((unsigned char)a);
         if (c < 0) continue;
 
         const unsigned off =
@@ -222,9 +290,10 @@ static int nt_font_build(void)
     g_nt_font_ready = 1;
     if (!g_nt_font_said) {
         g_nt_font_said = 1;
-        fprintf(stderr, "[tag] the ROM's message font is decoded from VRAM "
-                "%08x: 8x16 glyphs, 32-tile rows, widths from data_0208f074\n",
-                base);
+        fprintf(stderr, "[tag] the ROM's message font is decoded from its file "
+                "0x%x (c2d.narc member 14, %u bytes): 8x16 glyphs, 32-tile "
+                "rows, widths from data_0208f074\n", NT_FONT_FILE,
+                (unsigned)NT_FONT_BYTES);
     }
     return 1;
 }
@@ -250,13 +319,14 @@ static inline uint32_t nt_blend(uint32_t dst, uint32_t src, int a)
 }
 
 static int nt_line(const OvlSurface &fb, int x0, int y0, const char *s,
-                   int scale, uint32_t rgb, int pass, int measure, int alpha = 255)
+                   int scale, uint32_t rgb, int pass, int measure, int alpha = 255,
+                   const NtGlyph *atlas = g_nt_glyph)
 {
     int x = x0;
     for (; *s; ++s) {
         const unsigned char a = (unsigned char)*s;
         if (a < NT_FIRST || a > NT_LAST) continue;
-        const NtGlyph &g = g_nt_glyph[a - NT_FIRST];
+        const NtGlyph &g = atlas[a - NT_FIRST];
         const int adv = (int)g.adv * scale;
         if (measure || !g.have) { x += adv; continue; }
         for (int r = 0; r < NT_GH; ++r)
@@ -402,9 +472,181 @@ static int nt_probe(void)
     return on;
 }
 
+/* ---- the bubble -----------------------------------------------------------
+   One chat line wrapped into at most max_rows rows no wider than half the
+   screen (a word too long for a row is cut inside it); text past the last row
+   ends that row in "...". Returns the row count. */
+enum { NT_BUBBLE_ROWS = 3 };
+
+static int nt_badv(unsigned char a, int scale)
+{
+    if (a < NT_FIRST || a > NT_LAST) return 6 * scale;
+    return (int)g_nt_bglyph[a - NT_FIRST].adv * scale;
+}
+
+static int nt_bwidth(const char *s, int scale)
+{
+    int w = 0;
+    for (; *s; ++s) w += nt_badv((unsigned char)*s, scale);
+    return w;
+}
+
+static int nt_bubble_wrap(const char *text, int scale, int maxw, int max_rows,
+                          char rows[NT_BUBBLE_ROWS][port::kChatTextMax + 4])
+{
+    const int n = (int)strlen(text);
+    int i = 0, r = 0;
+    while (i < n && text[i] == ' ') ++i;
+    while (i < n && r < max_rows) {
+        /* the longest run from i that fits, preferring to end at a space */
+        int w = 0, j = i, last_space = -1;
+        while (j < n) {
+            const int a = nt_badv((unsigned char)text[j], scale);
+            if (w + a > maxw && j > i) break;
+            if (text[j] == ' ') last_space = j;
+            w += a;
+            ++j;
+        }
+        int end = j;
+        if (j < n && last_space > i) end = last_space;   /* break at the space */
+        int len = end - i;
+        while (len > 0 && text[i + len - 1] == ' ') --len;
+        memcpy(rows[r], text + i, (size_t)len);
+        rows[r][len] = 0;
+        i = end;
+        while (i < n && text[i] == ' ') ++i;
+        ++r;
+    }
+    if (i < n && r > 0) {
+        /* more than fits: the last row ends in "...", trimmed until it fits */
+        char *row = rows[r - 1];
+        int len = (int)strlen(row);
+        while (len > 0 && nt_bwidth(row, scale) + nt_bwidth("...", scale) > maxw)
+            row[--len] = 0;
+        memcpy(row + len, "...", 4);
+    }
+    return r;
+}
+
+/* The rows at the top of every chat glyph cell that nothing draws into:
+   above the highest inked row of any glyph in the bubble atlas, less the one
+   row its black outline takes. Read off the decoded font once. */
+static int nt_bubble_blank_top(void)
+{
+    static int blank = -1;
+    if (blank >= 0) return blank;
+    int top = NT_GH;
+    for (int a = 0; a <= NT_LAST - NT_FIRST; ++a) {
+        const NtGlyph &g = g_nt_bglyph[a];
+        if (!g.have) continue;
+        for (int r = 0; r < top; ++r) {
+            int any = 0;
+            for (int c = 0; c < NT_GW && !any; ++c) any = g.ink[r][c] != 0;
+            if (any) { top = r; break; }
+        }
+    }
+    blank = top >= NT_GH ? 0 : (top > 0 ? top - 1 : 0);
+    return blank;
+}
+
+/* The bubble whose BOTTOM edge is at y, centred on cx. Dots in the sender's
+   colour; a line in white. The shade is the chat log's own (ovl_shade), under
+   the text while it is still mostly opaque. */
+static void nt_bubble_draw(const OvlSurface &fb, int cx, int y,
+                           const port::ChatBubble &b, int scale, int alpha,
+                           int max_rows)
+{
+    const int lh = NT_GH * scale + 2 * scale;
+    /* KEEP IT ON THE PICTURE. At RenderScale 1 (256x192) a close body's head
+       sits so high that three rows above it would start off the top edge, so
+       only the rows that fit above y are drawn (at least one; the wrap ends
+       the last one in "..."), and y never sits closer to the top than one
+       row. A row counts as fitting when its INK is on the picture: the glyph
+       cells' blank top rows (above the highest outline pixel any chat glyph
+       has) may hang over the edge, so a bubble whose top row just touches
+       the edge keeps that row. */
+    const int fit = (y + nt_bubble_blank_top() * scale) / lh;
+    if (max_rows > fit) max_rows = fit < 1 ? 1 : fit;
+    if (y < lh) y = lh;
+    if (b.typing) {
+        static const char *const kDots[3] = {".", "..", "..."};
+        const int w3 = nt_bwidth("...", scale);
+        const int x = cx - w3 / 2;
+        const int top = y - lh;
+        if (alpha > 96)
+            ovl_shade(fb, x - 3 * scale, top - scale, w3 + 6 * scale, lh);
+        const char *d = kDots[(b.dots - 1) % 3];
+        nt_line(fb, x, top, d, scale, b.rgb, 0, 0, alpha, g_nt_bglyph);
+        nt_line(fb, x, top, d, scale, b.rgb, 1, 0, alpha, g_nt_bglyph);
+        return;
+    }
+    char rows[NT_BUBBLE_ROWS][port::kChatTextMax + 4];
+    /* half the ACTIVE width: SCREEN_W is the largest tier's buffer, not the
+       screen this frame is drawn at */
+    const int nr = nt_bubble_wrap(b.text, scale, ntr::active_w / 2, max_rows, rows);
+    if (nr <= 0) return;
+    const int a = alpha * b.alpha / 255;
+    if (a <= 0) return;
+    int w = 0;
+    for (int r = 0; r < nr; ++r) {
+        const int rw = nt_bwidth(rows[r], scale);
+        if (rw > w) w = rw;
+    }
+    const int top = y - nr * lh;
+    if (a > 96)
+        ovl_shade(fb, cx - w / 2 - 3 * scale, top - scale, w + 6 * scale, nr * lh);
+    for (int pass = 0; pass <= 1; ++pass)
+        for (int r = 0; r < nr; ++r) {
+            const int rw = nt_bwidth(rows[r], scale);
+            nt_line(fb, cx - rw / 2, top + r * lh, rows[r], scale, 0xFFFFFFFFu,
+                    pass, 0, a, g_nt_bglyph);
+        }
+}
+
+/* TEST ONLY: SM64DS_TAG_AT="x,y;x,y;..." (per mille of the picture, anchor
+   point = the head the tag stands on) draws the first remote body's tag and
+   bubble ONCE AT EACH listed place instead of over its head, so a proof can
+   put a tag behind the HUD counters, the panel corner or a menu on purpose and
+   compare the picture with tags off (run mp1, lane TAGLAYER1). Unset: nothing
+   changes. */
+static int nt_test_at(float xs[8], float ys[8])
+{
+    static int n = -1;
+    static float x[8], y[8];
+    if (n < 0) {
+        n = 0;
+        const char *e = getenv("SM64DS_TAG_AT");
+        while (e && *e && n < 8) {
+            char *end = 0;
+            const float fx = (float)strtod(e, &end);
+            if (end == e || *end != ',') break;
+            e = end + 1;
+            const float fy = (float)strtod(e, &end);
+            if (end == e) break;
+            x[n] = fx;
+            y[n] = fy;
+            ++n;
+            e = end;
+            if (*e == ';') ++e;
+        }
+    }
+    for (int i = 0; i < n; ++i) { xs[i] = x[i]; ys[i] = y[i]; }
+    return n;
+}
+
 /* ---- the tags -------------------------------------------------------------
-   Called once per frame, with the surface every other host overlay draws on.
+   Called once per frame from the level loop, right after the 3D raster and
+   BEFORE the engine-A 2D composite (tests/walk_window.cpp), so the HUD, the
+   dialogue box, the bottom-screen panel and the fade draw over the tags and
+   bubbles; the chat box, the ping readout and the menus draw after, on top.
    Reads only. */
+struct NtBody {
+    int i;               /* the body (player slot) */
+    int seat;            /* its chat seat, -1 when it has none */
+    float sx, sy, d;
+    int bp[3];
+};
+
 static void nt_draw(const OvlSurface &fb)
 {
     /* A VS match OR an adventure-ghost session -- both draw a tag over every
@@ -412,7 +654,11 @@ static void nt_draw(const OvlSurface &fb)
        the two modes, not the one flag. */
     const bool adventure = port::adventure_ghost_mode();
     if (data_0209f2d8 != 1 && !adventure) return;
-    if (!host_setting_name_tags()) return;
+    /* The Name Tags setting turns the two tag lines off; a chat bubble still
+       draws with it off (lane BUBBLE1). */
+    const bool tags_on = host_setting_name_tags() != 0;
+    const int my_seat = port::chat_my_seat();
+    if (!tags_on && my_seat < 0) return;
     if (!nt_font_build()) return;
     /* this reads and blends the 3D's pixels: a frame held on the graphics card
        (run cardfull) is made an ordinary one first. The card's one-frame
@@ -421,22 +667,87 @@ static void nt_draw(const OvlSurface &fb)
     ntr::gx_card_settle();
 
     const int me = (int)data_0209f250;
+    const unsigned vs_live = adventure ? 0u : port_vs_seat_live_mask();
+    NtBody bodies[kPortMaxPlayers];
+    int nb = 0;
+    bool nt_test_pos = false;
     for (int i = 0; i < kPortMaxPlayers; ++i) {
-        if (i == me) continue;                   /* never over the local body */
         const char *p = (const char *)data_0209f394[i];
         if (!p) continue;
         if (data_0209fc5c[i] == 0) continue;     /* Player::Render's own guard */
+        /* A VS PLAYER WHO LEFT (quit, refused at the door, retired): the round
+           no longer carries his slot, from the same round on every console, so
+           no tag and no bubble float over the body he left behind. A mask of
+           0 is "no information yet" and skips nothing. */
+        if (vs_live && !((vs_live >> i) & 1u)) continue;
         /* ADVENTURE co-op (M2): in a ghost session, only tag a peer present in
            this console's level -- a body in another level is despawned and
            draws nothing, so a name over it would float on empty space. VS is
            one shared level and does not consult the filter. */
-        if (adventure && !port_adventure_peer_visible(i)) continue;
+        if (i != me && adventure && !port_adventure_peer_visible(i)) continue;
 
-        const int wp[3] = {*(const int *)(p + 0x5c),
-                           *(const int *)(p + 0x60) + NT_HEAD_UP,
-                           *(const int *)(p + 0x64)};
-        float sx = 0, sy = 0, d = 0;
-        if (!nt_project(wp, &sx, &sy, &d)) continue;
+        /* the body's chat seat: its VS slot, a hub ghost's hub seat, or this
+           console's own seat over its own body */
+        int seat = -1;
+        if (i == me) seat = my_seat;
+        else if (adventure) seat = port_adventure_ghost_seat(i);
+        else if (my_seat >= 0) seat = i;
+        /* never a tag over the local body; only its own bubble, if any */
+        port::ChatBubble own;
+        if (i == me && !(seat >= 0 && port::chat_bubble(seat, &own))) continue;
+        if (i != me && !tags_on && seat < 0) continue;
+
+        /* WHERE THE BODY WAS DRAWN. A hub ghost is parked out of the level
+           again right after its draw (hal/comms_sync.cpp), so its tag reads
+           the position the follower drew it at this frame, and a hub ghost
+           that was not drawn gets no tag. Every other body: its own. */
+        NtBody &e = bodies[nb];
+        e.bp[0] = *(const int *)(p + 0x5c);
+        e.bp[1] = *(const int *)(p + 0x60);
+        e.bp[2] = *(const int *)(p + 0x64);
+        if (i != me && adventure && port_adventure_ghost_seat(i) >= 0 &&
+            !port_adventure_ghost_drawpos(i, e.bp))
+            continue;
+        const int wp[3] = {e.bp[0], e.bp[1] + NT_HEAD_UP, e.bp[2]};
+        if (!nt_project(wp, &e.sx, &e.sy, &e.d)) continue;
+        e.i = i;
+        e.seat = seat;
+        ++nb;
+    }
+    {
+        /* the test knob above: copies of the first remote body, one per place */
+        float tx[8], ty[8];
+        const int tn = nt_test_at(tx, ty);
+        nt_test_pos = tn > 0;
+        int first = -1;
+        for (int k = 0; k < nb; ++k)
+            if (bodies[k].i != me) { first = k; break; }
+        if (tn > 0 && first >= 0) {
+            const NtBody src = bodies[first];
+            nb = 0;
+            for (int k = 0; k < tn; ++k) {
+                bodies[nb] = src;
+                bodies[nb].sx = tx[k] * 0.001f * (float)ntr::active_w;
+                bodies[nb].sy = ty[k] * 0.001f * (float)ntr::active_h;
+                ++nb;
+            }
+        }
+    }
+    /* FAR TO NEAR, so the nearest body's tag and bubble land on top (a plain
+       insertion sort: at most sixteen) */
+    for (int a = 1; a < nb; ++a)
+        for (int b = a; b > 0 && bodies[b].d > bodies[b - 1].d; --b) {
+            const NtBody t = bodies[b];
+            bodies[b] = bodies[b - 1];
+            bodies[b - 1] = t;
+        }
+
+    static unsigned s_said[kPortMaxPlayers];     /* the probe's last bubble line */
+    for (int k = 0; k < nb; ++k) {
+        const NtBody &e = bodies[k];
+        const int i = e.i;
+        const int *bp = e.bp;
+        const float sx = e.sx, sy = e.sy, d = e.d;
 
         /* SIZE. The VS tag steps up one size when the player is close (a
            continuous scale shimmers as it rounds to whole pixels; the w<200
@@ -452,15 +763,12 @@ static void nt_draw(const OvlSurface &fb)
            Full opacity inside near, linear to zero at far, and NO tag at all
            beyond it -- a name you cannot talk to is not drawn. */
         int alpha = 255;
-        if (adventure) {
+        if (adventure && i != me) {
             const char *mp = (const char *)data_0209f394[me];
             if (mp) {
-                const double ddx = (double)(*(const int *)(p + 0x5c) -
-                                            *(const int *)(mp + 0x5c));
-                const double ddy = (double)(*(const int *)(p + 0x60) -
-                                            *(const int *)(mp + 0x60));
-                const double ddz = (double)(*(const int *)(p + 0x64) -
-                                            *(const int *)(mp + 0x64));
+                const double ddx = (double)(bp[0] - *(const int *)(mp + 0x5c));
+                const double ddy = (double)(bp[1] - *(const int *)(mp + 0x60));
+                const double ddz = (double)(bp[2] - *(const int *)(mp + 0x64));
                 const double dist =
                     sqrt(ddx * ddx + ddy * ddy + ddz * ddz) / 4096.0;
                 const double kNear = 512.0, kFar = 3072.0;
@@ -469,7 +777,10 @@ static void nt_draw(const OvlSurface &fb)
                                 : (kFar - dist) / (kFar - kNear);
                 alpha = (int)(aa * 255.0 + 0.5);
             }
+            /* a hub ghost whose frames stopped fades with its body */
+            alpha = alpha * port_adventure_ghost_fade(i) / 256;
             if (alpha <= 0) continue;   /* out of prox-chat range: no tag */
+            if (nt_test_pos) alpha = 255;   /* SM64DS_TAG_AT: a test places the tag, full strength */
         }
         /* OFF THE SCREEN ENTIRELY, with a whole tag's margin so a name that is
            half on does not flicker at the edge -- and TESTED IN FLOATS, BEFORE
@@ -491,39 +802,101 @@ static void nt_draw(const OvlSurface &fb)
         const int cx = (int)(sx + 0.5f);
         const int y_top = (int)(sy + 0.5f) - 2 * lh;
         const int y_bot = (int)(sy + 0.5f) - lh;
-        const int name_y = adventure ? y_top : y_bot;
-        const int star_y = adventure ? y_bot : y_top;
+        const bool tagged = tags_on && i != me;
+        if (tagged) {
+            const int name_y = adventure ? y_top : y_bot;
+            const int star_y = adventure ? y_bot : y_top;
 
-        char who[24];
-        const char *nick = port_vs_slot_name(i);
-        if (nick && nick[0])
-            snprintf(who, sizeof who, "%s", nick);
-        else
-            snprintf(who, sizeof who, "PLAYER %d", i + 1);
+            /* A HUB GHOST (run mp1 lane GHOSTWIRE1) is labelled from its own
+               wire: the name its SYNI carries (already cut down to printable
+               ASCII), the save's star total its SYNG carries, and the name
+               drawn in its body colour. Anything else keeps the VS facts. */
+            const int gseat = adventure ? port_adventure_ghost_seat(i) : -1;
+            char who[32];
+            const char *nick = gseat >= 0 ? port_adventure_ghost_name(i)
+                                          : port_vs_slot_name(i);
+            if (nick && nick[0])
+                snprintf(who, sizeof who, "%s", nick);
+            else
+                snprintf(who, sizeof who, "PLAYER %d",
+                         (gseat >= 0 ? gseat : i) + 1);
 
-        /* The star count is port_vs_slot_stars, the per-server VS score, and it
-           labels a ghost the same as a VS body now: how many stars that player
-           has on this server. */
-        const int stars = port_vs_slot_stars(i);
-        char sline[24];
-        snprintf(sline, sizeof sline, "%d STAR%s", stars, stars == 1 ? "" : "S");
+            /* The star count is port_vs_slot_stars, the per-server VS score,
+               and it labels a ghost the same as a VS body now: how many stars
+               that player has on this server. A hub ghost carries its own. */
+            int stars = port_vs_slot_stars(i);
+            if (gseat >= 0) {
+                const int gs = port_adventure_ghost_stars(i);
+                stars = gs >= 0 ? gs : 0;
+            }
+            char sline[24];
+            snprintf(sline, sizeof sline, "%d STAR%s", stars, stars == 1 ? "" : "S");
+            unsigned name_rgb = 0xFFFFFFFFu;
+            if (gseat >= 0) {
+                const unsigned rgb = port_adventure_ghost_rgb(i);
+                if (rgb) name_rgb = rgb;
+            }
 
-        nt_text_centred(fb, cx, star_y, sline, scale, 0xFFFFE060u, alpha);
-        nt_text_centred(fb, cx, name_y, who, scale, 0xFFFFFFFFu, alpha);
+            nt_text_centred(fb, cx, star_y, sline, scale, 0xFFFFE060u, alpha);
+            nt_text_centred(fb, cx, name_y, who, scale, name_rgb, alpha);
 
+            if (nt_probe()) {
+                fprintf(stderr, "[tag] slot %d \"%s\" %s at (%.0f,%.0f) w=%.2f "
+                        "scale %d\n", i, who, sline, sx, sy, d, scale);
+                if (nt_probe() >= 2) {
+                    const int fp[3] = {bp[0], bp[1], bp[2]};
+                    float fx = 0, fy = 0, fd = 0;
+                    if (nt_project(fp, &fx, &fy, &fd))
+                        fprintf(stderr, "[tag]   ruler: feet y=%.1f world at "
+                                "screen y %.0f, so +%d world lifts the anchor "
+                                "%.0f px\n", fp[1] / 4096.0, fy,
+                                (int)(NT_HEAD_UP / 4096), fy - sy);
+                }
+            }
+        }
+
+        /* THE BUBBLE, over the tag lines' place whether or not they are drawn
+           (your own body, or tags switched off): one height over every head,
+           so a bubble never lands on the tag of a body standing where you
+           stand. */
+        port::ChatBubble bub;
+        int have = e.seat >= 0 && port::chat_bubble(e.seat, &bub);
+        /* TEST ONLY: SM64DS_TAG_TEXT="..." gives every placed tag a full-strength bubble with that text, so a
+           proof does not depend on the chat's wall clock */
+        if (nt_test_pos && i != me) {
+            static const char *tt = getenv("SM64DS_TAG_TEXT");
+            if (tt && *tt) {
+                memset(&bub, 0, sizeof bub);
+                bub.has_text = true;
+                bub.alpha = 255;
+                bub.rgb = 0xFFFFFFFFu;
+                snprintf(bub.text, sizeof bub.text, "%s", tt);
+                have = 1;
+            }
+        }
+        if (have) {
+            const int bottom = y_top - 2 * scale;
+            nt_bubble_draw(fb, cx, bottom, bub, scale, alpha,
+                           d < 200.0f ? NT_BUBBLE_ROWS : 1);
+        }
         if (nt_probe()) {
-            fprintf(stderr, "[tag] slot %d \"%s\" %s at (%.0f,%.0f) w=%.2f "
-                    "scale %d\n", i, who, sline, sx, sy, d, scale);
-            if (nt_probe() >= 2) {
-                const int fp[3] = {*(const int *)(p + 0x5c),
-                                   *(const int *)(p + 0x60),
-                                   *(const int *)(p + 0x64)};
-                float fx = 0, fy = 0, fd = 0;
-                if (nt_project(fp, &fx, &fy, &fd))
-                    fprintf(stderr, "[tag]   ruler: feet y=%.1f world at screen"
-                            " y %.0f, so +%d world lifts the anchor %.0f px\n",
-                            fp[1] / 4096.0, fy, (int)(NT_HEAD_UP / 4096),
-                            fy - sy);
+            /* one line when a body's bubble changes, not one per frame */
+            unsigned sig = !have ? 0u : bub.typing ? 1u : 2166136261u;
+            if (have && !bub.typing)
+                for (const char *q = bub.text; *q; ++q)
+                    sig = (sig ^ (unsigned char)*q) * 16777619u;
+            if (sig != s_said[i]) {
+                s_said[i] = sig;
+                if (!have)
+                    fprintf(stderr, "[tag] bubble body=%d seat=%d%s none\n", i,
+                            e.seat, i == me ? " (me)" : "");
+                else
+                    fprintf(stderr, "[tag] bubble body=%d seat=%d%s %s at "
+                            "(%.0f,%.0f) w=%.2f rows=%d \"%s\"\n", i, e.seat,
+                            i == me ? " (me)" : "",
+                            bub.typing ? "typing" : "text", sx, sy, d,
+                            bub.typing ? 1 : (d < 200.0f ? NT_BUBBLE_ROWS : 1),
+                            bub.typing ? "..." : bub.text);
             }
         }
     }

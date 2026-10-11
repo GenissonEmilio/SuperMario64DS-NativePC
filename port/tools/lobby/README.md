@@ -15,8 +15,9 @@ access to the release zips every launcher downloads and runs.
 spawn it), and `failed` (any playing member aborts it back to lobby). NOTHING
 spawns a game until every playing seat has readied, and the seat count is frozen
 at `start` and forced into every launch plan as `SM64DS_VS_PLAYERS` -- the
-join-race guarantee. `result` arrives in stage C and answers `404 unknown_verb`
-today.
+join-race guarantee. Stage C added `result`. **Lobby 1.0 (contract v5)** adds
+the game build check, Luigi Infection and voice, the session digest, adventure
+rooms with a room-lifetime hub code, and the world pool: see CONTRACT v5 below.
 
 ---
 
@@ -29,6 +30,7 @@ today.
 | `docker-compose.yml` | the deploy unit, and every limit as an env knob |
 | `test_client.py` | over-the-wire `selftest`, `negatives` and `soak` |
 | `test_units.py` | the grammar, the caps, the lifecycle, the limiters, in process |
+| `test_security.py` | slow bodies, forged `X-Forwarded-For`, the world pool's bounds, over raw sockets |
 
 ---
 
@@ -49,12 +51,220 @@ python3 test_client.py selftest             # spawns a server, proves the wire
 python3 test_client.py negatives --out DIR  # writes one file per refusal
 python3 test_client.py dial                 # the dial, on the DEPLOYED knobs
 python3 test_client.py soak --seconds 60
+python3 test_security.py                    # spawns its own servers
+python3 test_client.py arena                # arena netmode over the wire
 python3 test_client.py selftest --url https://tangos.dev/port/lobby
 ```
 
 ---
 
-## THE WIRE CONTRACT, v1 and v2
+## CONTRACT v5 (lobby 1.0) AND v6 (party and coop rooms)
+
+Multiplayer 1.0 (run mp1, NETARCH1 design section 5). **`CONTRACT_MIN = 5`,
+`CONTRACT_V = 6`**: v5 is the floor, v6 is additive (see "PARTY AND COOP
+ROOMS" below). Every request that says `"v":1..4` is `400 bad_version`,
+which launchers 0.3.x..0.5.x already show as "This launcher and the lobby
+server do not agree on the rules. Check for an update." The floor moved with
+the version because the game under it changed: a 1.0 match needs a relay v2
+seat, a server-minted Luigi seed and a session digest in every plan, and a
+pre-1.0 launcher would spawn a game that cannot pair with a 1.0 host. The
+older gates that kept a narrow v2 client out of a wide room are gone with the
+clients they guarded against; the history sections below still describe them.
+
+**The examples further down were written at v1/v2.** Since v5 every request
+says `"v":5`, and `create`/`join` also carry `game`. Everything else in them
+is unchanged.
+
+What v5 is, all of it:
+
+| where | what |
+|---|---|
+| `create`, `join`, `world` | `game` REQUIRED: the game build id, `^[0-9A-Za-z._-]{1,24}$`, compared byte for byte, never parsed. A build not on the server's `GAME_IDS` allow list is **409 `unknown_game`** (check for an update). A room remembers its creator's build; a join from another listed build is **409 `game_mismatch`** ("someone in this room runs a different game version"), checked before `room_full` |
+| `create` | `session_type` `"vs"` (default) or `"adventure"`; `"party"` and `"coop"` are v6 (below), and a v5 caller naming either gets `400 bad_session_type` |
+| `params` (VS rooms) | optional `luigi` 0/1 (Luigi Infection, default 0) and `voice` 0/1 (the match allows proximity voice; **voice chat is shelved since 10-08: the field is still checked, but the stored value is always 0 and every plan says `voice` 0**, `VOICE_SHELVED` in server.py). Anything but the integer 0 or 1 is `400 bad_field`. On an adventure room `luigi`, `voice` or `match_players` is `400 bad_field`. Both ride the `view` and the `params` event |
+| `start` (VS) | mints `seed` (u32, system RNG) and freezes `luigi`/`voice`/`seed` with the rest of the match. A new seed every match. `start` on an adventure room is **409 `not_vs`** |
+| VS go plan | gains `relay_v` (2), `want_seat` (= `slot`), `luigi`, `seed`, `voice`, `digest` |
+| adventure rooms | a hub code minted once at create for the room's life; the plan arrives in the create/join answer and on every poll; no start/ready gate; the room outlives its creator |
+| `world`, `world_ping` | the always-on world pool (below) |
+| `/health` | `contract_min` 5, `contract_v` 6, plus `relay_v`, `world_open`, `game_ids` (how many builds are listed), `worlds`, `world_seats`, `world_member_s`, `world_addr_tokens` |
+
+**The VS plan, and what the launcher exports from it** (v5 keys marked):
+
+```json
+{"role":"child", "code":"M7KQ2PXR", "relay":"135.148.26.201:41234",
+ "session_type":"vs", "map":1, "players":4, "slot":2, "spawn_delay_ms":1500,
+ "playing":true, "names":"tango,opie,ace,nn", "match_players":4,
+ "colors":",,,", "relay_v":2, "want_seat":2, "luigi":1, "seed":3735928559,
+ "voice":1, "digest":909114140, "star_target":3}
+```
+
+| plan key | env |
+|---|---|
+| `luigi` | `SM64DS_VS_LUIGI_INFECTION` |
+| `seed` | `SM64DS_VS_LUIGI_SEED` (decimal u32) |
+| `voice` | `SM64DS_VOICE_ALLOWED` |
+| `digest` | `SM64DS_SESSION_DIGEST` (decimal u32) |
+| `relay_v`, `want_seat` | informational: no env today. The game already speaks relay v2 with v1 fallback, VS takes its seat from `SM64DS_COMMS_SLOT` (= `want_seat`) and the hub asks for any seat (255) |
+
+**The session digest** is the number the game's ACCEPT check computes from its
+own environment (port/hal/comms_loopback.cpp, the NETCORE1 session check), so
+a console launched with a plan that disagrees with the host's leaves at the
+door (exit code 3) instead of desyncing. FNV-1a 32 (`h = 2166136261; h ^= b;
+h *= 16777619`) over the ASCII string
+
+```
+map|players|win|target|king|luigi|seed|netmode|wire
+```
+
+`win` is `time`/`stars`/`king`; `target` is the star target in stars mode,
+else 0; `king` the king target in king mode, else 0; `seed` the seed when
+`luigi` is 1, else 0; `netmode` is the plan's `netmode`, `lockstep` or `arena` (see ARENA MODE below);
+`wire` is 2 for four players or fewer, else 3. Decimal, no padding, no
+spaces. `"1|4|stars|3|0|1|3735928559|lockstep|2"` is `909114140`. Pinned in
+`test_units.py::test_session_digest`, and the selftest recomputes every plan's
+digest with an implementation of its own.
+
+**Adventure rooms.** `create` with `session_type:"adventure"` mints the room's
+hub code once (8 characters of the room alphabet, never the room code). The
+create and join answers carry the plan, and so does every poll:
+
+```json
+{"playing":true, "session_type":"adventure", "code":"Q4WXN8ZT",
+ "relay":"135.148.26.201:41234", "relay_v":2, "want_seat":255}
+```
+
+The launcher boots the TITLE with `SM64DS_ADVENTURE=1`, `SM64DS_COMMS_CODE`
+and `SM64DS_COMMS_RELAY`, and exports no `SM64DS_LEVEL` and no `SM64DS_VS_*`:
+each player plays their own save. `want_seat` 255 asks the relay for any free
+hub seat. Everybody in an adventure room is "playing" (there is no dial). When
+the host leaves, the host role (kick only) passes to the lowest seat still in,
+with a `host` event; the room stays open. An adventure room is exempt from
+`ROOM_IDLE_S` and closes only after `ADV_EMPTY_S` (600 s) with nobody in it.
+The heartbeat still applies, so a launcher keeps polling while its game runs.
+
+**PARTY AND COOP ROOMS (contract v6; run mp1 FIELD5, lane ROOMS1).** Two more
+hub rooms next to the adventure room, made for the launcher's "Create party
+room" and "Create coop room" buttons. A party room shares stars and bodies
+between friends; a coop room is a private world with the host's save and a
+fully synced world. The lobby carries neither idea: it seats up to four
+friends under a six-letter code, hands each one the room's hub code, and lets
+the host release the room.
+
+| where | what |
+|---|---|
+| `create` | `session_type:"party"` or `"coop"`, **v6 only** (a v5 caller gets `400 bad_session_type`, which every launcher words as "Check for an update"). A coop create also carries **`save_name`**, required there and `400 bad_field` anywhere else: 1 to 24 bytes of printable ASCII, no leading or trailing space, and none of `\ / : * ? " < > \|` (`400 bad_save_name`, or `too_long`). It is opaque display text; the save's **path never reaches this service** (a `save_path` or any other unknown key is `400 bad_field`), is never stored and is never in an answer |
+| seats | `PARTY_SEATS` and `COOP_SEATS` (both 4, 2..16), apart from `MAX_SEATS`. The fifth friend is `409 room_full`. The view carries `room_seats` |
+| `join` | a party or coop room needs v6 (`400 bad_session_type` for a v5 launcher, which would boot it as a plain adventure room); everything else is the VS and adventure join (`game_mismatch`, `unknown_game`, kicks, budgets) |
+| the plan | the create and join answers and every poll carry the hub plan, like an adventure room's, plus `host` (this seat is the host), `started`, `launch` and `room_seats`; coop adds `save_name`: `{"playing":true,"session_type":"coop","code":"Q4WXN8ZT","relay":"...","relay_v":2,"want_seat":255,"host":true,"started":false,"launch":0,"room_seats":4,"save_name":"Tango file"}` |
+| `start` (host only) | the host's **Play**. No arming, `ready`, `go` or match id. It sets `started`, adds one to `launch`, and pushes a `started` event `{"kind":"started","launch":n}`. A launcher launches its game once per `launch` number; a friend who **joins later** is handed a plan that is already `started` and launches on joining. The host may start alone. Pressed again it is launch n+1: everybody whose game is closed relaunches. A guest is `403 not_host`; extra fields are `400 bad_field` |
+| the other VS verbs | `params` is `409 not_vs`; `ready`, `result` and `failed` have no match to act on and are `409 stale_match` for anyone (a forged one changes nothing) |
+| the host leaves | **coop: the room ends**, `closed` with `why:"host_left"` (the host's PC holds the save; a guest keeps no copy). **Party: the room goes on** and the host role (Play, kick) passes to the lowest seat in, with a `host` event. Both also apply when the host's launcher goes silent for `MEMBER_TIMEOUT_S` |
+| idle | exempt from `ROOM_IDLE_S` while anybody polls; an empty party room closes after `ADV_EMPTY_S` |
+| the view | `started`, `launch`, `room_seats` (and coop `save_name`) are added to party and coop views only; VS and adventure views are byte-identical to v5 |
+| what the launcher exports | party: `SM64DS_ROOM_KIND=party`, `SM64DS_PARTY=1`; coop: `SM64DS_ROOM_KIND=coop`, `SM64DS_COOP=1`, `SM64DS_COOP_SAVE_NAME`, `SM64DS_SKIP_MENU=1`, `SM64DS_BOOT_FILE=0`, and on the host only `SM64DS_COOP_HOST=1` and `SM64DS_COOP_SAVE=<path the host chose, which only the host's launcher knows>`; on top of the adventure hub set (`SM64DS_ADVENTURE=1`, `SM64DS_COMMS_RELAY`, `SM64DS_COMMS_CODE`, identity). A world launch carries none of the party and coop names. The game reads them; the lobby never sees them |
+
+**VS joining, leaving and results (run mp1, L-J1).** Tango's rules for 1.0:
+a joiner waits in the room and is in from the next match; no mid-match drop-in;
+the host leaving mid-match ends the match for everybody and the next player is
+host; one player's result does not end the match for the room. No field name
+changed and no version moved: only states and reasons widened.
+
+| what | before L-J1 | now |
+|---|---|---|
+| `join` while the room is `arming`/`go`/`in_match` | 409 `in_match` | **200, a WAITING seat**: `playing:false` for the match that is on, in no plan, slot map or names string; it sees the view, the roster and the chat. Every lobby cap still holds (join budget, `MAX_SEATS` -> `room_full`, kick cooldown, `game_mismatch`, `unknown_game`) |
+| a playing seat leaves during a match | the dial promoted a watcher into the running match; its go plan said child, slot 0 (the host's) | **nobody is promoted while a match is frozen**; the vacancy is filled when the match ends |
+| a plan for a seat not in the frozen slot map | slot 0 by default | `{"playing":false}`; `ready`/`failed`/`result` for the current match need a frozen, playing seat (else 403 `not_playing`) |
+| the match ends (`result`, `failed`, a deadline, a timeout) | watchers and dropped players stayed out until the host touched the dial | **the dial runs**: waiting and dropped seats play the next match, lowest seats first, up to the host's dial |
+| the VS host leaves (`leave`, or 45 s without a poll while in lobby) | the room closed, `closed` `why:"host_left"` | a match that is on ends: `failed` with **`reason:"host_left"`** (server-minted; 400 `bad_reason` from a client). Then the host passes to the **lowest seat that was playing the match that ended** (with no match on, or none of its players left: the lowest playing seat; never a joiner who waited through the match) with a `host` event (`{"kind":"host","seat":n,"display":...}`, the adventure rooms' event). The room stays open. Only the LAST member out closes it (`closed`, `why:"host_left"`) |
+| slot 0 | the lowest playing seat, which was always the host (seat 1) | **the host, by name**, then everybody else in seat order (the host is no longer always seat 1) |
+| `result` for the current match | the FIRST valid result from any playing seat ended the match | **the host's result ends it.** A non-host's result is a vote: accepted 200, and it ends the match only when strictly more than half of the match's live seats (frozen, still playing, still in the room) have posted the same `win` and `scores`. A drop or a leave re-counts. A seat's first vote stands. A late result for an ended match is still 200. **If every live non-host seat posted the same result and the host has sent no request since the first of those votes for `HOST_SILENT_S` (60 s; the env accepts 45 to 3600), the match ends with that result** (a pair whose host launcher died at MATCH OVER; with three or more live seats the guests agreeing is already a majority). Silence while the host's address is being refused does not count, whatever refused it (the rate limiter, and any other refusal such as a 403 or 409 answer): the clock waits, and it runs from the later of the first vote and that address's last refusal (a guest on the host's own public address cannot flood the host quiet). If the table of refused addresses is full, a refusal it cannot record holds every room's clock the same way |
+
+A waiting seat reads as `playing:false` in the view while `state` is not
+`lobby`; after the match it is `playing:true` (or still `false` if the host's
+dial is below the head count). A 200 from `result` no longer means the match
+ended: the `result` event and the view's `state` say that.
+
+**World rooms.** Nobody creates a world; a launcher asks for one:
+
+```
+-> {"v":5, "nick":"tango", "game":"1.0.0"}               (+ color/shoes, + "skip":"<code>")
+<- 200 {"v":5, "code":"H3PRK7VA", "relay":"...", "relay_v":2, "want_seat":255,
+        "world_no":1, "token":"<32 hex>", "members":7}
+-> world_ping {"v":5, "code":"H3PRK7VA", "token":"<32 hex>"}   every 10 s while the game runs
+<- 200 {"v":5, "ok":true, "world_no":1, "members":7}
+```
+
+The pool is per game build. `world` answers the lowest-numbered world with
+fewer than `WORLD_SEATS` (16) members seen in the last `WORLD_MEMBER_S` (30 s),
+and opens the next number when all are full. `skip` names a world the relay
+just refused as full (the game exits with code 4 and the launcher asks again):
+that world is passed over. A member unheard for 30 s is forgotten, and its
+`world_ping` answers `403 not_a_member` (ask `world` again); a code the pool no
+longer has is `404 no_such_world`. A world with nobody in it for
+`WORLD_EMPTY_S` (30 s) with no live member is dropped and its number is
+reused. The nick and colours are grammar-checked and then dropped: a world
+holds a number, a hub code and per token `[last seen, issuing address]`, and
+the address is used only for the per-address cap, never logged or sent.
+
+**What bounds the pool** (review REVLOBBY5, S2: before these, one home
+connection filled all 64 worlds in about a minute with made-up build ids):
+
+- **`GAME_IDS`, the build allow list.** Only listed builds get a room or a
+  world (`409 unknown_game` otherwise). The release step writes the list into
+  `docker-compose.yml`. **Empty (the default) turns the world pool off** (`503
+  world_off`) while code rooms take any build, so forgetting the line fails
+  safe.
+- **`WORLD_ADDR_TOKENS` (4) live members per client address.** A `world` call
+  from an address already holding four retires that address's least recently
+  heard token (its next `world_ping` is 403 and the launcher asks again), so a
+  household of four and a relaunch both work, and one address can never stand
+  for more than four members however many calls it makes.
+- The per-address join budget (60/min), `MAX_WORLDS` (64) across every build,
+  `RELAY_V=1` (pool off), and the 30 s empty drop. The lobby never talks to the
+relay, so it cannot see the relay's own seat count; `skip` is the answer to
+that race.
+
+New knobs (all in `docker-compose.yml` with these values):
+
+| knob | default | what |
+|---|---|---|
+| `RELAY_V` | 2 | the relay protocol plans name; 1 if the relay v2 deploy is rolled back (the world pool is then off) |
+| `GAME_IDS` | empty | the game builds served, comma-separated; empty = any build for rooms, world pool OFF. The release step sets it |
+| `WORLD_ADDR_TOKENS` | 4 | live world members one client address may hold |
+| `ADV_EMPTY_S` | 600 | an empty adventure or party room closes after this |
+| `PARTY_SEATS`, `COOP_SEATS` | 4, 4 | seats in a party room and in a coop room (2..16; the game's hub holds four bodies today) |
+| `WORLD_SEATS` | 16 | members per world |
+| `WORLD_MEMBER_S` | 30 | a world member unheard this long is not counted |
+| `WORLD_EMPTY_S` | 30 | a world with no live member is dropped after this |
+| `MAX_WORLDS` | 64 | worlds in the pool, every build together |
+
+**ARENA MODE: the `netmode` of a VS match (run mp1, lane A4).** The new VS
+netcode (every console runs its own Yoshi with no input delay, the others are
+drawn slightly behind, and a referee on the relay settles stars, hits, the
+clock and the winner) is chosen per match by the lobby. No field was renamed
+and no version moved. Lockstep stays as the fallback for one release.
+
+| where | what |
+|---|---|
+| VS go plan | gains `netmode`, `"arena"` or `"lockstep"`, on every playing VS plan. A plan without it (an older server) means lockstep. Spectator and adventure plans never carry it. Every other key keeps its meaning: in an arena match `slot` is the player's body and relay seat (`want_seat` = `slot`), `role` is only the lobby's name for slot 0 (there is no host inside an arena match), and `code` is still fresh per match |
+| digest | the canonical string's `netmode` term is the plan's `netmode`: `"0\|2\|time\|0\|0\|0\|0\|arena\|2"` is `1565304087`, `"1\|4\|stars\|3\|0\|0\|0\|arena\|2"` is `1476757693`. A console that runs lockstep computes `lockstep` and can never pair with an arena console |
+| launcher env | `netmode:"arena"` adds `SM64DS_VS_NETMODE=arena` (the game's arena switch, port/hal/vs_arena.h) to exactly the VS set it exports today; the game seats itself from `SM64DS_COMMS_ROLE`/`SM64DS_COMMS_SLOT` as before. `netmode:"lockstep"` sets no `SM64DS_VS_NETMODE` (an inherited one is cleared like every `SM64DS_VS_*` the plan does not set), so a lockstep console's environment is unchanged. Any other value, or an arena plan with Luigi on or a king target, is refused before anything spawns |
+| relay session | the lobby still never talks to the relay. The game picks the session from the netmode: lockstep opens the v2 star (roles parent/child, seat = slot) as before; arena opens the relay's arena session (relay lane A2) with seat = slot. Every console of one arena match gets the same map, players, target, names, colours and digest, and the digest commits to all of them, so the referee can take the settings from the seats and refuse a seat whose digest differs |
+| `params` (VS rooms) | optional `netmode` `"arena"`/`"lockstep"`, the host's pick; absent keeps the room's; anything else `400 bad_netmode`; on an adventure room `400 bad_field`. A new room starts at `NETMODE_DEFAULT`. The `params` event carries the pick |
+| `start` | resolves the match's netmode and freezes it with the rest: **arena when** the pick is arena, the room's build is on `ARENA_GAME_IDS`, `RELAY_V` is 2, the match has 2 to `ARENA_MAX_PLAYERS` players, the win mode is `time` or `stars` and Luigi is off; **lockstep otherwise** (King of the Star and Luigi Infection stay on lockstep until their referee rules exist). Picking arena is never an error. The `arming` event carries the resolved `netmode` |
+| `view` | `netmode` (the pick, VS rooms), `arena_ok` (this room's build can play arena on this server), `arena_max`, `arena_now` (what Start would resolve to on the current roster and settings), `match_netmode` (the running match's, `null` in lobby) |
+| an arena match has no host in it | lockstep matches keep every L-J1 rule. In an arena match (`go` or `in_match`) the host's `failed` drops only the host's seat (`dropped`; the host keeps the room's host role), and the host leaving the room does not end the match: `left`, then `host` (the L-J1B pick: the lowest seat still playing it, never a waiting seat), and no `failed host_left`. If the new host had already posted a result, it ends the match at once. The match ends as before: a `failed` that leaves fewer than 2 players, the (current) host's result, a majority, the host-silent rule, or `MATCH_TIMEOUT_S`; with nobody left playing it, the host leaving ends it with `failed host_left`. During `arming` (nothing has spawned) the host leaving ends it as before |
+| `/health` | `arena_game_ids` (how many builds), `arena_max`, `netmode_default` |
+
+| knob | default | what |
+|---|---|---|
+| `ARENA_GAME_IDS` | empty | the builds that play arena, comma-separated. **Empty = arena off for every build** (this server then behaves exactly as before). `*` = every build, for dev and test boxes only. Written at the relay redeploy that brings the referee; removing it is the rollback |
+| `ARENA_MAX_PLAYERS` | 4 | the largest arena match (2..16); bigger matches play lockstep |
+| `NETMODE_DEFAULT` | arena | a new room's pick (`arena` or `lockstep`) |
+
+---
+
+## THE WIRE CONTRACT, v1 and v2 (history; v5 above is what runs)
 
 ### Rules that apply to every request
 
@@ -66,7 +276,7 @@ python3 test_client.py selftest --url https://tangos.dev/port/lobby
 | `Content-Length` | REQUIRED, and parsed **before any rejection** | missing -> 411 `length_required`, close |
 | request body | <= 4096 bytes | 413 `too_large`, connection closed (body not read) |
 | JSON shape | one object; no arrays at the top level | 400 `bad_shape` |
-| `v` | REQUIRED, integer, `1` or `2` (see below) | 400 `bad_version` |
+| `v` | REQUIRED, integer, `5` (the contract range `/health` reports) | 400 `bad_version` |
 | unknown top-level key | rejected | 400 `bad_field` |
 | missing required key | rejected | 400 `bad_field` |
 | wrong type for a key | rejected | 400, the field's own code |
@@ -192,7 +402,7 @@ it blocks on a condition variable, not on a socket read, and is capped by the
 
 | field | type | rule | reject code |
 |---|---|---|---|
-| `v` | int | `1..2` (the contract range `/health` reports) | `bad_version` |
+| `v` | int | `5..5` (the contract range `/health` reports) | `bad_version` |
 | `room` | string | exactly 6 chars from `ABCDEFGHJKMNPQRSTUVWXYZ23456789` | `bad_room` |
 | `token` | string | exactly 32 chars from `0-9a-f` | `bad_token` |
 | `nick` | string | 1..16 **bytes**, every byte `0x20..0x7E` **except `,`**, not all spaces, no leading/trailing space | `bad_nick` |
@@ -208,6 +418,11 @@ it blocks on a condition variable, not on a socket read, and is capped by the
 | `pre_ok` | bool | `true`/`false`; optional on `create` and `join` | `bad_field` |
 | `color` | string | **v2 only.** exactly 6 hex digits, either case in, stored lower case. The BODY colour, and the swatch beside the name in the roster | `bad_color` |
 | `shoes` | string | **v2 only.** the same grammar. Travels with `color`: both or neither | `bad_color` |
+| `game` | string | **v5, required on `create`/`join`/`world`.** 1..24 of `0-9A-Za-z._-`, compared byte for byte | `bad_game` |
+| `luigi` | int | **v5.** exactly `0` or `1`; optional on `params`, VS rooms only | `bad_field` |
+| `voice` | int | **v5.** exactly `0` or `1`; optional on `params`, VS rooms only | `bad_field` |
+| `code` | string | **v5** (`world_ping`). exactly 8 chars of the room alphabet | `bad_code` |
+| `skip` | string | **v5** (`world`, optional). the same grammar as `code` | `bad_code` |
 
 A string longer than its cap answers `too_long` rather than the field's own
 code, because the length check runs first and never lets an oversized field
@@ -236,11 +451,13 @@ never leaves the lobby and keeps its commas.
 | `POST /port/lobby/params` | **host only** | set map / win condition |
 | `POST /port/lobby/preflight` | a seated member | correct its OWN `pre_ok` in place |
 | `POST /port/lobby/color` | a seated member | set its OWN two colours (**v2**, lobby state only) |
-| `POST /port/lobby/start` | **host only** | arm a match (stage B) |
+| `POST /port/lobby/start` | **host only** | arm a match (stage B); VS rooms only (`409 not_vs`) |
 | `POST /port/lobby/ready` | a playing member | "my launcher can spawn this match" (stage B) |
 | `POST /port/lobby/failed` | a playing member | report a match that could not run (stage B) |
 | `POST /port/lobby/kick` | **host only** | remove a member |
-| `POST /port/lobby/leave` | a seated member | give up the seat (host: close the room) |
+| `POST /port/lobby/leave` | a seated member | give up the seat (VS host: close the room; adventure host: hand it on) |
+| `POST /port/lobby/world` | anyone | **v5.** a seat in the world pool: a hub plan and a token |
+| `POST /port/lobby/world_ping` | a world member | **v5.** "still here", every 10 s while the game runs |
 | `GET  /port/lobby/health` | anyone | liveness, counts, revision |
 
 Stage C adds `result`. Any other path under `/port/lobby/` is a 404 and one log
@@ -275,7 +492,8 @@ minute of asset extraction inside a twenty-second arming window.
 
 404 `no_such_room` if unknown or closed; 403 `kicked` if this address was
 kicked from this room inside the cooldown; 409 `room_full` at `MAX_SEATS`;
-409 `in_match` if the room is not in the lobby state.
+409 `in_match` if the room is not in the lobby state (until run mp1 L-J1:
+since then a join during a match is a waiting seat, see the v5 section).
 
 Seats are numbered 1..`MAX_SEATS` and a joiner takes the lowest free one. A
 joiner plays while fewer than `GAME_MAX_PLAYERS` seats already do; the rest are
@@ -303,9 +521,11 @@ All three are asserted in `test_units.py`, in `test_seat_stability`.
 1. **A member's seat number never changes while they hold it.** Nothing
    renumbers anybody, through other people joining, leaving, being removed and
    being promoted.
-2. **The host is always seat 1.** The creator takes seat 1, and a host leaving
-   closes the room rather than handing it on, so no live room has a host at any
-   other number.
+2. **The host starts as seat 1.** The creator takes seat 1. Until run mp1
+   (L-J1) a host leaving closed the room, so no live room had a host at any
+   other number; since then a VS host leaving passes the role to the lowest
+   seat that played the match it ended (else the lowest playing seat), and
+   slot 0 goes to the host by name (`assign_slots`), not to the lowest seat.
 3. **Seat numbers are distinct and always inside 1..`MAX_SEATS`**, so the slots
    derived from them are distinct and always inside 0..3.
 
@@ -566,7 +786,8 @@ and the host could not even `kick` them (kick is refused outside lobby). Any `fa
 returns the whole room to lobby with a `failed` event, so every other launcher
 learns why. The `go`->`in_match` transition happens `GO_GRACE_S` after `go`, and
 a match with no result is returned to lobby with `failed` reason `timeout` after
-`MATCH_TIMEOUT_S`.
+`MATCH_TIMEOUT_S` (a pair whose guest posted a result while the host went
+silent ends `HOST_SILENT_S` after that result instead; see the v5 section).
 
 #### `result` — stage C
 
@@ -578,8 +799,12 @@ a match with no result is returned to lobby with `failed` reason `timeout` after
 
 A playing member reporting a finished match. `win` is `time-up`, `star-target`
 or `draw` (the launcher posts `draw` with all-zero scores for a `MATCH OVER`
-marker it could not parse). `scores` is four ints, 0..99, in slot order. The
-FIRST valid result for the current match appends a `result` event, discards the
+marker it could not parse), or since run mp1 one of the game marker's other
+ends, `king-target`, `luigi-all-infected` or `survivor-timeout` (a launcher
+posts those only to a lobby whose go plans carry `netmode`). `scores` is four ints, 0..99, in slot order. The
+match-ending result (since run mp1 L-J1 the HOST's, or one a majority of the
+live match seats agree on, or every guest's after `HOST_SILENT_S` of host
+silence; see the v5 section) appends a `result` event, discards the
 comms code, clears the match id and every `armed` flag, and returns the room to
 `lobby` -- while the room code, seats, nicknames, tokens, chat AND the params all
 survive, so "same again" is one Start press. A later result for the same match id
@@ -626,16 +851,22 @@ costs one button and takes the code with it.
 <- 200 {"v":1,"ok":true}
 ```
 
-Host: the room closes (`closed`, `why:"host_left"`). Member: the seat is freed,
-a `left` event is pushed, and the lowest spectator is promoted if a playing
-seat opened.
+Host (VS, since run mp1 L-J1): a match that is on ends with `failed`
+`reason:"host_left"`, the host passes to the lowest seat that played that
+match (else the lowest playing seat) with a `host` event, and the room stays
+open; the last member out closes it (`closed`,
+`why:"host_left"`). Member: the seat is freed, a `left` event is pushed, and
+the lowest spectator is promoted if a playing seat opened -- in lobby only; a
+seat that opens during a match is filled when the match ends.
 
 #### `health`
 
 ```
 GET /port/lobby/health
-<- 200 {"ok":true,"ts":"...","revision":"lobby-1","contract_min":1,"contract_v":2,
-        "dial_max":4,"rooms":3,"members":7,"waiters":5}
+<- 200 {"ok":true,"ts":"...","revision":"lobby-6","contract_min":5,"contract_v":6,
+        "dial_max":16,"relay_v":2,"world_open":true,"game_ids":1,"rooms":3,
+        "members":7,"worlds":2,"world_seats":16,"world_member_s":30,
+        "world_addr_tokens":4,"waiters":5}
 ```
 
 `rooms` visible from outside is the difference between a detectable outage and
@@ -708,11 +939,16 @@ three commas.
 
 | event | what the server does | what players see |
 |---|---|---|
-| host leaves, or 45 s without a poll | room -> `closed`, `why:"host_left"`; the record is kept 60 s so members get the reason rather than a bare 404, then deleted | "The host closed the room." |
+| VS host leaves, or 45 s without a poll in lobby | a match that is on ends (`failed`, `reason:"host_left"`); the host passes to the lowest seat that played that match, else the lowest playing seat (`host` event); the room stays (run mp1 L-J1) | the match ends with a host-left message, everybody is back in the room with a new host |
+| the last member leaves | room -> `closed`, `why:"host_left"`; the record is kept 60 s so members get the reason rather than a bare 404, then deleted | "The host closed the room." |
 | member leaves | seat freed, `left` event, spectator promoted if a playing seat opened | the name disappears; a system line says who left |
 | member stops polling | 45 s heartbeat timeout, treated as a leave with `why:"timeout"` | as above |
 | service restarts | **every room is gone.** State is in memory by design | every poll gets 404; the launcher says the room is gone and returns to the create/join screen |
+| VS host launcher dies at MATCH OVER (no `leave`) | 3+ live seats: the guests' same result is a majority and ends it at once. A pair: the guest's result ends it `HOST_SILENT_S` (60 s) after it came in, if the host sent nothing since and its address was not being refused; otherwise `MATCH_TIMEOUT_S` | the result shows up a minute late in a pair |
 | room idle | 30 minutes with no event -> `closed`, `why:"idle"` | "This room timed out." |
+| adventure host leaves | the room stays; host (kick) passes to the lowest seat with a `host` event | nothing changes for anybody playing |
+| adventure room empty | closed `why:"idle"` after `ADV_EMPTY_S` (600 s) empty; never on `ROOM_IDLE_S` | a code shared yesterday is gone |
+| world member silent 30 s | forgotten; its `world_ping` is 403 `not_a_member` | the launcher asks `world` again |
 
 Rooms are ephemeral and that is the whole recovery story. There is no
 persistence, no database, no file on disk and nothing to restore. **If the
@@ -736,6 +972,9 @@ match keeps playing and does not notice.**
 | long-poll holders | 96 | server | `MAX_WAITERS` |
 | bad-sender ignore | 10 refusals in 10 s -> 10 s | per address | `BAD_LIMIT`, `BAD_WINDOW_S`, `BAD_IGNORE_S` |
 | read timeout | 20 s per connection | per connection | `HANDLER_TIMEOUT_S` |
+| world calls | charged as joins (60/min) | per address | `RATE_JOIN_PER_MIN` |
+| worlds | 64, every build together | server | `MAX_WORLDS` |
+| world seats | 16 | per world | `WORLD_SEATS` |
 
 Generosity is deliberate: two launchers on one desk and four players in one
 house share an address, and the owner will create dozens of rooms while

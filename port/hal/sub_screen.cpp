@@ -3786,6 +3786,18 @@ extern "C" void hal_menu_pad_seam(void)
 static int g_inset_rect[4];
 static int g_inset_live;
 
+/* THE CORNER PANEL'S RECTANGLE, read-only, for a host overlay that has to stay
+   clear of it (hal/net_hud.h, the online ping readout): the rectangle the last
+   present drew the panel in, decoration included, in framebuffer pixels
+   (x0, y0, x1, y1). Returns 0 and leaves r alone when no panel was drawn
+   (the stacked layout, the panel off, the level-clear compose). */
+extern "C" int hal_sub_screen_inset_rect(int r[4])
+{
+    if (!g_inset_live) return 0;
+    for (int i = 0; i < 4; ++i) r[i] = g_inset_rect[i];
+    return 1;
+}
+
 static void sub_screen_present_body(unsigned int *dst, int w, int h)
 {
     g_inset_live = 0;

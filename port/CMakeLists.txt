@@ -1677,12 +1677,14 @@ endforeach()
 # crashed). Resolved at configure time via `git rev-parse`; a re-configure on a
 # new commit refreshes it. Emitted as a tiny .c so any target that wants the tip
 # just links it. Falls back to "unknown" outside a git checkout, which matches
-# fault_probe.h's weak default.
+# fault_probe.h's weak default. The length is fixed at 10 so two clones of one
+# commit bake the same tip, and so the same online build id (comms_loopback's
+# session check hashes this string).
 find_program(GIT_EXECUTABLE git)
 set(PORT_GIT_TIP "unknown")
 if(GIT_EXECUTABLE)
     execute_process(
-        COMMAND "${GIT_EXECUTABLE}" -C "${PORT_REPO_ROOT_ABS}" rev-parse --short HEAD
+        COMMAND "${GIT_EXECUTABLE}" -C "${PORT_REPO_ROOT_ABS}" rev-parse --short=10 HEAD
         OUTPUT_VARIABLE PORT_GIT_TIP_OUT
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET RESULT_VARIABLE PORT_GIT_RC)
@@ -11588,6 +11590,36 @@ list(APPEND SLICE_COMMS_SOURCES hal/comms_conductor.cpp)
 # only -- nothing in src/ knows it exists -- and OFF unless SM64DS_SYNC=1,
 # so linking it changes no behaviour. See runs/mg16/status/MP4-DESIGN.md.
 list(APPEND SLICE_COMMS_SOURCES hal/comms_sync.cpp)
+# Run mp1 lane GHOSTDOOR1: the door / area / hidden look of a hub ghost.
+list(APPEND SLICE_COMMS_SOURCES hal/ghost_door.cpp)
+# Run mp1 lane HUB1: the adventure hub carrier. Port-side only and INERT
+# unless SM64DS_ADVENTURE is on AND a relay or SM64DS_HUB_PORT is named, so
+# linking it changes no behaviour; see hal/comms_hub.h.
+list(APPEND SLICE_COMMS_SOURCES hal/comms_hub.cpp)
+# Run mp1 wave 56 lane WIRE1: party / coop presence ('SYNL') and the hub_on_kind
+# pump. INERT unless a hub is live in a non-arena session; see hal/hub_presence.h.
+list(APPEND SLICE_COMMS_SOURCES hal/hub_presence.cpp)
+# Run mp1 lane ARENACORE1: arena-mode VS (no rounds; the referee is the relay).
+# INERT unless SM64DS_VS_NETMODE=arena with a VS map; see hal/vs_arena.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena.cpp)
+# Run mp1 lane STARREF1: the arena referee client (stars, hits, the clock and the
+# winner come from the referee in the relay). INERT unless arena mode is installed
+# in its relay shape; see hal/vs_arena_ref.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_ref.cpp)
+# Run mp1 lane EAT1: arena eating (the Yoshi tongue and a player in a mouth). INERT unless
+# arena mode is installed; see hal/vs_arena_eat.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_eat.cpp)
+# Run mp1 lane GRAB1: the Wario hold (catch, carry, swing, throw a stunned player). INERT unless
+# arena mode is installed with a referee; see hal/vs_arena_grab.h.
+list(APPEND SLICE_COMMS_SOURCES hal/vs_arena_grab.cpp)
+# Run mp1 lane CHATUI1: in-game text chat over the VS carrier's aux kinds and
+# the hub. Port-side only and INERT unless one of those carriers is installed,
+# so linking it changes no behaviour solo; see hal/adv_chat.h.
+list(APPEND SLICE_COMMS_SOURCES hal/adv_chat.cpp)
+# Run mp1 lane PINGHUD1: the online ping readout's view (the painter is in
+# hal/net_hud.h, drawn by tests/walk_window.cpp). Reads carrier stats only and
+# shows nothing solo; see hal/net_hud.h.
+list(APPEND SLICE_COMMS_SOURCES hal/net_hud.cpp)
 # Lane VOICE: proximity voice chat. Port-side only -- nothing in src/ knows it
 # exists -- and INERT unless settings.json turns VoiceEnabled on, which is off
 # by default, so linking it opens no device and changes no behaviour. It rides

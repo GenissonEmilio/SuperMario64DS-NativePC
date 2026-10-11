@@ -1011,6 +1011,30 @@ void port_nitrofs_probe_after_boot(void)
         port_nitrofs_report();
 }
 
+/* ---- THE ARCHIVE NAME, RE-KEYED ONCE THE ROM TABLES ARE LOADED --------------
+   A ROM-CLEAN build (the kit) does not bake data_0209a048: its four bytes
+   ("rom" and a zero) arrive with romdata.bin, which port_romdata_load lays
+   down inside main. FS_Init runs earlier, from this file's static initialiser, so there
+   func_0205cc80 packed the name out of four zero bytes and registered the
+   archive under name word 0. Every by-name lookup of "rom" then walked the
+   list for a key nobody holds and answered null, and the VS radio bring-up's
+   header-region reads (src/func_020424c0.c through func_0205d5e8) dereferenced
+   that null: the host's game faulted in func_0205cdf4 the moment a lobby VS
+   match opened its session. A dev build bakes the bytes, so the key was right
+   and nothing showed. walk_window calls this right after port_romdata_load;
+   it packs the name the ROM's own way (func_0205d304) and writes it where
+   func_0205cc80 would have. It changes nothing when the word is already set. */
+int func_0205d304(unsigned char *s, int n);
+
+void port_nitrofs_rekey_after_romdata(void)
+{
+    if (data_020a8074[0] == 0 && data_0209a048[0] != 0) {
+        data_020a8074[0] = func_0205d304(data_0209a048, 3);
+        fprintf(stderr, "[nfs] rom archive re-keyed after the ROM tables "
+                "loaded: name word %#x\n", (unsigned)data_020a8074[0]);
+    }
+}
+
 }  /* extern "C" */
 
 namespace {

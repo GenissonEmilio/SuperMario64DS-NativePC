@@ -83,6 +83,8 @@
 // ===========================================================================
 
 #include "comms_seam.h"
+#include "comms_hub.h"         // run mp1 lane GHOSTWIRE1: the adventure hub's
+                               // ghost bodies (vs_player_count)
 #include "player_fields.h"   // run mg16 lane MP4: state_id for the VS probe
 #include "host_settings.h"   // adventure_ghost_mode(): fan-out stands down so an
                              // adventure console runs its own solo game
@@ -1014,6 +1016,18 @@ int vs_player_count() {
                      "[comms:conductor] SM64DS_VS_PLAYERS=%s out of range "
                      "1..%d; ignored\n", s, (int)kCommsMaxPlayers);
     }
+    /* run mp1 lane GHOSTWIRE1: AN ADVENTURE CONSOLE ON THE HUB seats FOUR
+       bodies -- its own player and three ghost bodies, which
+       hal/comms_sync.cpp hands to the three nearest players in the room each
+       frame (everyone else in the room stays on the wire: names, chat, voice).
+       There is no DS transport on the hub, so without this the answer was 1
+       and no ghost could ever be drawn. FOUR AND NO MORE, measured: two hub
+       consoles taking the Bob-omb Battlefield star and saving keep the star
+       and the save at 2 and 4 bodies and lose both at 8 and 16 (the star arms
+       and the course never ends). The hub is installed only for an adventure
+       console with a relay or test mesh, so VS and solo never reach this. */
+    enum : int { kHubBodies = 4 };
+    if (comms_hub_active()) return kHubBodies;
     const CommsTransport *t = comms_transport();
     if (!t) return 1;                       // solo: unchanged, and that is load-bearing
     const int n = t->player_count();
@@ -1637,7 +1651,26 @@ ThreadPump g_prev_pump = nullptr;
 // datagram wake is unchanged and still the DS's radio IRQ: the loop breaks the
 // moment comms_wire_activity() moves, so a round still completes within a
 // millisecond of the peer's block landing.
+//
+// AND NOT WHEN THE FRAME PUMP SPENDS IT (run mp1, lane VSFIELD1). Since the
+// ROM's loop became the frame (rung R3d), step 1b of the same halt runs
+// tests/walk_window.cpp's frame pump, which sleeps every halt out to the next
+// VBlank deadline. Blocking here as well spent each silent VBlank twice, and
+// the GetTickCount bound below ticks in 15.6 ms steps, so a "16 ms" wait was
+// 16..31 ms: measured on a lobby-shaped 2-player match through the relay,
+// both consoles ran 20 game frames a second (host starved 604 calls in 900
+// rounds at RTT 0, 859 at RTT 125) where solo runs 30 -- the 09-30 field
+// report's "very laggy" (host 21.5-24 frames a second). With the frame pump
+// pacing the halt this pump polls once and returns; the same match runs 30.0
+// on both consoles (starved 0 / 8). An unpaced selftest, a replayed frame or
+// a build with no frame pump keeps the wait below unchanged, which is what
+// VS7's 300-turn bound needs there.
 enum : unsigned { kVBlankMs = 16 };   // the DS frame, floor(1000 / 59.83)
+}  // namespace
+}  // namespace port
+extern "C" int port_halt_paced_by_frame_pump(void);   // hal/boot2_thread.cpp
+namespace port {
+namespace {
 
 bool conductor_pump(unsigned spin) {
     const CommsTransport *t = comms_transport();
@@ -1656,6 +1689,8 @@ bool conductor_pump(unsigned spin) {
 
     const int st = t ? t->state() : kCommsIdle;
     if (st == kCommsParentConnected || st == kCommsChildConnected) {
+        if (port_halt_paced_by_frame_pump())
+            return false;                // step 1b spends this VBlank
         const unsigned start = (unsigned)GetTickCount();
         const uint64_t act = comms_wire_activity();
         for (;;) {
