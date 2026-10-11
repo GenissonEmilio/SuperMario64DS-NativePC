@@ -336,6 +336,7 @@ struct Boss {
     uint32_t last_st;              // the state as of the last tick (bossdesc1: Chilly's hit shows as a state change, not an HP change)
     bool heard;                    // an authority record was ever applied here
     bool def_seen;                 // bossfix1: the boss was seen defeated (or its star was spawned) on this console
+    bool mine_last;                // bossfix1: I was this boss's authority the last time I saw it
     bool bit_set;                  // bossfix1: its death-table bit is up (a late joiner never gets this boss)
     Rx rx;
 };
@@ -347,6 +348,7 @@ HitKnob g_hit[4]; int g_nhit = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
 ForgeKnob g_forge[8]; int g_nforge = 0;
 unsigned g_stand_tick = 0, g_stand_every = 0; int g_stand_dist = 0; bool g_stand_done = true, g_god = false;
+bool g_deadmark = true;   // SM64DS_COOP_BOSS_DEADMARK=0: must-fail control, a defeated boss is not marked
 bool g_bomb = false;   // bossfix1: SM64DS_COOP_BOSS_BOMB=1: Bowser's proof hit is a REAL bomb hit (the ROM's own detection)
 unsigned g_behind_tick = 0, g_behind_every = 0; int g_behind_dist = 0; bool g_behind_done = true;   // bossdesc2: the local player behind the boss, facing his way (the grab proof)
 bool g_regd = false;
@@ -514,6 +516,7 @@ void read_env() {
     g_god = flag("SM64DS_COOP_BOSS_GOD", false);
     g_bomb = flag("SM64DS_COOP_BOSS_BOMB", false);
     check_descriptors();
+    g_deadmark = flag("SM64DS_COOP_BOSS_DEADMARK", true);
     if (const char *f = std::getenv("SM64DS_COOP_BOSS_FORGE")) {
         const char *p = f;
         while (*p && g_nforge < 8) {
@@ -604,6 +607,9 @@ void send_batch(int sub, uint8_t flags, const unsigned char *recs, int nrecs, in
 unsigned g_recent_t = 0; bool g_recent_mine = true;     // the last time any boss was seen here, and whether I was its authority
 void mark_dead_slot(int slot, Boss &b) {
     b.bit_set = true;
+    // Only the boss's authority marks it: a non-authority copy can finish its own defeat first (its player is quicker through the talk), and its
+    // mark would delete the authority's copy before that one spawned the reward (measured: no key at all, then the fallback).
+    if (!g_deadmark || !b.mine_last) return;
     int lv = -1, ac = 0;
     if (!coop_group_established() || !coop_group_key(&lv, &ac) || slot < 0 || slot >= kSlots) return;
     const int part = (int)GetLevelPart(lv);
@@ -801,6 +807,7 @@ void process(unsigned now) {
         const int auth = auth_for(slot, wnow);
         const bool mine = auth == g_my;
         g_recent_t = wnow | 1u; g_recent_mine = mine;
+        b.mine_last = mine;
         // a hit that landed on my copy: HP below what was last synced
         const int hp = hp_of(b);
         if (hp > b.synced_hp && d.cls == 218) b.synced_hp = hp;    // Chilly's revive raises it by himself
