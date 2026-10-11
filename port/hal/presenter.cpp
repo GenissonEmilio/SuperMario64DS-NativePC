@@ -84,6 +84,7 @@
 #include <string.h>
 
 #include "hal/presenter.h"
+#include "hal/pcore.h"
 
 #ifndef DXGI_STATUS_OCCLUDED
 #define DXGI_STATUS_OCCLUDED ((HRESULT)0x087A0001L)
@@ -549,6 +550,7 @@ void test_hang_present()
 DWORD WINAPI thread_main(LPVOID)
 {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+    pcore_thread_enter(PCORE_PRESENTER);   /* PCORE1 */
     long long period = (long long)((double)g_period_us * (double)g_qpf / 1e6);
     long long next = qpc();
     long long last_start = 0, last_gen = -1;
@@ -698,6 +700,7 @@ DWORD WINAPI thread_main(LPVOID)
         last_gen = shown_gen;
         stat_note_ex(shown_t_pub, fresh, shown_cam, shown_serial, shown_target);
     }
+    pcore_thread_leave();   /* PCORE1 */
     return 0;
 }
 

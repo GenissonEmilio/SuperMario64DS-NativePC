@@ -413,6 +413,7 @@ static bool winapi_load(void)
 #include "fault_probe.h"
 #include "overlay_font.h"
 #include "hal/host_settings.h"   /* settings.json, the launcher's file */
+#include "hal/pcore.h"            /* PCORE1: P-core / throttling opt-out */
 #include "hal/settings_live.h"   /* run menu1 SETLIVE1: live, saved settings */
 #include "hal/settings_page.h"   /* run menu1 SETMENU1: the in-game settings page */
 #include "hal/menu_starsel_api.h"   /* run menu1 STARHOOK1: the star select big-star rects (debug outline) */
@@ -2634,17 +2635,17 @@ static void pacer_end(void)
     }
 }
 
+namespace ntr { extern void (*gx_worker_thread_hook)(void); }
+static void pcore_worker_hook(void) { pcore_thread_enter(PCORE_WORKER); }
+
 static void pacer_begin(void)
 {
-    if (W.SetProcessInformation_) {
-        PortPowerThrottlingState pt;
-        pt.Version = PORT_POWER_THROTTLING_VERSION;
-        pt.ControlMask = PORT_IGNORE_TIMER_RESOLUTION;
-        pt.StateMask = 0;                 /* 0 = honour the raised timer */
-        W.SetProcessInformation_(GetCurrentProcess(),
-                                 PORT_PROCESS_POWER_THROTTLING, &pt,
-                                 sizeof pt);
-    }
+    /* PCORE1: opts the process out of execution-speed AND timer-resolution
+       throttling (so Windows does not park it on efficiency cores), puts the
+       logic thread on the fast cores / MMCSS, prints the [cpu] line.
+       SM64DS_PCORE=0 = the old timer-resolution-only opt-out. */
+    pcore_boot();
+    ntr::gx_worker_thread_hook = pcore_worker_hook;
     if (!W.timeBeginPeriod_ || g_pacer_period) return;
     if (W.timeBeginPeriod_(1) != 0) return;   /* != TIMERR_NOERROR */
     g_pacer_period = 1;

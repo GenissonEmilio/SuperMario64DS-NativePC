@@ -24574,3 +24574,10 @@ foreach(_tpause2 walk_window walk_window_hires)
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_pause_art_data.cpp")
 endforeach()
+
+# run hunt8, lane PCORE1: keep the hot threads on performance cores (hal/pcore.h). Own block.
+foreach(_tpcore1 walk_window walk_window_hires)
+    if(TARGET ${_tpcore1})
+        target_sources(${_tpcore1} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/pcore.cpp")
+    endif()
+endforeach()
