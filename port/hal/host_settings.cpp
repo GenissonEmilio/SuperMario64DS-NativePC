@@ -3393,8 +3393,14 @@ extern "C" int host_setting_one_screen_menus(void)
         env = e ? ((e[0] == 0 || (e[0] == '0' && e[1] == 0)) ? 0 : 1) : -1;
     }
     if (env >= 0) return env;
-    if (getenv("SM64DS_WINDOW_SELFTEST") || getenv("SM64DS_SCENE_FRAMES"))
-        return 0;
+    if (getenv("SM64DS_WINDOW_SELFTEST") || getenv("SM64DS_SCENE_FRAMES")) {
+#ifndef PORT_ROM_CLEAN
+        /* proof arm: SM64DS_ONE_SCREEN_FILE=1 lets a comparator route read the key from settings.json,
+           so "absent means ON" can be shown with no override in the environment */
+        if (!getenv("SM64DS_ONE_SCREEN_FILE"))
+#endif
+            return 0;
+    }
     load_once();
     return g_one_screen_menus;
 }
