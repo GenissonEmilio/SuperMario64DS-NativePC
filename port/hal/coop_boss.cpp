@@ -119,7 +119,7 @@ struct Boss {
 
 CoopBossStats g_st = {};
 bool g_env = false, g_on = true, g_log = false;
-struct HitKnob { unsigned tick; bool done; };
+struct HitKnob { unsigned tick; bool done; bool armed; int hp0; int slot; };
 HitKnob g_hit[4]; int g_nhit = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
 ForgeKnob g_forge[8]; int g_nforge = 0;
@@ -185,7 +185,7 @@ void read_env() {
         while (*p && g_nhit < 4) {
             unsigned fr = 0; int used = 0;
             if (std::sscanf(p, "%u%n", &fr, &used) < 1 || used <= 0) break;
-            g_hit[g_nhit].tick = fr; g_hit[g_nhit].done = false; ++g_nhit;
+            g_hit[g_nhit].tick = fr; g_hit[g_nhit].done = false; g_hit[g_nhit].armed = false; g_hit[g_nhit].hp0 = 0; g_hit[g_nhit].slot = -1; ++g_nhit;
             p += used; while (*p == ',' || *p == ';' || *p == ' ') ++p;
         }
     }
@@ -308,9 +308,13 @@ void apply_rx(int slot, Boss &b, unsigned now) {
     // The state: forced on the first record this console ever takes, otherwise after two in a row that disagree.
     const uint32_t ls = state_of(b), rs = x.w[d.state];
     bool force = false;
+    // King Bob-omb's two states in which HE holds a body (706c, 707c): the held pointer is a console-local one, so those states
+    // are never forced onto a copy; the pose still follows through the mover path.
+    const bool carry_state = d.cls == 189 && (rs == 7 || rs == 8);
     if (ls != rs) { ++b.mism; ++g_st.state_mismatch; } else b.mism = 0;
     if (!b.heard) force = ls != rs;
     else if (b.mism >= 2) force = true;
+    if (carry_state) force = false;
     if (force) {
         // everything except the HP (already min-merged); the state field goes first so its enter code runs on the old fields
         for (int k = 0; k < d.nf; ++k) if (k != d.hp && value_ok(d, k, x.w[k])) write_field(b.a, d, k, x.w[k]);
@@ -369,17 +373,31 @@ void process(unsigned now) {
     if (nrec > 0 && take_token(now)) send_batch(kWorldBossState, 0, recs, nrec, bytes);
 }
 
-void do_hit_knob() {
-    for (int slot = 0; slot < kSlots; ++slot) {
-        Boss &b = g_boss[slot];
-        if (!b.a) continue;
-        const int hp = hp_of(b);
-        if (hp <= 0) continue;
-        if (b.d->hit_off) { b.a[b.d->hit_off] = 1; }
-        else write_field(b.a, *b.d, b.d->hp, (uint32_t)(hp - 1));
-        std::fprintf(stderr, "[cbs-knob] hit slot=%d cls=%u hp %d (flag %s) w=%lld\n", slot, (unsigned)b.d->cls, hp, b.d->hit_off ? "set" : "n/a", wall_ms());
+// SM64DS_COOP_BOSS_HIT=F[,F]: from boss tick F, on THIS console, hit the first boss the ROM's own way. Where the class has a
+// hit flag (Whomp King) the flag is set every tick until the boss's own handler has taken it (it only does in its vulnerable
+// state), so the HP drop is the game's; where it has none the HP is lowered directly (the sync path is what is under test).
+void do_hit_knob(HitKnob &k) {
+    if (!k.armed) {
+        for (int slot = 0; slot < kSlots; ++slot) {
+            Boss &b = g_boss[slot];
+            if (!b.a || hp_of(b) <= 0) continue;
+            k.armed = true; k.slot = slot; k.hp0 = hp_of(b);
+            std::fprintf(stderr, "[cbs-knob] hit armed slot=%d cls=%u hp=%d w=%lld
+", slot, (unsigned)b.d->cls, k.hp0, wall_ms());
+            break;
+        }
+        if (!k.armed) return;
+    }
+    Boss &b = g_boss[k.slot];
+    if (!b.a) { k.done = true; return; }
+    if (hp_of(b) < k.hp0) {
+        k.done = true;
+        std::fprintf(stderr, "[cbs-knob] hit taken slot=%d hp %d->%d st=%u w=%lld
+", k.slot, k.hp0, hp_of(b), state_of(b), wall_ms());
         return;
     }
+    if (b.d->hit_off) b.a[b.d->hit_off] = 1;
+    else { write_field(b.a, *b.d, b.d->hp, (uint32_t)(k.hp0 - 1)); }
 }
 
 void do_forge(const char *name) {
@@ -436,7 +454,7 @@ void on_frame(unsigned now) {
     if (g_nb > 0) {
         process(now);
         for (int i = 0; i < g_nhit; ++i)
-            if (!g_hit[i].done && g_ticks >= g_hit[i].tick) { g_hit[i].done = true; do_hit_knob(); }
+            if (!g_hit[i].done && g_ticks >= g_hit[i].tick) do_hit_knob(g_hit[i]);
         for (int i = 0; i < g_nforge; ++i)
             if (!g_forge[i].done && g_ticks >= g_forge[i].tick) { g_forge[i].done = true; do_forge(g_forge[i].name); }
     }
