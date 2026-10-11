@@ -131,6 +131,10 @@ struct MenuPiece {
      has_ex3 / ex3 = a third skipped rect for a keycover piece (the ink bar). */
   uint8_t has_ex3;
   DsRect ex3;
+  /* PAUSE3 (appended): custom = the recipe draws this piece itself. menu_piece_draw calls custom(L, piece index, dst, w, h, stride) in piece order
+     and nothing else is drawn for it; the callback reads only the layout (L->facts, L->w / L->h) and the picture, so it stays on the draw side of
+     the decide / draw contract. A custom piece has no source, no touch and no hotspot of its own. */
+  void (*custom)(const struct MenuLayout *L, int piece, uint32_t *dst, int w, int h, int stride);
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */
@@ -397,6 +401,8 @@ void hal_menu_pad(uint16_t *pressed, int host_back);
 /* settings seam: key -> enabled. Default (no function set) = everything off. */
 void hal_menu_set_enable_fn(int (*fn)(int key));
 int  hal_menu_hover_box(int *x, int *y, unsigned *stamp);   /* ASSET3: the hovered hotspot's DS box origin; stamp changes per hover event */
+int  hal_menu_focus_set(int hs);      /* PAUSE3: show the pad cursor on hotspot hs of the live layout (a touch-only page starts on its safe choice); 1 when done */
+int  hal_menu_focus_shown(int *hs);   /* PAUSE3: 1 and the hotspot index when the pad / hover cursor is showing on a hotspot of the live layout */
 int  hal_menu_last_size(int *w, int *h);   /* PAUSE2: the picture size of this tick's decide (a recipe's idle warm-up asks for it); 0 before the first decide */
 void hal_menu_set_netplay(int on);              /* in a transport session ROM_CURSOR is refused; TOUCH is used */
 /* the synthesised-touch queue: single producer (hal_menu_pad), single consumer (poll_touch) */

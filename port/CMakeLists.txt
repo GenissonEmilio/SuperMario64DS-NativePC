@@ -24493,7 +24493,7 @@ foreach(_tstarhook1 walk_window walk_window_hires smoke_player)
     target_sources(${_tstarhook1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_starsel_api.cpp")
 endforeach()
-# MENU1 / PAUSE2 (run menu1): the pause menu's host-resolution art (res/menu/pause, embedded by tools/embed_pause_art.py) and its
+# MENU1 / PAUSE2 (run menu1): the pause menu's host-resolution art (res/menu/pause3, embedded by tools/embed_pause3_art.py) and its
 # registry behind hostimg's extension ids. Own block.
 foreach(_tpause2 walk_window walk_window_hires)
     target_sources(${_tpause2} PRIVATE

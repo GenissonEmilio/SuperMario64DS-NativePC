@@ -1,5 +1,5 @@
-/* menu_pause_art.cpp -- the pause menu's host pictures (run menu1, lane PAUSE2): the registry behind hostimg's extension ids 32..49.
-   The bytes are res/menu/pause/*.png (tools/prepare_pause_art.py), embedded by tools/embed_pause_art.py into menu_pause_art_data.cpp. */
+/* menu_pause_art.cpp -- the pause menu's host pictures (run menu1, lane PAUSE3): the registry behind hostimg's extension ids 32..45.
+   The bytes are res/menu/pause3/*.png (tools/prepare_pause3_art.py), embedded by tools/embed_pause3_art.py into menu_pause_art_data.cpp. */
 #include "menu_hostimg.h"
 #include "menu_pause_art_ids.h"
 
@@ -17,5 +17,5 @@ extern "C" int menu_ext_art_src(int id, const char **file, const unsigned char *
 
 extern "C" int menu_ext_art_is_plank(int id)
 {
-    return id >= MENU_IMG_P_PK_CONTINUE && id <= MENU_IMG_P_PK_NO;
+    return id >= MENU_IMG_P_PK_RESUME && id <= MENU_IMG_P_PK_NOKEEP;
 }

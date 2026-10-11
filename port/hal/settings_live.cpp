@@ -9,6 +9,10 @@
 
 static const char *const RUN_NAMES[3] = { "button", "analog", "auto" };
 static const char *const CAM_NAMES[3] = { "analog", "freecam", "ds" };
+static const char *const GAPLOOK_NAMES[3] = { "solid", "blur", "peek" };
+static const char *const GAPCOLOR_NAMES[6] = { "black", "white", "gray", "blue", "red", "green" };
+/* the preset colours of SL_GAP_COLOR (0xRRGGBB), in the order of GAPCOLOR_NAMES */
+static const unsigned GAP_COLORS[6] = { 0x000000, 0xFFFFFF, 0x808080, 0x2850C8, 0xC82828, 0x28A038 };
 
 static const SlInfo INFO[] = {
     /* keys, in HOST_KEY_ order */
@@ -27,6 +31,10 @@ static const SlInfo INFO[] = {
     { "KeyStart",    SL_KIND_KEY, 0, 255, 0x0d, 0, 1 },
     { "KeySelect",   SL_KIND_KEY, 0, 255, 0x08, 0, 1 },
     { "KeyLook",     SL_KIND_KEY, 0, 255, 0x5a, 0, 1 },
+    { "KeyCamCenter", SL_KIND_KEY, 0, 255, 0x43, 0, 1 },
+    { "KeyCamLeft",  SL_KIND_KEY, 0, 255, 0x51, 0, 1 },
+    { "KeyCamRight", SL_KIND_KEY, 0, 255, 0x45, 0, 1 },
+    { "KeyCamMode",  SL_KIND_KEY, 0, 255, 0x70, 0, 1 },
     /* pads, in HOST_PAD_ order */
     { "PadJump",     SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x1000, 0, 1 },
     { "PadAttack",   SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x2000, 0, 1 },
@@ -35,6 +43,10 @@ static const SlInfo INFO[] = {
     { "PadStart",    SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0010, 0, 1 },
     { "PadSelect",   SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0, 0, 1 },
     { "PadLook",     SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x8000, 0, 1 },
+    { "PadCamCenter", SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x10000, 0, 1 },
+    { "PadCamLeft",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0100, 0, 1 },
+    { "PadCamRight", SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0200, 0, 1 },
+    { "PadCamMode",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0080, 0, 1 },
     /* the rest */
     { "RunMode",                SL_KIND_ENUM,    0, 2, 1, RUN_NAMES, 1 },
     { "StickDeadzone",          SL_KIND_PERCENT, 0, 50, 24, 0, 1 },
@@ -48,6 +60,9 @@ static const SlInfo INFO[] = {
     { "Volume",                 SL_KIND_PERCENT, 0, 100, 50, 0, 1 },
     { "MinimapScale",           SL_KIND_PERCENT, 25, 400, 100, 0, 1 },
     { "ImprovedMinimap",        SL_KIND_BOOL,    0, 1, 1, 0, 0 },
+    { "MinigameGap",            SL_KIND_BOOL,    0, 1, 1, 0, 1 },
+    { "GapLook",                SL_KIND_ENUM,    0, 2, 1, GAPLOOK_NAMES, 1 },
+    { "GapColor",               SL_KIND_ENUM,    0, 5, 0, GAPCOLOR_NAMES, 1 },
 };
 
 /* INFO[] is positional: row i describes id i. If a host key or pad is added (HOST_KEY_COUNT / HOST_PAD_COUNT move, for example
@@ -60,6 +75,13 @@ static_assert(sizeof(INFO) / sizeof(INFO[0]) == SL_COUNT,
 const SlInfo *sl_info(int id)
 {
     return (id >= 0 && id < SL_COUNT) ? &INFO[id] : 0;
+}
+
+int sl_find(const char *key)
+{
+    for (int i = 0; i < SL_COUNT; ++i)
+        if (!strcmp(INFO[i].key, key)) return i;
+    return -1;
 }
 
 int sl_get(int id)
@@ -82,6 +104,13 @@ int sl_get(int id)
     }
     case SL_MINIMAP_SCALE:      return (int)(host_setting_minimap_scale_value() * 100.0 + 0.5);
     case SL_IMPROVED_MINIMAP:   return host_setting_improved_minimap();
+    case SL_MINIGAME_GAP:       return host_setting_minigame_gap();
+    case SL_GAP_LOOK:           return host_setting_gap_look();
+    case SL_GAP_COLOR: {
+        const unsigned c = host_setting_gap_color() & 0xffffffu;
+        for (int i = 0; i < 6; ++i) if (GAP_COLORS[i] == c) return i;
+        return 0;       /* a colour the launcher picked that is not a preset reads as the first until the player chooses one */
+    }
     }
     return 0;
 }
@@ -105,6 +134,11 @@ int sl_set(int id, int v)
         if (v < 25 || v > 400) return 0;
         return host_setting_set_minimap_scale(v / 100.0);
     case SL_IMPROVED_MINIMAP:   return 0;   /* latched with the minimap geometry */
+    case SL_MINIGAME_GAP:       return host_setting_set_minigame_gap(v);
+    case SL_GAP_LOOK:           return host_setting_set_gap_look(v);
+    case SL_GAP_COLOR:
+        if (v < 0 || v > 5) return 0;
+        return host_setting_set_gap_color(GAP_COLORS[v]);
     }
     return 0;
 }
@@ -118,6 +152,10 @@ int sl_applicable(int id)
         return host_setting_camera_mode() != 2;
     case SL_RUN_THRESHOLD:
         return host_setting_run_mode() == 1;
+    case SL_GAP_LOOK:
+        return host_setting_minigame_gap() != 0;
+    case SL_GAP_COLOR:
+        return host_setting_minigame_gap() != 0 && host_setting_gap_look() == 0;
     }
     return 1;
 }
@@ -182,6 +220,11 @@ int sl_capture_take_cancel(void)
     return a;
 }
 
+/* PAUSE3: the camera controls may share a button with one another (Center on LB while Rotate left holds LB is legal: the file allows two
+   actions on one button, and the page says so after the bind). A camera action never takes a button a gameplay action holds. */
+static int is_cam_key(int a) { return a >= HOST_KEY_CAM_CENTER && a <= HOST_KEY_CAM_MODE; }
+static int is_cam_pad(int a) { return a >= HOST_PAD_CAM_CENTER && a <= HOST_PAD_CAM_MODE; }
+
 static int key_reserved(int action, int vk, const char **why)
 {
     if (vk >= 0x70 && vk <= 0x7b) { *why = "the F keys belong to the window"; return 1; }
@@ -193,7 +236,7 @@ static int key_reserved(int action, int vk, const char **why)
         return 1;
     }
     for (int i = 0; i < HOST_KEY_COUNT; ++i)
-        if (i != action && host_setting_key(i) == vk) {
+        if (i != action && host_setting_key(i) == vk && !(is_cam_key(action) && is_cam_key(i))) {
             *why = "already used by another control";
             return 1;
         }
@@ -210,7 +253,7 @@ static int pad_reserved(int action, unsigned bit, const char **why)
     if (action != HOST_PAD_START && action != HOST_PAD_SELECT) blocked &= ~0x3000u;
     if (bit & blocked) { *why = "that button drives the menus"; return 1; }
     for (int i = 0; i < HOST_PAD_COUNT; ++i)
-        if (i != action && (host_setting_pad(i) & (int)bit)) {
+        if (i != action && (host_setting_pad(i) & (int)bit) && !(is_cam_pad(action) && is_cam_pad(i))) {
             *why = "already used by another control";
             return 1;
         }

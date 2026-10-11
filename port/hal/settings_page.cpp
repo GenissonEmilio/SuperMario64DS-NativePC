@@ -4,6 +4,9 @@
 #include "host_settings.h"
 #include "ui_text.h"
 #include "menu_hostimg.h"
+#include "menu_compose.h"
+#include "menu_pause_art_ids.h"
+#include "menu_pause_geo.h"
 #include "../third_party/stb/stb_image.h"
 
 #if defined(_MSC_VER) || defined(__SSE2__)
@@ -138,7 +141,7 @@ void scale_rect(const Img &I, int sx, int sy, int sw, int sh, int dw, int dh, st
 }
 
 /* a cache of finished pieces (a scaled picture, a composed box, the sheet): keyed by kind and size */
-struct Piece { int kind, a, b, c; int w, h; std::vector<uint32_t> px; int spans = 0; std::vector<int> lo, hi; bool building = false, warm_owned = false; };
+struct Piece { int kind, a, b, c; int w, h; std::vector<uint32_t> px; bool building = false, warm_owned = false; int spans = 0; std::vector<int> lo, hi; };
 std::deque<std::unique_ptr<Piece>> g_pieces;     /* a piece never moves (a caller may hold it); an erased one is retired, not freed */
 
 /* WARMFIX1 F1: g_pc_mx guards the container only. A new piece is filled in place by its caller, so it is marked `building` and only its own
@@ -504,15 +507,46 @@ const Piece *arrow_right_piece(int w, int h)
 
 /* =========================================================== state and rows ============================================ */
 
-enum Tab { T_CONTROLS = 0, T_CAMERA, T_SOUND, T_COUNT };
-enum RType { R_CHOICE, R_SLIDER, R_CHECK, R_BIND, R_HEAD };
-struct Row { RType t; const char *label; int id, id2, step; const char *const *names; int nn; };
+enum Tab { T_GENERAL = 0, T_DISPLAY, T_CONTROLS, T_SOUND, T_COUNT };
+enum RType { R_CHOICE, R_SLIDER, R_CHECK, R_BIND, R_HEAD, R_NOTE };
+struct Row { RType t; const char *label; int id, id2, step; const char *const *names; int nn; const int *vals; };   /* vals: the value of each choice when it is not min + index (the frame rate stops) */
+
+int ch_val(const Row &R, int i)
+{
+    const SlInfo *I = sl_info(R.id);
+    return R.vals ? R.vals[i] : (I ? I->min + i : i);
+}
+int ch_idx(const Row &R, int v)
+{
+    if (!R.vals) {
+        const SlInfo *I = sl_info(R.id);
+        const int k = v - (I ? I->min : 0);
+        return k < 0 ? 0 : (k >= R.nn ? R.nn - 1 : k);
+    }
+    int best = 0;
+    for (int i = 1; i < R.nn; ++i) if (abs(R.vals[i] - v) < abs(R.vals[best] - v)) best = i;
+    return best;
+}
+enum { MAXR = 40 };                 /* rows a tab can hold */
 
 const char *const RUN_LABELS[] = { "Hold button", "Analog stick", "Always run" };
 const char *const CAM_LABELS[] = { "Analog chase", "Free camera", "DS stepped" };
+const char *const GAPLOOK_LABELS[] = { "Solid", "Blur", "Peek" };
+const char *const GAPCOLOR_LABELS[] = { "Black", "White", "Gray", "Blue", "Red", "Green" };
 
+const Row ROWS_GENERAL[] = {
+    { R_SLIDER, "Minimap size", SL_MINIMAP_SCALE, -1, 5, 0, 0 },
+    { R_NOTE, "The minimap is the small map in the corner.", -1, -1, 0, 0, 0 },
+};
+/* PAUSE3: CONTROLS is the old CONTROLS and CAMERA tabs together (the camera rows first, then the run rows, then the bindings) */
 const Row ROWS_CONTROLS[] = {
+    { R_CHOICE, "Camera", SL_CAMERA_MODE, -1, 0, CAM_LABELS, 3 },
     { R_CHOICE, "Run", SL_RUN_MODE, -1, 0, RUN_LABELS, 3 },
+    { R_SLIDER, "Camera speed", SL_CAMERA_SENSITIVITY, -1, 5, 0, 0 },
+    { R_SLIDER, "Mouse speed", SL_MOUSE_SENSITIVITY, -1, 5, 0, 0 },
+    { R_CHECK, "Invert camera left/right", SL_SWAP_CAMERA_TURN, -1, 0, 0, 0 },
+    { R_CHECK, "Invert camera up/down", SL_INVERT_CAMERA_Y, -1, 0, 0, 0 },
+    { R_CHECK, "Lock mouse", SL_MOUSE_CAPTURE, -1, 0, 0, 0 },
     { R_SLIDER, "Stick deadzone", SL_STICK_DEADZONE, -1, 1, 0, 0 },
     { R_SLIDER, "Run point", SL_RUN_THRESHOLD, -1, 1, 0, 0 },
     { R_HEAD, "Keys and buttons", -1, -1, 0, 0, 0 },
@@ -527,27 +561,51 @@ const Row ROWS_CONTROLS[] = {
     { R_BIND, "Start", SL_KEY_BASE + HOST_KEY_START, SL_PAD_BASE + HOST_PAD_START, 0, 0, 0 },
     { R_BIND, "Select", SL_KEY_BASE + HOST_KEY_SELECT, SL_PAD_BASE + HOST_PAD_SELECT, 0, 0, 0 },
     { R_BIND, "Look", SL_KEY_BASE + HOST_KEY_LOOK, SL_PAD_BASE + HOST_PAD_LOOK, 0, 0, 0 },
-};
-const Row ROWS_CAMERA[] = {
-    { R_CHOICE, "Camera", SL_CAMERA_MODE, -1, 0, CAM_LABELS, 3 },
-    { R_SLIDER, "Camera speed", SL_CAMERA_SENSITIVITY, -1, 5, 0, 0 },
-    { R_SLIDER, "Mouse speed", SL_MOUSE_SENSITIVITY, -1, 5, 0, 0 },
-    { R_CHECK, "Invert camera left/right", SL_SWAP_CAMERA_TURN, -1, 0, 0, 0 },
-    { R_CHECK, "Invert camera up/down", SL_INVERT_CAMERA_Y, -1, 0, 0, 0 },
-    { R_CHECK, "Lock mouse", SL_MOUSE_CAPTURE, -1, 0, 0, 0 },
+    { R_BIND, "Center camera", SL_KEY_BASE + HOST_KEY_CAM_CENTER, SL_PAD_BASE + HOST_PAD_CAM_CENTER, 0, 0, 0 },
+    { R_BIND, "Rotate camera left", SL_KEY_BASE + HOST_KEY_CAM_LEFT, SL_PAD_BASE + HOST_PAD_CAM_LEFT, 0, 0, 0 },
+    { R_BIND, "Rotate camera right", SL_KEY_BASE + HOST_KEY_CAM_RIGHT, SL_PAD_BASE + HOST_PAD_CAM_RIGHT, 0, 0, 0 },
 };
 const Row ROWS_SOUND[] = {
     { R_SLIDER, "Volume", SL_VOLUME, -1, 5, 0, 0 },
-    { R_SLIDER, "Minimap size", SL_MINIMAP_SCALE, -1, 5, 0, 0 },
+    { R_NOTE, "Music and effects share one volume.", -1, -1, 0, 0, 0 },
 };
-const char *const TAB_NAMES[T_COUNT] = { "CONTROLS", "CAMERA", "SOUND" };
+const char *const TAB_NAMES[T_COUNT] = { "GENERAL", "DISPLAY", "CONTROLS", "SOUND" };
+
+/* DISPLAY is built per call: the Frame rate row is there only when this build's settings_live has a FrameRate row (another lane makes it
+   live; until then it stays a launcher setting and the note says so) */
+Row g_disp_rows[10];
+int g_disp_n;
+const Row *display_rows(int *n)
+{
+    int k = 0;
+    g_disp_rows[k++] = Row{ R_CHECK, "Minigame screen gap", SL_MINIGAME_GAP, -1, 0, 0, 0 };
+    g_disp_rows[k++] = Row{ R_CHOICE, "Gap look", SL_GAP_LOOK, -1, 0, GAPLOOK_LABELS, 3 };
+    g_disp_rows[k++] = Row{ R_CHOICE, "Gap color", SL_GAP_COLOR, -1, 0, GAPCOLOR_LABELS, 6 };
+    const int fr = sl_find("FrameRate");
+    const SlInfo *fi = fr >= 0 ? sl_info(fr) : 0;
+    static const char *const RATE_LABELS[] = { "Native", "60", "90", "120", "144", "165", "180", "240" };
+    static const int RATE_VALS[] = { 0, 60, 90, 120, 144, 165, 180, 240 };
+    const bool has_rate = fi && fi->live;           /* the row exists in this build (another lane makes the frame rate live): the drop-down shows */
+    if (has_rate) g_disp_rows[k++] = Row{ R_CHOICE, "Frame rate", fr, -1, 0, RATE_LABELS, 8, RATE_VALS };
+    if (has_rate) {
+        g_disp_rows[k++] = Row{ R_NOTE, "Aspect ratio and picture quality are set", -1, -1, 0, 0, 0 };
+        g_disp_rows[k++] = Row{ R_NOTE, "in the launcher.", -1, -1, 0, 0, 0 };
+    } else {
+        g_disp_rows[k++] = Row{ R_NOTE, "Frame rate, aspect ratio and picture quality", -1, -1, 0, 0, 0 };
+        g_disp_rows[k++] = Row{ R_NOTE, "are set in the launcher.", -1, -1, 0, 0, 0 };
+    }
+    g_disp_n = k;
+    *n = k;
+    return g_disp_rows;
+}
 
 const Row *rows_of(int tab, int *n)
 {
     switch (tab) {
-    case T_CAMERA: *n = (int)(sizeof ROWS_CAMERA / sizeof ROWS_CAMERA[0]); return ROWS_CAMERA;
+    case T_DISPLAY: return display_rows(n);
     case T_SOUND: *n = (int)(sizeof ROWS_SOUND / sizeof ROWS_SOUND[0]); return ROWS_SOUND;
-    default: *n = (int)(sizeof ROWS_CONTROLS / sizeof ROWS_CONTROLS[0]); return ROWS_CONTROLS;
+    case T_CONTROLS: *n = (int)(sizeof ROWS_CONTROLS / sizeof ROWS_CONTROLS[0]); return ROWS_CONTROLS;
+    default: *n = (int)(sizeof ROWS_GENERAL / sizeof ROWS_GENERAL[0]); return ROWS_GENERAL;
     }
 }
 
@@ -567,6 +625,10 @@ struct State {
     char note[160]; int note_t;
     int pressed_plank;                 /* 0 none, 1 back, 2 reset (mouse held on it) */
     double draw_ms;
+    /* PAUSE3: the panel inside the pause (set every tick by the pause recipe, kept across open_now): on = embedded, wide = the tall column
+       at the right of the wide layout, dx = the sideways slide in picture pixels, input = 0 while the panel is slid out of sight */
+    int emb_on, emb_wide, emb_dx, emb_input;
+    int emb_from_pause;                /* opened from the pause (starts on GENERAL), else from the title wrench (CONTROLS) */
 };
 /* WARMFIX1 F1: the warm-up runs the page's own draw code, so it gets its OWN state and layout: while tl_warm is set (this thread, inside
    settings_page_warm_step only) S and L name the scratch copies, never the live ones a draw on another thread reads. */
@@ -648,7 +710,7 @@ struct Lay {
     int reset[4];                     /* x, y, w, h */
     int content_h, scroll_max;
     int nrows;
-    RowL r[24];
+    RowL r[MAXR];
     int bar[4];                       /* scroll bar track: x, y, w, h */
 };
 Lay g_L_live, g_L_scr;
@@ -660,20 +722,25 @@ inline int P(double v) { return (int)(v * L.u + 0.5); }
 void compute_layout(int w, int h)
 {
     L.w = w; L.h = h;
-    const double u = (double)w / 1024.0, v = (double)h / 768.0;
+    /* PAUSE3: inside the wide pause the sheet is a tall column at the right (900 x 990 units); everywhere else the page is the 900 x 664 sheet
+       centred on the picture (the title wrench's page, and the 4:3 pause where it takes the whole screen), shifted by the slide offset */
+    const bool col = S.emb_on && S.emb_wide;
+    const int shu = col ? 990 : 664;
+    const double u = col ? 0.46 * w / 900.0 : (double)w / 1024.0, v = col ? 0.92 * h / shu : (double)h / 768.0;
     L.u = u < v ? u : v;
     if (L.u < 0.3) L.u = 0.3;
-    L.sw = P(900); L.sh = P(664);
-    L.sx = (w - L.sw) / 2; L.sy = (h - L.sh) / 2 + P(36);
+    L.sw = P(900); L.sh = P(shu);
+    L.sx = (col ? (int)(w * 0.74) : w / 2) - L.sw / 2 + (S.emb_on ? S.emb_dx : 0);
+    L.sy = (h - L.sh) / 2 + P(36);
     if (L.sy + L.sh > h - 2) L.sy = h - 2 - L.sh;
     L.title[2] = P(380); L.title[3] = L.title[2] * 160 / 600;
-    L.title[0] = (w - L.title[2]) / 2; L.title[1] = L.sy - L.title[3] / 2;
+    L.title[0] = L.sx + (L.sw - L.title[2]) / 2; L.title[1] = L.sy - L.title[3] / 2;
     L.back[2] = P(158); L.back[3] = L.back[2] * 182 / 320;
     L.back[0] = L.sx + P(30); L.back[1] = L.sy - L.back[3] / 2;
     L.tab_h = P(44); L.tab_y = L.sy + P(74);
     {   /* the tab names in a row, centred on the sheet */
-        const float em = (float)P(34);
-        const float gap = (float)P(46);
+        const float em = (float)P(27);
+        const float gap = (float)P(34);
         float tot = 0, tw[T_COUNT];
         for (int i = 0; i < T_COUNT; ++i) { tw[i] = ui_text_width(TAB_NAMES[i], em); tot += tw[i] + (i ? gap : 0); }
         float x = L.sx + (L.sw - tot) * 0.5f;
@@ -698,7 +765,7 @@ void compute_layout(int w, int h)
     } else if (S.ensure_vis) S.ensure_vis = 0;
     if (S.scroll > L.scroll_max) S.scroll = L.scroll_max;
     if (S.scroll < 0) S.scroll = 0;
-    for (int i = 0; i < n && i < 24; ++i) { L.r[i].y = L.body[1] + i * L.rowh - S.scroll; L.r[i].h = L.rowh; }
+    for (int i = 0; i < n && i < MAXR; ++i) { L.r[i].y = L.body[1] + i * L.rowh - S.scroll; L.r[i].h = L.rowh; }
     L.bar[0] = L.sx + L.sw - P(34); L.bar[2] = P(12); L.bar[1] = L.body[1]; L.bar[3] = vis;
 }
 
@@ -730,7 +797,7 @@ void caps_of(const Row &R, CapPos *cp /* [2] */)
 
 bool row_focusable(const Row &R)
 {
-    if (R.t == R_HEAD) return false;
+    if (R.t == R_HEAD || R.t == R_NOTE) return false;
     if (R.t == R_BIND) return true;
     return sl_applicable(R.id) != 0;
 }
@@ -755,10 +822,10 @@ void adjust(const Row &R, int dir, int big)
         v = v < I->min ? I->min : (v > I->max ? I->max : v);
         set_value(R.id, v);
     } else if (R.t == R_CHOICE) {
-        v += dir;
-        if (v < I->min) v = I->max;
-        if (v > I->max) v = I->min;
-        set_value(R.id, v);
+        int k = ch_idx(R, v) + dir;
+        if (k < 0) k = R.nn - 1;
+        if (k >= R.nn) k = 0;
+        set_value(R.id, ch_val(R, k));
     } else if (R.t == R_CHECK) {
         set_value(R.id, v ? 0 : 1);
     }
@@ -771,7 +838,7 @@ void reset_tab()
     for (int pass = 0; pass < 2; ++pass)           /* a binding restored before the one that held its key: the second pass settles it */
         for (int i = 0; i < n; ++i) {
             const Row &R = rows[i];
-            if (R.t == R_HEAD) continue;
+            if (R.t == R_HEAD || R.t == R_NOTE) continue;
             const SlInfo *a = sl_info(R.id);
             if (a && sl_get(R.id) != a->def) sl_set(R.id, a->def);
             if (R.t == R_BIND && R.id2 >= 0) {
@@ -843,7 +910,7 @@ bool in_rect(int x, int y, const int *r) { return x >= r[0] && x < r[0] + r[2] &
 int row_at(int x, int y)
 {
     if (x < L.body[0] || x >= L.body[2] || y < L.body[1] || y >= L.body[3]) return -1;
-    for (int i = 0; i < L.nrows && i < 24; ++i)
+    for (int i = 0; i < L.nrows && i < MAXR; ++i)
         if (y >= L.r[i].y && y < L.r[i].y + L.r[i].h) return i;
     return -1;
 }
@@ -871,7 +938,7 @@ void drag_slider(const Row &R, int mx)
 void activate(const Row &R, int col)
 {
     switch (R.t) {
-    case R_CHOICE: S.dd_open = 1; S.dd_hi = sl_get(R.id); break;
+    case R_CHOICE: S.dd_open = 1; S.dd_hi = ch_idx(R, sl_get(R.id)); break;
     case R_CHECK: adjust(R, 1, 0); break;
     case R_BIND: start_capture(col ? R.id2 : R.id); break;
     default: break;
@@ -891,14 +958,25 @@ extern "C" int settings_page_row(void) { return S.sel; }
 extern "C" const char *settings_page_note(void) { return S.note; }
 extern "C" double settings_page_draw_ms(void) { return S.draw_ms; }
 
+extern "C" void settings_page_set_embed(const SpEmbed *e)
+{
+    S.emb_on = e ? e->on : 0;
+    S.emb_wide = e ? e->wide : 0;
+    S.emb_dx = e ? e->dx : 0;
+    S.emb_input = e ? e->input : 1;
+}
+
 extern "C" void settings_page_open_now(int from)
 {
     (void)from;
     const int w = S.w, h = S.h;
+    const int eon = S.emb_on, ewide = S.emb_wide, edx = S.emb_dx, ein = S.emb_input;
     memset(&S, 0, sizeof S);
     S.w = w ? w : 1024; S.h = h ? h : 768;
+    S.emb_on = eon; S.emb_wide = ewide; S.emb_dx = edx; S.emb_input = ein;
+    S.emb_from_pause = eon;
     S.open = 1; S.drag = -1; S.hold_touch = 1;
-    S.tab = T_CONTROLS;
+    S.tab = eon ? T_GENERAL : T_CONTROLS;      /* inside the pause it opens on the first tab; the title wrench's page keeps CONTROLS */
     S.cursor_shown = 1;          /* the arrow stands on the first row from the start, whoever opened it */
     S.ensure_vis = 1;
     S.held_prev = ~0u;           /* the press that opened it is still down: no edges on the first frame */
@@ -942,6 +1020,10 @@ extern "C" int settings_page_frame(const SpInput *in)
     ++S.pf;
     if (S.note_t > 0 && --S.note_t == 0) S.note[0] = 0;
     compute_layout(S.w, S.h);
+    if (S.emb_on && !S.emb_input) {      /* PAUSE3: slid out of sight (the star tracker is showing): the page sees nothing */
+        S.held_prev = in->keys; S.ml_prev = in->mouse_l; S.mr_prev = in->mouse_r;
+        return 1;
+    }
     /* after a rebind ends, a still-held pad button (LB, RB, A, B, Y are page keys too) is not a press: keys read as up until all are released */
     if (S.settle && (in->keys == 0 || ++S.settle_n > 120)) S.settle = 0;
     const unsigned held = S.settle ? 0u : in->keys;
@@ -959,7 +1041,24 @@ extern "C" int settings_page_frame(const SpInput *in)
         ++S.cap_frames;
         const int st = sl_capture_state();
         const char *why = sl_capture_refused();
-        if (st == SL_CAP_BOUND) { S.cap_active = 0; S.settle = 1; S.settle_n = 0; note(""); }
+        if (st == SL_CAP_BOUND) {
+            S.cap_active = 0; S.settle = 1; S.settle_n = 0; note("");
+            /* PAUSE3: the camera controls may share a button with each other; say so when this one does */
+            const int id = S.cap_id;
+            const int pad = id >= SL_PAD_BASE;
+            const int lo = pad ? SL_PAD_BASE + HOST_PAD_CAM_CENTER : SL_KEY_BASE + HOST_KEY_CAM_CENTER;
+            const int hi = pad ? SL_PAD_BASE + HOST_PAD_CAM_MODE : SL_KEY_BASE + HOST_KEY_CAM_MODE;
+            if (id >= lo && id <= hi) {
+                static const char *const cam_names[4] = { "Center camera", "Rotate camera left", "Rotate camera right", "Camera mode" };
+                for (int o = lo; o <= hi; ++o)
+                    if (o != id && sl_get(o) == sl_get(id) && sl_get(id)) {
+                        char b[160];
+                        snprintf(b, sizeof b, "Shared with %s", cam_names[o - lo]);
+                        note(b);
+                        break;
+                    }
+            }
+        }
         else if (st == SL_CAP_CANCELLED) { S.cap_active = 0; S.settle = 1; S.settle_n = 0; note("Kept the old binding"); }
         else if (!sl_capture_active()) { S.cap_active = 0; S.settle = 1; S.settle_n = 0; }
         else {
@@ -976,19 +1075,20 @@ extern "C" int settings_page_frame(const SpInput *in)
         const Row &R = rows[S.sel];
         const SlInfo *I = sl_info(R.id);
         const int bh = P(46), by = L.r[S.sel].y + (L.rowh - bh) / 2, lh = P(44);
-        if (repeat_fire(0, held)) { if (S.dd_hi > I->min) --S.dd_hi; }
-        if (repeat_fire(1, held)) { if (S.dd_hi < I->max) ++S.dd_hi; }
-        if (edge_only(4, held)) { set_value(R.id, S.dd_hi); S.dd_open = 0; }
+        (void)I;
+        if (repeat_fire(0, held)) { if (S.dd_hi > 0) --S.dd_hi; }
+        if (repeat_fire(1, held)) { if (S.dd_hi < R.nn - 1) ++S.dd_hi; }
+        if (edge_only(4, held)) { set_value(R.id, ch_val(R, S.dd_hi)); S.dd_open = 0; }
         else if (edge_only(5, held)) { S.dd_open = 0; }
         else if (l_edge) {
             if (mx >= L.ctl_x && mx < L.ctl_x + L.ctl_w && my >= by + bh && my < by + bh + lh * R.nn + P(16)) {
                 const int i = (my - (by + bh + P(8))) / lh;
-                if (i >= 0 && i < R.nn) set_value(R.id, I->min + i);
+                if (i >= 0 && i < R.nn) set_value(R.id, ch_val(R, i));
             }
             S.dd_open = 0;
         } else if (moved && mx >= L.ctl_x && mx < L.ctl_x + L.ctl_w) {
             const int i = (my - (by + bh + P(8))) / lh;
-            if (i >= 0 && i < R.nn) S.dd_hi = I->min + i;
+            if (i >= 0 && i < R.nn) S.dd_hi = i;
         }
     } else {
         /* ---- navigation ---- */
@@ -1330,6 +1430,7 @@ extern "C" int settings_page_warm_step(int w, int h)
     if (S.open) return 0;                              /* the LIVE page is open (S is the live state here) */
     /* WARMFIX1 F1: everything below runs on the scratch S and L, and the pieces it makes stay private until the step ends */
     struct Scope { Scope() { tl_warm = true; } ~Scope() { publish_pieces(); tl_warm = false; } } scope;
+    S.emb_on = 1; S.emb_wide = (long long)w * 192 / h >= 300; S.emb_dx = 0; S.emb_input = 1;      /* PAUSE3: warm the layout the pause will use */
     if (w != g_ws_w || h != g_ws_h) {
         g_ws_w = w; g_ws_h = h; g_ws_stage = 0; g_ws_y = 0; g_ws_tab = 0; g_ws_row = -1; g_ws_cpn = 1;
         std::vector<uint32_t>().swap(g_ws_tile); std::vector<uint32_t>().swap(g_ws_buf);
@@ -1456,26 +1557,13 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
     int n = 0;
     const Row *rows = rows_of(S.tab, &n);
 
-    static int sec_on = -1;
-    if (sec_on < 0) sec_on = getenv("SM64DS_SETPAGE_COST") != 0;
-    double sec[6] = { 0, 0, 0, 0, 0, 0 };
-    auto lap = [&](int k, std::chrono::steady_clock::time_point &t) {
-        if (!sec_on) return;
-        const auto n = std::chrono::steady_clock::now();
-        sec[k] += std::chrono::duration<double, std::milli>(n - t).count();
-        t = n;
-    };
-    std::chrono::steady_clock::time_point tl = t0;
     const int cp = g_warming ? g_ws_cp : 0;
     const bool ro = g_warming && g_ws_r1 > g_ws_r0;    /* WARMFIX1 F5: a warm step for one row draws only that row (the chrome was cached by the tab's chrome step) */
     if (!ro) {
-    if (cp == 0 || cp == 1) {   /* the sheet: dim under it, then copy it */
-        const Piece *sheet = sheet_piece(L.sw, L.sh, (int)(L.u * 100 + 0.5));
-        lap(0, tl);
-        dim_under(s, sheet, L.sx, L.sy);
-        lap(1, tl);
-        if (sheet) blit_piece(s, sheet, L.sx, L.sy);
-        lap(2, tl);
+    if (cp == 0 || cp == 1) {   /* the dimmed picture, then the sheet (MENUCOST1: no dim under the opaque sheet) */
+        const Piece *sp = sheet_piece(L.sw, L.sh, (int)(L.u * 100 + 0.5));
+        if (!S.emb_on) dim_under(s, sp, L.sx, L.sy);      /* PAUSE3: the pause is already dimmed by the ROM */
+        if (sp) blit_piece(s, sp, L.sx, L.sy);
     }
     if (cp == 0 || cp == 1) draw_im(s, IM_TITLE, L.title[0], L.title[1], L.title[2], L.title[3], 255, 0, 0, 0);
     if (cp == 0 || cp == 1) {
@@ -1483,7 +1571,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         draw_im(s, IM_BACK, L.back[0], L.back[1] + (S.pressed_plank == 1 ? P(3) : 0), L.back[2], L.back[3], 255, hov ? 30 : 0, S.pressed_plank == 1 ? 25 : 0, 0);
     }
     if (cp == 0 || cp == 2) {   /* tabs */
-        const float em = (float)P(34);
+        const float em = (float)P(27);
         const int by = L.tab_y + L.tab_h - P(10);
         for (int i = 0; i < T_COUNT; ++i) {
             const int on = i == S.tab;
@@ -1495,20 +1583,23 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         const float rw = ui_text_width("RB", sm);
         text_mid(s, (float)(L.sx + L.sw - P(50)) - rw, (float)(L.tab_y + L.tab_h / 2 - P(2)), "RB", sm, C_QUIET, 200, 0);
     }
-    lap(3, tl);
     }
     const int *clip = L.body;
-    for (int i = 0; i < n && i < 24; ++i) {
+    for (int i = 0; i < n && i < MAXR; ++i) {
         if (g_warming && (i < g_ws_r0 || i >= g_ws_r1)) continue;
         const Row &R = rows[i];
         const int y = L.r[i].y, rh = L.r[i].h;
         if (y + rh < L.body[1] || y > L.body[3]) continue;
         const int cy = y + rh / 2;
-        const int app = (R.t == R_BIND || R.t == R_HEAD) ? 1 : sl_applicable(R.id) != 0;
+        const int app = (R.t == R_BIND || R.t == R_HEAD || R.t == R_NOTE) ? 1 : sl_applicable(R.id) != 0;
         const int alpha = app ? 255 : 110;
         const int sel = i == S.sel && S.cursor_shown;
         if (R.t == R_HEAD) {
             text_mid(s, (float)L.lab_x, (float)(cy + P(6)), R.label, (float)P(26), C_QUIET, 255, clip);
+            continue;
+        }
+        if (R.t == R_NOTE) {
+            text_mid(s, (float)L.lab_x, (float)cy, R.label, (float)P(23), C_QUIET, 255, clip);
             continue;
         }
         if (R.t != R_CHECK) text_mid(s, (float)L.lab_x, (float)cy, R.label, (float)P(30), app ? C_TEXT : C_QUIET, alpha, clip);
@@ -1517,7 +1608,11 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         case R_CHOICE: {
             const SlInfo *I = sl_info(R.id);
             const int v = sl_get(R.id);
-            const char *t = (v >= I->min && v <= I->max && v - I->min < R.nn) ? R.names[v - I->min] : "?";
+            const int ci = ch_idx(R, v);
+            char vb[16];
+            const char *t = R.names[ci];
+            if (R.vals && R.vals[ci] != v) { snprintf(vb, sizeof vb, "%d", v); t = vb; }      /* a value that is not one of the stops (the launcher's own number) */
+            (void)I;
             draw_dd_box(s, L.ctl_x, cy - P(23), L.ctl_w, P(46), t, sel, alpha, clip);
             break;
         }
@@ -1554,7 +1649,6 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         default: break;
         }
     }
-    lap(4, tl);
     if (!ro && (cp == 0 || cp == 3)) {
     if (L.scroll_max > 0) {   /* the scroll bar */
         fill_rrect(s, (float)L.bar[0], (float)L.bar[1], (float)L.bar[2], (float)L.bar[3], L.bar[2] * 0.5f, 0x000000, 34, 0);
@@ -1564,15 +1658,18 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         fill_rrect(s, (float)L.bar[0], (float)ty, (float)L.bar[2], (float)th, L.bar[2] * 0.5f, C_TEXT, 255, 0);
     }
     /* the selection arrow: the ROM's own title arrow, turned to point at the row */
-    if (S.cursor_shown && S.sel < n && rows[S.sel].t != R_HEAD) {
+    if (S.cursor_shown && S.sel < n && rows[S.sel].t != R_HEAD && rows[S.sel].t != R_NOTE) {
         const int aw = P(24), ah = P(34);
         const Piece *ap = arrow_right_piece(aw, ah);
         const int ay = L.r[S.sel].y + L.rowh / 2 - ah / 2;
         if (ap) blit(s, ap->px, ap->w, ap->h, L.sx + P(18) + ((S.pf / 12) % 2 ? P(2) : 0), ay, 255, 0, 0, L.body);
     }
     {   /* the footer: the note on the left, the Reset plank on the right */
+        const int camrow = S.cursor_shown && S.sel < n && rows[S.sel].t == R_BIND &&
+                           (!strncmp(rows[S.sel].label, "Rotate camera", 13) || !strcmp(rows[S.sel].label, "Center camera"));
         const char *msg = S.note[0] ? S.note
-                          : (S.cap_active ? (S.cap_id < SL_PAD_BASE ? "Press a key. Esc keeps the old one." : "Press a button. BACK keeps the old one.") : "");
+                          : (S.cap_active ? (S.cap_id < SL_PAD_BASE ? "Press a key. Esc keeps the old one." : "Press a button. BACK keeps the old one.")
+                             : (camrow ? "In the pause, LB / RB and Q / E always slide the screens." : ""));
         const int fy = L.reset[1] + L.reset[3] / 2;
         if (msg[0]) {
             float em = (float)P(24);
@@ -1580,9 +1677,10 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             const float need = ui_text_width(msg, em);
             if (room > 0 && need > room) em *= room / need;
             ui_text_draw(&s, (float)L.lab_x, fy + ui_text_cap_height(em) * 0.5f, msg, em, S.note[0] ? 0x9A2A10 : C_QUIET, 255, 0);
-        } else if (S.cursor_shown && S.sel < n && rows[S.sel].t == R_BIND) {
+        } else {
             const float em = (float)P(22);
-            ui_text_draw(&s, (float)L.lab_x, fy + ui_text_cap_height(em) * 0.5f, "A: change   Y or Delete: clear", em, C_QUIET, 255, 0);
+            const char *hint = (S.cursor_shown && S.sel < n && rows[S.sel].t == R_BIND) ? "A: change   Y or Delete: clear" : "Changes apply at once and are saved.";
+            ui_text_draw(&s, (float)L.lab_x, fy + ui_text_cap_height(em) * 0.5f, hint, em, C_QUIET, 255, 0);
         }
         const int sel = S.sel == n && S.cursor_shown;
         const int hov = S.mouse_known && in_rect(S.mx_prev, S.my_prev, L.reset);
@@ -1606,11 +1704,10 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         const SlInfo *I = sl_info(R.id);
         for (int i = 0; i < R.nn; ++i) {
             const int ry = ly + P(8) + i * lh;
-            if (I->min + i == S.dd_hi) fill_rrect(s, (float)(lx + P(6)), (float)ry, (float)(lw - P(12)), (float)lh, (float)P(6), 0xFFFFFF, 80, 0);
+            if (i == S.dd_hi) fill_rrect(s, (float)(lx + P(6)), (float)ry, (float)(lw - P(12)), (float)lh, (float)P(6), 0xFFFFFF, 80, 0);
             text_mid(s, (float)(lx + P(18)), ry + lh * 0.5f, R.names[i], lh * 0.62f, 0xFFFFFF, 255, 0);
         }
     }
-    lap(5, tl);
     }
     S.draw_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
     if (!tl_warm) publish_pieces();                    /* WARMFIX1 F1 */
@@ -1619,23 +1716,22 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
 #ifdef PORT_ROM_CLEAN
         on = 0;
 #endif
-        static double sum, mn = 1e9, mx, secsum[6];
+        static double sum, mn = 1e9, mx;
         if (on < 0) on = getenv("SM64DS_SETPAGE_COST") != 0;
         if (on && !g_warming) {
             sum += S.draw_ms; ++cnt;
-            for (int q = 0; q < 6; ++q) secsum[q] += sec[q];
             if (S.draw_ms < mn) mn = S.draw_ms;
             if (S.draw_ms > mx) mx = S.draw_ms;
             if (cnt == 120) {
                 fprintf(stderr, "[settings] page draw %dx%d: %d frames, mean %.2f ms, min %.2f, max %.2f\n", w, h, cnt, sum / cnt, mn, mx);
-                fprintf(stderr, "[settings] page sections (ms): sheet-cache %.2f dim %.2f sheet-blit %.2f title+tabs %.2f rows %.2f scroll+footer+list %.2f\n",
-                        secsum[0] / cnt, secsum[1] / cnt, secsum[2] / cnt, secsum[3] / cnt, secsum[4] / cnt, secsum[5] / cnt);
                 cnt = 0; sum = 0; mn = 1e9; mx = 0;
-                for (int q = 0; q < 6; ++q) secsum[q] = 0;
             }
         }
     }
 }
+
+/* PAUSE3: the new pause's drawing (star tracker, dialogs, edge tabs, pointer): pause_page_draw / pause_page_art */
+#include "pause_page.inc"
 
 /* ============================================================ scripted input (proof rows) ============================== */
 

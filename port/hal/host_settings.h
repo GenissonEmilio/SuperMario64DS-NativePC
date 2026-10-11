@@ -112,9 +112,33 @@ int host_setting_save_camera_mode(int mode);
    the [settings] line says so. A file that names KeyLook / PadLook is obeyed
    as written, 0 included.
 
-   The left stick and the d-pad walk, and the right stick, the bumpers and
-   the right-stick click drive the camera. Those are not bindings in this
-   file; they are the pad's shape.
+   THE CAMERA BUTTONS. Four more actions, key and pad, that the window used
+   to hard-wire:
+
+     KeyCamCenter 0x43 C    PadCamCenter 0x10000 LT -- CENTRE CAMERA. In the
+                            DS camera it sets the Ctrl 0x4000 bit, the raw DS
+                            L button (CheckInput maps raw 0x0200 to 0x4000),
+                            which func_02009e70 tests in held & 0x4300 at
+                            0x02009fdc and answers with the snap-behind; in the
+                            analog and free cameras it swings the view behind
+                            Mario. Before this key existed only C did it and
+                            the pad had no way; LT had no use at all.
+     KeyCamLeft   0x51 Q    PadCamLeft   0x0100 LB -- ROTATE CAMERA LEFT.
+     KeyCamRight  0x45 E    PadCamRight  0x0200 RB -- ROTATE CAMERA RIGHT.
+                            In the DS camera these are the stepped rotate
+                            (func_02009e70's 0x200 / 0x100 bits); in the
+                            analog and free cameras the pad pair zooms out /
+                            in and Q / E turn the view, as they always did.
+     KeyCamMode   0x70 F1   PadCamMode   0x0080 right-stick click -- cycles
+                            the camera mode (analog, free, DS).
+
+   Only Centre is "newer than the file" in the Look sense: a settings.json
+   that never names KeyCamCenter / PadCamCenter gets C / LT, unless the same
+   file already puts another action on that key or button, in which case that
+   half starts unbound and the [settings] line says so. The other three are
+   what the program has always read, so their defaults apply unconditionally
+   and nobody's camera changes. The left stick and the d-pad walk and the
+   right stick turns the camera; those are the pad's shape, not bindings.
 
    RunButtonKey AND RunButtonPad, the two names that existed before this
    block, KEEP WORKING AS ALIASES of KeyRun and PadRun. When both spellings
@@ -138,11 +162,13 @@ enum {
     HOST_KEY_UP_ALT, HOST_KEY_DOWN_ALT, HOST_KEY_LEFT_ALT, HOST_KEY_RIGHT_ALT,
     HOST_KEY_JUMP, HOST_KEY_ATTACK, HOST_KEY_CROUCH, HOST_KEY_RUN,
     HOST_KEY_START, HOST_KEY_SELECT, HOST_KEY_LOOK,
+    HOST_KEY_CAM_CENTER, HOST_KEY_CAM_LEFT, HOST_KEY_CAM_RIGHT, HOST_KEY_CAM_MODE,
     HOST_KEY_COUNT
 };
 enum {
     HOST_PAD_JUMP = 0, HOST_PAD_ATTACK, HOST_PAD_CROUCH, HOST_PAD_RUN,
     HOST_PAD_START, HOST_PAD_SELECT, HOST_PAD_LOOK,
+    HOST_PAD_CAM_CENTER, HOST_PAD_CAM_LEFT, HOST_PAD_CAM_RIGHT, HOST_PAD_CAM_MODE,
     HOST_PAD_COUNT
 };
 /* The two trigger pseudo-buttons a pad binding may name (see the PAD block
@@ -221,6 +247,13 @@ int host_setting_minigame_gap(void);
 int host_setting_gap_fill_mode(void);
 unsigned host_setting_gap_color(void);
 int host_setting_gap_peek(void);
+/* PAUSE3: the in-game settings page's setters for the screen gap (the rest of the file's values are read by the launcher's own page). Each
+   applies at once (host_settings_gen steps, the gap latch re-reads it) and queues the key. gap_look: 0 solid, 1 blur (ambient), 2 peek
+   (GapPeek on, the fill keeps its mode). gap_color is 0xRRGGBB. */
+int host_setting_set_minigame_gap(int on);
+int host_setting_gap_look(void);
+int host_setting_set_gap_look(int look);
+int host_setting_set_gap_color(unsigned rgb);
 
 /* ---- GaplessMinigames: THE ONE KEY THAT IS A MOD -----------------------
    Default 0, and the default is the only setting that is the ROM. This is
