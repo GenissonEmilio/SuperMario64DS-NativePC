@@ -2626,76 +2626,6 @@ static void pacer_end(void)
     }
 }
 
-/* ---- THE GAME FILES READ AHEAD (run hunt8, lane BOOTSTALL1) ---------------
-   The first load of a course after a cold start (the PC just booted, or the
-   virus scanner has dropped what it knew of these files) waited 1.3 s for
-   the disk with the processor idle: PERF120's first castle-grounds load from
-   the file select was 1410 ms in one run of three while the same load is 18 ms
-   once the files are in the system cache (process CPU time flat over the
-   stall, the whole process start 4x slower in that row). A background thread
-   reads every file under <asset root>/extracted once, a second and a half
-   after start, at the lowest CPU and disk priority, and throws the bytes away:
-   nothing the game sees changes, the files are just already in the cache (and
-   already scanned) when the level boot opens them. SM64DS_NO_PREFETCH=1 turns
-   it off. A tree without extracted/ (or with more than 96 MB of it) reads
-   nothing / stops at the cap. */
-static DWORD WINAPI boot_prefetch_thread(LPVOID)
-{
-    const char *env = getenv("SM64DS_ASSET_ROOT");
-    char base[MAX_PATH];
-    snprintf(base, sizeof base, "%s/extracted", (env && *env) ? env : ".");
-    Sleep(1500);
-    SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
-    unsigned char buf[65536];
-    unsigned long long total = 0;
-    int files = 0;
-    const DWORD t0 = GetTickCount();
-    /* depth-first with an explicit stack of directory names */
-    char dirs[256][MAX_PATH];
-    int nd = 0;
-    snprintf(dirs[nd++], MAX_PATH, "%s", base);
-    while (nd > 0 && total < (96ull << 20)) {
-        char dir[MAX_PATH];
-        snprintf(dir, sizeof dir, "%s", dirs[--nd]);
-        char pat[MAX_PATH + 4];
-        snprintf(pat, sizeof pat, "%s/*", dir);
-        WIN32_FIND_DATAA fd;
-        HANDLE h = FindFirstFileA(pat, &fd);
-        if (h == INVALID_HANDLE_VALUE) continue;
-        do {
-            if (fd.cFileName[0] == '.' && (!fd.cFileName[1] || (fd.cFileName[1] == '.' && !fd.cFileName[2])))
-                continue;
-            char full[MAX_PATH];
-            snprintf(full, sizeof full, "%s/%s", dir, fd.cFileName);
-            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                if (nd < 256) snprintf(dirs[nd++], MAX_PATH, "%s", full);
-                continue;
-            }
-            HANDLE f = CreateFileA(full, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING,
-                                   FILE_FLAG_SEQUENTIAL_SCAN, 0);
-            if (f == INVALID_HANDLE_VALUE) continue;
-            DWORD got;
-            while (ReadFile(f, buf, sizeof buf, &got, 0) && got) {
-                total += got;
-                if (total >= (96ull << 20)) break;
-            }
-            CloseHandle(f);
-            ++files;
-        } while (FindNextFileA(h, &fd) && total < (96ull << 20));
-        FindClose(h);
-    }
-    fprintf(stderr, "[prefetch] %d file(s), %llu bytes read ahead in %lu ms\n", files, total,
-            (unsigned long)(GetTickCount() - t0));
-    return 0;
-}
-static void boot_prefetch_start(void)
-{
-    const char *off = getenv("SM64DS_NO_PREFETCH");
-    if (off && *off && *off != '0') return;
-    HANDLE t = CreateThread(0, 0, boot_prefetch_thread, 0, 0, 0);
-    if (t) CloseHandle(t);
-}
-
 static void pacer_begin(void)
 {
     if (W.SetProcessInformation_) {
@@ -12170,7 +12100,6 @@ int main(void)
        writes through the 0x027ff000 mapping io_init reserves. */
     port::comms_loopback_install_from_env();
     pacer_begin();
-    boot_prefetch_start();   /* run hunt8 BOOTSTALL1 */
 #ifdef PORT_ROM_CLEAN
     /* ROM-CLEAN: load + verify the ROM tables from romdata.bin FIRST, before
        any table is read. Loud FATAL if the file is missing, short, or fails its
