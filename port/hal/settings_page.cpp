@@ -564,6 +564,7 @@ const Row ROWS_CONTROLS[] = {
     { R_BIND, "Center camera", SL_KEY_BASE + HOST_KEY_CAM_CENTER, SL_PAD_BASE + HOST_PAD_CAM_CENTER, 0, 0, 0 },
     { R_BIND, "Rotate camera left", SL_KEY_BASE + HOST_KEY_CAM_LEFT, SL_PAD_BASE + HOST_PAD_CAM_LEFT, 0, 0, 0 },
     { R_BIND, "Rotate camera right", SL_KEY_BASE + HOST_KEY_CAM_RIGHT, SL_PAD_BASE + HOST_PAD_CAM_RIGHT, 0, 0, 0 },
+    { R_NOTE, "Two actions can share a button.", -1, -1, 0, 0, 0 },
 };
 const Row ROWS_SOUND[] = {
     { R_SLIDER, "Volume", SL_VOLUME, -1, 5, 0, 0 },

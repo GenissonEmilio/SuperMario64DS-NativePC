@@ -3653,7 +3653,7 @@ extern "C" void hal_menu_decide_tick(int w, int h)
     const int scene = hal_sub_screen_stacked() ? MENU_SCENE_GATED : port_scene_live_id();
     hal_menu_decide(w, h, scene);
     g_force_panel.store((!g_on && scene != MENU_SCENE_GATED && !hal_menu_live() &&
-                         (save_menu_is_up() || scene == 8 || (data_0209f2c4 != 0 && data_0209f20c == 0 && (scene == 3 || scene == -1)))) ? 1 : 0);
+                         (save_menu_is_up() || scene == 8 || scene == 4 || (data_0209f2c4 != 0 && data_0209f20c == 0 && (scene == 3 || scene == -1)))) ? 1 : 0);
     /* THE COMPOSE'S OWN ANSWER AND ITS RECTANGLES, once a frame, by the same rule: one place decides, everybody else
        reads. They are computed whatever the answer is, so poll_touch's inverse has this frame's numbers on the very
        frame the plates come on. (These two lines read the ROM, so they live on the decide side; they used to sit in
