@@ -218,6 +218,10 @@ void pad_sdl_script_apply(int frame)
     for (int i = 0; i < NBTN; ++i)
         SDL_SetJoystickVirtualButton(g_virt_joy, BTN_MAP[i].sdl, (m & BTN_MAP[i].xb) != 0);
     virt_triggers_rest();
+    /* the trigger pseudo-bits of hal/host_settings.h (0x10000 LT, 0x20000 RT)
+       pull the matching axis all the way, so a script can press L2 / R2 */
+    if (m & 0x10000u) SDL_SetJoystickVirtualAxis(g_virt_joy, SDL_GAMEPAD_AXIS_LEFT_TRIGGER, 32767);
+    if (m & 0x20000u) SDL_SetJoystickVirtualAxis(g_virt_joy, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, 32767);
     SDL_UpdateGamepads();
 }
 
