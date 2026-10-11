@@ -954,7 +954,7 @@ int host_setting_renderer(void);
    It is read once and latched, like ImprovedMinimap and Aspect. */
 int host_setting_save_menu_on_top(void);
 /* OneScreenMenus (run menu1): SM64DS_ONE_SCREEN_MENUS outranks the pin and the file, comparator routes
-   (SM64DS_WINDOW_SELFTEST, SM64DS_SCENE_FRAMES) are pinned off, ABSENT MEANS OFF. HudLayout: 0 DS, 1 N64,
+   (SM64DS_WINDOW_SELFTEST, SM64DS_SCENE_FRAMES) are pinned off, ABSENT MEANS ON. HudLayout: 0 DS, 1 N64,
    parsed only. */
 int host_setting_one_screen_menus(void);
 int host_setting_hud_layout(void);

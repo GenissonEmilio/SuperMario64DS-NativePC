@@ -1379,10 +1379,10 @@ int g_improved_minimap = 1;   /* ABSENT MEANS ON: the owner's order */
 int g_save_menu_on_top = 1;   /* ABSENT MEANS ON: the owner's recommendation */
 /* OneScreenMenus (run menu1): the title, star select, Rec Room, VS lobby and game over
    scenes use the one-screen compose layer instead of two stacked DS screens. ABSENT MEANS
-   OFF while the recipes land. HudLayout: 0 = the DS row, 1 = the N64 row; parsed only,
-   the HUD lane reads it later. */
-int g_one_screen_menus = 0;
-int g_hud_layout = 0;
+   ON (the owner's decision for 0.5.7); an explicit false or 0 gives the DS screens.
+   HudLayout: 0 = the DS row, 1 = the N64 row; absent means the N64 row, same rule. */
+int g_one_screen_menus = 1;
+int g_hud_layout = 1;
 double g_minimap_scale = 1.0; /* the multiplier, 1 or more */
 /* A HAND HAS MOVED THE SIZE THIS RUN. Set by the drag's own write and by
    nothing else; read in host_setting_minimap_scale_value, where the block
@@ -1802,11 +1802,12 @@ void load_once(void)
            bool and a player editing by hand may write 1. */
         g_save_menu_on_top = (json_int(text, "SaveMenuOnTop", 1) != 0 &&
                               json_bool(text, "SaveMenuOnTop", 1) != 0) ? 1 : 0;
-        /* ONE SCREEN MENUS: absent is OFF, both spellings of the toggle */
-        g_one_screen_menus = (json_int(text, "OneScreenMenus", 0) != 0 ||
-                              json_bool(text, "OneScreenMenus", 0) != 0) ? 1 : 0;
-        g_hud_layout = (json_int(text, "HudLayout", 0) == 1 ||
-                        json_bool(text, "HudLayout", 0) != 0) ? 1 : 0;
+        /* ONE SCREEN MENUS and HUD LAYOUT: absent is ON, an explicit false or 0 is OFF,
+           both spellings of the toggle (the ImprovedMinimap shape) */
+        g_one_screen_menus = (json_int(text, "OneScreenMenus", 1) != 0 &&
+                              json_bool(text, "OneScreenMenus", 1) != 0) ? 1 : 0;
+        g_hud_layout = (json_int(text, "HudLayout", 1) == 1 &&
+                        json_bool(text, "HudLayout", 1) != 0) ? 1 : 0;
         {
             int snapped = 0;
             const double want = json_num(text, "MinimapScale", 1.0);
@@ -3383,7 +3384,7 @@ extern "C" int host_setting_save_menu_on_top(void)
 
 /* ONE SCREEN MENUS, the SaveMenuOnTop pattern: the environment disposes in both directions
    and outranks the pin, the comparator routes are pinned OFF so every recorded baseline
-   holds, then settings.json, and ABSENT MEANS OFF. */
+   holds, then settings.json, and ABSENT MEANS ON. */
 extern "C" int host_setting_one_screen_menus(void)
 {
     static int env = -2;
