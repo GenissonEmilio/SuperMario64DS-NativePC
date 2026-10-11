@@ -11605,6 +11605,9 @@ list(APPEND SLICE_COMMS_SOURCES hal/coop_boot.cpp)
 list(APPEND SLICE_COMMS_SOURCES hal/coop_groups.cpp hal/coop_world.cpp)
 # Run mp1 wave 56 lane PSTAR1: party shared stars. INERT unless SM64DS_PARTY=1.
 list(APPEND SLICE_COMMS_SOURCES hal/party_stars.cpp)
+# Run mp1 lane STARPOP1: star / key popup and the shared exit (party + coop). INERT
+# outside party / coop rooms; see hal/star_popup.h.
+list(APPEND SLICE_COMMS_SOURCES hal/star_popup.cpp)
 # Run mp1 lane ARENACORE1: arena-mode VS (no rounds; the referee is the relay).
 # INERT unless SM64DS_VS_NETMODE=arena with a VS map; see hal/vs_arena.h.
 list(APPEND SLICE_COMMS_SOURCES hal/vs_arena.cpp)
