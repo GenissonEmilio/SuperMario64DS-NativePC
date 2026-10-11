@@ -215,7 +215,7 @@ int g_store_count;
    because exec() and the texture binds below feed it. The whole mechanism is
    the block after gx_render; with the SmoothMotion key off g_ip_armed is 0
    and every hook is one test of it. */
-enum { IPK_CMD = 0, IPK_BIND, IPK_LIGHT, IPK_LMASK, IPK_SLOT };
+enum { IPK_CMD = 0, IPK_BIND, IPK_LIGHT, IPK_LMASK, IPK_SLOT, IPK_SPRITE };
 int g_ip_armed = 0;       // the key is on: level frames are recorded
 int g_ip_rec = 0;         // a frame's stream is being recorded right now
 int g_ip_replaying = 0;   // a recorded stream is being replayed right now
@@ -4294,7 +4294,11 @@ static void clear_fill_classic(Framebuffer &fb)
 
 /* MENU WIDE 3D (run menu1, lane FILE2): the two seams, see menu_wide() */
 void gx_set_menu_wide_cb(bool (*cb)(float *zoom, float *dy)) { g_menu_wide_cb = cb; }
-void gx_menu_sprite(int on) { g_menu_sprite = on; }
+void gx_menu_sprite(int on) {
+    g_menu_sprite = on;
+    /* MENUINTERP2: the bracket is part of the frame's stream, so a replay zooms the page model and not the sprite objects */
+    if (g_ip_rec) { const uint32_t v = on ? 1u : 0u; ip_push(IPK_SPRITE, 0, 1, &v); }
+}
 bool gx_menu_wide_active() { return menu_wide(); }
 
 void gx_configure_anti_aliasing(int mode) {
@@ -7452,6 +7456,8 @@ struct IpRec {
     State start;
     uint32_t start_teximage = 0, start_plttbase = 0;
     uint32_t sealed = 0;         // events that reached the frame's gx_render
+    int mw_eval = 0, mw_on = 0;  // MENUINTERP2: the frame's menu-wide answer, as the tick evaluated it
+    float mw_zoom = 1.0f, mw_dy = 0.0f;
     int is_sealed = 0;
     int valid = 0;
     int snap = 0;
@@ -7485,6 +7491,7 @@ struct IpSaved {
     int rec;
 };
 IpSaved g_ip_saved;
+int g_ip_sprite_saved = 0;
 int g_ip_grid_defer_saved = 0;
 
 /* Per group, the triangles one replay produced: [begin, end) into g.tris. The
@@ -7572,6 +7579,7 @@ void ip_rec_begin() {
 void ip_rec_seal() {
     IpRec &r = g_ipr[g_ip_w];
     r.sealed = static_cast<uint32_t>(r.ev.size());
+    r.mw_eval = g.mw_eval; r.mw_on = g.mw_on; r.mw_zoom = g.mw_zoom; r.mw_dy = g.mw_dy;
     r.is_sealed = 1;
     r.tex_gen = g_tex_generation;
     g_ip_rec = 0;
@@ -8040,6 +8048,13 @@ int gx_interp_begin(float alpha) {
     g_ip_open = 1;
 
     g = C.start;
+    /* MENUINTERP2: the replay starts from the tick's own wide-page answer (the callback reads ROM state and must not be asked again) */
+    g_ip_sprite_saved = g_menu_sprite;
+    g_menu_sprite = 0;
+    if (C.mw_eval) {
+        g.mw_eval = 1; g.mw_on = C.mw_on; g.mw_zoom = C.mw_zoom; g.mw_dy = C.mw_dy;
+        if (g.mw_on) { g.vp_x = 0; g.vp_y = 0; g.vp_w = active_w; g.vp_h = active_h; }
+    }
     g.tris = std::move(g_ip_tris);
     g.grids = std::move(g_ip_grids);
     g.grid_pts = std::move(g_ip_grid_pts);
@@ -8118,6 +8133,9 @@ int gx_interp_begin(float alpha) {
         case IPK_LMASK:
             gx_enable_lights(C.par[e.off]);
             break;
+        case IPK_SPRITE:
+            g_menu_sprite = C.par[e.off] ? 1 : 0;
+            break;
         case IPK_SLOT: {
             float m[16];
             std::memcpy(m, &C.par[e.off + 1], sizeof m);
@@ -8154,6 +8172,7 @@ void gx_interp_end() {
         g_mtx_ring_sim[i] = s.ring_sim[i];
     }
     g_ip_rec = s.rec;
+    g_menu_sprite = g_ip_sprite_saved;
     g_ip_open = 0;
 }
 
