@@ -622,8 +622,7 @@ DWORD WINAPI thread_main(LPVOID)
         if (pt_enabled()) {
             char dl[96] = ""; int dn = 0;
             for (int i = 0; i < ndrop && dn < 80; ++i) dn += _snprintf(dl + dn, sizeof dl - dn, " %lld", g_slot[drop[i]].serial);
-            pt_line("[pres] REFRESH at %.2f want %.2f pick %lld (target %.2f) dropped%s | queue %d
-", pt_abs(sel_t), pt_abs(want),
+            pt_line("[pres] REFRESH at %.2f want %.2f pick %lld (target %.2f) dropped%s | queue %d\n", pt_abs(sel_t), pt_abs(want),
                     pick >= 0 ? g_slot[pick].serial : -1LL, pick >= 0 && g_slot[pick].target ? pt_abs(g_slot[pick].target) : 0.0, dn ? dl : " none", g_qn);
         }
         for (int i = 0; i < ndrop; ++i) {
@@ -964,8 +963,7 @@ extern "C" void presenter_publish(int repeat)
     s.cam[0] = g_pcam[0];
     s.cam[1] = g_pcam[1];
     s.cam[2] = g_pcam[2];
-    pt_line("[pres] PUB serial %lld at %.2f target %s%.2f
-", s.serial, pt_abs(t), tg ? "+" : "none ", tg ? ms_since(t, tg) : 0.0);
+    pt_line("[pres] PUB serial %lld at %.2f target %s%.2f\n", s.serial, pt_abs(t), tg ? "+" : "none ", tg ? ms_since(t, tg) : 0.0);
     if (presenter_hash_on())
         presenter_hash_log("main", s.serial, presenter_hash_texture(g_dev, g_ctx, s.tex, 0));
     g_pub_w = g_w;
