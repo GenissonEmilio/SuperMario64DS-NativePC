@@ -155,15 +155,15 @@ void warm_slice(int w, int h)
 
 /* The shared warm-up slot, for the pause's pictures and the settings page's caches together. 1 = this call may do one slice. A slot is
    handed out at most every 4 ms (so two warmers never land on the same tick), and not at all until the callers have been seen running at
-   an even pace for a few calls (a call more than 35 ms after the last one means the level or something else is hitching: wait). */
+   an even pace for a few calls (a call more than 50 ms after the last one means the level or something else is hitching: wait). */
 extern "C" int menu_warm_claim(void)
 {
     static const bool off = getenv("SM64DS_NO_MENU_WARM") != 0;
     if (off) return 0;
     const double t = wnow_ms();
-    if (t - g_last_call > 35.0) g_calm = 0; else ++g_calm;
+    if (t - g_last_call > 50.0) g_calm = 0; else ++g_calm;
     g_last_call = t;
-    if (g_calm < 8) return 0;
+    if (g_calm < 3) return 0;
     if (t - g_last_claim < 4.0) return 0;
     g_last_claim = t;
     return 1;
