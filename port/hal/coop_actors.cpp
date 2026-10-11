@@ -539,7 +539,7 @@ int16_t ang_extrap(int16_t cur, int16_t prev, long long lead, int dt) {
 }
 void slave(Slot &s, const Rx &x, unsigned now) {
     const Prof &p = g_prof[s.prof];
-    if (x.snap || !x.valid || x.cls != p.id || x.nf != p.nf) return;
+    if (!x.valid || x.cls != p.id || x.nf != p.nf) return;
     const unsigned age = now - x.t;
     if (age > (unsigned)kStaleMs) return;                    // the owner went quiet for good: let the local copy run (a still actor heartbeats every 1.5 s)
     char *a = s.a;
@@ -582,7 +582,7 @@ void process(unsigned now) {
         for (int q = 0; q < kSeats; ++q) {
             if (q == g_my) continue;
             const Rx &x = g_rx[slot][q];
-            if (!alive_rx(x, now) || x.snap) continue;
+            if (!alive_rx(x, now)) continue;                  // (a snapshot record claims the actor too: its sender owns it)
             if (q == s.owner) { cur_fresh = true; cur_cd = x.cd; }
             if (best < 0 || x.cd < best_cd) { best = q; best_cd = x.cd; }
         }
