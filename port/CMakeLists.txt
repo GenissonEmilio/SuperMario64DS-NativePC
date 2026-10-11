@@ -11602,7 +11602,13 @@ list(APPEND SLICE_COMMS_SOURCES hal/coop_save.cpp)
 list(APPEND SLICE_COMMS_SOURCES hal/coop_boot.cpp)
 # Run mp1 lane COOPWORLD1: coop level groups and the death-table sync. INERT
 # unless SM64DS_COOP is set in a coop room; see hal/coop_world.h.
-list(APPEND SLICE_COMMS_SOURCES hal/coop_groups.cpp hal/coop_world.cpp hal/coop_switch.cpp)
+list(APPEND SLICE_COMMS_SOURCES hal/coop_groups.cpp hal/coop_world.cpp)
+# Run mp1 coop phase 2 lane COOPSW1: switches, WDW water, kicks. INERT unless
+# SM64DS_COOP is set in a coop room; see hal/coop_switch.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_switch.cpp)
+# Run mp1 coop phase 2 lane COOPSPAWN1: ? / ! block hits, red-coin counter, announced
+# runtime stars and prizes. INERT unless SM64DS_COOP is set in a coop room; see hal/coop_spawn.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_spawn.cpp)
 # Run mp1 lane ARENACORE1: arena-mode VS (no rounds; the referee is the relay).
 # INERT unless SM64DS_VS_NETMODE=arena with a VS map; see hal/vs_arena.h.
 list(APPEND SLICE_COMMS_SOURCES hal/vs_arena.cpp)
