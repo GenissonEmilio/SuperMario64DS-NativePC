@@ -194,7 +194,8 @@ int exit_gate(const char **why) {
     if (rd32(data_0209d4b0)) { *why = "d4b0"; return 1; }
     if (data_0209f294[0]) { *why = "starselect"; return 1; }
     if (data_0209f2c4[0]) { *why = "pause"; return 1; }
-    if (data_0209f20c[0]) { *why = "levelclear"; return 1; }
+    // data_0209f20c (level clear) is NOT a gate: the Bowser arenas hold it at 1 for the whole fight, and a level clear that
+    // matters always comes with a fade, a cutscene or a pending level change, which are gates.
     if (rd32(data_0209b454)) { *why = "fade"; return 1; }
     if (rd32(data_0209fc48)) { *why = "cutscene"; return 1; }
     if (data_0209f22c[0]) { *why = "timer"; return 1; }
@@ -427,7 +428,10 @@ extern "C" void port_star_popup_frame(void) {
         } else if (gate == 1) {
             if (g.log && (unsigned)(now - g.last_wait_log) > 1000u) {
                 g.last_wait_log = now;
-                std::fprintf(stderr, "[starpop] exit waits: %s wall=%lld\n", why, wall_ms());
+                std::fprintf(stderr, "[starpop] exit waits: %s (msg=%u d4b0=%u starsel=%u pause=%u lc=%u fade=%u cut=%u tmr=%u mode=%u) wall=%lld\n", why,
+                             (unsigned)data_0209d660[0], rd32(data_0209d4b0), (unsigned)data_0209f294[0], (unsigned)data_0209f2c4[0],
+                             (unsigned)data_0209f20c[0], rd32(data_0209b454), rd32(data_0209fc48), (unsigned)data_0209f22c[0],
+                             (unsigned)data_0209f2d8[0], wall_ms());
             }
         } else {
             landing_overrides(g.exit_key);
