@@ -32,6 +32,7 @@ extern unsigned char data_0209f250;
 extern unsigned char data_0209f21c;
 extern unsigned char data_0209f30c[];
 extern unsigned char data_0209f30d[];
+void func_ov002_020b16c4(void *coin, void *player);       // the ROM's own red coin pickup
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 char *_ZN8dActor_c10FindWithIDEj(unsigned id);
 char *_ZN8dActor_c15FindWithActorIDEjPS_(unsigned id, char *prev);
@@ -869,6 +870,11 @@ void knob_red(RedKnob &k) {
     static short last_slot = -2; static int tries = 0;
     if (a_slot(a) == last_slot) ++tries; else { last_slot = a_slot(a); tries = 0; }
     std::memcpy(pl + 0x5c, a + 0x5c, 12);
+    if (tries >= 2) {                      // out of reach for the harness (a summit): run the ROM's own pickup handler on it
+        func_ov002_020b16c4(a, pl);
+        std::fprintf(stderr, "[coopspawn-knob] red coin pickup handler slot=%d wall=%lld\n", (int)a_slot(a), wall_ms());
+        return;
+    }
     if (tries) ((int *)(pl + 0x5c))[1] += (tries * 150) << 12;
     std::fprintf(stderr, "[coopspawn-knob] red coin goto slot=%d (candidate %d of %d) pos=%d,%d,%d wall=%lld\n", (int)a_slot(a), k.nth % n, n,
                  ((const int *)(a + 0x5c))[0] >> 12, ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, wall_ms());
