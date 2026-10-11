@@ -93,6 +93,9 @@ struct TitleFacts {
     int dd_dead;              /* FACE2: 1 while the drawing page's own picture is not the page yet (the ROM's black hand-over frames): no strokes or buttons are cut from it */
     int out_e;                /* FACE2: ticks since the drawing page was left (1 on the first tick of the next page), 0 = not leaving it */
     int wide3d;               /* FILE2: this tick's 3D frame covered the whole wide frame (the page background was zoomed in the 3D itself: no margin pieces) */
+    int yh;                   /* FACE3 (review): the Yoshi hold (element machine 4) after the drawing page: our full-canvas iris covers it too */
+    int e3o;                  /* FACE3: ticks since the ROM left the free-draw state for the face tracing (the hand button), 1 on the first tick, 0 = not leaving it */
+    int e3;                   /* FACE3: ticks since the ROM entered the free-draw state (element machine 3), 1 on the first tick, 0 = not in it */
     int toy_v;                /* FACE1: the face press page's own frame counter (the page object's +0xc) PLUS ONE while top 4 / elem 0 is up, 0 = not the press page (a zeroed blob is not the press page) */
 };
 static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
@@ -137,13 +140,15 @@ int variant_for(int top, int elem)
        the score table is 4/5 (loading) then 2/5. Transit states keep the last stable page. */
     if (top == 11) return elem == 0 ? V_ATTRACT : g_last;   /* ASSET5: top 11 with the file machine up (elem 5) is the return from a file page, not the first attract */
     if (top == 10) return V_INTRO;                /* the logo arrives while the buttons come in through the ROM's star iris */
+    if (elem == 4 && g_last == V_DOODLE) return V_DOODLE;   /* FACE3: the Yoshi press on the drawing page: the ROM holds the page about 40 ticks before its star iris closes; the page stays ours (paper edge to edge) */
+    if (elem == 3) return V_DOODLE;                 /* FACE3: the free-draw state after the pencil (reached only from the drawing page): same page family, its own layout in build_doodle */
     if (elem == 2 && g_last == V_DOODLE) return V_DOODLE;   /* FACE2: the ROM's drawing mode proper (elem 2) is the same page as the face tracing (elem 1) */
     if (elem == 1) return ((top == 0 || top == 1) && g_last == V_TOY) ? V_TOY : V_DOODLE;     /* FACE1: the hand-over frames keep our picture */
     if (elem == 0) {
         if (top == 0) return V_MAIN;
         if (top == 8) return V_OPTIONS;
         if (top == 4) return V_TOY;               /* a press on the face: the head squashes and jumps, the plates leave (FACE1: drawn on the main menu's own wallpaper) */
-        if ((top == 1 || top == 5) && g_last == V_FILES) return V_MAIN;   /* ASSET5: coming back from a file page: the ROM walks the head in, so
+        if ((top == 1 || top == 5) && (g_last == V_FILES || g_last == V_DOODLE)) return V_MAIN;   /* ASSET5: coming back from a file page: the ROM walks the head in, so
                                                                               this is the main family (face fade, no walk-in of the file page's own head) */
         return g_last;                            /* 1, 6: easing in or out */
     }
@@ -975,6 +980,14 @@ void build_main_sel(MenuLayout *L, bool intro)
        (4:3: exactly where the DS puts them; wide: the same offsets from the edges), each its own touch piece in the ROM's own box. */
 enum { DD_XF = 18 };       /* the crossfade, in DS ticks: 0.3 s */
 
+/* FACE3: the free-draw page's paper: 0 = the drawing page's cream paper stays, 1 = the page's own green paper fades in (SM64DS_PAPER3=0/1) */
+int paper3_mode()
+{
+    static int m = -1;
+    if (m < 0) { const char *e = getenv("SM64DS_PAPER3"); m = (e && *e == '0') ? 0 : 1; }
+    return m;
+}
+
 void build_doodle(MenuLayout *L)
 {
     const int w = L->w, h = L->h;
@@ -983,7 +996,8 @@ void build_doodle(MenuLayout *L)
     L->no_focus_paint = 1;
     const int e = (t_f && t_f->dd_e > 0) ? t_f->dd_e : 1000;
     const bool live = !(t_f && t_f->dd_dead);
-    if (live && e >= DD_XF) L->snap_save = 1;                  /* the held frame of the way out */
+    const bool closing = t_f && t_f->vis && (t_f->e3 > 0 || t_f->yh);    /* FACE3: the Yoshi press: the ROM closes its star iris (polygons in the 3D layer, drawn only in the 4:3 area) */
+    if (live && e >= DD_XF && !closing && !(t_f && t_f->yh)) L->snap_save = 1;      /* the held frame of the way out (and of the iris: the last frame before the ROM's iris shows) */
     if (e < DD_XF) {
         MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)w; sn.fh = (short)h;
@@ -996,17 +1010,57 @@ void build_doodle(MenuLayout *L)
         pp.alpha = (uint8_t)(a >= 255 ? 0 : (a < 1 ? 1 : a));
         menu_add_piece(L, pp);
     }
+    const int e3 = t_f ? t_f->e3 : 0;      /* FACE3: the free-draw state (the ROM's element machine 3, after the pencil) */
+    if (e3 > 0 && paper3_mode() == 1) {    /* the page's own green paper fades in over the cream one (0.3 s) */
+        MenuPiece pg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        pg.bg = 1; pg.paper = 2; pg.lden = 1; pg.lnum = 1; pg.fx = 0; pg.fy = 0; pg.fw = (short)w; pg.fh = (short)h;
+        const int a = e3 >= DD_XF ? 255 : 255 * e3 / DD_XF;
+        pg.alpha = (uint8_t)(a >= 255 ? 0 : (a < 1 ? 1 : a));
+        menu_add_piece(L, pg);
+    }
+    const int e3o = t_f ? t_f->e3o : 0;
+    if (e3 == 0 && e3o > 0 && e3o < DD_XF && paper3_mode() == 1) {    /* the hand button: the green paper fades back to the drawing page's cream (0.3 s) */
+        MenuPiece pg = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        pg.bg = 1; pg.paper = 2; pg.lden = 1; pg.lnum = 1; pg.fx = 0; pg.fy = 0; pg.fw = (short)w; pg.fh = (short)h;
+        const int a = 255 - 255 * e3o / DD_XF;
+        pg.alpha = (uint8_t)(a < 1 ? 1 : a);
+        menu_add_piece(L, pg);
+    }
+    if (closing && live) {      /* the page is frozen under our own iris: the held frame, then the star over the whole canvas (same star, same radius as the ROM's) */
+        MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)w; sn.fh = (short)h;
+        menu_add_piece(L, sn);
+        MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
+        const float Rds = 0.004382f * (float)t_f->s48, Rpx = Rds * (float)h / 192.f;
+        ir.icx = w / 2;
+        ir.icy = (int)((96.f + 0.0864f * Rds) * (float)h / 192.f + 0.5f);
+        ir.ir16 = (int)(Rpx * 16.f);
+        if (!(Rpx > 0.f && menu_iris_covers(w, h, (float)ir.icx, (float)ir.icy, Rpx))) menu_add_piece(L, ir);
+        return;
+    }
     if (!live) return;
-    static const DsRect kYo = { 0, 132, 48, 60 }, kPen = { 208, 132, 48, 60 };     /* the buttons' rows of the lower screen: boxes x 4..44 / 212..252, y 148..188, with the slide-in path below */
+    static const DsRect kYo = { 0, 132, 60, 60 }, kPen = { 196, 132, 60, 60 }, kBar = { 84, 168, 88, 24 };     /* the buttons' rows of the lower screen: boxes x 4..44 / 212..252, y 148..188, with the slide-in path below */
     int x0, y0, fw, fh;
     toy_dest(L, 1.f, &x0, &y0, &fw, &fh);
+    if (e3 > 0) {      /* FACE3: the canvas starts at the head's size and place (the cut from the drawing page is seamless), then grows to the DS canvas's own size, centred, for drawing */
+        const float t = (float)(e3 - 8) / 26.f, g = t <= 0.f ? 0.f : t >= 1.f ? 1.f : t * t * (3.f - 2.f * t);
+        const float upx = (float)L->unum / (float)L->uden, ffw = 256.f * upx, ffh = 192.f * upx;
+        const float fx0 = (float)w * 0.5f - ffw * 0.5f, fy0 = ((float)h - ffh) * 0.5f;
+        x0 = (int)((float)x0 + (fx0 - (float)x0) * g + 0.5f); y0 = (int)((float)y0 + (fy0 - (float)y0) * g + 0.5f);
+        fw = (int)((float)fw + (ffw - (float)fw) * g + 0.5f); fh = (int)((float)fh + (ffh - (float)fh) * g + 0.5f);
+    }
     MenuPiece st = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
     st.fixdest = 1; st.keycover = 1; st.bg = 1; st.has_ex = 1; st.ex = kYo; st.has_ex2 = 1; st.ex2 = kPen;
+    if (e3 > 0) { st.has_ex3 = 1; st.ex3 = kBar; }
+    if (e3 > 0 && e3 <= 12) { st.ex2.y = 100; st.ex2.h = 92; }      /* the pencil's tick sprite while it slides out */
     st.fx = (short)x0; st.fy = (short)y0; st.fw = (short)fw; st.fh = (short)fh;
     menu_add_piece(L, st);
     MenuPiece tc = st;                           /* the touch twin: the same transform inverts a click on the strokes' area to the ROM's canvas */
     tc.keycover = 0; tc.has_ex = 0; tc.has_ex2 = 0; tc.bg = 0; tc.touch = 1; tc.nodraw = 1;
-    tc.s.h = 130; tc.fh = (short)((fh * 130 + 96) / 192);     /* ends above the button rows so it never meets the buttons' own touch boxes */
+    tc.has_ex3 = 0;
+    const int th = e3 > 0 ? 146 : 130;           /* FACE3: the free-draw canvas reaches down to the button rows (box tops at 148) */
+    tc.s.h = (short)th; tc.fh = (short)((fh * th + 96) / 192);     /* ends above the button rows so it never meets the buttons' own touch boxes */
     menu_add_piece(L, tc);
     MenuPiece yo = menu_piece_make(SRC_TOP_PIC, kYo.x, kYo.y, kYo.w, kYo.h, MENU_AX_L, MENU_AY_B, 0, 0, 1, 1);
     yo.keycover = 1; yo.touch = 1;
@@ -1014,6 +1068,11 @@ void build_doodle(MenuLayout *L)
     MenuPiece pe = menu_piece_make(SRC_TOP_PIC, kPen.x, kPen.y, kPen.w, kPen.h, MENU_AX_R, MENU_AY_B, 0, 0, 1, 1);
     pe.keycover = 1; pe.touch = 1;
     menu_add_piece(L, pe);
+    if (e3 > 0) {      /* FACE3: the ink bar, its own piece, centred on the bottom edge (the ROM's box 88..168 x 172..188) */
+        MenuPiece br = menu_piece_make(SRC_TOP_PIC, kBar.x, kBar.y, kBar.w, kBar.h, MENU_AX_C, MENU_AY_B, 0, 0, 1, 1);
+        br.keycover = 1; br.touch = 1;
+        menu_add_piece(L, br);
+    }
 }
 
 }  // namespace
@@ -1089,6 +1148,17 @@ void menu_title_facts(MenuFacts *f)
         static int last_v = -1, last_e = 0, dd_chain = 0, dd_e = 0, was_dd = 0, out_e = 0;
         int top = -1, elem = -1, req = -1;
         const bool st = port_title_page_state(&top, &elem, &req) != 0;
+        static int e3c = 0, e3oc = 0;
+        const int e3p = e3c;
+        e3c = (st && (elem == 3 || (elem == 4 && top == 0 && e3c > 0))) ? e3c + 1 : 0;
+        tf.e3 = e3c;
+        if (st && e3p > 0 && e3c == 0 && elem == 2) e3oc = 1;
+        else if (e3oc > 0 && st && elem == 2) e3oc = e3oc > DD_XF + 1 ? 0 : e3oc + 1;
+        else e3oc = 0;
+        tf.e3o = e3oc;
+        tf.yh = (st && elem == 4 && g_last == V_DOODLE) ? 1 : 0;
+        static int yoshi_out = 0;
+        yoshi_out = (st && elem == 4) ? 1 : (st && elem == 2) ? 0 : yoshi_out;      /* the Yoshi press: the ROM's own star iris covers the hand-over, no held frame fades over it */
         if (st && top == 4 && elem == 0 && data_ov007_0210342c) {
             const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
             tf.toy_v = (sp ? *(const int *)(sp + 0xc) : 0);
@@ -1106,6 +1176,8 @@ void menu_title_facts(MenuFacts *f)
             if (dd_chain) { dd_e = tf.toy_v >= 1000 ? tf.toy_e : dd_e + 1; tf.dd_e = dd_e; }
             tf.dd_dead = (tf.toy_v >= 1000 || (elem == 1 && top != 2)) ? 1 : 0;
             was_dd = 1; out_e = 0;
+        } else if (was_dd && yoshi_out) {
+            was_dd = 0; out_e = 0; dd_chain = 0;
         } else if (was_dd) {
             tf.out_e = ++out_e;
             if (out_e >= DD_XF + 2) { was_dd = 0; out_e = 0; dd_chain = 0; }
@@ -1485,6 +1557,11 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
         if (*pressed & 0x0001) host_back = 1;
         *pressed = (uint16_t)(*pressed & ~0x0001u);
         h = (unsigned short)(h & ~0x0001u);
+    }
+    /* FACE3: the free-draw page has no pad handling in the ROM (touch only): the back key (Backspace, pad B) taps its Yoshi button, the ROM's own box 6, which leaves for the main menu */
+    if (host_back && g_last == V_DOODLE && g_elem == 3) {
+        Box b;
+        if (box_of_live(6, &b)) hal_menu_touch_queue_press((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2);
     }
     if (h & MENU_PAD_CONFIRM) h = (unsigned short)((h & ~(unsigned)MENU_PAD_CONFIRM) | 0x0001);
     if (inject) h = (unsigned short)(h | 0x0001);

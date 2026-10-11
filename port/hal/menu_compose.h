@@ -127,6 +127,10 @@ struct MenuPiece {
      has_ex2 / ex2 = a second skipped rect for a keycover piece (as has_ex / ex). */
   uint8_t paper, snap, has_ex2;
   DsRect ex2;
+  /* FACE3 (appended): paper == 2 is the green paper of the drawing page's free-draw state (the same 32 x 32 layout, its own six greens);
+     has_ex3 / ex3 = a third skipped rect for a keycover piece (the ink bar). */
+  uint8_t has_ex3;
+  DsRect ex3;
 };
 
 struct MenuHotspot { uint8_t piece; DsRect box;     /* bottom-screen DS box = the ROM's own touch box */

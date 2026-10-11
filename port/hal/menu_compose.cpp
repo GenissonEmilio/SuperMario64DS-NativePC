@@ -868,8 +868,43 @@ const char *const k_paper_tile[32] = {
     "33544453444444445555555555555553",
     "33433434433222223333344444333333"
 };
-std::vector<uint32_t> g_paper_cache;
-int g_paper_key[4];
+const uint8_t k_paper_pal_g[6][3] = { { 231, 255, 181 }, { 231, 255, 189 }, { 231, 255, 206 }, { 247, 255, 239 }, { 255, 255, 247 }, { 255, 255, 255 } };   /* FACE3: the free-draw state's paper, measured off the ROM's settled render */
+const char *const k_paper_tile_g[32] = {
+    "11344533055233320555554441133245",
+    "35553545032355555423142300434445",
+    "55552223200454522350155534555535",
+    "50001241344515522233445554334023",
+    "30023334555543355413432354523333",
+    "55555455422020034345553344203434",
+    "35555333153335522345054453124555",
+    "34013431235453334555330233544451",
+    "55551544301433045531345324555201",
+    "55553245554455533334555512354303",
+    "32114320223220453355211345232455",
+    "20345531023435351532545455553443",
+    "44133535544553333445302442003155",
+    "34232555545230545355534333455555",
+    "54543555333123345310454455555545",
+    "24555122354345535520211420133110",
+    "00555333554454133433224333445442",
+    "54310455425555434555454555543454",
+    "44434334133312555354433555302321",
+    "24555434454420235124543242354455",
+    "22033555555555313554410214554355",
+    "33121440125313131454312220133030",
+    "55541100001003445445455551335533",
+    "55555555255543435531552445542522",
+    "20155555254555542320121332334233",
+    "32101010110355555455555553332555",
+    "35443213345333323355455544325555",
+    "13454534555204533101121245433355",
+    "25443235443402124542555333353002",
+    "13445545043424431153334243333333",
+    "44535353455555555555534355555545",
+    "54313134555552134555555553333333"
+};
+std::vector<uint32_t> g_paper_cache_a[2];
+int g_paper_key_a[2][4];
 
 inline int paper_ci(char c) { return c <= '9' ? c - '0' : c - 'a' + 10; }
 
@@ -878,6 +913,11 @@ void draw_paper(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     const MenuPiece &P = L->p[i];
     const int *d = L->dest[i];
     if (d[2] <= 0 || d[3] <= 0) return;
+    const int gi = P.paper == 2 ? 1 : 0;
+    std::vector<uint32_t> &g_paper_cache = g_paper_cache_a[gi];
+    int *g_paper_key = g_paper_key_a[gi];
+    const char *const *tile = gi ? k_paper_tile_g : k_paper_tile;
+    const uint8_t (*pal)[3] = gi ? k_paper_pal_g : k_paper_pal;
     const int key[4] = { d[2], d[3], L->unum, L->uden };
     if (g_paper_cache.size() != (size_t)d[2] * d[3] || memcmp(key, g_paper_key, sizeof key) != 0) {
         memcpy(g_paper_key, key, sizeof key);
@@ -894,12 +934,12 @@ void draw_paper(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
                 const int u0 = (int)floorf(u);
                 const float fu = u - (float)u0;
                 const int xa = ((u0 % 32) + 32) % 32, xb = (xa + 1) % 32;
-                const int c00 = paper_ci(k_paper_tile[ya][xa]), c10 = paper_ci(k_paper_tile[ya][xb]);
-                const int c01 = paper_ci(k_paper_tile[yb][xa]), c11 = paper_ci(k_paper_tile[yb][xb]);
+                const int c00 = paper_ci(tile[ya][xa]), c10 = paper_ci(tile[ya][xb]);
+                const int c01 = paper_ci(tile[yb][xa]), c11 = paper_ci(tile[yb][xb]);
                 int ch[3];
                 for (int k = 0; k < 3; ++k) {
-                    const float t0 = k_paper_pal[c00][k] + (k_paper_pal[c10][k] - k_paper_pal[c00][k]) * fu;
-                    const float t1 = k_paper_pal[c01][k] + (k_paper_pal[c11][k] - k_paper_pal[c01][k]) * fu;
+                    const float t0 = pal[c00][k] + (pal[c10][k] - pal[c00][k]) * fu;
+                    const float t1 = pal[c01][k] + (pal[c11][k] - pal[c01][k]) * fu;
                     ch[k] = (int)(t0 + (t1 - t0) * fv + 0.5f);
                 }
                 g_paper_cache[(size_t)y * d[2] + x] = 0xff000000u | ((uint32_t)ch[0] << 16) | ((uint32_t)ch[1] << 8) | (uint32_t)ch[2];
@@ -1137,6 +1177,7 @@ static void piece_draw_ref(const MenuLayout *L, int i, const MenuSources *S, uin
                         const int ex = (qx - S->pic_rx) * 256 / S->pic_rw, ey = (qy - S->pic_ry) * 192 / S->pic_rh;
                         if (ex >= P.ex.x && ex < P.ex.x + P.ex.w && ey >= P.ex.y && ey < P.ex.y + P.ex.h) continue;
                         if (P.has_ex2 && ex >= P.ex2.x && ex < P.ex2.x + P.ex2.w && ey >= P.ex2.y && ey < P.ex2.y + P.ex2.h) continue;
+                        if (P.has_ex3 && ex >= P.ex3.x && ex < P.ex3.x + P.ex3.w && ey >= P.ex3.y && ey < P.ex3.y + P.ex3.h) continue;
                     }
                 }
                 if (P.alpha && P.alpha < 255) {   /* ASSET5: a faded piece (the face fade-in) blends over what is there */
@@ -1348,7 +1389,7 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
         if (qy < 0 || qy >= S->pic_h) continue;
         const uint32_t *prow = S->pic + (size_t)qy * S->pic_stride;
         const uint8_t *cov = 0;
-        int in1 = 0, in2 = 0;
+        int in1 = 0, in2 = 0, in3 = 0;
         if (P.keycover) {
             if (!S->pic_cover) continue;
             cov = S->pic_cover + (size_t)qy * S->pic_stride;
@@ -1356,6 +1397,7 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
                 const int ey = (qy - S->pic_ry) * 192 / S->pic_rh;
                 in1 = ey >= P.ex.y && ey < P.ex.y + P.ex.h;
                 in2 = P.has_ex2 && ey >= P.ex2.y && ey < P.ex2.y + P.ex2.h;
+                in3 = P.has_ex3 && ey >= P.ex3.y && ey < P.ex3.y + P.ex3.h;
             }
         }
         for (int xx = xa; xx < xb; ++xx) {
@@ -1365,6 +1407,7 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
                 if (!cov[qx]) continue;
                 if (in1 && exc[xx] >= P.ex.x && exc[xx] < P.ex.x + P.ex.w) continue;
                 if (in2 && exc[xx] >= P.ex2.x && exc[xx] < P.ex2.x + P.ex2.w) continue;
+                if (in3 && exc[xx] >= P.ex3.x && exc[xx] < P.ex3.x + P.ex3.w) continue;
             }
             const uint32_t c = prow[qx];
             if (P.key_backdrop && ((c & 0xffffffu) == 0x101820u || (c & 0xffffffu) == 0x080808u)) { row[xx] = 0xff000000u; continue; }
