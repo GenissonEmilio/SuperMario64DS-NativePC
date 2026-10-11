@@ -989,7 +989,8 @@ bool bossdesc2_knob(Boss &b, HitKnob &k) {
         // fall into the pit beside the platform (the first try, exactly on the bomb, did and the level ended).
         const int32_t rad = rd32(bomb, 0x184);
         const double hl = std::sqrt((double)px * px + (double)pz * pz);
-        if (hl > 1.0 && rad > 0) { const double f = 1.0 - (rad * 0.6) / hl; px = (int32_t)(px * f); pz = (int32_t)(pz * f); }
+        if (hl > 1.0 && rad > 0) { const double off = (std::min)((double)rad * 0.6, 250.0 * 4096.0);      // the ROM's ring test allows +-300 units around the ring radius
+            const double f = 1.0 - off / hl; px = (int32_t)(px * f); pz = (int32_t)(pz * f); }
         std::memcpy(a + 0x5c, &px, 4); std::memcpy(a + 0x60, &py, 4); std::memcpy(a + 0x64, &pz, 4);
         const int32_t one = 1, zero = 0;
         std::memcpy(a + 0x40c, &one, 4); std::memcpy(a + 0x410, &zero, 4); a[0x423] = 0;
