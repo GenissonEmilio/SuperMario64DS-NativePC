@@ -126,13 +126,17 @@ static_assert(sizeof(SpRedWire) == 12, "red");
 
 // ---- what a datagram may name ------------------------------------------------
 inline bool sp_block_class_ok(int c) { return c >= 20 && c <= 25; }
-inline bool sp_actor_class_ok(int c) { return c == 178 || c == 276 || c == 277 || c == 282; }
+inline bool sp_actor_class_ok(int c) { return c == 178 || c == 276 || c == 277 || c == 282 || c == 283; }
 inline bool sp_silver_class_ok(int c) { return c == 179; }
 inline bool sp_class_ok(int kind, int c) {
     return kind == kSpKindActor ? sp_actor_class_ok(c) : kind == kSpKindSilver ? sp_silver_class_ok(c) : false;
 }
 // Spawn parameters: a star carries its star number (and the ROM's small flag bits), the prizes carry none.
-inline bool sp_param_ok(int cls, uint32_t p) { return (cls == 178 || cls == 179 || cls == 282) ? p < 0x100u : p == 0u; }
+// A star's number is (param & 0xf), 0..7 (bossfix1: 8..15 are not real stars).
+inline bool sp_param_ok(int cls, uint32_t p) {
+    if (cls == 178 || cls == 179) return p < 0x100u && (p & 0xfu) <= 7u;
+    return (cls == 282 || cls == 283) ? p < 0x100u : p == 0u;
+}
 inline bool sp_pos_ok(int32_t v) { return v > -kSpPosLimit && v < kSpPosLimit; }
 
 inline bool sp_spawn_validate(const void *p, int len) {

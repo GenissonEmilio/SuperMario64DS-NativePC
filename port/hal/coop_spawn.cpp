@@ -14,6 +14,7 @@
 // dead flags +0x0f / +0x0e.
 
 #include "coop_spawn.h"
+#include "coop_boss.h"
 #include "coop_world.h"
 #include "coop_wire.h"
 #include "comms_hub.h"
@@ -107,6 +108,11 @@ struct Net {
     int sends; unsigned next; int gsends; unsigned gnext;
 };
 Net g_net[kNetMax];
+// bossfix1: a boss reward (key 282, Grand Star 283) spawned natively on a console that is NOT the boss's authority is removed quietly;
+// the authority's announcement brings the one reward. If it has not arrived 3.5 s later (the authority left), this console spawns
+// and announces its own, so the reward is never lost.
+struct PendReward { bool on; uint16_t cls; uint32_t param; int32_t pos[3]; int8_t area; unsigned t; };
+PendReward g_pend;
 uint16_t g_counter = 0;
 struct Lnk { bool used, taken; char *a; unsigned uid; short mslot; int area; bool seen; int gsends; unsigned gnext; };
 Lnk g_lnk[kLnkMax];
@@ -231,7 +237,7 @@ char *my_player() {
     return (me >= 0 && me < 16) ? (char *)data_0209f394[me] : nullptr;
 }
 bool is_block_cls(unsigned c) { return c >= 20 && c <= 25; }
-bool is_ann_cls(unsigned c) { return c == 178 || c == 179 || c == 276 || c == 277 || c == 282; }
+bool is_ann_cls(unsigned c) { return c == 178 || c == 179 || c == 276 || c == 277 || c == 282 || c == 283; }
 bool is_star_cls(unsigned c) { return c == 178 || c == 179; }
 
 CoopKeyWire wkey() { CoopKeyWire k; k.level = (uint16_t)g_lvl; k.act = (uint8_t)g_act; k.reserved = 0; return k; }
@@ -526,6 +532,17 @@ void scan(unsigned now) {
                         }
                     } else if ((cls == 276 || cls == 277) && born_at_hit_block(a, blk_pos, nblk)) {
                         // a block's own prize: per player, not announced
+                    } else if ((cls == 282 || cls == 283) && coop_boss_reward_not_mine()) {
+                        // the boss's authority is another console: its announced reward is the one
+                        const int *p = (const int *)(a + 0x5c);
+                        if (!g_pend.on) {
+                            g_pend.on = true; g_pend.cls = (uint16_t)cls; g_pend.param = a_param(a);
+                            g_pend.pos[0] = p[0]; g_pend.pos[1] = p[1]; g_pend.pos[2] = p[2]; g_pend.area = (int8_t)a_area(a); g_pend.t = now;
+                        }
+                        kill_quiet(a);
+                        if (g_log)
+                            std::fprintf(stderr, "[coopspawn] boss reward suppressed cls=%u pos=%d,%d,%d (not this console's boss; the authority announces) frame=%u wall=%lld\n",
+                                         cls, p[0] >> 12, p[1] >> 12, p[2] >> 12, g_frames, wall_ms());
                     } else {
                         const int *p = (const int *)(a + 0x5c);
                         const int pos[3] = {p[0], p[1], p[2]};
@@ -584,6 +601,18 @@ void scan(unsigned now) {
         g_red_prev = red_sum();
     }
     if (g_census_on && maxuid > g_wm) g_wm = maxuid;
+    if (g_pend.on && (unsigned)(now - g_pend.t) >= 3500u) {
+        bool have = false;
+        for (const Net &n : g_net) if (n.used && !n.gone && n.cls == g_pend.cls) have = true;
+        for (const Net &n : g_net) if (n.used && n.gone && n.cls == g_pend.cls && n.remote) have = true;     // it came and was already taken
+        const PendReward pr = g_pend; g_pend.on = false;
+        if (!have) {
+            const int pos[3] = {pr.pos[0], pr.pos[1], pr.pos[2]};
+            char *a = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(pr.cls, pr.param, pos, nullptr, pr.area, -1);
+            if (a) { register_local(a, pr.cls, pr.param, pos, pr.area); if (a_uid(a) > g_wm) g_wm = a_uid(a); }
+            if (g_log) std::fprintf(stderr, "[coopspawn] boss reward fallback: no announced copy of cls=%u in 3.5 s, spawned my own (%s) wall=%lld\n", (unsigned)pr.cls, a ? "ok" : "failed", wall_ms());
+        } else if (g_log) std::fprintf(stderr, "[coopspawn] boss reward: the authority's copy of cls=%u arrived, mine stays removed wall=%lld\n", (unsigned)pr.cls, wall_ms());
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -633,11 +662,14 @@ bool near_same(const char *a, const SpSpawnWire &w) {
 // a forged key SPAWN must not get past this. The Big Boo key arena (47) is left out until its kind is proven.
 bool key_ok(int lvl, unsigned param) {
     if (lvl == 36 || lvl == 38 || lvl == 40) return true;
+    if (lvl == 45) return (param & 7u) == 2u;       // Goomboss's key (src/actors/Goomboss.cpp: kind 2)
+    if (lvl == 47) return (param & 7u) == 3u;       // the Big Boo key arena (func_ov063_02118ddc: kind 3)
     return lvl == 49 && (param & 7u) == 4u;
 }
 
 void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
     if (w.cls == 282 && !key_ok(g_lvl, w.param)) { ++g_st.drop_class; return; }
+    if (w.cls == 283 && g_lvl != 40) { ++g_st.drop_class; return; }           // the Grand Star only exists in Bowser's last arena
     if (ack_has(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     if (net_find(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     Net *n = net_alloc();
@@ -956,6 +988,7 @@ void new_level() {
     std::memset(g_bo, 0, sizeof g_bo);
     std::memset(g_lastbseq, 0, sizeof g_lastbseq);
     std::memset(g_net, 0, sizeof g_net);
+    std::memset(&g_pend, 0, sizeof g_pend);
     std::memset(g_lnk, 0, sizeof g_lnk);
     std::memset(g_lnk_gone, 0, sizeof g_lnk_gone);
     std::memset(g_ack, 0, sizeof g_ack);
