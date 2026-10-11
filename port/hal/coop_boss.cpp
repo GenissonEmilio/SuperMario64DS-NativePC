@@ -679,10 +679,10 @@ bool bossdesc1_knob(Boss &b, HitKnob &k) {
         if (k.lethal && (uint8_t)a[0x5ca] > 1) a[0x5ca] = 1;
         a[0x5cc] = 3; const uint16_t zero = 0; std::memcpy(a + 0x100, &zero, 2);
     } else {
-        // DAMAGE_START (10) is where his stomp goes; the chain DAMAGE_STOP, DAMAGE_WAIT, DAMAGE (5: the enter half takes the health point,
-        // floor 1), DAMAGETALK (6) then runs by itself and ends in MOVE_START (3) or, on the last point, DEAD (7).
+        // His stomp (func_ov034_02112688) sets the stomper into +0x8c8 (give_player_ptrs did) and enters DAMAGE (5): the enter half takes the
+        // health point (floor 1), the tick talks, DAMAGETALK (6) then ends in MOVE_START (3) or, on the last point, DEAD (7).
         if (k.lethal && (uint8_t)a[0x8db] > 1) a[0x8db] = 1;
-        func_ov034_021125b8(a, 10);
+        func_ov034_021125b8(a, 5);
     }
     k.done = true;
     std::fprintf(stderr, "[cbs-knob] hit made slot=%d cls=%u hp=%u st=%u w=%lld\n", k.slot, cls, (unsigned)hp_of(b), state_of(b), wall_ms());
