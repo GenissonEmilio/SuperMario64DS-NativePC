@@ -8361,9 +8361,16 @@ static int ip_fits(long long deadline)
     if (ovc < -1.0) { const char *e = getenv("SM64DS_SLOT_COST"); ovc = e ? atof(e) : -1.0; }
     if (ovc > 0.0) c = ovc;
     /* MENUPACE1: SM64DS_FIT_RULE=<k1>,<k2> sets the margin (default 1.2,0.5: a blend starts when the time left covers 1.2 of its cost plus half a ms) */
-    static double k1 = -1.0, k2 = 0.5;
-    if (k1 < 0.0) { k1 = 1.2; const char *e = getenv("SM64DS_FIT_RULE"); if (e) sscanf(e, "%lf,%lf", &k1, &k2); }
-    return ip_left_ms(deadline) >= c * k1 + k2;
+    static double k1 = -1.0, k2 = 0.5, s1 = 1.0, s2 = 0.3;
+    if (k1 < 0.0) {
+        k1 = 1.2;
+        const char *e = getenv("SM64DS_FIT_RULE");
+        if (e) { sscanf(e, "%lf,%lf", &k1, &k2); s1 = k1; s2 = k2; }
+    }
+    /* the scene path (menus) starts a blend when the time left covers its cost plus 0.3 ms, so a second one fits beside the tick's work
+       and its picture (measured quiet: main menu idle 128 -> 139 distinct pictures a second, tick pacing unchanged); the level path keeps
+       1.2 x cost + 0.5 ms. SM64DS_FIT_RULE=<k1>,<k2> sets both. */
+    return g_ip_scene_tick ? ip_left_ms(deadline) >= c * s1 + s2 : ip_left_ms(deadline) >= c * k1 + k2;
 }
 /* The fallback's measuring retry: its first blend is drawn whatever the cost
    window says, so the cost is always measured again (see ip_fit_commit).
