@@ -541,6 +541,7 @@ void slave(Slot &s, const Rx &x, unsigned now) {
     const Prof &p = g_prof[s.prof];
     if (!x.valid || x.cls != p.id || x.nf != p.nf) return;
     const unsigned age = now - x.t;
+    if (x.snap && age > 120u) return;                        // a snapshot pose is a starting point, not a live stream: the local copy, now in phase, runs on from it
     if (age > (unsigned)kStaleMs) return;                    // the owner went quiet for good: let the local copy run (a still actor heartbeats every 1.5 s)
     char *a = s.a;
     if (skip_state(a, p)) return;
@@ -588,7 +589,7 @@ void process(unsigned now) {
         }
         const int was = s.owner;
         int nown = decide_owner(s.owner, g_my, my_cd, cur_fresh, cur_cd, best, best_cd, g_hyst);
-        if (g_hyst && was != nown && was >= 0 && (unsigned)(now - s.owner_t) < (unsigned)kDwellMs && (was == g_my || cur_fresh))
+        if (g_hyst && was != nown && was >= 0 && (unsigned)(now - s.owner_t) < (unsigned)kDwellMs && ((was == g_my && s.last_pub != 0) || (was != g_my && cur_fresh)))
             nown = was;                                            // dwell: no flip within a second
         if (nown != was) {
             s.owner = nown; s.owner_t = now;
