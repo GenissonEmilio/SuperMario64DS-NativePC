@@ -6789,7 +6789,11 @@ static void pad_test_apply(int frame, int *pad_live, XPad *pad)
     }
     if (mask) {
         if (!*pad_live) { memset(pad, 0, sizeof *pad); *pad_live = 1; }
-        pad->buttons = (unsigned short)(pad->buttons | mask);
+        pad->buttons = (unsigned short)(pad->buttons | (mask & 0xffffu));
+        /* the trigger pseudo-bits (hal/host_settings.h): 0x10000 pulls LT,
+           0x20000 pulls RT, so a script can press a trigger binding */
+        if (mask & HOST_PAD_LT) pad->lt = 255;
+        if (mask & HOST_PAD_RT) pad->rt = 255;
     }
 }
 
@@ -12441,6 +12445,11 @@ int main(void)
                 run_key_name(g_key[HOST_KEY_START], b[11], sizeof b[0]),
                 run_key_name(g_key[HOST_KEY_SELECT], b[12], sizeof b[0]),
                 run_key_name(g_key[HOST_KEY_LOOK], b[13], sizeof b[0]));
+        fprintf(stderr, "[keys] camera center %s left %s right %s mode %s\n",
+                run_key_name(g_key[HOST_KEY_CAM_CENTER], b[14], sizeof b[0]),
+                run_key_name(g_key[HOST_KEY_CAM_LEFT], b[15], sizeof b[0]),
+                run_key_name(g_key[HOST_KEY_CAM_RIGHT], b[16], sizeof b[0]),
+                run_key_name(g_key[HOST_KEY_CAM_MODE], b[17], sizeof b[0]));
         char pb[HOST_PAD_COUNT][20];
         fprintf(stderr, "[keys] pad jump %s attack %s crouch %s (and the right "
                         "trigger) start %s select %s look %s\n",
@@ -12450,6 +12459,11 @@ int main(void)
                 run_pad_name(g_pad[HOST_PAD_START], pb[3], sizeof pb[0]),
                 run_pad_name(g_pad[HOST_PAD_SELECT], pb[4], sizeof pb[0]),
                 run_pad_name(g_pad[HOST_PAD_LOOK], pb[5], sizeof pb[0]));
+        fprintf(stderr, "[keys] pad camera center %s left %s right %s mode %s\n",
+                run_pad_name(g_pad[HOST_PAD_CAM_CENTER], pb[6], sizeof pb[0]),
+                run_pad_name(g_pad[HOST_PAD_CAM_LEFT], pb[7], sizeof pb[0]),
+                run_pad_name(g_pad[HOST_PAD_CAM_RIGHT], pb[8], sizeof pb[0]),
+                run_pad_name(g_pad[HOST_PAD_CAM_MODE], pb[9], sizeof pb[0]));
     }
     /* SM64DS_DECEL_PROBE=1 (under a selftest): hold the stick and the dash
        button until DECEL_RELEASE, then let go of both and log the horizontal
@@ -13340,8 +13354,10 @@ int main(void)
                 }
                 g_cam_req = -1;
             }
-            int now = key_live(VK_F1) ||
-                      (pad_live && (pad.buttons & 0x0080));
+            /* CAMERA MODE, settings.json KeyCamMode / PadCamMode: F1 and the
+               right stick's click by default, the two it always was */
+            int now = key_act(HOST_KEY_CAM_MODE) ||
+                      (pad_live && pad_act(&pad, HOST_PAD_CAM_MODE));
             if (selftest && getenv("SM64DS_SELFTEST_FREECAM")) {
                 /* the probe wants the mod ON at 20 and OFF three quarters
                    through, which a three-way cycle cannot express -- so set
@@ -13392,13 +13408,14 @@ int main(void)
                 /* Q pushes left, E pushes right, off the same sign as the
                    stick so the keyboard and the pad cannot disagree */
                 const int qe = ((CAM_STEP / 2) * host_setting_camera_sensitivity() / 100) * cam_turn;
-                if (key_live('Q')) { fc_yaw = (short)(fc_yaw - qe); rig_touched = 1; }
-                if (key_live('E')) { fc_yaw = (short)(fc_yaw + qe); rig_touched = 1; }
+                if (key_act(HOST_KEY_CAM_LEFT)) { fc_yaw = (short)(fc_yaw - qe); rig_touched = 1; }
+                if (key_act(HOST_KEY_CAM_RIGHT)) { fc_yaw = (short)(fc_yaw + qe); rig_touched = 1; }
             }
             {
                 int zoom = 0;
-                if (pad_live && (pad.buttons & 0x0100)) zoom -= 1;   /* LB */
-                if (pad_live && (pad.buttons & 0x0200)) zoom += 1;   /* RB */
+                /* PadCamLeft / PadCamRight: LB pulls the eye in, RB pushes out */
+                if (pad_live && pad_act(&pad, HOST_PAD_CAM_LEFT)) zoom -= 1;
+                if (pad_live && pad_act(&pad, HOST_PAD_CAM_RIGHT)) zoom += 1;
                 zoom -= mouse_wheel;   /* wheel forward pulls the eye in */
                 if (zoom) {
                     /* the player has taken the distance off the game; the
@@ -13409,7 +13426,9 @@ int main(void)
                     if (fc_dist > 0x2000000) fc_dist = 0x2000000;
                 }
             }
-            if (key_live('C')) {
+            /* CENTRE CAMERA: KeyCamCenter (C) / PadCamCenter (LT) */
+            if (key_act(HOST_KEY_CAM_CENTER) ||
+                (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER))) {
                 fc_yaw = (short)(*(short *)(c + 0x8e) + 0x8000);
                 rig_touched = 1;
             }
@@ -13454,8 +13473,8 @@ int main(void)
         /* the pre-Camera-actor dev rig (SM64DS_OLD_CAMERA). It never reaches a
            player, but it takes cam_turn too so nobody debugging in it has to
            remember that this one camera turns the other way. */
-        if (key_live('Q')) { cam_yaw -= cam_turn * 0.045f; orbiting = 1; }
-        if (key_live('E')) { cam_yaw += cam_turn * 0.045f; orbiting = 1; }
+        if (key_act(HOST_KEY_CAM_LEFT)) { cam_yaw -= cam_turn * 0.045f; orbiting = 1; }
+        if (key_act(HOST_KEY_CAM_RIGHT)) { cam_yaw += cam_turn * 0.045f; orbiting = 1; }
         if (key_live('R') && cam_pitch < 0.85f)
             cam_pitch += 0.02f;
         if (key_live('F') && cam_pitch > -0.15f)
@@ -13802,14 +13821,18 @@ int main(void)
                    Stage::CheckCameraInput merges the cartridge's own arrows. */
                 const unsigned cam_bit_right = (cam_turn > 0) ? 0x100u : 0x200u;
                 const unsigned cam_bit_left  = (cam_turn > 0) ? 0x200u : 0x100u;
-                if (key_live('Q')) cam_rot |= cam_bit_left;
-                if (key_live('E')) cam_rot |= cam_bit_right;
-                if (key_live('C')) btn |= 0x4000;
+                if (key_act(HOST_KEY_CAM_LEFT)) cam_rot |= cam_bit_left;
+                if (key_act(HOST_KEY_CAM_RIGHT)) cam_rot |= cam_bit_right;
+                /* centre camera: the DS L button's bit (raw 0x0200 -> Ctrl
+                   0x4000), KeyCamCenter / PadCamCenter */
+                if (key_act(HOST_KEY_CAM_CENTER)) btn |= 0x4000;
+                if (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER))
+                    btn |= 0x4000;
                 if (stick_rx < -10000) cam_rot |= cam_bit_left;
                 if (stick_rx > 10000) cam_rot |= cam_bit_right;
                 if (pad_live) {
-                    if (pad.buttons & 0x0100) cam_rot |= cam_bit_left;   /* LB */
-                    if (pad.buttons & 0x0200) cam_rot |= cam_bit_right;  /* RB */
+                    if (pad_act(&pad, HOST_PAD_CAM_LEFT)) cam_rot |= cam_bit_left;
+                    if (pad_act(&pad, HOST_PAD_CAM_RIGHT)) cam_rot |= cam_bit_right;
                 }
                 /* orbit probe: hold one of func_02009e70's own rotate bits
                    from frame 20 -- the camera's heading and the angle it

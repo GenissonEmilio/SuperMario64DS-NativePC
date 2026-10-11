@@ -97,10 +97,12 @@ static void check_eq(int got, int want, const char *what)
 static const int KEY_DFLT[HOST_KEY_COUNT] = {
     0x57, 0x53, 0x41, 0x44, 0x26, 0x28, 0x25, 0x27,
     0x20, 0x58, 0x11, 0x10, 0x0d, 0x08, 0x5a,
+    0x43, 0x51, 0x45, 0x70,         /* camera: centre C, left Q, right E, mode F1 */
 };
 static const int PAD_DFLT[HOST_PAD_COUNT] = {
     0x1000, 0x2000, 0x20000, 0x4000, 0x0010, 0,   /* crouch = RT pseudo-mask */
     0x8000,                                       /* look = Y, the DS X */
+    0x10000, 0x0100, 0x0200, 0x0080,              /* camera: centre LT, LB, RB, stick click */
 };
 
 static void check_defaults_except(const int *skip_key, int nskip_key,
@@ -191,6 +193,32 @@ static int child(const char *which)
         check_eq(host_setting_key(HOST_KEY_LOOK), 0x56, "KeyLook V");
         check_eq(host_setting_pad(HOST_PAD_LOOK), 0x1000, "PadLook A as written");
         check_eq(host_setting_pad(HOST_PAD_JUMP), 0x1000, "PadJump A");
+    } else if (!strcmp(which, "cam_042")) {
+        /* a whole pre-camera-binding file (no KeyCam* / PadCam*): all four
+           camera actions read their defaults, centre on C and LT */
+        check_defaults_except(0, 0, 0, 0);
+        check_eq(host_setting_pad(HOST_PAD_CAM_CENTER), 0x10000, "PadCamCenter LT");
+        check_eq(host_setting_key(HOST_KEY_CAM_CENTER), 0x43, "KeyCamCenter C");
+    } else if (!strcmp(which, "cam_taken")) {
+        /* crouch already on LT and jump already on C: centre starts unbound
+           on both halves, the three old camera buttons keep their defaults
+           even though PadAttack sits on LB */
+        check_eq(host_setting_pad(HOST_PAD_CROUCH), 0x10000, "PadCrouch LT");
+        check_eq(host_setting_key(HOST_KEY_CAM_CENTER), 0, "KeyCamCenter unbound");
+        check_eq(host_setting_pad(HOST_PAD_CAM_CENTER), 0, "PadCamCenter unbound");
+        check_eq(host_setting_pad(HOST_PAD_ATTACK), 0x0100, "PadAttack LB");
+        check_eq(host_setting_pad(HOST_PAD_CAM_LEFT), 0x0100, "PadCamLeft LB kept");
+        check_eq(host_setting_pad(HOST_PAD_CAM_RIGHT), 0x0200, "PadCamRight RB");
+        check_eq(host_setting_key(HOST_KEY_CAM_LEFT), 0x51, "KeyCamLeft Q");
+    } else if (!strcmp(which, "cam_named")) {
+        /* named in the file: obeyed as written, onto LB and on to V, and a
+           rotate rebound to the right stick click */
+        check_eq(host_setting_pad(HOST_PAD_CAM_CENTER), 0x0100, "PadCamCenter LB");
+        check_eq(host_setting_pad(HOST_PAD_CAM_LEFT), 0x0100, "PadCamLeft LB too");
+        check_eq(host_setting_key(HOST_KEY_CAM_CENTER), 0x56, "KeyCamCenter V");
+        check_eq(host_setting_pad(HOST_PAD_CAM_RIGHT), 0x0001, "PadCamRight d-pad up");
+        check_eq(host_setting_key(HOST_KEY_CAM_MODE), 0, "KeyCamMode unbound");
+        check_eq(host_setting_pad(HOST_PAD_CAM_MODE), 0x0080, "PadCamMode default");
     } else if (!strcmp(which, "camera_number")) {
         check_eq(host_setting_camera_mode(), 1, "CameraMode 1 is freecam");
     } else if (!strcmp(which, "alias_old")) {
@@ -587,6 +615,19 @@ int main(int argc, char **argv)
         "  \"PadSelect\": 0,\n"
         "  \"RunMode\": \"analog\", \"CameraMode\": \"ds\"\n"
         "}\n");
+    bad |= run_case(exe, dir, "cam_042",
+        "{\n"
+        "  \"KeyUp\": 87, \"KeyDown\": 83, \"KeyLeft\": 65, \"KeyRight\": 68,\n"
+        "  \"KeyJump\": 32, \"KeyAttack\": 88, \"KeyCrouch\": 17,\n"
+        "  \"KeyRun\": 16, \"KeyStart\": 13, \"KeySelect\": 8, \"KeyLook\": 90,\n"
+        "  \"PadJump\": 4096, \"PadAttack\": 8192, \"PadCrouch\": 131072,\n"
+        "  \"PadRun\": 16384, \"PadStart\": 16, \"PadSelect\": 0, \"PadLook\": 32768\n"
+        "}\n");
+    bad |= run_case(exe, dir, "cam_taken",
+        "{ \"KeyJump\": 67, \"PadCrouch\": 65536, \"PadAttack\": 256 }");
+    bad |= run_case(exe, dir, "cam_named",
+        "{ \"KeyCamCenter\": 86, \"PadCamCenter\": 256, \"PadCamRight\": 1,\n"
+        "  \"KeyCamMode\": 0 }");
     bad |= run_case(exe, dir, "look_taken",
         "{ \"KeyJump\": 90, \"RunButtonPad\": 32768 }");
     bad |= run_case(exe, dir, "look_named",
