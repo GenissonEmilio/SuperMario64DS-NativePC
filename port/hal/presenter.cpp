@@ -78,6 +78,7 @@
 #include <d3d11_4.h>
 #include <dxgi.h>
 #include <intrin.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -164,6 +165,41 @@ long long qpc()
     return c.QuadPart;
 }
 double ms_since(long long a, long long b) { return (double)(b - a) * 1000.0 / (double)g_qpf; }
+
+/* run hunt8, lane MENUPACE1: SM64DS_SLOT_TRACE=1 also logs what the presenter did with each picture (trace only, inert otherwise): a "[pres]"
+   line per publish (its target against now) and per refresh (the moment it stands for, the picture taken, the pictures it dropped). The
+   absolute stamp is the QPC clock in ms, the same one walk_window's "[slot]" lines carry as "at". Written at exit. */
+static char *g_pt_buf;
+static volatile long g_pt_n;
+static const long PT_CAP = 16L << 20;
+static int g_pt_on = -1;
+static void pt_flush(void)
+{
+    if (g_pt_buf) { const long n = g_pt_n; fwrite(g_pt_buf, 1, (size_t)(n < PT_CAP ? n : PT_CAP), stderr); fflush(stderr); g_pt_n = 0; }
+}
+static int pt_enabled(void)
+{
+    if (g_pt_on < 0) {
+        const char *e = getenv("SM64DS_SLOT_TRACE");
+        g_pt_on = (e && e[0] == '1') ? 1 : 0;
+        if (g_pt_on) { g_pt_buf = (char *)malloc((size_t)PT_CAP); atexit(pt_flush); }
+    }
+    return g_pt_on > 0 && g_pt_buf;
+}
+static void pt_line(const char *fmt, ...)
+{
+    if (!pt_enabled()) return;
+    char tmp[256];
+    va_list ap;
+    va_start(ap, fmt);
+    const int n = _vsnprintf(tmp, sizeof tmp, fmt, ap);
+    va_end(ap);
+    if (n <= 0) return;
+    const long at = _InterlockedExchangeAdd(&g_pt_n, (long)n);
+    if (at + n > PT_CAP) return;
+    memcpy(g_pt_buf + at, tmp, (size_t)n);
+}
+static double pt_abs(long long q) { return (double)q * 1000.0 / (double)g_qpf; }
 
 /* ---- statistics, shared with the old path ------------------------------- */
 
@@ -583,6 +619,13 @@ DWORD WINAPI thread_main(LPVOID)
             }
         }
         qunlock();
+        if (pt_enabled()) {
+            char dl[96] = ""; int dn = 0;
+            for (int i = 0; i < ndrop && dn < 80; ++i) dn += _snprintf(dl + dn, sizeof dl - dn, " %lld", g_slot[drop[i]].serial);
+            pt_line("[pres] REFRESH at %.2f want %.2f pick %lld (target %.2f) dropped%s | queue %d
+", pt_abs(sel_t), pt_abs(want),
+                    pick >= 0 ? g_slot[pick].serial : -1LL, pick >= 0 && g_slot[pick].target ? pt_abs(g_slot[pick].target) : 0.0, dn ? dl : " none", g_qn);
+        }
         for (int i = 0; i < ndrop; ++i) {
             Slot &d = g_slot[drop[i]];
             HRESULT dhr = test_fail_drop() ? (HRESULT)WAIT_TIMEOUT : d.km2->AcquireSync(1, 100);
@@ -921,6 +964,8 @@ extern "C" void presenter_publish(int repeat)
     s.cam[0] = g_pcam[0];
     s.cam[1] = g_pcam[1];
     s.cam[2] = g_pcam[2];
+    pt_line("[pres] PUB serial %lld at %.2f target %s%.2f
+", s.serial, pt_abs(t), tg ? "+" : "none ", tg ? ms_since(t, tg) : 0.0);
     if (presenter_hash_on())
         presenter_hash_log("main", s.serial, presenter_hash_texture(g_dev, g_ctx, s.tex, 0));
     g_pub_w = g_w;

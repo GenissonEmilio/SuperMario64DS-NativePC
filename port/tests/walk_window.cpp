@@ -2835,8 +2835,8 @@ static void slot_log(const char *kind, long long t, long long deadline, double c
     QueryPerformanceFrequency(&f);
     const double k = 1000.0 / (double)f.QuadPart;
     const long long t0 = g_ip_tick_t0;
-    g_slot_n += (size_t)_snprintf(g_slot_buf + g_slot_n, 200, "[slot] s%u f%d %s due %.2f now %.2f dl %.2f end %.2f cost %.2f work %.2f room %d | %s\n",
-        g_ip_serial, port_rom_frame(), kind, (t - t0) * k, (n.QuadPart - t0) * k, (deadline - t0) * k, g_ip_tick_len * k, cost, g_ip_work_ms,
+    g_slot_n += (size_t)_snprintf(g_slot_buf + g_slot_n, 200, "[slot] s%u f%d %s at %.2f due %.2f now %.2f dl %.2f end %.2f cost %.2f work %.2f room %d | %s\n",
+        g_ip_serial, port_rom_frame(), kind, n.QuadPart * k, (t - t0) * k, (n.QuadPart - t0) * k, (deadline - t0) * k, g_ip_tick_len * k, cost, g_ip_work_ms,
         presenter_room(), why);
 }
 
