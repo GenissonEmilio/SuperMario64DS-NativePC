@@ -392,8 +392,7 @@ void do_hit_knob(HitKnob &k) {
     if (!b.a) { k.done = true; return; }
     if (hp_of(b) < k.hp0) {
         k.done = true;
-        std::fprintf(stderr, "[cbs-knob] hit taken slot=%d hp %d->%d st=%u w=%lld
-", k.slot, k.hp0, hp_of(b), state_of(b), wall_ms());
+        std::fprintf(stderr, "[cbs-knob] hit taken slot=%d hp %d->%d st=%u w=%lld\n", k.slot, k.hp0, hp_of(b), state_of(b), wall_ms());
         return;
     }
     if (b.d->hit_off) b.a[b.d->hit_off] = 1;
