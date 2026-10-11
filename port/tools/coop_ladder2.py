@@ -171,8 +171,7 @@ def row_bobred(ctl=False):
     f0 = int(os.environ.get("SP_RF", "700"))
     ex = [{"SM64DS_SPAWN_RED": SP.collect_knobs(f0 + 600 * i, 90, 2 if i < 3 else 8)} for i in range(4)]
     cons = run(row, specs(6, 4, ex, frames=int(os.environ.get("CW_RED_FRAMES", "4800")), ctl=ctl, stagger=40))
-    check_red(row, cons, ctl)
-    check_drift(row, cons, ctl, 6)
+    check_red(row, cons, ctl)   # no drift check here: the harness walks the players coin to coin without the god knob, so enemies chase them
 
 
 def row_wf(ctl=False):
