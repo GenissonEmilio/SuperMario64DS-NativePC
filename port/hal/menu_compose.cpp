@@ -1547,20 +1547,33 @@ const MenuLiftInfo *hal_menu_lift_info(void) { return g_dd.live && g_dd.lift_on 
    replayed 3D would show beside its own moved copy: those ticks keep the snap. 2D sources (SRC_TOP_2D, SRC_TOP_HOSTROW, SRC_SUB,
    host images, gradients) are the tick's own and need nothing from the 3D. SM64DS_MENU_INTERP=0 snaps every menu tick (the old
    rule). Returns 1 when no menu is bound. Draw side only; read the bound decision, never ROM memory. */
+int  hal_menu_interp_mode(void)   /* SM64DS_MENU_INTERP: 0 snap every menu tick, 1 (default) the gate below, 2 allow every menu tick (a proof instrument: shows what the gate prevents) */
+{
+    static int m = -1;
+    if (m < 0) {
+        const char *e = getenv("SM64DS_MENU_INTERP");
+        m = (e && e[0] == '0' && e[1] == '\0') ? 0 : (e && e[0] == '2' && e[1] == '\0') ? 2 : 1;
+    }
+    return m;
+}
 int  hal_menu_interp_ok(void)
 {
     if (!g_dd.live) return 1;
-    static int on = -1;
-    if (on < 0) {
-        const char *e = getenv("SM64DS_MENU_INTERP");
-        on = (e && e[0] == '0' && e[1] == '\0') ? 0 : 1;
-    }
-    if (!on || g_dd.fallback) return 0;
+    const int mode = hal_menu_interp_mode();
+    if (mode == 2) return 1;
+    if (mode == 0 || g_dd.fallback) return 0;
+    if (g_dd.L.snap_save) return 0;
     for (int i = 0; i < g_dd.L.np; ++i) {
         const MenuPiece &P = g_dd.L.p[i];
-        if (P.src == SRC_TOP_PIC || P.keycover || P.snap) return 0;
+        if (P.src != SRC_TOP_PIC && !P.keycover && !P.snap) continue;
+        if (P.keycover || P.xfill || P.snap) return 0;
+        if (P.nodraw) continue;                                     /* a click-only piece draws nothing */
+        /* a piece of the 3D picture drawn 1:1 over the whole 4:3 picture lands every pixel where it already was (the file pages at 4:3) */
+        const MenuLayout &L = g_dd.L;
+        const bool whole = P.s.x == 0 && P.s.y == 0 && P.s.w == 256 && P.s.h == 192 && P.knum == P.kden &&
+                           L.dest[i][0] == 0 && L.dest[i][1] == 0 && L.dest[i][2] == L.w && L.dest[i][3] == L.h && L.w * 3 == L.h * 4;
+        if (!whole) return 0;
     }
-    if (g_dd.L.snap_save) return 0;
     return 1;
 }
 int  hal_menu_trace_on(void) { return trace_on(); }

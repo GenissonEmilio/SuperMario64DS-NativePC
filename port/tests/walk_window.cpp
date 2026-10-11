@@ -8576,12 +8576,13 @@ static int ip_fit_commit(void)
 extern "C" int IsMinigameActorID(unsigned int id);
 extern "C" int hal_menu_live(void);
 extern "C" int hal_menu_interp_ok(void);
+extern "C" int hal_menu_interp_mode(void);
 /* MENUFOLD1: this tick's menu forbids the pictures between ticks: a menu is up and it either takes 3D pixels as a source or the
    3D is zoomed to the wide frame (FILE2: the replay does not know that zoom). 0 with no menu up, so OFF is untouched. */
 static int menu_snaps_tick(void)
 {
     if (!hal_menu_live()) return 0;
-    return (!hal_menu_interp_ok() || ntr::gx_menu_wide_active()) ? 1 : 0;
+    return (!hal_menu_interp_ok() || (ntr::gx_menu_wide_active() && hal_menu_interp_mode() != 2)) ? 1 : 0;
 }
 extern "C" int port_fader_blend_state_sub(int *evy, int *toWhite);
 extern "C" void (*port_scene_ip_hook)(int stage, void *fb, int frame, int tick_game);
