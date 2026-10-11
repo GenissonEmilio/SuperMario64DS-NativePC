@@ -24,6 +24,7 @@ extern "C" {
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;
 extern short data_02092144[];
+extern dActor_c *STAR_MARKERS[12];      // 0x0209f40c: the actors showing a star glint on the minimap
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 int KingBobOmb_SetState(void *c, void *state);
 // bossdesc1: Chief Chilly's state records (16 x 0x10 at ov073 0x02123320), his ROM transition, Wiggler's ROM transition, ModelAnim::SetAnim
@@ -662,6 +663,10 @@ void scan() {
         b.a = a; ++b.seen; ++g_nb;
         if (g_deadmark && g_dead_cls[slot] == id && !b.killed_late && b.seen >= 3 && b.seen <= 900) {
             b.killed_late = true;           // it has initialised (the loader ran its InitResources) and is new here (the record can arrive a little after the boss): end it the ordinary way
+            // The star-marker table (the minimap's glints) holds the boss's pointer from its InitResources; the ROM's own end of a boss
+            // (UntrackAndSpawnStar) releases the slot first. Without that the minimap reads a freed boss (measured: Whomp King).
+            for (int m = 0; m < 12; ++m)
+                if (STAR_MARKERS[m] == (dActor_c *)a) { signed char sl = (signed char)m; ((dActor_c *)a)->UntrackStar(sl); }
             _ZN7fBase_c18MarkForDestructionEv(a);
             ++g_st.dead_killed;
             if (g_log) std::fprintf(stderr, "[cbs] dead boss removed on arrival: cls=%u slot=%d w=%lld\n", id, (int)slot, wall_ms());
