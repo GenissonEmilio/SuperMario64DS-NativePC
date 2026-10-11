@@ -630,6 +630,7 @@ int port_coop_boot_frame(void);
 void port_coop_world_frame(void);
 /* run mp1 wave 56 lane PSTAR1: party shared stars (hal/party_stars.cpp). */
 void port_party_stars_frame(void);
+void port_star_popup_frame(void);   /* run mp1 lane STARPOP1 (hal/star_popup.cpp) */
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
 extern char data_0209f4a0[];
@@ -3828,6 +3829,7 @@ static void chat_draw(const OvlSurface &fb)
 /* THE ONLINE PING READOUT (run mp1, lane PINGHUD1): its painter draws with the
    chat's glyphs above, so it comes in here; drawn next to the chat below. */
 #include "hal/net_hud.h"
+#include "hal/star_popup_paint.h"   /* run mp1 lane STARPOP1 */
 
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
    1-second exponential average, so the numbers are readable instead of
@@ -4746,6 +4748,7 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
     }
     if (!rb_skip_render()) chat_draw(surf);
     if (!rb_skip_render()) net_hud_draw(surf);
+    if (!rb_skip_render()) star_popup_draw(surf);
 }
 
 /* The pad's half of the chat box: while the player is typing the controller
@@ -16420,6 +16423,7 @@ int main(void)
         port_coop_save_frame();
         port_coop_world_frame();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
         port_party_stars_frame();
+        port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
            Reads the render pass's own per-slot record (set just below in the
