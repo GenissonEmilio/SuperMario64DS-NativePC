@@ -554,6 +554,10 @@ const BindKey KEY_BIND[HOST_KEY_COUNT] = {
     { "KeyStart",    0x0d },      /* VK_RETURN */
     { "KeySelect",   0x08 },      /* VK_BACK */
     { "KeyLook",     0x5a },      /* Z: the DS X button; see header */
+    { "KeyCamCenter", 0x43 },     /* C: centre camera; see header */
+    { "KeyCamLeft",  0x51 },      /* Q: rotate camera left */
+    { "KeyCamRight", 0x45 },      /* E: rotate camera right */
+    { "KeyCamMode",  0x70 },      /* F1: cycle the camera mode */
 };
 const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadJump",   0x1000 },      /* A */
@@ -563,6 +567,10 @@ const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadStart",  0x0010 },      /* START */
     { "PadSelect", 0      },      /* BACK opens the debug menu; see header */
     { "PadLook",   0x8000 },      /* Y: the DS X button; see header */
+    { "PadCamCenter", 0x10000 },  /* LT: centre camera; see header */
+    { "PadCamLeft",  0x0100 },    /* LB: rotate camera left */
+    { "PadCamRight", 0x0200 },    /* RB: rotate camera right */
+    { "PadCamMode",  0x0080 },    /* right stick click: cycle the camera mode */
 };
 int g_key[HOST_KEY_COUNT];
 int g_pad[HOST_PAD_COUNT];
@@ -571,6 +579,10 @@ int g_pad[HOST_PAD_COUNT];
    said once by its log block. */
 int g_look_key_taken;
 int g_look_pad_taken;
+/* The same for the centre-camera default (KeyCamCenter / PadCamCenter): the
+   action that already held it in a file that never named the key. */
+int g_cc_key_taken;
+int g_cc_pad_taken;
 
 /* ---- THE DS SCREEN GAP -------------------------------------------------
    The four keys behind the launcher's "remove minigame gap" checkbox and
@@ -1367,6 +1379,8 @@ void load_once(void)
     for (int i = 0; i < HOST_PAD_COUNT; ++i) g_pad[i] = PAD_BIND[i].dflt;
     g_look_key_taken = 0;
     g_look_pad_taken = 0;
+    g_cc_key_taken = 0;
+    g_cc_pad_taken = 0;
     g_gap_on = 1;
     g_gap_fill = 1;
     g_gap_color = 0xFF000000u;
@@ -1518,6 +1532,27 @@ void load_once(void)
                 if (i != HOST_PAD_LOOK && (g_pad[i] & g_pad[HOST_PAD_LOOK])) {
                     g_look_pad_taken = i + 1;
                     g_pad[HOST_PAD_LOOK] = 0;
+                    break;
+                }
+        /* CENTRE CAMERA, newer than the file like Look: the same rule. The
+           other three camera actions are NOT held to it, because each names a
+           button the program has always read for the camera (Q / E / LB / RB /
+           F1 / the stick click), so a file that moved something onto one of
+           them has always had both happen and keeps it. */
+        if (!json_value(text, KEY_BIND[HOST_KEY_CAM_CENTER].name))
+            for (int i = 0; i < HOST_KEY_COUNT; ++i)
+                if (i != HOST_KEY_CAM_CENTER &&
+                    g_key[i] == g_key[HOST_KEY_CAM_CENTER]) {
+                    g_cc_key_taken = i + 1;
+                    g_key[HOST_KEY_CAM_CENTER] = 0;
+                    break;
+                }
+        if (!json_value(text, PAD_BIND[HOST_PAD_CAM_CENTER].name))
+            for (int i = 0; i < HOST_PAD_COUNT; ++i)
+                if (i != HOST_PAD_CAM_CENTER &&
+                    (g_pad[i] & g_pad[HOST_PAD_CAM_CENTER])) {
+                    g_cc_pad_taken = i + 1;
+                    g_pad[HOST_PAD_CAM_CENTER] = 0;
                     break;
                 }
         /* the screen gap. Each key is read against its OWN default, so a file
@@ -1802,6 +1837,16 @@ void load_once(void)
                         "0x%04x is already %s (%s)\n",
                 (unsigned)PAD_BIND[HOST_PAD_LOOK].dflt,
                 PAD_BIND[g_look_pad_taken - 1].name, path);
+    if (g_cc_key_taken)
+        fprintf(stderr, "[settings] KeyCamCenter left unbound: its default key "
+                        "0x%02x is already %s (%s)\n",
+                (unsigned)KEY_BIND[HOST_KEY_CAM_CENTER].dflt,
+                KEY_BIND[g_cc_key_taken - 1].name, path);
+    if (g_cc_pad_taken)
+        fprintf(stderr, "[settings] PadCamCenter left unbound: its default "
+                        "button 0x%04x is already %s (%s)\n",
+                (unsigned)PAD_BIND[HOST_PAD_CAM_CENTER].dflt,
+                PAD_BIND[g_cc_pad_taken - 1].name, path);
     if (!g_gap_on || g_gap_fill != 1 || g_gap_color != 0xFF000000u ||
         g_gap_peek)
         fprintf(stderr, "[settings] MinigameGap %s, fill %s #%06x, peek %s "
