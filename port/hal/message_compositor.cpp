@@ -3714,7 +3714,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                    (hx0, bw, the host rows of the DS row), the verdict the
                    branches below would write, the mask bit */
                 const bool front = !honour3d
-                    || !layer_behind_3d(g_a[y][x].owner, g_a[y][x].prio, p3d);
+                    || !layer_behind_3d(gc.owner, gc.prio, p3d);
                 if (!front) ntr::gx_card_note_behind();
                 if (hx0 >= 0 && bw > 0 && hy1 > hy0) {
                     uint32_t *r = g_tw_inst + (size_t)g_tw_n * 4;
@@ -3794,6 +3794,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 }
         }
     }
+    }   /* the HUD pass loop (menu1 HUD1) */
     if (gpu_blit) {
         port_gpu_twod_rects(g_tw_inst, g_tw_n);
         if (tw_chk)
