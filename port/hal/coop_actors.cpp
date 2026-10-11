@@ -173,7 +173,8 @@ Rx   g_rx[kSlots][kSeats];
 Job  g_job[kSeats];
 unsigned g_req_nonce = 0, g_req_last = 0; int g_req_tries = 0; bool g_req_done = false;
 unsigned long long g_snap_base = 0;
-bool g_god = false;               // SM64DS_COOP_MOVE_GOD=1 (proof only)
+bool g_god = false, g_god_set = false;
+char g_god_pos[12];               // SM64DS_COOP_MOVE_GOD=1 (proof only)
 bool g_hold = false;              // a joiner publishes nothing until the group's snapshot is in (or it gave up)
 double g_tokens = 6.0; unsigned g_tok_t = 0;
 unsigned g_stat_t = 0;
@@ -482,6 +483,7 @@ void reset_level() {
     for (int i = 0; i < kSlots; ++i) { g_slot[i].owner = -1; g_slot[i].prof = -1; }
     std::memset(g_rx, 0, sizeof g_rx);
     std::memset(g_job, 0, sizeof g_job);
+    g_god_set = false;
     g_lf = 0; g_spawned = false; g_spawn_lf = 0; g_ents = 0;
     g_req_done = false; g_req_tries = 0; g_req_last = 0; g_req_nonce = 0; g_snap_base = g_st.snap_applied; g_hold = g_snap_on;
     for (int i = 0; i < g_nforge; ++i) g_forge[i].done = false;
@@ -806,7 +808,11 @@ void on_frame(unsigned now) {
     if (!g_spawned && g_ents > 0) { g_spawned = true; g_spawn_lf = g_lf; }
     maybe_request(now);
     process(now);
-    if (g_god) data_02092144[data_0209f250 & 15] = (short)(8 << 8);   // lab knob: the proof player does not die in lava / to hazards
+    if (g_god) {      // lab knob: the proof player does not die and does not fall out of a course whose warp lands in the air
+        data_02092144[data_0209f250 & 15] = (short)(8 << 8);
+        if (g_spawned && g_lf - g_spawn_lf == 30) { std::memcpy(g_god_pos, pl + 0x5c, 12); g_god_set = true; }
+        if (g_god_set) { std::memcpy(pl + 0x5c, g_god_pos, 12); wr32(pl, 0xa8, 0); wr32(pl, 0x98, 0); }
+    }
     if (g_log) watch_hurt(pl);
     if (g_spawned) {
         const unsigned since = g_lf - g_spawn_lf;
