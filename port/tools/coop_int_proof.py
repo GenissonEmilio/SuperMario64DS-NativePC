@@ -45,6 +45,8 @@ def reconciled(t):
 def run(row, quit_host):
     n_open = int(os.environ.get("CI_OPEN_FRAMES", "5200"))
     cap = n_open + int(os.environ.get("CI_WORLD_FRAMES", "3000"))
+    if quit_host:
+        cap += 6000      # the guests must still be running when the host is killed
     common = {"SM64DS_COOP_LOG": "1", "SM64DS_COOP_WARP": "60:%d:%d" % (BOB, ACT), "SM64DS_INTRO_WATCH": "1"}
     g1 = dict(common, SM64DS_COOP_KILL="60:%d:1;65:%d:3" % (GOOMBA, COIN), SM64DS_COOP_STAR="900",
               SM64DS_COOPSAVE_PROBE="star:%d:%d@%d" % (SAVE_STAR[0], SAVE_STAR[1], n_open + 1800))
