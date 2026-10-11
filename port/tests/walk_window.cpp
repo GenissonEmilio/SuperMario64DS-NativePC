@@ -2684,8 +2684,7 @@ static DWORD WINAPI boot_prefetch_thread(LPVOID)
         } while (FindNextFileA(h, &fd) && total < (96ull << 20));
         FindClose(h);
     }
-    fprintf(stderr, "[prefetch] %d file(s), %llu bytes read ahead in %lu ms
-", files, total,
+    fprintf(stderr, "[prefetch] %d file(s), %llu bytes read ahead in %lu ms\n", files, total,
             (unsigned long)(GetTickCount() - t0));
     return 0;
 }
