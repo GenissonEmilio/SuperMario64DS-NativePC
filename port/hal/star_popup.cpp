@@ -435,7 +435,7 @@ extern "C" void port_star_popup_frame(void) {
             ExitLevel();
             ++g.st.exits;
             g.armed = true;
-            std::fprintf(stderr, "[starpop] EXIT from level %d act %d key=%d -> next level %d entrance %u wall=%lld\n", from, data_0209f220[0],
+            std::fprintf(stderr, "[starpop] EXIT from level %d act %d key=%d (ROM override globals now %d/%u, -1/0 = default exit) wall=%lld\n", from, data_0209f220[0],
                          (int)g.exit_key, (int)data_0209211c, (unsigned)data_0209f200, wall_ms());
             g.exit_pending = false; g.nline = 0;
         }
