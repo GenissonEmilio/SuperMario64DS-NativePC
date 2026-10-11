@@ -125,6 +125,7 @@ extern "C" void settings_page_idle_tick(int idle_frames, int w, int h)
     if (idle_frames < 120) return;
     if (!hal_menu_enabled(MENU_KEY_ONE_SCREEN_MENUS)) return;
     if (done_w == w && done_h == h) return;
+    if (settings_page_warm_waiting()) return;
     if (!menu_warm_claim()) return;
     if (settings_page_warm_step(w, h)) { done_w = w; done_h = h; }
 }

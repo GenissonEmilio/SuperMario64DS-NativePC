@@ -1096,6 +1096,14 @@ static double ws_ms(const std::chrono::steady_clock::time_point &t0)
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 }
 
+/* 1 while the worker is still decoding the picture the next step waits for (the caller then does not take a warm-up slot) */
+extern "C" int settings_page_warm_waiting(void)
+{
+    if (!g_wd) return 0;
+    std::lock_guard<std::mutex> lk(g_wd->m);
+    return g_wd->req >= 0;
+}
+
 extern "C" int settings_page_warm_step(int w, int h)
 {
     if (w < 64 || h < 64 || w > 8192 || h > 8192) return 1;

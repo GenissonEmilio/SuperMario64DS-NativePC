@@ -174,6 +174,7 @@ void warm_tick(int scene_id)
     if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_v = 1; g_warm_p = 0; g_warm_busy = 0; g_warm_solved_v = 0; g_idle_ticks = 0; }
     if (g_warm_v == 0) g_warm_v = 1;
     if (++g_idle_ticks < 60 || g_warm_v >= V_VS) return;
+    if (menu_hostimg_prefetch_poll()) return;      /* the worker is still on the last picture: do not take a warm-up slot for nothing */
     if (!menu_warm_claim()) return;
     warm_slice(w, h);
 }
