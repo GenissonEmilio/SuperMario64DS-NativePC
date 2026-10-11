@@ -185,15 +185,9 @@ extern unsigned char data_ov002_0210c3a0[];
 extern unsigned char data_ov002_0210c3a8[];
 }
 
-/* TWODGPU1 (run hunt8): menu1's "a menu owns this tick's picture" switch
-   (hal/menu_compose.cpp, branch menu1-hook1). Until that unit is in the tree the
-   default below answers 0; once it is, its own definition wins and nothing here
-   changes (the linker takes /alternatename only for a symbol nobody defines). */
+/* MENUFOLD1: menu1's "a menu owns this tick's picture" switch (hal/menu_compose.cpp) is in the tree now, so TWODGPU1's weak default
+   (twodgpu_menu_live_default and its /alternatename) is gone: a defined LHS makes the alias inert and the guard refuses it. */
 extern "C" int hal_menu_live(void);
-extern "C" int twodgpu_menu_live_default(void) { return 0; }
-#if defined(_MSC_VER) && defined(_M_IX86)
-#pragma comment(linker, "/alternatename:_hal_menu_live=_twodgpu_menu_live_default")
-#endif
 
 namespace {
 
