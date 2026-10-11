@@ -122,8 +122,7 @@ void load_img(int id)
     I.tried = 1;
     const double t0 = art_trace() ? art_ms() : 0.0;
     load_into(id, I);
-    if (art_trace()) fprintf(stderr, "[menu-art] id %d decoded on the logic thread: %.2f ms
-", id, art_ms() - t0);
+    if (art_trace()) fprintf(stderr, "[menu-art] id %d decoded on the logic thread: %.2f ms\n", id, art_ms() - t0);
 }
 
 /* one axis of a separable resample: for each destination index, the source span and weights (triangle filter whose
@@ -229,8 +228,7 @@ void worker_main(Worker *W)
             }
             d.ok = true;
         }
-        if (art_trace()) fprintf(stderr, "[menu-art] id %d worker %s %dx%d: %.2f ms
-", j.id, j.dw > 0 ? "decode+scale" : "decode", j.dw, j.dh, art_ms() - t0);
+        if (art_trace()) fprintf(stderr, "[menu-art] id %d worker %s %dx%d: %.2f ms\n", j.id, j.dw > 0 ? "decode+scale" : "decode", j.dw, j.dh, art_ms() - t0);
         std::lock_guard<std::mutex> lk(W->m);
         W->out.push_back(std::move(d));
         --W->busy;
@@ -271,13 +269,10 @@ extern "C" const uint32_t *menu_hostimg_scaled(int id, int dw, int dh)
     if (I->cw1 == dw && I->ch1 == dh && !I->scaled1.empty()) return &I->scaled1[0];
     /* a miss replaces the slot that was not filled last */
     const double t0 = art_trace() ? art_ms() : 0.0;
-    if (art_trace()) fprintf(stderr, "[menu-art] id %d scale MISS %dx%d on the logic thread
-", id, dw, dh);
-    if (I->last_slot == 0) { scale_to(I, dw, dh, &I->scaled1); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; if (art_trace()) fprintf(stderr, "[menu-art] id %d scaled: %.2f ms
-", id, art_ms() - t0); return &I->scaled1[0]; }
+    if (art_trace()) fprintf(stderr, "[menu-art] id %d scale MISS %dx%d on the logic thread\n", id, dw, dh);
+    if (I->last_slot == 0) { scale_to(I, dw, dh, &I->scaled1); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; if (art_trace()) fprintf(stderr, "[menu-art] id %d scaled: %.2f ms\n", id, art_ms() - t0); return &I->scaled1[0]; }
     scale_to(I, dw, dh, &I->scaled); I->cw = dw; I->ch = dh; I->last_slot = 0;
-    if (art_trace()) fprintf(stderr, "[menu-art] id %d scaled: %.2f ms
-", id, art_ms() - t0);
+    if (art_trace()) fprintf(stderr, "[menu-art] id %d scaled: %.2f ms\n", id, art_ms() - t0);
     return &I->scaled[0];
 }
 
