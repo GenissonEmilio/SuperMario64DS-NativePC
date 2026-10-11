@@ -30,6 +30,7 @@ extern unsigned char data_0209b454[];     // fade / scene change flags
 extern unsigned char data_0209fc48[];     // cutscene
 extern unsigned char data_02092110[];     // pending level change, <0 = none
 extern unsigned char data_0209f22c[];     // hold timer
+extern unsigned char data_0209f228;       // the star number the clear screen names
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 int func_ov002_020e73ac(char *star);      // the ROM's star classifier
 void ExitLevel(void);
@@ -73,7 +74,7 @@ struct State {
     Pending pend[kPendMax];
     // receiver
     SeqMem mem[kSeqMemory]; int nmem;
-    bool counting; unsigned t_end; bool exit_pending; bool exit_key;
+    bool counting; unsigned t_end; bool exit_pending; bool exit_key; int exit_star;
     char line[kStarPopupLines - 1][kStarPopupLineMax]; int nline;
     unsigned t_last;
     bool registered;
@@ -224,7 +225,7 @@ bool seen_seq(int seat, unsigned seq) {
 }
 
 // An event arrived from `seat`. `same` = the sender stands in my level and act.
-void on_event(int seat, int kind, bool exits, bool same) {
+void on_event(int seat, int kind, bool exits, bool same, int star) {
     char name[24];
     seat_name(seat, name, sizeof name);
     ++g.st.rx;
@@ -249,6 +250,7 @@ void on_event(int seat, int kind, bool exits, bool same) {
         g.counting = true;
         g.t_end = now + kCountMs;
         g.exit_key = (kind == kKindKey);
+        g.exit_star = (kind == kKindStar && star >= 1 && star <= 7) ? star : -1;   // the first star is the one the clear screen names
     } else if (kind == kKindKey) {
         g.exit_key = true;       // a key anywhere in the batch: use the key landing
     }
@@ -312,7 +314,7 @@ void on_ctl(int seat, int sub, const unsigned char *pl, int len, void *) {
         seat < 0 || seat >= kCoopMaxSeats || seat == my_seat()) { ++g.st.dropped; return; }
     if (seen_seq(seat, w.seq)) return;
     const bool same = my_body() && w.key.level == (uint16_t)(data_0209f2f8 & 0xff) && w.key.act == (uint8_t)(data_0209f220[0] & 0xf);
-    on_event(seat, w.kind, (w.flags & kFlagExits) != 0, same);
+    on_event(seat, w.kind, (w.flags & kFlagExits) != 0, same, w.star);
 }
 
 void scan_local(Mode m) {
@@ -369,7 +371,7 @@ bool star_popup_party_rx(int seat, const unsigned char *d, int len) {
     unsigned age = 0;
     const bool pres = hub_presence_get(seat, &p, &age);
     const bool same = pres && age < 5000 && p.in_level() && my_body() && p.level == (int)data_0209f2f8 && p.act == data_0209f220[0];
-    on_event(seat, (rsv & kXKey) ? kKindKey : kKindStar, (rsv & kXNoExit) == 0, same);
+    on_event(seat, (rsv & kXKey) ? kKindKey : kKindStar, (rsv & kXNoExit) == 0, same, d[7]);
     return true;
 }
 
@@ -435,6 +437,7 @@ extern "C" void port_star_popup_frame(void) {
             }
         } else {
             landing_overrides(g.exit_key);
+            if (g.exit_star >= 0) data_0209f228 = (unsigned char)g.exit_star;   // the course-clear screen names the star the collector took (the ROM sets it at the touch)
             const int from = data_0209f2f8;
             ExitLevel();
             ++g.st.exits;
