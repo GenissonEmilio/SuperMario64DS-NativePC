@@ -465,6 +465,7 @@ void do_hit_knob(HitKnob &k) {
     } else if (b.d->cls == 189) {
         // King Bob-omb takes a hit by entering state 02126ffc: its enter code (func_ov078_021243c0) is the health point.
         if (k.lethal && hp_of(b) > 1) { write_field(b.a, *b.d, b.d->hp, 1u); k.hp0 = 1; }
+        give_player_ptrs(b);          // the hit state reads the player it was hit by (+0x430)
         KingBobOmb_SetState(b.a, kbo_id_to_ptr(0));
     } else { write_field(b.a, *b.d, b.d->hp, (uint32_t)(k.hp0 - 1)); }
 }
