@@ -51,7 +51,7 @@ int  settings_page_frame(const SpInput *in);
 /* draw onto an opaque 32 bit picture (0x00RRGGBB or 0xFFRRGGBB pixels) of w x h with `stride` pixels per row */
 void settings_page_draw(uint32_t *px, int stride, int w, int h);
 void settings_page_idle_tick(int idle_frames, int w, int h);   /* hooks.cpp: warms the caches once, when OneScreenMenus is on */
-void settings_page_warm(int w, int h);              /* one throwaway draw of the closed page: builds the caches before the first open */
+int settings_page_warm_step(int w, int h);          /* PAUSEFIX1: one small slice of the cache build (about 2 ms at most); 1 when all of it is cached for this size */
 /* the stylus filter of the touch path: 1 when the page swallows this frame's touch (it is open, or a press that opened it is
    still held), and the touch must read as not pressed */
 int  settings_page_swallow_touch(int touch_down);

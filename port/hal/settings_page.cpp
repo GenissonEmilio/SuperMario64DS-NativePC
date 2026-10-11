@@ -1016,21 +1016,111 @@ void draw_slider(const Surf &s, int x, int cy, int rail_w, int v, int vmin, int 
 
 static int g_warming;
 
-/* Draw the closed page once into a throwaway buffer so the first real open does not pay for the piece and glyph caches (about 50 ms). */
-extern "C" void settings_page_warm(int w, int h)
+/* PAUSEFIX1: the page's caches built in small steps, one per call, never more than about 2 ms of work a call (the old one-shot warm-up was one
+   55 ms frame in every level). Stages: layout, the parchment tile, the sheet in row slices, the title and back pictures, then one throwaway
+   draw per tab (glyphs, key caps, boxes). The caller (hooks.cpp) claims the shared warm-up slot first. Returns 1 when everything is cached
+   for this picture size (a resize starts again). */
+static std::vector<uint32_t> g_ws_tile, g_ws_sheet, g_ws_buf;
+static int g_ws_stage, g_ws_w, g_ws_h, g_ws_y, g_ws_tilesz, g_ws_u100, g_ws_tile_ok;
+
+static double ws_ms(const std::chrono::steady_clock::time_point &t0)
 {
-    if (S.open || w < 64 || h < 64 || w > 8192 || h > 8192) return;
-    std::vector<uint32_t> buf((size_t)w * (size_t)h, 0u);
-    g_warming = 1;
-    S.open = 1;
+    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+}
+
+extern "C" int settings_page_warm_step(int w, int h)
+{
+    if (w < 64 || h < 64 || w > 8192 || h > 8192) return 1;
+    if (S.open) return 0;
+    if (w != g_ws_w || h != g_ws_h) {
+        g_ws_w = w; g_ws_h = h; g_ws_stage = 0; g_ws_y = 0;
+        std::vector<uint32_t>().swap(g_ws_tile); std::vector<uint32_t>().swap(g_ws_sheet); std::vector<uint32_t>().swap(g_ws_buf);
+    }
+    enum { ST_LAYOUT = 0, ST_TILE, ST_SHEET, ST_TITLE, ST_BACK, ST_TAB0, ST_DONE = ST_TAB0 + T_COUNT };
+    if (g_ws_stage >= ST_DONE) return 1;
     const auto t0 = std::chrono::steady_clock::now();
-    settings_page_draw(buf.data(), w, w, h);
-    S.open = 0;
-    g_warming = 0;
+    while (g_ws_stage < ST_DONE) {
+        const auto ts = std::chrono::steady_clock::now();
+        const int st = g_ws_stage;
+        if (st == ST_LAYOUT) {
+            compute_layout(w, h);
+            g_ws_u100 = (int)(L.u * 100 + 0.5);
+            g_ws_tilesz = (int)(380 * (g_ws_u100 / 100.0) + 0.5);
+            ++g_ws_stage;
+        } else if (st == ST_TILE) {
+            const Piece *tp = find_piece(2, L.sw, L.sh, g_ws_u100) ? 0 : scaled_im(IM_PARCH, g_ws_tilesz, g_ws_tilesz);
+            g_ws_tile_ok = tp != 0;
+            if (tp) g_ws_tile = tp->px;
+            g_ws_sheet.assign(find_piece(2, L.sw, L.sh, g_ws_u100) ? 0 : (size_t)L.sw * L.sh, 0u);
+            g_ws_y = 0;
+            ++g_ws_stage;
+        } else if (st == ST_SHEET) {
+            if (g_ws_sheet.empty()) { ++g_ws_stage; }       /* the page already built it */
+            else {
+                /* the same per-pixel work as sheet_piece, in row slices */
+                const double u = g_ws_u100 / 100.0;
+                const int sw = L.sw, sh = L.sh, tile = g_ws_tilesz;
+                const bool have_tile = g_ws_tile_ok && !g_ws_tile.empty();
+                const float rad = (float)(26 * u), rim = (float)(6 * u);
+                while (g_ws_y < sh && ws_ms(ts) < 1.2) {
+                    const int y1 = g_ws_y + 8 < sh ? g_ws_y + 8 : sh;
+                    for (int y = g_ws_y; y < y1; ++y)
+                        for (int x = 0; x < sw; ++x) {
+                            const float sd = rr_sd(x + 0.5f, y + 0.5f, (float)sw, (float)sh, rad);
+                            const int cv = cov_of(sd);
+                            if (!cv) continue;
+                            int r, g, b;
+                            if (sd > -rim) { r = 0x5C; g = 0x2C; b = 0x0A; }
+                            else if (have_tile) {
+                                const uint32_t c = g_ws_tile[(size_t)(y % tile) * tile + (x % tile)];
+                                r = (c >> 16) & 255; g = (c >> 8) & 255; b = c & 255;
+                            } else { r = 0xE8; g = 0xCC; b = 0x7A; }
+                            if (sd > -rim - 1.0f && sd <= -rim && have_tile) {
+                                const float f = -rim - sd;
+                                const uint32_t c = g_ws_tile[(size_t)(y % tile) * tile + (x % tile)];
+                                const int tr = (c >> 16) & 255, tg = (c >> 8) & 255, tb = c & 255;
+                                r = (int)(0x5C + (tr - 0x5C) * f); g = (int)(0x2C + (tg - 0x2C) * f); b = (int)(0x0A + (tb - 0x0A) * f);
+                            }
+                            g_ws_sheet[(size_t)y * sw + x] = ((uint32_t)cv << 24) | ((uint32_t)(r * cv / 255) << 16) | ((uint32_t)(g * cv / 255) << 8) | (uint32_t)(b * cv / 255);
+                        }
+                    g_ws_y = y1;
+                }
+                if (g_ws_y >= sh) {
+                    if (!find_piece(2, sw, sh, g_ws_u100)) {
+                        Piece *p = new_piece(2, sw, sh, g_ws_u100, sw, sh);
+                        p->px.swap(g_ws_sheet);
+                    }
+                    std::vector<uint32_t>().swap(g_ws_sheet);
+                    std::vector<uint32_t>().swap(g_ws_tile);
+                    ++g_ws_stage;
+                }
+            }
+        } else if (st == ST_TITLE) {
+            scaled_im(IM_TITLE, L.title[2], L.title[3]);
+            ++g_ws_stage;
+        } else if (st == ST_BACK) {
+            scaled_im(IM_BACK, L.back[2], L.back[3]);
+            ++g_ws_stage;
+        } else {
+            /* one throwaway draw of a tab: its glyph, key cap, box and plank pieces. The tab and cursor are put back after. */
+            const int tab0 = S.tab;
+            if (g_ws_buf.empty()) g_ws_buf.assign((size_t)w * h, 0u);
+            g_warming = 1;
+            S.open = 1; S.tab = st - ST_TAB0;
+            settings_page_draw(g_ws_buf.data(), w, w, h);
+            S.open = 0; S.tab = tab0;
+            g_warming = 0;
+            ++g_ws_stage;
+            if (g_ws_stage >= ST_DONE) std::vector<uint32_t>().swap(g_ws_buf);
+        }
 #ifndef PORT_ROM_CLEAN
-    if (getenv("SM64DS_SETPAGE_COST"))
-        fprintf(stderr, "[settings] warm-up %dx%d: %.2f ms\n", w, h, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+        static int trace = -1;
+        if (trace < 0) trace = getenv("SM64DS_WARM_TRACE") != 0;
+        if (trace) fprintf(stderr, "[warm] settings stage %d %dx%d: %.2f ms\n", st, w, h, ws_ms(ts));
 #endif
+        if (ws_ms(t0) >= 0.8) break;      /* a stage that took real time ends the call; cheap ones chain */
+    }
+    return g_ws_stage >= ST_DONE;
 }
 
 extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)

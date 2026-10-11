@@ -33,7 +33,9 @@
 #include "menu_hostimg.h"
 #include "menu_pause_art_ids.h"
 
+#include <chrono>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 extern "C" {
@@ -77,7 +79,7 @@ int pause_variant(void)
     switch (st) {
     case 0: case 1: v = V_CASTLE; break;
     case 2: case 3: v = V_COURSE; break;
-    case 4: case 5: v = V_VS; break;
+    case 4: case 5: v = 0; break;      /* VS pause: the ROM draws its own until a real lobby proof exists (PAUSEFIX1 F3) */
     case 7: case 8: v = data_0209f218 ? V_CTL_SEL : V_CTL; break;
     case 9: case 0xa: case 0xb: v = V_OPT; break;
     case 0xc: case 0xd: v = V_SAVE; break;
@@ -90,29 +92,86 @@ int pause_variant(void)
 
 /* THE FIRST-OPEN HITCH. Decoding and scaling the pause's planks, card and arrows on the first frame the pause is up cost ~95 ms in one
    frame (perf trace, 1024x768). The recipe's up() runs every tick, so once the level has been running a moment and the pause is not up it
-   solves each variant once on a scratch layout and scales every picture to the size that variant will draw at (one variant per tick, so no
-   tick pays for more than a few pictures). The cache keeps the size; a window resize warms again. */
-int g_idle_ticks, g_warm_v, g_warm_p, g_warm_w, g_warm_h;
+   solves each variant once on a scratch layout and scales every picture to the size that variant will draw at. PAUSEFIX1: spread thin. A
+   slice is one decode or one scale (never both for a picture that took real time), at most about 1 ms of work chained past the first
+   unit, and only when the shared warm-up slot is free (menu_warm_claim: one slot per few ms for this and the settings page together, none
+   while the game is hitching). The save pages' big pictures (saving, saved, banner, about 11 MB) are not warmed: they load on first use.
+   The cache keeps the size; a window resize warms again. */
+int g_idle_ticks, g_warm_v, g_warm_p, g_warm_ph, g_warm_w, g_warm_h, g_warm_solved_v;
+double g_last_claim = -1e9, g_last_call = -1e9;
+int g_calm;
 
-/* one picture per tick: variant g_warm_v, its g_warm_p-th host picture (decode on first use, then scale to its draw size) */
-void warm_one(int w, int h)
+double wnow_ms(void)
+{
+    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+bool warm_skip_id(int id) { return id == MENU_IMG_P_SAVING || id == MENU_IMG_P_SAVED || id == MENU_IMG_P_BANNER; }
+bool g_warm_solving;     /* inside a warm-up solve: have() of a skipped picture answers yes without decoding it (the layout then has its piece, the warm-up skips it) */
+const int kWarmPre[] = { MENU_IMG_P_PK_CONTINUE, MENU_IMG_P_PK_OK, MENU_IMG_P_CARD, MENU_IMG_P_ARROW_L, MENU_IMG_ARROW_DOWN, MENU_IMG_STAR };
+int g_warm_pre;          /* the pictures every page's layout asks for, decoded one a slice before the first solve */
+
+/* one slice: variant g_warm_v, its g_warm_p-th warmable host picture, phase 0 = decode, phase 1 = scale */
+void warm_slice(int w, int h)
 {
     static MenuLayout W;
     const MenuRecipe *R = 0;
     for (int i = 0; i < g_menu_nrecipes; ++i)
         if (!strcmp(g_menu_recipes[i].name, "pause")) R = &g_menu_recipes[i];
     if (!R) { g_warm_v = V_VS; return; }
-    menu_layout_solve(&W, R, g_warm_v, w, h);
-    int k = 0;
-    for (int i = 0; i < W.np; ++i) {
-        if (W.p[i].src != SRC_HOSTIMG || !W.p[i].hostimg || W.dest[i][2] <= 0 || W.dest[i][3] <= 0) continue;
-        if (k++ < g_warm_p) continue;
-        menu_hostimg_scaled(W.p[i].hostimg, W.dest[i][2], W.dest[i][3]);
-        ++g_warm_p;
-        return;
+    const double t0 = wnow_ms();
+    static const bool trace = getenv("SM64DS_WARM_TRACE") != 0;
+    while (g_warm_v < V_VS) {
+        const double ts = wnow_ms();
+        if (g_warm_pre < (int)(sizeof kWarmPre / sizeof kWarmPre[0])) {
+            const int id = kWarmPre[g_warm_pre++];
+            menu_hostimg_ready(id);
+            if (trace) fprintf(stderr, "[warm] pause pre %d: %.2f ms\n", id, wnow_ms() - ts);
+            if (wnow_ms() - t0 >= 1.0) break;
+            continue;
+        }
+        if (g_warm_solved_v != g_warm_v) {
+            g_warm_solving = true;
+            menu_layout_solve(&W, R, g_warm_v, w, h);
+            g_warm_solving = false;
+            g_warm_solved_v = g_warm_v;
+            if (trace) fprintf(stderr, "[warm] pause solve v%d: %.2f ms\n", g_warm_v, wnow_ms() - ts);
+            if (wnow_ms() - t0 >= 1.0) break;
+        }
+        int k = 0, found = -1;
+        for (int i = 0; i < W.np; ++i) {
+            if (W.p[i].src != SRC_HOSTIMG || !W.p[i].hostimg || warm_skip_id(W.p[i].hostimg) || W.dest[i][2] <= 0 || W.dest[i][3] <= 0) continue;
+            if (k++ == g_warm_p) { found = i; break; }
+        }
+        if (found < 0) { ++g_warm_v; g_warm_p = 0; g_warm_ph = 0; continue; }     /* that variant is done */
+        const int id = W.p[found].hostimg;
+        if (g_warm_ph == 0) {
+            menu_hostimg_ready(id);       /* the decode, first use only */
+            g_warm_ph = 1;
+        } else {
+            menu_hostimg_scaled(id, W.dest[found][2], W.dest[found][3]);
+            g_warm_ph = 0; ++g_warm_p;
+        }
+        const double now = wnow_ms();
+        if (trace) fprintf(stderr, "[warm] pause v%d p%d %s %dx%d: %.2f ms\n", g_warm_v, g_warm_p, g_warm_ph ? "decode" : "scale", w, h, now - ts);
+        if (now - t0 >= 1.0) break;         /* cheap units (already decoded, already scaled) chain; a real one ends the slice */
     }
-    ++g_warm_v;      /* that variant is done */
-    g_warm_p = 0;
+}
+
+/* The shared warm-up slot, for the pause's pictures and the settings page's caches together. 1 = this call may do one slice. A slot is
+   handed out at most every 4 ms (so two warmers never land on the same tick), and not at all until the callers have been seen running at
+   an even pace for a few calls (a call more than 35 ms after the last one means the level or something else is hitching: wait). */
+extern "C" int menu_warm_claim(void)
+{
+    static const bool off = getenv("SM64DS_NO_MENU_WARM") != 0;
+    if (off) return 0;
+    const double t = wnow_ms();
+    if (t - g_last_call > 35.0) g_calm = 0; else ++g_calm;
+    g_last_call = t;
+    if (g_calm < 8) return 0;
+    if (t - g_last_claim < 4.0) return 0;
+    g_last_claim = t;
+    return 1;
 }
 
 void warm_tick(int scene_id)
@@ -120,10 +179,11 @@ void warm_tick(int scene_id)
     if (scene_id != 3 && scene_id != -1) { g_idle_ticks = 0; return; }
     int w, h;
     if (!hal_menu_last_size(&w, &h)) return;
-    if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_v = 1; g_warm_p = 0; g_idle_ticks = 0; }
+    if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_v = 1; g_warm_p = 0; g_warm_ph = 0; g_warm_solved_v = 0; g_idle_ticks = 0; }
     if (g_warm_v == 0) g_warm_v = 1;
-    if (++g_idle_ticks < 45 || g_warm_v >= V_VS) return;
-    warm_one(w, h);
+    if (++g_idle_ticks < 60 || g_warm_v >= V_VS) return;
+    if (!menu_warm_claim()) return;
+    warm_slice(w, h);
 }
 
 int pause_up(int scene_id)
@@ -253,7 +313,7 @@ const int kLeftX = kAw + kAgap + kPadH;       /* the text rect's offset from the
 const int kPlankPitch = 40;                   /* the ROM's plate pitch (PS_Update: rows 0x20, 0x48, ... and 0x18, 0x40, ...) */
 
 bool english(const MenuLayout *L) { return L->facts.language <= 1; }
-bool have(int id) { return menu_hostimg_ready(id) != 0; }
+bool have(int id) { return (g_warm_solving && warm_skip_id(id)) || menu_hostimg_ready(id) != 0; }
 bool arts_ready(void) { return have(MENU_IMG_P_PK_CONTINUE) && have(MENU_IMG_P_PK_OK) && have(MENU_IMG_P_CARD) && have(MENU_IMG_P_ARROW_L); }
 bool planks_on(const MenuLayout *L) { return english(L) && arts_ready(); }
 bool in_course(const MenuLayout *L) { return L->facts.spare[2] != 0; }   /* 0 = the castle (and the selftest, which has no game) */
@@ -475,11 +535,12 @@ void build_nosave(MenuLayout *L)
     const Cols C = make_cols(L, kLeftW, kUiW);
     int card;
     build_left(L, C, 0, !in_course(L), &card);
-    if (planks_on(L)) {
-        /* the question (the ROM's own bottom screen text, DS art) on our banner, the two planks under it */
+    if (arts_ready() && have(MENU_IMG_P_BANNER)) {
+        /* the question (the ROM's own bottom screen text, DS art) on our banner in EVERY language (the ROM's own question box is cut flat at the top
+           in German and French), the two planks under it: ours in English, the ROM's own plates in the other languages */
         const int hb = ceil_mul(32, C.b), gap = ur(8, C.b.n, C.b.d);
         const int top = top_dy(2 * hb + gap);
-        if (have(MENU_IMG_P_BANNER)) {
+        {
             MenuPiece bn = menu_piece_make(SRC_HOSTIMG, 24, 60, 208, 32, MENU_AX_R, MENU_AY_T, -C.marg - ur(248 - 232, C.b.n, C.b.d), top, C.b.n, C.b.d);
             bn.hostimg = (uint8_t)MENU_IMG_P_BANNER; bn.bg = 1;
             menu_add_piece(L, bn);
@@ -487,9 +548,16 @@ void build_nosave(MenuLayout *L)
             q.dx = (short)(-C.marg - ur(248 - 212, C.b.n, C.b.d));
             menu_add_piece(L, q);
         }
-        add_plank(L, C, MENU_IMG_P_PK_YES, 0x28, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                   /* YES x 0x28..0x77 */
-        add_plank(L, C, MENU_IMG_P_PK_NO, 0x88, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                     /* NO x 0x88..0xd7 */
-        L->back = (int8_t)(L->nh - 1);                                                                       /* the hotspot of NO */
+        if (planks_on(L)) {
+            add_plank(L, C, MENU_IMG_P_PK_YES, 0x28, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                   /* YES x 0x28..0x77 */
+            add_plank(L, C, MENU_IMG_P_PK_NO, 0x88, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                     /* NO x 0x88..0xd7 */
+            L->back = (int8_t)(L->nh - 1);                                                                       /* the hotspot of NO */
+        } else {
+            const int pl = menu_add_piece(L, sub_piece(0x28, 0x98, 0xb0, 0x20, C, top + hb + gap, 1));
+            const Hs yes = { 0x28, 0x98, 0x50, 0x20, -1 }, no = { 0x88, 0x98, 0x50, 0x20, -1 };
+            add_hs(L, pl, yes);
+            L->back = (int8_t)menu_add_hotspot(L, pl, no.x, no.y, no.w, no.h, -1);
+        }
     } else {
         MenuPiece p = sub_piece(24, 64, 208, 128, C, 0, 1);
         p.ay = MENU_AY_M;
