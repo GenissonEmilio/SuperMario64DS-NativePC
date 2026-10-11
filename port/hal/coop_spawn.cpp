@@ -45,6 +45,8 @@ void func_ov102_02149da8(void *self, int state);
 signed char NumRedCoins(void);
 void _ZN10StarMarker27SpawnRedCoinStarIfNecessaryEv(void *self);
 unsigned DeathTable_GetBit(int id);
+extern int data_ov089_02132894[];      // Key kinds 0..6: pointers to the kind's SharedFilePtr (src/_ZN3Key13InitResourcesEv.cpp)
+extern char data_ov002_0211094c;       // kind 7's model
 }
 
 namespace port {
@@ -113,6 +115,7 @@ Net g_net[kNetMax];
 // and announces its own, so the reward is never lost.
 struct PendReward { bool on; uint16_t cls; uint32_t param; int32_t pos[3]; int8_t area; unsigned t; };
 PendReward g_pend;
+bool key_model_ready(unsigned param);
 uint16_t g_counter = 0;
 struct Lnk { bool used, taken; char *a; unsigned uid; short mslot; int area; bool seen; int gsends; unsigned gnext; };
 Lnk g_lnk[kLnkMax];
@@ -606,7 +609,9 @@ void scan(unsigned now) {
         for (const Net &n : g_net) if (n.used && !n.gone && n.cls == g_pend.cls) have = true;
         for (const Net &n : g_net) if (n.used && n.gone && n.cls == g_pend.cls && n.remote) have = true;     // it came and was already taken
         const PendReward pr = g_pend; g_pend.on = false;
-        if (!have) {
+        if (!have && pr.cls == 282 && !key_model_ready(pr.param)) {
+            if (g_log) std::fprintf(stderr, "[coopspawn] boss reward fallback skipped: the key model is not loaded here wall=%lld\n", wall_ms());
+        } else if (!have) {
             const int pos[3] = {pr.pos[0], pr.pos[1], pr.pos[2]};
             char *a = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(pr.cls, pr.param, pos, nullptr, pr.area, -1);
             if (a) { register_local(a, pr.cls, pr.param, pos, pr.area); if (a_uid(a) > g_wm) g_wm = a_uid(a); }
@@ -660,6 +665,16 @@ bool near_same(const char *a, const SpSpawnWire &w) {
 // A key only exists where the ROM loaded its model: Bowser's three arenas (levels 36, 38, 40, any kind) and Chief Chilly's arena (49,
 // kind 4 as in func_ov073_0211fa74). Anywhere else the model is not there and the draw faults (measured: kind 0 in 49 and in BOB), so
 // a forged key SPAWN must not get past this. The Big Boo key arena (47) is left out until its kind is proven.
+// bossfix1: a key can only be built where its model file is loaded. Chief Chilly and Goomboss load their key's model in their own
+// InitResources (LoadKeyModels), so a console where that boss was deleted before it initialised (a dead boss stays dead) has no model;
+// spawning the key there faulted (measured: a late joiner applying the announced key). Such a console simply goes without the key.
+bool key_model_ready(unsigned param) {
+    const unsigned kind = param & 7u;
+    if (kind == 7) return *(void *const *)(&data_ov002_0211094c + 4) != nullptr;
+    const int sfp = data_ov089_02132894[kind];
+    return sfp != 0 && *(void *const *)((const char *)(intptr_t)sfp + 4) != nullptr;
+}
+
 bool key_ok(int lvl, unsigned param) {
     if (lvl == 36 || lvl == 38 || lvl == 40) return true;
     if (lvl == 45) return (param & 7u) == 2u;       // Goomboss's key (src/actors/Goomboss.cpp: kind 2)
@@ -669,6 +684,11 @@ bool key_ok(int lvl, unsigned param) {
 
 void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
     if (w.cls == 282 && !key_ok(g_lvl, w.param)) { ++g_st.drop_class; return; }
+    if (w.cls == 282 && !key_model_ready(w.param)) {
+        ++g_st.drop_class;
+        if (g_log) std::fprintf(stderr, "[coopspawn] key kind %u refused: its model is not loaded on this console (no boss here loaded it) wall=%lld\n", w.param & 7u, wall_ms());
+        return;
+    }
     if (w.cls == 283 && g_lvl != 40) { ++g_st.drop_class; return; }           // the Grand Star only exists in Bowser's last arena
     if (ack_has(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     if (net_find(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
