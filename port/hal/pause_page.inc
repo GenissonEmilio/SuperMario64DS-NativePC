@@ -180,7 +180,7 @@ void pp_dialog(const Surf &sf, const PauseGeo &g, const PauseFacts *f)
     if (f->variant == PAUSE_V_STATUS) {
         title = f->status ? "SAVED" : "SAVING";
         l1 = f->status ? "File saved." : "Saving file...";
-        l2 = f->status ? "" : "Do not turn off the power.";
+        l2 = f->status ? "Returning to the title..." : "Do not turn off the power.";
     } else if (f->variant == PAUSE_V_NOSAVE) {
         title = "QUIT";
         l1 = "Really quit without saving?";

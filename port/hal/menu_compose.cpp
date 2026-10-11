@@ -2015,6 +2015,14 @@ int hal_menu_hover_box(int *x, int *y, unsigned *stamp)
     return 1;
 }
 
+int hal_menu_focus_set(int hs)
+{
+    if (!g_live || hs < 0 || hs >= g_cur.nh) return 0;
+    g_cur.focus = hs;
+    g_focus_shown = 1;
+    return 1;
+}
+
 /* PAUSE3: the pad / hover cursor's hotspot, for a recipe that shows its own selection from it (a touch-only page's planks) */
 int hal_menu_focus_shown(int *hs)
 {

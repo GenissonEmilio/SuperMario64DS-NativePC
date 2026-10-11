@@ -347,6 +347,7 @@ unsigned g_hov_seen;
 int g_frame;
 int g_save_init;        /* the save page's cursor was put on Save & Quit once for this visit */
 int g_embed_set;
+int g_nosave_focus;     /* the quit-without-saving page's cursor was put on NO once for this visit */
 
 int pause_cursor_live(void)
 {
@@ -653,6 +654,7 @@ int pause_up(int scene_id)
     /* the Stage is scene 3; a level boot that never runs the scene thunk answers -1 (hal_menu_hook_h1), and
        the stacked layout is MENU_SCENE_GATED: no recipe */
     if (scene_id == 3 || scene_id == -1) v = pause_variant();
+    if (v && GetOwnerLanguage() > 1) v = 0;    /* every language but English: the recipe draws nothing, the player sees the ROM's own pause as with OneScreenMenus off */
     if (v != g_last_variant) {
         /* settings must reach the file on every way out of the pause (REVSETLIVE1 G1: the queue waits half a second and has no flush on quit) */
         if (!v || v == V_STATUS || v == V_NOSAVE) sl_flush();
@@ -727,7 +729,9 @@ extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int m
     const int up_edge = !mdown && prev_down;
     prev_down = mdown;
     const int v = g_last_variant;
-    if (!v) { g_tab_hover = g_tab_press = -1; return 0; }
+    if (!v) { g_tab_hover = g_tab_press = -1; g_nosave_focus = 0; return 0; }
+    if (v != V_NOSAVE) g_nosave_focus = 0;
+    else if (!g_nosave_focus && hal_menu_focus_set(0)) g_nosave_focus = 1;     /* the confirm page is touch only: the cursor starts on "No, keep playing" (hotspot 0) */
     if (!is_main_page(v) || GetOwnerLanguage() > 1) return 1;
     const int open = settings_page_open();
     unsigned left = edge & (1u | 4u), right = edge & (2u | 8u);       /* LB / Q, RB / E */
@@ -768,6 +772,12 @@ extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back)
 {
     if (!tracker_view() || settings_page_open()) return;
     const uint16_t confirm = (uint16_t)(MENU_PAD_CONFIRM | MENU_PAD_START | 0x0001);
+    if (*pressed & MENU_PAD_START) {       /* Start resumes at once (the ROM's Continue plate), the tracker view is left behind */
+        g_slide.target = 0;
+        set_chosen(0);
+        *pressed = (uint16_t)(*pressed & ~(MENU_PAD_CONFIRM | 0x0001 | MENU_PAD_UP | MENU_PAD_DOWN));
+        return;
+    }
     if ((*pressed & confirm) || back) g_slide.target = 0;
     *pressed = (uint16_t)(*pressed & ~(confirm | MENU_PAD_UP | MENU_PAD_DOWN));
 }
