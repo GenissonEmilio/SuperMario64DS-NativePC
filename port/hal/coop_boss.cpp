@@ -341,6 +341,21 @@ void process(unsigned now) {
         if (!b.a) continue;
         const BDesc &d = *b.d;
         if (!b.known) { b.known = true; b.synced_hp = hp_of(b); }
+        // King Bob-omb carried by MY player (state 707c with my body as the holder): the console that carries him is the one that is right.
+        bool claiming = false;
+        if (d.cls == 189) {
+            const uint32_t st = state_of(b);
+            char *holder = nullptr; std::memcpy(&holder, b.a + 0x494, sizeof holder);
+            const int me = (int)data_0209f250;
+            if ((st == 7 || st == 8) && holder && me >= 0 && me < 16 && holder == (char *)data_0209f394[me]) {
+                if ((int)(g_claim_until[g_my] - wnow) <= 0) {
+                    ++g_st.claims;
+                    if (g_log) std::fprintf(stderr, "[cbs] claim slot=%d st=%u holder=me w=%lld\n", slot, st, wall_ms());
+                }
+                g_claim_until[g_my] = wnow + 3000u;
+            }
+            claiming = (int)(g_claim_until[g_my] - wnow) > 0;
+        }
         const int auth = auth_for(slot, wnow);
         const bool mine = auth == g_my;
         // a hit that landed on my copy: HP below what was last synced
@@ -372,7 +387,7 @@ void process(unsigned now) {
         for (int k = 0; k < d.nf; ++k) { w[k] = read_field(b.a, d.f[k]); if (b.lw_valid && w[k] != b.last_w[k] && !(d.f[k].kind & kVol)) changed = true; }
         if (changed || (unsigned)(now - b.pub_t) >= (unsigned)kBossHeartbeatMs) {
             if (bytes + rec_bytes(d) <= kPayloadMax - (int)sizeof(BossHead) && nrec < kBossMaxRecs) {
-                bytes += fill_rec(recs + bytes, slot, b, 0); ++nrec;
+                bytes += fill_rec(recs + bytes, slot, b, claiming ? 2 : 0); ++nrec;
                 std::memcpy(b.last_w, w, sizeof w); b.lw_valid = true; b.pub_t = now;
             }
         }
