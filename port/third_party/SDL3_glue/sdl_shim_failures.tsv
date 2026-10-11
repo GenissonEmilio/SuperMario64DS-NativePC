@@ -1,0 +1,87 @@
+# index	function	dll	stdcall bytes	declared return type	failure value	reason
+0	AttachConsole	kernel32.dll	4	BOOL	0x00000000	FALSE
+1	CLSIDFromString	ole32.dll	8	HRESULT	0x80004005	E_FAIL; 0 would be S_OK
+2	CM_Get_Device_IDA	setupapi.dll	16	CONFIGRET	0x00000013	CR_FAILURE; 0 would be CR_SUCCESS
+3	CM_Get_Parent	setupapi.dll	12	CONFIGRET	0x00000013	CR_FAILURE; 0 would be CR_SUCCESS
+4	CM_Locate_DevNodeA	setupapi.dll	12	CONFIGRET	0x00000013	CR_FAILURE; 0 would be CR_SUCCESS
+5	CallWindowProcW	user32.dll	20	LRESULT	0x00000000	no failure code exists; 0 is the neutral answer
+6	CancelIo	kernel32.dll	4	BOOL	0x00000000	FALSE
+7	CoCreateInstance	ole32.dll	20	HRESULT	0x80004005	E_FAIL; 0 would be S_OK
+8	CoInitializeEx	ole32.dll	8	HRESULT	0x80004005	E_FAIL; 0 would be S_OK
+9	CoTaskMemFree	ole32.dll	4	VOID	0x00000000	no result
+10	CoUninitialize	ole32.dll	0	VOID	0x00000000	no result
+11	CommandLineToArgvW	shell32.dll	8	LPWSTR*	0x00000000	NULL
+12	CopyFileExW	kernel32.dll	24	BOOL	0x00000000	FALSE
+13	CreateBitmap	gdi32.dll	20	HBITMAP	0x00000000	NULL
+14	CreateCompatibleDC	gdi32.dll	4	HDC	0x00000000	NULL
+15	CreateDIBSection	gdi32.dll	24	HBITMAP	0x00000000	NULL
+16	CreateEventW	kernel32.dll	16	HANDLE	0x00000000	NULL (these create calls fail with NULL, not INVALID_HANDLE_VALUE)
+17	CreateIconIndirect	user32.dll	4	HICON	0x00000000	NULL
+18	CreateSemaphoreW	kernel32.dll	16	HANDLE	0x00000000	NULL (these create calls fail with NULL, not INVALID_HANDLE_VALUE)
+19	CreateWindowExA	user32.dll	48	HWND	0x00000000	NULL
+20	CreateWindowExW	user32.dll	48	HWND	0x00000000	NULL
+21	DefWindowProcW	user32.dll	16	LRESULT	0x00000000	no failure code exists; 0 is the neutral answer
+22	DeleteDC	gdi32.dll	4	BOOL	0x00000000	FALSE
+23	DeleteObject	gdi32.dll	4	BOOL	0x00000000	FALSE
+24	DestroyWindow	user32.dll	4	BOOL	0x00000000	FALSE
+25	DeviceIoControl	kernel32.dll	32	BOOL	0x00000000	FALSE
+26	DispatchMessageW	user32.dll	4	LRESULT	0x00000000	no failure code exists; 0 is the neutral answer
+27	FileTimeToSystemTime	kernel32.dll	8	BOOL	0x00000000	FALSE
+28	FormatMessageW	kernel32.dll	28	DWORD	0x00000000	0, the documented failure value of these calls
+29	GetCurrentDirectoryW	kernel32.dll	8	DWORD	0x00000000	0, the documented failure value of these calls
+30	GetDC	user32.dll	4	HDC	0x00000000	NULL
+31	GetDoubleClickTime	user32.dll	0	UINT	0x00000000	0
+32	GetFileAttributesExW	kernel32.dll	12	BOOL	0x00000000	FALSE
+33	GetFileTime	kernel32.dll	16	BOOL	0x00000000	FALSE
+34	GetLocaleInfoA	kernel32.dll	16	int	0x00000000	0
+35	GetLocaleInfoW	kernel32.dll	16	int	0x00000000	0
+36	GetLogicalDrives	kernel32.dll	0	DWORD	0x00000000	0, the documented failure value of these calls
+37	GetMessageA	user32.dll	16	BOOL	0x00000000	0 (WM_QUIT) ends a message loop; -1 would spin a 'while (GetMessage())' loop forever
+38	GetMessageW	user32.dll	16	BOOL	0x00000000	0 (WM_QUIT) ends a message loop; -1 would spin a 'while (GetMessage())' loop forever
+39	GetOverlappedResult	kernel32.dll	16	BOOL	0x00000000	FALSE
+40	GetRawInputData	user32.dll	20	UINT	0xFFFFFFFF	documented (UINT)-1 on error
+41	GetRawInputDeviceInfoA	user32.dll	16	UINT	0xFFFFFFFF	documented (UINT)-1 on error
+42	GetRawInputDeviceList	user32.dll	12	UINT	0xFFFFFFFF	documented (UINT)-1 on error
+43	GetSystemMetrics	user32.dll	4	int	0x00000000	0
+44	GlobalMemoryStatusEx	kernel32.dll	4	BOOL	0x00000000	FALSE
+45	KillTimer	user32.dll	8	BOOL	0x00000000	FALSE
+46	LoadLibraryW	kernel32.dll	4	HMODULE	0x00000000	NULL
+47	LocalFree	kernel32.dll	4	HLOCAL	0x00000000	NULL (LocalFree: NULL means freed; nothing to report)
+48	MessageBoxA	user32.dll	16	int	0x00000000	0
+49	OutputDebugStringW	kernel32.dll	4	VOID	0x00000000	no result
+50	PeekMessageW	user32.dll	20	BOOL	0x00000000	FALSE
+51	PostThreadMessageW	user32.dll	16	BOOL	0x00000000	FALSE
+52	PropVariantClear	ole32.dll	4	HRESULT	0x80004005	E_FAIL; 0 would be S_OK
+53	RegCloseKey	advapi32.dll	4	LSTATUS	0x00000078	ERROR_CALL_NOT_IMPLEMENTED; 0 would be ERROR_SUCCESS
+54	RegOpenKeyExW	advapi32.dll	20	LSTATUS	0x00000078	ERROR_CALL_NOT_IMPLEMENTED; 0 would be ERROR_SUCCESS
+55	RegQueryValueExW	advapi32.dll	24	LSTATUS	0x00000078	ERROR_CALL_NOT_IMPLEMENTED; 0 would be ERROR_SUCCESS
+56	RegisterClassExA	user32.dll	4	ATOM	0x00000000	0 is the failure atom
+57	RegisterClassExW	user32.dll	4	ATOM	0x00000000	0 is the failure atom
+58	RegisterClassW	user32.dll	4	ATOM	0x00000000	0 is the failure atom
+59	RegisterDeviceNotificationW	user32.dll	12	HDEVNOTIFY	0x00000000	NULL
+60	RegisterRawInputDevices	user32.dll	12	BOOL	0x00000000	FALSE
+61	ReleaseDC	user32.dll	8	int	0x00000000	0
+62	ReleaseSemaphore	kernel32.dll	12	BOOL	0x00000000	FALSE
+63	RemoveDirectoryW	kernel32.dll	4	BOOL	0x00000000	FALSE
+64	RemoveVectoredExceptionHandler	kernel32.dll	4	ULONG	0x00000000	0 (nothing removed)
+65	ResetEvent	kernel32.dll	4	BOOL	0x00000000	FALSE
+66	SHGetFolderPathW	shell32.dll	20	HRESULT	0x80004005	E_FAIL; 0 would be S_OK
+67	SelectObject	gdi32.dll	8	HGDIOBJ	0x00000000	NULL
+68	SetConsoleCtrlHandler	kernel32.dll	8	BOOL	0x00000000	FALSE
+69	SetErrorMode	kernel32.dll	4	UINT	0x00000000	0
+70	SetEvent	kernel32.dll	4	BOOL	0x00000000	FALSE
+71	SetPixel	gdi32.dll	16	COLORREF	0xFFFFFFFF	SetPixel documents -1 as failure
+72	SetPropW	user32.dll	12	BOOL	0x00000000	FALSE
+73	SetTimer	user32.dll	16	UINT_PTR	0x00000000	0 (no timer)
+74	SysFreeString	oleaut32.dll	4	VOID	0x00000000	no result
+75	SystemTimeToFileTime	kernel32.dll	8	BOOL	0x00000000	FALSE
+76	SystemTimeToTzSpecificLocalTime	kernel32.dll	12	BOOL	0x00000000	FALSE
+77	TranslateMessage	user32.dll	4	BOOL	0x00000000	FALSE
+78	TryEnterCriticalSection	kernel32.dll	4	BOOL	0x00000000	FALSE
+79	UnregisterClassA	user32.dll	8	BOOL	0x00000000	FALSE
+80	UnregisterClassW	user32.dll	8	BOOL	0x00000000	FALSE
+81	UnregisterDeviceNotification	user32.dll	4	BOOL	0x00000000	FALSE
+82	VerSetConditionMask	kernel32.dll	16	ULONGLONG	0x00000000	0
+83	VerifyVersionInfoW	kernel32.dll	16	BOOL	0x00000000	FALSE
+84	timeBeginPeriod	winmm.dll	4	MMRESULT	0x00000061	TIMERR_NOCANDO; 0 would be TIMERR_NOERROR
+85	timeEndPeriod	winmm.dll	4	MMRESULT	0x00000061	TIMERR_NOCANDO; 0 would be TIMERR_NOERROR

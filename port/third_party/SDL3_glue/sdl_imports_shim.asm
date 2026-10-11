@@ -40,162 +40,142 @@ PUBLIC __imp__CreateEventW@16
 __imp__CreateEventW@16 dd thunk_16
 PUBLIC __imp__CreateIconIndirect@4
 __imp__CreateIconIndirect@4 dd thunk_17
-PUBLIC __imp__CreatePipe@16
-__imp__CreatePipe@16 dd thunk_18
-PUBLIC __imp__CreateProcessW@40
-__imp__CreateProcessW@40 dd thunk_19
 PUBLIC __imp__CreateSemaphoreW@16
-__imp__CreateSemaphoreW@16 dd thunk_20
+__imp__CreateSemaphoreW@16 dd thunk_18
 PUBLIC __imp__CreateWindowExA@48
-__imp__CreateWindowExA@48 dd thunk_21
+__imp__CreateWindowExA@48 dd thunk_19
 PUBLIC __imp__CreateWindowExW@48
-__imp__CreateWindowExW@48 dd thunk_22
+__imp__CreateWindowExW@48 dd thunk_20
 PUBLIC __imp__DefWindowProcW@16
-__imp__DefWindowProcW@16 dd thunk_23
+__imp__DefWindowProcW@16 dd thunk_21
 PUBLIC __imp__DeleteDC@4
-__imp__DeleteDC@4 dd thunk_24
+__imp__DeleteDC@4 dd thunk_22
 PUBLIC __imp__DeleteObject@4
-__imp__DeleteObject@4 dd thunk_25
+__imp__DeleteObject@4 dd thunk_23
 PUBLIC __imp__DestroyWindow@4
-__imp__DestroyWindow@4 dd thunk_26
+__imp__DestroyWindow@4 dd thunk_24
 PUBLIC __imp__DeviceIoControl@32
-__imp__DeviceIoControl@32 dd thunk_27
+__imp__DeviceIoControl@32 dd thunk_25
 PUBLIC __imp__DispatchMessageW@4
-__imp__DispatchMessageW@4 dd thunk_28
-PUBLIC __imp__EnumWindows@8
-__imp__EnumWindows@8 dd thunk_29
+__imp__DispatchMessageW@4 dd thunk_26
 PUBLIC __imp__FileTimeToSystemTime@8
-__imp__FileTimeToSystemTime@8 dd thunk_30
+__imp__FileTimeToSystemTime@8 dd thunk_27
 PUBLIC __imp__FormatMessageW@28
-__imp__FormatMessageW@28 dd thunk_31
-PUBLIC __imp__GenerateConsoleCtrlEvent@8
-__imp__GenerateConsoleCtrlEvent@8 dd thunk_32
+__imp__FormatMessageW@28 dd thunk_28
 PUBLIC __imp__GetCurrentDirectoryW@8
-__imp__GetCurrentDirectoryW@8 dd thunk_33
+__imp__GetCurrentDirectoryW@8 dd thunk_29
 PUBLIC __imp__GetDC@4
-__imp__GetDC@4 dd thunk_34
+__imp__GetDC@4 dd thunk_30
 PUBLIC __imp__GetDoubleClickTime@0
-__imp__GetDoubleClickTime@0 dd thunk_35
-PUBLIC __imp__GetExitCodeProcess@8
-__imp__GetExitCodeProcess@8 dd thunk_36
+__imp__GetDoubleClickTime@0 dd thunk_31
 PUBLIC __imp__GetFileAttributesExW@12
-__imp__GetFileAttributesExW@12 dd thunk_37
+__imp__GetFileAttributesExW@12 dd thunk_32
 PUBLIC __imp__GetFileTime@16
-__imp__GetFileTime@16 dd thunk_38
+__imp__GetFileTime@16 dd thunk_33
 PUBLIC __imp__GetLocaleInfoA@16
-__imp__GetLocaleInfoA@16 dd thunk_39
+__imp__GetLocaleInfoA@16 dd thunk_34
 PUBLIC __imp__GetLocaleInfoW@16
-__imp__GetLocaleInfoW@16 dd thunk_40
+__imp__GetLocaleInfoW@16 dd thunk_35
 PUBLIC __imp__GetLogicalDrives@0
-__imp__GetLogicalDrives@0 dd thunk_41
+__imp__GetLogicalDrives@0 dd thunk_36
 PUBLIC __imp__GetMessageA@16
-__imp__GetMessageA@16 dd thunk_42
+__imp__GetMessageA@16 dd thunk_37
 PUBLIC __imp__GetMessageW@16
-__imp__GetMessageW@16 dd thunk_43
+__imp__GetMessageW@16 dd thunk_38
 PUBLIC __imp__GetOverlappedResult@16
-__imp__GetOverlappedResult@16 dd thunk_44
+__imp__GetOverlappedResult@16 dd thunk_39
 PUBLIC __imp__GetRawInputData@20
-__imp__GetRawInputData@20 dd thunk_45
+__imp__GetRawInputData@20 dd thunk_40
 PUBLIC __imp__GetRawInputDeviceInfoA@16
-__imp__GetRawInputDeviceInfoA@16 dd thunk_46
+__imp__GetRawInputDeviceInfoA@16 dd thunk_41
 PUBLIC __imp__GetRawInputDeviceList@12
-__imp__GetRawInputDeviceList@12 dd thunk_47
+__imp__GetRawInputDeviceList@12 dd thunk_42
 PUBLIC __imp__GetSystemMetrics@4
-__imp__GetSystemMetrics@4 dd thunk_48
-PUBLIC __imp__GetWindowThreadProcessId@8
-__imp__GetWindowThreadProcessId@8 dd thunk_49
+__imp__GetSystemMetrics@4 dd thunk_43
 PUBLIC __imp__GlobalMemoryStatusEx@4
-__imp__GlobalMemoryStatusEx@4 dd thunk_50
+__imp__GlobalMemoryStatusEx@4 dd thunk_44
 PUBLIC __imp__KillTimer@8
-__imp__KillTimer@8 dd thunk_51
+__imp__KillTimer@8 dd thunk_45
 PUBLIC __imp__LoadLibraryW@4
-__imp__LoadLibraryW@4 dd thunk_52
+__imp__LoadLibraryW@4 dd thunk_46
 PUBLIC __imp__LocalFree@4
-__imp__LocalFree@4 dd thunk_53
+__imp__LocalFree@4 dd thunk_47
 PUBLIC __imp__MessageBoxA@16
-__imp__MessageBoxA@16 dd thunk_54
+__imp__MessageBoxA@16 dd thunk_48
 PUBLIC __imp__OutputDebugStringW@4
-__imp__OutputDebugStringW@4 dd thunk_55
+__imp__OutputDebugStringW@4 dd thunk_49
 PUBLIC __imp__PeekMessageW@20
-__imp__PeekMessageW@20 dd thunk_56
-PUBLIC __imp__PostMessageW@16
-__imp__PostMessageW@16 dd thunk_57
+__imp__PeekMessageW@20 dd thunk_50
 PUBLIC __imp__PostThreadMessageW@16
-__imp__PostThreadMessageW@16 dd thunk_58
+__imp__PostThreadMessageW@16 dd thunk_51
 PUBLIC __imp__PropVariantClear@4
-__imp__PropVariantClear@4 dd thunk_59
+__imp__PropVariantClear@4 dd thunk_52
 PUBLIC __imp__RegCloseKey@4
-__imp__RegCloseKey@4 dd thunk_60
+__imp__RegCloseKey@4 dd thunk_53
 PUBLIC __imp__RegOpenKeyExW@20
-__imp__RegOpenKeyExW@20 dd thunk_61
+__imp__RegOpenKeyExW@20 dd thunk_54
 PUBLIC __imp__RegQueryValueExW@24
-__imp__RegQueryValueExW@24 dd thunk_62
+__imp__RegQueryValueExW@24 dd thunk_55
 PUBLIC __imp__RegisterClassExA@4
-__imp__RegisterClassExA@4 dd thunk_63
+__imp__RegisterClassExA@4 dd thunk_56
 PUBLIC __imp__RegisterClassExW@4
-__imp__RegisterClassExW@4 dd thunk_64
+__imp__RegisterClassExW@4 dd thunk_57
 PUBLIC __imp__RegisterClassW@4
-__imp__RegisterClassW@4 dd thunk_65
+__imp__RegisterClassW@4 dd thunk_58
 PUBLIC __imp__RegisterDeviceNotificationW@12
-__imp__RegisterDeviceNotificationW@12 dd thunk_66
+__imp__RegisterDeviceNotificationW@12 dd thunk_59
 PUBLIC __imp__RegisterRawInputDevices@12
-__imp__RegisterRawInputDevices@12 dd thunk_67
+__imp__RegisterRawInputDevices@12 dd thunk_60
 PUBLIC __imp__ReleaseDC@8
-__imp__ReleaseDC@8 dd thunk_68
+__imp__ReleaseDC@8 dd thunk_61
 PUBLIC __imp__ReleaseSemaphore@12
-__imp__ReleaseSemaphore@12 dd thunk_69
+__imp__ReleaseSemaphore@12 dd thunk_62
 PUBLIC __imp__RemoveDirectoryW@4
-__imp__RemoveDirectoryW@4 dd thunk_70
+__imp__RemoveDirectoryW@4 dd thunk_63
 PUBLIC __imp__RemoveVectoredExceptionHandler@4
-__imp__RemoveVectoredExceptionHandler@4 dd thunk_71
+__imp__RemoveVectoredExceptionHandler@4 dd thunk_64
 PUBLIC __imp__ResetEvent@4
-__imp__ResetEvent@4 dd thunk_72
+__imp__ResetEvent@4 dd thunk_65
 PUBLIC __imp__SHGetFolderPathW@20
-__imp__SHGetFolderPathW@20 dd thunk_73
+__imp__SHGetFolderPathW@20 dd thunk_66
 PUBLIC __imp__SelectObject@8
-__imp__SelectObject@8 dd thunk_74
+__imp__SelectObject@8 dd thunk_67
 PUBLIC __imp__SetConsoleCtrlHandler@8
-__imp__SetConsoleCtrlHandler@8 dd thunk_75
+__imp__SetConsoleCtrlHandler@8 dd thunk_68
 PUBLIC __imp__SetErrorMode@4
-__imp__SetErrorMode@4 dd thunk_76
+__imp__SetErrorMode@4 dd thunk_69
 PUBLIC __imp__SetEvent@4
-__imp__SetEvent@4 dd thunk_77
-PUBLIC __imp__SetHandleInformation@12
-__imp__SetHandleInformation@12 dd thunk_78
-PUBLIC __imp__SetNamedPipeHandleState@16
-__imp__SetNamedPipeHandleState@16 dd thunk_79
+__imp__SetEvent@4 dd thunk_70
 PUBLIC __imp__SetPixel@16
-__imp__SetPixel@16 dd thunk_80
+__imp__SetPixel@16 dd thunk_71
 PUBLIC __imp__SetPropW@12
-__imp__SetPropW@12 dd thunk_81
+__imp__SetPropW@12 dd thunk_72
 PUBLIC __imp__SetTimer@16
-__imp__SetTimer@16 dd thunk_82
-PUBLIC __imp__ShellExecuteW@24
-__imp__ShellExecuteW@24 dd thunk_83
+__imp__SetTimer@16 dd thunk_73
 PUBLIC __imp__SysFreeString@4
-__imp__SysFreeString@4 dd thunk_84
+__imp__SysFreeString@4 dd thunk_74
 PUBLIC __imp__SystemTimeToFileTime@8
-__imp__SystemTimeToFileTime@8 dd thunk_85
+__imp__SystemTimeToFileTime@8 dd thunk_75
 PUBLIC __imp__SystemTimeToTzSpecificLocalTime@12
-__imp__SystemTimeToTzSpecificLocalTime@12 dd thunk_86
+__imp__SystemTimeToTzSpecificLocalTime@12 dd thunk_76
 PUBLIC __imp__TranslateMessage@4
-__imp__TranslateMessage@4 dd thunk_87
+__imp__TranslateMessage@4 dd thunk_77
 PUBLIC __imp__TryEnterCriticalSection@4
-__imp__TryEnterCriticalSection@4 dd thunk_88
+__imp__TryEnterCriticalSection@4 dd thunk_78
 PUBLIC __imp__UnregisterClassA@8
-__imp__UnregisterClassA@8 dd thunk_89
+__imp__UnregisterClassA@8 dd thunk_79
 PUBLIC __imp__UnregisterClassW@8
-__imp__UnregisterClassW@8 dd thunk_90
+__imp__UnregisterClassW@8 dd thunk_80
 PUBLIC __imp__UnregisterDeviceNotification@4
-__imp__UnregisterDeviceNotification@4 dd thunk_91
+__imp__UnregisterDeviceNotification@4 dd thunk_81
 PUBLIC __imp__VerSetConditionMask@16
-__imp__VerSetConditionMask@16 dd thunk_92
+__imp__VerSetConditionMask@16 dd thunk_82
 PUBLIC __imp__VerifyVersionInfoW@16
-__imp__VerifyVersionInfoW@16 dd thunk_93
+__imp__VerifyVersionInfoW@16 dd thunk_83
 PUBLIC __imp__timeBeginPeriod@4
-__imp__timeBeginPeriod@4 dd thunk_94
+__imp__timeBeginPeriod@4 dd thunk_84
 PUBLIC __imp__timeEndPeriod@4
-__imp__timeEndPeriod@4 dd thunk_95
+__imp__timeEndPeriod@4 dd thunk_85
 .code
 thunk_0:
     push 0
@@ -205,7 +185,7 @@ thunk_0:
     jz fail_0
     jmp eax
 fail_0:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_1:
     push 1
@@ -215,7 +195,7 @@ thunk_1:
     jz fail_1
     jmp eax
 fail_1:
-    xor eax, eax
+    mov eax, 080004005h
     ret 8
 thunk_2:
     push 2
@@ -225,7 +205,7 @@ thunk_2:
     jz fail_2
     jmp eax
 fail_2:
-    xor eax, eax
+    mov eax, 000000013h
     ret 16
 thunk_3:
     push 3
@@ -235,7 +215,7 @@ thunk_3:
     jz fail_3
     jmp eax
 fail_3:
-    xor eax, eax
+    mov eax, 000000013h
     ret 12
 thunk_4:
     push 4
@@ -245,7 +225,7 @@ thunk_4:
     jz fail_4
     jmp eax
 fail_4:
-    xor eax, eax
+    mov eax, 000000013h
     ret 12
 thunk_5:
     push 5
@@ -255,7 +235,7 @@ thunk_5:
     jz fail_5
     jmp eax
 fail_5:
-    xor eax, eax
+    mov eax, 000000000h
     ret 20
 thunk_6:
     push 6
@@ -265,7 +245,7 @@ thunk_6:
     jz fail_6
     jmp eax
 fail_6:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_7:
     push 7
@@ -275,7 +255,7 @@ thunk_7:
     jz fail_7
     jmp eax
 fail_7:
-    xor eax, eax
+    mov eax, 080004005h
     ret 20
 thunk_8:
     push 8
@@ -285,7 +265,7 @@ thunk_8:
     jz fail_8
     jmp eax
 fail_8:
-    xor eax, eax
+    mov eax, 080004005h
     ret 8
 thunk_9:
     push 9
@@ -295,7 +275,7 @@ thunk_9:
     jz fail_9
     jmp eax
 fail_9:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_10:
     push 10
@@ -305,7 +285,7 @@ thunk_10:
     jz fail_10
     jmp eax
 fail_10:
-    xor eax, eax
+    mov eax, 000000000h
     ret 0
 thunk_11:
     push 11
@@ -315,7 +295,7 @@ thunk_11:
     jz fail_11
     jmp eax
 fail_11:
-    xor eax, eax
+    mov eax, 000000000h
     ret 8
 thunk_12:
     push 12
@@ -325,7 +305,7 @@ thunk_12:
     jz fail_12
     jmp eax
 fail_12:
-    xor eax, eax
+    mov eax, 000000000h
     ret 24
 thunk_13:
     push 13
@@ -335,7 +315,7 @@ thunk_13:
     jz fail_13
     jmp eax
 fail_13:
-    xor eax, eax
+    mov eax, 000000000h
     ret 20
 thunk_14:
     push 14
@@ -345,7 +325,7 @@ thunk_14:
     jz fail_14
     jmp eax
 fail_14:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_15:
     push 15
@@ -355,7 +335,7 @@ thunk_15:
     jz fail_15
     jmp eax
 fail_15:
-    xor eax, eax
+    mov eax, 000000000h
     ret 24
 thunk_16:
     push 16
@@ -365,7 +345,7 @@ thunk_16:
     jz fail_16
     jmp eax
 fail_16:
-    xor eax, eax
+    mov eax, 000000000h
     ret 16
 thunk_17:
     push 17
@@ -375,7 +355,7 @@ thunk_17:
     jz fail_17
     jmp eax
 fail_17:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_18:
     push 18
@@ -385,7 +365,7 @@ thunk_18:
     jz fail_18
     jmp eax
 fail_18:
-    xor eax, eax
+    mov eax, 000000000h
     ret 16
 thunk_19:
     push 19
@@ -395,8 +375,8 @@ thunk_19:
     jz fail_19
     jmp eax
 fail_19:
-    xor eax, eax
-    ret 40
+    mov eax, 000000000h
+    ret 48
 thunk_20:
     push 20
     call _sdlshim_resolve
@@ -405,8 +385,8 @@ thunk_20:
     jz fail_20
     jmp eax
 fail_20:
-    xor eax, eax
-    ret 16
+    mov eax, 000000000h
+    ret 48
 thunk_21:
     push 21
     call _sdlshim_resolve
@@ -415,8 +395,8 @@ thunk_21:
     jz fail_21
     jmp eax
 fail_21:
-    xor eax, eax
-    ret 48
+    mov eax, 000000000h
+    ret 16
 thunk_22:
     push 22
     call _sdlshim_resolve
@@ -425,8 +405,8 @@ thunk_22:
     jz fail_22
     jmp eax
 fail_22:
-    xor eax, eax
-    ret 48
+    mov eax, 000000000h
+    ret 4
 thunk_23:
     push 23
     call _sdlshim_resolve
@@ -435,8 +415,8 @@ thunk_23:
     jz fail_23
     jmp eax
 fail_23:
-    xor eax, eax
-    ret 16
+    mov eax, 000000000h
+    ret 4
 thunk_24:
     push 24
     call _sdlshim_resolve
@@ -445,7 +425,7 @@ thunk_24:
     jz fail_24
     jmp eax
 fail_24:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_25:
     push 25
@@ -455,8 +435,8 @@ thunk_25:
     jz fail_25
     jmp eax
 fail_25:
-    xor eax, eax
-    ret 4
+    mov eax, 000000000h
+    ret 32
 thunk_26:
     push 26
     call _sdlshim_resolve
@@ -465,7 +445,7 @@ thunk_26:
     jz fail_26
     jmp eax
 fail_26:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_27:
     push 27
@@ -475,8 +455,8 @@ thunk_27:
     jz fail_27
     jmp eax
 fail_27:
-    xor eax, eax
-    ret 32
+    mov eax, 000000000h
+    ret 8
 thunk_28:
     push 28
     call _sdlshim_resolve
@@ -485,8 +465,8 @@ thunk_28:
     jz fail_28
     jmp eax
 fail_28:
-    xor eax, eax
-    ret 4
+    mov eax, 000000000h
+    ret 28
 thunk_29:
     push 29
     call _sdlshim_resolve
@@ -495,7 +475,7 @@ thunk_29:
     jz fail_29
     jmp eax
 fail_29:
-    xor eax, eax
+    mov eax, 000000000h
     ret 8
 thunk_30:
     push 30
@@ -505,8 +485,8 @@ thunk_30:
     jz fail_30
     jmp eax
 fail_30:
-    xor eax, eax
-    ret 8
+    mov eax, 000000000h
+    ret 4
 thunk_31:
     push 31
     call _sdlshim_resolve
@@ -515,8 +495,8 @@ thunk_31:
     jz fail_31
     jmp eax
 fail_31:
-    xor eax, eax
-    ret 28
+    mov eax, 000000000h
+    ret 0
 thunk_32:
     push 32
     call _sdlshim_resolve
@@ -525,8 +505,8 @@ thunk_32:
     jz fail_32
     jmp eax
 fail_32:
-    xor eax, eax
-    ret 8
+    mov eax, 000000000h
+    ret 12
 thunk_33:
     push 33
     call _sdlshim_resolve
@@ -535,8 +515,8 @@ thunk_33:
     jz fail_33
     jmp eax
 fail_33:
-    xor eax, eax
-    ret 8
+    mov eax, 000000000h
+    ret 16
 thunk_34:
     push 34
     call _sdlshim_resolve
@@ -545,8 +525,8 @@ thunk_34:
     jz fail_34
     jmp eax
 fail_34:
-    xor eax, eax
-    ret 4
+    mov eax, 000000000h
+    ret 16
 thunk_35:
     push 35
     call _sdlshim_resolve
@@ -555,8 +535,8 @@ thunk_35:
     jz fail_35
     jmp eax
 fail_35:
-    xor eax, eax
-    ret 0
+    mov eax, 000000000h
+    ret 16
 thunk_36:
     push 36
     call _sdlshim_resolve
@@ -565,8 +545,8 @@ thunk_36:
     jz fail_36
     jmp eax
 fail_36:
-    xor eax, eax
-    ret 8
+    mov eax, 000000000h
+    ret 0
 thunk_37:
     push 37
     call _sdlshim_resolve
@@ -575,8 +555,8 @@ thunk_37:
     jz fail_37
     jmp eax
 fail_37:
-    xor eax, eax
-    ret 12
+    mov eax, 000000000h
+    ret 16
 thunk_38:
     push 38
     call _sdlshim_resolve
@@ -585,7 +565,7 @@ thunk_38:
     jz fail_38
     jmp eax
 fail_38:
-    xor eax, eax
+    mov eax, 000000000h
     ret 16
 thunk_39:
     push 39
@@ -595,7 +575,7 @@ thunk_39:
     jz fail_39
     jmp eax
 fail_39:
-    xor eax, eax
+    mov eax, 000000000h
     ret 16
 thunk_40:
     push 40
@@ -605,8 +585,8 @@ thunk_40:
     jz fail_40
     jmp eax
 fail_40:
-    xor eax, eax
-    ret 16
+    mov eax, 0FFFFFFFFh
+    ret 20
 thunk_41:
     push 41
     call _sdlshim_resolve
@@ -615,8 +595,8 @@ thunk_41:
     jz fail_41
     jmp eax
 fail_41:
-    xor eax, eax
-    ret 0
+    mov eax, 0FFFFFFFFh
+    ret 16
 thunk_42:
     push 42
     call _sdlshim_resolve
@@ -625,8 +605,8 @@ thunk_42:
     jz fail_42
     jmp eax
 fail_42:
-    xor eax, eax
-    ret 16
+    mov eax, 0FFFFFFFFh
+    ret 12
 thunk_43:
     push 43
     call _sdlshim_resolve
@@ -635,8 +615,8 @@ thunk_43:
     jz fail_43
     jmp eax
 fail_43:
-    xor eax, eax
-    ret 16
+    mov eax, 000000000h
+    ret 4
 thunk_44:
     push 44
     call _sdlshim_resolve
@@ -645,8 +625,8 @@ thunk_44:
     jz fail_44
     jmp eax
 fail_44:
-    xor eax, eax
-    ret 16
+    mov eax, 000000000h
+    ret 4
 thunk_45:
     push 45
     call _sdlshim_resolve
@@ -655,8 +635,8 @@ thunk_45:
     jz fail_45
     jmp eax
 fail_45:
-    xor eax, eax
-    ret 20
+    mov eax, 000000000h
+    ret 8
 thunk_46:
     push 46
     call _sdlshim_resolve
@@ -665,8 +645,8 @@ thunk_46:
     jz fail_46
     jmp eax
 fail_46:
-    xor eax, eax
-    ret 16
+    mov eax, 000000000h
+    ret 4
 thunk_47:
     push 47
     call _sdlshim_resolve
@@ -675,8 +655,8 @@ thunk_47:
     jz fail_47
     jmp eax
 fail_47:
-    xor eax, eax
-    ret 12
+    mov eax, 000000000h
+    ret 4
 thunk_48:
     push 48
     call _sdlshim_resolve
@@ -685,8 +665,8 @@ thunk_48:
     jz fail_48
     jmp eax
 fail_48:
-    xor eax, eax
-    ret 4
+    mov eax, 000000000h
+    ret 16
 thunk_49:
     push 49
     call _sdlshim_resolve
@@ -695,8 +675,8 @@ thunk_49:
     jz fail_49
     jmp eax
 fail_49:
-    xor eax, eax
-    ret 8
+    mov eax, 000000000h
+    ret 4
 thunk_50:
     push 50
     call _sdlshim_resolve
@@ -705,8 +685,8 @@ thunk_50:
     jz fail_50
     jmp eax
 fail_50:
-    xor eax, eax
-    ret 4
+    mov eax, 000000000h
+    ret 20
 thunk_51:
     push 51
     call _sdlshim_resolve
@@ -715,8 +695,8 @@ thunk_51:
     jz fail_51
     jmp eax
 fail_51:
-    xor eax, eax
-    ret 8
+    mov eax, 000000000h
+    ret 16
 thunk_52:
     push 52
     call _sdlshim_resolve
@@ -725,7 +705,7 @@ thunk_52:
     jz fail_52
     jmp eax
 fail_52:
-    xor eax, eax
+    mov eax, 080004005h
     ret 4
 thunk_53:
     push 53
@@ -735,7 +715,7 @@ thunk_53:
     jz fail_53
     jmp eax
 fail_53:
-    xor eax, eax
+    mov eax, 000000078h
     ret 4
 thunk_54:
     push 54
@@ -745,8 +725,8 @@ thunk_54:
     jz fail_54
     jmp eax
 fail_54:
-    xor eax, eax
-    ret 16
+    mov eax, 000000078h
+    ret 20
 thunk_55:
     push 55
     call _sdlshim_resolve
@@ -755,8 +735,8 @@ thunk_55:
     jz fail_55
     jmp eax
 fail_55:
-    xor eax, eax
-    ret 4
+    mov eax, 000000078h
+    ret 24
 thunk_56:
     push 56
     call _sdlshim_resolve
@@ -765,8 +745,8 @@ thunk_56:
     jz fail_56
     jmp eax
 fail_56:
-    xor eax, eax
-    ret 20
+    mov eax, 000000000h
+    ret 4
 thunk_57:
     push 57
     call _sdlshim_resolve
@@ -775,8 +755,8 @@ thunk_57:
     jz fail_57
     jmp eax
 fail_57:
-    xor eax, eax
-    ret 16
+    mov eax, 000000000h
+    ret 4
 thunk_58:
     push 58
     call _sdlshim_resolve
@@ -785,8 +765,8 @@ thunk_58:
     jz fail_58
     jmp eax
 fail_58:
-    xor eax, eax
-    ret 16
+    mov eax, 000000000h
+    ret 4
 thunk_59:
     push 59
     call _sdlshim_resolve
@@ -795,8 +775,8 @@ thunk_59:
     jz fail_59
     jmp eax
 fail_59:
-    xor eax, eax
-    ret 4
+    mov eax, 000000000h
+    ret 12
 thunk_60:
     push 60
     call _sdlshim_resolve
@@ -805,8 +785,8 @@ thunk_60:
     jz fail_60
     jmp eax
 fail_60:
-    xor eax, eax
-    ret 4
+    mov eax, 000000000h
+    ret 12
 thunk_61:
     push 61
     call _sdlshim_resolve
@@ -815,8 +795,8 @@ thunk_61:
     jz fail_61
     jmp eax
 fail_61:
-    xor eax, eax
-    ret 20
+    mov eax, 000000000h
+    ret 8
 thunk_62:
     push 62
     call _sdlshim_resolve
@@ -825,8 +805,8 @@ thunk_62:
     jz fail_62
     jmp eax
 fail_62:
-    xor eax, eax
-    ret 24
+    mov eax, 000000000h
+    ret 12
 thunk_63:
     push 63
     call _sdlshim_resolve
@@ -835,7 +815,7 @@ thunk_63:
     jz fail_63
     jmp eax
 fail_63:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_64:
     push 64
@@ -845,7 +825,7 @@ thunk_64:
     jz fail_64
     jmp eax
 fail_64:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_65:
     push 65
@@ -855,7 +835,7 @@ thunk_65:
     jz fail_65
     jmp eax
 fail_65:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_66:
     push 66
@@ -865,8 +845,8 @@ thunk_66:
     jz fail_66
     jmp eax
 fail_66:
-    xor eax, eax
-    ret 12
+    mov eax, 080004005h
+    ret 20
 thunk_67:
     push 67
     call _sdlshim_resolve
@@ -875,8 +855,8 @@ thunk_67:
     jz fail_67
     jmp eax
 fail_67:
-    xor eax, eax
-    ret 12
+    mov eax, 000000000h
+    ret 8
 thunk_68:
     push 68
     call _sdlshim_resolve
@@ -885,7 +865,7 @@ thunk_68:
     jz fail_68
     jmp eax
 fail_68:
-    xor eax, eax
+    mov eax, 000000000h
     ret 8
 thunk_69:
     push 69
@@ -895,8 +875,8 @@ thunk_69:
     jz fail_69
     jmp eax
 fail_69:
-    xor eax, eax
-    ret 12
+    mov eax, 000000000h
+    ret 4
 thunk_70:
     push 70
     call _sdlshim_resolve
@@ -905,7 +885,7 @@ thunk_70:
     jz fail_70
     jmp eax
 fail_70:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_71:
     push 71
@@ -915,8 +895,8 @@ thunk_71:
     jz fail_71
     jmp eax
 fail_71:
-    xor eax, eax
-    ret 4
+    mov eax, 0FFFFFFFFh
+    ret 16
 thunk_72:
     push 72
     call _sdlshim_resolve
@@ -925,8 +905,8 @@ thunk_72:
     jz fail_72
     jmp eax
 fail_72:
-    xor eax, eax
-    ret 4
+    mov eax, 000000000h
+    ret 12
 thunk_73:
     push 73
     call _sdlshim_resolve
@@ -935,8 +915,8 @@ thunk_73:
     jz fail_73
     jmp eax
 fail_73:
-    xor eax, eax
-    ret 20
+    mov eax, 000000000h
+    ret 16
 thunk_74:
     push 74
     call _sdlshim_resolve
@@ -945,8 +925,8 @@ thunk_74:
     jz fail_74
     jmp eax
 fail_74:
-    xor eax, eax
-    ret 8
+    mov eax, 000000000h
+    ret 4
 thunk_75:
     push 75
     call _sdlshim_resolve
@@ -955,7 +935,7 @@ thunk_75:
     jz fail_75
     jmp eax
 fail_75:
-    xor eax, eax
+    mov eax, 000000000h
     ret 8
 thunk_76:
     push 76
@@ -965,8 +945,8 @@ thunk_76:
     jz fail_76
     jmp eax
 fail_76:
-    xor eax, eax
-    ret 4
+    mov eax, 000000000h
+    ret 12
 thunk_77:
     push 77
     call _sdlshim_resolve
@@ -975,7 +955,7 @@ thunk_77:
     jz fail_77
     jmp eax
 fail_77:
-    xor eax, eax
+    mov eax, 000000000h
     ret 4
 thunk_78:
     push 78
@@ -985,8 +965,8 @@ thunk_78:
     jz fail_78
     jmp eax
 fail_78:
-    xor eax, eax
-    ret 12
+    mov eax, 000000000h
+    ret 4
 thunk_79:
     push 79
     call _sdlshim_resolve
@@ -995,8 +975,8 @@ thunk_79:
     jz fail_79
     jmp eax
 fail_79:
-    xor eax, eax
-    ret 16
+    mov eax, 000000000h
+    ret 8
 thunk_80:
     push 80
     call _sdlshim_resolve
@@ -1005,8 +985,8 @@ thunk_80:
     jz fail_80
     jmp eax
 fail_80:
-    xor eax, eax
-    ret 16
+    mov eax, 000000000h
+    ret 8
 thunk_81:
     push 81
     call _sdlshim_resolve
@@ -1015,8 +995,8 @@ thunk_81:
     jz fail_81
     jmp eax
 fail_81:
-    xor eax, eax
-    ret 12
+    mov eax, 000000000h
+    ret 4
 thunk_82:
     push 82
     call _sdlshim_resolve
@@ -1025,7 +1005,8 @@ thunk_82:
     jz fail_82
     jmp eax
 fail_82:
-    xor eax, eax
+    mov eax, 000000000h
+    xor edx, edx
     ret 16
 thunk_83:
     push 83
@@ -1035,8 +1016,8 @@ thunk_83:
     jz fail_83
     jmp eax
 fail_83:
-    xor eax, eax
-    ret 24
+    mov eax, 000000000h
+    ret 16
 thunk_84:
     push 84
     call _sdlshim_resolve
@@ -1045,7 +1026,7 @@ thunk_84:
     jz fail_84
     jmp eax
 fail_84:
-    xor eax, eax
+    mov eax, 000000061h
     ret 4
 thunk_85:
     push 85
@@ -1055,106 +1036,6 @@ thunk_85:
     jz fail_85
     jmp eax
 fail_85:
-    xor eax, eax
-    ret 8
-thunk_86:
-    push 86
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_86
-    jmp eax
-fail_86:
-    xor eax, eax
-    ret 12
-thunk_87:
-    push 87
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_87
-    jmp eax
-fail_87:
-    xor eax, eax
-    ret 4
-thunk_88:
-    push 88
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_88
-    jmp eax
-fail_88:
-    xor eax, eax
-    ret 4
-thunk_89:
-    push 89
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_89
-    jmp eax
-fail_89:
-    xor eax, eax
-    ret 8
-thunk_90:
-    push 90
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_90
-    jmp eax
-fail_90:
-    xor eax, eax
-    ret 8
-thunk_91:
-    push 91
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_91
-    jmp eax
-fail_91:
-    xor eax, eax
-    ret 4
-thunk_92:
-    push 92
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_92
-    jmp eax
-fail_92:
-    xor eax, eax
-    ret 16
-thunk_93:
-    push 93
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_93
-    jmp eax
-fail_93:
-    xor eax, eax
-    ret 16
-thunk_94:
-    push 94
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_94
-    jmp eax
-fail_94:
-    xor eax, eax
-    ret 4
-thunk_95:
-    push 95
-    call _sdlshim_resolve
-    add esp, 4
-    test eax, eax
-    jz fail_95
-    jmp eax
-fail_95:
-    xor eax, eax
+    mov eax, 000000061h
     ret 4
 end
