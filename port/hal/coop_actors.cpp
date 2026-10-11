@@ -32,8 +32,10 @@ namespace {
 // ---------------------------------------------------------------------------
 // Profiles.
 // ---------------------------------------------------------------------------
+CoopMoveStats g_st = {};
 enum : unsigned { kFPhase = 1u, kFSlave = 2u };   // kFSlave: the non-owner pins the pose every frame to the owner's, extrapolated
-struct Field { uint16_t off; uint8_t size; };
+// A phase field: where it sits, how wide it is, and the range a received value must lie in (signed for width 4, unsigned for 1 / 2).
+struct Field { uint16_t off; uint8_t size; int32_t lo, hi; };
 struct Prof {
     uint16_t id;
     const char *name;
@@ -41,7 +43,20 @@ struct Prof {
     uint8_t flags, nf;
     Field f[kMoverMaxFields];
     uint16_t hold;          // 0 = none; else a pointer word that is non-zero while something carries the actor
+    uint16_t size;          // the class's allocation size (coop_actor_sizes.inc), 0 = not in the table
+    bool     dead;          // switched off at run time (the live block turned out smaller than a field needs)
+    bool     live_seen;     // the live block size of this class was read and logged once
 };
+struct SizeRow { uint16_t id, bytes; };
+#define SIZE(id, bytes, name) { id, bytes },
+const SizeRow kSizes[] = {
+#include "coop_actor_sizes.inc"
+};
+#undef SIZE
+uint16_t class_size(unsigned id) {
+    for (const SizeRow &r : kSizes) if (r.id == id) return r.bytes;
+    return 0;
+}
 
 #define ROW(id, name, period, band, snap, flags, nf, ...) { id, name, period, band, snap, flags, nf, { __VA_ARGS__ } },
 Prof g_prof[256] = {
@@ -59,11 +74,24 @@ enum : int {
     kPayloadMax = kHubCoopMaxDatagram - kHubCoopHeaderBytes,
 };
 
-bool field_ok(const Field &f) {
+// A field must lie inside the CLASS's own allocation (size = bytes the ROM's operator new hands out for it); size 0 = the
+// class is not in the table, so only the header words (below 0xd0, in every actor) are allowed.
+bool field_ok(const Field &f, unsigned size) {
     if (f.size != 1 && f.size != 2 && f.size != 4) return false;
+    if (f.lo > f.hi) return false;
     const bool speed_words = f.off >= 0x98 && (int)f.off + f.size <= 0xb0;       // mHorzSpeed .. unk_0ac
-    if (!speed_words && (f.off < kFieldLo || (int)f.off + f.size > kFieldHi)) return false;
+    if (!speed_words) {
+        if (f.off < kFieldLo || (int)f.off + f.size > kFieldHi) return false;
+        if (size == 0 || (unsigned)f.off + f.size > size) return false;
+    }
     return (f.off % f.size) == 0;
+}
+
+// A received phase value must lie in the field's range (a forged record must not write an arbitrary value).
+bool value_ok(const Field &f, uint32_t v) {
+    long long x;
+    if (f.size == 4) x = (int32_t)v; else if (f.size == 2) x = (uint16_t)v; else x = (uint8_t)v;
+    return x >= f.lo && x <= f.hi;
 }
 
 void prof_index() {
@@ -73,14 +101,25 @@ void prof_index() {
     for (int i = 0; i < g_nprof; ++i) {
         Prof &p = g_prof[i];
         bool ok = p.id < 1024 && p.nf <= kMoverMaxFields;
-        for (int k = 0; ok && k < p.nf; ++k) ok = field_ok(p.f[k]);
-        if (!ok) { std::fprintf(stderr, "[coopmove] profile row %d (class %d) rejected\n", i, (int)p.id); p.id = 0; continue; }
+        p.size = ok ? class_size(p.id) : 0;
+        for (int k = 0; ok && k < p.nf; ++k) {
+            ok = field_ok(p.f[k], p.size);
+            if (!ok) std::fprintf(stderr, "[coopmove] size guard: row %d (class %d) field %#x+%d past the class size %#x (or bad): row dropped\n",
+                                  i, (int)p.id, (unsigned)p.f[k].off, (int)p.f[k].size, (unsigned)p.size);
+        }
+        if (ok && p.hold && (p.size == 0 || p.hold + 4u > p.size)) ok = false;
+        if (!ok) { std::fprintf(stderr, "[coopmove] profile row %d (class %d) rejected\n", i, (int)p.id); ++g_st.rows_dropped; p.id = 0; continue; }
+        if (p.size == 0) std::fprintf(stderr, "[coopmove] size guard: class %d is not in the size table (pose only, no fields)\n", (int)p.id);
         g_prof_of[p.id] = (short)i;
     }
     // classes a player can pick up: their pose is the carrier's, not the Behavior's
     static const struct { uint16_t id, off; } kHold[] = { { 206, 0x390 } };
     for (const auto &h : kHold)
-        if (h.id < 1024 && g_prof_of[h.id] >= 0 && g_prof[g_prof_of[h.id]].hold == 0) g_prof[g_prof_of[h.id]].hold = h.off;
+        if (h.id < 1024 && g_prof_of[h.id] >= 0 && g_prof[g_prof_of[h.id]].hold == 0) {
+            Prof &hp = g_prof[g_prof_of[h.id]];
+            if (hp.size != 0 && h.off + 4u <= hp.size) hp.hold = h.off;
+            else { std::fprintf(stderr, "[coopmove] size guard: class %d carried-test word %#x past the class size: not used\n", (int)h.id, (unsigned)h.off); ++g_st.rows_dropped; }
+        }
 }
 
 // SM64DS_COOP_MOVE_PROFILE=<file>: lines `id period band snap flags nf off:size ...`, '#' comments.
@@ -104,10 +143,23 @@ void load_profile_file(const char *path) {
             if (std::sscanf(p, " %i:%i%n", &off, &sz, &u2) < 2) { ok = false; break; }
             p += u2;
             np.f[k].off = (uint16_t)off; np.f[k].size = (uint8_t)sz;
-            if (!field_ok(np.f[k])) { ok = false; break; }
+            // optional range `:lo:hi`; without it the full range of the width (a developer knob, never on the wire)
+            int lo = 0, hi = 0, u3 = 0;
+            if (sz == 4) { lo = (int)0x80000000; hi = 0x7fffffff; } else if (sz == 2) { lo = 0; hi = 0xffff; } else { lo = 0; hi = 0xff; }
+            if (std::sscanf(p, ":%i:%i%n", &lo, &hi, &u3) >= 2) p += u3;
+            np.f[k].lo = lo; np.f[k].hi = hi;
+            np.size = class_size((unsigned)id);
+            if (!field_ok(np.f[k], np.size)) {
+                std::fprintf(stderr, "[coopmove] size guard: file row class %d field %#x+%d past the class size %#x (or bad): row dropped\n",
+                             id, off, sz, (unsigned)np.size);
+                ++g_st.rows_dropped;
+                ok = false; break;
+            }
         }
         if (ok) if (const char *h = std::strstr(p, "hold=")) np.hold = (uint16_t)std::strtoul(h + 5, nullptr, 0);
         if (!ok) { std::fprintf(stderr, "[coopmove] profile file: bad row for class %d\n", id); continue; }
+        np.size = class_size((unsigned)id);
+        if (np.hold && (np.size == 0 || np.hold + 4u > np.size)) { std::fprintf(stderr, "[coopmove] size guard: file row class %d carried-test word past the class size: row dropped\n", id); ++g_st.rows_dropped; continue; }
         int at = -1;
         for (int i = 0; i < g_nprof; ++i) if (g_prof[i].id == id) at = i;
         if (at < 0) {
@@ -155,7 +207,6 @@ struct Rx {
 };
 struct Job { bool on; int passes; unsigned next; int cursor; };
 
-CoopMoveStats g_st = {};
 bool g_env = false, g_log = false, g_act = true, g_snap_on = true, g_hyst = true, g_stale_on = true;
 unsigned g_sample_every = 0;
 unsigned g_dump_at[4]; int g_ndump = 0;
@@ -258,7 +309,7 @@ double dist3(const char *a, int32_t x, int32_t y, int32_t z) {
 
 // Dead, dying, being eaten or being carried: the actor's position is not its Behavior's business.
 bool skip_state(const char *a, const Prof &p) {
-    if (p.hold && p.hold + 4 <= 0x480 && rd32(a, p.hold) != 0) return true;
+    if (p.hold && rd32(a, p.hold) != 0) return true;
     if (*(const unsigned char *)(a + 0x0f) || *(const unsigned char *)(a + 0x0e) == 2) return true;
     const unsigned fl = (unsigned)rd32(a, 0xb0);
     if (fl & 0x60000u) return true;                       // yoshi mouth states
@@ -274,8 +325,16 @@ uint32_t read_field(const char *a, const Field &f) {
     std::memcpy(&v, a + f.off, f.size);                   // little-endian host: the low bytes
     return v;
 }
-void write_field(char *a, const Field &f, uint32_t v) {
-    if (!field_ok(f)) return;
+// Last line of defence: the live heap block of THIS actor must hold the field (the ROM's block header keeps the size three words
+// before the object), whatever the table says.
+bool live_holds(const char *a, const Field &f) {
+    const uint32_t live = (uint32_t)rd32(a, -12);
+    const bool sane = live >= 0xd0 && live <= 0x4000 && (live & 3u) == 0;
+    return !sane || (unsigned)f.off + f.size <= live;
+}
+void write_field(char *a, const Prof &p, const Field &f, uint32_t v) {
+    if (p.dead || !field_ok(f, p.size) || !value_ok(f, v)) { ++g_st.write_refused; return; }
+    if (f.off >= kFieldLo && !live_holds(a, f)) { ++g_st.write_refused; return; }
     std::memcpy(a + f.off, &v, f.size);
 }
 
@@ -447,7 +506,7 @@ void apply_rec(int slot, Slot &s, Rx &x) {
     if (!force && !phase && err <= p.band && aerr <= 0x400) { ++g_st.in_band; return; }
     const bool write = force || phase || err > p.snap;
     if (!force && phase && (p.flags & kFSlave)) {            // slave() owns the pose; the counters are written here
-        for (int k = 0; k < p.nf; ++k) write_field(a, p.f[k], x.f[k]);
+        for (int k = 0; k < p.nf; ++k) write_field(a, p, p.f[k], x.f[k]);
         ++g_st.applied_write;
         s.lvalid = false;
         return;
@@ -457,7 +516,7 @@ void apply_rec(int slot, Slot &s, Rx &x) {
         wr32(a, 0x60, clampi(ty, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
         wr32(a, 0x64, clampi(tz, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
         wr16(a, 0x8c, x.ax); wr16(a, 0x8e, x.ay); wr16(a, 0x90, x.az);
-        for (int k = 0; k < p.nf; ++k) write_field(a, p.f[k], x.f[k]);
+        for (int k = 0; k < p.nf; ++k) write_field(a, p, p.f[k], x.f[k]);
         ++g_st.applied_write;
         if (force) ++g_st.snap_applied;
     } else {
@@ -489,12 +548,35 @@ void reset_level() {
     for (int i = 0; i < g_nforge; ++i) g_forge[i].done = false;
 }
 
+// The first live actor of a class: its heap block says how big the class really is. A block smaller than the table (or smaller
+// than a field needs) switches the row off; a block that disagrees is logged for the size audit.
+void check_live(Prof &p, const char *a) {
+    if (p.live_seen) return;
+    p.live_seen = true;
+    const uint32_t live = (uint32_t)rd32(a, -12);
+    const bool sane = live >= 0xd0 && live <= 0x4000 && (live & 3u) == 0;
+    if (g_log) std::fprintf(stderr, "[coopmove] size cls=%d table=%#x live=%#x%s\n", (int)p.id, (unsigned)p.size, (unsigned)live, sane ? "" : " (unreadable)");
+    if (!sane) return;
+    if (p.size != 0 && live != p.size) { ++g_st.size_mismatch; std::fprintf(stderr, "[coopmove] size guard: class %d table %#x but live block %#x\n", (int)p.id, (unsigned)p.size, (unsigned)live); }
+    unsigned use = p.size ? (live < p.size ? live : p.size) : live;
+    bool ok = true;
+    for (int k = 0; k < p.nf; ++k) ok = ok && field_ok(p.f[k], use);
+    if (p.hold && p.hold + 4u > use) ok = false;
+    if (!ok) {
+        p.dead = true; ++g_st.rows_dropped;
+        if (p.id < 1024) g_prof_of[p.id] = -1;
+        std::fprintf(stderr, "[coopmove] size guard: class %d row switched off (live block %#x)\n", (int)p.id, (unsigned)live);
+    }
+}
+
 void scan_ents() {
     for (int i = 0; i < kSlots; ++i) { g_slot[i].a = nullptr; }
     unsigned n = 0;
     for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
         const unsigned id = *(const unsigned short *)(a + 0x0c);
         if (id >= 1024 || g_prof_of[id] < 0) continue;
+        check_live(g_prof[g_prof_of[id]], a);
+        if (g_prof_of[id] < 0) continue;
         const short slot = rd16(a, 0xce);
         if (slot < 0 || slot >= kSlots) continue;
         if (is_player_ptr(a)) continue;
@@ -722,7 +804,8 @@ void do_dump(unsigned at) {
         const Slot &s = g_slot[slot];
         if (!s.a) continue;
         char line[kFieldHi * 2 + 96]; int n = std::snprintf(line, sizeof line, "[mvd] lv=%d lf=%u slot=%d cls=%d w=", g_key.level, at, slot, (int)g_prof[s.prof].id);
-        for (int off = kFieldLo; off < kFieldHi; off += 4) n += std::snprintf(line + n, sizeof line - n, "%08x", (unsigned)rd32(s.a, off));
+        const int hi = (g_prof[s.prof].size && g_prof[s.prof].size < kFieldHi) ? g_prof[s.prof].size : kFieldHi;
+        for (int off = kFieldLo; off < hi; off += 4) n += std::snprintf(line + n, sizeof line - n, "%08x", (unsigned)rd32(s.a, off));
         std::fprintf(stderr, "%s\n", line);
     }
 }
@@ -750,6 +833,17 @@ void do_forge(const char *name) {
     else if (!std::strcmp(name, "short")) len -= 6;
     else if (!std::strcmp(name, "long")) len += 5;
     else if (!std::strcmp(name, "req")) snapreq = true;
+    else if (!std::strcmp(name, "val")) {      // a phase field value out of its range, on a class that has fields (prefer one this seat owns)
+        int fs = -1;
+        for (int i = 0; i < kSlots; ++i)
+            if (g_slot[i].a && g_prof[g_slot[i].prof].nf > 0 && (fs < 0 || g_slot[i].owner == g_my)) { fs = i; if (g_slot[i].owner == g_my) break; }
+        if (fs < 0) { std::fprintf(stderr, "[coopmove-knob] forge val: no actor with phase fields\n"); return; }
+        slot = fs; r.slot = (uint16_t)fs; r.cls = (uint16_t)g_prof[g_slot[fs].prof].id; r.nf = g_prof[g_slot[fs].prof].nf;
+        r.x = rd32(g_slot[fs].a, 0x5c); r.y = rd32(g_slot[fs].a, 0x60); r.z = rd32(g_slot[fs].a, 0x64);
+        len = (int)sizeof h + (int)sizeof r + 4 * r.nf;
+        const uint32_t bad = 0x7ffffff0u;
+        std::memcpy(b + sizeof h + sizeof r, &bad, 4);
+    }
     else return;
     std::fprintf(stderr, "[coopmove-knob] forge %s\n", name);
     if (snapreq) {
@@ -784,11 +878,11 @@ void stats_line() {
     const CoopMoveStats &s = g_st;
     std::fprintf(stderr,
         "[movestat] seat=%d ents=%llu sent b%llu r%llu sb%llu sr%llu req%llu served%llu rx b%llu r%llu applied w%llu e%llu band%llu "
-        "skip%llu clsmis%llu snapapp%llu noent%llu owner_ch%llu stale%llu thr%llu slv%llu drop bad%llu group%llu member%llu ver%llu far%llu off%llu seat%llu\n",
+        "skip%llu clsmis%llu snapapp%llu noent%llu owner_ch%llu stale%llu thr%llu slv%llu drop bad%llu group%llu member%llu ver%llu far%llu off%llu seat%llu val%llu rowsdrop%llu wrefused%llu sizemis%llu\n",
         g_my, s.ents, s.batches_sent, s.recs_sent, s.snap_batches_sent, s.snap_recs_sent, s.req_sent, s.req_served,
         s.batches_rx, s.recs_rx, s.applied_write, s.applied_ease, s.in_band, s.skipped_state, s.cls_mismatch, s.snap_applied,
         s.no_ent, s.owner_changes, s.owner_stale, s.throttled, s.slaved, s.drop_bad, s.drop_group, s.drop_member, s.drop_ver, s.drop_far,
-        s.drop_off, s.drop_seat);
+        s.drop_off, s.drop_seat, s.drop_val, s.rows_dropped, s.write_refused, s.size_mismatch);
 }
 
 // ---------------------------------------------------------------------------
@@ -868,6 +962,14 @@ bool coop_mover_batch_validate(const void *payload, int len) {
         MoverRec r; std::memcpy(&r, p + off, sizeof r);
         if (r.slot >= kSlots || r.rflags > 1) return false;
         if (!prof_known(r.cls, r.nf)) return false;
+        if (off + (int)sizeof r + 4 * r.nf > len) return false;
+        {
+            const Prof &vp = g_prof[g_prof_of[r.cls]];
+            for (int k = 0; k < r.nf; ++k) {
+                uint32_t v; std::memcpy(&v, p + off + sizeof r + 4 * k, 4);
+                if (!value_ok(vp.f[k], v)) { ++g_st.drop_val; return false; }
+            }
+        }
         const long long lim = (long long)kMoverMaxUnits * 4096;
         if (r.x < -lim || r.x > lim || r.y < -lim || r.y > lim || r.z < -lim || r.z > lim) return false;
         off += (int)sizeof r + 4 * r.nf;

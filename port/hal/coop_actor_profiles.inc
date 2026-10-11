@@ -7,7 +7,9 @@
 //   band        world units: inside it a receiver leaves its own copy alone
 //   snap        world units: past it a receiver writes the owner's pose; between band and snap it eases 25 percent
 //   flags       kFPhase = the class has counters that must be written WITH the pose (every record applies)
-//   nf, f[]     phase fields: {offset into the actor, width 1/2/4}; offsets 0xd0..0x47f, aligned to the width
+//   nf, f[]     phase fields: {offset into the actor, width 1/2/4, lo, hi}; offsets 0xd0..0x47f, aligned to the width, ENTIRELY inside
+//               the class's allocation (coop_actor_sizes.inc: a field past it drops the row at boot), and a received value must
+//               lie in lo..hi (signed for width 4) or the whole record is refused
 //
 // The field lists are DATA FOUND BY DISCOVERY, not guesses: SM64DS_COOP_MOVE_DUMP dumps every synced actor's
 // words at two ticks and coop_drift.py's `fields` command keeps the words that change with level age and are not
@@ -15,7 +17,8 @@
 // `id period band snap flags nf off:size ...`), which is how the discovery is iterated without a rebuild.
 // A class that is not in this table is not touched.
 //
-// ADDING A CLASS (COOPCASTLE1: Boo 209, MIPS 187, ...): append one ROW(...) line in the section that fits, enemies
+// ADDING A CLASS (COOPCASTLE1: Boo 209, MIPS 187, ...): append one SIZE(...) line to coop_actor_sizes.inc (a class with phase fields or a
+// carried-test word MUST have one) and one ROW(...) line in the section that fits, enemies
 // {period 100, band 40, snap 400, flags 0, nf 0}; a Boo or rabbit that flees or hides keeps the same numbers. No code change
 // is needed: ownership, publish, apply, snapshot and the carried-test (profile column `hold`, set in prof_index) are generic.
 // To try a row without a rebuild put it in an SM64DS_COOP_MOVE_PROFILE file. The actor is never touched when it is dead,
@@ -51,21 +54,21 @@ ROW(31,  "PATH_LIFT",           100, 8, 150, 2, 0)
 ROW(32,  "UP_DOWN_LIFT_BBH",    100, 8, 150, 2, 0)
 ROW(33,  "UP_DOWN_LIFT_HMC",    100, 8, 150, 2, 0)
 ROW(52,  "TOWER_STEP",          100, 8, 150, 2, 0)
-ROW(55,  "SLIDING_PLATFORM_WF", 100, 8, 150, 3, 2, {0x31c, 4}, {0x320, 4})
-ROW(53,  "MOVING_BAR_BIG",      100, 8, 150, 3, 9, {0x330, 4}, {0x334, 4}, {0x3a4, 4}, {0x3b0, 4}, {0x3bc, 4}, {0x3c0, 4}, {0x3c4, 4}, {0x3ec, 4}, {0x45c, 4})
-ROW(54,  "MOVING_BAR_SMALL",    100, 8, 150, 3, 9, {0x330, 4}, {0x334, 4}, {0x3a4, 4}, {0x3b0, 4}, {0x3bc, 4}, {0x3c0, 4}, {0x3c4, 4}, {0x3ec, 4}, {0x45c, 4})
+ROW(55,  "SLIDING_PLATFORM_WF", 100, 8, 150, 3, 2, {0x31c, 4, 0, 0x00ffffff}, {0x320, 4, 0, 0x0007ffff})
+ROW(53,  "MOVING_BAR_BIG",      100, 8, 150, 3, 2, {0x330, 4, 0, 6}, {0x334, 4, -0x100, 0x400})
+ROW(54,  "MOVING_BAR_SMALL",    100, 8, 150, 3, 2, {0x330, 4, 0, 6}, {0x334, 4, -0x100, 0x400})
 ROW(73,  "LAVA_BRIDGE",         100, 8, 150, 2, 0)
 ROW(77,  "LAVA_SEESAW",         100, 8, 150, 2, 0)
 ROW(81,  "ROTATING_FIREBAR",    100, 8, 150, 2, 0)
 ROW(88,  "PYRAMID_LIFT",        100, 8, 150, 2, 0)
-ROW(124, "SLIDING_PLATFORM_RR", 100, 8, 150, 3, 2, {0x31c, 4}, {0x320, 4})
+ROW(124, "SLIDING_PLATFORM_RR", 100, 8, 150, 3, 2, {0x31c, 4, 0, 0x00ffffff}, {0x320, 4, 0, 0x0007ffff})
 ROW(131, "UP_DOWN_LIFT_RR",     100, 8, 150, 2, 0)
-ROW(138, "SLIDING_PLATFORM_BDW", 100, 8, 150, 3, 2, {0x31c, 4}, {0x320, 4})
+ROW(138, "SLIDING_PLATFORM_BDW", 100, 8, 150, 3, 2, {0x31c, 4, 0, 0x00ffffff}, {0x320, 4, 0, 0x0007ffff})
 ROW(144, "SQUARE_METAL_NET_LIFT", 100, 8, 150, 2, 0)
-ROW(146, "SLIDING_PLATFORM_BFS_RECTANGLE", 100, 8, 150, 3, 2, {0x31c, 4}, {0x320, 4})
-ROW(147, "SLIDING_PLATFORM_BFS_SQUARE", 100, 8, 150, 3, 2, {0x31c, 4}, {0x320, 4})
-ROW(154, "SLIDING_PLATFORM_BS_WIDE", 100, 8, 150, 3, 2, {0x31c, 4}, {0x320, 4})
-ROW(155, "SLIDING_PLATFORM_BS_LONG", 100, 8, 150, 3, 2, {0x31c, 4}, {0x320, 4})
+ROW(146, "SLIDING_PLATFORM_BFS_RECTANGLE", 100, 8, 150, 3, 2, {0x31c, 4, 0, 0x00ffffff}, {0x320, 4, 0, 0x0007ffff})
+ROW(147, "SLIDING_PLATFORM_BFS_SQUARE", 100, 8, 150, 3, 2, {0x31c, 4, 0, 0x00ffffff}, {0x320, 4, 0, 0x0007ffff})
+ROW(154, "SLIDING_PLATFORM_BS_WIDE", 100, 8, 150, 3, 2, {0x31c, 4, 0, 0x00ffffff}, {0x320, 4, 0, 0x0007ffff})
+ROW(155, "SLIDING_PLATFORM_BS_LONG", 100, 8, 150, 3, 2, {0x31c, 4, 0, 0x00ffffff}, {0x320, 4, 0, 0x0007ffff})
 ROW(157, "ARROW_PATH_LIFT",     100, 8, 150, 2, 0)
 ROW(148, "EXTENDING_PLATFORM",  100, 8, 150, 2, 0)
 ROW(173, "BIG_MOVING_ICE_BLOCK", 100, 8, 150, 2, 0)
