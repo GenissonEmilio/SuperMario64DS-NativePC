@@ -146,13 +146,22 @@ void pcore_boot(void)
         Throttle t = {1, kThrottleExecSpeed | kThrottleIgnoreTimer, 0};
         proc = set_proc(GetCurrentProcess(), kProcessPowerThrottling, &t, sizeof t) ? 1 : 0;
     }
+    /* a loaded box starves the logic thread of CPU (rare 0.2 to 1 s freezes); above-normal keeps its ticks on time.
+       Resolved at run time so the import set does not change. */
+    int prio = 0;
+    if (k) {
+        typedef BOOL (WINAPI *SetPrio_t)(HANDLE, DWORD);
+        SetPrio_t sp = (SetPrio_t)GetProcAddress(k, "SetPriorityClass");
+        if (sp) prio = sp(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS) ? 1 : 0;
+    }
     if (HMODULE av = LoadLibraryA("avrt.dll")) {
         g_av_set = (AvSet_t)GetProcAddress(av, "AvSetMmThreadCharacteristicsW");
         g_av_revert = (AvRevert_t)GetProcAddress(av, "AvRevertMmThreadCharacteristics");
         if (!g_av_set || !g_av_revert) g_av_set = 0;
     }
-    fprintf(stderr, "[cpu] hybrid %s (efficiency classes %d, fastest class %d / others %d cpu sets), process throttle-off %s, mmcss %s, pinning %s\n",
+    fprintf(stderr, "[cpu] hybrid %s (efficiency classes %d, fastest class %d / others %d cpu sets), process throttle-off %s, priority %s, mmcss %s, pinning %s\n",
             g_classes > 1 ? "yes" : "no", g_classes, g_p_count, g_e_count, proc ? "yes" : "no",
+            prio ? "above-normal" : "normal",
             g_av_set ? "available" : "absent",
             g_pset.empty() ? "none (homogeneous)" : "fastest-class sets for logic + presenter");
     atexit(pcore_atexit);
