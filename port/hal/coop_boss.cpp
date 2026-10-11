@@ -24,8 +24,6 @@ extern "C" {
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;
 extern short data_02092144[];
-extern int data_0209f4f8[];
-signed char GetLevelPart(int idx);
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 int KingBobOmb_SetState(void *c, void *state);
 // bossdesc1: Chief Chilly's state records (16 x 0x10 at ov073 0x02123320), his ROM transition, Wiggler's ROM transition, ModelAnim::SetAnim
@@ -337,7 +335,8 @@ struct Boss {
     bool heard;                    // an authority record was ever applied here
     bool def_seen;                 // bossfix1: the boss was seen defeated (or its star was spawned) on this console
     bool mine_last;                // bossfix1: I was this boss's authority the last time I saw it
-    bool bit_set;                  // bossfix1: its death-table bit is up (a late joiner never gets this boss)
+    bool bit_set;                  // bossfix1: the group was told this boss is dead
+    bool killed_late;              // bossfix1: this copy was removed because the group said the boss is dead
     Rx rx;
 };
 
@@ -356,6 +355,9 @@ int  g_my = -1;
 CoopKey g_key;
 unsigned g_ticks = 0, g_seq = 0;
 Boss g_boss[kSlots];
+uint16_t g_dead_cls[kSlots];    // slot -> class of a boss the group knows is dead (0 = none)
+uint8_t  g_dead_tx[kSlots];     // sends still owed for it
+unsigned g_dead_t[kSlots];
 unsigned g_claim_until[kSeats];     // wall ms until which a seat's claim holds
 unsigned g_tok_t = 0; double g_tokens = 6.0;
 unsigned g_stat_t = 0;
@@ -595,6 +597,25 @@ void send_batch(int sub, uint8_t flags, const unsigned char *recs, int nrecs, in
     }
 }
 
+void send_dead(int slot) {
+    const BDesc *d = desc_of(g_dead_cls[slot]);
+    if (!d) return;
+    unsigned char rec[sizeof(BossRec) + 4 * kBossMaxFields];
+    std::memset(rec, 0, sizeof rec);
+    BossRec r; std::memset(&r, 0, sizeof r);
+    r.slot = (uint16_t)slot; r.cls = d->cls; r.nf = d->nf; r.rflags = 4; r.seq = (uint16_t)++g_seq;
+    std::memcpy(rec, &r, sizeof r);
+    send_batch(kWorldBossState, 0, rec, 1, rec_bytes(*d));
+}
+void pump_dead(unsigned now) {
+    for (int i = 0; i < kSlots; ++i)
+        if (g_dead_tx[i] && g_dead_cls[i] && (unsigned)(now - g_dead_t[i]) >= 150u) { send_dead(i); --g_dead_tx[i]; g_dead_t[i] = now; }
+}
+// The owner answered a joiner's snapshot request: tell it which bosses are dead as well.
+void on_snapshot_request(int /*seat*/, unsigned /*nonce*/) {
+    for (int i = 0; i < kSlots; ++i) if (g_dead_cls[i] && g_dead_tx[i] < 2) g_dead_tx[i] = 2;
+}
+
 // ---------------------------------------------------------------------------
 // Scan, publish, apply.
 // ---------------------------------------------------------------------------
@@ -605,19 +626,16 @@ void send_batch(int sub, uint8_t flags, const unsigned char *recs, int nrecs, in
 // BeforeInitResources then deletes the boss before it initialises.
 // ---------------------------------------------------------------------------
 unsigned g_recent_t = 0; bool g_recent_mine = true;     // the last time any boss was seen here, and whether I was its authority
+// A dead boss must not come back for a console that joins later. The death table is NOT used for it: a boss deleted by a death-table bit
+// never initialises, and its destructor then frees what its InitResources never took (measured: a late joiner's heap was corrupted and
+// the minimap faulted). Instead the group remembers {slot, class} and tells a joiner, whose copy of the boss, once it has initialised,
+// is removed the ordinary way (MarkForDestruction, as the ROM itself ends a boss).
 void mark_dead_slot(int slot, Boss &b) {
     b.bit_set = true;
-    // Only the boss's authority marks it: a non-authority copy can finish its own defeat first (its player is quicker through the talk), and its
-    // mark would delete the authority's copy before that one spawned the reward (measured: no key at all, then the fallback).
-    if (!g_deadmark || !b.mine_last) return;
-    int lv = -1, ac = 0;
-    if (!coop_group_established() || !coop_group_key(&lv, &ac) || slot < 0 || slot >= kSlots) return;
-    const int part = (int)GetLevelPart(lv);
-    if (part < 0 || part > 2) return;
-    unsigned *t = reinterpret_cast<unsigned *>(data_0209f4f8) + part * kCoopWords;
-    t[slot >> 5] |= 1u << (slot & 31);
+    if (!g_deadmark || slot < 0 || slot >= kSlots) return;
+    g_dead_cls[slot] = b.d->cls; g_dead_tx[slot] = 3; g_dead_t[slot] = 0;
     ++g_st.dead_marked;
-    if (g_log) std::fprintf(stderr, "[cbs] dead boss marked: cls=%u slot=%d part=%d (a joiner will not get it) w=%lld\n", (unsigned)b.d->cls, slot, part, wall_ms());
+    if (g_log) std::fprintf(stderr, "[cbs] dead boss marked: cls=%u slot=%d (kept by the group; a joiner is told, not given the boss) w=%lld\n", (unsigned)b.d->cls, slot, wall_ms());
 }
 
 int g_nb = 0;
@@ -642,6 +660,12 @@ void scan() {
         if (b.a) continue;
         if (b.d != d) { b = Boss(); b.d = d; }
         b.a = a; ++b.seen; ++g_nb;
+        if (g_deadmark && g_dead_cls[slot] == id && !b.killed_late && b.seen >= 3 && b.seen <= 12) {
+            b.killed_late = true;           // it has initialised (the loader ran its InitResources): end it the ordinary way
+            _ZN7fBase_c18MarkForDestructionEv(a);
+            ++g_st.dead_killed;
+            if (g_log) std::fprintf(stderr, "[cbs] dead boss removed on arrival: cls=%u slot=%d w=%lld\n", id, (int)slot, wall_ms());
+        }
     }
     for (int i = 0; i < kSlots; ++i) if (!g_boss[i].a && g_boss[i].d && g_boss[i].def_seen && !g_boss[i].bit_set) mark_dead_slot(i, g_boss[i]);
     for (int i = 0; i < kSlots; ++i) if (!g_boss[i].a) { g_boss[i].seen = 0; g_boss[i].known = false; g_boss[i].lw_valid = false; g_boss[i].heard = false; g_boss[i].rx.valid = false; g_boss[i].rx.first_done = false; }
@@ -1124,6 +1148,7 @@ void on_frame(unsigned now) {
         for (int i = 0; i < kSlots; ++i) g_boss[i] = Boss();
         for (int s = 0; s < kSeats; ++s) g_claim_until[s] = 0;
         g_recent_t = 0; g_recent_mine = true;
+        std::memset(g_dead_cls, 0, sizeof g_dead_cls); std::memset(g_dead_tx, 0, sizeof g_dead_tx);
         g_key = nk;
     }
     ++g_ticks; ++g_st.ticks;
@@ -1161,6 +1186,7 @@ void on_frame(unsigned now) {
             break;
         }
     }
+    pump_dead(now);
     if (g_nb > 0) {
         process(now);
         for (int i = 0; i < g_nhit; ++i)
@@ -1179,7 +1205,7 @@ void on_frame(unsigned now) {
 }
 
 struct Registrar {
-    Registrar() { coop_on_frame(on_frame); }
+    Registrar() { coop_on_frame(on_frame); coop_on_snapshot_request(on_snapshot_request); }
 } g_registrar;
 
 }  // namespace
@@ -1208,7 +1234,7 @@ bool coop_boss_validate(const void *payload, int len) {
     for (int i = 0; i < (int)h.count; ++i) {
         if (off + (int)sizeof(BossRec) > len) return false;
         BossRec r; std::memcpy(&r, p + off, sizeof r);
-        if (r.slot >= kSlots || (r.rflags & ~0x03) != 0) return false;
+        if (r.slot >= kSlots || (r.rflags & ~0x07) != 0) return false;
         const BDesc *d = desc_of(r.cls);
         if (!d || r.nf != d->nf) return false;
         off += (int)sizeof r + 4 * r.nf;
@@ -1236,6 +1262,13 @@ void coop_boss_on_world(int seat, int sub, const unsigned char *p, int len) {
         uint32_t w[kBossMaxFields]; std::memset(w, 0, sizeof w);
         std::memcpy(w, p + off + sizeof r, 4u * r.nf);
         off += (int)sizeof r + 4 * r.nf;
+        if (r.rflags & 4) {                       // "this boss is dead" (sent after its defeat, and to a joiner)
+            if (sub == kWorldBossState && h.flags == 0 && d && r.slot < kSlots && g_dead_cls[r.slot] != r.cls) {
+                g_dead_cls[r.slot] = r.cls; ++g_st.dead_marked;
+                if (g_log) std::fprintf(stderr, "[cbs] dead boss noted: cls=%u slot=%d from seat %d w=%lld\n", (unsigned)r.cls, (int)r.slot, seat, wall_ms());
+            }
+            continue;
+        }
         Boss &b = g_boss[r.slot];
         if (!b.a || b.d != d) { ++g_st.drop_cls; continue; }
         bool ok = true;
