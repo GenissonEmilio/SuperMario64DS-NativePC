@@ -1571,7 +1571,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         draw_im(s, IM_BACK, L.back[0], L.back[1] + (S.pressed_plank == 1 ? P(3) : 0), L.back[2], L.back[3], 255, hov ? 30 : 0, S.pressed_plank == 1 ? 25 : 0, 0);
     }
     if (cp == 0 || cp == 2) {   /* tabs */
-        const float em = (float)P(34);
+        const float em = (float)P(27);
         const int by = L.tab_y + L.tab_h - P(10);
         for (int i = 0; i < T_COUNT; ++i) {
             const int on = i == S.tab;
