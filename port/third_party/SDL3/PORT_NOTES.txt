@@ -1,0 +1,9 @@
+SDL 3.4.16 (release-3.4.16, upstream commit fa2c02bb6e21974a89ea9824bc53c9932abe5f9c),
+zlib licence (LICENSE.txt). Vendored for the controller backend (hal/pad_sdl.cpp) only.
+
+Trimmed: this tree holds only the files the port's gamepad-only static build compiles or
+includes (src/, include/, cmake/, CMakeLists.txt, LICENSE.txt, REVISION.txt). Tests, docs,
+examples, Xcode/Android/other-platform projects and every source file the Windows
+joystick-only configuration never touches were dropped. The files that remain are
+byte-identical to the upstream release archive. Provenance and checksums: see the lane
+record; build options are in port/CMakeLists.txt (run hunt8, lane SDLPAD1 block).

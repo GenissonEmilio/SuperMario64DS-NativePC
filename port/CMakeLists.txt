@@ -24229,3 +24229,54 @@ foreach(_pres1_t IN ITEMS walk_window walk_window_hires)
         target_sources(${_pres1_t} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hal/presenter.cpp")
     endif()
 endforeach()
+
+# run hunt8, lane SDLPAD1: SDL3's gamepad API as the controller backend's first
+# arm (hal/pad_sdl.cpp, called from hal/pad_backend.cpp). PlayStation, Switch Pro,
+# 8BitDo, generic and Xbox pads connect through SDL's HIDAPI drivers and mapping
+# database; XInput and DirectInput stay as the fallback.
+#
+# STATIC, gamepad-only, 32-bit /MT like the rest of the port: no SDL3.dll ships.
+# THE IMPORT TABLE DOES NOT MOVE. The exe may import KERNEL32 only (a new static
+# DLL chain can win the race for the DS's fixed 0x02000000 reservation, see the
+# static-import rule in the notes), and SDL's Windows joystick code calls about a
+# hundred and sixty Win32 functions. So SDL is linked WITHOUT the SDK import
+# libraries: third_party/SDL3_glue/sdl_imports_shim.asm defines the import-address
+# symbol (__imp__Fn@N) of every function SDL needs beyond the 155 KERNEL32 names
+# the exe already imports, each pointing at a thunk that LoadLibrary/GetProcAddress
+# resolves on first call (sdl_shim_resolve.c). The linker prefers a symbol an object
+# defines over one an import library supplies, so user32/gdi32/setupapi/... never
+# enter the import table. tools/sdl_import_guard.py runs after the link and fails the
+# build if any DLL but KERNEL32 is imported. Regenerate the shim with
+# third_party/SDL3_glue/gen_sdl_shim.py when SDL is updated.
+if(WIN32 AND MSVC AND TARGET walk_window AND TARGET walk_window_hires)
+    enable_language(ASM_MASM)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    foreach(_sdlpad1_off IN ITEMS SDL_AUDIO SDL_VIDEO SDL_GPU SDL_RENDER SDL_CAMERA
+            SDL_HAPTIC SDL_POWER SDL_DIALOG SDL_TRAY SDL_TESTS SDL_TEST_LIBRARY
+            SDL_INSTALL SDL_UNINSTALL SDL_EXAMPLES SDL_DIRECTX SDL_VULKAN SDL_OPENGL
+            SDL_OPENGLES SDL_OFFSCREEN SDL_DUMMYVIDEO SDL_DUMMYAUDIO SDL_DISKAUDIO)
+        set(${_sdlpad1_off} OFF CACHE BOOL "" FORCE)
+    endforeach()
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3"
+                     "${CMAKE_CURRENT_BINARY_DIR}/sdl3" EXCLUDE_FROM_ALL)
+    # SDL names the SDK import libraries as its link interface; the shim replaces
+    # them, so the exe links only the static data libraries SDL's GUIDs live in.
+    set_property(TARGET SDL3-static PROPERTY INTERFACE_LINK_LIBRARIES "")
+    set(_sdlpad1_glue "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3_glue")
+    foreach(_sdlpad1_t IN ITEMS walk_window walk_window_hires)
+        target_sources(${_sdlpad1_t} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/hal/pad_sdl.cpp"
+            "${_sdlpad1_glue}/sdl_shim_resolve.c"
+            "${_sdlpad1_glue}/sdl_imports_tab.c"
+            "${_sdlpad1_glue}/sdl_imports_shim.asm")
+        target_compile_definitions(${_sdlpad1_t} PRIVATE PORT_PAD_SDL=1)
+        target_include_directories(${_sdlpad1_t} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3/include")
+        target_link_libraries(${_sdlpad1_t} PRIVATE SDL3-static dxguid.lib uuid.lib)
+        add_custom_command(TARGET ${_sdlpad1_t} POST_BUILD
+            COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/sdl_import_guard.py"
+                    "$<TARGET_FILE:${_sdlpad1_t}>"
+            COMMENT "SDLPAD1: import table must stay KERNEL32 only")
+    endforeach()
+endif()

@@ -43,6 +43,9 @@
 #include <wchar.h>
 
 #include "hal/pad_backend.h"
+#ifdef PORT_PAD_SDL
+#include "hal/pad_sdl.h"
+#endif
 
 /* XINPUT_GAMEPAD_* spelled here so no xinput.h is needed either. */
 enum {
@@ -55,7 +58,7 @@ enum {
 /* SM64DS_PAD_BACKEND=xinput|dinput|none, read once in port_pad_init. Forcing
    dinput is how the fallback arm is exercised on a machine whose pad XInput
    already sees; none is a pad-less run on a machine with a pad. */
-enum { MODE_AUTO, MODE_XINPUT, MODE_DINPUT, MODE_NONE };
+enum { MODE_AUTO, MODE_XINPUT, MODE_DINPUT, MODE_NONE, MODE_SDL };
 static int g_mode = MODE_AUTO;
 
 /* ------------------------------------------------------- shared state, lock */
@@ -63,6 +66,11 @@ static int g_mode = MODE_AUTO;
 static CRITICAL_SECTION g_lock;
 static volatile LONG xi_slot = -1;      /* the XInput slot answering, or -1 */
 static volatile LONG g_rescan_now = 0;  /* WM_DEVICECHANGE: scan on the next pass */
+static int sdl_pub_live;                /* under g_lock: an SDL gamepad answers */
+static PortPadState sdl_pub_state;      /* under g_lock: its last translated state */
+static volatile LONG g_script_req;      /* SM64DS_PAD_SDL_SCRIPT: polls asked for ... */
+static volatile LONG g_script_ack;      /* ... and polls the worker has answered */
+static int g_sdl_script;                /* the scripted test hook is on */
 static int di_pub_live;                 /* under g_lock: a DirectInput pad answers */
 static PortPadState di_pub_state;       /* under g_lock: its last translated state */
 static char describe_buf[160] = "none"; /* under g_lock */
@@ -184,6 +192,21 @@ static volatile LONG g_relayout;
 static PadLayout di_over_row;                       /* worker only */
 static int di_learned;                              /* worker only */
 static PortPadRaw di_pub_raw;                       /* under g_lock */
+
+#ifdef PORT_PAD_SDL
+/* SDL asks, per pad it is about to open, whether the player taught that vid:pid a
+   layout: that layout is written for DirectInput's raw button numbers, so such a pad is
+   left to the DirectInput backend. Called on the worker. */
+static int sdl_is_learned(unsigned vid, unsigned pid)
+{
+    int r = 0;
+    EnterCriticalSection(&g_lock);
+    for (int i = 0; i < g_over_n; ++i)
+        if ((unsigned)g_over[i].vid == vid && (unsigned)g_over[i].pid == pid) r = 1;
+    LeaveCriticalSection(&g_lock);
+    return r;
+}
+#endif
 
 static signed char sc(int v) { return (signed char)v; }
 
@@ -572,13 +595,71 @@ static void announce(void)
 
 static DWORD WINAPI pad_worker(void *)
 {
+#ifdef PORT_PAD_SDL
+    /* SDL3's gamepad API is the first backend: PlayStation, Switch Pro, 8BitDo,
+       generic and Xbox pads, with hot-plug. It is started before the legacy backends
+       look, so a pad SDL knows is never bound twice. Everything SDL does, including its
+       start-up cost, happens here and not on the game thread. */
+    int sdl_ready = 0, sdl_was_bound = 0;
+    char sdl_desc[160] = "";
+    if (g_mode == MODE_AUTO || g_mode == MODE_SDL) {
+        const DWORD t0 = GetTickCount();
+        sdl_ready = pad_sdl_init(sdl_is_learned);
+        if (sdl_ready) {
+            fprintf(stderr, "[pad] SDL3 gamepad backend ready (%lu ms)\n",
+                    (unsigned long)(GetTickCount() - t0));
+        } else {
+            fprintf(stderr, "[pad] SDL3 gamepad backend unavailable; %s\n",
+                    g_mode == MODE_SDL ? "no pad (SM64DS_PAD_BACKEND=sdl)"
+                                       : "using XInput and DirectInput");
+        }
+        fflush(stderr);
+    }
+    const int legacy = g_mode != MODE_SDL;
+    if (legacy && g_mode != MODE_DINPUT) xinput_load();
+    if (legacy && g_mode != MODE_XINPUT) dinput_load();
+#else
     if (g_mode != MODE_DINPUT) xinput_load();
     if (g_mode != MODE_XINPUT) dinput_load();
+#endif
     DWORD last_xi = 0, last_di = 0;
     int first = 1;
     for (;;) {
         const DWORD now = GetTickCount();
         const int kick = InterlockedExchange(&g_rescan_now, 0) != 0;
+#ifdef PORT_PAD_SDL
+        if (sdl_ready) {
+            /* the scripted test hook: one poll of the game thread = one step of the
+               script, applied and published before the poll is answered */
+            const LONG req = g_script_req;
+            if (req != g_script_ack) pad_sdl_script_apply((int)req - 1);
+            PortPadState s;
+            const int bound = pad_sdl_pump(&s, sdl_desc, sizeof sdl_desc);
+            EnterCriticalSection(&g_lock);
+            sdl_pub_live = bound;
+            if (bound) sdl_pub_state = s;
+            LeaveCriticalSection(&g_lock);
+            if (req != g_script_ack) InterlockedExchange(&g_script_ack, req);
+            if (bound) {
+                /* an SDL pad answers: the legacy backends are not scanned (no
+                   duplicate input, no HID traffic), exactly as DirectInput is not
+                   scanned while an XInput slot answers */
+                describe_set(sdl_desc);
+                sdl_was_bound = 1;
+                Sleep(DI_POLL_MS);
+                continue;
+            }
+            if (sdl_was_bound) {            /* it went away: look at the rest at once */
+                sdl_was_bound = 0;
+                first = 1;
+            }
+            if (!legacy) {
+                describe_set("none");
+                Sleep(IDLE_MS);
+                continue;
+            }
+        }
+#endif
         /* XInput: confirm the known slot, or look for one */
         if (XInputGetState_) {
             if (xi_slot >= 0) {
@@ -645,13 +726,17 @@ int port_pad_init(void)
         if (!_stricmp(e, "xinput")) g_mode = MODE_XINPUT;
         else if (!_stricmp(e, "dinput")) g_mode = MODE_DINPUT;
         else if (!_stricmp(e, "none")) g_mode = MODE_NONE;
+#ifdef PORT_PAD_SDL
+        else if (!_stricmp(e, "sdl")) g_mode = MODE_SDL;
+#endif
         if (g_mode != MODE_AUTO) {
             fprintf(stderr, "[pad] forced: %s (SM64DS_PAD_BACKEND)\n",
                     g_mode == MODE_XINPUT ? "xinput only"
-                    : g_mode == MODE_DINPUT ? "dinput only" : "none");
+                    : g_mode == MODE_DINPUT ? "dinput only"
+                    : g_mode == MODE_SDL ? "sdl only" : "none");
             fflush(stderr);
         } else {
-            fprintf(stderr, "[pad] SM64DS_PAD_BACKEND=%s is not xinput, dinput "
+            fprintf(stderr, "[pad] SM64DS_PAD_BACKEND=%s is not sdl, xinput, dinput "
                             "or none; ignored\n", e);
             fflush(stderr);
         }
@@ -660,6 +745,10 @@ int port_pad_init(void)
         describe_set("none (forced)");
         return 0;
     }
+#ifdef PORT_PAD_SDL
+    g_sdl_script = (g_mode == MODE_AUTO || g_mode == MODE_SDL) &&
+                   getenv("SM64DS_PAD_SDL_SCRIPT") != 0;
+#endif
     /* the layouts settings.json remembers, before the worker exists so its
        first bind already sees them */
     {
@@ -683,6 +772,24 @@ int port_pad_poll(PortPadState *out)
 {
     if (!inited) port_pad_init();
     if (g_mode == MODE_NONE) return 0;
+#ifdef PORT_PAD_SDL
+    if (g_mode == MODE_AUTO || g_mode == MODE_SDL) {
+        if (g_sdl_script) {
+            /* test hook only: hand the worker this poll's number and wait for it to
+               apply the script step and publish (bounded, so a dead worker cannot
+               stall the game) */
+            const LONG req = InterlockedIncrement(&g_script_req);
+            for (int i = 0; i < 500 && g_script_ack != req; ++i) Sleep(1);
+        }
+        int sdl_live;
+        EnterCriticalSection(&g_lock);
+        sdl_live = sdl_pub_live;
+        if (sdl_live) *out = sdl_pub_state;
+        LeaveCriticalSection(&g_lock);
+        if (sdl_live) return 1;
+        if (g_mode == MODE_SDL) return 0;
+    }
+#endif
     /* the known XInput slot: one cheap call, never an empty slot */
     const LONG slot = xi_slot;
     if (slot >= 0 && XInputGetState_) {
@@ -719,6 +826,13 @@ int port_pad_raw(PortPadRaw *out)
        is XInput's own; there is nothing to learn on it */
     if (xi_slot >= 0) return 0;
     EnterCriticalSection(&g_lock);
+    if (sdl_pub_live) {
+        /* an SDL gamepad is the pad the game hears; its mapping is SDL's, and a
+           raw DirectInput button map has nothing to teach (SM64DS_PAD_BACKEND=dinput
+           brings the learn flow back for a pad SDL gets wrong) */
+        LeaveCriticalSection(&g_lock);
+        return 0;
+    }
     if (di_pub_live && di_pub_raw.live) *out = di_pub_raw;
     LeaveCriticalSection(&g_lock);
     return out->live;
