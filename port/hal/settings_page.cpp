@@ -614,7 +614,7 @@ struct State {
     int open, pending, hold_touch, settle, settle_n, swallow_back;
     int tab, sel, col;                 /* sel == nrows: the Reset plank */
     int scroll;                        /* body pixels scrolled */
-    int dd_open, dd_hi;                /* a drop-down list is open on row sel */
+    int dd_open, dd_hi, dd_first;      /* a drop-down list is open on row sel; dd_first: top visible item when the list is clamped */
     int cap_active, cap_id, cap_frames;/* a rebind is waiting */
     int drag;                          /* a slider row being dragged, -1 none */
     int cursor_shown;                  /* the pad / key selection arrow shows */
@@ -768,6 +768,37 @@ void compute_layout(int w, int h)
     if (S.scroll < 0) S.scroll = 0;
     for (int i = 0; i < n && i < MAXR; ++i) { L.r[i].y = L.body[1] + i * L.rowh - S.scroll; L.r[i].h = L.rowh; }
     L.bar[0] = L.sx + L.sw - P(34); L.bar[2] = P(12); L.bar[1] = L.body[1]; L.bar[3] = vis;
+}
+
+/* DDFIX1: where the opened list of the drop-down on row `sel` is drawn and hit. It opens below the box; when that would cross the bottom of the
+   sheet (which sits inside the picture) it opens upward; when neither side holds it, it takes the roomier side, shows what fits and scrolls
+   (dd_first follows dd_hi). Drawing, mouse hit boxes and pad / key focus all read this one answer. */
+struct DdGeom { int ly, lhh, first, vis, lh, lx, lw; };
+DdGeom dd_geom(int sel, int nn)
+{
+    DdGeom g;
+    const int bh = P(46), by = L.r[sel].y + (L.rowh - bh) / 2;
+    g.lh = P(44); g.lx = L.ctl_x; g.lw = L.ctl_w;
+    const int pad = P(16), gap = P(2), edge = P(6);
+    const int top = L.sy + edge, bot = L.sy + L.sh - edge;
+    const int need = g.lh * nn + pad;
+    const int below = bot - (by + bh + gap), above = (by - gap) - top;
+    g.first = 0; g.vis = nn;
+    if (need <= below) { g.ly = by + bh + gap; g.lhh = need; return g; }
+    if (need <= above) { g.lhh = need; g.ly = by - gap - need; return g; }
+    const bool dn = below >= above;
+    const int room = dn ? below : above;
+    int vis = (room - pad) / g.lh;
+    if (vis < 1) vis = 1;
+    if (vis > nn) vis = nn;
+    g.vis = vis; g.lhh = g.lh * vis + pad;
+    g.ly = dn ? by + bh + gap : by - gap - g.lhh;
+    if (S.dd_hi < S.dd_first) S.dd_first = S.dd_hi;
+    if (S.dd_hi >= S.dd_first + vis) S.dd_first = S.dd_hi - vis + 1;
+    if (S.dd_first > nn - vis) S.dd_first = nn - vis;
+    if (S.dd_first < 0) S.dd_first = 0;
+    g.first = S.dd_first;
+    return g;
 }
 
 /* the keycap widths of one binding row, for both layout and the draw */
@@ -939,7 +970,7 @@ void drag_slider(const Row &R, int mx)
 void activate(const Row &R, int col)
 {
     switch (R.t) {
-    case R_CHOICE: S.dd_open = 1; S.dd_hi = ch_idx(R, sl_get(R.id)); break;
+    case R_CHOICE: S.dd_open = 1; S.dd_hi = ch_idx(R, sl_get(R.id)); S.dd_first = 0; break;
     case R_CHECK: adjust(R, 1, 0); break;
     case R_BIND: start_capture(col ? R.id2 : R.id); break;
     default: break;
@@ -1075,21 +1106,29 @@ extern "C" int settings_page_frame(const SpInput *in)
         /* the open drop-down list */
         const Row &R = rows[S.sel];
         const SlInfo *I = sl_info(R.id);
-        const int bh = P(46), by = L.r[S.sel].y + (L.rowh - bh) / 2, lh = P(44);
         (void)I;
         if (repeat_fire(0, held)) { if (S.dd_hi > 0) --S.dd_hi; }
         if (repeat_fire(1, held)) { if (S.dd_hi < R.nn - 1) ++S.dd_hi; }
+        const DdGeom G = dd_geom(S.sel, R.nn);
+        const int row0 = G.ly + P(8);
+        if (in->wheel && G.vis < R.nn) {
+            S.dd_first -= in->wheel;
+            if (S.dd_first > R.nn - G.vis) S.dd_first = R.nn - G.vis;
+            if (S.dd_first < 0) S.dd_first = 0;
+            if (S.dd_hi < S.dd_first) S.dd_hi = S.dd_first;                 /* the highlight stays on a drawn row */
+            if (S.dd_hi > S.dd_first + G.vis - 1) S.dd_hi = S.dd_first + G.vis - 1;
+        }
         if (edge_only(4, held)) { set_value(R.id, ch_val(R, S.dd_hi)); S.dd_open = 0; }
         else if (edge_only(5, held)) { S.dd_open = 0; }
         else if (l_edge) {
-            if (mx >= L.ctl_x && mx < L.ctl_x + L.ctl_w && my >= by + bh && my < by + bh + lh * R.nn + P(16)) {
-                const int i = (my - (by + bh + P(8))) / lh;
-                if (i >= 0 && i < R.nn) set_value(R.id, ch_val(R, i));
+            if (mx >= G.lx && mx < G.lx + G.lw && my >= G.ly && my < G.ly + G.lhh) {
+                const int i = G.first + (my - row0) / G.lh;
+                if (my >= row0 && i >= G.first && i < G.first + G.vis && i < R.nn) set_value(R.id, ch_val(R, i));
             }
             S.dd_open = 0;
-        } else if (moved && mx >= L.ctl_x && mx < L.ctl_x + L.ctl_w) {
-            const int i = (my - (by + bh + P(8))) / lh;
-            if (i >= 0 && i < R.nn) S.dd_hi = i;
+        } else if (moved && mx >= G.lx && mx < G.lx + G.lw) {
+            const int i = G.first + (my - row0) / G.lh;
+            if (my >= row0 && i >= G.first && i < G.first + G.vis && i < R.nn) S.dd_hi = i;
         }
     } else {
         /* ---- navigation ---- */
@@ -1698,15 +1737,21 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
     }
     if (S.dd_open && S.sel < n && rows[S.sel].t == R_CHOICE) {   /* the open drop-down list, over the rows */
         const Row &R = rows[S.sel];
-        const int bh = P(46), by = L.r[S.sel].y + (L.rowh - bh) / 2, lh = P(44);
-        const int lx = L.ctl_x, ly = by + bh + P(2), lw = L.ctl_w, lhh = lh * R.nn + P(16);
-        const Piece *p = purple_piece(lw, lhh);
+        const DdGeom G = dd_geom(S.sel, R.nn);
+        const int lx = G.lx, ly = G.ly, lw = G.lw, lh = G.lh;
+        const Piece *p = purple_piece(lw, G.lhh);
         if (p) blit(s, p->px, p->w, p->h, lx, ly, 255, 0, 0, 0);
-        const SlInfo *I = sl_info(R.id);
-        for (int i = 0; i < R.nn; ++i) {
-            const int ry = ly + P(8) + i * lh;
+        for (int k = 0; k < G.vis; ++k) {
+            const int i = G.first + k;
+            const int ry = ly + P(8) + k * lh;
             if (i == S.dd_hi) fill_rrect(s, (float)(lx + P(6)), (float)ry, (float)(lw - P(12)), (float)lh, (float)P(6), 0xFFFFFF, 80, 0);
             text_mid(s, (float)(lx + P(18)), ry + lh * 0.5f, R.names[i], lh * 0.62f, 0xFFFFFF, 255, 0);
+        }
+        if (G.vis < R.nn) {                               /* clamped list: a thin scroll thumb on its right edge */
+            const int tx = lx + lw - P(13), ty = ly + P(10), th = G.lhh - P(20);
+            fill_rrect(s, (float)tx, (float)ty, (float)P(4), (float)th, (float)P(2), 0xFFFFFF, 70, 0);
+            const int kh = th * G.vis / R.nn, ky = ty + (th - kh) * G.first / (R.nn - G.vis);
+            fill_rrect(s, (float)tx, (float)ky, (float)P(4), (float)kh, (float)P(2), 0xFFFFFF, 230, 0);
         }
     }
     }
