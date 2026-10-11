@@ -128,7 +128,7 @@ def check_thi_switch(row, cons, ctl, bit):
     for j in (1, 2, 3):
         tl = SW.timeline(cons[j].text())
         up = SW.first_bit(tl, bit, 1, pw - 50)
-        verdict(row, "switch word bit %d on %s" % (bit, NAMES[j]), up is not None and upA is not None and abs(up - upA) <= 500,
+        verdict(row, "switch word bit %d on %s" % (bit, NAMES[j]), up is not None and 0 <= up - pw <= 500,
                 "A +%s B +%s" % (upA and upA - pw, up and up - pw), not (ctl and j == 3))
 
 
