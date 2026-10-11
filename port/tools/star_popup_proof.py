@@ -134,7 +134,7 @@ def row_pforge():
 P.ROWS.update(pstar=lambda: run_star("pstar"), pstar_off=lambda: run_star("pstar_off", True),
               pkey=lambda: run_fake("pkey", 2, 1, 36, True, (2, 10)),
               pnoexit=lambda: run_fake("pnoexit", 1, 0, BOB, False),
-              phold=lambda: run_fake("phold", 1, 1, BOB, True, None, os.environ.get("SP_HOLD", "1000:2500")),
+              phold=lambda: run_fake("phold", 1, 1, BOB, True, None, os.environ.get("SP_HOLD", "950:1200")),
               pforge=row_pforge)
 
 if __name__ == "__main__":
