@@ -686,7 +686,7 @@ void apply_rx(int slot, Boss &b, unsigned now) {
 
 void process(unsigned now) {
     const unsigned wnow = comms_hub_now_ms();
-    unsigned char recs[kPayloadMax]; int nrec = 0, bytes = 0;
+    unsigned char recs[kPayloadMax]; int nrec = 0, bytes = 0; bool urgent = false;
     for (int slot = 0; slot < kSlots; ++slot) {
         Boss &b = g_boss[slot];
         if (!b.a) continue;
@@ -770,6 +770,8 @@ void process(unsigned now) {
         if (!mine || !g_on) continue;
         // I am the authority: publish when anything changed, and as a heartbeat
         uint32_t w[kBossMaxFields]; bool changed = !b.lw_valid;
+        // a hit is never held back by the rate limit: the boss can be gone (a dead Eyerok hand destroys itself) before the next heartbeat
+        if (b.lw_valid && (int32_t)read_field(b.a, d.f[d.hp]) < (int32_t)b.last_w[d.hp]) urgent = true;
         for (int k = 0; k < d.nf; ++k) { w[k] = read_field(b.a, d.f[k]); if (b.lw_valid && w[k] != b.last_w[k] && !(d.f[k].kind & kVol)) changed = true; }
         if (changed || (unsigned)(now - b.pub_t) >= (unsigned)kBossHeartbeatMs) {
             if (bytes + rec_bytes(d) <= kPayloadMax - (int)sizeof(BossHead) && nrec < kBossMaxRecs) {
@@ -778,7 +780,7 @@ void process(unsigned now) {
             }
         }
     }
-    if (nrec > 0 && take_token(now)) send_batch(kWorldBossState, 0, recs, nrec, bytes);
+    if (nrec > 0 && (urgent || take_token(now))) send_batch(kWorldBossState, 0, recs, nrec, bytes);
 }
 
 // SM64DS_COOP_BOSS_HIT=F[,F]: from boss tick F, on THIS console, hit the first boss the ROM's own way. Where the class has a
@@ -1136,7 +1138,17 @@ void coop_boss_on_world(int seat, int sub, const unsigned char *p, int len) {
             g_claim_until[seat] = now + 3000u; ++g_st.claims;
         } else if (seat != auth) {
             // a late record from the authority before this one, within two seconds, still counts
-            if (!(b.last_auth == seat && (unsigned)(now - b.auth_t) < 2000u)) { ++g_st.drop_notauth; continue; }
+            if (!(b.last_auth == seat && (unsigned)(now - b.auth_t) < 2000u)) {
+                // two consoles can briefly disagree about the authority (the target seat changes with a 1 s hold): a lower HP is a hit and
+                // counts for everybody whoever sent it, so the hit is never lost to the disagreement
+                int rh = (int)w[d->hp]; if ((d->f[d->hp].kind & kS8) && rh < 0) rh = 0;
+                const int lh = (int)read_field(b.a, d->f[d->hp]);
+                if (d->cls != 218 && rh >= 0 && rh < lh) {
+                    write_field(b.a, *d, d->hp, (uint32_t)rh); b.synced_hp = rh; ++g_st.applied_hp;
+                    if (g_log) std::fprintf(stderr, "[cbs] hp-from-nonauth slot=%d hp %d->%d from seat %d (auth %d) w=%lld\n", (int)r.slot, lh, rh, seat, auth, wall_ms());
+                }
+                ++g_st.drop_notauth; continue;
+            }
         }
         b.rx.valid = true; b.rx.fresh = true; b.rx.t = now; b.rx.seq = r.seq; b.rx.rflags = r.rflags; b.rx.from = seat;
         std::memcpy(b.rx.w, w, sizeof w);
