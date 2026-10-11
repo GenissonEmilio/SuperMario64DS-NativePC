@@ -90,3 +90,6 @@ ROW(121, "ROTATING_COG_BIG",    200, 8, 150, 2, 0)
 ROW(122, "ROTATING_COG_SMALL",  200, 8, 150, 2, 0)
 ROW(127, "SWINGING_PLATFORM",   200, 8, 150, 2, 0)
 ROW(294, "CLOCK_PENDULUM",      200, 8, 150, 2, 0)
+// ---- bosses (run mp1, lane BOSSCORE1): the pose rides this table, HP / state / defeat ride hal/coop_boss.cpp ----
+ROW(165, "WHOMP_KING",          100, 12, 200, 2, 0)
+ROW(189, "KING_BOB_OMB",        100, 16, 250, 2, 0)
