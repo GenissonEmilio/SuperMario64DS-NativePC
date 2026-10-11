@@ -99,7 +99,7 @@ struct CoopMoveStats {
     unsigned long long batches_rx, recs_rx, applied_write, applied_ease, in_band, skipped_state, cls_mismatch,
                        snap_applied, no_ent, owner_changes, owner_stale, throttled, slaved;
     unsigned long long drop_bad, drop_group, drop_member, drop_ver, drop_far, drop_off, drop_seat;
-    unsigned long long drop_val, rows_dropped, write_refused, size_mismatch;   // size / value guard (COOPMOVE1_FIX)
+    unsigned long long drop_val, rows_dropped, write_refused, size_mismatch, overrun;   // size / value guard (COOPMOVE1_FIX)
 };
 CoopMoveStats coop_move_stats();
 

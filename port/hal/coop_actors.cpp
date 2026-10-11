@@ -33,6 +33,7 @@ namespace {
 // Profiles.
 // ---------------------------------------------------------------------------
 CoopMoveStats g_st = {};
+bool g_guard = true;          // SM64DS_COOP_MOVE_GUARD=0 is the proof CONTROL: no size / value guard (the pre-fix behaviour)
 enum : unsigned { kFPhase = 1u, kFSlave = 2u };   // kFSlave: the non-owner pins the pose every frame to the owner's, extrapolated
 // A phase field: where it sits, how wide it is, and the range a received value must lie in (signed for width 4, unsigned for 1 / 2).
 struct Field { uint16_t off; uint8_t size; int32_t lo, hi; };
@@ -82,13 +83,14 @@ bool field_ok(const Field &f, unsigned size) {
     const bool speed_words = f.off >= 0x98 && (int)f.off + f.size <= 0xb0;       // mHorzSpeed .. unk_0ac
     if (!speed_words) {
         if (f.off < kFieldLo || (int)f.off + f.size > kFieldHi) return false;
-        if (size == 0 || (unsigned)f.off + f.size > size) return false;
+        if (g_guard && (size == 0 || (unsigned)f.off + f.size > size)) return false;
     }
     return (f.off % f.size) == 0;
 }
 
 // A received phase value must lie in the field's range (a forged record must not write an arbitrary value).
 bool value_ok(const Field &f, uint32_t v) {
+    if (!g_guard) return true;
     long long x;
     if (f.size == 4) x = (int32_t)v; else if (f.size == 2) x = (uint16_t)v; else x = (uint8_t)v;
     return x >= f.lo && x <= f.hi;
@@ -243,6 +245,7 @@ void read_env() {
     auto flag = [](const char *n, bool dflt) { const char *e = std::getenv(n); return (e && *e) ? *e != '0' : dflt; };
     g_log = flag("SM64DS_COOP_MOVE_LOG", false);
     g_act = flag("SM64DS_COOP_ACT", true);
+    g_guard = flag("SM64DS_COOP_MOVE_GUARD", true);
     g_snap_on = flag("SM64DS_COOP_MOVE_SNAP", true);
     g_god = flag("SM64DS_COOP_MOVE_GOD", false);
     g_hyst = flag("SM64DS_COOP_MOVE_HYST", true);
@@ -274,6 +277,7 @@ void read_env() {
         }
     }
     prof_index();
+    if (!g_guard) std::fprintf(stderr, "[coopmove] GUARD OFF (proof control): no class-size or value checks\n");
     if (const char *pf = std::getenv("SM64DS_COOP_MOVE_PROFILE")) if (*pf) load_profile_file(pf);
     std::fprintf(stderr, "[coopmove] phase 2 %s: %d classes%s%s%s%s\n", g_act ? "on" : "OFF (control)", g_nprof,
                  g_snap_on ? "" : ", snapshot OFF", g_hyst ? "" : ", hysteresis OFF", g_stale_on ? "" : ", stale-owner expiry OFF",
@@ -333,8 +337,13 @@ bool live_holds(const char *a, const Field &f) {
     return !sane || (unsigned)f.off + f.size <= live;
 }
 void write_field(char *a, const Prof &p, const Field &f, uint32_t v) {
-    if (p.dead || !field_ok(f, p.size) || !value_ok(f, v)) { ++g_st.write_refused; return; }
-    if (f.off >= kFieldLo && !live_holds(a, f)) { ++g_st.write_refused; return; }
+    if (p.dead || !field_ok(f, p.size) || !value_ok(f, v)) { ++g_st.write_refused; return; }   // (guard off: only the header-range test applies)
+    if (f.off >= kFieldLo && !live_holds(a, f)) {
+        if (g_guard) { ++g_st.write_refused; return; }
+        if (++g_st.overrun <= 8)
+            std::fprintf(stderr, "[coopmove] OVERRUN (guard off) class %d writes %#x+%d past its live block %#x\n", (int)p.id, (unsigned)f.off,
+                         (int)f.size, (unsigned)rd32(a, -12));
+    }
     std::memcpy(a + f.off, &v, f.size);
 }
 
@@ -878,11 +887,11 @@ void stats_line() {
     const CoopMoveStats &s = g_st;
     std::fprintf(stderr,
         "[movestat] seat=%d ents=%llu sent b%llu r%llu sb%llu sr%llu req%llu served%llu rx b%llu r%llu applied w%llu e%llu band%llu "
-        "skip%llu clsmis%llu snapapp%llu noent%llu owner_ch%llu stale%llu thr%llu slv%llu drop bad%llu group%llu member%llu ver%llu far%llu off%llu seat%llu val%llu rowsdrop%llu wrefused%llu sizemis%llu\n",
+        "skip%llu clsmis%llu snapapp%llu noent%llu owner_ch%llu stale%llu thr%llu slv%llu drop bad%llu group%llu member%llu ver%llu far%llu off%llu seat%llu val%llu rowsdrop%llu wrefused%llu sizemis%llu overrun%llu\n",
         g_my, s.ents, s.batches_sent, s.recs_sent, s.snap_batches_sent, s.snap_recs_sent, s.req_sent, s.req_served,
         s.batches_rx, s.recs_rx, s.applied_write, s.applied_ease, s.in_band, s.skipped_state, s.cls_mismatch, s.snap_applied,
         s.no_ent, s.owner_changes, s.owner_stale, s.throttled, s.slaved, s.drop_bad, s.drop_group, s.drop_member, s.drop_ver, s.drop_far,
-        s.drop_off, s.drop_seat, s.drop_val, s.rows_dropped, s.write_refused, s.size_mismatch);
+        s.drop_off, s.drop_seat, s.drop_val, s.rows_dropped, s.write_refused, s.size_mismatch, s.overrun);
 }
 
 // ---------------------------------------------------------------------------
