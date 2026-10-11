@@ -1013,19 +1013,20 @@ bool bossdesc2_knob(Boss &b, HitKnob &k) {
             if (*(const unsigned short *)(x + 0x0c) == 284 && rd32(x, 0x170) == 0) { bomb = x; break; }
         if (!bomb) { std::fprintf(stderr, "[cbs-knob] bomb: no live bomb actor (class 284) in this arena w=%lld\n", wall_ms()); k.done = true; return true; }
         if (k.lethal && (int8_t)a[0x41e] > 1) { a[0x41e] = 1; k.hp0 = 1; }
-        int32_t px = rd32(bomb, 0x174), py = rd32(bomb, 0x178), pz = rd32(bomb, 0x17c);
-        // The bombs hang in the air around the arena's rim: land Bowser inside the hit sphere but on the arena side of the rim, so he does not
-        // fall into the pit beside the platform (the first try, exactly on the bomb, did and the level ended).
+        // The bombs hang in the air on a ring beyond the arena's floor, so Bowser put on one falls into the pit (measured: the level ended). The
+        // bomb is brought to him instead: its point and ring radius are set to where he stands on the floor, and the ROM's own test
+        // (func_ov060_02113d20 -> 02118544: ring radius +-300 and distance < the sphere) then finds it.
+        const int32_t bx = rd32(a, 0x5c), by = rd32(a, 0x60), bz = rd32(a, 0x64);
+        const int32_t hlen = (int32_t)std::sqrt((double)bx * bx + (double)bz * bz);
+        std::memcpy(bomb + 0x174, &bx, 4); std::memcpy(bomb + 0x178, &by, 4); std::memcpy(bomb + 0x17c, &bz, 4);
+        std::memcpy(bomb + 0x180, &hlen, 4);
         const int32_t rad = rd32(bomb, 0x184);
-        const double hl = std::sqrt((double)px * px + (double)pz * pz);
-        if (hl > 1.0 && rad > 0) { const double off = (std::min)((double)rad * 0.6, 250.0 * 4096.0);      // the ROM's ring test allows +-300 units around the ring radius
-            const double f = 1.0 - off / hl; px = (int32_t)(px * f); pz = (int32_t)(pz * f); }
-        std::memcpy(a + 0x5c, &px, 4); std::memcpy(a + 0x60, &py, 4); std::memcpy(a + 0x64, &pz, 4);
+        const int32_t px = bx, py = by, pz = bz;
         const int32_t one = 1, zero = 0;
         std::memcpy(a + 0x40c, &one, 4); std::memcpy(a + 0x410, &zero, 4); a[0x423] = 0;
         k.tick = g_ticks + 4;
         if (++k.slot_tries >= 60) { k.done = true; std::fprintf(stderr, "[cbs-knob] bomb: gave up after 60 tries hp=%d w=%lld\n", hp_of(b), wall_ms()); }
-        else if (k.slot_tries == 1) std::fprintf(stderr, "[cbs-knob] bomb: Bowser put on the bomb at %d,%d,%d in his thrown state (sphere radius %d, ring %d), the ROM decides hp=%d st=%u w=%lld\n", px >> 12, py >> 12, pz >> 12, rad >> 12, rd32(bomb, 0x180) >> 12, hp_of(b), state_of(b), wall_ms());
+        else if (k.slot_tries == 1) std::fprintf(stderr, "[cbs-knob] bomb: the bomb brought to Bowser at %d,%d,%d, he is in his thrown state (sphere radius %d, ring %d), the ROM decides hp=%d st=%u w=%lld\n", px >> 12, py >> 12, pz >> 12, rad >> 12, rd32(bomb, 0x180) >> 12, hp_of(b), state_of(b), wall_ms());
         return true;
     } else if (cls == 279) {
         if (k.lethal && (int8_t)a[0x41e] > 1) a[0x41e] = 1;
