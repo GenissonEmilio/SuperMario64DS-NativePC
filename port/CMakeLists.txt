@@ -24248,21 +24248,17 @@ endforeach()
 # enter the import table. tools/sdl_import_guard.py runs after the link and fails the
 # build if any DLL but KERNEL32 is imported. Regenerate the shim with
 # third_party/SDL3_glue/gen_sdl_shim.py when SDL is updated.
+#
+# run hunt8, lane SDLFIX1: a thunk whose function cannot be resolved returns the failure
+# value of the function's own return type (E_FAIL for HRESULT, CR_FAILURE for CONFIGRET,
+# ...), not a blanket 0; SDL's process spawning, open-URL and Steam storage are not built
+# (sdl_build.cmake, sdl_f2_stubs.c), so those Win32 names leave the exe.
 if(WIN32 AND MSVC AND TARGET walk_window AND TARGET walk_window_hires)
     enable_language(ASM_MASM)
-    set(SDL_STATIC ON CACHE BOOL "" FORCE)
-    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-    foreach(_sdlpad1_off IN ITEMS SDL_AUDIO SDL_VIDEO SDL_GPU SDL_RENDER SDL_CAMERA
-            SDL_HAPTIC SDL_POWER SDL_DIALOG SDL_TRAY SDL_TESTS SDL_TEST_LIBRARY
-            SDL_INSTALL SDL_UNINSTALL SDL_EXAMPLES SDL_DIRECTX SDL_VULKAN SDL_OPENGL
-            SDL_OPENGLES SDL_OFFSCREEN SDL_DUMMYVIDEO SDL_DUMMYAUDIO SDL_DISKAUDIO)
-        set(${_sdlpad1_off} OFF CACHE BOOL "" FORCE)
-    endforeach()
-    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3"
-                     "${CMAKE_CURRENT_BINARY_DIR}/sdl3" EXCLUDE_FROM_ALL)
-    # SDL names the SDK import libraries as its link interface; the shim replaces
-    # them, so the exe links only the static data libraries SDL's GUIDs live in.
-    set_property(TARGET SDL3-static PROPERTY INTERFACE_LINK_LIBRARIES "")
+    # The SDL3-static build (options, source filter, stubs) lives in one file so the
+    # shim-regeneration probe builds the identical library.
+    set(SDL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3")
+    include("${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3_glue/sdl_build.cmake")
     set(_sdlpad1_glue "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3_glue")
     foreach(_sdlpad1_t IN ITEMS walk_window walk_window_hires)
         target_sources(${_sdlpad1_t} PRIVATE

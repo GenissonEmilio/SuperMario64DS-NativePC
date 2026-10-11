@@ -2,8 +2,10 @@
    pushes its table index and calls this; the answer is cached, so a function costs one
    LoadLibrary/GetProcAddress the first time SDL calls it and one table read after.
    Every DLL is loaded from the system directory by full path. A function that cannot be
-   found answers 0 (the thunk then returns 0 with the right stack cleanup), so a missing
-   optional API reads as "this call failed", which is how SDL treats it. */
+   found answers 0 here; the generated thunk then returns the FAILURE VALUE OF THE
+   FUNCTION'S OWN RETURN TYPE (E_FAIL for HRESULT, CR_FAILURE for CONFIGRET, ... see
+   sdl_shim_failures.tsv) with the right stack cleanup, so a missing optional API reads as
+   "this call failed" to SDL even where 0 would mean success. */
 #include <windows.h>
 
 extern const char *const sdlshim_names[];
