@@ -73,9 +73,16 @@ struct CoopBossStats {
     unsigned long long ticks, bosses, sent, recs_sent, hits_sent, rx, recs_rx, hits_rx;
     unsigned long long applied_state, applied_hp, applied_fields, state_mismatch, hit_local, hit_adopted, claims;
     unsigned long long drop_bad, drop_group, drop_member, drop_notauth, drop_cls, drop_off, drop_seat;
-    unsigned long long stars_spawned, stars_suppressed, hit_spurious;
+    unsigned long long stars_spawned, stars_suppressed, hit_spurious, dead_marked;
 };
 CoopBossStats coop_boss_stats();
+
+// bossfix1. True while a Bowser (class 279) is in its defeat state: coop_target then answers the LOCAL player for it, so the defeat talk
+// runs with each console's own player instead of a parked friend.
+bool coop_boss_prefer_local(const char *actor);
+// True when a boss was seen on this console within the last 4 s and another console is its authority: a reward (key, Grand Star)
+// spawned here natively is then a duplicate of the authority's announced one.
+bool coop_boss_reward_not_mine();
 
 // Validator (payload = after the 12-byte head).
 bool coop_boss_validate(const void *payload, int len);

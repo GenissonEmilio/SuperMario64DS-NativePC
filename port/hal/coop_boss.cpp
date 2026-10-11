@@ -24,6 +24,8 @@ extern "C" {
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;
 extern short data_02092144[];
+extern int data_0209f4f8[];
+signed char GetLevelPart(int idx);
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 int KingBobOmb_SetState(void *c, void *state);
 // bossdesc1: Chief Chilly's state records (16 x 0x10 at ov073 0x02123320), his ROM transition, Wiggler's ROM transition, ModelAnim::SetAnim
@@ -298,6 +300,8 @@ struct Boss {
     bool retired;                  // bossdesc2: a defeated Bowser copy that was told to go
     uint32_t last_st;              // the state as of the last tick (bossdesc1: Chilly's hit shows as a state change, not an HP change)
     bool heard;                    // an authority record was ever applied here
+    bool def_seen;                 // bossfix1: the boss was seen defeated (or its star was spawned) on this console
+    bool bit_set;                  // bossfix1: its death-table bit is up (a late joiner never gets this boss)
     Rx rx;
 };
 
@@ -553,6 +557,25 @@ void send_batch(int sub, uint8_t flags, const unsigned char *recs, int nrecs, in
 // ---------------------------------------------------------------------------
 // Scan, publish, apply.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// bossfix1: A DEFEATED BOSS STAYS DEAD. The ROM does not track a boss in the death table (re-entering a course fights him again), so a
+// console that joined after the defeat got a live boss. When a boss that was seen defeated is gone from the actor list, its placed
+// slot's bit goes up in the death table: coop_world announces it to the group and hands it to every later joiner in the snapshot, and
+// BeforeInitResources then deletes the boss before it initialises.
+// ---------------------------------------------------------------------------
+unsigned g_recent_t = 0; bool g_recent_mine = true;     // the last time any boss was seen here, and whether I was its authority
+void mark_dead_slot(int slot, Boss &b) {
+    b.bit_set = true;
+    int lv = -1, ac = 0;
+    if (!coop_group_established() || !coop_group_key(&lv, &ac) || slot < 0 || slot >= kSlots) return;
+    const int part = (int)GetLevelPart(lv);
+    if (part < 0 || part > 2) return;
+    unsigned *t = reinterpret_cast<unsigned *>(data_0209f4f8) + part * kCoopWords;
+    t[slot >> 5] |= 1u << (slot & 31);
+    ++g_st.dead_marked;
+    if (g_log) std::fprintf(stderr, "[cbs] dead boss marked: cls=%u slot=%d part=%d (a joiner will not get it) w=%lld\n", (unsigned)b.d->cls, slot, part, wall_ms());
+}
+
 int g_nb = 0;
 char *g_key_seen = nullptr; int g_keys_seen = 0;
 void scan() {
@@ -576,11 +599,29 @@ void scan() {
         if (b.d != d) { b = Boss(); b.d = d; }
         b.a = a; ++b.seen; ++g_nb;
     }
+    for (int i = 0; i < kSlots; ++i) if (!g_boss[i].a && g_boss[i].d && g_boss[i].def_seen && !g_boss[i].bit_set) mark_dead_slot(i, g_boss[i]);
     for (int i = 0; i < kSlots; ++i) if (!g_boss[i].a) { g_boss[i].seen = 0; g_boss[i].known = false; g_boss[i].lw_valid = false; g_boss[i].heard = false; g_boss[i].rx.valid = false; g_boss[i].rx.first_done = false; }
 }
 
 int hp_of(const Boss &b) { return (int)read_field(b.a, b.d->f[b.d->hp]); }
 uint32_t state_of(const Boss &b) { return read_field(b.a, b.d->f[b.d->state]); }
+
+// The point of no return of each boss: after it the ROM only runs the defeat (and the reward). Latched once seen.
+bool is_defeated(const Boss &b) {
+    const int hp = hp_of(b);
+    const uint32_t st = state_of(b);
+    switch (b.d->cls) {
+    case 165: return st == 8u || hp <= 0;                                           // Whomp King: the defeat state / HP 0
+    case 189: return hp <= 0;                                                       // King Bob-omb
+    case 218: return hp <= 0 && (st == 13u || st == 9u || st == 12u || st == 15u || st == 5u);   // Chilly: after the last blow (the revive happens before it)
+    case 216: return hp == 0;                                                       // Big Bully: "alive" field 0 = dying or gone
+    case 210: return hp <= 0 && state_of(b) >= 6u;                                  // Big Boo: no hits left and in a late state
+    case 248: return st == 7u;                                                      // Wiggler: DEAD
+    case 198: return hp <= 0;                                                       // Goomboss: size index 0 = the defeat talk
+    case 279: return hp <= 0 && st == 4u;                                           // Bowser: the defeat state
+    default: return false;                                                          // Eyerok: two hand actors without placed slots, not covered
+    }
+}
 
 void log_sample(int slot, const Boss &b, int auth) {
     char line[320]; int n = std::snprintf(line, sizeof line, "[cbs] w=%lld t=%u slot=%d cls=%u pos=%d,%d,%d auth=%d me=%d hp=%d st=%u",
@@ -646,15 +687,8 @@ void apply_rx(int slot, Boss &b, unsigned now) {
     if (!b.heard) force = ls != rs;
     else if (b.mism >= 2) force = true;
     if (carry_state) force = false;
-    // Bowser's defeat (state 4) ends in a talk with mTargetPlayer, which is the TARGET SEAT's body: on the authority that is its own player,
-    // on any other console it is a parked friend, a talk that can never finish. The authority is the one that talks; the other copies ride
-    // through the steps it reports (forward only) and skip the talk step.
-    if (d.cls == 279 && ls == 4u && rs == 4u) {
-        const unsigned char lstep = (unsigned char)b.a[0x423];
-        unsigned char rstep = (unsigned char)x.w[3];
-        if (rstep >= 10) rstep = 11;
-        if (rstep > lstep) { b.a[0x423] = (char)rstep; if (g_log) std::fprintf(stderr, "[cbs] ride slot=%d step %u->%u from seat %d w=%lld\n", slot, (unsigned)lstep, (unsigned)rstep, x.from, wall_ms()); }
-    }
+    // Bowser's defeat talk: the target seat's body is a parked friend on every console but the authority's; coop_target now answers the
+    // LOCAL player for a Bowser in state 4 (coop_boss_prefer_local), so every console runs the whole talk with its own player.
     if (force) {
         // everything except the HP (already min-merged); the state field goes first so its enter code runs on the old fields
         // The state's enter code can have side effects of its own (King Bob-omb's hurt states take a health point): the HP
@@ -693,6 +727,10 @@ void process(unsigned now) {
         if (!b.a) continue;
         const BDesc &d = *b.d;
         if (!b.known) { b.known = true; b.synced_hp = hp_of(b); b.last_st = state_of(b); }
+        if (!b.def_seen && is_defeated(b)) {
+            b.def_seen = true;
+            if (g_log) std::fprintf(stderr, "[cbs] defeat seen slot=%d cls=%u hp=%d st=%u w=%lld\n", slot, (unsigned)d.cls, hp_of(b), state_of(b), wall_ms());
+        }
         // King Bob-omb carried by MY player (state 707c with my body as the holder): the console that carries him is the one that is right.
         bool claiming = false;
         if (d.cls == 189) {
@@ -723,6 +761,7 @@ void process(unsigned now) {
         }
         const int auth = auth_for(slot, wnow);
         const bool mine = auth == g_my;
+        g_recent_t = wnow | 1u; g_recent_mine = mine;
         // a hit that landed on my copy: HP below what was last synced
         const int hp = hp_of(b);
         if (hp > b.synced_hp && d.cls == 218) b.synced_hp = hp;    // Chilly's revive raises it by himself
@@ -769,14 +808,6 @@ void process(unsigned now) {
             b.last_st = stn;
         }
         if (g_on) apply_rx(slot, b, now);
-        if (d.cls == 279 && g_on && !mine && state_of(b) == 4u) {
-            if ((unsigned char)b.a[0x423] == 10) b.a[0x423] = 11;                 // never the talk with a parked friend
-            if ((unsigned char)b.a[0x423] == 11 && b.heard && (unsigned)(now - b.auth_t) > 2000u && !b.retired) {
-                b.retired = true;                                                  // the authority's copy is done and gone
-                _ZN7fBase_c18MarkForDestructionEv(b.a);
-                if (g_log) std::fprintf(stderr, "[cbs] retire slot=%d (the authority's defeated copy is gone) w=%lld\n", slot, wall_ms());
-            }
-        }
         if (g_log && (unsigned)(now - b.sample_t) >= 500u) { b.sample_t = now; log_sample(slot, b, auth); }
         if (!b.announced_dead && hp_of(b) == 0 && g_log) {
             b.announced_dead = true;
@@ -984,6 +1015,7 @@ bool star_is_mine(dActor_c *self) {
 
 dActor_c *__fastcall star_replacement(dActor_c *self, void * /*edx*/, s8 *trackStarID, u32 starID, const Vector3 *spawnPos, u8 how) {
     self->UntrackStar(*trackStarID);
+    { const short sl = rd16((const char *)self, 0xce); if (sl >= 0 && sl < kSlots && g_boss[sl].d) g_boss[sl].def_seen = true; }
     if (!star_is_mine(self)) {
         ++g_st.stars_suppressed;
         if (g_log) std::fprintf(stderr, "[cbs] star suppressed: this console is not the authority of cls=%u (the authority's star comes by announcement) w=%lld\n",
@@ -1022,6 +1054,7 @@ void on_frame(unsigned now) {
     if (nk != g_key) {
         for (int i = 0; i < kSlots; ++i) g_boss[i] = Boss();
         for (int s = 0; s < kSeats; ++s) g_claim_until[s] = 0;
+        g_recent_t = 0; g_recent_mine = true;
         g_key = nk;
     }
     ++g_ticks; ++g_st.ticks;
@@ -1086,6 +1119,15 @@ struct Registrar {
 // Public.
 // ---------------------------------------------------------------------------
 CoopBossStats coop_boss_stats() { return g_st; }
+
+// bossfix1 hooks for coop_target and coop_spawn.
+bool coop_boss_prefer_local(const char *actor) {
+    return g_on && actor && *(const unsigned short *)(actor + 0x0c) == 279 && rd32(actor, 0x40c) == 4;
+}
+bool coop_boss_reward_not_mine() {
+    if (!g_on || !coop_world_active() || !coop_group_established() || !g_recent_t) return false;
+    return (unsigned)(comms_hub_now_ms() - g_recent_t) < 4000u && !g_recent_mine;
+}
 
 bool coop_boss_validate(const void *payload, int len) {
     if (!payload || len < (int)sizeof(BossHead) + (int)sizeof(BossRec)) return false;

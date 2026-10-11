@@ -209,6 +209,7 @@ void *cp_impl(void *self, bool nonvanish) {
         if (lv) {
             place_friends();
             want = table_body((const char *)self, &wseat);
+            if (coop_boss_prefer_local((const char *)self)) { want = local_body(); wseat = g_my; }   // Bowser's defeat talk: my own player
             if (want && nonvanish && *((const unsigned char *)want + 0x6fb)) want = nullptr;   // a vanished player is skipped by this entry
         }
         for (int i = 0; i < (int)data_0209f21c; i++) {
