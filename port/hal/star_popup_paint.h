@@ -15,7 +15,7 @@ static void star_popup_draw(const OvlSurface &fb)
     const int rom = chat_font_build();
     const int scale = OVL_SCALE;
     const int big = scale * 2;                      /* twice the chat size, centred */
-    const int row_h = rom ? (NT_GH + 4) * big / 2 : OVL_LINE * 2;
+    const int row_h = rom ? (NT_GH + 2) * big : OVL_LINE * 2;
     const int total_h = v.n * row_h;
     int y = ntr::active_h / 4 - total_h / 2;
     if (y < 4 * scale) y = 4 * scale;
