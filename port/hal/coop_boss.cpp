@@ -48,6 +48,7 @@ struct BDesc {
     BField f[kBossMaxFields];
     int8_t hp;        // index of the HP field (min wins), -1 none
     int8_t state;     // index of the state field, -1 none
+    int8_t pos;       // index of the first of three position fields (x, y, z), -1 none
     uint16_t hit_off; // 0, or the offset of a byte the class's own handler turns into one HP (the proof knob sets it)
 };
 
@@ -55,16 +56,18 @@ struct BDesc {
 // mState +0x3b0, HP +0x401 (3 for the king), the hit flag +0x402, the sub-state +0x40c, the flat-on-the-ground timer
 // +0x3fc (u16), the state frame counter +0x100 (u16), +0x407, and the animation cursor in the ModelAnim's Animation.
 const BDesc kDescs[] = {
-    { 165, "WHOMP_KING", 7,
+    { 165, "WHOMP_KING", 14,
       { { 0x3b0, 4, kPlain }, { 0x401, 1, kPlain }, { 0x40c, 1, kPlain }, { 0x407, 1, kPlain }, { 0x3fc, 2, kVol },
-        { 0x100, 2, kVol }, { 0x324, 4, kVol }, { 0, 0, 0 } },
-      1, 0, 0x402 },
+        { 0x100, 2, kVol }, { 0x324, 4, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, 0x402 },
     // King Bob-omb (daBombking_c): state record pointer +0x420 (mapped to a table id), HP mHealth +0x500 (3), mPhase +0x4a0,
     // the two timers +0x504 / +0x505, mAnimSpeed +0x4fc, +0x499.
-    { 189, "KING_BOB_OMB", 7,
+    { 189, "KING_BOB_OMB", 14,
       { { 0x420, 4, kStatePtr }, { 0x500, 4, kPlain }, { 0x4a0, 4, kPlain }, { 0x504, 1, kVol }, { 0x505, 1, kVol },
-        { 0x4fc, 4, kPlain }, { 0x499, 1, kPlain }, { 0, 0, 0 } },
-      1, 0, 0 },
+        { 0x4fc, 4, kPlain }, { 0x499, 1, kPlain }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, 0 },
 };
 const int kNumDescs = (int)(sizeof kDescs / sizeof kDescs[0]);
 
@@ -75,7 +78,8 @@ const BDesc *desc_of(unsigned cls) {
 
 bool field_ok(const BField &f) {
     if (f.size != 1 && f.size != 2 && f.size != 4) return false;
-    if (f.off < kLoOff || (int)f.off + f.size > kHiOff) return false;
+    const bool low_ok = f.off == 0x5c || f.off == 0x60 || f.off == 0x64 || f.off == 0x98 || f.off == 0x9c || f.off == 0xa0 || f.off == 0xa8;
+    if (!low_ok && (f.off < kLoOff || (int)f.off + f.size > kHiOff)) return false;
     return (f.off % f.size) == 0;
 }
 
@@ -124,7 +128,7 @@ struct HitKnob { unsigned tick; bool done; bool armed; int hp0; int slot; };
 HitKnob g_hit[4]; int g_nhit = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
 ForgeKnob g_forge[8]; int g_nforge = 0;
-unsigned g_stand_tick = 0; int g_stand_dist = 0; bool g_stand_done = true, g_god = false;
+unsigned g_stand_tick = 0, g_stand_every = 0; int g_stand_dist = 0; bool g_stand_done = true, g_god = false;
 bool g_regd = false;
 int  g_my = -1;
 CoopKey g_key;
@@ -162,6 +166,7 @@ void write_field(char *a, const BDesc &d, int idx, uint32_t v) {
 
 // Sane values only: a state of Whomp King is a small index; HP is small.
 bool value_ok(const BDesc &d, int idx, uint32_t v) {
+    if (d.pos >= 0 && idx >= d.pos && idx < d.pos + 3) { const long long lim = 40000LL * 4096; return (int32_t)v > -lim && (int32_t)v < lim; }
     if (d.cls == 165) {
         if (idx == 0) return v < 16;                 // mState indexes the 12-cell handler table
         if (idx == 1) return v <= 8;                 // HP
@@ -192,8 +197,9 @@ void read_env() {
         }
     }
     if (const char *st = std::getenv("SM64DS_COOP_BOSS_STAND")) {
-        unsigned f = 0; int d = 0;
-        if (std::sscanf(st, "%u:%i", &f, &d) == 2) { g_stand_tick = f; g_stand_dist = d; g_stand_done = false; }
+        unsigned f = 0, ev = 0; int d = 0;
+        const int n = std::sscanf(st, "%u:%i:%u", &f, &d, &ev);
+        if (n >= 2) { g_stand_tick = f; g_stand_dist = d; g_stand_done = false; g_stand_every = n >= 3 ? ev : 0; }
     }
     g_god = flag("SM64DS_COOP_BOSS_GOD", false);
     if (const char *f = std::getenv("SM64DS_COOP_BOSS_FORGE")) {
@@ -328,6 +334,18 @@ void apply_rx(int slot, Boss &b, unsigned now) {
         b.mism = 0;
         ++g_st.applied_state;
         if (g_log) std::fprintf(stderr, "[cbs] apply-state slot=%d st %u->%u hp=%d from seat %d heard=%d w=%lld\n", slot, ls, rs, hp_of(b), x.from, (int)b.heard, wall_ms());
+    }
+    // The pose: the mover path carries it, but its heartbeat is 1.5 s and a copy that falls or slides in between (Whomp King's
+    // slam, a forced state) is far off by then. A record this fresh that disagrees by more than 80 units puts the copy back,
+    // with the speeds so it does not drift again.
+    if (d.pos >= 0 && (unsigned)(now - x.t) < 300u && !(x.rflags & 1)) {
+        double dd = 0;
+        for (int k = 0; k < 3; ++k) { const double e = ((double)rd32(b.a, d.f[d.pos + k].off) - (double)(int32_t)x.w[d.pos + k]) / 4096.0; dd += e * e; }
+        if (std::sqrt(dd) > 80.0) {
+            for (int k = d.pos; k < d.nf; ++k) if (value_ok(d, k, x.w[k])) write_field(b.a, d, k, x.w[k]);
+            ++g_st.applied_fields;
+            if (g_log) std::fprintf(stderr, "[cbs] apply-pos slot=%d off by %.0f units from seat %d w=%lld\n", slot, std::sqrt(dd), x.from, wall_ms());
+        }
     }
     b.heard = true;
     b.auth_t = now;
@@ -481,7 +499,7 @@ void on_frame(unsigned now) {
             int32_t x = rd32(b.a, 0x5c) + (g_stand_dist << 12), y = rd32(b.a, 0x60) + 0x10000, z = rd32(b.a, 0x64);
             std::memcpy(pl + 0x5c, &x, 4); std::memcpy(pl + 0x60, &y, 4); std::memcpy(pl + 0x64, &z, 4);
             const int32_t zero = 0; std::memcpy(pl + 0x98, &zero, 4);
-            g_stand_done = true;
+            if (g_stand_every) g_stand_tick = g_ticks + g_stand_every; else g_stand_done = true;
             std::fprintf(stderr, "[cbs-knob] stand local player %d units from boss slot=%d cls=%u at %d,%d,%d w=%lld\n", g_stand_dist, slot, (unsigned)b.d->cls, x >> 12, y >> 12, z >> 12, wall_ms());
             break;
         }

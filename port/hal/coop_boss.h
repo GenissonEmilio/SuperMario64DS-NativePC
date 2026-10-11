@@ -46,7 +46,7 @@
 namespace port {
 
 enum : int {
-    kBossMaxFields = 8,
+    kBossMaxFields = 14,
     kBossMaxRecs   = 8,
     kBossHeartbeatMs = 400,
 };
