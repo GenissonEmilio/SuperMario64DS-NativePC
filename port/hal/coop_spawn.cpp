@@ -878,13 +878,11 @@ void knob_take(TakeKnob &) {
         const unsigned c = a_cls(a);
         if ((c != 178 && c != 282) || a_slot(a) != -1 || a_dead(a) || is_player_ptr(a)) continue;
         std::memcpy(pl + 0x5c, a + 0x5c, 12);
-        std::fprintf(stderr, "[coopspawn-knob] take goto cls=%u pos=%d,%d,%d wall=%lld
-", c, ((const int *)(a + 0x5c))[0] >> 12,
+        std::fprintf(stderr, "[coopspawn-knob] take goto cls=%u pos=%d,%d,%d wall=%lld\n", c, ((const int *)(a + 0x5c))[0] >> 12,
                      ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, wall_ms());
         return;
     }
-    std::fprintf(stderr, "[coopspawn-knob] take: no runtime star or key
-");
+    std::fprintf(stderr, "[coopspawn-knob] take: no runtime star or key\n");
 }
 
 void knob_forge(const char *name) {
