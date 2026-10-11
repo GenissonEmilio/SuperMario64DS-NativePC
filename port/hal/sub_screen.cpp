@@ -3710,11 +3710,15 @@ extern "C" void hal_menu_pad_seam(void)
         static int env_read, env_on, env_at, calls;
         static POINT env_pt;
         ++calls;
+#ifndef PORT_ROM_CLEAN      /* the scripted pointer is a proof arm: not in the shipped build */
         if (!env_read) {
             env_read = 1;
             const char *e = getenv("SM64DS_MENU_HOVER_AT");
             if (e && sscanf(e, "%ld,%ld@%d", &env_pt.x, &env_pt.y, &env_at) >= 2) env_on = 1;
         }
+#else
+        (void)env_read; (void)env_at;
+#endif
         POINT p;
         int got = 0;
         if (env_on) { p = env_pt; got = calls >= env_at; }

@@ -297,8 +297,10 @@ int title_skip(char *o)
     if (trace < 0) {
         const char *e = getenv("SM64DS_TITLE_DRAWTRACE");
         trace = (e && *e && *e != '0') ? 1 : 0;
+#ifndef PORT_ROM_CLEAN      /* the object-skip probe is a proof arm: not in the shipped build */
         e = getenv("SM64DS_TITLE_SKIPK");
         skipk = e ? (unsigned)strtoul(e, 0, 16) : 0;
+#endif
     }
     if (!trace && !skipk) return 0;
     const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
