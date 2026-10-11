@@ -1582,7 +1582,7 @@ void menu_prepare_sources(unsigned *dst, int w, int h)
     g_msrc.hostrow_stride = ntr::SCREEN_W;
     g_msrc.hostrow_w = w;
     g_msrc.hostrow_h = h;
-    if (hal_menu_uses_src(SRC_TOP_PIC)) {
+    if (hal_menu_uses_src(SRC_TOP_PIC) || hal_menu_needs_picsnap()) {
         if (!g_picsnap) g_picsnap = (uint32_t *)std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H * sizeof(uint32_t));
         if (g_picsnap) {
             /* source and destination overlap (the backdrop piece is the whole picture), so the layer reads a copy */
@@ -4100,6 +4100,26 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
         menu_prepare_sources(dst, w, h);
         hal_menu_present(dst, w, h, MENU_STAGE_POST_FADE);
     }
+}
+
+/* MENUINTERP2 (hunt8): THE PICTURES BETWEEN TICKS UNDER A MENU THAT MOVES 3D PIXELS.
+   hal_menu_pic_snapshot: the copy of the finished, faded picture that menu_prepare_sources took right before this tick's POST_FADE
+   draw, i.e. the picture the menu was cut from (3D + the engine-A cells the recipe did not lift, no menu piece yet). Valid for the
+   tick whose draw ran (the SRC_TOP_PIC piece asked for it); null otherwise. SCREEN_W stride, like the framebuffer.
+   hal_menu_relift: the same draw again on a picture between ticks: dst is that picture (the replayed 3D, the tick's 2D put back, the
+   fade) before any menu piece, and the 3D coverage of the replay that made it is what gx_coverage answers now. The recipe's planes
+   (lifted top2d, engine-B scan-outs, host images) are the tick's own and constant between ticks; the bound decision is the tick's.
+   Returns 1 when the menu was drawn. */
+extern "C" const uint32_t *hal_menu_pic_snapshot(void)
+{
+    return hal_menu_draw_live() && hal_menu_draws_in(MENU_STAGE_POST_FADE) && hal_menu_needs_picsnap() ? g_picsnap : 0;
+}
+extern "C" int hal_menu_relift(unsigned int *dst, int w, int h)
+{
+    if (!dst || !hal_menu_draw_live() || !hal_menu_draws_in(MENU_STAGE_POST_FADE)) return 0;
+    menu_prepare_sources(dst, w, h);
+    hal_menu_present_relift(dst, w, h, MENU_STAGE_POST_FADE);
+    return 1;
 }
 
 /* ---- the stacked layout ----------------------------------------------------

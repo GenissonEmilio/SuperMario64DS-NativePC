@@ -927,10 +927,17 @@ void draw_paper(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
 /* the held frame: the composed picture as of the last frame that asked for it (MenuLayout.snap_save), draw thread only */
 std::vector<uint32_t> g_snap;
 int g_snap_w, g_snap_h;
+/* MENUINTERP2: the picture a re-draw between ticks (hal_menu_present_relift) draws its held-frame pieces from is the one THIS tick
+   drew them from, i.e. the held frame as it stood before this tick's own save. g_snap_old is that, kept when the tick saves. */
+std::vector<uint32_t> g_snap_old;
+int g_snap_old_valid, g_in_relift;
 
 void snap_save(const uint32_t *dst, int w, int h)
 {
+    if (g_in_relift) return;                 /* a picture between ticks never rewrites the held frame */
     const size_t stride = (size_t)stride_of(w);
+    g_snap_old.swap(g_snap);
+    g_snap_old_valid = !g_snap_old.empty();
     g_snap.resize((size_t)w * h);
     for (int y = 0; y < h; ++y) memcpy(&g_snap[(size_t)y * w], dst + (size_t)y * stride, (size_t)w * 4);
     g_snap_w = w; g_snap_h = h;
@@ -942,9 +949,10 @@ void draw_snap(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
     const MenuPiece &P = L->p[i];
     const size_t stride = (size_t)stride_of(w);
     const unsigned pa = P.alpha ? P.alpha : 255u, ia = 255u - pa;
+    const std::vector<uint32_t> &held = (g_in_relift && g_snap_old_valid && g_snap_old.size() == g_snap.size()) ? g_snap_old : g_snap;
     for (int y = 0; y < h; ++y) {
         uint32_t *row = dst + (size_t)y * stride;
-        const uint32_t *sr = &g_snap[(size_t)y * w];
+        const uint32_t *sr = &held[(size_t)y * w];
         if (pa == 255u) { memcpy(row, sr, (size_t)w * 4); continue; }
         for (int x = 0; x < w; ++x) {
             const uint32_t c = sr[x], o = row[x];
@@ -1552,7 +1560,7 @@ int  hal_menu_interp_mode(void)   /* SM64DS_MENU_INTERP: 0 snap every menu tick,
     static int m = -1;
     if (m < 0) {
         const char *e = getenv("SM64DS_MENU_INTERP");
-        m = (e && e[0] == '0' && e[1] == '\0') ? 0 : (e && e[0] == '2' && e[1] == '\0') ? 2 : 1;
+        m = (e && e[0] == '0' && e[1] == '\0') ? 0 : (e && e[0] == '2' && e[1] == '\0') ? 2 : (e && e[0] == '3' && e[1] == '\0') ? 3 : 1;
     }
     return m;
 }
@@ -1565,6 +1573,7 @@ int  hal_menu_interp_ok(void)
     if (g_dd.L.snap_save) return 0;
     for (int i = 0; i < g_dd.L.np; ++i) {
         const MenuPiece &P = g_dd.L.p[i];
+        if (P.nodraw) continue;                                     /* MENUINTERP2: a click-only piece draws nothing, whatever else it says (the file select's first page carries one with a cover key) */
         if (P.src != SRC_TOP_PIC && !P.keycover && !P.snap) continue;
         if (P.keycover || P.xfill || P.snap) return 0;
         if (P.nodraw) continue;                                     /* a click-only piece draws nothing */
@@ -1577,6 +1586,42 @@ int  hal_menu_interp_ok(void)
         if (!whole) return 0;
     }
     return 1;
+}
+/* MENUINTERP2 (hunt8): may a tick whose menu moves 3D pixels (hal_menu_interp_ok said no) still have pictures between ticks? Yes
+   when every piece can be drawn again from a picture's own 3D: the pieces read the tick's planes (top2d, engine B, host images,
+   all constant between ticks) and the picture + 3D coverage, which each in-between supplies from its own replay
+   (hal_menu_relift, hal_sub_screen). What cannot: a held-frame piece (snap, snap_save),
+   the fallback frame. (An edge-column fill, xfill, re-reads the picture's edge and re-lifts like any other.) Only the POST_FADE stage (every recipe that takes 3D pixels draws there), and only with a picture piece to
+   re-lift. SM64DS_MENU_INTERP=3 is MENUFOLD1's gate (no relift), 0 snaps everything. Draw side only. */
+/* why not (0 = ok): 1 live/mode/fallback, 2 stage */
+int  hal_menu_relift_why(void)
+{
+    if (!g_dd.live || hal_menu_interp_mode() != 1 || g_dd.fallback) return 1;
+    const MenuLayout &L = g_dd.L;
+    if (L.stage != MENU_STAGE_POST_FADE) return 2;
+    return 0;
+}
+int  hal_menu_relift_ok(void) { return hal_menu_relift_why() == 0; }
+/* does a re-draw between ticks need the picture as the menu found it (the tick keeps a copy, hal_sub_screen)? A picture piece cuts from it, a
+   held-frame piece or a save lays over / copies the finished picture. */
+int  hal_menu_needs_picsnap(void)
+{
+    if (!g_dd.live) return 0;
+    if (g_dd.L.snap_save) return 1;
+    for (int i = 0; i < g_dd.L.np; ++i)
+        if ((g_dd.L.p[i].src == SRC_TOP_PIC && !g_dd.L.p[i].nodraw) || g_dd.L.p[i].snap) return 1;
+    return 0;
+}
+/* debug: one line per piece of the bound layout (the in-between gate's inputs) */
+void hal_menu_relift_dump(void)
+{
+    const MenuLayout &L = g_dd.L;
+    fprintf(stderr, "[interp] menu layout %s v%d stage %d snap_save %d fb %d np %d:", L.recipe ? L.recipe->name : "?", L.variant, L.stage, L.snap_save, g_dd.fallback, L.np);
+    for (int i = 0; i < L.np; ++i) {
+        const MenuPiece &P = L.p[i];
+        fprintf(stderr, " [%d src%d%s%s%s%s a%d]", i, (int)P.src, P.keycover ? " key" : "", P.xfill ? " xf" : "", P.snap ? " SNAP" : "", P.nodraw ? " nd" : "", (int)P.alpha);
+    }
+    fputc('\n', stderr);
 }
 int  hal_menu_trace_on(void) { return trace_on(); }
 void hal_menu_set_dst_stride(int stride) { g_dst_stride = stride; }
@@ -1998,6 +2043,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
             fflush(stderr);
         }
     }
+    if (!g_in_relift && !D.L.snap_save) g_snap_old_valid = 0;     /* a tick that does not save drew from g_snap itself */
     g_rep.enable = cost_fast(); g_rep.valid = 0;
     if (trace_on()) {
         for (int i = 0; i < D.L.np; ++i) {
@@ -2018,6 +2064,15 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
     seen_ack(D);
     if (amended) seen_amend(D);
     g_dd_lift_pending = 0;      /* the draw honoured the lift */
+}
+
+/* MENUINTERP2: the same draw for a picture between ticks (see hal_menu_relift_ok). Never saves the held frame, draws held-frame
+   pieces from the one this tick drew from. */
+void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage)
+{
+    g_in_relift = 1;
+    hal_menu_present(dst, w, h, stage);
+    g_in_relift = 0;
 }
 
 void hal_menu_touch_inverse(int bx, int by, int *dsx, int *dsy, int *in)
