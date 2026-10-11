@@ -97,7 +97,7 @@ int pause_variant(void)
    unit, and only when the shared warm-up slot is free (menu_warm_claim: one slot per few ms for this and the settings page together, none
    while the game is hitching). The save pages' big pictures (saving, saved, banner, about 11 MB) are not warmed: they load on first use.
    The cache keeps the size; a window resize warms again. */
-int g_idle_ticks, g_warm_v, g_warm_p, g_warm_ph, g_warm_w, g_warm_h, g_warm_solved_v;
+int g_idle_ticks, g_warm_v, g_warm_p, g_warm_busy, g_warm_w, g_warm_h, g_warm_solved_v;
 double g_last_claim = -1e9, g_last_call = -1e9;
 int g_calm;
 
@@ -111,7 +111,8 @@ bool g_warm_solving;     /* inside a warm-up solve: have() of a skipped picture 
 const int kWarmPre[] = { MENU_IMG_P_PK_CONTINUE, MENU_IMG_P_PK_OK, MENU_IMG_P_CARD, MENU_IMG_P_ARROW_L, MENU_IMG_ARROW_DOWN, MENU_IMG_STAR };
 int g_warm_pre;          /* the pictures every page's layout asks for, decoded one a slice before the first solve */
 
-/* one slice: variant g_warm_v, its g_warm_p-th warmable host picture, phase 0 = decode, phase 1 = scale */
+/* one slice. The decode and the scale of a picture run on the hostimg worker thread (menu_hostimg_prefetch), one job at a time, so the game
+   thread only installs finished work (vector moves) and solves a layout (well under a millisecond). */
 void warm_slice(int w, int h)
 {
     static MenuLayout W;
@@ -119,15 +120,15 @@ void warm_slice(int w, int h)
     for (int i = 0; i < g_menu_nrecipes; ++i)
         if (!strcmp(g_menu_recipes[i].name, "pause")) R = &g_menu_recipes[i];
     if (!R) { g_warm_v = V_VS; return; }
-    const double t0 = wnow_ms();
     static const bool trace = getenv("SM64DS_WARM_TRACE") != 0;
+    const double t0 = wnow_ms();
+    if (menu_hostimg_prefetch_poll()) return;      /* a job is still running or waiting to be installed */
+    g_warm_busy = 0;
     while (g_warm_v < V_VS) {
-        const double ts = wnow_ms();
         if (g_warm_pre < (int)(sizeof kWarmPre / sizeof kWarmPre[0])) {
-            const int id = kWarmPre[g_warm_pre++];
-            menu_hostimg_ready(id);
-            if (trace) fprintf(stderr, "[warm] pause pre %d: %.2f ms\n", id, wnow_ms() - ts);
-            if (wnow_ms() - t0 >= 1.0) break;
+            /* the pictures every layout asks for are decoded first (a 2x2 scale rides along), so the solve below never decodes on this thread */
+            if (!menu_hostimg_prefetch(kWarmPre[g_warm_pre], 2, 2)) { g_warm_busy = 1; return; }
+            ++g_warm_pre;
             continue;
         }
         if (g_warm_solved_v != g_warm_v) {
@@ -135,26 +136,17 @@ void warm_slice(int w, int h)
             menu_layout_solve(&W, R, g_warm_v, w, h);
             g_warm_solving = false;
             g_warm_solved_v = g_warm_v;
-            if (trace) fprintf(stderr, "[warm] pause solve v%d: %.2f ms\n", g_warm_v, wnow_ms() - ts);
-            if (wnow_ms() - t0 >= 1.0) break;
+            if (trace) fprintf(stderr, "[warm] pause solve v%d: %.2f ms\n", g_warm_v, wnow_ms() - t0);
         }
         int k = 0, found = -1;
         for (int i = 0; i < W.np; ++i) {
             if (W.p[i].src != SRC_HOSTIMG || !W.p[i].hostimg || warm_skip_id(W.p[i].hostimg) || W.dest[i][2] <= 0 || W.dest[i][3] <= 0) continue;
             if (k++ == g_warm_p) { found = i; break; }
         }
-        if (found < 0) { ++g_warm_v; g_warm_p = 0; g_warm_ph = 0; continue; }     /* that variant is done */
-        const int id = W.p[found].hostimg;
-        if (g_warm_ph == 0) {
-            menu_hostimg_ready(id);       /* the decode, first use only */
-            g_warm_ph = 1;
-        } else {
-            menu_hostimg_scaled(id, W.dest[found][2], W.dest[found][3]);
-            g_warm_ph = 0; ++g_warm_p;
-        }
-        const double now = wnow_ms();
-        if (trace) fprintf(stderr, "[warm] pause v%d p%d %s %dx%d: %.2f ms\n", g_warm_v, g_warm_p, g_warm_ph ? "decode" : "scale", w, h, now - ts);
-        if (now - t0 >= 1.0) break;         /* cheap units (already decoded, already scaled) chain; a real one ends the slice */
+        if (found < 0) { ++g_warm_v; g_warm_p = 0; continue; }     /* that variant is done */
+        if (!menu_hostimg_prefetch(W.p[found].hostimg, W.dest[found][2], W.dest[found][3])) { g_warm_busy = 1; return; }
+        ++g_warm_p;
+        if (wnow_ms() - t0 >= 1.0) return;
     }
 }
 
@@ -179,7 +171,7 @@ void warm_tick(int scene_id)
     if (scene_id != 3 && scene_id != -1) { g_idle_ticks = 0; return; }
     int w, h;
     if (!hal_menu_last_size(&w, &h)) return;
-    if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_v = 1; g_warm_p = 0; g_warm_ph = 0; g_warm_solved_v = 0; g_idle_ticks = 0; }
+    if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_v = 1; g_warm_p = 0; g_warm_busy = 0; g_warm_solved_v = 0; g_idle_ticks = 0; }
     if (g_warm_v == 0) g_warm_v = 1;
     if (++g_idle_ticks < 60 || g_warm_v >= V_VS) return;
     if (!menu_warm_claim()) return;

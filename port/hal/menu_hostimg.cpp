@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+#include <condition_variable>
+#include <deque>
+#include <mutex>
+#include <thread>
 
 extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[], g_menu_png_pattern[], g_menu_png_title_star[], g_menu_png_btn_save_cont[], g_menu_png_btn_save_quit[], g_menu_png_btn_cont[];
 extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len, g_menu_png_pattern_len, g_menu_png_title_star_len, g_menu_png_btn_save_cont_len, g_menu_png_btn_save_quit_len, g_menu_png_btn_cont_len;
@@ -53,11 +57,8 @@ bool take(const unsigned char *rgba, int w, int h, Img *I)
     return true;
 }
 
-void load_img(int id)
+void load_into(int id, Img &I)
 {
-    Img &I = g_img[id];
-    if (I.tried) return;
-    I.tried = 1;
     int w = 0, h = 0, comp = 0;
     unsigned char *p = 0;
     char path[1100];
@@ -94,6 +95,14 @@ void load_img(int id)
         if (!take(p, w, h, &I)) I.px.clear();
         stbi_image_free(p);
     }
+}
+
+void load_img(int id)
+{
+    Img &I = g_img[id];
+    if (I.tried) return;
+    I.tried = 1;
+    load_into(id, I);
 }
 
 /* one axis of a separable resample: for each destination index, the source span and weights (triangle filter whose
@@ -163,6 +172,49 @@ void scale_to(Img *I, int dw, int dh, std::vector<uint32_t> *outv)
 
 Img *img_of(int id) { return id >= 1 && id < MENU_IMG_EXT_END ? &g_img[id] : 0; }
 
+/* PAUSEFIX1: a worker thread that decodes and scales a picture off the game thread. A job touches only its own local Img; the game thread
+   installs a finished job with menu_hostimg_prefetch_poll (vector moves, no copying), so no tick pays for a decode or a scale. */
+struct Job { int id, dw, dh; };
+struct Done { int id, dw, dh; Img img; bool ok; };
+struct Worker {
+    std::mutex m;
+    std::condition_variable cv;
+    std::deque<Job> in;
+    std::deque<Done> out;
+    int busy = 0;
+    bool started = false;
+};
+Worker *g_wk;      /* never freed: the thread outlives static destruction */
+
+void worker_main(Worker *W)
+{
+    for (;;) {
+        Job j;
+        {
+            std::unique_lock<std::mutex> lk(W->m);
+            W->cv.wait(lk, [W] { return !W->in.empty(); });
+            j = W->in.front(); W->in.pop_front();
+        }
+        Done d;
+        d.id = j.id; d.dw = j.dw; d.dh = j.dh; d.ok = false;
+        load_into(j.id, d.img);
+        if (!d.img.px.empty() && d.img.w > 0) {
+            std::vector<uint32_t> sc;
+            scale_to(&d.img, j.dw, j.dh, &sc);
+            d.img.scaled.swap(sc);
+            d.ok = true;
+        }
+        std::lock_guard<std::mutex> lk(W->m);
+        W->out.push_back(std::move(d));
+        W->busy = 0;
+    }
+}
+
+bool slot_has(const Img &I, int dw, int dh)
+{
+    return (I.cw == dw && I.ch == dh && !I.scaled.empty()) || (I.cw1 == dw && I.ch1 == dh && !I.scaled1.empty());
+}
+
 }  // namespace
 
 extern "C" int menu_hostimg_ready(int id)
@@ -197,4 +249,46 @@ extern "C" const uint32_t *menu_hostimg_scaled(int id, int dw, int dh)
 extern "C" int menu_hostimg_is_plank(int id)
 {
     return (id >= MENU_IMG_BTN_MP && id <= MENU_IMG_BTN_REC) || (id >= MENU_IMG_BTN_SAVE_CONT && id <= MENU_IMG_BTN_CONT) || menu_ext_art_is_plank(id);
+}
+
+/* PAUSEFIX1: 1 when the picture is decoded and already cached at dw x dh. Otherwise queues one background decode + scale (once) and returns 0.
+   At most one job is in flight; a call while one runs returns 0 and queues nothing. */
+extern "C" int menu_hostimg_prefetch(int id, int dw, int dh)
+{
+    Img *I = img_of(id);
+    if (!I || dw < 1 || dh < 1 || dw > 8192 || dh > 8192) return 1;
+    if (I->tried && I->px.empty()) return 1;                    /* no such picture: nothing to wait for */
+    if (!I->px.empty() && slot_has(*I, dw, dh)) return 1;
+    if (!g_wk) g_wk = new Worker();
+    Worker *W = g_wk;
+    std::lock_guard<std::mutex> lk(W->m);
+    if (W->busy) return 0;
+    if (!W->started) { W->started = true; std::thread(worker_main, W).detach(); }
+    W->busy = 1;
+    W->in.push_back(Job{ id, dw, dh });
+    W->cv.notify_one();
+    return 0;
+}
+
+/* installs every finished background job; 1 while a job is still running or waiting to be installed */
+extern "C" int menu_hostimg_prefetch_poll(void)
+{
+    if (!g_wk) return 0;
+    Worker *W = g_wk;
+    for (;;) {
+        Done d;
+        {
+            std::lock_guard<std::mutex> lk(W->m);
+            if (W->out.empty()) return W->busy;
+            d = std::move(W->out.front()); W->out.pop_front();
+        }
+        Img &I = g_img[d.id];
+        if (!d.ok) { if (!I.tried) I.tried = 1; continue; }
+        if (!I.tried) {
+            I.tried = 1; I.w = d.img.w; I.h = d.img.h; I.px = std::move(d.img.px);
+        }
+        if (I.px.empty() || I.w != d.img.w || I.h != d.img.h || slot_has(I, d.dw, d.dh)) continue;
+        if (I.last_slot == 0) { I.scaled1 = std::move(d.img.scaled); I.cw1 = d.dw; I.ch1 = d.dh; I.last_slot = 1; }
+        else { I.scaled = std::move(d.img.scaled); I.cw = d.dw; I.ch = d.dh; I.last_slot = 0; }
+    }
 }

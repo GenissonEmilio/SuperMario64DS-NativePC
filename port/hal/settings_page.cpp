@@ -1020,7 +1020,7 @@ static int g_warming;
    55 ms frame in every level). Stages: layout, the parchment tile, the sheet in row slices, the title and back pictures, then one throwaway
    draw per tab (glyphs, key caps, boxes). The caller (hooks.cpp) claims the shared warm-up slot first. Returns 1 when everything is cached
    for this picture size (a resize starts again). */
-static std::vector<uint32_t> g_ws_tile, g_ws_sheet, g_ws_buf;
+static std::vector<uint32_t> g_ws_tile, g_ws_buf;
 static int g_ws_stage, g_ws_w, g_ws_h, g_ws_y, g_ws_tilesz, g_ws_u100, g_ws_tile_ok;
 
 static double ws_ms(const std::chrono::steady_clock::time_point &t0)
@@ -1034,9 +1034,11 @@ extern "C" int settings_page_warm_step(int w, int h)
     if (S.open) return 0;
     if (w != g_ws_w || h != g_ws_h) {
         g_ws_w = w; g_ws_h = h; g_ws_stage = 0; g_ws_y = 0;
-        std::vector<uint32_t>().swap(g_ws_tile); std::vector<uint32_t>().swap(g_ws_sheet); std::vector<uint32_t>().swap(g_ws_buf);
+        std::vector<uint32_t>().swap(g_ws_tile); std::vector<uint32_t>().swap(g_ws_buf);
     }
-    enum { ST_LAYOUT = 0, ST_TILE, ST_SHEET, ST_TITLE, ST_BACK, ST_TAB0, ST_DONE = ST_TAB0 + T_COUNT };
+    /* stage order: layout; each picture decoded alone; the parchment tile scaled; the sheet in row slices (built in a hidden cache entry, kind 102,
+       renamed when whole); title and back scaled; one throwaway draw per tab */
+    enum { ST_LAYOUT = 0, ST_DEC, ST_TILE = ST_DEC + IM_COUNT, ST_SHEET, ST_TITLE, ST_BACK, ST_TAB0, ST_DONE = ST_TAB0 + T_COUNT };
     if (g_ws_stage >= ST_DONE) return 1;
     const auto t0 = std::chrono::steady_clock::now();
     while (g_ws_stage < ST_DONE) {
@@ -1047,16 +1049,20 @@ extern "C" int settings_page_warm_step(int w, int h)
             g_ws_u100 = (int)(L.u * 100 + 0.5);
             g_ws_tilesz = (int)(380 * (g_ws_u100 / 100.0) + 0.5);
             ++g_ws_stage;
+        } else if (st < ST_TILE) {
+            load_im(st - ST_DEC);
+            ++g_ws_stage;
         } else if (st == ST_TILE) {
             const Piece *tp = find_piece(2, L.sw, L.sh, g_ws_u100) ? 0 : scaled_im(IM_PARCH, g_ws_tilesz, g_ws_tilesz);
             g_ws_tile_ok = tp != 0;
             if (tp) g_ws_tile = tp->px;
-            g_ws_sheet.assign(find_piece(2, L.sw, L.sh, g_ws_u100) ? 0 : (size_t)L.sw * L.sh, 0u);
             g_ws_y = 0;
             ++g_ws_stage;
         } else if (st == ST_SHEET) {
-            if (g_ws_sheet.empty()) { ++g_ws_stage; }       /* the page already built it */
+            Piece *sp = find_piece(102, L.sw, L.sh, g_ws_u100);
+            if (find_piece(2, L.sw, L.sh, g_ws_u100)) { ++g_ws_stage; }       /* the page already built it */
             else {
+                if (!sp) { sp = new_piece(102, L.sw, L.sh, g_ws_u100, L.sw, L.sh); g_ws_y = 0; }
                 /* the same per-pixel work as sheet_piece, in row slices */
                 const double u = g_ws_u100 / 100.0;
                 const int sw = L.sw, sh = L.sh, tile = g_ws_tilesz;
@@ -1081,16 +1087,12 @@ extern "C" int settings_page_warm_step(int w, int h)
                                 const int tr = (c >> 16) & 255, tg = (c >> 8) & 255, tb = c & 255;
                                 r = (int)(0x5C + (tr - 0x5C) * f); g = (int)(0x2C + (tg - 0x2C) * f); b = (int)(0x0A + (tb - 0x0A) * f);
                             }
-                            g_ws_sheet[(size_t)y * sw + x] = ((uint32_t)cv << 24) | ((uint32_t)(r * cv / 255) << 16) | ((uint32_t)(g * cv / 255) << 8) | (uint32_t)(b * cv / 255);
+                            sp->px[(size_t)y * sw + x] = ((uint32_t)cv << 24) | ((uint32_t)(r * cv / 255) << 16) | ((uint32_t)(g * cv / 255) << 8) | (uint32_t)(b * cv / 255);
                         }
                     g_ws_y = y1;
                 }
                 if (g_ws_y >= sh) {
-                    if (!find_piece(2, sw, sh, g_ws_u100)) {
-                        Piece *p = new_piece(2, sw, sh, g_ws_u100, sw, sh);
-                        p->px.swap(g_ws_sheet);
-                    }
-                    std::vector<uint32_t>().swap(g_ws_sheet);
+                    sp->kind = 2;
                     std::vector<uint32_t>().swap(g_ws_tile);
                     ++g_ws_stage;
                 }
