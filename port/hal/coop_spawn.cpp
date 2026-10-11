@@ -865,7 +865,11 @@ void knob_red(RedKnob &k) {
     char *pl = my_player();
     if (!pl || n == 0) { std::fprintf(stderr, "[coopspawn-knob] red %d: no live red coin\n", k.nth); return; }
     char *a = c[k.nth % n];
+    // a coin the exact spot did not collect (a summit, inside a wall): the next try drops the player onto it from higher up
+    static short last_slot = -2; static int tries = 0;
+    if (a_slot(a) == last_slot) ++tries; else { last_slot = a_slot(a); tries = 0; }
     std::memcpy(pl + 0x5c, a + 0x5c, 12);
+    if (tries) ((int *)(pl + 0x5c))[1] += (tries * 150) << 12;
     std::fprintf(stderr, "[coopspawn-knob] red coin goto slot=%d (candidate %d of %d) pos=%d,%d,%d wall=%lld\n", (int)a_slot(a), k.nth % n, n,
                  ((const int *)(a + 0x5c))[0] >> 12, ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, wall_ms());
 }
@@ -887,6 +891,7 @@ void knob_take(TakeKnob &) {
         const unsigned c = a_cls(a);
         if ((c != 178 && c != 282) || a_slot(a) != -1 || a_dead(a) || is_player_ptr(a)) continue;
         std::memcpy(pl + 0x5c, a + 0x5c, 12);
+        if (c == 282) _ZN7fBase_c18MarkForDestructionEv(a);      // a key is destroyed when its pickup animation ends; the harness stands in for the animation
         std::fprintf(stderr, "[coopspawn-knob] take goto cls=%u pos=%d,%d,%d wall=%lld\n", c, ((const int *)(a + 0x5c))[0] >> 12,
                      ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, wall_ms());
         return;
