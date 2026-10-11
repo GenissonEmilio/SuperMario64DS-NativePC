@@ -93,3 +93,11 @@ ROW(294, "CLOCK_PENDULUM",      200, 8, 150, 2, 0)
 // ---- bosses (run mp1, lane BOSSCORE1): the pose rides this table, HP / state / defeat ride hal/coop_boss.cpp ----
 ROW(165, "WHOMP_KING",          100, 12, 200, 2, 0)
 ROW(189, "KING_BOB_OMB",        100, 16, 250, 2, 0)
+// ---- the other bosses: pose through the mover path, target through hal/coop_target.cpp; HP / phase rows are per-family lanes ----
+ROW(176, "EYEROK",              100, 16, 250, 2, 0)
+ROW(198, "GOOMBOSS",            100, 16, 250, 2, 0)
+ROW(210, "BIG_BOO",             100, 16, 250, 2, 0)
+ROW(216, "BIG_BULLY",           100, 16, 250, 2, 0)
+ROW(218, "CHIEF_CHILLY",        100, 16, 250, 2, 0)
+ROW(248, "WIGGLER",             100, 16, 250, 2, 0)
+ROW(279, "BOWSER",              100, 16, 250, 2, 0)

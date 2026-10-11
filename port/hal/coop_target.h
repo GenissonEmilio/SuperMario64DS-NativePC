@@ -38,6 +38,8 @@
 //   SM64DS_COOP_TARGET_LOG=1     [cotgt] lines: every decider switch, every change of the seat a console's
 //                                ClosestPlayer returns for a logged class, the stats line
 //   SM64DS_COOP_TARGET_CLS=a,b   classes whose "use" lines are logged (default 165,189 and the Goomba 200)
+//   SM64DS_COOP_TARGET_STAND=F:cls:d[:every]  at tick F put the local player d units beside the first actor of class cls (proof only)
+//   SM64DS_COOP_TARGET_SAMPLE=cls  [cts] lines: every 500 ms the pose and table seat of every actor of that class (proof only)
 //   SM64DS_COOP_TARGET_FORGE=F:name  at tick F one forged datagram: short long count seat slot key flags nonowner
 
 #ifndef PORT_HAL_COOP_TARGET_H

@@ -55,6 +55,8 @@ unsigned g_logcls[16]; int g_nlogcls = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
 ForgeKnob g_forge[8]; int g_nforge = 0;
 
+unsigned g_stand_tick = 0, g_stand_every = 0; int g_stand_cls = 0, g_stand_dist = 0; bool g_stand_on = false;
+int g_sample_cls = 0; unsigned g_sample_t = 0;
 bool g_regd = false, g_patched = false, g_patch_failed = false;
 int  g_my = -1;
 CoopKey g_key;
@@ -83,6 +85,12 @@ void read_env() {
     g_on = flag("SM64DS_COOP_TARGET", true);
     g_log = flag("SM64DS_COOP_TARGET_LOG", false);
     if (const char *h = std::getenv("SM64DS_COOP_TARGET_HOLD_MS")) { int v = std::atoi(h); if (v >= 0 && v <= 60000) g_hold_ms = (unsigned)v; }
+    if (const char *st = std::getenv("SM64DS_COOP_TARGET_STAND")) {
+        unsigned f = 0, ev = 0; int cl = 0, d = 0;
+        const int n = std::sscanf(st, "%u:%i:%i:%u", &f, &cl, &d, &ev);
+        if (n >= 3) { g_stand_tick = f; g_stand_cls = cl; g_stand_dist = d; g_stand_on = true; g_stand_every = n >= 4 ? ev : 0; }
+    }
+    if (const char *sm = std::getenv("SM64DS_COOP_TARGET_SAMPLE")) g_sample_cls = std::atoi(sm);
     const char *c = std::getenv("SM64DS_COOP_TARGET_CLS");
     if (!c || !*c) c = "165,189,200";
     for (const char *p = c; *p && g_nlogcls < 16;) {
@@ -491,6 +499,33 @@ void do_forge(const char *name) {
     coop_send_world(kWorldTargetSet, b, len);
 }
 
+// Proof knobs for the per-boss check: SM64DS_COOP_TARGET_STAND=F:cls:dist[:every] puts the local player dist units beside the
+// first actor of class cls at tick F (and again every N ticks); SM64DS_COOP_TARGET_SAMPLE=cls logs [cts] lines for every
+// actor of that class every 500 ms: wall ms, slot, position, the seat the table gives it.
+void proof_knobs(unsigned now) {
+    char *pl = local_body();
+    if (!pl) return;
+    if (g_stand_on && g_ticks >= g_stand_tick) {
+        for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+            if ((int)*(const unsigned short *)(a + 0x0c) != g_stand_cls || is_player_ptr(a)) continue;
+            const int32_t x = rd32(a, 0x5c) + (g_stand_dist << 12), y = rd32(a, 0x60) + 0x10000, z = rd32(a, 0x64), zero = 0;
+            std::memcpy(pl + 0x5c, &x, 4); std::memcpy(pl + 0x60, &y, 4); std::memcpy(pl + 0x64, &z, 4); std::memcpy(pl + 0x98, &zero, 4);
+            std::fprintf(stderr, "[cts-knob] stand local player %d units from class %d slot=%d at %d,%d,%d wall=%lld\n", g_stand_dist, g_stand_cls,
+                         (int)actor_slot(a), x >> 12, y >> 12, z >> 12, wall_ms());
+            if (g_stand_every) g_stand_tick = g_ticks + g_stand_every; else g_stand_on = false;
+            break;
+        }
+    }
+    if (g_sample_cls && (unsigned)(now - g_sample_t) >= 500u) {
+        g_sample_t = now;
+        for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+            if ((int)*(const unsigned short *)(a + 0x0c) != g_sample_cls || is_player_ptr(a)) continue;
+            std::fprintf(stderr, "[cts] w=%lld slot=%d cls=%d pos=%d,%d,%d tgt=%d me=%d\n", wall_ms(), (int)actor_slot(a), g_sample_cls,
+                         rd32(a, 0x5c) >> 12, rd32(a, 0x60) >> 12, rd32(a, 0x64) >> 12, coop_target_seat_of_slot(actor_slot(a)), g_my);
+        }
+    }
+}
+
 void on_frame(unsigned now) {
     read_env();
     if (!coop_world_active()) return;
@@ -501,6 +536,7 @@ void on_frame(unsigned now) {
     const CoopKey nk(lv, ac);
     if (nk != g_key) { reset_level(); g_key = nk; }
     ++g_ticks; ++g_st.ticks;
+    if (g_stand_on || g_sample_cls) proof_knobs(now);
     if (!g_on) return;
     if ((unsigned)(now - g_last_decide) >= (unsigned)kDecideMs) {
         g_last_decide = now;
