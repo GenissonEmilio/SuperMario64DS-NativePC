@@ -369,6 +369,10 @@ int       g_cp_cw, g_cp_ch, g_cp_px0, g_cp_py0, g_cp_pw, g_cp_ph;
 uint32_t  g_cp_clear, g_cp_outside;
 int       g_cp_fade, g_cp_evy, g_cp_white;
 int       g_cpt_fade, g_cpt_evy, g_cpt_white, g_cpt_shown3d, g_cpt_clear_opaque, g_cpt_mask_stride;
+/* run hunt8, lane INTERPFIX1: a fade in motion between two ticks. The next
+   pictures between ticks take this coefficient and colour instead of the
+   tick's own (under the tick's own brightness mask when it had one); off when 0. */
+int       g_ipo_on, g_ipo_evy, g_ipo_white;
 const uint8_t *g_cpt_mask;   /* the last composited tick's fade (FADEINTERP1) */
 long long g_cp_composed, g_cp_checked, g_cp_bad_frames, g_cp_bad_px;
 long long g_cp_settled, g_cp_captured;
@@ -3655,11 +3659,16 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
     u[7] = (uint32_t)g_cp_ph;
     u[8] = g_cp_clear;
     u[9] = g_cp_outside;
+    const bool ipo = g_ipo_on != 0;
+    const int  f_on = ipo ? (g_ipo_evy > 0) : g_cpt_fade;
+    const int  f_evy = ipo ? g_ipo_evy : g_cpt_evy;
+    const int  f_white = ipo ? g_ipo_white : g_cpt_white;
+    const bool f_mask = f_on && g_cpt_fade && g_cpt_mask;   /* the tick's own mask, when it had a fade */
     u[10] = (g_cp_smoothed ? 1u : 0u) | (g_cpt_shown3d ? 16u : 0u) |
-            (g_cpt_clear_opaque ? 32u : 0u) | (g_cpt_fade ? 2u : 0u) |
-            ((g_cpt_fade && g_cpt_white) ? 4u : 0u) |
-            ((g_cpt_fade && g_cpt_mask) ? 8u : 0u);
-    u[11] = (uint32_t)(g_cpt_fade ? g_cpt_evy : 0);
+            (g_cpt_clear_opaque ? 32u : 0u) | (f_on ? 2u : 0u) |
+            ((f_on && f_white) ? 4u : 0u) |
+            (f_mask ? 8u : 0u);
+    u[11] = (uint32_t)(f_on ? f_evy : 0);
     g_ctx->Unmap(g_comp_cb, 0);
 
     D3D11_VIEWPORT vp;
@@ -3687,7 +3696,7 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
     g_ctx->PSSetConstantBuffers(0, 1, &g_comp_cb);
     ID3D11ShaderResourceView *srvs[4] = { g_col_srv, g_cp_smoothed ? g_fa_srv : 0,
                                           g_ov_srv,
-                                          (g_cpt_fade && g_cpt_mask) ? g_bm_srv : 0 };
+                                          f_mask ? g_bm_srv : 0 };
     g_ctx->PSSetShaderResources(0, 4, srvs);
     g_ctx->Draw(3, 0);
     ID3D11ShaderResourceView *none[4] = { 0, 0, 0, 0 };
@@ -3707,8 +3716,18 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
     g_comp2_valid = true;
     g_cp_ms += ms_between(t0, qpc());
     if (g_cp_check && overlay && (g_cp_composed % g_cp_check) == 0 &&
-        (!g_tw_live || tw_check_on()))
+        (!g_tw_live || tw_check_on())) {
+        /* a picture with a fade in motion is checked against the rule at its
+           own coefficient, under the tick's mask when the tick had a fade */
+        const int sf = g_cp_fade, se = g_cp_evy, sw = g_cp_white;
+        const uint8_t *sm = g_cp_mask;
+        if (ipo) {
+            g_cp_fade = g_ipo_evy > 0; g_cp_evy = g_ipo_evy;
+            g_cp_white = g_ipo_white; if (!g_cpt_fade) g_cp_mask = 0;
+        }
         cp_check(overlay, stride_px, g_comp2_tex);
+        g_cp_fade = sf; g_cp_evy = se; g_cp_white = sw; g_cp_mask = sm;
+    }
     return g_comp2_srv;
 }
 
@@ -4482,6 +4501,18 @@ extern "C" void *port_gpu_card_compose_inter(const unsigned int *overlay, int st
 
 /* The recorded fade of the frame held now: 1 when one is waiting for the
    composite (SmoothMotion settles such a tick, its snapshots carry no fade). */
+extern "C" void port_gpu_card_inter_fade(int evy, int white)
+{
+    g_ipo_on = 1;
+    g_ipo_evy = evy < 0 ? 0 : (evy > 16 ? 16 : evy);
+    g_ipo_white = white ? 1 : 0;
+}
+
+extern "C" void port_gpu_card_inter_fade_off(void)
+{
+    g_ipo_on = 0;
+}
+
 extern "C" int port_gpu_card_fade_recorded(void)
 {
     return g_cp_held && g_cp_fade ? 1 : 0;
@@ -4667,6 +4698,8 @@ void *port_gpu_card_compose(const unsigned int *, int) { return 0; }
 void *port_gpu_card_retained_view(int) { return 0; }
 void *port_gpu_card_compose_inter(const unsigned int *, int) { return 0; }
 int port_gpu_card_fade_recorded(void) { return 0; }
+void port_gpu_card_inter_fade(int, int) {}
+void port_gpu_card_inter_fade_off(void) {}
 int port_gpu_twod_ready(void) { return 0; }
 void port_gpu_twod_reset(void) {}
 int port_gpu_twod_begin(const PortTwodFrame *, unsigned char *, int, const unsigned *) { return 0; }

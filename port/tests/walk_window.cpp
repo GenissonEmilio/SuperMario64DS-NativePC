@@ -7788,6 +7788,28 @@ static int g_ip_fade_on, g_ip_fade_evy, g_ip_fade_white;
 /* run hunt8, lane FADEINTERP1: the engine A fade of the previous tick, to tell
    a fade that holds still (blendable) from one in motion (a snap). */
 static int g_ip_prev_fade, g_ip_prev_evy, g_ip_prev_white, g_ip_fade_masked;
+/* run hunt8, lane INTERPFIX1: the previous tick's fade had a brightness mask;
+   this tick's mask is one the processor can read (a tick not held on the
+   card: the one-byte verdict, not the card's encoding); and a fade IN MOTION:
+   the pictures between two ticks take the coefficient from g_ip_fade_from to
+   g_ip_fade_evy (this tick's) by the blend's alpha, in g_ip_fade_white's colour */
+static int g_ip_prev_masked, g_ip_fade_cpumask, g_ip_fade_mov, g_ip_fade_from;
+/* why a tick could not blend (SM64DS_INTERP_TRACE's census): 0 it could, 1 the
+   fit fallback, 2 a frozen / stacked / skipped tick, 3 the recorded geometry
+   (gx_interp_commit refused it: a cut, a new level), 4 a fade that cannot be
+   blended */
+static int g_ip_snapwhy;
+/* SM64DS_INTERP_FADES=0 puts the earlier rule back (a fade in motion and a
+   masked fade on the processor path are snaps), for A/B on one binary */
+static int ip_fades_on(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("SM64DS_INTERP_FADES");
+        v = (e && atoi(e) == 0) ? 0 : 1;
+    }
+    return v;
+}
 static unsigned long long g_ip_fade_const_ticks, g_ip_fade_move_ticks;
 /* engine A's brightness blend on one pixel, the integers cp_fade and
    fade_pass use */
@@ -7942,6 +7964,7 @@ static void ip_live_sync(void)
         g_ip_stack_on = 0;
         g_ip_stack_fast = 0;
         g_ip_fade_on = 0;
+        g_ip_fade_mov = 0;
         fprintf(stderr, "[interp] SmoothMotion stands down: FrameRate went back "
                 "to native\n");
         return;
@@ -7985,6 +8008,16 @@ static int ip_build(double alpha)
        replayed 3D is drawn on the card and composited with that overlay into
        the in-between target, and the present shows it from there. No readback
        and no pass over the picture on the processor. */
+    /* run hunt8, lane INTERPFIX1: a fade in motion between the two ticks the
+       blend spans: the coefficient moves with the picture's alpha, so the
+       fade steps 144 times a second and not 30 */
+    int ip_evy_t = g_ip_fade_evy;
+    if (g_ip_fade_on && g_ip_fade_mov) {
+        const double e = g_ip_fade_from + (g_ip_fade_evy - g_ip_fade_from) * alpha;
+        ip_evy_t = (int)(e + 0.5);
+        if (ip_evy_t < 0) ip_evy_t = 0;
+        if (ip_evy_t > 16) ip_evy_t = 16;
+    }
     int card = 0;
     if (g_ip_card_ok && ntr::gx_card_retained(g_ip_level_fb) == 1)
         card = ntr::gx_card_interp_clear(o);
@@ -7995,7 +8028,13 @@ static int ip_build(double alpha)
     g_ip_sum_raster += ip_ms_since(t1);
     const long long t2 = ip_qpc();
     if (card && ntr::gx_card_overlay_active()) {
-        if (port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W)) {
+        if (g_ip_fade_on && g_ip_fade_mov)
+            port_gpu_card_inter_fade(ip_evy_t, g_ip_fade_white);
+        else
+            port_gpu_card_inter_fade_off();
+        const int card_done = port_gpu_card_compose_inter(&g_ip_level_fb->px[0][0], ntr::SCREEN_W) != 0;
+        port_gpu_card_inter_fade_off();
+        if (card_done) {
             ntr::gx_card_retire2(&o);
             ++g_ip_card_pics;
             g_ip_sum_compose += ip_ms_since(t2);
@@ -8022,7 +8061,9 @@ static int ip_build(double alpha)
         ip_snap(g_ip_p5, *g_ip_level_fb);
     }
     ++g_ip_cpu_pics;
-    if (g_ip_fade_on && g_ip_fade_masked) {
+    const unsigned char *ip_bm = (g_ip_fade_on && g_ip_fade_masked && g_ip_fade_cpumask)
+                                     ? port_engine_a_bright_mask() : 0;
+    if (g_ip_fade_on && g_ip_fade_masked && !ip_bm) {
         /* the fade only some pixels take, and the card could not composite this
            picture: the tick's own finished picture stands in for it */
         for (int y = 0; y < ntr::active_h; ++y)
@@ -8034,12 +8075,19 @@ static int ip_build(double alpha)
            the tick's 2D goes back over it wherever p2 differs from the faded
            3D layer, the same test the unfaded case makes against p3. */
         const int evy = g_ip_fade_evy, toWhite = g_ip_fade_white;
+        /* run hunt8, lane INTERPFIX1: the tick's picture carries its own
+           coefficient (evy); the replayed 3D takes the one for this alpha
+           (ip_evy_t, the same while the fade holds still). A tick whose fade
+           only some pixels take (the save menu) hands over its one-byte mask:
+           the 3D layer is faded where it says 1. */
         for (int y = 0; y < ntr::active_h; ++y) {
             uint32_t *row = o.px[y];
             const uint32_t *a = g_ip_p3->px[y], *b = g_ip_p2->px[y];
+            const unsigned char *mr = ip_bm ? ip_bm + (size_t)y * ntr::SCREEN_W : 0;
             for (int x = 0; x < ntr::active_w; ++x) {
-                const uint32_t pf = ip_fade_px(a[x], evy, toWhite);
-                row[x] = (pf != b[x]) ? b[x] : ip_fade_px(row[x], evy, toWhite);
+                const int take = mr ? mr[x] : 1;
+                const uint32_t pf = take ? ip_fade_px(a[x], evy, toWhite) : a[x];
+                row[x] = (pf != b[x]) ? b[x] : (take ? ip_fade_px(row[x], ip_evy_t, toWhite) : row[x]);
             }
         }
     } else {
@@ -8784,6 +8832,8 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
         }
         g_ip_fade_on = 0;
         g_ip_fade_masked = 0;
+        g_ip_fade_mov = 0;
+        g_ip_fade_cpumask = 0;
         if (ip_trace())
             fprintf(stderr, "[interp] scene tick f%d groups %d matched %d "
                     "unmatched %d teleport %d shape %d snap %d (%s) eye_step "
@@ -8819,6 +8869,8 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
         /* a fade that holds still is not motion: blend, and give the pictures
            between ticks the same fade (FADEINTERP1) */
         g_ip_fade_masked = 0;
+        g_ip_fade_mov = 0;
+        g_ip_fade_cpumask = 0;
         g_ip_fade_on = 1;
         g_ip_fade_evy = fe;
         g_ip_fade_white = fw;
@@ -9054,6 +9106,7 @@ static void ip_scene_end(void)
         g_ip_stack_on = 0;
         g_ip_stack_fast = 0;
         g_ip_fade_on = 0;
+        g_ip_fade_mov = 0;
     }
 }
 
@@ -18729,6 +18782,7 @@ int main(void)
                                       ? 1 : 0;
             ntr::GxInterpStats ist;
             g_ip_tick_ok = ntr::gx_interp_commit(data_0209b3ec, ip_snapit, &ist);
+            g_ip_snapwhy = g_ip_tick_ok ? 0 : (ip_slow ? 1 : (ip_snapit ? 2 : 3));
             ++g_ip_serial;
             g_ip_tick_shown = 0;
             g_ip_tick_final = 0;
@@ -18744,6 +18798,8 @@ int main(void)
                                             (double)qf.QuadPart / 1000.0 + 0.5);
             }
             g_ip_fade_on = 0;
+            g_ip_fade_mov = 0;
+            g_ip_fade_cpumask = 0;
             if (ip_trace())
                 fprintf(stderr, "[interp] tick f%d groups %d matched %d "
                         "unmatched %d teleport %d shape %d snap %d eye_step "
@@ -18796,10 +18852,33 @@ int main(void)
            did. Anything else (a fade moving, starting or stopping, or one
            that only some pixels take) still snaps. Updated every tick. */
         int ip_fade_const = 0, ip_fe = 0, ip_fw = 0;
+        int ip_fade_mov = 0, ip_mov_from = 0, ip_mov_white = 0;
+        int ip_masked_now = 0;
         if (g_ip_on > 0) {
             const int fnow = port_fader_blend_state(&ip_fe, &ip_fw);
             ip_fade_const = fnow && g_ip_prev_fade && g_ip_prev_evy == ip_fe &&
                             g_ip_prev_white == ip_fw;
+            ip_masked_now = port_engine_a_bright_mask() ? 1 : 0;
+            /* run hunt8, lane INTERPFIX1: a fade IN MOTION (starting, stepping
+               or ending) is blendable too when it is a plain whole-picture one
+               of the same colour whose step is small: the pictures between the
+               two ticks take the coefficient between theirs, under the tick's
+               brightness mask when it has one. A colour flip, a jump of more
+               than 4 steps (a cut to black) or a fade that ends while the tick
+               before it had a mask (nothing to replay) still snaps. */
+            if (ip_fades_on() && !ip_fade_const && (fnow || g_ip_prev_fade) &&
+                (fnow || !g_ip_prev_masked) &&
+                (!fnow || !g_ip_prev_fade || g_ip_prev_white == ip_fw)) {
+                const int to = fnow ? ip_fe : 0;
+                const int from = g_ip_prev_fade ? g_ip_prev_evy : 0;
+                const int d = to > from ? to - from : from - to;
+                if (d >= 1 && d <= 4) {
+                    ip_fade_mov = 1;
+                    ip_mov_from = from;
+                    ip_mov_white = fnow ? ip_fw : g_ip_prev_white;
+                }
+            }
+            g_ip_prev_masked = ip_masked_now;
             g_ip_prev_fade = fnow;
             g_ip_prev_evy = ip_fe;
             g_ip_prev_white = ip_fw;
@@ -18840,18 +18919,34 @@ int main(void)
             /* a fade only some pixels take (the brightness mask) is blendable
                only while the tick is held on the card: the composite decides
                the mask per pixel against the picture it draws */
-            if (ip_fade_const && port_engine_a_bright_mask() &&
+            if (ip_fade_const && !ip_fades_on() && port_engine_a_bright_mask() &&
                 !ntr::gx_card_overlay_active())
                 ip_fade_const = 0;
             if (ip_fade_const) {
                 /* a fade that holds still is not motion: blend, and give the
-                   pictures between ticks the same fade */
+                   pictures between ticks the same fade. A mask the processor
+                   can read (the tick was not held on the card: the save menu)
+                   is replayed by ip_build; one in the card's encoding stays
+                   with the card's composite (INTERPFIX1) */
                 g_ip_fade_masked = port_engine_a_bright_mask() ? 1 : 0;
+                g_ip_fade_cpumask = g_ip_fade_masked && !ntr::gx_card_overlay_active();
+                g_ip_fade_mov = 0;
                 g_ip_fade_on = 1;
                 g_ip_fade_evy = ip_fe;
                 g_ip_fade_white = ip_fw;
+            } else if (ip_fade_mov) {
+                /* the tick's own mask serves the whole fade (the card keeps it
+                   with the tick's overlay; the processor reads it at build) */
+                g_ip_fade_masked = ip_masked_now && ip_fe > 0;
+                g_ip_fade_cpumask = g_ip_fade_masked && !ntr::gx_card_overlay_active();
+                g_ip_fade_mov = 1;
+                g_ip_fade_from = ip_mov_from;
+                g_ip_fade_on = 1;
+                g_ip_fade_evy = ip_fe;          /* 0 when the fade ends this tick */
+                g_ip_fade_white = ip_mov_white;
             } else if (port_fader_blend_state(&ip_evy, &ip_white)) {
                 g_ip_tick_ok = 0;
+                g_ip_snapwhy = 4;
                 if (ip_trace())
                     fprintf(stderr, "[interp] tick f%d is a snap: engine A fade in "
                             "motion (evy %d to %s) mask %d prev %d/%d/%d\n",
@@ -18864,6 +18959,28 @@ int main(void)
         if (g_ip_on > 0 && g_ip_tick_ok) {
             ip_snap_2d(g_ip_p4, fb);   /* run interp1 */
             g_ip_snapstage = 2;
+        }
+        /* run hunt8, lane INTERPFIX1: SM64DS_INTERP_TRACE's tick census, one
+           line per 120 ticks: how many could blend and which fade rule they
+           took, how many snapped */
+        if (g_ip_on > 0 && ip_trace()) {
+            static unsigned c_n, c_ok, c_const, c_mask, c_mov, c_why[5];
+            ++c_n;
+            ++c_why[g_ip_tick_ok ? 0 : (g_ip_snapwhy ? g_ip_snapwhy : 3)];
+            if (g_ip_tick_ok) {
+                ++c_ok;
+                if (g_ip_fade_on) {
+                    if (g_ip_fade_mov) ++c_mov; else ++c_const;
+                    if (g_ip_fade_masked) ++c_mask;
+                }
+            }
+            if (c_n >= 120) {
+                fprintf(stderr, "[interp] census f%d: %u ticks, %u blendable (a constant fade %u, %u of them masked; a fade in motion %u), %u snapped (fit fallback %u, frozen or stacked %u, geometry %u, a fade %u)\n",
+                        port_rom_frame(), c_n, c_ok, c_const, c_mask, c_mov, c_n - c_ok,
+                        c_why[1], c_why[2], c_why[3], c_why[4]);
+                c_n = c_ok = c_const = c_mask = c_mov = 0;
+                memset(c_why, 0, sizeof c_why);
+            }
         }
 
         /* SM64DS_FADE_WATCH=<from>[-<to>] (ROM frames): one line per frame of

@@ -100,6 +100,11 @@ void *port_gpu_card_retained_view(int slot);   /* slot 1 the tick, 2 an in-betwe
    processor). */
 void *port_gpu_card_compose_inter(const unsigned int *overlay, int stride_px);
 int port_gpu_card_fade_recorded(void);
+/* run hunt8, lane INTERPFIX1: the pictures between two ticks take engine A's
+   fade at this coefficient (0..16, 0 = none) and colour (nonzero white) instead
+   of the tick's own, the whole picture; _off puts the tick's own back. */
+void port_gpu_card_inter_fade(int evy, int white);
+void port_gpu_card_inter_fade_off(void);
 
 /* THE READBACK WAIT, summed in milliseconds over every frame the card has
  * drawn. This is the CPU side of the opaque pass: the copy out of the render
