@@ -1114,7 +1114,7 @@ extern "C" int settings_page_warm_step(int w, int h)
     }
     /* stage order: layout; each picture decoded alone; the parchment tile scaled; the sheet in row slices (built in a hidden cache entry, kind 102,
        renamed when whole); title and back scaled; one throwaway draw per tab */
-    enum { ST_LAYOUT = 0, ST_DEC, ST_TILE = ST_DEC + IM_COUNT, ST_SHEET, ST_TITLE, ST_BACK, ST_TAB, ST_DONE };
+    enum { ST_LAYOUT = 0, ST_DEC, ST_TILE = ST_DEC + IM_COUNT, ST_SHEET, ST_TITLE, ST_BACK, ST_PLANK, ST_ARROW, ST_BUF, ST_TAB, ST_DONE };
     if (g_ws_stage >= ST_DONE) return 1;
     const auto t0 = std::chrono::steady_clock::now();
     while (g_ws_stage < ST_DONE) {
@@ -1178,6 +1178,15 @@ extern "C" int settings_page_warm_step(int w, int h)
             ++g_ws_stage;
         } else if (st == ST_BACK) {
             scaled_im(IM_BACK, L.back[2], L.back[3]);
+            ++g_ws_stage;
+        } else if (st == ST_PLANK) {
+            slice3_piece(4, IM_PLANK, L.reset[2], L.reset[3], 0.12);
+            ++g_ws_stage;
+        } else if (st == ST_ARROW) {
+            arrow_right_piece(P(24), P(34));
+            ++g_ws_stage;
+        } else if (st == ST_BUF) {
+            g_ws_buf.assign((size_t)w * h, 0u);
             ++g_ws_stage;
         } else {
             /* a throwaway draw of one tab, in pieces: the chrome (tabs, title, footer), then two rows at a time: their glyph, key cap, box and
