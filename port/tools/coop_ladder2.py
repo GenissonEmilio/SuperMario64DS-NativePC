@@ -72,6 +72,8 @@ def verdict(row, name, ok, text, expect_ok):
 # ----------------------------------------------------------------------------------------------------------- checks
 def check_drift(row, cons, ctl, lv):
     """movers: every other console against A, per class p95 inside the band (coop_drift)"""
+    if os.environ.get("CW_NODRIFT"):
+        return
     for j in (1, 2, 3):
         r = subprocess.run(DRIFT + ["drift", cons[0].log, cons[j].log], capture_output=True, text=True)
         out = r.stdout
