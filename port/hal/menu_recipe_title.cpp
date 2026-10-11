@@ -1004,7 +1004,7 @@ void build_doodle(MenuLayout *L)
         menu_add_piece(L, pg);
     }
     if (!live) return;
-    static const DsRect kYo = { 0, 132, 48, 60 }, kPen = { 208, 132, 48, 60 }, kBar = { 84, 168, 88, 24 };     /* the buttons' rows of the lower screen: boxes x 4..44 / 212..252, y 148..188, with the slide-in path below */
+    static const DsRect kYo = { 0, 132, 60, 60 }, kPen = { 196, 132, 60, 60 }, kBar = { 84, 168, 88, 24 };     /* the buttons' rows of the lower screen: boxes x 4..44 / 212..252, y 148..188, with the slide-in path below */
     int x0, y0, fw, fh;
     toy_dest(L, 1.f, &x0, &y0, &fw, &fh);
     if (e3 > 0) {      /* FACE3: the canvas starts at the head's size and place (the cut from the drawing page is seamless), then grows to the DS canvas's own size, centred, for drawing */
@@ -1035,6 +1035,15 @@ void build_doodle(MenuLayout *L)
         MenuPiece br = menu_piece_make(SRC_TOP_PIC, kBar.x, kBar.y, kBar.w, kBar.h, MENU_AX_C, MENU_AY_B, 0, 0, 1, 1);
         br.keycover = 1; br.touch = 1;
         menu_add_piece(L, br);
+    }
+    if (e3 > 0 && t_f && t_f->vis) {     /* FACE3: the Yoshi press: the ROM closes its star iris over the page (drawn only inside the 4:3 area in its own layer); ours covers the whole canvas, same star, same radius */
+        MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
+        const float Rds = 0.004382f * (float)t_f->s48, Rpx = Rds * (float)h / 192.f;
+        ir.icx = w / 2;
+        ir.icy = (int)((96.f + 0.0864f * Rds) * (float)h / 192.f + 0.5f);
+        ir.ir16 = (int)(Rpx * 16.f);
+        if (!(Rpx > 0.f && menu_iris_covers(w, h, (float)ir.icx, (float)ir.icy, Rpx))) menu_add_piece(L, ir);
     }
 }
 
