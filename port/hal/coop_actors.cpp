@@ -55,7 +55,7 @@ char  g_prof_name[256][40]; // names of rows added from the profile file
 enum : int {
     kSlots = 512, kSeats = 4,
     kFieldLo = 0xd0, kFieldHi = 0x480,
-    kStaleMs = 3000, kHeartbeatMs = 1500, kDwellMs = 1000, kRxKeepMs = 4000,
+    kStaleMs = 3000, kHeartbeatMs = 1500, kDwellMs = 2000, kRxKeepMs = 4000,
     kPayloadMax = kHubCoopMaxDatagram - kHubCoopHeaderBytes,
 };
 
@@ -383,7 +383,7 @@ void on_ctl(int seat, int sub, const unsigned char *p, int len, void *) {
 // Ownership: the member closest to an actor publishes it (PLAN 1.3). Pure.
 // ---------------------------------------------------------------------------
 int decide_owner(int cur, int me, unsigned my_cd, bool cur_fresh, unsigned cur_cd, int best, unsigned best_cd, bool hyst) {
-    const double F = hyst ? 1.5 : 1.0;
+    const double F = hyst ? 1.75 : 1.0;
     if (cur >= 0 && cur != me && !cur_fresh) cur = -1;           // the owner went silent
     if (best < 0 && (cur < 0 || cur == me)) return me;           // nobody else claims it
     if (cur == me) {
