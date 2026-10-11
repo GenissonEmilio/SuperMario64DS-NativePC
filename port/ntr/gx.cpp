@@ -3772,6 +3772,10 @@ static const Inv255 inv255;
    raster is the port's reference for what the DS drew.
 
    SM64DS_RASTER_THREADS=N forces the worker count; 1 turns threading off. */
+/* PCORE1: set by the exe at boot (hal/pcore.h); each raster worker calls it once
+   as it starts so Windows does not run it throttled on an efficiency core. */
+void (*gx_worker_thread_hook)(void) = nullptr;
+
 namespace {
 
 typedef void (*BandFn)(void *, int, int);
@@ -3801,6 +3805,7 @@ struct RasterPool {
             if (t.joinable()) t.join();
     }
     void worker(int id) {
+        if (gx_worker_thread_hook) gx_worker_thread_hook();
         unsigned long long seen = 0;
         for (;;) {
             std::unique_lock<std::mutex> lk(m);
