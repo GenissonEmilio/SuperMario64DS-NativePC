@@ -6086,8 +6086,27 @@ static int sp_frame(int pad_live, const XPad *pad)
     return 1;
 }
 
+/* PAUSE3: the new pause's own controls (hal/menu_recipe_pause.cpp menu_pause_input): LB / RB / Q / E slide the planks and the star tracker (4:3) or page
+   the courses (wide), the wooden edge tabs are clicked here. Reads the raw devices behind the same gates the page's frame uses, and only while the pause
+   recipe is up; with OneScreenMenus off the recipe is never up, so nothing here runs a read. */
+extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int mdown);
+extern "C" int menu_pause_active(void);
+static void pause3_input(int pad_live, const XPad *pad)
+{
+    if (!menu_pause_active()) { menu_pause_input(0, 0, 0, 0, 0); return; }
+    unsigned k = 0;
+    if (pad_live && (pad->buttons & 0x0100)) k |= 1;
+    if (pad_live && (pad->buttons & 0x0200)) k |= 2;
+    if (key_live('Q')) k |= 4;
+    if (key_live('E')) k |= 8;
+    int fx = 0, fy = 0;
+    const int mv = hal_window_cursor_fb(&fx, &fy);
+    menu_pause_input(k, mv, fx, fy, g_mouse_left_down ? 1 : 0);
+}
+
 static void menu_input(int pad_live, const XPad *pad)
 {
+    pause3_input(pad_live, pad);
     if (sp_frame(pad_live, pad)) return;
     if (g_selftest) return;
     static unsigned menu_prev;

@@ -125,6 +125,7 @@ int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy);
 extern "C" int settings_page_hook_pad(uint16_t *pressed);
 extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, unsigned char sy);
 extern "C" int settings_page_swallow_back(void);
+extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
 int hal_sub_screen_stacked(void);
@@ -3733,6 +3734,7 @@ extern "C" void hal_menu_pad_seam(void)
     uint16_t k = *pressed;
     const uint16_t k0 = k;
     settings_page_hook_pad(&k);      /* SETMENU1: the confirm on the wrench / the Options plate opens the settings page, the ROM never sees it */
+    menu_pause_hook_pad(&k, back);   /* PAUSE3: while the 4:3 star tracker is showing, A / B slide back and the plank cursor is not moved */
     hal_menu_pad(&k, back);
     if (k != k0) {
         *pressed = k;

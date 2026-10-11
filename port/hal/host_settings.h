@@ -247,6 +247,13 @@ int host_setting_minigame_gap(void);
 int host_setting_gap_fill_mode(void);
 unsigned host_setting_gap_color(void);
 int host_setting_gap_peek(void);
+/* PAUSE3: the in-game settings page's setters for the screen gap (the rest of the file's values are read by the launcher's own page). Each
+   applies at once (host_settings_gen steps, the gap latch re-reads it) and queues the key. gap_look: 0 solid, 1 blur (ambient), 2 peek
+   (GapPeek on, the fill keeps its mode). gap_color is 0xRRGGBB. */
+int host_setting_set_minigame_gap(int on);
+int host_setting_gap_look(void);
+int host_setting_set_gap_look(int look);
+int host_setting_set_gap_color(unsigned rgb);
 
 /* ---- GaplessMinigames: THE ONE KEY THAT IS A MOD -----------------------
    Default 0, and the default is the only setting that is the ROM. This is

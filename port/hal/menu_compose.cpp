@@ -1375,6 +1375,7 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
 
 void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
 {
+    if (dst && i >= 0 && i < L->np && L->p[i].custom) { L->p[i].custom(L, i, dst, w, h, stride_of(w)); return; }   /* PAUSE3 */
     if (!cost_fast()) { piece_draw_ref(L, i, S, dst, w, h); return; }
     if (!S || !dst || i < 0 || i >= L->np) return;
     const MenuPiece &P = L->p[i];
@@ -2011,6 +2012,14 @@ int hal_menu_hover_box(int *x, int *y, unsigned *stamp)
     *x = g_cur.hs[g_cur.focus].box.x;
     *y = g_cur.hs[g_cur.focus].box.y;
     *stamp = g_hover_stamp;
+    return 1;
+}
+
+/* PAUSE3: the pad / hover cursor's hotspot, for a recipe that shows its own selection from it (a touch-only page's planks) */
+int hal_menu_focus_shown(int *hs)
+{
+    if (!g_live || !g_focus_shown || g_cur.focus < 0 || g_cur.focus >= g_cur.nh) return 0;
+    *hs = g_cur.focus;
     return 1;
 }
 

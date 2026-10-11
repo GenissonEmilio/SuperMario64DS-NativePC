@@ -5,3 +5,4 @@
 extern "C" int settings_page_hook_pad(uint16_t *) { return 0; }
 extern "C" int settings_page_hook_touch(unsigned char, unsigned char, unsigned char) { return 0; }
 extern "C" int settings_page_swallow_back(void) { return 0; }
+extern "C" void menu_pause_hook_pad(uint16_t *, int) {}

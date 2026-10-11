@@ -9,6 +9,10 @@
 
 static const char *const RUN_NAMES[3] = { "button", "analog", "auto" };
 static const char *const CAM_NAMES[3] = { "analog", "freecam", "ds" };
+static const char *const GAPLOOK_NAMES[3] = { "solid", "blur", "peek" };
+static const char *const GAPCOLOR_NAMES[6] = { "black", "white", "gray", "blue", "red", "green" };
+/* the preset colours of SL_GAP_COLOR (0xRRGGBB), in the order of GAPCOLOR_NAMES */
+static const unsigned GAP_COLORS[6] = { 0x000000, 0xFFFFFF, 0x808080, 0x2850C8, 0xC82828, 0x28A038 };
 
 static const SlInfo INFO[] = {
     /* keys, in HOST_KEY_ order */
@@ -56,6 +60,9 @@ static const SlInfo INFO[] = {
     { "Volume",                 SL_KIND_PERCENT, 0, 100, 50, 0, 1 },
     { "MinimapScale",           SL_KIND_PERCENT, 25, 400, 100, 0, 1 },
     { "ImprovedMinimap",        SL_KIND_BOOL,    0, 1, 1, 0, 0 },
+    { "MinigameGap",            SL_KIND_BOOL,    0, 1, 1, 0, 1 },
+    { "GapLook",                SL_KIND_ENUM,    0, 2, 1, GAPLOOK_NAMES, 1 },
+    { "GapColor",               SL_KIND_ENUM,    0, 5, 0, GAPCOLOR_NAMES, 1 },
 };
 
 /* INFO[] is positional: row i describes id i. If a host key or pad is added (HOST_KEY_COUNT / HOST_PAD_COUNT move, for example
@@ -97,6 +104,13 @@ int sl_get(int id)
     }
     case SL_MINIMAP_SCALE:      return (int)(host_setting_minimap_scale_value() * 100.0 + 0.5);
     case SL_IMPROVED_MINIMAP:   return host_setting_improved_minimap();
+    case SL_MINIGAME_GAP:       return host_setting_minigame_gap();
+    case SL_GAP_LOOK:           return host_setting_gap_look();
+    case SL_GAP_COLOR: {
+        const unsigned c = host_setting_gap_color() & 0xffffffu;
+        for (int i = 0; i < 6; ++i) if (GAP_COLORS[i] == c) return i;
+        return 0;       /* a colour the launcher picked that is not a preset reads as the first until the player chooses one */
+    }
     }
     return 0;
 }
@@ -120,6 +134,11 @@ int sl_set(int id, int v)
         if (v < 25 || v > 400) return 0;
         return host_setting_set_minimap_scale(v / 100.0);
     case SL_IMPROVED_MINIMAP:   return 0;   /* latched with the minimap geometry */
+    case SL_MINIGAME_GAP:       return host_setting_set_minigame_gap(v);
+    case SL_GAP_LOOK:           return host_setting_set_gap_look(v);
+    case SL_GAP_COLOR:
+        if (v < 0 || v > 5) return 0;
+        return host_setting_set_gap_color(GAP_COLORS[v]);
     }
     return 0;
 }
@@ -133,6 +152,10 @@ int sl_applicable(int id)
         return host_setting_camera_mode() != 2;
     case SL_RUN_THRESHOLD:
         return host_setting_run_mode() == 1;
+    case SL_GAP_LOOK:
+        return host_setting_minigame_gap() != 0;
+    case SL_GAP_COLOR:
+        return host_setting_minigame_gap() != 0 && host_setting_gap_look() == 0;
     }
     return 1;
 }

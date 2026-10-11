@@ -46,6 +46,9 @@ enum SlId {
     SL_VOLUME,                  /* percent 0..100 */
     SL_MINIMAP_SCALE,           /* percent of 1.0x */
     SL_IMPROVED_MINIMAP,        /* bool, read only: latched with the geometry */
+    SL_MINIGAME_GAP,            /* bool: the DS hinge shown between the screens in a minigame (PAUSE3) */
+    SL_GAP_LOOK,                /* enum: solid, blur, peek */
+    SL_GAP_COLOR,               /* enum: a few preset colours for the solid look */
     SL_COUNT
 };
 
