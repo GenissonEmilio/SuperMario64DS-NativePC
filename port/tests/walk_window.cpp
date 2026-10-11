@@ -19700,6 +19700,7 @@ int main(void)
         sdat_host_tick();   /* hosted ARM7: drain the sound queue, feed the mixer */
         pt_mark(PS_POST);
         rb_frame_sound_ms(ovl_now_ms() - t_snd); }
+        si_ram_hash(port_rom_frame());   /* run hunt8 BOOTSTALL1: the state proof (SM64DS_SCENE_RAMHASH, inert unset) on the level loop too */
         /* THE FRAME BOUNDARY. Everything this frame -- tick, render, present --
            is done, and nothing of the next frame has started, so an editor's
            object move or staged warp lands on a world that is not half-updated.

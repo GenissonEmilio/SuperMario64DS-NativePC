@@ -2686,6 +2686,47 @@ static void fade_pass(unsigned int *px, int w, int h, int evy, int toWhite,
     }
 }
 
+/* the overlay words the processor wrote itself (alpha FF) inside the host
+   rectangle rc, faded by engine B's coefficient; every other word is left alone
+   (zero alpha means "the card's own pixel here", which a fade must not turn into
+   an opaque black one) */
+static void fade_pass_ov(unsigned int *px, int w, int h, int evy, int toWhite,
+                         const int *rc)
+{
+    const int x0 = rc[0] < 0 ? 0 : rc[0], x1 = rc[2] > w ? w : rc[2];
+    const int y0 = rc[1] < 0 ? 0 : rc[1], y1 = rc[3] > h ? h : rc[3];
+    for (int y = y0; y < y1; ++y) {
+        uint32_t *row = px + (size_t)y * ntr::SCREEN_W;
+        for (int x = x0; x < x1; ++x) {
+            uint32_t p = row[x];
+            if ((p >> 24) != 0xFFu) continue;
+            int r = (p >> 16) & 0xff, g = (p >> 8) & 0xff, b = p & 0xff;
+            if (toWhite) {
+                r += ((255 - r) * evy) >> 4;
+                g += ((255 - g) * evy) >> 4;
+                b += ((255 - b) * evy) >> 4;
+            } else {
+                r -= (r * evy) >> 4;
+                g -= (g * evy) >> 4;
+                b -= (b * evy) >> 4;
+            }
+            row[x] = 0xFF000000u | ((uint32_t)r << 16) |
+                     ((uint32_t)g << 8) | (uint32_t)b;
+        }
+    }
+}
+
+/* SM64DS_PANEL_WIPE_SETTLE=1 puts the old settle back (test only, for the before / after) */
+static int bootstall_panel_on(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_PANEL_WIPE_SETTLE");
+        v = (e && *e && *e != '0') ? 0 : 1;
+    }
+    return v;
+}
+
 extern "C" void port_engine_a_fade(unsigned int *px, int w, int h)
 {
     int evy = 0, toWhite = 0;
@@ -2711,14 +2752,38 @@ extern "C" void port_engine_a_fade(unsigned int *px, int w, int h)
        one fade the composite cannot say is the inset panel on engine B's own
        blend (a second coefficient inside one rectangle): that frame is made an
        ordinary one first and takes the processor's path below. */
+    /* BOTH ENGINES ON THE SAME COEFFICIENT (run hunt8, lane BOOTSTALL1): the
+       two fades above (engine A outside the panel, engine B inside it) are
+       one fade over the whole picture, and no mask is live (inset_b needs
+       !g_bm_live), so the frame is an ordinary one for the card. */
+    const bool same_fade = inset_b && a_on && b_evy &&
+                           (b_evy > 16 ? 16 : b_evy) == evy &&
+                           (b_white ? 1 : 0) == (toWhite ? 1 : 0) &&
+                           bootstall_panel_on();
     if (ntr::gx_card_overlay_active()) {
-        if (!(inset_b && b_evy)) {
+        if (!(inset_b && b_evy) || same_fade) {
             if (a_on) {
                 port_gpu_card_set_fade(evy, toWhite);
                 port_gpu_card_set_mask(g_bm_live ? g_bm : nullptr,
                                        ntr::SCREEN_W, g_bm_shown3d,
                                        g_bm_clear_opaque);
             }
+            return;
+        }
+        /* THE LEVEL-ENTRY WIPE (run hunt8, lane BOOTSTALL1). While the wipe
+           mesh moves the DS has engine A's effects off and fades only engine
+           B, so the one thing to fade is the corner panel, and the panel is
+           words the processor wrote itself into this overlay (alpha FF, a 2D
+           pixel in front). Fading those words here is the same rule fade_pass
+           runs on the settled picture, applied to the pixels that are the
+           panel; nothing under it needs reading back. Settling the whole
+           picture for it cost the first second of every course 5 ms of
+           readback and fade on the tick plus a settled replay for each
+           in-between (about 29 ticks, a 14 to 48 ms hole in the pictures at
+           144 Hz). A tick where engine A fades too keeps the settle. */
+        if (!a_on && px && bootstall_panel_on()) {
+            if (b_evy > 16) b_evy = 16;
+            fade_pass_ov(px, w, h, b_evy, b_white, g_inset_fade_rc);
             return;
         }
         ntr::gx_card_settle_because("the inset panel on engine B's fade");
