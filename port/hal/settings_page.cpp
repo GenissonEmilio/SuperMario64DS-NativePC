@@ -1058,6 +1058,7 @@ void draw_slider(const Surf &s, int x, int cy, int rail_w, int v, int vmin, int 
 }  // namespace
 
 static int g_warming;
+static int g_ws_cp, g_ws_cpn = 1;   /* WARMFIX1 F5: a tab's chrome is three warm steps: 1 = the sheet, title and back; 2 = the tabs; 3 = the scroll bar and footer (0 = all, as the live draw) */
 static int g_ws_r0, g_ws_r1;       /* PAUSEFIX1: while warming, the draw does only rows [r0, r1) of the tab (the chrome is always drawn) */
 
 /* PAUSEFIX1: the page's caches built in small steps, one per call, never more than about 2 ms of work a call (the old one-shot warm-up was one
@@ -1076,6 +1077,10 @@ struct WDec {
     int req = -1, done = -1;
     Img img;
     bool started = false;
+    /* WARMFIX1 F5: the same worker also scales a whole picture (a 6 to 12 ms scale on the game thread is a visible tick) */
+    bool sreq = false, sdone = false;
+    int sid = 0, sdw = 0, sdh = 0;
+    std::vector<uint32_t> spx;
 };
 WDec *g_wd;
 
@@ -1089,7 +1094,19 @@ void wdec_main(WDec *W)
         int id;
         {
             std::unique_lock<std::mutex> lk(W->m);
-            W->cv.wait(lk, [W] { return W->req >= 0; });
+            W->cv.wait(lk, [W] { return W->req >= 0 || W->sreq; });
+            if (W->sreq) {
+                const int sid = W->sid, sdw = W->sdw, sdh = W->sdh;
+                lk.unlock();
+                std::vector<uint32_t> out;
+                try { scale_rect(g_im[sid], 0, 0, g_im[sid].w, g_im[sid].h, sdw, sdh, &out); }      /* g_im[sid] is decoded and never changes again */
+                catch (...) { out.clear(); }
+                lk.lock();
+                W->spx = std::move(out);
+                W->sreq = false;
+                W->sdone = true;
+                continue;
+            }
             id = W->req;
         }
         Img t;
@@ -1116,6 +1133,37 @@ void wdec_main(WDec *W)
     }
 }
 
+/* the picture's scaled piece (kind 1, as scaled_im builds it), made by the worker: 1 when the piece exists (or cannot be made off-thread: the
+   caller then scales inline), 0 while the worker is busy with it */
+int wdec_ready(int id);
+int wscale_ready(int id, int dw, int dh)
+{
+    if (dw < 1 || dh < 1) return 1;
+    if (find_piece(1, id, dw, dh)) return 1;
+    if (!wdec_ready(id)) return 0;                               /* the picture itself first */
+    if (g_im[id].px.empty() || !g_wd) return 1;
+    WDec *W = g_wd;
+    std::unique_lock<std::mutex> lk(W->m);
+    if (!W->started) return 1;                                   /* no worker thread: scale inline */
+    if (W->sdone) {
+        if (W->sid == id && W->sdw == dw && W->sdh == dh && !W->spx.empty()) {
+            lk.unlock();
+            Piece *p = new_piece(1, id, dw, dh, dw, dh);
+            lk.lock();
+            p->px = std::move(W->spx);
+            W->sdone = false; W->spx.clear();
+            return 1;
+        }
+        W->sdone = false; W->spx.clear();                           /* a stale or failed result: ask again, or fall back inline */
+        if (W->sid == id && W->sdw == dw && W->sdh == dh) return 1;
+    }
+    if (!W->sreq && W->req < 0 && W->done < 0) {
+        W->sid = id; W->sdw = dw; W->sdh = dh; W->sreq = true;
+        W->cv.notify_one();
+    }
+    return 0;
+}
+
 /* 1 when picture id is loaded (decoded here or by the worker); otherwise asks the worker and answers 0 */
 int wdec_ready(int id)
 {
@@ -1127,7 +1175,11 @@ int wdec_ready(int id)
     std::lock_guard<std::mutex> lk(W->m);
     /* WARMFIX1 F2: a finished picture the page decoded itself in the meantime is stale; drop it first, or `done` stays set for the rest of
        the run and no later picture is ever requested */
-    if (W->done >= 0 && g_im[W->done].tried) { W->done = -1; W->img = Img(); }
+    if (W->done >= 0 && g_im[W->done].tried) {
+        static const bool tr = getenv("SM64DS_WARM_TRACE") != 0;
+        if (tr) fprintf(stderr, "[warm] settings: stale decode of picture %d dropped (the page loaded it first), asking for picture %d\n", W->done, id);
+        W->done = -1; W->img = Img();
+    }
     if (g_im[id].tried) return 1;
     if (W->done == id) {
         std::unique_lock<std::mutex> pl(g_pc_mx, std::try_to_lock);      /* WARMFIX1 F1: the swap; never wait for it */
@@ -1161,6 +1213,15 @@ static double ws_now_ms()
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 static double g_ws_hold_until;
+/* the calling thread's own CPU time in ms (trace only: it tells a slow unit from a descheduled one on a busy box) */
+extern "C" __declspec(dllimport) int __stdcall GetThreadTimes(void *, unsigned long long *, unsigned long long *, unsigned long long *, unsigned long long *);
+extern "C" __declspec(dllimport) void *__stdcall GetCurrentThread(void);
+static double ws_cpu_ms()
+{
+    unsigned long long c, e, k, u;
+    if (!GetThreadTimes(GetCurrentThread(), &c, &e, &k, &u)) return 0;
+    return (double)(k + u) / 10000.0;
+}
 
 /* 1 while the worker is still decoding the picture the next step waits for (the caller then does not take a warm-up slot) */
 extern "C" int settings_page_warm_waiting(void)
@@ -1168,7 +1229,7 @@ extern "C" int settings_page_warm_waiting(void)
     if (g_ws_hold_until > 0 && ws_now_ms() < g_ws_hold_until) return 1;
     if (!g_wd) return 0;
     std::lock_guard<std::mutex> lk(g_wd->m);
-    return g_wd->req >= 0;
+    return g_wd->req >= 0 || g_wd->sreq;
 }
 
 extern "C" int settings_page_warm_step(int w, int h)
@@ -1178,7 +1239,7 @@ extern "C" int settings_page_warm_step(int w, int h)
     /* WARMFIX1 F1: everything below runs on the scratch S and L, and the pieces it makes stay private until the step ends */
     struct Scope { Scope() { tl_warm = true; } ~Scope() { publish_pieces(); tl_warm = false; } } scope;
     if (w != g_ws_w || h != g_ws_h) {
-        g_ws_w = w; g_ws_h = h; g_ws_stage = 0; g_ws_y = 0; g_ws_tab = 0; g_ws_row = -1;
+        g_ws_w = w; g_ws_h = h; g_ws_stage = 0; g_ws_y = 0; g_ws_tab = 0; g_ws_row = -1; g_ws_cpn = 1;
         std::vector<uint32_t>().swap(g_ws_tile); std::vector<uint32_t>().swap(g_ws_buf);
     }
     /* stage order: layout; each picture decoded alone; the parchment tile scaled; the sheet in row slices (built in a hidden cache entry, kind 102,
@@ -1189,6 +1250,7 @@ extern "C" int settings_page_warm_step(int w, int h)
     const auto t0 = std::chrono::steady_clock::now();
     while (g_ws_stage < ST_DONE) {
         const auto ts = std::chrono::steady_clock::now();
+        const double cpu0 = ws_cpu_ms();
         const int st = g_ws_stage;
         if (st == ST_LAYOUT) {
             compute_layout(w, h);
@@ -1199,7 +1261,9 @@ extern "C" int settings_page_warm_step(int w, int h)
             if (!wdec_ready(st - ST_DEC)) return 0;       /* the worker is decoding it: come back next call */
             ++g_ws_stage;
         } else if (st == ST_TILE) {
-            const Piece *tp = find_piece(2, L.sw, L.sh, g_ws_u100) ? 0 : scaled_im(IM_PARCH, g_ws_tilesz, g_ws_tilesz);
+            const bool have_sheet = find_piece(2, L.sw, L.sh, g_ws_u100) != 0;
+            if (!have_sheet && !wscale_ready(IM_PARCH, g_ws_tilesz, g_ws_tilesz)) return 0;
+            const Piece *tp = have_sheet ? 0 : scaled_im(IM_PARCH, g_ws_tilesz, g_ws_tilesz);
             g_ws_tile_ok = tp != 0;
             if (tp) g_ws_tile = tp->px;
             g_ws_y = 0;
@@ -1244,9 +1308,11 @@ extern "C" int settings_page_warm_step(int w, int h)
                 }
             }
         } else if (st == ST_TITLE) {
+            if (!wscale_ready(IM_TITLE, L.title[2], L.title[3])) return 0;
             scaled_im(IM_TITLE, L.title[2], L.title[3]);
             ++g_ws_stage;
         } else if (st == ST_BACK) {
+            if (!wscale_ready(IM_BACK, L.back[2], L.back[3])) return 0;
             scaled_im(IM_BACK, L.back[2], L.back[3]);
             ++g_ws_stage;
         } else if (st == ST_PLANK) {
@@ -1266,19 +1332,20 @@ extern "C" int settings_page_warm_step(int w, int h)
             rows_of(g_ws_tab, &nrows);
             g_warming = 1;
             S.open = 1; S.tab = g_ws_tab;                  /* the scratch state: the live page never shows open */
-            if (g_ws_row < 0) { g_ws_r0 = g_ws_r1 = 0; }
-            else { g_ws_r0 = g_ws_row; g_ws_r1 = g_ws_row + 1; }
+            if (g_ws_row < 0) { g_ws_r0 = g_ws_r1 = 0; g_ws_cp = g_ws_cpn; }
+            else { g_ws_r0 = g_ws_row; g_ws_r1 = g_ws_row + 1; g_ws_cp = 0; }
             settings_page_draw(g_ws_buf.data(), w, w, h);
             S.open = 0;
             g_warming = 0;
-            g_ws_row = g_ws_row < 0 ? 0 : g_ws_row + 1;
+            if (g_ws_row < 0 && g_ws_cpn < 3) ++g_ws_cpn;                /* the next part of the chrome comes next */
+            else { g_ws_cpn = 1; g_ws_row = g_ws_row < 0 ? 0 : g_ws_row + 1; }
             if (g_ws_row >= nrows) { g_ws_row = -1; ++g_ws_tab; }
             if (g_ws_tab >= T_COUNT) { g_ws_stage = ST_DONE; std::vector<uint32_t>().swap(g_ws_buf); }
         }
 #ifndef PORT_ROM_CLEAN
         static int trace = -1;
         if (trace < 0) trace = getenv("SM64DS_WARM_TRACE") != 0;
-        if (trace) fprintf(stderr, "[warm] settings stage %d %dx%d: %.2f ms\n", st, w, h, ws_ms(ts));
+        if (trace) fprintf(stderr, "[warm] settings stage %d %dx%d: %.2f ms (thread cpu %.2f)\n", st, w, h, ws_ms(ts), ws_cpu_ms() - cpu0);
 #endif
         { const double cost = ws_ms(ts); if (cost > 6.0) { g_ws_hold_until = ws_now_ms() + 4.0 * cost; break; } }
         if (ws_ms(t0) >= 0.8) break;      /* a stage that took real time ends the call; cheap ones chain */
@@ -1297,17 +1364,20 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
     int n = 0;
     const Row *rows = rows_of(S.tab, &n);
 
-    dim_all(s);
-    {   /* the sheet */
+    const int cp = g_warming ? g_ws_cp : 0;
+    const bool ro = g_warming && g_ws_r1 > g_ws_r0;    /* WARMFIX1 F5: a warm step for one row draws only that row (the chrome was cached by the tab's chrome step) */
+    if (!ro) {
+    if (cp == 0 || cp == 1) dim_all(s);
+    if (cp == 0 || cp == 1) {   /* the sheet */
         const Piece *sp = sheet_piece(L.sw, L.sh, (int)(L.u * 100 + 0.5));
         if (sp) blit(s, sp->px, sp->w, sp->h, L.sx, L.sy, 255, 0, 0, 0);
     }
-    draw_im(s, IM_TITLE, L.title[0], L.title[1], L.title[2], L.title[3], 255, 0, 0, 0);
-    {
+    if (cp == 0 || cp == 1) draw_im(s, IM_TITLE, L.title[0], L.title[1], L.title[2], L.title[3], 255, 0, 0, 0);
+    if (cp == 0 || cp == 1) {
         const int hov = S.mouse_known && in_rect(S.mx_prev, S.my_prev, L.back);
         draw_im(s, IM_BACK, L.back[0], L.back[1] + (S.pressed_plank == 1 ? P(3) : 0), L.back[2], L.back[3], 255, hov ? 30 : 0, S.pressed_plank == 1 ? 25 : 0, 0);
     }
-    {   /* tabs */
+    if (cp == 0 || cp == 2) {   /* tabs */
         const float em = (float)P(34);
         const int by = L.tab_y + L.tab_h - P(10);
         for (int i = 0; i < T_COUNT; ++i) {
@@ -1319,6 +1389,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         text_mid(s, (float)(L.sx + P(50)), (float)(L.tab_y + L.tab_h / 2 - P(2)), "LB", sm, C_QUIET, 200, 0);
         const float rw = ui_text_width("RB", sm);
         text_mid(s, (float)(L.sx + L.sw - P(50)) - rw, (float)(L.tab_y + L.tab_h / 2 - P(2)), "RB", sm, C_QUIET, 200, 0);
+    }
     }
     const int *clip = L.body;
     for (int i = 0; i < n && i < 24; ++i) {
@@ -1377,6 +1448,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         default: break;
         }
     }
+    if (!ro && (cp == 0 || cp == 3)) {
     if (L.scroll_max > 0) {   /* the scroll bar */
         fill_rrect(s, (float)L.bar[0], (float)L.bar[1], (float)L.bar[2], (float)L.bar[3], L.bar[2] * 0.5f, 0x000000, 34, 0);
         int th = (int)((double)L.bar[3] * L.bar[3] / L.content_h);
@@ -1430,6 +1502,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             if (I->min + i == S.dd_hi) fill_rrect(s, (float)(lx + P(6)), (float)ry, (float)(lw - P(12)), (float)lh, (float)P(6), 0xFFFFFF, 80, 0);
             text_mid(s, (float)(lx + P(18)), ry + lh * 0.5f, R.names[i], lh * 0.62f, 0xFFFFFF, 255, 0);
         }
+    }
     }
     S.draw_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
     if (!tl_warm) publish_pieces();                    /* WARMFIX1 F1 */
