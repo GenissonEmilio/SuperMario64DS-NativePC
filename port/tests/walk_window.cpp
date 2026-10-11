@@ -6100,8 +6100,28 @@ static void pause3_input(int pad_live, const XPad *pad)
     if (key_live('Q')) k |= 4;
     if (key_live('E')) k |= 8;
     int fx = 0, fy = 0;
-    const int mv = hal_window_cursor_fb(&fx, &fy);
-    menu_pause_input(k, mv, fx, fy, g_mouse_left_down ? 1 : 0);
+    int mv = hal_window_cursor_fb(&fx, &fy);
+    int md = g_mouse_left_down ? 1 : 0;
+#ifndef PORT_ROM_CLEAN
+    {   /* SM64DS_PAUSE_MOUSE = "x,y@f0-f1;...": the pointer stands at picture pixel (x, y) from frame f0 to f1 + 2 and the left button is down on frames
+           f0 + 1 .. f1 (the frame count is SM64DS_HOST_KEY's). Proof rows only: a scripted run has no focused window to read a pointer from. */
+        static const char *env = (const char *)1;
+        if (env == (const char *)1) env = getenv("SM64DS_PAUSE_MOUSE");
+        if (env) {
+            const char *s = env;
+            while (*s) {
+                int x = 0, y = 0, f0 = 0, f1 = 0, got = 0;
+                if (sscanf(s, "%d,%d@%d-%d%n", &x, &y, &f0, &f1, &got) >= 4) {
+                    if (g_host_key_frame >= f0 && g_host_key_frame <= f1 + 2) { mv = 1; fx = x; fy = y; md = g_host_key_frame >= f0 + 1 && g_host_key_frame <= f1; }
+                    s += got;
+                }
+                while (*s && *s != ';') ++s;
+                if (*s == ';') ++s;
+            }
+        }
+    }
+#endif
+    menu_pause_input(k, mv, fx, fy, md);
 }
 
 static void menu_input(int pad_live, const XPad *pad)
