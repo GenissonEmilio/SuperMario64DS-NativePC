@@ -2029,6 +2029,8 @@ void hal_menu_pad(uint16_t *pressed, int host_back)
     const MenuRecipe *R = g_cur.recipe;
     if (R->pad_ok && !R->pad_ok()) return;      /* the ROM is not reading the menu this frame */
     if (R->pad_map) { R->pad_map(pressed, host_back); return; }   /* TITLE1: a native recipe with its own key meaning */
+    if ((R->flags & MENU_RF_START_CONFIRM) && (*pressed & MENU_PAD_START))   /* POLISH1A: Enter is the Start key; here it confirms like Space and pad A */
+        *pressed = (uint16_t)((*pressed & ~(unsigned)MENU_PAD_START) | MENU_PAD_CONFIRM);
     int drv = R->driver;
     if (g_netplay && drv == MENU_DRV_ROM_CURSOR) drv = MENU_DRV_TOUCH;   /* never write local ROM state in a session */
     if (g_netplay && drv == MENU_DRV_MIXED) drv = MENU_DRV_TOUCH;
