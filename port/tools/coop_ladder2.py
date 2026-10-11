@@ -36,6 +36,8 @@ def base_extra(i, ctl, extra=None, move_log=True):
     e = {"SM64DS_SPAWN_CENSUS": "1"}
     if move_log:
         e.update({"SM64DS_COOP_MOVE_LOG": "1", "SM64DS_COOP_MOVE_SAMPLE": os.environ.get("CW_SAMPLE", "6")})
+    if os.environ.get("CW_GOD", "0") == "1":
+        e["SM64DS_COOP_MOVE_GOD"] = "1"          # the proof knob: the harness player is not killed by the course
     if ctl and i == 3:
         e.update(MOVE_OFF)
     if extra:
@@ -70,8 +72,9 @@ def verdict(row, name, ok, text, expect_ok):
 
 
 # ----------------------------------------------------------------------------------------------------------- checks
-def check_drift(row, cons, ctl, lv):
-    """movers: every other console against A, per class p95 inside the band (coop_drift)"""
+def check_drift(row, cons, ctl, lv, accept=()):
+    """movers: every other console against A, per class p95 inside the band (coop_drift). `accept` = classes REVCOOPMOVE1 accepted
+    as lag over the band for the first test (fast WF bars 53 54 55, TTC bar); their OVER lines are reported, not failed."""
     if os.environ.get("CW_NODRIFT"):
         return
     for j in (1, 2, 3):
@@ -79,7 +82,11 @@ def check_drift(row, cons, ctl, lv):
         out = r.stdout
         for ln in out.splitlines():
             info("   drift A-%s: %s" % (NAMES[j], ln))
-        verdict(row, "movers A-%s in band" % NAMES[j], r.returncode == 0, "rc=%d" % r.returncode, not (ctl and j == 3))
+        over = [int(m.group(1)) for m in re.finditer(r"over band: class (\d+)", out)]
+        bad = [c for c in over if c not in accept]
+        ok = r.returncode == 0 or (r.returncode == 1 and over and not bad)
+        txt = "rc=%d%s" % (r.returncode, (" accepted-over classes %s" % sorted(set(over) & set(accept))) if over and not bad else (" over %s" % bad if bad else ""))
+        verdict(row, "movers A-%s in band" % NAMES[j], ok, txt, not (ctl and j == 3))
 
 
 def check_block(row, cons, ctl, cls):
@@ -172,7 +179,7 @@ def row_wf(ctl=False):
     """WF: lifts and bars in band on three pairs, a word bit reaches all"""
     row = "wf" + ("_ctl" if ctl else "")
     cons = run(row, specs(7, 1, [{"SM64DS_SW_SET": "1000:%d" % BIT}], ctl=ctl))
-    check_drift(row, cons, ctl, 7)
+    check_drift(row, cons, ctl, 7, accept=(53, 54, 55))
     ts = wall_of(SW.first(cons[0].text(), r"^\[coopsw-knob\] set"))
     say(bool(ts), "%s: A set the word bit" % row)
     if ts:
@@ -184,7 +191,7 @@ def row_ttc(ctl=False):
     row = "ttc" + ("_ctl" if ctl else "")
     act = int(os.environ.get("TTC_ACT", "1"))
     cons = run(row, specs(27, act, [], ctl=ctl))
-    check_drift(row, cons, ctl, 27)
+    check_drift(row, cons, ctl, 27, accept=tuple(int(x) for x in os.environ.get("TTC_ACCEPT", "").split(",") if x))
 
 
 def row_thi(ctl=False):
