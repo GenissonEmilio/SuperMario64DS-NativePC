@@ -10,7 +10,7 @@
 static const char *const RUN_NAMES[3] = { "button", "analog", "auto" };
 static const char *const CAM_NAMES[3] = { "analog", "freecam", "ds" };
 
-static const SlInfo INFO[SL_COUNT] = {
+static const SlInfo INFO[] = {
     /* keys, in HOST_KEY_ order */
     { "KeyUp",       SL_KIND_KEY, 0, 255, 0x57, 0, 1 },
     { "KeyDown",     SL_KIND_KEY, 0, 255, 0x53, 0, 1 },
@@ -49,6 +49,13 @@ static const SlInfo INFO[SL_COUNT] = {
     { "MinimapScale",           SL_KIND_PERCENT, 25, 400, 100, 0, 1 },
     { "ImprovedMinimap",        SL_KIND_BOOL,    0, 1, 1, 0, 0 },
 };
+
+/* INFO[] is positional: row i describes id i. If a host key or pad is added (HOST_KEY_COUNT / HOST_PAD_COUNT move, for example
+   hunt8 CAMBIND1's four camera keys and four camera pads, see runs hunt8 out CAMBIND1 FOR_MENU1.md), SL_COUNT moves and this stops
+   building until the matching rows are added to INFO[] in the same order. */
+static_assert(sizeof(INFO) / sizeof(INFO[0]) == SL_COUNT,
+              "settings_live INFO[] row count differs from SL_COUNT: a HOST_KEY_* / HOST_PAD_* was added or removed, add the matching "
+              "rows to INFO[] in HOST_ order (CAMBIND1's FOR_MENU1.md lists the camera rows)");
 
 const SlInfo *sl_info(int id)
 {

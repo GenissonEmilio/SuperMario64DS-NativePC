@@ -27,11 +27,14 @@
 #ifndef PORT_SETTINGS_LIVE_H
 #define PORT_SETTINGS_LIVE_H
 
+#include "host_settings.h"   /* HOST_KEY_COUNT, HOST_PAD_COUNT: the id bases below follow them */
+
 enum SlId {
-    /* 0..14: HOST_KEY_* (keyboard), 15..21: HOST_PAD_* (pad) */
+    /* 0..HOST_KEY_COUNT-1: HOST_KEY_* (keyboard), then HOST_PAD_COUNT pads: HOST_PAD_*. The bases follow the host enums, so a new
+       host key or pad shifts every id after it together with the INFO[] table, whose row count settings_live.cpp checks. */
     SL_KEY_BASE = 0,
-    SL_PAD_BASE = 15,
-    SL_RUN_MODE = 22,           /* enum: button, analog, auto */
+    SL_PAD_BASE = HOST_KEY_COUNT,
+    SL_RUN_MODE = HOST_KEY_COUNT + HOST_PAD_COUNT, /* enum: button, analog, auto */
     SL_STICK_DEADZONE,          /* percent 0..50, default 24 */
     SL_RUN_THRESHOLD,           /* percent 30..100, default 89 */
     SL_CAMERA_MODE,             /* enum: analog, freecam, ds */
