@@ -25,10 +25,12 @@ def text(p):
     return open(p, encoding="utf-8", errors="replace").read()
 
 
-def uses(t):
+def uses(t, only_table=False):
     out = {}
     for m in USE.finditer(t):
         seat, slot, cls, via, tick, wall = m.groups()
+        if only_table and via != "table":
+            continue
         out.setdefault((int(slot), int(cls)), []).append((int(wall), int(seat), via))
     return out
 
@@ -42,24 +44,29 @@ def cmd_use(logs):
     return 0
 
 
-def cmd_agree(logs, cls=None):
-    per = [uses(text(p)) for p in logs]
+def cmd_agree(logs, cls=None, via=None):
+    per = [uses(text(p), via is None) for p in logs]
+    if via:
+        per = [{k: [x for x in v if x[2] == via] for k, v in u.items()} for u in per]
+        per = [{k: v for k, v in u.items() if v} for u in per]
     keys = set()
     for u in per:
         keys |= {k for k in u if cls is None or k[1] == cls}
     bad = 0
     shown = 0
+    both = 0
     for k in sorted(keys):
         lasts = [(u[k][-1][1] if k in u else None) for u in per]
         have = [x for x in lasts if x is not None]
         ok = len(have) < 2 or len(set(have)) == 1
+        both += 1 if len(have) >= 2 else 0
         if not ok:
             bad += 1
         if (not ok) or shown < 12:
             shown += 1
             print("  slot %d cls %d last seats %s %s" % (k[0], k[1], lasts, "OK" if ok else "DISAGREE"))
-    print("agree: %d slots compared, %d disagree" % (len(keys), bad))
-    return 0 if keys and bad == 0 else (2 if not keys else 1)
+    print("agree: %d slots with a table answer, %d on every console, %d disagree" % (len(keys), both, bad))
+    return 0 if both and bad == 0 else (2 if not both else 1)
 
 
 def cmd_hold(logs, min_ms=900):
@@ -163,14 +170,16 @@ def main():
     logs = []
     i = 0
     while i < len(args):
-        if args[i] in ("--cls", "--min-ms", "--max-pos"):
+        if args[i] == "--via":
+            opts["via"] = args[i + 1]; i += 2
+        elif args[i] in ("--cls", "--min-ms", "--max-pos"):
             opts[args[i][2:]] = int(args[i + 1]); i += 2
         else:
             logs.append(args[i]); i += 1
     if cmd == "use":
         return cmd_use(logs)
     if cmd == "agree":
-        return cmd_agree(logs, opts.get("cls"))
+        return cmd_agree(logs, opts.get("cls"), opts.get("via"))
     if cmd == "hold":
         return cmd_hold(logs, opts.get("min-ms", 900))
     if cmd == "boss":
