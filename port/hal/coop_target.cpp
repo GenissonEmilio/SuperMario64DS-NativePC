@@ -113,6 +113,21 @@ bool logged_cls(unsigned c) {
 // ---------------------------------------------------------------------------
 struct PInfo { int seat; char *body; int idx; int32_t x, y, z; };
 
+// The follower can miss a frame (a teleport, a character swap) and then reports no drawn pose; a friend is still where he was
+// for a little while, so the last pose counts for 400 ms.
+struct Sticky { bool have; int32_t p[3]; unsigned t; };
+Sticky g_sticky[kPlayerMax];
+bool drawpos_sticky(int idx, int out[3]) {
+    const unsigned now = comms_hub_now_ms();
+    if (idx < 0 || idx >= kPlayerMax) return false;
+    if (port_adventure_ghost_drawpos(idx, out)) {
+        g_sticky[idx].have = true; std::memcpy(g_sticky[idx].p, out, sizeof g_sticky[idx].p); g_sticky[idx].t = now;
+        return true;
+    }
+    if (g_sticky[idx].have && (unsigned)(now - g_sticky[idx].t) < 400u) { std::memcpy(out, g_sticky[idx].p, sizeof g_sticky[idx].p); return true; }
+    return false;
+}
+
 char *local_body() {
     const int me = (int)data_0209f250;
     return (me >= 0 && me < kPlayerMax) ? (char *)data_0209f394[me] : nullptr;
@@ -136,7 +151,7 @@ int gather(PInfo *out) {
         const int s = port_adventure_ghost_seat(i);
         if (s < 0 || s >= kSeats || s == g_my || !((mask >> s) & 1u)) continue;
         int dp[3];
-        if (!port_adventure_ghost_drawpos(i, dp)) continue;
+        if (!drawpos_sticky(i, dp)) continue;
         out[n++] = { s, b, i, dp[0], dp[1], dp[2] };
     }
     return n;
@@ -560,7 +575,7 @@ void *coop_target_body_for_seat(int seat) {
         if (i == (int)data_0209f250 || !data_0209f394[i]) continue;
         if (port_adventure_ghost_seat(i) != seat) continue;
         int dp[3];
-        if (!port_adventure_ghost_drawpos(i, dp)) return nullptr;
+        if (!drawpos_sticky(i, dp)) return nullptr;
         char *b = (char *)data_0209f394[i];
         wr32(b, 0x5c, dp[0]); wr32(b, 0x60, dp[1]); wr32(b, 0x64, dp[2]); b[0x6fb] = 0;
         return b;

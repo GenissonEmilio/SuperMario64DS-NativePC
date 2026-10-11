@@ -125,7 +125,7 @@ struct Boss {
 
 CoopBossStats g_st = {};
 bool g_env = false, g_on = true, g_log = false;
-struct HitKnob { unsigned tick; bool done; bool armed; int hp0; int slot; };
+struct HitKnob { unsigned tick; bool done; bool armed; bool lethal; int hp0; int slot; };
 HitKnob g_hit[4]; int g_nhit = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
 ForgeKnob g_forge[8]; int g_nforge = 0;
@@ -193,6 +193,9 @@ void read_env() {
         while (*p && g_nhit < 4) {
             unsigned fr = 0; int used = 0;
             if (std::sscanf(p, "%u%n", &fr, &used) < 1 || used <= 0) break;
+            const bool lethal = std::strncmp(p + used, ":lethal", 7) == 0;
+            if (lethal) used += 7;
+            g_hit[g_nhit].lethal = lethal;
             g_hit[g_nhit].tick = fr; g_hit[g_nhit].done = false; g_hit[g_nhit].armed = false; g_hit[g_nhit].hp0 = 0; g_hit[g_nhit].slot = -1; ++g_nhit;
             p += used; while (*p == ',' || *p == ';' || *p == ' ') ++p;
         }
@@ -388,14 +391,14 @@ void process(unsigned now) {
             ++g_st.hit_local;
             if (g_log) std::fprintf(stderr, "[cbs] hit slot=%d hp %d->%d (auth %d me %d) w=%lld\n", slot, b.synced_hp, hp, auth, g_my, wall_ms());
             b.synced_hp = hp;
-            if (!mine) {
+            if (!mine && g_on) {
                 unsigned char one[64];
                 const int n = fill_rec(one, slot, b, 0);
                 send_batch(kWorldBossHit, 1, one, 1, n);
             }
             b.lw_valid = false;                 // publish at once when I am the authority
         }
-        apply_rx(slot, b, now);
+        if (g_on) apply_rx(slot, b, now);
         if (g_log && (unsigned)(now - b.sample_t) >= 500u) { b.sample_t = now; log_sample(slot, b, auth); }
         if (!b.announced_dead && hp_of(b) == 0 && g_log) {
             b.announced_dead = true;
@@ -405,7 +408,7 @@ void process(unsigned now) {
             if (g_log) std::fprintf(stderr, "[cbs] authority slot=%d %d->%d w=%lld\n", slot, b.last_auth, auth, wall_ms());
             b.last_auth = auth; b.auth_t = now; b.mism = 0;
         }
-        if (!mine) continue;
+        if (!mine || !g_on) continue;
         // I am the authority: publish when anything changed, and as a heartbeat
         uint32_t w[kBossMaxFields]; bool changed = !b.lw_valid;
         for (int k = 0; k < d.nf; ++k) { w[k] = read_field(b.a, d.f[k]); if (b.lw_valid && w[k] != b.last_w[k] && !(d.f[k].kind & kVol)) changed = true; }
@@ -427,6 +430,7 @@ void do_hit_knob(HitKnob &k) {
         for (int slot = 0; slot < kSlots; ++slot) {
             Boss &b = g_boss[slot];
             if (!b.a || hp_of(b) <= 0) continue;
+            if (k.lethal && b.d->hit_off && hp_of(b) > 1) { write_field(b.a, *b.d, b.d->hp, 1u); b.synced_hp = 1; }   // the next hit is the last one, the ROM's own way
             k.armed = true; k.slot = slot; k.hp0 = hp_of(b);
             std::fprintf(stderr, "[cbs-knob] hit armed slot=%d cls=%u hp=%d w=%lld\n", slot, (unsigned)b.d->cls, k.hp0, wall_ms());
             break;
@@ -443,6 +447,10 @@ void do_hit_knob(HitKnob &k) {
     if (b.d->hit_off) {
         if (b.d->hit_who && data_0209f394[data_0209f250 & 15]) { void *me = data_0209f394[data_0209f250 & 15]; std::memcpy(b.a + b.d->hit_who, &me, sizeof me); }
         b.a[b.d->hit_off] = 1;
+    } else if (b.d->cls == 189) {
+        // King Bob-omb takes a hit by entering state 02126ffc: its enter code (func_ov078_021243c0) is the health point.
+        if (k.lethal && hp_of(b) > 1) { write_field(b.a, *b.d, b.d->hp, 1u); k.hp0 = 1; }
+        KingBobOmb_SetState(b.a, kbo_id_to_ptr(0));
     } else { write_field(b.a, *b.d, b.d->hp, (uint32_t)(k.hp0 - 1)); }
 }
 
@@ -494,7 +502,6 @@ void on_frame(unsigned now) {
         g_key = nk;
     }
     ++g_ticks; ++g_st.ticks;
-    if (!g_on) return;
     scan();
     g_st.bosses = (unsigned long long)g_nb;
     if (g_god) { const int me = (int)data_0209f250 & 15; data_02092144[me] = (short)((data_02092144[me] & 0xff) | (8 << 8)); }
