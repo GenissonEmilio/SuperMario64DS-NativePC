@@ -109,9 +109,10 @@ static void starsel_present_selftest(void)
             if (!hal_menu_starsel_star_rect_pic(i, &px_, &py_, &pw_, &ph_) || !hal_menu_starsel_star_rect(i, &cx, &cy, &cw, &ch)) { ++bad; continue; }
             const int ex = rx + (int)((long long)px_ * rw / sw), ey = ry + (int)((long long)(py_ + top_y) * rh / sh);
             const int ew = (int)((long long)pw_ * rw / sw), eh = (int)((long long)ph_ * rh / sh);
+            const int tol = 1 + (sw + rw - 1) / rw;     /* one client pixel is up to sw / rw picture pixels when the window is smaller than the picture */
             const int dx = abs(cx - ex), dy = abs(cy - ey), dw = abs(cw - ew), dh = abs(ch - eh);
             hal_present_client_to_fb(cx + cw / 2, cy + ch / 2, &fx, &fy);
-            const int ok = dx <= 2 && dy <= 2 && dw <= 2 && dh <= 2 && abs(fx - (px_ + pw_ / 2)) <= 1 && abs(fy - (py_ + ph_ / 2)) <= 1;
+            const int ok = dx <= 2 && dy <= 2 && dw <= 2 && dh <= 2 && abs(fx - (px_ + pw_ / 2)) <= tol && abs(fy - (py_ + ph_ / 2)) <= tol;
             ++rows;
             if (!ok) ++bad;
             if (!ok || i == 0 || i == n - 1)
