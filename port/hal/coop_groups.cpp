@@ -147,6 +147,13 @@ void CoopGroups::update(unsigned now) {
         for (int i = 0; i < owner_; ++i) {
             if (!is_established(i) || s_[i].claim != i) continue;
             if ((int)(s_[i].claim_ms - inc) > (int)kTieMs) continue;
+            // An owner that already has an established member besides the challenger is not in a tie any more:
+            // two consoles that entered together are each alone until they see each other's claim.
+            if (owner_ == me_) {
+                bool served = false;
+                for (int j = 0; j < kSeats; ++j) if (j != i && is_established(j)) served = true;
+                if (served) continue;
+            }
             owner_ = i;
             break;
         }

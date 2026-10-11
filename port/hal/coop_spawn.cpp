@@ -31,6 +31,8 @@ extern void *data_0209f394[];
 extern unsigned char data_0209f250;
 extern unsigned char data_0209f21c;
 extern unsigned char data_0209f30c[];
+extern unsigned char data_0209f30d[];
+void func_ov002_020b16c4(void *coin, void *player);       // the ROM's own red coin pickup
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 char *_ZN8dActor_c10FindWithIDEj(unsigned id);
 char *_ZN8dActor_c15FindWithActorIDEjPS_(unsigned id, char *prev);
@@ -134,7 +136,9 @@ RedKnob g_kr[10]; int g_nkr = 0;
 struct StarKnob { unsigned frame; int cls; unsigned param; bool done; };
 StarKnob g_ks[4]; int g_nks = 0;
 struct Forge { unsigned frame; char name[12]; bool done; };
-Forge g_forge[8]; int g_nforge = 0;
+Forge g_forge[24]; int g_nforge = 0;
+struct TakeKnob { unsigned frame; bool done; };
+TakeKnob g_kt[4]; int g_nkt = 0;
 
 // ---------------------------------------------------------------------------
 // Env.
@@ -186,9 +190,19 @@ void read_env() {
             while (*p == ';' || *p == ',' || *p == ' ') ++p;
         }
     }
+    if (const char *e = std::getenv("SM64DS_SPAWN_TAKE")) {      // frame list: put my player on a runtime star / key
+        const char *p = e;
+        while (*p && g_nkt < 4) {
+            unsigned f = 0; int used = 0;
+            if (std::sscanf(p, "%u%n", &f, &used) < 1 || used <= 0) break;
+            g_kt[g_nkt++] = {f, false};
+            p += used;
+            while (*p == ';' || *p == ',' || *p == ' ') ++p;
+        }
+    }
     if (const char *f = std::getenv("SM64DS_SPAWN_FORGE")) {
         const char *p = f;
-        while (*p && g_nforge < 8) {
+        while (*p && g_nforge < 24) {
             unsigned fr = 0; char nm[12] = {}; int used = 0;
             if (std::sscanf(p, "%u:%11[a-z0-9]%n", &fr, nm, &used) < 2 || used <= 0) break;
             g_forge[g_nforge].frame = fr; std::memcpy(g_forge[g_nforge].name, nm, sizeof nm);
@@ -217,7 +231,7 @@ char *my_player() {
     return (me >= 0 && me < 16) ? (char *)data_0209f394[me] : nullptr;
 }
 bool is_block_cls(unsigned c) { return c >= 20 && c <= 25; }
-bool is_ann_cls(unsigned c) { return c == 178 || c == 179 || c == 276 || c == 277; }
+bool is_ann_cls(unsigned c) { return c == 178 || c == 179 || c == 276 || c == 277 || c == 282; }
 bool is_star_cls(unsigned c) { return c == 178 || c == 179; }
 
 CoopKeyWire wkey() { CoopKeyWire k; k.level = (uint16_t)g_lvl; k.act = (uint8_t)g_act; k.reserved = 0; return k; }
@@ -367,10 +381,13 @@ Lnk *lnk_alloc() { for (Lnk &l : g_lnk) if (!l.used) return &l; return nullptr; 
 // ---------------------------------------------------------------------------
 // Red coins.
 // ---------------------------------------------------------------------------
-int red_slots() { return data_0209f21c > 16 ? 16 : (int)data_0209f21c; }
+// NumRedCoins reads data_0209f30c[0] and then data_0209f30d[0..n-2]: on the cartridge those are one array, in the port two
+// (auto_bss.cpp), so body slot i >= 1 is data_0209f30d[i-1], not data_0209f30c[i].
+inline unsigned char &red_cell(int i) { return i == 0 ? data_0209f30c[0] : data_0209f30d[i - 1]; }
+int red_slots() { return data_0209f21c > 4 ? 4 : (int)data_0209f21c; }
 int red_sum() {
     int s = 0;
-    for (int i = 0; i < red_slots(); ++i) s += (signed char)data_0209f30c[i];
+    for (int i = 0; i < red_slots(); ++i) s += (signed char)red_cell(i);
     return s;
 }
 // a body slot that is not mine, inside the summed range
@@ -395,9 +412,9 @@ void red_check_star(int star_id) {
 void red_bump(int n, int star_id, const char *why) {
     const int sl = red_remote_slot();
     if (sl < 0 || n <= 0) return;
-    int v = (signed char)data_0209f30c[sl] + n;
+    int v = (signed char)red_cell(sl) + n;
     if (v > 0x63) v = 0x63;
-    data_0209f30c[sl] = (unsigned char)v;
+    red_cell(sl) = (unsigned char)v;
     g_st.red_remote += (unsigned)n;
     g_red_prev = red_sum();
     if (g_log)
@@ -468,8 +485,10 @@ void scan(unsigned now) {
 
         // ---- registered stars and prizes: still here? ---------------------
         if (is_ann_cls(cls)) {
-            const bool taken_now = is_star_cls(cls) && !dead && *(const unsigned *)(a + 0x440) == 5u &&
-                                   is_player_ptr(*(void *const *)(a + 0x438));
+            // a star in its take animation (state 5 on a player), a key flying to the player who took it (state 3, owner +0x110)
+            const bool taken_now = !dead && ((is_star_cls(cls) && *(const unsigned *)(a + 0x440) == 5u &&
+                                              is_player_ptr(*(void *const *)(a + 0x438))) ||
+                                             (cls == 282 && *(const int *)(a + 0x448) == 3 && is_player_ptr(*(void *const *)(a + 0x110))));
             for (Net &n : g_net)
                 if (n.used && !n.gone && n.a == a && n.uid == uid) { n.seen = !dead && !taken_now; }
             for (Lnk &l : g_lnk)
@@ -609,7 +628,16 @@ bool near_same(const char *a, const SpSpawnWire &w) {
     return true;
 }
 
+// A key only exists where the ROM loaded its model: Bowser's three arenas (levels 36, 38, 40, any kind) and Chief Chilly's arena (49,
+// kind 4 as in func_ov073_0211fa74). Anywhere else the model is not there and the draw faults (measured: kind 0 in 49 and in BOB), so
+// a forged key SPAWN must not get past this. The Big Boo key arena (47) is left out until its kind is proven.
+bool key_ok(int lvl, unsigned param) {
+    if (lvl == 36 || lvl == 38 || lvl == 40) return true;
+    return lvl == 49 && (param & 7u) == 4u;
+}
+
 void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
+    if (w.cls == 282 && !key_ok(g_lvl, w.param)) { ++g_st.drop_class; return; }
     if (ack_has(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     if (net_find(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     Net *n = net_alloc();
@@ -838,7 +866,16 @@ void knob_red(RedKnob &k) {
     char *pl = my_player();
     if (!pl || n == 0) { std::fprintf(stderr, "[coopspawn-knob] red %d: no live red coin\n", k.nth); return; }
     char *a = c[k.nth % n];
+    // a coin the exact spot did not collect (a summit, inside a wall): the next try drops the player onto it from higher up
+    static short last_slot = -2; static int tries = 0;
+    if (a_slot(a) == last_slot) ++tries; else { last_slot = a_slot(a); tries = 0; }
     std::memcpy(pl + 0x5c, a + 0x5c, 12);
+    if (tries >= 2) {                      // out of reach for the harness (a summit): run the ROM's own pickup handler on it
+        func_ov002_020b16c4(a, pl);
+        std::fprintf(stderr, "[coopspawn-knob] red coin pickup handler slot=%d wall=%lld\n", (int)a_slot(a), wall_ms());
+        return;
+    }
+    if (tries) ((int *)(pl + 0x5c))[1] += (tries * 150) << 12;
     std::fprintf(stderr, "[coopspawn-knob] red coin goto slot=%d (candidate %d of %d) pos=%d,%d,%d wall=%lld\n", (int)a_slot(a), k.nth % n, n,
                  ((const int *)(a + 0x5c))[0] >> 12, ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, wall_ms());
 }
@@ -851,6 +888,25 @@ void knob_star(StarKnob &k) {
     char *a = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as((unsigned)k.cls, k.param, pos, nullptr, a_area(pl), -1);
     std::fprintf(stderr, "[coopspawn-knob] spawn cls=%d param=%u -> %p uid=%u pos=%d,%d,%d wall=%lld\n", k.cls, k.param, (void *)a, a ? a_uid(a) : 0u,
                  pos[0] >> 12, pos[1] >> 12, pos[2] >> 12, wall_ms());
+}
+
+void knob_take(TakeKnob &) {
+    char *pl = my_player();
+    if (!pl) return;
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+        const unsigned c = a_cls(a);
+        if ((c != 178 && c != 282) || a_slot(a) != -1 || a_dead(a) || is_player_ptr(a)) continue;
+        std::memcpy(pl + 0x5c, a + 0x5c, 12);
+        if (c == 178) {                      // the same two words the harness probe writes: the star's own collect handler runs
+            *(unsigned *)(a + 0x134) = *(const unsigned *)(pl + 4);
+            *(unsigned *)(a + 0x130) |= 0x400000;
+        }
+        if (c == 282) _ZN7fBase_c18MarkForDestructionEv(a);      // a key is destroyed when its pickup animation ends; the harness stands in for the animation
+        std::fprintf(stderr, "[coopspawn-knob] take goto cls=%u state=%d pos=%d,%d,%d wall=%lld\n", c, *(const int *)(a + 0x440), ((const int *)(a + 0x5c))[0] >> 12,
+                     ((const int *)(a + 0x5c))[1] >> 12, ((const int *)(a + 0x5c))[2] >> 12, wall_ms());
+        return;
+    }
+    std::fprintf(stderr, "[coopspawn-knob] take: no runtime star or key\n");
 }
 
 void knob_forge(const char *name) {
@@ -870,6 +926,7 @@ void knob_forge(const char *name) {
     else if (!std::strcmp(name, "short")) { send_world(kSpWorldSpawn, b, 9); }
     else if (!std::strcmp(name, "long")) { send_world(kSpWorldSpawn, b, 100); }
     else if (!std::strcmp(name, "key")) { s.key.act = (uint8_t)((g_act + 1) & 7); send_world(kSpWorldSpawn, &s, sizeof s); }
+    else if (!std::strcmp(name, "badkey")) { s.cls = 282; s.counter = 9001; send_world(kSpWorldSpawn, &s, sizeof s); }       // a key in a course that has no key model
     else if (!std::strcmp(name, "goodstar")) { send_world(kSpWorldSpawn, &s, sizeof s); }                 // valid: the control that the forge shape is right
     else if (!std::strcmp(name, "gone")) {
         SpGoneWire g; std::memset(&g, 0, sizeof g); g.key = wkey(); g.origin = 99; g.kind = kSpGoneAnn; g.id = 5;
@@ -905,11 +962,13 @@ void new_level() {
     std::memset(g_in, 0, sizeof g_in);
     std::memset(g_job, 0, sizeof g_job);
     std::memset(g_rate, 0, sizeof g_rate);
+    for (int i = 0; i < 4; ++i) red_cell(i) = 0;     // the port's level clear misses the data_0209f30d half
     g_nred = 0; g_red_prev = 0; g_red_armed = false; g_red_snap_have = false; g_red_snap_sum = 0; g_red_star = 0;
     g_frames = 0; g_armed = false; g_census_on = false; g_wm = 0; g_census_lines = 0;
     for (int i = 0; i < g_nkb; ++i) g_kb[i].done = false;
     for (int i = 0; i < g_nkr; ++i) g_kr[i].done = false;
     for (int i = 0; i < g_nks; ++i) g_ks[i].done = false;
+    for (int i = 0; i < g_nkt; ++i) g_kt[i].done = false;
     for (int i = 0; i < g_nforge; ++i) g_forge[i].done = false;
     g_early = keep;
 }
@@ -998,6 +1057,8 @@ void on_frame(unsigned now) {
         if (!g_kr[i].done && g_armed && g_frames >= g_kr[i].frame) { g_kr[i].done = true; knob_red(g_kr[i]); }
     for (int i = 0; i < g_nks; ++i)
         if (!g_ks[i].done && g_armed && g_frames >= g_ks[i].frame) { g_ks[i].done = true; knob_star(g_ks[i]); }
+    for (int i = 0; i < g_nkt; ++i)
+        if (!g_kt[i].done && g_armed && g_frames >= g_kt[i].frame) { g_kt[i].done = true; knob_take(g_kt[i]); }
     for (int i = 0; i < g_nforge; ++i)
         if (!g_forge[i].done && g_armed && g_frames >= g_forge[i].frame) { g_forge[i].done = true; knob_forge(g_forge[i].name); }
 

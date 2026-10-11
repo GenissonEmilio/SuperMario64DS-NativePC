@@ -455,19 +455,26 @@ def row_host():
 
 # ---------------------------------------------------------------- guest temp image
 def row_guest():
-    tmproot = os.path.join(ARGS.out, "guest", "tmproot")
-    shutil.rmtree(os.path.join(ARGS.out, "guest"), ignore_errors=True)
+    """A guest's private temp image. Since the boot gate (COOPBOOT1) a guest only gets as far as its image when a host answers,
+    so the rows run a host and guests through a local relay."""
+    d = os.path.join(ARGS.out, "guest")
+    shutil.rmtree(d, ignore_errors=True)
+    tmproot = os.path.join(d, "tmproot")
     os.makedirs(tmproot)
-    # a stale folder from a dead pid, and one that belongs to a live pid (this script)
     dead = os.path.join(tmproot, "sm64ds-coop-999999")
     live = os.path.join(tmproot, "sm64ds-coop-%d" % PID)
     other = os.path.join(tmproot, "someone-elses-folder")
     for dd in (dead, live, other):
         os.makedirs(dd)
         write(os.path.join(dd, "guest.coopsav"), image(TAG_C))
-    env = {"SM64DS_SCENE": "1", "SM64DS_COOP": "1", "SM64DS_COOP_TEMP_ROOT": tmproot,
-           "SM64DS_SAVE_PROBE": "write", "SM64DS_SAVE_PROBE_FRAME": "60", "SM64DS_SAVE_PATH": None}
-    c = Con("guest", "g1_new", ARGS.exe, env, 400, ARGS.root, ARGS.out)
+    sav = os.path.join(d, "hostinstall", "save", "coop", "Pair Room.coopsav")
+    write(sav, image(TAG_C, payload(stars=[(0, 0)])))
+    rp, rf, port, rlog = start_relay("guest")
+    relay = ("127.0.0.1:%d" % port, "CG%d" % (PID % 1000))
+    ch = Con("guest", "host", ARGS.exe, coop_env(0, relay, True, sav, {}), 9000, ARGS.root, ARGS.out)
+    time.sleep(0.5)
+    env = {"SM64DS_COOP_TEMP_ROOT": tmproot}
+    c = Con("guest", "g1_new", ARGS.exe, coop_env(1, relay, False, None, env), 500, ARGS.root, ARGS.out)
     seen = []
     def tick():
         mine = os.path.join(tmproot, "sm64ds-coop-%d" % c.pid)
@@ -484,9 +491,9 @@ def row_guest():
     say(not os.path.exists(os.path.join(inst_save, "sm64ds.sav")) and not any(f.endswith(".coopsav") for f in (os.listdir(inst_save) if os.path.isdir(inst_save) else [])),
         "guest: nothing was written into the install's save folder (%s)" % (os.listdir(inst_save) if os.path.isdir(inst_save) else "no save folder"))
     # killed guest leaves its folder; the next guest sweeps it
-    c2 = Con("guest", "g2_kill", ARGS.exe, env, 3000, ARGS.root, ARGS.out)
+    c2 = Con("guest", "g2_kill", ARGS.exe, coop_env(1, relay, False, None, env), 3000, ARGS.root, ARGS.out)
     mine2 = os.path.join(tmproot, "sm64ds-coop-%d" % c2.pid)
-    dl = time.time() + 120
+    dl = time.time() + 150
     while time.time() < dl and not os.path.exists(os.path.join(mine2, "guest.coopsav")) and c2.poll() is None:
         time.sleep(0.2)
     existed = os.path.isdir(mine2)
@@ -495,12 +502,15 @@ def row_guest():
     time.sleep(0.5)
     left = os.path.isdir(mine2)
     say(existed and left, "guest: a KILLED guest leaves its folder behind (the sweep's job), exact pid %d killed" % c2.pid)
-    c3 = Con("guest", "g3_sweep", ARGS.exe, env, 200, ARGS.root, ARGS.out)
+    c3 = Con("guest", "g3_sweep", ARGS.exe, coop_env(1, relay, False, None, env), 300, ARGS.root, ARGS.out)
     wait_all([c3], 300)
     say(not os.path.isdir(mine2) and ("swept a stale guest save folder (pid %d)" % c2.pid) in c3.text(),
         "guest: the next coop start swept the killed guest's folder (log line present)")
+    ch.kill()
+    ch.poll()
+    stop_relay(rp, rf)
     # MUST-FAIL control: the BASE exe has no guest folder logic at all
-    c4 = Con("guest", "g4_base", ARGS.base, env, 200, ARGS.root, ARGS.out)
+    c4 = Con("guest", "g4_base", ARGS.base, dict(coop_env(1, relay, False, None, env)), 200, ARGS.root, ARGS.out)
     wait_all([c4], 300)
     say(os.path.isdir(os.path.join(tmproot)) and not any(n.startswith("sm64ds-coop-%d" % c4.pid) for n in os.listdir(tmproot)),
         "guest MUST-FAIL: the BASE exe makes no sm64ds-coop folder and would have used the install save path instead")
@@ -803,7 +813,10 @@ def row_timeout():
     t = c.text()
     m = re.search(r"fetch TIMEOUT after (\d+) ms \(budget (\d+)\)", t)
     info("timeout: %s rc=%s wall %.1f s" % (m.group(0) if m else "no timeout line", c.rc, (c.t_end or time.time()) - c.t0))
-    say(c.rc == 6 and m is not None and 1500 <= int(m.group(1)) <= 1500 + 600, "timeout: the guest gives up after the %s ms budget (measured %s ms) and exits with code %s" % (m.group(2) if m else "?", m.group(1) if m else "?", c.rc))
+    wall = (c.t_end or time.time()) - c.t0
+    old = c.rc == 6 and m is not None and 1500 <= int(m.group(1)) <= 1500 + 600
+    gate = c.rc == 6 and "Could not reach the host" in t and 14.5 <= wall <= 30    # since COOPBOOT1 the boot gate answers first (15 s)
+    say(old or gate, "timeout: the guest with no host gives up and exits with code %s (%s; wall %.1f s)" % (c.rc, m.group(0) if m else "boot gate: Could not reach the host", wall))
     left = []
     for n in os.listdir(gtmp):
         for f in os.listdir(os.path.join(gtmp, n)):
