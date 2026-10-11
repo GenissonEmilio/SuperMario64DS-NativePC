@@ -136,6 +136,7 @@ struct Slot {
     unsigned last_pub;
     bool     lvalid;
     int32_t  lx, ly, lz;
+    int16_t  lax, lay, laz;
     uint32_t lf[kMoverMaxFields];
     bool     heard;           // a remote record for this slot was ever taken
 };
@@ -172,10 +173,11 @@ Rx   g_rx[kSlots][kSeats];
 Job  g_job[kSeats];
 unsigned g_req_nonce = 0, g_req_last = 0; int g_req_tries = 0; bool g_req_done = false;
 unsigned long long g_snap_base = 0;
+bool g_god = false;               // SM64DS_COOP_MOVE_GOD=1 (proof only)
 bool g_hold = false;              // a joiner publishes nothing until the group's snapshot is in (or it gave up)
 double g_tokens = 6.0; unsigned g_tok_t = 0;
 unsigned g_stat_t = 0;
-int g_lead_ms = 40;               // receivers aim this far ahead along the owner's last velocity
+int g_lead_ms = 0;                // receivers aim this far ahead along the owner's last velocity
 int g_hp_prev = -99;
 
 long long wall_ms() {
@@ -190,6 +192,7 @@ void read_env() {
     g_log = flag("SM64DS_COOP_MOVE_LOG", false);
     g_act = flag("SM64DS_COOP_ACT", true);
     g_snap_on = flag("SM64DS_COOP_MOVE_SNAP", true);
+    g_god = flag("SM64DS_COOP_MOVE_GOD", false);
     g_hyst = flag("SM64DS_COOP_MOVE_HYST", true);
     g_stale_on = flag("SM64DS_COOP_MOVE_STALE", true);
     if (const char *ld = std::getenv("SM64DS_COOP_MOVE_LEAD")) g_lead_ms = std::atoi(ld);
@@ -611,7 +614,8 @@ void process(unsigned now) {
         if (!g_hold && s.owner == g_my && s.seen >= 3 && !skip_state(s.a, p) && !frozen_state(s.a)) {
             const unsigned age = now - s.last_pub;
             if (age >= p.period) {
-                bool changed = !s.lvalid || rd32(s.a, 0x5c) != s.lx || rd32(s.a, 0x60) != s.ly || rd32(s.a, 0x64) != s.lz;
+                bool changed = !s.lvalid || rd32(s.a, 0x5c) != s.lx || rd32(s.a, 0x60) != s.ly || rd32(s.a, 0x64) != s.lz ||
+                               rd16(s.a, 0x8c) != s.lax || rd16(s.a, 0x8e) != s.lay || rd16(s.a, 0x90) != s.laz;
                 for (int k = 0; !changed && k < p.nf; ++k) changed = read_field(s.a, p.f[k]) != s.lf[k];
                 if (changed || age >= (unsigned)kHeartbeatMs) { due[ndue].slot = slot; due[ndue].age = age; ++ndue; }
             }
@@ -638,6 +642,7 @@ void process(unsigned now) {
             Slot &s = g_slot[due[k].slot];
             s.last_pub = now;
             s.lvalid = true; s.lx = rd32(s.a, 0x5c); s.ly = rd32(s.a, 0x60); s.lz = rd32(s.a, 0x64);
+            s.lax = rd16(s.a, 0x8c); s.lay = rd16(s.a, 0x8e); s.laz = rd16(s.a, 0x90);
             for (int f = 0; f < g_prof[s.prof].nf; ++f) s.lf[f] = read_field(s.a, g_prof[s.prof].f[f]);
         }
     }
@@ -801,6 +806,7 @@ void on_frame(unsigned now) {
     if (!g_spawned && g_ents > 0) { g_spawned = true; g_spawn_lf = g_lf; }
     maybe_request(now);
     process(now);
+    if (g_god) data_02092144[data_0209f250 & 15] = (short)(8 << 8);   // lab knob: the proof player does not die in lava / to hazards
     if (g_log) watch_hurt(pl);
     if (g_spawned) {
         const unsigned since = g_lf - g_spawn_lf;

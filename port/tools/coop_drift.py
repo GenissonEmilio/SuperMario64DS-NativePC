@@ -26,7 +26,7 @@ import re
 import sys
 
 # Class ids that chase, bounce and decide (the 80 unit band). Everything else that is synced is a mover on a fixed route.
-ENEMY = {200, 201, 202, 206, 219, 337, 270, 230, 312, 255, 232, 215, 260, 237, 223, 310}
+ENEMY = {200, 201, 202, 206, 219, 220, 337, 270, 230, 312, 255, 232, 215, 260, 237, 223, 310}   # 220 = the pendulum iron balls (2000 units/s at the bottom): judged as enemies
 ROUTE_BAND_P95 = 24.0
 ENEMY_BAND_P95 = 80.0
 ANGLE_P95 = 0x800
