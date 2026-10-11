@@ -120,6 +120,9 @@ MenuDecision g_dd;
 MenuDecision g_dead;        /* all zero: "no menu this frame" */
 const MenuSources *g_src;
 int  g_dst_stride;                   /* HOOK1: pixels per row of the dst buffer; 0 = the picture width */
+int  g_layer_mode;                   /* SAVEOVL1: dst is a menu LAYER (premultiplied ARGB, zero = nothing), so a blend keeps its alpha */
+uint32_t *g_layer2;                  /* SAVEOVL1: the layer's second plane (same stride as dst): a translucent pixel over a translucent one */
+long long g_layer_conflicts;         /* SAVEOVL1: pixels the two planes could not hold (a third translucent write) */
 int  g_dd_lift_pending;              /* the lift was promised and the draw has not honoured it yet */
 /* the engine-B planes by layer mask, made by the host callback at most once per mask per generation */
 struct PlaneEnt { uint8_t layers, oam_on, lo, hi; const uint32_t *p; };
@@ -707,7 +710,7 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
         /* MENUCOST1: a faded or darkened picture (the logo's fade, a pressed plank) four pixels at a time, in 16 bit lanes. The same integer
            arithmetic as the loop below: v = c * f256 >> 8, then (v * af + 127) / 255, then over the destination with (o * (255 - a) + 127) / 255,
            where x / 255 is (x + 1 + (x >> 8)) >> 8 (exact for 0 <= x < 65535, checked for every x); pixels with source alpha 0 keep the destination. */
-        if (cost_fast() && !boost && (f256 != 256 || af != 255)) {
+        if (cost_fast() && !boost && (f256 != 256 || af != 255) && !g_layer_mode) {
             const __m128i zero = _mm_setzero_si128(), c1 = _mm_set1_epi16(1), c127 = _mm_set1_epi16(127), c255 = _mm_set1_epi16(255);
             const __m128i mulF = _mm_set_epi16(256, (short)f256, (short)f256, (short)f256, 256, (short)f256, (short)f256, (short)f256);
             const __m128i vaf = _mm_set1_epi16((short)af), opaque = _mm_set1_epi32((int)0xff000000u);
@@ -753,6 +756,23 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
             const unsigned ia = 255 - a;
             const unsigned orr = cr + (((o >> 16) & 255) * ia + 127) / 255, og = cg + (((o >> 8) & 255) * ia + 127) / 255,
                            ob = cb + ((o & 255) * ia + 127) / 255;
+            if (g_layer_mode) {
+                /* SAVEOVL1: the layer holds what the picture would have been given, in the order it was given. The card lays
+                   plane 1 and then plane 2 over its picture with this very rule, so the chain is exact: an opaque write replaces
+                   the pixel; a translucent one over nothing is the pixel; over an opaque pixel it composes into it (the result
+                   is opaque and equals the processor's); over a translucent pixel it goes to plane 2. A third translucent write
+                   has no place: it is counted and the tick is drawn onto the picture as before. */
+                const unsigned oa = o >> 24;
+                if (a >= 255) { row[px] = 0xff000000u | ((cr > 255 ? 255 : cr) << 16) | ((cg > 255 ? 255 : cg) << 8) | (cb > 255 ? 255 : cb); continue; }
+                if (oa == 0) { row[px] = ((a) << 24) | ((cr > 255 ? 255 : cr) << 16) | ((cg > 255 ? 255 : cg) << 8) | (cb > 255 ? 255 : cb); continue; }
+                if (oa == 255) { row[px] = 0xff000000u | ((orr > 255 ? 255 : orr) << 16) | ((og > 255 ? 255 : og) << 8) | (ob > 255 ? 255 : ob); continue; }
+                if (g_layer2 && !g_layer2[(size_t)py * stride + px]) {
+                    g_layer2[(size_t)py * stride + px] = ((a) << 24) | ((cr > 255 ? 255 : cr) << 16) | ((cg > 255 ? 255 : cg) << 8) | (cb > 255 ? 255 : cb);
+                    continue;
+                }
+                ++g_layer_conflicts;
+                continue;
+            }
             row[px] = 0xff000000u | ((orr > 255 ? 255 : orr) << 16) | ((og > 255 ? 255 : og) << 8) | (ob > 255 ? 255 : ob);
         }
     }
@@ -1624,6 +1644,29 @@ int  hal_menu_interp_ok(void)
 }
 int  hal_menu_trace_on(void) { return trace_on(); }
 void hal_menu_set_dst_stride(int stride) { g_dst_stride = stride; }
+void hal_menu_set_layer_mode(int on) { g_layer_mode = on ? 1 : 0; if (on) g_layer_conflicts = 0; }
+void hal_menu_set_layer2(unsigned *p) { g_layer2 = p; }
+long long hal_menu_layer_conflicts(void) { return g_layer_conflicts; }
+/* SAVEOVL1: may this tick's bound recipe be drawn into a menu LAYER (gpu_raster.h) instead of onto the picture? Yes when every
+   piece only WRITES opaque pixels or composes a host image over what is below it (the level-clear plates, bands and planks); no
+   when a piece reads the picture (a piece of the 3D, the dimmed backdrop, the held snapshot, the lit-hotspot paint, a custom draw,
+   the gradients and wallpapers). The draw side asks it with the decision bound. */
+extern "C" int hal_menu_layer_ok(void)
+{
+    const MenuDecision &D = g_dd;
+    if (!D.live || D.fallback) return 0;
+    if (D.L.backdrop == MENU_BACKDROP_DIM_AUTO || D.L.snap_save) return 0;
+    for (int i = 0; i < D.L.np; ++i) {
+        const MenuPiece &P = D.L.p[i];
+        if (P.nodraw) continue;
+        if (P.custom || P.hostgrad || P.src == SRC_TOP_PIC) return 0;
+        if (P.src == SRC_HOSTIMG && (P.wall || P.iris || P.paper || P.snap)) return 0;
+    }
+    if (D.L.focus >= 0 && D.focus_shown && !D.L.no_focus_paint && D.L.focus < D.L.nh &&
+        D.L.p[D.L.hs[D.L.focus].piece].src != SRC_HOSTIMG)
+        return 0;
+    return 1;
+}
 void hal_menu_note_lift_drawn(void) { g_dd_lift_pending = 0; }
 int  hal_menu_uses_src(int src)
 {

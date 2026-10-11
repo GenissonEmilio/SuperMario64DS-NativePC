@@ -420,6 +420,10 @@ void hal_menu_note_cost(double prep_us);       /* ASSET1: the host adds its sour
 int  hal_menu_enabled(int key);                 /* ASSET1: a MENU_KEY_* setting as the recipes see it */
 int  hal_menu_trace_on(void);                   /* SM64DS_MENU_TRACE or its alias SM64DS_SWAP_TRACE */
 void hal_menu_set_dst_stride(int stride);       /* pixels per row of the buffer hal_menu_present draws into; 0 = w */
+void hal_menu_set_layer_mode(int on);           /* SAVEOVL1: the buffer is a menu layer (premultiplied alpha kept) */
+void hal_menu_set_layer2(unsigned *p);            /* SAVEOVL1: the layer's second plane */
+long long hal_menu_layer_conflicts(void);       /* SAVEOVL1: pixels the layer could not hold since layer mode was set on */
+int  hal_menu_layer_ok(void);                   /* SAVEOVL1: the bound recipe may be drawn into a menu layer */
 void hal_menu_note_lift_drawn(void);            /* the draw honoured the lift promise (LIFT WITHOUT DRAW net) */
 int  hal_menu_lc_selftest(void);                /* menu_recipe_lc.cpp: COMPOSED LAYOUT SELFTEST, 0 = PASS */
 #ifdef __cplusplus
