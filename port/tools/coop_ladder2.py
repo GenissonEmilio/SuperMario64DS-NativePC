@@ -25,7 +25,7 @@ import coop_sw_rows as SW  # noqa: E402
 G = C.G
 say, info = G.say, G.info
 ROOT = G.ROOT
-DRIFT = [sys.executable, ROOT + "/port/tools/coop_drift.py"]
+DRIFT = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "coop_drift.py")]   # not G.ROOT: a kit row repoints ROOT at the asset root
 NAMES = "ABCD"
 FR = int(os.environ.get("CW_FRAMES", "4200"))
 BIT = int(os.environ.get("CW_BIT", "29"))       # a word bit the knob rows use (not one a course switch owns)
