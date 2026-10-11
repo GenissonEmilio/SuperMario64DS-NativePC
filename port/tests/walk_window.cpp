@@ -2826,10 +2826,28 @@ static int g_pic_clock_ran;
 
 /* The key's answer, latched once. host_setting_frame_rate is itself
    boot-latched; this caches it so the pacer's hot path never re-reads it. */
+static void port_pic_reset(void);   /* the picture clock, after its statics below */
 static int port_frame_rate_target(void)
 {
-    static int rate = -1;
+    /* run hunt8, lane FPSLIVE1: FrameRate is live. The cached answer is
+       re-read when host_setting_frame_rate_gen steps (a settings-page save, or
+       the launcher rewriting settings.json); between steps this is the same
+       cached int compare it was. Every reader sits at a tick boundary or at the
+       pacer's turn, so a change takes effect there. */
+    static int rate = -1, gen = -1;
+    const int g = host_setting_frame_rate_gen();
+    if (rate >= 0 && g != gen) {
+        const int old = rate;
+        gen = g;
+        rate = host_setting_frame_rate();
+        if (rate != old) {
+            port_pic_reset();
+            fprintf(stderr, "[frame-pace] FrameRate changed %d -> %d while running "
+                    "(takes effect at the next tick boundary)\n", old, rate);
+        }
+    }
     if (rate < 0) {
+        gen = g;
         rate = host_setting_frame_rate();
         if (rate && host_setting_smooth_motion())
             fprintf(stderr, "[frame-pace] FrameRate %d: pictures are handed to "
@@ -2879,6 +2897,20 @@ static int       g_pic_tick;       /* pictures the loops presented */
 static int       g_pic_extra;      /* pictures this clock presented */
 static int       g_pic_late;       /* slots the clock had to be pulled up */
 static int       g_pic_frame = -1; /* the tick whose picture was counted */
+
+/* FrameRate changed while running (run hunt8, lane FPSLIVE1): the picture
+   clock starts over on the new interval. Its deadline is a hitch-is-not-a-debt
+   value, so zero means "re-anchor at the next pacer turn", and the census
+   window restarts so its percentiles are one rate's. */
+static void port_pic_reset(void)
+{
+    g_pic_due = 0;
+    g_pic_t0 = 0;
+    g_pic_n = 0;
+    g_pic_tick = 0;
+    g_pic_extra = 0;
+    g_pic_late = 0;
+}
 
 static int port_pic_cmp(const void *a, const void *b)
 {
@@ -3026,6 +3058,108 @@ extern "C" double port_present_clock(long long now, long long deadline,
     return (end.QuadPart - now) * 1000.0 / (double)qpf;
 }
 
+static void ip_live_sync(void);   /* SmoothMotion's arm / stand-down, after ip_arm */
+static unsigned si_fnv(const void *p, size_t bytes);
+extern "C" void *port_arena_base(void);
+extern "C" void *port_arena_end(void);
+
+/* ---- THE LIVE-RATE PROOF INSTRUMENT (run hunt8, lane FPSLIVE1) ----------
+   Both knobs are read at the pacer's tail, once per game tick, and are inert
+   unless set.
+     SM64DS_FRAME_RATE_SCRIPT=<tick>:<rate>,...   at ROM frame <tick> the
+         settings page's own call, host_setting_save_frame_rate(<rate>), runs
+         (up to 16 steps). That is the in-game path a player's click takes.
+     SM64DS_FPSLIVE_HASH=1   one line per tick, "[fl-hash] f<frame> <main RAM>
+         <arena>": FNV-1a of the 4 MB main RAM at 0x02000000 and of the game
+         arena, so a run that switched rates can be compared tick by tick with
+         one that never did. The hash is of the GAME's memory only; no picture
+         state is in it. */
+static void fpslive_tick_tools(void)
+{
+    static int init;
+    static int sn, si;
+    static int sf[16], sr[16];
+    static int hash_on;
+    static int last = -1;
+    static unsigned *mask;
+    static size_t mask_n;
+    static int dump_frame = -1;
+    static const char *dump_path;
+    if (!init) {
+        init = 1;
+        const char *e = getenv("SM64DS_FRAME_RATE_SCRIPT");
+        while (e && *e && sn < 16) {
+            char *end = 0;
+            sf[sn] = (int)strtol(e, &end, 10);
+            if (!end || *end != ':') break;
+            sr[sn] = (int)strtol(end + 1, &end, 10);
+            ++sn;
+            if (!end || *end != ',') break;
+            e = end + 1;
+        }
+        const char *h = getenv("SM64DS_FPSLIVE_HASH");
+        hash_on = (h && atoi(h) > 0) ? 1 : 0;
+        /* SM64DS_FPSLIVE_MASK=<file of u32 word indexes> zeroes those arena words
+           before hashing (words two identical runs disagree on: host pointers,
+           clocks); SM64DS_FPSLIVE_DUMP=<frame>:<path> writes the arena at that
+           frame to <path>.arena for building such a mask. */
+        const char *m = getenv("SM64DS_FPSLIVE_MASK");
+        if (m && *m) {
+            if (FILE *mf = fopen(m, "rb")) {
+                fseek(mf, 0, SEEK_END);
+                const long n = ftell(mf);
+                fseek(mf, 0, SEEK_SET);
+                mask = (unsigned *)malloc((size_t)n);
+                if (mask && fread(mask, 1, (size_t)n, mf) == (size_t)n) mask_n = (size_t)n / 4;
+                fclose(mf);
+            }
+        }
+        const char *d = getenv("SM64DS_FPSLIVE_DUMP");
+        if (d && strchr(d, ':')) {
+            dump_frame = atoi(d);
+            dump_path = strchr(d, ':') + 1;
+            hash_on = 1;
+        }
+    }
+    if (!sn && !hash_on) return;
+    const int f = port_rom_frame();
+    if (f == last) return;
+    last = f;
+    if (hash_on) {
+        char *ab = (char *)port_arena_base();
+        char *ae = (char *)port_arena_end();
+        const unsigned m = si_fnv((const void *)(size_t)0x02000000u, 0x400000u);
+        unsigned a = 0;
+        if (ab && ae > ab) {
+            const size_t bytes = (size_t)(ae - ab);
+            if (dump_frame >= 0 && f == dump_frame && dump_path) {
+                char pth[600];
+                _snprintf(pth, sizeof pth, "%s.arena", dump_path);
+                if (FILE *df = fopen(pth, "wb")) { fwrite(ab, 1, bytes, df); fclose(df); }
+            }
+            static unsigned *copy;
+            static size_t copy_bytes;
+            if (copy_bytes != bytes) {
+                free(copy);
+                copy = (unsigned *)malloc(bytes);
+                copy_bytes = copy ? bytes : 0;
+            }
+            if (copy) {
+                memcpy(copy, ab, bytes);
+                for (size_t i = 0; i < mask_n; ++i)
+                    if ((size_t)mask[i] * 4 < bytes) copy[mask[i]] = 0;
+                a = si_fnv(copy, bytes);
+            }
+        }
+        fprintf(stderr, "[fl-hash] f%d %08x %08x\n", f, m, a);
+    }
+    while (si < sn && f >= sf[si]) {
+        fprintf(stderr, "[fl-script] f%d: FrameRate -> %d through the settings call\n", f, sr[si]);
+        host_setting_save_frame_rate(sr[si]);
+        ++si;
+    }
+}
+
 static void frame_pace(void)
 {
     static LARGE_INTEGER qpf, next;
@@ -3145,6 +3279,10 @@ static void frame_pace(void)
        `next`; a tick's alpha is measured from the turn it began in. */
     if (g_ip_deferred) ip_flush_deferred();
     g_ip_t0 = next.QuadPart;
+    /* FrameRate is live (run hunt8, lane FPSLIVE1): SmoothMotion arms or stands
+       down here, between two ticks, when the rate crossed zero. */
+    fpslive_tick_tools();
+    ip_live_sync();
     if (!trace) return;
     /* SM64DS_TRACE_PACE=2 is the per-frame line, which costs an unbuffered
        write every frame and therefore distorts the very thing it measures.
@@ -7885,31 +8023,72 @@ static void ip_retire_tick(ntr::Framebuffer &fb)
 /* Arm once, at the level loop's first turn. Needs FrameRate on (a rate the
    pacer presents at) and the key; the per-tick test against the tick rate
    is g_ip_rate_ok, set at each commit. */
+/* run hunt8, lane FPSLIVE1: FrameRate is live, so SmoothMotion (itself
+   boot-latched) may find the rate crossing zero while the game runs. g_ip_on
+   is now: -1 not armed (decided at the next ip_live_sync), 0 the SmoothMotion
+   key is off for the whole run, 1 armed. The framebuffer it will draw for is
+   the one the latest ip_arm call named; the five working buffers are made
+   once, on the first arming, and kept. */
+static const ntr::Framebuffer *g_ip_fb_pending;
+
 static void ip_arm(const ntr::Framebuffer *level_fb)
 {
-    if (g_ip_on >= 0) {
+    g_ip_fb_pending = level_fb;
+    if (g_ip_on > 0) {
         /* run hunt8, lane SCENEINTERP1: the scene loop may have armed it for
            the scene's framebuffer; the level loop takes it back */
-        if (g_ip_on > 0) {
-            g_ip_level_fb = level_fb;
-            g_ip_skip_p5 = 0;
-            g_ip_stack_on = 0;
-        }
+        g_ip_level_fb = level_fb;
+        g_ip_skip_p5 = 0;
+        g_ip_stack_on = 0;
         return;
     }
+    if (g_ip_on == 0) return;
+    ip_live_sync();
+}
+
+/* Between two ticks (frame_pace's tail, and ip_arm): arm SmoothMotion when the
+   key is on and the rate is above native, stand it down when the rate went
+   back to native. Standing down is the end-of-scene cleanup plus
+   gx_interp_arm(0), so the next tick records nothing and every picture is the
+   tick's own, the native path exactly. */
+static void ip_live_sync(void)
+{
+    if (g_ip_on == 0) return;
+    if (!host_setting_smooth_motion()) { g_ip_on = 0; return; }
     const int rate = port_frame_rate_target();
-    g_ip_on = (host_setting_smooth_motion() && rate > 0) ? 1 : 0;
-    if (!g_ip_on) return;
-    g_ip_level_fb = level_fb;
-    g_ip_fb = new ntr::Framebuffer;
-    g_ip_p3 = new ntr::Framebuffer;
-    g_ip_p2 = new ntr::Framebuffer;
-    g_ip_p4 = new ntr::Framebuffer;
-    g_ip_p5 = new ntr::Framebuffer;
-    ntr::gx_interp_arm(1);
-    fprintf(stderr, "[interp] SmoothMotion on at FrameRate %d: pictures between "
-            "two ticks on a 3D level are blended from the recorded geometry; "
-            "2D, menus and scenes are the tick's own\n", rate);
+    const bool want = rate > 0 && g_ip_fb_pending;
+    if (g_ip_on > 0 && !want) {
+        ntr::gx_interp_arm(0);
+        g_ip_on = -1;
+        g_ip_tick_ok = 0;
+        g_ip_rate_ok = 0;
+        g_ip_tick_t0 = 0;
+        g_ip_deferred = 0;
+        g_ip_skip_p5 = 0;
+        g_ip_stack_on = 0;
+        g_ip_stack_fast = 0;
+        g_ip_fade_on = 0;
+        fprintf(stderr, "[interp] SmoothMotion stands down: FrameRate went back "
+                "to native\n");
+        return;
+    }
+    if (g_ip_on < 0 && want) {
+        g_ip_level_fb = g_ip_fb_pending;
+        if (!g_ip_fb) {
+            g_ip_fb = new ntr::Framebuffer;
+            g_ip_p3 = new ntr::Framebuffer;
+            g_ip_p2 = new ntr::Framebuffer;
+            g_ip_p4 = new ntr::Framebuffer;
+            g_ip_p5 = new ntr::Framebuffer;
+        }
+        g_ip_tick_ok = 0;
+        g_ip_tick_t0 = 0;
+        g_ip_on = 1;
+        ntr::gx_interp_arm(1);
+        fprintf(stderr, "[interp] SmoothMotion on at FrameRate %d: pictures between "
+                "two ticks on a 3D level are blended from the recorded geometry; "
+                "2D, menus and scenes are the tick's own\n", rate);
+    }
 }
 
 /* Build the blended picture for `alpha` into g_ip_fb. 0 when the tick has no
@@ -9002,10 +9181,11 @@ static void ip_scene_begin(ntr::Framebuffer &fb)
 {
     if (!scene_ip_enabled()) return;
     ip_arm(&fb);
-    if (g_ip_on > 0) {
-        g_ip_level_fb = &fb;
-        port_scene_ip_hook = scene_ip_hook;
-    }
+    if (g_ip_on > 0) g_ip_level_fb = &fb;
+    /* the hook is installed whether or not SmoothMotion is armed now: FrameRate
+       is live (run hunt8, lane FPSLIVE1), and the hook stands down by itself
+       while g_ip_on is not 1 */
+    if (host_setting_smooth_motion()) port_scene_ip_hook = scene_ip_hook;
 }
 
 static void ip_scene_end(void)

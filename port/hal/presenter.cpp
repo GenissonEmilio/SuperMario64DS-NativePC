@@ -131,6 +131,7 @@ long long g_last_target;       /* the newest timed target published so far */
 volatile long g_delay_us;      /* the display delay D now: refresh k shows the picture made for the moment k minus D */
 volatile long g_goal_us;       /* where D is heading (adaptive mode) */
 long g_cap_us;                 /* adaptive D never goes above this */
+int g_cap_pinned;              /* SM64DS_PRESENTER_DELAY_CAP_MS set: the cap stays (FrameRate live, run hunt8, lane FPSLIVE1) */
 int g_fixed_delay;             /* SM64DS_PRESENTER_DELAY_MS set: D is that value and stays */
 double g_work[32];             /* the last ticks' own work, milliseconds */
 int g_work_n, g_work_at;
@@ -139,6 +140,7 @@ int g_qmax;                    /* test: deepest queue seen */
 int g_w, g_h;
 int g_mode;                  /* 1 Present(1), 0 timer grid */
 double g_period_ms = 6.944;
+volatile long g_period_us = 6944;   /* the same period for the thread, one atomic word (run hunt8, lane FPSLIVE1) */
 long long g_qpf;
 
 int g_main_idx;              /* the slot the game thread is drawing (game thread only) */
@@ -510,13 +512,18 @@ void test_hang_present()
 DWORD WINAPI thread_main(LPVOID)
 {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
-    const long long period = (long long)(g_period_ms * (double)g_qpf / 1000.0);
+    long long period = (long long)((double)g_period_us * (double)g_qpf / 1e6);
     long long next = qpc();
     long long last_start = 0, last_gen = -1;
     long long shown_gen = 0, shown_t_pub = 0, shown_serial = 0, shown_target = 0;
     float shown_cam[3] = {0, 0, 0};
     int have = 0, occluded = 0;
     while (!g_stop) {
+        /* FrameRate is live (run hunt8, lane FPSLIVE1): the grid follows
+           presenter_set_grid_hz. `next` is left where it is, so the first turn
+           after a change waits out at most one OLD period and the new grid
+           takes over from there. */
+        period = (long long)((double)g_period_us * (double)g_qpf / 1e6);
         if (g_mode == 0) {
             wait_until(next);
             next += period;
@@ -729,7 +736,7 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
         g_goal_us = 0;
         g_fixed_delay = 0;
         g_cap_us = (long)(1000000.0 / (grid_hz < 24.0 ? 60.0 : grid_hz));   /* one refresh */
-        if ((e = getenv("SM64DS_PRESENTER_DELAY_CAP_MS")) != 0 && *e) g_cap_us = (long)(atof(e) * 1000.0);
+        if ((e = getenv("SM64DS_PRESENTER_DELAY_CAP_MS")) != 0 && *e) { g_cap_us = (long)(atof(e) * 1000.0); g_cap_pinned = 1; }
         if ((e = getenv("SM64DS_PRESENTER_DELAY_MS")) != 0 && *e) {
             g_delay_us = (long)(atof(e) * 1000.0);
             g_fixed_delay = 1;
@@ -761,6 +768,7 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
     g_mode = interval_mode ? 1 : 0;
     if (grid_hz < 24.0) grid_hz = 60.0;
     g_period_ms = 1000.0 / grid_hz;
+    g_period_us = (long)(1000000.0 / grid_hz + 0.5);
     g_main_idx = 0;
     g_qn = 0;
     g_ql = 0;
@@ -792,6 +800,21 @@ extern "C" int presenter_begin(void *dev, void *ctx, void *swapchain, int w,
                 g_mode ? "Present(1)" : "timer grid, Present(0)", g_period_ms,
                 g_timed ? (g_fixed_delay ? "timed" : "timed, adaptive delay") : "newest-wins", g_ns, g_delay_us / 1000.0);
     return 1;
+}
+
+/* The timer grid's rate moves while the thread runs (FrameRate is live, run
+   hunt8, lane FPSLIVE1). Only the grid: the ring, the display delay and the
+   swap chain stay as they are. Below 24 Hz is no answer (the start's rule). */
+extern "C" void presenter_set_grid_hz(double grid_hz)
+{
+    if (grid_hz < 24.0) grid_hz = 60.0;
+    const long us = (long)(1000000.0 / grid_hz + 0.5);
+    if (us == g_period_us) return;
+    g_period_ms = 1000.0 / grid_hz;
+    _InterlockedExchange(&g_period_us, us);
+    if (!g_cap_pinned) g_cap_us = us > 40000 ? 40000 : us;   /* one refresh, as at the start */
+    if (presenter_stats_on())
+        fprintf(stderr, "[presenter] grid now %.2f Hz (%.3f ms)\n", grid_hz, g_period_ms);
 }
 
 extern "C" void presenter_end(void)

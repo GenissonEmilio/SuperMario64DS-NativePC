@@ -61,6 +61,9 @@ void presenter_shutdown(void);
    grid at grid_hz with Present(0). Returns 1 when it is running. */
 int presenter_begin(void *dev, void *ctx, void *swapchain, int w, int h,
                     int interval_mode, double grid_hz);
+/* Move the timer grid to grid_hz while running (a no-op in Present(1) mode
+   apart from remembering the period). Game thread only. */
+void presenter_set_grid_hz(double grid_hz);
 /* Stop the thread and release its textures. Safe to call any time, any
    number of times, from the game thread only. */
 void presenter_end(void);

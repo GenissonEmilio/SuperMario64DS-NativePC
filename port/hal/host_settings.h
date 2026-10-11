@@ -699,12 +699,15 @@ enum { kRollbackMaxPlayers = 8 };
    the Aspect rule again: 1000 becomes 240, which is a picture, where
    rejecting it would be a surprise.
 
-   BOOT-LATCHED, like Aspect and CustomPalette: the presentation clock's shape
-   is decided once, at the pacer's first turn, and a mid-run flip would be a
-   second code path nobody tests. The launcher's Settings row promises a
-   restart. SM64DS_FRAME_RATE overrides the file with the same grammar,
-   "display" included; an unparseable override is still an override and says
-   native, which is the answer an unparseable file value gives.
+   LIVE (run hunt8, lane FPSLIVE1): the pacer, the presenter's timer grid and
+   SmoothMotion follow a change at the end of a tick, with no restart. The
+   change comes either from host_setting_save_frame_rate (the in-game settings
+   page) or from the launcher rewriting settings.json (host_settings_poll
+   re-reads the key). SM64DS_FRAME_RATE overrides the file with the same
+   grammar, "display" included, for the BOOT value only: once a live change
+   has happened the override no longer sits in front. An unparseable override
+   is still an override and says native, which is the answer an unparseable
+   file value gives.
 
    WHAT IT LEAVES ALONE, and this is the contract the vanilla proof rests on:
    the game tick, the input sample, the geometry, the raster, the fader, the
@@ -716,6 +719,12 @@ enum { kRollbackMaxPlayers = 8 };
    host_setting_frame_rate returns the target pictures per second, or 0 for
    native. */
 int host_setting_frame_rate(void);
+/* Steps each time host_setting_frame_rate's answer changes while running. */
+int host_setting_frame_rate_gen(void);
+/* The settings page's call: sets the rate for this run at once and writes the
+   FrameRate key. rate is 0 (native) or 60..240; other values are sanitised the
+   way the file's are. Returns 1 when the file now says so. */
+int host_setting_save_frame_rate(int rate);
 
 /* ---- SmoothMotion: THE PICTURES BETWEEN TWO TICKS, BLENDED (run interp1) --
    Default 0, and 0 is today: every extra picture FrameRate asks for is the

@@ -1207,6 +1207,15 @@ int display_refresh_hz(void)
    and a mid-run change would be a second code path nobody tests. The only
    reader is walk_window's pacer. See the header for the whole contract. */
 int g_frame_rate = 0;
+/* run hunt8, lane FPSLIVE1: FrameRate follows a change while the game runs.
+   g_frame_rate_gen steps whenever the answer host_setting_frame_rate gives
+   moves (the pacer re-reads its cached copy when it sees the step), and
+   g_frame_rate_touched says a live change (the settings page's save, or the
+   launcher rewriting settings.json) has happened, after which the
+   SM64DS_FRAME_RATE override no longer sits in front: the override is the
+   boot value, a choice made in game replaces it. */
+int g_frame_rate_gen = 0;
+int g_frame_rate_touched = 0;
 
 /* ---- THE THREE PICTURE-QUALITY KEYS' BANDS (run hd1) ---------------------
    One sanitiser each, and both readers of every key -- settings.json and the
@@ -2222,6 +2231,27 @@ int reload_live(const char *text)
        comparison would have meant a voice-only edit either changing nothing
        (if the read were inside the if) or being announced as a gap change. */
     if (reload_controls(text)) changed = 1;
+    /* FrameRate (run hunt8, lane FPSLIVE1): live. Read the way load_once reads
+       it, through the same sanitiser, and compared with the value the FILE
+       last gave (g_frame_rate), so a launcher edit that leaves the key alone
+       cannot knock an SM64DS_FRAME_RATE override off its value. */
+    {
+        char fr[16];
+        int n;
+        if (json_str(text, "FrameRate", fr, sizeof fr) &&
+            strlen(fr) == 7 && ieq(fr, "display", 7))
+            n = display_refresh_hz();
+        else
+            n = json_int(text, "FrameRate", g_frame_rate);
+        n = frame_rate_sanitise(n);
+        if (n != g_frame_rate) {
+            g_frame_rate = n;
+            g_frame_rate_touched = 1;
+            ++g_frame_rate_gen;
+            changed = 1;
+            fprintf(stderr, "[settings] live re-read: FrameRate %d\n", n);
+        }
+    }
     const int voice_changed = read_voice_keys(text);
     if (voice_changed) {
         changed = 1;
@@ -3264,9 +3294,38 @@ extern "C" int host_setting_frame_rate(void)
             }
         }
     }
-    if (env >= 0) return env;
+    if (env >= 0 && !g_frame_rate_touched) return env;
     load_once();
     return g_frame_rate;
+}
+
+/* run hunt8, lane FPSLIVE1: steps each time the answer above changes while
+   the game runs, so the pacer can keep its cached copy and re-read it on a
+   step only. */
+extern "C" int host_setting_frame_rate_gen(void)
+{
+    return g_frame_rate_gen;
+}
+
+/* run hunt8, lane FPSLIVE1: the settings page's call. The rate takes effect
+   at the pacer's next turn and is written to settings.json for the next boot.
+   rate is the key's own grammar: 0 native, 60..240 pictures a second; anything
+   else is brought into the band by the same sanitiser the file goes through
+   (under 60 reads as native, above 240 as 240). Returns 1 when the file on
+   disk now says so; the running game has the new rate either way. */
+extern "C" int host_setting_save_frame_rate(int rate)
+{
+    load_once();
+    const int before = host_setting_frame_rate();
+    const int n = frame_rate_sanitise(rate);
+    g_frame_rate = n;
+    g_frame_rate_touched = 1;
+    if (n != before) ++g_frame_rate_gen;
+    char v[24];
+    snprintf(v, sizeof v, "%d", n);
+    const char *const keys[1] = { "FrameRate" };
+    const char *const vals[1] = { v };
+    return save_keys(keys, vals, 1, "frame rate");
 }
 
 /* ---- THE THREE PICTURE-QUALITY KEYS' ACCESSORS (run hd1) ----------------
