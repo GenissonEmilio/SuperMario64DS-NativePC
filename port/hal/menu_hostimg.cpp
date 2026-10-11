@@ -7,6 +7,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+#include <emmintrin.h>
+#include <malloc.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <condition_variable>
 #include <deque>
 #include <map>
@@ -122,6 +127,21 @@ void load_into(int id, Img &I)
     }
 }
 
+/* MENUPACE1: SM64DS_ART_TRACE=1 prints what a decode and a scale cost on the thread that did them */
+bool art_trace()
+{
+    static const bool on = getenv("SM64DS_ART_TRACE") != 0;
+    return on;
+}
+double art_ms()
+{
+    static LARGE_INTEGER f;
+    LARGE_INTEGER n;
+    if (!f.QuadPart) QueryPerformanceFrequency(&f);
+    QueryPerformanceCounter(&n);
+    return (double)n.QuadPart * 1000.0 / (double)f.QuadPart;
+}
+
 void load_img(int id)
 {
     Img &I = g_img[id];
@@ -131,7 +151,9 @@ void load_img(int id)
     }
     env();
     Img t;
+    const double t0 = art_trace() ? art_ms() : 0.0;
     load_into(id, t);                  /* decoded off to the side, published whole */
+    if (art_trace()) fprintf(stderr, "[menu-art] id %d decoded on the logic thread: %.2f ms\n", id, art_ms() - t0);
     std::lock_guard<std::mutex> lk(g_mx);
     if (I.tried) return;               /* the background install won */
     I.tried = 1; I.w = t.w; I.h = t.h; I.px = std::move(t.px);
@@ -162,7 +184,7 @@ void taps(int sn, int dn, std::vector<Tap> *out)
     }
 }
 
-void scale_to(Img *I, int dw, int dh, std::vector<uint32_t> *outv)
+void scale_to_ref(Img *I, int dw, int dh, std::vector<uint32_t> *outv)
 {
     std::vector<Tap> tx, ty;
     taps(I->w, dw, &tx);
@@ -202,6 +224,83 @@ void scale_to(Img *I, int dw, int dh, std::vector<uint32_t> *outv)
     }
 }
 
+/* MENUPACE1: the same resample as scale_to, bit for bit (same weights, same order of the float adds per channel), with the four channels in
+   one SSE register, flat tap tables, and no zero-filled scratch. */
+struct FTaps { std::vector<int> first, n, off; std::vector<float> w; };
+static void ftaps(int sn, int dn, FTaps *out)
+{
+    out->first.resize((size_t)dn); out->n.resize((size_t)dn); out->off.resize((size_t)dn);
+    out->w.clear();
+    const double sc = (double)sn / dn, sup = sc > 1.0 ? sc : 1.0;
+    for (int d = 0; d < dn; ++d) {
+        const double c = (d + 0.5) * sc;
+        int a = (int)floor(c - sup), b = (int)ceil(c + sup);
+        if (a < 0) a = 0;
+        if (b > sn) b = sn;
+        int n = b - a, first = a;
+        const size_t o = out->w.size();
+        out->w.resize(o + (size_t)(n > 1 ? n : 1), 0.f);
+        double sum = 0;
+        for (int s = a; s < b; ++s) {
+            double x = fabs((s + 0.5) - c) / sup;
+            double wv = x < 1.0 ? 1.0 - x : 0.0;
+            out->w[o + (size_t)(s - a)] = (float)wv; sum += wv;
+        }
+        if (sum <= 0) { first = a < sn ? a : sn - 1; n = 1; out->w[o] = 1.f; sum = 1; }
+        for (int s = 0; s < n; ++s) out->w[o + (size_t)s] = (float)(out->w[o + (size_t)s] / sum);
+        out->first[d] = first; out->n[d] = n; out->off[d] = (int)o;
+    }
+}
+static void scale_to_fast(const uint32_t *px, int sw, int sh, int dw, int dh, std::vector<uint32_t> *outv)
+{
+    FTaps tx, ty;
+    ftaps(sw, dw, &tx);
+    ftaps(sh, dh, &ty);
+    float *mid = (float *)_aligned_malloc((size_t)dw * sh * 16, 16);       /* lanes: b g r a */
+    const __m128i z = _mm_setzero_si128();
+    for (int y = 0; y < sh; ++y) {
+        const uint32_t *row = px + (size_t)y * sw;
+        float *mo = mid + (size_t)y * dw * 4;
+        for (int x = 0; x < dw; ++x) {
+            __m128 acc = _mm_setzero_ps();
+            const float *wp = &tx.w[(size_t)tx.off[x]];
+            const uint32_t *rp = row + tx.first[x];
+            for (int k = 0, nk = tx.n[x]; k < nk; ++k) {
+                const __m128 pv = _mm_cvtepi32_ps(_mm_unpacklo_epi16(_mm_unpacklo_epi8(_mm_cvtsi32_si128((int)rp[k]), z), z));
+                acc = _mm_add_ps(acc, _mm_mul_ps(_mm_set1_ps(wp[k]), pv));
+            }
+            _mm_store_ps(mo + (size_t)x * 4, acc);
+        }
+    }
+    outv->assign((size_t)dw * dh, 0);
+    for (int y = 0; y < dh; ++y) {
+        const float *wp = &ty.w[(size_t)ty.off[y]];
+        const int nk = ty.n[y], f0 = ty.first[y];
+        for (int x = 0; x < dw; ++x) {
+            __m128 acc = _mm_setzero_ps();
+            for (int k = 0; k < nk; ++k)
+                acc = _mm_add_ps(acc, _mm_mul_ps(_mm_set1_ps(wp[k]), _mm_load_ps(mid + ((size_t)(f0 + k) * dw + x) * 4)));
+            alignas(16) float f[4];
+            _mm_store_ps(f, acc);
+            int ib = (int)(f[0] + 0.5f), ig = (int)(f[1] + 0.5f), ir = (int)(f[2] + 0.5f), ia = (int)(f[3] + 0.5f);
+            if (ia > 255) ia = 255;
+            if (ir > ia) ir = ia;
+            if (ig > ia) ig = ia;
+            if (ib > ia) ib = ia;
+            (*outv)[(size_t)y * dw + x] = ((uint32_t)ia << 24) | ((uint32_t)ir << 16) | ((uint32_t)ig << 8) | (uint32_t)ib;
+        }
+    }
+    _aligned_free(mid);
+}
+
+/* the reference above is kept for SM64DS_MENU_SCALE_REF=1 (a proof aid: the two give the same pixels) */
+void scale_to(Img *I, int dw, int dh, std::vector<uint32_t> *outv)
+{
+    static const bool ref = getenv("SM64DS_MENU_SCALE_REF") != 0;
+    if (ref) { scale_to_ref(I, dw, dh, outv); return; }
+    scale_to_fast(I->px.data(), I->w, I->h, dw, dh, outv);
+}
+
 Img *img_of(int id) { return id >= 1 && id < MENU_IMG_EXT_END ? &g_img[id] : 0; }
 
 /* PAUSEFIX1: a worker thread that decodes and scales a picture off the game thread. A job touches only its own local Img; the game thread
@@ -231,6 +330,7 @@ void worker_main(Worker *W)
         }
         Done d;
         d.id = j.id; d.dw = j.dw; d.dh = j.dh; d.ok = false;
+        const double t0 = art_trace() ? art_ms() : 0.0;
         try {
             bool have = false;
             if (!(j.dw == 2 && j.dh == 2)) {
@@ -245,14 +345,17 @@ void worker_main(Worker *W)
                 if (W->src.size() < 16) W->src[j.id] = std::move(k);
             }
             if (!d.img.px.empty() && d.img.w > 0) {
-                std::vector<uint32_t> sc;
-                scale_to(&d.img, j.dw, j.dh, &sc);
-                d.img.scaled.swap(sc);
+                if (j.dw > 0 && j.dh > 0) {          /* MENUPACE1: a job of size 0 x 0 is a decode alone (menu_hostimg_predecode) */
+                    std::vector<uint32_t> sc;
+                    scale_to(&d.img, j.dw, j.dh, &sc);
+                    d.img.scaled.swap(sc);
+                }
                 d.ok = true;
             }
         } catch (...) {                /* WARMFIX1 F3: memory pressure: an empty failed result; the picture loads on first use */
             d.ok = false; d.exc = true; d.img = Img();
         }
+        if (art_trace()) fprintf(stderr, "[menu-art] id %d worker %s %dx%d: %.2f ms\n", j.id, j.dw > 0 ? "decode+scale" : "decode", j.dw, j.dh, art_ms() - t0);
         std::lock_guard<std::mutex> lk(W->m);
         try { W->out.push_back(std::move(d)); }
         catch (...) {
@@ -302,10 +405,14 @@ extern "C" const uint32_t *menu_hostimg_scaled(int id, int dw, int dh)
     }
     /* a miss: scale off the lock (the source pixels never change once the picture is ready), then swap in; the slot not filled last is replaced */
     std::vector<uint32_t> sc;
+    const double t0 = art_trace() ? art_ms() : 0.0;
     scale_to(I, dw, dh, &sc);
+    if (art_trace()) fprintf(stderr, "[menu-art] id %d scaled: %.2f ms\n", id, art_ms() - t0);
     std::lock_guard<std::mutex> lk(g_mx);
     if (I->cw == dw && I->ch == dh && !I->scaled.empty()) return &I->scaled[0];           /* the background install got there first */
     if (I->cw1 == dw && I->ch1 == dh && !I->scaled1.empty()) return &I->scaled1[0];
+    /* a miss replaces the slot that was not filled last */
+    if (art_trace()) fprintf(stderr, "[menu-art] id %d scale MISS %dx%d on the logic thread\n", id, dw, dh);
     if (I->last_slot == 0) { g_grave.push_back(std::move(I->scaled1)); I->scaled1 = std::move(sc); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; return &I->scaled1[0]; }
     g_grave.push_back(std::move(I->scaled)); I->scaled = std::move(sc); I->cw = dw; I->ch = dh; I->last_slot = 0;
     return &I->scaled[0];
@@ -372,9 +479,45 @@ extern "C" int menu_hostimg_prefetch_poll(void)
         if (!I.tried) {
             I.tried = 1; I.w = d.img.w; I.h = d.img.h; I.px = std::move(d.img.px);
         }
+        if (d.dw <= 0 || d.dh <= 0) continue;           /* MENUPACE1: a decode alone has no scaled copy to install */
         if (I.px.empty() || I.w != d.img.w || I.h != d.img.h || slot_has(I, d.dw, d.dh)) continue;
         g_grave_prev.swap(g_grave); g_grave.clear();                 /* what was replaced two installs ago is freed now */
         if (I.last_slot == 0) { g_grave.push_back(std::move(I.scaled1)); I.scaled1 = std::move(d.img.scaled); I.cw1 = d.dw; I.ch1 = d.dh; I.last_slot = 1; }
         else { g_grave.push_back(std::move(I.scaled)); I.scaled = std::move(d.img.scaled); I.cw = d.dw; I.ch = d.dh; I.last_slot = 0; }
+    }
+}
+
+/* MENUPACE1: decodes the picture on the worker thread and installs it on a later poll, so the first draw that asks for it
+   (menu_hostimg_ready) finds it decoded instead of paying a PNG decode inside a tick. 1 when it is already decoded (or has no file),
+   0 when it was queued or is on its way, -1 when four jobs are already waiting (ask again on a later tick). */
+extern "C" int menu_hostimg_predecode(int id)
+{
+    Img *I = img_of(id);
+    if (!I) return 1;
+    try {
+        env();
+        {
+            std::lock_guard<std::mutex> lk(g_mx);
+            if (I->tried) return 1;
+        }
+        if (!g_wk) g_wk = new Worker();
+        Worker *W = g_wk;
+        std::lock_guard<std::mutex> lk(W->m);
+        for (const Job &q : W->live)
+            if (q.id == id && q.dw == 0 && q.dh == 0) return 0;
+        if (W->busy >= 4) return -1;
+        if (!W->started) {
+            try { std::thread(worker_main, W).detach(); }
+            catch (...) { return 1; }
+            W->started = true;
+        }
+        W->live.push_back(Job{ id, 0, 0 });
+        try { W->in.push_back(Job{ id, 0, 0 }); }
+        catch (...) { W->live.pop_back(); return 1; }
+        ++W->busy;
+        W->cv.notify_one();
+        return 0;
+    } catch (...) {
+        return 1;
     }
 }

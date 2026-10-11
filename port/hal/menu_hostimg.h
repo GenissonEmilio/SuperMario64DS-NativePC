@@ -34,6 +34,7 @@ int menu_hostimg_size(int id, int *w, int *h);                    /* source pixe
 const uint32_t *menu_hostimg_scaled(int id, int dw, int dh);      /* premultiplied ARGB, dw*dh, cached; null on failure */
 int menu_hostimg_prefetch(int id, int dw, int dh);               /* PAUSEFIX1: 1 when cached at that size; else queues a background decode + scale (once) and returns 0, or -1 when 4 jobs already wait */
 int menu_hostimg_prefetch_poll(void);                            /* PAUSEFIX1: installs finished background jobs (cheap); 1 while any is still queued or running */
+int menu_hostimg_predecode(int id);                              /* MENUPACE1: queues a background decode alone (no scale); 1 when already decoded, 0 queued, -1 queue full */
 #ifdef __cplusplus
 }
 #endif

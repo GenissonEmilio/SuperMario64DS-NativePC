@@ -91,6 +91,8 @@ double presenter_delay_ms(void);
 int presenter_timed(void);
 /* One tick's own work in milliseconds, once per tick: the display delay follows it. */
 void presenter_note_work(double ms);
+/* MENUPACE1: the scene path's time from a tick's start to the end of its first in-between; the display delay follows it too. */
+void presenter_note_ready(double ms);
 /* Free textures in the ring, for drawing ahead. */
 int presenter_room(void);
 

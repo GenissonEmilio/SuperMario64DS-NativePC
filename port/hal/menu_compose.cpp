@@ -1743,12 +1743,31 @@ static void dec_copy(MenuDecision *dst, const MenuDecision *src)
     }
 }
 
+/* run hunt8, lane MENUPACE1: THE MAIN MENU'S ART IS DECODED AHEAD. The title -> main menu tick used to decode the logo, the three planks, the
+   arrows, the pattern and the star PNGs on the logic thread (a 41 ms tick). While a one-screen menu scene is up, each tick hands the
+   next picture to the hostimg worker (decode alone, no scale) and installs what the worker finished, so by the time the page changes the
+   pictures are in memory. SM64DS_NO_MENU_PREDECODE=1 turns it off (the old behaviour). */
+static void menu_art_predecode_tick(void)
+{
+    static const bool off = getenv("SM64DS_NO_MENU_PREDECODE") != 0;
+    static int next = 0;
+    static const int kIds[] = { MENU_IMG_LOGO, MENU_IMG_BTN_MP, MENU_IMG_BTN_ADV, MENU_IMG_BTN_REC, MENU_IMG_ARROW_UP, MENU_IMG_ARROW_DOWN,
+                                MENU_IMG_PATTERN, MENU_IMG_STAR };
+    if (off) return;
+    menu_hostimg_prefetch_poll();
+    while (next < (int)(sizeof kIds / sizeof kIds[0])) {
+        if (menu_hostimg_predecode(kIds[next]) < 0) return;      /* the queue is full: the rest on a later tick */
+        ++next;
+    }
+}
+
 /* THE DECIDE STEP. Logic thread, once per tick after the ROM tick. Everything that reads the ROM happens here (up(), the
    recipe's facts(), build() through L->facts, and the rom_cursor / pad_ok the input paths call), and the answer is a
    MenuDecision the draw side consumes by value. */
 void hal_menu_decide(int w, int h, int scene_id)
 {
     ++g_frame;
+    if (scene_is_menu(scene_id) && enabled(MENU_KEY_ONE_SCREEN_MENUS)) menu_art_predecode_tick();
     g_pub_i ^= 1;
     MenuDecision &D = g_pub[g_pub_i];
     D.serial = g_frame;
