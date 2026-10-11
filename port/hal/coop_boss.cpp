@@ -331,7 +331,12 @@ void apply_rx(int slot, Boss &b, unsigned now) {
     if (carry_state) force = false;
     if (force) {
         // everything except the HP (already min-merged); the state field goes first so its enter code runs on the old fields
+        // The state's enter code can have side effects of its own (King Bob-omb's hurt states take a health point): the HP
+        // stays what the min-merge above made it.
+        const int hp_keep = hp_of(b);
         for (int k = 0; k < d.nf; ++k) if (k != d.hp && value_ok(d, k, x.w[k])) write_field(b.a, d, k, x.w[k]);
+        write_field(b.a, d, d.hp, (uint32_t)hp_keep);
+        b.synced_hp = hp_keep;
         b.mism = 0;
         ++g_st.applied_state;
         if (g_log) std::fprintf(stderr, "[cbs] apply-state slot=%d st %u->%u hp=%d from seat %d heard=%d w=%lld\n", slot, ls, rs, hp_of(b), x.from, (int)b.heard, wall_ms());
@@ -590,7 +595,10 @@ void coop_boss_on_world(int seat, int sub, const unsigned char *p, int len) {
                 if (g_log) std::fprintf(stderr, "[cbs] hit-rx slot=%d hp %d->%u from seat %d (auth %d) w=%lld\n", (int)r.slot, lhp, w[d->hp], seat, auth, wall_ms());
             }
             if (auth == g_my) {
+                const int hp_keep = (int)read_field(b.a, d->f[d->hp]);
                 for (int k = 0; k < d->nf; ++k) if (k != d->hp) write_field(b.a, *d, k, w[k]);
+                write_field(b.a, *d, d->hp, (uint32_t)hp_keep);
+                b.synced_hp = hp_keep;
                 ++g_st.hit_adopted;
                 b.lw_valid = false;
             }
