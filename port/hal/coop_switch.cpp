@@ -573,6 +573,8 @@ void on_world(int seat, int sub, const unsigned char *p, int len, void *) {
         for (int i = 0; i < (int)h.count; ++i) {
             SwBitEntry e; std::memcpy(&e, p + sizeof h + i * sizeof e, sizeof e);
             if ((e.stamp & 15u) != (unsigned)seat) { ++g_st.drop_bad; continue; }   // a stamp names its sender
+            // a live change cannot be far ahead of the counter I follow: a forged top stamp would pin the bit for good
+            if (sw_stamp_counter(e.stamp) > g_counter + 512u) { ++g_st.drop_bad; continue; }
             adopt_bit(e.bit, e.value, e.stamp);
         }
         if ((unsigned)data_0209f34c != before) log_word("remote");

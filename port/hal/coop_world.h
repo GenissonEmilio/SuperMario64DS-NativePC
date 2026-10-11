@@ -49,7 +49,7 @@ bool coop_group_i_am_owner();
 unsigned coop_group_member_mask();             // other consoles in my group, bit = seat
 // Callback registries (up to 8 each; false when full, null or already added).
 bool coop_on_frame(void (*fn)(unsigned now_ms));                    // each frame, after the presence refresh
-bool coop_on_group_latched(void (*fn)(int level, int act));         // end of the level latch, before any object spawns
+bool coop_on_group_latched(void (*fn)(int level, int act));         // end of the level latch, before any object spawns; fires just BEFORE established
 bool coop_on_group_established(void (*fn)(int level, int act));     // snapshot taken, level live
 bool coop_on_snapshot_request(void (*fn)(int seat, unsigned nonce));// owner side: a LEVEL_ENTER arrived and was answered
 bool coop_on_member_gone(void (*fn)(int seat));                     // a member left my group

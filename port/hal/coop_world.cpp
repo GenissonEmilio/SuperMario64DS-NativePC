@@ -527,8 +527,33 @@ void dump_bits(const char *why) {
 // My unconfirmed kills, once more under the OLD group key, before the key changes: the retry loop
 // stops when I leave, and the others would never hear them. Eight copies 20 ms apart (loss is per
 // datagram, the owner's apply is idempotent, and 8 in 160 ms stays inside the 40 pps seat cap).
+// Kills made in the same tick the level changes are in the table but not yet in g_out (tick_est
+// has not run since): pick them up here so the flush below resends them too.
+void rescan_before_leave(unsigned now) {
+    const unsigned *t = tbl(g_part);
+    for (int w = 0; w < kCoopWords; ++w) {
+        unsigned nb = t[w] & ~g_prev[w];
+        while (nb) {
+            const unsigned bit = nb & (~nb + 1u);
+            nb &= nb - 1;
+            int b = 0; while (!((bit >> b) & 1u)) ++b;
+            if (g_out_n < kOutMax) {
+                g_out[g_out_n].slot = (uint16_t)(w * 32 + b);
+                g_out[g_out_n].sent = 0;
+                g_out[g_out_n].next = now;
+                ++g_out_n;
+            }
+            ++g_st.local_bits;
+            if (g_log) std::fprintf(stderr, "[coop] local bit slot=%d (leave rescan)
+", w * 32 + b);
+        }
+        g_prev[w] |= t[w] & ~g_prev[w];
+    }
+}
+
 void flush_on_leave() {
     if (!g_sync || !g_key.valid() || g_part < 0 || !g_grp.established() || g_grp.others() <= 0) return;
+    rescan_before_leave(comms_hub_now_ms());
     int total = 0;
     for (int i = 0; i < g_out_n;) {
         uint16_t slots[kCoopMaxDelta]; int n = 0;
@@ -625,6 +650,8 @@ void join_group(const CoopKey &nk) {
     g_hello_t = 0; g_full_t = comms_hub_now_ms();
     g_prev_members = g_grp.member_mask();
     dump_bits("established");
+    // latched first, then established: a lane resets its per-level state in latched and fills it in established
+    for (int i = 0; i < g_n_latched; ++i) g_cb_latched[i](nk.level, nk.act);
     for (int i = 0; i < g_n_estab; ++i) g_cb_estab[i](nk.level, nk.act);
 }
 
@@ -1013,9 +1040,7 @@ extern "C" void port_coop_world_level_latched(void) {
     using namespace port;
     if (!coop_world_active()) return;
     ensure_handlers();
-    join_group(CoopKey((int)data_0209f2f8, data_0209f220[0] & 0xff));
-    if (g_key.valid())
-        for (int i = 0; i < g_n_latched; ++i) g_cb_latched[i](g_key.level, g_key.act);
+    join_group(CoopKey((int)data_0209f2f8, data_0209f220[0] & 0xff));   // fires latched, then established
 }
 
 extern "C" void port_coop_world_frame(void) {
