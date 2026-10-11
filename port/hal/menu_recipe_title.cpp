@@ -256,8 +256,27 @@ bool wall_skip_active()
     return v == V_MAIN || v == V_INTRO;
 }
 
+/* POLISH1A: the file pages' orange cursor arrow. The ROM's cursor object (id 0x21) draws the file_menu_U orange down arrow on the file
+   machine's pages (elem 5: select, options, scores pick, copy, erase). While the page is the one-screen file page and the HD arrow
+   is ready the sprite is not submitted; its place (DS pixels, the object's own x / y: the arrow's top left is (x - 11, y - 8), the tip
+   is the bottom centre) and the title frame it was seen on are kept, and the file page draws the HD arrow there. */
+int g_oa_frame = -1, g_oa_x = 0, g_oa_y = 0;
+bool file_arrow_up()
+{
+    if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return false;
+    return elem != 0 && variant_for(top, elem) == V_FILES && menu_hostimg_ready(MENU_IMG_ARROW_ORANGE);
+}
+
 int title_skip(char *o)
 {
+    if (*(unsigned char *)(o + 0x4e) == 0x21 && file_arrow_up()) {
+        g_oa_frame = data_ov007_0210342c[0];
+        g_oa_x = ((const int *)o)[1] >> 12;
+        g_oa_y = ((const int *)o)[2] >> 12;
+        return 1;
+    }
     if (data_ov007_0210342c) {
         const char *g = (const char *)data_ov007_0210342c;
         for (int i = 0; i < 3; ++i)
@@ -278,8 +297,10 @@ int title_skip(char *o)
     if (trace < 0) {
         const char *e = getenv("SM64DS_TITLE_DRAWTRACE");
         trace = (e && *e && *e != '0') ? 1 : 0;
+#ifndef PORT_ROM_CLEAN      /* the object-skip probe is a proof arm: not in the shipped build */
         e = getenv("SM64DS_TITLE_SKIPK");
         skipk = e ? (unsigned)strtoul(e, 0, 16) : 0;
+#endif
     }
     if (!trace && !skipk) return 0;
     const int fr = data_ov007_0210342c ? data_ov007_0210342c[0] : 0;
@@ -1297,6 +1318,18 @@ void file_pages_build(int variant, MenuLayout *L)
         static const int ids[6] = { 10, 9, 11, 12, 13, 8 };
         hot(L, ip, ids, 6);
         return;
+    }
+    /* POLISH1A: the HD orange cursor arrow where the ROM's sprite was (kept this frame or the one before: the page and the sprite are
+       submitted by the same Render), same 22 x 15 DS footprint, tip anchored at the bottom centre; drawn over the plates */
+    if (variant == V_FILES && t_f && g_oa_frame >= 0 && t_f->frame - g_oa_frame <= 1 &&
+        menu_hostimg_ready(MENU_IMG_ARROW_ORANGE)) {
+        const int un = L->unum, ud = L->uden;
+        const int dw = 22 * un / ud, dh = 15 * un / ud;
+        MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_ORANGE; ar.lden = 1; ar.lnum = 1; ar.fw = (short)dw; ar.fh = (short)dh;
+        ar.fx = (short)(L->w / 2 + (g_oa_x - 11 - 128) * un / ud);
+        ar.fy = (short)((g_oa_y - 8) * un / ud + (L->h - 192 * un / ud) / 2);
+        menu_add_piece(L, ar);
     }
     static const int fids[8] = { 14, 15, 16, 17, 18, 19, 21, 20 };
     hot(L, ip, fids, 8);

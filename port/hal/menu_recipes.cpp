@@ -131,7 +131,7 @@ const MenuRecipe g_menu_recipes[] = {
     { "gameover", menu_gameover_up, menu_gameover_build, menu_gameover_rom_cursor, MENU_KEY_ONE_SCREEN_MENUS,
       MENU_DRV_ROM_CURSOR, 0, 1, menu_gameover_pad_ok,
       menu_gameover_facts },
-    { "recroom",  menu_recroom_up, menu_recroom_build, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_TOUCH, 0, 1,
+    { "recroom",  menu_recroom_up, menu_recroom_build, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_TOUCH, MENU_RF_START_CONFIRM, 1,
       menu_recroom_pad_ok, menu_recroom_facts },
     { "vs",       up_never, build_none, 0, MENU_KEY_ONE_SCREEN_MENUS,  MENU_DRV_TOUCH,      0, 0 },
     { "fallback", up_never, build_fallback, 0, MENU_KEY_ONE_SCREEN_MENUS, MENU_DRV_NATIVE,  MENU_RF_FALLBACK, 1 },
