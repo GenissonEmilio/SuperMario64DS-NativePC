@@ -470,9 +470,15 @@ int write_text(const char *path, const char *text)
         if (fclose(f) != 0) { remove(tmp); return 0; }
     }
 #ifdef _WIN32
-    if (!MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING)) {
-        remove(tmp);
-        return 0;
+    /* a short retry: the launcher (or a second copy of the game) may have
+       the old file open for a moment, and a sharing violation on the rename
+       is gone a few milliseconds later */
+    {
+        int tries = 0;
+        while (!MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING)) {
+            if (++tries >= 5) { remove(tmp); return 0; }
+            Sleep(20);
+        }
     }
 #else
     if (rename(tmp, path) != 0) { remove(tmp); return 0; }
@@ -583,6 +589,51 @@ int g_look_pad_taken;
    action that already held it in a file that never named the key. */
 int g_cc_key_taken;
 int g_cc_pad_taken;
+
+/* ---- THE LIVE CONTROL KEYS (run menu1, lane SETLIVE1) ---------------------
+   Six numbers the in-game settings page changes while the game runs, all
+   plain integers in settings.json (the launcher keeps unknown keys, and ints
+   survive its round trip as ints):
+
+     StickDeadzone      percent of the left stick's travel that reads as
+                        centred, 0..50. Default = today's floor, 7849 of
+                        32767 (24 percent): an absent key AND the value 24
+                        both mean exactly 7849, so the default feel is the
+                        shipped feel to the bit.
+     RunThreshold       percent of the usable travel (past the dead zone)
+                        where Mario starts to run, 30..100. The cartridge
+                        starts a run at 0xe47 of 0x1000 (89.2 percent); an
+                        absent key AND the value 89 mean no remap at all.
+     InvertCameraY      true/false, the analog and free camera's up/down.
+     CameraSensitivity  percent of the right stick's (and Q/E's) turn rate,
+                        10..400, 100 = today. The DS camera steps a fixed
+                        0x400 per tick in the ROM, so it does not apply there.
+     MouseSensitivity   percent of the mouse look, 10..400, 100 = today.
+   g_ctl_gen moves whenever any control or camera value changes (a set or a
+   file reload), so the frame loop refreshes its copies on a counter compare. */
+int g_stick_dead = 7849;             /* raw units of 32767 */
+int g_run_thresh_pct = -1;           /* -1 = the ROM's own point, no remap */
+int g_invert_camera_y;               /* default 0 */
+int g_camera_sens = 100;
+int g_mouse_sens = 100;
+int g_ctl_gen = 1;
+int g_cam_gen = 1;                   /* moves when CameraMode is SET or reloaded */
+int g_poll_flag;                     /* an API set wants the next poll to say 1 */
+
+const int STICK_DEAD_DEFAULT = 7849;
+const int RUN_THRESH_ROM_PCT = 89;   /* 0xe47 / 0x1000 = 89.2 percent */
+
+int stick_dead_from_pct(int pct)
+{
+    if (pct < 0) pct = 0;
+    if (pct > 50) pct = 50;
+    if (pct == 24) return STICK_DEAD_DEFAULT;
+    return (int)((long long)pct * 32767 / 100);
+}
+int stick_dead_to_pct(int raw)
+{
+    return (int)(((long long)raw * 100 + 16383) / 32767);
+}
 
 /* ---- THE DS SCREEN GAP -------------------------------------------------
    The four keys behind the launcher's "remove minigame gap" checkbox and
@@ -1328,6 +1379,12 @@ int g_improved_minimap = 1;   /* ABSENT MEANS ON: the owner's order */
    mod the owner asked for and recommended on. 0 is the picture the port drew
    before it existed. */
 int g_save_menu_on_top = 1;   /* ABSENT MEANS ON: the owner's recommendation */
+/* OneScreenMenus (run menu1): the title, star select, Rec Room, VS lobby and game over
+   scenes use the one-screen compose layer instead of two stacked DS screens. ABSENT MEANS
+   OFF while the recipes land. HudLayout: 0 = the DS row, 1 = the N64 row; parsed only,
+   the HUD lane reads it later. */
+int g_one_screen_menus = 0;
+int g_hud_layout = 0;
 double g_minimap_scale = 1.0; /* the multiplier, 1 or more */
 /* A HAND HAS MOVED THE SIZE THIS RUN. Set by the drag's own write and by
    nothing else; read in host_setting_minimap_scale_value, where the block
@@ -1375,6 +1432,11 @@ void load_once(void)
     g_run_key = 0x10;
     g_run_pad = 0x4000;
     g_camera_mode = 2;   /* CameraMode ds, on Tango's order */
+    g_stick_dead = STICK_DEAD_DEFAULT;
+    g_run_thresh_pct = -1;
+    g_invert_camera_y = 0;
+    g_camera_sens = 100;
+    g_mouse_sens = 100;
     for (int i = 0; i < HOST_KEY_COUNT; ++i) g_key[i] = KEY_BIND[i].dflt;
     for (int i = 0; i < HOST_PAD_COUNT; ++i) g_pad[i] = PAD_BIND[i].dflt;
     g_look_key_taken = 0;
@@ -1444,6 +1506,17 @@ void load_once(void)
     if (!text) return;
     if (looks_like_json_object(text)) {
         g_swap_camera_turn = json_bool(text, "SwapCameraTurnDirection", 0);
+        g_invert_camera_y = json_bool(text, "InvertCameraY", 0);
+        {
+            const int sd = json_int(text, "StickDeadzone", 24);
+            g_stick_dead = stick_dead_from_pct(sd);
+            const int rt = json_int(text, "RunThreshold", RUN_THRESH_ROM_PCT);
+            g_run_thresh_pct = (rt >= 30 && rt <= 100 && rt != RUN_THRESH_ROM_PCT) ? rt : -1;
+            int cs = json_int(text, "CameraSensitivity", 100);
+            g_camera_sens = cs < 10 ? 10 : cs > 400 ? 400 : cs;
+            int ms = json_int(text, "MouseSensitivity", 100);
+            g_mouse_sens = ms < 10 ? 10 : ms > 400 ? 400 : ms;
+        }
         /* the mode by NAME, and by number as well: the launcher serializes a
            C# enum as an integer unless it is told otherwise, and a player
            editing by hand will write the word */
@@ -1731,6 +1804,11 @@ void load_once(void)
            bool and a player editing by hand may write 1. */
         g_save_menu_on_top = (json_int(text, "SaveMenuOnTop", 1) != 0 &&
                               json_bool(text, "SaveMenuOnTop", 1) != 0) ? 1 : 0;
+        /* ONE SCREEN MENUS: absent is OFF, both spellings of the toggle */
+        g_one_screen_menus = (json_int(text, "OneScreenMenus", 0) != 0 ||
+                              json_bool(text, "OneScreenMenus", 0) != 0) ? 1 : 0;
+        g_hud_layout = (json_int(text, "HudLayout", 0) == 1 ||
+                        json_bool(text, "HudLayout", 0) != 0) ? 1 : 0;
         {
             int snapped = 0;
             const double want = json_num(text, "MinimapScale", 1.0);
@@ -2027,6 +2105,80 @@ unsigned long long g_watch_time;
 unsigned long long g_watch_size;
 #endif
 
+/* One mode word by NAME or by number, the way load_once reads RunMode and
+   CameraMode, landing on `cur` when the key is absent or unreadable. */
+int read_mode(const char *text, const char *key, const char *const *names,
+              int n, int cur)
+{
+    char mode[16];
+    if (!json_value(text, key)) return cur;
+    if (json_str(text, key, mode, sizeof mode)) {
+        for (int i = 0; i < n; ++i)
+            if (strlen(mode) == strlen(names[i]) &&
+                ieq(mode, names[i], strlen(mode)))
+                return i;
+    }
+    const int v = json_int(text, key, cur);
+    return (v >= 0 && v < n) ? v : cur;
+}
+
+/* The control and camera keys a launcher edit can change while the game runs
+   (run menu1 SETLIVE1): bindings, run mode, camera mode and the new numbers.
+   Each lands on the value it already has when the file stops naming it.
+   Returns 1 when anything moved, which bumps g_ctl_gen so the frame loop
+   re-copies its working values. */
+int reload_controls(const char *text)
+{
+    int changed = 0;
+#define CTL_SET(var, expr) do { const int nv_ = (expr); if (nv_ != (var)) { (var) = nv_; changed = 1; } } while (0)
+    CTL_SET(g_swap_camera_turn, json_bool(text, "SwapCameraTurnDirection", g_swap_camera_turn));
+    CTL_SET(g_invert_camera_y, json_bool(text, "InvertCameraY", g_invert_camera_y));
+    CTL_SET(g_run_mode, read_mode(text, "RunMode", RUN_MODE_KEY, 3, g_run_mode));
+    {
+        const int was_cam = g_camera_mode;
+        CTL_SET(g_camera_mode, read_mode(text, "CameraMode", CAMERA_MODE_KEY, 3, g_camera_mode));
+        if (g_camera_mode != was_cam) ++g_cam_gen;
+    }
+    CTL_SET(g_stick_dead, stick_dead_from_pct(
+        json_int(text, "StickDeadzone", stick_dead_to_pct(g_stick_dead))));
+    {
+        const int cur = g_run_thresh_pct < 0 ? RUN_THRESH_ROM_PCT : g_run_thresh_pct;
+        int rt = json_int(text, "RunThreshold", cur);
+        if (rt < 30 || rt > 100 || rt == RUN_THRESH_ROM_PCT) rt = (rt == RUN_THRESH_ROM_PCT) ? -1 : g_run_thresh_pct;
+        CTL_SET(g_run_thresh_pct, rt);
+    }
+    {
+        int cs = json_int(text, "CameraSensitivity", g_camera_sens);
+        CTL_SET(g_camera_sens, cs < 10 ? 10 : cs > 400 ? 400 : cs);
+        int ms = json_int(text, "MouseSensitivity", g_mouse_sens);
+        CTL_SET(g_mouse_sens, ms < 10 ? 10 : ms > 400 ? 400 : ms);
+    }
+    for (int i = 0; i < HOST_KEY_COUNT; ++i) {
+        int k = json_int(text, KEY_BIND[i].name, g_key[i]);
+        if (i == HOST_KEY_RUN && !json_value(text, KEY_BIND[i].name))
+            k = json_int(text, "RunButtonKey", g_key[i]);
+        if (k >= 0 && k <= 0xff) CTL_SET(g_key[i], k);
+    }
+    for (int i = 0; i < HOST_PAD_COUNT; ++i) {
+        int k = json_int(text, PAD_BIND[i].name, g_pad[i]);
+        if (i == HOST_PAD_RUN && !json_value(text, PAD_BIND[i].name))
+            k = json_int(text, "RunButtonPad", g_pad[i]);
+        if (k >= 0 && k <= HOST_PAD_MASK_MAX) CTL_SET(g_pad[i], k);
+    }
+#undef CTL_SET
+    g_run_key = g_key[HOST_KEY_RUN];
+    g_run_pad = g_pad[HOST_PAD_RUN];
+    if (changed) {
+        ++g_ctl_gen;
+        fprintf(stderr, "[settings] live re-read: controls/camera changed "
+                "(run %d camera %d swap %d invertY %d dead %d runthr %d "
+                "camsens %d mousesens %d)\n", g_run_mode, g_camera_mode,
+                g_swap_camera_turn, g_invert_camera_y, g_stick_dead,
+                g_run_thresh_pct, g_camera_sens, g_mouse_sens);
+    }
+    return changed;
+}
+
 /* Re-read ONLY the keys the header promises reload live: the four screen-gap
    keys, Volume, MouseCapture and lane VOICE's five. Returns 1 when an answer
    changed. Each key lands on the value it already has rather than its default
@@ -2069,6 +2221,7 @@ int reload_live(const char *text)
        its keys own their own change detection. Folding them into the gap
        comparison would have meant a voice-only edit either changing nothing
        (if the read were inside the if) or being announced as a gap change. */
+    if (reload_controls(text)) changed = 1;
     const int voice_changed = read_voice_keys(text);
     if (voice_changed) {
         changed = 1;
@@ -2454,7 +2607,15 @@ extern "C" int host_settings_poll(void)
 {
 #ifdef _WIN32
     static int tick;
+    /* SETLIVE1: a debounced save waiting out its half second goes first, and
+       a set made through the API says 1 on the very next call so the caller
+       pushes the volume and the mouse capture without the 30-frame wait. */
+    host_settings_save_tick();
+    if (g_poll_flag) { g_poll_flag = 0; return 1; }
     if (++tick < 30) return 0;
+    /* A save is still queued: the file is behind memory right now, and a
+       reload would put a half-dragged slider back where it started. */
+    if (host_settings_save_pending()) return 0;
     tick = 0;
     load_once();
 
@@ -2510,6 +2671,71 @@ extern "C" int host_settings_poll(void)
    write is carried across untouched (see json_set). Says why on stderr when
    the write fails; the in-memory values are the caller's to have moved
    already. */
+/* SETFIX1 (L1): the settings file's cross-process lock. The launcher and the
+   game both read-modify-write the same settings.json; without a lock a launcher
+   save landing between the game's read and its rename is overwritten (and the
+   game then re-reads the stale value). A NAMED mutex, shared with the launcher,
+   held around the whole read-modify-write-rename. The name is derived from the
+   file's full path so two installs do not share it:
+
+     "Local\\SM64DSPort.settings." + 8 hex digits of FNV-1a (32 bit) over the
+     UTF-16 code units of the full path, A-Z lowered and '/' turned into '\\'.
+
+   The launcher (Settings.cs) computes the same name. A short timeout (500 ms)
+   then proceed: a stuck holder can never hang a frame; the game takes the
+   lock only when it saves (the debounced tick), never per frame. */
+#ifdef _WIN32
+namespace {
+void settings_lock_name(const char *path, char *out, size_t cap)
+{
+    wchar_t wide[1100], full[1100];
+    unsigned h = 2166136261u;
+    full[0] = 0;
+    if (MultiByteToWideChar(CP_ACP, 0, path, -1, wide, 1100) &&
+        GetFullPathNameW(wide, 1100, full, 0)) {
+        for (const wchar_t *c = full; *c; ++c) {
+            unsigned ch = *c;
+            if (ch >= 'A' && ch <= 'Z') ch += 32;
+            if (ch == '/') ch = '\\';
+            h = (h ^ ch) * 16777619u;
+        }
+    }
+    snprintf(out, cap, "Local\\SM64DSPort.settings.%08x", h);
+}
+struct SettingsLock {
+    HANDLE m;
+    explicit SettingsLock(const char *path) : m(0)
+    {
+        char name[96];
+        settings_lock_name(path, name, sizeof name);
+        m = CreateMutexA(0, FALSE, name);
+        if (m && WaitForSingleObject(m, 500) == WAIT_TIMEOUT) {
+            CloseHandle(m);   /* proceed without it: never hang a frame */
+            m = 0;
+        }
+    }
+    ~SettingsLock()
+    {
+        if (m) { ReleaseMutex(m); CloseHandle(m); }
+    }
+    int held() const { return m != 0; }
+};
+}  /* namespace */
+#else
+namespace {
+struct SettingsLock { explicit SettingsLock(const char *) {} int held() const { return 0; } };
+}
+#endif
+/* test seam for the smoke program: the lock name for a path */
+extern "C" void host_settings_lock_name(const char *path, char *out, int cap)
+{
+#ifdef _WIN32
+    settings_lock_name(path, out, (size_t)cap);
+#else
+    snprintf(out, (size_t)cap, "%s", path);
+#endif
+}
+
 namespace {
 int save_keys(const char *const *keys, const char *const *vals, int n,
               const char *what)
@@ -2517,10 +2743,19 @@ int save_keys(const char *const *keys, const char *const *vals, int n,
     char path[1024];
     if (!settings_write_path(path, sizeof path)) return 0;
 
+    SettingsLock lock(path);   /* held to the end: read, edit, rename, last-good */
     char *doc = slurp(path);
     if (doc && !looks_like_json_object(doc)) {
         /* a file that will not parse is one the loader is already ignoring,
-           so replacing it loses nothing a reader was going to honour */
+           so replacing it loses nothing a reader was going to honour. SETFIX1:
+           but keep what it held once, beside it, so nothing is lost for good. */
+#ifdef _WIN32
+        {
+            char bad[1100];
+            snprintf(bad, sizeof bad, "%s.bad", path);
+            CopyFileA(path, bad, TRUE);   /* keeps an earlier .bad */
+        }
+#endif
         free(doc);
         doc = 0;
     }
@@ -2537,6 +2772,13 @@ int save_keys(const char *const *keys, const char *const *vals, int n,
         if (!doc) ok = 0;
     }
     if (ok) ok = write_text(path, doc);
+#ifdef _WIN32
+    if (ok) {   /* SETFIX1 (L2): the last good file, for the launcher's cold start */
+        char lg[1100];
+        snprintf(lg, sizeof lg, "%s.lastgood", path);
+        CopyFileA(path, lg, FALSE);
+    }
+#endif
     free(doc);
     if (!ok)
         fprintf(stderr, "[settings] could not write %s -- the %s is set for "
@@ -2544,6 +2786,297 @@ int save_keys(const char *const *keys, const char *const *vals, int n,
     return ok;
 }
 }  /* namespace */
+
+/* ---- SETLIVE1: the live setters and the debounced save -------------------
+   Every set* below moves the working value NOW (the frame loop sees it on its
+   next counter compare) and queues the settings.json key. A queued key is
+   written at once when the file has been quiet for half a second, otherwise
+   by host_settings_save_tick once the half second is up, so a slider dragged
+   for two seconds writes about four times, with the last value always
+   landing. The last write is also forced by host_settings_save_flush (the
+   page calls it on mouse-up and at close). Values are written typed: bools
+   as true/false, numbers as numbers, the two mode words quoted lowercase. */
+namespace {
+struct Pend { char key[40]; char val[40]; };
+Pend g_pend[24];
+int g_npend;
+unsigned long long g_last_write_ms;
+
+unsigned long long now_ms(void)
+{
+#ifdef _WIN32
+    return GetTickCount64();
+#else
+    return 0;
+#endif
+}
+
+int pending_flush(void)
+{
+    if (!g_npend) return 1;
+    const char *keys[24];
+    const char *vals[24];
+    for (int i = 0; i < g_npend; ++i) { keys[i] = g_pend[i].key; vals[i] = g_pend[i].val; }
+    const int ok = save_keys(keys, vals, g_npend, "live settings");
+    /* SETFIX1 (G2): a failed write keeps the queue, retried on the next tick */
+    if (ok) g_npend = 0;
+    g_last_write_ms = now_ms();
+    return ok;
+}
+
+void queue_save(const char *key, const char *val)
+{
+    int i;
+    for (i = 0; i < g_npend; ++i)
+        if (strcmp(g_pend[i].key, key) == 0) break;
+    if (i == g_npend) {
+        if (g_npend >= 24 && !pending_flush()) {
+            /* still full after a failed write: drop the oldest */
+            memmove(&g_pend[0], &g_pend[1], sizeof(Pend) * (24 - 1));
+            --g_npend;
+        }
+        i = g_npend++;
+    }
+    snprintf(g_pend[i].key, sizeof g_pend[i].key, "%s", key);
+    snprintf(g_pend[i].val, sizeof g_pend[i].val, "%s", val);
+    if (now_ms() - g_last_write_ms >= 500) pending_flush();
+}
+void queue_int(const char *key, int v)
+{
+    char b[24]; snprintf(b, sizeof b, "%d", v); queue_save(key, b);
+}
+void queue_bool(const char *key, int v) { queue_save(key, v ? "true" : "false"); }
+void queue_word(const char *key, const char *w)
+{
+    char b[32]; snprintf(b, sizeof b, "\"%s\"", w); queue_save(key, b);
+}
+}  /* namespace */
+
+extern "C" void host_settings_save_tick(void)
+{
+    if (g_npend && now_ms() - g_last_write_ms >= 500) pending_flush();
+}
+extern "C" int host_settings_save_pending(void) { return g_npend; }
+extern "C" int host_settings_save_flush(void) { return pending_flush(); }
+extern "C" int host_settings_ctl_gen(void) { return g_ctl_gen; }
+extern "C" int host_settings_cam_gen(void) { return g_cam_gen; }
+
+/* SETFIX1 (G4): the pause must stay reachable, so Start cannot be unbound on
+   the keyboard and the pad at the same time. The reason is kept for the page. */
+namespace { char g_refusal[96]; }
+extern "C" const char *host_setting_refusal(void) { return g_refusal; }
+
+extern "C" int host_setting_set_key(int action, int vk)
+{
+    load_once();
+    g_refusal[0] = 0;
+    if (action < 0 || action >= HOST_KEY_COUNT || vk < 0 || vk > 0xff) return 0;
+    if (action == HOST_KEY_START && vk == 0 && g_pad[HOST_PAD_START] == 0) {
+        snprintf(g_refusal, sizeof g_refusal, "%s",
+                 "Start needs a key or a button, or the pause cannot open");
+        return 0;
+    }
+    if (g_key[action] == vk) return 1;
+    g_key[action] = vk;
+    if (action == HOST_KEY_RUN) {
+        g_run_key = vk;
+        queue_int("RunButtonKey", vk);
+    }
+    queue_int(KEY_BIND[action].name, vk);
+    ++g_ctl_gen;
+    return 1;
+}
+
+extern "C" int host_setting_set_pad(int action, int mask)
+{
+    load_once();
+    g_refusal[0] = 0;
+    if (action < 0 || action >= HOST_PAD_COUNT || mask < 0 || mask > HOST_PAD_MASK_MAX) return 0;
+    if (action == HOST_PAD_START && mask == 0 && g_key[HOST_KEY_START] == 0) {
+        snprintf(g_refusal, sizeof g_refusal, "%s",
+                 "Start needs a key or a button, or the pause cannot open");
+        return 0;
+    }
+    if (g_pad[action] == mask) return 1;
+    g_pad[action] = mask;
+    if (action == HOST_PAD_RUN) {
+        g_run_pad = mask;
+        queue_int("RunButtonPad", mask);
+    }
+    queue_int(PAD_BIND[action].name, mask);
+    ++g_ctl_gen;
+    return 1;
+}
+
+extern "C" int host_setting_set_run_mode(int mode)
+{
+    load_once();
+    if (mode < 0 || mode > 2) return 0;
+    if (g_run_mode != mode) { g_run_mode = mode; ++g_ctl_gen; }
+    queue_word("RunMode", RUN_MODE_KEY[mode]);
+    return 1;
+}
+
+extern "C" int host_setting_set_camera_mode(int mode)
+{
+    load_once();
+    if (mode < 0 || mode > 2) return 0;
+    /* always bumps: the page's pick wins over an F1 cycle done in play */
+    g_camera_mode = mode;
+    ++g_ctl_gen;
+    ++g_cam_gen;
+    queue_word("CameraMode", CAMERA_MODE_KEY[mode]);
+    return 1;
+}
+
+extern "C" int host_setting_set_swap_camera_turn(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    if (g_swap_camera_turn != on) { g_swap_camera_turn = on; ++g_ctl_gen; }
+    queue_bool("SwapCameraTurnDirection", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_invert_camera_y(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    if (g_invert_camera_y != on) { g_invert_camera_y = on; ++g_ctl_gen; }
+    queue_bool("InvertCameraY", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_stick_deadzone(int pct)
+{
+    load_once();
+    if (pct < 0 || pct > 50) return 0;
+    const int raw = stick_dead_from_pct(pct);
+    if (g_stick_dead != raw) { g_stick_dead = raw; ++g_ctl_gen; }
+    queue_int("StickDeadzone", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_run_threshold(int pct)
+{
+    load_once();
+    if (pct < 30 || pct > 100) return 0;
+    const int v = (pct == RUN_THRESH_ROM_PCT) ? -1 : pct;
+    if (g_run_thresh_pct != v) { g_run_thresh_pct = v; ++g_ctl_gen; }
+    queue_int("RunThreshold", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_camera_sensitivity(int pct)
+{
+    load_once();
+    if (pct < 10 || pct > 400) return 0;
+    if (g_camera_sens != pct) { g_camera_sens = pct; ++g_ctl_gen; }
+    queue_int("CameraSensitivity", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_mouse_sensitivity(int pct)
+{
+    load_once();
+    if (pct < 10 || pct > 400) return 0;
+    if (g_mouse_sens != pct) { g_mouse_sens = pct; ++g_ctl_gen; }
+    queue_int("MouseSensitivity", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_mouse_capture(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    g_mouse_capture = on;
+    g_poll_flag = 1;
+    queue_bool("MouseCapture", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_volume(int pct)
+{
+    load_once();
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+    g_volume = pct;
+    g_poll_flag = 1;
+    queue_int("Volume", pct);
+    return 1;
+}
+
+extern "C" int host_setting_stick_deadzone_raw(void)
+{
+    load_once();
+    return g_stick_dead;
+}
+extern "C" int host_setting_stick_deadzone_pct(void)
+{
+    load_once();
+    return stick_dead_to_pct(g_stick_dead);
+}
+/* the digital walk threshold the left stick uses beside the d-pad: 12000 at
+   the default dead zone, scaled with the dead zone so the two stay in the
+   same proportion */
+extern "C" int host_setting_stick_digital(void)
+{
+    load_once();
+    if (g_stick_dead == STICK_DEAD_DEFAULT) return 12000;
+    const long long v = (long long)12000 * g_stick_dead / STICK_DEAD_DEFAULT;
+    /* SETFIX1: never below 4000 of 32767, so stick drift cannot walk Mario in
+       button / auto run mode at Deadzone 0 (the analog injection may still
+       use the raw zero dead zone) */
+    return v < 4000 ? 4000 : v > 30000 ? 30000 : (int)v;
+}
+extern "C" int host_setting_run_threshold_pct(void)
+{
+    load_once();
+    return g_run_thresh_pct < 0 ? RUN_THRESH_ROM_PCT : g_run_thresh_pct;
+}
+extern "C" int host_setting_run_threshold_is_default(void)
+{
+    load_once();
+    return g_run_thresh_pct < 0;
+}
+/* magnitude (0..0x1000 of usable travel) -> the magnitude the ROM is given.
+   Default: unchanged, exactly. Otherwise the player's point T maps to the
+   ROM's start-running point 0xe47: 0..T -> 0..0xe46 linear (walk speed is
+   linear in the magnitude, so walking is stretched or squeezed to fill the
+   same walk range), T..1 -> 0xe47..0x1000 linear. */
+extern "C" int host_setting_run_remap(int mag)
+{
+    load_once();
+    if (mag <= 0) return 0;
+    if (mag > 0x1000) mag = 0x1000;
+    if (g_run_thresh_pct < 0) return mag;
+    const int tm = (int)((long long)g_run_thresh_pct * 4096 / 100);
+    if (tm >= 4096) return (int)((long long)mag * 0xe46 / 4096);
+    if (mag < tm) return (int)((long long)mag * 0xe47 / tm);
+    return 0xe47 + (int)((long long)(mag - tm) * (0x1000 - 0xe47) / (4096 - tm));
+}
+/* the multiplayer fold's run point as a fraction of usable travel: 0.87 at
+   the default (the ROM split), the player's point otherwise */
+extern "C" double host_setting_run_norm(void)
+{
+    load_once();
+    return g_run_thresh_pct < 0 ? 0.87 : g_run_thresh_pct / 100.0;
+}
+extern "C" int host_setting_invert_camera_y(void)
+{
+    load_once();
+    return g_invert_camera_y;
+}
+extern "C" int host_setting_camera_sensitivity(void)
+{
+    load_once();
+    return g_camera_sens;
+}
+extern "C" int host_setting_mouse_sensitivity(void)
+{
+    load_once();
+    return g_mouse_sens;
+}
 
 extern "C" int host_setting_save_run(int mode, int key, int pad)
 {
@@ -2564,10 +3097,14 @@ extern "C" int host_setting_save_run(int mode, int key, int pad)
     snprintf(vmode, sizeof vmode, "\"%s\"", RUN_MODE_KEY[mode]);
     snprintf(vkey, sizeof vkey, "%d", key);
     snprintf(vpad, sizeof vpad, "%d", pad);
-    const char *const keys[5] = { "RunMode", "RunButtonKey", "KeyRun",
-                                  "RunButtonPad", "PadRun" };
-    const char *const vals[5] = { vmode, vkey, vkey, vpad, vpad };
-    return save_keys(keys, vals, 5, "run mode");
+    /* SETFIX1 (G3): through the queue, so an older page value still pending
+       cannot be flushed over this one afterwards */
+    queue_save("RunMode", vmode);
+    queue_save("RunButtonKey", vkey);
+    queue_save("KeyRun", vkey);
+    queue_save("RunButtonPad", vpad);
+    queue_save("PadRun", vpad);
+    return pending_flush();   /* a menu row persists on the spot, behind anything queued */
 }
 
 /* The camera row's twin of the above: the live mode moves whether or not the
@@ -2579,9 +3116,8 @@ extern "C" int host_setting_save_camera_mode(int mode)
     g_camera_mode = mode;
     char v[24];
     snprintf(v, sizeof v, "\"%s\"", CAMERA_MODE_KEY[mode]);
-    const char *const keys[1] = { "CameraMode" };
-    const char *const vals[1] = { v };
-    return save_keys(keys, vals, 1, "camera mode");
+    queue_save("CameraMode", v);   /* SETFIX1 (G3): through the queue, then on the spot */
+    return pending_flush();
 }
 
 /* ---- PadLayouts -----------------------------------------------------------
@@ -2806,6 +3342,36 @@ extern "C" int host_setting_save_menu_on_top(void)
     return g_save_menu_on_top;
 }
 
+/* ONE SCREEN MENUS, the SaveMenuOnTop pattern: the environment disposes in both directions
+   and outranks the pin, the comparator routes are pinned OFF so every recorded baseline
+   holds, then settings.json, and ABSENT MEANS OFF. */
+extern "C" int host_setting_one_screen_menus(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_ONE_SCREEN_MENUS");
+        env = e ? ((e[0] == 0 || (e[0] == '0' && e[1] == 0)) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    if (getenv("SM64DS_WINDOW_SELFTEST") || getenv("SM64DS_SCENE_FRAMES"))
+        return 0;
+    load_once();
+    return g_one_screen_menus;
+}
+
+/* HUD LAYOUT, parsed only (0 DS, 1 N64). SM64DS_HUD_LAYOUT outranks the file. */
+extern "C" int host_setting_hud_layout(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_HUD_LAYOUT");
+        env = (e && e[0]) ? (e[0] == '1' ? 1 : 0) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_hud_layout;
+}
+
 extern "C" double host_setting_minimap_scale_value(void)
 {
     static int env_read = 0;
@@ -2882,6 +3448,16 @@ extern "C" int host_setting_save_minimap_scale(double s)
     const char *const vals[1] = { v };
     return save_keys(keys, vals, 1, "minimap size");
 }
+
+extern "C" int host_setting_set_minimap_scale(double s)
+{
+    minimap_scale_move_live(s);
+    char v[32];
+    snprintf(v, sizeof v, "%.6g", g_minimap_scale);
+    queue_save("MinimapScale", v);
+    return 1;
+}
+
 
 /* HdTextures: 1 when the replacement pack is on. SM64DS_HD_TEXTURES has the
    mod keys' grammar rather than a number's -- unset is the file's answer,

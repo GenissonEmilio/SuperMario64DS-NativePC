@@ -454,6 +454,10 @@ int (*g_obj_veto_b)(unsigned short a2);
    at the register read, and ppu_sub_set_bg_suppress for what it is for. */
 uint32_t g_bg_suppress;
 
+/* ASSET1: the OAM entries engine B may draw this scan-out (see ppu_sub_set_obj_select); off = all. */
+uint32_t g_obj_sel[4];
+int g_obj_sel_on;
+
 /* How many entries this run declined, and the census of what engine B was
    asked to draw on one frame. SM64DS_MINIMAP_TRACE=<frame> prints every sub
    OBJ entry on that frame -- index, position, tile, palette -- and marks the
@@ -522,6 +526,10 @@ void obj_decide(uint32_t dispcnt, uint8_t *skip) {
                              bf, (unsigned)oam_b, i, (int)(a0 & 0xff));
         }
     }
+    /* ASSET1: a host-selected subset of entries (one sprite, or a set, alone) */
+    if (g_obj_sel_on)
+        for (int i = 0; i < 128; ++i)
+            if (!((g_obj_sel[i >> 5] >> (i & 31)) & 1u)) skip[i] = 1;
 }
 
 // obj_spans / bg_spans copy this and sample_bg's addressing for the skip cache: change them too (SM64DS_TWOD_VERIFY=1).
@@ -1750,6 +1758,12 @@ void ppu_sub_set_obj_veto(int (*fn)(unsigned short a2))
 void ppu_sub_set_bg_suppress(uint32_t mask)
 {
     g_bg_suppress = mask;
+}
+
+void ppu_sub_set_obj_select(const uint32_t *mask4)
+{
+    g_obj_sel_on = mask4 ? 1 : 0;
+    for (int i = 0; i < 4; ++i) g_obj_sel[i] = mask4 ? mask4[i] : 0;
 }
 
 /* The host's say over the one-pixel black frame. See the header. */

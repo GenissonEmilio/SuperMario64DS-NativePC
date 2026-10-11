@@ -1602,6 +1602,7 @@ extern "C" int (*port_interlude_frame_hook)(int frame) = 0;
    SetSceneToSpawn(4) every frame on top of the star select's own
    StartSceneFade(3), because data_02092110 is still pending until the latch. */
 static int g_interlude_live;
+static void port_crossing_shot(int f);   /* defined with the crossing below; the interlude reuses it (run menu1, STARGO1) */
 
 extern "C" int port_level_interlude_live(void) { return g_interlude_live; }
 
@@ -1721,6 +1722,7 @@ static void port_level_scene_interlude(void)
                              wwhite, asked, (int)port_scene_killed());
             }
         }
+        port_crossing_shot(f);   /* SM64DS_CROSSING_SHOT=<frames>: the star select's picture, for proof rows */
         if ((f % 300) == 0)
             std::fprintf(stderr, "  [starsel] f%d pending %u latch %u act %d "
                          "pad %04x/%04x\n",

@@ -91,8 +91,35 @@ static int port_message_asset_for_language(void)
 /* HOST COPY of LoadMessageBankForLanguage (func_0201fe08) +
    ParseMessageBankSections (func_0201cb2c). Loads the real bank and pins the
    section pointers. Returns 1 on success, 0 if the file did not load. */
+/* SM64DS_LANGUAGE=<eng|frn|gmn|itl|spn> (or the ROM's own number 0, 2..5): writes the owner-language byte the ROM
+   reads (GetOwnerLanguage -> data_020a0f00, host memory, zero by default) BEFORE the bank is chosen, so every later
+   language-dependent read (the message bank, the title and menu BG maps) comes from that language. A test and
+   support knob for the menu overhaul (hit boxes and strings change width per language); unset it changes nothing. */
+extern "C" unsigned char data_020a0f00[4];
+static void port_language_knob(void)
+{
+    static int done;
+    if (done) return;
+    done = 1;
+    const char *e = std::getenv("SM64DS_LANGUAGE");
+    if (!e || !*e) return;
+    int v = -1;
+    if (!strcmp(e, "eng") || !strcmp(e, "0")) v = 0;
+    else if (!strcmp(e, "frn") || !strcmp(e, "2")) v = 2;
+    else if (!strcmp(e, "gmn") || !strcmp(e, "3")) v = 3;
+    else if (!strcmp(e, "itl") || !strcmp(e, "4")) v = 4;
+    else if (!strcmp(e, "spn") || !strcmp(e, "5")) v = 5;
+    if (v < 0) {
+        std::fprintf(stderr, "[msg] SM64DS_LANGUAGE=%s is not eng, frn, gmn, itl or spn; ignored\n", e);
+        return;
+    }
+    data_020a0f00[0] = (unsigned char)v;
+    std::fprintf(stderr, "[msg] SM64DS_LANGUAGE=%s: owner language byte set to %d\n", e, v);
+}
+
 extern "C" int port_message_bank_load(void)
 {
+    port_language_knob();
     int asset = port_message_asset_for_language();
     char *base = (char *)LoadFile(asset);
     if (!base) {

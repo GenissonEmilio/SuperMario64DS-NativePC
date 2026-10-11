@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 22.04 29.01">
+  <defs>
+    <style>
+      .cls-1 {
+        isolation: isolate;
+      }
+
+      .cls-2, .cls-3, .cls-4 {
+        stroke: #29087b;
+      }
+
+      .cls-2, .cls-3, .cls-4, .cls-5 {
+        fill: none;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-3 {
+        mix-blend-mode: overlay;
+      }
+
+      .cls-3, .cls-5 {
+        stroke-width: .75px;
+      }
+
+      .cls-4 {
+        stroke-linecap: square;
+        stroke-width: .5px;
+      }
+
+      .cls-5 {
+        mix-blend-mode: soft-light;
+        stroke: #fff;
+      }
+
+      .cls-6 {
+        fill: url(#linear-gradient);
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="11.05" y1="-14.34" x2="11.05" y2="-1.69" gradientTransform="translate(0 13.7) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4a5af7"/>
+      <stop offset="1" stop-color="#4ab5f7"/>
+    </linearGradient>
+  </defs>
+  <g class="cls-1">
+    <g id="Blue_Up" data-name="Blue Up">
+      <polygon class="cls-6" points="1 28.03 21.09 28.03 21.03 23.41 12.06 15.39 9.97 15.39 1 23.57 1 28.03"/>
+      <polyline class="cls-5" points="20.66 24.43 20.66 23.57 11.83 15.73 10.12 15.75 1.4 23.68 1.4 24.43"/>
+      <polyline class="cls-4" points="21.27 23.41 21.36 23.41 12.11 15.13 9.88 15.13 .64 23.57 .77 23.57"/>
+      <line class="cls-3" x1=".5" y1="27.65" x2="21.53" y2="27.65"/>
+      <line class="cls-2" x1="21.54" y1="28.99" x2="21.52" y2="23.66"/>
+      <line class="cls-2" x1=".52" y1="23.8" x2=".52" y2="28.8"/>
+      <line class="cls-2" x1=".02" y1="28.5" x2="21.98" y2="28.51"/>
+      <line class="cls-3" x1="1.4" y1="27.71" x2="1.4" y2="23.84"/>
+      <line class="cls-3" x1="20.67" y1="27.55" x2="20.66" y2="23.74"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,303 @@
+/* menu_hostimg.cpp -- see menu_hostimg.h (run menu1, lane ASSET2). */
+#include "menu_hostimg.h"
+#include "../third_party/stb/stb_image.h"
+
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <vector>
+#include <condition_variable>
+#include <deque>
+#include <mutex>
+#include <thread>
+
+extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[], g_menu_png_pattern[], g_menu_png_title_star[], g_menu_png_btn_save_cont[], g_menu_png_btn_save_quit[], g_menu_png_btn_cont[];
+extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len, g_menu_png_pattern_len, g_menu_png_title_star_len, g_menu_png_btn_save_cont_len, g_menu_png_btn_save_quit_len, g_menu_png_btn_cont_len;
+
+namespace {
+
+struct Img {
+    int tried = 0, w = 0, h = 0;
+    std::vector<uint32_t> px;           /* premultiplied, source size */
+    /* ASSET5: TWO cached scaled sizes (the title's logo is drawn big and, after the choreography, small; a size change must not
+       cost a rescale every frame) */
+    int cw = 0, ch = 0;                 /* the cached scaled size, slot 0 */
+    std::vector<uint32_t> scaled;
+    int cw1 = 0, ch1 = 0;               /* slot 1 */
+    std::vector<uint32_t> scaled1;
+    int last_slot = 0;                  /* the slot filled last (the other one is replaced next) */
+};
+Img g_img[MENU_IMG_EXT_END];
+struct Src { const char *file; const unsigned char *emb; const unsigned *len; };
+const Src kSrc[MENU_IMG_COUNT] = {
+    { 0, 0, 0 },
+    { "logo_sm64_pc.png", g_menu_png_logo, &g_menu_png_logo_len },
+    { "btn_mp.png", g_menu_png_btn_mp, &g_menu_png_btn_mp_len },
+    { "btn_adventure.png", g_menu_png_btn_adventure, &g_menu_png_btn_adventure_len },
+    { "btn_rec.png", g_menu_png_btn_rec, &g_menu_png_btn_rec_len },
+    { "arrow_up.png", g_menu_png_arrow_up, &g_menu_png_arrow_up_len },
+    { "arrow_down.png", g_menu_png_arrow_down, &g_menu_png_arrow_down_len },
+    { "pattern.png", g_menu_png_pattern, &g_menu_png_pattern_len },
+    { "title_star.png", g_menu_png_title_star, &g_menu_png_title_star_len },
+    { "btn_save_cont.png", g_menu_png_btn_save_cont, &g_menu_png_btn_save_cont_len },
+    { "btn_save_quit.png", g_menu_png_btn_save_quit, &g_menu_png_btn_save_quit_len },
+    { "btn_cont.png", g_menu_png_btn_cont, &g_menu_png_btn_cont_len },
+};
+
+bool take(const unsigned char *rgba, int w, int h, Img *I)
+{
+    if (!rgba || w < 8 || h < 8 || w > 8192 || h > 8192) return false;
+    I->w = w; I->h = h;
+    I->px.resize((size_t)w * h);
+    for (int i = 0; i < w * h; ++i) {
+        const unsigned r = rgba[i * 4], g = rgba[i * 4 + 1], b = rgba[i * 4 + 2], a = rgba[i * 4 + 3];
+        I->px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
+    }
+    return true;
+}
+
+void load_into(int id, Img &I)
+{
+    int w = 0, h = 0, comp = 0;
+    unsigned char *p = 0;
+    char path[1100];
+    /* SM64DS_MENU_LOGO (id 1) or SM64DS_MENU_ART_DIR=<folder> (every id) point somewhere else; a name that cannot be read there
+       means "no picture" (the recipe keeps the DS art) and the embedded copy is NOT used, so the fallback can be proven */
+    const char *over = id == MENU_IMG_LOGO ? getenv("SM64DS_MENU_LOGO") : 0;
+    const char *dir = getenv("SM64DS_MENU_ART_DIR");
+    const char *efile = 0; const unsigned char *eemb = 0; unsigned elen = 0;
+    const bool ext = id >= MENU_IMG_EXT_BASE && menu_ext_art_src(id, &efile, &eemb, &elen);
+    if (id >= MENU_IMG_COUNT && !ext) return;
+    const char *fname = ext ? efile : kSrc[id].file;
+    const unsigned char *femb = ext ? eemb : kSrc[id].emb;
+    const unsigned flen = ext ? elen : (kSrc[id].len ? *kSrc[id].len : 0);
+    if (over && *over) {
+        p = stbi_load(over, &w, &h, &comp, 4);
+        fprintf(stderr, "[menu] art %d: SM64DS_MENU_LOGO=%s -> %s\n", id, over, p ? "loaded" : "unreadable, DS art kept");
+    } else if (dir && *dir && strlen(dir) + 40 < sizeof path) {
+        snprintf(path, sizeof path, "%s/%s", dir, fname);
+        p = stbi_load(path, &w, &h, &comp, 4);
+        fprintf(stderr, "[menu] art %d: %s -> %s\n", id, path, p ? "loaded" : "unreadable, DS art kept");
+    } else {
+        const char *root = getenv("SM64DS_ASSET_ROOT");
+        if (root && *root && strlen(root) + 40 < sizeof path) {
+            snprintf(path, sizeof path, "%s/menu/%s", root, fname);
+            p = stbi_load(path, &w, &h, &comp, 4);
+            if (p) fprintf(stderr, "[menu] art %d: kit file %s (%dx%d)\n", id, path, w, h);
+        }
+        if (!p) {
+            p = stbi_load_from_memory(femb, (int)flen, &w, &h, &comp, 4);
+            if (p) fprintf(stderr, "[menu] art %d: embedded copy %s (%dx%d)\n", id, fname, w, h);
+        }
+    }
+    if (p) {
+        if (!take(p, w, h, &I)) I.px.clear();
+        stbi_image_free(p);
+    }
+}
+
+void load_img(int id)
+{
+    Img &I = g_img[id];
+    if (I.tried) return;
+    I.tried = 1;
+    load_into(id, I);
+}
+
+/* one axis of a separable resample: for each destination index, the source span and weights (triangle filter whose
+   support grows with the reduction, so a shrink is an area average and an enlarge is bilinear) */
+struct Tap { int first, n; std::vector<float> w; };
+void taps(int sn, int dn, std::vector<Tap> *out)
+{
+    out->resize((size_t)dn);
+    const double sc = (double)sn / dn, sup = sc > 1.0 ? sc : 1.0;
+    for (int d = 0; d < dn; ++d) {
+        const double c = (d + 0.5) * sc;
+        int a = (int)floor(c - sup), b = (int)ceil(c + sup);
+        if (a < 0) a = 0;
+        if (b > sn) b = sn;
+        Tap &t = (*out)[d];
+        t.first = a; t.n = b - a; t.w.assign((size_t)t.n, 0.f);
+        double sum = 0;
+        for (int s = a; s < b; ++s) {
+            double x = fabs((s + 0.5) - c) / sup;
+            double wv = x < 1.0 ? 1.0 - x : 0.0;
+            t.w[s - a] = (float)wv; sum += wv;
+        }
+        if (sum <= 0) { t.first = a < sn ? a : sn - 1; t.n = 1; t.w.assign(1, 1.f); sum = 1; }
+        for (int s = 0; s < t.n; ++s) t.w[s] = (float)(t.w[s] / sum);
+    }
+}
+
+void scale_to(Img *I, int dw, int dh, std::vector<uint32_t> *outv)
+{
+    std::vector<Tap> tx, ty;
+    taps(I->w, dw, &tx);
+    taps(I->h, dh, &ty);
+    std::vector<float> mid((size_t)dw * I->h * 4);
+    for (int y = 0; y < I->h; ++y) {
+        const uint32_t *row = &I->px[(size_t)y * I->w];
+        for (int x = 0; x < dw; ++x) {
+            float a = 0, r = 0, g = 0, b = 0;
+            const Tap &t = tx[x];
+            for (int k = 0; k < t.n; ++k) {
+                const uint32_t c = row[t.first + k];
+                const float wv = t.w[k];
+                a += wv * (c >> 24); r += wv * ((c >> 16) & 255); g += wv * ((c >> 8) & 255); b += wv * (c & 255);
+            }
+            float *m = &mid[((size_t)y * dw + x) * 4];
+            m[0] = a; m[1] = r; m[2] = g; m[3] = b;
+        }
+    }
+    outv->assign((size_t)dw * dh, 0);
+    for (int y = 0; y < dh; ++y) {
+        const Tap &t = ty[y];
+        for (int x = 0; x < dw; ++x) {
+            float a = 0, r = 0, g = 0, b = 0;
+            for (int k = 0; k < t.n; ++k) {
+                const float *m = &mid[((size_t)(t.first + k) * dw + x) * 4];
+                const float wv = t.w[k];
+                a += wv * m[0]; r += wv * m[1]; g += wv * m[2]; b += wv * m[3];
+            }
+            int ia = (int)(a + 0.5f), ir = (int)(r + 0.5f), ig = (int)(g + 0.5f), ib = (int)(b + 0.5f);
+            if (ia > 255) ia = 255;
+            if (ir > ia) ir = ia;
+            if (ig > ia) ig = ia;
+            if (ib > ia) ib = ia;
+            (*outv)[(size_t)y * dw + x] = ((uint32_t)ia << 24) | ((uint32_t)ir << 16) | ((uint32_t)ig << 8) | (uint32_t)ib;
+        }
+    }
+}
+
+Img *img_of(int id) { return id >= 1 && id < MENU_IMG_EXT_END ? &g_img[id] : 0; }
+
+/* PAUSEFIX1: a worker thread that decodes and scales a picture off the game thread. A job touches only its own local Img; the game thread
+   installs a finished job with menu_hostimg_prefetch_poll (vector moves, no copying), so no tick pays for a decode or a scale. */
+struct Job { int id, dw, dh; };
+struct Done { int id, dw, dh; Img img; bool ok; };
+struct Worker {
+    std::mutex m;
+    std::condition_variable cv;
+    std::deque<Job> in;
+    std::deque<Done> out;
+    int busy = 0;                 /* jobs queued or running */
+    std::deque<Job> live;          /* the same jobs, kept until installed (so a repeat call queues nothing) */
+    bool started = false;
+};
+Worker *g_wk;      /* never freed: the thread outlives static destruction */
+
+void worker_main(Worker *W)
+{
+    for (;;) {
+        Job j;
+        {
+            std::unique_lock<std::mutex> lk(W->m);
+            W->cv.wait(lk, [W] { return !W->in.empty(); });
+            j = W->in.front(); W->in.pop_front();
+        }
+        Done d;
+        d.id = j.id; d.dw = j.dw; d.dh = j.dh; d.ok = false;
+        load_into(j.id, d.img);
+        if (!d.img.px.empty() && d.img.w > 0) {
+            std::vector<uint32_t> sc;
+            scale_to(&d.img, j.dw, j.dh, &sc);
+            d.img.scaled.swap(sc);
+            d.ok = true;
+        }
+        std::lock_guard<std::mutex> lk(W->m);
+        W->out.push_back(std::move(d));
+        --W->busy;
+    }
+}
+
+bool slot_has(const Img &I, int dw, int dh)
+{
+    return (I.cw == dw && I.ch == dh && !I.scaled.empty()) || (I.cw1 == dw && I.ch1 == dh && !I.scaled1.empty());
+}
+
+}  // namespace
+
+extern "C" int menu_hostimg_ready(int id)
+{
+    Img *I = img_of(id);
+    if (!I) return 0;
+    load_img(id);
+    return I->w > 0 && !I->px.empty();
+}
+
+extern "C" int menu_hostimg_size(int id, int *w, int *h)
+{
+    if (!menu_hostimg_ready(id)) return 0;
+    Img *I = img_of(id);
+    *w = I->w; *h = I->h;
+    /* ARROWART1: the selection arrows are drawn in the fixed 22 x 15 footprint of the ROM's art (its aspect, tip at the bottom or top
+       centre), whatever the PNG's own pixel size: a hi-res picture of the same drawing drops in with no code change */
+    if (id == MENU_IMG_ARROW_UP || id == MENU_IMG_ARROW_DOWN) { *w = 22; *h = 15; }
+    return 1;
+}
+
+extern "C" const uint32_t *menu_hostimg_scaled(int id, int dw, int dh)
+{
+    if (!menu_hostimg_ready(id) || dw < 1 || dh < 1 || dw > 8192 || dh > 8192) return 0;
+    Img *I = img_of(id);
+    if (I->cw == dw && I->ch == dh && !I->scaled.empty()) return &I->scaled[0];
+    if (I->cw1 == dw && I->ch1 == dh && !I->scaled1.empty()) return &I->scaled1[0];
+    /* a miss replaces the slot that was not filled last */
+    if (I->last_slot == 0) { scale_to(I, dw, dh, &I->scaled1); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; return &I->scaled1[0]; }
+    scale_to(I, dw, dh, &I->scaled); I->cw = dw; I->ch = dh; I->last_slot = 0;
+    return &I->scaled[0];
+}
+
+/* PAUSE2: the ids the compose treats as planks (lit when selected, sunk when pressed) */
+extern "C" int menu_hostimg_is_plank(int id)
+{
+    return (id >= MENU_IMG_BTN_MP && id <= MENU_IMG_BTN_REC) || (id >= MENU_IMG_BTN_SAVE_CONT && id <= MENU_IMG_BTN_CONT) || menu_ext_art_is_plank(id);
+}
+
+/* PAUSEFIX1: 1 when the picture is decoded and already cached at dw x dh. Otherwise queues one background decode + scale (once; a repeat call
+   for a job already queued or running changes nothing) and returns 0, or -1 when MENU_HOSTIMG_QUEUE jobs are already waiting (try again later). */
+extern "C" int menu_hostimg_prefetch(int id, int dw, int dh)
+{
+    Img *I = img_of(id);
+    if (!I || dw < 1 || dh < 1 || dw > 8192 || dh > 8192) return 1;
+    if (I->tried && I->px.empty()) return 1;                    /* no such picture: nothing to wait for */
+    if (!I->px.empty() && slot_has(*I, dw, dh)) return 1;
+    if (!g_wk) g_wk = new Worker();
+    Worker *W = g_wk;
+    std::lock_guard<std::mutex> lk(W->m);
+    for (const Job &q : W->live)
+        if (q.id == id && q.dw == dw && q.dh == dh) return 0;
+    if (W->busy >= 4) return -1;
+    if (!W->started) { W->started = true; std::thread(worker_main, W).detach(); }
+    ++W->busy;
+    W->live.push_back(Job{ id, dw, dh });
+    W->in.push_back(Job{ id, dw, dh });
+    W->cv.notify_one();
+    return 0;
+}
+
+/* installs every finished background job; 1 while a job is still running or waiting to be installed */
+extern "C" int menu_hostimg_prefetch_poll(void)
+{
+    if (!g_wk) return 0;
+    Worker *W = g_wk;
+    for (;;) {
+        Done d;
+        {
+            std::lock_guard<std::mutex> lk(W->m);
+            if (W->out.empty()) return W->busy > 0;
+            d = std::move(W->out.front()); W->out.pop_front();
+            for (size_t i = 0; i < W->live.size(); ++i)
+                if (W->live[i].id == d.id && W->live[i].dw == d.dw && W->live[i].dh == d.dh) { W->live.erase(W->live.begin() + i); break; }
+        }
+        Img &I = g_img[d.id];
+        if (!d.ok) { if (!I.tried) I.tried = 1; continue; }
+        if (!I.tried) {
+            I.tried = 1; I.w = d.img.w; I.h = d.img.h; I.px = std::move(d.img.px);
+        }
+        if (I.px.empty() || I.w != d.img.w || I.h != d.img.h || slot_has(I, d.dw, d.dh)) continue;
+        if (I.last_slot == 0) { I.scaled1 = std::move(d.img.scaled); I.cw1 = d.dw; I.ch1 = d.dh; I.last_slot = 1; }
+        else { I.scaled = std::move(d.img.scaled); I.cw = d.dw; I.ch = d.dh; I.last_slot = 0; }
+    }
+}

@@ -115,6 +115,7 @@
 #include "ntr/ppu.h"
 #include "ntr/rt.h"
 #include "hal/gpu_raster.h"
+#include "menu_compose.h"   /* run menu1 lane HOOK1: the lift plan (H1) */
 
 /* THE TOP ENGINE'S OBJ DISPLAY SHIFT, in DS rows, from hal/screen_gap.cpp.
  *
@@ -162,15 +163,12 @@ extern "C" {
    C linkage because that file's whole tail is one extern "C" block. */
 int hal_minimap_arrow_reanchor_on(void);
 
-/* THE LEVEL-CLEAR COMPOSE'S TWO SOURCE BANDS, asked once a frame. Returns 0
-   whenever the composed level-clear picture is not being drawn, which is every
-   frame of every ordinary run, and then this file does exactly what it did
-   before the overlay existed. With it on it fills the two DS row spans the
-   compose lifts off the top screen and redraws elsewhere: the course-clear
-   text block and the coin total. The banner is over hal/sub_screen.cpp's own
-   definition, which owns the option, the trigger and the rectangles; this file
-   owns the layers. */
-int hal_lc_compose_rows(int *text_r0, int *text_r1, int *coin_r0, int *coin_r1);
+/* H1 OF THE MENU COMPOSE (hal/sub_screen.cpp, hal/menu_compose.cpp): the frame's one predicate, asked at the head of
+   the composite. Returns the lift plan, null on every frame no menu recipe lifts anything (every frame of an
+   ordinary run), and then this file does exactly what it did before the layer existed. With a plan it fills the
+   planes below: host-row bands (the level-clear lettering) and the DS-space top2d cells (recipes that rearrange
+   the top screen's own layers). */
+extern "C" const MenuLiftInfo *hal_menu_hook_h1(int w, int h);
 
 /* Stage::RenderBouncingArrows' own sprite template, ov001 0x020abd88, mounted
    by name (port/ov001_syms.txt) and bound to the matched body's func_020abd88
@@ -955,64 +953,89 @@ inline bool layer_behind_3d(unsigned owner, int prio, int p3d) {
  * allocated, and every per-pixel test below short-circuits on a zero that was
  * read once for the whole frame. */
 struct LcOverlay {
-    uint32_t *col;               /* the lifted pixels, framebuffer-shaped */
-    uint8_t *msk;                /* 1 where a lifted pixel was written */
+    uint32_t *col;               /* the lifted SRC_TOP_HOSTROW pixels, framebuffer-shaped ARGB, alpha 0 = nothing */
     int n;                       /* allocated pixels */
-    unsigned lift;               /* owner bits sent to the overlay this frame */
-    unsigned hide;               /* owner bits drawn nowhere this frame */
-    int t0, t1;                  /* the text band, HOST rows [t0, t1) */
-    int c0, c1;                  /* the coin band, HOST rows [c0, c1) */
-    int live;                    /* the overlay holds THIS frame's pixels */
+    MenuTopCell *top;            /* the lifted SRC_TOP_2D cells, DS space 256x192 */
+    const MenuLiftInfo *info;    /* this frame's lift plan, null = lift nothing */
+    int live;                    /* col holds THIS frame's pixels */
+    int dirty_lo, dirty_hi;      /* host rows [lo, hi) that may be non-zero: col is zero everywhere else */
+    int top_live;                /* top holds THIS frame's cells */
 };
 LcOverlay lc_ov;
 
-/* Asked once a frame, at the head of the composite. Everything the overlay
-   does is behind the answer. */
+/* Asked once a frame, at the head of the composite (H1). Everything the lift does is behind the answer. */
 void lc_overlay_begin(void)
 {
-    lc_ov.lift = 0;
-    lc_ov.hide = 0;
     lc_ov.live = 0;
-    if (!hal_lc_compose_rows(&lc_ov.t0, &lc_ov.t1, &lc_ov.c0, &lc_ov.c1))
-        return;
-    const int n = ntr::SCREEN_W * ntr::SCREEN_H;
-    if (lc_ov.n < n) {
-        uint32_t *c = (uint32_t *)std::realloc(lc_ov.col, (size_t)n * sizeof *c);
-        if (!c) return;
-        lc_ov.col = c;
-        uint8_t *m = (uint8_t *)std::realloc(lc_ov.msk, (size_t)n);
-        if (!m) return;
-        lc_ov.msk = m;
-        lc_ov.n = n;
+    lc_ov.top_live = 0;
+    lc_ov.info = hal_menu_hook_h1(ntr::active_w, ntr::active_h);
+    const MenuLiftInfo *li = lc_ov.info;
+    if (!li) return;
+    if (li->nbands) {
+        const int n = ntr::SCREEN_W * ntr::SCREEN_H;
+        if (lc_ov.n < n) {
+            uint32_t *c = (uint32_t *)std::realloc(lc_ov.col, (size_t)n * sizeof *c);
+            if (!c) { lc_ov.info = nullptr; return; }
+            lc_ov.col = c;
+            lc_ov.n = n;
+            std::memset(lc_ov.col, 0, (size_t)lc_ov.n * sizeof *lc_ov.col);
+            lc_ov.dirty_lo = lc_ov.dirty_hi = 0;
+        }
+        /* only the rows the last lifted frame could have written are cleared (a lift writes inside its bands only),
+           so a menu frame no longer pays for a whole-buffer memset */
+        if (lc_ov.dirty_hi > lc_ov.dirty_lo)
+            std::memset(lc_ov.col + (size_t)lc_ov.dirty_lo * ntr::SCREEN_W, 0,
+                        (size_t)(lc_ov.dirty_hi - lc_ov.dirty_lo) * ntr::SCREEN_W * sizeof *lc_ov.col);
+        {
+            int lo = ntr::SCREEN_H, hi = 0;
+            for (int i = 0; i < li->nbands; ++i) {
+                if (li->band[i].r0 < lo) lo = li->band[i].r0;
+                if (li->band[i].r1 > hi) hi = li->band[i].r1;
+            }
+            if (lo < 0) lo = 0;
+            if (hi > ntr::SCREEN_H) hi = ntr::SCREEN_H;
+            if (hi < lo) hi = lo;
+            lc_ov.dirty_lo = lo;
+            lc_ov.dirty_hi = hi;
+        }
+        lc_ov.live = 1;
     }
-    std::memset(lc_ov.msk, 0, (size_t)n);
-    lc_ov.lift = (1u << 3) | (1u << kOwnerObj);   /* BG3 and the sprites */
-    lc_ov.hide = (1u << 2);                       /* BG2, "TOUCH TO SELECT" */
-    lc_ov.live = 1;
+    if (li->lift2d) {
+        if (!lc_ov.top) lc_ov.top = (MenuTopCell *)std::malloc(256 * 192 * sizeof(MenuTopCell));
+        if (lc_ov.top) {
+            std::memset(lc_ov.top, 0, 256 * 192 * sizeof(MenuTopCell));
+            lc_ov.top_live = 1;
+        }
+    }
 }
 
-/* What to do with a composited pixel's LAYER: 0 draw it, 1 lift it on its own
-   band, 2 hide it. Zero for everything while the compose is off, on one test
-   of a word that was written once for the frame. */
+/* What to do with a composited pixel's LAYER: 0 draw it, 1 lift it on its host-row band (when its row is inside the
+   band), 2 hide it, 3 lift it into the DS-space top2d plane. Zero for everything while no recipe lifts, on one
+   test of a pointer that was written once for the frame. */
 inline int lc_overlay_verdict(unsigned owner)
 {
-    if (!(lc_ov.lift | lc_ov.hide)) return 0;
+    const MenuLiftInfo *li = lc_ov.info;
+    if (!li) return 0;
     const unsigned b = 1u << owner;
-    if (b & lc_ov.hide) return 2;
-    return (b & lc_ov.lift) ? 1 : 0;
+    if (b & li->hide) return 2;
+    if ((b & li->lift2d) && lc_ov.top_live) return 3;
+    if (!lc_ov.live) return 0;
+    for (int i = 0; i < li->nbands; ++i)
+        if (li->band[i].layers & b) return 1;
+    return 0;
 }
 
-/* AND THE BAND THAT LAYER IS LIFTED ON, IN HOST ROWS, which is the same
-   rectangle the compose redraws it into. Host rows and not DS rows, and the
-   band is the compose's own: the lift and the redraw then cover EXACTLY the
-   same pixels, so a glyph can never be taken out of the picture and then
-   fall outside the band that puts it back. A pixel of a lifted layer outside
-   its band is left in the picture where the game put it -- which is the lives
-   counter, a sprite far above the coin band. */
+/* AND THE HOST ROWS THAT LAYER IS LIFTED ON: the band is the layout's own rectangle, so the lift and the redraw cover
+   EXACTLY the same pixels and a glyph can never be taken out of the picture and then fall outside the band that puts
+   it back. A pixel of a lifted layer outside its band is left in the picture where the game put it (the lives
+   counter, a sprite far above the coin band). */
 inline bool lc_overlay_in_band(unsigned owner, int hy)
 {
-    return (owner == 3) ? (hy >= lc_ov.t0 && hy < lc_ov.t1)
-                        : (hy >= lc_ov.c0 && hy < lc_ov.c1);
+    const MenuLiftInfo *li = lc_ov.info;
+    const unsigned b = 1u << owner;
+    for (int i = 0; i < li->nbands; ++i)
+        if ((li->band[i].layers & b) && hy >= li->band[i].r0 && hy < li->band[i].r1) return true;
+    return false;
 }
 
 // ---- PER-ELEMENT HUD ANCHORING (widescreen) --------------------------------
@@ -1085,6 +1108,24 @@ inline bool lc_overlay_in_band(unsigned owner, int hy)
 // plus a sparse extent walk. It runs ONLY when the aspect is wide; at the
 // native aspect the whole block is skipped and the placement is the byte-for-
 // byte original x*sx, so the default build pays nothing at all.
+/* THE N64 HUD ROW (HudLayout = 1; run menu1 lane HUD1). The DS stacks the coin counter under the star counter at the top
+   right (digits y 20..36 against the star row's y 2..18). The N64 puts lives, coins and stars on ONE row, so this
+   moves the coin counter, as one block (icon, x and digits, never a split glyph), up onto the star row and left into
+   the middle of the screen: DS pixel (x, y) of the counter (x >= 188, y 20..36) goes to (x - dx, y - kHudCoinDy), dx = 52 normally, wider when a three digit star count needs the room. It is done in the
+   DS 256x192 plane BEFORE the widescreen element pass, so the position is a canvas position in every aspect (4:3 plain
+   x*sx, wide through the anchors below). Wide, the moved block is held out of the element labelling (it would bridge
+   into the star counter) and takes the CENTRE anchor, the same one the power meter has, so the row spreads out
+   (lives left edge, coins centre, stars right edge) instead of stretching. The red coin row and the silver star row
+   already sit bottom left on the DS top screen (y 157..173, RenderRedCoins / RenderSilverStars), they stay.
+   Absent or 0 = nothing here runs: one int read per frame. */
+extern "C" int host_setting_hud_layout(void);
+static const int kHudZoneX0 = 188, kHudZoneY0 = 20, kHudZoneY1 = 36;   /* the coin counter's DS rectangle */
+static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudMeterGapMin = 2, kHudEdgeGap = 1, kHudStarGap = 6, kHudStarGapMin = 3;
+static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
+static Cell g_hud_cells[192][256];    /* the moved coin counter's cells, a plane of their own so they never replace a cell of g_a (the POWER label) */
+static bool g_hud_row_live;
+static bool g_hud_erase;   /* PROOF ARM (env SM64DS_HUD_ERASE_PROOF, off by default): the pre-fix behaviour, kept only to photograph the cause */
+
 namespace hudelem {
 
 // The dilation radii, in DS pixels. See the bridge discussion above.
@@ -1136,13 +1177,13 @@ void resolve(int band_l, int band_r, int margin)
     for (int y = 0; y < 192; ++y) {
         int run = kBridgeX + 1;
         for (int x = 0; x < 256; ++x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x);
+            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_erase && g_hud_row_live && g_hud_row[y][x]);
             run = on ? 0 : (run + 1);
             dil[y][x] = (run <= kBridgeX) ? 1 : 0;
         }
         run = kBridgeX + 1;
         for (int x = 255; x >= 0; --x) {
-            const bool on = g_a[y][x].hit && !msg_layer_px(y, x);
+            const bool on = g_a[y][x].hit && !msg_layer_px(y, x) && !(g_hud_erase && g_hud_row_live && g_hud_row[y][x]);
             run = on ? 0 : (run + 1);
             if (run <= kBridgeX) dil[y][x] = 1;
         }
@@ -1218,7 +1259,7 @@ void resolve(int band_l, int band_r, int margin)
             if (!l) continue;
             const int r = find_root(l);
             g_lbl[y][x] = (int16_t)r;
-            if (!g_a[y][x].hit || msg_layer_px(y, x)) continue;
+            if (!g_a[y][x].hit || msg_layer_px(y, x) || (g_hud_erase && g_hud_row_live && g_hud_row[y][x])) continue;
             if (x < x0[r]) x0[r] = x;
             if (x > x1[r]) x1[r] = x;
         }
@@ -2341,7 +2382,7 @@ inline bool twod_check_env() {
 bool twod_wanted() {
     if (!port_gpu_twod_ready()) return false;
     if (!ntr::gx_card_overlay_active()) return false;
-    if (lc_ov.live) return false;
+    if (lc_ov.live || lc_ov.top_live) return false;
     if (settle_drill()) return false;
     if (hal_menu_live()) return false;
     return true;
@@ -2870,7 +2911,8 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        this unit's 2D in the framebuffer, as an overlay (ntr/gx.h, GX_OV_*). The
        level-clear compose lifts pixels out of the picture it drew under them,
        so it needs the real 3D pixels: make the frame an ordinary one first. */
-    if (lc_ov.live) ntr::gx_card_settle_because("the level-clear compose");
+    /* menu1's lift into the DS-space plane (top_live) reads the 3D coverage too, so it settles the same way */
+    if (lc_ov.live || lc_ov.top_live) ntr::gx_card_settle_because("the level-clear compose");
     /* TWODGPU1: may this tick's host-resolution half go to the card? (after
        menu1's decision, which lc_overlay_begin above asks for) */
     const bool tw_try = twod_wanted();
@@ -3400,6 +3442,135 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        to anchor -- and skipped when the band-split control is armed, which is
        what lets that control be the OLD code path and not a re-derivation of
        it. */
+    /* THE N64 ROW, once per frame: only in a 3D scene shown at its own layout, never under a level-clear lift. */
+    g_hud_row_live = false;
+    { static const bool e = std::getenv("SM64DS_HUD_ERASE_PROOF") != nullptr; g_hud_erase = e; }
+    if (host_setting_hud_layout() == 1 && bg0_3d_shown(dispcnt) && !ntr::present_native()
+        && !lc_ov.live && !lc_ov.top_live) {
+        /* THE RACE TIMER (src/_ZN3HUD15RenderTimeTimerEv.cpp: x 0xa4..0xf0, y 0x16 / 0x1e) shares these rows, and its
+           pixels are not the coin counter's. The counter itself never reaches left of x 191 (icon of a three digit
+           count), so any sprite pixel at x 160..187 in the zone rows is the timer: leave the DS placement alone then. */
+        bool timer_up = false;
+        for (int y = kHudZoneY0; y <= kHudZoneY1 && !timer_up; ++y)
+            for (int x = 160; x < kHudZoneX0; ++x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { timer_up = true; break; }
+        if (!timer_up) {
+        /* THE STAR COUNTER'S LEFT EDGE. The ROM blinks the counter on a star collect (src/_ZN3HUD15RenderStarCountEv.cpp,
+           data_020a0db0 & 0x18) so a frame can show it blank or shifted: keep the smallest left edge seen (a count only grows
+           within a level) and let a larger one replace it after 120 frames of agreeing, so the coin block never hops. */
+        /* Proof arm (SM64DS_HUD_BLINK_SIM=1): blank the star counter for 8 frames in 16, the way the ROM's collect blink does,
+           so a strip can show the coin block does not hop. Never set in play. */
+        static const bool blink_sim = std::getenv("SM64DS_HUD_BLINK_SIM") != nullptr;
+        static unsigned blink_n = 0;
+        if (blink_sim && ((blink_n++ >> 3) & 1))
+            for (int y = 0; y < kHudZoneY0 - 1; ++y)
+                for (int x = 180; x < 256; ++x)
+                    if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) g_a[y][x].hit = false;
+        int star_left = 256;
+        for (int y = 0; y < kHudZoneY0 - 1; ++y)
+            for (int x = 180; x < star_left; ++x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { star_left = x; break; }
+        const int star_raw = star_left;
+        static int s_star_left = 256, s_star_larger = 0, s_star_right = -1;
+        if (star_left < 256) {
+            if (star_left <= s_star_left) { s_star_left = star_left; s_star_larger = 0; }
+            else if (++s_star_larger >= 120) { s_star_left = star_left; s_star_larger = 0; s_star_right = -1; }
+        }
+        star_left = s_star_left;
+        /* THE POWER METER's rightmost OBJ pixel in the rows the coin block lands on (x 80..187), and the coin block's own
+           left edge before the move. The block keeps kHudMeterGap clear pixels from the meter when the star counter allows. */
+        int meter_right = -1, blk_left = 256;
+        for (int y = kHudZoneY0 - kHudCoinDy; y <= kHudZoneY1 - kHudCoinDy; ++y)
+            for (int x = 187; x >= 80; --x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { if (x > meter_right) meter_right = x; break; }
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = kHudZoneX0; x < blk_left; ++x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj && !g_a[y][x].msgcur) { blk_left = x; break; }
+        int blk_right = -1;
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = 255; x > blk_right; --x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj && !g_a[y][x].msgcur) { blk_right = x; break; }
+        /* THE STAR COUNTER'S RIGHT EDGE (the largest seen, reset when the left edge is replaced). */
+        int star_right = -1;
+        for (int y = 0; y < kHudZoneY0 - 1; ++y)
+            for (int x = 255; x > star_right; --x)
+                if (g_a[y][x].hit && g_a[y][x].owner == kOwnerObj) { star_right = x; break; }
+        if (star_right > s_star_right) s_star_right = star_right;
+        star_right = s_star_right;
+        /* The block goes as far right as the DS plane lets it: its right end star_gap pixels short of the star counter.
+           It never goes to a second line. At 4:3 the DS plane is the screen, so if the meter is closer than the wanted gap, make room in the smallest steps:
+             1. squeeze the star gap from kHudStarGap toward kHudStarGapMin;
+             2. shrink the meter gap from kHudMeterGap toward kHudMeterGapMin (at 4:3 only; wide, the meter is on the
+                centre anchor and the block on the right, so the screen gap is larger than the plane gap);
+             3. at 4:3, slide the star counter (and the block with it) right, up to the plane edge less kHudEdgeGap.
+           Wide, the meter sits on the centre anchor and the block on the right one, so the screen gap is always larger than the
+           plane gap and the meter test is skipped. If even that leaves the meter touched, nothing moves and the numbers are printed (SM64DS_HUD_DBG). */
+        int dx_move = 0, star_gap = kHudStarGap, meter_gap = kHudMeterGap, star_shift = 0;
+        const bool wide = ntr::widescreen;
+        bool fits = blk_right >= 0;
+        if (fits) {
+            const int star_room = (wide || star_right < 0 || star_left >= 256) ? 0 : (255 - kHudEdgeGap - star_right);
+            bool ok = false;
+            for (int sh = 0; sh <= (star_room > 0 ? star_room : 0) && !ok; ++sh)
+                for (int mg = kHudMeterGap; mg >= (wide ? 1 : kHudMeterGapMin) && !ok; --mg) {
+                    if (sh > 0 && mg != kHudMeterGapMin) continue;
+                    for (int sg = kHudStarGap; sg >= kHudStarGapMin && !ok; --sg) {
+                        if (sh > 0 && sg != kHudStarGapMin) continue;
+                        int d = blk_right - (star_left + sh - sg);
+                        if (d < kHudCoinDxMin) d = kHudCoinDxMin;
+                        if (wide || meter_right < 0 || blk_left - d >= meter_right + 1 + mg) {
+                            ok = true; dx_move = d; star_gap = sg; meter_gap = mg; star_shift = sh;
+                        }
+                    }
+                }
+            fits = ok;
+        }
+        static const bool dbg = std::getenv("SM64DS_HUD_DBG") != nullptr;
+        if (dbg) std::fprintf(stderr, "[hudrow] star_raw=%d star_left=%d star_right=%d meter_right=%d blk=%d..%d dx=%d star_gap=%d meter_gap=%d star_shift=%d fits=%d\n",
+                              star_raw, star_left, star_right, meter_right, blk_left, blk_right, dx_move, star_gap, meter_gap, star_shift, (int)fits);
+        if (fits && star_shift > 0) {
+            /* slide the star counter right by star_shift DS pixels (same cells, still on the right anchor) */
+            for (int y = 0; y < kHudZoneY0 - 1; ++y)
+                for (int x = 255 - star_shift; x >= 180; --x) {
+                    Cell &c = g_a[y][x];
+                    if (c.hit && c.owner == kOwnerObj) { g_a[y][x + star_shift] = c; c.hit = false; }
+                }
+        }
+        if (fits) {
+        static Cell tmp[kHudZoneY1 - kHudZoneY0 + 1][256 - kHudZoneX0];
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = kHudZoneX0; x < 256; ++x) {
+                Cell &c = g_a[y][x];
+                const bool mv = c.hit && c.owner == kOwnerObj && !c.msgcur;
+                tmp[y - kHudZoneY0][x - kHudZoneX0] = c;
+                tmp[y - kHudZoneY0][x - kHudZoneX0].hit = mv;
+                if (mv) c.hit = false;
+            }
+        std::memset(g_hud_row, 0, sizeof(g_hud_row));
+        int hud_erased = 0;
+        static uint8_t mask_buf[192 * 256];
+        uint8_t *const mask_out = (dbg && std::getenv("SM64DS_HUD_MASK_OUT")) ? (std::memset(mask_buf, 0, sizeof(mask_buf)), mask_buf) : nullptr;
+        for (int y = kHudZoneY0; y <= kHudZoneY1; ++y)
+            for (int x = kHudZoneX0; x < 256; ++x) {
+                const Cell &c = tmp[y - kHudZoneY0][x - kHudZoneX0];
+                if (!c.hit) continue;
+                g_hud_cells[y - kHudCoinDy][x - dx_move] = c;   /* never g_a: the cell there may be a letter of POWER */
+                const bool under = g_a[y - kHudCoinDy][x - dx_move].hit;   /* a live DS plane cell (a letter of POWER) sits where this moved cell lands */
+                if (under) ++hud_erased;
+                if (mask_out) mask_out[(y - kHudCoinDy) * 256 + (x - dx_move)] = under ? 2 : 1;
+                if (g_hud_erase) g_a[y - kHudCoinDy][x - dx_move] = c;   /* PROOF ARM (env only): the pre-fix behaviour, the moved cell REPLACES the plane cell under it */
+                g_hud_row[y - kHudCoinDy][x - dx_move] = 1;
+                g_hud_row_live = true;
+            }
+        if (mask_out) {   /* debug: the moved block's plane mask, 1 = coin cell, 2 = coin cell landing on a live plane cell; P5, 256x192 */
+            if (FILE *mf = std::fopen(std::getenv("SM64DS_HUD_MASK_OUT"), "wb")) {
+                std::fputs("P5 256 192 255 ", mf); std::fwrite(mask_buf, 1, sizeof(mask_buf), mf); std::fclose(mf);
+            }
+        }
+        if (g_hud_erase || dbg) std::fprintf(stderr, "[hudrow] moved cells landing on a live DS plane cell: %d (proof arm %d)\n", hud_erased, (int)g_hud_erase);
+        }
+        }
+    }
     const bool bandsplit = hud_bandsplit_env();
     if (ntr::widescreen && !bandsplit) hudelem::resolve(band_l, band_r, margin);
     /* TWO QUESTIONS, KEPT APART SO THE A/B ARM STILL MEASURES. `shown3d` is
@@ -3435,10 +3606,16 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        store per composited pixel, and only when the setting is on. */
     uint32_t *const pre = ntr::gx_aa_preimage();
     uint32_t kept = 0, buried = 0;
+    for (int pass = 0; pass < 2; ++pass) {
+    if (pass && !g_hud_row_live) break;
+    /* pass 0 = the DS plane, pass 1 = the moved coin block's own plane (drawn after, so it covers what is under it) */
     for (int y = 0; y < 192; ++y) {
         for (int x = 0; x < 256; ++x) {
-            if (!g_a[y][x].hit) continue;
-            const uint32_t c = g_a[y][x].color;
+            const Cell &gc = pass ? g_hud_cells[y][x] : g_a[y][x];
+            if (!gc.hit) continue;
+            if (pass && !g_hud_row[y][x]) continue;   /* g_hud_cells is not cleared per frame: only this frame's moved cells */
+            if (!pass && g_hud_erase && g_hud_row_live && g_hud_row[y][x]) continue;
+            const uint32_t c = gc.color;
             /* horizontal placement of this DS column's block. In 4:3 (toggle
                off) ntr::widescreen is false and this is the plain x*sx block; in
                16:9 it reanchors. The wide arm also self-normalises -- margin is 0
@@ -3497,6 +3674,8 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                              three layers line up. */
                           : (ntr::present_native() || !shown3d)
                           ? ux0 + margin / 2
+                          : pass
+                          ? ux0 + margin   /* the moved coin block rides the right edge with the star counter */
                           : !bandsplit
                           ? ux0 + hudelem::g_off[hudelem::g_lbl[y][x]]
                           : (x < band_l) ? ux0
@@ -3523,7 +3702,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                one screen row in every layer whether or not active_h is a
                whole multiple of 192. */
             const int hy0 = ds_row_y0(y), hy1 = ds_row_y0(y + 1);
-            const unsigned lcow = g_a[y][x].owner;
+            const unsigned lcow = gc.owner;
             const int lcv = lc_overlay_verdict(lcow);
             if (lcv == 2) continue;
             /* this 2D layer's brightness verdict, for every host pixel it
@@ -3547,8 +3726,24 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 }
                 if (!tw_chk) continue;
             }
+            if (lcv == 3) {
+                /* LIFTED INTO THE DS-SPACE PLANE: not written to the picture at all. A cell the 3D layer covers (when
+                   the layer is behind it) is not lifted. The pre-smoothing copy still gets it. */
+                const bool behind = honour3d && layer_behind_3d(gc.owner, gc.prio, p3d);
+                if (!(behind && cover[hy0 * ntr::SCREEN_W + hx0])) {
+                    MenuTopCell &tc = lc_ov.top[y * 256 + x];
+                    tc.argb = c | 0xff000000u;
+                    tc.bm = bm_on ? bmv : 1;      /* 1 = the ROM's fade/brightness applies to this pixel */
+                    tc.owner = (uint8_t)lcow;
+                }
+                if (pre)
+                    for (int hy = hy0; hy < hy1; ++hy)
+                        for (int dx = 0; dx < bw; ++dx)
+                            pre[(size_t)hy * ntr::SCREEN_W + hx0 + dx] = c;
+                continue;
+            }
             if (!honour3d
-                || !layer_behind_3d(g_a[y][x].owner, g_a[y][x].prio, p3d)) {
+                || !layer_behind_3d(gc.owner, gc.prio, p3d)) {
                 /* the owning 2D layer is in FRONT of the 3D layer (or there is
                    no 3D layer in the picture): the old unconditional write */
                 for (int hy = hy0; hy < hy1; ++hy)
@@ -3564,8 +3759,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                         }
                         if (cover && cover[hy * ntr::SCREEN_W + hx]) ++buried;
                         if (lcv && lc_overlay_in_band(lcow, hy)) {
-                            lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c;
-                            lc_ov.msk[(size_t)hy * ntr::SCREEN_W + hx] = 1;
+                            lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c | 0xff000000u;
                         } else {
                             fb.px[hy][hx] = c;
                             if (bm_on)
@@ -3590,8 +3784,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                     }
                     if (cover[hy * ntr::SCREEN_W + hx]) { ++kept; continue; }
                     if (lcv && lc_overlay_in_band(lcow, hy)) {
-                        lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c;
-                        lc_ov.msk[(size_t)hy * ntr::SCREEN_W + hx] = 1;
+                        lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx] = c | 0xff000000u;
                     } else {
                         fb.px[hy][hx] = c;
                         if (bm_on)
@@ -3623,31 +3816,47 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     g_buried3d = buried;
 }
 
-/* ---- WHAT THE COMPOSE READS BACK -----------------------------------------
+/* ---- WHAT THE MENU COMPOSE READS BACK ---------------------------------------
  *
- * The three the level-clear compose in hal/sub_screen.cpp calls, and nothing
- * else in the program calls any of them. The buffers are framebuffer-shaped:
- * one entry per host pixel at a stride of ntr::SCREEN_W, exactly the way
- * ntr::Framebuffer and every drawing helper in that file index dst, so the
- * compose moves a lifted pixel by adding rows to its index and never by
- * re-deriving where it was.
- *
- * `live` is this frame's own answer and not a latch: the composite above
- * clears it on every frame the compose is not up and sets it on every frame it
- * is, above its own early returns, so a compose that asks on a frame this unit
- * declined is told the overlay is empty instead of being handed the last
- * frame's glyphs. */
-extern "C" int hal_lc_overlay_live(void)
+ * The planes are framebuffer-shaped (host plane: one ARGB entry per host pixel at a stride of ntr::SCREEN_W) or DS
+ * shaped (top2d). `live` is this frame's own answer and not a latch: the composite above clears it on every frame no
+ * recipe lifts and sets it on every frame one does, above its own early returns, so a draw that asks on a frame this
+ * unit declined is told the plane is empty instead of being handed the last frame's glyphs. */
+extern "C" const unsigned int *port_menu_hostrow_plane(void)
 {
-    return lc_ov.live && lc_ov.msk && lc_ov.col ? 1 : 0;
+    return lc_ov.live && lc_ov.col ? lc_ov.col : nullptr;
 }
 
-extern "C" const unsigned int *hal_lc_overlay_colour(void)
+extern "C" const MenuTopCell *port_menu_top2d_plane(void)
 {
-    return lc_ov.col;
+    return lc_ov.top_live && lc_ov.top ? lc_ov.top : nullptr;
 }
 
-extern "C" const unsigned char *hal_lc_overlay_mask(void)
+/* ENGINE A'S FADE FOR ONE LIFTED PIXEL, for a recipe drawn AFTER port_engine_a_fade: the same arithmetic as fade_pass,
+   with the verdict the pixel carried out of the compositor (bm 1 = the ROM's brightness applies to it). Prep reads
+   the blend state once for the frame. */
+static int g_fpx_evy, g_fpx_white;
+extern "C" void port_engine_a_fade_px_prep(void)
 {
-    return lc_ov.msk;
+    int evy = 0, white = 0;
+    const int on = port_fader_blend_state(&evy, &white);
+    if (on && evy > 16) evy = 16;
+    g_fpx_evy = on ? evy : 0;
+    g_fpx_white = white;
+}
+
+extern "C" unsigned int port_engine_a_fade_px(unsigned int p, unsigned char bm)
+{
+    if (!g_fpx_evy || !bm) return p;
+    int r = (p >> 16) & 0xff, g = (p >> 8) & 0xff, b = p & 0xff;
+    if (g_fpx_white) {
+        r += ((255 - r) * g_fpx_evy) >> 4;
+        g += ((255 - g) * g_fpx_evy) >> 4;
+        b += ((255 - b) * g_fpx_evy) >> 4;
+    } else {
+        r -= (r * g_fpx_evy) >> 4;
+        g -= (g * g_fpx_evy) >> 4;
+        b -= (b * g_fpx_evy) >> 4;
+    }
+    return 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
 }
