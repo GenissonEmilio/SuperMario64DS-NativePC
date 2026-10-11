@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <condition_variable>
 #include <deque>
 #include <mutex>
@@ -97,12 +100,30 @@ void load_into(int id, Img &I)
     }
 }
 
+/* MENUPACE1: SM64DS_ART_TRACE=1 prints what a decode and a scale cost on the thread that did them */
+bool art_trace()
+{
+    static const bool on = getenv("SM64DS_ART_TRACE") != 0;
+    return on;
+}
+double art_ms()
+{
+    static LARGE_INTEGER f;
+    LARGE_INTEGER n;
+    if (!f.QuadPart) QueryPerformanceFrequency(&f);
+    QueryPerformanceCounter(&n);
+    return (double)n.QuadPart * 1000.0 / (double)f.QuadPart;
+}
+
 void load_img(int id)
 {
     Img &I = g_img[id];
     if (I.tried) return;
     I.tried = 1;
+    const double t0 = art_trace() ? art_ms() : 0.0;
     load_into(id, I);
+    if (art_trace()) fprintf(stderr, "[menu-art] id %d decoded on the logic thread: %.2f ms
+", id, art_ms() - t0);
 }
 
 /* one axis of a separable resample: for each destination index, the source span and weights (triangle filter whose
@@ -198,13 +219,18 @@ void worker_main(Worker *W)
         }
         Done d;
         d.id = j.id; d.dw = j.dw; d.dh = j.dh; d.ok = false;
+        const double t0 = art_trace() ? art_ms() : 0.0;
         load_into(j.id, d.img);
         if (!d.img.px.empty() && d.img.w > 0) {
-            std::vector<uint32_t> sc;
-            scale_to(&d.img, j.dw, j.dh, &sc);
-            d.img.scaled.swap(sc);
+            if (j.dw > 0 && j.dh > 0) {          /* MENUPACE1: a job of size 0 x 0 is a decode alone (menu_hostimg_predecode) */
+                std::vector<uint32_t> sc;
+                scale_to(&d.img, j.dw, j.dh, &sc);
+                d.img.scaled.swap(sc);
+            }
             d.ok = true;
         }
+        if (art_trace()) fprintf(stderr, "[menu-art] id %d worker %s %dx%d: %.2f ms
+", j.id, j.dw > 0 ? "decode+scale" : "decode", j.dw, j.dh, art_ms() - t0);
         std::lock_guard<std::mutex> lk(W->m);
         W->out.push_back(std::move(d));
         --W->busy;
@@ -244,8 +270,14 @@ extern "C" const uint32_t *menu_hostimg_scaled(int id, int dw, int dh)
     if (I->cw == dw && I->ch == dh && !I->scaled.empty()) return &I->scaled[0];
     if (I->cw1 == dw && I->ch1 == dh && !I->scaled1.empty()) return &I->scaled1[0];
     /* a miss replaces the slot that was not filled last */
-    if (I->last_slot == 0) { scale_to(I, dw, dh, &I->scaled1); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; return &I->scaled1[0]; }
+    const double t0 = art_trace() ? art_ms() : 0.0;
+    if (art_trace()) fprintf(stderr, "[menu-art] id %d scale MISS %dx%d on the logic thread
+", id, dw, dh);
+    if (I->last_slot == 0) { scale_to(I, dw, dh, &I->scaled1); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; if (art_trace()) fprintf(stderr, "[menu-art] id %d scaled: %.2f ms
+", id, art_ms() - t0); return &I->scaled1[0]; }
     scale_to(I, dw, dh, &I->scaled); I->cw = dw; I->ch = dh; I->last_slot = 0;
+    if (art_trace()) fprintf(stderr, "[menu-art] id %d scaled: %.2f ms
+", id, art_ms() - t0);
     return &I->scaled[0];
 }
 
@@ -296,8 +328,31 @@ extern "C" int menu_hostimg_prefetch_poll(void)
         if (!I.tried) {
             I.tried = 1; I.w = d.img.w; I.h = d.img.h; I.px = std::move(d.img.px);
         }
+        if (d.dw <= 0 || d.dh <= 0) continue;           /* MENUPACE1: a decode alone has no scaled copy to install */
         if (I.px.empty() || I.w != d.img.w || I.h != d.img.h || slot_has(I, d.dw, d.dh)) continue;
         if (I.last_slot == 0) { I.scaled1 = std::move(d.img.scaled); I.cw1 = d.dw; I.ch1 = d.dh; I.last_slot = 1; }
         else { I.scaled = std::move(d.img.scaled); I.cw = d.dw; I.ch = d.dh; I.last_slot = 0; }
     }
+}
+
+/* MENUPACE1: decodes the picture on the worker thread and installs it on a later poll, so the first draw that asks for it
+   (menu_hostimg_ready) finds it decoded instead of paying a PNG decode inside a tick. 1 when it is already decoded (or has no file),
+   0 when it was queued or is on its way, -1 when four jobs are already waiting (ask again on a later tick). */
+extern "C" int menu_hostimg_predecode(int id)
+{
+    Img *I = img_of(id);
+    if (!I) return 1;
+    if (I->tried) return 1;
+    if (!g_wk) g_wk = new Worker();
+    Worker *W = g_wk;
+    std::lock_guard<std::mutex> lk(W->m);
+    for (const Job &q : W->live)
+        if (q.id == id && q.dw == 0 && q.dh == 0) return 0;
+    if (W->busy >= 4) return -1;
+    if (!W->started) { W->started = true; std::thread(worker_main, W).detach(); }
+    ++W->busy;
+    W->live.push_back(Job{ id, 0, 0 });
+    W->in.push_back(Job{ id, 0, 0 });
+    W->cv.notify_one();
+    return 0;
 }
