@@ -126,13 +126,13 @@ static_assert(sizeof(SpRedWire) == 12, "red");
 
 // ---- what a datagram may name ------------------------------------------------
 inline bool sp_block_class_ok(int c) { return c >= 20 && c <= 25; }
-inline bool sp_actor_class_ok(int c) { return c == 178 || c == 276 || c == 277; }
+inline bool sp_actor_class_ok(int c) { return c == 178 || c == 276 || c == 277 || c == 282; }
 inline bool sp_silver_class_ok(int c) { return c == 179; }
 inline bool sp_class_ok(int kind, int c) {
     return kind == kSpKindActor ? sp_actor_class_ok(c) : kind == kSpKindSilver ? sp_silver_class_ok(c) : false;
 }
 // Spawn parameters: a star carries its star number (and the ROM's small flag bits), the prizes carry none.
-inline bool sp_param_ok(int cls, uint32_t p) { return (cls == 178 || cls == 179) ? p < 0x100u : p == 0u; }
+inline bool sp_param_ok(int cls, uint32_t p) { return (cls == 178 || cls == 179 || cls == 282) ? p < 0x100u : p == 0u; }
 inline bool sp_pos_ok(int32_t v) { return v > -kSpPosLimit && v < kSpPosLimit; }
 
 inline bool sp_spawn_validate(const void *p, int len) {
@@ -184,7 +184,7 @@ CoopSpawnStats coop_spawn_stats();
 // pass the actor you want the others to get a copy of). The group gets one
 // SPAWN; the actor is registered under a network id, so its take / loss is
 // sent as GONE and a late joiner receives it. `cls` must be an announce-list
-// class (178 PowerStar, 179 Silver Star, 276 1-up, 277 mega mushroom); a
+// class (178 PowerStar, 179 Silver Star, 276 1-up, 277 mega mushroom, 282 Key); a
 // Silver Star announces with its marker (+0x434). Returns false when not in a
 // coop group, the class is off the list, or the table is full. Safe to call
 // from any frame hook; inert outside a coop room.
