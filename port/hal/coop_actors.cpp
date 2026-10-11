@@ -89,12 +89,12 @@ bool field_ok(const Field &f, unsigned size) {
 }
 
 // A received phase value must lie in the field's range (a forged record must not write an arbitrary value).
-bool value_ok(const Field &f, uint32_t v) {
-    if (!g_guard) return true;
+bool value_in(const Field &f, uint32_t v) {
     long long x;
     if (f.size == 4) x = (int32_t)v; else if (f.size == 2) x = (uint16_t)v; else x = (uint8_t)v;
     return x >= f.lo && x <= f.hi;
 }
+bool value_ok(const Field &f, uint32_t v) { return !g_guard || value_in(f, v); }
 
 void prof_index() {
     for (int i = 0; i < 1024; ++i) g_prof_of[i] = -1;
@@ -977,6 +977,8 @@ bool coop_mover_batch_validate(const void *payload, int len) {
             for (int k = 0; k < r.nf; ++k) {
                 uint32_t v; std::memcpy(&v, p + off + sizeof r + 4 * k, 4);
                 if (!value_ok(vp.f[k], v)) { ++g_st.drop_val; return false; }
+                if (!g_guard && !value_in(vp.f[k], v) && ++g_st.overrun <= 8)
+                    std::fprintf(stderr, "[coopmove] (guard off) out-of-range value %#x accepted for class %d field %#x\n", (unsigned)v, (int)vp.id, (unsigned)vp.f[k].off);
             }
         }
         const long long lim = (long long)kMoverMaxUnits * 4096;
