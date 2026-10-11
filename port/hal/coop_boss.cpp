@@ -26,6 +26,14 @@ extern unsigned char data_0209f250;
 extern short data_02092144[];
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 int KingBobOmb_SetState(void *c, void *state);
+// bossdesc1: Chief Chilly's state records (16 x 0x10 at ov073 0x02123320), his ROM transition, Wiggler's ROM transition, ModelAnim::SetAnim
+int ChiefChilly_ChangeState(void *c, void *state);
+void func_ov034_021125b8(void *c, int state);
+int _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *anim, void *file, int a, int speed, unsigned int b);
+extern char data_ov073_02123320[], data_ov073_02123330[], data_ov073_02123340[], data_ov073_02123350[], data_ov073_02123360[],
+            data_ov073_02123370[], data_ov073_02123380[], data_ov073_02123390[], data_ov073_021233a0[], data_ov073_021233b0[],
+            data_ov073_021233c0[], data_ov073_021233d0[], data_ov073_021233e0[], data_ov073_021233f0[], data_ov073_02123400[],
+            data_ov073_02123410[];
 extern char data_ov078_02126ffc[], data_ov078_0212700c[], data_ov078_0212701c[], data_ov078_0212702c[], data_ov078_0212703c[],
             data_ov078_0212704c[], data_ov078_0212705c[], data_ov078_0212706c[], data_ov078_0212707c[], data_ov078_0212708c[],
             data_ov078_0212709c[], data_ov078_021270ac[], data_ov078_021270bc[], data_ov078_021270cc[], data_ov078_021270dc[],
@@ -40,8 +48,14 @@ enum : int { kSeats = 4, kSlots = 512, kPayloadMax = kHubCoopMaxDatagram - kHubC
 // ---------------------------------------------------------------------------
 // The boss rows. A field is {offset, size, kind}; the kinds say how a value crosses the wire.
 // ---------------------------------------------------------------------------
-enum : uint8_t { kPlain = 0, kStatePtr = 1, kVol = 2 };   // kVol: changes every frame, never a reason to publish by itself
-enum : int { kLoOff = 0x100, kHiOff = 0x520 };
+enum : uint8_t { kPlain = 0, kStatePtr = 1, kVol = 2,   // kVol: changes every frame, never a reason to publish by itself
+                 // bossdesc1 kinds:
+                 kChillyPtr = 4,    // Chief Chilly's state record pointer (+0x37c), mapped to a table id; set through ChiefChilly_ChangeState
+                 kAlive = 8,        // a read-only "HP" for a boss without one: 1 while the int state at the field is not 4 (dead) or 5 (gone)
+                 kMaxUp = 16,       // a counter that only goes up (0xff = "not used" is never touched)
+                 kBullyState = 32,  // Big Bully's int state (+0x398): written with the ROM's animation for that state
+                 kWigState = 64 };  // Wiggler's state index (+0x8c4): set through func_ov034_021125b8
+enum : int { kLoOff = 0x100, kHiOff = 0x900 };
 struct BField { uint16_t off; uint8_t size; uint8_t kind; };
 struct BDesc {
     uint16_t cls;
@@ -72,6 +86,41 @@ const BDesc kDescs[] = {
         { 0x4fc, 4, kPlain }, { 0x499, 1, kPlain }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
         { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
       1, 0, 7, { 0x430, 0 }, 0, 0 },
+    // ---- bossdesc1 (run mp1, lane BOSSDESC1). Offsets from include/ChiefChilly.h, daOts_c.h / BigBully.h, daTrs_c.h, Wiggler.h and
+    // the state functions read for each (see out/BOSSDESC1/notes). Console-local pointers are never fields: they sit in pl[].
+    // Chief Chilly (class 218, daKing_Donketu_c): state record pointer +0x37c, knock-downs left mHitsRemaining +0x4cb (3 -> 0, taken
+    // when he slides off the edge: func_ov073_02120c7c), sub-state +0x4c8, flags +0x4ca, waypoint cursor +0x4c4, turn target +0x4c6,
+    // phase counter +0x4b4. +0x3e4 is the player he talks to (console-local). His reward is a KEY (class 282), spawned by each console.
+    { 218, "CHIEF_CHILLY", 14,
+      { { 0x37c, 4, kChillyPtr }, { 0x4cb, 1, kPlain }, { 0x4c8, 1, kPlain }, { 0x4ca, 1, kPlain }, { 0x4c4, 1, kPlain },
+        { 0x4c6, 2, kVol }, { 0x4b4, 4, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0x3e4, 0 }, 0, 0 },
+    // Big Bully (class 216, daBDonketu_c on daOts_c): no HP. He is killed by the lava (state 4) and the star is spawned from there.
+    // field 0 = the int state +0x398, field 1 = "alive" derived from it, then the bullies-killed counter +0x3fe (the three small
+    // bullies he spawns die on each console, or by the death list: only goes up), the bounce count +0x3f9, and the death point
+    // +0x3a8 / +0x3ac / +0x3b0 (the particles of the dying state read it).
+    { 216, "BIG_BULLY", 14,
+      { { 0x398, 4, kBullyState }, { 0x398, 4, kAlive }, { 0x3fe, 1, kMaxUp }, { 0x3f9, 1, kVol }, { 0x3a8, 4, kPlain },
+        { 0x3ac, 4, kPlain }, { 0x3b0, 4, kPlain }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0, 0 }, 0, 0 },
+    // Big Boo (class 210, daTrs_c, types 12..15): state byte +0x5cc, hits left +0x5ca (3 -> 0, taken in state 3 when the timer is 0),
+    // sub-state +0x5ce, +0x5c9, timer +0x5c2, +0x5d2, scale +0x584. +0x488 / +0x484 are the players he talks to (console-local).
+    // NOT synced on purpose: +0x5c8 (opacity) and the flags word +0x5d4 (camera / area visibility): those key on the LOCAL camera.
+    { 210, "BIG_BOO", 14,
+      { { 0x5cc, 1, kPlain }, { 0x5ca, 1, kPlain }, { 0x5ce, 1, kPlain }, { 0x5c9, 1, kPlain }, { 0x5c2, 2, kVol },
+        { 0x5d2, 1, kPlain }, { 0x584, 4, kPlain }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0x488, 0x484 }, 0, 0 },
+    // Wiggler (class 248): state index +0x8c4 (set through func_ov034_021125b8, whose enter half takes a health point in state 3),
+    // hits left +0x8db (4 -> 1, then state 7 is his death), angry +0x8de, falling +0x8df, dying +0x8e0, timer +0x8da, turn target
+    // +0x8d8. +0x8c8 is the player he talks to; +0x8e1 (drive the camera) stays local. The body chain is rebuilt from the head.
+    { 248, "WIGGLER", 14,
+      { { 0x8c4, 4, kWigState }, { 0x8db, 1, kPlain }, { 0x8de, 1, kPlain }, { 0x8df, 1, kPlain }, { 0x8e0, 1, kPlain },
+        { 0x8da, 1, kVol }, { 0x8d8, 2, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0x8c8, 0 }, 0, 0 },
 };
 const int kNumDescs = (int)(sizeof kDescs / sizeof kDescs[0]);
 
@@ -104,6 +153,47 @@ uint32_t kbo_ptr_to_id(uint32_t ptr) {
 void *kbo_id_to_ptr(uint32_t id) {
     int n; char *const *k = kbo_states(&n);
     return id < (uint32_t)n ? (void *)k[id] : nullptr;
+}
+
+// Chief Chilly's sixteen state records (data_ov073_02123320 + 0x10 * i).
+char *const *chilly_states(int *n) {
+    static char *const k[] = {
+        data_ov073_02123320, data_ov073_02123330, data_ov073_02123340, data_ov073_02123350, data_ov073_02123360, data_ov073_02123370,
+        data_ov073_02123380, data_ov073_02123390, data_ov073_021233a0, data_ov073_021233b0, data_ov073_021233c0, data_ov073_021233d0,
+        data_ov073_021233e0, data_ov073_021233f0, data_ov073_02123400, data_ov073_02123410 };
+    *n = (int)(sizeof k / sizeof k[0]);
+    return k;
+}
+uint32_t chilly_ptr_to_id(uint32_t ptr) {
+    int n; char *const *k = chilly_states(&n);
+    for (int i = 0; i < n; ++i) if ((uint32_t)(uintptr_t)k[i] == ptr) return (uint32_t)i;
+    return 0xffu;
+}
+void *chilly_id_to_ptr(uint32_t id) {
+    int n; char *const *k = chilly_states(&n);
+    return id < (uint32_t)n ? (void *)k[id] : nullptr;
+}
+
+// Big Bully (daOts_c): the int state at +0x398 (0 wait, 1 run, 2 knocked back, 3 turned at a cliff, 4 dying, 5 gone). The ROM sets
+// the animation at each transition (src/actors/daOts_c.cpp); a copy that is put into a state gets the same animation and a fresh
+// state timer. Death is final: a copy that is dying or gone is never pulled back.
+void bully_enter(char *a, uint32_t st) {
+    if (st > 5) return;
+    int32_t cur; std::memcpy(&cur, a + 0x398, 4);
+    if (cur == (int32_t)st || cur == 4 || cur == 5) return;
+    const int32_t v = (int32_t)st;
+    std::memcpy(a + 0x398, &v, 4);
+    const uint16_t zero = 0; std::memcpy(a + 0x100, &zero, 2);
+    static const int kFile[5] = { 4, 4, 2, 3, 1 };
+    static const int kSpeed[5] = { 0x1000, 0x2000, 0x1000, 0x1000, 0x1000 };
+    if (st < 5) {
+        char *cfg = nullptr; std::memcpy(&cfg, a + 0x330, sizeof cfg);
+        if (cfg) {
+            char *sf = nullptr; std::memcpy(&sf, cfg + 4 * kFile[st], sizeof sf);
+            void *anim = nullptr; if (sf) std::memcpy(&anim, sf + 4, sizeof anim);
+            if (anim) _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(a + 0x110, anim, 0, kSpeed[st], 0);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -153,6 +243,8 @@ uint32_t read_field(const char *a, const BField &f) {
     uint32_t v = 0;
     std::memcpy(&v, a + f.off, f.size);
     if (f.kind & kStatePtr) v = kbo_ptr_to_id(v);
+    else if (f.kind & kChillyPtr) v = chilly_ptr_to_id(v);
+    else if (f.kind & kAlive) v = (v == 4u || v == 5u) ? 0u : 1u;
     return v;
 }
 void write_field(char *a, const BDesc &d, int idx, uint32_t v) {
@@ -163,6 +255,20 @@ void write_field(char *a, const BDesc &d, int idx, uint32_t v) {
         if (!p) return;
         KingBobOmb_SetState(a, p);          // the ROM's own transition, with its enter code
         return;
+    }
+    if (f.kind & kChillyPtr) {
+        void *p = chilly_id_to_ptr(v);
+        if (!p) return;
+        ChiefChilly_ChangeState(a, p);      // the ROM's own transition (his enter code runs)
+        return;
+    }
+    if (f.kind & kAlive) return;            // derived, never written: the state field carries it
+    if (f.kind & kWigState) { if (v <= 8u) func_ov034_021125b8(a, (int)v); return; }
+    if (f.kind & kBullyState) { bully_enter(a, v); return; }
+    if (f.kind & kMaxUp) {
+        uint32_t cur = 0; std::memcpy(&cur, a + f.off, f.size);
+        const uint32_t unused = f.size == 1 ? 0xffu : (f.size == 2 ? 0xffffu : 0xffffffffu);
+        if (cur == unused || v == unused || v <= cur) return;
     }
     if (f.size == 1) v &= 0xffu; else if (f.size == 2) v &= 0xffffu;
     std::memcpy(a + f.off, &v, f.size);
@@ -180,6 +286,29 @@ bool value_ok(const BDesc &d, int idx, uint32_t v) {
     if (d.cls == 189) {
         if (idx == 0) return v < 18;                 // a table id
         if (idx == 1) return v <= 8;                 // mHealth
+        return true;
+    }
+    if (d.cls == 218) {
+        if (idx == 0) return v < 16;                 // one of the sixteen state records
+        if (idx == 1) return v <= 3;                 // knock-downs left
+        if (idx == 2) return v <= 8;                 // sub-state
+        return true;
+    }
+    if (d.cls == 216) {
+        if (idx == 0) return v <= 5;                 // int state
+        if (idx == 1) return v <= 1;                 // alive
+        if (idx == 2) return v <= 4 || v == 0xffu;   // bullies killed (0xff: none to kill)
+        return true;
+    }
+    if (d.cls == 210) {
+        if (idx == 0) return v <= 8;                 // state byte
+        if (idx == 1) return v <= 3;                 // hits left
+        if (idx == 2) return v <= 16;                // sub-state
+        return true;
+    }
+    if (d.cls == 248) {
+        if (idx == 0) return v <= 8;                 // state index
+        if (idx == 1) return v <= 4;                 // hits left
         return true;
     }
     return true;
@@ -321,6 +450,16 @@ void log_sample(int slot, const Boss &b, int auth) {
     std::fprintf(stderr, "%s\n", line);
 }
 
+// After a state was forced onto a copy (bossdesc1). Big Boo's hit state takes its health point only on the first frame of the state
+// (timer +0x100 == 0, src/unnamed/ov063/func_ov063_021177b0.c); the authority has taken it already and the merged HP is the truth, so a
+// forced copy skips that frame.
+void post_force(Boss &b) {
+    if (b.d->cls == 210) {
+        uint16_t t = 0; std::memcpy(&t, b.a + 0x100, 2);
+        if (t == 0) { t = 1; std::memcpy(b.a + 0x100, &t, 2); }
+    }
+}
+
 void apply_rx(int slot, Boss &b, unsigned now) {
     Rx &x = b.rx;
     if (!x.valid || !x.fresh) return;
@@ -338,6 +477,9 @@ void apply_rx(int slot, Boss &b, unsigned now) {
     } else if (b.synced_hp > rhp && rhp >= 0) {
         b.synced_hp = rhp;
     }
+    // counters that only go up (Big Bully's bullies killed): write_field refuses anything that is not larger
+    for (int k = 0; k < d.nf; ++k)
+        if ((d.f[k].kind & kMaxUp) && value_ok(d, k, x.w[k])) write_field(b.a, d, k, x.w[k]);
     // The state: forced on the first record this console ever takes, otherwise after two in a row that disagree.
     const uint32_t ls = state_of(b), rs = x.w[d.state];
     bool force = false;
@@ -356,6 +498,7 @@ void apply_rx(int slot, Boss &b, unsigned now) {
         give_player_ptrs(b);
         for (int k = 0; k < d.nf; ++k) if (k != d.hp && value_ok(d, k, x.w[k])) write_field(b.a, d, k, x.w[k]);
         write_field(b.a, d, d.hp, (uint32_t)hp_keep);
+        post_force(b);
         b.synced_hp = hp_keep;
         b.mism = 0;
         ++g_st.applied_state;
@@ -442,6 +585,7 @@ void process(unsigned now) {
 // SM64DS_COOP_BOSS_HIT=F[,F]: from boss tick F, on THIS console, hit the first boss the ROM's own way. Where the class has a
 // hit flag (Whomp King) the flag is set every tick until the boss's own handler has taken it (it only does in its vulnerable
 // state), so the HP drop is the game's; where it has none the HP is lowered directly (the sync path is what is under test).
+bool bossdesc1_knob(Boss &b, HitKnob &k);
 void do_hit_knob(HitKnob &k) {
     if (!k.armed) {
         for (int slot = 0; slot < kSlots; ++slot) {
@@ -469,7 +613,40 @@ void do_hit_knob(HitKnob &k) {
         if (k.lethal && hp_of(b) > 1) { write_field(b.a, *b.d, b.d->hp, 1u); k.hp0 = 1; }
         give_player_ptrs(b);          // the hit state reads the player it was hit by (+0x430)
         KingBobOmb_SetState(b.a, kbo_id_to_ptr(0));
+    } else if (bossdesc1_knob(b, k)) {
     } else { write_field(b.a, *b.d, b.d->hp, (uint32_t)(k.hp0 - 1)); }
+}
+
+// bossdesc1: the proof's "a hit from this console" for the four families, each the ROM's own way as far as it can be made without
+// a player pushing: Chilly goes through the knock-down code of func_ov073_02120c7c (one fewer, then the hit or the defeat state);
+// Big Bully falls into the lava (the dying state with the death point that func_ov064_02116220 sets); Big Boo enters its hit state
+// with the timer at 0 so the ROM's own handler takes the health point; Wiggler enters the hit state (whose enter half takes it) or,
+// on the last point, the death state. Returns true when the class is one of the four.
+bool bossdesc1_knob(Boss &b, HitKnob &k) {
+    char *a = b.a;
+    const unsigned cls = b.d->cls;
+    if (cls != 218 && cls != 216 && cls != 210 && cls != 248) return false;
+    give_player_ptrs(b);
+    if (cls == 218) {
+        uint8_t hp = (uint8_t)a[0x4cb];
+        if (k.lethal && hp > 1) { a[0x4cb] = 1; hp = 1; }
+        a[0x4cb] = (char)(hp - 1);
+        ChiefChilly_ChangeState(a, chilly_id_to_ptr(hp - 1 ? 10u : 11u));
+    } else if (cls == 216) {
+        int32_t x = rd32(a, 0x5c), y = rd32(a, 0x60) + 0x5000, z = rd32(a, 0x64);
+        std::memcpy(a + 0x3a8, &x, 4); std::memcpy(a + 0x3ac, &y, 4); std::memcpy(a + 0x3b0, &z, 4);
+        bully_enter(a, 4u);
+    } else if (cls == 210) {
+        if (k.lethal && (uint8_t)a[0x5ca] > 1) a[0x5ca] = 1;
+        a[0x5cc] = 3; const uint16_t zero = 0; std::memcpy(a + 0x100, &zero, 2);
+    } else {
+        if (k.lethal && (uint8_t)a[0x8db] > 1) a[0x8db] = 1;
+        func_ov034_021125b8(a, (uint8_t)a[0x8db] > 1 ? 3 : 7);
+    }
+    k.done = true;
+    std::fprintf(stderr, "[cbs-knob] hit made slot=%d cls=%u hp=%u st=%u w=%lld
+", k.slot, cls, (unsigned)hp_of(b), state_of(b), wall_ms());
+    return true;
 }
 
 void do_forge(const char *name) {
@@ -678,6 +855,7 @@ void coop_boss_on_world(int seat, int sub, const unsigned char *p, int len) {
                 give_player_ptrs(b);
                 for (int k = 0; k < d->nf; ++k) if (k != d->hp) write_field(b.a, *d, k, w[k]);
                 write_field(b.a, *d, d->hp, (uint32_t)hp_keep);
+                post_force(b);
                 b.synced_hp = hp_keep;
                 ++g_st.hit_adopted;
                 b.lw_valid = false;
