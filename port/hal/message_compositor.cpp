@@ -2717,8 +2717,16 @@ extern "C" void port_engine_a_fade(unsigned int *px, int w, int h)
        one fade the composite cannot say is the inset panel on engine B's own
        blend (a second coefficient inside one rectangle): that frame is made an
        ordinary one first and takes the processor's path below. */
+    /* BOTH ENGINES ON THE SAME COEFFICIENT (run hunt8, lane BOOTSTALL1): the
+       two fades above (engine A outside the panel, engine B inside it) are
+       one fade over the whole picture, and no mask is live (inset_b needs
+       !g_bm_live), so the frame is an ordinary one for the card. */
+    const bool same_fade = inset_b && a_on && b_evy &&
+                           (b_evy > 16 ? 16 : b_evy) == evy &&
+                           (b_white ? 1 : 0) == (toWhite ? 1 : 0) &&
+                           bootstall_panel_on();
     if (ntr::gx_card_overlay_active()) {
-        if (!(inset_b && b_evy)) {
+        if (!(inset_b && b_evy) || same_fade) {
             if (a_on) {
                 port_gpu_card_set_fade(evy, toWhite);
                 port_gpu_card_set_mask(g_bm_live ? g_bm : nullptr,
