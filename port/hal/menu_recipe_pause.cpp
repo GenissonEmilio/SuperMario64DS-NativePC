@@ -33,7 +33,10 @@
 #include "menu_hostimg.h"
 #include "menu_pause_art_ids.h"
 
+#include <atomic>
 #include <chrono>
+#include <functional>
+#include <thread>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -160,6 +163,12 @@ extern "C" int menu_warm_claim(void)
 {
     static const bool off = getenv("SM64DS_NO_MENU_WARM") != 0;
     if (off) return 0;
+    /* WARMFIX1 F1: the claim state below is plain statics, so the slot belongs to the first thread that asks (the logic thread); any other
+       thread is simply never given one. */
+    static std::atomic<size_t> owner(0);
+    const size_t me = std::hash<std::thread::id>()(std::this_thread::get_id()) | 1;
+    size_t none = 0;
+    if (!owner.compare_exchange_strong(none, me) && none != me) return 0;
     const double t = wnow_ms();
     if (t - g_last_call > 50.0) g_calm = 0; else ++g_calm;
     g_last_call = t;
