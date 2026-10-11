@@ -212,6 +212,7 @@ struct Boss {
     int mism;                      // consecutive state mismatches against the authority's record
     int last_auth; unsigned auth_t;
     bool announced_dead;
+    uint32_t last_st;              // the state as of the last tick (bossdesc1: Chilly's hit shows as a state change, not an HP change)
     bool heard;                    // an authority record was ever applied here
     Rx rx;
 };
@@ -420,11 +421,16 @@ void send_batch(int sub, uint8_t flags, const unsigned char *recs, int nrecs, in
 // Scan, publish, apply.
 // ---------------------------------------------------------------------------
 int g_nb = 0;
+char *g_key_seen = nullptr; int g_keys_seen = 0;
 void scan() {
     for (int i = 0; i < kSlots; ++i) g_boss[i].a = nullptr;
     g_nb = 0;
     for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
         const unsigned id = *(const unsigned short *)(a + 0x0c);
+        if (id == 282 && g_log && a != g_key_seen) {            // Chief Chilly's reward (a key): proof log only
+            g_key_seen = a; ++g_keys_seen;
+            std::fprintf(stderr, "[cbs] key actor seen at %d,%d,%d (#%d on this console) w=%lld\n", rd32(a, 0x5c) >> 12, rd32(a, 0x60) >> 12, rd32(a, 0x64) >> 12, g_keys_seen, wall_ms());
+        }
         const BDesc *d = desc_of(id);
         if (!d) continue;
         const short slot = rd16(a, 0xce);
@@ -536,7 +542,7 @@ void process(unsigned now) {
         Boss &b = g_boss[slot];
         if (!b.a) continue;
         const BDesc &d = *b.d;
-        if (!b.known) { b.known = true; b.synced_hp = hp_of(b); }
+        if (!b.known) { b.known = true; b.synced_hp = hp_of(b); b.last_st = state_of(b); }
         // King Bob-omb carried by MY player (state 707c with my body as the holder): the console that carries him is the one that is right.
         bool claiming = false;
         if (d.cls == 189) {
@@ -567,6 +573,19 @@ void process(unsigned now) {
                 send_batch(kWorldBossHit, 1, one, 1, n);
             }
             b.lw_valid = false;                 // publish at once when I am the authority
+        }
+        // Chief Chilly's last blow is a player hit in his waiting window after the last fall: his HP is already 0, so it shows only as
+        // the ROM's own move into state 33f0 (id 13). A console that is not the authority and saw it tells the authority like an HP hit.
+        if (d.cls == 218) {
+            const uint32_t stn = state_of(b);
+            if (stn == 13u && b.last_st != 13u && !mine && g_on) {
+                ++g_st.hit_local;
+                if (g_log) std::fprintf(stderr, "[cbs] hit slot=%d state %u->13 (auth %d me %d) w=%lld\n", slot, b.last_st, auth, g_my, wall_ms());
+                unsigned char one[64];
+                const int n = fill_rec(one, slot, b, 0);
+                send_batch(kWorldBossHit, 1, one, 1, n);
+            }
+            b.last_st = stn;
         }
         if (g_on) apply_rx(slot, b, now);
         if (g_log && (unsigned)(now - b.sample_t) >= 500u) { b.sample_t = now; log_sample(slot, b, auth); }
