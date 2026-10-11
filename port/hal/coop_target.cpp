@@ -197,7 +197,7 @@ void *__fastcall cp_replacement(void *self, void * /*edx*/) {
         } else if (lv) {
             ++g_st.cp_natural;
         }
-        if (lv && g_log) {
+        if (coop_world_active() && g_log) {
             const short slot = actor_slot((const char *)self);
             const unsigned cls = *(const unsigned short *)((const char *)self + 0x0c);
             if (slot >= 0 && slot < kTargetSlots && logged_cls(cls)) {
@@ -395,7 +395,7 @@ void on_frame(unsigned now) {
     read_env();
     if (!coop_world_active()) return;
     ensure_registered();
-    if (g_on) install_patch();
+    install_patch();   // also with targeting OFF: then the replacement IS the ROM loop (the control logs what each console picks)
     int lv = -1, ac = 0;
     if (!coop_group_established() || !coop_group_key(&lv, &ac)) return;
     const CoopKey nk(lv, ac);
