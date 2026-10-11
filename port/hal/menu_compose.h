@@ -393,6 +393,7 @@ void hal_menu_pad(uint16_t *pressed, int host_back);
 /* settings seam: key -> enabled. Default (no function set) = everything off. */
 void hal_menu_set_enable_fn(int (*fn)(int key));
 int  hal_menu_hover_box(int *x, int *y, unsigned *stamp);   /* ASSET3: the hovered hotspot's DS box origin; stamp changes per hover event */
+int  hal_menu_last_size(int *w, int *h);   /* PAUSE2: the picture size of this tick's decide (a recipe's idle warm-up asks for it); 0 before the first decide */
 void hal_menu_set_netplay(int on);              /* in a transport session ROM_CURSOR is refused; TOUCH is used */
 /* the synthesised-touch queue: single producer (hal_menu_pad), single consumer (poll_touch) */
 int  hal_menu_touch_queue_press(int dsx, int dsy);  /* 1 queued; 0 refused (in flight or a real stylus is held) */

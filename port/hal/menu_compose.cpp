@@ -613,7 +613,7 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
        held at the steady x1.14 lift; SM64DS_MENU_PULSE=1 brings the pulse back (round 3 picture comparison) */
     static int no_pulse = -1;
     if (no_pulse < 0) { const char *e = getenv("SM64DS_MENU_PULSE"); no_pulse = (e && *e && *e != '0') ? 0 : 1; }
-    if ((P.hostimg >= MENU_IMG_BTN_MP && P.hostimg <= MENU_IMG_BTN_REC) || (P.hostimg >= MENU_IMG_BTN_SAVE_CONT && P.hostimg <= MENU_IMG_BTN_CONT)) {   /* the planks; the logo and the arrows are never lit */
+    if (menu_hostimg_is_plank(P.hostimg)) {   /* the planks; the logo and the arrows are never lit */
         static const int pulse[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
         if (sel) boost = no_pulse ? 292 : 292 + pulse[g_draw_frame & 7] * 10;    /* x1.14 .. x1.30 */
         if (prs) { f256 = f256 * 216 / 256; boost = 0; sink = d[3] * 3 / 100; if (sink < 1) sink = 1; }
@@ -1642,6 +1642,15 @@ int hal_menu_hover_box(int *x, int *y, unsigned *stamp)
     *x = g_cur.hs[g_cur.focus].box.x;
     *y = g_cur.hs[g_cur.focus].box.y;
     *stamp = g_hover_stamp;
+    return 1;
+}
+
+/* PAUSE2: the picture size of the decide in progress (up() runs inside it), for a recipe's idle cache warm-up */
+int hal_menu_last_size(int *w, int *h)
+{
+    const MenuDecision &D = g_pub[g_pub_i];
+    if (D.w < 8 || D.h < 8) return 0;
+    *w = D.w; *h = D.h;
     return 1;
 }
 

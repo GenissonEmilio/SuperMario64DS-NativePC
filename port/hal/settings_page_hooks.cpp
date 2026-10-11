@@ -114,11 +114,18 @@ extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, un
     return 0;
 }
 
-/* SETPAGEFIX1: called once a frame from the idle side of the page's frame; builds the page's caches a moment after start, so the first
-   open does not stall. Nothing at all when OneScreenMenus is off. */
+/* SETPAGEFIX1 / PAUSEFIX1: called once a frame from the idle side of the page's frame; builds the page's caches in small slices a while
+   after start, so the first open does not stall and no frame pays more than a slice. The slice runs only when the shared warm-up slot
+   (menu_warm_claim, menu_recipe_pause.cpp: one slot per few ms for the pause and the page together, none while the game is hitching)
+   is free. Nothing at all when OneScreenMenus is off. */
+extern "C" int menu_warm_claim(void);
 extern "C" void settings_page_idle_tick(int idle_frames, int w, int h)
 {
-    if (idle_frames != 120) return;
+    static int done_w, done_h;
+    if (idle_frames < 120) return;
     if (!hal_menu_enabled(MENU_KEY_ONE_SCREEN_MENUS)) return;
-    settings_page_warm(w, h);
+    if (done_w == w && done_h == h) return;
+    if (settings_page_warm_waiting()) return;
+    if (!menu_warm_claim()) return;
+    if (settings_page_warm_step(w, h)) { done_w = w; done_h = h; }
 }
