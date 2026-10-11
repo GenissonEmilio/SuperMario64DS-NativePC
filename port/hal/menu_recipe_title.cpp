@@ -976,7 +976,7 @@ void build_doodle(MenuLayout *L)
     const int e = (t_f && t_f->dd_e > 0) ? t_f->dd_e : 1000;
     const bool live = !(t_f && t_f->dd_dead);
     const bool closing = t_f && t_f->vis && (t_f->e3 > 0 || t_f->yh);    /* FACE3: the Yoshi press: the ROM closes its star iris (polygons in the 3D layer, drawn only in the 4:3 area) */
-    if (live && e >= DD_XF && !closing) L->snap_save = 1;      /* the held frame of the way out (and of the iris: the last frame before the ROM's iris shows) */
+    if (live && e >= DD_XF && !closing && !(t_f && t_f->yh)) L->snap_save = 1;      /* the held frame of the way out (and of the iris: the last frame before the ROM's iris shows) */
     if (e < DD_XF) {
         MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)w; sn.fh = (short)h;
