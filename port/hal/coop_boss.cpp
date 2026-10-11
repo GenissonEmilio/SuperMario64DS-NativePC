@@ -35,6 +35,7 @@ extern char data_ov073_02123320[], data_ov073_02123330[], data_ov073_02123340[],
             data_ov073_021233c0[], data_ov073_021233d0[], data_ov073_021233e0[], data_ov073_021233f0[], data_ov073_02123400[],
             data_ov073_02123410[];
 // bossdesc2: Goomboss's ROM transition (state index at +0x5cc, runs the enter pair), its hit animation, Eyerok's transition + records + globals
+void _ZN7fBase_c18MarkForDestructionEv(void *self);
 void func_ov074_021203e4(char *c, int state);
 void func_ov074_02121a4c(char *c, int idx);
 int func_ov066_02119454(void *c, void *state);
@@ -42,6 +43,7 @@ extern char data_ov066_0211afcc[], data_ov066_0211afdc[], data_ov066_0211afec[],
             data_ov066_0211b01c[], data_ov066_0211b02c[], data_ov066_0211b03c[], data_ov066_0211b04c[], data_ov066_0211b05c[],
             data_ov066_0211b06c[], data_ov066_0211b07c[], data_ov066_0211b08c[], data_ov066_0211b09c[], data_ov066_0211b0ac[],
             data_ov066_0211b0bc[], data_ov066_0211b0cc[], data_ov066_0211b0dc[], data_ov066_0211b0ec[];
+extern void *data_ov066_0211aea4[], *data_ov066_0211ae8c[];
 extern unsigned char data_ov066_0211abe0, data_ov066_0211ae08;
 extern int data_ov066_0211abe4;
 extern char data_ov078_02126ffc[], data_ov078_0212700c[], data_ov078_0212701c[], data_ov078_0212702c[], data_ov078_0212703c[],
@@ -243,6 +245,15 @@ void *eye_id_to_ptr(uint32_t id) {
     return id < (uint32_t)n ? (void *)k[id] : nullptr;
 }
 constexpr int kEyeDeadRecord = 11;      // data_ov066_0211b07c, the dead hand
+// The dead hand's enter code (func_ov066_02116d14) starts the hand's death animation from a file pointer in the overlay's table; if that
+// file is not there on this console the call faults (measured: hand 2, accessing 2), so the transition is refused and logged.
+bool eye_enter_safe(char *a, uint32_t id) {
+    if (id != (uint32_t)kEyeDeadRecord) return true;
+    const int part = *(int *)(a + 0x49c);
+    void *f = part == 2 ? data_ov066_0211aea4[1] : data_ov066_0211ae8c[1];
+    if (!f) { std::fprintf(stderr, "[cbs] eyerok dead-hand animation file missing (part %d): enter refused\n", part); return false; }
+    return true;
+}
 uint32_t read_global(int idx) { return idx == 0 ? (uint32_t)data_ov066_0211abe0 : (uint32_t)data_ov066_0211ae08; }
 
 // Big Bully (daOts_c): the int state at +0x398 (0 wait, 1 run, 2 knocked back, 3 turned at a cliff, 4 dying, 5 gone). The ROM sets
@@ -283,6 +294,7 @@ struct Boss {
     int mism;                      // consecutive state mismatches against the authority's record
     int last_auth; unsigned auth_t;
     bool announced_dead;
+    bool retired;                  // bossdesc2: a defeated Bowser copy that was told to go
     uint32_t last_st;              // the state as of the last tick (bossdesc1: Chilly's hit shows as a state change, not an HP change)
     bool heard;                    // an authority record was ever applied here
     Rx rx;
@@ -332,10 +344,16 @@ void write_field(char *a, const BDesc &d, int idx, uint32_t v) {
         return;
     }
     if (f.kind & kZeroOnForce) { a[f.off] = 0; return; }
-    if (f.kind & kGoomState) { if (v <= 8u) func_ov074_021203e4(a, (int)v); return; }
+    if (f.kind & kGoomState) {
+        if (v > 8u) return;
+        if (v == 5u) func_ov074_02121a4c(a, 2);     // the stomp sets the hit animation before it enters state 5, whose tick waits for it to finish
+        func_ov074_021203e4(a, (int)v);
+        return;
+    }
     if (f.kind & kEyeState) {
         void *p = eye_id_to_ptr(v);
         if (!p) return;
+        if (!eye_enter_safe(a, v)) return;
         func_ov066_02119454(a, p);          // the ROM's own transition (the record's enter pair runs)
         return;
     }
@@ -627,6 +645,15 @@ void apply_rx(int slot, Boss &b, unsigned now) {
     if (!b.heard) force = ls != rs;
     else if (b.mism >= 2) force = true;
     if (carry_state) force = false;
+    // Bowser's defeat (state 4) ends in a talk with mTargetPlayer, which is the TARGET SEAT's body: on the authority that is its own player,
+    // on any other console it is a parked friend, a talk that can never finish. The authority is the one that talks; the other copies ride
+    // through the steps it reports (forward only) and skip the talk step.
+    if (d.cls == 279 && ls == 4u && rs == 4u) {
+        const unsigned char lstep = (unsigned char)b.a[0x423];
+        unsigned char rstep = (unsigned char)x.w[3];
+        if (rstep >= 10) rstep = 11;
+        if (rstep > lstep) { b.a[0x423] = (char)rstep; if (g_log) std::fprintf(stderr, "[cbs] ride slot=%d step %u->%u from seat %d w=%lld\n", slot, (unsigned)lstep, (unsigned)rstep, x.from, wall_ms()); }
+    }
     if (force) {
         // everything except the HP (already min-merged); the state field goes first so its enter code runs on the old fields
         // The state's enter code can have side effects of its own (King Bob-omb's hurt states take a health point): the HP
@@ -723,6 +750,14 @@ void process(unsigned now) {
             b.last_st = stn;
         }
         if (g_on) apply_rx(slot, b, now);
+        if (d.cls == 279 && g_on && !mine && state_of(b) == 4u) {
+            if ((unsigned char)b.a[0x423] == 10) b.a[0x423] = 11;                 // never the talk with a parked friend
+            if ((unsigned char)b.a[0x423] == 11 && b.heard && (unsigned)(now - b.auth_t) > 2000u && !b.retired) {
+                b.retired = true;                                                  // the authority's copy is done and gone
+                _ZN7fBase_c18MarkForDestructionEv(b.a);
+                if (g_log) std::fprintf(stderr, "[cbs] retire slot=%d (the authority's defeated copy is gone) w=%lld\n", slot, wall_ms());
+            }
+        }
         if (g_log && (unsigned)(now - b.sample_t) >= 500u) { b.sample_t = now; log_sample(slot, b, auth); }
         if (!b.announced_dead && hp_of(b) == 0 && g_log) {
             b.announced_dead = true;
@@ -857,7 +892,8 @@ bool bossdesc2_knob(Boss &b, HitKnob &k) {
             data_ov066_0211abe0 = (unsigned char)(data_ov066_0211abe0 ^ side);
             data_ov066_0211ae08 = (unsigned char)(data_ov066_0211ae08 + 1);
             data_ov066_0211abe4 = -3;
-            func_ov066_02119454(a, eye_id_to_ptr((uint32_t)kEyeDeadRecord));
+            std::fprintf(stderr, "[cbs-knob] eyerok part %d death: files ae8c=%p aea4=%p\n", side, data_ov066_0211ae8c[1], data_ov066_0211aea4[1]);
+            if (eye_enter_safe(a, (uint32_t)kEyeDeadRecord)) func_ov066_02119454(a, eye_id_to_ptr((uint32_t)kEyeDeadRecord));
         }
     }
     k.done = true;
@@ -1096,6 +1132,7 @@ void coop_boss_on_world(int seat, int sub, const unsigned char *p, int len) {
             continue;
         }
         if (r.rflags & 2) {                      // a claim: that seat's copy is carried by its player
+            if (g_log && (int)(g_claim_until[seat] - now) <= 0) std::fprintf(stderr, "[cbs] claim-rx slot=%d from seat %d (that console's player holds the boss) w=%lld\n", (int)r.slot, seat, wall_ms());
             g_claim_until[seat] = now + 3000u; ++g_st.claims;
         } else if (seat != auth) {
             // a late record from the authority before this one, within two seconds, still counts
