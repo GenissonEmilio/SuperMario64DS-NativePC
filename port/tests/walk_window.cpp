@@ -8214,6 +8214,9 @@ static void ip_present_alpha(double alpha)
     const uint32_t *was_stack = g_present_stack;
     g_present_fb = g_ip_fb;
     if (g_ip_stack_on) ip_stack_for_blend();
+    /* MENUFOLD1 proof instrument: on the level path SM64DS_PICDUMP_LEVEL=1 numbers the dumped pictures by ROM frame, so
+       SM64DS_SCENE_PICDUMP=<dir>:<from frame>:<count> starts at a chosen frame (a pause opened at frame 200, say) */
+    { static int lv = -1; if (lv < 0) lv = getenv("SM64DS_PICDUMP_LEVEL") ? 1 : 0; if (lv) g_si_pic_tick = (unsigned)port_rom_frame(); }
     si_pic('b', alpha, g_ip_fb, g_ip_stack_on ? g_present_stack : 0);
     present();
     g_present_fb = was;
