@@ -541,12 +541,12 @@ void slave(Slot &s, const Rx &x, unsigned now) {
     const Prof &p = g_prof[s.prof];
     if (x.snap || !x.valid || x.cls != p.id || x.nf != p.nf) return;
     const unsigned age = now - x.t;
-    if (age > 700u) return;                                  // the owner went quiet: let the local copy run
+    if (age > (unsigned)kStaleMs) return;                    // the owner went quiet for good: let the local copy run (a still actor heartbeats every 1.5 s)
     char *a = s.a;
     if (skip_state(a, p)) return;
     int32_t tx = x.x, ty = x.y, tz = x.z;
     int16_t tax = x.ax, tay = x.ay, taz = x.az;
-    const long long lead = (long long)age + g_lead_ms;
+    const long long lead = (long long)(std::min)(age, 150u) + g_lead_ms;   // extrapolate at most 150 ms past the last record
     const int dt = x.pvalid ? (int)(x.t - x.pt) : 0;
     if (x.pvalid && dt >= 30 && dt <= 400) {
         const long long lim = 100LL * 4096;
