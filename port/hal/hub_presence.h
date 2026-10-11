@@ -135,7 +135,7 @@ struct HubPartyStarWire {
     uint8_t  seat;           // 5  stamped
     uint8_t  course;         // 6  0..29
     uint8_t  star;           // 7  0..7
-    uint16_t reserved;       // 8  must be 0 (non-zero = dropped)
+    uint16_t reserved;       // 8  0 = star to save; 1 star / 2 key / +4 no exit = popup event (STARPOP1); other bits dropped
     uint16_t seq;            // 10
 };
 
@@ -289,12 +289,13 @@ inline int hub_presence_encode(const HubPresence &p, void *out20) {
     return (int)sizeof w;
 }
 
-// SYNX: exact length, tag, version 1, course 0..29, star 0..7, reserved 0.
+// SYNX: exact length, tag, version 1, course 0..29, star 0..7, reserved 0..7
+// (0 = a star to save; non-zero = a popup event, hal/star_popup.h, STARPOP1).
 inline bool hub_party_star_validate(const void *d, int len) {
     if (!d || len != (int)sizeof(HubPartyStarWire)) return false;
     HubPartyStarWire w; std::memcpy(&w, d, sizeof w);
     return w.tag == kHubTagPartyStar && w.version == 1 &&
-           w.course <= 29 && w.star <= 7 && w.reserved == 0;
+           w.course <= 29 && w.star <= 7 && (w.reserved & ~(uint16_t)7) == 0;
 }
 inline int hub_party_star_encode(int course, int star, unsigned seq,
                                  void *out12) {
