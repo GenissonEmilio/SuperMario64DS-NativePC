@@ -1568,10 +1568,12 @@ int  hal_menu_interp_ok(void)
         if (P.src != SRC_TOP_PIC && !P.keycover && !P.snap) continue;
         if (P.keycover || P.xfill || P.snap) return 0;
         if (P.nodraw) continue;                                     /* a click-only piece draws nothing */
-        /* a piece of the 3D picture drawn 1:1 over the whole 4:3 picture lands every pixel where it already was (the file pages at 4:3) */
+        /* a piece of the 3D picture drawn 1:1 as the whole 4:3 picture, full height and centred, lands every pixel where it already was
+           (the file pages at 4:3, the title's TOUCH TO START at any aspect: the scene is shown at its native layout there) */
         const MenuLayout &L = g_dd.L;
+        const int dx = L.dest[i][0], dy = L.dest[i][1], dw = L.dest[i][2], dh = L.dest[i][3];
         const bool whole = P.s.x == 0 && P.s.y == 0 && P.s.w == 256 && P.s.h == 192 && P.knum == P.kden &&
-                           L.dest[i][0] == 0 && L.dest[i][1] == 0 && L.dest[i][2] == L.w && L.dest[i][3] == L.h && L.w * 3 == L.h * 4;
+                           dy == 0 && dh == L.h && dw * 3 == dh * 4 && dx == (L.w - dw) / 2;
         if (!whole) return 0;
     }
     return 1;
