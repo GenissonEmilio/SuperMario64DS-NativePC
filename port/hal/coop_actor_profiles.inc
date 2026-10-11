@@ -93,3 +93,6 @@ ROW(121, "ROTATING_COG_BIG",    100, 8, 150, 2, 0)
 ROW(122, "ROTATING_COG_SMALL",  100, 8, 150, 2, 0)
 ROW(127, "SWINGING_PLATFORM",   100, 8, 150, 2, 0)
 ROW(294, "CLOCK_PENDULUM",      100, 8, 150, 2, 0)
+// ---- castle (COOPCASTLE1): Boos hide and chase by their own camera test, MIPS flees; same numbers as the enemies ----
+ROW(209, "BOO",                 100, 40, 400, 2, 0)
+ROW(187, "RABBIT",              100, 24, 300, 2, 0)
