@@ -74,7 +74,16 @@ def drift(row, cons, ctl, pairs, cls, lo_wall=None):
             verdict(row, "class %d A-%s p95 in band" % (c, NAMES[j]), ok == "ok", "n=%d p50 %.1f p95 %.1f max %.1f" % (n, p50, p95, mx), not (ctl and j == last))
 
 
+STARS = [(0, 0), (1, 0), (2, 0), (3, 0)]    # the castle Boos need NumStars() >= 3 (daTrs_c::InitResources)
+
+
 def run(row, specs_):
+    """the host's coop save holds 4 stars (the harness default holds one, which keeps every castle Boo from spawning)"""
+    sav = os.path.join(G.OUT, row, "hostinstall", "save", "coop", "Pair Room.coopsav")
+    os.makedirs(os.path.dirname(sav), exist_ok=True)
+    CS = L.C.CS
+    with open(sav, "wb") as f:
+        f.write(CS.image(CS.TAG_C, CS.payload(stars=STARS)))
     return L.run(row, specs_)
 
 
