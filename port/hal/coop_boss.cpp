@@ -1246,13 +1246,11 @@ bool coop_boss_prefer_local(const char *actor) {
 bool coop_boss_reward_not_mine() {
     static const bool off = [] { const char *e = std::getenv("SM64DS_COOP_REWARD"); return e && *e == '0'; }();     // must-fail control: no suppression
     if (off || !g_on || !coop_world_active() || !coop_group_established() || !g_recent_t) {
-        if (g_log) std::fprintf(stderr, "[cbs] reward decision: no (off=%d on=%d world=%d est=%d recent=%u)
-", (int)off, (int)g_on, (int)coop_world_active(), (int)coop_group_established(), g_recent_t);
+        if (g_log) std::fprintf(stderr, "[cbs] reward decision: no (off=%d on=%d world=%d est=%d recent=%u)\n", (int)off, (int)g_on, (int)coop_world_active(), (int)coop_group_established(), g_recent_t);
         return false;
     }
     const bool r = (unsigned)(comms_hub_now_ms() - g_recent_t) < 4000u && !g_recent_mine;
-    if (g_log) std::fprintf(stderr, "[cbs] reward decision: not mine=%d (boss seen %u ms ago, mine=%d)
-", (int)r, (unsigned)(comms_hub_now_ms() - g_recent_t), (int)g_recent_mine);
+    if (g_log) std::fprintf(stderr, "[cbs] reward decision: not mine=%d (boss seen %u ms ago, mine=%d)\n", (int)r, (unsigned)(comms_hub_now_ms() - g_recent_t), (int)g_recent_mine);
     return r;
 }
 
