@@ -165,6 +165,17 @@ void port_gpu_twod_fold(unsigned *fb, int stride_px);
 void port_gpu_twod_check(const unsigned *fb, int stride_px, const unsigned char *bm,
                          int bm_stride, int what);
 
+/* SAVEOVL1: THE MENU LAYER. A recipe of plain pieces is drawn into a scratch
+   layer (premultiplied 0xAARRGGBB, zero = nothing) instead of onto the picture
+   a card tick holds; the card lays it over its composite before (post 0) or
+   after (post 1) the engine A fade. ready: this tick's overlay is on the card.
+   begin hands back the cleared scratch (stride words a row), null if the card
+   cannot take it; end uploads what was drawn (1) or the card refused (0). */
+int port_gpu_layer_ready(void);
+unsigned *port_gpu_layer_begin(int w, int h, int stride);
+unsigned *port_gpu_layer2(void);   /* the layer's second plane (a translucent pixel over a translucent one), same stride */
+int port_gpu_layer_end(int w, int h, int post);
+
 #ifdef __cplusplus
 }
 #endif

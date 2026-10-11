@@ -116,6 +116,50 @@
 #include "ntr/rt.h"
 #include "hal/gpu_raster.h"
 #include "menu_compose.h"   /* run menu1 lane HOOK1: the lift plan (H1) */
+#include <chrono>
+/* SAVEOVL1: may the menu layer be used at all (SM64DS_MENU_LAYER, default on)? The card's own readiness is asked per tick. */
+static inline bool port_gpu_layer_ready_env()
+{
+    static int v = -1;
+    if (v < 0) { const char *e = std::getenv("SM64DS_MENU_LAYER"); v = (e && *e == '0') ? 0 : 1; }
+    return v != 0;
+}
+/* SAVEOVL1 PROOF: SM64DS_COMPA_ZONES=1 prints where the engine A compose spends a frame (mean ms per frame, split by whether a menu
+   lift was live), once at exit. Off: one cached int test per mark. */
+namespace {
+struct CaZones {
+    int on = -1;
+    double acc[2][10] = {};
+    unsigned long long n[2] = {};
+    std::chrono::steady_clock::time_point t;
+    int live = 0;
+    static void report();
+    void begin() {
+        if (on < 0) {
+            const char *e = std::getenv("SM64DS_COMPA_ZONES");
+            on = (e && *e && *e != '0') ? 1 : 0;
+            if (on) std::atexit(&CaZones::report);
+        }
+        if (on) t = std::chrono::steady_clock::now();
+    }
+    void mark(int z) {
+        if (on <= 0) return;
+        const auto now = std::chrono::steady_clock::now();
+        acc[live][z] += std::chrono::duration<double, std::milli>(now - t).count();
+        t = now;
+    }
+};
+CaZones g_cz;
+void CaZones::report() {
+    static const char *nm[10] = {"h1_decide", "settle", "regs_to_default", "bg_loop_obj", "to_blit", "blit", "tail", "", "", ""};
+    for (int l = 0; l < 2; ++l) {
+        if (!g_cz.n[l]) continue;
+        std::fprintf(stderr, "[compa] lift=%d frames %llu mean ms:", l, g_cz.n[l]);
+        for (int z = 0; z < 7; ++z) std::fprintf(stderr, " %s %.3f", nm[z], g_cz.acc[l][z] / (double)g_cz.n[l]);
+        std::fprintf(stderr, "\n");
+    }
+}
+}
 
 /* THE TOP ENGINE'S OBJ DISPLAY SHIFT, in DS rows, from hal/screen_gap.cpp.
  *
@@ -957,6 +1001,13 @@ struct LcOverlay {
 };
 LcOverlay lc_ov;
 
+/* SAVEOVL1: THE LIFT ON THE CARD. When the level-clear compose lifts glyphs out of the picture, it used to read the 3D
+   back from the card first (a settle: 9 to 13 ms a tick) because the menu recipe then drew onto the real picture. With
+   the menu layer (gpu_raster.h port_gpu_layer_*) the recipe draws into a layer of its own, so a lift is only a matter
+   of WHICH PLANE a cell lands in, and the picture can stay on the card. g_lift_card says this tick's lift runs that
+   way. SM64DS_MENU_LAYER=0 puts the old settle back. */
+bool g_lift_card;
+
 /* Asked once a frame, at the head of the composite (H1). Everything the lift does is behind the answer. */
 void lc_overlay_begin(void)
 {
@@ -1113,6 +1164,7 @@ inline bool lc_overlay_in_band(unsigned owner, int hy)
    already sit bottom left on the DS top screen (y 157..173, RenderRedCoins / RenderSilverStars), they stay.
    Absent or 0 = nothing here runs: one int read per frame. */
 extern "C" int host_setting_hud_layout(void);
+extern "C" int hal_menu_layer_ok(void);
 static const int kHudZoneX0 = 188, kHudZoneY0 = 20, kHudZoneY1 = 36;   /* the coin counter's DS rectangle */
 static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudMeterGapMin = 2, kHudEdgeGap = 1, kHudStarGap = 6, kHudStarGapMin = 3;
 static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
@@ -2376,9 +2428,9 @@ inline bool twod_check_env() {
 bool twod_wanted() {
     if (!port_gpu_twod_ready()) return false;
     if (!ntr::gx_card_overlay_active()) return false;
-    if (lc_ov.live || lc_ov.top_live) return false;
+    if ((lc_ov.live || lc_ov.top_live) && !g_lift_card) return false;
     if (settle_drill()) return false;
-    if (hal_menu_live()) return false;
+    if (hal_menu_live() && !g_lift_card) return false;
     return true;
 }
 
@@ -2959,7 +3011,11 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        -- above every early return -- so that a frame this unit declines is a
        frame the overlay reports as empty rather than as last frame's. Off, it
        is one call that answers 0 and nothing else in this file changes. */
+    g_cz.begin(); g_cz.live = 0;
     lc_overlay_begin();
+    g_cz.live = (lc_ov.live || lc_ov.top_live) ? 1 : 0;
+    g_cz.mark(0);
+    ++g_cz.n[g_cz.live];
     /* and the brightness mask's: off until this frame builds one */
     g_bm_live = false;
     g_inset_fade_set = false;
@@ -2971,7 +3027,12 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        level-clear compose lifts pixels out of the picture it drew under them,
        so it needs the real 3D pixels: make the frame an ordinary one first. */
     /* menu1's lift into the DS-space plane (top_live) reads the 3D coverage too, so it settles the same way */
-    if (lc_ov.live || lc_ov.top_live) ntr::gx_card_settle_because("the level-clear compose");
+    g_lift_card = false;
+    if ((lc_ov.live || lc_ov.top_live) && ntr::gx_card_overlay_active() && port_gpu_twod_ready() &&
+        port_gpu_layer_ready_env() && hal_menu_layer_ok())
+        g_lift_card = true;
+    if ((lc_ov.live || lc_ov.top_live) && !g_lift_card) ntr::gx_card_settle_because("the level-clear compose");
+    g_cz.mark(1);
     /* TWODGPU1: may this tick's host-resolution half go to the card? (after
        menu1's decision, which lc_overlay_begin above asks for) */
     const bool tw_try = twod_wanted();
@@ -3237,6 +3298,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         bm_on = tw_bm;
     }
 
+    g_cz.mark(2);
     // Clear the hit buffer, then BGs by priority (lower priority drawn last so
     // it wins), honouring the per-pixel window mask.
     for (int y = 0; y < 192; ++y)
@@ -3292,6 +3354,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     if (obj_on && (lmask & (1u << kOwnerObj)))
         raster_obj(dispcnt, bl, win, fb);
 
+    g_cz.mark(3);
     enga_layer_px();
     enga_strip_probe(dispcnt);
 
@@ -3657,6 +3720,22 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        processor-only branch, and the pre-smoothing copy is null as well (the
        capture builds its picture from the card). */
     if (settle_drill() & 1u) ntr::gx_card_settle_because("a test drill, before the blit");
+    /* SAVEOVL1: a lifted layer BEHIND the 3D needs the 3D's coverage to know which of its cells show: that tick reads
+       the picture back after all, and the old classic loops below take it */
+    if (g_lift_card && ntr::gx_card_overlay_active() && honour3d) {
+        bool behind_lift = false;
+        for (int y = 0; y < 192 && !behind_lift; ++y)
+            for (int x = 0; x < 256; ++x) {
+                const Cell &gc = g_a[y][x];
+                if (!gc.hit) continue;
+                const int v = lc_overlay_verdict(gc.owner);
+                if ((v == 1 || v == 3) && layer_behind_3d(gc.owner, gc.prio, p3d)) { behind_lift = true; break; }
+            }
+        if (behind_lift) {
+            g_lift_card = false;
+            ntr::gx_card_settle_because("a lifted layer sits behind the 3D");
+        }
+    }
     const bool ovl3d = ntr::gx_card_overlay_active() != 0;
     /* a frame settled after its mask was made (a sprite blended over the 3D)
        is an ordinary one from here: the mask has to be one too */
@@ -3675,6 +3754,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        store per composited pixel, and only when the setting is on. */
     uint32_t *const pre = ntr::gx_aa_preimage();
     uint32_t kept = 0, buried = 0;
+    g_cz.mark(4);
     for (int pass = 0; pass < 2; ++pass) {
     if (pass && !g_hud_row_live) break;
     /* pass 0 = the DS plane, pass 1 = the moved coin block's own plane (drawn after, so it covers what is under it) */
@@ -3778,6 +3858,49 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                puts on screen (ENGINE A'S BRIGHTNESS TARGETS) */
             const unsigned char bmv =
                 bm_on ? bm_verdict(lcow, window_mask(win, x, y)) : 0;
+            /* SAVEOVL1: THE LIFT ON A CARD TICK. The lifted layers are in front of the 3D (checked above), so a lifted cell
+               is never an overlay word: it goes to its plane exactly as the classic loop below puts it there. A cell of
+               a banded layer is split by host row, the rows inside the band to the plane, the others drawn as ever. */
+            if (ovl3d && lcv == 3) {
+                MenuTopCell &tc = lc_ov.top[y * 256 + x];
+                tc.argb = c | 0xff000000u;
+                tc.bm = bm_on ? bmv : 1;
+                tc.owner = (uint8_t)lcow;
+                continue;
+            }
+            if (ovl3d && lcv == 1) {
+                int run0 = -1;
+                for (int hy = hy0; hy <= hy1; ++hy) {
+                    const bool inb = hy < hy1 && lc_overlay_in_band(lcow, hy);
+                    if (hy < hy1 && inb)
+                        for (int dx = 0; dx < bw; ++dx) lc_ov.col[(size_t)hy * ntr::SCREEN_W + hx0 + dx] = c | 0xff000000u;
+                    if (hy < hy1 && !inb) { if (run0 < 0) run0 = hy; continue; }
+                    if (run0 >= 0) {
+                        /* rows run0..hy-1 of this cell stay in the picture */
+                        if (gpu_blit && g_tw_n < 256 * 192 && hx0 >= 0 && bw > 0) {
+                            uint32_t *r = g_tw_inst + (size_t)g_tw_n * 4;
+                            r[0] = (uint32_t)hx0 | ((uint32_t)run0 << 16);
+                            r[1] = (uint32_t)bw | ((uint32_t)(hy - run0) << 16);
+                            r[2] = (c & 0x00FFFFFFu) | (GX_OV_FRONT << 24);
+                            r[3] = bmv ? 1u : 0u;
+                            ++g_tw_n;
+                        }
+                        if (!gpu_blit || tw_chk) {
+                            for (int ry = run0; ry < hy; ++ry)
+                                for (int dx = 0; dx < bw; ++dx) {
+                                    const int hx = hx0 + dx;
+                                    fb.px[ry][hx] = (c & 0x00FFFFFFu) | (GX_OV_FRONT << 24);
+                                    if (bm_on) {
+                                        unsigned char &m = g_bm[(size_t)ry * ntr::SCREEN_W + hx];
+                                        m = (unsigned char)((m & 3u) | (bmv ? 4u : 0u) | 8u);
+                                    }
+                                }
+                        }
+                        run0 = -1;
+                    }
+                }
+                continue;
+            }
             if (gpu_blit && g_tw_n < 256 * 192) {
                 /* the cell as one rect for the card: this loop's own placement
                    (hx0, bw, the host rows of the DS row), the verdict the
@@ -3864,6 +3987,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         }
     }
     }   /* the HUD pass loop (menu1 HUD1) */
+    g_cz.mark(5);
     if (gpu_blit) {
         port_gpu_twod_rects(g_tw_inst, g_tw_n);
         if (tw_chk)
@@ -3884,6 +4008,7 @@ extern "C" void port_message_composite_engine_a(void *fbp)
     }
     g_kept3d = kept;
     g_buried3d = buried;
+    g_cz.mark(6);
 }
 
 /* ---- WHAT THE MENU COMPOSE READS BACK ---------------------------------------

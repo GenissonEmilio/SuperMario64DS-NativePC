@@ -466,7 +466,9 @@ cbuffer CompParams : register(b0)
                     // flags: bit 0 the frame was smoothed, bit 1 a fade is on,
                     // bit 2 the fade goes to white, bit 3 a brightness mask is
                     // bound (t3), bit 4 the 3D layer is shown, bit 5 its clear
-                    // plane is opaque
+                    // plane is opaque, bit 6 a menu layer (t4) goes over the
+                    // picture BEFORE the fade, bit 7 AFTER it (SAVEOVL1), bit 8
+                    // the layer has a second plane (t5)
 };
 
 Texture2D<float4> cp_col : register(t0);
@@ -477,6 +479,22 @@ Texture2D<uint>   cp_ov  : register(t2);
 //   bit 1  ... if the backdrop showed here
 //   bit 2  does it take the 2D pixel written here (overlay mode FF or FE)
 Texture2D<uint>   cp_bm  : register(t3);
+// SAVEOVL1: the menu layer, premultiplied 0xAARRGGBB, one texel per picture
+// pixel, drawn by the processor's menu compose into its own buffer instead of
+// onto the picture. The rule is the processor's "over" for a host image:
+// out = c + (below * (255 - a) + 127) / 255, per channel, capped at 255.
+Texture2D<uint>   cp_lay : register(t4);
+Texture2D<uint>   cp_lay2 : register(t5);    // the second plane (a translucent pixel over a translucent one), bit 8 of the flags
+
+int3 lay_over(uint lay, int3 below)
+{
+    uint a = lay >> 24;
+    if (a == 0u) return below;
+    int ia = 255 - (int)a;
+    int3 c = int3((int)((lay >> 16) & 0xFFu), (int)((lay >> 8) & 0xFFu), (int)(lay & 0xFFu));
+    int3 o = c + (below * ia + 127) / 255;
+    return min(o, int3(255, 255, 255));
+}
 
 uint cp_pack(float4 c)
 {
@@ -517,6 +535,16 @@ float4 comp_ps(float4 pos : SV_Position) : SV_Target0
         else take = def;
     }
     int r = (int)((p >> 16) & 0xFFu), g = (int)((p >> 8) & 0xFFu), b = (int)(p & 0xFFu);
+    uint lay = 0u, lay2 = 0u;
+    if (clr.z & 192u) {
+        lay = cp_lay.Load(int3(x, y, 0));
+        if (clr.z & 256u) lay2 = cp_lay2.Load(int3(x, y, 0));
+    }
+    if (clr.z & 64u) {
+        int3 q = lay_over(lay, int3(r, g, b));
+        q = lay_over(lay2, q);
+        r = q.x; g = q.y; b = q.z;
+    }
     if ((clr.z & 2u) && take) {
         int evy = (int)clr.w;
         if (clr.z & 4u) {
@@ -528,6 +556,11 @@ float4 comp_ps(float4 pos : SV_Position) : SV_Target0
             g -= (g * evy) >> 4;
             b -= (b * evy) >> 4;
         }
+    }
+    if (clr.z & 128u) {
+        int3 q = lay_over(lay, int3(r, g, b));
+        q = lay_over(lay2, q);
+        r = q.x; g = q.y; b = q.z;
     }
     return float4((float)r / 255.0, (float)g / 255.0, (float)b / 255.0, 1.0);
 }

@@ -421,6 +421,29 @@ long long                 g_tw_ticks, g_tw_rects, g_tw_flushes, g_tw_folds, g_tw
 long long                 g_tw_bad_px_ov, g_tw_bad_px_bm;
 double                    g_tw_ms, g_tw_flush_ms;
 
+/* ---- SAVEOVL1: THE MENU LAYER --------------------------------------------
+   A menu recipe whose pieces are all plain (the level-clear save menu) is
+   drawn by the processor into a scratch buffer of its own (premultiplied
+   0xAARRGGBB, zero = nothing) instead of onto the picture, so the picture
+   can stay on the card. The card lays the layer over its composite, before
+   or after the fade as the recipe's stage says (comp_ps, t4), for the tick
+   and for every picture drawn between ticks; the processor's copy of the same
+   rule (cp_resolve) applies it on a settle. */
+ID3D11Texture2D          *g_lay_tex, *g_lay2_tex;
+ID3D11ShaderResourceView *g_lay_srv, *g_lay2_srv;
+bool                      g_lay_two;               /* this tick's layer has a second plane in g_lay2_tex */
+bool                      g_lay2_tex_dirty;        /* g_lay2_tex may hold non-zero words */
+std::vector<uint32_t>     g_lay2_cpu;              /* the second plane's scratch, same stride and box as the first */
+int                       g_lay_w, g_lay_h;        /* size g_lay_tex was made for */
+bool                      g_lay_live;              /* this tick has a layer in g_lay_tex */
+int                       g_lay_post;              /* 1 = after the fade */
+std::vector<uint32_t>     g_lay_cpu;               /* the scratch, g_lay_stride words a row */
+int                       g_lay_stride;
+int                       g_lay_cpu_box[4];        /* x0 y0 x1 y1 of what the scratch holds (zero elsewhere) */
+int                       g_lay_tex_box[4];        /* ... and of what the texture may hold */
+int                       g_lay_env = -1;          /* SM64DS_MENU_LAYER (default on) */
+long long                 g_lay_ticks, g_lay_up_px, g_lay_checked, g_lay_inter;
+
 /* ---- the texture cache on the card --------------------------------------- */
 
 struct GTex {
@@ -798,6 +821,14 @@ void release_targets()
     if (g_bm_srv) { g_bm_srv->Release(); g_bm_srv = 0; }
     if (g_bm_tex) { g_bm_tex->Release(); g_bm_tex = 0; }
     g_tw_live = false;
+    g_lay_live = false;
+    if (g_lay_srv) { g_lay_srv->Release(); g_lay_srv = 0; }
+    if (g_lay_tex) { g_lay_tex->Release(); g_lay_tex = 0; }
+    if (g_lay2_srv) { g_lay2_srv->Release(); g_lay2_srv = 0; }
+    if (g_lay2_tex) { g_lay2_tex->Release(); g_lay2_tex = 0; }
+    g_lay2_tex_dirty = false;
+    g_lay_w = g_lay_h = 0;
+    g_lay_tex_box[0] = g_lay_tex_box[1] = g_lay_tex_box[2] = g_lay_tex_box[3] = 0;
     if (g_ov_rtv) { g_ov_rtv->Release(); g_ov_rtv = 0; }
     if (g_bm_rtv) { g_bm_rtv->Release(); g_bm_rtv = 0; }
     if (g_tw_up_srv) { g_tw_up_srv->Release(); g_tw_up_srv = 0; }
@@ -1129,6 +1160,10 @@ void at_exit()
         fprintf(stderr, "[renderer-cpcheck] %lld composite(s) compared with the "
                 "processor's copy of the rule: %lld differed (%lld pixel(s)).\n",
                 g_cp_checked, g_cp_bad_frames, g_cp_bad_px);
+    if (g_lay_ticks)
+        fprintf(stderr, "[renderer] menu layer: %lld tick(s) held on the card with a menu layer laid over the composite "
+                "(%lld pixel(s) uploaded), %lld picture(s) between ticks took it, %lld composite(s) with a layer checked against the processor's copy.\n",
+                g_lay_ticks, g_lay_up_px, g_lay_inter, g_lay_checked);
     if (g_tw_ticks)
         fprintf(stderr, "[renderer] 2D drawn on the card: %lld tick(s), %lld cell(s) "
                 "(%.3f ms each tick on the processor's clock), %lld merge(s) of the "
@@ -3158,6 +3193,22 @@ inline uint32_t cp_fade(uint32_t p, int evy, int white)
 /* the box of the held frame copied to the two staging textures and mapped:
    `plain` is the opaque-and-translucent picture (alpha != 0 covered), `sm` the
    smoothed one. An empty box maps nothing and every pixel reads as uncovered. */
+/* the menu layer's rule, the processor's twin of comp_ps's lay_over: out = c +
+   (below * (255 - a) + 127) / 255 per channel, capped at 255 */
+static inline uint32_t cp_lay_over(uint32_t lay, uint32_t below)
+{
+    const unsigned a = lay >> 24;
+    if (!a) return below;
+    const unsigned ia = 255u - a;
+    unsigned r = ((lay >> 16) & 255u) + ((((below >> 16) & 255u) * ia + 127u) / 255u);
+    unsigned g = ((lay >> 8) & 255u) + ((((below >> 8) & 255u) * ia + 127u) / 255u);
+    unsigned bl = (lay & 255u) + (((below & 255u) * ia + 127u) / 255u);
+    if (r > 255u) r = 255u;
+    if (g > 255u) g = 255u;
+    if (bl > 255u) bl = 255u;
+    return 0xFF000000u | (r << 16) | (g << 8) | bl;
+}
+
 struct CpMaps {
     D3D11_MAPPED_SUBRESOURCE plain, sm;
     bool have_plain, have_sm;
@@ -3256,6 +3307,10 @@ void cp_resolve(const uint32_t *ov, int ov_stride, uint32_t *dst, int dst_stride
                 }
             }
             uint32_t p = cp_combine(o, base, cov);
+            const uint32_t lay = (g_lay_live && x < g_lay_w && y < g_lay_h)
+                ? g_lay_cpu[(size_t)y * (size_t)g_lay_stride + (size_t)x] : 0u;
+            const uint32_t lay2 = (lay && g_lay_two) ? g_lay2_cpu[(size_t)y * (size_t)g_lay_stride + (size_t)x] : 0u;
+            if (lay && !g_lay_post) { p = cp_lay_over(lay, p); if (lay2) p = cp_lay_over(lay2, p); }
             if (fade) {
                 /* does the fade take this pixel? Every one, unless the frame
                    has a brightness mask (comp_ps carries the same rule) */
@@ -3271,6 +3326,7 @@ void cp_resolve(const uint32_t *ov, int ov_stride, uint32_t *dst, int dst_stride
                 }
                 if (take) p = cp_fade(p, g_cp_evy, g_cp_white);
             }
+            if (lay && g_lay_post) { p = cp_lay_over(lay, p); if (lay2) p = cp_lay_over(lay2, p); }
             if (cover) cover[(size_t)y * aux_stride + x] = cov ? 1 : 0;
             if (pre) pre[(size_t)y * aux_stride + x] = cp_combine(o, basepre, cov);
             drow[x] = p;
@@ -3506,6 +3562,7 @@ void cp_check(const uint32_t *overlay, int stride_px, ID3D11Texture2D *tex = 0)
     }
     g_ctx->Unmap(g_comp_stage, 0);
     ++g_cp_checked;
+    if (g_lay_live) ++g_lay_checked;
     if (bad) {
         ++g_cp_bad_frames;
         g_cp_bad_px += bad;
@@ -3573,7 +3630,9 @@ void *cp_compose(const uint32_t *overlay, int stride_px)
     u[9] = g_cp_outside;
     u[10] = (g_cp_smoothed ? 1u : 0u) | (g_cp_fade ? 2u : 0u) |
             ((g_cp_fade && g_cp_white) ? 4u : 0u) | (g_cp_mask ? 8u : 0u) |
-            (g_cp_shown3d ? 16u : 0u) | (g_cp_clear_opaque ? 32u : 0u);
+            (g_cp_shown3d ? 16u : 0u) | (g_cp_clear_opaque ? 32u : 0u) |
+            (g_lay_live ? (g_lay_post ? 128u : 64u) : 0u) |
+            ((g_lay_live && g_lay_two) ? 256u : 0u);
     u[11] = (uint32_t)g_cp_evy;
     g_ctx->Unmap(g_comp_cb, 0);
     /* run hunt8, lane FADEINTERP1: the fade this tick was composited with, kept
@@ -3609,12 +3668,14 @@ void *cp_compose(const uint32_t *overlay, int stride_px)
     g_ctx->VSSetShader(g_full_vs, 0, 0);
     g_ctx->PSSetShader(g_ps_comp, 0, 0);
     g_ctx->PSSetConstantBuffers(0, 1, &g_comp_cb);
-    ID3D11ShaderResourceView *srvs[4] = { g_col_srv, g_cp_smoothed ? g_fa_srv : 0,
-                                          g_ov_srv, g_cp_mask ? g_bm_srv : 0 };
-    g_ctx->PSSetShaderResources(0, 4, srvs);
+    ID3D11ShaderResourceView *srvs[6] = { g_col_srv, g_cp_smoothed ? g_fa_srv : 0,
+                                          g_ov_srv, g_cp_mask ? g_bm_srv : 0,
+                                          g_lay_live ? g_lay_srv : 0,
+                                          (g_lay_live && g_lay_two) ? g_lay2_srv : 0 };
+    g_ctx->PSSetShaderResources(0, 6, srvs);
     g_ctx->Draw(3, 0);
-    ID3D11ShaderResourceView *none[4] = { 0, 0, 0, 0 };
-    g_ctx->PSSetShaderResources(0, 4, none);
+    ID3D11ShaderResourceView *none[6] = { 0, 0, 0, 0, 0, 0 };
+    g_ctx->PSSetShaderResources(0, 6, none);
     g_ctx->OMSetRenderTargets(0, 0, 0);
 
     ++g_cp_composed;
@@ -3667,7 +3728,9 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
     u[10] = (g_cp_smoothed ? 1u : 0u) | (g_cpt_shown3d ? 16u : 0u) |
             (g_cpt_clear_opaque ? 32u : 0u) | (f_on ? 2u : 0u) |
             ((f_on && f_white) ? 4u : 0u) |
-            (f_mask ? 8u : 0u);
+            (f_mask ? 8u : 0u) |
+            (g_lay_live ? (g_lay_post ? 128u : 64u) : 0u) |
+            ((g_lay_live && g_lay_two) ? 256u : 0u);
     u[11] = (uint32_t)(f_on ? f_evy : 0);
     g_ctx->Unmap(g_comp_cb, 0);
 
@@ -3694,13 +3757,15 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
     g_ctx->VSSetShader(g_full_vs, 0, 0);
     g_ctx->PSSetShader(g_ps_comp, 0, 0);
     g_ctx->PSSetConstantBuffers(0, 1, &g_comp_cb);
-    ID3D11ShaderResourceView *srvs[4] = { g_col_srv, g_cp_smoothed ? g_fa_srv : 0,
+    ID3D11ShaderResourceView *srvs[6] = { g_col_srv, g_cp_smoothed ? g_fa_srv : 0,
                                           g_ov_srv,
-                                          f_mask ? g_bm_srv : 0 };
-    g_ctx->PSSetShaderResources(0, 4, srvs);
+                                          f_mask ? g_bm_srv : 0,
+                                          g_lay_live ? g_lay_srv : 0,
+                                          (g_lay_live && g_lay_two) ? g_lay2_srv : 0 };
+    g_ctx->PSSetShaderResources(0, 6, srvs);
     g_ctx->Draw(3, 0);
-    ID3D11ShaderResourceView *none[4] = { 0, 0, 0, 0 };
-    g_ctx->PSSetShaderResources(0, 4, none);
+    ID3D11ShaderResourceView *none[6] = { 0, 0, 0, 0, 0, 0 };
+    g_ctx->PSSetShaderResources(0, 6, none);
     g_ctx->OMSetRenderTargets(0, 0, 0);
     /* the picture now carries the tick's fade: a later settle or the check
        resolves it the same way (set only now, so a refusal above leaves the
@@ -3713,6 +3778,7 @@ void *cp_compose_inter(const uint32_t *overlay, int stride_px)
     g_cp_shown3d = g_cpt_shown3d;
     g_cp_clear_opaque = g_cpt_clear_opaque;
     ++g_cp_composed;
+    if (g_lay_live) ++g_lay_inter;
     g_comp2_valid = true;
     g_cp_ms += ms_between(t0, qpc());
     if (g_cp_check && overlay && (g_cp_composed % g_cp_check) == 0 &&
@@ -4527,6 +4593,189 @@ extern "C" int port_gpu_twod_ready(void)
 extern "C" void port_gpu_twod_reset(void)
 {
     g_tw_live = false;
+    g_lay_live = false;
+}
+
+/* ---- SAVEOVL1: the menu layer's entry points (hal/gpu_raster.h) ---------- */
+static bool lay_env_on()
+{
+    if (g_lay_env < 0) {
+        const char *e = getenv("SM64DS_MENU_LAYER");
+        g_lay_env = (e && *e == '0') ? 0 : 1;
+    }
+    return g_lay_env != 0;
+}
+
+extern "C" int port_gpu_layer_ready(void)
+{
+    return (lay_env_on() && port_gpu_twod_ready() && g_tw_live) ? 1 : 0;
+}
+
+/* the second plane's scratch (valid after port_gpu_layer_begin of the same tick), zero, same stride */
+extern "C" unsigned *port_gpu_layer2(void)
+{
+    return g_lay2_cpu.empty() ? 0 : &g_lay2_cpu[0];
+}
+
+/* the scratch the recipe draws into: zero, `stride` words a row, w x h */
+extern "C" unsigned *port_gpu_layer_begin(int w, int h, int stride)
+{
+    if (!port_gpu_layer_ready() || w < 1 || h < 1 || stride < w) return 0;
+    if (g_lay_stride != stride || (int)g_lay_cpu.size() < stride * h) {
+        g_lay_cpu.assign((size_t)stride * (size_t)h, 0u);
+        g_lay2_cpu.assign((size_t)stride * (size_t)h, 0u);
+        g_lay_stride = stride;
+        g_lay_cpu_box[0] = g_lay_cpu_box[1] = g_lay_cpu_box[2] = g_lay_cpu_box[3] = 0;
+    } else if (g_lay_cpu_box[3] > g_lay_cpu_box[1]) {
+        for (int y = g_lay_cpu_box[1]; y < g_lay_cpu_box[3] && y < h; ++y)
+        {
+            memset(&g_lay_cpu[(size_t)y * (size_t)stride + (size_t)g_lay_cpu_box[0]], 0,
+                   (size_t)(g_lay_cpu_box[2] - g_lay_cpu_box[0]) * 4u);
+            memset(&g_lay2_cpu[(size_t)y * (size_t)stride + (size_t)g_lay_cpu_box[0]], 0,
+                   (size_t)(g_lay_cpu_box[2] - g_lay_cpu_box[0]) * 4u);
+        }
+        g_lay_cpu_box[0] = g_lay_cpu_box[1] = g_lay_cpu_box[2] = g_lay_cpu_box[3] = 0;
+    }
+    return &g_lay_cpu[0];
+}
+
+/* the recipe has drawn: find what it wrote, put it on the card. 1 = the card
+   holds the layer (or there is none), 0 = the card refused */
+extern "C" int port_gpu_layer_end(int w, int h, int post)
+{
+    g_lay_live = false;
+    if (g_lay_cpu.empty() || !g_ctx || !port_gpu_layer_ready()) return 0;
+    if (w > g_cp_cw) w = g_cp_cw;
+    if (h > g_cp_ch) h = g_cp_ch;
+    int bx0 = w, bx1 = 0, by0 = h, by1 = 0;
+    for (int y = 0; y < h; ++y) {
+        const uint32_t *row = &g_lay_cpu[(size_t)y * (size_t)g_lay_stride];
+        int x = 0;
+        while (x + 8 <= w) {
+            if (row[x] | row[x + 1] | row[x + 2] | row[x + 3] |
+                row[x + 4] | row[x + 5] | row[x + 6] | row[x + 7]) break;
+            x += 8;
+        }
+        while (x < w && !row[x]) ++x;
+        if (x >= w) continue;
+        const int first = x;
+        int last = w - 1;
+        while (last - 8 >= first) {
+            if (row[last] | row[last - 1] | row[last - 2] | row[last - 3] |
+                row[last - 4] | row[last - 5] | row[last - 6] | row[last - 7]) break;
+            last -= 8;
+        }
+        while (last > first && !row[last]) --last;
+        if (first < bx0) bx0 = first;
+        if (last + 1 > bx1) bx1 = last + 1;
+        if (y < by0) by0 = y;
+        by1 = y + 1;
+    }
+    /* plane 2 words that sit on an opaque plane 1 pixel are stale (the pixel was overwritten after they were written) */
+    bool two = false;
+    if (bx1 > bx0 && by1 > by0) {
+        for (int y = by0; y < by1; ++y) {
+            const uint32_t *r1 = &g_lay_cpu[(size_t)y * (size_t)g_lay_stride];
+            uint32_t *r2 = &g_lay2_cpu[(size_t)y * (size_t)g_lay_stride];
+            for (int x = bx0; x < bx1; ++x) {
+                if (!r2[x]) continue;
+                if ((r1[x] >> 24) == 255u) r2[x] = 0; else two = true;
+            }
+        }
+    }
+    if (!g_lay_tex || g_lay_w != g_cp_cw || g_lay_h != g_cp_ch) {
+        if (g_lay_srv) { g_lay_srv->Release(); g_lay_srv = 0; }
+        if (g_lay_tex) { g_lay_tex->Release(); g_lay_tex = 0; }
+        D3D11_TEXTURE2D_DESC d;
+        memset(&d, 0, sizeof d);
+        d.Width = (UINT)g_cp_cw;
+        d.Height = (UINT)g_cp_ch;
+        d.MipLevels = d.ArraySize = 1;
+        d.SampleDesc.Count = 1;
+        d.Usage = D3D11_USAGE_DEFAULT;
+        d.Format = DXGI_FORMAT_R32_UINT;
+        d.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        if (FAILED(g_dev->CreateTexture2D(&d, 0, &g_lay_tex))) return 0;
+        if (FAILED(g_dev->CreateShaderResourceView(g_lay_tex, 0, &g_lay_srv))) {
+            g_lay_tex->Release(); g_lay_tex = 0;
+            return 0;
+        }
+        g_lay_w = g_cp_cw;
+        g_lay_h = g_cp_ch;
+        g_lay2_tex_dirty = false;
+        /* a new texture is zero only by luck: clear it whole */
+        std::vector<uint32_t> z((size_t)g_cp_cw * (size_t)g_cp_ch, 0u);
+        g_ctx->UpdateSubresource(g_lay_tex, 0, 0, &z[0], (UINT)g_cp_cw * 4u, 0);
+        g_lay_tex_box[0] = g_lay_tex_box[1] = g_lay_tex_box[2] = g_lay_tex_box[3] = 0;
+    }
+    const bool any = bx1 > bx0 && by1 > by0;
+    g_lay_cpu_box[0] = any ? bx0 : 0;
+    g_lay_cpu_box[1] = any ? by0 : 0;
+    g_lay_cpu_box[2] = any ? bx1 : 0;
+    g_lay_cpu_box[3] = any ? by1 : 0;
+    /* the texture is made to equal the scratch inside the union of what it held
+       and what the scratch now holds (zero elsewhere in both) */
+    int ux0 = g_lay_tex_box[0], uy0 = g_lay_tex_box[1], ux1 = g_lay_tex_box[2], uy1 = g_lay_tex_box[3];
+    if (any) {
+        if (ux1 <= ux0 || uy1 <= uy0) { ux0 = bx0; uy0 = by0; ux1 = bx1; uy1 = by1; }
+        else {
+            if (bx0 < ux0) ux0 = bx0;
+            if (by0 < uy0) uy0 = by0;
+            if (bx1 > ux1) ux1 = bx1;
+            if (by1 > uy1) uy1 = by1;
+        }
+    }
+    if (ux1 > ux0 && uy1 > uy0) {
+        D3D11_BOX ub;
+        ub.left = (UINT)ux0;
+        ub.right = (UINT)ux1;
+        ub.top = (UINT)uy0;
+        ub.bottom = (UINT)uy1;
+        ub.front = 0;
+        ub.back = 1;
+        g_ctx->UpdateSubresource(g_lay_tex, 0, &ub,
+                                 &g_lay_cpu[(size_t)uy0 * (size_t)g_lay_stride + (size_t)ux0],
+                                 (UINT)g_lay_stride * 4u, 0);
+        g_lay_up_px += (long long)(ux1 - ux0) * (uy1 - uy0);
+        /* plane 2: made when a layer first needs it, and cleaned over the same box while it holds words */
+        if ((two || g_lay2_tex_dirty) && !g_lay2_tex) {
+            D3D11_TEXTURE2D_DESC d2;
+            memset(&d2, 0, sizeof d2);
+            d2.Width = (UINT)g_cp_cw;
+            d2.Height = (UINT)g_cp_ch;
+            d2.MipLevels = d2.ArraySize = 1;
+            d2.SampleDesc.Count = 1;
+            d2.Usage = D3D11_USAGE_DEFAULT;
+            d2.Format = DXGI_FORMAT_R32_UINT;
+            d2.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+            std::vector<uint32_t> z2((size_t)g_cp_cw * (size_t)g_cp_ch, 0u);
+            D3D11_SUBRESOURCE_DATA sd;
+            sd.pSysMem = &z2[0];
+            sd.SysMemPitch = (UINT)g_cp_cw * 4u;
+            sd.SysMemSlicePitch = 0;
+            if (FAILED(g_dev->CreateTexture2D(&d2, &sd, &g_lay2_tex)) ||
+                FAILED(g_dev->CreateShaderResourceView(g_lay2_tex, 0, &g_lay2_srv))) {
+                if (g_lay2_srv) { g_lay2_srv->Release(); g_lay2_srv = 0; }
+                if (g_lay2_tex) { g_lay2_tex->Release(); g_lay2_tex = 0; }
+                return 0;
+            }
+        }
+        if (g_lay2_tex && (two || g_lay2_tex_dirty)) {
+            g_ctx->UpdateSubresource(g_lay2_tex, 0, &ub,
+                                     &g_lay2_cpu[(size_t)uy0 * (size_t)g_lay_stride + (size_t)ux0],
+                                     (UINT)g_lay_stride * 4u, 0);
+            g_lay2_tex_dirty = two;
+        }
+    }
+    g_lay_tex_box[0] = g_lay_cpu_box[0];
+    g_lay_tex_box[1] = g_lay_cpu_box[1];
+    g_lay_tex_box[2] = g_lay_cpu_box[2];
+    g_lay_tex_box[3] = g_lay_cpu_box[3];
+    g_lay_post = post ? 1 : 0;
+    g_lay_two = two && g_lay2_tex;
+    g_lay_live = any;
+    if (any) ++g_lay_ticks;
+    return 1;
 }
 
 extern "C" int port_gpu_twod_live(void)
@@ -4701,6 +4950,10 @@ int port_gpu_card_fade_recorded(void) { return 0; }
 void port_gpu_card_inter_fade(int, int) {}
 void port_gpu_card_inter_fade_off(void) {}
 int port_gpu_twod_ready(void) { return 0; }
+int port_gpu_layer_ready(void) { return 0; }
+unsigned *port_gpu_layer_begin(int, int, int) { return 0; }
+unsigned *port_gpu_layer2(void) { return 0; }
+int port_gpu_layer_end(int, int, int) { return 0; }
 void port_gpu_twod_reset(void) {}
 int port_gpu_twod_begin(const PortTwodFrame *, unsigned char *, int, const unsigned *) { return 0; }
 void port_gpu_twod_rects(const unsigned *, int) {}

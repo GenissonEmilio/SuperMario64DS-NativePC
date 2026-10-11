@@ -90,6 +90,7 @@
 #include "ntr/gx.h"       /* ASSET1: gx_coverage for keycover menu pieces */
 #include "hal/menu_compose.h"   /* run menu1 lane HOOK1: the one-screen menu compose layer */
 #include "hal/menu_bigmap.h"    /* run menu1 lane MAP1: Select shows the big map */
+#include "hal/gpu_raster.h"      /* SAVEOVL1: the menu layer on the card */
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
 #include "hal/screen_gap.h"
@@ -1571,6 +1572,28 @@ const uint32_t *menu_sub_for_oam(uint8_t layers, int lo, int hi)
 MenuSources g_msrc;
 uint32_t *g_picsnap;                                 /* a copy of the picture for SRC_TOP_PIC pieces */
 uint8_t *g_covsnap;                                  /* ASSET1: a copy of the 3D coverage plane, same frame, for keycover pieces */
+
+/* SAVEOVL1: draw the bound recipe into a MENU LAYER on the card instead of onto the picture. Only a frame the card still holds, with
+   this tick's overlay on the card, and a recipe whose pieces never read the picture (hal_menu_layer_ok). 1 = drawn (or nothing to
+   draw at this stage); 0 = the caller draws onto the picture as before. */
+void menu_prepare_sources(unsigned *dst, int w, int h);
+static int menu_layer_try(unsigned *dst, int w, int h, int stage)
+{
+    (void)dst;
+    if (!ntr::gx_card_overlay_active() || !port_gpu_layer_ready() || !hal_menu_layer_ok()) return 0;
+    if (!hal_menu_draws_in(stage)) return 1;
+    unsigned *lay = port_gpu_layer_begin(w, h, ntr::SCREEN_W);
+    if (!lay) return 0;
+    hal_menu_set_layer2(port_gpu_layer2());
+    hal_menu_set_layer_mode(1);
+    menu_prepare_sources(lay, w, h);
+    hal_menu_present(lay, w, h, stage);
+    hal_menu_set_layer_mode(0);
+    hal_menu_set_layer2(0);
+    if (hal_menu_layer_conflicts() > 0) return 0;   /* a third translucent write on one pixel: the picture takes this tick */
+    if (!port_gpu_layer_end(w, h, stage == MENU_STAGE_POST_FADE)) return 0;
+    return 1;
+}
 
 /* Hand the layer this frame's planes. Called right before hal_menu_present, at each of its two stages. */
 void menu_prepare_sources(unsigned *dst, int w, int h)
@@ -3973,11 +3996,17 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
         /* A MENU RECIPE OWNS THE PICTURE THIS FRAME. Nothing of the map panel is drawn: the recipe's pieces are the
            picture's menu, and the plate, the banner, the handle and the attention arrows are none of those. A
            PRE_FADE recipe (level-clear) draws here, before engine A's fade; a POST_FADE one in the wrapper below. */
-        /* the recipe reads and writes the picture's own pixels: a frame held on the card (run cardfull) is read back first */
-        ntr::gx_card_settle_because("a menu recipe's picture");
-        if (hal_menu_draws_in(MENU_STAGE_PRE_FADE)) {
-            menu_prepare_sources(dst, w, h);
-            hal_menu_present(dst, w, h, MENU_STAGE_PRE_FADE);
+        /* the recipe reads and writes the picture's own pixels: a frame held on the card (run cardfull) is read back first --
+           unless every piece of it only writes or composes (SAVEOVL1): then it is drawn into a menu layer the card lays over
+           its composite, and the picture stays where it is */
+        if (menu_layer_try(dst, w, h, MENU_STAGE_PRE_FADE)) {
+            /* drawn into the layer */
+        } else {
+            ntr::gx_card_settle_because("a menu recipe's picture");
+            if (hal_menu_draws_in(MENU_STAGE_PRE_FADE)) {
+                menu_prepare_sources(dst, w, h);
+                hal_menu_present(dst, w, h, MENU_STAGE_PRE_FADE);
+            }
         }
     } else if (!hal_sub_screen_stacked() && menu_bigmap_up()) {
         /* MAP1: SELECT SHOWS THE BIG MAP. The bottom screen's scan-out, big and centred over the dimmed picture, instead of the corner
@@ -4111,8 +4140,10 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
     port_engine_a_fade(dst, w, h);
     /* H2's second stage: the recipes that draw over the finished, faded picture */
     if (hal_menu_draws_in(MENU_STAGE_POST_FADE) && !hal_sub_screen_stacked()) {
-        menu_prepare_sources(dst, w, h);
-        hal_menu_present(dst, w, h, MENU_STAGE_POST_FADE);
+        if (!menu_layer_try(dst, w, h, MENU_STAGE_POST_FADE)) {
+            menu_prepare_sources(dst, w, h);
+            hal_menu_present(dst, w, h, MENU_STAGE_POST_FADE);
+        }
     }
 }
 
