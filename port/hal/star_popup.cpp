@@ -82,6 +82,8 @@ struct State {
     Fake fake[6];
     int hold_from, hold_n;
     unsigned last_wait_log;
+    // proof knob SM64DS_STAR_POPUP_STOP: end the selftest at a chosen moment (a picture)
+    int stop_kind, stop_val; bool armed, stop_flag, stop_timer; unsigned stop_at;
 };
 State g;
 
@@ -116,6 +118,12 @@ void init_once() {
             } else break;
             if (*p == ';') ++p;
         }
+    }
+    if (const char *e = std::getenv("SM64DS_STAR_POPUP_STOP")) {
+        int v = 0;
+        if (std::sscanf(e, "cd%d", &v) == 1) { g.stop_kind = 1; g.stop_val = v; }       // the countdown shows v
+        else if (std::sscanf(e, "tx%d", &v) == 1) { g.stop_kind = 2; g.stop_val = v; }  // v ms after my own event
+        else if (std::sscanf(e, "lv%d", &v) == 1) { g.stop_kind = 3; g.stop_val = v; }  // v ms after the level changed following an event
     }
     std::fprintf(stderr, "[starpop] on: enabled=%d\n", (int)g.enabled);
 }
@@ -277,6 +285,8 @@ void send_event(Mode m, int kind, bool exits, int star) {
         comms_hub_send(b, (int)sizeof b);
     }
     ++g.st.tx;
+    g.armed = true;
+    if (g.stop_kind == 2 && !g.stop_timer) { g.stop_timer = true; g.stop_at = now_ms() + (unsigned)g.stop_val; }
     queue_copies(p);
     std::fprintf(stderr, "[starpop] tx mode=%s kind=%d exits=%d star=%d level=%d act=%d seq=%u wall=%lld\n", m == kCoop ? "coop" : "party",
                  kind, (int)exits, star, (int)data_0209f2f8, data_0209f220[0], g.seq, wall_ms());
@@ -333,6 +343,7 @@ void scan_local(Mode m) {
 void new_level_check() {
     const int lv = data_0209f2f8, ac = data_0209f220[0];
     if (!g.have_key || lv != g.lvl || ac != g.act) {
+        if (g.have_key && g.armed && g.stop_kind == 3 && !g.stop_timer) { g.stop_timer = true; g.stop_at = now_ms() + (unsigned)g.stop_val; }
         g.have_key = true; g.lvl = lv; g.act = ac;
         g.nseen = 0;
         if ((g.counting || g.exit_pending || g.nline) && g.log)
@@ -372,6 +383,7 @@ void star_popup_view(StarPopupView *out) {
         if (left < 1) left = 1;
         if (left > 5) left = 5;
         std::snprintf(out->line[out->n++], kStarPopupLineMax, "Exiting in %d...", left);
+        if (g.stop_kind == 1 && left == g.stop_val && !g.stop_timer) { g.stop_timer = true; g.stop_at = now + 150; }
     } else if (g.exit_pending && out->n < kStarPopupLines) {
         std::snprintf(out->line[out->n++], kStarPopupLineMax, "Exiting in 1...");
     }
@@ -401,6 +413,10 @@ extern "C" void port_star_popup_frame(void) {
     scan_local(m);
     send_copies();
     const unsigned now = now_ms();
+    if (g.stop_timer && !g.stop_flag && (int)(now - g.stop_at) >= 0) {
+        g.stop_flag = true;
+        std::fprintf(stderr, "[starpop] STOP requested (picture) wall=%lld\n", wall_ms());
+    }
     if (g.counting && (int)(now - g.t_end) >= 0) { g.counting = false; g.exit_pending = true; }
     if (g.exit_pending) {
         const char *why = "";
@@ -418,6 +434,7 @@ extern "C" void port_star_popup_frame(void) {
             const int from = data_0209f2f8;
             ExitLevel();
             ++g.st.exits;
+            g.armed = true;
             std::fprintf(stderr, "[starpop] EXIT from level %d act %d key=%d -> next level %d entrance %u wall=%lld\n", from, data_0209f220[0],
                          (int)g.exit_key, (int)data_0209211c, (unsigned)data_0209f200, wall_ms());
             g.exit_pending = false; g.nline = 0;
@@ -425,3 +442,5 @@ extern "C" void port_star_popup_frame(void) {
     }
     if (!g.counting && !g.exit_pending && g.nline && (unsigned)(now - g.t_last) > kShowAfterMs + kCountMs) g.nline = 0;
 }
+
+extern "C" int port_star_popup_stop_now(void) { return port::g.stop_flag ? 1 : 0; }
