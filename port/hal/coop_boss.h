@@ -20,8 +20,8 @@
 //         timers its Behavior resets on a transition).
 //       - a hit that lands on a console that is NOT the authority (its HP dropped by itself) is sent as BOSS_HIT; the
 //         authority takes the hitter's record whole, so a hit by either player counts once for everybody.
-//     A star on defeat: both consoles run the defeat code, each spawns the star the ROM spawns; COOPSPAWN1's census
-//     announces it and the other console ADOPTS its own (coop_spawn.cpp "adopted"), so there is one star for all.
+//     A star on defeat: every console runs the defeat code, but dActor_c::UntrackAndSpawnStar is replaced so that only the
+//     boss's authority spawns the star; the others get it through COOPSPAWN1's announcement (one star for all).
 //
 // WIRE (SYNW 0x51-0x53, dispatched from coop_target.cpp; every field range-checked, unknown = dropped and counted):
 //   0x51 BOSS_STATE  BossHead (8 B) + count * (BossRec 8 B + nf * u32)
@@ -73,6 +73,7 @@ struct CoopBossStats {
     unsigned long long ticks, bosses, sent, recs_sent, hits_sent, rx, recs_rx, hits_rx;
     unsigned long long applied_state, applied_hp, applied_fields, state_mismatch, hit_local, hit_adopted, claims;
     unsigned long long drop_bad, drop_group, drop_member, drop_notauth, drop_cls, drop_off, drop_seat;
+    unsigned long long stars_spawned, stars_suppressed;
 };
 CoopBossStats coop_boss_stats();
 

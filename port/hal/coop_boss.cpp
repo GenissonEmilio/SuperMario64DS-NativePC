@@ -10,6 +10,8 @@
 #include "coop_wire.h"
 #include "comms_hub.h"
 
+#include "dActor_c.h"
+
 #include <windows.h>
 
 #include <algorithm>
@@ -505,10 +507,64 @@ void do_forge(const char *name) {
     coop_send_world(sub, buf, len);
 }
 
+// ---------------------------------------------------------------------------
+// ONE STAR FOR ALL. Every console runs the boss's defeat code and each would spawn the star (dActor_c::UntrackAndSpawnStar,
+// src/_ZN8dActor_c19UntrackAndSpawnStarERajRK7Vector3h.cpp: UntrackStar, then Spawn(0xb2, ...)); COOPSPAWN1 announces each one and
+// the others spawn it too, so a console ended with two. The replacement keeps the ROM's two lines for everything except a boss
+// whose authority is another console: that copy retires its star marker and spawns nothing, the authority's star arrives
+// through COOPSPAWN1's announcement.
+// ---------------------------------------------------------------------------
+bool boss_class_for_star(unsigned cls) {
+    if (desc_of(cls)) return true;
+    return cls == 176 || cls == 198 || cls == 210 || cls == 216 || cls == 218 || cls == 248 || cls == 279;
+}
+
+bool star_is_mine(dActor_c *self) {
+    if (!g_on || !coop_world_active() || !coop_group_established()) return true;
+    const unsigned cls = *(const unsigned short *)((const char *)self + 0x0c);
+    if (!boss_class_for_star(cls)) return true;
+    const short slot = rd16((const char *)self, 0xce);
+    if (slot < 0 || slot >= kSlots) return true;
+    if (g_my < 0) g_my = comms_hub_my_seat();
+    const int auth = desc_of(cls) ? auth_for(slot, comms_hub_now_ms()) : coop_target_seat_of_slot(slot);
+    if (auth < 0) return true;
+    return auth == g_my;
+}
+
+dActor_c *__fastcall star_replacement(dActor_c *self, void * /*edx*/, s8 *trackStarID, u32 starID, const Vector3 *spawnPos, u8 how) {
+    self->UntrackStar(*trackStarID);
+    if (!star_is_mine(self)) {
+        ++g_st.stars_suppressed;
+        if (g_log) std::fprintf(stderr, "[cbs] star suppressed: this console is not the authority of cls=%u (the authority's star comes by announcement) w=%lld\n",
+                                (unsigned)*(const unsigned short *)((const char *)self + 0x0c), wall_ms());
+        return nullptr;
+    }
+    ++g_st.stars_spawned;
+    return self->Spawn(0xb2, starID | ((u32)how << 4), *spawnPos, 0, ((const s8 *)self)[0xcc], -1);
+}
+
+bool g_star_patched = false;
+void install_star_patch() {
+    if (g_star_patched) return;
+    g_star_patched = true;
+    dActor_c *(dActor_c::*pmf)(s8 &, u32, const Vector3 &, u8) = &dActor_c::UntrackAndSpawnStar;
+    void *from = nullptr; std::memcpy(&from, &pmf, sizeof from);
+    DWORD old = 0;
+    if (!VirtualProtect(from, 8, PAGE_EXECUTE_READWRITE, &old)) { std::fprintf(stderr, "[cbs] cannot patch UntrackAndSpawnStar\n"); return; }
+    unsigned char b[5]; b[0] = 0xE9;
+    const int rel = (int)((unsigned char *)&star_replacement - (unsigned char *)from - 5);
+    std::memcpy(b + 1, &rel, 4);
+    std::memcpy(from, b, 5);
+    VirtualProtect(from, 8, old, &old);
+    FlushInstructionCache(GetCurrentProcess(), from, 8);
+    std::fprintf(stderr, "[cbs] UntrackAndSpawnStar replaced at %p\n", from);
+}
+
 void on_frame(unsigned now) {
     read_env();
     if (!coop_world_active()) return;
     if (!g_regd) { g_regd = true; g_my = comms_hub_my_seat(); }
+    install_star_patch();
     int lv = -1, ac = 0;
     if (!coop_group_established() || !coop_group_key(&lv, &ac)) return;
     const CoopKey nk(lv, ac);
