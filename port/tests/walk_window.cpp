@@ -6133,8 +6133,47 @@ static int sp_frame(int pad_live, const XPad *pad)
     return 1;
 }
 
+/* PAUSE3: the new pause's own controls (hal/menu_recipe_pause.cpp menu_pause_input): LB / RB / Q / E slide the planks and the star tracker (4:3) or page
+   the courses (wide), the wooden edge tabs are clicked here. Reads the raw devices behind the same gates the page's frame uses, and only while the pause
+   recipe is up; with OneScreenMenus off the recipe is never up, so nothing here runs a read. */
+extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int mdown);
+extern "C" int menu_pause_active(void);
+static void pause3_input(int pad_live, const XPad *pad)
+{
+    if (!menu_pause_active()) { menu_pause_input(0, 0, 0, 0, 0); return; }
+    unsigned k = 0;
+    if (pad_live && (pad->buttons & 0x0100)) k |= 1;
+    if (pad_live && (pad->buttons & 0x0200)) k |= 2;
+    if (key_live('Q')) k |= 4;
+    if (key_live('E')) k |= 8;
+    int fx = 0, fy = 0;
+    int mv = hal_window_cursor_fb(&fx, &fy);
+    int md = g_mouse_left_down ? 1 : 0;
+#ifndef PORT_ROM_CLEAN
+    {   /* SM64DS_PAUSE_MOUSE = "x,y@f0-f1;...": the pointer stands at picture pixel (x, y) from frame f0 to f1 + 2 and the left button is down on frames
+           f0 + 1 .. f1 (the frame count is SM64DS_HOST_KEY's). Proof rows only: a scripted run has no focused window to read a pointer from. */
+        static const char *env = (const char *)1;
+        if (env == (const char *)1) env = getenv("SM64DS_PAUSE_MOUSE");
+        if (env) {
+            const char *s = env;
+            while (*s) {
+                int x = 0, y = 0, f0 = 0, f1 = 0, got = 0;
+                if (sscanf(s, "%d,%d@%d-%d%n", &x, &y, &f0, &f1, &got) >= 4) {
+                    if (g_host_key_frame >= f0 && g_host_key_frame <= f1 + 2) { mv = 1; fx = x; fy = y; md = g_host_key_frame >= f0 + 1 && g_host_key_frame <= f1; }
+                    s += got;
+                }
+                while (*s && *s != ';') ++s;
+                if (*s == ';') ++s;
+            }
+        }
+    }
+#endif
+    menu_pause_input(k, mv, fx, fy, md);
+}
+
 static void menu_input(int pad_live, const XPad *pad)
 {
+    pause3_input(pad_live, pad);
     if (sp_frame(pad_live, pad)) return;
     if (g_selftest) return;
     static unsigned menu_prev;

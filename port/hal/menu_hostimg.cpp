@@ -9,11 +9,13 @@
 #include <vector>
 #include <condition_variable>
 #include <deque>
+#include <map>
 #include <mutex>
 #include <thread>
+#include <string>
 
-extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[], g_menu_png_pattern[], g_menu_png_title_star[], g_menu_png_btn_save_cont[], g_menu_png_btn_save_quit[], g_menu_png_btn_cont[];
-extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len, g_menu_png_pattern_len, g_menu_png_title_star_len, g_menu_png_btn_save_cont_len, g_menu_png_btn_save_quit_len, g_menu_png_btn_cont_len;
+extern "C" const unsigned char g_menu_png_logo[], g_menu_png_btn_mp[], g_menu_png_btn_adventure[], g_menu_png_btn_rec[], g_menu_png_arrow_up[], g_menu_png_arrow_down[], g_menu_png_pattern[], g_menu_png_title_star[], g_menu_png_btn_save_cont[], g_menu_png_btn_save_quit[], g_menu_png_btn_cont[], g_menu_png_arrow_orange[];
+extern "C" const unsigned int g_menu_png_logo_len, g_menu_png_btn_mp_len, g_menu_png_btn_adventure_len, g_menu_png_btn_rec_len, g_menu_png_arrow_up_len, g_menu_png_arrow_down_len, g_menu_png_pattern_len, g_menu_png_title_star_len, g_menu_png_btn_save_cont_len, g_menu_png_btn_save_quit_len, g_menu_png_btn_cont_len, g_menu_png_arrow_orange_len;
 
 namespace {
 
@@ -43,6 +45,7 @@ const Src kSrc[MENU_IMG_COUNT] = {
     { "btn_save_cont.png", g_menu_png_btn_save_cont, &g_menu_png_btn_save_cont_len },
     { "btn_save_quit.png", g_menu_png_btn_save_quit, &g_menu_png_btn_save_quit_len },
     { "btn_cont.png", g_menu_png_btn_cont, &g_menu_png_btn_cont_len },
+    { "arrow_orange_down.png", g_menu_png_arrow_orange, &g_menu_png_arrow_orange_len },
 };
 
 bool take(const unsigned char *rgba, int w, int h, Img *I)
@@ -57,6 +60,27 @@ bool take(const unsigned char *rgba, int w, int h, Img *I)
     return true;
 }
 
+/* WARMFIX1 F4: the environment strings this file reads, copied once (first use is always on the game thread, before any worker exists) so
+   a worker never calls getenv while the game thread may be inside _putenv_s. */
+struct Env { bool has_logo = false, has_dir = false, has_root = false; std::string logo, dir, root; };
+const Env &env()
+{
+    static const Env e = [] {
+        Env v;
+        const char *a = getenv("SM64DS_MENU_LOGO"), *b = getenv("SM64DS_MENU_ART_DIR"), *c = getenv("SM64DS_ASSET_ROOT");
+        if (a) { v.has_logo = true; v.logo = a; }
+        if (b) { v.has_dir = true; v.dir = b; }
+        if (c) { v.has_root = true; v.root = c; }
+        return v;
+    }();
+    return e;
+}
+
+/* WARMFIX1 F1: one mutex for g_img. Held only for the swap / the slot lookup, never across a decode or a scale. A pointer handed out by
+   menu_hostimg_scaled stays valid for a while because a replaced vector goes to g_grave and is freed two installs later, not at the swap. */
+std::mutex g_mx;
+std::vector<std::vector<uint32_t>> g_grave, g_grave_prev;
+
 void load_into(int id, Img &I)
 {
     int w = 0, h = 0, comp = 0;
@@ -64,8 +88,9 @@ void load_into(int id, Img &I)
     char path[1100];
     /* SM64DS_MENU_LOGO (id 1) or SM64DS_MENU_ART_DIR=<folder> (every id) point somewhere else; a name that cannot be read there
        means "no picture" (the recipe keeps the DS art) and the embedded copy is NOT used, so the fallback can be proven */
-    const char *over = id == MENU_IMG_LOGO ? getenv("SM64DS_MENU_LOGO") : 0;
-    const char *dir = getenv("SM64DS_MENU_ART_DIR");
+    const Env &E = env();
+    const char *over = id == MENU_IMG_LOGO && E.has_logo ? E.logo.c_str() : 0;
+    const char *dir = E.has_dir ? E.dir.c_str() : 0;
     const char *efile = 0; const unsigned char *eemb = 0; unsigned elen = 0;
     const bool ext = id >= MENU_IMG_EXT_BASE && menu_ext_art_src(id, &efile, &eemb, &elen);
     if (id >= MENU_IMG_COUNT && !ext) return;
@@ -80,7 +105,7 @@ void load_into(int id, Img &I)
         p = stbi_load(path, &w, &h, &comp, 4);
         fprintf(stderr, "[menu] art %d: %s -> %s\n", id, path, p ? "loaded" : "unreadable, DS art kept");
     } else {
-        const char *root = getenv("SM64DS_ASSET_ROOT");
+        const char *root = E.has_root ? E.root.c_str() : 0;
         if (root && *root && strlen(root) + 40 < sizeof path) {
             snprintf(path, sizeof path, "%s/menu/%s", root, fname);
             p = stbi_load(path, &w, &h, &comp, 4);
@@ -100,9 +125,16 @@ void load_into(int id, Img &I)
 void load_img(int id)
 {
     Img &I = g_img[id];
-    if (I.tried) return;
-    I.tried = 1;
-    load_into(id, I);
+    {
+        std::lock_guard<std::mutex> lk(g_mx);
+        if (I.tried) return;
+    }
+    env();
+    Img t;
+    load_into(id, t);                  /* decoded off to the side, published whole */
+    std::lock_guard<std::mutex> lk(g_mx);
+    if (I.tried) return;               /* the background install won */
+    I.tried = 1; I.w = t.w; I.h = t.h; I.px = std::move(t.px);
 }
 
 /* one axis of a separable resample: for each destination index, the source span and weights (triangle filter whose
@@ -175,7 +207,7 @@ Img *img_of(int id) { return id >= 1 && id < MENU_IMG_EXT_END ? &g_img[id] : 0; 
 /* PAUSEFIX1: a worker thread that decodes and scales a picture off the game thread. A job touches only its own local Img; the game thread
    installs a finished job with menu_hostimg_prefetch_poll (vector moves, no copying), so no tick pays for a decode or a scale. */
 struct Job { int id, dw, dh; };
-struct Done { int id, dw, dh; Img img; bool ok; };
+struct Done { int id, dw, dh; Img img; bool ok; bool exc = false; };
 struct Worker {
     std::mutex m;
     std::condition_variable cv;
@@ -184,6 +216,7 @@ struct Worker {
     int busy = 0;                 /* jobs queued or running */
     std::deque<Job> live;          /* the same jobs, kept until installed (so a repeat call queues nothing) */
     bool started = false;
+    std::map<int, Img> src;       /* WARMFIX1 F6: the source of a 2x2 pre-queue job, kept until the same picture's real-size job takes it (one decode, not two) */
 };
 Worker *g_wk;      /* never freed: the thread outlives static destruction */
 
@@ -198,15 +231,34 @@ void worker_main(Worker *W)
         }
         Done d;
         d.id = j.id; d.dw = j.dw; d.dh = j.dh; d.ok = false;
-        load_into(j.id, d.img);
-        if (!d.img.px.empty() && d.img.w > 0) {
-            std::vector<uint32_t> sc;
-            scale_to(&d.img, j.dw, j.dh, &sc);
-            d.img.scaled.swap(sc);
-            d.ok = true;
+        try {
+            bool have = false;
+            if (!(j.dw == 2 && j.dh == 2)) {
+                std::lock_guard<std::mutex> lk(W->m);
+                auto it = W->src.find(j.id);
+                if (it != W->src.end()) { d.img.w = it->second.w; d.img.h = it->second.h; d.img.px = std::move(it->second.px); W->src.erase(it); have = true; }
+            }
+            if (!have) load_into(j.id, d.img);
+            if (j.dw == 2 && j.dh == 2 && !d.img.px.empty()) {
+                Img k; k.w = d.img.w; k.h = d.img.h; k.px = d.img.px;
+                std::lock_guard<std::mutex> lk(W->m);
+                if (W->src.size() < 16) W->src[j.id] = std::move(k);
+            }
+            if (!d.img.px.empty() && d.img.w > 0) {
+                std::vector<uint32_t> sc;
+                scale_to(&d.img, j.dw, j.dh, &sc);
+                d.img.scaled.swap(sc);
+                d.ok = true;
+            }
+        } catch (...) {                /* WARMFIX1 F3: memory pressure: an empty failed result; the picture loads on first use */
+            d.ok = false; d.exc = true; d.img = Img();
         }
         std::lock_guard<std::mutex> lk(W->m);
-        W->out.push_back(std::move(d));
+        try { W->out.push_back(std::move(d)); }
+        catch (...) {
+            for (size_t i = 0; i < W->live.size(); ++i)
+                if (W->live[i].id == j.id && W->live[i].dw == j.dw && W->live[i].dh == j.dh) { W->live.erase(W->live.begin() + i); break; }
+        }
         --W->busy;
     }
 }
@@ -223,6 +275,7 @@ extern "C" int menu_hostimg_ready(int id)
     Img *I = img_of(id);
     if (!I) return 0;
     load_img(id);
+    std::lock_guard<std::mutex> lk(g_mx);
     return I->w > 0 && !I->px.empty();
 }
 
@@ -230,10 +283,11 @@ extern "C" int menu_hostimg_size(int id, int *w, int *h)
 {
     if (!menu_hostimg_ready(id)) return 0;
     Img *I = img_of(id);
+    std::lock_guard<std::mutex> lk(g_mx);
     *w = I->w; *h = I->h;
     /* ARROWART1: the selection arrows are drawn in the fixed 22 x 15 footprint of the ROM's art (its aspect, tip at the bottom or top
        centre), whatever the PNG's own pixel size: a hi-res picture of the same drawing drops in with no code change */
-    if (id == MENU_IMG_ARROW_UP || id == MENU_IMG_ARROW_DOWN) { *w = 22; *h = 15; }
+    if (id == MENU_IMG_ARROW_UP || id == MENU_IMG_ARROW_DOWN || id == MENU_IMG_ARROW_ORANGE) { *w = 22; *h = 15; }
     return 1;
 }
 
@@ -241,11 +295,19 @@ extern "C" const uint32_t *menu_hostimg_scaled(int id, int dw, int dh)
 {
     if (!menu_hostimg_ready(id) || dw < 1 || dh < 1 || dw > 8192 || dh > 8192) return 0;
     Img *I = img_of(id);
-    if (I->cw == dw && I->ch == dh && !I->scaled.empty()) return &I->scaled[0];
+    {
+        std::lock_guard<std::mutex> lk(g_mx);
+        if (I->cw == dw && I->ch == dh && !I->scaled.empty()) return &I->scaled[0];
+        if (I->cw1 == dw && I->ch1 == dh && !I->scaled1.empty()) return &I->scaled1[0];
+    }
+    /* a miss: scale off the lock (the source pixels never change once the picture is ready), then swap in; the slot not filled last is replaced */
+    std::vector<uint32_t> sc;
+    scale_to(I, dw, dh, &sc);
+    std::lock_guard<std::mutex> lk(g_mx);
+    if (I->cw == dw && I->ch == dh && !I->scaled.empty()) return &I->scaled[0];           /* the background install got there first */
     if (I->cw1 == dw && I->ch1 == dh && !I->scaled1.empty()) return &I->scaled1[0];
-    /* a miss replaces the slot that was not filled last */
-    if (I->last_slot == 0) { scale_to(I, dw, dh, &I->scaled1); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; return &I->scaled1[0]; }
-    scale_to(I, dw, dh, &I->scaled); I->cw = dw; I->ch = dh; I->last_slot = 0;
+    if (I->last_slot == 0) { g_grave.push_back(std::move(I->scaled1)); I->scaled1 = std::move(sc); I->cw1 = dw; I->ch1 = dh; I->last_slot = 1; return &I->scaled1[0]; }
+    g_grave.push_back(std::move(I->scaled)); I->scaled = std::move(sc); I->cw = dw; I->ch = dh; I->last_slot = 0;
     return &I->scaled[0];
 }
 
@@ -261,20 +323,33 @@ extern "C" int menu_hostimg_prefetch(int id, int dw, int dh)
 {
     Img *I = img_of(id);
     if (!I || dw < 1 || dh < 1 || dw > 8192 || dh > 8192) return 1;
-    if (I->tried && I->px.empty()) return 1;                    /* no such picture: nothing to wait for */
-    if (!I->px.empty() && slot_has(*I, dw, dh)) return 1;
-    if (!g_wk) g_wk = new Worker();
-    Worker *W = g_wk;
-    std::lock_guard<std::mutex> lk(W->m);
-    for (const Job &q : W->live)
-        if (q.id == id && q.dw == dw && q.dh == dh) return 0;
-    if (W->busy >= 4) return -1;
-    if (!W->started) { W->started = true; std::thread(worker_main, W).detach(); }
-    ++W->busy;
-    W->live.push_back(Job{ id, dw, dh });
-    W->in.push_back(Job{ id, dw, dh });
-    W->cv.notify_one();
-    return 0;
+    try {
+        env();                                                      /* WARMFIX1 F4: before any worker can exist */
+        {
+            std::lock_guard<std::mutex> lk(g_mx);
+            if (I->tried && I->px.empty()) return 1;                /* no such picture: nothing to wait for */
+            if (!I->px.empty() && slot_has(*I, dw, dh)) return 1;
+        }
+        if (!g_wk) g_wk = new Worker();
+        Worker *W = g_wk;
+        std::lock_guard<std::mutex> lk(W->m);
+        for (const Job &q : W->live)
+            if (q.id == id && q.dw == dw && q.dh == dh) return 0;
+        if (W->busy >= 4) return -1;
+        if (!W->started) {
+            try { std::thread(worker_main, W).detach(); }
+            catch (...) { return 1; }                               /* WARMFIX1 F3: no thread: load on first use, no flag left set */
+            W->started = true;
+        }
+        W->live.push_back(Job{ id, dw, dh });
+        try { W->in.push_back(Job{ id, dw, dh }); }
+        catch (...) { W->live.pop_back(); return 1; }
+        ++W->busy;
+        W->cv.notify_one();
+        return 0;
+    } catch (...) {
+        return 1;
+    }
 }
 
 /* installs every finished background job; 1 while a job is still running or waiting to be installed */
@@ -292,12 +367,14 @@ extern "C" int menu_hostimg_prefetch_poll(void)
                 if (W->live[i].id == d.id && W->live[i].dw == d.dw && W->live[i].dh == d.dh) { W->live.erase(W->live.begin() + i); break; }
         }
         Img &I = g_img[d.id];
-        if (!d.ok) { if (!I.tried) I.tried = 1; continue; }
+        std::lock_guard<std::mutex> lk(g_mx);                       /* WARMFIX1 F1: the swap, and only the swap */
+        if (!d.ok) { if (!d.exc && !I.tried) I.tried = 1; continue; }     /* an exception is not "no such picture" */
         if (!I.tried) {
             I.tried = 1; I.w = d.img.w; I.h = d.img.h; I.px = std::move(d.img.px);
         }
         if (I.px.empty() || I.w != d.img.w || I.h != d.img.h || slot_has(I, d.dw, d.dh)) continue;
-        if (I.last_slot == 0) { I.scaled1 = std::move(d.img.scaled); I.cw1 = d.dw; I.ch1 = d.dh; I.last_slot = 1; }
-        else { I.scaled = std::move(d.img.scaled); I.cw = d.dw; I.ch = d.dh; I.last_slot = 0; }
+        g_grave_prev.swap(g_grave); g_grave.clear();                 /* what was replaced two installs ago is freed now */
+        if (I.last_slot == 0) { g_grave.push_back(std::move(I.scaled1)); I.scaled1 = std::move(d.img.scaled); I.cw1 = d.dw; I.ch1 = d.dh; I.last_slot = 1; }
+        else { g_grave.push_back(std::move(I.scaled)); I.scaled = std::move(d.img.scaled); I.cw = d.dw; I.ch = d.dh; I.last_slot = 0; }
     }
 }

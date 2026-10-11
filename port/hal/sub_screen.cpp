@@ -76,6 +76,7 @@
 // hal_sub_screen_set_stacked. A level never asks, so a level gets the inset.
 // SM64DS_DUAL_SCREEN=1 forces it on and =0 forces it off, both ways, and the
 // env is read HERE so there is one place that decides.
+#include <atomic>      /* POLISH1A: the forced-panel flag */
 #include <cstdio>
 #include <cstdlib>
 
@@ -126,6 +127,7 @@ int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy);
 extern "C" int settings_page_hook_pad(uint16_t *pressed);
 extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, unsigned char sy);
 extern "C" int settings_page_swallow_back(void);
+extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
 int hal_sub_screen_stacked(void);
@@ -225,6 +227,7 @@ extern void *data_0209f318;      /* the Camera actor */
    data_0209f2d4 is that function's own state word. */
 extern unsigned char data_0209f20c;
 extern unsigned char data_0209f2d4;
+extern unsigned char data_0209f2c4;   /* 0 = playing, else the pause is up (Stage::Behavior :206-243) */
 /* the NEW COIN RECORD flag: LC_Update's case 1 sets it when the course's coin
    total beats the saved record, and LC_Render then draws the "HIGH SCORE"
    banner above the coin total (see kCoinRow0Rec) */
@@ -271,6 +274,10 @@ int g_pan_w, g_pan_h;               /* the drawn panel, in framebuffer pixels */
 int g_pan_margin = kMargin;         /* what was left of the margin (see below) */
 
 bool g_on = true;
+/* POLISH1A: a DS bottom-screen menu (pause plates, the save screen's choices, game over's CONTINUE / QUIT) is up while no one-screen recipe
+   owns it (OneScreenMenus off, or a pause variant no recipe covers): the corner panel is the only place those plates show, so the panel
+   is forced on for as long as the menu is up even with the panel option off. Set on the decide side each tick, read on the draw side. */
+std::atomic<int> g_force_panel{0};
 bool g_ready;
 /* Headless runs must not read the mouse or the keyboard. SM64DS_WINDOW_SELFTEST
    is CI's comparator and several of these binaries run on one machine at once,
@@ -2291,7 +2298,7 @@ void poll_touch(void)
         btn = 1;
     } else {
         static int raw_was, focus_was, hold_ok;
-        const int raw = (!g_headless && (g_on || hal_menu_live()) && !menu_bigmap_up() && GetAsyncKeyState_ &&   /* MAP1: no stylus under the big map */
+        const int raw = (!g_headless && (g_on || g_force_panel.load() || hal_menu_live()) && !menu_bigmap_up() && GetAsyncKeyState_ &&   /* MAP1: no stylus under the big map */
                          (GetAsyncKeyState_(VK_LBUTTON) & 0x8000)) ? 1 : 0;
         const int foc = hal_window_focused();
         if (!raw)              hold_ok = 0;
@@ -3645,6 +3652,8 @@ extern "C" void hal_menu_decide_tick(int w, int h)
     hal_menu_set_netplay(port::comms_transport() != 0);
     const int scene = hal_sub_screen_stacked() ? MENU_SCENE_GATED : port_scene_live_id();
     hal_menu_decide(w, h, scene);
+    g_force_panel.store((!g_on && scene != MENU_SCENE_GATED && !hal_menu_live() &&
+                         (save_menu_is_up() || scene == 8 || (data_0209f2c4 != 0 && data_0209f20c == 0 && (scene == 3 || scene == -1)))) ? 1 : 0);
     /* THE COMPOSE'S OWN ANSWER AND ITS RECTANGLES, once a frame, by the same rule: one place decides, everybody else
        reads. They are computed whatever the answer is, so poll_touch's inverse has this frame's numbers on the very
        frame the plates come on. (These two lines read the ROM, so they live on the decide side; they used to sit in
@@ -3711,11 +3720,15 @@ extern "C" void hal_menu_pad_seam(void)
         static int env_read, env_on, env_at, calls;
         static POINT env_pt;
         ++calls;
+#ifndef PORT_ROM_CLEAN      /* the scripted pointer is a proof arm: not in the shipped build */
         if (!env_read) {
             env_read = 1;
             const char *e = getenv("SM64DS_MENU_HOVER_AT");
             if (e && sscanf(e, "%ld,%ld@%d", &env_pt.x, &env_pt.y, &env_at) >= 2) env_on = 1;
         }
+#else
+        (void)env_read; (void)env_at;
+#endif
         POINT p;
         int got = 0;
         if (env_on) { p = env_pt; got = calls >= env_at; }
@@ -3734,6 +3747,7 @@ extern "C" void hal_menu_pad_seam(void)
     uint16_t k = *pressed;
     const uint16_t k0 = k;
     settings_page_hook_pad(&k);      /* SETMENU1: the confirm on the wrench / the Options plate opens the settings page, the ROM never sees it */
+    menu_pause_hook_pad(&k, back);   /* PAUSE3: while the 4:3 star tracker is showing, A / B slide back and the plank cursor is not moved */
     hal_menu_pad(&k, back);
     if (k != k0) {
         *pressed = k;
@@ -3937,7 +3951,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
     ntr::ppu_vram_publish();
     ntr::ppu_display_capture(dst, w, h);
 
-    if (g_on || hal_menu_draw_live() || menu_bigmap_up()) ntr::ppu_scanout_sub(g_sub);   /* a live menu, or the big map (MAP1), forces its own scan-out */
+    if (g_on || g_force_panel.load() || hal_menu_draw_live() || menu_bigmap_up()) ntr::ppu_scanout_sub(g_sub);   /* a live menu, or the big map (MAP1), forces its own scan-out */
     /* THE LATE UPLOAD, and it is now the OPT-IN arm. port_frame_oam_upload
        above already ran this frame's OAM::Load at func_02019144's own line,
        ahead of both rasters; this block is what SM64DS_OAM_LOAD_LATE=1 gets
@@ -3946,7 +3960,7 @@ static void sub_screen_present_body(unsigned int *dst, int w, int h)
         ntr::ppu_seam_oam_mark();
         _ZN3OAM4LoadEv();
     }
-    if (!g_on && !hal_menu_draw_live() && !menu_bigmap_up()) return;
+    if (!g_on && !g_force_panel.load() && !hal_menu_draw_live() && !menu_bigmap_up()) return;
     /* THE STACKED LAYOUT WRITES NOTHING INTO dst HERE, and that is the whole
        trick. dst is the framebuffer, the scan-out above is everything the
        bottom screen needs, and the stacked image is built downstream by

@@ -3006,6 +3006,47 @@ extern "C" int host_setting_set_volume(int pct)
     return 1;
 }
 
+/* PAUSE3: the screen gap's setters (see host_settings.h). The same variables reload_live writes from the file. */
+extern "C" int host_setting_set_minigame_gap(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    if (g_gap_on != on) { g_gap_on = on; ++g_setgen; }
+    queue_bool("MinigameGap", on);
+    return 1;
+}
+
+extern "C" int host_setting_gap_look(void)
+{
+    load_once();
+    return g_gap_peek ? 2 : (g_gap_fill == 0 ? 0 : 1);
+}
+
+extern "C" int host_setting_set_gap_look(int look)
+{
+    load_once();
+    if (look < 0 || look > 2) return 0;
+    const int peek = look == 2 ? 1 : 0;
+    int fill = g_gap_fill;
+    if (look == 0) fill = 0;
+    else if (look == 1 && fill == 0) fill = 1;
+    if (peek != g_gap_peek || fill != g_gap_fill) { g_gap_peek = peek; g_gap_fill = fill; ++g_setgen; }
+    queue_bool("GapPeek", peek);
+    queue_word("GapFillMode", fill == 0 ? "solid" : (fill == 2 ? "custom" : "ambient"));
+    return 1;
+}
+
+extern "C" int host_setting_set_gap_color(unsigned rgb)
+{
+    load_once();
+    const unsigned c = 0xFF000000u | (rgb & 0xffffffu);
+    if (g_gap_color != c) { g_gap_color = c; ++g_setgen; }
+    char b[24];
+    snprintf(b, sizeof b, "\"#%06X\"", rgb & 0xffffffu);
+    queue_save("GapColor", b);
+    return 1;
+}
+
 extern "C" int host_setting_stick_deadzone_raw(void)
 {
     load_once();

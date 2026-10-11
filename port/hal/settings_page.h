@@ -39,6 +39,12 @@ struct SpInput {
     int inject_key;                      /* proof runs only (SM64DS_SETPAGE_SCRIPT key:<vk>): a key the window procedure would have seen, for the rebind capture */
 };
 
+/* PAUSE3: the pause recipe's description of where the panel sits, set every tick it is up (and cleared when it is not). on = inside the pause;
+   wide = the wide layout (a tall column at the right of the picture) else the page takes the picture; dx = the 4:3 slide offset in picture
+   pixels (the planks' side); input = 0 while the star tracker is showing and the panel is out of sight (the page then ignores every device). */
+struct SpEmbed { int on, wide, dx, input; };
+void settings_page_set_embed(const struct SpEmbed *e);
+
 int  settings_page_open(void);                       /* 1 while the page is up */
 void settings_page_request(void);                    /* ask for it to open on the next frame (a hook saw the press) */
 int  settings_page_pending(void);                    /* a request is waiting (cleared by settings_page_open_now) */

@@ -1,39 +1,38 @@
-/* menu_recipe_pause.cpp -- the one-screen PAUSE menu recipe (run menu1, lane PAUSE1).
+/* menu_recipe_pause.cpp -- the one-screen PAUSE menu recipe (run menu1, lanes PAUSE1, PAUSE2, PAUSE3).
  *
- * WHAT THE PLAYER GETS (Tango's layout, 10-09). The level stays dimmed behind (the ROM itself dims it
- * while the pause is up: Stage::PS_Init, src/_ZN5Stage7PS_InitEv.cpp:70-111, both engines BLDY 7).
- * LEFT column: the ROM's own top-screen text (course name, star row, coin record; engine A BG3 + OBJ),
- * and under it, in the castle when the course card pages, the ROM's own paging arrows. RIGHT column: the
- * ROM's own bottom-screen plates stacked (Continue / Controller Modes / Options / Quit or Exit Course;
- * engine B BG1 plates + BG0 labels). Nothing is redrawn: the ROM keeps running unchanged and this recipe
- * only says where its pieces land on one picture.
+ * WHAT THE PLAYER GETS (PAUSE3, Tango's "mock up is fine", 10-11). One pause screen in the launcher's look: parchment and wooden planks, the
+ * DS lettering font at window resolution, no DS art. WIDE (16:9 and up): the STAR TRACKER at the left (course name, the seven star names with
+ * got / not got, the 100 coin star, stars, coins and the coin record, red coins, the course arrows < > in the castle) and the PLANKS at the
+ * right: Resume, Settings, Exit Course (in a course only), Save & Quit (in the castle only: the ROM has no save inside a course). 4:3: the planks
+ * alone; LB / RB / Q / E or the wooden tab at either screen edge slides the planks (or the open settings) out in the bumper's direction and the
+ * tracker in from the other side. The Settings plank opens the settings panel INSIDE the pause (hal/settings_page.cpp). The save pages (Save & Quit,
+ * saving, saved, quit without saving) are sheets in the same style.
  *
- * STATES (data_0209f248 = Stage pause state; src/_ZN5Stage9PS_UpdateEv.cpp and atlas section 1):
- *   variant 1 castle main (state 0 init, 1)      plates drawn y 24/64/104/144 (touch boxes y 32/72/112/152, 8 lower, as the ROM has them), paging arrows when !data_0209f2f0
- *   variant 2 course main (states 2 init, 3)     plates y 24/64/104/144
- *   variant 3 controller modes (7, 8)            top diagram + 3 mode rows + OK + Back
- *   variant 4 controller modes via Select        same, no Back (data_0209f218 != 0: PS_Init :94)
- *   variant 5 options (9, 0xa, 0xb)              sound row + backlight row + OK + Back
- *   variant 6 save page (0xc, 0xd)               plates y 40/80/120 (Continue / Save / Don't Save)
- *   variant 7 saving status (0xe, 0xf)           the status box, no controls
- *   variant 8 don't save confirm (0x10, 0x11)    YES / NO
- *   variant 9 VS pause (4 init, 5)               plates y 40/80/120 (Continue / Exit / Title)
- * Leaving states (6, 0x12, 0x13) keep the last variant up (hysteresis). Every other transit state is a
- * page-builder frame that maps to the variant it builds.
+ * WHAT STAYS THE ROM'S (MENU2_RULES 4). The ROM's pause state machine runs unchanged: this recipe only decides where its pieces land on one picture.
+ * The planks are hostimg pieces whose hit boxes are the ROM's own touch boxes (a click maps through to the ROM's touch), the pad drives the ROM's
+ * own plate cursor (data_0209f2e0, Stage::UpdateMenuButtons) and A is the ROM's confirm. The tracker's numbers are read from the ROM's save data
+ * and its message bank (the star names), once a tick, on the logic thread (pause_facts); the draw sees only the facts (hal/menu_pause_geo.h).
  *
- * DRIVER MIXED (hal_menu_pad in menu_compose.cpp): up/down move the ROM's own plate cursor through
- * Stage::UpdateMenuButtons exactly as hal_lc_menu_pad does (so the highlight is the ROM's palette bank);
- * left/right press the paging arrows as a synthesised touch; A is the ROM's confirm. The touch-only pages
- * (3, 4, 5) use the core's focus + synthesised touch, and in netplay everything does.
- *
- * ROM EVIDENCE for every rect below is the touch box in PS_Update (cited per table). No English widths:
- * the OK button box depends on the language exactly as PS_Update picks it (GetOwnerLanguage 5 / 3 / other).
+ * THE ROM'S PLATES (data_0209f2e0 = the selected plate; PS_Update.cpp):
+ *   castle  (state 0 init, 1)    Continue 0 (box y 0x20), Controller Modes 1 (0x48, no plank: Select belongs to the big map), Options 2 (0x70), Quit 3 (0x98)
+ *   course  (2 init, 3)          Continue 0 (0x18), Controller Modes 1 (0x40), Options 2 (0x68), Exit Course 3 (0x90)
+ *   save    (0xc init, 0xd)      Continue 0 (0x28), Save 1 (0x50), Don't Save 2 (0x78)       [shown: Save & Quit, Quit without saving, Resume]
+ *   saving  (0xe, 0xf)           the status box, nothing to press (the ROM quits when its countdown ends)
+ *   nosave  (0x10, 0x11)         YES (x 0x28, y 0x98) and NO (x 0x88): touch only; NO goes back to the game
+ * Leaving states (6, 0x12, 0x13) keep the last variant up (hysteresis). A page the new look has no layout for (Controller Modes and Options, which the
+ * planks never reach, and every language but English, whose strings the port's font cannot draw) keeps a plain layout of the ROM's own bottom screen.
  */
 #include "menu_compose.h"
 #include "menu_hostimg.h"
 #include "menu_pause_art_ids.h"
+#include "menu_pause_geo.h"
+#include "settings_page.h"
+#include "settings_live.h"
 
+#include <atomic>
 #include <chrono>
+#include <functional>
+#include <thread>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,20 +51,30 @@ extern unsigned char data_0209f22c;    /* press hold ticks */
 extern unsigned char data_0209f244;    /* press flash ticks */
 extern unsigned char data_0209f300;    /* input lock after open */
 extern unsigned char data_0209f2c8;    /* the course the card shows */
-extern unsigned char data_0209f2dc;    /* the highlighted controller mode */
-extern unsigned char data_0209f234;    /* the sound mode */
-extern unsigned char data_0209f2ec;    /* the backlight: 0 on, 1 off */
+extern unsigned char data_0209f2b8;    /* the save status countdown */
+extern signed char data_0209f2f8;      /* the level the pause is in (PS_Init: castle = 0x1d) */
+extern unsigned char data_0209f250;    /* the local player's slot */
+extern unsigned short data_0209f358[]; /* coins per player */
+extern signed char data_0209f30c[];    /* red coins per player */
+extern unsigned char data_0209cad2[];  /* SaveData coin records, per course (SaveData::GetCoinRecord) */
+extern short data_020756d0[];          /* the message id of each course's title (Stage::PS_Update case 0) */
+extern int data_0209d6fc[];            /* the message bank (hal/message_boot.cpp): base, entries, info section */
+extern int data_0209d708[];
+extern int data_0209d70c[];
 int GetOwnerLanguage(void);
 int SublevelToLevel(int i);
-extern signed char data_0209f2f8;   /* the level the pause is in (PS_Init: castle = 0x1d) */
-extern unsigned char data_0209f2b8; /* the save status countdown */
+int IsStarCollected(signed char courseID, int starID);
+unsigned char CountStarsCollectedInLevelToDisplay(int courseID);
 void _ZN5Stage17UpdateMenuButtonsEb(int b);
 void func_02012790(int id);
+void pause_page_draw(const MenuLayout *lay, int piece, uint32_t *dst, int w, int h, int stride);   /* hal/settings_page.cpp (pause_page.inc) */
+int pause_page_art(int w, int h, int idx, int *id, int *dw, int *dh);
 }
 
 namespace {
 
-enum { V_CASTLE = 1, V_COURSE, V_CTL, V_CTL_SEL, V_OPT, V_SAVE, V_STATUS, V_NOSAVE, V_VS };
+enum { V_CASTLE = PAUSE_V_CASTLE, V_COURSE = PAUSE_V_COURSE, V_CTL, V_CTL_SEL, V_OPT, V_SAVE = PAUSE_V_SAVE, V_STATUS = PAUSE_V_STATUS,
+       V_NOSAVE = PAUSE_V_NOSAVE, V_VS };
 
 /* ---- the variant, with hysteresis over the leaving states ---------------- */
 
@@ -90,65 +99,55 @@ int pause_variant(void)
     return v;
 }
 
-/* THE FIRST-OPEN HITCH. Decoding and scaling the pause's planks, card and arrows on the first frame the pause is up cost ~95 ms in one
-   frame (perf trace, 1024x768). The recipe's up() runs every tick, so once the level has been running a moment and the pause is not up it
-   solves each variant once on a scratch layout and scales every picture to the size that variant will draw at. PAUSEFIX1: spread thin. A
-   slice is one decode or one scale (never both for a picture that took real time), at most about 1 ms of work chained past the first
-   unit, and only when the shared warm-up slot is free (menu_warm_claim: one slot per few ms for this and the settings page together, none
-   while the game is hitching). The save pages' big pictures (saving, saved, banner, about 11 MB) are not warmed: they load on first use.
-   The cache keeps the size; a window resize warms again. */
-int g_idle_ticks, g_warm_v, g_warm_p, g_warm_busy, g_warm_w, g_warm_h, g_warm_solved_v;
-double g_last_claim = -1e9, g_last_call = -1e9;
-int g_calm;
-
 double wnow_ms(void)
 {
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-bool warm_skip_id(int id) { return id == MENU_IMG_P_SAVING || id == MENU_IMG_P_SAVED || id == MENU_IMG_P_BANNER; }
-bool g_warm_solving;     /* inside a warm-up solve: have() of a skipped picture answers yes without decoding it (the layout then has its piece, the warm-up skips it) */
-const int kWarmPre[] = { MENU_IMG_P_PK_CONTINUE, MENU_IMG_P_PK_OK, MENU_IMG_P_CARD, MENU_IMG_P_ARROW_L, MENU_IMG_ARROW_DOWN, MENU_IMG_STAR };
-int g_warm_pre;          /* the pictures every page's layout asks for, decoded one a slice before the first solve */
+/* ---- the warm-up ----------------------------------------------------------------------------------------------------------
+   Decoding and scaling the pause's pictures on the first frame the pause is up cost ~95 ms in one frame (PAUSE2's perf trace). The recipe's up()
+   runs every tick, so once the level has been running a moment and the pause is not up it solves each page once on a scratch layout and queues
+   every picture to the hostimg worker at the size that page will draw at (menu_hostimg_prefetch), then the pictures the pause draws itself
+   (pause_page_art). A slice is one solve or a few queue calls (well under a millisecond), only when the shared warm-up slot is free (menu_warm_claim:
+   one slot per few ms for this and the settings page together, none while the game is hitching). The cache keeps the size; a window resize warms
+   again. */
+int g_idle_ticks, g_warm_v, g_warm_p, g_warm_a, g_warm_w, g_warm_h, g_warm_solved_v;
+double g_last_claim = -1e9, g_last_call = -1e9;
+int g_calm;
+const int kWarmVars[] = { V_CASTLE, V_COURSE, V_SAVE, V_NOSAVE };
+const int kNWarmVars = (int)(sizeof kWarmVars / sizeof kWarmVars[0]);
 
-/* one slice. The decode and the scale of a picture run on the hostimg worker thread (menu_hostimg_prefetch), up to four jobs queued, so the game
-   thread only installs finished work (vector moves) and solves a layout (well under a millisecond). */
 void warm_slice(int w, int h)
 {
     static MenuLayout W;
     const MenuRecipe *R = 0;
     for (int i = 0; i < g_menu_nrecipes; ++i)
         if (!strcmp(g_menu_recipes[i].name, "pause")) R = &g_menu_recipes[i];
-    if (!R) { g_warm_v = V_VS; return; }
     static const bool trace = getenv("SM64DS_WARM_TRACE") != 0;
     const double t0 = wnow_ms();
     menu_hostimg_prefetch_poll();             /* installs what the worker finished */
-    while (g_warm_v < V_VS) {
-        if (g_warm_pre < (int)(sizeof kWarmPre / sizeof kWarmPre[0])) {
-            /* the pictures every layout asks for are decoded first (a 2x2 scale rides along), so the solve below never decodes on this thread:
-               queue them all, then wait until each is in */
-            int pending = 0;
-            for (int i = 0; i < (int)(sizeof kWarmPre / sizeof kWarmPre[0]); ++i)
-                if (menu_hostimg_prefetch(kWarmPre[i], 2, 2) != 1) ++pending;
-            if (pending) return;
-            g_warm_pre = (int)(sizeof kWarmPre / sizeof kWarmPre[0]);
-            continue;
-        }
-        if (g_warm_solved_v != g_warm_v) {
-            g_warm_solving = true;
-            menu_layout_solve(&W, R, g_warm_v, w, h);
-            g_warm_solving = false;
-            g_warm_solved_v = g_warm_v;
-            if (trace) fprintf(stderr, "[warm] pause solve v%d: %.2f ms\n", g_warm_v, wnow_ms() - t0);
+    while (R && g_warm_v < kNWarmVars) {
+        const int v = kWarmVars[g_warm_v];
+        if (g_warm_solved_v != v) {
+            menu_layout_solve(&W, R, v, w, h);
+            g_warm_solved_v = v;
+            if (trace) fprintf(stderr, "[warm] pause solve v%d: %.2f ms\n", v, wnow_ms() - t0);
         }
         int k = 0, found = -1;
         for (int i = 0; i < W.np; ++i) {
-            if (W.p[i].src != SRC_HOSTIMG || !W.p[i].hostimg || warm_skip_id(W.p[i].hostimg) || W.dest[i][2] <= 0 || W.dest[i][3] <= 0) continue;
+            if (W.p[i].src != SRC_HOSTIMG || !W.p[i].hostimg || W.p[i].nodraw || W.dest[i][2] <= 0 || W.dest[i][3] <= 0) continue;
             if (k++ == g_warm_p) { found = i; break; }
         }
-        if (found < 0) { ++g_warm_v; g_warm_p = 0; continue; }     /* that variant is done */
+        if (found < 0) { ++g_warm_v; g_warm_p = 0; continue; }     /* that page is done */
         if (menu_hostimg_prefetch(W.p[found].hostimg, W.dest[found][2], W.dest[found][3]) < 0) return;      /* the queue is full: next slice */
         ++g_warm_p;                                                  /* cached or queued: on to the next picture */
+        if (wnow_ms() - t0 >= 1.0) return;
+    }
+    for (;;) {
+        int id, dw, dh;
+        if (!pause_page_art(w, h, g_warm_a, &id, &dw, &dh)) { g_warm_v = kNWarmVars + 1; return; }      /* all of it is queued */
+        if (menu_hostimg_prefetch(id, dw, dh) < 0) return;
+        ++g_warm_a;
         if (wnow_ms() - t0 >= 1.0) return;
     }
 }
@@ -160,6 +159,12 @@ extern "C" int menu_warm_claim(void)
 {
     static const bool off = getenv("SM64DS_NO_MENU_WARM") != 0;
     if (off) return 0;
+    /* WARMFIX1 F1: the claim state below is plain statics, so the slot belongs to the first thread that asks (the logic thread); any other
+       thread is simply never given one. */
+    static std::atomic<size_t> owner(0);
+    const size_t me = std::hash<std::thread::id>()(std::this_thread::get_id()) | 1;
+    size_t none = 0;
+    if (!owner.compare_exchange_strong(none, me) && none != me) return 0;
     const double t = wnow_ms();
     if (t - g_last_call > 50.0) g_calm = 0; else ++g_calm;
     g_last_call = t;
@@ -174,468 +179,175 @@ void warm_tick(int scene_id)
     if (scene_id != 3 && scene_id != -1) { g_idle_ticks = 0; return; }
     int w, h;
     if (!hal_menu_last_size(&w, &h)) return;
-    if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_v = 1; g_warm_p = 0; g_warm_busy = 0; g_warm_solved_v = 0; g_idle_ticks = 0; }
-    if (g_warm_v == 0) g_warm_v = 1;
-    if (++g_idle_ticks < 30 || g_warm_v >= V_VS) return;
+    if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_v = 0; g_warm_p = 0; g_warm_a = 0; g_warm_solved_v = 0; g_idle_ticks = 0; }
+    if (++g_idle_ticks < 30 || g_warm_v > kNWarmVars) return;
     if (!menu_warm_claim()) return;
     warm_slice(w, h);
 }
 
-int pause_up(int scene_id)
+/* ---- the slide (4:3): planks page <-> tracker page ----------------------------------------------------------------------- */
+
+struct Slide {
+    int target;       /* 0 planks page, 1 tracker page */
+    int ticks;        /* 0..kSlideTicks */
+    int dir;          /* +1: the planks leave to the right (RB, E, the right tab), -1: to the left */
+} g_slide = { 0, 0, 1 };
+const int kSlideTicks = 14;      /* about 0.23 s at the ROM's 60 ticks a second */
+
+int slide_eased(void)
 {
-    int v = 0;
-    /* the Stage is scene 3; a level boot that never runs the scene thunk answers -1 (hal_menu_hook_h1), and
-       the stacked layout is MENU_SCENE_GATED: no recipe */
-    if (scene_id == 3 || scene_id == -1) v = pause_variant();
-    g_last_variant = v;
-    if (!v) warm_tick(scene_id);
-    if (hal_menu_trace_on()) {      /* SM64DS_MENU_TRACE: every change of the ROM's pause words, for the proof rows */
-        static int last[10] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
-        const int now[10] = { v, data_0209f2c4, data_0209f248, data_0209f1ec, data_0209f2c8, data_0209f2e0, data_0209f218,
-                              data_0209f2dc, data_0209f234, data_0209f2ec };
-        if (memcmp(now, last, sizeof now) != 0) {
-            memcpy(last, now, sizeof last);
-            fprintf(stderr, "[pause] variant=%d f2c4=%d f248=%d f1ec=%d course=%d sel=%d select=%d mode=%d sound=%d backlight=%d\n", now[0], now[1],
-                    now[2], now[3], now[4], now[5], now[6], now[7], now[8], now[9]);
+    const double p = (double)g_slide.ticks / kSlideTicks, q = 1.0 - p;
+    return (int)((1.0 - q * q * q) * 1000.0 + 0.5);
+}
+
+void slide_tick(int allowed)
+{
+    if (!allowed) g_slide.target = 0;
+    if (g_slide.target && g_slide.ticks < kSlideTicks) ++g_slide.ticks;
+    else if (!g_slide.target && g_slide.ticks > 0) --g_slide.ticks;
+}
+
+int g_wide_now;                         /* the picture of this tick is wide (set by pause_facts) */
+int g_pic_w = 1024, g_pic_h = 768;      /* the picture of this tick */
+int g_tab_hover = -1, g_tab_press = -1; /* the 4:3 edge tabs under / held by the pointer (set by the input hook) */
+
+/* the course paging, as a synthesised touch on the ROM's own arrow boxes (PS_Update.cpp :322-401: x < 0x38 / x >= 0xc8, y < 0x20) */
+void page_course(int dir)
+{
+    if (data_0209f248 != 1 || data_0209f2f0) return;
+    hal_menu_touch_queue_press(dir < 0 ? 0x1c : 0xe4, 0x10);
+}
+
+int is_main_page(int v) { return v == V_CASTLE || v == V_COURSE; }
+int tracker_view(void) { return !g_wide_now && is_main_page(g_last_variant) && g_slide.ticks > 0 && g_slide.target; }
+
+/* ---- the ROM's strings ------------------------------------------------------------------------------------------------ */
+
+/* The message bank's text is a glyph-index stream (src/func_0201b7cc.c): 0..9 digits, 0xa..0x23 A..Z, 0x2d..0x46 a..z, a few punctuation codes, 0xff
+   ends a line. Decoded to ASCII (checked against the bank: course 0 star 0 reads BIG BOB-OMB ON THE SUMMIT). */
+int msg_text(int id, char *out, int cap)
+{
+    out[0] = 0;
+    const char *info = (const char *)(size_t)(unsigned)data_0209d70c[0];
+    const char *base = (const char *)(size_t)(unsigned)data_0209d6fc[0];
+    const char *entries = (const char *)(size_t)(unsigned)data_0209d708[0];
+    if (!info || !base || !entries) return 0;
+    const unsigned count = *(const unsigned short *)(info + 8);
+    if (id < 0 || (unsigned)id >= count) return 0;
+    const int secsz = *(const int *)(info + 4);
+    const int off = *(const int *)(entries + id * 8);
+    const unsigned char *p = (const unsigned char *)(base + 0x28 + secsz + off);
+    int n = 0;
+    for (int guard = 0; guard < 120 && *p != 0xff && n < cap - 1; ++guard, ++p) {
+        const unsigned c = *p;
+        char o;
+        if (c <= 9) o = (char)('0' + c);
+        else if (c <= 0x23) o = (char)('A' + c - 10);
+        else if (c >= 0x2d && c <= 0x46) o = (char)('a' + c - 0x2d);
+        else switch (c) {
+            case 0x26: o = '?'; break;
+            case 0x27: o = '!'; break;
+            case 0x29: o = ','; break;
+            case 0x2b: o = '"'; break;
+            case 0x47: o = '-'; break;
+            case 0x48: o = '.'; break;
+            case 0x49: o = '\''; break;
+            case 0x4a: o = '!'; break;
+            case 0x4c: o = '&'; break;
+            case 0x4d: o = ' '; break;
+            default: o = '?'; break;
         }
+        out[n++] = o;
     }
-    return v;
+    out[n] = 0;
+    return n;
 }
 
-/* ---- scale choice --------------------------------------------------------- */
-
-struct Sc { int n, d; };
-const Sc kSc[4] = { { 1, 1 }, { 3, 4 }, { 2, 3 }, { 1, 2 } };
-
-int ceil_mul(int w, const Sc &s) { return (w * s.n + s.d - 1) / s.d; }
-int floor_mul(int w, const Sc &s) { return (w * s.n) / s.d; }
-int rank(const Sc &s) { return s.n * 12 / s.d; }   /* 12, 9, 8, 6 */
-
-/* Two columns of width wa and wb on a canvas `cw` units wide: the largest whole-step scales that keep
-   `need` units of margin in total. The best pair has the largest smaller scale, then the larger second
-   column (the controls), then the larger first. */
-bool fit(int wa, int wb, int cw, int need, Sc *a, Sc *b)
+/* STAR NAMES IN TITLE CASE: each word capitalised, the small words and the letters after a hyphen or an apostrophe not */
+void title_case(char *s)
 {
-    int best = -1, bm = 0, bb = 0, ba = 0;
-    for (int i = 0; i < 4; ++i)
-        for (int j = 0; j < 4; ++j) {
-            if (ceil_mul(wa, kSc[i]) + ceil_mul(wb, kSc[j]) + need > cw) continue;
-            const int m = rank(kSc[i]) < rank(kSc[j]) ? rank(kSc[i]) : rank(kSc[j]);
-            if (best < 0 || m > bm || (m == bm && (rank(kSc[j]) > bb || (rank(kSc[j]) == bb && rank(kSc[i]) > ba)))) {
-                best = 1; bm = m; bb = rank(kSc[j]); ba = rank(kSc[i]);
-                *a = kSc[i]; *b = kSc[j];
-            }
+    static const char *const small[] = { "a", "an", "the", "of", "on", "in", "to", "for", "with", "at", "from", "and", "or", "over", "by" };
+    char *w = s;
+    int first = 1;
+    while (*w) {
+        while (*w == ' ') ++w;
+        char *e = w;
+        while (*e && *e != ' ') ++e;
+        const char save = *e;
+        *e = 0;
+        char low[40];
+        snprintf(low, sizeof low, "%s", w);
+        for (char *q = low; *q; ++q) if (*q >= 'A' && *q <= 'Z') *q = (char)(*q - 'A' + 'a');
+        char core[40];
+        snprintf(core, sizeof core, "%s", low);
+        for (int k = (int)strlen(core) - 1; k >= 0 && (core[k] == ',' || core[k] == '!' || core[k] == '.' || core[k] == '?'); --k) core[k] = 0;
+        int is_small = 0;
+        for (unsigned k = 0; k < sizeof small / sizeof small[0]; ++k) if (!strcmp(core, small[k])) is_small = 1;
+        for (char *q = w; *q; ++q) *q = low[q - w];
+        if ((!is_small || first) && *w >= 'a' && *w <= 'z') *w = (char)(*w - 'a' + 'A');
+        if (!strncmp(low, "chain-chomp", 11)) { *w = 'C'; w[6] = 'C'; }           /* the ROM spells Chain Chomp with a hyphen */
+        *e = save;
+        w = e;
+        first = 0;
+    }
+}
+
+struct Text {
+    int lv, bank;
+    char title[40], sub[20];
+    char names[7][38];
+} g_text = { -1, 0, "", "", {} };
+
+void text_for(int lv)
+{
+    const int bank = data_0209d6fc[0];
+    if (g_text.lv == lv && g_text.bank == bank) return;
+    g_text.lv = lv; g_text.bank = bank;
+    memset(g_text.title, 0, sizeof g_text.title); memset(g_text.sub, 0, sizeof g_text.sub); memset(g_text.names, 0, sizeof g_text.names);
+    if (!bank) return;
+    char raw[80];
+    const int t = lv < 15 ? lv : 15;
+    msg_text(data_020756d0[t], raw, sizeof raw);
+    const char *p = raw;
+    while (*p == ' ') ++p;
+    int num = 0;
+    if (lv < 15) while (*p >= '0' && *p <= '9') { num = num * 10 + (*p - '0'); ++p; }
+    while (*p == ' ') ++p;
+    snprintf(g_text.title, sizeof g_text.title, "%s", p);
+    if (lv < 15) snprintf(g_text.sub, sizeof g_text.sub, "Course %d", num ? num : lv + 1);
+    else snprintf(g_text.sub, sizeof g_text.sub, "Peach's Castle");
+    if (lv < 15)
+        for (int a = 0; a < 7; ++a) {
+            msg_text(0x1b4 + lv * 7 + a, g_text.names[a], sizeof g_text.names[a]);
+            title_case(g_text.names[a]);
         }
-    return best >= 0;
 }
 
-struct Hs { short x, y, w, h; int8_t rom; };
+/* ---- the plank slots of a page ---------------------------------------------------------------------------------------- */
 
-/* the left piece (top-screen stuff) and the right piece (bottom-screen stuff) */
-struct Cols {
-    Sc a, b;
-    int marg;       /* canvas units from each canvas edge to its column */
-    int wa_px, wb_px;
-};
+const int kRomMain[3] = { 0, 2, 3 };         /* Resume, Settings, Save & Quit (castle) / Exit Course (course) */
+const int kRomSave[3] = { 1, 2, 0 };         /* Save & Quit, Quit without saving, Resume */
 
-Cols make_cols(const MenuLayout *L, int wa, int wb)
+const int *slot_rom_table(int variant) { return variant == V_SAVE ? kRomSave : kRomMain; }
+int nslots_of(int variant)
 {
-    Cols C;
-    Sc a = kSc[3], b = kSc[3];
-    if (!fit(wa, wb, L->canvas_w, 12, &a, &b)) fit(wa, wb, L->canvas_w, 0, &a, &b);
-    C.a = a; C.b = b;
-    C.wa_px = ceil_mul(wa, a);
-    C.wb_px = ceil_mul(wb, b);
-    int free_u = L->canvas_w - C.wa_px - C.wb_px;
-    int m = free_u / 3;
-    if (m > 40) m = 40;
-    if (m < 0) m = 0;
-    C.marg = m;
-    return C;
+    return variant == V_CASTLE || variant == V_COURSE || variant == V_SAVE ? 3 : (variant == V_NOSAVE ? 2 : 0);
 }
-
-MenuPiece top_piece(int sx, int sy, int sw, int sh, uint8_t layers, const Cols &C, int dy, int dx = 0)
+int slot_of_rom(int variant, int rom)
 {
-    MenuPiece p = menu_piece_make(SRC_TOP_2D, sx, sy, sw, sh, MENU_AX_L, MENU_AY_T, C.marg + dx, dy, C.a.n, C.a.d);
-    p.layers = layers;
-    return p;
+    const int n = nslots_of(variant);
+    const int *t = slot_rom_table(variant);
+    for (int i = 0; i < n; ++i) if (t[i] == rom) return i;
+    return -1;
 }
 
-MenuPiece sub_piece(int sx, int sy, int sw, int sh, const Cols &C, int dy, int touch, uint8_t layers = MENU_L_BG0 | MENU_L_BG1 | MENU_L_OBJ)
-{
-    MenuPiece p = menu_piece_make(SRC_SUB, sx, sy, sw, sh, MENU_AX_R, MENU_AY_T, -C.marg, dy, C.b.n, C.b.d);
-    p.layers = layers;     /* plates + labels (+ the ROM's own star / arrows OBJs where a page has them); never the minimap */
-    p.key_backdrop = 1;
-    p.touch = (uint8_t)touch;
-    return p;
-}
+/* ---- the facts of this tick ---------------------------------------------------------------------------------------------- */
 
-int top_dy(int block_h) { return (192 - block_h) / 2; }
-
-void add_hs(MenuLayout *L, int piece, const Hs &h)
-{
-    menu_add_hotspot(L, piece, h.x, h.y, h.w, h.h, h.rom);
-}
-
-/* ---- language dependent boxes (PS_Update.cpp :704-718 controller, :944-961 options) ------------- */
-
-void ok_box(int controller, int lang, short *x, short *w)
-{
-    if (controller) {
-        if (lang == 5) { *x = 0x44; *w = 0x64; }
-        else if (lang == 3) { *x = 0x3c; *w = 0x74; }
-        else { *x = 0x4c; *w = 0x54; }
-    } else {
-        if (lang == 5) { *x = 0x40; *w = 0x70; }
-        else if (lang == 3) { *x = 0x48; *w = 0x60; }
-        else { *x = 0x50; *w = 0x50; }
-    }
-}
-
-/* ---- the builders ---------------------------------------------------------- */
-
-/* LAYOUT CONSTANTS, DS units before the column scale. One left column width and one plank column width for EVERY page, so the two
-   columns keep one scale across pages (the text never jumps when a page changes).
-   LEFT column (kLeftW): [arrow][card][arrow], the course card (gold frame + cream paper, our art, drawn behind the ROM's own top text) with
-   the course paging arrows (our art) at its sides. RIGHT column (kUiW): the planks. */
-const int kUiW = 240;
-const int kTextX = 20, kTextY = 30, kTextW = 216, kTextH = 124;   /* top text block (BG3 + OBJ). Measured on the reference exe (lifted rows 36..147, text columns 27..228; the rect keeps 6 empty rows above and below), clear of the bouncing band (rows 166..184) and of the two OBJ course arrows (columns 4..19 and 236..251) */
-const int kPadH = 6, kPadV = 5;               /* card paper around the text rect */
-const int kAw = 14, kAh = 21, kAgap = 2;      /* paging arrow art size and its gap to the card */
-const int kLeftW = 2 * (kAw + kAgap) + kTextW + 2 * kPadH;   /* 260: wide enough for the full text rect (no paging arrows up) */
-const int kLeftX = kAw + kAgap + kPadH;       /* the text rect's offset from the column's left edge */
-
-const int kPlankPitch = 40;                   /* the ROM's plate pitch (PS_Update: rows 0x20, 0x48, ... and 0x18, 0x40, ...) */
-
-bool english(const MenuLayout *L) { return L->facts.language <= 1; }
-bool have(int id) { return (g_warm_solving && warm_skip_id(id)) || menu_hostimg_ready(id) != 0; }
-bool arts_ready(void) { return have(MENU_IMG_P_PK_CONTINUE) && have(MENU_IMG_P_PK_OK) && have(MENU_IMG_P_CARD) && have(MENU_IMG_P_ARROW_L); }
-bool planks_on(const MenuLayout *L) { return english(L) && arts_ready(); }
-bool in_course(const MenuLayout *L) { return L->facts.spare[2] != 0; }   /* 0 = the castle (and the selftest, which has no game) */
-
-int ur(int units_n, int n, int d) { return (units_n * n + d / 2) / d; }   /* a DS length at the column scale, rounded */
-
-/* Left column: card (castle only), text rect, paging arrows. */
-void build_left(MenuLayout *L, const Cols &C, int with_arrows, int castle_card, int *card_piece)
-{
-    const int blockH = kTextH + 2 * kPadV;
-    const int hB = ceil_mul(blockH, C.a);
-    const int dyB = top_dy(hB);
-    const int tx = with_arrows ? 30 : kTextX, tw = with_arrows ? 198 : kTextW;
-    *card_piece = -1;
-    if (castle_card && have(MENU_IMG_P_CARD)) {
-        /* the card spans the text rect with its paper margin, centred on the text */
-        const int cw = tw + 2 * kPadH;
-        MenuPiece cp = menu_piece_make(SRC_HOSTIMG, 0, 0, cw, blockH, MENU_AX_L, MENU_AY_T,
-                                       C.marg + ur(kAw + kAgap + (kTextW - tw) / 2, C.a.n, C.a.d), dyB, C.a.n, C.a.d);
-        cp.hostimg = (uint8_t)MENU_IMG_P_CARD;
-        cp.bg = 1;
-        *card_piece = menu_add_piece(L, cp);
-    }
-    menu_add_piece(L, top_piece(tx, kTextY, tw, kTextH, MENU_L_BG3 | MENU_L_OBJ, C, dyB + ur(kPadV, C.a.n, C.a.d),
-                                ur(kLeftX + (tx - kTextX), C.a.n, C.a.d)));
-    if (with_arrows && have(MENU_IMG_P_ARROW_L)) {
-        /* the paging arrows: fixed host rects either side of the card; a click anywhere on one reaches the ROM's own touch box
-           (PS_Update.cpp :322-401: x < 0x38 and x >= 0xc8, y < 0x20) */
-        menu_layout_dest(L);
-        const int *cd = L->dest[*card_piece >= 0 ? *card_piece : 0];
-        const int aw = ur(kAw, C.a.n, C.a.d) * L->unum / L->uden, ah = ur(kAh, C.a.n, C.a.d) * L->unum / L->uden;
-        const int gap = ur(kAgap, C.a.n, C.a.d) * L->unum / L->uden;
-        const int cy = cd[1] + cd[3] / 2;
-        for (int side = 0; side < 2; ++side) {
-            MenuPiece ap = menu_piece_make(SRC_HOSTIMG, side ? 0xc8 : 0, 0, 0x38, 0x20, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-            ap.hostimg = (uint8_t)(side ? MENU_IMG_P_ARROW_R : MENU_IMG_P_ARROW_L);
-            ap.touch = 1; ap.lden = 1; ap.lnum = 1;
-            ap.fw = (short)aw; ap.fh = (short)ah;
-            ap.fx = (short)(side ? cd[0] + cd[2] + gap : cd[0] - gap - aw);
-            ap.fy = (short)(cy - ah / 2);
-            const int ip = menu_add_piece(L, ap);
-            menu_add_hotspot(L, ip, side ? 0xc8 : 0, 0, 0x38, 0x20, -1);
-        }
-    }
-}
-
-/* one plank: anchored right at the column, dy in canvas units (top of the piece). sx..sw / sy / sh = the ROM's own touch box. */
-int add_plank(MenuLayout *L, const Cols &C, int img, int sx, int sy, int sw, int sh, int dy, int rom, int hl)
-{
-    MenuPiece p = menu_piece_make(SRC_HOSTIMG, sx, sy, sw, sh, MENU_AX_R, MENU_AY_T, -C.marg - ur(248 - (sx + sw), C.b.n, C.b.d), dy, C.b.n, C.b.d);
-    p.hostimg = (uint8_t)img;
-    p.touch = 1;
-    p.hl = (uint8_t)hl;
-    const int ip = menu_add_piece(L, p);
-    menu_add_hotspot(L, ip, sx, sy, sw, sh, rom);
-    return ip;
-}
-
-/* the game's small arrow over the chosen plank (fixed host rect, bobbing on the ROM's 8 frame cadence) */
-void add_pointer(MenuLayout *L, int plank_piece)
-{
-    if (plank_piece < 0 || !have(MENU_IMG_ARROW_DOWN)) return;
-    menu_layout_dest(L);
-    static const int kBob[8] = { 0, 1, 2, 3, 4, 3, 2, 1 };
-    const int bob2 = kBob[L->facts.spare[1] & 7];
-    int iw = 1, ih = 1;
-    menu_hostimg_size(MENU_IMG_ARROW_DOWN, &iw, &ih);
-    const int *d = L->dest[plank_piece];
-    const int aw = L->unum * 10 / L->uden, ah = (int)((long long)aw * ih / iw);
-    MenuPiece ar = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-    ar.bg = 1; ar.hostimg = MENU_IMG_ARROW_DOWN; ar.lden = 1; ar.lnum = 1; ar.fw = (short)aw; ar.fh = (short)ah;
-    ar.fx = (short)(d[0] + d[2] / 2 - aw / 2);
-    ar.fy = (short)(d[1] + (2 + bob2) * L->unum / (2 * L->uden) - ah);
-    menu_add_piece(L, ar);
-}
-
-/* the plank pages (castle 1, course 2, save 6, VS 9): the left column, then the planks (ours in English, else the ROM's plates) */
-void build_plates(MenuLayout *L, int variant, int py, int ph, const Hs *hs, int nhs, int back, int with_arrows,
-                  const int *imgs)
-{
-    const Cols C = make_cols(L, kLeftW, kUiW);
-    int card;
-    build_left(L, C, with_arrows, !in_course(L), &card);
-    const bool pk = planks_on(L) && imgs;
-    int sel = (int)L->facts.spare[0];
-    if (sel < 0 || sel >= nhs) sel = 0;
-    int selp = -1;
-    if (pk) {
-        /* nhs planks at the ROM's pitch, as one block centred on the picture */
-        const int pitch = ur(kPlankPitch, C.b.n, C.b.d), hp = ceil_mul(32, C.b);
-        const int blockH = (nhs - 1) * pitch + hp;
-        const int top = top_dy(blockH);
-        for (int i = 0; i < nhs; ++i) {
-            const int ip = add_plank(L, C, imgs[i], hs[i].x, hs[i].y, hs[i].w, hs[i].h, top + i * pitch, hs[i].rom,
-                                     (i == sel ? 1 : 0) | (i == sel && L->facts.spare[3] ? 2 : 0));
-            if (i == sel) selp = ip;
-        }
-    } else {
-        const int pl = menu_add_piece(L, sub_piece(8, py, 240, ph, C, top_dy(ceil_mul(ph, C.b)), 1, MENU_L_BG0 | MENU_L_BG1));
-        for (int i = 0; i < nhs; ++i) add_hs(L, pl, hs[i]);
-    }
-    L->back = (int8_t)back;
-    L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
-    L->hide_owners = MENU_L_BG1 | MENU_L_BG2;   /* the card (BG2, ours replaces it) and the "TOUCH TO SELECT" band (BG1; the castle card fix 15707787b5 makes the ROM load both): drawn nowhere */
-    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
-    L->stage = MENU_STAGE_POST_FADE;
-    if (pk) {
-        add_pointer(L, selp);
-        L->no_focus_paint = 1;      /* the lit plank and the arrow are the selection */
-    }
-    (void)variant;
-}
-
-/* controller modes (7, 8): the diagram on the top screen, the mode rows + OK (+ Back) below */
-void build_ctl(MenuLayout *L, int with_back)
-{
-    const Cols C = make_cols(L, 252, kUiW);
-    const MenuPiece d = [&] {
-        MenuPiece p = menu_piece_make(SRC_TOP_2D, 2, 0, 252, 192, MENU_AX_L, MENU_AY_M, C.marg, 0, C.a.n, C.a.d);
-        p.layers = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
-        return p;
-    }();
-    menu_add_piece(L, d);
-    short ox, ow;
-    ok_box(1, L->facts.language, &ox, &ow);
-    int back = -1;
-    if (planks_on(L)) {
-        /* rows at the ROM's pitch (boxes y 32, 72, 112) then OK on the same pitch (y 152): the right column's block is rows 32..184 */
-        const int pitch = ur(kPlankPitch, C.b.n, C.b.d), hp = ceil_mul(32, C.b);
-        const int top = top_dy(3 * pitch + hp);
-        static const int kImg[3] = { MENU_IMG_P_PK_STANDARD, MENU_IMG_P_PK_TOUCH, MENU_IMG_P_PK_DUAL };
-        const int mode = (int)L->facts.spare[4];
-        for (int i = 0; i < 3; ++i) {
-            const int ip = add_plank(L, C, kImg[i], 8, 32 + 40 * i, 240, 32, top + i * pitch, -1, 0);
-            if (i == mode && have(MENU_IMG_STAR)) {
-                /* the chosen mode's star, our title star art, on the plank's left */
-                menu_layout_dest(L);
-                const int *pd = L->dest[ip];
-                const int sh = pd[3] * 7 / 10;
-                MenuPiece st = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
-                st.bg = 1; st.hostimg = MENU_IMG_STAR; st.lden = 1; st.lnum = 1; st.fw = (short)sh; st.fh = (short)sh;
-                st.fx = (short)(pd[0] + pd[2] * 3 / 100); st.fy = (short)(pd[1] + (pd[3] - sh) / 2);
-                menu_add_piece(L, st);
-            }
-        }
-        back = L->nh;
-        add_plank(L, C, MENU_IMG_P_PK_OK, ox, 0x98, ow, 0x20, top + 3 * pitch, -1, 0);
-        if (with_back) {
-            /* the ROM's own Back button (OBJ), DS art: no hi-res version yet (artist ask) */
-            const MenuPiece b = sub_piece(0xd8, 0x98, 0x20, 0x20, C, top + 3 * pitch, 1, MENU_L_BG0 | MENU_L_BG1 | MENU_L_OBJ);
-            const int bp = menu_add_piece(L, b);
-            back = menu_add_hotspot(L, bp, 0xd8, 0x98, 0x20, 0x20, -1);
-        }
-    } else {
-        const int ps = menu_add_piece(L, sub_piece(4, 28, 248, 160, C, 0, 1));
-        L->p[ps].ay = MENU_AY_M;
-        const Hs rows[3] = { { 8, 32, 240, 32, -1 }, { 8, 72, 240, 32, -1 }, { 8, 112, 240, 32, -1 } };
-        for (int i = 0; i < 3; ++i) add_hs(L, ps, rows[i]);
-        back = menu_add_hotspot(L, ps, ox, 0x98, ow, 0x20, -1);
-        if (with_back) back = menu_add_hotspot(L, ps, 0xd8, 0x98, 0x20, 0x20, -1);
-    }
-    L->back = (int8_t)back;
-    L->lift_owners = MENU_L_BG2 | MENU_L_BG3 | MENU_L_OBJ;
-    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
-    L->stage = MENU_STAGE_POST_FADE;
-}
-
-/* options (9, 0xa, 0xb): the ROM's own page. With OneScreenMenus on the Options plate opens the port's settings page instead
-   (hal/settings_page_hooks.cpp), so this page is the fallback only: castle text (on the card) left, sound + backlight + OK + Back right (DS art). */
-void build_opt(MenuLayout *L)
-{
-    const Cols C = make_cols(L, kLeftW, kUiW);
-    int card;
-    build_left(L, C, 0, !in_course(L), &card);
-    MenuPiece p = sub_piece(4, 28, 248, 160, C, 0, 1);
-    p.ay = MENU_AY_M;
-    const int ps = menu_add_piece(L, p);
-    /* PS_Update.cpp :939-1230: sound arrows, the two backlight boxes, OK, Back */
-    const Hs hs[4] = { { 0x5c, 0x30, 0x10, 0x10, -1 }, { 0xec, 0x30, 0x10, 0x10, -1 },
-                       { 0x70, 0x58, 0x38, 0x20, -1 }, { 0xb0, 0x58, 0x38, 0x20, -1 } };
-    for (int i = 0; i < 4; ++i) add_hs(L, ps, hs[i]);
-    short ox, ow;
-    ok_box(0, L->facts.language, &ox, &ow);
-    menu_add_hotspot(L, ps, ox, 0x98, ow, 0x20, -1);
-    L->back = (int8_t)menu_add_hotspot(L, ps, 0xd8, 0x98, 0x20, 0x20, -1);
-    L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
-    L->hide_owners = MENU_L_BG1 | MENU_L_BG2;   /* the card (BG2, ours replaces it) and the "TOUCH TO SELECT" band (BG1; the castle card fix 15707787b5 makes the ROM load both): drawn nowhere */
-    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
-    L->stage = MENU_STAGE_POST_FADE;
-}
-
-/* saving status (0xe, 0xf): the box the ROM draws, nothing to press. English: our card with the two lines (the ROM's second text
-   appears when its countdown data_0209f2b8 reaches 0x3c: PS_Update.cpp :1348-1357) */
-void build_status(MenuLayout *L)
-{
-    const Cols C = make_cols(L, kLeftW, kUiW);
-    int card;
-    build_left(L, C, 0, !in_course(L), &card);
-    if (planks_on(L) && have(MENU_IMG_P_SAVING) && have(MENU_IMG_P_SAVED)) {
-        const int saved = L->facts.spare[5] != 0 && L->facts.spare[5] <= 0x3c;
-        MenuPiece p = menu_piece_make(SRC_HOSTIMG, 56, 40, 144, 80, MENU_AX_R, MENU_AY_M, -C.marg - ur(248 - 200, C.b.n, C.b.d), 0, C.b.n, C.b.d);
-        p.hostimg = (uint8_t)(saved ? MENU_IMG_P_SAVED : MENU_IMG_P_SAVING);
-        menu_add_piece(L, p);
-    } else {
-        MenuPiece p = sub_piece(56, 40, 144, 80, C, 0, 0);
-        p.ay = MENU_AY_M;
-        menu_add_piece(L, p);
-    }
-    L->back = -1;
-    L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
-    L->hide_owners = MENU_L_BG1 | MENU_L_BG2;   /* the card (BG2, ours replaces it) and the "TOUCH TO SELECT" band (BG1; the castle card fix 15707787b5 makes the ROM load both): drawn nowhere */
-    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
-    L->stage = MENU_STAGE_POST_FADE;
-}
-
-/* don't save confirm (0x10, 0x11): the question and YES / NO (PS_Update.cpp :1370-1451) */
-void build_nosave(MenuLayout *L)
-{
-    const Cols C = make_cols(L, kLeftW, kUiW);
-    int card;
-    build_left(L, C, 0, !in_course(L), &card);
-    if (planks_on(L)) {
-        /* the question (the ROM's own bottom screen text, DS art) on our banner, the two planks under it */
-        const int hb = ceil_mul(32, C.b), gap = ur(8, C.b.n, C.b.d);
-        const int top = top_dy(2 * hb + gap);
-        if (have(MENU_IMG_P_BANNER)) {
-            MenuPiece bn = menu_piece_make(SRC_HOSTIMG, 24, 60, 208, 32, MENU_AX_R, MENU_AY_T, -C.marg - ur(248 - 232, C.b.n, C.b.d), top, C.b.n, C.b.d);
-            bn.hostimg = (uint8_t)MENU_IMG_P_BANNER; bn.bg = 1;
-            menu_add_piece(L, bn);
-            MenuPiece q = sub_piece(46, 68, 166, 20, C, top + ur(6, C.b.n, C.b.d), 0, MENU_L_BG0 | MENU_L_BG1);   /* the ROM's message strip has a bar tile at x 34..40 and one near x 222: the text sits at x 61..195 */
-            q.dx = (short)(-C.marg - ur(248 - 212, C.b.n, C.b.d));
-            menu_add_piece(L, q);
-        }
-        add_plank(L, C, MENU_IMG_P_PK_YES, 0x28, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                   /* YES x 0x28..0x77 */
-        add_plank(L, C, MENU_IMG_P_PK_NO, 0x88, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                     /* NO x 0x88..0xd7 */
-        L->back = (int8_t)(L->nh - 1);                                                                       /* the hotspot of NO */
-    } else {
-        MenuPiece p = sub_piece(24, 64, 208, 128, C, 0, 1);
-        p.ay = MENU_AY_M;
-        const int ps = menu_add_piece(L, p);
-        menu_add_hotspot(L, ps, 0x28, 0x98, 0x50, 0x20, -1);                 /* YES x 0x28..0x77 */
-        L->back = (int8_t)menu_add_hotspot(L, ps, 0x88, 0x98, 0x50, 0x20, -1);   /* NO x 0x88..0xd7 */
-    }
-    L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;
-    L->hide_owners = MENU_L_BG1 | MENU_L_BG2;   /* the card (BG2, ours replaces it) and the "TOUCH TO SELECT" band (BG1; the castle card fix 15707787b5 makes the ROM load both): drawn nowhere */
-    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
-    L->stage = MENU_STAGE_POST_FADE;
-}
-
-void pause_build(int variant, MenuLayout *L)
-{
-    switch (variant) {
-    case V_CASTLE: {   /* PS_Update.cpp :224-321 */
-        const Hs hs[4] = { { 8, 0x20, 240, 32, 0 }, { 8, 0x48, 240, 32, 1 }, { 8, 0x70, 240, 32, 2 }, { 8, 0x98, 240, 32, 3 } };
-        static const int img[4] = { MENU_IMG_P_PK_CONTINUE, MENU_IMG_P_PK_CTL, MENU_IMG_P_PK_OPTIONS, MENU_IMG_P_PK_QUIT };
-        build_plates(L, variant, 24, 160, hs, 4, 0, !L->facts.pause_f2f0, img);
-        break;
-    }
-    case V_COURSE: {   /* :430-551 */
-        const Hs hs[4] = { { 8, 0x18, 240, 32, 0 }, { 8, 0x40, 240, 32, 1 }, { 8, 0x68, 240, 32, 2 }, { 8, 0x90, 240, 32, 3 } };
-        static const int img[4] = { MENU_IMG_P_PK_CONTINUE, MENU_IMG_P_PK_CTL, MENU_IMG_P_PK_OPTIONS, MENU_IMG_P_PK_EXIT };
-        build_plates(L, variant, 24, 160, hs, 4, 0, 0, img);
-        break;
-    }
-    case V_SAVE: {     /* :1249-1339 */
-        const Hs hs[3] = { { 8, 0x28, 240, 32, 0 }, { 8, 0x50, 240, 32, 1 }, { 8, 0x78, 240, 32, 2 } };
-        static const int img[3] = { MENU_IMG_P_PK_CONTINUE, MENU_IMG_P_PK_SAVE, MENU_IMG_P_PK_DONTSAVE };
-        build_plates(L, variant, 40, 120, hs, 3, 0, 0, img);
-        break;
-    }
-    case V_VS: {       /* :552-636: the three VS labels were never captured, so the ROM's plates stay (artist ask) */
-        const Hs hs[3] = { { 8, 0x28, 240, 32, 0 }, { 8, 0x50, 240, 32, 1 }, { 8, 0x78, 240, 32, 2 } };
-        build_plates(L, variant, 40, 120, hs, 3, 0, 0, 0);
-        break;
-    }
-    case V_CTL: build_ctl(L, 1); break;
-    case V_CTL_SEL: build_ctl(L, 0); break;
-    case V_OPT: build_opt(L); break;
-    case V_STATUS: build_status(L); break;
-    case V_NOSAVE: build_nosave(L); break;
-    default: break;
-    }
-}
-
-/* ---- the ROM-cursor driver (called by hal_menu_pad for every pad frame while this recipe is up) ----
-   dir = MENU_DIR_* or -1 (no direction this frame). *owns is set to 1 on the pages whose plates are the
-   ROM's own cursor (A is then the ROM's confirm, the core rewrites it to Start) and 0 on the touch-only
-   pages (A presses the focused hotspot). Returns 1 when it consumed the direction. */
-int pause_cursor(int dir, int *owns)
-{
-    const unsigned st = data_0209f248;
-    const int plates = st == 1 || st == 3 || st == 5 || st == 0xd;
-    if (owns) *owns = plates;
-    if (!plates || dir < 0) return 0;
-    if (data_0209f300 != 0 || data_0209f22c != 0 || data_0209f244 != 0) return 1;
-    if (dir == MENU_DIR_LEFT || dir == MENU_DIR_RIGHT) {
-        /* the course arrows are touch boxes at the top corners of the bottom screen (PS_Update.cpp :322-401),
-           live in the castle main page only and only when the card pages (data_0209f2f0 == 0) */
-        if (st == 1 && !data_0209f2f0)
-            hal_menu_touch_queue_press(dir == MENU_DIR_LEFT ? 0x1c : 0xe4, 0x10);
-        return 1;
-    }
-    const int last = data_0209f2b4 ? data_0209f2b4 - 1 : 0;
-    int sel = data_0209f2e0;
-    int moved = 0;
-    if (dir == MENU_DIR_UP && sel > 0) {
-        --sel;
-        moved = 1;
-    } else if (dir == MENU_DIR_DOWN && sel < last) {
-        ++sel;
-        moved = 1;
-    }
-    if (moved) {
-        data_0209f2e0 = (unsigned char)sel;
-        _ZN5Stage17UpdateMenuButtonsEb(0);
-        func_02012790(0x12e);
-    }
-    return 1;
-}
-
-
-
-/* MENUSPLIT1: the ROM values build() needs, read once per tick by the decide step. build() reads nothing else.
-   spare[0] the chosen plate, [1] a frame counter (the pointer's bob), [2] 1 = in a course (no card: the text is white on the dimmed level),
-   [3] 1 while the press is held (the ROM's own 8 tick hold after a confirm: the plank sinks), [4] the chosen controller mode, [5] the save countdown */
 unsigned g_hov_seen;
 int g_frame;
+int g_save_init;        /* the save page's cursor was put on Save & Quit once for this visit */
+int g_embed_set;
+int g_nosave_focus;     /* the quit-without-saving page's cursor was put on NO once for this visit */
 
 int pause_cursor_live(void)
 {
@@ -651,27 +363,348 @@ void set_chosen(int sel)
     _ZN5Stage17UpdateMenuButtonsEb(0);
 }
 
-void pause_facts(MenuFacts *f)
+void publish_embed(const PauseFacts *f, int wide)
 {
-    f->language = (int16_t)GetOwnerLanguage();
-    f->pause_f2f0 = data_0209f2f0;
+    SpEmbed e;
+    const int on = is_main_page(f->variant);
+    e.on = on;
+    e.wide = wide;
+    e.dx = (!wide && on) ? pause_planks_dx(pause_geo(g_pic_w, g_pic_h, f, 3), f) : 0;
+    e.input = wide || f->slide_t1000 < 500;
+    settings_page_set_embed(&e);
+    g_embed_set = on;
+}
+
+void pause_facts(MenuFacts *mf)
+{
+    mf->language = (int16_t)GetOwnerLanguage();
+    mf->pause_f2f0 = data_0209f2f0;
+    int w = 1024, h = 768;
+    hal_menu_last_size(&w, &h);
+    g_pic_w = w; g_pic_h = h;
+    const int wide = (long long)w * 192 / h >= 300;
+    g_wide_now = wide;
+    const int v = g_last_variant;
     /* MOUSE HOVER: a pointer that moved onto a plank makes it the ROM's chosen plate (silent), so the lit plank, the pointer and a
        later Enter all name the same plate */
     int hx, hy;
     unsigned st;
     if (hal_menu_hover_box(&hx, &hy, &st) && st != g_hov_seen) {
         g_hov_seen = st;
-        if (pause_cursor_live()) {
+        if (pause_cursor_live() && (v == V_CASTLE || v == V_COURSE || v == V_SAVE) && !settings_page_open()) {
             const int y0 = data_0209f248 == 1 ? 0x20 : (data_0209f248 == 3 ? 0x18 : 0x28);
-            if (hy >= y0 && (hy - y0) % 0x28 == 0) set_chosen((hy - y0) / 0x28);
+            if (hy >= y0 && (hy - y0) % 0x28 == 0 && slot_of_rom(v, (hy - y0) / 0x28) >= 0) set_chosen((hy - y0) / 0x28);
         }
     }
-    f->spare[0] = data_0209f2e0;
-    f->spare[1] = ++g_frame;
-    f->spare[2] = SublevelToLevel(data_0209f2f8) != 0x1d;
-    f->spare[3] = data_0209f22c != 0;
-    f->spare[4] = data_0209f2dc;
-    f->spare[5] = data_0209f2b8;
+    ++g_frame;
+    if (v != V_SAVE) g_save_init = 0;
+    else if (!g_save_init && data_0209f248 == 0xd && data_0209f300 == 0) { g_save_init = 1; set_chosen(1); }   /* the cursor starts on Save & Quit */
+    slide_tick(is_main_page(v) && !wide);       /* the slide runs on the main pages only; a dialog forces the planks page */
+    PauseFacts *f = (PauseFacts *)mf->blob;
+    memset(f, 0, sizeof *f);
+    f->magic = PAUSE_FACTS_MAGIC;
+    f->variant = v;
+    f->slide_t1000 = wide ? 0 : slide_eased();
+    f->dir = g_slide.dir;
+    f->settings_open = settings_page_open();
+    const int in_course = SublevelToLevel(data_0209f2f8) != 0x1d;
+    f->in_course = in_course;
+    f->paging = !in_course && !data_0209f2f0 && v != 0;
+    f->frame = g_frame;
+    f->hover_tab = g_tab_hover;
+    f->press_tab = g_tab_press;
+    int lv = data_0209f2c8;
+    if (lv > 15) lv = 15;
+    f->course = lv;
+    text_for(lv);
+    memcpy(f->title, g_text.title, sizeof f->title);
+    memcpy(f->sub, g_text.sub, sizeof f->sub);
+    memcpy(f->names, g_text.names, sizeof f->names);
+    int mask = 0;
+    if (lv < 15) for (int k = 0; k < 8; ++k) if (IsStarCollected((signed char)lv, k)) mask |= 1 << k;
+    f->got_mask = mask;
+    f->stars_got = CountStarsCollectedInLevelToDisplay(lv);
+    f->secret_n = CountStarsCollectedInLevelToDisplay(15);
+    {
+        int total = f->secret_n;
+        for (int c = 0; c < 15; ++c) total += CountStarsCollectedInLevelToDisplay(c);
+        f->total_n = total;
+    }
+    const int me = data_0209f250 < 16 ? data_0209f250 : 0;
+    f->coin_rec = lv < 15 ? data_0209cad2[lv] : 0;
+    f->coins = in_course ? (int)data_0209f358[me] : 0;
+    f->red = in_course ? (int)(unsigned char)data_0209f30c[me] : 0;
+    f->show_red = f->red > 0;
+    f->status = data_0209f2b8 != 0 && data_0209f2b8 <= 0x3c;
+    f->nslots = nslots_of(v);
+    f->pressed = data_0209f22c != 0;
+    int hs = -1;
+    if (v == V_NOSAVE) {
+        /* touch only: the lit plank is the pad / hover cursor (hotspot 0 = NO, slot 1; hotspot 1 = YES, slot 0) */
+        f->sel_slot = hal_menu_focus_shown(&hs) ? (hs == 0 ? 1 : 0) : -1;
+    } else if (v == V_CASTLE || v == V_COURSE || v == V_SAVE) {
+        f->sel_slot = slot_of_rom(v, data_0209f2e0);
+    } else f->sel_slot = -1;
+    f->arrows_live = f->paging && (wide || f->slide_t1000 >= 1000) && !f->settings_open && is_main_page(v);
+    publish_embed(f, wide);
+    mf->spare[0] = data_0209f2e0;
+    mf->spare[1] = g_frame;
+}
+
+/* ---- the builders ---------------------------------------------------------------------------------------------------- */
+
+const PauseFacts *facts_of(const MenuLayout *L, PauseFacts *fallback, int variant)
+{
+    const PauseFacts *f = (const PauseFacts *)L->facts.blob;
+    if (f->magic == PAUSE_FACTS_MAGIC) return f;
+    memset(fallback, 0, sizeof *fallback);      /* no facts (the layout selftest, a warm-up solve): the planks page at rest */
+    fallback->magic = PAUSE_FACTS_MAGIC;
+    fallback->variant = variant;
+    fallback->dir = 1;
+    fallback->nslots = nslots_of(variant);
+    fallback->sel_slot = 0;
+    fallback->in_course = variant == V_COURSE;
+    fallback->paging = variant == V_CASTLE;
+    return fallback;
+}
+
+/* the whole-picture piece the pause draws its tracker, dialogs, tabs and pointer with (pause_page_draw) */
+int add_custom(MenuLayout *L)
+{
+    MenuPiece p = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    p.bg = 1;
+    p.fixdest = 1; p.fx = 0; p.fy = 0; p.fw = (short)L->w; p.fh = (short)L->h;
+    p.custom = pause_page_draw;
+    return menu_add_piece(L, p);
+}
+
+/* a plank: the ROM's own touch box (bx, by, bw, bh) is what a click inside the host rect maps to */
+int add_plank(MenuLayout *L, int img, const PauseRect &r, int bx, int by, int bw, int bh, int rom, int lit, int pressed)
+{
+    MenuPiece p = menu_piece_make(SRC_HOSTIMG, bx, by, bw, bh, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    p.hostimg = (uint8_t)img;
+    p.fixdest = 1; p.fx = (short)r.x; p.fy = (short)r.y; p.fw = (short)r.w; p.fh = (short)r.h;
+    p.touch = 1;
+    p.hl = (uint8_t)((lit ? 1 : 0) | (lit && pressed ? 2 : 0));
+    const int ip = menu_add_piece(L, p);
+    if (ip < 0) return -1;
+    return menu_add_hotspot(L, ip, bx, by, bw, bh, rom);       /* the hotspot index */
+}
+
+/* a touch-only piece (draws nothing) over a host rect: a click maps into the ROM box (bx, by, bw, bh) */
+int add_touch_zone(MenuLayout *L, const PauseRect &r, int bx, int by, int bw, int bh)
+{
+    MenuPiece p = menu_piece_make(SRC_HOSTIMG, bx, by, bw, bh, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    p.nodraw = 1; p.touch = 1;
+    p.fixdest = 1; p.fx = (short)r.x; p.fy = (short)r.y; p.fw = (short)r.w; p.fh = (short)r.h;
+    const int ip = menu_add_piece(L, p);
+    if (ip < 0) return -1;
+    return menu_add_hotspot(L, ip, bx, by, bw, bh, -1);
+}
+
+void finish_new(MenuLayout *L)
+{
+    L->lift_owners = MENU_L_BG3 | MENU_L_OBJ;     /* the ROM's own top text and sprites are lifted out of the picture and drawn nowhere */
+    L->hide_owners = MENU_L_BG1 | MENU_L_BG2;     /* the card (BG2) and the "TOUCH TO SELECT" band (BG1) are drawn nowhere */
+    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+    L->stage = MENU_STAGE_POST_FADE;
+    L->no_focus_paint = 1;                        /* the lit plank and the pointer are the selection */
+}
+
+void build_new(MenuLayout *L, int variant)
+{
+    PauseFacts fb;
+    const PauseFacts *f = facts_of(L, &fb, variant);
+    const PauseGeo g = pause_geo(L->w, L->h, f, f->nslots);
+    add_custom(L);
+    L->back = -1;
+    const int sel = f->sel_slot, prs = f->pressed;
+    if (variant == V_CASTLE || variant == V_COURSE) {
+        static const int castle_box_y[3] = { 0x20, 0x70, 0x98 }, course_box_y[3] = { 0x18, 0x68, 0x90 };
+        const int *box_y = variant == V_COURSE ? course_box_y : castle_box_y;
+        const int img[3] = { MENU_IMG_P_PK_RESUME, MENU_IMG_P_PK_SETTINGS, variant == V_COURSE ? MENU_IMG_P_PK_EXIT : MENU_IMG_P_PK_SAVEQUIT };
+        if (f->arrows_live)
+            for (int side = 0; side < 2; ++side)      /* the ROM's course arrows (PS_Update.cpp :322-401), clickable where the tracker draws them */
+                add_touch_zone(L, pause_arrow_rect(g, f, side), side ? 0xc8 : 0, 0, 0x38, 0x20);
+        const int rest = f->slide_t1000 == 0;
+        if (!f->settings_open && (g.wide || f->slide_t1000 < 1000)) {
+            for (int i = 0; i < 3; ++i) {
+                const PauseRect r = pause_plank_rect(g, f, 3, i);
+                const int h = add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomMain[i], i == sel, prs);
+                if (i == 0 && rest && h >= 0) L->back = (int8_t)h;
+            }
+        }
+    } else if (variant == V_SAVE) {
+        static const int box_y[3] = { 0x50, 0x78, 0x28 };            /* the ROM plates 1, 2, 0 */
+        const int img[3] = { MENU_IMG_P_PK_SAVEQUIT, MENU_IMG_P_PK_QUITNOSAVE, MENU_IMG_P_PK_RESUME };
+        for (int i = 0; i < 3; ++i) {
+            const PauseRect r = pause_dialog_plank(g, f, V_SAVE, 3, i);
+            const int h = add_plank(L, img[i], r, 8, box_y[i], 240, 32, kRomSave[i], i == sel, prs);
+            if (i == 2 && h >= 0) L->back = (int8_t)h;
+        }
+    } else if (variant == V_NOSAVE) {
+        /* touch only (PS_Update.cpp :1370-1451): NO first (hotspot 0, the default focus and the back key), then YES; the stack reads YES over NO */
+        const PauseRect ry = pause_dialog_plank(g, f, V_NOSAVE, 2, 0), rn = pause_dialog_plank(g, f, V_NOSAVE, 2, 1);
+        MenuPiece py = menu_piece_make(SRC_HOSTIMG, 0x28, 0x98, 0x50, 0x20, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        py.hostimg = MENU_IMG_P_PK_YESQUIT; py.fixdest = 1; py.fx = (short)ry.x; py.fy = (short)ry.y; py.fw = (short)ry.w; py.fh = (short)ry.h; py.touch = 1;
+        py.hl = (uint8_t)(sel == 0 ? (1 | (prs ? 2 : 0)) : 0);
+        MenuPiece pn = menu_piece_make(SRC_HOSTIMG, 0x88, 0x98, 0x50, 0x20, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+        pn.hostimg = MENU_IMG_P_PK_NOKEEP; pn.fixdest = 1; pn.fx = (short)rn.x; pn.fy = (short)rn.y; pn.fw = (short)rn.w; pn.fh = (short)rn.h; pn.touch = 1;
+        pn.hl = (uint8_t)(sel == 1 ? (1 | (prs ? 2 : 0)) : 0);
+        const int iy = menu_add_piece(L, py), in = menu_add_piece(L, pn);
+        const int hn = menu_add_hotspot(L, in, 0x88, 0x98, 0x50, 0x20, -1);
+        menu_add_hotspot(L, iy, 0x28, 0x98, 0x50, 0x20, -1);
+        L->back = (int8_t)hn;
+    }
+    finish_new(L);
+}
+
+/* ---- the plain layout for what the new look has no page for ------------------------------------------------------------ */
+
+/* The ROM's own bottom screen (plates, labels) as one touch piece at the right of the picture, the top picture as the ROM draws it: used for every
+   language but English (the port's font has no accents) and for the Controller Modes / Options pages (reached only by Select, which the big map
+   took, and by the plates the new look does not have). Nothing is lifted. */
+struct Hs { short x, y, w, h; int8_t rom; };
+
+MenuPiece sub_plain(int sx, int sy, int sw, int sh, int dy, int touch)
+{
+    MenuPiece p = menu_piece_make(SRC_SUB, sx, sy, sw, sh, MENU_AX_R, MENU_AY_M, -8, dy, 2, 3);
+    p.layers = MENU_L_BG0 | MENU_L_BG1 | MENU_L_OBJ;
+    p.key_backdrop = 1;
+    p.touch = (uint8_t)touch;
+    return p;
+}
+
+void ok_box(int controller, int lang, short *x, short *w)
+{
+    if (controller) {
+        if (lang == 5) { *x = 0x44; *w = 0x64; }
+        else if (lang == 3) { *x = 0x3c; *w = 0x74; }
+        else { *x = 0x4c; *w = 0x54; }
+    } else {
+        if (lang == 5) { *x = 0x40; *w = 0x70; }
+        else if (lang == 3) { *x = 0x48; *w = 0x60; }
+        else { *x = 0x50; *w = 0x50; }
+    }
+}
+
+void build_plain(MenuLayout *L, int variant)
+{
+    const int lang = L->facts.language;
+    switch (variant) {
+    case V_CASTLE: case V_COURSE: case V_SAVE: {
+        const int y0 = variant == V_CASTLE ? 0x20 : (variant == V_COURSE ? 0x18 : 0x28);
+        const int n = variant == V_SAVE ? 3 : 4;
+        const int ps = menu_add_piece(L, sub_plain(8, y0 - 8, 240, 40 * n, 0, 1));
+        for (int i = 0; i < n; ++i) menu_add_hotspot(L, ps, 8, y0 + 0x28 * i, 240, 32, i);
+        L->back = 0;
+        break;
+    }
+    case V_CTL: case V_CTL_SEL: {
+        const int ps = menu_add_piece(L, sub_plain(4, 28, 248, 160, 0, 1));
+        short ox, ow;
+        ok_box(1, lang, &ox, &ow);
+        for (int i = 0; i < 3; ++i) menu_add_hotspot(L, ps, 8, 32 + 40 * i, 240, 32, -1);
+        int back = menu_add_hotspot(L, ps, ox, 0x98, ow, 0x20, -1);
+        if (variant == V_CTL) back = menu_add_hotspot(L, ps, 0xd8, 0x98, 0x20, 0x20, -1);
+        L->back = (int8_t)back;
+        break;
+    }
+    case V_OPT: {
+        const int ps = menu_add_piece(L, sub_plain(4, 28, 248, 160, 0, 1));
+        const Hs hs[4] = { { 0x5c, 0x30, 0x10, 0x10, -1 }, { 0xec, 0x30, 0x10, 0x10, -1 }, { 0x70, 0x58, 0x38, 0x20, -1 }, { 0xb0, 0x58, 0x38, 0x20, -1 } };
+        for (int i = 0; i < 4; ++i) menu_add_hotspot(L, ps, hs[i].x, hs[i].y, hs[i].w, hs[i].h, hs[i].rom);
+        short ox, ow;
+        ok_box(0, lang, &ox, &ow);
+        menu_add_hotspot(L, ps, ox, 0x98, ow, 0x20, -1);
+        L->back = (int8_t)menu_add_hotspot(L, ps, 0xd8, 0x98, 0x20, 0x20, -1);
+        break;
+    }
+    case V_STATUS: {
+        menu_add_piece(L, sub_plain(56, 40, 144, 80, 0, 0));
+        L->back = -1;
+        break;
+    }
+    case V_NOSAVE: {
+        const int ps = menu_add_piece(L, sub_plain(24, 64, 208, 128, 0, 1));
+        menu_add_hotspot(L, ps, 0x28, 0x98, 0x50, 0x20, -1);                     /* YES */
+        L->back = (int8_t)menu_add_hotspot(L, ps, 0x88, 0x98, 0x50, 0x20, -1);    /* NO */
+        break;
+    }
+    default: break;
+    }
+    L->lift_owners = 0;
+    L->hide_owners = 0;
+    L->backdrop = MENU_BACKDROP_TOP_AS_IS;
+    L->stage = MENU_STAGE_POST_FADE;
+}
+
+void pause_build(int variant, MenuLayout *L)
+{
+    const int english = L->facts.language <= 1;
+    if (english && (variant == V_CASTLE || variant == V_COURSE || variant == V_SAVE || variant == V_STATUS || variant == V_NOSAVE)) build_new(L, variant);
+    else if (variant >= V_CASTLE && variant <= V_NOSAVE) build_plain(L, variant);
+}
+
+/* ---- the up() test and the ROM-cursor driver --------------------------------------------------------------------------- */
+
+int pause_up(int scene_id)
+{
+    int v = 0;
+    /* the Stage is scene 3; a level boot that never runs the scene thunk answers -1 (hal_menu_hook_h1), and
+       the stacked layout is MENU_SCENE_GATED: no recipe */
+    if (scene_id == 3 || scene_id == -1) v = pause_variant();
+    if (v && GetOwnerLanguage() > 1) v = 0;    /* every language but English: the recipe draws nothing, the player sees the ROM's own pause as with OneScreenMenus off */
+    if (v != g_last_variant) {
+        /* settings must reach the file on every way out of the pause (REVSETLIVE1 G1: the queue waits half a second and has no flush on quit) */
+        if (!v || v == V_STATUS || v == V_NOSAVE) sl_flush();
+        g_slide.target = 0; g_slide.ticks = 0;
+    }
+    g_last_variant = v;
+    if (!v) {
+        if (g_embed_set) { settings_page_set_embed(0); g_embed_set = 0; }
+        g_tab_hover = g_tab_press = -1;
+        warm_tick(scene_id);
+    }
+    if (hal_menu_trace_on()) {      /* SM64DS_MENU_TRACE: every change of the ROM's pause words, for the proof rows */
+        static int last[10] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+        const int now[10] = { v, data_0209f2c4, data_0209f248, data_0209f1ec, data_0209f2c8, data_0209f2e0, data_0209f218,
+                              (int)g_slide.ticks, (int)g_slide.target, g_slide.dir };
+        if (memcmp(now, last, sizeof now) != 0) {
+            memcpy(last, now, sizeof last);
+            fprintf(stderr, "[pause] variant=%d f2c4=%d f248=%d f1ec=%d course=%d sel=%d select=%d slide_ticks=%d slide_target=%d dir=%d\n", now[0], now[1],
+                    now[2], now[3], now[4], now[5], now[6], now[7], now[8], now[9]);
+        }
+    }
+    return v;
+}
+
+/* dir = MENU_DIR_* or -1 (no direction this frame). *owns is set to 1 on the pages whose plates are the ROM's own cursor (A is then the ROM's
+   confirm, the core rewrites it to Start) and 0 on the touch-only pages (A presses the focused hotspot). Returns 1 when it consumed the direction. */
+int pause_cursor(int dir, int *owns)
+{
+    const unsigned st = data_0209f248;
+    const int plates = st == 1 || st == 3 || st == 5 || st == 0xd;
+    if (owns) *owns = plates;
+    if (!plates || dir < 0) return 0;
+    if (data_0209f300 != 0 || data_0209f22c != 0 || data_0209f244 != 0) return 1;
+    if (dir == MENU_DIR_LEFT || dir == MENU_DIR_RIGHT) {
+        /* the course arrows: live in the castle's main page, and only where the tracker is on screen (wide, or slid in at 4:3) */
+        if (st == 1 && !data_0209f2f0 && (g_wide_now || tracker_view()) && !settings_page_open()) page_course(dir == MENU_DIR_LEFT ? -1 : 1);
+        return 1;
+    }
+    if (tracker_view()) return 1;         /* the planks are slid away: up and down do nothing */
+    const int v = g_last_variant;
+    const int slot = slot_of_rom(v, data_0209f2e0);
+    int ns = slot;
+    if (slot < 0) ns = 0;
+    else if (dir == MENU_DIR_UP && slot > 0) --ns;
+    else if (dir == MENU_DIR_DOWN && slot < nslots_of(v) - 1) ++ns;
+    if (ns != slot || slot < 0) {
+        set_chosen(slot_rom_table(v)[ns]);
+        func_02012790(0x12e);
+    }
+    return 1;
 }
 
 }  // namespace
@@ -681,3 +714,72 @@ void menu_pause_facts(MenuFacts *f) { pause_facts(f); }
 void menu_pause_build(int variant, MenuLayout *L) { pause_build(variant, L); }
 int menu_pause_cursor(int dir, int *owns) { return pause_cursor(dir, owns); }
 int menu_pause_pad_ok(void) { return data_0209f2c4 != 0 && data_0209f20c == 0; }
+
+/* ---- the devices the recipe's own controls read (walk_window.cpp's menu_input, once a logic frame) ----------------------- */
+
+/* keys: bit 0 LB, bit 1 RB, bit 2 Q, bit 3 E (held now). The mouse is the pointer over the picture in picture pixels. Returns nothing: the slide, the
+   course paging and the edge tabs act here. 1 when this recipe is up (the caller then lets nothing else take these keys). */
+extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int mdown)
+{
+    static unsigned prev_keys;
+    static int prev_down;
+    const unsigned edge = keys & ~prev_keys;
+    prev_keys = keys;
+    const int down_edge = mdown && !prev_down;
+    const int up_edge = !mdown && prev_down;
+    prev_down = mdown;
+    const int v = g_last_variant;
+    if (!v) { g_tab_hover = g_tab_press = -1; g_nosave_focus = 0; return 0; }
+    if (v != V_NOSAVE) g_nosave_focus = 0;
+    else if (!g_nosave_focus && hal_menu_focus_set(0)) g_nosave_focus = 1;     /* the confirm page is touch only: the cursor starts on "No, keep playing" (hotspot 0) */
+    if (!is_main_page(v) || GetOwnerLanguage() > 1) return 1;
+    const int open = settings_page_open();
+    unsigned left = edge & (1u | 4u), right = edge & (2u | 8u);       /* LB / Q, RB / E */
+    if (open) { left &= 4u; right &= 8u; }                             /* the settings page's own tabs take LB / RB */
+    if (g_wide_now) {
+        if (!open) { if (left) page_course(-1); if (right) page_course(1); }
+        return 1;
+    }
+    int act = 0;
+    if (left || right) { act = right ? 1 : -1; }
+    /* the edge tabs: shown on the main pages, hidden while the settings panel is up and in view */
+    const int tabs_up = !open || g_slide.ticks > 0;
+    g_tab_hover = -1;
+    if (tabs_up && mvalid) {
+        PauseFacts f0;
+        memset(&f0, 0, sizeof f0);
+        f0.dir = g_slide.dir;
+        const PauseGeo g = pause_geo(g_pic_w, g_pic_h, &f0, 3);
+        for (int side = 0; side < 2; ++side) {
+            const PauseRect r = pause_tab_rect(g, side);
+            const int inside = mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h;
+            if (inside) g_tab_hover = side;
+            if (inside && down_edge) g_tab_press = side;
+            if (up_edge && g_tab_press == side && inside) act = side ? 1 : -1;
+        }
+    }
+    if (!mdown || !mvalid) g_tab_press = -1;
+    if (act) {
+        if (g_slide.target) g_slide.target = 0;                        /* back the way it came */
+        else { g_slide.dir = act; g_slide.target = 1; }
+    }
+    return 1;
+}
+
+/* the pad seam, before hal_menu_pad: while the tracker page is showing at 4:3 the planks are away, so A, Start and up / down must not reach the ROM's
+   plate cursor: A (or B) slides back to the planks instead. pressed is the DS key word (MENU_PAD_*). */
+extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back)
+{
+    if (!tracker_view() || settings_page_open()) return;
+    const uint16_t confirm = (uint16_t)(MENU_PAD_CONFIRM | MENU_PAD_START | 0x0001);
+    if (*pressed & MENU_PAD_START) {       /* Start resumes at once (the ROM's Continue plate), the tracker view is left behind */
+        g_slide.target = 0;
+        set_chosen(0);
+        *pressed = (uint16_t)(*pressed & ~(MENU_PAD_CONFIRM | 0x0001 | MENU_PAD_UP | MENU_PAD_DOWN));
+        return;
+    }
+    if ((*pressed & confirm) || back) g_slide.target = 0;
+    *pressed = (uint16_t)(*pressed & ~(confirm | MENU_PAD_UP | MENU_PAD_DOWN));
+}
+
+extern "C" int menu_pause_active(void) { return g_last_variant != 0; }

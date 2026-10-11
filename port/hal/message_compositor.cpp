@@ -3438,7 +3438,9 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        it. */
     /* THE N64 ROW, once per frame: only in a 3D scene shown at its own layout, never under a level-clear lift. */
     g_hud_row_live = false;
+#ifndef PORT_ROM_CLEAN      /* env-only proof arm: not in the shipped build (g_hud_erase stays false) */
     { static const bool e = std::getenv("SM64DS_HUD_ERASE_PROOF") != nullptr; g_hud_erase = e; }
+#endif
     if (host_setting_hud_layout() == 1 && bg0_3d_shown(dispcnt) && !ntr::present_native()
         && !lc_ov.live && !lc_ov.top_live) {
         /* THE RACE TIMER (src/_ZN3HUD15RenderTimeTimerEv.cpp: x 0xa4..0xf0, y 0x16 / 0x1e) shares these rows, and its
@@ -3454,7 +3456,11 @@ extern "C" void port_message_composite_engine_a(void *fbp)
            within a level) and let a larger one replace it after 120 frames of agreeing, so the coin block never hops. */
         /* Proof arm (SM64DS_HUD_BLINK_SIM=1): blank the star counter for 8 frames in 16, the way the ROM's collect blink does,
            so a strip can show the coin block does not hop. Never set in play. */
+#ifndef PORT_ROM_CLEAN
         static const bool blink_sim = std::getenv("SM64DS_HUD_BLINK_SIM") != nullptr;
+#else
+        static const bool blink_sim = false;
+#endif
         static unsigned blink_n = 0;
         if (blink_sim && ((blink_n++ >> 3) & 1))
             for (int y = 0; y < kHudZoneY0 - 1; ++y)
@@ -3519,7 +3525,11 @@ extern "C" void port_message_composite_engine_a(void *fbp)
                 }
             fits = ok;
         }
+#ifndef PORT_ROM_CLEAN
         static const bool dbg = std::getenv("SM64DS_HUD_DBG") != nullptr;
+#else
+        static const bool dbg = false;
+#endif
         if (dbg) std::fprintf(stderr, "[hudrow] star_raw=%d star_left=%d star_right=%d meter_right=%d blk=%d..%d dx=%d star_gap=%d meter_gap=%d star_shift=%d fits=%d\n",
                               star_raw, star_left, star_right, meter_right, blk_left, blk_right, dx_move, star_gap, meter_gap, star_shift, (int)fits);
         if (fits && star_shift > 0) {

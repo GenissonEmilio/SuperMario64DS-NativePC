@@ -3397,6 +3397,9 @@ extern "C" int port_scene_force_kill(void)
 static int  __fastcall sc_bbeh(void *s, void *)
 {
     int r = _ZN8dScene_c14BeforeBehaviorEv(s);
+    /* POLISH1A: a scene the carrier spawned after the first one is a NEW object: the killed edge of the old one must not follow it (the
+       title -> Rec Room hand-over answered scene id -1 for the whole Rec Room, so no one-screen recipe ever matched there) */
+    if (s != g_sc_obj) g_sc_killed = 0;
     g_sc_obj = s;
     ++g_sc_beh_ticks;
     if (((const unsigned char *)s)[0xf] != 0)
