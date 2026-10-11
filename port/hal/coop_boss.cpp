@@ -181,6 +181,41 @@ const BDesc *desc_of(unsigned cls) {
     return nullptr;
 }
 
+// bossfix1 (item 11): the allocation size of each boss class (the literal the ROM passes to operator new; the same numbers as
+// port/hal/coop_actor_sizes.inc in COOPMOVE1_FIX, port/l7-coopmove1 bbbaccb252). A descriptor field past its class would read or write
+// another object's memory, and the generic bound (kHiOff) is above every boss class, so each class gets its own.
+int class_size(unsigned cls) {
+    switch (cls) {
+    case 165: return 0x610; case 189: return 0x50c; case 176: return 0x874; case 198: return 0x610; case 210: return 0x5e0;
+    case 248: return 0x8e8; case 279: return 0x454; case 216: return 0x400; case 218: return 0x504;
+    default: return 0;
+    }
+}
+bool field_in_class(unsigned cls, const BField &f) {
+    if (f.kind & kGlobal) return true;
+    const int sz = class_size(cls);
+    return sz > 0 && (int)f.off + f.size <= sz;
+}
+bool g_desc_checked = false;
+void check_descriptors() {
+    if (g_desc_checked) return;
+    g_desc_checked = true;
+    int bad = 0;
+    for (int i = 0; i < kNumDescs; ++i) {
+        const BDesc &d = kDescs[i];
+        for (int k = 0; k < d.nf; ++k)
+            if (!field_in_class(d.cls, d.f[k])) {
+                ++bad;
+                std::fprintf(stderr, "[cbs] DESCRIPTOR %s field %d at 0x%x+%d is past the class size 0x%x: refused\n", d.name, k, (unsigned)d.f[k].off, (int)d.f[k].size, class_size(d.cls));
+            }
+        for (int k = 0; k < 2; ++k)
+            if (d.pl[k] && (int)d.pl[k] + 4 > class_size(d.cls)) { ++bad; std::fprintf(stderr, "[cbs] DESCRIPTOR %s pointer field 0x%x is past the class size\n", d.name, (unsigned)d.pl[k]); }
+        if (d.hit_who && (int)d.hit_who + 4 > class_size(d.cls)) { ++bad; std::fprintf(stderr, "[cbs] DESCRIPTOR %s hit pointer 0x%x is past the class size\n", d.name, (unsigned)d.hit_who); }
+        if (d.hit_off && (int)d.hit_off + 1 > class_size(d.cls)) { ++bad; std::fprintf(stderr, "[cbs] DESCRIPTOR %s hit byte 0x%x is past the class size\n", d.name, (unsigned)d.hit_off); }
+    }
+    std::fprintf(stderr, "[cbs] descriptor class-size check: %d descriptors, %d problems\n", kNumDescs, bad);
+}
+
 bool field_ok(const BField &f) {
     if (f.kind & kGlobal) return f.off < 2 && f.size == 1;
     if (f.size != 1 && f.size != 2 && f.size != 4) return false;
@@ -343,7 +378,7 @@ uint32_t read_field(const char *a, const BField &f) {
 }
 void write_field(char *a, const BDesc &d, int idx, uint32_t v) {
     const BField &f = d.f[idx];
-    if (!field_ok(f)) return;
+    if (!field_ok(f) || !field_in_class(d.cls, f)) return;
     if (f.kind & kGlobal) {                  // the overlay's own words: a merge that only ever moves one way, so a replay is harmless
         if (f.off == 0) { if (v <= 3u) data_ov066_0211abe0 = (unsigned char)(data_ov066_0211abe0 & v); }
         else if (v <= 3u && v > data_ov066_0211ae08) data_ov066_0211ae08 = (unsigned char)v;
@@ -478,6 +513,7 @@ void read_env() {
     }
     g_god = flag("SM64DS_COOP_BOSS_GOD", false);
     g_bomb = flag("SM64DS_COOP_BOSS_BOMB", false);
+    check_descriptors();
     if (const char *f = std::getenv("SM64DS_COOP_BOSS_FORGE")) {
         const char *p = f;
         while (*p && g_nforge < 8) {
@@ -942,12 +978,17 @@ bool bossdesc2_knob(Boss &b, HitKnob &k) {
         if (!bomb) { std::fprintf(stderr, "[cbs-knob] bomb: no live bomb actor (class 284) in this arena w=%lld\n", wall_ms()); k.done = true; return true; }
         if (k.lethal && (int8_t)a[0x41e] > 1) { a[0x41e] = 1; k.hp0 = 1; }
         int32_t px = rd32(bomb, 0x174), py = rd32(bomb, 0x178), pz = rd32(bomb, 0x17c);
+        // The bombs hang in the air around the arena's rim: land Bowser inside the hit sphere but on the arena side of the rim, so he does not
+        // fall into the pit beside the platform (the first try, exactly on the bomb, did and the level ended).
+        const int32_t rad = rd32(bomb, 0x184);
+        const double hl = std::sqrt((double)px * px + (double)pz * pz);
+        if (hl > 1.0 && rad > 0) { const double f = 1.0 - (rad * 0.6) / hl; px = (int32_t)(px * f); pz = (int32_t)(pz * f); }
         std::memcpy(a + 0x5c, &px, 4); std::memcpy(a + 0x60, &py, 4); std::memcpy(a + 0x64, &pz, 4);
         const int32_t one = 1, zero = 0;
         std::memcpy(a + 0x40c, &one, 4); std::memcpy(a + 0x410, &zero, 4); a[0x423] = 0;
         k.tick = g_ticks + 4;
         if (++k.slot_tries >= 60) { k.done = true; std::fprintf(stderr, "[cbs-knob] bomb: gave up after 60 tries hp=%d w=%lld\n", hp_of(b), wall_ms()); }
-        else if (k.slot_tries == 1) std::fprintf(stderr, "[cbs-knob] bomb: Bowser put on the bomb at %d,%d,%d in his thrown state, the ROM decides hp=%d st=%u w=%lld\n", px >> 12, py >> 12, pz >> 12, hp_of(b), state_of(b), wall_ms());
+        else if (k.slot_tries == 1) std::fprintf(stderr, "[cbs-knob] bomb: Bowser put on the bomb at %d,%d,%d in his thrown state (sphere radius %d, ring %d), the ROM decides hp=%d st=%u w=%lld\n", px >> 12, py >> 12, pz >> 12, rad >> 12, rd32(bomb, 0x180) >> 12, hp_of(b), state_of(b), wall_ms());
         return true;
     } else if (cls == 279) {
         if (k.lethal && (int8_t)a[0x41e] > 1) a[0x41e] = 1;
