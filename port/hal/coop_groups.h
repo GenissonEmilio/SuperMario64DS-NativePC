@@ -39,7 +39,7 @@ struct CoopKey {
 
 class CoopGroups {
 public:
-    enum { kSeats = 16, kEvidenceMs = 3500, kTieMs = 4000 };
+    enum { kSeats = 16, kEvidenceMs = 3500, kTieMs = 2000 };
 
     void reset(int my_seat);
     int  my_seat() const { return me_; }
