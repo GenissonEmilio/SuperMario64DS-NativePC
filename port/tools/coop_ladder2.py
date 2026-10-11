@@ -209,5 +209,4 @@ if __name__ == "__main__":
         name, _, arg = a.partition(":")
         f = ROWS[name]
         f(ctl=True) if arg == "ctl" and name != "solo" else f()
-    print("
-".join(G.RES))
+    print(chr(10).join(G.RES))
