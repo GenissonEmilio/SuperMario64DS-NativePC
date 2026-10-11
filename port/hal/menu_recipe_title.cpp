@@ -1517,6 +1517,11 @@ void menu_title_pad_map(uint16_t *pressed, int host_back)
         *pressed = (uint16_t)(*pressed & ~0x0001u);
         h = (unsigned short)(h & ~0x0001u);
     }
+    /* FACE3: the free-draw page has no pad handling in the ROM (touch only): the back key (Backspace, pad B) taps its Yoshi button, the ROM's own box 6, which leaves for the main menu */
+    if (host_back && g_last == V_DOODLE && g_elem == 3) {
+        Box b;
+        if (box_of_live(6, &b)) hal_menu_touch_queue_press((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2);
+    }
     if (h & MENU_PAD_CONFIRM) h = (unsigned short)((h & ~(unsigned)MENU_PAD_CONFIRM) | 0x0001);
     if (inject) h = (unsigned short)(h | 0x0001);
     if (host_back) h = (unsigned short)(h | 0x0002);
