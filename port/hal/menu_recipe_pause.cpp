@@ -285,6 +285,7 @@ void title_case(char *s)
         for (unsigned k = 0; k < sizeof small / sizeof small[0]; ++k) if (!strcmp(core, small[k])) is_small = 1;
         for (char *q = w; *q; ++q) *q = low[q - w];
         if ((!is_small || first) && *w >= 'a' && *w <= 'z') *w = (char)(*w - 'a' + 'A');
+        if (!strncmp(low, "chain-chomp", 11)) { *w = 'C'; w[6] = 'C'; }           /* the ROM spells Chain Chomp with a hyphen */
         *e = save;
         w = e;
         first = 0;

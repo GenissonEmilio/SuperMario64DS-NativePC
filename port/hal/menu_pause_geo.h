@@ -166,7 +166,7 @@ inline PauseRect pause_tab_rect(const PauseGeo &g, int side)
 inline PauseRect pause_dialog_rect(const PauseGeo &g, const PauseFacts *f, int kind)
 {
     const int dwu = 600;
-    int dhu = 520;
+    int dhu = 560;
     if (kind == PAUSE_V_STATUS) dhu = 330;
     if (kind == PAUSE_V_NOSAVE) dhu = 430;
     PauseRect r;

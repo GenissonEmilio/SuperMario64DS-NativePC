@@ -509,7 +509,24 @@ const Piece *arrow_right_piece(int w, int h)
 
 enum Tab { T_GENERAL = 0, T_DISPLAY, T_CONTROLS, T_SOUND, T_COUNT };
 enum RType { R_CHOICE, R_SLIDER, R_CHECK, R_BIND, R_HEAD, R_NOTE };
-struct Row { RType t; const char *label; int id, id2, step; const char *const *names; int nn; };
+struct Row { RType t; const char *label; int id, id2, step; const char *const *names; int nn; const int *vals; };   /* vals: the value of each choice when it is not min + index (the frame rate stops) */
+
+int ch_val(const Row &R, int i)
+{
+    const SlInfo *I = sl_info(R.id);
+    return R.vals ? R.vals[i] : (I ? I->min + i : i);
+}
+int ch_idx(const Row &R, int v)
+{
+    if (!R.vals) {
+        const SlInfo *I = sl_info(R.id);
+        const int k = v - (I ? I->min : 0);
+        return k < 0 ? 0 : (k >= R.nn ? R.nn - 1 : k);
+    }
+    int best = 0;
+    for (int i = 1; i < R.nn; ++i) if (abs(R.vals[i] - v) < abs(R.vals[best] - v)) best = i;
+    return best;
+}
 enum { MAXR = 40 };                 /* rows a tab can hold */
 
 const char *const RUN_LABELS[] = { "Hold button", "Analog stick", "Always run" };
@@ -566,9 +583,11 @@ const Row *display_rows(int *n)
     g_disp_rows[k++] = Row{ R_CHOICE, "Gap color", SL_GAP_COLOR, -1, 0, GAPCOLOR_LABELS, 6 };
     const int fr = sl_find("FrameRate");
     const SlInfo *fi = fr >= 0 ? sl_info(fr) : 0;
-    if (fi && fi->live && fi->names && fi->kind == SL_KIND_ENUM)
-        g_disp_rows[k++] = Row{ R_CHOICE, "Frame rate", fr, -1, 0, fi->names, fi->max - fi->min + 1 };
-    if (fi && fi->live && fi->names && fi->kind == SL_KIND_ENUM) {
+    static const char *const RATE_LABELS[] = { "Native", "60", "90", "120", "144", "165", "180", "240" };
+    static const int RATE_VALS[] = { 0, 60, 90, 120, 144, 165, 180, 240 };
+    const bool has_rate = fi && fi->live;           /* the row exists in this build (another lane makes the frame rate live): the drop-down shows */
+    if (has_rate) g_disp_rows[k++] = Row{ R_CHOICE, "Frame rate", fr, -1, 0, RATE_LABELS, 8, RATE_VALS };
+    if (has_rate) {
         g_disp_rows[k++] = Row{ R_NOTE, "Aspect ratio and picture quality are set", -1, -1, 0, 0, 0 };
         g_disp_rows[k++] = Row{ R_NOTE, "in the launcher.", -1, -1, 0, 0, 0 };
     } else {
@@ -720,8 +739,8 @@ void compute_layout(int w, int h)
     L.back[0] = L.sx + P(30); L.back[1] = L.sy - L.back[3] / 2;
     L.tab_h = P(44); L.tab_y = L.sy + P(74);
     {   /* the tab names in a row, centred on the sheet */
-        const float em = (float)P(30);
-        const float gap = (float)P(38);
+        const float em = (float)P(27);
+        const float gap = (float)P(34);
         float tot = 0, tw[T_COUNT];
         for (int i = 0; i < T_COUNT; ++i) { tw[i] = ui_text_width(TAB_NAMES[i], em); tot += tw[i] + (i ? gap : 0); }
         float x = L.sx + (L.sw - tot) * 0.5f;
@@ -803,10 +822,10 @@ void adjust(const Row &R, int dir, int big)
         v = v < I->min ? I->min : (v > I->max ? I->max : v);
         set_value(R.id, v);
     } else if (R.t == R_CHOICE) {
-        v += dir;
-        if (v < I->min) v = I->max;
-        if (v > I->max) v = I->min;
-        set_value(R.id, v);
+        int k = ch_idx(R, v) + dir;
+        if (k < 0) k = R.nn - 1;
+        if (k >= R.nn) k = 0;
+        set_value(R.id, ch_val(R, k));
     } else if (R.t == R_CHECK) {
         set_value(R.id, v ? 0 : 1);
     }
@@ -919,7 +938,7 @@ void drag_slider(const Row &R, int mx)
 void activate(const Row &R, int col)
 {
     switch (R.t) {
-    case R_CHOICE: S.dd_open = 1; S.dd_hi = sl_get(R.id); break;
+    case R_CHOICE: S.dd_open = 1; S.dd_hi = ch_idx(R, sl_get(R.id)); break;
     case R_CHECK: adjust(R, 1, 0); break;
     case R_BIND: start_capture(col ? R.id2 : R.id); break;
     default: break;
@@ -1056,19 +1075,20 @@ extern "C" int settings_page_frame(const SpInput *in)
         const Row &R = rows[S.sel];
         const SlInfo *I = sl_info(R.id);
         const int bh = P(46), by = L.r[S.sel].y + (L.rowh - bh) / 2, lh = P(44);
-        if (repeat_fire(0, held)) { if (S.dd_hi > I->min) --S.dd_hi; }
-        if (repeat_fire(1, held)) { if (S.dd_hi < I->max) ++S.dd_hi; }
-        if (edge_only(4, held)) { set_value(R.id, S.dd_hi); S.dd_open = 0; }
+        (void)I;
+        if (repeat_fire(0, held)) { if (S.dd_hi > 0) --S.dd_hi; }
+        if (repeat_fire(1, held)) { if (S.dd_hi < R.nn - 1) ++S.dd_hi; }
+        if (edge_only(4, held)) { set_value(R.id, ch_val(R, S.dd_hi)); S.dd_open = 0; }
         else if (edge_only(5, held)) { S.dd_open = 0; }
         else if (l_edge) {
             if (mx >= L.ctl_x && mx < L.ctl_x + L.ctl_w && my >= by + bh && my < by + bh + lh * R.nn + P(16)) {
                 const int i = (my - (by + bh + P(8))) / lh;
-                if (i >= 0 && i < R.nn) set_value(R.id, I->min + i);
+                if (i >= 0 && i < R.nn) set_value(R.id, ch_val(R, i));
             }
             S.dd_open = 0;
         } else if (moved && mx >= L.ctl_x && mx < L.ctl_x + L.ctl_w) {
             const int i = (my - (by + bh + P(8))) / lh;
-            if (i >= 0 && i < R.nn) S.dd_hi = I->min + i;
+            if (i >= 0 && i < R.nn) S.dd_hi = i;
         }
     } else {
         /* ---- navigation ---- */
@@ -1588,7 +1608,11 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         case R_CHOICE: {
             const SlInfo *I = sl_info(R.id);
             const int v = sl_get(R.id);
-            const char *t = (v >= I->min && v <= I->max && v - I->min < R.nn) ? R.names[v - I->min] : "?";
+            const int ci = ch_idx(R, v);
+            char vb[16];
+            const char *t = R.names[ci];
+            if (R.vals && R.vals[ci] != v) { snprintf(vb, sizeof vb, "%d", v); t = vb; }      /* a value that is not one of the stops (the launcher's own number) */
+            (void)I;
             draw_dd_box(s, L.ctl_x, cy - P(23), L.ctl_w, P(46), t, sel, alpha, clip);
             break;
         }
@@ -1680,7 +1704,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         const SlInfo *I = sl_info(R.id);
         for (int i = 0; i < R.nn; ++i) {
             const int ry = ly + P(8) + i * lh;
-            if (I->min + i == S.dd_hi) fill_rrect(s, (float)(lx + P(6)), (float)ry, (float)(lw - P(12)), (float)lh, (float)P(6), 0xFFFFFF, 80, 0);
+            if (i == S.dd_hi) fill_rrect(s, (float)(lx + P(6)), (float)ry, (float)(lw - P(12)), (float)lh, (float)P(6), 0xFFFFFF, 80, 0);
             text_mid(s, (float)(lx + P(18)), ry + lh * 0.5f, R.names[i], lh * 0.62f, 0xFFFFFF, 255, 0);
         }
     }

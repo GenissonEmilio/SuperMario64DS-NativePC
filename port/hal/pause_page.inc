@@ -60,10 +60,13 @@ void pp_title_text(const Surf &sf, int cx, int cy, int maxw, const char *t, doub
     ui_text_draw(&sf, cx - w * 0.5f, cy + ui_text_cap_height(e) * 0.5f, t, e, PP_BROWN, 255, 0);
 }
 
-void pp_star_row(const Surf &sf, int x, int y, int rowh, int icon, const char *name, int got, double sc)
+void pp_star_row(const Surf &sf, int x, int y, int rowh, int icon, const char *name, int got, double sc, int maxw)
 {
     blit_hi(sf, got ? MENU_IMG_P_STAR_GOT : MENU_IMG_P_STAR_OFF, x, y + (rowh - icon) / 2, icon, icon);
-    const float em = (float)(31 * sc);
+    float em = (float)(31 * sc);
+    const float room = (float)(maxw - icon - 18 * sc);       /* a long name shrinks to fit the sheet */
+    const float need = ui_text_width(name, em);
+    if (need > room && room > 0) em *= room / need;
     ui_text_draw(&sf, (float)(x + icon + 18 * sc), y + rowh * 0.5f + ui_text_cap_height(em) * 0.5f, name, em, got ? PP_BROWN : PP_FADED, 255, 0);
 }
 
@@ -127,10 +130,10 @@ void pp_tracker(const Surf &sf, const PauseGeo &g, const PauseFacts *f)
     } else {
         for (int i = 0; i < 7; ++i) {
             if (!f->names[i][0]) { yy += rowh; continue; }
-            pp_star_row(sf, lx, yy, rowh, ic, f->names[i], (f->got_mask >> (i + 1)) & 1, sc);
+            pp_star_row(sf, lx, yy, rowh, ic, f->names[i], (f->got_mask >> (i + 1)) & 1, sc, (int)(w - 70 * sc - 50 * sc));
             yy += rowh;
         }
-        pp_star_row(sf, lx, yy, rowh, ic, "100 Coins", f->got_mask & 1, sc);
+        pp_star_row(sf, lx, yy, rowh, ic, "100 Coins", f->got_mask & 1, sc, (int)(w - 70 * sc - 50 * sc));
         yy += rowh;
     }
     yy += (int)(6 * sc);
