@@ -30,6 +30,10 @@ extern int data_0208e380;
 extern int data_0208e37c;
 extern short data_02092144[];
 int Vec3_Dist(const void *a, const void *b);
+int Vec3_HorzDist(const void *a, const void *b);
+short Vec3_HorzAngle(const void *a, const void *b);
+int _ZN8dActor_c14GetSubtractionEss(void *self, short a, short b);
+void func_ov079_02123f34(char *self);
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 int port_adventure_ghost_seat(int slot);
 int port_adventure_ghost_drawpos(int slot, int out[3]);
@@ -213,6 +217,78 @@ void *__fastcall cp_replacement(void *self, void * /*edx*/) {
     return data_0209b458;
 }
 
+
+// ---------------------------------------------------------------------------
+// WHOMP / WHOMP KING DO NOT ASK ClosestPlayer. Whomp::InitResources copies the player table into the actor (+0x39c, four
+// pointers) and func_ov079_02123f34 (src/func_ov079_02123f34.c) picks the nearest by HORIZONTAL distance every frame:
+// +0x3ec the index, +0x3f4 the distance, +0x3b8 the angle, and +0x3f0 / +0x3f8 the nearest one that is roughly in front.
+// A parked friend body shares my x and z, so the strict "<" always kept the lowest index. This is the same function with
+// one difference: when the table names a seat for this king, that seat's body is the one chosen.
+// ---------------------------------------------------------------------------
+struct V3 { int x, y, z; };
+void whomp_replacement(char *self) {
+    ++g_st.cp_calls;
+    const bool lv = live();
+    void *want = nullptr; int wseat = -1;
+    if (lv) {
+        place_friends();
+        want = table_body(self, &wseat);
+    }
+    short minAngle;
+    int minDist, minDist2;
+    *(short *)(self + 0x3b8) = *(short *)(self + 0x94);
+    minAngle = *(short *)(self + 0x94);
+    minDist2 = 0x7fffffff;
+    minDist = 0x7fffffff;
+    int widx = -1, wdist = 0; short wang = 0;
+    for (int i = 0; i < 4; i++) {
+        char *obj = *(char **)(self + 0x39c + i * 4);
+        if (obj == 0) continue;
+        V3 v; std::memcpy(&v, obj + 0x5c, sizeof v);
+        const int dist = Vec3_HorzDist(self + 0x5c, &v);
+        const short angle = Vec3_HorzAngle(self + 0x5c, &v);
+        if (dist < minDist) {
+            *(int *)(self + 0x3ec) = i;
+            minDist = dist;
+            minAngle = angle;
+        }
+        if (want && obj == (char *)want) { widx = i; wdist = dist; wang = angle; }
+        if (_ZN8dActor_c14GetSubtractionEss(self, angle, *(short *)(self + 0x94)) < 0x2000) {
+            if (dist < minDist2) {
+                minDist2 = dist;
+                *(int *)(self + 0x3f0) = i;
+            }
+        }
+    }
+    const char *how = lv ? "nearest" : "rom";
+    if (want && widx >= 0) {
+        *(int *)(self + 0x3ec) = widx;
+        minDist = wdist;
+        minAngle = wang;
+        ++g_st.cp_used_table;
+        how = "table";
+    } else if (lv) {
+        ++g_st.cp_natural;
+        if (want) ++g_st.cp_unavailable;       // the table's seat is not in this king's own copy of the table
+    }
+    *(int *)(self + 0x3f4) = minDist;
+    *(int *)(self + 0x3f8) = minDist2;
+    *(short *)(self + 0x3b8) = minAngle;
+    if (coop_world_active() && g_log) {
+        const short slot = actor_slot(self);
+        if (slot >= 0 && slot < kTargetSlots) {
+            const int idx = *(int *)(self + 0x3ec);
+            char *obj = (idx >= 0 && idx < 4) ? *(char **)(self + 0x39c + idx * 4) : nullptr;
+            const int s = coop_target_seat_of_body(obj);
+            if (s != g_lastuse[slot]) {
+                g_lastuse[slot] = (short)s;
+                std::fprintf(stderr, "[cotgt] use seat=%d slot=%d cls=%u via=%s idx=%d tick=%u wall=%lld\n", s, (int)slot,
+                             (unsigned)*(const unsigned short *)(self + 0x0c), how, idx, g_ticks, wall_ms());
+            }
+        }
+    }
+}
+
 void *member_addr() {
     Player *(dActor_c::*pmf)() = &dActor_c::ClosestPlayer;
     static_assert(sizeof(pmf) >= sizeof(void *), "a pointer to member holds at least the address");
@@ -238,6 +314,20 @@ void install_patch() {
     FlushInstructionCache(GetCurrentProcess(), from, 8);
     g_patched = true;
     ++g_st.patched;
+    {   // the Whomp family's own nearest-player pick (see above)
+        unsigned char *wf = (unsigned char *)&func_ov079_02123f34;
+        DWORD wold = 0;
+        if (VirtualProtect(wf, 8, PAGE_EXECUTE_READWRITE, &wold)) {
+            unsigned char wb[5];
+            wb[0] = 0xE9;
+            const int wrel = (int)((unsigned char *)&whomp_replacement - wf - 5);
+            std::memcpy(wb + 1, &wrel, 4);
+            std::memcpy(wf, wb, 5);
+            VirtualProtect(wf, 8, wold, &wold);
+            FlushInstructionCache(GetCurrentProcess(), wf, 8);
+            std::fprintf(stderr, "[cotgt] Whomp nearest-player pick replaced at %p\n", (void *)wf);
+        }
+    }
     std::fprintf(stderr, "[cotgt] ClosestPlayer replaced at %p\n", (void *)from);
 }
 

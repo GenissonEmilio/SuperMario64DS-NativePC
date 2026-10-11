@@ -21,6 +21,9 @@
 //   3. Everyone else (and the owner itself) uses the table: the seat an actor is told to look at is the seat its
 //      ClosestPlayer returns on every console. An actor with no fresh entry (a runtime spawn with no slot, a
 //      lost datagram) falls back to the nearest placed player here, no hold.
+//   4. Whomp / Whomp King never ask ClosestPlayer: Whomp::InitResources copies the player table into the actor (+0x39c) and
+//      func_ov079_02123f34 picks the nearest by horizontal distance. That function is replaced the same way, with the table's
+//      seat winning. Other classes that read the player table themselves are listed in the lane's BREAKS.md.
 //   Boss authority (coop_boss.*) is "the console of the boss's target seat".
 //
 // WIRE. SYNW 0x50 TARGET_SET, payload after the 12-byte head: TargetHead (8 B) + count * TargetRec (4 B).
