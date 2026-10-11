@@ -111,7 +111,7 @@ bool g_warm_solving;     /* inside a warm-up solve: have() of a skipped picture 
 const int kWarmPre[] = { MENU_IMG_P_PK_CONTINUE, MENU_IMG_P_PK_OK, MENU_IMG_P_CARD, MENU_IMG_P_ARROW_L, MENU_IMG_ARROW_DOWN, MENU_IMG_STAR };
 int g_warm_pre;          /* the pictures every page's layout asks for, decoded one a slice before the first solve */
 
-/* one slice. The decode and the scale of a picture run on the hostimg worker thread (menu_hostimg_prefetch), one job at a time, so the game
+/* one slice. The decode and the scale of a picture run on the hostimg worker thread (menu_hostimg_prefetch), up to four jobs queued, so the game
    thread only installs finished work (vector moves) and solves a layout (well under a millisecond). */
 void warm_slice(int w, int h)
 {
@@ -122,13 +122,16 @@ void warm_slice(int w, int h)
     if (!R) { g_warm_v = V_VS; return; }
     static const bool trace = getenv("SM64DS_WARM_TRACE") != 0;
     const double t0 = wnow_ms();
-    if (menu_hostimg_prefetch_poll()) return;      /* a job is still running or waiting to be installed */
-    g_warm_busy = 0;
+    menu_hostimg_prefetch_poll();             /* installs what the worker finished */
     while (g_warm_v < V_VS) {
         if (g_warm_pre < (int)(sizeof kWarmPre / sizeof kWarmPre[0])) {
-            /* the pictures every layout asks for are decoded first (a 2x2 scale rides along), so the solve below never decodes on this thread */
-            if (!menu_hostimg_prefetch(kWarmPre[g_warm_pre], 2, 2)) { g_warm_busy = 1; return; }
-            ++g_warm_pre;
+            /* the pictures every layout asks for are decoded first (a 2x2 scale rides along), so the solve below never decodes on this thread:
+               queue them all, then wait until each is in */
+            int pending = 0;
+            for (int i = 0; i < (int)(sizeof kWarmPre / sizeof kWarmPre[0]); ++i)
+                if (menu_hostimg_prefetch(kWarmPre[i], 2, 2) != 1) ++pending;
+            if (pending) return;
+            g_warm_pre = (int)(sizeof kWarmPre / sizeof kWarmPre[0]);
             continue;
         }
         if (g_warm_solved_v != g_warm_v) {
@@ -144,8 +147,8 @@ void warm_slice(int w, int h)
             if (k++ == g_warm_p) { found = i; break; }
         }
         if (found < 0) { ++g_warm_v; g_warm_p = 0; continue; }     /* that variant is done */
-        if (!menu_hostimg_prefetch(W.p[found].hostimg, W.dest[found][2], W.dest[found][3])) { g_warm_busy = 1; return; }
-        ++g_warm_p;
+        if (menu_hostimg_prefetch(W.p[found].hostimg, W.dest[found][2], W.dest[found][3]) < 0) return;      /* the queue is full: next slice */
+        ++g_warm_p;                                                  /* cached or queued: on to the next picture */
         if (wnow_ms() - t0 >= 1.0) return;
     }
 }
@@ -173,8 +176,7 @@ void warm_tick(int scene_id)
     if (!hal_menu_last_size(&w, &h)) return;
     if (w != g_warm_w || h != g_warm_h) { g_warm_w = w; g_warm_h = h; g_warm_v = 1; g_warm_p = 0; g_warm_busy = 0; g_warm_solved_v = 0; g_idle_ticks = 0; }
     if (g_warm_v == 0) g_warm_v = 1;
-    if (++g_idle_ticks < 60 || g_warm_v >= V_VS) return;
-    if (menu_hostimg_prefetch_poll()) return;      /* the worker is still on the last picture: do not take a warm-up slot for nothing */
+    if (++g_idle_ticks < 30 || g_warm_v >= V_VS) return;
     if (!menu_warm_claim()) return;
     warm_slice(w, h);
 }

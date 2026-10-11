@@ -181,7 +181,8 @@ struct Worker {
     std::condition_variable cv;
     std::deque<Job> in;
     std::deque<Done> out;
-    int busy = 0;
+    int busy = 0;                 /* jobs queued or running */
+    std::deque<Job> live;          /* the same jobs, kept until installed (so a repeat call queues nothing) */
     bool started = false;
 };
 Worker *g_wk;      /* never freed: the thread outlives static destruction */
@@ -206,7 +207,7 @@ void worker_main(Worker *W)
         }
         std::lock_guard<std::mutex> lk(W->m);
         W->out.push_back(std::move(d));
-        W->busy = 0;
+        --W->busy;
     }
 }
 
@@ -251,8 +252,8 @@ extern "C" int menu_hostimg_is_plank(int id)
     return (id >= MENU_IMG_BTN_MP && id <= MENU_IMG_BTN_REC) || (id >= MENU_IMG_BTN_SAVE_CONT && id <= MENU_IMG_BTN_CONT) || menu_ext_art_is_plank(id);
 }
 
-/* PAUSEFIX1: 1 when the picture is decoded and already cached at dw x dh. Otherwise queues one background decode + scale (once) and returns 0.
-   At most one job is in flight; a call while one runs returns 0 and queues nothing. */
+/* PAUSEFIX1: 1 when the picture is decoded and already cached at dw x dh. Otherwise queues one background decode + scale (once; a repeat call
+   for a job already queued or running changes nothing) and returns 0, or -1 when MENU_HOSTIMG_QUEUE jobs are already waiting (try again later). */
 extern "C" int menu_hostimg_prefetch(int id, int dw, int dh)
 {
     Img *I = img_of(id);
@@ -262,9 +263,12 @@ extern "C" int menu_hostimg_prefetch(int id, int dw, int dh)
     if (!g_wk) g_wk = new Worker();
     Worker *W = g_wk;
     std::lock_guard<std::mutex> lk(W->m);
-    if (W->busy) return 0;
+    for (const Job &q : W->live)
+        if (q.id == id && q.dw == dw && q.dh == dh) return 0;
+    if (W->busy >= 4) return -1;
     if (!W->started) { W->started = true; std::thread(worker_main, W).detach(); }
-    W->busy = 1;
+    ++W->busy;
+    W->live.push_back(Job{ id, dw, dh });
     W->in.push_back(Job{ id, dw, dh });
     W->cv.notify_one();
     return 0;
@@ -279,8 +283,10 @@ extern "C" int menu_hostimg_prefetch_poll(void)
         Done d;
         {
             std::lock_guard<std::mutex> lk(W->m);
-            if (W->out.empty()) return W->busy;
+            if (W->out.empty()) return W->busy > 0;
             d = std::move(W->out.front()); W->out.pop_front();
+            for (size_t i = 0; i < W->live.size(); ++i)
+                if (W->live[i].id == d.id && W->live[i].dw == d.dw && W->live[i].dh == d.dh) { W->live.erase(W->live.begin() + i); break; }
         }
         Img &I = g_img[d.id];
         if (!d.ok) { if (!I.tried) I.tried = 1; continue; }

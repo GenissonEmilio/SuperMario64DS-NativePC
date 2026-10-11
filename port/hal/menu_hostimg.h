@@ -31,8 +31,8 @@ int menu_hostimg_is_plank(int id);
 int menu_hostimg_ready(int id);                                   /* 1 once the picture decoded */
 int menu_hostimg_size(int id, int *w, int *h);                    /* source pixel size */
 const uint32_t *menu_hostimg_scaled(int id, int dw, int dh);      /* premultiplied ARGB, dw*dh, cached; null on failure */
-int menu_hostimg_prefetch(int id, int dw, int dh);               /* PAUSEFIX1: 1 when cached at that size, else queues ONE background decode + scale and returns 0 */
-int menu_hostimg_prefetch_poll(void);                            /* PAUSEFIX1: installs finished background jobs (cheap); 1 while one is still running */
+int menu_hostimg_prefetch(int id, int dw, int dh);               /* PAUSEFIX1: 1 when cached at that size; else queues a background decode + scale (once) and returns 0, or -1 when 4 jobs already wait */
+int menu_hostimg_prefetch_poll(void);                            /* PAUSEFIX1: installs finished background jobs (cheap); 1 while any is still queued or running */
 #ifdef __cplusplus
 }
 #endif
