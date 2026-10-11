@@ -630,7 +630,8 @@ int port_coop_boot_frame(void);
 void port_coop_world_frame(void);
 /* run mp1 wave 56 lane PSTAR1: party shared stars (hal/party_stars.cpp). */
 void port_party_stars_frame(void);
-void port_star_popup_frame(void);   /* run mp1 lane STARPOP1 (hal/star_popup.cpp) */
+void port_star_popup_frame(void);
+int port_star_popup_stop_now(void);   /* run mp1 lane STARPOP1 (hal/star_popup.cpp) */
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
 extern char data_0209f4a0[];
@@ -18788,6 +18789,7 @@ int main(void)
                 }
             }
         }
+        if (selftest && port_star_popup_stop_now()) stop_round_hit = 1;   /* hook: STARPOP1 picture knob */
         if (selftest &&
             (port_rom_frame_checked(frame, "selftest-exit") >= selftest ||
              stop_round_hit)) {
