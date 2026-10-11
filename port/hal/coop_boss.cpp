@@ -114,7 +114,7 @@ const BDesc kDescs[] = {
         { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
       1, 0, 7, { 0x488, 0x484 }, 0, 0 },
     // Wiggler (class 248): state index +0x8c4 (set through func_ov034_021125b8, whose enter half takes a health point in state 3),
-    // hits left +0x8db (4 -> 1, then state 7 is his death), angry +0x8de, falling +0x8df, dying +0x8e0, timer +0x8da, turn target
+    // hits left +0x8db (4 -> 1, taken by DAMAGE's enter code; state 7 DEAD ends it), angry +0x8de, falling +0x8df, dying +0x8e0, timer +0x8da, turn target
     // +0x8d8. +0x8c8 is the player he talks to; +0x8e1 (drive the camera) stays local. The body chain is rebuilt from the head.
     { 248, "WIGGLER", 14,
       { { 0x8c4, 4, kWigState }, { 0x8db, 1, kPlain }, { 0x8de, 1, kPlain }, { 0x8df, 1, kPlain }, { 0x8e0, 1, kPlain },
@@ -469,12 +469,21 @@ void apply_rx(int slot, Boss &b, unsigned now) {
     // HP only goes down.
     const int lhp = hp_of(b);
     const int rhp = (int)x.w[d.hp];
-    if (rhp >= 0 && rhp < lhp) {
+    // Chief Chilly's knock-down count also goes UP once: after the last fall he waits for a hit and, if none comes, his state function
+    // sets it back to 1 (src/func_ov073_02120910.c). Both copies do that by themselves; a record from the other state would put the
+    // revived copy back to 0, so HP is only compared when both are in the same state, and 0 -> 1 is accepted in the same state.
+    const bool hold = d.cls == 218 && state_of(b) != x.w[d.state];
+    if (!hold && rhp >= 0 && rhp < lhp) {
         write_field(b.a, d, d.hp, (uint32_t)rhp);
         b.synced_hp = rhp;
         ++g_st.applied_hp;
         if (g_log) std::fprintf(stderr, "[cbs] apply-hp slot=%d hp %d->%d from seat %d w=%lld\n", slot, lhp, rhp, x.from, wall_ms());
-    } else if (b.synced_hp > rhp && rhp >= 0) {
+    } else if (!hold && d.cls == 218 && lhp == 0 && rhp == 1) {
+        write_field(b.a, d, d.hp, 1u);
+        b.synced_hp = 1;
+        ++g_st.applied_hp;
+        if (g_log) std::fprintf(stderr, "[cbs] apply-hp slot=%d hp 0->1 (revive) from seat %d w=%lld\n", slot, x.from, wall_ms());
+    } else if (!hold && b.synced_hp > rhp && rhp >= 0) {
         b.synced_hp = rhp;
     }
     // counters that only go up (Big Bully's bullies killed): write_field refuses anything that is not larger
@@ -547,6 +556,7 @@ void process(unsigned now) {
         const bool mine = auth == g_my;
         // a hit that landed on my copy: HP below what was last synced
         const int hp = hp_of(b);
+        if (hp > b.synced_hp && d.cls == 218) b.synced_hp = hp;    // Chilly's revive raises it by himself
         if (hp < b.synced_hp) {
             ++g_st.hit_local;
             if (g_log) std::fprintf(stderr, "[cbs] hit slot=%d hp %d->%d (auth %d me %d) w=%lld\n", slot, b.synced_hp, hp, auth, g_my, wall_ms());
@@ -628,10 +638,20 @@ bool bossdesc1_knob(Boss &b, HitKnob &k) {
     if (cls != 218 && cls != 216 && cls != 210 && cls != 248) return false;
     give_player_ptrs(b);
     if (cls == 218) {
-        uint8_t hp = (uint8_t)a[0x4cb];
-        if (k.lethal && hp > 1) { a[0x4cb] = 1; hp = 1; }
-        a[0x4cb] = (char)(hp - 1);
-        ChiefChilly_ChangeState(a, chilly_id_to_ptr(hp - 1 ? 10u : 11u));
+        if (k.hp0 == -2) {
+            // stage 2 of the lethal hit: the player's hit in his waiting window (state 33f0 is where func_ov073_02120910 sends him on a hit)
+            ChiefChilly_ChangeState(a, chilly_id_to_ptr(13u));
+        } else {
+            uint8_t hp = (uint8_t)a[0x4cb];
+            if (k.lethal && hp > 1) { a[0x4cb] = 1; hp = 1; }
+            a[0x4cb] = (char)(hp - 1);
+            ChiefChilly_ChangeState(a, chilly_id_to_ptr(hp - 1 ? 10u : 11u));
+            if (k.lethal) {
+                k.hp0 = -2; k.tick = g_ticks + 30;     // the waiting window is 90 frames
+                std::fprintf(stderr, "[cbs-knob] fall made slot=%d hp=%u st=%u, the hit follows in 30 ticks w=%lld\n", k.slot, (unsigned)hp_of(b), state_of(b), wall_ms());
+                return true;
+            }
+        }
     } else if (cls == 216) {
         int32_t x = rd32(a, 0x5c), y = rd32(a, 0x60) + 0x5000, z = rd32(a, 0x64);
         std::memcpy(a + 0x3a8, &x, 4); std::memcpy(a + 0x3ac, &y, 4); std::memcpy(a + 0x3b0, &z, 4);
@@ -640,8 +660,10 @@ bool bossdesc1_knob(Boss &b, HitKnob &k) {
         if (k.lethal && (uint8_t)a[0x5ca] > 1) a[0x5ca] = 1;
         a[0x5cc] = 3; const uint16_t zero = 0; std::memcpy(a + 0x100, &zero, 2);
     } else {
+        // DAMAGE_START (10) is where his stomp goes; the chain DAMAGE_STOP, DAMAGE_WAIT, DAMAGE (5: the enter half takes the health point,
+        // floor 1), DAMAGETALK (6) then runs by itself and ends in MOVE_START (3) or, on the last point, DEAD (7).
         if (k.lethal && (uint8_t)a[0x8db] > 1) a[0x8db] = 1;
-        func_ov034_021125b8(a, (uint8_t)a[0x8db] > 1 ? 3 : 7);
+        func_ov034_021125b8(a, 10);
     }
     k.done = true;
     std::fprintf(stderr, "[cbs-knob] hit made slot=%d cls=%u hp=%u st=%u w=%lld\n", k.slot, cls, (unsigned)hp_of(b), state_of(b), wall_ms());
