@@ -23,6 +23,9 @@
 #include <chrono>
 #include <vector>
 #include <mutex>
+#if defined(_MSC_VER) || defined(__SSE2__)
+#include <emmintrin.h>
+#endif
 
 namespace {
 
@@ -699,7 +702,40 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
         uint32_t *row = dst + (size_t)py * stride;
         const uint32_t *sr = src + (size_t)yy * d[2];
         const int xs = d[0] < 0 ? -d[0] : 0, xe = d[0] + d[2] > w ? w - d[0] : d[2];
-        for (int xx = xs; xx < xe; ++xx) {
+        int xx = xs;
+#if defined(_MSC_VER) || defined(__SSE2__)
+        /* MENUCOST1: a faded or darkened picture (the logo's fade, a pressed plank) four pixels at a time, in 16 bit lanes. The same integer
+           arithmetic as the loop below: v = c * f256 >> 8, then (v * af + 127) / 255, then over the destination with (o * (255 - a) + 127) / 255,
+           where x / 255 is (x + 1 + (x >> 8)) >> 8 (exact for 0 <= x < 65535, checked for every x); pixels with source alpha 0 keep the destination. */
+        if (cost_fast() && !boost && (f256 != 256 || af != 255)) {
+            const __m128i zero = _mm_setzero_si128(), c1 = _mm_set1_epi16(1), c127 = _mm_set1_epi16(127), c255 = _mm_set1_epi16(255);
+            const __m128i mulF = _mm_set_epi16(256, (short)f256, (short)f256, (short)f256, 256, (short)f256, (short)f256, (short)f256);
+            const __m128i vaf = _mm_set1_epi16((short)af), opaque = _mm_set1_epi32((int)0xff000000u);
+            for (; xx + 4 <= xe; xx += 4) {
+                const __m128i sv = _mm_loadu_si128((const __m128i *)(sr + xx));
+                const __m128i dv = _mm_loadu_si128((const __m128i *)(row + d[0] + xx));
+                const __m128i a0 = _mm_cmpeq_epi32(_mm_srli_epi32(sv, 24), zero);
+                __m128i half[2];
+                for (int hsel = 0; hsel < 2; ++hsel) {
+                    const __m128i s16 = hsel ? _mm_unpackhi_epi8(sv, zero) : _mm_unpacklo_epi8(sv, zero);
+                    const __m128i d16 = hsel ? _mm_unpackhi_epi8(dv, zero) : _mm_unpacklo_epi8(dv, zero);
+                    __m128i v = _mm_srli_epi16(_mm_mullo_epi16(s16, mulF), 8);
+                    if (af != 255) {
+                        const __m128i t = _mm_add_epi16(_mm_mullo_epi16(v, vaf), c127);
+                        v = _mm_srli_epi16(_mm_add_epi16(_mm_add_epi16(t, c1), _mm_srli_epi16(t, 8)), 8);
+                    }
+                    const __m128i al = _mm_shufflehi_epi16(_mm_shufflelo_epi16(v, 0xFF), 0xFF);
+                    const __m128i ia = _mm_sub_epi16(c255, al);
+                    const __m128i t2 = _mm_add_epi16(_mm_mullo_epi16(d16, ia), c127);
+                    const __m128i q = _mm_srli_epi16(_mm_add_epi16(_mm_add_epi16(t2, c1), _mm_srli_epi16(t2, 8)), 8);
+                    half[hsel] = _mm_min_epi16(_mm_add_epi16(v, q), c255);
+                }
+                const __m128i res = _mm_or_si128(_mm_packus_epi16(half[0], half[1]), opaque);
+                _mm_storeu_si128((__m128i *)(row + d[0] + xx), _mm_or_si128(_mm_and_si128(a0, dv), _mm_andnot_si128(a0, res)));
+            }
+        }
+#endif
+        for (; xx < xe; ++xx) {
             const int px = d[0] + xx;
             const uint32_t c = sr[xx];
             unsigned a = c >> 24;
