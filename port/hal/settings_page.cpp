@@ -27,6 +27,14 @@ extern "C" const unsigned int g_setart_png_parchment_len, g_setart_png_title_len
 
 namespace {
 
+/* MENUCOST1: the cheaper draw paths are on unless SM64DS_MENU_COST_OFF=1 (the reference arithmetic, for the picture A/B proof) */
+int cost_fast(void)
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_MENU_COST_OFF"); v = (e && *e && *e != '0') ? 0 : 1; }
+    return v;
+}
+
 /* ================================================================== art ================================================ */
 
 enum { IM_PARCH, IM_TITLE, IM_BACK, IM_KEY, IM_PLANK, IM_DDTOP, IM_DDMID, IM_DDBOT, IM_DDARROW, IM_COUNT };
@@ -122,7 +130,7 @@ void scale_rect(const Img &I, int sx, int sy, int sw, int sh, int dw, int dh, st
 }
 
 /* a cache of finished pieces (a scaled picture, a composed box, the sheet): keyed by kind and size */
-struct Piece { int kind, a, b, c; int w, h; std::vector<uint32_t> px; };
+struct Piece { int kind, a, b, c; int w, h; std::vector<uint32_t> px; int spans = 0; std::vector<int> lo, hi; };
 std::deque<Piece> g_pieces;           /* a deque: a push never moves a piece a caller still holds */
 
 Piece *find_piece(int kind, int a, int b, int c)
@@ -164,14 +172,14 @@ Clip clip_of(const Surf &s, const int *c)
 void blit(const Surf &s, const std::vector<uint32_t> &src, int sw, int sh, int dx, int dy, int alpha, int light, int shade, const int *clipv)
 {
     const Clip k = clip_of(s, clipv);
+    const int xlo = k.x0 - dx > 0 ? k.x0 - dx : 0, xhi = k.x1 - dx < sw ? k.x1 - dx : sw;      /* the visible source columns */
     for (int y = 0; y < sh; ++y) {
         const int yy = dy + y;
         if (yy < k.y0 || yy >= k.y1) continue;
         uint32_t *row = s.px + (size_t)yy * s.stride;
         const uint32_t *sp = &src[(size_t)y * sw];
-        for (int x = 0; x < sw; ++x) {
+        for (int x = xlo; x < xhi; ++x) {
             const int xx = dx + x;
-            if (xx < k.x0 || xx >= k.x1) continue;
             const uint32_t c = sp[x];
             int a = c >> 24;
             if (!a) continue;
@@ -182,6 +190,54 @@ void blit(const Surf &s, const std::vector<uint32_t> &src, int sw, int sh, int d
             if (alpha < 255) { r = r * alpha / 255; g = g * alpha / 255; b = b * alpha / 255; a = a * alpha / 255; }
             row[xx] = over(row[xx], r, g, b, a);
         }
+    }
+}
+
+/* MENUCOST1: the plain blit (full alpha, no light, no shade) of a cached piece: the run of fully opaque pixels in each row is one copy,
+   the edge pixels take the general path. The words written are the general path's. */
+void ensure_spans(Piece *p)
+{
+    if (p->spans) return;
+    p->spans = 1;
+    p->lo.assign((size_t)p->h, 0);
+    p->hi.assign((size_t)p->h, 0);
+    for (int y = 0; y < p->h; ++y) {
+        const uint32_t *r = &p->px[(size_t)y * p->w];
+        int a = 0;
+        while (a < p->w && (r[a] >> 24) != 255) ++a;
+        int b = a;
+        while (b < p->w && (r[b] >> 24) == 255) ++b;
+        if (a == p->w) a = b = 0;
+        p->lo[y] = a; p->hi[y] = b;
+    }
+}
+
+void blit_piece(const Surf &s, const Piece *cp, int dx, int dy)
+{
+    if (!cost_fast()) { blit(s, cp->px, cp->w, cp->h, dx, dy, 255, 0, 0, 0); return; }
+    Piece *p = const_cast<Piece *>(cp);
+    ensure_spans(p);
+    for (int y = 0; y < p->h; ++y) {
+        const int yy = dy + y;
+        if (yy < 0 || yy >= s.h) continue;
+        uint32_t *row = s.px + (size_t)yy * s.stride;
+        const uint32_t *sp = &p->px[(size_t)y * p->w];
+        const int lo = p->lo[y], hi = p->hi[y];
+        const int cxl = -dx > 0 ? -dx : 0, cxh = s.w - dx < p->w ? s.w - dx : p->w;     /* the visible source columns */
+        for (int pass = 0; pass < 2; ++pass) {
+            int a = pass ? hi : 0, b = pass ? p->w : lo;
+            if (a < cxl) a = cxl;
+            if (b > cxh) b = cxh;
+            for (int x = a; x < b; ++x) {
+                const uint32_t c = sp[x];
+                const int al = c >> 24;
+                if (!al) continue;
+                if (al == 255) { row[dx + x] = c; continue; }
+                row[dx + x] = over(row[dx + x], (c >> 16) & 255, (c >> 8) & 255, c & 255, al);
+            }
+        }
+        int a = lo > cxl ? lo : cxl, b = hi < cxh ? hi : cxh;
+        if (b > a) memcpy(row + dx + a, sp + a, (size_t)(b - a) * 4);
     }
 }
 
@@ -211,6 +267,7 @@ inline float rr_sd(float px, float py, float w, float h, float r)
     const float qx = fabsf(px - cx) - (cx - r), qy = fabsf(py - cy) - (cy - r);
     const float ox = qx > 0 ? qx : 0, oy = qy > 0 ? qy : 0;
     const float in = (qx > qy ? qx : qy);
+    if (ox == 0.f && oy == 0.f) return (0.f + (in < 0 ? in : 0)) - r;       /* MENUCOST1: sqrtf(0) is 0 */
     return sqrtf(ox * ox + oy * oy) + (in < 0 ? in : 0) - r;
 }
 inline int cov_of(float sd) { const float c = 0.5f - sd; return c <= 0 ? 0 : (c >= 1 ? 255 : (int)(c * 255 + 0.5f)); }
@@ -253,6 +310,41 @@ void dim_all(const Surf &s)
         }
 #endif
         for (; x < s.w; ++x) row[x] = 0xFF000000u | ((row[x] >> 1) & 0x007F7F7Fu);
+    }
+}
+
+/* MENUCOST1: the same dim, left off the pixels the sheet then overwrites with its own opaque ones (the result is the same words) */
+void dim_row(uint32_t *row, int x0, int x1)
+{
+    int x = x0;
+#if defined(_MSC_VER) || defined(__SSE2__)
+    const __m128i keep = _mm_set1_epi32(0x007F7F7F), opaque = _mm_set1_epi32((int)0xFF000000u);
+    for (; x + 4 <= x1; x += 4) {
+        const __m128i v = _mm_loadu_si128((const __m128i *)(row + x));
+        _mm_storeu_si128((__m128i *)(row + x), _mm_or_si128(_mm_and_si128(_mm_srli_epi32(v, 1), keep), opaque));
+    }
+#endif
+    for (; x < x1; ++x) row[x] = 0xFF000000u | ((row[x] >> 1) & 0x007F7F7Fu);
+}
+
+void dim_under(const Surf &s, const Piece *sh, int sx, int sy)
+{
+    if (!cost_fast() || !sh) { dim_all(s); return; }
+    Piece *p = const_cast<Piece *>(sh);
+    ensure_spans(p);
+    for (int y = 0; y < s.h; ++y) {
+        uint32_t *row = s.px + (size_t)y * s.stride;
+        const int py = y - sy;
+        int e0 = 0, e1 = 0;
+        if (py >= 0 && py < p->h && p->hi[py] > p->lo[py]) {
+            e0 = sx + p->lo[py]; e1 = sx + p->hi[py];
+            if (e0 < 0) e0 = 0;
+            if (e1 > s.w) e1 = s.w;
+            if (e1 < e0) e1 = e0;
+        }
+        if (e1 == e0) { dim_row(row, 0, s.w); continue; }
+        dim_row(row, 0, e0);
+        dim_row(row, e1, s.w);
     }
 }
 
@@ -1226,11 +1318,22 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
     int n = 0;
     const Row *rows = rows_of(S.tab, &n);
 
-    dim_all(s);
-    {   /* the sheet */
-        const Piece *sp = sheet_piece(L.sw, L.sh, (int)(L.u * 100 + 0.5));
-        if (sp) blit(s, sp->px, sp->w, sp->h, L.sx, L.sy, 255, 0, 0, 0);
-    }
+    static int sec_on = -1;
+    if (sec_on < 0) sec_on = getenv("SM64DS_SETPAGE_COST") != 0;
+    double sec[6] = { 0, 0, 0, 0, 0, 0 };
+    auto lap = [&](int k, std::chrono::steady_clock::time_point &t) {
+        if (!sec_on) return;
+        const auto n = std::chrono::steady_clock::now();
+        sec[k] += std::chrono::duration<double, std::milli>(n - t).count();
+        t = n;
+    };
+    std::chrono::steady_clock::time_point tl = t0;
+    const Piece *sheet = sheet_piece(L.sw, L.sh, (int)(L.u * 100 + 0.5));
+    lap(0, tl);
+    dim_under(s, sheet, L.sx, L.sy);
+    lap(1, tl);
+    if (sheet) blit_piece(s, sheet, L.sx, L.sy);
+    lap(2, tl);
     draw_im(s, IM_TITLE, L.title[0], L.title[1], L.title[2], L.title[3], 255, 0, 0, 0);
     {
         const int hov = S.mouse_known && in_rect(S.mx_prev, S.my_prev, L.back);
@@ -1249,6 +1352,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         const float rw = ui_text_width("RB", sm);
         text_mid(s, (float)(L.sx + L.sw - P(50)) - rw, (float)(L.tab_y + L.tab_h / 2 - P(2)), "RB", sm, C_QUIET, 200, 0);
     }
+    lap(3, tl);
     const int *clip = L.body;
     for (int i = 0; i < n && i < 24; ++i) {
         if (g_warming && (i < g_ws_r0 || i >= g_ws_r1)) continue;
@@ -1306,6 +1410,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         default: break;
         }
     }
+    lap(4, tl);
     if (L.scroll_max > 0) {   /* the scroll bar */
         fill_rrect(s, (float)L.bar[0], (float)L.bar[1], (float)L.bar[2], (float)L.bar[3], L.bar[2] * 0.5f, 0x000000, 34, 0);
         int th = (int)((double)L.bar[3] * L.bar[3] / L.content_h);
@@ -1360,21 +1465,26 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
             text_mid(s, (float)(lx + P(18)), ry + lh * 0.5f, R.names[i], lh * 0.62f, 0xFFFFFF, 255, 0);
         }
     }
+    lap(5, tl);
     S.draw_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
     {   /* SM64DS_SETPAGE_COST=1: the cost of the page's draw, a line every 120 frames (proof rows only) */
         static int on = -1, cnt;
 #ifdef PORT_ROM_CLEAN
         on = 0;
 #endif
-        static double sum, mn = 1e9, mx;
+        static double sum, mn = 1e9, mx, secsum[6];
         if (on < 0) on = getenv("SM64DS_SETPAGE_COST") != 0;
         if (on && !g_warming) {
             sum += S.draw_ms; ++cnt;
+            for (int q = 0; q < 6; ++q) secsum[q] += sec[q];
             if (S.draw_ms < mn) mn = S.draw_ms;
             if (S.draw_ms > mx) mx = S.draw_ms;
             if (cnt == 120) {
                 fprintf(stderr, "[settings] page draw %dx%d: %d frames, mean %.2f ms, min %.2f, max %.2f\n", w, h, cnt, sum / cnt, mn, mx);
+                fprintf(stderr, "[settings] page sections (ms): sheet-cache %.2f dim %.2f sheet-blit %.2f title+tabs %.2f rows %.2f scroll+footer+list %.2f\n",
+                        secsum[0] / cnt, secsum[1] / cnt, secsum[2] / cnt, secsum[3] / cnt, secsum[4] / cnt, secsum[5] / cnt);
                 cnt = 0; sum = 0; mn = 1e9; mx = 0;
+                for (int q = 0; q < 6; ++q) secsum[q] = 0;
             }
         }
     }

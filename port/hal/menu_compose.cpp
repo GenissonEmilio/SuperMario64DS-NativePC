@@ -23,6 +23,9 @@
 #include <chrono>
 #include <vector>
 #include <mutex>
+#if defined(_MSC_VER) || defined(__SSE2__)
+#include <emmintrin.h>
+#endif
 
 namespace {
 
@@ -54,6 +57,14 @@ int trace_on(void)
         if (!e || !*e) e = getenv("SM64DS_SWAP_TRACE");   /* the level-clear compose's old name, kept as an alias */
         v = (e && *e && *e != '0') ? 1 : 0;
     }
+    return v;
+}
+
+/* MENUCOST1: the cheaper draw paths are on unless SM64DS_MENU_COST_OFF=1 (the reference arithmetic, kept for the picture A/B proof). */
+int cost_fast(void)
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_MENU_COST_OFF"); v = (e && *e && *e != '0') ? 0 : 1; }
     return v;
 }
 
@@ -500,6 +511,12 @@ namespace {
 float g_sky_ref = 0.f, g_fade = 1.f;     /* brightest sky luminance seen on this page, and this frame's fade factor */
 int   g_sky_frame = -1000;
 
+/* MENUCOST1: what the gradient kept from the last frame (the medians, the smoothed ramp, the finished rect) */
+struct GradCache {
+    int valid; uint64_t hash; float rr[192], gg[192], bb[192], sr[192], sg[192], sb[192];
+    int pix_ok; uint64_t pix_hash; int pd[4]; std::vector<uint32_t> pix;
+} g_gc;
+
 void draw_hostgrad(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
 {
     const MenuPiece &P = L->p[i];
@@ -510,7 +527,21 @@ void draw_hostgrad(const MenuLayout *L, int i, const MenuSources *S, uint32_t *d
     float rr[192], gg[192], bb[192];
     int n = P.s.w;
     if (n < 1) n = 1;
-    for (int y = 0; y < 192; ++y) {
+    /* MENUCOST1: the medians and the smoothing depend only on the sampled columns: hashed, and kept while they do not change */
+    const int fast = cost_fast();
+    uint64_t hsh = 1469598103934665603ull;
+    int hit = 0;
+    if (fast) {
+        for (int y = 0; y < 192; ++y)
+            for (int x = P.s.x; x < P.s.x + n && x < 256; ++x) {
+                if (x < 0) continue;
+                hsh = (hsh ^ sp[y * 256 + x]) * 1099511628211ull;
+            }
+        hsh ^= (uint64_t)(unsigned)P.s.x * 31u + (uint64_t)(unsigned)n;
+        hit = g_gc.valid && g_gc.hash == hsh;
+    }
+    if (hit) { memcpy(rr, g_gc.rr, sizeof rr); memcpy(gg, g_gc.gg, sizeof gg); memcpy(bb, g_gc.bb, sizeof bb); }
+    else for (int y = 0; y < 192; ++y) {
         /* the MEDIAN of each channel over the sample columns: a few columns that catch the edge of an object (the DS logo's
            left end, a black sprite pixel) are a minority and never reach the answer */
         int r[256], g[256], b[256], c = 0;
@@ -528,7 +559,10 @@ void draw_hostgrad(const MenuLayout *L, int i, const MenuSources *S, uint32_t *d
        lumps and keeps the ramp's overall shape and colours. Every DS row is then one stop at its centre. */
     float sy[192], sr[192], sg[192], sb[192];
     const int ns = 192;
-    {
+    if (hit) {
+        memcpy(sr, g_gc.sr, sizeof sr); memcpy(sg, g_gc.sg, sizeof sg); memcpy(sb, g_gc.sb, sizeof sb);
+        for (int y = 0; y < 192; ++y) sy[y] = y + 0.5f;
+    } else {
         float *ch[3] = { rr, gg, bb }, *out[3] = { sr, sg, sb };
         for (int k = 0; k < 3; ++k) {
             float cur[192], nxt[192];
@@ -552,6 +586,11 @@ void draw_hostgrad(const MenuLayout *L, int i, const MenuSources *S, uint32_t *d
         }
         for (int y = 0; y < 192; ++y) sy[y] = y + 0.5f;
     }
+    if (fast && !hit) {
+        g_gc.valid = 1; g_gc.hash = hsh;
+        memcpy(g_gc.rr, rr, sizeof rr); memcpy(g_gc.gg, gg, sizeof gg); memcpy(g_gc.bb, bb, sizeof bb);
+        memcpy(g_gc.sr, sr, sizeof sr); memcpy(g_gc.sg, sg, sizeof sg); memcpy(g_gc.sb, sb, sizeof sb);
+    }
     /* the fade factor: the middle of the sky now over the brightest it has been on this page */
     {
         const float lum = 0.3f * rr[96] + 0.59f * gg[96] + 0.11f * bb[96];
@@ -567,6 +606,45 @@ void draw_hostgrad(const MenuLayout *L, int i, const MenuSources *S, uint32_t *d
     static const int bayer[4][4] = { { 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 } };
     const size_t stride = (size_t)stride_of(w);
     int seg = 0;
+    if (fast) {
+        /* the finished rect is kept while the ramp, the rect and nothing else changes, and copied per frame */
+        if (!(g_gc.pix_ok && g_gc.pix_hash == hsh && g_gc.pd[0] == d[0] && g_gc.pd[1] == d[1] && g_gc.pd[2] == d[2] && g_gc.pd[3] == d[3] &&
+              g_gc.pix.size() == (size_t)d[2] * d[3])) {
+            g_gc.pix.assign((size_t)d[2] * d[3], 0u);
+            for (int yy = 0; yy < d[3]; ++yy) {
+                const int py = d[1] + yy;
+                const float v = (yy + 0.5f) * 192.f / d[3];
+                while (seg + 1 < ns && sy[seg + 1] <= v) ++seg;
+                float r, g, b;
+                if (v <= sy[0] || ns == 1) { r = sr[0]; g = sg[0]; b = sb[0]; }
+                else if (seg + 1 >= ns) { r = sr[ns - 1]; g = sg[ns - 1]; b = sb[ns - 1]; }
+                else {
+                    const float t = (v - sy[seg]) / (sy[seg + 1] - sy[seg]);
+                    r = sr[seg] + (sr[seg + 1] - sr[seg]) * t; g = sg[seg] + (sg[seg + 1] - sg[seg]) * t; b = sb[seg] + (sb[seg + 1] - sb[seg]) * t;
+                }
+                uint32_t pat[4];
+                for (int k = 0; k < 4; ++k) {
+                    const float dz = (bayer[py & 3][k] - 7.5f) / 16.f;
+                    int ir = (int)(r + 0.5f + dz), ig = (int)(g + 0.5f + dz), ib = (int)(b + 0.5f + dz);
+                    ir = ir < 0 ? 0 : ir > 255 ? 255 : ir; ig = ig < 0 ? 0 : ig > 255 ? 255 : ig; ib = ib < 0 ? 0 : ib > 255 ? 255 : ib;
+                    pat[k] = 0xff000000u | ((uint32_t)ir << 16) | ((uint32_t)ig << 8) | (uint32_t)ib;
+                }
+                uint32_t *prow = &g_gc.pix[(size_t)yy * d[2]];
+                const int xs = d[0];
+                for (int x = 0; x < d[2]; ++x) prow[x] = pat[(xs + x) & 3];
+            }
+            g_gc.pix_ok = 1; g_gc.pix_hash = hsh;
+            g_gc.pd[0] = d[0]; g_gc.pd[1] = d[1]; g_gc.pd[2] = d[2]; g_gc.pd[3] = d[3];
+        }
+        const size_t stride = (size_t)stride_of(w);
+        const int xa = d[0] < 0 ? -d[0] : 0, xb = d[0] + d[2] > w ? w - d[0] : d[2];
+        for (int yy = 0; yy < d[3]; ++yy) {
+            const int py = d[1] + yy;
+            if (py < 0 || py >= h || xb <= xa) continue;
+            memcpy(dst + (size_t)py * stride + d[0] + xa, &g_gc.pix[(size_t)yy * d[2] + xa], (size_t)(xb - xa) * 4);
+        }
+        return;
+    }
     for (int yy = 0; yy < d[3]; ++yy) {
         const int py = d[1] + yy;
         if (py < 0 || py >= h) continue;
@@ -623,9 +701,42 @@ void draw_hostimg(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
         if (py < 0 || py >= h) continue;
         uint32_t *row = dst + (size_t)py * stride;
         const uint32_t *sr = src + (size_t)yy * d[2];
-        for (int xx = 0; xx < d[2]; ++xx) {
+        const int xs = d[0] < 0 ? -d[0] : 0, xe = d[0] + d[2] > w ? w - d[0] : d[2];
+        int xx = xs;
+#if defined(_MSC_VER) || defined(__SSE2__)
+        /* MENUCOST1: a faded or darkened picture (the logo's fade, a pressed plank) four pixels at a time, in 16 bit lanes. The same integer
+           arithmetic as the loop below: v = c * f256 >> 8, then (v * af + 127) / 255, then over the destination with (o * (255 - a) + 127) / 255,
+           where x / 255 is (x + 1 + (x >> 8)) >> 8 (exact for 0 <= x < 65535, checked for every x); pixels with source alpha 0 keep the destination. */
+        if (cost_fast() && !boost && (f256 != 256 || af != 255)) {
+            const __m128i zero = _mm_setzero_si128(), c1 = _mm_set1_epi16(1), c127 = _mm_set1_epi16(127), c255 = _mm_set1_epi16(255);
+            const __m128i mulF = _mm_set_epi16(256, (short)f256, (short)f256, (short)f256, 256, (short)f256, (short)f256, (short)f256);
+            const __m128i vaf = _mm_set1_epi16((short)af), opaque = _mm_set1_epi32((int)0xff000000u);
+            for (; xx + 4 <= xe; xx += 4) {
+                const __m128i sv = _mm_loadu_si128((const __m128i *)(sr + xx));
+                const __m128i dv = _mm_loadu_si128((const __m128i *)(row + d[0] + xx));
+                const __m128i a0 = _mm_cmpeq_epi32(_mm_srli_epi32(sv, 24), zero);
+                __m128i half[2];
+                for (int hsel = 0; hsel < 2; ++hsel) {
+                    const __m128i s16 = hsel ? _mm_unpackhi_epi8(sv, zero) : _mm_unpacklo_epi8(sv, zero);
+                    const __m128i d16 = hsel ? _mm_unpackhi_epi8(dv, zero) : _mm_unpacklo_epi8(dv, zero);
+                    __m128i v = _mm_srli_epi16(_mm_mullo_epi16(s16, mulF), 8);
+                    if (af != 255) {
+                        const __m128i t = _mm_add_epi16(_mm_mullo_epi16(v, vaf), c127);
+                        v = _mm_srli_epi16(_mm_add_epi16(_mm_add_epi16(t, c1), _mm_srli_epi16(t, 8)), 8);
+                    }
+                    const __m128i al = _mm_shufflehi_epi16(_mm_shufflelo_epi16(v, 0xFF), 0xFF);
+                    const __m128i ia = _mm_sub_epi16(c255, al);
+                    const __m128i t2 = _mm_add_epi16(_mm_mullo_epi16(d16, ia), c127);
+                    const __m128i q = _mm_srli_epi16(_mm_add_epi16(_mm_add_epi16(t2, c1), _mm_srli_epi16(t2, 8)), 8);
+                    half[hsel] = _mm_min_epi16(_mm_add_epi16(v, q), c255);
+                }
+                const __m128i res = _mm_or_si128(_mm_packus_epi16(half[0], half[1]), opaque);
+                _mm_storeu_si128((__m128i *)(row + d[0] + xx), _mm_or_si128(_mm_and_si128(a0, dv), _mm_andnot_si128(a0, res)));
+            }
+        }
+#endif
+        for (; xx < xe; ++xx) {
             const int px = d[0] + xx;
-            if (px < 0 || px >= w) continue;
             const uint32_t c = sr[xx];
             unsigned a = c >> 24;
             if (!a) continue;
@@ -884,7 +995,9 @@ void draw_iris(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
             for (int x = 0; x < w; ++x) row[x] = 0xff000000u;
             continue;
         }
-        std::fill(cov.begin(), cov.begin() + w, 0.f);
+        const int fastc = cost_fast();
+        int cmin = w, cmax = -1;
+        if (!fastc) std::fill(cov.begin(), cov.begin() + w, 0.f);
         for (int s = 0; s < SS; ++s) {
             const float sy = y + (s + 0.5f) / SS;
             float xs[10]; int n = 0;
@@ -900,14 +1013,23 @@ void draw_iris(const MenuLayout *L, int i, uint32_t *dst, int w, int h)
                 if (a < 0.f) a = 0.f;
                 if (b > (float)w) b = (float)w;
                 const int ia = (int)a, ib = (int)b;
+                if (ia < cmin) cmin = ia;
+                if ((ib < w ? ib : w - 1) > cmax) cmax = ib < w ? ib : w - 1;
                 if (ia == ib) { cov[ia] += (b - a) / SS; continue; }
                 cov[ia] += ((ia + 1) - a) / SS;
                 for (int x = ia + 1; x < ib; ++x) cov[x] += 1.f / SS;
                 if (ib < w) cov[ib] += (b - ib) / SS;
             }
         }
-        for (int x = 0; x < w; ++x) {
+        if (fastc) {
+            if (cmax < 0) { std::fill(row, row + w, 0xff000000u); continue; }
+            std::fill(row, row + cmin, 0xff000000u);
+            std::fill(row + cmax + 1, row + w, 0xff000000u);
+        }
+        const int xlo = fastc ? cmin : 0, xhi = fastc ? cmax + 1 : w;
+        for (int x = xlo; x < xhi; ++x) {
             const float c = cov[x];
+            if (fastc) cov[x] = 0.f;
             if (c >= 0.999f) continue;
             if (c <= 0.001f) { row[x] = 0xff000000u; continue; }
             const uint32_t o = row[x];
@@ -944,7 +1066,7 @@ extern "C++" int menu_iris_covers(int w, int h, float cx, float cy, float R)
     return iris_star_inside((float)w, (float)h, cx, cy, R) && iris_star_inside(0.f, 0.f, cx, cy, R);
 }
 
-void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
+static void piece_draw_ref(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
 {
     if (!S || !dst || i < 0 || i >= L->np) return;
     const MenuPiece &P = L->p[i];
@@ -1061,6 +1183,209 @@ void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t 
             }
         }
     }
+}
+
+/* ---- MENUCOST1: THE CHEAPER DRAW OF A COPIED PIECE ----------------------------------------------------------------------------
+   The reference loop (piece_draw_ref) does per DEST pixel what only depends on the SOURCE pixel: the key test, the layer test, the
+   engine-A brightness verdict. A menu is mostly upscaled DS art (4x and more), so that work repeats a dozen times per source pixel.
+   Here a source row is converted once into `crow` (one ARGB word per source column, 0 = not drawn), a dest row is a gather from it,
+   and a dest row whose source row is the one above (and which that row filled completely) is a copy of the row above. The words
+   written are the ones the reference writes (proved by picture hash; SM64DS_MENU_COST_OFF=1 runs the reference). A piece identical to
+   the one drawn just before it (the Rec Room's star pattern tiles) is copied from it when that one filled its whole rect. */
+struct RepState {
+    int enable, valid;
+    uint32_t *dst; int w, h; size_t stride;
+    MenuSrc src; uint8_t layers, key_backdrop, xfill, oam_on, oam_lo, oam_hi; DsRect s; short fill_w; int lnum, lden; int (*row_ok)(int);
+    int x0, y0, dw, dh;
+} g_rep;
+
+static int rep_same(const RepState &a, const MenuPiece &P, int dw, int dh)
+{
+    return a.src == P.src && a.layers == P.layers && a.key_backdrop == P.key_backdrop && a.xfill == P.xfill && a.oam_on == P.oam_on &&
+           a.oam_lo == P.oam_lo && a.oam_hi == P.oam_hi && a.s.x == P.s.x && a.s.y == P.s.y && a.s.w == P.s.w && a.s.h == P.s.h &&
+           a.fill_w == P.fill_w && a.lnum == P.lnum && a.lden == P.lden && a.row_ok == P.row_ok && a.dw == dw && a.dh == dh;
+}
+
+static void piece_draw_2d(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
+{
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    const int x0 = d[0], y0 = d[1], dw = d[2], dh = d[3];
+    const int prev_ok = g_rep.enable && g_rep.valid;
+    g_rep.valid = 0;
+    if (dw <= 0 || dh <= 0) return;
+    const size_t stride = (size_t)stride_of(w);
+    const uint32_t *subp = P.src == SRC_SUB ? sub_plane(&P, S) : 0;
+    if (P.src == SRC_SUB && !subp) return;
+    if (P.src == SRC_TOP_2D && !S->top2d) return;
+    const int xa = x0 < 0 ? -x0 : 0;
+    const int xb = (x0 + dw > w) ? w - x0 : dw;
+    if (xa >= xb) return;
+    static std::vector<int> colx;
+    if ((int)colx.size() < dw) colx.resize((size_t)dw);
+    int *cx = &colx[0];
+    unsigned char used[257];
+    memset(used, 0, sizeof used);
+    for (int xx = xa; xx < xb; ++xx) {
+        int sx = P.xfill ? P.s.x : P.lden > 0 ? P.s.x + (int)fdiv((long long)xx * P.lden, P.lnum > 0 ? P.lnum : 1)
+                                    : P.s.x + (int)fdiv((long long)xx * P.s.w, dw);
+        if (P.lden > 0 && sx > P.s.x + P.s.w - 1) sx = P.s.x + P.s.w - 1;
+        cx[xx] = (sx < 0 || sx >= 256) ? 256 : sx;      /* 256 = the column that is never drawn */
+        used[cx[xx]] = 1;
+    }
+    unsigned short ulist[257];
+    int nu = 0;
+    for (int k = 0; k < 257; ++k) if (used[k]) ulist[nu++] = (unsigned short)k;
+    const int clipped = (xa != 0 || xb != dw || y0 < 0 || y0 + dh > h);
+    /* the previous piece of this frame was the same art over a full rect: copy it */
+    if (prev_ok && g_rep.dst == dst && g_rep.w == w && g_rep.h == h && g_rep.stride == stride && P.src != SRC_TOP_2D &&
+        rep_same(g_rep, P, dw, dh) && g_rep.y0 == y0 && !(y0 < 0 || y0 + dh > h)) {
+        for (int yy = 0; yy < dh; ++yy) {
+            const uint32_t *from = dst + (size_t)(y0 + yy) * stride + g_rep.x0;
+            memmove(dst + (size_t)(y0 + yy) * stride + x0 + xa, from + xa, (size_t)(xb - xa) * 4);
+        }
+        if (!clipped) { g_rep.x0 = x0; g_rep.valid = 1; }
+        return;
+    }
+    const uint32_t bd = S->sub_backdrop & 0xffffffu;
+    uint32_t crow[257];
+    crow[256] = 0;
+    /* the runs of a source row (dest column ranges whose source column is drawn): a row of the same source row as the row above is those
+       runs copied from the row above, whatever is transparent in between is left alone, as the reference leaves it */
+    static std::vector<int> runs;
+    int last_sy = -1000, last_full = 0, last_py = -1000, all_rows = 1, ever_full = 1;
+    for (int yy = 0; yy < dh; ++yy) {
+        const int py = y0 + yy;
+        if (py < 0 || py >= h) { all_rows = 0; continue; }
+        uint32_t *row = dst + (size_t)py * stride + x0;
+        int sy = P.lden > 0 ? P.s.y + (int)fdiv((long long)yy * P.lden, P.lnum > 0 ? P.lnum : 1)
+                            : P.s.y + (int)fdiv((long long)yy * P.s.h, dh);
+        if (P.lden > 0 && sy > P.s.y + P.s.h - 1) sy = P.s.y + P.s.h - 1;
+        if ((P.row_ok && !P.row_ok(sy)) || sy < 0 || sy >= 192) { all_rows = 0; continue; }
+        if (sy != last_sy) {
+            if (P.src == SRC_SUB) {
+                const uint32_t *srow = subp + sy * 256;
+                if (P.key_backdrop) for (int sx = 0; sx < 256; ++sx) { const uint32_t c = srow[sx]; crow[sx] = (c & 0xffffffu) == bd ? 0u : (c | 0xff000000u); }
+                else for (int sx = 0; sx < 256; ++sx) crow[sx] = srow[sx] | 0xff000000u;
+            } else {
+                const MenuTopCell *trow = S->top2d + sy * 256;
+                for (int sx = 0; sx < 256; ++sx) {
+                    const MenuTopCell &c = trow[sx];
+                    if ((c.argb >> 24) == 0 || c.owner > 4 || !((P.layers >> c.owner) & 1)) { crow[sx] = 0; continue; }
+                    uint32_t col = c.argb;
+                    if (S->bm_apply) col = S->bm_apply(col, c.bm);
+                    crow[sx] = col | 0xff000000u;
+                }
+            }
+            last_full = 1;
+            for (int k = 0; k < nu; ++k) if (!crow[ulist[k]]) { last_full = 0; break; }
+            if (!last_full) ever_full = 0;
+            runs.clear();
+            if (!P.xfill) {
+                if (last_full) { runs.push_back(xa); runs.push_back(xb); }
+                else {
+                    int xx = xa;
+                    while (xx < xb) {
+                        while (xx < xb && !crow[cx[xx]]) ++xx;
+                        const int a = xx;
+                        while (xx < xb && crow[cx[xx]]) ++xx;
+                        if (xx > a) { runs.push_back(a); runs.push_back(xx); }
+                    }
+                }
+            }
+        }
+        if (P.xfill) {
+            const uint32_t v = crow[cx[xa]];
+            if (v) std::fill(row + xa, row + xb, v);
+        } else if (sy == last_sy && last_py == py - 1) {      /* the row above was this source row: copy its drawn runs */
+            for (size_t k = 0; k + 1 < runs.size(); k += 2) memcpy(row + runs[k], row - stride + runs[k], (size_t)(runs[k + 1] - runs[k]) * 4);
+        } else {
+            for (size_t k = 0; k + 1 < runs.size(); k += 2)
+                for (int xx = runs[k]; xx < runs[k + 1]; ++xx) row[xx] = crow[cx[xx]];
+        }
+        last_sy = sy;
+        last_py = py;
+    }
+    if (g_rep.enable && !clipped && all_rows && ever_full) {
+        g_rep.dst = dst; g_rep.w = w; g_rep.h = h; g_rep.stride = stride;
+        g_rep.src = P.src; g_rep.layers = P.layers; g_rep.key_backdrop = P.key_backdrop; g_rep.xfill = P.xfill; g_rep.oam_on = P.oam_on;
+        g_rep.oam_lo = P.oam_lo; g_rep.oam_hi = P.oam_hi; g_rep.s = P.s; g_rep.fill_w = P.fill_w; g_rep.lnum = P.lnum; g_rep.lden = P.lden;
+        g_rep.row_ok = P.row_ok; g_rep.x0 = x0; g_rep.y0 = y0; g_rep.dw = dw; g_rep.dh = dh;
+        g_rep.valid = 1;
+    }
+}
+
+/* a keycover / plain piece of the 3D picture (the title's head, the wrench): the per-pixel integer divides of the exclusion rects
+   are done once per column and once per row */
+static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
+{
+    const MenuPiece &P = L->p[i];
+    const int *d = L->dest[i];
+    const int x0 = d[0], y0 = d[1], dw = d[2], dh = d[3];
+    g_rep.valid = 0;
+    if (dw <= 0 || dh <= 0) return;
+    const size_t stride = (size_t)stride_of(w);
+    const int xa = x0 < 0 ? -x0 : 0;
+    const int xb = (x0 + dw > w) ? w - x0 : dw;
+    if (xa >= xb) return;
+    if (!S->pic || S->pic_rw < 1 || S->pic_rh < 1) return;
+    static std::vector<int> colx, colex;
+    if ((int)colx.size() < dw) { colx.resize((size_t)dw); colex.resize((size_t)dw); }
+    int *cx = &colx[0], *exc = &colex[0];
+    const int use_ex = P.keycover && P.has_ex;
+    for (int xx = xa; xx < xb; ++xx) {
+        const long long ux = (long long)P.s.x * dw + (long long)xx * P.s.w;
+        const int qx = S->pic_rx + (int)fdiv(ux * S->pic_rw, 256LL * dw);
+        cx[xx] = (qx < 0 || qx >= S->pic_w) ? -1 : qx;
+        if (use_ex && cx[xx] >= 0) exc[xx] = (cx[xx] - S->pic_rx) * 256 / S->pic_rw;
+    }
+    for (int yy = 0; yy < dh; ++yy) {
+        const int py = y0 + yy;
+        if (py < 0 || py >= h) continue;
+        uint32_t *row = dst + (size_t)py * stride + x0;
+        const long long uy = (long long)P.s.y * dh + (long long)yy * P.s.h;
+        const int qy = S->pic_ry + (int)fdiv(uy * S->pic_rh, 192LL * dh);
+        if (qy < 0 || qy >= S->pic_h) continue;
+        const uint32_t *prow = S->pic + (size_t)qy * S->pic_stride;
+        const uint8_t *cov = 0;
+        int in1 = 0, in2 = 0;
+        if (P.keycover) {
+            if (!S->pic_cover) continue;
+            cov = S->pic_cover + (size_t)qy * S->pic_stride;
+            if (P.has_ex) {
+                const int ey = (qy - S->pic_ry) * 192 / S->pic_rh;
+                in1 = ey >= P.ex.y && ey < P.ex.y + P.ex.h;
+                in2 = P.has_ex2 && ey >= P.ex2.y && ey < P.ex2.y + P.ex2.h;
+            }
+        }
+        for (int xx = xa; xx < xb; ++xx) {
+            const int qx = cx[xx];
+            if (qx < 0) continue;
+            if (cov) {
+                if (!cov[qx]) continue;
+                if (in1 && exc[xx] >= P.ex.x && exc[xx] < P.ex.x + P.ex.w) continue;
+                if (in2 && exc[xx] >= P.ex2.x && exc[xx] < P.ex2.x + P.ex2.w) continue;
+            }
+            const uint32_t c = prow[qx];
+            if (P.key_backdrop && ((c & 0xffffffu) == 0x101820u || (c & 0xffffffu) == 0x080808u)) { row[xx] = 0xff000000u; continue; }
+            row[xx] = c | 0xff000000u;
+        }
+    }
+}
+
+void menu_piece_draw(const MenuLayout *L, int i, const MenuSources *S, uint32_t *dst, int w, int h)
+{
+    if (!cost_fast()) { piece_draw_ref(L, i, S, dst, w, h); return; }
+    if (!S || !dst || i < 0 || i >= L->np) return;
+    const MenuPiece &P = L->p[i];
+    if (P.nodraw) return;
+    if (P.src == SRC_HOSTIMG || P.hostgrad || P.src == SRC_TOP_HOSTROW || (P.src == SRC_TOP_PIC && P.alpha && P.alpha < 255)) {
+        g_rep.valid = 0;
+        piece_draw_ref(L, i, S, dst, w, h);
+        return;
+    }
+    if (P.src == SRC_TOP_PIC) piece_draw_pic(L, i, S, dst, w, h);
+    else piece_draw_2d(L, i, S, dst, w, h);
 }
 
 void menu_dim(uint32_t *dst, int w, int h, int evy)
@@ -1513,6 +1838,36 @@ static void menu_shot_maybe(const uint32_t *dst, int w, int h, unsigned frame)
     fclose(f);
 }
 
+/* MENUCOST1: per recipe and variant cost windows (SM64DS_MENU_TRACE): the first draw, then the mean and the worst of every 60 drawn
+   frames of that recipe and variant. */
+static double g_piece_us[24];
+static int g_piece_n;
+static void cost_window(const char *name, int variant, double us)
+{
+    struct Slot { const char *name; int variant; int n; double sum, mx; double pu[24]; };
+    static Slot slot[32];
+    static int ns = 0;
+    int k = 0;
+    while (k < ns && !(slot[k].name == name && slot[k].variant == variant)) ++k;
+    if (k == ns) {
+        if (ns == 32) return;
+        slot[ns++] = Slot { name, variant, 0, 0.0, 0.0 };
+        fprintf(stderr, "[menu] cost2 %s v%d first draw %.0f us\n", name, variant, us);
+    }
+    Slot &S = slot[k];
+    S.sum += us; if (us > S.mx) S.mx = us;
+    for (int q = 0; q < g_piece_n && q < 24; ++q) S.pu[q] += g_piece_us[q];
+    if (++S.n == 60) {
+        char pb[400];
+        int o = 0;
+        pb[0] = 0;
+        for (int q = 0; q < g_piece_n && q < 24 && o < 360; ++q) o += snprintf(pb + o, sizeof pb - (size_t)o, " %d:%.0f", q, S.pu[q] / 60);
+        fprintf(stderr, "[menu] cost2 %s v%d: 60 frames mean %.0f us max %.0f us, pieces (us):%s\n", name, variant, S.sum / 60, S.mx, pb);
+        S.n = 0; S.sum = 0; S.mx = 0;
+        for (int q = 0; q < 24; ++q) S.pu[q] = 0;
+    }
+}
+
 void hal_menu_present(uint32_t *dst, int w, int h, int stage)
 {
     MenuDecision &D = g_dd;
@@ -1520,14 +1875,17 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
     const std::chrono::steady_clock::time_point t_in = std::chrono::steady_clock::now();
     struct CostEnd {
         std::chrono::steady_clock::time_point t;
+        const char *name; int variant;
         ~CostEnd()
         {
-            g_cost_draw_us += std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t).count();
+            const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t).count();
+            g_cost_draw_us += us;
+            if (trace_on()) cost_window(name, variant, us);
             if (++g_cost_n % 120 == 0 && trace_on())
                 fprintf(stderr, "[menu] cost over %d drawn frames: draw %.0f us, source prep %.0f us per frame\n", g_cost_n,
                         g_cost_draw_us / g_cost_n, g_cost_prep_us / g_cost_n);
         }
-    } cost_end = { t_in };
+    } cost_end = { t_in, D.L.recipe ? D.L.recipe->name : "?", D.L.variant };
     const MenuSources *S = g_src;
     g_nplanes = 0;
     int amended = 0;
@@ -1602,7 +1960,18 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
             fflush(stderr);
         }
     }
-    for (int i = 0; i < D.L.np; ++i) menu_piece_draw(&D.L, i, S, dst, w, h);
+    g_rep.enable = cost_fast(); g_rep.valid = 0;
+    if (trace_on()) {
+        for (int i = 0; i < D.L.np; ++i) {
+            const std::chrono::steady_clock::time_point tp = std::chrono::steady_clock::now();
+            menu_piece_draw(&D.L, i, S, dst, w, h);
+            if (i < 24) g_piece_us[i] = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tp).count();
+        }
+        g_piece_n = D.L.np;
+    } else {
+        for (int i = 0; i < D.L.np; ++i) menu_piece_draw(&D.L, i, S, dst, w, h);
+    }
+    g_rep.enable = 0; g_rep.valid = 0;
     if (D.L.snap_save) snap_save(dst, w, h);
     menu_shot_maybe(dst, w, h, D.serial);
     if (D.L.focus >= 0 && D.focus_shown && !D.L.no_focus_paint && D.L.focus < D.L.nh &&
