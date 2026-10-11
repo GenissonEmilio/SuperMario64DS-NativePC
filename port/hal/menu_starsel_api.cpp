@@ -3,6 +3,7 @@
 
 #include "menu_compose.h"
 #include "ntr/ppu.h"
+#include "screen_gap.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +13,9 @@ extern "C" {
 void *port_scene_live_object(void);
 int   port_scene_live_id(void);
 int   hal_present_client_to_fb(int cx, int cy, int *fx, int *fy);
+void  hal_present_set_rect(int x, int y, int w, int h, int src_w, int src_h);
+void  hal_present_fit(int cw, int ch, int sw, int sh, int *x, int *y, int *w, int *h);
+int   hal_sub_screen_stacked(void);
 }
 extern "C++" {
 void menu_starsel_facts(MenuFacts *f);          /* menu_recipe_starsel.cpp: reads the live object (logic thread) */
@@ -83,6 +87,42 @@ int to_client(const Axis &A, int t)
 
 }  // namespace
 
+#ifndef PORT_ROM_CLEAN
+/* SM64DS_STARSEL_RECT_DEBUG=2: once, at the star select, drives the REAL present fit (hal_present_fit + hal_present_set_rect, the pair
+   present() calls) over a list of client sizes, as a window resize would, and checks that every returned client rect equals the
+   forward arithmetic of that fit (picture pixel -> source image -> fitted rectangle) to within 2 client pixels and that the centre
+   maps back to the picture centre with the click mapper. A headless run never presents, so its rectangle is free to set. */
+static void starsel_present_selftest(void)
+{
+    static const int sz[][2] = { {1024, 768}, {1280, 720}, {1920, 1080}, {800, 600}, {2560, 1080}, {640, 960}, {1000, 1000}, {3440, 1440}, {1027, 578}, {517, 301} };
+    const int stacked = hal_sub_screen_stacked();
+    const ntr::StackLayout &lay = *hal_screen_layout();
+    const int sw = stacked ? lay.w : ntr::active_w, sh = stacked ? lay.h : ntr::active_h, top_y = stacked ? lay.top_y : 0;
+    int bad = 0, rows = 0;
+    for (int k = 0; k < (int)(sizeof sz / sizeof sz[0]); ++k) {
+        int rx, ry, rw, rh;
+        hal_present_fit(sz[k][0], sz[k][1], sw, sh, &rx, &ry, &rw, &rh);
+        hal_present_set_rect(rx, ry, rw, rh, sw, sh);
+        const int n = hal_menu_starsel_count();
+        for (int i = 0; i < n; ++i) {
+            int px_, py_, pw_, ph_, cx, cy, cw, ch, fx = -1, fy = -1;
+            if (!hal_menu_starsel_star_rect_pic(i, &px_, &py_, &pw_, &ph_) || !hal_menu_starsel_star_rect(i, &cx, &cy, &cw, &ch)) { ++bad; continue; }
+            const int ex = rx + (int)((long long)px_ * rw / sw), ey = ry + (int)((long long)(py_ + top_y) * rh / sh);
+            const int ew = (int)((long long)pw_ * rw / sw), eh = (int)((long long)ph_ * rh / sh);
+            const int dx = abs(cx - ex), dy = abs(cy - ey), dw = abs(cw - ew), dh = abs(ch - eh);
+            hal_present_client_to_fb(cx + cw / 2, cy + ch / 2, &fx, &fy);
+            const int ok = dx <= 2 && dy <= 2 && dw <= 2 && dh <= 2 && abs(fx - (px_ + pw_ / 2)) <= 1 && abs(fy - (py_ + ph_ / 2)) <= 1;
+            ++rows;
+            if (!ok) ++bad;
+            if (!ok || i == 0 || i == n - 1)
+                fprintf(stderr, "[starsel-selftest] %dx%d (fit %d,%d %dx%d) star %d client(%d,%d,%d,%d) expect(%d,%d,%d,%d) back(%d,%d) want(%d,%d) %s\n",
+                        sz[k][0], sz[k][1], rx, ry, rw, rh, i, cx, cy, cw, ch, ex, ey, ew, eh, fx, fy, px_ + pw_ / 2, py_ + ph_ / 2, ok ? "ok" : "BAD");
+        }
+    }
+    fprintf(stderr, "STARSEL RECT SELFTEST: %s (%d rows, %d bad, %s layout)\n", bad || !rows ? "FAIL" : "PASS", rows, bad, stacked ? "stacked" : "inset");
+}
+#endif
+
 extern "C" {
 
 int hal_menu_starsel_up(void) { return port_scene_live_id() == kStarScene ? 1 : 0; }
@@ -134,8 +174,9 @@ int hal_menu_starsel_star_rect(int star, int *x, int *y, int *w, int *h)
 void hal_menu_starsel_debug_draw(unsigned *px, int stride)
 {
     static int on = -1, last_sig;
-    if (on < 0) { const char *e = getenv("SM64DS_STARSEL_RECT_DEBUG"); on = (e && *e && *e != '0') ? 1 : 0; }
+    if (on < 0) { const char *e = getenv("SM64DS_STARSEL_RECT_DEBUG"); on = (e && *e == '2') ? 2 : ((e && *e && *e != '0') ? 1 : 0); }
     if (!on || !px || !hal_menu_starsel_up()) return;
+    if (on == 2) { static int done; if (!done) { done = 1; starsel_present_selftest(); } }
     const int n = hal_menu_starsel_count(), cur = hal_menu_starsel_selected();
     int sig = n * 100 + cur + 1;
     for (int i = 0; i < n; ++i) {
