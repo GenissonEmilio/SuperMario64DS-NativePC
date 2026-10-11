@@ -24488,3 +24488,8 @@ foreach(_tmap1 walk_window walk_window_hires smoke_player)
     target_sources(${_tmap1} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_bigmap.cpp")
 endforeach()
+# MENU1 / STARHOOK1 (run menu1): the star select big-star rect query for mp1 (hal/menu_starsel_api.h). Own block.
+foreach(_tstarhook1 walk_window walk_window_hires smoke_player)
+    target_sources(${_tstarhook1} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/hal/menu_starsel_api.cpp")
+endforeach()
