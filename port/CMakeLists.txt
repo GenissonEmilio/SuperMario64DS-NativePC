@@ -17880,6 +17880,14 @@ if(MSVC)
     # checks the base, so if anything rebases the exe anyway the state is
     # refused with a message rather than loaded onto dangling pointers.
     target_link_options(walk_window PRIVATE /DYNAMICBASE:NO)
+    # MENUFOLD1 (run hunt8): THE IMAGE BASE MOVES UP. At 0x00400000 the image runs to just under the DS's main RAM range
+    # (0x02000000), and the loader's own early allocations (the process heap segments, the NLS tables) are placed first-fit
+    # above it, before our TLS callback asks for the fixed ranges (ntr/io.cpp). With 8.5 MB of headroom they fit below
+    # 0x02000000; with menu1's embedded art (headroom 2.6 MB) they spill into it, every launch loses main RAM and about one
+    # launch in ten dies at boot (the ROM's ctor runner walks a table that is a piece of the host heap). Based at 0x10000000
+    # the low 256 MB stays free for them, whatever the image weighs. No relocations (the image is linked fixed), so nothing else
+    # moves; the lk6 / lk7 states already refuse a different image base.
+    target_link_options(walk_window PRIVATE /BASE:0x10000000)
 endif()
 
 # The save state captures the whole .dsstate section (hal/dsstate_seg.h). Fail
@@ -18289,6 +18297,14 @@ if(MSVC)
     # checks the base, so if anything rebases the exe anyway the state is
     # refused with a message rather than loaded onto dangling pointers.
     target_link_options(walk_window_hires PRIVATE /DYNAMICBASE:NO)
+    # MENUFOLD1 (run hunt8): THE IMAGE BASE MOVES UP. At 0x00400000 the image runs to just under the DS's main RAM range
+    # (0x02000000), and the loader's own early allocations (the process heap segments, the NLS tables) are placed first-fit
+    # above it, before our TLS callback asks for the fixed ranges (ntr/io.cpp). With 8.5 MB of headroom they fit below
+    # 0x02000000; with menu1's embedded art (headroom 2.6 MB) they spill into it, every launch loses main RAM and about one
+    # launch in ten dies at boot (the ROM's ctor runner walks a table that is a piece of the host heap). Based at 0x10000000
+    # the low 256 MB stays free for them, whatever the image weighs. No relocations (the image is linked fixed), so nothing else
+    # moves; the lk6 / lk7 states already refuse a different image base.
+    target_link_options(walk_window_hires PRIVATE /BASE:0x10000000)
 endif()
 
 
