@@ -11,6 +11,7 @@
 #endif
 #include <chrono>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <deque>
@@ -29,6 +30,10 @@ namespace {
 
 /* ================================================================== art ================================================ */
 
+/* WARMFIX1 F1: tl_warm is set only inside settings_page_warm_step; g_pc_mx guards the picture and piece caches (swaps only) */
+thread_local bool tl_warm = false;
+std::mutex g_pc_mx;
+
 enum { IM_PARCH, IM_TITLE, IM_BACK, IM_KEY, IM_PLANK, IM_DDTOP, IM_DDMID, IM_DDBOT, IM_DDARROW, IM_COUNT };
 
 struct Img { int tried = 0, w = 0, h = 0; std::vector<uint32_t> px; };     /* premultiplied 0xAARRGGBB */
@@ -37,8 +42,11 @@ Img g_im[IM_COUNT];
 void load_im(int id)
 {
     Img &I = g_im[id];
-    if (I.tried) return;
-    I.tried = 1;
+    {
+        std::lock_guard<std::mutex> lk(g_pc_mx);       /* WARMFIX1 F1: the claim on this slot; the background install skips a tried one */
+        if (I.tried) return;
+        I.tried = 1;
+    }
     const unsigned char *const emb[IM_COUNT] = { g_setart_png_parchment, g_setart_png_title, g_setart_png_back, g_setart_png_key, g_setart_png_plank,
                                                  g_setart_png_dd_top, g_setart_png_dd_mid, g_setart_png_dd_bot, g_setart_png_dd_arrow };
     const unsigned len[IM_COUNT] = { g_setart_png_parchment_len, g_setart_png_title_len, g_setart_png_back_len, g_setart_png_key_len,
@@ -122,23 +130,49 @@ void scale_rect(const Img &I, int sx, int sy, int sw, int sh, int dw, int dh, st
 }
 
 /* a cache of finished pieces (a scaled picture, a composed box, the sheet): keyed by kind and size */
-struct Piece { int kind, a, b, c; int w, h; std::vector<uint32_t> px; };
-std::deque<Piece> g_pieces;           /* a deque: a push never moves a piece a caller still holds */
+struct Piece { int kind, a, b, c; int w, h; std::vector<uint32_t> px; bool building = false, warm_owned = false; };
+std::deque<std::unique_ptr<Piece>> g_pieces;     /* a piece never moves (a caller may hold it); an erased one is retired, not freed */
+
+/* WARMFIX1 F1: g_pc_mx guards the container only. A new piece is filled in place by its caller, so it is marked `building` and only its own
+   side (the warm-up or the live draw) can find it until that side publishes (end of the warm step / end of the draw). Erased pieces are not
+   freed at once (the other side may hold a pointer): they wait in g_retired until the live draw's next frame starts. */
+std::deque<std::unique_ptr<Piece>> g_retired;
 
 Piece *find_piece(int kind, int a, int b, int c)
 {
-    for (Piece &p : g_pieces)
-        if (p.kind == kind && p.a == a && p.b == b && p.c == c) return &p;
+    std::lock_guard<std::mutex> lk(g_pc_mx);
+    for (auto &pp : g_pieces) {
+        Piece &p = *pp;
+        if (p.kind == kind && p.a == a && p.b == b && p.c == c && !(p.building && p.warm_owned != tl_warm)) return &p;
+    }
     return 0;
 }
 Piece *new_piece(int kind, int a, int b, int c, int w, int h)
 {
-    if (g_pieces.size() >= 48) g_pieces.erase(g_pieces.begin(), g_pieces.begin() + 24);
-    g_pieces.push_back(Piece());
-    Piece &p = g_pieces.back();
-    p.kind = kind; p.a = a; p.b = b; p.c = c; p.w = w; p.h = h;
-    p.px.assign((size_t)w * h, 0);
-    return &p;
+    std::unique_ptr<Piece> np(new Piece());
+    np->kind = kind; np->a = a; np->b = b; np->c = c; np->w = w; np->h = h;
+    np->building = true; np->warm_owned = tl_warm;
+    np->px.assign((size_t)w * h, 0);                   /* the allocation happens off the lock */
+    std::lock_guard<std::mutex> lk(g_pc_mx);
+    if (g_pieces.size() >= 48) {
+        for (size_t i = 0; i < 24; ++i) g_retired.push_back(std::move(g_pieces[i]));
+        g_pieces.erase(g_pieces.begin(), g_pieces.begin() + 24);
+    }
+    g_pieces.push_back(std::move(np));
+    return g_pieces.back().get();
+}
+/* this side's finished pieces become visible to the other side (a piece of kind 102 is the warm sheet, still being built across steps) */
+void publish_pieces()
+{
+    std::lock_guard<std::mutex> lk(g_pc_mx);
+    for (auto &pp : g_pieces)
+        if (pp->building && pp->warm_owned == tl_warm && pp->kind != 102) pp->building = false;
+}
+/* the live draw owns nothing across frames, so what the warm-up retired can go now */
+void free_retired()
+{
+    std::lock_guard<std::mutex> lk(g_pc_mx);
+    g_retired.clear();
 }
 
 /* ============================================================ drawing primitives ======================================= */
@@ -442,7 +476,11 @@ struct State {
     int pressed_plank;                 /* 0 none, 1 back, 2 reset (mouse held on it) */
     double draw_ms;
 };
-State S;
+/* WARMFIX1 F1: the warm-up runs the page's own draw code, so it gets its OWN state and layout: while tl_warm is set (this thread, inside
+   settings_page_warm_step only) S and L name the scratch copies, never the live ones a draw on another thread reads. */
+State g_S_live, g_S_scr;
+inline State &S_cur() { return tl_warm ? g_S_scr : g_S_live; }
+#define S (S_cur())
 
 void note(const char *s)
 {
@@ -521,7 +559,9 @@ struct Lay {
     RowL r[24];
     int bar[4];                       /* scroll bar track: x, y, w, h */
 };
-Lay L;
+Lay g_L_live, g_L_scr;
+inline Lay &L_cur() { return tl_warm ? g_L_scr : g_L_live; }
+#define L (L_cur())
 
 inline int P(double v) { return (int)(v * L.u + 0.5); }
 
@@ -1053,37 +1093,56 @@ void wdec_main(WDec *W)
             id = W->req;
         }
         Img t;
-        int w = 0, h = 0, comp = 0;
-        unsigned char *p = stbi_load_from_memory(emb[id], (int)len[id], &w, &h, &comp, 4);
-        if (p) {
-            t.w = w; t.h = h; t.px.resize((size_t)w * h);
-            for (int i = 0; i < w * h; ++i) {
-                const unsigned r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], a = p[i * 4 + 3];
-                t.px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
+        bool failed = false;
+        try {
+            int w = 0, h = 0, comp = 0;
+            unsigned char *p = stbi_load_from_memory(emb[id], (int)len[id], &w, &h, &comp, 4);
+            if (p) {
+                try {
+                    t.w = w; t.h = h; t.px.resize((size_t)w * h);
+                    for (int i = 0; i < w * h; ++i) {
+                        const unsigned r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], a = p[i * 4 + 3];
+                        t.px[i] = (a << 24) | (((r * a + 127) / 255) << 16) | (((g * a + 127) / 255) << 8) | ((b * a + 127) / 255);
+                    }
+                } catch (...) { stbi_image_free(p); throw; }
+                stbi_image_free(p);
             }
-            stbi_image_free(p);
-        }
+        } catch (...) { failed = true; t = Img(); }                /* WARMFIX1 F3: a failed result, not a terminate */
         std::lock_guard<std::mutex> lk(W->m);
         W->img = std::move(t);
         W->req = -1;
         W->done = id;
+        (void)failed;
     }
 }
 
 /* 1 when picture id is loaded (decoded here or by the worker); otherwise asks the worker and answers 0 */
 int wdec_ready(int id)
 {
-    if (g_im[id].tried) return 1;
-    if (!g_wd) g_wd = new WDec();
+    if (!g_wd) {
+        if (g_im[id].tried) return 1;
+        try { g_wd = new WDec(); } catch (...) { return 1; }       /* WARMFIX1 F3: no memory: the page loads it on first use */
+    }
     WDec *W = g_wd;
     std::lock_guard<std::mutex> lk(W->m);
+    /* WARMFIX1 F2: a finished picture the page decoded itself in the meantime is stale; drop it first, or `done` stays set for the rest of
+       the run and no later picture is ever requested */
+    if (W->done >= 0 && g_im[W->done].tried) { W->done = -1; W->img = Img(); }
+    if (g_im[id].tried) return 1;
     if (W->done == id) {
+        std::unique_lock<std::mutex> pl(g_pc_mx, std::try_to_lock);      /* WARMFIX1 F1: the swap; never wait for it */
+        if (!pl.owns_lock()) return 0;
+        if (g_im[id].tried) { W->done = -1; W->img = Img(); return 1; }
         g_im[id].tried = 1; g_im[id].w = W->img.w; g_im[id].h = W->img.h; g_im[id].px = std::move(W->img.px);
         W->done = -1;
         return 1;
     }
     if (W->req < 0 && W->done < 0) {
-        if (!W->started) { W->started = true; std::thread(wdec_main, W).detach(); }
+        if (!W->started) {
+            try { std::thread(wdec_main, W).detach(); }
+            catch (...) { return 1; }                              /* WARMFIX1 F3: no thread: load on first use, no flag left set */
+            W->started = true;
+        }
         W->req = id;
         W->cv.notify_one();
     }
@@ -1096,9 +1155,17 @@ static double ws_ms(const std::chrono::steady_clock::time_point &t0)
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 }
 
+/* WARMFIX1 F5: after a step that took over 6 ms the warm-up rests for four times that long (no slot is claimed meanwhile) */
+static double ws_now_ms()
+{
+    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+static double g_ws_hold_until;
+
 /* 1 while the worker is still decoding the picture the next step waits for (the caller then does not take a warm-up slot) */
 extern "C" int settings_page_warm_waiting(void)
 {
+    if (g_ws_hold_until > 0 && ws_now_ms() < g_ws_hold_until) return 1;
     if (!g_wd) return 0;
     std::lock_guard<std::mutex> lk(g_wd->m);
     return g_wd->req >= 0;
@@ -1107,7 +1174,9 @@ extern "C" int settings_page_warm_waiting(void)
 extern "C" int settings_page_warm_step(int w, int h)
 {
     if (w < 64 || h < 64 || w > 8192 || h > 8192) return 1;
-    if (S.open) return 0;
+    if (S.open) return 0;                              /* the LIVE page is open (S is the live state here) */
+    /* WARMFIX1 F1: everything below runs on the scratch S and L, and the pieces it makes stay private until the step ends */
+    struct Scope { Scope() { tl_warm = true; } ~Scope() { publish_pieces(); tl_warm = false; } } scope;
     if (w != g_ws_w || h != g_ws_h) {
         g_ws_w = w; g_ws_h = h; g_ws_stage = 0; g_ws_y = 0; g_ws_tab = 0; g_ws_row = -1;
         std::vector<uint32_t>().swap(g_ws_tile); std::vector<uint32_t>().swap(g_ws_buf);
@@ -1116,6 +1185,7 @@ extern "C" int settings_page_warm_step(int w, int h)
        renamed when whole); title and back scaled; one throwaway draw per tab */
     enum { ST_LAYOUT = 0, ST_DEC, ST_TILE = ST_DEC + IM_COUNT, ST_SHEET, ST_TITLE, ST_BACK, ST_PLANK, ST_ARROW, ST_BUF, ST_TAB, ST_DONE };
     if (g_ws_stage >= ST_DONE) return 1;
+    if (g_ws_hold_until > 0 && ws_now_ms() < g_ws_hold_until) return 0;
     const auto t0 = std::chrono::steady_clock::now();
     while (g_ws_stage < ST_DONE) {
         const auto ts = std::chrono::steady_clock::now();
@@ -1168,7 +1238,7 @@ extern "C" int settings_page_warm_step(int w, int h)
                     g_ws_y = y1;
                 }
                 if (g_ws_y >= sh) {
-                    sp->kind = 2;
+                    { std::lock_guard<std::mutex> pl(g_pc_mx); sp->kind = 2; sp->building = true; }      /* published with the step's other pieces */
                     std::vector<uint32_t>().swap(g_ws_tile);
                     ++g_ws_stage;
                 }
@@ -1191,16 +1261,15 @@ extern "C" int settings_page_warm_step(int w, int h)
         } else {
             /* a throwaway draw of one tab, in pieces: the chrome (tabs, title, footer), then one row at a time: their glyph, key cap, box and
                plank pieces. The tab and cursor are put back after. */
-            const int tab0 = S.tab;
             if (g_ws_buf.empty()) g_ws_buf.assign((size_t)w * h, 0u);
             int nrows = 0;
             rows_of(g_ws_tab, &nrows);
             g_warming = 1;
-            S.open = 1; S.tab = g_ws_tab;
+            S.open = 1; S.tab = g_ws_tab;                  /* the scratch state: the live page never shows open */
             if (g_ws_row < 0) { g_ws_r0 = g_ws_r1 = 0; }
             else { g_ws_r0 = g_ws_row; g_ws_r1 = g_ws_row + 1; }
             settings_page_draw(g_ws_buf.data(), w, w, h);
-            S.open = 0; S.tab = tab0;
+            S.open = 0;
             g_warming = 0;
             g_ws_row = g_ws_row < 0 ? 0 : g_ws_row + 1;
             if (g_ws_row >= nrows) { g_ws_row = -1; ++g_ws_tab; }
@@ -1211,6 +1280,7 @@ extern "C" int settings_page_warm_step(int w, int h)
         if (trace < 0) trace = getenv("SM64DS_WARM_TRACE") != 0;
         if (trace) fprintf(stderr, "[warm] settings stage %d %dx%d: %.2f ms\n", st, w, h, ws_ms(ts));
 #endif
+        { const double cost = ws_ms(ts); if (cost > 6.0) { g_ws_hold_until = ws_now_ms() + 4.0 * cost; break; } }
         if (ws_ms(t0) >= 0.8) break;      /* a stage that took real time ends the call; cheap ones chain */
     }
     return g_ws_stage >= ST_DONE;
@@ -1219,6 +1289,7 @@ extern "C" int settings_page_warm_step(int w, int h)
 extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
 {
     if (!S.open || !px || w < 64 || h < 64) return;
+    if (!tl_warm) free_retired();                      /* WARMFIX1 F1: this frame holds no piece yet */
     const auto t0 = std::chrono::steady_clock::now();
     S.w = w; S.h = h;
     compute_layout(w, h);
@@ -1361,6 +1432,7 @@ extern "C" void settings_page_draw(uint32_t *px, int stride, int w, int h)
         }
     }
     S.draw_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    if (!tl_warm) publish_pieces();                    /* WARMFIX1 F1 */
     {   /* SM64DS_SETPAGE_COST=1: the cost of the page's draw, a line every 120 frames (proof rows only) */
         static int on = -1, cnt;
 #ifdef PORT_ROM_CLEAN
