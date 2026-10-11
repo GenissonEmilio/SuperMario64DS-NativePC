@@ -32,6 +32,8 @@
 //   SM64DS_COOP_BOSS_LOG=1       [cbs] lines: a sample per boss every 500 ms, every hit, apply, claim, defeat
 //   SM64DS_COOP_BOSS_HIT=F:slotsel   at boss tick F lower the boss's HP by one the ROM's way (sets its own hit flag,
 //                                where the class has one) on THIS console: the proof's "a hit from either player"
+//   SM64DS_COOP_BOSS_STAND=F:d      at boss tick F put the local player d units beside the first boss (proof only)
+//   SM64DS_COOP_BOSS_GOD=1           keep the local player at full health (proof only)
 //   SM64DS_COOP_BOSS_FORGE=F:name    one forged datagram (short long count cls slot nf hp key flags notboss)
 
 #ifndef PORT_HAL_COOP_BOSS_H

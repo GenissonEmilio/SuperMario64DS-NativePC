@@ -21,6 +21,7 @@
 extern "C" {
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;
+extern short data_02092144[];
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 int KingBobOmb_SetState(void *c, void *state);
 extern char data_ov078_02126ffc[], data_ov078_0212700c[], data_ov078_0212701c[], data_ov078_0212702c[], data_ov078_0212703c[],
@@ -123,6 +124,7 @@ struct HitKnob { unsigned tick; bool done; bool armed; int hp0; int slot; };
 HitKnob g_hit[4]; int g_nhit = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
 ForgeKnob g_forge[8]; int g_nforge = 0;
+unsigned g_stand_tick = 0; int g_stand_dist = 0; bool g_stand_done = true, g_god = false;
 bool g_regd = false;
 int  g_my = -1;
 CoopKey g_key;
@@ -189,6 +191,11 @@ void read_env() {
             p += used; while (*p == ',' || *p == ';' || *p == ' ') ++p;
         }
     }
+    if (const char *st = std::getenv("SM64DS_COOP_BOSS_STAND")) {
+        unsigned f = 0; int d = 0;
+        if (std::sscanf(st, "%u:%i", &f, &d) == 2) { g_stand_tick = f; g_stand_dist = d; g_stand_done = false; }
+    }
+    g_god = flag("SM64DS_COOP_BOSS_GOD", false);
     if (const char *f = std::getenv("SM64DS_COOP_BOSS_FORGE")) {
         const char *p = f;
         while (*p && g_nforge < 8) {
@@ -449,6 +456,21 @@ void on_frame(unsigned now) {
     if (!g_on) return;
     scan();
     g_st.bosses = (unsigned long long)g_nb;
+    if (g_god) { const int me = (int)data_0209f250 & 15; data_02092144[me] = (short)((data_02092144[me] & 0xff) | (8 << 8)); }
+    if (!g_stand_done && g_ticks >= g_stand_tick && g_nb > 0) {
+        for (int slot = 0; slot < kSlots; ++slot) {
+            Boss &b = g_boss[slot];
+            const int me = (int)data_0209f250;
+            if (!b.a || me < 0 || me >= 16 || !data_0209f394[me]) continue;
+            char *pl = (char *)data_0209f394[me];
+            int32_t x = rd32(b.a, 0x5c) + (g_stand_dist << 12), y = rd32(b.a, 0x60) + 0x10000, z = rd32(b.a, 0x64);
+            std::memcpy(pl + 0x5c, &x, 4); std::memcpy(pl + 0x60, &y, 4); std::memcpy(pl + 0x64, &z, 4);
+            const int32_t zero = 0; std::memcpy(pl + 0x98, &zero, 4);
+            g_stand_done = true;
+            std::fprintf(stderr, "[cbs-knob] stand local player %d units from boss slot=%d cls=%u at %d,%d,%d w=%lld\n", g_stand_dist, slot, (unsigned)b.d->cls, x >> 12, y >> 12, z >> 12, wall_ms());
+            break;
+        }
+    }
     if (g_nb > 0) {
         process(now);
         for (int i = 0; i < g_nhit; ++i)
