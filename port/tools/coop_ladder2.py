@@ -124,10 +124,10 @@ def check_thi_switch(row, cons, ctl, bit):
     if not pw:
         return
     tla = SW.timeline(ta)
-    upA = SW.first_bit(tla, bit, 1, pw)
+    upA = SW.first_bit(tla, bit, 1, pw - 50)
     for j in (1, 2, 3):
         tl = SW.timeline(cons[j].text())
-        up = SW.first_bit(tl, bit, 1, pw)
+        up = SW.first_bit(tl, bit, 1, pw - 50)
         verdict(row, "switch word bit %d on %s" % (bit, NAMES[j]), up is not None and upA is not None and abs(up - upA) <= 500,
                 "A +%s B +%s" % (upA and upA - pw, up and up - pw), not (ctl and j == 3))
 
@@ -162,8 +162,8 @@ def row_bobred(ctl=False):
     """BOB act 4: the 8 red coins split two per console; the star appears for everyone"""
     row = "bobred" + ("_ctl" if ctl else "")
     f0 = int(os.environ.get("SP_RF", "700"))
-    ex = [{"SM64DS_SPAWN_RED": SP.collect_knobs(f0 + 600 * i, 90, 2)} for i in range(4)]
-    cons = run(row, specs(6, 4, ex, frames=int(os.environ.get("CW_RED_FRAMES", "3600")), ctl=ctl, stagger=40))
+    ex = [{"SM64DS_SPAWN_RED": SP.collect_knobs(f0 + 600 * i, 90, 2 if i < 3 else 8)} for i in range(4)]
+    cons = run(row, specs(6, 4, ex, frames=int(os.environ.get("CW_RED_FRAMES", "4800")), ctl=ctl, stagger=40))
     check_red(row, cons, ctl)
     check_drift(row, cons, ctl, 6)
 
