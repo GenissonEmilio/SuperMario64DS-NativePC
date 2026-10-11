@@ -544,8 +544,7 @@ void rescan_before_leave(unsigned now) {
                 ++g_out_n;
             }
             ++g_st.local_bits;
-            if (g_log) std::fprintf(stderr, "[coop] local bit slot=%d (leave rescan)
-", w * 32 + b);
+            if (g_log) std::fprintf(stderr, "[coop] local bit slot=%d (leave rescan)\n", w * 32 + b);
         }
         g_prev[w] |= t[w] & ~g_prev[w];
     }
