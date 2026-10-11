@@ -205,7 +205,7 @@ void *__fastcall cp_replacement(void *self, void * /*edx*/) {
                 if (s != g_lastuse[slot]) {
                     g_lastuse[slot] = (short)s;
                     std::fprintf(stderr, "[cotgt] use seat=%d slot=%d cls=%u via=%s tick=%u wall=%lld\n", s, (int)slot, cls,
-                                 want ? "table" : "nearest", g_ticks, wall_ms());
+                                 want ? "table" : (lv ? "nearest" : "rom"), g_ticks, wall_ms());
                 }
             }
         }
