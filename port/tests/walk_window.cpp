@@ -628,6 +628,8 @@ int port_coop_boot_scene_frame(void);
 int port_coop_boot_frame(void);
 /* run mp1 lane COOPWORLD1: the coop world core (hal/coop_world.cpp). */
 void port_coop_world_frame(void);
+/* run mp1 wave 56 lane PSTAR1: party shared stars (hal/party_stars.cpp). */
+void port_party_stars_frame(void);
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
 extern char data_0209f4a0[];
@@ -16417,6 +16419,7 @@ int main(void)
         port_hub_presence_frame();
         port_coop_save_frame();
         port_coop_world_frame();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
+        port_party_stars_frame();
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
            Reads the render pass's own per-slot record (set just below in the
