@@ -61,6 +61,8 @@ struct SlInfo {
 
 /* NULL outside 0..SL_COUNT-1 */
 const SlInfo *sl_info(int id);
+/* the id of the row with this settings.json key, -1 if this build has none (a page asks by name for a row another lane may add) */
+int sl_find(const char *key);
 
 int sl_get(int id);
 /* 1 when accepted and applied, 0 when refused (range, read-only, reserved) */
