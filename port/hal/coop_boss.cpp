@@ -49,6 +49,7 @@ struct BDesc {
     int8_t hp;        // index of the HP field (min wins), -1 none
     int8_t state;     // index of the state field, -1 none
     int8_t pos;       // index of the first of three position fields (x, y, z), -1 none
+    uint16_t pl[2];   // offsets of player pointers the class's states dereference (a copy that is put into such a state must hold one)
     uint16_t hit_who; // 0, or the offset where the ROM keeps the pointer of the player that hit (the proof knob must set it too)
     uint16_t hit_off; // 0, or the offset of a byte the class's own handler turns into one HP (the proof knob sets it)
 };
@@ -61,14 +62,14 @@ const BDesc kDescs[] = {
       { { 0x3b0, 4, kPlain }, { 0x401, 1, kPlain }, { 0x40c, 1, kPlain }, { 0x407, 1, kPlain }, { 0x3fc, 2, kVol },
         { 0x100, 2, kVol }, { 0x324, 4, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
         { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
-      1, 0, 7, 0x3ac, 0x402 },
+      1, 0, 7, { 0x3ac, 0 }, 0x3ac, 0x402 },
     // King Bob-omb (daBombking_c): state record pointer +0x420 (mapped to a table id), HP mHealth +0x500 (3), mPhase +0x4a0,
     // the two timers +0x504 / +0x505, mAnimSpeed +0x4fc, +0x499.
     { 189, "KING_BOB_OMB", 14,
       { { 0x420, 4, kStatePtr }, { 0x500, 4, kPlain }, { 0x4a0, 4, kPlain }, { 0x504, 1, kVol }, { 0x505, 1, kVol },
         { 0x4fc, 4, kPlain }, { 0x499, 1, kPlain }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
         { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
-      1, 0, 7, 0, 0 },
+      1, 0, 7, { 0x430, 0 }, 0, 0 },
 };
 const int kNumDescs = (int)(sizeof kDescs / sizeof kDescs[0]);
 
@@ -223,6 +224,19 @@ bool is_player_ptr(const void *a) {
     return false;
 }
 
+// A state that was never entered on this copy finds its player pointers empty (Whomp King's defeat talk dereferences +0x3ac,
+// King Bob-omb's +0x430): they are given the local player's body, so the dialogue and camera run for the player at this console.
+void give_player_ptrs(Boss &b) {
+    const int me = (int)data_0209f250;
+    if (me < 0 || me >= 16 || !data_0209f394[me]) return;
+    for (int k = 0; k < 2; ++k) {
+        const uint16_t off = b.d->pl[k];
+        if (!off) continue;
+        void *cur = nullptr; std::memcpy(&cur, b.a + off, sizeof cur);
+        if (!cur || !is_player_ptr(cur)) { void *mine = data_0209f394[me]; std::memcpy(b.a + off, &mine, sizeof mine); }
+    }
+}
+
 CoopKeyWire wire_key() {
     CoopKeyWire w; w.level = (uint16_t)g_key.level; w.act = (uint8_t)g_key.act; w.reserved = 0;
     return w;
@@ -337,6 +351,7 @@ void apply_rx(int slot, Boss &b, unsigned now) {
         // The state's enter code can have side effects of its own (King Bob-omb's hurt states take a health point): the HP
         // stays what the min-merge above made it.
         const int hp_keep = hp_of(b);
+        give_player_ptrs(b);
         for (int k = 0; k < d.nf; ++k) if (k != d.hp && value_ok(d, k, x.w[k])) write_field(b.a, d, k, x.w[k]);
         write_field(b.a, d, d.hp, (uint32_t)hp_keep);
         b.synced_hp = hp_keep;
@@ -603,6 +618,7 @@ void coop_boss_on_world(int seat, int sub, const unsigned char *p, int len) {
             }
             if (auth == g_my) {
                 const int hp_keep = (int)read_field(b.a, d->f[d->hp]);
+                give_player_ptrs(b);
                 for (int k = 0; k < d->nf; ++k) if (k != d->hp) write_field(b.a, *d, k, w[k]);
                 write_field(b.a, *d, d->hp, (uint32_t)hp_keep);
                 b.synced_hp = hp_keep;
