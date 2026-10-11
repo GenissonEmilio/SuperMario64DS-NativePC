@@ -1189,7 +1189,7 @@ extern "C" int settings_page_warm_step(int w, int h)
             g_ws_buf.assign((size_t)w * h, 0u);
             ++g_ws_stage;
         } else {
-            /* a throwaway draw of one tab, in pieces: the chrome (tabs, title, footer), then two rows at a time: their glyph, key cap, box and
+            /* a throwaway draw of one tab, in pieces: the chrome (tabs, title, footer), then one row at a time: their glyph, key cap, box and
                plank pieces. The tab and cursor are put back after. */
             const int tab0 = S.tab;
             if (g_ws_buf.empty()) g_ws_buf.assign((size_t)w * h, 0u);
@@ -1198,11 +1198,11 @@ extern "C" int settings_page_warm_step(int w, int h)
             g_warming = 1;
             S.open = 1; S.tab = g_ws_tab;
             if (g_ws_row < 0) { g_ws_r0 = g_ws_r1 = 0; }
-            else { g_ws_r0 = g_ws_row; g_ws_r1 = g_ws_row + 2; }
+            else { g_ws_r0 = g_ws_row; g_ws_r1 = g_ws_row + 1; }
             settings_page_draw(g_ws_buf.data(), w, w, h);
             S.open = 0; S.tab = tab0;
             g_warming = 0;
-            g_ws_row = g_ws_row < 0 ? 0 : g_ws_row + 2;
+            g_ws_row = g_ws_row < 0 ? 0 : g_ws_row + 1;
             if (g_ws_row >= nrows) { g_ws_row = -1; ++g_ws_tab; }
             if (g_ws_tab >= T_COUNT) { g_ws_stage = ST_DONE; std::vector<uint32_t>().swap(g_ws_buf); }
         }
