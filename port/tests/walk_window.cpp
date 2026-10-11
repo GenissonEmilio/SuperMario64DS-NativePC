@@ -2812,6 +2812,34 @@ static int ip_present_slot(long long t, long long deadline);
 static int ip_owns_picture(void);
 static void ip_flush_deferred(void);
 
+/* run hunt8, lane MENUPACE1: SM64DS_SLOT_TRACE=1, a per-slot log of the scene/level pacer (inert unless asked for). One "[slot]" line per
+   decision, in tick time (ms after the tick's start): what the slot was due at, the clock's own time, the time left to the tick's end,
+   the cost the fit rule used and what became of the slot. Collected in memory and written at exit so it costs no pacing time. */
+static char *g_slot_buf;
+static size_t g_slot_n, g_slot_cap = 24u << 20;
+static int g_slot_on = -1;
+static void slot_flush(void)
+{
+    if (g_slot_buf && g_slot_n) { fwrite(g_slot_buf, 1, g_slot_n, stderr); fflush(stderr); g_slot_n = 0; }
+}
+static void slot_log(const char *kind, long long t, long long deadline, double cost, const char *why)
+{
+    if (g_slot_on < 0) {
+        const char *e = getenv("SM64DS_SLOT_TRACE");
+        g_slot_on = (e && e[0] == '1') ? 1 : 0;
+        if (g_slot_on) { g_slot_buf = (char *)malloc(g_slot_cap); atexit(slot_flush); }
+    }
+    if (g_slot_on <= 0 || !g_slot_buf || g_slot_n + 200 > g_slot_cap) return;
+    LARGE_INTEGER n, f;
+    QueryPerformanceCounter(&n);
+    QueryPerformanceFrequency(&f);
+    const double k = 1000.0 / (double)f.QuadPart;
+    const long long t0 = g_ip_tick_t0;
+    g_slot_n += (size_t)_snprintf(g_slot_buf + g_slot_n, 200, "[slot] s%u f%d %s due %.2f now %.2f dl %.2f end %.2f cost %.2f work %.2f room %d | %s\n",
+        g_ip_serial, port_rom_frame(), kind, (t - t0) * k, (n.QuadPart - t0) * k, (deadline - t0) * k, g_ip_tick_len * k, cost, g_ip_work_ms,
+        presenter_room(), why);
+}
+
 /* THE PICTURE COUNT. Every picture this program hands to the window goes
    through present(), including the repeats port_present_clock makes, so
    this one counter is the only honest answer to "how many pictures a
@@ -2953,6 +2981,7 @@ extern "C" double port_present_clock(long long now, long long deadline,
     const int f = port_rom_frame();
     if (f != g_pic_frame) {
         g_pic_frame = f;
+        if (g_ip_deferred) slot_log("TICK-DEFER", g_pic_due, deadline, g_ip_cost_ms, "tick picture handed to the clock");
         if (g_ip_deferred) {
             /* SmoothMotion: the tick drew no picture of its own and consumed
                no slot; the loop below presents from the next slot on. */
@@ -3001,6 +3030,7 @@ extern "C" double port_present_clock(long long now, long long deadline,
             QueryPerformanceCounter(&at);
             const long long dq = (long long)(presenter_delay_ms() * (double)qpf / 1000.0);
             if (g_pic_due + step / 2 <= at.QuadPart - dq) {
+                slot_log("LATEDROP", g_pic_due, deadline, g_ip_cost_ms, "slot behind the display delay");
                 ++g_pic_late;
                 g_pic_due += step;
                 continue;
@@ -8288,6 +8318,7 @@ static void ip_present_plain_or_skip(int *presented, long long deadline)
            nothing is waiting */
         if (presenter_timed()) presenter_set_target(-1);
         present();
+        slot_log("PLAIN", 0, deadline, g_ip_cost_ms, "the tick's own picture");
         if (presenter_timed()) presenter_set_target(0);
         g_ip_plain_ms = g_ip_plain_ms * 0.8 + ip_ms_since(t0) * 0.2;
         g_ip_tick_shown = 1;
@@ -8348,11 +8379,14 @@ static int ip_present_slot(long long t, long long deadline)
         g_present_repeat = 0;
         return 1;
     }
-    if (g_ip_tick_final) return 0;   /* tick N is up; a blend would step back */
+    if (g_ip_tick_final) { slot_log("SKIP", t, deadline, g_ip_cost_ms, "tick N already up"); return 0; }
     if (!ip_measure_now(deadline) && !ip_fits(deadline)) {
         int shown = 0;
         g_ip_tick_refused = 1;
         ip_present_plain_or_skip(&shown, deadline);
+        char w[64];
+        _snprintf(w, sizeof w, "REFUSED left %.2f need %.2f -> plain %d", ip_left_ms(deadline), g_ip_cost_ms * 1.2 + 0.5, shown);
+        slot_log("REFUSE", t, deadline, g_ip_cost_ms, w);
         return shown;
     }
     double alpha = (double)(ip_qpc() - g_ip_tick_t0) / (double)g_ip_tick_len;
@@ -8365,12 +8399,13 @@ static int ip_present_slot(long long t, long long deadline)
     if (timed) {
         alpha = (double)(t - g_ip_tick_t0) / (double)g_ip_tick_len;
         if (alpha < 0.0) alpha = 0.0;
-        if (alpha >= 1.0) return 0;
+        if (alpha >= 1.0) { slot_log("SKIP", t, deadline, g_ip_cost_ms, "moment at or past the tick's end"); return 0; }
         presenter_set_target(t);
     } else if (alpha >= 1.0) {
         ++g_ip_w_after_slot;
     }
-    ip_present_alpha(alpha);
+    { const long long q0 = ip_qpc(); ip_present_alpha(alpha);
+      char w[64]; _snprintf(w, sizeof w, "BLEND alpha %.3f took %.2f ms", alpha, ip_ms_since(q0)); slot_log("BLEND", t, deadline, g_ip_cost_ms, w); }
     if (timed) presenter_set_target(0);
     g_ip_tick_shown = 1;
     return 1;
@@ -8391,6 +8426,7 @@ static void ip_present_tick(void)
         const double w = (now.QuadPart - g_ip_tick_t0) * 1000.0 / (double)f.QuadPart;
         g_ip_work_ms = g_ip_work_ms * 0.8 + w * 0.2;
         presenter_note_work(w);
+        slot_log("WORK", now.QuadPart, 0, g_ip_cost_ms, "tick work ended");
     }
     if (!ip_owns_picture()) { present(); return; }
     if (g_ip_pace_seen && now.QuadPart - g_ip_pace_seen < 2 * g_ip_tick_len) {
@@ -8729,6 +8765,7 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
             g_ip_tick_len = (long long)(PORT_VBLANK_MS * port_frame_divider() *
                                         (double)qf.QuadPart / 1000.0 + 0.5);
         }
+        slot_log("TICK", g_ip_tick_t0, g_ip_tick_t0, g_ip_cost_ms, g_ip_tick_ok ? "blendable" : "snap");
         g_ip_fade_on = 0;
         g_ip_fade_masked = 0;
         if (ip_trace())
