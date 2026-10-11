@@ -8360,7 +8360,10 @@ static int ip_fits(long long deadline)
     static double ovc = -2.0;
     if (ovc < -1.0) { const char *e = getenv("SM64DS_SLOT_COST"); ovc = e ? atof(e) : -1.0; }
     if (ovc > 0.0) c = ovc;
-    return ip_left_ms(deadline) >= c * 1.2 + 0.5;
+    /* MENUPACE1: SM64DS_FIT_RULE=<k1>,<k2> sets the margin (default 1.2,0.5: a blend starts when the time left covers 1.2 of its cost plus half a ms) */
+    static double k1 = -1.0, k2 = 0.5;
+    if (k1 < 0.0) { k1 = 1.2; const char *e = getenv("SM64DS_FIT_RULE"); if (e) sscanf(e, "%lf,%lf", &k1, &k2); }
+    return ip_left_ms(deadline) >= c * k1 + k2;
 }
 /* The fallback's measuring retry: its first blend is drawn whatever the cost
    window says, so the cost is always measured again (see ip_fit_commit).
