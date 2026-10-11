@@ -1369,6 +1369,12 @@ static int present_impl(void *hwnd, const void *pixels, int stride_px,
         break;
     }
     if (presenter_running()) {
+        /* FrameRate is live (run hunt8, lane FPSLIVE1): the timer grid follows
+           the key the way presenter_begin first chose it. A no-op while the
+           period is unchanged. */
+        if (!g_vsync_key)
+            presenter_set_grid_hz(frame_rate_key > 0 ? (double)frame_rate_key
+                                                     : (double)(g_refresh_hz > 0 ? g_refresh_hz : 60));
         const long long p0 = qpc();
         ID3D11RenderTargetView *prt = (ID3D11RenderTargetView *)presenter_target();
         if (!prt) return 1;     /* the ring had no free texture: this picture is dropped, the one on show stays */
