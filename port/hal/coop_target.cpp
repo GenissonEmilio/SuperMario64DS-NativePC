@@ -156,7 +156,7 @@ void place_friends() {
     PInfo p[kSeats];
     const int n = gather(p);
     for (int i = 0; i < n; ++i)
-        if (p[i].seat != g_my) { wr32(p[i].body, 0x5c, p[i].x); wr32(p[i].body, 0x60, p[i].y); wr32(p[i].body, 0x64, p[i].z); }
+        if (p[i].seat != g_my) { wr32(p[i].body, 0x5c, p[i].x); wr32(p[i].body, 0x60, p[i].y); wr32(p[i].body, 0x64, p[i].z); p[i].body[0x6fb] = 0; }
 }
 
 bool fresh(const Ent &e, unsigned now) { return e.seat != kTargetNoSeat && (unsigned)(now - e.t) <= (unsigned)kFreshMs; }
@@ -176,7 +176,7 @@ void *table_body(const char *self, int *seat_out) {
     return b;
 }
 
-void *__fastcall cp_replacement(void *self, void * /*edx*/) {
+void *cp_impl(void *self, bool nonvanish) {
     ++g_st.cp_calls;
     if (!data_0209b458) {
         data_0208e380 = 0x7fffffff;
@@ -186,10 +186,12 @@ void *__fastcall cp_replacement(void *self, void * /*edx*/) {
         if (lv) {
             place_friends();
             want = table_body((const char *)self, &wseat);
+            if (want && nonvanish && *((const unsigned char *)want + 0x6fb)) want = nullptr;   // a vanished player is skipped by this entry
         }
         for (int i = 0; i < (int)data_0209f21c; i++) {
             void *p = data_0209f394[i];
             if (!p) continue;
+            if (nonvanish && *((unsigned char *)p + 0x6fb)) continue;
             const int d = Vec3_Dist((char *)self + 0x5c, (char *)p + 0x5c);
             if (d < data_0208e380) { data_0208e380 = d; data_0209b458 = p; }
             if (d > data_0208e37c) { data_0208e37c = d; data_0209b450 = p; }
@@ -216,6 +218,8 @@ void *__fastcall cp_replacement(void *self, void * /*edx*/) {
     }
     return data_0209b458;
 }
+void *__fastcall cp_replacement(void *self, void * /*edx*/) { return cp_impl(self, false); }
+void *__fastcall cpnv_replacement(void *self, void * /*edx*/) { return cp_impl(self, true); }
 
 
 // ---------------------------------------------------------------------------
@@ -289,46 +293,37 @@ void whomp_replacement(char *self) {
     }
 }
 
-void *member_addr() {
-    Player *(dActor_c::*pmf)() = &dActor_c::ClosestPlayer;
+void *addr_of_pmf(Player *(dActor_c::*pmf)()) {
     static_assert(sizeof(pmf) >= sizeof(void *), "a pointer to member holds at least the address");
     void *p; std::memcpy(&p, &pmf, sizeof p);     // a non-virtual member: the first word is its address
     return p;
 }
 
-void install_patch() {
-    if (g_patched || g_patch_failed) return;
-    unsigned char *from = (unsigned char *)member_addr();
+bool jump_patch(void *from_v, void *to_v, const char *what) {
+    unsigned char *from = (unsigned char *)from_v;
     DWORD old = 0;
     if (!VirtualProtect(from, 8, PAGE_EXECUTE_READWRITE, &old)) {
-        g_patch_failed = true;
-        std::fprintf(stderr, "[cotgt] cannot patch ClosestPlayer (VirtualProtect %lu)\n", GetLastError());
-        return;
+        std::fprintf(stderr, "[cotgt] cannot patch %s (VirtualProtect %lu)\n", what, GetLastError());
+        return false;
     }
     unsigned char b[5];
     b[0] = 0xE9;
-    const int rel = (int)((unsigned char *)&cp_replacement - from - 5);
+    const int rel = (int)((unsigned char *)to_v - from - 5);
     std::memcpy(b + 1, &rel, 4);
     std::memcpy(from, b, 5);
     VirtualProtect(from, 8, old, &old);
     FlushInstructionCache(GetCurrentProcess(), from, 8);
+    std::fprintf(stderr, "[cotgt] %s replaced at %p\n", what, (void *)from);
+    return true;
+}
+
+void install_patch() {
+    if (g_patched || g_patch_failed) return;
+    if (!jump_patch(addr_of_pmf(&dActor_c::ClosestPlayer), (void *)&cp_replacement, "ClosestPlayer")) { g_patch_failed = true; return; }
+    jump_patch(addr_of_pmf(&dActor_c::ClosestNonVanishPlayer), (void *)&cpnv_replacement, "ClosestNonVanishPlayer");
+    jump_patch((void *)&func_ov079_02123f34, (void *)&whomp_replacement, "Whomp nearest-player pick");
     g_patched = true;
     ++g_st.patched;
-    {   // the Whomp family's own nearest-player pick (see above)
-        unsigned char *wf = (unsigned char *)&func_ov079_02123f34;
-        DWORD wold = 0;
-        if (VirtualProtect(wf, 8, PAGE_EXECUTE_READWRITE, &wold)) {
-            unsigned char wb[5];
-            wb[0] = 0xE9;
-            const int wrel = (int)((unsigned char *)&whomp_replacement - wf - 5);
-            std::memcpy(wb + 1, &wrel, 4);
-            std::memcpy(wf, wb, 5);
-            VirtualProtect(wf, 8, wold, &wold);
-            FlushInstructionCache(GetCurrentProcess(), wf, 8);
-            std::fprintf(stderr, "[cotgt] Whomp nearest-player pick replaced at %p\n", (void *)wf);
-        }
-    }
-    std::fprintf(stderr, "[cotgt] ClosestPlayer replaced at %p\n", (void *)from);
 }
 
 // ---------------------------------------------------------------------------
@@ -567,7 +562,7 @@ void *coop_target_body_for_seat(int seat) {
         int dp[3];
         if (!port_adventure_ghost_drawpos(i, dp)) return nullptr;
         char *b = (char *)data_0209f394[i];
-        wr32(b, 0x5c, dp[0]); wr32(b, 0x60, dp[1]); wr32(b, 0x64, dp[2]);
+        wr32(b, 0x5c, dp[0]); wr32(b, 0x60, dp[1]); wr32(b, 0x64, dp[2]); b[0x6fb] = 0;
         return b;
     }
     return nullptr;
