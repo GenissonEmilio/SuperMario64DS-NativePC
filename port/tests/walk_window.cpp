@@ -8575,6 +8575,14 @@ static int ip_fit_commit(void)
  * SM64DS_SCENE_INTERP=0 turns the whole thing off (the scene path as before). */
 extern "C" int IsMinigameActorID(unsigned int id);
 extern "C" int hal_menu_live(void);
+extern "C" int hal_menu_interp_ok(void);
+/* MENUFOLD1: this tick's menu forbids the pictures between ticks: a menu is up and it either takes 3D pixels as a source or the
+   3D is zoomed to the wide frame (FILE2: the replay does not know that zoom). 0 with no menu up, so OFF is untouched. */
+static int menu_snaps_tick(void)
+{
+    if (!hal_menu_live()) return 0;
+    return (!hal_menu_interp_ok() || ntr::gx_menu_wide_active()) ? 1 : 0;
+}
 extern "C" int port_fader_blend_state_sub(int *evy, int *toWhite);
 extern "C" void (*port_scene_ip_hook)(int stage, void *fb, int frame, int tick_game);
 extern "C" int port_scene_env_want(void);
@@ -8648,7 +8656,6 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
         int why = -1;
         if (!tick_game) why = SI_PAUSED;
         else if (menu_on) why = SI_DEBUG;
-        else if (hal_menu_live()) why = SI_MENU;
         else if (frame < 2) why = SI_EARLY;
         else if (ip_slow) why = SI_SLOW;
         else {
@@ -8703,6 +8710,14 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
     }
     /* stage 2: the 2D, the bottom screen and engine A's fade are in fb */
     if (!g_ip_tick_ok) return;
+    /* MENUFOLD1: a one-screen menu that takes no 3D pixels as a source lets the pictures between ticks run (the tick's composed
+       picture goes back over the replayed 3D); one that moves 3D pixels keeps the snap. Asked here, after the composite, so it is
+       THIS tick's menu and not the previous tick's. */
+    if (menu_snaps_tick()) {
+        g_ip_tick_ok = 0;
+        scene_ip_note(SI_MENU);
+        return;
+    }
     if (port_gpu_twod_live()) {
         g_ip_tick_ok = 0;
         scene_ip_note(SI_TWOD);
@@ -18816,13 +18831,11 @@ int main(void)
                    settled after all, the 3D layer's snapshot is the card's */
                 ntr::gx_card_settle_sink(&g_ip_p3->px[0][0], ip_settled);
             }
-            if (!ip_slow) ip_snap(g_ip_p3, fb);
             /* hal_menu_live() is this frame's answer only from the composite below (H1); read here it is the previous
                frame's, so the smooth-motion snap trails the menu by one frame at open and at close. A clean fix needs the
                predicate split out of H1 without a second pass over its trace and fallback counters; left as is (menu1
                HOOK1FIX decision), harmless to every picture row. */
             const int ip_snapit = (tick_frozen || !k1_rom || stacked || ip_slow ||
-                                   hal_menu_live() ||
                                    rb_skip_render() || rb_resim_skip_render())
                                       ? 1 : 0;
             ntr::GxInterpStats ist;
@@ -18959,6 +18972,12 @@ int main(void)
             }
         }
 
+        /* MENUFOLD1: the menu of THIS tick (known only now, after the composite) decides whether its pictures between ticks run */
+        if (g_ip_on > 0 && g_ip_tick_ok && menu_snaps_tick()) {
+            g_ip_tick_ok = 0;
+            if (ip_trace())
+                fprintf(stderr, "[interp] tick f%d is a snap: a one-screen menu takes 3D pixels\n", port_rom_frame());
+        }
         if (g_ip_on > 0 && g_ip_tick_ok) {
             ip_snap_2d(g_ip_p4, fb);   /* run interp1 */
             g_ip_snapstage = 2;

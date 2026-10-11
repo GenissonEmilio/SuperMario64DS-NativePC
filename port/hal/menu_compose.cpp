@@ -1540,6 +1540,29 @@ int  hal_menu_uses_cover(void)
     return 0;
 }
 const MenuLiftInfo *hal_menu_lift_info(void) { return g_dd.live && g_dd.lift_on ? &g_dd.lift : 0; }
+/* MENUFOLD1 (hunt8): may the pictures BETWEEN ticks (Smooth Motion, scene in-betweens) run under this tick's menu? They replay the
+   tick's 3D and put the tick's composed picture back wherever it differs from the tick's 3D, which is exact when the menu takes no
+   3D pixels as a source. A recipe that draws a piece of the 3D picture (SRC_TOP_PIC: the title's head, plates and wrench, the file
+   pages' page picture, the star select's upper picture), a 3D-keyed piece, or the held snapshot frame moves 3D pixels, so the
+   replayed 3D would show beside its own moved copy: those ticks keep the snap. 2D sources (SRC_TOP_2D, SRC_TOP_HOSTROW, SRC_SUB,
+   host images, gradients) are the tick's own and need nothing from the 3D. SM64DS_MENU_INTERP=0 snaps every menu tick (the old
+   rule). Returns 1 when no menu is bound. Draw side only; read the bound decision, never ROM memory. */
+int  hal_menu_interp_ok(void)
+{
+    if (!g_dd.live) return 1;
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_MENU_INTERP");
+        on = (e && e[0] == '0' && e[1] == '\0') ? 0 : 1;
+    }
+    if (!on || g_dd.fallback) return 0;
+    for (int i = 0; i < g_dd.L.np; ++i) {
+        const MenuPiece &P = g_dd.L.p[i];
+        if (P.src == SRC_TOP_PIC || P.keycover || P.snap) return 0;
+    }
+    if (g_dd.L.snap_save) return 0;
+    return 1;
+}
 int  hal_menu_trace_on(void) { return trace_on(); }
 void hal_menu_set_dst_stride(int stride) { g_dst_stride = stride; }
 void hal_menu_note_lift_drawn(void) { g_dd_lift_pending = 0; }
