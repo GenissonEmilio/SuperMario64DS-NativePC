@@ -93,6 +93,7 @@ struct TitleFacts {
     int dd_dead;              /* FACE2: 1 while the drawing page's own picture is not the page yet (the ROM's black hand-over frames): no strokes or buttons are cut from it */
     int out_e;                /* FACE2: ticks since the drawing page was left (1 on the first tick of the next page), 0 = not leaving it */
     int wide3d;               /* FILE2: this tick's 3D frame covered the whole wide frame (the page background was zoomed in the 3D itself: no margin pieces) */
+    int yh;                   /* FACE3 (review): the Yoshi hold (element machine 4) after the drawing page: our full-canvas iris covers it too */
     int e3o;                  /* FACE3: ticks since the ROM left the free-draw state for the face tracing (the hand button), 1 on the first tick, 0 = not leaving it */
     int e3;                   /* FACE3: ticks since the ROM entered the free-draw state (element machine 3), 1 on the first tick, 0 = not in it */
     int toy_v;                /* FACE1: the face press page's own frame counter (the page object's +0xc) PLUS ONE while top 4 / elem 0 is up, 0 = not the press page (a zeroed blob is not the press page) */
@@ -1017,6 +1018,7 @@ void build_doodle(MenuLayout *L)
     MenuPiece st = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
     st.fixdest = 1; st.keycover = 1; st.bg = 1; st.has_ex = 1; st.ex = kYo; st.has_ex2 = 1; st.ex2 = kPen;
     if (e3 > 0) { st.has_ex3 = 1; st.ex3 = kBar; }
+    if (e3 > 0 && e3 <= 12) { st.ex2.y = 100; st.ex2.h = 92; }      /* the pencil's tick sprite while it slides out */
     st.fx = (short)x0; st.fy = (short)y0; st.fw = (short)fw; st.fh = (short)fh;
     menu_add_piece(L, st);
     MenuPiece tc = st;                           /* the touch twin: the same transform inverts a click on the strokes' area to the ROM's canvas */
@@ -1036,7 +1038,7 @@ void build_doodle(MenuLayout *L)
         br.keycover = 1; br.touch = 1;
         menu_add_piece(L, br);
     }
-    if (e3 > 0 && t_f && t_f->vis) {     /* FACE3: the Yoshi press: the ROM closes its star iris over the page (drawn only inside the 4:3 area in its own layer); ours covers the whole canvas, same star, same radius */
+    if ((e3 > 0 || (t_f && t_f->yh)) && t_f && t_f->vis) {     /* FACE3: the Yoshi press: the ROM closes its star iris over the page (drawn only inside the 4:3 area in its own layer); ours covers the whole canvas, same star, same radius */
         MenuPiece ir = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         ir.bg = 1; ir.iris = 1; ir.lden = 1; ir.lnum = 1; ir.fx = 0; ir.fy = 0; ir.fw = (short)w; ir.fh = (short)h;
         const float Rds = 0.004382f * (float)t_f->s48, Rpx = Rds * (float)h / 192.f;
@@ -1128,6 +1130,7 @@ void menu_title_facts(MenuFacts *f)
         else if (e3oc > 0 && st && elem == 2) e3oc = e3oc > DD_XF + 1 ? 0 : e3oc + 1;
         else e3oc = 0;
         tf.e3o = e3oc;
+        tf.yh = (st && elem == 4 && g_last == V_DOODLE) ? 1 : 0;
         static int yoshi_out = 0;
         yoshi_out = (st && elem == 4) ? 1 : (st && elem == 2) ? 0 : yoshi_out;      /* the Yoshi press: the ROM's own star iris covers the hand-over, no held frame fades over it */
         if (st && top == 4 && elem == 0 && data_ov007_0210342c) {
