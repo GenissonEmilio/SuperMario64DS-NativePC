@@ -11608,6 +11608,10 @@ list(APPEND SLICE_COMMS_SOURCES hal/coop_groups.cpp hal/coop_world.cpp)
 list(APPEND SLICE_COMMS_SOURCES hal/coop_actors.cpp)
 # Coop shared targeting and bosses (run mp1, lane BOSSCORE1; see hal/coop_target.h, hal/coop_boss.h).
 list(APPEND SLICE_COMMS_SOURCES hal/coop_target.cpp hal/coop_boss.cpp)
+# Run mp1 coop phase 2 lane COOPSPAWN1: ? / ! block hits, red-coin counter, announced
+# runtime stars and prizes. INERT unless SM64DS_COOP is set in a coop room; see hal/coop_spawn.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_spawn.cpp)
+
 # Run mp1 lane ARENACORE1: arena-mode VS (no rounds; the referee is the relay).
 # INERT unless SM64DS_VS_NETMODE=arena with a VS map; see hal/vs_arena.h.
 list(APPEND SLICE_COMMS_SOURCES hal/vs_arena.cpp)
