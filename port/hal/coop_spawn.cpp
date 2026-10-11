@@ -627,12 +627,16 @@ bool near_same(const char *a, const SpSpawnWire &w) {
     return true;
 }
 
-// A key only exists where the ROM loaded its model: the two Bowser fights, the Big Boo and Chilly key arenas (levels 36, 38, 40, 47, 49).
-// Spawning one anywhere else draws a model that is not there, so a forged key SPAWN must not get past this.
-bool key_level_ok(int lvl) { return lvl == 36 || lvl == 38 || lvl == 40 || lvl == 47 || lvl == 49; }
+// A key only exists where the ROM loaded its model: Bowser's three arenas (levels 36, 38, 40, any kind) and Chief Chilly's arena (49,
+// kind 4 as in func_ov073_0211fa74). Anywhere else the model is not there and the draw faults (measured: kind 0 in 49 and in BOB), so
+// a forged key SPAWN must not get past this. The Big Boo key arena (47) is left out until its kind is proven.
+bool key_ok(int lvl, unsigned param) {
+    if (lvl == 36 || lvl == 38 || lvl == 40) return true;
+    return lvl == 49 && (param & 7u) == 4u;
+}
 
 void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
-    if (w.cls == 282 && !key_level_ok(g_lvl)) { ++g_st.drop_class; return; }
+    if (w.cls == 282 && !key_ok(g_lvl, w.param)) { ++g_st.drop_class; return; }
     if (ack_has(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     if (net_find(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     Net *n = net_alloc();
