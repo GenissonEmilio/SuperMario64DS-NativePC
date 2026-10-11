@@ -644,8 +644,7 @@ bool bossdesc1_knob(Boss &b, HitKnob &k) {
         func_ov034_021125b8(a, (uint8_t)a[0x8db] > 1 ? 3 : 7);
     }
     k.done = true;
-    std::fprintf(stderr, "[cbs-knob] hit made slot=%d cls=%u hp=%u st=%u w=%lld
-", k.slot, cls, (unsigned)hp_of(b), state_of(b), wall_ms());
+    std::fprintf(stderr, "[cbs-knob] hit made slot=%d cls=%u hp=%u st=%u w=%lld\n", k.slot, cls, (unsigned)hp_of(b), state_of(b), wall_ms());
     return true;
 }
 
