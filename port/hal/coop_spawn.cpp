@@ -627,7 +627,12 @@ bool near_same(const char *a, const SpSpawnWire &w) {
     return true;
 }
 
+// A key only exists where the ROM loaded its model: the two Bowser fights, the Big Boo and Chilly key arenas (levels 36, 38, 40, 47, 49).
+// Spawning one anywhere else draws a model that is not there, so a forged key SPAWN must not get past this.
+bool key_level_ok(int lvl) { return lvl == 36 || lvl == 38 || lvl == 40 || lvl == 47 || lvl == 49; }
+
 void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
+    if (w.cls == 282 && !key_level_ok(g_lvl)) { ++g_st.drop_class; return; }
     if (ack_has(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     if (net_find(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     Net *n = net_alloc();
@@ -902,6 +907,7 @@ void knob_forge(const char *name) {
     else if (!std::strcmp(name, "short")) { send_world(kSpWorldSpawn, b, 9); }
     else if (!std::strcmp(name, "long")) { send_world(kSpWorldSpawn, b, 100); }
     else if (!std::strcmp(name, "key")) { s.key.act = (uint8_t)((g_act + 1) & 7); send_world(kSpWorldSpawn, &s, sizeof s); }
+    else if (!std::strcmp(name, "badkey")) { s.cls = 282; s.counter = 9001; send_world(kSpWorldSpawn, &s, sizeof s); }       // a key in a course that has no key model
     else if (!std::strcmp(name, "goodstar")) { send_world(kSpWorldSpawn, &s, sizeof s); }                 // valid: the control that the forge shape is right
     else if (!std::strcmp(name, "gone")) {
         SpGoneWire g; std::memset(&g, 0, sizeof g); g.key = wkey(); g.origin = 99; g.kind = kSpGoneAnn; g.id = 5;
