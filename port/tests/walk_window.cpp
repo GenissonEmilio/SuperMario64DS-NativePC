@@ -7954,6 +7954,14 @@ static inline uint32_t ip_fade_px(uint32_t p, int evy, int toWhite)
     return 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
 }
 static int g_ip_rate_ok;
+/* run hunt8, lane MENUINTERP2: this scene tick's menu moves 3D pixels, so each picture between ticks draws the menu again on its own
+   3D (hal_menu_relift) over the tick's 2D as it was BEFORE the menu (hal_menu_pic_snapshot, kept in p2). */
+static int g_ip_menu_relift;
+extern "C" int hal_menu_relift_ok(void);
+extern "C" int hal_menu_relift_why(void);
+extern "C" void hal_menu_relift_dump(void);
+extern "C" const uint32_t *hal_menu_pic_snapshot(void);
+extern "C" int hal_menu_relift(unsigned int *dst, int w, int h);
 
 /* The blended pictures' own cost, for SM64DS_INTERP_TRACE's line and the
    gate's frame-time rows: build (replay + raster + 2D) and present apart. */
@@ -7963,6 +7971,8 @@ static int g_ip_win_n;
 static unsigned long long g_ip_pictures, g_ip_blended, g_ip_plain;
 /* inside a build: the replay, the raster, the 2D put back, summed per window */
 static double g_ip_sum_replay, g_ip_sum_raster, g_ip_sum_compose;
+static double g_ip_sum_menu;       /* MENUINTERP2: the menu's re-draw inside the builds (ms), and how many */
+static unsigned g_ip_menu_n;
 
 static long long ip_qpc(void)
 {
@@ -8224,6 +8234,14 @@ static int ip_build(double alpha)
                 if (a[x] != b[x]) row[x] = b[x];
         }
     }
+    /* run hunt8, lane MENUINTERP2: the menu again, on this picture's own 3D (the pieces it lifts from the 3D picture are cut from
+       the replay, not from the tick) */
+    if (g_ip_menu_relift) {
+        const long long tm = ip_qpc();
+        hal_menu_relift(&o.px[0][0], ntr::active_w, ntr::active_h);
+        g_ip_sum_menu += ip_ms_since(tm);
+        ++g_ip_menu_n;
+    }
     if (!g_ip_skip_p5)
     for (int y = 0; y < ntr::active_h; ++y) {
         uint32_t *row = o.px[y];
@@ -8259,6 +8277,8 @@ static void ip_note(double build_ms, double pres_ms)
             sb[IP_WIN - 1], g_ip_sum_replay / IP_WIN, g_ip_sum_raster / IP_WIN,
             g_ip_sum_compose / IP_WIN, ap / IP_WIN, sp[(IP_WIN * 95) / 100],
             sp[IP_WIN - 1], g_ip_pictures, g_ip_blended, g_ip_plain);
+    if (g_ip_menu_n) fprintf(stderr, "[interp] menu re-draw in %u of those pictures: %.2f ms each (inside '2D')\n", g_ip_menu_n, g_ip_sum_menu / g_ip_menu_n);
+    g_ip_sum_menu = 0; g_ip_menu_n = 0;
     g_ip_sum_replay = g_ip_sum_raster = g_ip_sum_compose = 0;
 }
 
@@ -8851,7 +8871,9 @@ extern "C" int hal_menu_interp_mode(void);
 static int menu_snaps_tick(void)
 {
     if (!hal_menu_live()) return 0;
-    return (!hal_menu_interp_ok() || (ntr::gx_menu_wide_active() && hal_menu_interp_mode() != 2)) ? 1 : 0;
+    /* MENUINTERP2: the replay knows the wide page (the frame's menu-wide answer and the sprite brackets are in its record), so a wide
+       3D no longer snaps by itself; SM64DS_MENU_INTERP=3 is MENUFOLD1's rule, which did */
+    return (!hal_menu_interp_ok() || (ntr::gx_menu_wide_active() && hal_menu_interp_mode() == 3)) ? 1 : 0;
 }
 extern "C" int port_fader_blend_state_sub(int *evy, int *toWhite);
 extern "C" void (*port_scene_ip_hook)(int stage, void *fb, int frame, int tick_game);
@@ -8870,6 +8892,8 @@ static void scene_ip_note(int why)
     if (why >= 0 && why < SI_N) ++g_si_count[why];
 }
 
+static double g_force_ms[5];   /* MENUINTERP2 cost rows: forced builds, total / replay / raster / 2D (incl. menu) / menu re-draw, ms summed */
+static unsigned g_force_n;
 static void scene_ip_report(void)
 {
     if (!g_si_ticks) return;
@@ -8881,6 +8905,9 @@ static void scene_ip_report(void)
     fprintf(stderr, "[scene-interp] per tick ms: hook stage 1 %.2f, stage 2 %.2f, kept-image copy %.2f (of stage 1: p3 snapshot %.2f, commit %.2f) | per blend: stacked compose %.2f (%u blends)\n",
             g_si_ms[0] / g_si_ticks, g_si_ms[1] / g_si_ticks, g_si_ms[2] / g_si_ticks, g_si_ms[4] / g_si_ticks, g_si_ms[5] / g_si_ticks,
             g_si_blend_n ? g_si_ms[3] / g_si_blend_n : 0.0, g_si_blend_n);
+    if (g_force_n)
+        fprintf(stderr, "[scene-interp] forced builds %u: avg ms total %.2f (replay %.2f raster %.2f 2D+menu %.2f, of which menu re-draw %.2f)%s",
+                g_force_n, g_force_ms[0] / g_force_n, g_force_ms[1] / g_force_n, g_force_ms[2] / g_force_n, g_force_ms[3] / g_force_n, g_force_ms[4] / g_force_n, "\n");
     fflush(stderr);
 }
 
@@ -8912,6 +8939,7 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
     if (stage == 1) {
         ++g_si_ticks;
         g_ip_tick_ok = 0;
+        g_ip_menu_relift = 0;
         /* a scene tick is never held on the card (the stacked layout is not
            allowed, the inset scenes never asked): if one is, read it back */
         if (ntr::gx_card_overlay_active())
@@ -8985,10 +9013,17 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
     /* MENUFOLD1: a one-screen menu that takes no 3D pixels as a source lets the pictures between ticks run (the tick's composed
        picture goes back over the replayed 3D); one that moves 3D pixels keeps the snap. Asked here, after the composite, so it is
        THIS tick's menu and not the previous tick's. */
+    g_ip_menu_relift = 0;
     if (menu_snaps_tick()) {
-        g_ip_tick_ok = 0;
-        scene_ip_note(SI_MENU);
-        return;
+        if (hal_menu_relift_ok() && hal_menu_pic_snapshot()) {
+            g_ip_menu_relift = 1;        /* MENUINTERP2: every picture between ticks lifts the menu's 3D pieces from its own 3D */
+        } else {
+            if (ip_trace()) fprintf(stderr, "[interp] scene tick f%d snaps: menu (relift why %d, wide %d, interp_ok %d)\n", port_rom_frame(), hal_menu_relift_why(), ntr::gx_menu_wide_active() ? 1 : 0, hal_menu_interp_ok());
+            if (ip_trace() >= 2) hal_menu_relift_dump();
+            g_ip_tick_ok = 0;
+            scene_ip_note(SI_MENU);
+            return;
+        }
     }
     if (port_gpu_twod_live()) {
         g_ip_tick_ok = 0;
@@ -9030,7 +9065,14 @@ static void scene_ip_hook_body(int stage, void *fbp, int frame, int tick_game)
         return;
     }
     ++g_si_ok;
-    ip_snap(g_ip_p2, fb);
+    if (g_ip_menu_relift) {
+        /* p2 is the picture as the menu found it (pre-menu, faded): a blend puts it back over the replayed 3D and then draws the menu */
+        const uint32_t *pm = hal_menu_pic_snapshot();
+        for (int y = 0; y < ntr::active_h; ++y)
+            memcpy(g_ip_p2->px[y], pm + (size_t)y * ntr::SCREEN_W, ntr::active_w * sizeof(uint32_t));
+    } else {
+        ip_snap(g_ip_p2, fb);
+    }
     /* p4 (the picture after the fade) is read only by a masked fade, which
        snaps above, and by the host-UI diff of the inset layout */
     if (!hal_sub_screen_stacked()) ip_snap(g_ip_p4, fb);
@@ -9145,7 +9187,18 @@ static void ip_scene_force(int stacked, unsigned tick_hash)
     if (k <= 0 || g_ip_on <= 0 || !g_ip_tick_ok) return;
     for (int j = 1; j <= k; ++j) {
         const double alpha = (double)j / k;
-        if (!ip_build(alpha)) {
+        const double r0 = g_ip_sum_replay, a0 = g_ip_sum_raster, c0 = g_ip_sum_compose, m0 = g_ip_sum_menu;
+        const long long tb = ip_qpc();
+        const int built = ip_build(alpha);
+        if (built) {
+            g_force_ms[0] += ip_ms_since(tb);
+            g_force_ms[1] += g_ip_sum_replay - r0;
+            g_force_ms[2] += g_ip_sum_raster - a0;
+            g_force_ms[3] += g_ip_sum_compose - c0;
+            g_force_ms[4] += g_ip_sum_menu - m0;
+            ++g_force_n;
+        }
+        if (!built) {
             fprintf(stderr, "[blendhash] t%u j%d/%d SNAP" "\n", g_si_pic_tick, j, k);
             continue;
         }
@@ -9246,6 +9299,7 @@ static void ip_scene_end(void)
     if (g_ip_on > 0) {
         scene_ip_report();
         g_ip_tick_ok = 0;
+        g_ip_menu_relift = 0;
         g_ip_deferred = 0;
         g_ip_skip_p5 = 0;
         g_ip_stack_on = 0;

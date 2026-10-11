@@ -413,7 +413,12 @@ int  hal_menu_fallback_frames(void);
 /* HOOK1 */
 const MenuLiftInfo *hal_menu_lift_info(void);   /* this frame's lift plan, null = lift nothing */
 int  hal_menu_uses_src(int src);                /* the live layout has a piece of this MenuSrc */
-int  hal_menu_interp_mode(void);                /* MENUFOLD1: SM64DS_MENU_INTERP 0 / 1 / 2 (2 = proof instrument, every menu tick blends) */
+int  hal_menu_interp_mode(void);                /* MENUFOLD1: SM64DS_MENU_INTERP 0 snap / 1 default (MENUINTERP2: re-lift per picture) / 2 proof instrument (every menu tick blends, as the tick's pieces) / 3 MENUFOLD1's gate (snap when a piece takes 3D pixels) */
+int  hal_menu_relift_why(void);                 /* MENUINTERP2: 0 = ok, else 1 mode/fallback, 2 stage or snap_save, 3 held-frame piece, 4 no picture piece */
+void hal_menu_relift_dump(void);                /* MENUINTERP2 debug: one trace line of the bound layout's pieces */
+void hal_menu_present_relift(uint32_t *dst, int w, int h, int stage);   /* MENUINTERP2: hal_menu_present for a picture between ticks */
+int  hal_menu_needs_picsnap(void);              /* MENUINTERP2: the tick must keep the picture as the menu found it for a re-draw between ticks */
+int  hal_menu_relift_ok(void);                  /* MENUINTERP2: a tick the gate snaps may still blend if every in-between re-draws the menu on its own 3D picture (hal_menu_relift) */
 int  hal_menu_interp_ok(void);                  /* MENUFOLD1: the pictures between ticks may run under this tick's menu (no 3D-sourced piece); 1 when no menu is bound */
 int  hal_menu_uses_cover(void);                 /* ASSET1: the live layout has a keycover piece (the host then supplies pic_cover) */
 void hal_menu_note_cost(double prep_us);       /* ASSET1: the host adds its source-preparation time for the frame */
