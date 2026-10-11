@@ -660,8 +660,8 @@ void scan() {
         if (b.a) continue;
         if (b.d != d) { b = Boss(); b.d = d; }
         b.a = a; ++b.seen; ++g_nb;
-        if (g_deadmark && g_dead_cls[slot] == id && !b.killed_late && b.seen >= 3 && b.seen <= 12) {
-            b.killed_late = true;           // it has initialised (the loader ran its InitResources): end it the ordinary way
+        if (g_deadmark && g_dead_cls[slot] == id && !b.killed_late && b.seen >= 3 && b.seen <= 900) {
+            b.killed_late = true;           // it has initialised (the loader ran its InitResources) and is new here (the record can arrive a little after the boss): end it the ordinary way
             _ZN7fBase_c18MarkForDestructionEv(a);
             ++g_st.dead_killed;
             if (g_log) std::fprintf(stderr, "[cbs] dead boss removed on arrival: cls=%u slot=%d w=%lld\n", id, (int)slot, wall_ms());
