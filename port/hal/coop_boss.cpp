@@ -307,11 +307,12 @@ struct Boss {
 
 CoopBossStats g_st = {};
 bool g_env = false, g_on = true, g_log = false;
-struct HitKnob { unsigned tick; bool done; bool armed; bool lethal; int hp0; int slot; };
+struct HitKnob { unsigned tick; bool done; bool armed; bool lethal; int hp0; int slot; int slot_tries; };
 HitKnob g_hit[4]; int g_nhit = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
 ForgeKnob g_forge[8]; int g_nforge = 0;
 unsigned g_stand_tick = 0, g_stand_every = 0; int g_stand_dist = 0; bool g_stand_done = true, g_god = false;
+bool g_bomb = false;   // bossfix1: SM64DS_COOP_BOSS_BOMB=1: Bowser's proof hit is a REAL bomb hit (the ROM's own detection)
 unsigned g_behind_tick = 0, g_behind_every = 0; int g_behind_dist = 0; bool g_behind_done = true;   // bossdesc2: the local player behind the boss, facing his way (the grab proof)
 bool g_regd = false;
 int  g_my = -1;
@@ -476,6 +477,7 @@ void read_env() {
         if (n >= 2) { g_behind_tick = f; g_behind_dist = d; g_behind_done = false; g_behind_every = n >= 3 ? ev : 0; }
     }
     g_god = flag("SM64DS_COOP_BOSS_GOD", false);
+    g_bomb = flag("SM64DS_COOP_BOSS_BOMB", false);
     if (const char *f = std::getenv("SM64DS_COOP_BOSS_FORGE")) {
         const char *p = f;
         while (*p && g_nforge < 8) {
@@ -628,6 +630,7 @@ void log_sample(int slot, const Boss &b, int auth) {
                                           wall_ms(), g_ticks, slot, (unsigned)b.d->cls, rd32(b.a, 0x5c) >> 12, rd32(b.a, 0x60) >> 12, rd32(b.a, 0x64) >> 12,
                                           auth, g_my, hp_of(b), state_of(b));
     for (int k = 2; k < b.d->nf && n < (int)sizeof line - 20; ++k) n += std::snprintf(line + n, sizeof line - n, " f%d=%u", k, read_field(b.a, b.d->f[k]));
+    if (b.d->cls == 279) n += std::snprintf(line + n, sizeof line - n, " talk=%d cnt=%d", (int)(signed char)b.a[0x424], (int)rd16(b.a, 0x3fe));
     n += std::snprintf(line + n, sizeof line - n, " tgt=%d", coop_target_seat_of_slot(slot));
     std::fprintf(stderr, "%s\n", line);
 }
@@ -929,6 +932,23 @@ bool bossdesc2_knob(Boss &b, HitKnob &k) {
         std::memcpy(a + 0x5f6, &sp, 2);
         func_ov074_02121a4c(a, 2);
         func_ov074_021203e4(a, 5);
+    } else if (cls == 279 && g_bomb) {
+        // The ROM's own bomb hit: Bowser is put into his thrown state (aed4[1] = func_ov060_02113b5c) on the bomb's point, and that state's
+        // own check (func_ov060_02113d20 -> 02118544) finds the bomb, takes the HP point and picks state 0xc or, at 0, the defeat state 4.
+        // Retried every 4 ticks (the state needs a frame to run) until the HP has dropped.
+        char *bomb = nullptr;
+        for (char *x = (char *)_ZN8dActor_c4NextEPKS_(0); x; x = (char *)_ZN8dActor_c4NextEPKS_(x))
+            if (*(const unsigned short *)(x + 0x0c) == 284 && rd32(x, 0x170) == 0) { bomb = x; break; }
+        if (!bomb) { std::fprintf(stderr, "[cbs-knob] bomb: no live bomb actor (class 284) in this arena w=%lld\n", wall_ms()); k.done = true; return true; }
+        if (k.lethal && (int8_t)a[0x41e] > 1) { a[0x41e] = 1; k.hp0 = 1; }
+        int32_t px = rd32(bomb, 0x174), py = rd32(bomb, 0x178), pz = rd32(bomb, 0x17c);
+        std::memcpy(a + 0x5c, &px, 4); std::memcpy(a + 0x60, &py, 4); std::memcpy(a + 0x64, &pz, 4);
+        const int32_t one = 1, zero = 0;
+        std::memcpy(a + 0x40c, &one, 4); std::memcpy(a + 0x410, &zero, 4); a[0x423] = 0;
+        k.tick = g_ticks + 4;
+        if (++k.slot_tries >= 60) { k.done = true; std::fprintf(stderr, "[cbs-knob] bomb: gave up after 60 tries hp=%d w=%lld\n", hp_of(b), wall_ms()); }
+        else if (k.slot_tries == 1) std::fprintf(stderr, "[cbs-knob] bomb: Bowser put on the bomb at %d,%d,%d in his thrown state, the ROM decides hp=%d st=%u w=%lld\n", px >> 12, py >> 12, pz >> 12, hp_of(b), state_of(b), wall_ms());
+        return true;
     } else if (cls == 279) {
         if (k.lethal && (int8_t)a[0x41e] > 1) a[0x41e] = 1;
         a[0x41e] = (char)((int8_t)a[0x41e] - 1);
