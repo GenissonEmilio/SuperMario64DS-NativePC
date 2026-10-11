@@ -294,6 +294,7 @@ struct Boss {
     int mism;                      // consecutive state mismatches against the authority's record
     int last_auth; unsigned auth_t;
     bool announced_dead;
+    unsigned knob_ok_t;            // bossdesc2: wall ms of the last proof-knob hit made on this copy (a drop right after it is a hit from my player)
     bool retired;                  // bossdesc2: a defeated Bowser copy that was told to go
     uint32_t last_st;              // the state as of the last tick (bossdesc1: Chilly's hit shows as a state change, not an HP change)
     bool heard;                    // an authority record was ever applied here
@@ -725,10 +726,28 @@ void process(unsigned now) {
         // a hit that landed on my copy: HP below what was last synced
         const int hp = hp_of(b);
         if (hp > b.synced_hp && d.cls == 218) b.synced_hp = hp;    // Chilly's revive raises it by himself
-        if (hp < b.synced_hp) {
+        // A console that is NOT the authority only reports a drop in its own copy's HP as a hit when the hit can have come from ITS player:
+        // the proof knob made it, or its player is within reach of the boss. Anything else is the copy's own ROM chain walking into a hit
+        // state after a state was forced onto it (it sees a friend's placed body as the attacker): REVBOSSCORE1 item 4, King Bob-omb lost a
+        // second point about 10 s after one hit. That drop is undone and never sent.
+        if (hp < b.synced_hp && !mine && g_on && (unsigned)(wnow - b.knob_ok_t) >= 1500u) {
+            const int me = (int)data_0209f250;
+            bool near_me = false;
+            if (me >= 0 && me < 16 && data_0209f394[me]) {
+                const char *pl = (const char *)data_0209f394[me];
+                const double dx = ((double)rd32(pl, 0x5c) - rd32(b.a, 0x5c)) / 4096.0, dy = ((double)rd32(pl, 0x60) - rd32(b.a, 0x60)) / 4096.0, dz = ((double)rd32(pl, 0x64) - rd32(b.a, 0x64)) / 4096.0;
+                near_me = std::sqrt(dx * dx + dy * dy + dz * dz) < 900.0;
+            }
+            if (!near_me) {
+                ++g_st.hit_spurious;
+                if (g_log) std::fprintf(stderr, "[cbs] drop ignored slot=%d hp %d->%d (not from my player; auth %d me %d) w=%lld\n", slot, b.synced_hp, hp, auth, g_my, wall_ms());
+                write_field(b.a, d, d.hp, (uint32_t)b.synced_hp);
+            }
+        }
+        if (hp_of(b) < b.synced_hp) {
             ++g_st.hit_local;
-            if (g_log) std::fprintf(stderr, "[cbs] hit slot=%d hp %d->%d (auth %d me %d) w=%lld\n", slot, b.synced_hp, hp, auth, g_my, wall_ms());
-            b.synced_hp = hp;
+            if (g_log) std::fprintf(stderr, "[cbs] hit slot=%d hp %d->%d (auth %d me %d) w=%lld\n", slot, b.synced_hp, hp_of(b), auth, g_my, wall_ms());
+            b.synced_hp = hp_of(b);
             if (!mine && g_on) {
                 unsigned char one[64];
                 const int n = fill_rec(one, slot, b, 0);
@@ -802,6 +821,7 @@ void do_hit_knob(HitKnob &k) {
     }
     Boss &b = g_boss[k.slot];
     if (!b.a) { k.done = true; return; }
+    b.knob_ok_t = comms_hub_now_ms();
     if (hp_of(b) < k.hp0) {
         k.done = true;
         std::fprintf(stderr, "[cbs-knob] hit taken slot=%d hp %d->%d st=%u w=%lld\n", k.slot, k.hp0, hp_of(b), state_of(b), wall_ms());

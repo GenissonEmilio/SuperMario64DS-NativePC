@@ -73,7 +73,7 @@ struct CoopBossStats {
     unsigned long long ticks, bosses, sent, recs_sent, hits_sent, rx, recs_rx, hits_rx;
     unsigned long long applied_state, applied_hp, applied_fields, state_mismatch, hit_local, hit_adopted, claims;
     unsigned long long drop_bad, drop_group, drop_member, drop_notauth, drop_cls, drop_off, drop_seat;
-    unsigned long long stars_spawned, stars_suppressed;
+    unsigned long long stars_spawned, stars_suppressed, hit_spurious;
 };
 CoopBossStats coop_boss_stats();
 
