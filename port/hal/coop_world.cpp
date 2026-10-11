@@ -118,7 +118,7 @@ unsigned g_heard[CoopGroups::kSeats];   // when a seat last sent me something fo
 
 unsigned g_hello_t = 0, g_full_t = 0;
 unsigned g_seq_ctl = 0, g_seq_world = 0;
-Reg      g_reg_ctl[8], g_reg_world[4];
+Reg      g_reg_ctl[kMaxRegs], g_reg_world[kMaxRegs];
 int      g_nreg_ctl = 0, g_nreg_world = 0;
 
 // proof knobs
