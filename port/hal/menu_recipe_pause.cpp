@@ -528,12 +528,11 @@ void build_nosave(MenuLayout *L)
     const Cols C = make_cols(L, kLeftW, kUiW);
     int card;
     build_left(L, C, 0, !in_course(L), &card);
-    if (arts_ready() && have(MENU_IMG_P_BANNER)) {
-        /* the question (the ROM's own bottom screen text, DS art) on our banner in EVERY language (the ROM's own question box is cut flat at the top
-           in German and French), the two planks under it: ours in English, the ROM's own plates in the other languages */
+    if (planks_on(L)) {
+        /* the question (the ROM's own bottom screen text, DS art) on our banner, the two planks under it */
         const int hb = ceil_mul(32, C.b), gap = ur(8, C.b.n, C.b.d);
         const int top = top_dy(2 * hb + gap);
-        {
+        if (have(MENU_IMG_P_BANNER)) {
             MenuPiece bn = menu_piece_make(SRC_HOSTIMG, 24, 60, 208, 32, MENU_AX_R, MENU_AY_T, -C.marg - ur(248 - 232, C.b.n, C.b.d), top, C.b.n, C.b.d);
             bn.hostimg = (uint8_t)MENU_IMG_P_BANNER; bn.bg = 1;
             menu_add_piece(L, bn);
@@ -541,16 +540,9 @@ void build_nosave(MenuLayout *L)
             q.dx = (short)(-C.marg - ur(248 - 212, C.b.n, C.b.d));
             menu_add_piece(L, q);
         }
-        if (planks_on(L)) {
-            add_plank(L, C, MENU_IMG_P_PK_YES, 0x28, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                   /* YES x 0x28..0x77 */
-            add_plank(L, C, MENU_IMG_P_PK_NO, 0x88, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                     /* NO x 0x88..0xd7 */
-            L->back = (int8_t)(L->nh - 1);                                                                       /* the hotspot of NO */
-        } else {
-            const int pl = menu_add_piece(L, sub_piece(0x28, 0x98, 0xb0, 0x20, C, top + hb + gap, 1));
-            const Hs yes = { 0x28, 0x98, 0x50, 0x20, -1 }, no = { 0x88, 0x98, 0x50, 0x20, -1 };
-            add_hs(L, pl, yes);
-            L->back = (int8_t)menu_add_hotspot(L, pl, no.x, no.y, no.w, no.h, -1);
-        }
+        add_plank(L, C, MENU_IMG_P_PK_YES, 0x28, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                   /* YES x 0x28..0x77 */
+        add_plank(L, C, MENU_IMG_P_PK_NO, 0x88, 0x98, 0x50, 0x20, top + hb + gap, -1, 0);                     /* NO x 0x88..0xd7 */
+        L->back = (int8_t)(L->nh - 1);                                                                       /* the hotspot of NO */
     } else {
         MenuPiece p = sub_piece(24, 64, 208, 128, C, 0, 1);
         p.ay = MENU_AY_M;
