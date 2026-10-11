@@ -1226,7 +1226,8 @@ bool coop_boss_prefer_local(const char *actor) {
     return g_on && actor && *(const unsigned short *)(actor + 0x0c) == 279 && rd32(actor, 0x40c) == 4;
 }
 bool coop_boss_reward_not_mine() {
-    if (!g_on || !coop_world_active() || !coop_group_established() || !g_recent_t) return false;
+    static const bool off = [] { const char *e = std::getenv("SM64DS_COOP_REWARD"); return e && *e == '0'; }();     // must-fail control: no suppression
+    if (off || !g_on || !coop_world_active() || !coop_group_established() || !g_recent_t) return false;
     return (unsigned)(comms_hub_now_ms() - g_recent_t) < 4000u && !g_recent_mine;
 }
 
