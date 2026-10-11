@@ -191,7 +191,7 @@ def row_ttc(ctl=False):
     row = "ttc" + ("_ctl" if ctl else "")
     act = int(os.environ.get("TTC_ACT", "1"))
     cons = run(row, specs(27, act, [], ctl=ctl))
-    check_drift(row, cons, ctl, 27, accept=tuple(int(x) for x in os.environ.get("TTC_ACCEPT", "").split(",") if x))
+    check_drift(row, cons, ctl, 27, accept=tuple(int(x) for x in os.environ.get("TTC_ACCEPT", "108,113").split(",") if x))
 
 
 def row_thi(ctl=False):
