@@ -870,8 +870,7 @@ LowStage *low_stage()
 #endif
     if (!p) {
         std::fprintf(stderr, "[wm7] HARD FAULT: no free block below 0x04000000 "
-                             "for the FIFO staging buffers.
-");
+                             "for the FIFO staging buffers.\n");
         std::fflush(stderr);
         std::_Exit(24);
     }
