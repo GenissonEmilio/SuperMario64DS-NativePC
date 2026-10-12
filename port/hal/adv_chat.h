@@ -173,6 +173,9 @@ int chat_my_seat();
 // table both the cleaner and the window's glyph atlas read.
 int chat_font_code(unsigned char ascii);
 
+// A gray note with no name (run mp1, lane PSTAR1: "<name> got BOB S1").
+void chat_system_line(const char *text);
+
 // One "[chat] report ..." line to stderr (also printed once at exit).
 void chat_report(const char *tag);
 
