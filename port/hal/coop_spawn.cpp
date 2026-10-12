@@ -236,7 +236,7 @@ char *my_player() {
     return (me >= 0 && me < 16) ? (char *)data_0209f394[me] : nullptr;
 }
 bool is_block_cls(unsigned c) { return c >= 20 && c <= 25; }
-bool is_ann_cls(unsigned c) { return c == 178 || c == 179 || c == 276 || c == 277 || c == 282 || c == 283; }
+bool is_ann_cls(unsigned c) { return c == 178 || c == 179 || c == 276 || c == 277 || c == 282 || c == 283 || c == 229; }
 bool is_star_cls(unsigned c) { return c == 178 || c == 179; }
 
 CoopKeyWire wkey() { CoopKeyWire k; k.level = (uint16_t)g_lvl; k.act = (uint8_t)g_act; k.reserved = 0; return k; }
@@ -982,6 +982,7 @@ void knob_forge(const char *name) {
     else if (!std::strcmp(name, "star7")) { s.param = 7; s.counter = 9002; send_world(kSpWorldSpawn, &s, sizeof s); }      // star number 7: valid
     else if (!std::strcmp(name, "grand")) { s.cls = 283; s.param = 7; s.counter = 9003; send_world(kSpWorldSpawn, &s, sizeof s); }   // the Grand Star: level 40 only
     else if (!std::strcmp(name, "key2")) { s.cls = 282; s.param = 2; s.counter = 9004; send_world(kSpWorldSpawn, &s, sizeof s); }    // Goomboss's key: level 45 only
+    else if (!std::strcmp(name, "mips")) { s.cls = 229; s.param = 0; s.counter = 9006; send_world(kSpWorldSpawn, &s, sizeof s); }      // MIPS's object (item 12): announced like a key
     else if (!std::strcmp(name, "key3")) { s.cls = 282; s.param = 3; s.counter = 9005; send_world(kSpWorldSpawn, &s, sizeof s); }    // Big Boo's key: level 47 only
     else if (!std::strcmp(name, "goodstar")) { send_world(kSpWorldSpawn, &s, sizeof s); }                 // valid: the control that the forge shape is right
     else if (!std::strcmp(name, "gone")) {
