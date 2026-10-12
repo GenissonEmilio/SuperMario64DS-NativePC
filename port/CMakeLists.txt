@@ -11592,6 +11592,9 @@ list(APPEND SLICE_COMMS_SOURCES hal/comms_conductor.cpp)
 list(APPEND SLICE_COMMS_SOURCES hal/comms_sync.cpp)
 # Run mp1 lane GHOSTDOOR1: the door / area / hidden look of a hub ghost.
 list(APPEND SLICE_COMMS_SOURCES hal/ghost_door.cpp)
+# Run mp1 wave 3 lane PBODY1: solid party bodies (membership by seat, the collision
+# cylinder and its audit). INERT unless SM64DS_PARTY is set; see hal/party.h.
+list(APPEND SLICE_COMMS_SOURCES hal/party.cpp hal/party_cyl.cpp)
 # Run mp1 lane HUB1: the adventure hub carrier. Port-side only and INERT
 # unless SM64DS_ADVENTURE is on AND a relay or SM64DS_HUB_PORT is named, so
 # linking it changes no behaviour; see hal/comms_hub.h.

@@ -17,6 +17,7 @@
 #include "player_fields.h"   /* run mg16 lane MP4: the one place field offsets live */
 #include "host_settings.h"   /* port::adventure_ghost_mode() for the ghost pass */
 #include "comms_seam.h"      /* port::sync_stats(): the local-write witness */
+#include "party.h"           /* PBODY1: solid party bodies */
 #include "ShadowModel.h"
 #include "TextureSequence.h"
 #include "Heap.h"
@@ -524,12 +525,17 @@ extern "C" void port_adventure_ghost_hold()
     for (int i = 0; i < kPortMaxPlayers; ++i) {
         if (i == me) continue;
         if (data_0209fc5c[i] == 0) continue;   /* slot not live */
-        /* PARTY: a party member is a shared-world body that COLLIDES and
-           interacts -- do NOT hold it non-colliding. Only non-party remotes
-           (adventure ghosts) get the pass-through hold. */
-        if (port_party_member(i)) continue;
+        /* PARTY (PBODY1): a party body is held and parked like any hub ghost
+           body. It is the follower that makes it solid for the one pass that
+           needs it: it registers the body's cylinder after the last hold of the
+           frame (hal/party_cyl.cpp), and the render pass draws it without the
+           ghost layer (port_party_member, below). */
         if (void *a = data_0209f394[i]) {
             port::player::disable_interaction(a);
+            /* PBODY1: ...but its collider flags are the party rule's (hal/party_cyl.cpp), and
+               the immovable bit the hold just raised is not part of it */
+            if (port_party_member(i))
+                *(unsigned *)((char *)a + port::player::kBodyColliderFlags) &= ~4u;
             /* run mp1 lane GHOSTWIRE1: ON THE HUB A GHOST BODY RUNS NO GAME
                LOGIC AT ALL. fBase_c::BeforeBehavior returns 0 while pauseFlags
                & 2 is set (src/_ZN7fBase_c14BeforeBehaviorEv.cpp), so the
@@ -1890,6 +1896,9 @@ static void hal_render_player_world_body(void *player)
                         data_0209f394[party_slot] == player;
     const bool ghost = port::adventure_ghost_mode() && remote &&
                        !port_party_member(party_slot);
+    /* PBODY1: a solid party body is drawn at full alpha: its materials may still hold the alpha a
+       ghost draw stamped (a fade-in, a pass as a ghost before it was solid), and nothing else resets it */
+    const bool party_solid = !ghost && remote && port_party_member(party_slot) != 0;
     if (party_slot >= 0 && party_slot < 16)
         g_party_render_ghost[party_slot] = (signed char)(ghost ? 1 : 0);
     std::size_t vscol_tris0 = 0;
@@ -1951,6 +1960,7 @@ static void hal_render_player_world_body(void *player)
         return;
     }
 
+    port::party::draw_diag(c);          /* PBODY1: log level 2 only */
     unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
     ModelAnim *ma = ((ModelAnim **)(c + 0xdc))[id];
     if (!ma) return;
@@ -2043,6 +2053,7 @@ static void hal_render_player_world_body(void *player)
        (UpdateVerts, the palette stamp) is already done and the alpha is what
        the raster reads. */
     if (ghost) ghost_opacity(ma, party_slot);
+    else if (party_solid) _ZN9ModelBase12ApplyOpacityEj(ma, 31);
     /* THE ROM'S BODY DRAW, WHOLE. src/_ZN6Player6RenderEv.cpp:79 is one
        statement carrying two facts, and the port used to get both of them
        wrong with `ma->ModelAnim::Render(0)`:
@@ -2088,6 +2099,7 @@ static void hal_render_player_world_body(void *player)
         ModelAnim *m3 = (ModelAnim *)(c + 0xf0);    /* mModelAnim3 */
         _ZN9ModelBase12ApplyOpacityEj(m3, *(const unsigned char *)(c + 0x6f5));
         if (ghost) ghost_opacity(m3, party_slot);
+        else if (party_solid) _ZN9ModelBase12ApplyOpacityEj(m3, 31);
         m3->Render((const Vector3 *)(c + 0x80));    /* virtual, as the ROM's */
     } else {
         if (hsink_on()) ntr::gx_polygons(hsink_t0);
@@ -2110,6 +2122,7 @@ static void hal_render_player_world_body(void *player)
                         hid, (int)(hsink_t1 - hsink_t0));
             hal_player_vs_palette(c, head);
             if (ghost) ghost_opacity(head, party_slot);
+            else if (party_solid) _ZN9ModelBase12ApplyOpacityEj(head, 31);
             hal_render_head_group(c, head, hid, ma, scene);
             hal_player_texseq_head(c, hid);
             /* THE MIRROR, once for the body (above) and once here for the
@@ -2145,6 +2158,7 @@ static void hal_render_player_world_body(void *player)
             if (func_ov002_020d225c(c)) {
                 char *m = *(char **)(c + 0x1d8);
                 if (m && ghost) ghost_opacity(m, party_slot);
+                else if (m && party_solid) _ZN9ModelBase12ApplyOpacityEj(m, 31);
                 if (m)
                     ((void(__fastcall *)(void *, void *, const void *))(
                         ((void ***)m)[0][5]))(m, 0, c + 0x56c);
@@ -2242,6 +2256,7 @@ static void hal_render_player_world_body(void *player)
             const int *src;
             _ZN9ModelBase12ApplyOpacityEj(m4, *(const unsigned char *)(c + 0x6f5));
             if (ghost) ghost_opacity(m4, party_slot);
+            else if (party_solid) _ZN9ModelBase12ApplyOpacityEj(m4, 31);
             if (*(unsigned char *)(c + 0x6db) == 3) {
                 Matrix4x3_FromTranslation(&data_020a0e68, -0x1b33, -0x666, 0);
                 Matrix4x3_ApplyInPlaceToRotationZ(&data_020a0e68, 0x4000);
