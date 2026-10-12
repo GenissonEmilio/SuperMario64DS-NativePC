@@ -11626,6 +11626,9 @@ list(APPEND SLICE_COMMS_SOURCES hal/party_stars.cpp)
 # Run mp1 lane STARPOP1: star / key popup and the shared exit (party + coop). INERT
 # outside party / coop rooms; see hal/star_popup.h.
 list(APPEND SLICE_COMMS_SOURCES hal/star_popup.cpp)
+# Run mp1 lane COOPCASTLE1: castle Boos and MIPS (profile rows in coop_actor_profiles.inc) + proof knobs. INERT
+# unless SM64DS_COOP is set in a coop room; see hal/coop_castle.h.
+list(APPEND SLICE_COMMS_SOURCES hal/coop_castle.cpp)
 # Run mp1 lane ARENACORE1: arena-mode VS (no rounds; the referee is the relay).
 # INERT unless SM64DS_VS_NETMODE=arena with a VS map; see hal/vs_arena.h.
 list(APPEND SLICE_COMMS_SOURCES hal/vs_arena.cpp)
