@@ -701,7 +701,7 @@ void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
         bool taken = false;
         for (const Net &o : g_net) if (o.used && o.a == a) taken = true;
         for (const Lnk &o : g_lnk) if (o.used && o.a == a) taken = true;
-        if (taken || !near_same(a, w)) continue;
+        if (taken || (w.cls != 282 && w.cls != 283 && !near_same(a, w))) continue;     // a boss reward: the native key of this console IS the reward, wherever it stands
         adopt = a; break;
     }
     char *a = adopt ? adopt : do_spawn(w);
