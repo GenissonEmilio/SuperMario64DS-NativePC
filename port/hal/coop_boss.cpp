@@ -1,0 +1,1352 @@
+// COOP BOSSES. Run mp1, lane BOSSCORE1. See coop_boss.h for the design.
+//
+// PORT_HOST_ABI. Reads and writes live boss actors by raw offset (the established convention in port/hal); nothing in
+// src/ changes. Every received value is range-checked before it is written.
+
+#include "coop_boss.h"
+#include "coop_target.h"
+#include "coop_world.h"
+#include "coop_groups.h"
+#include "coop_wire.h"
+#include "comms_hub.h"
+
+#include "dActor_c.h"
+
+#include <windows.h>
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+extern "C" {
+extern void *data_0209f394[];
+extern unsigned char data_0209f250;
+extern short data_02092144[];
+extern dActor_c *STAR_MARKERS[12];      // 0x0209f40c: the actors showing a star glint on the minimap
+void *_ZN8dActor_c4NextEPKS_(const void *prev);
+int KingBobOmb_SetState(void *c, void *state);
+// bossdesc1: Chief Chilly's state records (16 x 0x10 at ov073 0x02123320), his ROM transition, Wiggler's ROM transition, ModelAnim::SetAnim
+int ChiefChilly_ChangeState(void *c, void *state);
+void func_ov034_021125b8(void *c, int state);
+int _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *anim, void *file, int a, int speed, unsigned int b);
+extern char data_ov073_02123320[], data_ov073_02123330[], data_ov073_02123340[], data_ov073_02123350[], data_ov073_02123360[],
+            data_ov073_02123370[], data_ov073_02123380[], data_ov073_02123390[], data_ov073_021233a0[], data_ov073_021233b0[],
+            data_ov073_021233c0[], data_ov073_021233d0[], data_ov073_021233e0[], data_ov073_021233f0[], data_ov073_02123400[],
+            data_ov073_02123410[];
+// bossdesc2: Goomboss's ROM transition (state index at +0x5cc, runs the enter pair), its hit animation, Eyerok's transition + records + globals
+void _ZN7fBase_c18MarkForDestructionEv(void *self);
+void func_ov074_021203e4(char *c, int state);
+void func_ov074_02121a4c(char *c, int idx);
+int func_ov066_02119454(void *c, void *state);
+extern char data_ov066_0211afcc[], data_ov066_0211afdc[], data_ov066_0211afec[], data_ov066_0211affc[], data_ov066_0211b00c[],
+            data_ov066_0211b01c[], data_ov066_0211b02c[], data_ov066_0211b03c[], data_ov066_0211b04c[], data_ov066_0211b05c[],
+            data_ov066_0211b06c[], data_ov066_0211b07c[], data_ov066_0211b08c[], data_ov066_0211b09c[], data_ov066_0211b0ac[],
+            data_ov066_0211b0bc[], data_ov066_0211b0cc[], data_ov066_0211b0dc[], data_ov066_0211b0ec[];
+extern void *data_ov066_0211aea4[], *data_ov066_0211ae8c[];
+extern unsigned char data_ov066_0211abe0, data_ov066_0211ae08;
+extern int data_ov066_0211abe4;
+extern char data_ov078_02126ffc[], data_ov078_0212700c[], data_ov078_0212701c[], data_ov078_0212702c[], data_ov078_0212703c[],
+            data_ov078_0212704c[], data_ov078_0212705c[], data_ov078_0212706c[], data_ov078_0212707c[], data_ov078_0212708c[],
+            data_ov078_0212709c[], data_ov078_021270ac[], data_ov078_021270bc[], data_ov078_021270cc[], data_ov078_021270dc[],
+            data_ov078_021270ec[], data_ov078_021270fc[], data_ov078_0212710c[];
+}
+
+namespace port {
+namespace {
+
+enum : int { kSeats = 4, kSlots = 512, kPayloadMax = kHubCoopMaxDatagram - kHubCoopHeaderBytes };
+
+// ---------------------------------------------------------------------------
+// The boss rows. A field is {offset, size, kind}; the kinds say how a value crosses the wire.
+// ---------------------------------------------------------------------------
+enum : uint16_t { kPlain = 0, kStatePtr = 1, kVol = 2,   // kVol: changes every frame, never a reason to publish by itself
+                 // bossdesc1 kinds:
+                 kChillyPtr = 4,    // Chief Chilly's state record pointer (+0x37c), mapped to a table id; set through ChiefChilly_ChangeState
+                 kAlive = 8,        // a read-only "HP" for a boss without one: 1 while the int state at the field is not 4 (dead) or 5 (gone)
+                 kMaxUp = 16,       // a counter that only goes up (0xff = "not used" is never touched)
+                 kBullyState = 32,  // Big Bully's int state (+0x398): written with the ROM's animation for that state
+                 kWigState = 64,    // Wiggler's state index (+0x8c4): set through func_ov034_021125b8
+                 // bossdesc2 kinds:
+                 kS8 = 128,         // a signed byte (sign-extended on the wire, masked on a write): Eyerok's hand HP, Bowser's HP
+                 kGlobal = 256,     // not a field of the actor: off = index of an overlay global (Eyerok: 0 = phase bits, 1 = hands down)
+                 kZeroOnForce = 512,// a step counter: a forced state restarts at step 0, so the state's own set-up runs
+                 kGoomState = 1024, // Goomboss's state index (+0x5cc): set through func_ov074_021203e4 (enter pair runs)
+                 kEyeState = 2048 };// Eyerok's state record pointer (+0x48c), mapped to a table id; set through func_ov066_02119454
+enum : int { kLoOff = 0x100, kHiOff = 0x900 };
+struct BField { uint16_t off; uint8_t size; uint16_t kind; };
+struct BDesc {
+    uint16_t cls;
+    const char *name;
+    uint8_t nf;
+    BField f[kBossMaxFields];
+    int8_t hp;        // index of the HP field (min wins), -1 none
+    int8_t state;     // index of the state field, -1 none
+    int8_t pos;       // index of the first of three position fields (x, y, z), -1 none
+    uint16_t pl[2];   // offsets of player pointers the class's states dereference (a copy that is put into such a state must hold one)
+    uint16_t hit_who; // 0, or the offset where the ROM keeps the pointer of the player that hit (the proof knob must set it too)
+    uint16_t hit_off; // 0, or the offset of a byte the class's own handler turns into one HP (the proof knob sets it)
+};
+
+// Whomp King (daBtn_c, shared Whomp class, king flag +0x414): include/Whomp.h, src/func_ov079_02124b08.c / 02124ed4.c:
+// mState +0x3b0, HP +0x401 (3 for the king), the hit flag +0x402, the sub-state +0x40c, the flat-on-the-ground timer
+// +0x3fc (u16), the state frame counter +0x100 (u16), +0x407, and the animation cursor in the ModelAnim's Animation.
+const BDesc kDescs[] = {
+    { 165, "WHOMP_KING", 14,
+      { { 0x3b0, 4, kPlain }, { 0x401, 1, kPlain }, { 0x40c, 1, kPlain }, { 0x407, 1, kPlain }, { 0x3fc, 2, kVol },
+        { 0x100, 2, kVol }, { 0x324, 4, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0x3ac, 0 }, 0x3ac, 0x402 },
+    // King Bob-omb (daBombking_c): state record pointer +0x420 (mapped to a table id), HP mHealth +0x500 (3), mPhase +0x4a0,
+    // the two timers +0x504 / +0x505, mAnimSpeed +0x4fc, +0x499.
+    { 189, "KING_BOB_OMB", 14,
+      { { 0x420, 4, kStatePtr }, { 0x500, 4, kPlain }, { 0x4a0, 4, kPlain }, { 0x504, 1, kVol }, { 0x505, 1, kVol },
+        { 0x4fc, 4, kPlain }, { 0x499, 1, kPlain }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0x430, 0 }, 0, 0 },
+    // ---- bossdesc1 (run mp1, lane BOSSDESC1). Offsets from include/ChiefChilly.h, daOts_c.h / BigBully.h, daTrs_c.h, Wiggler.h and
+    // the state functions read for each (see out/BOSSDESC1/notes). Console-local pointers are never fields: they sit in pl[].
+    // Chief Chilly (class 218, daKing_Donketu_c): state record pointer +0x37c, knock-downs left mHitsRemaining +0x4cb (3 -> 0, taken
+    // when he slides off the edge: func_ov073_02120c7c), sub-state +0x4c8, flags +0x4ca, waypoint cursor +0x4c4, turn target +0x4c6,
+    // phase counter +0x4b4. +0x3e4 is the player he talks to (console-local). His reward is a KEY (class 282), spawned by each console.
+    { 218, "CHIEF_CHILLY", 14,
+      { { 0x37c, 4, kChillyPtr }, { 0x4cb, 1, kPlain }, { 0x4c8, 1, kPlain }, { 0x4ca, 1, kPlain }, { 0x4c4, 1, kPlain },
+        { 0x4c6, 2, kVol }, { 0x4b4, 4, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0x3e4, 0 }, 0, 0 },
+    // Big Bully (class 216, daBDonketu_c on daOts_c): no HP. He is killed by the lava (state 4) and the star is spawned from there.
+    // field 0 = the int state +0x398, field 1 = "alive" derived from it, then the bullies-killed counter +0x3fe (the three small
+    // bullies he spawns die on each console, or by the death list: only goes up), the bounce count +0x3f9, and the death point
+    // +0x3a8 / +0x3ac / +0x3b0 (the particles of the dying state read it).
+    { 216, "BIG_BULLY", 14,
+      { { 0x398, 4, kBullyState }, { 0x398, 4, kAlive }, { 0x3fe, 1, kMaxUp }, { 0x3f9, 1, kVol }, { 0x3a8, 4, kPlain },
+        { 0x3ac, 4, kPlain }, { 0x3b0, 4, kPlain }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0, 0 }, 0, 0 },
+    // Big Boo (class 210, daTrs_c, types 12..15): state byte +0x5cc, hits left +0x5ca (3 -> 0, taken in state 3 when the timer is 0),
+    // sub-state +0x5ce, +0x5c9, timer +0x5c2, +0x5d2, scale +0x584. +0x488 / +0x484 are the players he talks to (console-local).
+    // NOT synced on purpose: +0x5c8 (opacity) and the flags word +0x5d4 (camera / area visibility): those key on the LOCAL camera.
+    { 210, "BIG_BOO", 14,
+      { { 0x5cc, 1, kPlain }, { 0x5ca, 1, kPlain }, { 0x5ce, 1, kPlain }, { 0x5c9, 1, kPlain }, { 0x5c2, 2, kVol },
+        { 0x5d2, 1, kPlain }, { 0x584, 4, kPlain }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0x488, 0x484 }, 0, 0 },
+    // Wiggler (class 248): state index +0x8c4 (set through func_ov034_021125b8, whose enter half takes a health point in state 3),
+    // hits left +0x8db (4 -> 1, taken by DAMAGE's enter code; state 7 DEAD ends it), angry +0x8de, falling +0x8df, dying +0x8e0, timer +0x8da, turn target
+    // +0x8d8. +0x8c8 is the player he talks to; +0x8e1 (drive the camera) stays local. The body chain is rebuilt from the head.
+    { 248, "WIGGLER", 14,
+      { { 0x8c4, 4, kWigState }, { 0x8db, 1, kPlain }, { 0x8de, 1, kPlain }, { 0x8df, 1, kPlain }, { 0x8e0, 1, kPlain },
+        { 0x8da, 1, kVol }, { 0x8d8, 2, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0x8c8, 0 }, 0, 0 },
+    // ---- bossdesc2 (run mp1, lane BOSSDESC2). Append-only rows. Offsets from include/Goomboss.h, Bowser.h, Eyerok.h and the state
+    // code read for each (src/actors/Goomboss.cpp, src/func_ov060_*, src/actors/Eyerok.cpp + src/func_ov066_0211603c.c).
+    // Goomboss (class 198, daKuriKing_c): state index +0x5cc (9 states, enter/tick pairs; set through func_ov074_021203e4), HP = the size
+    // index +0x604 (each stomp's state 5 enter takes one, 0 = the defeat talk), sub-step +0x603, goombas spawned +0x602 (the goombas
+    // themselves are runtime spawns, one set per console), shrink counter +0x607, timer +0x5fc, direction +0x5f0, walk angle / speed
+    // +0x5f4 / +0x5f6, scale +0x5e4. +0x5c8 is the player he talks to (console-local), +0x5dc a spawned actor's unique id (never sent).
+    // His reward is a key (actor 0x11a): each console spawns its own in state 7 (COOPSPAWN1 announces keys only in courses 36/38/40/49).
+    { 198, "GOOMBOSS", 14,
+      { { 0x5cc, 4, kGoomState }, { 0x604, 1, kPlain }, { 0x603, 1, kPlain }, { 0x602, 1, kPlain }, { 0x607, 1, kPlain },
+        { 0x5fc, 2, kVol }, { 0x5f0, 4, kPlain }, { 0x5f4, 2, kVol }, { 0x5f6, 2, kVol }, { 0x5e4, 4, kVol },
+        { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol }, { 0x98, 4, kVol } },
+      1, 0, 10, { 0x5c8, 0 }, 0, 0 },
+    // Bowser (class 279, daKpa_c, all three arenas): main state +0x40c, HP = signed byte +0x41e (from a table by variant +0x414, a bomb
+    // hit takes one and moves him to state 0xc or, at 0, to 4 = defeat), tail-grab sub-mode +0x410 (0 free, 1 swung by a player, 2
+    // thrown, 3 landing), step inside a state +0x423 (restarts at 0 when a state is forced: the state sets its own animation there), +0x422,
+    // timers +0x420 / +0x3fc. +0x3a4 is the player holding his tail, +0x3a8 / +0x3ac are unique ids (console-local, never sent).
+    { 279, "BOWSER", 14,
+      { { 0x40c, 4, kPlain }, { 0x41e, 1, kS8 }, { 0x410, 4, kPlain }, { 0x423, 1, kZeroOnForce | kVol }, { 0x422, 1, kPlain },
+        { 0x420, 2, kVol }, { 0x3fc, 2, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0x98, 4, kVol }, { 0x9c, 4, kVol }, { 0xa0, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0, 0 }, 0, 0 },
+    // Eyerok (class 176, daIwante_c): THREE actors of this class: part 0 (the head, a death-table slot) and the two hands (mPartIdx
+    // +0x49c = 1 / 2, runtime spawns with slot -1: scan() gives them the record slots 510 / 511). State record pointer +0x48c (one of
+    // 19 records), hand HP = signed byte +0x4d8 (3, a punch takes one; at 0 the ROM sets the overlay globals and sends the hand to
+    // record 0211b07c), part 0's intro / talk steps +0x4a0 / +0x498 / +0x494, timers +0x4d0 / +0x4d2. The overlay globals are carried in
+    // every record: field 10 = the hands-alive bits (a hand's death clears its bit: merged by AND), field 11 = hands down so far (merged by max).
+    // +0x490 is the player the head talks to (console-local).
+    { 176, "EYEROK", 14,
+      { { 0x48c, 4, kEyeState }, { 0x4d8, 1, kS8 }, { 0x4a0, 4, kPlain }, { 0x498, 4, kPlain }, { 0x494, 4, kPlain },
+        { 0x4d0, 2, kVol }, { 0x4d2, 2, kVol }, { 0x5c, 4, kVol }, { 0x60, 4, kVol }, { 0x64, 4, kVol },
+        { 0, 1, kGlobal }, { 1, 1, kGlobal }, { 0x98, 4, kVol }, { 0xa8, 4, kVol } },
+      1, 0, 7, { 0x490, 0 }, 0, 0 },
+};
+const int kNumDescs = (int)(sizeof kDescs / sizeof kDescs[0]);
+
+const BDesc *desc_of(unsigned cls) {
+    for (int i = 0; i < kNumDescs; ++i) if (kDescs[i].cls == cls) return &kDescs[i];
+    return nullptr;
+}
+
+// bossfix1 (item 11): the allocation size of each boss class (the literal the ROM passes to operator new; the same numbers as
+// port/hal/coop_actor_sizes.inc in COOPMOVE1_FIX, port/l7-coopmove1 bbbaccb252). A descriptor field past its class would read or write
+// another object's memory, and the generic bound (kHiOff) is above every boss class, so each class gets its own.
+int class_size(unsigned cls) {
+    switch (cls) {
+    case 165: return 0x610; case 189: return 0x50c; case 176: return 0x874; case 198: return 0x610; case 210: return 0x5e0;
+    case 248: return 0x8e8; case 279: return 0x454; case 216: return 0x400; case 218: return 0x504;
+    default: return 0;
+    }
+}
+bool field_in_class(unsigned cls, const BField &f) {
+    if (f.kind & kGlobal) return true;
+    const int sz = class_size(cls);
+    return sz > 0 && (int)f.off + f.size <= sz;
+}
+bool g_desc_checked = false;
+void check_descriptors() {
+    if (g_desc_checked) return;
+    g_desc_checked = true;
+    int bad = 0;
+    for (int i = 0; i < kNumDescs; ++i) {
+        const BDesc &d = kDescs[i];
+        for (int k = 0; k < d.nf; ++k)
+            if (!field_in_class(d.cls, d.f[k])) {
+                ++bad;
+                std::fprintf(stderr, "[cbs] DESCRIPTOR %s field %d at 0x%x+%d is past the class size 0x%x: refused\n", d.name, k, (unsigned)d.f[k].off, (int)d.f[k].size, class_size(d.cls));
+            }
+        for (int k = 0; k < 2; ++k)
+            if (d.pl[k] && (int)d.pl[k] + 4 > class_size(d.cls)) { ++bad; std::fprintf(stderr, "[cbs] DESCRIPTOR %s pointer field 0x%x is past the class size\n", d.name, (unsigned)d.pl[k]); }
+        if (d.hit_who && (int)d.hit_who + 4 > class_size(d.cls)) { ++bad; std::fprintf(stderr, "[cbs] DESCRIPTOR %s hit pointer 0x%x is past the class size\n", d.name, (unsigned)d.hit_who); }
+        if (d.hit_off && (int)d.hit_off + 1 > class_size(d.cls)) { ++bad; std::fprintf(stderr, "[cbs] DESCRIPTOR %s hit byte 0x%x is past the class size\n", d.name, (unsigned)d.hit_off); }
+    }
+    std::fprintf(stderr, "[cbs] descriptor class-size check: %d descriptors, %d problems\n", kNumDescs, bad);
+}
+
+bool field_ok(const BField &f) {
+    if (f.kind & kGlobal) return f.off < 2 && f.size == 1;
+    if (f.size != 1 && f.size != 2 && f.size != 4) return false;
+    const bool low_ok = f.off == 0x5c || f.off == 0x60 || f.off == 0x64 || f.off == 0x98 || f.off == 0x9c || f.off == 0xa0 || f.off == 0xa8;
+    if (!low_ok && (f.off < kLoOff || (int)f.off + f.size > kHiOff)) return false;
+    return (f.off % f.size) == 0;
+}
+
+// King Bob-omb's state records, by ROM address (the host's symbols are the same records the ROM code names).
+char *const *kbo_states(int *n) {
+    static char *const k[] = {
+        data_ov078_02126ffc, data_ov078_0212700c, data_ov078_0212701c, data_ov078_0212702c, data_ov078_0212703c, data_ov078_0212704c,
+        data_ov078_0212705c, data_ov078_0212706c, data_ov078_0212707c, data_ov078_0212708c, data_ov078_0212709c, data_ov078_021270ac,
+        data_ov078_021270bc, data_ov078_021270cc, data_ov078_021270dc, data_ov078_021270ec, data_ov078_021270fc, data_ov078_0212710c };
+    *n = (int)(sizeof k / sizeof k[0]);
+    return k;
+}
+uint32_t kbo_ptr_to_id(uint32_t ptr) {
+    int n; char *const *k = kbo_states(&n);
+    for (int i = 0; i < n; ++i) if ((uint32_t)(uintptr_t)k[i] == ptr) return (uint32_t)i;
+    return 0xffu;
+}
+void *kbo_id_to_ptr(uint32_t id) {
+    int n; char *const *k = kbo_states(&n);
+    return id < (uint32_t)n ? (void *)k[id] : nullptr;
+}
+
+// Chief Chilly's sixteen state records (data_ov073_02123320 + 0x10 * i).
+char *const *chilly_states(int *n) {
+    static char *const k[] = {
+        data_ov073_02123320, data_ov073_02123330, data_ov073_02123340, data_ov073_02123350, data_ov073_02123360, data_ov073_02123370,
+        data_ov073_02123380, data_ov073_02123390, data_ov073_021233a0, data_ov073_021233b0, data_ov073_021233c0, data_ov073_021233d0,
+        data_ov073_021233e0, data_ov073_021233f0, data_ov073_02123400, data_ov073_02123410 };
+    *n = (int)(sizeof k / sizeof k[0]);
+    return k;
+}
+uint32_t chilly_ptr_to_id(uint32_t ptr) {
+    int n; char *const *k = chilly_states(&n);
+    for (int i = 0; i < n; ++i) if ((uint32_t)(uintptr_t)k[i] == ptr) return (uint32_t)i;
+    return 0xffu;
+}
+void *chilly_id_to_ptr(uint32_t id) {
+    int n; char *const *k = chilly_states(&n);
+    return id < (uint32_t)n ? (void *)k[id] : nullptr;
+}
+
+// Eyerok's nineteen state records (.bss, 16 bytes each, installed at +0x48c by func_ov066_02119454).
+char *const *eye_states(int *n) {
+    static char *const k[] = {
+        data_ov066_0211afcc, data_ov066_0211afdc, data_ov066_0211afec, data_ov066_0211affc, data_ov066_0211b00c, data_ov066_0211b01c,
+        data_ov066_0211b02c, data_ov066_0211b03c, data_ov066_0211b04c, data_ov066_0211b05c, data_ov066_0211b06c, data_ov066_0211b07c,
+        data_ov066_0211b08c, data_ov066_0211b09c, data_ov066_0211b0ac, data_ov066_0211b0bc, data_ov066_0211b0cc, data_ov066_0211b0dc,
+        data_ov066_0211b0ec };
+    *n = (int)(sizeof k / sizeof k[0]);
+    return k;
+}
+uint32_t eye_ptr_to_id(uint32_t ptr) {
+    int n; char *const *k = eye_states(&n);
+    for (int i = 0; i < n; ++i) if ((uint32_t)(uintptr_t)k[i] == ptr) return (uint32_t)i;
+    return 0xffu;
+}
+void *eye_id_to_ptr(uint32_t id) {
+    int n; char *const *k = eye_states(&n);
+    return id < (uint32_t)n ? (void *)k[id] : nullptr;
+}
+constexpr int kEyeDeadRecord = 11;      // data_ov066_0211b07c, the dead hand
+// The dead hand's enter code (func_ov066_02116d14) starts the hand's death animation from a file pointer in the overlay's table; if that
+// file is not there on this console the call faults (measured: hand 2, accessing 2), so the transition is refused and logged.
+bool eye_enter_safe(char *a, uint32_t id) {
+    if (id != (uint32_t)kEyeDeadRecord) return true;
+    const int part = *(int *)(a + 0x49c);
+    void *f = part == 2 ? data_ov066_0211aea4[1] : data_ov066_0211ae8c[1];
+    if (!f) { std::fprintf(stderr, "[cbs] eyerok dead-hand animation file missing (part %d): enter refused\n", part); return false; }
+    return true;
+}
+uint32_t read_global(int idx) { return idx == 0 ? (uint32_t)data_ov066_0211abe0 : (uint32_t)data_ov066_0211ae08; }
+
+// Big Bully (daOts_c): the int state at +0x398 (0 wait, 1 run, 2 knocked back, 3 turned at a cliff, 4 dying, 5 gone). The ROM sets
+// the animation at each transition (src/actors/daOts_c.cpp); a copy that is put into a state gets the same animation and a fresh
+// state timer. Death is final: a copy that is dying or gone is never pulled back.
+void bully_enter(char *a, uint32_t st) {
+    if (st > 5) return;
+    int32_t cur; std::memcpy(&cur, a + 0x398, 4);
+    if (cur == (int32_t)st || cur == 4 || cur == 5) return;
+    const int32_t v = (int32_t)st;
+    std::memcpy(a + 0x398, &v, 4);
+    const uint16_t zero = 0; std::memcpy(a + 0x100, &zero, 2);
+    static const int kFile[5] = { 4, 4, 2, 3, 1 };
+    static const int kSpeed[5] = { 0x1000, 0x2000, 0x1000, 0x1000, 0x1000 };
+    if (st < 5) {
+        char *cfg = nullptr; std::memcpy(&cfg, a + 0x330, sizeof cfg);
+        if (cfg) {
+            char *sf = nullptr; std::memcpy(&sf, cfg + 4 * kFile[st], sizeof sf);
+            void *anim = nullptr; if (sf) std::memcpy(&anim, sf + 4, sizeof anim);
+            if (anim) _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(a + 0x110, anim, 0, kSpeed[st], 0);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// State.
+// ---------------------------------------------------------------------------
+struct Rx { bool valid, fresh, first_done; unsigned t; uint16_t seq; uint8_t rflags; int from; uint32_t w[kBossMaxFields]; };
+struct Boss {
+    char *a;
+    const BDesc *d;
+    uint32_t seen;
+    bool known;                    // first sight done
+    int32_t synced_hp;             // HP as of the last publish / apply: a lower local HP is a hit by my player
+    uint32_t last_w[kBossMaxFields]; bool lw_valid;
+    unsigned pub_t;
+    unsigned sample_t;
+    int mism;                      // consecutive state mismatches against the authority's record
+    int last_auth; unsigned auth_t;
+    bool announced_dead;
+    unsigned knob_ok_t;            // bossdesc2: wall ms of the last proof-knob hit made on this copy (a drop right after it is a hit from my player)
+    bool retired;                  // bossdesc2: a defeated Bowser copy that was told to go
+    uint32_t last_st;              // the state as of the last tick (bossdesc1: Chilly's hit shows as a state change, not an HP change)
+    bool heard;                    // an authority record was ever applied here
+    bool def_seen;                 // bossfix1: the boss was seen defeated (or its star was spawned) on this console
+    bool mine_last;                // bossfix1: I was this boss's authority the last time I saw it
+    bool bit_set;                  // bossfix1: the group was told this boss is dead
+    bool killed_late;              // bossfix1: this copy was removed because the group said the boss is dead
+    Rx rx;
+};
+
+CoopBossStats g_st = {};
+bool g_env = false, g_on = true, g_log = false;
+struct HitKnob { unsigned tick; bool done; bool armed; bool lethal; int hp0; int slot; int slot_tries; };
+HitKnob g_hit[4]; int g_nhit = 0;
+struct ForgeKnob { unsigned tick; char name[12]; bool done; };
+ForgeKnob g_forge[8]; int g_nforge = 0;
+unsigned g_stand_tick = 0, g_stand_every = 0; int g_stand_dist = 0; bool g_stand_done = true, g_god = false;
+bool g_deadmark = true;   // SM64DS_COOP_BOSS_DEADMARK=0: must-fail control, a defeated boss is not marked
+bool g_face = false;   // bossfix1: SM64DS_COOP_BOSS_FACE=1: while Bowser is in his defeat state the local player stands 300 units from him, facing him (step 2 of the ROM's defeat asks for exactly that)
+bool g_bomb = false;   // bossfix1: SM64DS_COOP_BOSS_BOMB=1: Bowser's proof hit is a REAL bomb hit (the ROM's own detection)
+unsigned g_behind_tick = 0, g_behind_every = 0; int g_behind_dist = 0; bool g_behind_done = true;   // bossdesc2: the local player behind the boss, facing his way (the grab proof)
+bool g_regd = false;
+int  g_my = -1;
+CoopKey g_key;
+unsigned g_ticks = 0, g_seq = 0;
+Boss g_boss[kSlots];
+uint16_t g_dead_cls[kSlots];    // slot -> class of a boss the group knows is dead (0 = none)
+uint8_t  g_dead_tx[kSlots];     // sends still owed for it
+unsigned g_dead_t[kSlots];
+unsigned g_claim_until[kSeats];     // wall ms until which a seat's claim holds
+unsigned g_tok_t = 0; double g_tokens = 6.0;
+unsigned g_stat_t = 0;
+
+long long wall_ms() {
+    FILETIME ft; GetSystemTimeAsFileTime(&ft);
+    return (long long)((((unsigned long long)ft.dwHighDateTime << 32) | ft.dwLowDateTime) / 10000ull);
+}
+inline int32_t rd32(const char *a, int off) { int32_t v; std::memcpy(&v, a + off, 4); return v; }
+inline int16_t rd16(const char *a, int off) { int16_t v; std::memcpy(&v, a + off, 2); return v; }
+
+uint32_t read_field(const char *a, const BField &f) {
+    if (f.kind & kGlobal) return read_global(f.off);
+    uint32_t v = 0;
+    std::memcpy(&v, a + f.off, f.size);
+    if (f.kind & kS8) v = (uint32_t)(int32_t)(int8_t)(uint8_t)v;
+    else if (f.kind & kEyeState) v = eye_ptr_to_id(v);
+    if (f.kind & kStatePtr) v = kbo_ptr_to_id(v);
+    else if (f.kind & kChillyPtr) v = chilly_ptr_to_id(v);
+    else if (f.kind & kAlive) v = (v == 4u || v == 5u) ? 0u : 1u;
+    return v;
+}
+void write_field(char *a, const BDesc &d, int idx, uint32_t v) {
+    const BField &f = d.f[idx];
+    if (!field_ok(f) || !field_in_class(d.cls, f)) return;
+    if (f.kind & kGlobal) {                  // the overlay's own words: a merge that only ever moves one way, so a replay is harmless
+        if (f.off == 0) { if (v <= 3u) data_ov066_0211abe0 = (unsigned char)(data_ov066_0211abe0 & v); }
+        else if (v <= 3u && v > data_ov066_0211ae08) data_ov066_0211ae08 = (unsigned char)v;
+        return;
+    }
+    if (f.kind & kZeroOnForce) { a[f.off] = 0; return; }
+    if (f.kind & kGoomState) {
+        if (v > 8u) return;
+        if (v == 5u) func_ov074_02121a4c(a, 2);     // the stomp sets the hit animation before it enters state 5, whose tick waits for it to finish
+        func_ov074_021203e4(a, (int)v);
+        return;
+    }
+    if (f.kind & kEyeState) {
+        void *p = eye_id_to_ptr(v);
+        if (!p) return;
+        if (!eye_enter_safe(a, v)) return;
+        func_ov066_02119454(a, p);          // the ROM's own transition (the record's enter pair runs)
+        return;
+    }
+    if (f.kind & kStatePtr) {
+        void *p = kbo_id_to_ptr(v);
+        if (!p) return;
+        KingBobOmb_SetState(a, p);          // the ROM's own transition, with its enter code
+        return;
+    }
+    if (f.kind & kChillyPtr) {
+        void *p = chilly_id_to_ptr(v);
+        if (!p) return;
+        ChiefChilly_ChangeState(a, p);      // the ROM's own transition (his enter code runs)
+        return;
+    }
+    if (f.kind & kAlive) return;            // derived, never written: the state field carries it
+    if (f.kind & kWigState) { if (v <= 8u) func_ov034_021125b8(a, (int)v); return; }
+    if (f.kind & kBullyState) { bully_enter(a, v); return; }
+    if (f.kind & kMaxUp) {
+        uint32_t cur = 0; std::memcpy(&cur, a + f.off, f.size);
+        const uint32_t unused = f.size == 1 ? 0xffu : (f.size == 2 ? 0xffffu : 0xffffffffu);
+        if (cur == unused || v == unused || v <= cur) return;
+    }
+    if (f.size == 1) v &= 0xffu; else if (f.size == 2) v &= 0xffffu;
+    std::memcpy(a + f.off, &v, f.size);
+}
+
+// Sane values only: a state of Whomp King is a small index; HP is small.
+bool value_ok(const BDesc &d, int idx, uint32_t v) {
+    if (d.pos >= 0 && idx >= d.pos && idx < d.pos + 3) { const long long lim = 40000LL * 4096; return (int32_t)v > -lim && (int32_t)v < lim; }
+    if (d.cls == 165) {
+        if (idx == 0) return v < 16;                 // mState indexes the 12-cell handler table
+        if (idx == 1) return v <= 8;                 // HP
+        if (idx == 2) return v <= 32;                // sub-state
+        return true;
+    }
+    if (d.cls == 189) {
+        if (idx == 0) return v < 18;                 // a table id
+        if (idx == 1) return v <= 8;                 // mHealth
+        return true;
+    }
+    if (d.cls == 218) {
+        if (idx == 0) return v < 16;                 // one of the sixteen state records
+        if (idx == 1) return v <= 3;                 // knock-downs left
+        if (idx == 2) return v <= 8;                 // sub-state
+        return true;
+    }
+    if (d.cls == 216) {
+        if (idx == 0) return v <= 5;                 // int state
+        if (idx == 1) return v <= 1;                 // alive
+        if (idx == 2) return v <= 4 || v == 0xffu;   // bullies killed (0xff: none to kill)
+        return true;
+    }
+    if (d.cls == 210) {
+        if (idx == 0) return v <= 8;                 // state byte
+        if (idx == 1) return v <= 3;                 // hits left
+        if (idx == 2) return v <= 16;                // sub-state
+        return true;
+    }
+    if (d.cls == 248) {
+        if (idx == 0) return v <= 8;                 // state index
+        if (idx == 1) return v <= 4;                 // hits left
+        return true;
+    }
+    if (d.cls == 198) {
+        if (idx == 0) return v <= 8;                 // state index (nine states)
+        if (idx == 1) return v <= 5;                 // size index = HP (the ROM clamps it at 5)
+        if (idx == 2) return v <= 8;                 // sub-step
+        if (idx == 3) return v <= 40;                // goombas spawned so far
+        if (idx == 4) return v <= 4;                 // shrink counter
+        return true;
+    }
+    if (d.cls == 279) {
+        if (idx == 0) return v <= 0x20;              // main state
+        if (idx == 1) return (int32_t)v >= -4 && (int32_t)v <= 8;     // HP
+        if (idx == 2) return v <= 3;                 // tail-grab sub-mode
+        if (idx == 3) return v <= 0x20;              // step
+        return true;
+    }
+    if (d.cls == 176) {
+        if (idx == 0) return v < 19;                 // one of the nineteen state records
+        if (idx == 1) return (int32_t)v >= -4 && (int32_t)v <= 3;     // hand HP
+        if (idx == 10 || idx == 11) return v <= 3;   // overlay globals
+        return true;
+    }
+    return true;
+}
+
+void read_env() {
+    if (g_env) return;
+    g_env = true;
+    auto flag = [](const char *n, bool dflt) { const char *e = std::getenv(n); return (e && *e) ? *e != '0' : dflt; };
+    g_on = flag("SM64DS_COOP_BOSS", true);
+    g_log = flag("SM64DS_COOP_BOSS_LOG", false);
+    if (const char *h = std::getenv("SM64DS_COOP_BOSS_HIT")) {
+        const char *p = h;
+        while (*p && g_nhit < 4) {
+            unsigned fr = 0; int used = 0;
+            if (std::sscanf(p, "%u%n", &fr, &used) < 1 || used <= 0) break;
+            const bool lethal = std::strncmp(p + used, ":lethal", 7) == 0;
+            if (lethal) used += 7;
+            g_hit[g_nhit].lethal = lethal;
+            g_hit[g_nhit].tick = fr; g_hit[g_nhit].done = false; g_hit[g_nhit].armed = false; g_hit[g_nhit].hp0 = 0; g_hit[g_nhit].slot = -1; ++g_nhit;
+            p += used; while (*p == ',' || *p == ';' || *p == ' ') ++p;
+        }
+    }
+    if (const char *st = std::getenv("SM64DS_COOP_BOSS_STAND")) {
+        unsigned f = 0, ev = 0; int d = 0;
+        const int n = std::sscanf(st, "%u:%i:%u", &f, &d, &ev);
+        if (n >= 2) { g_stand_tick = f; g_stand_dist = d; g_stand_done = false; g_stand_every = n >= 3 ? ev : 0; }
+    }
+    if (const char *st = std::getenv("SM64DS_COOP_BOSS_BEHIND")) {
+        unsigned f = 0, ev = 0; int d = 0;
+        const int n = std::sscanf(st, "%u:%i:%u", &f, &d, &ev);
+        if (n >= 2) { g_behind_tick = f; g_behind_dist = d; g_behind_done = false; g_behind_every = n >= 3 ? ev : 0; }
+    }
+    g_god = flag("SM64DS_COOP_BOSS_GOD", false);
+    g_bomb = flag("SM64DS_COOP_BOSS_BOMB", false);
+    g_face = flag("SM64DS_COOP_BOSS_FACE", false);
+    check_descriptors();
+    g_deadmark = flag("SM64DS_COOP_BOSS_DEADMARK", true);
+    if (const char *f = std::getenv("SM64DS_COOP_BOSS_FORGE")) {
+        const char *p = f;
+        while (*p && g_nforge < 8) {
+            unsigned fr = 0; char nm[12] = {}; int used = 0;
+            if (std::sscanf(p, "%u:%11[a-z]%n", &fr, nm, &used) < 2 || used <= 0) break;
+            g_forge[g_nforge].tick = fr; std::memcpy(g_forge[g_nforge].name, nm, sizeof nm); g_forge[g_nforge].done = false;
+            ++g_nforge; p += used; while (*p == ',' || *p == ';' || *p == ' ') ++p;
+        }
+    }
+    std::fprintf(stderr, "[cbs] boss sync %s%s\n", g_on ? "on" : "OFF (control)", g_log ? " log" : "");
+}
+
+bool is_player_ptr(const void *a) {
+    for (int i = 0; i < 16; ++i) if (data_0209f394[i] == a) return true;
+    return false;
+}
+
+// A state that was never entered on this copy finds its player pointers empty (Whomp King's defeat talk dereferences +0x3ac,
+// King Bob-omb's +0x430): they are given the local player's body, so the dialogue and camera run for the player at this console.
+void give_player_ptrs(Boss &b) {
+    const int me = (int)data_0209f250;
+    if (me < 0 || me >= 16 || !data_0209f394[me]) return;
+    for (int k = 0; k < 2; ++k) {
+        const uint16_t off = b.d->pl[k];
+        if (!off) continue;
+        void *cur = nullptr; std::memcpy(&cur, b.a + off, sizeof cur);
+        if (!cur || !is_player_ptr(cur)) { void *mine = data_0209f394[me]; std::memcpy(b.a + off, &mine, sizeof mine); }
+    }
+}
+
+CoopKeyWire wire_key() {
+    CoopKeyWire w; w.level = (uint16_t)g_key.level; w.act = (uint8_t)g_key.act; w.reserved = 0;
+    return w;
+}
+
+bool take_token(unsigned now) {
+    if (g_tok_t == 0) g_tok_t = now;
+    const unsigned dt = now - g_tok_t; g_tok_t = now;
+    g_tokens = (std::min)(8.0, g_tokens + dt * 0.012);
+    if (g_tokens < 1.0) return false;
+    g_tokens -= 1.0;
+    return true;
+}
+
+// The seat whose copy of this boss is the right one.
+int auth_for(int slot, unsigned wnow) {
+    for (int s = 0; s < kSeats; ++s)
+        if ((int)(g_claim_until[s] - wnow) > 0 && (s == g_my || ((coop_group_member_mask() >> s) & 1u))) return s;
+    int s = coop_target_seat_of_slot(slot);
+    if (s >= 0) return s;
+    const int o = coop_group_owner();
+    return o >= 0 ? o : g_my;
+}
+
+int rec_bytes(const BDesc &d) { return (int)sizeof(BossRec) + 4 * d.nf; }
+
+int fill_rec(unsigned char *out, int slot, const Boss &b, uint8_t rflags) {
+    BossRec r; std::memset(&r, 0, sizeof r);
+    r.slot = (uint16_t)slot; r.cls = b.d->cls; r.nf = b.d->nf; r.rflags = rflags; r.seq = (uint16_t)++g_seq;
+    std::memcpy(out, &r, sizeof r);
+    for (int k = 0; k < b.d->nf; ++k) {
+        const uint32_t v = read_field(b.a, b.d->f[k]);
+        std::memcpy(out + sizeof r + 4 * k, &v, 4);
+    }
+    return rec_bytes(*b.d);
+}
+
+void send_batch(int sub, uint8_t flags, const unsigned char *recs, int nrecs, int bytes) {
+    unsigned char buf[kPayloadMax];
+    BossHead h; std::memset(&h, 0, sizeof h);
+    h.key = wire_key(); h.count = (uint8_t)nrecs; h.flags = flags;
+    std::memcpy(buf, &h, sizeof h);
+    std::memcpy(buf + sizeof h, recs, (size_t)bytes);
+    if (coop_send_world(sub, buf, (int)sizeof h + bytes)) {
+        if (sub == kWorldBossHit) ++g_st.hits_sent; else { ++g_st.sent; g_st.recs_sent += (unsigned)nrecs; }
+    }
+}
+
+void send_dead(int slot) {
+    const BDesc *d = desc_of(g_dead_cls[slot]);
+    if (!d) return;
+    unsigned char rec[sizeof(BossRec) + 4 * kBossMaxFields];
+    std::memset(rec, 0, sizeof rec);
+    BossRec r; std::memset(&r, 0, sizeof r);
+    r.slot = (uint16_t)slot; r.cls = d->cls; r.nf = d->nf; r.rflags = 4; r.seq = (uint16_t)++g_seq;
+    std::memcpy(rec, &r, sizeof r);
+    send_batch(kWorldBossState, 0, rec, 1, rec_bytes(*d));
+}
+void pump_dead(unsigned now) {
+    for (int i = 0; i < kSlots; ++i)
+        if (g_dead_tx[i] && g_dead_cls[i] && (unsigned)(now - g_dead_t[i]) >= 150u) { send_dead(i); --g_dead_tx[i]; g_dead_t[i] = now; }
+}
+// The owner answered a joiner's snapshot request: tell it which bosses are dead as well.
+void on_snapshot_request(int /*seat*/, unsigned /*nonce*/) {
+    for (int i = 0; i < kSlots; ++i) if (g_dead_cls[i] && g_dead_tx[i] < 2) g_dead_tx[i] = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Scan, publish, apply.
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// bossfix1: A DEFEATED BOSS STAYS DEAD. The ROM does not track a boss in the death table (re-entering a course fights him again), so a
+// console that joined after the defeat got a live boss. When a boss that was seen defeated is gone from the actor list, its placed
+// slot's bit goes up in the death table: coop_world announces it to the group and hands it to every later joiner in the snapshot, and
+// BeforeInitResources then deletes the boss before it initialises.
+// ---------------------------------------------------------------------------
+unsigned g_recent_t = 0; bool g_recent_mine = true;     // the last time any boss was seen here, and whether I was its authority
+// A dead boss must not come back for a console that joins later. The death table is NOT used for it: a boss deleted by a death-table bit
+// never initialises, and its destructor then frees what its InitResources never took (measured: a late joiner's heap was corrupted and
+// the minimap faulted). Instead the group remembers {slot, class} and tells a joiner, whose copy of the boss, once it has initialised,
+// is removed the ordinary way (MarkForDestruction, as the ROM itself ends a boss).
+void mark_dead_slot(int slot, Boss &b) {
+    b.bit_set = true;
+    if (!g_deadmark || slot < 0 || slot >= kSlots) return;
+    g_dead_cls[slot] = b.d->cls; g_dead_tx[slot] = 3; g_dead_t[slot] = 0;
+    ++g_st.dead_marked;
+    if (g_log) std::fprintf(stderr, "[cbs] dead boss marked: cls=%u slot=%d (kept by the group; a joiner is told, not given the boss) w=%lld\n", (unsigned)b.d->cls, slot, wall_ms());
+}
+
+int g_nb = 0;
+char *g_key_seen = nullptr; int g_keys_seen = 0;
+void scan() {
+    for (int i = 0; i < kSlots; ++i) g_boss[i].a = nullptr;
+    g_nb = 0;
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(0); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+        const unsigned id = *(const unsigned short *)(a + 0x0c);
+        if (id == 282 && g_log && a != g_key_seen) {            // Chief Chilly's reward (a key): proof log only
+            g_key_seen = a; ++g_keys_seen;
+            std::fprintf(stderr, "[cbs] key actor seen at %d,%d,%d (#%d on this console) w=%lld\n", rd32(a, 0x5c) >> 12, rd32(a, 0x60) >> 12, rd32(a, 0x64) >> 12, g_keys_seen, wall_ms());
+        }
+        const BDesc *d = desc_of(id);
+        if (!d) continue;
+        short slot = rd16(a, 0xce);
+        // bossdesc2: Eyerok's two hands are runtime spawns (slot -1); their record slot is 509 + the part number
+        if (slot < 0 && id == 176) { const int part = rd32(a, 0x49c); if (part == 1 || part == 2) slot = (short)(509 + part); }
+        if (slot < 0 || slot >= kSlots || is_player_ptr(a)) continue;
+        if (id == 165 && *(const unsigned char *)(a + 0x414) == 0) continue;   // a plain Whomp that shares the class body
+        Boss &b = g_boss[slot];
+        if (b.a) continue;
+        if (b.d != d) { b = Boss(); b.d = d; }
+        b.a = a; ++b.seen; ++g_nb;
+        if (g_deadmark && g_dead_cls[slot] == id && !b.killed_late && b.seen >= 3 && b.seen <= 900) {
+            b.killed_late = true;           // it has initialised (the loader ran its InitResources) and is new here (the record can arrive a little after the boss): end it the ordinary way
+            // The star-marker table (the minimap's glints) holds the boss's pointer from its InitResources; the ROM's own end of a boss
+            // (UntrackAndSpawnStar) releases the slot first. Without that the minimap reads a freed boss (measured: Whomp King).
+            for (int m = 0; m < 12; ++m)
+                if (STAR_MARKERS[m] == (dActor_c *)a) { signed char sl = (signed char)m; ((dActor_c *)a)->UntrackStar(sl); }
+            _ZN7fBase_c18MarkForDestructionEv(a);
+            ++g_st.dead_killed;
+            if (g_log) std::fprintf(stderr, "[cbs] dead boss removed on arrival: cls=%u slot=%d w=%lld\n", id, (int)slot, wall_ms());
+        }
+    }
+    for (int i = 0; i < kSlots; ++i) if (!g_boss[i].a && g_boss[i].d && g_boss[i].def_seen && !g_boss[i].bit_set) mark_dead_slot(i, g_boss[i]);
+    for (int i = 0; i < kSlots; ++i) if (!g_boss[i].a) { g_boss[i].seen = 0; g_boss[i].known = false; g_boss[i].lw_valid = false; g_boss[i].heard = false; g_boss[i].rx.valid = false; g_boss[i].rx.first_done = false; }
+}
+
+int hp_of(const Boss &b) { return (int)read_field(b.a, b.d->f[b.d->hp]); }
+uint32_t state_of(const Boss &b) { return read_field(b.a, b.d->f[b.d->state]); }
+
+// The point of no return of each boss: after it the ROM only runs the defeat (and the reward). Latched once seen.
+bool is_defeated(const Boss &b) {
+    const int hp = hp_of(b);
+    const uint32_t st = state_of(b);
+    switch (b.d->cls) {
+    case 165: return st == 8u || hp <= 0;                                           // Whomp King: the defeat state / HP 0
+    case 189: return hp <= 0;                                                       // King Bob-omb
+    case 218: return hp <= 0 && (st == 13u || st == 9u || st == 12u || st == 15u || st == 5u);   // Chilly: after the last blow (the revive happens before it)
+    case 216: return hp == 0;                                                       // Big Bully: "alive" field 0 = dying or gone
+    case 210: return hp <= 0 && state_of(b) >= 6u;                                  // Big Boo: no hits left and in a late state
+    case 248: return st == 7u;                                                      // Wiggler: DEAD
+    case 198: return hp <= 0;                                                       // Goomboss: size index 0 = the defeat talk
+    case 279: return hp <= 0 && st == 4u;                                           // Bowser: the defeat state
+    default: return false;                                                          // Eyerok: two hand actors without placed slots, not covered
+    }
+}
+
+void log_sample(int slot, const Boss &b, int auth) {
+    char line[320]; int n = std::snprintf(line, sizeof line, "[cbs] w=%lld t=%u slot=%d cls=%u pos=%d,%d,%d auth=%d me=%d hp=%d st=%u",
+                                          wall_ms(), g_ticks, slot, (unsigned)b.d->cls, rd32(b.a, 0x5c) >> 12, rd32(b.a, 0x60) >> 12, rd32(b.a, 0x64) >> 12,
+                                          auth, g_my, hp_of(b), state_of(b));
+    for (int k = 2; k < b.d->nf && n < (int)sizeof line - 20; ++k) n += std::snprintf(line + n, sizeof line - n, " f%d=%u", k, read_field(b.a, b.d->f[k]));
+    if (b.d->cls == 279) n += std::snprintf(line + n, sizeof line - n, " talk=%d cnt=%d", (int)(signed char)b.a[0x424], (int)rd16(b.a, 0x3fe));
+    n += std::snprintf(line + n, sizeof line - n, " tgt=%d", coop_target_seat_of_slot(slot));
+    std::fprintf(stderr, "%s\n", line);
+}
+
+// After a state was forced onto a copy (bossdesc1). Big Boo's hit state takes its health point only on the first frame of the state
+// (timer +0x100 == 0, src/unnamed/ov063/func_ov063_021177b0.c); the authority has taken it already and the merged HP is the truth, so a
+// forced copy skips that frame.
+void post_force(Boss &b) {
+    if (b.d->cls == 279) {                 // a forced state is never a held one: no stale held-player pointer on this copy
+        const int32_t sub = rd32(b.a, 0x410);
+        if (sub != 1 && sub != 2) { void *z = nullptr; std::memcpy(b.a + 0x3a4, &z, sizeof z); }
+    }
+    if (b.d->cls == 210) {
+        uint16_t t = 0; std::memcpy(&t, b.a + 0x100, 2);
+        if (t == 0) { t = 1; std::memcpy(b.a + 0x100, &t, 2); }
+    }
+}
+
+void apply_rx(int slot, Boss &b, unsigned now) {
+    Rx &x = b.rx;
+    if (!x.valid || !x.fresh) return;
+    x.fresh = false;
+    const BDesc &d = *b.d;
+    ++g_st.recs_rx;
+    // HP only goes down.
+    const int lhp = hp_of(b);
+    int rhp = (int)x.w[d.hp];
+    if ((d.f[d.hp].kind & kS8) && rhp < 0) rhp = 0;       // a signed byte HP: anything at or below 0 is "down"; do not chase a double decrement
+    // Chief Chilly's knock-down count also goes UP once: after the last fall he waits for a hit and, if none comes, his state function
+    // sets it back to 1 (src/func_ov073_02120910.c). Both copies do that by themselves; a record from the other state would put the
+    // revived copy back to 0, so HP is only compared when both are in the same state, and 0 -> 1 is accepted in the same state.
+    const bool hold = d.cls == 218 && state_of(b) != x.w[d.state];
+    if (!hold && rhp >= 0 && rhp < lhp) {
+        write_field(b.a, d, d.hp, (uint32_t)rhp);
+        b.synced_hp = rhp;
+        ++g_st.applied_hp;
+        if (g_log) std::fprintf(stderr, "[cbs] apply-hp slot=%d hp %d->%d from seat %d w=%lld\n", slot, lhp, rhp, x.from, wall_ms());
+    } else if (!hold && d.cls == 218 && lhp == 0 && rhp == 1) {
+        write_field(b.a, d, d.hp, 1u);
+        b.synced_hp = 1;
+        ++g_st.applied_hp;
+        if (g_log) std::fprintf(stderr, "[cbs] apply-hp slot=%d hp 0->1 (revive) from seat %d w=%lld\n", slot, x.from, wall_ms());
+    } else if (!hold && b.synced_hp > rhp && rhp >= 0) {
+        b.synced_hp = rhp;
+    }
+    // counters that only go up (Big Bully's bullies killed): write_field refuses anything that is not larger
+    for (int k = 0; k < d.nf; ++k)
+        if ((d.f[k].kind & (kMaxUp | kGlobal)) && value_ok(d, k, x.w[k])) write_field(b.a, d, k, x.w[k]);
+    // The state: forced on the first record this console ever takes, otherwise after two in a row that disagree.
+    const uint32_t ls = state_of(b), rs = x.w[d.state];
+    bool force = false;
+    // King Bob-omb's two states in which HE holds a body (706c, 707c): the held pointer is a console-local one, so those states
+    // are never forced onto a copy; the pose still follows through the mover path.
+    // Bowser's tail grab is the same hand-off (sub-mode +0x410 = 1 swung, 2 thrown: the held pointer +0x3a4 is a console-local one).
+    const bool carry_state = (d.cls == 189 && (rs == 7 || rs == 8)) || (d.cls == 279 && (x.w[2] == 1u || x.w[2] == 2u));
+    if (ls != rs) { ++b.mism; ++g_st.state_mismatch; } else b.mism = 0;
+    if (!b.heard) force = ls != rs;
+    else if (b.mism >= 2) force = true;
+    if (carry_state) force = false;
+    // Bowser's defeat talk: the target seat's body is a parked friend on every console but the authority's; coop_target now answers the
+    // LOCAL player for a Bowser in state 4 (coop_boss_prefer_local), so every console runs the whole talk with its own player.
+    if (force) {
+        // everything except the HP (already min-merged); the state field goes first so its enter code runs on the old fields
+        // The state's enter code can have side effects of its own (King Bob-omb's hurt states take a health point): the HP
+        // stays what the min-merge above made it.
+        const int hp_keep = hp_of(b);
+        give_player_ptrs(b);
+        for (int k = 0; k < d.nf; ++k) if (k != d.hp && value_ok(d, k, x.w[k])) write_field(b.a, d, k, x.w[k]);
+        write_field(b.a, d, d.hp, (uint32_t)hp_keep);
+        post_force(b);
+        b.synced_hp = hp_keep;
+        b.mism = 0;
+        ++g_st.applied_state;
+        if (g_log) std::fprintf(stderr, "[cbs] apply-state slot=%d st %u->%u hp=%d from seat %d heard=%d w=%lld\n", slot, ls, rs, hp_of(b), x.from, (int)b.heard, wall_ms());
+    }
+    // The pose: the mover path carries it, but its heartbeat is 1.5 s and a copy that falls or slides in between (Whomp King's
+    // slam, a forced state) is far off by then. A record this fresh that disagrees by more than 80 units puts the copy back,
+    // with the speeds so it does not drift again.
+    if (d.pos >= 0 && (unsigned)(now - x.t) < 300u && !(x.rflags & 1)) {
+        double dd = 0;
+        for (int k = 0; k < 3; ++k) { const double e = ((double)rd32(b.a, d.f[d.pos + k].off) - (double)(int32_t)x.w[d.pos + k]) / 4096.0; dd += e * e; }
+        if (std::sqrt(dd) > 80.0) {
+            for (int k = d.pos; k < d.nf; ++k) if (value_ok(d, k, x.w[k])) write_field(b.a, d, k, x.w[k]);
+            ++g_st.applied_fields;
+            if (g_log) std::fprintf(stderr, "[cbs] apply-pos slot=%d off by %.0f units from seat %d w=%lld\n", slot, std::sqrt(dd), x.from, wall_ms());
+        }
+    }
+    b.heard = true;
+    b.auth_t = now;
+}
+
+void process(unsigned now) {
+    const unsigned wnow = comms_hub_now_ms();
+    unsigned char recs[kPayloadMax]; int nrec = 0, bytes = 0; bool urgent = false;
+    for (int slot = 0; slot < kSlots; ++slot) {
+        Boss &b = g_boss[slot];
+        if (!b.a) continue;
+        const BDesc &d = *b.d;
+        if (!b.known) { b.known = true; b.synced_hp = hp_of(b); b.last_st = state_of(b); }
+        if (!b.def_seen && is_defeated(b)) {
+            b.def_seen = true;
+            if (g_log) std::fprintf(stderr, "[cbs] defeat seen slot=%d cls=%u hp=%d st=%u w=%lld\n", slot, (unsigned)d.cls, hp_of(b), state_of(b), wall_ms());
+        }
+        // King Bob-omb carried by MY player (state 707c with my body as the holder): the console that carries him is the one that is right.
+        bool claiming = false;
+        if (d.cls == 189) {
+            const uint32_t st = state_of(b);
+            char *holder = nullptr; std::memcpy(&holder, b.a + 0x494, sizeof holder);
+            const int me = (int)data_0209f250;
+            if ((st == 7 || st == 8) && holder && me >= 0 && me < 16 && holder == (char *)data_0209f394[me]) {
+                if ((int)(g_claim_until[g_my] - wnow) <= 0) {
+                    ++g_st.claims;
+                    if (g_log) std::fprintf(stderr, "[cbs] claim slot=%d st=%u holder=me w=%lld\n", slot, st, wall_ms());
+                }
+                g_claim_until[g_my] = wnow + 3000u;
+            }
+            claiming = (int)(g_claim_until[g_my] - wnow) > 0;
+        }
+        if (d.cls == 279) {      // Bowser swung by MY player's hands (his tail): the grabbing console is the authority while the grab lasts
+            const int32_t sub = rd32(b.a, 0x410);
+            char *holder = nullptr; std::memcpy(&holder, b.a + 0x3a4, sizeof holder);
+            const int me = (int)data_0209f250;
+            if ((sub == 1 || sub == 2) && holder && me >= 0 && me < 16 && holder == (char *)data_0209f394[me]) {
+                if ((int)(g_claim_until[g_my] - wnow) <= 0) {
+                    ++g_st.claims;
+                    if (g_log) std::fprintf(stderr, "[cbs] claim slot=%d sub=%d holder=me w=%lld\n", slot, (int)sub, wall_ms());
+                }
+                g_claim_until[g_my] = wnow + 3000u;
+            }
+            claiming = (int)(g_claim_until[g_my] - wnow) > 0;
+        }
+        const int auth = auth_for(slot, wnow);
+        const bool mine = auth == g_my;
+        g_recent_t = wnow ? wnow : 1u; g_recent_mine = mine;
+        b.mine_last = mine;
+        // a hit that landed on my copy: HP below what was last synced
+        const int hp = hp_of(b);
+        if (hp > b.synced_hp && d.cls == 218) b.synced_hp = hp;    // Chilly's revive raises it by himself
+        // A console that is NOT the authority only reports a drop in its own copy's HP as a hit when the hit can have come from ITS player:
+        // the proof knob made it, or its player is within reach of the boss. Anything else is the copy's own ROM chain walking into a hit
+        // state after a state was forced onto it (it sees a friend's placed body as the attacker): REVBOSSCORE1 item 4, King Bob-omb lost a
+        // second point about 10 s after one hit. That drop is undone and never sent.
+        if (hp < b.synced_hp && !mine && g_on && (unsigned)(wnow - b.knob_ok_t) >= 1500u) {
+            const int me = (int)data_0209f250;
+            bool near_me = false;
+            if (me >= 0 && me < 16 && data_0209f394[me]) {
+                const char *pl = (const char *)data_0209f394[me];
+                const double dx = ((double)rd32(pl, 0x5c) - rd32(b.a, 0x5c)) / 4096.0, dy = ((double)rd32(pl, 0x60) - rd32(b.a, 0x60)) / 4096.0, dz = ((double)rd32(pl, 0x64) - rd32(b.a, 0x64)) / 4096.0;
+                near_me = std::sqrt(dx * dx + dy * dy + dz * dz) < 900.0;
+            }
+            if (!near_me) {
+                ++g_st.hit_spurious;
+                if (g_log) std::fprintf(stderr, "[cbs] drop ignored slot=%d hp %d->%d (not from my player; auth %d me %d) w=%lld\n", slot, b.synced_hp, hp, auth, g_my, wall_ms());
+                write_field(b.a, d, d.hp, (uint32_t)b.synced_hp);
+            }
+        }
+        if (hp_of(b) < b.synced_hp) {
+            ++g_st.hit_local;
+            if (g_log) std::fprintf(stderr, "[cbs] hit slot=%d hp %d->%d (auth %d me %d) w=%lld\n", slot, b.synced_hp, hp_of(b), auth, g_my, wall_ms());
+            b.synced_hp = hp_of(b);
+            if (!mine && g_on) {
+                unsigned char one[64];
+                const int n = fill_rec(one, slot, b, 0);
+                send_batch(kWorldBossHit, 1, one, 1, n);
+            }
+            b.lw_valid = false;                 // publish at once when I am the authority
+        }
+        // Chief Chilly's last blow is a player hit in his waiting window after the last fall: his HP is already 0, so it shows only as
+        // the ROM's own move into state 33f0 (id 13). A console that is not the authority and saw it tells the authority like an HP hit.
+        if (d.cls == 218) {
+            const uint32_t stn = state_of(b);
+            if (stn == 13u && b.last_st != 13u && !mine && g_on) {
+                ++g_st.hit_local;
+                if (g_log) std::fprintf(stderr, "[cbs] hit slot=%d state %u->13 (auth %d me %d) w=%lld\n", slot, b.last_st, auth, g_my, wall_ms());
+                unsigned char one[64];
+                const int n = fill_rec(one, slot, b, 0);
+                send_batch(kWorldBossHit, 1, one, 1, n);
+            }
+            b.last_st = stn;
+        }
+        if (g_on) apply_rx(slot, b, now);
+        if (g_log && (unsigned)(now - b.sample_t) >= 500u) { b.sample_t = now; log_sample(slot, b, auth); }
+        if (!b.announced_dead && hp_of(b) == 0 && g_log) {
+            b.announced_dead = true;
+            std::fprintf(stderr, "[cbs] defeated slot=%d cls=%u hp=0 st=%u w=%lld\n", slot, (unsigned)d.cls, state_of(b), wall_ms());
+        }
+        if (b.last_auth != auth) {
+            if (g_log) std::fprintf(stderr, "[cbs] authority slot=%d %d->%d w=%lld\n", slot, b.last_auth, auth, wall_ms());
+            b.last_auth = auth; b.auth_t = now; b.mism = 0;
+        }
+        if (!mine || !g_on) continue;
+        // I am the authority: publish when anything changed, and as a heartbeat
+        uint32_t w[kBossMaxFields]; bool changed = !b.lw_valid;
+        // a hit is never held back by the rate limit: the boss can be gone (a dead Eyerok hand destroys itself) before the next heartbeat
+        if (b.lw_valid && (int32_t)read_field(b.a, d.f[d.hp]) < (int32_t)b.last_w[d.hp]) urgent = true;
+        for (int k = 0; k < d.nf; ++k) { w[k] = read_field(b.a, d.f[k]); if (b.lw_valid && w[k] != b.last_w[k] && !(d.f[k].kind & kVol)) changed = true; }
+        if (changed || (unsigned)(now - b.pub_t) >= (unsigned)kBossHeartbeatMs) {
+            if (bytes + rec_bytes(d) <= kPayloadMax - (int)sizeof(BossHead) && nrec < kBossMaxRecs) {
+                bytes += fill_rec(recs + bytes, slot, b, claiming ? 2 : 0); ++nrec;
+                std::memcpy(b.last_w, w, sizeof w); b.lw_valid = true; b.pub_t = now;
+            }
+        }
+    }
+    if (nrec > 0 && (urgent || take_token(now))) send_batch(kWorldBossState, 0, recs, nrec, bytes);
+}
+
+// SM64DS_COOP_BOSS_HIT=F[,F]: from boss tick F, on THIS console, hit the first boss the ROM's own way. Where the class has a
+// hit flag (Whomp King) the flag is set every tick until the boss's own handler has taken it (it only does in its vulnerable
+// state), so the HP drop is the game's; where it has none the HP is lowered directly (the sync path is what is under test).
+bool bossdesc1_knob(Boss &b, HitKnob &k);
+bool bossdesc2_knob(Boss &b, HitKnob &k);
+void do_hit_knob(HitKnob &k) {
+    if (!k.armed) {
+        for (int slot = 0; slot < kSlots; ++slot) {
+            Boss &b = g_boss[slot];
+            if (!b.a || hp_of(b) <= 0) continue;
+            if (k.lethal && b.d->hit_off && hp_of(b) > 1) { write_field(b.a, *b.d, b.d->hp, 1u); b.synced_hp = 1; }   // the next hit is the last one, the ROM's own way
+            k.armed = true; k.slot = slot; k.hp0 = hp_of(b);
+            std::fprintf(stderr, "[cbs-knob] hit armed slot=%d cls=%u hp=%d w=%lld\n", slot, (unsigned)b.d->cls, k.hp0, wall_ms());
+            break;
+        }
+        if (!k.armed) return;
+    }
+    Boss &b = g_boss[k.slot];
+    if (!b.a) { k.done = true; return; }
+    b.knob_ok_t = comms_hub_now_ms();
+    if (hp_of(b) < k.hp0) {
+        k.done = true;
+        std::fprintf(stderr, "[cbs-knob] hit taken slot=%d hp %d->%d st=%u w=%lld\n", k.slot, k.hp0, hp_of(b), state_of(b), wall_ms());
+        return;
+    }
+    if (b.d->hit_off) {
+        if (b.d->hit_who && data_0209f394[data_0209f250 & 15]) { void *me = data_0209f394[data_0209f250 & 15]; std::memcpy(b.a + b.d->hit_who, &me, sizeof me); }
+        b.a[b.d->hit_off] = 1;
+    } else if (b.d->cls == 189) {
+        // King Bob-omb takes a hit by entering state 02126ffc: its enter code (func_ov078_021243c0) is the health point.
+        if (k.lethal && hp_of(b) > 1) { write_field(b.a, *b.d, b.d->hp, 1u); k.hp0 = 1; }
+        give_player_ptrs(b);          // the hit state reads the player it was hit by (+0x430)
+        KingBobOmb_SetState(b.a, kbo_id_to_ptr(0));
+    } else if (bossdesc1_knob(b, k)) {
+    } else if (bossdesc2_knob(b, k)) {
+    } else { write_field(b.a, *b.d, b.d->hp, (uint32_t)(k.hp0 - 1)); }
+}
+
+// bossdesc1: the proof's "a hit from this console" for the four families, each the ROM's own way as far as it can be made without
+// a player pushing: Chilly goes through the knock-down code of func_ov073_02120c7c (one fewer, then the hit or the defeat state);
+// Big Bully falls into the lava (the dying state with the death point that func_ov064_02116220 sets); Big Boo enters its hit state
+// with the timer at 0 so the ROM's own handler takes the health point; Wiggler enters the hit state (whose enter half takes it) or,
+// on the last point, the death state. Returns true when the class is one of the four.
+bool bossdesc1_knob(Boss &b, HitKnob &k) {
+    char *a = b.a;
+    const unsigned cls = b.d->cls;
+    if (cls != 218 && cls != 216 && cls != 210 && cls != 248) return false;
+    give_player_ptrs(b);
+    if (cls == 218) {
+        if (k.hp0 == -2) {
+            // stage 2 of the lethal hit: the player's hit in his waiting window (state 33f0 is where func_ov073_02120910 sends him on a hit)
+            ChiefChilly_ChangeState(a, chilly_id_to_ptr(13u));
+        } else {
+            uint8_t hp = (uint8_t)a[0x4cb];
+            if (k.lethal && hp > 1) { a[0x4cb] = 1; hp = 1; }
+            a[0x4cb] = (char)(hp - 1);
+            ChiefChilly_ChangeState(a, chilly_id_to_ptr(hp - 1 ? 10u : 11u));
+            if (k.lethal) {
+                k.hp0 = -2; k.tick = g_ticks + 30;     // the waiting window is 90 frames
+                std::fprintf(stderr, "[cbs-knob] fall made slot=%d hp=%u st=%u, the hit follows in 30 ticks w=%lld\n", k.slot, (unsigned)hp_of(b), state_of(b), wall_ms());
+                return true;
+            }
+        }
+    } else if (cls == 216) {
+        int32_t x = rd32(a, 0x5c), y = rd32(a, 0x60) + 0x5000, z = rd32(a, 0x64);
+        std::memcpy(a + 0x3a8, &x, 4); std::memcpy(a + 0x3ac, &y, 4); std::memcpy(a + 0x3b0, &z, 4);
+        bully_enter(a, 4u);
+    } else if (cls == 210) {
+        if (k.lethal && (uint8_t)a[0x5ca] > 1) a[0x5ca] = 1;
+        a[0x5cc] = 3; const uint16_t zero = 0; std::memcpy(a + 0x100, &zero, 2);
+    } else {
+        // His stomp (func_ov034_02112688) sets the stomper into +0x8c8 (give_player_ptrs did) and enters DAMAGE (5): the enter half takes the
+        // health point (floor 1), the tick talks, DAMAGETALK (6) then ends in MOVE_START (3) or, on the last point, DEAD (7).
+        if (k.lethal && (uint8_t)a[0x8db] > 1) a[0x8db] = 1;
+        func_ov034_021125b8(a, 5);
+    }
+    k.done = true;
+    std::fprintf(stderr, "[cbs-knob] hit made slot=%d cls=%u hp=%u st=%u w=%lld\n", k.slot, cls, (unsigned)hp_of(b), state_of(b), wall_ms());
+    return true;
+}
+
+// bossdesc2: the proof's "a hit from this console" for Goomboss, Bowser and an Eyerok hand, each the ROM's own transition as far as it
+// can be made without a player's body: Goomboss goes through the stomp's own tail (turn, hit animation, state 5 whose enter code takes
+// the size point); Bowser takes the bomb hit's own tail (func_ov060_02113b5c: one HP, state 0xc or at 0 state 4); a hand takes the punch
+// (func_ov066_0211603c's tail: HP, and at 0 the overlay globals and record 0211b07c).
+bool bossdesc2_knob(Boss &b, HitKnob &k) {
+    char *a = b.a;
+    const unsigned cls = b.d->cls;
+    if (cls != 198 && cls != 279 && cls != 176) return false;
+    if (cls == 198) {
+        if (k.lethal && (uint8_t)a[0x604] > 1) a[0x604] = 1;
+        if ((uint8_t)a[0x604] == 0) { k.done = true; return true; }
+        const int16_t sp = (int16_t)(rd32(a, 0x5f0) * -0x190);
+        std::memcpy(a + 0x5f6, &sp, 2);
+        func_ov074_02121a4c(a, 2);
+        func_ov074_021203e4(a, 5);
+    } else if (cls == 279 && g_bomb) {
+        // The ROM's own bomb hit: Bowser is put into his thrown state (aed4[1] = func_ov060_02113b5c) on the bomb's point, and that state's
+        // own check (func_ov060_02113d20 -> 02118544) finds the bomb, takes the HP point and picks state 0xc or, at 0, the defeat state 4.
+        // Retried every 4 ticks (the state needs a frame to run) until the HP has dropped.
+        char *bomb = nullptr;
+        for (char *x = (char *)_ZN8dActor_c4NextEPKS_(0); x; x = (char *)_ZN8dActor_c4NextEPKS_(x))
+            if (*(const unsigned short *)(x + 0x0c) == 284 && rd32(x, 0x170) == 0) { bomb = x; break; }
+        if (!bomb) { std::fprintf(stderr, "[cbs-knob] bomb: no live bomb actor (class 284) in this arena w=%lld\n", wall_ms()); k.done = true; return true; }
+        if (k.lethal && (int8_t)a[0x41e] > 1) { a[0x41e] = 1; k.hp0 = 1; }
+        // The bombs hang in the air on a ring beyond the arena's floor, so Bowser put on one falls into the pit (measured: the level ended). The
+        // bomb is brought to him instead: its point and ring radius are set to where he stands on the floor, and the ROM's own test
+        // (func_ov060_02113d20 -> 02118544: ring radius +-300 and distance < the sphere) then finds it.
+        const int32_t bx = rd32(a, 0x5c), by = rd32(a, 0x60), bz = rd32(a, 0x64);
+        const int32_t hlen = (int32_t)std::sqrt((double)bx * bx + (double)bz * bz);
+        std::memcpy(bomb + 0x174, &bx, 4); std::memcpy(bomb + 0x178, &by, 4); std::memcpy(bomb + 0x17c, &bz, 4);
+        std::memcpy(bomb + 0x180, &hlen, 4);
+        const int32_t rad = rd32(bomb, 0x184);
+        const int32_t px = bx, py = by, pz = bz;
+        const int32_t one = 1, zero = 0;
+        std::memcpy(a + 0x40c, &one, 4); std::memcpy(a + 0x410, &zero, 4); a[0x423] = 0;
+        k.tick = g_ticks + 4;
+        if (++k.slot_tries >= 60) { k.done = true; std::fprintf(stderr, "[cbs-knob] bomb: gave up after 60 tries hp=%d w=%lld\n", hp_of(b), wall_ms()); }
+        else if (k.slot_tries == 1) std::fprintf(stderr, "[cbs-knob] bomb: the bomb brought to Bowser at %d,%d,%d, he is in his thrown state (sphere radius %d, ring %d), the ROM decides hp=%d st=%u w=%lld\n", px >> 12, py >> 12, pz >> 12, rad >> 12, rd32(bomb, 0x180) >> 12, hp_of(b), state_of(b), wall_ms());
+        return true;
+    } else if (cls == 279) {
+        if (k.lethal && (int8_t)a[0x41e] > 1) a[0x41e] = 1;
+        a[0x41e] = (char)((int8_t)a[0x41e] - 1);
+        const int32_t st = (int8_t)a[0x41e] <= 0 ? 4 : 0xc;
+        std::memcpy(a + 0x40c, &st, 4);
+        a[0x423] = 0;
+    } else {
+        int8_t hp = (int8_t)a[0x4d8];
+        if (k.lethal && hp > 1) hp = 1;
+        hp = (int8_t)(hp - 1);
+        a[0x4d8] = (char)hp;
+        if (hp <= 0) {
+            const int side = rd32(a, 0x49c);
+            data_ov066_0211abe0 = (unsigned char)(data_ov066_0211abe0 ^ side);
+            data_ov066_0211ae08 = (unsigned char)(data_ov066_0211ae08 + 1);
+            data_ov066_0211abe4 = -3;
+            std::fprintf(stderr, "[cbs-knob] eyerok part %d death: files ae8c=%p aea4=%p\n", side, data_ov066_0211ae8c[1], data_ov066_0211aea4[1]);
+            if (eye_enter_safe(a, (uint32_t)kEyeDeadRecord)) func_ov066_02119454(a, eye_id_to_ptr((uint32_t)kEyeDeadRecord));
+        }
+    }
+    k.done = true;
+    std::fprintf(stderr, "[cbs-knob] hit made slot=%d cls=%u hp=%d st=%u w=%lld\n", k.slot, cls, hp_of(b), state_of(b), wall_ms());
+    return true;
+}
+
+void do_forge(const char *name) {
+    int slot = -1;
+    for (int i = 0; i < kSlots; ++i) if (g_boss[i].a) { slot = i; break; }
+    if (slot < 0) { std::fprintf(stderr, "[cbs-knob] forge %s: no boss\n", name); return; }
+    const Boss &b = g_boss[slot];
+    unsigned char buf[kPayloadMax]; std::memset(buf, 0, sizeof buf);
+    BossHead h; std::memset(&h, 0, sizeof h); h.key = wire_key(); h.count = 1;
+    unsigned char rec[64]; int rn = fill_rec(rec, slot, b, 0);
+    BossRec r; std::memcpy(&r, rec, sizeof r);
+    int sub = kWorldBossState;
+    int len;
+    if (!std::strcmp(name, "short")) { len = (int)sizeof h + rn - 5; }
+    else if (!std::strcmp(name, "long")) { len = (int)sizeof h + rn + 3; }
+    else {
+        if (!std::strcmp(name, "count")) h.count = 9;
+        else if (!std::strcmp(name, "cls")) r.cls = 200;
+        else if (!std::strcmp(name, "slot")) r.slot = 600;
+        else if (!std::strcmp(name, "nf")) r.nf = (uint8_t)(r.nf + 1);
+        else if (!std::strcmp(name, "key")) h.key.act = (uint8_t)((g_key.act + 1) & 7);
+        else if (!std::strcmp(name, "flags")) h.flags = 1;
+        else if (!std::strcmp(name, "rflags")) r.rflags = 0x80;
+        else if (!std::strcmp(name, "hp")) { const uint32_t v = 200; std::memcpy(rec + sizeof r + 4 * b.d->hp, &v, 4); }
+        else if (!std::strcmp(name, "state")) { const uint32_t v = 99; std::memcpy(rec + sizeof r + 4 * b.d->state, &v, 4); }
+        else if (!std::strcmp(name, "hit")) { sub = kWorldBossHit; h.flags = 1; }
+        else if (!std::strcmp(name, "notboss")) { r.cls = 164; }
+        else return;
+        std::memcpy(rec, &r, sizeof r);
+        len = (int)sizeof h + rn;
+    }
+    std::fprintf(stderr, "[cbs-knob] forge %s\n", name);
+    std::memcpy(buf, &h, sizeof h); std::memcpy(buf + sizeof h, rec, (size_t)rn);
+    if (len < 1) len = 1;
+    coop_send_world(sub, buf, len);
+}
+
+// ---------------------------------------------------------------------------
+// ONE STAR FOR ALL. Every console runs the boss's defeat code and each would spawn the star (dActor_c::UntrackAndSpawnStar,
+// src/_ZN8dActor_c19UntrackAndSpawnStarERajRK7Vector3h.cpp: UntrackStar, then Spawn(0xb2, ...)); COOPSPAWN1 announces each one and
+// the others spawn it too, so a console ended with two. The replacement keeps the ROM's two lines for everything except a boss
+// whose authority is another console: that copy retires its star marker and spawns nothing, the authority's star arrives
+// through COOPSPAWN1's announcement.
+// ---------------------------------------------------------------------------
+bool boss_class_for_star(unsigned cls) {
+    if (desc_of(cls)) return true;
+    return cls == 176 || cls == 198 || cls == 210 || cls == 216 || cls == 218 || cls == 248 || cls == 279;
+}
+
+bool star_is_mine(dActor_c *self) {
+    if (!g_on || !coop_world_active() || !coop_group_established()) return true;
+    const unsigned cls = *(const unsigned short *)((const char *)self + 0x0c);
+    if (!boss_class_for_star(cls)) return true;
+    const short slot = rd16((const char *)self, 0xce);
+    if (slot < 0 || slot >= kSlots) return true;
+    if (g_my < 0) g_my = comms_hub_my_seat();
+    const int auth = desc_of(cls) ? auth_for(slot, comms_hub_now_ms()) : coop_target_seat_of_slot(slot);
+    if (auth < 0) return true;
+    return auth == g_my;
+}
+
+dActor_c *__fastcall star_replacement(dActor_c *self, void * /*edx*/, s8 *trackStarID, u32 starID, const Vector3 *spawnPos, u8 how) {
+    self->UntrackStar(*trackStarID);
+    { const short sl = rd16((const char *)self, 0xce); if (sl >= 0 && sl < kSlots && g_boss[sl].d) g_boss[sl].def_seen = true; }
+    if (!star_is_mine(self)) {
+        ++g_st.stars_suppressed;
+        if (g_log) std::fprintf(stderr, "[cbs] star suppressed: this console is not the authority of cls=%u (the authority's star comes by announcement) w=%lld\n",
+                                (unsigned)*(const unsigned short *)((const char *)self + 0x0c), wall_ms());
+        return nullptr;
+    }
+    ++g_st.stars_spawned;
+    return self->Spawn(0xb2, starID | ((u32)how << 4), *spawnPos, 0, ((const s8 *)self)[0xcc], -1);
+}
+
+bool g_star_patched = false;
+void install_star_patch() {
+    if (g_star_patched) return;
+    g_star_patched = true;
+    dActor_c *(dActor_c::*pmf)(s8 &, u32, const Vector3 &, u8) = &dActor_c::UntrackAndSpawnStar;
+    void *from = nullptr; std::memcpy(&from, &pmf, sizeof from);
+    DWORD old = 0;
+    if (!VirtualProtect(from, 8, PAGE_EXECUTE_READWRITE, &old)) { std::fprintf(stderr, "[cbs] cannot patch UntrackAndSpawnStar\n"); return; }
+    unsigned char b[5]; b[0] = 0xE9;
+    const int rel = (int)((unsigned char *)&star_replacement - (unsigned char *)from - 5);
+    std::memcpy(b + 1, &rel, 4);
+    std::memcpy(from, b, 5);
+    VirtualProtect(from, 8, old, &old);
+    FlushInstructionCache(GetCurrentProcess(), from, 8);
+    std::fprintf(stderr, "[cbs] UntrackAndSpawnStar replaced at %p\n", from);
+}
+
+void on_frame(unsigned now) {
+    read_env();
+    if (!coop_world_active()) return;
+    if (!g_regd) { g_regd = true; g_my = comms_hub_my_seat(); }
+    install_star_patch();
+    int lv = -1, ac = 0;
+    if (!coop_group_established() || !coop_group_key(&lv, &ac)) return;
+    const CoopKey nk(lv, ac);
+    if (nk != g_key) {
+        for (int i = 0; i < kSlots; ++i) g_boss[i] = Boss();
+        for (int s = 0; s < kSeats; ++s) g_claim_until[s] = 0;
+        g_recent_t = 0; g_recent_mine = true;
+        std::memset(g_dead_cls, 0, sizeof g_dead_cls); std::memset(g_dead_tx, 0, sizeof g_dead_tx);
+        g_key = nk;
+    }
+    ++g_ticks; ++g_st.ticks;
+    scan();
+    g_st.bosses = (unsigned long long)g_nb;
+    if (g_god) { const int me = (int)data_0209f250 & 15; data_02092144[me] = (short)((data_02092144[me] & 0xff) | (8 << 8)); }
+    if (!g_stand_done && g_ticks >= g_stand_tick && g_nb > 0) {
+        for (int slot = 0; slot < kSlots; ++slot) {
+            Boss &b = g_boss[slot];
+            const int me = (int)data_0209f250;
+            if (!b.a || me < 0 || me >= 16 || !data_0209f394[me]) continue;
+            char *pl = (char *)data_0209f394[me];
+            int32_t x = rd32(b.a, 0x5c) + (g_stand_dist << 12), y = rd32(b.a, 0x60) + 0x10000, z = rd32(b.a, 0x64);
+            std::memcpy(pl + 0x5c, &x, 4); std::memcpy(pl + 0x60, &y, 4); std::memcpy(pl + 0x64, &z, 4);
+            const int32_t zero = 0; std::memcpy(pl + 0x98, &zero, 4);
+            if (g_stand_every) g_stand_tick = g_ticks + g_stand_every; else g_stand_done = true;
+            std::fprintf(stderr, "[cbs-knob] stand local player %d units from boss slot=%d cls=%u at %d,%d,%d w=%lld\n", g_stand_dist, slot, (unsigned)b.d->cls, x >> 12, y >> 12, z >> 12, wall_ms());
+            break;
+        }
+    }
+    if (!g_behind_done && g_ticks >= g_behind_tick && g_nb > 0) {
+        for (int slot = 0; slot < kSlots; ++slot) {
+            Boss &b = g_boss[slot];
+            const int me = (int)data_0209f250;
+            if (!b.a || me < 0 || me >= 16 || !data_0209f394[me]) continue;
+            char *pl = (char *)data_0209f394[me];
+            const int16_t ang = rd16(b.a, 0x8e);
+            const double rad = (double)(uint16_t)ang * 6.283185307179586 / 65536.0;
+            int32_t x = rd32(b.a, 0x5c) - (int32_t)(std::sin(rad) * g_behind_dist * 4096.0), y = rd32(b.a, 0x60) + 0x10000, z = rd32(b.a, 0x64) - (int32_t)(std::cos(rad) * g_behind_dist * 4096.0);
+            std::memcpy(pl + 0x5c, &x, 4); std::memcpy(pl + 0x60, &y, 4); std::memcpy(pl + 0x64, &z, 4);
+            const int32_t zero = 0; std::memcpy(pl + 0x98, &zero, 4);
+            std::memcpy(pl + 0x8e, &ang, 2);
+            if (g_behind_every) g_behind_tick = g_ticks + g_behind_every; else g_behind_done = true;
+            std::fprintf(stderr, "[cbs-knob] behind local player %d units behind boss slot=%d cls=%u (boss angle %d) at %d,%d,%d w=%lld\n", g_behind_dist, slot, (unsigned)b.d->cls, (int)ang, x >> 12, y >> 12, z >> 12, wall_ms());
+            break;
+        }
+    }
+    pump_dead(now);
+    if (g_face && g_nb > 0 && (g_ticks % 12) == 0) {
+        for (int slot = 0; slot < kSlots; ++slot) {
+            Boss &b = g_boss[slot];
+            const int me = (int)data_0209f250;
+            if (!b.a || b.d->cls != 279 || state_of(b) != 4u || me < 0 || me >= 16 || !data_0209f394[me]) continue;
+            char *pl = (char *)data_0209f394[me];
+            const int32_t bx = rd32(b.a, 0x5c), by = rd32(b.a, 0x60), bz = rd32(b.a, 0x64);
+            const int32_t px = bx - (300 << 12), pz = bz;
+            const int16_t ang = (int16_t)(std::atan2((double)(bx - px), (double)(bz - pz)) * 32768.0 / 3.14159265358979323846);
+            const int32_t py = by + 0x4000, zero = 0;
+            std::memcpy(pl + 0x5c, &px, 4); std::memcpy(pl + 0x60, &py, 4); std::memcpy(pl + 0x64, &pz, 4);
+            std::memcpy(pl + 0x98, &zero, 4); std::memcpy(pl + 0x8e, &ang, 2);
+            if (g_log && (g_ticks % 120) == 0) std::fprintf(stderr, "[cbs-knob] face: local player put 300 units from Bowser, facing him (step %d) w=%lld\n", (int)(unsigned char)b.a[0x423], wall_ms());
+            break;
+        }
+    }
+    if (g_nb > 0) {
+        process(now);
+        for (int i = 0; i < g_nhit; ++i)
+            if (!g_hit[i].done && g_ticks >= g_hit[i].tick) do_hit_knob(g_hit[i]);
+        for (int i = 0; i < g_nforge; ++i)
+            if (!g_forge[i].done && g_ticks >= g_forge[i].tick) { g_forge[i].done = true; do_forge(g_forge[i].name); }
+    }
+    if (g_log && g_nb > 0 && (unsigned)(now - g_stat_t) >= 4000u) {
+        g_stat_t = now;
+        const CoopBossStats &s = g_st;
+        std::fprintf(stderr, "[cbsstat] seat=%d bosses=%llu sent=%llu recs=%llu hits_sent=%llu rx=%llu rrx=%llu hits_rx=%llu app st%llu hp%llu mism%llu hit_local=%llu "
+                     "hit_adopted=%llu drop bad%llu grp%llu mem%llu auth%llu cls%llu off%llu seat%llu\n",
+                     g_my, s.bosses, s.sent, s.recs_sent, s.hits_sent, s.rx, s.recs_rx, s.hits_rx, s.applied_state, s.applied_hp, s.state_mismatch,
+                     s.hit_local, s.hit_adopted, s.drop_bad, s.drop_group, s.drop_member, s.drop_notauth, s.drop_cls, s.drop_off, s.drop_seat);
+    }
+}
+
+struct Registrar {
+    Registrar() { coop_on_frame(on_frame); coop_on_snapshot_request(on_snapshot_request); }
+} g_registrar;
+
+}  // namespace
+
+// ---------------------------------------------------------------------------
+// Public.
+// ---------------------------------------------------------------------------
+CoopBossStats coop_boss_stats() { return g_st; }
+
+// bossfix1 hooks for coop_target and coop_spawn.
+bool coop_boss_prefer_local(const char *actor) {
+    return g_on && actor && *(const unsigned short *)(actor + 0x0c) == 279 && rd32(actor, 0x40c) == 4;
+}
+bool coop_boss_reward_not_mine() {
+    static const bool off = [] { const char *e = std::getenv("SM64DS_COOP_REWARD"); return e && *e == '0'; }();     // must-fail control: no suppression
+    if (off || !g_on || !coop_world_active() || !coop_group_established() || !g_recent_t) {
+        if (g_log) std::fprintf(stderr, "[cbs] reward decision: no (off=%d on=%d world=%d est=%d recent=%u)\n", (int)off, (int)g_on, (int)coop_world_active(), (int)coop_group_established(), g_recent_t);
+        return false;
+    }
+    const bool r = (int)(comms_hub_now_ms() - g_recent_t) < 4000 && !g_recent_mine;
+    if (g_log) std::fprintf(stderr, "[cbs] reward decision: not mine=%d (boss seen %u ms ago, mine=%d)\n", (int)r, (unsigned)(comms_hub_now_ms() - g_recent_t), (int)g_recent_mine);
+    return r;
+}
+
+bool coop_boss_validate(const void *payload, int len) {
+    if (!payload || len < (int)sizeof(BossHead) + (int)sizeof(BossRec)) return false;
+    const unsigned char *p = static_cast<const unsigned char *>(payload);
+    BossHead h; std::memcpy(&h, p, sizeof h);
+    if (!coop_key_ok(h.key) || h.flags > 1 || h.reserved != 0) return false;
+    if (h.count < 1 || h.count > kBossMaxRecs) return false;
+    int off = (int)sizeof h;
+    for (int i = 0; i < (int)h.count; ++i) {
+        if (off + (int)sizeof(BossRec) > len) return false;
+        BossRec r; std::memcpy(&r, p + off, sizeof r);
+        if (r.slot >= kSlots || (r.rflags & ~0x07) != 0) return false;
+        const BDesc *d = desc_of(r.cls);
+        if (!d || r.nf != d->nf) return false;
+        off += (int)sizeof r + 4 * r.nf;
+        if (off > len) return false;
+    }
+    return off == len;
+}
+
+void coop_boss_on_world(int seat, int sub, const unsigned char *p, int len) {
+    read_env();
+    if (!g_on) { ++g_st.drop_off; return; }
+    if (seat < 0 || seat >= kSeats || seat == g_my) { ++g_st.drop_seat; return; }
+    if (sub != kWorldBossState && sub != kWorldBossHit) { ++g_st.drop_bad; return; }
+    if (!coop_boss_validate(p, len)) { ++g_st.drop_bad; return; }
+    BossHead h; std::memcpy(&h, p, sizeof h);
+    if ((sub == kWorldBossHit) != (h.flags == 1) || (sub == kWorldBossHit && h.count != 1)) { ++g_st.drop_bad; return; }
+    ++g_st.rx;
+    if (!g_key.valid() || h.key.level != (uint16_t)g_key.level || h.key.act != (uint8_t)g_key.act) { ++g_st.drop_group; return; }
+    if (!((coop_group_member_mask() >> seat) & 1u)) { ++g_st.drop_member; return; }
+    const unsigned now = comms_hub_now_ms();
+    int off = (int)sizeof h;
+    for (int i = 0; i < (int)h.count; ++i) {
+        BossRec r; std::memcpy(&r, p + off, sizeof r);
+        const BDesc *d = desc_of(r.cls);
+        uint32_t w[kBossMaxFields]; std::memset(w, 0, sizeof w);
+        std::memcpy(w, p + off + sizeof r, 4u * r.nf);
+        off += (int)sizeof r + 4 * r.nf;
+        if (r.rflags & 4) {                       // "this boss is dead" (sent after its defeat, and to a joiner)
+            if (sub == kWorldBossState && h.flags == 0 && d && r.slot < kSlots && g_dead_cls[r.slot] != r.cls) {
+                g_dead_cls[r.slot] = r.cls; ++g_st.dead_marked;
+                if (g_log) std::fprintf(stderr, "[cbs] dead boss noted: cls=%u slot=%d from seat %d w=%lld\n", (unsigned)r.cls, (int)r.slot, seat, wall_ms());
+            }
+            continue;
+        }
+        Boss &b = g_boss[r.slot];
+        if (!b.a || b.d != d) { ++g_st.drop_cls; continue; }
+        bool ok = true;
+        for (int k = 0; k < d->nf; ++k) if (!value_ok(*d, k, w[k])) ok = false;
+        if (!ok) { ++g_st.drop_bad; continue; }
+        const int auth = auth_for(r.slot, now);
+        if (sub == kWorldBossHit) {
+            ++g_st.hits_rx;
+            // the hitter's copy was hit: take its HP at once everywhere; the authority takes its state whole
+            const int lhp = (int)read_field(b.a, d->f[d->hp]);
+            if ((int)w[d->hp] < lhp) {
+                write_field(b.a, *d, d->hp, w[d->hp]);
+                b.synced_hp = (int)w[d->hp];
+                ++g_st.applied_hp;
+                if (g_log) std::fprintf(stderr, "[cbs] hit-rx slot=%d hp %d->%u from seat %d (auth %d) w=%lld\n", (int)r.slot, lhp, w[d->hp], seat, auth, wall_ms());
+            }
+            if (auth == g_my) {
+                const int hp_keep = (int)read_field(b.a, d->f[d->hp]);
+                give_player_ptrs(b);
+                for (int k = 0; k < d->nf; ++k) if (k != d->hp) write_field(b.a, *d, k, w[k]);
+                write_field(b.a, *d, d->hp, (uint32_t)hp_keep);
+                post_force(b);
+                b.synced_hp = hp_keep;
+                ++g_st.hit_adopted;
+                b.lw_valid = false;
+            }
+            continue;
+        }
+        if (r.rflags & 2) {                      // a claim: that seat's copy is carried by its player
+            if (g_log && (int)(g_claim_until[seat] - now) <= 0) std::fprintf(stderr, "[cbs] claim-rx slot=%d from seat %d (that console's player holds the boss) w=%lld\n", (int)r.slot, seat, wall_ms());
+            g_claim_until[seat] = now + 3000u; ++g_st.claims;
+        } else if (seat != auth) {
+            // a late record from the authority before this one, within two seconds, still counts
+            if (!(b.last_auth == seat && (unsigned)(now - b.auth_t) < 2000u)) {
+                // two consoles can briefly disagree about the authority (the target seat changes with a 1 s hold): a lower HP is a hit and
+                // counts for everybody whoever sent it, so the hit is never lost to the disagreement
+                int rh = (int)w[d->hp]; if ((d->f[d->hp].kind & kS8) && rh < 0) rh = 0;
+                const int lh = (int)read_field(b.a, d->f[d->hp]);
+                if (d->cls != 218 && rh >= 0 && rh < lh) {
+                    write_field(b.a, *d, d->hp, (uint32_t)rh); b.synced_hp = rh; ++g_st.applied_hp;
+                    if (g_log) std::fprintf(stderr, "[cbs] hp-from-nonauth slot=%d hp %d->%d from seat %d (auth %d) w=%lld\n", (int)r.slot, lh, rh, seat, auth, wall_ms());
+                }
+                ++g_st.drop_notauth; continue;
+            }
+        }
+        b.rx.valid = true; b.rx.fresh = true; b.rx.t = now; b.rx.seq = r.seq; b.rx.rflags = r.rflags; b.rx.from = seat;
+        std::memcpy(b.rx.w, w, sizeof w);
+    }
+}
+
+}  // namespace port

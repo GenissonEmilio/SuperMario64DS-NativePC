@@ -14,6 +14,7 @@
 // dead flags +0x0f / +0x0e.
 
 #include "coop_spawn.h"
+#include "coop_boss.h"
 #include "coop_world.h"
 #include "coop_wire.h"
 #include "comms_hub.h"
@@ -44,6 +45,8 @@ void func_ov102_02149da8(void *self, int state);
 signed char NumRedCoins(void);
 void _ZN10StarMarker27SpawnRedCoinStarIfNecessaryEv(void *self);
 unsigned DeathTable_GetBit(int id);
+extern int data_ov089_02132894[];      // Key kinds 0..6: pointers to the kind's SharedFilePtr (src/_ZN3Key13InitResourcesEv.cpp)
+extern char data_ov002_0211094c;       // kind 7's model
 }
 
 namespace port {
@@ -104,9 +107,11 @@ struct Net {
     bool used, remote, gone;
     uint8_t origin, kind; uint16_t counter, cls; uint32_t param; int32_t pos[3]; int8_t area;
     char *a; unsigned uid; bool seen;
+    bool alias; uint8_t alias_o; uint16_t alias_c;      // bossfix1: the other console's id for the SAME boss reward (each console keeps its own native key)
     int sends; unsigned next; int gsends; unsigned gnext;
 };
 Net g_net[kNetMax];
+bool key_model_ready(unsigned param);
 uint16_t g_counter = 0;
 struct Lnk { bool used, taken; char *a; unsigned uid; short mslot; int area; bool seen; int gsends; unsigned gnext; };
 Lnk g_lnk[kLnkMax];
@@ -231,7 +236,7 @@ char *my_player() {
     return (me >= 0 && me < 16) ? (char *)data_0209f394[me] : nullptr;
 }
 bool is_block_cls(unsigned c) { return c >= 20 && c <= 25; }
-bool is_ann_cls(unsigned c) { return c == 178 || c == 179 || c == 276 || c == 277 || c == 282; }
+bool is_ann_cls(unsigned c) { return c == 178 || c == 179 || c == 276 || c == 277 || c == 282 || c == 283 || c == 229; }
 bool is_star_cls(unsigned c) { return c == 178 || c == 179; }
 
 CoopKeyWire wkey() { CoopKeyWire k; k.level = (uint16_t)g_lvl; k.act = (uint8_t)g_act; k.reserved = 0; return k; }
@@ -293,7 +298,7 @@ char *do_spawn(const SpSpawnWire &w) {
 // Announced actors.
 // ---------------------------------------------------------------------------
 Net *net_find(int origin, int counter) {
-    for (Net &n : g_net) if (n.used && n.origin == origin && n.counter == counter) return &n;
+    for (Net &n : g_net) if (n.used && ((n.origin == origin && n.counter == counter) || (n.alias && n.alias_o == origin && n.alias_c == counter))) return &n;
     return nullptr;
 }
 Net *net_alloc() {
@@ -302,7 +307,27 @@ Net *net_alloc() {
     return nullptr;
 }
 
+// bossfix1: ONE boss reward (key 282, Grand Star 283) per group. A key can only be built where its model is loaded, and the model belongs
+// to the boss on that console (Chief Chilly / Goomboss load it in InitResources, it goes with them), so a console cannot take a key built
+// elsewhere once its own boss is gone. Every console therefore keeps the key its own boss makes, and the two ids are made ALIASES of one
+// reward: a take on either console sends the id it knows, and the other console finds its key through the alias. A console whose boss
+// was not finished when the announced key arrived builds the announced one (its boss still has the model) and removes the native one it
+// makes later.
+Net *reward_net(int cls) {
+    static const bool off = [] { const char *e = std::getenv("SM64DS_COOP_REWARD"); return e && *e == '0'; }();     // must-fail control: every reward is its own
+    if (off || (cls != 282 && cls != 283)) return nullptr;
+    for (Net &n : g_net) if (n.used && !n.gone && n.cls == cls) return &n;
+    return nullptr;
+}
+
 bool register_local(char *a, int cls, unsigned param, const int pos[3], int area) {
+    if (Net *o = reward_net(cls)) {
+        if (o->remote) {                          // the announced copy is already here: it stands, this native one goes
+            if (a) kill_quiet(a);
+            if (g_log) std::fprintf(stderr, "[coopspawn] reward: seat %d's announced cls=%d is already here, my native copy removed wall=%lld\n", (int)o->origin, cls, wall_ms());
+            return false;
+        }
+    }
     Net *n = net_alloc();
     if (!n) { ++g_st.drop_full; return false; }
     ++g_counter; if (!g_counter) g_counter = 1;
@@ -631,15 +656,41 @@ bool near_same(const char *a, const SpSpawnWire &w) {
 // A key only exists where the ROM loaded its model: Bowser's three arenas (levels 36, 38, 40, any kind) and Chief Chilly's arena (49,
 // kind 4 as in func_ov073_0211fa74). Anywhere else the model is not there and the draw faults (measured: kind 0 in 49 and in BOB), so
 // a forged key SPAWN must not get past this. The Big Boo key arena (47) is left out until its kind is proven.
+// bossfix1: a key can only be built where its model file is loaded. Chief Chilly and Goomboss load their key's model in their own
+// InitResources (LoadKeyModels), so a console where that boss was deleted before it initialised (a dead boss stays dead) has no model;
+// spawning the key there faulted (measured: a late joiner applying the announced key). Such a console simply goes without the key.
+bool key_model_ready(unsigned param) {
+    const unsigned kind = param & 7u;
+    if (kind == 7) return *(void *const *)(&data_ov002_0211094c + 4) != nullptr;
+    const int sfp = data_ov089_02132894[kind];
+    return sfp != 0 && *(void *const *)((const char *)(intptr_t)sfp + 4) != nullptr;
+}
+
 bool key_ok(int lvl, unsigned param) {
     if (lvl == 36 || lvl == 38 || lvl == 40) return true;
+    if (lvl == 45) return (param & 7u) == 2u;       // Goomboss's key (src/actors/Goomboss.cpp: kind 2)
+    if (lvl == 47) return (param & 7u) == 3u;       // the Big Boo key arena (func_ov063_02118ddc: kind 3)
     return lvl == 49 && (param & 7u) == 4u;
 }
 
 void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
     if (w.cls == 282 && !key_ok(g_lvl, w.param)) { ++g_st.drop_class; return; }
+    if (w.cls == 282 && !key_model_ready(w.param)) {
+        ++g_st.drop_class;
+        if (g_log) std::fprintf(stderr, "[coopspawn] key kind %u refused: its model is not loaded on this console (no boss here loaded it) wall=%lld\n", w.param & 7u, wall_ms());
+        return;
+    }
+    if (w.cls == 283 && g_lvl != 40) { ++g_st.drop_class; return; }           // the Grand Star only exists in Bowser's last arena
     if (ack_has(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     if (net_find(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
+    if (Net *o = reward_net(w.cls)) {
+        if (!o->remote && !o->alias) {            // my own native reward is out: the same reward, two ids
+            o->alias = true; o->alias_o = w.origin; o->alias_c = w.counter;
+            ++g_st.spawn_dup;
+            if (g_log) std::fprintf(stderr, "[coopspawn] reward: seat %d's announced cls=%d (id %d/%d) is my native copy's alias wall=%lld\n", seat, (int)w.cls, (int)w.origin, (int)w.counter, wall_ms());
+            return;
+        }
+    }
     Net *n = net_alloc();
     if (!n) { ++g_st.drop_full; return; }
     // the same thing already out here (spawned natively by a replayed event): adopt it, never double it
@@ -650,7 +701,7 @@ void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
         bool taken = false;
         for (const Net &o : g_net) if (o.used && o.a == a) taken = true;
         for (const Lnk &o : g_lnk) if (o.used && o.a == a) taken = true;
-        if (taken || !near_same(a, w)) continue;
+        if (taken || (w.cls != 282 && w.cls != 283 && !near_same(a, w))) continue;     // a boss reward: the native key of this console IS the reward, wherever it stands
         adopt = a; break;
     }
     char *a = adopt ? adopt : do_spawn(w);
@@ -927,6 +978,12 @@ void knob_forge(const char *name) {
     else if (!std::strcmp(name, "long")) { send_world(kSpWorldSpawn, b, 100); }
     else if (!std::strcmp(name, "key")) { s.key.act = (uint8_t)((g_act + 1) & 7); send_world(kSpWorldSpawn, &s, sizeof s); }
     else if (!std::strcmp(name, "badkey")) { s.cls = 282; s.counter = 9001; send_world(kSpWorldSpawn, &s, sizeof s); }       // a key in a course that has no key model
+    else if (!std::strcmp(name, "star9")) { s.param = 9; send_world(kSpWorldSpawn, &s, sizeof s); }                        // star number 9: not a star
+    else if (!std::strcmp(name, "star7")) { s.param = 7; s.counter = 9002; send_world(kSpWorldSpawn, &s, sizeof s); }      // star number 7: valid
+    else if (!std::strcmp(name, "grand")) { s.cls = 283; s.param = 7; s.counter = 9003; send_world(kSpWorldSpawn, &s, sizeof s); }   // the Grand Star: level 40 only
+    else if (!std::strcmp(name, "key2")) { s.cls = 282; s.param = 2; s.counter = 9004; send_world(kSpWorldSpawn, &s, sizeof s); }    // Goomboss's key: level 45 only
+    else if (!std::strcmp(name, "mips")) { s.cls = 229; s.param = 0; s.counter = 9006; send_world(kSpWorldSpawn, &s, sizeof s); }      // MIPS's object (item 12): announced like a key
+    else if (!std::strcmp(name, "key3")) { s.cls = 282; s.param = 3; s.counter = 9005; send_world(kSpWorldSpawn, &s, sizeof s); }    // Big Boo's key: level 47 only
     else if (!std::strcmp(name, "goodstar")) { send_world(kSpWorldSpawn, &s, sizeof s); }                 // valid: the control that the forge shape is right
     else if (!std::strcmp(name, "gone")) {
         SpGoneWire g; std::memset(&g, 0, sizeof g); g.key = wkey(); g.origin = 99; g.kind = kSpGoneAnn; g.id = 5;
