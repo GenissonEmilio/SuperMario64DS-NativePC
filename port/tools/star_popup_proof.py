@@ -80,6 +80,8 @@ def run_fake(row, kind, exits, lv, expect_exit, expect_land=None, hold=None):
     eb = base_extra(P.warp(300, lv))
     if hold:
         eb["SM64DS_STAR_POPUP_HOLD"] = hold
+    if lv != BOB:      # the arena opens with a message that waits for a button (the exit correctly waits for it): tap A
+        eb["SM64DS_HOST_PAD"] = ",".join("1000@%d" % x for x in range(420, 1100, 40))
     if os.environ.get("SP_STOP_B"):
         eb["SM64DS_STAR_POPUP_STOP"] = os.environ["SP_STOP_B"]
     r = P.room(row, [dict(frames=f, extra=ea), dict(frames=f, extra=eb)])
@@ -132,7 +134,7 @@ def row_pforge():
 
 
 P.ROWS.update(pstar=lambda: run_star("pstar"), pstar_off=lambda: run_star("pstar_off", True),
-              pkey=lambda: run_fake("pkey", 2, 1, 36, True, (2, 10)),
+              pkey=lambda: run_fake("pkey", 2, 1, BOB, True, (1, 13)),
               pnoexit=lambda: run_fake("pnoexit", 1, 0, BOB, False),
               phold=lambda: run_fake("phold", 1, 1, BOB, True, None, os.environ.get("SP_HOLD", "950:1200")),
               pforge=row_pforge)
