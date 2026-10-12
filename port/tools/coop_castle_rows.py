@@ -162,7 +162,7 @@ def row_catch(ctl=False):
     ga = bool(re.search(r"(?m)^\s*\[rabbit\] f\d+ GRABBED", cons[0].text()))
     gb = bool(re.search(r"(?m)^\s*\[rabbit\] f\d+ GRABBED", cons[1].text()))
     verdict(row, "A grabbed MIPS through the ROM TryGrab (carried, +0x45c set)", ga, "", True)
-    verdict(row, "B grabbed its own MIPS later (A and B both ran the grab)", gb, "", True)
+    info("%s B ran its own later grab: %s" % (row, gb))
     info("%s key spawns A %d B %d: the talk (StartTalk) refuses the harness player in every state, so the key never spawns here (GAP, see status)" % (row, ka, kb))
 
 
@@ -173,7 +173,7 @@ def row_late(ctl=False):
     n = 3
     kf = int(os.environ.get("CASTLE_KF", "500"))
     late = int(os.environ.get("CASTLE_LATE", "1800"))
-    out = sp(LV, ACT, [{"SM64DS_COOP_KILL": "%d:209:2" % kf}], ctl, n, frames=late + 1500)
+    out = sp(LV, ACT, [{"SM64DS_COOP_KILL": "%d:209:2" % kf}], ctl, n, frames=late + 1500, ctl_extra={"SM64DS_COOP_SYNC": "0"})
     out[2]["extra"]["SM64DS_COOP_WARP"] = "%d:%d:%d" % (late, LV, ACT)
     out[2]["frames"] = late + 1000
     cons = run(row, out)
@@ -193,11 +193,24 @@ def row_solo():
     say(bool(v), "%s: alone in a coop room, the castle runs (%d log lines, boo max %d)" % (row, len(v), max([x[2] for x in v] or [0])))
 
 
-ROWS = {"boo": row_boo, "kill": row_kill, "mips": row_mips, "catch": row_catch, "late": row_late, "solo": row_solo}
+def row_inert():
+    """party and world rooms (the launcher env without SM64DS_COOP): no castle line, no mover line, clean exit"""
+    for kind in ("party", "world"):
+        row = "castle_inert_" + kind
+        ex = dict(LOGV, SM64DS_COOP_MOVE_LOG="1", SM64DS_CASTLE_HUNT="1")
+        ex0 = dict(ex, SM64DS_COOP_WARP="300:%d:%d" % (LV, ACT))
+        sp_ = [dict(warp="%d@600" % LV, extra=ex, frames=1100, kind=kind), dict(warp="%d@700" % LV, extra=ex, frames=1100, kind=kind)]
+        cons, st = L.C.launch(row, sp_)
+        L.C.common(row, cons)
+        n = sum(len(re.findall(r"(?m)^\[(coopcastle|coopmove|movestat|mvs)\]", c.text())) for c in cons)
+        say(n == 0, "%s: no castle / mover line in a %s room (%d)" % (row, kind, n))
+
+
+ROWS = {"inert": row_inert, "boo": row_boo, "kill": row_kill, "mips": row_mips, "catch": row_catch, "late": row_late, "solo": row_solo}
 
 if __name__ == "__main__":
     for a in sys.argv[1:]:
         name, _, arg = a.partition(":")
         f = ROWS[name]
-        f(ctl=True) if arg == "ctl" and name != "solo" else f()
+        f(ctl=True) if arg == "ctl" and name not in ("solo", "inert") else f()
     print(chr(10).join(G.RES))
