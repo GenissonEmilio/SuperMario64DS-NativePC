@@ -107,14 +107,10 @@ struct Net {
     bool used, remote, gone;
     uint8_t origin, kind; uint16_t counter, cls; uint32_t param; int32_t pos[3]; int8_t area;
     char *a; unsigned uid; bool seen;
+    bool alias; uint8_t alias_o; uint16_t alias_c;      // bossfix1: the other console's id for the SAME boss reward (each console keeps its own native key)
     int sends; unsigned next; int gsends; unsigned gnext;
 };
 Net g_net[kNetMax];
-// bossfix1: a boss reward (key 282, Grand Star 283) spawned natively on a console that is NOT the boss's authority is removed quietly;
-// the authority's announcement brings the one reward. If it has not arrived 6 s later (the authority left), this console spawns
-// and announces its own, so the reward is never lost.
-struct PendReward { bool on; uint16_t cls; uint32_t param; int32_t pos[3]; int8_t area; unsigned t; };
-PendReward g_pend;
 bool key_model_ready(unsigned param);
 uint16_t g_counter = 0;
 struct Lnk { bool used, taken; char *a; unsigned uid; short mslot; int area; bool seen; int gsends; unsigned gnext; };
@@ -302,7 +298,7 @@ char *do_spawn(const SpSpawnWire &w) {
 // Announced actors.
 // ---------------------------------------------------------------------------
 Net *net_find(int origin, int counter) {
-    for (Net &n : g_net) if (n.used && n.origin == origin && n.counter == counter) return &n;
+    for (Net &n : g_net) if (n.used && ((n.origin == origin && n.counter == counter) || (n.alias && n.alias_o == origin && n.alias_c == counter))) return &n;
     return nullptr;
 }
 Net *net_alloc() {
@@ -311,28 +307,26 @@ Net *net_alloc() {
     return nullptr;
 }
 
-// bossfix1: ONE boss reward (key 282, Grand Star 283) per group. Two consoles can each make a reward natively (their copies of the boss end
-// at their own pace) and the boss-authority suppression can disagree between consoles for a moment; whichever way it falls out, the reward
-// with the LOWER origin seat wins and the other is removed quietly, so every console ends with exactly one.
+// bossfix1: ONE boss reward (key 282, Grand Star 283) per group. A key can only be built where its model is loaded, and the model belongs
+// to the boss on that console (Chief Chilly / Goomboss load it in InitResources, it goes with them), so a console cannot take a key built
+// elsewhere once its own boss is gone. Every console therefore keeps the key its own boss makes, and the two ids are made ALIASES of one
+// reward: a take on either console sends the id it knows, and the other console finds its key through the alias. A console whose boss
+// was not finished when the announced key arrived builds the announced one (its boss still has the model) and removes the native one it
+// makes later.
 Net *reward_net(int cls) {
-    if (cls != 282 && cls != 283) return nullptr;
+    static const bool off = [] { const char *e = std::getenv("SM64DS_COOP_REWARD"); return e && *e == '0'; }();     // must-fail control: every reward is its own
+    if (off || (cls != 282 && cls != 283)) return nullptr;
     for (Net &n : g_net) if (n.used && !n.gone && n.cls == cls) return &n;
     return nullptr;
-}
-void drop_net_quiet(Net &n) {
-    if (n.a && n.seen) kill_quiet(n.a);
-    n.gone = true; n.gsends = 3;                // silent: nobody is told this id is gone
 }
 
 bool register_local(char *a, int cls, unsigned param, const int pos[3], int area) {
     if (Net *o = reward_net(cls)) {
-        if (o->origin < g_my) {                  // theirs wins: this native one goes
+        if (o->remote) {                          // the announced copy is already here: it stands, this native one goes
             if (a) kill_quiet(a);
-            if (g_log) std::fprintf(stderr, "[coopspawn] reward dedupe: my native cls=%d removed, seat %d's copy stands wall=%lld\n", cls, (int)o->origin, wall_ms());
+            if (g_log) std::fprintf(stderr, "[coopspawn] reward: seat %d's announced cls=%d is already here, my native copy removed wall=%lld\n", (int)o->origin, cls, wall_ms());
             return false;
         }
-        drop_net_quiet(*o);                      // mine wins: the other copy goes
-        if (g_log) std::fprintf(stderr, "[coopspawn] reward dedupe: seat %d's copy of cls=%d removed, mine stands wall=%lld\n", (int)o->origin, cls, wall_ms());
     }
     Net *n = net_alloc();
     if (!n) { ++g_st.drop_full; return false; }
@@ -557,17 +551,6 @@ void scan(unsigned now) {
                         }
                     } else if ((cls == 276 || cls == 277) && born_at_hit_block(a, blk_pos, nblk)) {
                         // a block's own prize: per player, not announced
-                    } else if ((cls == 282 || cls == 283) && coop_boss_reward_not_mine()) {
-                        // the boss's authority is another console: its announced reward is the one
-                        const int *p = (const int *)(a + 0x5c);
-                        if (!g_pend.on) {
-                            g_pend.on = true; g_pend.cls = (uint16_t)cls; g_pend.param = a_param(a);
-                            g_pend.pos[0] = p[0]; g_pend.pos[1] = p[1]; g_pend.pos[2] = p[2]; g_pend.area = (int8_t)a_area(a); g_pend.t = now;
-                        }
-                        kill_quiet(a);
-                        if (g_log)
-                            std::fprintf(stderr, "[coopspawn] boss reward suppressed cls=%u pos=%d,%d,%d (not this console's boss; the authority announces) frame=%u wall=%lld\n",
-                                         cls, p[0] >> 12, p[1] >> 12, p[2] >> 12, g_frames, wall_ms());
                     } else {
                         const int *p = (const int *)(a + 0x5c);
                         const int pos[3] = {p[0], p[1], p[2]};
@@ -626,20 +609,6 @@ void scan(unsigned now) {
         g_red_prev = red_sum();
     }
     if (g_census_on && maxuid > g_wm) g_wm = maxuid;
-    if (g_pend.on && (unsigned)(now - g_pend.t) >= 6000u) {
-        bool have = false;
-        for (const Net &n : g_net) if (n.used && !n.gone && n.cls == g_pend.cls) have = true;
-        for (const Net &n : g_net) if (n.used && n.gone && n.cls == g_pend.cls && n.remote) have = true;     // it came and was already taken
-        const PendReward pr = g_pend; g_pend.on = false;
-        if (!have && pr.cls == 282 && !key_model_ready(pr.param)) {
-            if (g_log) std::fprintf(stderr, "[coopspawn] boss reward fallback skipped: the key model is not loaded here wall=%lld\n", wall_ms());
-        } else if (!have) {
-            const int pos[3] = {pr.pos[0], pr.pos[1], pr.pos[2]};
-            char *a = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(pr.cls, pr.param, pos, nullptr, pr.area, -1);
-            if (a) { register_local(a, pr.cls, pr.param, pos, pr.area); if (a_uid(a) > g_wm) g_wm = a_uid(a); }
-            if (g_log) std::fprintf(stderr, "[coopspawn] boss reward fallback: no announced copy of cls=%u in 6 s, spawned my own (%s) wall=%lld\n", (unsigned)pr.cls, a ? "ok" : "failed", wall_ms());
-        } else if (g_log) std::fprintf(stderr, "[coopspawn] boss reward: the authority's copy of cls=%u arrived, mine stays removed wall=%lld\n", (unsigned)pr.cls, wall_ms());
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -715,9 +684,12 @@ void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
     if (ack_has(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     if (net_find(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     if (Net *o = reward_net(w.cls)) {
-        if (w.origin > o->origin) { ack_add(w.origin, w.counter, now); ++g_st.spawn_dup; if (g_log) std::fprintf(stderr, "[coopspawn] reward dedupe: seat %d's copy of cls=%d ignored, seat %d's stands wall=%lld\n", (int)w.origin, (int)w.cls, (int)o->origin, wall_ms()); return; }
-        if (g_log) std::fprintf(stderr, "[coopspawn] reward dedupe: my copy of cls=%d (seat %d) removed, seat %d's stands wall=%lld\n", (int)w.cls, (int)o->origin, (int)w.origin, wall_ms());
-        drop_net_quiet(*o);
+        if (!o->remote && !o->alias) {            // my own native reward is out: the same reward, two ids
+            o->alias = true; o->alias_o = w.origin; o->alias_c = w.counter;
+            ++g_st.spawn_dup;
+            if (g_log) std::fprintf(stderr, "[coopspawn] reward: seat %d's announced cls=%d (id %d/%d) is my native copy's alias wall=%lld\n", seat, (int)w.cls, (int)w.origin, (int)w.counter, wall_ms());
+            return;
+        }
     }
     Net *n = net_alloc();
     if (!n) { ++g_st.drop_full; return; }
@@ -1040,7 +1012,6 @@ void new_level() {
     std::memset(g_bo, 0, sizeof g_bo);
     std::memset(g_lastbseq, 0, sizeof g_lastbseq);
     std::memset(g_net, 0, sizeof g_net);
-    std::memset(&g_pend, 0, sizeof g_pend);
     std::memset(g_lnk, 0, sizeof g_lnk);
     std::memset(g_lnk_gone, 0, sizeof g_lnk_gone);
     std::memset(g_ack, 0, sizeof g_ack);
