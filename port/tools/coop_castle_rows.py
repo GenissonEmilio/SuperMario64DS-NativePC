@@ -206,7 +206,18 @@ def row_inert():
         say(n == 0, "%s: no castle / mover line in a %s room (%d)" % (row, kind, n))
 
 
-ROWS = {"inert": row_inert, "boo": row_boo, "kill": row_kill, "mips": row_mips, "catch": row_catch, "late": row_late, "solo": row_solo}
+def row_pic():
+    """two consoles put 250 units from the same Boo, facing away from it, short run so the end screenshot is the live course"""
+    row = "castle_pic"
+    chase = os.environ.get("CASTLE_PICCHASE", "450:2000:209:250")
+    fr = int(os.environ.get("CASTLE_PICFR", "1100"))
+    cons = run(row, sp(LV, ACT, [{"SM64DS_CASTLE_CHASE": chase}, {"SM64DS_CASTLE_CHASE": chase}], False, 2, frames=fr))
+    for j, c in enumerate(cons):
+        v = cc(c.text())
+        info("%s %s last line: %s" % (row, NAMES[j], v[-1] if v else None))
+
+
+ROWS = {"pic": row_pic, "inert": row_inert, "boo": row_boo, "kill": row_kill, "mips": row_mips, "catch": row_catch, "late": row_late, "solo": row_solo}
 
 if __name__ == "__main__":
     for a in sys.argv[1:]:
