@@ -90,6 +90,7 @@
 #include "vs_palette_gen.h"
 #include "vs_char_palette_gen.h"
 #include "vs_char_groups.h"
+#include "mods.h"
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -1427,6 +1428,19 @@ int g_pal_state;        /* 0 not tried, 1 loaded, -1 absent or refused */
 FILE *palette_open_named(const char *base, char *shown, size_t cap)
 {
     char path[1024];
+    /* ENABLED MODS FIRST (run mods1, MODFILES1): <mod>/palettes/<name>.pal,
+       the latest mod in EnabledMods first, then the usual places below. A mod
+       that ships a palette under a name the player has chosen in the settings
+       is the player's own choice of that mod, so it outranks the copy in the
+       bundle's palettes/ folder. */
+    for (int m = port_mods_count() - 1; m >= 0; --m) {
+        snprintf(path, sizeof path, "%s/palettes/%s.pal", port_mods_folder(m), base);
+        FILE *f = fopen(path, "rb");
+        if (f) {
+            snprintf(shown, cap, "%s", path);
+            return f;
+        }
+    }
 #ifdef _WIN32
     {
         char exe[MAX_PATH];
@@ -1940,7 +1954,7 @@ void pc_load(void)
         }
         f = palette_open_named(v, shown, sizeof shown);
         if (!f) {
-            fprintf(stderr, "[mods] %s %s: no palettes/%s.pal beside the "
+            fprintf(stderr, "[mods] %s %s: no palettes/%s.pal in an enabled mod, beside the "
                             "exe, the asset root, or the working directory; "
                             "%s keeps the ROM's colors\n",
                     PC_KEY[c], v, v, PC_WHO[c]);

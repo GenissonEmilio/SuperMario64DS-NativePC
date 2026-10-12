@@ -475,3 +475,12 @@ today's code and not a guarantee.
   * The exe's own FATAL text still tells a player to "run tools/asset_catalog
     .py generate <rom>". With the extractor fixed, no player should reach that
     message -- but if one does, it is still advice they cannot act on.
+
+MODS (run mods1): THE KIT MUST SHIP walk_window.symtab BESIDE THE EXE
+The code-mod plugin loader (hal/mod_plugins.cpp) resolves game symbols for
+plugins from walk_window.symtab, written next to walk_window.exe after every
+build by port/tools/mk_symtab.py. The packaged kit has to carry that file in the
+same folder as the exe. Without it the loader falls back to parsing
+walk_window.map, which a kit does not ship, so plugins would see no symbols (one
+log line says so). Regenerate it from the shipped exe's own /MAP, never reuse an
+old one: a stale table points plugins at the wrong addresses.

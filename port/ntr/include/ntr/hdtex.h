@@ -56,6 +56,14 @@ namespace ntr {
 // business rather than an assumption about the caller's storage.
 void hdtex_configure(int enabled, const char *pack_dir);
 
+// THE MODS HOOK (run mods1). Null unless hal/mods.cpp is linked (the two game
+// targets); the ntr libraries link no hal code, so the mods list reaches this
+// file through a pointer. hdtex_configure asks it for i = 0, 1, 2 ... until it
+// returns 0; each answer is a mod's textures_hd directory, highest priority
+// (the latest mod in EnabledMods) first. They are searched before the main
+// pack, which stays the last fallback.
+extern int (*hdtex_mod_dir_hook)(int i, char *out, unsigned cap);
+
 // What hdtex_configure was told. Unchanged from the seam's contract.
 int hdtex_enabled(void);
 const char *hdtex_pack_dir(void);
