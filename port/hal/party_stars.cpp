@@ -10,6 +10,7 @@
 // SaveData::SaveCurrentFile.
 
 #include "party_stars.h"
+#include "star_popup.h"
 
 #include "comms_hub.h"
 #include "hub_presence.h"
@@ -316,6 +317,7 @@ void refresh_seat(int seat, unsigned now) {
 }
 
 void on_star(int seat, const unsigned char *d, int len, void *) {
+    if (star_popup_party_rx(seat, d, len)) return;     // STARPOP1: a popup event, not a star to save
     ++g.st.recv;
     int course = -1, star = -1;
     PsDrop r = kPsOk;

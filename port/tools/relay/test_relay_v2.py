@@ -1102,7 +1102,7 @@ def u_party_coop_kinds(mod):
     drop_case("SYNX course 255", pa, pstar(course=255), b"SYNX")
     drop_case("SYNX star 8", pa, pstar(star=8), b"SYNX")
     drop_case("SYNX star 255", pa, pstar(star=255), b"SYNX")
-    drop_case("SYNX reserved 1", pa, pstar(reserved=1), b"SYNX")
+    drop_case("SYNX reserved 8", pa, pstar(reserved=8), b"SYNX")      # 1..7 = popup event (STARPOP1), 8+ dropped
     drop_case("SYNX reserved 0x100", pa, pstar(reserved=0x100), b"SYNX")
     drop_case("SYNX version 2", pa, pstar(ver=2), b"SYNX")
     drop_case("SYNH victim 4", pa, phit(4), b"SYNH")
@@ -1294,7 +1294,7 @@ def u_party_coop_fuzz(mod, rounds=40000):
                     or struct.unpack("<H", d[10:12])[0] != len(d) - 12):
                 bad.append("coop head not checked")
             if t == b"SYNX" and (d[4] != 1 or d[6] > 29 or d[7] > 7
-                                 or d[8] or d[9]):
+                                 or d[8] & ~7 or d[9]):
                 bad.append("SYNX fields not checked")
             if t == b"SYNL" and (d[10] > 3 or d[11] & ~0x1F or d[4] != 1):
                 bad.append("SYNL fields not checked")

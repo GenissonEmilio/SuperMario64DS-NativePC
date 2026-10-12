@@ -636,6 +636,8 @@ int port_coop_boot_scene_frame(void);
 int port_coop_boot_frame(void);
 /* run mp1 lane COOPWORLD1: the coop world core (hal/coop_world.cpp). */
 void port_coop_world_frame(void);
+void port_star_popup_frame(void);
+int port_star_popup_stop_now(void);   /* run mp1 lane STARPOP1 (hal/star_popup.cpp) */
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
 extern char data_0209f4a0[];
@@ -4101,6 +4103,7 @@ static void chat_draw(const OvlSurface &fb)
    chat's glyphs above, so it comes in here; drawn next to the chat below. */
 #include "hal/net_hud.h"
 #include "hal/player_list_paint.h"   /* run mp1 PLIST1: party / coop player list */
+#include "hal/star_popup_paint.h"   /* run mp1 lane STARPOP1 */
 
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
    1-second exponential average, so the numbers are readable instead of
@@ -5064,6 +5067,7 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
     if (!rb_skip_render()) player_list_draw(surf);   /* under the chat: a long chat burst wins the pixels */
     if (!rb_skip_render()) chat_draw(surf);
     if (!rb_skip_render()) net_hud_draw(surf);
+    if (!rb_skip_render()) star_popup_draw(surf);
 }
 
 /* The pad's half of the chat box: while the player is typing the controller
@@ -18185,6 +18189,7 @@ int main(void)
         port_coop_save_frame();
         port_coop_world_frame();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
         port_party_stars_frame();
+        port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
            Reads the render pass's own per-slot record (set just below in the
@@ -20734,6 +20739,7 @@ int main(void)
                 }
             }
         }
+        if (selftest && port_star_popup_stop_now()) stop_round_hit = 1;   /* hook: STARPOP1 picture knob */
         if (selftest &&
             (port_rom_frame_checked(frame, "selftest-exit") >= selftest ||
              stop_round_hit)) {

@@ -278,7 +278,7 @@ def party_field_ok(tag, data, seat):
         return data[10] <= 3 and (data[11] & ~PRES_FLAGS_MASK) == 0
     if tag == b"SYNX":
         return (data[6] < PARTY_COURSES and data[7] < PARTY_STARS
-                and data[8] == 0 and data[9] == 0)
+                and (data[8] & ~7) == 0 and data[9] == 0)   # 0 star to save; 1..7 popup event (STARPOP1)
     if tag == b"SYNH":
         return (data[6] < PARTY_SEATS and data[6] != seat
                 and data[7] < HIT_KINDS)
