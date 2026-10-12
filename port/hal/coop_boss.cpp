@@ -837,7 +837,7 @@ void process(unsigned now) {
         }
         const int auth = auth_for(slot, wnow);
         const bool mine = auth == g_my;
-        g_recent_t = wnow | 1u; g_recent_mine = mine;
+        g_recent_t = wnow ? wnow : 1u; g_recent_mine = mine;
         b.mine_last = mine;
         // a hit that landed on my copy: HP below what was last synced
         const int hp = hp_of(b);
@@ -1249,7 +1249,7 @@ bool coop_boss_reward_not_mine() {
         if (g_log) std::fprintf(stderr, "[cbs] reward decision: no (off=%d on=%d world=%d est=%d recent=%u)\n", (int)off, (int)g_on, (int)coop_world_active(), (int)coop_group_established(), g_recent_t);
         return false;
     }
-    const bool r = (unsigned)(comms_hub_now_ms() - g_recent_t) < 4000u && !g_recent_mine;
+    const bool r = (int)(comms_hub_now_ms() - g_recent_t) < 4000 && !g_recent_mine;
     if (g_log) std::fprintf(stderr, "[cbs] reward decision: not mine=%d (boss seen %u ms ago, mine=%d)\n", (int)r, (unsigned)(comms_hub_now_ms() - g_recent_t), (int)g_recent_mine);
     return r;
 }
