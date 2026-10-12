@@ -4091,6 +4091,7 @@ static void chat_draw(const OvlSurface &fb)
 /* THE ONLINE PING READOUT (run mp1, lane PINGHUD1): its painter draws with the
    chat's glyphs above, so it comes in here; drawn next to the chat below. */
 #include "hal/net_hud.h"
+#include "hal/player_list_paint.h"   /* run mp1 PLIST1: party / coop player list */
 
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
    1-second exponential average, so the numbers are readable instead of
@@ -5051,6 +5052,7 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
                     *(const int *)(p + 0x5c), *(const int *)(p + 0x60),
                     *(const int *)(p + 0x64), typing);
     }
+    if (!rb_skip_render()) player_list_draw(surf);   /* under the chat: a long chat burst wins the pixels */
     if (!rb_skip_render()) chat_draw(surf);
     if (!rb_skip_render()) net_hud_draw(surf);
 }
@@ -10882,6 +10884,7 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
         g_mouse_click_x = cx;
         g_mouse_click_y = cy;
         g_mouse_click_new = 1;
+        if (port::player_list_click(cx, cy)) g_mouse_click_new = 0;   /* PLIST1: a coop list row takes it */
         fprintf(stderr, "[mouse] click %d,%d fb\n", cx, cy);
         return 0;
     }
