@@ -88,8 +88,7 @@ void shove_all(unsigned cls, int dx) {
         std::memcpy(a + 0x5c, &nx, 4);
         ++n;
     }
-    std::fprintf(stderr, "[coopcastle-knob] shove class=%u dx=%d moved=%d wall=%lld
-", cls, dx, n, wall_ms());
+    std::fprintf(stderr, "[coopcastle-knob] shove class=%u dx=%d moved=%d wall=%lld\n", cls, dx, n, wall_ms());
 }
 
 void on_latched(int, int) { g_established = false; g_frames = 0; g_shove_done = g_shove_cls == 0; g_prev_keys = 0; }
