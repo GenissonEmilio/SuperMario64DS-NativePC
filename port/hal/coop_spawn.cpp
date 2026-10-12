@@ -111,7 +111,7 @@ struct Net {
 };
 Net g_net[kNetMax];
 // bossfix1: a boss reward (key 282, Grand Star 283) spawned natively on a console that is NOT the boss's authority is removed quietly;
-// the authority's announcement brings the one reward. If it has not arrived 45 s later (the authority left), this console spawns
+// the authority's announcement brings the one reward. If it has not arrived 6 s later (the authority left), this console spawns
 // and announces its own, so the reward is never lost.
 struct PendReward { bool on; uint16_t cls; uint32_t param; int32_t pos[3]; int8_t area; unsigned t; };
 PendReward g_pend;
@@ -311,7 +311,29 @@ Net *net_alloc() {
     return nullptr;
 }
 
+// bossfix1: ONE boss reward (key 282, Grand Star 283) per group. Two consoles can each make a reward natively (their copies of the boss end
+// at their own pace) and the boss-authority suppression can disagree between consoles for a moment; whichever way it falls out, the reward
+// with the LOWER origin seat wins and the other is removed quietly, so every console ends with exactly one.
+Net *reward_net(int cls) {
+    if (cls != 282 && cls != 283) return nullptr;
+    for (Net &n : g_net) if (n.used && !n.gone && n.cls == cls) return &n;
+    return nullptr;
+}
+void drop_net_quiet(Net &n) {
+    if (n.a && n.seen) kill_quiet(n.a);
+    n.gone = true; n.gsends = 3;                // silent: nobody is told this id is gone
+}
+
 bool register_local(char *a, int cls, unsigned param, const int pos[3], int area) {
+    if (Net *o = reward_net(cls)) {
+        if (o->origin < g_my) {                  // theirs wins: this native one goes
+            if (a) kill_quiet(a);
+            if (g_log) std::fprintf(stderr, "[coopspawn] reward dedupe: my native cls=%d removed, seat %d's copy stands wall=%lld\n", cls, (int)o->origin, wall_ms());
+            return false;
+        }
+        drop_net_quiet(*o);                      // mine wins: the other copy goes
+        if (g_log) std::fprintf(stderr, "[coopspawn] reward dedupe: seat %d's copy of cls=%d removed, mine stands wall=%lld\n", (int)o->origin, cls, wall_ms());
+    }
     Net *n = net_alloc();
     if (!n) { ++g_st.drop_full; return false; }
     ++g_counter; if (!g_counter) g_counter = 1;
@@ -604,7 +626,7 @@ void scan(unsigned now) {
         g_red_prev = red_sum();
     }
     if (g_census_on && maxuid > g_wm) g_wm = maxuid;
-    if (g_pend.on && (unsigned)(now - g_pend.t) >= 45000u) {
+    if (g_pend.on && (unsigned)(now - g_pend.t) >= 6000u) {
         bool have = false;
         for (const Net &n : g_net) if (n.used && !n.gone && n.cls == g_pend.cls) have = true;
         for (const Net &n : g_net) if (n.used && n.gone && n.cls == g_pend.cls && n.remote) have = true;     // it came and was already taken
@@ -615,7 +637,7 @@ void scan(unsigned now) {
             const int pos[3] = {pr.pos[0], pr.pos[1], pr.pos[2]};
             char *a = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(pr.cls, pr.param, pos, nullptr, pr.area, -1);
             if (a) { register_local(a, pr.cls, pr.param, pos, pr.area); if (a_uid(a) > g_wm) g_wm = a_uid(a); }
-            if (g_log) std::fprintf(stderr, "[coopspawn] boss reward fallback: no announced copy of cls=%u in 45 s, spawned my own (%s) wall=%lld\n", (unsigned)pr.cls, a ? "ok" : "failed", wall_ms());
+            if (g_log) std::fprintf(stderr, "[coopspawn] boss reward fallback: no announced copy of cls=%u in 6 s, spawned my own (%s) wall=%lld\n", (unsigned)pr.cls, a ? "ok" : "failed", wall_ms());
         } else if (g_log) std::fprintf(stderr, "[coopspawn] boss reward: the authority's copy of cls=%u arrived, mine stays removed wall=%lld\n", (unsigned)pr.cls, wall_ms());
     }
 }
@@ -692,6 +714,11 @@ void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
     if (w.cls == 283 && g_lvl != 40) { ++g_st.drop_class; return; }           // the Grand Star only exists in Bowser's last arena
     if (ack_has(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
     if (net_find(w.origin, w.counter)) { ++g_st.spawn_dup; return; }
+    if (Net *o = reward_net(w.cls)) {
+        if (w.origin > o->origin) { ack_add(w.origin, w.counter, now); ++g_st.spawn_dup; if (g_log) std::fprintf(stderr, "[coopspawn] reward dedupe: seat %d's copy of cls=%d ignored, seat %d's stands wall=%lld\n", (int)w.origin, (int)w.cls, (int)o->origin, wall_ms()); return; }
+        if (g_log) std::fprintf(stderr, "[coopspawn] reward dedupe: my copy of cls=%d (seat %d) removed, seat %d's stands wall=%lld\n", (int)w.cls, (int)o->origin, (int)w.origin, wall_ms());
+        drop_net_quiet(*o);
+    }
     Net *n = net_alloc();
     if (!n) { ++g_st.drop_full; return; }
     // the same thing already out here (spawned natively by a replayed event): adopt it, never double it
