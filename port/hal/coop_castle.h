@@ -16,6 +16,7 @@
 //   SM64DS_COOP_CASTLE_LOG=1       [coopcastle] lines, one per second
 //   SM64DS_CASTLE_HUNT=1           set the save bit that wakes the rabbits (data_0209caa0[2] & 0x20000), as the LakituBro intro does
 //   SM64DS_CASTLE_CHASE=F:N[:cls[:d]]  from group frame F for N frames keep the local player d (150) units from the nearest MIPS (cls 187) or Boo (209)
+//   SM64DS_CASTLE_SHOVE=F:cls:dx   at group frame F add dx units to x of every live Boo (209) / MIPS (187): a stand-in for a mover moving
 //   (catching uses the existing SM64DS_RABBIT_TRIGGER=<frame> stand-in for the grab cylinder, hal/input_probe.cpp)
 
 #ifndef PORT_HAL_COOP_CASTLE_H

@@ -92,7 +92,7 @@ def row_boo(ctl=False):
     row = "castle_boo" + ("_ctl" if ctl else "")
     n = 3
     chase = os.environ.get("CASTLE_BOOCHASE", "500:1500:209:300")
-    cons = run(row, sp(LV, ACT, [{"SM64DS_CASTLE_CHASE": chase}], ctl, n))
+    cons = run(row, sp(LV, ACT, [{"SM64DS_CASTLE_CHASE": chase, "SM64DS_CASTLE_SHOVE": os.environ.get("CASTLE_SHOVE", "1200:209:600")}], ctl, n))
     for j, c in enumerate(cons):
         v = cc(c.text())
         info("%s %s boo counts seen: %s" % (row, NAMES[j], sorted(set(x[2] for x in v))))

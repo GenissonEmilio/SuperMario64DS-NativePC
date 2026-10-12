@@ -6,6 +6,7 @@
 
 #include <windows.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -23,6 +24,7 @@ namespace {
 enum : unsigned { kClsBoo = 209, kClsMip = 187, kClsMipKey = 229 };
 
 bool g_env = false, g_log = false, g_hunt = false;
+unsigned g_shove_f = 0, g_shove_cls = 0; int g_shove_dx = 0; bool g_shove_done = true;
 unsigned g_chase_f = 0, g_chase_n = 0, g_chase_cls = kClsMip, g_chase_d = 150;
 bool g_established = false;
 unsigned g_frames = 0;
@@ -41,6 +43,12 @@ void read_env() {
     g_log = l && *l && *l != '0';
     const char *h = std::getenv("SM64DS_CASTLE_HUNT");
     g_hunt = h && *h && *h != '0';
+    if (const char *sh = std::getenv("SM64DS_CASTLE_SHOVE")) {
+        unsigned f = 0, cl = 0; int dx = 0;
+        if (std::sscanf(sh, "%u:%u:%d", &f, &cl, &dx) == 3 && (cl == kClsMip || cl == kClsBoo) && dx >= -3000 && dx <= 3000) {
+            g_shove_f = f; g_shove_cls = cl; g_shove_dx = dx; g_shove_done = false;
+        }
+    }
     if (const char *c = std::getenv("SM64DS_CASTLE_CHASE")) {
         unsigned f = 0, n = 0, cl = kClsMip, d = 150;
         if (std::sscanf(c, "%u:%u:%u:%u", &f, &n, &cl, &d) >= 2) {
@@ -70,7 +78,19 @@ char *nearest_cls(const char *pl, unsigned cls) {
     return best;
 }
 
-void on_latched(int, int) { g_established = false; g_frames = 0; g_prev_keys = 0; }
+void shove_all(unsigned cls, int dx) {
+    int n = 0;
+    for (char *a = (char *)_ZN8dActor_c4NextEPKS_(nullptr); a; a = (char *)_ZN8dActor_c4NextEPKS_(a)) {
+        if (*(const unsigned short *)(a + 0x0c) != cls || is_player(a) || !live(a)) continue;
+        const int nx = rd32(a, 0x5c) + (dx << 12);
+        std::memcpy(a + 0x5c, &nx, 4);
+        ++n;
+    }
+    std::fprintf(stderr, "[coopcastle-knob] shove class=%u dx=%d moved=%d wall=%lld
+", cls, dx, n, wall_ms());
+}
+
+void on_latched(int, int) { g_established = false; g_frames = 0; g_shove_done = g_shove_cls == 0; g_prev_keys = 0; }
 void on_established(int, int) { g_established = true; g_frames = 0; }
 
 void on_frame(unsigned) {
@@ -90,9 +110,16 @@ void on_frame(unsigned) {
             std::memcpy(pl + 0x5c, &nx, 4);
             const int ny = rd32(m, 0x60), nz = rd32(m, 0x64);
             std::memcpy(pl + 0x60, &ny, 4); std::memcpy(pl + 0x64, &nz, 4);
+            if (g_chase_cls == kClsBoo) {     // a shy Boo creeps up on a player who looks away: face away from it
+                const double ddx = (rd32(m, 0x5c) - nx) / 4096.0, ddz = (rd32(m, 0x64) - nz) / 4096.0;
+                const int away = ((int)std::lround(std::atan2(ddx, ddz) * 32768.0 / 3.14159265358979) + 0x8000) & 0xffff;
+                const short ya = (short)away;
+                std::memcpy(pl + 0x8e, &ya, 2); std::memcpy(pl + 0x94, &ya, 2);
+            }
             ++g_st.chase_moves;
         }
     }
+    if (!g_shove_done && g_frames >= g_shove_f) { g_shove_done = true; shove_all(g_shove_cls, g_shove_dx); }
     if ((g_frames % 60u) != 0) return;
     int boo = 0, mip = 0, keys = 0;
     char *b0 = nullptr, *m0 = nullptr;
