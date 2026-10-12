@@ -3640,6 +3640,111 @@ extern "C" const char *host_setting_hd_textures_dir(void)
     return dir;
 }
 
+/* ---- the mods list (run mods1, lane MODFILES1) ---------------------------
+   settings.json gains "EnabledMods": ["a", "b"], the ids of the installed mods
+   that are switched on, in priority order (a later id wins over an earlier
+   one). hal/mods.cpp owns what the ids MEAN; this file only owns how
+   settings.json is found and scanned, so the list is read by the same scanner
+   and from the same file as every other key. Boot-latched there, not here.
+
+   json_value (above) cannot tell a top-level key from one nested under another
+   object: it steps through every string in the text. So the EnabledMods key is
+   found by top_level_value below, which tracks bracket depth and accepts the
+   key only at depth 1 of the settings object. The other keys keep json_value.
+
+   bundle  gets the folder settings.json was found in (the folder holding the
+           exe, the launcher and mods/), or, when there is no settings file,
+           SM64DS_ASSET_ROOT, or "." as the last resort, the same three
+           places the other bundle folders (palettes/, textures_hd/) are found.
+   arr     gets the raw text of the EnabledMods array ("[...]"), or an empty
+           string when the key is absent or is not an array.
+   Returns 1 when an array was there, 0 when not, and -1 when the array is
+   longer than arr can hold (arr is then empty). */
+static const char *top_level_value(const char *s, const char *key)
+{
+    const size_t klen = strlen(key);
+    int depth = 0;
+    for (const char *p = s; *p; ++p) {
+        if (*p == '{' || *p == '[') { ++depth; continue; }
+        if (*p == '}' || *p == ']') { --depth; continue; }
+        if (*p != '"') continue;
+        const char *name = p + 1;
+        const char *end = name;
+        while (*end && *end != '"') end += (*end == '\\' && end[1]) ? 2 : 1;
+        if (*end != '"') return 0;
+        p = end;
+        if (depth != 1) continue;
+        const char *q = end + 1;
+        while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') ++q;
+        if (*q != ':') continue;
+        if ((size_t)(end - name) == klen && ieq(name, key, klen)) {
+            ++q;
+            while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') ++q;
+            return q;
+        }
+    }
+    return 0;
+}
+
+extern "C" int host_setting_enabled_mods(char *bundle, size_t bcap,
+                                         char *arr, size_t acap)
+{
+    char path[1024];
+    int have = 0;
+    if (!bcap || !acap) return 0;
+    bundle[0] = '\0';
+    arr[0] = '\0';
+    if (find_settings(path, sizeof path)) {
+        char *slash = strrchr(path, '\\');
+        char *fwd = strrchr(path, '/');
+        if (fwd && (!slash || fwd > slash)) slash = fwd;
+        if (slash) {
+            *slash = '\0';
+            snprintf(bundle, bcap, "%s", path);
+            *slash = '/';
+        } else {
+            snprintf(bundle, bcap, ".");
+        }
+        have = 1;
+    } else {
+        const char *root = getenv("SM64DS_ASSET_ROOT");
+        snprintf(bundle, bcap, "%s", root && *root ? root : ".");
+    }
+    if (have) {
+        char *text = slurp(path);
+        if (text) {
+            if (looks_like_json_object(text)) {
+                const char *v = top_level_value(text, "EnabledMods");
+                if (v && *v == '[') {
+                    const char *e = json_value_end(v);
+                    if ((size_t)(e - v) < acap) {
+                        memcpy(arr, v, (size_t)(e - v));
+                        arr[e - v] = '\0';
+                        free(text);
+                        return 1;
+                    }
+                    free(text);
+                    return -1;
+                }
+            }
+            free(text);
+        }
+    }
+    return 0;
+}
+
+/* The same scanner for a mod's own mod.json: 1 when `text` is a JSON object,
+   and one string-or-scalar value by key (json_str's contract). */
+extern "C" int host_json_is_object(const char *text)
+{
+    return text && looks_like_json_object(text);
+}
+extern "C" int host_json_string(const char *text, const char *key, char *out,
+                                size_t cap)
+{
+    return text && json_str(text, key, out, cap);
+}
+
 /* WHERE THE IMPROVED MAP'S PANEL ARTWORK WOULD BE READ FROM, whether or not
    anything is there. Exactly the shape host_setting_hd_textures_dir has above,
    and for the same reason: an asset folder beside the game data, named here so

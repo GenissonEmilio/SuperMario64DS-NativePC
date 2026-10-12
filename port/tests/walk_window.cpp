@@ -1813,6 +1813,7 @@ void port_actor_scene_pass(void);    /* phase 1: scene-tree housekeeping */
 void port_actor_frame(int level_camera);
 void port_actor_frame_begin(void);
 void port_actor_frame_end(int frame, const char *loop);
+void port_mod_plugins_load(void);   /* hal/mod_plugins.cpp */
 int port_actor_frame_split_forced(void);
 /* the host rig's seat on Camera::Render's face (hal/camera_bridges.cpp) */
 extern void (*port_level_camera_render_hook)(void *cam);
@@ -6257,6 +6258,46 @@ static int port_menu_relaunch_vs(int vs_map)
     CloseHandle(pi.hProcess);
     return 1;
 }
+
+/* MODS ARE OFF IN EVERY MULTIPLAYER MODE (Tango 10-09), and the local VS lobby
+   (scene 6, reached from the title) is one. The mod list is latched at boot and
+   cannot be unloaded, so a process running mods relaunches itself on the same
+   lobby scene with the SM64DS_MODS=0 kill switch and quits. Called by
+   hal/scene_vs_menu.cpp's port_vs_spawn only while mods are on; the child has
+   none on, so this runs at most once. If the relaunch fails the lobby stays up
+   with mods on and a log line says so. */
+extern "C" int (*port_vs_lobby_mods_hook)(void);
+static int port_vs_lobby_mods_relaunch(void)
+{
+    char exe[MAX_PATH];
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    if (!GetModuleFileNameA(0, exe, (DWORD)sizeof exe))
+        return 0;
+    for (unsigned i = 0; i < sizeof PORT_RELAUNCH_CLEAR /
+                             sizeof *PORT_RELAUNCH_CLEAR; ++i)
+        SetEnvironmentVariableA(PORT_RELAUNCH_CLEAR[i], 0);
+    SetEnvironmentVariableA("SM64DS_LEVEL", 0);
+    SetEnvironmentVariableA("SM64DS_VS_MAP", 0);
+    SetEnvironmentVariableA("SM64DS_VS_MODE", 0);
+    SetEnvironmentVariableA("SM64DS_SCENE", "6");
+    SetEnvironmentVariableA("SM64DS_MODS", "0");
+    memset(&si, 0, sizeof si);
+    si.cb = sizeof si;
+    memset(&pi, 0, sizeof pi);
+    if (!CreateProcessA(exe, 0, 0, 0, FALSE, 0, 0, 0, &si, &pi)) {
+        fprintf(stderr, "[mods] VS lobby: could not relaunch with mods off (win32 %lu); mods stay on\n",
+                (unsigned long)GetLastError());
+        return 0;
+    }
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    fprintf(stderr, "[mods] VS lobby: relaunched with mods off (SM64DS_MODS=0), this process is quitting\n");
+    W.PostQuitMessage_(0);
+    return 1;
+}
+static const int port_vs_lobby_mods_hook_seated =
+    (port_vs_lobby_mods_hook = port_vs_lobby_mods_relaunch, 1);
 
 /* ---- THE ROM'S OWN "BACK TO THE FRONT END" REQUEST, ON THE LEVEL PATH -----
  *
@@ -13240,6 +13281,10 @@ int main(void)
     if (!port::vs_arena_install_from_env() &&
         !port::comms_hub_install_from_env())
         port::comms_loopback_install_from_env();
+    /* run mods1 (plugin API v1): load the enabled code mods' DLLs now that io_init
+       holds the DS ranges and before any file or actor is touched. Never loads in a
+       lobby or VS match; SM64DS_MOD_PLUGINS=0 / SM64DS_MODS=0 skip it. */
+    port_mod_plugins_load();
     pacer_begin();
     port_coop_boot_begin();
     port_coop_save_boot();

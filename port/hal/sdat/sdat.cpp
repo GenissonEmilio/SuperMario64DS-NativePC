@@ -33,8 +33,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <set>
 #include <unordered_map>
 #include <vector>
+#include <string>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 #ifndef PORT_REPO_ROOT
 #define PORT_REPO_ROOT "."
@@ -604,6 +608,356 @@ int sd_cnv_vol(int v)
     return lut[v];
 }
 
+// ---- mods: sound/ replacements (run mods1, lane MODSOUND1) ---------------
+//
+// Each enabled mod (hal/mods.h, index 0 = first, the LAST wins) may carry a
+// sound/ folder. A file there replaces one member of the archive, named by
+// the archive's own SYMB name plus the type's extension (NCS_BGM_PERFECT.sseq)
+// or, for a member the archive has no name for, by type and record number
+// (sseq_0042.sseq, sbnk_0007.sbnk). The new bytes are appended to the in-memory
+// image and the member's FAT record (offset, size) is repointed, so every
+// later read of that member (sdat_file, the ROM's residency fill, the sequence
+// and wave readers) sees the mod's bytes. Run before any pointer into the
+// image exists.
+//
+// Nothing here may fail the boot or crash the game on a bad file. The readers
+// further down trust the archive's bytes, so a file is only accepted after its
+// own structure has been checked against its stated size (mod_member_ok):
+// every offset the readers follow must land inside the file. Anything that
+// fails is skipped with one log line and the stock member stays. Limits: a
+// file over kModMaxFile is not read, the added bytes over kModMaxTotal are
+// skipped (naming the file), and a zeroed tail of kModGuard bytes follows the
+// last appended member so a reader that overruns by a little reads zeros.
+// The mod list lives in hal/mods.cpp, which only the two game targets link;
+// hal/sdat_mods.cpp (same two targets) fills these three pointers at start-up.
+// Everywhere else they stay null and no mod is ever looked at.
+extern "C" {
+int (*g_sdat_mods_count)(void);
+const char *(*g_sdat_mods_id)(int);
+const char *(*g_sdat_mods_folder)(int);
+}
+
+// The biggest stock member is 284072 bytes, so 8 MB is about 28 times that.
+static const size_t kModMaxFile  = 8u << 20;
+static const size_t kModMaxTotal = 64u << 20;
+static const size_t kModGuard    = 16u << 10;
+
+static std::string lower_s(std::string s)
+{ for (auto &c : s) if (c >= 'A' && c <= 'Z') c = (char)(c + 32); return s; }
+
+// Walks the instrument records of an SBNK. Structure is checked against n;
+// onWave(slot, swav) is called for every PCM sample reference and may veto it.
+template <class F>
+static bool sbnk_walk(const sd_u8 *d, size_t n, F onWave, const char *&why)
+{
+    if (n < 0x3c) { why = "bank header cut short"; return false; }
+    sd_u32 cnt = rd32(d + 0x38);
+    if (cnt > (n - 0x3c) / 4) { why = "bank record count runs past the file"; return false; }
+    for (sd_u32 i = 0; i < cnt; i++) {
+        unsigned t = d[0x3c + i * 4];
+        size_t off = rd16(d + 0x3d + i * 4);
+        if (t == 0) continue;
+        if (t >= 1 && t <= 5) {
+            if (off + 10 > n) { why = "bank instrument runs past the file"; return false; }
+            if (t == 1 && !onWave(rd16(d + off + 2), rd16(d + off), why)) return false;
+        } else if (t == 16 || t == 17) {
+            size_t ne, first;
+            if (t == 16) {
+                if (off + 2 > n || d[off + 1] < d[off]) { why = "bank drum set is malformed"; return false; }
+                ne = (size_t)d[off + 1] - d[off] + 1; first = off + 2;
+            } else {
+                if (off + 8 > n) { why = "bank key split runs past the file"; return false; }
+                for (ne = 0; ne < 8 && d[off + ne]; ne++) {}
+                first = off + 8;
+            }
+            if (first + ne * 12 > n) { why = "bank instrument list runs past the file"; return false; }
+            for (size_t k = 0; k < ne; k++) {
+                const sd_u8 *e = d + first + k * 12;
+                unsigned et = rd16(e);
+                if (et > 5) { why = "bank sub-instrument has an unknown type"; return false; }
+                if (et == 1 && !onWave(rd16(e + 4), rd16(e + 2), why)) return false;
+            }
+        } else { why = "bank instrument has an unknown type"; return false; }
+    }
+    return true;
+}
+
+// Is d (n = the size it states) a sane member of this kind? why = first problem.
+static bool mod_member_ok(int kind, const sd_u8 *d, size_t n, const char *&why)
+{
+    why = "";
+    if (kind == 0) {                                   // SSEQ: DATA block, data offset inside
+        if (n < 0x1c || memcmp(d + 0x10, "DATA", 4) != 0) { why = "no DATA block"; return false; }
+        sd_u32 dof = rd32(d + 0x18);
+        if (dof < 0x1c || dof >= n) { why = "sequence data offset is outside the file"; return false; }
+        return true;
+    }
+    if (kind == 2) {                                   // SBNK
+        if (n < 0x3c || memcmp(d + 0x10, "DATA", 4) != 0) { why = "no DATA block"; return false; }
+        return sbnk_walk(d, n, [](unsigned slot, unsigned, const char *&w) {
+            if (slot > 3) { w = "bank names a wave archive slot above 3"; return false; }
+            return true; }, why);
+    }
+    if (kind == 3) {                                   // SWAR: count + offset table
+        if (n < 0x3c || memcmp(d + 0x10, "DATA", 4) != 0) { why = "no DATA block"; return false; }
+        sd_u32 cnt = rd32(d + 0x38);
+        if (cnt > (n - 0x3c) / 4) { why = "wave count runs past the file"; return false; }
+        for (sd_u32 i = 0; i < cnt; i++) {
+            sd_u32 o = rd32(d + 0x3c + i * 4);
+            if (o < 0x3c + cnt * 4 || o > n || n - o < 12) { why = "wave offset is outside the file"; return false; }
+            unsigned long long words = (unsigned long long)rd16(d + o + 6) + rd32(d + o + 8);    // loop start + loop length, in words
+            if (words * 4 > n - o - 12) { why = "wave data runs past the file"; return false; }
+        }
+        return true;
+    }
+    if (kind == 1) {                                   // SSAR: records of 12 bytes, data offset
+        if (n < 0x20 || memcmp(d + 0x10, "DATA", 4) != 0) { why = "no DATA block"; return false; }
+        sd_u32 dof = rd32(d + 0x18), cnt = rd32(d + 0x1c);
+        if (dof > n || cnt > (n - 0x20) / 12 || 0x20 + (size_t)cnt * 12 > dof) { why = "record table is outside the file"; return false; }
+        for (sd_u32 i = 0; i < cnt; i++) {
+            sd_u32 o = rd32(d + 0x20 + i * 12);
+            if (o != 0xffffffffu && o >= n - dof) { why = "record points outside the file"; return false; }
+        }
+        return true;
+    }
+    // STRM: HEAD block, then a DATA block that fits
+    if (n < 0x30 || memcmp(d + 0x10, "HEAD", 4) != 0) { why = "no HEAD block"; return false; }
+    sd_u32 hs = rd32(d + 0x14);
+    if (hs < 0x30 || hs > n - 0x10 || n - 0x10 - hs < 8 || memcmp(d + 0x10 + hs, "DATA", 4) != 0) {
+        why = "no DATA block after the header block"; return false; }
+    if (rd32(d + 0x14 + hs) > n - 0x10 - hs) { why = "stream data block runs past the file"; return false; }
+    return true;
+}
+
+static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
+{
+    if (!g_sdat_mods_count || !g_sdat_mods_id || !g_sdat_mods_folder) return buf;
+    int nmods = g_sdat_mods_count();
+    if (nmods <= 0) return buf;
+
+    static const struct { int kind; const char *ext; const char *magic; } kTypes[] = {
+        {0, "sseq", "SSEQ"}, {1, "ssar", "SSAR"}, {2, "sbnk", "SBNK"},
+        {3, "swar", "SWAR"}, {7, "strm", "STRM"} };
+    int nblocks = rd16(buf + 0x0e);
+    sd_u32 oSymb = 0, oInfo = 0, oFat = 0;
+    for (int i = 0; i < nblocks && i < 8; i++) {
+        sd_u32 off = rd32(buf + 0x10 + i * 8);
+        if (!off || off + 12 > len) continue;
+        if (!memcmp(buf + off, "SYMB", 4)) oSymb = off;
+        else if (!memcmp(buf + off, "INFO", 4)) oInfo = off;
+        else if (!memcmp(buf + off, "FAT ", 4)) oFat = off;
+    }
+    if (!oInfo || !oFat) return buf;
+    sd_u32 fatCount = rd32(buf + oFat + 8);
+    if (fatCount > (len - oFat - 0xc) / 16) fatCount = (sd_u32)((len - oFat - 0xc) / 16);
+
+    // name table: lowercase "<name>.<ext>" and "<ext>_<NNNN>.<ext>" -> (file id, kind).
+    // SYMB name lists are 4-byte entries (a name offset) for every kind except
+    // SEQARC (kind 1), whose entries are 8 bytes: name offset, then the offset
+    // of the archive's own sub-name table.
+    struct Hit { sd_u32 fid; int kind; };
+    std::unordered_map<std::string, Hit> byName;
+    for (auto &t : kTypes) {
+        sd_u32 lo = rd32(buf + oInfo + 8 + t.kind * 4);
+        if (!lo || (size_t)oInfo + lo + 4 > len) continue;
+        sd_u32 n = rd32(buf + oInfo + lo);
+        sd_u32 sl = 0, sn = 0;
+        const sd_u32 stride = t.kind == 1 ? 8 : 4;
+        if (oSymb) {
+            sl = rd32(buf + oSymb + 8 + t.kind * 4);
+            if (sl && (size_t)oSymb + sl + 4 <= len) sn = rd32(buf + oSymb + sl);
+            else sl = 0;
+        }
+        for (sd_u32 i = 0; i < n && (size_t)oInfo + lo + 4 + i * 4 + 4 <= len; i++) {
+            sd_u32 ro = rd32(buf + oInfo + lo + 4 + i * 4);
+            if (!ro || (size_t)oInfo + ro + 4 > len) continue;
+            sd_u32 fid = rd32(buf + oInfo + ro) & 0xffffff;
+            if (fid >= fatCount) continue;
+            char num[32];
+            snprintf(num, sizeof num, "%s_%04u.%s", t.ext, i, t.ext);
+            byName.emplace(num, Hit{fid, t.kind});
+            if (sl && i < sn && (size_t)oSymb + sl + 4 + (size_t)i * stride + 4 <= len) {
+                sd_u32 so = rd32(buf + oSymb + sl + 4 + i * stride);
+                if (so && (size_t)oSymb + so < len) {
+                    const char *nm = (const char *)buf + oSymb + so;
+                    size_t maxl = len - (oSymb + so);
+                    size_t l = strnlen(nm, maxl);
+                    if (l && l < maxl)
+                        byName.emplace(lower_s(std::string(nm, l) + "." + t.ext), Hit{fid, t.kind});
+                }
+            }
+        }
+    }
+
+    struct Rep { std::vector<sd_u8> data; std::string name, mod; int kind; };
+    std::unordered_map<sd_u32, Rep> reps;
+    std::vector<sd_u32> order;
+    size_t added = 0;                                  // padded bytes of the replacements held now
+    auto pad4 = [](size_t x) { return (x + 3) & ~(size_t)3; };
+    for (int m = 0; m < nmods; m++) {
+        const char *folder = g_sdat_mods_folder(m), *mid = g_sdat_mods_id(m);
+        if (!folder || !mid) continue;
+        std::string pat = std::string(folder) + "/sound/*";
+        WIN32_FIND_DATAA fd;
+        HANDLE h = FindFirstFileA(pat.c_str(), &fd);
+        if (h == INVALID_HANDLE_VALUE) continue;
+        do {
+            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+            std::string fn = fd.cFileName, lf = lower_s(fn);
+            size_t dot = lf.rfind('.');
+            std::string ext = dot == std::string::npos ? "" : lf.substr(dot + 1);
+            const char *magic = 0;
+            for (auto &t : kTypes) if (ext == t.ext) magic = t.magic;
+            if (!magic) {
+                fprintf(stderr, "[mods] sound: %s/%s: not .sseq/.sbnk/.swar/.ssar/.strm, ignored\n", mid, fn.c_str());
+                continue;
+            }
+            auto it = byName.find(lf);
+            if (it == byName.end()) {
+                fprintf(stderr, "[mods] sound: %s/%s: no such member in the archive, ignored\n", mid, fn.c_str());
+                continue;
+            }
+            // the size is known before anything is read or allocated
+            unsigned long long fsz = ((unsigned long long)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
+            if (fsz > kModMaxFile) {
+                fprintf(stderr, "[mods] sound: %s/%s: %llu bytes is over the %u byte limit for one file, skipped\n",
+                        mid, fn.c_str(), fsz, (unsigned)kModMaxFile);
+                continue;
+            }
+            if (fsz < 0x10) {
+                fprintf(stderr, "[mods] sound: %s/%s: too short to be a %s file, skipped\n", mid, fn.c_str(), magic);
+                continue;
+            }
+            std::string full = std::string(folder) + "/sound/" + fn;
+            FILE *f = fopen(full.c_str(), "rb");
+            if (!f) { fprintf(stderr, "[mods] sound: %s/%s: cannot open, ignored\n", mid, fn.c_str()); continue; }
+            std::vector<sd_u8> d((size_t)fsz);
+            size_t got = fread(d.data(), 1, d.size(), f);
+            fclose(f);
+            if (got != d.size() || memcmp(d.data(), magic, 4) != 0) {
+                fprintf(stderr, "[mods] sound: %s/%s: not a valid %s file (magic), skipped\n", mid, fn.c_str(), magic);
+                continue;
+            }
+            sd_u32 stated = rd32(d.data() + 8);
+            if (stated < 0x10 || stated > d.size()) {
+                fprintf(stderr, "[mods] sound: %s/%s: stated size %u does not fit the %u byte file, skipped\n",
+                        mid, fn.c_str(), (unsigned)stated, (unsigned)d.size());
+                continue;
+            }
+            d.resize(stated);                           // the stated size is the member's size
+            const char *why = "";
+            if (!mod_member_ok(it->second.kind, d.data(), d.size(), why)) {
+                fprintf(stderr, "[mods] sound: %s/%s: bad %s file (%s), skipped\n", mid, fn.c_str(), magic, why);
+                continue;
+            }
+            sd_u32 fid = it->second.fid;
+            size_t had = reps.count(fid) ? pad4(reps[fid].data.size()) : 0;
+            if (added - had + pad4(d.size()) > kModMaxTotal) {
+                fprintf(stderr, "[mods] sound: %s/%s: would pass the %u byte limit on added data, skipped\n",
+                        mid, fn.c_str(), (unsigned)kModMaxTotal);
+                continue;
+            }
+            if (!reps.count(fid)) order.push_back(fid);
+            Rep &r = reps[fid];
+            added = added - had + pad4(d.size());
+            r.data.swap(d); r.name = fn; r.mod = mid; r.kind = it->second.kind;
+        } while (FindNextFileA(h, &fd));
+        FindClose(h);
+    }
+
+    // A bank names samples by (wave archive slot, wave number). Some stock banks name waves their
+    // archive does not have (instruments the game never plays), so the check is relative: a bank
+    // may not name a missing wave that it did not already name with the stock archive. A bank that
+    // fails, with a replaced bank or wave archive involved, loses the replacement(s).
+    auto view = [&](sd_u32 fid, bool stockOnly, const sd_u8 *&p, size_t &n) {
+        auto it = reps.find(fid);
+        if (!stockOnly && it != reps.end()) { p = it->second.data.data(); n = it->second.data.size(); return true; }
+        if (fid >= fatCount) return false;
+        sd_u32 o = rd32(buf + oFat + 0xc + fid * 16), s = rd32(buf + oFat + 0x10 + fid * 16);
+        if ((size_t)o + s > len) return false;
+        p = buf + o; n = s; return true;
+    };
+    for (bool again = true; again; ) {
+        again = false;
+        sd_u32 blo = rd32(buf + oInfo + 8 + 2 * 4), wlo = rd32(buf + oInfo + 8 + 3 * 4);
+        if (!blo || !wlo) break;
+        sd_u32 nb = rd32(buf + oInfo + blo), nw = rd32(buf + oInfo + wlo);
+        for (sd_u32 bi = 0; bi < nb && !again; bi++) {
+            if ((size_t)oInfo + blo + 4 + bi * 4 + 4 > len) break;
+            sd_u32 ro = rd32(buf + oInfo + blo + 4 + bi * 4);
+            if (!ro || (size_t)oInfo + ro + 12 > len) continue;
+            sd_u32 bfid = rd32(buf + oInfo + ro) & 0xffffff;
+            bool involved = reps.count(bfid) != 0;
+            sd_u32 swfid[4];
+            for (int s = 0; s < 4; s++) {
+                swfid[s] = 0xffffffffu;
+                sd_u32 wa = rd16(buf + oInfo + ro + 4 + s * 2);
+                if (wa >= nw || wa == 0xffff || (size_t)oInfo + wlo + 4 + wa * 4 + 4 > len) continue;
+                sd_u32 wro = rd32(buf + oInfo + wlo + 4 + wa * 4);
+                if (!wro || (size_t)oInfo + wro + 4 > len) continue;
+                swfid[s] = rd32(buf + oInfo + wro) & 0xffffff;
+                if (reps.count(swfid[s])) involved = true;
+            }
+            if (!involved) continue;
+            // the set of (slot, wave) pairs the bank names that its wave archives lack
+            auto missing = [&](bool stockOnly, std::set<unsigned> &out) {
+                const sd_u8 *bp; size_t bn; const char *w = "";
+                if (!view(bfid, stockOnly, bp, bn)) return false;
+                return sbnk_walk(bp, bn, [&](unsigned slot, unsigned swav, const char *&) {
+                    const sd_u8 *wp; size_t wn;
+                    if (slot > 3 || swfid[slot] == 0xffffffffu || !view(swfid[slot], stockOnly, wp, wn) ||
+                        wn < 0x3c || swav >= rd32(wp + 0x38)) out.insert(slot << 16 | swav);
+                    return true; }, w);
+            };
+            std::set<unsigned> now, was;
+            bool okNow = missing(false, now);
+            missing(true, was);
+            bool bad = !okNow;
+            for (unsigned k : now) if (!was.count(k)) bad = true;
+            if (!bad) continue;
+            // drop the replacement(s) that took part: the bank, or else the wave archives
+            std::vector<sd_u32> drop;
+            if (reps.count(bfid)) drop.push_back(bfid);
+            else for (int s = 0; s < 4; s++) if (swfid[s] != 0xffffffffu && reps.count(swfid[s])) drop.push_back(swfid[s]);
+            for (sd_u32 fid : drop) {
+                fprintf(stderr, "[mods] sound: %s (%s): bank file %u would use a wave its wave archive does not have, replacement dropped, stock kept\n",
+                        reps[fid].name.c_str(), reps[fid].mod.c_str(), (unsigned)bfid);
+                added -= pad4(reps[fid].data.size());
+                reps.erase(fid);
+                for (size_t k = 0; k < order.size(); k++) if (order[k] == fid) { order.erase(order.begin() + k); break; }
+            }
+            again = !drop.empty();
+        }
+    }
+
+    if (order.empty()) {
+        fprintf(stderr, "[mods] sound: no members replaced\n");
+        return buf;
+    }
+    size_t at0 = pad4(len);
+    size_t total = at0 + added + kModGuard;
+    sd_u8 *nb = (sd_u8 *)malloc(total);
+    if (!nb) { fprintf(stderr, "[mods] sound: out of memory, no members replaced\n"); return buf; }
+    memset(nb, 0, total);
+    memcpy(nb, buf, len);
+    size_t at = at0;
+    std::string list;
+    for (sd_u32 fid : order) {
+        Rep &r = reps[fid];
+        memcpy(nb + at, r.data.data(), r.data.size());
+        sd_u8 *e = nb + oFat + 0xc + fid * 16;
+        e[0] = (sd_u8)at; e[1] = (sd_u8)(at >> 8); e[2] = (sd_u8)(at >> 16); e[3] = (sd_u8)(at >> 24);
+        sd_u32 sz = (sd_u32)r.data.size();
+        e[4] = (sd_u8)sz; e[5] = (sd_u8)(sz >> 8); e[6] = (sd_u8)(sz >> 16); e[7] = (sd_u8)(sz >> 24);
+        at += pad4(r.data.size());
+        list += (list.empty() ? "" : ", ") + r.name + " (" + r.mod + ", file " + std::to_string((unsigned)fid) + ")";
+    }
+    free(buf);
+    len = total;
+    fprintf(stderr, "[mods] sound: replaced %u archive members: %s\n", (unsigned)order.size(), list.c_str());
+    return nb;
+}
+
 // ---- init ---------------------------------------------------------------
 
 int sdat_init(void)
@@ -640,6 +994,16 @@ int sdat_init(void)
         return 0;
     }
 
+    {
+        size_t mlen = (size_t)len;
+        try {
+            buf = sdat_apply_mods(buf, mlen);
+            len = (long)mlen;
+        } catch (...) {
+            // the stock image is only freed after a replacement succeeds, so it is still intact
+            fprintf(stderr, "[mods] sound: failed while applying replacements, stock archive kept\n");
+        }
+    }
     g_sdat.base = buf;
     g_sdat.size = (size_t)len;
 

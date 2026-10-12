@@ -910,7 +910,20 @@ static void __fastcall ent_pdes(void *s, void *)
 /* ---- the factories --------------------------------------------------------
    The registry's factory column is void *(*)(void); both matched factories
    already are. The forwarders exist so the rows name symbols this file owns. */
-extern "C" void *port_vs_spawn(void)       { return dScEntry_c_classInit_ENTRY(); }
+/* MODS ARE OFF IN EVERY MULTIPLAYER MODE, and the local VS lobby is one. The mod
+   list is latched at boot, so a process that booted with mods on cannot run VS
+   plain. tests/walk_window.cpp seats this hook: it relaunches the game on this
+   same lobby scene with SM64DS_MODS=0 and quits this process. port_mods_count()
+   is 0 in the child, so the hook never fires twice. */
+extern "C" int port_mods_count(void);
+extern "C" int (*port_vs_lobby_mods_hook)(void);
+extern "C" int (*port_vs_lobby_mods_hook)(void) = 0;
+extern "C" void *port_vs_spawn(void)
+{
+    if (port_vs_lobby_mods_hook && port_mods_count() > 0)
+        port_vs_lobby_mods_hook();
+    return dScEntry_c_classInit_ENTRY();
+}
 extern "C" void *port_vs_entry_spawn(void) { return dEntObj_c_classInit(); }
 
 /* ---- the fill -------------------------------------------------------------

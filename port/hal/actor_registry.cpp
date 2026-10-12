@@ -66,6 +66,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include "mod_hooks.h"
+
 extern "C" {
 
 /* storage: hal/actor_vtables.cpp (actorID -> SpawnInfo*) */
@@ -397,6 +399,16 @@ extern "C" void hal_fill_moving_cylinder_vtables(void);
 typedef const char *(*port_classname_fn)(unsigned id);
 extern "C" port_classname_fn port_classname_resolver;
 
+/* run mods1: the registry's own factory for an id (what a plugin's
+   replace_actor wraps), or 0 when the class is not registered. */
+extern "C" void *port_actor_registry_stock_factory(unsigned actor_id)
+{
+    for (const PortActorClass *k = port_actor_classes; k->name; ++k)
+        if (k->id == actor_id && k->info && k->factory)
+            return (void *)k->factory;
+    return 0;
+}
+
 extern "C" void port_actor_registry_install(void)
 {
     int n = 0;
@@ -440,6 +452,10 @@ extern "C" void port_actor_registry_install(void)
         if (k->fill) k->fill();
         ++n;
     }
+    /* run mods1: a plugin's replace_actor choices are written over the stock
+       factories every time the table is (re)written, i.e. every level boot. */
+    if (port_mod_hook_registry)
+        port_mod_hook_registry();
     data_020a4b58[0] = (int)(size_t)port_prespawn_hook;
     std::printf("[reg] %d actor classes registered, the gate is armed\n", n);
 }
@@ -1350,6 +1366,9 @@ extern "C" void port_actor_frame_end(int frame, const char *loop)
         g_k1_list_disp[i] = 0;
     }
     g_k1_f_rom = g_k1_f_tick = g_k1_f_render = g_k1_f_pass = 0;
+    /* run mods1: the plugins' on_frame, after the frame's actor work */
+    if (port_mod_hook_frame)
+        port_mod_hook_frame();
 }
 
 /* How many actors are currently on each list -- the read-back that says the

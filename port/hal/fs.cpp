@@ -422,7 +422,7 @@ static int port_fs_archive_fill(struct fs_cache_entry *ent, unsigned fileID)
    built as a forward-slash path, or -1. Depth and cursor are both bounded:
    a malformed table returns -1, never walks wild. */
 static long btnf_find(const u8 *nb, u32 nsize, unsigned dir, char *buf,
-                      size_t pos, size_t cap, const char *want, int depth)
+                      size_t pos, size_t cap, const char *want, int depth, int ci)
 {
     u32 e, p;
     unsigned fid;
@@ -449,12 +449,12 @@ static long btnf_find(const u8 *nb, u32 nsize, unsigned dir, char *buf,
             buf[pos + ln] = '/';
             buf[pos + ln + 1] = '\0';
             long r = btnf_find(nb, nsize, sub, buf, pos + ln + 1, cap, want,
-                               depth + 1);
+                               depth + 1, ci);
             if (r >= 0)
                 return r;
         } else {
             buf[pos + ln] = '\0';
-            if (strcmp(buf, want) == 0)
+            if ((ci ? _stricmp(buf, want) : strcmp(buf, want)) == 0)
                 return (long)fid;
             ++fid;
         }
@@ -467,7 +467,7 @@ static long btnf_find(const u8 *nb, u32 nsize, unsigned dir, char *buf,
    names it. For mods, which key their targets by NAME: every id table here
    is generated from the player's own dump, so a shipped id would be a guess
    where a shipped name is a fact. */
-extern "C" unsigned port_fs_interior_id(const char *want)
+static unsigned fs_interior_id(const char *want, int ci)
 {
     for (int i = 0; i < 13; ++i) {
         struct port_arc_entry *e = &port_archive_map[i];
@@ -487,11 +487,25 @@ extern "C" unsigned port_fs_interior_id(const char *want)
         if (btnf_size <= 8 || btnf + btnf_size > a + g_arc_len[i])
             continue;
         idx = btnf_find(btnf + 8, btnf_size - 8, 0, buf, 0, sizeof buf,
-                        want, 0);
+                        want, 0, ci);
         if (idx >= 0 && e->base + idx < e->end)
             return (unsigned)(e->base + idx);
     }
     return 0;
+}
+
+extern "C" unsigned port_fs_interior_id(const char *want)
+{
+    return fs_interior_id(want, 0);
+}
+
+/* The same lookup with the names compared without regard to case. Mods use
+   this: their loose files already match case-insensitively (Windows paths
+   do), so a member path typed with other capitals has to find its member too.
+   port_fs_interior_id above keeps its exact comparison for its own callers. */
+extern "C" unsigned port_fs_interior_id_nocase(const char *want)
+{
+    return fs_interior_id(want, 1);
 }
 
 /* ---- host file cache ----------------------------------------------------
@@ -705,9 +719,25 @@ static int fs_patch_served(unsigned fid, struct fs_cache_entry *e, int *changed)
 
 /* The claimed archive members, held until every claim is in so each NARC is
    rebuilt once (fs_patch_members, further down). */
-enum { FS_MEMBER_CLAIMS = 256 };
+/* 512, chosen from the ROM: its 13 archives hold 370 members in all (arc0 198,
+   en1 39, ar1 17, six 16-member card archives, four 5-member vs archives), so
+   no mod can claim more distinct members than that. It was 256 while only the
+   port's own mods claimed members; 370 members made that reachable by a mod.
+   512 at 12 bytes a slot is 6 KB of table, with room over the ROM's count.
+   SM64DS_FS_MEMBER_CAP=<n> lowers it for a test of the over-the-cap line. */
+enum { FS_MEMBER_CLAIMS = 512 };
 static struct { unsigned fid; u8 *data; u32 size; } g_member[FS_MEMBER_CLAIMS];
 static unsigned g_nmember;
+extern "C" unsigned port_fs_member_claim_cap(void)
+{
+    static unsigned cap;
+    if (!cap) {
+        const char *e = getenv("SM64DS_FS_MEMBER_CAP");
+        const unsigned v = e ? (unsigned)atoi(e) : 0;
+        cap = v >= 1 && v < FS_MEMBER_CLAIMS ? v : FS_MEMBER_CLAIMS;
+    }
+    return cap;
+}
 
 /* One claimed file into the patched range. A loose file goes in whole,
    wrapped the way the cartridge holds the stock file; an archive member waits
@@ -731,10 +761,13 @@ static void fs_patch_claim(unsigned fid)
         for (i = 0; i < g_nmember; ++i)
             if (g_member[i].fid == fid)
                 return;
-        if (g_nmember == FS_MEMBER_CLAIMS) {
-            fprintf(stderr, "[mods] more than %d archive members claimed; "
-                    "member %u keeps the cartridge's bytes\n",
-                    FS_MEMBER_CLAIMS, fid);
+        if (g_nmember >= port_fs_member_claim_cap()) {
+            /* said once; hal/mods.cpp names the mod in its boot summary */
+            static int said;
+            if (!said++)
+                fprintf(stderr, "[mods] more than %u archive members claimed; "
+                        "the rest keep the cartridge's bytes\n",
+                        port_fs_member_claim_cap());
             return;
         }
         if (!fs_patch_served(fid, &e, &changed))
