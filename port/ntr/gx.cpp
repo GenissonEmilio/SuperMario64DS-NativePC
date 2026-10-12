@@ -6167,6 +6167,7 @@ void ghost_group_cpu(Framebuffer &fb, const std::vector<GxTriangle> &gt,
         const float eax = b.x - a.x, eay = b.y - a.y;
         const float ebx = c.x - b.x, eby = c.y - b.y;
         const float ecx = a.x - c.x, ecy = a.y - c.y;
+        const float wq = wdepth ? w_tie_q(a, b, c) : 0.0f;   /* the main raster's W tie rule */
         const float iwa = (std::fabs(a.w) > 1e-6f) ? 1.0f / a.w : 0.0f;
         const float iwb = (std::fabs(b.w) > 1e-6f) ? 1.0f / b.w : 0.0f;
         const float iwc = (std::fabs(c.w) > 1e-6f) ? 1.0f / c.w : 0.0f;
@@ -6202,13 +6203,14 @@ void ghost_group_cpu(Framebuffer &fb, const std::vector<GxTriangle> &gt,
                 const float n1 = r1 - eby * (px - b.x);
                 const float n2 = r2 - ecy * (px - c.x);
                 if (!((n0 >= 0 && n1 >= 0 && n2 >= 0) ||
-                      (n0 <= 0 && n1 <= 0 && n2 <= 0)))
+                      (n0 <= 0 && n1 <= 0 && n2 <= 0)) &&
+                    !edge_rescue(a, b, c, px, py, r0, r1, r2, n0, n1, n2))
                     continue;
                 const float w0 = n0 / area, w1 = n1 / area, w2 = n2 / area;
                 const float l0 = w1, l1 = w2, l2 = w0;
                 const float z = wdepth ? -(l0 * iwa + l1 * iwb + l2 * iwc)
                                        : l0 * a.z + l1 * b.z + l2 * c.z;
-                if (z >= drow[x]) continue;
+                if (w_depth_fail(z, drow[x], wq, false)) continue;
                 const size_t o = row + (size_t)(x - bx0);
                 if (z >= g_gh_z[o]) continue;
                 uint32_t texel = 0xFFFFFFFFu;
@@ -6230,6 +6232,9 @@ void ghost_group_cpu(Framebuffer &fb, const std::vector<GxTriangle> &gt,
                         texel = sample_filtered<FILTER>(
                             tt, t.tex, t.tw, t.th, uu * tsc, vv * tsc, rep_s,
                             rep_t, flip_s, flip_t);
+                        const int ui = tex_coord(uu * tsc, t.tw, rep_s, flip_s);
+                        const int vi = tex_coord(vv * tsc, t.th, rep_t, flip_t);
+                        texel = filtered_texel_cover(texel, t.tex[vi * t.tw + ui]);
                     }
                     if ((texel >> 24) == 0) continue;
                 }
