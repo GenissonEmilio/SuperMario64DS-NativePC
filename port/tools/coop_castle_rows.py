@@ -145,7 +145,7 @@ def row_catch(ctl=False):
     f1 = int(os.environ.get("CASTLE_C1", "600"))
     f2 = int(os.environ.get("CASTLE_C2", "2400"))
     press = os.environ.get("CASTLE_PRESS", "")
-    base = {"SM64DS_CASTLE_HUNT": "1"}
+    base = {"SM64DS_CASTLE_HUNT": "1", "SM64DS_CASTLE_CARRY": "1"}
     ea = dict(base, SM64DS_RABBIT_TRIGGER=str(f1))
     eb = dict(base, SM64DS_RABBIT_TRIGGER=str(f2))
     if press:
