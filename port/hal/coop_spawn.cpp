@@ -111,7 +111,7 @@ struct Net {
 };
 Net g_net[kNetMax];
 // bossfix1: a boss reward (key 282, Grand Star 283) spawned natively on a console that is NOT the boss's authority is removed quietly;
-// the authority's announcement brings the one reward. If it has not arrived 3.5 s later (the authority left), this console spawns
+// the authority's announcement brings the one reward. If it has not arrived 45 s later (the authority left), this console spawns
 // and announces its own, so the reward is never lost.
 struct PendReward { bool on; uint16_t cls; uint32_t param; int32_t pos[3]; int8_t area; unsigned t; };
 PendReward g_pend;
@@ -604,7 +604,7 @@ void scan(unsigned now) {
         g_red_prev = red_sum();
     }
     if (g_census_on && maxuid > g_wm) g_wm = maxuid;
-    if (g_pend.on && (unsigned)(now - g_pend.t) >= 3500u) {
+    if (g_pend.on && (unsigned)(now - g_pend.t) >= 45000u) {
         bool have = false;
         for (const Net &n : g_net) if (n.used && !n.gone && n.cls == g_pend.cls) have = true;
         for (const Net &n : g_net) if (n.used && n.gone && n.cls == g_pend.cls && n.remote) have = true;     // it came and was already taken
@@ -615,7 +615,7 @@ void scan(unsigned now) {
             const int pos[3] = {pr.pos[0], pr.pos[1], pr.pos[2]};
             char *a = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(pr.cls, pr.param, pos, nullptr, pr.area, -1);
             if (a) { register_local(a, pr.cls, pr.param, pos, pr.area); if (a_uid(a) > g_wm) g_wm = a_uid(a); }
-            if (g_log) std::fprintf(stderr, "[coopspawn] boss reward fallback: no announced copy of cls=%u in 3.5 s, spawned my own (%s) wall=%lld\n", (unsigned)pr.cls, a ? "ok" : "failed", wall_ms());
+            if (g_log) std::fprintf(stderr, "[coopspawn] boss reward fallback: no announced copy of cls=%u in 45 s, spawned my own (%s) wall=%lld\n", (unsigned)pr.cls, a ? "ok" : "failed", wall_ms());
         } else if (g_log) std::fprintf(stderr, "[coopspawn] boss reward: the authority's copy of cls=%u arrived, mine stays removed wall=%lld\n", (unsigned)pr.cls, wall_ms());
     }
 }
