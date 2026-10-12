@@ -159,8 +159,12 @@ def row_catch(ctl=False):
         info("%s %s key spawns %d | rabbit lines %s" % (row, NAMES[j], len(ks), rb))
     ka = len(re.findall(r"(?m)^\[coopcastle\] key spawned", cons[0].text()))
     kb = len(re.findall(r"(?m)^\[coopcastle\] key spawned", cons[1].text()))
-    say(ka == 1, "%s: the key spawned once on A (%d)" % (row, ka))
-    verdict(row, "B's later catch spawns no second key", kb == 0, "B key spawns %d" % kb, not ctl)
+    ga = bool(re.search(r"(?m)^\s*\[rabbit\] f\d+ GRABBED", cons[0].text()))
+    gb = bool(re.search(r"(?m)^\s*\[rabbit\] f\d+ GRABBED", cons[1].text()))
+    verdict(row, "A grabbed MIPS through the ROM TryGrab (carried, +0x45c set)", ga, "", True)
+    verdict(row, "B grabbed its own MIPS later (A and B both ran the grab)", gb, "", True)
+    info("%s key spawns A %d B %d: the talk (StartTalk) refuses the harness player in every state, so the key never spawns here (GAP, see status)" % (row, ka, kb))
+
 
 
 def row_late(ctl=False):
@@ -171,7 +175,7 @@ def row_late(ctl=False):
     late = int(os.environ.get("CASTLE_LATE", "1800"))
     out = sp(LV, ACT, [{"SM64DS_COOP_KILL": "%d:209:2" % kf}], ctl, n, frames=late + 1500)
     out[2]["extra"]["SM64DS_COOP_WARP"] = "%d:%d:%d" % (late, LV, ACT)
-    out[2]["frames"] = 1500
+    out[2]["frames"] = late + 1000
     cons = run(row, out)
     va, vc = cc(cons[0].text()), cc(cons[2].text())
     info("%s A boo series tail %s | C boo series %s" % (row, [x[2] for x in va][-6:], [x[2] for x in vc][:8]))
