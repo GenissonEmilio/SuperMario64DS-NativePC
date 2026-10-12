@@ -844,7 +844,49 @@ bool g_layout_said = false;
 // on hardware for anything that reads it there. The check at the head of
 // post_reply refuses rather than truncates if the staging address ever grows
 // past 26 bits.
-__declspec(align(32)) unsigned char g_reply[0x100];
+//
+// THE IMAGE IS NOT LOW ANY MORE (run mp1, fold onto 0.9.0). The shipped window
+// links at /BASE:0x10000000 (port/CMakeLists.txt), so no static buffer of the
+// image is under 0x04000000 and the 26-bit payload cannot name one. The two
+// buffers that go down the FIFO (the reply and the 0x82 record) therefore live
+// in a small block taken on first use between 0x02400000 and 0x04000000, the
+// part of the low 64 MB the DS main RAM mirror leaves free; the one that comes
+// UP (the ROM's command buffer, an image static) is restored by
+// ipc_restore_ptr below from the image's own top bits.
+struct LowStage {
+    unsigned char reply[0x100];
+    unsigned char ind_msg[0x40];
+};
+LowStage *low_stage()
+{
+    static LowStage *p;
+    if (p) return p;
+#if defined(_WIN32)
+    for (uintptr_t a = 0x02400000u; a < 0x03F00000u; a += 0x10000u) {
+        void *v = VirtualAlloc((void *)a, 0x10000, MEM_RESERVE | MEM_COMMIT,
+                               PAGE_READWRITE);
+        if (v) { p = (LowStage *)v; break; }
+    }
+#endif
+    if (!p) {
+        std::fprintf(stderr, "[wm7] HARD FAULT: no free block below 0x04000000 "
+                             "for the FIFO staging buffers.
+");
+        std::fflush(stderr);
+        std::_Exit(24);
+    }
+    return p;
+}
+#define g_reply (low_stage()->reply)
+
+// A payload the ROM packed from an image address arrives with its top six bits
+// gone. The image is one block under 64 MB, so they are the image base's.
+unsigned char g_image_anchor;
+inline uint32_t ipc_restore_ptr(uint32_t p26)
+{
+    if (p26 >= 0x02000000u) return p26;                 // main RAM and up: whole
+    return (uint32_t)(((uintptr_t)&g_image_anchor & ~(uintptr_t)0x03FFFFFFu) | p26);
+}
 
 // ---- the work buffer and the status block ---------------------------------
 unsigned int work_base() { return *(const unsigned int *)data_020a89ac; }
@@ -1241,7 +1283,7 @@ enum : unsigned { kMpPort = 0x0c, kMpRecvState = 0x15 };
 
 // The record and the datagram are staged in the image for the same 26-bit
 // reason g_reply is: src/IPCSend.c packs the payload address into 26 bits.
-__declspec(align(32)) unsigned char g_ind_msg[0x40];
+#define g_ind_msg (low_stage()->ind_msg)
 __declspec(align(32)) unsigned char g_ind_buf[4 + port::kCommsMaxPlayers *
                                              port::kCommsBlockBytes];
 // The round's blocks as the carrier handed them over, in ASCENDING AID order
@@ -1493,7 +1535,7 @@ void mp_indication_arm(unsigned mask, unsigned stride,
 // ===========================================================================
 extern "C" void port_wm_arm7_command(uint32_t word)
 {
-    const uint32_t cmdaddr = ntr::ipc_data(word);
+    const uint32_t cmdaddr = ipc_restore_ptr(ntr::ipc_data(word));
     if (!cmdaddr) { fault("the command word carries no buffer address", 0); return; }
 
     const unsigned short *c16 = (const unsigned short *)(uintptr_t)cmdaddr;
