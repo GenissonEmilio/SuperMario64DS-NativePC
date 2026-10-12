@@ -44,26 +44,16 @@ unsigned char NumStars(void);
 void CollectStar(int course, int star);
 int _ZN8SaveData15SaveCurrentFileEv(void);
 
-// The chat overlay's system line (gray, no name). ADV_CHAT has no public way
-// to add one yet; until it does this resolves to the no-op below. When
-// hal/adv_chat.cpp defines port_chat_system_line (see the blocked: request in
-// status/PSTAR1.md) the linker takes that and the line is drawn.
+// Both are defined elsewhere in the build now (adv_chat.cpp, player_list.cpp):
+// the chat overlay's system line and the "BOB S1" stage code lookup. The old
+// /alternatename fallbacks were inert once those landed and the link guard
+// rejects them, so they are gone.
 void port_chat_system_line(const char *text);
-void ps_no_chat_line(const char *text) { (void)text; }
-// PLIST1's "BOB S1" lookup, when that file is in the build; else it returns
-// an empty string and the text reads "course N star M".
-const char *ps_no_stage_code(int level, int act, char *out) {
-    (void)level; (void)act;
-    if (out) out[0] = 0;
-    return out;
-}
 }
 
-#pragma comment(linker, "/alternatename:_port_chat_system_line=_ps_no_chat_line")
 namespace port {
 const char *player_list_stage_code(int level, int act, char *out);
 }
-#pragma comment(linker, "/alternatename:?player_list_stage_code@port@@YAPBDHHPAD@Z=_ps_no_stage_code")
 
 namespace port {
 namespace {
