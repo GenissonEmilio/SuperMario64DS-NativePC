@@ -1,0 +1,586 @@
+// COOP SAVE. Run mp1 wave 56, lane COOPSAVE1. Design and rules: coop_save.h,
+// coop_save_wire.h, and ntr/backup.cpp section 6 (the fence).
+//
+// WHO WRITES WHAT. Only the HOST console writes the .coopsav, and it does it
+// with the ROM's own SaveData::SaveFile (checksum, tag and mirror are the
+// ROM's), with one exception: the GUEST's first record, which is seeded into
+// its throwaway image before the title reads the files (write_guest_seed
+// below), because no ROM save call can run before the ROM has a file open.
+// That image is deleted at exit.
+//
+// THE HOST RECORD, in order of preference: the live working copy
+// (data_0209caa0, once the game has opened slot 0), else slot 0 of the file on
+// disk (checksum checked), else "blank" (a new file: the guest keeps an erased
+// image and the ROM installs defaults, so the opening plays on every console).
+//
+// WHAT A RECEIVED RECORD CAN DO: OR bits from coop_mono_mask() into the live
+// copy and nothing else (coop_save_wire.h). Honest limit: a guest can SET
+// stars, doors, cannons and unlock bits on the host file (that is what sharing
+// progress is); it cannot clear a bit or set a scalar, and a forged record
+// from another seat of the room is the same thing.
+
+#include "coop_save.h"
+#include "coop_save_wire.h"
+#include "comms_hub.h"
+#include "hub_presence.h"
+#include "ntr/backup.h"
+
+#include <windows.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+
+extern "C" {
+extern unsigned char data_0209caa0[];
+extern unsigned char data_020a4b40[8];     // the record tag (ntr/backup.cpp section 6)
+int  _ZN8SaveData8SaveFileEjP12FileSaveData(unsigned fileID, void *data);
+int  _ZN8SaveData15SaveCurrentFileEv(void);
+void CollectStar(int course, int star);
+}
+
+namespace port {
+namespace {
+
+const uint8_t kCoopTag[8] = { 'd', 's', ' ', 'c', 'o', 'o', 'p', '!' };
+const uint8_t kMagic[4]   = { 0x38, 0x30, 0x30, 0x30 };   // "8000"
+
+bool env_on(const char *n) {
+    const char *e = std::getenv(n);
+    return e && *e && *e != '0';
+}
+
+// ---- state (game thread only) ----------------------------------------------
+int      g_coop = -1, g_host = -1;
+bool     g_init = false, g_registered = false, g_external = false;
+unsigned g_frame = 0;
+char     g_sav[1024];
+CoopSaveStats g_st = {};
+
+uint8_t  g_pending[kCoopRecBytes];  bool g_pending_have = false;   // host: guest bits
+uint8_t  g_hostrec[kCoopRecBytes];  bool g_host_have = false;      // guest: host bits
+bool     g_host_blank = false, g_host_dirty = false;
+bool     g_answer = false;           // host: a SAVE_REQ is waiting
+uint8_t  g_last_sent[kCoopRecBytes]; bool g_last_have = false;
+ULONGLONG g_last_send_ms = 0, g_last_req_ms = 0, g_json_ms = 0;
+bool     g_json_dirty = false;
+unsigned g_seq = 0;
+bool     g_probe_done = false, g_forge_done = false, g_fetched = false;
+// host: a save that did not reach the disk is retried until it does
+bool     g_save_retry = false, g_atexit = false;
+unsigned g_retry_frame = 0, g_fail_seen = 0, g_retry_tries = 0;
+ULONGLONG g_retry_ms = 0;
+constexpr unsigned kRetryFrames = 30;     // bounded backoff: every 30 frames
+constexpr unsigned kRetryMs = 2000;       // and at least every 2 s tick
+
+bool coop() { if (g_coop < 0) g_coop = env_on("SM64DS_COOP") ? 1 : 0; return g_coop == 1; }
+bool host() { if (g_host < 0) g_host = env_on("SM64DS_COOP_HOST") ? 1 : 0; return g_host == 1; }
+
+bool live_valid() {
+    return std::memcmp(data_0209caa0, kMagic, 4) == 0 && data_0209caa0[0x328] == 0;
+}
+
+// magic + the mergeable bits only: what goes on the wire
+void mask_record(uint8_t *out, const uint8_t *rec) {
+    const uint8_t *mk = coop_mono_mask();
+    std::memset(out, 0, kCoopRecBytes);
+    for (int i = 0; i < kCoopRecBytes; ++i) out[i] = (uint8_t)(rec[i] & mk[i]);
+    std::memcpy(out, kMagic, 4);
+}
+
+// ---- files -----------------------------------------------------------------
+bool ends_coopsav(const char *p) {
+    size_t n = std::strlen(p);
+    if (n < 8) return false;
+    return _stricmp(p + n - 8, ".coopsav") == 0;
+}
+
+void mkdirs(const char *path) {
+    char buf[1100];
+    std::snprintf(buf, sizeof buf, "%s", path);
+    for (char *p = buf + 1; *p; ++p) {
+        if (*p == '\\' || *p == '/') {
+            char c = *p; *p = '\0';
+            CreateDirectoryA(buf, NULL);
+            *p = c;
+        }
+    }
+}
+
+void iso_now(char *out, size_t cap) {
+    std::time_t t = std::time(nullptr);
+    std::tm tmv;
+    gmtime_s(&tmv, &t);
+    std::strftime(out, cap, "%Y-%m-%dT%H:%M:%SZ", &tmv);
+}
+
+void json_path(char *out, size_t cap) {
+    std::snprintf(out, cap, "%s", g_sav);
+    size_t n = std::strlen(out);
+    if (n >= 8) std::snprintf(out + n - 8, cap - (n - 8), ".json");
+}
+
+// <name>.json: display name, created, last played, star count. No personal data.
+void write_json(int stars) {
+    char jp[1100];
+    json_path(jp, sizeof jp);
+    char created[40] = "";
+    if (std::FILE *f = std::fopen(jp, "rb")) {
+        char buf[2048];
+        size_t n = std::fread(buf, 1, sizeof buf - 1, f);
+        buf[n] = '\0';
+        std::fclose(f);
+        const char *k = std::strstr(buf, "\"created\":\"");
+        if (k) {
+            k += 11;
+            size_t i = 0;
+            while (k[i] && k[i] != '"' && i < sizeof created - 1) { created[i] = k[i]; ++i; }
+            created[i] = '\0';
+        }
+        if (stars < 0) {
+            const char *s = std::strstr(buf, "\"stars\":");
+            if (s) stars = std::atoi(s + 8);
+        }
+    }
+    char now[40];
+    iso_now(now, sizeof now);
+    if (!created[0]) std::snprintf(created, sizeof created, "%s", now);
+    if (stars < 0) stars = 0;
+    const char *nm = std::getenv("SM64DS_COOP_SAVE_NAME");
+    char name[80];
+    size_t j = 0;
+    if (nm) for (size_t i = 0; nm[i] && j < 64; ++i) {
+        unsigned char c = (unsigned char)nm[i];
+        name[j++] = (c < 0x20 || c == '"' || c == '\\') ? '_' : (char)c;
+    }
+    name[j] = '\0';
+    if (!name[0]) std::snprintf(name, sizeof name, "Coop file");
+    char tmp[1200];
+    std::snprintf(tmp, sizeof tmp, "%s.%lu.tmp", jp, (unsigned long)GetCurrentProcessId());
+    if (std::FILE *f = std::fopen(tmp, "wb")) {
+        std::fprintf(f, "{\"version\":1,\"name\":\"%s\",\"created\":\"%s\","
+                        "\"last_played\":\"%s\",\"stars\":%d}\n",
+                     name, created, now, stars);
+        std::fclose(f);
+        if (!MoveFileExA(tmp, jp, MOVEFILE_REPLACE_EXISTING)) std::remove(tmp);
+    }
+}
+
+// ---- records ---------------------------------------------------------------
+// The host current record: live, else the file slot 0 (checksum checked), else
+// none (blank).
+bool host_record(uint8_t *out68, bool *blank) {
+    if (live_valid()) {
+        std::memcpy(out68, data_0209caa0, kCoopRecBytes);
+        *blank = false;
+        return true;
+    }
+    for (int copy = 0; copy < 2; ++copy) {
+        uint8_t b[10 + kCoopRecBytes];
+        if (!ntr::backup::read(copy ? 0x1000u : 0u, b, sizeof b)) continue;
+        if (std::memcmp(b + 2, kCoopTag, 8) != 0) continue;
+        uint16_t crc = (uint16_t)(b[0] | (b[1] << 8));
+        if (crc != coop_record_checksum(kCoopTag, b + 10, kCoopRecBytes)) continue;
+        if (std::memcmp(b + 10, kMagic, 4) != 0) continue;
+        std::memcpy(out68, b + 10, kCoopRecBytes);
+        *blank = false;
+        return true;
+    }
+    std::memset(out68, 0, kCoopRecBytes);
+    *blank = true;
+    return false;
+}
+
+bool send_ctl(int sub, const uint8_t *payload, int plen) {
+    uint8_t dg[64 + 700];
+    int n = hub_coop_encode(kHubTagCoopCtl, sub, ++g_seq, payload, plen, dg, sizeof dg);
+    if (n <= 0) return false;
+    return comms_hub_send(dg, n);
+}
+
+void send_rec(bool from_host, bool blank, const uint8_t *rec) {
+    uint8_t pl[kCoopRecPayload];
+    uint8_t m[kCoopRecBytes];
+    std::memset(m, 0, sizeof m);
+    if (!blank) mask_record(m, rec);
+    coop_rec_encode(pl, from_host, blank, blank ? nullptr : m);
+    if (send_ctl(kCoopSaveSubRec, pl, kCoopRecPayload)) {
+        if (from_host) ++g_st.rec_sent_host; else ++g_st.rec_sent_guest;
+    }
+    g_last_send_ms = GetTickCount64();
+}
+
+void on_ctl(int seat, const unsigned char *d, int len, void *) {
+    coop_save_handle(seat, d, len);
+}
+
+void exit_save();
+
+void ensure_init() {
+    if (g_init) return;
+    g_init = true;
+    if (!coop()) return;
+    if (host()) {
+        coop_save_prepare();
+        if (!g_atexit) { g_atexit = true; std::atexit(exit_save); }
+    }
+    if (!g_external && !g_registered)
+        g_registered = hub_on_kind(kHubCoopCtl, on_ctl, nullptr);
+    std::fprintf(stderr, "[coopsave] init role=%s handler=%s file=%s\n",
+                 host() ? "host" : "guest",
+                 g_external ? "external" : (g_registered ? "own" : "NONE"),
+                 host() ? g_sav : "(temp image)");
+}
+
+// Frame the seed record the ROM way (the guest first record only).
+void write_guest_seed(const uint8_t *host68) {
+    uint8_t rec[kCoopRecBytes];
+    std::memset(rec, 0, sizeof rec);
+    std::memcpy(rec, kMagic, 4);
+    rec[0x41] = 3;                 // SetDefaultValues: character 3
+    rec[0x08] |= 8;                // SetDefaultValues: flags2 bit 3
+    coop_merge_record(rec, host68);
+    uint8_t img[10 + kCoopRecBytes];
+    uint16_t crc = coop_record_checksum(kCoopTag, rec, kCoopRecBytes);
+    img[0] = (uint8_t)(crc & 0xFF);
+    img[1] = (uint8_t)(crc >> 8);
+    std::memcpy(img + 2, kCoopTag, 8);
+    std::memcpy(img + 10, rec, kCoopRecBytes);
+    ntr::backup::write(0u, img, sizeof img);
+    ntr::backup::write(0x1000u, img, sizeof img);
+}
+
+bool retry_off() {
+    static int off = -1;
+    if (off < 0) { const char *e = std::getenv("SM64DS_COOPSAVE_NO_RETRY"); off = (e && *e == '1') ? 1 : 0; }
+    return off == 1;
+}
+
+void mark_retry() {
+    if (retry_off()) return;
+    g_save_retry = true;
+    g_retry_frame = g_frame + kRetryFrames;
+    g_retry_ms = GetTickCount64();
+}
+
+void save_live() {
+    int ok = _ZN8SaveData8SaveFileEjP12FileSaveData(0, data_0209caa0);
+    ++g_st.saves_written;
+    std::fprintf(stderr, "[coopsave] saved slot 0 through SaveFile ok=%d stars=%d\n",
+                 ok, coop_record_stars(data_0209caa0));
+    g_json_dirty = true;
+    g_fail_seen = ntr::backup::stats().flush_failures;
+    if (!ok) {
+        mark_retry();
+    } else if (g_save_retry) {
+        g_save_retry = false;
+        std::fprintf(stderr, "[coopsave] save retry landed after %u tries\n", g_retry_tries);
+        g_retry_tries = 0;
+    }
+}
+
+// A flush that failed anywhere (the ROM's own SaveCurrentFile included) leaves
+// the disk behind the live record: arm the retry.
+void watch_flush_failures() {
+    const unsigned fs = ntr::backup::stats().flush_failures;
+    if (fs != g_fail_seen) {
+        g_fail_seen = fs;
+        if (!g_save_retry) {
+            std::fprintf(stderr, "[coopsave] a save did not reach the disk, will retry\n");
+            mark_retry();
+        }
+    }
+}
+
+// Last synchronous attempt at exit (exit() runs atexit callbacks).
+void exit_save() {
+    if (!coop() || !host() || retry_off()) return;
+    if (live_valid()) {
+        watch_flush_failures();
+        if (g_save_retry) {
+            save_live();
+            if (g_save_retry)
+                std::fprintf(stderr, "[coopsave] EXIT: the coop save did NOT reach the disk "
+                             "(%s); the last merged progress is lost\n", g_sav);
+        }
+    }
+}
+
+// ---- proof drivers ---------------------------------------------------------
+// SM64DS_COOPSAVE_PROBE=star:<course>:<bit>@<frame>: the game own star choke
+// point (CollectStar, then SaveCurrentFile) at a chosen frame, once the file
+// is open. Stands in for walking into a star.
+void run_probe() {
+    if (g_probe_done) return;
+    const char *e = std::getenv("SM64DS_COOPSAVE_PROBE");
+    if (!e) { g_probe_done = true; return; }
+    int c = 0, b = 0, f = 0;
+    if (std::sscanf(e, "star:%d:%d@%d", &c, &b, &f) != 3 || c < 0 || c > 29 ||
+        b < 0 || b > 7) { g_probe_done = true; return; }
+    if ((int)g_frame < f || !live_valid()) return;
+    g_probe_done = true;
+    CollectStar(c, b);
+    int ok = _ZN8SaveData15SaveCurrentFileEv();
+    std::fprintf(stderr, "[coopsave] PROBE star course %d bit %d collected "
+                 "(CollectStar + SaveCurrentFile ok=%d) stars=%d\n",
+                 c, b, ok, coop_record_stars(data_0209caa0));
+}
+
+// SM64DS_COOPSAVE_FORGE=<mode>@<frame>: send ONE hand-made SAVE_REC / SAVE_REQ.
+//   clear      guest record that is magic only (tries to clear every bit)
+//   setall     guest record with every mergeable bit set (the honest limit)
+//   hostclear  a "host" record that is magic only, sent by a guest
+//   badlen     payload 40 bytes    badflags  reserved bytes non-zero
+//   badreq     SAVE_REQ with a non-zero payload    badrole  from_host = 2
+void run_forge() {
+    if (g_forge_done) return;
+    const char *e = std::getenv("SM64DS_COOPSAVE_FORGE");
+    if (!e) { g_forge_done = true; return; }
+    char mode[24] = ""; int f = 0;
+    if (std::sscanf(e, "%23[a-z]@%d", mode, &f) != 2) { g_forge_done = true; return; }
+    if ((int)g_frame < f || comms_hub_state() != kHubLive) return;
+    g_forge_done = true;
+    uint8_t pl[kCoopRecPayload];
+    std::memset(pl, 0, sizeof pl);
+    std::memcpy(pl + 4, kMagic, 4);
+    int plen = kCoopRecPayload, sub = kCoopSaveSubRec;
+    if (!std::strcmp(mode, "setall")) {
+        const uint8_t *mk = coop_mono_mask();
+        for (int i = 4; i < kCoopRecBytes; ++i) pl[4 + i] = mk[i];
+    } else if (!std::strcmp(mode, "hostclear")) pl[0] = 1;
+    else if (!std::strcmp(mode, "badlen")) plen = 40;
+    else if (!std::strcmp(mode, "badflags")) pl[2] = 1;
+    else if (!std::strcmp(mode, "badrole")) pl[0] = 2;
+    else if (!std::strcmp(mode, "badreq")) { sub = kCoopSaveSubReq; plen = 4; pl[1] = 7; }
+    else if (std::strcmp(mode, "clear")) return;
+    bool ok = send_ctl(sub, pl, plen);
+    std::fprintf(stderr, "[coopsave] FORGE %s sent=%d len=%d\n", mode, ok, plen);
+}
+
+}  // namespace
+
+// ---- public ----------------------------------------------------------------
+bool coop_save_active() { return coop(); }
+bool coop_save_is_host() { return coop() && host(); }
+CoopSaveStats coop_save_stats() { return g_st; }
+void coop_save_set_external_dispatch(bool on) { g_external = on; }
+
+bool coop_save_prepare() {
+    if (!coop() || !host()) return true;
+    const char *p = std::getenv("SM64DS_COOP_SAVE");
+    if (!p || !*p) p = std::getenv("SM64DS_SAVE_PATH");
+    if (!p || !*p || std::strlen(p) + 1 >= sizeof g_sav || !ends_coopsav(p)) return false;
+    std::snprintf(g_sav, sizeof g_sav, "%s", p);
+    mkdirs(g_sav);
+    // A new file is an erased image. CREATE_NEW: never touches an existing one.
+    HANDLE h = CreateFileA(g_sav, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+                           FILE_ATTRIBUTE_NORMAL, NULL);
+    bool created = false;
+    if (h != INVALID_HANDLE_VALUE) {
+        static uint8_t blank[ntr::backup::kSize];
+        std::memset(blank, ntr::backup::kErased, sizeof blank);
+        DWORD w = 0;
+        created = WriteFile(h, blank, sizeof blank, &w, NULL) && w == sizeof blank;
+        CloseHandle(h);
+        if (!created) DeleteFileA(g_sav);
+    }
+    char jp[1100];
+    json_path(jp, sizeof jp);
+    if (created || GetFileAttributesA(jp) == INVALID_FILE_ATTRIBUTES) write_json(0);
+    std::fprintf(stderr, "[coopsave] host file %s (%s)\n", g_sav,
+                 created ? "created, a new file" : "reopened");
+    return GetFileAttributesA(g_sav) != INVALID_FILE_ATTRIBUTES;
+}
+
+// One line per drop, the first 24 only (a hostile peer must not fill a log).
+static bool drop(unsigned *counter, int seat, const char *why) {
+    static unsigned said = 0;
+    ++*counter;
+    if (said < 24) {
+        ++said;
+        std::fprintf(stderr, "[coopsave] DROP seat %d: %s\n", seat, why);
+    }
+    return true;
+}
+
+bool coop_save_handle(int seat, const unsigned char *d, int len) {
+    if (!d || len < kHubCoopHeaderBytes) return false;
+    const int sub = d[6];
+    if (sub < kCoopSaveSubLo || sub > kCoopSaveSubHi) return false;
+    if (!coop()) return true;
+    if (!hub_coop_validate(kHubTagCoopCtl, d, len))
+        return drop(&g_st.dropped_bad, seat, "bad SYNB head");
+    const uint8_t *pl = d + kHubCoopHeaderBytes;
+    const int plen = len - kHubCoopHeaderBytes;
+    if (sub == kCoopSaveSubReq) {
+        if (plen != kCoopReqPayload || (pl[0] | pl[1] | pl[2] | pl[3])) {
+            return drop(&g_st.dropped_bad, seat, "malformed SAVE_REQ");
+        }
+        if (host()) { ++g_st.req_recv; g_answer = true; }
+        return true;
+    }
+    if (sub == kCoopSaveSubRec) {
+        bool blank = false;
+        uint8_t rec[kCoopRecBytes];
+        int r = coop_rec_decode(pl, plen, &blank, rec);
+        if (r < 0) return drop(&g_st.dropped_bad, seat, "malformed SAVE_REC");
+        if (!blank && std::memcmp(rec, kMagic, 4) != 0)
+            return drop(&g_st.dropped_bad, seat, "SAVE_REC without the file magic");
+        if ((r == 0) != host())
+            return drop(&g_st.dropped_role, seat, "SAVE_REC for the other role");
+        if (r == 0) {
+            ++g_st.rec_recv_guest;
+            if (!g_pending_have) std::memset(g_pending, 0, sizeof g_pending);
+            int n = coop_merge_record(g_pending, rec);
+            g_pending_have = true;
+            std::fprintf(stderr, "[coopsave] host heard seat %d record, %d new bits "
+                         "queued (stars in it %d)\n", seat, n, coop_record_stars(rec));
+        } else {
+            ++g_st.rec_recv_host;
+            g_host_blank = blank;
+            if (!g_host_have) std::memset(g_hostrec, 0, sizeof g_hostrec);
+            if (!blank) coop_merge_record(g_hostrec, rec);   // only grows
+            g_host_have = true;
+            g_host_dirty = true;
+        }
+        return true;
+    }
+    return drop(&g_st.dropped_subtype, seat, "unknown sub-type in 0x20-0x2f");
+}
+
+bool coop_save_fetch(int timeout_ms) {
+    if (!coop() || host()) { if (host()) coop_save_prepare(); return true; }
+    if (g_fetched) return true;
+    ensure_init();
+    const ULONGLONG t0 = GetTickCount64();
+    ULONGLONG last_req = 0;
+    while (!g_host_have) {
+        const ULONGLONG now = GetTickCount64();
+        if ((long long)(now - t0) >= timeout_ms) {
+            ++g_st.fetch_timeout;
+            std::fprintf(stderr, "[coopsave] fetch TIMEOUT after %llu ms (budget %d): "
+                         "the host did not answer\n",
+                         (unsigned long long)(now - t0), timeout_ms);
+            return false;
+        }
+        if (comms_hub_state() == kHubLive && now - last_req >= 250) {
+            uint8_t z[kCoopReqPayload] = {0, 0, 0, 0};
+            if (send_ctl(kCoopSaveSubReq, z, sizeof z)) ++g_st.req_sent;
+            last_req = now;
+        }
+        comms_hub_pump();
+        Sleep(10);
+    }
+    if (!g_host_blank) write_guest_seed(g_hostrec);
+    ++g_st.fetch_ok;
+    g_fetched = true;
+    std::fprintf(stderr, "[coopsave] fetch ok in %llu ms: %s, stars %d\n",
+                 (unsigned long long)(GetTickCount64() - t0),
+                 g_host_blank ? "new file (blank)" : "host record seeded into slot 0",
+                 g_host_blank ? 0 : coop_record_stars(g_hostrec));
+    g_host_dirty = false;
+    return true;
+}
+
+}  // namespace port
+
+extern "C" void port_coop_save_frame(void) {
+    using namespace port;
+    if (!coop()) return;
+    ensure_init();
+    ++g_frame;
+    /* the ROM puts "ds mario" back at boot; a coop room keeps its own tag */
+    if (std::memcmp(data_020a4b40, kCoopTag, 8) != 0) std::memcpy(data_020a4b40, kCoopTag, 8);
+    run_probe();
+    run_forge();
+    const ULONGLONG now = GetTickCount64();
+    const bool live = comms_hub_state() == kHubLive;
+    const bool others = live && comms_hub_seat_mask() != 0;
+
+    if (live_valid()) {
+        if (host() && g_pending_have) {
+            int n = coop_merge_record(data_0209caa0, g_pending);
+            g_pending_have = false;
+            if (n) {
+                g_st.merged_bits += (unsigned)n;
+                std::fprintf(stderr, "[coopsave] host merged %d guest bits\n", n);
+                save_live();
+            }
+        }
+        if (!host() && g_host_dirty && !g_host_blank) {
+            int n = coop_merge_record(data_0209caa0, g_hostrec);
+            if (n) {
+                g_st.merged_bits += (unsigned)n;
+                std::fprintf(stderr, "[coopsave] guest took %d bits from the host record\n", n);
+                save_live();
+            }
+        }
+        g_host_dirty = false;
+        if (host() && !retry_off()) {
+            watch_flush_failures();
+            if (g_save_retry && (g_frame >= g_retry_frame || GetTickCount64() - g_retry_ms >= kRetryMs)) {
+                ++g_retry_tries;
+                save_live();
+            }
+        }
+        uint8_t sn[kCoopRecBytes];
+        mask_record(sn, data_0209caa0);
+        if (host()) {
+            const bool changed = !g_last_have || std::memcmp(sn, g_last_sent, sizeof sn) != 0;
+            if (others && (g_answer || changed || now - g_last_send_ms >= 2000)) {
+                send_rec(true, false, data_0209caa0);
+                std::memcpy(g_last_sent, sn, sizeof sn);
+                g_last_have = true;
+                g_answer = false;
+            } else if (!others) {
+                g_answer = false;
+            }
+        } else if (others) {
+            const bool covered = g_host_have && coop_record_covers(g_hostrec, sn);
+            if (!covered && (!g_last_have || std::memcmp(sn, g_last_sent, sizeof sn) != 0 ||
+                             now - g_last_send_ms >= 1500)) {
+                send_rec(false, false, data_0209caa0);
+                std::memcpy(g_last_sent, sn, sizeof sn);
+                g_last_have = true;
+            }
+        }
+        if (host() && g_json_dirty && now - g_json_ms >= 1000) {
+            write_json(coop_record_stars(data_0209caa0));
+            g_json_dirty = false;
+            g_json_ms = now;
+        }
+    } else if (host() && g_answer && others) {
+        uint8_t rec[kCoopRecBytes];
+        bool blank = true;
+        host_record(rec, &blank);
+        send_rec(true, blank, rec);
+        g_answer = false;
+    }
+    if (!host() && live && !g_host_have && now - g_last_req_ms >= 250) {
+        uint8_t z[kCoopReqPayload] = {0, 0, 0, 0};
+        if (send_ctl(kCoopSaveSubReq, z, sizeof z)) ++g_st.req_sent;
+        g_last_req_ms = now;
+    }
+}
+
+// BOOT HOOK (one line in tests/walk_window.cpp's main, after the hub install).
+// A host prepares its file; a guest fetches the host record when
+// SM64DS_COOPSAVE_BOOT_FETCH=<ms> is set (the proof rows set it; COOPBOOT1 owns
+// the real boot and calls coop_save_fetch itself, which is idempotent, and
+// decides the exit). Inert outside a coop room.
+extern "C" void port_coop_save_boot(void) {
+    using namespace port;
+    if (!coop()) return;
+    ensure_init();
+    const char *e = std::getenv("SM64DS_COOPSAVE_BOOT_FETCH");
+    if (host() || !e || !*e) return;
+    int ms = std::atoi(e);
+    if (ms <= 0) ms = 3000;
+    if (!coop_save_fetch(ms)) {
+        std::fprintf(stderr, "[coopsave] the host did not answer for the save; "
+                     "exiting with code 6\n");
+        std::fflush(stderr);
+        ExitProcess(6);
+    }
+}

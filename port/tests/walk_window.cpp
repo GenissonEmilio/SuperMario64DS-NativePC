@@ -629,6 +629,13 @@ void port_party_probe(int frame);
 void port_hub_presence_frame(void);
 /* run mp1 wave 56 lane PSTAR1: party shared stars (hal/party_stars.cpp). */
 void port_party_stars_frame(void);
+void port_coop_save_frame(void);
+void port_coop_save_boot(void);
+void port_coop_boot_begin(void);
+int port_coop_boot_scene_frame(void);
+int port_coop_boot_frame(void);
+/* run mp1 lane COOPWORLD1: the coop world core (hal/coop_world.cpp). */
+void port_coop_world_frame(void);
 /* PARTY: per-slot party-member predicate (hal/comms_sync.cpp). */
 extern "C" int port_party_member(int slot);
 extern char data_0209f4a0[];
@@ -12495,6 +12502,7 @@ static int scene_window_run(void)
         /* the scene's own frame; the menu's pause is its second argument, the
            same switch the level loop's game_ticked is */
         pt_mark(PS_SCENE_TICK);
+        port_coop_boot_scene_frame();
         port_scene_tick(port_rom_frame_checked(frame, "scene-tick"), !menu_on);
         si_ram_hash(frame);
 
@@ -13229,6 +13237,8 @@ int main(void)
         !port::comms_hub_install_from_env())
         port::comms_loopback_install_from_env();
     pacer_begin();
+    port_coop_boot_begin();
+    port_coop_save_boot();
 #ifdef PORT_ROM_CLEAN
     /* ROM-CLEAN: load + verify the ROM tables from romdata.bin FIRST, before
        any table is read. Loud FATAL if the file is missing, short, or fails its
@@ -18004,7 +18014,7 @@ int main(void)
                      !rb_skip_actor_render() && !(selftest && frame == 0) &&
                      !port_actor_frame_split_forced();
         }
-        if (tick_frozen) {
+        if (port_coop_boot_frame() || tick_frozen) {
             game_ticked = 0;
         } else if (boot_spawns) {
             /* Nothing to undo before the tick any more. The view matrix is
@@ -18172,6 +18182,8 @@ int main(void)
            SM64DS_ADVENTURE_PRESENCE is set. */
         port_adventure_presence_probe(frame);
         port_hub_presence_frame();
+        port_coop_save_frame();
+        port_coop_world_frame();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
         port_party_stars_frame();
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
