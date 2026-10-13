@@ -54,6 +54,8 @@ extern unsigned char data_0209f2c8;    /* the course the card shows */
 extern unsigned char data_0209f2b8;    /* the save status countdown */
 extern signed char data_0209f2f8;      /* the level the pause is in (PS_Init: castle = 0x1d) */
 extern unsigned char data_0209f250;    /* the local player's slot */
+extern unsigned char data_020a0de8[];  /* TouchInfo[slot * 4]: +0 touched, +1 change edge, +2 x, +3 y (hal/sub_screen.cpp poll_touch writes it) */
+extern unsigned char data_020a0e40;    /* the input slot the ROM reads */
 extern unsigned short data_0209f358[]; /* coins per player */
 extern signed char data_0209f30c[];    /* red coins per player */
 extern unsigned char data_0209cad2[];  /* SaveData coin records, per course (SaveData::GetCoinRecord) */
@@ -217,6 +219,19 @@ void page_course(int dir)
 {
     if (data_0209f248 != 1 || data_0209f2f0) return;
     hal_menu_touch_queue_press(dir < 0 ? 0x1c : 0xe4, 0x10);
+}
+
+/* NO STALE STYLUS UNDER A CONFIRM KEY. The ROM's plate chain (PS_Update.cpp case 1 / 3 / 5: "touched, or a valid button") tests the stylus x / y
+   against every plate box BEFORE it looks at the chosen plate, and a valid button (Start, which the port's confirm keys become) with no touch
+   goes through the same tests. On the cartridge an untouched panel reads x = y = 0xff (src/func_0203b9bc.c: the idle quad {0xff, 0xff, 0, 0}
+   whenever no ring entry is touched), which falls outside every box, so the chosen plate wins. The port latches the LAST touched point on release
+   (hal/sub_screen.cpp poll_touch), so any earlier click left x / y inside some plate box (a click that landed where the ROM's Controller Modes
+   plate is, 0x40..0x5f in a course, is enough) and the next Enter / A / Space on "Exit Course" pressed that plate instead. While the pause is up
+   and nothing is touching, park the point where the cartridge does. */
+void park_idle_stylus(void)
+{
+    unsigned char *t = data_020a0de8 + (unsigned)data_020a0e40 * 4;
+    if (t[0] == 0) { t[2] = 0xff; t[3] = 0xff; }
 }
 
 int is_main_page(int v) { return v == V_CASTLE || v == V_COURSE; }
@@ -781,6 +796,7 @@ extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int m
    plate cursor: A (or B) slides back to the planks instead. pressed is the DS key word (MENU_PAD_*). */
 extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back)
 {
+    if (g_last_variant) park_idle_stylus();
     if (!tracker_view() || settings_page_open()) return;
     const uint16_t confirm = (uint16_t)(MENU_PAD_CONFIRM | MENU_PAD_START | 0x0001);
     if (*pressed & MENU_PAD_START) {       /* Start resumes at once (the ROM's Continue plate), the tracker view is left behind */
@@ -800,6 +816,7 @@ extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back)
    the port's confirm keys (pad A, Space, the DS A key) become the Start the ROM confirms with. pressed is the DS key word (MENU_PAD_*); the caller writes it back. */
 extern "C" void menu_pause_rom_pad(uint16_t *pressed)
 {
+    if (data_0209f248 != 5 && menu_pause_pad_ok()) park_idle_stylus();      /* (the VS pause stays the ROM's own) */
     if (!pause_cursor_live() || !menu_pause_pad_ok()) return;
     uint16_t k = *pressed;
     const unsigned st = data_0209f248;
