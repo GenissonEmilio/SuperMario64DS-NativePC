@@ -3721,9 +3721,36 @@ extern "C" int hal_window_cursor_fb(int *fx, int *fy)
     return hal_present_client_to_fb((int)p.x, (int)p.y, fx, fy) ? 1 : 0;
 }
 
+/* PAUSEMP1: the slot the seam rewrites. -1 = data_020a0e40 (the ROM's which-player-is-ticking, 0 in solo: the old behaviour).
+   A session calls hal_menu_pad_seam_slot with the LOCAL slot (data_0209f250 in the level loop, 0 in the scene loop, which only
+   fills slot 0): outside a Player tick data_020a0e40 is whatever the last ticked Player left, a remote slot in a session. */
+static int g_seam_slot = -1;
+static void menu_pad_seam_impl(void);
 extern "C" void hal_menu_pad_seam(void)
 {
+    g_seam_slot = -1;
+    menu_pad_seam_impl();
+}
+extern "C" void hal_menu_pad_seam_slot(int slot)
+{
+    g_seam_slot = (slot >= 0 && slot < 4) ? slot : -1;
+    menu_pad_seam_impl();
+    g_seam_slot = -1;
+}
+
+static void menu_pad_seam_impl(void)
+{
     static int back_was;
+    const int seam_slot = g_seam_slot >= 0 ? g_seam_slot : (int)data_020a0e40;
+    if (g_seam_slot >= 0 && data_020a0e40 != (unsigned char)g_seam_slot &&
+        (hal_menu_live() || data_0209f2c4)) {
+        /* a session: the ROM's pause / menu code reads the pad of data_020a0e40, and between Player ticks that is the last
+           body ticked (a remote seat). While a menu is up it is the local player's. A Player tick sets it again itself. */
+        static int said;
+        if (said < 4) { ++said; fprintf(stderr, "[pausemp] which-player %d -> local %d
+", (int)data_020a0e40, g_seam_slot); }
+        data_020a0e40 = (unsigned char)g_seam_slot;
+    }
     int back = 0;
     {
         /* ASSET6: SM64DS_HOST_KEY=08@f scripts the Backspace here too (a scripted run has no focused window to read the key from) */
@@ -3736,7 +3763,7 @@ extern "C" void hal_menu_pad_seam(void)
     menu_bigmap_pad_seam();   /* MAP1: Select shows / hides the big map; the ROM never sees that Select (OneScreenMenus on) */
     if (!hal_menu_live()) {
         /* OneScreenMenus off: the ROM's own pause on two screens; its plate cursor and confirm get the keys and the pad */
-        const int s0 = data_020a0e40;
+        const int s0 = seam_slot;
         unsigned short *pr = (unsigned short *)((char *)data_020a0e58 + s0 * 4 + 2);
         unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);
         uint16_t k0 = *pr, k1 = k0;
@@ -3774,7 +3801,7 @@ extern "C" void hal_menu_pad_seam(void)
             else if (hal_present_client_to_fb((int)p.x, (int)p.y, &hbx, &hby)) hal_menu_hover(hbx, hby);
         }
     }
-    const int slot = data_020a0e40;
+    const int slot = seam_slot;
     unsigned short *pressed = (unsigned short *)((char *)data_020a0e58 + slot * 4 + 2);
     unsigned short *split = (unsigned short *)((char *)data_020a0e5a + slot * 4);
     uint16_t k = *pressed;
