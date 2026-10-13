@@ -128,7 +128,8 @@ int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy);
 extern "C" int settings_page_hook_pad(uint16_t *pressed);
 extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, unsigned char sy);
 extern "C" int settings_page_swallow_back(void);
-extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);   /* PAUSE3: hal/menu_recipe_pause.cpp */
+extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);
+extern "C" void menu_pause_rom_pad(uint16_t *pressed);   /* hal/menu_recipe_pause.cpp: OneScreenMenus off, the ROM's own pause */   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
 int hal_sub_screen_stacked(void);
@@ -3733,7 +3734,16 @@ extern "C" void hal_menu_pad_seam(void)
         if (back && settings_page_swallow_back()) back = 0;   /* SETPAGEFIX1: the Backspace that is the page's Back is not the ROM's */
     }
     menu_bigmap_pad_seam();   /* MAP1: Select shows / hides the big map; the ROM never sees that Select (OneScreenMenus on) */
-    if (!hal_menu_live()) return;
+    if (!hal_menu_live()) {
+        /* OneScreenMenus off: the ROM's own pause on two screens; its plate cursor and confirm get the keys and the pad */
+        const int s0 = data_020a0e40;
+        unsigned short *pr = (unsigned short *)((char *)data_020a0e58 + s0 * 4 + 2);
+        unsigned short *sp = (unsigned short *)((char *)data_020a0e5a + s0 * 4);
+        uint16_t k0 = *pr, k1 = k0;
+        menu_pause_rom_pad(&k1);
+        if (k1 != k0) { *pr = k1; *sp = k1; }
+        return;
+    }
     /* ASSET3: MOUSE HOVER. A menu recipe's hotspots take the mouse focus when the pointer moves onto them (hal_menu_hover had no
        caller): the pointer in client pixels -> picture pixels, the same inverse the stylus uses. SM64DS_MENU_HOVER_AT=x,y@N (picture
        pixels, from the Nth live frame on) stands in for the pointer on a scripted run. Only a pointer that moved since the last frame counts, so a pointer left
