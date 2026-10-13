@@ -11,6 +11,10 @@
 // level latch then runs, COOPWORLD1's late-join snapshot makes the level equal
 // the group's, and the group key becomes the friend's.
 //
+// HUB ONLY (COOPTP2): the badge shows and a click is taken only while MY player is in the castle (sublevels
+// 1..5: grounds, 1F, courtyard, basement, 2F/top). In a course there is no badge and the click goes on to
+// the game. The friend may be in any course and act. Landing is always the level's START (entrance 0).
+//
 // REFUSALS (one gray chat line each, nothing is queued):
 //   * the friend is in a menu / star select / cutscene / not in a level, has
 //     only just changed level (presence unsettled), or the level is not

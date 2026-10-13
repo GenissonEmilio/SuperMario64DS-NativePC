@@ -6,7 +6,7 @@ through the proof knob SM64DS_COOP_TP_FAKE=<seat>@<tick> (the same call the mous
 covered by PLIST1's WM_LBUTTONDOWN rows).
 
   python coop_tp_proof.py <row>[:base] ...
-Rows: badge | tp | tpmid | tplocked | tpoff | tpparty | refuse_menu | refuse_me | refuse_same | alone
+Rows: hub_tp | course_none | badge | tp | tpmid | tplocked | tpoff | tpparty | refuse_menu | refuse_me | refuse_same | alone
 Env: CTP_EXE (exe under test), CTP_BASE_EXE (control = f91d317300), CTP_SCRIPTS.
 :base runs the row on the base exe (the must-fail control).
 """
@@ -68,7 +68,7 @@ def wall_of(l):
 def row_badge(arm="new"):
     row = "badge" + ("_base" if arm == "base" else "")
     exe = BASE if arm == "base" else EXE
-    cons = run(row, exe, "%d@300" % BOB, {}, {}, frames=900)
+    cons = run(row, exe, "%d@300" % BOB, {}, {}, me_warp="1@300", frames=900)
     fa, ca = cons[0], cons[1]
     CR.common(row, cons)
     t = ca.text()
@@ -101,10 +101,11 @@ def landing(row, ta, tb, level, act):
 
 
 def row_tp(arm="new", warp=BOB, locked=False):
+    # COOPTP2: the clicker must be in the hub, so A starts in castle grounds (level 1).
     row = ("tplocked" if locked else "tp") + ("_base" if arm == "base" else "")
     exe = BASE if arm == "base" else EXE
     fx = {"SM64DS_COOP_KILL": KILLS} if not locked else {}
-    cons = run(row, exe, "%d@300" % warp, fx, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK})
+    cons = run(row, exe, "%d@300" % warp, fx, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK}, me_warp="1@300")
     fb, fa = cons[0], cons[1]
     CR.common(row, cons)
     ta, tb = fa.text(), fb.text()
@@ -129,9 +130,31 @@ def row_tp(arm="new", warp=BOB, locked=False):
     R.bmp_png(fa, "%s_A_end.png" % row)
 
 
+def row_hub_tp():
+    """COOPTP2: I (A) stand in the HUB (castle grounds, level 1) and TP to B in BOB: lands at the level start (entrance 0)."""
+    row = "hub_tp"
+    cons = run(row, EXE, "%d@300" % BOB, {}, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK}, me_warp="1@300")
+    CR.common(row, cons)
+    ta = cons[1].text()
+    say(bool(lines(ta, r"\[cotp\] badge seat 0 ON")), "%s: badge shows while A is in the hub" % row)
+    say(bool(lines(ta, r"\[cotp\] TP to seat 0.*level %d act 1" % BOB)), "%s: A asked for B's level+act" % row)
+    say(bool(lines(ta, r"\[cotp\] landed")), "%s: A landed (level start, entrance 0)" % row)
+
+
+def row_course_none():
+    """COOPTP2: A is inside a course (CCM, 10) while B is in BOB: no badge, the click is ignored, no TP, no chat spam."""
+    row = "course_none"
+    cons = run(row, EXE, "%d@300" % BOB, {}, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK}, me_warp="10@300")
+    CR.common(row, cons)
+    ta = cons[1].text()
+    say(not lines(ta, r"\[cotp\] badge seat 0 ON"), "%s: no badge while A is in a course" % row)
+    say(not lines(ta, r"\[cotp\] TP to seat"), "%s: the click started no warp" % row)
+    say(len(lines(ta, r"\[cotp\] say:")) <= 1, "%s: at most one quiet line, no spam" % row)
+
+
 def row_tpoff(arm="new"):
     row = "tpoff"
-    cons = run(row, EXE, "%d@300" % BOB, {"SM64DS_COOP_TP": "0"}, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK})
+    cons = run(row, EXE, "%d@300" % BOB, {"SM64DS_COOP_TP": "0"}, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK}, me_warp="1@300")
     fb, fa = cons[0], cons[1]
     CR.common(row, cons)
     ta = fa.text()
@@ -146,7 +169,7 @@ def row_tpoff(arm="new"):
 
 def row_tpparty():
     row = "tpparty"
-    cons = run(row, EXE, "%d@300" % BOB, {}, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK}, kind="party", frames=1500)
+    cons = run(row, EXE, "%d@300" % BOB, {}, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK}, me_warp="1@300", kind="party", frames=1500)
     CR.common(row, cons)
     ta = cons[1].text()
     say(not lines(ta, r"\[cotp\]") and not [m for m in CR.bits_of(ta)], "%s: party room = no badge, no TP, no coop code at all" % row)
@@ -162,7 +185,7 @@ def row_refuse(which):
         mx["SM64DS_COOP_TP_FAKE"] = "1@%d" % TPTICK
     else:
         mx["SM64DS_HOST_PAD"] = "10@%d" % (TPTICK - 100)
-    cons = run(row, EXE, None if which == "menu" else "%d@300" % BOB, fx, mx, swap=(which == "menu"))
+    cons = run(row, EXE, None if which == "menu" else "%d@300" % BOB, fx, mx, me_warp=("1@300" if which != "menu" else None), swap=(which == "menu"))
     CR.common(row, cons)
     ta = cons[0 if which == "menu" else 1].text()
     say = G.say
@@ -230,7 +253,8 @@ def row_same():
     cons = run(row, EXE, "%d@300" % BOB, {}, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK}, me_warp="%d@320" % BOB)
     CR.common(row, cons)
     ta = cons[1].text()
-    say(bool(lines(ta, r"say: You are already with")) and not lines(ta, r"\[cotp\] TP to seat"), "%s: already in the friend's level+act: refused, no reload" % row)
+    # COOPTP2: A is in BOB (a course), so there is no badge/handler at all; the click is ignored, no reload.
+    say(not lines(ta, r"\[cotp\] TP to seat") and not lines(ta, r"\[cotp\] badge seat 0 ON"), "%s: in a course (same level as the friend): no badge, click ignored, no reload" % row)
 
 
 def row_alone():
@@ -250,6 +274,8 @@ if __name__ == "__main__":
         elif name == "tp": row_tp(arm)
         elif name == "tpmid": row_tp(arm, warp=int(os.environ.get("CTP_MID", "8")))
         elif name == "tplocked": row_tp(arm, warp=int(os.environ.get("CTP_LOCKED", "28")), locked=True)
+        elif name == "hub_tp": row_hub_tp()
+        elif name == "course_none": row_course_none()
         elif name == "tpoff": row_tpoff()
         elif name == "tpparty": row_tpparty()
         elif name == "refuse_menu": row_refuse("menu")
