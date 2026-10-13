@@ -3673,7 +3673,9 @@ extern "C" void hal_menu_decide_tick(int w, int h)
         init = 1;
         hal_menu_set_enable_fn(menu_enable);
     }
-    hal_menu_set_netplay(port::comms_transport() != 0);
+    /* PAUSEMP1: the ROM-cursor drivers are refused only in a LOCKSTEP session (the ROM's fan-out drives, a ROM-state write desyncs it).
+       Adventure, coop and party run their own world per console (comms_fanout_active() is false there), so a local plate cursor is local. */
+    hal_menu_set_netplay(port::comms_transport() != 0 && port::comms_fanout_active());
     const int scene = hal_sub_screen_stacked() ? MENU_SCENE_GATED : port_scene_live_id();
     hal_menu_decide(w, h, scene);
     g_force_panel.store((!g_on && scene != MENU_SCENE_GATED && !hal_menu_live() &&
