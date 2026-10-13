@@ -3944,29 +3944,42 @@ static int chat_font_build(void)
     return 1;
 }
 
-/* Width of one character at `scale`, in whichever font is drawing. */
-static int chat_adv(unsigned char ch, int rom, int scale)
+/* Width of one character at `sc100`, the pixel scale times 100 (so 100 * the
+   integer scale draws what the chat always drew), in whichever font is
+   drawing. Run mp1, lane CHATSCALE1: the chat's size setting makes the scale
+   fractional; every other painter keeps calling the integer forms below, which
+   are these at x100. */
+static int chat_adv100(unsigned char ch, int rom, int sc100)
 {
     if (!rom) return OVL_ADVANCE * OVL_SCALE;
-    if (ch < NT_FIRST || ch > NT_LAST) return 6 * scale;
-    return (int)g_chat_glyph[ch - NT_FIRST].adv * scale;
+    const int a = (ch < NT_FIRST || ch > NT_LAST)
+                      ? 6 : (int)g_chat_glyph[ch - NT_FIRST].adv;
+    return (a * sc100 + 50) / 100;
+}
+static int chat_adv(unsigned char ch, int rom, int scale)
+{
+    return chat_adv100(ch, rom, scale * 100);
 }
 
 /* n characters of s at (x0, y0); returns the width. pass 0 outline, 1 ink
-   (ROM font); the 5x7 font has no outline and paints on pass 1 only. */
-static int chat_text(const OvlSurface &fb, int x0, int y0, const char *s,
-                     int n, int rom, int scale, uint32_t rgb, int pass,
-                     int alpha)
+   (ROM font); the 5x7 font has no outline and paints on pass 1 only. At a
+   whole scale (sc100 a multiple of 100) the pixels are exactly the old
+   integer-scale pixels; between, each glyph cell covers the rounded span of
+   its scaled position, so a stroke is never thinner than a pixel. */
+static int chat_text100(const OvlSurface &fb, int x0, int y0, const char *s,
+                        int n, int rom, int sc100, uint32_t rgb, int pass,
+                        int alpha)
 {
     ntr::gx_card_settle();     /* see ovl_shade */
+    const int olw = (sc100 + 50) / 100 < 1 ? 1 : (sc100 + 50) / 100;
     int x = x0;
     for (int i = 0; i < n && s[i]; ++i) {
         const unsigned char a = (unsigned char)s[i];
-        const int adv = chat_adv(a, rom, scale);
+        const int adv = chat_adv100(a, rom, sc100);
         if (!rom) {
             if (pass == 1) {
                 char one[2] = {(char)a, 0};
-                ovl_text(fb, x, y0 + (NT_GH * scale - OVL_GLYPH_H * OVL_SCALE) / 2,
+                ovl_text(fb, x, y0 + ((NT_GH * sc100 + 50) / 100 - OVL_GLYPH_H * OVL_SCALE) / 2,
                          one, rgb);
             }
             x += adv;
@@ -3977,17 +3990,21 @@ static int chat_text(const OvlSurface &fb, int x0, int y0, const char *s,
             continue;
         }
         const NtGlyph &gl = g_chat_glyph[a - NT_FIRST];
-        for (int r = 0; r < NT_GH; ++r)
+        for (int r = 0; r < NT_GH; ++r) {
+            const int cy0 = (r * sc100 + 50) / 100;
+            int cy1 = ((r + 1) * sc100 + 50) / 100;
+            if (cy1 <= cy0) cy1 = cy0 + 1;
             for (int c = 0; c < NT_GW; ++c) {
                 if (!gl.ink[r][c]) continue;
-                for (int sy = 0; sy < scale; ++sy)
-                    for (int sx = 0; sx < scale; ++sx)
-                        for (int oy = -1; oy <= 1; ++oy)
-                            for (int ox = -1; ox <= 1; ++ox) {
-                                if (pass == 1 && (ox || oy)) continue;
-                                if (pass == 0 && !ox && !oy) continue;
-                                const int qx = x + c * scale + sx + ox * scale;
-                                const int qy = y0 + r * scale + sy + oy * scale;
+                const int cx0 = (c * sc100 + 50) / 100;
+                int cx1 = ((c + 1) * sc100 + 50) / 100;
+                if (cx1 <= cx0) cx1 = cx0 + 1;
+                for (int oy = -1; oy <= 1; ++oy)
+                    for (int ox = -1; ox <= 1; ++ox) {
+                        if (pass == 1 && (ox || oy)) continue;
+                        if (pass == 0 && !ox && !oy) continue;
+                        for (int qy = y0 + cy0 + oy * olw; qy < y0 + cy1 + oy * olw; ++qy)
+                            for (int qx = x + cx0 + ox * olw; qx < x + cx1 + ox * olw; ++qx) {
                                 if (qx < 0 || qx >= ntr::active_w || qy < 0 ||
                                     qy >= ntr::active_h)
                                     continue;
@@ -3996,30 +4013,38 @@ static int chat_text(const OvlSurface &fb, int x0, int y0, const char *s,
                                 fb.px[idx] = nt_blend(fb.px[idx],
                                     pass ? rgb : 0xFF000000u, alpha);
                             }
+                    }
             }
+        }
         x += adv;
     }
     return x - x0;
 }
+static int chat_text(const OvlSurface &fb, int x0, int y0, const char *s,
+                     int n, int rom, int scale, uint32_t rgb, int pass,
+                     int alpha)
+{
+    return chat_text100(fb, x0, y0, s, n, rom, scale * 100, rgb, pass, alpha);
+}
 
-/* One message, word-wrapped to `width`, bottom row at y_bottom; returns the
-   number of rows it used (drawing upward), at most `max_rows`. */
+/* One message, word-wrapped to `width` (the text's right edge, measured from
+   its left edge), at most `max_rows` rows. The name and its ": " sit on row 0
+   only; the text continues from the row's start, wrapping at a space where
+   there is one and mid-word where a word is wider than a row. */
 struct ChatRow { int start, len, indent; };
-static int chat_layout(const char *name, const char *text, int rom, int scale,
+static int chat_layout(const char *name, const char *text, int rom, int sc100,
                        int width, ChatRow *rows, int max_rows)
 {
-    /* the name and its ": " on row 0; text continues after it and wraps at
-       spaces where it can, mid-word where a word is wider than a row */
     int name_w = 0;
-    for (const char *p = name; *p; ++p) name_w += chat_adv((unsigned char)*p, rom, scale);
-    if (*name) name_w += chat_adv(':', rom, scale) + chat_adv(' ', rom, scale);
+    for (const char *p = name; *p; ++p) name_w += chat_adv100((unsigned char)*p, rom, sc100);
+    if (*name) name_w += chat_adv100(':', rom, sc100) + chat_adv100(' ', rom, sc100);
     int n = 0, i = 0;
     const int len = (int)strlen(text);
     while (i < len && n < max_rows) {
         const int indent = n == 0 ? name_w : 0;
         int w = indent, j = i, last_space = -1;
         while (j < len) {
-            const int a = chat_adv((unsigned char)text[j], rom, scale);
+            const int a = chat_adv100((unsigned char)text[j], rom, sc100);
             if (w + a > width && j > i) break;
             if (text[j] == ' ') last_space = j;
             w += a;
@@ -4036,6 +4061,8 @@ static int chat_layout(const char *name, const char *text, int rom, int scale,
     return n;
 }
 
+enum { CHAT_MAXROWS = 16 };      /* rows one message or the box can take */
+
 static void chat_draw(const OvlSurface &fb)
 {
     port::ChatView v;
@@ -4043,9 +4070,16 @@ static void chat_draw(const OvlSurface &fb)
     if (v.n == 0 && !v.open) return;
     const int rom = chat_font_build();
     const int scale = OVL_SCALE;
-    const int row_h = rom ? (NT_GH + 2) * scale : OVL_LINE;
+    /* THE SIZE SETTING (CHATSCALE1): percent of today's look; 100 is today */
+    const int pct = host_setting_chat_scale();
+    const int sc100 = scale * pct;
+#define CS(n) (((n) * sc100 + 50) / 100)       /* n of today's pixels, scaled */
+    const int row_h = rom ? CS(NT_GH + 2) : OVL_LINE;
     const int left = 6 * scale;
-    const int width = ntr::active_w - 2 * left;
+    /* a line that would reach past the HALF of the screen wraps: its text may
+       run to the half-way column and no further */
+    int width = ntr::active_w / 2 - left;
+    if (width < 8 * chat_adv100('W', rom, sc100)) width = 8 * chat_adv100('W', rom, sc100);
     /* clear of the bottom corners: the save-state toast's row and the HUD's
        corner icon on the left, the inset touch panel on the right (the box
        never reaches it: the counter follows the text instead of the edge) */
@@ -4055,52 +4089,74 @@ static void chat_draw(const OvlSurface &fb)
         char cnt[16];
         snprintf(cnt, sizeof cnt, "%d", port::kChatTextMax - v.box_bytes);
         int cw = 0;
-        for (const char *p = cnt; *p; ++p) cw += chat_adv((unsigned char)*p, rom, scale);
+        for (const char *p = cnt; *p; ++p) cw += chat_adv100((unsigned char)*p, rom, sc100);
         char line[160];
         snprintf(line, sizeof line, "SAY: %s%s", v.box, v.caret ? "_" : " ");
-        /* the tail of a long line, so the caret stays on screen; the room
-           left over the text is shown after it, dimmed */
-        const char *s = line;
-        int w = 0;
-        for (const char *p = s; *p; ++p) w += chat_adv((unsigned char)*p, rom, scale);
-        const int room = width - cw - 8 * scale;
-        while (*s && w > room) { w -= chat_adv((unsigned char)*s, rom, scale); ++s; }
-        ovl_shade(fb, left - 2 * scale, y - scale, w + cw + 12 * scale, row_h);
-        if (rom) chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 0, 255);
-        chat_text(fb, left, y, s, (int)strlen(s), rom, scale, 0xFFFFFFFFu, 1, 255);
-        const int cx = left + w + 8 * scale;
-        if (rom) chat_text(fb, cx, y, cnt, (int)strlen(cnt), rom, scale, 0xFFA0A0A0u, 0, 255);
-        chat_text(fb, cx, y, cnt, (int)strlen(cnt), rom, scale, 0xFFA0A0A0u, 1, 255);
-        y -= row_h + 2 * scale;
+        /* the typed line wraps like a message, inside the half width less the
+           counter that follows its last row; a very long one shows its last
+           rows, so the caret stays on screen */
+        const int room = width - cw - CS(8);
+        ChatRow brow[CHAT_MAXROWS];
+        const int nb = chat_layout("", line, rom, sc100, room > 0 ? room : width, brow, CHAT_MAXROWS);
+        const int first = nb > 4 ? nb - 4 : 0;
+        const int shown = nb - first;
+        const int top = y - (shown - 1) * row_h;
+        for (int r = first; r < nb; ++r) {
+            const int ry = top + (r - first) * row_h;
+            const char *s = line + brow[r].start;
+            const int sl = brow[r].len;
+            int w = 0;
+            for (int q = 0; q < sl; ++q) w += chat_adv100((unsigned char)s[q], rom, sc100);
+            const bool last = r == nb - 1;
+            ovl_shade(fb, left - CS(2), ry - CS(1), w + (last ? cw + CS(12) : CS(4)), row_h);
+            if (rom) chat_text100(fb, left, ry, s, sl, rom, sc100, 0xFFFFFFFFu, 0, 255);
+            chat_text100(fb, left, ry, s, sl, rom, sc100, 0xFFFFFFFFu, 1, 255);
+            if (last) {
+                const int cx = left + w + CS(8);
+                if (rom) chat_text100(fb, cx, ry, cnt, (int)strlen(cnt), rom, sc100, 0xFFA0A0A0u, 0, 255);
+                chat_text100(fb, cx, ry, cnt, (int)strlen(cnt), rom, sc100, 0xFFA0A0A0u, 1, 255);
+            }
+        }
+        y = top - row_h - CS(2);
     }
 
-    /* newest at the bottom: walk the lines newest first, drawing upward */
+    /* newest at the bottom: walk the lines newest first, drawing upward. The
+       history keeps its length in WRAPPED rows: kChatShowLines rows in all, so
+       the box never grows over the game further than it did, with the newest
+       message always whole. */
+    int budget = port::kChatShowLines;
+    bool first_line = true;
     for (int k = v.n - 1; k >= 0; --k) {
         const port::ChatViewLine &l = v.line[k];
-        ChatRow rows[3];
-        const int nr = chat_layout(l.name, l.text, rom, scale, width, rows, 3);
+        ChatRow rows[CHAT_MAXROWS];
+        const int nr = chat_layout(l.name, l.text, rom, sc100, width, rows, CHAT_MAXROWS);
+        if (!first_line && nr > budget) break;
+        budget -= nr;
+        first_line = false;
         const int top = y - (nr - 1) * row_h;
         if (top < 0) break;
         for (int r = 0; r < nr; ++r) {
             const int ry = top + r * row_h;
             int rw = rows[r].indent;
             for (int q = 0; q < rows[r].len; ++q)
-                rw += chat_adv((unsigned char)l.text[rows[r].start + q], rom, scale);
-            if (l.alpha > 96) ovl_shade(fb, left - 2 * scale, ry - scale, rw + 4 * scale, row_h);
+                rw += chat_adv100((unsigned char)l.text[rows[r].start + q], rom, sc100);
+            if (l.alpha > 96) ovl_shade(fb, left - CS(2), ry - CS(1), rw + CS(4), row_h);
             for (int pass = rom ? 0 : 1; pass <= 1; ++pass) {
                 if (r == 0 && l.name[0]) {
-                    const int nw = chat_text(fb, left, ry, l.name, (int)strlen(l.name),
-                                             rom, scale, l.rgb, pass, l.alpha);
-                    chat_text(fb, left + nw, ry, ": ", 2, rom, scale, l.rgb, pass,
-                              l.alpha);
+                    const int nw = chat_text100(fb, left, ry, l.name, (int)strlen(l.name),
+                                                rom, sc100, l.rgb, pass, l.alpha);
+                    chat_text100(fb, left + nw, ry, ": ", 2, rom, sc100, l.rgb, pass,
+                                 l.alpha);
                 }
-                chat_text(fb, left + rows[r].indent, ry, l.text + rows[r].start,
-                          rows[r].len, rom, scale,
-                          l.name[0] ? 0xFFFFFFFFu : 0xFFC0C0C0u, pass, l.alpha);
+                chat_text100(fb, left + rows[r].indent, ry, l.text + rows[r].start,
+                             rows[r].len, rom, sc100,
+                             l.name[0] ? 0xFFFFFFFFu : 0xFFC0C0C0u, pass, l.alpha);
             }
         }
-        y = top - row_h - scale;
+        y = top - row_h - CS(1);
+        if (budget <= 0) break;
     }
+#undef CS
 }
 
 /* THE ONLINE PING READOUT (run mp1, lane PINGHUD1): its painter draws with the

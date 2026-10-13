@@ -804,6 +804,21 @@ int g_mouse_capture;
    rather than a mod. */
 int g_name_tags = 1;
 
+/* ChatScale (run mp1, lane CHATSCALE1): the text chat's size in percent of
+   today's look. One of 75 / 100 / 125 / 150 / 200, default 100 (= the look the
+   chat has always had). Reloads live: the overlay asks per frame. Anything the
+   file says that is not one of the five lands on the nearest of them. */
+int g_chat_scale = 100;
+int chat_scale_sanitise(int n)
+{
+    if (n <= 0) return 100;
+    if (n < 88) return 75;
+    if (n < 113) return 100;
+    if (n < 138) return 125;
+    if (n < 175) return 150;
+    return 200;
+}
+
 /* AdventureGhosts: 1 when the player asked to play the single-player adventure
    together, seeing other players as see-through ghosts. Default 0, and 0 is
    the ROM's own solo game. Unlike NameTags the default is OFF -- see the
@@ -1466,6 +1481,7 @@ void load_once(void)
     g_mouse_capture = 0;
     g_custom_palette = 0;
     g_name_tags = 1;
+    g_chat_scale = 100;
     g_adventure_ghosts = 0;
     g_aspect = 0.0;
     g_vs_luigi_infection = 0;
@@ -1655,6 +1671,7 @@ void load_once(void)
            written before this key existed reads as a file that left it on,
            which is what a player who never opened the dialog expects. */
         g_name_tags = json_bool(text, "NameTags", 1);
+        g_chat_scale = chat_scale_sanitise(json_int(text, "ChatScale", 100));
         /* the adventure-ghost mode, read against its own default of OFF beside
            the keys above: a file written before this key existed reads as one
            that left it off, which is the ROM's solo game. */
@@ -2229,6 +2246,8 @@ int reload_live(const char *text)
        no-collision paths read it per frame, so the launcher's dialog can turn
        the mode on and off with the game already running. */
     const int adv = json_bool(text, "AdventureGhosts", g_adventure_ghosts);
+    /* ChatScale (CHATSCALE1): live; the overlay reads it every frame. */
+    const int chat = chat_scale_sanitise(json_int(text, "ChatScale", g_chat_scale));
     int fill = g_gap_fill;
     unsigned color = g_gap_color;
     int vol = g_volume;
@@ -2283,7 +2302,8 @@ int reload_live(const char *text)
     }
     if (gap != g_gap_on || peek != g_gap_peek || fill != g_gap_fill ||
         color != g_gap_color || vol != g_volume || mcap != g_mouse_capture ||
-        tags != g_name_tags || adv != g_adventure_ghosts) {
+        tags != g_name_tags || adv != g_adventure_ghosts ||
+        chat != g_chat_scale) {
         g_gap_on = gap;
         g_gap_peek = peek;
         g_gap_fill = fill;
@@ -2292,17 +2312,18 @@ int reload_live(const char *text)
         g_mouse_capture = mcap;
         g_name_tags = tags;
         g_adventure_ghosts = adv;
+        g_chat_scale = chat;
         changed = 1;
         fprintf(stderr, "[settings] live re-read: MinigameGap %s, fill %s "
                 "#%06x, peek %s, volume %d, mouse capture %s, "
-                "name tags %s, adventure ghosts %s\n",
+                "name tags %s, adventure ghosts %s, chat scale %d\n",
                 g_gap_on ? "on" : "OFF",
                 g_gap_fill == 0   ? "solid"
                 : g_gap_fill == 2 ? "custom"
                                   : "ambient",
                 g_gap_color & 0xffffffu, g_gap_peek ? "ON" : "off", g_volume,
                 g_mouse_capture ? "ON" : "off", g_name_tags ? "on" : "OFF",
-                g_adventure_ghosts ? "ON" : "off");
+                g_adventure_ghosts ? "ON" : "off", g_chat_scale);
     }
     return changed;
 }
@@ -2497,6 +2518,21 @@ extern "C" int host_setting_name_tags(void)
     if (env >= 0) return env;
     load_once();
     return g_name_tags;
+}
+
+/* ChatScale: percent, one of 75 / 100 / 125 / 150 / 200. SM64DS_CHAT_SCALE
+   forces a value for a proof run (through the same sanitiser); unset is the
+   file's answer, live re-read included. */
+extern "C" int host_setting_chat_scale(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_CHAT_SCALE");
+        env = (e && *e) ? chat_scale_sanitise(atoi(e)) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_chat_scale;
 }
 
 /* AdventureGhosts, plus the debug env override every host toggle in this file
@@ -3054,6 +3090,17 @@ extern "C" int host_setting_set_volume(int pct)
     g_volume = pct;
     g_poll_flag = 1;
     queue_int("Volume", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_chat_scale(int pct)
+{
+    load_once();
+    if (pct <= 0) return 0;
+    pct = chat_scale_sanitise(pct);
+    g_chat_scale = pct;
+    g_poll_flag = 1;
+    queue_int("ChatScale", pct);
     return 1;
 }
 

@@ -68,6 +68,7 @@ static const SlInfo INFO[] = {
     { "GapLook",                SL_KIND_ENUM,    0, 2, 1, GAPLOOK_NAMES, 1 },
     { "GapColor",               SL_KIND_ENUM,    0, 5, 0, GAPCOLOR_NAMES, 1 },
     { "FrameRate",              SL_KIND_PERCENT, 0, 240, 0, 0, 1 },     /* values 1..59 are sanitised to 0 by the engine */
+    { "ChatScale",              SL_KIND_PERCENT, 75, 200, 100, 0, 1 },  /* values between the five stops snap to the nearest */
 };
 
 /* INFO[] is positional: row i describes id i. If a host key or pad is added (HOST_KEY_COUNT / HOST_PAD_COUNT move, for example
@@ -112,6 +113,7 @@ int sl_get(int id)
     case SL_MINIGAME_GAP:       return host_setting_minigame_gap();
     case SL_GAP_LOOK:           return host_setting_gap_look();
     case SL_FRAME_RATE:         return host_setting_frame_rate();
+    case SL_CHAT_SCALE:         return host_setting_chat_scale();
     case SL_GAP_COLOR: {
         const unsigned c = host_setting_gap_color() & 0xffffffu;
         for (int i = 0; i < 6; ++i) if (GAP_COLORS[i] == c) return i;
@@ -143,6 +145,9 @@ int sl_set(int id, int v)
     case SL_MINIGAME_GAP:       return host_setting_set_minigame_gap(v);
     case SL_GAP_LOOK:           return host_setting_set_gap_look(v);
     case SL_FRAME_RATE:         host_setting_save_frame_rate(v); return 1;     /* FPSLIVE1 saves the key itself */
+    case SL_CHAT_SCALE:
+        if (v < 75 || v > 200) return 0;
+        return host_setting_set_chat_scale(v);
     case SL_GAP_COLOR:
         if (v < 0 || v > 5) return 0;
         return host_setting_set_gap_color(GAP_COLORS[v]);

@@ -534,8 +534,11 @@ const char *const CAM_LABELS[] = { "Analog chase", "Free camera", "DS stepped" }
 const char *const GAPLOOK_LABELS[] = { "Solid", "Blur", "Peek" };
 const char *const GAPCOLOR_LABELS[] = { "Black", "White", "Gray", "Blue", "Red", "Green" };
 
+const char *const CHAT_LABELS[] = { "75%", "100%", "125%", "150%", "200%" };
+const int CHAT_VALS[] = { 75, 100, 125, 150, 200 };
 const Row ROWS_GENERAL[] = {
     { R_SLIDER, "Minimap size", SL_MINIMAP_SCALE, -1, 5, 0, 0 },
+    { R_CHOICE, "Chat size", SL_CHAT_SCALE, -1, 0, CHAT_LABELS, 5, CHAT_VALS },
     { R_NOTE, "The minimap is the small map in the corner.", -1, -1, 0, 0, 0 },
 };
 /* PAUSE3: CONTROLS is the old CONTROLS and CAMERA tabs together (the camera rows first, then the run rows, then the bindings) */
