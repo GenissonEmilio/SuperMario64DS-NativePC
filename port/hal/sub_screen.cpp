@@ -3747,8 +3747,7 @@ static void menu_pad_seam_impl(void)
         /* a session: the ROM's pause / menu code reads the pad of data_020a0e40, and between Player ticks that is the last
            body ticked (a remote seat). While a menu is up it is the local player's. A Player tick sets it again itself. */
         static int said;
-        if (said < 4) { ++said; fprintf(stderr, "[pausemp] which-player %d -> local %d
-", (int)data_020a0e40, g_seam_slot); }
+        if (said < 4) { ++said; fprintf(stderr, "[pausemp] which-player %d -> local %d\n", (int)data_020a0e40, g_seam_slot); }
         data_020a0e40 = (unsigned char)g_seam_slot;
     }
     int back = 0;
