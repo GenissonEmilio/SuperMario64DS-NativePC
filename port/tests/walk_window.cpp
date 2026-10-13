@@ -629,6 +629,8 @@ void port_party_probe(int frame);
 void port_hub_presence_frame(void);
 /* run mp1 wave 56 lane PSTAR1: party shared stars (hal/party_stars.cpp). */
 void port_party_stars_frame(void);
+/* PLAYINT1: party / coop player interactions (hal/party_hits.cpp). Inert outside party / coop rooms. */
+void port_party_hits_frame(void);
 void port_coop_save_frame(void);
 void port_coop_save_boot(void);
 void port_coop_boot_begin(void);
@@ -18255,6 +18257,7 @@ int main(void)
         port_coop_save_frame();
         port_coop_world_frame();   /* hook: COOPWORLD1, inert unless SM64DS_COOP */
         port_party_stars_frame();
+        port_party_hits_frame();   /* hook: PLAYINT1, inert outside party / coop rooms */
         port_star_popup_frame();   /* hook: STARPOP1, inert outside party / coop rooms */
         /* PARTY: the render boundary (a party body solid+colliding vs a
            non-party ghost translucent+pass-through) and party-body liveness.
