@@ -889,7 +889,9 @@ static void port_adv_red_silver_bottom(void)
         first = 0;
     else if (!first)
         first = silver ? 2 : 1;      /* both on one frame: silver below */
-    const int bottom = 0xa6, above = 0xa6 - 0x12;
+    /* HUDTWEAK1 (player ask, "N64 Accurate HUD Positioning"): both rows sit 14 DS pixels lower than the first bottom-left
+       placement (0xa6), the silver row's sprites ending 4 rows above the screen edge. */
+    const int bottom = 0xa6 + 14, above = 0xa6 + 14 - 0x12;
     const int red_y = (first == 1 || !silver) ? bottom : above;
     const int silver_y = (first == 2 || !red) ? bottom : above;
     for (int i = 0; i < red; i++)

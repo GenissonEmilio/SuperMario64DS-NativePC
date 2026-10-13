@@ -1166,10 +1166,18 @@ inline bool lc_overlay_in_band(unsigned owner, int hy)
 extern "C" int host_setting_hud_layout(void);
 extern "C" int hal_menu_layer_ok(void);
 static const int kHudZoneX0 = 188, kHudZoneY0 = 20, kHudZoneY1 = 36;   /* the coin counter's DS rectangle */
-static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudMeterGapMin = 2, kHudEdgeGap = 1, kHudStarGap = 6, kHudStarGapMin = 3;
+static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudMeterGapMin = 2, kHudEdgeGap = 1, kHudStarGap = 11, kHudStarGapMin = 3;
+/* HUDTWEAK1 (player ask, "N64 Accurate HUD Positioning"): the coin block sits 5 DS pixels further from the star counter (kHudStarGap
+   6 -> 11, the squeeze floor stays 3), the power meter moves the same 5 pixels left so the two keep their gap, and the race timer,
+   which the port draws one coin row (kHudCoinDy) under the coin count, moves up into the row the coin counter left. */
+static const int kHudMeterLeft = 5;
+static const int kHudMeterX0 = 80, kHudMeterX1 = 153, kHudMeterY1 = 60;   /* the meter's DS rectangle (x 80..153, y 0..60), clear of the lives and the star counter */
+static const int kHudTimerX0 = 154, kHudTimerX1 = 256, kHudTimerY0 = 38, kHudTimerY1 = 70;   /* the port's timer rows, x 0xa4..0xf8 and the glyph overhang, drawn at y 0x16 + 18 .. 0x1e + 18 + 16 */
+extern "C" unsigned char data_ov002_02111184;   /* the ROM's "a timer runs on this course" byte */
 static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
 static Cell g_hud_cells[192][256];    /* the moved coin counter's cells, a plane of their own so they never replace a cell of g_a (the POWER label) */
 static bool g_hud_row_live;
+static bool g_hud_timer_live;   /* HUDTWEAK1: this frame's timer cells move up (the N64 row is on and a course timer runs) */
 static bool g_hud_erase;   /* PROOF ARM (env SM64DS_HUD_ERASE_PROOF, off by default): the pre-fix behaviour, kept only to photograph the cause */
 
 namespace hudelem {
@@ -3566,11 +3574,23 @@ extern "C" void port_message_composite_engine_a(void *fbp)
        it. */
     /* THE N64 ROW, once per frame: only in a 3D scene shown at its own layout, never under a level-clear lift. */
     g_hud_row_live = false;
+    g_hud_timer_live = false;
 #ifndef PORT_ROM_CLEAN      /* env-only proof arm: not in the shipped build (g_hud_erase stays false) */
     { static const bool e = std::getenv("SM64DS_HUD_ERASE_PROOF") != nullptr; g_hud_erase = e; }
 #endif
     if (host_setting_hud_layout() == 1 && bg0_3d_shown(dispcnt) && !ntr::present_native()
         && !lc_ov.live && !lc_ov.top_live) {
+        g_hud_timer_live = data_ov002_02111184 != 0;
+        /* HUDTWEAK1: the power meter's cells (OBJ, x 80..153, y 0..59) go kHudMeterLeft pixels left, in the plane, before anything
+           measures them, so the coin block's gap to the meter is the one it had. */
+        for (int y = 0; y < kHudMeterY1; ++y)
+            for (int x = kHudMeterX0; x <= kHudMeterX1; ++x) {
+                Cell &c = g_a[y][x];
+                if (c.hit && c.owner == kOwnerObj && !c.msgcur) {
+                    g_a[y][x - kHudMeterLeft] = c;
+                    c.hit = false;
+                }
+            }
         /* THE RACE TIMER (src/_ZN3HUD15RenderTimeTimerEv.cpp: x 0xa4..0xf0, y 0x16 / 0x1e) shares these rows, and its
            pixels are not the coin counter's. The counter itself never reaches left of x 191 (icon of a three digit
            count), so any sprite pixel at x 160..187 in the zone rows is the timer: leave the DS placement alone then. */
@@ -3702,6 +3722,18 @@ extern "C" void port_message_composite_engine_a(void *fbp)
         if (g_hud_erase || dbg) std::fprintf(stderr, "[hudrow] moved cells landing on a live DS plane cell: %d (proof arm %d)\n", hud_erased, (int)g_hud_erase);
         }
         }
+    }
+    if (g_hud_timer_live) {
+        /* HUDTWEAK1: the timer's cells go up kHudCoinDy rows, into the row the coin counter left, after the coin step (above) so
+           they are not taken for coin pixels. */
+        for (int y = kHudTimerY0; y < kHudTimerY1; ++y)
+            for (int x = kHudTimerX0; x < kHudTimerX1; ++x) {
+                Cell &c = g_a[y][x];
+                if (c.hit && c.owner == kOwnerObj && !c.msgcur) {
+                    g_a[y - kHudCoinDy][x] = c;
+                    c.hit = false;
+                }
+            }
     }
     const bool bandsplit = hud_bandsplit_env();
     if (ntr::widescreen && !bandsplit) hudelem::resolve(band_l, band_r, margin);
