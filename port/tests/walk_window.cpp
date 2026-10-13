@@ -4137,10 +4137,17 @@ static void chat_draw(const OvlSurface &fb)
         const int nr = chat_layout(l.name, l.text, rom, sc100, width, rows, CHAT_MAXROWS);
         if (!first_line && nr > budget) break;
         budget -= nr;
+        const bool shown_first = first_line;
         first_line = false;
         const int top = y - (nr - 1) * row_h;
-        if (top - CS(1) < top_edge) break;       /* never a part-row: this and every older message are dropped */
-        for (int r = 0; r < nr; ++r) {
+        /* never a part-row. The newest message always shows: when it does not fit whole, its
+           LAST rows that fit are drawn. Any older message that does not fit whole is dropped. */
+        int r0 = 0;
+        if (top - CS(1) < top_edge) {
+            if (!shown_first) break;
+            while (r0 < nr - 1 && y - (nr - 1 - r0) * row_h - CS(1) < top_edge) ++r0;
+        }
+        for (int r = r0; r < nr; ++r) {
             const int ry = top + r * row_h;
             int rw = rows[r].indent;
             for (int q = 0; q < rows[r].len; ++q)
@@ -4158,6 +4165,7 @@ static void chat_draw(const OvlSurface &fb)
                              l.name[0] ? 0xFFFFFFFFu : 0xFFC0C0C0u, pass, l.alpha);
             }
         }
+        if (r0 > 0) break;                       /* a cut newest message leaves no room for older ones */
         y = top - row_h - CS(1);
         if (budget <= 0) break;
     }
