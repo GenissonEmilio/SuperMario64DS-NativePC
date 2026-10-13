@@ -4271,8 +4271,7 @@ static int __fastcall ps_render(void *self, void *)
     const unsigned fl = *(const unsigned *)(c + 0xb0);
     const bool hide = gate && (op == 0 || (fl & 0x10));
     if (logstride > 0 && (frames++ % (unsigned)logstride) == 0)
-        fprintf(stderr, "[cast] %p no=%u ch=%u pos=(%d,%d,%d) op=%u flags=%08x van=%u anim=%d hide=%d
-",
+        fprintf(stderr, "[cast] %p no=%u ch=%u pos=(%d,%d,%d) op=%u flags=%08x van=%u anim=%d hide=%d\n",
                 self, (unsigned)*(const unsigned char *)(c + 0x6d8), *(const unsigned *)(c + 8) & 0xffu,
                 *(const int *)(c + 0x5c) >> 12, *(const int *)(c + 0x60) >> 12, *(const int *)(c + 0x64) >> 12,
                 op, fl, (unsigned)*(const unsigned char *)(c + 0x6fb), 0, (int)hide);
