@@ -23,8 +23,8 @@ CR.EXE = EXE
 BOB = 6
 GOOMBA, COIN = CR.GOOMBA, CR.COIN
 KILLS = "500:%d:1;505:%d:3" % (GOOMBA, COIN)
-TPTICK = int(os.environ.get("CTP_TICK", "1100"))
-FRAMES = int(os.environ.get("CTP_FRAMES", "2200"))
+TPTICK = int(os.environ.get("CTP_TICK", "1800"))
+FRAMES = int(os.environ.get("CTP_FRAMES", "2800"))
 
 
 def tp_env(extra=None):
@@ -115,7 +115,7 @@ def row_tp(arm="new", warp=BOB, locked=False):
     fe = first_est(ta, warp)
     info("%s A first (landing) bitmap %s" % (row, fe and fe[:2]))
     if not locked:
-        say(bool(fe and kb and kb[2] == fe[2] and fe[1] >= 4), "%s: A's census of dead equals B's (landing bitmap == B's final, n=%s: dead stay dead)" % (row, fe and fe[1]))
+        say(bool(fe and kb and kb[3] == fe[2] and fe[1] >= 4), "%s: A's census of dead equals B's (landing bitmap == B's final, n=%s: dead stay dead)" % (row, fe and fe[1]))
         cA = [m for m in re.findall(r"(?m)^\[coop\] census level=%d act=(\d+) actors=(\d+) slotted=(\d+)" % warp, ta)]
         cB = [m for m in re.findall(r"(?m)^\[coop\] census level=%d act=(\d+) actors=(\d+) slotted=(\d+)" % warp, tb)]
         info("%s census A %s | B %s" % (row, cA[:1], cB[:1]))
