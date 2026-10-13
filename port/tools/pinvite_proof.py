@@ -64,9 +64,9 @@ def env_for(i, relay, kind, o):
     e["SM64DS_WPARTY_LOG"] = "1"
     if o.get("keys%d" % i):
         e["SM64DS_CHAT_KEY_TEST"] = o["keys%d" % i]      # scripted key presses through the real key reader
-    e["SM64DS_PLAYER_NAME"] = ("Tango", "Opie", "Kirb", "MoMo")[i]
+    e["SM64DS_PLAYER_NAME"] = ("Tango", "Opie", "Kirb", "MoMo", "Zed")[i]
     # one of each character on the four seats
-    e["SM64DS_PLAYER_COLOR"] = ("e04040", "40c060", "e0c030", "60a0f0")[i]
+    e["SM64DS_PLAYER_COLOR"] = ("e04040", "40c060", "e0c030", "60a0f0", "c060e0")[i]
     w = o.get("warp%d" % i, "1@300")
     if w:
         e["SM64DS_WARP_SEQ"] = w
@@ -82,7 +82,7 @@ def env_for(i, relay, kind, o):
                                  "%d:second line;%d:third line" % (f, f + 30, f + 60))
     # the seeded save plays Yoshi; SM64DS_SWITCH picks another character at the first stage boot, so four consoles
     # show all four heads: seat 0 Yoshi, seat 1 Mario, seat 2 Luigi, seat 3 Wario
-    sw = o.get("char%d" % i, ("", "0", "1", "2")[i])
+    sw = o.get("char%d" % i, ("", "0", "1", "2", "")[i])
     if sw != "":
         e["SM64DS_SWITCH"] = sw
     for k, v in o.items():            # env_<NAME>=value: any extra environment, on every console

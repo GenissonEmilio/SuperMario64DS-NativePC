@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <random>
 
 extern "C" {
 extern void *data_0209f394[];
@@ -55,7 +56,10 @@ struct State {
     char toast[kWparLineMax] = {0};
     unsigned toast_until = 0;
     WparStats st = {};
-    unsigned rng = 0x9E3779B9u;
+    unsigned rng = 0;
+    char name_of[kHubMaxSeats][kWparNameMax + 1] = {};   // last name seen of a member
+    unsigned accept_ms = 0;       // when I last accepted (suppresses the join chatter)
+    bool auto_accept = false;     // test seam (not in a PORT_ROM_CLEAN build)
     bool announced = false;
 };
 State g;
@@ -83,9 +87,20 @@ void check_env() {
     if (o && *o == '0') g.off = true;
     g.vk_invite = parse_vk(std::getenv("SM64DS_PARTY_KEY_INVITE"), 'B');
     g.vk_leave = parse_vk(std::getenv("SM64DS_PARTY_KEY_LEAVE"), 'N');
+#ifndef PORT_ROM_CLEAN
+    {   /* TEST ONLY: press UP by itself a moment after an invite prompt shows (the row driver cannot see a prompt) */
+        const char *a = std::getenv("SM64DS_WPARTY_TEST_AUTOACCEPT");
+        g.auto_accept = a && *a && *a != '0';
+    }
+#endif
 }
 
 unsigned next_rand() {
+    if (g.rng == 0) {   /* every console its own id stream: two founders must not pick one id */
+        std::random_device rd;
+        g.rng = rd() ^ (unsigned)(comms_hub_now_ms() * 2654435761u) ^ ((unsigned)comms_hub_my_seat() << 20);
+        if (g.rng == 0) g.rng = 0x9E3779B9u;
+    }
     g.rng ^= g.rng << 13;
     g.rng ^= g.rng >> 17;
     g.rng ^= g.rng << 5;
@@ -240,7 +255,10 @@ void world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave) {
     const bool dn_now = (pad_buttons & kPadDown) != 0 || key_leave;
     const bool up_prev = (g.prev_pad & kPadUp) != 0 || g.prev_inv_key;
     const bool dn_prev = (g.prev_pad & kPadDown) != 0 || g.prev_leave_key;
-    const bool up_edge = g.primed && up_now && !up_prev;
+    bool up_edge = g.primed && up_now && !up_prev;
+#ifndef PORT_ROM_CLEAN
+    if (g.auto_accept && g.in_seat >= 0 && (int)(now - g.in_first_ms) > 800) up_edge = true;
+#endif
     const bool dn_edge = g.primed && dn_now && !dn_prev;
     g.prev_pad = pad_buttons;
     g.prev_inv_key = key_invite;
@@ -272,10 +290,15 @@ void world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave) {
         if (want[s] && !g.member[s]) {
             ++g.st.joined;
             if (g.inv_to == s) { g.inv_to = -1; g.inv_until = 0; g.cooldown_until = now; }
-            say("%s joined the party", info[s].name, now);
+            std::memcpy(g.name_of[s], info[s].name, sizeof g.name_of[s]);
+            /* the people already in the party I just joined are not news */
+            if ((int)(now - g.accept_ms) > 2500 || !g.accept_ms)
+                say("%s joined the party", info[s].name, now);
         } else if (!want[s] && g.member[s] && g.my_id) {
             ++g.st.left_by_other;
-            say("%s left the party", info[s].name[0] ? info[s].name : "A player", now);
+            say("%s left the party", g.name_of[s][0] ? g.name_of[s] : "A player", now);
+        } else if (want[s]) {
+            std::memcpy(g.name_of[s], info[s].name, sizeof g.name_of[s]);
         }
     }
     push_members(want, now);
@@ -338,6 +361,7 @@ void world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave) {
             } else {
                 g.my_id = g.in_id;
                 g.inv_to = -1;
+                g.accept_ms = now ? now : 1;
                 ++g.st.accepts;
                 say("You joined %s's party", info[g.in_seat].name, now);
                 if (logging())
