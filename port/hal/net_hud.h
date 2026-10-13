@@ -103,8 +103,7 @@ static void net_hud_draw(const OvlSurface &fb)
     const int drawn = v.n > 0 ? 1 : 0;
     if (drawn != s_drawn) {
         s_drawn = drawn;
-        fprintf(stderr, "[nethud] frame-draw %s%s
-", drawn ? "ON" : "OFF",
+        fprintf(stderr, "[nethud] frame-draw %s%s\n", drawn ? "ON" : "OFF",
                 sup ? " (no body)" : "");
     }
     if (v.n <= 0) return;
