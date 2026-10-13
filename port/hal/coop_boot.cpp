@@ -49,6 +49,7 @@ short Vec3_HorzAngle(const void *a, const void *b);
 extern unsigned char data_0209f498[];   // Stage's per-player stick record, 0x18 bytes each (probe only)
 extern unsigned char data_020a0de8[];   // touch records, 4 bytes each (probe only)
 extern int data_020a0e58[];             // pad mirror (probe only)
+extern unsigned char data_020a0e40;     // the stick slot Player::St_Wait_Main reads (probe only)
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 }
 
@@ -750,6 +751,12 @@ void spawn_frame() {
         LOG("SPAWN body f=%u pos=(%d,%d,%d) spd=%d ang=%d st=%08x pause=%02x stick mag=%d ang=%d held=%04x touch=%d/%d pad=%08x mode=%d", S9.frame,
             me[0] >> 12, me[1] >> 12, me[2] >> 12, rd_i32(b, 0x98), (int)ang, (unsigned)rd_i32(b, 0x370), (unsigned)(unsigned char)b[0x13],
             (int)cmag, (int)cang, (unsigned)cheld, (int)data_020a0de8[mi * 4], (int)data_020a0de8[mi * 4 + 1], (unsigned)data_020a0e58[mi], (int)ct[0x16]);
+        {
+            const int si = (int)data_020a0e40 & 3;
+            short smag; std::memcpy(&smag, data_0209f498 + si * 0x18 + 8, 2);
+            LOG("SPAWN slot f=%u e40=%d me=%d ctrl[e40].mag=%d ctrl[0..3].mag=%d,%d,%d,%d", S9.frame, (int)data_020a0e40, (int)data_0209f250, (int)smag,
+                (int)*(short *)(data_0209f498 + 8), (int)*(short *)(data_0209f498 + 0x18 + 8), (int)*(short *)(data_0209f498 + 0x30 + 8), (int)*(short *)(data_0209f498 + 0x48 + 8));
+        }
     }
     if (S9.log && (bit || !C.intro_seen) && (S9.frame % 120) == 0) {
         // this console's view of every seat: my own body exactly, a friend at the pose the follower drew him at
