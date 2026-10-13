@@ -794,6 +794,18 @@ def u_hits(mod):
     b.pos = [100, 0, 0]
     a.state = ST_PUNCH
     streaming(rig, [a, b], 0.2)
+    # FIX9C: inside the star-get pose (1.5 s after the grab) nothing hurts b
+    cid = a.claim(CL["HIT"], b.seat, aux=0x40 >> 5, ref_frame=b.frame - 3)
+    streaming(rig, [a, b], 0.3)
+    v = a.verdict(cid)
+    res.check(v and v["name"] == "DENY" and v["b"] == DENY["INVULN"],
+              "a hit 0.5 s after b's star (b is in the pose): INVULN (%s)" % v)
+    res.check(ref.scores[b.seat] == 1, "... b keeps the star")
+    streaming(rig, [a, b], 1.4)                  # the pose is over
+    a.pos = [0, 0, 0]
+    b.pos = [100, 0, 0]
+    a.state = ST_PUNCH
+    streaming(rig, [a, b], 0.2)
     cid = a.claim(CL["HIT"], b.seat, aux=0x40 >> 5, ref_frame=b.frame - 3)
     streaming(rig, [a, b], 0.3)
     v = a.verdict(cid)
@@ -1680,6 +1692,7 @@ def u_hit_eat(mod):
         streaming(rig, cs, 0.2)
         b.claim(CL["GRAB"], inst)
         streaming(rig, cs, 0.3)
+        streaming(rig, cs, 1.4)                     # (FIX9C: out of the star-get pose, which nothing hurts)
         a.pos, b.pos = [0, 0, 0], [100, 0, 0]
         a.state, b.state = ST_POUND, ST_YOSHI       # a pounds, b's tongue is out
         streaming(rig, cs, 0.3)
