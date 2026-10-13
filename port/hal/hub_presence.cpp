@@ -34,6 +34,7 @@
 
 #include "hub_presence.h"
 #include "comms_hub.h"
+#include "world_party.h"
 
 #include <windows.h>
 
@@ -168,14 +169,16 @@ bool sample(HubPresence *out) {
     if (room == kHubRoomCoop) flags |= kPresCoopRoom;
     out->flags = flags;
     out->stars_total = (int)NumStars();
-    out->level_clock = 0;
+    /* hook: PINVITE1, the party word rides the unused clock of a world room's SYNL */
+    out->level_clock = room == kHubRoomWorld ? world_party_word() : 0;
     return true;
 }
 
 bool differs(const HubPresence &a, const HubPresence &b) {
     return a.level != b.level || a.area != b.area || a.act != b.act ||
            a.character != b.character || a.flags != b.flags ||
-           a.stars_total != b.stars_total;
+           a.stars_total != b.stars_total ||
+           (a.level_clock != b.level_clock && comms_hub_room_kind() == kHubRoomWorld);
 }
 
 void send_if_due() {

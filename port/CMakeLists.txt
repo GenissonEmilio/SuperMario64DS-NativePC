@@ -11657,6 +11657,8 @@ list(APPEND SLICE_COMMS_SOURCES hal/net_hud.cpp)
 # Run mp1 wave 56 lane PLIST1: the party / coop player list (names, heads, stage codes,
 # the click API). Shows nothing outside party and coop rooms; see hal/player_list.h.
 list(APPEND SLICE_COMMS_SOURCES hal/player_list.cpp hal/head_icons.cpp)
+# PINVITE1: parties made and left inside the world (d-pad UP invite / accept, DOWN leave); see hal/world_party.h.
+list(APPEND SLICE_COMMS_SOURCES hal/world_party.cpp)
 # Lane VOICE: proximity voice chat. Port-side only -- nothing in src/ knows it
 # exists -- and INERT unless settings.json turns VoiceEnabled on, which is off
 # by default, so linking it opens no device and changes no behaviour. It rides

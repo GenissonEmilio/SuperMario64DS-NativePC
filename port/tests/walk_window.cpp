@@ -4105,6 +4105,7 @@ static void chat_draw(const OvlSurface &fb)
 #include "hal/net_hud.h"
 #include "hal/player_list_paint.h"   /* run mp1 PLIST1: party / coop player list */
 #include "hal/star_popup_paint.h"   /* run mp1 lane STARPOP1 */
+#include "hal/world_party_paint.h"   /* run mp1 lane PINVITE1: parties inside the world */
 
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
    1-second exponential average, so the numbers are readable instead of
@@ -5069,6 +5070,7 @@ static void chat_host_frame(const OvlSurface &surf, int frame)
     if (!rb_skip_render()) chat_draw(surf);
     if (!rb_skip_render()) net_hud_draw(surf);
     if (!rb_skip_render()) star_popup_draw(surf);
+    if (!rb_skip_render()) world_party_draw(surf);   /* hook: PINVITE1, inert outside a world room */
 }
 
 /* The pad's half of the chat box: while the player is typing the controller
@@ -5079,6 +5081,10 @@ static void chat_key_test_frame(void);   /* SM64DS_CHAT_KEY_TEST, test only */
 static void chat_pad_gate(int *pad_live, XPad *pad)
 {
     chat_key_test_frame();
+    /* hook: PINVITE1, d-pad UP / DOWN (or B / N) invite, accept, leave; inert outside a world room */
+    port::world_party_input(*pad_live ? (unsigned)pad->buttons : 0u,
+                            key_live(port::world_party_vk_invite()) != 0,
+                            key_live(port::world_party_vk_leave()) != 0);
     if (!port::chat_typing()) return;
     memset(pad, 0, sizeof *pad);
     *pad_live = 0;
