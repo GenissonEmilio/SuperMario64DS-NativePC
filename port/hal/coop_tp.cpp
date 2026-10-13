@@ -86,6 +86,15 @@ void init() {
 #endif
 }
 
+// The hub (the castle): sublevel ids 1 castle grounds (main_castle), 2 castle 1F (castle_1f, also the
+// upper floors' shared overlay), 3 courtyard (main_garden), 4 basement (castle_b1), 5 second/top floor
+// (castle_2f). The stage table in hal/player_list.cpp (kStage) and port_level_table in level_boot.cpp agree.
+// TP works only while MY player stands in one of these; never inside a course.
+bool in_hub() {
+    const int lv = (int)data_0209f2f8;
+    return lv >= 1 && lv <= 5;
+}
+
 bool on_now() {
     init();
     if (!coop_world_active()) return false;
@@ -154,6 +163,7 @@ void try_tp(int seat, unsigned now) {
     if (!port_level_is_mounted(p.level)) {
         std::snprintf(t, sizeof t, "Can't TP: %s's level is not available", nm); ++g.st.refused; say(t); return;
     }
+    if (!in_hub()) { ++g.st.refused; return; }
     if (const char *why = my_gate()) {
         std::snprintf(t, sizeof t, "Can't TP right now"); ++g.st.refused; say(t);
         if (g.log) std::fprintf(stderr, "[cotp] refused: my gate = %s\n", why);
@@ -166,6 +176,8 @@ void try_tp(int seat, unsigned now) {
         std::fprintf(stderr, "[cotp] TP to seat %d (%s): level %d act %d (from %d act %d) wall=%lld\n", seat, nm, p.level, p.act,
                      (int)data_0209f2f8, data_0209f220[0], wall_ms());
     g.tp_wall = wall_ms(); g.tp_level = p.level; g.tp_act = p.act;
+    // Landing: the level's own START (entrance 0), as entering the course from its painting. The friend's
+    // position is never read here: only their level and act.
     LoadLevelNoReturn((unsigned)p.level, 0, (unsigned)p.act, 0);
     ++g.st.warps;
     std::snprintf(t, sizeof t, "Going to %s", nm);
@@ -174,7 +186,7 @@ void try_tp(int seat, unsigned now) {
 
 // ---- badge + click (player list API) --------------------------------------
 const char *row_extra(int seat) {
-    if (!on_now() || seat == comms_hub_my_seat()) return "";
+    if (!on_now() || !in_hub() || seat == comms_hub_my_seat()) return "";
     HubPresence p;
     const bool show = hub_presence_get(seat, &p) && p.in_level();
     if (seat >= 0 && seat < kSeats && g.log && g.badge_log[seat] != (show ? 1 : 2)) {
@@ -185,6 +197,12 @@ const char *row_extra(int seat) {
 }
 void on_click(int seat) {
     if (!on_now()) return;                     // toggle off: a click does nothing
+    if (!in_hub()) {                           // raced the frame that drops the handler: one quiet line, rate-limited
+        static unsigned last;
+        const unsigned t = comms_hub_now_ms();
+        if (!last || (int)(t - last) > 5000) { last = t ? t : 1; say("TP only works in the castle"); }
+        return;
+    }
     g.click_seat.store(seat);                  // the window thread: the frame acts on it
 }
 
@@ -205,7 +223,7 @@ void on_frame(unsigned now) {
     if (!coop_world_active()) return;
     // The handler exists only while TP is on in a coop room: with it off (or in a party
     // room, where this never runs) a click on a row is not consumed and goes on to the game.
-    const bool on = on_now();
+    const bool on = on_now() && in_hub();
     if (on != player_list_has_click_handler()) player_list_set_click_handler(on ? on_click : nullptr);
     track_seen(now);
     if (g.host && ((int)(now - g.last_tx) >= kToggleEveryMs || g.last_tx_val != (g.env_on ? 1 : 0))) {
