@@ -179,8 +179,7 @@ const char *row_extra(int seat) {
     const bool show = hub_presence_get(seat, &p) && p.in_level();
     if (seat >= 0 && seat < kSeats && g.log && g.badge_log[seat] != (show ? 1 : 2)) {
         g.badge_log[seat] = show ? 1 : 2;
-        std::fprintf(stderr, "[cotp] badge seat %d %s wall=%lld
-", seat, show ? "ON" : "off", wall_ms());
+        std::fprintf(stderr, "[cotp] badge seat %d %s wall=%lld\n", seat, show ? "ON" : "off", wall_ms());
     }
     return show ? "TP" : "";
 }
@@ -226,8 +225,7 @@ void on_frame(unsigned now) {
 void on_established(int level, int act) {
     if (!g.tp_wall) return;
     if (g.log)
-        std::fprintf(stderr, "[cotp] landed: group established level %d act %d, %lld ms after the click (wanted level %d act %d) wall=%lld
-",
+        std::fprintf(stderr, "[cotp] landed: group established level %d act %d, %lld ms after the click (wanted level %d act %d) wall=%lld\n",
                      level, act, wall_ms() - g.tp_wall, g.tp_level, g.tp_act, wall_ms());
     g.tp_wall = 0;
 }
