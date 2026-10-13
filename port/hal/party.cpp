@@ -67,8 +67,8 @@ void read_env() {
             q = *end == ',' ? end + 1 : end;
         }
     }
-    if (const char *e = std::getenv("SM64DS_ROOM_COLLISION")) g_off = std::atoi(e) == 0 && *e;
-    std::fprintf(stderr, "[party] room collision %s\n", g_off ? "OFF (ghosts)" : "ON (solid bodies)");
+    if (const char *e = std::getenv("SM64DS_ROOM_COLLISION")) g_off = e[0] == '0' && e[1] == 0;
+    std::fprintf(stderr, "[party] room collision %s\n", g_off ? "OFF (ghosts)" : "ON (solid bodies)");
     if (const char *e = std::getenv("SM64DS_PARTY_GATE")) g_gate_on = std::atoi(e) != 0;
     if (const char *e = std::getenv("SM64DS_PARTY_LOG")) g_log = std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PARTY_SEP")) g_sep = std::atoi(e);
@@ -205,13 +205,17 @@ void unstick(void *a, int seat) {
     int third = 0;
     for (int i = 0; i < (int)data_0209f21c && i < kMaxBodies; ++i) {
         char *o = (char *)data_0209f394[i];
-        if (!o || o == mb || o == (char *)a) continue;
+        if (!o || o == mb || o == (char *)a || !g_solid[i]) continue;   // only bodies follow() took through gate()
         const long long ex = (long long)(*player::pos_x(o) - *player::pos_x(mb)) >> 12;
         const long long ez = (long long)(*player::pos_z(o) - *player::pos_z(mb)) >> 12;
         const long long ey = (long long)(*player::pos_y(o) - *player::pos_y(mb)) >> 12;
         if (ey <= 150 && ey >= -150 && ex * ex + ez * ez < (long long)kStackUnits * kStackUnits) ++third;
     }
     if (!third) return;
+    // Not sure the step is safe unless my body stands on something: in the air (a ledge, a drop) skip it
+    // and try again next frame. The step goes into the pushback word, which the ROM integrates through its
+    // own wall and floor collision, not a position write.
+    if (!player::on_ground(mb)) return;
     static const int ux[4] = {1, 0, -1, 0}, uz[4] = {0, 1, 0, -1};
     const int k = comms_hub_my_seat() & 3;
     *(int *)(mb + 0x2e0) += ux[k] * kUnstickUnits * 4096;
