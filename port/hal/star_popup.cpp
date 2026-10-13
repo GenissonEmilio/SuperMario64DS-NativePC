@@ -315,9 +315,18 @@ void star_title(int course, int star, char *out, int cap) {
 }
 
 // "Name got <star name> (<course>)" / "Name got the key (<course>)"; the names are the ROM's. Fallbacks keep the sentence whole.
-void describe(const char *name, int kind, int course, int star, char *out, size_t cap) {
+void describe(const char *name, int kind, int course, int star, char *out, size_t cap, bool full = true) {
     char c[64], st[48];
     course_title(course, c, sizeof c);
+    if (!full) {        // the popup: one short line (the chat line has the course)
+        if (kind == kKindKey) std::snprintf(out, cap, "%s got the key", name);
+        else {
+            star_title(course, star, st, sizeof st);
+            if (st[0]) std::snprintf(out, cap, "%s got %s", name, st); else std::snprintf(out, cap, "%s got a star", name);
+        }
+        if (std::strlen(out) > 34) { out[31] = '.'; out[32] = '.'; out[33] = '.'; out[34] = 0; }
+        return;
+    }
     if (kind == kKindKey) {
         if (c[0]) std::snprintf(out, cap, "%s got the key (%s)", name, c); else std::snprintf(out, cap, "%s got the key", name);
         return;
@@ -404,7 +413,7 @@ void start_popup(const char *name, int kind, int course, int star) {
     const unsigned now = now_ms();
     if (g.nline < kStarPopupLines - 1) {
         char l[160];
-        describe(name, kind, course, star, l, sizeof l);
+        describe(name, kind, course, star, l, sizeof l, false);
         std::snprintf(g.line[g.nline], kStarPopupLineMax, "%s", l);
         ++g.nline;
     }
