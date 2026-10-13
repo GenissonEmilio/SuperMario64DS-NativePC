@@ -101,6 +101,7 @@ struct State {
     unsigned t_pend;                 // when the exit started waiting for a safe frame
     unsigned stale_frame; bool stale_done;   // proof knob SM64DS_STAR_POPUP_STALE=<frame>: leave data_0209d4b0 non-zero
     bool cleared_d4b0;
+    bool no_timeout;                 // proof knob SM64DS_STAR_POPUP_NOTIMEOUT=1: the old behaviour (every gate waits for ever)
     // proof knob SM64DS_STAR_POPUP_STOP: end the selftest at a chosen moment (a picture)
     int stop_kind, stop_val; bool armed, stop_flag, stop_timer; unsigned stop_at;
 };
@@ -144,6 +145,7 @@ void init_once() {
         else if (std::sscanf(e, "tx%d", &v) == 1) { g.stop_kind = 2; g.stop_val = v; }  // v ms after my own event
         else if (std::sscanf(e, "lv%d", &v) == 1) { g.stop_kind = 3; g.stop_val = v; }  // v ms after the level changed following an event
     }
+    g.no_timeout = env_on("SM64DS_STAR_POPUP_NOTIMEOUT", false);
     if (const char *e = std::getenv("SM64DS_STAR_POPUP_STALE")) { const int f = std::atoi(e); if (f > 0) g.stale_frame = (unsigned)f; }
     std::fprintf(stderr, "[starpop] on: enabled=%d\n", (int)g.enabled);
 }
@@ -370,6 +372,7 @@ void toast(const char *name, int kind, int course, int star) {
     describe(name, kind, course, star, t, sizeof t);
     port_chat_system_line(t);
     ++g.st.toast;
+    std::fprintf(stderr, "[starpop] chat: %s\n", t);
 }
 
 bool seen_seq(int seat, unsigned seq) {
@@ -656,7 +659,9 @@ extern "C" void port_star_popup_frame(void) {
             // anything still in the way after kForceMs is forced, unless the console has no body at all (loading: the level
             // change clears the exit by itself).
             bool go = (gate == 0);
-            if (gate == 1 && !hard && waited >= kSoftMs) {
+            if (gate == 1 && g.no_timeout) {
+                // control: no limit
+            } else if (gate == 1 && !hard && waited >= kSoftMs) {
                 if (!std::strcmp(why, "d4b0")) clear_stale_d4b0();
                 std::fprintf(stderr, "[starpop] soft gate '%s' timed out after %u ms: exit goes ahead wall=%lld\n", why, waited, wall_ms());
                 go = true;

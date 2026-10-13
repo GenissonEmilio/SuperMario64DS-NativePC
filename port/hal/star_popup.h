@@ -39,6 +39,13 @@
 // SM64DS_STAR_POPUP_FAKE=<kind>:<exits>@<frame>[;..] sends an event as if the
 // local player had collected one (kind 1 star, 2 key; exits 0 or 1).
 // SM64DS_STAR_POPUP_HOLD=<frame>:<n> forces "not safe" for n frames.
+//
+// STARGATE1 (run mp1): the exit unit is COURSE + act (JRB and its Sunken Ship are one course; castle floors only match
+// themselves). Soft gates give up after 4 s of waiting (a stale data_0209d4b0 fader pointer is cleared first), any gate is forced
+// after 12 s, and the gate being waited on is always logged. An event that arrives while this console is loading is kept for 8 s,
+// and the sender repeats it up to +8 s. Two collections of one star within 2 s count once. Chat/popup lines name the star and the
+// course from the ROM's own message bank. Knobs: SM64DS_STAR_POPUP_STALE=<frame> plants a stale data_0209d4b0,
+// SM64DS_STAR_POPUP_NOTIMEOUT=1 is the old wait-for-ever behaviour (control).
 #ifndef PORT_HAL_STAR_POPUP_H
 #define PORT_HAL_STAR_POPUP_H
 
