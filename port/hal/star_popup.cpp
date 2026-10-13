@@ -267,7 +267,7 @@ int msg_text(int id, char *out, int cap) {
 }
 
 void title_case(char *s) {
-    static const char *const small[] = { "a", "an", "the", "of", "on", "in", "to", "for", "with", "at", "from", "and", "or", "over", "by" };
+    static const char *const smallw[] = { "a", "an", "the", "of", "on", "in", "to", "for", "with", "at", "from", "and", "or", "over", "by" };
     char *w = s;
     int first = 1;
     while (*w) {
@@ -283,7 +283,7 @@ void title_case(char *s) {
         std::snprintf(core, sizeof core, "%s", low);
         for (int k = (int)std::strlen(core) - 1; k >= 0 && (core[k] == ',' || core[k] == '!' || core[k] == '.' || core[k] == '?'); --k) core[k] = 0;
         int is_small = 0;
-        for (unsigned k = 0; k < sizeof small / sizeof small[0]; ++k) if (!std::strcmp(core, small[k])) is_small = 1;
+        for (unsigned k = 0; k < sizeof smallw / sizeof smallw[0]; ++k) if (!std::strcmp(core, smallw[k])) is_small = 1;
         for (char *q = w; *q; ++q) *q = low[q - w];
         if ((!is_small || first) && *w >= 'a' && *w <= 'z') *w = (char)(*w - 'a' + 'A');
         if (!std::strncmp(low, "chain-chomp", 11)) { *w = 'C'; w[6] = 'C'; }
