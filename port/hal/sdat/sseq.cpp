@@ -73,7 +73,7 @@ void pdump_open(void)
             "[pd] units are 1/64 of a semitone, 768 to the octave. "
             "pu = (bend * (range << 6)) >> 7 + ext, the ROM's "
             "TrackUpdateChannel. rate is sample frames per output frame at "
-            "%d Hz.\n", (int)SD_MIX_RATE);
+            "%d Hz.\n", sd_mix_rate());
 }
 
 struct Track {
@@ -168,6 +168,10 @@ struct Player {
     // Command 0x02 writes it (sd_seq_pause); while it is set SND_SeqMain skips
     // PlayerSeqMain for this player and still runs PlayerUpdateChannel.
     int paused;
+    // 1 while a sound mod's recording stands in for this sequence (lane
+    // AUDIOHQ1): the sequence below runs exactly as before, silently, and the
+    // mixer's stream voice for this player plays the recording.
+    int replaced;
     sd_s16 var[SD_VARS];
 };
 
@@ -585,6 +589,7 @@ void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
     }
 
     SdatWave w;
+    w.ownPitch = 0;
     const int psg = n.type == 2 || n.type == 3;
     if (psg) {
         w.pcm = psg_table(n, &w);
@@ -617,9 +622,18 @@ void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
        now joins it -- one quantity, one place, track_pitch_units. */
     double semis = (double)(key - n.baseNote);
     double baseRate = (double)w.sampleRate * pow(2.0, semis / 12.0)
-                    / SD_MIX_RATE;
+                    / sd_mix_rate();
     int pitchUnits = track_pitch_units(tk);
     double rate = baseRate * pitch_units_scale(pitchUnits);
+    if (w.ownPitch) {
+        /* A wave a mod replaced with its own recording plays at the file's
+           natural pitch: no key offset, bend, sweep, portamento or modulation
+           reaches it. Volume, pan, envelope and stop still do. */
+        semis = 0.0;
+        baseRate = (double)w.sampleRate / sd_mix_rate();
+        pitchUnits = 0;
+        rate = baseRate;
+    }
     // Everything that can refuse the note is settled BEFORE a channel is
     // taken. Allocating first and then bailing on the rate left a stolen
     // channel dead with the previous note's owner still recorded against it,
@@ -704,7 +718,7 @@ void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
             g_note[held].ticks     = -1;   /* tie: no scheduled note-off */
             g_note[held].released  = 0;
             sd_mix_set(held, db10, pan, rate);
-            sd_mix_set_pitch_base(held, baseRate, pitchUnits);
+            sd_mix_set_pitch_base(held, w.ownPitch ? -1.0 : baseRate, pitchUnits);
             note_env(tk, held);
             note_sweep(pl, tk, held, key, ticks);
             SD_VT("note p%d t%d key %d TIED onto chan %d (no new voice)\n",
@@ -733,7 +747,8 @@ void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
 
     sd_mix_start(ch, &w, &n, db10, pan, rate, prio);
     if (psg) sd_mix_set_hold(ch);
-    sd_mix_set_pitch_base(ch, baseRate, pitchUnits);
+    sd_mix_set_pitch_base(ch, w.ownPitch ? -1.0 : baseRate, pitchUnits);
+    if (pl.replaced) sd_mix_set_mute(ch);       // the recording plays instead
     note_env(tk, ch);
     note_sweep(pl, tk, ch, key, ticks);
     g_note[ch].active = 1;
@@ -1246,6 +1261,13 @@ int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
     // to 64 and lose it, which inverted the ROM's steal order (see
     // sdat_seq_priority).
     pl.cpr = sdat_seq_priority(seqBase, startOff);
+    {
+        /* A mod may have replaced this music track with a recording. The
+           sequence still starts and runs (silently), so every status the ROM
+           reads is what it would have been; the stream is what is heard. */
+        const int mid = sd_music_for_sequence(seqBase, startOff);
+        if (mid >= 0 && sd_mix_stream_start(p, mid)) pl.replaced = 1;
+    }
 
     Track &t0 = pl.tr[0];
     t0.active = 1;
@@ -1291,6 +1313,7 @@ void sd_seq_stop(int p)
 {
     if (p < 0 || p >= SD_PLAYERS) return;
     if (g_pl[p].active) SD_VT("play %2d stop\n", p);
+    if (g_pl[p].replaced) sd_mix_stream_stop(p);
     player_silence(p);
     memset(&g_pl[p], 0, sizeof g_pl[p]);
 }
@@ -1324,6 +1347,7 @@ void sd_seq_pause(int p, int flag)
     if (p < 0 || p >= SD_PLAYERS) return;
     Player &pl = g_pl[p];
     pl.paused = flag;
+    if (pl.replaced) sd_mix_stream_pause(p, flag);
     if (!flag || !pl.active) return;
     SD_VT("play %2d pause\n", p);
     for (int t = 0; t < SD_TRACKS; t++)
@@ -1612,6 +1636,7 @@ void sd_seq_frame(void)
                 // cannot silence them either.
                 SD_VT("play %2d finished: sequence ended, tails detached\n", p);
                 pl.active = 0;
+                if (pl.replaced) sd_mix_stream_finish(p);   // the recording plays out
                 break;
             }
         }
@@ -1621,5 +1646,10 @@ void sd_seq_frame(void)
            written this frame reaches the notes this frame, including the ones
            that were already sounding when it was written. */
         player_update_channels(p);
+        /* The recording follows the player's volume and the game's fade (the
+           ARM9's PLAYER_PARAM 6), the same two terms every sounding note of
+           this player carries, once per 192 Hz tick. */
+        if (pl.replaced && pl.active)
+            sd_mix_stream_set_db10(p, sd_cnv_vol(pl.volume) + pl.volDb10);
     }
 }

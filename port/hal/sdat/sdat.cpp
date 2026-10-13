@@ -35,8 +35,10 @@
 #include <string.h>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <string>
+#include "sd_audio.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -278,6 +280,11 @@ struct WaveCache {
 };
 static std::unordered_map<const void *, WaveCache> g_waves;
 
+// SWAV records a sound mod replaced with a plain .wav / .ogg (lane AUDIOHQ1):
+// they play at the file's own pitch (SdatWave::ownPitch). Filled once by
+// sdat_apply_mods, with addresses inside the final in-memory image.
+static std::unordered_set<const sd_u8 *> g_ownRecs;
+
 /* Drop every decoded wave. The cache is keyed by SWAV record ADDRESSES in the
    game arena, and an address only names the same sample while the arena around
    it stands still. A save-state restore that crossed an area rolls the arena
@@ -393,6 +400,7 @@ static const WaveCache *decode_swav(const sd_u8 *rec)
     wc.w.sampleRate = rate ? rate : 32768;
     wc.w.loop = loop;
     wc.w.loopStart = 0;
+    wc.w.ownPitch = g_ownRecs.count(rec) ? 1 : 0;
 
     if (fmt == 0) {                       // PCM8, signed
         wc.pcm.resize(bytes);
@@ -642,6 +650,37 @@ static const size_t kModMaxFile  = 8u << 20;
 static const size_t kModMaxTotal = 64u << 20;
 static const size_t kModGuard    = 16u << 10;
 
+// Plain .wav / .ogg limits. A recording standing in for a music track is held
+// in memory as the file it came in (an .ogg is decoded as it plays), so these
+// are file sizes. A single replaced wave is held decoded, so it is limited by
+// length instead.
+static const size_t kAudioMaxFile = 48u << 20;
+static const size_t kAudioMaxTotal = 128u << 20;
+static const unsigned long long kClipMaxFrames = 6000000ull;
+
+struct MusicRep {
+    std::vector<sd_u8> data;
+    std::string name, mod;
+    int isOgg = 0;
+    sd_u32 fid = 0;
+    int kind = 0;               // 0 sequence (music), 7 stream
+    SdAudioInfo info;
+};
+static std::vector<MusicRep> g_music;
+static std::unordered_map<sd_u32, int> g_musicByFid;
+
+static bool read_whole_file(const std::string &path, unsigned long long expect,
+                            std::vector<sd_u8> &out)
+{
+    FILE *f = fopen(path.c_str(), "rb");
+    if (!f) return false;
+    out.resize((size_t)expect);
+    size_t got = fread(out.data(), 1, out.size(), f);
+    fclose(f);
+    if (got != out.size()) return false;
+    return true;
+}
+
 static std::string lower_s(std::string s)
 { for (auto &c : s) if (c >= 'A' && c <= 'Z') c = (char)(c + 32); return s; }
 
@@ -789,7 +828,10 @@ static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
         }
     }
 
-    struct Rep { std::vector<sd_u8> data; std::string name, mod; int kind; };
+    struct WaveDir { int mod; std::string dir; };
+    std::vector<WaveDir> waveDirs;
+    size_t musicBytes = 0;
+    struct Rep { std::vector<sd_u8> data; std::string name, mod; int kind; std::vector<unsigned> ownIdx; };
     std::unordered_map<sd_u32, Rep> reps;
     std::vector<sd_u32> order;
     size_t added = 0;                                  // padded bytes of the replacements held now
@@ -802,10 +844,72 @@ static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
         HANDLE h = FindFirstFileA(pat.c_str(), &fd);
         if (h == INVALID_HANDLE_VALUE) continue;
         do {
-            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                // sound/<SWAR symbol>/<n>.wav|.ogg : single waves of a wave archive
+                if (fd.cFileName[0] != '.') waveDirs.push_back({m, fd.cFileName});
+                continue;
+            }
             std::string fn = fd.cFileName, lf = lower_s(fn);
             size_t dot = lf.rfind('.');
             std::string ext = dot == std::string::npos ? "" : lf.substr(dot + 1);
+            if (ext == "wav" || ext == "ogg") {
+                // sound/<SSEQ or STRM symbol>.wav|.ogg : a recording standing in for a track
+                std::string stem = lf.substr(0, dot);
+                auto hit = byName.find(stem + ".sseq");
+                if (hit == byName.end() || hit->second.kind != 0) hit = byName.find(stem + ".strm");
+                if (hit == byName.end()) {
+                    fprintf(stderr, "[mods] sound: %s/%s: no sequence or stream with that name in the archive, ignored\n", mid, fn.c_str());
+                    continue;
+                }
+                unsigned long long asz = ((unsigned long long)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
+                if (asz > kAudioMaxFile) {
+                    fprintf(stderr, "[mods] sound: %s/%s: %llu bytes is over the %u byte limit for one recording, skipped\n",
+                            mid, fn.c_str(), asz, (unsigned)kAudioMaxFile);
+                    continue;
+                }
+                std::vector<sd_u8> ad;
+                std::string full = std::string(folder) + "/sound/" + fn;
+                if (!read_whole_file(full, asz, ad)) {
+                    fprintf(stderr, "[mods] sound: %s/%s: cannot read, ignored\n", mid, fn.c_str());
+                    continue;
+                }
+                MusicRep mr;
+                std::string why;
+                const int sn = sd_audio_sniff(ad.data(), ad.size());
+                if (sn < 0) {
+                    fprintf(stderr, "[mods] sound: %s/%s: not a WAV or OGG file, skipped\n", mid, fn.c_str());
+                    continue;
+                }
+                mr.isOgg = sn == 1;
+                if (!sd_audio_probe(ad.data(), ad.size(), mr.isOgg != 0, mr.info, why)) {
+                    fprintf(stderr, "[mods] sound: %s/%s: bad audio file (%s), skipped\n", mid, fn.c_str(), why.c_str());
+                    continue;
+                }
+                size_t had = g_musicByFid.count(hit->second.fid) ? g_music[g_musicByFid[hit->second.fid]].data.size() : 0;
+                if (musicBytes - had + ad.size() > kAudioMaxTotal) {
+                    fprintf(stderr, "[mods] sound: %s/%s: would pass the %u byte limit on recordings, skipped\n",
+                            mid, fn.c_str(), (unsigned)kAudioMaxTotal);
+                    continue;
+                }
+                mr.fid = hit->second.fid;
+                mr.kind = hit->second.kind;
+                mr.name = fn;
+                mr.mod = mid;
+                mr.data.swap(ad);
+                musicBytes = musicBytes - had + mr.data.size();
+                fprintf(stderr, "[mods] sound: %s/%s: %s '%s' replaced by a recording (%d Hz, %d ch, %.1f s, %s%s%s)\n",
+                        mid, fn.c_str(), hit->second.kind == 0 ? "music track" : "stream",
+                        stem.c_str(), mr.info.rate, mr.info.channels,
+                        (double)mr.info.frames / mr.info.rate,
+                        mr.info.hasLoop ? "loop tags" : "whole-file loop",
+                        mr.info.loopNote.empty() ? "" : "; ", mr.info.loopNote.c_str());
+                if (hit->second.kind != 0)
+                    fprintf(stderr, "[mods] sound: %s/%s: note: the game never starts a stream member in this build, so this file will not be heard\n", mid, fn.c_str());
+                auto prev = g_musicByFid.find(mr.fid);
+                if (prev != g_musicByFid.end()) g_music[prev->second] = std::move(mr);
+                else { g_musicByFid[mr.fid] = (int)g_music.size(); g_music.push_back(std::move(mr)); }
+                continue;
+            }
             const char *magic = 0;
             for (auto &t : kTypes) if (ext == t.ext) magic = t.magic;
             if (!magic) {
@@ -877,6 +981,137 @@ static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
         if ((size_t)o + s > len) return false;
         p = buf + o; n = s; return true;
     };
+    // Single waves: sound/<SWAR symbol>/<n>.wav|.ogg. They are applied on top of
+    // whatever the wave archive is by now (a whole-archive .swar from any mod,
+    // else the stock one), in mod order, so the last mod to name a wave wins.
+    {
+        struct WaveRepl { sd_u32 fid; unsigned idx; SdClip clip; std::string name, mod; };
+        std::vector<WaveRepl> wr;
+        for (auto &wd : waveDirs) {
+            const char *folder = g_sdat_mods_folder(wd.mod), *mid = g_sdat_mods_id(wd.mod);
+            auto it = byName.find(lower_s(wd.dir) + ".swar");
+            if (it == byName.end() || it->second.kind != 3) {
+                fprintf(stderr, "[mods] sound: %s/%s/: no wave archive with that name, folder ignored\n", mid, wd.dir.c_str());
+                continue;
+            }
+            std::string pat = std::string(folder) + "/sound/" + wd.dir + "/*";
+            WIN32_FIND_DATAA fd;
+            HANDLE h = FindFirstFileA(pat.c_str(), &fd);
+            if (h == INVALID_HANDLE_VALUE) continue;
+            do {
+                if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+                std::string fn = fd.cFileName, lf = lower_s(fn);
+                size_t dot = lf.rfind('.');
+                std::string ext = dot == std::string::npos ? "" : lf.substr(dot + 1);
+                std::string stem = dot == std::string::npos ? lf : lf.substr(0, dot);
+                std::string shown = std::string(mid) + "/" + wd.dir + "/" + fn;
+                if (ext != "wav" && ext != "ogg") {
+                    fprintf(stderr, "[mods] sound: %s: not .wav or .ogg, ignored\n", shown.c_str());
+                    continue;
+                }
+                bool digits = !stem.empty() && stem.size() <= 5;
+                for (char ch : stem) if (ch < '0' || ch > '9') digits = false;
+                if (!digits) {
+                    fprintf(stderr, "[mods] sound: %s: the name must be the wave number (for example 3.wav), ignored\n", shown.c_str());
+                    continue;
+                }
+                unsigned long long fsz = ((unsigned long long)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
+                if (fsz > kModMaxFile) {
+                    fprintf(stderr, "[mods] sound: %s: %llu bytes is over the %u byte limit for one file, skipped\n", shown.c_str(), fsz, (unsigned)kModMaxFile);
+                    continue;
+                }
+                std::vector<sd_u8> ad;
+                if (fsz < 12 || !read_whole_file(std::string(folder) + "/sound/" + wd.dir + "/" + fn, fsz, ad)) {
+                    fprintf(stderr, "[mods] sound: %s: cannot read (or too short), skipped\n", shown.c_str());
+                    continue;
+                }
+                const int sn = sd_audio_sniff(ad.data(), ad.size());
+                if (sn < 0) {
+                    fprintf(stderr, "[mods] sound: %s: not a WAV or OGG file, skipped\n", shown.c_str());
+                    continue;
+                }
+                WaveRepl r;
+                std::string why;
+                if (!sd_audio_decode_mono(ad.data(), ad.size(), sn == 1, kClipMaxFrames, r.clip, why)) {
+                    fprintf(stderr, "[mods] sound: %s: bad audio file (%s), skipped\n", shown.c_str(), why.c_str());
+                    continue;
+                }
+                r.fid = it->second.fid;
+                r.idx = (unsigned)atoi(stem.c_str());
+                r.name = wd.dir + "/" + fn;
+                r.mod = mid;
+                // later mods replace earlier ones for the same wave
+                bool replaced = false;
+                for (auto &o : wr) if (o.fid == r.fid && o.idx == r.idx) { o = std::move(r); replaced = true; break; }
+                if (!replaced) wr.push_back(std::move(r));
+            } while (FindNextFileA(h, &fd));
+            FindClose(h);
+        }
+        std::vector<sd_u32> fids;
+        for (auto &r : wr) { bool have = false; for (auto f : fids) if (f == r.fid) have = true; if (!have) fids.push_back(r.fid); }
+        for (sd_u32 fid : fids) {
+            const sd_u8 *bp; size_t bn;
+            if (!view(fid, false, bp, bn)) continue;
+            const sd_u8 *sp; size_t sn2;
+            const bool haveStock = view(fid, true, sp, sn2);
+            std::vector<SdSwavRepl> list;
+            std::vector<unsigned> own;
+            std::string archName;
+            for (auto &r : wr) {
+                if (r.fid != fid) continue;
+                const std::string shown = r.mod + "/" + r.name;
+                if (bn < 0x3c || r.idx >= rd32(bp + 0x38)) {
+                    fprintf(stderr, "[mods] sound: %s (wave %u): the archive has only %u waves, skipped\n",
+                            shown.c_str(), r.idx, bn < 0x3c ? 0u : (unsigned)rd32(bp + 0x38));
+                    continue;
+                }
+                bool origLoops = false;
+                if (haveStock && sn2 >= 0x3c && r.idx < rd32(sp + 0x38)) {
+                    sd_u32 wo = rd32(sp + 0x3c + r.idx * 4);
+                    if (wo && wo + 12 <= sn2) origLoops = sp[wo + 1] != 0;
+                }
+                SdSwavRepl one;
+                one.index = r.idx;
+                std::string note, why;
+                if (!sd_swav_from_clip(std::move(r.clip), origLoops, one.rec, note, why)) {
+                    fprintf(stderr, "[mods] sound: %s (wave %u): %s, skipped\n", shown.c_str(), r.idx, why.c_str());
+                    continue;
+                }
+                fprintf(stderr, "[mods] sound: %s -> wave %u of file %u (%u Hz, %u samples%s%s%s)\n",
+                        shown.c_str(), r.idx, (unsigned)fid, (unsigned)(one.rec[2] | (one.rec[3] << 8)),
+                        (unsigned)((one.rec.size() - 12) / 2), one.rec[1] ? ", loops" : "",
+                        note.empty() ? "" : "; ", note.c_str());
+                list.push_back(std::move(one));
+                own.push_back(r.idx);
+            }
+            if (list.empty()) continue;
+            std::vector<sd_u8> nd;
+            std::string why;
+            if (!sd_swar_rebuild(bp, bn, list, nd, why)) {
+                fprintf(stderr, "[mods] sound: wave archive file %u: cannot rebuild (%s), its wave files skipped\n", (unsigned)fid, why.c_str());
+                continue;
+            }
+            const char *w2 = "";
+            if (!mod_member_ok(3, nd.data(), nd.size(), w2)) {
+                fprintf(stderr, "[mods] sound: wave archive file %u: rebuilt archive failed the check (%s), its wave files skipped\n", (unsigned)fid, w2);
+                continue;
+            }
+            size_t had = reps.count(fid) ? pad4(reps[fid].data.size()) : 0;
+            if (added - had + pad4(nd.size()) > kModMaxTotal) {
+                fprintf(stderr, "[mods] sound: wave archive file %u: would pass the %u byte limit on added data, its wave files skipped\n", (unsigned)fid, (unsigned)kModMaxTotal);
+                continue;
+            }
+            if (!reps.count(fid)) order.push_back(fid);
+            Rep &rp = reps[fid];
+            added = added - had + pad4(nd.size());
+            rp.data.swap(nd);
+            rp.name = "waves of file " + std::to_string((unsigned)fid);
+            rp.mod = "wave files";
+            rp.kind = 3;
+            rp.ownIdx = own;
+        }
+    }
+
     for (bool again = true; again; ) {
         again = false;
         sd_u32 blo = rd32(buf + oInfo + 8 + 2 * 4), wlo = rd32(buf + oInfo + 8 + 3 * 4);
@@ -931,9 +1166,11 @@ static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
     }
 
     if (order.empty()) {
-        fprintf(stderr, "[mods] sound: no members replaced\n");
+        if (g_music.empty()) fprintf(stderr, "[mods] sound: no members replaced\n");
+        else fprintf(stderr, "[mods] sound: %u recording(s) replace music, no archive members replaced\n", (unsigned)g_music.size());
         return buf;
     }
+    // (recordings that replace a music track need no archive member; see g_music)
     size_t at0 = pad4(len);
     size_t total = at0 + added + kModGuard;
     sd_u8 *nb = (sd_u8 *)malloc(total);
@@ -949,6 +1186,10 @@ static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
         e[0] = (sd_u8)at; e[1] = (sd_u8)(at >> 8); e[2] = (sd_u8)(at >> 16); e[3] = (sd_u8)(at >> 24);
         sd_u32 sz = (sd_u32)r.data.size();
         e[4] = (sd_u8)sz; e[5] = (sd_u8)(sz >> 8); e[6] = (sd_u8)(sz >> 16); e[7] = (sd_u8)(sz >> 24);
+        for (unsigned wi : r.ownIdx) {
+            sd_u32 wo = rd32(nb + at + 0x3c + wi * 4);
+            if (wo) g_ownRecs.insert(nb + at + wo);
+        }
         at += pad4(r.data.size());
         list += (list.empty() ? "" : ", ") + r.name + " (" + r.mod + ", file " + std::to_string((unsigned)fid) + ")";
     }
@@ -956,6 +1197,39 @@ static sd_u8 *sdat_apply_mods(sd_u8 *buf, size_t &len)
     len = total;
     fprintf(stderr, "[mods] sound: replaced %u archive members: %s\n", (unsigned)order.size(), list.c_str());
     return nb;
+}
+
+// ---- recordings that stand in for a music track -------------------------
+
+// The id of the recording a mod gave this sequence, or -1. seqBase / startOff
+// are what the START command carries; a standalone SSEQ (music) is its own FAT
+// file, so the file id names the track. A SEQARC entry (a sound effect) is never
+// in the table.
+int sd_music_for_sequence(const sd_u8 *seqBase, sd_u32 startOff)
+{
+    (void)startOff;
+    if (g_musicByFid.empty()) return -1;
+    sd_u32 fid = sdat_file_id_of(seqBase);
+    if (fid == (sd_u32)-1) return -1;
+    auto it = g_musicByFid.find(fid);
+    if (it == g_musicByFid.end() || g_music[it->second].kind != 0) return -1;
+    return it->second;
+}
+
+SdSource *sd_music_open(int id)
+{
+    if (id < 0 || id >= (int)g_music.size()) return 0;
+    MusicRep &m = g_music[id];
+    std::string why;
+    SdSource *s = sd_source_open(m.data.data(), m.data.size(), m.isOgg != 0, why);
+    if (!s) fprintf(stderr, "[mods] sound: %s/%s: cannot start the recording (%s), the sequence plays as normal\n",
+                    m.mod.c_str(), m.name.c_str(), why.c_str());
+    return s;
+}
+
+const char *sd_music_name(int id)
+{
+    return (id >= 0 && id < (int)g_music.size()) ? g_music[id].name.c_str() : "?";
 }
 
 // ---- init ---------------------------------------------------------------

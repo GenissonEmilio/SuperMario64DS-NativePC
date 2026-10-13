@@ -245,6 +245,8 @@ int host_camera_turn_sign(void);
    hal/host_settings.cpp and hal/gap_art.h carry the long form. */
 int host_setting_minigame_gap(void);
 int host_setting_gap_fill_mode(void);
+/* AudioQuality (lane AUDIOHQ1): 1 = "hq" 48000 Hz mix with a Hermite resampler (the default), 0 = "ds" 32768 Hz linear, the DS's own. The launcher's setting; read once at start. */
+int host_setting_audio_quality(void);
 unsigned host_setting_gap_color(void);
 int host_setting_gap_peek(void);
 /* PAUSE3: the in-game settings page's setters for the screen gap (the rest of the file's values are read by the launcher's own page). Each

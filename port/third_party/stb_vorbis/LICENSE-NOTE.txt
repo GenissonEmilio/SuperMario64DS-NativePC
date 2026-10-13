@@ -1,0 +1,14 @@
+stb_vorbis.c
+============
+Ogg Vorbis audio decoder, version 1.22, by Sean Barrett and contributors.
+Source: https://github.com/nothings/stb (stb_vorbis.c), unmodified.
+
+License: dual licensed, choose either one (the text is at the end of
+stb_vorbis.c):
+  - MIT License, Copyright (c) 2017 Sean Barrett, or
+  - Public Domain (unlicense.org).
+
+Use in this project: decodes .ogg files that sound mods place in their sound/
+folder (port/hal/sdat/sd_audio.cpp). It is compiled into the game only through
+port/hal/sdat/vorbis_impl.cpp, with STB_VORBIS_NO_STDIO and
+STB_VORBIS_NO_PUSHDATA_API defined (memory decoding only).

@@ -86,6 +86,10 @@ struct SdatWave {
     int loop;
     sd_u32 loopStart;       // in samples
     sd_u32 sampleRate;
+    // 1 for a wave a sound mod replaced with a plain .wav / .ogg: it plays at
+    // the file's own pitch, whatever key, bend, sweep or modulation the
+    // sequence asks for (volume, pan, envelope and stop still follow the game).
+    int ownPitch;
 };
 
 // Resolve wave `index` inside a resident SWAR image. Returns 1 on success.
@@ -115,7 +119,18 @@ int sdat_link_bank_waves(sd_u8 *sbnk);
 
 // ---- mixer --------------------------------------------------------------
 
-enum { SD_CHANNELS = 16, SD_MIX_RATE = 32768 };
+// SD_MIX_RATE is the DS's own mixing rate, the "ds" AudioQuality path. The rate
+// the mixer actually runs at is sd_mix_rate(): 32768 for "ds", 48000 for "hq"
+// (the default). Use sd_mix_rate() for anything that is a count of output frames.
+enum { SD_CHANNELS = 16, SD_MIX_RATE = 32768, SD_MIX_RATE_HQ = 48000 };
+
+// The mixer / output rate for this run. Decided once, on first use: the env
+// switch SM64DS_AUDIO_HQ=0 forces "ds", SM64DS_AUDIO_HQ=1 forces "hq"; otherwise
+// the AudioQuality setting (g_sdat_audio_quality, filled in by the game targets,
+// 1 = hq, 0 = ds); a target that never installed the hook stays "ds".
+int sd_mix_rate(void);
+int sd_audio_hq(void);
+extern "C" int (*g_sdat_audio_quality)(void);
 
 struct SdatChanKey { int player; int track; int note; };
 
@@ -153,7 +168,12 @@ void sd_mix_set_rate(int ch, double rate);      // ditto, playback rate only
 // update does: (key - root) as baseStep, the track's bend + ext pitch as
 // userPitch, plus the channel's sweep (portamento / 0xE3), all in 1/64
 // semitones. See the Channel fields in mixer.cpp.
+// baseStep <= 0 means the voice plays at its own pitch (a replaced wave, see
+// SdatWave::ownPitch): nothing retunes it.
 void sd_mix_set_pitch_base(int ch, double baseStep, int userPitch);
+// The voice still runs (envelope, position, end) but adds nothing to the mix.
+// Used for the notes of a sequence whose music a mod replaced with a recording.
+void sd_mix_set_mute(int ch);
 void sd_mix_set_user_pitch(int ch, int units);
 void sd_mix_set_sweep(int ch, int sweepPitch, int sweepLength);
 // The track's envelope override at a note-on: -1 keeps the instrument's.
@@ -169,6 +189,25 @@ void sd_mix_render(sd_s16 *dst, int frames);   // stereo interleaved
 // registrant, hal/voice_chat.cpp, and only when the player turned voice on.
 void sd_mix_set_aux_render(void (*fn)(sd_s16 *dst, int frames));
 void sd_mix_reset(void);
+
+// ---- music streams (a sound mod's recording standing in for a sequence) ----
+//
+// The sequence keeps running silently (its voices are muted) so every status the
+// ROM polls stays true; the stream plays the recording instead. The sequencer
+// drives it: start with the sequence, volume from the player's volume and fade
+// each 192 Hz tick, pause with the sequence, stop with it.
+//
+// A "music id" names one replaced track in the mod layer (sdat.cpp).
+int sd_music_for_sequence(const sd_u8 *seqBase, sd_u32 startOff);   // id or -1
+class SdSource;
+SdSource *sd_music_open(int id);                    // a fresh source, or null
+const char *sd_music_name(int id);
+int sd_mix_stream_start(int player, int musicId);   // 1 if it is playing
+void sd_mix_stream_set_db10(int player, int db10);
+void sd_mix_stream_pause(int player, int flag);
+void sd_mix_stream_finish(int player);              // the sequence ended: play out, no more looping
+void sd_mix_stream_stop(int player);                // short fade, then gone
+int  sd_mix_stream_active(int player);
 
 // Re-seed the command queue (free list, ring, cursors) to its booted shape.
 // Boot calls it through sd_consumer_init; a save-state restore calls it beside

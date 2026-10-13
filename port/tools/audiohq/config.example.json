@@ -1,0 +1,21 @@
+{
+  "_help": "Copy this file to config.json and fill in the paths. Every path on your machine lives here and nowhere else. Any key can be overridden on a command line: --set exe_tip=C:/somewhere/walk_window.exe",
+
+  "exe_tip":  "C:/path/to/walk_window.exe built from THIS branch (build.py puts it in out_dir/exes/tip/)",
+  "exe_base": "C:/path/to/walk_window.exe built BEFORE this work (any build of lead/audio-snapshot, for example the shipped 0.9.1 dev build)",
+  "asset_root": "C:/path/to/the/folder/that/contains/extracted/",
+
+  "out_dir": "C:/path/to/a/scratch/folder/for/audiohq/results",
+
+  "repo": "C:/path/to/your/sm64ds tree (the one on branch cloud/audiohq1)",
+  "build_cmd": "port\\build-port-k0.cmd",
+  "stage_py": "",
+  "build_lock_path": "",
+
+  "settings_base": "",
+  "route_seconds": 60,
+  "workers": 2,
+  "timeout_s": 1800,
+  "probe_seqarc": 2,
+  "music_force_id": 58
+}

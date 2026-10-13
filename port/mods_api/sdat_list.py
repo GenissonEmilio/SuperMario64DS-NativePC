@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """List the members of a Nintendo SDAT archive by the names a mod's sound/ folder uses.
 
-Usage: python sdat_list.py path/to/sound_data.sdat
+Usage: python sdat_list.py path/to/sound_data.sdat [--waves]
+
+--waves also lists every wave inside each wave archive (.swar): its number (the n of
+sound/<archive name>/<n>.wav), format, sample rate, length and whether it loops.
 
 Each output line is: <file name to use in sound/>  <type>  <record>  <file id>  <size in bytes>
 The name is the archive's own symbol (SYMB block) plus the type's extension, or
@@ -56,10 +59,35 @@ def members(buf):
     return out
 
 
+def waves(buf, fat, fid):
+    """Yield (index, format name, rate, samples, loops) for every wave of the SWAR with this file id."""
+    off, size = struct.unpack_from("<II", buf, fat + 0xc + fid * 16)
+    f = buf[off:off + size]
+    cnt = struct.unpack_from("<I", f, 0x38)[0]
+    for i in range(cnt):
+        wo = struct.unpack_from("<I", f, 0x3c + i * 4)[0]
+        if not wo:
+            continue
+        fmt, loop = f[wo], f[wo + 1]
+        rate, _, loop_words, tail_words = struct.unpack_from("<HHHI", f, wo + 2)
+        nbytes = (loop_words + tail_words) * 4
+        if fmt == 0:
+            n, name = nbytes, "pcm8"
+        elif fmt == 1:
+            n, name = nbytes // 2, "pcm16"
+        elif fmt == 2:
+            n, name = max(0, (nbytes - 4) * 2), "adpcm"
+        else:
+            n, name = 0, "format %d" % fmt
+        yield i, name, rate, n, bool(loop)
+
+
 def main():
-    if len(sys.argv) != 2:
+    args = [a for a in sys.argv[1:] if a != "--waves"]
+    show_waves = "--waves" in sys.argv[1:]
+    if len(args) != 1:
         sys.exit(__doc__)
-    buf = open(sys.argv[1], "rb").read()
+    buf = open(args[0], "rb").read()
     if buf[:4] != b"SDAT":
         sys.exit("not an SDAT")
     nblk = struct.unpack_from("<H", buf, 0x0e)[0]
@@ -69,6 +97,9 @@ def main():
         size = struct.unpack_from("<I", buf, fat + 0xc + fid * 16 + 4)[0]
         fn = (name or "%s_%04d" % (ext, i)) + suffix
         print("%-48s %-5s %6d %6d %9d" % (fn, ext, i, fid, size))
+        if show_waves and ext == "swar":
+            for wi, wname, rate, n, loops in waves(buf, fat, fid):
+                print("    wave %-4d %-6s %6d Hz %8d samples%s" % (wi, wname, rate, n, "  loops" if loops else ""))
 
 
 if __name__ == "__main__":

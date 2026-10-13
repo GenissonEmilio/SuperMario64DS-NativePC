@@ -24,8 +24,8 @@
 // is live by then and the run is exactly the old one), and returns.
 //
 // WHILE THE WORKER WAITS, A VIRTUAL DEVICE DRAINS THE RING. It is the same
-// NBUF x OUT_FRAMES ring, refilled by the same loop, and each block counts as
-// played when the real clock says a device at SD_MIX_RATE would have finished
+// NBUF x g_outFrames ring, refilled by the same loop, and each block counts as
+// played when the real clock says a device at mixrate() would have finished
 // it -- exactly how waveOut hands a header back. So the mixer and the 192 Hz
 // sequencer clock advance at the pace a device that opened instantly would
 // have driven them, and not at the no-device clock's 546 frames a push, which
@@ -76,13 +76,19 @@
 
 namespace {
 
-enum { OUT_FRAMES = 1024, NBUF = 4, MIX_MAX = 2048, OPEN_GRACE_MS = 200 };
+inline int mixrate(void) { return sd_mix_rate(); }
 
-sd_s16 g_mix[MIX_MAX * 2];      // scratch at SD_MIX_RATE, stereo interleaved
+// OUT_FRAMES_MAX sizes the ring; g_outFrames is the block actually used: 1024
+// frames at 32768 Hz ("ds", 31 ms) and 1536 at 48000 Hz ("hq", 32 ms), so the
+// ring holds the same ~125 ms either way.
+enum { OUT_FRAMES_MAX = 1536, NBUF = 4, MIX_MAX = 2048, OPEN_GRACE_MS = 200 };
+int g_outFrames = 1024;
+
+sd_s16 g_mix[MIX_MAX * 2];      // scratch at mixrate(), stereo interleaved
 
 int g_opened;                   // 0 untried, 1 device live, -1 no device,
                                 // 2 opening on the worker (virtual device)
-int g_devRate = SD_MIX_RATE;
+int g_devRate = SD_MIX_RATE;       // set from sd_mix_rate() when the device opens
 sd_u32 g_cum;                   // frames rendered since boot, every path
 
 // HOST MASTER VOLUME. SM64DS_VOLUME is an integer 0..100 read once at boot; it
@@ -106,7 +112,7 @@ pfnOpen  p_Open;
 pfnHdr   p_Prepare, p_Unprepare, p_Write;
 pfnDev   p_Reset, p_Close;
 
-/* RING HEALTH. The ring is NBUF x OUT_FRAMES frames, refilled once per video
+/* RING HEALTH. The ring is NBUF x g_outFrames frames, refilled once per video
    frame from sd_out_push, and the device drains it at the device rate no
    matter what the video loop is doing. Three counters, so "it squealed" can be
    answered with a number instead of an ear:
@@ -119,7 +125,7 @@ pfnDev   p_Reset, p_Close;
                   it is the shape a glitch/squeal has.
 
    sd_out_report prints them at exit. A healthy run has g_starved == 0 and
-   g_refills close to (run seconds * device rate / OUT_FRAMES). */
+   g_refills close to (run seconds * device rate / g_outFrames). */
 int g_pushes, g_refills, g_starved, g_reported;
 
 HWAVEOUT g_dev;
@@ -181,10 +187,10 @@ int open_device(int delay_ms)
     }
     const double t1 = now_ms();
     g_wLoadMs = t1 - t0;
-    g_wRate = SD_MIX_RATE;
-    int ok = open_at(SD_MIX_RATE);
+    g_wRate = mixrate();
+    int ok = open_at(mixrate());
     g_wOpenMs[0] = now_ms() - t1;
-    if (!ok) {
+    if (!ok && mixrate() != 48000) {     // "hq" already asked for 48000
         const double t2 = now_ms();
         g_wRate = 48000;
         ok = open_at(48000);
@@ -247,9 +253,9 @@ void bt_write(int i)
 {
     const int skip = (i == g_trim) ? g_trimFrames : 0;
     if (g_ddFile)
-        fwrite(g_buf[i] + skip * 2, sizeof(sd_s16) * 2, OUT_FRAMES - skip, g_ddFile);
+        fwrite(g_buf[i] + skip * 2, sizeof(sd_s16) * 2, g_outFrames - skip, g_ddFile);
     if (g_ddSilent)     // recorded above, then the speaker gets zeros
-        memset(g_buf[i], 0, OUT_FRAMES * 2 * sizeof(sd_s16));
+        memset(g_buf[i], 0, g_outFrames * 2 * sizeof(sd_s16));
     bt_note(i);
 }
 
@@ -259,7 +265,7 @@ void bt_line(const char *mode, int free_on_entry, sd_u32 cum0)
         fprintf(g_btFile, "n=%d t=%.1f mode=%s free=%d rend=%u cum=%u tick=%u w=%s\n",
                 g_btPush, now_ms() - g_bt0, mode, free_on_entry,
                 (unsigned)(g_cum - cum0), (unsigned)g_cum,
-                (unsigned)((unsigned long long)g_cum * 192u / SD_MIX_RATE),
+                (unsigned)((unsigned long long)g_cum * 192u / mixrate()),
                 g_btWn ? g_btW + 1 : "-");
         fflush(g_btFile);
     }
@@ -277,7 +283,7 @@ void wav_hdr(FILE *f, sd_u32 frames)
 {
     sd_u32 dataBytes = frames * 4;
     sd_u32 riff = 36 + dataBytes;
-    sd_u32 fmtLen = 16, rate = SD_MIX_RATE, byteRate = SD_MIX_RATE * 4;
+    sd_u32 fmtLen = 16, rate = mixrate(), byteRate = mixrate() * 4;
     sd_u16 fmt = 1, ch = 2, bits = 16, align = 4;
     fwrite("RIFF", 1, 4, f);      fwrite(&riff, 4, 1, f);
     fwrite("WAVEfmt ", 1, 8, f);  fwrite(&fmtLen, 4, 1, f);
@@ -287,7 +293,7 @@ void wav_hdr(FILE *f, sd_u32 frames)
     fwrite("data", 1, 4, f);      fwrite(&dataBytes, 4, 1, f);
 }
 
-// Render `frames` at SD_MIX_RATE into g_mix and feed the dump.
+// Render `frames` at mixrate() into g_mix and feed the dump.
 void render_mix(int frames)
 {
     if (frames > MIX_MAX) frames = MIX_MAX;
@@ -305,8 +311,8 @@ void out_report(void)
     g_reported = 1;
     fprintf(stderr, "[audio] ring: %d pushes, %d refills, %d starved "
                     "(%d x %d frames at %d Hz = %.0f ms)\n",
-            g_pushes, g_refills, g_starved, NBUF, OUT_FRAMES, g_devRate,
-            1000.0 * NBUF * OUT_FRAMES / (g_devRate ? g_devRate : 1));
+            g_pushes, g_refills, g_starved, NBUF, g_outFrames, g_devRate,
+            1000.0 * NBUF * g_outFrames / (g_devRate ? g_devRate : 1));
     fflush(stderr);
 }
 
@@ -373,7 +379,7 @@ void sd_wav_close(void)
     fclose(g_wav);
     g_wav = 0;
     fprintf(stderr, "[sdat] wav dump closed: %u frames (%.2f s)\n",
-            g_wavFrames, (double)g_wavFrames / SD_MIX_RATE);
+            g_wavFrames, (double)g_wavFrames / mixrate());
 }
 
 // ---- device -------------------------------------------------------------
@@ -390,10 +396,10 @@ double g_tFirst;                // the first sound push, for the ready line
 void ring_alloc(void)
 {
     for (int i = 0; i < NBUF; i++) {
-        g_buf[i] = (sd_s16 *)calloc(OUT_FRAMES * 2, sizeof(sd_s16));
+        g_buf[i] = (sd_s16 *)calloc(OUT_FRAMES_MAX * 2, sizeof(sd_s16));
         memset(&g_hdr[i], 0, sizeof g_hdr[i]);
         g_hdr[i].lpData = (LPSTR)g_buf[i];
-        g_hdr[i].dwBufferLength = OUT_FRAMES * 2 * sizeof(sd_s16);
+        g_hdr[i].dwBufferLength = g_outFrames * 2 * sizeof(sd_s16);
         g_hdr[i].dwFlags = WHDR_DONE;       // free to fill
     }
 }
@@ -438,11 +444,11 @@ int go_live(int ok)
     // re-prepared whole when it comes back, in the refill below).
     g_trim = -1;
     g_trimFrames = 0;
-    if (n > 0 && g_wRate == SD_MIX_RATE) {
+    if (n > 0 && g_wRate == mixrate()) {
         const int i = order[0];
-        const double start = g_vEnd[i] - OUT_FRAMES * 1000.0 / SD_MIX_RATE;
-        int played = now > start ? (int)((now - start) * SD_MIX_RATE / 1000.0) : 0;
-        if (played > OUT_FRAMES - 1) played = OUT_FRAMES - 1;
+        const double start = g_vEnd[i] - g_outFrames * 1000.0 / mixrate();
+        int played = now > start ? (int)((now - start) * mixrate() / 1000.0) : 0;
+        if (played > g_outFrames - 1) played = g_outFrames - 1;
         if (played > 0) { g_trim = i; g_trimFrames = played; }
     }
     for (int i = 0; i < NBUF; i++) {
@@ -451,13 +457,13 @@ int go_live(int ok)
         if (i == g_trim) {
             g_hdr[i].lpData = (LPSTR)(g_buf[i] + g_trimFrames * 2);
             g_hdr[i].dwBufferLength =
-                (DWORD)((OUT_FRAMES - g_trimFrames) * 2 * sizeof(sd_s16));
+                (DWORD)((g_outFrames - g_trimFrames) * 2 * sizeof(sd_s16));
         }
         p_Prepare(g_dev, &g_hdr[i], sizeof(WAVEHDR));
         g_hdr[i].dwFlags |= done;
     }
     int dropped = 0;
-    if (g_devRate != SD_MIX_RATE) {
+    if (g_devRate != mixrate()) {
         // Rendered at 32768 Hz for the virtual device; this device plays
         // 48000 through the resampler, so these cannot be handed over.
         for (int k = 0; k < n; k++) g_hdr[order[k]].dwFlags |= WHDR_DONE;
@@ -470,8 +476,8 @@ int go_live(int ok)
     }
     g_opened = 1;
     fprintf(stderr, "[sdat] waveOut open at %d Hz, %d x %d frames (%.0f ms)\n",
-            g_devRate, NBUF, OUT_FRAMES,
-            1000.0 * NBUF * OUT_FRAMES / g_devRate);
+            g_devRate, NBUF, g_outFrames,
+            1000.0 * NBUF * g_outFrames / g_devRate);
     fprintf(stderr, "[sdat] device ready %.0f ms after the first sound push "
                     "(winmm load %.0f ms, open %.0f ms%s); %d block(s) in "
                     "flight handed over (the first from its frame %d), %d "
@@ -488,7 +494,7 @@ int go_live(int ok)
 /* One push while the worker is still opening: the virtual device hands back
    every header whose block it has finished by now, and the refill below is
    the device path's own, less the resampler (the virtual device plays
-   SD_MIX_RATE) and less the write. */
+   mixrate()) and less the write. */
 void virt_push(sd_u32 cum0)
 {
     const double now = now_ms();
@@ -501,11 +507,11 @@ void virt_push(sd_u32 cum0)
     for (int i = 0; i < NBUF; i++) {
         if (!(g_hdr[i].dwFlags & WHDR_DONE)) continue;
         g_off[i] = g_cum;
-        render_mix(OUT_FRAMES);
-        memcpy(g_buf[i], g_mix, OUT_FRAMES * 2 * sizeof(sd_s16));
+        render_mix(g_outFrames);
+        memcpy(g_buf[i], g_mix, g_outFrames * 2 * sizeof(sd_s16));
         g_hdr[i].dwFlags &= ~WHDR_DONE;
         const double start = g_vBusy > now ? g_vBusy : now;
-        g_vEnd[i] = g_vBusy = start + OUT_FRAMES * 1000.0 / SD_MIX_RATE;
+        g_vEnd[i] = g_vBusy = start + g_outFrames * 1000.0 / mixrate();
         g_vSeq[i] = ++g_seq;
         bt_note(i);
     }
@@ -519,6 +525,7 @@ int sd_out_open(void)
 {
     if (g_opened) return g_opened == 1;
     g_opened = -1;
+    g_outFrames = sd_audio_hq() ? 1536 : 1024;
 
     if (getenv("SM64DS_NO_AUDIO")) {
         fprintf(stderr, "[sdat] SM64DS_NO_AUDIO=1: no output device, "
@@ -622,7 +629,7 @@ void sd_out_push(void)
                 // back from the hand-over's part block: whole again
                 p_Unprepare(g_dev, &g_hdr[i], sizeof(WAVEHDR));
                 g_hdr[i].lpData = (LPSTR)g_buf[i];
-                g_hdr[i].dwBufferLength = OUT_FRAMES * 2 * sizeof(sd_s16);
+                g_hdr[i].dwBufferLength = g_outFrames * 2 * sizeof(sd_s16);
                 g_hdr[i].dwFlags = 0;
                 p_Prepare(g_dev, &g_hdr[i], sizeof(WAVEHDR));
                 g_trim = -1;
@@ -630,17 +637,17 @@ void sd_out_push(void)
             }
             const clock_t c0 = slow_ms > 0 ? clock() : 0;
             g_off[i] = g_cum;
-            if (g_devRate == SD_MIX_RATE) {
-                render_mix(OUT_FRAMES);
-                memcpy(g_buf[i], g_mix, OUT_FRAMES * 2 * sizeof(sd_s16));
+            if (g_devRate == mixrate()) {
+                render_mix(g_outFrames);
+                memcpy(g_buf[i], g_mix, g_outFrames * 2 * sizeof(sd_s16));
             } else {
                 // Linear interpolation up to the device rate. g_phase and
                 // g_last carry across blocks so the seam is continuous.
-                double ratio = (double)SD_MIX_RATE / g_devRate;
-                int need = (int)(OUT_FRAMES * ratio) + 2;
+                double ratio = (double)mixrate() / g_devRate;
+                int need = (int)(g_outFrames * ratio) + 2;
                 render_mix(need);
                 sd_s16 *o = g_buf[i];
-                for (int k = 0; k < OUT_FRAMES; k++, o += 2) {
+                for (int k = 0; k < g_outFrames; k++, o += 2) {
                     int idx = (int)g_phase;
                     double f = g_phase - idx;
                     if (idx >= need - 1) idx = need - 2, f = 1.0;
@@ -658,7 +665,7 @@ void sd_out_push(void)
             // Master volume was already applied in sd_mix_render (the host
             // output stage), so g_buf holds the level that goes to the speaker.
             g_hdr[i].dwFlags &= ~WHDR_DONE;
-            g_hdr[i].dwBufferLength = OUT_FRAMES * 2 * sizeof(sd_s16);
+            g_hdr[i].dwBufferLength = g_outFrames * 2 * sizeof(sd_s16);
             g_refills++;
             const clock_t c1 = slow_ms > 0 ? clock() : 0;
             bt_write(i);
@@ -678,8 +685,18 @@ void sd_out_push(void)
     }
 #endif
     // No device: clock the mixer off the video frame so state still advances
-    // (envelopes decay, sequences end) and the dump still fills.
-    render_mix(SD_MIX_RATE / 60);
+    // (envelopes decay, sequences end) and the dump still fills. A push is 546
+    // frames of the DS's 32768 Hz clock whatever the mix rate, so the 192 Hz
+    // tick count at every push is the same in "ds" and "hq" (floor(n * 546 *
+    // rate / 32768) running total: exact, no drift, ticks agree to the push).
+    {
+        static unsigned long long pushes, rendered;
+        ++pushes;
+        const unsigned long long target =
+            pushes * 546ull * (unsigned)mixrate() / (unsigned)SD_MIX_RATE;
+        render_mix((int)(target - rendered));
+        rendered = target;
+    }
 #if defined(_WIN32)
     bt_line("nodev", -1, cum0);
 #endif

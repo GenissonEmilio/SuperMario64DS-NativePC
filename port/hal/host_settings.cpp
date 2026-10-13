@@ -696,6 +696,7 @@ int g_gap_on;                        /* default 1 */
    re-validates it and reads anything it does not know as ambient, so the two
    spellings cannot disagree about an unknown value. */
 int g_gap_fill;                      /* default 1, ambient */
+int g_audio_quality = 1;             /* AudioQuality: 1 "hq" (default), 0 "ds"; lane AUDIOHQ1 */
 unsigned g_gap_color;                /* default 0xFF000000, black */
 int g_gap_peek;                      /* default 0 */
 
@@ -1454,6 +1455,7 @@ void load_once(void)
     g_cc_pad_taken = 0;
     g_gap_on = 1;
     g_gap_fill = 1;
+    g_audio_quality = 1;
     g_gap_color = 0xFF000000u;
     g_gap_peek = 0;
     g_gapless_minigames = 0;
@@ -1751,6 +1753,18 @@ void load_once(void)
         {
             const int v = json_int(text, "Volume", -1);
             if (v >= 0) g_volume = v > 100 ? 100 : v;
+        }
+        /* AudioQuality (lane AUDIOHQ1): "hq" (the default; an absent key, an
+           absent file and anything else read as this) mixes at 48000 Hz with a
+           4-point Hermite resampler; "ds" is the DS's own 32768 Hz mixer with
+           linear interpolation, bit-identical to builds before the key. Read
+           once at start: the mixer's rate cannot change while the game runs.
+           SM64DS_AUDIO_HQ=0 (or 1) in the environment overrides it. */
+        {
+            char q[16];
+            if (json_str(text, "AudioQuality", q, sizeof q)) {
+                if (strlen(q) == 2 && ieq(q, "ds", 2)) g_audio_quality = 0;
+            }
         }
         /* NetMode (port/rollback): "rollback" (the default again as of 0.3.7,
            and what an absent key, an absent file and an unparseable file all
@@ -2438,6 +2452,13 @@ extern "C" int host_setting_yoshi_builtin_row(void)
 {
     load_once();
     return g_yoshi_row;
+}
+
+/* AudioQuality: 1 "hq" (default), 0 "ds". */
+extern "C" int host_setting_audio_quality(void)
+{
+    load_once();
+    return g_audio_quality;
 }
 
 extern "C" int host_setting_volume(void)

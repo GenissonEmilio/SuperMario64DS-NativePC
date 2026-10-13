@@ -413,19 +413,26 @@ void dump_devices()
 
 // ---------------------------------------------------------------------------
 // THE MIX HOOK. Called from sd_mix_render, AFTER the host master volume, at
-// SD_MIX_RATE. See mixer.cpp's tail for why after.
+// sd_mix_rate(). See mixer.cpp's tail for why after.
 //
-// 16000 into 32768 is not a whole ratio, so the cursor is 16.16 fixed point
-// stepping by 32000 per output frame (16000 * 65536 / 32768) with linear
+// 16000 into 32768 (or 48000) is not a whole ratio, so the cursor is 16.16
+// fixed point stepping by 32000 per output frame at 32768 (16000 * 65536 /
+// rate), 21845 at 48000, with linear
 // interpolation between the two samples it lands between -- the same
 // resampling the DS mixer does in hardware and the same the sdat mixer does
 // for every other voice.
 // ---------------------------------------------------------------------------
-enum : unsigned { kResampleStep = (unsigned)((16000ull << 16) / SD_MIX_RATE) };
+/* The mix rate is 32768 ("ds") or 48000 ("hq", the default), so the step is
+   worked out from the rate the mixer actually runs at. */
+static inline unsigned resample_step()
+{
+    return (unsigned)((16000ull << 16) / (unsigned)sd_mix_rate());
+}
 
 void voice_mix_render(sd_s16 *dst, int frames)
 {
     if (!g_on) return;
+    const unsigned step_per_frame = resample_step();
     for (int s = 0; s < kCommsMaxPlayers; ++s) {
         RemoteVoice &r = g_rv[s];
         if (!r.playing) { r.cur_gain = r.gain; continue; }
@@ -455,7 +462,7 @@ void voice_mix_render(sd_s16 *dst, int frames)
             o[0] = (sd_s16)(l < -32768 ? -32768 : (l > 32767 ? 32767 : l));
             o[1] = (sd_s16)(rr < -32768 ? -32768 : (rr > 32767 ? 32767 : rr));
 
-            r.frac += kResampleStep;
+            r.frac += step_per_frame;
             const int step = (int)(r.frac >> 16);
             if (step) {
                 r.frac &= 0xffff;

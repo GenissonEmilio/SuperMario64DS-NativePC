@@ -1,5 +1,9 @@
 # Sound mods
 
+**Plain `.wav` / `.ogg` files** (a recording for a piece of music, or one replaced
+sound inside a wave archive) are described in `SOUND_MODS.md`. This file is
+about replacing whole archive members.
+
 A mod can replace music, sound effects, instrument banks and wave data. Put the
 replacement files in the mod's `sound/` folder:
 

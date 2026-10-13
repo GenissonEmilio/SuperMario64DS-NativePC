@@ -8,8 +8,15 @@
 // ARM7's square-law one (sd_cnv_vol in sdat.cpp has the address and the
 // check against the cartridge).
 //
-// Resampling is linear interpolation. The DS does the same thing in
-// hardware, so this is not a shortcut.
+// Resampling has two paths, chosen once per run (AudioQuality, lane AUDIOHQ1):
+//   "ds"  32768 Hz, linear interpolation -- the DS's own mixer, bit-identical to
+//         every earlier build. The loop below is the old one, untouched.
+//   "hq"  48000 Hz, 4-point Hermite (Catmull-Rom) interpolation for sampled
+//         voices; PSG voices stay stepped. About 14 flops per voice-sample
+//         against 4 for linear: 16 voices at 48 kHz is ~11 Mflop/s, far below
+//         the load of a 2008 laptop. The 192 Hz tick, every envelope, LFO, sweep
+//         and fade are counted in ticks, never in output samples, so game time
+//         is the same in both: only the frames per tick change (250 vs 170.67).
 //
 // This file also owns the 192 Hz sequencer clock: sd_mix_render slices its
 // output at 192 Hz boundaries and ticks the sequencer and every envelope
@@ -23,6 +30,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <vector>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
+#include <time.h>
+#endif
+
+#include "sd_audio.h"
 
 // ---- the voice trace ----------------------------------------------------
 //
@@ -43,6 +61,10 @@
 // predictable branch per event and nothing else.
 extern "C" int g_voice_trace;
 int g_voice_trace;
+
+extern "C" {
+int (*g_sdat_audio_quality)(void);
+}
 
 void sd_vtrace(const char *fmt, ...)
 {
@@ -65,6 +87,17 @@ struct Channel {
     sd_u32 total, loopStart;
     int loop;
     int hold;           // PSG voice: steps its samples, no interpolation
+    int muted;          // runs, ends and frees like any voice but adds nothing
+    /* "hq" only. Whether a one-shot has run out is a fact the sequencer reads
+       (a track parked on a duration-0 note waits for it) and the ROM sees
+       through the player status, so it must happen on the same 192 Hz tick as
+       in "ds" or game state would depend on the audio setting. The audio
+       position (pos) cannot promise that, since it counts 48 kHz frames, so a
+       shadow position counts what the 32768 Hz mixer would have counted:
+       dsPos, advanced a whole tick at a time, decides when the voice ends. The
+       audio side only goes quiet when it runs out (ended). */
+    double dsPos;
+    int ended;
     double pos, step;
 
     sd_s32 ampl;
@@ -116,8 +149,13 @@ struct Channel {
 
 Channel g_ch[SD_CHANNELS];
 
-// Frames of 32768 Hz output per 192 Hz sequencer tick, as a fraction.
-int g_tickAcc;          // counts output frames * 192
+// Output frames per 192 Hz sequencer tick, as a fraction: g_tickAcc counts
+// output frames * 192 and a tick is due each time it reaches g_mixRate.
+int g_tickAcc;
+unsigned long long g_tickIndex;     // ticks fired since sd_mix_reset
+int g_mixRate = SD_MIX_RATE;
+int g_hq;
+int g_modeLatched;
 
 int cnv_attack(int a)
 {
@@ -140,6 +178,20 @@ int cnv_fall(int f)
 // Lane VOICE: the post-master-volume render hook. See sd_mix_render's tail.
 void (*g_aux_render)(sd_s16 *, int);
 
+void mode_latch(void)
+{
+    if (g_modeLatched) return;
+    g_modeLatched = 1;
+    int hq = 0;
+    const char *e = getenv("SM64DS_AUDIO_HQ");
+    if (e && *e) hq = e[0] != '0';
+    else if (g_sdat_audio_quality) hq = g_sdat_audio_quality() != 0;
+    g_hq = hq;
+    g_mixRate = hq ? SD_MIX_RATE_HQ : SD_MIX_RATE;
+    fprintf(stderr, "[audio] quality %s: mixing at %d Hz, %s resampler\n",
+            hq ? "hq" : "ds", g_mixRate, hq ? "4-point Hermite" : "linear");
+}
+
 double db10_to_gain(int db10)
 {
     if (db10 <= -723) return 0.0;
@@ -158,9 +210,24 @@ namespace { void ct_open(void); }   // SM64DS_CHAN_TRACE, below sd_mix_frame
 static volatile int g_host_mute = 0;
 extern "C" void sd_host_mute(int on) { g_host_mute = on ? 1 : 0; }
 
+namespace { void streams_reset(void); }
+
+int sd_mix_rate(void)
+{
+    mode_latch();
+    return g_mixRate;
+}
+
+int sd_audio_hq(void)
+{
+    mode_latch();
+    return g_hq;
+}
+
 void sd_mix_reset(void)
 {
     static int latched;
+    mode_latch();
     if (!latched) {
         latched = 1;
         g_voice_trace = getenv("SM64DS_VOICE_TRACE") != 0;
@@ -168,6 +235,8 @@ void sd_mix_reset(void)
     }
     memset(g_ch, 0, sizeof g_ch);
     g_tickAcc = 0;
+    g_tickIndex = 0;
+    streams_reset();
 }
 
 /* THE ROM'S OWN CHANNEL ALLOCATOR, transcribed from the ARM7 driver.
@@ -310,7 +379,7 @@ void sd_mix_start(int ch, const SdatWave *w, const SdatNote *n,
           "rate %.4f (%u Hz wave, %.0f ms)\n", ch,
           (unsigned)w->totalSamples, w->loop ? " looping" : "", volume_db10,
           pan, priority, rate, (unsigned)w->sampleRate,
-          rate > 0.0 ? (double)w->totalSamples * 1000.0 / (rate * SD_MIX_RATE)
+          rate > 0.0 ? (double)w->totalSamples * 1000.0 / (rate * g_mixRate)
                      : 0.0);
     Channel &c = g_ch[ch];
     unsigned s = c.seq + 1;
@@ -345,6 +414,11 @@ void sd_mix_start(int ch, const SdatWave *w, const SdatNote *n,
 void sd_mix_set_hold(int ch)
 {
     if (ch >= 0 && ch < SD_CHANNELS) g_ch[ch].hold = 1;
+}
+
+void sd_mix_set_mute(int ch)
+{
+    if (ch >= 0 && ch < SD_CHANNELS) g_ch[ch].muted = 1;
 }
 
 void sd_mix_set(int ch, int volume_db10, int pan, double rate)
@@ -411,6 +485,11 @@ void sd_mix_set_pitch_base(int ch, double baseStep, int userPitch)
 {
     if (ch < 0 || ch >= SD_CHANNELS || !g_ch[ch].active) return;
     Channel &c = g_ch[ch];
+    if (baseStep <= 0.0) {          // own pitch: no key, bend, sweep or LFO term
+        c.hasBase = 0;
+        c.userPitch = c.modPitch = c.pitchUnits = 0;
+        return;
+    }
     c.hasBase = 1;
     c.baseStep = baseStep;
     c.userPitch = userPitch;
@@ -615,7 +694,7 @@ void ct_open(void)
     g_ctOn = 1;
     fprintf(g_ctFile, "[ct] f = 192 Hz frame; rate = sample frames per output "
             "frame at %d Hz; vol = envelope + external volume in tenths of a "
-            "dB (-723 = silent); pan 0..127\n", (int)SD_MIX_RATE);
+            "dB (-723 = silent); pan 0..127\n", g_mixRate);
 }
 
 void ct_frame(void)
@@ -716,13 +795,339 @@ void sd_mix_frame(void)
 
 void sd_seq_frame(void);   // forward: the sequencer shares this clock
 
+/* ---- music streams ------------------------------------------------------
+ *
+ * One stream voice per replaced music track that is sounding, plus the ones
+ * fading out after a stop. The source is read forward in blocks into a small
+ * stereo buffer; the output position walks that buffer at (file rate / mix
+ * rate) and is interpolated with the same 4-point Hermite the sampled voices
+ * use in "hq". Loops are the source's business (it seeks back by itself), so
+ * the buffer sees one continuous timeline and the loop point is seamless.
+ */
+namespace {
+
+enum { ST_MAX = 6, ST_CAP = 8192, ST_BLOCK = 1024 };
+
+struct Stream {
+    int state;              // 0 free, 1 playing, 2 fading out
+    int player;             // -1 once detached
+    int id;
+    int paused, finishing;
+    SdSource *src;
+    double pos, step;       // pos: absolute file frame; step: file frames per output frame
+    long long base;         // absolute file frame of buf[0]
+    int have, eof;
+    std::vector<sd_s16> buf;
+    float gain, target;
+    int lastDb10;
+    int fresh;
+    unsigned long long outFrames;
+};
+Stream g_st[ST_MAX];
+
+void stream_free(Stream &s)
+{
+    if (s.src) {
+        fprintf(stderr, "[audio] music stream end: player %d '%s', %.2f s out, "
+                "%llu loop(s)\n", s.player, sd_music_name(s.id),
+                (double)s.outFrames / g_mixRate, s.src->wraps);
+        delete s.src;
+    }
+    s.src = 0;
+    s.state = 0;
+    s.player = -1;
+    std::vector<sd_s16>().swap(s.buf);
+}
+
+void streams_reset(void)
+{
+    for (int i = 0; i < ST_MAX; i++) {
+        if (g_st[i].src) stream_free(g_st[i]);
+        g_st[i].state = 0;
+        g_st[i].player = -1;
+    }
+}
+
+Stream *stream_of(int player)
+{
+    for (int i = 0; i < ST_MAX; i++)
+        if (g_st[i].state == 1 && g_st[i].player == player) return &g_st[i];
+    return 0;
+}
+
+// Make sure file frames up to `need` are in the buffer (or the source is dry).
+void stream_fill(Stream &s, long long need)
+{
+    while (!s.eof && s.base + s.have <= need) {
+        if (s.have + ST_BLOCK > ST_CAP) {
+            long long drop = (long long)floor(s.pos) - 1 - s.base;
+            if (drop > s.have - 0) drop = s.have;
+            if (drop <= 0) break;                   // cannot make room: stall, never overrun
+            memmove(s.buf.data(), s.buf.data() + drop * 2,
+                    (size_t)(s.have - drop) * 2 * sizeof(sd_s16));
+            s.base += drop;
+            s.have -= (int)drop;
+        }
+        int n = s.src->read(s.buf.data() + (size_t)s.have * 2, ST_BLOCK);
+        if (n <= 0) { s.eof = 1; break; }
+        s.have += n;
+    }
+}
+
+inline float st_at(const Stream &s, long long i, int c)
+{
+    long long j = i - s.base;
+    if (s.have <= 0) return 0.0f;
+    if (j < 0) j = 0;
+    if (j >= s.have) j = s.have - 1;
+    return (float)s.buf[(size_t)j * 2 + c];
+}
+
+void stream_mix(Stream &s, sd_s16 *o, int n)
+{
+    // gain for this slice: ramped from where it was to where it should be
+    float g1 = s.paused ? 0.0f : s.target;
+    if (s.state == 2) g1 = s.gain > 0.25f ? s.gain - 0.25f : 0.0f;
+    if (s.fresh) { s.gain = g1; s.fresh = 0; }
+    const float g0 = s.gain;
+    const float dg = (g1 - g0) / (float)n;
+    s.gain = g1;
+    if (s.paused && g0 <= 0.0f && g1 <= 0.0f) return;       // held where it stands
+    for (int k = 0; k < n; k++, o += 2) {
+        long long i = (long long)s.pos;
+        stream_fill(s, i + 2);
+        if (s.eof && i >= s.base + s.have) { s.state = 2; s.target = 0.0f; s.gain = 0.0f; s.finishing = 2; break; }
+        const float f = (float)(s.pos - (double)i);
+        const float g = g0 + dg * (float)k;
+        const float vl = sd_hermite(st_at(s, i - 1, 0), st_at(s, i, 0), st_at(s, i + 1, 0), st_at(s, i + 2, 0), f) * g;
+        const float vr = sd_hermite(st_at(s, i - 1, 1), st_at(s, i, 1), st_at(s, i + 1, 1), st_at(s, i + 2, 1), f) * g;
+        sd_s32 l = o[0] + (sd_s32)vl;
+        sd_s32 r = o[1] + (sd_s32)vr;
+        o[0] = (sd_s16)(l < -32768 ? -32768 : (l > 32767 ? 32767 : l));
+        o[1] = (sd_s16)(r < -32768 ? -32768 : (r > 32767 ? 32767 : r));
+        s.pos += s.step;
+        s.outFrames++;
+    }
+}
+
+void streams_render(sd_s16 *dst, int n)
+{
+    for (int i = 0; i < ST_MAX; i++) {
+        Stream &s = g_st[i];
+        if (!s.state) continue;
+        stream_mix(s, dst, n);
+        if (s.state == 2 && s.gain <= 0.0f) stream_free(s);
+    }
+}
+
+}  // namespace
+
+int sd_mix_stream_start(int player, int musicId)
+{
+    if (player < 0) return 0;
+    if (Stream *old = stream_of(player)) { old->state = 2; old->player = -1; }
+    int slot = -1;
+    for (int i = 0; i < ST_MAX && slot < 0; i++)
+        if (!g_st[i].state) slot = i;
+    for (int i = 0; i < ST_MAX && slot < 0; i++)         // all busy: take a fading one
+        if (g_st[i].state == 2) { stream_free(g_st[i]); slot = i; }
+    if (slot < 0) return 0;
+    SdSource *src = sd_music_open(musicId);
+    if (!src) return 0;
+    Stream &s = g_st[slot];
+    s.state = 1;
+    s.player = player;
+    s.id = musicId;
+    s.paused = s.finishing = 0;
+    s.src = src;
+    src->loop = true;
+    s.pos = 0.0;
+    s.step = (double)src->info.rate / (double)g_mixRate;
+    s.base = 0;
+    s.have = 0;
+    s.eof = 0;
+    s.buf.assign((size_t)ST_CAP * 2, 0);
+    s.gain = 0.0f;
+    s.target = 1.0f;
+    s.lastDb10 = 1;             // impossible, so the first level is traced
+    s.fresh = 1;
+    s.outFrames = 0;
+    fprintf(stderr, "[audio] music stream start: player %d plays '%s' (%d Hz, %d ch, %.1f s%s)\n",
+            player, sd_music_name(musicId), src->info.rate, src->info.channels,
+            (double)src->info.frames / src->info.rate,
+            src->info.hasLoop ? ", loop tags" : ", whole-file loop");
+    if (src->info.loopNote.size())
+        fprintf(stderr, "[audio] music stream '%s': %s\n", sd_music_name(musicId), src->info.loopNote.c_str());
+    return 1;
+}
+
+/* SM64DS_STREAM_TRACE=1: one line each time the level a music stream is told
+   to play at changes (and when it pauses or resumes), stamped with the 192 Hz
+   tick, so a test can lay the recording's loudness over what the game did. */
+static int stream_trace(void)
+{
+    static int on = -1;
+    if (on < 0) { const char *e = getenv("SM64DS_STREAM_TRACE"); on = (e && *e && *e != '0') ? 1 : 0; }
+    return on;
+}
+
+void sd_mix_stream_set_db10(int player, int db10)
+{
+    Stream *s = stream_of(player);
+    if (!s || s->finishing) return;
+    s->target = (float)db10_to_gain(db10);
+    if (stream_trace() && db10 != s->lastDb10) {
+        fprintf(stderr, "[stream] tick %llu player %d db10 %d\n", g_tickIndex, player, db10);
+        s->lastDb10 = db10;
+    }
+}
+
+void sd_mix_stream_pause(int player, int flag)
+{
+    Stream *s = stream_of(player);
+    if (!s) return;
+    if (stream_trace() && (flag ? 1 : 0) != s->paused)
+        fprintf(stderr, "[stream] tick %llu player %d %s\n", g_tickIndex, player, flag ? "paused" : "resumed");
+    s->paused = flag ? 1 : 0;
+}
+
+void sd_mix_stream_finish(int player)
+{
+    Stream *s = stream_of(player);
+    if (!s) return;
+    s->finishing = 1;
+    s->src->loop = false;       // plays out to the end of the file, once
+}
+
+void sd_mix_stream_stop(int player)
+{
+    Stream *s = stream_of(player);
+    if (!s) return;
+    s->state = 2;               // short fade, then freed
+    s->player = -1;
+    s->paused = 0;
+}
+
+int sd_mix_stream_active(int player)
+{
+    return stream_of(player) != 0;
+}
+
+namespace {
+
+// Sampled voice, "hq" path: one voice, n frames, 4-point Hermite.
+inline float pcm_at(const Channel &c, long long i)
+{
+    if (i < 0) return (float)c.pcm[0];
+    if (i >= (long long)c.total) {
+        if (c.loop && c.total > c.loopStart)
+            i = (long long)c.loopStart + (i - (long long)c.total) % (long long)(c.total - c.loopStart);
+        else
+            return (float)c.pcm[c.total - 1];
+    }
+    return (float)c.pcm[i];
+}
+
+}  // namespace
+
+/* The "ds" mixer's frame count for the tick that is about to fire: tick k lands
+   on output frame ceil(k * 32768 / 192), and the tick before it on k-1. */
+static inline unsigned long long ds_tick_frame(unsigned long long k)
+{
+    return (k * (unsigned long long)SD_MIX_RATE + 191ull) / 192ull;
+}
+
+static void hq_shadow_tick(void)
+{
+    const unsigned long long k = g_tickIndex;
+    const double n = (double)(ds_tick_frame(k) - ds_tick_frame(k - 1));
+    for (int i = 0; i < SD_CHANNELS; i++) {
+        Channel &c = g_ch[i];
+        if (!c.active || !c.pcm) continue;
+        const double stepDs = c.step * (double)SD_MIX_RATE_HQ / (double)SD_MIX_RATE;
+        const bool looping = c.loop && c.total > c.loopStart;
+        /* The ds mixer tests the sample at the start of each frame, so it ran
+           out during this tick iff the position at the tick's last frame is
+           already past the end. */
+        if (!looping && (sd_u32)(c.dsPos + (n - 1.0) * stepDs) >= c.total) {
+            SD_VT("chan %2d off: sample ran out (%u samples, no loop)\n", i,
+                  (unsigned)c.total);
+            sd_pd_end(i, c.priority, "sampleend");
+            c.active = 0;
+            c.priority = 0;   /* stopped: priority 0 */
+            continue;
+        }
+        c.dsPos += stepDs * n;
+        if (looping && (sd_u32)c.dsPos >= c.total) {
+            const double span = (double)(c.total - c.loopStart);
+            c.dsPos = c.loopStart + fmod(c.dsPos - c.loopStart, span);
+        }
+    }
+}
+
+/* SM64DS_AUDIO_STATS=1: what the mixer costs. Wall-clock time spent inside
+   sd_mix_render, against the audio it produced, printed once at exit. Off (and
+   free of any clock call) unless asked for; tools/audiohq reads the line. */
+namespace {
+int g_stats = -1;
+double g_statMs, g_statWorst;
+unsigned long long g_statFrames;
+unsigned g_statBlocks;
+
+double stat_now_ms(void)
+{
+#ifdef _WIN32
+    static LARGE_INTEGER f;
+    LARGE_INTEGER n;
+    if (!f.QuadPart) QueryPerformanceFrequency(&f);
+    QueryPerformanceCounter(&n);
+    return n.QuadPart * 1000.0 / f.QuadPart;
+#else
+    timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000.0 + ts.tv_nsec / 1.0e6;
+#endif
+}
+
+void stat_report(void)
+{
+    if (!g_statBlocks) return;
+    const double audioMs = 1000.0 * (double)g_statFrames / g_mixRate;
+    fprintf(stderr, "[audio] stats: mix %.1f ms for %.2f s of audio at %d Hz = "
+            "%.3f%% of real time (%u blocks, mean %.1f us, worst %.2f ms)\n",
+            g_statMs, audioMs / 1000.0, g_mixRate, 100.0 * g_statMs / audioMs,
+            g_statBlocks, 1000.0 * g_statMs / g_statBlocks, g_statWorst);
+    fflush(stderr);
+}
+}  // namespace
+
+static void sd_mix_render_body(sd_s16 *dst, int frames);
+
 void sd_mix_render(sd_s16 *dst, int frames)
 {
+    if (g_stats < 0) {
+        const char *e = getenv("SM64DS_AUDIO_STATS");
+        g_stats = (e && *e && *e != '0') ? 1 : 0;
+        if (g_stats) atexit(stat_report);
+    }
+    if (!g_stats) { sd_mix_render_body(dst, frames); return; }
+    const double t0 = stat_now_ms();
+    sd_mix_render_body(dst, frames);
+    const double dt = stat_now_ms() - t0;
+    g_statMs += dt;
+    if (dt > g_statWorst) g_statWorst = dt;
+    g_statFrames += (unsigned long long)frames;
+    g_statBlocks++;
+}
+
+static void sd_mix_render_body(sd_s16 *dst, int frames)
+{
+    mode_latch();
     memset(dst, 0, (size_t)frames * 2 * sizeof(sd_s16));
     int done = 0;
     while (done < frames) {
         // Frames remaining before the next 192 Hz boundary.
-        int need = (SD_MIX_RATE - g_tickAcc + 191) / 192;
+        int need = (g_mixRate - g_tickAcc + 191) / 192;
         if (need <= 0) need = 1;
         int n = frames - done;
         if (n > need) n = need;
@@ -730,6 +1135,30 @@ void sd_mix_render(sd_s16 *dst, int frames)
         for (int i = 0; i < SD_CHANNELS; i++) {
             Channel &c = g_ch[i];
             if (!c.active || !c.pcm) continue;
+            if (g_hq && (c.ended || c.muted)) continue;   // the shadow clock owns its end
+            if (c.muted) {
+                /* A voice of a sequence whose music a mod replaced: it keeps
+                   its position and ends where it would, so channel use and
+                   every status the ROM polls stay what they were, but it adds
+                   nothing to the mix. */
+                for (int k = 0; k < n; k++) {
+                    sd_u32 idx = (sd_u32)c.pos;
+                    if (idx >= c.total) {
+                        if (c.loop && c.total > c.loopStart) {
+                            double span = (double)(c.total - c.loopStart);
+                            c.pos = c.loopStart + fmod(c.pos - c.loopStart, span);
+                        } else {
+                            SD_VT("chan %2d off: sample ran out (muted)\n", i);
+                            sd_pd_end(i, c.priority, "sampleend");
+                            c.active = 0;
+                            c.priority = 0;
+                            break;
+                        }
+                    }
+                    c.pos += c.step;
+                }
+                continue;
+            }
             int envDb10 = c.ampl >> 7;   /* 0x037FBD48: asr 7, not a divide */
             int total = envDb10 + c.volDb10 + c.lfoDb10;
             if (total < -723) total = -723;
@@ -742,6 +1171,42 @@ void sd_mix_render(sd_s16 *dst, int frames)
             double gr = g * pan / 127.0;
 
             sd_s16 *o = dst + (done * 2);
+            if (g_hq) {
+                for (int k = 0; k < n; k++, o += 2) {
+                    sd_u32 idx = (sd_u32)c.pos;
+                    if (idx >= c.total) {
+                        if (c.loop && c.total > c.loopStart) {
+                            double span = (double)(c.total - c.loopStart);
+                            c.pos = c.loopStart + fmod(c.pos - c.loopStart, span);
+                            idx = (sd_u32)c.pos;
+                        } else {
+                            c.ended = 1;      // quiet from here; the shadow clock frees it
+                            break;
+                        }
+                    }
+                    double s;
+                    if (c.hold) {
+                        s = (double)c.pcm[idx];
+                    } else {
+                        const float f = (float)(c.pos - (double)idx);
+                        float ym1, y0, y1, y2;
+                        if (idx >= 1 && idx + 2 < c.total) {
+                            ym1 = (float)c.pcm[idx - 1]; y0 = (float)c.pcm[idx];
+                            y1 = (float)c.pcm[idx + 1];  y2 = (float)c.pcm[idx + 2];
+                        } else {
+                            ym1 = pcm_at(c, (long long)idx - 1); y0 = pcm_at(c, idx);
+                            y1 = pcm_at(c, (long long)idx + 1);  y2 = pcm_at(c, (long long)idx + 2);
+                        }
+                        s = (double)sd_hermite(ym1, y0, y1, y2, f);
+                    }
+                    sd_s32 l = (sd_s32)(o[0] + s * gl);
+                    sd_s32 r = (sd_s32)(o[1] + s * gr);
+                    o[0] = (sd_s16)(l < -32768 ? -32768 : (l > 32767 ? 32767 : l));
+                    o[1] = (sd_s16)(r < -32768 ? -32768 : (r > 32767 ? 32767 : r));
+                    c.pos += c.step;
+                }
+                continue;
+            }
             for (int k = 0; k < n; k++, o += 2) {
                 sd_u32 idx = (sd_u32)c.pos;
                 if (idx >= c.total) {
@@ -771,10 +1236,14 @@ void sd_mix_render(sd_s16 *dst, int frames)
             }
         }
 
+        streams_render(dst + done * 2, n);
+
         done += n;
         g_tickAcc += n * 192;
-        while (g_tickAcc >= SD_MIX_RATE) {
-            g_tickAcc -= SD_MIX_RATE;
+        while (g_tickAcc >= g_mixRate) {
+            g_tickAcc -= g_mixRate;
+            ++g_tickIndex;
+            if (g_hq) hq_shadow_tick();
             sd_seq_frame();
             sd_mix_frame();
         }

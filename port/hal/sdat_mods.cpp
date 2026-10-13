@@ -7,11 +7,13 @@
    before main. The pointers are plain null-initialised globals, so the order
    of static construction does not matter: sdat_init runs long after. */
 #include "mods.h"
+#include "host_settings.h"
 
 extern "C" {
 extern int (*g_sdat_mods_count)(void);
 extern const char *(*g_sdat_mods_id)(int);
 extern const char *(*g_sdat_mods_folder)(int);
+extern int (*g_sdat_audio_quality)(void);
 }
 
 namespace {
@@ -21,6 +23,7 @@ struct SdatModsInstall {
         g_sdat_mods_count = port_mods_count;
         g_sdat_mods_id = port_mods_id;
         g_sdat_mods_folder = port_mods_folder;
+        g_sdat_audio_quality = host_setting_audio_quality;   // lane AUDIOHQ1: AudioQuality
     }
 } g_install;
 }

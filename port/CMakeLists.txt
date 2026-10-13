@@ -11670,6 +11670,10 @@ set(SOUND_HOST_SOURCES
     hal/sdat/mixer.cpp
     hal/sdat/sseq.cpp
     hal/sdat/out_win.cpp
+    # Lane AUDIOHQ1: plain .wav / .ogg for sound mods (decode, streaming, wave
+    # archive rebuild) and the one translation unit holding stb_vorbis.
+    hal/sdat/sd_audio.cpp
+    hal/sdat/vorbis_impl.cpp
     hal/sdat/consumer.cpp
     hal/sdat/sound_abi.cpp
     hal/sdat/sound_bss.cpp
@@ -18349,7 +18353,8 @@ endif()
 # The SDAT player on its own: parser, sequencer and mixer with no game code
 # and no command queue, so a failure is localised to the player itself.
 add_executable(smoke_sdat tests/smoke_sdat.cpp
-    hal/sdat/sdat.cpp hal/sdat/mixer.cpp hal/sdat/sseq.cpp hal/sdat/out_win.cpp)
+    hal/sdat/sdat.cpp hal/sdat/mixer.cpp hal/sdat/sseq.cpp hal/sdat/out_win.cpp
+    hal/sdat/sd_audio.cpp hal/sdat/vorbis_impl.cpp)
 target_include_directories(smoke_sdat PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../include")
