@@ -1503,8 +1503,7 @@ void cap_tongue_watch() {
         static int last_look = -1;
         const int lk = s32r(me, 8) & 0xff;
         if (last_look >= 0 && lk != last_look)
-            std::fprintf(stderr, "[captongue] f=%u my look %d -> %d (hat %d)
-", my_frame_now(), last_look, lk, (int)*u8p(me, 0x6dd));
+            std::fprintf(stderr, "[captongue] f=%u my look %d -> %d (hat %d)\n", my_frame_now(), last_look, lk, (int)*u8p(me, 0x6dd));
         last_look = lk;
     }
     bool seen = false;
@@ -3085,12 +3084,10 @@ void rig_capdrop() {
                     static const int back = env_int("SM64DS_RIG_TONGUE_BACK", 60, 20, 200);
                     vs_eat_tongue_at(to, back);
                     g.rig_tongue_next = now_ms() + 700u;
-                    std::fprintf(stderr, "[rig] captongue: seat 1 tongues the knocked-off cap %d (frame %u, look %d)
-",
+                    std::fprintf(stderr, "[rig] captongue: seat 1 tongues the knocked-off cap %d (frame %u, look %d)\n",
                                  g.rig_drop_id, my_frame_now(), s32r(me, 8) & 0xff);
                 } else if (!a) {
-                    std::fprintf(stderr, "[rig] captongue: no actor for the knocked-off cap (gone or taken)
-");
+                    std::fprintf(stderr, "[rig] captongue: no actor for the knocked-off cap (gone or taken)\n");
                     g.rig_drop_id = 0;
                 }
             }

@@ -894,8 +894,7 @@ void vs_eat_tongue_at(const int *pos, int back) {
     ta.pos[0] = pos[0]; ta.pos[1] = pos[1]; ta.pos[2] = pos[2] - (back << 12);
     ta.pin = 25;
     ta.press = 3;
-    std::fprintf(stderr, "[eat] rig: tongue at (%d,%d,%d) from %d units behind
-", pos[0] >> 12, pos[1] >> 12, pos[2] >> 12, back);
+    std::fprintf(stderr, "[eat] rig: tongue at (%d,%d,%d) from %d units behind\n", pos[0] >> 12, pos[1] >> 12, pos[2] >> 12, back);
 }
 
 void vs_eat_before_walk(int frame) {
