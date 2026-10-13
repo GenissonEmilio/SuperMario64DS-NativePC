@@ -17,8 +17,15 @@ import coop_rows as CR
 import lgc as G
 
 say, info = G.say, G.info
-EXE = os.environ.get("CTP_EXE", "C:/tmp/cooptp1/exes/b1/walk_window.exe")
-BASE = os.environ.get("CTP_BASE_EXE", "C:/tmp/cooptp1/base/walk_window.exe")
+def _need(name):
+    v = os.environ.get(name)
+    if not v:
+        sys.exit("coop_tp_proof: set %s to the walk_window.exe path (no default)" % name)
+    return v
+
+
+EXE = _need("CTP_EXE")
+BASE = _need("CTP_BASE_EXE")
 CR.EXE = EXE
 BOB = 6
 GOOMBA, COIN = CR.GOOMBA, CR.COIN

@@ -176,7 +176,7 @@ void try_tp(int seat, unsigned now) {
         if (g.log) std::fprintf(stderr, "[cotp] refused: my gate = %s\n", why);
         return;
     }
-    if ((int)data_0209f2f8 == p.level && data_0209f220[0] == p.act) {
+    if ((int)data_0209f2f8 == p.level && (data_0209f220[0] & 0xff) == p.act) {
         std::snprintf(t, sizeof t, "You are already with %s", nm); ++g.st.refused; say(t); return;
     }
     if (g.log)
