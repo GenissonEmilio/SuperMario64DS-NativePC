@@ -43,6 +43,7 @@ int g_all = 0;                 // SM64DS_PARTY=1
 int g_coop = 0;                // SM64DS_COOP=1 (FIX9A: coop seats are solid bodies too)
 bool g_have_list = false;
 unsigned g_mask = 0;           // SM64DS_PARTY_MEMBERS, seats
+unsigned g_rt_mask = 0;        // set_member(): seats made members at run time (in-world party invites)
 int g_gate_on = 1;
 int g_log = 0;
 int g_sep = 0;
@@ -74,16 +75,24 @@ void read_env() {
 
 bool active() {
     read_env();
-    return g_all != 0 || g_coop != 0 || g_have_list;
+    return g_all != 0 || g_coop != 0 || g_have_list || g_rt_mask != 0;
 }
 
 bool seat_is_party(int seat) {
     read_env();
     if (seat < 0 || seat >= kHubMaxSeats) return false;
     if (seat == comms_hub_my_seat()) return false;
+    if ((g_rt_mask >> seat) & 1u) return true;
     if (g_have_list) return ((g_mask >> seat) & 1u) != 0;
     return g_all != 0 || g_coop != 0;
 }
+
+void set_member(int seat, bool on) {
+    if (seat < 0 || seat >= kHubMaxSeats || seat >= 32) return;
+    if (on) g_rt_mask |= (1u << (unsigned)seat); else g_rt_mask &= ~(1u << (unsigned)seat);
+}
+
+bool is_member(int seat) { return seat_is_party(seat); }
 
 int gate(int seat) {
     read_env();
@@ -258,3 +267,7 @@ int log_level() { read_env(); return g_log; }
 extern "C" int port_party_member(int slot) {
     return port::party::body_solid(slot) ? 1 : 0;
 }
+
+extern "C" void party_set_member(int seat, bool on) { port::party::set_member(seat, on); }
+extern "C" bool party_is_member(int seat) { return port::party::is_member(seat); }
+extern "C" bool party_active() { return port::party::active(); }
