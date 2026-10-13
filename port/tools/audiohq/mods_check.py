@@ -161,27 +161,40 @@ def check_fade(res, label, row, db, t_start):
     if max(vals) - min(vals) < 60:
         return False
     ref_db10 = max(vals)
-    # reference level: a stable stretch at the loudest setting
-    ref = None
+    # The dump is the whole game's sound, not just the stream: other sounds that do not fade with
+    # the music add to a plain RMS (3 dB high at -34 dB, in the first rerun), so the level is read
+    # at the stream's own tone -- tune_loop.ogg loops its 550 Hz half after the first second --
+    # and only where that half is playing.
     seg = []
     for i, (t, p, v) in enumerate(db):
         t_end = db[i + 1][0] if i + 1 < len(db) else t + 400
         seg.append((t, t_end, v))
+    first_loop = (t_start + 1.1) * W.TICK_HZ          # tick from which the stream is in its 550 Hz half
+
+    def level(t, te):
+        """550 Hz level 20 ticks into the stretch (or once the loop half has started), None if the
+        stretch has no 0.1 s inside the loop half."""
+        t1 = max(t + 20, first_loop + 10)
+        if t1 + 0.1 * W.TICK_HZ > te or t1 / W.TICK_HZ + 0.1 > len(m) / float(w.rate):
+            return None
+        return W.tone_db(m, w.rate, t1 / W.TICK_HZ, 0.1, 550.0)
+
+    ref = None
     for t, te, v in seg:
         if v == ref_db10 and te - t >= 60:
-            ref = window_db(m, w.rate, (t + 20) / W.TICK_HZ, 0.1)
-            break
+            ref = level(t, te)
+            if ref is not None:
+                break
     if ref is None or ref < -50:
-        res.add(label + " fade", "INCONCLUSIVE", "no stable full-volume stretch to measure against")
+        res.add(label + " fade", "INCONCLUSIVE", "no stable full-volume stretch in the 550 Hz half to measure against")
         return True
     bad, tested = [], 0
     for t, te, v in seg:
         if te - t < 60 or (v - ref_db10) / 10.0 < -40.0:
             continue
-        tm = (t + 20) / W.TICK_HZ
-        if tm + 0.1 > len(m) / float(w.rate):
+        got = level(t, te)
+        if got is None:
             continue
-        got = window_db(m, w.rate, tm, 0.1)
         want = ref + (v - ref_db10) / 10.0
         tested += 1
         if abs(got - want) > 2.0:
@@ -235,10 +248,12 @@ def case_music(cfg, res, sd, only):
     names = sd.bgm_names()
     res.add("music: mod", "PASS" if names else "FAIL", "%d NCS_BGM_* tracks replaced by tune_loop.ogg" % len(names))
     mods = {"ahq-music": music_mod(names, "ogg")}
-    levels = ("1", "6", "14", "19")
+    # level 1 starts no stream within the 30 s route (its music is not a plain NCS_BGM start: INCONCLUSIVE in
+    # both reruns), so the ds-quality stream row runs on level 6, which does
+    levels = ("6", "14", "19")
     jobs = [(lambda l=l: C.launch(cfg, "music_l%s_hq" % l, cfg["exe_tip"], level_env(cfg, l, 30),
                                   settings={"AudioQuality": "hq"}, mods=mods, subdir="mods")) for l in levels]
-    jobs.append(lambda: C.launch(cfg, "music_l1_ds", cfg["exe_tip"], level_env(cfg, 1, 30),
+    jobs.append(lambda: C.launch(cfg, "music_l6_ds", cfg["exe_tip"], level_env(cfg, 6, 30),
                                  settings={"AudioQuality": "ds"}, mods=mods, subdir="mods"))
     rows = C.run_parallel(jobs, cfg["workers"])
     fade_seen = False

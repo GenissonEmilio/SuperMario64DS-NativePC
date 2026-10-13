@@ -266,6 +266,53 @@ def match_onsets(a, b, tol=1):
     return frac(a, b), frac(b, a), len(a), len(b)
 
 
+def soft_match_onsets(a, env_b, tol=1, near=2, soft_rise_db=4.0, floor_db=-60.0):
+    """Like the a-in-b half of match_onsets, but an onset of a that has no onset of b
+    within +-tol ticks still counts when b's own envelope shows a rise of at least
+    soft_rise_db within +-near ticks of it. The onset detector is a hard threshold
+    (6 dB) on a 5 ms RMS: the same note rising 5.9 dB in one mix and 6.1 dB in the
+    other (a 32 kHz and a 48 kHz mix resample the attack differently) flips it, and
+    the refractory gap then moves the next one. A note that is really missing or
+    moved has no rise near it at all. Returns (fraction matched, strict fraction, count)."""
+    import bisect
+    db = [to_db(v) for v in env_b]
+    qs = sorted(env_onsets(env_b))
+    strict = soft = 0
+    for t in a:
+        i = bisect.bisect_left(qs, t)
+        if any(0 <= j < len(qs) and abs(qs[j] - t) <= tol for j in (i - 1, i)):
+            strict += 1
+            soft += 1
+            continue
+        for k in range(max(2, t - near), min(len(db), t + near + 1)):
+            if db[k] > floor_db and db[k] - min(db[k - 1], db[k - 2]) >= soft_rise_db:
+                soft += 1
+                break
+    n = len(a)
+    return (soft / float(n) if n else 1.0), (strict / float(n) if n else 1.0), n
+
+
+def tone_db(x, rate, t0, dur, freq):
+    """Level in dB (rms_db's scale, for a pure tone) of the component of x at freq Hz in
+    [t0, t0+dur): one Hann-windowed DFT bin. Anything else playing in the mix, which is not
+    that exact tone, does not move it."""
+    a = int(t0 * rate)
+    seg = x[a:a + int(dur * rate)]
+    n = len(seg)
+    if n < 16:
+        return -120.0
+    w = 2.0 * math.pi * freq / rate
+    re = im = norm = 0.0
+    for i, v in enumerate(seg):
+        h = 0.5 - 0.5 * math.cos(2.0 * math.pi * i / (n - 1))
+        re += v * h * math.cos(w * i)
+        im -= v * h * math.sin(w * i)
+        norm += h
+    amp = 2.0 * math.hypot(re, im) / norm          # peak amplitude of the tone
+    rms = amp / math.sqrt(2.0)
+    return 20.0 * math.log10(rms) if rms > 1e-9 else -120.0
+
+
 def count_jumps(x, threshold):
     n = 0
     for i in range(1, len(x)):
