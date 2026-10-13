@@ -70,6 +70,7 @@ struct Stats {
     unsigned long long solid_frames;    // bodies marked solid, summed over frames
     unsigned long long registers;       // cylinders put in the collision list
     unsigned long long guard_skips;     // frames a cylinder was withheld by the audit
+    unsigned long long unstick;         // times my body stepped off a stack of friends (FIX9A)
     unsigned long long assists;         // frames my body took the second half of a push
     unsigned long long detached;        // bodies that were still attached to an actor (+0x35c) and were let go
     unsigned long long gate_hide, gate_level, gate_area;

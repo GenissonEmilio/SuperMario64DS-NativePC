@@ -83,6 +83,7 @@ static_assert(sizeof(TargetRec) == 4, "target record is 4 bytes");
 
 struct CoopTargetStats {
     unsigned long long ticks, decisions, switches, holds, drops_at_once, sent, recs_sent, rx, recs_rx, applied;
+    unsigned long long talk_redirects;
     unsigned long long cp_calls, cp_used_table, cp_natural, cp_unavailable, patched;
     unsigned long long drop_bad, drop_group, drop_notowner, drop_member, drop_off, drop_seat;
 };

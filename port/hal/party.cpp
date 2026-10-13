@@ -3,6 +3,7 @@
 //
 // Knobs (all off by default; the first four are the proof's):
 //   SM64DS_PARTY=1            this console is in a party room (the launcher sets it)
+//   SM64DS_COOP=1             coop room: the same solid bodies (FIX9A), hidden in another level / area / act
 //   SM64DS_PARTY_MEMBERS=1,2  lab: only these SEATS are party, the rest stay ghosts
 //   SM64DS_PARTY_GATE=0       lab: ignore SYNL (the ghost frames alone decide)
 //   SM64DS_PARTY_LOG=1        a [party] line every 60 follower passes, and the
@@ -25,6 +26,7 @@ extern unsigned char data_0209f250;
 extern unsigned char data_0209f21c;
 extern signed char data_0209f2f8;
 extern signed char data_02092120;
+extern int data_0209f220[];
 unsigned _ZNK6Player14GetBodyModelIDEjb(void *self, unsigned a, int b);
 int port_player_render_hidden(const void *player);
 int port_adventure_ghost_palette(int slot);
@@ -34,10 +36,11 @@ namespace port {
 namespace party {
 namespace {
 
-enum { kMaxBodies = 16 };
+enum { kMaxBodies = 16, kStackUnits = 10, kUnstickUnits = 110 };
 
 int g_read = 0;
 int g_all = 0;                 // SM64DS_PARTY=1
+int g_coop = 0;                // SM64DS_COOP=1 (FIX9A: coop seats are solid bodies too)
 bool g_have_list = false;
 unsigned g_mask = 0;           // SM64DS_PARTY_MEMBERS, seats
 int g_gate_on = 1;
@@ -51,6 +54,7 @@ void read_env() {
     if (g_read) return;
     g_read = 1;
     if (const char *e = std::getenv("SM64DS_PARTY")) g_all = std::atoi(e) != 0;
+    if (const char *e = std::getenv("SM64DS_COOP")) g_coop = std::atoi(e) != 0;
     if (const char *e = std::getenv("SM64DS_PARTY_MEMBERS")) {
         g_have_list = true;
         for (const char *q = e; *q;) {
@@ -70,7 +74,7 @@ void read_env() {
 
 bool active() {
     read_env();
-    return g_all != 0 || g_have_list;
+    return g_all != 0 || g_coop != 0 || g_have_list;
 }
 
 bool seat_is_party(int seat) {
@@ -78,7 +82,7 @@ bool seat_is_party(int seat) {
     if (seat < 0 || seat >= kHubMaxSeats) return false;
     if (seat == comms_hub_my_seat()) return false;
     if (g_have_list) return ((g_mask >> seat) & 1u) != 0;
-    return g_all != 0;
+    return g_all != 0 || g_coop != 0;
 }
 
 int gate(int seat) {
@@ -100,6 +104,11 @@ int gate(int seat) {
     if (p.area != (int)data_02092120) {
         ++g_st.gate_area;
         return kGateArea;
+    }
+    // Coop: the group key is level + act, so a friend in another act of this level is in another world.
+    if (g_coop && p.act > 0 && (data_0209f220[0] & 0xff) > 0 && p.act != (data_0209f220[0] & 0xff)) {
+        ++g_st.gate_level;
+        return kGateLevel;
     }
     return kGateOk;
 }
@@ -161,6 +170,32 @@ bool body_solid(int body) {
     return body >= 0 && body < kMaxBodies && g_solid[body];
 }
 
+// PBODY1_FIX / FIX9A: friends that spawn on one spot and stand idle. The ROM pair pass ASSIGNS a node's pushback
+// (it does not add), so with three or more bodies on one spot each console is pushed away from only the last friend in
+// the list, often the same way and by the same amount as another console: that pair never separates. Only the HIGHER
+// seat of a pair moves, along a direction of its own (a quarter turn per seat), once, by more than the radius sum;
+// every pair of seats ends further apart than the radius sum whatever the list order. Two bodies are not touched
+// until they are within kStackUnits of each other, so the 2-body push numbers do not change.
+void unstick(void *a, int seat) {
+    if (seat >= comms_hub_my_seat()) return;            // the lower seat stays where it is
+    const int me = (int)data_0209f250;
+    char *mb = (me >= 0 && me < kMaxBodies) ? (char *)data_0209f394[me] : nullptr;
+    if (!mb || mb == (char *)a) return;
+    if (*(const int *)(mb + 0x37c) != 0) return;         // my body does not integrate its position now
+    const long long dx = (long long)(*player::pos_x(a) - *player::pos_x(mb)) >> 12;
+    const long long dz = (long long)(*player::pos_z(a) - *player::pos_z(mb)) >> 12;
+    const long long dy = (long long)(*player::pos_y(a) - *player::pos_y(mb)) >> 12;
+    if (dy > 150 || dy < -150) return;
+    if (dx * dx + dz * dz >= (long long)kStackUnits * kStackUnits) return;
+    static const int ux[4] = {1, 0, -1, 0}, uz[4] = {0, 1, 0, -1};
+    const int k = comms_hub_my_seat() & 3;
+    *(int *)(mb + 0x2e0) += ux[k] * kUnstickUnits * 4096;
+    *(int *)(mb + 0x2e8) += uz[k] * kUnstickUnits * 4096;
+    ++g_st.unstick;
+    if (g_log > 0) std::fprintf(stderr, "[party] unstick: my seat %d steps %d units from the stack of seat %d
+", comms_hub_my_seat(), kUnstickUnits, seat);
+}
+
 bool follow(void *a, int body, int seat) {
     read_env();
     if (!a || body < 0 || body >= kMaxBodies) return false;
@@ -174,6 +209,7 @@ bool follow(void *a, int body, int seat) {
     ++g_st.solid_frames;
     ++g_pass;
     cyl_assist(a);
+    unstick(a, seat);
     const bool reg = cyl_register(a, seat);
     if (g_sep > 0) {
         const int me = (int)data_0209f250;
