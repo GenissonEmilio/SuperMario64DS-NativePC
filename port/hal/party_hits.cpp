@@ -102,14 +102,22 @@ Place my_place() {
 
 // Can my body be hit / held right now? (the same set of reasons vs_arena_ref.cpp's my_body_may_act and the
 // referee's _hit use, plus a level in transition)
+const char *g_busy_why = "";
 bool me_busy(const char *me) {
     const int st = port::vs_arena_state_index(me);
+    g_busy_why = "state";
     if (st != 0xFF && state_blocks_hit(st)) return true;
+    g_busy_why = "invincible";
     if (*(const unsigned short *)(me + player::kInvincibleTimer) > 0) return true;
+    g_busy_why = "nocontrol";
     if (*(const unsigned char *)(me + 0x708) || *(const unsigned char *)(me + kNoControl)) return true;
+    g_busy_why = "inmouth";
     if (*(void *const *)(me + kInMouth)) return true;
+    g_busy_why = "level_state";
     if (data_0209f2d8[0] != 1) return true;
+    g_busy_why = "cutscene";
     if (*(const int *)data_0209fc48 != 0) return true;
+    g_busy_why = "";
     return false;
 }
 
