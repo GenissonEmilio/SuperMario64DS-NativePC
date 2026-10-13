@@ -248,6 +248,17 @@ bool player_list_suppressed() {
     return false;
 }
 
+// FIELD9B_FIX1: the ping box in ANY hub room (adventure world included) stays
+// off until this console has a body in a level. On the title / file select /
+// level load the hub is already pairing and re-pairing, so the readout used to
+// appear and vanish there. VS and solo (no hub) are untouched.
+bool net_hud_suppressed() {
+    if (!comms_hub_active()) return false;
+    if (player_list_active()) return player_list_suppressed();
+    const int me = (int)data_0209f250;
+    return me < 0 || me >= 16 || !data_0209f394[me];
+}
+
 void player_list_view(PlayerListView *out) {
     out->n = 0;
     if (!player_list_active()) return;

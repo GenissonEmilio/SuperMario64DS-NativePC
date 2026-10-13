@@ -28,6 +28,8 @@ unsigned   g_next_ms = 0;
 unsigned   g_next_log_ms = 0;
 bool       g_shown = false;
 int        g_kind = 0;      // 0 none, 1 room, 2 VS
+unsigned   g_room_seen_ms = 0;
+enum : unsigned { kRoomHoldMs = 2000 };
 
 // THE ROOM'S LOSS WINDOW: the pings the hub sent and the pongs it got back,
 // per refresh interval, over the last ten seconds. An interval counts only
@@ -239,6 +241,15 @@ void net_hud_view(NetHudView *out) {
         if (build_room(&v)) kind = 1;
         else if (build_vs(&v)) kind = 2;
         else v.n = 0;
+        // FIELD9B_FIX1: STEADY. A room readout that has been up goes only
+        // after 2 s of the hub not being pairing / live (a re-pair blip drops
+        // the state for one refresh and the box used to blink off and on).
+        if (kind == 1) g_room_seen_ms = now;
+        else if (v.n == 0 && g_kind == 1 && g_view_valid && g_view.n > 0 &&
+                 (unsigned)(now - g_room_seen_ms) < kRoomHoldMs) {
+            v = g_view;
+            kind = 1;
+        }
         if (kind != 1 && g_kind == 1) loss_reset();
         // ONE LINE IN THE LOG when the readout appears or goes, and every ten
         // seconds while it shows, so a player's log carries what he saw.

@@ -78,6 +78,11 @@ void net_hud_view(NetHudView *out);
 // the room overlays (player list, ping box) stay off then.
 bool player_list_suppressed();
 
+// FIELD9B_FIX1: hal/player_list.cpp. The ping box's own gate: player_list_
+// suppressed() in a party / coop room, and in a plain adventure room (or an
+// arena) hidden until this console has a body (not on the title / file select).
+bool net_hud_suppressed();
+
 }  // namespace port
 
 #ifdef OVL_SCALE
@@ -90,8 +95,18 @@ extern "C" int hal_sub_screen_inset_rect(int r[4]);
 static void net_hud_draw(const OvlSurface &fb)
 {
     port::NetHudView v;
-    if (port::player_list_suppressed()) return;
-    port::net_hud_view(&v);
+    // FIELD9B_FIX1: one log line per change of drawn / not drawn, so a row can
+    // count the flicker (a steady box logs once).
+    static int s_drawn = -1;
+    const bool sup = port::net_hud_suppressed();
+    if (!sup) port::net_hud_view(&v); else v.n = 0;
+    const int drawn = v.n > 0 ? 1 : 0;
+    if (drawn != s_drawn) {
+        s_drawn = drawn;
+        fprintf(stderr, "[nethud] frame-draw %s%s
+", drawn ? "ON" : "OFF",
+                sup ? " (no body)" : "");
+    }
     if (v.n <= 0) return;
     const int rom = chat_font_build();
     const int scale = OVL_SCALE;
