@@ -44,6 +44,13 @@ extern "C" int port_coop_minimap_ghost(int slot, int pos[3]) {
     return 1;
 }
 
+extern "C" void port_coop_minimap_trace(int slot, int gk, int x, int y, int mapid, int cur) {
+    if (!log_env()) return;
+    static unsigned n;
+    if ((n++ % 240u) == 0)
+        std::fprintf(stderr, "[comap] render slot %d answer %d icon (%d,%d) map %d current %d\n", slot, gk, x, y, mapid, cur);
+}
+
 namespace {
 struct Install { Install() { g_mm_ghost_pos = port_coop_minimap_ghost; } } g_install;
 }  // namespace

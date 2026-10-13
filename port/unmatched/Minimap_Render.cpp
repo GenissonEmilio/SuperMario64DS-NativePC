@@ -72,6 +72,7 @@ struct Minimap {
 };
 
 extern "C" void _ZN3OAM9RenderSubEP7OamAttriiii(void *oam, int x, int y, int a, int pal);
+extern "C" void port_coop_minimap_trace(int slot, int gk, int x, int y, int mapid, int cur);
 extern "C" void _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(int on, void *oam, int x, int y, int a, int pal, int scale, int ang);
 extern "C" void _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(int on, void *oam, int x, int y, int a, int pal, void *mtx);
 
@@ -156,7 +157,9 @@ int Minimap::Render()
             if (g_mm_ghost_pos) {
                 for (i = 0; i < kMinimapWidePlayers; i++) {
                     int gp[3];
-                    if (i == idx || g_mm_ghost_pos(i, gp) != 1) continue;
+                    const int gk = (i == idx) ? 0 : g_mm_ghost_pos(i, gp);
+                    if (gk) port_coop_minimap_trace(i, gk, g_mm_iconX[i], g_mm_iconY[i], g_mm_mapID[i], data_ov002_02111148);
+                    if (gk != 1) continue;
                     int y = g_mm_iconY[i];
                     if ((u16)(y + 0x10) < 0xe0) {
                         int x = g_mm_iconX[i];

@@ -4248,6 +4248,17 @@ void hal_render_player_world(void *player);
  * loop finds it and returns before drawing. */
 static int __fastcall ps_render(void *self, void *)
 {
+    static int arrlog = -1;
+    if (arrlog < 0) { const char *l = getenv("SM64DS_CAST_LOG"); arrlog = (l && atoi(l) > 0) ? 1 : 0; }
+    if (arrlog) {
+        static unsigned af = 0;
+        const char *q = (const char *)self;
+        if ((af++ % 30u) == 0)
+            fprintf(stderr, "[castall] %p no=%u pos=(%d,%d,%d) op=%u inarray=%d\n", self,
+                    (unsigned)*(const unsigned char *)(q + 0x6d8), *(const int *)(q + 0x5c) >> 12,
+                    *(const int *)(q + 0x60) >> 12, *(const int *)(q + 0x64) >> 12,
+                    (unsigned)*(const unsigned char *)(q + 0x6f5), data_0209f394[0] == self);
+    }
     const int count = (int)data_0209f21c;
     for (int i = 0; i < count; ++i)
         if (data_0209f394[i] == self)
