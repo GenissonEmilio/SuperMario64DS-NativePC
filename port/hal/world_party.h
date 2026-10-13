@@ -121,7 +121,8 @@ bool world_party_active();
 // Once a frame, from the input hook: this frame's pad word (XInput buttons, 0 when
 // the pad is not live), the invite key and the leave key as the game's key reader
 // sees them. Also the module's clock (reads the others' words, publishes mine).
-void world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave);
+/* Returns the pad bits of a press it consumed this frame; the caller clears them. Acts only while the player has control. */
+unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave);
 // The player's bindings (host_settings KeyPartyInvite / KeyPartyLeave /
 // PadPartyInvite / PadPartyLeave), pushed once a frame by the input hook so this
 // module stays free of host_settings (it is in the shared comms slice). 0 =

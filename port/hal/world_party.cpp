@@ -7,6 +7,7 @@
 #include "hal/hub_presence.h"
 #include "hal/party.h"
 #include "hal/player_list.h"
+#include "hal/adv_chat.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -20,6 +21,9 @@ extern signed char data_0209f2f8;
 extern signed char data_02092120;
 extern int data_0209f220[];
 extern int data_0209fc48;
+extern unsigned char data_0209d660[];   // message window
+extern unsigned char data_0209f2c4[];   // pause menu
+extern signed char data_02092110[];     // < 0 while the level is not being left
 }
 
 namespace port {
@@ -237,6 +241,17 @@ void drop_all(unsigned now) {
     g.in_seat = -1;
 }
 
+// The pad and keys count only in a level the player is steering: not paused,
+// no message box, no cutscene word, not typing, not changing level.
+bool input_live() {
+    if (data_0209f2f8 <= 0) return false;
+    if ((signed char)data_02092110[0] >= 0) return false;
+    if (data_0209f2c4[0] || data_0209d660[0]) return false;
+    if (data_0209fc48 != 0) return false;
+    if (chat_typing()) return false;
+    return true;
+}
+
 }  // namespace
 
 bool world_party_active() {
@@ -267,17 +282,17 @@ bool world_party_member(int seat) {
     return seat >= 0 && seat < kHubMaxSeats && g.member[seat];
 }
 
-void world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave) {
+unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave) {
     if (!world_party_active()) {
         if (g.primed || g.my_id) {
             drop_all(comms_hub_now_ms());
             g.primed = false;
         }
-        return;
+        return 0;
     }
     const unsigned now = comms_hub_now_ms();
     const int my_seat = comms_hub_my_seat();
-    if (my_seat < 0 || my_seat >= kHubMaxSeats) return;
+    if (my_seat < 0 || my_seat >= kHubMaxSeats) return 0;
     if (!g.announced && logging()) {
         g.announced = true;
         std::fprintf(stderr, "[wparty] active seat=%d keys invite=0x%x leave=0x%x pad invite=0x%x leave=0x%x\n",
@@ -291,11 +306,17 @@ void world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave) {
     const bool dn_now = (pad_buttons & kPadDown) != 0 || key_leave;
     const bool up_prev = (g.prev_pad & kPadUp) != 0 || g.prev_inv_key;
     const bool dn_prev = (g.prev_pad & kPadDown) != 0 || g.prev_leave_key;
-    bool up_edge = g.primed && up_now && !up_prev;
+    // raw edges are tracked every frame (a button held through a menu closing
+    // is not a fresh press); they count only while the player has control
+    const bool live = input_live();
+    bool up_edge = live && g.primed && up_now && !up_prev;
 #ifndef PORT_ROM_CLEAN
     if (g.auto_accept && g.in_seat >= 0 && (int)(now - g.in_first_ms) > 800) up_edge = true;
 #endif
-    const bool dn_edge = g.primed && dn_now && !dn_prev;
+    const bool dn_edge = live && g.primed && dn_now && !dn_prev;
+    unsigned consumed = 0;   // pad bits of a press this call acted on: the caller masks them
+    if (up_edge && (pad_buttons & kPadUp)) consumed |= kPadUp;
+    if (dn_edge && (pad_buttons & kPadDown)) consumed |= kPadDown;
     g.prev_pad = pad_buttons;
     g.prev_inv_key = key_invite;
     g.prev_leave_key = key_leave;
@@ -477,6 +498,7 @@ void world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave) {
     } else if (up_edge && g.confirm_until) {
         g.confirm_until = 0;
     }
+    return consumed;
 }
 
 void world_party_view(WparView *out) {

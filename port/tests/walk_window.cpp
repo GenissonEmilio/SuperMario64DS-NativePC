@@ -5085,9 +5085,10 @@ static void chat_pad_gate(int *pad_live, XPad *pad)
     /* hook: PINVITE1, d-pad UP / DOWN (or B / N) invite, accept, leave; inert outside a world room */
     port::world_party_set_binds(host_setting_key(HOST_KEY_PARTY_INVITE), host_setting_key(HOST_KEY_PARTY_LEAVE),
                                 (unsigned)host_setting_pad(HOST_PAD_PARTY_INVITE), (unsigned)host_setting_pad(HOST_PAD_PARTY_LEAVE));
-    port::world_party_input(*pad_live ? (unsigned)pad->buttons : 0u,
+    const unsigned wp_used = port::world_party_input(*pad_live ? (unsigned)pad->buttons : 0u,
                             key_live(port::world_party_vk_invite()) != 0,
                             key_live(port::world_party_vk_leave()) != 0);
+    if (wp_used && *pad_live) pad->buttons = (unsigned short)((unsigned)pad->buttons & ~wp_used);   /* the press was the party's */
     if (!port::chat_typing()) return;
     memset(pad, 0, sizeof *pad);
     *pad_live = 0;
