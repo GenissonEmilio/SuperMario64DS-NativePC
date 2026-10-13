@@ -1171,7 +1171,10 @@ static const int kHudCoinDxMin = 24, kHudCoinDy = 18, kHudMeterGap = 7, kHudMete
    6 -> 11, the squeeze floor stays 3), the power meter moves the same 5 pixels left so the two keep their gap, and the race timer,
    which the port draws one coin row (kHudCoinDy) under the coin count, moves up into the row the coin counter left. */
 static const int kHudMeterLeft = 5;
-static const int kHudMeterX0 = 80, kHudMeterX1 = 153, kHudMeterY1 = 60;   /* the meter's DS rectangle (x 80..153, y 0..60), clear of the lives and the star counter */
+/* the meter's DS rectangle (x 80..153), clear of the lives and the star counter. Its rows run to y 95, not to the 59 it rests within: the
+   appear animation draws the meter at y 0x39 (src/_ZN3HUD17UpdateHealthMeterEv.cpp: mHealthMeterY = 0x39, held 0x5a ticks, then 4 a tick up to
+   0x19), its lower half reaching about y 90, and a box that ends at 59 moved only the top half left (the meter showed sliced and offset). */
+static const int kHudMeterX0 = 80, kHudMeterX1 = 153, kHudMeterY1 = 96;
 static const int kHudTimerX0 = 154, kHudTimerX1 = 256, kHudTimerY0 = 38, kHudTimerY1 = 70;   /* the port's timer rows, x 0xa4..0xf8 and the glyph overhang, drawn at y 0x16 + 18 .. 0x1e + 18 + 16 */
 extern "C" unsigned char data_ov002_02111184;   /* the ROM's "a timer runs on this course" byte */
 static uint8_t g_hud_row[192][256];   /* 1 = a moved coin counter pixel (read only while g_hud_row_live) */
