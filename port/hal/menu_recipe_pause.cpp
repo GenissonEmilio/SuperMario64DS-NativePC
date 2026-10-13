@@ -196,10 +196,15 @@ struct Slide {
 } g_slide = { 0, 0, 1 };
 const int kSlideTicks = 14;      /* about 0.23 s at the ROM's 60 ticks a second */
 
+/* ONE CURVE FOR EVERY SLIDE. ticks counts up toward the tracker (target 1) and down toward the planks (target 0), so the same ease-out read off
+   ticks would run backwards on the way back (slow start, then a hard stop: the "too fast" slide). Both ways ease out of the slide's own start:
+   toward the tracker the progress is ticks / kSlideTicks, toward the planks it is the ticks already walked back (kSlideTicks - ticks). Every
+   slide is kSlideTicks ticks long and lands on the same curve. */
 int slide_eased(void)
 {
-    const double p = (double)g_slide.ticks / kSlideTicks, q = 1.0 - p;
-    return (int)((1.0 - q * q * q) * 1000.0 + 0.5);
+    const double p = (double)(g_slide.target ? g_slide.ticks : kSlideTicks - g_slide.ticks) / kSlideTicks, q = 1.0 - p;
+    const int e = (int)((1.0 - q * q * q) * 1000.0 + 0.5);
+    return g_slide.target ? e : 1000 - e;
 }
 
 void slide_tick(int allowed)
