@@ -201,6 +201,17 @@ void unstick(void *a, int seat) {
     const long long dy = (long long)(*player::pos_y(a) - *player::pos_y(mb)) >> 12;
     if (dy > 150 || dy < -150) return;
     if (dx * dx + dz * dz >= (long long)kStackUnits * kStackUnits) return;
+    // Only a stack of three or more (me, this friend and at least one more on the same spot): two bodies keep the ROM push.
+    int third = 0;
+    for (int i = 0; i < (int)data_0209f21c && i < kMaxBodies; ++i) {
+        char *o = (char *)data_0209f394[i];
+        if (!o || o == mb || o == (char *)a) continue;
+        const long long ex = (long long)(*player::pos_x(o) - *player::pos_x(mb)) >> 12;
+        const long long ez = (long long)(*player::pos_z(o) - *player::pos_z(mb)) >> 12;
+        const long long ey = (long long)(*player::pos_y(o) - *player::pos_y(mb)) >> 12;
+        if (ey <= 150 && ey >= -150 && ex * ex + ez * ez < (long long)kStackUnits * kStackUnits) ++third;
+    }
+    if (!third) return;
     static const int ux[4] = {1, 0, -1, 0}, uz[4] = {0, 1, 0, -1};
     const int k = comms_hub_my_seat() & 3;
     *(int *)(mb + 0x2e0) += ux[k] * kUnstickUnits * 4096;
