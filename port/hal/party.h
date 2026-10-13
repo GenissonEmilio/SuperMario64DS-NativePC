@@ -47,6 +47,12 @@ enum Gate : int {
 };
 int gate(int seat);
 
+// Run-time membership (in-world party invites): seat `seat` becomes a solid party body (on) or goes back to what the
+// hub made it (off). Same per-seat rule as the SM64DS_PARTY_MEMBERS knob; the env path keeps working. active() is true
+// while any seat is a member. Main thread only.
+void set_member(int seat, bool on);
+bool is_member(int seat);
+
 // Before the follower places body `a` for a party seat: the things a body that stopped running at
 // its level entry can still carry that would keep it from being drawn where its friend stands.
 void prepare(void *a);
@@ -70,6 +76,7 @@ struct Stats {
     unsigned long long solid_frames;    // bodies marked solid, summed over frames
     unsigned long long registers;       // cylinders put in the collision list
     unsigned long long guard_skips;     // frames a cylinder was withheld by the audit
+    unsigned long long unstick;         // times my body stepped off a stack of friends (FIX9A)
     unsigned long long assists;         // frames my body took the second half of a push
     unsigned long long detached;        // bodies that were still attached to an actor (+0x35c) and were let go
     unsigned long long gate_hide, gate_level, gate_area;
@@ -108,5 +115,8 @@ void lab_tick(int body);
 // The old per-slot face (hal/player_bridges.cpp, tests/walk_window.cpp): 1 when
 // body `slot` is a solid party body in this frame's draw.
 extern "C" int port_party_member(int slot);
+extern "C" void party_set_member(int seat, bool on);
+extern "C" bool party_is_member(int seat);
+extern "C" bool party_active();
 
 #endif  // PORT_HAL_PARTY_H

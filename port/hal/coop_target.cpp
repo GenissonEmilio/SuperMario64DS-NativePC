@@ -11,6 +11,7 @@
 #include "comms_hub.h"
 
 #include "dActor_c.h"
+#include "Player.h"
 
 #include <windows.h>
 
@@ -199,6 +200,64 @@ void *table_body(const char *self, int *seat_out) {
     return b;
 }
 
+// ---------------------------------------------------------------------------
+// TALKERS (FIX9A). An actor that opens a message, starts a camera or cutscene scene, or is an NPC must run its whole
+// conversation with MY player: Player::StartTalk on a friend's body (held, never running) refuses for ever, and the actor
+// waits on a talk that never begins (the castle intro Lakitu softlock). Enemies and bosses keep the shared target.
+// Evidence: out FIX9A TALKERS.md (every ClosestPlayer caller in src/ that reaches StartTalk / a camera call).
+// Class ids are the ROM spawn table's (dActor_c +0x0c).
+// ---------------------------------------------------------------------------
+const unsigned short kTalkerClasses[] = {
+    26,   // QUESTION_SWITCH   d_a_obj_hatena_switch.cpp:231 ClosestPlayer -> StartTalk
+    38,   // PEACH_PAINTING    PeachPainting::Behavior
+    181,  // BOB_OMB_BUDDY     Behavior / InitResources
+    183, 184, 299, 300,  // WALL_SIGN, SIGN_POST (Behavior), ARROW_SIGN_LEFT / RIGHT (messages)
+    185,  // TOAD              Behavior / InitResources
+    186,  // PRINCESS_PEACH    UpdateLookAt, letter scene
+    187,  // RABBIT (MIPS)     daMip_c.cpp:510,616 ClosestPlayer -> StartTalk
+    188,  // KOOPA_THE_QUICK   func_ov062_0211a9c4 (+0x398 = ClosestPlayer -> StartTalk)
+    234,  // HOOT_THE_OWL      func_ov094_02135c28 ClosestPlayer -> StartTalk
+    235,  // LAKITU_BRO        func_ov085_0212d5dc / 0212df84: ClosestPlayer + camera set (castle intro)
+    257,  // MOTHER_PENGUIN    d_a_pg_mthr.cpp:359,395 ClosestPlayer -> StartTalk
+    259,  // RACING_PENGUIN    func_ov019_02112168 ClosestPlayer -> StartTalk
+    265,  // LAKITU            Lakitu::Behavior
+    267, 268,  // UKIKI_THIEF / UKIKI_STAR  daMky_c.cpp:435,864,883 ClosestPlayer -> StartTalk
+    272, 273, 274, 275,  // SNOWMAN, HEAD, BODY, BREATH  daBgSnmBdy_c.cpp:279, SnowmanHead State0/3, SnowmanBreath
+    282, 283,  // KEY, LAST_STAR   func_ov089_0213162c camera set
+};
+
+bool class_is_talker(unsigned cls) {
+    for (unsigned short c : kTalkerClasses) if (c == cls) return true;
+    return false;
+}
+
+// Actors that asked a friend's body for a talk (see the StartTalk guard below): local player for a while.
+struct Learned { const void *actor; unsigned t; };
+Learned g_learned[16];
+const unsigned kLearnedMs = 8000;
+bool learned_actor(const void *a, unsigned now) {
+    for (const Learned &l : g_learned) if (l.actor == a && (unsigned)(now - l.t) < kLearnedMs) return true;
+    return false;
+}
+void learn_actor(const void *a, unsigned now) {
+    int slot = -1;
+    for (int i = 0; i < 16; ++i) {
+        if (g_learned[i].actor == a) { slot = i; break; }
+        if (slot < 0 && (!g_learned[i].actor || (unsigned)(now - g_learned[i].t) >= kLearnedMs)) slot = i;
+    }
+    if (slot < 0) slot = 0;
+    g_learned[slot] = { a, now };
+}
+
+bool is_talker(const char *self) {
+    if (!self) return false;
+    if (class_is_talker(*(const unsigned short *)(self + 0x0c))) return true;
+    const unsigned now = comms_hub_now_ms();
+    if (learned_actor(self, now)) return true;
+    const char *lb = local_body();      // my player is already in a talk with this actor
+    return lb && *(const void *const *)(lb + 0x368) == self;
+}
+
 void *cp_impl(void *self, bool nonvanish) {
     ++g_st.cp_calls;
     if (!data_0209b458) {
@@ -209,7 +268,7 @@ void *cp_impl(void *self, bool nonvanish) {
         if (lv) {
             place_friends();
             want = table_body((const char *)self, &wseat);
-            if (coop_boss_prefer_local((const char *)self)) { want = local_body(); wseat = g_my; }   // Bowser's defeat talk: my own player
+            if (coop_boss_prefer_local((const char *)self) || is_talker((const char *)self)) { want = local_body(); wseat = g_my; }   // Bowser's defeat talk, NPCs, camera / talk actors: my own player
             if (want && nonvanish && *((const unsigned char *)want + 0x6fb)) want = nullptr;   // a vanished player is skipped by this entry
         }
         for (int i = 0; i < (int)data_0209f21c; i++) {
@@ -317,6 +376,45 @@ void whomp_replacement(char *self) {
     }
 }
 
+
+// ---------------------------------------------------------------------------
+// Player::StartTalk guard (FIX9A). Any actor, not only the listed classes, that asks a FRIEND's body to start a talk
+// (a boss's pre-fight or defeat talk, a class nobody listed) is answered "not yet" and remembered: its next
+// ClosestPlayer answer is my own player for kLearnedMs (is_talker), so the talk starts on this console. A call on my own
+// body goes straight to the ROM's function (the five patched bytes are put back around the call; one thread).
+// ---------------------------------------------------------------------------
+unsigned char *g_st_addr = nullptr;
+unsigned char g_st_orig[5];
+unsigned char g_st_jmp[5];
+typedef int (__fastcall *StartTalkFn)(void *, void *, void *, bool);
+
+void write_code(unsigned char *at, const unsigned char *b) {
+    DWORD old = 0;
+    if (!VirtualProtect(at, 8, PAGE_EXECUTE_READWRITE, &old)) return;
+    std::memcpy(at, b, 5);
+    VirtualProtect(at, 8, old, &old);
+    FlushInstructionCache(GetCurrentProcess(), at, 8);
+}
+
+bool is_player_body(const void *a) {
+    for (int i = 0; i < (int)data_0209f21c && i < kPlayerMax; ++i) if (data_0209f394[i] == a) return true;
+    return false;
+}
+
+int __fastcall starttalk_replacement(void *self, void *edx, void *actor, bool b) {
+    if (live() && self != (void *)local_body() && is_player_body(self)) {
+        learn_actor(actor, comms_hub_now_ms());
+        ++g_st.talk_redirects;
+        if (g_log) std::fprintf(stderr, "[cotgt] talk guard: actor %p cls=%u asked a friend's body, now local\n", actor,
+                                actor ? (unsigned)*(const unsigned short *)((const char *)actor + 0x0c) : 0u);
+        return 0;
+    }
+    write_code(g_st_addr, g_st_orig);
+    const int r = ((StartTalkFn)g_st_addr)(self, edx, actor, b);
+    write_code(g_st_addr, g_st_jmp);
+    return r;
+}
+
 void *addr_of_pmf(Player *(dActor_c::*pmf)()) {
     static_assert(sizeof(pmf) >= sizeof(void *), "a pointer to member holds at least the address");
     void *p; std::memcpy(&p, &pmf, sizeof p);     // a non-virtual member: the first word is its address
@@ -346,6 +444,14 @@ void install_patch() {
     if (!jump_patch(addr_of_pmf(&dActor_c::ClosestPlayer), (void *)&cp_replacement, "ClosestPlayer")) { g_patch_failed = true; return; }
     jump_patch(addr_of_pmf(&dActor_c::ClosestNonVanishPlayer), (void *)&cpnv_replacement, "ClosestNonVanishPlayer");
     jump_patch((void *)&func_ov079_02123f34, (void *)&whomp_replacement, "Whomp nearest-player pick");
+    {
+        int (Player::*pmf)(fBase_c &, bool) = &Player::StartTalk;
+        void *a; std::memcpy(&a, &pmf, sizeof a);
+        g_st_addr = (unsigned char *)a;
+        std::memcpy(g_st_orig, g_st_addr, 5);
+        if (jump_patch(a, (void *)&starttalk_replacement, "Player::StartTalk guard")) std::memcpy(g_st_jmp, g_st_addr, 5);
+        else g_st_addr = nullptr;
+    }
     g_patched = true;
     ++g_st.patched;
 }
