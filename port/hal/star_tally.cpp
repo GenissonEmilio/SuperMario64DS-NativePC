@@ -2,7 +2,7 @@
 #include "star_tally.h"
 
 #include "comms_hub.h"
-#include "coop_world.h"
+#include "coop_wire.h"
 
 #include <windows.h>
 
