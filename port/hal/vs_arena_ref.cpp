@@ -50,6 +50,7 @@
 #include "comms_hub.h"
 #include "vs_arena.h"
 #include "vs_arena_grab.h"
+#include "vs_arena_eat.h"
 
 #include <windows.h>
 
@@ -83,6 +84,10 @@ void _ZN10StarMarker7CollectEv(void *self);
 short GetAngleToCamera(int i);
 void _ZN6Player11ChangeStateERNS_5StateE(void *self, void *state);
 void port_player_set_character(void *player, unsigned ch);   // hal/player_bridges.cpp: the door swap
+int _ZN6Player17SetNoControlStateEhih(void *self, unsigned char a, int b, unsigned char c);
+void _ZN6Player18SetNewHatCharacterEjjb(void *self, unsigned a, unsigned b, unsigned char c);
+int _ZN6Player12Unk_020c9e5cEh(void *self, unsigned char h);
+void func_ov002_020c9e18(char *c);
 int _ZN6Player7IsStateERNS_5StateE(void *self, void *state);
 int _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *self, const void *v,
         unsigned a, int knock, unsigned d, unsigned e, unsigned f);
@@ -288,6 +293,8 @@ struct Ref {
     unsigned prev_look = 3;
     int rig_drop_id = 0;         // capdrop rig: the knocked-off cap seat 1 goes for
     unsigned rig_drop_at = 0;
+    unsigned rig_tongue_until = 0;   // captongue rig: seat 1 keeps tongueing the knocked-off cap until this ms
+    unsigned rig_tongue_next = 0;
     // lab rigs (SM64DS_ARENA_RIG)
     int rig = 0;                 // 0 off, 1 race, 2 hit
     unsigned rig_seed = 1;
@@ -1271,6 +1278,12 @@ void on_cap_dropped(const RefEvent &e) {
         g_trace_n = 0;
     }
     if (g.rig == 8) { g.rig_drop_id = e.a; g.rig_drop_at = now_ms() + 1600u; }
+    if (g.rig == 10) {
+        static const int ms = env_int("SM64DS_RIG_TONGUE_MS", 300, 0, 5000);
+        g.rig_drop_id = e.a;
+        g.rig_drop_at = now_ms() + (unsigned)ms;
+        g.rig_tongue_until = now_ms() + 6500u;
+    }
 }
 
 void on_cap_state(const RefEvent &e) {
@@ -1459,6 +1472,84 @@ void caps_detect() {
     }
 }
 
+
+// ---------------------------------------------------------------------------
+// A TONGUED CAP (FIX9C). Yoshi's tongue can pull a cap in (daObjMarioCap_c's
+// OnYoshiTryEat answers 4), and the swallow then calls the cap's OnTurnIntoEgg:
+// SetNoControlState(8) and, only if that took, SetNewHatCharacter. When the
+// first call is refused (Swallow_Init switched interaction off: mIsNoControl is
+// 1 and a kind above 3 is refused while it is set) the cap still goes into its
+// put-on state, follows the player, blinks and dies after 150 frames, and the
+// player never changes: Tango's "tongued a Luigi cap, blinked, never changed".
+// The touch path does not have the problem because it simply asks again every
+// frame until the call takes. This does the same for a cap that follows MY
+// body in the put-on state and has not started its morph: from the 4th frame
+// on, once the swallow is over (nothing in my mouth), ask again; when it takes,
+// set the hat exactly as OnTurnIntoEgg does. If it still has not taken by frame
+// 60 the character is swapped outright (the door swap) and the cap removed.
+// SM64DS_CAP_TONGUE_FIX=0 leaves the ROM's behaviour alone (the control row);
+// SM64DS_CAP_TONGUE_LOG=1 (or REFLOG) prints the first 45 frames of every such cap.
+// ---------------------------------------------------------------------------
+struct TongueCap { unsigned uid = 0; int frames = 0; int tries = 0; bool hat_set = false, swapped = false; } g_tc;
+int g_tc_fixed = 0, g_tc_swapped = 0;
+
+void cap_tongue_watch() {
+    if (!g.started) return;
+    static const bool fix = env_int("SM64DS_CAP_TONGUE_FIX", 1, 0, 1) != 0;
+    static const bool lg = env_on("SM64DS_CAP_TONGUE_LOG") || env_on("SM64DS_ARENA_REFLOG");
+    char *me = my_body();
+    if (!me) return;
+    {
+        static int last_look = -1;
+        const int lk = s32r(me, 8) & 0xff;
+        if (last_look >= 0 && lk != last_look)
+            std::fprintf(stderr, "[captongue] f=%u my look %d -> %d (hat %d)\n", my_frame_now(), last_look, lk, (int)*u8p(me, 0x6dd));
+        last_look = lk;
+    }
+    bool seen = false;
+    each_class(kClassCap, [&](char *a) {
+        if (u32r(a, 0x3bc) != (unsigned)(size_t)&data_ov002_0210df54) return;   // not putting on
+        if ((char *)(size_t)u32r(a, 0x3c0) != me) return;
+        seen = true;
+        const unsigned uid = actor_uid(a);
+        if (uid != g_tc.uid) g_tc = TongueCap{}, g_tc.uid = uid;
+        const int model = s32r(a, 0x3f4) & 0xff;
+        const bool morphing = *u8p(a, 0x3fe) != 0 || *u8p(a, 0x401) != 0;
+        ++g_tc.frames;
+        if (lg && g_tc.frames <= 45)
+            std::fprintf(stderr, "[captongue] f=%u cap uid=%u type=%d model=%d t3fe=%d t401=%d | me state=%d step=%d "
+                         "noctl=%d kind=%d inmouth=%p morph8=%d look=%d hat=%d prev=%d%s\n", my_frame_now(), uid,
+                         s32r(a, 0x3f0), model, (int)*u8p(a, 0x3fe), (int)*u8p(a, 0x401), vs_arena_state_index(me),
+                         (int)*u8p(me, 0x6e3), (int)*u8p(me, 0x709), (int)*u8p(me, 0x70a), (void *)(size_t)u32r(me, 0x360),
+                         _ZN6Player12Unk_020c9e5cEh(me, 8), s32r(me, 8) & 0xff, (int)*u8p(me, 0x6dd), (int)*u8p(me, 0x6dc),
+                         morphing ? " (morph running)" : "");
+        if (!fix || morphing || model > 2 || (s32r(me, 8) & 0xff) == (unsigned)model) return;
+        if (g_tc.frames < 4 || u32r(me, 0x360) != 0) return;        // the swallow is not over yet
+        if (_ZN6Player12Unk_020c9e5cEh(me, 8)) return;               // the morph state is up: the cap takes it from here
+        if (g_tc.frames >= 60 && !g_tc.swapped) {
+            g_tc.swapped = true;
+            ++g_tc_swapped;
+            std::fprintf(stderr, "[captongue] f=%u the ROM's own put-on never started in %d frames (%d tries): "
+                         "swapping my character to %d outright\n", my_frame_now(), g_tc.frames, g_tc.tries, model);
+            port_player_set_character(me, (unsigned)model);
+            _ZN7fBase_c18MarkForDestructionEv(a);
+            return;
+        }
+        if (g_tc.swapped || g_tc.tries >= 40) return;
+        ++g_tc.tries;
+        if (*u8p(me, 0x709) == 1) func_ov002_020c9e18(me);            // the swallow's "interaction off"
+        const int r = _ZN6Player17SetNoControlStateEhih(me, 8, -1, 0);
+        if (r == 1 && *u8p(me, 0x6dd) != (unsigned)model) {
+            _ZN6Player18SetNewHatCharacterEjjb(me, (unsigned)model, 1u, 0);
+            g_tc.hat_set = true;
+            ++g_tc_fixed;
+        }
+        std::fprintf(stderr, "[captongue] f=%u try %d (cap frame %d): SetNoControlState(8) = %d, hat %s; "
+                     "state=%d noctl=%d\n", my_frame_now(), g_tc.tries, g_tc.frames, r,
+                     r == 1 ? "set" : "not set", vs_arena_state_index(me), (int)*u8p(me, 0x709));
+    });
+    if (!seen && g_tc.uid) g_tc = TongueCap{};
+}
 
 void on_star_taken(const RefEvent &e) {
     Inst *i = inst_by_id(e.a);
@@ -2325,6 +2416,7 @@ void rig_parse() {
     else if (std::strncmp(e, "caprace", 7) == 0) g.rig = 7;
     else if (std::strncmp(e, "capdrop", 7) == 0) g.rig = 8;
     else if (std::strncmp(e, "capforge", 8) == 0) g.rig = 9;
+    else if (std::strncmp(e, "captongue", 9) == 0) g.rig = 10;
     else if (std::strncmp(e, "cap", 3) == 0) g.rig = 6;
     if (g.rig == 2 || g.rig == 3) g.rig_real = e[g.rig == 2 ? 3 : 5] == 'r';   // hitr / chainr
     else if (std::strncmp(e, "fuzz", 4) == 0) g.rig = 4;
@@ -2334,7 +2426,7 @@ void rig_parse() {
         std::fprintf(stderr, "[rig] SM64DS_ARENA_RIG=%s: scripted %s rig, seed %u\n",
                      e, g.rig == 1 ? "contention" : g.rig == 2 ? "hit" : g.rig == 5 ? "hurtgrab" :
                      g.rig == 6 ? "cap pickup" : g.rig == 7 ? "cap race" : g.rig == 8 ? "cap drop" :
-                     g.rig == 9 ? "cap forgery" : "chain",
+                     g.rig == 9 ? "cap forgery" : g.rig == 10 ? "cap tongue" : "chain",
                      g.rig_seed);
 }
 
@@ -2980,6 +3072,27 @@ void rig_capdrop() {
                 std::fprintf(stderr, "[rig] capdrop: observer seat 1 waits 400 units from seat 0\n");
             }
         }
+        if (g.rig == 10) {
+            // FIX9C: the knocked-off cap is TONGUED, not walked into (Yoshi, look 3), again every 40 frames
+            // until my character changes or the cap is gone
+            if (g.rig_drop_id && (int)(now_ms() - g.rig_drop_at) >= 0 && (int)(now_ms() - g.rig_tongue_until) < 0 &&
+                (int)(now_ms() - g.rig_tongue_next) >= 0) {
+                CapRec *c = cap_rec(g.rig_drop_id);
+                char *a = c ? cap_actor_of(*c) : nullptr;
+                if (a && (s32r(me, 8) & 0xff) == 3) {
+                    const int to[3] = { s32r(a, 0x5c), s32r(a, 0x60), s32r(a, 0x64) };
+                    static const int back = env_int("SM64DS_RIG_TONGUE_BACK", 60, 20, 200);
+                    vs_eat_tongue_at(to, back);
+                    g.rig_tongue_next = now_ms() + 700u;
+                    std::fprintf(stderr, "[rig] captongue: seat 1 tongues the knocked-off cap %d (frame %u, look %d)\n",
+                                 g.rig_drop_id, my_frame_now(), s32r(me, 8) & 0xff);
+                } else if (!a) {
+                    std::fprintf(stderr, "[rig] captongue: no actor for the knocked-off cap (gone or taken)\n");
+                    g.rig_drop_id = 0;
+                }
+            }
+            return;
+        }
         if (g.rig_drop_id && (int)(now_ms() - g.rig_drop_at) >= 0) {
             CapRec *c = cap_rec(g.rig_drop_id);
             char *a = c ? cap_actor_of(*c) : nullptr;
@@ -3067,7 +3180,7 @@ void rig_step() {
     else if (g.rig == 4) rig_fuzz();
     else if (g.rig == 5) rig_hurtgrab();
     else if (g.rig == 6 || g.rig == 7) rig_cap();
-    else if (g.rig == 8) rig_capdrop();
+    else if (g.rig == 8 || g.rig == 10) rig_capdrop();
     else if (g.rig == 9) rig_capforge();
 }
 
@@ -3222,6 +3335,7 @@ void vs_ref_post_walk(int frame) {
         hit_detect("post-walk");
         grab_detect();
         caps_detect();
+        cap_tongue_watch();
         syno_send();
         my_state_edges();
         star_census();

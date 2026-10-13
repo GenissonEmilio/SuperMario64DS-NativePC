@@ -825,6 +825,22 @@ void rig_starmouth() {
     std::fprintf(stderr, "[starrig] tongue %u at the star uid %u (state %d)\n", sr.tongues, *(unsigned *)(star + 4), s32r(star, 0x440));
 }
 
+// SM64DS_ARENA_RIG=captongue (FIX9C): vs_eat_tongue_at() below arms it, this runs it every frame
+struct TongueAt { int press = 0, pin = 0; int pos[3] = {0, 0, 0}; } ta;
+void tongue_at_step() {
+    const int me = vs_arena_my_seat();
+    if (me < 0 || me > 3 || (ta.press <= 0 && ta.pin <= 0)) return;
+    char *mb = (char *)data_0209f394[me];
+    if (!mb) return;
+    if (ta.pin > 0) {
+        --ta.pin;
+        int *p = (int *)(mb + 0x5c);
+        p[0] = ta.pos[0]; p[1] = ta.pos[1]; p[2] = ta.pos[2];
+        s32r(mb, 0x98) = 0; s16r(mb, 0x8e) = 0; s16r(mb, 0x94) = 0;
+    }
+    if (ta.press > 0) { rig_press(me, 0x0001, ta.press == 3); --ta.press; }
+}
+
 void report_at_exit() {
     std::fprintf(stderr, "[eat] exit asked=%llu refused=%llu claims=%llu confirmed=%llu "
                  "denied=%llu unwound=%llu | v_eaten=%llu v_released=%llu v_escapes=%llu "
@@ -874,6 +890,13 @@ void clear_tongue_bits() {
 
 }  // namespace
 
+void vs_eat_tongue_at(const int *pos, int back) {
+    ta.pos[0] = pos[0]; ta.pos[1] = pos[1]; ta.pos[2] = pos[2] - (back << 12);
+    ta.pin = 25;
+    ta.press = 3;
+    std::fprintf(stderr, "[eat] rig: tongue at (%d,%d,%d) from %d units behind\n", pos[0] >> 12, pos[1] >> 12, pos[2] >> 12, back);
+}
+
 void vs_eat_before_walk(int frame) {
     (void)frame;
     if (!vs_arena_active()) return;
@@ -890,6 +913,7 @@ void vs_eat_before_walk(int frame) {
         v_monitor();
     }
     probe_tongue();
+    tongue_at_step();
     if (g.rig == 3) rig_stale();
     if (g.rig == 5) rig_starmouth();
     if (data_0209f2d8 == 1) sanitize_mouth();

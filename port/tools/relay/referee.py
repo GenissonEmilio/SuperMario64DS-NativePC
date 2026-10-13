@@ -78,6 +78,7 @@ CAP_UNKNOWN_MS = 100
 FUTURE_SLACK_MS = 5
 COMP_MAX_MS = 200
 HIT_IMMUNE_MS = 1000
+STAR_POSE_MS = 1500             # FIX9C: the star-get pose (the ROM's no-control hold) is hit-immune this long after the grab
 # an ESCAPE earlier than this after the EATEN is refused: the ROM's victim
 # needs 23 or more frames of mashing after its own console has the event, so a
 # real escape is never this fast (a cheating victim could otherwise make its
@@ -257,6 +258,7 @@ def _idx_set(names):
 
 
 ATTACK_IDX = _idx_set(ATTACK_STATES)
+NOCONTROL_IDX = _idx_set(["St_NoControl"])
 DISABLED_IDX = _idx_set(DISABLED_STATES)
 CLASH_IDX = _idx_set(CLASH_STATES)
 SPEED_CLASS = []
@@ -412,6 +414,7 @@ class Seat(object):
         self.strikes = deque()
         self.strikes_total = 0
         self.last_hit = None        # referee stamp of the last HIT on me
+        self.star_stamp = None      # FIX9C: referee stamp of my last granted star (the pose after it is hit-immune)
         self.last_hit_by = None
         self.hit_check = None       # (deadline rt, verdict rt)
         self.sanction_until = -1e9
@@ -614,6 +617,7 @@ class Referee(object):
             s.done_order.clear()
             s.pending_ids.clear()
             s.last_hit = None
+            s.star_stamp = None
             s.eaten_by = None
             s.grabbed_by = None
             s.holding = None
@@ -1228,7 +1232,14 @@ class Referee(object):
         # a refusal worth reading in the journal: what was refused, why and by
         # how much. LOST / GONE / STALE are ordinary contention and stay in the
         # counters. Rate-limited per session so a hostile seat cannot flood it.
-        if c.kind in (C_GRAB, C_MARKER_BREAK, C_HIT, C_EAT) and                 reason in (D_RANGE, D_STATE, D_INVULN, D_TOO_OLD):
+        # FIX9C: a star or cap claim that was refused as STALE / GONE / LOST / BAD
+        # used to leave no trace here, which is why "he picked up a star and got
+        # nothing" could not be read back from the journal.
+        loud = (c.kind in (C_GRAB, C_MARKER_BREAK, C_HIT, C_EAT) and
+                reason in (D_RANGE, D_STATE, D_INVULN, D_TOO_OLD)) or (
+                c.kind in (C_GRAB, C_CAP_TAKE, C_CAP_DROP) and
+                reason in (D_STALE, D_GONE, D_LOST, D_BAD))
+        if loud:
             if rt - self._dlog_t >= 1000:
                 self._dlog_t, self._dlog_n = rt, 0
             if self._dlog_n < DENY_LOG_PER_S:
@@ -1332,7 +1343,7 @@ class Referee(object):
             return False
         return smp.frame - first.frame <= ATTACK_NC_MAX_FRAMES
 
-    def _usable(self, s, frame, attack=False):
+    def _usable(self, s, frame, attack=False, cap=False):
         """The claimant's own sample at `frame`, and whether it may act.
         attack=True: the sample is an attacker's, which may carry no_control
         for the length of a caught tongue (see _attack_nc_ok)."""
@@ -1342,7 +1353,15 @@ class Referee(object):
         bad = F_IN_HURT | F_NO_CONTROL
         if attack and smp.flags & F_NO_CONTROL and self._attack_nc_ok(s, smp):
             bad = F_IN_HURT
-        if (smp.state in DISABLED_IDX or smp.flags & bad
+        disabled = DISABLED_IDX
+        if cap:
+            # FIX9C: a cap that Yoshi's tongue pulled in is claimed from inside
+            # the swallow (mIsNoControl up) and the put-on's own no-control
+            # morph; a cap taken by touch is claimed from that morph too once
+            # the sample is a frame late. Hurt, dead, eaten stay refused.
+            bad = F_IN_HURT
+            disabled = DISABLED_IDX - NOCONTROL_IDX
+        if (smp.state in disabled or smp.flags & bad
                 or smp.eaten_by or s.eaten_by is not None):
             return smp, D_STATE
         return smp, 0
@@ -1402,6 +1421,7 @@ class Referee(object):
         del self.stars[c.target]
         self._taken(c.target, c.seat, c.stamp)
         self.scores[c.seat] = min(127, self.scores[c.seat] + 1)
+        s.star_stamp = c.stamp
         self.progress = (self.progress + 1) & 0xFF
         ev = self._emit(EV_STAR_TAKEN, c.seat, c.target, self.scores[c.seat],
                         c.cid, 0, self.progress, c.stamp, smp.x, smp.y, smp.z)
@@ -1521,6 +1541,17 @@ class Referee(object):
             return
         if v.last_hit is not None and c.stamp - v.last_hit < HIT_IMMUNE_MS:
             self._deny(c, D_INVULN, rt)
+            return
+        if (v.star_stamp is not None
+                and 0 <= c.stamp - v.star_stamp < STAR_POSE_MS):
+            # FIX9C (Tango's "picked up a star and it said 0"): the victim
+            # touched a star BEFORE this hit in the referee's time and is still
+            # in the ROM's star-get pose, which is a no-control hold nothing
+            # hurts. The attacker's screen shows the victim a few frames late
+            # (still walking), so the sample at ref_frame cannot tell; the
+            # grab's own stamp can.
+            self._deny(c, D_INVULN, rt, why="the victim is in its star-get "
+                       "pose (%d ms after its star)" % (c.stamp - v.star_stamp))
             return
         if eat:
             v.eaten_by = c.seat
@@ -1809,7 +1840,7 @@ class Referee(object):
                 self._deny(c, D_GONE, rt)
             return
         s = self.seats[c.seat]
-        smp, why = self._usable(s, c.frame)
+        smp, why = self._usable(s, c.frame, cap=True)
         if why:
             self._deny(c, why, rt, why=self._why_state(s, smp)
                        if why == D_STATE else None)

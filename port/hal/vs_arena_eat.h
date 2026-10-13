@@ -33,6 +33,11 @@ void vs_eat_before_walk(int frame);
 // sent (the top of vs_arena_tick). Keeps a held puppet on the eater's body.
 void vs_eat_after_walk(int frame);
 
+// LAB RIG helper (FIX9C, SM64DS_ARENA_RIG=captongue): put MY body `back` units
+// behind `pos` (20.12 fixed, x y z), facing +z, and use the tongue (the attack
+// button) once. The body is held there for 25 frames so the tongue reaches.
+void vs_eat_tongue_at(const int *pos, int back);
+
 struct VsEatStats {
     bool wrapped;                      // slot 18 is ours
     unsigned long long asked;          // tongue questions in arena mode
