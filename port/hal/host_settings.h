@@ -163,12 +163,14 @@ enum {
     HOST_KEY_JUMP, HOST_KEY_ATTACK, HOST_KEY_CROUCH, HOST_KEY_RUN,
     HOST_KEY_START, HOST_KEY_SELECT, HOST_KEY_LOOK,
     HOST_KEY_CAM_CENTER, HOST_KEY_CAM_LEFT, HOST_KEY_CAM_RIGHT, HOST_KEY_CAM_MODE,
+    HOST_KEY_PARTY_INVITE, HOST_KEY_PARTY_LEAVE,     /* WPARTY2: in-world party invite / accept, leave (hal/world_party.h) */
     HOST_KEY_COUNT
 };
 enum {
     HOST_PAD_JUMP = 0, HOST_PAD_ATTACK, HOST_PAD_CROUCH, HOST_PAD_RUN,
     HOST_PAD_START, HOST_PAD_SELECT, HOST_PAD_LOOK,
     HOST_PAD_CAM_CENTER, HOST_PAD_CAM_LEFT, HOST_PAD_CAM_RIGHT, HOST_PAD_CAM_MODE,
+    HOST_PAD_PARTY_INVITE, HOST_PAD_PARTY_LEAVE,     /* default d-pad UP / DOWN; the only rows allowed to hold a d-pad bit */
     HOST_PAD_COUNT
 };
 /* The two trigger pseudo-buttons a pad binding may name (see the PAD block

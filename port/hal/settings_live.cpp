@@ -35,6 +35,8 @@ static const SlInfo INFO[] = {
     { "KeyCamLeft",  SL_KIND_KEY, 0, 255, 0x51, 0, 1 },
     { "KeyCamRight", SL_KIND_KEY, 0, 255, 0x45, 0, 1 },
     { "KeyCamMode",  SL_KIND_KEY, 0, 255, 0x70, 0, 1 },
+    { "KeyPartyInvite", SL_KIND_KEY, 0, 255, 0x42, 0, 1 },
+    { "KeyPartyLeave",  SL_KIND_KEY, 0, 255, 0x4e, 0, 1 },
     /* pads, in HOST_PAD_ order */
     { "PadJump",     SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x1000, 0, 1 },
     { "PadAttack",   SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x2000, 0, 1 },
@@ -47,6 +49,8 @@ static const SlInfo INFO[] = {
     { "PadCamLeft",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0100, 0, 1 },
     { "PadCamRight", SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0200, 0, 1 },
     { "PadCamMode",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0080, 0, 1 },
+    { "PadPartyInvite", SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0001, 0, 1 },
+    { "PadPartyLeave",  SL_KIND_PAD, 0, HOST_PAD_MASK_MAX, 0x0002, 0, 1 },
     /* the rest */
     { "RunMode",                SL_KIND_ENUM,    0, 2, 1, RUN_NAMES, 1 },
     { "StickDeadzone",          SL_KIND_PERCENT, 0, 50, 24, 0, 1 },
@@ -254,6 +258,8 @@ static int pad_reserved(int action, unsigned bit, const char **why)
        out of the menu slots (Start, Select). */
     unsigned blocked = 0x30afu;
     if (action != HOST_PAD_START && action != HOST_PAD_SELECT) blocked &= ~0x3000u;
+    /* WPARTY2: the party rows default to the d-pad (UP / DOWN), so they may hold d-pad bits; still not BACK or the stick click. */
+    if (action == HOST_PAD_PARTY_INVITE || action == HOST_PAD_PARTY_LEAVE) blocked &= ~0x000fu;
     if (bit & blocked) { *why = "that button drives the menus"; return 1; }
     for (int i = 0; i < HOST_PAD_COUNT; ++i)
         if (i != action && (host_setting_pad(i) & (int)bit) && !(is_cam_pad(action) && is_cam_pad(i))) {

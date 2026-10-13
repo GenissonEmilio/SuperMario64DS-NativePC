@@ -5082,6 +5082,8 @@ static void chat_pad_gate(int *pad_live, XPad *pad)
 {
     chat_key_test_frame();
     /* hook: PINVITE1, d-pad UP / DOWN (or B / N) invite, accept, leave; inert outside a world room */
+    port::world_party_set_binds(host_setting_key(HOST_KEY_PARTY_INVITE), host_setting_key(HOST_KEY_PARTY_LEAVE),
+                                (unsigned)host_setting_pad(HOST_PAD_PARTY_INVITE), (unsigned)host_setting_pad(HOST_PAD_PARTY_LEAVE));
     port::world_party_input(*pad_live ? (unsigned)pad->buttons : 0u,
                             key_live(port::world_party_vk_invite()) != 0,
                             key_live(port::world_party_vk_leave()) != 0);

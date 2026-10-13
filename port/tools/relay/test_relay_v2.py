@@ -1022,7 +1022,7 @@ def u_party_coop_kinds(mod):
     allowed = {  # session label -> tags that pass
         "party": (b"SYNL", b"SYNX", b"SYNH"),
         "coop": (b"SYNL", b"SYNW", b"SYNB"),
-        "hub": (b"SYNL",),
+        "hub": (b"SYNL", b"SYNX"),   # world party shares stars
         "star": (),
     }
     rooms = {"party": party, "coop": cooper, "hub": hub, "star": star}
@@ -1105,6 +1105,17 @@ def u_party_coop_kinds(mod):
     drop_case("SYNX reserved 8", pa, pstar(reserved=8), b"SYNX")      # 1..7 = popup event (STARPOP1), 8+ dropped
     drop_case("SYNX reserved 0x100", pa, pstar(reserved=0x100), b"SYNX")
     drop_case("SYNX version 2", pa, pstar(ver=2), b"SYNX")
+    # WPARTY2: a world (hub) session carries SYNX under the same field checks
+    ha = hub[0]
+    drop_case("hub SYNX course 30", ha, pstar(course=30), b"SYNX")
+    drop_case("hub SYNX star 8", ha, pstar(star=8), b"SYNX")
+    drop_case("hub SYNX reserved 8", ha, pstar(reserved=8), b"SYNX")
+    drop_case("hub SYNX version 2", ha, pstar(ver=2), b"SYNX")
+    fresh()
+    out = rig.send(ha, pstar(course=5, star=2))
+    res.check(len(out) == len(hub) - 1 and all(d[5] == 0 for d, _ in out),
+              "hub SYNX with good fields forwarded to every other seat, "
+              "stamped with the sender")
     drop_case("SYNH victim 4", pa, phit(4), b"SYNH")
     drop_case("SYNH victim 255", pa, phit(255), b"SYNH")
     drop_case("SYNH victim = attacker", pa, phit(0), b"SYNH")
@@ -1226,7 +1237,7 @@ def u_party_coop_fuzz(mod, rounds=40000):
         for k, a in enumerate(addrs):
             seat_of[a] = (label, k)
     allowed = {"party": (b"SYNL", b"SYNX", b"SYNH"),
-               "coop": (b"SYNL", b"SYNW", b"SYNB"), "hub": (b"SYNL",),
+               "coop": (b"SYNL", b"SYNW", b"SYNB"), "hub": (b"SYNL", b"SYNX"),
                "star": ()}
     sizes = {b"SYNL": (20,), b"SYNX": (12,), b"SYNH": (24,)}
     tags = list(sizes) + [b"SYNW", b"SYNB", b"SYNG", b"SYNP", b"SYNQ",

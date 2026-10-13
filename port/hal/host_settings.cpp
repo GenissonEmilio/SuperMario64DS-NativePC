@@ -564,6 +564,8 @@ const BindKey KEY_BIND[HOST_KEY_COUNT] = {
     { "KeyCamLeft",  0x51 },      /* Q: rotate camera left */
     { "KeyCamRight", 0x45 },      /* E: rotate camera right */
     { "KeyCamMode",  0x70 },      /* F1: cycle the camera mode */
+    { "KeyPartyInvite", 0x42 },   /* B: world party invite / accept */
+    { "KeyPartyLeave",  0x4e },   /* N: world party leave (press twice) */
 };
 const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadJump",   0x1000 },      /* A */
@@ -577,6 +579,8 @@ const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadCamLeft",  0x0100 },    /* LB: rotate camera left */
     { "PadCamRight", 0x0200 },    /* RB: rotate camera right */
     { "PadCamMode",  0x0080 },    /* right stick click: cycle the camera mode */
+    { "PadPartyInvite", 0x0001 }, /* d-pad UP: world party invite / accept */
+    { "PadPartyLeave",  0x0002 }, /* d-pad DOWN: world party leave (press twice) */
 };
 int g_key[HOST_KEY_COUNT];
 int g_pad[HOST_PAD_COUNT];
