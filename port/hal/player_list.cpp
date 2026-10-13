@@ -4,6 +4,7 @@
 #include "hal/player_list.h"
 
 #include "hal/comms_hub.h"
+#include "hal/coop_boot.h"
 #include "hal/hub_presence.h"
 
 #include <cstdio>
@@ -231,9 +232,26 @@ bool player_list_active() {
     return k == kHubRoomParty || k == kHubRoomCoop;
 }
 
+// FIX9B: the list (and the ping box) show only while this console is in a
+// level and the player has control. Hidden: no body yet (title, file select,
+// the load before a level), a ROM cutscene running (data_0209fc48 is the kuppa
+// script word: the new-file opening, star-get, the ending, the Lakitu scenes),
+// and a coop boot hold (barrier frames and the opening the barrier waits for).
+// Those are the frames whose own 2D (the Peach letter, the star-get camera,
+// fades) the shaded rows used to be drawn over.
+bool player_list_suppressed() {
+    if (!player_list_active()) return false;   // world / VS / solo: untouched
+    const int me = (int)data_0209f250;
+    if (me < 0 || me >= 16 || !data_0209f394[me]) return true;
+    if (data_0209fc48 != 0) return true;
+    if (coop_boot_active() && !coop_boot_ticking()) return true;
+    return false;
+}
+
 void player_list_view(PlayerListView *out) {
     out->n = 0;
     if (!player_list_active()) return;
+    if (player_list_suppressed()) return;
     if (!g_installed_log && logging()) {
         g_installed_log = true;
         std::fprintf(stderr, "[plist] active room=%d\n",
