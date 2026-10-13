@@ -739,6 +739,11 @@ void spawn_frame() {
     const bool bit = seen_bit();
     int me[3] = {rd_i32(b, 0x5c), rd_i32(b, 0x60), rd_i32(b, 0x64)};
     if (S9.log && C.intro_seen && !bit && (S9.frame % 20) == 0) spawn_log_lakitu(b);
+    if (S9.log && C.intro_seen && !bit && (S9.frame % 10) == 0) {
+        short ang; std::memcpy(&ang, b + 0x8e, 2);
+        LOG("SPAWN body f=%u pos=(%d,%d,%d) spd=%d ang=%d st=%08x pause=%02x", S9.frame, me[0] >> 12, me[1] >> 12, me[2] >> 12,
+            rd_i32(b, 0x98), (int)ang, (unsigned)rd_i32(b, 0x370), (unsigned)(unsigned char)b[0x13]);
+    }
     if (S9.log && (bit || !C.intro_seen) && (S9.frame % 120) == 0) {
         // this console's view of every seat: my own body exactly, a friend at the pose the follower drew him at
         char v[256]; int w = 0;

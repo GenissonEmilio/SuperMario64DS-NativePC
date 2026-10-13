@@ -95,6 +95,7 @@ void read_env() {
     if (const char *sm = std::getenv("SM64DS_COOP_TARGET_SAMPLE")) g_sample_cls = std::atoi(sm);
     const char *c = std::getenv("SM64DS_COOP_TARGET_CLS");
     if (!c || !*c) c = "165,189,200";
+    if (!std::strcmp(c, "all")) { g_logall = true; c = ""; }
     for (const char *p = c; *p && g_nlogcls < 16;) {
         char *end = nullptr; unsigned long v = std::strtoul(p, &end, 0);
         if (end == p) break;
@@ -113,7 +114,9 @@ void read_env() {
     std::fprintf(stderr, "[cotgt] targeting %s hold=%ums%s\n", g_on ? "on" : "OFF (control)", g_hold_ms, g_log ? " log" : "");
 }
 
+bool g_logall = false;   // SM64DS_COOP_TARGET_CLS=all: every class (COOPSPAWN9 proof)
 bool logged_cls(unsigned c) {
+    if (g_logall) return true;
     for (int i = 0; i < g_nlogcls; ++i) if (g_logcls[i] == c) return true;
     return false;
 }
