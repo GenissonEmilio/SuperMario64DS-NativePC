@@ -2045,6 +2045,19 @@ def u_caps(mod):
         v = take(b, 1)
         res.check(v and v["name"] == "CAP_TAKEN" and v["seat"] == b.seat, "back after the respawn window: b takes it (%s)" % v)
 
+        # ---- FIX9C: a cap tongued in is claimed from the swallow / the put-on's no-control morph
+        streaming(rig, [a, b], 1.7)
+        a.pos = [-200, 0, 0]
+        a.state = ST_NOCONTROL
+        a.flags |= 0x40
+        streaming(rig, [a, b], 0.3)
+        v = take(a, 1)
+        res.check(v and v["name"] == "CAP_TAKEN" and v["seat"] == a.seat,
+                  "a claimant in the no-control put-on morph still takes the cap (%s)" % v)
+        a.state = ST_WAIT
+        a.flags &= ~0x40
+        streaming(rig, [a, b], 0.3)
+
         # ---- a race: the earlier stamp wins even when its claim arrives second
         streaming(rig, [a, b], 2.2)
         sa = a.ref_now()

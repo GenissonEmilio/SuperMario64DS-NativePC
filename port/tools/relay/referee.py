@@ -258,6 +258,7 @@ def _idx_set(names):
 
 
 ATTACK_IDX = _idx_set(ATTACK_STATES)
+NOCONTROL_IDX = _idx_set(["St_NoControl"])
 DISABLED_IDX = _idx_set(DISABLED_STATES)
 CLASH_IDX = _idx_set(CLASH_STATES)
 SPEED_CLASS = []
@@ -1342,7 +1343,7 @@ class Referee(object):
             return False
         return smp.frame - first.frame <= ATTACK_NC_MAX_FRAMES
 
-    def _usable(self, s, frame, attack=False):
+    def _usable(self, s, frame, attack=False, cap=False):
         """The claimant's own sample at `frame`, and whether it may act.
         attack=True: the sample is an attacker's, which may carry no_control
         for the length of a caught tongue (see _attack_nc_ok)."""
@@ -1352,7 +1353,15 @@ class Referee(object):
         bad = F_IN_HURT | F_NO_CONTROL
         if attack and smp.flags & F_NO_CONTROL and self._attack_nc_ok(s, smp):
             bad = F_IN_HURT
-        if (smp.state in DISABLED_IDX or smp.flags & bad
+        disabled = DISABLED_IDX
+        if cap:
+            # FIX9C: a cap that Yoshi's tongue pulled in is claimed from inside
+            # the swallow (mIsNoControl up) and the put-on's own no-control
+            # morph; a cap taken by touch is claimed from that morph too once
+            # the sample is a frame late. Hurt, dead, eaten stay refused.
+            bad = F_IN_HURT
+            disabled = DISABLED_IDX - NOCONTROL_IDX
+        if (smp.state in disabled or smp.flags & bad
                 or smp.eaten_by or s.eaten_by is not None):
             return smp, D_STATE
         return smp, 0
@@ -1831,7 +1840,7 @@ class Referee(object):
                 self._deny(c, D_GONE, rt)
             return
         s = self.seats[c.seat]
-        smp, why = self._usable(s, c.frame)
+        smp, why = self._usable(s, c.frame, cap=True)
         if why:
             self._deny(c, why, rt, why=self._why_state(s, smp)
                        if why == D_STATE else None)
