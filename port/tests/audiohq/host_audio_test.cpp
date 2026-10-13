@@ -37,7 +37,16 @@
 
 extern "C" void *data_020a5bb8;
 void *data_020a5bb8;
-int out_volume_pct(void) { return 100; }
+// The real one lives in out_win.cpp: SM64DS_VOLUME 0..100, applied INSIDE sd_mix_render, so
+// it is already in the WAV dump. Same here, so the harness can show what a test launched
+// with SM64DS_VOLUME=0 records (silence). Unset = 100.
+int out_volume_pct(void)
+{
+    const char *v = getenv("SM64DS_VOLUME");
+    if (!v || !*v) return 100;
+    long n = strtol(v, 0, 10);
+    return (int)(n < 0 ? 0 : (n > 100 ? 100 : n));
+}
 
 // ---- FindFile shim -------------------------------------------------------
 struct FindState { std::vector<WIN32_FIND_DATAA> items; size_t at; };

@@ -187,27 +187,42 @@ def parse_stats(text):
 RAMHASH_RE = re.compile(r"\[scene-ramhash\] f(\d+) ([0-9a-f]{8}) ([0-9a-f]{8})")
 
 
-def build_mask(cfg, exe, env, tag):
-    """Words of the arena that differ between two identical runs of exe: dump the
-    arena at the last frame twice, list the differing 32-bit word indices."""
-    frames = int(env.get("SM64DS_WINDOW_SELFTEST", "600"))
-    dumps = []
-    rows = []
-    for i in (1, 2):
-        e = dict(env, SM64DS_SCENE_RAMHASH="1", SM64DS_SCENE_RAMDUMP="%d:{wdir}/ram" % (frames - 2))
-        rows.append(C.launch(cfg, "%s_mask%d" % (tag, i), exe, e, settings={"AudioQuality": "ds"}, subdir="state"))
+def _dump_words(row):
     import struct
-    a, b = rows[0].path("ram.arena"), rows[1].path("ram.arena")
-    if not (os.path.exists(a) and os.path.exists(b)):
+    p = row.path("ram.arena")
+    if not os.path.exists(p):
+        return None
+    d = open(p, "rb").read()
+    return struct.unpack("<%dI" % (len(d) // 4), d[:len(d) // 4 * 4])
+
+
+def build_mask(cfg, env, tag):
+    """Words of the arena that may legitimately differ, as a mask file of 32-bit word indices.
+    Dump the arena at the last frame of four runs, two of the base exe and two of the tip exe
+    (ds), and list every word where any of them disagrees:
+      * base vs base and tip vs tip: run-to-run noise (timers, thread timing);
+      * base vs tip: the two exes are different images, so every host pointer the game keeps in
+        its arena (heap objects, vtables, "name pointer 117e4e38" vs "117f9e38" in the logs) moves
+        with the image layout. That is not game state, and it is the reason the first version of
+        this check failed at its first hashed frame on every route."""
+    import struct
+    frames = int(env.get("SM64DS_WINDOW_SELFTEST", "600"))
+    e = dict(env, SM64DS_SCENE_RAMHASH="1", SM64DS_SCENE_RAMDUMP="%d:{wdir}/ram" % (frames - 2))
+    plan = [("base1", cfg["exe_base"]), ("base2", cfg["exe_base"]), ("tip1", cfg["exe_tip"]), ("tip2", cfg["exe_tip"])]
+    rows = C.run_parallel([(lambda n=n, x=x: C.launch(cfg, "%s_mask_%s" % (tag, n), x, e,
+                                                      settings={"AudioQuality": "ds"}, subdir="state"))
+                           for n, x in plan], cfg["workers"])
+    ws = [_dump_words(r) for r in rows]
+    if any(w is None for w in ws):
         return None, "no arena dump (is SM64DS_SCENE_RAMDUMP supported by this exe?)"
-    da, db = open(a, "rb").read(), open(b, "rb").read()
-    n = min(len(da), len(db)) // 4
-    wa, wb = struct.unpack("<%dI" % n, da[:n * 4]), struct.unpack("<%dI" % n, db[:n * 4])
-    idx = [i for i in range(n) if wa[i] != wb[i]]
+    n = min(len(w) for w in ws)
+    idx = [i for i in range(n) if len({w[i] for w in ws}) > 1]
+    noise = sum(1 for i in range(n) if ws[0][i] != ws[1][i] or ws[2][i] != ws[3][i])
     mp = os.path.join(cfg["out_dir"], "state", tag + "_mask.bin")
     with open(mp, "wb") as f:
         f.write(struct.pack("<%dI" % len(idx), *idx))
-    return mp, "%d of %d words differ between two identical runs" % (len(idx), n)
+    return mp, "%d of %d arena words masked: %d run-to-run noise, %d more differ only between the two exe images" % (
+        len(idx), n, noise, len(idx) - noise)
 
 
 def state_trace(cfg, name, exe, env, settings, mask):
@@ -216,9 +231,21 @@ def state_trace(cfg, name, exe, env, settings, mask):
     return row, [(int(f), m, a) for f, m, a in RAMHASH_RE.findall(row.text)]
 
 
+def _first_diff(x, y):
+    for p, q in zip(x, y):
+        if p != q:
+            return "first difference frame %d" % p[0]
+    if len(x) != len(y):
+        return "%d frames against %d" % (len(y), len(x))
+    return ""
+
+
 def check_state(cfg, res, name, env):
-    """(c) for one route: base, ds and hq must print the same hash on every frame."""
-    mask, note = build_mask(cfg, cfg["exe_base"], env, name)
+    """(c) for one route. Same exe (ds vs hq): the main-RAM hash and the masked arena hash must be
+    equal on every frame. Base exe vs tip exe: the masked arena hash only -- the main-RAM hash
+    (0x02000000, 4 MB) also holds host pointers and cannot be masked, so across two different
+    images it is not comparable and is not used."""
+    mask, note = build_mask(cfg, env, name)
     if not mask:
         res.add("state " + name, "INCONCLUSIVE", note)
         return
@@ -226,23 +253,17 @@ def check_state(cfg, res, name, env):
             lambda: state_trace(cfg, name + "_ds", cfg["exe_tip"], env, {"AudioQuality": "ds"}, mask),
             lambda: state_trace(cfg, name + "_hq", cfg["exe_tip"], env, {"AudioQuality": "hq"}, mask)]
     (rb, tb), (rd, td), (rh, th) = C.run_parallel(jobs, cfg["workers"])
-    if not tb:
-        res.add("state " + name, "INCONCLUSIVE", "the base exe printed no [scene-ramhash] lines")
+    if not tb or not td or not th:
+        res.add("state " + name, "INCONCLUSIVE", "an exe printed no [scene-ramhash] lines")
         return
-    same_d = tb == td
-    same_h = tb == th
-    detail = "%d frames hashed (%s); ds %s base, hq %s base" % (
-        len(tb), note, "==" if same_d else "!=", "==" if same_h else "!=")
-    if not (same_d and same_h):
-        for lab, t in (("ds", td), ("hq", th)):
-            for x, y in zip(tb, t):
-                if x != y:
-                    detail += "; first difference (%s) frame %d" % (lab, x[0])
-                    break
-            else:
-                if len(tb) != len(t):
-                    detail += "; %s has %d frames, base %d" % (lab, len(t), len(tb))
-    res.add("state " + name, "PASS" if same_d and same_h else "FAIL", detail)
+    ok = td == th
+    res.add("state %s ds == hq" % name, "PASS" if ok else "FAIL",
+            "%d frames, main RAM + arena hash; %s%s" % (len(td), note, "" if ok else "; " + _first_diff(td, th)))
+    arena = lambda t: [(f, a) for f, m, a in t]
+    for lab, t in (("ds", td), ("hq", th)):
+        same = arena(tb) == arena(t)
+        res.add("state %s base == %s" % (name, lab), "PASS" if same else "FAIL",
+                "%d frames, masked arena hash%s" % (len(tb), "" if same else "; " + _first_diff(arena(tb), arena(t))))
 
 
 # ---- the live checks -----------------------------------------------------------------
