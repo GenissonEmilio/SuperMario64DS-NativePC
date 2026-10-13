@@ -81,6 +81,8 @@ void LinkSilverStarAndStarMarker(char *a, char *b);
 void func_ov002_020e7e58(char *c);
 void func_ov002_020e9448(unsigned char *p);
 void _ZN10StarMarker7CollectEv(void *self);
+void func_ov002_020e930c(char *c);    // the ROM touch reader (PowerStar states 4 and 8)
+int _ZN5Event6GetBitEj(unsigned bit);
 short GetAngleToCamera(int i);
 void _ZN6Player11ChangeStateERNS_5StateE(void *self, void *state);
 void port_player_set_character(void *player, unsigned ch);   // hal/player_bridges.cpp: the door swap
@@ -178,6 +180,7 @@ struct Inst {
     unsigned short grab_cid;
     int deny_reason;             // the referee's reason for the last refused grab (F9-b log)
     unsigned hold_ms;
+    unsigned direct_n;           // VSHAND1: frames the ROM touch reader was called directly
     int fly;                     // overrule fly-off frames left
     int fly_from[3], fly_to[3];
     // the flight, as streamed (owner) or as received (the others)
@@ -1962,14 +1965,43 @@ void neutralise_foreign_star_touches() {
 void hold_step() {
     for (int k = 1; k < kMaxInst; ++k) {
         Inst &i = g.inst[k];
-        if (i.used && i.holding && !i.pending && i.result == 1 && now_ms() - i.hold_ms >= (unsigned)kHoldMs) {
-            char *c = star_by_uid(i.uid);           // my verdict, handed back, yet the ROM never took the star
+        if (i.used && i.holding && !i.pending && i.result == 1) {
+            // VSHAND1: my verdict is in and the touch was handed back, but a one-shot write is
+            // lost whenever the star is not reading touches that frame (its state, the +0x100
+            // post-bounce counter, the +0x4a2 bit) or the collision pass rewrites +0x130. So the
+            // touch is re-armed every frame until the ROM takes the star, and from the 4th frame
+            // on the ROM's own touch reader (func_ov002_020e930c) is called here, which is the same
+            // call PowerStar states 4 and 8 make, so the star-get starts whatever state it is in.
+            char *c = star_by_uid(i.uid);
             const int st = c ? s32r(c, 0x440) : -1;
-            if (st != 5 && st != 6 && st != 7 && st != 10) {
-                i.holding = false;
+            const unsigned el = now_ms() - i.hold_ms;
+            if (c && st != 5 && st != 6 && st != 7 && st != 10 && el < (unsigned)kHoldMs) {
+                u32r(c, 0x130) |= i.pend_flags;
+                u32r(c, 0x134) = i.pend_id;
+                if (el >= 60) {
+                    char *b = my_body();
+                    if (i.direct_n == 0)
+                        std::fprintf(stderr, "[vsarena-ref] hand-back of inst %d not taken after %u ms: star st=%d 43c=%d +100=%d "
+                                     "4a2=%04x body709=%d evt1e=%d; calling the ROM touch reader\n", k, el, st,
+                                     (int)s32r(c, 0x43c), (int)*(unsigned short *)(c + 0x100), (unsigned)*(unsigned short *)(c + 0x4a2),
+                                     b ? (int)*u8p(b, 0x709) : -1, _ZN5Event6GetBitEj(0x1e));
+                    ++i.direct_n;
+                    func_ov002_020e930c(c);
+                }
+            } else if (st != 5 && st != 6 && st != 7 && st != 10) {
+                i.holding = false;              // my verdict, handed back, yet the ROM never took the star
                 vs_arena_set_star_lock(false);
-                if (c) unlink_and_destroy_star(c);
+                char *b = my_body();
+                if (c) {
+                    std::fprintf(stderr, "[vsarena-ref] held touch of inst %d: end state st=%d 43c=%d +100=%d 4a2=%04x body709=%d evt1e=%d direct=%u\n",
+                                 k, st, (int)s32r(c, 0x43c), (int)*(unsigned short *)(c + 0x100), (unsigned)*(unsigned short *)(c + 0x4a2),
+                                 b ? (int)*u8p(b, 0x709) : -1, _ZN5Event6GetBitEj(0x1e), i.direct_n);
+                    unlink_and_destroy_star(c);
+                }
                 std::fprintf(stderr, "[vsarena-ref] held touch of inst %d: the ROM never started the star-get; star removed\n", k);
+            } else if (i.direct_n) {
+                std::fprintf(stderr, "[vsarena-ref] hand-back of inst %d taken: st=%d after %u ms (%u direct calls)\n", k, st, el, i.direct_n);
+                i.direct_n = 0;
             }
         }
         if (!i.used || !i.pending) continue;
@@ -1988,6 +2020,7 @@ void hold_step() {
             std::fprintf(stderr, "[vsarena-ref] held touch of inst %d is mine after %u ms: ROM star-get starts\n",
                          k, now_ms() - i.hold_ms);
             i.hold_ms = now_ms();                   // (the ROM has kHoldMs to take it from here)
+            i.direct_n = 0;
             continue;                               // holding stays: star5_arena sees result 1
         }
         i.holding = false;
