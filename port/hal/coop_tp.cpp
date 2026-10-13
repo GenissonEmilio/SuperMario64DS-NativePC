@@ -48,6 +48,8 @@ struct State {
     int last_tx_val;
     CoopTpStats st;
     unsigned tick;
+    long long tp_wall; int tp_level, tp_act;   // a TP in flight, for the landing log
+    int badge_log[kSeats];
     bool inited;
     int fake_seat; unsigned fake_tick; bool fake_done;
 };
@@ -163,6 +165,7 @@ void try_tp(int seat, unsigned now) {
     if (g.log)
         std::fprintf(stderr, "[cotp] TP to seat %d (%s): level %d act %d (from %d act %d) wall=%lld\n", seat, nm, p.level, p.act,
                      (int)data_0209f2f8, data_0209f220[0], wall_ms());
+    g.tp_wall = wall_ms(); g.tp_level = p.level; g.tp_act = p.act;
     LoadLevelNoReturn((unsigned)p.level, 0, (unsigned)p.act, 0);
     ++g.st.warps;
     std::snprintf(t, sizeof t, "Going to %s", nm);
@@ -173,8 +176,13 @@ void try_tp(int seat, unsigned now) {
 const char *row_extra(int seat) {
     if (!on_now() || seat == comms_hub_my_seat()) return "";
     HubPresence p;
-    if (!hub_presence_get(seat, &p) || !p.in_level()) return "";
-    return "TP";
+    const bool show = hub_presence_get(seat, &p) && p.in_level();
+    if (seat >= 0 && seat < kSeats && g.log && g.badge_log[seat] != (show ? 1 : 2)) {
+        g.badge_log[seat] = show ? 1 : 2;
+        std::fprintf(stderr, "[cotp] badge seat %d %s wall=%lld
+", seat, show ? "ON" : "off", wall_ms());
+    }
+    return show ? "TP" : "";
 }
 void on_click(int seat) {
     if (!on_now()) return;                     // toggle off: a click does nothing
@@ -215,10 +223,20 @@ void on_frame(unsigned now) {
     if (s >= 0) try_tp(s, now);
 }
 
+void on_established(int level, int act) {
+    if (!g.tp_wall) return;
+    if (g.log)
+        std::fprintf(stderr, "[cotp] landed: group established level %d act %d, %lld ms after the click (wanted level %d act %d) wall=%lld
+",
+                     level, act, wall_ms() - g.tp_wall, g.tp_level, g.tp_act, wall_ms());
+    g.tp_wall = 0;
+}
+
 struct Reg {
     Reg() {
         init();
         coop_on_frame(on_frame);
+        coop_on_group_established(on_established);
         coop_ctl_register(kSubToggle, kSubToggle, on_ctl, nullptr);
         player_list_set_row_extra(row_extra);
     }
