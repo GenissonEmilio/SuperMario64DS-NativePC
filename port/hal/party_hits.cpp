@@ -24,7 +24,7 @@ extern unsigned char data_0209f250;       // my player slot
 extern signed char data_0209f2f8;         // level (sublevel id)
 extern signed char data_02092120;         // area
 extern int data_0209f220[];               // [0] & 0xff = act
-extern unsigned char data_0209f2d8[];     // stage mode (1 = normal play)
+extern unsigned char data_0209f2d8[];     // game mode: 0 adventure / party / coop, 1 VS, 2 script (cutscene)
 extern unsigned char data_0209fc48[];     // (s32) cutscene
 extern unsigned char data_ov002_0211013c[];   // the neutral state the ROM returns to (vs_arena_eat.cpp)
 int _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *self, const void *pos, unsigned dmg_units, int speed,
@@ -114,7 +114,7 @@ bool me_busy(const char *me) {
     g_busy_why = "inmouth";
     if (*(void *const *)(me + kInMouth)) return true;
     g_busy_why = "level_state";
-    if (data_0209f2d8[0] != 1) return true;
+    if (data_0209f2d8[0] == 2) return true;
     g_busy_why = "cutscene";
     if (*(const int *)data_0209fc48 != 0) return true;
     g_busy_why = "";
@@ -238,7 +238,7 @@ void eat_tick(char *me) {
     const Place mp = my_place();
     in.eater_present = s.have_presence && s.in_level && s.presence_age_ms <= (unsigned)kPresenceMaxAgeMs &&
                        s.at.level == mp.level && s.at.area == mp.area && s.have_ghost && s.ghost_age_ms <= (unsigned)kGhostMaxAgeMs;
-    in.me_dead_or_menu = data_0209f2d8[0] != 1;
+    in.me_dead_or_menu = data_0209f2d8[0] == 2;
     const EatStep step = g.hold.tick(g.frame, in);
     if (step == kEatHolding) {
         int ox, oy, oz;
