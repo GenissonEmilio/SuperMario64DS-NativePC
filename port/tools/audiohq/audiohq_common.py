@@ -239,6 +239,12 @@ def launch(cfg, name, exe, env=None, settings=None, mods=None, subdir="rows", ti
     if quiet:
         e.update({"SM64DS_NO_FOCUS": "1", "SM64DS_VOLUME": "0", "SM64DS_MINIMIZED": "1",
                   "SM64DS_NO_DIALOG": "1", "SM64DS_INSTANCE": "ahq_" + name[:40]})
+        # The master volume (SM64DS_VOLUME) is applied inside sd_mix_render, BEFORE the
+        # SM64DS_WAV_DUMP tap (hal/sdat/mixer.cpp, "Host master volume"), so a dump taken at
+        # volume 0 is digital silence. A row with SM64DS_NO_AUDIO=1 opens no device, so full
+        # volume cannot reach a speaker: those rows capture at 100 (an explicit env wins below).
+        if str((env or {}).get("SM64DS_NO_AUDIO", "")) not in ("", "0"):
+            e["SM64DS_VOLUME"] = "100"
     if cfg.get("asset_root"):
         e["SM64DS_ASSET_ROOT"] = cfg["asset_root"]
     if faults_fatal:

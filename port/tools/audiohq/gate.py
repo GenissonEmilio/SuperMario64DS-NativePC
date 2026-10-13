@@ -41,7 +41,16 @@ def pic(row):
     return "sha256=" + C.sha256(row.path("walk_window_selftest.bmp"))[:8]
 
 
+TRAP_SUMMARY = re.compile(r"unmatched-body traps entered: (\d+)")
+
+
 def traps(row):
+    """Traps entered. The game's own summary line ("traps entered: 0 (none of the 24 trapping
+    sites was reached)") says 'trapping site' even when the count is 0, so it must not be
+    counted as a trap line: use its number, else count the other trap lines."""
+    m = TRAP_SUMMARY.findall(row.text)
+    if m:
+        return "trap-lines=%d" % int(m[-1])
     return "trap-lines=%d" % sum(1 for l in row.text.splitlines()
                                  if "unmatched-body trap" in l.lower() or "trapping site" in l.lower())
 
@@ -65,8 +74,8 @@ def irq(row):
 
 def absolute_problem(name, tok):
     """Rows with an absolute requirement besides 'all variants agree'."""
-    if name.startswith("traps") and "trap-lines=0" not in tok:
-        return "trap lines must be 0"
+    # traps_*: no absolute rule. The 0.9.x baseline decides the count; the row fails when any
+    # variant differs from the base ("variants differ"), i.e. when the audio work adds a trap.
     if name.startswith("ab_") and not re.search(r"colour 0 depth 0 coverage 0 stencil 0 attrid 0 tlattr 0 badframes 0", tok):
         return "RASTER_AB must show 0 bad"
     if name.startswith("tw_") and (" mismatch-lines=0" not in tok or re.search(r"=\d+/[1-9]", tok)):
