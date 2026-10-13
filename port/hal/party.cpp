@@ -207,8 +207,7 @@ void unstick(void *a, int seat) {
     *(int *)(mb + 0x2e0) += ux[k] * kUnstickUnits * 4096;
     *(int *)(mb + 0x2e8) += uz[k] * kUnstickUnits * 4096;
     ++g_st.unstick;
-    if (g_log > 0) std::fprintf(stderr, "[party] unstick: my seat %d steps %d units from the stack of seat %d
-", comms_hub_my_seat(), kUnstickUnits, seat);
+    if (g_log > 0) std::fprintf(stderr, "[party] unstick: my seat %d steps %d units from the stack of seat %d\n", comms_hub_my_seat(), kUnstickUnits, seat);
 }
 
 bool follow(void *a, int body, int seat) {
