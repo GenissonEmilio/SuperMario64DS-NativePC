@@ -148,6 +148,26 @@ int Minimap::Render()
                 }
             }
         } else {
+            /* SMALLS9: the other players of a party / coop / world room, as the
+               VS loop above draws them (the same small coloured icons). Hub
+               ghosts only: g_mm_ghost_pos is installed by hal/coop_minimap.cpp
+               and answers 1 for a ghost drawn this frame. NULL (solo) = nothing
+               here, byte-identical to the matched body. */
+            if (g_mm_ghost_pos) {
+                for (i = 0; i < kMinimapWidePlayers; i++) {
+                    int gp[3];
+                    if (i == idx || g_mm_ghost_pos(i, gp) != 1) continue;
+                    int y = g_mm_iconY[i];
+                    if ((u16)(y + 0x10) < 0xe0) {
+                        int x = g_mm_iconX[i];
+                        if ((u16)(x + 0x10) < 0x120 && data_ov002_02111148 == g_mm_mapID[i]) {
+                            _ZN3OAM9RenderSubEP7OamAttriiii(
+                                _ZN3OAM20MM_VS_PLAYER_ICONS_SE[mm_icon_slot(i) * 4 + (data_0209f394[i]->unk8 & 3)],
+                                x, y, -1, 2);
+                        }
+                    }
+                }
+            }
             u16 t = pl->unk6C8;
             if (t == 0 || ((t / 10) & 1) == 0) {
                 if (this->unk255 == 0) {

@@ -29,6 +29,7 @@ typedef int Fix12;
 int         g_mm_iconX[kMinimapWidePlayers];
 int         g_mm_iconY[kMinimapWidePlayers];
 signed char g_mm_mapID[kMinimapWidePlayers];
+int (*g_mm_ghost_pos)(int slot, int pos[3]) = 0;
 
 /* Luigi Infection minimap hide, defined in hal/luigi_infection.cpp; inert when
  * the mode is off. Called at the tail of Behavior, below. */
@@ -343,12 +344,27 @@ L738:
     for (i = 0; i < kMinimapWidePlayers; i++) {
         Obj *o = data_0209f394[i];
         if (o != 0) {
-        v2c = *(Vector3 *)(((int)o + 0x5c));
+        /* SMALLS9: in a party / coop / world room a remote player is a hub
+           ghost, parked far off between draws; read where the follower drew
+           it, and call it "on this map" while it is drawn (a ghost not drawn
+           is in another level: -1). Without the hook this is the ROM's code. */
+        int gpos[3] = {0, 0, 0};
+        const int gk = (g_mm_ghost_pos && i != data_0209f250 && data_0209f2d8 != 1)
+                           ? g_mm_ghost_pos(i, gpos) : 0;
+        if (gk == 1) {
+            v2c.x = gpos[0]; v2c.y = gpos[1]; v2c.z = gpos[2];
+        } else {
+            v2c = *(Vector3 *)(((int)o + 0x5c));
+        }
         _ZN7Minimap21FixTHIPaintingRoomPosER7Vector3(&v2c);
         _ZN7Minimap15GetPosOnMinimapER7Vector3S1_5Fix12IiEsS1_(&v2c, &self->v1f4, self->f1f0, self->ang, &v8);
         g_mm_iconX[i] = (v8.x + 0x800) >> 12;
         g_mm_iconY[i] = (v8.z + 0x800) >> 12;
-        if (i != data_0209f250)
+        if (gk == 1)
+            g_mm_mapID[i] = data_ov002_02111148;
+        else if (gk == 2)
+            g_mm_mapID[i] = -1;
+        else if (i != data_0209f250)
             g_mm_mapID[i] = (s8)GetMinimapID(o, -1);
         else
             g_mm_mapID[i] = (s8)GetMinimapID(o, data_ov002_02111148);

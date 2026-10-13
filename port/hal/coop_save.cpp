@@ -23,6 +23,7 @@
 #include "coop_save_wire.h"
 #include "comms_hub.h"
 #include "hub_presence.h"
+#include "star_tally.h"
 #include "ntr/backup.h"
 
 #include <windows.h>
@@ -41,6 +42,7 @@ void CollectStar(int course, int star);
 }
 
 namespace port {
+static_assert(kStarTallySub == kCoopSaveSubTally, "tally sub-type");
 namespace {
 
 const uint8_t kCoopTag[8] = { 'd', 's', ' ', 'c', 'o', 'o', 'p', '!' };
@@ -446,6 +448,11 @@ bool coop_save_handle(int seat, const unsigned char *d, int len) {
         }
         return true;
     }
+    if (sub == kStarTallySub) {          // SMALLS9: the per-player star tally (hal/star_tally.h)
+        if (!star_tally_on_payload(host(), seat, pl, plen))
+            return drop(&g_st.dropped_bad, seat, "malformed TALLY");
+        return true;
+    }
     return drop(&g_st.dropped_subtype, seat, "unknown sub-type in 0x20-0x2f");
 }
 
@@ -556,6 +563,11 @@ extern "C" void port_coop_save_frame(void) {
         host_record(rec, &blank);
         send_rec(true, blank, rec);
         g_answer = false;
+    }
+    if (live && others) {                // SMALLS9: my star tally to the host / the host table to all
+        uint8_t tp[kStarTallyPayloadMax];
+        const int tn = star_tally_take_outgoing(host(), tp);
+        if (tn > 0) send_ctl(kStarTallySub, tp, tn);
     }
     if (!host() && live && !g_host_have && now - g_last_req_ms >= 250) {
         uint8_t z[kCoopReqPayload] = {0, 0, 0, 0};
