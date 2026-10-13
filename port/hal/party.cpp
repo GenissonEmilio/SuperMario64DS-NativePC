@@ -68,8 +68,7 @@ void read_env() {
         }
     }
     if (const char *e = std::getenv("SM64DS_ROOM_COLLISION")) g_off = std::atoi(e) == 0 && *e;
-    std::fprintf(stderr, "[party] room collision %s
-", g_off ? "OFF (ghosts)" : "ON (solid bodies)");
+    std::fprintf(stderr, "[party] room collision %s\n", g_off ? "OFF (ghosts)" : "ON (solid bodies)");
     if (const char *e = std::getenv("SM64DS_PARTY_GATE")) g_gate_on = std::atoi(e) != 0;
     if (const char *e = std::getenv("SM64DS_PARTY_LOG")) g_log = std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PARTY_SEP")) g_sep = std::atoi(e);
