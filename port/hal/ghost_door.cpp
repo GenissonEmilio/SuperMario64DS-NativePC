@@ -27,6 +27,8 @@ void Vec3_RotateYAndTranslate(void *out, void *base, short angle, void *v);
 // TEST ONLY (SM64DS_GHOST_DOOR_UNSAFE): the door's own touch, below
 extern int func_ov100_021451c4(char *door, void *node, char *player);
 extern int data_ov100_021488f4[];
+extern char data_020a0ebc[];          // the matrix St_OpenClose_Main passes (opaque here)
+extern int data_ov100_02148948[3];    // Vector3 x,y,z; St_OpenClose_Main reads .y/.z
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;
 extern signed char data_02092120;     // the area shown (-1 none)
@@ -118,10 +120,12 @@ unsigned char gate_frame(const void *g) {
 }
 
 // The leaf offset Render uses for a slide of `slide` (Fix12, >= 0): the same
-// rotation St_OpenClose_Main applies to (-slide, 0, 0).
+// rotation St_OpenClose_Main applies to {mHorzSpeed, data_ov100_02148948.y,
+// data_ov100_02148948.z} (d_a_star_gate.cpp), with the ROM's own matrix.
 void gate_offset(const void *g, int slide, int out[3]) {
-    int zero[3] = {0, 0, 0}, v[3] = {-slide, 0, 0};
-    Vec3_RotateYAndTranslate(out, zero, *(const short *)((const char *)g + kGateAngle), v);
+    int v[3] = {-slide, data_ov100_02148948[1], data_ov100_02148948[2]};
+    Vec3_RotateYAndTranslate(out, data_020a0ebc,
+                             *(const short *)((const char *)g + kGateAngle), v);
 }
 
 bool door_alive(const void *d) {
@@ -300,6 +304,33 @@ void give_back(Drive &d) {
     }
     d.yielded = false;
 }
+/* [gwdoors] pick: every door a friend opens. The friend's position, the door
+   the watcher picked (actor id at +0x0c, param / variant at +8, position) and
+   every other door-like actor in range, so a key-door variant that the pick
+   missed (or a neighbouring plain door that it took instead) shows in one row. */
+void probe_pick(int seat, unsigned char kind, unsigned char frame,
+                const int pos[3], const void *picked) {
+    std::fprintf(stderr,
+                 "[gwdoors] pick t=%u seat=%d kind=%u frame=%u friend=%d,%d,%d "
+                 "picked=%p class=%u variant=%u pos=%d,%d,%d\n",
+                 comms_hub_now_ms(), seat, (unsigned)kind, (unsigned)frame,
+                 pos[0] >> 12, pos[1] >> 12, pos[2] >> 12, picked,
+                 (unsigned)*(const unsigned short *)((const char *)picked + 0x0c),
+                 (unsigned)rd(picked, 8),
+                 rd(picked, 0x5c) >> 12, rd(picked, 0x60) >> 12, rd(picked, 0x64) >> 12);
+    for (void *a = _ZN8dActor_c4NextEPKS_(0); a; a = _ZN8dActor_c4NextEPKS_(a)) {
+        if (!is_door(a) && !is_gate(a)) continue;
+        const int dx = rd(a, 0x5c) - pos[0], dz = rd(a, 0x64) - pos[2];
+        if (dx > 2 * kSearchR || dx < -2 * kSearchR || dz > 2 * kSearchR || dz < -2 * kSearchR)
+            continue;
+        std::fprintf(stderr,
+                     "[gwdoors] pick   %s %p class=%u variant=%u pos=%d,%d,%d "
+                     "d=%d,%d\n", a == picked ? "PICKED" : "other ", a,
+                     (unsigned)*(const unsigned short *)((const char *)a + 0x0c),
+                     (unsigned)rd(a, 8), rd(a, 0x5c) >> 12, rd(a, 0x60) >> 12,
+                     rd(a, 0x64) >> 12, dx >> 12, dz >> 12);
+    }
+}
 }  // namespace
 
 void watcher_release(int seat) {
@@ -338,6 +369,7 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
             d.orig[k] = rd(d.door[k], kCursor);
             d.written[k] = d.orig[k];
         }
+        if (std::getenv("SM64DS_GHOST_DOOR_PROBE")) probe_pick(seat, kind, frame, pos, d.door[0]);
         /* THE MUST-FAIL CONTROL for the proof rows, inert unset: what the door
            visual would be if it ran the door's REAL touch (the state logic the
            header says it must not): the watcher's OWN body is taken into the
