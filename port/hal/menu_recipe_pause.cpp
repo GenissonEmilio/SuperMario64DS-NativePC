@@ -214,7 +214,6 @@ void slide_tick(int allowed)
     else if (!g_slide.target && g_slide.ticks > 0) --g_slide.ticks;
 }
 
-int g_slide_pend;                       /* a bumper / tab press that came in mid-slide, applied once the slide lands (+1 / -1 / 0) */
 int g_wide_now;                         /* the picture of this tick is wide (set by pause_facts) */
 int g_pic_w = 1024, g_pic_h = 768;      /* the picture of this tick */
 int g_tab_hover = -1, g_tab_press = -1; /* the 4:3 edge tabs under / held by the pointer (set by the input hook) */
@@ -240,6 +239,13 @@ void park_idle_stylus(void)
 }
 
 int is_main_page(int v) { return v == V_CASTLE || v == V_COURSE; }
+/* A SLIDE IN FLIGHT EATS EVERY INPUT: from the press that starts it until it lands on the planks or the tracker, nothing is queued and nothing
+   is delivered late (bumpers, Q / E, the edge tabs, the planks' A / Enter / Space / Up / Down / Start / B and clicks). 4:3 main pages only. */
+int slide_busy(void)
+{
+    if (g_wide_now || !is_main_page(g_last_variant)) return 0;
+    return g_slide.target ? g_slide.ticks < kSlideTicks : g_slide.ticks > 0;
+}
 int tracker_view(void) { return !g_wide_now && is_main_page(g_last_variant) && g_slide.ticks > 0 && g_slide.target; }
 
 /* ---- the ROM's strings ------------------------------------------------------------------------------------------------ */
@@ -391,7 +397,7 @@ void publish_embed(const PauseFacts *f, int wide)
     e.on = on;
     e.wide = wide;
     e.dx = (!wide && on) ? pause_planks_dx(pause_geo(g_pic_w, g_pic_h, f, 3), f) : 0;
-    e.input = wide || f->slide_t1000 < 500;
+    e.input = wide || (f->slide_t1000 < 500 && !slide_busy());
     settings_page_set_embed(&e);
     g_embed_set = on;
 }
@@ -679,7 +685,7 @@ int pause_up(int scene_id)
     if (v != g_last_variant) {
         /* settings must reach the file on every way out of the pause (REVSETLIVE1 G1: the queue waits half a second and has no flush on quit) */
         if (!v || v == V_STATUS || v == V_NOSAVE) sl_flush();
-        g_slide.target = 0; g_slide.ticks = 0; g_slide_pend = 0;
+        g_slide.target = 0; g_slide.ticks = 0;
     }
     g_last_variant = v;
     if (!v) {
@@ -785,11 +791,8 @@ extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int m
        arriving; from the tracker page it is the tracker leaving the same way and the planks arriving from the other side, so a second RB keeps
        going the way the first one went. The slide is one number (slide_t1000, 0 planks .. 1000 tracker) and dir is the side the PLANKS leave to, so
        tracker -> planks with the tracker leaving to side act is the planks arriving from side -act: dir = -act, run back toward 0. A press while a
-       slide is still running waits for it to land (one press is remembered). */
-    const int settled = g_slide.target ? g_slide.ticks >= kSlideTicks : g_slide.ticks == 0;
-    if (act && !settled) { g_slide_pend = act; act = 0; }
-    else if (!act && settled && g_slide_pend) { act = g_slide_pend; g_slide_pend = 0; }
-    else if (act) g_slide_pend = 0;
+       slide is still running is dropped (slide_busy), not remembered. */
+    if (act && slide_busy()) act = 0;
     if (act) {
         if (g_slide.target) { g_slide.dir = -act; g_slide.target = 0; }
         else { g_slide.dir = act; g_slide.target = 1; }
@@ -802,6 +805,7 @@ extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int m
 extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back)
 {
     if (g_last_variant) park_idle_stylus();
+    if (slide_busy()) { *pressed = 0; return; }       /* a slide in flight eats the pad */
     if (!tracker_view() || settings_page_open()) return;
     const uint16_t confirm = (uint16_t)(MENU_PAD_CONFIRM | MENU_PAD_START | 0x0001);
     if (*pressed & MENU_PAD_START) {       /* Start resumes at once (the ROM's Continue plate), the tracker view is left behind */
@@ -844,3 +848,5 @@ extern "C" void menu_pause_rom_pad(uint16_t *pressed)
 }
 
 extern "C" int menu_pause_active(void) { return g_last_variant != 0; }
+/* 1 while a 4:3 pause slide is in flight: the host stylus / click and the Backspace back key are eaten by their seam (hal/sub_screen.cpp) */
+extern "C" int menu_pause_slide_busy(void) { return slide_busy(); }

@@ -129,6 +129,7 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed);
 extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, unsigned char sy);
 extern "C" int settings_page_swallow_back(void);
 extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);
+extern "C" int menu_pause_slide_busy(void);    /* PAUSE43FIX2: a 4:3 pause slide in flight eats the click and the back key */
 extern "C" void menu_pause_rom_pad(uint16_t *pressed);   /* hal/menu_recipe_pause.cpp: OneScreenMenus off, the ROM's own pause */   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
@@ -2553,6 +2554,7 @@ void poll_touch(void)
     /* SETMENU1: the in-game settings page takes the stylus (the press on the title's wrench / the pause menu's Options plate that opens
        it, and every touch while it is up): the ROM sees no press. Single player only, as the pad half is. */
     if (!port::comms_transport() && settings_page_hook_touch(down, sx, sy)) down = 0;
+    if (down && menu_pause_slide_busy()) down = 0;     /* PAUSE43FIX2: a click while a 4:3 pause slide runs is eaten */
 
     /* ASSET6: a stylus / click / queued press going into the ROM gives the title attract its hidden save words back first */
     if (down) port_title_press_seen();
@@ -3732,6 +3734,7 @@ extern "C" void hal_menu_pad_seam(void)
         back = d && !back_was;
         back_was = d;
         if (back && settings_page_swallow_back()) back = 0;   /* SETPAGEFIX1: the Backspace that is the page's Back is not the ROM's */
+        if (back && menu_pause_slide_busy()) back = 0;        /* PAUSE43FIX2: dropped, not queued */
     }
     menu_bigmap_pad_seam();   /* MAP1: Select shows / hides the big map; the ROM never sees that Select (OneScreenMenus on) */
     if (!hal_menu_live()) {
