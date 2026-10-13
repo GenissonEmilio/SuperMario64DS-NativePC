@@ -316,6 +316,7 @@ void star_title(int course, int star, char *out, int cap) {
 
 // "Name got <star name> (<course>)" / "Name got the key (<course>)"; the names are the ROM's. Fallbacks keep the sentence whole.
 void describe(const char *name, int kind, int course, int star, char *out, size_t cap, bool full = true) {
+    // The chat font has no brackets, so the course goes after "in" / "from".
     char c[64], st[48];
     course_title(course, c, sizeof c);
     if (!full) {        // the popup: one short line (the chat line has the course)
@@ -328,13 +329,14 @@ void describe(const char *name, int kind, int course, int star, char *out, size_
         return;
     }
     if (kind == kKindKey) {
-        if (c[0]) std::snprintf(out, cap, "%s got the key (%s)", name, c); else std::snprintf(out, cap, "%s got the key", name);
+        const char *prep = (course >= 15 && course <= 17) ? "from" : "in";      // courses 15 to 17 are the three Bowser fights
+        if (c[0]) std::snprintf(out, cap, "%s got the key %s %s", name, prep, c); else std::snprintf(out, cap, "%s got the key", name);
         return;
     }
     star_title(course, star, st, sizeof st);
-    if (st[0] && c[0]) std::snprintf(out, cap, "%s got %s (%s)", name, st, c);
+    if (st[0] && c[0]) std::snprintf(out, cap, "%s got %s in %s", name, st, c);
     else if (st[0]) std::snprintf(out, cap, "%s got %s", name, st);
-    else if (c[0]) std::snprintf(out, cap, "%s got a star (%s)", name, c);
+    else if (c[0]) std::snprintf(out, cap, "%s got a star in %s", name, c);
     else std::snprintf(out, cap, "%s got a star", name);
 }
 
