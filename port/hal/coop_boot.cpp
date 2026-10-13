@@ -38,7 +38,14 @@
 
 extern "C" {
 extern unsigned char data_0209caa0[];
+extern void *data_0209f394[];
+extern unsigned char data_0209f250;
+extern unsigned char data_0209f21c;
+extern int data_0209f2f8;
 int port_adventure_hub_opening_held(void);
+int port_adventure_ghost_drawpos(int slot, int out[3]);
+short Vec3_HorzAngle(const void *a, const void *b);
+void *_ZN8dActor_c4NextEPKS_(const void *prev);
 }
 
 namespace port {
@@ -53,6 +60,7 @@ struct Ctl {
     bool host = false;
     bool released = false;
     bool at_first_frame = false;   // this console reached the file's first level frame
+    bool late_at_first = false;    // ...and the GO had already been given then (COOPSPAWN9: a late joiner)
     bool holding = false;
     bool exiting = false;
     // host
@@ -597,12 +605,143 @@ extern "C" int port_coop_boot_scene_frame(void) {
     return 0;
 }
 
+
+namespace port {
+namespace {
+// ---------------------------------------------------------------------------
+// COOPSPAWN9 (run mp1, items 3 and 4 of the 10-13 field report): WHERE EVERYONE STANDS AFTER THE OPENING.
+//
+// The opening is a one-player cutscene on every console. Its hand-over (LakituBro wakes the player, talks, walks him on)
+// asks the ROM's ClosestPlayer for the body it works with, and coop replaces that answer with a group-wide pick: with
+// four bodies seated the pick was not always the local one, so some consoles walked their body west to the hedge maze
+// while the others stayed on the start (measured: out COOPSPAWN9 base_open vs base_tgtoff). So the replacement stays
+// OFF from the opening's start until the opening-seen bit (port_coop_boot_opening_hold, read by coop_target.cpp): every
+// console runs the hand-over on its own body exactly as one player does, and every body ends on the same spot.
+//
+// Then, wire-free and deterministic like port_vs_extra_start (hal/level_boot.cpp, the 96-unit ring; its table is copied
+// here because that function is file-local), each console moves ITS OWN body to its place on that ring around where its
+// own body stands at the bit: hub seat 0 stays on the spot, seats 1..3 go on the inner ring. The ROM's script is the
+// same on every console, so the centres agree to within the walk's timing.
+//
+// A LATE JOINER (the GO was already given when it reached the file's first frame) has no opening: it waits for the host's
+// body to show in its own level (hub presence + the follower's drawn pose, at most 4 s) and lands on the same ring around
+// it. No host in the level, or no pose: it stays where the level put it.
+// ---------------------------------------------------------------------------
+struct SpawnState {
+    bool inited = false;
+    bool bit_prev = false;
+    bool late = false;
+    bool late_done = false;
+    ULONGLONG late_since = 0;
+    bool log = false;
+    unsigned frame = 0;
+    unsigned placed = 0;
+    unsigned lak_every = 0;
+} S9;
+
+bool seen_bit() { return (data_0209caa0[8] & 0x80) != 0; }
+
+char *spawn_body() {
+    const int me = (int)data_0209f250;
+    return (me >= 0 && me < 16 && me < (int)data_0209f21c) ? (char *)data_0209f394[me] : nullptr;
+}
+
+int rd_i32(const char *a, int off) { int v; std::memcpy(&v, a + off, 4); return v; }
+void wr_i32(char *a, int off, int v) { std::memcpy(a + off, &v, 4); }
+
+// the ring of port_vs_extra_start for slots 1..3 (radius 96, bearings 0, 72, 144 degrees), 20.12 offsets
+void ring_offset(int slot, int out[2]) {
+    static const short kCos[5] = {4096, 1266, -3313, -3313, 1266};
+    static const short kSin[5] = {0, 3895, 2408, -2408, -3895};
+    out[0] = out[1] = 0;
+    if (slot < 1 || slot > 5) return;
+    out[0] = 96 * (int)kCos[slot - 1];
+    out[1] = 96 * (int)kSin[slot - 1];
+}
+
+// Move my own body to cx,cz (+ the ring for my seat), keeping its height; 20.12.
+void spawn_move(const char *why, int cx, int cy, int cz) {
+    char *b = spawn_body();
+    const int seat = my_seat();
+    if (!b || seat < 0 || seat > 3) return;
+    static const bool place_off = std::getenv("SM64DS_COOPSPAWN_PLACE") && std::getenv("SM64DS_COOPSPAWN_PLACE")[0] == '0';   // proof control
+    if (place_off) { LOG("SPAWN %s: placement switched off (SM64DS_COOPSPAWN_PLACE=0)", why); return; }
+    int off[2];
+    ring_offset(seat, off);
+    const int tx = cx + off[0], tz = cz + off[1];
+    const int ox = rd_i32(b, 0x5c), oy = rd_i32(b, 0x60), oz = rd_i32(b, 0x64);
+    wr_i32(b, 0x5c, tx);
+    wr_i32(b, 0x60, cy);
+    wr_i32(b, 0x64, tz);
+    wr_i32(b, 0x68, tx);       // last frame's position too, so no sweep from the old spot
+    wr_i32(b, 0x6c, cy);
+    wr_i32(b, 0x70, tz);
+    wr_i32(b, 0x98, 0);        // no horizontal speed carried over
+    ++S9.placed;
+    LOG("SPAWN %s: seat %d placed (%d,%d,%d) -> (%d,%d,%d) around centre (%d,%d,%d)", why, seat, ox >> 12, oy >> 12, oz >> 12,
+        tx >> 12, cy >> 12, tz >> 12, cx >> 12, cy >> 12, cz >> 12);
+}
+
+// item 4 evidence: where LakituBro stands and which way he faces compared with the way to my body (SM64DS_COOPSPAWN_LOG)
+void spawn_log_lakitu(const char *b) {
+    for (const char *a = (const char *)_ZN8dActor_c4NextEPKS_(nullptr); a; a = (const char *)_ZN8dActor_c4NextEPKS_(a)) {
+        unsigned short cls; std::memcpy(&cls, a + 0x0c, 2);
+        if (cls != 235) continue;
+        short yaw; std::memcpy(&yaw, a + 0x8e, 2);
+        const short to_me = Vec3_HorzAngle(a + 0x5c, b + 0x5c);
+        const int d = (int)(short)(yaw - to_me);
+        LOG("SPAWN lakitu f=%u pos=(%d,%d,%d) yaw=%d toMe=%d diff=%d me=(%d,%d,%d)", S9.frame, rd_i32(a, 0x5c) >> 12,
+            rd_i32(a, 0x60) >> 12, rd_i32(a, 0x64) >> 12, (int)yaw, (int)to_me, d < 0 ? -d : d, rd_i32(b, 0x5c) >> 12,
+            rd_i32(b, 0x60) >> 12, rd_i32(b, 0x64) >> 12);
+        return;
+    }
+}
+
+void spawn_frame() {
+    if (!S9.inited) {
+        S9.inited = true;
+        S9.log = env_on("SM64DS_COOPSPAWN_LOG");
+        S9.bit_prev = seen_bit();
+        S9.late = !C.host && C.late_at_first && S9.bit_prev && !C.intro_seen;
+        S9.late_since = tick();
+        if (S9.late) LOG("SPAWN late joiner: waits for the host's body to place itself on the ring");
+    }
+    ++S9.frame;
+    char *b = spawn_body();
+    if (!b) return;
+    const bool bit = seen_bit();
+    if (S9.log && C.intro_seen && !bit && (S9.frame % 20) == 0) spawn_log_lakitu(b);
+    if (C.intro_seen && bit && !S9.bit_prev && S9.placed == 0) {
+        // the opening is over on this console: my body's place on the ring around where it stands
+        LOG("SPAWN opening seen bit set on this console");
+        spawn_move("after the opening", rd_i32(b, 0x5c), rd_i32(b, 0x60), rd_i32(b, 0x64));
+    }
+    S9.bit_prev = bit;
+    if (S9.late && !S9.late_done) {
+        bool give_up = tick() - S9.late_since > 4000ULL;
+        HubPresence p;
+        int dp[3];
+        if (C.host_seat >= 0 && hub_presence_get(C.host_seat, &p) && p.in_level() && p.level == (int)data_0209f2f8 &&
+            port_adventure_ghost_drawpos(C.host_seat, dp)) {
+            S9.late_done = true;
+            spawn_move("late joiner", dp[0], dp[1], dp[2]);
+        } else if (give_up) {
+            S9.late_done = true;
+            LOG("SPAWN late joiner: no host body in this level within 4 s, staying where the level put me");
+        }
+    }
+}
+
+}  // namespace
+}  // namespace port
+
 // The level loop's hold. 1 = skip this frame's game tick.
 extern "C" int port_coop_boot_frame(void) {
     using namespace port;
     if (!C.on) return 0;
     if (!C.at_first_frame) {
         C.at_first_frame = true;
+        C.late_at_first = C.released;
         C.host_ready_ms = tick();
         C.last_ready = 0;
         LOG("%s at the file's first frame: %s", C.host ? "host" : "guest",
@@ -685,5 +824,17 @@ extern "C" int port_coop_boot_frame(void) {
         if (ticked == 1 || ticked == 120 || ticked == 600)
             LOG("ticked frame %d since the release", ticked);
     }
+    if (!hold) spawn_frame();
     return hold ? 1 : 0;
+}
+
+// COOPSPAWN9: 1 while this console is in a new file's opening (its start until the opening-seen bit), when
+// hal/coop_target.cpp leaves the ROM's own ClosestPlayer in place so the hand-over runs on the local body.
+extern "C" int port_coop_boot_opening_hold(void) {
+    using namespace port;
+    if (!C.on) return 0;
+    static const bool off = std::getenv("SM64DS_COOPSPAWN_HOLD") && std::getenv("SM64DS_COOPSPAWN_HOLD")[0] == '0';   // proof control
+    if (off) return 0;
+    if (port_adventure_hub_opening_held() != 0) return 1;
+    return (C.intro_seen && !(data_0209caa0[8] & 0x80)) ? 1 : 0;
 }

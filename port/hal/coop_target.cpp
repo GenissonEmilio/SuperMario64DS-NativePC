@@ -35,6 +35,7 @@ int Vec3_HorzDist(const void *a, const void *b);
 short Vec3_HorzAngle(const void *a, const void *b);
 int _ZN8dActor_c14GetSubtractionEss(void *self, short a, short b);
 void func_ov079_02123f34(char *self);
+int port_coop_boot_opening_hold(void);
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 int port_adventure_ghost_seat(int slot);
 int port_adventure_ghost_drawpos(int slot, int out[3]);
@@ -263,7 +264,9 @@ void *cp_impl(void *self, bool nonvanish) {
     if (!data_0209b458) {
         data_0208e380 = 0x7fffffff;
         data_0208e37c = (int)0x80000000;
-        const bool lv = live();
+        // COOPSPAWN9: from a new file's opening start until its seen bit the ROM's own pick runs (the hand-over and the cast
+        // work on the local body, as for one player); coop_boot.cpp owns the flag.
+        const bool lv = live() && !port_coop_boot_opening_hold();
         void *want = nullptr; int wseat = -1;
         if (lv) {
             place_friends();
