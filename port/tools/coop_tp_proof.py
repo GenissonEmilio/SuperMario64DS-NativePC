@@ -34,9 +34,11 @@ def tp_env(extra=None):
     return e
 
 
-def run(row, exe, friend_warp, friend_extra, me_extra, me_warp=None, kind="coop", frames=FRAMES, third=None):
+def run(row, exe, friend_warp, friend_extra, me_extra, me_warp=None, kind="coop", frames=FRAMES, third=None, swap=False):
     sp = [dict(warp=friend_warp, extra=tp_env(friend_extra), frames=frames, exe=exe, kind=kind),
           dict(warp=me_warp, extra=tp_env(me_extra), frames=frames, exe=exe, kind=kind, delay=0.5)]
+    if swap:      # the friend is the later console (seat 1): its scripted pad is not focus-gated
+        sp.reverse()
     if third:
         sp.append(dict(warp=third.get("warp"), extra=tp_env(third.get("extra")), frames=frames, exe=exe, kind=kind))
     cons, st = CR.launch(row, sp)
@@ -156,18 +158,71 @@ def row_refuse(which):
     row = "refuse_" + which
     fx, mx = {}, {"SM64DS_COOP_TP_FAKE": "0@%d" % TPTICK}
     if which == "menu":
-        fx["SM64DS_HOST_PAD"] = "10@%d" % (TPTICK - 200)
+        fx["SM64DS_HOST_PAD"] = os.environ.get("CTP_FPAD", "10@%d" % (TPTICK - 200))
+        mx["SM64DS_COOP_TP_FAKE"] = "1@%d" % TPTICK
     else:
         mx["SM64DS_HOST_PAD"] = "10@%d" % (TPTICK - 100)
-    cons = run(row, EXE, "%d@300" % BOB, fx, mx)
+    cons = run(row, EXE, None if which == "menu" else "%d@300" % BOB, fx, mx, swap=(which == "menu"))
     CR.common(row, cons)
-    ta = cons[1].text()
+    ta = cons[0 if which == "menu" else 1].text()
     say = G.say
     info("%s A cotp: %s" % (row, lines(ta, r"\[cotp\]")[:8]))
     refused = lines(ta, r"\[cotp\] say: Can't TP")
     say(bool(refused), "%s: refused with a chat line (%s)" % (row, refused[:1]))
     say(not lines(ta, r"\[cotp\] TP to seat"), "%s: no warp was started and nothing queued" % row)
     say(not [m for m in CR.bits_of(ta) if m.group(2) == str(BOB)], "%s: A is still out of BOB" % row)
+
+
+def row_change():
+    """the click lands right after the friend arrived in BOB (presence not settled for 1.5 s): refused."""
+    row = "refuse_change"
+    cons = run(row, EXE, "%d@300" % BOB, {}, {"SM64DS_COOP_TP_FAKE": "0@1100"}, frames=1700)
+    CR.common(row, cons)
+    ta = cons[1].text()
+    info("%s A cotp: %s" % (row, lines(ta, r"\[cotp\]")[:8]))
+    say(bool(lines(ta, r"say: Can't TP: .* is changing level")), "%s: refused, the friend is changing level" % row)
+    say(not lines(ta, r"\[cotp\] TP to seat") and not [m for m in CR.bits_of(ta) if m.group(2) == str(BOB)], "%s: no warp started, nothing queued" % row)
+
+
+def row_mouse(arm="new"):
+    """THE REAL CLICK: a WM_LBUTTONDOWN posted to console A's window on the friend's row (framebuffer pixel), no proof knob."""
+    import time
+    import r3gw as R
+    import plist_proof as PP
+    row = "mouse" + ("_base" if arm == "base" else "")
+    exe = BASE if arm == "base" else EXE
+    CR.CUR_ROW[0] = row
+    rp, rf, port, rlog = R.start_relay(row)
+    rl = ("127.0.0.1:%d" % port, "CT%d" % (G.PID % 1000))
+    cons = []
+    for i, (warp, extra) in enumerate([("%d@300" % BOB, tp_env({"SM64DS_COOP_KILL": KILLS})), (None, tp_env({"SM64DS_PLIST_LOG": "1"}))]):
+        cons.append(G.Con(row, "p%d" % i, CR.env(i, rl, warp, extra), 3200, exe=exe))
+        time.sleep(0.5)
+    a = cons[1]
+    t_seen, t_post = None, None
+    dl = time.time() + 1700
+    while any(c.p.poll() is None for c in cons) and time.time() < dl:
+        if t_seen is None and re.search(r"seat=0 name=\S+ char=\d code=BOB S1", a.text()):
+            t_seen = time.time()
+        if t_seen and t_post is None and time.time() - t_seen >= 4.0:
+            t_post = time.time()
+            fx, fy = int(os.environ.get("CTP_ROW_X", "40")), int(os.environ.get("CTP_ROW_Y", "76"))
+            info("%s: posted a real left click to A at framebuffer %d,%d -> %s" % (row, fx, fy, PP.post_click(a.p.pid, fx, fy, 512, 384)))
+        time.sleep(0.5)
+    G.finish(cons, 90)
+    R.stop_relay(rp, rf)
+    CR.common(row, cons)
+    ta, tb = a.text(), cons[0].text()
+    info("%s A: %s" % (row, lines(ta, r"\[plist\] t=\d+ click")[:3]))
+    if arm == "base":
+        say(bool(t_post) and not lines(ta, r"\[cotp\]") and not [m for m in CR.bits_of(ta) if m.group(2) == str(BOB)],
+            "%s: CONTROL base exe: the real click was posted, nothing happens (no [cotp], A never enters BOB)" % row)
+        return
+    say(bool(t_post), "%s: the real click was posted once B showed BOB S1 in the list" % row)
+    say(bool(lines(ta, r"CONSUMED")), "%s: the list consumed the click (%s)" % (row, lines(ta, r"CONSUMED")[:1]))
+    landing(row, ta, tb, BOB, 1)
+    import r3gw as R2
+    R2.bmp_png(a, "%s_A_end.png" % row)
 
 
 def row_same():
@@ -200,6 +255,8 @@ if __name__ == "__main__":
         elif name == "refuse_menu": row_refuse("menu")
         elif name == "refuse_me": row_refuse("me")
         elif name == "refuse_same": row_same()
+        elif name == "mouse": row_mouse(arm)
+        elif name == "refuse_change": row_change()
         elif name == "alone": row_alone()
         else: print("unknown row", name)
     print("\n".join(G.RES))
