@@ -32,6 +32,7 @@
 
 #include <windows.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -611,17 +612,21 @@ namespace {
 // ---------------------------------------------------------------------------
 // COOPSPAWN9 (run mp1, items 3 and 4 of the 10-13 field report): WHERE EVERYONE STANDS AFTER THE OPENING.
 //
-// The opening is a one-player cutscene on every console. Its hand-over (LakituBro wakes the player, talks, walks him on)
-// asks the ROM's ClosestPlayer for the body it works with, and coop replaces that answer with a group-wide pick: with
-// four bodies seated the pick was not always the local one, so some consoles walked their body west to the hedge maze
-// while the others stayed on the start (measured: out COOPSPAWN9 base_open vs base_tgtoff). So the replacement stays
-// OFF from the opening's start until the opening-seen bit (port_coop_boot_opening_hold, read by coop_target.cpp): every
-// console runs the hand-over on its own body exactly as one player does, and every body ends on the same spot.
+// The opening is a one-player cutscene on every console. Its hand-over (LakituBro wakes the player, talks, and after the
+// opening-seen bit the ROM walks the body on to the castle path) asks the ROM's ClosestPlayer for the body it works with,
+// and coop replaces that answer with a group-wide pick: with four bodies seated some other actor of the hand-over was
+// not always given the local one, so some consoles walked their body WEST to the hedge maze while the others walked on
+// to the castle path (measured: out COOPSPAWN9 base_open vs base_tgtoff; the LakituBro talk itself already answered the
+// local body, [cotgt] use ... cls=235). So the replacement stays OFF from the opening's start until its seen bit
+// (port_coop_boot_opening_hold, read by coop_target.cpp): every console runs the hand-over on its own body exactly as one
+// player does.
 //
-// Then, wire-free and deterministic like port_vs_extra_start (hal/level_boot.cpp, the 96-unit ring; its table is copied
-// here because that function is file-local), each console moves ITS OWN body to its place on that ring around where its
-// own body stands at the bit: hub seat 0 stays on the spot, seats 1..3 go on the inner ring. The ROM's script is the
-// same on every console, so the centres agree to within the walk's timing.
+// The ROM then walks every body on its own to the same stretch of the castle path, ending a few hundred units apart (the
+// walk is physics and timing). When MY body has walked and stopped, the host stays where it stopped and every guest
+// moves ITS OWN body to its place on the 96-unit ring (the table of port_vs_extra_start in hal/level_boot.cpp, copied
+// here because that function is file-local) around the host's body as the follower draws it: ring slot = my rank among
+// the guests by hub seat. Nothing goes on the wire. A guest waits for the host to stop near it (at most about 30 s, then it
+// takes the ring around its own stop), and gives up at once if its player takes control and walks off first.
 //
 // A LATE JOINER (the GO was already given when it reached the file's first frame) has no opening: it waits for the host's
 // body to show in its own level (hub presence + the follower's drawn pose, at most 4 s) and lands on the same ring around
@@ -636,7 +641,16 @@ struct SpawnState {
     bool log = false;
     unsigned frame = 0;
     unsigned placed = 0;
-    unsigned lak_every = 0;
+    // after the opening
+    int phase = 0;                 // 0 before the bit, 1 bit seen / walking, 2 stopped, waiting for the host, 3 done
+    unsigned bit_frame = 0, stop_frame = 0;
+    int p0[3] = {0, 0, 0};         // my body at the bit
+    int last[3] = {0, 0, 0};
+    int still = 0;
+    bool walked = false;
+    int stop[3] = {0, 0, 0};
+    int hlast[3] = {0, 0, 0};
+    int hstill = 0;
 } S9;
 
 bool seen_bit() { return (data_0209caa0[8] & 0x80) != 0; }
@@ -649,6 +663,21 @@ char *spawn_body() {
 int rd_i32(const char *a, int off) { int v; std::memcpy(&v, a + off, 4); return v; }
 void wr_i32(char *a, int off, int v) { std::memcpy(a + off, &v, 4); }
 
+double hdist(const int *a, const int *b) {
+    const double dx = ((double)a[0] - b[0]) / 4096.0, dz = ((double)a[2] - b[2]) / 4096.0;
+    return std::sqrt(dx * dx + dz * dz);
+}
+
+// my place among the guests: hub seats other than the host's, counted from 1 (the host itself stays on the centre, rank 0)
+int my_rank() {
+    const int seat = my_seat();
+    if (seat < 0 || seat > 3) return -1;
+    if (C.host) return 0;
+    int r = 1;
+    for (int t = 0; t < seat; ++t) if (t != C.host_seat) ++r;
+    return r;
+}
+
 // the ring of port_vs_extra_start for slots 1..3 (radius 96, bearings 0, 72, 144 degrees), 20.12 offsets
 void ring_offset(int slot, int out[2]) {
     static const short kCos[5] = {4096, 1266, -3313, -3313, 1266};
@@ -659,15 +688,15 @@ void ring_offset(int slot, int out[2]) {
     out[1] = 96 * (int)kSin[slot - 1];
 }
 
-// Move my own body to cx,cz (+ the ring for my seat), keeping its height; 20.12.
+// Move my own body to cx,cz (+ the ring for my rank), keeping the centre's height; 20.12.
 void spawn_move(const char *why, int cx, int cy, int cz) {
     char *b = spawn_body();
-    const int seat = my_seat();
-    if (!b || seat < 0 || seat > 3) return;
+    const int rank = my_rank();
+    if (!b || rank < 0) return;
     static const bool place_off = std::getenv("SM64DS_COOPSPAWN_PLACE") && std::getenv("SM64DS_COOPSPAWN_PLACE")[0] == '0';   // proof control
     if (place_off) { LOG("SPAWN %s: placement switched off (SM64DS_COOPSPAWN_PLACE=0)", why); return; }
     int off[2];
-    ring_offset(seat, off);
+    ring_offset(rank, off);
     const int tx = cx + off[0], tz = cz + off[1];
     const int ox = rd_i32(b, 0x5c), oy = rd_i32(b, 0x60), oz = rd_i32(b, 0x64);
     wr_i32(b, 0x5c, tx);
@@ -678,8 +707,8 @@ void spawn_move(const char *why, int cx, int cy, int cz) {
     wr_i32(b, 0x70, tz);
     wr_i32(b, 0x98, 0);        // no horizontal speed carried over
     ++S9.placed;
-    LOG("SPAWN %s: seat %d placed (%d,%d,%d) -> (%d,%d,%d) around centre (%d,%d,%d)", why, seat, ox >> 12, oy >> 12, oz >> 12,
-        tx >> 12, cy >> 12, tz >> 12, cx >> 12, cy >> 12, cz >> 12);
+    LOG("SPAWN %s: seat %d (rank %d) placed (%d,%d,%d) -> (%d,%d,%d) around centre (%d,%d,%d)", why, my_seat(), rank, ox >> 12,
+        oy >> 12, oz >> 12, tx >> 12, cy >> 12, tz >> 12, cx >> 12, cy >> 12, cz >> 12);
 }
 
 // item 4 evidence: where LakituBro stands and which way he faces compared with the way to my body (SM64DS_COOPSPAWN_LOG)
@@ -697,6 +726,12 @@ void spawn_log_lakitu(const char *b) {
     }
 }
 
+bool host_in_my_level(int dp[3]) {
+    HubPresence p;
+    return C.host_seat >= 0 && hub_presence_get(C.host_seat, &p) && p.in_level() && p.level == (int)data_0209f2f8 &&
+           port_adventure_ghost_drawpos(C.host_seat, dp) != 0;
+}
+
 void spawn_frame() {
     if (!S9.inited) {
         S9.inited = true;
@@ -710,30 +745,74 @@ void spawn_frame() {
     char *b = spawn_body();
     if (!b) return;
     const bool bit = seen_bit();
+    int me[3] = {rd_i32(b, 0x5c), rd_i32(b, 0x60), rd_i32(b, 0x64)};
     if (S9.log && C.intro_seen && !bit && (S9.frame % 20) == 0) spawn_log_lakitu(b);
     if (S9.log && (bit || !C.intro_seen) && (S9.frame % 120) == 0) {
         // this console's view of every seat: my own body exactly, a friend at the pose the follower drew him at
         char v[256]; int w = 0;
         for (int s = 0; s < 4; ++s) {
             int dp[3];
-            if (s == my_seat()) { dp[0] = rd_i32(b, 0x5c); dp[1] = rd_i32(b, 0x60); dp[2] = rd_i32(b, 0x64); }
+            if (s == my_seat()) { dp[0] = me[0]; dp[1] = me[1]; dp[2] = me[2]; }
             else if (!port_adventure_ghost_drawpos(s, dp)) continue;
             w += std::snprintf(v + w, sizeof v - (size_t)w, " s%d%s=(%d,%d,%d)", s, s == my_seat() ? "*" : "", dp[0] >> 12, dp[1] >> 12, dp[2] >> 12);
         }
         LOG("SPAWN view f=%u level=%d%s", S9.frame, (int)data_0209f2f8, v);
     }
-    if (C.intro_seen && bit && !S9.bit_prev && S9.placed == 0) {
-        // the opening is over on this console: my body's place on the ring around where it stands
-        LOG("SPAWN opening seen bit set on this console");
-        spawn_move("after the opening", rd_i32(b, 0x5c), rd_i32(b, 0x60), rd_i32(b, 0x64));
+
+    // ---- after the opening
+    if (C.intro_seen && S9.phase == 0 && bit && !S9.bit_prev) {
+        S9.phase = 1;
+        S9.bit_frame = S9.frame;
+        std::memcpy(S9.p0, me, sizeof me);
+        std::memcpy(S9.last, me, sizeof me);
+        LOG("SPAWN opening seen bit set on this console at (%d,%d,%d)", me[0] >> 12, me[1] >> 12, me[2] >> 12);
     }
     S9.bit_prev = bit;
+    if (S9.phase == 1 || S9.phase == 2) {
+        if (S9.phase == 1) {
+            if (hdist(me, S9.p0) > 300.0) S9.walked = true;
+            const bool moving = hdist(me, S9.last) > 1.5 || std::abs(me[1] - S9.last[1]) > (3 << 12);
+            S9.still = moving ? 0 : S9.still + 1;
+            std::memcpy(S9.last, me, sizeof me);
+            const bool timeout = S9.frame - S9.bit_frame > 2400;
+            if ((S9.walked && S9.still >= 60) || timeout) {
+                S9.phase = 2;
+                S9.stop_frame = S9.frame;
+                std::memcpy(S9.stop, me, sizeof me);
+                LOG("SPAWN body stopped%s at (%d,%d,%d), %u frames after the bit", timeout ? " (timeout, never walked)" : "",
+                    me[0] >> 12, me[1] >> 12, me[2] >> 12, S9.frame - S9.bit_frame);
+                if (C.host) { S9.phase = 3; LOG("SPAWN host: stays here as the centre of the ring"); }
+            }
+        } else {
+            // a guest: wait for the host's body to settle near mine, then take my place on the ring around it
+            if (hdist(me, S9.stop) > 400.0) {
+                S9.phase = 3;
+                LOG("SPAWN my player took control and walked off: no placement");
+            } else {
+                int dp[3];
+                if (host_in_my_level(dp)) {
+                    const bool moving = hdist(dp, S9.hlast) > 0.5;
+                    S9.hstill = moving ? 0 : S9.hstill + 1;
+                    std::memcpy(S9.hlast, dp, sizeof dp);
+                    if (hdist(dp, me) < 1500.0 && S9.hstill >= 60) {
+                        S9.phase = 3;
+                        spawn_move("after the opening", dp[0], dp[1], dp[2]);
+                    }
+                }
+                if (S9.phase == 2 && S9.frame - S9.stop_frame > 1800) {
+                    S9.phase = 3;
+                    LOG("SPAWN host did not settle near me in 30 s: ring around my own stop");
+                    spawn_move("after the opening (own stop)", S9.stop[0], S9.stop[1], S9.stop[2]);
+                }
+            }
+        }
+    }
+
+    // ---- a late joiner
     if (S9.late && !S9.late_done) {
-        bool give_up = tick() - S9.late_since > 4000ULL;
-        HubPresence p;
+        const bool give_up = tick() - S9.late_since > 4000ULL;
         int dp[3];
-        if (C.host_seat >= 0 && hub_presence_get(C.host_seat, &p) && p.in_level() && p.level == (int)data_0209f2f8 &&
-            port_adventure_ghost_drawpos(C.host_seat, dp)) {
+        if (host_in_my_level(dp)) {
             S9.late_done = true;
             spawn_move("late joiner", dp[0], dp[1], dp[2]);
         } else if (give_up) {
@@ -742,7 +821,6 @@ void spawn_frame() {
         }
     }
 }
-
 }  // namespace
 }  // namespace port
 
