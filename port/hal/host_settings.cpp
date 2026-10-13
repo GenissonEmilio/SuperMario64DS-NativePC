@@ -2535,17 +2535,6 @@ extern "C" int host_setting_chat_scale(void)
     return g_chat_scale;
 }
 
-extern "C" int host_setting_set_chat_scale(int pct)
-{
-    load_once();
-    if (pct <= 0) return 0;
-    pct = chat_scale_sanitise(pct);
-    g_chat_scale = pct;
-    g_poll_flag = 1;
-    queue_int("ChatScale", pct);
-    return 1;
-}
-
 /* AdventureGhosts, plus the debug env override every host toggle in this file
    has. SM64DS_ADVENTURE=0 forces the mode off and any other value forces it
    on, so a proof run can pin the answer without editing a player's file; unset
@@ -3101,6 +3090,17 @@ extern "C" int host_setting_set_volume(int pct)
     g_volume = pct;
     g_poll_flag = 1;
     queue_int("Volume", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_chat_scale(int pct)
+{
+    load_once();
+    if (pct <= 0) return 0;
+    pct = chat_scale_sanitise(pct);
+    g_chat_scale = pct;
+    g_poll_flag = 1;
+    queue_int("ChatScale", pct);
     return 1;
 }
 
