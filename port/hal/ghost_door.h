@@ -18,7 +18,9 @@
 //                  bit 7 (0x80) reserved, sent as 0
 //   vy (offset 26, s16) low byte: while a door kind is set, the door's own
 //                  animation frame (0..254, 255 = no door near him); 0
-//                  otherwise. The follower never reads vy (Y is held, not
+//                  otherwise. GHOSTDOOR2: 0..127 a plain Door's model frame;
+//                  128 + n (n = slide / 2 units, 0..69) a star gate (actor 354),
+//                  which has no model animation, only sliding leaves. The follower never reads vy (Y is held, not
 //                  reckoned), so the field is free.
 //
 // comms_hub.h stays WIRE1's file; its SYNG comment should point here.
@@ -38,6 +40,7 @@ enum : unsigned char {
     kDoorKinds  = 4,   // a kind >= this is a bad field
     kFlagHidden = 0x40,
     kDoorFrameNone = 0xff,
+    kGateBase   = 128,   // GHOSTDOOR2: frame bytes 128..197 are a star gate's slide (2-unit steps)
 };
 
 // ---- the sender: read the local body ---------------------------------------

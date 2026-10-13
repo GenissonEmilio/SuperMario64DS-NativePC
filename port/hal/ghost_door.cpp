@@ -22,6 +22,8 @@ extern "C" {
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 extern int _ZN6Player7IsStateERNS_5StateE(void *p, void *st);
 extern char data_ov002_0211022c;      // Player's no-control state
+// daStarGate_c::St_OpenClose_Main's own rotation of the leaf offset (pure math)
+void Vec3_RotateYAndTranslate(void *out, void *base, short angle, void *v);
 // TEST ONLY (SM64DS_GHOST_DOOR_UNSAFE): the door's own touch, below
 extern int func_ov100_021451c4(char *door, void *node, char *player);
 extern int data_ov100_021488f4[];
@@ -37,6 +39,11 @@ namespace {
 
 enum {
     kDoorActorId = 353,                   // g_profile_DOOR (ov100), the plain door
+    kGateActorId = 354,                   // g_profile_STAR_GATE (ov100), daStarGate_c
+    kGateSlide   = 0x98,                  // dActor_c::mHorzSpeed: the leaf offset, 0 .. -0x8a000
+    kGateOffs    = 0xa4,                  // dActor_c 0xa4/0xa8/0xac: the offset Render adds / subtracts
+    kGateAngle   = 0x8e,                  // mAngleY
+    kGateMax     = 0x8a000,               // the fully open slide (St_OpenClose_Init)
     kCursor      = 0x12c,                 // Door: ModelAnim 0xd4 + Animation 0x50 + currFrame 8
     kNumFrames   = 0x128,                 // ...numFrames << 12, flags in the top two bits
     kNode        = 0x140,                 // the state callback node
@@ -73,6 +80,48 @@ void *nearest_door(int x, int y, int z) {
         if (!best || d < bd) { best = a; bd = d; }
     }
     return best;
+}
+
+bool is_gate(const void *a) {
+    return *(const unsigned short *)((const char *)a + 0x0c) == kGateActorId;
+}
+
+/* The nearest door-like actor to (x, y, z): a plain Door (353, animated by its
+   model cursor) or a star gate (354, two leaves that slide apart). Same metric
+   as nearest_door; the sender and the watcher use this one so they pick the
+   same actor. */
+void *nearest_any(int x, int y, int z) {
+    void *best = 0;
+    long long bd = 0;
+    for (void *a = _ZN8dActor_c4NextEPKS_(0); a; a = _ZN8dActor_c4NextEPKS_(a)) {
+        if (!is_door(a) && !is_gate(a)) continue;
+        const long long dx = (long long)(rd(a, 0x5c) - x),
+                        dz = (long long)(rd(a, 0x64) - z);
+        const int dy = rd(a, 0x60) - y;
+        if (dx > kSearchR || dx < -kSearchR || dz > kSearchR || dz < -kSearchR ||
+            dy > kSearchY || dy < -kSearchY)
+            continue;
+        const long long d = (dx >> 4) * (dx >> 4) + (dz >> 4) * (dz >> 4);
+        if (!best || d < bd) { best = a; bd = d; }
+    }
+    return best;
+}
+
+/* Wire byte for a star gate: kGateBase + the slide in 2-unit steps (0..69).
+   Plain-door frames are clamped below kGateBase, so the byte says which class
+   it is. */
+unsigned char gate_frame(const void *g) {
+    int slide = -rd(g, kGateSlide);
+    if (slide < 0) slide = 0;
+    if (slide > kGateMax) slide = kGateMax;
+    return (unsigned char)(kGateBase + (slide >> 13));
+}
+
+// The leaf offset Render uses for a slide of `slide` (Fix12, >= 0): the same
+// rotation St_OpenClose_Main applies to (-slide, 0, 0).
+void gate_offset(const void *g, int slide, int out[3]) {
+    int zero[3] = {0, 0, 0}, v[3] = {-slide, 0, 0};
+    Vec3_RotateYAndTranslate(out, zero, *(const short *)((const char *)g + kGateAngle), v);
 }
 
 bool door_alive(const void *d) {
@@ -113,11 +162,12 @@ unsigned char sender_kind(const void *body) {
 
 unsigned char sender_frame(const void *body) {
     if (!body) return kDoorFrameNone;
-    const void *d = nearest_door(rd(body, 0x5c), rd(body, 0x60), rd(body, 0x64));
+    const void *d = nearest_any(rd(body, 0x5c), rd(body, 0x60), rd(body, 0x64));
     if (!d) return kDoorFrameNone;
+    if (is_gate(d)) return gate_frame(d);     // a star door has no model cursor
     int f = rd(d, kCursor) >> 12;
     if (f < 0) f = 0;
-    if (f > 254) f = 254;
+    if (f > kGateBase - 1) f = kGateBase - 1;
     return (unsigned char)f;
 }
 
@@ -152,6 +202,16 @@ void sender_probe(const void *body, unsigned frame, unsigned char kind) {
         last_area = data_02092120;
         int n = 0;
         for (void *a = _ZN8dActor_c4NextEPKS_(0); a; a = _ZN8dActor_c4NextEPKS_(a)) {
+            if (is_gate(a)) {
+                std::fprintf(stderr,
+                             "[gwdoors] level %d area %d gate %d @%p pos=%d,%d,%d "
+                             "yaw=%d param=%u slide=%d\n",
+                             (int)data_0209f2f8, (int)data_02092120, n++, a,
+                             rd(a, 0x5c) >> 12, rd(a, 0x60) >> 12, rd(a, 0x64) >> 12,
+                             (int)*(const short *)((const char *)a + kGateAngle),
+                             (unsigned)rd(a, 8), rd(a, kGateSlide) >> 12);
+                continue;
+            }
             if (!is_door(a)) continue;
             std::fprintf(stderr,
                          "[gwdoors] level %d area %d door %d @%p pos=%d,%d,%d "
@@ -168,9 +228,10 @@ void sender_probe(const void *body, unsigned frame, unsigned char kind) {
         std::fprintf(stderr, "[gwdoors] level %d area %d: %d doors\n",
                      (int)data_0209f2f8, (int)data_02092120, n);
     }
-    const void *d = nearest_door(rd(body, 0x5c), rd(body, 0x60), rd(body, 0x64));
-    const unsigned node = d ? (unsigned)rd(d, kNode) : 0u;
-    const int cur = d ? rd(d, kCursor) >> 12 : -1;
+    const void *d = nearest_any(rd(body, 0x5c), rd(body, 0x60), rd(body, 0x64));
+    const bool gate = d && is_gate(d);
+    const unsigned node = d && !gate ? (unsigned)rd(d, kNode) : 0u;
+    const int cur = !d ? -1 : gate ? (int)gate_frame(d) : rd(d, kCursor) >> 12;
     if (kind || node != last_node || cur != last_cur) {
         last_node = node;
         last_cur = cur;
@@ -182,7 +243,7 @@ void sender_probe(const void *body, unsigned frame, unsigned char kind) {
                      rd(body, 0x5c), rd(body, 0x60), rd(body, 0x64),
                      (int)*(const short *)((const char *)body + 0x8e),
                      (unsigned)(rd(body, 0x63c) >> 2), d, cur,
-                     d ? door_frames(d) : -1, node);
+                     d && !gate ? door_frames(d) : -1, node);
     }
 }
 
@@ -199,6 +260,9 @@ struct Drive {
     int   orig[kLeaves];   // each one's cursor before the first write (Fix12)
     int   written[kLeaves];  // ...and as last written
     bool  yielded;         // the local game moved one: leave them alone until released
+    bool  gate;            // door[0] is a star gate: gorig / gwritten are its leaf offset
+    int   gorig[3];        // the gate's 0xa4/0xa8/0xac before the first write
+    int   gwritten[3];     // ...and as last written
 };
 Drive g_drive[kMaxSeats];
 
@@ -221,6 +285,13 @@ void *pair_leaf(const void *d) {
 }
 
 void give_back(Drive &d) {
+    if (d.gate && d.door[0] && door_alive(d.door[0]) && !d.yielded &&
+        rd(d.door[0], kGateOffs) == d.gwritten[0] &&
+        rd(d.door[0], kGateOffs + 4) == d.gwritten[1] &&
+        rd(d.door[0], kGateOffs + 8) == d.gwritten[2])
+        for (int i = 0; i < 3; ++i)
+            *(int *)((char *)d.door[0] + kGateOffs + 4 * i) = d.gorig[i];
+    d.gate = false;
     for (int k = 0; k < kLeaves; ++k) {
         if (d.door[k] && door_alive(d.door[k]) && !d.yielded &&
             rd(d.door[k], kCursor) == d.written[k])
@@ -250,15 +321,20 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
     }
     if (d.door[0] && !door_alive(d.door[0])) {      // a level change took it
         for (int k = 0; k < kLeaves; ++k) d.door[k] = 0;
+        d.gate = false;
         d.yielded = false;
     }
     if (d.yielded) return;
     if (!d.door[0]) {
-        d.door[0] = nearest_door(pos[0], pos[1], pos[2]);
+        d.door[0] = nearest_any(pos[0], pos[1], pos[2]);
         if (!d.door[0]) { ++g_stats.no_door; return; }
-        d.door[1] = pair_leaf(d.door[0]);
+        d.gate = is_gate(d.door[0]);
+        d.door[1] = d.gate ? 0 : pair_leaf(d.door[0]);
+        if (d.gate)
+            for (int i = 0; i < 3; ++i)
+                d.gorig[i] = d.gwritten[i] = rd(d.door[0], kGateOffs + 4 * i);
         for (int k = 0; k < kLeaves; ++k) {
-            if (!d.door[k]) continue;
+            if (!d.door[k] || d.gate) continue;
             d.orig[k] = rd(d.door[k], kCursor);
             d.written[k] = d.orig[k];
         }
@@ -273,8 +349,16 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
         if (unsafe) {
             void *me = data_0209f394[data_0209f250];
             std::fprintf(stderr, "[gwdoorw] UNSAFE: door touch on the LOCAL body\n");
-            if (me) func_ov100_021451c4((char *)d.door[0], data_ov100_021488f4, (char *)me);
+            if (me && !d.gate)
+                func_ov100_021451c4((char *)d.door[0], data_ov100_021488f4, (char *)me);
         }
+    } else if (d.gate) {
+        for (int i = 0; i < 3; ++i)
+            if (rd(d.door[0], kGateOffs + 4 * i) != d.gwritten[i]) {
+                d.yielded = true;     // the gate's own state machine moved it
+                ++g_stats.yielded;
+                return;
+            }
     } else {
         for (int k = 0; k < kLeaves; ++k) {
             if (d.door[k] && rd(d.door[k], kCursor) != d.written[k]) {
@@ -288,6 +372,22 @@ void watcher_apply(int seat, unsigned char kind, unsigned char frame,
     }
     static int probe = -1;
     if (probe < 0) probe = std::getenv("SM64DS_GHOST_DOOR_PROBE") ? 1 : 0;
+    if (d.gate) {
+        /* A star door: no model cursor. Its two leaves are the same model drawn
+           at +offset and -offset (daStarGate_c::Render); the offset is set by
+           St_OpenClose_Main, which only runs for the local player. Write it. */
+        int slide = frame >= kGateBase ? ((int)frame - kGateBase) << 13 : 0;
+        if (slide > kGateMax) slide = kGateMax;
+        gate_offset(d.door[0], slide, d.gwritten);
+        for (int i = 0; i < 3; ++i)
+            *(int *)((char *)d.door[0] + kGateOffs + 4 * i) = d.gwritten[i];
+        ++g_stats.applied;
+        if (probe)
+            std::fprintf(stderr, "[gwdoorw] t=%u seat=%d kind=%u frame=%u gate=%p "
+                         "slide=%d\n", comms_hub_now_ms(), seat, (unsigned)kind,
+                         (unsigned)frame, d.door[0], slide >> 12);
+        return;
+    }
     for (int k = 0; k < kLeaves; ++k) {
         if (!d.door[k]) continue;
         int f = (int)frame;
