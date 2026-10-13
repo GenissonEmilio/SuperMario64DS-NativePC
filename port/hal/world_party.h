@@ -38,7 +38,9 @@
 // accept, N = leave (B was the old voice mic key; voice is shelved, if it returns
 // it must take another key). Overrides for the proofs / a later settings page:
 // SM64DS_PARTY_KEY_INVITE / SM64DS_PARTY_KEY_LEAVE = a Windows virtual-key code
-// (decimal or 0x..), 0 = none; SM64DS_WORLD_PARTY=0 turns the whole thing off.
+// (decimal or 0x..), 0 = none; SM64DS_PARTY_PAD_INVITE / SM64DS_PARTY_PAD_LEAVE the same
+// for the pad button mask; SM64DS_WORLD_PARTY=0 turns the whole thing off. The same four
+// are settings.json rows (host_settings.cpp: KeyPartyInvite ...), which the env overrides.
 //
 // ONLY IN A WORLD ROOM (comms_hub_room_kind() == world, a live hub, not an
 // arena). Party, coop, VS and solo never read or send anything: the word is not
@@ -120,6 +122,11 @@ bool world_party_active();
 // the pad is not live), the invite key and the leave key as the game's key reader
 // sees them. Also the module's clock (reads the others' words, publishes mine).
 void world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave);
+// The player's bindings (host_settings KeyPartyInvite / KeyPartyLeave /
+// PadPartyInvite / PadPartyLeave), pushed once a frame by the input hook so this
+// module stays free of host_settings (it is in the shared comms slice). 0 =
+// unbound. An env override (below) still wins for the proofs.
+void world_party_set_binds(int vk_invite, int vk_leave, unsigned pad_invite, unsigned pad_leave);
 int  world_party_vk_invite();
 int  world_party_vk_leave();
 

@@ -5,6 +5,7 @@
 #include "coop_wire.h"
 #include "coop_world.h"
 #include "hub_presence.h"
+#include "world_party.h"
 
 #include <windows.h>
 
@@ -138,6 +139,8 @@ Mode mode_now() {
         return (e && *e && !(e[0] == '0' && e[1] == 0)) ? kParty : kNone;
     }
     if (k == kHubRoomCoop) return coop_world_active() ? kCoop : kNone;
+    // WPARTY2: a world room, while I am in a world party (kParty; rx adds the member test)
+    if (k == kHubRoomWorld) return (world_party_active() && world_party_in_party()) ? kParty : kNone;
     return kNone;
 }
 
@@ -362,7 +365,8 @@ bool star_popup_party_rx(int seat, const unsigned char *d, int len) {
     init_once();
     const unsigned rsv = hub_rd16(d, 8);
     if (!g.enabled || mode_now() != kParty) return true;
-    if ((rsv & ~7u) || ((rsv & 3u) != kXStar && (rsv & 3u) != kXKey) || seat < 0 || seat >= 4 || seat == my_seat()) {
+    if ((rsv & ~7u) || ((rsv & 3u) != kXStar && (rsv & 3u) != kXKey) || seat < 0 || seat >= 16 || seat == my_seat() ||
+        (comms_hub_room_kind() == kHubRoomWorld && !world_party_member(seat))) {
         ++g.st.dropped;
         return true;
     }
@@ -398,7 +402,8 @@ StarPopupStats star_popup_stats() { return g.st; }
 
 extern "C" void port_star_popup_frame(void) {
     using namespace port;
-    if (!std::getenv("SM64DS_PARTY") && !std::getenv("SM64DS_COOP")) return;
+    if (!std::getenv("SM64DS_PARTY") && !std::getenv("SM64DS_COOP") &&
+        !(world_party_active() && comms_hub_room_kind() == kHubRoomWorld)) return;
     init_once();
     ++g.frame;
     const Mode m = mode_now();

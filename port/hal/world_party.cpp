@@ -26,12 +26,19 @@ namespace port {
 namespace {
 
 const unsigned kDefaultRgb[4] = {0xE04040u, 0x40C060u, 0xE0C030u, 0x60A0F0u};
-const unsigned kPadUp = 0x0001u, kPadDown = 0x0002u;
+const unsigned kPadUpDflt = 0x0001u, kPadDownDflt = 0x0002u;   // XInput DPAD_UP / DPAD_DOWN
 
 struct State {
     bool env_checked = false;
     bool off = false;
-    int  vk_invite = 'B', vk_leave = 'N';
+    int  vk_invite = 'B', vk_leave = 'N';          // what the keys resolve to this frame
+    unsigned pad_invite = kPadUpDflt, pad_leave = kPadDownDflt;
+    // the player's bindings (host_settings, pushed by world_party_set_binds) and
+    // whether an env override owns each one (the proofs set those; env wins)
+    int  set_vk_invite = 'B', set_vk_leave = 'N';
+    unsigned set_pad_invite = kPadUpDflt, set_pad_leave = kPadDownDflt;
+    bool env_vk_invite = false, env_vk_leave = false;
+    bool env_pad_invite = false, env_pad_leave = false;
     int  log = -1;
     // my side of the word
     int  my_id = 0;
@@ -80,13 +87,31 @@ int parse_vk(const char *e, int dflt) {
     return (int)v;
 }
 
+long parse_mask(const char *e, unsigned dflt) {
+    if (!e || !*e) return (long)dflt;
+    char *end = nullptr;
+    const long v = std::strtol(e, &end, 0);
+    if (end == e || v < 0 || v > 0x3ffff) return (long)dflt;
+    return v;
+}
+
 void check_env() {
     if (g.env_checked) return;
     g.env_checked = true;
     const char *o = std::getenv("SM64DS_WORLD_PARTY");
     if (o && *o == '0') g.off = true;
-    g.vk_invite = parse_vk(std::getenv("SM64DS_PARTY_KEY_INVITE"), 'B');
-    g.vk_leave = parse_vk(std::getenv("SM64DS_PARTY_KEY_LEAVE"), 'N');
+    const char *ki = std::getenv("SM64DS_PARTY_KEY_INVITE");
+    const char *kl = std::getenv("SM64DS_PARTY_KEY_LEAVE");
+    const char *pi = std::getenv("SM64DS_PARTY_PAD_INVITE");
+    const char *pl = std::getenv("SM64DS_PARTY_PAD_LEAVE");
+    g.env_vk_invite = ki && *ki;
+    g.env_vk_leave = kl && *kl;
+    g.env_pad_invite = pi && *pi;
+    g.env_pad_leave = pl && *pl;
+    if (g.env_vk_invite) g.vk_invite = parse_vk(ki, 'B');
+    if (g.env_vk_leave) g.vk_leave = parse_vk(kl, 'N');
+    if (g.env_pad_invite) g.pad_invite = (unsigned)parse_mask(pi, kPadUpDflt);
+    if (g.env_pad_leave) g.pad_leave = (unsigned)parse_mask(pl, kPadDownDflt);
 #ifndef PORT_ROM_CLEAN
     {   /* TEST ONLY: press UP by itself a moment after an invite prompt shows (the row driver cannot see a prompt) */
         const char *a = std::getenv("SM64DS_WPARTY_TEST_AUTOACCEPT");
@@ -219,6 +244,15 @@ bool world_party_active() {
     return !g.off && world_room();
 }
 
+void world_party_set_binds(int vk_invite, int vk_leave, unsigned pad_invite, unsigned pad_leave) {
+    check_env();
+    g.set_vk_invite = vk_invite; g.set_vk_leave = vk_leave;
+    g.set_pad_invite = pad_invite; g.set_pad_leave = pad_leave;
+    if (!g.env_vk_invite) g.vk_invite = vk_invite;
+    if (!g.env_vk_leave) g.vk_leave = vk_leave;
+    if (!g.env_pad_invite) g.pad_invite = pad_invite;
+    if (!g.env_pad_leave) g.pad_leave = pad_leave;
+}
 int world_party_vk_invite() { check_env(); return g.vk_invite; }
 int world_party_vk_leave() { check_env(); return g.vk_leave; }
 
@@ -246,11 +280,13 @@ void world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave) {
     if (my_seat < 0 || my_seat >= kHubMaxSeats) return;
     if (!g.announced && logging()) {
         g.announced = true;
-        std::fprintf(stderr, "[wparty] active seat=%d keys invite=0x%x leave=0x%x\n",
-                     my_seat, g.vk_invite, g.vk_leave);
+        std::fprintf(stderr, "[wparty] active seat=%d keys invite=0x%x leave=0x%x pad invite=0x%x leave=0x%x\n",
+                     my_seat, g.vk_invite, g.vk_leave, g.pad_invite, g.pad_leave);
     }
 
     // edges (rising only; calling twice in a frame is harmless)
+    // a pad mask of 0 is unbound and never reads down
+    const unsigned kPadUp = g.pad_invite, kPadDown = g.pad_leave;
     const bool up_now = (pad_buttons & kPadUp) != 0 || key_invite;
     const bool dn_now = (pad_buttons & kPadDown) != 0 || key_leave;
     const bool up_prev = (g.prev_pad & kPadUp) != 0 || g.prev_inv_key;

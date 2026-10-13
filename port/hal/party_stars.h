@@ -87,7 +87,7 @@ namespace port {
 enum : int {
     kPsCourses   = 30,        // data_0209cab4 is 30 bytes
     kPsStarBits  = 8,
-    kPsSeats     = 4,
+    kPsSeats     = 16,       // a world room has 16 seats (WPARTY2); a party room uses 0..3
     kPsQueueMax  = 8,
     kPsVisitMs   = 60000,     // the sender must have been in the course this recently
     kPsGapMs     = 10000,     // 1 per 10 s per seat

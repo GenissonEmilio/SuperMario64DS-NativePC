@@ -98,11 +98,13 @@ static const int KEY_DFLT[HOST_KEY_COUNT] = {
     0x57, 0x53, 0x41, 0x44, 0x26, 0x28, 0x25, 0x27,
     0x20, 0x58, 0x11, 0x10, 0x0d, 0x08, 0x5a,
     0x43, 0x51, 0x45, 0x70,         /* camera: centre C, left Q, right E, mode F1 */
+    0x42, 0x4e,                     /* world party: invite B, leave N */
 };
 static const int PAD_DFLT[HOST_PAD_COUNT] = {
     0x1000, 0x2000, 0x20000, 0x4000, 0x0010, 0,   /* crouch = RT pseudo-mask */
     0x8000,                                       /* look = Y, the DS X */
     0x10000, 0x0100, 0x0200, 0x0080,              /* camera: centre LT, LB, RB, stick click */
+    0x0001, 0x0002,                               /* world party: d-pad UP invite, DOWN leave */
 };
 
 static void check_defaults_except(const int *skip_key, int nskip_key,

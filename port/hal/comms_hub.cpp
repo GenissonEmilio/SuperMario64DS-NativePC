@@ -303,12 +303,14 @@ bool arena_kind(int kind) {
            kind == kKindRefPing || kind == kKindRefPong;
 }
 // THE ROOM GATES (lane WIRE1), the relay's own table: presence in world,
-// party and coop rooms; the party star and hit in party rooms only; the coop
+// party and coop rooms; the party star in party and world rooms, the hit in party rooms only; the coop
 // world and control kinds in coop rooms only; none of them in an arena.
 bool room_kind_ok(int kind, bool arena, int room) {
     switch (kind) {
     case kHubPresence: return !arena;
-    case kHubPartyStar:
+    case kHubPartyStar:   // WPARTY2: also in a world room (the relay forwards SYNX to hub sessions); the
+                          // receiver only takes it from a world-party member
+        return !arena && (room == kHubRoomParty || room == kHubRoomWorld);
     case kHubPartyHit: return !arena && room == kHubRoomParty;
     case kHubCoopWorld:
     case kHubCoopCtl: return !arena && room == kHubRoomCoop;

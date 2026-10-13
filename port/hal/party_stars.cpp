@@ -11,6 +11,7 @@
 
 #include "party_stars.h"
 #include "star_popup.h"
+#include "world_party.h"
 
 #include "comms_hub.h"
 #include "hub_presence.h"
@@ -171,12 +172,35 @@ void init_once() {
                  env_flag("SM64DS_PARTY", false), g.no_limit);
 }
 
-// Is this console in a live party room?
+// Is this console in a live hub that is not an arena?
+bool hub_live() {
+    return comms_hub_active() && !comms_hub_arena() &&
+           comms_hub_state() == kHubLive;
+}
+
+// Is this console in a live WORLD room with a party of its own (WPARTY2)? The
+// party is the stars' audience there: a star is sent only while I am in a party
+// and taken only from a seat in mine (world_party_member). Elsewhere in a world
+// room nothing is sent and nothing taken.
+bool world_party_room() {
+    return hub_live() && comms_hub_room_kind() == kHubRoomWorld &&
+           world_party_active() && world_party_in_party();
+}
+
+// Is this console in a live party room (SM64DS_PARTY, a party room), or in a
+// world room while in a world party? Both share stars; the receive side adds
+// the membership test for a world room (seat_ok).
 bool party_room() {
+    if (world_party_room()) return true;
     if (!party_env()) return false;
-    if (!comms_hub_active() || comms_hub_arena() ||
-        comms_hub_state() != kHubLive) return false;
-    return comms_hub_room_kind() == kHubRoomParty;
+    return hub_live() && comms_hub_room_kind() == kHubRoomParty;
+}
+
+// May a star from `seat` be taken? A party room: any seat (the relay's room is
+// the audience). A world room: only a current member of my world party.
+bool seat_ok(int seat) {
+    if (comms_hub_room_kind() == kHubRoomWorld) return world_party_member(seat);
+    return true;
 }
 
 int my_seat() { return comms_hub_my_seat(); }
@@ -318,7 +342,7 @@ void on_star(int seat, const unsigned char *d, int len, void *) {
     if (r == kPsOk) {
         course = d[6];
         star = d[7];
-        if (seat < 0 || seat >= kPsSeats || seat == my_seat()) r = kPsDropSeat;
+        if (seat < 0 || seat >= kPsSeats || seat == my_seat() || !seat_ok(seat)) r = kPsDropSeat;
     }
     if (r == kPsOk) {
         refresh_seat(seat, now);
@@ -550,7 +574,8 @@ bool party_stars_enabled() { return g.inited && party_room(); }
 // port_hub_presence_frame). Global, no namespace, like the other port_* calls.
 extern "C" void port_party_stars_frame(void) {
     using namespace port;
-    if (!party_env()) return;                         // not a party launch: nothing runs
+    // not a party launch (SM64DS_PARTY) and not in a world room: nothing runs
+    if (!party_env() && !(world_party_active() && comms_hub_room_kind() == kHubRoomWorld)) return;
     init_once();
     if (!g.report_hooked) {
         g.report_hooked = true;

@@ -236,7 +236,7 @@ KIND_ORDER = tuple(KINDS)   # stats line order, the table's own
 # and the relay stamps the sender's seat at byte 5 like every SYN kind.
 #
 #   SYNL presence      20 fixed        party, coop, world   cap  6/s
-#   SYNX party star    12 fixed        party                cap  2/s
+#   SYNX party star    12 fixed        party, world         cap  2/s
 #   SYNH party hit     24 fixed        party, ONE seat      cap 10/s
 #   SYNW coop world    16..700         coop                 cap 40/s
 #   SYNB coop control  16..700         coop                 cap 30/s
@@ -249,7 +249,7 @@ for _k in (
         Kind(b"SYNL", "presence", (20,),             None, R_ALL,   6, 5,
              frozenset((KIND_HUB, KIND_PARTY, KIND_COOP))),
         Kind(b"SYNX", "partystar", (12,),            None, R_ALL,   2, 5,
-             frozenset((KIND_PARTY,))),
+             frozenset((KIND_PARTY, KIND_HUB))),
         Kind(b"SYNH", "partyhit", (24,),             None, R_SEAT6, 10, 5,
              frozenset((KIND_PARTY,))),
         Kind(b"SYNW", "coopworld", range(16, 701),   None, R_ALL,  40, 5,
