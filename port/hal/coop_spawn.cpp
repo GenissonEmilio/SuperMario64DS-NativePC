@@ -33,6 +33,7 @@ extern unsigned char data_0209f250;
 extern unsigned char data_0209f21c;
 extern unsigned char data_0209f30c[];
 extern unsigned char data_0209f30d[];
+extern short data_0209f358[];
 void func_ov002_020b16c4(void *coin, void *player);       // the ROM's own red coin pickup
 void *_ZN8dActor_c4NextEPKS_(const void *prev);
 char *_ZN8dActor_c10FindWithIDEj(unsigned id);
@@ -84,6 +85,7 @@ bool     g_have_key = false;
 int      g_lvl = -1, g_act = 0;
 unsigned g_gen = 0;
 unsigned g_frames = 0;
+unsigned g_tc_frame = 0; int g_tc_val = -1;       // SM64DS_TOTALS_COINS=<frame>:<count>: proof knob, set my coin counter once
 bool     g_armed = false;
 bool     g_census_on = false;
 unsigned g_wm = 0;                 // uid watermark: actors with a larger uid are new
@@ -158,6 +160,10 @@ void read_env() {
     g_log = l && *l && *l != '0';
     const char *c = std::getenv("SM64DS_SPAWN_CENSUS");
     g_census_log = c && *c && *c != '0';
+    if (const char *o = std::getenv("SM64DS_TOTALS_COINS")) {
+        unsigned f = 0; int v = 0;
+        if (std::sscanf(o, "%u:%i", &f, &v) == 2) { g_tc_frame = f; g_tc_val = v; }
+    }
     if (const char *o = std::getenv("SM64DS_TOTALS_OFF")) {
         g_toff.redlocal = std::strstr(o, "redlocal") != nullptr;
         g_toff.guard = std::strstr(o, "guard") != nullptr;
@@ -646,6 +652,10 @@ void scan(unsigned now) {
         g_red_prev = red_sum();
     }
     if (g_census_on && maxuid > g_wm) g_wm = maxuid;
+    if (g_log && (g_frames % 60u) == 0)         // TOTALS9 proof: what the HUD draws on this console
+        std::fprintf(stderr, "[coopspawn] hud coins=%d redcell=%d redsum=%d frame=%u wall=%lld
+", (int)data_0209f358[(int)data_0209f250 & 3],
+                     (int)(signed char)red_cell((int)data_0209f250 < red_slots() ? (int)data_0209f250 : 0), red_sum(), g_frames, wall_ms());
 }
 
 // ---------------------------------------------------------------------------
@@ -1152,6 +1162,12 @@ void on_frame(unsigned now) {
     drain_in(now);
 
     // proof knobs
+    if (g_tc_val >= 0 && g_armed && g_frames >= g_tc_frame) {
+        data_0209f358[(int)data_0209f250 & 3] = (short)g_tc_val;
+        std::fprintf(stderr, "[coopspawn-knob] coin counter set to %d wall=%lld
+", g_tc_val, wall_ms());
+        g_tc_val = -1;
+    }
     for (int i = 0; i < g_nkb; ++i)
         if (!g_kb[i].done && g_armed && g_frames >= g_kb[i].frame) { g_kb[i].done = true; knob_block(g_kb[i]); }
     for (int i = 0; i < g_nkr; ++i)
