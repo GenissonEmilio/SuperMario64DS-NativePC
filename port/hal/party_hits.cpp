@@ -156,7 +156,8 @@ void log_verdict(const Claim &c, Verdict v) {
     if (v != kOk) { ++g.st.refused; ++g.st.refused_by[v & 15]; }
     if (g.log > 0 || v == kOk)
         std::fprintf(stderr, "[phit] %s ik=%u from seat %d (claimed %d,%d,%d) -> %s\n", v == kOk ? "APPLY" : "REFUSE", c.ikind,
-                     c.attacker, c.x, c.y, c.z, verdict_name(v));
+                     c.attacker, c.x, c.y, c.z, verdict_name(v),
+                     v == kVictimBusy ? " why=" : "", v == kVictimBusy ? g_busy_why : "");
 }
 
 void handle_claim(int attacker, unsigned ikind, unsigned counter, int yaw, int x, int y, int z) {
