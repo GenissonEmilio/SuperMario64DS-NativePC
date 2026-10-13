@@ -40,6 +40,7 @@ enum { kMaxBodies = 16, kStackUnits = 10, kUnstickUnits = 110 };
 
 int g_read = 0;
 int g_all = 0;                 // SM64DS_PARTY=1
+int g_off = 0;                 // SM64DS_ROOM_COLLISION=0: room toggle, friends stay ghosts (party and coop)
 int g_coop = 0;                // SM64DS_COOP=1 (FIX9A: coop seats are solid bodies too)
 bool g_have_list = false;
 unsigned g_mask = 0;           // SM64DS_PARTY_MEMBERS, seats
@@ -66,6 +67,9 @@ void read_env() {
             q = *end == ',' ? end + 1 : end;
         }
     }
+    if (const char *e = std::getenv("SM64DS_ROOM_COLLISION")) g_off = std::atoi(e) == 0 && *e;
+    std::fprintf(stderr, "[party] room collision %s
+", g_off ? "OFF (ghosts)" : "ON (solid bodies)");
     if (const char *e = std::getenv("SM64DS_PARTY_GATE")) g_gate_on = std::atoi(e) != 0;
     if (const char *e = std::getenv("SM64DS_PARTY_LOG")) g_log = std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PARTY_SEP")) g_sep = std::atoi(e);
@@ -75,6 +79,7 @@ void read_env() {
 
 bool active() {
     read_env();
+    if (g_off) return false;
     return g_all != 0 || g_coop != 0 || g_have_list || g_rt_mask != 0;
 }
 
@@ -82,6 +87,7 @@ bool seat_is_party(int seat) {
     read_env();
     if (seat < 0 || seat >= kHubMaxSeats) return false;
     if (seat == comms_hub_my_seat()) return false;
+    if (g_off) return false;
     if ((g_rt_mask >> seat) & 1u) return true;
     if (g_have_list) return ((g_mask >> seat) & 1u) != 0;
     return g_all != 0 || g_coop != 0;
