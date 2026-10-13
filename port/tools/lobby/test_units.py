@@ -42,12 +42,12 @@ def _locked(fn):
 for _name in ("do_create", "do_join", "do_poll", "do_chat", "do_params",
               "do_preflight", "do_color", "do_start", "do_ready", "do_result",
               "do_failed", "do_kick", "do_leave", "do_world",
-              "do_world_ping", "sweep"):
+              "do_world_ping", "do_settings", "sweep"):
     setattr(S, _name, _locked(getattr(S, _name)))
 S.VERBS = {"create": S.do_create, "join": S.do_join, "poll": S.do_poll,
            "chat": S.do_chat, "params": S.do_params,
            "preflight": S.do_preflight, "color": S.do_color,
-           "start": S.do_start,
+           "start": S.do_start, "settings": S.do_settings,
            "ready": S.do_ready, "result": S.do_result, "failed": S.do_failed,
            "kick": S.do_kick, "leave": S.do_leave,
            "world": S.do_world, "world_ping": S.do_world_ping}
@@ -905,6 +905,7 @@ _FIELD_SAMPLES = {
     "code": "K7QMR3AB",
     "skip": "K7QMR3AB",
     "save_name": "My file",
+    "settings": {"collision": 0},
 }
 
 
@@ -4486,6 +4487,222 @@ def test_v5_clients_and_party_coop():
           st == 200 and g["plan"]["session_type"] == "adventure", (st, g))
 
 
+# ------------------------------------------------ v6: room settings (ROOMSET1)
+
+
+DEFAULT_PARTY = {"collision": 1, "interact": 1, "damage": 0, "starshare": 1}
+DEFAULT_COOP = {"collision": 1, "interact": 1, "damage": 0, "tp": 1}
+
+
+def settings6(code, token, settings, who="10.0.0.1", now=1000.0):
+    return S.do_settings({"v": 6, "room": code, "token": token,
+                          "settings": settings}, who, now)
+
+
+def test_room_settings():
+    """Contract v6 (ROOMSET1): the host's toggles on a party or coop room.
+
+    Defaults: collision on, interactions on, friendly damage off, TP to friends
+    on (coop), star sharing on (party). The toggles ride the create answer, the
+    view and every plan, so each launcher can turn them into SM64DS_ROOM_*.
+    """
+    print("\n-- v6 room settings: defaults, toggles, refusals, host update")
+    check("the toggle names per kind are the contract's",
+          S.ROOM_SETTINGS == {
+              "party": ("collision", "interact", "damage", "starshare"),
+              "coop": ("collision", "interact", "damage", "tp")},
+          S.ROOM_SETTINGS)
+
+    # ---- defaults: no settings field means the defaults, for each kind -----
+    for kind, want in (("party", DEFAULT_PARTY), ("coop", DEFAULT_COOP)):
+        reset()
+        extra = {"save_name": "f"} if kind == "coop" else {}
+        st, host = create6(nick="h", session_type=kind, **extra)
+        check("%s: a create with no settings is 200" % kind, st == 200,
+              (st, host))
+        code, token = host["room"], host["token"]
+        check("%s: the defaults are %r" % (kind, want),
+              host["plan"]["settings"] == want
+              and S.ROOMS[code].settings == want, host["plan"])
+        check("%s: the view carries the same settings" % kind,
+              host["view"]["settings"] == want, host["view"])
+        st, g = join6(code, "g", who="10.0.0.2")
+        check("%s: a joiner's plan carries the room's settings" % kind,
+              st == 200 and g["plan"]["settings"] == want, (st, g))
+        st, p = poll6(code, token, 0)
+        check("%s: every poll's plan carries them too" % kind,
+              st == 200 and p["plan"]["settings"] == want, (st, p))
+        check("%s: and no path-like key anywhere in the answers" % kind,
+              _no_path_anywhere(host) and _no_path_anywhere(g))
+
+    # ---- an empty object is the defaults too -------------------------------
+    reset()
+    st, host = create6(nick="h", session_type="party", settings={})
+    check("party: settings {} is the defaults", st == 200
+          and host["plan"]["settings"] == DEFAULT_PARTY, host)
+
+    # ---- each toggle, set alone to 0 (and back to 1), reaches the plan ------
+    for kind, names in (("party", DEFAULT_PARTY), ("coop", DEFAULT_COOP)):
+        for name in names:
+            for val in (0, 1):
+                reset()
+                extra = {"save_name": "f"} if kind == "coop" else {}
+                want = dict(names)
+                want[name] = val
+                st, host = create6(nick="h", session_type=kind,
+                                   settings={name: val}, **extra)
+                check("%s: %s=%d is accepted" % (kind, name, val), st == 200,
+                      (st, host))
+                check("%s: %s=%d reaches the create plan, the view and the "
+                      "room" % (kind, name, val),
+                      st == 200 and host["plan"]["settings"] == want
+                      and host["view"]["settings"] == want
+                      and S.ROOMS[host["room"]].settings == want, host)
+            # The whole set, all at once.
+            reset()
+            extra = {"save_name": "f"} if kind == "coop" else {}
+            allzero = {k: 0 for k in names}
+            st, host = create6(nick="h", session_type=kind, settings=allzero,
+                               **extra)
+            check("%s: every toggle at 0 is accepted" % kind,
+                  st == 200 and host["plan"]["settings"] == allzero, host)
+
+    # ---- a joiner's plan reflects the host's toggles -----------------------
+    reset()
+    st, host = create6(nick="h", session_type="party",
+                       settings={"damage": 1, "collision": 0})
+    st, g = join6(host["room"], "g", who="10.0.0.2")
+    check("party: a joiner is handed the host's damage=1 collision=0",
+          st == 200 and g["plan"]["settings"] == {
+              "collision": 0, "interact": 1, "damage": 1, "starshare": 1},
+          (st, g))
+
+    # ---- refusals: the wrong kind of room, the wrong names, the wrong types -
+    reset()
+    st, out = create6(nick="h", session_type="party", settings={"tp": 1})
+    check("party: tp is not a party toggle (bad_setting_key)",
+          st == 400 and out["error"] == "bad_setting_key", (st, out))
+    st, out = create6(nick="h", session_type="coop", save_name="f",
+                      settings={"starshare": 1})
+    check("coop: starshare is not a coop toggle (bad_setting_key)",
+          st == 400 and out["error"] == "bad_setting_key", (st, out))
+    for bad in ("bogus", "COLLISION", "", "SM64DS_ROOM_COLLISION", "collision "):
+        st, out = create6(nick="h", session_type="party",
+                          settings={bad: 1})
+        check("party: unknown toggle %r is bad_setting_key" % bad,
+              st == 400 and out["error"] == "bad_setting_key", (st, out))
+    for bad in ("1", "0", 2, -1, True, False, 1.0, 0.0, None, [1], {"x": 1}):
+        st, out = create6(nick="h", session_type="party",
+                          settings={"collision": bad})
+        check("party: collision=%r is bad_setting_value" % (bad,),
+              st == 400 and out["error"] == "bad_setting_value", (st, out))
+    for bad in ([], [("collision", 1)], "collision=1", 1, None, True):
+        st, out = create6(nick="h", session_type="party", settings=bad)
+        check("party: settings %r (not an object) is bad_settings" % (bad,),
+              st == 400 and out["error"] == "bad_settings", (st, out))
+    check("every refused create made no room", not S.ROOMS, list(S.ROOMS))
+
+    # ---- VS, adventure: settings are a field those rooms do not have -------
+    for kind in ("vs", "adventure"):
+        reset()
+        st, out = create6(nick="h", session_type=kind, settings={})
+        check("%s: a create with settings is bad_field" % kind,
+              st == 400 and out["error"] == "bad_field", (st, out))
+        check("%s: and made no room" % kind, not S.ROOMS)
+    reset()
+    st, out = create6(nick="h", settings={})
+    check("a create with no session_type (vs) and settings is bad_field",
+          st == 400 and out["error"] == "bad_field", (st, out))
+
+    # ---- v5 cannot send settings (the field is v6) -------------------------
+    reset()
+    st, out = create(nick="old", settings={})
+    check("a v5 create with settings is bad_field (a v6 field)",
+          st == 400 and out["error"] == "bad_field", (st, out))
+
+    # ---- the host's update: partial, host-only, before Start ---------------
+    reset()
+    st, host = create6(nick="h", session_type="party")
+    code, token = host["room"], host["token"]
+    st, g = join6(code, "g", who="10.0.0.2")
+    gtoken = g["token"]
+    st, out = settings6(code, gtoken, {"damage": 1}, who="10.0.0.2")
+    check("a guest cannot change the settings (403 not_host)",
+          st == 403 and out["error"] == "not_host", (st, out))
+    check("and the guest's refusal changed nothing",
+          S.ROOMS[code].settings == DEFAULT_PARTY)
+    before = S.ROOMS[code].seq
+    st, out = settings6(code, token, {"damage": 1})
+    check("the host's partial update is 200", st == 200
+          and out["settings"] == dict(DEFAULT_PARTY, damage=1), (st, out))
+    check("a partial update keeps the other toggles",
+          S.ROOMS[code].settings == dict(DEFAULT_PARTY, damage=1),
+          S.ROOMS[code].settings)
+    st, p = poll6(code, gtoken, 0, who="10.0.0.2")
+    check("the guest's next plan carries the host's update",
+          st == 200 and p["plan"]["settings"] == dict(DEFAULT_PARTY, damage=1),
+          (st, p))
+    st, p = poll6(code, token, before)
+    check("the update is a settings event every member can poll for",
+          any(e.get("kind") == "settings"
+              and e.get("settings") == dict(DEFAULT_PARTY, damage=1)
+              for e in p.get("events", [])), p)
+    st, out = settings6(code, token, {"damage": 2})
+    check("an update with a bad value is refused and changes nothing",
+          st == 400 and out["error"] == "bad_setting_value"
+          and S.ROOMS[code].settings == dict(DEFAULT_PARTY, damage=1),
+          (st, out))
+    st, out = settings6(code, token, {"tp": 1})
+    check("an update with a name of the other kind is refused",
+          st == 400 and out["error"] == "bad_setting_key", (st, out))
+    st, out = settings6(code, token, {})
+    check("an empty update is 200 and changes nothing",
+          st == 200 and S.ROOMS[code].settings == dict(DEFAULT_PARTY, damage=1),
+          (st, out))
+
+    # ---- after Start the room's toggles are fixed --------------------------
+    st, out = start6(code, token)
+    check("the host's Start is 200", st == 200, (st, out))
+    st, out = settings6(code, token, {"damage": 0})
+    check("after Start an update is 409 already_started",
+          st == 409 and out["error"] == "already_started", (st, out))
+    check("and the started room's settings did not move",
+          S.ROOMS[code].settings == dict(DEFAULT_PARTY, damage=1))
+
+    # ---- a VS room has no room settings to change --------------------------
+    reset()
+    st, vs = create(nick="h")
+    st, out = settings6(vs["room"], vs["token"], {"damage": 1})
+    check("a VS room's settings update is 409 no_room_settings",
+          st == 409 and out["error"] == "no_room_settings", (st, out))
+
+    # ---- a coop room's update reaches a joiner's plan the same way --------
+    reset()
+    st, host = create6(nick="h", session_type="coop", save_name="f")
+    st, out = settings6(host["room"], host["token"], {"tp": 0})
+    check("coop: the host sets tp=0", st == 200
+          and out["settings"] == dict(DEFAULT_COOP, tp=0), (st, out))
+    st, g = join6(host["room"], "g", who="10.0.0.2")
+    check("coop: a late joiner's plan says tp=0",
+          st == 200 and g["plan"]["settings"] == dict(DEFAULT_COOP, tp=0),
+          (st, g))
+
+    # ---- unknown verb fields are still refused on the new verb -------------
+    reset()
+    st, host = create6(nick="h", session_type="party")
+    st, out = S.do_settings({"v": 6, "room": host["room"],
+                             "token": host["token"], "settings": {},
+                             "save_path": "C:\\x\\y.coopsav"}, "10.0.0.1",
+                            1000.0)
+    check("settings with a path-like key is bad_field",
+          st == 400 and out["error"] == "bad_field", (st, out))
+    st, out = S.do_settings({"v": 5, "room": host["room"],
+                             "token": host["token"], "settings": {}},
+                            "10.0.0.1", 1000.0)
+    check("a v5 settings verb is bad_field (the verb is v6, like color at v1)",
+          st == 400 and out["error"] == "bad_field", (st, out))
+
+
 def test_party_coop_malformed_input():
     """Security law: every new field bounds-checked, names opaque and capped,
     no path ever stored, a forged message grants nothing."""
@@ -4654,6 +4871,7 @@ def main():
     test_arena_has_no_host_in_the_match()
     test_party_and_coop_rooms()
     test_v5_clients_and_party_coop()
+    test_room_settings()
     test_party_coop_malformed_input()
 
     print("\n%d passed, %d failed" % (len(PASSED), len(FAILED)))

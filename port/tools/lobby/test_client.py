@@ -1140,6 +1140,42 @@ def selftest_rooms(c):
     check("a 5 KB coop create body is refused before it is parsed (413)",
           status == 413, (status, text[:80]))
 
+    # ROOMSET1: the host's toggles over the wire. A party room made with two
+    # toggles changed carries them in its plan; a guest cannot change them; the
+    # host can, until Start; a bad name is refused.
+    status, pr = c.post("create", {"v": 6, "game": GAME, "nick": "ts",
+                                   "session_type": "party",
+                                   "settings": {"collision": 0, "damage": 1}})
+    check("party: the create's settings ride the plan over the wire",
+          status == 200 and pr["plan"]["settings"] == {
+              "collision": 0, "interact": 1, "damage": 1, "starshare": 1}, pr)
+    status, g = c.post("join", {"v": 6, "game": GAME, "room": pr["room"],
+                                "nick": "tg"})
+    check("party: a joiner's plan carries the same toggles",
+          status == 200 and g["plan"]["settings"] == pr["plan"]["settings"], g)
+    expect("party: a guest's settings update is 403 not_host",
+           c.post("settings", {"v": 6, "room": pr["room"],
+                               "token": g["token"], "settings": {"damage": 0}}),
+           403, "not_host")
+    expect("party: a host's update with an unknown toggle is bad_setting_key",
+           c.post("settings", {"v": 6, "room": pr["room"],
+                               "token": pr["token"], "settings": {"tp": 1}}),
+           400, "bad_setting_key")
+    expect("party: the host's update is 200",
+           c.post("settings", {"v": 6, "room": pr["room"],
+                               "token": pr["token"], "settings": {"damage": 0}}),
+           200, None)
+    expect("party: a settings create on a VS room is bad_field",
+           c.post("create", {"v": 6, "game": GAME, "nick": "ts",
+                             "settings": {}}), 400, "bad_field")
+    expect("party: a host's Start is 200",
+           c.post("start", {"v": 6, "room": pr["room"], "token": pr["token"]}),
+           200, None)
+    expect("party: a settings update after Start is 409 already_started",
+           c.post("settings", {"v": 6, "room": pr["room"],
+                               "token": pr["token"], "settings": {"damage": 1}}),
+           409, "already_started")
+
 
 def selftest_colors(c):
     """The owner's two picked colours, over the wire.
