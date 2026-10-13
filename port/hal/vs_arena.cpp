@@ -121,6 +121,7 @@ void _ZN6Player7SetAnimEji5Fix12IiEj(void *, unsigned int, int, int, unsigned in
 // the ROM's body placement and the ROM's one per-frame pose
 void func_ov002_020e444c(char *self);
 void func_ov002_020e4768(char *self);
+int func_ov002_020e4990(char *c);       // the carry arm layer: off, then on while +0x358 holds something and the anim is a carry anim
 // the in-place character change (hal/player_bridges.cpp, the door path)
 void port_player_set_character(void *player, unsigned ch);
 int _ZN6Player8HasNoCapEv(void *self);
@@ -748,6 +749,7 @@ struct PupDraw {
     unsigned char invuln;
     unsigned char power;
     unsigned char eaten_by;   // seat + 1 of the mouth this body is in, 0 = none
+    unsigned char held;       // the owner's stream: seat + 1 of the player in its mouth / hands (or kArenaHeldObject)
     char mode;                // i interp, r reckon, h hold, t teleport hold,
                               // o older than the ring
     double ft;                // the sender frame the draw time maps to
@@ -771,7 +773,7 @@ struct Pup {
     unsigned long long face_adv = 0, tongue_frames = 0, tongue_starts = 0,
                        anim_refused = 0, sfx_far = 0, sfx_near = 0;
     unsigned last_refused_id = 0xffffffffu;
-    unsigned long long puton = 0;
+    unsigned long long puton = 0, puff_changes = 0;
     unsigned puton_at = 0;                 // frame of the last put-on cap spawn (probe)
     // a puppet in somebody's mouth is not drawn (PUPEAT2)
     bool mouth_prev = false;               // in a mouth at the last drive
@@ -897,6 +899,18 @@ bool pup_eater_confirms(int eater_seat, int victim_seat, unsigned recv_ms) {
     }
     return false;
 }
+// GRABPOSE1: SM64DS_PUPPET_PUFF=0 turns the puffed-cheek puppet off (the base behaviour)
+bool pup_puff_fix() {
+    static int on = -1;
+    if (on < 0) { const char *e = std::getenv("SM64DS_PUPPET_PUFF"); on = !(e && e[0] == '0' && !e[1]); }
+    return on != 0;
+}
+// GRABPOSE1: SM64DS_PUPPET_CARRYLAYER=0 skips the carry layer call (the base behaviour)
+bool pup_carry_layer_fix() {
+    static int on = -1;
+    if (on < 0) { const char *e = std::getenv("SM64DS_PUPPET_CARRYLAYER"); on = !(e && e[0] == '0' && !e[1]); }
+    return on != 0;
+}
 int pup_buf_pin() {
     if (g_pc.buf == -2) g_pc.buf = env_int("SM64DS_PUPPET_BUF_MS", -1, 10, 400);
     return g_pc.buf;
@@ -972,6 +986,7 @@ bool pup_sample(int seat, unsigned now, Pup &pp, PupDraw *o, ArenaSample *ring,
         o->cursor = (int)s.anim_cursor << 8; o->look = s.character;
         o->flags = s.flags; o->invuln = s.invuln; o->power = s.power;
         o->eaten_by = s.eaten_by;
+        o->held = s.held;
         o->recv_ms = ring[n - 1].recv_ms;
         o->mode = 'o';
         return true;
@@ -981,6 +996,7 @@ bool pup_sample(int seat, unsigned now, Pup &pp, PupDraw *o, ArenaSample *ring,
     o->flags = a.flags;
     o->power = a.power;
     o->eaten_by = a.eaten_by;
+    o->held = a.held;
     o->recv_ms = ring[ia].recv_ms;
     const double since = ft - (double)a.frame;           // frames past a
     const int inv = (int)a.invuln - (int)since;
@@ -1206,6 +1222,31 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
     // sets both) and then follow the body frame with the head frame; leaving
     // the anims puts the head back (func_ov002_020d71a0).
     const bool is_yoshi = (*(int *)(a + 8) & 0xff) == 3u;
+    // GRABPOSE1 THE CHEEKS. A Yoshi with a player in its mouth wears the puffed-cheek
+    // body model: the ROM sets Player+0x714 (mUseAltBodyModel) at frame 0xc of the swallow
+    // (src/_ZN6Player18St_YoshiPower_MainEv.cpp case 1) and Player::GetBodyModelID answers
+    // model 3 + 4 for a Yoshi while it is set (src/actors/Player.cpp:1241); only a
+    // spit / hurt / escape clears it. A puppet runs no states, so nothing set it: the eater
+    // looked as if it held nothing. The eater's own stream says whose mouth it holds
+    // (held = seat + 1, sampled from mObjInMouth), the one clock every console shares. On the
+    // victim's console wait for the referee's EATEN (my body's +0xd0 names this puppet), so a
+    // DENY never puffs a cheek. Set before the SetAnim below, which installs the pose on
+    // whichever model GetBodyModelID now names.
+    if (is_yoshi) {
+        bool puff = false;
+        if (pup_puff_fix() && d.held >= 1 && d.held <= kArenaSeats) {
+            const int vseat = (int)d.held - 1;
+            char *const vb = (vseat == g.seat && g.seat < kArenaSeats) ? (char *)data_0209f394[g.seat] : nullptr;
+            puff = vseat != seat && (vseat != g.seat || (vb && *(char **)(vb + kPlayerEatenBy) == a));
+        }
+        unsigned char &alt = *(unsigned char *)(a + 0x714);
+        if ((alt != 0) != puff) {
+            std::fprintf(stderr, "[puppet] f%u seat %d cheeks %s (holds seat %d)\n", g.frame, seat,
+                         puff ? "puffed" : "relaxed", (int)d.held - 1);
+            ++pp.puff_changes;
+        }
+        alt = puff ? 1 : 0;
+    }
     {
         int targ = -1;
         if (pup_tongue_fix() && is_yoshi && pup_tongue_ready()) {
@@ -1381,6 +1422,11 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
     else *(unsigned char *)(a + 0x6fb) = 0;
     // PLACE, THEN POSE, in Player::Behavior's own order
     func_ov002_020e444c(a);
+    // GRABPOSE1: Player::Behavior's tail (func_ov002_020e4bb8) runs func_ov002_020e4990 between the
+    // placement and the pose: it switches the upper-body carry layer (model layer 8) off and, while
+    // +0x358 holds something and the body anim is a carry anim, back on. A puppet skipped it, so the
+    // layer vs_arena_grab loads onto a holder puppet (puppet_carry_overlay) was never shown.
+    if (pup_carry_layer_fix()) func_ov002_020e4990(a);
     func_ov002_020e4768(a);
     // the render latches, the tail of func_ov002_020e4bb8 (GHOSTLOOK1 A)
     *(unsigned char *)(a + 0x6db) = (unsigned char)*(int *)(a + 8);
