@@ -207,6 +207,7 @@ void slide_tick(int allowed)
     else if (!g_slide.target && g_slide.ticks > 0) --g_slide.ticks;
 }
 
+int g_slide_pend;                       /* a bumper / tab press that came in mid-slide, applied once the slide lands (+1 / -1 / 0) */
 int g_wide_now;                         /* the picture of this tick is wide (set by pause_facts) */
 int g_pic_w = 1024, g_pic_h = 768;      /* the picture of this tick */
 int g_tab_hover = -1, g_tab_press = -1; /* the 4:3 edge tabs under / held by the pointer (set by the input hook) */
@@ -658,7 +659,7 @@ int pause_up(int scene_id)
     if (v != g_last_variant) {
         /* settings must reach the file on every way out of the pause (REVSETLIVE1 G1: the queue waits half a second and has no flush on quit) */
         if (!v || v == V_STATUS || v == V_NOSAVE) sl_flush();
-        g_slide.target = 0; g_slide.ticks = 0;
+        g_slide.target = 0; g_slide.ticks = 0; g_slide_pend = 0;
     }
     g_last_variant = v;
     if (!v) {
@@ -759,8 +760,18 @@ extern "C" int menu_pause_input(unsigned keys, int mvalid, int mx, int my, int m
         }
     }
     if (!mdown || !mvalid) g_tab_press = -1;
+    /* A CAROUSEL: each bumper, Q / E and edge tab always slides its own way (RB, E and the right tab: the page in view leaves to the right, the
+       other page comes in from the left; LB, Q and the left tab the mirror). From the planks page that is the planks leaving and the tracker
+       arriving; from the tracker page it is the tracker leaving the same way and the planks arriving from the other side, so a second RB keeps
+       going the way the first one went. The slide is one number (slide_t1000, 0 planks .. 1000 tracker) and dir is the side the PLANKS leave to, so
+       tracker -> planks with the tracker leaving to side act is the planks arriving from side -act: dir = -act, run back toward 0. A press while a
+       slide is still running waits for it to land (one press is remembered). */
+    const int settled = g_slide.target ? g_slide.ticks >= kSlideTicks : g_slide.ticks == 0;
+    if (act && !settled) { g_slide_pend = act; act = 0; }
+    else if (!act && settled && g_slide_pend) { act = g_slide_pend; g_slide_pend = 0; }
+    else if (act) g_slide_pend = 0;
     if (act) {
-        if (g_slide.target) g_slide.target = 0;                        /* back the way it came */
+        if (g_slide.target) { g_slide.dir = -act; g_slide.target = 0; }
         else { g_slide.dir = act; g_slide.target = 1; }
     }
     return 1;
