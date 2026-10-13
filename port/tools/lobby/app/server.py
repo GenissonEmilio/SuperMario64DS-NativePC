@@ -148,6 +148,12 @@ REVISION = "lobby-6"
 #     rooms: it releases the room, and the plan every member polls carries
 #     `started` / `launch` so a launcher can launch together, and a later
 #     joiner (who is handed a started plan) launches on joining.
+#   * ROOM SETTINGS (ROOMSET1, additive within v6): create may carry
+#     `settings`, an object of 0/1 toggles for a party or coop room (see
+#     ROOM_SETTINGS below); the `settings` verb lets the host change them
+#     while the room has not started. Every plan of a party or coop room
+#     carries the room's `settings`, so each launcher can turn them into env.
+#     A v6 create without `settings` gets the defaults, exactly as before.
 CONTRACT_MIN = 5
 CONTRACT_V = 6
 V_SESSION = 4    # create.session_type
@@ -168,6 +174,24 @@ SESSION_TYPES = ("vs", "adventure", "party", "coop")
 # coop is the synced world. Neither type uses the VS dial, ready, go or result.
 ROOM_KINDS = ("party", "coop")
 HUB_TYPES = ("adventure", "party", "coop")
+
+# ROOM SETTINGS (ROOMSET1). Player-to-player behaviour in a party or coop room
+# is a set of toggles the HOST picks when the room is made (Tango: a room
+# toggle, not a build switch). Each is 0 or 1 and each has one name here, which
+# is also the launch env the game reads (SM64DS_ROOM_<NAME> upper-cased):
+#   collision  1 = friends are solid bodies, 0 = ghosts (SM64DS_ROOM_COLLISION)
+#   interact   1 = hits / stomps / eats count, 0 = none (SM64DS_ROOM_INTERACT)
+#   damage     1 = a friend's hit can hurt a friend, 0 = off (SM64DS_ROOM_DAMAGE)
+#   tp         1 = TP to friends, coop only (SM64DS_ROOM_TP)
+#   starshare  1 = stars are shared, party only (SM64DS_ROOM_STARSHARE)
+# Each kind takes only its own names: a party room has no tp, a coop room no
+# starshare. An unknown name, or a name of the other kind, is refused.
+ROOM_SETTINGS = {
+    "party": ("collision", "interact", "damage", "starshare"),
+    "coop": ("collision", "interact", "damage", "tp"),
+}
+ROOM_SETTING_DEFAULTS = {"collision": 1, "interact": 1, "damage": 0,
+                         "tp": 1, "starshare": 1}
 
 # The longest and the allowed shape of a coop save's DISPLAY name. Opaque text
 # the lobby only stores and echoes. The characters that make a path (separators,
@@ -839,6 +863,9 @@ class Room(object):
         self.started = False
         self.launch_no = 0
         self.save_name = ""
+        # ROOM SETTINGS (ROOMSET1): the host's toggles for a party or coop room,
+        # name -> 0/1, only the names its kind takes. Empty for every other kind.
+        self.settings = {}
         self.map = 0
         self.win_mode = "time"
         self.star_target = None
@@ -1112,6 +1139,7 @@ class Room(object):
             v["started"] = self.started
             v["launch"] = self.launch_no
             v["room_seats"] = self.seat_cap()
+            v["settings"] = dict(self.settings)
             if self.session_type == "coop":
                 v["save_name"] = self.save_name
         if self.session_type == "vs":
@@ -1389,6 +1417,31 @@ def v_save_name(body):
     return s, None
 
 
+def settings_for(kind, given, base=None):
+    """A party or coop room's settings, from what a client sent (ROOMSET1).
+
+    `given` is the JSON object the client sent ({} when it sent none). `base`
+    is what the room has now (an update) or None (a create: the defaults).
+    Only the names `kind` takes are accepted, each 0 or 1 (a real int: a
+    bool, a float or a string is refused). Answers (dict, None) or
+    (None, error_code); the refusal names the kind of mistake, not the value.
+    """
+    names = ROOM_SETTINGS[kind]
+    if base is None:
+        out = {k: ROOM_SETTING_DEFAULTS[k] for k in names}
+    else:
+        out = dict(base)
+    if not isinstance(given, dict):
+        return None, "bad_settings"
+    for k, v in given.items():
+        if k not in names:
+            return None, "bad_setting_key"
+        if isinstance(v, bool) or not isinstance(v, int) or v not in (0, 1):
+            return None, "bad_setting_value"
+        out[k] = v
+    return out, None
+
+
 def v_text(body):
     s, err = want_str(body, "text", "bad_text")
     if err:
@@ -1616,7 +1669,9 @@ VERB_FIELDS = {
                    "session_type": V_SESSION,
                    # v6: a coop room's save display name (do_create requires
                    # it for coop and refuses it anywhere else).
-                   "save_name": V_ROOMS}),
+                   "save_name": V_ROOMS,
+                   # v6 (ROOMSET1): the room's toggles, party and coop only.
+                   "settings": V_ROOMS}),
     "join":      (("v", "room", "nick", "game"),
                   {"pre_ok": 1, "color": V_COLOR, "shoes": V_COLOR}),
     "poll":      (("v", "room", "token", "cursor"), {"wait": 1}),
@@ -1636,6 +1691,8 @@ VERB_FIELDS = {
     "color":     (("v", "room", "token", "color", "shoes"), {}, V_COLOR),
     "preflight": (("v", "room", "token", "pre_ok"), {}),
     "start":     (("v", "room", "token"), {}),
+    # v6 (ROOMSET1): the host changes a party or coop room's toggles before Start.
+    "settings":  (("v", "room", "token", "settings"), {}, V_ROOMS),
     "ready":     (("v", "room", "token", "match"), {}),
     "result":    (("v", "room", "token", "match", "win", "scores"), {}),
     "failed":    (("v", "room", "token", "match", "reason"), {}),
@@ -1768,6 +1825,15 @@ def do_create(body, who, now):
             return 400, {"error": err}
     elif "save_name" in body:
         return 400, {"error": "bad_field"}
+    # ROOMSET1: the room's toggles. Party and coop only; absent means the
+    # defaults. Checked before the rate bucket and the room cap, like the rest.
+    settings = {}
+    if session_type in ROOM_KINDS:
+        settings, err = settings_for(session_type, body.get("settings", {}))
+        if err:
+            return 400, {"error": err}
+    elif "settings" in body:
+        return 400, {"error": "bad_field"}
 
     if not BUCKETS.allow_create(who, now):
         return 429, {"error": "too_fast"}
@@ -1789,6 +1855,7 @@ def do_create(body, who, now):
     room = Room(code, now, game)
     room.session_type = session_type
     room.save_name = save_name
+    room.settings = settings
     if session_type in HUB_TYPES:
         # THE ROOM'S HUB CODE, minted once and kept for the room's life: an
         # adventure room is one relay hub session that people drop in and out
@@ -2088,6 +2155,47 @@ def do_params(body, who, now):
            room.playing_count(), room.match_players, room.luigi, room.voice,
            room.netmode if room.session_type == "vs" else "-"))
     return 200, {"cursor": room.seq}
+
+
+def do_settings(body, who, now):
+    """Host only, before Start: change a party or coop room's toggles (ROOMSET1).
+
+    `settings` is a partial update: the names sent change, the rest keep what
+    the room has. Refused once the room is started (the games are up, and a
+    change would not reach them) and for any room that is not party or coop.
+    """
+    err = shape_for("settings", body)
+    if err:
+        return 400, {"error": err}
+    code, err = v_room(body)
+    if err:
+        return 400, {"error": err}
+    token, err = v_token(body)
+    if err:
+        return 400, {"error": err}
+    room = ROOMS.get(code)
+    if room is None or room.state == "closed":
+        return 404, {"error": "no_such_room"}
+    seat = seat_of(room, token)
+    if seat is None:
+        return refuse_member(room, token, now)
+    room.members[seat].seen = now
+    if seat != room.host_seat:
+        return 403, {"error": "not_host"}
+    if room.session_type not in ROOM_KINDS:
+        return 409, {"error": "no_room_settings"}
+    if room.state != "lobby":
+        return 409, {"error": "not_in_lobby"}
+    if room.started:
+        return 409, {"error": "already_started"}
+    out, err = settings_for(room.session_type, body["settings"], room.settings)
+    if err:
+        return 400, {"error": err}
+    room.settings = out
+    room.push("settings", settings=dict(out))
+    log("room %s settings %s" % (code, " ".join(
+        "%s=%d" % (k, out[k]) for k in ROOM_SETTINGS[room.session_type])))
+    return 200, {"cursor": room.seq, "settings": dict(out)}
 
 
 def do_leave(body, who, now):
@@ -2422,7 +2530,10 @@ def member_plan(room, seat):
                 "code": room.comms_code, "relay": RELAY_ADDR,
                 "relay_v": RELAY_V, "want_seat": WANT_ANY_SEAT,
                 "host": seat == room.host_seat, "started": room.started,
-                "launch": room.launch_no, "room_seats": room.seat_cap()}
+                "launch": room.launch_no, "room_seats": room.seat_cap(),
+                # ROOMSET1: the room's toggles, the same for every seat. The
+                # launcher turns each into SM64DS_ROOM_<NAME>=<0|1>.
+                "settings": dict(room.settings)}
         if room.session_type == "coop":
             plan["save_name"] = room.save_name
         return plan
@@ -3323,6 +3434,7 @@ VERBS = {
     "preflight": do_preflight,
     "color": do_color,
     "start": do_start,
+    "settings": do_settings,
     "ready": do_ready,
     "result": do_result,
     "failed": do_failed,
