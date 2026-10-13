@@ -75,6 +75,7 @@ struct Chore {
     int skip;            /* a confirm press asked for the resting state */
     int iris_covered;    /* the iris covered the picture on the last drawn frame */
     int ff2_done;
+    int voice2;          /* INTROVOICE1: 0 = the counter has not been moved to the ROM's second voice call yet, then frames since */
     int attract_t;       /* the ROM's attract counter as last read */
     int fly_t;           /* ASSET6: frames since the press, while the star flies off the top (state 10 before the iris) */
 } g_ch;
@@ -552,6 +553,8 @@ int ff_on()
     return v;
 }
 
+enum { VOICE_WAIT = 2 };       /* INTROVOICE1: frames the iris finish waits after the counter move */
+
 int ctune(int idx, int dflt)         /* SM64DS_CHORE_TUNE=a,b,c,... integer knobs for timing / look iteration */
 {
     static int v[12], have = 0;
@@ -606,7 +609,7 @@ void chore_step(int variant, int top, int elem, int req)
     if (!c.in_fam) {              /* entering the main family */
         c.in_fam = 1;
         c.mode = (c.prev_variant == V_ATTRACT) ? CH_INTRO : CH_RETURN;
-        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0;
+        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.voice2 = 0; c.fly_t = 0;
         if (hal_menu_trace_on()) fprintf(stderr, "[chore] enter family mode=%s top=%d\n", c.mode == CH_INTRO ? "intro" : "return", top);
     }
     ++c.fam_t;
@@ -721,7 +724,20 @@ void chore_rom_writes(int top, int req)
         /* once our iris covers the picture the ROM's iris is finished: progress to its last step so the callback asks for the arrival */
         if (g_ch.iris_covered && !g_ch.ff2_done && data_ov007_02104bd8) {
             char *o6 = *(char **)data_ov007_02104bd8;
-            if (o6 && *(int *)(o6 + 8) == 1) {
+            /* INTROVOICE1: the second half of the title line. src/func_ov007_020b10dc.c plays the voice in two calls of the top-state 10
+               handler: id 0x2b at t = 30 ("It's-a me") and id 0x2d at t = 128 ("Mario!"; Luigi 0x2c at 30 and 0x2e at 122), the second on the
+               frame the star iris ends, as the head's arrival starts. Finishing the iris early left t at its iris-time value, so the ROM never
+               reached that call. The counter is moved to the frame before the ROM's second call and the iris is finished VOICE_WAIT frames
+               later, so the ROM's own handler plays it (it picks the character's id itself) on the beat the DS does: the end of the iris,
+               as the head arrives. */
+            if (o6 && *(int *)(o6 + 8) == 1 && g_ch.voice2 == 0) {
+                const int voice_t = (*(int *)(g + 0xec) == 1) ? 0x7a : 0x80;
+                if (*t < voice_t) *t = voice_t - 1;
+                g_ch.voice2 = 1;
+                if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t moved to %d for the second voice call\n", voice_t - 1);
+            } else if (g_ch.voice2 > 0 && g_ch.voice2 < VOICE_WAIT) {
+                ++g_ch.voice2;
+            } else if (o6 && *(int *)(o6 + 8) == 1) {
                 const int step = *(int *)(o6 + 0x18);
                 const int want = 0x1000 - step + 1;
                 if (*(int *)(o6 + 0x14) < want) *(int *)(o6 + 0x14) = want;
