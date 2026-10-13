@@ -74,6 +74,10 @@ struct NetHudView {
 // is rebuilt at most every 500 ms and otherwise copied.
 void net_hud_view(NetHudView *out);
 
+// FIX9B: hal/player_list.cpp. True while no body / a cutscene / a coop boot hold:
+// the room overlays (player list, ping box) stay off then.
+bool player_list_suppressed();
+
 }  // namespace port
 
 #ifdef OVL_SCALE
@@ -86,6 +90,7 @@ extern "C" int hal_sub_screen_inset_rect(int r[4]);
 static void net_hud_draw(const OvlSurface &fb)
 {
     port::NetHudView v;
+    if (port::player_list_suppressed()) return;
     port::net_hud_view(&v);
     if (v.n <= 0) return;
     const int rom = chat_font_build();
