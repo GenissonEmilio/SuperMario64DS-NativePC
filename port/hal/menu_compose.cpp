@@ -1707,9 +1707,6 @@ extern "C" int hal_menu_layer_ok(void)
         if (P.custom || P.hostgrad || P.src == SRC_TOP_PIC) return 0;
         if (P.src == SRC_HOSTIMG && (P.wall || P.iris || P.paper || P.snap)) return 0;
     }
-    if (D.L.focus >= 0 && D.focus_shown && !D.L.no_focus_paint && D.L.focus < D.L.nh &&
-        D.L.p[D.L.hs[D.L.focus].piece].src != SRC_HOSTIMG)
-        return 0;
     return 1;
 }
 void hal_menu_note_lift_drawn(void) { g_dd_lift_pending = 0; }
@@ -2164,9 +2161,7 @@ void hal_menu_present(uint32_t *dst, int w, int h, int stage)
     g_rep.enable = 0; g_rep.valid = 0;
     if (D.L.snap_save) snap_save(dst, w, h);
     menu_shot_maybe(dst, w, h, D.serial);
-    if (D.L.focus >= 0 && D.focus_shown && !D.L.no_focus_paint && D.L.focus < D.L.nh &&
-        D.L.p[D.L.hs[D.L.focus].piece].src != SRC_HOSTIMG)
-        menu_highlight_paint(&D.L, dst, w, h, D.serial);
+    /* HOVERBOX1: no port-made pulsing outline over a hovered or pad-focused hotspot (menu_highlight_paint is no longer called) */
     seen_ack(D);
     if (amended) seen_amend(D);
     g_dd_lift_pending = 0;      /* the draw honoured the lift */
