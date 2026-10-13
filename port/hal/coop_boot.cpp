@@ -616,20 +616,20 @@ namespace {
 // ---------------------------------------------------------------------------
 // COOPSPAWN9 (run mp1, items 3 and 4 of the 10-13 field report): WHERE EVERYONE STANDS AFTER THE OPENING.
 //
-// The opening is a one-player cutscene on every console. Its hand-over (LakituBro wakes the player, talks, and after the
-// opening-seen bit the ROM walks the body on to the castle path) asks the ROM's ClosestPlayer for the body it works with,
-// and coop replaces that answer with a group-wide pick: with four bodies seated some other actor of the hand-over was
-// not always given the local one, so some consoles walked their body WEST to the hedge maze while the others walked on
-// to the castle path (measured: out COOPSPAWN9 base_open vs base_tgtoff; the LakituBro talk itself already answered the
-// local body, [cotgt] use ... cls=235). So the replacement stays OFF from the opening's start until its seen bit
-// (port_coop_boot_opening_hold, read by coop_target.cpp): every console runs the hand-over on its own body exactly as one
-// player does.
-//
-// At the seen bit the host stays where it stands and every guest moves ITS OWN body to its place on the 96-unit ring (the
-// table of port_vs_extra_start in hal/level_boot.cpp, copied here because that function is file-local) around the host's
-// body as the follower draws it: ring slot = my rank among the guests by hub seat. Nothing goes on the wire. If the host's
-// pose is not near mine within 2 s the guest takes the ring around its own body. (The bit comes while the bodies still
-// stand where the hand-over woke them, a few hundred units apart at most; the walk on to the castle is the player's.)
+// The opening is a one-player cutscene on every console. Its hand-over (LakituBro puts the player to sleep on the spawn,
+// talks, wakes him; the opening-seen bit is set as the player wakes) asks the ROM's ClosestPlayer for the body it works
+// with, and coop replaces that answer with a group-wide pick. Measured with four consoles (out COOPSPAWN9, base_open and
+// the b3/b4/b5 probe rows): the LakituBro pick itself already answered each console's OWN body, but from the first tick after
+// the opening's closing load some consoles' bodies slid off the spawn by themselves (100 to 300 units, and in about half the
+// runs a runaway of up to 2000 units west to the hedge maze, pad words all zero), at random, on the shipped build too, so
+// the talk happened with Yoshi somewhere else and the group ended up scattered.
+//  1. The group-wide ClosestPlayer stays OFF from the opening's start until its seen bit (port_coop_boot_opening_hold, read by
+//     coop_target.cpp): the hand-over works on the local body exactly as it does for one player.
+//  2. PIN: from the closing load until the bit the body is written back onto the spawn point the load gave it (record 0, the
+//     same point on every console) before every tick, with the spawn's facing.
+//  3. At the bit every console puts its own body on its place of the 96-unit ring around that spawn (the table of
+//     port_vs_extra_start in hal/level_boot.cpp, copied here because that function is file-local): the host takes the centre,
+//     guests rank 1..3 by hub seat. Wire-free: the spawn is level data, so every console computes the same places.
 //
 // A LATE JOINER (the GO was already given when it reached the file's first frame) has no opening: it waits for the host's
 // body to show in its own level (hub presence + the follower's drawn pose, at most 4 s) and lands on the same ring around
@@ -645,8 +645,12 @@ struct SpawnState {
     unsigned frame = 0;
     unsigned placed = 0;
     // after the opening
-    int phase = 0;                 // 0 before the bit, 1 bit seen / waiting for the host's pose, 3 done
-    unsigned bit_frame = 0;
+    int phase = 0;                 // 0 before the bit, 3 done
+    bool have_spawn = false;
+    int spawn[3] = {0, 0, 0};
+    short spawn_ang = 0;
+    unsigned pin_from = 0, pinned = 0;
+    double max_drift = 0.0;
 } S9;
 
 bool seen_bit() { return (data_0209caa0[8] & 0x80) != 0; }
@@ -770,26 +774,43 @@ void spawn_frame() {
         LOG("SPAWN view f=%u level=%d%s", S9.frame, (int)data_0209f2f8, v);
     }
 
-    // ---- after the opening: at the seen bit, a guest takes its place on the ring around the host's body (as the follower
-    // draws it, when that is near mine), or around its own body when the host's pose has not come within 2 s
-    if (C.intro_seen && S9.phase == 0 && bit && !S9.bit_prev) {
-        S9.phase = 1;
-        S9.bit_frame = S9.frame;
-        LOG("SPAWN opening seen bit set on this console at (%d,%d,%d)", me[0] >> 12, me[1] >> 12, me[2] >> 12);
-        if (C.host) { S9.phase = 3; LOG("SPAWN host: stays here as the centre of the ring"); }
-    }
-    S9.bit_prev = bit;
-    if (S9.phase == 1) {
-        int dp[3];
-        if (host_in_my_level(dp) && hdist(dp, me) < 1500.0) {
-            S9.phase = 3;
-            spawn_move("after the opening", dp[0], dp[1], dp[2]);
-        } else if (S9.frame - S9.bit_frame > 120) {
-            S9.phase = 3;
-            LOG("SPAWN no host pose near me within 2 s: ring around my own body");
-            spawn_move("after the opening (own body)", me[0], me[1], me[2]);
+    // ---- after the opening. From the closing load until the seen bit the body stays on the spawn the load gave it (record 0 of
+    // the level, the same point on every console): the ROM's hand-over leaves it standing there when one player plays, but in
+    // a room some consoles' bodies got shoved off it (measured: runaway slides of 2000 units west, or 100 to 300 either way),
+    // so the talk with LakituBro happened with Yoshi somewhere else. The pin writes it back before every tick.
+    // At the bit every console puts its own body on its place of the ring around that spawn (rank by hub seat; the host
+    // takes the centre) and gives it the spawn's facing: the group stands together on the main spawn, wire-free.
+    static const bool pin_off = std::getenv("SM64DS_COOPSPAWN_PIN") && std::getenv("SM64DS_COOPSPAWN_PIN")[0] == '0';   // proof control
+    if (C.intro_seen && C.arrived && S9.phase == 0 && !bit && !S9.have_spawn) {
+        S9.have_spawn = true;
+        std::memcpy(S9.spawn, me, sizeof me);
+        std::memcpy(&S9.spawn_ang, b + 0x8e, 2);
+        S9.pin_from = S9.frame;
+        LOG("SPAWN spawn point (%d,%d,%d) facing %d%s", me[0] >> 12, me[1] >> 12, me[2] >> 12, (int)S9.spawn_ang, pin_off ? " (pin off)" : "");
+    } else if (S9.have_spawn && S9.phase == 0 && !bit && !pin_off) {
+        const double drift = hdist(me, S9.spawn);
+        if (drift > S9.max_drift) S9.max_drift = drift;
+        if (drift > 0.0) {
+            wr_i32(b, 0x5c, S9.spawn[0]);
+            wr_i32(b, 0x64, S9.spawn[2]);
+            wr_i32(b, 0x68, S9.spawn[0]);
+            wr_i32(b, 0x70, S9.spawn[2]);
+            std::memcpy(b + 0x8e, &S9.spawn_ang, 2);
+            std::memcpy(b + 0x94, &S9.spawn_ang, 2);
+            ++S9.pinned;
         }
     }
+    if (C.intro_seen && S9.phase == 0 && bit && !S9.bit_prev) {
+        S9.phase = 3;
+        LOG("SPAWN opening seen bit set on this console at (%d,%d,%d); pinned %u frames, largest drift in one frame %.0f units", me[0] >> 12,
+            me[1] >> 12, me[2] >> 12, S9.pinned, S9.max_drift);
+        if (S9.have_spawn) {
+            spawn_move("after the opening", S9.spawn[0], S9.spawn[1], S9.spawn[2]);
+            std::memcpy(b + 0x8e, &S9.spawn_ang, 2);
+            std::memcpy(b + 0x94, &S9.spawn_ang, 2);
+        }
+    }
+    S9.bit_prev = bit;
 
     // ---- a late joiner
     if (S9.late && !S9.late_done) {
