@@ -371,6 +371,15 @@ int host_setting_mouse_capture(void);
    file's answer. */
 int host_setting_name_tags(void);
 
+/* ---- ChatScale: HOW BIG THE TEXT CHAT IS (run mp1, lane CHATSCALE1) -----
+   Percent of the chat's look today: 75, 100, 125, 150 or 200, default 100
+   (which draws exactly what the chat always drew). It scales the chat lines
+   and the typing box; a message wider than half the screen wraps, so a bigger
+   size wraps sooner. Any other number lands on the nearest of the five.
+   Reloads live. SM64DS_CHAT_SCALE overrides it for a proof run. */
+int host_setting_chat_scale(void);
+int host_setting_set_chat_scale(int pct);
+
 /* ---- AdventureGhosts: PLAY THE SINGLE-PLAYER ADVENTURE TOGETHER ----------
    Default 0, and 0 is the ROM: an ordinary solo game with nobody else in it.
    With it on the game is still a solo game -- your own level, your own single
