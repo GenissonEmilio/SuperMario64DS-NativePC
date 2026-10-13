@@ -1214,8 +1214,13 @@ void cap_on_deny(unsigned short cid, int reason, int winner) {
     }
 }
 
+// The frame of the last CAP_TAKEN the referee gave ME (0 = none). The tongued-cap watch below swaps my
+// character outright only after one: a cap the referee gave to someone else must not change me.
+unsigned g_cap_taken_me_frame = 0;
+
 void on_cap_taken(const RefEvent &e) {
     ++g.st.cap_taken;
+    if (e.seat == g.seat) g_cap_taken_me_frame = my_frame_now() ? my_frame_now() : 1u;
     std::fprintf(stderr, "[vsarena-ref] CAP_TAKEN cap=%d by seat %d look=%d back_in=%d claim=%d stamp=%u\n",
                  e.a, e.seat, (int)(signed char)e.b, e.d, e.c, e.t);
     if (e.seat == g.seat) finish_claim(e.c, 1, 0, 0xFF);
@@ -1526,7 +1531,9 @@ void cap_tongue_watch() {
         if (!fix || morphing || model > 2 || (s32r(me, 8) & 0xff) == (unsigned)model) return;
         if (g_tc.frames < 4 || u32r(me, 0x360) != 0) return;        // the swallow is not over yet
         if (_ZN6Player12Unk_020c9e5cEh(me, 8)) return;               // the morph state is up: the cap takes it from here
-        if (g_tc.frames >= 60 && !g_tc.swapped) {
+        // the outright swap needs the referee's say-so: a CAP_TAKEN for me within the last ~10 s
+        const bool granted = g_cap_taken_me_frame && (unsigned)(my_frame_now() - g_cap_taken_me_frame) < 600u;
+        if (g_tc.frames >= 60 && !g_tc.swapped && granted) {
             g_tc.swapped = true;
             ++g_tc_swapped;
             std::fprintf(stderr, "[captongue] f=%u the ROM's own put-on never started in %d frames (%d tries): "
