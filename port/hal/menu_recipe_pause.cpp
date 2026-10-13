@@ -782,4 +782,32 @@ extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back)
     *pressed = (uint16_t)(*pressed & ~(confirm | MENU_PAD_UP | MENU_PAD_DOWN));
 }
 
+/* OneScreenMenus OFF: no recipe is up, the ROM's own two-screen pause is on screen. The cartridge's pause has no pad cursor (PS_Update case 3: only a
+   touch inside a plate picks it; the pad's Start / Select presses whatever plate data_0209f2e0 already names, IsButtonInputValid's special path
+   src/IsButtonInputValid.c :39), so with the keyboard or a pad no key could ever reach Exit Course and A / Space did nothing at all. The same two things the
+   recipe's driver gives the new pause: Up / Down move the ROM's plate cursor (the ROM redraws it through UpdateMenuButtons, as a touch does), and
+   the port's confirm keys (pad A, Space, the DS A key) become the Start the ROM confirms with. pressed is the DS key word (MENU_PAD_*); the caller writes it back. */
+extern "C" void menu_pause_rom_pad(uint16_t *pressed)
+{
+    if (!pause_cursor_live() || !menu_pause_pad_ok()) return;
+    uint16_t k = *pressed;
+    const unsigned st = data_0209f248;
+    if (st == 5) return;            /* the VS pause stays the ROM's own */
+    int dir = -1;
+    if (k & MENU_PAD_UP) dir = MENU_DIR_UP;
+    else if (k & MENU_PAD_DOWN) dir = MENU_DIR_DOWN;
+    if (dir >= 0) {
+        const int last = data_0209f2b4 ? (int)data_0209f2b4 - 1 : 0;
+        const int cur = (int)data_0209f2e0;
+        const int ns = dir == MENU_DIR_UP ? (cur > 0 ? cur - 1 : cur) : (cur < last ? cur + 1 : cur);
+        if (ns != cur) {
+            set_chosen(ns);
+            func_02012790(0x12e);
+        }
+    }
+    if (k & (MENU_PAD_CONFIRM | 0x0001)) k = (uint16_t)((k & ~(unsigned)(MENU_PAD_CONFIRM | 0x0001)) | MENU_PAD_START);
+    k = (uint16_t)(k & ~(unsigned)(MENU_PAD_UP | MENU_PAD_DOWN));
+    *pressed = k;
+}
+
 extern "C" int menu_pause_active(void) { return g_last_variant != 0; }

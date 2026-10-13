@@ -1916,6 +1916,7 @@ void hal_sub_screen_probe(void);
 /* the one-screen menu compose layer's pad step (run menu1, hal/sub_screen.cpp): the live recipe's driver on the
    pressed word, in both spellings the ROM reads; inert with no recipe live */
 void hal_menu_pad_seam(void);
+void hal_menu_pad_seam_slot(int slot);
 /* the pointer over the picture, for the settings page (hal/sub_screen.cpp) */
 extern "C" int hal_window_cursor_fb(int *fx, int *fy);
 /* and its one predicate for the frame (hal/menu_compose.cpp): a recipe owns this frame's picture */
@@ -12307,8 +12308,11 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
             scene_raw_prev = scene_raw_all;
             /* the menu compose layer's pad step, the scene loop's seam (the title, the star select, the menus);
                single player only, as the level loop's is */
-            if (!port::comms_transport())
-                hal_menu_pad_seam();
+            /* PAUSEMP1: also in a session. This block runs only when the ROM's fan-out is NOT driving, and the pad
+               words written just above are PadData, which no sender reads: the wire's key word is published from the
+               raw host bits (port_host_keys_set, scene_boot.cpp port_scene_comms_publish, masked 0x2fff held-only) and
+               the seam rewrites the pressed halfword only, on the local slot. */
+            hal_menu_pad_seam_slot(0);   /* the scene loop fills PadData slot 0 only */
         }
         btn_was = btn;
     }
@@ -16120,6 +16124,7 @@ int main(void)
                below, into its own slot, unchanged. */
             const int b5_transport = port::comms_transport() != 0;
             const int b5_fan = comms_fanout_on() ? 1 : 0;
+            { static int said_mode = -1; const int m = b5_transport * 2 + b5_fan; if (m != said_mode) { said_mode = m; fprintf(stderr, "[pausemp] level loop pad mode: transport %d fan-out %d\n", b5_transport, b5_fan); } }
             if (b5_fan) {
                 data_0209d50c = 0x16;
                 func_0203bb60();
@@ -16142,7 +16147,8 @@ int main(void)
                over hal_menu_pad_seam; the level-clear save menu's cursor and
                A-as-Start live in its recipe): on the pressed word the ROM just
                built, before the tick reads it; inert with no recipe live, and
-               never in a transport session (a pad rewrite desyncs it) */
+               never in a lockstep (fan-out) session, where a pad rewrite desyncs it; a session with the
+               fan-out off runs it below, after the direct store of its own slot (PAUSEMP1) */
             if (!b5_transport)
                 hal_menu_pad_seam();
             if (b5_transport && !b5_fan) {
@@ -16190,6 +16196,12 @@ int main(void)
                    hal/message_pump.cpp's own publish is unchanged and still
                    runs later in the frame. */
                 *(unsigned short *)((char *)data_020a0e5a + lo) = edge;
+                /* PAUSEMP1: the menu pad step for a session with the fan-out off (VS-less adventure, coop, party:
+                   each console runs its own world and syncs state, not pads). After the direct store so the rewrite
+                   is not overwritten; the wire key word was published from the raw host bits above (comms_publish_pad
+                   at the top of this frame), PadData is never read for sending, and the seam only touches the pressed
+                   halfword of the LOCAL slot. */
+                hal_menu_pad_seam_slot((int)data_0209f250);
             }
             /* func_020197b8.c:43-46: the local player's held word into the
                32-deep ring. The ring has no reader in src/ but the loop itself;
