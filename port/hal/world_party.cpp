@@ -466,7 +466,9 @@ unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave
                                      : "Walk up to someone first", nullptr, now);
             } else {
                 if (!g.my_id) {
-                    do { g.my_id = (int)(next_rand() & 255u); } while (g.my_id == 0);
+                    /* founder seat (high nibble) + a nonce 1..15 (low nibble): two parties
+                       founded by different seats can never share an id */
+                    g.my_id = ((my_seat & 15) << 4) | (int)(next_rand() % 15u + 1u);
                 }
                 g.inv_to = best;
                 g.nonce = (g.nonce + 1) & 15;
