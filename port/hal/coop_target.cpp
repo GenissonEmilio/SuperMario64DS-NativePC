@@ -52,6 +52,7 @@ enum : int {
 
 CoopTargetStats g_st = {};
 bool g_env = false, g_on = true, g_log = false;
+bool g_logall = false;   // SM64DS_COOP_TARGET_CLS=all: log every class (COOPSPAWN9 proof)
 unsigned g_hold_ms = 1000;
 unsigned g_logcls[16]; int g_nlogcls = 0;
 struct ForgeKnob { unsigned tick; char name[12]; bool done; };
@@ -114,7 +115,6 @@ void read_env() {
     std::fprintf(stderr, "[cotgt] targeting %s hold=%ums%s\n", g_on ? "on" : "OFF (control)", g_hold_ms, g_log ? " log" : "");
 }
 
-bool g_logall = false;   // SM64DS_COOP_TARGET_CLS=all: every class (COOPSPAWN9 proof)
 bool logged_cls(unsigned c) {
     if (g_logall) return true;
     for (int i = 0; i < g_nlogcls; ++i) if (g_logcls[i] == c) return true;
