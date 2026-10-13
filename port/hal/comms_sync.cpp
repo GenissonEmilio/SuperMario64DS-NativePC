@@ -3072,7 +3072,8 @@ int gw_fade_out(int s) {
     if (gw_door_tag_fade()) {
         const GwSample &ls = g_gw_last[s];
         if (z.last_have && ls.door_kind && ls.door_frame != ghostdoor::kDoorFrameNone &&
-            ls.door_frame >= kGwDoorGoneFrom) {
+            ls.door_frame >= kGwDoorGoneFrom &&
+            ls.door_frame < ghostdoor::kGateBase) {   // 128+ is a star gate's slide, not a door frame
             const int d = ls.door_frame >= kGwDoorGoneTo ? 0 :
                 (int)(kGwDoorGoneTo - ls.door_frame);
             f = f * d / (int)(kGwDoorGoneTo - kGwDoorGoneFrom);
