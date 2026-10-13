@@ -123,6 +123,12 @@ bool world_party_active();
 // sees them. Also the module's clock (reads the others' words, publishes mine).
 /* Returns the pad bits of a press it consumed this frame; the caller clears them. Acts only while the player has control. */
 unsigned world_party_input(unsigned pad_buttons, bool key_invite, bool key_leave);
+// True while the controller D-pad belongs to the party (a world room, and the
+// player is steering in a level / the castle). The walk reader then ignores the
+// physical D-pad; the stick and the keyboard keys are untouched, and in every
+// menu / message / pause the D-pad keeps navigating. HOOK for the later D-pad
+// icon: draw it from the same condition (world_party_dpad_reserved()).
+bool world_party_dpad_reserved();
 // The player's bindings (host_settings KeyPartyInvite / KeyPartyLeave /
 // PadPartyInvite / PadPartyLeave), pushed once a frame by the input hook so this
 // module stays free of host_settings (it is in the shared comms slice). 0 =

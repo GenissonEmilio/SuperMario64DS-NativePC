@@ -15638,10 +15638,16 @@ int main(void)
         }
         if (pad_live) {
             stick_dpad_bits(pad.lx, pad.ly, &dx, &dz);
-            if (pad.buttons & 1) dz += 1;
-            if (pad.buttons & 2) dz -= 1;
-            if (pad.buttons & 4) dx -= 1;
-            if (pad.buttons & 8) dx += 1;
+            /* DPADWORLD1: in an online Adventure room the physical d-pad is the
+               party control (world_party.cpp), so it never walks Mario while he
+               is steered; the stick above and the keys are unchanged, and menus
+               / pause / message boxes still get the d-pad (not input_live). */
+            if (!port::world_party_dpad_reserved()) {
+                if (pad.buttons & 1) dz += 1;
+                if (pad.buttons & 2) dz -= 1;
+                if (pad.buttons & 4) dx -= 1;
+                if (pad.buttons & 8) dx += 1;
+            }
             if (pad.rx < -10000 || pad.rx > 10000) {
                 cam_yaw += cam_turn * 0.045f * (pad.rx / 32768.0f);
                 orbiting = 1;

@@ -259,6 +259,10 @@ bool world_party_active() {
     return !g.off && world_room();
 }
 
+bool world_party_dpad_reserved() {
+    return world_party_active() && input_live();
+}
+
 void world_party_set_binds(int vk_invite, int vk_leave, unsigned pad_invite, unsigned pad_leave) {
     check_env();
     g.set_vk_invite = vk_invite; g.set_vk_leave = vk_leave;
