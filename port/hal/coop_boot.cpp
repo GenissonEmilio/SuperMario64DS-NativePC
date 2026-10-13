@@ -621,12 +621,11 @@ namespace {
 // (port_coop_boot_opening_hold, read by coop_target.cpp): every console runs the hand-over on its own body exactly as one
 // player does.
 //
-// The ROM then walks every body on its own to the same stretch of the castle path, ending a few hundred units apart (the
-// walk is physics and timing). When MY body has walked and stopped, the host stays where it stopped and every guest
-// moves ITS OWN body to its place on the 96-unit ring (the table of port_vs_extra_start in hal/level_boot.cpp, copied
-// here because that function is file-local) around the host's body as the follower draws it: ring slot = my rank among
-// the guests by hub seat. Nothing goes on the wire. A guest waits for the host to stop near it (at most about 30 s, then it
-// takes the ring around its own stop), and gives up at once if its player takes control and walks off first.
+// At the seen bit the host stays where it stands and every guest moves ITS OWN body to its place on the 96-unit ring (the
+// table of port_vs_extra_start in hal/level_boot.cpp, copied here because that function is file-local) around the host's
+// body as the follower draws it: ring slot = my rank among the guests by hub seat. Nothing goes on the wire. If the host's
+// pose is not near mine within 2 s the guest takes the ring around its own body. (The bit comes while the bodies still
+// stand where the hand-over woke them, a few hundred units apart at most; the walk on to the castle is the player's.)
 //
 // A LATE JOINER (the GO was already given when it reached the file's first frame) has no opening: it waits for the host's
 // body to show in its own level (hub presence + the follower's drawn pose, at most 4 s) and lands on the same ring around
@@ -642,15 +641,8 @@ struct SpawnState {
     unsigned frame = 0;
     unsigned placed = 0;
     // after the opening
-    int phase = 0;                 // 0 before the bit, 1 bit seen / walking, 2 stopped, waiting for the host, 3 done
-    unsigned bit_frame = 0, stop_frame = 0;
-    int p0[3] = {0, 0, 0};         // my body at the bit
-    int last[3] = {0, 0, 0};
-    int still = 0;
-    bool walked = false;
-    int stop[3] = {0, 0, 0};
-    int hlast[3] = {0, 0, 0};
-    int hstill = 0;
+    int phase = 0;                 // 0 before the bit, 1 bit seen / waiting for the host's pose, 3 done
+    unsigned bit_frame = 0;
 } S9;
 
 bool seen_bit() { return (data_0209caa0[8] & 0x80) != 0; }
@@ -759,52 +751,24 @@ void spawn_frame() {
         LOG("SPAWN view f=%u level=%d%s", S9.frame, (int)data_0209f2f8, v);
     }
 
-    // ---- after the opening
+    // ---- after the opening: at the seen bit, a guest takes its place on the ring around the host's body (as the follower
+    // draws it, when that is near mine), or around its own body when the host's pose has not come within 2 s
     if (C.intro_seen && S9.phase == 0 && bit && !S9.bit_prev) {
         S9.phase = 1;
         S9.bit_frame = S9.frame;
-        std::memcpy(S9.p0, me, sizeof me);
-        std::memcpy(S9.last, me, sizeof me);
         LOG("SPAWN opening seen bit set on this console at (%d,%d,%d)", me[0] >> 12, me[1] >> 12, me[2] >> 12);
+        if (C.host) { S9.phase = 3; LOG("SPAWN host: stays here as the centre of the ring"); }
     }
     S9.bit_prev = bit;
-    if (S9.phase == 1 || S9.phase == 2) {
-        if (S9.phase == 1) {
-            if (hdist(me, S9.p0) > 300.0) S9.walked = true;
-            const bool moving = hdist(me, S9.last) > 1.5 || std::abs(me[1] - S9.last[1]) > (3 << 12);
-            S9.still = moving ? 0 : S9.still + 1;
-            std::memcpy(S9.last, me, sizeof me);
-            const bool timeout = S9.frame - S9.bit_frame > 2400;
-            if ((S9.walked && S9.still >= 60) || timeout) {
-                S9.phase = 2;
-                S9.stop_frame = S9.frame;
-                std::memcpy(S9.stop, me, sizeof me);
-                LOG("SPAWN body stopped%s at (%d,%d,%d), %u frames after the bit", timeout ? " (timeout, never walked)" : "",
-                    me[0] >> 12, me[1] >> 12, me[2] >> 12, S9.frame - S9.bit_frame);
-                if (C.host) { S9.phase = 3; LOG("SPAWN host: stays here as the centre of the ring"); }
-            }
-        } else {
-            // a guest: wait for the host's body to settle near mine, then take my place on the ring around it
-            if (hdist(me, S9.stop) > 400.0) {
-                S9.phase = 3;
-                LOG("SPAWN my player took control and walked off: no placement");
-            } else {
-                int dp[3];
-                if (host_in_my_level(dp)) {
-                    const bool moving = hdist(dp, S9.hlast) > 0.5;
-                    S9.hstill = moving ? 0 : S9.hstill + 1;
-                    std::memcpy(S9.hlast, dp, sizeof dp);
-                    if (hdist(dp, me) < 1500.0 && S9.hstill >= 60) {
-                        S9.phase = 3;
-                        spawn_move("after the opening", dp[0], dp[1], dp[2]);
-                    }
-                }
-                if (S9.phase == 2 && S9.frame - S9.stop_frame > 1800) {
-                    S9.phase = 3;
-                    LOG("SPAWN host did not settle near me in 30 s: ring around my own stop");
-                    spawn_move("after the opening (own stop)", S9.stop[0], S9.stop[1], S9.stop[2]);
-                }
-            }
+    if (S9.phase == 1) {
+        int dp[3];
+        if (host_in_my_level(dp) && hdist(dp, me) < 1500.0) {
+            S9.phase = 3;
+            spawn_move("after the opening", dp[0], dp[1], dp[2]);
+        } else if (S9.frame - S9.bit_frame > 120) {
+            S9.phase = 3;
+            LOG("SPAWN no host pose near me within 2 s: ring around my own body");
+            spawn_move("after the opening (own body)", me[0], me[1], me[2]);
         }
     }
 
