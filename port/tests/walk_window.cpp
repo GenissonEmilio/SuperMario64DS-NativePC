@@ -4084,6 +4084,9 @@ static void chat_draw(const OvlSurface &fb)
        corner icon on the left, the inset touch panel on the right (the box
        never reaches it: the counter follows the text instead of the edge) */
     int y = ntr::active_h - 40 * scale - row_h;
+    /* the first pixel a whole row may touch: its shade starts CS(1) above the
+       row and the outline one chat pixel above that */
+    const int top_edge = ((sc100 + 50) / 100 < 1 ? 1 : (sc100 + 50) / 100) + 1;
 
     if (v.open) {
         char cnt[16];
@@ -4098,7 +4101,9 @@ static void chat_draw(const OvlSurface &fb)
         const int room = width - cw - CS(8);
         ChatRow brow[CHAT_MAXROWS];
         const int nb = chat_layout("", line, rom, sc100, room > 0 ? room : width, brow, CHAT_MAXROWS);
-        const int first = nb > 4 ? nb - 4 : 0;
+        int first = nb > 4 ? nb - 4 : 0;
+        /* only whole rows: drop the oldest that would not fit under the top edge */
+        while (first < nb - 1 && y - (nb - 1 - first) * row_h - CS(1) < top_edge) ++first;
         const int shown = nb - first;
         const int top = y - (shown - 1) * row_h;
         for (int r = first; r < nb; ++r) {
@@ -4134,7 +4139,7 @@ static void chat_draw(const OvlSurface &fb)
         budget -= nr;
         first_line = false;
         const int top = y - (nr - 1) * row_h;
-        if (top < 0) break;
+        if (top - CS(1) < top_edge) break;       /* never a part-row: this and every older message are dropped */
         for (int r = 0; r < nr; ++r) {
             const int ry = top + r * row_h;
             int rw = rows[r].indent;
