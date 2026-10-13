@@ -69,6 +69,7 @@
 #include "player_fields.h"
 #include "ghost_door.h"      // GHOSTDOOR1: door / area / hidden look of a hub ghost
 #include "party.h"           // PBODY1: solid party bodies (membership by seat)
+#include "party_hits.h"      // PLAYINT1: the squash after a stomp
 #include "host_settings.h"   // port::adventure_ghost_mode(): adventure runs this
                              // layer without SM64DS_SYNC
 
@@ -3497,6 +3498,19 @@ void gw_follow() {
         if (pseat && !z.leaving && !sm.door_kind && gw_fade_out(s) >= 256 &&
             party::gate(s) == party::kGateOk)
             party::follow(a, i, s);
+        if (pseat) {
+            /* PLAYINT1 hook 4: the squash after a stomp I landed (+0x84 is the Y scale).
+               Written only while a squash runs and put back once when it ends. */
+            static bool squashed[kCommsMaxPlayers];
+            const int sy = port::party_hits::squash_scale_for_seat(s);
+            if (sy != 0x1000) {
+                *(int *)((char *)a + 0x84) = sy;
+                squashed[i] = true;
+            } else if (squashed[i]) {
+                *(int *)((char *)a + 0x84) = 0x1000;
+                squashed[i] = false;
+            }
+        }
         if (gw_err_log())
             std::fprintf(stderr, "[gwshown] t=%u f=%u seat=%d body=%d bc=%u "
                          "want=%u fade=%d\n", comms_hub_now_ms(), g_gw_frame,
