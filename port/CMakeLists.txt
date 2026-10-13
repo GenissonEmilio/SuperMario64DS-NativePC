@@ -11625,6 +11625,9 @@ list(APPEND SLICE_COMMS_SOURCES hal/coop_tp.cpp)
 list(APPEND SLICE_COMMS_SOURCES hal/coop_actors.cpp)
 # Run mp1 wave 56 lane PSTAR1: party shared stars. INERT unless SM64DS_PARTY=1.
 list(APPEND SLICE_COMMS_SOURCES hal/party_stars.cpp)
+# Run mp1 lane PLAYINT1: party / coop player interactions (punch, stomp, eat, shove). INERT outside
+# party / coop rooms; see hal/party_hits.h.
+list(APPEND SLICE_COMMS_SOURCES hal/party_hits.cpp)
 # Run mp1 lane STARPOP1: star / key popup and the shared exit (party + coop). INERT
 # outside party / coop rooms; see hal/star_popup.h.
 list(APPEND SLICE_COMMS_SOURCES hal/star_popup.cpp)
