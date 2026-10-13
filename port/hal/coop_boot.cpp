@@ -711,6 +711,17 @@ void spawn_frame() {
     if (!b) return;
     const bool bit = seen_bit();
     if (S9.log && C.intro_seen && !bit && (S9.frame % 20) == 0) spawn_log_lakitu(b);
+    if (S9.log && (bit || !C.intro_seen) && (S9.frame % 120) == 0) {
+        // this console's view of every seat: my own body exactly, a friend at the pose the follower drew him at
+        char v[256]; int w = 0;
+        for (int s = 0; s < 4; ++s) {
+            int dp[3];
+            if (s == my_seat()) { dp[0] = rd_i32(b, 0x5c); dp[1] = rd_i32(b, 0x60); dp[2] = rd_i32(b, 0x64); }
+            else if (!port_adventure_ghost_drawpos(s, dp)) continue;
+            w += std::snprintf(v + w, sizeof v - (size_t)w, " s%d%s=(%d,%d,%d)", s, s == my_seat() ? "*" : "", dp[0] >> 12, dp[1] >> 12, dp[2] >> 12);
+        }
+        LOG("SPAWN view f=%u level=%d%s", S9.frame, (int)data_0209f2f8, v);
+    }
     if (C.intro_seen && bit && !S9.bit_prev && S9.placed == 0) {
         // the opening is over on this console: my body's place on the ring around where it stands
         LOG("SPAWN opening seen bit set on this console");
