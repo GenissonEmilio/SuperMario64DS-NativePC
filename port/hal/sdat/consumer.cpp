@@ -1099,12 +1099,59 @@ static void snd_sys_probe(void)
         }
 }
 
+/* ---- SM64DS_SND_VOICEPROBE=<frame>:<char>:<id>[,...]: A CHARACTER VOICE, ON
+ * DEMAND ----------------------------------------------------------------------
+ *
+ * Calls the ROM's own Sound::PlayCharVoice(char, id, pos), the call the player
+ * actor makes for every voice line (src/actors/Player.cpp), at the given hosted
+ * sound frame, at the local player's camera-space position (+0x74) when there is
+ * a player, else at the origin. char is the character index the player actor
+ * keeps at +0x6d9. It exists so a voice that plays only deep in a level (the
+ * Mario line at the Bowser throw is voice id 0x32) can be captured without
+ * reaching it. Test builds only: off unless the variable is set. */
+extern "C" unsigned int _ZN5Sound13PlayCharVoiceEjjRK7Vector3(unsigned int ch, unsigned int id, const void *pos);
+
+static void snd_voice_probe(void)
+{
+    static int n = -1, frame;
+    static int at[16], who[16], id[16];
+    if (n < 0) {
+        n = 0;
+        const char *e = getenv("SM64DS_SND_VOICEPROBE");
+        while (e && *e && n < 16) {
+            char *end;
+            long f = strtol(e, &end, 0);
+            if (end == e || *end != ':') break;
+            long c = strtol(end + 1, &end, 0);
+            if (*end != ':') break;
+            long v = strtol(end + 1, &end, 0);
+            at[n] = (int)f; who[n] = (int)c; id[n] = (int)v; n++;
+            e = end;
+            while (*e == ',' || *e == ' ') ++e;
+        }
+        if (n) fprintf(stderr, "[voiceprobe] armed: %d call(s) of the ROM's own "
+                       "Sound::PlayCharVoice\n", n);
+    }
+    if (!n) return;
+    ++frame;
+    for (int i = 0; i < n; i++)
+        if (at[i] == frame) {
+            static const int zero[3] = { 0, 0, 0 };
+            void *player = data_0209f394[data_0209f250];
+            const void *pos = player ? (const void *)((char *)player + 0x74) : (const void *)zero;
+            fprintf(stderr, "[voiceprobe] frame %d: PlayCharVoice(char %d, id 0x%x)%s\n",
+                    frame, who[i], (unsigned)id[i], player ? "" : " (no player: origin)");
+            _ZN5Sound13PlayCharVoiceEjjRK7Vector3((unsigned)who[i], (unsigned)id[i], pos);
+        }
+}
+
 extern "C" void sdat_host_tick(void)
 {
     sd_consumer_init();
     snd_coin_probe();
     snd_break_probe();
     snd_sys_probe();
+    snd_voice_probe();
     // The ARM9's sound frame first, then the ARM7's: that is the order on
     // hardware (func_020132d8 -> func_0204f03c runs in the game's update, the
     // other core consumes after), and it matters here because the recycle and

@@ -110,6 +110,7 @@ namespace {
 struct Mod {
     std::string id, folder, kind, game;
     int api;
+    bool part;   /* a switchable sub-folder of the mod above it (see add_parts) */
 };
 
 std::vector<Mod> g_mods;
@@ -164,6 +165,131 @@ bool dir_exists(const std::string &p)
 {
     const DWORD a = GetFileAttributesA(p.c_str());
     return a != INVALID_FILE_ATTRIBUTES && (a & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+
+/* ---- switchable parts (lane MODPACK1) -----------------------------------
+   A files mod may declare, in its settings.json (the launcher's list of
+   settings), a bool or choice setting that carries a "files" entry: a folder
+   inside the mod, relative, written with / between names. That folder is a
+   PART. It is laid out exactly like a mod folder (files/, sound/, textures_hd/,
+   palettes/) and is applied only while the setting says so.
+
+     bool    {"key":"x","type":"bool","default":true,"files":"parts/x"}
+             applies parts/x when the player's value (settings.values.json) is
+             true, else when it is absent and the default is true.
+     choice  {"key":"q","type":"choice","choices":["hd","ds"],"default":"hd",
+              "files":"parts/q"}
+             applies the folder named by the value, parts/q/<value>.
+
+   A part joins the mod list as its own entry straight AFTER its mod (so it
+   outranks the mod and sits below the next mod in EnabledMods), kind "files",
+   id "<mod>:<part folder>". Everything that walks the list (the files layer,
+   textures_hd, palettes, sound/ including single-wave .wav files) therefore
+   treats it like any mod, with no other code. Read once at boot, with the
+   list. A part folder must stay inside the mod: no "..", no drive or stream
+   colon, no leading slash, only letters, digits, - _ . and / . */
+bool part_path_ok(const std::string &rel)
+{
+    if (rel.empty() || rel.size() > 120 || rel[0] == '/' || rel[0] == '.') return false;
+    if (rel.find("//") != std::string::npos || rel[rel.size() - 1] == '/') return false;
+    for (size_t i = 0; i < rel.size(); ++i) {
+        const char c = rel[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '/'))
+            return false;
+    }
+    if (rel.find("..") != std::string::npos) return false;
+    return true;
+}
+
+void add_parts(const Mod &parent, std::vector<Mod> &list, std::string &summary)
+{
+    char *spec = slurp_small(parent.folder + "/settings.json");
+    if (!spec) return;
+    char *vals = slurp_small(parent.folder + "/settings.values.json");
+    int nparts = 0;
+    /* the top-level objects of the settings array */
+    int depth = 0;
+    const char *objstart = 0;
+    for (const char *p = spec; *p; ++p) {
+        if (*p == '"') {
+            ++p;
+            while (*p && *p != '"') p += (*p == '\\' && p[1]) ? 2 : 1;
+            if (!*p) break;
+            continue;
+        }
+        if (*p == '[' || *p == '{') {
+            if (*p == '{' && depth == 1) objstart = p;
+            ++depth;
+        } else if (*p == ']' || *p == '}') {
+            --depth;
+            if (*p == '}' && depth == 1 && objstart) {
+                const std::string obj(objstart, (size_t)(p + 1 - objstart));
+                objstart = 0;
+                char key[96] = "", type[16] = "", files[160] = "", def[96] = "", val[96] = "";
+                host_json_string(obj.c_str(), "key", key, sizeof key);
+                host_json_string(obj.c_str(), "type", type, sizeof type);
+                if (!host_json_string(obj.c_str(), "files", files, sizeof files) || !files[0]) continue;
+                host_json_string(obj.c_str(), "default", def, sizeof def);
+                const bool have = vals && key[0] && host_json_string(vals, key, val, sizeof val);
+                const char *src = have ? "player's value" : "default";
+                const std::string cur = have ? val : def;
+                if (!key[0]) continue;
+                if (nparts >= 16) { fprintf(stderr, "[mods] %s: more than 16 parts, the rest are ignored\n", parent.id.c_str()); break; }
+                if (!part_path_ok(files)) {
+                    fprintf(stderr, "[mods] %s: setting %s: part folder \"%s\" is not a plain folder inside the mod, ignored\n",
+                            parent.id.c_str(), key, files);
+                    continue;
+                }
+                std::string rel = files;
+                bool on;
+                if (!strcmp(type, "bool")) {
+                    on = cur == "true";
+                } else if (!strcmp(type, "choice")) {
+                    on = !cur.empty() && part_path_ok(cur) && cur.find('/') == std::string::npos;
+                    if (on) rel += "/" + cur;
+                } else {
+                    fprintf(stderr, "[mods] %s: setting %s: \"files\" needs a bool or choice setting, ignored\n", parent.id.c_str(), key);
+                    continue;
+                }
+                ++nparts;
+                if (!on) {
+                    fprintf(stderr, "[mods] %s: setting %s = %s (%s): part %s is off\n", parent.id.c_str(), key,
+                            cur.empty() ? "-" : cur.c_str(), src, rel.c_str());
+                    continue;
+                }
+                const std::string dir = parent.folder + "/" + rel;
+                if (!dir_exists(dir)) {
+                    fprintf(stderr, "[mods] %s: setting %s = %s (%s): part folder %s does not exist, nothing applied\n",
+                            parent.id.c_str(), key, cur.c_str(), src, rel.c_str());
+                    continue;
+                }
+                Mod pm;
+                pm.id = parent.id + ":" + rel;
+                pm.folder = dir;
+                pm.kind = "files";
+                pm.api = 0;
+                pm.part = true;
+                list.push_back(pm);
+                summary += " + part " + rel;
+                fprintf(stderr, "[mods] %s: setting %s = %s (%s): part %s is on\n", parent.id.c_str(), key,
+                        cur.c_str(), src, rel.c_str());
+            }
+        }
+    }
+    free(spec);
+    if (vals) free(vals);
+}
+
+/* A files mod with none of files/, sound/, textures_hd/, palettes/ (in itself
+   or in an applied part) replaces nothing: say so, once. The usual cause is a
+   zip that was unpacked with its contents inside one extra folder. */
+bool has_content(const std::string &folder)
+{
+    static const char *const D[] = { "/files", "/sound", "/textures_hd", "/palettes", 0 };
+    for (int i = 0; D[i]; ++i)
+        if (dir_exists(folder + D[i])) return true;
+    return false;
 }
 
 std::string g_summary_loaded, g_summary_skipped;
@@ -259,9 +385,19 @@ void latch(void)
         m.kind = kind;
         m.game = game;
         m.api = atoi(api);
-        if (!g_mods.empty()) g_summary_loaded += ", ";
+        m.part = false;
+        if (!g_summary_loaded.empty()) g_summary_loaded += ", ";
         g_mods.push_back(m);
         g_summary_loaded += id + " (" + kind + ")";
+        const size_t before = g_mods.size();
+        add_parts(m, g_mods, g_summary_loaded);
+        if (!strcmp(kind, "files")) {
+            bool any = has_content(folder);
+            for (size_t q = before; q < g_mods.size() && !any; ++q) any = has_content(g_mods[q].folder);
+            if (!any)
+                fprintf(stderr, "[mods] WARNING: %s replaces nothing: it has no files/, sound/, textures_hd/ or palettes/ folder "
+                        "(a zip unpacked with everything inside one extra folder looks like this)\n", id.c_str());
+        }
     }
     fprintf(stderr, "[mods] %u loaded: %s | %d skipped%s%s\n", (unsigned)g_mods.size(),
             g_mods.empty() ? "-" : g_summary_loaded.c_str(), g_nskipped,
