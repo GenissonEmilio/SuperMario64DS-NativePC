@@ -2210,12 +2210,48 @@ def u_caps(mod):
     return res
 
 
+def u_star_tie(mod):
+    res = Result("star tie (VSSTAR2): two touches a few ms apart, one award, the loser is denied")
+    rig, (a, b) = match(2, code="STARTIE1")
+    ref = rig.ref("STARTIE1")
+    for trial in range(10):
+        inst = a.find("STAR_WAKE")[-1]["a"]
+        a.claim(CL["MARKER_BREAK"], inst)
+        streaming(rig, [a, b], 0.3)
+        tnow = rig.now
+        gap = 1 + trial % 4              # b touched 1..4 ms after a
+        sa0, sb0 = ref.scores[a.seat], ref.scores[b.seat]
+        ca = a.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, a.seat) - 20)
+        cb = b.claim(CL["GRAB"], inst, stamp=ref.ref_ms(tnow, b.seat) - 20 + gap)
+        streaming(rig, [a, b], 0.4)
+        va, vb = a.verdict(ca), b.verdict(cb)
+        won = [v for v in (va, vb) if v and v["name"] == "STAR_TAKEN"]
+        lost = [v for v in (va, vb) if v and v["name"] == "DENY"]
+        res.check(len(won) == 1 and len(lost) == 1,
+                  "trial %d: exactly one award and one deny (%s / %s)" % (trial, va, vb))
+        res.check(ref.scores[a.seat] + ref.scores[b.seat] == sa0 + sb0 + 1,
+                  "trial %d: the count moved by exactly one" % trial)
+        res.check(lost and lost[0]["b"] == DENY["LOST"], "trial %d: loser denied LOST" % trial)
+        # the loser also hears the award go to the other seat, so its console can
+        # take the star away from view with no pose of its own
+        loser, winner = (b, a) if va is not None and va["name"] == "STAR_TAKEN" else (a, b)
+        ev = [e for e in loser.find("STAR_TAKEN") if e["a"] == inst]
+        res.check(len(ev) == 1 and ev[0]["seat"] == winner.seat,
+                  "trial %d: the loser is told seat %d took inst %d" % (trial, winner.seat, inst))
+        # FIX9C immunity belongs to the winner only
+        res.check(ref.seats[winner.seat].star_stamp is not None
+                  and ref.seats[loser.seat].star_stamp != ref.seats[winner.seat].star_stamp,
+                  "trial %d: pose immunity stamped for the winner only" % trial)
+        ref.seats[a.seat].star_stamp = ref.seats[b.seat].star_stamp = None
+    return res
+
+
 def run_unit():
     mod = load_relay()
     tests = (u_contract, u_handshake, u_routes, u_match, u_timeup,
              u_contention, u_hits, u_hit_nc, u_reliability, u_leave, u_ready,
              u_strikes, u_eat, u_grab, u_stomp, u_rematch, u_rejoin, u_hit_eat, u_star_flight,
-             u_eat_shield, u_land_speed, u_caps)
+             u_eat_shield, u_land_speed, u_caps, u_star_tie)
     results = []
     for t in tests:
         try:

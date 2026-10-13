@@ -170,6 +170,9 @@ struct Inst {
     unsigned uid;                // the local PowerStar's actor uid, 0 none yet
     bool holding;                // my console grabbed it, verdict pending
     bool claimed;                // the grab claim was made (once per touch)
+    bool pending;                // VSSTAR2: touched and claimed, the ROM star-get NOT started (held for the verdict)
+    unsigned pend_flags, pend_id;// the ROM's touch (star +0x130 / +0x134) kept back until the verdict says it is mine
+    unsigned retry_ms;           // no new claim for this star before this local time (after a loss)
     int result;                  // 0 pending, 1 mine, 2 lost, 3 timeout
     int winner;
     unsigned short grab_cid;
@@ -1907,7 +1910,37 @@ void neutralise_foreign_star_touches() {
             // (F9-b: a hurt body that starts a collect gets the Yoshi star pose
             // and then the star flung away when the claim is refused)
             static const bool off = env_on("SM64DS_ARENA_NOTOUCHGATE");
-            if (off || my_body_may_act()) return;
+            if (off || my_body_may_act()) {
+                // VSSTAR2: the touch only CLAIMS the star. The ROM's star-get (the
+                // Yoshi pose, the dance, the fanfare) must not start before the
+                // referee says the star is mine, or a tie's loser would pose and
+                // then be pulled out of it. The touch is kept (flags + id) and
+                // handed back to the star by hold_step() on my verdict.
+                static const bool hold_off = env_on("SM64DS_ARENA_NOHOLDTOUCH");   // control row: the old early star-get
+                Inst *i = hold_off ? nullptr : inst_by_uid(actor_uid(a));
+                if (!i) return;
+                if (i->holding && !i->pending) return;     // the ROM's own collect is running (after my verdict)
+                if (!i->holding && i->state == 2 && !i->claimed && now_ms() >= i->retry_ms) {
+                    unsigned stamp;
+                    if (stamp_for(g.last_post_ms ? g.last_post_ms : now_ms(), &stamp)) {
+                        PClaim *c = make_claim(CLAIM_GRAB, (unsigned char)(i - g.inst), 0, stamp,
+                                              my_frame_now(), 0);
+                        if (c) {
+                            c->inst = (unsigned char)(i - g.inst);
+                            i->holding = i->claimed = i->pending = true;
+                            i->result = 0;
+                            i->grab_cid = c->cid;
+                            i->hold_ms = now_ms();
+                            i->pend_flags = flags & (kStarTouchMask | 0x8000);
+                            i->pend_id = u32r(a, 0x134);
+                            std::fprintf(stderr, "[vsarena-ref] TOUCH inst=%d seat=%d (claim only, star-get "
+                                         "held for the verdict) frame=%u stamp=%u\n",
+                                         (int)(i - g.inst), g.seat, my_frame_now(), stamp);
+                        }
+                    }
+                }
+                // (no claim made, or one is pending: the ROM must not collect this frame either)
+            } else {
             ++g.st.touches_gated;
             if (g.log && (g.st.touches_gated % 30) == 1)
                 std::fprintf(stderr, "[vsarena-ref] star touch held back: my body is in "
@@ -1915,10 +1948,56 @@ void neutralise_foreign_star_touches() {
                              "the grab (%llu so far)\n", vs_arena_state_index(me),
                              (int)*u8p(me, 0x709), (int)*u8p(me, 0x708),
                              g.st.touches_gated);
+            }
         }
         u32r(a, 0x130) &= ~(unsigned)(kStarTouchMask | 0x8000);
         u32r(a, 0x134) = 0;
     });
+}
+
+// VSSTAR2: the verdict on a held touch. WON: the touch goes back to the star and the
+// ROM's own star-get runs (the winner's pose / dance / fanfare / count, one round trip
+// late). LOST or denied: nothing was ever started, so there is nothing to undo; a star
+// the referee gave to another seat is put over that seat's head like on any other console.
+void hold_step() {
+    for (int k = 1; k < kMaxInst; ++k) {
+        Inst &i = g.inst[k];
+        if (i.used && i.holding && !i.pending && i.result == 1 && now_ms() - i.hold_ms >= (unsigned)kHoldMs) {
+            char *c = star_by_uid(i.uid);           // my verdict, handed back, yet the ROM never took the star
+            const int st = c ? s32r(c, 0x440) : -1;
+            if (st != 5 && st != 6 && st != 7 && st != 10) {
+                i.holding = false;
+                vs_arena_set_star_lock(false);
+                if (c) unlink_and_destroy_star(c);
+                std::fprintf(stderr, "[vsarena-ref] held touch of inst %d: the ROM never started the star-get; star removed\n", k);
+            }
+        }
+        if (!i.used || !i.pending) continue;
+        char *s = star_by_uid(i.uid);
+        if (i.result == 0) {
+            if (now_ms() - i.hold_ms < (unsigned)kHoldMs) continue;
+            i.result = 3;                           // no verdict in time: treated as denied
+            std::fprintf(stderr, "[vsarena-ref] held touch of inst %d: no verdict in %d ms; dropped\n",
+                         k, kHoldMs);
+        }
+        i.pending = false;
+        if (i.result == 1 && s) {
+            u32r(s, 0x130) |= i.pend_flags;
+            u32r(s, 0x134) = i.pend_id;
+            vs_arena_set_star_lock(true);
+            std::fprintf(stderr, "[vsarena-ref] held touch of inst %d is mine after %u ms: ROM star-get starts\n",
+                         k, now_ms() - i.hold_ms);
+            i.hold_ms = now_ms();                   // (the ROM has kHoldMs to take it from here)
+            continue;                               // holding stays: star5_arena sees result 1
+        }
+        i.holding = false;
+        i.claimed = false;
+        i.retry_ms = now_ms() + 250;
+        std::fprintf(stderr, "[vsarena-ref] held touch of inst %d lost (winner %d, reason %s): no star-get ever "
+                     "started here\n", k, i.winner, reason_name(i.deny_reason));
+        if (i.state == 3 && s && i.winner >= 0 && !show_star_start(i, s, i.winner))
+            unlink_and_destroy_star(s);
+    }
 }
 
 void marker_pass() {
@@ -3321,6 +3400,7 @@ void vs_ref_pre_walk(int frame) {
         if (g.inst[k].used && g.inst[k].state == 1) ensure_star_uid(g.inst[k]);
     if (g.started) {
         neutralise_foreign_star_touches();
+        hold_step();
         marker_pass();
         puppet_stars();
         shown_stars();
