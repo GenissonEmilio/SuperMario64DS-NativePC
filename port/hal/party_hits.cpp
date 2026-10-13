@@ -316,6 +316,10 @@ extern "C" void port_party_hits_frame(void) {
     using namespace port::party_hits;
     read_env();
     if (!g.installed) {
+        /* comms_hub_room_kind() reads kHubRoomWorld until the hub is live, so
+           deciding earlier would leave interactions off for the whole run.
+           Re-evaluate every frame and latch only once the hub is live. */
+        if (!comms_hub_active() || comms_hub_state() != kHubLive) return;
         g.installed = true;
         const HubRoomKind rk = comms_hub_room_kind();
         g.on = g.judge.tog.interact && (rk == kHubRoomParty || rk == kHubRoomCoop);
