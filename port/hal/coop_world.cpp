@@ -315,8 +315,7 @@ void credit_remote_coins(int w, unsigned fresh) {
         data_0209f358[me] = (short)n;
         ++g_coin_credits; g_coin_total += (unsigned)v;
         if (g_log)
-            std::fprintf(stderr, "[coop] coin credit cls=%u slot=%d type=%d +%d count=%d wall=%lld
-", cls, (int)slot, ty, v, n, wall_ms());
+            std::fprintf(stderr, "[coop] coin credit cls=%u slot=%d type=%d +%d count=%d wall=%lld\n", cls, (int)slot, ty, v, n, wall_ms());
     }
 }
 

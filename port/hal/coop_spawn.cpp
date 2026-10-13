@@ -298,8 +298,7 @@ void kill_quiet(char *a) {
     // The rabbit key (229) runs a cutscene on the Player closest to it and ends itself (func_ov085_0212e480): a copy is never removed from
     // outside, whatever stage of that cutscene it is in; its own end releases the Player.
     if (!g_toff.guard && (cls == 229 || player_attached_to(a))) {
-        if (g_log && !g_guard_logged) { g_guard_logged = true; std::fprintf(stderr, "[coopspawn] guard: cls=%u not removed from outside (key cutscene / a Player is attached) wall=%lld
-", cls, wall_ms()); }
+        if (g_log && !g_guard_logged) { g_guard_logged = true; std::fprintf(stderr, "[coopspawn] guard: cls=%u not removed from outside (key cutscene / a Player is attached) wall=%lld\n", cls, wall_ms()); }
         return;
     }
     if (cls == 179) {
@@ -551,8 +550,7 @@ void scan(unsigned now) {
                                              (cls == 282 && *(const int *)(a + 0x448) == 3 && is_player_ptr(*(void *const *)(a + 0x110))));
             if (cls == 229 && g_log && !dead && (g_frames % 20u) == 0) {      // TOTALS9 probe: the key's state machine against my Player's state
                 const char *pl = my_player();
-                std::fprintf(stderr, "[coopspawn] key probe state=%08x t2c8=%d mine: pstate=%08x ptimer=%d d6e3=%d held=%08x dist=%d frame=%u wall=%lld
-",
+                std::fprintf(stderr, "[coopspawn] key probe state=%08x t2c8=%d mine: pstate=%08x ptimer=%d d6e3=%d held=%08x dist=%d frame=%u wall=%lld\n",
                              *(const unsigned *)(a + 0x188), *(const int *)(a + 0x2c8), pl ? *(const unsigned *)(pl + 0x370) : 0u,
                              pl ? (int)*(const unsigned short *)(pl + 0x6a4) : -1, pl ? (int)pl[0x6e3] : -1, pl ? *(const unsigned *)(pl + 0x358) : 0u,
                              pl ? (int)(((long long)*(const int *)(pl + 0x5c) - *(const int *)(a + 0x5c)) >> 12) : -1, g_frames, wall_ms());
@@ -653,8 +651,7 @@ void scan(unsigned now) {
     }
     if (g_census_on && maxuid > g_wm) g_wm = maxuid;
     if (g_log && (g_frames % 60u) == 0)         // TOTALS9 proof: what the HUD draws on this console
-        std::fprintf(stderr, "[coopspawn] hud coins=%d redcell=%d redsum=%d frame=%u wall=%lld
-", (int)data_0209f358[(int)data_0209f250 & 3],
+        std::fprintf(stderr, "[coopspawn] hud coins=%d redcell=%d redsum=%d frame=%u wall=%lld\n", (int)data_0209f358[(int)data_0209f250 & 3],
                      (int)(signed char)red_cell((int)data_0209f250 < red_slots() ? (int)data_0209f250 : 0), red_sum(), g_frames, wall_ms());
 }
 
@@ -762,8 +759,7 @@ void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
     // "100 coin star is out" event bit, so this console's counter, shared with theirs, does not spawn a second one at its next pickup.
     if (!g_toff.coinstar && w.cls == 178 && (w.param & 0xff) == 0x20) {
         _ZN5Event6SetBitEj(0x1f);
-        if (g_log) std::fprintf(stderr, "[coopspawn] 100-coin star from seat %d: event bit 0x1f set here wall=%lld
-", seat, wall_ms());
+        if (g_log) std::fprintf(stderr, "[coopspawn] 100-coin star from seat %d: event bit 0x1f set here wall=%lld\n", seat, wall_ms());
     }
     if (adopt) ++g_st.spawn_adopted; else ++g_st.spawn_applied;
     if (g_log)
@@ -1164,8 +1160,7 @@ void on_frame(unsigned now) {
     // proof knobs
     if (g_tc_val >= 0 && g_armed && g_frames >= g_tc_frame) {
         data_0209f358[(int)data_0209f250 & 3] = (short)g_tc_val;
-        std::fprintf(stderr, "[coopspawn-knob] coin counter set to %d wall=%lld
-", g_tc_val, wall_ms());
+        std::fprintf(stderr, "[coopspawn-knob] coin counter set to %d wall=%lld\n", g_tc_val, wall_ms());
         g_tc_val = -1;
     }
     for (int i = 0; i < g_nkb; ++i)
