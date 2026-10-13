@@ -10,6 +10,7 @@
 #include "party_hits_core.h"
 #include "party.h"
 #include "comms_hub.h"
+#include "coop_wire.h"
 #include "hub_presence.h"
 #include "player_fields.h"
 
@@ -289,9 +290,9 @@ void attacker_scan(char *me) {
 
 bool active() { read_env(); return g.on; }
 
-void on_coop_ctl(int seat, const unsigned char *d, int len) {
-    if (!g.on || !d || len < kHubCoopHeaderBytes + (int)sizeof(HubPartyHitWire)) return;
-    HubPartyHitWire w; std::memcpy(&w, d + kHubCoopHeaderBytes, sizeof w);
+void on_coop_ctl(int seat, const unsigned char *pl, int len) {
+    if (!g.on || !pl || len < (int)sizeof(HubPartyHitWire)) return;
+    HubPartyHitWire w; std::memcpy(&w, pl, sizeof w);
     if (w.tag != kHubTagPartyHit || w.version != 1 || w.victim != (unsigned char)comms_hub_my_seat() || seat == w.victim) return;
     const unsigned ik = seq_ikind(w.seq), ctr = seq_counter(w.seq);
     if (ikind_is_reply(ik)) {
@@ -300,6 +301,9 @@ void on_coop_ctl(int seat, const unsigned char *d, int len) {
     }
     handle_claim(seat, ik, ctr, w.yaw, w.x, w.y, w.z);
 }
+
+// coop_world's SYNB dispatcher hands over the payload after the 12-byte head.
+static void coop_sub(int seat, int, const unsigned char *pl, int len, void *) { on_coop_ctl(seat, pl, len); }
 
 int squash_scale_for_seat(int seat) {
     if (seat < 0 || seat >= kHubPartySeats || !g.on || g.frame >= g.squash_until[seat]) return 0x1000;
@@ -325,6 +329,10 @@ extern "C" void port_party_hits_frame(void) {
         g.on = g.judge.tog.interact && (rk == kHubRoomParty || rk == kHubRoomCoop);
         g.judge.tog.room = rk == kHubRoomParty || rk == kHubRoomCoop;
         if (rk == kHubRoomParty) hub_on_kind(kHubPartyHit, on_hit, nullptr);
+        if (rk == kHubRoomCoop && g.on) {              // hook 3: coop receives claims on SYNB 0x41
+            const bool ok = coop_ctl_register(kCoopCtlSubtype, kCoopCtlSubtype, coop_sub, nullptr);
+            std::fprintf(stderr, "[phit] coop SYNB 0x%02x %s\n", (unsigned)kCoopCtlSubtype, ok ? "registered" : "REGISTER FAILED");
+        }
         std::fprintf(stderr, "[phit] %s (room %d, interact %d, damage %d)\n", g.on ? "on" : "off: not a party/coop room or interactions off",
                      (int)rk, g.judge.tog.interact ? 1 : 0, g.judge.tog.damage ? 1 : 0);
     }

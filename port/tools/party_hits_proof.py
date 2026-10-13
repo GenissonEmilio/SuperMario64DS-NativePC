@@ -250,7 +250,7 @@ LIVE_ROWS = """LIVE ROWS (a local agent, Windows + ROM; two consoles A,B in one 
  L8 DAMAGE:  launch both with SM64DS_ROOM_DAMAGE=1: one health unit is lost per believed hit; =0 (default): none.
  L9 EAT:     A is Yoshi; tongue touches B: B logs EAT hold from seat A, parks in front of A ~45 frames, is spat out along A's facing,
              logs EAT release; A logs ack + release.  Health unchanged, no egg.  Walk B away mid-hold into another level: abort.
- L10 COOP:   the same L1..L9 in a coop room (transport SYNB 0x40; needs the hook in the coop control dispatcher, see the design doc).
+ L10 COOP:   the same L1..L9 in a coop room (transport SYNB 0x41, registered by party_hits itself via coop_ctl_register).
  L11 SOLID BODY UNCHANGED: coins / stars / caps / switches near a friend still behave (party_cyl.cpp is not touched by this lane).
 """
 

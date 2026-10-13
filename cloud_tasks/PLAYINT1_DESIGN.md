@@ -45,8 +45,8 @@ would then send `hit_kind = ikind`. Not needed now.
 
 **Coop rooms.** The relay only routes SYNH in party sessions (`relay.py` Kind SYNH sessions = {KIND_PARTY}; `comms_hub.cpp shape_ok_send`
 the same). Without a relay change, coop carries the identical 24 bytes as the payload of a SYNB (coop control) datagram with sub-type
-`0x40` (outside every range W56 claims: 0x00-0x3f). SYNB is broadcast, so the victim byte inside the payload filters. The coop control
-dispatcher must forward sub-type 0x40 to `party_hits::on_coop_ctl` (hook 3). Cost: a broadcast instead of a unicast, at most a few per second.
+`0x41` (0x40 is COOPTP's toggle; FOLD9B2 moved this one; outside every range W56 claims: 0x00-0x3f). SYNB is broadcast, so the victim byte inside the payload filters. The coop control
+receive side is registered by party_hits (hook 3, SYNB 0x41). Cost: a broadcast instead of a unicast, at most a few per second.
 The honest alternative is a relay change to add KIND_COOP to SYNH's sessions plus one `shape_ok_send` line (coordinator decision, needs a
 redeploy); then `send_wire`'s coop branch is deleted. I did not make it.
 
@@ -106,8 +106,7 @@ victim's own body.
 ## 6. HOOK LINES for the local agent (I did not edit existing files)
 1. `port/tests/walk_window.cpp` ~line 631 (declarations): `void port_party_hits_frame(void);`
 2. same file ~line 18236, right AFTER `port_party_stars_frame();`: `port_party_hits_frame();`
-3. coop control dispatcher (where a received SYNB sub-type is switched, `coop_wire.h` kinds; the owner of `comms_hub_on_kind(kHubCoopCtl)`):
-   `case 0x40: port::party_hits::on_coop_ctl(seat, data, len); break;` (include `party_hits.h`). Coop only.
+3. DONE in code (FOLD9B2): party_hits registers SYNB 0x41 itself with `coop_ctl_register` when the room is coop (no dispatcher edit needed). Coop only.
 4. optional, `gw_follow` / the party follower after it poses a party body: `int sy = port::party_hits::squash_scale_for_seat(seat);
    if (sy != 0x1000) *(int*)((char*)body + 0x84) = sy;` (+0x84 is the Y scale, `party.cpp draw_diag` prints 0x80..0x88). Restore 0x1000
    otherwise.

@@ -18,11 +18,12 @@ namespace party_hits {
 // This console is in a party / coop room AND SM64DS_ROOM_INTERACT is on.
 bool active();
 
-// SYNB sub-type the coop transport uses (outside the ranges W56 claims: 0x00-0x3f).
-enum : int { kCoopCtlSubtype = 0x40 };
+// SYNB sub-type the coop transport uses. 0x40 is COOPTP's toggle (coop_tp.cpp), so this is 0x41; it is outside the
+// ranges W56 claims (0x00-0x3f) and is registered with coop_ctl_register, which refuses an overlapping range.
+enum : int { kCoopCtlSubtype = 0x41 };
 
-// Coop transport: the coop control dispatcher forwards a received SYNB with this sub-type here
-// (`seat` = the relay-stamped sender, `d` = the whole datagram, `len` its length).
+// Coop transport: coop_world's SYNB dispatcher forwards a received SYNB with this sub-type here
+// (`seat` = the relay-stamped sender, `d` = the payload after the 12-byte head, `len` its length).
 void on_coop_ctl(int seat, const unsigned char *d, int len);
 
 // Cosmetic: the y-scale (Fix12, 0x1000 = normal) the follower should give the friend's body on `seat` for
