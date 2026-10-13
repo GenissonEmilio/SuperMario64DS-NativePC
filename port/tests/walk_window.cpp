@@ -16116,6 +16116,7 @@ int main(void)
                below, into its own slot, unchanged. */
             const int b5_transport = port::comms_transport() != 0;
             const int b5_fan = comms_fanout_on() ? 1 : 0;
+            { static int said_mode = -1; const int m = b5_transport * 2 + b5_fan; if (m != said_mode) { said_mode = m; fprintf(stderr, "[pausemp] level loop pad mode: transport %d fan-out %d\n", b5_transport, b5_fan); } }
             if (b5_fan) {
                 data_0209d50c = 0x16;
                 func_0203bb60();
