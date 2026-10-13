@@ -2028,6 +2028,24 @@ void gw_send_ident(unsigned now) {
     }
 }
 
+// FIX9B: the identity (name, colours, character) goes out on its own clock,
+// not behind a body frame. It used to ride the tail of gw_send, which returns
+// early while a cutscene runs (GHOSTCUT1) and whenever no frame is due, so a
+// console in the opening sent no SYNI at all and the others read "Player n"
+// in chat until the cutscene was over. SYNI needs no body.
+void gw_ident_tick(unsigned now) {
+    if (comms_hub_state() != kHubLive) return;
+    const unsigned roster = comms_hub_roster_version();
+    const bool roster_moved = roster != g_gw_roster;
+    if (!g_gw_ident_sent ||
+        (unsigned)(now - g_gw_last_ident_ms) >= (unsigned)kGwIdentMs ||
+        (roster_moved &&
+         (unsigned)(now - g_gw_last_ident_ms) >= (unsigned)kGwIdentGapMs)) {
+        g_gw_roster = roster;
+        gw_send_ident(now);
+    }
+}
+
 // THE SEND SIDE: my own body only, once per 15 Hz wall tick.
 void gw_send(unsigned now) {
     if (comms_hub_state() != kHubLive) return;
@@ -2224,16 +2242,6 @@ void gw_send(unsigned now) {
     } else {
         ++g_gws.send_fail;
     }
-
-    const unsigned roster = comms_hub_roster_version();
-    const bool roster_moved = roster != g_gw_roster;
-    if (!g_gw_ident_sent ||
-        (unsigned)(now - g_gw_last_ident_ms) >= (unsigned)kGwIdentMs ||
-        (roster_moved &&
-         (unsigned)(now - g_gw_last_ident_ms) >= (unsigned)kGwIdentGapMs)) {
-        g_gw_roster = roster;
-        gw_send_ident(now);
-    }
 }
 
 void gw_report(const char *tag) {
@@ -2320,6 +2328,7 @@ void gw_tick() {
     gw_target_probe();
     gw_recv();
     gw_assign(now);
+    gw_ident_tick(now);
     gw_send(now);
     static int every = -1;
     if (every < 0) {
