@@ -1499,6 +1499,14 @@ void cap_tongue_watch() {
     static const bool lg = env_on("SM64DS_CAP_TONGUE_LOG") || env_on("SM64DS_ARENA_REFLOG");
     char *me = my_body();
     if (!me) return;
+    {
+        static int last_look = -1;
+        const int lk = s32r(me, 8) & 0xff;
+        if (last_look >= 0 && lk != last_look)
+            std::fprintf(stderr, "[captongue] f=%u my look %d -> %d (hat %d)
+", my_frame_now(), last_look, lk, (int)*u8p(me, 0x6dd));
+        last_look = lk;
+    }
     bool seen = false;
     each_class(kClassCap, [&](char *a) {
         if (u32r(a, 0x3bc) != (unsigned)(size_t)&data_ov002_0210df54) return;   // not putting on
