@@ -37,7 +37,13 @@ void *port_scene_live_object(void);
 int  port_scene_live_id(void);
 void func_ov003_020b0730(void *self, int arg);
 void func_02012790(int id);
+extern int data_0208ee44;
+extern unsigned char data_0209caa0[];
 }
+
+/* Message::DisplayStarNameForStarSelect, the static the ROM's Behavior calls when the selection changes (declared the way
+   hal/message_pump.cpp declares its Message statics) */
+struct Message { static void DisplayStarNameForStarSelect(unsigned int star); };
 
 namespace {
 
@@ -82,6 +88,52 @@ void starsel_facts(MenuFacts *f)
     f->spare[0] = 1 + ob(o, 0x115);       /* the selected act index + 1 (0 = nothing read) */
     { static int calls; f->spare[2] = ++calls; }     /* a per-tick counter for the pointer's bob */
     f->spare[1] = ob(o, 0x135);           /* the input phase: 0 intro, 1 waiting for the pad to come up, 2 live */
+}
+
+/* STARSEL093 (D7): the keys of the star select while the one-screen menu is up. The lower screen is not drawn, so the ROM's states
+   that live only there must not be reachable:
+   - Down (the DS moves the cursor onto the Mario head on the lower screen, 0x133 = 2, where Left / Right do nothing: the "cursor
+     stops" report) is dropped, except where it opens the character row (0x130 > 1 and the character is 3: variant 2, drawn).
+   - the first press only woke the pad (0x135 0 -> 2) and did nothing else: the press that wakes it is let through as the live
+     phase, so one press of A starts the act and the first Left / Right moves.
+   - the mouse over a star selects it (the ROM's own selection change, without the touch edge that would start the act).
+   Added to the pressed word only; the ROM reads the keys itself (native driver). */
+void starsel_keys(uint16_t *pressed, int)
+{
+    unsigned char *o = (unsigned char *)port_scene_live_object();
+    if (!o || port_scene_live_id() != kStarScene) return;
+    if (SublevelToLevel(data_02092110) > 0xe) return;              /* Bowser / secret courses: the ROM's own star-less screen */
+    if (o[0x133] == 1) return;                                      /* the character row: the ROM's own keys */
+    const bool charrow = o[0x130] > 1 && data_0209caa0[0x41] == 3;
+    uint16_t k = *pressed;
+    if (o[0x139] == 0) {
+        if (o[0x133] == 2) o[0x133] = 0;                           /* nothing on the lower screen to be on */
+        if (!charrow) k = (uint16_t)(k & ~(unsigned)0x0080u);       /* DS Down */
+        if (o[0x135] == 0 && (k & (0x0001u | 0x0002u | 0x0008u | 0x00f0u))) o[0x135] = 2;
+    }
+    *pressed = k;
+    {
+        static unsigned seen;
+        int hx, hy;
+        unsigned st;
+        if (o[0x139] == 0 && hal_menu_hover_box(&hx, &hy, &st) && st != seen) {
+            seen = st;
+            const int n = o[0x114], cur = o[0x115];
+            for (int i = 0; i < n && i < 8; ++i) {
+                int sx = (int)o[0x11a + i] - 8;
+                if (sx < 0) sx = 0;
+                if (sx > 240) sx = 240;
+                if (i != cur && ((o[0x131] >> i) & 1) && sx == hx && hy == 0) {
+                    o[0x115] = (unsigned char)i;
+                    o[0x133] = 0;
+                    o[0x117] = (unsigned char)(data_0208ee44 * 3);
+                    func_02012790(0x12e);
+                    Message::DisplayStarNameForStarSelect((unsigned int)i);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /* STARHOOK1: the big stars' rects for hal/menu_starsel_api.cpp (run menu1, for mp1's players-in-stars heads). The upper screen is
@@ -288,6 +340,7 @@ int rom_cursor_gameover(int dir, int *sel_out)
 
 extern "C++" {
 int  menu_starsel_up(int scene_id) { return up_starsel(scene_id); }
+void menu_starsel_pad_map(uint16_t *pressed, int host_back) { starsel_keys(pressed, host_back); }
 void menu_starsel_build(int variant, MenuLayout *L) { build_starsel(variant, L); }
 void menu_starsel_facts(MenuFacts *f) { starsel_facts(f); }
 int  menu_gameover_up(int scene_id) { return up_gameover(scene_id); }
