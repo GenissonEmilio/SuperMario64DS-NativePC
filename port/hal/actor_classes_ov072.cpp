@@ -143,6 +143,7 @@
 // before 191, MOOT now that 191 hosts the mother. Documented here even
 // though BABY_PENGUIN is unregistered this gate, since the fill and the
 // PMF work are complete and this finding stands on its own.
+#include "hal/pmf_tc.h"
 #include "port_d16.h"
 
 #include <cstdio>
@@ -446,8 +447,8 @@ extern "C" void port_baby_penguin_states_seat(void)
                          g_bp_cells[i].enter_rom, g_bp_cells[i].tick_rom);
             std::abort();
         }
-        cell.enter_fn = (unsigned)(size_t)g_bp_cells[i].enter_host;
-        cell.tick_fn = (unsigned)(size_t)g_bp_cells[i].tick_host;
+        cell.enter_fn = PORT_PMF_TC(g_bp_cells[i].enter_host);
+        cell.tick_fn = PORT_PMF_TC(g_bp_cells[i].tick_host);
     }
 }
 
@@ -768,8 +769,8 @@ static void ov72_seat_cells(const char *who, PortSnowmanCell *cells,
                          rows[i].enter_rom, rows[i].tick_rom);
             std::abort();
         }
-        cell.enter_fn = (unsigned)(size_t)rows[i].enter_host;
-        cell.tick_fn = (unsigned)(size_t)rows[i].tick_host;
+        cell.enter_fn = PORT_PMF_TC(rows[i].enter_host);
+        cell.tick_fn = PORT_PMF_TC(rows[i].tick_host);
     }
 }
 

@@ -79,6 +79,7 @@
 // destructors tail into the Enemy base D2 _ZN12dEnemyBase_cD2Ev) and then all
 // THREE ov032 sinits in ROM order -- all of them; no class here is without
 // reach.
+#include "hal/pmf_tc.h"
 #include "port_d16.h"
 
 #include <cstdio>
@@ -457,8 +458,8 @@ extern "C" void port_bubba_states_seat(void)
                          g_bubba_cells[i].enter_rom, g_bubba_cells[i].tick_rom);
             std::abort();
         }
-        cell.enter_fn = (unsigned)(size_t)g_bubba_cells[i].enter_host;
-        cell.tick_fn = (unsigned)(size_t)g_bubba_cells[i].tick_host;
+        cell.enter_fn = PORT_PMF_TC(g_bubba_cells[i].enter_host);
+        cell.tick_fn = PORT_PMF_TC(g_bubba_cells[i].tick_host);
     }
 }
 

@@ -137,6 +137,7 @@
 //  - That Eyerok is REACHABLE in normal play from level 17's walk. See the
 //    lane's report: registration and a forced spawn are what is proved.
 // ============================================================================
+#include "hal/pmf_tc.h"
 #include "port_d16.h"
 
 #include <cstdio>
@@ -798,8 +799,8 @@ extern "C" void port_eyerok_states_seat(void)
                          g_eyerok_cells[i].enter_rom, g_eyerok_cells[i].tick_rom);
             std::abort();
         }
-        cell->enter_fn = (unsigned)(size_t)g_eyerok_cells[i].enter_host;
-        cell->tick_fn = (unsigned)(size_t)g_eyerok_cells[i].tick_host;
+        cell->enter_fn = PORT_PMF_TC(g_eyerok_cells[i].enter_host);
+        cell->tick_fn = PORT_PMF_TC(g_eyerok_cells[i].tick_host);
     }
 }
 

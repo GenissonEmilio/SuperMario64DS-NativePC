@@ -139,6 +139,7 @@
 //  - What the eleven states MEAN. They are seated by address, in the sinit's
 //    own field order, and the run reports which ones were entered.
 // ============================================================================
+#include "hal/pmf_tc.h"
 #include "port_d16.h"
 
 #include <cstdio>
@@ -623,8 +624,8 @@ extern "C" void port_ukiki_states_seat(void)
                          g_ukiki_cells[i].enter_rom, g_ukiki_cells[i].tick_rom);
             std::abort();
         }
-        cell.enter_fn = (unsigned)(size_t)g_ukiki_cells[i].enter_host;
-        cell.tick_fn = (unsigned)(size_t)g_ukiki_cells[i].tick_host;
+        cell.enter_fn = PORT_PMF_TC(g_ukiki_cells[i].enter_host);
+        cell.tick_fn = PORT_PMF_TC(g_ukiki_cells[i].tick_host);
     }
 }
 
