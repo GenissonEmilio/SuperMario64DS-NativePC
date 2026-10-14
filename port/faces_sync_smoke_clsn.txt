@@ -25,14 +25,14 @@
 # confirmed by this lane's own -k 0 build.  COLUMNS and the R/F/D meaning are
 # port/faces_sync.txt's; read that file's header before adding a row here.
 
-__ZN10MemoryNode6TargetC1EPS_                                            ??0Target@MemoryNode@@QAE@PAU1@@Z                                0x0204e938 R
+#RETIRED(PORTSYNC3, heap_globals.cpp defines it): __ZN10MemoryNode6TargetC1EPS_                                            ??0Target@MemoryNode@@QAE@PAU1@@Z                                0x0204e938 R
 __ZN13ExpandingHeap11VDeallocateEPv                                      ?VDeallocate@ExpandingHeap@@UAEXPAX@Z                            0x0203c50c R
 __ZN13ExpandingHeapC1EPvjP4HeapP22ExpandingHeapAllocator                 ??0ExpandingHeap@@QAE@PAXIPAUHeap@@PAUExpandingHeapAllocator@@@Z 0x0203ca80 R
 __ZN13SharedFilePtr8LoadFileEv                                           ?LoadFile@SharedFilePtr@@QAEPAXXZ                                0x02017bc4 R
-__ZN18NestedHeapIteratorC1Ej                                             ??0NestedHeapIterator@@QAE@I@Z                                   0x0204df20 R
-__ZN22ExpandingHeapAllocator16AllocateForwardsEjj                        ?AllocateForwards@ExpandingHeapAllocator@@QAEPAXII@Z             0x0204e5c8 R
-__ZN22ExpandingHeapAllocator17AllocateBackwardsEjj                       ?AllocateBackwards@ExpandingHeapAllocator@@QAEPAXII@Z            0x0204e504 R
-__ZN22ExpandingHeapAllocatorC1EPvj                                       ??0ExpandingHeapAllocator@@QAE@PAXI@Z                            0x0204e828 R
+#RETIRED(PORTSYNC3, heap_globals.cpp defines it): __ZN18NestedHeapIteratorC1Ej                                             ??0NestedHeapIterator@@QAE@I@Z                                   0x0204df20 R
+#RETIRED(PORTSYNC3, heap_globals.cpp defines it): __ZN22ExpandingHeapAllocator16AllocateForwardsEjj                        ?AllocateForwards@ExpandingHeapAllocator@@QAEPAXII@Z             0x0204e5c8 R
+#RETIRED(PORTSYNC3, heap_globals.cpp defines it): __ZN22ExpandingHeapAllocator17AllocateBackwardsEjj                       ?AllocateBackwards@ExpandingHeapAllocator@@QAEPAXII@Z            0x0204e504 R
+#RETIRED(PORTSYNC3, heap_globals.cpp defines it): __ZN22ExpandingHeapAllocatorC1EPvj                                       ??0ExpandingHeapAllocator@@QAE@PAXI@Z                            0x0204e828 R
 __ZN5dBgPcC1Ev                                                           ??0dBgPc@@QAE@XZ                                                 0x02037eec R
 __ZN5dBgPcD1Ev                                                           ??1dBgPc@@QAE@XZ                                                 0x02037ee8 R
 __ZN7dBgW_KcC1Ev                                                         ??0dBgW_Kc@@QAE@XZ                                               0x02039894 R
