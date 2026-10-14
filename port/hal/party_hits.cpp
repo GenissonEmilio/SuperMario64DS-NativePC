@@ -316,7 +316,10 @@ void att_links() {
         }
         if (want >= 0) {
             char *hb = body_of_seat(want);
-            if (hb && vb) { port::vs_grab_export_overlay(hb, vb); port::vs_grab_export_link(hb, vb, true); }
+            // the holder's raised-arms layer only. NOT the ROM's hand link (holder +0x358 / carried +0x35c): the ROM's hand
+            // placement of a carried body reads the LOCAL player's hand, so on a bystander it drew the carried ghost over my own
+            // head (picture ci_g1_p2 / p3, out/ROMSTATE9). The attach rule in gw_follow places the carried ghost at the holder.
+            if (hb && vb) port::vs_grab_export_overlay(hb, vb);
         }
         linked_h[v] = want;
     }
