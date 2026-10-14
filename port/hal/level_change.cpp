@@ -2349,6 +2349,7 @@ void StartMinigameMenu(unsigned char a);
 void ExitLevel(void);
 void _ZN8dScene_c9SetFadersEP15FaderBrightness(void *);
 void func_0202ec9c(void *, int);
+void _ZN8dScene_c14StartSceneFadeEjjt(unsigned, unsigned, unsigned short);
 void _ZN6Player11ChangeStateERNS_5StateE(void *, void *);
 void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p, unsigned short val, short amt);
 }
