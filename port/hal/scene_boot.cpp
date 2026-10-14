@@ -2850,8 +2850,11 @@ extern "C" unsigned port_l2_trap_hits(void) { return g_l2_trap_hits; }
    tree, and two are cross-overlay calls out of src/func_0201a458.c into
    overlays this build does not host. Naming them here is what makes them
    visible; guessing bodies for them would not be.
-     func_01ffaa34  ITCM, config/arm9/itcm/symbols.txt names it and no src
-                    defines it. Reached from func_ov007_020c5c14.
+     func_01ffaa34  RETIRED (0.9.2 respin): it is _ll_sdiv, the signed 64-bit
+                    divide, and has a real host body below (the asm in
+                    src/_ll_sdiv.c cannot build on MSVC). It was a trap that
+                    returned 0 and zeroed every bounding box centre computed
+                    by func_ov007_020c5c14.
      (func_02054c80 WAS IN THIS LIST AND IS RETIRED. The note said "no arm9
       symbol at that address at all, so dsd's name is a guess about an
       address", and that was wrong: config/arm9/symbols.txt names
@@ -2865,7 +2868,16 @@ extern "C" unsigned port_l2_trap_hits(void) { return g_l2_trap_hits; }
      func_02140d80  helper). Both are addresses in overlays this build does
                     not host, and ov007 is not co-resident with either. */
 #define L2_UNMATCHED(sym)                                                          extern "C" int sym(void);                                                      extern "C" int sym(void) { l2_trap(#sym); return 0; }
-L2_UNMATCHED(func_01ffaa34)
+/* func_01ffaa34 is _ll_sdiv (ITCM, src/_ll_sdiv.c, a hand-asm byte match), the
+   signed 64-bit divide. The asm cannot build on MSVC, so this is a host body
+   with the ROM's semantics: truncating division, and a zero divisor returns
+   the numerator unchanged (the ROM's early exit leaves r0:r1 alone). The only
+   caller, func_ov007_020c5c14, keeps the low word (a bounding box centre). */
+extern "C" int func_01ffaa34(long long num, long long den) {
+    if (den == 0) return (int)num;
+    if (den == -1) return (int)(0LL - (unsigned long long)num);
+    return (int)(num / den);
+}
 L2_UNMATCHED(func_0211d9c0)
 L2_UNMATCHED(func_02140d80)
 #undef L2_UNMATCHED
