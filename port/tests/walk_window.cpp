@@ -4279,6 +4279,125 @@ static void fc_push_view(void *cam, const int *eye, const int *at)
     _Z13CopyToViewMatPK9Matrix4x3(mat);
 }
 
+/* ---- CAMERA093: WHEN THE RIG STANDS DOWN, AND WHAT STOPS IT SEEING THROUGH WALLS ----
+   (run hunt8, lane CAMERA093; BUGS.md D13, backlog 22.)
+
+   1. THE DS CAMERA STATES. The Camera actor keeps one of 19 State objects
+      (hal/camera_states.cpp). States 0..8 all run the same follow body
+      (func_02009e70) with different tuning, which is the chase camera the rig
+      replaces. States 9, 11, 12, 13, 15, 16, 17 and 18 are the scripted ones: the talk
+      camera, the look-at for an exit, the zoom, the cannon aim, the grab-Bowser's-tail
+      frame and the like.
+      Those are the "fixed camera moments" of the DS, and the rig used to draw
+      over every one of them. Now it stands down in them (view and heading both),
+      the game's camera is shown, and on the way back the rig is re-seeded from
+      the game's eye so the hand-over does not jump.
+      SM64DS_CAM93_RIG_ALWAYS=1 puts back the old always-rig behaviour for A/B.
+   2. COLLISION. The rig's eye is placed by pure geometry, so it went through
+      walls, floors and ceilings. The eye is now the first thing the ROM's own
+      level collision (dActor_c::DetectRaycastClsn, the call the actors cast
+      their floor rays with) meets on the segment pivot -> eye, backed off a
+      little. A hit pulls the eye in at once; clear air lets it ease back out so
+      it does not pop. SM64DS_CAM93_NO_COLLIDE=1 switches it off for A/B.
+   3. MOUSE. The analog auto-recenter swings the view behind Mario while he
+      walks and the camera is untouched. With the mouse steering that fights the
+      player: once the mouse has steered it stays off until the stick, Q/E, R/F or
+      the centre key take the camera back. A player who never uses the mouse never
+      sets the flag, so nothing changes for them. */
+extern "C" int _ZN8dActor_c17DetectRaycastClsnER7Vector3S1_b(void *self, void *a0, void *a1, bool a2);
+extern "C" void _ZN6Camera14GoBehindPlayerEj(void *self, unsigned int j);
+extern "C" unsigned char data_ov002_021102d4[];   /* the Player's cannon-aim State object */
+extern "C" unsigned data_0209b018[], data_0209b028[], data_0209b038[], data_0209b048[], data_0209b058[],
+    data_0209b068[], data_0209b088[], data_0209b098[], data_0209b0a8[], data_0209b0b8[], data_0209b0c8[],
+    data_0209b0d8[], data_0209b0e8[], data_0209b118[], data_0209b128[], data_0209b108[];
+/* the camera's current State as an index 0..18, -1 when it is none of them */
+static int cam93_state_idx(const void *cam)
+{
+    if (!cam) return -1;
+    const void *st = *(void *const *)((const char *)cam + 0x138);
+    const void *tab[19] = {data_0209b008, data_0209b018, data_0209b028, data_0209b038, data_0209b048,
+                           data_0209b058, data_0209b068, data_0209b078, data_0209b088, data_0209b098,
+                           data_0209b0a8, data_0209b0b8, data_0209b0c8, data_0209b0d8, data_0209b0e8,
+                           data_0209b0f8, data_0209b108, data_0209b118, data_0209b128};
+    for (int i = 0; i < 19; ++i)
+        if (st == tab[i]) return i;
+    return -1;
+}
+/* 1 when the game's own camera owns the picture this frame */
+static int cam93_ds_owned(const void *cam)
+{
+    static int always = -1;
+    if (always < 0) always = getenv("SM64DS_CAM93_RIG_ALWAYS") ? 1 : 0;
+    if (always) return 0;
+    /* 9 zoom, 11 cannon aim, 12 talk, 13 talk at an actor, 15 look at an exit, 16 talk (second kind),
+       17 no-control hold, 18 grab Bowser's tail: each has its own camera body. NOT 10 and 14 (the follow
+       body with a timer, and the go-behind-the-player follow, which the game sits in for long stretches of
+       ordinary play) and not 0..8 (the follow body in its tunings: the chase camera the rig replaces). */
+    const int i = cam93_state_idx(cam);
+    return i == 9 || i == 11 || i == 12 || i == 13 || i == 15 || i == 16 || i == 17 || i == 18;
+}
+static int cam93_ds_owned_off(void) { return getenv("SM64DS_CAM93_RIG_ALWAYS") ? 1 : 0; }
+static int g_cam93_mouse_owned;            /* the mouse is steering the camera: no auto-recenter until the stick or keys take it back */
+static int g_cam93_scale = 4096;           /* eased fraction of the eye distance the collision allows */
+static int g_cam93_hit;                    /* trace: the ray hit this frame */
+static int g_cam93_floorhit;               /* the ray hit something BELOW the pivot on an eye that is below it too: the
+                                              rig's eye is under the ground. The rig lifts its pitch while that holds. */
+static int g_cam93_wouldscale = 4096;      /* trace: the scale the collision asked for even when it is off */
+static int g_cam93_disabled = -1;
+static int g_cam93_hitrel[3];              /* trace: the hit point (+ normal) relative to the pivot, world units */
+static int g_cam93_eye[3];                 /* trace: the eye the rig last pushed */
+
+/* the rig's eye, pulled in to the first wall / floor / ceiling the segment from the pivot meets */
+static void cam93_collide(char *player, const int *pivot, int *eye)
+{
+    if (g_cam93_disabled < 0) g_cam93_disabled = getenv("SM64DS_CAM93_NO_COLLIDE") ? 1 : 0;
+    g_cam93_hit = 0;
+    g_cam93_floorhit = 0;
+    if (!player) { g_cam93_scale = 4096; return; }
+    long long v[3] = {(long long)eye[0] - pivot[0], (long long)eye[1] - pivot[1], (long long)eye[2] - pivot[2]};
+    int vi[3] = {(int)v[0], (int)v[1], (int)v[2]};
+    const int len = LenVec3(vi);
+    if (len <= 0) return;
+    int a[3] = {pivot[0], pivot[1], pivot[2]};
+    int e2[3] = {eye[0], eye[1], eye[2]};
+    int want = 4096;
+    /* storeHitPos on: a hit overwrites the end with the hit point pushed off the surface */
+    if (_ZN8dActor_c17DetectRaycastClsnER7Vector3S1_b(player, a, e2, true)) {
+        int wi[3] = {e2[0] - pivot[0], e2[1] - pivot[1], e2[2] - pivot[2]};
+        g_cam93_hitrel[0] = wi[0] >> 12; g_cam93_hitrel[1] = wi[1] >> 12; g_cam93_hitrel[2] = wi[2] >> 12;
+        long long d = LenVec3(wi);
+        const long long MARGIN = 12LL << 12, MINDIST = 60LL << 12;
+        d -= MARGIN;
+        if (d < MINDIST) d = MINDIST;
+        want = (int)(d * 4096 / len);
+        if (want > 4096) want = 4096;
+        g_cam93_hit = 1;
+        if (v[1] < 0 && wi[1] < 0) g_cam93_floorhit = 1;
+    }
+    g_cam93_wouldscale = want;
+    if (g_cam93_disabled) {   /* A/B: the ray is still cast so a trace can show what it would have done */
+        g_cam93_scale = 4096;
+        g_cam93_eye[0] = eye[0]; g_cam93_eye[1] = eye[1]; g_cam93_eye[2] = eye[2];
+        return;
+    }
+    if (want < g_cam93_scale) g_cam93_scale = want;                    /* in at once */
+    else g_cam93_scale += (want - g_cam93_scale + 5) / 6;              /* out gently */
+    if (g_cam93_scale > 4096) g_cam93_scale = 4096;
+    for (int k = 0; k < 3; ++k)
+        eye[k] = pivot[k] + (int)(v[k] * g_cam93_scale / 4096);
+    g_cam93_eye[0] = eye[0]; g_cam93_eye[1] = eye[1]; g_cam93_eye[2] = eye[2];
+}
+
+/* the rig's picture: eye from the pivot, collided, pushed. One place for both frame loops. */
+static void cam93_rig_draw(void *cam, char *player)
+{
+    int fceye[3];
+    const int *pivot = cam_mode == CAM_ANALOG ? an_pivot : (const int *)((char *)cam + 0x80);
+    fc_eye(pivot, fceye);
+    cam93_collide(player, pivot, fceye);
+    fc_push_view(cam, fceye, pivot);
+}
+
 /* THE RIG'S SEAT ON THE ROM'S CAMERA::RENDER (run linkfull, lane K1LOOP). On a
    frame the level loop hands to the ROM's func_02044120, Camera::Render runs
    at the head of the render walk (render priority 0) through the Camera's
@@ -4299,14 +4418,8 @@ static void k1_level_camera_render_hook(void *cam)
     const int cutscene_cam = !no_cutscene_cam && data_0209fc48 != 0;
     if (cam_mode == CAM_ANALOG && !rb_replaying() && g_k1_player)
         an_step_pivot(g_k1_player);
-    if (cam_mode != CAM_DS && !cutscene_cam) {
-        int fceye[3];
-        const int *pivot = cam_mode == CAM_ANALOG
-                               ? an_pivot
-                               : (const int *)((char *)cam + 0x80);
-        fc_eye(pivot, fceye);
-        fc_push_view(cam, fceye, pivot);
-    }
+    if (cam_mode != CAM_DS && !cutscene_cam && !cam93_ds_owned(cam))
+        cam93_rig_draw(cam, g_k1_player);
     if (ntr::widescreen)
         hal_camera_widen_frustum();
 }
@@ -10021,6 +10134,7 @@ static void setlive_test_apply(int frame, int *pad_live, XPad *pad)
     }
     if (e_mouse) {
         const char *p = e_mouse;
+        mo_look = 0;   /* CAMERA093: the scripted hold ends with its frames, like a released right button */
         while (*p) {
             char *q;
             const long f0 = strtol(p, &q, 10);
@@ -14672,6 +14786,9 @@ int main(void)
             mo_dx = mo_dy = 0;
             if (!selftest) mouse_wheel = mo_wheel;
             mo_wheel = 0;
+            /* CAMERA093: how long the mouse has been quiet (see the block above
+               k1_level_camera_render_hook). Capture counts as steering. */
+            if (mouse_dyaw || mouse_dpitch || mo_captured || mo_look) g_cam93_mouse_owned = 1;
         }
 
         /* Top of the DS 2D frame: both OAM shadows back to empty, and the
@@ -14866,12 +14983,30 @@ int main(void)
             }
             fc_edge = now;
         }
-        if (cam_mode != CAM_DS && !rb_replaying()) {
+        {   /* CAMERA093: back from a DS-owned camera moment (talk, exit look-at,
+               zoom ...): seed the rig from the game's eye so the hand-over does
+               not jump. */
+            static int was_ds;
+            const int ds = cam && cam93_ds_owned(cam);
+            if (was_ds && !ds && cam_mode != CAM_DS) {
+                fc_seed(cam);
+                if (cam_mode == CAM_ANALOG) an_pivot_live = 0;
+                g_cam93_scale = 4096;
+            }
+            was_ds = ds;
+        }
+        if (cam_mode != CAM_DS && !rb_replaying() && !(cam && cam93_ds_owned(cam))) {
             /* the rig's own frame: orbit and tilt at a rate proportional to
                the stick, zoom on the bumpers or R/F, C back behind Mario.
                `rig_touched` is what tells the analog auto-recenter to keep its
                hands off -- the player is aiming the camera. */
             int rig_touched = 0;
+            /* CAMERA093: the stick, Q/E, R/F or the centre key take the camera back from the mouse */
+            if (g_cam93_mouse_owned && !mouse_dyaw && !mouse_dpitch && !mo_captured && !mo_look &&
+                (fc_stick_rate(stick_rx, 1000) || fc_stick_rate(stick_ry, 1000) || key_act(HOST_KEY_CAM_LEFT) ||
+                 key_act(HOST_KEY_CAM_RIGHT) || key_live('R') || key_live('F') || key_act(HOST_KEY_CAM_CENTER) ||
+                 (pad_live && pad_act(&pad, HOST_PAD_CAM_CENTER))))
+                g_cam93_mouse_owned = 0;
             /* the distance the game's camera converged to on the frame just
                gone -- see the block above fc_seed. Ahead of the zoom keys so
                a press this frame still lands on top of it. */
@@ -14892,6 +15027,11 @@ int main(void)
                 if (mouse_dpitch) rig_touched = 1;
                 if (key_live('R')) t += 0x80;
                 if (key_live('F')) t -= 0x80;
+                /* CAMERA093: the eye is under the floor (the pitch the game's camera had when the rig was
+                   seeded can be below the horizon): lift it, unless the player is steering the pitch. */
+                if (g_cam93_floorhit && !mouse_dpitch && !fc_stick_rate(stick_ry, 1000) &&
+                    !key_live('R') && !key_live('F') && t < 0x0c00)
+                    t += 0x100;
                 if (t > 0x3a00) t = 0x3a00;      /* just short of overhead */
                 if (t < -0x1000) t = -0x1000;    /* a little from below */
                 fc_pitch = (short)t;
@@ -14935,7 +15075,9 @@ int main(void)
                a sustained turn the proportional term is what binds, and the
                camera trails him by a dozen degrees or so, which is the lag
                that makes it feel like a camera rather than a bracket. */
-            if (cam_mode == CAM_ANALOG && !rig_touched) {
+            static int mouse_recenter_old = -1;   /* SM64DS_CAM93_MOUSE_RECENTER=1: the old always-recenter, for A/B */
+            if (mouse_recenter_old < 0) mouse_recenter_old = getenv("SM64DS_CAM93_MOUSE_RECENTER") ? 1 : 0;
+            if (cam_mode == CAM_ANALOG && !rig_touched && (!g_cam93_mouse_owned || mouse_recenter_old)) {
                 const int spd = *(int *)(c + 0x98);
                 if (spd > (2 << 12) || spd < -(2 << 12)) {
                     const short behind = (short)(*(short *)(c + 0x8e) + 0x8000);
@@ -14948,6 +15090,35 @@ int main(void)
                     }
                 }
             }
+        }
+        {   /* CAMERA093 test hook (SM64DS_CAM93_BEHIND=<frame>): the game's own Camera::GoBehindPlayer, the
+               fixed camera a door walk-through uses, so a headless run can show the rig stand down and hand back */
+            static int bf = -2;
+            if (bf == -2) { const char *e = getenv("SM64DS_CAM93_BEHIND"); bf = e ? atoi(e) : -1; }
+            if (bf >= 0 && frame == bf && cam) _ZN6Camera14GoBehindPlayerEj(cam, 0);
+        }
+        {   /* CAMERA093 trace (SM64DS_CAM93_TRACE=1): one line a tick */
+            static int tr = -1;
+            if (tr < 0) tr = getenv("SM64DS_CAM93_TRACE") ? 1 : 0;
+            if (tr && cam && c)
+                fprintf(stderr, "[cam93] f%d st=%d ds=%d mode=%d yaw=%04x pitch=%04x dist=%d scale=%d hit=%d midle=%d want=%d "
+                        "pl=%d,%d,%d pyaw=%04x pst=%p eye=%d,%d,%d hitrel=%d,%d,%d\n",
+                        frame, cam93_state_idx(cam), cam93_ds_owned(cam), cam_mode, (unsigned short)fc_yaw,
+                        (unsigned short)fc_pitch, fc_dist >> 12, g_cam93_scale, g_cam93_hit | (g_cam93_floorhit << 1),
+                        g_cam93_mouse_owned, g_cam93_wouldscale,
+                        *(int *)(c + 0x5c) >> 12, *(int *)(c + 0x60) >> 12, *(int *)(c + 0x64) >> 12,
+                        (unsigned)(unsigned short)*(short *)(c + 0x8e), *(void **)(c + 0x370),
+                        g_cam93_eye[0] >> 12, g_cam93_eye[1] >> 12, g_cam93_eye[2] >> 12,
+                        g_cam93_hitrel[0], g_cam93_hitrel[1], g_cam93_hitrel[2]);
+        }
+        if (pad_live && c && *(void **)(c + 0x370) == (void *)data_ov002_021102d4 && !cam93_ds_owned_off()) {
+            /* CAMERA093: in the cannon (the Player's own aim state) the DS camera is the picture (camera
+               states 11 and 12, see the block above k1_level_camera_render_hook) and the right stick has
+               no camera to turn, so it aims the barrel like the left stick does. Only while the left
+               stick is idle. */
+            int cdx = 0, cdz = 0;
+            stick_dpad_bits(pad.lx, pad.ly, &cdx, &cdz);
+            if (!cdx && !cdz) stick_dpad_bits(pad.rx, pad.ry, &dx, &dz);
         }
         if (pad_live) {
             stick_dpad_bits(pad.lx, pad.ly, &dx, &dz);
@@ -17951,7 +18122,7 @@ int main(void)
                (cutscene_cam) the rig stands down so the actor's own heading --
                the one Camera::Behavior just wrote from the script -- survives
                into the echo below. */
-            if (cam_mode != CAM_DS && !cutscene_cam)
+            if (cam_mode != CAM_DS && !cutscene_cam && !cam93_ds_owned(cam))
                 *(short *)data_020a1050 = fc_yaw;
             /* run mg16 lane MP3: THE ROM'S OWN DISPATCHER, LINKED.
                src/func_0203df40.c fills the local comms record from the pad and
@@ -18652,14 +18823,8 @@ int main(void)
                    view: hal_camera_render has just parked the script-driven view in
                    data_0209b3ec, and leaving it there is what makes the star-get
                    fly-around visible instead of overwritten. */
-                if (cam_mode != CAM_DS && !cutscene_cam) {
-                    int fceye[3];
-                    const int *pivot = cam_mode == CAM_ANALOG
-                                           ? an_pivot
-                                           : (const int *)((char *)cam + 0x80);
-                    fc_eye(pivot, fceye);
-                    fc_push_view(cam, fceye, pivot);
-                }
+                if (cam_mode != CAM_DS && !cutscene_cam && !cam93_ds_owned(cam))
+                    cam93_rig_draw(cam, (char *)c);
                 /* WIDESCREEN: widen the object-cull frustum to match the Hor+ 3D
                    field, AFTER the camera Render just seeded the global Clipper
                    (func_0200d954 -> Func_020156DC) and BEFORE the actor buckets test
