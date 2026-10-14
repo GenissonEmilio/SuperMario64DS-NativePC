@@ -5608,9 +5608,7 @@ __ZN11fLiNdBaPr_cD1Ev                                                    ??1fLiN
 # PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player8BlowAwayEs                                                   ?BlowAway@Player@@QAEXF@Z                                        0x020d4fe4 F
 # PORTSYNC3 retired (Player.cpp / dActor_c.cpp now define this member itself): __ZN6Player9DropActorEv                                                  ?DropActor@Player@@QAEHXZ                                        0x020da7f4 F
 
-__ZN10dFdColor_c11AdvanceFadeEv                                          ?AdvanceFade@dFdColor_c@@UAEXXZ                                  0x020174e0 F
 
-__ZN9dFdWipe_c14LoadAndSetFileEt                                         ?LoadAndSetFile@dFdWipe_c@@QAEXG@Z                               0x020172c0 F
 
 __ZN10daKpa3Bg_c19func_ov060_02117db8Ev                                  ?func_ov060_02117db8@daKpa3Bg_c@@QAEXXZ                          0x02117db8 F
 __ZN10daKpa3Bg_c19func_ov060_021181b4Ev                                  ?func_ov060_021181b4@daKpa3Bg_c@@QAEXXZ                          0x021181b4 F
