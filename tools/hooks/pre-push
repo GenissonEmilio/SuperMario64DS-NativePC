@@ -5,11 +5,6 @@
 # main never gets byte-match checked. This runs the same link verification locally (this box
 # has the ROM + toolchain) and refuses the push if a src/ file does not reproduce the ROM.
 #
-# It also checks contributor attribution. `validate` fails a merge when credit moves off its
-# matcher, but that verdict costs a full merge validation on the build box and only arrives
-# once a PR is open -- and the mistake is invisible in review, because every file still
-# byte-matches. See tools/prepush_attribution.py.
-#
 # It also checks port/'s references into src/ (manifests, hostgen symbol lists, HAL linkage
 # bridges). port/ has its own MSVC build that nothing in the decomp toolchain compiles or
 # links, so a src/ rename can strand a port/ reference with no other gate to catch it. See
@@ -44,16 +39,6 @@ remote_ref_check() {
       echo "pre-push: REFUSING to push (see above). Override with --no-verify if you are certain." >&2
       return 1
     fi
-
-    # Attribution is a comparison, so it needs a real base. A brand-new remote branch has
-    # nothing to compare against and nothing can have moved yet.
-    if [ "$remote_sha" != "0000000000000000000000000000000000000000" ]; then
-      echo "pre-push: checking contributor attribution in $range"
-      if ! python tools/prepush_attribution.py --base "$remote_sha" --head "$local_sha"; then
-        echo "pre-push: REFUSING to push (see above). Override with --no-verify if you are certain." >&2
-        return 1
-      fi
-    fi
   done
   return 0
 }
@@ -80,31 +65,19 @@ if ! python tools/check_duplicate_sources.py; then
   exit 1
 fi
 
-# Does every merged translation unit still COMPILE? tools/check_src_tu.py (run in CI)
-# proves every include and mangled symbol resolves; it cannot see a type. #1583 retyped
-# three dActor_c virtuals int -> void, swept only src/, and stranded a src_tu TU --
-# and #1643's collision rename left ov029/SwitchActivatedPlank with a placeholder
-# `struct dBgW_Kc` that the real class then collided with. Neither showed up anywhere:
-# an unbuildable source file is an ABSENT one, so rombuild kept reporting 106/106 with
-# the file simply gone from coverage.
-#
-# It needs mwccarm but NOT the ROM, and it is about three seconds for all 41 TUs, so it
-# runs on every push rather than only main-targeted ones.
-#
-# The gate itself never returns 0 without a compiler -- that is deliberate, see its
-# docstring. Deciding what an unwired worktree should do is the HOOK's call, not the
-# gate's, so the compiler is tested here and its absence is printed as NOT CHECKED
-# rather than either refusing the push or being passed over in silence.
+# Does every NONMATCHING draft in src/ still COMPILE? enroll.py leaves a bannered
+# draft out of the ROM build, so nothing else compiles it: #3085's draft stopped
+# compiling when a header retyped a callee and stayed broken for nine days. Same
+# compiler-present test and NOT CHECKED message as the src_tu gate above.
 if [ -f tools/mwccarm/2004/b56/mwccarm.exe ]; then
-  if ! python tools/check_src_tu_compiles.py --quiet; then
+  if ! python tools/check_drafts_compile.py --quiet; then
     echo "pre-push: REFUSING to push (see above). Override with --no-verify if you are certain." >&2
     exit 1
   fi
 else
-  echo "pre-push: src_tu COMPILE GATE NOT CHECKED -- no tools/mwccarm/2004/b56/mwccarm.exe"
-  echo "          in this worktree. This is not a pass: type drift in src_tu/ is invisible"
-  echo "          to every other gate. Wire the worktree up and re-run"
-  echo "          'python tools/check_src_tu_compiles.py' before trusting this push."
+  echo "pre-push: NONMATCHING DRAFT COMPILE GATE NOT CHECKED -- no tools/mwccarm/2004/b56/mwccarm.exe"
+  echo "          in this worktree. This is not a pass. Wire the worktree up and re-run"
+  echo "          'python tools/check_drafts_compile.py' before trusting this push."
 fi
 
 # Reference resolvability needs tools/eligible.py, which compiles ~11,100 files and

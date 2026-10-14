@@ -1,8 +1,8 @@
 {
   "id": "ov070/daBrq_c",
   "module": "ov070",
-  "source": "src/game/actors/daBrq_c.cpp",
-  "promoted_source": "src/game/actors/daBrq_c.cpp",
+  "source": "src/actors/daBrq_c.cpp",
+  "promoted_source": "src/actors/daBrq_c.cpp",
   "status": "promoted",
   "production_mode": "intact-object",
   "boundary_confidence": "high",
@@ -720,7 +720,7 @@
     "criteria": {
       "every_declared_function_defined": "PASS",
       "every_declared_function_bytes_match": "PASS",
-      "declared_function_set_equals_defined_function_set": "FAIL-BY-DESIGN -- 6 inherited RTTI/type-name copies are externalized to their canonical arm9 definitions; 0 compiler-only policy error(s)",
+      "declared_function_set_equals_defined_function_set": "PASS",
       "functions_occur_in_expected_order": "PASS",
       "relocation_destinations_verified": "PASS"
     },
@@ -732,10 +732,33 @@
         "_ZN7Vector3D1Ev"
       ],
       "droppedSections": [
+        5,
+        6,
+        8,
+        9,
+        10,
+        13,
+        14,
+        15,
+        16,
         56
       ],
-      "data": [],
-      "dataExternalized": []
+      "data": [
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c"
+      ],
+      "dataExternalized": [
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c"
+      ]
     },
     "linkcheck": {
       "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
@@ -774,12 +797,34 @@
       ],
       "objectAudit": {
         "counts": {
-          "LICENSED": 22
+          "LICENSED": 23
         },
         "emittedTextOrderIsRomAscending": true,
         "nonLicensedSymbols": [],
         "unlicensedSections": []
       },
+      "nontextSectionOrder": {
+        "groups": [
+          {
+            "section": ".data",
+            "original": [
+              7,
+              11,
+              17,
+              19
+            ],
+            "desired": [
+              7,
+              11,
+              17,
+              19
+            ]
+          }
+        ],
+        "objisolate": null,
+        "errors": null
+      },
+      "linkedStorageAliases": null,
       "symbolCheckNewVsBaseline": [],
       "symbolCheckErrors": [
         "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",

@@ -3,10 +3,22 @@
 
 #include "types.h"
 
-/* Polymorphic touch-screen icon base. RTTI proves the dThIcon_c name and its
- * derived-class edges. ROM vtables prove the two virtual roles are Behavior
- * and Render; the destructor is nonvirtual. Its 0x24-byte extent is fixed by
- * the derived constructors/destructors and array stride. */
+/* Polymorphic touch-screen icon base. RTTI proves the dThIcon_c name and
+ * its derived-class edges. ROM vtables prove the two virtual roles are
+ * Behavior and Render; the destructor is nonvirtual. Its 0x24-byte
+ * extent is fixed by the derived constructors/destructors and array
+ * stride.
+ *
+ * deslop leftovers:
+ * - unk_00c is the countdown this class's TU subtracts data_0208ee44
+ *   from; unk_010 flips 0/1 when it expires; unk_011 latches to 1 when
+ *   unk_014 >= 1. Original names are not in the cartridge. Naming fans
+ *   out to derived Renders.
+ * - unk_004 / unk_006 / unk_008 / unk_00a are the icon's centre and
+ *   half extents, unk_014 its touch kind and unk_018 the countdown
+ *   reload; this class's TU writes them only in func_ov001_020ab5b0,
+ *   which also clears unk_012. unk_01c / unk_020 are unused there.
+ */
 struct dThIcon_c {
     s16 unk_004;
     s16 unk_006;
@@ -15,9 +27,10 @@ struct dThIcon_c {
     s32 unk_00c;
     u8 unk_010;
     u8 unk_011;
-    u8 pad_012[0x2];
+    u8 unk_012;
+    u8 pad_013[0x1];
     s32 unk_014;
-    u8 pad_018[0x4];
+    s32 unk_018;
     s32 unk_01c;
     s32 unk_020;
 

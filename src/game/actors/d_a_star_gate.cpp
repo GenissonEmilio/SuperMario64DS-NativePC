@@ -16,8 +16,8 @@
  * compiler-ordered.
  *
  * deslop
- * Leftover: Camera::GoBehindPlayer / SetFlag_3 stay mangled (no Camera.h;
- *   SetFlag_3 is not on Camera.h). This TU's St_OpenClose_Init / Main.
+ * Leftover: dCamera_c::GoBehindPlayer / SetFlag_3 stay mangled (dCamera_c.h shifts
+ *   this TU's @452 uniquifier). This TU's St_OpenClose_Init / Main.
  * Leftover: func_ov100_02144fcc / 02145014 / 02145070 / 02144f84 stay those
  *   ROM labels. 02144fcc keeps the ellipsis: St_StayClosed_Main passes
  *   (this, player); the body is 0-arg.
@@ -39,17 +39,19 @@
 #include "SharedFilePtr.h"
 #include "Model.h"
 
-struct Camera;
+struct dCamera_c;
 
 extern "C" {
 int func_ov100_02144fcc(...);
 unsigned char DecIfAbove0_Byte(unsigned char *p);
 void func_02012694(int soundID, void *position, ...);
-void _ZN6Camera14GoBehindPlayerEj(Camera *self, unsigned int a);
+/* local extern: including dCamera_c.h shifts this TU's @452 uniquifier; the TU binding policy refuses it */
+void _ZN9dCamera_c14GoBehindPlayerEj(dCamera_c *self, unsigned int a);
 void Vec3_RotateYAndTranslate(Vector3 *out, void *m, short angle, Vector3 *in);
 void ChangeArea(int areaID);
 int ShowArea(int areaID);
-int _ZN6Camera9SetFlag_3Ev(void *camera);
+/* local extern: including dCamera_c.h shifts this TU's @452 uniquifier; the TU binding policy refuses it */
+int _ZN9dCamera_c9SetFlag_3Ev(void *camera);
 int func_ov100_02145014(void);
 void func_ov100_02145070(int value);
 unsigned char NumStars(void);
@@ -64,7 +66,7 @@ void Matrix4x3_FromRotationY(Matrix4x3 *matrix, int angle);
 int ApproachLinear(int &x, int a, int b);
 
 extern u8 data_0209f250;
-extern Camera *data_0209f318;
+extern dCamera_c *data_0209f318;
 extern Player *data_0209f394[];
 extern int data_0209caa0[];
 extern char data_020a0ebc[];
@@ -392,7 +394,7 @@ bool daStarGate_c::St_OpenClose_Init(Player *)
 {
     ShowArea((s8)mAngleX);
     ShowArea((s8)mAngleZ);
-    _ZN6Camera9SetFlag_3Ev((void *)data_0209f318);
+    _ZN9dCamera_c9SetFlag_3Ev((void *)data_0209f318);
     mTerminalVelocity = -0x8a000;
     func_02012694(0x4e, &mCamSpacePosX);
     return true;
@@ -416,7 +418,7 @@ bool daStarGate_c::St_OpenClose_Main(Player *player)
                 mTerminalVelocity = 0;
                 func_02012694(0x4f, &mCamSpacePosX, 0);
             } else if (mCloseDoorTimer == 8) {
-                _ZN6Camera14GoBehindPlayerEj(data_0209f318, data_0209f250);
+                _ZN9dCamera_c14GoBehindPlayerEj(data_0209f318, data_0209f250);
             }
         } else if (ready != 0) {
             ChangeState(&ST_WAIT, player);

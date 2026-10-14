@@ -4,143 +4,46 @@
     .ctor       start:0x0211242c end:0x02112444 kind:rodata align:4
     .data       start:0x02112460 end:0x02113180 kind:data align:32
     .bss        start:0x02113180 end:0x02113280 kind:bss align:32
-src/_ZN15FireSeaElevatorD1Ev.cpp:
+src/game/actors/d_a_obj_km2_agaru.cpp:
     complete
-    .text start:0x021111a0 end:0x021111e4
+    .text start:0x021111a0 end:0x0211150c
+    .init start:0x021121a8 end:0x02112214
+    .ctor start:0x0211242c end:0x02112430
+    .bss start:0x02113180 end:0x021131a8
 
-src/_ZN15FireSeaElevatorD0Ev.cpp:
+src/game/actors/d_a_obj_km2_ami_bou.cpp:
     complete
-    .text start:0x021111e4 end:0x0211123c
+    .text start:0x0211150c end:0x02111840
+    .init start:0x02112214 end:0x02112280
+    .ctor start:0x02112430 end:0x02112434
+    .data start:0x02112d80 end:0x02112e3c
+    .bss start:0x021131a8 end:0x021131d0
 
-src/_ZN15FireSeaElevator16CleanupResourcesEv.cpp:
+src/actors/daObjKm2_Nobiru_c.cpp:
     complete
-    .text start:0x0211123c end:0x02111274
-
-src/_ZN15FireSeaElevator6RenderEv.cpp:
-    complete
-    .text start:0x02111274 end:0x0211129c
-
-src/_ZN15FireSeaElevator8BehaviorEv.cpp:
-    complete
-    .text start:0x0211129c end:0x021113ec
-
-src/_ZN15FireSeaElevator13InitResourcesEv.cpp:
-    complete
-    .text start:0x021113ec end:0x021114a8
-
-src/func_ov045_021114a8.cpp:
-    complete
-    .text start:0x021114a8 end:0x021114c8
-
-src/func_ov045_021114c8.c:
-    complete
-    .text start:0x021114c8 end:0x021114dc
-
-src/d_a_obj_km2_agaru.c:
-    complete
-    .text start:0x021114dc end:0x0211150c
-
-src/_ZN8PoleLiftD1Ev.cpp:
-    complete
-    .text start:0x0211150c end:0x02111558
-
-src/_ZN8PoleLiftD0Ev.cpp:
-    complete
-    .text start:0x02111558 end:0x021115b8
-
-src/_ZN8PoleLift16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x021115b8 end:0x021115f0
-
-src/_ZN8PoleLift6RenderEv.cpp:
-    complete
-    .text start:0x021115f0 end:0x02111618
-
-src/_ZN8PoleLift8BehaviorEv.cpp:
-    complete
-    .text start:0x02111618 end:0x02111738
-
-src/_ZN8PoleLift13InitResourcesEv.cpp:
-    complete
-    .text start:0x02111738 end:0x02111808
-
-src/d_a_obj_km2_ami_bou.c:
-    complete
-    .text start:0x02111808 end:0x02111840
-
-src/_ZN17ExtendingPlatformD1Ev.cpp:
-    complete
-    .text start:0x02111840 end:0x02111878
-
-src/_ZN17ExtendingPlatformD0Ev.cpp:
-    complete
-    .text start:0x02111878 end:0x021118c4
-
-src/_ZN17ExtendingPlatform23UpdateColliderTransformEv.cpp:
-    complete
-    .text start:0x021118c4 end:0x021118f8
-
-src/_ZN17ExtendingPlatform20UpdateModelTransformEv.cpp:
-    complete
-    .text start:0x021118f8 end:0x02111938
-
-src/_ZN17ExtendingPlatform16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02111938 end:0x02111970
-
-src/_ZN17ExtendingPlatform16OnPendingDestroyEv.cpp:
-    complete
-    .text start:0x02111970 end:0x02111974
-
-src/_ZN17ExtendingPlatform6RenderEv.cpp:
-    complete
-    .text start:0x02111974 end:0x021119c0
-
-src/_ZN17ExtendingPlatform8BehaviorEv.cpp:
-    complete
-    .text start:0x021119c0 end:0x02111a30
-
-src/_ZN17ExtendingPlatform13InitResourcesEv.cpp:
-    complete
-    .text start:0x02111a30 end:0x02111ad4
-
-src/d_a_obj_km2_nobiru.c:
-    complete
-    .text start:0x02111ad4 end:0x02111b14
+    .text start:0x02111840 end:0x02111b14
+    .init start:0x02112280 end:0x021122ec
+    .ctor start:0x02112434 end:0x02112438
+    .bss start:0x021131d0 end:0x021131f8
 
 src/game/actors/d_a_obj_km2_ukishima.cpp:
     complete
     .text start:0x02111b14 end:0x02111c30
+    .init start:0x021122ec end:0x02112358
+    .ctor start:0x02112438 end:0x0211243c
+    .bss start:0x021131f8 end:0x02113220
 
 src/game/actors/d_a_obj_km2_gura.cpp:
     complete
     .text start:0x02111c30 end:0x02111d48
+    .init start:0x02112358 end:0x021123c0
+    .ctor start:0x0211243c end:0x02112440
     .data start:0x02112fdc end:0x021130a0
+    .bss start:0x02113220 end:0x02113248
 
 src/game/actors/d_a_obj_km2_fall_block.cpp:
     complete
     .text start:0x02111d48 end:0x02111e60
-
-src/__sinit_ov045_021121a8.c:
-    complete
-    .init start:0x021121a8 end:0x02112214
-
-src/__sinit_ov045_02112214.c:
-    complete
-    .init start:0x02112214 end:0x02112280
-
-src/__sinit_ov045_02112280.c:
-    complete
-    .init start:0x02112280 end:0x021122ec
-
-src/__sinit_ov045_021122ec.c:
-    complete
-    .init start:0x021122ec end:0x02112358
-
-src/__sinit_ov045_02112358.c:
-    complete
-    .init start:0x02112358 end:0x021123c0
-
-src/__sinit_ov045_021123c0.c:
-    complete
     .init start:0x021123c0 end:0x0211242c
+    .ctor start:0x02112440 end:0x02112444
+    .bss start:0x02113248 end:0x02113270

@@ -141,6 +141,16 @@ on:
       - "tools/**"
       - "nearmiss/**"
       - ".github/workflows/tool-tests.yml"
+  # Nightly, because the paths filters above see only the tests' own code, not the
+  # data they read. tools.test_reloc_audit_flags reads every promoted
+  # config/tu_manifest.d entry. #3199 promoted ov002/dPathLiftActor_c without its
+  # verification block, and main stayed "green" because nothing under tools/ changed.
+  # The red only appeared on the next unrelated tools PR (#3222, 2026-09-27), whose
+  # author had to find and fix it (#3223) before their own change could land. This
+  # run catches that shape within a day on main itself. GitHub mails a scheduled
+  # run's failure to whoever last edited this cron line.
+  schedule:
+    - cron: "23 7 * * *"
   workflow_dispatch:
 
 permissions:
@@ -152,13 +162,14 @@ concurrency:
 
 jobs:
   tools:
+    name: tool tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           # Full history, like source-coverage.yml and header-offsets.yml. Several of
           # these suites read git history rather than the working tree --
-          # test_attribution walks commits, test_validate_merge reads a committed merge,
+          # test_validate_merge reads a committed merge,
           # test_srcpath and test_bytegate resolve tracked paths -- and a shallow
           # checkout makes those assert against a one-commit repository.
           fetch-depth: 0
@@ -194,7 +205,6 @@ jobs:
             tools.test_affected_src \
             tools.test_asm_policy \
             tools.test_asset_catalog \
-            tools.test_attribution \
             tools.test_bytegate \
             tools.test_check_call_arity \
             tools.test_check_data_definitions \
@@ -223,6 +233,7 @@ jobs:
             tools.test_rombuild_check \
             tools.test_rombuild_profile \
             tools.test_sinit_owners \
+            tools.test_src_move \
             tools.test_srcpath \
             tools.test_stamp_provenance_verify \
             tools.test_submit_pr_validation \
@@ -248,8 +259,6 @@ jobs:
 #                                      source references into it, and `resolve`, which
 #                                      must read an integer as a runtime handle and
 #                                      never as a NitroFS file ID.
-#   test_attribution            (17)   chaos_db_ci.py -- rebuilds chaos-db.json from
-#                                      COMMITTED history; the credit data the site reads.
 #   test_bytegate               (39)   bytegate.py -- the byte-gate-failure half of the
 #                                      matched test, over layout_check/relocs/srcpath,
 #                                      plus is_zero_size_alias, which decides whether a
@@ -284,6 +293,8 @@ jobs:
 #   test_layout                 (11)   layout_check.py -- the invariants that make src/
 #                                      trustworthy; L1 is the one the ROM build cannot
 #                                      catch.
+#   test_src_move               (19)   src_move.py -- the path rewrite that must not miss a
+#                                      reference, and the bucket each file is sent to.
 #   test_linkcheck               (14)   linkcheck.py -- the len-mismatch verdict one
 #                                      level under pgate.py/prepush_linkcheck.py's own
 #                                      resolution: a zero-size EABI alias record (a

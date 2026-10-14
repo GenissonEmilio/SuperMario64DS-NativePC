@@ -32,8 +32,8 @@ class DepfileParsing(unittest.TestCase):
         self.repo = pathlib.Path(self.tmp.name).resolve()
         (self.repo / "include" / "math").mkdir(parents=True)
         (self.repo / "src").mkdir()
-        self.header = self.repo / "include" / "Animation.h"
-        self.header.write_text("struct Animation;\n", encoding="utf-8")
+        self.header = self.repo / "include" / "dExtFrameCtrl_c.h"
+        self.header.write_text("struct dExtFrameCtrl_c;\n", encoding="utf-8")
         self.nested = self.repo / "include" / "math" / "Fix12.h"
         self.nested.write_text("typedef int fx32;\n", encoding="utf-8")
         self.source = self.repo / "src" / "Anim.c"
@@ -54,12 +54,12 @@ class DepfileParsing(unittest.TestCase):
                 f"\t{compiler_path(self.header)} \\\n"
                 f"\t{compiler_path(self.nested)} \n")
         self.assertEqual(self.parse(text),
-                         ["include/Animation.h", "include/math/Fix12.h", "src/Anim.c"])
+                         ["include/dExtFrameCtrl_c.h", "include/math/Fix12.h", "src/Anim.c"])
 
     def test_relative_target(self):
         """What a miss actually produces: mwccarm names the target relative to cwd."""
         text = f"x.o: {compiler_path(self.header)} \n"
-        self.assertEqual(self.parse(text), ["include/Animation.h"])
+        self.assertEqual(self.parse(text), ["include/dExtFrameCtrl_c.h"])
 
     def test_crlf_line_endings(self):
         """mwccarm is a Windows tool and ends its .d lines with CRLF.
@@ -73,7 +73,7 @@ class DepfileParsing(unittest.TestCase):
                 f"\t{compiler_path(self.header)} \\\r\n"
                 f"\t{compiler_path(self.nested)} \r\n")
         self.assertEqual(self.parse(text),
-                         ["include/Animation.h", "include/math/Fix12.h", "src/Anim.c"])
+                         ["include/dExtFrameCtrl_c.h", "include/math/Fix12.h", "src/Anim.c"])
 
     def test_headers_outside_the_repo_are_dropped(self):
         """A compiler-install header is pinned by the version in the source key."""
@@ -82,7 +82,7 @@ class DepfileParsing(unittest.TestCase):
         try:
             text = (f"x.o: {compiler_path(self.header)} "
                     f"{compiler_path(outside)} \n")
-            self.assertEqual(self.parse(text), ["include/Animation.h"])
+            self.assertEqual(self.parse(text), ["include/dExtFrameCtrl_c.h"])
         finally:
             outside.unlink()
 

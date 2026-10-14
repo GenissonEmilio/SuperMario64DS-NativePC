@@ -8,7 +8,7 @@ This document describes this commit. The queue records its immutable output SHA.
   queue task**. `python tools/classqueue_v2.py list` shows fifteen tasks
   (`issue-2409` through `issue-2423`) and none of them is ov078/daBombking_c, so
   this producer holds no receipt and nothing was claimed or published through
-  the queue. Stage: **recovery** of a finished branch that never had a PR
+  the queue. dScStage_c: **recovery** of a finished branch that never had a PR
   opened, role producer, session `prod-kbo-0907`, harness Claude Code
   (`claude-opus-5`).
 - Source branch and previous accepted input SHA: `origin/cpp/KingBobOmb-tu`,
@@ -25,7 +25,7 @@ This document describes this commit. The queue records its immutable output SHA.
 - Separate evidence commits and required artifacts in this commit: no separate
   evidence commit. Facts: `notes/data/class-facts/daBombking_c.json`, carried
   from the source branch and re-measured here rather than trusted (see ROM
-  observations). Stage artifacts present:
+  observations). dScStage_c artifacts present:
   `config/tu_manifest.d/ov078/daBombking_c.json`,
   `src/actors/daBombking_c.cpp`, `include/daBombking_c.h`.
 - Next action, responsible role and blockers: independent verification of this
@@ -349,7 +349,7 @@ not committed.
   `source_coverage.py`; `check_src_tu_compiles.py --quiet` (**160/160**
   translation units compile).
   - `python -m unittest` over `test_tu_manifest`, `test_validate_merge`,
-    `test_attribution`, `test_tiers_ratchet`, `test_check_dead_references` and
+    `test_tiers_ratchet`, `test_check_dead_references` and
     `test_check_rename_ledger`: **171 tests, all passing.** One of them
     (`test_the_committed_baseline_matches_the_tree`) failed on a first run and
     caught a real defect in this very document: an earlier draft named the

@@ -139,14 +139,14 @@ Matching the ROM may initially require an explicitly padded representation, with
 The current decompilation commonly stores one function per source file. The original game used normal translation units containing multiple functions and globals:
 
 ```cpp
-// Possible original shape: Unagi.cpp
+// Possible original shape: daMoray_c.cpp
 
 UnagiResources resources;
 int instanceCount;
 
-void Unagi::Init() { /* ... */ }
-void Unagi::Update() { /* ... */ }
-void Unagi::Render() { /* ... */ }
+void daMoray_c::Init() { /* ... */ }
+void daMoray_c::Update() { /* ... */ }
+void daMoray_c::Render() { /* ... */ }
 ```
 
 The reconstructed tree may instead contain separate files for each function. The linker normally does not preserve enough information to state with certainty which original `.cpp` file owned a particular global.
@@ -240,8 +240,8 @@ address=0x02114d4c
 operation=write32
 old_value=0x00000000
 new_value=0x00000001
-pc=Unagi::InitResources+0x38
-callers=Stage::Load -> Actor::Spawn -> Unagi::InitResources
+pc=daMoray_c::InitResources+0x38
+callers=dScStage_c::Load -> Actor::Spawn -> daMoray_c::InitResources
 ```
 
 Important fields include:
@@ -284,17 +284,17 @@ Tracing every memory access for an entire playthrough would create excessive noi
 4. Summarize the resulting traces deterministically.
 5. Ask the LLM which hypothesis best explains the observations.
 
-For an Unagi-related candidate, contrasting experiments might include:
+For an daMoray_c-related candidate, contrasting experiments might include:
 
 ```text
-Run A: Enter the stage without spawning Unagi
-Run B: Approach and activate Unagi
-Run C: Spawn and despawn Unagi repeatedly
-Run D: Trigger another water enemy without Unagi present
+Run A: Enter the stage without spawning daMoray_c
+Run B: Approach and activate daMoray_c
+Run C: Spawn and despawn daMoray_c repeatedly
+Run D: Trigger another water enemy without daMoray_c present
 Run E: Leave and reload the stage
 ```
 
-The LLM can also recommend the next discriminating experiment. If two likely owners are `Unagi.cpp` and a shared water-enemy resource TU, running another water enemy without Unagi may separate the hypotheses.
+The LLM can also recommend the next discriminating experiment. If two likely owners are `daMoray_c.cpp` and a shared water-enemy resource TU, running another water enemy without daMoray_c may separate the hypotheses.
 
 ## 10. Proposed ownership manifest
 
@@ -307,14 +307,14 @@ address: 0x02114d4c
 inferred_stride: 0x0c
 
 candidate_owners:
-  - tu: Unagi.cpp
+  - tu: daMoray_c.cpp
     confidence: 0.91
     evidence:
       - constructed by __sinit_ov016_02114c20
       - constructor appears to be UnagiResources::UnagiResources
-      - 8 of 9 static references belong to the Unagi TU cluster
-      - runtime writes occur during Unagi::InitResources
-      - runtime reads occur only while Unagi actors are active
+      - 8 of 9 static references belong to the daMoray_c TU cluster
+      - runtime writes occur during daMoray_c::InitResources
+      - runtime reads occur only while daMoray_c actors are active
     contradictions:
       - one reference from shared actor-resource cleanup
 

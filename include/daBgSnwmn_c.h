@@ -3,7 +3,7 @@
 #include "dActor_c.h"
 #include "Model.h"
 #include "TextureSequence.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "dCcAcPos_c.h"
 
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
@@ -27,7 +27,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  *     Model           0x0d4  sizeof 0x50
  *     Model           0x124  sizeof 0x50
  *     TextureSequence 0x174  sizeof 0x14
- *     ShadowModel     0x188  sizeof 0x28
+ *     dExtShadowModel_c     0x188  sizeof 0x28
  *     dCcAcPos_c      0x1b0  sizeof 0x40
  * 0x1b0 + 0x40 = 0x1f0. The destructor pair tears the same five down in
  * reverse order.
@@ -46,7 +46,7 @@ struct daBgSnwmn_c : dActor_c {
     Model mModel1;                 /* 0x0d4 */
     Model mModel2;                 /* 0x124 */
     TextureSequence mTexSeq;       /* 0x174 */
-    ShadowModel mShadow;           /* 0x188 */
+    dExtShadowModel_c mShadow;           /* 0x188 */
     dCcAcPos_c mCylClsn;           /* 0x1b0 */
 
     /* --- overrides, in dActor_c's own vtable order. --- */
@@ -56,24 +56,17 @@ struct daBgSnwmn_c : dActor_c {
     virtual s32  Render();                                /* slot  9 */
     virtual void OnPendingDestroy();                      /* slot 12 */
 
+    /* Builds both model matrices from mAngleY/mPos* and drops the shadow.
+       Called once from InitResources. */
+    void func_ov072_021208d8();
+
     static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 
     /* Declared last and inline so class instantiation emits the retail D1/D0
        pair in that order, with no separate D2 body. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daBgSnwmn_c() {}   /* no slot */
-#else
-    virtual ~daBgSnwmn_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daBgSnwmn_c() {}                            /* slots 16 (D1), 17 (D0) */
 };
 
 #ifndef SM64DS_PLATFORM_PC

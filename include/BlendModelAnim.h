@@ -9,9 +9,12 @@
  * shape as ModelAnim, every slot overridden) plus its own
  * VTable_Animation_BlendModelAnimThunk secondary.
  *
- * THE DESTRUCTOR IS DECLARED FIRST AND NEVER DEFINED AS A METHOD -- see
- * include/ModelAnim.h; the D1 additionally frees unk_6c before chaining
- * to ModelAnim::D2, which is why it stays a C file with real logic.
+ * THE DESTRUCTOR IS DECLARED FIRST -- see include/ModelAnim.h; the D1
+ * additionally frees unk_6c before chaining to ModelAnim::D2. Defined
+ * out of line: D1 in src/_ZN14BlendModelAnimD1Ev.cpp, D0 in
+ * src/_ZN14BlendModelAnimD0Ev.cpp -- the lifecycle stays shard-enrolled
+ * because this MI class's vtable group cannot ride in the promoted TU
+ * (see its manifest).
  *
  * LAYOUT: ModelAnim 0x00..0x64, then the blend state. blendWeight ramps
  * 0 -> 0x1000 (1.0) by blendStep per Advance; below 1.0 UpdateVerts and
@@ -51,7 +54,7 @@ struct BlendModelAnim : ModelAnim {
 
     /* DECLARED, defined out of line in src/_ZN14BlendModelAnimC1Ev.cpp as
      * real C++ -- complete-object context for every ROM caller (it is a
-     * member subobject in ChiefChilly/Eyerok/Klepto/Unagi...), hence C1.
+     * member subobject in daKing_Donketu_c/Eyerok/daJango_c/daMoray_c...), hence C1.
      * Body is empty; blendWeight and unk_6c are initialised through the init
      * list so their stores land where the ROM has them. */
 
@@ -62,9 +65,9 @@ struct BlendModelAnim : ModelAnim {
                  Fix12<int> speed, u16 startFrame);  /* free function, wall 6az */
 
     /* ITS OWN, TO RESOLVE AN AMBIGUITY MULTIPLE INHERITANCE CREATES. ModelAnim
-       derives from Model (so ModelBase) and from Animation, and both bases
+       derives from Model (so ModelBase) and from dExtFrameCtrl_c, and both bases
        declare operator delete, so an inherited one is "ambiguous access to
-       name found: ModelBase::operator delete and Animation::operator delete".
+       name found: ModelBase::operator delete and dExtFrameCtrl_c::operator delete".
        Declaring it here picks the same deallocator both bases name, and also
        satisfies the rule in include/dActor_c.h that mwcc only inlines the member
        when it is in the class or its immediate base. */

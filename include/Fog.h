@@ -14,9 +14,9 @@ struct Fog {
     u8  pad_026[0x2];
 };
 
-/* 0x28, from the array stride: Stage::LoadFog walks its fog array with
+/* 0x28, from the array stride: dScStage_c::LoadFog walks its fog array with
    `dst += 0x28` and hands each element to Fog::Init. check_header_offsets.py
-   sizes a member type from this typedef -- without it, Stage.h's Fog member is
+   sizes a member type from this typedef -- without it, dScStage_c.h's Fog member is
    UNPARSED and the checker goes blind for the rest of that struct. */
 #ifndef SM64DS_PLATFORM_PC
 /* ROM layout under mwccarm; host ABI divergence is tracked separately. */

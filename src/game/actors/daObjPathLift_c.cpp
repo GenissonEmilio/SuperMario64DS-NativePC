@@ -6,13 +6,27 @@
  * allocation/vptr shape. ov100 is mixed; this is the path lift, not STAR_DOOR
  * / daStarGate_c. Historical project alias: PathLift.
  *
- * mwccarm emits ordinary function sections in reverse source order. Keep
- * InitResources first. The inline destructor declared in daObjPathLift_c
- * emits the retail D1/D0 pair first and emits no leaf D2 body.
+ * mwccarm emits ordinary function sections in reverse source order.
+ * classInit is this TU's highest ROM address (0x02147328), so it comes
+ * first, ahead of InitResources. The inline destructor declared in
+ * daObjPathLift_c emits the retail D1/D0 pair itself and emits no leaf D2
+ * body.
  *
- * The factory stays in src/d_a_obj_path_lift.cpp. Folding `return new`
- * into this TU parks the vague-linkage Vector3 D1 between InitResources
- * and classInit and shifts the factory.
+ * deslop
+ * Leftover: classInit stays the typed C-ABI seam daObjRcCarpet_c already
+ *   established for this same dPathLiftActor_c base (see
+ *   src/game/actors/d_a_obj_rc_carpet.cpp), not `return new
+ *   daObjPathLift_c()`. dPathLiftActor_c has no out-of-line ctor, so the
+ *   intermediate vptr store stays the raw `data_ov002_0210af70` address
+ *   point (no offset -- that symbol already names the address point in
+ *   its own ov002 TU). This TU now defines _ZTV15daObjPathLift_c itself
+ *   (the out-of-line destructor is the key function), so the compiler's
+ *   own `_ZTV15daObjPathLift_c` label names the object start, two words
+ *   before the address point; the final vptr store is
+ *   `_ZTV15daObjPathLift_c[2]` (addend 8) to reach it instead of the
+ *   RTTI header.
+ * Leftover: data_0209f2f8 == 13 is a level-ID check (the current
+ *   level); data_0209f2d8 == 1 is the mode-1 check used tree-wide.
  */
 
 #include "daObjPathLift_c.h"
@@ -21,9 +35,6 @@
 
 extern "C" {
 extern CLPS_Block data_ov002_0210d7d4;
-extern void func_ov002_020efcf4(dPathLiftActor_c *lift);
-extern void func_ov002_020efc74(dPathLiftActor_c *lift);
-extern void func_ov002_020efaf0(dPathLiftActor_c *lift);
 extern void func_ov100_02146e70(daObjPathLift_c *self);
 extern int func_ov100_0214700c(daObjPathLift_c *self);
 
@@ -43,10 +54,10 @@ extern void func_020393d4(dBgW_KcMbg *p, void *v);
 void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     dBgW_KcMbg *self, void *kcl, const Matrix4x3 *mtx, int scale, short angY,
     CLPS_Block *clps);
-void _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(
+int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(
     dBgActor_c *self, int a, int b);
-void _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
-    dActor_c *self, ShadowModel *sm, Matrix4x3 *mtx, int a, int b, int d,
+void _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
+    dActor_c *self, dExtShadowModel_c *sm, Matrix4x3 *mtx, int a, int b, int d,
     unsigned int e);
 }
 
@@ -58,11 +69,62 @@ unsigned int PlayLong(unsigned int, unsigned int, unsigned int,
 }
 
 extern SharedFilePtr data_ov002_0210d9f0;
-extern SharedFilePtr data_ov100_02148a54;
-extern SharedFilePtr data_ov100_02148a5c;
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
+/* File-scope objects at the end of this file construct the two resource
+ * handles (model file 0x9c0d, collision file 0x9c0e). mwcc emits
+ * __sinit_daObjPathLift_c.cpp from those definitions. The wrapper names
+ * are local; the handle constructors and destructors are the ROM
+ * resource-family functions, aliased in the manifest. */
+struct PathLiftModelFile : SharedFilePtr {
+    u32 words[2];
+
+    PathLiftModelFile(u32 fileID);
+    ~PathLiftModelFile();
+};
+
+struct PathLiftCollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    PathLiftCollisionFilePtr(u32 fileID);
+    ~PathLiftCollisionFilePtr();
+};
+
+extern PathLiftModelFile data_ov100_02148a54;
+extern PathLiftCollisionFilePtr data_ov100_02148a5c;
+
+extern "C" {
+extern void *_ZN10dBgActor_cC2Ev(dBgActor_c *actor);
+extern void *_ZN5ModelC1Ev(Model *model);
+extern Model *_ZN5ModelD1Ev(Model *model);
+extern void *_ZN7PathPtrC1Ev(PathPtr *path);
+extern void *_ZN17dExtShadowModel_cC1Ev(dExtShadowModel_c *model);
+extern void __cxa_vec_ctor(
+    Model *models, unsigned int count, unsigned int size,
+    void (*ctor)(void *), void (*dtor)(void *));
+}
+
+extern int data_ov002_0210af70[];
+extern int _ZTV15daObjPathLift_c[];
+
+// @symbol daObjPathLift_c_classInit
+extern "C" daObjPathLift_c *daObjPathLift_c_classInit()
+{
+    daObjPathLift_c *actor =
+        (daObjPathLift_c *)_ZN7fBase_cnwEj(sizeof(daObjPathLift_c));
+    if (actor) {
+        _ZN10dBgActor_cC2Ev(actor);
+        *(int *)actor = (int)data_ov002_0210af70;
+        __cxa_vec_ctor(
+            actor->mModels, 3, sizeof(Model),
+            (void (*)(void *))_ZN5ModelC1Ev,
+            (void (*)(void *))_ZN5ModelD1Ev);
+        _ZN7PathPtrC1Ev(&actor->mPath);
+        *(int *)actor = (int)&_ZTV15daObjPathLift_c[2];
+        _ZN17dExtShadowModel_cC1Ev(&actor->mShadowModel);
+    }
+    return actor;
+}
+
 // @symbol _ZN15daObjPathLift_c13InitResourcesEv
 int daObjPathLift_c::InitResources()
 {
@@ -80,7 +142,7 @@ int daObjPathLift_c::InitResources()
         (void *)&dBgW::UpdatePosAndAngs);
     mPathSpeed = 0xa000;
     mHorzSpeed = mPathSpeed;
-    func_ov002_020efaf0(this);
+    BaseInitResources();
     mPathDirection = 1;
     pos.x = mPosX;
     pos.y = mPosY;
@@ -101,12 +163,10 @@ int daObjPathLift_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN15daObjPathLift_c8BehaviorEv
 int daObjPathLift_c::Behavior()
 {
-    func_ov002_020efcf4(this);
+    UpdatePathModels();
     BaseBehavior();
     if (Vec3_Dist((Vector3 *)&mPosX, (Vector3 *)&mPrevPosX) != 0) {
         if (DecIfAbove0_Byte(&mTimer) == 0) {
@@ -130,8 +190,6 @@ int daObjPathLift_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN15daObjPathLift_c6RenderEv
 int daObjPathLift_c::Render()
 {
@@ -140,13 +198,11 @@ int daObjPathLift_c::Render()
         if (h & 1)
             return 1;
     }
-    func_ov002_020efc74(this);
+    RenderPathModels();
     mModel.Render(0);
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN15daObjPathLift_c16CleanupResourcesEv
 int daObjPathLift_c::CleanupResources()
 {
@@ -159,8 +215,6 @@ int daObjPathLift_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol func_ov100_0214700c
 extern "C" int func_ov100_0214700c(daObjPathLift_c *self)
 {
@@ -176,8 +230,6 @@ extern "C" int func_ov100_0214700c(daObjPathLift_c *self)
     return z;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol func_ov100_02146e70
 extern "C" void func_ov100_02146e70(daObjPathLift_c *self)
 {
@@ -211,15 +263,35 @@ extern "C" void func_ov100_02146e70(daObjPathLift_c *self)
     *(s32 *)((char *)self + 0x4a0) = (self->mPosY - yOff) >> 3;
     *(s32 *)((char *)self + 0x4a4) = self->mPosZ >> 3;
 
-    t = data_0209f2d8;
-    t = t == 1;
+    t = data_0209f2d8 == 1;
     if (t != false) {
-        _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
+        _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
             self, &self->mShadowModel, (Matrix4x3 *)self->unk_478, 0x118000,
             0x7d0000, scaleZ, 0xf);
     } else {
-        _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
+        _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
             self, &self->mShadowModel, (Matrix4x3 *)self->unk_478, 0x118000,
             groundDepth, scaleZ, 0xf);
     }
 }
+// @symbol _ZN15daObjPathLift_cD1Ev
+// @symbol _ZN15daObjPathLift_cD0Ev
+/* -------------------------------------------------------------------------- */
+/* ROM ordinals 0 and 1 -- the destructor group.                              */
+/*   _ZN15daObjPathLift_cD1Ev  0x02146d7c  size 0x70                          */
+/*   _ZN15daObjPathLift_cD0Ev  0x02146dec  size 0x84                          */
+/* Both come from the `~daObjPathLift_c() {}` in the header: the compiler     */
+/* writes the group, and only the INLINE form writes it in the cartridge's    */
+/* order. An out-of-line definition here emits D2, D0, D1 instead, which is   */
+/* why this class's destructor is declared with a body and defined nowhere    */
+/* in this file. mwcc still emits _ZTV15daObjPathLift_c for it, so the        */
+/* vtable and the RTTI records stay comparable to the cartridge -- see this   */
+/* TU's compiler_only_output rows, which check every one of them and then     */
+/* discard the copy dsd already delinks.                                     */
+/* -------------------------------------------------------------------------- */
+
+/* Static-init globals (was the handwritten __sinit_ov100_02147d7c shard).
+ * Definition order is the retail initializer's construction order: the
+ * model handle (file 0x9c0d), then the collision handle (file 0x9c0e). */
+PathLiftModelFile data_ov100_02148a54(0x9c0d);
+PathLiftCollisionFilePtr data_ov100_02148a5c(0x9c0e);

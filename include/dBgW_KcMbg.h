@@ -59,8 +59,8 @@ struct dBgW_KcMbg : dBgW_Kc {
     virtual s16 GetAngularVelY();                         /* slot 11 */
     virtual void GetVelocity(Vector3 &res);               /* slot 12 */
 
-    /* DECLARED, never defined as a method here -- src/_ZN10dBgW_KcMbgC1Ev.cpp
-       owns C1 and src/_ZN10dBgW_KcMbgC2Ev.c the base-subobject variant
+    /* DECLARED, never defined as a method here -- src/engine/collision/dBgW_KcMbg.cpp
+       owns C1 and the base-subobject variant
        (notes/ctor-migration.md section 2). */
     dBgW_KcMbg();
 
@@ -94,7 +94,7 @@ typedef char dBgW_KcMbg_size_must_be_0x1c8[sizeof(dBgW_KcMbg) == 0x1c8 ? 1 : -1]
 
 #else
 
-/* The C spelling of the same object, flat -- the arrangement include/ShadowModel.h
+/* The C spelling of the same object, flat -- the arrangement include/dExtShadowModel_c.h
    and include/dBgCh_Actr.h already use, and added here for the same reason they
    have one: ten actor headers that a `.c` translation unit reaches embed a
    dBgW_KcMbg BY VALUE, proved by their own destructors calling _ZN10dBgW_KcMbgD1Ev

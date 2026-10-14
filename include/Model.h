@@ -17,11 +17,11 @@
  *   slot 4  0x02016bb8  Virtual10(Matrix4x3 &)
  *   slot 5  0x02016b78  Render(Vector3 const *)
  *
- * THE DESTRUCTOR IS DECLARED FIRST. Each enrolled destructor-variant
- * translation unit defines the same real method; mwcc emits D2/D0/D1 together
- * and objisolate keeps the variant named by that file's enrollment. The
- * key-function vtable emitted beside it is stripped and rebound to the ROM's
- * carved-out _ZTV5Model, as described in ModelBase.h.
+ * THE DESTRUCTOR IS DECLARED FIRST. The promoted TU
+ * (src/engine/model/Model.cpp) defines it once; mwcc emits D2/D0/D1 together
+ * and all three stay enrolled. The key-function vtable emitted beside it is
+ * stripped and rebound to the ROM's carved-out _ZTV5Model, as described in
+ * ModelBase.h.
  *
  * LAYOUT evidence: Model::C2 calls ModelBase::C2, stores _ZTV5Model, copies
  * mat4x3 from IDENTITY_MATRIX4X3 and zeroes +0x4c. Model::DoSetFile allocates

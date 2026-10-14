@@ -547,7 +547,7 @@ class PullRequestShapeTests(unittest.TestCase):
 # The pre-fix code refused to model any ROOT struct the moment its body reached a
 # method declaration, on the grounds that a polymorphic root carries an implicit vptr
 # that no declaration mentions. The offset IS derivable, and the tree writes the model
-# down by hand -- verbatim, in include/Animation.h and include/dCc_c.h:
+# down by hand -- verbatim, in include/dExtFrameCtrl_c.h and include/dCc_c.h:
 #
 #   /* 0x00 is the vptr, placed implicitly by the first virtual declaration. */
 #
@@ -587,7 +587,7 @@ struct Widget {
 # The same class with its comments written as though there were no vptr.
 POLY_BROKEN = POLY_GOOD.replace("0x004", "0x000").replace("0x008", "0x004")
 
-# A flat view that declares the vptr as a REAL field; include/ArrowSignRight.h is the
+# A flat view that declares the vptr as a REAL field; include/daObjYajirusi_c.h is the
 # live instance. Its comments already count that field, so the walk must start at 0 --
 # adding 4 unconditionally would report every field of every such header 4 bytes late.
 FLAT_GOOD = """\
@@ -659,7 +659,7 @@ class RootVptrTests(unittest.TestCase):
     def test_the_vptr_decision_is_scoped_to_this_struct_not_the_whole_file(self):
         """A twin header carries a flat C view of the same class below an `#else`, and
         that half routinely spells `void **vtable;` even where the C++ half above it
-        does not -- include/Animation.h is exactly that shape. A file-wide search for
+        does not -- include/dExtFrameCtrl_c.h is exactly that shape. A file-wide search for
         either marker reads the wrong half and shifts every field of the right one.
 
         Not a planted regression, and it cannot be one: the old code skipped this
@@ -775,6 +775,15 @@ struct Widget {
 QUALIFIED_BROKEN = QUALIFIED_GOOD.replace("/* 0x00c */", "/* 0x040 */")
 
 
+# A member whose type is written with its namespace, asserted only under that name.
+NAMESPACED_GOOD = """struct Widget {
+	u32 first;                         /* 0x000 */
+	Particle::SysTracker mSysTracker;  /* 0x004 */
+	u32 last;                          /* 0x014 */
+};
+"""
+
+
 class QualifiedSizeAssertTests(unittest.TestCase):
     def test_a_qualified_assertion_is_read_where_the_bare_tag_cannot_answer(self):
         with Repo() as r:
@@ -857,6 +866,28 @@ class QualifiedSizeAssertTests(unittest.TestCase):
         self.assertNotIn("include/dMgPsOpt_c.h", C._known_issues(),
                          "the waiver is back; this test guards its retirement")
         self.assertEqual(C.main(["include/dMgPsOpt_c.h"], REPO), 0)
+
+    def test_a_member_spelled_with_its_namespace_is_sized_by_that_name(self):
+        """`Particle::SysTracker mSysTracker;` names its class outright. The walk
+        strips the member type to its last component, SysTracker, and no bare tag of
+        that name is asserted, so the field came back UNPARSED in every header that
+        embeds one. The sizeof() operand of a qualified assertion is keyed by the same
+        spelling the member uses."""
+        with Repo() as r:
+            r.write("include/Widget.h", NAMESPACED_GOOD)
+            with unittest.mock.patch.dict(C.CLASS_SIZES_QUALIFIED, {}, clear=True):
+                self.assertEqual(r.run("include/Widget.h"), 1,
+                                 "precondition: the bare-tag lookup could not size this")
+            with unittest.mock.patch.dict(C.CLASS_SIZES_QUALIFIED,
+                                          {"Particle::SysTracker": 0x10}, clear=True):
+                self.assertEqual(r.run("include/Widget.h"), 0)
+
+    def test_a_wrong_comment_after_a_namespaced_member_is_still_caught(self):
+        with Repo() as r:
+            r.write("include/Widget.h", NAMESPACED_GOOD.replace("/* 0x014 */", "/* 0x018 */"))
+            with unittest.mock.patch.dict(C.CLASS_SIZES_QUALIFIED,
+                                          {"Particle::SysTracker": 0x10}, clear=True):
+                self.assertEqual(r.run("include/Widget.h"), 1)
 
 
 # ---------------------------------- defect 5: Allman inline member-function bodies
@@ -946,6 +977,55 @@ class InlineMethodBodyTests(unittest.TestCase):
         rc, out = self._run(broken)
         self.assertEqual(rc, 1, out)
         self.assertIn("2 commented fields, 1 mismatched, 0 unparsed", out)
+
+
+# ------------------------- nested enums and anonymous unions are not fields
+
+class NestedEnumAndUnionTests(unittest.TestCase):
+    """daStar_c.h put its State/Kind enums ahead of the fields and overlaid words
+    with anonymous unions. Both stopped the walk (the enum's `};` read as the end of
+    the struct), so the header reported UNPARSED and none of its fields were checked."""
+
+    def _run(self, body):
+        with Repo() as r:
+            r.write("include/Widget.h", body)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = r.run("include/Widget.h")
+            return rc, out.getvalue()
+
+    ENUM_FIRST = """struct Widget {
+    enum State {
+        A = 0,
+        B = 1
+    };
+    enum Kind { K0, K1 };
+    u32 first;   /* 0x000 */
+    u32 second;  /* 0x004 */
+};
+"""
+    UNION = """struct Widget {
+    u32 first;   /* 0x000 */
+    union {
+        u32 second;  /* 0x004 */
+        u32 alias;
+    };
+    u32 third;   /* 0x008 */
+};
+"""
+
+    def test_enums_ahead_of_the_fields_do_not_end_the_walk(self):
+        rc, out = self._run(self.ENUM_FIRST)
+        self.assertEqual(rc, 0, out)
+        self.assertIn("2 commented fields, 0 mismatched, 0 unparsed, struct spans 0x8", out)
+
+    def test_a_field_after_an_anonymous_union_is_still_checked(self):
+        rc, out = self._run(self.UNION)
+        self.assertEqual(rc, 0, out)
+        self.assertIn("3 commented fields, 0 mismatched, 0 unparsed, struct spans 0xc", out)
+        rc, out = self._run(self.UNION.replace("/* 0x008 */", "/* 0x00c */"))
+        self.assertEqual(rc, 1, out)
+        self.assertIn("1 mismatched", out)
 
 
 # ------------------------- allocation methods do not occupy or end instance fields
@@ -1093,5 +1173,60 @@ class AllocationMethodTests(unittest.TestCase):
 # `Ran 20 tests ... OK` over them. `python -m unittest tools.test_check_header_offsets`
 # imports the module instead of running it, which is why running it that way locally
 # found 53 and nobody noticed the split.
+
+
+class CvQualifiedFieldTests(unittest.TestCase):
+    """A cv-qualifier changes neither a field's size nor its alignment.
+
+    `const State *mState;` came back UNPARSED and failed four class-form PRs
+    (#3214, #3215, #3219, #3220) on headers whose offsets were all right.
+    """
+
+    def _run(self, members):
+        with tempfile.TemporaryDirectory(prefix="offset_cv_") as tmp:
+            header = pathlib.Path(tmp) / "Widget.h"
+            header.write_text("struct Widget {\n" + members + "\n};\n",
+                              encoding="utf-8")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = C.main([str(header)])
+            return rc, out.getvalue()
+
+    def test_qualified_fields_are_sized_like_their_unqualified_type(self):
+        for field in ("const State *mState;", "State const *mState;",
+                      "volatile u32 mFlags;", "const volatile u32 mFlags;",
+                      "u32 volatile mFlags;", "const struct State *mState;"):
+            with self.subTest(field=field):
+                rc, out = self._run(
+                    "    u8 first; /* 0x000 */\n"
+                    "    u8 pad_001[3]; /* 0x001 */\n"
+                    f"    {field} /* 0x004 */\n"
+                    "    u16 tail; /* 0x008 */")
+                self.assertEqual(rc, 0, out)
+                self.assertIn("4 commented fields, 0 mismatched, 0 unparsed, struct spans 0xa", out)
+
+    def test_a_wrong_offset_after_a_qualified_field_still_fails(self):
+        rc, out = self._run(
+            "    const State *mState; /* 0x000 */\n"
+            "    u16 tail; /* 0x008 */")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("2 commented fields, 1 mismatched, 0 unparsed", out)
+
+    def test_a_name_that_starts_with_const_is_still_the_name(self):
+        rc, out = self._run(
+            "    u32 const_value; /* 0x000 */\n"
+            "    u8 volatile_flag; /* 0x004 */")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("2 commented fields, 0 mismatched, 0 unparsed, struct spans 0x5", out)
+
+    def test_an_unknown_qualified_type_is_still_unparsed(self):
+        rc, out = self._run(
+            "    const Mystery mValue; /* 0x000 */\n"
+            "    u32 tail; /* 0x004 */")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("UNPARSED", out)
+        self.assertIn("const Mystery mValue;", out)
+
+
 if __name__ == "__main__":
     unittest.main()

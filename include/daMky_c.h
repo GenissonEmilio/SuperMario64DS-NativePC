@@ -3,7 +3,7 @@
 #include "types.h"
 #include "dActor_c.h"
 #include "ModelAnim.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "dCcAc_c.h"
 #include "dBgCh_Actr.h"
 #include "PathPtr.h"
@@ -45,28 +45,26 @@ struct daMky_c : dActor_c {
     /* ModelAnim member, named by _ZN9ModelAnimD1Ev at +0xd4 -- a relocation the ROM build
        checks. */
     ModelAnim mModelAnim;            /* 0x0d4 */
-    /* ShadowModel member, named by the class's own destructor calling
-       ShadowModel's D1 at +0x138.
+    /* dExtShadowModel_c member, named by the class's own destructor calling
+       dExtShadowModel_c's D1 at +0x138.
        [src/actors/daMky_c.cpp: daMky_c::~daMky_c] */
-    ShadowModel mShadowModel;            /* 0x138 */
+    dExtShadowModel_c mShadowModel;            /* 0x138 */
     /* dCcAc_c member, named by the class's own destructor calling
        dCcAc_c's D1 at +0x160.
        [src/actors/daMky_c.cpp: daMky_c::~daMky_c] */
     dCcAc_c mdCcAc_c;            /* 0x160 */
     /* dBgCh_Actr member, named by daMky_c_classInit_MONKEY_THIEF/_MONKEY_STAR's own
        C1 call and the class's own destructor's D1 call at +0x194.
-       [src/d_a_mky_monkey_thief.c,
-        src/actors/daMky_c.cpp: daMky_c::~daMky_c] */
+       [src/actors/daMky_c.cpp: daMky_c_classInit_MONKEY_THIEF,
+        daMky_c_classInit_MONKEY_STAR, daMky_c::~daMky_c] */
     dBgCh_Actr mWithMeshClsn;            /* 0x194 */
-    u8  pad_350[0x30];
-    /* Second position triple, also seeded from mPos in InitResources, but with
-       0x64000 (100.0) added to Y immediately after -- a point a hundred units
-       above the spawn. func_ov030_02111734 reads it to restore position.
-       The original field names are unknown.
-       [src/actors/daMky_c.cpp: InitResources, func_ov030_02111734] */
-    s32 unk_380;            /* 0x380 */
-    s32 unk_384;            /* 0x384 */
-    s32 unk_388;            /* 0x388 */
+    /* 02112094 copies IDENTITY-rotated model matrix here and stores
+       &mCapMtx on the spawned cap at +0xc8. */
+    s32 mCapMtx[12];        /* 0x350 */
+    /* Init copies mPos then adds 0x64000 to Y. 02111734 restores from here. */
+    s32 mPerchPosX;         /* 0x380 */
+    s32 mPerchPosY;         /* 0x384 */
+    s32 mPerchPosZ;         /* 0x388 */
     /* Copy of mPosX/Y/Z seeded in InitResources. func_ov030_02111dd0 updates
        it after a ground check; func_ov030_02111734 also resets it.
        [src/actors/daMky_c.cpp: InitResources, func_ov030_02111dd0,
@@ -78,8 +76,10 @@ struct daMky_c : dActor_c {
        call at +0x398. Trivial (no dtor), so _ZN7daMky_cD0Ev does not destroy
        it. */
     PathPtr mPathPtr;            /* 0x398 */
-    u8  pad_3a0[0x8];
-    s32 unk_3a8;            /* 0x3a8 */
+    u32 mPathNode;          /* 0x3a0 -- 02111b20 GetNode index */
+    /* 021141a8 stores &data_ov030_02115e0c[idx]; 02114170/02114134 call through. */
+    void *mStateDesc;       /* 0x3a4 */
+    void *unk_3a8;          /* 0x3a8 -- ClosestPlayer or pad_0d0 copy */
     /* The cap-thief group. Only actor 0x10b (the MONKEY_THIEF profile) runs it: it reads the
        closest player's fBase_c::param1 (the character number, guarded < 3) into
        mCapPlayerNo, spawns actor 0x10d -- Mario's lost cap -- with
@@ -89,14 +89,15 @@ struct daMky_c : dActor_c {
        [src/actors/daMky_c.cpp: InitResources, Behavior] */
     s32 mCapUniqueID;            /* 0x3ac */
     u32 mCapPlayerNo;            /* 0x3b0 */
-    s32 mState;            /* 0x3b4 -- the state-machine id.  Proven: the
-                             eleven EnterState* members below each write
-                             one immediate here, 0..10 with none repeated
-                             and none missing, and 0x02115e0c holds exactly
-                             eleven 0x10-byte descriptors. */
-    u8  pad_3b8[0x10];
-    u8  mHasSpawnedCap;            /* 0x3c8 */
-    u8  pad_3c9[0x2];
+    s32 mState;             /* 0x3b4 -- EnterState0..10 each write 0..10 */
+    s32 mPrevState;         /* 0x3b8 -- 02111bc4 snapshots mState; 021141a8(this, mPrevState) */
+    s32 unk_3bc;            /* 0x3bc */
+    u8  pad_3c0[6];
+    u8  mActionTimer;       /* 0x3c6 -- EnterState10 arms 0x1e; DecIfAbove0_Byte */
+    u8  unk_3c7;            /* 0x3c7 -- this TU switches on it; not padding */
+    u8  mHasSpawnedCap;     /* 0x3c8 */
+    u8  mPlayerWasOwnCharacter; /* 0x3c9 -- Behavior case 0: Player mCharacter == param1 */
+    u8  mAnimIdx;           /* 0x3ca -- 02111a00 indexes data_ov030_02115bc8 */
     u8  unk_3cb;            /* 0x3cb */
 
     /* The state machine.  Entered through func_ov030_021141a8(this, N),
@@ -116,18 +117,34 @@ struct daMky_c : dActor_c {
     s32  EnterState9();        /* 0x02112560 -- PMF record 8 of 22 */
     s32  EnterState10();       /* 0x021123a4 -- PMF record 6 of 22 */
 
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daMky_c();   /* no slot */
-#else
-    virtual ~daMky_c();   /* D1 and D0 */
-#endif
+    /* The func_ov030_* methods. r0 is this Ukiki. The address is the
+     * name: the cartridge does not spell these. */
+    void func_ov030_02111734();
+    void func_ov030_02111890();
+    void func_ov030_02111908();
+    int func_ov030_02111a00();
+    int func_ov030_02111b20();
+    int func_ov030_02111bc4();
+    int func_ov030_02111dd0();
+    int func_ov030_02111ea4();
+    void func_ov030_02111f6c(dBgCh_Actr* w);
+    void func_ov030_02112094();
+    int func_ov030_021122b0();
+    int func_ov030_02112400();
+    int func_ov030_02112578();
+    int func_ov030_02112a84();
+    int func_ov030_02112da0();
+    int func_ov030_02113094();
+    int func_ov030_02113324();
+    int func_ov030_021136b0();
+    int func_ov030_02113b38();
+    int func_ov030_02113d20();
+    int func_ov030_02113ff0();
+    void func_ov030_02114134();
+    void func_ov030_02114170();
+    void func_ov030_021141a8(int idx);
+
+    virtual ~daMky_c();            /* slots 16 (D1), 17 (D0) */
 
     virtual s32  InitResources();         /* slot  0 */
     virtual s32  CleanupResources();      /* slot  3 */

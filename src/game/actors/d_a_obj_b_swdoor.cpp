@@ -34,10 +34,32 @@ struct ResourceDescriptor {
 typedef char ResourceDescriptor_size_must_be_0x0c[
     sizeof(ResourceDescriptor) == 0x0c ? 1 : -1];
 
+/* 8-byte file handles. The model uses func_02017acc / func_02017ab4 and the
+ * collision file func_02017b4c / SharedFilePtr_Destruct_Clsn. The spellings
+ * are local; the manifest aliases the generated names to those ROM symbols. */
+struct BSwdoorModelFilePtr : SharedFilePtr {
+    unsigned int words[2];
+
+    BSwdoorModelFilePtr(unsigned int fileID);
+    ~BSwdoorModelFilePtr();
+};
+
+struct BSwdoorClsnFilePtr : SharedFilePtr {
+    unsigned int words[2];
+
+    BSwdoorClsnFilePtr(unsigned int fileID);
+    ~BSwdoorClsnFilePtr();
+};
+
+typedef char BSwdoorModelFilePtr_size_must_be_8[
+    sizeof(BSwdoorModelFilePtr) == 8 ? 1 : -1];
+typedef char BSwdoorClsnFilePtr_size_must_be_8[
+    sizeof(BSwdoorClsnFilePtr) == 8 ? 1 : -1];
+
 extern "C" {
-int func_ov002_020bad10(daObjBSwdoor_c *self, ResourceDescriptor *descriptor);
-int func_ov002_020baba8(daObjBSwdoor_c *self, ResourceDescriptor *descriptor);
-int func_ov002_020bac18(daObjBSwdoor_c *self);
+int func_ov002_020bad10(daObjSwdoor_c *self, ResourceDescriptor *descriptor);
+int func_ov002_020baba8(daObjSwdoor_c *self, ResourceDescriptor *descriptor);
+int func_ov002_020bac18(daObjSwdoor_c *self);
 extern ResourceDescriptor data_ov014_021145c4;
 }
 
@@ -71,3 +93,31 @@ s32 daObjBSwdoor_c::CleanupResources()
     return func_ov002_020baba8(this, &data_ov014_021145c4);
 }
 #pragma long_calls off
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 1 -- _ZN14daObjBSwdoor_cD0Ev, 0x021111f0, size 0x64 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN14daObjBSwdoor_cD0Ev
+/* recovered: named members + shared header, vtable identified, declarations from a shared header */
+/* recovered: named members + shared header, vtable identified */
+/* vtable identified: VT0 = _ZTV14daObjBSwdoor_c; VT1 = _ZTV13daObjSwdoor_c */
+/* (no separate definition: the single ~daObjBSwdoor_c() below emits the D0 and D1
+ * variants together -- keeping the hand-mangled body alongside a real destructor
+ * is the known mwccarm ICE, ELFgen.c:483.) */
+
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 0 -- _ZN14daObjBSwdoor_cD1Ev, 0x021111a0, size 0x50 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN14daObjBSwdoor_cD1Ev
+/* recovered: real C++ destructor -- the compiler emits the whole body
+ *
+ * (no definition here either: `virtual ~daObjBSwdoor_c() {}` is in
+ * include/daObjBSwdoor_c.h, which is where the reasoning lives. Defined out of
+ * line in this file, the pair came out D0-before-D1 -- the reverse of the
+ * cartridge -- with a third, homeless D2, and objisolate refused the TU. The
+ * inline definition emits both variants here, in ROM order, and no D2.)
+ */
+
+/* Source order is construction order: model file 1443, then the collision
+ * file 1444. The compiler registers each destructor beside the object. */
+BSwdoorModelFilePtr data_ov014_02114948(1443);
+BSwdoorClsnFilePtr data_ov014_02114940(1444);

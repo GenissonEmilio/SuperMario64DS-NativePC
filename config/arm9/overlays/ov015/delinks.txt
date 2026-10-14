@@ -7,143 +7,49 @@
 src/game/actors/d_a_obj_bk_billboard.cpp:
     complete
     .text start:0x021111a0 end:0x02111314
+    .init start:0x02112f9c end:0x02112fdc
+    .ctor start:0x02113410 end:0x02113414
+    .bss start:0x02114960 end:0x02114974
 
-src/_ZN14KnockDownPlankD1Ev.cpp:
+src/actors/daObjBk_Botaosi_c.cpp:
     complete
-    .text start:0x02111314 end:0x02111360
-
-src/_ZN14KnockDownPlankD0Ev.cpp:
-    complete
-    .text start:0x02111360 end:0x021113c0
-
-src/_ZN14KnockDownPlank15OnHitByMegaCharER6Player.cpp:
-    complete
-    .text start:0x021113c0 end:0x021113fc
-
-src/_ZN14KnockDownPlank8OnKickedER8dActor_c.cpp:
-    complete
-    .text start:0x021113fc end:0x02111408
-
-src/_ZN14KnockDownPlank11OnAttacked2ER8dActor_c.cpp:
-    complete
-    .text start:0x02111408 end:0x02111414
-
-src/func_ov015_02111414.c:
-    complete
-    .text start:0x02111414 end:0x021114f0
-
-src/func_ov015_0211166c.c:
-    complete
-    .text start:0x0211166c end:0x021116b4
-
-src/_ZN14KnockDownPlank16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x021116b4 end:0x021116f8
-
-src/_ZN14KnockDownPlank6RenderEv.cpp:
-    complete
-    .text start:0x021116f8 end:0x02111720
-
-src/_ZN14KnockDownPlank8BehaviorEv.cpp:
-    complete
-    .text start:0x02111720 end:0x02111960
-
-src/_ZN14KnockDownPlank13InitResourcesEv.cpp:
-    complete
-    .text start:0x02111960 end:0x02111b68
-
-src/d_a_obj_bk_botaosi.c:
-    complete
-    .text start:0x02111b68 end:0x02111ba0
+    .text start:0x02111314 end:0x02111ba0
+    .init start:0x02112fdc end:0x02113048
+    .ctor start:0x02113414 end:0x02113418
+    .bss start:0x02114974 end:0x0211499c
 
 src/game/actors/d_a_obj_bk_dossunbar.cpp:
     complete
     .text start:0x02111ba0 end:0x02112290
 
-src/_ZN9TowerStepD1Ev.cpp:
+src/actors/daObjBk_Lift_c.cpp:
     complete
-    .text start:0x02112290 end:0x021122dc
-
-src/_ZN9TowerStepD0Ev.cpp:
-    complete
-    .text start:0x021122dc end:0x0211233c
-
-src/_ZN9TowerStep4KillEv.cpp:
-    complete
-    .text start:0x0211233c end:0x021123a0
-
-src/_ZN9TowerStep15OnHitByMegaCharER6Player.cpp:
-    complete
-    .text start:0x021123a0 end:0x021123c8
-
-src/func_ov015_021123c8.cpp:
-    complete
-    .text start:0x021123c8 end:0x02112464
-
-src/_ZN9TowerStep16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02112464 end:0x021124a8
-
-src/_ZN9TowerStep6RenderEv.cpp:
-    complete
-    .text start:0x021124a8 end:0x021124d0
-
-src/_ZN9TowerStep8BehaviorEv.cpp:
-    complete
-    .text start:0x021124d0 end:0x0211269c
-
-src/_ZN9TowerStep13InitResourcesEv.cpp:
-    complete
-    .text start:0x0211269c end:0x021128e8
-
-src/func_ov015_021128e8.c:
-    complete
-    .text start:0x021128e8 end:0x021128f8
-
-src/func_ov015_021128f8.c:
-    complete
-    .text start:0x021128f8 end:0x0211290c
-
-src/d_a_obj_bk_lift.c:
-    complete
-    .text start:0x0211290c end:0x02112944
+    .text start:0x02112290 end:0x02112944
+    .init start:0x02113264 end:0x021132d0
+    .ctor start:0x0211341c end:0x02113420
+    .bss start:0x02114a5c end:0x02114a84
 
 src/game/actors/d_a_obj_bk_rotebar.cpp:
     complete
     .text start:0x02112944 end:0x02112bd0
+    .init start:0x021132d0 end:0x0211333c
+    .ctor start:0x02113420 end:0x02113424
+    .bss start:0x02114a84 end:0x02114aac
 
 src/game/actors/d_a_obj_bk_ukisima.cpp:
     complete
     .text start:0x02112bd0 end:0x02112cf4
+    .init start:0x0211333c end:0x021133a8
+    .ctor start:0x02113424 end:0x02113428
+    .bss start:0x02114aac end:0x02114ad4
 
 src/game/actors/d_a_obj_bk_fall_block.cpp:
     complete
     .text start:0x02112cf4 end:0x02112e0c
+    .init start:0x021133a8 end:0x02113410
+    .ctor start:0x02113428 end:0x0211342c
+    .bss start:0x02114ad4 end:0x02114afc
 
-src/__sinit_ov015_02112f9c.c:
-    complete
-    .init start:0x02112f9c end:0x02112fdc
-
-src/__sinit_ov015_02112fdc.c:
-    complete
-    .init start:0x02112fdc end:0x02113048
-
-src/__sinit_ov015_02113048.c:
+src/unnamed/ov015/__sinit_ov015_02113048.c:
     complete
     .init start:0x02113048 end:0x02113264
-
-src/__sinit_ov015_02113264.c:
-    complete
-    .init start:0x02113264 end:0x021132d0
-
-src/__sinit_ov015_021132d0.c:
-    complete
-    .init start:0x021132d0 end:0x0211333c
-
-src/__sinit_ov015_0211333c.c:
-    complete
-    .init start:0x0211333c end:0x021133a8
-
-src/__sinit_ov015_021133a8.c:
-    complete
-    .init start:0x021133a8 end:0x02113410

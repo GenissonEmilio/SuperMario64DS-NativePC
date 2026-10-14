@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """Check symbols/actor_renames.tsv against each module's own symbols.txt.
 
-The ledger's fourth column asserts, in the present tense, what the symbol at a
-given address is called. `tools/cpp_index.py:86` and `tools/cpp_rename.py:51`
-read it back as a live address -> symbol map, so a row naming a symbol that
-lives at a DIFFERENT address is not stale prose -- it is a false lookup result.
+The ledger is an append log. The last row at an address is the live claim;
+every earlier row is superseded history (`tools/check_profile_campaign.py`
+already reads it that way, and `tools/cpp_rename.py` overwrites by address, so
+the last mangled name wins). Only that live fourth column is checked against
+symbols.txt. A historical fourth column may name the coined symbol the row
+introduced. Rewriting it in place to keep this gate green is what severs the
+chain: the appended lineage row then sources a name no row targets.
+
+`tools/cpp_index.py:86` still indexes every mangled fourth column, not only the
+live one. A historical mangled name therefore remains a lookup key for that
+address. It is not a present-tense claim, and this check does not treat it as
+one.
 
 WHERE THE BAD ROWS CAME FROM, and why they cannot be regenerated away.
 `tools/actor_names.py` WRITES this file (line 282, on every run, including the
@@ -26,13 +34,21 @@ every one of those writes is applied in order to make the build emit that
 symbol, so symbols.txt and the linked ROM agree by construction and the ledger
 does not. This check therefore only ever moves the ledger toward symbols.txt.
 
-SCOPE. Only mangled (_ZN...) and vtable (_ZTV...) rows are checked. Coined
-source-style spellings (Foo_Spawn, g_profile_BAR) are reconstructions that
-deliberately have no symbols.txt counterpart. That is a real limit, not a clean
-bill of health: some coined rows carry the same one-class shift (ov009's
-DockPole_Spawn / DockPole_SpawnInfo sit on MetalNet's addresses), and this
-check will never see them. The summary line prints how many rows went unchecked
+SCOPE. Only the live mangled (_ZN...) and vtable (_ZTV...) row at each
+address is checked. Coined source-style spellings (Foo_Spawn, g_profile_BAR)
+are reconstructions that deliberately have no symbols.txt counterpart. That is
+a real limit, not a clean bill of health: some coined rows carry the same
+one-class shift (ov009's DockPole_Spawn / DockPole_SpawnInfo sit on MetalNet's
+addresses), and this check will never see them. The summary line prints how
+many live rows went unchecked, and how many earlier rows were left as history,
 so the green is not read as more than it is.
+
+CHAINS. Separately, every row's source (column 3) must be reachable from the
+first source at that address by following column-3 -> column-4 edges, in any
+order. An in-place rewrite plus a lineage row fails that: the lineage row
+sources the coined name, and the rewritten row no longer targets it. An
+append-only hop (func -> coined, coined -> rom) passes. This is a red gate.
+It is safe to be one only when the checked-in ledger has no such break.
 """
 import argparse
 import collections
@@ -110,10 +126,68 @@ def split_lines(raw):
     return [ln[:-1] if ln.endswith("\r") else ln for ln in raw.split("\n")], newline
 
 
+def row_parts(lines):
+    """-> list of (lineno, parts) for data rows, file order.
+
+    lineno is 1-based, matching the file. The header and short lines are not
+    rows. A trailing empty line left by split_lines is not a row.
+    """
+    rows = []
+    for i, line in enumerate(lines, 1):
+        parts = line.split("\t")
+        if len(parts) < 4:
+            continue
+        if i == 1 and parts[0] == "module":
+            continue
+        rows.append((i, parts))
+    return rows
+
+
+def live_line_numbers(rows):
+    """Line numbers of the last row at each (module, address)."""
+    last = {}
+    for i, parts in rows:
+        last[(parts[0], parts[1])] = i
+    return set(last.values())
+
+
+def chain_breaks(lines):
+    """-> [(lineno, module, addr, source, target), ...]
+
+    A source is reachable when it is the first row's source at that address,
+    or when some row's target is that source and that row's own source is
+    reachable. Edges may be followed in any order, so a later appended hop
+    can put a coined name back on the path. The first row that sources an
+    unreachable name is the break; a repeat of the same source is not.
+    """
+    grouped = collections.OrderedDict()
+    for i, parts in row_parts(lines):
+        grouped.setdefault((parts[0], parts[1]), []).append(
+            (i, parts[2], parts[3]))
+    breaks = []
+    for (module, addr), hops in grouped.items():
+        reach = {hops[0][1]}
+        changed = True
+        while changed:
+            changed = False
+            for _, source, target in hops:
+                if source in reach and target not in reach:
+                    reach.add(target)
+                    changed = True
+        reported = set()
+        for lineno, source, target in hops:
+            if source in reach or source in reported:
+                continue
+            reported.add(source)
+            breaks.append((lineno, module, addr, source, target))
+    return breaks
+
+
 def audit(repo):
     """-> (lines, newline, findings, missing, stats).
 
     findings: (lineno, module, addr_text, claimed, correction, candidates)
+    Only the last row at each address is a finding candidate.
     """
     cache = {}
     path = os.path.join(repo, LEDGER)
@@ -123,13 +197,13 @@ def audit(repo):
     findings = []
     stats = collections.Counter()
     missing = set()
-    for i, line in enumerate(lines, 1):
-        parts = line.split("\t")
-        if len(parts) < 4:
-            continue
-        if i == 1 and parts[0] == "module":
-            continue
+    rows = row_parts(lines)
+    live = live_line_numbers(rows)
+    for i, parts in rows:
         module, addr_text, claimed = parts[0], parts[1], parts[3]
+        if i not in live:
+            stats["superseded"] += 1
+            continue
         if not (claimed.startswith("_ZN") or claimed.startswith("_ZTV")):
             stats["unchecked"] += 1
             continue
@@ -152,11 +226,21 @@ def audit(repo):
 
 
 def summarize(stats, missing):
-    print("  checked %d mangled/vtable row(s); %d coined row(s) are out of scope "
-          "and unchecked" % (stats["checked"], stats["unchecked"]))
+    print("  checked %d live mangled/vtable row(s); %d live coined row(s) are out "
+          "of scope and unchecked; %d earlier row(s) are superseded history"
+          % (stats["checked"], stats["unchecked"], stats["superseded"]))
     if missing:
         print("  WARNING: %d row(s) skipped -- no symbols.txt for module(s): %s"
               % (stats["no_symbols_txt"], ", ".join(missing)))
+
+
+def report_breaks(breaks):
+    print("check_rename_ledger: %d rename source(s) are not reachable from the "
+          "first name at that address" % len(breaks))
+    for lineno, module, addr, source, target in breaks:
+        print("  %s:%d  %s %s" % (LEDGER, lineno, module, addr))
+        print("      source %s is not a target, and it renames to %s"
+              % (source, target))
 
 
 def main():
@@ -168,26 +252,31 @@ def main():
     args = ap.parse_args()
 
     lines, newline, findings, missing, stats = audit(args.repo)
-    if not findings:
-        print("check_rename_ledger: every mangled/vtable row agrees with its "
-              "module's symbols.txt")
+    breaks = chain_breaks(lines)
+    if not findings and not breaks:
+        print("check_rename_ledger: every live mangled/vtable row agrees with its "
+              "module's symbols.txt, and every rename source is reachable")
         summarize(stats, missing)
         return 1 if missing else 0
 
     unresolved = [f for f in findings if f[4] is None]
-    print("check_rename_ledger: %d row(s) name a symbol that does not live at the "
-          "given address" % len(findings))
+    if findings:
+        print("check_rename_ledger: %d row(s) name a symbol that does not live at the "
+              "given address" % len(findings))
     summarize(stats, missing)
-    per = collections.Counter(f[1] for f in findings)
-    print("  by module: " + ", ".join("%s=%d" % kv for kv in per.most_common()))
-    for lineno, module, addr, claimed, fix, names in findings:
-        print("  %s:%d  %s %s" % (LEDGER, lineno, module, addr))
-        print("      ledger says : %s" % claimed)
-        print("      symbols.txt : %s" % ("/".join(names) or "<nothing at this address>"))
-    if unresolved:
-        print("  %d row(s) could not be resolved automatically." % len(unresolved))
+    if findings:
+        per = collections.Counter(f[1] for f in findings)
+        print("  by module: " + ", ".join("%s=%d" % kv for kv in per.most_common()))
+        for lineno, module, addr, claimed, fix, names in findings:
+            print("  %s:%d  %s %s" % (LEDGER, lineno, module, addr))
+            print("      ledger says : %s" % claimed)
+            print("      symbols.txt : %s" % ("/".join(names) or "<nothing at this address>"))
+        if unresolved:
+            print("  %d row(s) could not be resolved automatically." % len(unresolved))
+    if breaks:
+        report_breaks(breaks)
 
-    if not args.fix:
+    if not args.fix or not findings:
         return 1
 
     fixed = 0
@@ -221,7 +310,9 @@ def main():
         fh.write(newline.join(lines))
     print("  rewrote %d row(s), withdrew %d stale alloc= figure(s); "
           "%d left for a human" % (fixed, withdrawn, len(unresolved)))
-    return 1 if unresolved else 0
+    # --fix corrects a live claim. It does not append the hop that would keep
+    # a coined source reachable, so a chain break still fails the run.
+    return 1 if unresolved or breaks or missing else 0
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ problem, different note (`declaration-centralization.md`). See §1; they are eas
 
 ## 1. Two generators were named; neither ever existed
 
-`include/BrickBlock.h` opens with
+`include/daObjBlockItemTag_c.h` opens with
 
 ```sh
 /* AUTO-GENERATED from matched-function evidence by tools/gen_header.py */
@@ -152,7 +152,7 @@ entrenched 87 known-wrong inherited fields permanently. **A field that is unback
 conflicts with its base class is not unbacked -- it is contradicted by the hierarchy.**
 
 Where evidence conflicts *with itself* -- 8 of 1,867 ROM-evidenced offsets show multiple
-widths, and source-level reinterpretation exists (`_ZN6Camera11ChangeStateEPNS_5StateE.cpp`
+widths, and source-level reinterpretation exists (`_ZN9dCamera_c11ChangeStateEPNS_5StateE.cpp`
 reads 4 bytes through `&self->unk_154`) -- it goes to a human. Never auto-resolve to
 widest or narrowest.
 
@@ -188,12 +188,12 @@ evidence behind them.
 
 - **Do not let any pass report a bare zero.** §2. State recall or the number is unreadable.
 - **Do not emit a field no pass could prove.** A gap is recoverable; a wrong field is inherited.
-- **Do not rewrite a de-bannered header.** `include/Actor.h` and `include/Fader.h` were
+- **Do not rewrite a de-bannered header.** `include/Actor.h` and `include/dFader_c.h` were
   hand-reconstructed with real inheritance; `Actor.h`'s key-function arrangement (dtor
   declared first, no TU defining it as a method) is a deliberate invariant a regenerator
   would flatten. They are reconciliation *references*, and read-only.
-- **Do not touch vtables.** `Fader.h`'s vtable half is already known wrong -- the ROM's
-  four fader vtables have 10 slots with Fader's 2-9 null, an abstract base, against 7
+- **Do not touch vtables.** `dFader_c.h`'s vtable half is already known wrong -- the ROM's
+  four fader vtables have 10 slots with dFader_c's 2-9 null, an abstract base, against 7
   non-pure virtuals declared. Vtables are ROM data and deserve their own pass; mixing
   them in means one tool with two authorities.
 - **Do not change a 4-byte field's signedness on a hunch.** The load does not say, and
@@ -208,6 +208,6 @@ evidence behind them.
 - [ ] three extractors run over all 241 classes, each reporting its own recall
 - [ ] confirmed / contradicted / base-conflict / unbacked / new counted, tree and per class
 - [ ] every contradiction listed with provenance (`file:line` or instruction address)
-- [ ] the 112 base-conflicts individually classified, including the handful (Camera,
+- [ ] the 112 base-conflicts individually classified, including the handful (dCamera_c,
       `ActorBase__SceneNode`) that may not be Actor descendants
 - [ ] no file in `src/` or `include/` modified; `ROM-build analysis: PASS` trivially

@@ -1,12 +1,12 @@
 # Translation-unit reconstruction and consolidation plan
 
-> **Status: active design history with shadow tooling implemented.** `tools/tubuild.py`,
-> `src_tu/`, and `config/tu_manifest.d/` now exercise candidate translation units,
-> but manifest entries still do not control the normal ROM build and production
-> promotion remains dry-run only. The current `config/**/delinks.txt` enrollment is
-> authoritative until a candidate passes the gates below and is promoted. Use
-> [`cpp-tu-current-state.md`](cpp-tu-current-state.md) for generated current counts and
-> compatibility blockers; keep this document as the architecture and safety rationale.
+> **Historical design rationale, not an active launch plan.** The shadow and
+> partitioned tooling described here has since been implemented, and production
+> promotion is available through `tools/tu_promote.py`. Its supported policies
+> remain narrower than scratch experiments. Use
+> [the canonical promotion workflow](tu-promotion-conventions.md) for current
+> execution and completion rules. Proposed phases and command interfaces below
+> explain the original design; do not replay them as prerequisites for new work.
 
 **Related notes:**
 
@@ -60,11 +60,11 @@ At the time `notes/tu-boundaries.md` was measured:
 - 270 boundaries were high-confidence, 107 medium-confidence, and 50 low-confidence;
 - 30 of 74 code-bearing modules were independently corroborated by static-initializer counts.
 
-The 501 value is a lower bound rather than a final source-file count. `main`, `ov006`, `ov007`, and several other modules are known to be under-segmented. Even allowing for that, the likely destination is hundreds or perhaps high hundreds of meaningful `.cpp` files—not one file per function.
+The 501 value is a lower bound rather than a final source-file count. `main`, [ov006](../config/arm9/overlays/ov006/symbols.txt), [ov007](../config/arm9/overlays/ov007/symbols.txt), and several other modules are known to be under-segmented. Even allowing for that, the likely destination is hundreds or perhaps high hundreds of meaningful `.cpp` files—not one file per function.
 
 Classes and TUs are not interchangeable:
 
-- Two interleaved class spans can prove that the classes shared a TU. MontyMole and MontyMoleRock are the canonical example.
+- Two interleaved class spans can prove that the classes shared a TU. daChoropu_c and daChoro_Rock_c are the canonical example.
 - A large class can have methods defined across several TUs.
 - A TU can contain unnamed helpers that carry no class label.
 - Vtables generally anchor the TU containing the relevant key function or destructor, not every TU containing methods of that class.
@@ -158,10 +158,10 @@ An illustrative entry:
 
 ```json
 {
-  "id": "ov062/Chuckya",
+  "id": "ov062/daHolhei_c",
   "module": "ov062",
-  "source": "src_tu/actors/Chuckya.cpp",
-  "promoted_source": "src/actors/Chuckya.cpp",
+  "source": "src/game/actors/d_a_holhei.cpp",
+  "promoted_source": "src/game/actors/d_a_holhei.cpp",
   "status": "shadow",
   "boundary_confidence": "high",
   "boundary_evidence": [
@@ -178,17 +178,17 @@ An illustrative entry:
   ],
   "functions": [
     {
-      "symbol": "_ZN7Chuckya8BehaviorEv",
+      "symbol": "_ZN10daHolhei_c8BehaviorEv",
       "address": "0x021xxxxx",
       "size": "0x000xxxxx",
-      "legacy_source": "src/_ZN7Chuckya8BehaviorEv.cpp",
+      "legacy_source": "src/game/actors/d_a_holhei.cpp",
       "ordinal": 0
     },
     {
-      "symbol": "_ZN7Chuckya6RenderEv",
+      "symbol": "_ZN10daHolhei_c6RenderEv",
       "address": "0x021xxxxx",
       "size": "0x000xxxxx",
-      "legacy_source": "src/_ZN7Chuckya6RenderEv.cpp",
+      "legacy_source": "src/game/actors/d_a_holhei.cpp",
       "ordinal": 1
     }
   ],
@@ -228,12 +228,12 @@ One entry point should orchestrate the existing lower-level tools rather than cr
 
 ```sh
 python tools/tubuild.py list
-python tools/tubuild.py inspect ov062/Chuckya
-python tools/tubuild.py create ov062/Chuckya
-python tools/tubuild.py compile ov062/Chuckya
-python tools/tubuild.py verify ov062/Chuckya
-python tools/tubuild.py linkcheck ov062/Chuckya
-python tools/tubuild.py promote ov062/Chuckya
+python tools/tubuild.py inspect ov062/daHolhei_c
+python tools/tubuild.py create ov062/daHolhei_c
+python tools/tubuild.py compile ov062/daHolhei_c
+python tools/tubuild.py verify ov062/daHolhei_c
+python tools/tubuild.py linkcheck ov062/daHolhei_c
+python tools/tubuild.py promote ov062/daHolhei_c
 ```
 
 ### 7.1 `list`
@@ -303,12 +303,12 @@ Reuse the existing `match.py`, `fdiff.py`, relocation, and ELF-parsing logic rat
 Example report:
 
 ```python
-TU ov062/Chuckya
+TU ov062/daHolhei_c
 
-MATCH  Chuckya::~Chuckya          0x021xxxxx  size 0x0xx
-MATCH  Chuckya::InitResources     0x021xxxxx  size 0x0xx
-MATCH  Chuckya::Behavior          0x021xxxxx  size 0x0xx
-DIFF   Chuckya::Render            0x021xxxxx  7 instructions differ
+MATCH  daHolhei_c::~daHolhei_c          0x021xxxxx  size 0x0xx
+MATCH  daHolhei_c::InitResources     0x021xxxxx  size 0x0xx
+MATCH  daHolhei_c::Behavior          0x021xxxxx  size 0x0xx
+DIFF   daHolhei_c::Render            0x021xxxxx  7 instructions differ
 EXTRA  .rodata                    size 0x14, not licensed
 
 Result: shadow only; promotion refused
@@ -502,7 +502,7 @@ The current one-function eligibility gate remains in place for legacy sources. A
 
 ## 14. Pilot selection
 
-Do not begin with `main`, `ov006`, `ov007`, or another known under-segmented module.
+Do not begin with `main`, [ov006](../config/arm9/overlays/ov006/symbols.txt), [ov007](../config/arm9/overlays/ov007/symbols.txt), or another known under-segmented module.
 
 The first candidate should have:
 

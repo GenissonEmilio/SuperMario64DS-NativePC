@@ -18,9 +18,24 @@
       "end": "0x02120570"
     },
     {
+      "name": ".init",
+      "start": "0x02122afc",
+      "end": "0x02122d80"
+    },
+    {
+      "name": ".ctor",
+      "start": "0x021230a4",
+      "end": "0x021230a8"
+    },
+    {
       "name": ".data",
       "start": "0x02123120",
       "end": "0x021231e4"
+    },
+    {
+      "name": ".bss",
+      "start": "0x02123500",
+      "end": "0x021235ec"
     }
   ],
   "functions": [
@@ -67,7 +82,7 @@
       "ordinal": 5
     },
     {
-      "symbol": "func_ov070_0211f48c",
+      "symbol": "_ZN19daPropeller_Heyho_c19func_ov070_0211f48cEv",
       "address": "0x0211f48c",
       "size": "0x00000164",
       "legacy_source": "src/func_ov070_0211f48c.c",
@@ -81,7 +96,7 @@
       "ordinal": 7
     },
     {
-      "symbol": "func_ov070_0211f62c",
+      "symbol": "_ZN19daPropeller_Heyho_c19func_ov070_0211f62cEv",
       "address": "0x0211f62c",
       "size": "0x00000068",
       "legacy_source": "src/func_ov070_0211f62c.c",
@@ -95,7 +110,7 @@
       "ordinal": 9
     },
     {
-      "symbol": "func_ov070_0211f6e0",
+      "symbol": "_ZN19daPropeller_Heyho_c19func_ov070_0211f6e0Ev",
       "address": "0x0211f6e0",
       "size": "0x000003a0",
       "legacy_source": "src/func_ov070_0211f6e0.c",
@@ -214,6 +229,24 @@
       "ordinal": 26
     }
   ],
+  "init": [
+    {
+      "symbol": "__sinit_d_a_propeller_heyho.cpp",
+      "address": "0x02122afc",
+      "size": "0x284",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated static initializer is raw-byte-identical to retail __sinit_ov070_02122afc (0x284, same instruction sequence and literal pool) and carries the same relocation sites: seven handle constructions with destructor registrations and the twelve-word state-record copy"
+    }
+  ],
+  "ctor": [
+    {
+      "symbol": ".p__sinit_d_a_propeller_heyho.cpp",
+      "address": "0x021230a4",
+      "size": "0x4",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated constructor-table word relocates to the owned initializer exactly as retail; the other three .ctor words belong to the remaining shards"
+    }
+  ],
   "data": [
     {
       "symbol": "_ZTI19daPropeller_Heyho_c",
@@ -263,7 +296,278 @@
     }
   ],
   "rodata": [],
-  "bss": [],
+  "bss": [
+    {
+      "symbol": "data_ov070_02123500",
+      "address": "0x02123500",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "animation file handle constructed with file ID 0x416; InitResources loads it and CleanupResources releases it"
+    },
+    {
+      "symbol": "data_ov070_02123508",
+      "address": "0x02123508",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "animation file handle constructed with file ID 0x415; InitResources loads it and CleanupResources releases it"
+    },
+    {
+      "symbol": "data_ov070_02123510",
+      "address": "0x02123510",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "animation file handle constructed with file ID 0x413; InitResources loads it and CleanupResources releases it"
+    },
+    {
+      "symbol": "data_ov070_02123518",
+      "address": "0x02123518",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "animation file handle constructed with file ID 0x412; InitResources loads it and CleanupResources releases it"
+    },
+    {
+      "symbol": "data_ov070_02123520",
+      "address": "0x02123520",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "animation file handle constructed with file ID 0x417; InitResources loads it and CleanupResources releases it"
+    },
+    {
+      "symbol": "data_ov070_02123528",
+      "address": "0x02123528",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "animation file handle constructed with file ID 0x414; InitResources loads it and CleanupResources releases it"
+    },
+    {
+      "symbol": "data_ov070_02123530",
+      "address": "0x02123530",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "model file handle constructed with file ID 0x411; InitResources loads it with Model::LoadFile and CleanupResources releases it"
+    },
+    {
+      "symbol": "@146",
+      "address": "0x02123538",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated destructor-registration node for the 0x416 animation handle"
+    },
+    {
+      "symbol": "@140",
+      "address": "0x02123544",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated destructor-registration node for the 0x411 model handle"
+    },
+    {
+      "symbol": "@141",
+      "address": "0x02123550",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated destructor-registration node for the 0x417 animation handle"
+    },
+    {
+      "symbol": "@142",
+      "address": "0x0212355c",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated destructor-registration node for the 0x412 animation handle"
+    },
+    {
+      "symbol": "@143",
+      "address": "0x02123568",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated destructor-registration node for the 0x413 animation handle"
+    },
+    {
+      "symbol": "@144",
+      "address": "0x02123574",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated destructor-registration node for the 0x414 animation handle"
+    },
+    {
+      "symbol": "@145",
+      "address": "0x02123580",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated destructor-registration node for the 0x415 animation handle"
+    },
+    {
+      "symbol": "data_ov070_0212358c",
+      "address": "0x0212358c",
+      "size": "0x10",
+      "binding": "STB_GLOBAL",
+      "evidence": "fire state record plain-copied from the ROM PMF constants 0x02123110/0x021230e0; FlyGuy_ChangeState indexes it as State"
+    },
+    {
+      "symbol": "data_ov070_0212359c",
+      "address": "0x0212359c",
+      "size": "0x10",
+      "binding": "STB_GLOBAL",
+      "evidence": "wander state record plain-copied from the ROM PMF constants 0x021230e8/0x021230c8; FlyGuy_ChangeState indexes it as State"
+    },
+    {
+      "symbol": "data_ov070_021235ac",
+      "address": "0x021235ac",
+      "size": "0x10",
+      "binding": "STB_GLOBAL",
+      "evidence": "chase state record plain-copied from the ROM PMF constants 0x021230d8/0x021230f0; FlyGuy_ChangeState indexes it as State"
+    },
+    {
+      "symbol": "data_ov070_021235bc",
+      "address": "0x021235bc",
+      "size": "0x10",
+      "binding": "STB_GLOBAL",
+      "evidence": "knocked state record plain-copied from the ROM PMF constants 0x021230f8/0x02123100; FlyGuy_ChangeState indexes it as State"
+    },
+    {
+      "symbol": "data_ov070_021235cc",
+      "address": "0x021235cc",
+      "size": "0x10",
+      "binding": "STB_GLOBAL",
+      "evidence": "dive state record plain-copied from the ROM PMF constants 0x021230c0/0x02123118; FlyGuy_ChangeState indexes it as State"
+    },
+    {
+      "symbol": "data_ov070_021235dc",
+      "address": "0x021235dc",
+      "size": "0x10",
+      "binding": "STB_GLOBAL",
+      "evidence": "settle state record plain-copied from the ROM PMF constants 0x02123108/0x021230d0; FlyGuy_ChangeState indexes it as State"
+    }
+  ],
+  "undefined_symbol_aliases": [
+    {
+      "symbol": "_ZN14HeyhoModelFileC1Ej",
+      "canonical_symbol": "func_02017acc",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017acc",
+      "evidence": "retail initializer call destination and the model wrapper constructor exact PC24 relocation"
+    },
+    {
+      "symbol": "_ZN14HeyhoModelFileD1Ev",
+      "canonical_symbol": "func_02017ab4",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017ab4",
+      "evidence": "retail destructor registration destination and the model wrapper destructor exact ABS32 relocation"
+    },
+    {
+      "symbol": "_ZN21HeyhoAnimationFilePtrC1Ej",
+      "canonical_symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0201799c",
+      "evidence": "retail initializer call destination and the animation wrapper constructor exact PC24 relocation"
+    },
+    {
+      "symbol": "_ZN21HeyhoAnimationFilePtrD1Ev",
+      "canonical_symbol": "SharedFilePtr_Destruct_Anim",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017984",
+      "evidence": "retail destructor registration destination and the animation wrapper destructor exact ABS32 relocation"
+    },
+    {
+      "symbol": "__register_global_object",
+      "canonical_symbol": "func_020731dc",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020731dc",
+      "evidence": "compiler-generated static initialization call shape and the direct retail reference in this initializer"
+    }
+  ],
+  "defined_symbol_renames": [
+    {
+      "from": "@1006",
+      "to": "@140",
+      "evidence": "mwcc numbers this registration node @992 per TU and the fleet already defines a global @992, so the scratch link would multiply-define it"
+    },
+    {
+      "from": "@1007",
+      "to": "@141",
+      "evidence": "mwcc numbers this registration node @993 per TU and the fleet already defines a global @993, so the scratch link would multiply-define it"
+    },
+    {
+      "from": "@1008",
+      "to": "@142",
+      "evidence": "mwcc numbers this registration node @994 per TU and the fleet already defines a global @994, so the scratch link would multiply-define it"
+    },
+    {
+      "from": "@1009",
+      "to": "@143",
+      "evidence": "mwcc numbers this registration node @995 per TU and the fleet already defines a global @995, so the scratch link would multiply-define it"
+    },
+    {
+      "from": "@1010",
+      "to": "@144",
+      "evidence": "mwcc numbers this registration node @996 per TU and the fleet already defines a global @996, so the scratch link would multiply-define it"
+    },
+    {
+      "from": "@1011",
+      "to": "@145",
+      "evidence": "mwcc numbers this registration node @997 per TU and the fleet already defines a global @997, so the scratch link would multiply-define it"
+    },
+    {
+      "from": "@1012",
+      "to": "@146",
+      "evidence": "mwcc numbers this registration node @998 per TU and the fleet already defines a global @998, so the scratch link would multiply-define it"
+    }
+  ],
+  "symbol_binding_rewrites": [
+    {
+      "symbol": "__sinit_d_a_propeller_heyho.cpp",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "mwcc emits the TU initializer local; DSD requires a configured global relocation destination at the same exact address"
+    },
+    {
+      "symbol": ".p__sinit_d_a_propeller_heyho.cpp",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "mwcc emits the ctor-table object local; DSD exposes owned symbols globally and cannot encode a local symbols.txt entry"
+    },
+    {
+      "symbol": "@140",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local destructor-registration node is a configured initializer relocation destination at 0x02123544"
+    },
+    {
+      "symbol": "@141",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local destructor-registration node is a configured initializer relocation destination at 0x02123550"
+    },
+    {
+      "symbol": "@142",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local destructor-registration node is a configured initializer relocation destination at 0x0212355c"
+    },
+    {
+      "symbol": "@143",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local destructor-registration node is a configured initializer relocation destination at 0x02123568"
+    },
+    {
+      "symbol": "@144",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local destructor-registration node is a configured initializer relocation destination at 0x02123574"
+    },
+    {
+      "symbol": "@145",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local destructor-registration node is a configured initializer relocation destination at 0x02123580"
+    },
+    {
+      "symbol": "@146",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local destructor-registration node is a configured initializer relocation destination at 0x02123538"
+    }
+  ],
   "relocations": [
     {
       "section": ".data",
@@ -624,8 +928,832 @@
       "addend": 0,
       "target_module": "arm9",
       "target_address": "0x020100dc"
+    },
+    {
+      "section": ".ctor",
+      "source": "0x021230a4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "__sinit_d_a_propeller_heyho.cpp",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02122afc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b0c",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_02017acc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x02017acc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b1c",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b28",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x0201799c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b38",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b44",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x0201799c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b54",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b60",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x0201799c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b70",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b7c",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x0201799c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b8c",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122b98",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x0201799c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122ba8",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122bb4",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x0201799c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122bc4",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122cdc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123530",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123530"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122ce4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "func_02017ab4",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02017ab4"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122ce8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@140",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123544"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122cec",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123520",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123520"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122cf4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "SharedFilePtr_Destruct_Anim",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02017984"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122cf8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@141",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123550"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122cfc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123518",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123518"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d04",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@142",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x0212355c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d08",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123510",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123510"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d10",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@143",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123568"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d14",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123528",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123528"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d1c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@144",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123574"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d20",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123508",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123508"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d28",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@145",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123580"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d2c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123500",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123500"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d34",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@146",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123538"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d38",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_0212359c",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x0212359c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d3c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021230e8",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021230e8"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d40",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021230c8",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021230c8"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d44",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021235ac",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021235ac"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d48",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021230d8",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021230d8"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d4c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021230f0",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021230f0"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d50",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021235cc",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021235cc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d54",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021230c0",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021230c0"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d58",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123118",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123118"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d5c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021235dc",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021235dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d60",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123108",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123108"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d64",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021230d0",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021230d0"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d68",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_0212358c",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x0212358c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d6c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123110",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123110"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d70",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021230e0",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021230e0"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d74",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021235bc",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021235bc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d78",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_021230f8",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x021230f8"
+    },
+    {
+      "section": ".init",
+      "source": "0x02122d7c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov070_02123100",
+      "addend": 0,
+      "target_module": "ov070",
+      "target_address": "0x02123100"
     }
   ],
+  "notes": [
+    "Generated by tools/tubuild.py create. See the file's own header comment for what was and was not reconciled, and notes/translation-unit-reconstruction-plan.md section 7.3 for what this generator does and does not attempt to resolve automatically.",
+    "tubuild create warning: hand-assembled: raw concatenation in reverse ROM order; tubuild create refused this TU (extern \"C\"-wrapped legacy bodies)",
+    "ROM-PROVEN CLASS IDENTITY: _ZTV19daPropeller_Heyho_c at 0x02123168 points through _ZTI19daPropeller_Heyho_c at 0x02123120 to the exact length-prefixed string `19daPropeller_Heyho_c` at 0x0212312c. FlyGuy was a coined decomp class name. FlyGuy_Spawn (now the reconstructed daPropeller_Heyho_c_classInit), FlyGuy_SpawnInfo (now the reconstructed g_profile_PROPELLER_HEYHO), and FlyGuy_ChangeState remain explicit semantic C-ABI aliases; the cartridge proves their addresses and relationship to this class, not those exact source spellings.",
+    "Inlining the virtual destructor in the directly included class header makes mwccarm emit only the retail D1 then D0 pair in ROM order. The former out-of-line definition emitted an additional homeless D2 and reversed the D1/D0 section-order check.",
+    "27/27 MATCH, objisolate clean, reloc-destinations clean. Hand-assembled (create refuses extern-C-wrapped bodies). Carries the NEW struct-copy lever: mwccarm's C++ front end scalarizes a plain struct assignment where the C front end emits an ldm/stm block copy; an array-wrapper view (struct V3w { int w[3]; }) restores the block copy -- fixed func_ov070_0211f48c (-4B) and func_ov070_0211f6e0 (+8B) after fdiff proved the idiom byte-exact. Also: two members keep their own int-target ApproachAngle view via BLOCK-SCOPE extern declarations (C++ name hiding), because the TU-wide extern-C declaration cannot serve both signatures and the parameter width is byte-load-bearing. FlyGuy_Spawn (now the reconstructed daPropeller_Heyho_c_classInit) stores &_ZTV19daPropeller_Heyho_c[2] (+8 rule).",
+    "Static initializer folded: the HeyhoModelFile handle (file 0x411), the six HeyhoAnimationFilePtr handles (files 0x417/0x412/0x413/0x414/0x415/0x416), their destructor-registration nodes and the six state-record copies make mwcc emit __sinit_d_a_propeller_heyho.cpp itself (0x284, raw-byte-identical to retail __sinit_ov070_02122afc with the same instruction sequence, literal pool order and relocation sites); the handwritten shard is retired. @992-@998 clashed with the fleet and are renamed (@992->@140, @993->@141, @994->@142, @995->@143, @996->@144, @997->@145, @998->@146). This fold does NOT license the .data PMF descriptors or any other .data.",
+    "LOCAL WORKER NOTE: this machine's stock dump is the EU image (gamecode ASMP), so the scratch link built ROM sha256 ddab9300b24aeae254192c2a30d812b07ece3adff83230e75c865ed915c9de40 -- byte-identical to this tree's stock build -- while the recorded rom.sha256 carries the fleet-canonical stock SHA-256 that every other intact entry on main shares (d1506e90...c478e8). The divergent bytes are NDS container/packaging fields outside every module range; the content proof is identical either way (moduleSetSha256 f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b, symbol inventory and tuRanges all equal the canonical records)."
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov070-daPropeller_Heyho_c/d_a_propeller_heyho.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 27,
+    "functions_declared": 27,
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "FAIL-BY-DESIGN -- 16 unlicensed section/symbol(s), 0 compiler-only policy error(s)",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    },
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN7Vector3D1Ev"
+      ],
+      "deadstripped": [
+        "_ZN7Vector3D1Ev"
+      ],
+      "droppedSections": [
+        50
+      ],
+      "data": [],
+      "dataExternalized": []
+    },
+    "linkcheck": {
+      "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
+      "result": "scratch-data-verified",
+      "scratch": "build/tu/ov070-daPropeller_Heyho_c/link (gitignored)",
+      "phases": {
+        "delink": true,
+        "lcf": true,
+        "compile": true,
+        "link": true,
+        "checkModules": true,
+        "checkSymbols": false,
+        "rom": true
+      },
+      "tuRange": {
+        "start": "0x0211f000",
+        "end": "0x02120570",
+        "differingBytes": 0,
+        "firstDiff": null
+      },
+      "tuRanges": [
+        {
+          "section": ".text",
+          "start": "0x0211f000",
+          "end": "0x02120570",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".init",
+          "start": "0x02122afc",
+          "end": "0x02122d80",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".ctor",
+          "start": "0x021230a4",
+          "end": "0x021230a8",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".data",
+          "start": "0x02123120",
+          "end": "0x021231e4",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".bss",
+          "start": "0x02123500",
+          "end": "0x021235ec",
+          "comparison": "NOBITS -- symbol/module gates"
+        }
+      ],
+      "objectAudit": {
+        "counts": {
+          "LICENSED": 55
+        },
+        "emittedTextOrderIsRomAscending": true,
+        "nonLicensedSymbols": [],
+        "unlicensedSections": []
+      },
+      "nontextSectionOrder": {
+        "groups": [
+          {
+            "section": ".init",
+            "original": [
+              95
+            ],
+            "desired": [
+              95
+            ]
+          },
+          {
+            "section": ".ctor",
+            "original": [
+              93
+            ],
+            "desired": [
+              93
+            ]
+          },
+          {
+            "section": ".data",
+            "original": [
+              27,
+              39,
+              40,
+              42
+            ],
+            "desired": [
+              27,
+              39,
+              40,
+              42
+            ]
+          },
+          {
+            "section": ".bss",
+            "original": [
+              5,
+              6,
+              9,
+              10,
+              11,
+              12,
+              13,
+              21,
+              22,
+              25,
+              26,
+              29,
+              30,
+              31,
+              33,
+              34,
+              35,
+              36,
+              37,
+              38
+            ],
+            "desired": [
+              5,
+              13,
+              12,
+              11,
+              10,
+              9,
+              6,
+              26,
+              29,
+              30,
+              21,
+              22,
+              31,
+              25,
+              35,
+              37,
+              38,
+              36,
+              33,
+              34
+            ]
+          }
+        ],
+        "objisolate": {
+          "reordered": [
+            {
+              "section": ".bss",
+              "original": [
+                5,
+                6,
+                9,
+                10,
+                11,
+                12,
+                13,
+                21,
+                22,
+                25,
+                26,
+                29,
+                30,
+                31,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38
+              ],
+              "desired": [
+                5,
+                13,
+                12,
+                11,
+                10,
+                9,
+                6,
+                26,
+                29,
+                30,
+                21,
+                22,
+                31,
+                25,
+                35,
+                37,
+                38,
+                36,
+                33,
+                34
+              ],
+              "slots": [
+                5,
+                6,
+                9,
+                10,
+                11,
+                12,
+                13,
+                21,
+                22,
+                25,
+                26,
+                29,
+                30,
+                31,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38
+              ]
+            }
+          ],
+          "symbolIndices": 20,
+          "sectionLinks": 0,
+          "sectionInfos": 0,
+          "error": null
+        },
+        "errors": null
+      },
+      "linkedStorageAliases": {
+        "ok": true,
+        "rows": [
+          {
+            "vtable": "_ZTV19daPropeller_Heyho_c",
+            "vtableMetadata": {
+              "address": 34746728,
+              "size": 28,
+              "binding": "STB_GLOBAL",
+              "type": "STT_OBJECT",
+              "visibility": "STV_DEFAULT",
+              "sectionIndex": 147,
+              "section": "OV070"
+            },
+            "splitSymbols": {
+              "data_ov070_02123184": {
+                "address": 34746756,
+                "size": 28,
+                "binding": "STB_GLOBAL",
+                "type": "STT_OBJECT",
+                "visibility": "STV_DEFAULT",
+                "sectionIndex": 147,
+                "section": "OV070"
+              },
+              "data_ov070_021231a0": {
+                "address": 34746784,
+                "size": 68,
+                "binding": "STB_GLOBAL",
+                "type": "STT_OBJECT",
+                "visibility": "STV_DEFAULT",
+                "sectionIndex": 147,
+                "section": "OV070"
+              }
+            },
+            "baselineElfSha256": "a3944cf851d990f2d053998622c6385ac9a546ff219ae9ed652efc54acb34c50",
+            "exact": true
+          }
+        ],
+        "errors": []
+      },
+      "symbolCheckNewVsBaseline": [],
+      "symbolCheckErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "symbolCheckBaselineErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "moduleSetSha256": "f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b",
+      "rom": {
+        "bytes": 16777216,
+        "sha256": "d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8",
+        "matchesStockRom": true
+      },
+      "linkerOutput": null
+    }
+  },
   "compiler_only_output": [
     {
       "symbol": "_ZN7Vector3D1Ev",
@@ -828,156 +1956,6 @@
       ]
     }
   ],
-  "notes": [
-    "Generated by tools/tubuild.py create. See the file's own header comment for what was and was not reconciled, and notes/translation-unit-reconstruction-plan.md section 7.3 for what this generator does and does not attempt to resolve automatically.",
-    "tubuild create warning: hand-assembled: raw concatenation in reverse ROM order; tubuild create refused this TU (extern \"C\"-wrapped legacy bodies)",
-    "ROM-PROVEN CLASS IDENTITY: _ZTV19daPropeller_Heyho_c at 0x02123168 points through _ZTI19daPropeller_Heyho_c at 0x02123120 to the exact length-prefixed string `19daPropeller_Heyho_c` at 0x0212312c. FlyGuy was a coined decomp class name. FlyGuy_Spawn (now the reconstructed daPropeller_Heyho_c_classInit), FlyGuy_SpawnInfo (now the reconstructed g_profile_PROPELLER_HEYHO), and FlyGuy_ChangeState remain explicit semantic C-ABI aliases; the cartridge proves their addresses and relationship to this class, not those exact source spellings.",
-    "Inlining the virtual destructor in the directly included class header makes mwccarm emit only the retail D1 then D0 pair in ROM order. The former out-of-line definition emitted an additional homeless D2 and reversed the D1/D0 section-order check.",
-    "27/27 MATCH, objisolate clean, reloc-destinations clean. Hand-assembled (create refuses extern-C-wrapped bodies). Carries the NEW struct-copy lever: mwccarm's C++ front end scalarizes a plain struct assignment where the C front end emits an ldm/stm block copy; an array-wrapper view (struct V3w { int w[3]; }) restores the block copy -- fixed func_ov070_0211f48c (-4B) and func_ov070_0211f6e0 (+8B) after fdiff proved the idiom byte-exact. Also: two members keep their own int-target ApproachAngle view via BLOCK-SCOPE extern declarations (C++ name hiding), because the TU-wide extern-C declaration cannot serve both signatures and the parameter width is byte-load-bearing. FlyGuy_Spawn (now the reconstructed daPropeller_Heyho_c_classInit) stores &_ZTV19daPropeller_Heyho_c[2] (+8 rule)."
-  ],
-  "verification": {
-    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
-    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
-    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
-    "object": "build/tu/ov070-daPropeller_Heyho_c/daPropeller_Heyho_c.o (gitignored)",
-    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 27,
-    "functions_declared": 27,
-    "criteria": {
-      "every_declared_function_defined": "PASS",
-      "every_declared_function_bytes_match": "PASS",
-      "declared_function_set_equals_defined_function_set": "FAIL-BY-DESIGN -- 12 unlicensed section/symbol(s), 0 compiler-only policy error(s)",
-      "functions_occur_in_expected_order": "PASS",
-      "relocation_destinations_verified": "PASS"
-    },
-    "compilerOnlyOutput": {
-      "requested": [
-        "_ZN7Vector3D1Ev"
-      ],
-      "deadstripped": [
-        "_ZN7Vector3D1Ev"
-      ],
-      "droppedSections": [
-        30
-      ],
-      "data": [],
-      "dataExternalized": []
-    },
-    "linkcheck": {
-      "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
-      "result": "scratch-data-verified",
-      "scratch": "build/tu/ov070-daPropeller_Heyho_c/link (gitignored)",
-      "phases": {
-        "delink": true,
-        "lcf": true,
-        "compile": true,
-        "link": true,
-        "checkModules": true,
-        "checkSymbols": false,
-        "rom": true
-      },
-      "tuRange": {
-        "start": "0x0211f000",
-        "end": "0x02120570",
-        "differingBytes": 0,
-        "firstDiff": null
-      },
-      "tuRanges": [
-        {
-          "section": ".text",
-          "start": "0x0211f000",
-          "end": "0x02120570",
-          "differingBytes": 0,
-          "firstDiff": null
-        },
-        {
-          "section": ".data",
-          "start": "0x02123120",
-          "end": "0x021231e4",
-          "differingBytes": 0,
-          "firstDiff": null
-        }
-      ],
-      "objectAudit": {
-        "counts": {
-          "LICENSED": 33
-        },
-        "emittedTextOrderIsRomAscending": true,
-        "nonLicensedSymbols": [],
-        "unlicensedSections": []
-      },
-      "linkedStorageAliases": {
-        "ok": true,
-        "rows": [
-          {
-            "vtable": "_ZTV19daPropeller_Heyho_c",
-            "vtableMetadata": {
-              "address": 34746728,
-              "size": 28,
-              "binding": "STB_GLOBAL",
-              "type": "STT_OBJECT",
-              "visibility": "STV_DEFAULT",
-              "sectionIndex": 147,
-              "section": "OV070"
-            },
-            "splitSymbols": {
-              "data_ov070_02123184": {
-                "address": 34746756,
-                "size": 28,
-                "binding": "STB_GLOBAL",
-                "type": "STT_OBJECT",
-                "visibility": "STV_DEFAULT",
-                "sectionIndex": 147,
-                "section": "OV070"
-              },
-              "data_ov070_021231a0": {
-                "address": 34746784,
-                "size": 68,
-                "binding": "STB_GLOBAL",
-                "type": "STT_OBJECT",
-                "visibility": "STV_DEFAULT",
-                "sectionIndex": 147,
-                "section": "OV070"
-              }
-            },
-            "baselineElfSha256": "7c768a0d8a43ed044518224d4a0b26f8428cdba7e4ddb30d8e1420d4e43f0dae",
-            "exact": true
-          }
-        ],
-        "errors": []
-      },
-      "symbolCheckNewVsBaseline": [],
-      "symbolCheckErrors": [
-        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
-        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
-        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
-        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
-        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
-        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
-        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
-        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
-        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
-      ],
-      "symbolCheckBaselineErrors": [
-        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
-        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
-        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
-        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
-        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
-        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
-        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
-        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
-        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
-      ],
-      "moduleSetSha256": "f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b",
-      "rom": {
-        "bytes": 16777216,
-        "sha256": "d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8",
-        "matchesStockRom": true
-      },
-      "linkerOutput": null
-    }
-  },
   "partial_isolation": {
     "round": "tools/tubuild.py partial -- one compile of the consolidated source, objisolate.derive per licensed function, compared against rombuild.compile_one + objisolate.isolate of each legacy source",
     "derivedObjects": 27,

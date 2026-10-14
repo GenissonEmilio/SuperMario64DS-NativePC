@@ -115,12 +115,12 @@
     "as_shipped": "include/Eyerok.h is left UNCHANGED (destructor still out of line) because the D1/D0 shards are outside this partial claim and still define it out of line; inlining it in the header would be a duplicate definition. A later writer who can take the whole run should inline it, and should expect the 13-row compiler_only_output above at the same time."
   },
   "size": "0x874",
-  "size_evidence": "The factory daIwante_c_classInit (ov066:0x0211a370, size 0xa8) calls fBase_c::operator new(0x874) and then stores 0x0211ad64 (_ZTV6Eyerok) at [this]. include/Eyerok.h closes the field span on the same number. Builder correction: this entry previously named the factory's source as a file that does not exist -- it lives in src/d_a_iwante.cpp, lines 21 and 24. tools/opnew_sizes.py agrees independently: 1 site, size 0x874, confidence inline_store, unambiguous, vtable 0x0211ad64.",
+  "size_evidence": "The factory daIwante_c_classInit (ov066:0x0211a370, size 0xa8) calls fBase_c::operator new(0x874) and then stores 0x0211ad64 (_ZTV6Eyerok) at [this]. include/Eyerok.h closes the field span on the same number. Builder correction: this entry previously named the factory's source as a file that does not exist -- it lived in src/d_a_iwante.cpp and is now folded into src/actors/Eyerok.cpp. tools/opnew_sizes.py agrees independently: 1 site, size 0x874, confidence inline_store, unambiguous, vtable 0x0211ad64.",
   "linker_run": {
-    "range": "0x02115ee0..0x0211a2e4",
-    "functions": 61,
-    "promoted": "ordinals 25..58 (34 functions), 0x021184c0..0x02119ce8",
-    "dropped": "ordinals 0..24, 59, 60"
+    "range": "0x02115ee0..0x0211a418",
+    "functions": 64,
+    "promoted": "62 functions in src/actors/Eyerok.cpp, 0x0211603c..0x0211a418",
+    "dropped": "D1/D0 stay their own shards (0x02115ee0..0x0211603c): defining ~Eyerok in this TU would emit _ZTS6Eyerok RTTI the ROM does not carry (its RTTI is daIwante_c's)"
   },
   "unproven": [
     "Whether the six link-blocked shards can ever join the run without a symbols.txt entry naming 0x02112c08/c88/ca8/cc8/d48. They byte-match at 2004/b56 today (tools/match.py, strict relocs) but nothing DEFINES those addresses under the spellings the shards use (func_02112c08 etc); decl_common.h's `extern char func_02112c08;` is a declaration with no definition anywhere in the tree. Builder correction to this file's earlier wording: it is not true that no module names those addresses. They lie below ov066's own base (ov066 spans 0x02115ee0..0x0211b0ec), in the lower overlay slot ov066 is co-resident with, and fourteen overlays -- ov009, ov010, ov018, ov019, ov022, ov024, ov025, ov027, ov032, ov035, ov036, ov045, ov056, ov060 -- each name an overlay-local symbol there, nearly all flagged `ambiguous`, disagreeing on kind (func_ov060_02112d48 is a function; data_ov035_02112c88 is bss). The open question is therefore which overlay is resident alongside ov066, not what to call the address.",

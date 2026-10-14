@@ -15,13 +15,13 @@ typed-subobject constructor (dBgCh_Actr).
 |---|---|---|
 | `src/_ZN9ModelBaseC2Ev.cpp` | `ModelBase::ModelBase()` | 0x02017150, 0x18 |
 | `src/_ZN5ModelC1Ev.cpp` | `Model::Model()` | 0x02016d58, 0x50 |
-| `src/_ZN11CommonModelC1Ev.cpp` | `CommonModel::CommonModel()` | 0x02016204, 0x50 |
-| `src/_ZN11ShadowModelC1Ev.cpp` | `ShadowModel::ShadowModel()` | 0x02016068, 0x34 |
-| `src/_ZN7PathPtrC1Ev.cpp` | `PathPtr::PathPtr()` | 0x0203ad74, 0x10 |
-| `src/_ZN8dM3dGSphC1Ev.cpp` | `dM3dGSph::dM3dGSph()` | 0x0203ac60, 0x10 |
-| `src/_ZN9dBgCh_LinC1Ev.cpp` | `dBgCh_Lin::dBgCh_Lin()` | 0x020377b0, 0x5c |
+| `src/engine/model/dExtCommonModel_c.cpp` | `dExtCommonModel_c::dExtCommonModel_c()` | 0x02016204, 0x50 |
+| `src/engine/model/dExtShadowModel_c.cpp` | `dExtShadowModel_c::dExtShadowModel_c()` | 0x02016068, 0x34 |
+| `src/engine/path/PathPtr.cpp` | `PathPtr::PathPtr()` | 0x0203ad74, 0x10 |
+| `src/engine/collision/dM3dGSph.cpp` | `dM3dGSph::dM3dGSph()` | 0x0203ac60, 0x10 |
+| `src/engine/collision/dBgCh_Lin.cpp` | `dBgCh_Lin::dBgCh_Lin()` | 0x020377b0, 0x5c |
 | `src/_ZN12dBgCh_SphCrrC1Ev.cpp` | `dBgCh_SphCrr::dBgCh_SphCrr()` | 0x02037d18, 0x6c |
-| `src/_ZN9dBgCh_GndC1Ev.cpp` | `dBgCh_Gnd::dBgCh_Gnd()` | 0x02037570, 0x40 |
+| `src/engine/collision/dBgCh_Gnd.cpp` | `dBgCh_Gnd::dBgCh_Gnd()` | 0x02037570, 0x40 |
 
 The seventh is the tree's **first multiple-inheritance constructor**: its
 header declares `dBgCh_Lin : dBgCh, dBgPi, dM3dGLin` straight out of the
@@ -81,8 +81,8 @@ class with ~55 consumers: declaring `dBgCh_Gnd();` flipped every TU holding
 a typed local of the REAL class (five of them; the other fifty define their
 own dumb shadow structs and never see it) from hand-managed lifecycle to
 implicit synthesis. Two kept the moved declaration and are byte-exact as
-synthesized (BowserFire, daObjPathLift_c — the latter already shaped right);
-one tried the move and gave it back (Toad: the synthesized pair scheduled one
+synthesized (daKpaFire_c, daObjPathLift_c — the latter already shaped right);
+one tried the move and gave it back (daKinopio_c: the synthesized pair scheduled one
 instruction differently at the tail); and two are truly interleaved
 from the start. daTrs_c::Behavior has rc2 constructed only on some paths,
 with gotos into the middle of its lifetime, so it keeps **named word arrays**
@@ -90,7 +90,7 @@ with gotos into the middle of its lifetime, so it keeps **named word arrays**
 `(dBgCh_Gnd *)rc1`, which costs exactly the sp-relative add the old POD local
 spelled. The tempting alias form (`dBgCh_Gnd *const rc1 = (dBgCh_Gnd
 *)&storage;`) is measured wrong: it perturbs register allocation and cost
-Behavior +32 bytes. KnockDownPlank (+8) and Toad (+4) both showed that the
+Behavior +32 bytes. daObjBk_Botaosi_c (+8) and daKinopio_c (+4) both showed that the
 moved-declaration synthesis reproduces construction/destruction but not
 always their exact scheduling; both restored hand C1/D1 calls over a `u32`
 array. The old comment in
@@ -115,17 +115,17 @@ names the real offenders, and per-function spelunking is wasted motion.
 The census this attacks (`tools/langmode_audit.py --by-class`, 2026-08-24):
 **C1 32 (8 migrated), C2 14 (2 migrated), C3 2** — against 397 plain methods
 and 65 D1s — though §5c
-reclassifies the two "C3"s and at least two C1s (Camera settled; Minimap,
-HUD pending shape-check) as
+reclassifies the two "C3"s and at least two C1s (dCamera_c settled; dMap_c,
+dMeter_c pending shape-check) as
 factories that no source form can express, so the true migratable backlog is
 smaller than the raw census; §7 enumerates it symbol by symbol. D0 is out of
 backlog forever; constructors were the last symbol kind with no playbook.
 
 PathPtr also supplied the first live sighting of §2's blast radius: the
 moment `PathPtr();` appeared in its header, every typed local of that class
-in every TU grew an implicit construction call. `Shark::InitResources`
+in every TU grew an implicit construction call. `daShark_c::InitResources`
 holds two such locals and constructs them BY HAND at interleaved ROM
-positions — each double-constructed, Shark went four words long, and
+positions — each double-constructed, daShark_c went four words long, and
 eligible.py caught it before anything linked. Its locals are now raw `u32`
 storage with a comment explaining why they must stay dumb. When you declare
 a constructor on a widely-embedded class, grep for typed locals of it
@@ -158,7 +158,7 @@ appears and the candidate lands tens of bytes short. Declared-but-not-defined
 in the class body is what makes every derived constructor emit
 `bl _ZN…C…Ev`. This is already how `Model()` was declared in
 `include/Model.h`; this wave added the same declaration to `ModelBase`,
-`CommonModel`, and `ShadowModel`.
+`dExtCommonModel_c`, and `dExtShadowModel_c`.
 
 Risk to check when adding one: every TU that value-constructs the class or a
 derived class changes codegen. In this family every derived constructor was
@@ -188,7 +188,7 @@ hand-spelled externs. It is a **C2**. The evidence, all four callers:
 
 | caller | what it is |
 |---|---|
-| `_ZN11ShadowModelC1Ev` | derived ctor, base-subobject step |
+| `_ZN17dExtShadowModel_cC1Ev` | derived ctor, base-subobject step |
 | `_ZN11CommonModelC1Ev` | derived ctor, base-subobject step |
 | `_ZN5ModelC1Ev` (+8) | derived ctor, base-subobject step |
 | `_ZN5ModelC2Ev` (+8) | derived ctor, base-subobject step |
@@ -222,9 +222,9 @@ a **base subobject** of a derived class:
 
 | callers | what they are |
 |---|---|
-| `_ZN6CameraC1Ev`, `_ZN8dActor_cC1Ev`, `_ZN8dActor_cC2Ev` | derived ctors, base-subobject step |
-| `_ZN3HUDC1Ev`, `_ZN7MinimapC1Ev` | derived ctors, base-subobject step |
-| `_ZN5StageC3Ev` | allocating ctor folding a base-subobject step (§5c) |
+| `_ZN9dCamera_cC1Ev`, `_ZN8dActor_cC1Ev`, `_ZN8dActor_cC2Ev` | derived ctors, base-subobject step |
+| `_ZN8dMeter_cC1Ev`, `_ZN6dMap_cC1Ev` | derived ctors, base-subobject step |
+| `_ZN10dScStage_cC3Ev` | allocating ctor folding a base-subobject step (§5c) |
 | `dScStarSel_c_classInit`, `UnknownVsEntry_Spawn`, `dScBoot_c_classInit`, `func_020352b4` | unnamed C3s: `operator new` → null check → base step → double vptr store |
 | 7 overlay `func_*` placeholders | same Spawn shape in ov003/004/005/007/075 |
 
@@ -300,9 +300,9 @@ Disassembled, all three allocating-labelled functions share one shape:
 
 | label | prologue |
 |---|---|
-| `_ZN5StageC3Ev` 0x0202e088 | `ldr r0, [pc]` → `bl fBase_c::op new` → `movs r4,r0; beq ret` → construct |
+| `_ZN10dScStage_cC3Ev` 0x0202e088 | `ldr r0, [pc]` → `bl fBase_c::op new` → `movs r4,r0; beq ret` → construct |
 | `_ZN6PlayerC3Ev` 0x020e6c0c | same, then `bl` Player's own ctor |
-| `_ZN6CameraC1Ev` 0x0200e444 | same, construction fully inline |
+| `_ZN9dCamera_cC1Ev` 0x0200e444 | same, construction fully inline |
 
 Three tells, each individually fatal to the constructor reading:
 
@@ -339,20 +339,20 @@ p->T::T();                        -> illegal use of type-name
 ```
 
 So a folded factory is **not writable as real C++ under this toolchain**,
-period. `Camera_Spawn`, `Stage`'s and `Player`'s factories stay hand-written
+period. `Camera_Spawn`, `dScStage_c`'s and `Player`'s factories stay hand-written
 `.c` files — like fBase_c's constructor, a permanent asm-or-C transcription,
 with the reason recorded here so nobody retries the recipe hoping for a
 different answer. What IS recoverable from them is knowledge, not code:
 
-### 5e. What the Camera factory taught us about the hierarchy
+### 5e. What the dCamera_c factory taught us about the hierarchy
 
 RTTI names read straight off the vtables (typeinfo name strings):
 
 | object | RTTI name | note |
 |---|---|
 | `data_0208e4b8` | `7dBase_c` | the unnamed intermediate base §5b predicted; vtable already carries the class's 18 slots |
-| `_ZTV4View` | `7dView_c` | overrides slot 9 (Render) + D1/D0 only; adds no new virtuals |
-| `_ZTV6Camera` | `9dCamera_c` | the project's `Camera` |
+| `_ZTV7dView_c` | `7dView_c` | overrides slot 9 (Render) + D1/D0 only; adds no new virtuals |
+| `_ZTV9dCamera_c` | `9dCamera_c` | the project's `dCamera_c` |
 
 Chain: **`dCamera_c : dView_c : dBase_c : fBase_c`**. The factory's three
 vptr stores walk it bottom-up (`dBase_c` store, `dView_c` store, then body +
@@ -362,11 +362,11 @@ note already said.
 
 Layout consequence: `dView_c` owns the 48-byte matrix at +0x50 (constructed
 with `Matrix4x3_LoadIdentity(&mat)` mid-fold), making it 0x80 tall — which is
-exactly why auto-generated `Camera.h` shows `pad_000[0x80]` before `lookAt`:
+exactly why auto-generated `dCamera_c.h` shows `pad_000[0x80]` before `lookAt`:
 those bytes are base subobjects, not padding. Reference-graph facts: only
-`Camera` derives from `View` (five `_ZTV4View` references total: two inside
-Camera's D1/D0 teardown, two inside dView_c's own dtor pair, one in the
-factory), and `View` has no out-of-line constructor anywhere — its
+`dCamera_c` derives from `dView_c` (five `_ZTV7dView_c` references total: two
+inside dCamera_c's D1/D0 teardown, two inside dView_c's own dtor pair, one in
+the factory), and `dView_c` has no out-of-line constructor anywhere — its
 construction exists only inside the folded factory, so its ctor must have
 been defined inline in the original header.
 
@@ -396,11 +396,10 @@ no vtable. An ABI probe settles the shape: dBgPi introduces the virtual
 destructor and derives from the non-polymorphic dBgPc. With no dynamic primary
 base, the compiler places dBgPi's own vptr at +0x00 and its dBgPc base at +0x04.
 The generated C2 sequence therefore constructs dBgPc at +0x04 before storing
-dBgPi's vptr. C1 now lives in `src/_ZN5dBgPiC1Ev.cpp` as real C++, and since
-#1833 so does the separately enrolled C2 ABI variant, in
-`src/_ZN5dBgPiC2Ev.cpp`. The two files carry the same definition -- C1 and C2
-are two of the functions mwcc emits from one constructor, and
-`config/arm9/delinks.txt` binds each file to one of them.
+dBgPi's vptr. C1 now lives in `src/engine/collision/dBgPi.cpp` as real C++, and since
+#1833 so does the separately enrolled C2 ABI variant, in the same
+`src/engine/collision/dBgPi.cpp`. The two carry the same definition -- C1 and C2
+are two of the functions mwcc emits from one constructor.
 
 ## 6. The recipe, condensed
 
@@ -473,8 +472,8 @@ asm transcription, or absent.
    `Particle10SysTrackerC1Ev` 0x02023204 (0x1d0 — the biggest body on the
    list; expect member-ctor synthesis work). Shape-check before attempting:
    if the disassembly starts `operator new` → null-check, it is a factory
-   (§5c/§5d) and no source form exists. `Camera` is settled that way;
-   FaderWipe C1 0x02017480 has no source at all and needs the same check
+   (§5c/§5d) and no source form exists. `dCamera_c` is settled that way;
+   dFdWipe_c C1 0x02017480 has no source at all and needs the same check
    before anyone promotes its header.
 5. **Anim/model family**: `ModelAnimC1/C2Ev` 0x02016958/98 ·
    `ModelAnim2C1Ev` 0x020163a0 · `BlendModelAnimC1Ev` 0x020166d4.
@@ -498,7 +497,7 @@ asm transcription, or absent.
    `bl _ZN8dActor_cC2Ev` instead of inlining the base. The remaining two are
    rich bodies that still need that treatment one level down.
 8. **Overlays**: `PlayerC1Ev` 0x020e68f4 · `MinimapC1Ev` 0x020fb8bc ·
-   `HUDC1Ev` 0x020fe154. Minimap and HUD looked like genuine receive-`this`
+   `HUDC1Ev` 0x020fe154. dMap_c and dMeter_c looked like genuine receive-`this`
    ctors during the §4b caller sweep — shape-check, then §6.
 9. **Settled, do not retry** (the §5c factory wall): `PlayerC3Ev`,
    `StageC3Ev`, `CameraC1Ev`.

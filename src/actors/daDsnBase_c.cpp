@@ -1,276 +1,440 @@
 //cpp
-/* ov091/daDsnBase_c -- the abstract base of the crushers (Thwomp, Grindel).
+/* daDsnBase_c -- shared base of the Thwomp (daDsn_c, DOSUN 161, ov091)
+ * and the Grindel (daDkk_c, DONKAKU 162, ov025). `dsn` is dossun.
  *
- * Gathered from the run's one-function shards; see include/daDsnBase_c.h for the
- * class's shape, its vtable/RTTI split (vtable ov091 0x021351fc, record ov025
- * 0x021137f8) and why the destructor is inline in the class body.
+ * This TU owns CleanupResources (slot 3, the key function, so it emits
+ * _ZTV11daDsnBase_c), Render (slot 9), Init, and the seven helpers both
+ * leaves' Behaviors call: rise, hover, slam, rest, recover, the drop
+ * shadow, and the Yoshi-egg check that wakes the mesh collider. No
+ * factory: InitResources and Behavior are pure. Grindel's states 5..7
+ * and the Thwomp's trigger live on the leaves.
  *
- * FUNCTION ORDER IS DELIBERATELY THE REVERSE OF THE ROM'S -- mwccarm 2004/b56
- * emits one .text section per function in the REVERSE of source order, so the
- * highest-address ROM function is written FIRST here. Do not reorder.
+ * The file compiles under `#pragma defer_codegen off`, so mwccarm lays .text
+ * in source order, which is ROM order. Do not reorder. The destructor stays
+ * inline in daDsnBase_c.h and the two forcing functions near the top pull
+ * its D0 and D1 out here, in the cartridge's order. daDsnBase_c.h is the
+ * first include so Matrix4x3 is
+ * common.h's flat s32 m[12]. Do not hoist math/Matrix.h.
  *
- * CleanupResources is this class's ABI key function (first declared virtual
- * that is neither inline nor pure), so this TU emits _ZTV11daDsnBase_c and,
- * with it, both destructor variants. The forcing scaffolds the two destructor
- * shards carried (`p->~daDsnBase_c();` and `delete p;`) are therefore not
- * needed here and have been dropped.
- *
- * LICENSED FOR 9 OF THE RUN'S 11 FUNCTIONS: .text 0x02132dc0..0x02133254.
- * The destructor pair below that range stays owned by its own two enrolled
- * shards, because the cartridge orders D0 (0x02132d04) BELOW D1 (0x02132d6c)
- * and no admissible source form emits that order -- a destructor defined
- * inline in the class body always emits D1 then D0, and an out-of-line one
- * emits D2, D0, D1 plus a homeless D2 the ROM does not carry. This file still
- * emits both variants byte-identically; the manifest licenses those two copies
- * deadstrip-duplicate. See the manifest's boundary_evidence.
- *
- * Absorbed these 9 legacy one-function sources (ROM address order):
- *   0x02132dc0  func_ov091_02132dc0
- *   0x02132e64  func_ov091_02132e64
- *   0x02132e98  func_ov091_02132e98
- *   0x02132f04  func_ov091_02132f04
- *   0x02132ff4  func_ov091_02132ff4
- *   0x02133020  func_ov091_02133020
- *   0x02133098  func_ov091_02133098
- *   0x021331b8  daDsnBase_c::CleanupResources
- *   0x02133210  daDsnBase_c::Render
- *
- * Still enrolled separately, NOT absorbed:
- *   0x02132d04  _ZN11daDsnBase_cD0Ev
- *   0x02132d6c  _ZN11daDsnBase_cD1Ev
+ * deslop leftovers:
+ * - func_ov091_02133098 keeps the early `s32 *clipRadius` and the braced
+ *   mClipRadius clamp. An if-clamp in that spot is a 64-word DIFF.
+ *   Dropping the pointer and shifting mClipRadius directly is a 1-word
+ *   DIFF. dActor_c::DropShadowScaleXYZ with Fix12<int> by value
+ *   size-DIFFs 0x120 -> 0x134; the scalar extern stays.
+ * - func_ov091_02132f04 keeps `int isDosun` and `if (isDosun != 0)`.
+ *   Comparing actorID in the if size-DIFFs 0xf0 -> 0xe4. Combining
+ *   dustPos.y into `mPosY + 0x3c000` size-DIFFs 0xf0 -> 0xec. NewSimple
+ *   and Earthquake are not header members; the scalar externs stay.
+ * - Init keeps the two-step probePos.y (combined form size-DIFFs
+ *   0x1a8 -> 0x1a4). dBgW_KcMbg::SetFile with Fix12<int> size-DIFFs
+ *   0x1a8 -> 0x1ac. TextureSequence::SetFile with Fix12<int> size-DIFFs
+ *   0x1a8 -> 0x1b0. Storing beforeClsnCallback directly size-DIFFs
+ *   0x1a8 -> 0x1a4; the body calls func_020393d4.
+ * - CleanupResources reloads mFileTable around each Release. One pointer
+ *   across the three calls is a 20-word DIFF.
+ * - func_ov091_02132ff4, func_ov091_02132e98 and func_ov091_02132e64 stay
+ *   extern "C". func_ov091_02133098, func_ov091_02133020, func_ov091_02132f04
+ *   and func_ov091_02132dc0 are methods; the address is the method name.
+ *   DsnCycle only names the shared tail inside this TU.
  */
 
-/* daDsnBase_c.h reaches dBgActor_c.h, which includes common.h BEFORE Model.h.
- * That fixes Matrix4x3 to common.h's flat `s32 m[12]` spelling -- the same one
- * every shard here compiled against -- so the merge does not change the type.
- * Do not hoist math/Matrix.h above this include. */
+#pragma defer_codegen off
+
 #include "daDsnBase_c.h"
 #include "common.h"
 #include "decl_common.h"
 #include "SharedFilePtr.h"
 #include "dBgW.h"
+#include "dBgCh_Gnd.h"
 
+/* Actor IDs this TU compares. No header vocabulary exists (cleaned callers
+ * pass raw hex), so they live here, cited to the ROM's own debug table. */
+enum {
+    kYoshiEggActorID = 9,   /* YOSHI_EGG: func_ov091_02132dc0's target */
+    kDosunActorID = 0xa1,   /* DOSUN (161): the Thwomp leaf; Grindel takes
+                               the particle path in func_ov091_02132f04 */
+};
+
+/* The per-leaf resource table both InitResources store into mFileTable (the
+ * Thwomp's at data_ov091_02135138, Grindel's at data_ov025_02113814). Shaped
+ * from its consumers: Init loads the model/collision files,
+ * binds the CLPS block and, when [3] is non-null, the texture animation;
+ * CleanupResources releases [0], [1] and [3]; Render animates only when [3]
+ * is set; func_ov091_02133098 reads [4]/[5] as shadow extents. Owned by the
+ * leaf overlays, never defined here. */
+struct DsnBaseFileTable {
+    SharedFilePtr *model;       /* +0x00, BMD */
+    SharedFilePtr *collision;   /* +0x04, KCL */
+    CLPS_Block *clps;           /* +0x08, CLPS block: not a file, not released */
+    SharedFilePtr *texAnim;     /* +0x0c, BTP, or null when the leaf has none */
+    int shadowExtentX;          /* +0x10, DropShadow X base */
+    int shadowExtentZ;          /* +0x14, DropShadow Z base */
+};
+
+#ifndef SM64DS_PLATFORM_PC
+typedef char DsnBaseFileTable_size_must_be_0x18[
+    sizeof(DsnBaseFileTable) == 0x18 ? 1 : -1];
+#endif
+
+/* SharedFilePtr has no fields (include/SharedFilePtr.h). Both leaves' tables
+ * store the loaded BMD/BTP at +4; Prepare and SetFile read that word. */
+struct DsnFileHandle {
+    s32 fileId;
+    void *loaded;
+};
+
+/* 0x360..0x39f is the same on both leaves, and daDsn_c.h / daDkk_c.h already
+ * declare it, so the view stays in this TU. Based at the actor, shadowMtx.m[9]
+ * is the store at 0x384. */
+struct DsnCycle {
+    char prefix[0x5c];
+    s32 posX;                 /* 0x05c */
+    s32 posY;                 /* 0x060 */
+    s32 posZ;                 /* 0x064 */
+    char mid[0x360 - 0x68];
+    Matrix4x3 shadowMtx;      /* 0x360; translation row is m[9..11] at 0x384 */
+    s32 riseY;                /* 0x390 */
+    s32 groundY;              /* 0x394 */
+    s32 state;                /* 0x398 */
+    s16 turnAng;              /* 0x39c -- Grindel only; this TU does not write it */
+    u8 timer;                 /* 0x39e */
+    u8 landCount;             /* 0x39f */
+};
+
+/* --------------------------------------------------------------------------
+ * The one file-scope extern "C" region. Everything here is reached from a
+ * body below that cannot declare it in its own scope.
+ * func_ov091_02132ff4/02132e98/02132e64 come from decl_common.h (all (char*),
+ * the real header wins), so they are not restated.
+ * ------------------------------------------------------------------------ */
 extern "C" {
-/* Two shards spelled this `int(char*)` and `int(void*)`; every call site here
- * passes `char* + 0x39e`, so the char* spelling serves both. */
-extern int DecIfAbove0_Byte(char*);
-/* Two shards spelled this `int(void*)` and `int(int*)`, and spelled its
- * argument `data_0209e650` both as an array and as a scalar. Declared as an
- * array taking void*, both call sites below stand verbatim and both resolve to
- * the same address. */
-extern int RandomIntInternal(void*);
+
+/* No header declares these (checked include/decl_common.h and its decl_Actor
+ * siblings at promotion).
+ * DecIfAbove0_Byte is spelled from its definition at src/DecIfAbove0_Byte.c --
+ * unsigned char in, unsigned char out. A call site cannot evidence either: the
+ * casts and the int temporaries below are the caller's, not the callee's
+ * interface. RandomIntInternal's sites pass the RNG state. */
+extern u8 DecIfAbove0_Byte(u8 *);
+extern int RandomIntInternal(void *);
 extern int data_0209e650[];
+
+extern int Vec3_Dist(const Vector3 *, const Vector3 *);
+
+/* daDkk_c.cpp's spelling, whose void return the enrolled definition at
+ * src/engine/sound/Sound.cpp confirms. */
+extern void func_0201267c(int id, void *pos);
+
+/* Fix12<int> BY VALUE (6az): the header member form would home the argument
+ * and move the caller. Scalar tail is deliberate; the (const Vector3 &)
+ * is what the mangled name spells. */
+extern void _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(void *self, const Vector3 &pos, int magnitude);
+extern void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned id, int x, int y, int z);
+
+/* Same 6az tail, and the same pointer spelling the enrolled definition uses
+ * (dActor_c / dExtShadowModel_c / Matrix4x3 pointers, scalar ints -- see the
+ * _ZN8dActor_c18DropShadowScaleXYZ file); daObjPathLift_c.cpp calls it this
+ * way. The three scales stay scalar ints. */
+extern void _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
+    dActor_c *self, dExtShadowModel_c *shadow, Matrix4x3 *matrix, int scaleX, int scaleY, int scaleZ, unsigned opacity);
+
+/* Same 6az tail: both take Fix12<int> BY VALUE, so the header member form
+ * would home the argument. */
+extern void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+    dBgW_KcMbg *self, KCL_File *file, const Matrix4x3 *mat, int scale, s16 angY,
+    CLPS_Block *clps);
+extern void _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(
+    TextureSequence *self, BTP_File *file, int flags, int speed,
+    unsigned startFrame);
+/* 8-byte store into dBgW+0x18 (beforeClsnCallback). No SetCallback member.
+ * Spelling matches src/engine/collision/dBgW.cpp -- (int *, int). */
+extern void func_020393d4(int *collider, int callback);
+
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 10 -- _ZN11daDsnBase_c6RenderEv, 0x02133210, size 0x44 */
-/* -------------------------------------------------------------------------- */
-// @symbol _ZN11daDsnBase_c6RenderEv
-int daDsnBase_c::Render()
+// @symbol _ZN11daDsnBase_cD0Ev
+// @symbol _ZN11daDsnBase_cD1Ev
+/* ROM ordinals 0 and 1 -- ov091 0x02132d04 (D0, 0x68) and 0x02132d6c (D1,
+ * 0x54). No source here: both destructor variants come from the ONE
+ * inline body in include/daDsnBase_c.h, which the class's descendants need
+ * visible to inline its vptr store.
+ *
+ * The two calls below are never executed. Under `#pragma defer_codegen off`
+ * the compiler emits ordinary functions at parse time in source order, so the
+ * delete-expression pulls the deleting variant out of line first and the
+ * explicit destructor call pulls the complete-object variant out second --
+ * the cartridge's D0-then-D1 order, which no deferred form reaches without a
+ * D2 the image does not contain. A delete-expression for D0 because
+ * dBgActor_c declares Kill, a key function reachable from this class. */
+
+/* Not called. Forces the out-of-line copy of the deleting destructor. */
+void daDsnBase_c_EmitDeletingDestructor(daDsnBase_c *p)
 {
-  int check = *(int*)(mFileTable+0xc);
-  if (check != 0)
-    mTextureSequence.Update(mModel.data);
-  ((Model*)((char*)&mModel))->Render(0);
-  return 1;
+    delete p;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 9 -- _ZN11daDsnBase_c16CleanupResourcesEv, 0x021331b8, size 0x58 */
-/* -------------------------------------------------------------------------- */
-// @symbol _ZN11daDsnBase_c16CleanupResourcesEv
-int daDsnBase_c::CleanupResources()
+/* Not called. Forces the out-of-line copy of the inline destructor. */
+void daDsnBase_c_EmitDestructor(daDsnBase_c *p)
 {
-    void **fp;
-    if (((dBgW *)((char *)&mMeshCollider))->IsEnabled()) {
-        ((dBgW *)((char *)&mMeshCollider))->Disable();
-    }
-    fp = *(void***)((char *)&mFileTable);
-    ((SharedFilePtr *)(fp[0]))->Release();
-    fp = *(void***)((char *)&mFileTable);
-    ((SharedFilePtr *)(fp[1]))->Release();
-    fp = *(void***)((char *)&mFileTable);
-    if (fp[3] != 0) {
-        ((SharedFilePtr *)(fp[3]))->Release();
-    }
-    return 1;
+    p->~daDsnBase_c();
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 8 -- func_ov091_02133098, 0x02133098, size 0x120 */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov091_02133098
-extern "C" {
-void _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
-    void* a, void* sm, void* mtx, int f, int t1, int t2, unsigned int x);
-
-/* Parameter is `char*`, not the shard's `void*`: decl_common.h:2858 already
- * declares this symbol and the real header wins. */
-void func_ov091_02133098(char* c){
-  char* r = c;
-  int off = 0x20000;
-  int d = *(int*)(r+0x60) - *(int*)(r+0x394);
-  if(d <= 0x14000){ d = 0x14000; off = 0; }
-  int rad = (int)(((long long)d * 0x60 + 0x800) >> 12);
-  int* pb8 = (int*)(((int)r + 0xb8));
-  int v1 = *(int*)(*(char**)(r+0x320)+0x10) - rad;
-  if(v1 < 0xa000) v1 = 0xa000;
-  int v2 = *(int*)(*(char**)(r+0x320)+0x14) - rad;
-  if(v2 < 0xa000) v2 = 0xa000;
-  *(int*)(r+0xb8) = d + 0x8c000;
-  {
-    int t = *(int*)(r+0xb8);
-    if(t < 0x200000) t = 0x200000;
-    *(int*)(r+0xb8) = t;
-  }
-  *pb8 = *pb8 >> 3;
-  *(Matrix4x3*)(r+0x360) = *(Matrix4x3*)(r+0xf0);
-  *(int*)(r+0x384) = *(int*)(r+0x5c) >> 3;
-  *(int*)(r+0x388) = (*(int*)(r+0x60) - off) >> 3;
-  *(int*)(r+0x38c) = *(int*)(r+0x64) >> 3;
-  _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
-      r, r+0x338, r+0x360, v1, d + 0x28000, v2, 0xf);
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 7 -- func_ov091_02133020, 0x02133020, size 0x78 */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov091_02133020
-extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov091_02133020(char *c)
+/* The egg proximity check both Behaviors run in the collision tail. When the
+ * nearest Yoshi egg closes to (mClipRadius << 3) and the mesh collider is
+ * still asleep, wakes it and reports 1 so the caller refreshes the collider
+ * position. The aimPos block is dead by value -- the distance check reads
+ * the actor origin, not it -- but it keeps the OnAimedAtWithEgg
+ * call and the three stores the ROM emits. */
+// @symbol _ZN11daDsnBase_c19func_ov091_02132dc0Ev
+int daDsnBase_c::func_ov091_02132dc0()
 {
-    (*(int *)(((int)c + 0x60))) += 0xa000;
-    if (*(int *)(c + 0x60) < *(int *)(c + 0x390))
-        return;
-    *(int *)(c + 0x60) = *(int *)(c + 0x390);
-    *(int *)(c + 0x398) = 1;
-    *(unsigned char *)(c + 0x39e) =
-        (unsigned char)(((unsigned int)RandomIntInternal(&data_0209e650) >> 0x10) % 0x1e + 0xa);
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 6 -- func_ov091_02132ff4, 0x02132ff4, size 0x2c */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov091_02132ff4
-extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov091_02132ff4(char* c) {
-    int r = DecIfAbove0_Byte(c+0x39e);
-    if (r == 0) {
-        *(int*)(c+0x398) = 2;
-    }
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 5 -- func_ov091_02132f04, 0x02132f04, size 0xf0 */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov091_02132f04
-extern "C" {
-
-int _ZN8dActor_c15HugeLandingDustEb(void*, int);
-void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned, int, int, int);
-int _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(void*, struct Vector3*, int);
-int func_0201267c(int, void*);
-void func_ov091_02132f04(char* c){
-  int *pa8 = (int*)(((int)c + 0xa8));
-  int a = *pa8;
-  int *p60 = (int*)(((int)c + 0x60));
-  a = a - 0x4000;
-  *pa8 = a;
-  a = *p60 + *(int*)(c+0xa8);
-  *p60 = a;
-  if(*(int*)(c+0x60) > *(int*)(c+0x394)) return;
-  *(int*)(c+0x60) = *(int*)(c+0x394);
-  int zero = 0;
-  *(int*)(c+0xa8) = zero;
-  *(int*)(c+0x398) = 3;
-  *(unsigned char*)(c+0x39e) = 0xa;
-  if(*(unsigned short*)(c+0xc) == 0xa1) zero = 1;
-
-  struct { struct Vector3 part; struct Vector3 quake; } sp;
-  if(zero != 0){
-    _ZN8dActor_c15HugeLandingDustEb(c, 1);
-  } else {
-    sp.part.x = *(int*)(c+0x5c);
-    sp.part.y = *(int*)(c+0x60);
-    sp.part.z = *(int*)(c+0x64);
-    sp.part.y = sp.part.y + 0x3c000;
-    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x2e, sp.part.x, sp.part.y, sp.part.z);
-  }
-  sp.quake.x = *(int*)(c+0x5c);
-  sp.quake.y = *(int*)(c+0x60);
-  sp.quake.z = *(int*)(c+0x64);
-  _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(c, &sp.quake, 0x7d0000);
-  func_0201267c(0xc7, c+0x74);
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 4 -- func_ov091_02132e98, 0x02132e98, size 0x6c */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov091_02132e98
-extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov091_02132e98(char *c){
-  if(DecIfAbove0_Byte(c+0x39e)) return;
-  *(int*)(c+0x398)=4;
-  unsigned int r=RandomIntInternal(data_0209e650);
-  unsigned int v=r>>16;
-  c[0x39e]=(char)(v%10+0x14);
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 3 -- func_ov091_02132e64, 0x02132e64, size 0x34 */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov091_02132e64
-extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov091_02132e64(char* c){
-  int r = DecIfAbove0_Byte(c+0x39e);
-  if(r==0){
-    *(int*)(c+0x398) = 0;
-    *(unsigned char*)(c+0x39e) = 0x28;
-  }
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 2 -- func_ov091_02132dc0, 0x02132dc0, size 0xa4 */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov091_02132dc0
-extern "C" {
-extern void* _ZN8dActor_c18ClosestWithActorIDEj(void*, unsigned int);
-extern int Vec3_Dist(void*, void*);
-
-int func_ov091_02132dc0(char* c) {
-    void* p = _ZN8dActor_c18ClosestWithActorIDEj(c, 9);
-    if (p != 0) {
-        volatile struct Vector3 v;
-        v.x = *(int*)(c + 0x5c);
-        v.y = *(int*)(c + 0x60);
-        v.z = *(int*)(c + 0x64);
-        v.y = v.y + ((dActor_c*)c)->OnAimedAtWithEgg();
-        if (Vec3_Dist((char*)c + 0x5c, (char*)p + 0x5c) < (*(int*)(c + 0xb8) << 3)) {
-            if (!((dBgW *)(c + 0x124))->IsEnabled()) {
-                ((dBgW *)(c + 0x124))->Enable((dActor_c *)(c));
+    dActor_c *egg = ClosestWithActorID(kYoshiEggActorID);
+    if (egg != 0) {
+        Vector3 aimPos;
+        aimPos.x = mPosX;
+        aimPos.y = mPosY;
+        aimPos.z = mPosZ;
+        aimPos.y = aimPos.y + OnAimedAtWithEgg();
+        if (Vec3_Dist((const Vector3 *)&mPosX,
+                      (const Vector3 *)&egg->mPosX) < (mClipRadius << 3)) {
+            if (!mMeshCollider.IsEnabled()) {
+                mMeshCollider.Enable(this);
                 return 1;
             }
         }
     }
     return 0;
 }
+
+/* State 4, the recover. Spends the timer state 3 set, then closes the cycle
+ * back to state 0 with a 0x28-frame hover preload. */
+// @symbol func_ov091_02132e64
+extern "C" void func_ov091_02132e64(char *c)
+{
+    DsnCycle *self = (DsnCycle *)c;
+    int timeLeft = DecIfAbove0_Byte(&self->timer);
+    if (timeLeft == 0) {
+        self->state = 0;
+        self->timer = 0x28;
+    }
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinals 1 and 0 -- _ZN11daDsnBase_cD1Ev 0x02132d6c,
- *                         _ZN11daDsnBase_cD0Ev 0x02132d04.
- *
- * No source appears here. The destructor is defined inline in the class body
- * (include/daDsnBase_c.h) so that every descendant inlines it, and owning the
- * key function above is what makes this TU emit the vtable and, with it, both
- * out-of-line variants. See the manifest's boundary_evidence for how the pair
- * is dispositioned.
- */
-// @symbol _ZN11daDsnBase_cD1Ev
-// @symbol _ZN11daDsnBase_cD0Ev
+/* State 3, the rest. Spends the landing timer, then moves to state 4 with
+ * a fresh 0x14..0x1d-frame recovery time. */
+// @symbol func_ov091_02132e98
+extern "C" void func_ov091_02132e98(char *c)
+{
+    DsnCycle *self = (DsnCycle *)c;
+    if (DecIfAbove0_Byte(&self->timer) != 0)
+        return;
+    self->state = 4;
+    unsigned int roll = RandomIntInternal(data_0209e650);
+    unsigned int rollHigh = roll >> 16;
+    self->timer = (char)(rollHigh % 10 + 0x14);
+}
+
+/* State 2, the slam. Integrates the fall at 0x4000 a frame; on reaching the
+ * stored ground (0x394) snaps to it, stops, moves to state 3 and lands:
+ * the Thwomp (DOSUN) raises its landing dust, Grindel spawns particle 0x2e,
+ * and both shake the camera and play 0xc7. */
+// @symbol _ZN11daDsnBase_c19func_ov091_02132f04Ev
+void daDsnBase_c::func_ov091_02132f04()
+{
+    Vector3 dustPos;
+    Vector3 quakePos;
+    mVertSpeed = mVertSpeed - 0x4000;
+    mPosY = mPosY + mVertSpeed;
+    DsnCycle *cycle = (DsnCycle *)this;
+    if (mPosY > cycle->groundY)
+        return;
+    mPosY = cycle->groundY;
+    mVertSpeed = 0;
+    cycle->state = 3;
+    cycle->timer = 0xa;
+    int isDosun = (actorID == kDosunActorID);
+    if (isDosun != 0) {
+        HugeLandingDust(true);
+    } else {
+        dustPos.x = mPosX;
+        dustPos.y = mPosY;
+        dustPos.z = mPosZ;
+        dustPos.y = dustPos.y + 0x3c000;
+        _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x2e, dustPos.x, dustPos.y, dustPos.z);
+    }
+    quakePos.x = mPosX;
+    quakePos.y = mPosY;
+    quakePos.z = mPosZ;
+    _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(this, quakePos, 0x7d0000);
+    func_0201267c(0xc7, &mCamSpacePosX);
+}
+
+/* State 1, the hover. Spends the timer state 0 rolled, then drops to
+ * state 2. */
+// @symbol func_ov091_02132ff4
+extern "C" void func_ov091_02132ff4(char *c)
+{
+    DsnCycle *self = (DsnCycle *)c;
+    int timeLeft = DecIfAbove0_Byte(&self->timer);
+    if (timeLeft == 0)
+        self->state = 2;
+}
+
+/* State 0, the rise. Climbs 0xa000 a frame toward the stored top height
+ * (0x390); on arrival snaps to it, moves to state 1 and rolls the hover
+ * time (0xa..0x27 frames). */
+// @symbol _ZN11daDsnBase_c19func_ov091_02133020Ev
+void daDsnBase_c::func_ov091_02133020()
+{
+    DsnCycle *self = (DsnCycle *)this;
+    self->posY += 0xa000;
+    if (self->posY < self->riseY)
+        return;
+    self->posY = self->riseY;
+    self->state = 1;
+    self->timer =
+        (u8)(((unsigned int)RandomIntInternal(&data_0209e650) >> 0x10) % 0x1e + 0xa);
+}
+
+/* The per-frame shadow refresh both Behaviors run after the state step.
+ * Scales the drop shadow with the height above groundY, grows mClipRadius
+ * with that height, and copies the model matrix into shadowMtx with the
+ * translation shifted. mClipRadius is also func_ov091_02132dc0's trigger
+ * radius. The clipRadius pointer and the braced clamp are load-bearing;
+ * see the file comment. */
+// @symbol _ZN11daDsnBase_c19func_ov091_02133098Ev
+void daDsnBase_c::func_ov091_02133098()
+{
+    DsnCycle *cycle = (DsnCycle *)this;
+    int shadowDrop = 0x20000;
+    int heightAboveGround = mPosY - cycle->groundY;
+    if (heightAboveGround <= 0x14000) {
+        heightAboveGround = 0x14000;
+        shadowDrop = 0;
+    }
+    int radius = (int)(((long long)heightAboveGround * 0x60 + 0x800) >> 12);
+    s32 *clipRadius = &mClipRadius;
+    DsnBaseFileTable *files = (DsnBaseFileTable *)mFileTable;
+    int scaleX = files->shadowExtentX - radius;
+    if (scaleX < 0xa000)
+        scaleX = 0xa000;
+    int scaleZ = files->shadowExtentZ - radius;
+    if (scaleZ < 0xa000)
+        scaleZ = 0xa000;
+    mClipRadius = heightAboveGround + 0x8c000;
+    {
+        int clamped = mClipRadius;
+        if (clamped < 0x200000)
+            clamped = 0x200000;
+        mClipRadius = clamped;
+    }
+    *clipRadius = *clipRadius >> 3;
+    cycle->shadowMtx = mModel.mat4x3;
+    cycle->shadowMtx.m[9] = cycle->posX >> 3;
+    cycle->shadowMtx.m[10] = (cycle->posY - shadowDrop) >> 3;
+    cycle->shadowMtx.m[11] = cycle->posZ >> 3;
+    _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
+        this, &mShadowModel, &cycle->shadowMtx,
+        scaleX, heightAboveGround + 0x28000, scaleZ, 0xf);
+}
+
+/* Vtable slot 3, inherited by both leaves -- and the key function, so this
+ * TU emits the vtable. Releases the model, the collision mesh and, when the
+ * leaf bound one, the texture animation; the CLPS block at [2] is not a
+ * file and is not released. */
+// @symbol _ZN11daDsnBase_c16CleanupResourcesEv
+int daDsnBase_c::CleanupResources()
+{
+    DsnBaseFileTable *files;
+    if (mMeshCollider.IsEnabled())
+        mMeshCollider.Disable();
+    files = (DsnBaseFileTable *)mFileTable;
+    files->model->Release();
+    files = (DsnBaseFileTable *)mFileTable;
+    files->collision->Release();
+    files = (DsnBaseFileTable *)mFileTable;
+    if (files->texAnim != 0)
+        files->texAnim->Release();
+    return 1;
+}
+
+/* Vtable slot 9, inherited by both leaves. The texture animation runs only
+ * when the leaf bound one: Grindel's table carries null at [3], the Thwomp's
+ * carries its BTP handle. */
+// @symbol _ZN11daDsnBase_c6RenderEv
+int daDsnBase_c::Render()
+{
+    DsnBaseFileTable *files = (DsnBaseFileTable *)mFileTable;
+    if (files->texAnim != 0)
+        mTextureSequence.Update(mModel.data);
+    mModel.Render(0);
+    return 1;
+}
+
+/* Init is the run's highest-address definition, so it is written last.
+ * Both leaves' InitResources call it with their own file table already
+ * stored. `Init` is a coined name: class ownership, the two inbound calls,
+ * the body and the layout are proven; the original English is not. */
+// @symbol _ZN11daDsnBase_c4InitEv
+s32 daDsnBase_c::Init()
+{
+    Vector3 probePos;
+    BMD_File *bmd;
+    KCL_File *kcl;
+    DsnBaseFileTable *files;
+    CLPS_Block *clps;
+    SharedFilePtr *texAnim;
+
+    files = (DsnBaseFileTable *)mFileTable;
+    bmd = (BMD_File *)Model::LoadFile(*files->model);
+    mModel.SetFile(bmd, 1, -1);
+    UpdateModelPosAndRotY();
+    UpdateClsnPosAndRot();
+
+    files = (DsnBaseFileTable *)mFileTable;
+    kcl = (KCL_File *)dBgW_Kc::LoadFile(*files->collision);
+    clps = files->clps;
+    _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+        &mMeshCollider, kcl, &mClsnMat, 0x199, mAngleY, clps);
+    func_020393d4((int *)&mMeshCollider, (int)&dBgW::UpdatePosAndAngs);
+    mMeshCollider.Enable(this);
+
+    texAnim = ((DsnBaseFileTable *)mFileTable)->texAnim;
+    if (texAnim != 0) {
+        TextureSequence::LoadFile(*texAnim);
+        files = (DsnBaseFileTable *)mFileTable;
+        TextureSequence::Prepare(
+            *(BMD_File *)((DsnFileHandle *)files->model)->loaded,
+            *(BTP_File *)((DsnFileHandle *)files->texAnim)->loaded);
+        files = (DsnBaseFileTable *)mFileTable;
+        texAnim = files->texAnim;
+        _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(
+            &mTextureSequence, (BTP_File *)((DsnFileHandle *)texAnim)->loaded,
+            0x40000000, 0x1000, 0);
+    }
+
+    if (!mShadowModel.InitCuboid())
+        return 0;
+
+    probePos.x = mPosX;
+    probePos.y = mPosY;
+    probePos.z = mPosZ;
+    probePos.y = probePos.y + 0x32000;
+    {
+        dBgCh_Gnd ground;
+        ground.SetObjAndPos(probePos, 0);
+        DsnCycle *cycle = (DsnCycle *)this;
+        cycle->groundY = probePos.y;
+        if (ground.DetectClsn())
+            cycle->groundY = ground.clsnY;
+
+        cycle->riseY = mPosY + 0x190000;
+        mPosY = cycle->groundY;
+        cycle->timer = 0x28;
+        mVertAccel = -0x4000;
+        mTerminalVelocity = -0x3c000;
+        mHorzSpeed = 0xc000;
+        cycle->landCount = 0;
+    }
+    return 1;
+}

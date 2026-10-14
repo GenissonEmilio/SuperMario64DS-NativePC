@@ -3,7 +3,7 @@
 **Status:** mapped, not migrated. Nothing here renames or types anything.
 **Scope:** the eight of `dScene_c`'s ten direct children that have never had a
 single function named in this tree.
-**Provoked by:** migrating `Scene`/`Stage`/`BootScene` to real C++ (2026-08-11,
+**Provoked by:** migrating `Scene`/`dScStage_c`/`dScBoot_c` to real C++ (2026-08-11,
 branch `cpp/stage-slices`) and wanting to know what's left in the family before
 starting the next slice.
 
@@ -29,8 +29,8 @@ cross-checked against `include/dScene_c.h`'s own census comment):
 
 | class | vtable addr | module | status |
 |---|---|---|---|
-| `dScBoot_c` | 0x02091528 | [arm9](../config/arm9/symbols.txt) | **done** — `include/BootScene.h`, D0/D1 real |
-| `dScStage_c` | 0x020921c0 | [arm9](../config/arm9/symbols.txt) | **done** — `include/Stage.h`, D0/D1/methods real |
+| `dScBoot_c` | 0x02091528 | [arm9](../config/arm9/symbols.txt) | **done** — `include/dScBoot_c.h`, D0/D1 real |
+| `dScStage_c` | 0x020921c0 | [arm9](../config/arm9/symbols.txt) | **done** — `include/dScStage_c.h`, D0/D1/methods real |
 | `dScMB_c` | 0x020943c4 | [arm9](../config/arm9/symbols.txt) | unnamed, 0 attributed functions |
 | `dScTitle_c` | 0x020b1650 | [ov003](../config/arm9/overlays/ov003/symbols.txt) | unnamed, 0 attributed functions |
 | `dScStarSel_c` | 0x020b1704 | [ov003](../config/arm9/overlays/ov003/symbols.txt) | unnamed, 0 attributed functions |
@@ -73,7 +73,7 @@ for anything but orientation.
 
 Slot numbers match Scene's own table (0=InitResources, 1=BeforeInitResources,
 3=CleanupResources, 6=Behavior, 9=Render, 12=OnPendingDestroy, 16=D1, 17=D0) —
-same convention `include/dScene_c.h`/`include/Stage.h` document.
+same convention `include/dScene_c.h`/`include/dScStage_c.h` document.
 
 ## 2. dScMgBase_c is not a plain sibling -- it's a second hierarchy root
 
@@ -294,7 +294,7 @@ each one settled by reading the body. Two still carry that reasoning in their ow
 headers: the deleting destructor of `daIDonketu_c`, whose seven per-function
 sources have since been folded into the source-owned `actors/d_a_i_donketu.cpp`
 (the destructor pair is inline in `include/daIDonketu_c.h` now, and the TU's
-closing comment says why), and `src/_ZN10LavaSeesawD0Ev.cpp`. All 31
+closing comment says why), and `src/actors/daObjFl_Seesaw_c.cpp`. All 31
 remaining `OnYoshiTryEat` claims sit on genuine slot-18 bodies. The standing
 advice is still right and still cheap: don't trust a slot-17 "recovered name"
 without checking the body.

@@ -1,0 +1,393 @@
+{
+  "id": "ov075/dScEntry_c",
+  "module": "ov075",
+  "source": "src/actors/dScEntry_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x02115ab8",
+      "end": "0x02116128"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN10dScEntry_cD1Ev",
+      "address": "0x02115ab8",
+      "size": "0x00000070",
+      "legacy_source": "src/_ZN10dScEntry_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN10dScEntry_cD0Ev",
+      "address": "0x02115b28",
+      "size": "0x00000084",
+      "legacy_source": "src/_ZN10dScEntry_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "_ZN10dScEntry_c6icon_cD1Ev",
+      "address": "0x02115bac",
+      "size": "0x0000001c",
+      "legacy_source": "src/_ZN10dScEntry_c6icon_cD1Ev.cpp",
+      "ordinal": 2
+    },
+    {
+      "symbol": "_ZN12OamAnimationD1Ev",
+      "address": "0x02115bc8",
+      "size": "0x00000004",
+      "legacy_source": "src/_ZN12OamAnimationD1Ev.cpp",
+      "ordinal": 3
+    },
+    {
+      "symbol": "_ZN10dScEntry_c6icon_c6RenderEv",
+      "address": "0x02115bcc",
+      "size": "0x00000250",
+      "legacy_source": "src/_ZN10dScEntry_c6icon_c6RenderEv.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "_ZN10dScEntry_c6icon_c8BehaviorEv",
+      "address": "0x02115e1c",
+      "size": "0x00000070",
+      "legacy_source": "src/_ZN10dScEntry_c6icon_c8BehaviorEv.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov075_02115e8c",
+      "address": "0x02115e8c",
+      "size": "0x00000190",
+      "legacy_source": "src/func_ov075_02115e8c.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov075_0211601c",
+      "address": "0x0211601c",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_ov075_0211601c.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov075_02116028",
+      "address": "0x02116028",
+      "size": "0x00000008",
+      "legacy_source": "src/func_ov075_02116028.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov075_02116030",
+      "address": "0x02116030",
+      "size": "0x00000010",
+      "legacy_source": "src/func_ov075_02116030.c",
+      "ordinal": 9
+    },
+    {
+      "symbol": "_ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev",
+      "address": "0x02116040",
+      "size": "0x00000074",
+      "legacy_source": "src/_ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev.cpp",
+      "ordinal": 10
+    },
+    {
+      "symbol": "_ZN10dScEntry_c15graphCallback_cC1Ev",
+      "address": "0x021160b4",
+      "size": "0x00000028",
+      "legacy_source": "src/_ZN10dScEntry_c15graphCallback_cC1Ev.cpp",
+      "ordinal": 11
+    },
+    {
+      "symbol": "func_ov075_021160dc",
+      "address": "0x021160dc",
+      "size": "0x0000004c",
+      "legacy_source": "src/func_ov075_021160dc.cpp",
+      "ordinal": 12
+    }
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 13,
+    "functions_declared": 13,
+    "emission_order": "all 13 in ROM-ascending section order",
+    "linkcheck": "SCRATCH-LINK-VERIFIED 0x02115bac..0x02116128 at the original promotion; module fidelity 106/106 exact; ROM sha256 d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8 identical to stock control. The widen to 0x02115ab8..0x02116128 is not re-recorded here: tools/tubuild.py linkcheck refuses an already-enrolled text-only TU ('intact production requires one .text claim and at least one non-text claim'). Its link proof is the full `python tools/rombuild.py -j8`: 106/106 modules exact, 0 mismatching, ROM-build analysis PASS, with src/actors/dScEntry_c.cpp recompiled.",
+    "dsd_check_symbols": "FAIL on 9 pre-existing error lines; baseline control has the same 9 (0 new, 0 resolved). NOT green.",
+    "object": "build/tu/ov075-dScEntry_c/dScEntry_c.o (gitignored)",
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN10dScEntry_cD2Ev",
+        "_ZN10dScEntry_c15graphCallback_cC2Ev",
+        "_ZN10dScEntry_c6icon_cD0Ev",
+        "_ZN10dScEntry_c6icon_cD2Ev",
+        "_ZN12OamAnimationD2Ev"
+      ],
+      "deadstripped": [
+        "_ZN10dScEntry_c15graphCallback_cC2Ev",
+        "_ZN10dScEntry_c6icon_cD0Ev",
+        "_ZN10dScEntry_c6icon_cD2Ev",
+        "_ZN10dScEntry_cD2Ev",
+        "_ZN12OamAnimationD2Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        13,
+        14,
+        15,
+        16,
+        18,
+        32,
+        33,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "data": [
+        "_ZTV10dScEntry_c",
+        "_ZTI10dScEntry_c",
+        "_ZTS10dScEntry_c",
+        "_ZTI8dScene_c",
+        "_ZTS8dScene_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTI9dThIcon_c",
+        "_ZTS9dThIcon_c",
+        "_ZTIN8dGraph_c10callback_cE",
+        "_ZTSN8dGraph_c10callback_cE",
+        "_ZTIN10dScEntry_c6icon_cE",
+        "_ZTSN10dScEntry_c6icon_cE",
+        "_ZTVN10dScEntry_c6icon_cE",
+        "_ZTIN10dScEntry_c15graphCallback_cE",
+        "_ZTSN10dScEntry_c15graphCallback_cE",
+        "_ZTVN10dScEntry_c15graphCallback_cE"
+      ],
+      "dataExternalized": [
+        "_ZTI10dScEntry_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dScene_c",
+        "_ZTI9dThIcon_c",
+        "_ZTIN10dScEntry_c15graphCallback_cE",
+        "_ZTIN10dScEntry_c6icon_cE",
+        "_ZTIN8dGraph_c10callback_cE",
+        "_ZTS10dScEntry_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dScene_c",
+        "_ZTS9dThIcon_c",
+        "_ZTSN10dScEntry_c15graphCallback_cE",
+        "_ZTSN10dScEntry_c6icon_cE",
+        "_ZTSN8dGraph_c10callback_cE",
+        "_ZTV10dScEntry_c",
+        "_ZTVN10dScEntry_c15graphCallback_cE",
+        "_ZTVN10dScEntry_c6icon_cE"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  },
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN10dScEntry_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Compiler-generated base-object destructor. dScEntry_c declares its destructor out of line, so mwccarm emits all three variants; under this file's `#pragma defer_codegen off` the group emits D1, D0, D2, and D1/D0 reproduce the cartridge byte for byte at 0x02115ab8 and 0x02115b28. Nothing in the object references D2: the vtable's slots 16 and 17 name D1 and D0. config/arm9/overlays/*/symbols.txt gives _ZN10dScEntry_cD2Ev no home anywhere in the ROM, which is the cartridge saying the retail link dead-stripped the same unreferenced variant. Homeless, so a plain deadstrip rather than deadstrip-duplicate."
+    },
+    {
+      "symbol": "_ZTV10dScEntry_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov075",
+      "canonical_address": "0x0211d304",
+      "reason": "This class's own record. This TU defines dScEntry_c's key function -- the destructor, the first DECLARED non-inline virtual -- so mwcc emits the whole inheritance chain's typeinfo as vague linkage. The cartridge keeps its canonical copy at ov075:0x0211d304, outside this TU's only licensed range (.text 0x02115ab8-0x02116128), so dsd delinks it from the cartridge independently and discarding this object's copy cannot cost the image a byte. romdata_check compares the emitted copy against the cartridge, relocations applied, before production isolation discards it."
+    },
+    {
+      "symbol": "_ZTI10dScEntry_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov075",
+      "canonical_address": "0x0211c8f8",
+      "reason": "This class's own record. This TU defines dScEntry_c's key function -- the destructor, the first DECLARED non-inline virtual -- so mwcc emits the whole inheritance chain's typeinfo as vague linkage. The cartridge keeps its canonical copy at ov075:0x0211c8f8, outside this TU's only licensed range (.text 0x02115ab8-0x02116128), so dsd delinks it from the cartridge independently and discarding this object's copy cannot cost the image a byte. romdata_check compares the emitted copy against the cartridge, relocations applied, before production isolation discards it."
+    },
+    {
+      "symbol": "_ZTS10dScEntry_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov075",
+      "canonical_address": "0x0211c904",
+      "reason": "This class's own record. This TU defines dScEntry_c's key function -- the destructor, the first DECLARED non-inline virtual -- so mwcc emits the whole inheritance chain's typeinfo as vague linkage. The cartridge keeps its canonical copy at ov075:0x0211c904, outside this TU's only licensed range (.text 0x02115ab8-0x02116128), so dsd delinks it from the cartridge independently and discarding this object's copy cannot cost the image a byte. romdata_check compares the emitted copy against the cartridge, relocations applied, before production isolation discards it."
+    },
+    {
+      "symbol": "_ZTI8dScene_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914d4",
+      "reason": "Ancestor passenger. This TU defines dScEntry_c's key function -- the destructor, the first DECLARED non-inline virtual -- so mwcc emits the whole inheritance chain's typeinfo as vague linkage. The cartridge keeps its canonical copy at arm9:0x020914d4, outside this TU's only licensed range (.text 0x02115ab8-0x02116128), so dsd delinks it from the cartridge independently and discarding this object's copy cannot cost the image a byte. romdata_check compares the emitted copy against the cartridge, relocations applied, before production isolation discards it."
+    },
+    {
+      "symbol": "_ZTS8dScene_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914b0",
+      "reason": "Ancestor passenger. This TU defines dScEntry_c's key function -- the destructor, the first DECLARED non-inline virtual -- so mwcc emits the whole inheritance chain's typeinfo as vague linkage. The cartridge keeps its canonical copy at arm9:0x020914b0, outside this TU's only licensed range (.text 0x02115ab8-0x02116128), so dsd delinks it from the cartridge independently and discarding this object's copy cannot cost the image a byte. romdata_check compares the emitted copy against the cartridge, relocations applied, before production isolation discards it."
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78",
+      "reason": "Ancestor passenger. This TU defines dScEntry_c's key function -- the destructor, the first DECLARED non-inline virtual -- so mwcc emits the whole inheritance chain's typeinfo as vague linkage. The cartridge keeps its canonical copy at arm9:0x02086e78, outside this TU's only licensed range (.text 0x02115ab8-0x02116128), so dsd delinks it from the cartridge independently and discarding this object's copy cannot cost the image a byte. romdata_check compares the emitted copy against the cartridge, relocations applied, before production isolation discards it."
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54",
+      "reason": "Ancestor passenger. This TU defines dScEntry_c's key function -- the destructor, the first DECLARED non-inline virtual -- so mwcc emits the whole inheritance chain's typeinfo as vague linkage. The cartridge keeps its canonical copy at arm9:0x02086e54, outside this TU's only licensed range (.text 0x02115ab8-0x02116128), so dsd delinks it from the cartridge independently and discarding this object's copy cannot cost the image a byte. romdata_check compares the emitted copy against the cartridge, relocations applied, before production isolation discards it."
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70",
+      "reason": "Ancestor passenger. This TU defines dScEntry_c's key function -- the destructor, the first DECLARED non-inline virtual -- so mwcc emits the whole inheritance chain's typeinfo as vague linkage. The cartridge keeps its canonical copy at arm9:0x02086d70, outside this TU's only licensed range (.text 0x02115ab8-0x02116128), so dsd delinks it from the cartridge independently and discarding this object's copy cannot cost the image a byte. romdata_check compares the emitted copy against the cartridge, relocations applied, before production isolation discards it."
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60",
+      "reason": "Ancestor passenger. This TU defines dScEntry_c's key function -- the destructor, the first DECLARED non-inline virtual -- so mwcc emits the whole inheritance chain's typeinfo as vague linkage. The cartridge keeps its canonical copy at arm9:0x02086e60, outside this TU's only licensed range (.text 0x02115ab8-0x02116128), so dsd delinks it from the cartridge independently and discarding this object's copy cannot cost the image a byte. romdata_check compares the emitted copy against the cartridge, relocations applied, before production isolation discards it."
+    },
+    {
+      "symbol": "_ZN10dScEntry_c15graphCallback_cC2Ev",
+      "disposition": "deadstrip",
+      "reason": "Compiler-generated base-object constructor variant for the nested graphCallback_c. The cartridge defines only the complete-object C1 at 0x021160b4; graphCallback_c is never constructed as a base subobject, so no C2 exists in the ROM."
+    },
+    {
+      "symbol": "_ZN10dScEntry_c6icon_cD0Ev",
+      "disposition": "deadstrip",
+      "reason": "Compiler-generated deleting destructor variant for the nested icon_c. icon_c instances live only as the 9-element array member at dScEntry_c+0x70 and are destroyed as an array, never individually deleted, so the cartridge never emitted a D0 for it."
+    },
+    {
+      "symbol": "_ZN10dScEntry_c6icon_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Compiler-generated base-object destructor variant for the nested icon_c. The cartridge defines only _ZN10dScEntry_c6icon_cD1Ev (0x02115bac); no symbols.txt in the tree defines a D2 and nothing relocates to one."
+    },
+    {
+      "symbol": "_ZN12OamAnimationD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Compiler-generated base-object destructor variant for OamAnimation. The cartridge defines only _ZN12OamAnimationD1Ev (0x02115bc8); no D2 exists in the ROM."
+    },
+    {
+      "symbol": "_ZTI9dThIcon_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov001",
+      "canonical_address": "0x020ad478",
+      "reason": "Vague-linkage typeinfo record for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at ov001:0x020ad478, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTS9dThIcon_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov001",
+      "canonical_address": "0x020ad480",
+      "reason": "Vague-linkage typeinfo NAME string for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at ov001:0x020ad480, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTIN8dGraph_c10callback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208ee04",
+      "reason": "Vague-linkage typeinfo record for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x0208ee04, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTSN8dGraph_c10callback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208ee24",
+      "reason": "Vague-linkage typeinfo NAME string for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x0208ee24, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTIN10dScEntry_c6icon_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov075",
+      "canonical_address": "0x0211c8e0",
+      "reason": "Typeinfo record for a class this TU defines out of line, so mwccarm anchors the record here. Its cartridge home is ov075:0x0211c8e0, in .data -- outside the 0x02115ab8..0x02116128 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTSN10dScEntry_c6icon_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov075",
+      "canonical_address": "0x0211ca1c",
+      "reason": "Typeinfo name string for a class this TU defines out of line, so mwccarm anchors the record here. Its cartridge home is ov075:0x0211ca1c, in .data -- outside the 0x02115ab8..0x02116128 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTVN10dScEntry_c6icon_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov075",
+      "canonical_address": "0x0211c94c",
+      "reason": "Vtable for a class this TU defines out of line, so mwccarm anchors the record here. Its cartridge home is ov075:0x0211c94c, in .data -- outside the 0x02115ab8..0x02116128 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTIN10dScEntry_c15graphCallback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov075",
+      "canonical_address": "0x0211c8ec",
+      "reason": "Typeinfo record for a class this TU defines out of line, so mwccarm anchors the record here. Its cartridge home is ov075:0x0211c8ec, in .data -- outside the 0x02115ab8..0x02116128 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTSN10dScEntry_c15graphCallback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov075",
+      "canonical_address": "0x0211cb44",
+      "reason": "Typeinfo name string for a class this TU defines out of line, so mwccarm anchors the record here. Its cartridge home is ov075:0x0211cb44, in .data -- outside the 0x02115ab8..0x02116128 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTVN10dScEntry_c15graphCallback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov075",
+      "canonical_address": "0x0211ca3c",
+      "reason": "Vtable for a class this TU defines out of line, so mwccarm anchors the record here. Its cartridge home is ov075:0x0211ca3c, in .data -- outside the 0x02115ab8..0x02116128 .text run this entry claims."
+    }
+  ],
+  "promoted_source": "src/actors/dScEntry_c.cpp",
+  "boundary_evidence": [
+    "PARTIAL PROMOTION. The linker run holding dScEntry_c is ov075 0x02115ab8..0x0211a854, 82 functions shared with OamAnimation (build/tu_map.json, tools/tu_map.py; `tubuild list` names it ov075/OamAnimation+dScEntry_c). src/actors/dScEntry_c.cpp licenses the contiguous sub-range 0x02115ab8..0x02116128 -- thirteen of those 82, from dScEntry_c's own D1 to func_ov075_021160dc. The class's other seven one-function shards sit at 0x0211a210..0x0211a854, on the far side of an unenrolled hole.",
+    "WHY THE UPPER SIXTY-NINE CANNOT JOIN: the next function, func_ov075_02116128 (0xf4), does not match. It is the recorded register-allocation near-miss of notes/mwccarm-codegen.md 6bo (div 20, ~60,000 compiles, the shared-TU hypothesis measured in both forms), and its source carries a NONMATCHING banner. config/arm9/overlays/ov075/delinks.txt has NO entry covering 0x02116128..0x021165b0 -- that function and func_ov075_0211621c -- so dsd serves those bytes from the ROM. src/unnamed/ov075/func_ov075_02117bc4.c is enrolled but carries no `complete` marker. A delinks entry is a single contiguous .text claim (zero of the tree's entries carry two), so a licensed range cannot step over 0x02116128; everything above it, the factories included, keeps its own shard until that function closes.",
+    "DESTRUCTOR FORM. The cartridge places dScEntry_c's D1 (0x02115ab8) BELOW its D0 (0x02115b28). Under deferred codegen the out-of-line `dScEntry_c::~dScEntry_c() {}` emitted D0 before D1 (measured at the original promotion: 13/13 bytes, but `licensed .text functions are not emitted in ROM address order`), and the in-class form emitted no pair at all because no factory is in range to instantiate the class. The form shipped here is ov003/dScStarSel_c's and ov006/dScMgFlower_c's: `#pragma defer_codegen off` above every function, the file rewritten in ROM-ascending order, and the unchanged out-of-line destructor defined first. It emits D1, D0, D2; D1 and D0 reproduce the cartridge and D2 is unreferenced and deadstripped. The destructor is dScEntry_c's first declared non-inline virtual, so this TU is the key function and now also emits _ZTV10dScEntry_c and the typeinfo chain up to fBase_c, each deadstrip-data against its cartridge home.",
+    "WHAT THE WIDENED RANGE PROVED. `python tools/tubuild.py verify ov075/dScEntry_c`: 13/13 MATCH, objisolate clean, reloc-destinations clean, all 13 in ROM-ascending emission order, compiler-only policy accepted. `tubuild linkcheck` refuses an already-enrolled text-only TU (see verification.linkcheck), so the link proof is the full `python tools/rombuild.py -j8`: 106/106 modules exact, 0 mismatching, ROM-build analysis PASS. The original promotion's SCRATCH-LINK-VERIFIED record for 0x02115bac..0x02116128 is kept in verification.linkcheck; `dsd check symbols --fail` failed there on 9 error lines, all 9 present in the baseline control too, so it was not green then and is not reported as such now.",
+    "THE FIVE HOMELESS COMPILER-ONLY FUNCTIONS ARE NOT DUPLICATES. _ZN10dScEntry_cD2Ev, _ZN10dScEntry_c6icon_cD2Ev, _ZN10dScEntry_c6icon_cD0Ev, _ZN12OamAnimationD2Ev and _ZN10dScEntry_c15graphCallback_cC2Ev are emitted by mwccarm and defined by no symbols.txt in the tree, so they take a plain `deadstrip`, not `deadstrip-duplicate` (which requires a configured ROM home another source owns). The nineteen RTTI/vtable records take `deadstrip-data`; every canonical home is in .data, outside the claimed .text run."
+  ]
+}

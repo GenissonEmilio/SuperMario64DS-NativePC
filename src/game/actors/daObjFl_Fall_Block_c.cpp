@@ -1,29 +1,52 @@
 //cpp
 /**
- * Lethal Lava Land falling block.
+ * Lethal Lava Land falling block (FL_KUZURE).
  *
  * No fields. InitResources / CleanupResources hand this overlay's
- * model and collision files to daObjFallBlock_c's shared ov098
- * helpers.
- * func_ov098_0213a794 loads slot 0 with Model::LoadFile, slot 1
- * with dBgW_Kc::LoadFile, slot 2 as CLPS into SetFile. ov022 sinit
- * constructs those SharedFilePtrs as file IDs 1529 / 1530.
+ * model, KCL, and CLPS to the shared ov098 helpers.
+ * daObjFallBlock_c_InitResources loads the model with Model::LoadFile,
+ * the KCL with dBgW_Kc::LoadFile, and the CLPS into SetFile. The ov022
+ * sinit constructs those SharedFilePtrs as file IDs 1529 and 1530.
  *
- * deslop
- * Leftover: func_ov098_0213a794 / func_ov098_0213a2cc are still the
- *   linker names of daObjFallBlock_c Init/Cleanup (the base leaves
- *   those slots pure virtual). Naming belongs in ov098.
- * Leftover: data_ov022_0211427c is overlay .data this TU does not
- *   own; the BMD/KCL SharedFilePtrs stay data_ov022_*, CLPS is
- *   data_ov064_0211ba8c.
- * Leftover: factory is still src/d_a_obj_fl_fall_block.c, outside
- *   this TU.
+ * daObjFl_Fall_Block_c_classInit is reconstructed (RTTI
+ * daObjFl_Fall_Block_c, FL_KUZURE registry). Retail does not store
+ * that spelling.
+ *
+ */
+/* leftovers: CleanupResources stays a call to func_ov098_0213a2cc.
+ * Retail 0x02112434 is 0x14 bytes and only loads that symbol plus
+ * data_ov022_0211427c. The callee calls dBgW::IsEnabled and
+ * dBgW::Disable on mMeshCollider, then SharedFilePtr::Release on the
+ * model and KCL slots. Those three calls are the body in ov098, not
+ * this leaf. data_ov022_0211427c is overlay .data this TU does not own.
+ * It points at data_ov022_02114648 (model), data_ov022_02114640 (KCL)
+ * and data_ov064_0211ba8c (CLPS). g_profile_FL_KUZURE lives outside
+ * this TU.
  */
 
 #include "daObjFl_Fall_Block_c.h"
 #include "SharedFilePtr.h"
 
 struct CLPS_Block;
+
+/* File-scope objects at the end of this file construct the two resource
+ * handles (model file 0x5f9, collision file 0x5fa). Those definitions
+ * are this file's static initializer. The wrapper names are local; the
+ * handle constructors and destructors are the ROM resource-family
+ * functions, aliased in the manifest. */
+struct FallBlockModelFile : SharedFilePtr {
+    u32 words[2];
+
+    FallBlockModelFile(u32 fileID);
+    ~FallBlockModelFile();
+};
+
+struct FallBlockCollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    FallBlockCollisionFilePtr(u32 fileID);
+    ~FallBlockCollisionFilePtr();
+};
 
 struct ResourceDescriptor {
     SharedFilePtr *model;
@@ -35,14 +58,20 @@ typedef char ResourceDescriptor_size_must_be_0x0c[
 
 extern "C" {
 int func_ov098_0213a2cc(daObjFl_Fall_Block_c *self, ResourceDescriptor *descriptor);
-int func_ov098_0213a794(daObjFl_Fall_Block_c *self, ResourceDescriptor *descriptor);
+int daObjFallBlock_c_InitResources(daObjFallBlock_c *self, ResourceDescriptor *descriptor);
 extern ResourceDescriptor data_ov022_0211427c;
+}
+
+// @symbol daObjFl_Fall_Block_c_classInit
+extern "C" daObjFl_Fall_Block_c *daObjFl_Fall_Block_c_classInit()
+{
+    return new daObjFl_Fall_Block_c();
 }
 
 // @symbol _ZN20daObjFl_Fall_Block_c13InitResourcesEv
 int daObjFl_Fall_Block_c::InitResources()
 {
-    return func_ov098_0213a794(this, &data_ov022_0211427c);
+    return daObjFallBlock_c_InitResources(this, &data_ov022_0211427c);
 }
 
 // @symbol _ZN20daObjFl_Fall_Block_c16CleanupResourcesEv
@@ -53,3 +82,9 @@ int daObjFl_Fall_Block_c::CleanupResources()
 
 // @symbol _ZN20daObjFl_Fall_Block_cD1Ev
 // @symbol _ZN20daObjFl_Fall_Block_cD0Ev
+
+/* Static-init globals (was the handwritten __sinit_ov022_02112fe4 shard).
+ * Definition order is the retail initializer's construction order: the
+ * model handle (file 0x5f9), then the collision handle (file 0x5fa). */
+FallBlockModelFile data_ov022_02114648(0x5f9);
+FallBlockCollisionFilePtr data_ov022_02114640(0x5fa);

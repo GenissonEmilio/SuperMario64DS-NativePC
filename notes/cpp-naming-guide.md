@@ -173,7 +173,7 @@ When decompiling, you will frequently encounter these top classes. The number of
 
 *   **Player** (246 methods) - Extremely complex state machines (`St_*_Init`, `St_*_Main`).
 *   **Actor** (81 methods) - Base behaviors, spawning patterns.
-*   **Stage** (44 methods)
+*   **dScStage_c** (44 methods)
 *   **Heap** (31 methods)
 *   **Sound** (29 methods)
 *   **WithMeshClsn** (27 methods)

@@ -2,10 +2,10 @@
 #define TEXTURESEQUENCE_H
 
 #include "types.h"
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 #include "math/Fix12.h"
 
-/* Animation child that drives BTP-file playback, vtable _ZTV15TextureSequence at 0x0208e7d4:
+/* dExtFrameCtrl_c child that drives BTP-file playback, vtable _ZTV15TextureSequence at 0x0208e7d4:
  * two slots, the destructor pair, nothing else. Update is a plain method;
  * Prepare is static, for the reason set out below.
  *
@@ -41,46 +41,32 @@ struct ModelComponents;
 struct BMD_File;
 struct SharedFilePtr;
 
-/* Only the header words UpdateFileOffsets touches are typed. */
+/* Only the header words UpdateFileOffsets touches are typed. texRecords
+   and palRecords are the name-lookup tables Prepare indexes -- 8-byte
+   { s16 resourceId; u16 pad; char *name; } records per func_02046d50's
+   Tbl view -- and seqRecords the 0xc-byte sequence table alongside them;
+   each holds file-relative offsets that UpdateFileOffsets rebases. */
 struct BTP_File {
     u16 unk_00;
-    u16 numTexRecords;         /* 0x02 - 8-byte records at unk_04 */
-    char *unk_04;              /* 0x04 - fixed up on load */
-    u16 numPalRecords;         /* 0x08 - 8-byte records at unk_0c */
+    u16 numTexRecords;         /* 0x02 - 8-byte records at texRecords */
+    char *texRecords;          /* 0x04 - fixed up on load */
+    u16 numPalRecords;         /* 0x08 - 8-byte records at palRecords */
     u16 pad_0a;
-    char *unk_0c;              /* 0x0c */
+    char *palRecords;          /* 0x0c */
     char *unk_10;              /* 0x10 */
     char *unk_14;              /* 0x14 */
     char *unk_18;              /* 0x18 */
-    u16 numSeqRecords;         /* 0x1c - 0xc-byte records at unk_20; the ROM reads a halfword */
+    u16 numSeqRecords;         /* 0x1c - 0xc-byte records at seqRecords; the ROM reads a halfword */
     u16 pad_1e;
-    char *unk_20;              /* 0x20 */
+    char *seqRecords;          /* 0x20 */
 };
-struct TextureSequence : Animation {
+struct TextureSequence : dExtFrameCtrl_c {
     BTP_File *file;           /* 0x10 */
 
     /* --- vtable: the destructor pair only. --- */
     virtual ~TextureSequence();                       /* slots 0 (D1), 1 (D0) */
 
-    /* HOST-ONLY VTABLE-SHAPE PIN. The ROM's _ZTV15TextureSequence has TWO
-       slots, D1 at 0 and D0 at 1 (0208e7d4 = 02015a2c, 0208e7d8 =
-       02015a00; the words are quoted in hal/model_dtor_seat.cpp). MSVC
-       folds the destructor pair into one ??_E slot, so the host table had
-       ONE slot -- and the ROM's own destructors for daDemo_c::anmModel_c
-       hand-index slot 1 of this table, (*(VFN)((*(int **)p)[1]))(p), which
-       on the host read the next class's RTTI pointer out of .rdata and
-       called it (c0000005 at RVA 0x0043e298 = &??_R4MaterialChanger, on
-       the opening cutscene). This declaration gives the host table the
-       ROM's second slot, holding the ROM's own body for it, the DELETING
-       half. __cdecl because the only readers are those four ROM bodies and
-       their VFN typedef is a plain void (*)(void *) with the receiver
-       pushed as a stack word; nothing MSVC generates ever indexes 1. Host
-       only: mwccarm never sees it, so no matched body changes. */
-#ifdef SM64DS_PLATFORM_PC
-    virtual void __cdecl RomSlot1D0();      /* ROM _ZTV15TextureSequence[1] */
-#endif
-
-    /* DECLARED, never defined as a method here -- src/_ZN15TextureSequenceC1Ev.cpp
+    /* DECLARED, never defined as a method here -- src/engine/model/TextureSequence.cpp
        owns C1 (notes/ctor-migration.md section 2). */
     TextureSequence();
 

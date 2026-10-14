@@ -6,7 +6,7 @@
  * than to a neighbour.
  *
  * SIZE 0x5044, from the factory's own `_ZN7fBase_cnwEj(0x5044)`
- * (src/d_s_mg_slot3.c). The evidenced field span stops at 0x5043,
+ * (dScMgSlot3_c_classInit in src/actors/dScMgSlots.cpp). The evidenced field span stops at 0x5043,
  * so the trailing byte is alignment, not unclaimed space.
  *
  * TABLE at 0x4f38, constructed by func_ov006_020c221c and destroyed by
@@ -15,9 +15,10 @@
  * Nothing reads inside the table itself, so its size is bounded only by
  * what follows it, and that bound is 0xac, not the 0xb8 the first draft of
  * this header claimed: a THREE-ELEMENT s32 array sits at 0x4fe4, indexed by
- * five of this class's own files (_ZN12dScMgSlot3_c6RenderEv.cpp's own local
+ * five of this class's methods (the legacy Render's local
  * `struct T4fe4 { char pad[0x4fe4]; int vals[3]; }` names it outright, and
- * 0210bdb0.cpp, 0210af64.c, 0210adac.c and 0210ab08.c all index it as
+ * InitResources, func_ov006_0210af64, func_ov006_0210adac and
+ * func_ov006_0210ab08 all index it as
  * `[i]` or `+ i*4`). It closes exactly on unk_4ff0. Left opaque up to
  * there rather than guessed at, as dScMgCard_c.h leaves its own.
  *
@@ -30,8 +31,8 @@
  * all four are dScMgBase_c's own and are already declared there.
  *
  * THE DESTRUCTOR IS NOT DEFINED INLINE -- a leaf, no RTTI descendants of
- * its own. Defined for real in src/_ZN12dScMgSlot3_cD1Ev.cpp; D0Ev.cpp
- * carries an identical copy. No separate operator delete is needed --
+ * its own. Its definition in src/actors/dScMgSlots.cpp emits both
+ * destructor variants. No separate operator delete is needed --
  * dScMgBase_c, two levels up, already provides one.
  *
  * SM64DS RTTI names the implementation dScMgSlot3_c. The reconstructed factory
@@ -45,18 +46,7 @@
 extern "C" int func_ov006_020c21e4(char *t); /* decl_common.h's own signature */
 
 struct dScMgSlot3_c : dScMgSingle3DBase_c {
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgSlot3_c();   /* no slot */
-#else
-    virtual ~dScMgSlot3_c();   /* D1 and D0 */
-#endif
+    virtual ~dScMgSlot3_c();
 
     /* This class's own overrides, read off the ROM's vtable: the slots where the
        table differs from dScMgSingle3DBase_c's. The ones recovered off this
@@ -68,15 +58,15 @@ struct dScMgSlot3_c : dScMgSingle3DBase_c {
        already declares is implicitly virtual, so each reuses an existing slot
        and adds no field, and the 0x5044 assert below still holds. The
        destructor above is declared first and out of line, so it stays this
-       class's KEY FUNCTION and neither of these translation units emits
+       class's key function; the production TU owns the compiler-emitted
        _ZTV12dScMgSlot3_c. */
-    s32 InitResources();   /* slot  0 -- src/_ZN12dScMgSlot3_c13InitResourcesEv.cpp */
+    s32 InitResources();   /* slot  0 */
     virtual void OnYoshiTryEat(int arg);               /* slot 18 */
     virtual int  OnAimedAtWithEgg();                   /* slot 29 */
     virtual void OnAimedAtWithEggReturnVec();          /* slot 30 */
     virtual void Virtual80();                          /* slot 32 */
-    s32 Behavior();        /* slot  6 -- src/_ZN12dScMgSlot3_c8BehaviorEv.cpp */
-    s32 Render();          /* slot  9 -- src/_ZN12dScMgSlot3_c6RenderEv.cpp */
+    s32 Behavior();        /* slot  6 */
+    s32 Render();          /* slot  9 */
 
     u8  pad_4f38[0xac];     /* 0x4f38 -- opaque table, see file banner */
     s32 mReelPos[3];        /* 0x4fe4 -- Fix12 scroll of each reel; seeded to a

@@ -2,11 +2,10 @@
  * (zero RTTI edges name dScMgSlot1_c as a base).
  *
  * Own vtable slots (python tools/rtti_vtables.py --own dScMgSlot1_c): 0
- * (InitResources), 6 (Behavior -- declared, body not decompiled, see below),
+ * (InitResources), 6 (Behavior),
  * 9 (Render), 16
- * (D1), 17 (D0), 18 (own new slot -- stays a raw extern "C" helper,
- * src/func_ov006_0210c674.c, same precedent as every other dScMgBase_c
- * leaf's slot 18), 27 (OnHitByMegaChar), 28 (OnHitFromUnderneath).
+ * (D1), 17 (D0), 18 (OnYoshiTryEat), 27 (OnHitByMegaChar), and
+ * 28 (OnHitFromUnderneath).
  * rtti_vtables.py --own also reports slot 36 (dScMgSmartball_c_classInit);
  * that one is SPURIOUS -- address-gap math confirms it: the vtable data
  * symbol ends exactly 0x90 bytes (36 words) before the unrelated
@@ -20,22 +19,19 @@
  * that address genuinely is Render (confirmed by vtable slot identity and
  * by matching every sibling's Render shape).
  *
- * BEHAVIOR (slot 6) IS DECLARED BUT NOT DECOMPILED. dScMgSlot1_c's own
- * Behavior -- 0x81c bytes at ov006:0x0210c9e0 -- has never been matched: its
- * .text range (0x0210c9e0..0x0210d1fc) has no entry anywhere in
- * config/arm9/overlays/ov006/delinks.txt, so it is served, unenrolled, by
- * the module's gap object straight from the ROM dump (tools/rombuild.py's
- * own banner: "every address range NOT enrolled is supplied by a delinked
- * gap object carrying the original ROM bytes"). There is still no C source
- * to convert -- that is original matching work, a different and much larger
- * task than this struct-to-class migration.
+ * Behavior (ov006:0x0210c9e0..0x0210d1fc, 0x81c bytes) is byte-exact since
+ * 2026-10-12. The 19-word residue that notes/mwccarm-codegen.md section 6cm
+ * banked as a compiler floor was a source-shape artefact: the draft named
+ * the object two ways (members and a char* with literal offsets), and that
+ * is what made 2004/b56 fold the hoisted touch-record address. Spelled
+ * through members alone it reproduces the cartridge.
  *
  * The DECLARATION is nevertheless required, and an earlier revision of this
  * banner was wrong to say otherwise. It claimed "this class's own vtable
  * data, data_ov006_0213eb40, is never compiler-emitted either -- only
  * aliased -- so the real ROM vtable word for slot 6 is untouched". That
  * stopped being true once the destructor became this class's key function:
- * _ZTV12dScMgSlot1_c IS emitted, from src/_ZN12dScMgSlot1_cD1Ev.cpp, and
+ * _ZTV12dScMgSlot1_c IS emitted, from src/actors/dScMgSlots.cpp, and
  * tools/romdata_check.py byte-compares it against the cartridge. With
  * Behavior undeclared mwcc wrote dScMgBase_c's own body (0x020b0618) into
  * slot 6 where the cartridge holds 0x0210c9e0, and the whole table scored
@@ -73,17 +69,13 @@
  * dScMgBase_c's own fields start at 0x50) -- accessed via raw offset
  * arithmetic on a char* cast, not added as a named field anywhere.
  *
- * 0x4706 is read only by the unmigrated slot-18 helper (itself called from
- * InitResources via a vtable-shim, but not a field InitResources/Render/D1/
- * D0 touch directly) -- same precedent dScMgPachinko2_c.h documents for its
- * own offset 0xbc: stays raw padding here, and the slot-18 helper reaches
- * it (and 0x46b4) via a raw offset cast rather than a named field, so it no
- * longer includes this header.
+ * OnYoshiTryEat still accesses the byte at 0x4706 through an offset cast.
+ * That byte remains inside pad_4705 until its role is recovered.
  *
  * slots 27/28 (OnHitByMegaChar/OnHitFromUnderneath) are real overrides.  The
  * names were independently recovered on dScMgBase_c's own copies at the same
- * two slots (src/_ZN11dScMgBase_c15OnHitByMegaCharEv.cpp and
- * .../_ZN11dScMgBase_c19OnHitFromUnderneathEv.cpp, both of which this class's
+ * two slots (dScMgBase_c::OnHitByMegaChar and ::OnHitFromUnderneath in
+ * src/minigames/d_s_mg_base.cpp, both of which this class's
  * overrides call into), and on many unrelated fBase_c descendants across other
  * overlays -- a shared, fixed collision-event slot pair used across both the
  * dActor_c and dScene_c branches, not a coincidence of numbering.
@@ -163,7 +155,7 @@ struct dScMgSlot1_c : dScMgBase_c {
     virtual ~dScMgSlot1_c();   /* D1 and D0 */
 #endif
     virtual s32 InitResources();                       /* slot  0 */
-    virtual s32 Behavior();     /* slot  6 -- ov006 0x0210c9e0, not decompiled */
+    virtual s32 Behavior();     /* slot  6 -- ov006 0x0210c9e0, nonmatching draft */
     virtual s32 Render();                               /* slot  9 */
     /* All three override dScMgBase_c -- slots 18, 27 and 28 -- so the base
        fixes every index below and declaration order no longer decides any of
@@ -178,20 +170,22 @@ struct dScMgSlot1_c : dScMgBase_c {
     u8  pad_4690[0xc];      /* 0x4690 -- embedded object, own type unknown */
     u8  pad_469c[0x8];      /* 0x469c -- embedded object, own type unknown */
     u32 unk_46a4[3];         /* 0x46a4 */
-    u8  pad_46b0[0x4];
+    s32 unk_46b0;            /* 0x46b0 -- reel-spin sound handle (Behavior) */
     s32 unk_46b4;            /* 0x46b4 */
-    u8  pad_46b8[0x4];
+    s32 unk_46b8;            /* 0x46b8 -- payout multiplier (Behavior) */
     s32 unk_46bc;            /* 0x46bc */
     u8  unk_46c0[0x15];      /* 0x46c0 */
     u8  pad_46d5[0x2a];
     u8  unk_46ff[3];         /* 0x46ff */
     u8  unk_4702[3];         /* 0x4702 */
-    u8  pad_4705[0x4];       /* covers 0x4706, touched only by the
-                                 unmigrated slot 18 helper -- see banner */
+    u8  unk_4705;            /* 0x4705 -- reels stopped by touch this spin (Behavior) */
+    u8  pad_4706[0x2];       /* 0x4706 used by OnYoshiTryEat */
+    u8  unk_4708;            /* 0x4708 -- reel speed table row (Behavior) */
     u8  unk_4709;            /* 0x4709 */
     u8  unk_470a;            /* 0x470a */
     u8  unk_470b;            /* 0x470b */
-    u8  pad_470c[0x4];
+    u8  unk_470c;            /* 0x470c -- state timer, DecIfAbove0_Byte (Behavior) */
+    u8  pad_470d[0x3];
 };
 
 #ifndef SM64DS_PLATFORM_PC

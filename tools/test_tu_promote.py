@@ -101,23 +101,6 @@ class IntactPromotion(unittest.TestCase):
                 "src/actors/TU.cpp#First", "src/Unrelated.cpp"])
             self.assertEqual(data["_note"], TP.TR.NOTE)
 
-    def test_attribution_update_appends_without_reordering_existing_overrides(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = pathlib.Path(td)
-            path = root / "attribution.json"
-            path.write_text(
-                '{"overrides":{"src/Z.cpp":"zed","src/A.cpp":"aye"}}\n',
-                encoding="utf-8")
-            plans = [{"dest": "src/actors/TU.cpp", "functions": [{
-                "symbol": "First", "legacy_source": "src/First.cpp"}]}]
-            with mock.patch.object(TP, "REPO", root):
-                prepared = TP.attribution_update(
-                    plans, {"src/First": "author"})
-                TP.rewrite_attribution(plans, {}, prepared)
-            data = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(list(data["overrides"]), [
-                "src/Z.cpp", "src/A.cpp", "src/actors/TU.cpp#First"])
-
     def test_single_member_converted_identity_stays_path_based(self):
         with tempfile.TemporaryDirectory() as td:
             config = pathlib.Path(td) / "config"

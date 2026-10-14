@@ -39,8 +39,8 @@ data_ov017_02111928 kind:data(any) addr:0x02111928 ambiguous
 data_ov017_0211192c kind:data(any) addr:0x0211192c ambiguous
 data_ov017_02111944 kind:data(any) addr:0x02111944 ambiguous
 data_ov017_02111960 kind:data(any) addr:0x02111960 ambiguous
-__sinit_ov017_0211198c kind:function(arm,size=0x6c) addr:0x0211198c
-.p__sinit_ov017_0211198c kind:data(word) addr:0x021119f8
+__sinit_d_a_obj_ks_water.cpp kind:function(arm,size=0x6c) addr:0x0211198c
+.p__sinit_d_a_obj_ks_water.cpp kind:data(word) addr:0x021119f8
 data_ov017_02111a00 kind:data(any) addr:0x02111a00
 data_ov017_02111a04 kind:data(any) addr:0x02111a04
 data_ov017_02111a08 kind:data(any) addr:0x02111a08
@@ -78,5 +78,6 @@ data_ov017_02111c20 kind:data(any) addr:0x02111c20 ambiguous
 data_ov017_02111c54 kind:data(any) addr:0x02111c54 ambiguous
 data_ov017_02111c80 kind:bss addr:0x02111c80
 data_ov017_02111c88 kind:bss addr:0x02111c88
-data_ov017_02111c90 kind:bss addr:0x02111c90
-data_ov017_02111c9c kind:bss addr:0x02111c9c
+@149 kind:bss addr:0x02111c90
+@480 kind:bss addr:0x02111c9c
+data_ov017_02111ca8 kind:bss addr:0x02111ca8

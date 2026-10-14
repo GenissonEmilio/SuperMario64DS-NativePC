@@ -33,12 +33,13 @@ struct dScMgPachinko_ball {
     s32 unk20;          /* 0x20 */
     u16 unk24;          /* 0x24 */
     u16 angle;          /* 0x26 */
-    u16 unk28;          /* 0x28 */
+    u16 timer;          /* 0x28 seeded with 16 when a hit forces state 6;
+                           only ever written here, so the name is inferred */
     u8  unk2a[0x2];     /* 0x2a */
     u8  active;         /* 0x2c */
     u8  unk2d;          /* 0x2d */
     u8  unk2e;          /* 0x2e */
-    u8  unk2f;          /* 0x2f */
+    u8  state;          /* 0x2f 0 rests; a hit below 5 jumps to 6 */
     u8  unk30;          /* 0x30 */
     u8  unk31[0x2];     /* 0x31 */
     u8  unk33;          /* 0x33 */
@@ -60,16 +61,17 @@ struct dScMgPachinko_shot {
     s32 velY;           /* 0x0c */
     s32 offX;           /* 0x10, grab offset from the stylus */
     s32 offY;           /* 0x14 */
-    u8  unk18[0x8];     /* 0x18 */
+    s32 prevX;          /* 0x18 x the aim line was last drawn from */
+    s32 prevY;          /* 0x1c */
     s32 speed;          /* 0x20 */
     s32 unk24;          /* 0x24 */
     s32 sound;          /* 0x28, sound handle */
     s32 dist;           /* 0x2c, last frame's distance from the launcher */
     u16 angle;          /* 0x30 */
     u16 timer;          /* 0x32 */
-    u8  unk34;          /* 0x34 */
-    u8  state;          /* 0x35 */
-    u8  unk36;          /* 0x36 */
+    u8  active;         /* 0x34 clear: this shot is gone */
+    u8  state;          /* 0x35 at least 2 before it can hit; 2 sits on the launcher */
+    u8  unk36;          /* 0x36 cleared with active on a hit; not read here */
     u8  unk37;          /* 0x37 */
 };
 
@@ -78,26 +80,64 @@ struct dScMgPachinko_shot {
 typedef char dScMgPachinko_shot_size_must_be_0x38[sizeof(struct dScMgPachinko_shot) == 0x38 ? 1 : -1];
 #endif
 
-struct dScMgPachinko_c : dScMgBase_c {
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgPachinko_c();   /* no slot */
-#else
-    virtual ~dScMgPachinko_c();   /* D1 and D0 */
+/* A score popup: 30 of them at 0x4cf0 (func_ov006_020fbb2c). */
+struct dScMgPachinko_popup {
+    s32 x;              /* 0x00 */
+    s32 y;              /* 0x04 */
+    u16 timer;          /* 0x08 */
+    u16 value;          /* 0x0a */
+};
+
+/* One of the three swinging rows at 0x4e58 (func_ov006_020fa844 swings
+   angle between -0x1000 and 0x1000; dir picks the way). */
+struct dScMgPachinko_row {
+    s32 x;              /* 0x00 */
+    s32 y;              /* 0x04 */
+    u8  pad08[0x8];
+    s16 angle;          /* 0x10 */
+    s16 unk12;          /* 0x12 */
+    u8  active;         /* 0x14 */
+    u8  visible;        /* 0x15 */
+    u8  dir;            /* 0x16 */
+    u8  pad17;
+};
+
+/* The two pipes at 0x4ea0. */
+struct dScMgPachinko_pipe {
+    s32 acc;            /* 0x00 */
+    u8  pad04[0x4];
+    s32 vel;            /* 0x08 */
+    u8  pad0c[0x4];
+    u16 timer;          /* 0x10 */
+    u8  pad12;
+    u8  out2;           /* 0x13 */
+    u8  state;          /* 0x14 */
+    u8  out;            /* 0x15 */
+    u8  frame;          /* 0x16 */
+    u8  unk17;          /* 0x17 */
+    u8  unk18;          /* 0x18 */
+    u8  pad19;
+    u8  laps;           /* 0x1a */
+    u8  pad1b;
+};
+
+#ifndef SM64DS_PLATFORM_PC
+typedef char dScMgPachinko_popup_size_must_be_0xc[sizeof(dScMgPachinko_popup) == 0xc ? 1 : -1];
+typedef char dScMgPachinko_row_size_must_be_0x18[sizeof(dScMgPachinko_row) == 0x18 ? 1 : -1];
+typedef char dScMgPachinko_pipe_size_must_be_0x1c[sizeof(dScMgPachinko_pipe) == 0x1c ? 1 : -1];
 #endif
+
+struct dScMgPachinko_c : dScMgBase_c {
+    virtual ~dScMgPachinko_c();
     virtual s32 InitResources();  /* slot 0 */
     virtual s32 Behavior();       /* slot 6 */
     virtual s32 Render();         /* slot 9 */
     virtual void OnYoshiTryEat(int arg);               /* slot 18 */
 
     dScMgPachinko_ball mBall[30];    /* 0x4660, stride 0x38, ends 0x4cf0 */
-    u8  pad_4cf0[0x1e8];
+    dScMgPachinko_popup mPopup[30];  /* 0x4cf0 */
+    dScMgPachinko_row   mRow[3];     /* 0x4e58 */
+    dScMgPachinko_pipe  mPipe[2];    /* 0x4ea0 */
     dScMgPachinko_shot mShot[24];    /* 0x4ed8, stride 0x38; 24 puts the
                                         siblings' own 0x5418 field exactly
                                         one record past the end */

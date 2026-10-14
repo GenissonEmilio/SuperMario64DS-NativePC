@@ -381,7 +381,7 @@ def find_definition(code, stem):
 def find_method_definition(code, cls_last, method):
     """Find `Class::Method(...) { ... }` -- the already-real-C++ files.
 
-    src/_ZN13ExpandingHeap9VAllocateEji.cpp is written as
+    The ExpandingHeap::VAllocate body in src/engine/heap/Heap.cpp is written as
     `void* ExpandingHeap::VAllocate(u32 size, int align)`, so there is no explicit
     `this` parameter at all and members are bare identifiers.
     """

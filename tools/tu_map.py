@@ -432,8 +432,8 @@ def cluster(fns, vt_for_module, factory_for_module, blind):
     two TUs. But the RTTI class `daSnowman_c` spans 0x2125eb8-0x21261d4, straddling
     that boundary, and a naive union merged them into one. The sinit count settles
     it: ov081 has five named classes and five sinits, so five TUs is right and the
-    merge was wrong. ov090 fails identically (`daMenbo_c` bridging MantaRay and
-    Skeeter; four classes, four sinits).
+    merge was wrong. ov090 fails identically (`daMenbo_c` bridging daManta_c and
+    daMenbo_c; four classes, four sinits).
 
     The reason RTTI can lie here and symbols cannot: a mangled name is direct
     evidence about the function that carries it, whereas an RTTI span is inferred

@@ -19,13 +19,13 @@ _ZN14daObjRc_Hane_c6RenderEv kind:function(arm,size=0x24) addr:0x0211169c
 _ZN14daObjRc_Hane_c8BehaviorEv kind:function(arm,size=0x194) addr:0x021116c0
 _ZN14daObjRc_Hane_c13InitResourcesEv kind:function(arm,size=0xb0) addr:0x02111854
 daObjRc_Hane_c_classInit kind:function(arm,size=0x38) addr:0x02111904
-_ZN10DonutBlockD1Ev kind:function(arm,size=0x4c) addr:0x0211193c
-_ZN10DonutBlockD0Ev kind:function(arm,size=0x60) addr:0x02111988
-_ZN10DonutBlock16CleanupResourcesEv kind:function(arm,size=0x44) addr:0x021119e8
-_ZN10DonutBlock16OnPendingDestroyEv kind:function(arm,size=0x4) addr:0x02111a2c
-_ZN10DonutBlock6RenderEv kind:function(arm,size=0x34) addr:0x02111a30
-_ZN10DonutBlock8BehaviorEv kind:function(arm,size=0x154) addr:0x02111a64
-_ZN10DonutBlock13InitResourcesEv kind:function(arm,size=0xec) addr:0x02111bb8
+_ZN16daObjRc_Tikuwa_cD1Ev kind:function(arm,size=0x4c) addr:0x0211193c
+_ZN16daObjRc_Tikuwa_cD0Ev kind:function(arm,size=0x60) addr:0x02111988
+_ZN16daObjRc_Tikuwa_c16CleanupResourcesEv kind:function(arm,size=0x44) addr:0x021119e8
+_ZN16daObjRc_Tikuwa_c16OnPendingDestroyEv kind:function(arm,size=0x4) addr:0x02111a2c
+_ZN16daObjRc_Tikuwa_c6RenderEv kind:function(arm,size=0x34) addr:0x02111a30
+_ZN16daObjRc_Tikuwa_c8BehaviorEv kind:function(arm,size=0x154) addr:0x02111a64
+_ZN16daObjRc_Tikuwa_c13InitResourcesEv kind:function(arm,size=0xec) addr:0x02111bb8
 func_ov036_02111ca4 kind:function(arm,size=0x20) addr:0x02111ca4
 func_ov036_02111cc4 kind:function(arm,size=0x14) addr:0x02111cc4
 daObjRc_Tikuwa_c_classInit kind:function(arm,size=0x3c) addr:0x02111cd8
@@ -50,20 +50,20 @@ _ZN15daObjRcCarpet_c6RenderEv kind:function(arm,size=0x50) addr:0x02112378
 _ZN15daObjRcCarpet_c8BehaviorEv kind:function(arm,size=0x84) addr:0x021123c8
 _ZN15daObjRcCarpet_c13InitResourcesEv kind:function(arm,size=0xec) addr:0x0211244c
 daObjRcCarpet_c_classInit kind:function(arm,size=0x78) addr:0x02112538
-__sinit_ov036_021125b0 kind:function(arm,size=0x6c) addr:0x021125b0
-__sinit_ov036_0211261c kind:function(arm,size=0x6c) addr:0x0211261c
-__sinit_ov036_02112688 kind:function(arm,size=0x40) addr:0x02112688
-__sinit_ov036_021126c8 kind:function(arm,size=0x68) addr:0x021126c8
-__sinit_ov036_02112730 kind:function(arm,size=0x6c) addr:0x02112730
-__sinit_ov036_0211279c kind:function(arm,size=0x1a8) addr:0x0211279c
-__sinit_ov036_02112944 kind:function(arm,size=0x98) addr:0x02112944
-.p__sinit_ov036_021125b0 kind:data(word) addr:0x021129dc
-.p__sinit_ov036_0211261c kind:data(word) addr:0x021129e0
-.p__sinit_ov036_02112688 kind:data(word) addr:0x021129e4
-.p__sinit_ov036_021126c8 kind:data(word) addr:0x021129e8
-.p__sinit_ov036_02112730 kind:data(word) addr:0x021129ec
-.p__sinit_ov036_0211279c kind:data(word) addr:0x021129f0
-.p__sinit_ov036_02112944 kind:data(word) addr:0x021129f4
+__sinit_d_a_obj_rc_buranko.cpp kind:function(arm,size=0x6c) addr:0x021125b0
+__sinit_d_a_obj_rc_kaitendai.cpp kind:function(arm,size=0x6c) addr:0x0211261c
+__sinit_d_a_obj_rc_hane.cpp kind:function(arm,size=0x40) addr:0x02112688
+__sinit_daObjRc_Tikuwa_c.cpp kind:function(arm,size=0x68) addr:0x021126c8
+__sinit_d_a_obj_rc_guruguru.cpp kind:function(arm,size=0x6c) addr:0x02112730
+__sinit_d_a_obj_rc_dorifu.cpp kind:function(arm,size=0x1a8) addr:0x0211279c
+__sinit_d_a_obj_rc_carpet.cpp kind:function(arm,size=0x98) addr:0x02112944
+.p__sinit_d_a_obj_rc_buranko.cpp kind:data(word) addr:0x021129dc
+.p__sinit_d_a_obj_rc_kaitendai.cpp kind:data(word) addr:0x021129e0
+.p__sinit_d_a_obj_rc_hane.cpp kind:data(word) addr:0x021129e4
+.p__sinit_daObjRc_Tikuwa_c.cpp kind:data(word) addr:0x021129e8
+.p__sinit_d_a_obj_rc_guruguru.cpp kind:data(word) addr:0x021129ec
+.p__sinit_d_a_obj_rc_dorifu.cpp kind:data(word) addr:0x021129f0
+.p__sinit_d_a_obj_rc_carpet.cpp kind:data(word) addr:0x021129f4
 data_ov036_02112a00 kind:data(any) addr:0x02112a00
 data_ov036_02112a04 kind:data(any) addr:0x02112a04
 data_ov036_02112a08 kind:data(any) addr:0x02112a08
@@ -177,13 +177,12 @@ data_ov036_02113c20 kind:data(any) addr:0x02113c20 ambiguous
 data_ov036_02113c28 kind:data(any) addr:0x02113c28 ambiguous
 _ZTV14daObjRc_Hane_c kind:data(any) addr:0x02113c38
 data_ov036_02113c48 kind:data(any) addr:0x02113c48 ambiguous
-data_ov036_02113cb4 kind:data(any) addr:0x02113cb4
-data_ov036_02113cc0 kind:data(any) addr:0x02113cc0
+_ZTI16daObjRc_Tikuwa_c kind:data(any) addr:0x02113cb4
+_ZTS16daObjRc_Tikuwa_c kind:data(any) addr:0x02113cc0
 data_ov036_02113ccc kind:data(any) addr:0x02113ccc ambiguous
 g_profile_RC_TIKUWA kind:data(any) addr:0x02113cd4 ambiguous
 data_ov036_02113cec kind:data(any) addr:0x02113cec ambiguous
 data_ov036_02113cf4 kind:data(any) addr:0x02113cf4 ambiguous
-_ZTV10DonutBlock kind:data(any) addr:0x02113cf8
 _ZTV16daObjRc_Tikuwa_c kind:data(any) addr:0x02113cf8
 data_ov036_02113d30 kind:data(any) addr:0x02113d30 ambiguous
 data_ov036_02113d78 kind:data(any) addr:0x02113d78
@@ -207,49 +206,46 @@ data_ov036_02113ff4 kind:data(any) addr:0x02113ff4 ambiguous
 data_ov036_02114010 kind:data(any) addr:0x02114010 ambiguous
 data_ov036_02114020 kind:bss addr:0x02114020
 data_ov036_02114028 kind:bss addr:0x02114028
-data_ov036_02114030 kind:bss addr:0x02114030
-data_ov036_0211403c kind:bss addr:0x0211403c
+@387 kind:bss addr:0x02114030
+@386 kind:bss addr:0x0211403c
 data_ov036_02114048 kind:bss addr:0x02114048
 data_ov036_02114050 kind:bss addr:0x02114050
-data_ov036_02114058 kind:bss addr:0x02114058
-data_ov036_02114064 kind:bss addr:0x02114064
+@624 kind:bss addr:0x02114058
+@162 kind:bss addr:0x02114064
 data_ov036_02114070 kind:bss addr:0x02114070
-data_ov036_02114078 kind:bss addr:0x02114078
+@307 kind:bss addr:0x02114078
 data_ov036_02114084 kind:bss addr:0x02114084
 data_ov036_0211408c kind:bss addr:0x0211408c
-data_ov036_02114094 kind:bss addr:0x02114094
-data_ov036_021140a0 kind:bss addr:0x021140a0
+@151 kind:bss addr:0x02114094
+@150 kind:bss addr:0x021140a0
 data_ov036_021140ac kind:bss addr:0x021140ac
 data_ov036_021140b4 kind:bss addr:0x021140b4
-data_ov036_021140b8 kind:bss addr:0x021140b8 ambiguous
-data_ov036_021140bc kind:bss addr:0x021140bc
-data_ov036_021140c8 kind:bss addr:0x021140c8
+@67 kind:bss addr:0x021140bc
+@68 kind:bss addr:0x021140c8
 data_ov036_021140d4 kind:bss addr:0x021140d4
 data_ov036_021140dc kind:bss addr:0x021140dc
 data_ov036_021140e4 kind:bss addr:0x021140e4
 data_ov036_021140ec kind:bss addr:0x021140ec
 data_ov036_021140f4 kind:bss addr:0x021140f4
-data_ov036_021140f8 kind:bss addr:0x021140f8 ambiguous
 data_ov036_021140fc kind:bss addr:0x021140fc
 data_ov036_02114104 kind:bss addr:0x02114104
-data_ov036_02114108 kind:bss addr:0x02114108 ambiguous
 data_ov036_0211410c kind:bss addr:0x0211410c
 data_ov036_02114114 kind:bss addr:0x02114114
 data_ov036_0211411c kind:bss addr:0x0211411c
-data_ov036_02114124 kind:bss addr:0x02114124
-data_ov036_02114130 kind:bss addr:0x02114130
-data_ov036_0211413c kind:bss addr:0x0211413c
-data_ov036_02114148 kind:bss addr:0x02114148
-data_ov036_02114154 kind:bss addr:0x02114154
-data_ov036_02114160 kind:bss addr:0x02114160
-data_ov036_0211416c kind:bss addr:0x0211416c
-data_ov036_02114178 kind:bss addr:0x02114178
-data_ov036_0211417c kind:bss addr:0x0211417c ambiguous
-data_ov036_02114184 kind:bss addr:0x02114184
-data_ov036_02114190 kind:bss addr:0x02114190
+@362 kind:bss addr:0x02114124
+@363 kind:bss addr:0x02114130
+@364 kind:bss addr:0x0211413c
+@365 kind:bss addr:0x02114148
+@366 kind:bss addr:0x02114154
+@367 kind:bss addr:0x02114160
+@368 kind:bss addr:0x0211416c
+@370 kind:bss addr:0x02114178
+@361 kind:bss addr:0x02114184
+@369 kind:bss addr:0x02114190
 data_ov036_0211419c kind:bss addr:0x0211419c
 data_ov036_021141a4 kind:bss addr:0x021141a4
 data_ov036_021141ac kind:bss addr:0x021141ac
-data_ov036_021141b4 kind:bss addr:0x021141b4
-data_ov036_021141c0 kind:bss addr:0x021141c0
-data_ov036_021141cc kind:bss addr:0x021141cc
+@453 kind:bss addr:0x021141b4
+@455 kind:bss addr:0x021141c0
+@454 kind:bss addr:0x021141cc
+data_ov036_021141d8 kind:bss addr:0x021141d8

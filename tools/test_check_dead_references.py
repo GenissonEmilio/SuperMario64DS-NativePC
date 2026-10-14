@@ -65,6 +65,22 @@ class DetectionTests(unittest.TestCase):
             t.write("tools/thing.py", '"""See include/dEnemyBase_c.h for the layout."""\n')
         self.assertEqual(self._dead(build), set())
 
+    def test_a_plus_in_a_filename_is_part_of_the_path(self):
+        """A joint TU name is one path. The scanner must not stop at the plus."""
+        dead = self._dead(lambda t: t.write(
+            "notes/cite.md",
+            "See src_tu/actors/Koopa+KoopaSmall.cpp for the fold.\n"
+            "C++/CLI and g++/clang are not paths.\n"))
+        self.assertEqual(
+            dead, {("notes/cite.md", "src_tu/actors/Koopa+KoopaSmall.cpp")})
+
+    def test_a_live_plus_path_is_not_reported(self):
+        def build(t):
+            t.write("config/tu_manifest.d/ov062/Koopa+KoopaSmall.json", "{}\n")
+            t.write("notes/cite.md",
+                    "The manifest is config/tu_manifest.d/ov062/Koopa+KoopaSmall.json.\n")
+        self.assertEqual(self._dead(build), set())
+
     def test_a_dead_reference_in_a_comment_is_detected(self):
         dead = self._dead(lambda t: t.write(
             "tools/thing.py", "x = 1  # cf. notes/gone.md\n"))
@@ -111,6 +127,73 @@ class DetectionTests(unittest.TestCase):
             t.write("src/legacy.cpp", "int legacy;\n")
             t.write("src/promoted.cpp", "// promoted from src/legacy.cpp\n")
         self.assertEqual(self._dead(build), set())
+
+
+class StagingCiterTests(unittest.TestCase):
+    """`src_tu/` is a citer we skip and a target we still resolve.
+
+    A staging file is not in the ROM build and its own promotion deletes it, so a
+    stale path in its comments cannot reach anyone -- while the promotion that
+    deletes the shard it names would red this gate on the way past. The opposite
+    direction is the one that catches a rename, and must keep failing.
+    """
+
+    DEAD_SHARD = "src/" + "_ZN8BookShotD0Ev.c"
+
+    def _dead(self, build):
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Tree(tmp)
+            build(t)
+            old = CDR.REPO
+            CDR.REPO = t.root
+            try:
+                _f, _r, dead = CDR.dead_references(t.root)
+            finally:
+                CDR.REPO = old
+            return {(f, r) for f, r in dead}
+
+    def _comment(self, ref):
+        return "// assembled from " + ref + "\n"
+
+    def test_a_dead_reference_inside_src_tu_is_not_reported(self):
+        dead = self._dead(lambda t: t.write(
+            "src_tu/actors/BookShot.cpp", self._comment(self.DEAD_SHARD)))
+        self.assertEqual(dead, set())
+
+    def test_the_same_comment_outside_src_tu_is_still_reported(self):
+        """The skip is scoped to the directory, not to the comment shape."""
+        dead = self._dead(lambda t: t.write(
+            "src/actors/BookShot.cpp", self._comment(self.DEAD_SHARD)))
+        self.assertEqual(dead, {("src/actors/BookShot.cpp", self.DEAD_SHARD)})
+
+    def test_a_reference_INTO_src_tu_still_fails(self):
+        """A rename that stranded a staging path is the case worth keeping."""
+        gone = "src_tu/" + "actors/Renamed.cpp"
+        dead = self._dead(lambda t: t.write(
+            "include/Thing.h", "/* see " + gone + " */\n"))
+        self.assertEqual(dead, {("include/Thing.h", gone)})
+
+    def test_a_live_reference_into_src_tu_resolves(self):
+        kept = "src_tu/" + "actors/Kept.cpp"
+
+        def build(t):
+            t.write(kept, "int kept;\n")
+            t.write("include/Thing.h", "/* see " + kept + " */\n")
+        self.assertEqual(self._dead(build), set())
+
+    def test_src_tu_is_a_known_topdir_but_not_a_scanned_citer(self):
+        self.assertIn("src_tu", CDR.TOPDIRS)
+        self.assertIn("src_tu/", CDR.UNSCANNED_CITERS)
+
+    def test_no_baselined_citer_lives_in_an_unscanned_directory(self):
+        """A banked pair we no longer scan would report as HEALED, which is a lie."""
+        for path in (CDR.BASELINE, CDR.CODE_BASELINE):
+            banked = json.loads(path.read_text(encoding="utf-8"))["known"]
+            citers = (banked.keys() if isinstance(banked, dict)
+                      else (row["file"] for row in banked))
+            stranded = sorted(c for c in citers
+                              if c.startswith(CDR.UNSCANNED_CITERS))
+            self.assertEqual(stranded, [], path.name + " banks unscanned citers")
 
 
 class NoiseTests(unittest.TestCase):

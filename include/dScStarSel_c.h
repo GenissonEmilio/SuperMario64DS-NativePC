@@ -85,6 +85,17 @@ struct dScStarSel_c : dScene_c {
     virtual s32  Behavior();                              /* slot  6 */
     virtual s32  Render();                                /* slot  9 */
     virtual void OnPendingDestroy();                      /* slot 12 */
+
+    /* Non-virtual. The address is the method name; no new vtable slot. Every
+       inbound call in the class's run passes this, and every access in each
+       body is a this-relative field of this class. */
+    s32  func_ov003_020adec0(u32 chr);
+    s32  func_ov003_020adf50();
+    void func_ov003_020adfc8();
+    void func_ov003_020ae0b0();
+    void func_ov003_020ae1a4(s32 value);
+    void func_ov003_020ae238();
+    void func_ov003_020ae358();
 };
 
 #ifndef SM64DS_PLATFORM_PC

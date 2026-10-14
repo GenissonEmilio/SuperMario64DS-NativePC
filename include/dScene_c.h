@@ -4,7 +4,7 @@
 #include "dBase_c.h"
 
 /* The scene root: fBase_c -> dBase_c -> dScene_c. Ten classes derive from it
- * directly; Stage (dScStage_c), BootScene (dScBoot_c) and dScEntry_c are the
+ * directly; dScStage_c, dScBoot_c and dScEntry_c are the
  * three this tree describes. It declares no data members of its own -- every
  * offset below 0x50 belongs to fBase_c.
  *
@@ -15,7 +15,7 @@
  * This header has no C spelling and cannot be included from a C file, because
  * dBase_c.h has none either.
  */
-struct FaderBrightness;
+struct dFdBrightness_c;
 
 /* The actor heap and its deallocator, for the inline operator delete below.
    Spelt exactly as include/decl_common.h spells it -- see the note in dActor_c.h. */
@@ -31,20 +31,9 @@ struct dScene_c : dBase_c {
     /* Declared first (key function) and DEFINED INLINE, both deliberately.
        MEASURED: every subclass destructor inlines this one, so a merely
        declared `virtual ~dScene_c();' emits `bl _ZN8dScene_cD2Ev' where the
-       ROM has none and costs 24 bytes in Stage's destructor alone. Do not move
+       ROM has none and costs 24 bytes in dScStage_c's destructor alone. Do not move
        it out of line. Overrides slots 16 (D1) and 17 (D0). */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScene_c() {}   /* no slot */
-#else
-    virtual ~dScene_c() {}   /* D1 and D0 */
-#endif
+    virtual ~dScene_c() {}
 
     /* dScene_c's own copy of dActor_c's inline operator delete. mwcc inlines
        the operator only when it finds it in the class itself or its IMMEDIATE
@@ -66,22 +55,11 @@ struct dScene_c : dBase_c {
 
     /* --- non-virtual, and takes `this`: BeforeInitResources `bl`s here
            with r0 untouched. --- */
-    /* `bool`, not `int`. The body returns only 0 or 1 (`mov r0,#1` /
-       `moveq r0,#0`), so both spellings emit the same ARM bytes here and at
-       every call site, byte-verified. The reason to prefer `bool` is
-       Stage::BeforeInitResources, whose entire body is a tail call to this one:
-       vtable slot 1 is declared `bool`, and while the two types disagreed the
-       only ROM-faithful spelling over there was a bare call with no `return`,
-       because `return ResetFadersAndSound();` made the compiler insert an
-       int->bool normalisation the ROM does not have. With both sides `bool` the
-       `return` is free. That matters off the cartridge: a host compiler does not
-       promise to pass r0 through a returnless function, so slot 1 was handing
-       the host port garbage. See src/_ZN5Stage19BeforeInitResourcesEv.cpp. */
     bool ResetFadersAndSound();
 
     /* --- static: every call site in the ROM puts the first declared argument in
            r0, so none of these receives a `this`. --- */
-    static void SetFaders(FaderBrightness *fader);
+    static void SetFaders(dFdBrightness_c *fader);
     static void SetAndStopColorFader();
     static void StartSceneFade(u32 sceneID, u32 param, u16 fadeColor);
     static int  SetSceneToSpawn(u32 sceneID, u32 param);

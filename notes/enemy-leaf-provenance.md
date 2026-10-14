@@ -5,8 +5,8 @@ the offset. Where the bodies only *write* a field and nothing in the tree reads 
 back, the field stays `unk_NNN` and the reason is recorded — a name nobody can
 check is a claim the next reader would trust for nothing.
 
-Classes covered here: JetStream, Goomboss, daWanwan_c, BobOmb, Whomp,
-RollingIronBall, KoopaShell, Klepto, daMip_c, ChiefChilly.
+Classes covered here: daWater_Hakidasi_c, daKuriKing_c, daWanwan_c, BobOmb, daBtn_c,
+daIbl_c, daShl_c, Klepto, daMip_c, daKing_Donketu_c.
 
 A recurring source of `unk_` in these headers is the `#else` C twin, which
 restates the whole `fBase_c -> dBase_c -> dActor_c -> dEnemyBase_c` chain flat.
@@ -28,15 +28,15 @@ once, here, rather than per class.
 
 ---
 
-## JetStream (`include/JetStream.h`, [ov064](../config/arm9/overlays/ov064/symbols.txt))
+## daWater_Hakidasi_c (`include/daWater_Hakidasi_c.h`, [ov064](../config/arm9/overlays/ov064/symbols.txt))
 
 | offset | name | evidence |
 | --- | --- | --- |
-| 0x300 | `mState` (`State *`) | `src/_ZN9JetStream8BehaviorEv.cpp` loads the pointer word at 0x300 every frame, tests the word at `+0x08` of what it points at, and if non-zero calls it as a pointer-to-member on `this`. That is the same object `Bullet::State` describes (`include/Bullet.h`, handler at +0x08) and the same `mState` spelling `Chuckya`, `ChiefChilly` and `daBakubaku_c` already use for it. Only `+0x08` is evidenced; the first two words stay padding. |
+| 0x300 | `mState` (`State *`) | `src/actors/daWater_Hakidasi_c.cpp` loads the pointer word at 0x300 every frame, tests the word at `+0x08` of what it points at, and if non-zero calls it as a pointer-to-member on `this`. That is the same object `daPropeller_Heyho_Fire_c::State` describes (`include/daPropeller_Heyho_Fire_c.h`, handler at +0x08) and the same `mState` spelling `daHolhei_c`, `daKing_Donketu_c` and `daBakubaku_c` already use for it. Only `+0x08` is evidenced; the first two words stay padding. |
 
 Left `unk_`:
 
-* **0x314, 0x318** — `src/_ZN9JetStream13InitResourcesEv.cpp` decodes both out of
+* **0x314, 0x318** — `src/actors/daWater_Hakidasi_c.cpp` decodes both out of
   the spawn word: `unk_314 = (param1 >> 12) & 0xf`, `unk_318 = param1 & 1` and then
   `if ((param1 & 0xf) > 1) unk_318 = 0`. Nothing in the tree reads either back, so
   the bytes say how they are *built* but nothing about what they *select*. A name
@@ -49,17 +49,17 @@ Byte-neutral cleanups made in the same pass (each re-verified with
   stand-in in favour of the declared `mState`; collapsed
   `*(short*)((char*)&mAngleX) = *(short*)((char*)&mPrevAngleX)` (and Y, Z) to plain
   member assignments; `(unsigned short*)((char*)&(*(u8 *)&unk_100))` to
-  `(unsigned short*)&unk_100`; [func_ov064_0211987c](../src/func_ov064_0211987c.c)`(((C*)this))` to `(this)`.
+  `(unsigned short*)&unk_100`; [func_ov064_0211987c](../src/actors/daWater_Hakidasi_c.cpp)`(((C*)this))` to `(this)`.
 * `InitResources` — `(dCcAc_c*)((char*)&(*(u8 *)&mdCcAc_c))` to `&mdCcAc_c`,
   `(dActor_c*)((char*)this)` to `(dActor_c*)this`.
 
 ---
 
-## Goomboss (`include/Goomboss.h`, [ov074](../config/arm9/overlays/ov074/symbols.txt))
+## daKuriKing_c (`include/daKuriKing_c.h`, [ov074](../config/arm9/overlays/ov074/symbols.txt))
 
 | offset | name | evidence |
 | --- | --- | --- |
-| 0x5d0 | `mSpawnPosX` | `src/_ZN8Goomboss13InitResourcesEv.cpp` copies `self+0x5c` (mPosX) into `self+0x5d0` once, immediately after the collision cylinders are sized, and nothing writes it again. |
+| 0x5d0 | `mSpawnPosX` | `InitResources` ([src/actors/daKuriKing_c.cpp](../src/actors/daKuriKing_c.cpp)) copies `self+0x5c` (mPosX) into `self+0x5d0` once, immediately after the collision cylinders are sized, and nothing writes it again. |
 | 0x5d4 | `mSpawnPosY` | same, from `self+0x60` (mPosY). |
 | 0x5d8 | `mSpawnPosZ` | same, from `self+0x64` (mPosZ). |
 
@@ -71,7 +71,7 @@ spells properly:
 | 0x09c | `mVertAccel` | `dActor_c`'s field; `InitResources` sets it to `-0xa000`, i.e. gravity. |
 | 0x0a0 | `mTerminalVelocity` | `dActor_c`'s field; `InitResources` sets it to `-0x3c000`. |
 | 0x3ac | `mCylClsnPos[9]` | The header's own note already said `unk_3b8..unk_3cc` were elements 1 and 2 of the C++ branch's `Vector3 mCylClsnPos[3]`. The twin now spells the whole array flat instead of six of its nine scalars. `Behavior` reads elements 1 and 2 as the two footfall positions. |
-| 0x3d8 | `mMaterialChangerFrame` | `mMaterialChanger` sits at 0x3d0 and its `Animation` base puts the 20.12 playback cursor at +0x08 (`include/Animation.h`). `InitResources` stores `data_ov074_02122e04[mSizeIndex] << 12` there — a frame number in 20.12. |
+| 0x3d8 | `mMaterialChangerFrame` | `mMaterialChanger` sits at 0x3d0 and its `Animation` base puts the 20.12 playback cursor at +0x08 (`include/dExtFrameCtrl_c.h`). `InitResources` stores `data_ov074_02122e04[mSizeIndex] << 12` there — a frame number in 20.12. |
 | 0x3f0 | `mTextureSequenceSpeed` | `mTextureSequence` sits at 0x3e4 and `Animation` puts playback speed at +0x0c. `InitResources` calls `SetFile(..., 0x1000, 0)` and then zeroes this word, freezing the sequence. |
 
 Byte-neutral cleanups (each re-verified, `2004/b56`):
@@ -82,9 +82,11 @@ Byte-neutral cleanups (each re-verified, `2004/b56`):
 * `Behavior` — `((char*)this)+0x40c` became `&mWithMeshClsn`, `+0x110` became
   `(char *)mdCc_cs`, `+0x74` became `&mCamSpacePosX`.
 
-`src/_ZN8Goomboss13InitResourcesEv.cpp` is left alone: it is an `extern "C"`
-function over a bare `char *self` that never includes the header at all, so its
-offsets are not member accesses to collapse.
+`InitResources` was left alone in this pass: at the time it was the standalone
+shard `_ZN12daKuriKing_c13InitResourcesEv.cpp`, an `extern "C"` function over a
+bare `char *self` that never included the header, so its offsets were not member
+accesses to collapse. It has since been folded into
+[src/actors/daKuriKing_c.cpp](../src/actors/daKuriKing_c.cpp) as a real method.
 
 ---
 
@@ -100,7 +102,7 @@ one-function files, now all consolidated into the promoted TU
 | 0x5ec | `mSpawnPosX` | `InitResources` copies `self+0x5c/0x60/0x64` into `self+0x5ec/0x5f0/0x5f4` and then adds `0xc8000` to each of the live position words, so these three are where the actor started. |
 | 0x5f0 | `mSpawnPosY` | as above, and `Behavior` clamps `mPosY` up to `mSpawnPosY + 0xc8000` every frame — the rest height the chomp hangs at. |
 | 0x5f4 | `mSpawnPosZ` | as above. |
-| 0x608 | `mStumpUniqueID` | `InitResources` calls `dActor_c::Spawn(0x1b, 0x11, &mPosX, ...)` and stores `spawned + 4` here. `fBase_c + 0x04` is `uniqueID` (`include/fBase_c.h`). ACTOR_SPAWN_TABLE at 0x02090864, entry 0x1b, points at 0x02135298 = `g_profile_PILE`; and the very next line writes `spawned + 0x320`, which `include/Stump.h` declares as `Stump::mBusy`. Two independent witnesses for the same class. |
+| 0x608 | `mStumpUniqueID` | `InitResources` calls `dActor_c::Spawn(0x1b, 0x11, &mPosX, ...)` and stores `spawned + 4` here. `fBase_c + 0x04` is `uniqueID` (`include/fBase_c.h`). ACTOR_SPAWN_TABLE at 0x02090864, entry 0x1b, points at 0x02135298 = `g_profile_PILE`; and the very next line writes `spawned + 0x320`, which `include/daObjPile_c.h` declares as `daObjPile_c::mBusy`. Two independent witnesses for the same class. |
 | 0x60c | `mFenceUniqueID` | `Behavior` lazily fills it with `dActor_c::FindWithActorID(0x29, 0)->uniqueID`. ACTOR_SPAWN_TABLE entry 0x29 points at 0x0211488c = `g_profile_WANWAN_SHUTTER` (historical alias `ChainChompFence_SpawnInfo`), in this same overlay. |
 | 0x61c | `mIsOnGround` | `Behavior` clears it at the top of the frame and sets it to 1 in exactly the branch that had to clamp `mPosY` up to the rest height. |
 | 0x61d | `mWasOnGround` | last statement of that block is `mWasOnGround = mIsOnGround`, and [func_ov014_02111fb8](../src/game/actors/d_a_wanwan.cpp) fires only when the clamp happens *and* `mWasOnGround == 0` — a rising-edge one-shot. |
@@ -145,9 +147,9 @@ the class and its members were renamed to the cartridge's own spelling.
 | offset | name | evidence |
 | --- | --- | --- |
 | 0x394 | `mMatrix[12]` | `InitResources` does `*(Matrix4x3 *)unk_394 = IDENTITY_MATRIX4X3;` — a 0x30-byte copy of the identity matrix. Kept as twelve words rather than typed `Matrix4x3`: several includers of this header do not pull `common.h`. |
-| 0x3dc | `mState` | `Behavior` branches on it three times and only on equality — `!= 5` guards the whole main body, `== 4` selects the egg/Chuckya hand-off, `== 0` allows the wall bounce. |
+| 0x3dc | `mState` | `Behavior` branches on it three times and only on equality — `!= 5` guards the whole main body, `== 4` selects the egg/daHolhei_c hand-off, `== 0` allows the wall bounce. |
 | 0x3f0 | `mHomeAngleY` | `InitResources`' last statement, `unk_3f0 = mAngleY`, sitting beside the `mHomePosX/Y/Z = mPos*` snapshot a few lines up. |
-| 0x3f3 | `mShouldRender` | `Render` is `if (unk_3f3 != 0) { ...draw... }` and nothing else; `InitResources` sets it to 1. Same role and same spelling as `Goomboss::mShouldRender`. |
+| 0x3f3 | `mShouldRender` | `Render` is `if (unk_3f3 != 0) { ...draw... }` and nothing else; `InitResources` sets it to 1. Same role and same spelling as `daKuriKing_c::mShouldRender`. |
 | 0x3f5 | `mVariant` | `InitResources` sets it to `param1 & 7` and immediately switches on it: 2 starts inert (sets the collision volume's hit bit, clears `mFlags` bit 0), 4 starts clear, anything else starts live. This header's own prose already called it the variant. |
 
 Left `unk_`:
@@ -184,12 +186,10 @@ with" flag rather than a counter.
 
 ---
 
-## Whomp (`include/Whomp.h`, [ov079](../config/arm9/overlays/ov079/symbols.txt))
+## daBtn_c (`include/daBtn_c.h`, [ov079](../config/arm9/overlays/ov079/symbols.txt))
 
-Bodies read: `src/_ZN5Whomp13InitResourcesEv.cpp`,
-`src/_ZN5Whomp8BehaviorEv.cpp`, `src/_ZN5Whomp6RenderEv.cpp`,
-`src/_ZN5Whomp16OnAimedAtWithEggEv.cpp`,
-`src/_ZN5Whomp15OnHitByMegaCharER6Player.cpp`.
+Bodies read: `InitResources`, `Behavior`, `Render`, `OnAimedAtWithEgg` and
+`OnHitByMegaChar`, all now in `src/game/actors/d_a_btn.cpp`.
 
 | offset | name | evidence |
 | --- | --- | --- |
@@ -231,18 +231,17 @@ Byte-neutral cleanups (each re-verified, `2004/b56`):
 * `OnAimedAtWithEgg` — `*(unsigned char*)(c+0x414)` and `*(unsigned short*)(c+0x8c)`
   became `mIsKing` and `(unsigned short)mAngleX`.
 
-**Landed as `dEnemyBase_c::mStateTimer`.** `Whomp::Behavior` increments it (as `u16`)
+**Landed as `dEnemyBase_c::mStateTimer`.** `daBtn_c::Behavior` increments it (as `u16`)
 once per frame and resets it to 0 the moment the state handler changes `mState`.
 That is a state-elapsed frame counter, which fits the 28 subclasses that declare
 the offset better than `unk_100` does.
 
 ---
 
-## RollingIronBall (`include/RollingIronBall.h`, ov100)
+## daIbl_c (`include/daIbl_c.h`, ov100)
 
-Bodies read: `src/_ZN15RollingIronBall13InitResourcesEv.cpp`,
-`src/_ZN15RollingIronBall8BehaviorEv.cpp`,
-`src/_ZN15RollingIronBall6RenderEv.cpp`.
+Bodies read (all in `src/actors/daIbl_c.cpp`): `daIbl_c::InitResources`,
+`daIbl_c::Behavior`, `daIbl_c::Render`.
 
 | offset | name | evidence |
 | --- | --- | --- |
@@ -275,7 +274,7 @@ Byte-neutral cleanups: six `((char *)this) + 0xNNN` member addresses in
 `*(unsigned char*)((char*)&unk_3d0)` became `mVariant`.
 
 **Tooling note.** `build_pin.verify` reports `999 word(s) differ` for
-`_ZN15RollingIronBall13InitResourcesEv` — *including on the untouched `HEAD`
+`_ZN7daIbl_c13InitResourcesEv` — *including on the untouched `HEAD`
 version of the file*, checked by restoring both the header and the body from
 `HEAD` and re-running. `match.extract_func` returns a 2-byte body for that
 symbol, so the isolated-compile path cannot see this function at all; it is the
@@ -284,7 +283,7 @@ whole-ROM build is the authority here and it is green.
 
 ---
 
-## KoopaShell (`include/KoopaShell.h`, ov102)
+## daShl_c (`include/daShl_c.h`, ov102)
 
 This header was already largely named. One correction and one collapse:
 
@@ -307,14 +306,14 @@ Byte-neutral cleanup: `Behavior`'s
 
 ---
 
-## Klepto (`include/Klepto.h`, [ov062](../config/arm9/overlays/ov062/symbols.txt))
+## daJango_c (`include/daJango_c.h`, [ov062](../config/arm9/overlays/ov062/symbols.txt))
 
-Bodies read: `src/_ZN6Klepto13InitResourcesEv.cpp`,
-`src/_ZN6Klepto8BehaviorEv.cpp`, `src/_ZN6Klepto6RenderEv.cpp`.
+The cartridge class is daJango_c. The bodies below were read when they were
+still one file each; they now live in `src/actors/daJango_c.cpp`.
 
 | offset | name | evidence |
 | --- | --- | --- |
-| 0x42c | `mState` (`void *`) | `Behavior` reads the word as a pointer, calls the pointer-to-member at its `+0x08` on `this` every frame, and compares it against the file-scope records [data_ov062_0211e14c](../config/arm9/overlays/ov062/symbols.txt) / [data_ov062_0211e15c](../config/arm9/overlays/ov062/symbols.txt) / [data_ov062_0211e17c](../config/arm9/overlays/ov062/symbols.txt) **by address**. [func_ov062_0211c658](../src/func_ov062_0211c658.cpp)(this, record) is the setter. |
+| 0x42c | `mState` (`void *`) | `Behavior` reads the word as a pointer, calls the pointer-to-member at its `+0x08` on `this` every frame, and compares it against the file-scope records [data_ov062_0211e14c](../config/arm9/overlays/ov062/symbols.txt) / [data_ov062_0211e15c](../config/arm9/overlays/ov062/symbols.txt) / [data_ov062_0211e17c](../config/arm9/overlays/ov062/symbols.txt) **by address**. `func_ov062_0211c658` in `src/actors/daJango_c.cpp` is the setter. |
 | 0x430 | `mPathNodePosX` | `PathPtr::GetNode(path, &unk_430, mPathNodeIndex)` writes the node here, and the star-carrying branch then does `mPosX = unk_430; mPosY = unk_434; mPosZ = unk_438;`. |
 | 0x434 | `mPathNodePosY` | as above. |
 | 0x438 | `mPathNodePosZ` | as above. |

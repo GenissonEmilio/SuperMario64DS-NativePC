@@ -73,7 +73,7 @@ blank actor-only fields for 0x08 entries.
 
 This two-family result has a close conceptual analogue in later EAD code, where
 the framework distinguishes base and actor profile declarations.  The public
-NSMBW decomp's pinned
+[NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) decomp's pinned
 [`f_profile.hpp`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/2e010f8708d8232c736b1ece507400dfd76aaa9c/include/game/framework/f_profile.hpp)
 materializes a `className##_classInit` wrapper and `g_profile_##profName` object
 from separate base/actor profile macros.  That is Tier B lineage evidence only;
@@ -138,7 +138,7 @@ MG_CURLING_J    -> dScMgCurling2_c
 Deriving a global from the class would erase genuine registry identity.  A
 source generator, if present, therefore plausibly accepted both a profile ID
 and a class, like the structural relationship visible in later EAD code.  A
-public NSMBW example is
+public [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) example is
 [`d_a_obj_fruit_tree.cpp`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/2e010f8708d8232c736b1ece507400dfd76aaa9c/source/dol/d_basesNP/bases/d_a_obj_fruit_tree.cpp),
 which supplies a profile token and a C++ class separately.  Again, this only
 provides a reconstruction prior.

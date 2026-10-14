@@ -63,6 +63,20 @@ def rename_undefined_symbols(raw, aliases):
     than the original and no other symbol points into that string.  Relocations,
     section contents, symbol values/bindings/types, and table indices are unchanged.
     """
+    return rename_symbols(raw, aliases, defined=False)
+
+
+def rename_defined_symbols(raw, aliases):
+    """Renumber exact compiler-local definitions in place under the same string-table rules.
+
+    mwcc numbers anonymous data (``@NNN``) per translation unit, so two TUs can each
+    define the same name as a global and collide in the scratch link. The caller's
+    manifest licenses a fleet-unique replacement; only that symbol's name bytes change.
+    """
+    return rename_symbols(raw, aliases, defined=True)
+
+
+def rename_symbols(raw, aliases, defined):
     requested = dict(aliases or {})
     if not requested:
         return bytes(raw), {"renamed": [], "error": None}
@@ -87,17 +101,19 @@ def rename_undefined_symbols(raw, aliases):
     out = bytearray(raw)
     offsets = [int(sym.entry["st_name"]) for sym in syms]
     for old, new in requested.items():
+        kind = "defined rename source" if defined else "undefined alias source"
         matches = [(index, sym) for index, sym in enumerate(syms) if sym.name == old]
         if len(matches) != 1:
             return None, {"renamed": rows, "error":
-                          f"undefined alias source {old} has {len(matches)} symbols"}
+                          f"{kind} {old} has {len(matches)} symbols"}
         index, sym = matches[0]
-        if sym["st_shndx"] != "SHN_UNDEF":
+        if (sym["st_shndx"] == "SHN_UNDEF") == defined:
             return None, {"renamed": rows, "error":
-                          f"undefined alias source {old} is a definition"}
+                          f"{kind} {old} is {'undefined' if defined else 'a definition'}"}
         if new in names and new not in requested:
             return None, {"renamed": rows, "error":
-                          f"canonical alias destination {new} already exists in object"}
+                          f"{'rename' if defined else 'canonical alias'} destination "
+                          f"{new} already exists in object"}
         old_bytes, new_bytes = old.encode("utf-8"), new.encode("utf-8")
         if len(new_bytes) > len(old_bytes):
             return None, {"renamed": rows, "error":
@@ -119,15 +135,25 @@ def rename_undefined_symbols(raw, aliases):
 
     check = ELFFile(io.BytesIO(bytes(out))).get_section_by_name(".symtab")
     got = [sym.name for sym in check.iter_symbols()]
+    # A simultaneous rename can legitimately reuse another source's spelling.
+    # Validate every indexed name, including untouched symbols, instead of
+    # requiring each old spelling to disappear from the whole table.
+    expected = [sym.name for sym in syms]
     for row in rows:
-        if got[row["symbolIndex"]] != row["to"] or row["from"] in got:
+        expected[row["symbolIndex"]] = row["to"]
+    if len(got) != len(expected):
+        return None, {"renamed": rows, "error":
+                      "post-rewrite symbol count differs from indexed rename plan"}
+    for index, name in enumerate(expected):
+        if got[index] != name:
             return None, {"renamed": rows, "error":
-                          f"post-rewrite symbol verification failed for {row['from']}"}
+                          f"post-rewrite symbol verification failed at index {index}: "
+                          f"expected {name}, got {got[index]}"}
     return bytes(out), {"renamed": rows, "error": None}
 
 
 def rewrite_symbol_bindings(raw, policies):
-    """Rewrite exact defined-symbol bindings in place, preserving every other bit."""
+    """Rewrite bindings and the local-symbol boundary without reordering symbols."""
     requested = dict(policies or {})
     if not requested:
         return bytes(raw), {"rewritten": [], "error": None}
@@ -146,8 +172,10 @@ def rewrite_symbol_bindings(raw, policies):
                           f"invalid binding policy for {name}: {policy!r}"}
         matches = [(index, sym) for index, sym in enumerate(syms) if sym.name == name]
         if len(matches) != 1:
+            present = sorted(sym.name for sym in syms if sym.name.startswith("@"))
             return None, {"rewritten": rows, "error":
-                          f"binding rewrite symbol {name} has {len(matches)} entries"}
+                          f"binding rewrite symbol {name} has {len(matches)} entries"
+                          f" (object @ symbols: {', '.join(present) or 'none'})"}
         index, sym = matches[0]
         if sym["st_shndx"] == "SHN_UNDEF" or sym["st_info"]["bind"] != policy[0]:
             return None, {"rewritten": rows, "error":
@@ -162,6 +190,21 @@ def rewrite_symbol_bindings(raw, policies):
         rows.append({"symbolIndex": index, "symbol": name,
                      "from": policy[0], "to": policy[1]})
     check = list(ELFFile(io.BytesIO(bytes(out))).get_section_by_name(".symtab").iter_symbols())
+    first_nonlocal = next((index for index, sym in enumerate(check)
+                           if sym["st_info"]["bind"] != "STB_LOCAL"), len(check))
+    if any(sym["st_info"]["bind"] == "STB_LOCAL"
+           for sym in check[first_nonlocal:]):
+        return None, {"rewritten": rows, "error":
+                      "binding rewrite would leave a local symbol after a nonlocal; "
+                      "symbol reordering is not supported"}
+    # ELF requires all locals to precede every nonlocal, with sh_info naming
+    # the first nonlocal. Promoting a suffix of locals changes that boundary
+    # even though every symbol index and relocation remains untouched.
+    import struct
+    symtab_index = next(index for index, section in enumerate(elf.iter_sections())
+                        if section.name == ".symtab")
+    struct.pack_into("<I" if elf.little_endian else ">I", out,
+                     _shdr_offset(elf, symtab_index) + 28, first_nonlocal)
     for row in rows:
         if check[row["symbolIndex"]]["st_info"]["bind"] != row["to"]:
             return None, {"rewritten": rows, "error":
@@ -363,6 +406,8 @@ def plan(raw, keep_symbol):
       drop        section indices to zero
       externalise symbol names to turn into imports (referenced by the survivor)
       dead        symbol names dropped and referenced by nothing
+      ztvRebase   whether a kept-text `_ZTV` relocation still needs the preamble
+                  taken off its addend -- true even when nothing is dropped
       error       why isolation is impossible, or None
       kind        machine-readable tag for an error a caller must branch on;
                   only NOT_A_FUNCTION today, absent for every other error
@@ -433,6 +478,7 @@ def plan(raw, keep_symbol):
     # than corrected: there is no enrolled instance to verify a correction against,
     # and fail-closed costs one function while fail-open corrupts a module.
     ext = set(externalise)
+    ztv_rebase = False
     for s in secs:
         if not isinstance(s, RelocationSection) or s.header["sh_info"] != keep:
             continue
@@ -495,8 +541,16 @@ def plan(raw, keep_symbol):
                                      f"addend {addend}; the ROM symbol is already the "
                                      f"slot array, so this would land {addend} past it"}
 
+            # The same test `_apply` makes before re-addending. A `new C` factory
+            # is the whole object -- nothing to drop, nothing to externalise -- and
+            # still stores UNDEF `_ZTV<C>` at addend 8, so `derive` must know.
+            if (sym.name.startswith("_ZTV") and addend >= VTABLE_PREAMBLE
+                    and (sym.name in ext or shndx in ("SHN_UNDEF", SHN_UNDEF))):
+                ztv_rebase = True
+
     return {"keep": keep, "drop": sorted(set(drop)), "externalise": sorted(externalise),
-            "dead": sorted(dead), "referenced": sorted(referenced), "error": None}
+            "dead": sorted(dead), "referenced": sorted(referenced),
+            "ztvRebase": ztv_rebase, "error": None}
 
 
 def plan_many(raw, keep_symbols):
@@ -677,11 +731,15 @@ def derive(raw, keep_symbol):
     drop, externalise and re-addend, and `isolate` is now this function plus a
     write. A caller that wants the derived object on disk under a DIFFERENT name
     (the TU case: one source, N object paths) writes the bytes itself.
+
+    The input comes back unchanged only when there is nothing to drop, nothing to
+    externalise and no `_ZTV` addend to rebase: an object that is already just the
+    function can still carry mwcc's preamble skip.
     """
     p = plan(bytes(raw), keep_symbol)
     if p.get("error"):
         return None, p
-    if not p["drop"] and not p["externalise"]:
+    if not p["drop"] and not p["externalise"] and not p["ztvRebase"]:
         return bytes(raw), p
     return _apply(raw, p, keep_symbol), p
 
@@ -1332,7 +1390,8 @@ def reorder_same_named_nontext_sections(raw, ordered_groups):
                         "sectionInfos": section_infos, "error": None}
 
 
-def rebias_object_symbols(raw, symbol_policies, normalize_undefined=False):
+def rebias_object_symbols(raw, symbol_policies, normalize_undefined=False,
+                          skip_undefined=None):
     """Move exact retained object symbols from storage start to public address point.
 
     C++ vtable definitions are the motivating case.  mwcc's symbol covers the full
@@ -1347,6 +1406,10 @@ def rebias_object_symbols(raw, symbol_policies, normalize_undefined=False):
     ``normalize_undefined``, raw references to undefined ``_ZTV`` imports lose the
     same ABI preamble from their addend; unlike a rebased local definition this fixes
     the address the repository's already-public import would otherwise resolve to.
+    ``skip_undefined`` names undefined ``_ZTV`` imports whose references are already
+    in the public convention -- a vtable this object defined and a compiler-only or
+    externalization policy then dropped, whose surviving references were re-addended
+    by that earlier pass and must not be corrected a second time.
     A policy may additionally split the preamble and public vtable range into exact
     symbols by reusing explicitly policy-owned symbol-table slots. A fitting name
     reuses the donor's exclusive string bytes in place. A longer name is appended to
@@ -1479,6 +1542,7 @@ def rebias_object_symbols(raw, symbol_policies, normalize_undefined=False):
 
     import struct
     endian = "<" if elf.little_endian else ">"
+    skipped = set(skip_undefined or ())
 
     # Moving the definition from storage start to public address point must not move
     # any resolved reference.  mwcc's live references use RELA/ABS32 with the ABI
@@ -1497,6 +1561,7 @@ def rebias_object_symbols(raw, symbol_policies, normalize_undefined=False):
             target_is_rebased = target.name in requested
             target_is_undefined = (normalize_undefined
                                    and target.name.startswith("_ZTV")
+                                   and target.name not in skipped
                                    and target["st_shndx"] in ("SHN_UNDEF", SHN_UNDEF))
             if not target_is_rebased and not target_is_undefined:
                 continue
@@ -1806,14 +1871,14 @@ def rebias_object_symbols(raw, symbol_policies, normalize_undefined=False):
 def isolate(obj, keep_symbol):
     """Apply `plan` to the object file in place. Returns the plan.
 
-    Idempotent: an object with nothing left to drop is rewritten to the same bytes,
-    so a cached object processed by an earlier build is not corrupted by a later
-    one."""
+    Writes only when the derived bytes differ. Expects the compiler's object:
+    re-running on its own output leaves a primary vptr store at 0, but would take
+    the preamble off a secondary store's remaining addend again. rombuild caches
+    the RAW object and isolates each fetched copy once."""
     raw = obj.read_bytes()
     out, p = derive(raw, keep_symbol)
-    if p.get("error") or not (p["drop"] or p["externalise"]):
-        return p
-    obj.write_bytes(out)
+    if out is not None and out != raw:
+        obj.write_bytes(out)
     return p
 
 

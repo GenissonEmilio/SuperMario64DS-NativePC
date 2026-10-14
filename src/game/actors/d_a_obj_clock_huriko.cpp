@@ -44,11 +44,21 @@
 #include "SharedFilePtr.h"
 #include "Sound.h"
 
+/* Model handles construct through func_02017acc and destroy through
+ * func_02017ab4. The manifest aliases those undefined members onto the ROM
+ * symbols. */
+struct ClockHurikoModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    ClockHurikoModelFilePtr(u32 fileID);
+    ~ClockHurikoModelFilePtr();
+};
+
 extern "C" {
 extern void Matrix4x3_FromRotationZXYExt(void *, int, int, int);
 void func_ov013_02111238(daObjClockHuriko_c *self);
 extern signed char data_02092110[];
-extern SharedFilePtr data_ov013_02112280;
+extern ClockHurikoModelFilePtr data_ov013_02112280;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -161,3 +171,7 @@ s32 daObjClockHuriko_c::CleanupResources()
  * it would emit a third symbol, D2, which has no address anywhere in the
  * cartridge. See the vtable comment in the header.
  */
+
+/* File-scope object: the pendulum model's SharedFilePtr, the one
+ * construction __sinit_d_a_obj_clock_huriko.cpp performs. */
+ClockHurikoModelFilePtr data_ov013_02112280(0x5b3);

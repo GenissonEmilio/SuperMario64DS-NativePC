@@ -140,7 +140,7 @@ def build_header(cls, old, sizes=None):
     tail = "".join(f"\n    {m};" for m in meths)
 
     # The C side keeps the flat struct verbatim -- same arrangement as
-    # include/ShadowModel.h and include/Fader.h. A C translation unit gets no
+    # include/dExtShadowModel_c.h and include/dFader_c.h. A C translation unit gets no
     # base sub-object and no implicit vptr, so it needs every offset spelled
     # out, and the generated declaration this replaces already is exactly that.
     # The D0 files are why it has to stay: they are C, they read fields, and
@@ -182,7 +182,7 @@ typedef char {cls}_size_must_be_0x{size:x}[sizeof({cls}) == 0x{size:x} ? 1 : -1]
 
 /* The C spelling of the same object, flat. Kept because the D0 file is a C
    translation unit that reads these fields, and D0 is compiler-generated so it
-   can never be migrated. Same arrangement as include/ShadowModel.h. */
+   can never be migrated. Same arrangement as include/dExtShadowModel_c.h. */
 {cbody}
 
 #endif /* __cplusplus */
@@ -253,7 +253,7 @@ def patch_source(text, oldmap, names, types=None, itypes=None):
 
 def sources_for(cls):
     inc = f'#include "{cls}.h"'
-    return sorted(p for p in list((REPO / "src").glob("*.c")) + list((REPO / "src").glob("*.cpp"))
+    return sorted(p for p in list((REPO / "src").rglob("*.c")) + list((REPO / "src").rglob("*.cpp"))
                   if inc in p.read_text(errors="replace"))
 
 

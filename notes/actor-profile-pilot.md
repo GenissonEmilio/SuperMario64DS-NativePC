@@ -51,7 +51,7 @@ name correspondence and stays at confidence `B` for that reason (see
 
 ### Naming a class that several profiles reach
 
-The NSMBW `className##_classInit` spelling assumes one factory per class.  SM64DS
+The [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) `className##_classInit` spelling assumes one factory per class.  SM64DS
 breaks that assumption 118 times: `daObjSeesaw_c` is reached from seven registry
 entries, each with its own factory function at its own address, and one class
 cannot supply seven distinct symbol names -- nor seven distinct source filenames.
@@ -78,7 +78,7 @@ settled.
 
 ### The `factory_filename` column
 
-`class_filename_candidate` is the NSMBW-convention stem `tools/tu_names.py` derives
+`class_filename_candidate` is the [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp)-convention stem `tools/tu_names.py` derives
 from the ROM's own RTTI class name (`daObjKm2_Ami_Bou_c` -> `d_a_obj_km2_ami_bou`).
 That stem belongs to the CLASS, so the 42 shared classes above would have several
 factories claiming one file.  `factory_filename` is the per-factory target, built by
@@ -98,7 +98,7 @@ the same rule as the symbol:
 assert that.  Like the symbol, the stem is Tier B and the profile-id suffix is a
 decomp-local convention.
 
-The lineage reference was pinned at NSMBW-Decomp revision
+The lineage reference was pinned at [NSMBW-Decomp](https://github.com/NSMBW-Community/NSMBW-Decomp) revision
 [`2e010f8708d8232c736b1ece507400dfd76aaa9c`](https://github.com/NSMBW-Community/NSMBW-Decomp/commit/2e010f8708d8232c736b1ece507400dfd76aaa9c).
 Its profile header defines a base-profile and actor-profile split, generates
 `className##_classInit`, and generates `g_profile_##profName` in
@@ -142,7 +142,7 @@ columns 3 and 5 remain Tier B.
 | ROM profile ID | current descriptor | proposed profile | RTTI class | current factory | direct SM64DS evidence | profile/factory confidence |
 |---|---|---|---|---|---|---|
 | `BOOT` | `data_020914a8` | `g_profile_BOOT` | `dScBoot_c` | `func_02023624` | debug `BOOT` @ `0x0208f698`; descriptor `arm9:0x020914a8` -> factory `0x02023624` -> RTTI `0x020914c8` | `B+ / B+` |
-| `STAGE` | `_ZN5Stage9spawnDataE` | `g_profile_STAGE` | `dScStage_c` | `Stage_Spawn` | debug `STAGE` @ `0x0208f708`; descriptor `arm9:0x0209213c` -> factory `0x0202e088` -> RTTI `0x02092158` | `B+ / B+` |
+| `STAGE` | `_ZN10dScStage_c9spawnDataE` | `g_profile_STAGE` | `dScStage_c` | `Stage_Spawn` | debug `STAGE` @ `0x0208f708`; descriptor `arm9:0x0209213c` -> factory `0x0202e088` -> RTTI `0x02092158` | `B+ / B+` |
 | `MINIGAME` | `data_ov005_020c2440` | `g_profile_MINIGAME` | `dScMiniGm_c` | `func_ov005_020c21ec` | debug `MINIGAME` @ `0x0208fabc`; descriptor `ov005:0x020c2440` -> factory `0x020c21ec` -> RTTI `0x020c2448` | `B+ / B+` |
 | `CANNON_SHUTTER` | `daObjCannonShutter_c_SpawnInfo` | `g_profile_CANNON_SHUTTER` | `daObjCannonShutter_c` | `daObjCannonShutter_c_Spawn` | debug @ `0x02090678`; descriptor `ov002:0x02109d14` -> factory `0x020bcccc` -> RTTI `0x02109cf0` | `B+ / B+` |
 | `C1_TRAP` | `Trap_SpawnInfo` | `g_profile_C1_TRAP` | `daObjC1_Trap_c` | `Trap_Spawn` | debug @ `0x0208f958`; `ov010:0x02112ac0` -> `0x02111998` -> RTTI `0x02112aa0`; the same numeric pointer has a second valid ov035 interpretation | `B / B+` |

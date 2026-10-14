@@ -5,14 +5,14 @@
 #include "BMD_File.h"
 #include "ModelBase.h"
 #include "Model.h"
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 #include "math/Matrix.h"
 #include "math/Fix12.h"
 
 /* The first multiply-inheriting class in the tree: ModelAnim derives from
- * Model AND Animation. The Animation base sits at +0x50, which is exactly
+ * Model AND dExtFrameCtrl_c. The dExtFrameCtrl_c base sits at +0x50, which is exactly
  * sizeof(Model), and the ROM's _ZThn80_ thunks (80 decimal = 0x50) adjust
- * this from the Animation view back to the object start.
+ * this from the dExtFrameCtrl_c view back to the object start.
  *
  * Primary vtable _ZTV9ModelAnim at 0x0208e980:
  *
@@ -25,7 +25,7 @@
  *   slot 5  0x020167f8  Render(Vector3 const *)
  *   slot 6  0x020167c4  Virtual18(u32, Vector3 const *)
  *
- * Secondary (Animation-in-ModelAnim) vtable at +0x24 of the primary,
+ * Secondary (dExtFrameCtrl_c-in-ModelAnim) vtable at +0x24 of the primary,
  * VTable_Animation_ModelAnimThunk: [_ZThn80_ D1, _ZThn80_ D0, null] -- the
  * inherited slot stays null.
  *
@@ -53,7 +53,7 @@
  * structors staying C files is what keeps all of them ROM-supplied. See
  * include/ModelBase.h.
  *
- * LAYOUT: Model 0x00..0x50, Animation 0x50..0x60 (its vptr at +0x50), the
+ * LAYOUT: Model 0x00..0x50, dExtFrameCtrl_c 0x50..0x60 (its vptr at +0x50), the
  * BCA file pointer at 0x60. Pinned by C2 (both ctor calls, both vptr
  * stores, zeroes +0x60), D2 (both vptr restores, both base D2 calls) and
  * SetAnim/UpdateVerts reading +0x60.
@@ -66,7 +66,7 @@
 
 extern "C" void _ZN6Memory16operator_delete2EPv(void *);
 
-struct ModelAnim : Model, Animation {
+struct ModelAnim : Model, dExtFrameCtrl_c {
     BCA_File *file;            /* 0x60 */
 
     /* --- primary vtable order. Do not reorder. --- */
@@ -90,9 +90,9 @@ struct ModelAnim : Model, Animation {
     void Copy(const ModelAnim &src, char *newFile);
 
     /* ITS OWN, TO RESOLVE AN AMBIGUITY MULTIPLE INHERITANCE CREATES. ModelAnim
-       derives from Model (so ModelBase) and from Animation, and both bases
+       derives from Model (so ModelBase) and from dExtFrameCtrl_c, and both bases
        declare operator delete, so an inherited one is "ambiguous access to
-       name found: ModelBase::operator delete and Animation::operator delete".
+       name found: ModelBase::operator delete and dExtFrameCtrl_c::operator delete".
        Declaring it here picks the same deallocator both bases name, and also
        satisfies the rule in include/dActor_c.h that mwcc only inlines the member
        when it is in the class or its immediate base. */

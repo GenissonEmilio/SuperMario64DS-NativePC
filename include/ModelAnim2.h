@@ -3,10 +3,10 @@
 
 #include "types.h"
 #include "ModelAnim.h"
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 
-/* ModelAnim child that carries a SECOND Animation as a data member (not a
- * base): its C1 builds otherAnim with Animation::C1 after chaining
+/* ModelAnim child that carries a SECOND dExtFrameCtrl_c as a data member (not a
+ * base): its C1 builds otherAnim with dExtFrameCtrl_c::C1 after chaining
  * ModelAnim::C2. Vtable _ZTV10ModelAnim2 at 0x0208e9b4 overrides only the
  * destructor pair; every other slot still points at the ModelAnim or
  * Model implementation.
@@ -25,7 +25,7 @@ extern "C" void _ZN6Memory16operator_delete2EPv(void *);
 
 struct ModelAnim2 : ModelAnim {
     u32 otherFile;             /* 0x64 - the second animation's BCA, stored as a word */
-    Animation otherAnim;       /* 0x68 - a member, built with Animation::C1 */
+    dExtFrameCtrl_c otherAnim;       /* 0x68 - a member, built with dExtFrameCtrl_c::C1 */
 
     /* --- vtable order. Do not reorder. --- */
     /* The destructor pair spelled as two plain virtuals on the host, plus the
@@ -56,9 +56,9 @@ struct ModelAnim2 : ModelAnim {
                        u16 startFrame);        /* free function, wall 6az */
 
     /* ITS OWN, TO RESOLVE AN AMBIGUITY MULTIPLE INHERITANCE CREATES. ModelAnim
-       derives from Model (so ModelBase) and from Animation, and both bases
+       derives from Model (so ModelBase) and from dExtFrameCtrl_c, and both bases
        declare operator delete, so an inherited one is "ambiguous access to
-       name found: ModelBase::operator delete and Animation::operator delete".
+       name found: ModelBase::operator delete and dExtFrameCtrl_c::operator delete".
        Declaring it here picks the same deallocator both bases name, and also
        satisfies the rule in include/dActor_c.h that mwcc only inlines the member
        when it is in the class or its immediate base. */

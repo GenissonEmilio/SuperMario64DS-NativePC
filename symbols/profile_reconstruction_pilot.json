@@ -400,21 +400,12 @@
       "tu_left_boundary_confidence": "medium",
       "tu_right_boundary_confidence": "medium",
       "tu_classes": [
-        "Animation",
         "BlendModelAnim",
-        "BootScene",
         "CLPS_BlockRef",
         "CP15",
-        "Camera",
-        "Clipper",
-        "CommonModel",
         "Event",
         "ExpandingHeap",
         "ExpandingHeapAllocator",
-        "Fader",
-        "FaderBrightness",
-        "FaderColor",
-        "FaderWipe",
         "Fog",
         "G2",
         "G2S",
@@ -440,19 +431,16 @@
         "Particle",
         "PathPtr",
         "SaveData",
-        "ShadowModel",
         "SharedFilePtr",
         "SolidHeap",
         "SolidHeapAllocator",
         "Sound",
-        "Stage",
         "SurfaceInfo",
         "TextureSequence",
         "TextureTransformer",
         "Timer",
         "Vector3",
         "Vector3s",
-        "View",
         "cstd",
         "dActor_c",
         "dBase_c",
@@ -467,17 +455,29 @@
         "dBgW_Kc",
         "dBgW_KcMbg",
         "dBgW_KcMbgSclY",
+        "dCamera_c",
         "dCapEnemy_c",
         "dCcAcPos_c",
         "dCcAc_c",
         "dCcPos_c",
         "dCc_c",
+        "dClipper",
+        "dExtCommonModel_c",
+        "dExtFrameCtrl_c",
+        "dExtShadowModel_c",
+        "dFader_c",
+        "dFdBrightness_c",
+        "dFdColor_c",
         "dFdDummy_c",
+        "dFdWipe_c",
         "dGraph_c",
         "dM3dGSph",
         "dPa_c",
+        "dScBoot_c",
         "dScMB_c",
+        "dScStage_c",
         "dScene_c",
+        "dView_c",
         "dWipe_c",
         "fBase_c",
         "fLiNdBaPr_c",
@@ -489,262 +489,20 @@
       ],
       "static_initializers": [
         {
-          "symbol": "__sinit_02073a24",
-          "address": "0x02073a24",
-          "size": "0x448",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "19 of 19 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02073e6c",
-          "address": "0x02073e6c",
-          "size": "0xf24",
+          "symbol": "__sinit_020750ec",
+          "address": "0x020750ec",
+          "size": "0x30",
           "classification": "medium",
           "causes": [
             "destructor-registration",
             "dynamic-global-data"
           ],
           "evidence": [
-            "6 of 39 ownership global(s) map through consumers to main:19",
-            "33 ownership global(s) have no recovered source consumer",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074d90",
-          "address": "0x02074d90",
-          "size": "0x18",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074da8",
-          "address": "0x02074da8",
-          "size": "0x14",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19",
-            "no directional write/construct/register target was recovered; consumer mapping falls back to all referenced globals"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer edge is non-directional; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074dc4",
-          "address": "0x02074dc4",
-          "size": "0x48",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "2 of 3 ownership global(s) map through consumers to main:19",
             "1 ownership global(s) have no recovered source consumer",
-            "no directional write/construct/register target was recovered; consumer mapping falls back to all referenced globals"
+            "ordered hypothesis main:19 (main/BlendModelAnim+CLPS_BlockRef+CP15+Event+ExpandingHeap+ExpandingHeapAllocator+Fog+G2+G2S+G2x+G3X+G3i+GX+GXS+Heap+HeapAllocator+IRQ+MaterialChanger+Memory+MemoryNode+Message+Model+ModelAnim+ModelAnim2+ModelBase+ModelComponents+NestedHeapIterator+OAM+Particle+PathPtr+SaveData+SharedFilePtr+SolidHeap+SolidHeapAllocator+Sound+SurfaceInfo+TextureSequence+TextureTransformer+Timer+Vector3+Vector3s+cstd+dActor_c+dBase_c+dBgCh+dBgCh_Actr+dBgCh_Gnd+dBgCh_Lin+dBgCh_SphCrr+dBgPc+dBgPi+dBgW+dBgW_Kc+dBgW_KcMbg+dBgW_KcMbgSclY+dCamera_c+dCapEnemy_c+dCcAcPos_c+dCcAc_c+dCcPos_c+dCc_c+dClipper+dExtCommonModel_c+dExtFrameCtrl_c+dExtShadowModel_c+dFader_c+dFdBrightness_c+dFdColor_c+dFdDummy_c+dFdWipe_c+dGraph_c+dM3dGSph+dPa_c+dScBoot_c+dScMB_c+dScStage_c+dScene_c+dView_c+dWipe_c+fBase_c+fLiNdBaPr_c+fLiNdBa_c): module has one sinit per candidate TU; this is corroboration, not proof"
           ],
           "blockers": [
-            "module TU map is under-segmented; consumer edge is non-directional; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074e0c",
-          "address": "0x02074e0c",
-          "size": "0x38",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074e44",
-          "address": "0x02074e44",
-          "size": "0x3c",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 2 ownership global(s) map through consumers to main:19",
-            "1 ownership global(s) have no recovered source consumer",
-            "no directional write/construct/register target was recovered; consumer mapping falls back to all referenced globals"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer edge is non-directional; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074e84",
-          "address": "0x02074e84",
-          "size": "0x58",
-          "classification": "medium",
-          "causes": [
-            "global-object-construction",
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "2 of 2 ownership global(s) map through consumers to main:19",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074edc",
-          "address": "0x02074edc",
-          "size": "0xa4",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "2 of 2 ownership global(s) map through consumers to main:19",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074f80",
-          "address": "0x02074f80",
-          "size": "0x38",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074fb8",
-          "address": "0x02074fb8",
-          "size": "0x2c",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074fe4",
-          "address": "0x02074fe4",
-          "size": "0x38",
-          "classification": "medium",
-          "causes": [
-            "global-object-construction",
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": []
-        },
-        {
-          "symbol": "__sinit_0207501c",
-          "address": "0x0207501c",
-          "size": "0x38",
-          "classification": "medium",
-          "causes": [
-            "global-object-construction",
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_020750b8",
-          "address": "0x020750b8",
-          "size": "0x34",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": []
-        },
-        {
-          "symbol": "__sinit_0207511c",
-          "address": "0x0207511c",
-          "size": "0x34",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": []
-        },
-        {
-          "symbol": "__sinit_02075154",
-          "address": "0x02075154",
-          "size": "0xdc",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "5 of 5 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
+            "no touched global maps to a candidate TU"
           ]
         }
       ],
@@ -761,7 +519,7 @@
         }
       ],
       "current_factory_name": "dScBoot_c_classInit",
-      "current_factory_file": "src/d_s_boot.c",
+      "current_factory_file": "src/d_s_boot.cpp",
       "proposed_factory_name": "dScBoot_c_classInit",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -785,7 +543,7 @@
       "clip_distance": "",
       "far_distance": "",
       "alloc_size": "0x00000058",
-      "class_size": "0x00000058",
+      "class_size": "",
       "installed_vtable": "0x02091528",
       "expected_vtable": "_ZTV9dScBoot_c",
       "factory_ordinal_in_tu": 949,
@@ -878,21 +636,12 @@
       "tu_left_boundary_confidence": "medium",
       "tu_right_boundary_confidence": "medium",
       "tu_classes": [
-        "Animation",
         "BlendModelAnim",
-        "BootScene",
         "CLPS_BlockRef",
         "CP15",
-        "Camera",
-        "Clipper",
-        "CommonModel",
         "Event",
         "ExpandingHeap",
         "ExpandingHeapAllocator",
-        "Fader",
-        "FaderBrightness",
-        "FaderColor",
-        "FaderWipe",
         "Fog",
         "G2",
         "G2S",
@@ -918,19 +667,16 @@
         "Particle",
         "PathPtr",
         "SaveData",
-        "ShadowModel",
         "SharedFilePtr",
         "SolidHeap",
         "SolidHeapAllocator",
         "Sound",
-        "Stage",
         "SurfaceInfo",
         "TextureSequence",
         "TextureTransformer",
         "Timer",
         "Vector3",
         "Vector3s",
-        "View",
         "cstd",
         "dActor_c",
         "dBase_c",
@@ -945,17 +691,29 @@
         "dBgW_Kc",
         "dBgW_KcMbg",
         "dBgW_KcMbgSclY",
+        "dCamera_c",
         "dCapEnemy_c",
         "dCcAcPos_c",
         "dCcAc_c",
         "dCcPos_c",
         "dCc_c",
+        "dClipper",
+        "dExtCommonModel_c",
+        "dExtFrameCtrl_c",
+        "dExtShadowModel_c",
+        "dFader_c",
+        "dFdBrightness_c",
+        "dFdColor_c",
         "dFdDummy_c",
+        "dFdWipe_c",
         "dGraph_c",
         "dM3dGSph",
         "dPa_c",
+        "dScBoot_c",
         "dScMB_c",
+        "dScStage_c",
         "dScene_c",
+        "dView_c",
         "dWipe_c",
         "fBase_c",
         "fLiNdBaPr_c",
@@ -967,262 +725,20 @@
       ],
       "static_initializers": [
         {
-          "symbol": "__sinit_02073a24",
-          "address": "0x02073a24",
-          "size": "0x448",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "19 of 19 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02073e6c",
-          "address": "0x02073e6c",
-          "size": "0xf24",
+          "symbol": "__sinit_020750ec",
+          "address": "0x020750ec",
+          "size": "0x30",
           "classification": "medium",
           "causes": [
             "destructor-registration",
             "dynamic-global-data"
           ],
           "evidence": [
-            "6 of 39 ownership global(s) map through consumers to main:19",
-            "33 ownership global(s) have no recovered source consumer",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074d90",
-          "address": "0x02074d90",
-          "size": "0x18",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074da8",
-          "address": "0x02074da8",
-          "size": "0x14",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19",
-            "no directional write/construct/register target was recovered; consumer mapping falls back to all referenced globals"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer edge is non-directional; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074dc4",
-          "address": "0x02074dc4",
-          "size": "0x48",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "2 of 3 ownership global(s) map through consumers to main:19",
             "1 ownership global(s) have no recovered source consumer",
-            "no directional write/construct/register target was recovered; consumer mapping falls back to all referenced globals"
+            "ordered hypothesis main:19 (main/BlendModelAnim+CLPS_BlockRef+CP15+Event+ExpandingHeap+ExpandingHeapAllocator+Fog+G2+G2S+G2x+G3X+G3i+GX+GXS+Heap+HeapAllocator+IRQ+MaterialChanger+Memory+MemoryNode+Message+Model+ModelAnim+ModelAnim2+ModelBase+ModelComponents+NestedHeapIterator+OAM+Particle+PathPtr+SaveData+SharedFilePtr+SolidHeap+SolidHeapAllocator+Sound+SurfaceInfo+TextureSequence+TextureTransformer+Timer+Vector3+Vector3s+cstd+dActor_c+dBase_c+dBgCh+dBgCh_Actr+dBgCh_Gnd+dBgCh_Lin+dBgCh_SphCrr+dBgPc+dBgPi+dBgW+dBgW_Kc+dBgW_KcMbg+dBgW_KcMbgSclY+dCamera_c+dCapEnemy_c+dCcAcPos_c+dCcAc_c+dCcPos_c+dCc_c+dClipper+dExtCommonModel_c+dExtFrameCtrl_c+dExtShadowModel_c+dFader_c+dFdBrightness_c+dFdColor_c+dFdDummy_c+dFdWipe_c+dGraph_c+dM3dGSph+dPa_c+dScBoot_c+dScMB_c+dScStage_c+dScene_c+dView_c+dWipe_c+fBase_c+fLiNdBaPr_c+fLiNdBa_c): module has one sinit per candidate TU; this is corroboration, not proof"
           ],
           "blockers": [
-            "module TU map is under-segmented; consumer edge is non-directional; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074e0c",
-          "address": "0x02074e0c",
-          "size": "0x38",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074e44",
-          "address": "0x02074e44",
-          "size": "0x3c",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 2 ownership global(s) map through consumers to main:19",
-            "1 ownership global(s) have no recovered source consumer",
-            "no directional write/construct/register target was recovered; consumer mapping falls back to all referenced globals"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer edge is non-directional; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074e84",
-          "address": "0x02074e84",
-          "size": "0x58",
-          "classification": "medium",
-          "causes": [
-            "global-object-construction",
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "2 of 2 ownership global(s) map through consumers to main:19",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074edc",
-          "address": "0x02074edc",
-          "size": "0xa4",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "2 of 2 ownership global(s) map through consumers to main:19",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074f80",
-          "address": "0x02074f80",
-          "size": "0x38",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074fb8",
-          "address": "0x02074fb8",
-          "size": "0x2c",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_02074fe4",
-          "address": "0x02074fe4",
-          "size": "0x38",
-          "classification": "medium",
-          "causes": [
-            "global-object-construction",
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": []
-        },
-        {
-          "symbol": "__sinit_0207501c",
-          "address": "0x0207501c",
-          "size": "0x38",
-          "classification": "medium",
-          "causes": [
-            "global-object-construction",
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "1 of 1 ownership global(s) map through consumers to main:19",
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
-          ]
-        },
-        {
-          "symbol": "__sinit_020750b8",
-          "address": "0x020750b8",
-          "size": "0x34",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": []
-        },
-        {
-          "symbol": "__sinit_0207511c",
-          "address": "0x0207511c",
-          "size": "0x34",
-          "classification": "medium",
-          "causes": [
-            "destructor-registration",
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "constructor/destructor class maps to main:19"
-          ],
-          "blockers": []
-        },
-        {
-          "symbol": "__sinit_02075154",
-          "address": "0x02075154",
-          "size": "0xdc",
-          "classification": "medium",
-          "causes": [
-            "dynamic-global-data"
-          ],
-          "evidence": [
-            "5 of 5 ownership global(s) map through consumers to main:19"
-          ],
-          "blockers": [
-            "module TU map is under-segmented; consumer ownership is only medium confidence"
+            "no touched global maps to a candidate TU"
           ]
         }
       ],
@@ -1263,7 +779,7 @@
       "clip_distance": "",
       "far_distance": "",
       "alloc_size": "0x000009c8",
-      "class_size": "0x000009c8",
+      "class_size": "",
       "installed_vtable": "0x020921c0",
       "expected_vtable": "_ZTV10dScStage_c",
       "factory_ordinal_in_tu": 1072,
@@ -1373,7 +889,7 @@
         }
       ],
       "current_factory_name": "dScMiniGm_c_classInit",
-      "current_factory_file": "src/d_s_mini_gm.c",
+      "current_factory_file": "src/actors/dScMiniGm_c.cpp",
       "proposed_factory_name": "dScMiniGm_c_classInit",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -1656,7 +1172,7 @@
         }
       ],
       "current_factory_name": "StarCamera_Spawn",
-      "current_factory_file": "src/StarCamera_Spawn.cpp",
+      "current_factory_file": "src/actors/StarCamera_Spawn.cpp",
       "proposed_factory_name": "",
       "factory_shape": "uncertain",
       "factory_shape_evidence": "allocation is exact, but the called base constructor leaves the dActor_c vtable installed; no most-derived RTTI identity survives",
@@ -1923,7 +1439,7 @@
         }
       ],
       "current_factory_name": "daKrb_c_classInit_KURIBO",
-      "current_factory_file": "src/d_a_krb_kuribo.c",
+      "current_factory_file": "src/actors/daKrb_c.cpp",
       "proposed_factory_name": "daKrb_c_classInit_KURIBO",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -2013,7 +1529,7 @@
         }
       ],
       "current_factory_name": "daTrs_c_classInit_TERESA",
-      "current_factory_file": "src/game/actors/daTrs_c/d_a_trs_teresa.cpp",
+      "current_factory_file": "src/actors/daTrs_c.cpp",
       "proposed_factory_name": "daTrs_c_classInit_TERESA",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -2103,7 +1619,7 @@
         }
       ],
       "current_factory_name": "daTrs_c_classInit_BOSS_TERESA",
-      "current_factory_file": "src/game/actors/daTrs_c/d_a_trs_boss_teresa.cpp",
+      "current_factory_file": "src/actors/daTrs_c.cpp",
       "proposed_factory_name": "daTrs_c_classInit_BOSS_TERESA",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -2281,7 +1797,7 @@
         }
       ],
       "current_factory_name": "daObj_Mip_Key_c_classInit",
-      "current_factory_file": "src/d_a_obj_mip_key.c",
+      "current_factory_file": "src/actors/daObj_Mip_Key_c.cpp",
       "proposed_factory_name": "daObj_Mip_Key_c_classInit",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -2549,7 +2065,7 @@
         }
       ],
       "current_factory_name": "daBook_c_classInit_SHOOT_BOOK",
-      "current_factory_file": "src/d_a_book_shoot_book.c",
+      "current_factory_file": "src/actors/daBook_c.cpp",
       "proposed_factory_name": "daBook_c_classInit_SHOOT_BOOK",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -2639,7 +2155,7 @@
         }
       ],
       "current_factory_name": "daBookGen_c_classInit",
-      "current_factory_file": "src/d_a_book_gen.c",
+      "current_factory_file": "src/actors/daBook_c.cpp",
       "proposed_factory_name": "daBookGen_c_classInit",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -2728,7 +2244,7 @@
         }
       ],
       "current_factory_name": "dScMgCup_c_classInit",
-      "current_factory_file": "src/d_s_mg_cup.cpp",
+      "current_factory_file": "src/actors/dScMgCup_c.cpp",
       "proposed_factory_name": "dScMgCup_c_classInit",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -2817,7 +2333,7 @@
         }
       ],
       "current_factory_name": "dScMgCurling_c_classInit",
-      "current_factory_file": "src/d_s_mg_curling.c",
+      "current_factory_file": "src/d_s_mg_curling.cpp",
       "proposed_factory_name": "dScMgCurling_c_classInit",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",
@@ -2906,7 +2422,7 @@
         }
       ],
       "current_factory_name": "dScMgCurling2_c_classInit",
-      "current_factory_file": "src/d_s_mg_curling2.c",
+      "current_factory_file": "src/d_s_mg_curling2.cpp",
       "proposed_factory_name": "dScMgCurling2_c_classInit",
       "factory_shape": "new_plus_inlined_ctor",
       "factory_shape_evidence": "operator new size is exact and the most-derived RTTI vtable is stored in the factory",

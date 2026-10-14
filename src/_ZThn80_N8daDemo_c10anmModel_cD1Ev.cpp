@@ -2,30 +2,39 @@
 // @symbol _ZThn80_N8daDemo_c10anmModel_cD1Ev
 /* Compiler-owned complete-destructor adjustment thunk. The source describes
    the real destructor; mwccarm emits the -0x50 thunk named by this file as a
-   byproduct of the virtual ScaleHolder base in daDemo_c.h. */
-#include "daDemo_c.h"
+   byproduct of the Animation base at +0x50 inside the model base.
+
+   The nested classes are declared here under the project's spellings
+   (Model, ModelAnim, Animation, ModelBase) rather than the cartridge RTTI
+   spellings daDemo_c.h mirrors as dExtModel_c/dExtAnmModel_c -- the two
+   spellings are the same classes with the same layout and the same vtable
+   bytes (notes/model-rtti-names.md). The folded TU emits the nested vtables
+   under the cartridge spellings, whose member names have no symbols.txt
+   home; the copy this file emits under the project spellings resolves every
+   vtable slot and is the copy romdata_check verifies. simpleModel_c's
+   destructor is defined here for the same reason: no other source emits its
+   vtable. */
+#include "ModelAnim.h"
 #include "SharedFilePtr.h"
 
 typedef void (*VFN)(void *);
 
-#ifdef _MSC_VER
-/* THE HOST NEEDS THE ROM'S FLAT THUNK NAME, AND MSVC NEVER EMITS IT. mwccarm
- * emits this thunk beside the destructor below: `ldr ip,=-80; add r0,r0,ip;
- * b _ZN8daDemo_c10anmModel_cD1Ev`, which moves `this` from the Animation base at +0x50 back to
- * the whole daDemo_c::anmModel_c and runs its complete-object destructor. MSVC makes
- * adjustor thunks only for its own vftables, and those are not this one. This
- * arm is the same two steps, reached from slot 0 of the port's copy of the
- * ROM's secondary table data_ov002_0210bce8 (0x0210bce8, filled in
- * port/hal/w2_dtor_heads.cpp). The destructor itself is defined by the class's D1
- * file; defining it here as well would define it twice under MSVC. Nothing
- * here reaches mwccarm: it builds the `#else` arm, byte for byte as before. */
-extern "C" void _ZN8daDemo_c10anmModel_cD1Ev(void *self);
+struct daDemo_c {
+    struct param_c {
+        Vector3 mScale[1];
+    };
 
-extern "C" void _ZThn80_N8daDemo_c10anmModel_cD1Ev(Animation *thiz)
-{
-    _ZN8daDemo_c10anmModel_cD1Ev((void *)((char *)thiz - 80));
-}
-#else
+    struct anmModel_c : param_c, ModelAnim {
+        virtual ~anmModel_c();
+        void operator delete(void *ptr) { _ZN6Memory16operator_delete2EPv(ptr); }
+    };
+
+    struct simpleModel_c : param_c, Model {
+        virtual ~simpleModel_c();
+        void operator delete(void *ptr) { _ZN6Memory16operator_delete2EPv(ptr); }
+    };
+};
+
 daDemo_c::anmModel_c::~anmModel_c()
 {
     char *c = (char *)this;
@@ -49,4 +58,11 @@ daDemo_c::anmModel_c::~anmModel_c()
         }
     }
 }
-#endif
+
+daDemo_c::simpleModel_c::~simpleModel_c()
+{
+    SharedFilePtr *file = *(SharedFilePtr **)((char *)this + 0x5c);
+    if (file != 0) {
+        file->Release();
+    }
+}

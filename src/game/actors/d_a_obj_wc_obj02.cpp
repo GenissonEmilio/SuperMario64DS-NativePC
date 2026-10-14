@@ -22,8 +22,8 @@
  * - func_02012694: Behavior plays 0x17b at mCamSpacePosX.
  * - InitResources keeps (unsigned long long)((int)this + 0x94) for
  *   mPrevAngleY += 0x4000: `&mPrevAngleY` size-DIFFs.
- * - data_ov029_02114250 / 02114248 / 0211302c BMD/KCL/CLPS handles; this TU
- *   claims .text only.
+ * - data_ov029_02114250 / 02114248 are this TU's BMD/KCL file handles;
+ *   data_ov029_0211302c the CLPS block stays unowned overlay data.
  * - func_ov029_021116c4 / 021116e4 stay placeholder labels (BeforeClsn
  *   veneer + player-id trigger). decl_common.h's `extern int` DATA view of
  *   021116e4 forces the namespaced definition.
@@ -36,6 +36,23 @@
 #include "decl_common.h"
 #include "SharedFilePtr.h"
 
+/* Retail constructs these 8-byte handles in this order and registers
+ * their destructors. The wrapper names are local; the ctor/dtor
+ * addresses are the ROM resource-family functions. */
+struct WcObj02ModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    WcObj02ModelFilePtr(u32 fileID);
+    ~WcObj02ModelFilePtr();
+};
+
+struct WcObj02CollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    WcObj02CollisionFilePtr(u32 fileID);
+    ~WcObj02CollisionFilePtr();
+};
+
 extern "C" {
 void func_02012694(int a, void *p);
 void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
@@ -44,10 +61,9 @@ void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
 int _ZN10dBgActor_c21IsClsnInRangeOnScreenE5Fix12IiES1_(void *self, int a, int b);
 void func_020393d4(int *p, int v);
 void func_020393c4(int *p, int v);
-extern SharedFilePtr data_ov029_02114250;
-extern SharedFilePtr data_ov029_02114248;
+extern WcObj02ModelFilePtr data_ov029_02114250;
+extern WcObj02CollisionFilePtr data_ov029_02114248;
 extern CLPS_Block data_ov029_0211302c;
-extern int _ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_;
 /* (RESOLVED): CONFLICT -- alternate declaration of
  * _ZN10dBgActor_c21UpdateModelPosAndRotYEv / 19UpdateClsnPosAndRotEv from
  * Behavior vs InitResources; both are now the real dBgActor_c methods. */
@@ -76,6 +92,7 @@ namespace tail_6c4 { extern "C" int func_ov029_021116c4(void *a, void *b); }
  * address through that view); the function definition lives in a namespace so both
  * spellings of the one C symbol can coexist. */
 namespace fndef_e4 {
+// @symbol func_ov029_021116e4
 extern "C" int func_ov029_021116e4(void *a, void *b, void *c)
 {
     return tail_6c4::func_ov029_021116c4(b, c);
@@ -87,6 +104,7 @@ extern "C" int func_ov029_021116e4(void *a, void *b, void *c)
 /* -------------------------------------------------------------------------- */
 /* BeforeClsn helper: if the other actor's actorID (dActor_c+0x0c) is PLAYER
  * (0xbf), arm mTriggered. The unsigned char temporary is load-bearing. */
+// @symbol func_ov029_021116c4
 extern "C" void func_ov029_021116c4(char *a, char *b)
 {
     unsigned char ok = *(unsigned short *)(b + 0xc) == 0xbf;
@@ -115,7 +133,7 @@ int daObjWc_Obj02_c::InitResources()
         short *p = (short *)((unsigned long long)((int)this + 0x94));
         short val = *p;
         int *arg0_1 = (int *)&mMeshCollider;
-        int arg1_1 = (int)&_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_;
+        int arg1_1 = (int)&dBgW::UpdatePosWithTransform;
         *p = (short)(val + 0x4000);
         func_020393d4(arg0_1, arg1_1);
     }
@@ -216,6 +234,12 @@ int daObjWc_Obj02_c::CleanupResources()
     data_ov029_02114248.Release();
     return 1;
 }
-
+// @symbol _ZN15daObjWc_Obj02_cD1Ev
+// @symbol _ZN15daObjWc_Obj02_cD0Ev
 /* daObjWc_Obj02_c's inline class-body destructor is instantiated by the
  * definitions above. mwccarm emits D1 and D0 into this object. */
+
+/* The static-init globals -- mwcc emits __sinit_d_a_obj_wc_obj02.cpp
+   from these: one ctor veneer plus destructor registration per handle. */
+WcObj02ModelFilePtr data_ov029_02114250(0x6ce);
+WcObj02CollisionFilePtr data_ov029_02114248(0x6cf);

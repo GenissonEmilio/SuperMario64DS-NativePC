@@ -52,13 +52,12 @@ A base failure is not hidden. If base and merge fail in the same phase with the 
 failure signature, the report shows a warning and permits a non-regressing PR. If a green
 base becomes red, or the failure changes, validation fails.
 
-## Moving credit on purpose
+## Who matched a function
 
-Some PRs move contributor credit as their whole point — pinning a stem in
-`attribution.json` is exactly that. Attribution never blocks a merge: the lineage gate
-only reports what moved, so a PR like this needs no label and no override flag. A lost
-match, a changed coverage denominator, or a failed ROM build still fails the merge on its
-own terms — attribution findings are informational either way.
+That record is `function-authors.json`. The key is the module and the address, so
+moving a source file does not change the author. A lost match, a changed coverage
+denominator, or a failed ROM build still fails the merge on its own terms. A credit
+note in the validation report does not.
 
 The check names the moves rather than counting them. `0 added, 2 changed, 0 lost` was
 unactionable for a PR author who cannot read the worker's log: the summary names the

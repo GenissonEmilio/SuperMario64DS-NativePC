@@ -44,6 +44,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 import delaunder  # noqa: E402  (code_mask only -- no compiler, no ROM; see _code_only)
 import demangle  # noqa: E402  (pure string work, no compiler, no ROM; see _reader_name)
+import msvc_arms  # noqa: E402  (pure string work; the side of a file mwccarm compiles)
 import srcpath  # noqa: E402  (enrolled source -> function ownership)
 
 SRC = REPO / "src"
@@ -62,6 +63,14 @@ LINKED_STAMP = REPO / "config" / "port_linkage.json"
 #
 # Three of them run over `_code_only(text)`, not raw text, so a comment that names
 # a defect no longer scores as the defect. See _code_only for the measurement.
+#
+# Every criterion reads the file as mwccarm compiles it (msvc_arms.mwcc_side): an
+# `#ifdef _MSC_VER` side exists only for the PC port's MSVC build and is not decomp
+# source, so it neither fails nor passes a criterion. Before this, a host arm that
+# defines the ROM's flat D0 name (`extern "C" Model *_ZN5ModelD0Ev(...)`) failed
+# no_mangled_refs for its whole file although the ROM side calls nothing by a mangled
+# name. Measured on the tree it landed on: CONVERTED 3221 -> 3227, the six Model-family
+# variant files that carry such an arm, and no other file moved.
 #
 # The bar was set on 2026-08-07 and is deliberately strict. Softer readings were
 # considered and rejected: "includes a shared header" scores 28.9% but measures
@@ -251,8 +260,9 @@ def _reader_name(path, text):
     That is done with the repo's demangler rather than by matching `Class::Method(`
     in the body, because the text search was tried first and is wrong four ways:
     it finds a DEPENDENCY's stub or a bare forward declaration instead of the file's
-    own function (src/_ZN5Stage13UpdateMessageEv.cpp reported `Message::UpdateWindow`;
-    src/_ZN6Coffin13InitResourcesEv.cpp matched a `MeshCollider::LoadFile` prototype),
+    own function (src/_ZN10dScStage_c13UpdateMessageEv.cpp reported `Message::UpdateWindow`;
+    the old Coffin::InitResources shard, now daObjCasket_c::InitResources in the
+    promoted daObjCasket_c TU, matched a `MeshCollider::LoadFile` prototype),
     it lets an unrelated call override a genuinely-unidentified `func_ov*` filename,
     it drops outer qualifiers (`Sound::Player::SetPlayableSeqCount` -> `Player::...`,
     colliding with the unrelated real `Player` class), and it cannot match a ctor or
@@ -294,6 +304,7 @@ def _real_name_for_symbol(sym):
 
 def score_file(path, text):
     """The five criteria for one source file, plus the header reading."""
+    text = msvc_arms.mwcc_side(text)
     code = _code_only(text)
     return {
         "real_name": _real_name(path, text),
@@ -325,11 +336,11 @@ def _marked_member_fragment(text, symbol):
     return text[start:stop]
 
 
-def _balanced_lifecycle_fragment(text, class_name, method_name):
-    """Find an inline ctor/dtor declaration or definition in one header.
+def _balanced_lifecycle_fragment(text, class_name, method_name, *, qualified=False):
+    """Find one balanced lifecycle body, optionally requiring its class qualifier.
 
     This is deliberately a small recognizer, not a C++ parser.  It searches the
-    comment/string-masked text and returns only a balanced inline body. A mere
+    comment/string-masked text and returns only a balanced body. A mere
     declaration is not ownership evidence. If the evidence is not this simple the
     caller falls back to the whole
     TU, which can under-credit a member but can never grant it speculatively.
@@ -337,12 +348,21 @@ def _balanced_lifecycle_fragment(text, class_name, method_name):
     code = _code_only(text)
     unqualified = class_name.rsplit("::", 1)[-1]
     token = f"~{unqualified}" if method_name.startswith("~") else unqualified
-    pattern = re.compile(r"(?<![A-Za-z0-9_~])" + re.escape(token) + r"\s*\(")
+    spelling = re.escape(token)
+    if qualified:
+        qualifier = r"\s*::\s*".join(re.escape(part) for part in class_name.split("::"))
+        spelling = qualifier + r"\s*::\s*" + spelling
+        pattern = re.compile(r"^[ \t]*(?:inline[ \t]+)?" + spelling + r"\s*\(",
+                             re.MULTILINE)
+    else:
+        pattern = re.compile(r"(?<![A-Za-z0-9_~])" + spelling + r"\s*\(")
     matches = list(pattern.finditer(code))
     if len(matches) != 1:
         return None
 
     start = matches[0].start()
+    if qualified and code[:start].strip():
+        return None  # Do not skip enclosing scopes or a continued qualifier.
     open_paren = code.find("(", matches[0].start(), matches[0].end())
     depth = 0
     close_paren = None
@@ -363,6 +383,8 @@ def _balanced_lifecycle_fragment(text, class_name, method_name):
         return None
     if brace < 0:
         return None
+    if qualified and code[close_paren + 1:brace].strip():
+        return None  # In particular, do not drop function-try-block catch handlers.
 
     depth = 0
     for i in range(brace, len(code)):
@@ -376,10 +398,38 @@ def _balanced_lifecycle_fragment(text, class_name, method_name):
 
 
 def _lifecycle_member_fragment(path, text, symbol, repo_root=None):
-    """Return an inline compiler-generated ctor/dtor's direct-header source."""
+    """Find the written body behind a compiler-generated lifecycle variant."""
     parsed = demangle.demangle(symbol)
     if not parsed or not (parsed.get("ctor") or parsed.get("dtor")):
         return None
+
+    # One out-of-line destructor emits D0/D1/D2. A sibling variant's marker
+    # identifies the owner, but require its actual qualified definition too:
+    # a marker, declaration, or similarly named class alone is not a body.
+    if parsed.get("dtor") and not parsed.get("thunk"):
+        siblings = []
+        for marker in SYMBOL.finditer(text):
+            other = demangle.demangle(marker.group(1))
+            if (other and other.get("dtor") and not other.get("thunk")
+                    and other["qualified"] == parsed["qualified"]):
+                siblings.append(marker)
+        if len(siblings) == 1:
+            marker = siblings[0]
+            prefix = _code_only(text[:marker.end()])
+            conditional_depth = 0
+            for directive in re.finditer(
+                    r"^\s*#\s*(if|ifdef|ifndef|endif)\b", prefix, re.MULTILINE):
+                conditional_depth += -1 if directive.group(1) == "endif" else 1
+            if conditional_depth:
+                return None  # Do not infer which preprocessor branch is active.
+            if (prefix.count("{") != prefix.count("}")
+                    or prefix.rstrip().endswith("::")):
+                return None  # Namespace-qualified definitions at file scope only.
+            marked = _marked_member_fragment(text, marker.group(1))
+            fragment = _balanced_lifecycle_fragment(
+                marked, parsed["class"], parsed["method"], qualified=True)
+            if fragment is not None:
+                return fragment
 
     root = pathlib.Path(repo_root or REPO)
     source = pathlib.Path(path)
@@ -393,7 +443,7 @@ def _lifecycle_member_fragment(path, text, symbol, repo_root=None):
         candidates.append(root / "include" / name)
         for header in candidates:
             try:
-                header_text = header.read_text(errors="replace")
+                header_text = msvc_arms.mwcc_side(header.read_text(errors="replace"))
             except OSError:
                 continue
             fragment = _balanced_lifecycle_fragment(
@@ -407,10 +457,12 @@ def score_member(path, text, symbol, repo_root=None):
     """Score one member of a promoted multi-function translation unit.
 
     Hand-written members use exact ``@symbol`` boundaries.  Compiler-generated
-    ctor/dtor variants use the inline lifecycle definition in a directly included
-    class header.  Anything without either form of evidence is scored against the
+    destructor variants can share a marked out-of-line definition; inline
+    ctor/dtor variants use their directly included header. Anything without this
+    evidence is scored against the
     entire file, preserving the old conservative behavior.
     """
+    text = msvc_arms.mwcc_side(text)
     fragment = _marked_member_fragment(text, symbol)
     if fragment is None:
         fragment = _lifecycle_member_fragment(path, text, symbol, repo_root)
@@ -427,7 +479,7 @@ def converted(src_root=None):
     Reads committed source only - no ROM, no build, no local state - so it
     reproduces on a fresh checkout, which is what CI needs. Ordinary intake files
     retain file-wide scoring. Members of a promoted production TU are independently
-    scored from explicit source markers or inline lifecycle definitions, with a
+    scored from explicit source markers or evidenced lifecycle definitions, with a
     conservative file-wide fallback when neither boundary is evidenced.
     """
     root = pathlib.Path(src_root or SRC)
@@ -598,7 +650,14 @@ def matched_caption(m):
 
 
 def bar_block(t, preserved_matched=None):
-    """The fenced block shown under the README "## The three tiers" heading."""
+    """The fenced block shown under the README "## Progress" heading.
+
+    It sits after the progress bar, as a SIBLING of the `progress:start` /
+    `progress:end` markers rather than nested inside them: `progress.py`
+    replaces everything between those two markers, so a block nested in that
+    range would be deleted by the next progress refresh and the next
+    `tiers.py` refresh would then throw on the missing marker.
+    """
     rows = []
     m, c, k = t["matched"], t["converted"], t["linked"]
     if m:

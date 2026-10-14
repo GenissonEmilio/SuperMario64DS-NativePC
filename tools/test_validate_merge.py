@@ -45,6 +45,10 @@ class ValidateMerge(unittest.TestCase):
             "    .text start:0x02000000 end:0x02000004\n",
             encoding="utf-8")
         (self.repo / "src" / "Example.c").write_text("int Example(void) { return 0; }\n")
+        (self.repo / "function-authors.json").write_text(
+            json.dumps({"functions": {
+                "arm9:0x02000000": {"author": "alice", "name": "Example"}}}) + "\n",
+            encoding="utf-8")
         self.base = commit(self.repo, "base", "alice")
         self.base_branch = git(self.repo, "branch", "--show-current")
         self.old_repo = VM.REPO
@@ -241,8 +245,10 @@ class ValidateMerge(unittest.TestCase):
         # function's "last touched by" without losing anything, and this project spends
         # no tokens defending credit. It is still named, in the warning and the table,
         # so a PR author can see which files moved without that costing the merge.
-        (self.repo / "attribution.json").write_text(
-            '{"overrides": {"src/Example.c": "bob"}}\n', encoding="utf-8")
+        (self.repo / "function-authors.json").write_text(
+            json.dumps({"functions": {
+                "arm9:0x02000000": {"author": "bob", "name": "Example"}}}) + "\n",
+            encoding="utf-8")
         commit(self.repo, "pin credit", "maintainer")
         report = VM.build_report(self.base, "HEAD")
         self.assertEqual(report["status"], "Passed")
@@ -265,11 +271,18 @@ class ValidateMerge(unittest.TestCase):
             text += f"{name} kind:function(arm,size=0x4) addr:0x{0x02000004 + i * 4:08x}\n"
             (self.repo / "src" / f"{name}.c").write_text(
                 f"int {name}(void) {{ return 0; }}\n")
-            overrides[f"src/{name}.c"] = "bob"
+            overrides[f"arm9:0x{0x02000004 + i * 4:08x}"] = {
+                "author": "alice", "name": name}
+        overrides["arm9:0x02000000"] = {"author": "alice", "name": "Example"}
         symbols.write_text(text, encoding="utf-8")
+        (self.repo / "function-authors.json").write_text(
+            json.dumps({"functions": overrides}) + "\n", encoding="utf-8")
         base = commit(self.repo, "more functions", "alice")
-        (self.repo / "attribution.json").write_text(
-            json.dumps({"overrides": overrides}), encoding="utf-8")
+        for key, row in overrides.items():
+            if key != "arm9:0x02000000":
+                row["author"] = "bob"
+        (self.repo / "function-authors.json").write_text(
+            json.dumps({"functions": overrides}) + "\n", encoding="utf-8")
         commit(self.repo, "repin them all", "maintainer")
 
         report = VM.build_report(base, "HEAD")
@@ -284,8 +297,6 @@ class ValidateMerge(unittest.TestCase):
         # actually lost matched code alongside its credit.
         (self.repo / "src" / "Example.c").write_text(
             "// NONMATCHING\nint Example(void) { return 0; }\n")
-        (self.repo / "attribution.json").write_text(
-            '{"overrides": {"src/Example.c": "bob"}}\n', encoding="utf-8")
         commit(self.repo, "unmatch and repin", "maintainer")
         report = VM.build_report(self.base, "HEAD")
         self.assertEqual(report["status"], "Failed")

@@ -7,13 +7,13 @@ No caller needs these exports: a complete tracked reference search finds uses
 only in the two owning translation units, neither of which includes that header.
 The definitions and their current type locations remain unchanged.
 
-- `data_ov045_02112fdc`: the local `GuraResourceDescriptor` in
+- [data_ov045_02112fdc](../../../config/arm9/overlays/ov045/symbols.txt): the local `GuraResourceDescriptor` in
   `src/game/actors/d_a_obj_km2_gura.cpp` contains three pointers. Its 12 ROM bytes
-  resolve to ov045 addresses `0x02113220`, `0x02113228`, and `0x021124f0`.
+  resolve to [ov045](../../../config/arm9/overlays/ov045/symbols.txt) addresses `0x02113220`, `0x02113228`, and `0x021124f0`.
   All three data relocations explicitly name overlay 45. The initialization and
   cleanup helpers consume the first two entries as file handles and the third
   as collision configuration. The obsolete common declaration was `int[]`.
-- `data_ov100_02148390`: the table in `src/game/actors/d_a_star_gate.cpp` holds
+- [data_ov100_02148390](../../../config/arm9/overlays/ov100/symbols.txt): the table in `src/game/actors/d_a_star_gate.cpp` holds
   four `daStarGateInfo` records, each six bytes: two signed bytes followed by two
   signed halfwords. The ROM rows are `(12,5,28,37)`, `(30,6,29,38)`,
   `(50,7,30,39)`, and `(80,8,31,36)`. The existing type and size assertion in

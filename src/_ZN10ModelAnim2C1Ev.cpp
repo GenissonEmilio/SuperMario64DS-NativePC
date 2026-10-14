@@ -5,7 +5,7 @@
  * base when this runs), both vptr stores (_ZTV10ModelAnim2 primary,
  * VTable_Animation_ModelAnim2Thunk secondary at +0x50, addend 0x2c raw),
  * the scalar store otherFile = 0, then the MEMBER construction
- * _ZN9AnimationC1Ev at +0x68. That order -- scalar store before a class
+ * _ZN15dExtFrameCtrl_cC1Ev at +0x68. That order -- scalar store before a class
  * member's ctor -- is mem-initialisation running in DECLARATION order
  * (otherFile is declared before otherAnim), so the init list below
  * reproduces it; spelling `otherFile = 0;` in the body would emit after

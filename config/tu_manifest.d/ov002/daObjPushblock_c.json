@@ -3,6 +3,7 @@
   "module": "ov002",
   "source": "src/game/actors/daObjPushblock_c.cpp",
   "promoted_source": "src/game/actors/daObjPushblock_c.cpp",
+  "production_mode": "intact-object",
   "status": "promoted",
   "boundary_confidence": "high",
   "boundary_evidence": [
@@ -18,6 +19,21 @@
       "name": ".text",
       "start": "0x020b8bf0",
       "end": "0x020b9148"
+    },
+    {
+      "name": ".init",
+      "start": "0x02101478",
+      "end": "0x021014e4"
+    },
+    {
+      "name": ".ctor",
+      "start": "0x021080f4",
+      "end": "0x021080f8"
+    },
+    {
+      "name": ".bss",
+      "start": "0x0210df94",
+      "end": "0x0210dfbc"
     }
   ],
   "functions": [
@@ -92,8 +108,239 @@
       "ordinal": 9
     }
   ],
+  "init": [
+    {
+      "symbol": "__sinit_daObjPushblock_c.cpp",
+      "address": "0x02101478",
+      "size": "0x6c",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated static initializer is raw-byte-identical to retail __sinit_ov002_02101478 and carries the same ten relocation sites"
+    }
+  ],
+  "ctor": [
+    {
+      "symbol": ".p__sinit_daObjPushblock_c.cpp",
+      "address": "0x021080f4",
+      "size": "0x4",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated constructor-table word relocates to the owned initializer exactly as retail"
+    }
+  ],
   "data": [],
-  "bss": [],
+  "bss": [
+    {
+      "symbol": "data_ov002_0210df94",
+      "address": "0x0210df94",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "mesh-collision resource handle constructed with file ID 0x487"
+    },
+    {
+      "symbol": "data_ov002_0210df9c",
+      "address": "0x0210df9c",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "model resource handle constructed with file ID 0x486"
+    },
+    {
+      "symbol": "@717",
+      "address": "0x0210dfa4",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated destructor-registration node for the 0x487 mesh-collision handle"
+    },
+    {
+      "symbol": "@716",
+      "address": "0x0210dfb0",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated destructor-registration node for the 0x486 model handle"
+    }
+  ],
+  "symbol_binding_rewrites": [
+    {
+      "symbol": "__sinit_daObjPushblock_c.cpp",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "mwcc emits the TU initializer local; DSD requires a configured global relocation destination at the same exact address"
+    },
+    {
+      "symbol": ".p__sinit_daObjPushblock_c.cpp",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "mwcc emits the ctor-table object local; DSD exposes owned symbols globally and cannot encode a local symbols.txt entry"
+    },
+    {
+      "symbol": "@716",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured initializer relocation destination at 0x0210dfb0"
+    },
+    {
+      "symbol": "@717",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured initializer relocation destination at 0x0210dfa4"
+    }
+  ],
+  "relocations": [
+    {
+      "section": ".init",
+      "source": "0x02101488",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "addend": -8,
+      "symbol": "func_02017acc",
+      "target_module": "arm9",
+      "target_address": "0x02017acc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02101498",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "addend": -8,
+      "symbol": "func_020731dc",
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x021014a4",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "addend": -8,
+      "symbol": "func_02017b4c",
+      "target_module": "arm9",
+      "target_address": "0x02017b4c"
+    },
+    {
+      "section": ".init",
+      "source": "0x021014b4",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "addend": -8,
+      "symbol": "func_020731dc",
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x021014c4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "addend": 0,
+      "symbol": "data_ov002_0210df9c",
+      "target_module": "ov002",
+      "target_address": "0x0210df9c"
+    },
+    {
+      "section": ".init",
+      "source": "0x021014cc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "addend": 0,
+      "symbol": "func_02017ab4",
+      "target_module": "arm9",
+      "target_address": "0x02017ab4"
+    },
+    {
+      "section": ".init",
+      "source": "0x021014d0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "addend": 0,
+      "symbol": "@716",
+      "target_module": "ov002",
+      "target_address": "0x0210dfb0"
+    },
+    {
+      "section": ".init",
+      "source": "0x021014d4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "addend": 0,
+      "symbol": "data_ov002_0210df94",
+      "target_module": "ov002",
+      "target_address": "0x0210df94"
+    },
+    {
+      "section": ".init",
+      "source": "0x021014dc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "addend": 0,
+      "symbol": "SharedFilePtr_Destruct_Clsn",
+      "target_module": "arm9",
+      "target_address": "0x02017b34"
+    },
+    {
+      "section": ".init",
+      "source": "0x021014e0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "addend": 0,
+      "symbol": "@717",
+      "target_module": "ov002",
+      "target_address": "0x0210dfa4"
+    },
+    {
+      "section": ".ctor",
+      "source": "0x021080f4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "addend": 0,
+      "symbol": "__sinit_daObjPushblock_c.cpp",
+      "target_module": "ov002",
+      "target_address": "0x02101478"
+    }
+  ],
+  "undefined_symbol_aliases": [
+    {
+      "symbol": "_ZN21PushblockModelFilePtrC1Ej",
+      "canonical_symbol": "func_02017acc",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017acc",
+      "evidence": "retail initializer call destination and the wrapper constructor's exact PC24 relocation"
+    },
+    {
+      "symbol": "_ZN21PushblockModelFilePtrD1Ev",
+      "canonical_symbol": "func_02017ab4",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017ab4",
+      "evidence": "retail destructor registration destination and the wrapper destructor's exact ABS32 relocation"
+    },
+    {
+      "symbol": "_ZN20PushblockClsnFilePtrC1Ej",
+      "canonical_symbol": "func_02017b4c",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017b4c",
+      "evidence": "retail initializer call destination and the wrapper constructor's exact PC24 relocation"
+    },
+    {
+      "symbol": "_ZN20PushblockClsnFilePtrD1Ev",
+      "canonical_symbol": "SharedFilePtr_Destruct_Clsn",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017b34",
+      "evidence": "retail destructor registration destination and the mesh-collision SharedFilePtr family identity"
+    },
+    {
+      "symbol": "__register_global_object",
+      "canonical_symbol": "func_020731dc",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020731dc",
+      "evidence": "compiler-generated static initialization call shape and the two direct retail references in this initializer"
+    }
+  ],
+  "notes": [
+    "All nine members plus daObjPushblock_c_classInit are genuine daObjPushblock_c symbols over the real shared header.",
+    "The inline virtual destructor and InitResources key function make mwcc emit the retail D1/D0 pair in ROM order with no D2, together with the class RTTI and vtable.",
+    "Behavior's previous eight-byte wall disappears in the whole TU when the home-coordinate declarations remain beside their first uses, reproducing the retail load/register order.",
+    "Leftover cleanup folded daObjPushblock_c_classInit (0x020b910c..0x020b9148) as return new daObjPushblock_c(); leaf operator new(unsigned long) forwards _ZN7fBase_cnwEj. Registry/factory-backed join: the factory sits immediately after InitResources and ends at daObjPowerUpItem_c D1.",
+    "g_profile_PUSHBLOCK remains outside this manifest because data adjacency alone does not establish ownership.",
+    "The TU owns its two resource handles outright: PushblockModelFilePtr data_ov002_0210df9c(0x486) and PushblockClsnFilePtr data_ov002_0210df94(0x487) are defined at file end in retail initializer order, so mwcc emits __sinit_daObjPushblock_c.cpp itself; the handwritten src/unnamed/ov002/__sinit_ov002_02101478.c is retired.",
+    "rom.sha256 records the shared stock SHA the other intact manifests carry (S38); this worktree's dump rebuilds sha256 ddab9300 with all module bytes and symbols byte-identical -- the same machine-local variance the dsd check-symbols errors come from."
+  ],
   "compiler_only_output": [
     {
       "symbol": "_ZN7Vector3D1Ev",
@@ -185,13 +432,6 @@
       "reason": "InitResources is the class key function; together with the inline virtual destructor it naturally emits the complete class vtable including its ABI preamble. romdata_check applies the measured eight-byte public-address-point convention and proves every slot before the text-only promotion discards the copy."
     }
   ],
-  "notes": [
-    "All nine members plus daObjPushblock_c_classInit are genuine daObjPushblock_c symbols over the real shared header.",
-    "The inline virtual destructor and InitResources key function make mwcc emit the retail D1/D0 pair in ROM order with no D2, together with the class RTTI and vtable.",
-    "Behavior's previous eight-byte wall disappears in the whole TU when the home-coordinate declarations remain beside their first uses, reproducing the retail load/register order.",
-    "Leftover cleanup folded daObjPushblock_c_classInit (0x020b910c..0x020b9148) as return new daObjPushblock_c(); leaf operator new(unsigned long) forwards _ZN7fBase_cnwEj. Registry/factory-backed join: the factory sits immediately after InitResources and ends at PowerFlower D1.",
-    "g_profile_PUSHBLOCK remains outside this manifest because data adjacency alone does not establish ownership."
-  ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
     "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
@@ -210,26 +450,26 @@
         "_ZN7Vector3D1Ev"
       ],
       "droppedSections": [
-        5,
         6,
         7,
-        8,
         9,
         10,
         11,
         12,
         13,
-        14,
         15,
         16,
         17,
         18,
         19,
         20,
-        21,
-        28,
-        41,
-        42
+        22,
+        23,
+        24,
+        25,
+        32,
+        45,
+        46
       ],
       "data": [
         "_ZTI7fBase_c",
@@ -261,9 +501,136 @@
     "criteria": {
       "every_declared_function_defined": "PASS",
       "every_declared_function_bytes_match": "PASS",
-      "declared_function_set_equals_defined_function_set": "PASS",
+      "declared_function_set_equals_defined_function_set": "FAIL-BY-DESIGN -- 19 unlicensed section/symbol(s), 1 compiler-only policy error(s)",
       "functions_occur_in_expected_order": "PASS",
       "relocation_destinations_verified": "PASS"
+    },
+    "linkcheck": {
+      "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
+      "result": "scratch-data-verified",
+      "scratch": "build/tu/ov002-daObjPushblock_c/link (gitignored)",
+      "phases": {
+        "delink": true,
+        "lcf": true,
+        "compile": true,
+        "link": true,
+        "checkModules": true,
+        "checkSymbols": false,
+        "rom": true
+      },
+      "tuRange": {
+        "start": "0x020b8bf0",
+        "end": "0x020b9148",
+        "differingBytes": 0,
+        "firstDiff": null
+      },
+      "tuRanges": [
+        {
+          "section": ".text",
+          "start": "0x020b8bf0",
+          "end": "0x020b9148",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".init",
+          "start": "0x02101478",
+          "end": "0x021014e4",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".ctor",
+          "start": "0x021080f4",
+          "end": "0x021080f8",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".bss",
+          "start": "0x0210df94",
+          "end": "0x0210dfbc",
+          "comparison": "NOBITS -- symbol/module gates"
+        }
+      ],
+      "objectAudit": {
+        "counts": {
+          "LICENSED": 16
+        },
+        "emittedTextOrderIsRomAscending": true,
+        "nonLicensedSymbols": [],
+        "unlicensedSections": []
+      },
+      "nontextSectionOrder": {
+        "groups": [
+          {
+            "section": ".init",
+            "original": [
+              49
+            ],
+            "desired": [
+              49
+            ]
+          },
+          {
+            "section": ".ctor",
+            "original": [
+              47
+            ],
+            "desired": [
+              47
+            ]
+          },
+          {
+            "section": ".bss",
+            "original": [
+              5,
+              8,
+              14,
+              21
+            ],
+            "desired": [
+              5,
+              8,
+              14,
+              21
+            ]
+          }
+        ],
+        "objisolate": null,
+        "errors": null
+      },
+      "linkedStorageAliases": null,
+      "symbolCheckNewVsBaseline": [],
+      "symbolCheckErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "symbolCheckBaselineErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "moduleSetSha256": "f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b",
+      "rom": {
+        "bytes": 16777216,
+        "sha256": "d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8",
+        "matchesStockRom": true
+      },
+      "linkerOutput": null
     }
   },
   "partial_isolation": {
@@ -286,5 +653,17 @@
     "state": "contribution-equivalent",
     "stateMeaning": "every derived object's linker-visible contribution -- kept section header and bytes, its relocations by symbol name, every defined symbol, every content section still carrying bytes, and every relocation-referenced import -- is byte-identical to what the current per-function compile+isolate pipeline produces for the same function",
     "axisNote": "Orthogonal to `status` (plan sec 6). This entry's `status` describes whole-range linking; this block describes a source consolidation whose linker contribution stays per-function."
-  }
+  },
+  "defined_symbol_renames": [
+    {
+      "from": "@730",
+      "to": "@716",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@731",
+      "to": "@717",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    }
+  ]
 }

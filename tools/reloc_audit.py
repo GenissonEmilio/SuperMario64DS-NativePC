@@ -35,6 +35,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import sys
 import tempfile
 from collections import Counter
@@ -218,8 +219,61 @@ def object_reloc_dests(obj, func, name_index, vt_form="raw"):
     return dests, size
 
 
+_RENAME_POLICIES = None
+
+
+def _defined_symbol_rename_policies():
+    """[(function symbols, {from: to})] for every manifest that sets defined_symbol_renames."""
+    global _RENAME_POLICIES
+    if _RENAME_POLICIES is None:
+        policies = []
+        for path in sorted((REPO / "config" / "tu_manifest.d").glob("*/*.json")):
+            try:
+                entry = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            rows = entry.get("defined_symbol_renames") or []
+            mapping = {row.get("from"): row.get("to") for row in rows
+                       if isinstance(row, dict) and row.get("from") and row.get("to")}
+            funcs = frozenset(row["symbol"] for row in entry.get("functions") or []
+                              if isinstance(row, dict) and row.get("symbol"))
+            if mapping and funcs:
+                policies.append((funcs, mapping))
+        _RENAME_POLICIES = policies
+    return _RENAME_POLICIES
+
+
+def _with_manifest_renames(obj):
+    """Renumber the compiler temps a promoted TU's manifest renames, as tu_production does.
+
+    mwcc numbers `@NNN` per TU, so a fold can emit a name another module already
+    defines globally; the manifest's defined_symbol_renames gives it a fleet-unique
+    one, and the production link only ever sees the renamed object. Resolving the
+    compiled name through symbols.txt instead lands on the OTHER module's temp:
+    ov002 dPathLiftActor_c's `@653` read as ov079's `@653` and called a correct
+    `__sinit` WRONG. A policy applies only to the object that defines every function
+    its manifest lists and every name it renames; a refused rename keeps the raw
+    object, so the verdict fails closed.
+    """
+    policies = _defined_symbol_rename_policies()
+    if not policies:
+        return obj
+    try:
+        symtab = ELFFile(io.BytesIO(obj)).get_section_by_name(".symtab")
+        defined = {s.name for s in symtab.iter_symbols()
+                   if s.name and s["st_shndx"] != "SHN_UNDEF"}
+    except Exception:                                             # noqa: BLE001
+        return obj
+    for funcs, mapping in policies:
+        if funcs <= defined and set(mapping) <= defined:
+            import objisolate as OI
+            out, _plan = OI.rename_defined_symbols(obj, mapping)
+            return obj if out is None else out
+    return obj
+
+
 def _as_the_build_links_it(obj, name):
-    """Apply objisolate, because the ROM build does and the destinations differ.
+    """Apply manifest renames and objisolate, because the ROM build does and the destinations differ.
 
     A gate that checks relocation DESTINATIONS has to check the object the linker
     actually consumes. rombuild runs every enrolled object through objisolate, and
@@ -240,6 +294,7 @@ def _as_the_build_links_it(obj, name):
     wrong. Fails open -- if isolation cannot plan this object, check it unisolated
     rather than losing the verdict.
     """
+    obj = _with_manifest_renames(obj)
     try:
         import objisolate as OI
         fd, tmp = tempfile.mkstemp(suffix=".o")
@@ -342,7 +397,33 @@ def resolve_nested_slice(sym, code, relocs, addr, size, name_index):
     return code[off:off + size], {r - off for r in relocs if off <= r < off + size}, off
 
 
-def winning_object(name, addr, size, mod, candidate=None, include_dirs=(), name_index=None):
+def defined_function_size(obj, name):
+    """Size of a real, complete named function, or None when emission is unproven.
+
+    extract_func also accepts data symbols and truncated section slices. Neither
+    is evidence that the compiler emitted the requested function as a draft.
+    """
+    try:
+        elf = ELFFile(io.BytesIO(obj))
+        st = elf.get_section_by_name(".symtab")
+        for sym in st.iter_symbols():
+            if sym.name != name or sym["st_info"]["type"] != "STT_FUNC":
+                continue
+            index, start, size = sym["st_shndx"], sym["st_value"], sym["st_size"]
+            if not isinstance(index, int) or not 0 < index < elf.num_sections():
+                continue
+            sec = elf.get_section(index)
+            if (size > 0 and sec["sh_type"] == "SHT_PROGBITS"
+                    and sec["sh_flags"] & 4  # SHF_EXECINSTR
+                    and 0 <= start < start + size <= len(sec.data())):
+                return size
+    except Exception:
+        pass  # Invalid/missing output is never positive draft evidence.
+    return None
+
+
+def winning_object(name, addr, size, mod, candidate=None, include_dirs=(), name_index=None,
+                   diagnostics=None):
     """Reproduce the match the way reverify does, but return the object that did it.
 
     Mirrors reverify_corpus.compiles_to so the audit measures exactly what reverify
@@ -350,7 +431,9 @@ def winning_object(name, addr, size, mod, candidate=None, include_dirs=(), name_
     When ``candidate`` is supplied, verify that source file directly instead of
     looking it up under ``src/``. This is the safe bridge for workbench artifacts.
 
-    Returns a 4-tuple ``(obj, sym, err, offset)``. ``offset`` is 0 for every ordinary
+    Returns a 4-tuple ``(obj, sym, err, offset)``. Optional ``diagnostics`` collects
+    expected/emitted sizes on failure without changing that caller contract.
+    ``offset`` is 0 for every ordinary
     match (`sym`'s own compiled bytes are what `name` names) and nonzero only for a
     NESTED entry point: a hand-asm block that packs several ROM functions into ONE
     compiled symbol, e.g. func_01ff97d8.c, whose object defines only "func_01ff97d8"
@@ -364,13 +447,14 @@ def winning_object(name, addr, size, mod, candidate=None, include_dirs=(), name_
     containers (which carry their address in the name itself) get nested-slice support."""
     import reverify_corpus as RV
     target = RV.rom_bytes(mod, addr, size)
-    if target is None:
+    if target is None or len(target) != size:
         return None, None, "no-module-bin", 0
-    # Distinguish the three ways this can fail so callers do not report a missing
-    # or wrong-length source as "no-repro" (which reads as a false-match red flag).
-    # saw_source: src_texts yielded at least one candidate to try.
-    # saw_len:    a candidate compiled to a function of the expected length.
-    saw_source = saw_len = False
+    # Keep failure evidence separate from the any-symbol match search: a sibling
+    # near miss cannot prove that the requested function compiled at all.
+    saw_source = saw_output = False
+    emitted_sizes = set()
+    if diagnostics is not None:
+        diagnostics.update(expected_size=size, emitted_sizes=[])
     candidate_path = pathlib.Path(candidate) if candidate is not None else None
     if candidate_path is not None:
         try:
@@ -379,20 +463,25 @@ def winning_object(name, addr, size, mod, candidate=None, include_dirs=(), name_
             # and take down a verdict. (Windows cp1252 round-trips have corrupted repo JSONL
             # this way before; do not narrow this to a bare OSError catch.)
             sources = [(candidate_path.read_text(encoding="utf-8", errors="replace"),
-                        candidate_path)]
+                        candidate_path, candidate_path)]
         except OSError:
             sources = []
     else:
-        sources = [(src, None) for src in RV.src_texts(name, addr)]
-    for src, source_path in sources:
+        sources = [(src, None, path) for src, path in RV.src_candidates(name, addr)]
+    for src, source_path, origin in sources:
         saw_source = True
         attempts = build_flag_attempts(src)
         for flags, suf in attempts:
             tmp = None
             if source_path is None:
-                fd, tmp = tempfile.mkstemp(suffix=suf)
-                os.close(fd)
-                cfile = pathlib.Path(tmp)
+                # The copy keeps the source's own basename: mwcc names a TU's static
+                # initializer __sinit_<file name>, and isolation asked for
+                # __sinit_dPathLiftActor_c.cpp finds nothing to keep in an object that
+                # calls it __sinit_tmpXXXX.cpp. It then returns the whole TU unisolated,
+                # and the destructors it emits for their legacy sources get checked with
+                # the raw +8 vtable addend and read WRONG.
+                tmp = tempfile.mkdtemp()
+                cfile = pathlib.Path(tmp) / (pathlib.Path(origin).stem + suf)
                 # encoding is not optional here: 42 files in src/ contain non-ASCII
                 # (arrows and box characters in codegen comments), and on Windows the
                 # default is cp1252, which raises UnicodeEncodeError and degrades the
@@ -405,7 +494,14 @@ def winning_object(name, addr, size, mod, candidate=None, include_dirs=(), name_
                     obj = M.compile_c(cfile, v, flags, include_dirs)
                     if obj is None:
                         continue
-                    obj = _as_the_build_links_it(obj, name)
+                    saw_output = True
+                    try:
+                        obj = _as_the_build_links_it(obj, name)
+                    except Exception:
+                        continue
+                    emitted_size = defined_function_size(obj, name)
+                    if emitted_size is not None:
+                        emitted_sizes.add(emitted_size)
                     import probe_versions as PV
                     try:
                         candidate_syms = list(PV.funcs_in(obj).keys())
@@ -421,7 +517,10 @@ def winning_object(name, addr, size, mod, candidate=None, include_dirs=(), name_
                     # D1's ROM bytes and called a correct file WRONG.
                     candidate_syms = [name] + [s for s in candidate_syms if s != name]
                     for sym in candidate_syms:
-                        code, relocs = M.extract_func(obj, sym)
+                        try:
+                            code, relocs = M.extract_func(obj, sym)
+                        except Exception:
+                            continue
                         if code is None:
                             continue
                         tgt, off = target, 0
@@ -447,18 +546,25 @@ def winning_object(name, addr, size, mod, candidate=None, include_dirs=(), name_
                                 if sliced is None:
                                     continue
                                 code, relocs, off = sliced
-                        saw_len = True
                         ok, _ = M.compare(tgt, code, relocs, verbose=False)
                         if ok:
                             return obj, sym, None, off
             finally:
                 if tmp is not None:
-                    pathlib.Path(tmp).unlink(missing_ok=True)
+                    shutil.rmtree(tmp, ignore_errors=True)
+    if diagnostics is not None:
+        diagnostics["emitted_sizes"] = sorted(emitted_sizes)
     if not saw_source:
-        return None, None, "no-source", 0      # no src/<name>.c|.cpp on disk to try
-    if not saw_len:
-        return None, None, "len-mismatch", 0   # compiled, but never the target's length
-    return None, None, "no-repro", 0           # right length, but bytes never matched
+        return None, None, "no-source", 0
+    if not saw_output:
+        return None, None, "compile-failed", 0
+    if not emitted_sizes:
+        return None, None, "missing-symbol", 0
+    if size <= 0:
+        return None, None, "len-mismatch", 0  # unresolved zero-size alias
+    if size not in emitted_sizes:
+        return None, None, "requested-size-mismatch", 0
+    return None, None, "no-repro", 0
 
 
 def classify(cand_name, cand_mod, cand_addr, cfg, sym_index):

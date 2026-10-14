@@ -15,10 +15,31 @@
  *   [4] 0x020b33dc  daObjAbuku_c::Behavior
  *   [5] 0x020b3518  daObjAbuku_c::InitResources
  *   [6] 0x020b3568  daObjAbuku_c_classInit
+ *
+ * deslop leftovers:
+ * - func_ov002_020b330c (pop: PlayBank3 + Particle NewSimple +
+ *   MarkForDestruction) / func_ov002_020b3344 (dBgCh_Gnd water probe):
+ *   manifest ordinals 2-3 of this TU, no other src/ consumer; kept as
+ *   C-linkage ROM labels with TU-local (daObjAbuku_c *) decls. This TU
+ *   does not include decl_common.h's (char *) spellings.
+ * - dCcAc_c::Init stays TU-local mangled (see extern block: Fix12i
+ *   by-value homes on the stack, 6az).
+ * - Particle::System::New / NewSimple stay TU-local mangled:
+ *   Particle__System.h declares neither.
+ * - data_02082214 is the link name (arm9 symbols.txt kind:data(any));
+ *   no named alias exists. Sway lookup off (mSwayAngle >> 4).
+ * - AbukuVector3 POD + reinterpret_cast: a real Vector3 local emits
+ *   vague-linkage ~Vector3 into this text-only TU.
+ * - g_profile_OBJ_ABUKU keeps TU-local AbukuSpawnInfo; no shared 0x1c
+ *   actor-profile struct exists. The manifest proves the descriptor,
+ *   then deadstrip-discards it (canonical home outside .text).
+ * - mSwayAngle volatile-u16 reload + >> 4, and the actorID == 0xbf
+ *   int-then-if, kept in matched form.
  */
 
 #include "daObjAbuku_c.h"
 #include "dBgCh_Gnd.h"
+#include "Player.h"
 #include "Sound.h"
 
 /* POD stand-in: a real Vector3 local emits vague-linkage ~Vector3 into this
@@ -39,8 +60,6 @@ struct AbukuSpawnInfo {
 typedef char AbukuSpawnInfo_size_must_be_0x1c[
     sizeof(AbukuSpawnInfo) == 0x1c ? 1 : -1];
 
-typedef long long s64;
-
 extern "C" {
 void func_ov002_020b330c(daObjAbuku_c *);
 int func_ov002_020b3344(daObjAbuku_c *);
@@ -54,7 +73,6 @@ unsigned short DecIfAbove0_Short(unsigned short *p);
 unsigned int _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
     unsigned int, unsigned int, Fix12i, Fix12i, Fix12i, const Vector3_16 *, void *);
 void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned, int, int, int);
-void _ZN6Player4HealEi(dActor_c *player, int amount);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -104,7 +122,7 @@ int daObjAbuku_c::Behavior()
         if (found) {
             int b = (found->actorID == 0xbf);
             if (b) {
-                _ZN6Player4HealEi(found, 0x300);
+                ((Player *)found)->Heal(0x300);
                 func_ov002_020b330c(this);
             }
         }
@@ -121,6 +139,7 @@ int daObjAbuku_c::Behavior()
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
+// @symbol func_ov002_020b3344
 extern "C" {
 int func_ov002_020b3344(daObjAbuku_c *c){
   dBgCh_Gnd rg;
@@ -145,6 +164,7 @@ int func_ov002_020b3344(daObjAbuku_c *c){
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
+// @symbol func_ov002_020b330c
 extern "C" {
 void func_ov002_020b330c(daObjAbuku_c *c){
   Sound::PlayBank3(0xb, *reinterpret_cast<const Vector3 *>(&c->mCamSpacePosX));

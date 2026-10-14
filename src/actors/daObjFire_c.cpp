@@ -16,10 +16,10 @@
  * - func_020228dc / func_0202293c: blue/red flame particle wrappers
  *   (effects 0x117 / 0x118). No recovered names.
  * - Particle::System::NewSimple stays mangled (Fix12i by value, 6az).
- * - Player::Burn stays mangled (no Player.h).
  */
 
 #include "daObjFire_c.h"
+#include "Player.h"
 
 extern "C" {
 u8 DecIfAbove0_Byte(u8 *value);
@@ -30,7 +30,6 @@ void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(
 void _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(
     void *self, dActor_c *actor, Fix12i radius, Fix12i height,
     u32 flags, u32 vulnFlags);
-void _ZN6Player4BurnEv(void *player);
 }
 
 // @symbol daObjFire_c_classInit_OBJ_RED_FIRE
@@ -141,7 +140,7 @@ int daObjFire_c::Behavior()
             if (actor != 0) {
                 if ((int)(actor->actorID == 0xbf) != 0) {
                     if ((mdCcAc_c.hitFlags & 0x8000) == 0) {
-                        _ZN6Player4BurnEv(actor);
+                        ((Player *)actor)->Burn();
                     }
                 }
             }
@@ -152,3 +151,19 @@ int daObjFire_c::Behavior()
     mdCcAc_c.Update();
     return 1;
 }
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 1 -- _ZN11daObjFire_cD0Ev, 0x020b5764, size 0x44 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN11daObjFire_cD0Ev
+/* Deleting destructor, vtable slot 17. No body here: the destructor is inline in
+ * include/daObjFire_c.h, which is what makes mwccarm emit exactly the retail
+ * D1/D0 pair in retail order and no D2. dActor_c's inline operator delete
+ * supplies the actor-heap release after complete destruction. */
+
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 0 -- _ZN11daObjFire_cD1Ev, 0x020b5734, size 0x30 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN11daObjFire_cD1Ev
+/* Complete destructor, vtable slot 16. No body here either -- same inline header
+ * definition. The only member with a destructor is the dCcAc_c collider, and it
+ * is destroyed before the dActor_c base. */

@@ -130,12 +130,6 @@ a fast green that means nothing. Included:
                       (`SCAN TOO SMALL`, exit 2) so a scan that found nothing cannot
                       report clean. Needs `git ls-files -z`.
 
-  src-tu-refs         tools/check_src_tu.py
-                      Resolves mangled references in `src_tu/` against
-                      `config/**/symbols.txt`. Text only -- the compiling half of
-                      this check lives in `check_src_tu_compiles.py`, which is
-                      EXCLUDED below for exactly that reason.
-
   header-offsets      tools/check_header_offsets.py <every tracked header>
                       Pure text. Refuses an empty file list ("an empty check is not
                       a pass"), which this tool relies on: if `git ls-files` yields
@@ -162,7 +156,6 @@ and including one would buy a green that means nothing:
                               build/eligible-scratch/, or rombuild.py in build/src/.
   check_layout_free.py        reads `extracted/` (the ROM dump) and needs PyYAML.
   check_python_names.py       needs pyflakes, which is not stdlib.
-  check_src_tu_compiles.py    needs mwccarm.
   rombuild.py, eligible.py    forbidden outright, see above.
 
 BYTES, BELOW: WHY source_coverage IS RUN WITH `--check`, AND HOW
@@ -414,11 +407,6 @@ GATES = [
         "key": "dead-references",
         "commands": lambda t: [[sys.executable, "tools/check_dead_references.py"]],
         "note": "pure text; own SCAN TOO SMALL guard",
-    },
-    {
-        "key": "src-tu-refs",
-        "commands": lambda t: [[sys.executable, "tools/check_src_tu.py"]],
-        "note": "text only; the compiling half is check_src_tu_compiles.py (excluded)",
     },
     {
         "key": "header-offsets",
@@ -904,7 +892,7 @@ def run_gate(gate, tree):
 
 
 # The line a reader wants when a gate goes red. The LAST line is right for a gate
-# that ends with a verdict (`CONVERTED backslide: ...`, `check_src_tu: N unresolved`)
+# that ends with a verdict (`CONVERTED backslide: ...`, `N unresolved`)
 # and useless for a batched one -- header-offsets ends on whichever header happened
 # to sort last, which says nothing about why it failed. So on a red gate the first
 # line that looks like the complaint wins, and the last line is the fallback.

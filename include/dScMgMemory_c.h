@@ -1,13 +1,23 @@
-/* Memory Match uses the ROM class dScMgMemory_c. RTTI at
- * ov006:0x0213d090 names the class and its vtable begins at 0x0213d1b8.
- * The English minigame name is descriptive evidence, not a substitute for
- * that ROM-proven identity.
+/* Memory Match (MG_MEMORY). Twelve cards and three markers on the
+ * touch screen.
  *
- * SIZE 0x5340, measured by the unique MG_MEMORY factory at 0x020f5504.
- * The complete scene TU proves twelve 0x18-byte cards, three 0x14-byte
- * player markers, a cursor/HUD object, and the state-machine scalars below.
- * Address-only handler spellings are descriptive and disclosed as coined in
- * symbols/actor_renames.tsv. */
+ * RTTI at ov006:0x0213d090 names the class dScMgMemory_c; its vtable
+ * begins at 0x0213d1b8. SIZE 0x5340, measured by the MG_MEMORY factory at
+ * 0x020f5504.
+ *
+ * Coined names: this tree first called the class MgMemoryMatch
+ * (`_ZN13MgMemoryMatchD1Ev`, `_ZTV13MgMemoryMatch`). The ROM disagrees: the
+ * RTTI pointer one word below the vptr value 0x0213d1b8 is
+ * `_ZTI13dScMgMemory_c`, whose `_ZTS` reads "13dScMgMemory_c". Both names
+ * are 13 characters, so no mangled prefix changed. dScMgMemory_c_classInit
+ * (historical alias MgMemoryMatch_Spawn) is reconstructed; retail does not
+ * store that spelling. The address-only handler names are coined as well,
+ * and disclosed in symbols/actor_renames.tsv.
+ *
+ * Shared table at 0x4f38 (mShared, 0x270 bytes), built by
+ * func_ov006_020c1d80 and torn down by func_ov006_020c1c64 -- the same
+ * pair dScMgCard_c, dScMgMCarlo2_c and dScMgRoulette_c use.
+ */
 #ifndef DSCMGMEMORY_C_H
 #define DSCMGMEMORY_C_H
 
@@ -70,18 +80,7 @@ typedef char dMgMemoryCursor_c_size_must_be_0x10[sizeof(dMgMemoryCursor_c) == 0x
 #endif
 
 struct dScMgMemory_c : dScMgSingle3DBase_c {
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgMemory_c();   /* no slot */
-#else
-    virtual ~dScMgMemory_c();   /* D1 and D0 */
-#endif
+    virtual ~dScMgMemory_c();
 
     s32 InitResources();
     s32 Behavior();

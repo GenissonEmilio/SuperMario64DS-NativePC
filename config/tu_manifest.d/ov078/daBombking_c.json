@@ -16,6 +16,11 @@
       "name": ".text",
       "start": "0x02123740",
       "end": "0x02126660"
+    },
+    {
+      "name": ".data",
+      "start": "0x02126e0c",
+      "end": "0x02126ec8"
     }
   ],
   "functions": [
@@ -34,98 +39,98 @@
       "ordinal": 1
     },
     {
-      "symbol": "func_ov078_02123804",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123804Ev",
       "address": "0x02123804",
       "size": "0x00000060",
       "legacy_source": "src/func_ov078_02123804.c",
       "ordinal": 2
     },
     {
-      "symbol": "func_ov078_02123864",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123864Ev",
       "address": "0x02123864",
       "size": "0x00000048",
       "legacy_source": "src/func_ov078_02123864.c",
       "ordinal": 3
     },
     {
-      "symbol": "func_ov078_021238ac",
+      "symbol": "_ZN12daBombking_c19func_ov078_021238acEv",
       "address": "0x021238ac",
       "size": "0x00000190",
       "legacy_source": "src/func_ov078_021238ac.c",
       "ordinal": 4
     },
     {
-      "symbol": "func_ov078_02123a3c",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123a3cEv",
       "address": "0x02123a3c",
       "size": "0x00000064",
       "legacy_source": "src/func_ov078_02123a3c.c",
       "ordinal": 5
     },
     {
-      "symbol": "func_ov078_02123aa0",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123aa0Ev",
       "address": "0x02123aa0",
       "size": "0x00000124",
       "legacy_source": "src/func_ov078_02123aa0.c",
       "ordinal": 6
     },
     {
-      "symbol": "func_ov078_02123bc4",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123bc4Ev",
       "address": "0x02123bc4",
       "size": "0x0000005c",
       "legacy_source": "src/func_ov078_02123bc4.cpp",
       "ordinal": 7
     },
     {
-      "symbol": "func_ov078_02123c20",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123c20Ev",
       "address": "0x02123c20",
       "size": "0x000000d0",
       "legacy_source": "src/func_ov078_02123c20.cpp",
       "ordinal": 8
     },
     {
-      "symbol": "func_ov078_02123cf0",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123cf0Ev",
       "address": "0x02123cf0",
       "size": "0x0000004c",
       "legacy_source": "src/func_ov078_02123cf0.cpp",
       "ordinal": 9
     },
     {
-      "symbol": "func_ov078_02123d3c",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123d3cEv",
       "address": "0x02123d3c",
       "size": "0x0000017c",
       "legacy_source": "src/func_ov078_02123d3c.c",
       "ordinal": 10
     },
     {
-      "symbol": "func_ov078_02123eb8",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123eb8Ev",
       "address": "0x02123eb8",
       "size": "0x00000064",
       "legacy_source": "src/func_ov078_02123eb8.c",
       "ordinal": 11
     },
     {
-      "symbol": "func_ov078_02123f1c",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123f1cEv",
       "address": "0x02123f1c",
       "size": "0x00000098",
       "legacy_source": "src/func_ov078_02123f1c.cpp",
       "ordinal": 12
     },
     {
-      "symbol": "func_ov078_02123fb4",
+      "symbol": "_ZN12daBombking_c19func_ov078_02123fb4Ev",
       "address": "0x02123fb4",
       "size": "0x0000004c",
       "legacy_source": "src/func_ov078_02123fb4.cpp",
       "ordinal": 13
     },
     {
-      "symbol": "func_ov078_02124000",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124000Ev",
       "address": "0x02124000",
       "size": "0x00000060",
       "legacy_source": "src/func_ov078_02124000.c",
       "ordinal": 14
     },
     {
-      "symbol": "func_ov078_02124060",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124060Ev",
       "address": "0x02124060",
       "size": "0x00000040",
       "legacy_source": "src/func_ov078_02124060.cpp",
@@ -139,196 +144,196 @@
       "ordinal": 16
     },
     {
-      "symbol": "func_ov078_021243c0",
+      "symbol": "_ZN12daBombking_c19func_ov078_021243c0Ev",
       "address": "0x021243c0",
       "size": "0x000000b0",
       "legacy_source": "src/func_ov078_021243c0.cpp",
       "ordinal": 17
     },
     {
-      "symbol": "func_ov078_02124470",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124470Ev",
       "address": "0x02124470",
       "size": "0x00000060",
       "legacy_source": "src/func_ov078_02124470.c",
       "ordinal": 18
     },
     {
-      "symbol": "func_ov078_021244d0",
+      "symbol": "_ZN12daBombking_c19func_ov078_021244d0Ev",
       "address": "0x021244d0",
       "size": "0x00000050",
       "legacy_source": "src/func_ov078_021244d0.c",
       "ordinal": 19
     },
     {
-      "symbol": "func_ov078_02124520",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124520Ev",
       "address": "0x02124520",
       "size": "0x00000258",
       "legacy_source": "src/func_ov078_02124520.c",
       "ordinal": 20
     },
     {
-      "symbol": "func_ov078_02124778",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124778Ev",
       "address": "0x02124778",
       "size": "0x00000044",
       "legacy_source": "src/func_ov078_02124778.cpp",
       "ordinal": 21
     },
     {
-      "symbol": "func_ov078_021247bc",
+      "symbol": "_ZN12daBombking_c19func_ov078_021247bcEv",
       "address": "0x021247bc",
       "size": "0x00000384",
       "legacy_source": "src/func_ov078_021247bc.c",
       "ordinal": 22
     },
     {
-      "symbol": "func_ov078_02124b40",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124b40Ev",
       "address": "0x02124b40",
       "size": "0x00000084",
       "legacy_source": "src/func_ov078_02124b40.c",
       "ordinal": 23
     },
     {
-      "symbol": "func_ov078_02124bc4",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124bc4Ev",
       "address": "0x02124bc4",
       "size": "0x000000d0",
       "legacy_source": "src/func_ov078_02124bc4.cpp",
       "ordinal": 24
     },
     {
-      "symbol": "func_ov078_02124c94",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124c94Ev",
       "address": "0x02124c94",
       "size": "0x00000060",
       "legacy_source": "src/func_ov078_02124c94.c",
       "ordinal": 25
     },
     {
-      "symbol": "func_ov078_02124cf4",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124cf4Ev",
       "address": "0x02124cf4",
       "size": "0x000001a8",
       "legacy_source": "src/func_ov078_02124cf4.cpp",
       "ordinal": 26
     },
     {
-      "symbol": "func_ov078_02124e9c",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124e9cEv",
       "address": "0x02124e9c",
       "size": "0x0000008c",
       "legacy_source": "src/func_ov078_02124e9c.c",
       "ordinal": 27
     },
     {
-      "symbol": "func_ov078_02124f28",
+      "symbol": "_ZN12daBombking_c19func_ov078_02124f28Ev",
       "address": "0x02124f28",
       "size": "0x000001a8",
       "legacy_source": "src/func_ov078_02124f28.cpp",
       "ordinal": 28
     },
     {
-      "symbol": "func_ov078_021250d0",
+      "symbol": "_ZN12daBombking_c19func_ov078_021250d0Ev",
       "address": "0x021250d0",
       "size": "0x00000028",
       "legacy_source": "src/func_ov078_021250d0.c",
       "ordinal": 29
     },
     {
-      "symbol": "func_ov078_021250f8",
+      "symbol": "_ZN12daBombking_c19func_ov078_021250f8Ev",
       "address": "0x021250f8",
       "size": "0x00000258",
       "legacy_source": "src/func_ov078_021250f8.c",
       "ordinal": 30
     },
     {
-      "symbol": "func_ov078_02125350",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125350Ev",
       "address": "0x02125350",
       "size": "0x000000f8",
       "legacy_source": "src/func_ov078_02125350.c",
       "ordinal": 31
     },
     {
-      "symbol": "func_ov078_02125448",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125448Ev",
       "address": "0x02125448",
       "size": "0x000002ec",
       "legacy_source": "src/func_ov078_02125448.c",
       "ordinal": 32
     },
     {
-      "symbol": "func_ov078_02125734",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125734Ev",
       "address": "0x02125734",
       "size": "0x0000005c",
       "legacy_source": "src/func_ov078_02125734.c",
       "ordinal": 33
     },
     {
-      "symbol": "func_ov078_02125790",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125790Ev",
       "address": "0x02125790",
       "size": "0x00000154",
       "legacy_source": "src/func_ov078_02125790.cpp",
       "ordinal": 34
     },
     {
-      "symbol": "func_ov078_021258e4",
+      "symbol": "_ZN12daBombking_c19func_ov078_021258e4Ev",
       "address": "0x021258e4",
       "size": "0x0000006c",
       "legacy_source": "src/func_ov078_021258e4.c",
       "ordinal": 35
     },
     {
-      "symbol": "func_ov078_02125950",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125950Ev",
       "address": "0x02125950",
       "size": "0x00000094",
       "legacy_source": "src/func_ov078_02125950.cpp",
       "ordinal": 36
     },
     {
-      "symbol": "func_ov078_021259e4",
+      "symbol": "_ZN12daBombking_c19func_ov078_021259e4Ev",
       "address": "0x021259e4",
       "size": "0x00000008",
       "legacy_source": "src/func_ov078_021259e4.c",
       "ordinal": 37
     },
     {
-      "symbol": "func_ov078_021259ec",
+      "symbol": "_ZN12daBombking_c19func_ov078_021259ecEv",
       "address": "0x021259ec",
       "size": "0x000001dc",
       "legacy_source": "src/func_ov078_021259ec.c",
       "ordinal": 38
     },
     {
-      "symbol": "func_ov078_02125bc8",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125bc8Ev",
       "address": "0x02125bc8",
       "size": "0x0000005c",
       "legacy_source": "src/func_ov078_02125bc8.cpp",
       "ordinal": 39
     },
     {
-      "symbol": "func_ov078_02125c24",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125c24Ei",
       "address": "0x02125c24",
       "size": "0x00000024",
       "legacy_source": "src/func_ov078_02125c24.c",
       "ordinal": 40
     },
     {
-      "symbol": "KingBobOmb_SetState",
+      "symbol": "_ZN12daBombking_c19KingBobOmb_SetStateEPv",
       "address": "0x02125c48",
       "size": "0x00000050",
       "legacy_source": "src/KingBobOmb_SetState.cpp",
       "ordinal": 41
     },
     {
-      "symbol": "func_ov078_02125c98",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125c98Ev",
       "address": "0x02125c98",
       "size": "0x00000148",
       "legacy_source": "src/func_ov078_02125c98.cpp",
       "ordinal": 42
     },
     {
-      "symbol": "func_ov078_02125de0",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125de0Ev",
       "address": "0x02125de0",
       "size": "0x000001ac",
       "legacy_source": "src/func_ov078_02125de0.c",
       "ordinal": 43
     },
     {
-      "symbol": "func_ov078_02125f8c",
+      "symbol": "_ZN12daBombking_c19func_ov078_02125f8cEv",
       "address": "0x02125f8c",
       "size": "0x00000068",
       "legacy_source": "src/func_ov078_02125f8c.cpp",
@@ -384,10 +389,38 @@
       "ordinal": 51
     }
   ],
-  "data": [],
+  "data": [
+    {
+      "symbol": "_ZTI12daBombking_c",
+      "address": "0x02126e0c",
+      "size": "0xc",
+      "evidence": "ROM typeinfo record; base pointer is 0x0209a764 (main RTTI base)"
+    },
+    {
+      "symbol": "_ZTS12daBombking_c",
+      "address": "0x02126e18",
+      "size": "0xf",
+      "evidence": "ROM type-name string \"12daBombking_c\\0\"; exact compiler emission"
+    },
+    {
+      "symbol": "g_profile_BOMBKING",
+      "address": "0x02126e28",
+      "size": "0x1c",
+      "evidence": "typed actor profile; the +0x00 classInit relocation is ov078 relocs.txt from:0x02126e28 to:0x021265fc, this TU's own factory"
+    },
+    {
+      "symbol": "_ZTV12daBombking_c",
+      "address": "0x02126e4c",
+      "emitted_storage_address": "0x02126e44",
+      "address_point_bias": "0x8",
+      "size": "0x84",
+      "evidence": "compiler storage includes the two-word ABI preamble; the public address point remains 0x02126e4c"
+    }
+  ],
   "bss": [],
   "notes": [
     "Generated by tools/tubuild.py create. See the file's own header comment for what was and was not reconciled, and notes/translation-unit-reconstruction-plan.md section 7.3 for what this generator does and does not attempt to resolve automatically.",
+    "FOLDED 2026-10-02: g_profile_BOMBKING moved into this TU as BombkingSpawnInfo (0x1c at ov078:0x02126e28). The profile fold forced the .data claim to span ZTI + ZTS + profile + ZTV (0x02126e0c..0x02126ec8, 0xbc), which pulled the class's own _ZTS/_ZTV from compiler-only deadstrip into licensed data and flipped production_mode to intact-object. 36 .data relocation rows license every relocated word in the claim (si_class_type_info, ZTS, base ZTI, classInit, own ZTI, 31 vtable slots). tubuild verify 52/52 TEXT-VERIFIED. Copied from daBmb_c.",
     "tubuild create warning: RAW: src/func_ov078_02123c20.cpp (func_ov078_02123c20) did not split (the definition is inside the extern \"C\" block opened on line 2, so it was consumed as a declaration -- tubuild cannot place a block-scoped member in a TU); carried verbatim -- its own includes/declarations stay inside its member block",
     "tubuild create warning: RAW: src/func_ov078_02123cf0.cpp (func_ov078_02123cf0) did not split (the definition is inside the extern \"C\" block opened on line 3, so it was consumed as a declaration -- tubuild cannot place a block-scoped member in a TU); carried verbatim -- its own includes/declarations stay inside its member block",
     "tubuild create warning: RAW: src/func_ov078_02123fb4.cpp (func_ov078_02123fb4) did not split (the definition is inside the extern \"C\" block opened on line 2, so it was consumed as a declaration -- tubuild cannot place a block-scoped member in a TU); carried verbatim -- its own includes/declarations stay inside its member block",
@@ -412,7 +445,7 @@
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'func_ov002_020db54c' differs between the legacy file that used to hold func_ov078_02123d3c and the one that held func_ov078_02123f1c; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'KingBobOmb_SetState' differs between the legacy file that used to hold func_ov078_02123804 and the one that held func_ov078_02123f1c; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'ApproachAngle' differs between the legacy file that used to hold func_ov078_02123aa0 and the one that held func_ov078_02124000; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
-    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN9Animation8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_02124000; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
+    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN15dExtFrameCtrl_c8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_02124000; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'KingBobOmb_SetState' differs between the legacy file that used to hold func_ov078_02123804 and the one that held func_ov078_02124000; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN8dActor_c18HorzAngleToCPlayerEv' differs between the legacy file that used to hold func_ov078_02124000 and the one that held func_ov078_021240a0; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'ApproachAngle' differs between the legacy file that used to hold func_ov078_02123aa0 and the one that held func_ov078_021240a0; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
@@ -430,20 +463,20 @@
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'Vec3_Lsl' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_02124520; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN6Player12GetTalkStateEv' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_02124520; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'Vec3_HorzAngle' differs between the legacy file that used to hold func_ov078_02123aa0 and the one that held func_ov078_02124520; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
-    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN9Animation8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_02124520; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
+    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN15dExtFrameCtrl_c8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_02124520; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'KingBobOmb_SetState' differs between the legacy file that used to hold func_ov078_02123804 and the one that held func_ov078_02124520; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'data_020a0e68' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_02124520; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'Vec3_HorzAngle' differs between the legacy file that used to hold func_ov078_02123aa0 and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'Vec3_Dist' differs between the legacy file that used to hold func_ov078_02123aa0 and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'ApproachAngle' differs between the legacy file that used to hold func_ov078_02123aa0 and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
-    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN9Animation8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
+    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN15dExtFrameCtrl_c8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'MulVec3Mat4x3' differs between the legacy file that used to hold func_ov078_02124520 and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZNK10dBgCh_Actr10IsOnGroundEv' differs between the legacy file that used to hold func_ov078_021240a0 and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN8dActor_c13ClosestPlayerEv' differs between the legacy file that used to hold func_ov078_02123aa0 and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'KingBobOmb_SetState' differs between the legacy file that used to hold func_ov078_02123804 and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt' differs between the legacy file that used to hold func_ov078_02123a3c and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN6Player11ShowMessageER7fBase_cjPK7Vector3hh' differs between the legacy file that used to hold func_ov078_021240a0 and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
-    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN6Camera9SetFlag_3Ev' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
+    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN9dCamera_c9SetFlag_3Ev' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'data_020a0e68' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'data_0209f318' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_021247bc; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt' differs between the legacy file that used to hold func_ov078_02123a3c and the one that held func_ov078_02124b40; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
@@ -466,7 +499,7 @@
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'Matrix4x3_FromRotationY' differs between the legacy file that used to hold func_ov078_02124520 and the one that held func_ov078_021250f8; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'Matrix4x3_ApplyInPlaceToRotationX' differs between the legacy file that used to hold func_ov078_021247bc and the one that held func_ov078_021250f8; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'MulVec3Mat4x3' differs between the legacy file that used to hold func_ov078_02124520 and the one that held func_ov078_021250f8; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
-    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN9Animation8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_021250f8; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
+    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN15dExtFrameCtrl_c8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_021250f8; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'KingBobOmb_SetState' differs between the legacy file that used to hold func_ov078_02123804 and the one that held func_ov078_021250f8; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'data_ov078_0212703c' differs between the legacy file that used to hold func_ov078_02124520 and the one that held func_ov078_021250f8; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt' differs between the legacy file that used to hold func_ov078_02123a3c and the one that held func_ov078_02125350; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
@@ -481,7 +514,7 @@
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'MulMat4x3Mat4x3' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_02125790; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'Vec3_Lsl' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_02125790; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN8dActor_c17HugeLandingDustAtER7Vector3b' differs between the legacy file that used to hold func_ov078_02124520 and the one that held func_ov078_02125790; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
-    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN9Animation8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_02125790; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
+    "tubuild create warning: CONFLICT (RESOLVED): extern declaration '_ZN15dExtFrameCtrl_c8FinishedEv' differs between the legacy file that used to hold func_ov078_02123f1c and the one that held func_ov078_02125790; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'KingBobOmb_SetState' differs between the legacy file that used to hold func_ov078_02123804 and the one that held func_ov078_02125790; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'data_020a0e68' differs between the legacy file that used to hold func_ov078_021238ac and the one that held func_ov078_02125790; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
     "tubuild create warning: CONFLICT (RESOLVED): extern declaration 'data_ov078_0212703c' differs between the legacy file that used to hold func_ov078_02124520 and the one that held func_ov078_02125790; kept the first. Resolved by hand: one canonical declaration per symbol was imposed across the merged TU and reconciled against include/ (decl_common.h and dActor_c.h are authoritative where they declare a symbol); the alternate was dropped, not left commented out.",
@@ -533,14 +566,7 @@
       "droppedSections": [
         9,
         10,
-        21,
-        107,
-        108,
-        109,
-        110,
-        111,
-        112,
-        113,
+        29,
         114,
         115,
         116,
@@ -550,12 +576,11 @@
         120,
         121,
         122,
-        123
+        123,
+        124,
+        125
       ],
       "data": [
-        "_ZTV12daBombking_c",
-        "_ZTI12daBombking_c",
-        "_ZTS12daBombking_c",
         "_ZTI12dEnemyBase_c",
         "_ZTS12dEnemyBase_c",
         "_ZTI8dActor_c",
@@ -567,20 +592,19 @@
       ],
       "dataExternalized": [
         "_ZTI12dEnemyBase_c",
-        "_ZTI12daBombking_c",
         "_ZTI7dBase_c",
         "_ZTI7fBase_c",
         "_ZTI8dActor_c",
         "_ZTS12dEnemyBase_c",
-        "_ZTS12daBombking_c",
         "_ZTS7dBase_c",
         "_ZTS7fBase_c",
-        "_ZTS8dActor_c",
-        "_ZTV12daBombking_c"
+        "_ZTS8dActor_c"
       ]
     },
     "criteria": {
       "every_declared_function_defined": "PASS",
+      "no_unexpected_vtable_rtti_or_data_emission": "PASS -- after the 2026-10-02 profile fold the TU is intact-object. The vtable and RTTI chain are licensed data in .data (0x02126e0c..0x02126ec8). The class's own _ZTS/_ZTV are in the data claim; base-class RTTI is deadstrip-data.",
+      "all_content_sections_licensed": "PASS -- .text 0x02123740..0x02126660 (52 functions) + .data 0x02126e0c..0x02126ec8 (ZTI + ZTS + profile + ZTV, 0xbc). The linkcheck block proves both ranges byte-identical.",
       "every_declared_function_bytes_match": "PASS",
       "declared_function_set_equals_defined_function_set": "PASS",
       "functions_occur_in_expected_order": "PASS",
@@ -588,7 +612,7 @@
     },
     "linkcheck": {
       "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
-      "result": "scratch-link-verified",
+      "result": "scratch-data-verified",
       "scratch": "build/tu/ov078-daBombking_c/link (gitignored)",
       "phases": {
         "delink": true,
@@ -612,19 +636,70 @@
           "end": "0x02126660",
           "differingBytes": 0,
           "firstDiff": null
+        },
+        {
+          "section": ".data",
+          "start": "0x02126e0c",
+          "end": "0x02126ec8",
+          "differingBytes": 0,
+          "firstDiff": null
         }
       ],
       "objectAudit": {
         "counts": {
-          "LICENSED": 52
+          "LICENSED": 56
         },
         "emittedTextOrderIsRomAscending": true,
         "nonLicensedSymbols": [],
         "unlicensedSections": []
       },
       "nontextSectionOrder": {
-        "groups": [],
-        "objisolate": null,
+        "groups": [
+          {
+            "section": ".data",
+            "original": [
+              107,
+              109,
+              111,
+              112
+            ],
+            "desired": [
+              112,
+              111,
+              107,
+              109
+            ]
+          }
+        ],
+        "objisolate": {
+          "reordered": [
+            {
+              "section": ".data",
+              "original": [
+                107,
+                109,
+                111,
+                112
+              ],
+              "desired": [
+                112,
+                111,
+                107,
+                109
+              ],
+              "slots": [
+                107,
+                109,
+                111,
+                112
+              ]
+            }
+          ],
+          "symbolIndices": 4,
+          "sectionLinks": 0,
+          "sectionInfos": 3,
+          "error": null
+        },
         "errors": null
       },
       "linkedStorageAliases": null,
@@ -672,29 +747,6 @@
       "reason": "include/types.h gives Vector3 a declared, empty destructor (the ROM destroys arrays of it). Four members of this TU hold Vector3 locals, which odr-uses it, so mwcc emits a vague-linkage copy. The cartridge keeps the canonical copy at arm9:0x020072c0 (4 bytes, `bx lr`), outside this TU's licensed range, so dsd supplies it independently.",
       "canonical_module": "arm9",
       "canonical_address": "0x020072c0"
-    },
-    {
-      "symbol": "_ZTV12daBombking_c",
-      "disposition": "deadstrip-data",
-      "reason": "The out-of-line destructor owns the emitted vtable. ROM storage begins at ov078:0x02126e44 with two ABI preamble words; the address point is 0x02126e4c. Its 31 slots occupy 0x7c bytes and end at 0x02126ec8, for 0x84 bytes of complete storage. The raw checker compares the address-point payload: 124 emitted/equal bytes against a 148-byte symbol extent, retaining PARTIAL coverage because of 24 trailing bytes. Text-only production discards the emitted copy and retains cartridge data.",
-      "canonical_module": "ov078",
-      "canonical_address": "0x02126e4c"
-    },
-    {
-      "symbol": "_ZTI12daBombking_c",
-      "disposition": "deadstrip-data",
-      "reason": "The emitted typeinfo record has a canonical ROM home at ov078:0x02126e0c and refers to the cartridge-attested class name. It is compared with that record, then discarded by text-only production because this TU claims no data. This is retained ROM data, not an unhomed class identity.",
-      "canonical_module": "ov078",
-      "canonical_address": "0x02126e0c",
-      "note": "homed RTTI record; cartridge spelling confirmed by the RTTI string at ov078:0x02126e18 (\"12daBombking_c\")"
-    },
-    {
-      "symbol": "_ZTS12daBombking_c",
-      "disposition": "deadstrip-data",
-      "reason": "The emitted class-name string is compared with the cartridge bytes at ov078:0x02126e18. Its spelling is attested by RTTI. Text-only production retains cartridge data; the raw checker retains PARTIAL coverage when its symbol extent includes bytes beyond the emitted string.",
-      "canonical_module": "ov078",
-      "canonical_address": "0x02126e18",
-      "note": "homed RTTI record; cartridge spelling confirmed by the RTTI string at ov078:0x02126e18 (\"12daBombking_c\")"
     },
     {
       "symbol": "_ZTI12dEnemyBase_c",
@@ -754,8 +806,371 @@
     }
   ],
   "externalized_output": [],
+  "relocations": [
+    {
+      "section": ".data",
+      "source": "0x02126e0c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZTVN3abi20__si_class_type_infoE",
+      "addend": 8,
+      "target_module": "arm9",
+      "target_address": "0x0209a764"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e10",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZTS12daBombking_c",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x02126e18"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e14",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZTI12dEnemyBase_c",
+      "addend": 0,
+      "target_module": "ov002",
+      "target_address": "0x021081c0"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e28",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "daBombking_c_classInit",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x021265fc"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e48",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZTI12daBombking_c",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x02126e0c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e4c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN12daBombking_c13InitResourcesEv",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x02126368"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e50",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c19BeforeInitResourcesEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02011268"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e54",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c18AfterInitResourcesEj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02011244"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e58",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN12daBombking_c16CleanupResourcesEv",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x02125ff4"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e5c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c22BeforeCleanupResourcesEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02011220"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e60",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c21AfterCleanupResourcesEj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02011214"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e64",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN12daBombking_c8BehaviorEv",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x02126104"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e68",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c14BeforeBehaviorEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010fd4"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e6c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c13AfterBehaviorEj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010fc8"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e70",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN12daBombking_c6RenderEv",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x021260ac"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e74",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c12BeforeRenderEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010f78"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e78",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c11AfterRenderEj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010f6c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e7c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN12daBombking_c16OnPendingDestroyEv",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x021260a8"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e80",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN7fBase_c9Virtual34Ejj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0204357c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e84",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN7fBase_c9Virtual38Ejj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0204349c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e88",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN7fBase_c13OnHeapCreatedEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02043494"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e8c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN12daBombking_cD1Ev",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x02123740"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e90",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN12daBombking_cD0Ev",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x02123798"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e94",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c13OnYoshiTryEatEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010160"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e98",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c13OnTurnIntoEggER6Player",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010154"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126e9c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c9Virtual50Ev",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0201014c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126ea0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c15OnGroundPoundedERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010148"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126ea4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c11OnAttacked1ERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010144"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126ea8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c11OnAttacked2ERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010140"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126eac",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c8OnKickedERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0201013c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126eb0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c8OnPushedERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010138"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126eb4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c24OnHitByCannonBlastedCharERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010134"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126eb8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c15OnHitByMegaCharER6Player",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010130"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126ebc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c19OnHitFromUnderneathERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0201012c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126ec0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN12daBombking_c16OnAimedAtWithEggEv",
+      "addend": 0,
+      "target_module": "ov078",
+      "target_address": "0x021265f4"
+    },
+    {
+      "section": ".data",
+      "source": "0x02126ec4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c25OnAimedAtWithEggReturnVecEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x020100dc"
+    }
+  ],
+  "production_mode": "intact-object",
   "promotion_route": "text-only",
-  "promotion_note": "Text-only. This is a KEY-FUNCTION TU: the out-of-line destructor is the key function, so the object emits _ZTV/_ZTI/_ZTS for the whole inherited chain as vague linkage and the scratch link must deadstrip 13 compiler-only symbols before linking (tubuild.py:5091). That rewrite is what caps the linkcheck result at scratch-link-verified rather than link-verified -- tubuild's own ladder comment says a key-function TU cannot reach link-verified until phase F. The evidence is nonetheless stronger than text-only requires: module fidelity 106/106 exact and the built ROM sha256 d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8 is byte-identical to the stock control.",
+  "promotion_note": "This TU is enrolled through production_mode intact-object. It owns 52 text functions at 0x02123740..0x02126660 and four data records in the 188-byte range 0x02126e0c..0x02126ec8: the class typeinfo, type-name string, actor profile, and complete vtable storage including its ABI preamble. Normal production preparation verifies the owned bytes and typed relocations, applies the existing compiler-only policies to inherited RTTI and duplicate functions, and retains the class-owned data. Earlier text-only and scratch-link measurements remain historical evidence; fresh proof for each continuation is bound to its exact candidate and tested base in that continuation report.",
   "source_review_checkpoint": {
     "issue": "https://github.com/tangosdev/sm64ds-decomp/issues/2479",
     "status": "partial-awaiting-independent-review",

@@ -1,28 +1,28 @@
-_ZN15FireSeaElevatorD1Ev kind:function(arm,size=0x44) addr:0x021111a0
-_ZN15FireSeaElevatorD0Ev kind:function(arm,size=0x58) addr:0x021111e4
-_ZN15FireSeaElevator16CleanupResourcesEv kind:function(arm,size=0x38) addr:0x0211123c
-_ZN15FireSeaElevator6RenderEv kind:function(arm,size=0x28) addr:0x02111274
-_ZN15FireSeaElevator8BehaviorEv kind:function(arm,size=0x150) addr:0x0211129c
-_ZN15FireSeaElevator13InitResourcesEv kind:function(arm,size=0xbc) addr:0x021113ec
+_ZN16daObjKm2_Agaru_cD1Ev kind:function(arm,size=0x44) addr:0x021111a0
+_ZN16daObjKm2_Agaru_cD0Ev kind:function(arm,size=0x58) addr:0x021111e4
+_ZN16daObjKm2_Agaru_c16CleanupResourcesEv kind:function(arm,size=0x38) addr:0x0211123c
+_ZN16daObjKm2_Agaru_c6RenderEv kind:function(arm,size=0x28) addr:0x02111274
+_ZN16daObjKm2_Agaru_c8BehaviorEv kind:function(arm,size=0x150) addr:0x0211129c
+_ZN16daObjKm2_Agaru_c13InitResourcesEv kind:function(arm,size=0xbc) addr:0x021113ec
 func_ov045_021114a8 kind:function(arm,size=0x20) addr:0x021114a8
 func_ov045_021114c8 kind:function(arm,size=0x14) addr:0x021114c8
 daObjKm2_Agaru_c_classInit kind:function(arm,size=0x30) addr:0x021114dc
-_ZN8PoleLiftD1Ev kind:function(arm,size=0x4c) addr:0x0211150c
-_ZN8PoleLiftD0Ev kind:function(arm,size=0x60) addr:0x02111558
-_ZN8PoleLift16CleanupResourcesEv kind:function(arm,size=0x38) addr:0x021115b8
-_ZN8PoleLift6RenderEv kind:function(arm,size=0x28) addr:0x021115f0
-_ZN8PoleLift8BehaviorEv kind:function(arm,size=0x120) addr:0x02111618
-_ZN8PoleLift13InitResourcesEv kind:function(arm,size=0xd0) addr:0x02111738
+_ZN18daObjKm2_Ami_Bou_cD1Ev kind:function(arm,size=0x4c) addr:0x0211150c
+_ZN18daObjKm2_Ami_Bou_cD0Ev kind:function(arm,size=0x60) addr:0x02111558
+_ZN18daObjKm2_Ami_Bou_c16CleanupResourcesEv kind:function(arm,size=0x38) addr:0x021115b8
+_ZN18daObjKm2_Ami_Bou_c6RenderEv kind:function(arm,size=0x28) addr:0x021115f0
+_ZN18daObjKm2_Ami_Bou_c8BehaviorEv kind:function(arm,size=0x120) addr:0x02111618
+_ZN18daObjKm2_Ami_Bou_c13InitResourcesEv kind:function(arm,size=0xd0) addr:0x02111738
 daObjKm2_Ami_Bou_c_classInit kind:function(arm,size=0x38) addr:0x02111808
-_ZN17ExtendingPlatformD1Ev kind:function(arm,size=0x38) addr:0x02111840
-_ZN17ExtendingPlatformD0Ev kind:function(arm,size=0x4c) addr:0x02111878
-_ZN17ExtendingPlatform23UpdateColliderTransformEv kind:function(arm,size=0x34) addr:0x021118c4
-_ZN17ExtendingPlatform20UpdateModelTransformEv kind:function(arm,size=0x40) addr:0x021118f8
-_ZN17ExtendingPlatform16CleanupResourcesEv kind:function(arm,size=0x38) addr:0x02111938
-_ZN17ExtendingPlatform16OnPendingDestroyEv kind:function(arm,size=0x4) addr:0x02111970
-_ZN17ExtendingPlatform6RenderEv kind:function(arm,size=0x4c) addr:0x02111974
-_ZN17ExtendingPlatform8BehaviorEv kind:function(arm,size=0x70) addr:0x021119c0
-_ZN17ExtendingPlatform13InitResourcesEv kind:function(arm,size=0xa4) addr:0x02111a30
+_ZN17daObjKm2_Nobiru_cD1Ev kind:function(arm,size=0x38) addr:0x02111840
+_ZN17daObjKm2_Nobiru_cD0Ev kind:function(arm,size=0x4c) addr:0x02111878
+_ZN17daObjKm2_Nobiru_c23UpdateColliderTransformEv kind:function(arm,size=0x34) addr:0x021118c4
+_ZN17daObjKm2_Nobiru_c20UpdateModelTransformEv kind:function(arm,size=0x40) addr:0x021118f8
+_ZN17daObjKm2_Nobiru_c16CleanupResourcesEv kind:function(arm,size=0x38) addr:0x02111938
+_ZN17daObjKm2_Nobiru_c16OnPendingDestroyEv kind:function(arm,size=0x4) addr:0x02111970
+_ZN17daObjKm2_Nobiru_c6RenderEv kind:function(arm,size=0x4c) addr:0x02111974
+_ZN17daObjKm2_Nobiru_c8BehaviorEv kind:function(arm,size=0x70) addr:0x021119c0
+_ZN17daObjKm2_Nobiru_c13InitResourcesEv kind:function(arm,size=0xa4) addr:0x02111a30
 daObjKm2_Nobiru_c_classInit kind:function(arm,size=0x40) addr:0x02111ad4
 _ZN19daObjKm2_Ukishima_cD1Ev kind:function(arm,size=0x50) addr:0x02111b14
 _ZN19daObjKm2_Ukishima_cD0Ev kind:function(arm,size=0x64) addr:0x02111b64
@@ -55,18 +55,18 @@ data_ov045_02112138 kind:data(any) addr:0x02112138 ambiguous
 data_ov045_02112158 kind:data(any) addr:0x02112158 ambiguous
 data_ov045_02112178 kind:data(any) addr:0x02112178 ambiguous
 data_ov045_02112198 kind:data(any) addr:0x02112198 ambiguous
-__sinit_ov045_021121a8 kind:function(arm,size=0x6c) addr:0x021121a8
-__sinit_ov045_02112214 kind:function(arm,size=0x6c) addr:0x02112214
-__sinit_ov045_02112280 kind:function(arm,size=0x6c) addr:0x02112280
-__sinit_ov045_021122ec kind:function(arm,size=0x6c) addr:0x021122ec
-__sinit_ov045_02112358 kind:function(arm,size=0x68) addr:0x02112358
-__sinit_ov045_021123c0 kind:function(arm,size=0x6c) addr:0x021123c0
-.p__sinit_ov045_021121a8 kind:data(word) addr:0x0211242c
-.p__sinit_ov045_02112214 kind:data(word) addr:0x02112430
-.p__sinit_ov045_02112280 kind:data(word) addr:0x02112434
-.p__sinit_ov045_021122ec kind:data(word) addr:0x02112438
-.p__sinit_ov045_02112358 kind:data(word) addr:0x0211243c
-.p__sinit_ov045_021123c0 kind:data(word) addr:0x02112440
+__sinit_d_a_obj_km2_agaru.cpp kind:function(arm,size=0x6c) addr:0x021121a8
+__sinit_d_a_obj_km2_ami_bou.cpp kind:function(arm,size=0x6c) addr:0x02112214
+__sinit_daObjKm2_Nobiru_c.cpp kind:function(arm,size=0x6c) addr:0x02112280
+__sinit_d_a_obj_km2_ukishima.cpp kind:function(arm,size=0x6c) addr:0x021122ec
+__sinit_d_a_obj_km2_gura.cpp kind:function(arm,size=0x68) addr:0x02112358
+__sinit_d_a_obj_km2_fall_block.cpp kind:function(arm,size=0x6c) addr:0x021123c0
+.p__sinit_d_a_obj_km2_agaru.cpp kind:data(word) addr:0x0211242c
+.p__sinit_d_a_obj_km2_ami_bou.cpp kind:data(word) addr:0x02112430
+.p__sinit_daObjKm2_Nobiru_c.cpp kind:data(word) addr:0x02112434
+.p__sinit_d_a_obj_km2_ukishima.cpp kind:data(word) addr:0x02112438
+.p__sinit_d_a_obj_km2_gura.cpp kind:data(word) addr:0x0211243c
+.p__sinit_d_a_obj_km2_fall_block.cpp kind:data(word) addr:0x02112440
 data_ov045_02112460 kind:data(any) addr:0x02112460
 data_ov045_02112464 kind:data(any) addr:0x02112464 ambiguous
 data_ov045_02112468 kind:data(any) addr:0x02112468
@@ -122,21 +122,19 @@ data_ov045_02112c58 kind:data(any) addr:0x02112c58 ambiguous
 data_ov045_02112c68 kind:data(any) addr:0x02112c68 ambiguous
 data_ov045_02112c88 kind:data(any) addr:0x02112c88 ambiguous
 data_ov045_02112ca8 kind:data(any) addr:0x02112ca8 ambiguous
-data_ov045_02112cb0 kind:data(any) addr:0x02112cb0
+_ZTI16daObjKm2_Agaru_c kind:data(any) addr:0x02112cb0
 _ZTS16daObjKm2_Agaru_c kind:data(any) addr:0x02112cbc
 data_ov045_02112cc8 kind:data(any) addr:0x02112cc8 ambiguous
 g_profile_KM2_AGARU kind:data(any) addr:0x02112cd0 ambiguous
-_ZTV15FireSeaElevator kind:data(any) addr:0x02112cf4
+_ZTV16daObjKm2_Agaru_c kind:data(any) addr:0x02112cf4
 data_ov045_02112d48 kind:data(any) addr:0x02112d48 ambiguous
 _ZTI18daObjKm2_Ami_Bou_c kind:data(any) addr:0x02112d74
 _ZTS18daObjKm2_Ami_Bou_c kind:data(any) addr:0x02112d80
 g_profile_KM2_AMI_BOU kind:data(any) addr:0x02112d98 ambiguous
-_ZTV8PoleLift kind:data(any) addr:0x02112dbc
 _ZTV18daObjKm2_Ami_Bou_c kind:data(any) addr:0x02112dbc
 _ZTI17daObjKm2_Nobiru_c kind:data(any) addr:0x02112e3c
 _ZTS17daObjKm2_Nobiru_c kind:data(any) addr:0x02112e48
 g_profile_KM2_NOBIRU kind:data(any) addr:0x02112e5c ambiguous
-_ZTV17ExtendingPlatform kind:data(any) addr:0x02112e80
 _ZTV17daObjKm2_Nobiru_c kind:data(any) addr:0x02112e80
 _ZTI19daObjKm2_Ukishima_c kind:data(any) addr:0x02112efc
 data_ov045_02112f08 kind:data(any) addr:0x02112f08
@@ -158,27 +156,26 @@ g_profile_KM2_KUZURE kind:data(any) addr:0x021130d0 ambiguous
 _ZTV21daObjKm2_Fall_Block_c kind:data(any) addr:0x021130f4
 data_ov045_02113180 kind:bss addr:0x02113180
 data_ov045_02113188 kind:bss addr:0x02113188
-data_ov045_02113190 kind:bss addr:0x02113190
-data_ov045_0211319c kind:bss addr:0x0211319c
+@407 kind:bss addr:0x02113190
+@406 kind:bss addr:0x0211319c
 data_ov045_021131a8 kind:bss addr:0x021131a8
 data_ov045_021131b0 kind:bss addr:0x021131b0
-data_ov045_021131b8 kind:bss addr:0x021131b8
-data_ov045_021131c4 kind:bss addr:0x021131c4
-data_ov045_021131d0 kind:bss addr:0x021131d0
+@428 kind:bss addr:0x021131b8
+@427 kind:bss addr:0x021131c4
 PoleLift_ClsnFile kind:bss addr:0x021131d0
-data_ov045_021131d8 kind:bss addr:0x021131d8
 PoleLift_ModelFile kind:bss addr:0x021131d8
-data_ov045_021131e0 kind:bss addr:0x021131e0
-data_ov045_021131ec kind:bss addr:0x021131ec
+@405 kind:bss addr:0x021131e0
+@408 kind:bss addr:0x021131ec
 data_ov045_021131f8 kind:bss addr:0x021131f8
 data_ov045_02113200 kind:bss addr:0x02113200
-data_ov045_02113208 kind:bss addr:0x02113208
-data_ov045_02113214 kind:bss addr:0x02113214
+@603 kind:bss addr:0x02113208
+@426 kind:bss addr:0x02113214
 data_ov045_02113220 kind:bss addr:0x02113220
 data_ov045_02113228 kind:bss addr:0x02113228
-data_ov045_02113230 kind:bss addr:0x02113230
-data_ov045_0211323c kind:bss addr:0x0211323c
+@973 kind:bss addr:0x02113230
+@975 kind:bss addr:0x0211323c
 data_ov045_02113248 kind:bss addr:0x02113248
 data_ov045_02113250 kind:bss addr:0x02113250
-data_ov045_02113258 kind:bss addr:0x02113258
-data_ov045_02113264 kind:bss addr:0x02113264
+@617 kind:bss addr:0x02113258
+@616 kind:bss addr:0x02113264
+data_ov045_02113270 kind:bss addr:0x02113270

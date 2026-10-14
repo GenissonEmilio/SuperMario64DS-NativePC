@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Match method provenance + durable ledger for experimental atlas tracking.
 
-WHO (credit / contributor colors) = classic function field `author` (GitHub login).
-  Same rule as sm64ds chaos_db_ci: prefer **git** first-adder of the surviving
-  src/ file — never the AI/harness name (no "grok" as author).
+WHO (credit / contributor colors) = the author already recorded in
+  function-authors.json for this module and address, or an explicit --author.
+  Never an AI/harness name (no "grok" as author). Git history is not read.
 HOW  (method)                     = matchProvenance only:
 
   human:  {"kind":"human", "note"?: str}
@@ -26,7 +26,6 @@ import json
 import os
 import pathlib
 import re
-import subprocess
 from typing import Any, Optional
 
 # Module-level defaults; call configure(repo) before banking if scripts live outside the tree.
@@ -45,7 +44,6 @@ TOKEN_HELP = (
 )
 
 # GitHub noreply: 60808132+lunavyqo@users.noreply.github.com or lunavyqo@users.noreply…
-LOGIN_RE = re.compile(r"^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$", re.I)
 
 # Never treat these as classic credit (agent / model / harness product names).
 _AGENT_CREDIT_BLOCKLIST = frozenset(
@@ -99,119 +97,26 @@ def is_agent_credit(handle: Optional[str]) -> bool:
     return False
 
 
-def handle_from_git_identity(name: str, email: str) -> str:
-    """git author → GitHub-ish login (sm64ds chaos_db_ci rule)."""
-    email = (email or "").strip()
-    m = LOGIN_RE.match(email)
-    if m:
-        return m.group(1)
-    if "@" in email:
-        local = email.split("@", 1)[0].lower().strip()
-        if local and not is_agent_credit(local):
-            return local
-    name = (name or "").strip()
-    if name and not is_agent_credit(name):
-        # Prefer single-token logins; collapse spaces for "Luna Vyqo" style poorly
-        return re.sub(r"\s+", "", name)
-    return name or "unknown"
-
-
-def first_matchers(root: Optional[pathlib.Path] = None) -> dict[str, str]:
-    """{'src/…': handle} — first git adder of each surviving src/ path (sm64ds).
-
-    Renames carry credit; delete+add starts a new lineage.
-    """
+def recorded_author(
+    module: str,
+    addr: int,
+    root: Optional[pathlib.Path] = None,
+) -> Optional[str]:
+    """Author already stored for this function in function-authors.json."""
     root = root or repo()
-    try:
-        out = subprocess.run(
-            [
-                "git",
-                "-c",
-                "diff.renameLimit=0",
-                "log",
-                "--reverse",
-                "--diff-filter=ADR",
-                "-M",
-                "--format=%x01%an%x02%ae",
-                "--name-status",
-                "--",
-                "src/",
-            ],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=120,
-            check=False,
-        ).stdout
-    except (OSError, subprocess.SubprocessError):
-        return {}
-    origin: dict[str, str] = {}
-    handle: Optional[str] = None
-    for line in out.splitlines():
-        if line.startswith("\x01"):
-            name, _, email = line[1:].partition("\x02")
-            handle = handle_from_git_identity(name, email)
-        elif handle and line and line[0] in "ADR":
-            parts = line.split("\t")
-            code = parts[0]
-            if code.startswith("A") and len(parts) >= 2:
-                origin.setdefault(parts[1].strip(), handle)
-            elif code.startswith("D") and len(parts) >= 2:
-                origin.pop(parts[1].strip(), None)
-            elif code.startswith("R") and len(parts) >= 3:
-                old, new = parts[1].strip(), parts[2].strip()
-                origin[new] = origin.pop(old, handle)
-    return origin
-
-
-def git_config_handle(root: Optional[pathlib.Path] = None) -> Optional[str]:
-    """Current repo git user (for brand-new files not yet committed)."""
-    root = root or repo()
-    try:
-        email = subprocess.run(
-            ["git", "config", "user.email"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout.strip()
-        name = subprocess.run(
-            ["git", "config", "user.name"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout.strip()
-    except OSError:
+    path = root / "function-authors.json"
+    if not path.is_file():
         return None
-    if not email and not name:
-        return None
-    h = handle_from_git_identity(name, email)
-    return None if is_agent_credit(h) else h
-
-
-def attribution_overrides(root: Optional[pathlib.Path] = None) -> dict[str, str]:
-    """Optional attribution.json overrides: {"overrides": {"src/x.c": "login"}}."""
-    root = root or repo()
-    p = root / "attribution.json"
-    if not p.is_file():
-        return {}
     try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-        ov = data.get("overrides", {}) if isinstance(data, dict) else {}
-        return {
-            k: v
-            for k, v in ov.items()
-            if isinstance(k, str)
-            and k.startswith("src/")
-            and isinstance(v, str)
-            and v
-            and not is_agent_credit(v)
-        }
-    except Exception:
-        return {}
+        data = json.loads(path.read_text(encoding="utf-8"))
+        functions = data.get("functions", {}) if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return None
+    row = functions.get(f"{module}:0x{int(addr):08x}")
+    author = row.get("author") if isinstance(row, dict) else row
+    if isinstance(author, str) and author and not is_agent_credit(author):
+        return author
+    return None
 
 
 def resolve_credit_author(
@@ -219,36 +124,20 @@ def resolve_credit_author(
     *,
     explicit: Optional[str] = None,
     root: Optional[pathlib.Path] = None,
-    first: Optional[dict[str, str]] = None,
+    module: Optional[str] = None,
+    addr: Optional[int] = None,
 ) -> Optional[str]:
-    """Resolve classic credit (GitHub login) like sm64ds.
+    """Who matched this function.
 
-    Priority:
-      1. attribution.json overrides for src_path
-      2. explicit CLI --author only if it is not an agent name
-      3. git first-adder of src_path (surviving match lineage)
-      4. git config user (new / uncommitted promote)
-    Never returns agent/harness product names (e.g. grok).
+    An explicit name wins when it is a person. Otherwise the name already in
+    function-authors.json is used. Git history is not consulted. Agent and
+    harness names are never returned.
     """
-    root = root or repo()
-    overrides = attribution_overrides(root)
-    if src_path:
-        sp = src_path.lstrip("./")
-        if sp in overrides:
-            return overrides[sp]
+    del src_path  # kept so older callers that pass a path still run
     if explicit and str(explicit).strip() and not is_agent_credit(explicit):
         return str(explicit).strip()
-    if explicit and is_agent_credit(explicit):
-        # fall through — do not credit "grok"
-        pass
-    if src_path:
-        sp = src_path.lstrip("./")
-        fm = first if first is not None else first_matchers(root)
-        if sp in fm and not is_agent_credit(fm[sp]):
-            return fm[sp]
-    cfg = git_config_handle(root)
-    if cfg:
-        return cfg
+    if module is not None and addr is not None:
+        return recorded_author(module, addr, root)
     return None
 
 def is_repo_root(path: pathlib.Path) -> bool:
@@ -537,13 +426,14 @@ def append_ledger_row(
 ) -> dict:
     """Validate, append one JSONL row, return the row. Raises ProvenanceError.
 
-    `author` is classic chaos-viewer credit (GitHub login from git, not agent).
+    `author` is the person in function-authors.json, or an explicit name.
     `provenance` is how only — never put the operator or agent in how.by.
     """
     path = path or ledger_path()
     prov = normalize_provenance(provenance)
     rid = make_id(module, addr)
-    credit = resolve_credit_author(src_path, explicit=author)
+    credit = resolve_credit_author(
+        src_path, explicit=author, module=module, addr=addr)
     row: dict[str, Any] = {
         "id": rid,
         "module": module,

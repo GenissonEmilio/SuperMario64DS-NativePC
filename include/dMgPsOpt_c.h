@@ -3,29 +3,29 @@
 
 #include "dThIcon_c.h"
 
-/* The minigame pause/options touch controls embedded in dScMgBase_c. The ROM
- * constructs and destroys eight polymorphic TouchIcon_c elements as one member.
- * TouchIcon_c's nested name and dThIcon_c base are RTTI-proven. dThIcon_c's
- * ROM vtable proves this nested class has an ordinary nonvirtual destructor. */
+/* Minigame pause / options touch panel. dScMgBase_c embeds one at 0xf4
+ * as mTouchOptions: eight TouchIcon_c buttons. The nested name and the
+ * dThIcon_c base are the cartridge's RTTI. Behavior is the base's;
+ * Render is this class's. */
 struct dMgPsOpt_c {
     struct TouchIcon_c : dThIcon_c {
         TouchIcon_c();
         ~TouchIcon_c();
 
-        /* Slot 1 of dThIcon_c's two-slot table, and this class's only override
-           of it. The cartridge's _ZTVN10dMgPsOpt_c11TouchIcon_cE holds
-           ov004:0x020b8c18 there where dThIcon_c's own table holds
-           _ZN9dThIcon_c6RenderEv; without this declaration mwcc emitted the
-           inherited address and romdata_check scored the table DIFFERS. Body in
-           src/_ZN10dMgPsOpt_c11TouchIcon_c6RenderEv.cpp. Behavior (slot 0) is
-           NOT overridden -- the cartridge keeps dThIcon_c's there. */
+        /* Vtable slot 1. Slot 0 stays dThIcon_c::Behavior. This has to
+           be declared: without it the slot keeps the base Render. */
         void Render();
     };
 
-    TouchIcon_c mIcons[8];   /* 0x000..0x120 */
-    s32 mSelectedIcon;       /* 0x120 */
-    u8 mActive;              /* 0x124 */
-    u8 pad_125[0x3];         /* 0x125 */
+    TouchIcon_c mIcons[8]; /* 0x000 */
+    /* How many icons Behavior and Render walk. 8 while the panel is up,
+       0 when it is shut. Not which icon is selected. */
+    s32 mIconCount;        /* 0x120 */
+    /* 0 shut, 1 taking touches, 2 counting down the close. */
+    u8 mActive;            /* 0x124 */
+    /* Frames left in state 2. The back button loads 0x14. */
+    u8 mCloseTimer;        /* 0x125 */
+    u8 pad_126[0x2];       /* 0x126 */
 
     dMgPsOpt_c();
     ~dMgPsOpt_c();

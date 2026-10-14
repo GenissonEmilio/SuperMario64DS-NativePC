@@ -5,9 +5,9 @@ small: build/cache the committed base, create and commit the PR merge, run rombu
 for both, run pr_linkcheck for the affected files, then call this tool with the JSON
 artifacts.  This tool supplies the stable policy and report schema used by CI.
 
-Coverage and attribution are read from Git *commits*, never the worktree.  That is
-load-bearing for path-only PRs: ``first_matchers`` follows committed rename lineage,
-while an uncommitted merge makes every new path appear to have no author.
+Coverage and attribution are read from Git *commits*, never the worktree.  Who
+matched a function is ``function-authors.json`` in that commit.  The key is the
+module and the address, so a rename of the source file does not change the author.
 
 Example:
     python tools/validate_merge.py --base origin/main --head HEAD \
@@ -30,7 +30,6 @@ import tempfile
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 import asm_policy as AP  # noqa: E402
-import chaos_db_ci as CHAOS  # noqa: E402
 import rombuild_check as RBC  # noqa: E402
 
 FUNC_RE = re.compile(
@@ -1223,7 +1222,7 @@ def classify_repartition(bf, hf):
     the gate as written makes the correction the one edit that cannot land, and holds the
     tree in a state where its own count is a fiction. PR #2360 is the live case:
     `func_020610fc` is declared 0x3c, the routine is 0x2c and ends in `b self`, and the
-    remaining 0x10 is a separate routine that `src/func_02019ebc.c` CALLS -- a call
+    remaining 0x10 is a separate routine that `src/unnamed/arm9/0201/func_02019ebc.c` CALLS -- a call
     `config/unresolved-baseline.json` records as missing because nothing defines it.
 
     That is the trap the WITHDRAWN carve-out below was written for: "treating both as
@@ -1398,35 +1397,22 @@ def _json_at(rev, path):
 
 
 def attribution_snapshot(rev, functions):
-    old_repo = CHAOS.REPO
-    CHAOS.REPO = REPO
-    try:
-        first = CHAOS.first_matchers(rev)
-        finishers = CHAOS.match_finishers(rev)
-    finally:
-        CHAOS.REPO = old_repo
-    data = _json_at(rev, "attribution.json")
-    overrides = data.get("overrides", {}) if isinstance(data, dict) else {}
-    aliases = data.get("aliases", {}) if isinstance(data, dict) else {}
+    """Author of each matched function, read from function-authors.json at ``rev``.
 
-    def canon(name):
-        return aliases.get(str(name).lower(), name)
-
+    The key is ``module:0xaddress``. Moving a source file does not change it.
+    """
+    data = _json_at(rev, "function-authors.json")
+    recorded = data.get("functions", {}) if isinstance(data, dict) else {}
     by_function, counts, sizes = {}, collections.Counter(), collections.Counter()
     for key, rec in functions["matched"].items():
-        path = rec["srcPath"]
-        # A reconstructed TU may combine functions first matched by different people.
-        # Keep the path override as the default, but let path#symbol preserve credit
-        # for each member without inventing duplicate source files.
-        member_key = f"{path}#{rec['name']}"
-        author = (overrides.get(member_key) or overrides.get(path)
-                  or finishers.get(path) or first.get(path))
+        row = recorded.get(key)
+        if isinstance(row, dict):
+            author = row.get("author")
+        else:
+            author = row
         if not author:
             continue
-        author = canon(author)
-        # The source path travels with the author because credit is decided per file:
-        # a report that says only "2 changed" cannot tell a PR author which two.
-        by_function[key] = {"author": author, "path": path}
+        by_function[key] = {"author": author, "path": rec["srcPath"]}
         counts[author] += 1
         sizes[author] += rec["size"]
     return {"byFunction": by_function,

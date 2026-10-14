@@ -59,6 +59,7 @@ import rombuild_cache as RBK  # noqa: E402
 import rombuild_check as RBC  # noqa: E402
 import romdata_check as RDC  # noqa: E402
 import layout_check as LAY  # noqa: E402
+import lcf_interior as LI  # noqa: E402
 import rombuild_profile as RP  # noqa: E402
 import srcpath as SP  # noqa: E402
 import relocs as RL  # noqa: E402
@@ -237,6 +238,20 @@ def run(cmd, what, quiet_patterns=()):
     return out
 
 
+def _bad_module_lines(verification):
+    """Name the modules behind a failed `dsd check modules`, not just the count.
+
+    dsd prints `Check <module>: checksum failed` per offending module into the
+    captured output; surfacing it makes a remote-only mismatch actionable from
+    the failure detail alone."""
+    out = (verification.get("modulesOutput") or "").strip()
+    bad = [line for line in out.splitlines()
+           if "checksum failed" in line or "byte(s) differ" in line]
+    if bad:
+        return bad
+    return [out[-1200:]] if out else []
+
+
 def enrolled(config_root=CONFIG_ROOT, extra_roots=()):
     """Every `src/` file carved out by a `complete` file entry in a delinks.txt.
 
@@ -352,15 +367,23 @@ def _isolate(obj, rel, syms, data_sink=None, compiler_only=None, intact_tus=None
             return f"intact TU preparation refused: {exc}"
         obj.write_bytes(prepared)
         return None
+    pol = (compiler_only or {}).get(rel.replace("\\", "/")) or {}
+    if pol.get("canonical") and not isinstance(selected, (list, tuple)):
+        return "canonical duplicate policy requires explicit enrolled function ownership"
     if isinstance(selected, (list, tuple)):
         if not selected:
             return "source owns no enrolled functions"
-        if len(selected) == 1:
+        if len(selected) == 1 and not pol.get("canonical"):
             plan = OI.isolate(obj, selected[0])
         else:
-            pol = (compiler_only or {}).get(rel.replace("\\", "/")) or {}
             dead = pol.get("deadstrip") or []
             if dead:
+                canonical = pol.get("canonical", [])
+                if canonical:
+                    import tubuild as TB
+                    errors = TB.verify_canonical_duplicates(obj.read_bytes(), canonical)
+                    if errors:
+                        return "canonical duplicate policy: " + "; ".join(errors)
                 # Before the surgery, not after: once the sections are zeroed there is
                 # nothing left to compare against the cartridge.
                 differ = _data_body_reasons(obj, rel, pol.get("data") or [])
@@ -375,8 +398,14 @@ def _isolate(obj, rel, syms, data_sink=None, compiler_only=None, intact_tus=None
                 if reduced is None:
                     return ("compiler-only deadstrip refused: "
                             + str(dead_plan.get("error")))
+                if canonical:
+                    reduced, rename_plan = OI.rename_undefined_symbols(
+                        reduced, {r["symbol"]: r["canonical_symbol"] for r in canonical})
+                    if reduced is None:
+                        return "canonical duplicate rename refused: " + rename_plan["error"]
                 obj.write_bytes(reduced)
-            plan = OI.isolate_many(obj, selected)
+            plan = (OI.isolate(obj, selected[0]) if len(selected) == 1
+                    else OI.isolate_many(obj, selected))
     else:
         plan = OI.isolate(obj, selected)
     if plan.get("kind") == OI.NOT_A_FUNCTION:
@@ -665,6 +694,12 @@ def compiler_only_policies(enrolled=None, manifest=None, homes=None):
         if source in out:
             errors.append(f"{source}: compiler-only policy is declared by multiple entries")
             continue
+        import tubuild as TB  # only policy preflight; both build paths share guards
+        canonical, canonical_errors = TB.canonical_duplicate_policies(entry, homes)
+        if canonical_errors:
+            errors.extend(f"{source}: {error}" for error in canonical_errors)
+            continue
+        canonical_by_name = {row["symbol"]: row for row in canonical}
         licensed = {row.get("symbol") for row in entry.get("functions", [])}
         wanted, expect, data, dup_homes = [], {}, [], {}
         for i, row in enumerate(rows):
@@ -691,13 +726,17 @@ def compiler_only_policies(enrolled=None, manifest=None, homes=None):
                               f"must name a module and an integer address")
             elif declared is not None:
                 actual = {(RL.normalize_module(m), a)
-                          for m, a in homes.get(symbol) or []}
+                          for m, a in homes.get(row.get("canonical_symbol", symbol)) or []}
                 if declared not in actual:
                     errors.append(f"{source}: {symbol} names canonical home "
                                   f"{declared[0]}:0x{declared[1]:08x}, which is not one "
                                   f"of its configured ROM home(s) {sorted(actual)}")
             if disposition == "deadstrip-duplicate":
-                if not homes.get(symbol):
+                if symbol in canonical_by_name:
+                    resolved = canonical_by_name[symbol]
+                    expect[symbol] = resolved["body"]
+                    dup_homes[symbol] = (resolved["module"], resolved["address"])
+                elif not homes.get(symbol):
                     errors.append(f"{source}: {symbol} is declared a duplicate but has "
                                   f"no configured ROM home")
                 else:
@@ -765,6 +804,8 @@ def compiler_only_policies(enrolled=None, manifest=None, homes=None):
             wanted.append(symbol)
         out[source] = {"deadstrip": wanted, "expect": expect, "data": data,
                        "homes": dup_homes}
+        if canonical:
+            out[source]["canonical"] = canonical
     if errors:
         raise BuildError("compiler-only policy", 1, "\n".join(errors))
     return out
@@ -917,7 +958,7 @@ def _definition_symbols(rel, rows):
     """Collapse owned records only for one exact legacy outer-owner alias shape.
 
     Some ROM functions contain independently named entry points.  The concrete case
-    is ``src/func_01ff97d8.c``: one 0xb6c outer function owns the complete range while
+    is ``src/unnamed/arm9/01ff/func_01ff97d8.c``: one 0xb6c outer function owns the complete range while
     four nonzero function records partition its interior.  Those records are useful
     address/ownership aliases, but mwcc emits only the outer definition.  Treating the
     five records as a consolidated TU would make the exact object fail with four
@@ -1102,16 +1143,11 @@ def main():
                     help="object cache location (default build/objcache)")
     ap.add_argument("--cache-max-mb", type=int, default=1024,
                     help="prune the object cache back under this size after a build")
-    ap.add_argument("--tu-module", action="append", default=[], metavar="MODULE",
-                    help="build this module from its config_tu/ merged TUs instead of "
-                         "the per-function src/ files (repeatable; e.g. --tu-module ov010)")
     ap.add_argument("--partitioned-tu", action="append", default=[], metavar="TU_ID",
                     help="production-build one partitioned-link-verified manifest TU: "
                          "compile it once, substitute its exact derived text objects, "
                          "and link its licensed reduced non-text object (repeatable)")
     args = ap.parse_args()
-    if args.tu_module and args.partitioned_tu:
-        ap.error("--tu-module and --partitioned-tu are mutually exclusive")
     if args.partitioned_tu and args.profile != "stock":
         ap.error("--partitioned-tu currently supports only the stock profile")
     if args.partitioned_tu and args.no_check:
@@ -1156,7 +1192,7 @@ def main():
                                  "waiver to config/layout-known-issues.txt only if the "
                                  "violation is genuinely pre-existing.")
 
-        profile = RP.prepare_profile(args.profile, tu_modules=args.tu_module)
+        profile = RP.prepare_profile(args.profile)
         config_root = profile["configRoot"]
         config_yaml = profile["configYaml"]
         tu_prepared = None
@@ -1175,8 +1211,6 @@ def main():
             }
             report["partitionedTus"] = TP.report_view(tu_prepared)
         report["profileConfig"] = str(config_root.relative_to(REPO))
-        if profile.get("tuModules"):
-            report["tuModules"] = profile["tuModules"]
         report["modReplacements"] = profile["modReplacements"]
         report["modGapFallbacks"] = profile["modGapFallbacks"]
 
@@ -1192,9 +1226,9 @@ def main():
         run([str(DSD), "lcf", "-c", str(config_yaml)], "dsd lcf")
         report["phases"].append("dsd lcf")
 
-        # A TU-built module's delinks name src_tu/ merged files; widen the allowed
-        # source roots so those enroll like any other complete entry.
-        extra_roots = ("src_tu",) if profile.get("tuModules") or tu_prepared else ()
+        # A partitioned TU's delinks name its src_tu/ merged file; widen the allowed
+        # source roots so it enrolls like any other complete entry.
+        extra_roots = ("src_tu",) if tu_prepared else ()
         srcs = enrolled(config_root, extra_roots=extra_roots)
         vers = versions()
         # Before the first compile: a pin that no longer names a real file has quietly
@@ -1274,6 +1308,10 @@ def main():
                 cache.prune(args.cache_max_mb * 1024 * 1024)
         report["phases"].append("mwccarm")
 
+        defined_interior = LI.patch(BUILD / "arm9.lcf", BUILD / "objects.txt", config_root)
+        if defined_interior:
+            print(f"      lcf: defined {len(defined_interior)} interior row(s) at their ROM "
+                  f"address ({', '.join(n for n, _a in defined_interior)})")
         print("[4/6] mwldarm")
         run([*launcher(), str(MW / LD_VERSION / "mwldarm.exe"), *LDFLAGS.split(),
              f"@{BUILD / 'objects.txt'}", str(BUILD / "arm9.lcf"),
@@ -1287,6 +1325,7 @@ def main():
                 detail = []
                 if not verification["modulesOk"]:
                     detail.append("dsd check modules --fail did not pass")
+                    detail.extend(_bad_module_lines(verification))
                 detail.extend(f"new symbol error: {line}"
                               for line in verification["newSymbolErrors"])
                 detail.extend(verification["storageAliasErrors"])
@@ -1301,7 +1340,11 @@ def main():
             if not verification["ok"]:
                 detail = []
                 if not verification["modulesOk"]:
-                    detail.append("dsd check modules --fail did not pass")
+                    replay = verification.get("moduleChecksumReplay") or []
+                    detail.append(
+                        "dsd check modules --fail did not pass "
+                        f"[replay-diag-1: {', '.join(replay) if replay else 'all module hashes replay-match the committed config'}]")
+                    detail.extend(_bad_module_lines(verification))
                 detail.extend(f"new symbol error: {line}"
                               for line in verification["newSymbolErrors"])
                 detail.extend(verification["storageAliasErrors"])

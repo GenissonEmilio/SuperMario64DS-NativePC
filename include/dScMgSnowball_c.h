@@ -7,7 +7,7 @@
  * SIZE 0xc59c, and the allocation is NOT in this class's own constructor.
  * func_ov006_021295ac takes an already-allocated `char*` -- it is a C2,
  * not a factory. Its one caller, dScMgSnowball_c_classInit, is where
- * `_ZN7fBase_cnwEj(0xc59c)` lives. Deriving a size from the field span
+ * the 0xc59c allocation (fBase_c::operator new) lives. Deriving a size from the field span
  * would have stopped at 0xbe94 and been 0x708 short.
  *
  * CONSTRUCTOR AND DESTRUCTOR AGREE MEMBER FOR MEMBER, in exact reverse
@@ -33,15 +33,15 @@
  * (func_ov006_0212968c / func_ov006_02125800).
  *
  * THE 0xb0d8..0xb5d8 REGION IS FOUR PARALLEL ARRAYS, not padding, and they
- * tile the 0x500 exactly: Snowball's own Render (src/func_ov006_02127d10.c)
+ * tile the 0x500 exactly: Snowball's own Render (src/actors/dScMgSnowball_c.cpp)
  * indexes 0xb0d8 as `*(int*)(c + i*4 + ...)`, 0xb2d8 and 0xb358 as
  * `*(u8*)(c + i + ...)`, and 0xb3d8 as `*(int*)(c + i*4 + ...)`; 0x80
  * elements each gives 0x200 + 0x80 + 0x80 + 0x200 = 0x500, landing on
- * mArray2. src/func_ov006_02125bbc.c writes the first two the same way.
+ * mArray2. the same file writes the first two the same way.
  *
  * 0xbe94..0xc59c IS A FIFTH ARRAY, and it is why this class has NO trailing
- * slack at all: src/func_ov006_02129690.c already carries the full element
- * layout (two s32 then three u8 at +0x1e/0x1f/0x20, stride 0x24) as a local
+ * slack at all: func_ov006_02129690 (in src/actors/dScMgSnowball_c.cpp) already
+ * carries the full element layout (two s32 then three u8 at +0x1e/0x1f/0x20, stride 0x24) as a local
  * `Elem arr[50]` at exactly this offset, and 50 * 0x24 = 0x708 closes
  * precisely on the allocation literal. At least eight further ov006 files
  * index it. Unlike the other four arrays neither structor touches it, so
@@ -53,11 +53,11 @@
  *
  * mMenuOpen, which the old auto-generated header declared, is dScMgBase_c's
  * own and is already declared there; it is dropped from this file, not
- * lost. src/_ZN15dScMgSnowball_c8OnKickedEv.c reads it through this class
+ * lost. OnKicked, in src/actors/dScMgSnowball_c.cpp, reads it through this class
  * and keeps working because it inherits it.
  *
  * THE DESTRUCTOR IS NOT DEFINED INLINE -- a leaf, no RTTI descendants of
- * its own. Defined for real in src/_ZN15dScMgSnowball_cD1Ev.cpp; D0Ev.cpp
+ * its own. Defined for real in src/actors/dScMgSnowball_c.cpp's destructor; the deleting variant
  * carries an identical copy. No separate operator delete is needed --
  * dScMgBase_c, two levels up, already provides one.
  *
@@ -91,18 +91,7 @@ struct dScMgSnowball_c : dScMgSingle3DBase_c {
         ~Vec2() {}
     };
 
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgSnowball_c();   /* no slot */
-#else
-    virtual ~dScMgSnowball_c();   /* D1 and D0 */
-#endif
+    virtual ~dScMgSnowball_c();
 
     /* --- this class's own vtable slots, named from the table ---
        Re-overrides of slots fBase_c already owns, NOT new virtuals: the
@@ -116,6 +105,39 @@ struct dScMgSnowball_c : dScMgSingle3DBase_c {
     virtual int  OnAttacked2();                        /* slot 23 */
     virtual int  OnKicked();                           /* slot 24 */
     virtual int  OnPushed();                           /* slot 25 */
+
+    /* scene helpers */
+    void func_ov006_02125804();           /* render live mArray3 chunks */
+    void func_ov006_02125890();           /* step live mArray3 chunks */
+    void func_ov006_02125994();           /* clear the mArray3 chunk records */
+    int  func_ov006_021259d8(int *point); /* point vs walkable corridor */
+    int  func_ov006_02125bbc(int *point); /* point vs pickup row */
+    int  func_ov006_02125cdc(int *point); /* point vs solid tile ring */
+    void func_ov006_02125f68();           /* collision ring probes + push-out */
+    void func_ov006_02126a98();           /* per-tick flag/sound bookkeeping */
+    void func_ov006_02126b4c(int col, int flag); /* tile flag at (x,z) */
+    void func_ov006_02126ee4();           /* generate the course tilemap */
+    void func_ov006_021279b0();           /* seed the course + sprite tables */
+
+    /* mArray4 records: the 50 on-course objects, dispatched by the four
+       sinit-built PMF tables at data_ov006_02143020/38/50/70 */
+    void func_ov006_02129690();           /* render live mArray4 records */
+    void func_ov006_0212972c(int idx);    /* table 02143020 entry 2: cooldown tick */
+    void func_ov006_021297c0(int idx);    /* table 02143020 entry 1 */
+    void func_ov006_02129894(int i);      /* table 02143020 entry 0 */
+    void func_ov006_0212992c(int idx);    /* table 02143070 entry 3 */
+    void func_ov006_02129a34(int i);      /* table 02143070 entry 2 */
+    void func_ov006_02129b74(int index);  /* table 02143070 entry 1 */
+    void func_ov006_02129cb0(int i);      /* table 02143070 entry 0 */
+    void func_ov006_02129d94(int i);      /* table 02143038 entry 2: dispatches 02143070 + 02143020 on elem i */
+    void func_ov006_02129e28(int i);      /* table 02143050 entry 3 */
+    void func_ov006_02129eec(int idx);    /* table 02143050 entry 2 */
+    void func_ov006_0212a000(int index);  /* table 02143050 entry 1 */
+    void func_ov006_0212a110(int idx);    /* table 02143050 entry 0 */
+    void func_ov006_0212a224(int idx);    /* table 02143038 entry 1: dispatches 02143050 on state */
+    void func_ov006_0212a274(int idx);    /* table 02143038 entry 0 */
+    void func_ov006_0212a2e0();           /* walk mArray4, dispatch table 02143038 */
+    void func_ov006_0212a3c0();           /* reset the mArray4 records */
 
     /* 0x4f38 -- the generated course, 0x10 lanes of 0x2e0 rows. The stride
        is the lane's: func_ov006_02126ee4 writes every tile as
@@ -165,7 +187,7 @@ struct dScMgSnowball_c : dScMgSingle3DBase_c {
                                Render indexes as i*8 + 0 / i*8 + 4 */
     s32   mArray1Kind[0x80]; /* 0xb0d8 -- 1 picks the 8-frame animated sprite
                                 table, anything else the static one */
-    u8    mArray1Hit[0x80]; /* 0xb2d8 -- src/func_ov006_02125bbc.c sets it on
+    u8    mArray1Hit[0x80]; /* 0xb2d8 -- func_ov006_02125bbc sets it on
                                contact; Render then offsets the frame by 8 */
     u8    mArray2Active[0x80]; /* 0xb358 -- 1 = this mArray2 slot is live */
     s32   mArray2Kind[0x80]; /* 0xb3d8 -- Render switches 0..2 against 3 to
@@ -177,7 +199,7 @@ struct dScMgSnowball_c : dScMgSingle3DBase_c {
     s32   mTimeLeft;        /* 0xb9dc -- frames; Render draws it as
                                 seconds.centiseconds, 0 ends the run */
     s32   mScore;           /* 0xb9e0 -- +1 a tick while rolling; handed to the
-                                HUD counter func_ov004_020adb1c on the crash */
+                                dMeter_c counter func_ov004_020adb1c on the crash */
     u8    mHitBreakable;    /* 0xb9e4 -- a breakable was hit this tick */
     u8    mAllWater;        /* 0xb9e5 -- every probe was in water */
     u8    mSoundPending;    /* 0xb9e6 */

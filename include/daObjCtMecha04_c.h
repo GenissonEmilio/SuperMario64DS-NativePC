@@ -4,7 +4,7 @@
  *
  * The inheritance and ownership are visible in both lifecycle directions:
  * the factories construct dBgActor_c, then TextureTransformer at 0x320 and
- * ShadowModel at 0x334; the destructor tears those members down in reverse
+ * dExtShadowModel_c at 0x334; the destructor tears those members down in reverse
  * order before inlining dBgActor_c's destruction. The allocation literal in
  * both factories is 0x3a0, independently fixing the complete object size. */
 #ifndef DAOBJCTMECHA04_C_H
@@ -14,12 +14,12 @@
 #ifdef __cplusplus
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 #include "dBgActor_c.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "TextureTransformer.h"
 
 struct daObjCtMecha04_c : dBgActor_c {
     TextureTransformer mTextureTransformer; /* 0x320 */
-    ShadowModel mShadowModel;                /* 0x334 */
+    dExtShadowModel_c mShadowModel;                /* 0x334 */
     /* UpdateShadow builds this from mAngleY, then writes the actor's X/Z and
      * ground Y into its translation before passing it to DropShadowScaleXYZ. */
     Matrix4x3 mShadowMat;                    /* 0x35c */

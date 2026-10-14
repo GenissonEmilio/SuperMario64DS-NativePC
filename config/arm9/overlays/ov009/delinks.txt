@@ -4,53 +4,21 @@
     .ctor       start:0x02112b34 end:0x02112b44 kind:rodata align:4
     .data       start:0x02112b60 end:0x02113c20 kind:data align:32
     .bss        start:0x02113c20 end:0x02113ee0 kind:bss align:32
-src/_ZN4BirdD1Ev.cpp:
+src/game/actors/d_a_s_bird_head.cpp:
     complete
-    .text start:0x021111a0 end:0x021111d8
+    .text start:0x021111a0 end:0x0211145c
 
-src/_ZN4BirdD0Ev.cpp:
+src/unnamed/ov009/func_ov009_0211145c.cpp:
     complete
-    .text start:0x021111d8 end:0x02111224
+    .text start:0x0211145c end:0x021115d8
 
-src/func_ov009_02111224.c:
+src/game/actors/d_a_s_bird.cpp:
     complete
-    .text start:0x02111224 end:0x02111234
-
-src/func_ov009_02111234.cpp:
-    complete
-    .text start:0x02111234 end:0x0211145c
-
-src/func_ov009_021115d8.c:
-    complete
-    .text start:0x021115d8 end:0x021116ec
-
-src/func_ov009_021116ec.cpp:
-    complete
-    .text start:0x021116ec end:0x0211183c
-
-src/_ZN4Bird16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x0211183c end:0x0211186c
-
-src/_ZN4Bird16OnPendingDestroyEv.cpp:
-    complete
-    .text start:0x0211186c end:0x02111870
-
-src/_ZN4Bird6RenderEv.cpp:
-    complete
-    .text start:0x02111870 end:0x02111898
-
-src/_ZN4Bird8BehaviorEv.cpp:
-    complete
-    .text start:0x02111898 end:0x0211197c
-
-src/_ZN4Bird13InitResourcesEv.cpp:
-    complete
-    .text start:0x0211197c end:0x02111a30
-
-src/d_a_s_bird.c:
-    complete
-    .text start:0x02111a30 end:0x02111a70
+    .text start:0x021115d8 end:0x02111a70
+    .init start:0x02112458 end:0x02112524
+    .ctor start:0x02112b34 end:0x02112b38
+    .data start:0x021138fc end:0x0211391c
+    .bss start:0x02113c20 end:0x02113c68
 
 src/game/actors/d_a_obj_mc_water.cpp:
     complete
@@ -59,23 +27,18 @@ src/game/actors/d_a_obj_mc_water.cpp:
 src/game/actors/d_a_obj_mc_metalnet.cpp:
     complete
     .text start:0x02111dc4 end:0x02112078
+    .init start:0x02112a5c end:0x02112ac8
+    .ctor start:0x02112b3c end:0x02112b40
+    .bss start:0x02113e88 end:0x02113eb0
 
 src/game/actors/d_a_mc_flag.cpp:
     complete
     .text start:0x02112078 end:0x02112228
+    .init start:0x02112ac8 end:0x02112b34
+    .ctor start:0x02112b40 end:0x02112b44
+    .bss start:0x02113eb0 end:0x02113ed8
 
-src/__sinit_ov009_02112458.c:
-    complete
-    .init start:0x02112458 end:0x02112524
-
-src/__sinit_ov009_02112524.c:
+src/unnamed/ov009/__sinit_ov009_02112524.c:
     complete
     .init start:0x02112524 end:0x02112a5c
 
-src/__sinit_ov009_02112a5c.c:
-    complete
-    .init start:0x02112a5c end:0x02112ac8
-
-src/__sinit_ov009_02112ac8.c:
-    complete
-    .init start:0x02112ac8 end:0x02112b34

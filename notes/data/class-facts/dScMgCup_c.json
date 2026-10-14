@@ -381,6 +381,6 @@
     "worktree": "C:/tmp/sm64ds-cupscout",
     "ref": "cpp/dScMgCup_c-tu",
     "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe, verified by wt-setup canary build",
-    "byte_gate_run": "None. `tubuild verify` was run, which compiles and compares but is not a gate; it exited 1 and printed 31/32 MATCH -> NOT verified. Stage 4 owns the gates."
+    "byte_gate_run": "None. `tubuild verify` was run, which compiles and compares but is not a gate; it exited 1 and printed 31/32 MATCH -> NOT verified. dScStage_c 4 owns the gates."
   }
 }

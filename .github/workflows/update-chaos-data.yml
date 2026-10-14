@@ -26,7 +26,7 @@ on:
       # percentage and must republish. The LINKED stamp needs no line of its own:
       # config/** already covers config/port_linkage.json.
       - "tools/tiers.py"
-      - "attribution.json"
+      - "function-authors.json"
       # include/** and tools/langmode_audit.py are here for the langmode re-bank below,
       # which reads both; neither feeds chaos-db. The baseline itself is not listed
       # because it no longer lives in this tree -- it is banked on chaos-data, and a

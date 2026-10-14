@@ -220,7 +220,7 @@ def main():
                     help="print unmatched-function counts per C++ class, then exit")
     ap.add_argument("--pretty", action="store_true")
     ap.add_argument("--ignore-claims", action="store_true",
-                    help="schedule targets even if CLAIMS.md marks them active/partial "
+                    help="schedule targets even if the claims service holds them "
                          "(default: skip them, so a batch never duplicates held work)")
     ap.add_argument("--examples", type=int, default=2,
                     help="attach up to N verified sibling sources (same mnemonic "
@@ -266,7 +266,7 @@ def main():
             print(f"  {n:4}  {cls}")
         return
 
-    # Someone else's active claim (API lock or CLAIMS.md row) means that function is taken.
+    # Someone else's active claim means that function is taken.
     # Scheduling it anyway is how a batch ends up duplicating work another contributor
     # already finished.
     held = CLM.held_targets() if not args.ignore_claims else {"names": set(), "addrs": set(), "ranges": [], "rows": 0}

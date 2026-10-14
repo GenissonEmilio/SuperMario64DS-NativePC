@@ -1,94 +1,106 @@
 //cpp
-/* Production translation unit for ov065/daObjCtMecha04_c.
- *
- * deslop
- *
- * Leftover:
- * - TextureTransformer::SetFile / dBgW_KcMbg::SetFile / DropShadowScaleXYZ /
- *   dBgActor_c::IsClsnInRange stay mangled (Fix12-by-value, 6az)
- * - func_020393c4 / func_020393bc store/load dBgW+0x1c (no setter)
- * - Sound::PlayLong TU-local mangled (Sound.h has PlayBank3 only)
- * - data_ov065_* handles; this TU is text-only (S14 no g_profile_CT_MECHA04*)
- * - SharedFilePtr +4 BMD (Prepare; header has no fields)
- * - common.h first (UpdateShadow mShadowMat.m[9..11] needs the flat 12-word spelling)
- * - return new emits homeless _ZN10dBgActor_cD2Ev; compiler-only policy deadstrips it
- *
- * mwccarm emits ordinary functions in reverse source order, so the eleven
- * definitions below intentionally run from the highest retail address back
- * toward the compiler-owned destructor group. Keep the factories first.
+/* daObjCtMecha04_c -- the conveyor belt of Tick Tock Clock (CT_MECHA04L/S,
+ * ov065). Both spawn entries construct this class, and InitResources picks its
+ * model, collision and CLPS row from actorID (0x6f -> row 0, 0x70 -> row 1).
+ * Behavior scrolls the belt texture and, through AfterClsnCallback, moves
+ * whatever stands on it.
  *
  * UpdateShadow, MoveActorOnBelt, and AfterClsnCallback are descriptive
  * reconstructions. The member/static forms and parameter spellings of the
  * latter two are also inferred; the manifest records the evidence boundary.
- *
- * The two factories (CT_MECHA04L / CT_MECHA04S) are `return new` in this file.
  */
+
+// leftovers (each measured; simplifying changes the emitted bytes):
+// TextureTransformer::SetFile / dBgW_KcMbg::SetFile / DropShadowScaleXYZ /
+// dBgActor_c::IsClsnInRange stay mangled (Fix12-by-value, 6az -- this TU's
+// InitResources/Behavior/UpdateShadow calls). func_020393c4 / func_020393bc
+// store/load dBgW+0x1c -- the ROM's own call, not an inlineable assignment
+// (no setter). Sound::PlayLong stays TU-local mangled (Sound.h has PlayBank3
+// only). SharedFilePtr's file data sits at +4; the header declares no fields.
+// common.h first: UpdateShadow writes mShadowMat.m[9..11] on the flat 12-word
+// spelling. InitResources keeps its two-store animationFiles[2] stack array,
+// the variant reloads, MoveActorOnBelt's &mPosX-derived pointer chain and flat
+// sin/cos index, Behavior's (mFlags & 8) ? 1 : 0, and UpdateShadow's isLarge
+// temporary -- measured bool-widening / pointer-reuse shapes. `return new`
+// emits a homeless _ZN10dBgActor_cD2Ev (compiler-only deadstrip); the header's
+// inline dtor gives the D1/D0 pair, no D2.
 
 #include "common.h"
 #include "daObjCtMecha04_c.h"
 #include "SharedFilePtr.h"
 #include "dBgW.h"
-#include "types.h"
 #include "dBgCh_Gnd.h"
 
-/* One 2-row {model, collision, clps} table indexed by mVariant.
- * 0211d194 / 0211d198 / 0211d19c are the three columns of row 0. */
-struct Entry3 {
-    void *a;
-    void *b;
-    void *c;
+int ApproachLinear(int &value, int target, int step);
+
+enum {
+    ACTOR_CT_MECHA04L = 0x6f,
+    ACTOR_CT_MECHA04S = 0x70,
+    CLOCK_SETTING_RANDOM = 2,   /* Behavior picks a random belt direction */
+    CLOCK_SETTING_STOPPED = 3   /* Behavior skips the belt texture, sound and callback */
 };
 
-int ApproachLinear(int &r, int t, int step);
+/* Resource handles constructed by this TU's static initializer. The
+ * constructor and destructor bodies stay out of line; mwcc registers them. */
+struct Mecha04ModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    Mecha04ModelFilePtr(u32 fileID);
+    ~Mecha04ModelFilePtr();
+};
+
+struct Mecha04ClsnFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    Mecha04ClsnFilePtr(u32 fileID);
+    ~Mecha04ClsnFilePtr();
+};
 
 /* Fix12-by-value calls retain their measured raw ABI declarations. Natural
  * class-typed declarations make mwccarm home arguments absent from retail. */
 extern "C" {
 extern void Matrix4x3_FromRotationY(Matrix4x3 *matrix, s16 angle);
-extern void _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
-    dActor_c *actor, ShadowModel *shadow, Matrix4x3 *matrix,
+extern void _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
+    dActor_c *actor, dExtShadowModel_c *shadow, Matrix4x3 *matrix,
     int scaleX, int scaleY, int scaleZ, u32 opacity);
-extern char data_ov065_0211d16c[];
-extern char data_ov065_0211d194[];
-extern char data_ov065_0211d198[];
-extern char data_ov065_0211d19c[];
-extern void func_020393c4(void *p, void *v);
-extern int func_020393bc(int *p);
-extern int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *self, int a, int b);
+/* One 2-row {model, collision, clps} table indexed by mVariant; the three
+ * data_ov065_* symbols name row 0's fields, so each column's decl strides by
+ * the row size. */
+extern BTA_File *data_ov065_0211d16c[2];
+extern SharedFilePtr *data_ov065_0211d194[][3];
+extern SharedFilePtr *data_ov065_0211d198[][3];
+extern CLPS_Block *data_ov065_0211d19c[][3];
+extern void func_020393c4(dBgW *collider, void *callback);
+extern int func_020393bc(dBgW *collider);
+extern int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(dBgActor_c *self, int a, int b);
 extern u16 DecIfAbove0_Short(u16 *p);
 extern int RandomIntInternal(int *seed);
-extern void *_ZN5Sound8PlayLongEjjjRK7Vector3s(
-    unsigned int a, unsigned int b, unsigned int cc,
-    void *v, unsigned int d);
+extern int _ZN5Sound8PlayLongEjjjRK7Vector3s(
+    unsigned int handle, unsigned int bank, unsigned int sound,
+    void *pos, unsigned int flags);
 extern u8 data_0209f2c0;
 extern int data_0209e650;
-extern int data_ov065_0211c0b8[];
+extern int data_ov065_0211c0b8[]; /* per-clock-setting belt speeds */
 extern void _ZN18TextureTransformer7SetFileER8BTA_Filei5Fix12IiEj(
-    void *, BTA_File &f, int a, int fix, unsigned int u);
+    TextureTransformer *self, BTA_File &f, int a, int fix, unsigned int u);
 extern void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
-    void *, KCL_File *f, const Matrix4x3 &m, int fix, short sh,
+    dBgW_KcMbg *self, KCL_File *f, const Matrix4x3 &m, int fix, short sh,
     CLPS_Block &b);
-extern s16 data_02082214[];
+extern s16 data_02082214[]; /* sin/cos pair per (angle >> 4) index */
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol daObjCtMecha04_c_classInit_CT_MECHA04S
 extern "C" daObjCtMecha04_c *daObjCtMecha04_c_classInit_CT_MECHA04S()
 {
     return new daObjCtMecha04_c();
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol daObjCtMecha04_c_classInit_CT_MECHA04L
 extern "C" daObjCtMecha04_c *daObjCtMecha04_c_classInit_CT_MECHA04L()
 {
     return new daObjCtMecha04_c();
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c17AfterClsnCallbackEP4dBgWP8dActor_cS3_
 /* Inferred descriptive name and observed three-register callback ABI. The
  * wrapper deliberately ignores the collider and tail-calls the owner method. */
@@ -98,18 +110,19 @@ void daObjCtMecha04_c::AfterClsnCallback(dBgW *collider, dActor_c *owner,
     ((daObjCtMecha04_c *)owner)->MoveActorOnBelt(*other);
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c15MoveActorOnBeltER8dActor_c
 /* Inferred descriptive name. The collision callback supplies this conveyor as
- * owner and the actor whose X/Z position should advance with the belt. */
+ * owner and the actor whose X/Z position should advance with the belt. Each
+ * axis moves by mBeltSpeed * 4 scaled by one sin/cos pair of data_02082214,
+ * indexed by (u16)mAngleY >> 4: [2i] for X, [2i + 1] for Z. Direct
+ * actor.mPosX/mPosZ stores differ; the PosX-derived pointer chain matches. */
 void daObjCtMecha04_c::MoveActorOnBelt(dActor_c &actor)
 {
     u16 angleForX = (u16)mAngleY;
     int angleIndexForX = angleForX >> 4;
     int beltStepForX = mBeltSpeed << 2;
-    int cosine = data_02082214[angleIndexForX * 2];
-    int deltaX = (int)((((s64)beltStepForX * cosine) + 0x800) >> 12);
+    int sinY = data_02082214[angleIndexForX * 2];
+    int deltaX = (int)((((s64)beltStepForX * sinY) + 0x800) >> 12);
     s32 *actorPosX = &actor.mPosX;
     int oldX = *actorPosX;
     *actorPosX = oldX + deltaX;
@@ -118,36 +131,33 @@ void daObjCtMecha04_c::MoveActorOnBelt(dActor_c &actor)
     int angleIndexForZ = angleForZ >> 4;
     int beltStepForZ = mBeltSpeed << 2;
     s32 *actorPosZ = actorPosX + 2;
-    int sine = data_02082214[(angleIndexForZ * 2) + 1];
+    int cosY = data_02082214[(angleIndexForZ * 2) + 1];
     int oldZ = *actorPosZ;
-    int deltaZ = (int)((((s64)beltStepForZ * sine) + 0x800) >> 12);
+    int deltaZ = (int)((((s64)beltStepForZ * cosY) + 0x800) >> 12);
     *actorPosZ = oldZ + deltaZ;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c13InitResourcesEv
 int daObjCtMecha04_c::InitResources()
 {
-    void *animationFiles[2];
+    BTA_File *animationFiles[2];
     Vector3 position;
     unsigned char variant;
     void *modelFile;
     void *collisionFile;
 
-    animationFiles[0] = *(void **)&data_ov065_0211d16c[0];
-    animationFiles[1] = *(void **)&data_ov065_0211d16c[4];
+    animationFiles[0] = data_ov065_0211d16c[0];
+    animationFiles[1] = data_ov065_0211d16c[1];
 
-    if (actorID != 0x6f) {
-        if (actorID == 0x70)
+    if (actorID != ACTOR_CT_MECHA04L) {
+        if (actorID == ACTOR_CT_MECHA04S)
             mVariant = 1;
     } else {
         mVariant = 0;
     }
 
     variant = mVariant;
-    modelFile = Model::LoadFile(
-        *(SharedFilePtr *)((Entry3 *)data_ov065_0211d194)[variant].a);
+    modelFile = Model::LoadFile(*data_ov065_0211d194[variant][0]);
     mModel.SetFile(
         (BMD_File *)modelFile, 1, -1);
 
@@ -155,23 +165,22 @@ int daObjCtMecha04_c::InitResources()
 
     variant = mVariant;
     TextureTransformer::Prepare(
-        *(BMD_File *)*(void **)((char *)((Entry3 *)data_ov065_0211d194)[variant].a + 4),
-        *(BTA_File *)animationFiles[variant]);
+        *(BMD_File *)((void **)data_ov065_0211d194[variant][0])[1],
+        *animationFiles[variant]);
 
     _ZN18TextureTransformer7SetFileER8BTA_Filei5Fix12IiEj(
         &mTextureTransformer,
-        *(BTA_File *)animationFiles[mVariant], 0, 0x1000, 0);
+        *animationFiles[mVariant], 0, 0x1000, 0);
 
     UpdateModelPosAndRotY();
     UpdateClsnPosAndRot();
 
     variant = mVariant;
-    collisionFile = dBgW_Kc::LoadFile(
-        *(SharedFilePtr *)((Entry3 *)data_ov065_0211d198)[variant].a);
+    collisionFile = dBgW_Kc::LoadFile(*data_ov065_0211d198[variant][0]);
     _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
         &mMeshCollider, (KCL_File *)collisionFile, mClsnMat,
         0x199, mAngleY,
-        *(CLPS_Block *)((Entry3 *)data_ov065_0211d19c)[variant].a);
+        *data_ov065_0211d19c[variant][0]);
 
     func_020393c4(
         &mMeshCollider,
@@ -184,41 +193,40 @@ int daObjCtMecha04_c::InitResources()
     position.x = mPosX;
     position.y = mPosY;
     position.z = mPosZ;
-    position.y = position.y - 0xa000;
+    position.y -= 0xa000;
 
     {
         dBgCh_Gnd ground;
 
-        ground.SetObjAndPos(position, (dActor_c *)0);
+        ground.SetObjAndPos(position, 0);
         mGroundY = position.y;
 
-        if (ground.DetectClsn() != 0)
+        if (ground.DetectClsn())
             mGroundY = ground.clsnY;
     }
 
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c8BehaviorEv
 int daObjCtMecha04_c::Behavior()
 {
-    if (data_0209f2c0 == 3) {
+    if (data_0209f2c0 == CLOCK_SETTING_STOPPED) {
         func_020393c4(&mMeshCollider, 0);
         _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0, 0);
     } else {
         if (((mFlags & 8) ? 1 : 0) == 0) {
-            if (func_020393bc((int *)&mMeshCollider) == 0) {
+            if (!func_020393bc(&mMeshCollider)) {
                 func_020393c4(&mMeshCollider,
                               (void *)&daObjCtMecha04_c::AfterClsnCallback);
             }
 
-            if (data_0209f2c0 == 2) {
+            if (data_0209f2c0 == CLOCK_SETTING_RANDOM) {
                 if (ApproachLinear(mBeltSpeed, mTargetBeltSpeed, 0xcc) != 0
                     && DecIfAbove0_Short((u16 *)&mDirectionTimer) == 0) {
                     unsigned int randomValue = (u16)(
-                        (unsigned int)RandomIntInternal(&data_0209e650) >> 0x10);
+                        (unsigned int)RandomIntInternal(&data_0209e650) >> 16);
+                    /* New direction, held for 0xa + 0x14 * (0..6) ticks. */
                     mDirectionTimer = (s16)(((int)randomValue % 7) * 0x14 + 0xa);
                     if (randomValue >= 0x7fff) {
                         mTargetBeltSpeed = 0x1000;
@@ -233,7 +241,7 @@ int daObjCtMecha04_c::Behavior()
             mTextureTransformer.speed = mBeltSpeed;
             mTextureTransformer.Advance();
             if (mBeltSpeed != 0) {
-                mSoundHandle = (int)_ZN5Sound8PlayLongEjjjRK7Vector3s(
+                mSoundHandle = _ZN5Sound8PlayLongEjjjRK7Vector3s(
                     mSoundHandle, 3, 0x88, &mCamSpacePosX, 0);
             }
         }
@@ -245,8 +253,6 @@ int daObjCtMecha04_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c6RenderEv
 int daObjCtMecha04_c::Render()
 {
@@ -255,26 +261,20 @@ int daObjCtMecha04_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c16CleanupResourcesEv
 int daObjCtMecha04_c::CleanupResources()
 {
     if (mMeshCollider.IsEnabled())
         mMeshCollider.Disable();
-    ((SharedFilePtr *)((Entry3 *)data_ov065_0211d194)[mVariant].a)->Release();
-    ((SharedFilePtr *)((Entry3 *)data_ov065_0211d198)[mVariant].a)->Release();
+    data_ov065_0211d194[mVariant][0]->Release();
+    data_ov065_0211d198[mVariant][0]->Release();
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c12UpdateShadowEv
-/* Inferred descriptive name. The owned ShadowModel and its matrix are fixed by
- * the destructor, field accesses, and dActor_c::DropShadowScaleXYZ call. */
-/* The real declaration takes three Fix12<int> values by value. This compiler
- * homes those class-typed arguments in the caller, unlike the cartridge call;
- * keep the measured register/stack ABI at this one boundary (notes 6az). */
+/* Inferred descriptive name. DropShadowScaleXYZ takes three Fix12<int> values
+ * by value; the class-typed call homes arguments absent from the cartridge,
+ * so the measured register/stack ABI extern stays (6az). */
 void daObjCtMecha04_c::UpdateShadow()
 {
     int heightDiff = mPosY - mGroundY;
@@ -287,21 +287,30 @@ void daObjCtMecha04_c::UpdateShadow()
     mShadowMat.m[10] = (mGroundY + 0x1000) >> 3;
     mShadowMat.m[11] = mPosZ >> 3;
 
-    int isLarge = (int)(actorID == 0x6f);
+    int isLarge = (int)(actorID == ACTOR_CT_MECHA04L);
     if (isLarge != 0) {
-        _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
+        _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
             this, &mShadowModel, &mShadowMat,
             0x1f4000, 0x32000, 0x3e8000, 0xf);
         return;
     }
 
-    _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
+    _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
         this, &mShadowModel, &mShadowMat,
         0x1f4000, 0x32000, 0x320000, 0xf);
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
+// @symbol _ZN16daObjCtMecha04_cD1Ev
+// @symbol _ZN16daObjCtMecha04_cD0Ev
 /* No separate body lives here. The inline virtual destructor in the directly
  * included class header makes mwccarm emit retail's D1 then D0 order without
  * the otherwise homeless D2 variant. */
+
+/* The ROM's initializer constructs both model handles (file IDs 1472 and
+ * 1470) then both collision handles (1473 and 1471), registering a
+ * destructor node for each. mwcc emits __sinit_daObjCtMecha04_c.cpp from
+ * these definitions. */
+Mecha04ModelFilePtr data_ov065_0211d8cc(1472);
+Mecha04ModelFilePtr data_ov065_0211d8bc(1470);
+Mecha04ClsnFilePtr data_ov065_0211d8b4(1473);
+Mecha04ClsnFilePtr data_ov065_0211d8c4(1471);

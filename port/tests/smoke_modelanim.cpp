@@ -2,7 +2,7 @@
 //
 // Gates 4c/5 posed the piano by handing UpdateBones a loop counter; here
 // ModelAnim runs the show: SetAnim installs the animation with the game's
-// flag/speed packing, Animation::Advance steps currFrame each fiber frame
+// flag/speed packing, dExtFrameCtrl_c::Advance steps currFrame each fiber frame
 // (fx12 speed, loop-mode modulo), and ModelAnim::UpdateVerts converts the
 // fx frame to the sampler index exactly as every actor does. The wrap
 // check is the point: after numFrames advances at speed 1.0 the game's
@@ -14,7 +14,7 @@
 #include <cstring>
 
 #include "Model.h"
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 #include "ModelAnim.h"
 #include "BlendModelAnim.h"
 
@@ -105,7 +105,7 @@ static void game_main()
         g_ma->Model::Render(NULL);
         g_hash[i] = tri_hash();
         ++g_frames_run;
-        g_ma->Animation::Advance();
+        g_ma->dExtFrameCtrl_c::Advance();
         ntr::rt_vblank_wait();
     }
 }
@@ -158,7 +158,7 @@ int main(void)
 
     SharedFilePtrC ap;
     _ZN13SharedFilePtr9ConstructEj(&ap, 1036);          /* piano_attack.bca */
-    void *bca = Animation::LoadFile(*(SharedFilePtr *)&ap);
+    void *bca = dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)&ap);
     CHECK(bca != NULL);
 
     /* the game's install: loop mode (flags 0), speed 1.0 (fx12), frame 0 */

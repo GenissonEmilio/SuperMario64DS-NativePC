@@ -46,7 +46,7 @@
  * data blob in this overlay; the four function addresses above are exactly
  * what tools/rtti_vtables.py read out of that data, cross-checked against
  * config/arm9/overlays/ov013/symbols.txt's function addresses.) Slot 12
- * (OnPendingDestroy) is NOT overridden -- unlike Door (include/Door.h), which
+ * (OnPendingDestroy) is NOT overridden -- unlike daDoor_c (include/daDoor_c.h), which
  * overrides all five of InitResources/CleanupResources/Behavior/Render/
  * OnPendingDestroy, this class leaves slot 12 pointing at fBase_c's
  * implementation, so it is not part of this recovery.
@@ -57,8 +57,8 @@
  * stays a free function under its func_ name -- it is not a vtable slot, and
  * nothing in the cartridge says whether it is a member.
  *
- * REAL METHODS, NOT THE FREE-FUNCTION IDIOM. Older recoveries (include/Door.h,
- * src/_ZN7fBase_c13InitResourcesEv.cpp) declare the override here but define
+ * REAL METHODS, NOT THE FREE-FUNCTION IDIOM. Older recoveries (daDoor_c before
+ * its promotion, src/actors/ActorBase.cpp) declare the override here but define
  * it as a free function under a hand-written mangled `extern "C"` name. That
  * idiom cannot survive promotion. With the destructor inline the key function
  * is the first DECLARED non-inline virtual -- InitResources -- and a
@@ -73,7 +73,7 @@
  * SIZE. daObjClockHuriko_c_classInit asks fBase_c::operator new for 296 =
  * 0x128 bytes. dActor_c is 0xd0 (include/dActor_c.h) and Model is 0x50
  * (include/Model.h), so the embedded Model runs 0xd4..0x124 (the same
- * 4-byte alignment pad include/dBgActor_c.h and include/Door.h both take
+ * 4-byte alignment pad include/dBgActor_c.h and include/daDoor_c.h both take
  * before their own Model/ModelAnim members). That leaves exactly
  * 0x124..0x127 (4 bytes) as this class's own storage -- one s16, mAngSpeed,
  * plus 2 bytes of trailing padding. Same offset, daObjClock_c.h's sibling

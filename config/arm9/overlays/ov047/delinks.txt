@@ -6,34 +6,30 @@
 src/game/actors/d_a_obj_km3_kurumajiku.cpp:
     complete
     .text start:0x021111a0 end:0x021112bc
+    .init start:0x021116dc end:0x02111748
+    .ctor start:0x021119c4 end:0x021119c8
     .data start:0x02112258 end:0x02112320
+    .bss start:0x021125e0 end:0x02112608
 
 src/game/actors/d_a_obj_km3_kaitendai.cpp:
     complete
     .text start:0x021112bc end:0x021113f8
+    .init start:0x02111748 end:0x021117b4
+    .ctor start:0x021119c8 end:0x021119cc
     .data start:0x02112328 end:0x021123fc
+    .bss start:0x02112608 end:0x02112630
 
 src/game/actors/d_a_obj_km3_kuruma.cpp:
     complete
     .text start:0x021113f8 end:0x02111510
+    .init start:0x021117b4 end:0x0211181c
+    .ctor start:0x021119cc end:0x021119d0
     .data start:0x021123fc end:0x021124cc
+    .bss start:0x02112630 end:0x02112658
 
 src/game/actors/d_a_obj_km3_dorifu.cpp:
     complete
     .text start:0x02111510 end:0x021116dc
-
-src/__sinit_ov047_021116dc.c:
-    complete
-    .init start:0x021116dc end:0x02111748
-
-src/__sinit_ov047_02111748.c:
-    complete
-    .init start:0x02111748 end:0x021117b4
-
-src/__sinit_ov047_021117b4.c:
-    complete
-    .init start:0x021117b4 end:0x0211181c
-
-src/__sinit_ov047_0211181c.c:
-    complete
     .init start:0x0211181c end:0x021119c4
+    .ctor start:0x021119d0 end:0x021119d4
+    .bss start:0x02112658 end:0x02112720

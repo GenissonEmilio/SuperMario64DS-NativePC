@@ -33,8 +33,11 @@
  * only member it has past mSysTracker and the reason this file does not
  * stop at 0x5000 (the first draft of it did; the write is what caught it).
  *
- * From above, the bound is dScMgJump_c's: a Jump helper
- * (src/func_ov006_020ee2c4.c) writes 0x5004 and 0x5014, and no method of
+ * From above, the bound is dScMgJump_c's: a Jump helper (func_ov006_020ee2c4,
+ * once a one-function source directly under src/ that no longer exists --
+ * it is now a member of src/actors/dScMgJump_c.cpp, whose manifest entry
+ * config/tu_manifest.d/ov006/dScMgJump_c.json keeps the old full path in its
+ * functions[].legacy_source row) writes 0x5004 and 0x5014, and no method of
  * THIS class touches either. Its three siblings begin at 0x500c instead, so
  * 0x5004..0x500c is Jump's alone.
  *
@@ -70,7 +73,7 @@
 #ifndef DSCMGD3DBASE_C_H
 #define DSCMGD3DBASE_C_H
 #include "dScMgBase_c.h"
-#include "Stage.h"
+#include "dScStage_c.h"
 
 struct dScMgD3DBase_c : dScMgBase_c {
     /* Declared first -- see include/dScene_c.h's KEY FUNCTION note. Overrides
@@ -150,7 +153,7 @@ struct dScMgD3DBase_c : dScMgBase_c {
        (+0xa0..+0xb8), and all four children reference all fourteen. Kept as
        flat names for now because the eight files that read them spell them
        this way; typing it as a real array is its own change. */
-    /* AND EACH ELEMENT IS A MINIGAME CAMERA. src/Camera_UpdateMatrices.c
+    /* AND EACH ELEMENT IS A MINIGAME CAMERA. Camera_UpdateMatrices (src/actors/unit020bfec0.cpp)
        carries the 0xbc layout: matrices in the head, `eye` at +0xa0, `target`
        at +0xac and `angle` at +0xb8. dScMgJump_c::InitResources settles which
        element is which by calling Camera_UpdateMatrices(this + 0x466c) and

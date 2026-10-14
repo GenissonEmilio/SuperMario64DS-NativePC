@@ -13,7 +13,7 @@
 //
 // SEAM LEVEL: SharedFilePtr::Load(). Everything above it -- LoadFile's
 // refcounting, Release, func_02017c24, func_02017e0c, and every
-// Model/Animation/Collider LoadFile -- is portable src/ and runs verbatim.
+// Model/dExtFrameCtrl_c/Collider LoadFile -- is portable src/ and runs verbatim.
 // Load itself is card hardware (overlay-file table, card streaming, CP15
 // cache flushes), so the HAL reimplements its CONTRACT: resolve fileID to
 // bytes, decompress if LZ77-tagged, allocate the result from the game's own
@@ -1296,3 +1296,16 @@ struct SharedFilePtrC *_ZN13SharedFilePtr9ConstructEj(
 }
 #endif /* SM64DS_SFP_CONSTRUCT_ROM */
 } /* extern "C" */
+
+/* The seam above is spelled as a C function because that is how src/ reached it
+   before the callers were converted. include/SharedFilePtr.h now declares Load as
+   the real member, and src/_ZN13SharedFilePtr8LoadFileEv.cpp calls it as one -- so
+   this target, which deliberately does NOT compile the card-hardware
+   src/_ZN13SharedFilePtr4LoadEv.cpp, has to export the member too. Same seam, one
+   spelling forwarding to the other. */
+#include "SharedFilePtr.h"
+
+void *SharedFilePtr::Load()
+{
+    return _ZN13SharedFilePtr4LoadEv((struct SharedFilePtrC *)this);
+}

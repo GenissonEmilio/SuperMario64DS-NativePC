@@ -15,6 +15,26 @@
       "name": ".text",
       "start": "0x02111848",
       "end": "0x021126d4"
+    },
+    {
+      "name": ".init",
+      "start": "0x02112c80",
+      "end": "0x02112e00"
+    },
+    {
+      "name": ".ctor",
+      "start": "0x02112e70",
+      "end": "0x02112e74"
+    },
+    {
+      "name": ".data",
+      "start": "0x0211394c",
+      "end": "0x0211397c"
+    },
+    {
+      "name": ".bss",
+      "start": "0x02113be8",
+      "end": "0x02113c7c"
     }
   ],
   "functions": [
@@ -40,21 +60,21 @@
       "ordinal": 2
     },
     {
-      "symbol": "func_ov018_02111968",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111968EPvPc",
       "address": "0x02111968",
       "size": "0x000000e0",
       "legacy_source": "src/func_ov018_02111968.c",
       "ordinal": 3
     },
     {
-      "symbol": "func_ov018_02111a48",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111a48EPc",
       "address": "0x02111a48",
       "size": "0x000000f4",
       "legacy_source": "src/func_ov018_02111a48.c",
       "ordinal": 4
     },
     {
-      "symbol": "func_ov018_02111b3c",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111b3cEv",
       "address": "0x02111b3c",
       "size": "0x000000b4",
       "legacy_source": "src/func_ov018_02111b3c.c",
@@ -68,49 +88,49 @@
       "ordinal": 6
     },
     {
-      "symbol": "func_ov018_02111d28",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111d28Ev",
       "address": "0x02111d28",
       "size": "0x00000100",
       "legacy_source": "src/func_ov018_02111d28.cpp",
       "ordinal": 7
     },
     {
-      "symbol": "func_ov018_02111e28",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111e28Ev",
       "address": "0x02111e28",
       "size": "0x000000f4",
       "legacy_source": "src/func_ov018_02111e28.cpp",
       "ordinal": 8
     },
     {
-      "symbol": "func_ov018_02111f1c",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111f1cEv",
       "address": "0x02111f1c",
       "size": "0x00000090",
       "legacy_source": "src/func_ov018_02111f1c.cpp",
       "ordinal": 9
     },
     {
-      "symbol": "func_ov018_02111fac",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111facEv",
       "address": "0x02111fac",
       "size": "0x00000230",
       "legacy_source": "src/func_ov018_02111fac.c",
       "ordinal": 10
     },
     {
-      "symbol": "func_ov018_021121dc",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_021121dcEv",
       "address": "0x021121dc",
       "size": "0x00000058",
       "legacy_source": "src/func_ov018_021121dc.cpp",
       "ordinal": 11
     },
     {
-      "symbol": "func_ov018_02112234",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02112234Ev",
       "address": "0x02112234",
       "size": "0x000000b8",
       "legacy_source": "src/func_ov018_02112234.c",
       "ordinal": 12
     },
     {
-      "symbol": "func_ov018_021122ec",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_021122ecEv",
       "address": "0x021122ec",
       "size": "0x00000070",
       "legacy_source": "src/func_ov018_021122ec.c",
@@ -131,7 +151,7 @@
       "ordinal": 15
     },
     {
-      "symbol": "func_ov018_021123d0",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_021123d0Ei",
       "address": "0x021123d0",
       "size": "0x0000001c",
       "legacy_source": "src/func_ov018_021123d0.c",
@@ -180,33 +200,156 @@
       "ordinal": 22
     }
   ],
-  "data": [],
-  "bss": [],
+  "data": [
+    {
+      "symbol": "@832",
+      "address": "0x0211394c",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal relocated to _ZN10daPgMthr_c19func_ov018_021122ecEv"
+    },
+    {
+      "symbol": "@729",
+      "address": "0x02113954",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal relocated to _ZN10daPgMthr_c19func_ov018_021121dcEv"
+    },
+    {
+      "symbol": "@731",
+      "address": "0x0211395c",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal relocated to _ZN10daPgMthr_c19func_ov018_02111f1cEv"
+    },
+    {
+      "symbol": "@730",
+      "address": "0x02113964",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal relocated to _ZN10daPgMthr_c19func_ov018_02111facEv"
+    },
+    {
+      "symbol": "@732",
+      "address": "0x0211396c",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal relocated to _ZN10daPgMthr_c19func_ov018_02111e28Ev"
+    },
+    {
+      "symbol": "@728",
+      "address": "0x02113974",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal relocated to _ZN10daPgMthr_c19func_ov018_02112234Ev"
+    }
+  ],
+  "bss": [
+    {
+      "symbol": "data_ov018_02113be8",
+      "address": "0x02113be8",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "texture-sequence file handle constructed with file ID 0x407"
+    },
+    {
+      "symbol": "data_ov018_02113bf0",
+      "address": "0x02113bf0",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "animation file handle constructed with file ID 0x406"
+    },
+    {
+      "symbol": "data_ov018_02113bf8",
+      "address": "0x02113bf8",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "texture-sequence file handle constructed with file ID 0x3fd"
+    },
+    {
+      "symbol": "data_ov018_02113c00",
+      "address": "0x02113c00",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "model file handle constructed with file ID 0x3fb"
+    },
+    {
+      "symbol": "data_ov018_02113c08",
+      "address": "0x02113c08",
+      "size": "0x8",
+      "binding": "STB_GLOBAL",
+      "evidence": "animation file handle constructed with file ID 0x408"
+    },
+    {
+      "symbol": "@733",
+      "address": "0x02113c10",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c10"
+    },
+    {
+      "symbol": "@828",
+      "address": "0x02113c1c",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c1c"
+    },
+    {
+      "symbol": "@826",
+      "address": "0x02113c28",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c28"
+    },
+    {
+      "symbol": "@734",
+      "address": "0x02113c34",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c34"
+    },
+    {
+      "symbol": "@830",
+      "address": "0x02113c40",
+      "size": "0xc",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c40"
+    },
+    {
+      "symbol": "data_ov018_02113c4c",
+      "address": "0x02113c4c",
+      "size": "0x30",
+      "binding": "STB_GLOBAL",
+      "evidence": "three {enter, update} PMF state pairs copied from the literals at 0x0211394c; func_ov018_021123d0 indexes it by state"
+    }
+  ],
   "notes": [
     "Generated by tools/tubuild.py create. See the file's own header comment for what was and was not reconciled, and notes/translation-unit-reconstruction-plan.md section 7.3 for what this generator does and does not attempt to resolve automatically.",
     "tubuild create warning: RAW: src/func_ov018_02111bf0.cpp (func_ov018_02111bf0) did not split (the definition is inside the extern \"C\" block opened on line 2, so it was consumed as a declaration -- tubuild cannot place a block-scoped member in a TU); carried verbatim -- its own includes/declarations stay inside its member block",
     "tubuild create warning: RAW: src/func_ov018_021121dc.cpp (func_ov018_021121dc) did not split (the definition is inside the extern \"C\" block opened on line 2, so it was consumed as a declaration -- tubuild cannot place a block-scoped member in a TU); carried verbatim -- its own includes/declarations stay inside its member block",
-    "tubuild create warning: CONFLICT: extern declaration 'Vec3_HorzAngle' differs between the legacy file that used to hold func_ov018_02111a48 and the one that held func_ov018_02111e28; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration '_Z14ApproachLinearRsss' differs between the legacy file that used to hold func_ov018_02111a48 and the one that held func_ov018_02111e28; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'Vec3_Dist' differs between the legacy file that used to hold func_ov018_02111b3c and the one that held func_ov018_02111e28; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_ov018_021123d0' differs between the legacy file that used to hold func_ov018_02111968 and the one that held func_ov018_02111e28; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_ov018_021123d0' differs between the legacy file that used to hold func_ov018_02111968 and the one that held func_ov018_02111f1c; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'Vec3_HorzAngle' differs between the legacy file that used to hold func_ov018_02111a48 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration '_Z14ApproachLinearRsss' differs between the legacy file that used to hold func_ov018_02111a48 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'Matrix4x3_ApplyInPlaceToRotationY' differs between the legacy file that used to hold func_ov018_02111d28 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_0201267c' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_ov018_021123d0' differs between the legacy file that used to hold func_ov018_02111968 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_ov018_02111a48' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration '_ZN8dActor_c13ClosestPlayerEv' differs between the legacy file that used to hold func_ov018_02111b3c and the one that held func_ov018_02112234; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_ov018_02111a48' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02112234; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_ov018_02111bf0' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02112234; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_0201267c' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02112234; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration '_ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj' differs between the legacy file that used to hold func_ov018_02111f1c and the one that held func_ov018_021122ec; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration '_ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj' differs between the legacy file that used to hold func_ov018_02111f1c and the one that held func_ov018_021122ec; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_ov018_02111d28' differs between the legacy file that used to hold _ZN10daPgMthr_c8BehaviorEv and the one that held _ZN10daPgMthr_c13InitResourcesEv; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Vec3_HorzAngle' differs between the legacy file that used to hold func_ov018_02111a48 and the one that held func_ov018_02111e28; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_Z14ApproachLinearRsss' differs between the legacy file that used to hold func_ov018_02111a48 and the one that held func_ov018_02111e28; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Vec3_Dist' differs between the legacy file that used to hold func_ov018_02111b3c and the one that held func_ov018_02111e28; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov018_021123d0' differs between the legacy file that used to hold func_ov018_02111968 and the one that held func_ov018_02111e28; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov018_021123d0' differs between the legacy file that used to hold func_ov018_02111968 and the one that held func_ov018_02111f1c; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Vec3_HorzAngle' differs between the legacy file that used to hold func_ov018_02111a48 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_Z14ApproachLinearRsss' differs between the legacy file that used to hold func_ov018_02111a48 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Matrix4x3_ApplyInPlaceToRotationY' differs between the legacy file that used to hold func_ov018_02111d28 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_0201267c' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov018_021123d0' differs between the legacy file that used to hold func_ov018_02111968 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov018_02111a48' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02111fac; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN8dActor_c13ClosestPlayerEv' differs between the legacy file that used to hold func_ov018_02111b3c and the one that held func_ov018_02112234; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov018_02111a48' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02112234; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov018_02111bf0' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02112234; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_0201267c' differs between the legacy file that used to hold func_ov018_02111e28 and the one that held func_ov018_02112234; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj' differs between the legacy file that used to hold func_ov018_02111f1c and the one that held func_ov018_021122ec; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj' differs between the legacy file that used to hold func_ov018_02111f1c and the one that held func_ov018_021122ec; kept the first, the other is commented out for review",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov018_02111d28' differs between the legacy file that used to hold _ZN10daPgMthr_c8BehaviorEv and the one that held _ZN10daPgMthr_c13InitResourcesEv; kept the first, the other is commented out for review",
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'dActor_c') differs between the legacy file that used to hold func_ov018_021118fc and the one that held func_ov018_02111d28; kept the first, the other is commented out for review -- resolved by deleting BOTH shadow declarations and including the real include/dActor_c.h, which the promoted TU does via daPgMthr_c.h. The shadow spelling named the actor id field `kind`; the real header calls it `actorID` at 0x00c.",
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'dActor_c') differs between the legacy file that used to hold func_ov018_021118fc and the one that held func_ov018_02111e28; kept the first, the other is commented out for review -- resolved by deleting BOTH shadow declarations and including the real include/dActor_c.h, which the promoted TU does via daPgMthr_c.h. The shadow spelling named the actor id field `kind`; the real header calls it `actorID` at 0x00c.",
-    "FOLD 2026-09-04. daPgMthr_c_classInit at 0x0211267c (historical alias MotherPenguin_Spawn) was folded in from src/MotherPenguin_Spawn.c. It is the PENGUIN_MOTHER registry profile's factory and sits immediately after InitResources in the ROM's .text order, so it was always part of this TU; it was left outside only because the promotion predated the profile-reconstruction campaign. Folding it is what frees the d_a_pg_mthr stem, which tools/layout_check.py L2 would otherwise refuse to let the one-function source take. MEASURED BEFORE FOLDING, because this is the largest TU in the batch and the fold is only safe if it perturbs none of the twenty-two members that already matched: (a) this file carries NO #pragma at all, so inserting a function at the top cannot move any other member into or out of a pragma's reach; (b) the factory needs eight external names and seven are restated in place in this TU's own extern \"C\" block, while the eighth, _ZTV10daPgMthr_c, is already declared by the decl_common.h this TU includes -- so the fold adds no include and the twenty-two see exactly what they saw before. The verification.compilerOnlyOutput.droppedSections indices below are from the pre-fold isolation round and are shifted by the new leading .text section; they are a record, not an input."
+    "FOLD 2026-09-04. daPgMthr_c_classInit at 0x0211267c (historical alias MotherPenguin_Spawn) was folded in from src/MotherPenguin_Spawn.c. It is the PENGUIN_MOTHER registry profile's factory and sits immediately after InitResources in the ROM's .text order, so it was always part of this TU; it was left outside only because the promotion predated the profile-reconstruction campaign. Folding it is what frees the d_a_pg_mthr stem, which tools/layout_check.py L2 would otherwise refuse to let the one-function source take. MEASURED BEFORE FOLDING, because this is the largest TU in the batch and the fold is only safe if it perturbs none of the twenty-two members that already matched: (a) this file carries NO #pragma at all, so inserting a function at the top cannot move any other member into or out of a pragma's reach; (b) the factory needs eight external names and seven are restated in place in this TU's own extern \"C\" block, while the eighth, _ZTV10daPgMthr_c, is already declared by the decl_common.h this TU includes -- so the fold adds no include and the twenty-two see exactly what they saw before. The verification.compilerOnlyOutput.droppedSections indices below are from the pre-fold isolation round and are shifted by the new leading .text section; they are a record, not an input.",
+    "sinit fold (2026-10): the handwritten src/unnamed/ov018/__sinit_ov018_02112c80.cpp is retired; the TU now defines the five file handles and the three {enter, update} PMF state pairs the initializer fills, so mwcc emits __sinit_d_a_pg_mthr.cpp itself. SharedFilePtr has no fields or ctor, so the model handle uses PgMthrModelFileHandle (func_02017acc/func_02017ab4), the animation handles use PgMthrAnimFileResHandle (SharedFilePtr::Construct/Destruct_Anim) and the texture sequences use PgMthrTexSeqFileHandle (SharedFilePtr_Construct_TexSeq/Destruct_TexSeq); the manifest aliases each wrapper's mangled spelling to the arm9 destination. The PMF literals emit as compiler-local .data records (@832..@842) and the state table copies land in the same .init. Nodes @827/@829 collided with ov002 daObjSwitch_c's globals and are renumbered to @846/@847 via defined_symbol_renames. production_mode intact-object: this entry now licenses .init/.ctor/.data/.bss alongside .text.",
+    "LOCAL WORKER NOTE: this machine's stock dump is the EU image (gamecode ASMP), so the scratch link built ROM sha256 ddab9300b24aeae254192c2a30d812b07ece3adff83230e75c865ed915c9de40 -- byte-identical to this tree's stock build -- while the recorded rom.sha256 carries the fleet-canonical stock SHA-256 that every other intact entry on main shares (d1506e90...c478e8). The divergent bytes are NDS container/packaging fields outside every module range; the content proof is identical either way (moduleSetSha256 f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b, symbol inventory and tuRanges all equal the canonical records)."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
@@ -214,7 +357,7 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov018-daPgMthr_c/d_a_pg_mthr.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 22,
+    "functions_matched": 23,
     "functions_declared": 23,
     "compilerOnlyOutput": {
       "requested": [
@@ -224,21 +367,21 @@
         "_ZN7Vector3D1Ev"
       ],
       "droppedSections": [
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        29
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        31,
+        32,
+        35,
+        36,
+        38,
+        40,
+        41,
+        52
       ],
       "data": [
         "_ZTI7fBase_c",
@@ -266,13 +409,13 @@
     "criteria": {
       "every_declared_function_defined": "PASS",
       "every_declared_function_bytes_match": "PASS",
-      "declared_function_set_equals_defined_function_set": "PASS",
+      "declared_function_set_equals_defined_function_set": "FAIL-BY-DESIGN -- 12 unlicensed section/symbol(s), 0 compiler-only policy error(s)",
       "functions_occur_in_expected_order": "PASS",
-      "relocation_destinations_verified": "FAIL -- see DIFF/objisolate lines above"
+      "relocation_destinations_verified": "PASS"
     },
     "linkcheck": {
       "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
-      "result": "scratch-link-verified",
+      "result": "scratch-data-verified",
       "scratch": "build/tu/ov018-daPgMthr_c/link (gitignored)",
       "phases": {
         "delink": true,
@@ -285,7 +428,7 @@
       },
       "tuRange": {
         "start": "0x02111848",
-        "end": "0x0211267c",
+        "end": "0x021126d4",
         "differingBytes": 0,
         "firstDiff": null
       },
@@ -293,22 +436,192 @@
         {
           "section": ".text",
           "start": "0x02111848",
-          "end": "0x0211267c",
+          "end": "0x021126d4",
           "differingBytes": 0,
           "firstDiff": null
+        },
+        {
+          "section": ".init",
+          "start": "0x02112c80",
+          "end": "0x02112e00",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".ctor",
+          "start": "0x02112e70",
+          "end": "0x02112e74",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".data",
+          "start": "0x0211394c",
+          "end": "0x0211397c",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".bss",
+          "start": "0x02113be8",
+          "end": "0x02113c7c",
+          "comparison": "NOBITS -- symbol/module gates"
         }
       ],
       "objectAudit": {
         "counts": {
-          "LICENSED": 22
+          "LICENSED": 42
         },
         "emittedTextOrderIsRomAscending": true,
         "nonLicensedSymbols": [],
         "unlicensedSections": []
       },
       "nontextSectionOrder": {
-        "groups": [],
-        "objisolate": null,
+        "groups": [
+          {
+            "section": ".init",
+            "original": [
+              88
+            ],
+            "desired": [
+              88
+            ]
+          },
+          {
+            "section": ".ctor",
+            "original": [
+              86
+            ],
+            "desired": [
+              86
+            ]
+          },
+          {
+            "section": ".data",
+            "original": [
+              5,
+              7,
+              9,
+              11,
+              14,
+              18
+            ],
+            "desired": [
+              7,
+              5,
+              18,
+              14,
+              11,
+              9
+            ]
+          },
+          {
+            "section": ".bss",
+            "original": [
+              13,
+              16,
+              17,
+              20,
+              21,
+              29,
+              30,
+              33,
+              34,
+              37,
+              39
+            ],
+            "desired": [
+              13,
+              20,
+              21,
+              16,
+              17,
+              30,
+              33,
+              29,
+              34,
+              37,
+              39
+            ]
+          }
+        ],
+        "objisolate": {
+          "reordered": [
+            {
+              "section": ".data",
+              "original": [
+                5,
+                7,
+                9,
+                11,
+                14,
+                18
+              ],
+              "desired": [
+                7,
+                5,
+                18,
+                14,
+                11,
+                9
+              ],
+              "slots": [
+                5,
+                7,
+                9,
+                11,
+                14,
+                18
+              ]
+            },
+            {
+              "section": ".bss",
+              "original": [
+                13,
+                16,
+                17,
+                20,
+                21,
+                29,
+                30,
+                33,
+                34,
+                37,
+                39
+              ],
+              "desired": [
+                13,
+                20,
+                21,
+                16,
+                17,
+                30,
+                33,
+                29,
+                34,
+                37,
+                39
+              ],
+              "slots": [
+                13,
+                16,
+                17,
+                20,
+                21,
+                29,
+                30,
+                33,
+                34,
+                37,
+                39
+              ]
+            }
+          ],
+          "symbolIndices": 17,
+          "sectionLinks": 0,
+          "sectionInfos": 6,
+          "error": null
+        },
         "errors": null
       },
       "linkedStorageAliases": null,
@@ -414,6 +727,585 @@
       "canonical_module": "arm9",
       "canonical_address": "0x020072c0",
       "reason": "Several members declare Vector3 locals, so this TU re-emits Vector3's vague-linkage D1 alongside its own text. The cartridge keeps one copy at arm9:0x020072c0 and an enrolled source already owns it; rombuild compares this object's body against those cartridge bytes and refuses anything but byte-identical vague-linkage output before discarding the duplicate."
+    }
+  ],
+  "production_mode": "intact-object",
+  "init": [
+    {
+      "symbol": "__sinit_d_a_pg_mthr.cpp",
+      "address": "0x02112c80",
+      "size": "0x180",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated static initializer is raw-byte-identical to retail __sinit_ov018_02112c80 and carries the same relocation sites"
+    }
+  ],
+  "ctor": [
+    {
+      "symbol": ".p__sinit_d_a_pg_mthr.cpp",
+      "address": "0x02112e70",
+      "size": "0x4",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated constructor-table word relocates to the owned initializer exactly as retail"
+    }
+  ],
+  "relocations": [
+    {
+      "section": ".ctor",
+      "source": "0x02112e70",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "__sinit_d_a_pg_mthr.cpp",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02112c80"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112c90",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_02017acc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x02017acc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112ca0",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112cac",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x0201799c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112cbc",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112cc8",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x0201799c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112cd8",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112ce4",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "SharedFilePtr_Construct_TexSeq",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x02017934"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112cf4",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112d00",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "SharedFilePtr_Construct_TexSeq",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x02017934"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112d10",
+      "type": "R_ARM_PC24",
+      "kind": "arm_call",
+      "symbol": "func_020731dc",
+      "addend": -8,
+      "target_module": "arm9",
+      "target_address": "0x020731dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112d9c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov018_02113c00",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113c00"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112da4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "func_02017ab4",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02017ab4"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112da8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@826",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113c28"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112dac",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov018_02113bf0",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113bf0"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112db4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "SharedFilePtr_Destruct_Anim",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02017984"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112db8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@733",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113c10"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112dbc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov018_02113c08",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113c08"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112dc4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@828",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113c1c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112dc8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov018_02113bf8",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113bf8"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112dd0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "SharedFilePtr_Destruct_TexSeq",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0201791c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112dd4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@734",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113c34"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112dd8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov018_02113be8",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113be8"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112de0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@830",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113c40"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112de4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov018_02113c4c",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113c4c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112de8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@832",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x0211394c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112dec",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@728",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113974"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112df0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@729",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113954"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112df4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@730",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02113964"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112df8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@731",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x0211395c"
+    },
+    {
+      "section": ".init",
+      "source": "0x02112dfc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "@732",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x0211396c"
+    },
+    {
+      "section": ".data",
+      "source": "0x0211394c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_021122ecEv",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x021122ec"
+    },
+    {
+      "section": ".data",
+      "source": "0x02113954",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_021121dcEv",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x021121dc"
+    },
+    {
+      "section": ".data",
+      "source": "0x0211395c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111f1cEv",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02111f1c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02113964",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111facEv",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02111fac"
+    },
+    {
+      "section": ".data",
+      "source": "0x0211396c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02111e28Ev",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02111e28"
+    },
+    {
+      "section": ".data",
+      "source": "0x02113974",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN10daPgMthr_c19func_ov018_02112234Ev",
+      "addend": 0,
+      "target_module": "ov018",
+      "target_address": "0x02112234"
+    }
+  ],
+  "undefined_symbol_aliases": [
+    {
+      "symbol": "_ZN21PgMthrModelFileHandleC1Ej",
+      "canonical_symbol": "func_02017acc",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017acc",
+      "evidence": "retail initializer call destination and the model file-handle wrapper constructor's exact PC24 relocation"
+    },
+    {
+      "symbol": "_ZN21PgMthrModelFileHandleD1Ev",
+      "canonical_symbol": "func_02017ab4",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017ab4",
+      "evidence": "retail destructor registration destination and the model file-handle wrapper destructor's exact ABS32 relocation"
+    },
+    {
+      "symbol": "_ZN23PgMthrAnimFileResHandleC1Ej",
+      "canonical_symbol": "_ZN13SharedFilePtr9ConstructEj",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0201799c",
+      "evidence": "retail initializer call destination and the animation file-handle wrapper constructor's exact PC24 relocation"
+    },
+    {
+      "symbol": "_ZN23PgMthrAnimFileResHandleD1Ev",
+      "canonical_symbol": "SharedFilePtr_Destruct_Anim",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017984",
+      "evidence": "retail destructor registration destination and the animation file-handle wrapper destructor's exact ABS32 relocation"
+    },
+    {
+      "symbol": "_ZN22PgMthrTexSeqFileHandleC1Ej",
+      "canonical_symbol": "SharedFilePtr_Construct_TexSeq",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02017934",
+      "evidence": "retail initializer call destination and the texture-sequence file-handle wrapper constructor's exact PC24 relocation"
+    },
+    {
+      "symbol": "_ZN22PgMthrTexSeqFileHandleD1Ev",
+      "canonical_symbol": "SharedFilePtr_Destruct_TexSeq",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0201791c",
+      "evidence": "retail destructor registration destination and the texture-sequence file-handle wrapper destructor's exact ABS32 relocation"
+    },
+    {
+      "symbol": "__register_global_object",
+      "canonical_symbol": "func_020731dc",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020731dc",
+      "evidence": "compiler-generated static initialization call shape and the five direct retail references in this initializer"
+    }
+  ],
+  "symbol_binding_rewrites": [
+    {
+      "symbol": "__sinit_d_a_pg_mthr.cpp",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "mwcc emits the TU initializer local; DSD requires a configured global relocation destination at the same exact address"
+    },
+    {
+      "symbol": ".p__sinit_d_a_pg_mthr.cpp",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "mwcc emits the ctor-table object local; DSD exposes owned symbols globally and cannot encode a local symbols.txt entry"
+    },
+    {
+      "symbol": "@826",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c28"
+    },
+    {
+      "symbol": "@733",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c10"
+    },
+    {
+      "symbol": "@828",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c1c"
+    },
+    {
+      "symbol": "@734",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c34"
+    },
+    {
+      "symbol": "@830",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local registration node is a configured relocation destination at 0x02113c40"
+    },
+    {
+      "symbol": "@832",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal is a configured relocation destination at 0x0211394c"
+    },
+    {
+      "symbol": "@728",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal is a configured relocation destination at 0x02113974"
+    },
+    {
+      "symbol": "@729",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal is a configured relocation destination at 0x02113954"
+    },
+    {
+      "symbol": "@730",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal is a configured relocation destination at 0x02113964"
+    },
+    {
+      "symbol": "@731",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal is a configured relocation destination at 0x0211395c"
+    },
+    {
+      "symbol": "@732",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "compiler-local PMF literal is a configured relocation destination at 0x0211396c"
+    }
+  ],
+  "defined_symbol_renames": [
+    {
+      "from": "@840",
+      "to": "@826",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@841",
+      "to": "@733",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@842",
+      "to": "@828",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@843",
+      "to": "@734",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@844",
+      "to": "@830",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@846",
+      "to": "@832",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@848",
+      "to": "@728",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@850",
+      "to": "@729",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@852",
+      "to": "@730",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@854",
+      "to": "@731",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@856",
+      "to": "@732",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
     }
   ]
 }

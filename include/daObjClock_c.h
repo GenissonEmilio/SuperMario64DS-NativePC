@@ -72,6 +72,9 @@ struct daObjClock_c : dActor_c {
     virtual int Behavior();            /* slot 6 -- 0x021114cc */
     virtual int Render();              /* slot 9 -- 0x021114a4 */
 
+    /* State helper taking this (S33): the ROM address is the method name. */
+    void func_ov013_02111430();
+
     /* Until #2570 merges, a leaf `unsigned long` new forwards the retail
        `fBase_c::operator new(unsigned int)`. `unsigned int` here mangles
        differently and the factories miss. */

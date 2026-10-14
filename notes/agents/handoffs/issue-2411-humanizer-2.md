@@ -52,11 +52,11 @@ in [the preceding handoff](issue-2411.md).
 
 ## Contract correction
 
-The actor `OnTurnIntoEgg(Player&)` base and 24 named overrides now return void,
+The actor `OnTurnIntoEgg(Player&)` base and 24 named overrides now return `void`,
 across the headers, the host shim, and the three remaining Player `Obj::v19`
 caller views.
 
-An earlier revision of this section claimed those overrides returned void "with
+An earlier revision of this section claimed those overrides returned `void` "with
 matching headers". That was wrong, and a whole-tree compile falsified it. The
 header change moved a shared contract in `include/dActor_c.h` and its sibling
 actor headers but touched no file under `src_tu/`, so four byte-verified
@@ -64,9 +64,10 @@ promoted translation units still defined the method as `int` and the compiler
 rejected them as redeclarations. Measured: at candidate `eb06f6ebe`,
 `tools/check_src_tu_compiles.py` exited 1 with 156/160; at base `11ef9a7dd` it
 exited 0 with 159/159 (the denominator moves because the candidate enrolls
-`ov002/da1up_c`). The four definitions — `src_tu/actors/Actor.cpp:1140`,
-`src_tu/actors/Koopa+KoopaSmall.cpp:347`, `src_tu/actors/Lakitu.cpp:88` and
-`src_tu/actors/Spiny.cpp:88` — are now void, and the evidence bullet below
+[ov002](../../../config/arm9/overlays/ov002/symbols.txt)/`da1up_c`). The four definitions — `src_tu/actors/Actor.cpp:1140`,
+`src_tu/actors/Koopa+KoopaSmall.cpp:347`, `daJgm_c::OnTurnIntoEgg` (measured in
+the [ov077](../../../config/arm9/overlays/ov077/symbols.txt) staging TU, since promoted to `src/game/actors/d_a_jgm.cpp`) and
+`daTgz_c.cpp:88` — are now `void`, and the evidence bullet below
 records the re-run.
 
 That repair is a source-consistency fix; it is not new evidence about the
@@ -77,11 +78,11 @@ dispatch site, `Player::St_YoshiPower_Main`, models the callee as
 `virtual void v19(char *)` and invokes it as a bare statement, so no caller
 consumes a value from them.
 
-OneUp's `func_ov002_020af684` no longer has an int definition that
-falls through after a void call. Its two PMF forwarding helpers also return void,
+OneUp's `func_ov002_020af684` no longer has an `int` definition that
+falls through after a `void` call. Its two PMF forwarding helpers also return `void`,
 retaining the player lookup result, null test and actual argument. Key's helper
-and destruction prototype now agree with the existing void destruction method;
-Key and PowerStar forwarding declarations agree with their helper definitions.
+and destruction prototype now agree with the existing `void` destruction method;
+Key and daStar_c forwarding declarations agree with their helper definitions.
 Early `return void_expression;` control flow is retained. No arbitrary result,
 assembly, warning suppression, altered address or symbol name was introduced.
 
@@ -89,14 +90,14 @@ This is a source-consistent, byte-proved reconstruction, not recovery of an
 original type spelling. The pre-edit census found 21 nonempty fallthrough hook
 bodies, one empty body, and three bodies forwarding calls (OneUp also falls
 through), with zero constant/computed non-call return expressions. All 25 ROM
-exit patterns support void without deleting meaningful register writes. Five
-observed Player calls overwrite r0 before using an outgoing result. Unused r0
+exit patterns support `void` without deleting meaningful register writes. Five
+observed Player calls overwrite `r0` before using an outgoing result. Unused `r0`
 alone does not prove an original return type. The ARM immediate-slot scan does
 not cover Thumb, computed slots or a complete indirect-call graph.
 
-The separate minigame `OnTurnIntoEgg(int)` hierarchy remains int: 14 observed
-ov004 calls consume its result. Goomba remains an unmigrated free hook; only its
-header explanation changed. Its earlier int-versus-void 4-byte experiment is
+The separate minigame `OnTurnIntoEgg(int)` hierarchy remains `int`: 14 observed
+[ov004](../../../config/arm9/overlays/ov004/symbols.txt) calls consume its result. Goomba remains an unmigrated free hook; only its
+header explanation changed. Its earlier `int`-versus-`void` 4-byte experiment is
 preserved as historical evidence, not new acceptance of Goomba.
 
 ## Repairs after independent integration review
@@ -132,7 +133,7 @@ either way; only the narration was wrong.
 - **The queue rows.** This branch's `da1up_c` row in
   `notes/data/tu-promotion-queue.tsv` wrote `total_lines 1295`;
   `tools/queue_audit.py` derives **1284** from the three source files covering
-  ov002 `0x20aee40`-`0x20b05d0`. Correcting that cell left five rows still
+  [ov002](../../../config/arm9/overlays/ov002/symbols.txt) `0x20aee40`-`0x20b05d0`. Correcting that cell left five rows still
   disagreeing, and an earlier revision of this bullet called all five
   pre-existing on `origin/main` and left them alone. That was wrong for three of
   them. The sentence it rested on was true as far as it went — those cells are
@@ -144,13 +145,13 @@ either way; only the narration was wrong.
   | row | old cell | refreshed | source file | lines base → here |
   |---|---|---|---|---|
   | `Crate` | 1431 | **1427** | `src/_ZN5Crate13OnTurnIntoEggER6Player.cpp` | 42 → 38 |
-  | `Coin` | 1148 | **1147** | `src/_ZN4Coin13OnTurnIntoEggER6Player.cpp` | 24 → 23 |
+  | `Coin` | 1148 | **1147** | `Coin::OnTurnIntoEgg` (since folded into `src/actors/daCoin_c.cpp`) | 24 → 23 |
   | `daGmch_c` | 1119 | **1120** | `src/actors/daGmch_c.cpp` | 1119 → 1120 |
 
   Each row delta matches its file delta exactly, so these three are this
-  branch's to move. `ChiefChilly` (1992 → **1993**) and `Player`
+  branch's to move. `daKing_Donketu_c` (1992 → **1993**) and `Player`
   (26798 → **26799**) genuinely are pre-existing: `main`'s own `b3342da8f`
-  edited `include/ChiefChilly.h` and `include/Player.h` without refreshing the
+  edited `include/daKing_Donketu_c.h` and `include/Player.h` without refreshing the
   queue file, and they are the two rows base already disagrees on. All five
   were refreshed by one `python tools/queue_audit.py --write` pass, which
   rewrote only the derived columns of `notes/data/tu-promotion-queue.tsv` and
@@ -170,11 +171,11 @@ figure below is the one measured on this tree.
   compile. Set-differencing the compiled-unit lists against the base control
   (exit 0, 159/159) shows **no unit dropped**: the eleven added are the ten
   `main` enrolled between `11ef9a7dd` and `1f65fcaec`, plus this branch's own
-  `ov002/da1up_c`. Comparing totals alone could not have shown that, because a
+  [ov002](../../../config/arm9/overlays/ov002/symbols.txt)/`da1up_c`. Comparing totals alone could not have shown that, because a
   rising total can hide a dropped unit.
 - `tubuild verify` on the four repaired translation units, re-run separately
-  after the merge: `arm9/Actor` **97/97 MATCH**, `ov062/Koopa+KoopaSmall`
-  **39/39 MATCH**, `ov077/Lakitu` **32/32 MATCH**, `ov077/Spiny` **34/34
+  after the merge: [arm9](../../../config/arm9/symbols.txt)/`Actor` **97/97 MATCH**, [ov062](../../../config/arm9/overlays/ov062/symbols.txt)/`Koopa+KoopaSmall`
+  **39/39 MATCH**, [ov077](../../../config/arm9/overlays/ov077/symbols.txt)/`daJgm_c` **32/32 MATCH**, [ov077](../../../config/arm9/overlays/ov077/symbols.txt)/`daTgz_c` **34/34
   MATCH**, all four objisolate clean, reloc-destinations clean and
   TEXT-VERIFIED, and all four exit 1 on the same unlicensed compiler-only
   records. The base control at `11ef9a7dd` reproduces every one of those
@@ -218,14 +219,14 @@ Independent verification must still pin the final candidate.
   exact wired pre-contract control produces the same eight records and exit 1;
   this audit remains a documented baseline limit, not a green promotion gate.
 - `tools/check_src_tu_compiles.py`: **exit 0, 160/160 translation units compile**
-  after the four `src_tu/` definitions were changed to void — superseded by the
+  after the four `src_tu/` definitions were changed to `void` — superseded by the
   170/170 reading above, which is the same gate on the merged tree. The same command
   exits **1 at 156/160** on candidate `eb06f6ebe` and **0 at 159/159** on base
   `11ef9a7dd`, so the four failures were introduced by the header change and are
   now cleared. This gate proves compilation only; it says nothing about bytes.
 - `tubuild verify` on the four repaired TUs, each run separately, after the edit:
-  `arm9/Actor` **97/97 MATCH**, `ov062/Koopa+KoopaSmall` **39/39 MATCH**,
-  `ov077/Lakitu` **32/32 MATCH**, `ov077/Spiny` **34/34 MATCH** — all four
+  [arm9](../../../config/arm9/symbols.txt)/`Actor` **97/97 MATCH**, [ov062](../../../config/arm9/overlays/ov062/symbols.txt)/`Koopa+KoopaSmall` **39/39 MATCH**,
+  [ov077](../../../config/arm9/overlays/ov077/symbols.txt)/`daJgm_c` **32/32 MATCH**, [ov077](../../../config/arm9/overlays/ov077/symbols.txt)/`daTgz_c` **34/34 MATCH** — all four
   objisolate clean and reloc-destinations clean, all four TEXT-VERIFIED. The
   return type is therefore not load-bearing in the emitted code for any of them.
   All four also exit 1 on the same unlicensed compiler-only records (`_ZTV`/
@@ -254,12 +255,12 @@ Independent verification must still pin the final candidate.
 
 | Source slot | Module | Raw result | Production source? |
 |---|---|---|---|
-| RollingIronBall InitResources | ov100 | BLIND-14 | No: incomplete delink entry |
-| daObjMarioCap_c InitResources shard | ov002 | BLIND-33 | No: incomplete delink entry |
-| MrI InitResources | ov071 | NO-REPRO | No: not enrolled |
-| `__sinit_d_a_obj_fm_battan.cpp` | ov023 | BLIND-6 | Yes |
-| `__sinit_d_a_obj_kb1_billboard.cpp` | ov044 | BLIND-3 | Yes |
-| `__sinit_d_a_star_gate.cpp` | ov100 | BLIND-3 | Yes |
+| RollingIronBall InitResources | [ov100](../../../config/arm9/overlays/ov100/symbols.txt) | BLIND-14 | No: incomplete delink entry |
+| daObjMarioCap_c InitResources shard | [ov002](../../../config/arm9/overlays/ov002/symbols.txt) | BLIND-33 | No: incomplete delink entry |
+| MrI InitResources | [ov071](../../../config/arm9/overlays/ov071/symbols.txt) | NO-REPRO | No: not enrolled |
+| `__sinit_d_a_obj_fm_battan.cpp` | [ov023](../../../config/arm9/overlays/ov023/symbols.txt) | BLIND-6 | Yes |
+| `__sinit_d_a_obj_kb1_billboard.cpp` | [ov044](../../../config/arm9/overlays/ov044/symbols.txt) | BLIND-3 | Yes |
+| `__sinit_d_a_star_gate.cpp` | [ov100](../../../config/arm9/overlays/ov100/symbols.txt) | BLIND-3 | Yes |
 
 The coordinator's independent read-only inspection of prepared production
 objects, final ELF/map ownership, and actual linked module images separately

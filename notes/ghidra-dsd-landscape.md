@@ -33,8 +33,8 @@ Files\Microsoft\jdk-11.0.16.101-hotspot`); Ghidra 11.x needs JDK 21. Whatever pr
 the historical `ghidra_out` drafts ran elsewhere or has been removed.
 
 **G1.5 — The historical verdict on raw Ghidra drafts is mixed, and recorded.** [high]
-`CLAIMS.md` cites them by name both ways: a win ([ov102](../config/arm9/overlays/ov102/symbols.txt) [func_ov102_0214b53c](../src/actors/daBmb_c.cpp) — "Ghidra
-dest + ROM-order angle" → byte-identical) and repeated losses ([ov006](../config/arm9/overlays/ov006/symbols.txt) [func_ov006_020dbe9c](../src/func_ov006_020dbe9c.c) — "Ghidra missed s64 matrix"; [arm9](../config/arm9/symbols.txt) `OAM::Render` — "Ghidra dump div=999 (frame 0x44)";
+Match notes cite them by name both ways: a win ([ov102](../config/arm9/overlays/ov102/symbols.txt) [func_ov102_0214b53c](../src/actors/daBmb_c.cpp) — "Ghidra
+dest + ROM-order angle" → byte-identical) and repeated losses ([ov006](../config/arm9/overlays/ov006/symbols.txt) [func_ov006_020dbe9c](../src/actors/dScMgCoin_c.cpp) — "Ghidra missed s64 matrix"; [arm9](../config/arm9/symbols.txt) `OAM::Render` — "Ghidra dump div=999 (frame 0x44)";
 [ov006](../config/arm9/overlays/ov006/symbols.txt) [func_ov006_0211e72c](../src/actors/dScMgTeresa_c.cpp) — "Ghidra-shaped 30w attractor" that*stalls* at 26 words).
 `README.md:102` states the house position: useful for reading a function, "its output
 never matches on its own."
@@ -305,7 +305,7 @@ that dsd cannot attribute to [overlay 2](../config/arm9/overlays/ov002/symbols.t
 The next three (`0x020aea30`, `0x020adc74`, `0x020ada40`) account for another 69. Four
 addresses cover 126 of 135.
 
-**G5.4 — The data side is dominated by two tables.** [high] [data_02090864](../config/arm9/symbols.txt) alone
+**G5.4 — The data side is dominated by two tables.** [high] [ACTOR_SPAWN_TABLE](../config/arm9/symbols.txt) alone
 accounts for **244** entries and [data_02092208](../config/arm9/symbols.txt) for 51; the rest of the top-12 are ten
 `data_ov006_*` blocks at 21-23 each. A 244-entry ambiguous run at one address is a
 function-pointer table, not 244 independent problems.
@@ -331,20 +331,20 @@ Breaking the 135 down by how the caller pins its callee:
 | raw address literal | 0 |
 
 Of the 60 safe ones, 57 are `0x020aed98 →` [ov002](../config/arm9/overlays/ov002/symbols.txt) `_ZN5EnemyC2Ev` (`Enemy::Enemy()`,
-size 0x24). The rival at that address is [func_ov007_020aed98](../src/func_ov007_020aed98.cpp), size 0x1e0 — a
+size 0x24). The rival at that address is [func_ov007_020aed98](../src/unnamed/ov007/func_ov007_020aed98.cpp), size 0x1e0 — a
 480-byte function, obviously not a base constructor. **The top ambiguity is settled:
 [overlay 2](../config/arm9/overlays/ov002/symbols.txt), for all 57.** That is consistent with the bounded enemy-subclass family in
 `[[enemy-subclass-census]]`.
 
 **G5.7 — The other 75 ARE the phantom-reference worklist, and this explains its cause.**
-[high] [func_ov006_02115b0c](../src/func_ov006_02115b0c.c):59 declares:
+[high] [func_ov006_02115b0c](../src/actors/dScMgSmartball_c.cpp) declared:
 
 ```c
 extern void *func_020adc74(void *p);
 ```
 
 There is no `func_020adc74` in any `symbols.txt`. The real symbols at that address are
-[func_ov003_020adc74](../src/func_ov003_020adc74.cpp) and [func_ov004_020adc74](../src/func_ov004_020adc74.c). The author could not tell which overlay owned the target, so they wrote a **module-less placeholder** — which resolves to
+[func_ov003_020adc74](../src/actors/dScTitle_c.cpp) and [func_ov004_020adc74](../src/minigames/d_s_mg_base.cpp). The author could not tell which overlay owned the target, so they wrote a **module-less placeholder** — which resolves to
 nothing. Checking the ten ambiguous call targets against
 `config/unresolved-baseline.json`: **nine of ten are present as module-less phantom
 names** (all but `func_020aed98`, which is the one already correctly named).
@@ -492,20 +492,20 @@ All fifteen call sites live in overlays whose unambiguous calls go **exclusively
 [ov002](../config/arm9/overlays/ov002/symbols.txt) — [ov062](../config/arm9/overlays/ov062/symbols.txt) 66/0, [ov063](../config/arm9/overlays/ov063/symbols.txt) 42/0, [ov064](../config/arm9/overlays/ov064/symbols.txt) 69/0, [ov065](../config/arm9/overlays/ov065/symbols.txt) 93/0, [ov081](../config/arm9/overlays/ov081/symbols.txt) 42/0, [ov084](../config/arm9/overlays/ov084/symbols.txt) 65/0, [ov090](../config/arm9/overlays/ov090/symbols.txt) 29/0, [ov100](../config/arm9/overlays/ov100/symbols.txt) 53/0, [ov102](../config/arm9/overlays/ov102/symbols.txt) 86/0. Twelve callers write the phantom `func_020ada40`. One does not: **[func_ov081_02123910](../config/arm9/overlays/ov081/symbols.txt)** names `_ZN5Enemy20KillByInvincibleCharERK10Vector3_16R6Player`, which is the **[ov004](../config/arm9/overlays/ov004/symbols.txt) symbol** — while [ov081](../config/arm9/overlays/ov081/symbols.txt)'s own evidence is 42 calls to [ov002](../config/arm9/overlays/ov002/symbols.txt) and zero to [ov004](../config/arm9/overlays/ov004/symbols.txt). The file byte-matches, because both candidates sit at the same address.
 
 Two readings, and choosing between them is a human call:
-- the *reference* is wrong and should point at [ov002](../config/arm9/overlays/ov002/symbols.txt)'s [func_ov002_020ada40](../config/arm9/overlays/ov002/symbols.txt) (size 0x100, part of [Enemy](../src_tu/actors/Enemy.cpp), ROM ordinal 1); or
+- the *reference* is wrong and should point at [ov002](../config/arm9/overlays/ov002/symbols.txt)'s [func_ov002_020ada40](../config/arm9/overlays/ov002/symbols.txt) (size 0x100, part of [Enemy](../src/actors/dEnemyBase_c.cpp), ROM ordinal 1); or
 - [ov002](../config/arm9/overlays/ov002/symbols.txt) and [ov004](../config/arm9/overlays/ov004/symbols.txt) are two variants of the same enemy-base code, the *name* is right but
   attached to the [ov004](../config/arm9/overlays/ov004/symbols.txt) copy, and [ov002](../config/arm9/overlays/ov002/symbols.txt)'s copy should carry the name too.
 
 Note the sizes differ — 0x100 ([ov002](../config/arm9/overlays/ov002/symbols.txt)) vs 0xbc ([ov004](../config/arm9/overlays/ov004/symbols.txt)) — which argues against a straight duplicate and so favours the first reading. Either way, a matched file currently
 references a symbol its own module never otherwise calls.
 
-**G8.3 — `0x02123804` stays open.** [high] Its single caller [func_ov002_020ec670](../src/func_ov002_020ec670.c) makes
-no unambiguous call to any of [ov077](../config/arm9/overlays/ov077/symbols.txt)/[ov078](../config/arm9/overlays/ov078/symbols.txt)/[ov079](../config/arm9/overlays/ov079/symbols.txt)/[ov080](../config/arm9/overlays/ov080/symbols.txt), so co-residency says nothing. The [ov080](../config/arm9/overlays/ov080/symbols.txt) candidate is named (`_ZN13MontyMoleRockD0Ev`, size 0x54) and the others are placeholders
-of size 0x8 / 0x60 / 0x288. Needs different evidence — a call-shape or runtime check.
+**G8.3 — `0x02123804` stays open.** [high] Its single caller [func_ov002_020ec670](../src/actors/daYegg_c.cpp) makes
+no unambiguous call to any of [ov077](../config/arm9/overlays/ov077/symbols.txt)/[ov078](../config/arm9/overlays/ov078/symbols.txt)/[ov079](../config/arm9/overlays/ov079/symbols.txt)/[ov080](../config/arm9/overlays/ov080/symbols.txt), so co-residency says nothing. The [ov080](../config/arm9/overlays/ov080/symbols.txt) candidate is named (`_ZN14daChoro_Rock_cD0Ev`, size 0x54) and the others are placeholders
+of size 0x8 / 0x60 / 0x288. Needs different evidence — a call-shape or runtime check. **Since settled by the call's guard, not by residency:** the call runs only for actor types 0xa4/0xa5 (BATAN/BATANKING, both `daBtn_c`, in [ov079](../config/arm9/overlays/ov079/symbols.txt)), so the source names `func_ov079_02123804`.
 
 **G8.4 — Ghidra independently corroborates the [ov006](../config/arm9/overlays/ov006/symbols.txt) → [ov004](../config/arm9/overlays/ov004/symbols.txt) verdict.** [high] See §9:
-the SyncDsd'd decompilation of [func_ov006_020dbe9c](../src/func_ov006_020dbe9c.c) names its callee
-[func_ov004_020b023c](../src/func_ov004_020b023c.cpp). That is a third, independent line of evidence for [ov006](../config/arm9/overlays/ov006/symbols.txt) co-residing with [ov004](../config/arm9/overlays/ov004/symbols.txt) rather than [ov003](../config/arm9/overlays/ov003/symbols.txt) — arrived at through the imported relocation table rather than through the `relocs.txt` histogram.
+the SyncDsd'd decompilation of [func_ov006_020dbe9c](../src/actors/dScMgCoin_c.cpp) names its callee
+[func_ov004_020b023c](../src/minigames/d_s_mg_base.cpp). That is a third, independent line of evidence for [ov006](../config/arm9/overlays/ov006/symbols.txt) co-residing with [ov004](../config/arm9/overlays/ov004/symbols.txt) rather than [ov003](../config/arm9/overlays/ov003/symbols.txt) — arrived at through the imported relocation table rather than through the `relocs.txt` histogram.
 
 **G8.5 — Applying these is a symbol-rename change, with the usual hazards.** [high]
 Nine resolutions convert module-less phantom externs into real symbols across 6-12 files
@@ -531,7 +531,7 @@ analyzeHeadless C:\tools\ghidra_proj sm64ds -process sm64.nds -noanalysis `
 **G9.1 — The sync is essentially complete.** [high] `ListBlocks` reports **486 memory
 blocks** and **11,382 functions** against the 11,394 `kind:function` symbols in the dsd
 config — a 99.9% import. Overlays land in their own address spaces, and the ambiguity of
-§5 is directly visible in the memory map: `arm9_ov002::`[020ad660](../src/func_ov002_020ad660.cpp) and
+§5 is directly visible in the memory map: `arm9_ov002::`[020ad660](../src/actors/dEnemyBase_c.cpp) and
 `arm9_ov003::`[020ad660](../config/arm9/overlays/ov003/symbols.txt) both exist.
 
 **G9.2 — Names: transformed. Zero `FUN_xxxxxxxx` in any of the three drafts.** [high]
@@ -540,9 +540,9 @@ extension links `cpp_demangle`):
 
 | function | callees in the draft |
 |---|---|
-| [func_ov102_0214b53c](../src/actors/daBmb_c.cpp) | `Matrix4x3_FromRotationY`, `MulMat4x3Mat4x3`, `Vec3_Lsl`, `Vec3_LslInPlace`, `IsFrontSliding`, `LostGrabbedObject`, `UpdateCarry`, [func_ov002_020e496c](../src/func_ov002_020e496c.c) |
+| [func_ov102_0214b53c](../src/actors/daBmb_c.cpp) | `Matrix4x3_FromRotationY`, `MulMat4x3Mat4x3`, `Vec3_Lsl`, `Vec3_LslInPlace`, `IsFrontSliding`, `LostGrabbedObject`, `UpdateCarry`, [func_ov002_020e496c](../src/actors/Player.cpp) |
 | `OAM::Render` | `GetObjWidth`, `GetObjHeight`, `LoadAffineParams`, `fdiv` — and the function itself comes back as `OAM::Render(...)` with 10 parameters, not `FUN_02020994` |
-| [func_ov006_020dbe9c](../src/func_ov006_020dbe9c.c) | [func_ov004_020b023c](../src/func_ov004_020b023c.cpp) — **correctly attributed to [ov004](../config/arm9/overlays/ov004/symbols.txt)** |
+| [func_ov006_020dbe9c](../src/actors/dScMgCoin_c.cpp) | [func_ov004_020b023c](../src/minigames/d_s_mg_base.cpp) — **correctly attributed to [ov004](../config/arm9/overlays/ov004/symbols.txt)** |
 
 This is the whole delta over the old raw-binary path, and it is a real one: a draft that
 says `MulMat4x3Mat4x3(...)` tells the LLM tier what the function *is*, where
@@ -555,8 +555,8 @@ That is expected — dsd's config has symbols and relocations, not struct defini
 there is nothing for SyncDsd to import. Class layouts would have to come from our own
 headers via Ghidra's data-type manager, which nothing currently does.
 
-**G9.4 — The specific historical miss is still missed.** [high] [CLAIMS.md](../CLAIMS.md) records
-[ov006](../config/arm9/overlays/ov006/symbols.txt) [func_ov006_020dbe9c](../src/func_ov006_020dbe9c.c) as "Ghidra missed s64 matrix". The SyncDsd'd draft is:
+**G9.4 — The specific historical miss is still missed.** [high] Match notes recorded
+[ov006](../config/arm9/overlays/ov006/symbols.txt) [func_ov006_020dbe9c](../src/actors/dScMgCoin_c.cpp) as "Ghidra missed s64 matrix". The SyncDsd'd draft is:
 
 ```c
 void func_ov006_020dbe9c(int param_1) {
@@ -593,7 +593,7 @@ files, then `enroll.py --complete-list` promoted the newly eligible names.
 | reproducing / mismatching | 10,854 / 0 | **10,880 / 0** |
 | module fidelity | 106/106 exact | **106/106 exact, 100.000000%** |
 | `port_refcheck.py` | — | 393 checked, 0 stale |
-| `prepush_attribution.py` | — | 11330 tracked, 0 changed, 0 lost |
+| `the old credit check` | — | 11330 tracked, 0 changed, 0 lost |
 
 **G10.1 — The langmode ratchet fails, and it is not this change.** [high] `--check`
 against `origin/chaos-data:langmode-baseline.json` reports
@@ -601,7 +601,7 @@ against `origin/chaos-data:langmode-baseline.json` reports
 change and re-running on the clean tree gives the **identical** numbers, so the ratchet
 is stuck on main. This is the `[[stale-baseline-gates]]` case; reproduce before owning.
 
-**G10.2 — CORRECTION to G8.2: [func_ov081_02123910](../src/func_ov081_02123910.cpp) is not a landed fakematch.** [high]
+**G10.2 — CORRECTION to G8.2: [func_ov081_02123910](../src/actors/daHuwa_c.cpp) is not a landed fakematch.** [high]
 It is `reason: "compile failed"` in the eligibility report —
 `func_ov081_02123910.cpp:31: illegal function overloading` under 2004/b56. 
 It is not eligible, not enrolled, and not in the build, so its reference to the [ov004](../config/arm9/overlays/ov004/symbols.txt) symbol has never affected a byte. It is a latent problem in an unbuildable file, which is exactly

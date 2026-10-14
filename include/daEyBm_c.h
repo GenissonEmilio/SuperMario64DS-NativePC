@@ -2,7 +2,7 @@
 #define DAEYBM_C_H
 
 #include "dCcAcPos_c.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "dBgCh_Actr.h"
 #include "dActor_c.h"
 #include "math/Matrix.h"
@@ -35,7 +35,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  */
 struct daEyBm_c : dActor_c {
     u8                        pad_0d0[0x4];
-    ShadowModel               mShadowModel;                  /* 0x0d4 */
+    dExtShadowModel_c               mShadowModel;                  /* 0x0d4 */
     dCcAcPos_c mdCcAcPos_c;    /* 0x0fc */
     dBgCh_Actr              mWithMeshClsn;                 /* 0x13c */
     Matrix4x3 mMatrix;        /* 0x2f8 */

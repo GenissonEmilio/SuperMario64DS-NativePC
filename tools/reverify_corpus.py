@@ -71,6 +71,11 @@ def src_texts(name, addr):
     the address-keyed match/auto/0x<addr> file. src/<name>.c is sometimes a STUB whose only
     content is a path into match/auto -- skip those. A match counts if ANY candidate
     reproduces it (the two dirs can hold different revisions of the same function)."""
+    return [t for t, _ in src_candidates(name, addr)]
+
+
+def src_candidates(name, addr):
+    """src_texts, each paired with the path it was read from."""
     out = []
     # srcpath resolves the committed source wherever it lives; match/auto stays keyed by
     # address and is composed here. Also drops the old `base.with_suffix(ext)`, which
@@ -81,7 +86,7 @@ def src_texts(name, addr):
         if p.exists():
             t = p.read_text(encoding="utf-8", errors="replace")
             if not t.strip().startswith("C:") and "match\\auto" not in t and "match/auto" not in t:
-                out.append(t)
+                out.append((t, p))
     return out
 
 

@@ -91,9 +91,9 @@ at byte offsets 0x34, 0x38 and 0x50 — slots 13, 14 and 20.
 ## Two traps for whoever writes the headers
 
 **Destructor position.** D1/D0 land at slots **16 and 17**, not 0 and 1. That differs from
-`include/Fader.h`, where the destructor is declared first and takes slots 0/1. Slot index
+`include/dFader_c.h`, where the destructor is declared first and takes slots 0/1. Slot index
 follows declaration order, so `ActorBase` must declare its destructor *after*
-`OnHeapCreated`. Copying the Fader header shape puts it first and shifts sixteen slots.
+`OnHeapCreated`. Copying the dFader_c header shape puts it first and shifts sixteen slots.
 
 **Which vptr store to read.** `Actor`'s constructor contains two. Taking "the" vptr store
 yields ActorDerived's vtable. Read each class's D1 destructor and take its *first* store.
@@ -189,7 +189,7 @@ it. The table was wrong in the only place it could be wrong silently.
 Four independent measurements agree it is 32:
 
 - **`_ZTV8Platform` spans `0x0210ae30`..`0x0210aeb8` = 0x88 bytes.** Two header words plus
-  32 slots. `_ZTV8PoleLift`, one of the subclasses, is 0x88 as well.
+  32 slots. `_ZTV18daObjKm2_Ami_Bou_c`, one of the subclasses, is 0x88 as well.
 - `rtti_vtables.py` reads `dActor_c` at 31 slots and `dBgActor_c`'s own overrides as
   16, 17 and **31**.
 - **97 of `dBgActor_c`'s 101 direct RTTI children have exactly 32 slots** (three add one or

@@ -1,48 +1,172 @@
-# Genuine-TU promotion: conventions for the PR
+# Genuine-TU promotion: workflow and review conventions
 
-Grounded only in what has landed on `main`. Every rule below cites a promotion that is
-already merged; nothing here is proposed from taste. Read it before you open the next
-promotion PR, and check it as a reviewer before you approve one.
+This is the canonical workflow for TU promotion. Read [AGENTS.md](../AGENTS.md)
+for repository gates and [the agent protocol](agents/PIPELINE.md) for ownership,
+independent review and publication. Other TU guides are technical references;
+they do not create extra staging tasks or replace this completion contract.
 
-A *genuine-TU promotion* collapses N per-function files into one real C++ translation
-unit and replaces that class's N per-function `delinks.txt` entries with a single
-`complete` span. `tools/tu_promote.py` drives the mechanical half (the `git mv` R100 so
-attribution follows, the `git rm` of absorbed sources, the manifest flip to
-`status: promoted`, the per-symbol attribution overrides, the CONVERTED identity
-migration to `promoted-path#symbol`). This note covers the half the tool does not do,
-which is the half every review has spent its time on.
+## What a promotion delivers
+
+A translation unit is one compiler input. For a promotion, consolidate the evidenced
+functions into one authoritative `.cpp` under `src/`, and make the **default build**
+consume it through complete tracked `config/**/delinks.txt` ownership. Retire the
+absorbed per-function sources and the shadow copy, preserve each symbol's credit,
+and verify the final production arrangement. Follow the evidenced boundary: a TU
+can contain multiple classes, and a class can span multiple TUs.
+
+Moving `.c` and `.cpp` files into a class folder leaves separate compiler inputs.
+Renaming extensions, adding a wrapper that includes the old implementation files,
+or committing a better `src_tu/` copy does not complete a promotion. Do not schedule
+a folder-localization PR or a separate per-function backport as a routine precursor.
+A new wired worktree provides isolation; it is not a new reconstruction to start
+when a usable branch, PR or candidate already exists.
+
+Production packaging and source reconstruction are separate claims. Aim for
+readable, period-accurate class definitions and compiler-spelled methods. Original
+C helpers may remain C helpers. Retained ABI bridges or unresolved reconstruction
+need the explicit source-review dispositions in [PIPELINE](agents/PIPELINE.md#source-quality-and-proof-are-separate);
+a `promoted` manifest does not certify that the class is fully reconstructed.
+
+## One path from candidate to production
+
+1. **Resume and reserve.** Inspect the existing issue, task, PR, worktree, manifest,
+   source and proof before creating anything. Resume the accepted input or adopted
+   checkpoint; start new work from current main only when no continuation exists.
+   Follow the v2 queue and reserve shared dependencies before edits. Assign the
+   independent verifier and integration owner before the producer finishes.
+2. **Resolve the actual owner.** Use `python tools/srcpath.py <symbol>` and inspect
+   its complete delinks entry. For an already promoted TU, edit its production
+   `src/` file directly in the isolated worktree. Do not recreate a shadow fork.
+   For new consolidation, establish the boundary and emitted-output ownership;
+   the map is evidence, not authority to expand the assigned scope.
+3. **Consolidate and prove.** Reuse an existing candidate. If none exists, the
+   current helper creates a temporary `src_tu/` input; use it to resolve combined
+   codegen and ownership within the promotion task. There is no mandatory separate
+   shadow PR or per-function conversion PR. Review genuine C++ form, all declared
+   functions and relocation destinations, affected header consumers, and the whole
+   emitted object, including lifecycle variants, RTTI, vtables and static data.
+4. **Promote with the actual tool.** Review `tu_promote.py`'s dry-run, then apply
+   it in the same workstream once the candidate is proved. It moves the source,
+   removes absorbed legacy files, updates delinks and the manifest, preserves
+   `attribution.json` `path#symbol` overrides, and migrates CONVERTED identities.
+   Check the proposed destination against `srcpath` and the repository conventions.
+   A successful plan is mechanical readiness, not byte or source approval.
+5. **Verify the production result.** Inspect the diff and normal build's source
+   coverage: each absorbed function must now be built from the production TU,
+   with no duplicate owner or fallback to ROM. Run the required gates below and
+   obtain independent review of the exact final candidate and base. A shadow's
+   earlier proof does not prove the changed production arrangement.
+6. **Carry the handoff through.** The producer offers the exact commit to the
+   verifier; the coordinator keeps a named integration owner and next action.
+   A local commit or successful queue stage is a role handoff, not a landed result.
+   The integrator publishes the reviewed production PR and follows it through the
+   authorized endpoint. Record the PR and, when merged, the resulting main SHA.
+   Honor explicit local-only or PR-only requests and publication/merge authority;
+   these instructions do not grant broader permissions or bypass required checks.
+
+Typical commands, with the assigned TU ID and immutable base substituted:
+
+```sh
+python tools/cpp_tu_compat.py --require-ready
+python tools/tubuild.py inspect <module/TU-id>
+# Only if a new candidate is needed:
+python tools/tubuild.py create <module/TU-id>
+python tools/tubuild.py verify <module/TU-id>
+python tools/tubuild.py linkcheck --baseline --module <module> -j16 --clean
+python tools/tubuild.py linkcheck <module/TU-id> -j16
+# After candidate proof; inspect the plan before applying:
+python tools/tu_promote.py <module/TU-id> --dry-run
+python tools/tu_promote.py <module/TU-id>
+# Recheck the resulting production arrangement:
+python tools/rombuild.py -j16
+# Review and commit the production candidate before commit-range checks:
+git diff --check
+git add <reviewed-paths>
+git commit -m "Promote the assigned translation unit"
+python tools/prepush_linkcheck.py --range <base>..HEAD
+python tools/port_refcheck.py
+python tools/check_decl_agreement.py --changed <base>
+```
+
+`--range <base>..HEAD` and `--head HEAD` inspect commits, not uncommitted edits.
+If a check causes further source or manifest changes, commit them and refresh the
+relevant proof before handing off the final immutable SHA. The local checkpoint
+commit is part of this task, not a separate staging PR.
+
+`cpp_tu_compat` is a synthetic tooling probe, not candidate verification. The
+older `tubuild.py promote` command is only a planner and its refusal messages can
+lag production support; use `tu_promote.py` for the actual promotion plan. Neither
+a compatibility pass nor a successful promotion dry-run substitutes for proof.
+
+Use the candidate's required link mode and inspect every emitted output. For owned
+non-text data, run `python tools/romdata_check.py --files <source.cpp> --json <report.json>`.
+It compiles the source without isolation. Inspect emitted-symbol coverage and
+individual verdicts; its exit status is not a pass/fail gate, and a failed compile
+can leave no records. For a shadow source, confirm its filename-based compiler pin
+agrees with the TU's pin. Normal isolation can discard the metadata under review.
+Apply the header, references, attribution and source-state gates required by
+AGENTS and the changed surfaces. The private byte validator must pass for the
+proposed candidate/base before landing; fleet work also needs its queue source
+review (`tools/check_pr_source_review.py --pr NUMBER`).
+
+## When staging or a smaller production change is justified
+
+Temporary `src_tu/` work is useful when combined compilation changes bytes,
+file-global pragmas conflict, compiler pins disagree, or lifecycle/data ownership
+is unresolved. It is also the current promotion helper's staging input. It is
+not a second permanent implementation or a required separately published phase.
+
+A persistent blocker needs a concrete symbol/range, failed gate or unsupported
+policy, the pinned experiment, remaining production changes, and a next owner/action.
+Tell the user why production cannot yet be completed. Missing build inputs and an
+explicit research-only assignment are also valid limits; neither is a byte pass.
+Keep useful evidence without presenting folder counts or shadow status as progress
+in the production build.
+
+For measured partitioning problems, use the [partitioned TU reference](agent-partitioned-tu-workflow.md).
+A single compiler input may produce multiple derived linker objects; that is still
+one compiler TU. However, `rombuild.py --partitioned-tu <id>` currently uses an
+opt-in generated profile and retains legacy sources as controls. Its success does
+not retire those sources or complete default production enrollment. Supported
+intact-object promotions do exist; evaluate the current tool's actual restrictions
+instead of repeating a blanket claim that all data-owning TUs are blocked.
+
+A narrow fix to existing production sources can land independently when whole-TU
+promotion has a measured blocker, or when the user assigned a smaller method slice.
+Record why that intermediate result is useful and what remains. Do not duplicate
+already promoted code into a shadow to make routine readability or matching fixes.
+Keep a required tooling repair separate from the source PR, then resume and reprove
+the existing candidate after that dependency lands.
 
 ## The landed corpus
 
-Seven classes across six PRs. When this note says "landed precedent" it means these:
+These historical case studies explain the review conventions below; they are not a
+live inventory or universal compiler rules. Recheck each technique on the candidate.
+The initial corpus was seven classes across six PRs:
 
 | PR | class | promoted TU |
 | --- | --- | --- |
-| #2000 | daKpFr_c | `src/game/actors/d_a_kp_fr.cpp` |
-| #2043 | daObjFm_Battan_c | `src/game/actors/d_a_obj_fm_battan.cpp` |
-| #2045 | daBar_c | `src/game/actors/d_a_bar.cpp` |
-| #2047 | daObjCannonShutter_c | `src/game/actors/d_a_obj_cannon_shutter.cpp` |
-| #2047 | daObjFl_Fall_Block_c | `src/game/actors/daObjFl_Fall_Block_c.cpp` |
-| #2051 | daObjKinokoTag_c | `src/game/actors/d_a_obj_kinoko_tag.cpp` |
-| #2055 | daEyBm_c | `src/game/actors/d_a_ey_bm.cpp` |
+| #2000 | daKpFr_c | [src/game/actors/d_a_kp_fr.cpp](../src/game/actors/d_a_kp_fr.cpp) |
+| #2043 | daObjFm_Battan_c | [src/game/actors/d_a_obj_fm_battan.cpp](../src/game/actors/d_a_obj_fm_battan.cpp) |
+| #2045 | daBar_c | [src/actors/daBar_c.cpp](../src/actors/daBar_c.cpp) |
+| #2047 | daObjCannonShutter_c | [src/game/actors/d_a_obj_cannon_shutter.cpp](../src/game/actors/d_a_obj_cannon_shutter.cpp) |
+| #2047 | daObjFl_Fall_Block_c | [src/game/actors/daObjFl_Fall_Block_c.cpp](../src/game/actors/daObjFl_Fall_Block_c.cpp) |
+| #2051 | daObjKinokoTag_c | [src/game/actors/d_a_obj_kinoko_tag.cpp](../src/game/actors/d_a_obj_kinoko_tag.cpp) |
+| #2055 | daEyBm_c | [src/game/actors/d_a_ey_bm.cpp](../src/game/actors/d_a_ey_bm.cpp) |
 
-PR #2004 (daObjKm3_Kurumajiku_c) is an open draft. It is a data point, not precedent.
-Do not cite it as settled, and do not copy a pattern that appears only there.
-
-*Update.* #2004 was since closed and that class landed instead through #2057 ("first
-compiler-built vtable — promote ov047/daObjKm3_Kurumajiku_c to intact-object
-production"), so `src/game/actors/d_a_obj_km3_kurumajiku.cpp` is on `main` and is precedent.
-Section 2's Kurumajiku measurements were written while it was a draft; they still hold,
-and section 6 cites the landed file.
+PR #2004 was superseded by #2057, which landed
+[src/game/actors/d_a_obj_km3_kurumajiku.cpp](../src/game/actors/d_a_obj_km3_kurumajiku.cpp)
+as an intact-object promotion. Section 2 retains the original experiment's
+measurements; section 6 cites the landed file.
 
 ---
 
 ## 1. A coined mangled name must not assert a parameter type the bytes cannot prove
 
-#2055 renamed four functions in `config/arm9/overlays/ov071/symbols.txt`, among them:
-
+#2055 renamed four functions in [arm9/overlays/ov071/symbols.txt](../config/arm9/overlays/ov071/symbols.txt), among them:
+```sh
     func_ov071_02121b50  ->  _ZN8daEyBm_c15UpdateCollisionER10dBgCh_Actr
-
+```
 The trailing `R10dBgCh_Actr` asserts a **reference** parameter. The ROM cannot prove
 that. A reference and a pointer mangle differently but generate identical ARM for this
 body, so the bytes are silent on which one the original source wrote. `P10dBgCh_Actr`
@@ -56,13 +180,13 @@ the mangled spelling encodes something the bytes cannot distinguish (parameter t
 above all, and `const` qualification with them), the guess has to be disclosed next to
 the symbol, not left to be re-derived by the next reader.
 
-**Where the disclosure has to live.** Measured: `config/arm9/overlays/ov071/symbols.txt`
-contains zero comment lines, and dsd's symbol format has no comment channel at all. The
+**Where the disclosure has to live.** Measured: [arm9/overlays/ov071/symbols.txt](../config/arm9/overlays/ov071/symbols.txt)
+contains zero comment lines, and *dsd*'s symbol format has no comment channel at all. The
 most authoritative-looking surface in the whole promotion is the one surface that
 physically cannot carry the caveat. So it goes in all three of the places that *can*,
 and that stay adjacent to the name:
 
-1. **The manifest entry's `notes`.** Landed precedent: `config/tu_manifest.d/ov071/daEyBm_c.json`
+1. **The manifest entry's `notes`.** Landed precedent: [config/tu_manifest.d/ov071/daEyBm_c.json](../config/tu_manifest.d/ov071/daEyBm_c.json)
    already says the four coined spellings are "truthful inferred private spellings"
    whose "class ownership, inbound calls, bodies, layout, relocations and codegen are
    proven; the exact original English names and UpdateCollision reference spelling are
@@ -157,7 +281,7 @@ Three independent places in the tree pin that 8:
   `emitted_storage_address` and `address_point_bias`, because "recognizing `_ZTV` and
   subtracting eight here would silently reinterpret every existing symbol table."
 
-And it is stated in a landed manifest. `config/tu_manifest.d/ov071/daEyBm_c.json` records
+And it is stated in a landed manifest. [config/tu_manifest.d/ov071/daEyBm_c.json](../config/tu_manifest.d/ov071/daEyBm_c.json) records
 `_ZTV8daEyBm_c` at `0x02122de8` with the reason: "InitResources naturally emits the
 complete class vtable; romdata_check applies the measured eight-byte public address-point
 bias and proves every slot through 0x02122e64."
@@ -191,14 +315,14 @@ supply the vtable *storage* will find a delinker-invented placeholder sitting 8 
 the address point — at the offset-to-top word. That entry is not merely droppable, it is
 **unkeepable**, and the promotion cannot link while it exists.
 
-Measured on `ov047/daObjKm3_Kurumajiku_c`, whose `_ZTV21daObjKm3_Kurumajiku_c` address point
-is `0x021122a0` and whose placeholder `data_ov047_02112298` sits at the storage start.
+Measured on [ov047/`daObjKm3_Kurumajiku_c`](../config/arm9/overlays/ov047/symbols.txt), whose `_ZTV21daObjKm3_Kurumajiku_c` address point
+is `0x021122a0` and whose placeholder [data_ov047_02112298](../config/arm9/overlays/ov047/symbols.txt) sits at the storage start.
 Restoring the placeholder on top of the promotion and rebuilding produces a **new** symbol
 error, beyond the pre-existing baseline set:
-
+```c
     [ERROR] Symbol 'data_ov047_02112298' in overlay 47
             at 0x02112298 not found in linked binary
-
+```
 Once the TU supplies those 8 bytes, `0x02112298` is the storage start of the
 compiler-emitted vtable, and no symbol of that name exists in the linked binary at all.
 `dsd check symbols --fail` rejects it. The placeholder was a delinker-invented name for
@@ -224,11 +348,11 @@ the entry was keepable and the drop needs a different justification.
 Promotion renames the absorbed functions in `symbols.txt`, but the old
 `func_<module>_<addr>` names survive elsewhere. `include/decl_common.h` still declares
 three functions that #2055 renamed out of existence:
-
+```c
     extern void func_ov071_02121b08(void*);
     extern void func_ov071_02121b50(void*, void*);
     extern void func_ov071_02121ba4(void*);
-
+```
 Verified against `origin/main`: a tree-wide search finds **no source reference** to any
 of the three. (Note the count — three, not four. `func_ov071_02121c6c` was renamed by the
 same PR but was never declared in that header, so a promotion must check each absorbed
@@ -252,10 +376,10 @@ them to make a search come back clean.
 ## 4. Update the provenance comments the promotion just invalidated
 
 `include/daEyBm_c.h` still carries, after #2055:
-
+```c
     [_ZN8daEyBm_c6RenderEv.cpp, _ZN8daEyBm_c8BehaviorEv.cpp,
      _ZN8daEyBm_c13InitResourcesEv.cpp]
-
+```
 All three files were deleted by that same PR. **The rule: a promotion updates its own
 provenance comments to name the promoted TU.**
 
@@ -268,7 +392,7 @@ machine-read `legacy_source` fields, which are the historical record.
 
 ---
 
-## 5. Ledger-touching PRs land one at a time, with regeneration between
+## 5. Serialize shared ledger updates and regenerate the composed result
 
 Every promotion touches `config/converted-baseline.json` and its overlay's `delinks.txt`
 and `symbols.txt`.
@@ -283,12 +407,15 @@ and `symbols.txt`.
   per-member `path#symbol`. A hand-resolved merge produces a baseline that is neither
   branch's and still passes a casual read.
 
-**The rule.** Do not batch promotions. Land one, then **regenerate** — `python
-tools/tiers_ratchet.py --update` — and rebase the next one onto the result. Never
-hand-merge the baseline array.
+**The rule.** Reserve and serialize shared bookkeeping through the integrator.
+Regenerate with `python tools/tiers_ratchet.py --update` after composing the
+accepted source changes; inspect symbol identities and credit, not just counts.
+Never resolve the baseline array by blindly taking one side or unioning text.
 
-With roughly a dozen promotions queued, this is the rule most likely to cost a day. Plan
-the queue as a chain, not a fan.
+Independently accepted, coherent promotions may share an integration PR under
+[PIPELINE](agents/PIPELINE.md#integration-and-completion). Reprove the resulting
+composition and current base. Separate PRs remain useful for unrelated scope or
+dependencies; a ledger overlap does not mandate a preliminary staging PR.
 
 ---
 
@@ -354,12 +481,12 @@ That promotion also spent five rows in `config/converted-backslide-exceptions.js
 ### The marker must be unique in the file
 
 `_marked_member_fragment` returns `None` unless the symbol appears exactly once:
-
+```python
     matches = [i for i, marker in enumerate(markers)
                if marker.group(1) == symbol]
     if len(matches) != 1:
         return None
-
+```
 A marker copy-pasted from the member above, or repeated on both a forward declaration and
 the definition, silently re-enables the whole-file fallback for that member. Nothing warns
 and nothing goes red; the member simply scores as if it were unmarked.
@@ -409,24 +536,24 @@ and only then can they carry markers, above their out-of-line definitions.
 Inlining the destructor to make it scoreable moves a function *body* into a struct that
 `tools/check_header_offsets.py` parses, and that gate recognises the body only when the
 signature line itself carries the `{`:
-
+```python
     if n == 0:
         depth = line.count("{") - line.count("}")
         if depth > 0:
             skip_body = depth
         continue
-
+```
 Written Allman the signature line has no brace, `skip_body` never arms, and the body's
 lines fall through to declaration parsing and are reported UNPARSED. Measured by
 rewriting nothing but the destructor of `include/dScMgBase_c.h` -- a derived class that
 declares its destructor first, which is the shape every inline-destructor promotion
 produces:
-
+```sh
     one line, with body    40 commented fields, 0 mismatched, 0 unparsed, spans 0x4660
     one line, empty {}     40 commented fields, 0 mismatched, 0 unparsed, spans 0x4660
     Allman, with body       0 commented fields, 0 mismatched, 2 unparsed, spans 0x50
     Allman, empty           0 commented fields, 0 mismatched, 1 unparsed, spans 0x50
-
+```
 Two things go wrong and only one of them is loud. The gate exits 1 on the UNPARSED line
 -- and it is green on `origin/main`, so this is a **merge-tree-only** red that
 `tools/premerge_check.py` will show you and your branch's own CI will not. The quiet half
@@ -445,11 +572,11 @@ Allman body breaks it exactly as an empty one-line body does not. It is the newl
 costs, not the statements.
 
 So write
-
-    virtual ~PoleLift() {
+```cpp
+    virtual ~daObjKm2_Ami_Bou_c() {
         ...
     }
-
+```
 and not the Allman form. Every inline destructor in `include/` today is `virtual ~X() {}`
 on a single line, so nothing has exercised this before; the inline-destructor wave will
 exercise it repeatedly. This is a defect in the gate rather than in the style, and it is
@@ -458,7 +585,7 @@ recorded as one -- but until the gate is fixed, brace position is load-bearing.
 ### A marker on a still-unnamed member buys nothing
 
 `score_member` recomputes `real_name` from the symbol, not from the fragment, so a member
-still called `func_ov006_0210a534` fails that criterion whichever text it is scored
+still called [func_ov006_0210a534](../src/minigames/d_s_mg_single3_d_base.cpp) (ROM Ordinal 2 used to assemble TU) fails that criterion whichever text it is scored
 against. Marking it is still worth doing, because the boundary it creates is what protects
 its *neighbour* — that is the whole point of the rule above — but do not expect the marker
 to move that member's own score. Renaming it is the thing that does.
@@ -486,10 +613,10 @@ happened is that comment lines were traded for ledger rows.
   `volatile` is in one member. The other eight paid for it.
 - **#2064** (`dScMgSingle3DBase_c`, nine functions) adds **six** markers and **zero**
   backslide-exception rows. The three it leaves unmarked are the two destructor variants,
-  which is right, and one member still named `func_ov006_0210a534`, which is not.
+  which is right, and one member still named [func_ov006_0210a534](../src/minigames/d_s_mg_single3_d_base.cpp), which is not.
   Nothing backslides — neither it nor its neighbour was CONVERTED before — but the
   omission still costs, and it costs the *other* member: with no marker after it, the
-  preceding slot-26 fragment -- `func_ov006_0210a600` at the time, since renamed to
+  preceding slot-26 fragment -- [func_ov006_0210a600](../src/minigames/d_s_mg_single3_d_base.cpp) (ROM Ordinal 3 used to assemble TU) at the time, since renamed to
   `_ZN19dScMgSingle3DBase_c24OnHitByCannonBlastedCharEv` and written as a real member
   definition -- runs from its own marker to end of file and swallows a534's `volatile`
   body and raw addresses. That member is an eight-byte `return 1;` that can never score

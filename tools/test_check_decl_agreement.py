@@ -447,6 +447,264 @@ class MovedDefinitionTests(unittest.TestCase):
                          [("return", "src/caller.cpp", "int", "void")])
 
 
+class AdoptedSymbolMarkTests(unittest.TestCase):
+    """A delinked shard's `@symbol` line names its definition even from the top.
+
+    The mark scan only honours a mark sitting between the previous statement and
+    the declarator. A converted shard that declares a helper above its definition
+    -- which the converted ones routinely do -- pushed its mark out of window, and
+    the definition was then discarded as unnameable. 1180 of this tree's real C++
+    definitions were invisible to the gate that way, so `_reference()` fell back to
+    a plurality vote among the unconverted shards the conversion campaign exists to
+    retire.
+    """
+
+    CONVERTED = '''// @symbol _ZN9dBgCh_Gnd12SetObjAndPosERK7Vector3P8dActor_c
+#include "types.h"
+
+extern "C" void func_020374d4(void *ray, const Vector3 *pos);
+
+void dBgCh_Gnd::SetObjAndPos(const Vector3 &vec_, void *actor_)
+{
+    func_020374d4(this, &vec_);
+}
+'''
+
+    def test_a_helper_declaration_does_not_cost_the_definition_its_name(self):
+        def tree(t):
+            t.write("src/_ZN9dBgCh_Gnd12SetObjAndPosERK7Vector3P8dActor_c.cpp",
+                    self.CONVERTED)
+        _findings, _d, defs, _files = build(tree)
+        self.assertIn("_ZN9dBgCh_Gnd12SetObjAndPosERK7Vector3P8dActor_c",
+                      {d.symbol for d in defs})
+
+    def test_the_definition_outranks_a_contradicting_plurality(self):
+        """Twenty shards spelling a pointer do not outvote the reference that the
+        ROM's own mangled name (`RK7Vector3`) spells."""
+        sym = "_ZN9dBgCh_Gnd12SetObjAndPosERK7Vector3P8dActor_c"
+        def tree(t):
+            t.write("src/%s.cpp" % sym, self.CONVERTED)
+            for i in range(20):
+                t.write("src/shard%d.c" % i,
+                        '#include "types.h"\n'
+                        "extern void %s(void *self, Vector3 *pos, void *actor);\n"
+                        % sym)
+        findings, _d, _f, _files = build(tree)
+        basis = {f["basis"] for f in findings if f["symbol"] == sym}
+        self.assertEqual(basis, {"definition"})
+        self.assertEqual({f["want"] for f in findings if f["symbol"] == sym},
+                         {"#2 const Vector3 &"})
+
+    def test_two_marks_in_one_file_adopt_nothing(self):
+        """Two marks say nothing about which belongs to which definition."""
+        def tree(t):
+            t.write("src/pair.cpp",
+                    '// @symbol _ZN1A1fEv\n'
+                    '// @symbol _ZN1A1gEv\n'
+                    '#include "types.h"\n'
+                    'extern "C" void helper(void);\n'
+                    'void A::f(void)\n{\n    helper();\n}\n')
+        _findings, _d, defs, _files = build(tree)
+        self.assertNotIn("_ZN1A1fEv", {d.symbol for d in defs})
+        self.assertNotIn("_ZN1A1gEv", {d.symbol for d in defs})
+
+    def test_two_unnamed_definitions_adopt_nothing(self):
+        def tree(t):
+            t.write("src/two.cpp",
+                    '// @symbol _ZN1A1fEv\n'
+                    '#include "types.h"\n'
+                    'extern "C" void helper(void);\n'
+                    'void A::f(void)\n{\n    helper();\n}\n'
+                    'void A::g(void)\n{\n    helper();\n}\n')
+        _findings, _d, defs, _files = build(tree)
+        self.assertNotIn("_ZN1A1fEv", {d.symbol for d in defs})
+
+    def test_a_mark_already_claimed_is_not_handed_out_twice(self):
+        """The in-window mark named one definition; the orphan does not take it."""
+        def tree(t):
+            t.write("src/claimed.cpp",
+                    '#include "types.h"\n'
+                    'extern "C" void helper(void);\n'
+                    '// @symbol _ZN1A1fEv\n'
+                    'void A::f(void)\n{\n    helper();\n}\n')
+        _findings, _d, defs, _files = build(tree)
+        owners = [d for d in defs if d.symbol == "_ZN1A1fEv"]
+        self.assertEqual(len(owners), 1)
+
+    def test_an_unmarked_member_definition_still_claims_nothing(self):
+        """No `@symbol` anywhere: the linker name is genuinely unrecoverable."""
+        def tree(t):
+            t.write("src/bare.cpp",
+                    '#include "types.h"\n'
+                    'void A::f(void)\n{\n}\n')
+        _findings, _d, defs, _files = build(tree)
+        self.assertEqual([d for d in defs if "::" in (d.symbol or "")], [])
+
+
+class MarkerIdentityTests(unittest.TestCase):
+    """One marker and one orphan is not symbol identity.
+
+    The fallback used to hand the only `@symbol` to whatever body was left after
+    a helper declaration. That records a definition the file does not contain,
+    and a definition outranks every declaration of that name.
+    """
+
+    def test_a_namespace_helper_does_not_take_an_unrelated_marker(self):
+        text = ("// @symbol _ZN1A1fEv\n"
+                "extern \"C\" void helper(void);\n"
+                "namespace B {\n"
+                "int g(void) { return 7; }\n"
+                "}\n")
+        _decls, defs, _unparsed = CDA.parse_file("src/pair.cpp", text, {})
+        self.assertFalse(any(d.symbol == "_ZN1A1fEv" for d in defs))
+        self.assertFalse(any(d.ret == "int" and d.symbol.startswith("_ZN1A")
+                             for d in defs))
+
+    def test_mismatched_class_or_function_is_not_adopted(self):
+        for body in ("int B::g(void) { return 7; }\n",
+                     "int A::g(void) { return 7; }\n",
+                     "int B::f(void) { return 7; }\n"):
+            text = ("// @symbol _ZN1A1fEv\n"
+                    "extern \"C\" void helper(void);\n" + body)
+            _decls, defs, _unparsed = CDA.parse_file("src/pair.cpp", text, {})
+            self.assertFalse(any(d.symbol == "_ZN1A1fEv" for d in defs), body)
+
+    def test_a_declaration_only_marker_records_no_definition(self):
+        samples = (
+            "// @symbol _ZN1A1fEv\nextern \"C\" void helper(void);\n",
+            "// @symbol _ZN1A1fEv\nextern int A::f(void);\n",
+            "// @symbol _ZN1A1fEv\nextern \"C\" void helper(void);\n"
+            "namespace B { int g(void); }\n",
+        )
+        for text in samples:
+            _decls, defs, _unparsed = CDA.parse_file("src/pair.cpp", text, {})
+            self.assertFalse(any(d.symbol == "_ZN1A1fEv" for d in defs), text)
+
+    def test_a_matching_namespace_function_is_still_adopted(self):
+        text = ("// @symbol _ZN1B1gEv\n"
+                "extern \"C\" void helper(void);\n"
+                "namespace B {\n"
+                "int g(void) { return 7; }\n"
+                "}\n")
+        _decls, defs, _unparsed = CDA.parse_file("src/ns.cpp", text, {})
+        self.assertEqual([d.symbol for d in defs], ["_ZN1B1gEv"])
+        self.assertEqual(defs[0].ret, "int")
+
+    def test_a_namespace_qualified_member_is_still_adopted(self):
+        text = ("// @symbol _ZN8Particle10SysTracker10InitialiseEv\n"
+                "extern \"C\" void helper(void);\n"
+                "namespace Particle {\n"
+                "void SysTracker::Initialise(void) {}\n"
+                "}\n")
+        _decls, defs, _unparsed = CDA.parse_file("src/ns.cpp", text, {})
+        self.assertEqual([d.symbol for d in defs],
+                         ["_ZN8Particle10SysTracker10InitialiseEv"])
+
+    def test_a_const_method_marker_still_matches(self):
+        text = ("// @symbol _ZNK6Widget1fEv\n"
+                "extern \"C\" void helper(void);\n"
+                "int Widget::f(void) const { return 1; }\n")
+        _decls, defs, _unparsed = CDA.parse_file("src/widget.cpp", text, {})
+        self.assertEqual([d.symbol for d in defs], ["_ZNK6Widget1fEv"])
+        self.assertEqual(defs[0].ret, "int")
+
+
+class EastConstTests(unittest.TestCase):
+    """`Vector3 const &` and `const Vector3 &` spell one type.
+
+    The gate compared the two as text, so a converted definition writing the type
+    one way contradicted a caller writing it the other. That false positive only
+    became load-bearing once the adoption pass above let definitions be seen.
+    """
+
+    def test_east_const_and_west_const_are_one_type(self):
+        def tree(t):
+            t.write("src/def.cpp",
+                    '#include "types.h"\n'
+                    'extern "C" void Take(const Vector3 &v)\n{\n    (void)v;\n}\n')
+            t.write("src/caller.cpp",
+                    '#include "types.h"\n'
+                    'extern "C" void Take(Vector3 const &v);\n')
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(kinds(findings, "Take"), [])
+
+    def test_a_pointer_level_const_is_still_its_own_type(self):
+        """`T * const *` is a pointer to a const pointer; it is not `const T **`."""
+        def tree(t):
+            t.write("src/def.cpp",
+                    '#include "types.h"\n'
+                    'extern "C" void Take(Vector3 * const *v)\n{\n    (void)v;\n}\n')
+            t.write("src/caller.cpp",
+                    '#include "types.h"\n'
+                    'extern "C" void Take(const Vector3 **v);\n')
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(len(kinds(findings, "Take")), 1)
+
+    def test_const_still_contradicts_non_const(self):
+        def tree(t):
+            t.write("src/def.cpp",
+                    '#include "types.h"\n'
+                    'extern "C" void Take(const Vector3 *v)\n{\n    (void)v;\n}\n')
+            t.write("src/caller.cpp",
+                    '#include "types.h"\n'
+                    'extern "C" void Take(Vector3 *v);\n')
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(len(kinds(findings, "Take")), 1)
+
+
+class TemplateConstTests(unittest.TestCase):
+    """Const inside a template argument is not const on the template itself.
+
+    `Box<const T> &` and `const Box<T> &` are different types. The outer hoist
+    used to pull the inner const out, so a definition and an extern of those two
+    spellings produced no finding. Outer east/west const still collapses.
+    """
+
+    def test_template_argument_const_is_not_outer_const(self):
+        self.assertEqual(CDA.normalise_type("Box<const T> &", {}, False),
+                         "Box < const T > &")
+        self.assertEqual(CDA.normalise_type("const Box<T> &", {}, False),
+                         "const Box < T > &")
+        self.assertNotEqual(CDA.normalise_type("Box<const T> &", {}, False),
+                            CDA.normalise_type("const Box<T> &", {}, False))
+        self.assertEqual(CDA.normalise_type("Box<T const> &", {}, False),
+                         "Box < const T > &")
+        self.assertEqual(CDA.normalise_type("Box<T> const &", {}, False),
+                         CDA.normalise_type("const Box<T> &", {}, False))
+        self.assertEqual(CDA.normalise_type("Vector3 const &", {}, False),
+                         CDA.normalise_type("const Vector3 &", {}, False))
+        self.assertEqual(CDA.normalise_type("Box<Wrap<const T>> &", {}, False),
+                         "Box < Wrap < const T > > &")
+        self.assertNotEqual(
+            CDA.normalise_type("Box<Wrap<const T>> &", {}, False),
+            CDA.normalise_type("const Box<Wrap<T>> &", {}, False))
+
+    def test_template_argument_const_disagrees_through_comparison(self):
+        def tree(t):
+            t.write("src/def.cpp",
+                    "extern \"C\" void Take(Box<const Vector3> &v)\n"
+                    "{\n    (void)v;\n}\n")
+            t.write("src/caller.cpp",
+                    "extern \"C\" void Take(const Box<Vector3> &v);\n")
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(kinds(findings, "Take"),
+                         [("param", "src/caller.cpp",
+                           "#1 const Box < Vector3 > &",
+                           "#1 Box < const Vector3 > &")])
+        self.assertEqual({f["basis"] for f in findings if f["symbol"] == "Take"},
+                         {"definition"})
+
+    def test_outer_const_on_a_template_is_still_one_type(self):
+        def tree(t):
+            t.write("src/def.cpp",
+                    "extern \"C\" void Take(const Box<Vector3> &v)\n"
+                    "{\n    (void)v;\n}\n")
+            t.write("src/caller.cpp",
+                    "extern \"C\" void Take(Box<Vector3> const &v);\n")
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(kinds(findings, "Take"), [])
+
+
 # ------------------------------------------------------------------- other controls
 
 class KindTests(unittest.TestCase):
@@ -698,8 +956,76 @@ class ChangedResolutionTests(unittest.TestCase):
             self.assertEqual(defined, {"moved"})
 
 
+class HistoricalArrayConstructorTests(unittest.TestCase):
+    """Keep the original bad imports as fixtures so real callers can be repaired."""
+
+    HISTORICAL_DECLARATIONS = (
+        ("src/d_a_dp_lift.cpp", "int",
+         "extern int __cxa_vec_ctor(void*,int,int,void*,void*);"),
+        ("src/d_a_hanachan.c", "int",
+         "extern int __cxa_vec_ctor(void *p, int a, int b, void *ctor, void *dtor);"),
+        ("src/game/actors/d_a_wanwan.cpp", "int",
+         "int __cxa_vec_ctor(void *, int, int, void *, void *);"),
+        ("src/d_a_luigi.cpp", "void *",
+         "extern void* __cxa_vec_ctor(void* a, int b, int n, void* ctor, void* dtor);"),
+        ("src/func_ov006_020c3f54.cpp", "void *",
+         "extern void* __cxa_vec_ctor(void* a, int b, int c, void* d, void* e);"),
+    )
+    CORRECT_DECLARATION = (
+        "extern void __cxa_vec_ctor(void *base, unsigned int count, unsigned int stride,\n"
+        "                           void (*ctor)(void *), void (*dtor)(void *));\n")
+
+    def _runtime(self, tree):
+        tree.symbols(["__cxa_vec_ctor"])
+        tree.write("src/__cxa_vec_ctor.cpp",
+                   "typedef void (*ctor_t)(void *);\n"
+                   "typedef void (*dtor_t)(void *);\n"
+                   'extern "C" void __cxa_vec_ctor(void *base, unsigned int count,\n'
+                   "                               unsigned int stride, ctor_t ctor, dtor_t dtor) {}\n")
+
+    def _declaration(self, tree, path, text):
+        if path.endswith(".cpp"):
+            text = 'extern "C" {\n' + text + "\n}\n"
+        tree.write(path, text)
+
+    def test_historical_wrong_results_are_reported_against_the_definition(self):
+        def fixture(tree):
+            self._runtime(tree)
+            for path, _result, declaration in self.HISTORICAL_DECLARATIONS:
+                self._declaration(tree, path, declaration)
+        findings, _decls, _defs, _files = build(fixture)
+        returns = [row for row in findings if row["kind"] == "return"]
+        self.assertEqual(
+            sorted((row["file"], row["got"], row["want"]) for row in returns),
+            sorted((path, result, "void") for path, result, _text in self.HISTORICAL_DECLARATIONS))
+        for row in returns:
+            self.assertEqual(row["symbol"], "__cxa_vec_ctor")
+            self.assertEqual(row["basis"], "definition")
+            self.assertEqual(row["ref_file"], "src/__cxa_vec_ctor.cpp")
+
+    def test_fully_corrected_imports_are_silent_at_the_same_paths(self):
+        def fixture(tree):
+            self._runtime(tree)
+            for path, _result, _declaration in self.HISTORICAL_DECLARATIONS:
+                self._declaration(tree, path, self.CORRECT_DECLARATION)
+        findings, decls, _defs, _files = build(fixture)
+        self.assertEqual(len([d for d in decls if d.symbol == "__cxa_vec_ctor"]), 5)
+        self.assertEqual(findings, [])
+
+    def test_a_correct_result_does_not_hide_a_missing_array_base(self):
+        def fixture(tree):
+            self._runtime(tree)
+            self._declaration(tree, "src/missing_base.cpp",
+                              "extern void __cxa_vec_ctor(unsigned int count, unsigned int stride,\n"
+                              "                           void (*ctor)(void *), void (*dtor)(void *));\n")
+        findings, _decls, _defs, _files = build(fixture)
+        arity = [row for row in findings if row["kind"] == "arity"]
+        self.assertEqual([(row["got"], row["want"]) for row in arity], [("4", "5")])
+        self.assertEqual(arity[0]["basis"], "definition")
+
+
 class RealTreeTests(unittest.TestCase):
-    """The gate must reproduce the finding it was commissioned for."""
+    """The current runtime definition must remain visible to the checker."""
 
     @classmethod
     def setUpClass(cls):
@@ -717,23 +1043,6 @@ class RealTreeTests(unittest.TestCase):
         self.assertEqual(len(found[0].params), 5)
         self.assertEqual(found[0].params[1], "unsigned int")
 
-    def test_the_five_known_wrong_declarations_are_still_wrong(self):
-        wrong = {
-            "src/d_a_dp_lift.cpp": "int",
-            "src/d_a_hanachan.c": "int",
-            "src/game/actors/d_a_wanwan.cpp": "int",
-            "src/d_a_luigi.cpp": "void *",
-            "src/func_ov006_020c3f54.cpp": "void *",
-        }
-        for rel, want in wrong.items():
-            path = REPO / rel
-            if not path.exists():
-                self.skipTest("%s not in this tree" % rel)
-            text = path.read_text(encoding="utf-8", errors="replace")
-            decls, _defs, _u = CDA.parse_file(rel, text, self.aliases)
-            found = [d for d in decls if d.symbol == "__cxa_vec_ctor"]
-            self.assertEqual(len(found), 1, rel)
-            self.assertEqual(found[0].ret, want, rel)
 
 
 # ------------------------------------- the four false-pass paths reported on #2471
@@ -1471,6 +1780,51 @@ class DeletedTypeInputTests(unittest.TestCase):
         self.assertNotIn("src/filler_0001.c", total)
 
 
+class DeletionOnlyDiffTests(unittest.TestCase):
+    """#3294 deleted one workflow file and changed nothing else. Every row was a `D`
+    that `_paths_of` does not keep, so the work list came back empty. The run then
+    failed as "a base ref that resolved to nothing", although the base resolved
+    fine. The fixture's README.md exists to step around this; these tests
+    deliberately do not touch it."""
+
+    def test_a_deletion_only_diff_is_nothing_to_check(self):
+        """FAILS before the fix: rc 1, "the diff against HEAD is EMPTY"."""
+        repo = BigRepo.shared()
+        repo.reset()
+        (repo.root / "README.md").unlink()
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertEqual(rc, 0, out)
+        self.assertIn("every one a deletion", out)
+
+    def test_a_deleted_source_alone_is_nothing_to_check_either(self):
+        """The carve-out above, reached with no other change beside it."""
+        repo = BigRepo.shared()
+        repo.reset()
+        (repo.root / "src" / "filler_0001.c").unlink()
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertEqual(rc, 0, out)
+        self.assertIn("every one a deletion", out)
+
+    def test_a_deleted_header_alone_is_still_scanned(self):
+        """A deletion the gate DOES read never reaches the new exit. It stays in the
+        work list and is scanned as before."""
+        repo = BigRepo.shared()
+        repo.reset()
+        (repo.root / "include" / "types.h").unlink()
+        rc, out = repo.run_main(["--changed", "HEAD", "--list"])
+        self.assertEqual(rc, 1, out)
+        self.assertNotIn("every one a deletion", out)
+        self.assertIn("src/tdef_user.c", out)
+
+    def test_a_diff_with_no_rows_is_still_an_unresolved_base(self):
+        """Control: the guard the new exit sits beside is unchanged."""
+        repo = BigRepo.shared()
+        repo.reset()
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertEqual(rc, 1, out)
+        self.assertNotIn("every one a deletion", out)
+
+
 class BomTests(unittest.TestCase):
     """A UTF-8 BOM is not part of the first token.
 
@@ -1501,6 +1855,1089 @@ class BomTests(unittest.TestCase):
             rel, path.read_text(encoding="utf-8", errors="replace"),
             CDA.scalar_typedefs(REPO))
         self.assertEqual([d.symbol for d in defs if d.symbol in ("u8", "u16")], [])
+
+
+class StaticMemberTests(unittest.TestCase):
+    """A static member has no `this`, and its DEFINITION cannot say so.
+
+    C++ forbids repeating `static` on an out-of-line definition, so `fBase_c
+    *dBase_c::Spawn(u32, fBase_c *, int, int)` is character-for-character what a
+    non-static member's definition looks like; the keyword survives only in the class
+    body. The tool prepended a `this` to every out-of-line member it saw, which
+    invented a fifth parameter for `dBase_c::Spawn` and billed three correct
+    four-argument declarations for an arity disagreement.
+
+    THE DEFECT WAS ALWAYS THERE. Before `dBase_c::Spawn`'s definition gained an
+    `@symbol` marker the tool could not recover its linker name at all, so it went to
+    `orphans` and claimed nothing. The marker only made the phantom visible, and any
+    file that gains one over a static member would hit it again.
+
+    BOTH DIRECTIONS ARE TESTED, and the second one is the one that matters: the
+    implicit `this` has to keep being added for a NON-static member, because that is
+    what keeps roughly 3,000 correct flat externs of real members out of the report. A
+    fix that simply stopped adding it would pass the first test here and silently
+    switch two thirds of the gate off.
+    """
+
+    HEADER = (
+        "struct dBase_c {\n"
+        "    void AfterInitResources(u32 vfSuccess);\n"
+        "    static struct fBase_c *Spawn(u32 id, struct fBase_c *parent,\n"
+        "                                 int a, int b);\n"
+        "};\n")
+
+    SPAWN_DEF = (
+        '#include "types.h"\n'
+        "// @symbol _ZN7dBase_c5SpawnEjP7fBase_cii\n"
+        "struct fBase_c *dBase_c::Spawn(u32 id, struct fBase_c *parent,\n"
+        "                               int a, int b)\n"
+        "{\n"
+        "    (void)id; (void)a; (void)b;\n"
+        "    return parent;\n"
+        "}\n")
+
+    def _tree(self, t):
+        t.write("include/dBase_c.h", self.HEADER)
+        t.write("src/ActorDerived.cpp", self.SPAWN_DEF)
+
+    # ------------------------------------------------ direction 1: no phantom
+
+    def test_a_static_member_definition_gets_no_this(self):
+        _findings, _d, defs, _files = build(self._tree)
+        rec = [d for d in defs
+               if d.symbol == "_ZN7dBase_c5SpawnEjP7fBase_cii"][0]
+        self.assertFalse(rec.is_member)
+        self.assertEqual(rec.flat_params(),
+                         ("unsigned int", "fBase_c *", "int", "int"))
+
+    def test_a_flat_four_argument_declaration_of_it_agrees(self):
+        def tree(t):
+            self._tree(t)
+            t.write("src/shard.c",
+                    '#include "types.h"\n'
+                    "extern struct fBase_c *_ZN7dBase_c5SpawnEjP7fBase_cii(\n"
+                    "    u32 a, struct fBase_c *b, int c, int d);\n")
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(kinds(findings, "_ZN7dBase_c5SpawnEjP7fBase_cii"), [])
+
+    def test_a_five_argument_declaration_of_it_is_now_the_wrong_one(self):
+        """The phantom is gone, not inverted: 5 against 4 is still reported."""
+        def tree(t):
+            self._tree(t)
+            t.write("src/shard.c",
+                    '#include "types.h"\n'
+                    "extern struct fBase_c *_ZN7dBase_c5SpawnEjP7fBase_cii(\n"
+                    "    void *thiz, u32 a, struct fBase_c *b, int c, int d);\n")
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(kinds(findings, "_ZN7dBase_c5SpawnEjP7fBase_cii"),
+                         [("arity", "src/shard.c", "5", "4")])
+
+    # -------------------------- direction 2: the regression that matters most
+
+    def test_a_non_static_member_definition_still_gets_its_this(self):
+        _findings, _d, defs, _files = build(self._tree_with_instance_member)
+        rec = [d for d in defs
+               if d.symbol == "_ZN7dBase_c18AfterInitResourcesEj"][0]
+        self.assertTrue(rec.is_member)
+        self.assertEqual(rec.flat_params(), ("<this>", "unsigned int"))
+
+    def _tree_with_instance_member(self, t):
+        self._tree(t)
+        t.write("src/AfterInit.cpp",
+                '#include "types.h"\n'
+                "// @symbol _ZN7dBase_c18AfterInitResourcesEj\n"
+                "void dBase_c::AfterInitResources(u32 vfSuccess)\n"
+                "{\n    (void)vfSuccess;\n}\n")
+
+    def test_a_flat_declaration_of_it_missing_the_this_is_still_reported(self):
+        def tree(t):
+            self._tree_with_instance_member(t)
+            t.write("src/shard.c",
+                    '#include "types.h"\n'
+                    "extern void _ZN7dBase_c18AfterInitResourcesEj(u32 a);\n")
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(kinds(findings, "_ZN7dBase_c18AfterInitResourcesEj"),
+                         [("arity", "src/shard.c", "1", "2")])
+
+    def test_a_flat_declaration_of_it_writing_the_this_out_agrees(self):
+        def tree(t):
+            self._tree_with_instance_member(t)
+            t.write("src/shard.c",
+                    '#include "types.h"\n'
+                    "extern void _ZN7dBase_c18AfterInitResourcesEj(\n"
+                    "    void *thiz, u32 a);\n")
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(kinds(findings, "_ZN7dBase_c18AfterInitResourcesEj"), [])
+
+    def test_one_class_flips_one_member_and_not_its_sibling(self):
+        """The paired control. Same header, same class, same definition file."""
+        def tree(t):
+            t.write("include/dBase_c.h", self.HEADER)
+            t.write("src/both.cpp",
+                    '#include "types.h"\n'
+                    "// @symbol _ZN7dBase_c18AfterInitResourcesEj\n"
+                    "void dBase_c::AfterInitResources(u32 v)\n{\n    (void)v;\n}\n"
+                    "// @symbol _ZN7dBase_c5SpawnEjP7fBase_cii\n"
+                    "struct fBase_c *dBase_c::Spawn(u32 id, struct fBase_c *p,\n"
+                    "                               int a, int b)\n"
+                    "{\n    (void)id; (void)a; (void)b;\n    return p;\n}\n")
+        _findings, _d, defs, _files = build(tree)
+        flags = {d.symbol: d.is_member for d in defs}
+        self.assertFalse(flags["_ZN7dBase_c5SpawnEjP7fBase_cii"])
+        self.assertTrue(flags["_ZN7dBase_c18AfterInitResourcesEj"])
+
+
+class StaticMemberIndexTests(unittest.TestCase):
+    """What the index reads, and the three things it must not confuse with it.
+
+    `static` means three different things in C++ and only one of them is a static
+    member: at file scope it is internal linkage, inside a function body it is a local
+    with static storage, and inside a class body it is "no `this`". The index is a
+    brace-scope walk for that reason, not a regex for the keyword.
+    """
+
+    def index(self, files):
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Tree(tmp)
+            for rel, text in files.items():
+                t.write(rel, text)
+            return CDA.static_member_index(t.root)
+
+    def test_a_static_member_is_indexed_static(self):
+        idx = self.index({"include/w.h":
+                          "struct Widget {\n    static int Make(int a);\n};\n"})
+        self.assertEqual(idx[("Widget", "Make")], CDA.STATIC_MEMBER)
+
+    def test_a_plain_member_is_indexed_instance(self):
+        idx = self.index({"include/w.h":
+                          "struct Widget {\n    int Make(int a);\n};\n"})
+        self.assertEqual(idx[("Widget", "Make")], CDA.INSTANCE_MEMBER)
+
+    def test_an_access_label_does_not_hide_the_keyword(self):
+        """`private:` carries no `;`, so it glues itself to the next member."""
+        idx = self.index({"include/w.h":
+                          "class Widget {\n"
+                          "private:\n"
+                          "    static int Hidden(void);\n"
+                          "public:\n"
+                          "    static int Shown(void);\n"
+                          "};\n"})
+        self.assertEqual(idx[("Widget", "Hidden")], CDA.STATIC_MEMBER)
+        self.assertEqual(idx[("Widget", "Shown")], CDA.STATIC_MEMBER)
+
+    def test_a_static_free_function_at_file_scope_is_not_a_member(self):
+        """Internal linkage, which is what line ~1144 of the tool already handles."""
+        idx = self.index({"include/w.h":
+                          "static int Helper(int a);\n"
+                          "struct Widget {\n    int Make(int a);\n};\n"})
+        self.assertEqual([k for k in idx if k[1] == "Helper"], [])
+        self.assertEqual(idx[("Widget", "Make")], CDA.INSTANCE_MEMBER)
+
+    def test_a_declaration_inside_a_member_body_does_not_reach_the_class(self):
+        """One brace deeper is a function body, and its contents are not members."""
+        idx = self.index({"include/w.h":
+                          "struct Widget {\n"
+                          "    static int Total(void) { int Leak(void);"
+                          " return Leak(); }\n"
+                          "};\n"})
+        self.assertEqual(idx[("Widget", "Total")], CDA.STATIC_MEMBER)
+        self.assertNotIn(("Widget", "Leak"), idx)
+
+    def test_an_anonymous_body_does_not_lend_members_to_its_enclosing_class(self):
+        idx = self.index({"include/w.h":
+                          "struct Widget {\n"
+                          "    struct { int Anon(void); } u;\n"
+                          "    static int Real(void);\n"
+                          "};\n"})
+        self.assertEqual(idx[("Widget", "Real")], CDA.STATIC_MEMBER)
+        self.assertNotIn(("Widget", "Anon"), idx)
+
+    def test_a_nested_class_is_keyed_on_the_inner_name(self):
+        """`A::B::f` is a member of B, and B is what the definition spells."""
+        idx = self.index({"include/w.h":
+                          "struct Outer {\n"
+                          "    struct Inner { static int Make(int a); };\n"
+                          "    int Make(int a);\n"
+                          "};\n"})
+        self.assertEqual(idx[("Inner", "Make")], CDA.STATIC_MEMBER)
+        self.assertEqual(idx[("Outer", "Make")], CDA.INSTANCE_MEMBER)
+
+    def test_a_class_body_in_a_source_file_is_not_indexed(self):
+        """HEADERS ONLY. A class re-declared inside one shard is that shard's
+        private reconstruction, as likely to be a guess as the extern beside it."""
+        idx = self.index({"src/shard.cpp":
+                          "struct Widget {\n    static int Make(int a);\n};\n"})
+        self.assertEqual(idx, {})
+
+    def test_two_different_classes_do_not_contaminate_each_other(self):
+        idx = self.index({"include/a.h":
+                          "struct Alpha {\n    static int Spawn(int a);\n};\n",
+                          "include/b.h":
+                          "struct Beta {\n    int Spawn(int a);\n};\n"})
+        self.assertEqual(idx[("Alpha", "Spawn")], CDA.STATIC_MEMBER)
+        self.assertEqual(idx[("Beta", "Spawn")], CDA.INSTANCE_MEMBER)
+
+    def test_one_class_declared_twice_the_same_way_stays_decisive(self):
+        idx = self.index({"include/a.h":
+                          "struct Widget {\n    static int Make(int a);\n};\n",
+                          "include/b.h":
+                          "struct Widget {\n    static int Make(int a);\n};\n"})
+        self.assertEqual(idx[("Widget", "Make")], CDA.STATIC_MEMBER)
+
+    # ------------------------------------------------------------- ambiguity
+
+    def test_two_headers_that_disagree_are_ambiguous(self):
+        idx = self.index({"include/a.h":
+                          "struct Widget {\n    static int Make(int a);\n};\n",
+                          "include/b.h":
+                          "struct Widget {\n    int Make(int a);\n};\n"})
+        self.assertEqual(idx[("Widget", "Make")], CDA.AMBIGUOUS_MEMBER)
+
+    def test_an_overload_set_holding_both_kinds_is_ambiguous(self):
+        """The index is keyed on the NAME. It cannot tell two overloads apart, and
+        the definition's parameter list is not enough to pick one either."""
+        idx = self.index({"include/w.h":
+                          "struct Widget {\n"
+                          "    static int Make(int a);\n"
+                          "    int Make(void);\n"
+                          "};\n"})
+        self.assertEqual(idx[("Widget", "Make")], CDA.AMBIGUOUS_MEMBER)
+
+    def test_ambiguity_is_sticky(self):
+        """A third agreeing declaration does not vote the contradiction away."""
+        idx = self.index({"include/a.h":
+                          "struct Widget {\n    static int Make(int a);\n};\n",
+                          "include/b.h":
+                          "struct Widget {\n    int Make(int a);\n};\n",
+                          "include/c.h":
+                          "struct Widget {\n    int Make(int a);\n};\n"})
+        self.assertEqual(idx[("Widget", "Make")], CDA.AMBIGUOUS_MEMBER)
+
+
+class AmbiguousStaticMemberTests(unittest.TestCase):
+    """When the index contradicts itself the definition states NO arity.
+
+    Neither reading is privileged, so the tool claims nothing about the parameter
+    count rather than picking a side -- the same choice the docstring makes about
+    every other thing it cannot recover ("claiming them is worse than missing them").
+    It is NOT silence about everything: a return type still disagrees, which is what
+    says this path declines one question rather than switching the symbol off.
+    """
+
+    def _tree(self, t):
+        t.write("include/a.h",
+                "struct Widget {\n    static int Make(int a);\n};\n")
+        t.write("include/b.h",
+                "struct Widget {\n    int Make(int a);\n};\n")
+        t.write("src/Make.cpp",
+                '#include "types.h"\n'
+                "// @symbol _ZN6Widget4MakeEi\n"
+                "int Widget::Make(int a)\n{\n    return a;\n}\n")
+
+    def test_the_definition_declines_to_state_an_arity(self):
+        _findings, _d, defs, _files = build(self._tree)
+        rec = [d for d in defs if d.symbol == "_ZN6Widget4MakeEi"][0]
+        self.assertTrue(rec.this_unknown)
+        self.assertIs(rec.flat_params(), CDA.UNSPECIFIED)
+
+    def test_neither_arity_is_billed(self):
+        def tree(t):
+            self._tree(t)
+            t.write("src/one.c", "extern int _ZN6Widget4MakeEi(int a);\n")
+            t.write("src/two.c",
+                    "extern int _ZN6Widget4MakeEi(void *thiz, int a);\n")
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(kinds(findings, "_ZN6Widget4MakeEi"), [])
+
+    def test_a_return_type_disagreement_is_still_reported(self):
+        def tree(t):
+            self._tree(t)
+            t.write("src/one.c", "extern void _ZN6Widget4MakeEi(int a);\n")
+        findings, _d, _f, _files = build(tree)
+        self.assertEqual(kinds(findings, "_ZN6Widget4MakeEi"),
+                         [("return", "src/one.c", "void", "int")])
+
+    def test_the_spelling_says_the_this_is_the_unknown_part(self):
+        _findings, _d, defs, _files = build(self._tree)
+        rec = [d for d in defs if d.symbol == "_ZN6Widget4MakeEi"][0]
+        self.assertEqual(rec.spelling(), "int (<this?>, int)")
+
+
+class StaticMemberScopeTests(unittest.TestCase):
+    """The index is built over EVERY header, whatever `collect` was narrowed to.
+
+    A class body is not a declaration of anything this tool collects, so no
+    `--changed` scope rule would ever fold `include/dBase_c.h` in for a branch that
+    only touched the file DEFINING `dBase_c::Spawn`. Narrow the index with the scan
+    and the phantom comes straight back in the narrowed run -- which is the run every
+    pull request gets.
+    """
+
+    def test_a_narrowed_collect_still_reads_the_class_body(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Tree(tmp)
+            t.write("include/dBase_c.h", StaticMemberTests.HEADER)
+            t.write("src/ActorDerived.cpp", StaticMemberTests.SPAWN_DEF)
+            _files, _decls, defs, _u = CDA.collect(
+                t.root, files=["src/ActorDerived.cpp"])
+        rec = [d for d in defs
+               if d.symbol == "_ZN7dBase_c5SpawnEjP7fBase_cii"][0]
+        self.assertFalse(rec.is_member)
+
+    def test_without_an_index_a_member_keeps_the_old_reading(self):
+        """`parse_file(..., statics=None)` is the pre-index behaviour, and it is
+        what the assertions above are measured against."""
+        decls, defs, _u = CDA.parse_file(
+            "src/ActorDerived.cpp", StaticMemberTests.SPAWN_DEF, {}, None)
+        del decls
+        rec = [d for d in defs
+               if d.symbol == "_ZN7dBase_c5SpawnEjP7fBase_cii"][0]
+        self.assertTrue(rec.is_member)
+        self.assertEqual(rec.flat_params()[0], "<this>")
+
+
+class RealTreeStaticMemberTests(unittest.TestCase):
+    """The live fixture: `dBase_c::Spawn` and its non-static sibling, same file.
+
+    `include/dBase_c.h` declares `Spawn` static and `AfterInitResources` virtual, and
+    `src/actors/ActorDerived.cpp` defines both out of line with an `@symbol` marker
+    over each. One must lose its `this` and the other must keep it, which no
+    whole-file switch can satisfy.
+    """
+
+    def setUp(self):
+        for rel in ("include/dBase_c.h", "src/actors/ActorDerived.cpp"):
+            if not (REPO / rel).exists():
+                self.skipTest("%s is not in this tree" % rel)
+        self.index = CDA.static_member_index(REPO)
+
+    def test_the_header_records_Spawn_static(self):
+        self.assertEqual(self.index.get(("dBase_c", "Spawn")),
+                         CDA.STATIC_MEMBER)
+        self.assertEqual(self.index.get(("dBase_c", "AfterInitResources")),
+                         CDA.INSTANCE_MEMBER)
+
+    def test_the_real_definitions_split_the_right_way(self):
+        rel = "src/actors/ActorDerived.cpp"
+        _d, defs, _u = CDA.parse_file(
+            rel, (REPO / rel).read_text(encoding="utf-8", errors="replace"),
+            CDA.scalar_typedefs(REPO), self.index)
+        by = {d.symbol: d for d in defs}
+        spawn = by["_ZN7dBase_c5SpawnEjP7fBase_cii"]
+        self.assertFalse(spawn.is_member)
+        self.assertEqual(len(spawn.flat_params()), 4)
+        after = by["_ZN7dBase_c18AfterInitResourcesEj"]
+        self.assertTrue(after.is_member)
+        self.assertEqual(after.flat_params()[0], "<this>")
+
+    def test_the_tree_still_reads_most_members_as_instance_members(self):
+        """The floor under direction 2. If a change made everything static this
+        collapses, and so do the 3,000 flat externs the wildcard `this` protects."""
+        verdicts = list(self.index.values())
+        self.assertGreater(verdicts.count(CDA.INSTANCE_MEMBER), 1000)
+        self.assertGreater(verdicts.count(CDA.STATIC_MEMBER), 50)
+        self.assertEqual(verdicts.count(CDA.AMBIGUOUS_MEMBER), 0)
+
+
+class NativeFreeOverloadTests(unittest.TestCase):
+    """Native short/int overloads must not share whichever body was scanned first."""
+
+    def fixture(self, declarations, reverse=False, symbols=()):
+        def tree(t):
+            bodies = [
+                ("src/_Z14ApproachLinearRiii.cpp",
+                 "int ApproachLinear(int &x, int target, int step) { return 0; }\n"),
+                ("src/_Z14ApproachLinearRsss.cpp",
+                 "int ApproachLinear(short &x, short target, short step) { return 1; }\n"),
+            ]
+            for path, body in bodies:
+                t.write(path, body)
+            t.write("src/user.cpp", declarations)
+            t.symbols(symbols)
+        findings, decls, defs, files = build(tree)
+        if reverse:
+            findings = CDA.disagreements(decls, list(reversed(defs)), set(symbols))
+        return findings, decls, defs, files
+
+    def test_both_genuine_overloads_agree_in_either_definition_order(self):
+        declarations = ("extern int ApproachLinear(int &, int, int);\n"
+                        "extern int ApproachLinear(short &, short, short);\n")
+        for reverse in (False, True):
+            findings, _, _, _ = self.fixture(declarations, reverse=reverse)
+            self.assertEqual(findings, [])
+
+    def test_typedef_equivalence_selects_the_short_overload(self):
+        findings, _, _, _ = self.fixture(
+            "extern int ApproachLinear(s16 &, s16, s16);\n")
+        self.assertEqual(findings, [])
+
+    def test_wrong_return_is_compared_to_the_selected_definition(self):
+        findings, _, _, _ = self.fixture(
+            "extern void ApproachLinear(short &, short, short);\n")
+        self.assertEqual([(f["kind"], f["got"], f["want"]) for f in findings],
+                         [("return", "void", "int")])
+        self.assertEqual(findings[0]["ref_file"],
+                         "src/_Z14ApproachLinearRsss.cpp")
+
+    def test_unmatched_parameter_types_still_report(self):
+        findings, _, _, _ = self.fixture(
+            "extern int ApproachLinear(int &, short, int);\n")
+        self.assertEqual([f["kind"] for f in findings], ["param"])
+        self.assertEqual(findings[0]["got"], "#2 short")
+
+    def test_wrong_arity_still_reports(self):
+        findings, _, _, _ = self.fixture("extern int ApproachLinear(int &);\n")
+        self.assertEqual([f["kind"] for f in findings], ["arity"])
+
+    def test_c_linkage_does_not_select_a_cpp_overload(self):
+        findings, _, _, _ = self.fixture(
+            'extern "C" int ApproachLinear(short &, short, short);\n')
+        self.assertEqual([f["kind"] for f in findings], ["param"] * 3)
+
+    def test_a_known_c_symbol_still_reports_linkage(self):
+        findings, _, _, _ = self.fixture(
+            "extern int ApproachLinear(short &, short, short);\n",
+            symbols=("ApproachLinear",))
+        self.assertIn("linkage", [f["kind"] for f in findings])
+
+    def test_explicit_linker_identity_still_reports_true_parameters(self):
+        def tree(t):
+            t.write("src/callee.cpp", '// @symbol _Z3fooi\nint foo(int x) { return x; }\n')
+            t.write("src/user.c", 'extern int _Z3fooi(short);\n')
+        findings, _, _, _ = build(tree)
+        self.assertEqual([f["kind"] for f in findings], ["param"])
+
+    def test_reference_pointer_difference_is_not_blanket_suppressed(self):
+        findings, _, _, _ = self.fixture(
+            "extern int ApproachLinear(int *, int, int);\n")
+        self.assertEqual([f["kind"] for f in findings], ["param"])
+
+
+class NativeDestructorTests(unittest.TestCase):
+    """Source syntax and a precisely mapped direct Arm ABI entry stay distinct."""
+
+    def inspect(self, declaration, variant="D1", owner="Widget", mark=None):
+        symbol = mark or "_ZN%d%s%sEv" % (len(owner), owner, variant)
+        def tree(t):
+            t.write("include/Widget.h", "struct Widget { Widget(); ~Widget(); };\n")
+            t.write("src/native.cpp", "// @symbol %s\n%s::~%s() {}\n" %
+                    (symbol, owner, owner))
+            t.write("src/caller.cpp", 'extern "C" ' + declaration % symbol + ';\n')
+        findings, decls, defs, _ = build(tree)
+        return findings, defs
+
+    def test_source_sentinel_and_real_receiver(self):
+        findings, defs = self.inspect("Widget *%s(Widget *)")
+        self.assertEqual(findings, [])
+        self.assertEqual(defs[0].ret, "<destructor Widget>")
+        self.assertTrue(defs[0].is_member)
+        self.assertEqual(defs[0].flat_params(), ("<this>",))
+
+    def test_complete_and_base_direct_entries_return_receiver(self):
+        for variant in ("D1", "D2"):
+            for signature in ("Widget *%s(Widget *)", "void *%s(void *)"):
+                with self.subTest(variant=variant, signature=signature):
+                    self.assertEqual(self.inspect(signature, variant)[0], [])
+
+    def test_nonpointer_or_wrong_typed_result_still_fails(self):
+        for result in ("int", "float", "void", "Other *", "const Widget *"):
+            with self.subTest(result=result):
+                rows, _ = self.inspect(result + " %s(Widget *)")
+                self.assertEqual([r['kind'] for r in rows], ['return'])
+
+    def test_missing_or_extra_lifecycle_arguments_still_fail(self):
+        for params in ("void", "Widget *, int"):
+            with self.subTest(params=params):
+                rows, _ = self.inspect("Widget *%s(" + params + ")")
+                self.assertIn('arity', [r['kind'] for r in rows]); self.assertTrue(all(r['kind'] in ('arity', 'mangled') for r in rows))
+
+    def test_nonpointer_receiver_still_fails(self):
+        for receiver in ("int", "float"):
+            with self.subTest(receiver=receiver):
+                rows, _ = self.inspect("Widget *%s(" + receiver + ")")
+                self.assertEqual([r['kind'] for r in rows], ['param'])
+                self.assertIn("implicit this", rows[0]['want'])
+
+    def test_receiver_views_keep_existing_member_compatibility(self):
+        # This is the existing <this> policy, not acceptance of these source views.
+        for receiver in ("Other *", "const Widget *", "const void *", "Widget **", "Widget &"):
+            with self.subTest(receiver=receiver):
+                self.assertEqual(self.inspect("Widget *%s(" + receiver + ")")[0], [])
+
+    def test_six_existing_storage_views_do_not_gain_parameter_findings(self):
+        examples = (
+            ("dBgPi", "dBgPiLoc *", "src/_ZN10dBgCh_Actr16UpdateContinuousEv.cpp"),
+            ("dBgPi", "dBgPiLoc *", "src/_ZN10dBgCh_Actr20UpdateExtraContinousEv.cpp"),
+            ("dBgPi", "dBgPiLoc *", "src/_ZN10dBgCh_Actr22UpdateContinuousNoLavaEv.cpp"),
+            ("dBgPi", "dBgPiRaw *", "src/game/actors/d_a_pg_mthr.cpp"),
+            ("dBgCh_Gnd", "RG *", "src/func_ov002_020b94c4.c"),
+            ("dBgCh_Gnd", "char *", "src/actors/daObjMarioCap_c.cpp"),
+        )
+        for owner, receiver, path in examples:
+            symbol = "_ZN%d%sD1Ev" % (len(owner), owner)
+            def tree(t):
+                t.write("src/native.cpp", "// @symbol %s\n%s::~%s() {}\n" % (symbol, owner, owner))
+                linkage = 'extern "C" ' if path.endswith('.cpp') else 'extern '
+                t.write(path, linkage + "void %s(%s);\n" % (symbol, receiver))
+            with self.subTest(path=path):
+                rows, _, _, _ = build(tree)
+                # The existing false written result is still reported; neither
+                # implicit receiver arity nor its storage view invents another key.
+                self.assertEqual([r['kind'] for r in rows], ['return'])
+
+    def test_deleting_destructor_does_not_get_receiver_result_exemption(self):
+        self.assertEqual(self.inspect("void %s(Widget *)", "D0")[0], [])
+        for result in ("Widget *", "void *", "int"):
+            with self.subTest(result=result):
+                rows, _ = self.inspect(result + " %s(Widget *)", "D0")
+                self.assertEqual([r['kind'] for r in rows], ['return'])
+        rows, _ = self.inspect("void %s(Widget *, int)", "D0")
+        self.assertIn('arity', [r['kind'] for r in rows]); self.assertTrue(all(r['kind'] in ('arity', 'mangled') for r in rows))
+
+    def test_constructor_uses_its_own_native_abi_inference(self):
+        source = '// @symbol _ZN6WidgetC1Ev\nWidget::Widget() {}\n'
+        decls, defs, _ = CDA.parse_file("src/native.cpp", source, {})
+        self.assertEqual(len(defs), 1)
+        self.assertIsNone(CDA._native_destructor_abi(defs[0]))
+        self.assertEqual(CDA._native_constructor_abi(defs[0]), ('Widget', 'Widget *'))
+
+    def test_explicit_flat_lifecycle_definition_is_not_overridden(self):
+        def tree(t):
+            t.write("src/native.cpp", 'extern "C" int _ZN6WidgetD1Ev(void *p) { return 1; }\n')
+            t.write("src/caller.cpp", 'extern "C" Widget *_ZN6WidgetD1Ev(Widget *p);\n')
+        rows, _, _, _ = build(tree)
+        self.assertEqual([r['kind'] for r in rows], ['return'])
+        self.assertEqual(rows[0]['want'], 'int')
+
+    def test_thunk_or_wrong_owner_identity_has_no_abi_inference(self):
+        for symbol in ('_ZThn4_N6WidgetD1Ev', '_ZN5OtherD1Ev', '_ZN6WidgetD1Ei'):
+            with self.subTest(symbol=symbol):
+                rows, defs = self.inspect('Widget *%s(Widget *)', mark=symbol)
+                # A contradictory marker cannot rename the native owner. There
+                # is no definition-backed claim; mangled arity checks may remain.
+                self.assertEqual(defs, [])
+                self.assertFalse(any(r['basis'] == 'definition' for r in rows))
+
+    def test_ambiguous_unmarked_definition_is_not_adopted(self):
+        source = '// @symbol _ZN6WidgetD1Ev\nextern void helper();\nWidget::~Widget() {}\nOther::~Other() {}\n'
+        _, defs, _ = CDA.parse_file('src/native.cpp', source, {})
+        self.assertEqual(defs, [])
+
+    def test_single_orphan_retains_destructor_metadata(self):
+        source = '// @symbol _ZN6WidgetD1Ev\nextern void helper();\nWidget::~Widget() {}\n'
+        _, defs, _ = CDA.parse_file('src/native.cpp', source, {})
+        self.assertEqual(len(defs), 1)
+        self.assertEqual(CDA._native_destructor_abi(defs[0]), ('Widget', 'Widget *'))
+
+    def test_nested_qualified_owner_is_exact(self):
+        source = '// @symbol _ZN1N6WidgetD1Ev\nN::Widget::~Widget() {}\n'
+        _, defs, _ = CDA.parse_file('src/native.cpp', source, {})
+        self.assertEqual(CDA._native_destructor_abi(defs[0]), ('N::Widget', 'N::Widget *'))
+
+    def test_void_parameter_and_exception_specification(self):
+        source = '// @symbol _ZN6WidgetD1Ev\nWidget::~Widget(void) throw() {}\n'
+        _, defs, _ = CDA.parse_file('src/native.cpp', source, {})
+        self.assertEqual(CDA._native_destructor_abi(defs[0]), ('Widget', 'Widget *'))
+
+    def test_unrelated_return_and_linkage_findings_are_preserved(self):
+        def tree(t):
+            t.symbols(['ordinary'])
+            t.write('src/ordinary.cpp', 'extern "C" int ordinary(int n) { return n; }\n')
+            t.write('src/caller.cpp', 'extern void ordinary(float n);\n')
+        rows, _, _, _ = build(tree)
+        self.assertEqual({r['kind'] for r in rows}, {'return', 'param', 'linkage'})
+
+
+class HeaderRedeclarationTests(unittest.TestCase):
+    """A branch that ADDS a local declaration of a symbol a header already declares.
+
+    #3091 found local externs of Particle::System::FromUniqueID in several spellings
+    while Particle__System.h declared it correctly. The gate is a ratchet: it needs
+    an added line AND a rise in the symbol's src/ redeclaration count, so moving
+    existing externs (a TU promotion) stays clean."""
+
+    HEADER = "extern void hdr_target(int n);\n"
+    USER = '#include "hdr_probe.h"\nvoid hdr_user_body(int n) { hdr_target(n); }\n'
+
+    def _base(self, repo):
+        repo.reset()
+        repo.write("include/hdr_probe.h", self.HEADER)
+        repo.write("src/hdr_user.c", self.USER)
+        repo.write("src/hdr_old.c", "extern void hdr_target(int n);\n"
+                                    "void hdr_old_body(int n) { hdr_target(n); }\n")
+        repo.git("add", "-A")
+        repo.git("commit", "-q", "-m", "hdr base")
+
+    def test_a_new_local_copy_of_a_header_declaration_fails(self):
+        repo = BigRepo.shared()
+        self._base(repo)
+        repo.write("src/hdr_new.c", "extern void hdr_target(int n);\n"
+                                    "void hdr_new_body(int n) { hdr_target(n); }\n")
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertEqual(rc, 1, out)
+        self.assertIn("src/hdr_new.c:1  hdr_target", out)
+        self.assertIn("include/hdr_probe.h", out)
+
+    def test_the_marker_states_the_reason_and_ends_the_finding(self):
+        repo = BigRepo.shared()
+        self._base(repo)
+        repo.write("src/hdr_new.c", "/* local extern: probe */\n"
+                                    "extern void hdr_target(int n);\n"
+                                    "void hdr_new_body(int n) { hdr_target(n); }\n")
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertEqual(rc, 0, out)
+        self.assertIn("no new local redeclarations", out)
+
+    def test_moving_an_existing_local_copy_is_not_new(self):
+        """The promotion shape: every moved line is ADDED, the count does not rise."""
+        repo = BigRepo.shared()
+        self._base(repo)
+        repo.git("mv", "src/hdr_old.c", "src/hdr_moved.c")
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertEqual(rc, 0, out)
+
+    def test_a_c_file_is_not_sent_to_a_header_no_c_file_includes(self):
+        repo = BigRepo.shared()
+        self._base(repo)
+        repo.write("src/hdr_user.c", "void hdr_user_body(int n) { (void)n; }\n")
+        repo.write("src/hdr_new.c", "extern void hdr_target(int n);\n")
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertIn("no new local redeclarations", out)
+
+    def test_a_mangled_copy_of_a_class_member_fails_in_a_cxx_file(self):
+        """The FromUniqueID shape: the header declares it inside the class body."""
+        repo = BigRepo.shared()
+        self._base(repo)
+        repo.write("include/hdr_probe.h", self.HEADER +
+                   "struct Probe {\n    static int Get(unsigned int id);\n};\n")
+        repo.git("add", "-A")
+        repo.git("commit", "-q", "-m", "member")
+        repo.write("src/hdr_member.cpp",
+                   '//cpp\nextern "C" int _ZN5Probe3GetEj(unsigned int id);\n'
+                   "int hdr_member_body() { return _ZN5Probe3GetEj(1); }\n")
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertEqual(rc, 1, out)
+        self.assertIn("_ZN5Probe3GetEj", out)
+        self.assertIn("include/hdr_probe.h", out)
+
+    def test_a_member_behind_the_fix12_wall_is_exempt(self):
+        """Passing Fix12<int> by value costs the caller bytes (6az), so a local
+        scalar declaration is the only spelling that reproduces. Replayed on #3062's
+        MaterialChanger::SetFile, this was the one false positive in 25 merges."""
+        repo = BigRepo.shared()
+        self._base(repo)
+        repo.write("include/hdr_probe.h", self.HEADER +
+                   "struct Probe {\n    static int Set(Fix12<int> v);\n};\n")
+        repo.git("add", "-A")
+        repo.git("commit", "-q", "-m", "member")
+        repo.write("src/hdr_member.cpp",
+                   '//cpp\nextern "C" int _ZN5Probe3SetE5Fix12IiE(int v);\n')
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertIn("no new local redeclarations", out)
+
+    def test_an_overload_with_another_arity_does_not_answer(self):
+        repo = BigRepo.shared()
+        self._base(repo)
+        repo.write("include/hdr_probe.h", self.HEADER +
+                   "struct Probe {\n    static int Get(unsigned int id, int n);\n};\n")
+        repo.git("add", "-A")
+        repo.git("commit", "-q", "-m", "member")
+        repo.write("src/hdr_member.cpp",
+                   '//cpp\nextern "C" int _ZN5Probe3GetEj(unsigned int id);\n')
+        rc, out = repo.run_main(["--changed", "HEAD"])
+        self.assertIn("no new local redeclarations", out)
+
+
+class NativeConstructorAndWrapperTests(unittest.TestCase):
+    def inspect(self, declaration, variant="C1", owner="Widget", init="", between=""):
+        name = owner.split("::")[-1]
+        symbol = "_ZN" + "".join(str(len(p)) + p for p in owner.split("::")) + variant + "Ev"
+        def tree(t):
+            t.write("src/native.cpp", "// @symbol %s\n%s%s::%s()%s {}\n" %
+                    (symbol, between, owner, name, init))
+            t.write("src/caller.cpp", 'extern "C" ' + declaration % symbol + ';\n')
+        rows, decls, defs, _ = build(tree)
+        return rows, defs
+
+    def test_complete_and_base_constructor_have_receiver_and_pointer_result(self):
+        for variant in ("C1", "C2"):
+            for signature in ("Widget *%s(Widget *)", "void *%s(void *)"):
+                with self.subTest(variant=variant, signature=signature):
+                    rows, defs = self.inspect(signature, variant)
+                    self.assertEqual(rows, [])
+                    self.assertEqual(defs[0].ret, "<constructor Widget>")
+                    self.assertEqual(defs[0].flat_params(), ("<this>",))
+
+    def test_constructor_wrong_results_are_not_silenced(self):
+        for result in ("void", "int", "float", "Other *", "const Widget *"):
+            with self.subTest(result=result):
+                rows, _ = self.inspect(result + " %s(Widget *)")
+                self.assertEqual([r['kind'] for r in rows], ['return'])
+                self.assertEqual(rows[0]['basis'], 'definition')
+
+    def test_missing_extra_and_scalar_receiver_still_fail(self):
+        for params, expected in (("void", "arity"), ("Widget *, int", "arity"), ("int", "param")):
+            with self.subTest(params=params):
+                rows, _ = self.inspect("Widget *%s(" + params + ")")
+                self.assertIn(expected, [r['kind'] for r in rows])
+
+    def test_nested_icon_constructor_has_the_full_owner(self):
+        rows, defs = self.inspect("dScEntry_c::icon_c *%s(dScEntry_c::icon_c *)", owner="dScEntry_c::icon_c")
+        self.assertEqual(rows, [])
+        self.assertEqual(defs[0].symbol, "_ZN10dScEntry_c6icon_cC1Ev")
+        self.assertEqual(CDA._native_constructor_abi(defs[0]), ("dScEntry_c::icon_c", "dScEntry_c::icon_c *"))
+
+    def test_initializer_and_orphan_adoption_preserve_native_identity(self):
+        for init in (" : p(0)", " : Base(), p(0), n(1)", " throw() : p(0)"):
+            with self.subTest(init=init):
+                rows, defs = self.inspect("Widget *%s(Widget *)", init=init, between="extern void helper();\n")
+                self.assertEqual(rows, [])
+                self.assertEqual(CDA._native_constructor_abi(defs[0]), ("Widget", "Widget *"))
+
+    def test_no_constructor_identity_is_invented_for_wrong_marks(self):
+        for mark in ("_ZN5OtherC1Ev", "_ZN6WidgetC3Ev", "_ZThn4_N6WidgetC1Ev", "_ZN6WidgetC1Ei"):
+            with self.subTest(mark=mark):
+                source = "// @symbol " + mark + "\nWidget::Widget() {}\n"
+                _, defs, _ = CDA.parse_file("src/native.cpp", source, {})
+                self.assertEqual(defs, [])
+
+    def test_parameterized_constructor_remains_outside_nullary_inference(self):
+        _, defs, _ = CDA.parse_file("src/native.cpp", "// @symbol _ZN6WidgetC1Ei\nWidget::Widget(int value) {}\n", {})
+        self.assertFalse(any(CDA._native_constructor_abi(d) for d in defs))
+
+    def test_explicit_flat_constructor_contract_is_not_overridden(self):
+        def tree(t):
+            t.write("src/native.cpp", 'extern "C" int _ZN6WidgetC1Ev(void *p) { return 1; }\n')
+            t.write("src/caller.cpp", 'extern "C" Widget *_ZN6WidgetC1Ev(Widget *p);\n')
+        rows, _, defs, _ = build(tree)
+        self.assertEqual([r['kind'] for r in rows], ['return'])
+        self.assertEqual(rows[0]['want'], 'int')
+        self.assertIsNone(CDA._native_constructor_abi(defs[0]))
+
+    def test_force_wrapper_never_becomes_element_destructor(self):
+        for separator in ("", "extern void helper();\n"):
+            source = ("// @symbol _ZN7Vector3D1Ev\n"
+                      "struct Vector3_ForceDestructor { Vector3 v[2]; ~Vector3_ForceDestructor(); };\n"
+                      + separator + "Vector3_ForceDestructor::~Vector3_ForceDestructor() {}\n")
+            with self.subTest(separator=separator):
+                _, defs, _ = CDA.parse_file("src/native.cpp", source, {})
+                self.assertFalse(any(d.symbol == "_ZN7Vector3D1Ev" for d in defs))
+
+    def test_wrong_mark_does_not_erase_a_real_separate_definition(self):
+        def tree(t):
+            t.write("src/wrapper.cpp", "// @symbol _ZN6WidgetD1Ev\nOther::~Other() {}\n")
+            t.write("src/native.cpp", "// @symbol _ZN6WidgetD1Ev\nWidget::~Widget() {}\n")
+            t.write("src/caller.cpp", 'extern "C" int _ZN6WidgetD1Ev(Widget *);\n')
+        rows, _, defs, _ = build(tree)
+        self.assertEqual(len(defs), 1)
+        self.assertEqual([r['kind'] for r in rows], ['return'])
+        self.assertEqual(rows[0]['ref_file'], 'src/native.cpp')
+
+    def test_ambiguous_orphans_do_not_acquire_a_constructor_mark(self):
+        text = "// @symbol _ZN6WidgetC1Ev\nextern void helper();\nWidget::Widget() {}\nOther::Other() {}\n"
+        _, defs, _ = CDA.parse_file("src/native.cpp", text, {})
+        self.assertEqual(defs, [])
+
+    def test_real_constructor_and_force_wrapper_fixtures(self):
+        examples = (("src/engine/model/Model.cpp", "_ZN5ModelC1Ev", "Model"),
+                    ("src/_ZN10dScEntry_c6icon_cC1Ev.cpp", "_ZN10dScEntry_c6icon_cC1Ev", "dScEntry_c::icon_c"))
+        for rel, symbol, owner in examples:
+            with self.subTest(path=rel):
+                text = (REPO / rel).read_text(encoding="utf-8")
+                _, defs, _ = CDA.parse_file(rel, text, {})
+                found = [d for d in defs if d.symbol == symbol]
+                self.assertEqual(len(found), 1)
+                self.assertEqual(CDA._native_constructor_abi(found[0]), (owner, owner + " *"))
+        for owner in ("Vector3", "Vector3s"):
+            symbol = "_ZN%d%sD1Ev" % (len(owner), owner)
+            rel = "src/" + symbol + ".cpp"
+            _, defs, _ = CDA.parse_file(rel, (REPO / rel).read_text(encoding="utf-8"), {})
+            self.assertFalse(any(d.symbol == symbol for d in defs))
+
+
+class IncludedInlineDestructorTests(unittest.TestCase):
+    def inspect(self, header='struct Widget { ~Widget() {} };\n',
+                declaration='Widget *_ZN6WidgetD1Ev(Widget *)',
+                symbol='_ZN6WidgetD1Ev', carrier=None, extra=None):
+        if carrier is None:
+            carrier = ('// @symbol ' + symbol + '\n#include "Widget.h"\n'
+                       'struct Wrapper { Widget a[2]; ~Wrapper(); };\n'
+                       'Wrapper::~Wrapper() {}\n')
+        def tree(t):
+            t.write('include/Widget.h', header)
+            t.write('src/carrier.cpp', carrier)
+            if declaration:
+                t.write('src/caller.cpp', 'extern "C" ' + declaration + ';\n')
+            if extra:
+                extra(t)
+        return build(tree)
+
+    def test_actual_header_body_and_location_supply_the_native_definition(self):
+        rows, _, defs, _ = self.inspect('\n\nstruct Widget {\n    ~Widget() {}\n};\n')
+        self.assertEqual(rows, [])
+        self.assertEqual(len(defs), 1)
+        self.assertEqual((defs[0].file, defs[0].line), ('include/Widget.h', 4))
+        self.assertEqual(CDA._native_destructor_abi(defs[0]), ('Widget', 'Widget *'))
+
+    def test_both_direct_variants_accept_typed_and_opaque_receiver_results(self):
+        for variant in ('D1', 'D2'):
+            for result, receiver in (('Widget *', 'Widget *'), ('void *', 'void *')):
+                symbol = '_ZN6Widget' + variant + 'Ev'
+                with self.subTest(variant=variant, result=result):
+                    self.assertEqual(self.inspect(symbol=symbol, declaration=result + symbol + '(' + receiver + ')')[0], [])
+
+    def test_inline_body_does_not_waive_wrong_results_or_real_receiver_findings(self):
+        for declaration, expected in (
+                ('void _ZN6WidgetD1Ev(Widget *)', 'return'),
+                ('int _ZN6WidgetD1Ev(Widget *)', 'return'),
+                ('Other *_ZN6WidgetD1Ev(Widget *)', 'return'),
+                ('const Widget *_ZN6WidgetD1Ev(Widget *)', 'return'),
+                ('Widget *_ZN6WidgetD1Ev(void)', 'arity'),
+                ('Widget *_ZN6WidgetD1Ev(Widget *, int)', 'arity'),
+                ('Widget *_ZN6WidgetD1Ev(int)', 'param')):
+            with self.subTest(declaration=declaration):
+                rows = self.inspect(declaration=declaration)[0]
+                self.assertIn(expected, [r['kind'] for r in rows])
+                self.assertTrue(all(r['basis'] == 'definition' or r['kind'] == 'mangled' for r in rows))
+
+    def test_marker_alone_never_invents_a_body(self):
+        for header in ('struct Widget { ~Widget(); };',
+                       'struct Widget { virtual ~Widget() = 0; };',
+                       'struct Widget { ~Widget() = default; };',
+                       'struct Other { ~Other() {} };', ''):
+            with self.subTest(header=header):
+                self.assertEqual(self.inspect(header)[2], [])
+
+    def test_unincluded_or_transitively_included_body_is_not_adopted(self):
+        carriers = ('// @symbol _ZN6WidgetD1Ev\n',
+                    '// @symbol _ZN6WidgetD1Ev\n#include <Widget.h>\n',
+                    '// @symbol _ZN6WidgetD1Ev\n#include HEADER\n',
+                    '// @symbol _ZN6WidgetD1Ev\n#include "Bridge.h"\n')
+        for carrier in carriers:
+            with self.subTest(carrier=carrier):
+                self.assertEqual(self.inspect(carrier=carrier, extra=lambda t: t.write('include/Bridge.h', '#include "Widget.h"\n'))[2], [])
+
+    def test_no_marker_multiple_markers_wrong_owner_thunks_and_d0_remain_outside(self):
+        for marker in ('', '// @symbol _ZN6WidgetD1Ev\n// @symbol _ZN6WidgetD2Ev\n',
+                       '// @symbol _ZN5OtherD1Ev\n', '// @symbol _ZThn4_N6WidgetD1Ev\n',
+                       '// @symbol _ZN6WidgetD0Ev\n', '// @symbol _ZN6WidgetC1Ev\n',
+                       '// @symbol _ZN6WidgetD1Ei\n', '// @symbol _ZN06WidgetD1Ev\n'):
+            with self.subTest(marker=marker):
+                self.assertEqual(self.inspect(carrier=marker + '#include "Widget.h"\n')[2], [])
+
+    def test_quoted_local_header_shadows_include_directory(self):
+        rows, _, defs, _ = self.inspect(extra=lambda t: t.write('src/Widget.h', 'struct Other { ~Other() {} };\n'))
+        self.assertEqual(defs, [])
+
+    def test_relative_direct_header_has_real_provenance(self):
+        rows, _, defs, _ = self.inspect(carrier='// @symbol _ZN6WidgetD1Ev\n#include "../include/Widget.h"\n')
+        self.assertEqual(rows, [])
+        self.assertEqual(defs[0].file, 'include/Widget.h')
+
+    def test_c_carrier_never_acquires_cpp_inline_definition(self):
+        def tree(t):
+            t.write('include/Widget.h', 'struct Widget { ~Widget() {} };\n')
+            t.write('src/carrier.c', '// @symbol _ZN6WidgetD1Ev\n#include "Widget.h"\n')
+        self.assertEqual(build(tree)[2], [])
+
+    def test_actual_nested_class_owner_is_preserved(self):
+        header='struct Outer { struct Widget { ~Widget() {} }; };\n'
+        symbol='_ZN5Outer6WidgetD1Ev'
+        rows, _, defs, _ = self.inspect(header, 'Outer::Widget *' + symbol + '(Outer::Widget *)', symbol)
+        self.assertEqual(rows, [])
+        self.assertEqual(CDA._native_destructor_abi(defs[0]), ('Outer::Widget', 'Outer::Widget *'))
+        self.assertEqual(self.inspect(header)[2], [])
+
+    def test_namespace_template_union_and_local_class_are_not_guessed(self):
+        for header in ('namespace N { struct Widget { ~Widget() {} }; }',
+                       'template<class T> struct Widget { ~Widget() {} };',
+                       'union Widget { ~Widget() {} };',
+                       'inline void f() { struct Widget { ~Widget() {} }; }'):
+            with self.subTest(header=header):
+                self.assertFalse(any(d.symbol == '_ZN6WidgetD1Ev' for d in self.inspect(header)[2]))
+
+    def test_guarded_cpp_body_is_collected_but_not_unknown_conditional(self):
+        header=('#ifndef WIDGET_H\n#define WIDGET_H\nstruct Widget {\n'
+                '#ifdef __cplusplus\n~Widget() {}\n#endif\n};\n#endif\n')
+        self.assertEqual(len(self.inspect(header)[2]), 1)
+        for header in ('#if PLATFORM\nstruct Widget { ~Widget() {} };\n#endif\n',
+                       'struct Widget {\n#if PLATFORM\n~Widget() {}\n#endif\n};\n',
+                       '#ifdef UNKNOWN\nstruct Widget { ~Widget() {} };\n#else\nstruct Widget { ~Widget() {} };\n#endif\n'):
+            with self.subTest(header=header):
+                self.assertEqual(self.inspect(header)[2], [])
+
+    def test_cpp_false_branch_is_not_a_second_definition(self):
+        header=('#ifndef __cplusplus\nstruct Widget { int x; };\n#else\n'
+                'struct Widget { ~Widget() {} };\n#endif\n')
+        self.assertEqual(len(self.inspect(header)[2]), 1)
+
+    def test_inactive_conditional_include_and_comment_include_do_not_prove_visibility(self):
+        for include in ('#if 0\n#include "Widget.h"\n#endif\n',
+                        '#if PLATFORM\n#include "Widget.h"\n#endif\n',
+                        '/*\n#include "Widget.h"\n*/\n'):
+            with self.subTest(include=include):
+                self.assertEqual(self.inspect(carrier='// @symbol _ZN6WidgetD1Ev\n' + include)[2], [])
+
+    def test_duplicate_class_or_body_is_ambiguous_even_when_text_agrees(self):
+        for header in ('struct Widget { ~Widget() {} }; struct Widget { ~Widget() {} };',
+                       'struct Widget { ~Widget() {} ~Widget() {} };',
+                       '#if PLATFORM\nstruct Widget { ~Widget() {} };\n#endif\nstruct Widget { ~Widget() {} };'):
+            with self.subTest(header=header):
+                self.assertEqual(self.inspect(header)[2], [])
+
+    def test_two_direct_headers_cannot_both_supply_owner(self):
+        carrier='// @symbol _ZN6WidgetD1Ev\n#include "Widget.h"\n#include "Other.h"\n'
+        extra=lambda t: t.write('include/Other.h', 'struct Widget { ~Widget() {} };\n')
+        self.assertEqual(self.inspect(carrier=carrier, extra=extra)[2], [])
+
+    def test_two_carriers_with_different_inline_owner_bodies_are_ambiguous(self):
+        def extra(t):
+            t.write('include/Other.h', 'struct Widget { ~Widget() {} };\n')
+            t.write('src/other.cpp', '// @symbol _ZN6WidgetD1Ev\n#include "Other.h"\n')
+        self.assertEqual(self.inspect(extra=extra)[2], [])
+
+    def test_repeated_includes_or_carriers_of_same_body_are_deduplicated(self):
+        carrier='// @symbol _ZN6WidgetD1Ev\n#include "Widget.h"\n#include "Widget.h"\n'
+        self.assertEqual(len(self.inspect(carrier=carrier, extra=lambda t: t.write('src/other.cpp', carrier))[2]), 1)
+
+    def test_macro_owner_has_no_assumed_identity(self):
+        for header in ('#define Widget Other\nstruct Widget { ~Widget() {} };',
+                       'struct Widget { ~Widget() {} };\n#define Widget Other\n'):
+            with self.subTest(header=header):
+                self.assertEqual(self.inspect(header)[2], [])
+        carrier='// @symbol _ZN6WidgetD1Ev\n#define Widget Other\n#include "Widget.h"\n'
+        self.assertEqual(self.inspect(carrier=carrier)[2], [])
+
+    def test_sibling_and_transitive_macro_headers_can_rename_the_owner(self):
+        for macro_body in ('#define Widget Other\n', '#include "rename.h"\n'):
+            def extra(t):
+                t.write('include/context.h', macro_body)
+                t.write('include/rename.h', '#define Widget Other\n')
+            carrier='// @symbol _ZN6WidgetD1Ev\n#include "context.h"\n#include "Widget.h"\n'
+            with self.subTest(macro_body=macro_body):
+                self.assertEqual(self.inspect(carrier=carrier, extra=extra)[2], [])
+
+    def test_unknown_external_macro_or_missing_include_context_is_not_trusted(self):
+        for include in ('#include <stddef.h>\n', '#include HEADER\n', '#include "missing.h"\n'):
+            carrier='// @symbol _ZN6WidgetD1Ev\n' + include + '#include "Widget.h"\n'
+            with self.subTest(include=include):
+                self.assertEqual(self.inspect(carrier=carrier, extra=lambda t: t.write('include/stddef.h', '#define Widget Other\n'))[2], [])
+
+    def test_rom_target_excludes_host_include_but_selector_redefinition_poisons_it(self):
+        header='#ifdef _MSC_VER\n#include <stddef.h>\n#endif\nstruct Widget { ~Widget() {} };\n'
+        self.assertEqual(len(self.inspect(header)[2]), 1)
+        for prefix in ('#define _MSC_VER 1\n', '#undef _MSC_VER\n'):
+            with self.subTest(prefix=prefix):
+                self.assertEqual(self.inspect(prefix + header)[2], [])
+                carrier='// @symbol _ZN6WidgetD1Ev\n' + prefix + '#include "Widget.h"\n'
+                self.assertEqual(self.inspect(header, carrier=carrier)[2], [])
+        carrier='// @symbol _ZN6WidgetD1Ev\n#include "selector.h"\n#include "Widget.h"\n'
+        self.assertEqual(self.inspect(header, carrier=carrier, extra=lambda t: t.write('include/selector.h', '#define _MSC_VER 1\n'))[2], [])
+
+    def test_predefined_header_guard_suppresses_the_candidate_body(self):
+        header='#ifndef WIDGET_H\n#define WIDGET_H\nstruct Widget { ~Widget() {} };\n#endif\n'
+        for prefix in ('#define WIDGET_H\n', '#include "context.h"\n'):
+            carrier='// @symbol _ZN6WidgetD1Ev\n' + prefix + '#include "Widget.h"\n'
+            with self.subTest(prefix=prefix):
+                self.assertEqual(self.inspect(header, carrier=carrier, extra=lambda t: t.write('include/context.h', '#define WIDGET_H\n'))[2], [])
+        self.assertEqual(len(self.inspect(header)[2]), 1)
+
+    def test_cpp_selector_redefinition_or_undefinition_poison_assumed_mode(self):
+        header='struct Widget {\n#ifdef __cplusplus\n~Widget() {}\n#endif\n};\n'
+        for prefix in ('#undef __cplusplus\n', '#define __cplusplus 1\n'):
+            carrier='// @symbol _ZN6WidgetD1Ev\n' + prefix + '#include "Widget.h"\n'
+            with self.subTest(prefix=prefix):
+                self.assertEqual(self.inspect(header, carrier=carrier)[2], [])
+                self.assertEqual(self.inspect(prefix + header)[2], [])
+
+    def test_real_flat_or_out_of_line_definition_is_not_overridden(self):
+        for source, result in (('extern "C" int _ZN6WidgetD1Ev(Widget *) { return 1; }\n', 'int'),
+                               ('// @symbol _ZN6WidgetD1Ev\nWidget::~Widget() {}\n', 'Widget *')):
+            with self.subTest(source=source):
+                rows, _, defs, _ = self.inspect(declaration='void _ZN6WidgetD1Ev(Widget *)', extra=lambda t: t.write('src/actual.cpp', source))
+                self.assertEqual(len(defs), 1)
+                self.assertEqual(defs[0].file, 'src/actual.cpp')
+                self.assertEqual(rows[0]['want'], result)
+
+    def test_changed_carrier_and_header_expand_scope_to_opaque_callers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Tree(tmp)
+            t.write('include/Widget.h', 'struct Widget { ~Widget() {} };\n')
+            t.write('src/carrier.cpp', '// @symbol _ZN6WidgetD1Ev\n#include "Widget.h"\n')
+            t.write('src/caller.cpp', 'extern "C" int _ZN6WidgetD1Ev(void *);\n')
+            def git(*args):
+                return subprocess.run(['git', *args], cwd=t.root, check=True, capture_output=True, text=True)
+            git('init', '-q'); git('config', 'user.email', 'test@example.invalid'); git('config', 'user.name', 'Test')
+            git('add', '.'); git('commit', '-qm', 'fixture')
+            for path, text in (('src/carrier.cpp', '// @symbol _ZN6WidgetD1Ev\n#include "Widget.h"\n// changed\n'),
+                               ('include/Widget.h', 'struct Widget { ~Widget() { int n = 0; } };\n')):
+                with self.subTest(path=path):
+                    git('checkout', '--', '.')
+                    t.write(path, text)
+                    touched, defined, _, error = CDA.changed_scope('HEAD', t.root)
+                    self.assertIsNone(error)
+                    self.assertIn('_ZN6WidgetD1Ev', defined)
+                    findings, decls, _, _ = t.run()
+                    scope=set(touched) | {d.file for d in decls if d.symbol in defined}
+                    self.assertTrue(any(r['file'] == 'src/caller.cpp' and r['kind'] == 'return' for r in findings if r['file'] in scope))
+
+    def test_renamed_carrier_keeps_old_marker_in_changed_scope(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            t=Tree(tmp)
+            padding=''.join('// unchanged carrier context %d\n' % i for i in range(30))
+            t.write('src/carrier.cpp', '// @symbol _ZN6WidgetD1Ev\n#include "Widget.h"\n' + padding)
+            def git(*args):
+                return subprocess.run(['git', *args], cwd=t.root, check=True, capture_output=True, text=True)
+            git('init', '-q'); git('config', 'user.email', 'test@example.invalid'); git('config', 'user.name', 'Test')
+            git('add', '.'); git('commit', '-qm', 'fixture')
+            (t.root/'src/carrier.cpp').unlink()
+            t.write('src/new.cpp', '// @symbol _ZN5OtherD1Ev\n#include "Other.h"\n' + padding)
+            git('add', '-A')
+            touched, defined, _, error=CDA.changed_scope('HEAD', t.root)
+            self.assertIsNone(error)
+            self.assertTrue({'_ZN6WidgetD1Ev', '_ZN5OtherD1Ev'} <= defined, repr((touched, defined)))
+
+    def test_include_inside_source_scope_never_claims_a_global_owner(self):
+        for body in ('namespace N {\n#include "Widget.h"\n}\n',
+                     'struct Outer {\n#include "Widget.h"\n};\n',
+                     'extern "C" {\n#include "Widget.h"\n}\n',
+                     '#if PLATFORM\nnamespace N {\n#endif\n#include "Widget.h"\n#if PLATFORM\n}\n#endif\n'):
+            with self.subTest(body=body):
+                self.assertFalse(any(d.symbol == '_ZN6WidgetD1Ev' for d in self.inspect(carrier='// @symbol _ZN6WidgetD1Ev\n' + body)[2]))
+        carrier='// @symbol _ZN6WidgetD1Ev\nstruct Other { int n; };\n#include "Widget.h"\n'
+        self.assertEqual(len(self.inspect(carrier=carrier)[2]), 1)
+
+    def test_line_spliced_preprocessor_context_is_not_inferred(self):
+        for prefix in ('#define ' + chr(92) + '\n_MSC_VER 1\n',
+                       '#undef ' + chr(92) + '\n__cplusplus\n',
+                       '#define Macro(x) x + ' + chr(92) + '\n1\n'):
+            carrier='// @symbol _ZN6WidgetD1Ev\n' + prefix + '#include "Widget.h"\n'
+            with self.subTest(prefix=prefix):
+                self.assertEqual(self.inspect(carrier=carrier)[2], [])
+                self.assertEqual(self.inspect(prefix + 'struct Widget { ~Widget() {} };\n')[2], [])
+
+    def test_sibling_header_cannot_transfer_scope_into_a_candidate_include(self):
+        carrier='// @symbol _ZN6WidgetD1Ev\n#include "open.h"\n#include "Widget.h"\n}\n'
+        self.assertEqual(self.inspect(carrier=carrier, extra=lambda t: t.write('include/open.h', 'namespace N {\n'))[2], [])
+        carrier='// @symbol _ZN6WidgetD1Ev\n#include "open.h"\n#include "Widget.h"\n'
+        self.assertEqual(self.inspect(carrier=carrier, extra=lambda t: t.write('include/open.h', '#if PLATFORM\nnamespace N {\n#else\n}\n#endif\n'))[2], [])
+
+    def test_macros_used_in_code_cannot_manufacture_unseen_owner_scope(self):
+        carrier='// @symbol _ZN6WidgetD1Ev\n#include "scope.h"\nBEGIN_NS\n#include "Widget.h"\nEND_NS\n'
+        extra=lambda t: t.write('include/scope.h', '#define BEGIN_NS namespace N {\n#define END_NS }\n')
+        self.assertEqual(self.inspect(carrier=carrier, extra=extra)[2], [])
+        header='#define BEGIN_NS namespace N {\n#define END_NS }\nBEGIN_NS\nstruct Widget { ~Widget() {} };\nEND_NS\n'
+        self.assertEqual(self.inspect(header)[2], [])
+
+    def test_real_vector_carriers_reference_inline_header_bodies(self):
+        targets=['src/_ZN7Vector3D1Ev.cpp', 'src/_ZN8Vector3sD1Ev.cpp']
+        _, _, defs, _=CDA.collect(REPO, targets)
+        for owner, line in (('Vector3', 61), ('Vector3s', 89)):
+            symbol='_ZN%d%sD1Ev' % (len(owner), owner)
+            found=[d for d in defs if d.symbol == symbol]
+            self.assertEqual(len(found), 1)
+            self.assertEqual((found[0].file, found[0].line), ('include/types.h', line))
+            self.assertEqual(CDA._native_destructor_abi(found[0]), (owner, owner + ' *'))
 
 
 if __name__ == "__main__":

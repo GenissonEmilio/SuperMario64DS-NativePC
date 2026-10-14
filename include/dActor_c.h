@@ -38,7 +38,7 @@ struct dCc_c;
 /* Only ever named through a pointer below; the definition lives in common.h /
    math/Matrix.h, which this header deliberately does not pull in. */
 struct Matrix4x3;
-struct ShadowModel;
+struct dExtShadowModel_c;
 #include "math/Fix12.h"
 
 /* The actor heap and its deallocator, for the inline operator delete at the end of
@@ -105,13 +105,13 @@ struct dActor_c : dBase_c {
     /* The clip volume, all four set together by SetRanges out of the actor's
        entry in the spawn-info table. BeforeBehavior projects
        (mPosX, mPosY + mClipOffsetY, mPosZ) into camera space and hands the
-       result to the Clipper; a zero radius means "no clip volume" and skips the
+       result to the dClipper; a zero radius means "no clip volume" and skips the
        transform outright. */
     s32 mClipOffsetY;       /* 0x0b4 */
     s32 mClipRadius;        /* 0x0b8 */
     s32 mClipDistance;      /* 0x0bc -- past this the actor is off screen AND far away */
     s32 mFarDistance;       /* 0x0c0 -- past this it is merely far away */
-    u8  mClipResult;        /* 0x0c4 -- written by the Clipper */
+    u8  mClipResult;        /* 0x0c4 -- written by the dClipper */
     u8  pad_0c5[0x7];
     s8  mAreaId;            /* 0x0cc -- negative means "not area-bound" */
     u8  pad_0cd[0x1];
@@ -284,12 +284,12 @@ struct dActor_c : dBase_c {
                         Fix12<int> horzSpeed, Fix12<int> unk35c, u32 param1);
     bool IsPlayerInRange(Fix12<int> posX, Fix12<int> posY, Fix12<int> posZ,
                           s32 maxDist);
-    void DropShadowScaleXYZ(ShadowModel &shadow, Matrix4x3 &matrix,
+    void DropShadowScaleXYZ(dExtShadowModel_c &shadow, Matrix4x3 &matrix,
                              Fix12<int> scaleX, Fix12<int> scaleY,
                              Fix12<int> scaleZ, u32 opacity);
     s16  ReflectAngle(Fix12<int> normalX, Fix12<int> normalZ, s16 angToReflect);
     void SpawnCoins(const Vector3 &pos, u32 count, Fix12<int> spread, s16 angle);
-    void DropShadowRadHeight(ShadowModel &shadow, Matrix4x3 &matrix,
+    void DropShadowRadHeight(dExtShadowModel_c &shadow, Matrix4x3 &matrix,
                               Fix12<int> radius, Fix12<int> depth, u32 opacity);
 
     /* INLINE, AND ON THIS CLASS RATHER THAN A BASE -- both are load-bearing.

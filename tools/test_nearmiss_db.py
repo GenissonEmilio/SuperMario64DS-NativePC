@@ -361,11 +361,49 @@ class NearMissDbTests(unittest.TestCase):
         self.assertEqual(db[KEY]["divergences"], 2)      # untouched
 
     def test_set_divergence_drops_cand_size_not_backed_by_a_fresh_compile(self):
+        # Unstamped row: the re-stamp below moves it from no evaluator to the live one,
+        # so a size measured elsewhere must not inherit that stamp.
         self.write_rows(row(2, cand_size=0x164))
         NDB.set_divergence(argparse.Namespace(
             name="func_ov004", divergences=3, evidence="x"))
         db, _ = self.load_quiet()
         self.assertNotIn("cand_size", db[KEY])
+
+    def test_set_divergence_drops_cand_size_when_the_stamp_actually_changes(self):
+        # Same rule with an explicit foreign stamp rather than an absent one.
+        self.write_rows(row(2, cand_size=0x164, evaluator="1.2/sp2p3|m1"))
+        NDB.set_divergence(argparse.Namespace(
+            name="func_ov004", divergences=3, evidence="x"))
+        db, _ = self.load_quiet()
+        self.assertNotIn("cand_size", db[KEY])
+
+    def test_set_divergence_keeps_cand_size_when_the_stamp_is_unchanged(self):
+        # cand_size is the assembled size of the row's OWN c_source, and set_divergence
+        # never touches c_source, so when the row is already stamped by the live
+        # evaluator the stored size is still exactly as valid as before. Dropping it
+        # here destroyed good data: _size_gap falls back to 1<<30, so a fully measured
+        # row starts ranking as though it had never been compiled, and nothing
+        # downstream can re-score the seed against the target's exact size.
+        fp = NDB.current_fingerprint()
+        self.assertIsNotNone(fp, "test needs the live evaluator fingerprint")
+        self.write_rows(row(2, cand_size=0x164, evaluator=fp))
+        NDB.set_divergence(argparse.Namespace(
+            name="func_ov004", divergences=3, evidence="x"))
+        db, _ = self.load_quiet()
+        self.assertEqual(db[KEY]["cand_size"], 0x164)
+        self.assertEqual(db[KEY]["divergences"], 3)
+        self.assertEqual(NDB._size_gap(db[KEY]), 0)   # 0x164 target, 0x164 candidate
+
+    def test_set_divergence_keeps_cand_size_when_there_is_no_compile_stack(self):
+        # On a bare interpreter the evaluator is unknown, so no re-stamp happens; with
+        # nothing to misattribute the size to, there is no reason to discard it.
+        self.write_rows(row(2, cand_size=0x164, evaluator="1.2/sp2p3|m1"))
+        with mock.patch.object(NDB, "current_fingerprint", return_value=None):
+            NDB.set_divergence(argparse.Namespace(
+                name="func_ov004", divergences=3, evidence="x"))
+        db, _ = self.load_quiet()
+        self.assertEqual(db[KEY]["cand_size"], 0x164)
+        self.assertEqual(db[KEY]["evaluator"], "1.2/sp2p3|m1")   # not re-stamped
 
     def test_is_manual_false_by_default(self):
         self.assertFalse(NDB._is_manual(row(10)))
@@ -503,7 +541,7 @@ class EvaluateFullResolverParityTests(unittest.TestCase):
     for the same reason: the WIRING is what these prove, and resolve_nested_slice's
     own offset arithmetic already has dedicated coverage there (shared code, not
     re-tested here). RealCompileFixtures below compiles the actual committed
-    src/_dmul.c and src/func_01ff97d8.c and skips if the canonical (2004/b56)
+    src/_dmul.c and src/unnamed/arm9/01ff/func_01ff97d8.c and skips if the canonical (2004/b56)
     compiler is absent, same as tools/test_linkcheck.py's RealCompileFixtures."""
 
     def _require_compile_stack(self):
@@ -637,7 +675,7 @@ class RealCompileResolverFixtures(unittest.TestCase):
         self.assertTrue(full["ok"])
 
     def test_nested_entry_point_scores_zero_from_the_containing_source(self):
-        """src/func_01ff97d8.c compiles to ONE ELF symbol, "func_01ff97d8", 0xb6c
+        """src/unnamed/arm9/01ff/func_01ff97d8.c compiles to ONE ELF symbol, "func_01ff97d8", 0xb6c
         bytes; func_01ff98f4 (config size 0xb0) has no symbol of its own anywhere in
         that object. Fed to evaluate_full as func_01ff98f4's own c_source (the
         nested shape: a stored near-miss draft that is really the whole containing
@@ -645,7 +683,7 @@ class RealCompileResolverFixtures(unittest.TestCase):
         address-resolved offset and read a byte-exact MATCH."""
         import match as M
         import reverify_corpus as RV
-        src = (TOOLS.parent / "src" / "func_01ff97d8.c").read_text(encoding="utf-8")
+        src = (TOOLS.parent / "src" / "unnamed" / "arm9" / "01ff" / "func_01ff97d8.c").read_text(encoding="utf-8")
         target = RV.rom_bytes("itcm", 0x01ff98f4, 0xb0)
         full = NDB.evaluate_full(src, "func_01ff98f4", target,
                                  module="itcm", addr=0x01ff98f4, size=0xb0)

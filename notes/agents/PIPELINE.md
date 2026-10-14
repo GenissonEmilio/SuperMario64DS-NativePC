@@ -75,8 +75,9 @@ Original task workflow/source pins remain historical facts. The separately recor
 A denied claim or unavailable queue is not permission to proceed. Shared headers
 are shared dependencies even when classes differ. If new resources are needed,
 checkpoint the work and coordinate an atomic reservation update before editing
-them. Do not broaden your scope silently. Global attribution and generated state
-are reconciled in the integration lane.
+them. Do not broaden your scope silently. Generated state is reconciled in the
+integration lane. Who matched a function stays in `function-authors.json`. A
+move does not change that row.
 
 Use the repository path resolver and the task's reviewed manifest. A worker does
 not introduce a new directory/naming convention based on a sibling's appearance.
@@ -153,6 +154,19 @@ TU/lifecycle work also requires complete emitted-object and metadata evidence.
 Treat queued validation, masked byte matches, unexplained blind relocations, and
 report-only success as incomplete. Record the exact tested source and base SHAs.
 
+## TU promotion deliverables
+
+[The promotion workflow](../tu-promotion-conventions.md) owns the completion
+contract and technical gates. Assign a production TU, not a folder of per-function
+files or an indefinite shadow. Reuse existing candidates and edit already promoted
+sources directly. Temporary staging stays within the promotion task unless a
+specific blocker or research-only scope justifies a separate evidence result.
+
+A producer's local commit and a verifier's accepted handoff finish roles, not the
+whole delivery. The coordinator retains a named integration owner and next action.
+Respect the task's publication/merge limits; report PR-ready, published and merged
+states distinctly instead of declaring a shadow or queue stage fully delivered.
+
 ## Integration and completion
 
 Only the integrator composes independently accepted candidates, reconciles shared
@@ -174,8 +188,9 @@ A queue's completed stages do not themselves prove a merge. The integrator recor
 the PR URL, tested candidate, tested base, and resulting main commit in its evidence.
 A squash merge's SHA differs from the candidate SHA; preserve both identities.
 
-Close superseded PRs after their content is accounted for, preserve contributor
-attribution, and leave no unresolved output without an issue and next owner.
+Close superseded PRs after their content is accounted for. Who matched a
+function stays in `function-authors.json`. Leave no unresolved output without
+an issue and next owner.
 Tools/CI/protocol work remains separate from source reconstruction PRs.
 
 See [CUTOVER.md](CUTOVER.md) before starting v2 and [queue-v2.md](queue-v2.md)

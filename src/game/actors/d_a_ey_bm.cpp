@@ -1,35 +1,39 @@
 //cpp
-/* Mr. I projectile (EYEKUN_BEAM 264) -- ov071/daEyBm_c.
+/* daEyBm_c -- Mr. I's projectile (EYEKUN_BEAM 264), ov071.
+ *
+ * It flies straight at 10.0 along the pitch and yaw it spawned with
+ * (mPrevAngleX / mPrevAngleY) and bursts (particle 0x45) when it touches
+ * ground or a wall, when it hurts a Mario (Player::Hurt, not while he is
+ * vanished), or after 150 frames.
  *
  * ov071 is mixed (COFFIN / SCUTTLEBUG / MR_I / BIG_MR_I / MR_I_PROJECTILE).
- * RTTI at ov071:0x02122db8 names this class daEyBm_c; the debug table names
- * EYEKUN_BEAM. Historical project aliases: MrI_Projectile_Spawn and
- * MrI_Projectile_SpawnInfo. Private helper spellings are inferred; class
- * ownership, bodies, calls and ordering are proven.
+ * RTTI at ov071:0x02122db8 names this class daEyBm_c. Historical project
+ * aliases: MrI_Projectile_Spawn and MrI_Projectile_SpawnInfo. Private helper
+ * spellings are inferred; class ownership, bodies, calls and ordering are
+ * proven.
  *
- * common.h FIRST: InitResources assigns IDENTITY_MATRIX4X3 onto mMatrix, and
- * the ROM copies it as three 4-word ldm/stm pairs. common.h's flat s32 m[12]
- * is that copy; math/Matrix.h's nested {Matrix3x3 r; Vector3 t;} splits it.
- * UpdateShadow writes translation through m[9..11].
- *
- * mwccarm emits ordinary function sections in reverse source order. Keep the
- * ROM-high factory first and OnYoshiTryEat last. InitResources is the key
- * function; together with the inline destructor in the real header this
- * naturally emits retail D1 then D0 and the class RTTI/vtable, without D2 or a
- * forcing object.
- *
- * deslop leftovers:
- * - dCcAcPos_c::Init / dBgCh_Actr::Init / DropShadowRadHeight / Player::Hurt
- *   6az: this TU passes Fix12<int> by value; the header method form size-DIFFs.
- *   dBgCh_Actr::Init also mangles Fix12i as `i` while the ROM is Fix12<int>.
- * - Particle::System::New / NewUnkCallback818: not shared-header declared.
- * - dBgCh_Actr_UpdateDiscreteNoLava_veneer (UpdateCollision): the named
- *   UpdateDiscreteNoLava method is WRONG-DEST (ROM 0x02038420).
- * - data_ov071_021230b8 collision-offset words; overlay .data owns them.
- * - DaEyBmVector3Words: Vector3's empty D1 would instantiate in this TU.
- * - UpdateCollision R10dBgCh_Actr: a pointer would generate identical ARM.
- * - S14: g_profile_EYEKUN_BEAM stays outside the licensed .text.
- * - no Camera.h.
+ * leftovers:
+ * - common.h first is load-bearing: InitResources assigns
+ *   IDENTITY_MATRIX4X3 as three 4-word ldm/stm copies, which the flat
+ *   s32 m[12] spelling reproduces and math/Matrix.h's nested {r,t}
+ *   splits. UpdateShadow's m[9..11] writes come from the same layout.
+ * - ROM-descending source order: the factory stays first and
+ *   OnYoshiTryEat last. InitResources is the key function; the inline
+ *   destructor emits D1 then D0, the RTTI/vtable, and no D2.
+ * - DaEyBmVector3Words, not Vector3: a Vector3 stack local would
+ *   instantiate its vague-linkage D1 into this TU. EyBmVec3's
+ *   declared-not-defined destructor is that D1's alias.
+ * - dCcAcPos_c::Init, dBgCh_Actr::Init, DropShadowRadHeight and
+ *   Player::Hurt stay mangled: by-value Fix12<int> is wall 6az, and
+ *   dBgCh_Actr::Init's header also mangles Fix12i as `i` where the ROM
+ *   has 5Fix12IiE.
+ * - Particle::System::New / NewUnkCallback818 stay mangled: no shared
+ *   header declares them. The UpdateDiscreteNoLava veneer stays because
+ *   the named method is WRONG-DEST (ROM 0x02038420).
+ * - data_ov071_021230b8 is this TU's sinit-constructed bss;
+ *   g_profile_EYEKUN_BEAM is overlay data outside its .text.
+ * - UpdateCollision takes R10dBgCh_Actr: a pointer would emit identical
+ *   ARM.
  */
 
 #include "common.h"
@@ -44,6 +48,20 @@ namespace Particle { struct Callback; }
  * these stack values are plain fixed-point words and must not instantiate its
  * otherwise unrelated vague-linkage D1 in this class TU. */
 struct DaEyBmVector3Words { Fix12i x, y, z; };
+
+/* Dynamic offset at 0x021230b8. A user constructor keeps the three stores in
+ * the sinit (bss, not .data). The undefined destructor is Vector3's D1. */
+struct EyBmVec3 {
+    int x, y, z;
+    EyBmVec3(int a, int b, int c) {
+        x = a;
+        y = b;
+        z = c;
+    }
+    ~EyBmVec3();
+};
+
+extern EyBmVec3 data_ov071_021230b8;
 
 /* Typed reconstruction of the actor-table descriptor at ov071:0x02122dc4. */
 struct DaEyBmSpawnInfo {
@@ -60,8 +78,7 @@ struct DaEyBmSpawnInfo {
 typedef char DaEyBmSpawnInfo_size_must_be_0x1c[
     sizeof(DaEyBmSpawnInfo) == 0x1c ? 1 : -1];
 
-/* Leaf
- * operator new forwards fBase_c::operator new; the implicit constructor
+/* The leaf operator new forwards fBase_c::operator new; the implicit constructor
  * emits the measured dActor_c C2, vptr store, and three member C1s. */
 // @symbol daEyBm_c_classInit
 extern "C" daEyBm_c *daEyBm_c_classInit()
@@ -80,7 +97,7 @@ extern "C" DaEyBmSpawnInfo g_profile_EYEKUN_BEAM = {
     0x01000000
 };
 
-
+// @symbol _ZN8daEyBm_c13InitResourcesEv
 extern "C" {
 /* Known by-value Fix12 compiler walls: these exact ABI imports preserve the
  * retail register calling convention while the owned objects remain typed. */
@@ -91,7 +108,6 @@ extern int _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(
     dBgCh_Actr *collision, dActor_c *actor, Fix12i radius, Fix12i height,
     void *a, void *b);
 extern Matrix4x3 IDENTITY_MATRIX4X3;
-extern DaEyBmVector3Words data_ov071_021230b8;
 }
 
 int daEyBm_c::InitResources()
@@ -116,7 +132,7 @@ int daEyBm_c::InitResources()
     return 1;
 }
 
-
+// @symbol _ZN8daEyBm_c8BehaviorEv
 extern "C" {
 extern void Matrix4x3_FromRotationY(Matrix4x3 *matrix, s16 angle);
 extern void Matrix4x3_ApplyInPlaceToRotationX(Matrix4x3 *matrix, s16 angle);
@@ -130,7 +146,7 @@ extern Matrix4x3 data_020a0e68;
 int daEyBm_c::Behavior()
 {
     DaEyBmVector3Words offset;
-    DaEyBmVector3Words speed;
+    DaEyBmVector3Words velocity;
     int flags = mFlags;
     int destroying = (int)((flags & 0x40000) != 0);
     int beingEaten;
@@ -139,16 +155,16 @@ int daEyBm_c::Behavior()
 
     beingEaten = (int)((flags & 0x20000) != 0);
     if (!beingEaten) {
-        offset = data_ov071_021230b8;
+        offset = *(DaEyBmVector3Words *)&data_ov071_021230b8;
         mdCcAcPos_c.SetPosRelativeToActor(*(Vector3 *)&offset);
 
-        speed.z = mHorzSpeed;
-        speed.x = 0;
-        speed.y = 0;
+        velocity.z = mHorzSpeed;
+        velocity.x = 0;
+        velocity.y = 0;
         Matrix4x3_FromRotationY(&data_020a0e68, mPrevAngleY);
         Matrix4x3_ApplyInPlaceToRotationX(&data_020a0e68, mPrevAngleX);
         MulVec3Mat4x3(
-            &speed, &data_020a0e68, (DaEyBmVector3Words *)&unk_0a4);
+            &velocity, &data_020a0e68, (DaEyBmVector3Words *)&unk_0a4);
 
         /* Retail retains a typed whole-vector writeback after the transform. */
         *(DaEyBmVector3Words *)&unk_0a4 =
@@ -168,7 +184,7 @@ int daEyBm_c::Behavior()
     return 1;
 }
 
-
+// @symbol _ZN8daEyBm_c6RenderEv
 extern "C" u32 _ZN8Particle6System17NewUnkCallback818Ejj5Fix12IiES2_S2_PK11Vector3_16f(
     u32 handle, u32 effectID, Fix12i x, Fix12i y, Fix12i z,
     const Vector3_16f *rotation);
@@ -183,20 +199,19 @@ int daEyBm_c::Render()
             mParticle2, 0x47, mPosX, mPosY, mPosZ, 0);
     return 1;
 }
-
-
+// @symbol _ZN8daEyBm_c16OnPendingDestroyEv
 void daEyBm_c::OnPendingDestroy()
 {
 }
 
-
+// @symbol _ZN8daEyBm_c16CleanupResourcesEv
 int daEyBm_c::CleanupResources()
 {
     return 1;
 }
-
-extern "C" void _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
-    dActor_c *actor, ShadowModel *shadow, Matrix4x3 *matrix,
+// @symbol _ZN8daEyBm_c12UpdateShadowEv
+extern "C" void _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_j(
+    dActor_c *actor, dExtShadowModel_c *shadow, Matrix4x3 *matrix,
     Fix12i radius, Fix12i depth, u32 opacity);
 
 void daEyBm_c::UpdateShadow()
@@ -212,13 +227,14 @@ void daEyBm_c::UpdateShadow()
         depth = (mPosY - ground.clsnY) + 0x1e000;
     else
         depth = 0x1f4000;
-    _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
+    _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_j(
         this, &mShadowModel, &mMatrix, 0x50000, depth, 0xf);
 }
 
 /*
  * 0x02121ba4, size 0xc8. Player::Hurt retains the measured by-value Fix12
  * ABI seam; Player itself and all accessed fields are the real type. */
+// @symbol _ZN8daEyBm_c10HurtPlayerEv
 extern "C" void _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(
     Player *player, const DaEyBmVector3Words *position, u32 source,
     Fix12i amount, u32 a, u32 b, u32 c);
@@ -254,6 +270,7 @@ void daEyBm_c::HurtPlayer()
  * 0x02121b50, size 0x54. The coined mangling uses a reference; a pointer
  * would generate identical ARM. The retail caller passes the owned
  * collision subobject explicitly in r1. */
+// @symbol _ZN8daEyBm_c15UpdateCollisionER10dBgCh_Actr
 extern "C" void dBgCh_Actr_UpdateDiscreteNoLava_veneer(dBgCh_Actr *collision);
 
 void daEyBm_c::UpdateCollision(dBgCh_Actr &collision)
@@ -266,6 +283,7 @@ void daEyBm_c::UpdateCollision(dBgCh_Actr &collision)
 /*
  * 0x02121b08, size 0x48. Particle::System::New is not yet shared-header
  * declared, so this exact typed ABI import remains local. */
+// @symbol _ZN8daEyBm_c18SpawnDestroyEffectEv
 extern "C" u32 _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
     u32 uniqueID, u32 effectID, Fix12i x, Fix12i y, Fix12i z,
     const Vector3_16f *rotation, Particle::Callback *callback);
@@ -278,11 +296,13 @@ void daEyBm_c::SpawnDestroyEffect()
     MarkForDestruction();
 }
 
-
+// @symbol _ZN8daEyBm_c13OnYoshiTryEatEv
 int daEyBm_c::OnYoshiTryEat()
 {
     return 4;
 }
 
-/* The inline class
- * destructor and InitResources vtable instantiation emit both naturally. */
+EyBmVec3 data_ov071_021230b8(0, -0x19000, 0);
+// @symbol _ZN8daEyBm_cD1Ev
+// @symbol _ZN8daEyBm_cD0Ev
+/* The inline class destructor and InitResources vtable instantiation emit both naturally. */

@@ -1,20 +1,10 @@
 //cpp
+#include "dScene_c.h"
 #include "types.h"
-struct Fader {
+struct dFader_c {
     Fix12i currInterp;
     Fix12i speed;
-#ifdef _MSC_VER
-    /* THE DESTRUCTOR TAKES TWO SLOTS, AS IT DOES IN THE ROM TABLE. mwcc gives a
-       virtual destructor two entries (D1, D0), MSVC folds them into one, so
-       every virtual below sat one slot early on the PC: SetToStart reached
-       0x20 (SetToEnd) and SetToEnd reached 0x1c. The wipe objects' tables
-       are ROM-ordered (include/Fader.h: 0x20 SetToEnd, 0x24 SetToStart), so
-       two placeholder slots stand where D1 and D0 stand. */
-    virtual void Destructor1();
-    virtual void Destructor0();
-#else
-    virtual ~Fader();
-#endif
+    virtual ~dFader_c();
     virtual int Advance();
     virtual int SetBackwardTime(unsigned frames);
     virtual int SetForwardTime(unsigned frames);
@@ -25,17 +15,12 @@ struct Fader {
     virtual void SetToStart();
 };
 
-/* FaderWipe: Fader(0x0c) + color(2)+unk0e(2) + model(0x50) = 0x60 */
-struct FaderWipe : Fader {
+/* dFdWipe_c: dFader_c(0x0c) + color(2)+unk0e(2) + model(0x50) = 0x60 */
+struct dFdWipe_c : dFader_c {
     u16 color;
     u16 unk0e;
     u32 model[0x50/4];
-#ifdef _MSC_VER
-    virtual void Destructor1();
-    virtual void Destructor0();
-#else
-    virtual ~FaderWipe();
-#endif
+    virtual ~dFdWipe_c();
     virtual int Advance();
     virtual int SetBackwardTime(unsigned frames);
     virtual int SetForwardTime(unsigned frames);
@@ -46,16 +31,15 @@ struct FaderWipe : Fader {
     virtual void SetToStart();
 };
 
-/* The fader wipe array. Stage::InitResources fills this with
-   func_02073470(7, 0x60, 8, &FaderWipeC1, &FaderWipeD1): seven objects of 0x60,
-   which is sizeof(FaderWipe). Stage::CleanupResources tears the array down and
+/* The fader wipe array. dScStage_c::InitResources fills this with
+   func_02073470(7, 0x60, 8, &dFdWipe_cC1, &dFdWipe_cD1): seven objects of 0x60,
+   which is sizeof(dFdWipe_c). dScStage_c::CleanupResources tears the array down and
    zeroes it. Named data_0209f324 because that is the symbol; every other
    consumer of this address spells it the same way. */
-extern FaderWipe* data_0209f324;
-extern "C" void _ZN8dScene_c9SetFadersEP15FaderBrightness(FaderWipe* f);
+extern dFdWipe_c* data_0209f324;
 
 extern "C" void StartEntranceFaderWipe(int index) {
-    FaderWipe* f = &data_0209f324[index];
-    _ZN8dScene_c9SetFadersEP15FaderBrightness(f);
+    dFdWipe_c* f = &data_0209f324[index];
+    dScene_c::SetFaders((dFdBrightness_c *)f);
     f->SetToEnd();
 }

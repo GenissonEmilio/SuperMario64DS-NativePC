@@ -37,7 +37,7 @@ Reconstructed code has a characteristic smell. Flag it:
   obvious. The answer is very often already in a comment somewhere in the tree —
   grep the field offset before declaring it unknowable.
 
-  **But that heuristic inverts on the ov006 scene classes, where a sibling hit
+  **But that heuristic inverts on the [ov006](../../../config/arm9/overlays/ov006/symbols.txt) scene classes, where a sibling hit
   is actively misleading.** Those classes overlap addresses with different
   layouts, so the same offset means unrelated things in different ones: `0x51c8`
   is a `u16` on a 0x24 stride in `dScMgSound_c` and something else entirely in
@@ -115,7 +115,7 @@ builder can re-run the full gates. Do not rely on the builder to catch a moved
 byte — by then you have lost which batch did it, and both humanizer runs to date
 needed a bisect for exactly that reason.
 
-**Do not rebase a branch that is already on the remote.** Stage 2 pushes before
+**Do not rebase a branch that is already on the remote.** dScStage_c 2 pushes before
 you start, so a rebase makes your push a non-fast-forward against the remote's
 copy of the same commit, and repairing it costs an add/add conflict on the
 promoted `.cpp`. Merge `origin/main` in instead. Force-pushes are blocked here.

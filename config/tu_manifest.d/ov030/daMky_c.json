@@ -8,13 +8,14 @@
   "boundary_evidence": [
     "contiguous linker run: 0x2111688..0x21145e0, 44 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daMky_c",
-    "module sinit corroboration: 3 sinit(s) / 3 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 3 sinit(s) / 3 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "fold-lane-c-0929: two loose one-function registry factories, src/d_a_mky_monkey_star.c (MONKEY_STAR, 0x021145e0..0x02114638) and src/d_a_mky_monkey_thief.c (MONKEY_THIEF, 0x02114638..0x02114690), sit immediately after this TU's OnTurnIntoEgg with no gap before the next symbol, __sinit_ov030_0211484c (the module's static initializer at 0x0211484c, outside this .text run); folded in ROM order as `return new daMky_c();` twice -- daMky_c declares no constructor of its own, so the compiler-synthesized default constructor reproduces each loose file's hand-written fBase_c::operator new(972) + dActor_c::dActor_c() + vtable store + ModelAnim/dExtShadowModel_c/dCcAc_c/dBgCh_Actr/PathPtr sub-object construction sequence byte-for-byte."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x02111688",
-      "end": "0x021145e0"
+      "end": "0x02114690"
     }
   ],
   "functions": [
@@ -40,77 +41,77 @@
       "ordinal": 2
     },
     {
-      "symbol": "func_ov030_02111734",
+      "symbol": "_ZN7daMky_c19func_ov030_02111734Ev",
       "address": "0x02111734",
       "size": "0x0000015c",
       "legacy_source": "src/func_ov030_02111734.c",
       "ordinal": 3
     },
     {
-      "symbol": "func_ov030_02111890",
+      "symbol": "_ZN7daMky_c19func_ov030_02111890Ev",
       "address": "0x02111890",
       "size": "0x00000078",
       "legacy_source": "src/func_ov030_02111890.c",
       "ordinal": 4
     },
     {
-      "symbol": "func_ov030_02111908",
+      "symbol": "_ZN7daMky_c19func_ov030_02111908Ev",
       "address": "0x02111908",
       "size": "0x000000f8",
       "legacy_source": "src/func_ov030_02111908.c",
       "ordinal": 5
     },
     {
-      "symbol": "func_ov030_02111a00",
+      "symbol": "_ZN7daMky_c19func_ov030_02111a00Ev",
       "address": "0x02111a00",
       "size": "0x00000120",
       "legacy_source": "src/func_ov030_02111a00.c",
       "ordinal": 6
     },
     {
-      "symbol": "func_ov030_02111b20",
+      "symbol": "_ZN7daMky_c19func_ov030_02111b20Ev",
       "address": "0x02111b20",
       "size": "0x000000a4",
       "legacy_source": "src/func_ov030_02111b20.c",
       "ordinal": 7
     },
     {
-      "symbol": "func_ov030_02111bc4",
+      "symbol": "_ZN7daMky_c19func_ov030_02111bc4Ev",
       "address": "0x02111bc4",
       "size": "0x0000020c",
       "legacy_source": "src/func_ov030_02111bc4.c",
       "ordinal": 8
     },
     {
-      "symbol": "func_ov030_02111dd0",
+      "symbol": "_ZN7daMky_c19func_ov030_02111dd0Ev",
       "address": "0x02111dd0",
       "size": "0x000000d4",
       "legacy_source": "src/func_ov030_02111dd0.cpp",
       "ordinal": 9
     },
     {
-      "symbol": "func_ov030_02111ea4",
+      "symbol": "_ZN7daMky_c19func_ov030_02111ea4Ev",
       "address": "0x02111ea4",
       "size": "0x000000c8",
       "legacy_source": "src/func_ov030_02111ea4.cpp",
       "ordinal": 10
     },
     {
-      "symbol": "func_ov030_02111f6c",
+      "symbol": "_ZN7daMky_c19func_ov030_02111f6cEP10dBgCh_Actr",
       "address": "0x02111f6c",
       "size": "0x00000128",
       "legacy_source": "src/func_ov030_02111f6c.cpp",
       "ordinal": 11
     },
     {
-      "symbol": "func_ov030_02112094",
+      "symbol": "_ZN7daMky_c19func_ov030_02112094Ev",
       "address": "0x02112094",
       "size": "0x0000021c",
       "legacy_source": "src/func_ov030_02112094.cpp",
       "ordinal": 12
     },
     {
-      "symbol": "func_ov030_021122b0",
+      "symbol": "_ZN7daMky_c19func_ov030_021122b0Ev",
       "address": "0x021122b0",
       "size": "0x000000f4",
       "legacy_source": "src/func_ov030_021122b0.cpp",
@@ -124,7 +125,7 @@
       "ordinal": 14
     },
     {
-      "symbol": "func_ov030_02112400",
+      "symbol": "_ZN7daMky_c19func_ov030_02112400Ev",
       "address": "0x02112400",
       "size": "0x00000160",
       "legacy_source": "src/func_ov030_02112400.cpp",
@@ -138,7 +139,7 @@
       "ordinal": 16
     },
     {
-      "symbol": "func_ov030_02112578",
+      "symbol": "_ZN7daMky_c19func_ov030_02112578Ev",
       "address": "0x02112578",
       "size": "0x0000049c",
       "legacy_source": "src/func_ov030_02112578.c",
@@ -152,7 +153,7 @@
       "ordinal": 18
     },
     {
-      "symbol": "func_ov030_02112a84",
+      "symbol": "_ZN7daMky_c19func_ov030_02112a84Ev",
       "address": "0x02112a84",
       "size": "0x00000190",
       "legacy_source": "src/func_ov030_02112a84.c",
@@ -166,7 +167,7 @@
       "ordinal": 20
     },
     {
-      "symbol": "func_ov030_02112da0",
+      "symbol": "_ZN7daMky_c19func_ov030_02112da0Ev",
       "address": "0x02112da0",
       "size": "0x00000258",
       "legacy_source": "src/func_ov030_02112da0.c",
@@ -180,7 +181,7 @@
       "ordinal": 22
     },
     {
-      "symbol": "func_ov030_02113094",
+      "symbol": "_ZN7daMky_c19func_ov030_02113094Ev",
       "address": "0x02113094",
       "size": "0x00000240",
       "legacy_source": "src/func_ov030_02113094.c",
@@ -194,7 +195,7 @@
       "ordinal": 24
     },
     {
-      "symbol": "func_ov030_02113324",
+      "symbol": "_ZN7daMky_c19func_ov030_02113324Ev",
       "address": "0x02113324",
       "size": "0x000002e8",
       "legacy_source": "src/func_ov030_02113324.cpp",
@@ -208,7 +209,7 @@
       "ordinal": 26
     },
     {
-      "symbol": "func_ov030_021136b0",
+      "symbol": "_ZN7daMky_c19func_ov030_021136b0Ev",
       "address": "0x021136b0",
       "size": "0x000003d0",
       "legacy_source": "src/func_ov030_021136b0.c",
@@ -222,7 +223,7 @@
       "ordinal": 28
     },
     {
-      "symbol": "func_ov030_02113b38",
+      "symbol": "_ZN7daMky_c19func_ov030_02113b38Ev",
       "address": "0x02113b38",
       "size": "0x000000b0",
       "legacy_source": "src/func_ov030_02113b38.cpp",
@@ -236,7 +237,7 @@
       "ordinal": 30
     },
     {
-      "symbol": "func_ov030_02113d20",
+      "symbol": "_ZN7daMky_c19func_ov030_02113d20Ev",
       "address": "0x02113d20",
       "size": "0x000002b8",
       "legacy_source": "src/func_ov030_02113d20.c",
@@ -250,7 +251,7 @@
       "ordinal": 32
     },
     {
-      "symbol": "func_ov030_02113ff0",
+      "symbol": "_ZN7daMky_c19func_ov030_02113ff0Ev",
       "address": "0x02113ff0",
       "size": "0x00000134",
       "legacy_source": "src/func_ov030_02113ff0.cpp",
@@ -264,21 +265,21 @@
       "ordinal": 34
     },
     {
-      "symbol": "func_ov030_02114134",
+      "symbol": "_ZN7daMky_c19func_ov030_02114134Ev",
       "address": "0x02114134",
       "size": "0x0000003c",
       "legacy_source": "src/func_ov030_02114134.cpp",
       "ordinal": 35
     },
     {
-      "symbol": "func_ov030_02114170",
+      "symbol": "_ZN7daMky_c19func_ov030_02114170Ev",
       "address": "0x02114170",
       "size": "0x00000038",
       "legacy_source": "src/func_ov030_02114170.cpp",
       "ordinal": 36
     },
     {
-      "symbol": "func_ov030_021141a8",
+      "symbol": "_ZN7daMky_c19func_ov030_021141a8Ei",
       "address": "0x021141a8",
       "size": "0x0000001c",
       "legacy_source": "src/func_ov030_021141a8.c",
@@ -325,6 +326,20 @@
       "size": "0x0000000c",
       "legacy_source": "src/_ZN7daMky_c13OnTurnIntoEggER6Player.cpp",
       "ordinal": 43
+    },
+    {
+      "symbol": "daMky_c_classInit_MONKEY_STAR",
+      "address": "0x021145e0",
+      "size": "0x00000058",
+      "legacy_source": "src/d_a_mky_monkey_star.c",
+      "ordinal": 44
+    },
+    {
+      "symbol": "daMky_c_classInit_MONKEY_THIEF",
+      "address": "0x02114638",
+      "size": "0x00000058",
+      "legacy_source": "src/d_a_mky_monkey_thief.c",
+      "ordinal": 45
     }
   ],
   "data": [],
@@ -372,7 +387,7 @@
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_0201267c' differs between the legacy file that used to hold func_ov030_02111890 and the one that held func_ov030_02113324; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN6Player12GetTalkStateEv' differs between the legacy file that used to hold func_ov030_02112da0 and the one that held func_ov030_02113324; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN6Player9DropActorEv' differs between the legacy file that used to hold func_ov030_02112da0 and the one that held func_ov030_02113324; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN9Animation7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113324; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN15dExtFrameCtrl_c7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113324; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN5dCc_c5ClearEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113324; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'DecIfAbove0_Byte' differs between the legacy file that used to hold func_ov030_02111734 and the one that held func_ov030_02113324; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'data_020a0e68' differs between the legacy file that used to hold func_ov030_02112094 and the one that held func_ov030_02113324; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
@@ -391,11 +406,11 @@
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN6Player9DropActorEv' differs between the legacy file that used to hold func_ov030_02112da0 and the one that held func_ov030_021136b0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN8dActor_c10FindWithIDEj' differs between the legacy file that used to hold func_ov030_02111bc4 and the one that held func_ov030_021136b0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov030_021141a8' differs between the legacy file that used to hold func_ov030_02111bc4 and the one that held func_ov030_021136b0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN9Animation7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_021136b0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN15dExtFrameCtrl_c7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_021136b0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN5dCc_c5ClearEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_021136b0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'data_0209f318' differs between the legacy file that used to hold func_ov030_02113324 and the one that held func_ov030_021136b0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'data_020a0e68' differs between the legacy file that used to hold func_ov030_02112094 and the one that held func_ov030_021136b0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN9Animation7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113b38; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN15dExtFrameCtrl_c7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113b38; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN8dActor_c9UpdatePosEP5dCc_c' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113b38; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov030_02111f6c' differs between the legacy file that used to hold func_ov030_021122b0 and the one that held func_ov030_02113b38; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZNK10dBgCh_Actr13JustHitGroundEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113b38; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
@@ -414,7 +429,7 @@
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_Z14ApproachLinearRsss' differs between the legacy file that used to hold func_ov030_021122b0 and the one that held func_ov030_02113d20; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj' differs between the legacy file that used to hold func_ov030_02111a00 and the one that held func_ov030_02113d20; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov030_02111a00' differs between the legacy file that used to hold func_ov030_02112400 and the one that held func_ov030_02113d20; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN9Animation7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113d20; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN15dExtFrameCtrl_c7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113d20; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN8dActor_c9UpdatePosEP5dCc_c' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113d20; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov030_02111dd0' differs between the legacy file that used to hold func_ov030_021122b0 and the one that held func_ov030_02113d20; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov030_02111f6c' differs between the legacy file that used to hold func_ov030_021122b0 and the one that held func_ov030_02113d20; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
@@ -427,7 +442,7 @@
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj' differs between the legacy file that used to hold func_ov030_02111a00 and the one that held func_ov030_02113ff0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov030_02111a00' differs between the legacy file that used to hold func_ov030_02112400 and the one that held func_ov030_02113ff0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_Z14ApproachLinearRsss' differs between the legacy file that used to hold func_ov030_021122b0 and the one that held func_ov030_02113ff0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN9Animation7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113ff0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN15dExtFrameCtrl_c7AdvanceEv' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113ff0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN8dActor_c9UpdatePosEP5dCc_c' differs between the legacy file that used to hold func_ov030_02112a84 and the one that held func_ov030_02113ff0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov030_02111dd0' differs between the legacy file that used to hold func_ov030_021122b0 and the one that held func_ov030_02113ff0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov030_02111f6c' differs between the legacy file that used to hold func_ov030_021122b0 and the one that held func_ov030_02113ff0; kept the first, the other is commented out for review -- RESOLVED: the generated preamble was discarded wholesale. This TU hoists nothing a function body can hold, so each member keeps its own declarations at block scope inside its own extern \"C\" region and the two spellings never meet. No /* TUBUILD CONFLICT */ marker survives in the merged source.",
@@ -453,7 +468,7 @@
     "SOURCE FORM: written ROM-ascending under `#pragma defer_codegen off`. The two are one decision -- with codegen deferred mwccarm lays .text down in reverse source order and an out-of-line destructor emits D2, D0, D1; with it off the file emits in source order and the destructor emits D1, D0, D2, which is the cartridge's D1 (0x02111688) below D0 (0x021116d0). Measured: verify reports all 44 sections in ROM-ascending order.",
     "decl_common.h is deliberately NOT included, the ov006/dScMgPanel_c way. It declares data_ov030_02115cf0, data_ov030_02114824, data_ov030_02115d00 and data_02099368 with types the byte-matched shards contradict (`void *[]` against `int []`), and mwccarm 2004/b56 rejects a block-scope redeclaration of a data symbol an included header already declares -- measured here as `identifier 'data_ov030_02115cf0' redeclared`. Canonicalising the data spelling instead is the codegen hazard measured on ov002/Player. The one declaration the header was supplying that no member carried, data_ov030_02115ddc, is written out at its point of use in func_ov030_02112094.",
     "One member needed a source repair that the MERGE caused rather than the shard: func_ov030_02112a84 was a .c file whose two-int shadow struct P2 is whole-struct-assigned, and C++ scalarises what C block-moved -- 10 words differ. Respelling P2 with an array member restored 44/44. Its sibling func_ov030_02112400 had already recovered the same copy as a `double` because it was written as C++ from the start.",
-    "Two shadow class definitions were dropped rather than carried: func_ov030_021122b0 and func_ov030_02112400 each spelt their own `struct dActor_c` / `dCc_c` / `Animation` to reproduce a mangled non-virtual member call, and the merged TU already includes the real headers, which declare all five methods with the same signatures and none of them virtual. Keeping the shadows would have defined a second dActor_c and mwccarm refuses the call as a type mismatch.",
+    "Two shadow class definitions were dropped rather than carried: func_ov030_021122b0 and func_ov030_02112400 each spelt their own `struct dActor_c` / `dCc_c` / `dExtFrameCtrl_c` to reproduce a mangled non-virtual member call, and the merged TU already includes the real headers, which declare all five methods with the same signatures and none of them virtual. Keeping the shadows would have defined a second dActor_c and mwccarm refuses the call as a type mismatch.",
     "The class is written under the cartridge's RTTI spelling, daMky_c, not the tree's former coined `Ukiki`; the rename landed as its own commit ahead of this one. That is not cosmetic here: this TU owns the key function, so it emits _ZTS for its own class, and the content of a _ZTS record IS the length-prefixed class name. A coined name makes that record homeless and both dispositions refuse it -- the wall ov071/Scuttlebug hit.",
     "STAGE 3b, what converted: 20 of the 44 members are real daMky_c:: methods. Nine were already C++-named when the shards were gathered (the whole virtual interface: ~daMky_c and the seven overrides). Eleven more were converted in this pass -- EnterState0..EnterState10, at 0x02114124, 0x02113fd8, 0x02113be8, 0x02113a80, 0x0211360c, 0x021132d4, 0x02112ff8, 0x02112c14, 0x02112a14, 0x02112560 and 0x021123a4. Counted from the emitted file: 19 definitions carrying 20 mangled symbols (the destructor definition carries both D1 and D0), 24 func_ov030_* free functions, and 26 file-scope extern \"C\" regions -- one per free function plus the two shared declaration regions.",
     "STAGE 3b, why those eleven and not more. Member-ness is ROM-proven for 22 of the 35 free functions: they are the targets of the 22 pointer-to-member records at 0x02115ac8. A number is ROM-proven for eleven of those 22. Each of the eleven writes exactly one immediate to the state word at +0x3b4, and across all 44 functions the values are 0,1,2,...,10 -- none repeated, none missing -- while 0x02115e0c holds exactly 11 descriptors of 0x10 bytes. Eleven handlers, eleven descriptors, eleven consecutive ids is a bijection. func_ov030_021141a8(this, N) stores &data_ov030_02115e0c[N] at +0x3a4 and calls func_ov030_02114170, which invokes pp[0]; 021141a8 never touches +0x3b4 itself, so the body that wrote N is descriptor N's pp[0]. The other eleven records write no state id, which is the 11 x (entry, tick) split the 0x10 descriptor predicts -- but the ARRAY ORDER does not pair them (2i, 2i+1): records 4 and 5 are both entry handlers. Which tick belongs to which entry is still unproven and no name here asserts it.",
@@ -538,9 +553,9 @@
       "reason": "Vague-linkage Vector3 destructor. Vector3 carries a user-declared ~Vector3() (include/types.h) and this TU odr-uses several as function locals -- three in func_ov030_02111734 alone. One row however many objects: the emitted symbol is the single vague copy. arm9 owns the kept copy at 0x020072c0, four bytes of bx lr."
     },
     {
-      "symbol": "_ZN21Bundle$724daMky_c_cppD1Ev",
+      "symbol": "_ZN7daMky_c21Bundle$902daMky_c_cppD1Ev",
       "disposition": "deadstrip",
-      "reason": "The implicit destructor of the file-local `struct Bundle` that func_ov030_02112094 declares in its own body -- it holds a Vector3_16 and a Vector3, so the aggregate gets a destructor of its own, and mwccarm names it after the file. The name is file-scoped by construction and exists nowhere in the cartridge, so it is genuinely homeless: a plain deadstrip, not a duplicate of anything. The $724 in the name is a POSITION-DEPENDENT uniquifier, not a stable identity, and not a line number either: this row read _ZN21Bundle$701daMky_c_cppD1Ev until stage 3b added the file-scope declaration region and converted eleven members, at which point the same struct came back as $724 -- and a later 25-line comment edit above it moved nothing. The struct itself is declared inside func_ov030_02112094's body and has not moved in the source at all. Any future edit to this TU may renumber it, and the promotion then refuses with `unlicensed function ... has no compiler_only_output policy` until this row is updated. Re-read the symbol from verify's output rather than assuming it held."
+      "reason": "The implicit destructor of the file-local `struct Bundle` that func_ov030_02112094 declares in its own body -- it holds a Vector3_16 and a Vector3, so the aggregate gets a destructor of its own, and mwccarm names it after the file. The name is file-scoped by construction and exists nowhere in the cartridge, so it is genuinely homeless: a plain deadstrip, not a duplicate of anything. The $724 in the name is a POSITION-DEPENDENT uniquifier, not a stable identity, and not a line number either: this row read _ZN21Bundle$701daMky_c_cppD1Ev until stage 3b added the file-scope declaration region and converted eleven members, at which point the same struct came back as $724 -- and a later 25-line comment edit above it moved nothing. The struct itself is declared inside func_ov030_02112094's body and has not moved in the source at all. Including Player.h, SurfaceInfo.h and dBgCh_Lin.h ahead of it moved the uniquifier from $743 to $805, and hoisting the func_ov030_* methods' block-scope externs to file scope moved it to $816. Including dCamera_c.h ahead of the struct moved it to $828. Any future edit to this TU may renumber it, and the promotion then refuses with `unlicensed function ... has no compiler_only_output policy` until this row is updated. Adding the eight method declarations to include/dBgPi.h moved it to $840. The batch/maint4 extern normalization moved it to $845, batch/maint5 (folded dBgCh_Lin Set port) moved it to $846, and merging those with the six PathPtr member/static declarations in include/PathPtr.h moved it to $850. The dCamera_c member declarations on include/dCamera_c.h moved it to $851; re-read the symbol from verify's output rather than assuming it held Adding the Vector3 ctors to include/types.h moved it to $902."
     }
   ],
   "verification": {
@@ -549,17 +564,17 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov030-daMky_c/daMky_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 44,
-    "functions_declared": 44,
+    "functions_matched": 46,
+    "functions_declared": 46,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN7daMky_cD2Ev",
         "_ZN7Vector3D1Ev",
-        "_ZN21Bundle$724daMky_c_cppD1Ev"
+        "_ZN7daMky_c21Bundle$902daMky_c_cppD1Ev"
       ],
       "deadstripped": [
-        "_ZN21Bundle$724daMky_c_cppD1Ev",
         "_ZN7Vector3D1Ev",
+        "_ZN7daMky_c21Bundle$902daMky_c_cppD1Ev",
         "_ZN7daMky_cD2Ev"
       ],
       "droppedSections": [
@@ -567,10 +582,6 @@
         10,
         14,
         33,
-        90,
-        91,
-        92,
-        93,
         94,
         95,
         96,
@@ -580,7 +591,11 @@
         100,
         101,
         102,
-        103
+        103,
+        104,
+        105,
+        106,
+        107
       ],
       "data": [
         "_ZTV7daMky_c",

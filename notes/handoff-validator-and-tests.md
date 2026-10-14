@@ -42,7 +42,7 @@ grep -rlE "test_|pytest|unittest" .github/workflows/*.yml
 #   .github/workflows/src-tu-refs.yml     -> python tools/test_check_src_tu.py
 grep -oE "python tools/[a-z_]+\.py" tools/hooks/pre-push | sort -u
 #   check_duplicate_sources.py  check_references.py  eligible.py
-#   port_refcheck.py  prepush_attribution.py  prepush_linkcheck.py
+#   port_refcheck.py  prepush_linkcheck.py
 ```
 
 So 36 of the 39 are documentation that happens to be executable. They pass today -- I ran

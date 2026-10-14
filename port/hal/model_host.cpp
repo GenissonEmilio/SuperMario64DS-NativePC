@@ -217,7 +217,7 @@ void _ZN2GX16BeginLoadTexPlttEv(void) {}
 //   Palette uploads change bytes under the same cache keys; same drop.
 void _ZN2GX14EndLoadTexPlttEv(void) { hal_tex_cache_drop(); }
 
-// GX::LoadTex destination resolution (see src/_ZN2GX7LoadTexEPKvjj.cpp):
+// GX::LoadTex destination resolution (see src/engine/gx/GX.cpp):
 //   data_020a60ac  base window address        -> texture slots at 0x06800000
 //   data_020a60bc  secondary bank address     -> 0 = single flat window
 //   data_020a60c0  where the window splits    -> unused while _bc is 0
@@ -312,7 +312,7 @@ int data_0209b3ec[12];      /* camera Matrix4x3 the render walk composes */
 void *_ZTV5Model[8];
 // Same story for the animated-model hierarchy: primary vtables plus the
 // multiple-inheritance thunk table the ModelAnim ctor installs at +0x50.
-void *_ZTV9Animation[8];
+void *_ZTV15dExtFrameCtrl_c[8];
 void *_ZTV9ModelAnim[10];
 void *VTable_Animation_ModelAnimThunk[8];
 // _ZTV4dBgW: the STORAGE (C2 installs it as the vptr, and C2 rides

@@ -12,7 +12,7 @@
  * destructor is at 16/17, NOT 0/1, and vtable+0x40 (which AfterCleanupResources
  * dispatches through) is that D1 destructor, not OnPendingDestroy at slot 12.
  *
- * InitResources is declared here but src/_ZN7fBase_c13InitResourcesEv.cpp
+ * InitResources is declared here but src/actors/ActorBase.cpp
  * deliberately defines it as an extern "C" free function, because a class's
  * first non-inline virtual is its key function and CW emits the vtable into
  * whichever TU defines it -- colliding with the copy the module's gap object
@@ -45,6 +45,10 @@
    declarations of one name in a single TU, which mwcc rejects. */
 extern "C" void _ZN6Memory10DeallocateEPvP4Heap(void *, void *);
 extern "C" void *data_020a0eac;
+/* ROM body of fBase_c::operator new(unsigned) — mangled _ZN7fBase_cnwEj.
+   CW will not accept that signature as an in-class operator new (first
+   parameter is not size_t). Defined in src/actors/ActorBase.cpp. */
+extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
 struct fBase_c {
     /* Intrusive scene-graph node owned by every actor. */
@@ -157,16 +161,28 @@ struct fBase_c {
 #endif
 
     /* --- non-virtual --- */
-    void MarkForDestruction();
-    /* operator new is deliberately NOT declared here: CW rejects an in-class
-       declaration of it, so src/_ZN7fBase_cnwEj.cpp defines it under its mangled
-       name instead. It is neither virtual nor layout-affecting.
+    /* Callback types follow the configured Process signature. The cleanup,
+       behavior and render guards still declare int returns; their callers keep
+       the existing ABI records until those guard contracts are reconciled. */
+    typedef int (fBase_c::*ProcessFunction)();
+    typedef bool (fBase_c::*BeforeProcessFunction)();
+    typedef void (fBase_c::*AfterProcessFunction)(u32);
 
-       operator delete IS accepted in-class, and must be, INLINE: CW builds D0
-       (slot 17) as "run the destructor, then call operator delete", and without
-       this it calls the global _ZdlPv, which exists nowhere in this image. The
-       ROM's D0s under this class are each exactly their D1 plus the two
-       instructions this expands to. Note it reaches only fBase_c and dBase_c --
+    int Process(ProcessFunction action, BeforeProcessFunction before,
+                AfterProcessFunction after);
+    void MarkForDestruction();
+    /* size_t is unsigned long (`m`). The ROM allocator is operator new(unsigned)
+       (`j` / _ZN7fBase_cnwEj); CW rejects that signature in-class
+       ("illegal 'operator' declaration"). `return new T` binds this size_t
+       overload and forwards. Not virtual, not layout. */
+    static void *operator new(size_t size) {
+        return _ZN7fBase_cnwEj((unsigned)size);
+    }
+    /* CW builds D0 (slot 17) as "run the destructor, then call operator delete".
+       The inline class overload selects the actor heap at data_020a0eac. The
+       global _ZdlPv exists at arm9 0x0203cbf0 but uses Memory::defaultHeapPtr. The
+       deleting destructor additionally calls the actor-heap deallocator.
+       This inline overload reaches only fBase_c and dBase_c --
        CW inlines it from the class itself or its IMMEDIATE base -- which is why
        include/dActor_c.h carries its own copy. */
     void operator delete(void *ptr) { _ZN6Memory10DeallocateEPvP4Heap(ptr, data_020a0eac); }

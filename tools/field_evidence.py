@@ -19,7 +19,7 @@ This gathers the three routes to a handler and prints what each one reads:
             is where those land. Weakest route: confirm before believing it.
 
     python tools/field_evidence.py Bowser
-    python tools/field_evidence.py Dorrie --route called,scored
+    python tools/field_evidence.py daDossy_c --route called,scored
 
 Prints evidence, never verdicts. Read the handler before naming anything.
 """
@@ -56,7 +56,7 @@ def struct_body(text, ob):
 
 def load_sources():
     out = {}
-    for p in list(SRC.rglob("*")) + list((REPO / "src_tu").rglob("*")):
+    for p in SRC.rglob("*"):
         if p.suffix in (".c", ".cpp"):
             out[p.name] = (p, p.read_text(encoding="utf-8", errors="replace"))
     return out

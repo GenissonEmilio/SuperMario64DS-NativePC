@@ -19,11 +19,15 @@ WHAT IS DERIVED, AND FROM WHAT
 already_promoted   every named class has a config/tu_manifest.d entry whose
                    status is exactly `promoted`.
 shard_count        distinct src/ files covering the TU's ROM run, where the run
-                   is tu_map.py's unit EXTENDED over zero-gap neighbours named
-                   <Class>_classInit / <Class>_Spawn. tu_map cuts on symbol
-                   NAME, so those factories fall outside a run they physically
-                   abut; absorbing them adds a member to about 50 rows. It is
-                   still a FLOOR -- any other unlabelled neighbour is uncounted.
+                   is tu_map.py's unit EXTENDED over zero-gap neighbours that
+                   are the row's factory under either spelling:
+                   <row class>_classInit / _Spawn, or the ROM RTTI name of that
+                   class. The two names are one class when they share a vtable
+                   address (`_ZTV` symbol joined to the build/rtti.json record).
+                   tu_map cuts on symbol NAME, and srcpath.class_of only matches
+                   `_Spawn` (`^(\\w+)_Spawn$`), so `*_classInit` is never labelled
+                   and falls outside a run it physically abuts. Still a FLOOR --
+                   any other unlabelled neighbour is uncounted.
 unmatched:N        delink entries in the run with no `complete` marker.
                    The NAME MISLEADS: it is a link condition, not a matching
                    one. Measured on ov066/Eyerok, all six `unmatched` shards
@@ -82,6 +86,142 @@ PRAGMA_RE = re.compile(r"^\s*#pragma\s+\w+")
 BASE_RE = re.compile(
     r"^\s*(?:class|struct)\s+([A-Za-z_]\w*)\s*:\s*"
     r"(?:public\s+|private\s+|protected\s+|virtual\s+)*([A-Za-z_][\w:]*)\s*(?:,|\{|$)")
+# A class a header DEFINES. The brace is required, so `struct C;` -- which
+# declares nothing a TU can be compiled against -- does not count. Matching the
+# looser form would retire a real blocker, which is the expensive direction.
+DEFN_RE = re.compile(r"^\s*(?:class|struct)\s+([A-Za-z_]\w*)\s*(?::[^;{]*)?\{")
+NO_HEADER_RE = re.compile(r"classif:no-header:([A-Za-z_]\w*)$")
+# A plain class vtable, `_ZTV<length><name>`, with the length consuming the name.
+# Nested `_ZTVN...` and abi/std vtables are not a class spelling.
+VT_RE = re.compile(r"^(_ZTV\S+)\s+kind:\S+\s+addr:(0x[0-9a-fA-F]+)")
+VT_CLASS_RE = re.compile(r"^_ZTV(\d+)(.+)$")
+
+
+def vtable_class(symbol):
+    """Class a `_ZTV<len><Name>` symbol names, or None."""
+    m = VT_CLASS_RE.match(symbol)
+    if not m:
+        return None
+    n = int(m.group(1))
+    rest = m.group(2)
+    return rest if len(rest) == n else None
+
+
+def rtti_vtable_names(path=None):
+    """{(module, vtable addr): {ROM class name}} from build/rtti.json.
+
+    An address the ROM assigns to more than one record is left as a set of
+    that size so the caller can refuse it. Overlays reuse virtual addresses;
+    the module keeps those apart.
+    """
+    path = RTTI if path is None else path
+    out = collections.defaultdict(set)
+    if not path.is_file():
+        return out
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for rec in data.get("records", {}).values():
+        vt, mod, name = rec.get("vtable"), rec.get("vtable_module"), rec.get("name")
+        if not vt or not mod or not name:
+            continue
+        try:
+            addr = int(vt, 16)
+        except ValueError:
+            continue
+        out[(mod, addr)].add(name)
+    return out
+
+
+def class_aliases(vt_names, rom_names):
+    """{spelling: frozenset of every spelling of that class}.
+
+    `vt_names` and `rom_names` are `{(module, vtable addr): {names}}`. A coined
+    `_ZTV` and the ROM record are the same class when they share that address.
+    Two ROM names on one address are a collision, not an alias, and are not
+    joined. Classes with a single spelling are absent: the caller compares the
+    factory stem to the row directly.
+    """
+    parent = {}
+
+    def find(x):
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    for key in set(vt_names) | set(rom_names):
+        group = set(vt_names.get(key, ()))
+        roms = rom_names.get(key, ())
+        if len(roms) == 1:
+            group.update(roms)
+        if len(group) < 2:
+            continue
+        names = sorted(group)
+        for n in names[1:]:
+            union(names[0], n)
+    groups = collections.defaultdict(set)
+    for n in list(parent):
+        groups[find(n)].add(n)
+    out = {}
+    for g in groups.values():
+        frozen = frozenset(g)
+        for n in g:
+            out[n] = frozen
+    return out
+
+
+def factory_stem(name):
+    """Class spelling of a `<Class>_classInit[_ID]` or `<Class>_Spawn` symbol.
+
+    None when `name` is not one of those. `srcpath.class_of` cannot answer
+    this: its spawn pattern is `^(\\w+)_Spawn$`, so a `_classInit` factory,
+    including one with a profile suffix, returns None.
+    """
+    stem = name.rsplit("_classInit", 1)[0].rsplit("_Spawn", 1)[0]
+    return None if stem == name else stem
+
+
+def same_class(stem, classes, aliases):
+    """True when `stem` is a row class, or the other spelling of one."""
+    if stem in classes:
+        return True
+    group = aliases.get(stem)
+    return group is not None and not group.isdisjoint(classes)
+
+
+def extend_over_factories(symbols, classes, start, end, aliases=None):
+    """Widen `[start, end)` across zero-gap factories of `classes`.
+
+    The factory may be spelled with the row's class or with the ROM RTTI name
+    (`aliases`). A neighbour that does not abut, or that names some other
+    class, stays outside: the zero gap is the linker's contiguity rule, and
+    the name is what says the gap is this TU's factory rather than the next
+    TU's. Returns `(start, end, absorbed names)`.
+    """
+    aliases = aliases or {}
+    wanted = set(classes)
+    absorbed = []
+    changed = True
+    while changed:
+        changed = False
+        for addr, size, name in symbols:
+            stem = factory_stem(name)
+            if stem is None or not same_class(stem, wanted, aliases) or start <= addr < end:
+                continue
+            if addr == end:
+                end = addr + size
+            elif addr + size == start:
+                start = addr
+            else:
+                continue
+            changed = True
+            absorbed.append(name)
+    return start, end, absorbed
 
 
 def split_blockers(s):
@@ -136,11 +276,15 @@ class Graph:
         self.rtti_names = {v["name"] for v in rt["records"].values()}
 
         self.hdr_parent = collections.defaultdict(set)
+        self.hdr_defines = set()
         for f in glob.glob(str(REPO / "include" / "**" / "*.h"), recursive=True):
             for line in open(f, encoding="utf-8", errors="replace"):
                 m = BASE_RE.match(line)
                 if m and m.group(1) != m.group(2).split("::")[-1]:
                     self.hdr_parent[m.group(1)].add(m.group(2).split("::")[-1])
+                d = DEFN_RE.match(line)
+                if d:
+                    self.hdr_defines.add(d.group(1))
 
     def ancestors(self, cls, seen=frozenset()):
         """({cls} | ancestors, provenance) -- 'rtti', 'header' or 'unknown'."""
@@ -185,18 +329,26 @@ class Graph:
 class Tree:
     def __init__(self):
         self.sym = collections.defaultdict(list)
+        vt_names = collections.defaultdict(set)
         for f in glob.glob(str(REPO / "config" / "arm9" / "overlays" / "*" / "symbols.txt")) \
                 + [str(REPO / "config" / "arm9" / "symbols.txt")]:
             if not os.path.exists(f):
                 continue
             mod = os.path.basename(os.path.dirname(f))
             for line in open(f, encoding="utf-8", errors="replace"):
-                m = SYM_RE.match(line.strip())
-                if not m:
+                stripped = line.strip()
+                m = SYM_RE.match(stripped)
+                if m:
+                    sz = re.search(r"size=(0x[0-9a-fA-F]+)", m.group(2))
+                    self.sym[mod].append(
+                        (int(m.group(3), 16), int(sz.group(1), 16) if sz else 4, m.group(1)))
                     continue
-                sz = re.search(r"size=(0x[0-9a-fA-F]+)", m.group(2))
-                self.sym[mod].append(
-                    (int(m.group(3), 16), int(sz.group(1), 16) if sz else 4, m.group(1)))
+                vm = VT_RE.match(stripped)
+                if not vm:
+                    continue
+                cls = vtable_class(vm.group(1))
+                if cls:
+                    vt_names[(mod, int(vm.group(2), 16))].add(cls)
         for k in self.sym:
             self.sym[k].sort()
 
@@ -246,6 +398,10 @@ class Tree:
                 if d.get("status") == "promoted":
                     self.promoted.add(c)
 
+        # Coined row name and ROM RTTI name of one class. Built from the vtable
+        # symbols just read plus build/rtti.json, which Graph already requires.
+        self.aliases = class_aliases(vt_names, rtti_vtable_names())
+
     def cover(self, mod, addr):
         for a, b, path, complete in self.delink.get(mod, []):
             if a <= addr < b:
@@ -258,27 +414,14 @@ class Tree:
         if not u or len(u) != 1:
             return None
         mod, unit = u[0]
-        a, b = int(unit["start"], 16), int(unit["end"], 16)
-
-        # tu_map labels on symbol NAME, so a factory spelled <Class>_classInit
-        # rather than _ZN<len><Class>... is never labelled and never lands in
-        # the run -- even when it abuts it with a zero-byte gap. Absorb exactly
-        # those: the name ties it to a class the row already names, and the
-        # zero gap is what the linker's contiguity rule needs.
-        absorbed, changed = [], True
-        while changed:
-            changed = False
-            for addr, size, name in self.sym.get(mod, []):
-                stem = name.rsplit("_classInit", 1)[0].rsplit("_Spawn", 1)[0]
-                if stem == name or stem not in classes or a <= addr < b:
-                    continue
-                if addr == b:
-                    b, changed = addr + size, True
-                elif addr + size == a:
-                    a, changed = addr, True
-                else:
-                    continue
-                absorbed.append(name)
+        a0, b0 = int(unit["start"], 16), int(unit["end"], 16)
+        # tu_map labels on symbol NAME. A factory spelled <Class>_classInit is
+        # not a mangled method, and class_of does not recognise `_classInit`,
+        # so it never lands in the run -- even when it abuts it with a zero-byte
+        # gap. The row may use the coined spelling while the symbol uses the ROM
+        # one, or the reverse; either is this class when the vtables coincide.
+        a, b, absorbed = extend_over_factories(
+            self.sym.get(mod, []), classes, a0, b0, self.aliases)
 
         srcs, incomplete, sourceless, orphan = set(), set(), [], []
         for addr, _size, name in self.sym.get(mod, []):
@@ -337,12 +480,17 @@ NOTES = [
     "# HOW TO READ THIS FILE. Rows whose first field starts with '#' are notes;",
     "# tools/classqueue.py skips them. Re-derive the data rows with:",
     "#     python tools/rtti_extract.py && python tools/tu_map.py --out build/tu_map.json",
-    "#     python tools/queue_audit.py --write        (--check in CI, --help for the method)",
+    "#     python tools/queue_audit.py --write        (needs the ROM dump; --help for the method)",
+    "# CI runs --check-promoted, which audits already_promoted ONLY. The other columns need",
+    "# build/rtti.json and build/tu_map.json, both derived from the cartridge dump, so no",
+    "# runner can check them. A green CI run says nothing about shard_count or any blocker.",
     "#",
     "# shard_count is a FLOOR, not a figure. It counts distinct src/ files covering the TU's",
-    "# ROM run as tools/tu_map.py cuts it, extended over zero-gap <Class>_classInit factories",
-    "# tu_map cannot label because it cuts on symbol NAME. Any OTHER unlabelled neighbour is",
-    "# still uncounted. Trust `tubuild.py inspect` over this column.",
+    "# ROM run as tools/tu_map.py cuts it, extended over zero-gap factories spelled either",
+    "# <Class>_classInit or the class's ROM RTTI name (the two share a vtable address).",
+    "# tu_map cannot label those: it cuts on symbol NAME, and class_of only matches _Spawn.",
+    "# Any OTHER unlabelled neighbour is still uncounted. Trust `tubuild.py inspect` over",
+    "# this column.",
     "#",
     "# compiler-only:>=N is DERIVED from the row's own ancestor chain, not copied from",
     "# sibling_oracle -- that copy had no depth check and was wrong in both directions.",
@@ -420,6 +568,19 @@ def run(write, check):
                     changed["compiler-only"] += 1
                 out.append(cell)
                 continue
+            # Everything the loop below does not recognise falls through its
+            # `else` and is copied verbatim, so a `classif:` token written once
+            # can never be retired -- which is how `classif:no-header:<C>`
+            # survives on rows whose own has_header column reads yes. Retire it
+            # when a tracked header defines the class. The probe is keyed on the
+            # DEFINITION and not on a `<Class>.h` filename, because five of the
+            # nine it currently clears are defined in a header named after a
+            # different class: dScMgCard_c.h, dScMgMCarlo_c.h, dScMgMCarlo2_c.h
+            # and CapIcon.h.
+            d = NO_HEADER_RE.match(b)
+            if d and d.group(1) in graph.hdr_defines:
+                changed["classif:no-header"] += 1
+                continue
             for key, field in (("no-legacy-source", "no_legacy_source"),
                                ("unmatched", "unmatched")):
                 if re.match(re.escape(key) + r":(\d+)$", b) and m is not None:
@@ -465,12 +626,120 @@ def run(write, check):
     return 0
 
 
+def check_promoted_only():
+    """Audit ONLY already_promoted, from git-tracked files, for CI.
+
+    The full audit cannot run on a GitHub runner. `compiler-only` needs
+    build/rtti.json and every measured column needs build/tu_map.json, and both
+    are derived from extracted/arm9_dec.bin and extracted/overlays/*.bin -- the
+    cartridge dump, which is not in the repository. So `--check` has always been
+    a local-only gate, even though the queue's own header advertises it as
+    running in CI. It did not, and a four-day-stale row survived a same-day
+    regeneration because of it.
+
+    `already_promoted` is the exception, and it is also the column that costs
+    real work. `Tree.measure()` derives it as `all(c in self.promoted ...)`, and
+    `self.promoted` is read entirely from config/tu_manifest.d/**/*.json -- all
+    git-tracked. Nothing about it needs the ROM; it sat behind the ROM-derived
+    inputs only because it was computed inside a method that loads them for the
+    other columns.
+
+    This is deliberately ONE column. A row can be stale in shard_count,
+    total_lines or any blocker and still pass here, and the output says so, so a
+    green run is never mistaken for the full audit.
+
+    Why this column specifically: the queue is what fleet dispatch screens TU
+    candidates from. A row reading `already_promoted = no` for a class that is
+    already promoted sends an agent to redo landed work. That happened on
+    2026-09-18 with daObjTh_Fall_Block_c, promoted four days earlier; the agent
+    produced no commit because there was nothing to do, and daTrsTrap_c was next
+    on the same screen. No other column can waste an agent that way.
+
+    AN EMPTY CHECK IS NOT A PASS. No manifest entries and no rows both exit 2
+    rather than printing a reassuring `checked 0`.
+    """
+    promoted, entries = set(), 0
+    for f in glob.glob(str(REPO / "config" / "tu_manifest.d" / "**" / "*.json"),
+                       recursive=True):
+        if os.path.basename(f) == "_meta.json":
+            continue
+        entries += 1
+        d = json.loads(open(f, encoding="utf-8").read())
+        if d.get("status") == "promoted":
+            for c in d["id"].split("/")[-1].split("+"):
+                promoted.add(c)
+    if not entries:
+        print("queue_audit: no manifest entries under config/tu_manifest.d -- "
+              "relocated directory or partial checkout, not a pass", file=sys.stderr)
+        return 2
+
+    with QUEUE.open(newline="", encoding="utf-8") as fh:
+        rd = csv.DictReader(fh, delimiter="	")
+        fields, all_rows = rd.fieldnames, list(rd)
+    rows = [r for r in all_rows if not (r[fields[0]] or "").lstrip().startswith("#")]
+    if not rows:
+        print("queue_audit: the queue resolved to no rows -- not a pass",
+              file=sys.stderr)
+        return 2
+
+    # Rows carrying "-" make no promotion claim: UNATTRIBUTED and
+    # UNATTRIBUTED-CORE are aggregate counts of unplaced .text runs, not
+    # classes, and there is nothing about them for a manifest to agree with.
+    # The full audit skips them for the same reason by a different route --
+    # Tree.measure() returns None because tu_map cannot place a name that is
+    # not a class. Auditing them here would red the gate permanently on two
+    # rows that are correct, which is how a gate gets switched off.
+    wrong, no_claim = [], 0
+    for row in rows:
+        classes = [c.strip() for c in row["class_name"].split("+") if c.strip()]
+        have = (row.get("already_promoted") or "").strip()
+        if not classes:
+            continue
+        if have not in ("yes", "no"):
+            no_claim += 1
+            continue
+        want = "yes" if all(c in promoted for c in classes) else "no"
+        if have != want:
+            wrong.append((row["class_name"], row.get("overlay", "?"), have, want))
+
+    audited = len(rows) - no_claim
+    if not audited:
+        print("queue_audit: no row made a promotion claim -- not a pass",
+              file=sys.stderr)
+        return 2
+    print("queue_audit --check-promoted: %d of %d row(s) audited against %d "
+          "manifest entries (%d promoted class(es)); %d row(s) make no "
+          "promotion claim" % (audited, len(rows), entries, len(promoted), no_claim))
+    print("  checks already_promoted ONLY; shard_count, total_lines and every "
+          "blocker need the ROM dump and are NOT checked here")
+    if not wrong:
+        print("queue_audit: every row's already_promoted agrees with "
+              "config/tu_manifest.d")
+        return 0
+    for cls, ov, have, want in wrong:
+        why = ("is promoted but the queue says no" if want == "yes"
+               else "is NOT promoted but the queue says yes")
+        print("  %-28s %-7s %s (has %r, want %r)" % (cls, ov, why, have, want))
+    print("queue_audit: FAIL -- %d row(s) disagree. Regenerate with "
+          "'python tools/queue_audit.py --write' (needs the ROM dump; see --help)"
+          % len(wrong))
+    return 1
+
+
 def main():
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--write", action="store_true", help="rewrite the queue in place")
     p.add_argument("--check", action="store_true", help="exit 1 if the queue is stale")
+    p.add_argument("--check-promoted", action="store_true",
+                   help="audit ONLY already_promoted, from git-tracked files; "
+                        "needs no ROM dump, so this is the arm that runs in CI")
     args = p.parse_args()
+    if args.check_promoted:
+        if args.write or args.check:
+            p.error("--check-promoted is a standalone arm; it does not combine "
+                    "with --write or --check")
+        return check_promoted_only()
     return run(args.write, args.check)
 
 

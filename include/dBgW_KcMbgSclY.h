@@ -41,8 +41,8 @@ struct dBgW_KcMbgSclY : dBgW_KcMbg {
     virtual int DetectClsn(dBgCh_Lin &ray);               /* slot 7 */
     virtual int DetectClsn(dBgCh_SphCrr &sphere);         /* slot 8 */
 
-    /* DECLARED, never defined as a method here -- src/_ZN14dBgW_KcMbgSclYC1Ev.cpp
-       owns C1; the C2 variant has no ROM counterpart because nothing derives
+    /* Defined in src/engine/collision/dBgW_KcMbgSclY.cpp, which owns C1;
+       the C2 variant has no ROM counterpart because nothing derives
        from SclY (notes/ctor-migration.md section 2). */
     dBgW_KcMbgSclY();
 

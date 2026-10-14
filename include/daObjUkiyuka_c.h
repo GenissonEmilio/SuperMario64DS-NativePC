@@ -22,17 +22,17 @@
  * ABSTRACT. Slots 0 and 3 -- InitResources and CleanupResources -- are null. Its
  * own overrides are slots 6 (Behavior), 9 (Render), 16 (D1) and 17 (D0).
  *
- * TWO DESCENDANTS: daObjFl_Ukiyuka_c (FloatingFloorLllSmall, which has a second
- * factory daObjFl_Ukiyuka_c_classInit_FL_UKIYUKA building the same class with different
- * parameters) and daObjKm2_Ukishima_c, whose coined spelling FloatingFloorBfs is
- * retired -- see include/daObjKm2_Ukishima_c.h for the cartridge measurement.
+ * TWO DESCENDANTS: daObjFl_Ukiyuka_c (historical alias daObjFl_Ukiyuka_c,
+ * which has a second factory daObjFl_Ukiyuka_c_classInit_FL_UKIYUKA building
+ * the same class with different parameters) and daObjKm2_Ukishima_c
+ * (historical alias FloatingFloorBfs).
  *
  * FOUR FIELDS, all of them read by this class's own Behavior, ov002 0x020b6494
  * -- now `_ZN14daObjUkiyuka_c8BehaviorEv`:
  *
- *   0x320  the rest height. Behavior compares the actor's own Y at 0x60 against it
+ *   0x320  the rest height. Behavior compares mPosY against it
  *          and, when the two are equal, restarts the rest timer.
- *   0x324  the bob amplitude, multiplied by sin(phase) and subtracted from Y.
+ *   0x324  the bob amplitude, multiplied by sin(phase) and subtracted from mPosY.
  *   0x328  the bob phase, stepped 0x100 a frame.
  *   0x32a  the rest timer, 0x3c frames. While DecIfAbove0_Short is counting it
  *          down Behavior does nothing but the collider range check.
@@ -54,7 +54,7 @@
 struct daObjUkiyuka_c : dBgActor_c {
     /* Field NAMES are placeholders. Offsets, widths and types are observed. */
     s32 mRestY;             /* 0x320 */
-    s32 mBobAmplitude;      /* 0x324 */
+    Fix12i mBobAmplitude;   /* 0x324 */
     s16 mBobPhase;          /* 0x328 */
     u16 mRestTimer;         /* 0x32a */
 
@@ -78,7 +78,7 @@ struct daObjUkiyuka_c : dBgActor_c {
 #endif
 
     /* Slot 6, this class's own override, defined out of line in
-       src/_ZN14daObjUkiyuka_c8BehaviorEv.cpp. LAYOUT-NEUTRAL: it re-uses the
+       src/actors/daObjUkiyuka_c.cpp. LAYOUT-NEUTRAL: it re-uses the
        slot dBgActor_c already holds rather than appending one, and adds no
        field, so the 0x32c assert below is untouched.
 
@@ -122,7 +122,7 @@ typedef char daObjUkiyuka_c_size_must_be_0x32c[sizeof(daObjUkiyuka_c) == 0x32c ?
 struct daObjUkiyuka_c {
     u8  pad_000[0x320];
     s32 mRestY;             /* 0x320 */
-    s32 mBobAmplitude;      /* 0x324 */
+    Fix12i mBobAmplitude;   /* 0x324 */
     s16 mBobPhase;          /* 0x328 */
     u16 mRestTimer;         /* 0x32a */
 };

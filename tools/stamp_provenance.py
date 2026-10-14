@@ -403,18 +403,19 @@ def main() -> None:
             return None
 
     # Resolve credit early for dry-run (src may only exist after --promote).
-    credit_preview = resolve_credit_author(_rel_src(src_path), explicit=args.author)
+    credit_preview = resolve_credit_author(
+        _rel_src(src_path), explicit=args.author, module=module, addr=addr)
     if args.author and is_agent_credit(args.author):
         print(
             f"WARNING: --author {args.author!r} looks like an agent/harness name; "
-            f"using git credit {credit_preview!r} instead (sm64ds-style who).",
+            f"using recorded author {credit_preview!r} instead.",
             file=sys.stderr,
         )
 
     if args.dry_run:
         print(f"dry-run id={rid} name={name} module={module} addr=0x{addr:08x}")
         print(f"dry-run src={src_path} c={c_path}")
-        print(f"dry-run author={credit_preview!r}  (git who; not matchProvenance)")
+        print(f"dry-run author={credit_preview!r}  (function-authors.json; not matchProvenance)")
         print(f"dry-run matchProvenance={json_dumps(prov)}  (how only)")
         print("dry-run: no ledger write")
         return
@@ -472,12 +473,12 @@ def main() -> None:
             file=sys.stderr,
         )
 
-    credit = resolve_credit_author(src_rel, explicit=args.author)
+    credit = resolve_credit_author(
+        src_rel, explicit=args.author, module=module, addr=addr)
     if not credit:
         print(
-            "WARNING: could not resolve git credit author "
-            "(commit the src file or set git user.name/email). "
-            "Ledger how-record will still write; who may be empty.",
+            "WARNING: this function has no author in function-authors.json. "
+            "Pass --author, or add the row. The how-record will still write.",
             file=sys.stderr,
         )
     row = append_ledger_row(
@@ -486,7 +487,7 @@ def main() -> None:
         name=name,
         provenance=prov,
         src_path=src_rel,
-        author=credit,  # already git-resolved; never agent slug
+        author=credit,
     )
     who = row.get("author") or "(no author)"
     print(

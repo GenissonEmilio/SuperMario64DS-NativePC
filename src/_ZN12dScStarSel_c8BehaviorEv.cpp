@@ -1,89 +1,25 @@
 //cpp
 // @symbol _ZN12dScStarSel_c8BehaviorEv
-// NONMATCHING: 11/525 at exact size 0x834. Real dScStarSel_c method over
-// include/dScStarSel_c.h, vtable slot 6. Declaring the two touch-record globals with
-// their real 4-byte stride (u8 [][4]) is what took 20 to 19: with the stride in the
-// type, the index scale folds into each addressing mode instead of being CSE'd into
-// one live temp, so the second read refolds it off the surviving index exactly as the
-// ROM does (+0x28c ldrb r0,[r1,r0,lsl#2]). See notes 6bv lever 2.
+// Matched 2004/b56. Real dScStarSel_c method over include/dScStarSel_c.h, vtable
+// slot 6.
 //
-// 19 to 11 is the declaration block above: `idx` moved to rank 6 AND typed `long`
-// instead of `u8`. That kills the whole first cluster (8 words, +0x214..+0x2ec) -- the
-// ROM's `ldrb r2,[r0]` at +0x214 and the r0/r2 routing of `idx` against `n` that hangs
-// off it. The two edits only work together: the move alone measures 21, `long` alone
-// 31, both 11. `long` and `int` are the same 32-bit signed type here and emit the same
-// instruction, so this is a pure type-NAME rank effect, not a width effect; every other
-// local reverts to its natural type at 11 (measured one at a time).
+// The stylus-hit loop reads the touch record through a 4-byte row type (TouchRecord,
+// the gTouchHeld/gTouchEdge/gTouchX/gTouchY layout PlayerInput.h describes). The
+// record's y byte is not a named local: it is read in the loop condition straight off
+// the row, and the compiler hoists that invariant read into the preheader itself,
+// which is what gives it a fresh register. The slot index is a byte; a 32-bit index
+// CSEs idx * 4 instead of refolding it for the edge read.
 //
-// The 11 that remain are ONE cluster, +0x248..+0x278: a clean r6 <-> r7 swap between
-// `ty` and the loop-body scratch chain. `rec` dies at the `ty` load (+0x248), freeing
-// r6, and the scratch web is born one instruction later at +0x24c. Both need a
-// register and their ranges nest, so the pair is {r6, r7}; the ROM gives the recycled
-// r6 to the short loop-local scratch and the fresh r7 to `ty`, which is loop-invariant
-// (it is hoisted into the preheader at +0x248 -- the loop proper starts at +0x24c) and
-// live across the whole loop. We give `ty` the recycled r6 and the scratch r7.
-//
-// Do NOT read the old banner's 6bs verdict here: it claimed both clusters were an
-// unreachable build delta because "the ROM's compiler will not reuse a register that
-// died on the previous instruction". That is false on this body in both directions.
-// The ROM itself recycles a just-died register twice in this very block (+0x244
-// `ldrb r3,[r6,#2]` takes r3, dead at +0x240; +0x24c `add r6,r5,ip` takes r6, dead at
-// +0x248), and the first cluster fell to ordinary source-level rank levers.
-//
-// What the two sides actually disagree about is narrower: when a load's BASE register
-// holds a value whose last use is that same load, 2004/b56 takes it as the load's
-// destination, and the ROM's compiler takes it only when base and destination belong
-// to one expression chain. The ROM does dest == base 25 times in this function -- every
-// one a chained read like data_0209caa0[0x41] or the vptr walk at +0x18 -- and refuses
-// it at exactly the two sites where the destination is a distinct named value, +0x214
-// (`idx` off the pool temp) and +0x248 (`ty` off `rec`). Raising a named local's
-// colouring rank overrides our preference, and that is what closed +0x214. At +0x248
-// the value competing with `ty` is a compiler temp with no declaration, so there is no
-// rank to raise, and the sweeps below say so.
-//
-// MEASURED INERT on the remaining cluster, all at div 11 with the schedule intact
-// (SCHED==0 throughout): `ty`'s declaration rank x type name is EXHAUSTIVE at 14 names
-// x 11 ranks and all 187 cells emit the identical `ldrb r6,[r6,#3]`; naming the window
-// temp (8 types x 4 ranks); naming the scratch chain's address and loaded byte as two
-// locals swept over 3 pointer types x 5 value types x 12 ranks (180 cells, one root-2
-// word in all of them); `ty` before `tx`; a `rec` alias copy; `*(u8 *)(rec + 3)` and
-// the other access-expression forms; declaring `ty` or `tx` at the point of use;
-// carrying `ty` in an existing local with a disjoint live range; the three nested-if
-// spellings of the guard (the banner this replaces recorded those as "did not
-// compile" -- they compile and they tie); moving the `ty` read into the loop with
-// opt_loop_invariants re-enabled, which keeps SCHED==0 and scores 23; the callee
-// return-type and argument-type axis; the `data_020a0de9` respellings
-// (`data_020a0de8[idx][1]`, flat `[idx * 4]`, struct arrays). Two randomized product
-// scans over declaration order x type names x spellings (1475 cells from the old shape,
-// 1359 from this one) never produce the ROM's `ldrb r7,[r6,#3]`, and neither does a
-// 45-minute permuter run on a plain-C base that compiles byte-identically to this file.
-// The FULL verified 246-name pragma vocabulary at on and off (492 cells, on top of this
-// file's pair) is inert too: 448 cells score 11, 43 break the size, one scores 24, and not
-// one reproduces a window word. Both pragmas here are load-bearing: dropping
-// opt_strength_reduction rebuilds the frame (0x830, pushes r8, loses the `sub sp,sp,#4`),
-// dropping opt_loop_invariants keeps the exact schedule and costs 5 more coloring words.
-// Cross-build: 2004/b56 is the ONLY installed build that even reaches 0x834 here
-// (1.2 lands 2008-2012, 2.0 1952, dsi 1764-1784), so the version axis is closed too.
-//
-// ALSO MEASURED INERT, wave 9 lane CRK-L (~5,300 more compiles, notes 6cq): 6cd dead
-// assignments in the loop preamble (130 cells, byte-identical objects every time); the 6cc
-// joint rank x type-name axis applied to the loop scratch after naming it (195 cells) and
-// two annealers over the same joint space, the second adding the five inner-scope locals'
-// type names, hoisting them to function scope at any rank, and the named scratch (1,558 then
-// 2,653 compiles, 7 restarts, all end at 11) and an EXHAUSTIVE 3,300-cell grid of the
-// product that matters, `ty`'s (type name x rank) crossed with the named scratch's (type
-// name x rank), one representative per colouring class -- best 11, zero window words;
-// 6ca member-RMW respellings at all eight RMW
-// sites (16 cells, ALL break the size -- the compound-assignment spelling is already the
-// folded form); block depth (1 to 3 added bare scopes x 6 types, flat; rec/tx/ty declared
-// inside the `if (n > 0)` block in every legal order x 4 type sets, 31-32); the 6y-1
-// self-select boosters (135 cells); access-expression respellings of the scratch chain's two
-// reads (32 cells); and 175 more permuter-minutes over two structurally distinct seeds,
-// 16,626 candidates, base score 85 and minimum score 85 on both -- neither run improved on
-// its base once. Do not re-run any of those.
-#pragma opt_loop_invariants off
+// Two scratch locals are shared between the character-pick branch and the stylus
+// branch: `val` carries the cursor mode (c+0x133) in the first and the stylus-held
+// flag in the second, `num` the picked character and then the plate count. The
+// register allocator orders webs by where their variable is first assigned, so the
+// sharing is what puts the plate count in r0 and the slot index in r2 at the loop;
+// as four fresh locals they colour the other way round. opt_strength_reduction off
+// keeps the frame at 0x834 (with it on, r8 is pushed).
 #pragma opt_strength_reduction off
 #include "common.h"
+#include "PlayerInput.h"
 #include "dScStarSel_c.h"
 #include "decl_common.h"
 #include "Message.h"
@@ -108,12 +44,11 @@ extern s32 data_0208ee44;
 extern u16 data_0209f5e8[];
 extern u8 data_02092128;
 extern u8 data_0209caa0[];
-extern u8 data_020a0e40;
-extern u8 data_020a0de8[][4];
-extern u8 data_020a0de9[][4];
 extern u16 data_020a0e58[];
 extern u16 data_020a0e5a[];
 }
+
+typedef u8 TouchRecord[4];
 
 #define FB(p, o) (*(u8 *)((u8 *)(p) + (o)))
 #define FH(p, o) (*(s16 *)((u8 *)(p) + (o)))
@@ -121,17 +56,16 @@ extern u16 data_020a0e5a[];
 
 s32 dScStarSel_c::Behavior()
 {
-    s32 cur;
-    u8 ty;
-    s32 found;
-    s32 i;
     u8 *rec;
-    u8 tx;
-    long idx;
-    u8 touched;
-    s32 hit;
-    s32 n;
-    s32 pressed;
+    u8 hit;
+    int pressed;
+    s32 cur;
+    u32 found;
+    s32 i;
+    long tx;
+    s32 num;
+    u8 val;
+    unsigned char idx;
 
     if (data_0209f5bc->v5() != 0) {
         DecIfAbove0_Byte(&FB(this, 0x117));
@@ -150,16 +84,16 @@ s32 dScStarSel_c::Behavior()
                 }
             }
         } else if (FB(this, 0x135) != 0 && IsButtonInputValid() != 0) {
-            u8 mode = FB(this, 0x133);
-            if (mode == 0 && FB(this, 0x130) > 1 && data_0209caa0[0x41] == 3) {
+            val = FB(this, 0x133);
+            if (val == 0 && FB(this, 0x130) > 1 && data_0209caa0[0x41] == 3) {
                 FB(this, 0x133) = 2;
                 func_02012790(0x12e);
             } else if (FB(this, 0x139) == 0) {
-                if (mode == 1) {
-                    u8 ch = func_ov003_020adf50((char *)this);
-                    data_02092128 = ch;
-                    data_02092114 = ch;
-                    FB(this, 0x132) = ch;
+                if (val == 1) {
+                    num = func_ov003_020adf50();
+                    data_02092128 = num;
+                    data_02092114 = num;
+                    FB(this, 0x132) = num;
                     FB(this, 0x118) = data_0208ee44 * 3;
                     FB(this, 0x139) = 2;
                 } else {
@@ -172,20 +106,19 @@ s32 dScStarSel_c::Behavior()
                 func_02012790(data_0209caa0[0x41] + 0x3c);
             }
         } else if (SublevelToLevel(data_02092110) <= 0xe) {
-            idx = data_020a0e40;
+            idx = gActivePlayerSlot;
             cur = FB(this, 0x115);
             found = 0;
-            touched = data_020a0de8[idx][0];
-            if (touched != 0) {
-                n = FB(this, 0x114);
+            val = gTouchHeld[idx * 4];
+            if (val != 0) {
+                num = FB(this, 0x114);
                 i = 0;
-                if (n > 0) {
-                    rec = data_020a0de8[idx];
+                if (num > 0) {
+                    rec = ((TouchRecord *)gTouchHeld)[idx];
                     tx = rec[2];
-                    ty = rec[3];
                     do {
-                    if ((u8)(tx - FB((u8 *)this + i, 0x11a) + 8) < 0x10 && ty < 0x28 && ((FB(this, 0x131) >> i) & 1)) {
-                        hit = (touched != 0 && data_020a0de9[idx][0] != 0);
+                    if ((u8)(tx - FB((u8 *)this + i, 0x11a) + 8) < 0x10 && ((TouchRecord *)gTouchHeld)[idx][3] < 0x28 && ((FB(this, 0x131) >> i) & 1)) {
+                        hit = (val != 0 && gTouchEdge[idx * 4] != 0);
                         if (hit != 0 || cur != i) {
                             FB(this, 0x117) = data_0208ee44 * 3;
                         }
@@ -198,7 +131,7 @@ s32 dScStarSel_c::Behavior()
                         break;
                     }
                     i++;
-                    } while (i < n);
+                    } while (i < num);
                 }
             }
             if (found == 0 && FB(this, 0x135) == 2 && FB(this, 0x133) == 0 && data_0209caa0[0x42] == 0) {
@@ -236,13 +169,13 @@ s32 dScStarSel_c::Behavior()
                 FB(this, 0x117) = data_0208ee44 * 3;
             }
             if (FB(this, 0x139) == 0) {
-                func_ov003_020ae358((char *)this);
+                func_ov003_020ae358();
             }
         }
 
         if (SublevelToLevel(data_02092110) <= 0xe) {
             if (FB(this, 0x135) == 0) {
-                if (IsButtonInputValid() != 0 || (data_0209caa0[0x42] == 0 && (data_020a0e5a[data_020a0e40 * 2] & 0xf0))) {
+                if (IsButtonInputValid() != 0 || (data_0209caa0[0x42] == 0 && (data_020a0e5a[gActivePlayerSlot * 2] & 0xf0))) {
                     func_02012790(0x12e);
                     if (data_0209caa0[0x42] == 0 && (data_020a0e58[1] & 0x30)) {
                         FB(this, 0x135) = 1;

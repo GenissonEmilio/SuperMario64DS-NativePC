@@ -1,29 +1,46 @@
 //cpp
 // @symbol _ZN3IRQ24IPCRxFifoNotEmptyHandlerEv
-//
-// Language-mode flip only: the compiler mangles the name, it is no longer
-// spelled by hand. Signature and body preserved exactly; no codegen intent.
-// See notes/plan-cpp-language-mode.md phase 1 (layout-free SDK namespaces).
+/* IRQ::IPCRxFifoNotEmptyHandler -- the PXI recv-fifo IRQ handler, arm9
+ * 0x0205b864..0x0205b988. func_0205bad8's PXI init clears the callback
+ * table and registers this on IRQ 0x40000; func_0205ba64 registers one
+ * callback per channel. On a fifo error the handler clears it and retries;
+ * an empty read returns; a command word dispatches through
+ * data_020a7fc8[channel], and an unhandled non-reply command is echoed
+ * back to the ARM7 with its reply bit set.
+ *
+ * leftovers: none.
+ */
 #include "types.h"
-extern "C" {
-extern u32 _ZN3IRQ7DisableEv(void);
-extern void _ZN3IRQ7RestoreEj(u32 saved);
 
+namespace IRQ {
+
+u32 Disable(void);
+void Restore(u32 saved);
+
+}
+
+extern "C" {
+/* Channel callbacks, 32 entries; written by func_0205ba64. */
 extern void (*data_020a7fc8[])(u32 idx, u32 data, u32 flag);
 }
 
 typedef union {
     u32 raw;
     struct {
-        u32 a : 5;
-        u32 b : 1;
-        u32 c : 26;
+        u32 idx  : 5;   /* callback table slot; 0 is unused */
+        u32 flag : 1;   /* set on reply words */
+        u32 data : 26;
     } f;
 } IpcCmd;
 
-#define FIFOCNT (*(volatile u16 *)0x4000184)
+#define FIFOCNT  (*(volatile u16 *)0x4000184)
 #define FIFORECV (*(volatile u32 *)0x4100000)
 #define FIFOSEND (*(volatile u32 *)0x4000188)
+
+#define FIFOCNT_ERROR      0x4000  /* set on a recv-empty read or send-full write */
+#define FIFOCNT_ERROR_CLEAR 0xc000 /* clears the error and flushes the send fifo */
+#define FIFOCNT_RECV_EMPTY 0x0100
+#define FIFOCNT_SEND_FULL  0x0002
 
 namespace IRQ {
 
@@ -33,17 +50,17 @@ void IPCRxFifoNotEmptyHandler(void)
     int code;
     u32 saved;
     for (;;) {
-        if (FIFOCNT & 0x4000) {
-            FIFOCNT = FIFOCNT | 0xc000;
+        if (FIFOCNT & FIFOCNT_ERROR) {
+            FIFOCNT = FIFOCNT | FIFOCNT_ERROR_CLEAR;
             code = -3;
         } else {
-            saved = _ZN3IRQ7DisableEv();
-            if (FIFOCNT & 0x100) {
-                _ZN3IRQ7RestoreEj(saved);
+            saved = Disable();
+            if (FIFOCNT & FIFOCNT_RECV_EMPTY) {
+                Restore(saved);
                 code = -4;
             } else {
                 cmd.raw = FIFORECV;
-                _ZN3IRQ7RestoreEj(saved);
+                Restore(saved);
                 code = 0;
             }
         }
@@ -53,27 +70,27 @@ void IPCRxFifoNotEmptyHandler(void)
             continue;
         {
             void (*fn)(u32, u32, u32);
-            if (cmd.f.a == 0)
+            if (cmd.f.idx == 0)
                 continue;
-            fn = data_020a7fc8[cmd.f.a];
+            fn = data_020a7fc8[cmd.f.idx];
             if (fn != 0) {
-                fn(cmd.f.a, cmd.f.c, cmd.f.b);
+                fn(cmd.f.idx, cmd.f.data, cmd.f.flag);
                 continue;
             }
-            if (cmd.f.b)
+            if (cmd.f.flag)
                 continue;
             cmd.raw = cmd.raw | 0x20;
-            if (FIFOCNT & 0x4000) {
-                FIFOCNT = FIFOCNT | 0xc000;
+            if (FIFOCNT & FIFOCNT_ERROR) {
+                FIFOCNT = FIFOCNT | FIFOCNT_ERROR_CLEAR;
                 continue;
             }
-            saved = _ZN3IRQ7DisableEv();
-            if (FIFOCNT & 2) {
-                _ZN3IRQ7RestoreEj(saved);
+            saved = Disable();
+            if (FIFOCNT & FIFOCNT_SEND_FULL) {
+                Restore(saved);
                 continue;
             }
             FIFOSEND = cmd.raw;
-            _ZN3IRQ7RestoreEj(saved);
+            Restore(saved);
         }
     }
 }

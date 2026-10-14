@@ -27,9 +27,9 @@ EAD's class names carry a lowercase prefix naming the layer. Measured over the 4
 structs); `_info` closes the 4 ABI records.
 
 In the GameCube Zelda codebases that share this convention the prefix *is* the path:
-`daKrb_c` lives in `d_a_krb.cpp`. Later NSMBW source independently maps
-`dScBoot_c` to `d_s_boot.cpp` and `daObjFruitTree_c` to
-`d_a_obj_fruit_tree.cpp`. `tools/tu_names.py` applies that lineage convention to
+`daKrb_c` lives in `d_a_krb.cpp`. Later [NSMBW source](https://github.com/NSMBW-Community/NSMBW-Decomp) independently maps
+[dScBoot_c](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/2e010f8708d8232c736b1ece507400dfd76aaa9c/include/game/bases/d_s_boot.hpp#L19) to [d_s_boot.cpp](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/2e010f8708d8232c736b1ece507400dfd76aaa9c/source/dol/bases/d_s_boot.cpp) and [daObjFruitTree_c](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/2e010f8708d8232c736b1ece507400dfd76aaa9c/include/game/bases/d_a_obj_fruit_tree.hpp#L13) to
+[d_a_obj_fruit_tree.cpp](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/2e010f8708d8232c736b1ece507400dfd76aaa9c/source/d_basesNP/bases/d_a_obj_fruit_tree.cpp). `tools/tu_names.py` applies that lineage convention to
 every RTTI class.
 
 ### This part is a hypothesis, and the ROM cannot confirm it
@@ -75,13 +75,13 @@ English ones:
 
 | module | ROM names | tree names |
 | --- | --- | --- |
-| ov080 | `daChoropu_c` + `daChoro_Rock_c` | MontyMole + MontyMoleRock |
-| ov002 | `daStar_c` + `daStarBase_c` | PowerStar + PowerStarBase |
-| ov060 | `daKpa_c` + `daKpaTail_c` | Bowser + BowserTail |
-| ov065 | `daDossy_c` + `daDossyCap_c` | Dorrie + DorrieCap |
-| ov020 | `daBook_c` + `daBookGen_c` | BookShot + BookShotSpawner |
-| ov026 | `daWater_Suikomi_c` + `daWater_Tatumaki_c` | — |
-| ov064 | `daObjFl_Coin_c` + `daObjFl_Puzzle_c` | — |
+| [ov080](../config/arm9/overlays/ov080/symbols.txt) | `daChoropu_c` + `daChoro_Rock_c` | — (was MontyMole + MontyMoleRock) |
+| [ov002](../config/arm9/overlays/ov002/symbols.txt) | `daStar_c` + `daStarBase_c` | daStar_c + PowerStarBase |
+| [ov060](../config/arm9/overlays/ov060/symbols.txt) | `daKpa_c` + `daKpaTail_c` | daKpa_c + daKpaTail_c |
+| [ov065](../config/arm9/overlays/ov065/symbols.txt) | `daDossy_c` + `daDossyCap_c` | — (was Dorrie + DorrieCap) |
+| [ov020](../config/arm9/overlays/ov020/symbols.txt) | `daBook_c` + `daBookGen_c` | — (was BookShot + BookShotSpawner) |
+| [ov026](../config/arm9/overlays/ov026/symbols.txt) | `daWater_Suikomi_c` + `daWater_Tatumaki_c` | — |
+| [ov064](../config/arm9/overlays/ov064/symbols.txt) | `daObjFl_Coin_c` + `daObjFl_Puzzle_c` | — |
 
 `daChoropu_c`/`daChoro_Rock_c` is `tu_map.py`'s own canonical interleave case,
 recovered here from name evidence the clustering never used.
@@ -104,7 +104,7 @@ only if each label occupies exactly one object. Two kinds of label break that, a
   **71** other labels. Same shape: `IRQ`, `cstd`, `GX`, `Sound`, `SaveData`,
   `Message`, `Particle`.
 - **genuinely multi-TU classes** — the case the plan predicts in section 2 ("A large
-  class can have methods defined across several TUs"). `Model`, `Scene`, `Stage`,
+  class can have methods defined across several TUs"). `Model`, `Scene`, `dScStage_c`,
   `Animation`, `MeshCollider`, `TextureSequence` all *do* have `type_info` records
   and still swallow.
 
@@ -130,17 +130,17 @@ that docstring describes (symbols trusted, RTTI not) is right about which class
 | `main` TUs with a class | 1 | 28 |
 | tree-wide TUs | 608 | 746 |
 | tree-wide high-confidence boundaries | 277 | **289** |
-| modules flagged under-segmented | ov007, **main**, ov075, ov084 | ov007, ov075, ov084 |
+| modules flagged under-segmented | [ov007](../config/arm9/overlays/ov007/symbols.txt), **main**, [ov075](../config/arm9/overlays/ov075/symbols.txt), [ov084](../config/arm9/overlays/ov084/symbols.txt) | [ov007](../config/arm9/overlays/ov007/symbols.txt), [ov075](../config/arm9/overlays/ov075/symbols.txt), [ov084](../config/arm9/overlays/ov084/symbols.txt) |
 
 At `k >= 6` **no module other than `main` changes at all**, and the result is flat
 across `k = 6..12` — it is reading a real structural feature, not a tuned cutoff.
-`k = 3` is too aggressive: it splits ov063, whose Boo/BooCage/BigBooIcon interleave is
+`k = 3` is too aggressive: it splits [ov063](../config/arm9/overlays/ov063/symbols.txt), whose Boo/BooCage/BigBooIcon interleave is
 one of the cases the tool exists to get right.
 
 `main` is still under-segmented afterwards, but at subsystem granularity rather than
 one blob — the largest remaining units are coherent: `Heap`/`Memory`/`HeapAllocator`
 (607), `Scene`/`Event`/`Fog`/`OAM` (530), the collision family
-`BgCh`/`SphereClsn`/`RaycastGround`/`MeshColliderBase` (223), `Camera`/`Vector3`
+`BgCh`/`SphereClsn`/`RaycastGround`/`MeshColliderBase` (223), `dCamera_c`/`Vector3`
 (157), the GX register API `G2`/`G2S`/`G3X`/`GXS` (122).
 
 ## 4. Two gate findings
@@ -151,15 +151,15 @@ one blob — the largest remaining units are coherent: `Heap`/`Memory`/`HeapAllo
 enough to push the TU count below the count of TUs *with static initialisers*. Not
 changed here — a fix needs a different signal, not a different constant.
 
-**`V1 ov080 classed-TU count == 3` was failing on `origin/main`, with no flag.
+**V1 [ov080](../config/arm9/overlays/ov080/symbols.txt) classed-TU count == 3** was failing on `origin/main`, with no flag.
 Corrected to 4.** Reproduced on a clean baseline before touching it, so it was
 pre-existing rather than caused by anything else in this note, and the map was never
-wrong. ov080 really does have 5 TUs, of which 4 carry a class label:
+wrong. [ov080](../config/arm9/overlays/ov080/symbols.txt) really does have 5 TUs, of which 4 carry a class label:
 
 ```sh
 0x2123740  MontyMole, MontyMoleRock, daChoropu_c
 0x2124a20  CrazedCrate, daBttBk_c
-0x2125404  Painting
+0x2125404  daPicGate_c
 0x2126fbc  daPicGate_c        <- labelled by RTTI; no mangled name ever named it
 ```
 
@@ -167,7 +167,7 @@ The constant predated the RTTI label source. The 4th classed TU is new *labellin
 not a new *boundary* — the total is 5 either way, and 3 sinits still fits under it.
 `--check` is now 8/8 green both with and without `--split-swallowers`.
 
-Note this is a different count from the module docstring's "ov080's three TUs shatter
+Note this is a different count from the module docstring's "[ov080](../config/arm9/overlays/ov080/symbols.txt)'s three TUs shatter
 into thirteen", which describes the *mangled-name* view alone; `daPicGate_c` has no
 mangled name and is not part of that illustration, so that passage stands.
 
@@ -177,9 +177,9 @@ Against the three `config/tu_manifest.d/` entries:
 
 | entry | status | result |
 | --- | --- | --- |
-| `ov045/PoleLift` | text-verified | `0x211150c..0x2111840` — **exact match** |
-| `ov045/daObjKm2_Fall_Block_c` | text-verified | `0x2111d48..0x2111e60` — **exact match** |
-| `ov002/LevelObjects` | link-verified | manifest `0x20fe190..0x20fea4c`, map `0x20fe190..0x20fe33c` — **start agrees, end short by 0x710** |
+| [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Ami_Bou_c` | text-verified | `0x211150c..0x2111840` — **exact match** |
+| [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Fall_Block_c` | text-verified | `0x2111d48..0x2111e60` — **exact match** |
+| [ov002](../config/arm9/overlays/ov002/symbols.txt)/`LevelObjects` | link-verified | manifest `0x20fe190..0x20fea4c`, map `0x20fe190..0x20fe33c` — **start agrees, end short by 0x710** |
 
 The two text-verified pilots reproduce exactly. The one **link-verified** pilot — the
 strongest evidence in the manifest — is a case where the map cuts *early*: same start,

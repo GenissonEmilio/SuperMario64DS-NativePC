@@ -2,16 +2,17 @@
 #define MATERIALCHANGER_H
 
 #include "types.h"
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 #include "math/Fix12.h"
 
-/* Animation child that drives BMA-file playback, vtable _ZTV15MaterialChanger at 0x0208e7f4:
+/* dExtFrameCtrl_c child that drives BMA-file playback, vtable _ZTV15MaterialChanger at 0x0208e7f4:
  * two slots, the destructor pair, nothing else. Update is a plain method;
  * Prepare is static, for the reason set out below.
  *
  * THE DESTRUCTOR IS DECLARED FIRST AND D1 IS A REAL METHOD -- see
  * include/ModelBase.h for the key-function rule and the objisolate exemption
- * to it. D0 stays a C file.
+ * to it. One ~MaterialChanger() emits D0 and D1 together; the whole class
+ * folds into src/engine/model/MaterialChanger.cpp.
  *
  * PREPARE IS STATIC, on exactly the evidence set out in TextureSequence.h for
  * the sibling veneer. Its ROM body is a 0xc long-call veneer (ldr ip, [pc];
@@ -34,14 +35,14 @@
 struct ModelComponents;
 struct BMD_File;
 struct BMA_File { u16 numFrames; };
-struct MaterialChanger : Animation {
+struct MaterialChanger : dExtFrameCtrl_c {
     BMA_File *file;           /* 0x10 */
 
     /* --- vtable: the destructor pair only. --- */
     virtual ~MaterialChanger();                       /* slots 0 (D1), 1 (D0) */
 
-    /* DECLARED, never defined as a method here -- src/_ZN15MaterialChangerC1Ev.cpp
-       owns C1 (notes/ctor-migration.md section 2). */
+    /* DEFINED in the promoted TU -- one MaterialChanger() emits C1 (and a
+       deadstripped C2 sibling); see notes/ctor-migration.md section 2. */
     MaterialChanger();
 
     /* --- non-virtual --- */

@@ -1,0 +1,176 @@
+{
+  "id": "arm9/dBgCh",
+  "module": "arm9",
+  "source": "src/engine/collision/dBgCh.cpp",
+  "promoted_source": "src/engine/collision/dBgCh.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "CONTIGUOUS AND EXHAUSTIVE: 0x02035448..0x0203553c is twelve complete .text entries in config/arm9/delinks.txt with no gap and no other section. The low edge is func_0203543c (0x0203543c..0x02035448), which is not a dBgCh member. The high edge is src/engine/collision/dBgCh_Actr.cpp, which starts at 0x0203553c.",
+    "CLASS IDENTITY FROM ROM RTTI: _ZTS5dBgCh at arm9 0x020991c0 names this class dBgCh. The tree already spells that name in include/dBgCh.h. This is the class's only run and it had no home TU.",
+    "EMISSION ORDER: mwccarm 2004/b56 emits plain members in reverse source order and the lifecycle group in fixed order at the tail. One constructor and one destructor, defined first, land as D2 0x020354d0, D0 0x020354e0, D1 0x02035504, C2 0x02035514. C1 is emitted and deadstripped."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x02035448",
+      "end": "0x0203553c"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN5dBgCh19StartDetectingToxicEv",
+      "address": "0x02035448",
+      "size": "0x00000014",
+      "legacy_source": "src/_ZN5dBgCh19StartDetectingToxicEv.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "func_0203545c",
+      "address": "0x0203545c",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_0203545c.c",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_02035468",
+      "address": "0x02035468",
+      "size": "0x00000014",
+      "legacy_source": "src/unnamed/arm9/0203/func_02035468.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_0203547c",
+      "address": "0x0203547c",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_0203547c.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "_ZN5dBgCh18StopDetectingWaterEv",
+      "address": "0x02035488",
+      "size": "0x00000014",
+      "legacy_source": "src/_ZN5dBgCh18StopDetectingWaterEv.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "_ZN5dBgCh19StartDetectingWaterEv",
+      "address": "0x0203549c",
+      "size": "0x00000014",
+      "legacy_source": "src/_ZN5dBgCh19StartDetectingWaterEv.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_020354b0",
+      "address": "0x020354b0",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_020354b0.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "_ZN5dBgCh21StopDetectingOrdinaryEv",
+      "address": "0x020354bc",
+      "size": "0x00000014",
+      "legacy_source": "src/_ZN5dBgCh21StopDetectingOrdinaryEv.cpp",
+      "ordinal": 7
+    },
+    {
+      "symbol": "_ZN5dBgChD2Ev",
+      "address": "0x020354d0",
+      "size": "0x00000010",
+      "legacy_source": "src/_ZN5dBgChD2Ev.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "_ZN5dBgChD0Ev",
+      "address": "0x020354e0",
+      "size": "0x00000024",
+      "legacy_source": "src/_ZN5dBgChD0Ev.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "_ZN5dBgChD1Ev",
+      "address": "0x02035504",
+      "size": "0x00000010",
+      "legacy_source": "src/_ZN5dBgChD1Ev.cpp",
+      "ordinal": 10
+    },
+    {
+      "symbol": "_ZN5dBgChC2Ev",
+      "address": "0x02035514",
+      "size": "0x00000028",
+      "legacy_source": "src/_ZN5dBgChC2Ev.cpp",
+      "ordinal": 11
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "The file name is the class name already used in include/dBgCh.h and in the ROM RTTI string _ZTS5dBgCh. Twelve contiguous functions, written with the lifecycle pair first because this compiler emits that group at the tail and plain functions in reverse source order. The four C helpers stay extern C under their existing names. C1 is compiler-only and is not part of the run."
+  ],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN5dBgChC1Ev",
+      "disposition": "deadstrip",
+      "reason": "Vague-linkage complete-object constructor emitted alongside C2. Nothing constructs a standalone dBgCh, so the cartridge has no C1 -- discarded."
+    },
+    {
+      "symbol": "_ZTV5dBgCh",
+      "disposition": "deadstrip-data",
+      "reason": "Key function is the out-of-line destructor, so this TU emits the vtable. symbols.txt names the address point arm9:0x020991d8; the emitted copy is licensed deadstrip-data against that canonical home."
+    },
+    {
+      "symbol": "_ZTI5dBgCh",
+      "disposition": "deadstrip-data",
+      "reason": "Typeinfo emitted with the vtable by the key function. Canonical home arm9:0x020991c8 per symbols.txt."
+    },
+    {
+      "symbol": "_ZTS5dBgCh",
+      "disposition": "deadstrip-data",
+      "reason": "RTTI name string emitted with the vtable by the key function. Canonical home arm9:0x020991c0 per symbols.txt."
+    }
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/arm9-dBgCh/dBgCh.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 12,
+    "functions_declared": 12,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN5dBgChC1Ev"
+      ],
+      "deadstripped": [
+        "_ZN5dBgChC1Ev"
+      ],
+      "droppedSections": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        24,
+        25
+      ],
+      "data": [
+        "_ZTV5dBgCh",
+        "_ZTI5dBgCh",
+        "_ZTS5dBgCh"
+      ],
+      "dataExternalized": [
+        "_ZTI5dBgCh",
+        "_ZTS5dBgCh",
+        "_ZTV5dBgCh"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  }
+}

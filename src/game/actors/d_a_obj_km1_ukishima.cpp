@@ -6,7 +6,7 @@
  * dBgActor_c that drifts forward along its own yaw and turns a quarter
  * turn every 60 frames. ROM RTTI spells the class daObjKm1_Ukishima_c
  * (_ZTS at ov043 0x0211227c); _ZTI+8 at 0x02112270 points at
- * _ZTI10dBgActor_c. ov043 is Bowser in the Dark World.
+ * _ZTI10dBgActor_c. ov043 is daKpa_c in the Dark World.
  *
  * FUNCTION ORDER IS DELIBERATELY THE REVERSE OF THE ROM'S. mwccarm 2004/b56
  * emits one .text section per function in the REVERSE of source order, so the
@@ -31,14 +31,36 @@
 #include "SharedFilePtr.h"
 #include "dBgW.h"
 
+/* 8-byte file handles. The model uses func_02017acc / func_02017ab4 and the
+ * collision file func_02017b4c / SharedFilePtr_Destruct_Clsn. The spellings
+ * are local; the manifest aliases the generated names to those ROM symbols. */
+struct Km1UkishimaModelFilePtr : SharedFilePtr {
+    unsigned int words[2];
+
+    Km1UkishimaModelFilePtr(unsigned int fileID);
+    ~Km1UkishimaModelFilePtr();
+};
+
+struct Km1UkishimaClsnFilePtr : SharedFilePtr {
+    unsigned int words[2];
+
+    Km1UkishimaClsnFilePtr(unsigned int fileID);
+    ~Km1UkishimaClsnFilePtr();
+};
+
+typedef char Km1UkishimaModelFilePtr_size_must_be_8[
+    sizeof(Km1UkishimaModelFilePtr) == 8 ? 1 : -1];
+typedef char Km1UkishimaClsnFilePtr_size_must_be_8[
+    sizeof(Km1UkishimaClsnFilePtr) == 8 ? 1 : -1];
+
 struct KCL_File;
 struct CLPS_Block;
 
 /* DecIfAbove0_Byte (arm9 0x0203add4) has no shared header anywhere in the
  * tree -- every caller declares it locally. */
 extern "C" {
-extern SharedFilePtr data_ov043_021125e0;   /* the KCL  */
-extern SharedFilePtr data_ov043_021125e8;   /* the BMD  */
+extern Km1UkishimaClsnFilePtr data_ov043_021125e0;   /* the KCL  */
+extern Km1UkishimaModelFilePtr data_ov043_021125e8;   /* the BMD  */
 extern CLPS_Block    data_ov043_02111c00;   /* the CLPS block SetFile is handed */
 
 unsigned char DecIfAbove0_Byte(unsigned char *p);
@@ -150,3 +172,8 @@ s32 daObjKm1_Ukishima_c::CleanupResources()
    D1 and then D0 -- the cartridge's own order -- and no D2, which is the order
    and the set the ROM carries. Written out of line here instead, mwcc emits D0
    ahead of D1 and rombuild refuses the object outright. */
+
+/* Source order is construction order: model file 1625, then the collision
+ * file 1626. The compiler registers each destructor beside the object. */
+Km1UkishimaModelFilePtr data_ov043_021125e8(1625);
+Km1UkishimaClsnFilePtr data_ov043_021125e0(1626);

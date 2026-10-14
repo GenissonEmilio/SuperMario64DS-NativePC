@@ -3,26 +3,129 @@
   "module": "ov006",
   "source": "src/actors/dScMgHanachan_c.cpp",
   "promoted_source": "src/actors/dScMgHanachan_c.cpp",
+  "production_mode": "intact-object",
   "status": "promoted",
   "boundary_confidence": "high",
   "boundary_evidence": [
-    "PARTIAL RUN, 49 of 61. tu_map calls 0x20ea280..0x20ede18 one contiguous linker run of 61 function(s) (build/tu_map.json, tools/tu_map.py). This TU licenses 0x020eac38..0x020ede18, 49 function(s), ROM ordinals 12..60. Of the other 12, 11 keep their own shards and their own delinks.txt entries; the 12th is the sourceless hole in EDGE 1 below, which has neither.",
+    "WHOLE UNIT. tu_map calls 0x020ea280..0x020ede18 one contiguous linker run of 61 functions (build/tu_map.json, tools/tu_map.py). This TU licenses all 61, ROM ordinals 0..60, as one .text claim. Below it, 0x020ea1f0..0x020ea280 is dScMg3DEsp_c_classInit in src/d_s_mg3_d_esp.cpp, a different class; above it is dScMgHanachan_c_classInit in src/minigames/d_s_mg_hanachan.cpp (0x020ede18..0x020edec0), which tu_map does not put in this unit and which stays its own file.",
     "class label(s): dScMgHanachan_c",
-    "EDGE 1 -- a sourceless hole splits the run, and it is now the ONLY edge. ROM ordinal 11, func_ov006_020ea914 (0x020ea914, size 0x324), has no source anywhere in the tree: it is a banked near-miss (config/match_attempts.jsonl, best 113 divergences, size-exact but mis-coloured) and carries no entry in config/arm9/overlays/ov006/delinks.txt at all -- the cartridge's own bytes cover that range. It sits in the MIDDLE of the run, and no delink block and no TU manifest anywhere in this tree expresses a .text claim with a hole in it (both checked tree-wide: zero of each carries two .text runs). So the run can only be licensed as one of its two contiguous sides; ordinals 0..10 (0x020ea280..0x020ea914, 11 functions, including the destructor pair) are the smaller side and stay out.",
+    "WIDENED from the earlier 49-function claim 0x020eac38..0x020ede18. The hole that bounded it, func_ov006_020ea914 (0x020ea914, size 0x324), has since been byte-matched in its own file (src/func_ov006_020ea914.cpp; its delinks entry was not marked complete). With it the run is one piece. 12 shards were folded: D1, D0 and the ten functions func_ov006_020ea324..func_ov006_020ea914. func_ov006_020ea914 matches here unchanged, with its file-global opt_strength_reduction off now a push/pop bracket.",
     "EDGE 2 IS GONE -- the two contradicting file-global pragmas were dissolved, not worked around. The previous promotion of this class took only ordinals 13..34 (22 functions) because four members reproduce only with `#pragma opt_strength_reduction off` (func_ov006_020eac38, func_ov006_020ec458, func_ov006_020ec93c, func_ov006_020ec9c0) and three only with it on (func_ov006_020ebf20, func_ov006_020ec2bc, func_ov006_020ecba4), while _ZN15dScMgHanachan_c6RenderEv wants `#pragma opt_common_subs off`, which costs five other members when set file-wide. Whole-side scores measured then: SR off / OCS on = 44/49, SR on / OCS on = 42/49, SR off / OCS off = 40/49, and bracketing SR `off ... on` positionally was byte-identical to omitting it. All of that is true only while codegen is DEFERRED. With `#pragma defer_codegen off` at the top of the TU, mwccarm 2004/b56 generates each function at parse time and both pragmas bind POSITIONALLY: the four SR-off members carry their own `#pragma push / opt_strength_reduction off / #pragma pop` bracket, Render carries an opt_common_subs bracket, and all 49 reproduce in one compile. Measured on this TU, not inferred from a sibling.",
-    "EDGE 2 addendum -- `defer_codegen off` also flips emission order, and the two effects are one edit. With codegen deferred mwccarm lays .text down in the REVERSE of source order; generating at parse time lays it down in source order. This file is therefore written lowest-ROM-address FIRST, the opposite of the 22-function version. Measured both ways on the identical member set: source ROM-descending + defer_codegen off gives 22/22 MATCH but `21 ordinal pair(s) NOT in ROM order`; source ROM-ascending + defer_codegen off gives 22/22 MATCH and `all 22 in the expected ROM-ascending section order`. Flipping either alone fails the `linkcheck [4b/8]` emission-order refusal. Control on the final 49-member file: deleting the `#pragma defer_codegen off` line and changing nothing else costs both properties at once -- 44/49 MATCH (the brackets stop binding and their trailing state goes file-wide, reproducing the earlier pass's 44/49 for strength reduction off) and `48 ordinal pair(s) NOT in ROM order`.",
+    "EDGE 2 addendum -- `defer_codegen off` also flips emission order, and the two effects are one edit. With codegen deferred mwccarm lays .text down in the REVERSE of source order; generating at parse time lays it down in source order. This file is therefore written lowest-ROM-address FIRST, the opposite of the 22-function version. Measured both ways on the identical member set: source ROM-descending + defer_codegen off gives 22/22 MATCH but `21 ordinal pair(s) NOT in ROM order`; source ROM-ascending + defer_codegen off gives 22/22 MATCH and `all 22 in the expected ROM-ascending section order`. Flipping either alone fails the `linkcheck [4b/8]` emission-order refusal. Control on the earlier 49-member file: deleting the `#pragma defer_codegen off` line and changing nothing else costs both properties at once -- 44/49 MATCH (the brackets stop binding and their trailing state goes file-wide, reproducing the earlier pass's 44/49 for strength reduction off) and `48 ordinal pair(s) NOT in ROM order`.",
     "Three byte-diffs that surfaced only in the merge, all fixed at the source and none of them pragma-related. (a) func_ov006_020ec4dc, func_ov006_020ecba4 and func_ov006_020ec9c0 each assign a two-int pair whole-struct; the legacy files were C and block-moved it (ldr/ldr/str/str) where C++ scalarizes (ldr/str/ldr/str), so those three copies go through the array-spelled `struct Words2`. (b) _ZN15dScMgHanachan_c13OnYoshiTryEatEi's read-modify-write of +0xbc let mwcc CSE the field address into its own register (add r2,r4,#0xbc), one word longer than the cartridge's re-issued ldr r1,[r4,#0xbc]; a `const` on the read side defeats the CSE. Seven source forms were tried and six of them match; `x += 1` is the one that does not.",
-    "NOT a destructor-order refusal. The ROM orders this class D1 (0x020ea280) BELOW D0 (0x020ea2c8), which is the reproducible direction (inline-in-class => D1 then D0) and would have promoted whole; the pair is out only because it lies on the far side of the sourceless hole. Consequently this TU does not own the class's key function -- the first declared virtual is the out-of-line ~dScMgHanachan_c() -- so it emits no _ZTV/_ZTI/_ZTS, needs no compiler_only_output block (verify reports zero unlicensed symbols), and needed no header edit: include/dScMgHanachan_c.h keeps the out-of-line destructor declaration that the two still-enrolled destructor shards require.",
+    "DESTRUCTOR ORDER. The cartridge has D1 at 0x020ea280 below D0 at 0x020ea2c8 and no D2 home. One out-of-line ~dScMgHanachan_c() under #pragma defer_codegen off emits D1 then D0 in that order; the D2 mwccarm also emits is a compiler_only_output deadstrip row.",
+    "KEY FUNCTION. The out-of-line destructor is the class's first declared virtual, so this TU now emits _ZTV/_ZTI/_ZTS15dScMgHanachan_c and the ancestor RTTI chain (fBase_c, dBase_c, dScene_c, dScMgBase_c). Each is a deadstrip-data row with its canonical symbols.txt home; ov006 .data stays ROM-owned, so the TU stays text-only. func_ov006_020ea914's point type Vec2_ea914 also emits a 4-byte vague-linkage D1 with no cartridge copy; it is a deadstrip row.",
+    "SOURCE ORDER IS ROM-ASCENDING, lowest address first, under #pragma defer_codegen off; tubuild verify reports all 61 in ROM-ascending emission order.",
+    "OUTPUT PATH: src/actors/dScMgHanachan_c.cpp, unchanged.",
     "module sinit corroboration: 31 sinit(s) / 31 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
   ],
   "sections": [
     {
       "name": ".text",
-      "start": "0x020eac38",
+      "start": "0x020ea280",
       "end": "0x020ede18"
+    },
+    {
+      "name": ".init",
+      "start": "0x02130df8",
+      "end": "0x02130e9c"
+    },
+    {
+      "name": ".ctor",
+      "start": "0x021335a0",
+      "end": "0x021335a4"
+    },
+    {
+      "name": ".bss",
+      "start": "0x02142018",
+      "end": "0x02142044"
     }
   ],
   "functions": [
+    {
+      "symbol": "_ZN15dScMgHanachan_cD1Ev",
+      "address": "0x020ea280",
+      "size": "0x00000048",
+      "legacy_source": "src/_ZN15dScMgHanachan_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN15dScMgHanachan_cD0Ev",
+      "address": "0x020ea2c8",
+      "size": "0x0000005c",
+      "legacy_source": "src/_ZN15dScMgHanachan_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov006_020ea324",
+      "address": "0x020ea324",
+      "size": "0x0000002c",
+      "legacy_source": "src/func_ov006_020ea324.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov006_020ea350",
+      "address": "0x020ea350",
+      "size": "0x00000080",
+      "legacy_source": "src/func_ov006_020ea350.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov006_020ea3d0",
+      "address": "0x020ea3d0",
+      "size": "0x00000220",
+      "legacy_source": "src/func_ov006_020ea3d0.c",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov006_020ea5f0",
+      "address": "0x020ea5f0",
+      "size": "0x00000068",
+      "legacy_source": "src/func_ov006_020ea5f0.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov006_020ea658",
+      "address": "0x020ea658",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov006_020ea658.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov006_020ea670",
+      "address": "0x020ea670",
+      "size": "0x000000ac",
+      "legacy_source": "src/func_ov006_020ea670.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov006_020ea71c",
+      "address": "0x020ea71c",
+      "size": "0x00000100",
+      "legacy_source": "src/func_ov006_020ea71c.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov006_020ea81c",
+      "address": "0x020ea81c",
+      "size": "0x000000c4",
+      "legacy_source": "src/func_ov006_020ea81c.c",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov006_020ea8e0",
+      "address": "0x020ea8e0",
+      "size": "0x00000034",
+      "legacy_source": "src/func_ov006_020ea8e0.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov006_020ea914",
+      "address": "0x020ea914",
+      "size": "0x00000324",
+      "legacy_source": "src/func_ov006_020ea914.cpp",
+      "ordinal": 11
+    },
     {
       "symbol": "func_ov006_020eac38",
       "address": "0x020eac38",
@@ -276,17 +379,17 @@
       "ordinal": 47
     },
     {
-      "symbol": "func_ov006_020ed274",
+      "symbol": "_ZN15dScMgHanachan_c19func_ov006_020ed274Ev",
       "address": "0x020ed274",
       "size": "0x0000008c",
-      "legacy_source": "src/func_ov006_020ed274.c",
+      "legacy_source": "src/_ZN15dScMgHanachan_c19func_ov006_020ed274Ev.c",
       "ordinal": 48
     },
     {
-      "symbol": "func_ov006_020ed300",
+      "symbol": "_ZN15dScMgHanachan_c19func_ov006_020ed300Ev",
       "address": "0x020ed300",
       "size": "0x00000028",
-      "legacy_source": "src/func_ov006_020ed300.c",
+      "legacy_source": "src/_ZN15dScMgHanachan_c19func_ov006_020ed300Ev.c",
       "ordinal": 49
     },
     {
@@ -297,52 +400,52 @@
       "ordinal": 50
     },
     {
-      "symbol": "func_ov006_020ed32c",
+      "symbol": "_ZN15dScMgHanachan_c19func_ov006_020ed32cEv",
       "address": "0x020ed32c",
       "size": "0x00000020",
-      "legacy_source": "src/func_ov006_020ed32c.c",
+      "legacy_source": "src/_ZN15dScMgHanachan_c19func_ov006_020ed32cEv.c",
       "ordinal": 51
     },
     {
-      "symbol": "func_ov006_020ed34c",
+      "symbol": "_ZN15dScMgHanachan_c19func_ov006_020ed34cEv",
       "address": "0x020ed34c",
       "size": "0x000000c0",
-      "legacy_source": "src/func_ov006_020ed34c.c",
+      "legacy_source": "src/_ZN15dScMgHanachan_c19func_ov006_020ed34cEv.c",
       "ordinal": 52
     },
     {
-      "symbol": "func_ov006_020ed40c",
+      "symbol": "_ZN15dScMgHanachan_c19func_ov006_020ed40cEv",
       "address": "0x020ed40c",
       "size": "0x00000088",
-      "legacy_source": "src/func_ov006_020ed40c.c",
+      "legacy_source": "src/_ZN15dScMgHanachan_c19func_ov006_020ed40cEv.c",
       "ordinal": 53
     },
     {
-      "symbol": "func_ov006_020ed494",
+      "symbol": "_ZN15dScMgHanachan_c19func_ov006_020ed494Ev",
       "address": "0x020ed494",
       "size": "0x00000388",
-      "legacy_source": "src/func_ov006_020ed494.c",
+      "legacy_source": "src/_ZN15dScMgHanachan_c19func_ov006_020ed494Ev.c",
       "ordinal": 54
     },
     {
-      "symbol": "func_ov006_020ed81c",
+      "symbol": "_ZN15dScMgHanachan_c19func_ov006_020ed81cEv",
       "address": "0x020ed81c",
       "size": "0x00000028",
-      "legacy_source": "src/func_ov006_020ed81c.c",
+      "legacy_source": "src/_ZN15dScMgHanachan_c19func_ov006_020ed81cEv.c",
       "ordinal": 55
     },
     {
-      "symbol": "func_ov006_020ed844",
+      "symbol": "_ZN15dScMgHanachan_c19func_ov006_020ed844Ev",
       "address": "0x020ed844",
       "size": "0x00000060",
-      "legacy_source": "src/func_ov006_020ed844.cpp",
+      "legacy_source": "src/_ZN15dScMgHanachan_c19func_ov006_020ed844Ev.cpp",
       "ordinal": 56
     },
     {
-      "symbol": "func_ov006_020ed8a4",
+      "symbol": "_ZN15dScMgHanachan_c19func_ov006_020ed8a4Ev",
       "address": "0x020ed8a4",
       "size": "0x000001a4",
-      "legacy_source": "src/func_ov006_020ed8a4.c",
+      "legacy_source": "src/_ZN15dScMgHanachan_c19func_ov006_020ed8a4Ev.c",
       "ordinal": 57
     },
     {
@@ -367,10 +470,142 @@
       "ordinal": 60
     }
   ],
+  "init": [
+    {
+      "symbol": "__sinit_dScMgHanachan_c.cpp",
+      "address": "0x02130df8",
+      "size": "0xa4",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated static initializer is raw-byte-identical to retail __sinit_ov006_02130df8 and carries the same eight literal-pool relocation sites"
+    }
+  ],
+  "ctor": [
+    {
+      "symbol": ".p__sinit_dScMgHanachan_c.cpp",
+      "address": "0x021335a0",
+      "size": "0x4",
+      "binding": "STB_GLOBAL",
+      "evidence": "compiler-generated constructor-table word relocates to the owned initializer exactly as retail"
+    }
+  ],
   "data": [],
-  "bss": [],
+  "bss": [
+    {
+      "symbol": "data_ov006_02142018",
+      "address": "0x02142018",
+      "size": "0x2c",
+      "binding": "STB_GLOBAL",
+      "evidence": "OamAttr* table OAM::Render indexes; the initializer copies five scalar attribute globals, two data_ov006_021375dc entries and every third entry of the vu32* ring data_ov006_02137560 into it"
+    }
+  ],
+  "symbol_binding_rewrites": [
+    {
+      "symbol": "__sinit_dScMgHanachan_c.cpp",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "mwcc emits the TU initializer local; DSD requires a configured global relocation destination at the same exact address"
+    },
+    {
+      "symbol": ".p__sinit_dScMgHanachan_c.cpp",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "mwcc emits the ctor-table object local; DSD exposes owned symbols globally and cannot encode a local symbols.txt entry"
+    }
+  ],
+  "relocations": [
+    {
+      "section": ".init",
+      "source": "0x02130e7c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov006_02137560",
+      "addend": 0,
+      "target_module": "ov006",
+      "target_address": "0x02137560"
+    },
+    {
+      "section": ".init",
+      "source": "0x02130e80",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov006_021375dc",
+      "addend": 0,
+      "target_module": "ov006",
+      "target_address": "0x021375dc"
+    },
+    {
+      "section": ".init",
+      "source": "0x02130e84",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov006_021374b8",
+      "addend": 0,
+      "target_module": "ov006",
+      "target_address": "0x021374b8"
+    },
+    {
+      "section": ".init",
+      "source": "0x02130e88",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov006_021374c4",
+      "addend": 0,
+      "target_module": "ov006",
+      "target_address": "0x021374c4"
+    },
+    {
+      "section": ".init",
+      "source": "0x02130e8c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov006_021374ac",
+      "addend": 0,
+      "target_module": "ov006",
+      "target_address": "0x021374ac"
+    },
+    {
+      "section": ".init",
+      "source": "0x02130e90",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov006_021374e8",
+      "addend": 0,
+      "target_module": "ov006",
+      "target_address": "0x021374e8"
+    },
+    {
+      "section": ".init",
+      "source": "0x02130e94",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov006_021374f4",
+      "addend": 0,
+      "target_module": "ov006",
+      "target_address": "0x021374f4"
+    },
+    {
+      "section": ".init",
+      "source": "0x02130e98",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov006_02142018",
+      "addend": 0,
+      "target_module": "ov006",
+      "target_address": "0x02142018"
+    },
+    {
+      "section": ".ctor",
+      "source": "0x021335a0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "__sinit_dScMgHanachan_c.cpp",
+      "addend": 0,
+      "target_module": "ov006",
+      "target_address": "0x02130df8"
+    }
+  ],
   "notes": [
-    "Generated by tools/tubuild.py create. See the file's own header comment for what was and was not reconciled, and notes/translation-unit-reconstruction-plan.md section 7.3 for what this generator does and does not attempt to resolve automatically.",
+    "Generated by tools/tubuild.py create for 49 functions, then widened by hand to the whole unit. See the file's own header comment, and notes/translation-unit-reconstruction-plan.md section 7.3 for what the generator does and does not attempt to resolve automatically.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Math_Function_0203b0fc' differs between the legacy file that used to hold func_ov006_020eb018 and the one that held func_ov006_020eb0c8; kept the first, the other is commented out for review -- resolved by hand: the whole preamble was rewritten, one spelling chosen per name, and the odd call site cast; the commented-out alternate was deleted along with it. See the source file's declaration banner for the rule applied to each family.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov006_020ec134' differs between the legacy file that used to hold func_ov006_020eb018 and the one that held func_ov006_020eb0c8; kept the first, the other is commented out for review -- resolved by hand: the whole preamble was rewritten, one spelling chosen per name, and the odd call site cast; the commented-out alternate was deleted along with it. See the source file's declaration banner for the rule applied to each family.",
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_Z15ApproachLinear2Rsss' differs between the legacy file that used to hold func_ov006_020eb0c8 and the one that held func_ov006_020eb1e0; kept the first, the other is commented out for review -- resolved by hand: the whole preamble was rewritten, one spelling chosen per name, and the odd call site cast; the commented-out alternate was deleted along with it. See the source file's declaration banner for the rule applied to each family.",
@@ -387,7 +622,11 @@
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'C') differs between the legacy file that used to hold func_ov006_020eb018 and the one that held func_ov006_020eb31c; kept the first, the other is commented out for review -- resolved by hand: the whole preamble was rewritten, one spelling chosen per name, and the odd call site cast; the commented-out alternate was deleted along with it. See the source file's declaration banner for the rule applied to each family.",
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'C') differs between the legacy file that used to hold func_ov006_020eb018 and the one that held func_ov006_020ebf20; kept the first, the other is commented out for review -- resolved by hand: the whole preamble was rewritten, one spelling chosen per name, and the odd call site cast; the commented-out alternate was deleted along with it. See the source file's declaration banner for the rule applied to each family.",
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'C') differs between the legacy file that used to hold func_ov006_020eb018 and the one that held func_ov006_020ec134; kept the first, the other is commented out for review -- resolved by hand: the whole preamble was rewritten, one spelling chosen per name, and the odd call site cast; the commented-out alternate was deleted along with it. See the source file's declaration banner for the rule applied to each family.",
-    "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'C') differs between the legacy file that used to hold func_ov006_020eb018 and the one that held func_ov006_020ec2bc; kept the first, the other is commented out for review -- resolved by hand: the whole preamble was rewritten, one spelling chosen per name, and the odd call site cast; the commented-out alternate was deleted along with it. See the source file's declaration banner for the rule applied to each family."
+    "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'C') differs between the legacy file that used to hold func_ov006_020eb018 and the one that held func_ov006_020ec2bc; kept the first, the other is commented out for review -- resolved by hand: the whole preamble was rewritten, one spelling chosen per name, and the odd call site cast; the commented-out alternate was deleted along with it. See the source file's declaration banner for the rule applied to each family.",
+    "Widening: the popup arrays data_ov006_02141fe4 and data_ov006_02142044 were declared several ways across the folded shards (three and four respectively). Each is declared once; data_ov006_02142044 takes func_ov006_020ea81c's record type, because func_ov006_020ea81c DIFFs when it reaches the array through a cast, and the other functions cast to the record type their own shard used. Local tags are renamed per function (Ent_ea670, S_ea81c, E6_ea8e0, Vec2_ea914).",
+    "Widening: func_ov006_020ea324 is the wiggler array's element destructor and takes the element in r0. include/dScMgHanachan_c.h and include/decl_common.h declared it (void); the header now declares (void *self) and the conflicting decl_common.h line was removed. Its only other use, src/minigames/d_s_mg_hanachan.cpp, takes its address.",
+    "The file-scope OamAttr* table data_ov006_02142018 is defined in this TU, so mwcc emits __sinit_dScMgHanachan_c.cpp byte-identical to retail __sinit_ov006_02130df8 (0xa4, eight literal-pool relocations: the five scalar globals, data_ov006_021375dc, the vu32* ring data_ov006_02137560 and the table itself), plus the .ctor word at 0x021335a0. The handwritten src/unnamed/ov006/__sinit_ov006_02130df8.c is retired; its delinks row is absorbed and symbols.txt renames the pair __sinit_dScMgHanachan_c.cpp / .p__sinit_dScMgHanachan_c.cpp.",
+    "Local scratch ROM matched this machine's baseline control (ddab9300b24aeae254192c2a30d812b07ece3adff83230e75c865ed915c9de40). Recorded rom.sha256 is the fleet SHA the other intact-object entries on this main share."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
@@ -395,24 +634,76 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov006-dScMgHanachan_c/dScMgHanachan_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 49,
-    "functions_declared": 49,
+    "functions_matched": 61,
+    "functions_declared": 61,
     "compilerOnlyOutput": {
-      "requested": [],
-      "deadstripped": [],
-      "data": [],
-      "dataExternalized": []
+      "requested": [
+        "_ZN15dScMgHanachan_cD2Ev",
+        "_ZN10Vec2_ea914D1Ev"
+      ],
+      "deadstripped": [
+        "_ZN10Vec2_ea914D1Ev",
+        "_ZN15dScMgHanachan_cD2Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        31,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139
+      ],
+      "data": [
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS7dBase_c",
+        "_ZTS8dScene_c",
+        "_ZTI7dBase_c",
+        "_ZTI11dScMgBase_c",
+        "_ZTS11dScMgBase_c",
+        "_ZTI8dScene_c",
+        "_ZTI15dScMgHanachan_c",
+        "_ZTS15dScMgHanachan_c",
+        "_ZTV15dScMgHanachan_c"
+      ],
+      "dataExternalized": [
+        "_ZTI11dScMgBase_c",
+        "_ZTI15dScMgHanachan_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dScene_c",
+        "_ZTS11dScMgBase_c",
+        "_ZTS15dScMgHanachan_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dScene_c",
+        "_ZTV15dScMgHanachan_c"
+      ]
     },
     "criteria": {
       "every_declared_function_defined": "PASS",
       "every_declared_function_bytes_match": "PASS",
-      "declared_function_set_equals_defined_function_set": "PASS",
+      "declared_function_set_equals_defined_function_set": "FAIL-BY-DESIGN -- 1 unlicensed section/symbol(s), 0 compiler-only policy error(s)",
       "functions_occur_in_expected_order": "PASS",
       "relocation_destinations_verified": "PASS"
     },
     "linkcheck": {
       "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
-      "result": "link-verified",
+      "result": "scratch-data-verified",
       "scratch": "build/tu/ov006-dScMgHanachan_c/link (gitignored)",
       "phases": {
         "delink": true,
@@ -424,7 +715,7 @@
         "rom": true
       },
       "tuRange": {
-        "start": "0x020eac38",
+        "start": "0x020ea280",
         "end": "0x020ede18",
         "differingBytes": 0,
         "firstDiff": null
@@ -432,22 +723,70 @@
       "tuRanges": [
         {
           "section": ".text",
-          "start": "0x020eac38",
+          "start": "0x020ea280",
           "end": "0x020ede18",
           "differingBytes": 0,
           "firstDiff": null
+        },
+        {
+          "section": ".init",
+          "start": "0x02130df8",
+          "end": "0x02130e9c",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".ctor",
+          "start": "0x021335a0",
+          "end": "0x021335a4",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".bss",
+          "start": "0x02142018",
+          "end": "0x02142044",
+          "comparison": "NOBITS -- symbol/module gates"
         }
       ],
       "objectAudit": {
         "counts": {
-          "LICENSED": 49
+          "LICENSED": 64
         },
         "emittedTextOrderIsRomAscending": true,
         "nonLicensedSymbols": [],
         "unlicensedSections": []
       },
       "nontextSectionOrder": {
-        "groups": [],
+        "groups": [
+          {
+            "section": ".init",
+            "original": [
+              142
+            ],
+            "desired": [
+              142
+            ]
+          },
+          {
+            "section": ".ctor",
+            "original": [
+              140
+            ],
+            "desired": [
+              140
+            ]
+          },
+          {
+            "section": ".bss",
+            "original": [
+              122
+            ],
+            "desired": [
+              122
+            ]
+          }
+        ],
         "objisolate": null,
         "errors": null
       },
@@ -481,8 +820,96 @@
         "sha256": "d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8",
         "matchesStockRom": true
       },
-      "linkerOutput": null,
-      "note": "Pre-promotion substitution run: the 49-member TU was linked from src_tu/ while the 28 legacy delinks entries inside 0x020eac38..0x020ede18 were spliced out, which is the only shape tubuild will validate (once the src/ path is enrolled it routes to the intact-object path and refuses a text-only TU with `intact production requires one .text claim and at least one non-text claim`; that refusal reproduces on untouched main). [4b/8] licensing audit: 49 LICENSED, 0 non-licensed, 0 unlicensed sections, emitted .text order ROM-ascending. One prerequisite had to be settled first: src/_ZN15dScMgHanachan_c13OnYoshiTryEatEi.cpp carried no `complete` marker because as committed it did not compile (its own `extern char* data_ov004_020beb68` contradicts the void* spelling the headers reach), so dsd served ordinal 58 from ROM bytes. Absorbing it into this TU converts it to source-built; module fidelity stays 106/106 exact and the ROM sha256 is unchanged."
+      "linkerOutput": null
     }
-  }
+  },
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN15dScMgHanachan_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "mwccarm emits the base-object destructor beside the licensed D1/D0 pair; the ROM has no configured D2 home and no surviving relocation references it"
+    },
+    {
+      "symbol": "_ZN10Vec2_ea914D1Ev",
+      "disposition": "deadstrip",
+      "reason": "func_ov006_020ea914's point type has a trivial inline destructor, so mwccarm emits a 4-byte vague-linkage D1 for it beside the licensed text. The cartridge has no copy and no relocation references it."
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70",
+      "reason": "ancestor RTTI passenger; the canonical cartridge copy is independently enrolled"
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60",
+      "reason": "ancestor RTTI name passenger; the canonical cartridge copy is independently enrolled"
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54",
+      "reason": "ancestor RTTI name passenger; the canonical cartridge copy is independently enrolled"
+    },
+    {
+      "symbol": "_ZTS8dScene_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914b0",
+      "reason": "ancestor RTTI name passenger; the canonical cartridge copy is independently enrolled"
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78",
+      "reason": "ancestor RTTI passenger; the canonical cartridge copy is independently enrolled"
+    },
+    {
+      "symbol": "_ZTI11dScMgBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov004",
+      "canonical_address": "0x020bbf6c",
+      "reason": "ancestor RTTI passenger; the canonical cartridge copy is independently enrolled"
+    },
+    {
+      "symbol": "_ZTS11dScMgBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov004",
+      "canonical_address": "0x020bbf84",
+      "reason": "ancestor RTTI name passenger; the canonical cartridge copy is independently enrolled"
+    },
+    {
+      "symbol": "_ZTI8dScene_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914d4",
+      "reason": "ancestor RTTI passenger; the canonical cartridge copy is independently enrolled"
+    },
+    {
+      "symbol": "_ZTI15dScMgHanachan_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213ca7c",
+      "reason": "this class RTTI record; the canonical cartridge copy remains ROM-gap owned"
+    },
+    {
+      "symbol": "_ZTS15dScMgHanachan_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213ca88",
+      "reason": "this class RTTI name; the canonical cartridge copy remains ROM-gap owned"
+    },
+    {
+      "symbol": "_ZTV15dScMgHanachan_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213cab8",
+      "reason": "this class vtable; the canonical cartridge copy remains ROM-gap owned"
+    }
+  ]
 }

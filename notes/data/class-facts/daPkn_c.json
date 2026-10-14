@@ -196,7 +196,7 @@
     "total_lines": "921 -> 952 measured. 952 - 31 (src/d_a_pkn.c) = 921 exactly, confirming the same off-by-one shard.",
     "sibling_oracle": "`-` is wrong at this base. Two promoted TUs share daPkn_c's exact ancestor chain X -> dEnemyBase_c -> dActor_c -> dBase_c -> fBase_c: src/actors/daOts_c.cpp (ov064, 22 functions, config/tu_manifest.d/ov064/daOts_c.json) and src/actors/daObjMarioCap_c.cpp (ov002, 29 of 30 functions). Both are text-only promotions -- daOts_c's manifest has sections = [.text] only, data = [] and bss = [] -- and both handle the vtable through the manifest's compiler_only_output list rather than by owning .data.",
     "compiler_only": ">=11 is an ESTIMATE carried in the queue file, not a measurement. This scout did not measure it; doing so requires building the TU, which is stage 2.",
-    "no_promoted_class_in_ov084": "0 of the 31 files in src/actors/ is an ov084 class. src/actors/Goomboss.cpp merely declares func_ov084_021296b0 and data_ov084_02130cf8 as externs -- that is the ov074 -> daKrb_c call, unrelated to this class."
+    "no_promoted_class_in_ov084": "0 of the 31 files in src/actors/ is an ov084 class. src/actors/daKuriKing_c.cpp merely declares func_ov084_021296b0 and data_ov084_02130cf8 as externs -- that is the ov074 -> daKrb_c call, unrelated to this class."
   },
 
   "state_machine": {
@@ -212,7 +212,7 @@
     },
     "static_initializer": {
       "function": "__sinit_ov084_02130654",
-      "shard": "src/__sinit_ov084_02130654.c",
+      "shard": "src/unnamed/ov084/__sinit_ov084_02130654.c",
       "ctor_entry": "0x02130868 in ov084 .ctor (3 words at 0x02130860..0x0213086c, one per sinit)",
       "what_it_does": "copies the nine .data PMF constants into data_ov084_02130e80[0..8], and also constructs the shared static objects at .bss 0x02130df4..0x02130e74"
     },
@@ -325,7 +325,7 @@
     "offsets_agree_with_rom": true,
     "divergences_to_consider": [
       "The header declares `virtual ~PiranhaPlant();` as the FIRST virtual, out of line. Both promoted dEnemyBase_c oracles took the opposite shape: daOts_c.h and daObjMarioCap_c.h define the destructor INLINE in the class body so that a later out-of-line virtual becomes the key function. Which shape this class takes decides whether the TU emits the _ZTV/_ZTI/_ZTS group, and that group's canonical copy is in ov084 .data, which no shard owns. This is a stage-2 codegen decision; it is recorded here because the ROM does not settle it.",
-      "InitResources, CleanupResources, Behavior, Render and OnPendingDestroy are declared WITHOUT the `virtual` keyword. This is not a defect: they redeclare virtuals fBase_c.h already declares (slots 0/3/6/9/12) and `typedef signed int s32` in include/types.h makes the header's `int` return types identical to fBase_c's `s32`, so they override correctly. It is only inconsistent with include/BobOmbBuddy.h, which spells the same five `virtual s32`.",
+      "InitResources, CleanupResources, Behavior, Render and OnPendingDestroy are declared WITHOUT the `virtual` keyword. This is not a defect: they redeclare virtuals fBase_c.h already declares (slots 0/3/6/9/12) and `typedef signed int s32` in include/types.h makes the header's `int` return types identical to fBase_c's `s32`, so they override correctly. It is only inconsistent with include/daRedBombhei_c.h, which spells the same five `virtual s32`.",
       "The header does not mention the 9-entry state PMF array or any of the 15 non-virtual functions."
     ]
   },

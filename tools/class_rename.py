@@ -35,6 +35,14 @@ in that order -- notes: generator-dependency-order). Rewriting it by hand would
 produce a report that disagrees with its own generator on the next run. Regenerate
 it after the rename instead.
 
+`symbols/actor_renames.tsv` is an append log. The last row at an address is the
+live name; earlier rows are how it got there. Substituting the new spelling into
+an earlier row leaves the appended lineage row sourcing a name nothing targets
+(`_ZN6RabbitD1Ev` after the row that used to produce it now says `_ZN7daMip_cD1Ev`).
+Existing ledger rows are not edited. When the live name at an address changes
+under the rules below, one lineage row is appended: previous live name, new live
+name. A second pass appends nothing, because that new row is now the live one.
+
 `config/arm9/**/symbols.txt` IS rewritten, and that is the load-bearing edit: it is
 what makes the build emit the new symbol. Watch for the alias case -- 125 classes
 already carry BOTH the coined and the ROM name at one address, and for those the
@@ -57,10 +65,11 @@ import subprocess
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
+LEDGER = "symbols/actor_renames.tsv"
 
 # Swept by default. `docs/` is generated and deliberately absent; `build/` is
 # gitignored output; `extracted/` is the cartridge and must never be edited.
-DEFAULT_PATHS = ("src", "src_tu", "include", "config", "symbols", "notes")
+DEFAULT_PATHS = ("src", "include", "config", "symbols", "notes")
 SKIP_DIRS = {".git", "build", "extracted", "docs", "__pycache__", "tools/mwccarm"}
 TEXT_SUFFIXES = {".c", ".cpp", ".h", ".hpp", ".txt", ".json", ".tsv", ".md", ".yaml", ".yml"}
 
@@ -101,6 +110,50 @@ def apply_rules(text, rs):
     return text
 
 
+def _is_ledger(rel):
+    return rel.replace("\\", "/") == LEDGER
+
+
+def append_ledger_lineage(text, rs, old, new):
+    """Append one live-name hop per address. Return (text, appended_lines).
+
+    `text` is the file bytes decoded as text, newlines included. The returned
+    text starts with that exact string when anything is appended, so a CRLF
+    ledger is not rewritten on the way past. A live name that the rules do not
+    change contributes no row: historical mentions of `old` stay where they are.
+    """
+    newline = "\r\n" if "\r\n" in text else "\n"
+    last = {}
+    last_at = {}
+    for i, line in enumerate(text.splitlines()):
+        parts = line.split("\t")
+        if len(parts) < 4:
+            continue
+        if parts[0] == "module" and parts[1] == "addr":
+            continue
+        key = (parts[0], parts[1])
+        last[key] = parts
+        last_at[key] = i
+    why = ("class renamed from the coined %s to %s; earlier rows left untouched"
+           % (old, new))
+    appended = []
+    for key in sorted(last_at, key=lambda k: last_at[k]):
+        parts = last[key]
+        live = parts[3]
+        renamed = apply_rules(live, rs)
+        if renamed == live:
+            continue
+        if any(c in renamed for c in "\t\r\n"):
+            raise ValueError("renamed live name is not one field: %r" % renamed)
+        appended.append("\t".join((parts[0], parts[1], live, renamed, why)))
+    if not appended:
+        return text, []
+    suffix = newline.join(appended) + newline
+    if text.endswith("\n"):
+        return text + suffix, appended
+    return text + newline + suffix, appended
+
+
 def tracked_files(paths):
     r = git("ls-files", "--", *paths)
     out = []
@@ -114,11 +167,28 @@ def tracked_files(paths):
 
 
 def plan(old, new, paths, with_derived):
+    """-> (rules, edits, renames, unchanged_hits, ledger).
+
+    `ledger` is None when the rename log is outside this sweep. Otherwise it is
+    (rel, new_text, appended_lines). `new_text` is the file plus those lines;
+    `appended_lines` is empty when no live name changed.
+    """
     rs = rules(old, new, with_derived)
     edits, renames, unchanged_hits = [], [], []
+    ledger = None
 
     for rel in tracked_files(paths):
         p = REPO / rel
+        if _is_ledger(rel):
+            try:
+                text = p.read_bytes().decode("utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            if old not in text:
+                continue
+            new_text, appended = append_ledger_lineage(text, rs, old, new)
+            ledger = (rel, new_text, appended)
+            continue
         try:
             text = p.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
@@ -139,7 +209,7 @@ def plan(old, new, paths, with_derived):
         if new_base != base:
             renames.append((rel, str(pathlib.PurePosixPath(rel).parent / new_base)))
 
-    return rs, edits, renames, unchanged_hits
+    return rs, edits, renames, unchanged_hits, ledger
 
 
 def check_collision(new, paths):
@@ -177,7 +247,7 @@ def main(argv=None):
         print("  DELETED, not this rename -- see the module docstring.")
         return 2
 
-    rs, edits, renames, unchanged = plan(old, new, args.paths, args.with_derived)
+    rs, edits, renames, unchanged, ledger = plan(old, new, args.paths, args.with_derived)
 
     print(f"=== {old}  ->  {new}   (mangled {len(old)}{old} -> {len(new)}{new})")
     print(f"rules: {', '.join(n for n, _ in rs)}")
@@ -188,6 +258,14 @@ def main(argv=None):
     print(f"\n{len(renames)} file(s) renamed:")
     for a, b in renames:
         print(f"   {a}\n     -> {b}")
+    if ledger:
+        rel, new_text, appended = ledger
+        if appended:
+            print(f"\nledger: {len(appended)} lineage row(s) appended to {rel} "
+                  f"(earlier rows untouched)")
+        else:
+            print(f"\nledger: {rel} mentions {old} but no live name changes; "
+                  f"earlier rows untouched")
     if unchanged:
         print(f"\n{len(unchanged)} file(s) MENTION {old} but no rule fired "
               f"(substring inside a longer identifier) -- review:")
@@ -196,6 +274,10 @@ def main(argv=None):
 
     # Idempotency: a second pass over the produced text must be a no-op.
     bad = [rel for rel, _, b in edits if apply_rules(b, rs) != b]
+    if ledger and ledger[2]:
+        _, more = append_ledger_lineage(ledger[1], rs, old, new)
+        if more:
+            bad.append(ledger[0])
     if bad:
         print(f"\n!! NOT IDEMPOTENT -- a second pass would change: {bad}")
         return 1
@@ -207,10 +289,15 @@ def main(argv=None):
 
     for rel, _, b in edits:
         (REPO / rel).write_text(b, encoding="utf-8", newline="\n")
+    if ledger and ledger[2]:
+        rel, new_text, appended = ledger
+        (REPO / rel).write_bytes(new_text.encode("utf-8"))
     for a, b in renames:
         (REPO / b).parent.mkdir(parents=True, exist_ok=True)
         git("mv", a, b)
-    print(f"\napplied: {len(edits)} edit(s), {len(renames)} rename(s)")
+    n_ledger = len(ledger[2]) if ledger else 0
+    print(f"\napplied: {len(edits)} edit(s), {len(renames)} rename(s), "
+          f"{n_ledger} ledger row(s)")
     return 0
 
 

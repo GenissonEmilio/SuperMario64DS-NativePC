@@ -12,9 +12,9 @@
  *
  * SIZE 0x4b4, the literal daObjPathLift_c_classInit factory passes to
  * fBase_c::operator new. dPathLiftActor_c ends at 0x450; the D1 destructor
- * destroys only a ShadowModel at 0x450 before storing the base vtable and
+ * destroys only a dExtShadowModel_c at 0x450 before storing the base vtable and
  * running dPathLiftActor_c's destructor (Model[3] array, inlined per
- * include/PathLift.h), so ShadowModel is this class's only member with a
+ * include/PathLift.h), so dExtShadowModel_c is this class's only member with a
  * constructor/destructor of its own.
  *
  * unk_428, unk_42c, unk_43c and unk_440 are NOT this class's own fields --
@@ -33,12 +33,12 @@
 #ifdef __cplusplus
 
 #include "PathLift.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
 struct daObjPathLift_c : dPathLiftActor_c {
-    ShadowModel mShadowModel; /* 0x450 */
+    dExtShadowModel_c mShadowModel; /* 0x450 */
     u8          unk_478[0x30]; /* 0x478 */
     u32         mSoundHandle; /* 0x4a8 */
     s32         mGroundY;     /* 0x4ac */

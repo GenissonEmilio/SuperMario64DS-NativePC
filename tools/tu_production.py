@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -48,8 +49,12 @@ def prepare_intact_object(raw, entry):
         TB.apply_externalized_output_policy(post_policy, entry)
     if reasons:
         _raise(f"{entry['id']} exact RTTI externalization", reasons)
+    renamed_obj, defined_renames, reasons = \
+        TB.apply_defined_symbol_rename_policy(externalized_obj, entry)
+    if reasons:
+        _raise(f"{entry['id']} defined symbol renames", reasons)
     aliased_obj, undefined_aliases, reasons = \
-        TB.apply_undefined_symbol_alias_policy(externalized_obj, entry)
+        TB.apply_undefined_symbol_alias_policy(renamed_obj, entry)
     if reasons:
         _raise(f"{entry['id']} undefined symbol aliases", reasons)
     bound_obj, symbol_bindings, reasons = \
@@ -70,7 +75,8 @@ def prepare_intact_object(raw, entry):
     if reasons:
         _raise(f"{entry['id']} vtable address-point policy", reasons)
     linked_obj, rebias = TB.OI.rebias_object_symbols(
-        ordered_obj, biases, normalize_undefined=True)
+        ordered_obj, biases, normalize_undefined=True,
+        skip_undefined=TB.policy_dropped_vtable_symbols(entry))
     if linked_obj is None:
         _raise(f"{entry['id']} vtable address-point rewrite", [rebias.get("error")])
     owned_after = TB.verify_owned_sections(
@@ -89,6 +95,7 @@ def prepare_intact_object(raw, entry):
         _raise(f"{entry['id']} production object audit", audit_errors)
     return linked_obj, {
         "compilerOnly": compiler_only, "externalized": externalized,
+        "definedSymbolRenames": defined_renames,
         "undefinedAliases": undefined_aliases,
         "symbolBindings": symbol_bindings,
         "sectionOrder": section_order,
@@ -358,8 +365,12 @@ def _prepare_one(entry, config_root, work_root, jobs):
     if reasons:
         _raise(f"{entry['id']} exact RTTI externalization", reasons)
 
+    renamed_obj, defined_renames, reasons = \
+        TB.apply_defined_symbol_rename_policy(externalized_obj, entry)
+    if reasons:
+        _raise(f"{entry['id']} defined symbol renames", reasons)
     aliased_obj, undefined_aliases, reasons = \
-        TB.apply_undefined_symbol_alias_policy(externalized_obj, entry)
+        TB.apply_undefined_symbol_alias_policy(renamed_obj, entry)
     if reasons:
         _raise(f"{entry['id']} undefined symbol aliases", reasons)
 
@@ -385,7 +396,8 @@ def _prepare_one(entry, config_root, work_root, jobs):
     if reasons:
         _raise(f"{entry['id']} vtable address-point policy", reasons)
     storage_obj, rebias = TB.OI.rebias_object_symbols(
-        storage_obj, biases, normalize_undefined=True)
+        storage_obj, biases, normalize_undefined=True,
+        skip_undefined=TB.policy_dropped_vtable_symbols(entry))
     if storage_obj is None:
         _raise(f"{entry['id']} vtable address-point rewrite",
                [rebias.get("error")])
@@ -479,6 +491,82 @@ def prepare(tu_ids, config_root, work_root, jobs=1):
     }
 
 
+_FXHASH_SEED = 0x517cc1B727220A95
+
+
+def _fxhash64(data):
+    """rustc-hash fxhash64 over a ``Vec<u8>`` (length add, then 8/4/2/1-byte chunks)."""
+    h = 0
+
+    def add(v):
+        nonlocal h
+        rot = ((h << 5) | (h >> 59)) & 0xFFFFFFFFFFFFFFFF
+        h = (rot ^ v) * _FXHASH_SEED & 0xFFFFFFFFFFFFFFFF
+
+    add(len(data))
+    i, n = 0, len(data)
+    while i + 8 <= n:
+        add(int.from_bytes(data[i:i + 8], "little"))
+        i += 8
+    if i + 4 <= n:
+        add(int.from_bytes(data[i:i + 4], "little"))
+        i += 4
+    if i + 2 <= n:
+        add(int.from_bytes(data[i:i + 2], "little"))
+        i += 2
+    if i < n:
+        add(data[i])
+    return h
+
+
+def _module_checksum_failures(config_yaml):
+    """Replicate `dsd check modules` module-by-module so a failing gate names bytes.
+
+    dsd's per-module verdicts go through `log::info!`, which the captured output
+    suppresses, so a remote-only failure reports nothing. This resolves each
+    module's `object:` the same way dsd does -- relative to the config file's
+    directory -- and hashes exactly as `check_module` does, including the
+    missing-file-means-empty-bytes rule."""
+    out = []
+    try:
+        text = config_yaml.read_text(encoding="utf-8")
+    except OSError as exc:
+        return [f"checksum replay unavailable: {exc}"]
+    name = obj = None
+    for line in text.splitlines():
+        m = re.match(r"\s*(?:- )?name:\s*(\S+)", line)
+        if m:
+            name = m.group(1)
+            continue
+        m = re.match(r"\s*object:\s*(\S+)", line)
+        if m:
+            obj = m.group(1)
+            continue
+        m = re.match(r"\s*hash:\s*(\S+)", line)
+        if not m or obj is None:
+            continue
+        try:
+            expected = int(m.group(1), 16)
+        except ValueError:
+            out.append(f"module {name}: invalid hash {m.group(1)!r}")
+            name = obj = None
+            continue
+        p = config_yaml.parent / obj
+        try:
+            code = p.read_bytes() if p.is_file() else b""
+        except OSError as exc:
+            out.append(f"module {name}: cannot read {obj}: {exc}")
+            name = obj = None
+            continue
+        actual = _fxhash64(code)
+        if actual != expected:
+            out.append(f"module {name}: checksum failed "
+                       f"(file {obj}: {'absent' if not p.is_file() else f'{len(code)} bytes'}, "
+                       f"actual {actual:016x}, expected {expected:016x})")
+        name = obj = None
+    return out
+
+
 def verify_link(config_yaml, linked_elf, prepared):
     """Run the production-only module, symbol-delta, and storage-alias gates."""
     config_yaml = pathlib.Path(config_yaml)
@@ -486,6 +574,31 @@ def verify_link(config_yaml, linked_elf, prepared):
     ok_modules, modules_out, _seconds = TB._run_dsd(
         [str(TB.RB.DSD), "check", "modules", "-c", str(config_yaml), "-f"],
         "dsd check modules")
+    checksum_replay = []
+    if not ok_modules:
+        checksum_replay = _module_checksum_failures(config_yaml)
+        detail_lines = list(checksum_replay)
+        if not detail_lines:
+            try:
+                import rombuild_check as RBC
+                analysis = RBC.analyze(config_yaml.parent, "stock")
+                for m in (analysis.get("moduleFidelity") or {}).get("results", []):
+                    if not m.get("exact"):
+                        detail_lines.append(
+                            f"module {m.get('module')}: {m.get('differingBytes')} "
+                            f"byte(s) differ from retail")
+                for f in (analysis.get("failures") or [])[:12]:
+                    detail_lines.append(
+                        f"  {f.get('module')} {f.get('name')} "
+                        f"0x{f.get('addr', 0):08x} +0x{f.get('size', 0):x}: "
+                        f"{f.get('differingBytes', f.get('reason', '?'))}")
+                for label in (analysis.get("missingModuleBinaries") or [])[:12]:
+                    detail_lines.append(f"module {label}: binary missing")
+            except Exception as exc:  # diagnostic only; never mask the gate failure
+                detail_lines.append(f"module analysis unavailable: {exc}")
+        if detail_lines:
+            modules_out = (modules_out + "\n" if modules_out else "") \
+                + "\n".join(detail_lines)
     ok_symbols, symbols_out, _seconds = TB._run_dsd(
         [str(TB.RB.DSD), "check", "symbols", "-c", str(config_yaml),
          "-e", str(linked_elf), "-m", "12"],
@@ -503,6 +616,7 @@ def verify_link(config_yaml, linked_elf, prepared):
         "ok": bool(ok_modules and ok_symbols and not new_errors and not alias_errors),
         "modulesOk": bool(ok_modules),
         "modulesOutput": modules_out[-4000:],
+        "moduleChecksumReplay": checksum_replay[:12],
         "symbolsCommandOk": bool(ok_symbols),
         "symbolErrors": symbol_errors,
         "baselineSymbolErrors": sorted(baseline_errors),

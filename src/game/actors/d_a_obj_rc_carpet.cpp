@@ -20,17 +20,15 @@
  * Leftover: func_020393d4 is an 8-byte store into dBgW+0x18
  *   (beforeClsnCallback). This TU calls it; naming belongs with
  *   dBgW in arm9.
- * Leftover: func_ov002_020efaf0 is the path-lift setup helper
- *   (ROM label; symbols.txt has not renamed it to a method).
  * Leftover: func_ov036_021122c0 / 0211224c keep ROM labels.
  * Leftover: 021122c0 / 0211224c translation stores stay
  *   `(char *)self + 0x490/0x494/0x498` (mModelAnim.mat4x3.t) and
  *   `+ 0x310/0x314/0x318` (mClsnMat.t). Nested-member stores make
  *   b56 materialise a second 0x46c base and grow the function.
  * Leftover: SharedFilePtr +4 BCA load (layout unrecovered).
- * Leftover: data_ov002_0210d9f0 / data_ov036_0211419c / 021141a4 /
- *   021141ac handles and data_ov036_02112b28 CLPS. This TU does
- *   not own those overlay cells.
+ * Leftover: data_ov002_0210d9f0 and data_ov036_02112b28 CLPS stay
+ *   outside this TU. The three ov036 handles are file-scope objects
+ *   at the bottom of this file.
  */
 
 #include "common.h"
@@ -61,11 +59,35 @@ struct FlyingCarpetSpawnInfo {
 typedef char FlyingCarpetSpawnInfo_size_must_be_0x1c[
     sizeof(FlyingCarpetSpawnInfo) == 0x1c ? 1 : -1];
 
+/* Retail constructs these 8-byte handles in this order and registers
+ * their destructors. The wrapper names are local; the ctor/dtor
+ * addresses are the ROM resource-family functions. */
+struct CarpetModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    CarpetModelFilePtr(u32 fileID);
+    ~CarpetModelFilePtr();
+};
+
+struct CarpetAnimationFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    CarpetAnimationFilePtr(u32 fileID);
+    ~CarpetAnimationFilePtr();
+};
+
+struct CarpetCollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    CarpetCollisionFilePtr(u32 fileID);
+    ~CarpetCollisionFilePtr();
+};
+
 extern "C" {
 extern SharedFilePtr data_ov002_0210d9f0;
-extern SharedFilePtr data_ov036_0211419c;
-extern SharedFilePtr data_ov036_021141a4;
-extern SharedFilePtr data_ov036_021141ac;
+extern CarpetModelFilePtr data_ov036_021141a4;
+extern CarpetAnimationFilePtr data_ov036_0211419c;
+extern CarpetCollisionFilePtr data_ov036_021141ac;
 extern CLPS_Block data_ov036_02112b28;
 
 /* Retail resource-pointer table at ov036:0x02113f58. */
@@ -75,12 +97,11 @@ FlyingCarpetResources data_ov036_02113f58 = {
     &data_ov036_02112b28
 };
 
-extern void *_ZN7fBase_cnwEj(u32 size);
-extern void _ZN10dBgActor_cC2Ev(dBgActor_c *actor);
-extern void _ZN5ModelC1Ev(Model *model);
+extern void *_ZN10dBgActor_cC2Ev(dBgActor_c *actor);
+extern void *_ZN5ModelC1Ev(Model *model);
 extern void _ZN5ModelD1Ev(Model *model);
-extern void _ZN7PathPtrC1Ev(PathPtr *path);
-extern void _ZN9ModelAnimC1Ev(ModelAnim *model);
+extern void *_ZN7PathPtrC1Ev(PathPtr *path);
+extern void *_ZN9ModelAnimC1Ev(ModelAnim *model);
 extern void __cxa_vec_ctor(
     Model *models, int count, int size, void *ctor, void *dtor);
 extern int _ZTV15daObjRcCarpet_c[];
@@ -93,7 +114,6 @@ extern int _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block
     dBgW_KcMbg *collider, KCL_File *file, const Matrix4x3 *matrix,
     Fix12i scale, s16 angle, CLPS_Block *clps);
 extern void func_020393d4(dBgW *collider, void *callback);
-extern void func_ov002_020efaf0(dPathLiftActor_c *lift);
 extern void _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(
     dBgActor_c *actor, Fix12i low, Fix12i high);
 extern void Matrix4x3_FromRotationXYZExt(
@@ -140,7 +160,7 @@ int daObjRcCarpet_c::InitResources()
     Model::LoadFile(data_ov002_0210d9f0);
     void *modelFile = Model::LoadFile(*data_ov036_02113f58.model);
     mModelAnim.SetFile((BMD_File *)modelFile, 1, -1);
-    Animation::LoadFile(data_ov036_0211419c);
+    dExtFrameCtrl_c::LoadFile(data_ov036_0211419c);
     _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(
         &mModelAnim, (BCA_File *)((int *)&data_ov036_0211419c)[1],
         0, 0x1000, 0);
@@ -154,7 +174,7 @@ int daObjRcCarpet_c::InitResources()
     func_020393d4(&mMeshCollider, (void *)&dBgW::UpdatePosAndAngs);
     mPathSpeed = 0xa000;
     mHorzSpeed = mPathSpeed;
-    func_ov002_020efaf0(this);
+    BaseInitResources();
     mPathDirection = 1;
     unk_42c = 1;
     return 1;
@@ -221,3 +241,10 @@ extern "C" void func_ov036_0211224c(daObjRcCarpet_c *self)
     *(s32 *)((char *)self + 0x318) = self->mPosZ;
     self->mMeshCollider.Transform(self->mClsnMat, self->mAngleY);
 }
+/* ROM ordinals 0/1 are emitted by the inline virtual destructor:*/
+// @symbol _ZN15daObjRcCarpet_cD1Ev
+// @symbol _ZN15daObjRcCarpet_cD0Ev
+
+CarpetModelFilePtr data_ov036_021141a4(1687);
+CarpetAnimationFilePtr data_ov036_0211419c(1689);
+CarpetCollisionFilePtr data_ov036_021141ac(1688);

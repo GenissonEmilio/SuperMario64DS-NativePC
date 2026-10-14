@@ -12,9 +12,9 @@
  * 0x14 BYTES, every offset pinned by a one-line matched function:
  *
  *   _ZN8dM3dGSphC1Ev   p[0] = _ZTV8dM3dGSph   the vptr at 0x00
- *   func_0203ac00   d[1..3] = s[0..2]         the centre  at 0x04
- *   func_0203abcc   p[4] = v                  the radius  at 0x10
- *   func_0203abd4   calls both of the above   -- SetCentreAndRadius
+ *   SetCentre       d[1..3] = s[0..2]         the centre  at 0x04
+ *   SetRadius       p[4] = v                  the radius  at 0x10
+ *   Set             calls both of the above   -- SetCentreAndRadius
  *   _ZN8dM3dGSphD1Ev / _ZN8dM3dGSphD0Ev       D1 / D0
  *   _ZN8dM3dGSphD2Ev @0x0203ac1c               D2, already named
  *
@@ -57,6 +57,14 @@ struct dM3dGSph {
     /* Declared here and defined out of line so each constructor ABI variant can
      * be isolated at its own ROM address. */
     dM3dGSph();
+
+    /* The field accessors the func_ shards kept anonymous. GetCentre copies the
+       centre out for dBgW_KcMbgSclY::DetectClsn; the setters are what
+       SetObjAndLine and SetObjAndSphere reach through Set(). */
+    void GetCentre(Vector3 &out) const;
+    void SetRadius(Fix12i radius);
+    void Set(const Vector3 &centre, Fix12i radius);
+    void SetCentre(const Vector3 &centre);
 
     /* This family deallocates through Memory::operator_delete2 (0x0203cbcc),
      * not the actor heap and not the global _ZdlPv. CW inlines operator delete

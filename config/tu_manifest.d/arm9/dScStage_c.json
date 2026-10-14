@@ -1,0 +1,350 @@
+{
+  "id": "arm9/dScStage_c",
+  "module": "arm9",
+  "source": "src/actors/dScStage_c.cpp",
+  "promoted_source": "src/actors/dScStage_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "contiguous linker run: 0x02023688..0x02029408, 16 function(s), gapless in config/arm9/delinks.txt, every entry complete.",
+    "The run is one class. The destructor pair opens it and the VE_ (VS exit), LC_ (level clear) and PS_ (pause screen) groups follow in ROM order; every function is a dScStage_c static or the destructor.",
+    "d_s_boot.c ends exactly at 0x02023688 and func_02029408.c (a foreign 0x24-byte helper) begins at 0x02029408, so the run is bounded by other TUs on both sides.",
+    "The rest of the class -- InitResources 0x0202cc0c, Behavior, Render, UpdateMessage, the graph callbacks, the factory dScStage_c_classInit 0x0202e088 -- sits in later ranges interleaved with the message and camera systems and is not claimed here.",
+    "module sinit corroboration: arm9 is one under-segmented unit, so sinit attribution does not narrow this TU."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x02023688",
+      "end": "0x02029408"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN10dScStage_cD1Ev",
+      "address": "0x02023688",
+      "size": "0x00000068",
+      "legacy_source": "src/_ZN10dScStage_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN10dScStage_cD0Ev",
+      "address": "0x020236f0",
+      "size": "0x0000007c",
+      "legacy_source": "src/_ZN10dScStage_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "_ZN10dScStage_c9VE_UpdateEv",
+      "address": "0x0202376c",
+      "size": "0x00000314",
+      "legacy_source": "src/_ZN10dScStage_c9VE_UpdateEv.cpp",
+      "ordinal": 2
+    },
+    {
+      "symbol": "_ZN10dScStage_c7VE_InitEv",
+      "address": "0x02023a80",
+      "size": "0x00000160",
+      "legacy_source": "src/_ZN10dScStage_c7VE_InitEv.cpp",
+      "ordinal": 3
+    },
+    {
+      "symbol": "_ZN10dScStage_c20RenderBouncingArrowsEv",
+      "address": "0x02023be0",
+      "size": "0x000001d8",
+      "legacy_source": "src/_ZN10dScStage_c20RenderBouncingArrowsEv.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "_ZN10dScStage_c9LC_RenderEv",
+      "address": "0x02023db8",
+      "size": "0x00000510",
+      "legacy_source": "src/_ZN10dScStage_c9LC_RenderEv.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "_ZN10dScStage_c9LC_UpdateEv",
+      "address": "0x020242c8",
+      "size": "0x000009a8",
+      "legacy_source": "src/_ZN10dScStage_c9LC_UpdateEv.cpp",
+      "ordinal": 6
+    },
+    {
+      "symbol": "_ZN10dScStage_c16CheckCameraInputEv",
+      "address": "0x02024c70",
+      "size": "0x00000460",
+      "legacy_source": "src/_ZN10dScStage_c16CheckCameraInputEv.cpp",
+      "ordinal": 7
+    },
+    {
+      "symbol": "_ZN10dScStage_c12RenderNumberEhiibi",
+      "address": "0x020250d0",
+      "size": "0x00000100",
+      "legacy_source": "src/_ZN10dScStage_c12RenderNumberEhiibi.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "_ZN10dScStage_c9PS_RenderEv",
+      "address": "0x020251d0",
+      "size": "0x00000b50",
+      "legacy_source": "src/_ZN10dScStage_c9PS_RenderEv.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "_ZN10dScStage_c25PS_UpdateOkAndBackButtonsEb",
+      "address": "0x02025d20",
+      "size": "0x00000154",
+      "legacy_source": "src/_ZN10dScStage_c25PS_UpdateOkAndBackButtonsEb.cpp",
+      "ordinal": 10
+    },
+    {
+      "symbol": "_ZN10dScStage_c17PS_UpdateSaveMenuEb",
+      "address": "0x02025e74",
+      "size": "0x000000ec",
+      "legacy_source": "src/_ZN10dScStage_c17PS_UpdateSaveMenuEb.cpp",
+      "ordinal": 11
+    },
+    {
+      "symbol": "_ZN10dScStage_c20PS_UpdateOptionsMenuEv",
+      "address": "0x02025f60",
+      "size": "0x000001e8",
+      "legacy_source": "src/_ZN10dScStage_c20PS_UpdateOptionsMenuEv.cpp",
+      "ordinal": 12
+    },
+    {
+      "symbol": "_ZN10dScStage_c17UpdateMenuButtonsEb",
+      "address": "0x02026148",
+      "size": "0x00000148",
+      "legacy_source": "src/_ZN10dScStage_c17UpdateMenuButtonsEb.cpp",
+      "ordinal": 13
+    },
+    {
+      "symbol": "_ZN10dScStage_c10PS_CleanupEv",
+      "address": "0x02026290",
+      "size": "0x000000cc",
+      "legacy_source": "src/_ZN10dScStage_c10PS_CleanupEv.cpp",
+      "ordinal": 14
+    },
+    {
+      "symbol": "_ZN10dScStage_c9PS_UpdateEv",
+      "address": "0x0202635c",
+      "size": "0x000030ac",
+      "legacy_source": "src/_ZN10dScStage_c9PS_UpdateEv.cpp",
+      "ordinal": 15
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Text-only. The class's _ZTV/_ZTI/_ZTS stay in the cartridge .data at 0x02092158..0x02092208; this TU re-emits them and deadstrips the copies.",
+    "Destructor is the key function, defined out of line under defer_codegen off, so the file is ROM-ascending. D2 is deadstripped.",
+    "ROMBUILD NOTE: the intact-TU link control refuses on stock-ROM sha256 ddab9300... != admitted bootstrap proof d1506e9018.... Pre-existing tree rot, not this TU: a clean checkout of main (2ecca74c0d) builds the identical ddab9300... and is refused the same way; the baseline control's module fidelity is PASS and dsd check symbols --fail shows the same 9 pre-existing ITCM/ARM9-main lines on both trees."
+  ],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN10dScStage_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Compiler-generated base-object destructor. dScStage_c is never a base subobject. The cartridge carries D1 at 0x02023688 and D0 at 0x020236f0; no symbols.txt row defines a D2 and nothing relocates to one."
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70",
+      "reason": "Vague-linkage typeinfo for an inherited base. The cartridge copy is arm9:0x02086d70, outside this entry's .text."
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60",
+      "reason": "Vague-linkage typeinfo name for an inherited base. The cartridge copy is arm9:0x02086e60, outside this entry's .text."
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54",
+      "reason": "Vague-linkage typeinfo name for an inherited base. The cartridge copy is arm9:0x02086e54, outside this entry's .text."
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78",
+      "reason": "Vague-linkage typeinfo for an inherited base. The cartridge copy is arm9:0x02086e78, outside this entry's .text."
+    },
+    {
+      "symbol": "_ZTS8dScene_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914b0",
+      "reason": "Vague-linkage typeinfo name for an inherited base. The cartridge copy is arm9:0x020914b0, outside this entry's .text."
+    },
+    {
+      "symbol": "_ZTI8dScene_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914d4",
+      "reason": "Vague-linkage typeinfo for an inherited base. The cartridge copy is arm9:0x020914d4, outside this entry's .text."
+    },
+    {
+      "symbol": "_ZTI10dScStage_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02092158",
+      "reason": "Typeinfo for dScStage_c, emitted because this TU defines the key function. Cartridge home arm9:0x02092158 is .data, outside the claimed .text."
+    },
+    {
+      "symbol": "_ZTS10dScStage_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02092170",
+      "reason": "Typeinfo name for dScStage_c. Cartridge home arm9:0x02092170 is .data, outside the claimed .text."
+    },
+    {
+      "symbol": "_ZTV10dScStage_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020921c0",
+      "reason": "Vtable for dScStage_c, emitted because this TU defines the key function. Cartridge home arm9:0x020921c0 is .data, outside the claimed .text."
+    }
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/arm9-dScStage_c/dScStage_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 16,
+    "functions_declared": 16,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN10dScStage_cD2Ev"
+      ],
+      "deadstripped": [
+        "_ZN10dScStage_cD2Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52
+      ],
+      "data": [
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7dBase_c",
+        "_ZTS8dScene_c",
+        "_ZTI8dScene_c",
+        "_ZTI10dScStage_c",
+        "_ZTS10dScStage_c",
+        "_ZTV10dScStage_c"
+      ],
+      "dataExternalized": [
+        "_ZTI10dScStage_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dScene_c",
+        "_ZTS10dScStage_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dScene_c",
+        "_ZTV10dScStage_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    },
+    "linkcheck": {
+      "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
+      "result": "scratch-link-verified",
+      "scratch": "build/tu/arm9-dScStage_c/link (gitignored)",
+      "phases": {
+        "delink": true,
+        "lcf": true,
+        "compile": true,
+        "link": true,
+        "checkModules": true,
+        "checkSymbols": false,
+        "rom": true
+      },
+      "tuRange": {
+        "start": "0x02023688",
+        "end": "0x02029408",
+        "differingBytes": 0,
+        "firstDiff": null
+      },
+      "tuRanges": [
+        {
+          "section": ".text",
+          "start": "0x02023688",
+          "end": "0x02029408",
+          "differingBytes": 0,
+          "firstDiff": null
+        }
+      ],
+      "objectAudit": {
+        "counts": {
+          "LICENSED": 16
+        },
+        "emittedTextOrderIsRomAscending": true,
+        "nonLicensedSymbols": [],
+        "unlicensedSections": []
+      },
+      "nontextSectionOrder": {
+        "groups": [],
+        "objisolate": null,
+        "errors": null
+      },
+      "linkedStorageAliases": null,
+      "symbolCheckNewVsBaseline": [],
+      "symbolCheckErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "symbolCheckBaselineErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "moduleSetSha256": "f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b",
+      "rom": {
+        "bytes": 16777216,
+        "sha256": "ddab9300b24aeae254192c2a30d812b07ece3adff83230e75c865ed915c9de40",
+        "matchesStockRom": true
+      },
+      "linkerOutput": null
+    }
+  }
+}

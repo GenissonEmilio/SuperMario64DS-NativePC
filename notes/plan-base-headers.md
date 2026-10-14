@@ -101,7 +101,6 @@ python tools/eligible.py                     # BEFORE, on a clean tree
 python tools/check_header_offsets.py include/dEnemyBase_c.h include/dCapEnemy_c.h
 python tools/rombuild.py                     # 106/106 exact, PASS
 python tools/eligible.py                     # AFTER -- diff against BEFORE
-python tools/prepush_attribution.py          # credit must not move
 python tools/gen_header.py --root . --report # the 49 weak conflicts should be 0
 ```
 

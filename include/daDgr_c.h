@@ -92,7 +92,7 @@ struct daDgr_c : dBgActor_c {
      * teardowns from the base clause alone.
      *
      * (This header previously declared it out of line, reasoning by analogy
-     * with include/BigBrickBlock.h. The analogy is wrong for this class: the
+     * with include/daObjBlockL_c.h. The analogy is wrong for this class: the
      * ROM's own D1/D0 addresses settle it, and the one-function shards could
      * not see the ordering because each held only one variant.)
      *
@@ -123,6 +123,10 @@ struct daDgr_c : dBgActor_c {
     virtual s32 CleanupResources();    /* slot 3 */
     virtual s32 Behavior();            /* slot 6 */
     virtual s32 Render();              /* slot 9 */
+
+    int func_ov025_0211123c();
+    void func_ov025_021112e0();
+    void func_ov025_02111344();
 
     /* slot 31 (Kill) is NOT overridden: the vtable word at data_ov025_02113760
        + 0x7c is 0x020ee55c, identical to dBgActor_c's own slot 31 -- confirmed

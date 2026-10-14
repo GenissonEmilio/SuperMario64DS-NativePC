@@ -8,13 +8,30 @@ import sinit_owners as SO  # noqa: E402
 
 
 class SinitOwnersTests(unittest.TestCase):
-    def test_polelift_manifest_is_curated_but_not_overclaimed_as_proven(self):
-        evidence = SO.load_manifest_evidence()
+    def test_curated_init_is_not_overclaimed_as_proven(self):
+        # A synthetic manifest, not a live one: the ov045 PoleLift manifest this
+        # test used to read has since folded its initializer (#3661, landed in
+        # #3703), the promotion that turns a curated row into a licensed one.
+        # Even under a proof status, a curated row stays unproven.
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            mdir = repo / "config" / "tu_manifest.d" / "ov045"
+            mdir.mkdir(parents=True)
+            (mdir / "daObjKm2_Ami_Bou_c.json").write_text(
+                '{"id": "ov045/daObjKm2_Ami_Bou_c", "status": "promoted",'
+                ' "functions": [{"symbol": "__sinit_d_a_obj_km2_ami_bou.cpp"}],'
+                ' "tu_owned_but_out_of_scope": {"init": [{"symbol": "__sinit_ov045_02112214",'
+                ' "evidence": "touches this TU\'s two .bss SharedFilePtr statics"}]}}',
+                encoding="utf-8")
+            evidence = SO.load_manifest_evidence(repo)
         rows = evidence["__sinit_ov045_02112214"]
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["owner"], "ov045/PoleLift")
+        self.assertEqual(rows[0]["owner"], "ov045/daObjKm2_Ami_Bou_c")
         self.assertEqual(rows[0]["kind"], "curated-out-of-scope")
         self.assertFalse(rows[0]["proven"])
+        licensed = evidence["__sinit_d_a_obj_km2_ami_bou.cpp"]
+        self.assertEqual([r["kind"] for r in licensed], ["licensed-function"])
+        self.assertTrue(licensed[0]["proven"])
 
     def test_unique_consumer_is_high_but_conflicting_type_is_ambiguous(self):
         self.assertEqual(

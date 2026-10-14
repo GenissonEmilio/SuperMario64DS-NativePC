@@ -1,5 +1,5 @@
 """Coordinate decomp work via the tangos.dev claims lock service so multiple bots
-do not grind the same address ranges. Programmatic sibling of CLAIMS.md.
+do not grind the same address ranges.
 
 Lock flow: try-lock a (module, start, end) span -> renew while working -> release when
 done. The handle (display label) comes from CLAIMS_HANDLE / tools/claims_handle.txt /
@@ -11,7 +11,7 @@ the OS username -- the API key is what proves identity. Endpoints:
 
 The API key is NOT in this file: it comes from the CLAIMS_API_KEY env var or the
 gitignored tools/claims_key.txt. Without a key, check() still works read-only;
-lock/renew/release will 401 (coordinate via CLAIMS.md instead).
+lock/renew/release will 401.
 
 CLI:
   python tools/claims.py check    --module ov006 --start 0x020f0000 --end 0x020f0100

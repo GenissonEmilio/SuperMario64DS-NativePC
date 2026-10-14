@@ -66,7 +66,7 @@ signature, they are citing something that does not exist.
 *which vtable belongs to it*, and *which slot is which* — the slot order was validated
 against a byte-matched function on ov056.
 
-But `BigMovingIceBlock` is a drafted label, not a ROM string. `config/rom-name-glossary.json`
+But `BigMovingIceBlock` was a drafted label, not a ROM string; the cartridge RTTI name is `daObjEwmIceBlock_c`. `config/rom-name-glossary.json`
 is explicit about this and carries a per-entry confidence, noting: *"nothing in the binary
 says what 'Ukiyuka' means."* So: the *relationship* the name encodes is ROM-proven; the
 English word is a community reading. Renaming one costs nothing; relying on the wiring is
@@ -155,7 +155,7 @@ inference:
 
 | symbol | name declares | tree says | witness |
 |---|---|---|---|
-| `_ZN7Clipper13Func_020156DCEv` | 0 | **5** | `src/Camera_UpdateMatrices.c` declares `(void*,int,int,int,int)` and matches the ROM |
+| `_ZN7Clipper13Func_020156DCEv` | 0 | **5** | `Camera_UpdateMatrices` (in `src/actors/unit020bfec0.cpp`) declares `(void*,int,int,int,int)` and matches the ROM |
 | `_ZN12dEnemyBase_c12KillByAttackER8dActor_c` | 1 (+`this`) | **4** | its own definition takes 4, and three call sites pass 4 |
 | `_ZN12dEnemyBase_c20KillByInvincibleCharERK10Vector3_16R6Player` | 2 (+`this`) | **3** | 15 call sites outside ov004 materialise r3; the four inside it do not |
 
@@ -307,13 +307,13 @@ rows get restamped when a correction happens to touch them and keep their
 import-time spelling when it does not. So the same address routinely spells a
 different name in each record (`0x02043444` is `_ZN7fBase_cnwEj` in config and
 `_ZN9ActorBasenwEj` in the mirror), and destructor rows diverge in class *and*
-variant at once (`0x02023598`: `_ZN9BootSceneD1Ev` vs `_ZN5SceneD2Ev`).
+variant at once (`0x02023598`: `_ZN9dScBoot_cD1Ev` vs `_ZN5SceneD2Ev`).
 
 What went wrong on 2026-08-30: an "is this body sourced?" sweep took *names* from
 one record and looked them up against work keyed to the other. Every divergent
 address came back "missing", and the sweep manufactured phantom crack targets out
 of functions that were matched, enrolled, and building (`func_ov062_0211bd10`,
-`_ZN13TreasureChest6State0Ev` among them). No time was lost to a wrong edit, but
+`_ZN11daObjTbox_c6State0Ev` among them). No time was lost to a wrong edit, but
 only because the phantoms were noticed before anyone re-cracked a solved function.
 
 **The rule, stated once:**

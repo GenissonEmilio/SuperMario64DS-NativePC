@@ -63,7 +63,7 @@ proof. The documentation corrections in this revision do not resolve them.
   `21fc6604`, with the handoff path removed, is byte-identical at 10,935
   entries, every mode and hash equal. This revision corrects four statements
   that verification found wrong -- the owed-attribution table's re-key recipe
-  (which, applied literally, FAILED `prepush_attribution`), the stated
+  (which, applied literally, FAILED `the old credit check`), the stated
   mechanism behind that gate's blindness, the contributor count, and the
   block-scope extern count -- and changes nothing else. It deliberately does
   not move the source file; see the placement note under blockers.
@@ -78,14 +78,14 @@ proof. The documentation corrections in this revision do not resolve them.
   `notes/data/class-facts/OneUpMushroom.json` (file named for the old queue
   row; its `class` field is `da1up_c`). Required artifacts present:
   `src/actors/da1up_c.cpp`, `include/da1up_c.h`,
-  `config/tu_manifest.d/ov002/da1up_c.json`.
+  [config/tu_manifest.d/ov002/da1up_c.json](../../../config/tu_manifest.d/ov002/da1up_c.json).
 - Next action, responsible role and blockers: verifier claims the `verify`
   stage on this exact commit and re-runs the proof below in its own worktree.
   Integrator: the private validator's `rom_data_regressions` line on the
   predecessor was the defect tracked by
   https://github.com/tangosdev/sm64ds-decomp/issues/2409 -- it read the alias
   collapse `_ZTV13OneUpMushroom` -> `_ZTV7da1up_c` at the one address
-  ov002:0x021083c8 as a lost symbol. **That defect is now fixed and landed on
+  [ov002](../../../config/arm9/overlays/ov002/symbols.txt):0x021083c8 as a lost symbol. **That defect is now fixed and landed on
   main** as commit `abda09fdd62e4907151fabb4e2d3411274f591b3`
   (https://github.com/tangosdev/sm64ds-decomp/pull/2425), which anchors the
   ROM-data diff on `(module, address, bytes)` instead of the symbol name, so a
@@ -95,7 +95,7 @@ proof. The documentation corrections in this revision do not resolve them.
   REGENERATE the base ROM report rather than serve a cached one: a base report
   built before `abda09fdd` still shows the phantom loss. Two workarounds remain
   forbidden -- do NOT re-add an alias row to
-  `config/arm9/overlays/ov002/symbols.txt` and do NOT make the gate consult
+  [config/arm9/overlays/ov002/symbols.txt](../../../config/arm9/overlays/ov002/symbols.txt) and do NOT make the gate consult
   `symbols/actor_renames.tsv`; both would let this change certify its own rename.
 - Why this candidate has NOT merged `origin/main`, and why that is deliberate:
   the base stays at `2d293216c3eb0938ea291d0ad59f21e630cea041`. Merging main
@@ -112,11 +112,11 @@ proof. The documentation corrections in this revision do not resolve them.
   here earlier -- 21/2, then 79/48, 123/88 and 177/140 -- are each superseded.
   This number is expected to keep moving; re-measure it, never quote it.
   **One earlier conclusion did NOT survive re-measurement and is withdrawn.**
-  This note previously said main touches 0 ov002 files. That stopped being true
-  when the ov002 lava batch #2435 landed: main now touches **2** ov002 files,
-  `config/arm9/overlays/ov002/delinks.txt` and `symbols.txt`, the same two this
+  This note previously said main touches 0 [ov002](../../../config/arm9/overlays/ov002/symbols.txt) files. That stopped being true
+  when the [ov002](../../../config/arm9/overlays/ov002/symbols.txt) lava batch #2435 landed: main now touches **2** [ov002](../../../config/arm9/overlays/ov002/symbols.txt) files,
+  [config/arm9/overlays/ov002/delinks.txt](../../../config/arm9/overlays/ov002/delinks.txt) and [symbols.txt](../../../config/arm9/overlays/ov002/symbols.txt), the same two this
   change edits. The overlap is nonetheless positional rather than semantic, and
-  that is the claim to carry forward: #2435's ov002 edits begin at `0x020b5734`
+  that is the claim to carry forward: #2435's [ov002](../../../config/arm9/overlays/ov002/symbols.txt) edits begin at `0x020b5734`
   while this change spans `0x020aee40..0x020b0530`, so the two diffs share zero
   changed lines and both files auto-merged. `include/decl_common.h` is the same
   story -- main's hunks land at lines 514, 701, 749, 773, 1561, 2811 and 2898
@@ -151,7 +151,7 @@ proof. The documentation corrections in this revision do not resolve them.
   was returned for four further defects, all corrected here and each marked at
   the place it was corrected. One of the four was not a wording problem: the
   owed-attribution table's re-key recipe, applied literally to a scratch commit,
-  made `prepush_attribution` exit 1 with `CREDIT LOST _ZN13OneUpMushroomD0Ev`.
+  made `the old credit check` exit 1 with `CREDIT LOST _ZN13OneUpMushroomD0Ev`.
   That recipe is rewritten below and re-tested the same way; the number this
   session measured is recorded under Proof. Every check the producer and the
   independent verifications could run locally is listed under Proof, including
@@ -173,10 +173,10 @@ proof. The documentation corrections in this revision do not resolve them.
 
 ## What changed and why
 
-- Class/TU/symbol and module-qualified ROM scope: `da1up_c`, ov002, the
-  contiguous `.text` run `ov002:[0x020aee40,0x020b0530)` (36 functions, ROM
+- Class/TU/symbol and module-qualified ROM scope: `da1up_c`, [ov002](../../../config/arm9/overlays/ov002/symbols.txt), the
+  contiguous `.text` run [ov002](../../../config/arm9/overlays/ov002/symbols.txt):[0x020aee40,0x020b0530) (36 functions, ROM
   ordinals 0..35) promoted into `src/actors/da1up_c.cpp`. The two factories
-  `ov002:[0x020b0530,0x020b05d0)` now live in that same cpp with the rest of
+  [ov002](../../../config/arm9/overlays/ov002/symbols.txt):[0x020b0530,0x020b05d0) now live in that same cpp with the rest of
   the class; only their vtable reference moved to the ROM name.
   Data of this class (`_ZTV7da1up_c` 0x021083c8, `_ZTI7da1up_c` 0x0210837c,
   `_ZTS7da1up_c` 0x02108370, the two profile records, the 14 PMF descriptors at
@@ -184,9 +184,9 @@ proof. The documentation corrections in this revision do not resolve them.
   by the existing shards; the TU claims `.text` only.
 - Reserved source/header/config surfaces actually touched:
   `src/actors/da1up_c.cpp` (new), `include/da1up_c.h` (new; replaces the coined
-  header OneUpMushroom.h, deleted), `config/tu_manifest.d/ov002/da1up_c.json`,
-  `config/arm9/overlays/ov002/delinks.txt`,
-  `config/arm9/overlays/ov002/symbols.txt` (nine mangled members renamed at their
+  header OneUpMushroom.h, deleted), [config/tu_manifest.d/ov002/da1up_c.json](../../../config/tu_manifest.d/ov002/da1up_c.json) (new; replaces the coined manifest,
+  [config/arm9/overlays/ov002/delinks.txt](../../../config/arm9/overlays/ov002/delinks.txt),
+  [config/arm9/overlays/ov002/symbols.txt](../../../config/arm9/overlays/ov002/symbols.txt) (nine mangled members renamed at their
   unchanged addresses and sizes; the coined `_ZTV13OneUpMushroom` alias row at
   0x021083c8 dropped, leaving `_ZTV7da1up_c` there), `include/daTBasket_c.h`
   (comment-only: the sibling's prose named OneUpMushroom).
@@ -202,13 +202,13 @@ proof. The documentation corrections in this revision do not resolve them.
   integration lane owes are tabulated under Reconstruction dimensions, and this
   revision deliberately did not add them, because that file is global
   bookkeeping outside this task's reservation.
-- ROM observations: `7da1up_c\0` at ov002 file offset 0x5ad10 == 0x02108370;
+- ROM observations: `7da1up_c\0` at [ov002](../../../config/arm9/overlays/ov002/symbols.txt) file offset 0x5ad10 == 0x02108370;
   `_ZTI7da1up_c` is a `__si_class_type_info` whose +8 word is
   `_ZTI12dEnemyBase_c` (0x021081c0); both factories allocate 0x398 through
   `fBase_c::operator new` and store `_ZTV7da1up_c`; the vtable is 31 slots with
   nine own overrides (0, 3, 6, 9, 12, 16, 17, 18, 19); D1 (0x020aee40) precedes
   D0 (0x020aee88), no D2; fourteen `{fn, 0}` pointer-to-member records at
-  0x02108300 are copied by `__sinit_ov002_02100adc` into a 14-element array
+  0x02108300 are copied by [__sinit_ov002_02100adc](../../../src/actors/da1up_c.cpp) into a 14-element array
   that only `Behavior` reads.
 - Lineage evidence or structural inference: base `dEnemyBase_c` from RTTI;
   member layout 0x110 dCcAc_c / 0x144 dBgCh_Actr / 0x300 Model / 0x350
@@ -248,7 +248,7 @@ proof. The documentation corrections in this revision do not resolve them.
   The "whole range `[0x020aee40,0x020b0530)`, 0 differing bytes" figure that
   earlier revisions of this document quoted for it is the PRE-PROMOTION scratch
   link: it is the `verification.linkcheck` record inside
-  `config/tu_manifest.d/ov002/da1up_c.json`, measured against the shadow TU
+  [config/tu_manifest.d/ov002/da1up_c.json](../../../config/tu_manifest.d/ov002/da1up_c.json), measured against the shadow TU
   before promotion and written into the manifest by commit `4918d6f1a`
   (2026-09-06). It is a historical record of a different tree shape, it cannot
   be re-run on a promoted `.text`-only entry at this tool revision, and it is
@@ -283,7 +283,7 @@ proof. The documentation corrections in this revision do not resolve them.
   structs, not two: `C` (line 1042, the opaque pointer-to-member holder),
   `Obj` (line 1050, a six-slot vtable-shape stand-in so ordinal 33 can reach
   the model's slot 5 by index) and `ModelCache` (line 1061, ordinal 35's view
-  of `data_ov002_0210d9b8`). Each carries a comment naming what is proven about
+  of [data_ov002_0210d9b8](../../../config/arm9/overlays/ov002/symbols.txt)). Each carries a comment naming what is proven about
   it. `Behavior` indexes the dispatch array through a pointer-to-member on a
   cast `this`.
 - Lifecycle, vtable/RTTI, initializer and data ownership: destructor
@@ -291,7 +291,7 @@ proof. The documentation corrections in this revision do not resolve them.
   `_ZTI7da1up_c`, `_ZTS7da1up_c` and the ancestor chain's RTTI as compiler-only
   passengers (manifest `compiler_only_output`, each with its ROM home). The full
   build's ROM-data measurement verifies `_ZTV7da1up_c`, `_ZTI7da1up_c` and
-  `_ZTI12dEnemyBase_c` at ov002 from this object. The sinit, descriptors, bss
+  `_ZTI12dEnemyBase_c` at [ov002](../../../config/arm9/overlays/ov002/symbols.txt) from this object. The sinit, descriptors, bss
   array and profiles are not owned by the TU.
 - Attribution preserved through each move/rename: **partially, and the exact
   gap is measured below.** `attribution.json` carries
@@ -302,19 +302,18 @@ proof. The documentation corrections in this revision do not resolve them.
   and the 19 `func_ov002_*` bodies carry one each: 14 + 19 = 33. That doubling
   is load-bearing, not redundancy, and the reason is spelled out under the
   table below. An earlier revision of this document
-  said "every folded shard"; that was wrong. `python tools/prepush_attribution.py --base
-  2d293216c3eb0938ea291d0ad59f21e630cea041 --head HEAD` reports `9720 tracked,
+  said "every folded shard"; that was wrong. `the old credit check` reports `9720 tracked,
   26 consolidated with credit intact, 0 changed, 0 lost` -- the 26 with rows.
   The remaining **10** symbols have no `#symbol` override row. For the private
   validator, which resolves on the HEAD path, they miss
   `overrides[src/actors/da1up_c.cpp#<sym>]`, miss the bare TU path, and land on
-  `first_matchers[src/actors/da1up_c.cpp]` -- a path created by this fold --
+  `the old credit check[src/actors/da1up_c.cpp]` -- a path created by this fold --
   so it credits them to the TU's adder (`andrewboudreau`). They are
   `_ZN7da1up_cD0Ev`, `_ZN7da1up_c8BehaviorEv`,
-  `func_ov002_020aeee4`, `func_ov002_020aefa4`, `func_ov002_020aefb8`,
-  `func_ov002_020af724`, `func_ov002_020af950`, `func_ov002_020afc68`,
-  `func_ov002_020afd10` and `func_ov002_020aff10`. For two of them
-  (`func_ov002_020aeee4`, `func_ov002_020afd10`) the base matcher IS the adder,
+  [func_ov002_020aeee4](../../../src/actors/da1up_c.cpp), [func_ov002_020aefa4](../../../src/actors/da1up_c.cpp), [func_ov002_020aefb8](../../../src/actors/da1up_c.cpp),
+  [func_ov002_020af724](../../../src/actors/da1up_c.cpp), [func_ov002_020af950](../../../src/actors/da1up_c.cpp), [func_ov002_020afc68](../../../src/actors/da1up_c.cpp),
+  [func_ov002_020afd10](../../../src/actors/da1up_c.cpp) and [func_ov002_020aff10](../../../src/actors/da1up_c.cpp). For two of them
+  ([func_ov002_020aeee4](../../../src/actors/da1up_c.cpp), [func_ov002_020afd10](../../../src/actors/da1up_c.cpp)) the base matcher IS the adder,
   so nothing moves. For the other **8** the base matcher is someone else, and
   those 8 are exactly the "8 changed credits" the predecessor's private
   validation reported. This is owed work, not a resolved item.
@@ -323,11 +322,11 @@ proof. The documentation corrections in this revision do not resolve them.
   lane applies the rows below. Each base author was recomputed independently
   **[rev b]** and again **[this revision]** with the validator's own formula
   (`overrides[path#symbol]` else
-  `overrides[path]` else `match_finishers[path]` else `first_matchers[path]`,
+  `overrides[path]` else `the old credit check[path]` else `the old credit check[path]`,
   evaluated at base `2d293216c3...`), which reproduces the same 8 rows and the
   same 8 handles both times.
   Each old shard path is recorded per function as `legacy_source` in
-  `config/tu_manifest.d/ov002/da1up_c.json`.
+  [config/tu_manifest.d/ov002/da1up_c.json](../../../config/tu_manifest.d/ov002/da1up_c.json).
 
   **Two of these eight need a row under BOTH mangled spellings, and an earlier
   revision of this table asked for only the new one.** That is not a cosmetic
@@ -337,9 +336,9 @@ proof. The documentation corrections in this revision do not resolve them.
   - `validate_merge.attribution_snapshot` builds `f"{path}#{rec['name']}"` from
     the built report, so at HEAD it looks up the **new** spelling
     (`...#_ZN7da1up_cD0Ev`) on the TU path.
-  - `prepush_attribution.member_overrides_at` splits on the `#` and keys the
+  - `the old credit check` splits on the `#` and keys the
     result by the bare symbol, then consults it for each **deleted shard's
-    basename** (`prepush_attribution.py:256-265`). A promoted shard's basename
+    basename** (`the old credit check`). A promoted shard's basename
     is the **old** spelling (`_ZN13OneUpMushroomD0Ev`), because that is what
     the file was called. Without a row under the old spelling the rescue misses
     and the gate reports the credit lost.
@@ -347,19 +346,19 @@ proof. The documentation corrections in this revision do not resolve them.
   This is exactly what the 26 rows already on that path do -- it is why 26
   shards carry 33 rows -- and the earlier table failed to apply its own
   arithmetic to the two shards it was adding. Measured on a scratch commit by
-  this session; see the `prepush_attribution` entry under Proof for the exit
+  this session; see the `the old credit check` entry under Proof for the exit
   codes.
 
-  | # | Ordinal | Address | Override key(s) to add on `src/actors/da1up_c.cpp` | Value | Where the base credit comes from |
+  | # | Ordinal | Address | Override key(s) to add on [src/actors/da1up_c.cpp](../../../src/actors/da1up_c.cpp) | Value | Where the base credit comes from |
   |---|---|---|---|---|---|
   | 1 | 1 | 0x020aee88 | `#_ZN7da1up_cD0Ev` **and** `#_ZN13OneUpMushroomD0Ev` | `tangosdev` | an `attribution.json` **bare-path** override keyed on the deleted shard `_ZN13OneUpMushroomD0Ev.cpp`; drop that row |
   | 2 | 3 | 0x020aefa4 | `#func_ov002_020aefa4` | `ruspecial` | an `attribution.json` **bare-path** override keyed on the deleted shard `func_ov002_020aefa4.c`; drop that row |
-  | 3 | 4 | 0x020aefb8 | `#func_ov002_020aefb8` | `lunavyqo` | `match_finishers` on the deleted shard |
-  | 4 | 15 | 0x020af724 | `#func_ov002_020af724` | `tangosdev` | `match_finishers` on the deleted shard |
-  | 5 | 20 | 0x020af950 | `#func_ov002_020af950` | `tangosdev` | `match_finishers` on the deleted shard |
-  | 6 | 26 | 0x020afc68 | `#func_ov002_020afc68` | `tangosdev` | `match_finishers` on the deleted shard |
-  | 7 | 30 | 0x020aff10 | `#func_ov002_020aff10` | `tangosdev` | `match_finishers` on the deleted shard |
-  | 8 | 34 | 0x020b00e8 | `#_ZN7da1up_c8BehaviorEv` **and** `#_ZN13OneUpMushroom8BehaviorEv` | `alexsobolew7` | `match_finishers` on the deleted shard |
+  | 3 | 4 | 0x020aefb8 | `#func_ov002_020aefb8` | `lunavyqo` | `the old credit check` on the deleted shard |
+  | 4 | 15 | 0x020af724 | `#func_ov002_020af724` | `tangosdev` | `the old credit check` on the deleted shard |
+  | 5 | 20 | 0x020af950 | `#func_ov002_020af950` | `tangosdev` | `the old credit check` on the deleted shard |
+  | 6 | 26 | 0x020afc68 | `#func_ov002_020afc68` | `tangosdev` | `the old credit check` on the deleted shard |
+  | 7 | 30 | 0x020aff10 | `#func_ov002_020aff10` | `tangosdev` | `the old credit check` on the deleted shard |
+  | 8 | 34 | 0x020b00e8 | `#_ZN7da1up_c8BehaviorEv` **and** `#_ZN13OneUpMushroom8BehaviorEv` | `alexsobolew7` | `the old credit check` on the deleted shard |
 
   Ten rows for eight shards. Rows 3-7 need only one spelling because a
   `func_ov002_*` body was never renamed -- its shard basename and its symbol
@@ -367,15 +366,15 @@ proof. The documentation corrections in this revision do not resolve them.
 
   Two of the eight, rows 1 and 2, additionally require a **deletion**: their
   credit today survives only through a bare-path `attribution.json` override on
-  a path this promotion deleted, and they appear in neither `first_matchers`
-  nor `match_finishers`. Re-key them onto the TU -- add the `#symbol` row(s),
+  a path this promotion deleted, and they appear in neither `the old credit check`
+  nor `the old credit check`. Re-key them onto the TU -- add the `#symbol` row(s),
   drop the bare-path row -- rather than leaving a second, stale key behind. The
-  other six are `match_finishers`-only and need no deletion.
+  other six are `the old credit check`-only and need no deletion.
 
   On the **value** column: write the base handle verbatim, as
-  `match_finishers` / the bare-path override returns it at base
+  `the old credit check` / the bare-path override returns it at base
   `2d293216c3...`. Notably that means `alexsobolew7` for row 8, not
-  `ruspecial`. `prepush_attribution` string-compares the row's value against
+  `ruspecial`. `the old credit check` string-compares the row's value against
   the base handle with no alias resolution, so a canonicalised value can read
   as CREDIT CHANGED; `validate_merge` applies `attribution.json`'s own
   `aliases` map afterwards (`validate_merge.py:319-333`) and gets the right
@@ -389,8 +388,8 @@ proof. The documentation corrections in this revision do not resolve them.
   it is the same person as `ruspecial`, and `lunavyqo` is not aliased to
   anyone.
 
-  For completeness the integrator may also add rows for `func_ov002_020aeee4`
-  (ordinal 2, 0x020aeee4) and `func_ov002_020afd10` (ordinal 27, 0x020afd10),
+  For completeness the integrator may also add rows for [func_ov002_020aeee4](../../../src/actors/da1up_c.cpp)
+  (ordinal 2, 0x020aeee4) and [func_ov002_020afd10](../../../src/actors/da1up_c.cpp) (ordinal 27, 0x020afd10),
   both `andrewboudreau`: no credit moves today, but a row makes them durable
   against a later move of this file. That would bring the TU to 36/36 shards
   covered, on 45 rows -- the 9 renamed members at two spellings each plus the
@@ -458,8 +457,8 @@ worktree's ignored `build/`; they are not committed.
   build/romdata-da1up.json` -> exit 0: 11 data symbols emitted, `VERIFIED 6
   (180 bytes equal to the cartridge)`, `PARTIAL 5 (44 bytes equal, coverage
   short of the ROM's extent)`, `DIFFERS 0`, `UNNAMED 0`. The six VERIFIED are
-  `_ZTV7da1up_c`, `_ZTI7da1up_c`, `_ZTI12dEnemyBase_c` (ov002) and
-  `_ZTI8dActor_c`, `_ZTI7dBase_c`, `_ZTI7fBase_c` (arm9); the five PARTIAL are
+  `_ZTV7da1up_c`, `_ZTI7da1up_c`, `_ZTI12dEnemyBase_c` ([ov002](../../../config/arm9/overlays/ov002/symbols.txt)) and
+  `_ZTI8dActor_c`, `_ZTI7dBase_c`, `_ZTI7fBase_c` ([arm9](../../../config/arm9/symbols.txt)); the five PARTIAL are
   by elimination the five `_ZTS` type-name strings of that chain (the 11
   emitted names are the manifest's `compiler_only_output` list). Nothing
   differs from the cartridge.
@@ -481,7 +480,7 @@ worktree's ignored `build/`; they are not committed.
   PRE-PROMOTION scratch link: it was measured on the shard-shaped tree before
   the fold ("LINKCHECK (pre-promotion, the only usable kind)" in that commit's
   own message) and written into `verification.linkcheck` of
-  `config/tu_manifest.d/ov002/da1up_c.json` by commit `4918d6f1a` on
+  [config/tu_manifest.d/ov002/da1up_c.json](../../../config/tu_manifest.d/ov002/da1up_c.json) by commit `4918d6f1a` on
   2026-09-06, the promotion commit -- the only commit that has ever touched
   that manifest. It is a historical record of a different tree shape and is not
   re-runnable on a promoted `.text`-only entry at this tool revision. What
@@ -505,14 +504,12 @@ worktree's ignored `build/`; they are not committed.
   `tools/tiers_ratchet.py --check` (CONVERTED 2696/2696);
   `tools/langmode_audit.py`; `tools/layout_check.py --quiet` (clean);
   `tools/cpp_tu_state.py --check-note` (note current);
-  `tools/queue_audit.py --check` -> exit 1 on ONE row, `dScMgAmida_c` (ov006),
+  `tools/queue_audit.py --check` -> exit 1 on ONE row, `dScMgAmida_c` ([ov006](../../../config/arm9/overlays/ov006/symbols.txt)),
   which is drift already on `main` and outside this task's reservation; the
   `da1up_c` row agrees with the tree (verified by regenerating with `--write`,
   reading the diff, and reverting). `tools/tu_map.py` was regenerated from
   fresh `rtti.json`/`rtti_vtables.json` and reports 691 TUs / 333 with a class.
-- Contributor attribution: `python tools/prepush_attribution.py --base
-  2d293216c3eb0938ea291d0ad59f21e630cea041 --head HEAD --json
-  build/attrib.json` -> exit 0, `9720 tracked, 0 moved with credit intact,
+- Contributor attribution: `the old credit check` -> exit 0, `9720 tracked, 0 moved with credit intact,
   0 renamed with credit intact, 26 consolidated with credit intact, 0 changed,
   0 lost`. Re-run **[rev b]** and again **[this revision]**; both verifications
   ran the same command with the same result. Coverage limit, and an earlier revision of this
@@ -520,16 +517,16 @@ worktree's ignored `build/`; they are not committed.
   the 26 rowed shards and that the other 10 are absent from its ledger. It is
   the other way round, and it was measured this time rather than reasoned
   about, by comparing each shard's `legacy_source` basename against
-  `prepush_attribution.lineage(HEAD)`:
+  `the old credit check`:
   - **0 of the 26** rowed shards appear in the HEAD ledger. Their deleted paths
-    drop out of `first_matchers`/`match_finishers`/bare overrides entirely, so
+    drop out of `the old credit check`/`the old credit check`/bare overrides entirely, so
     each falls into the "present at base, gone at head" branch and is rescued
     by its `#symbol` row. That rescue is precisely what `26 consolidated`
     counts -- the number is the rowed shards, but it counts them because they
     VANISHED, not because the gate can see them.
   - **10 of the 10** unrowed shards DO appear in the HEAD ledger: 8 because
-    `match_finishers` never expires a deleted source path, and 2
-    (`_ZN13OneUpMushroomD0Ev`, `func_ov002_020aefa4`) through the stale
+    `the old credit check` never expires a deleted source path, and 2
+    (`_ZN13OneUpMushroomD0Ev`, [func_ov002_020aefa4](../../../src/actors/da1up_c.cpp)) through the stale
     bare-path overrides that rows 1 and 2 of the owed table remove. Being
     present at head with the same handle as at base, they compare equal and are
     reported as nothing at all.
@@ -546,19 +543,19 @@ worktree's ignored `build/`; they are not committed.
   above is a recipe an integrator will apply literally, so it was applied
   literally -- to `attribution.json` on a throwaway branch off this commit, one
   commit per variant, then measured with the same
-  `prepush_attribution.py --base 2d293216c3... --head HEAD` invocation and the
+  the old credit check, and the
   branch deleted. Three variants:
   - The table **as the previous revision wrote it** (new mangled spelling only,
     both bare-path overrides dropped) -> **exit 1**, `27 consolidated with
     credit intact, 0 changed, 1 lost`, and the line
     `CREDIT LOST     _ZN13OneUpMushroomD0Ev`, whose tail names the deleted
-    shard stem and `tangosdev`. `func_ov002_020aefa4` is rescued (its shard
+    shard stem and `tangosdev`. [func_ov002_020aefa4](../../../src/actors/da1up_c.cpp) is rescued (its shard
     basename and its symbol are the same string); the renamed destructor is not.
   - The table **as corrected above** (both spellings for rows 1 and 8) ->
     **exit 0**, `9718 tracked, 0 moved with credit intact, 0 renamed with
     credit intact, 28 consolidated with credit intact, 0 changed, 0 lost`. The
     two extra consolidations over the 26 baseline are exactly
-    `_ZN13OneUpMushroomD0Ev` and `func_ov002_020aefa4`; `tracked` falls by 2
+    `_ZN13OneUpMushroomD0Ev` and [func_ov002_020aefa4](../../../src/actors/da1up_c.cpp); `tracked` falls by 2
     because dropping the two stale bare-path overrides removes two names from
     the head ledger. Rows 3-8 change this gate's tally by nothing, for the
     reason in the coverage limit above -- their names never leave the ledger.
@@ -566,7 +563,7 @@ worktree's ignored `build/`; they are not committed.
     `alexsobolew7` -> also **exit 0**, `28 consolidated, 0 changed, 0 lost`,
     because that shard's name stays in the head ledger and its `#symbol` row is
     never consulted by this gate. Recorded so nobody reads that as licence:
-    write the base handle verbatim, since the moment `match_finishers` stops
+    write the base handle verbatim, since the moment `the old credit check` stops
     carrying the deleted path the row IS consulted and a canonicalised value
     reads as CREDIT CHANGED.
 
@@ -593,12 +590,12 @@ worktree's ignored `build/`; they are not committed.
   above read the way they do;
   `python tools/check_python_names.py` -> exit 0, `278 tracked file(s) checked,
   0 unresolvable names`;
-  `python tools/prepush_attribution.py --base 2d293216c3... --head HEAD` on
+  `the old credit check` on
   this commit -> exit 0, `26 consolidated, 0 changed, 0 lost`, and on the three
   scratch variants of the owed table -> exit 1 / exit 0 / exit 0 as recorded
   above; the ledger-membership measurement behind the corrected coverage limit
   (0 of the 26 rowed shards and 10 of the 10 unrowed ones present in
-  `prepush_attribution.lineage(HEAD)`); the base-handle recomputation
+  `the old credit check`); the base-handle recomputation
   for all 36 shards through the validator's resolution order; the
   `attribution.json` `aliases` read that settles `alexsobolew7` -> `ruspecial`;
   the block-scope mangled `extern` count (33 lines, 16 distinct symbols); and
@@ -627,7 +624,7 @@ worktree's ignored `build/`; they are not committed.
   keyed identity by `(module, symbol)` and set-subtracted. That was the defect
   tracked by https://github.com/tangosdev/sm64ds-decomp/issues/2409, not a
   defect in this source: this commit's own full build verifies `_ZTV7da1up_c`
-  at ov002 and the cartridge holds one vtable at 0x021083c8. **That defect is
+  at [ov002](../../../config/arm9/overlays/ov002/symbols.txt) and the cartridge holds one vtable at 0x021083c8. **That defect is
   now fixed on main** by `abda09fdd62e4907151fabb4e2d3411274f591b3`
   (https://github.com/tangosdev/sm64ds-decomp/pull/2425), which anchors the
   ROM-data diff on `(module, address, bytes)`; confirmed an ancestor of

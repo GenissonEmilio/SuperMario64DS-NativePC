@@ -8,7 +8,7 @@ struct BCA_File {
     u16 numFrames;
 };
 
-struct Animation {
+struct dExtFrameCtrl_c {
     void* vtable;
     s32 numFramesAndFlags;
     s32 currFrame;
@@ -18,22 +18,22 @@ struct Animation {
 struct ModelAnim2 {
     char pad[0x64];
     void* unk64;
-    struct Animation otherAnim;
+    struct dExtFrameCtrl_c otherAnim;
 };
 
-extern void _ZN9Animation8SetFlagsEi(struct Animation* anim, s32 flags);
-extern void _ZN9Animation12SetAnimationEti5Fix12IiEt(struct Animation* anim, u16 frames, s32 flags, s32 speed, u16 startFrame);
+extern void _ZN15dExtFrameCtrl_c8SetFlagsEi(struct dExtFrameCtrl_c* anim, s32 flags);
+extern void _ZN15dExtFrameCtrl_c12SetAnimationEti5Fix12IiEt(struct dExtFrameCtrl_c* anim, u16 frames, s32 flags, s32 speed, u16 startFrame);
 
 void _ZN10ModelAnim213Func_020162C4Eji5Fix12IiEt(struct ModelAnim2* thiz, void* newUnk64, s32 flags, s32 speed, u16 startFrame)
 {
     if (newUnk64 == thiz->unk64)
     {
-        _ZN9Animation8SetFlagsEi(&thiz->otherAnim, flags);
+        _ZN15dExtFrameCtrl_c8SetFlagsEi(&thiz->otherAnim, flags);
         thiz->otherAnim.speed = speed;
     }
     else
     {
         thiz->unk64 = newUnk64;
-        _ZN9Animation12SetAnimationEti5Fix12IiEt(&thiz->otherAnim, ((struct BCA_File*)newUnk64)->numFrames, flags, speed, startFrame);
+        _ZN15dExtFrameCtrl_c12SetAnimationEti5Fix12IiEt(&thiz->otherAnim, ((struct BCA_File*)newUnk64)->numFrames, flags, speed, startFrame);
     }
 }

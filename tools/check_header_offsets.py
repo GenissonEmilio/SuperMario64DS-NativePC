@@ -105,7 +105,14 @@ learn_aggregates(REPO / "include" / "types.h")
 # dimension and left `[0x24];` dangling after what should have been the
 # terminating `;`, so the whole match failed. Capture every bracket group as
 # one blob instead and multiply the dimensions in ARR_DIMS below.
-DECL = re.compile(r"^\s*(?:(?:struct|union|class|enum)\s+)?((?:\w+::)*[A-Za-z_]\w*)\s*(\**)\s*(\w+)\s*"
+# `const State *mState;` -- a cv-qualifier on the field's type, before or after the
+# type name. It changes neither the size nor the alignment, so it is skipped rather
+# than read as the type: without this the field came back UNPARSED and the walk
+# stopped there (#3214, #3215, #3219, #3220). `\b` keeps `u32 const_value;` a field
+# named const_value.
+DECL = re.compile(r"^\s*(?:(?:const|volatile)\s+)*(?:(?:struct|union|class|enum)\s+)?"
+                  r"(?:(?:const|volatile)\s+)*((?:\w+::)*[A-Za-z_]\w*)\s*"
+                  r"(?:(?:const|volatile)\b\s*)*(\**)\s*(\w+)\s*"
                   r"((?:\[\s*(?:0x[0-9a-fA-F]+|\d+)\s*\])*)\s*;"
                   r"(?:\s*/\*\s*(0x[0-9a-fA-F]+))?")
 ARR_DIMS = re.compile(r"\[\s*(0x[0-9a-fA-F]+|\d+)\s*\]")
@@ -620,6 +627,8 @@ def main(argv, repo=None):
         off, bad, n, skipped, pending = 0, 0, 0, [], []
         trusted = True
         started = in_comment = unmodelled = nested = skip_other = False
+        in_union = False
+        u_start = u_end = u_members = 0
         skip_body = 0
         await_body = body_comment = False
         await_body_line = None
@@ -632,7 +641,7 @@ def main(argv, repo=None):
             if not started:
                 # A struct-with-body BEFORE the file's own class is a helper type
                 # (ActorBase_SceneNode in fBase_c.h, KCL_Tri in dBgW_Kc.h,
-                # Particle::SysTracker's namespace-nested body in Stage.h), not the
+                # Particle::SysTracker's namespace-nested body in dScStage_c.h), not the
                 # struct this file is named for. Without this check the FIRST
                 # struct-with-body wins regardless of name, and the tool silently
                 # checks the helper instead of the class the header exists to
@@ -768,10 +777,34 @@ def main(argv, repo=None):
             # suppresses the mismatch check for the whole header. That is the same
             # silent-no-op shape this gate has already been bitten by twice, arriving a
             # third way; here it at least exits non-zero rather than reporting a pass.
+            # An ANONYMOUS UNION -- `union { s32 mState; s32 unk_440; };` -- overlays its
+            # members at one offset and takes the size of the largest. Without this the
+            # opening `union {` fell through to UNPARSED and, worse, its `};` matched the
+            # outer-struct terminator below, ending the walk with every later field
+            # unchecked. Each member is compared at the union's start; a member whose
+            # type is not sized here (a nested bit-field struct overlaying the same
+            # word) is skipped rather than reported, since it can only restate the
+            # first member and the header's own size assertion still holds the total.
+            if in_union:
+                if re.match(r"^\s*\};", line):
+                    in_union = False
+                    off = max(u_end, u_start)
+                    continue
+                off = u_start
+            elif re.match(r"^\s*union\s*\{", line):
+                in_union, u_start, u_end, u_members = True, off, off, 0
+                continue
             if re.match(r"^\s*(?:struct|union|class)\s+\w+\s*;\s*$", line):
                 continue
             if re.match(r"^\s*struct \w+\s*(?::\s*(?:public\s+)?\w+\s*)?\{", line):
                 nested = True
+                continue
+            # A nested ENUM is a type too -- it names constants and occupies nothing --
+            # and a class that puts its State/Kind enums ahead of its fields (so the
+            # field comments read against them) stopped the walk at the first
+            # enumerator. One written on a single line closes itself.
+            if re.match(r"^\s*enum\s+(?:class\s+)?(?:\w+\s*)?\{", line):
+                nested = "};" not in line
                 continue
             if re.match(r"^\s*(#|\}|/\* methods)", line):
                 break
@@ -784,7 +817,7 @@ def main(argv, repo=None):
             # Say the struct is unmodelled rather than emit a mismatch per field.
             #
             # `~Name(...)` (a bare, non-virtual destructor declaration -- Particle::
-            # SysTracker in include/Stage.h is the first instance) starts with `~`,
+            # SysTracker in include/dScStage_c.h is the first instance) starts with `~`,
             # which the type-name alternative below never matches (`~` is not in
             # `[A-Za-z_]`), so without this alternative it fell through to UNPARSED.
             method_code, _ = _code_without_comments_or_strings(line)
@@ -805,7 +838,7 @@ def main(argv, repo=None):
                 # other bug this file documents, just arrived at from the opposite
                 # direction. Once a field HAS been seen, a method line ends the
                 # list as before -- that's the generated-header convention
-                # (Stage.h: fields, then methods).
+                # (dScStage_c.h: fields, then methods).
                 # Recognized allocation/inline methods consume no storage and
                 # resume the walk even when a commented field came before them.
                 if n == 0 or allocation_method or inline_method:
@@ -843,6 +876,11 @@ def main(argv, repo=None):
             # `dMgPsOpt_c_size_must_be_0x128` says -- an independent check that the
             # size read here is the right one.
             qsize = _qualified_size(expected, typ) if (m and not m.group(2)) else None
+            # A member spelled with its namespace, `Particle::SysTracker mSysTracker;`,
+            # names its class outright; the sizeof() operand of a qualified assertion
+            # is keyed the same way.
+            if qsize is None and m and not m.group(2) and "::" in m.group(1):
+                qsize = CLASS_SIZES_QUALIFIED.get(m.group(1))
             if qsize is not None:
                 w = qsize
             elif m and not m.group(2) and _shadowed_by_nested(typ, nested_names, fp):
@@ -853,6 +891,8 @@ def main(argv, repo=None):
                 # An unrecognised declaration is NOT harmless: skipping it leaves the
                 # running offset short, so every later field silently "matches" at the
                 # wrong place. Say so rather than quietly carrying on.
+                if in_union and u_members:
+                    continue
                 skipped.append(f"{lineno}: {line.strip()}")
                 # ...and stop claiming MISMATCH from here on. The running offset is now
                 # known-wrong, so every later comparison is against a meaningless number:
@@ -889,6 +929,9 @@ def main(argv, repo=None):
             for d in ARR_DIMS.findall(arr):
                 arr_n *= int(d, 0)
             off += w * arr_n
+            if in_union:
+                u_members += 1
+                u_end = max(u_end, off)
         if await_body and await_body_line:
             # EOF before either `{` or a terminating `;` is malformed input.  It
             # must not collapse back to the same zero-field pass this state fixes.

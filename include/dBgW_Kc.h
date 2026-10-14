@@ -9,10 +9,8 @@
  * Thirteen slots: it overrides Virtual08 and supplies the six collision
  * workers (the three pures at slots 3..5 and the DetectClsn triple at
  * 6..8) from ITCM - 0x01ffd920, 0x01ffd8d8, 0x01ffd890, 0x01ffd3f8,
- * 0x01ffb0fc, 0x01ffb830 - which is why those overrides are declared
- * here but defined nowhere in src/ yet. config/arm9/itcm/symbols.txt
- * already names slot 3's: _ZN7dBgW_Kc14GetSurfaceInfoEsR11SurfaceInfo,
- * i.e. GetSurfaceInfo(s16, SurfaceInfo &). Slots 9..12 stay on the base
+ * 0x01ffb0fc, 0x01ffb830 - the six are defined in
+ * src/engine/collision/dBgW_Kc_itcm.cpp. Slots 9..12 stay on the base
  * implementations.
  *
  * The CLPS_BlockRef member owns its one-word lifetime. Its compiler-generated
@@ -117,9 +115,8 @@ struct dBgW_Kc : dBgW {
     virtual int DetectClsn(dBgCh_Lin &ray);             /* slot 7 - ITCM */
     virtual int DetectClsn(dBgCh_SphCrr &sphere);           /* slot 8 - ITCM */
 
-    /* DECLARED, never defined as a method here -- src/_ZN7dBgW_KcC1Ev.cpp
-       owns C1 and src/_ZN7dBgW_KcC2Ev.cpp the base-subobject variant
-       (notes/ctor-migration.md section 2). */
+    /* C1 and the C2 base-subobject variant are defined in
+       src/engine/collision/dBgW_Kc.cpp (notes/ctor-migration.md section 2). */
     dBgW_Kc();
 
     /* --- non-virtual --- */

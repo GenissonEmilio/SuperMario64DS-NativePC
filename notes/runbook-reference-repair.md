@@ -150,7 +150,6 @@ python tools/demember_calls.py --apply -j 16
 python tools/eligible.py                                   # refresh the report
 python tools/enroll.py --complete-list build/eligible-names.txt
 python tools/rombuild.py                                   # the real gate
-python tools/prepush_attribution.py                        # credit must not move
 python tools/check_references.py                           # must not regress
 ```
 

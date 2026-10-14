@@ -16,7 +16,7 @@ Two jobs, one output file (build/evidence_hierarchy.json):
       instead of inheriting them, and the copies often disagree on width.
 
 Nothing is written outside build/.  This pass never proposes a change to a
-de-bannered header: those (include/dActor_c.h, include/Fader.h, ...) were
+de-bannered header: those (include/dActor_c.h, include/dFader_c.h, ...) were
 hand-reconstructed with real inheritance and are the *reference*, read-only.
 
 Evidence sources for an inheritance edge, strongest first
@@ -569,11 +569,11 @@ def build_vtable_alias_map(addr_names, known_classes):
     """Canonical class name per vtable *name*, and per `data_*` literal.
 
     Within one module, several _ZTV names can share an address -- the tree's
-    name and the ROM's original one (`_ZTV13QuestionBlock` and
-    `_ZTV18daObjHatenaBlock_c` are both ov0xx:0x0214e47c; see
-    notes/model-rtti-names.md).  Without collapsing those, QuestionBlock appears
-    to inherit from itself under another name.  Preference: a name that has an
-    include/*.h, then a name that is not the `*_c` ROM spelling, then sorted.
+    coined name and the ROM's own one (`_ZTV10KoopaShell` and `_ZTV7daShl_c`
+    are both ov102:0x0214e650; see notes/model-rtti-names.md).  Without
+    collapsing those, KoopaShell appears to inherit from itself under another
+    name.  Preference: a name that has an include/*.h, then a name that is not
+    the `*_c` ROM spelling, then sorted.
     """
     alias = {}
     data_alias = {}
@@ -801,7 +801,10 @@ def load_rtti_edges(root, stats):
     for key, r in sorted(data.get("records", {}).items()):
         if not r.get("vtable"):
             continue
-        for n in sorted(by_mod.get((r["module"], int(r["vtable"], 16)), [])):
+        # The vtable can sit in a different overlay from the typeinfo it points at
+        # (rtti_extract.attach_vtables); look it up where it actually lives.
+        vmod = r.get("vtable_module") or r["module"]
+        for n in sorted(by_mod.get((vmod, int(r["vtable"], 16)), [])):
             if n.startswith("_ZTV"):
                 p = split_nested(n[4:-1] if n[4:5] == "N" and n.endswith("E")
                                  else n[4:])
@@ -1511,6 +1514,11 @@ def build(root, seed_path):
             },
         },
         "hierarchy": {k: hierarchy[k] for k in sorted(hierarchy)},
+        # Per header: what kind it is and the base it writes, whether or not that
+        # base was admitted as evidence.  Lets a reader say *why* a class has no
+        # header-sourced base -- still bannered, unparsed, or no header at all.
+        "headers": {c: {"path": h.path, "kind": h.kind, "base": h.base}
+                    for c, h in sorted(headers.items())},
         "conflicts": conflicts,
         "overlaps_agreeing": agreeing,
     }

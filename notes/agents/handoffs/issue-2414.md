@@ -33,7 +33,7 @@ This document describes this commit. The queue records its immutable output SHA.
   pins no separate evidence commits. The scout facts for this class are
   committed on this branch at `notes/data/class-facts/Rabbit.json` (still under
   the retired coined name — see remaining work). The stage's required artifacts,
-  `src/actors/daMip_c.cpp` and `config/tu_manifest.d/ov085/daMip_c.json`, are
+  `src/actors/daMip_c.cpp` and [config/tu_manifest.d/ov085/daMip_c.json](../../../config/tu_manifest.d/ov085/daMip_c.json), are
   both present.
 - **Next action, responsible role and blockers:** independent verification of
   this commit by a session that is none of `prod-2414-0907`, `prod-2414b-0907`,
@@ -64,14 +64,14 @@ This document describes this commit. The queue records its immutable output SHA.
 
 ## What changed and why
 
-- **Class/TU/symbol and module-qualified ROM scope:** `daMip_c` in ov085.
+- **Class/TU/symbol and module-qualified ROM scope:** `daMip_c` in [ov085](../../../config/arm9/overlays/ov085/symbols.txt).
   `.text` `0x0212a6d4..0x0212cc88`, 32 functions, one translation unit at
-  `src/actors/daMip_c.cpp`. Class data in ov085 at `0x021300bc` (typeinfo name),
+  `src/actors/daMip_c.cpp`. Class data in [ov085](../../../config/arm9/overlays/ov085/symbols.txt) at `0x021300bc` (typeinfo name),
   `0x021300c8` (`__si_class_type_info`) and `0x021300f8` (31-slot vtable address
   point).
 - **Reserved source/header/config surfaces actually touched by *this* stage:**
   `src/actors/daMip_c.cpp` and `include/daMip_c.h`. Nothing else. The reserved
-  ov085 `symbols.txt`/`delinks.txt`, the TU manifest and the retired coined
+  [ov085 symbols.txt](../../../config/arm9/overlays/ov085/symbols.txt)/[delinks.txt](../../../config/arm9/overlays/ov085/delinks.txt), the TU manifest and the retired coined
   header were already in their final state at the accepted input.
 - **ROM observations:** unchanged from the accepted input and independently
   re-measured here, not re-asserted: 32 of 32 functions reproduce the cartridge
@@ -151,7 +151,7 @@ This document describes this commit. The queue records its immutable output SHA.
 
   **This is the weakest dimension of the candidate, and a previous draft of
   this section understated it badly** by naming only seven pads, `mState`,
-  `daMip_cSelf`, one `V3Blk` and "the ov085 file statics". Measured over
+  `daMip_cSelf`, one `V3Blk` and "the [ov085](../../../config/arm9/overlays/ov085/symbols.txt) file statics". Measured over
   `src/actors/daMip_c.cpp` at this commit, with comments stripped first, the
   actual remaining surface is:
 
@@ -190,7 +190,7 @@ This document describes this commit. The queue records its immutable output SHA.
     has always understated the debt and strengthened the document's own
     consolidation argument, so treat a low number here with suspicion.
   - **63 block-scope `extern` declarations naming 26 distinct objects.** Nine
-    are arm9 `data_0209xxxx`/`data_020a0e68` objects and seventeen are ov085
+    are arm9 `data_0209xxxx`/`data_020a0e68` objects and seventeen are [ov085](../../../config/arm9/overlays/ov085/symbols.txt)
     `data_ov085_0213xxxx` objects. The most-repeated single object is declared
     seven times in seven different members.
   - **19 `char *` aliases of `this`** (`char *c = (char *)this;` and two
@@ -224,14 +224,14 @@ This document describes this commit. The queue records its immutable output SHA.
   seven padding spans (`pad_390`, `pad_3e8`, `pad_424`, `pad_42b`, `pad_44c`,
   `pad_460`, `pad_46c`); `mState` at `0x364`, which is really a pointer to a
   state record but is kept an opaque `s32` because `Behavior` compares it by
-  address against four ov085 objects; **`mTalkingPlayer` at `0x45c`, which the
+  address against four [ov085](../../../config/arm9/overlays/ov085/symbols.txt) objects; **`mTalkingPlayer` at `0x45c`, which the
   header's own comment documents as "A Player *" while declaring it `s32`, and
   which the body then round-trips through `*(void **)&mTalkingPlayer` at three
   sites** — it was missing from the previous list entirely and is the cheapest
   correct field recovery left in the class; the `daMip_cSelf` shadow struct the
   pointer-to-member call goes through; the `V3Blk { s32 w[3]; }` block in
   `StateFleeMain`, which is load-bearing — the scalar spelling costs eight
-  bytes; and the ov085 file statics, which stay block-scope inside the member
+  bytes; and the [ov085](../../../config/arm9/overlays/ov085/symbols.txt) file statics, which stay block-scope inside the member
   that recovered each one, because the legacy shards disagreed about their
   types and canonicalising them is a measured codegen hazard rather than a
   tidy-up.
@@ -255,7 +255,7 @@ This document describes this commit. The queue records its immutable output SHA.
   no `.data` or `.bss`.
 
   **Coverage limit on the vtable evidence, stated rather than left implicit:**
-  because this TU claims `.text` only, `ov085/daMip_c` is not an intact TU —
+  because this TU claims `.text` only, [ov085](../../../config/arm9/overlays/ov085/symbols.txt)/`daMip_c` is not an intact TU —
   the same condition that makes `tubuild.py linkcheck` refuse it below. It is
   therefore absent from the build report's `intactTus` list, objisolate
   discards the vtable and RTTI this TU emits, and the ROM gap supplies those
@@ -338,7 +338,7 @@ against base `origin/main` `c4cace0ee05f2c0b3c6536665e981927ead132e2`.
 failure that looks exactly like a real ROM-data regression.**
 
 This class is a `#2425` case. On `origin/main` the class is still the coined
-`Rabbit`, spread across per-function shards, and the ov085 `symbols.txt` names
+`Rabbit`, spread across per-function shards, and the [ov085](../../../config/arm9/overlays/ov085/symbols.txt) `symbols.txt` names
 its vtable `_ZTV6Rabbit` at `0x021300f8`. On main, the `Rabbit.h` header
 declares `virtual ~Rabbit()` first among the virtuals (line 100 there), so the
 `_ZN6RabbitD1Ev` shard is the key function and emits that vtable. Both of those

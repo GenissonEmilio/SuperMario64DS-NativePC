@@ -5,36 +5,25 @@
 #include "dActor_c.h"
 #include "dCcAc_c.h"
 
-extern "C" void *_ZN7fBase_cnwEj(unsigned size);
-
-/* Secret Coin (SECRET_COIN 329) -- RTTI ov002:0x0210b000 names daSCoin_c;
- * the debug table at 0x020903bc names SECRET_COIN. overlay_actors.md lists
- * the same actor slot as INVISIBLE_SECRET(329). SILVER_STAR(179) is a
- * different class (daStar_c). ov002 also carries POWER_STAR(178) and
- * STAR_MARKER(180), which this TU spawns / matches against.
+/* Secret Coin (SECRET_COIN 329). RTTI ov002:0x0210b000 names daSCoin_c; the
+ * debug table names SECRET_COIN (overlay_actors spells it INVISIBLE_SECRET).
+ * Coins sit in a level in groups of five; collecting the fifth spawns
+ * POWER_STAR at the STARBASE marker whose mStarID matches the group's
+ * mStarID.
  *
- * SIZE 0x114, the literal daSCoin_c_classInit passes to operator new.
- * Factory constructs dCcAc_c at 0xd4; D1 tears it down before ~dActor_c.
- * dActor_c ends at 0xd0; pad_0d0 is the 4-byte gap before mdCcAc_c.
- * 0xd4 + 0x34 = 0x108, and 0x108..0x114 is this class's POD group:
+ * SIZE 0x114. dActor_c ends at 0xd0; the class's POD group is 0x108..0x114:
  *
- *   0x108  mLeaderUniqueID -- uniqueID of the elected leader.
- *   0x10c  pad_10c -- never read or written in this TU.
- *   0x10d  unk_10d -- param1 & 0xf; 020f05f4 matches it against a
- *                    STAR_MARKER at +0x1d9 and ORs 0x40 into the
- *                    POWER_STAR spawn param.
- *   0x10e  mGroupId -- (param1 >> 8) & 0xf.
- *   0x10f  mGroupRole -- 0 unassigned, 1 leader, 2 follower.
- *   0x110  mCollectedCount -- leader's tally; 5 destroys the set.
- *   0x111  mClsnDisabled -- nonzero skips mdCcAc_c.Update().
- *   0x112  unk_112 -- "already paired" flag, read/written by 020f051c.
- *   0x113  mDeathTimer -- DecIfAbove0_Byte; 0 means not dying.
- *
- * Behavior's election: a coin whose mGroupRole is still 0 and whose
- * mGroupId nibble is 0 or 0xf claims role 1, records uniqueID, then
- * walks FindWithActorID(0x149) and writes role 2 plus that uniqueID
- * into every other SECRET_COIN. The fifth collection spawns POWER_STAR
- * at the matching STAR_MARKER.
+ *   0x0d4  mdCcAc_c        -- touch collider
+ *   0x108  mLeaderUniqueID -- uniqueID of the elected leader
+ *   0x10d  mStarID         -- param1 & 0xf; matched against
+ *                             daStarBase_c::mStarID, then OR'd 0x40 into the
+ *                             POWER_STAR spawn param
+ *   0x10e  mGroupId        -- (param1 >> 8) & 0xf
+ *   0x10f  mGroupRole      -- 0 unassigned, 1 leader, 2 follower
+ *   0x110  mCollectedCount -- leader's tally; 5 destroys the set
+ *   0x111  mClsnDisabled   -- nonzero skips mdCcAc_c.Update()
+ *   0x112  mBlockScanDone  -- LinkToBlock already ran (one-shot guard)
+ *   0x113  mDeathTimer     -- DecIfAbove0_Byte; 0 means not dying
  */
 
 struct daSCoin_c : dActor_c {
@@ -42,12 +31,12 @@ struct daSCoin_c : dActor_c {
     dCcAc_c mdCcAc_c;            /* 0x0d4 */
     s32 mLeaderUniqueID;         /* 0x108 */
     u8  pad_10c[0x1];
-    u8  unk_10d;                 /* 0x10d */
+    u8  mStarID;                 /* 0x10d */
     u8  mGroupId;                /* 0x10e */
     u8  mGroupRole;              /* 0x10f -- 0 unassigned, 1 leader, 2 follower */
     u8  mCollectedCount;         /* 0x110 */
     u8  mClsnDisabled;           /* 0x111 */
-    u8  unk_112;                 /* 0x112 */
+    u8  mBlockScanDone;          /* 0x112 */
     u8  mDeathTimer;             /* 0x113 */
 
     /* INLINE IS LOAD-BEARING. Out of line, mwccarm emits D0 before D1
@@ -55,26 +44,17 @@ struct daSCoin_c : dActor_c {
        ROM home. Empty body: mdCcAc_c teardown, the vptr store and
        dActor_c's teardown are synthesised. Key function is InitResources,
        the first declared non-inline virtual. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daSCoin_c() {}   /* no slot */
-#else
-    virtual ~daSCoin_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daSCoin_c() {}          /* slots 16 (D1), 17 (D0) */
 
     virtual s32  InitResources();    /* slot  0 */
     virtual s32  CleanupResources(); /* slot  3 */
     virtual s32  Behavior();         /* slot  6 */
 
-    static void *operator new(size_t size) {
-        return _ZN7fBase_cnwEj((unsigned)size);
-    }
+    /* Readable inferred names, not ROM-authenticated original spellings.
+     * Address evidence is recorded in symbols/actor_renames.tsv. */
+    void Collect();      /* was func_ov002_020f0438 */
+    void LinkToBlock();  /* was func_ov002_020f051c */
+    void SpawnStar();    /* was func_ov002_020f05f4 */
 };
 
 #ifndef SM64DS_PLATFORM_PC

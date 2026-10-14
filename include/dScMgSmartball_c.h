@@ -30,7 +30,7 @@
  * alone. They are real matched access; they are simply not modelled yet,
  * because each one's WIDTH has to come from its access site and that is a
  * separate reading pass from making the class real. Naming them changes no
- * byte and needs no migration -- every one of those seven files reaches
+ * byte and needs no migration -- each of those methods reaches
  * them by raw offset today and will keep working untouched.
  *
  * So: the four arrays below are evidenced by two witnesses each and the
@@ -38,8 +38,8 @@
  * not a claim that nothing reads it.
  *
  * THE DESTRUCTOR IS NOT DEFINED INLINE -- a leaf, no RTTI descendants of
- * its own. Defined for real in src/_ZN16dScMgSmartball_cD1Ev.cpp; D0Ev.cpp
- * carries an identical copy. No separate operator delete is needed --
+ * its own. Its definition in src/actors/dScMgSmartball_c.cpp emits both
+ * destructor variants. No separate operator delete is needed --
  * dScMgBase_c, the immediate base, already provides one.
  *
  * SM64DS RTTI names the implementation dScMgSmartball_c. The reconstructed factory
@@ -55,18 +55,7 @@ extern "C" void NullDestructor_0203d47c(void);
 extern "C" void func_ov006_0210d894(void);
 
 struct dScMgSmartball_c : dScMgBase_c {
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgSmartball_c();   /* no slot */
-#else
-    virtual ~dScMgSmartball_c();   /* D1 and D0 */
-#endif
+    virtual ~dScMgSmartball_c();
 
     /* This class's own overrides, read off the ROM's vtable: the slots where the
        table differs from dScMgBase_c's. Spelled WITHOUT the `virtual` keyword, the
@@ -74,8 +63,8 @@ struct dScMgSmartball_c : dScMgBase_c {
        an override of a virtual an ancestor already declares is implicitly virtual
        either way, so each reuses an existing slot and adds no field, and the
        0x629c assert below still holds. The destructor above is declared first and
-       out of line, so it stays this class's KEY FUNCTION and none of these
-       translation units emits _ZTV16dScMgSmartball_c.
+       out of line, so it stays this class's key function; the production TU owns the
+       compiler-emitted vtable.
 
        AfterCleanupResources takes dScMgBase_c's signature exactly, u32 and all.
        The pre-migration file spelled the parameter `int mode` and still matched,
@@ -86,15 +75,44 @@ struct dScMgSmartball_c : dScMgBase_c {
        default, _ZN7fBase_c13InitResourcesEv (0x02043c80), into slot 0 while the
        cartridge holds 0x02118b70 -- romdata_check scored _ZTV16dScMgSmartball_c
        DIFFERS on that one word. Its 0x8dc bytes are now decompiled and enrolled
-       (src/_ZN16dScMgSmartball_c13InitResourcesEv.cpp); the slot is unchanged. */
+       (src/actors/dScMgSmartball_c.cpp); the slot is unchanged. */
     virtual void OnYoshiTryEat(int arg);               /* slot 18 */
     virtual int  OnPushed();                           /* slot 25 */
     virtual int  Virtual7C();                          /* slot 31 */
-    s32  InitResources();  /* slot  0 -- src/_ZN16dScMgSmartball_c13InitResourcesEv.cpp */
+    s32  InitResources();  /* slot  0 */
     void AfterCleanupResources(u32 vfSuccess);
-                           /* slot  5 -- src/_ZN16dScMgSmartball_c21AfterCleanupResourcesEj.cpp */
-    s32  Behavior();       /* slot  6 -- src/_ZN16dScMgSmartball_c8BehaviorEv.cpp */
-    s32  Render();         /* slot  9 -- src/_ZN16dScMgSmartball_c6RenderEv.cpp */
+                           /* slot  5 */
+    s32  Behavior();       /* slot  6 */
+    s32  Render();         /* slot  9 */
+
+    /* Recovered helpers. The spark/dust pair renders the rolling-ball trail
+       and the collision poofs; the Count* counters feed the score popup the
+       emitter queue plays back; EmitScore is the 5-slot popup queue. */
+    int  SparksActive();
+    void EmitSparks(int *pair, int a3);
+    void RenderSparks();
+    void UpdateSparks();
+    void ResetSparks();
+    void EndRound();
+    void ServeNextBall();
+    void CountOut();
+    void CountAward(int i);
+    void CountDokan();
+    void CountAna();
+    void CountKinoko();
+    void CountBingo();
+    int  CountLine(int i);
+    void CountCell();
+    unsigned short GetTile(int *pos);
+    void UpdateDust();
+    void SpawnDust(int *origin);
+    void UpdateScores();
+    void EmitScore(int *src, int v2, int v3, int v5);
+    void KickGate(int idx);
+    int  IsTableAtRest();
+    void ResolveBallPair(int b, int c, u8 *d, u8 *e);
+    void CollideBalls();
+    void SpawnObjects();
 
     u8 pad_4660[0x168];   /* 0x4660 -- dScMgBase_c's data ends here; real matched
                               access inside, see file banner */

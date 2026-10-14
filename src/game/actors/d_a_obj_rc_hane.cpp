@@ -60,6 +60,7 @@
  * - mFrame pointer RMW (named mFrame++ CSEs the field address)
  * - (s64) table <<n + 0x800 >> 12 (Fix12 round; (long long)(int) size-DIFF)
  * - data_ov036_02114070 / data_02082214 / data_020a0e68 handles
+ *   (the BMD handle is constructed by this TU's static initializer, file 1702)
  * - func_ov036_02111618 C-linkage name (other config still names it)
  * - S14: g_profile_RC_HANE stays outside the licensed .text
  */
@@ -73,6 +74,19 @@
 #include "Model.h"
 #include "SharedFilePtr.h"
 #include "Sound.h"
+
+/* 8-byte model handle. The constructor and destructor are the retail
+ * func_02017acc / func_02017ab4 pair; the manifest aliases the generated
+ * names onto those ROM symbols. */
+struct RcHaneModelFilePtr : SharedFilePtr {
+    unsigned int words[2];
+
+    RcHaneModelFilePtr(unsigned int fileID);
+    ~RcHaneModelFilePtr();
+};
+
+typedef char RcHaneModelFilePtr_size_must_be_8[
+    sizeof(RcHaneModelFilePtr) == 8 ? 1 : -1];
 
 /* Externs: the union of the legacy files', kept at their legacy spelling.
  *
@@ -93,7 +107,7 @@
  * from Behavior, so it keeps C linkage and its existing name; renaming it
  * would move a symbol other config still names. */
 
-extern SharedFilePtr data_ov036_02114070;   /* the wing's BMD */
+extern RcHaneModelFilePtr data_ov036_02114070;   /* the wing's BMD */
 
 extern "C" {
 extern s16 data_02082214[];                 /* the canned rock table */
@@ -117,7 +131,7 @@ void Matrix4x3_ApplyInPlaceToRotationZ(Matrix4x3 *m, short ang);
 
    Every instruction the cartridge has here falls out of the one `new`.
    sizeof is 0x11c; the implicit ctor calls dActor_c C2, stores this class's
-   vptr, then CommonModel C1 at 0xd4. The null check is the one `new` itself
+   vptr, then dExtCommonModel_c C1 at 0xd4. The null check is the one `new` itself
    emits. */
 extern "C" daObjRc_Hane_c *daObjRc_Hane_c_classInit()
 {
@@ -260,8 +274,11 @@ s32 daObjRc_Hane_c::CleanupResources()
  * RTTI pair land here rather than in whichever other TU happens to name them.
  *
  * Both bodies are short because the chain is short: this class's vptr store,
- * then CommonModel's destructor, then dActor_c's. This class's own fields are
+ * then dExtCommonModel_c's destructor, then dActor_c's. This class's own fields are
  * two s16 triples and three small integers, none of which has a destructor.
  * D0's trailing deallocation is the inherited inline operator delete, which is
  * why nothing here names a heap.
  */
+
+/* File 1702. The compiler registers func_02017ab4 beside the object. */
+RcHaneModelFilePtr data_ov036_02114070(1702);

@@ -385,7 +385,7 @@ structural read: slots 3/4/5 are **NULL in `_ZTV16MeshColliderBase`** (0x0209938
 base declares `GetSurfaceInfo` / `GetNormal` / `GetTriangleOrigin` pure virtual, and slots
 9-12 of `MeshCollider` still point at `MeshColliderBase`'s implementations. That is the
 derivation, read straight out of the ROM, and it is handed to whoever converts the collision
-chain (claimed in CLAIMS.md) rather than done here.
+chain rather than done here.
 
 Type names are the ROM's own: `KCL_File` and `CLPS_Block` appear verbatim inside
 `_ZN12MeshCollider7SetFileEP8KCL_FileR10CLPS_Block`, and `Vector3_16` inside

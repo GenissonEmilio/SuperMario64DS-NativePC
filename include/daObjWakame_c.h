@@ -36,9 +36,9 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  *   - ~daObjWakame_c calls _ZN9ModelAnimD1Ev on this+0xd4 (see below);
  *   - Render loads a vptr from this+0xd4 and dispatches slot 5 through it,
  *     which is Model::Render -- so +0xd4 is a polymorphic object, not bytes;
- *   - Behavior calls Animation::Advance (arm9 0x02015c3c) on this+0x124, and
+ *   - Behavior calls dExtFrameCtrl_c::Advance (arm9 0x02015c3c) on this+0x124, and
  *     0x124 - 0xd4 = 0x50, which include/ModelAnim.h pins as exactly where the
- *     Animation base sits inside a ModelAnim. The second base lands where the
+ *     dExtFrameCtrl_c base sits inside a ModelAnim. The second base lands where the
  *     class says it should.
  *
  * unk_0d0 IS AN UNKNOWN FIELD, NOT ALIGNMENT. dActor_c asserts its own size

@@ -6,7 +6,7 @@
   "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
-    "contiguous linker run: 0x2115ee0..0x2116d1c, 22 function(s), from build/tu_map.json (tools/tu_map.py)",
+    "contiguous linker run: 0x2115ee0..0x2117070, 24 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daOts_c",
     "module sinit corroboration: 11 sinit(s) / 11 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
   ],
@@ -14,7 +14,7 @@
     {
       "name": ".text",
       "start": "0x02115ee0",
-      "end": "0x02116d1c"
+      "end": "0x02117070"
     }
   ],
   "functions": [
@@ -40,28 +40,28 @@
       "ordinal": 2
     },
     {
-      "symbol": "func_ov064_02115f98",
+      "symbol": "_ZN7daOts_c19func_ov064_02115f98EPc",
       "address": "0x02115f98",
       "size": "0x00000178",
       "legacy_source": "src/func_ov064_02115f98.c",
       "ordinal": 3
     },
     {
-      "symbol": "func_ov064_02116110",
+      "symbol": "_ZN7daOts_c19func_ov064_02116110Es",
       "address": "0x02116110",
       "size": "0x0000005c",
       "legacy_source": "src/func_ov064_02116110.cpp",
       "ordinal": 4
     },
     {
-      "symbol": "func_ov064_0211616c",
+      "symbol": "_ZN7daOts_c19func_ov064_0211616cEv",
       "address": "0x0211616c",
       "size": "0x000000b4",
       "legacy_source": "src/func_ov064_0211616c.c",
       "ordinal": 5
     },
     {
-      "symbol": "func_ov064_02116220",
+      "symbol": "_ZN7daOts_c19func_ov064_02116220Ev",
       "address": "0x02116220",
       "size": "0x00000128",
       "legacy_source": "src/func_ov064_02116220.cpp",
@@ -110,14 +110,14 @@
       "ordinal": 12
     },
     {
-      "symbol": "func_ov064_02116460",
+      "symbol": "_ZN7daOts_c19func_ov064_02116460Ev",
       "address": "0x02116460",
       "size": "0x00000100",
       "legacy_source": "src/func_ov064_02116460.cpp",
       "ordinal": 13
     },
     {
-      "symbol": "func_ov064_02116560",
+      "symbol": "_ZN7daOts_c19func_ov064_02116560Ev",
       "address": "0x02116560",
       "size": "0x00000074",
       "legacy_source": "src/func_ov064_02116560.cpp",
@@ -131,28 +131,28 @@
       "ordinal": 15
     },
     {
-      "symbol": "func_ov064_021165d8",
+      "symbol": "_ZN7daOts_c19func_ov064_021165d8Ev",
       "address": "0x021165d8",
       "size": "0x00000118",
       "legacy_source": "src/func_ov064_021165d8.cpp",
       "ordinal": 16
     },
     {
-      "symbol": "func_ov064_021166f0",
+      "symbol": "_ZN7daOts_c19func_ov064_021166f0Ev",
       "address": "0x021166f0",
       "size": "0x00000064",
       "legacy_source": "src/func_ov064_021166f0.c",
       "ordinal": 17
     },
     {
-      "symbol": "func_ov064_02116754",
+      "symbol": "_ZN7daOts_c19func_ov064_02116754Ev",
       "address": "0x02116754",
       "size": "0x00000458",
       "legacy_source": "src/func_ov064_02116754.cpp",
       "ordinal": 18
     },
     {
-      "symbol": "func_ov064_02116bac",
+      "symbol": "_ZN7daOts_c19func_ov064_02116bacEv",
       "address": "0x02116bac",
       "size": "0x000000f4",
       "legacy_source": "src/func_ov064_02116bac.cpp",
@@ -171,6 +171,20 @@
       "size": "0x0000002c",
       "legacy_source": "src/_ZN7daOts_c6RenderEv.cpp",
       "ordinal": 21
+    },
+    {
+      "symbol": "_ZN7daOts_c14BehaviorCommonEv",
+      "address": "0x02116d1c",
+      "size": "0x000001a4",
+      "legacy_source": "src/func_ov064_02116d1c.cpp",
+      "ordinal": 22
+    },
+    {
+      "symbol": "_ZN7daOts_c19InitResourcesCommonEv",
+      "address": "0x02116ec0",
+      "size": "0x000001b0",
+      "legacy_source": "src/func_ov064_02116ec0.cpp",
+      "ordinal": 23
     }
   ],
   "data": [],
@@ -187,7 +201,8 @@
     "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj' differs between the legacy file that used to hold func_ov064_021163c0 and the one that held func_ov064_02116754; kept the first, the other is commented out for review",
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'ModelAnim') differs between the legacy file that used to hold func_ov064_021163c0 and the one that held func_ov064_02116460; kept the first, the other is commented out for review",
     "tubuild reconcile note: every conflict and RAW warning above was resolved in src/actors/daOts_c.cpp before the first verify. The four disagreeing declarations of _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj were collapsed into one int-returning form -- five of the six call sites drop the result and func_ov064_02116560 tail-forwards it; the three spellings of _Z14ApproachLinearRsss (reference form, pointer form, and a plain ApproachLinear) into one reference form; the two of Vec3_HorzAngle into one. The stand-in struct ModelAnim and struct dActor_c were deleted outright in favour of include/ModelAnim.h and the real dActor_c that daOts_c.h pulls in, and Vector3_16f was respelled as include/Particle__System.h spells it, under the same VECTOR3_16F_DEFINED guard. The two RAW members (func_ov064_02116220 and func_ov064_02116bac) had their per-member extern \"C\" blocks unwrapped and their declarations hoisted into the file's single extern block. Marked (RESOLVED) rather than deleted so the record that the legacy files disagreed survives. Checked by tools/check_tubuild_conflicts.py.",
-    "compiler_only_output measured, not estimated: the queue row for daOts_c carried compiler-only:~16 (estimate from sibling daObjFl_Gura_c: 2 deadstrip, 14 deadstrip-data). The real count is 12 -- ONE deadstrip-duplicate (_ZN7Vector3D1Ev) and ELEVEN deadstrip-data. It is smaller than the sibling's because daObjFl_Gura_c sits one level deeper (daObjFl_Gura_c -> daObjGuragura_c -> dBgActor_c -> dActor_c) and carries a g_profile_ record this abstract class has no factory for; and it is unusual in one respect the sibling is not: this class's _ZTI/_ZTS pair lives in ov027, not in its own overlay."
+    "compiler_only_output measured, not estimated: the queue row for daOts_c carried compiler-only:~16 (estimate from sibling daObjFl_Gura_c: 2 deadstrip, 14 deadstrip-data). The real count is 12 -- ONE deadstrip-duplicate (_ZN7Vector3D1Ev) and ELEVEN deadstrip-data. It is smaller than the sibling's because daObjFl_Gura_c sits one level deeper (daObjFl_Gura_c -> daObjGuragura_c -> dBgActor_c -> dActor_c) and carries a g_profile_ record this abstract class has no factory for; and it is unusual in one respect the sibling is not: this class's _ZTI/_ZTS pair lives in ov027, not in its own overlay.",
+    "InitResourcesCommon / BehaviorCommon: leftover shards at 0x02116d1c and 0x02116ec0 absorbed into this TU. Proven daOts members by this-pointer layout (ModelAnim 0x110, dBgCh_Actr 0x174, mFileTable 0x330, dCcAc_c 0x33c, dExtShadowModel_c 0x370) and by named daOts callees (UpdateDeathState, plus this TU's leftover helpers). Children wrap them from the pure-virtual InitResources / Behavior slots; they are not in the vtable. Coined English names describe those call sites; class ownership, inbound calls, bodies, layout, relocations and codegen are proven; the exact original English names are not."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
@@ -195,8 +210,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov064-daOts_c/daOts_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 22,
-    "functions_declared": 22,
+    "functions_matched": 24,
+    "functions_declared": 24,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN7Vector3D1Ev"

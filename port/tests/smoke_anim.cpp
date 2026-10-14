@@ -13,7 +13,7 @@
 #include <cstring>
 
 #include "Model.h"
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 
 #include "ntr/gx.h"
 #include "ntr/mmio.h"
@@ -88,7 +88,7 @@ int main(void)
     SharedFilePtrC ap;
     _ZN13SharedFilePtr9ConstructEj(&ap, 1036);
     /* the game's loader: SharedFilePtr load + the BCA header rebase */
-    void *bca = Animation::LoadFile(*(SharedFilePtr *)&ap);
+    void *bca = dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)&ap);
     CHECK(bca != NULL);
 
     /* the game's per-frame order: pose bones, re-skin, render */

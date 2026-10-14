@@ -1,0 +1,111 @@
+{
+  "id": "arm9/dExtFrameCtrl_c",
+  "module": "arm9",
+  "source": "src/engine/animation/dExtFrameCtrl_c.cpp",
+  "promoted_source": "src/engine/animation/dExtFrameCtrl_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "contiguous linker run: 0x02015a7c..0x02015cb4, 8 function(s), gapless in config/arm9/delinks.txt, every entry complete.",
+    "The run is the ordinary half of one class: dExtFrameCtrl_c's eight non-lifecycle methods (Copy, WillHitFrame, Finished, GetFlags, SetFlags, GetFrameCount, SetAnimation, Advance). dExtFrameCtrl_c is the tree's name for the ROM's dExtFrameCtrl_c root; notes/model-rtti-names.md recovers the family.",
+    "The run's ABI tail stays sharded: ~dExtFrameCtrl_c() is the key function, so a TU that defines it emits _ZTV/_ZTI/_ZTS under the coined '9Animation' spelling while the cartridge records spell '15dExtFrameCtrl_c'. A homeless emitted name resolves as a plain deadstrip, which the compiler-only policy refuses for RTTI/vtable records, so D2/D0/D1/C1/C2 (0x02015cb4..0x02015d38) keep their per-function sources until the class is renamed -- the licensed-range trim the daObjKuruma_c manifests already use.",
+    "LoadFile (0x0201794c) and UpdateFileOffsets (0x020469ac) are dExtFrameCtrl_c members too, but they link in other neighbourhoods and keep their own shards; they are not part of this run.",
+    "The neighbour before the run, _ZN15TextureSequenceC1Ev ending at 0x02015a7c, is a TextureSequence constructor; the ABI tail's own shards continue the run to 0x02015d38 where _ZN11ShadowModel9RenderAllEv begins. Neither is an dExtFrameCtrl_c method licensed here.",
+    "module sinit corroboration: arm9 is one under-segmented unit, so sinit attribution does not narrow this TU."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x02015a7c",
+      "end": "0x02015cb4"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN15dExtFrameCtrl_c4CopyERKS_",
+      "address": "0x02015a7c",
+      "size": "0x0000001c",
+      "legacy_source": "src/_ZN15dExtFrameCtrl_c4CopyERKS_.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZNK15dExtFrameCtrl_c12WillHitFrameEi",
+      "address": "0x02015a98",
+      "size": "0x00000134",
+      "legacy_source": "src/_ZNK15dExtFrameCtrl_c12WillHitFrameEi.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "_ZN15dExtFrameCtrl_c8FinishedEv",
+      "address": "0x02015bcc",
+      "size": "0x00000020",
+      "legacy_source": "src/_ZN15dExtFrameCtrl_c8FinishedEv.cpp",
+      "ordinal": 2
+    },
+    {
+      "symbol": "_ZN15dExtFrameCtrl_c8GetFlagsEv",
+      "address": "0x02015bec",
+      "size": "0x0000000c",
+      "legacy_source": "src/_ZN15dExtFrameCtrl_c8GetFlagsEv.cpp",
+      "ordinal": 3
+    },
+    {
+      "symbol": "_ZN15dExtFrameCtrl_c8SetFlagsEi",
+      "address": "0x02015bf8",
+      "size": "0x00000014",
+      "legacy_source": "src/_ZN15dExtFrameCtrl_c8SetFlagsEi.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "_ZNK15dExtFrameCtrl_c13GetFrameCountEv",
+      "address": "0x02015c0c",
+      "size": "0x00000014",
+      "legacy_source": "src/_ZNK15dExtFrameCtrl_c13GetFrameCountEv.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "_ZN15dExtFrameCtrl_c12SetAnimationEti5Fix12IiEt",
+      "address": "0x02015c20",
+      "size": "0x0000001c",
+      "legacy_source": "src/_ZN15dExtFrameCtrl_c12SetAnimationEti5Fix12IiEt.cpp",
+      "ordinal": 6
+    },
+    {
+      "symbol": "_ZN15dExtFrameCtrl_c7AdvanceEv",
+      "address": "0x02015c3c",
+      "size": "0x00000078",
+      "legacy_source": "src/_ZN15dExtFrameCtrl_c7AdvanceEv.cpp",
+      "ordinal": 7
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Text-only. The class's _ZTV/_ZTI/_ZTS stay in the cartridge .data at 0x0208e744..0x0208e858, emitted and deadstripped by the legacy dtor shard exactly as before this fold.",
+    "mwccarm emits .text in reverse source order, so the file is ROM-descending.",
+    "SetAnimation keeps a mangled extern-C definition at file scope: its declared signature passes Fix12<int> by value, and the wall 6az homes class-typed by-value parameters, so the member definition cannot be spelled without changing bytes (see the local extern note in the source)."
+  ],
+  "compiler_only_output": [],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/arm9-dExtFrameCtrl_c/dExtFrameCtrl_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 8,
+    "functions_declared": 8,
+    "compilerOnlyOutput": {
+      "requested": [],
+      "deadstripped": [],
+      "data": [],
+      "dataExternalized": []
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  }
+}

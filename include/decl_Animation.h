@@ -20,13 +20,13 @@
 extern "C" {
 #endif
 
-extern int _ZN9Animation8GetFlagsEv(void*);
-extern int _ZNK9Animation12WillHitFrameEi(void*, int);
-extern int _ZNK9Animation13GetFrameCountEv(void*);
-extern void _ZN9Animation17UpdateFileOffsetsER8BCA_File(char*);
-extern void _ZN9Animation4CopyERKS_(void*, const void*);
-extern void _ZN9Animation8SetFlagsEi(void*, int);
-extern void _ZN9AnimationC2Ev(void*);
+extern int _ZN15dExtFrameCtrl_c8GetFlagsEv(void*);
+extern int _ZNK15dExtFrameCtrl_c12WillHitFrameEi(void*, int);
+extern int _ZNK15dExtFrameCtrl_c13GetFrameCountEv(void*);
+extern void _ZN15dExtFrameCtrl_c17UpdateFileOffsetsER8BCA_File(char*);
+extern void _ZN15dExtFrameCtrl_c4CopyERKS_(void*, const void*);
+extern void _ZN15dExtFrameCtrl_c8SetFlagsEi(void*, int);
+extern void *_ZN15dExtFrameCtrl_cC2Ev(void*);
 
 
 #ifdef __cplusplus

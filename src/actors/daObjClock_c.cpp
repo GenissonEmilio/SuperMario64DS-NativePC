@@ -14,55 +14,67 @@
  * destructor pair at the end is the one documented exception, because the
  * compiler picks the order inside a D0/D1 group itself.
  *
- * Members, in ROM address order (each was a one-function shard before this
- * TU took over the run; the shards are gone):
- *   [0] 0x021113bc  daObjClock_c::~daObjClock_c   (D1)
- *   [1] 0x021113ec  daObjClock_c::~daObjClock_c   (D0)
- *   [2] 0x02111430  func_ov013_02111430           (state helper)
- *   [3] 0x02111478  daObjClock_c::CleanupResources
- *   [4] 0x021114a4  daObjClock_c::Render
- *   [5] 0x021114cc  daObjClock_c::Behavior
- *   [6] 0x021115cc  daObjClock_c::InitResources
- *   [7] 0x0211163c  daObjClock_c_classInit_CLOCK_SHORT   (factory, actor 292)
- *   [8] 0x02111674  daObjClock_c_classInit_CLOCK_LONG    (factory, actor 293)
- *
- * deslop leftovers:
- * - data_ov013_021116ac / data_ov013_021116b0: per-hand angular speed and
- *   SharedFilePtr handles. This TU consumes them; overlay .data owns them.
- * - two C-linkage factories stay CLOCK_SHORT / CLOCK_LONG: EAD would name
- *   both daObjClock_c_classInit (not_apply=global_classinit_name_collision).
- * - Matrix4x3_FromRotationZXYExt stays the C helper (no class method).
- * - func_ov013_02111430 keeps its func_ name: not a vtable slot, and
- *   nothing in the cartridge says it is a member.
+ * leftovers: measured under mwccarm 2004/b56, and left in the form that
+ * matches.
+ * - the widened `int isLongHand` stays: folding actorID == 0x125 into the
+ *   if sizes InitResources 0x70 -> 0x64; a ternary, or
+ *   mHandIndex = actorID != 0x125, sizes it 0x70 -> 0x60.
+ * - Behavior's quadrant chain keeps the measured shape: lower-bound-first
+ *   compares stay 0x100 and 21 words differ; dropping the repeated lower
+ *   bounds sizes it 0xe0; folding the two stopped quadrants into one test
+ *   sizes it 0xf8; mAngleZ = mAngleZ + step sizes it 0xfc; testing
+ *   mHandIndex before IsAreaShowing stays 0x100 and 5 words differ.
+ * - func_ov013_02111430 keeps the three memberwise mat4x3.t stores:
+ *   assigning a Vector3 sizes it 0x50 against 0x48.
+ * - data_ov013_021116ac (per-hand speeds) and data_ov013_021116b0 (model
+ *   handles) keep linker names: this TU reads them; it does not own that
+ *   .data. data_02092110 / data_0209f2c0 are arm9's level id and clock
+ *   setting. The two factories stay CLOCK_SHORT / CLOCK_LONG, because one
+ *   C name cannot cover both.
+ * - Matrix4x3_FromRotationZXYExt and IsAreaShowing stay local externs;
+ *   no shared header owns them.
  */
 
 #include "daObjClock_c.h"
 #include "SharedFilePtr.h"
 
+/* Model handles construct through func_02017acc and destroy through
+ * func_02017ab4. The manifest aliases those undefined members onto the ROM
+ * symbols. */
+struct ClockModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    ClockModelFilePtr(u32 fileID);
+    ~ClockModelFilePtr();
+};
+
 extern "C" {
 extern void Matrix4x3_FromRotationZXYExt(void *, int, int, int);
 int IsAreaShowing(int areaId);
-extern signed char data_02092110[];
-extern unsigned char data_0209f2c0[];
-extern short data_ov013_021116ac[];
+extern s8 data_02092110;             /* current level id; hands advance while it is not positive */
+extern u8 data_0209f2c0;              /* clock setting: 0 slow, 1 fast, 2 random, 3 stopped */
+extern s16 data_ov013_021116ac[];
 extern SharedFilePtr *data_ov013_021116b0[];
-void func_ov013_02111430(daObjClock_c *self);
+extern ClockModelFilePtr data_ov013_02112294;
+extern ClockModelFilePtr data_ov013_0211229c;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-/* ONE CLASS, TWO PROFILES. CLOCK_LONG (actor 293) and CLOCK_SHORT (actor 292)
- * each own a descriptor and a separate factory; both install the same
- * vtable at 0x02112200 and the same 0x128 allocation, and InitResources tells
- * them apart at run time by actorID.
- *
- * The factories keep their coined spellings. The registry's
- * factory_rename_recommended is `no` for both rows for exactly this reason
- * (not_apply=global_classinit_name_collision): the EAD convention would name
- * both daObjClock_c_classInit, and two C-linkage definitions cannot share one
- * name. Only the two profile records are renamed, to the spellings the ROM's
- * own debug string table proves -- CLOCK_SHORT at 0x02090230, CLOCK_LONG at
- * 0x0208ffa8. */
+enum {
+    ACTOR_CLOCK_SHORT = 0x124,
+    ACTOR_CLOCK_LONG = 0x125
+};
+
+enum {
+    CLOCK_SETTING_SLOW = 0,
+    CLOCK_SETTING_FAST = 1,
+    CLOCK_SETTING_RANDOM = 2,
+    CLOCK_SETTING_STOPPED = 3
+};
+
+/* ONE CLASS, TWO PROFILES. Both factories install the same vtable and the
+ * same 0x128 allocation. They cannot share one C name: the EAD spelling
+ * would be daObjClock_c_classInit for both. CLOCK_SHORT at 0x02090230 and
+ * CLOCK_LONG at 0x0208ffa8 are the ROM debug strings. */
 // @symbol daObjClock_c_classInit_CLOCK_LONG
 extern "C" daObjClock_c *daObjClock_c_classInit_CLOCK_LONG()
 {
@@ -75,12 +87,10 @@ extern "C" daObjClock_c *daObjClock_c_classInit_CLOCK_SHORT()
     return new daObjClock_c();
 }
 
-/* The 0x1c actor descriptor, `actor_profile_0x1c` in
- * symbols/profile_reconstruction_registry.tsv. Emitted in SOURCE order, which
- * is why CLOCK_LONG (0x021121c0) is written before CLOCK_SHORT (0x021121dc).
- * The fBase_c constructor passes +4/+6 to behavior/render priority setters.
- * Their names describe those uses. The retained s16 fields, order and values
- * do not establish the original signedness. */
+/* 0x1c actor descriptor. Source order is CLOCK_LONG (0x021121c0) then
+ * CLOCK_SHORT (0x021121dc). +4/+6 are the halfwords fBase_c passes to the
+ * behavior and render priority setters; the s16 type is the storage, not
+ * a recovered signedness. */
 struct ClockSpawnInfo {
     daObjClock_c *(*classInit)();
     s16 profileID;
@@ -95,114 +105,97 @@ typedef char ClockSpawnInfo_size_must_be_0x1c[sizeof(ClockSpawnInfo) == 0x1c ? 1
 
 // @symbol g_profile_CLOCK_LONG
 extern "C" ClockSpawnInfo g_profile_CLOCK_LONG = {
-    daObjClock_c_classInit_CLOCK_LONG, 0x0125, 0x00a3, 0x00000006,
+    daObjClock_c_classInit_CLOCK_LONG, ACTOR_CLOCK_LONG, 0x00a3, 0x00000006,
     0x00064000, 0x000fa000, 0x00c80000, 0x00640000
 };
 
 // @symbol g_profile_CLOCK_SHORT
 extern "C" ClockSpawnInfo g_profile_CLOCK_SHORT = {
-    daObjClock_c_classInit_CLOCK_SHORT, 0x0124, 0x00a2, 0x00000006,
+    daObjClock_c_classInit_CLOCK_SHORT, ACTOR_CLOCK_SHORT, 0x00a2, 0x00000006,
     0x00064000, 0x000fa000, 0x00c80000, 0x00640000
 };
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN12daObjClock_c13InitResourcesEv
-/* recovered: typed actor, model, and shared-file ownership */
+/* Hand 0 is the long hand, hand 1 the short. The actorID test stays in an
+ * int: folding it into the if sizes this 0x64 against 0x70, and a ternary
+ * or mHandIndex = actorID != 0x125 sizes it 0x60. */
 int daObjClock_c::InitResources()
 {
-    int isLongHand = (int)(actorID == 0x125);
-    if (isLongHand != 0)
+    int isLongHand = actorID == ACTOR_CLOCK_LONG;
+    if (isLongHand)
         mHandIndex = 0;
     else
         mHandIndex = 1;
-    {
-        unsigned char index = mHandIndex;
-        SharedFilePtr &file = *data_ov013_021116b0[index];
-        mModel.SetFile((BMD_File *)Model::LoadFile(file), 1, -1);
-    }
-    func_ov013_02111430(this);
+    mModel.SetFile((BMD_File *)Model::LoadFile(*data_ov013_021116b0[mHandIndex]), 1, -1);
+    func_ov013_02111430();
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN12daObjClock_c8BehaviorEv
-/* recovered: real C++ method over inherited actor fields */
+/* While the level id is not positive the hand advances by its per-hand
+ * speed. Otherwise the long hand, when its area is showing, writes the
+ * clock setting from the quadrant of -mAngleZ. Upper bound first is the
+ * match: lower-bound-first compares are 21 words off at the same 0x100.
+ * Dropping the repeated lower bounds sizes this 0xe0. Folding the two
+ * stopped quadrants sizes it 0xf8. mAngleZ = mAngleZ + step sizes it 0xfc.
+ * Testing mHandIndex before IsAreaShowing is 5 words off. */
 int daObjClock_c::Behavior()
 {
-    if (data_02092110[0] <= 0) {
+    if (data_02092110 <= 0) {
         mAngleZ += data_ov013_021116ac[mHandIndex];
     } else if (IsAreaShowing(mAreaId) && mHandIndex == 0) {
-        unsigned short angle = (unsigned short)-mAngleZ;
+        u16 angle = -mAngleZ;
         if (angle < 0x2000)
-            data_0209f2c0[0] = 3;
+            data_0209f2c0 = CLOCK_SETTING_STOPPED;
         else if (angle < 0x6000 && angle >= 0x2000)
-            data_0209f2c0[0] = 0;
+            data_0209f2c0 = CLOCK_SETTING_SLOW;
         else if (angle < 0xa000 && angle >= 0x6000)
-            data_0209f2c0[0] = 2;
+            data_0209f2c0 = CLOCK_SETTING_RANDOM;
         else if (angle < 0xe000 && angle >= 0xa000)
-            data_0209f2c0[0] = 1;
+            data_0209f2c0 = CLOCK_SETTING_FAST;
         else if (angle >= 0xe000)
-            data_0209f2c0[0] = 3;
+            data_0209f2c0 = CLOCK_SETTING_STOPPED;
     }
-    func_ov013_02111430(this);
+    func_ov013_02111430();
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN12daObjClock_c6RenderEv
-/* recovered: real C++ method over the owned Model */
 int daObjClock_c::Render()
 {
     mModel.Render(0);
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN12daObjClock_c16CleanupResourcesEv
-/* recovered: typed file ownership through the shared class APIs */
 int daObjClock_c::CleanupResources()
 {
     data_ov013_021116b0[mHandIndex]->Release();
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov013_02111430
-/* Rebuild the owned model matrix from inherited actor angles and position.
- * Not a vtable slot and not provably a member, so it keeps its func_ name.
+// @symbol _ZN12daObjClock_c19func_ov013_02111430Ev
+/* Rebuild mModel.mat4x3 from the actor angles and from position >> 3.
+ * Assigning a Vector3 to mat4x3.t sizes this 0x50 against 0x48.
  * The marker above is not decoration -- without it tools/tiers.py folds this
  * body into the preceding member's fragment. */
-extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov013_02111430(daObjClock_c *self)
+void daObjClock_c::func_ov013_02111430()
 {
-    Matrix4x3_FromRotationZXYExt(&self->mModel.mat4x3, self->mAngleX, self->mAngleY, self->mAngleZ);
-    self->mModel.mat4x3.t.x = self->mPosX >> 3;
-    self->mModel.mat4x3.t.y = self->mPosY >> 3;
-    self->mModel.mat4x3.t.z = self->mPosZ >> 3;
-}
+    Matrix4x3_FromRotationZXYExt(&mModel.mat4x3, mAngleX, mAngleY, mAngleZ);
+    mModel.mat4x3.t.x = mPosX >> 3;
+    mModel.mat4x3.t.y = mPosY >> 3;
+    mModel.mat4x3.t.z = mPosZ >> 3;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN12daObjClock_cD1Ev
 // @symbol _ZN12daObjClock_cD0Ev
-/* Both destructors are emitted from the INLINE `~daObjClock_c() {}` in
- * include/daObjClock_c.h -- there is deliberately no body here.
- *
- * A complete-object destructor stores this class's vtable over the one the base
- * constructor left, destroys members in reverse declaration order, then runs the
- * base subobject destructor; the deleting destructor does that and calls
- * operator delete. All of it follows from `: dActor_c` and the member types, so
- * the compiler writes both bodies and the bytes still reproduce.
- *
- * Defining ~daObjClock_c() out of line HERE instead would break the TU two ways:
- * mwccarm would emit D0 at 0x021113ec's slot before D1 at 0x021113bc's,
- * reversing ROM order so objisolate refuses the entire TU, and it would emit a
- * third symbol, D2, which has no address anywhere in the cartridge. See the
- * vtable comment in the header.
+/* Both destructors come from the inline `~daObjClock_c() {}` in the header.
+ * Out of line, mwccarm emits D0 before D1 (objisolate refuses the TU) and a
+ * D2 the cartridge has no home for.
  */
+
+/* File-scope objects: the short hand's model file (0x5b2) and the long
+ * hand's model file (0x5b1); the two constructions
+ * __sinit_daObjClock_c.cpp performs, in retail order. */
+ClockModelFilePtr data_ov013_0211229c(0x5b1);
+ClockModelFilePtr data_ov013_02112294(0x5b2);

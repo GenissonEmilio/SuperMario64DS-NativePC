@@ -1,4 +1,4 @@
-# TU reconstruction pilot #2 — `ov002/LevelObjects`
+# TU reconstruction pilot #2 — [ov002](../config/arm9/overlays/ov002/symbols.txt)/`LevelObjects`
 
 **What this is:** the second read-only experiment described in
 [`translation-unit-reconstruction-plan.md`](translation-unit-reconstruction-plan.md)
@@ -8,9 +8,17 @@ by recommending that the next one deliberately avoid that shape, so the first
 whole-range link is not confounded by the destructor-emission-order problem it
 found. This is that candidate.
 
-**What it is not:** a build change. `src_tu/stage/LevelObjects.cpp` is not
-enrolled, `config/**/delinks.txt` is untouched, and the seventeen one-function
-sources under `src/` remain the sole enrolled owners of
+**Status update — the TU has since been promoted.** Everything below is the
+pilot's own record and is left as it was written. What has changed since: the
+reconstructed source now lives at `src/stage/LevelObjects.cpp`,
+`config/arm9/overlays/ov002/delinks.txt` carries one `complete` entry for it
+over `0x020fe190..0x020fea4c`, and the seventeen one-function sources are gone.
+The two vague-linkage Vector3 destructors §7 reports as unlicensed are now
+declared `deadstrip-duplicate` against their arm9 homes.
+
+**What it was not, at the time:** a build change. The file sat unenrolled under
+`src_tu/`, `config/**/delinks.txt` was untouched, and the seventeen one-function
+sources under `src/` were the sole enrolled owners of
 `0x020fe190..0x020fea4c`. No `rombuild.py`, no `eligible.py`, no link.
 
 ---
@@ -24,7 +32,7 @@ sources under `src/` remain the sole enrolled owners of
 ```python
 TU ov002/LevelObjects
 
-MATCH  Stage::LoadClsnAndObjects   0x020fe190  size 0x1ac  relocs 19
+MATCH  dScStage_c::LoadClsnAndObjects   0x020fe190  size 0x1ac  relocs 19
 MATCH  LoadObjects                 0x020fe33c  size 0x090  relocs  2
 MATCH  LoadStarCameraObjects       0x020fe3cc  size 0x018  relocs  1
 MATCH  LoadUnusedType13Objects     0x020fe3e4  size 0x014  relocs  1
@@ -79,7 +87,7 @@ TU. Getting there produced four findings that are worth more than the candidate.
 
 `tu_map.absorb_unlabelled` attaches a stray function to a cluster on call-graph
 evidence **without extending that cluster's `[start,end)`**. So a unit's function
-list can be scattered. `ov006` unit #64 is the proof: ten functions labelled
+list can be scattered. [ov006](../config/arm9/overlays/ov006/symbols.txt) unit #64 is the proof: ten functions labelled
 `dScMgMemory_c`, nominally `0x20f523c..0x20f5504`, actually spread over
 `0x20f38f0..0x20f5504` with three other units sitting inside the gaps. Any
 candidate search that reads the unit record as "a contiguous linker run" is
@@ -117,7 +125,7 @@ first pass's actor candidates.
 
 Two whole families of apparent shape-(b) candidates were rejected:
 
-* **The `ov006` minigame scenes.** `dScMgMemory_c`, `dScMgMemory2_c`,
+* **The [ov006](../config/arm9/overlays/ov006/symbols.txt) minigame scenes.** `dScMgMemory_c`, `dScMgMemory2_c`,
   `dScMgBSC_c`, `dScMgMCarlo_c` and `dScMgSingle3DBase_c` each present a clean
   contiguous run of vtable-slot methods with the class's destructors nowhere in
   it. They are not separate TUs: the destructors sit at a *lower* address in the
@@ -130,31 +138,30 @@ Two whole families of apparent shape-(b) candidates were rejected:
   `MeshCollider` block. But ITCM is a *section collection*: the linker gathers
   each object's ITCM contribution, so an ITCM run is a TU's ITCM **fragment**,
   not a TU. `MeshCollider`'s own destructors and `MeshColliderBase`,
-  `MovingMeshCollider` and `ExtendingMeshCollider` all live in `arm9` at
+  `MovingMeshCollider` and `ExtendingMeshCollider` all live in [arm9](../config/arm9/itcm/symbols.txt) at
   `0x0203xxxx`, and the `DMAStartTransfer` block at `0x01ffde00` is called by
-  `DMASyncHalfTransfer`/`DMASyncWordTransfer`/`DMASyncFillTransfer` in `arm9` at
+  `DMASyncHalfTransfer`/`DMASyncWordTransfer`/`DMASyncFillTransfer` in [arm9](../config/arm9/itcm/symbols.txt) at
   `0x0205a1xx`. Reconstructing an ITCM run as a standalone `.cpp` would be
   historically false by construction. **ITCM and DTCM should be excluded from
   this workstream's candidate pool the same way `main` is** — for a different
   reason, but just as firmly.
-  (`MeshCollider` is separately disqualified: `CLAIMS.md` carries an active
-  "Collision chain" conversion claim, and `MeshCollider::DetectClsn(SphereClsn&)`
+  (`MeshCollider` is separately disqualified: a collision-chain conversion was
+  already underway, and `MeshCollider::DetectClsn(SphereClsn&)`
   is unmatched.)
 
 A direct search that bypassed `tu_map` entirely — cut every module's
 address-sorted function list wherever the mangled class label changes — found
 **171** single-class contiguous destructor-free runs of 5–15 functions. Every
 one outside `main` is the *named tail* of an ordinary actor TU whose destructor
-pair sits at its head with unnamed helpers between (`ov062/Chuckya` is the
-canonical example: a "7-function Chuckya run" that is the last seven of a
+pair sits at its head with unnamed helpers between ([ov062](../config/arm9/overlays/ov062/symbols.txt)/[daHolhei_c](../src/game/actors/d_a_holhei.cpp) is the
+canonical example: a "7-function daHolhei_c run" that is the last seven of a
 36-function object). And every run belonging to a class with **no destructor
 anywhere in the ROM** — `IRQ`, `GX`, `GXS`, `CP15`, `SaveData`, `Memory`,
 `Message`, `ExpandingHeapAllocator`, `SolidHeapAllocator`, `NestedHeapIterator` —
 is in `main`, which §14 excludes.
 
 ### 2.5 The candidate, and why its boundary is better than `tu_map`'s
-
-`ov002` `0x020fe190..0x020fea4c`: the level-object loader. Seventeen functions,
+[ov002](../config/arm9/overlays/ov002/symbols.txt) `0x020fe190..0x020fea4c`: the level-object loader. Seventeen functions,
 fifteen of which are `_Z`-mangled **free functions with no class component at
 all** and one identical parameter list,
 `(LVL_Overlay::ObjSubTable&, int, unsigned)`.
@@ -177,31 +184,31 @@ Fifteen entries, fifteen targets, all inside the span, nothing else. **Correctio
 (adversarial review):** the claim that those fifteen relocations are the *only*
 references into the span was checked against the full reloc sweep and is off by
 three — there are eighteen: the fifteen table loads, two intra-span calls to
-`LoadObjects` (both from inside `Stage::LoadClsnAndObjects`, so "one caller"
+`LoadObjects` (both from inside `dScStage_c::LoadClsnAndObjects`, so "one caller"
 still holds), and one external call from arm9 `0x0202d2b8` into the TU's public
-entry point, `Stage::LoadClsnAndObjects` itself. All three extra references land
+entry point, `dScStage_c::LoadClsnAndObjects` itself. All three extra references land
 *inside* the boundary already drawn or call *into* it from outside in the
 expected direction — none of them contradicts the boundary, they support it —
 but the "only fifteen" sentence as originally written was wrong and is corrected
 here rather than left standing. `LoadObjects` — which indexes that table — is
-referenced by exactly one function in the whole ROM: `Stage::LoadClsnAndObjects`,
+referenced by exactly one function in the whole ROM: `dScStage_c::LoadClsnAndObjects`,
 immediately below it in address order.
 
-**Both ends are hard.** `_ZN3HUDC1Ev` ends exactly at `0x020fe190` and is the
-last function of the `HUD` class object (which carries its own D1/D0). At the
+**Both ends are hard.** `_ZN8dMeter_cC1Ev` ends exactly at `0x020fe190` and is the
+last function of the `dMeter_c` class object (which carries its own D1/D0). At the
 other end, `tu_map` cuts at `0x020fea84`; that cut is **wrong**, and this pilot
 corrects it. The four functions at `0x020fea4c..0x020feabc` are a `RaycastLine`
 group, not loaders:
 
 | addr | function | what it does |
 | --- | --- | --- |
-| `0x020fea4c` | `func_ov002_020fea4c` | copies a `Vector3` out of offset `0x0c` |
-| `0x020fea68` | `func_ov002_020fea68` | copies a `Vector3` out of offset `0x00` |
+| `0x020fea4c` | [func_ov002_020fea4c](../src/actors/dM3dGLin.cpp) | copies a `Vector3` out of offset `0x0c` |
+| `0x020fea68` | [func_ov002_020fea68](../src/actors/dM3dGLin.cpp) | copies a `Vector3` out of offset `0x00` |
 | `0x020fea84` | `RaycastLine::Line::Set` | writes a `Vector3` **at** `0x00` and another **at** `0x0c` |
 | `0x020feab8` | `func_ov002_020feab8` | empty stub |
 
 The two unnamed ones are the getters for exactly the two fields `Line::Set`
-writes, and `config/arm9/relocs.txt` shows all four called from one `main`
+writes, and [config/arm9/relocs.txt](../config/arm9/relocs.txt) shows all four called from one `main`
 function at `0x02037624..0x02037788`, with the empty stub also called from
 `_ZN11RaycastLineD1Ev`. They belong to `RaycastLine`, not here.
 
@@ -211,7 +218,7 @@ function at `0x02037624..0x02037788`, with the empty stub also called from
 | --- | --- |
 | high-confidence contiguous TU boundary | **PASS.** Contiguity re-derived from `symbols.txt`, both ends bounded by demonstrably different objects. |
 | independent corroboration | **PASS, by a different witness.** Not sinits (§2.2 proves that is unavailable for this shape) but the owned dispatch table, the single-caller chain, and the source-order reading in §3.2 — none of which was used to pick the boundary. |
-| not an under-segmented module | **PASS.** `ov002` is not in `tu_map.json`'s `under_segmented` list (1511 functions / 79 TUs). |
+| not an under-segmented module | **PASS.** [ov002](../config/arm9/overlays/ov002/symbols.txt) is not in `tu_map.json`'s `under_segmented` list (1511 functions / 79 TUs). |
 | approximately 5–15 functions | **MISS — 17.** Stated rather than fixed: splitting the run to hit the count would have been an invented cut. See §7. |
 | all functions already individually matched | **PASS.** 17/17 under `build_pin.verify`, not merely `complete` in `delinks.txt`. |
 | zero destructor (D0/D1/D2) symbols | **PASS for the bar as meant** — no destructor of any class this TU defines, because it defines none. **See §5.1 for what it does emit.** |
@@ -220,7 +227,7 @@ function at `0x02037624..0x02037788`, with the empty stub also called from
 | no unexpected `.bss`/`.data`/`.rodata` | **PASS.** Verified by section inventory (§4), not by inspection of sources. |
 | no by-value class-parameter exclusions | **PASS at the definitions.** One *callee*, `LoadMinimapChangeObject`, takes a by-value `Fix12<int>`; it stays hand-spelled as an `extern "C"` symbol exactly as the legacy file had it, so the exclusion never reaches a definition here. |
 | small header blast radius | **PASS, unusually so.** `tools/affected_src.py include/LVL_Overlay.h` returns exactly fifteen files, and all fifteen are inside this TU. No header was edited. |
-| no active `CLAIMS.md` row | **PASS.** No row covers `ov002 0x020fe190..0x020fea4c`. (The active "Collision chain" row is what disqualified the `MeshCollider` alternative.) |
+| no active lock on the span | **PASS.** Nothing covers [ov002](../config/arm9/overlays/ov002/symbols.txt) `0x020fe190..0x020fea4c`. (The collision-chain conversion is what disqualified the `MeshCollider` alternative.) |
 
 ---
 
@@ -247,7 +254,7 @@ Strict reversal, third independent confirmation.
 ### 3.2 On the real TU — and the reversal is evidence, not just mechanics
 
 The file is written with `LoadSimpleObjects` (highest ROM address) first and
-`Stage::LoadClsnAndObjects` (lowest) last, and the emitted order comes out as
+`dScStage_c::LoadClsnAndObjects` (lowest) last, and the emitted order comes out as
 ordinals 0..16 in exact ROM address order, with **no exceptions**. Unlike pilot
 #1 there is no destructor variant group to break the rule inside a definition,
 and no vague-linkage class body trailing the object — the only two extras are
@@ -259,13 +266,13 @@ easy to get backwards:
 ```text
 compiled section order = ROM address order = reverse of SOURCE order
   =>  the ORIGINAL file's reading order = reverse of the ROM's addresses
-  =>  the original file read exactly the way src_tu/stage/LevelObjects.cpp
+  =>  the original file read exactly the way src/stage/LevelObjects.cpp
       reads top-to-bottom
 ```
 
 Read that way the file is textbook define-before-use: the fifteen category
 loaders, then `LoadObjects` which dispatches to all fifteen, then
-`Stage::LoadClsnAndObjects`, `LoadObjects`' only caller. And after
+`dScStage_c::LoadClsnAndObjects`, `LoadObjects`' only caller. And after
 `LoadSimpleObjects` the remaining fourteen fall in **ascending handler-table
 index** — `0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14` — with only index 5
 hoisted to the front.
@@ -346,7 +353,7 @@ Six copies across five objects today; **two** in the merged object. Consolidatio
 *reduces* the surplus. No legacy object emits any `.data`/`.rodata`/`.bss`
 either, so the merged object's cleanliness there is inherited, not new.
 
-Contrast with pilot #1, where the unlicensed output was `_ZN8PoleLiftD2Ev` plus
+Contrast with pilot #1, where the unlicensed output was `_ZN18daObjKm2_Ami_Bou_cD2Ev` plus
 `Platform`'s two out-of-line destructors plus twelve RTTI/vtable `.data`
 sections — all consequences of owning a class. None of that shape is present
 here.
@@ -356,21 +363,21 @@ here.
 `decl_common.h` (line 2116) declares `extern void func_0203accc(int);`.
 `src/_Z19LoadPathNodeObjects...cpp` declares
 `extern "C" void func_0203accc(void *entries, int areaID, u32 param);` and calls
-it with three arguments. `Stage::LoadClsnAndObjects` includes `decl_common.h` and
+it with three arguments. `dScStage_c::LoadClsnAndObjects` includes `decl_common.h` and
 calls it with one. Two `extern "C"` declarations of one symbol with different
 arity cannot coexist in a translation unit, and no cast reconciles them.
 
 The ROM settles it. Disassembling both call sites:
 
 ```arm
-Stage::LoadClsnAndObjects        LoadPathNodeObjects (0x10, the whole function)
+dScStage_c::LoadClsnAndObjects        LoadPathNodeObjects (0x10, the whole function)
   mov r0, #0                       ldr ip, [pc, #4]
   bl  func_0203accc                ldr r0, [r0, #4]
                                    bx  ip
                                    .word func_0203accc
 ```
 
-`Stage` never sets `r1`/`r2`, so a three-argument declaration there costs two
+`dScStage_c` never sets `r1`/`r2`, so a three-argument declaration there costs two
 extra instructions and breaks the byte match. `LoadPathNodeObjects` is a tail
 call that passes `r1`/`r2` through **by accident of the ABI, not by intent** —
 the same four instructions come out whether the callee is declared to take them
@@ -379,7 +386,7 @@ call sites, and the three-argument spelling was an inference from the tail-call
 shape that the other caller contradicts.
 
 Resolved to `func_0203accc((int)tbl.entries)`. Byte-free — `LoadPathNodeObjects`
-is still `0x10` and `Stage::LoadClsnAndObjects` still `0x1ac`.
+is still `0x10` and `dScStage_c::LoadClsnAndObjects` still `0x1ac`.
 
 **This is the interesting class of finding for the workstream.** Per-function
 compilation lets two files hold mutually exclusive beliefs about a ROM symbol
@@ -405,23 +412,23 @@ long, because `areaID` arrives as a full-word `int`. So `LoadEntranceObjects`
 moves *off* the real method onto the alias — measured byte-free at `0x1e4`.
 
 The same collision exists for `ActorDerived::Spawn` and resolves the other way:
-`include/ActorDerived.h` arrives transitively through `Stage.h` → `Scene.h`, and
+`include/ActorDerived.h` arrives transitively through `dScStage_c.h` → `Scene.h`, and
 the real static method costs nothing, so both call sites use it and the
-hand-spelled alias in `Stage`'s legacy file is dropped.
+hand-spelled alias in `dScStage_c`'s legacy file is dropped.
 
-### 5.4 CONFLICT — `data_0209caa0`'s element type
+### 5.4 CONFLICT — [data_0209caa0](../config/arm9/symbols.txt)'s element type
 
-`Stage::LoadClsnAndObjects` declared `extern int data_0209caa0[]` and reads
+`dScStage_c::LoadClsnAndObjects` declared `extern int data_0209caa0[]` and reads
 `data_0209caa0[2] & 0x80`; `LoadEntranceObjects` declared `extern u8
 data_0209caa0[]` and reads `data_0209caa0[0x41]`. Both cannot be the element
 type. The byte view wins because it is the finer one — index `0x41` is not
-expressible as an `int` index — and `Stage`'s word read becomes an explicit
+expressible as an `int` index — and `dScStage_c`'s word read becomes an explicit
 `((int *)data_0209caa0)[2]`, which is what the wider declaration was doing
 implicitly. Byte-free on both.
 
-### 5.5 CONFLICT — `data_0209f5c0`'s type
+### 5.5 CONFLICT — [data_0209f5c0](../config/arm9/symbols.txt)'s type
 
-`ActorBase *` (Stage) vs `void *` with a cast back to `ActorBase *`
+`ActorBase *` (dScStage_c) vs `void *` with a cast back to `ActorBase *`
 (`LoadEntranceObjects`). `ActorBase *` is the real type — it is the parent handed
 to `ActorDerived::Spawn` — so the cast disappears. Byte-free.
 
@@ -449,23 +456,23 @@ an existing type:
 * `LVL_Overlay_Layout` — `LVL_Overlay` in the header has **no data members at
   all**, only nested table and record types (that nesting is what makes the
   compiler emit `N11LVL_Overlay8ObjTableE`). The outer object's runtime shape is
-  still unrecovered, and only `Stage::LoadClsnAndObjects` reads it.
+  still unrecovered, and only `dScStage_c::LoadClsnAndObjects` reads it.
 
 ### 5.7 Reconciled with no code change
 
 * **Include sets.** Six different sets across seventeen files reduced to four
-  headers: `decl_common.h`, `LVL_Overlay.h`, `Stage.h`, `MeshColliderBase.h`.
+  headers: `decl_common.h`, `LVL_Overlay.h`, `dScStage_c.h`, `MeshColliderBase.h`.
   The `Matrix4x3` ordering hazard (`common.h` first, flat `s32 m[12]` vs
   `math/Matrix.h`'s `{r, t}`) is not triggered: `decl_common.h` pulls `common.h`
-  first and `Stage.h` → `Model.h` → `math/Matrix.h` stands down on the guard.
+  first and `dScStage_c.h` → `Model.h` → `math/Matrix.h` stands down on the guard.
 * **Language mode.** All seventeen were already `//cpp`. Unlike pilot #1 there is
   no `.c` → C++ transition to measure here.
-* **`_Z11LoadObjects...` by hand.** `Stage::LoadClsnAndObjects` reached
+* **`_Z11LoadObjects...` by hand.** `dScStage_c::LoadClsnAndObjects` reached
   `LoadObjects` through the hand-spelled mangled name because that was the only
   way to reach another file's symbol. In one TU the `extern "C"` declaration of
   that literal name and the C++ definition that mangles to it are the same
   linker symbol, so the alias had to go and the call is now by name.
-* **`Stage::LoadClsnAndObjects` was defined inside `extern "C" { }`** in the
+* **`dScStage_c::LoadClsnAndObjects` was defined inside `extern "C" { }`** in the
   legacy file — inert for a member function, but stated wrongly. Now outside.
 
 ---
@@ -477,7 +484,7 @@ build; symbol-address checks. §12's layers 4 through 7 are untouched. A
 `text-verified` status means layers 2 and 3 only — plus, this round, the
 relocation-destination check that sits between them.
 
-**Not claimed:** that `data_ov002_0210cbb8` and the four small tables the loaders
+**Not claimed:** that [data_ov002_0210cbb8](../config/arm9/overlays/ov002/symbols.txt) and the four small tables the loaders
 index are byte-correct, or that they belong to this TU in the linker's sense.
 Their contents were *read* (§2.5) as boundary evidence; they were not
 reconstructed or compared.
@@ -489,10 +496,10 @@ contains no `_Spawn` factory, so the bug's precondition is absent. Nothing here
 confirms or weakens it.
 
 **One inference, flagged rather than buried:** the membership of
-`Stage::LoadClsnAndObjects`. It rests on contiguity, on being `LoadObjects`' only
+`dScStage_c::LoadClsnAndObjects`. It rests on contiguity, on being `LoadObjects`' only
 caller, and on the define-before-use reading — but it is externally linked, so
 nothing *forces* it into this TU the way internal linkage would force a static
-helper. The alternative reading is a one-function TU sandwiched between `HUD`'s
+helper. The alternative reading is a one-function TU sandwiched between `dMeter_c`'s
 object and the loader's. That is possible and is not refuted here. Dropping it
 would leave the other sixteen unchanged, and the manifest records this as a
 caveat rather than as evidence.
@@ -548,7 +555,7 @@ So the whole-range link this pilot exists to unblock has exactly one open
 question against it, and that question is 8 bytes of `STB_LOPROC` `.text` that
 the current build already handles.
 
-The `.data` phase for `data_ov002_0210cbb8` remains, but it is a *later* phase
+The `.data` phase for [data_ov002_0210cbb8](../config/arm9/overlays/ov002/symbols.txt) remains, but it is a *later* phase
 (plan §11 difficulty 5), not a blocker for a text-only link.
 
 ---
@@ -595,7 +602,7 @@ order, no data, no vtable, and 8 bytes of surplus.
 
 * `git status src/ config/` reports only `config/tu_manifest.d/`. The seventeen
   legacy files are byte-identical to their committed state and still `complete`
-  in `config/arm9/overlays/ov002/delinks.txt`.
+  in [arm9/overlays/ov002/delinks.txt](../config/arm9/overlays/ov002/delinks.txt).
 * No file under `include/` was edited. `tools/affected_src.py include/LVL_Overlay.h`
   lists exactly the fifteen loader files, all of which are inside this TU.
 * Nothing in the ROM-build path sees `src_tu/`: `grep -rn src_tu` over
@@ -607,15 +614,15 @@ order, no data, no vtable, and 8 bytes of surplus.
 
 While this pilot ran, **another session was working in the same worktree** and
 added, as untracked files, `tools/tubuild.py` (a real implementation of plan §7),
-`tools/test_tubuild.py`, and the ov045 falling-block shadow under `src_tu/actors/`
+`tools/test_tubuild.py`, and the [ov045](../config/arm9/overlays/ov045/symbols.txt) falling-block shadow under `src_tu/actors/`
 (then spelled FallBlockBfs.c, since renamed to the cartridge's own class name) —
-and appended an `ov045/FallBlockBfs` entry to `config/tu_manifest.d/`.
+and appended an [ov045](../config/arm9/overlays/ov045/symbols.txt)/`FallBlockBfs` entry to `config/tu_manifest.d/`.
 
 This pilot's manifest entry was therefore **spliced in textually** ahead of the
 closing bracket rather than written by re-serialising the file, so that entry and
-the concurrent session's edit to the `ov045/PoleLift` record are preserved
+the concurrent session's edit to the [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Ami_Bou_c` record are preserved
 byte-for-byte. The result parses and carries three entries in order:
-`ov045/PoleLift`, `ov045/FallBlockBfs`, `ov002/LevelObjects`.
+[ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Ami_Bou_c`, [ov045](../config/arm9/overlays/ov045/symbols.txt)/`FallBlockBfs`, [ov002](../config/arm9/overlays/ov002/symbols.txt)/`LevelObjects`.
 
 Nothing here was produced by or verified against `tools/tubuild.py`; every
 measurement above was made by hand against `match.py`, `objisolate.py`,
@@ -628,9 +635,9 @@ efforts will need reconciling — a useful first test for it would be whether
 
 | Path | |
 | --- | --- |
-| `src_tu/stage/LevelObjects.cpp` | new — the shadow TU, not enrolled |
-| `config/tu_manifest.d/` | modified — one entry appended, `ov002/LevelObjects`, status `text-verified` |
-| `notes/tu-reconstruction-pilot-2-report.md` | new — this file |
+| [src/stage/LevelObjects.cpp](../src/stage/LevelObjects.cpp) | new — the shadow TU, not enrolled at the time; it lived under `src_tu/` until the promotion recorded at the top of this file |
+| [config/tu_manifest.d/](../config/tu_manifest.d/) | modified — one entry appended, [ov002](../config/arm9/overlays/ov002/symbols.txt)/`LevelObjects`, status `text-verified` |
+| [notes/tu-reconstruction-pilot-2-report.md](../notes/tu-reconstruction-pilot-2-report.md) | new — this file |
 
 Untracked build output at `build/tu/ov002-LevelObjects/` is gitignored, per §13
 item 10.

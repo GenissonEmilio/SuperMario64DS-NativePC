@@ -25,13 +25,15 @@
  * therefore cannot use a typed member at all. Same class, same member, two
  * different answers, decided by the ROM's own ordering.
  *
- * 0x5004 IS A PAIR OF s32, not padding: src/func_ov006_020ee2c4.c assigns
- * `*(P*)(c + 0x5004) = data_ov006_0213cb7c` through its own local
- * `typedef struct { int a, b; } P`. That write, and the s16 at 0x5014 in
- * the same function, are what bound dScMgD3DBase_c at 0x5004 from above.
+ * 0x5004 IS A PAIR OF s32, not padding -- the {fn, 0} state pair the ten
+ * state functions below assign the next data_ov006_0213cb* row into. That
+ * write, and the s16 countdown at 0x5014 in the same functions, are what
+ * bound dScMgD3DBase_c at 0x5004 from above. Both live in
+ * src/actors/dScMgJump_c.cpp now.
  *
- * THE DESTRUCTOR IS NOT DEFINED INLINE -- a leaf. No separate operator
- * delete is needed: dScMgD3DBase_c, the immediate base, provides one.
+ * THE DESTRUCTOR IS DEFINED IN THE CLASS BODY, for the emission-order reason
+ * spelled out at the definition below. No separate operator delete is needed:
+ * dScMgD3DBase_c, the immediate base, provides one.
  *
  * SM64DS RTTI names the implementation dScMgJump_c. The reconstructed factory
  * dScMgJump_c_classInit (historical alias MgBounceAndPounce_Spawn) installs this class's
@@ -43,42 +45,71 @@
 #include "dMgJump3DMario_c.h"
 #include "Model.h"
 
-extern "C" void __cxa_vec_cleanup(void *base, int count, int stride, void *dtor);
-extern "C" void func_ov006_020c6f3c(void);
+/* The array runtime passes each element address and ignores callback results.
+ * The casts below adapt the existing lifecycle entries at that ABI boundary. */
+extern "C" void __cxa_vec_cleanup(void *base, unsigned int count, unsigned int stride,
+                       void (*dtor)(void *));
+extern "C" int func_ov006_020c6f3c(int *object);
 
 struct dScMgJump_c : dScMgD3DBase_c {
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgJump_c();   /* no slot */
-#else
-    virtual ~dScMgJump_c();   /* D1 and D0 */
-#endif
+    /* DEFINED IN THE CLASS BODY, DELIBERATELY -- not a style choice.
+       D1 sits at 0x020edec0, BELOW D0 at 0x020edf54. An out-of-line member
+       definition makes mwccarm 2004/b56 emit the destructor group as
+       D0-then-D1 plus a homeless D2, and the single translation unit that
+       covers the .text run 0x020edec0..0x020ee994 cannot then be linked: the
+       functions are not emitted in ROM address order. Defining it here emits
+       D1 before D0, emits no D2 at all -- and no D2 exists anywhere in the
+       cartridge -- and costs nothing else. It is still the same body, and it
+       is still not inlined into callers, because a virtual destructor is
+       always reached through the vtable. Nothing derives from this class, so
+       no descendant's own destructor is affected either way.
+       It does give up the key function: with this inline, the first virtual
+       DECLARED but not defined here is InitResources below, which lives in
+       src/actors/dScMgJump_c.cpp, so _ZTV11dScMgJump_c is emitted by that one
+       translation unit and by no other. */
+    virtual ~dScMgJump_c() {
+        __cxa_vec_cleanup(mArray2, 6, 0xf0, (void (*)(void *))func_ov006_020c6f3c);
+    }
 
     /* This class's own overrides, read off the ROM's vtable: the slots where the
        table differs from dScMgD3DBase_c's. Spelled WITHOUT the `virtual` keyword,
        the way include/daObjMarioCap_c.h and include/daObjRc_Dorifu_c.h spell
        theirs -- an override of a virtual an ancestor already declares is
        implicitly virtual either way, so each reuses an existing slot and adds no
-       field, and the 0x5834 assert below still holds. The destructor above is
-       declared first and out of line, so it stays this class's KEY FUNCTION and
-       none of these translation units emits _ZTV11dScMgJump_c. */
-    s32 InitResources();    /* slot  0 -- src/_ZN11dScMgJump_c13InitResourcesEv.cpp */
+       field, and the 0x5834 assert below still holds. */
+    s32 InitResources();    /* slot  0 -- src/actors/dScMgJump_c.cpp, the key function */
     virtual void OnYoshiTryEat(int arg);               /* slot 18 */
     virtual int  OnTurnIntoEgg(int mode);              /* slot 19 */
-    s32 CleanupResources(); /* slot  3 -- src/_ZN11dScMgJump_c16CleanupResourcesEv.cpp */
-    s32 Behavior();         /* slot  6 -- src/_ZN11dScMgJump_c8BehaviorEv.cpp */
-    s32 Render();           /* slot  9 -- src/_ZN11dScMgJump_c6RenderEv.cpp */
+    s32 CleanupResources(); /* slot  3 -- src/actors/dScMgJump_c.cpp */
+    s32 Behavior();         /* slot  6 -- src/actors/dScMgJump_c.cpp */
+    s32 Render();           /* slot  9 -- src/actors/dScMgJump_c.cpp */
 
-    s32   unk_5004;        /* 0x5004 -- written as an { int, int } pair */
-    s32   unk_5008;        /* 0x5008 */
-    u8    pad_500c[0x8];   /* 0x500c */
-    s16   unk_5014;        /* 0x5014 */
+    /* The minigame's state functions. Unnamed in the cartridge; stored as
+       {fn, 0} pairs in the data_ov006_0213cb4c table rows, dispatched through
+       mState by Behavior. The mangled spellings are what the table relocs
+       resolve by. */
+    void func_ov006_020ee2c0();
+    void func_ov006_020ee2c4();
+    void func_ov006_020ee3bc();
+    void func_ov006_020ee3ec();
+    void func_ov006_020ee44c();
+    void func_ov006_020ee4e0();
+    void func_ov006_020ee508();
+    void func_ov006_020ee598();
+    void func_ov006_020ee5b8();
+    void func_ov006_020ee658();
+
+    /* 0x5004 IS A PAIR OF s32, not padding: func_ov006_020ee2c4 and the other
+       state functions assign the next table row into it whole, and that write
+       plus the s16 at 0x5014 are what bound dScMgD3DBase_c at 0x5004 from
+       above. The sole member must stay an ARRAY: with two named scalars
+       mwccarm scalarises the copy member-by-member and the assigners come
+       back 2 words short of the ROM's schedule. */
+    struct StatePmf { s32 w[2]; };
+    StatePmf mState;      /* 0x5004 -- current state pair */
+    s32   mAccum;          /* 0x500c -- gains mAccumStep >> 12 a tick */
+    s32   mAccumStep;      /* 0x5010 -- Fix12 */
+    s16   mStateTimer;     /* 0x5014 -- countdown to the state change */
     u8    pad_5016[0x6];   /* 0x5016 */
     Model mModel;          /* 0x501c -- 0x50, destroyed last, see banner */
     dMgJump3DMario_c mPlayers[3]; /* 0x506c -- RTTI-proven element type */

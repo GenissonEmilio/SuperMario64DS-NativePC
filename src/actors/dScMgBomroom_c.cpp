@@ -1,55 +1,46 @@
 //cpp
-/* Reconstructed translation unit (PARTIAL -- 41 of the run's 80 functions).
- * ov006/dScMgBomroom_c   .text 0x020d5eb8 .. 0x020d7c4c
+/* Bob-omb sorting minigame. Each bomb is one of two colors; a stylus
+ * grab carries it by the offset at the touch. Its own pen settles it;
+ * the wrong pen explodes it, which knocks that pen's settled bombs and the
+ * loose ones back into play. When 40 bombs of one color are settled the
+ * round ends, and +0x62f5 records the color.
  *
- * FUNCTION ORDER IS ROM-ASCENDING, under `#pragma defer_codegen off`.
+ * A bomb is sorted once dropped in its pen: x under 0x40 or over 0xc0, y
+ * between 0x40 and 0x80.
  *
- * Assembled from these legacy one-function sources (ROM address order):
- *   [14] 0x020d5eb8  src/func_ov006_020d5eb8.c
- *   [15] 0x020d5f28  src/func_ov006_020d5f28.c
- *   [16] 0x020d5f2c  src/func_ov006_020d5f2c.c
- *   [17] 0x020d5fd8  src/func_ov006_020d5fd8.c
- *   [18] 0x020d5fec  src/func_ov006_020d5fec.cpp
- *   [19] 0x020d604c  src/func_ov006_020d604c.c
- *   [20] 0x020d6084  src/func_ov006_020d6084.cpp
- *   [21] 0x020d6098  src/func_ov006_020d6098.c
- *   [22] 0x020d6100  src/func_ov006_020d6100.c
- *   [23] 0x020d6170  src/func_ov006_020d6170.c
- *   [24] 0x020d61dc  src/func_ov006_020d61dc.c
- *   [25] 0x020d6264  src/func_ov006_020d6264.c
- *   [26] 0x020d6278  src/func_ov006_020d6278.cpp
- *   [27] 0x020d62e0  src/func_ov006_020d62e0.c
- *   [28] 0x020d634c  src/func_ov006_020d634c.c
- *   [29] 0x020d63ac  src/func_ov006_020d63ac.c
- *   [30] 0x020d63d4  src/func_ov006_020d63d4.c
- *   [31] 0x020d6454  src/func_ov006_020d6454.c
- *   [32] 0x020d64c4  src/func_ov006_020d64c4.c
- *   [33] 0x020d64c8  src/func_ov006_020d64c8.c
- *   [34] 0x020d65b4  src/func_ov006_020d65b4.c
- *   [35] 0x020d65c8  src/func_ov006_020d65c8.cpp
- *   [36] 0x020d6630  src/func_ov006_020d6630.c
- *   [37] 0x020d669c  src/func_ov006_020d669c.c
- *   [38] 0x020d66c4  src/func_ov006_020d66c4.cpp
- *   [39] 0x020d672c  src/func_ov006_020d672c.c
- *   [40] 0x020d6784  src/func_ov006_020d6784.c
- *   [41] 0x020d68a8  src/func_ov006_020d68a8.c
- *   [42] 0x020d69b8  src/func_ov006_020d69b8.c
- *   [43] 0x020d6b88  src/func_ov006_020d6b88.c
- *   [44] 0x020d6c90  src/func_ov006_020d6c90.c
- *   [45] 0x020d6d7c  src/func_ov006_020d6d7c.c
- *   [46] 0x020d6e8c  src/func_ov006_020d6e8c.c
- *   [47] 0x020d7524  src/func_ov006_020d7524.c
- *   [48] 0x020d7604  src/func_ov006_020d7604.c
- *   [49] 0x020d7778  src/func_ov006_020d7778.c
- *   [50] 0x020d777c  src/func_ov006_020d777c.c
- *   [51] 0x020d7958  src/func_ov006_020d7958.c
- *   [52] 0x020d795c  src/func_ov006_020d795c.c
- *   [53] 0x020d7a84  src/func_ov006_020d7a84.c
- *   [54] 0x020d7c00  src/func_ov006_020d7c00.cpp
+ * This TU is the class's whole linker unit: 81 functions, .text
+ * 0x020d5a54..0x020d95a4. It opens with the destructor, which the header
+ * declares first and out of line, so this file is the key function and
+ * emits the vtable and the RTTI chain. Then come the unnamed helpers and
+ * round states, OnYoshiTryEat, Render, Behavior and InitResources, and it
+ * closes with the registry factory dScMgBomroom_c_classInit. Functions run
+ * in ROM order under
+ * `#pragma defer_codegen off`; do not reorder. cstd::atan2 takes Fix12 by
+ * value, so its call stays mangled.
+ *
+ * Each pragma bracket below carries the file-global pragma of the shard
+ * that function came from; every bracket moves bytes, and they bind only
+ * under defer_codegen off.
  */
 
+// leftovers: func_ov006_020d68a8 keeps raw bomb-record addressing (a state
+// field and &state differ from (u8 *)(bomb + 0x4697); the idle-bomb timer
+// stays raw + i*0x40 + 0x4690; mBombs[i].color swaps the compare's register
+// pairing). func_ov006_020d7604 keeps &f3c over (unsigned char *)(bomb +
+// 0x469c). func_ov006_020d7c4c keeps the sine-table value as the first factor
+// (inline reads flip smull order) and the spawner keeps raw (c + (j << 6)) +
+// 0x46NN stores. func_ov006_020d5eb8/_020d5f2c/_020d6100/_020d6170/_020d6454
+// keep the rec = this + index*0x10 temp and its *(ty *)(rec + 0x62NN) puns
+// (member access reschedules the address math); _020d5fd8 keeps its BrEnt5fd8
+// pad overlay; _020d7edc/_020d8324 keep slot/h pointer temps. iarr[i][0x119c]
+// in _020d89c4/_020d8af8 is a parallel 0x40-stride int array outside the bomb
+// records that nothing else names.
+
+#include "dScMgBomroom_c.h"
 #include "types.h"
 #include "decl_common.h"
+#include "Sound.h"
+#include "G2x.h"
 
 extern "C" {
 extern void Hud_RenderSprite(void* a0, int a1, int a2, int a3, int a4);
@@ -58,7 +49,6 @@ extern int data_ov006_0212e2c8[];
 extern int data_ov006_0212e2e0[];
 extern int data_ov006_021342bc[];
 extern int data_ov006_021343b0[];
-extern void func_ov006_020d5d90(char *o, int i);
 extern int data_ov006_0212e2d8[];
 extern int data_ov006_0212e2d0[];
 extern int func_020126e8(int a);
@@ -71,668 +61,767 @@ extern void func_ov004_020afdd0(void* a0, int a1, int a2, int a3, int a4);
 extern unsigned char* data_ov006_0213bb18[];
 extern unsigned char* data_ov006_0213bb28[];
 extern void* data_ov006_0213bb4c[];
-extern void func_ov006_020d5e3c(void *a);
+extern void RenderOamMainScreen(int a0, int a1, int a2, int a3, int a4);
+extern void *data_ov006_02134f30;
+extern void *data_ov006_02133ae0[];
+extern void *data_ov006_02133a70[];
+extern int data_ov006_0212e2c0[];
+extern int func_ov004_020adbc0(void);
+extern int RandomIntInternal(int *seed);
+// local extern: this file needs a record-view spelling of one of the touch lanes (the ROM scales the slot in the addressing mode), which conflicts with PlayerInput.h; the header is not included and all five symbols are declared here.
+extern u8 gTouchX[];
+// local extern: see above.
+extern u8 gTouchY[];
+extern u16 data_ov006_0212e2e8[];
+extern int data_ov006_021416a0[];
+extern int LoadFile(int handle);
+extern void DecompressLZ16(void *src, void *dst);
+extern void _ZN2GX10LoadBGPlttEPKvjj(const void *p, u32 a, u32 b);
+extern void *_ZN2G212GetBG2ScrPtrEv(void);
+extern void MultiStore16(u16 val, char *dst, int nbytes);
+extern void _ZN2GX11LoadOBJPlttEPKvjj(const void *p, u32 a, u32 b);
+extern void _ZN3GXS10LoadBGPlttEPKvjj(const void *p, u32 a, u32 b);
+extern void _ZN3GXS11LoadOBJPlttEPKvjj(const void *p, u32 a, u32 b);
+extern void func_02056554(const void *src, int offset, int count);
+extern u8 data_0209d45c;
+extern u8 data_0209d454;
 }
 
+namespace cstd { int sqrt(u64 value); }
+
+/* One bomb: 0x40 bytes at scene + 0x4660. x, y, grabX, grabY and speed are Fix12. */
 #pragma defer_codegen off
 
+/* No member needs explicit destruction: the empty body is the compiler's
+ * own vtable store and base-destructor call. The deleting variant reaches
+ * dScMgBase_c's operator delete, its immediate base's. */
+// @symbol _ZN14dScMgBomroom_cD1Ev
+// @symbol _ZN14dScMgBomroom_cD0Ev
+dScMgBomroom_c::~dScMgBomroom_c()
+{
+}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 14 -- func_ov006_020d5eb8, 0x020d5eb8, size 0x70 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d5eb8
-extern "C" {
-void func_ov006_020d5eb8(unsigned char* base, int idx) {
-    unsigned char* p = base + (idx << 4);
-    int o = idx << 4;
-    if (*(unsigned char*)(p + 0x62ae) != 0) {
-        *(unsigned short*)(base + 0x62a8 + o) =
-            *(unsigned short*)(base + 0x62a8 + o) + 1;
-        if (*(unsigned short*)(p + 0x62a8) < 3) return;
-        *(unsigned short*)(p + 0x62a8) = 0;
-        *(unsigned char*)(base + 0x62ae + o) =
-            *(unsigned char*)(base + 0x62ae + o) - 1;
-    } else {
-        *(unsigned char*)(p + 0x62ac) = 0;
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5ab0Ev
+/* Draws the round-over sprite once +0x62fa is set. */
+
+void dScMgBomroom_c::func_ov006_020d5ab0() {
+    void * p = (void *)this;
+    char *c = (char *)p;
+    if (*(unsigned char *)(c + 0x6000 + 0x2fa) == 0) return;
+    RenderOamMainScreen((int)data_ov006_02134f30, 0x80, 0xc0, -1, 1);
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5b00Ev
+
+void dScMgBomroom_c::func_ov006_020d5b00() {
+    char * p = (char *)this;
+    mRoundOver = 1;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5b10Ev
+/* Steps the BG2 y offset (Fix12 at +0x62dc): state 1 raises it by 3 a
+ * frame to 0xc0, state 2 waits out the +0x62f2 count, then lowers it by 3
+ * a frame back to 0. */
+
+void dScMgBomroom_c::func_ov006_020d5b10() {
+    char * c = (char *)this;
+    u8 state = mBg2State;
+
+    if (state == 0) {
+        return;
+    }
+
+    if (state == 1) {
+        s32 v;
+        s32 shifted;
+        mBg2Y += 0x3000;
+        v = mBg2Y;
+        shifted = v >> 0xc;
+        if (shifted >= 0xc0) {
+            mBg2Y = 0xc0000;
+            mBg2State = 2;
+            shifted = 0xc0;
+            mBg2Hold = shifted;
+            Sound::PlayBank2_2D(0x1de);
+            func_ov006_020d8904();
+        }
+        SetBg2Offset(0, shifted);
+        return;
+    }
+
+    if (state != 2) {
+        return;
+    }
+
+    if (mBg2Hold != 0) {
+        mBg2Hold -= 1;
+        if (mBg2Hold != 0) {
+            return;
+        }
+        Sound::PlayBank2_2D(0x1df);
+        return;
+    }
+
+    {
+        s32 v;
+        s32 shifted;
+        mBg2Y -= 0x3000;
+        v = mBg2Y;
+        shifted = v >> 0xc;
+        if (shifted <= 0) {
+            shifted = 0;
+            mBg2Y = 0;
+            mBg2State = 0;
+            Sound::PlayBank2_2D(0x1de);
+        }
+        SetBg2Offset(0, shifted);
     }
 }
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5c60Ev
+
+void dScMgBomroom_c::func_ov006_020d5c60() {
+    char * p = (char *)this;
+    int zero = 0;
+    mBg2Y = zero;
+    mBg2State = zero;
+    mBg2Hold = zero;
+    SetBg2Offset(zero, zero);
 }
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 15 -- func_ov006_020d5f28, 0x020d5f28, size 0x4 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d5f28
-extern "C" {
-void func_ov006_020d5f28(void)
-{
-}
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 16 -- func_ov006_020d5f2c, 0x020d5f2c, size 0xac */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d5f2c
-extern "C" {
-void func_ov006_020d5f2c(char *c, int i)
-{
-  char *new_var2;
-  char *ip;
-  unsigned char new_var;
-  new_var2 = c + (i * 0x10);
-  if (((unsigned char) (*((unsigned char *) ((new_var2 + 0x6000) + 0x2ae)))) >= 4)
-  {
-    *((unsigned char *) ((new_var2 + 0x6000) + 0x2ae)) = 4;
-    *((unsigned char *) ((new_var2 + 0x6000) + 0x2ac)) = 2;
-    return;
-  }
-  {
-    unsigned short *p = (unsigned short *) ((c + 0x62a8) + (i * 0x10));
-    *p = (*p) + 1;
-  }
-  if ((*((unsigned short *) (new_var2 + 0x62a8))) < 3)
-  {
-    return;
-  }
-  *((unsigned short *) (new_var2 + 0x62a8)) = 0;
-  ip = new_var2 + 0x6000;
-  {
-    unsigned char *q = (unsigned char *) ((c + 0x62ae) + (i * 0x10));
-    *q = (*q) + 1;
-  }
-  new_var = (unsigned char) (*((unsigned char *) (ip + 0x2ae)));
-  if (new_var >= 4)
-  {
-    *((unsigned char *) ((new_var2 + 0x6000) + 0x2ae)) = 4;
-    *((unsigned char *) (ip + 0x2ac)) = 2;
-  }
-}
-}
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5c88Ev
+/* Draws the two 0x10-byte sprite records at +0x62b0 that are active. */
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 17 -- func_ov006_020d5fd8, 0x020d5fd8, size 0x14 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d5fd8
-extern "C" {
-typedef struct { char pad[0xa8]; short f; } BrEnt5fd8;
-void func_ov006_020d5fd8(int c, int i){
-  BrEnt5fd8 *p = (BrEnt5fd8*)(c + (i<<4) + 0x6200);
-  p->f = 0;
-}
-}
-
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 18 -- func_ov006_020d5fec, 0x020d5fec, size 0x60 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d5fec
-extern "C" {
-struct C_5fec; typedef void (C_5fec::*PMF_5fec)(int);
-struct Entry_5fec { PMF_5fec pmf; };
-extern "C" Entry_5fec data_ov006_02141660[];
-struct C_5fec { char pad[0x62ac]; unsigned char idx; unsigned char guard; };
-extern "C" void func_ov006_020d5fec(C_5fec* c) {
-    if (!c->guard) return;
-    (c->*(data_ov006_02141660[c->idx].pmf))(0);
-}
-}
-
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 19 -- func_ov006_020d604c, 0x020d604c, size 0x38 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d604c
-extern "C" {
-struct S_604c{char b[0x10000];};
-void func_ov006_020d604c(void *p){
-  struct S_604c *c = (struct S_604c *)p;
-  *(unsigned char*)((char*)c+0x62ad)=1;
-  *(unsigned char*)((char*)c+0x62ac)=0;
-  *(unsigned char*)((char*)c+0x62ae)=0;
-  *(unsigned char*)((char*)c+0x62af)=1;
-  *(short*)((char*)c+0x62a8)=0;
-  *(int*)((char*)c+0x62a0)=0x80000;
-  *(int*)((char*)c+0x62a4)=0x8000;
-}
-}
-
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 20 -- func_ov006_020d6084, 0x020d6084, size 0x14 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6084
-extern "C" {
-extern "C" void func_ov006_020d6084(char *self)
-{
-    *(char *)(self + 0x62ad) = 0;
-    *(char *)(self + 0x62af) = 0;
-}
-}
-
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 21 -- func_ov006_020d6098, 0x020d6098, size 0x68 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6098
-extern "C" {
-typedef struct {
-    int x;              /* 0x00 */
-    int y;              /* 0x04 */
-    char pad[7];
-    unsigned char idx;  /* 0x0f */
-} Rec_6098;
-typedef struct {
-    char head[0x6280];
-    Rec_6098 recs[2];
-} Obj_6098;
-void func_ov006_020d6098(void *p) {
-    Obj_6098 *a0 = (Obj_6098 *)p;
+void dScMgBomroom_c::func_ov006_020d5c88() {
     int i;
     for (i = 0; i < 2; i++) {
-        int xv = a0->recs[i].x >> 12;
-        int yv = a0->recs[i].y >> 12;
-        int k = a0->recs[i].idx;
+        if (mMarkers[i].gate != 0) {
+            int xv = mMarkers[i].x;
+            int yv = mMarkers[i].y;
+            int idx = mMarkers[i].idx;
+            int a1 = xv >> 12;
+            int a2 = yv >> 12;
+            Hud_RenderSprite((i != 0) ? data_ov006_02133a70[idx]
+                                      : data_ov006_02133ae0[idx],
+                             a1, a2, -1, 1);
+        }
+    }
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5d08Ev
+#pragma push
+#pragma opt_strength_reduction off
+
+void dScMgBomroom_c::func_ov006_020d5d08() {
+    int i;
+    for (i = 0; i < 2; i++) {
+        if (mMarkers[i].state) {
+            mMarkers[i].timer = mMarkers[i].timer + 1;
+            if (mMarkers[i].timer >= 4) {
+                mMarkers[i].timer = 0;
+                mMarkers[i].idx = mMarkers[i].idx + 1;
+                mMarkers[i].idx = mMarkers[i].idx & 3;
+            }
+        }
+    }
+}
+
+#pragma pop
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5d90Ei
+
+void dScMgBomroom_c::func_ov006_020d5d90(int idx) {
+    mMarkers[idx].state = 1;
+    mMarkers[idx].gate = 1;
+    mMarkers[idx].x = 0x80000;
+    mMarkers[idx].y = data_ov006_0212e2c0[idx] << 12;
+    mMarkers[idx].timer = 0;
+    mMarkers[idx].idx = 0;
+}
+
+
+/* The scene keeps its per-slot UI state as 0x10-stride entries at
+ * +0x6260, +0x6280 and +0x62b0, two slots each. The loop helpers
+ * (5dd4, 6278, 63ac, 65c8, 669c) address an entry as slot * 0x10 bytes into
+ * scene storage and do not model it as a 16-byte array, which they would
+ * index far past its end. That byte-base form matches only with strength
+ * reduction off, so each of the five carries its own bracket. */
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5dd4Ev
+#pragma push
+#pragma opt_strength_reduction off
+
+void dScMgBomroom_c::func_ov006_020d5dd4() {
+    int slot;
+    for (slot = 0; slot < 2; slot++) {
+        mMarkers[slot].state = 0;
+        mMarkers[slot].gate = 0;
+    }
+}
+
+#pragma pop
+
+// @symbol func_ov006_020d5dfc
+extern "C" {
+void func_ov006_020d5dfc(void)
+{
+    func_ov004_020b1a5c(func_ov004_020adbc0(), 4);
+}
+}
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5e1cEv
+
+void dScMgBomroom_c::func_ov006_020d5e1c() {
+    mSlotsB[2].state = 3;
+    Sound::PlayBank2_2D(0x1e3);
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5e3cEv
+
+void dScMgBomroom_c::func_ov006_020d5e3c() {
+    mSlotsB[2].state = 1;
+    Sound::PlayBank2_2D(0x1e2);
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5e5cEv
+
+void dScMgBomroom_c::func_ov006_020d5e5c() {
+    char * c = (char *)this;
+    c += 0x6000;
+    if (*(unsigned char *)(c + 0x2af) == 0) return;
+    RenderOamMainScreen(data_ov006_021343b0[*(unsigned char *)(c + 0x2ae)],
+                        *(int *)(c + 0x2a0) >> 0xc, *(int *)(c + 0x2a4) >> 0xc, -1, 2);
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5eb8Ei
+
+void dScMgBomroom_c::func_ov006_020d5eb8(int index) {
+    unsigned char* raw = (unsigned char*)this;
+
+    unsigned char* rec = raw + (index << 4);
+    int off = index << 4;
+    if (*(unsigned char*)(rec + 0x62ae) != 0) {
+        *(unsigned short*)(raw + 0x62a8 + off) =
+            *(unsigned short*)(raw + 0x62a8 + off) + 1;
+        if (*(unsigned short*)(rec + 0x62a8) < 3) return;
+        *(unsigned short*)(rec + 0x62a8) = 0;
+        *(unsigned char*)(raw + 0x62ae + off) =
+            *(unsigned char*)(raw + 0x62ae + off) - 1;
+    } else {
+        *(unsigned char*)(rec + 0x62ac) = 0;
+    }
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5f28Ev
+
+void dScMgBomroom_c::func_ov006_020d5f28() {
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5f2cEi
+
+void dScMgBomroom_c::func_ov006_020d5f2c(int index) {
+    char *raw = (char *)this;
+
+  char *rec;
+  char *hi;
+  unsigned char count;
+  rec = raw + (index * 0x10);
+  if (((unsigned char) (*((unsigned char *) ((rec + 0x6000) + 0x2ae)))) >= 4)
+  {
+    *((unsigned char *) ((rec + 0x6000) + 0x2ae)) = 4;
+    *((unsigned char *) ((rec + 0x6000) + 0x2ac)) = 2;
+    return;
+  }
+  {
+    unsigned short *p = (unsigned short *) ((raw + 0x62a8) + (index * 0x10));
+    *p = (*p) + 1;
+  }
+  if ((*((unsigned short *) (rec + 0x62a8))) < 3)
+  {
+    return;
+  }
+  *((unsigned short *) (rec + 0x62a8)) = 0;
+  hi = rec + 0x6000;
+  {
+    unsigned char *q = (unsigned char *) ((raw + 0x62ae) + (index * 0x10));
+    *q = (*q) + 1;
+  }
+  count = (unsigned char) (*((unsigned char *) (hi + 0x2ae)));
+  if (count >= 4)
+  {
+    *((unsigned char *) ((rec + 0x6000) + 0x2ae)) = 4;
+    *((unsigned char *) (hi + 0x2ac)) = 2;
+  }
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5fd8Ei
+
+typedef struct { char pad[0xa8]; short f; } BrEnt5fd8;
+void dScMgBomroom_c::func_ov006_020d5fd8(int index) {
+    int raw = (int)this;
+
+  BrEnt5fd8 *rec = (BrEnt5fd8*)(raw + (index<<4) + 0x6200);
+  rec->f = 0;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d5fecEv
+
+typedef void (dScMgBomroom_c::*PMF)(int);
+struct PMFEntry { PMF pmf; };
+extern "C" PMFEntry data_ov006_02141660[];
+void dScMgBomroom_c::func_ov006_020d5fec() {
+    if (!mSlotsB[2].gate) return;
+    (this->*(data_ov006_02141660[mSlotsB[2].state].pmf))(0);
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d604cEv
+
+void dScMgBomroom_c::func_ov006_020d604c() {
+    mSlotsB[2].gate = 1;
+    mSlotsB[2].state = 0;
+    mSlotsB[2].idx = 0;
+    mSlotsB[2].level = 1;
+    mSlotsB[2].timer = 0;
+    mSlotsB[2].x = 0x80000;
+    mSlotsB[2].y = 0x8000;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6084Ev
+
+void dScMgBomroom_c::func_ov006_020d6084() {
+    mSlotsB[2].gate = 0;
+    mSlotsB[2].level = 0;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6098Ev
+
+void dScMgBomroom_c::func_ov006_020d6098() {
+    int i;
+    for (i = 0; i < 2; i++) {
+        int xv = mSlotsB[i].x >> 12;
+        int yv = mSlotsB[i].y >> 12;
+        int k = mSlotsB[i].level;
         if (i != 0) k += 5;
         Hud_RenderSprite((void*)data_ov006_021344ec[k], xv, yv, -1, -1);
     }
 }
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 22 -- func_ov006_020d6100, 0x020d6100, size 0x70 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6100
-extern "C" {
-void func_ov006_020d6100(unsigned char* base, int idx) {
-    unsigned char* p = base + (idx << 4);
-    int o = idx << 4;
-    if (*(unsigned char*)(p + 0x628f) != 0) {
-        *(unsigned short*)(base + 0x6288 + o) =
-            *(unsigned short*)(base + 0x6288 + o) + 1;
-        if (*(unsigned short*)(p + 0x6288) < 4) return;
-        *(unsigned short*)(p + 0x6288) = 0;
-        *(unsigned char*)(base + 0x628f + o) =
-            *(unsigned char*)(base + 0x628f + o) - 1;
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6100Ei
+
+void dScMgBomroom_c::func_ov006_020d6100(int index) {
+    unsigned char* raw = (unsigned char*)this;
+
+    unsigned char* rec = raw + (index << 4);
+    int off = index << 4;
+    if (*(unsigned char*)(rec + 0x628f) != 0) {
+        *(unsigned short*)(raw + 0x6288 + off) =
+            *(unsigned short*)(raw + 0x6288 + off) + 1;
+        if (*(unsigned short*)(rec + 0x6288) < 4) return;
+        *(unsigned short*)(rec + 0x6288) = 0;
+        *(unsigned char*)(raw + 0x628f + off) =
+            *(unsigned char*)(raw + 0x628f + off) - 1;
     } else {
-        *(unsigned char*)(p + 0x628c) = 0;
+        *(unsigned char*)(rec + 0x628c) = 0;
     }
 }
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 23 -- func_ov006_020d6170, 0x020d6170, size 0x6c */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6170
-extern "C" {
-void func_ov006_020d6170(char* c, int idx)
-{
-    char* base = c + (idx << 4);
-    unsigned short* t = (unsigned short*)(base + 0x6288);
 
-    if (*t != 0) {
-        unsigned short* p = (unsigned short*)(c + 0x6288 + (idx << 4));
-        *p = (unsigned short)(*p - 1);
-        if (*(short*)(base + 0x6288) < 0)
-            *(short*)(base + 0x6288) = 0;
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6170Ei
+
+void dScMgBomroom_c::func_ov006_020d6170(int index) {
+    char* raw = (char*)this;
+
+    char* rec = raw + (index << 4);
+    unsigned short* timer = (unsigned short*)(rec + 0x6288);
+
+    if (*timer != 0) {
+        unsigned short* timer2 = (unsigned short*)(raw + 0x6288 + (index << 4));
+        *timer2 = (unsigned short)(*timer2 - 1);
+        if (*(short*)(rec + 0x6288) < 0)
+            *(short*)(rec + 0x6288) = 0;
         return;
     }
 
-    *(unsigned char*)(base + 0x628c) = 3;
-}
+    *(unsigned char*)(rec + 0x628c) = 3;
 }
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 24 -- func_ov006_020d61dc, 0x020d61dc, size 0x88 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d61dc
-extern "C" {
-typedef struct {
-    char _pad0[8];
-    u16 timer;   /* +0x08 */
-    char _pad1[2];
-    u8 state;    /* +0x0c */
-    char _pad2[2];
-    u8 level;    /* +0x0f */
-} Slot_61dc; /* 0x10 */
-typedef struct {
-    char _pad0[0x6280];
-    Slot_61dc slots[16];
-} Work_61dc;
-void func_ov006_020d61dc(char* c, int index)
-{
-    Work_61dc* w = (Work_61dc*)c;
-    w->slots[index].timer++;
-    if (w->slots[index].timer < 5)
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d61dcEi
+
+void dScMgBomroom_c::func_ov006_020d61dc(int index) {
+    mSlotsB[index].timer++;
+    if (mSlotsB[index].timer < 5)
         return;
-    w->slots[index].timer = 0;
-    w->slots[index].level++;
-    if (w->slots[index].level >= 4) {
-        w->slots[index].state = 2;
-        w->slots[index].timer = 0x20;
+    mSlotsB[index].timer = 0;
+    mSlotsB[index].level++;
+    if (mSlotsB[index].level >= 4) {
+        mSlotsB[index].state = 2;
+        mSlotsB[index].timer = 0x20;
     }
 }
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6264Ei
+
+void dScMgBomroom_c::func_ov006_020d6264(int index) {
+  mSlotsB[index].timer = 0;
 }
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 25 -- func_ov006_020d6264, 0x020d6264, size 0x14 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6264
-extern "C" {
-typedef struct { char pad[0x88]; short f; } BrEnt6264;
-void func_ov006_020d6264(int c, int i){
-  BrEnt6264 *p = (BrEnt6264*)(c + (i<<4) + 0x6200);
-  p->f = 0;
-}
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 26 -- func_ov006_020d6278, 0x020d6278, size 0x68 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6278
-extern "C" {
-class C_6278;
-typedef void (C_6278::*PMF_6278)(int);
-class C_6278 { public: int dummy; };
-struct Row_6278 { u8 d[0x10]; };
-extern "C" PMF_6278 data_ov006_021416c0[];
-extern "C" void func_ov006_020d6278(C_6278 *self)
-{
-    Row_6278 *rows = (Row_6278 *)self;
-    for (int i = 0; i < 2; i++) {
-        if (rows[i].d[0x628d]) {
-            u8 k = rows[i].d[0x628c];
-            (self->*data_ov006_021416c0[k])(i);
-        }
-    }
-}
-}
-
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 27 -- func_ov006_020d62e0, 0x020d62e0, size 0x6c */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d62e0
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6278Ev
 #pragma push
 #pragma opt_strength_reduction off
-extern "C" {
-void func_ov006_020d62e0(void *p) {
-    char *c = (char *)p;
-    int i;
-    for (i = 0; i < 2; i++) {
-        char *p = c + i * 0x10;
-        *(unsigned char *)(p + 0x628d) = 1;
-        *(unsigned char *)(p + 0x628c) = 0;
-        *(unsigned char *)(p + 0x628e) = 1;
-        *(int *)(p + 0x6280) = data_ov006_0212e2c8[i] << 0xc;
-        *(int *)(p + 0x6284) = data_ov006_0212e2e0[i] << 0xc;
-        *(unsigned char *)(p + 0x628f) = 0;
-        *(short *)(p + 0x6288) = 0;
+
+typedef void (dScMgBomroom_c::*PMF)(int);
+extern "C" PMF data_ov006_021416c0[];
+void dScMgBomroom_c::func_ov006_020d6278() {
+    for (int slot = 0; slot < 2; slot++) {
+        if (mSlotsB[slot].gate) {
+            u8 state = mSlotsB[slot].state;
+            (this->*data_ov006_021416c0[state])(slot);
+        }
     }
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 28 -- func_ov006_020d634c, 0x020d634c, size 0x60 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d634c
-extern "C" {
-void func_ov006_020d634c(char *c, int i)
-{
-    char *p = c + i * 16;
-    unsigned char st = *(unsigned char *)(p + 0x628c);
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d62e0Ev
+#pragma push
+#pragma opt_strength_reduction off
+
+void dScMgBomroom_c::func_ov006_020d62e0() {
+    void * p = (void *)this;
+    int i;
+    for (i = 0; i < 2; i++) {
+        mSlotsB[i].gate = 1;
+        mSlotsB[i].state = 0;
+        mSlotsB[i].idx = 1;
+        mSlotsB[i].x = data_ov006_0212e2c8[i] << 0xc;
+        mSlotsB[i].y = data_ov006_0212e2e0[i] << 0xc;
+        mSlotsB[i].level = 0;
+        mSlotsB[i].timer = 0;
+    }
+}
+
+#pragma pop
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d634cEi
+
+void dScMgBomroom_c::func_ov006_020d634c(int index) {
+    char * raw = (char *)this;
+    unsigned char st = mSlotsB[index].state;
     if (st != 0) {
         if (st == 2) {
-            *(short *)(p + 0x6288) = 0x20;
+            mSlotsB[index].timer = 0x20;
         } else {
-            *(unsigned char *)(p + 0x628c) = 1;
+            mSlotsB[index].state = 1;
         }
         return;
     }
-    *(unsigned char *)(p + 0x628c) = 1;
+    mSlotsB[index].state = 1;
     SetBg0Offset(0x100, 0);
 }
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d63acEv
+#pragma push
+#pragma opt_strength_reduction off
+
+void dScMgBomroom_c::func_ov006_020d63ac() {
+    int slot;
+    for (slot = 0; slot < 2; slot++) {
+        mSlotsB[slot].gate = 0;
+        mSlotsB[slot].idx = 0;
+    }
 }
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 29 -- func_ov006_020d63ac, 0x020d63ac, size 0x28 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d63ac
-extern "C" {
-void func_ov006_020d63ac(char (*c)[16]){
-  int i;
-  for(i=0;i<2;i++){ c[i][0x628d]=0; c[i][0x628e]=0; }
-}
-}
+#pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 30 -- func_ov006_020d63d4, 0x020d63d4, size 0x80 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d63d4
-extern "C" {
-typedef struct {
-    int x;              /* 0x00 */
-    int y;              /* 0x04 */
-    char pad2[6];
-    unsigned char flag; /* 0x0e */
-    unsigned char idx;  /* 0x0f */
-} Rec_63d4;
-typedef struct {
-    char head[0x6260];
-    Rec_63d4 recs[2];
-} Obj_63d4;
-void func_ov006_020d63d4(void *p) {
-    Obj_63d4 *a0 = (Obj_63d4 *)p;
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d63d4Ev
+
+void dScMgBomroom_c::func_ov006_020d63d4() {
     int i;
     for (i = 0; i < 2; i++) {
-        if (a0->recs[i].flag != 0) {
-            int xv = a0->recs[i].x >> 12;
-            int yv = a0->recs[i].y >> 12;
-            int k = a0->recs[i].idx;
+        if (mSlotsA[i].idx != 0) {
+            int xv = mSlotsA[i].x >> 12;
+            int yv = mSlotsA[i].y >> 12;
+            int k = mSlotsA[i].level;
             int v = (i == 0) ? data_ov006_021343b0[k] : data_ov006_021342bc[k];
             Hud_RenderSprite((void*)v, xv, yv, -1, 1);
         }
     }
 }
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 31 -- func_ov006_020d6454, 0x020d6454, size 0x70 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6454
-extern "C" {
-void func_ov006_020d6454(unsigned char* base, int idx) {
-    unsigned char* p = base + (idx << 4);
-    if (*(unsigned char*)(p + 0x626f) != 0) {
-        unsigned short* c = (unsigned short*)(base + 0x6268 + (idx << 4));
-        *c = *c + 1;
-        if (*(unsigned short*)(p + 0x6268) < 3) return;
-        *(unsigned short*)(p + 0x6268) = 0;
-        *(unsigned char*)(base + 0x626f + (idx << 4)) =
-            *(unsigned char*)(base + 0x626f + (idx << 4)) - 1;
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6454Ei
+
+void dScMgBomroom_c::func_ov006_020d6454(int index) {
+    unsigned char* raw = (unsigned char*)this;
+
+    unsigned char* rec = raw + (index << 4);
+    if (*(unsigned char*)(rec + 0x626f) != 0) {
+        unsigned short* timer = (unsigned short*)(raw + 0x6268 + (index << 4));
+        *timer = *timer + 1;
+        if (*(unsigned short*)(rec + 0x6268) < 3) return;
+        *(unsigned short*)(rec + 0x6268) = 0;
+        *(unsigned char*)(raw + 0x626f + (index << 4)) =
+            *(unsigned char*)(raw + 0x626f + (index << 4)) - 1;
     } else {
-        *(unsigned char*)(p + 0x626c) = 0;
+        *(unsigned char*)(rec + 0x626c) = 0;
     }
 }
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d64c4Ev
+
+void dScMgBomroom_c::func_ov006_020d64c4() {
 }
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 32 -- func_ov006_020d64c4, 0x020d64c4, size 0x4 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d64c4
-extern "C" {
-void func_ov006_020d64c4(void)
-{
-}
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 33 -- func_ov006_020d64c8, 0x020d64c8, size 0xec */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d64c8
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d64c8Ei
 #pragma push
 #pragma opt_common_subs off
 #pragma opt_strength_reduction off
-extern "C" {
-void func_ov006_020d64c8(char *o, int i)
-{
-    *(u16 *)(o + 0x6268 + i * 16) += 1;
-    if (*(u16 *)(o + i * 16 + 0x6268) < 5)
+
+void dScMgBomroom_c::func_ov006_020d64c8(int index) {
+    char * raw = (char *)this;
+    mSlotsA[index].timer += 1;
+    if (mSlotsA[index].timer < 5)
         return;
-    *(u16 *)(o + i * 16 + 0x6268) = 0;
-    *(u8 *)(o + 0x626f + i * 16) += 1;
-    if (i == 0) {
-        u8 v = *(u8 *)(o + i * 16 + 0x626f);
-        if (v == 2 || v == 4) {
-            int *w = (int *)(((int)o + 0x62b4));
-            *w += 0x8000;
+    mSlotsA[index].timer = 0;
+    mSlotsA[index].level += 1;
+    if (index == 0) {
+        u8 level = mSlotsA[index].level;
+        if (level == 2 || level == 4) {
+            int *offsetY = &mMarkers[0].y;
+            *offsetY += 0x8000;
         }
     }
-    if (*(u8 *)(o + i * 16 + 0x626f) == 3 && i == 1)
-        func_ov006_020d5d90(o, i);
-    if (*(u8 *)(o + i * 16 + 0x626f) >= 4)
-        *(u8 *)(o + i * 16 + 0x626c) = 2;
+    if (mSlotsA[index].level == 3 && index == 1)
+        func_ov006_020d5d90(index);
+    if (mSlotsA[index].level >= 4)
+        mSlotsA[index].state = 2;
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 34 -- func_ov006_020d65b4, 0x020d65b4, size 0x14 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d65b4
-extern "C" {
-typedef struct { char pad[0x68]; short f; } BrEnt65b4;
-void func_ov006_020d65b4(int c, int i){
-  BrEnt65b4 *p = (BrEnt65b4*)(c + (i<<4) + 0x6200);
-  p->f = 0;
-}
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d65b4Ei
+
+void dScMgBomroom_c::func_ov006_020d65b4(int index) {
+  mSlotsA[index].timer = 0;
 }
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 35 -- func_ov006_020d65c8, 0x020d65c8, size 0x68 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d65c8
-extern "C" {
-class C_65c8;
-typedef void (C_65c8::*PMF_65c8)(int);
-class C_65c8 { public: int dummy; };
-struct Row_65c8 { u8 d[0x10]; };
-extern "C" PMF_65c8 data_ov006_02141680[];
-extern "C" void func_ov006_020d65c8(C_65c8 *self)
-{
-    Row_65c8 *rows = (Row_65c8 *)self;
-    for (int i = 0; i < 2; i++) {
-        if (rows[i].d[0x626d]) {
-            u8 k = rows[i].d[0x626c];
-            (self->*data_ov006_02141680[k])(i);
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d65c8Ev
+#pragma push
+#pragma opt_strength_reduction off
+
+typedef void (dScMgBomroom_c::*PMF)(int);
+extern "C" PMF data_ov006_02141680[];
+void dScMgBomroom_c::func_ov006_020d65c8() {
+    for (int slot = 0; slot < 2; slot++) {
+        if (mSlotsA[slot].gate) {
+            u8 state = mSlotsA[slot].state;
+            (this->*data_ov006_02141680[state])(slot);
         }
     }
 }
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 36 -- func_ov006_020d6630, 0x020d6630, size 0x6c */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6630
+#pragma pop
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6630Ev
 #pragma push
 #pragma opt_strength_reduction off
-extern "C" {
-void func_ov006_020d6630(void *p) {
-    char *c = (char *)p;
+
+void dScMgBomroom_c::func_ov006_020d6630() {
+    void * p = (void *)this;
     int i;
     for (i = 0; i < 2; i++) {
-        *(unsigned char *)(c + i * 0x10 + 0x626d) = 1;
-        *(unsigned char *)(c + i * 0x10 + 0x626c) = 0;
-        *(int *)(c + i * 0x10 + 0x6260) = data_ov006_0212e2d8[i] << 0xc;
-        *(int *)(c + i * 0x10 + 0x6264) = data_ov006_0212e2d0[i] << 0xc;
-        *(unsigned char *)(c + i * 0x10 + 0x626f) = 0;
-        *(short *)(c + i * 0x10 + 0x6268) = 0;
-        *(unsigned char *)(c + i * 0x10 + 0x626e) = 1;
+        mSlotsA[i].gate = 1;
+        mSlotsA[i].state = 0;
+        mSlotsA[i].x = data_ov006_0212e2d8[i] << 0xc;
+        mSlotsA[i].y = data_ov006_0212e2d0[i] << 0xc;
+        mSlotsA[i].level = 0;
+        mSlotsA[i].timer = 0;
+        mSlotsA[i].idx = 1;
     }
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 37 -- func_ov006_020d669c, 0x020d669c, size 0x28 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d669c
-extern "C" {
-void func_ov006_020d669c(char (*c)[16]){
-  int i;
-  for(i=0;i<2;i++){ c[i][0x626d]=0; c[i][0x626e]=0; }
-}
-}
-
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 38 -- func_ov006_020d66c4, 0x020d66c4, size 0x68 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d66c4
-extern "C" {
-extern "C" void func_ov006_020d66c4(char *base, int idx) {
-    char *ip = base + idx * 16;
-    if (*(unsigned char*)(ip + 0x6000 + 0x26c) != 0) return;
-    *(unsigned char*)(ip + 0x6000 + 0x26c) = 1;
-    _ZN5Sound12PlayBank2_2DEj(0x1e2);
-    if (idx != 0) return;
-    func_ov006_020d5d90(base, idx);
-}
-}
-
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 39 -- func_ov006_020d672c, 0x020d672c, size 0x58 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d672c
-extern "C" {
-typedef struct { char pad[0x2f9]; unsigned char on; } BrFlag672c;
-typedef struct { char pad[0xee]; unsigned short v; } BrEnt672c;
-void func_ov006_020d672c(void *p){
-  int c = (int)p;
-  if(((BrFlag672c*)(c+0x6000))->on==0) return;
-  func_ov004_020b2444(0x80,0xc,((BrEnt672c*)(c+0x6200))->v,1,-1,0,0);
-}
-}
-
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 40 -- func_ov006_020d6784, 0x020d6784, size 0x124 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6784
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d669cEv
 #pragma push
 #pragma opt_strength_reduction off
-extern "C" {
-void func_ov006_020d6784(char *c)
-{
-    int b, a, i;
-    a = 0;
-    b = 0;
-    for (i = 0; i < 0x70; i++) {
-        if (*(unsigned char *)(c + (i << 6) + 0x4698) == 0) continue;
-        if (*(unsigned char *)(c + (i << 6) + 0x4697) != 5) continue;
-        if (*(unsigned char *)(c + (i << 6) + 0x4696) != 0) a++;
-        else b++;
-    }
-    if (b >= 0x28) {
-        *(int *)(c + 0x62d0) = 3;
-        *(int *)(c + 0x62d4) = 0;
-        *(unsigned char *)(c + 0x62f8) = 0;
-        *(unsigned char *)(c + 0x62f5) = 0;
-        *(volatile unsigned int *)(c + 0xbc) = *(unsigned int *)(c + 0xbc) + 1;
-        if (*(unsigned int *)(c + 0xbc) > 0x270e) *(unsigned int *)(c + 0xbc) = 0x270e;
-        *(unsigned char *)(c + 0x62fb) = 1;
-        _ZN5Sound12PlayBank2_2DEj(0x1e6);
-    } else if (a >= 0x28) {
-        *(int *)(c + 0x62d0) = 3;
-        *(int *)(c + 0x62d4) = 0;
-        *(unsigned char *)(c + 0x62f8) = 0;
-        *(unsigned char *)(c + 0x62f5) = 1;
-        *(volatile unsigned int *)(c + 0xbc) = *(unsigned int *)(c + 0xbc) + 1;
-        if (*(unsigned int *)(c + 0xbc) > 0x270e) *(unsigned int *)(c + 0xbc) = 0x270e;
-        *(unsigned char *)(c + 0x62fb) = 1;
-        _ZN5Sound12PlayBank2_2DEj(0x1e6);
+
+void dScMgBomroom_c::func_ov006_020d669c() {
+    int slot;
+    for (slot = 0; slot < 2; slot++) {
+        mSlotsA[slot].gate = 0;
+        mSlotsA[slot].idx = 0;
     }
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 41 -- func_ov006_020d68a8, 0x020d68a8, size 0x110 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d68a8
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d66c4Ei
+
+void dScMgBomroom_c::func_ov006_020d66c4(int index) {
+    char * raw = (char *)this;
+    if (mSlotsA[index].state != 0) return;
+    mSlotsA[index].state = 1;
+    Sound::PlayBank2_2D(0x1e2);
+    if (index != 0) return;
+    func_ov006_020d5d90(index);
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d672cEv
+
+void dScMgBomroom_c::func_ov006_020d672c() {
+  if(unk_62f9==0) return;
+  func_ov004_020b2444(0x80,0xc,unk_62ee,1,-1,0,0);
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6784Ev
+#pragma push
+#pragma opt_strength_reduction off
+
+void dScMgBomroom_c::func_ov006_020d6784() {
+    char * raw = (char *)this;
+    int plain, colored, i;
+    colored = 0;
+    plain = 0;
+    for (i = 0; i < 0x70; i++) {
+        if (mBombs[i].active == 0) continue;
+        if (mBombs[i].state != 5) continue;
+        if (mBombs[i].color != 0) colored++;
+        else plain++;
+    }
+    if (plain >= 0x28) {
+        mSceneState = 3;
+        mSubState = 0;
+        mBlastPen = 0;
+        mWinColor = 0;
+        *(volatile unsigned int *)(raw + 0xbc) = *(unsigned int *)(raw + 0xbc) + 1;
+        if (*(unsigned int *)(raw + 0xbc) > 0x270e) *(unsigned int *)(raw + 0xbc) = 0x270e;
+        unk_62fb = 1;
+        Sound::PlayBank2_2D(0x1e6);
+    } else if (colored >= 0x28) {
+        mSceneState = 3;
+        mSubState = 0;
+        mBlastPen = 0;
+        mWinColor = 1;
+        *(volatile unsigned int *)(raw + 0xbc) = *(unsigned int *)(raw + 0xbc) + 1;
+        if (*(unsigned int *)(raw + 0xbc) > 0x270e) *(unsigned int *)(raw + 0xbc) = 0x270e;
+        unk_62fb = 1;
+        Sound::PlayBank2_2D(0x1e6);
+    }
+}
+
+#pragma pop
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d68a8Ei
+/* Bomb `picked` has gone off. Pen byte +0x3a of that bomb is 0 when it
+ * was loose: every other live bomb not yet sorted (state 5) is knocked into
+ * state 3 for 0x20 frames. Otherwise only the bombs of that pen's color and
+ * the idle ones are. The first blast also records its pen at 0x62f8 and sets
+ * the scene state at 0x62d0 to 3. */
 #pragma push
 #pragma opt_strength_reduction off
 #pragma opt_common_subs off
-extern "C" {
-void func_ov006_020d68a8(char *o, int a1)
-{
+
+void dScMgBomroom_c::func_ov006_020d68a8(int picked) {
+    char * raw = (char *)this;
     int i;
-    u8 *cur = (u8 *)(((int)(o + a1 * 0x40) + 0x469a));
+    u8 *cur = (u8 *)(((int)(raw + picked * 0x40) + 0x469a));
     for (i = 0; i < 0x70; i++) {
-        char *q = o + i * 0x40;
-        if (*(u8 *)(q + 0x4698) != 0) {
-            if (i != a1) {
-                u8 n = *cur;
-                if (n == 0) {
-                    u8 *st = (u8 *)(((int)q + 0x4697));
-                    if (*st != 5) {
-                        *st = 3;
-                        *(u16 *)(q + 0x4690) = 0x20;
+        char *bomb = raw + i * 0x40;
+        if (mBombs[i].active != 0) {
+            if (i != picked) {
+                u8 pen = *cur;
+                if (pen == 0) {
+                    u8 *state = (u8 *)(bomb + 0x4697);
+                    if (*state != 5) {
+                        *state = 3;
+                        mBombs[i].unk_30 = 0x20;
                     }
                 } else {
-                    u8 *st = (u8 *)(((int)q + 0x4697));
-                    if (*st == 5) {
-                        if (*(u8 *)(q + 0x4696) + 1 == n) {
-                            *st = 3;
-                            *(u16 *)(q + 0x4690) = 0x20;
+                    u8 *state = (u8 *)(bomb + 0x4697);
+                    if (*state == 5) {
+                        if (((dScMgBomroom_Bomb *)(bomb + 0x4660))->color + 1 == pen) {
+                            *state = 3;
+                            mBombs[i].unk_30 = 0x20;
                         }
                     }
-                    if (*st <= 1) {
-                        *st = 3;
-                        *(u16 *)(o + i * 0x40 + 0x4690) = 0x20;
+                    if (*state <= 1) {
+                        *state = 3;
+                        *(u16 *)(raw + i * 0x40 + 0x4690) = 0x20;
                     }
                 }
             }
         }
     }
-    if (*(u8 *)(o + 0x62f8) != 0)
+    if (mBlastPen != 0)
         return;
-    *(u8 *)(o + 0x62f8) = *(u8 *)(o + a1 * 0x40 + 0x469a) + 1;
-    *(u16 *)(o + 0x62e8) = 0x60;
-    *(int *)(o + 0x62d0) = 3;
-    *(int *)(o + 0x62d4) = 0;
+    mBlastPen = mBombs[picked].pen + 1;
+    mStateTimer = 0x60;
+    mSceneState = 3;
+    mSubState = 0;
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 42 -- func_ov006_020d69b8, 0x020d69b8, size 0x1d0 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d69b8
-extern "C" {
-struct Ent_69b8 {
-    int f660;
-    char pad1[0x20];
-    int f684;
-    char pad2[6];
-    unsigned short f68e;
-    char pad3[4];
-    unsigned char f694;
-    unsigned char f695;
-    unsigned char f696;
-    unsigned char f697;
-    unsigned char f698;
-    unsigned char f699;
-    char pad4[6];
-};
-struct Gbl_69b8 {
-    char pad0[0x2d0];
-    int f2d0;
-};
-#define E_69b8 (((struct Ent_69b8 *)(a + 0x4000 + 0x660))[i])
-#define G_69b8 ((struct Gbl_69b8 *)(a + 0x6000))
-void func_ov006_020d69b8(char *a, int i)
-{
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d69b8Ei
+/* Steps one bomb's animation: the frame advances when the counter at +0x2e
+ * reaches the per-type frame time, playing its sound effects, and
+ * wraps (or holds, for type 3) at the per-type frame count. */
+
+
+void dScMgBomroom_c::func_ov006_020d69b8(int index) {
     int type;
     int frame;
     int max;
 
-    *(unsigned short *)(a + 0x468e + (i << 6)) += 1;
-    type = E_69b8.f694;
-    frame = E_69b8.f695;
+    mBombs[index].counter += 1;
+    type = mBombs[index].type;
+    frame = mBombs[index].frame;
 
-    if (type != 3 && type != 0 && G_69b8->f2d0 != 3) {
-        E_69b8.f684 = func_02012468(E_69b8.f684, 2, 0x1db, 4, 0, 0,
-                               func_020126e8(E_69b8.f660), 0);
+    if (type != 3 && type != 0 && mSceneState != 3) {
+        mBombs[index].sound = func_02012468(mBombs[index].sound, 2, 0x1db, 4, 0, 0,
+                               func_020126e8(mBombs[index].x), 0);
     }
 
-    if (E_69b8.f68e >= data_ov006_0213bb08[type][frame]) {
+    if (mBombs[index].counter >= data_ov006_0213bb08[type][frame]) {
         frame++;
-        E_69b8.f695 = frame;
-        E_69b8.f68e = 0;
-        if (type != 3 && E_69b8.f697 != 2 && (type != 0 || E_69b8.f697 != 5)) {
-            if (E_69b8.f698 == 1 && G_69b8->f2d0 != 3) {
-                if (E_69b8.f696 != 0) {
-                    func_02012718((int)0x1d9, E_69b8.f660);
+        mBombs[index].frame = frame;
+        mBombs[index].counter = 0;
+        if (type != 3 && mBombs[index].state != 2 && (type != 0 || mBombs[index].state != 5)) {
+            if (mBombs[index].active == 1 && mSceneState != 3) {
+                if (mBombs[index].color != 0) {
+                    func_02012718((int)0x1d9, mBombs[index].x);
                 } else {
-                    func_02012718((int)0x1da, E_69b8.f660);
+                    func_02012718((int)0x1da, mBombs[index].x);
                 }
             }
         }
         if (type == 3 && frame == 1) {
-            func_02012718((int)0x1e1, E_69b8.f660);
+            func_02012718((int)0x1e1, mBombs[index].x);
         }
     }
 
@@ -741,78 +830,72 @@ void func_ov006_020d69b8(char *a, int i)
         return;
     }
     if (type == 3) {
-        E_69b8.f698 = 0;
-        E_69b8.f699 = 0;
+        mBombs[index].active = 0;
+        mBombs[index].unk_39 = 0;
     } else {
         max = 0;
     }
-    E_69b8.f695 = max;
-}
+    mBombs[index].frame = max;
 }
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 43 -- func_ov006_020d6b88, 0x020d6b88, size 0x108 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6b88
-extern "C" {
 
-void func_ov006_020d6b88(char *self_, int idx)
-{
-    char *b = self_ + idx * 0x40;
-    u8 flag = *(u8*)(b + 0x4696);
-    int v3 = *(int*)(b + 0x4660) >> 0xc;
-    int v0 = *(int*)(b + 0x4664) >> 0xc;
-    if (flag != 0) {
-        if (v3 <= 0xc0) return;
-        if (v0 <= 0x40) return;
-        if (v0 >= 0x80) return;
-        *(u8*)(b + 0x4697) = 5;
-        *(u8*)(b + 0x4694) = 0;
-        *(u8*)(b + 0x4695) = 0;
-        *(u16*)(b + 0x468e) = 0;
-        *(int*)(b + 0x4670) = 0x999;
-        func_02012718((int)0x1dc, *(int*)(b + 0x4660));
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6b88Ei
+
+
+void dScMgBomroom_c::func_ov006_020d6b88(int index) {
+    char * raw = (char *)this;
+    char *bomb = raw + index * 0x40;
+    u8 color = mBombs[index].color;
+    int x = mBombs[index].x >> 0xc;
+    int y = mBombs[index].y >> 0xc;
+    if (color != 0) {
+        if (x <= 0xc0) return;
+        if (y <= 0x40) return;
+        if (y >= 0x80) return;
+        mBombs[index].state = 5;
+        mBombs[index].type = 0;
+        mBombs[index].frame = 0;
+        mBombs[index].counter = 0;
+        mBombs[index].speed = 0x999;
+        func_02012718((int)0x1dc, mBombs[index].x);
     } else {
-        if (v3 >= 0x40) return;
-        if (v0 <= 0x40) return;
-        if (v0 >= 0x80) return;
-        *(u8*)(b + 0x4697) = 5;
-        *(u8*)(b + 0x4694) = 0;
-        *(u8*)(b + 0x4695) = 0;
-        *(u16*)(b + 0x468e) = 0;
-        *(int*)(b + 0x4670) = 0x999;
-        func_02012718((int)0x1dc, *(int*)(b + 0x4660));
+        if (x >= 0x40) return;
+        if (y <= 0x40) return;
+        if (y >= 0x80) return;
+        mBombs[index].state = 5;
+        mBombs[index].type = 0;
+        mBombs[index].frame = 0;
+        mBombs[index].counter = 0;
+        mBombs[index].speed = 0x999;
+        func_02012718((int)0x1dc, mBombs[index].x);
     }
 }
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 44 -- func_ov006_020d6c90, 0x020d6c90, size 0xec */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6c90
-extern "C" {
-void func_ov006_020d6c90(char *c, int idx)
-{
-    char *slot = c + (idx << 6);
-    unsigned char flag = *(unsigned char *)(slot + 0x4696);
-    int x = *(int *)(slot + 0x4660) >> 12;
-    int y = *(int *)(slot + 0x4664) >> 12;
 
-    if (flag != 0) {
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6c90Ei
+
+void dScMgBomroom_c::func_ov006_020d6c90(int index) {
+    char * raw = (char *)this;
+    char *bomb = raw + (index << 6);
+    unsigned char color = mBombs[index].color;
+    int x = mBombs[index].x >> 12;
+    int y = mBombs[index].y >> 12;
+
+    if (color != 0) {
         if (x >= 0x40)
             return;
         if (y <= 0x40)
             return;
         if (y >= 0x80)
             return;
-        *(short *)(slot + 0x4692) = 0;
-        *(unsigned char *)(slot + 0x4697) = 4;
-        *(unsigned char *)(slot + 0x4694) = 3;
-        *(unsigned char *)(slot + 0x4695) = 0;
-        *(short *)(slot + 0x468e) = 0;
-        *(unsigned char *)(slot + 0x469a) = 1;
-        *(unsigned char *)(slot + 0x469d) = 1;
-        func_ov006_020d68a8(c, idx);
+        mBombs[index].unk_32 = 0;
+        mBombs[index].state = 4;
+        mBombs[index].type = 3;
+        mBombs[index].frame = 0;
+        mBombs[index].counter = 0;
+        mBombs[index].pen = 1;
+        mBombs[index].unk_3d = 1;
+        func_ov006_020d68a8(index);
     } else {
         if (x <= 0xc0)
             return;
@@ -820,120 +903,118 @@ void func_ov006_020d6c90(char *c, int idx)
             return;
         if (y >= 0x80)
             return;
-        *(short *)(slot + 0x4692) = 0;
-        *(unsigned char *)(slot + 0x4697) = 4;
-        *(unsigned char *)(slot + 0x4694) = 3;
-        *(unsigned char *)(slot + 0x4695) = 0;
-        *(short *)(slot + 0x468e) = 0;
-        *(unsigned char *)(slot + 0x469a) = 2;
-        *(unsigned char *)(slot + 0x469d) = 1;
-        func_ov006_020d68a8(c, idx);
+        mBombs[index].unk_32 = 0;
+        mBombs[index].state = 4;
+        mBombs[index].type = 3;
+        mBombs[index].frame = 0;
+        mBombs[index].counter = 0;
+        mBombs[index].pen = 2;
+        mBombs[index].unk_3d = 1;
+        func_ov006_020d68a8(index);
     }
 }
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 45 -- func_ov006_020d6d7c, 0x020d6d7c, size 0x110 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6d7c
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6d7cEi
+/* Picks up a bomb under the stylus: a touch within 12 units across and 15
+ * down of it, while nothing is held (0x62f6 is 0xff). grabX/grabY keep the
+ * stylus-minus-bomb offset. */
 #pragma push
 #pragma opt_propagation off
-extern "C" {
+
 
 typedef struct { u8 f0, f1, f2, f3; } Tab;
-extern u8 data_020a0e40;
-extern Tab data_020a0de8[];
+// local extern: see above.
+extern u8 gActivePlayerSlot;
+// local extern: see above.
+extern Tab gTouchHeld[];
 
-void func_ov006_020d6d7c(char *self_, int idx) {
-    u8 m = data_020a0e40;
-    int hit = 0;
-    char *b;
+void dScMgBomroom_c::func_ov006_020d6d7c(int index) {
+    char * raw = (char *)this;
+    u8 touch = gActivePlayerSlot;
+    int touching = 0;
     int dx, dy;
-    if (data_020a0de8[m].f0 != 0) {
-        if (data_020a0de8[m].f1 != 0) hit = 1;
+    if (gTouchHeld[touch].f0 != 0) {
+        if (gTouchHeld[touch].f1 != 0) touching = 1;
     }
-    if (hit == 0) return;
-    if (*(u8*)(self_ + 0x62f6) != 0xff) return;
-    b = self_ + idx * 0x40;
-    dx = data_020a0de8[m].f2 - (*(int*)(b + 0x4660) >> 0xc);
-    dy = data_020a0de8[m].f3 - (*(int*)(b + 0x4664) >> 0xc);
+    if (touching == 0) return;
+    if (mHeldColor != 0xff) return;
+    dx = gTouchHeld[touch].f2 - (mBombs[index].x >> 0xc);
+    dy = gTouchHeld[touch].f3 - (mBombs[index].y >> 0xc);
     if (dx > 0xc) return;
     if (dx < -0xc) return;
     if (dy > 0xf) return;
     if (dy < -0xf) return;
-    *(u8*)(self_ + 0x62f6) = *(u8*)(b + 0x4696);
-    *(u8*)(b + 0x4694) = 1;
-    *(u8*)(b + 0x4697) = 2;
-    *(int*)(b + 0x4668) = dx << 0xc;
-    *(int*)(b + 0x466c) = dy << 0xc;
-    *(u8*)(b + 0x469e) = 0;
-    func_02012718((int)0x1d2, *(int*)(b + 0x4660));
+    mHeldColor = mBombs[index].color;
+    mBombs[index].type = 1;
+    mBombs[index].state = 2;
+    mBombs[index].grabX = dx << 0xc;
+    mBombs[index].grabY = dy << 0xc;
+    mBombs[index].unk_3e = 0;
+    func_02012718((int)0x1d2, mBombs[index].x);
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 46 -- func_ov006_020d6e8c, 0x020d6e8c, size 0x698 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d6e8c
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d6e8cEi
 #pragma push
 #pragma opt_common_subs off
-extern "C" {
-void func_ov006_020d6e8c(char* self, int idx)
-{
+
+void dScMgBomroom_c::func_ov006_020d6e8c(int index) {
+    char* raw = (char*)this;
     int x, y, py, dx, dy1, ang, i2, a, dy2, sy, px;
 
-    x = *(int*)(self + (idx << 6) + 0x4660) >> 12;
-    y = *(int*)(self + (idx << 6) + 0x4664) >> 12;
+    x = mBombs[index].x >> 12;
+    y = mBombs[index].y >> 12;
 
     if (x + 12 > 0x100) {
-        *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - *(u16*)(self + (idx << 6) + 0x468c);
-        *(int*)(self + (idx << 6) + 0x4660) = 0xF4000;
+        mBombs[index].angle = 0x8000 - mBombs[index].angle;
+        mBombs[index].x = 0xF4000;
     } else if (x - 12 < 0) {
-        *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - *(u16*)(self + (idx << 6) + 0x468c);
-        *(int*)(self + (idx << 6) + 0x4660) = 0xC000;
+        mBombs[index].angle = 0x8000 - mBombs[index].angle;
+        mBombs[index].x = 0xC000;
     }
 
     if (y + 12 > 0xB8) {
-        *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-        *(int*)(self + (idx << 6) + 0x4664) = 0xAC000;
+        mBombs[index].angle = 0 - mBombs[index].angle;
+        mBombs[index].y = 0xAC000;
     } else if (y - 12 < 0) {
-        *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-        *(int*)(self + (idx << 6) + 0x4664) = 0xC000;
+        mBombs[index].angle = 0 - mBombs[index].angle;
+        mBombs[index].y = 0xC000;
     }
 
-    px = *(int*)(self + (idx << 6) + 0x4660) >> 12;
-    py = *(int*)(self + (idx << 6) + 0x4664) >> 12;
+    px = mBombs[index].x >> 12;
+    py = mBombs[index].y >> 12;
 
     if (px + 12 > 0xC0 && py + 12 > 0x40 && py - 12 < 0x80) {
         dx = px - 0xC0;
         dy1 = py - 0x40;
         dy2 = 0x80 - py;
         if (px <= 0xC0 && py >= 0x40 && py <= 0x80) {
-            *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - *(u16*)(self + (idx << 6) + 0x468c);
-            *(int*)(self + (idx << 6) + 0x4660) = 0xB4000;
+            mBombs[index].angle = 0x8000 - mBombs[index].angle;
+            mBombs[index].x = 0xB4000;
         } else if (px > 0xC0 && py < 0x40) {
-            *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-            *(int*)(self + (idx << 6) + 0x4664) = 0x34000;
+            mBombs[index].angle = 0 - mBombs[index].angle;
+            mBombs[index].y = 0x34000;
         } else if (px > 0xC0 && py > 0x80) {
-            *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-            *(int*)(self + (idx << 6) + 0x4664) = 0x8C000;
+            mBombs[index].angle = 0 - mBombs[index].angle;
+            mBombs[index].y = 0x8C000;
         } else if (px > 0xC0 && py > 0x40 && py < 0x80) {
             if (dy1 < dy2) {
                 if (dx < dy1) {
-                    *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - *(u16*)(self + (idx << 6) + 0x468c);
-                    *(int*)(self + (idx << 6) + 0x4660) = 0xB4000;
+                    mBombs[index].angle = 0x8000 - mBombs[index].angle;
+                    mBombs[index].x = 0xB4000;
                 } else {
-                    *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-                    *(int*)(self + (idx << 6) + 0x4664) = 0x34000;
+                    mBombs[index].angle = 0 - mBombs[index].angle;
+                    mBombs[index].y = 0x34000;
                 }
             } else {
                 if (dx < dy2) {
-                    *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - *(u16*)(self + (idx << 6) + 0x468c);
-                    *(int*)(self + (idx << 6) + 0x4660) = 0xB4000;
+                    mBombs[index].angle = 0x8000 - mBombs[index].angle;
+                    mBombs[index].x = 0xB4000;
                 } else {
-                    *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-                    *(int*)(self + (idx << 6) + 0x4664) = 0x8C000;
+                    mBombs[index].angle = 0 - mBombs[index].angle;
+                    mBombs[index].y = 0x8C000;
                 }
             }
         } else {
@@ -943,23 +1024,23 @@ void func_ov006_020d6e8c(char* self, int idx)
                 dy2 = 0x40 - py;
                 sy = 0xC0 - px;
             }
-            _ZN4cstd4sqrtEy((s64)(sy * sy + dy2 * dy2));
+            cstd::sqrt((s64)(sy * sy + dy2 * dy2));
             ang = (u16)_ZN4cstd5atan2E5Fix12IiES1_(dy2, sy);
             i2 = (ang >> 4) * 2;
-            *(int*)(self + (idx << 6) + 0x4660) =
+            mBombs[index].x =
                 (0xC0 - (int)(((s64)data_02082214[i2 + 1] * 0xF + 0x800) >> 12)) << 12;
             if (py >= 0x60) {
-                *(int*)(self + (idx << 6) + 0x4664) =
+                mBombs[index].y =
                     (0x80 - (int)(((s64)data_02082214[i2] * 0xF + 0x800) >> 12)) << 12;
             } else {
-                *(int*)(self + (idx << 6) + 0x4664) =
+                mBombs[index].y =
                     (0x40 - (int)(((s64)data_02082214[i2] * 0xF + 0x800) >> 12)) << 12;
             }
-            a = *(u16*)(self + (idx << 6) + 0x468c);
+            a = mBombs[index].angle;
             if (data_02082214[(a >> 4) * 2 + 1] > 0) {
-                *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - a;
+                mBombs[index].angle = 0x8000 - a;
             } else {
-                *(u16*)(self + (idx << 6) + 0x468c) = 0 - a;
+                mBombs[index].angle = 0 - a;
             }
         }
     }
@@ -972,329 +1053,301 @@ void func_ov006_020d6e8c(char* self, int idx)
     dy1 = py - 0x40;
     sy = 0x80 - py;
     if (px >= 0x40 && py >= 0x40 && py <= 0x80) {
-        *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - *(u16*)(self + (idx << 6) + 0x468c);
-        *(int*)(self + (idx << 6) + 0x4660) = 0x4C000;
+        mBombs[index].angle = 0x8000 - mBombs[index].angle;
+        mBombs[index].x = 0x4C000;
         return;
     }
     if (px < 0x40 && py < 0x40) {
-        *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-        *(int*)(self + (idx << 6) + 0x4664) = 0x34000;
+        mBombs[index].angle = 0 - mBombs[index].angle;
+        mBombs[index].y = 0x34000;
         return;
     }
     if (px < 0x40 && py > 0x80) {
-        *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-        *(int*)(self + (idx << 6) + 0x4664) = 0x8C000;
+        mBombs[index].angle = 0 - mBombs[index].angle;
+        mBombs[index].y = 0x8C000;
         return;
     }
     if (px < 0x40 && py > 0x40 && py < 0x80) {
         if (dy1 < sy) {
             if (dy2 < dy1) {
-                *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - *(u16*)(self + (idx << 6) + 0x468c);
-                *(int*)(self + (idx << 6) + 0x4660) = 0x4C000;
+                mBombs[index].angle = 0x8000 - mBombs[index].angle;
+                mBombs[index].x = 0x4C000;
                 return;
             }
-            *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-            *(int*)(self + (idx << 6) + 0x4664) = 0x34000;
+            mBombs[index].angle = 0 - mBombs[index].angle;
+            mBombs[index].y = 0x34000;
             return;
         }
         if (dy2 < sy) {
-            *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - *(u16*)(self + (idx << 6) + 0x468c);
-            *(int*)(self + (idx << 6) + 0x4660) = 0x4C000;
+            mBombs[index].angle = 0x8000 - mBombs[index].angle;
+            mBombs[index].x = 0x4C000;
             return;
         }
-        *(u16*)(self + (idx << 6) + 0x468c) = 0 - *(u16*)(self + (idx << 6) + 0x468c);
-        *(int*)(self + (idx << 6) + 0x4664) = 0x8C000;
+        mBombs[index].angle = 0 - mBombs[index].angle;
+        mBombs[index].y = 0x8C000;
         return;
     }
 
     if (py < 0x60) {
         sy = 0x40 - py;
     }
-    _ZN4cstd4sqrtEy((s64)(dy2 * dy2 + sy * sy));
+    cstd::sqrt((s64)(dy2 * dy2 + sy * sy));
     ang = (u16)_ZN4cstd5atan2E5Fix12IiES1_(sy, dy2);
     i2 = (ang >> 4) * 2;
-    *(int*)(self + (idx << 6) + 0x4660) =
+    mBombs[index].x =
         (0x40 - (int)(((s64)data_02082214[i2 + 1] * 0xF + 0x800) >> 12)) << 12;
     if (py >= 0x60) {
-        *(int*)(self + (idx << 6) + 0x4664) =
+        mBombs[index].y =
             (0x80 - (int)(((s64)data_02082214[i2] * 0xF + 0x800) >> 12)) << 12;
     } else {
-        *(int*)(self + (idx << 6) + 0x4664) =
+        mBombs[index].y =
             (0x40 - (int)(((s64)data_02082214[i2] * 0xF + 0x800) >> 12)) << 12;
     }
-    a = *(u16*)(self + (idx << 6) + 0x468c);
+    a = mBombs[index].angle;
     if (data_02082214[(a >> 4) * 2 + 1] < 0) {
-        *(u16*)(self + (idx << 6) + 0x468c) = 0x8000 - a;
+        mBombs[index].angle = 0x8000 - a;
     } else {
-        *(u16*)(self + (idx << 6) + 0x468c) = 0 - a;
+        mBombs[index].angle = 0 - a;
     }
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 47 -- func_ov006_020d7524, 0x020d7524, size 0xe0 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d7524
-extern "C" {
-typedef struct { int f660; int f664; char pad08[0x2c]; unsigned char b694; unsigned char b695; unsigned char b696; unsigned char b697; unsigned char pad38; unsigned char b699; unsigned char pad3a; unsigned char b69b; char pad3c[4]; } E_7524;
-typedef struct { char pad0[0x4660]; E_7524 e[112]; char pad1[0x7c]; int f62dc; } Self_7524;
-void func_ov006_020d7524(void *p) {
-    Self_7524 *self = (Self_7524 *)p;
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7524Ev
+
+void dScMgBomroom_c::func_ov006_020d7524() {
     int i;
     for (i = 0; i < 0x70; i++) {
-        if (self->e[i].b699 == 0) continue;
+        if (mBombs[i].unk_39 == 0) continue;
         {
-            int b694 = self->e[i].b694;
-            int a4 = 1;
+            int b694 = mBombs[i].type;
+            int palette = 1;
             int b695, b696;
-            unsigned char idx;
+            unsigned char sprite;
             int b697;
             int f664;
-            int a1, a2;
-            if (b694 == 3) a4 = 0;
-            b696 = self->e[i].b696;
-            b695 = self->e[i].b695;
-            if (b696 != 0) { idx = data_ov006_0213bb28[b694][b695]; }
-            else { idx = data_ov006_0213bb18[b694][b695]; }
-            b697 = self->e[i].b697;
-            a1 = self->e[i].f660 >> 12;
-            f664 = self->e[i].f664;
-            a2 = f664 >> 12;
+            int x, y;
+            if (b694 == 3) palette = 0;
+            b696 = mBombs[i].color;
+            b695 = mBombs[i].frame;
+            if (b696 != 0) { sprite = data_ov006_0213bb28[b694][b695]; }
+            else { sprite = data_ov006_0213bb18[b694][b695]; }
+            b697 = mBombs[i].state;
+            x = mBombs[i].x >> 12;
+            f664 = mBombs[i].y;
+            y = f664 >> 12;
             if (b697 == 6) {
-                if (self->e[i].b69b == 4) { a2 = (f664 - self->f62dc) >> 12; }
+                if (mBombs[i].substate == 4) { y = (f664 - mBg2Y) >> 12; }
             }
-            func_ov004_020afdd0(data_ov006_0213bb4c[idx], a1, a2, -1, a4);
+            func_ov004_020afdd0(data_ov006_0213bb4c[sprite], x, y, -1, palette);
         }
     }
 }
-}
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 48 -- func_ov006_020d7604, 0x020d7604, size 0x174 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d7604
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7604Ev
 #pragma push
 #pragma opt_strength_reduction off
 #pragma opt_common_subs off
-extern "C" {
-void func_ov006_020d7604(void *a)
-{
-    unsigned char *base = (unsigned char *)a;
+
+void dScMgBomroom_c::func_ov006_020d7604() {
+    void * raw = (void *)this;
+    unsigned char *bytes = (unsigned char *)raw;
     int ca = 0;
     int cb = 0;
     int cc = 0;
     int i;
 
     for (i = 0; i < 0x70; i++) {
-        unsigned char *p = base + i * 64;
-        if (p[0x4698] != 0) {
-            if (base[0x62f8] == 1) {
-                if (p[0x4696] != 0) {
+        unsigned char *bomb = bytes + i * 64;
+        if (mBombs[i].active != 0) {
+            if (mBlastPen == 1) {
+                if (mBombs[i].color != 0) {
                     int v;
                     int q;
-                    p[0x469b] = 3;
+                    mBombs[i].substate = 3;
                     v = ca;
                     q = 0;
-                    *(unsigned short *)(p + 0x4690) = (unsigned short)(cc * 8);
+                    mBombs[i].unk_30 = (unsigned short)(cc * 8);
                     while (v >= 5) { v -= 5; q++; }
-                    ((unsigned char *)(int)(base + i * 64))[0x469c] = (unsigned char)(q * 10 + v);
+                    ((unsigned char *)(int)(bytes + i * 64))[0x469c] = (unsigned char)(q * 10 + v);
                     ca++;
                     cc++;
                 } else {
                     int v;
                     int q;
-                    unsigned char *d = (unsigned char *)(int)(p + 0x469c);
+                    unsigned char *d = (unsigned char *)(int)(bomb + 0x469c);
                     *d = (unsigned char)cb;
-                    p[0x469b] = 3;
+                    mBombs[i].substate = 3;
                     v = cb;
-                    *(unsigned short *)(p + 0x4690) = (unsigned short)(cc * 8);
+                    mBombs[i].unk_30 = (unsigned short)(cc * 8);
                     q = 0;
                     while (v >= 5) { v -= 5; q++; }
                     *d = (unsigned char)(q * 10 + v + 5);
                     cb++;
                     cc++;
                 }
-            } else if (base[0x62f8] != 0) {
-                p[0x469c] = (unsigned char)cc;
-                p[0x469b] = 3;
-                *(unsigned short *)(p + 0x4690) = (unsigned short)(cc * 8);
+            } else if (mBlastPen != 0) {
+                mBombs[i].unk_3c = (unsigned char)cc;
+                mBombs[i].substate = 3;
+                mBombs[i].unk_30 = (unsigned short)(cc * 8);
                 cc++;
             } else {
-                if (base[0x62f5] == p[0x4696] && p[0x4697] == 6) {
-                    p[0x469c] = (unsigned char)cc;
-                    p[0x469b] = 3;
-                    *(unsigned short *)(p + 0x4690) = (unsigned short)(cc * 8);
+                if (mWinColor == mBombs[i].color && mBombs[i].state == 6) {
+                    mBombs[i].unk_3c = (unsigned char)cc;
+                    mBombs[i].substate = 3;
+                    mBombs[i].unk_30 = (unsigned short)(cc * 8);
                     cc++;
                 }
             }
         }
     }
-    func_ov006_020d5e3c(a);
+    func_ov006_020d5e3c();
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 49 -- func_ov006_020d7778, 0x020d7778, size 0x4 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d7778
-extern "C" {
-void func_ov006_020d7778(void)
-{
-}
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7778Ev
+
+void dScMgBomroom_c::func_ov006_020d7778() {
 }
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 50 -- func_ov006_020d777c, 0x020d777c, size 0x1dc */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d777c
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d777cEi
 #pragma push
 #pragma opt_common_subs off
-extern "C" {
 
-void func_ov006_020d777c(char *self_, int idx)
-{
-    int n = idx << 6;
-    if (*(u16*)(self_ + (idx << 6) + 0x4600 + 0x90) != 0) {
-        *(u16*)(self_ + 0x4690 + n) -= 1;
-        if (*(s16*)(self_ + (idx << 6) + 0x4600 + 0x90) < 0)
-            *(u16*)(self_ + (idx << 6) + 0x4600 + 0x90) = 0;
+
+void dScMgBomroom_c::func_ov006_020d777c(int index) {
+    char * raw = (char *)this;
+    int off = index << 6;
+    if (mBombs[index].unk_30 != 0) {
+        mBombs[index].unk_30 -= 1;
+        if ((s16)mBombs[index].unk_30 < 0)
+            mBombs[index].unk_30 = 0;
         return;
     }
     {
-        int rp = *(u8*)(self_ + (idx << 6) + 0x4000 + 0x69c);
-        int quo = 0;
+        int slot = mBombs[index].unk_3c;
+        int row = 0;
         int curX, curY, targetY, targetX;
-        while (rp >= 10) { rp -= 10; quo++; }
-        n = quo * 20;
-        targetX = rp * 16 + 0x38;
-        targetY = n - 0xC0;
-        curX = *(int*)(self_ + (idx << 6) + 0x4000 + 0x660) >> 12;
-        curY = *(int*)(self_ + (idx << 6) + 0x4000 + 0x664) >> 12;
+        while (slot >= 10) { slot -= 10; row++; }
+        off = row * 20;
+        targetX = slot * 16 + 0x38;
+        targetY = off - 0xC0;
+        curX = mBombs[index].x >> 12;
+        curY = mBombs[index].y >> 12;
         if (targetX == curX && targetY == curY) {
-            *(u8*)(self_ + (idx << 6) + 0x4000 + 0x69b) = 4;
-            if (*(u8*)(self_ + (idx << 6) + 0x4000 + 0x696) != 0)
-                func_02012718((int)0x1d9, *(int*)(self_ + (idx << 6) + 0x4000 + 0x660));
+            mBombs[index].substate = 4;
+            if (mBombs[index].color != 0)
+                func_02012718((int)0x1d9, mBombs[index].x);
             else
-                func_02012718((int)0x1da, *(int*)(self_ + (idx << 6) + 0x4000 + 0x660));
+                func_02012718((int)0x1da, mBombs[index].x);
             return;
         }
         if (targetY != curY) {
-            *(int*)(self_ + 0x4664 + (idx << 6)) += *(int*)(self_ + (idx << 6) + 0x4000 + 0x670);
-            if ((*(int*)(self_ + (idx << 6) + 0x4000 + 0x664) >> 12) >= targetY)
-                *(int*)(self_ + (idx << 6) + 0x4000 + 0x664) = targetY << 12;
+            mBombs[index].y += mBombs[index].speed;
+            if ((mBombs[index].y >> 12) >= targetY)
+                mBombs[index].y = targetY << 12;
             return;
         }
         if (targetX > curX) {
-            *(int*)(self_ + 0x4660 + (idx << 6)) += *(int*)(self_ + (idx << 6) + 0x4000 + 0x670);
-            if (targetX <= (*(int*)(self_ + (idx << 6) + 0x4000 + 0x660) >> 12))
-                *(int*)(self_ + (idx << 6) + 0x4000 + 0x660) = targetX << 12;
+            mBombs[index].x += mBombs[index].speed;
+            if (targetX <= (mBombs[index].x >> 12))
+                mBombs[index].x = targetX << 12;
         } else if (targetX < curX) {
-            *(int*)(self_ + 0x4660 + (idx << 6)) -= *(int*)(self_ + (idx << 6) + 0x4000 + 0x670);
+            mBombs[index].x -= mBombs[index].speed;
             if (targetX >= curX)
-                *(int*)(self_ + (idx << 6) + 0x4000 + 0x660) = targetX << 12;
+                mBombs[index].x = targetX << 12;
         }
     }
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 51 -- func_ov006_020d7958, 0x020d7958, size 0x4 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d7958
-extern "C" {
-void func_ov006_020d7958(void)
-{
-}
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7958Ev
+
+void dScMgBomroom_c::func_ov006_020d7958() {
 }
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 52 -- func_ov006_020d795c, 0x020d795c, size 0x128 */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d795c
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d795cEi
 #pragma push
 #pragma opt_strength_reduction off
 #pragma opt_common_subs off
-extern "C" {
-void func_ov006_020d795c(char *o, int i)
-{
-    int b, v;
+
+void dScMgBomroom_c::func_ov006_020d795c(int index) {
+    char * raw = (char *)this;
+    int color, x;
     {
-        s16 tv = data_02082214[((*(u16 *)(o + i * 0x40 + 0x468c)) >> 4) * 2 + 1];
-        *(int *)((char *)(((int)o + 0x4660)) + i * 0x40) +=
-            (int)(((s64)tv * *(int *)(o + i * 0x40 + 0x4670) + 0x800) >> 12);
+        s16 sine = data_02082214[((mBombs[index].angle) >> 4) * 2 + 1];
+        mBombs[index].x +=
+            (int)(((s64)sine * mBombs[index].speed + 0x800) >> 12);
     }
     {
-        s16 tv = data_02082214[((*(u16 *)(o + i * 0x40 + 0x468c)) >> 4) * 2];
-        *(int *)((char *)(((int)o + 0x4664)) + i * 0x40) +=
-            (int)(((s64)tv * *(int *)(o + i * 0x40 + 0x4670) + 0x800) >> 12);
+        s16 sine = data_02082214[((mBombs[index].angle) >> 4) * 2];
+        mBombs[index].y +=
+            (int)(((s64)sine * mBombs[index].speed + 0x800) >> 12);
     }
-    b = *(u8 *)(o + i * 0x40 + 0x4696);
-    v = *(int *)(o + i * 0x40 + 0x4660) >> 12;
-    if (b != 0) {
-        if (v >= 0x110) {
-            *(u8 *)(o + i * 0x40 + 0x469b) = 2;
-            *(int *)(o + i * 0x40 + 0x4660) = 0x80000;
-            *(int *)(o + i * 0x40 + 0x4664) = -0xf0000;
+    color = mBombs[index].color;
+    x = mBombs[index].x >> 12;
+    if (color != 0) {
+        if (x >= 0x110) {
+            mBombs[index].substate = 2;
+            mBombs[index].x = 0x80000;
+            mBombs[index].y = -0xf0000;
         }
     } else {
-        if (v <= -0x10) {
-            *(u8 *)(o + i * 0x40 + 0x469b) = 2;
-            *(int *)(o + i * 0x40 + 0x4660) = 0x80000;
-            *(int *)(o + i * 0x40 + 0x4664) = -0xf0000;
+        if (x <= -0x10) {
+            mBombs[index].substate = 2;
+            mBombs[index].x = 0x80000;
+            mBombs[index].y = -0xf0000;
         }
     }
-    func_ov006_020d634c(o, *(u8 *)(o + i * 0x40 + 0x4696));
+    func_ov006_020d634c(mBombs[index].color);
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 53 -- func_ov006_020d7a84, 0x020d7a84, size 0x17c */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d7a84
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7a84Ei
 #pragma push
 #pragma opt_strength_reduction off
 #pragma opt_common_subs off
-extern "C" {
-void func_ov006_020d7a84(char *c, int i)
-{
-    int b, x, z, tx, ty;
 
-    tx = (*(u8 *)(c + i * 0x40 + 0x4696) != 0) ? 0x100 : 0;
+void dScMgBomroom_c::func_ov006_020d7a84(int index) {
+    char * raw = (char *)this;
+    int color, x, z, tx, ty;
+
+    tx = (mBombs[index].color != 0) ? 0x100 : 0;
     ty = 0x60;
-    tx -= *(int *)(c + i * 0x40 + 0x4660) >> 12;
-    ty -= *(int *)(c + i * 0x40 + 0x4664) >> 12;
+    tx -= mBombs[index].x >> 12;
+    ty -= mBombs[index].y >> 12;
 
-    *(s16 *)(c + i * 0x40 + 0x468c) =
+    mBombs[index].angle =
         _ZN4cstd5atan2E5Fix12IiES1_(ty, tx);
 
     {
-        s16 tv = data_02082214[
-            ((*(u16 *)(c + i * 0x40 + 0x468c) >> 4) * 2) + 1];
+        s16 sine = data_02082214[
+            ((mBombs[index].angle >> 4) * 2) + 1];
 
-        *(int *)((char *)(((int)c + 0x4660)) +
-                  i * 0x40) +=
-            (int)(((s64)tv *
-                   *(int *)(c + i * 0x40 + 0x4670) + 0x800) >> 12);
+        mBombs[index].x +=
+            (int)(((s64)sine *
+                   mBombs[index].speed + 0x800) >> 12);
     }
 
     {
-        s16 tv = data_02082214[
-            (*(u16 *)(c + i * 0x40 + 0x468c) >> 4) * 2];
+        s16 sine = data_02082214[
+            (mBombs[index].angle >> 4) * 2];
 
-        *(int *)((char *)(((int)c + 0x4664)) +
-                  i * 0x40) +=
-            (int)(((s64)tv *
-                   *(int *)(c + i * 0x40 + 0x4670) + 0x800) >> 12);
+        mBombs[index].y +=
+            (int)(((s64)sine *
+                   mBombs[index].speed + 0x800) >> 12);
     }
 
-    b = *(u8 *)(c + i * 0x40 + 0x4696);
-    x = *(int *)(c + i * 0x40 + 0x4660) >> 12;
-    z = *(int *)(c + i * 0x40 + 0x4664) >> 12;
-    tx = b ? 0x100 : 0;
+    color = mBombs[index].color;
+    x = mBombs[index].x >> 12;
+    z = mBombs[index].y >> 12;
+    tx = color ? 0x100 : 0;
 
     if (x > tx + 2)
         goto done;
@@ -1305,32 +1358,1082 @@ void func_ov006_020d7a84(char *c, int i)
     if (z < 0x5e)
         goto done;
 
-    *(u8 *)(c + i * 0x40 + 0x469b) = 1;
-    if (*(u8 *)(c + i * 0x40 + 0x4696) != 0)
-        *(s16 *)(c + i * 0x40 + 0x468c) = 0;
+    mBombs[index].substate = 1;
+    if (mBombs[index].color != 0)
+        mBombs[index].angle = 0;
     else
-        *(u16 *)(c + i * 0x40 + 0x468c) = 0x8000;
+        mBombs[index].angle = 0x8000;
 
 done:
-    func_ov006_020d634c(c, *(u8 *)(c + i * 0x40 + 0x4696));
+    func_ov006_020d634c(mBombs[index].color);
 }
-}
+
 #pragma pop
 
-/* ---------------------------------------------------------------- */
-/* ROM ordinal 54 -- func_ov006_020d7c00, 0x020d7c00, size 0x4c */
-/* ---------------------------------------------------------------- */
-// @symbol func_ov006_020d7c00
-extern "C" {
-struct C_7c00;
-typedef void (C_7c00::*PMF_7c00)(int);
-struct Entry_7c00 { PMF_7c00 pmf; };
-struct Elem_7c00 { char pad[0x40]; };
-struct C_7c00 {};
-extern "C" Entry_7c00 data_ov006_02141708[];
-extern "C" void func_ov006_020d7c00(C_7c00* c, int i){
-  Elem_7c00* e = (Elem_7c00*)c + i;
-  unsigned char idx = *((unsigned char*)e + 0x469b);
-  (c->*(data_ov006_02141708[idx].pmf))(i);
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7c00Ei
+/* Runs the bomb's current handler: the byte at +0x3b indexes the
+ * pointer-to-member table data_ov006_02141708. */
+
+extern "C" PMFEntry data_ov006_02141708[];
+void dScMgBomroom_c::func_ov006_020d7c00(int index) {
+  unsigned char state = mBombs[index].substate;
+  (this->*(data_ov006_02141708[state].pmf))(index);
 }
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7c4cEi
+/* Roaming step: advance x/y along the angle at speed (sine table, Fix12),
+ * then bounce off the box selected by color (0xc0..0x100 x 0x40..0x80 for
+ * color 1, 0..0x40 x 0x40..0x80 for color 0): a vertical wall mirrors the
+ * angle (0x8000 - a), a horizontal one negates it, and the coordinate is
+ * pinned just inside the wall. */
+
+void dScMgBomroom_c::func_ov006_020d7c4c(int idx) {
+    dScMgBomroom_c * self = (dScMgBomroom_c *)this;
+    int xv;
+    int yv;
+    s16 sinv;
+    s16 cosv;
+
+    sinv = data_02082214[(self->mBombs[idx].angle >> 4) * 2 + 1];
+    self->mBombs[idx].x += (s32)(((s64)sinv * self->mBombs[idx].speed + 0x800) >> 12);
+    cosv = data_02082214[(self->mBombs[idx].angle >> 4) * 2];
+    self->mBombs[idx].y += (s32)(((s64)cosv * self->mBombs[idx].speed + 0x800) >> 12);
+    xv = self->mBombs[idx].x >> 12;
+    yv = self->mBombs[idx].y >> 12;
+    if (self->mBombs[idx].color != 0) {
+        if (xv + 0xc > 0x100) {
+            self->mBombs[idx].angle = 0x8000 - self->mBombs[idx].angle;
+            self->mBombs[idx].x = 0xf4000;
+        } else if (xv - 0xc < 0xc0) {
+            self->mBombs[idx].angle = 0x8000 - self->mBombs[idx].angle;
+            self->mBombs[idx].x = 0xcc000;
+        }
+        if (yv + 0xc > 0x80) {
+            self->mBombs[idx].angle = -self->mBombs[idx].angle;
+            self->mBombs[idx].y = 0x74000;
+        } else if (yv - 0xc < 0x40) {
+            self->mBombs[idx].angle = -self->mBombs[idx].angle;
+            self->mBombs[idx].y = 0x4c000;
+        }
+    } else {
+        if (xv + 0xc > 0x40) {
+            self->mBombs[idx].angle = 0x8000 - self->mBombs[idx].angle;
+            self->mBombs[idx].x = 0x34000;
+        } else if (xv - 0xc < 0) {
+            self->mBombs[idx].angle = 0x8000 - self->mBombs[idx].angle;
+            self->mBombs[idx].x = 0xc000;
+        }
+        if (yv + 0xc > 0x80) {
+            self->mBombs[idx].angle = -self->mBombs[idx].angle;
+            self->mBombs[idx].y = 0x74000;
+        } else if (yv - 0xc < 0x40) {
+            self->mBombs[idx].angle = -self->mBombs[idx].angle;
+            self->mBombs[idx].y = 0x4c000;
+        }
+    }
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7e7cEi
+
+void dScMgBomroom_c::func_ov006_020d7e7c(int i) {
+    char * c = (char *)this;
+    char *b = c + i * 64;
+    if (mBombs[i].unk_3d == 0) return;
+    if (mBombs[i].frame != 0) return;
+    if (mBombs[i].counter != 1) return;
+    Sound::PlayBank2_2D(0x1e0);
+    unk_62f0 = 0x60;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7edcEi
+
+void dScMgBomroom_c::func_ov006_020d7edc(int idx) {
+    unsigned char * c = (unsigned char *)this;
+    unsigned char *slot = c + idx * 0x40;
+    if (*(unsigned short *)(slot + 0x4690) != 0) {
+        unsigned short *p = (unsigned short *)(c + 0x4690 + idx * 0x40);
+        *p = *p - 1;
+        if (*(short *)(slot + 0x4690) < 0) *(unsigned short *)(slot + 0x4690) = 0;
+    } else {
+        *(unsigned char *)(slot + 0x4697) = 4;
+        *(unsigned char *)(slot + 0x4694) = 3;
+        *(unsigned char *)(slot + 0x4695) = 0;
+        *(unsigned short *)(slot + 0x468e) = 0;
+    }
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d7f5cEi
+/* A held bomb follows the stylus less its grab offset, and +0x69e records
+ * whether it is over its own pen. With nothing held (0x62f6 is 0xff) the
+ * bomb goes back to state 1 instead. */
+#pragma push
+#pragma opt_common_subs off
+
+#define B ((char *)self_ + idx * 0x40 + 0x4000)
+void dScMgBomroom_c::func_ov006_020d7f5c(int idx) {
+    char * self_ = (char *)this;
+    if (mHeldColor == 0xff) {
+        mBombs[idx].state = 1;
+        mBombs[idx].unk_32 += 0x40;
+        func_ov006_020d6b88(idx);
+        func_ov006_020d6c90(idx);
+    } else {
+        int old_x = mBombs[idx].x;
+        int old_y = mBombs[idx].y;
+        int cx, cy;
+        u8 was;
+        int t = gActivePlayerSlot;
+
+        mBombs[idx].x = (gTouchX[t << 2] << 12) - mBombs[idx].grabX;
+        mBombs[idx].y = (gTouchY[t << 2] << 12) - mBombs[idx].grabY;
+        cx = old_x >> 12;
+        cy = old_y >> 12;
+
+        func_ov006_020d6e8c(idx);
+
+        {
+            int t2 = gActivePlayerSlot;
+            mBombs[idx].x = (gTouchX[t2 << 2] << 12) - mBombs[idx].grabX;
+            mBombs[idx].y = (gTouchY[t2 << 2] << 12) - mBombs[idx].grabY;
+        }
+
+        was = mBombs[idx].unk_3e;
+        if (mBombs[idx].color != 0) {
+            if (cx > 0xc0 && cy > 0x40 && cy < 0x80) {
+                mBombs[idx].unk_3e = 1;
+            } else {
+                mBombs[idx].unk_3e = 0;
+            }
+        } else {
+            if (cx < 0x40 && cy > 0x40 && cy < 0x80) {
+                mBombs[idx].unk_3e = 1;
+            } else {
+                mBombs[idx].unk_3e = 0;
+            }
+        }
+
+        if (was == 0 && mBombs[idx].unk_3e != 0) {
+            func_02012718(0x1e4, mBombs[idx].x);
+        }
+
+        mBombs[idx].unk_28 = func_02012468(mBombs[idx].unk_28, 2, 0x1e5, 4, 0, 0,
+                                            func_020126e8(mBombs[idx].x), 0);
+        mBombs[idx].prevX = mBombs[idx].x;
+        mBombs[idx].prevY = mBombs[idx].y;
+    }
+}
+#undef B
+
+#pragma pop
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d816cEi
+/* While the bomb's +0x32 timer runs it counts down (unless +0x62fb is
+ * set) and the bomb moves along its angle; once it reaches 0 the bomb goes
+ * to state 4 and func_ov006_020d68a8 takes over. */
+
+void dScMgBomroom_c::func_ov006_020d816c(int idx) {
+    char * self = (char *)this;
+    int t;
+
+    if (mBombs[idx].unk_32 != 0) {
+        if (unk_62fb == 0) {
+            mBombs[idx].unk_32--;
+        }
+        if ((short)mBombs[idx].unk_32 < 0) {
+            mBombs[idx].unk_32 = 0;
+        }
+        if (mBombs[idx].unk_32 <= 0x40) {
+            mBombs[idx].type = 2;
+        }
+    } else {
+        mBombs[idx].unk_32 = 0;
+        mBombs[idx].state = 4;
+        mBombs[idx].type = 3;
+        mBombs[idx].frame = 0;
+        mBombs[idx].counter = 0;
+        mBombs[idx].pen = 0;
+        mBombs[idx].unk_3d = 1;
+        func_ov006_020d68a8(idx);
+        return;
+    }
+
+    if (unk_62fb != 0) {
+        return;
+    }
+
+    t = data_02082214[((int)mBombs[idx].angle >> 4) * 2 + 1];
+    mBombs[idx].x += (int)(((long long)t * mBombs[idx].speed + 0x800) >> 12);
+    t = data_02082214[((int)mBombs[idx].angle >> 4) * 2];
+    mBombs[idx].y += (int)(((long long)t * mBombs[idx].speed + 0x800) >> 12);
+    func_ov006_020d6e8c(idx);
+    func_ov006_020d6d7c(idx);
+    mBombs[idx].prevX = mBombs[idx].x;
+    mBombs[idx].prevY = mBombs[idx].y;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8324Ei
+
+void dScMgBomroom_c::func_ov006_020d8324(int i) {
+    char * c = (char *)this;
+    char *b = c + (i << 6);
+    if (*(unsigned short *)(b + 0x4690) != 0) {
+        unsigned short *h = (unsigned short *)((c + 0x4690) + (i << 6));
+        *h = *h - 1;
+    } else {
+        *(unsigned char *)(b + 0x4699) = 1;
+        *(unsigned char *)(b + 0x4694) = 1;
+        *(unsigned char *)(b + 0x4697) = 1;
+    }
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d836cEv
+/* Per-frame bomb pass: with no touch, nothing is held (0x62f6 = 0xff);
+ * then every live bomb runs its state handler from the pointer-to-member
+ * table data_ov006_02141730, indexed by +0x697, and func_ov006_020d69b8. */
+#pragma push
+#pragma opt_strength_reduction off
+
+typedef void (dScMgBomroom_c::*PMF)(int);
+extern PMF data_ov006_02141730[];
+void dScMgBomroom_c::func_ov006_020d836c() {
+    char * c = (char *)this;
+    if (*(u8 *)(gTouchHeld + gActivePlayerSlot) == 0)
+        mHeldColor = 0xff;
+    int i;
+    for (i = 0; i < 0x70; i++) {
+        u8 *o = (u8 *)c + i * 0x40;
+        u8 flag;
+        o += 0x4000;
+        flag = o[0x698];
+        if (flag != 0) {
+            (this->*data_ov006_02141730[o[0x697]])(i);
+            func_ov006_020d69b8(i);
+        }
+    }
+}
+
+#pragma pop
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8408Ev
+/* Spawner: once the +0x62e2 delay runs out, picks a step from the spawn
+ * count at +0x62d8, drops that many new bombs into free records with a
+ * random color and angle, and reloads the delay from
+ * data_ov006_0212e2e8. */
+#pragma push
+#pragma opt_strength_reduction off
+#pragma opt_common_subs off
+#pragma opt_loop_invariants off
+
+void dScMgBomroom_c::func_ov006_020d8408()
+{
+    char * c = (char *)this;
+  s32 sb;
+  s32 step;
+  s32 ang;
+  s32 i;
+  s32 one;
+  s32 off;
+  s32 t0;
+  u32 rnd;
+  s32 cnt;
+  s32 flag;
+  s32 j;
+  s32 z0;
+  s32 z1;
+  s32 z2;
+  s32 z3;
+  s32 v80000;
+  s32 new_var;
+  s32 v4;
+  s32 v200;
+  s32 vB8000;
+  s32 j0;
+  if (mSpawnDelay != 0)
+  {
+    (*((u16 *) ( ((int) (c + 0x62e2)))))--;
+    if ((s16)mSpawnDelay < 0)
+    {
+      *((u16 *) ((c + 0x6200) + 0xe2)) = 0;
+    }
+    return;
+  }
+  t0 = *((s32 *) ((c + 0x6000) + 0x2d8));
+  sb = 0;
+  if (t0 >= 0x12c)
+  {
+    sb = 0xc;
+  }
+  else
+    if (t0 >= 0xc6)
+  {
+    sb = 0xb;
+  }
+  else
+    if (t0 >= 0x9f)
+  {
+    sb = 0xa;
+  }
+  else
+    if (t0 >= 0x84)
+  {
+    sb = 9;
+  }
+  else
+    if (t0 >= 0x5c)
+  {
+    sb = 8;
+  }
+  else
+    if (t0 >= 0x39)
+  {
+    sb = 7;
+  }
+  else
+    if (t0 >= 0x21)
+  {
+    sb = 6;
+  }
+  else
+    if (t0 >= 0x1b)
+  {
+    sb = 5;
+  }
+  else
+    if (t0 >= 0x15)
+  {
+    sb = 4;
+  }
+  else
+    if (t0 >= 0xf)
+  {
+    sb = 3;
+  }
+  else
+    if (t0 >= 9)
+  {
+    sb = 2;
+  }
+  else
+    if (t0 >= 3)
+  {
+    sb = 1;
+  }
+  cnt = 1;
+  step = 0;
+  if (sb >= 5)
+  {
+    cnt = 2;
+  }
+  if (sb == 9)
+  {
+    cnt = 1;
+  }
+  flag = 0;
+  if (sb == 7)
+  {
+    unsigned char *pf = (unsigned char *) ((int) ( ((int) (c + 0x62fc))));
+    s32 bit = *((unsigned char *) ((c + 0x6000) + 0x2fc));
+    cnt = 2;
+    flag = (bit & 1) + 1;
+    *pf ^= 1;
+    step = 0x3000;
+  }
+  new_var = sb;
+  if (new_var == 8)
+  {
+    s32 bit = (*((unsigned char *) ((c + 0x6000) + 0x2fc))) & 1;
+    unsigned char *pf = (unsigned char *) ((int) ( ((int) (c + 0x62fc))));
+    s32 x = *pf;
+    cnt = bit + 2;
+    *pf = x ^ 1;
+    flag = bit + 1;
+    if (cnt == 2)
+    {
+      step = 0x3000;
+    }
+    else
+    {
+      step = 0x1800;
+    }
+  }
+  if (new_var == 10)
+  {
+    cnt = 4;
+    step = 0x3000;
+  }
+  if (sb == 11)
+  {
+    unsigned char *pf = (unsigned char *) ((int) ( ((int) (c + 0x62fc))));
+    s32 bit = *((unsigned char *) ((c + 0x6000) + 0x2fc));
+    cnt = 3;
+    flag = (bit & 1) + 1;
+    *pf ^= 1;
+    step = 0x1800;
+  }
+  if (sb >= 12)
+  {
+    cnt = 6;
+    step = 0x1800;
+  }
+  i = 0;
+  if (cnt > 0)
+  {
+    v80000 = 0x80000;
+    v4 = 4;
+    v200 = 0x200;
+    vB8000 = 0xb8000;
+    off = 0x4698;
+    ang = 0;
+    z0 = 0;
+    z1 = 0;
+    z2 = 0;
+    z3 = 0;
+    one = 1;
+    j0 = 0;
+    do
+    {
+      s32 z = z0;
+      j = j0;
+      while (1)
+      {
+        char *row;
+        unsigned char *slot = (unsigned char *) ((c + (j << 6)) + off);
+        if ((*slot) == 0)
+        {
+          unsigned char *ptype;
+          *slot = (unsigned char) one;
+          (c + (j << 6))[0x4697] = (char) z;
+          (c + (j << 6))[0x469b] = (char) z;
+          (c + (j << 6))[0x469c] = (char) z;
+          (c + (j << 6))[0x469d] = (char) z;
+          *((s32 *) ((c + (j << 6)) + 0x4660)) = v80000;
+          *((s16 *) ((c + (j << 6)) + 0x4690)) = (s16) v4;
+          *((s16 *) ((c + (j << 6)) + 0x4692)) = (s16) v200;
+          rnd = (u32) RandomIntInternal(&data_0209d4b8);
+          ptype = (unsigned char *) ((int) ( ((int) ((c + (j << 6)) + 0x4696))));
+          *ptype = (((rnd >> 16) & 0x7fff) << 1) >> 15;
+          *((s32 *) ((c + (j << 6)) + 0x4670)) = 0x999;
+          *((s32 *) ((c + (j << 6)) + 0x4688)) = z1;
+          if (sb == 0)
+          {
+            *ptype = (unsigned char) one;
+            func_ov006_020d66c4(z1);
+          }
+          if (sb <= 1)
+          {
+            rnd = (u32) RandomIntInternal(&data_0209d4b8);
+            *((s16 *) ((((0, c)) + (j << 6)) + 0x468c)) = (((((rnd >> 16) & 0x7fff) << 2) >> 15) << 12) + 0x2000;
+            *((s32 *) ((c + (j << 6)) + 0x4664)) = z2;
+          }
+          else
+            if (flag != 0)
+          {
+            if (flag == 1)
+            {
+              *((s16 *) ((c + (j << 6)) + 0x468c)) = ang + 0x2000;
+              *((s32 *) ((c + (j << 6)) + 0x4664)) = z2;
+              func_ov006_020d66c4(z2);
+            }
+            else
+            {
+              *((s16 *) ((c + (j << 6)) + 0x468c)) = ang + 0xa000;
+              *((s32 *) ((c + (j << 6)) + 0x4664)) = vB8000;
+              func_ov006_020d66c4(one);
+            }
+          }
+          else
+            if (((*((s32 *) ((c + 0x6000) + 0x2d8))) & 1) != 0)
+          {
+            if (step != 0)
+            {
+              *((s16 *) ((c + (j << 6)) + 0x468c)) = (step * (i >> 1)) + 0x2800;
+            }
+            else
+            {
+              rnd = (u32) RandomIntInternal(&data_0209d4b8);
+              *((s16 *) ((c + (j << 6)) + 0x468c)) = (((((rnd >> 16) & 0x7fff) << 2) >> 15) << 12) + 0x2000;
+            }
+            *((s32 *) ((c + (j << 6)) + 0x4664)) = z3;
+            func_ov006_020d66c4(z3);
+          }
+          else
+          {
+            if (step != 0)
+            {
+              *((s16 *) ((c + (j << 6)) + 0x468c)) = (step * (i >> 1)) + 0xa800;
+            }
+            else
+            {
+              rnd = (u32) RandomIntInternal(&data_0209d4b8);
+              *((s16 *) ((c + (j << 6)) + 0x468c)) = (((((rnd >> 16) & 0x7fff) << 2) >> 15) << 12) + 0xa000;
+            }
+            *((s32 *) ((c + (j << 6)) + 0x4664)) = vB8000;
+            func_ov006_020d66c4(one);
+          }
+          (*((s32 *) ((int) ( ((int) (c + 0x62d8))))))++;
+          break;
+        }
+        j++;
+        if (j >= 0x70)
+        {
+          break;
+        }
+      }
+
+      ang += step;
+      i++;
+    }
+    while (i < cnt);
+  }
+  mSpawnDelay = data_ov006_0212e2e8[sb];
+}
+
+#pragma pop
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8904Ev
+
+void dScMgBomroom_c::func_ov006_020d8904() {
+    char * p = (char *)this;
+    int i;
+    for (i = 0; i < 0x70; i++) {
+        if (mBombs[i].active != 0) {
+            if (mBombs[i].state == 6)
+                mBombs[i].unk_39 = 0;
+        }
+    }
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d893cEv
+/* Zeroes all 0x70 bomb records (stride 0x40 at +0x4660): 11 words, 4
+ * halfwords and 10 bytes each. */
+
+typedef struct {
+    u32 w0;      /* +0x00 */
+    u32 w1;
+    u32 w2;
+    u32 w3;
+    u32 w4;
+    u32 w5;
+    u32 w6;
+    u32 w7;
+    u32 w8;
+    u32 w9;
+    u32 w10;     /* +0x28 */
+    u16 h0;      /* +0x2c */
+    u16 h1;
+    u16 h2;
+    u16 h3;      /* +0x32 */
+    u8 b0;       /* +0x34 */
+    u8 b1;
+    u8 b2;
+    u8 b3;
+    u8 b4;       /* +0x38 */
+    u8 b5;       /* +0x39 */
+    u8 b6;       /* +0x3a */
+    u8 b7;       /* +0x3b */
+    u8 b8;       /* +0x3c */
+    u8 b9;       /* +0x3d */
+    char _pad[2];
+} Entry_893c; /* 0x40 */
+
+void dScMgBomroom_c::func_ov006_020d893c() {
+    int i;
+    for (i = 0; i < 0x70; i++) {
+        mBombs[i].x = 0;
+        mBombs[i].y = 0;
+        mBombs[i].grabX = 0;
+        mBombs[i].grabY = 0;
+        mBombs[i].speed = 0;
+        mBombs[i].unk_14 = 0;
+        mBombs[i].unk_18 = 0;
+        mBombs[i].prevX = 0;
+        mBombs[i].prevY = 0;
+        mBombs[i].sound = 0;
+        mBombs[i].unk_28 = 0;
+        mBombs[i].angle = 0;
+        mBombs[i].counter = 0;
+        mBombs[i].unk_30 = 0;
+        mBombs[i].unk_32 = 0;
+        mBombs[i].type = 0;
+        mBombs[i].frame = 0;
+        mBombs[i].color = 0;
+        mBombs[i].state = 0;
+        mBombs[i].active = 0;
+        mBombs[i].substate = 0;
+        mBombs[i].unk_39 = 0;
+        mBombs[i].pen = 0;
+        mBombs[i].unk_3c = 0;
+        mBombs[i].unk_3d = 0;
+    }
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d89c4Ev
+#pragma push
+#pragma opt_strength_reduction off
+
+void dScMgBomroom_c::func_ov006_020d89c4() {
+    char * self = (char *)this;
+    int j;
+
+    func_ov006_020d836c();
+
+    if (mStateTimer != 0) {
+        (mStateTimer)--;
+        if ((s16)mStateTimer < 0)
+            mStateTimer = 0;
+        return;
+    }
+
+    for (j = 0; j < 0x70; j++) {
+        if (mBombs[j].active == 2) {
+            if (mBombs[j].state == 6
+             && mBombs[j].substate == 4) {
+                mBombs[j].active = 0;
+                mBombs[j].unk_39 = 0;
+            }
+        }
+    }
+
+    if (mBlastPen != 0) {
+        mStateTimer = 0x60;
+        mSceneState = 4;
+        mSubState = 0;
+        func_ov004_020adb1c(unk_62ee + func_ov004_020adbc0());
+    } else {
+        func_ov004_020adb1c(unk_62ee + func_ov004_020adbc0());
+        mSceneState = 2;
+        mSubState = 0;
+        mBlastPen = 0;
+        unk_62fb = 0;
+    }
+    unk_62f9 = 0;
+    unk_62ee = 0;
+    SetBg0Offset(0, 0);
+}
+
+#pragma pop
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8af8Ev
+
+void dScMgBomroom_c::func_ov006_020d8af8() {
+    char * self = (char *)this;
+    int found;
+    int j;
+    u8 (*arr)[0x40] = (u8 (*)[0x40])self;
+
+    func_ov006_020d836c();
+
+    if (mStateTimer != 0) {
+        (mStateTimer)--;
+        if ((s16)mStateTimer > 0)
+            return;
+        mStateTimer = 0;
+        unk_62e0 = 0x10;
+        if (func_ov006_020d8c88() != 0) {
+            mBg2State = 1;
+            Sound::PlayBank2_2D(0x1dd);
+        }
+        return;
+    }
+
+    if (unk_62e0 != 0) {
+        (unk_62e0)--;
+        return;
+    }
+
+    found = 0;
+    j = 0;
+    do {
+        if (mBombs[j].active == 1 && mBombs[j].state == 6 && mBombs[j].substate == 4)
+            found = j + 1;
+        j++;
+    } while (j < 0x70);
+
+    (unk_62ea)++;
+    if (unk_62ea < 4)
+        return;
+
+    if (found != 0) {
+        mBombs[found - 1].active = 2;
+        unk_62ea = 0;
+        (unk_62ee)++;
+        Sound::PlayBank2_2D(0x1bc);
+    } else {
+        unk_62ea = 0;
+        mStateTimer = 0x40;
+        mSubState = 3;
+    }
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8c88Ev
+
+int dScMgBomroom_c::func_ov006_020d8c88() {
+    char * c = (char *)this;
+    int i;
+    unsigned char (*arr)[0x40];
+    i = 0;
+    arr = (unsigned char (*)[0x40])c;
+    do {
+        if (mBombs[i].active == 1 && mBombs[i].state == 6)
+            return 1;
+        i++;
+    } while (i < 0x70);
+    return 0;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8cc4Ev
+#pragma push
+#pragma opt_strength_reduction off
+
+void dScMgBomroom_c::func_ov006_020d8cc4() {
+    char * base = (char *)this;
+    func_ov006_020d836c();
+    int c4 = 0;
+    int c2 = 0;
+    int i = 0;
+    do {
+        char *e = base + (i << 6);
+        e = e + 0x4000;
+        if (*(unsigned char *)(e + 0x698) != 0 && *(unsigned char *)(e + 0x697) == 6) {
+            unsigned char v = *(unsigned char *)(e + 0x69b);
+            if (v != 2) c2++;
+            if (v != 4) c4++;
+        }
+        i++;
+    } while (i < 0x70);
+    if (c2 == 0 && *(unsigned char *)(base + 0x6000 + 0x2f4) == 0) {
+        func_ov006_020d7604();
+    }
+    if (c4 != 0) return;
+    func_ov006_020d5e1c();
+    mStateTimer = 0x10;
+    *(int *)(base + 0x6000 + 0x2d4) = 2;
+    *(unsigned char *)(base + 0x6000 + 0x2f9) = 1;
+}
+
+#pragma pop
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8d84Ev
+
+void dScMgBomroom_c::func_ov006_020d8d84() {
+    char * self = (char *)this;
+    int flag;
+    int count;
+    int i;
+    u8 (*arr)[0x40] = (u8 (*)[0x40])self;
+    int (*iarr)[0x10] = (int (*)[0x10])self;
+
+    func_ov006_020d836c();
+
+    if (mStateTimer != 0) {
+        (mStateTimer)--;
+        if ((s16)mStateTimer < 0)
+            mStateTimer = 0;
+        return;
+    }
+
+    if (mBlastPen != 0) {
+        flag = 0;
+        count = 0;
+        i = 0;
+        do {
+            if (mBombs[i].active != 0 && mBombs[i].state != 6) {
+                mBombs[i].state = 6;
+                mBombs[i].substate = 0;
+                iarr[i][0x119c] = 0x4000;
+                if (mBombs[i].color != 0)
+                    flag = 1;
+                count++;
+            }
+            i++;
+        } while (i < 0x70);
+        if (count != 0) {
+            Sound::PlayBank2_2D(0x1e6);
+            if (mBlastPen == 1) {
+                func_ov006_020d634c(0);
+                func_ov006_020d634c(1);
+            } else {
+                func_ov006_020d634c(flag);
+            }
+        }
+    } else {
+        i = 0;
+        do {
+            if (mBombs[i].active != 0 && mBombs[i].state == 5) {
+                if (mWinColor == mBombs[i].color) {
+                    mBombs[i].state = 6;
+                    mBombs[i].substate = 0;
+                    iarr[i][0x119c] = 0x4000;
+                }
+            }
+            i++;
+        } while (i < 0x70);
+        Sound::PlayBank2_2D(0x1e6);
+        func_ov006_020d634c(mWinColor);
+    }
+    mSubState = 1;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8f34Ev
+
+void dScMgBomroom_c::func_ov006_020d8f34() {
+    char * c = (char *)this;
+    if (mStateTimer == 0)
+        return;
+    mStateTimer -= 1;
+    if ((s16)mStateTimer > 0)
+        return;
+    mStateTimer = 0;
+    func_ov004_020b0a54(0x10);
+    *(u8 *)(c + 0xc3) = 0;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8f98Ev
+/* Runs the +0x62d4 sub-state through the pointer-to-member table
+ * data_ov006_021416a0, decoded by hand (a function word, then a
+ * this-adjust whose low bit marks a virtual call), then the three
+ * per-frame passes. */
+
+void dScMgBomroom_c::func_ov006_020d8f98() {
+    unsigned char * c = (unsigned char *)this;
+    int idx = mSubState;
+    int *e = &data_ov006_021416a0[idx * 2];
+    int off = e[1];
+    void *obj = c + (off >> 1);
+    void (*f)(void *);
+    if (off & 1) f = (void (*)(void *))(*(int *)(*(int *)obj + e[0]));
+    else f = (void (*)(void *))e[0];
+    f(obj);
+    func_ov006_020d65c8();
+    func_ov006_020d6278();
+    func_ov006_020d5fec();
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d8ff4Ev
+
+void dScMgBomroom_c::func_ov006_020d8ff4() {
+    void * c = (void *)this;
+    func_ov006_020d65c8();
+    func_ov006_020d8408();
+    func_ov006_020d836c();
+    func_ov006_020d6784();
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d9020Ev
+
+void dScMgBomroom_c::func_ov006_020d9020() {
+    void * c = (void *)this;
+    unsigned char *p = (unsigned char *)c;
+    if (p[0xc4] == 0) { p[0xc3] = 1; p[0xc4] = 1; *(short *)(p + 0xc0) = 0; }
+    *(int *)(p + 0x6000 + 0x2d0) = 2;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d904cEv
+
+void dScMgBomroom_c::func_ov006_020d904c() {
+    void * c = (void *)this;
+    func_ov006_020d6630();
+    func_ov006_020d62e0();
+    func_ov006_020d604c();
+    *(int *)((char *)c + 0x6000 + 0x2d0) = 1;
+}
+
+
+// @symbol _ZN14dScMgBomroom_c19func_ov006_020d907cEv
+/* Resets the round: clears every bomb record and the round counters
+ * between +0x62d8 and +0x62fc, then runs the other reset helpers. */
+
+void dScMgBomroom_c::func_ov006_020d907c() {
+    void * p = (void *)this;
+    char *c = (char *)p;
+    func_ov006_020d893c();
+    mSpawnDelay = 0;
+    unk_62e4 = 0;
+    unk_62e6 = 0;
+    mHeldColor = 0xff;
+    unk_62f7 = 0;
+    unk_62ea = 0;
+    mBlastPen = 0;
+    mSpawnCount = 0;
+    unk_62f0 = 0;
+    unk_62f9 = 0;
+    unk_62fb = 0;
+    *(unsigned char *)(c + 0x62fc) = 0;
+    func_ov004_020adb1c(0);
+    func_ov006_020d669c();
+    func_ov006_020d63ac();
+    func_ov006_020d6084();
+    func_ov006_020d5dd4();
+    func_ov006_020d5c60();
+    func_ov006_020d5b00();
+}
+
+
+/* Slot 18 override of dScMgBase_c::OnYoshiTryEat(int); the signature
+ * repeats the base declaration exactly, or mwcc appends a slot instead of
+ * overriding. */
+// @symbol _ZN14dScMgBomroom_c13OnYoshiTryEatEi
+void dScMgBomroom_c::OnYoshiTryEat(int /* arg */)
+{
+    unsigned char *c = (unsigned char *)this;
+
+    func_ov006_020d907c();
+    unsigned char *a = c + 0x6200;
+    unsigned char *b = c + 0x6000;
+    *(unsigned short *)(a + 0xee) = 0;
+    *(int *)(b + 0x2d0) = 0;
+    G2x::SetBlendAlpha((volatile u16 *)0x4000050, 1, 0x1c, 4, 3);
+    SetBg0Offset(0, 0);
+}
+
+// @symbol _ZN14dScMgBomroom_c6RenderEv
+s32 dScMgBomroom_c::Render()
+{
+    func_ov006_020d5dfc();
+    func_ov006_020d6098();
+    func_ov006_020d5e5c();
+    func_ov006_020d672c();
+    func_ov006_020d7524();
+    func_ov006_020d63d4();
+    func_ov006_020d5c88();
+    func_ov006_020d5ab0();
+    return 1;
+}
+
+// @symbol _ZN14dScMgBomroom_c8BehaviorEv
+/* Waits out the +0x62f0 delay, then runs the round state at +0x62d0 from
+ * the pointer-to-member table data_ov006_021416e0 and steps the sprite
+ * records and the BG2 offset. */
+typedef void (dScMgBomroom_c::*PMFv)();
+extern "C" PMFv data_ov006_021416e0[];
+s32 dScMgBomroom_c::Behavior()
+{
+    char *c = (char *)this;
+    if (*(unsigned short *)(c + 0x6200 + 0xf0) != 0) {
+        unsigned short *t = (unsigned short *)(((int)c + 0x62f0));
+        *t = *t - 1;
+        if (*(short *)(c + 0x6200 + 0xf0) <= 0)
+            *(short *)(c + 0x6200 + 0xf0) = 0;
+    } else {
+        (this->*data_ov006_021416e0[*(int *)(c + 0x6000 + 0x2d0)])();
+        func_ov006_020d5d08();
+        func_ov006_020d5b10();
+    }
+    return 1;
+}
+
+// @symbol _ZN14dScMgBomroom_c13InitResourcesEv
+/* Loads the main- and sub-screen backgrounds, palettes and object
+ * graphics, sets the blend, then resets the round into state 1. */
+s32 dScMgBomroom_c::InitResources()
+{
+    char *c = (char *)this;
+    char *b;
+    volatile u16 fill;
+    int f;
+    int arc;
+
+    data_0209d45c |= 8;
+    *(volatile u16 *)0x400000e = (*(volatile u16 *)0x400000e & ~3) | 2;
+    *(volatile u16 *)0x400000e = (*(volatile u16 *)0x400000e & 0x43) | 0x1210;
+
+    f = LoadFile(0x23);
+    DecompressLZ16((void *)f, (void *)(func_02054d88() + 0x4000));
+    Deallocate((void *)f);
+
+    f = LoadFile(0x24);
+    _ZN2GX10LoadBGPlttEPKvjj((const void *)f, 0x180, 0x80);
+    Deallocate((void *)f);
+
+    f = LoadFile(0x25);
+    func_02056314((void *)f, 0, 0x800);
+    Deallocate((void *)f);
+
+    data_0209d45c |= 4;
+    *(volatile u16 *)0x400000c = (*(volatile u16 *)0x400000c & ~3) | 1;
+    *(volatile u16 *)0x400000c = (*(volatile u16 *)0x400000c & 0x43) | 0x9410;
+
+    f = LoadFile(3);
+    b = (char *)_ZN2G212GetBG2ScrPtrEv();
+    fill = 0xf23f;
+    MultiStore16(fill, b, 0x1000);
+    func_020563d4((const void *)f, 0, 0x800);
+    Deallocate((void *)f);
+
+    data_0209d45c |= 1;
+    *(volatile u16 *)0x4000008 = (*(volatile u16 *)0x4000008 & ~3);
+    *(volatile u16 *)0x4000008 = (*(volatile u16 *)0x4000008 & 0x43) | 0x5610;
+
+    f = LoadFile(2);
+    func_02056554((const void *)f, 0, 0x800);
+    Deallocate((void *)f);
+
+    f = LoadFile(7);
+    func_02056554((const void *)f, 0x800, 0x800);
+    Deallocate((void *)f);
+
+    G2x::SetBlendAlpha((volatile u16 *)0x4000050, 1, 0x1c, 4, 3);
+
+    arc = LoadFile(0xb5);
+    f = LoadFile(0xb6);
+    DecompressLZ16((void *)arc, (void *)0x6400000);
+    _ZN2GX11LoadOBJPlttEPKvjj((const void *)f, 0, 0x100);
+
+    data_0209d454 |= 8;
+    *(volatile u16 *)0x400100e = (*(volatile u16 *)0x400100e & ~3) | 1;
+    *(volatile u16 *)0x400100e = (*(volatile u16 *)0x400100e & 0x43) | 0x210;
+
+    {
+        int f7 = LoadFile(0x23);
+        DecompressLZ16((void *)f7, (void *)(_ZN3G2S13GetBG3CharPtrEv() + 0x4000));
+        Deallocate((void *)f7);
+
+        f7 = LoadFile(0x24);
+        _ZN3GXS10LoadBGPlttEPKvjj((const void *)f7, 0x180, 0x80);
+        Deallocate((void *)f7);
+
+        f7 = LoadFile(0x22);
+        func_020562b4((const void *)f7, 0, 0x800);
+        Deallocate((void *)f7);
+
+        DecompressLZ16((void *)arc, (void *)0x6600000);
+        _ZN3GXS11LoadOBJPlttEPKvjj((const void *)f, 0, 0x100);
+        Deallocate((void *)arc);
+        Deallocate((void *)f);
+    }
+
+    func_ov006_020d907c();
+    func_ov006_020d6630();
+    func_ov006_020d62e0();
+    func_ov006_020d604c();
+    *(int *)(c + 0x6000 + 0x2d0) = 1;
+    *(u16 *)(c + 0x6200 + 0xee) = 0;
+    func_ov004_020b04d0(0x20);
+    func_ov004_020adb1c(0);
+    return 1;
+}
+
+/* Reconstructed source-style name: SM64DS proves dScMgBomroom_c through RTTI,
+ * allocation size, vtable identity, and the MG_BOMROOM registry profile;
+ * later EAD lineage supplies classInit. Exact original spelling is not
+ * preserved. Historical alias: MgSortOrSplode_Spawn. */
+// @symbol dScMgBomroom_c_classInit
+extern "C" void *dScMgBomroom_c_classInit()
+{
+    return new dScMgBomroom_c;
 }

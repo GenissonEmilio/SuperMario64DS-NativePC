@@ -81,14 +81,14 @@ so re-measure before quoting a number. The lesson below stands; the example is h
 as strong evidence, then reconcile across the whole hierarchy -- which is what pass 2
 below does for you.
 
-`include/BrickBlock.h` carries a banner naming the generator that produced it. **That
+`include/daObjBlockItemTag_c.h` carries a banner naming the generator that produced it. **That
 banner was never true.** No `tools/gen_header.py` was ever committed; the 241 headers
 carrying it were added in one commit (`be9d58ed`, PR #866) that added zero `tools/`
 files, so nothing ever checked what they claim:
 
 ```c
 /* AUTO-GENERATED from matched-function evidence by tools/gen_header.py
- * class BrickBlock: 5 matched functions, 7 evidenced fields.
+ * class daObjBlockItemTag_c: 5 matched functions, 7 evidenced fields.
  * Offsets/widths are observed, not guessed. Gaps are explicit padding.
  * Field NAMES are placeholders - renaming cannot change codegen. */
 ```
@@ -190,10 +190,10 @@ Write **byte-unobservable**, not *verified*.
 
 ## 3. The ladder, with the tree's own before/after
 
-**Rung 0 -- generated skeleton** (`include/BrickBlock.h`, today):
+**Rung 0 -- generated skeleton** (`include/daObjBlockItemTag_c.h`, today):
 
 ```c
-struct BrickBlock {
+struct daObjBlockItemTag_c {
     u8  pad_000[0x8];
     s32 unk_008;            /* 0x008 */
     u16 unk_00c;            /* 0x00c */
@@ -202,14 +202,14 @@ struct BrickBlock {
 };
 ```
 
-**Rung 1 -- reconstructed header** (`include/Fader.h`, fields done, vtable NOT):
+**Rung 1 -- reconstructed header** (`include/dFader_c.h`, fields done, vtable NOT):
 
 ```c
 /* currInterp=0x4 and speed=0x8, both 4 bytes.
  * FIXED POINT. currInterp runs 0..0x1000 -- 0.0..1.0 in 20.12. SetToEnd writes
  * 0x1000 and SetToStart writes 0; SetForwardTime derives speed as 1.0/frames,
  * which is why AdvanceInterp picks its target from the sign of speed. */
-struct Fader {
+struct dFader_c {
     Fix12i currInterp;  /* 0x04 -- current fade level, 0..0x1000 */
     Fix12i speed;       /* 0x08 -- per-frame delta; sign selects the target */
 ```
@@ -225,19 +225,20 @@ an explicit `void* vtable; /* 0x00 */`, because a C translation unit gets no imp
 vptr. Migrate one function of a polymorphic class without that and every C-side
 includer's offsets shift by 4.
 
-*Do not copy this:* the vtable half of `Fader.h` is **known wrong**. Dumping the four
-fader vtables out of `extracted/arm9_dec.bin` shows 10 slots each with Fader's slots
+*Do not copy this:* the vtable half of `dFader_c.h` is **known wrong**. Dumping the four
+fader vtables out of `extracted/arm9_dec.bin` shows 10 slots each with dFader_c's slots
 2-9 null -- an abstract base -- while the header declares 7 non-pure virtuals, and
-`FaderBrightness.h` declares three of the missing methods non-virtual. Fields
+`dFdBrightness_c.h` declares three of the missing methods non-virtual. Fields
 reconstructed, hierarchy not. Treat "this header looks finished" as a hypothesis and
 check the ROM's own vtable before building on it.
 
-**Rung 2 -- unmigrated function** (`src/_ZN10BrickBlockD0Ev.cpp`, today):
+**Rung 2 -- unmigrated function** (`_ZN19daObjBlockItemTag_cD0Ev`, as the tree carried
+it before ov002/daObjBlockItemTag_c was promoted):
 
 ```c
-int *_ZN10BrickBlockD0Ev(int *t)
+int *_ZN19daObjBlockItemTag_cD0Ev(int *t)
 {
-    t[0] = (int)_ZTV10BrickBlock;
+    t[0] = (int)_ZTV19daObjBlockItemTag_c;
     _ZN5ActorD2Ev(t);
     _ZN6Memory10DeallocateEPvP4Heap(t, data_020a0eac);
     return t;
@@ -246,18 +247,18 @@ int *_ZN10BrickBlockD0Ev(int *t)
 
 `this` is an `int*`, members are array indices, the symbol name is spelled by hand.
 
-**Rung 3 -- migrated function** (`src/engine/fader/_ZN5Fader13AdvanceInterpEv.cpp`, done):
+**Rung 3 -- migrated function** (`dFader_c::AdvanceInterp`, written as a one-function shard and since folded into `src/engine/fader/dFader_c.cpp`, done):
 
 ```c
 //cpp
-// @symbol _ZN5Fader13AdvanceInterpEv
-#include "Fader.h"
+// @symbol _ZN8dFader_c13AdvanceInterpEv
+#include "dFader_c.h"
 
 extern "C" void _Z14ApproachLinearRiii(Fix12i* value, Fix12i target, Fix12i step);
 
 /* Step currInterp one frame toward its target. A positive speed fades toward
    1.0, a negative one toward 0.0; the helper takes an unsigned step. */
-void Fader::AdvanceInterp()
+void dFader_c::AdvanceInterp()
 {
     Fix12i step = speed;
     Fix12i target = step >= 0 ? 0x1000 : 0;
@@ -268,7 +269,7 @@ void Fader::AdvanceInterp()
 ```
 
 Real method, implicit `this`, named typed members. **The compiler now mangles the
-symbol for you** -- `Fader::AdvanceInterp()` becomes `_ZN5Fader13AdvanceInterpEv`
+symbol for you** -- `dFader_c::AdvanceInterp()` becomes `_ZN8dFader_c13AdvanceInterpEv`
 without anyone spelling it.
 
 Note the honest leftover: the helper is still called by its raw mangled name. **Migration
@@ -281,7 +282,7 @@ declaration.
 Nothing merges and nothing accumulates. The binding is one line in a generated file:
 
 ```sh
-src/engine/fader/_ZN5Fader13AdvanceInterpEv.cpp:
+src/<dir>/_ZN8dFader_c13AdvanceInterpEv.cpp:
     complete
     .text start:0x020175e8 end:0x02017610
 ```
@@ -405,8 +406,8 @@ the check the ROM build cannot report**, and it is why the baseline is step 0.
   scalar args. See `notes/mwccarm-codegen.md` 6az.
 - **Do not define a destructor of a polymorphic class as a real method against its
   real header.** Defining it makes it the class's **key function**, so mwccarm emits
-  the whole vtable group into that translation unit — `Fader::~Fader() {}` yields
-  `_ZTV5Fader`, `_ZTI5Fader`, `_ZTS5Fader` and `_ZN5FaderD0Ev` alongside the
+  the whole vtable group into that translation unit — `dFader_c::~dFader_c() {}` yields
+  `_ZTV8dFader_c`, `_ZTI8dFader_c`, `_ZTS8dFader_c` and `_ZN8dFader_cD0Ev` alongside the
   destructor. Those already exist as delinked ROM data, so `eligible.py` rejects the
   file with **"extra sections: .data"** and the enrolled count falls.
 

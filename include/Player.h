@@ -25,7 +25,7 @@
 #define PLAYER_H
 #include "types.h"
 #include "dActor_c.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "dCcAcPos_c.h"
 #include "dBgCh_Actr.h"
 #include "ModelAnim.h"
@@ -115,7 +115,7 @@ struct Player : dActor_c {
        GetBodyModelID(mBodyModelId, 1) and TurnOffToonShading with
        GetBodyModelID(j, 0). The element type is ModelAnim, and the matched
        bodies pin every part of it: they reach +0x08 (Model's ModelComponents),
-       +0x14 (Model::mat4x3), +0x50 (the Animation base) and +0x58 (its
+       +0x14 (Model::mat4x3), +0x50 (the dExtFrameCtrl_c base) and +0x58 (its
        currFrame), and they call vtable slots 5 (Render) and 6 (Virtual18). */
     ModelAnim *mBodyModels[4];            /* 0x0dc */
     u8  unk_0ec;            /* 0x0ec */
@@ -123,7 +123,7 @@ struct Player : dActor_c {
     /* ~Player calls _ZN9ModelAnimD1Ev on this LAST of the two, and ModelAnim
        asserts 0x64 -- 0x0f0..0x154, closing exactly at unk_154. The markers
        this replaces are its own sub-objects: mAnimation1 at 0x140 was the
-       Animation base (+0x50) and unk_148 at 0x148 was that base's currFrame
+       dExtFrameCtrl_c base (+0x50) and unk_148 at 0x148 was that base's currFrame
        (+0x58). Both are reachable through the member now. */
     ModelAnim mModelAnim3;            /* 0x0f0 */
     /* EIGHT more models, same element type and the same evidence: CleanupResources
@@ -136,7 +136,7 @@ struct Player : dActor_c {
        its result is discarded. */
     ModelAnim *unk_154[8];            /* 0x154 */
     /* The other ModelAnim, destroyed FIRST of the two. 0x174..0x1d8, closing
-       exactly at unk_1d8; mAnimation2 at 0x1c4 was its Animation base. */
+       exactly at unk_1d8; mAnimation2 at 0x1c4 was its dExtFrameCtrl_c base. */
     ModelAnim mModelAnim4;            /* 0x174 */
     u8  unk_1d8;            /* 0x1d8 */
     u8  pad_1d9[0x3];
@@ -160,9 +160,9 @@ struct Player : dActor_c {
        the pairing is expressed and the name is not. */
     s32 unk_27c[4];            /* 0x27c */
     s32 unk_28c[8];            /* 0x28c */
-    /* ~Player calls _ZN11ShadowModelD1Ev on this, and ShadowModel asserts
+    /* ~Player calls _ZN17dExtShadowModel_cD1Ev on this, and dExtShadowModel_c asserts
        0x28 -- which closes exactly at mdCcAcPos_c. */
-    ShadowModel mShadowModel;            /* 0x2ac */
+    dExtShadowModel_c mShadowModel;            /* 0x2ac */
     /* ~Player calls _ZN10dCcAcPos_cD1Ev on this too, and the
        0x40 it asserts closes exactly at mAttackClsn. The four markers it
        absorbs are all dCc_c's own, reached through the base:
@@ -555,6 +555,7 @@ struct Player : dActor_c {
     int St_Climb_Main();
     int St_Crawl_Init();
     int St_Crawl_Main();
+    int St_CrazedCrate_Cleanup();
     int St_CrazedCrate_Init();
     int St_CrazedCrate_Main();
     int St_Crouch_Init();
@@ -674,6 +675,7 @@ struct Player : dActor_c {
     int St_Swim_Main();
     int St_SwingPlayer_Cleanup();
     int St_SwingPlayer_Init();
+    int St_SwingPlayer_Main();
     int St_Talk_Cleanup();
     int St_Talk_Init();
     int St_Talk_Main();
@@ -736,6 +738,175 @@ struct Player : dActor_c {
     void SetRealCharacter(unsigned int chr_);
     void TurnOffToonShading(unsigned int j);
     void Unk_020ca488();
+
+    /* Player commands of the Kuppa script (ov002 0x020bccfc..0x020bd828).
+       func_ov002_020bd664 dispatches a command record to one of fourteen of
+       these through a table of pointers to members, all of one signature:
+       the command's parameter bytes and its begin and end frame.
+       func_ov002_020bd06c is the step change func_ov002_020bd20c makes.
+       The parameters are left unnamed on purpose: each NAMED parameter here
+       advances mwccarm's @NNN counter in every file that includes this
+       header (measured: 33 of 258 consumers renumbered their @NNN locals),
+       and unnamed they leave all 258 objects byte-identical. */
+    int func_ov002_020bccfc(unsigned char *, int, int);
+    int func_ov002_020bcd18(unsigned char *, int, int);
+    int func_ov002_020bcd38(unsigned char *, int, int);
+    void func_ov002_020bd06c(unsigned int);
+    int func_ov002_020bd20c(unsigned char *, int, int);
+    int func_ov002_020bd250(unsigned char *, int, int);
+    int func_ov002_020bd354(unsigned char *, int, int);
+    int func_ov002_020bd3a0(unsigned char *, int, int);
+    int func_ov002_020bd438(unsigned char *, int, int);
+    int func_ov002_020bd45c(unsigned char *, int, int);
+    int func_ov002_020bd480(unsigned char *, int, int);
+    int func_ov002_020bd4ac(unsigned char *, int, int);
+    int func_ov002_020bd4c8(unsigned char *, int, int);
+    int func_ov002_020bd4e0(unsigned char *, int, int);
+    int func_ov002_020bd600(unsigned char *, int, int);
+    int func_ov002_020bd664(unsigned char *, int, int);
+
+    void func_ov002_020bd8c0(unsigned int);
+    void func_ov002_020bd928(unsigned int);
+    void func_ov002_020bd984(unsigned int);
+    void func_ov002_020bd9ec(unsigned int);
+    /* Player state helpers in the 0x020d2f24..0x020db8d8 span (method review
+       020d2f24-020db8d8). Address-named Player methods, verified against the
+       ROM bodies; parameters stay unnamed so the 258 Player.h consumers keep
+       byte-identical objects (see the Kuppa note above). */
+    void func_ov002_020d4748();
+    int func_ov002_020d5ed0();
+    int func_ov002_020d5338();
+    int func_ov002_020d5f98(unsigned char *, unsigned char *);
+    int func_ov002_020d6048();
+    int func_ov002_020d6998();
+    char *func_ov002_020d708c();
+    void func_ov002_020d718c();
+    void func_ov002_020d71a0();
+    int func_ov002_020d93ac();
+    int func_ov002_020d94cc();
+    void func_ov002_020d98b4();
+    int func_ov002_020daa74();
+    void func_ov002_020db8d8();
+
+    void func_ov002_020bda48();
+    void func_ov002_020bdb50(int);
+    void func_ov002_020bdc18();
+    void func_ov002_020bdd2c();
+    void func_ov002_020bdd9c();
+    void func_ov002_020bdef0();
+    void func_ov002_020bdf8c();
+    void func_ov002_020be3b0();
+    int func_ov002_020bea7c();
+    void func_ov002_020beabc();
+    int func_ov002_020beb38();
+    int func_ov002_020becf4(int, int);
+    void func_ov002_020bf13c();
+    void func_ov002_020bf2d8(Fix12i);
+    void func_ov002_020bf36c(void *);
+    int func_ov002_020bf40c();
+    void func_ov002_020bf5e0();
+    void func_ov002_020bf88c();
+    void func_ov002_020bf90c();
+    void func_ov002_020bf9d4();
+    int func_ov002_020bfa74();
+    int func_ov002_020bfec0();
+    int func_ov002_020c0108(int);
+    int func_ov002_020c031c();
+    void func_ov002_020c0364(u32);
+    int func_ov002_020c0434();
+    int func_ov002_020c04ac();
+    int func_ov002_020c04e0();
+    int func_ov002_020c0688();
+    int func_ov002_020c06fc(int);
+    int func_ov002_020c0cbc();
+    int func_ov002_020c0d90(int);
+    int func_ov002_020c0fb4();
+
+    void func_ov002_020c1234();
+    void func_ov002_020c133c();
+    void func_ov002_020c14b8();
+    int func_ov002_020c19d0(int, int);
+    int func_ov002_020c1ad8(int);
+    int func_ov002_020c1c84(int);
+    void func_ov002_020c1eb4(int);
+    int func_ov002_020c200c(int);
+    int func_ov002_020c2138();
+    int func_ov002_020c231c();
+    int func_ov002_020c25a8(int);
+    void func_ov002_020c29d4();
+    void func_ov002_020c2b08();
+    void func_ov002_020c2db8();
+    void func_ov002_020c2e78();
+    void func_ov002_020c2f64();
+    int func_ov002_020c2fec(int *);
+    void func_ov002_020c3148();
+    void func_ov002_020c37a4(char *);
+    void func_ov002_020c38a0();
+    int func_ov002_020c3a48();
+    void func_ov002_020c3bdc();
+    void func_ov002_020c3cf0();
+    int func_ov002_020c3ea0();
+    int func_ov002_020c4188();
+    void func_ov002_020c43c4(unsigned int);
+    int func_ov002_020c44c4();
+    int func_ov002_020c47f4();
+    void func_ov002_020c5444();
+    int func_ov002_020c5d0c();
+    void func_ov002_020c5d60();
+    int func_ov002_020c5dec(int);
+    int func_ov002_020c607c(int, int, int *);
+    int func_ov002_020c61ac();
+    int func_ov002_020c647c(int);
+    int func_ov002_020c6538();
+    int func_ov002_020c6908();
+    int func_ov002_020c6adc();
+    void func_ov002_020c6fe4();
+
+    void func_ov002_020c70ac();
+    void func_ov002_020c7194();
+    void func_ov002_020c71e0();
+    void func_ov002_020c7350();
+    void func_ov002_020c75f0();
+    int func_ov002_020c7cbc();
+    void func_ov002_020c7dd0(int);
+    int func_ov002_020c7f10();
+    void func_ov002_020c7ff8();
+    unsigned char func_ov002_020c84b0();
+    int func_ov002_020c8540();
+    int func_ov002_020c8714();
+    int func_ov002_020c897c();
+    int func_ov002_020c8a4c();
+    int func_ov002_020c8b54();
+    int func_ov002_020c8b78();
+    int func_ov002_020c8cb0();
+    int func_ov002_020c8d14();
+    int func_ov002_020c8f0c();
+    int func_ov002_020c8f80();
+    int func_ov002_020c904c();
+    int func_ov002_020c9128();
+    int func_ov002_020c91bc();
+
+    int func_ov002_020c924c();
+    int func_ov002_020c9288();
+    int func_ov002_020c92fc();
+    int func_ov002_020c94a4();
+    int func_ov002_020c965c();
+    void func_ov002_020c9718();
+    void func_ov002_020c97e0();
+    void func_ov002_020c97f8();
+    void func_ov002_020c9840();
+    void func_ov002_020c98a4();
+    void func_ov002_020c9a04();
+    void func_ov002_020c9ac0();
+    int func_ov002_020c9b10();
+    void func_ov002_020c9b5c();
+    int func_ov002_020c9c00();
+    void func_ov002_020c9c4c();
+    void func_ov002_020c9cc0();
+    int func_ov002_020c9d1c();
+    void func_ov002_020c9d68();
+    void func_ov002_020c9e18();
+    void func_ov002_020ca108();
 };
 
 /* Hold both claims with the compiler rather than a comment. State's 0x18 is

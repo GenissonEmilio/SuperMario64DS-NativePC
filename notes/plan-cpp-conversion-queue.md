@@ -3,7 +3,7 @@
 Which `.c` files the ROM proves are C++ translation units, and the staged queue for
 migrating them. Ground truth and counts: `notes/tu-cpp-census-2026-08.md`. Per-file
 evidence tiers: `notes/data/c-cpp-classification.tsv`. Source form: the
-`decomp-cpp-class-form` skill. Prior plan this inherits from: `notes/plan-cpp-language-mode.md`.
+[class-form compiler observations](cpp-class-form.md). Prior plan this inherits from: `notes/plan-cpp-language-mode.md`.
 
 **Destructors are out of scope** as evidence and as work, per the scope call. The 37
 by-value-class-param files are permanently unconvertible — excluded, not backlogged.
@@ -15,7 +15,7 @@ Planned 2026-08-25. No builds were run during planning.
 | census said | tree says | impact |
 |---|---|---|
 | 19 of the 330 already compile as C++ → **311** un-migrated | **15** active, 1 inert, 314 bare → **315** un-migrated. The 15 are all `func_ov006_*.c` files under `src/`; 19 `.c` files tree-wide carry an active marker but 4 are tier P3/P4, outside the 330 | stage sizing |
-| 3 inert-marker violators "in the positive pool" | only **1** (`src/_ZN7dWipe_c15SetBackwardTimeEj.c`) is in the 1,167. [src/func_0204322c.c](../src/func_0204322c.c) is WEAK-refs-only, [src/func_ov075_0211b1cc.c](../src/func_ov075_0211b1cc.c) is PURE-C | two are not this workstream's problem |
+| 3 inert-marker violators "in the positive pool" | only **1** (`src/_ZN7dWipe_c15SetBackwardTimeEj.c`) is in the 1,167. [src/unnamed/arm9/0204/func_0204322c.c](../src/unnamed/arm9/0204/func_0204322c.c) is WEAK-refs-only, [src/unnamed/ov075/func_ov075_0211b1cc.c](../src/unnamed/ov075/func_ov075_0211b1cc.c) is PURE-C | two are not this workstream's problem |
 | — | **262 of the 315** un-migrated direct files are in `build/eligible-names.txt`; **53 are not** | the 53 have no per-file byte gate → TU-work or nothing |
 | — | of the 55 safe-pool TUs containing a provably-C++ `.c`, **all 55 are direct-seeded. Zero purely-transitive safe TUs exist.** | the 837 transitive files split 203 (inside direct-seeded safe TUs) / 634 (blocked TUs). There is no "transitive-only merge" to schedule |
 | — | `config/rombuild-versions.txt` holds exactly **one** override (`_ZN11dScMgCard_c13InitResourcesEv → 1.2/base`) | `match.py`'s default `CANONICAL` == the build's pin for every file in this plan except that one. Grep before each batch |
@@ -45,7 +45,7 @@ The population splits on two axes that are **almost disjoint**, and that drives 
   transitive (837)    n/a  no individual proof  203 safe / 634 blocked
 ```
 
-| Stage | Set | Count | Granularity | Owner |
+| dScStage_c | Set | Count | Granularity | Owner |
 |---|---|---|---|---|
 | **S0** | inert `//cpp` marker in the positive pool | **1 file** | file, no build | report only |
 | **S1** | **pilot**, then P2-vtable-only, zero-hazard, enrolled | **82 files** | file-level | cheap model, bulk |
@@ -110,7 +110,7 @@ reason than tidiness.)*
 **Entry:** pilot (§3) passed.
 **Set:** direct-proven, tier `P2-vtable-only` (`func_<addr>`, no mangled name anywhere),
 enrolled, free of all seven lexical hazards. Modules: [ov006](../config/arm9/overlays/ov006/symbols.txt) 51, [ov004](../config/arm9/overlays/ov004/symbols.txt) 13, [arm9](../config/arm9/symbols.txt) 9, [ov064](../config/arm9/overlays/ov064/symbols.txt) 7,
-[ov002](../config/arm9/overlays/ov002/symbols.txt) 5, [ov022](../config/arm9/overlays/ov022/symbols.txt) 5, [ov045](../config/arm9/overlays/ov045/symbols.txt) 5, [ov071](../config/arm9/overlays/ov071/symbols.txt) 4, [ov070](../config/arm9/overlays/ov070/symbols.txt) 4, [ov072](../config/arm9/overlays/ov072/symbols.txt) 3, tail. Six sit in the safe merge pool ([func_ov081_021261b8](../src/func_ov081_021261b8.c)(weak ref to `daSnowman_c`), [func_ov026_021122b0](../src/func_ov026_021122b0.c)(weak ref to `daWater_Tatumaki_c`), [func_ov026_021122cc](../src/func_ov026_021122cc.c)(weak ref to `daWater_Tatumaki_c`), [func_ov027_02111680](../src/game/actors/d_a_i_donketu.cpp)(func 3 used to assemble TU - `d_a_i_donketu.cpp`), `func_ov064_0211755c`(weak ref to `daBDonketu_c`), [func_ov022_02112710](../src/func_ov022_02112710.c))(ROM ordinal 4 of `daObj_volcanoCannon_c`) — **per §7 those six are ceded to the merge**, leaving 76 here.
+[ov002](../config/arm9/overlays/ov002/symbols.txt) 5, [ov022](../config/arm9/overlays/ov022/symbols.txt) 5, [ov045](../config/arm9/overlays/ov045/symbols.txt) 5, [ov071](../config/arm9/overlays/ov071/symbols.txt) 4, [ov070](../config/arm9/overlays/ov070/symbols.txt) 4, [ov072](../config/arm9/overlays/ov072/symbols.txt) 3, tail. Six sit in the safe merge pool ([func_ov081_021261b8](../src/actors/daSnowball_c.cpp)(weak ref to `daSnowman_c`), [func_ov026_021122b0](../src/actors/daWater_Suikomi_c.cpp)(weak ref to `daWater_Tatumaki_c`), [func_ov026_021122cc](../src/actors/daWater_Suikomi_c.cpp)(weak ref to `daWater_Tatumaki_c`), [func_ov027_02111680](../src/game/actors/d_a_i_donketu.cpp)(func 3 used to assemble TU - `d_a_i_donketu.cpp`), `func_ov064_0211755c`(weak ref to `daBDonketu_c`), [func_ov022_02112710](../src/game/actors/d_a_obj_fl_maruta.cpp))(ROM ordinal 4 of `daObj_volcanoCannon_c`) — **per §7 those six are ceded to the merge**, leaving 76 here.
 
 The exact edit — two lines, no restructuring:
 
@@ -215,9 +215,9 @@ python tools/mangle.py src/game/actors/d_a_obj_km2_fall_block.cpp \
 
 **Entry:** S2 green, and the S2 bracket showed no enrollment loss.
 Add one method declaration to `include/<Class>.h` inside the existing `#ifdef __cplusplus`
-block, then do the S2 edit. Representative classes: `DonutBlock`, `FlameChomp`,
-`Scuttlebug`, `dScEntry_c`, `dScTitle_c`, `BabyPenguin`. Two classes have no header at all
-(`RecRoomCupboard` + one more) — drop those files; that is header-reconstruction work.
+block, then do the S2 edit. Representative classes: `daObjRc_Tikuwa_c`, `FlameChomp`,
+`Scuttlebug`, `dScEntry_c`, `dScTitle_c`, `daPgBby_c`. Two classes have no header at all
+(`daObjCloset_c` + one more) — drop those files; that is header-reconstruction work.
 
 **Why a separate stage:** a header edit has blast radius through every includer, and
 `notes/plan-cpp-language-mode.md` §7 names "header retype silently un-matches a
@@ -295,7 +295,9 @@ merge. So S1 legitimately harvests blocked-pool files; S6 does not.
 > `actors/d_a_i_donketu.cpp`. The paths and symbols below are left as the pilot spelled
 > them, so none of them is in the tree any more.
 
-Why not the 4-byte `src/_ZN9dThIcon_c6RenderEv.cpp` (an empty `bx lr`): a stub is
+Why not the 4-byte `dThIcon_c::Render` (an empty `bx lr`), which had its own
+per-function source directly under `src/` when this was written and is now a
+member of `src/actors/dThIcon_c.cpp`: a stub is
 codegen-identical in both languages by construction and would validate nothing. This file
 is the smallest candidate that puts **real code** through the C→C++ front end while
 holding every other variable fixed:

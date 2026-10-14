@@ -36,6 +36,25 @@
 
 struct CLPS_Block;
 
+/* File-scope objects at the end of this file construct the two resource
+ * handles (model file 0x5fd, collision file 0x5fe). mwcc emits
+ * __sinit_daObjFl_London_c.cpp from those definitions. The wrapper names
+ * are local; the handle constructors and destructors are the ROM
+ * resource-family functions, aliased in the manifest. */
+struct LondonModelFile : SharedFilePtr {
+    u32 words[2];
+
+    LondonModelFile(u32 fileID);
+    ~LondonModelFile();
+};
+
+struct LondonCollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    LondonCollisionFilePtr(u32 fileID);
+    ~LondonCollisionFilePtr();
+};
+
 extern "C" {
 unsigned char DecIfAbove0_Byte(unsigned char *p);
 void Matrix4x3_FromRotationZXYExt(void *m, int x, int y, int z);
@@ -45,8 +64,8 @@ void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     dBgW_KcMbg *self, void *kcl, Matrix4x3 *mtx, int fix, short s, void *clps);
 void func_ov022_02111a1c(daObjFl_London_c *t);
 
-extern SharedFilePtr data_ov022_02114580;
-extern SharedFilePtr data_ov022_02114578;
+extern LondonModelFile data_ov022_02114580;
+extern LondonCollisionFilePtr data_ov022_02114578;
 extern CLPS_Block data_ov064_0211bb2c;
 }
 
@@ -166,3 +185,9 @@ extern "C" void func_ov022_02111a1c(daObjFl_London_c *t)
  * ROM order so objisolate refuses the entire TU, and it would emit a third
  * symbol, D2, which has no address anywhere in the cartridge.
  */
+
+/* Static-init globals (was the handwritten __sinit_ov022_02112dec shard).
+ * Definition order is the retail initializer's construction order: the
+ * model handle (file 0x5fd), then the collision handle (file 0x5fe). */
+LondonModelFile data_ov022_02114580(0x5fd);
+LondonCollisionFilePtr data_ov022_02114578(0x5fe);

@@ -20,8 +20,8 @@
 extern "C" {
 #endif
 
-extern void _ZN5Stage18ResetMeshCollidersEv(void);
-extern void _ZN5Stage20RenderBouncingArrowsEv(void);
+extern void _ZN10dScStage_c18ResetMeshCollidersEv(void);
+extern void _ZN10dScStage_c20RenderBouncingArrowsEv(void);
 
 
 #ifdef __cplusplus

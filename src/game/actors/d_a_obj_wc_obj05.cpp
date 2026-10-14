@@ -22,9 +22,8 @@
  *   Behavior clips at 0x250000; dBgW.h has no setter.
  * - Sound::PlayLong: Behavior recycles unk_324 at mCamSpacePosX; not in
  *   include/Sound.h.
- * - data_ov029_0211428c / 02114284 / 0211306c BMD/KCL/CLPS handles; this TU
- *   claims .text only. decl_common.h types them int[], so LoadFile/Release
- *   cast at the use site.
+ * - data_ov029_0211428c / 02114284 are this TU's BMD/KCL file handles;
+ *   data_ov029_0211306c the CLPS block stays unowned overlay data.
  * - func_ov029_02111e40 / 02111e60 stay placeholder labels (BeforeClsn
  *   veneer + player-id trigger). decl_common.h's `void(void)` view of
  *   02111e60 forces the namespaced definition.
@@ -37,6 +36,23 @@
 #include "decl_common.h"
 #include "SharedFilePtr.h"
 
+/* Retail constructs these 8-byte handles in this order and registers
+ * their destructors. The wrapper names are local; the ctor/dtor
+ * addresses are the ROM resource-family functions. */
+struct WcObj05ModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    WcObj05ModelFilePtr(u32 fileID);
+    ~WcObj05ModelFilePtr();
+};
+
+struct WcObj05CollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    WcObj05CollisionFilePtr(u32 fileID);
+    ~WcObj05CollisionFilePtr();
+};
+
 extern "C" {
 void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     dBgW_KcMbg *self, KCL_File *file, Matrix4x3 *mat, int scale,
@@ -46,7 +62,9 @@ void func_020393d4(void *p, void *v);
 void func_020393c4(void *p, void *v);
 void func_020393a4(int *p, int v);
 int _ZN5Sound8PlayLongEjjjRK7Vector3s(unsigned a, unsigned b, unsigned c, void *pos, unsigned e);
-extern int _ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_;
+extern WcObj05ModelFilePtr data_ov029_0211428c;
+extern WcObj05CollisionFilePtr data_ov029_02114284;
+extern CLPS_Block data_ov029_0211306c;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -70,6 +88,7 @@ extern "C" daObjWc_Obj05_c *daObjWc_Obj05_c_classInit()
 namespace tail_e40 { extern "C" int func_ov029_02111e40(void *b, void *c); }
 #pragma long_calls on
 namespace fndef_e60 {
+// @symbol func_ov029_02111e60
 extern "C" int func_ov029_02111e60(void *a, void *b, void *c)
 {
     return tail_e40::func_ov029_02111e40(b, c);
@@ -81,6 +100,7 @@ extern "C" int func_ov029_02111e60(void *a, void *b, void *c)
 /* -------------------------------------------------------------------------- */
 /* BeforeClsn helper: if the other actor's actorID (dActor_c+0x0c) is PLAYER
  * (0xbf), arm unk_32a. The unsigned char temporary is load-bearing. */
+// @symbol func_ov029_02111e40
 extern "C" void func_ov029_02111e40(char *a, char *b)
 {
     unsigned char ok = *(unsigned short *)(b + 0xc) == 0xbf;
@@ -93,14 +113,14 @@ extern "C" void func_ov029_02111e40(char *a, char *b)
 // @symbol _ZN15daObjWc_Obj05_c13InitResourcesEv
 s32 daObjWc_Obj05_c::InitResources()
 {
-    BMD_File *f = (BMD_File *)Model::LoadFile(*(SharedFilePtr *)data_ov029_0211428c);
+    BMD_File *f = (BMD_File *)Model::LoadFile(data_ov029_0211428c);
     mModel.SetFile(f, 1, -1);
     UpdateModelPosAndRotY();
     UpdateClsnPosAndRot();
-    KCL_File *mc = (KCL_File *)dBgW_Kc::LoadFile(*(SharedFilePtr *)data_ov029_02114284);
+    KCL_File *mc = (KCL_File *)dBgW_Kc::LoadFile(data_ov029_02114284);
     _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
-        &mMeshCollider, mc, &mClsnMat, 0x1000, mAngleY, *(CLPS_Block *)data_ov029_0211306c);
-    func_020393d4(&mMeshCollider, (void *)&_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_);
+        &mMeshCollider, mc, &mClsnMat, 0x1000, mAngleY, data_ov029_0211306c);
+    func_020393d4(&mMeshCollider, (void *)&dBgW::UpdatePosWithTransform);
     func_020393c4(&mMeshCollider, (void *)&func_ov029_02111e60);
     unk_32b = 0;
     unk_32a = unk_32b;
@@ -198,10 +218,16 @@ s32 daObjWc_Obj05_c::CleanupResources()
     if (mMeshCollider.IsEnabled()) {
         mMeshCollider.Disable();
     }
-    ((SharedFilePtr *)data_ov029_0211428c)->Release();
-    ((SharedFilePtr *)data_ov029_02114284)->Release();
+    data_ov029_0211428c.Release();
+    data_ov029_02114284.Release();
     return 1;
 }
-
+// @symbol _ZN15daObjWc_Obj05_cD1Ev
+// @symbol _ZN15daObjWc_Obj05_cD0Ev
 /* daObjWc_Obj05_c's inline class-body destructor is instantiated by the
  * definitions above. mwccarm emits D1 and D0 into this object. */
+
+/* The static-init globals -- mwcc emits __sinit_d_a_obj_wc_obj05.cpp
+   from these: one ctor veneer plus destructor registration per handle. */
+WcObj05ModelFilePtr data_ov029_0211428c(0x6d3);
+WcObj05CollisionFilePtr data_ov029_02114284(0x6d4);

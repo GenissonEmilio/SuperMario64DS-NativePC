@@ -77,7 +77,7 @@ not merely once after the rebase.
     #      `cpp-tu state note is current`, exit 0. It is NOT unconditionally
     #      safe -- an unstaged edit to src, src_tu, include or config makes it
     #      exit 2 with `authority inputs have unstaged/untracked changes`,
-    #      naming the file. Stage the edit and re-run; do NOT git stash, which
+    #      naming the file. dScStage_c the edit and re-run; do NOT git stash, which
     #      is shared across every worktree of this clone.
     #      It reports stale only when the note file itself differs from a
     #      regeneration. The dirty-tree refusal below belongs to --write-note
@@ -94,7 +94,6 @@ not merely once after the rebase.
     python tools/check_tubuild_conflicts.py --list
     python tools/layout_check.py
     python tools/source_coverage.py --check --base origin/main
-    python tools/prepush_attribution.py --base origin/main --head HEAD
 
 PASS signals:
 
@@ -114,53 +113,9 @@ PASS signals:
   `main`. It is absent from the PASS list above and it is not your defect, but a
   builder grepping the log for `FAIL` will stop on it. Compare the error count
   against the control run and report `0 new`
-- `prepush_attribution` → **no symbol *lost*.** Do **not** hold out for
-  `0 changed`: a promotion folds N shards into one file, and the counter credits
-  only the delinks range's *first* symbol and reclassifies the rest as
-  "claimed" — see the many-to-one fold artifact below, which lists the lines
-  that are expected and are not losses. **But `changed` is not noise by
-  construction, and this file used to say it was.** With correct `path#symbol`
-  overrides committed, the validator reports `0 changed` and the four "expected"
-  fold lines collapse to one (`N address range(s) left the byte-verified set`).
-  Measured on `ov006/dScMgRoulette_c`: `32 consolidated with credit intact,
-  0 changed, 0 lost`. So aim for `0 changed`; if you cannot reach it, say which
-  rows resist and why, rather than writing it off as inherent. **`0 changed` is
-  a target, not a merge bar** — the landed `dScMgHanachan_c` promotion (#2309)
-  measures `43 changed, 0 lost`, exit 1, at its own commit. Judge on `lost`.
-
-  **It is NOT the same computation as the validator's credit line on a
-  many-to-one fold, and this file used to imply that it was.** Measured on the
-  52-member ov006/`dScMgMemory2_c` promotion: locally `0 changed, 0 lost`, at the
-  validator **`11 changed`**. The two disagree about which side is *before* — for
-  `dScMgMemory2_c_classInit` the local `--json` gave `before=tangosdev,
-  after=tangosdev` while the validator reported `tangosdev -> tangosdev`, exactly
-  inverted. So do not build overrides from the local tool's "was" column and
-  expect the validator to agree. It still answers the question that gates a
-  merge: without those overrides the local tool measured **38 lost**, and `lost`
-  fails a merge while `changed` is explicitly not a blocker.
-
-  **A second, independent mechanism for the same divergence, measured on the
-  301-member ov002/`Player` fold: a symbol with NO override row at all.** Local
-  reported `0 changed`; the validator reported **18 changed**, because for those
-  18 the resolver fell back to the *promotion commit's* author — moving them off
-  `tangosdev` (8), `ruspecial` (6) and `lunavyqo` (4). The repair is to restore
-  them from the validator's own "Before" column, after which the re-run is
-  `0 changed`. Two different causes, one rule: **a local green here does not
-  predict the gate on a many-to-one fold.**
-
-  **`prepush_attribution --json` takes a PATH argument**, not a bare flag. `--json`
-  alone errors `expected one argument`; this file used to imply it prints to stdout.
-
-  **The mechanism this file never named, which cost a builder real time:** the
-  overrides live in `attribution.json` at the repo **root**, in the `overrides`
-  dict, keyed `src/<tu>.cpp#<symbol>`. `prepush_attribution --json` prints the
-  rows verbatim, so you can lift the keys straight out of it. Two traps: an
-  override has **no effect until it is committed**, and a key must match the
-  file's real extension — `main` carries a `..._c14RoundShowCardsEv.c` key for a
-  file that is `.cpp`, and that single mis-spelled key kept one member reporting
-  CREDIT CHANGED after the fold. Add the correctly-spelled key; never prune. Run the check, commit what it asks for,
-  report the numbers, and move on — reconciling credit beyond that is a stated
-  non-goal in this repo and has consumed whole sessions before.
+- Who matched a function is `function-authors.json`, keyed by the module and
+  the address. Moving the source into one translation unit does not change the
+  author. Do not add credit rows. There is no credit script.
 - everything else → exit 0 with no backlog count increased
 
 **Re-read the manifest prose against what actually shipped.** This is the single
@@ -215,7 +170,7 @@ own its key function. The proof-block example shows nonzero counts; do not read
 zeros as a failed run.
 
 **They are NOT evidence for an empty `compiler_only_output`, and this file used
-to say they were.** `romdata_check` reports on *data* symbols. ov066/`Eyerok`
+to say they were.** `romdata_check` reports on *data* symbols. [ov066](../../../config/arm9/overlays/ov066/symbols.txt)/`Eyerok`
 measures 0/0/0/0 with a non-empty **two-row** `compiler_only_output`, because
 both rows are functions. Read all-zero as "no data rows", never as "no rows".
 
@@ -246,7 +201,7 @@ a manifest you then commit.
 and addend), and `reloc_audit` (destination identity).
 
 **And all four of those together still do not prove the TU LINKS.** Measured on
-`ov006/dScMgPanel_c`: 71/71 MATCH, objisolate clean, reloc-destinations clean,
+[ov006](../../../config/arm9/overlays/ov006/symbols.txt)/`dScMgPanel_c`: 71/71 MATCH, objisolate clean, reloc-destinations clean,
 `[4b]` object audit `order_ok True, {'LICENSED': 71}, 0 refusals` — and the
 object carried **41 undefined symbols that do not exist anywhere in the image**,
 because a declaration got the wrong linkage. Every byte gate is happy with a
@@ -254,7 +209,7 @@ relocation against a name nobody defines; only the linker is not. **Add one
 cheap check to the sweep**: read the compiled object's `.symtab` and list the
 `SHN_UNDEF` entries (a ~20-line ELF walk over
 `build/tu/<ov>-<Class>/<Class>.o`). Any `_Z…`-mangled name whose demangling is a
-plain C ROM symbol — `_Z8LoadFilei`, `_Z19func_ov006_021063a0Pv` — is a linkage
+plain C ROM symbol — `_Z8LoadFilei`, [_Z19func_ov006_021063a0Pv](../../../config/tu_manifest.d/ov006/dScMgPanel_c.json) — is a linkage
 bug, and it costs seconds where finding it through a failed `rombuild` costs an
 hour. Legitimate `_ZN…` / `_ZT…` names are not what you are looking for.
 
@@ -285,9 +240,9 @@ wrong conclusion in the exact place it matters.
 ## Two manifest defects no gate catches
 
 **Nothing checks a manifest's `legacy_source` paths against the tree.** Measured
-on `config/tu_manifest.d/ov006/dScMgMemory2_c.json`, landed on `main`: ordinal
+on [config/tu_manifest.d/ov006/dScMgMemory2_c.json](../../../config/tu_manifest.d/ov006/dScMgMemory2_c.json), landed on `main`: ordinal
 30 recorded the shard `_ZN14dScMgMemory2_c14RoundShowCardsEv` with a **`.c`**
-extension where both the file and its `delinks.txt` entry are **`.cpp`**. (Both
+extension where both the file and its [delinks.txt](../../../config/arm9/overlays/ov006/delinks.txt) entry are **`.cpp`**. (Both
 spellings are written bare here rather than repo-rooted: quoting the dead one in
 full would fail `check_dead_references`, which is a gate this very paragraph
 would otherwise trip.) `linkcheck` refuses before doing any work
@@ -357,40 +312,11 @@ path legitimately recurs under different reasons — `main` carries 66 such rows
 from past promotions. Only byte-identical repetition is the defect. A builder
 who deduped by path would delete real history.
 
-## Check for a shallow clone before trusting ANY attribution output
+## Authors do not come from git history
 
-    git rev-parse --is-shallow-repository        # must print false
-
-**A shallow clone silently corrupts every attribution answer, and the wrong
-answer is permanent.** `first_matchers()` / `match_finishers()` replay `src/`
-history, so a truncated clone makes every lineage start at the newest commit
-that touched the file — which is usually the automated refresh, i.e.
-`github-actions[bot]`. `prepush_attribution` then reports dozens "lost", and
-banking its suggestion writes override rows that are **highest priority and
-never pruned**.
-
-Measured 2026-09-05: this repo's primary checkout was shallow at **1,325 of
-4,743 commits** for a whole session. A builder banked 40 override rows from that
-output before catching it; the merge validator's "Before" column showed it would
-have stripped functions from three named human contributors and mislabelled 24
-more. After `git fetch --unshallow`, the recomputed owner set agreed with all 25
-owners the validator printed, with **0 disagreements**.
-
-`attribution.json` currently carries **968 of 2,036 override rows crediting
-`github-actions[bot]`**, which is what this defect looks like at scale. CI is not
-the source — the workflows that read history correctly set `fetch-depth: 0`.
-Local agent runs are.
-
-**An attribution override has no effect until it is committed.** With all rows
-present in the working tree the gate still reported `0 consolidated, 71 lost` —
-unchanged. After `git commit`, the identical rows gave `71 consolidated, 0
-changed, 0 lost`. A builder who edits, re-runs, and sees no movement will
-reasonably conclude overrides are the wrong mechanism. Commit, then re-run.
-
-**So: never bank an attribution override from a shallow clone.** If
-`--is-shallow-repository` prints true, run `git fetch --unshallow` and recompute
-before writing anything. Worktrees share the parent clone's `.git`, so one
-shallow clone makes every worktree cut from it shallow too.
+Who matched a function is `function-authors.json`. A shallow clone cannot change
+it, and a fold does not either. Do not invent credit rows from `git log`.
+Do not edit `attribution.json` to record credit.
 
 ## Two PowerShell traps that read as other people's bugs
 
@@ -515,8 +441,9 @@ files merged silently. Same rule as the ledgers — regenerate, never resolve:
 **In a merge train the conflict set is bigger than one file, and every builder
 hit the same three.** Across six promotions rebased onto each other in one
 afternoon, the recurring `UU` set was `notes/cpp-tu-current-state.md`,
-**`attribution.json`** and, on the larger folds, **`config/converted-baseline.json`**.
-The last two are sorted, keyed **sets**, so resolve them as **unions**, line-wise,
+`attribution.json`, and, on the larger folds, **`config/converted-baseline.json`**.
+Do not edit `attribution.json` for credit. If it conflicts, keep main.
+`converted-baseline.json` is a sorted, keyed **set**, so resolve it as a **union**, line-wise,
 and never re-serialise: a reorder conflicts with every other open PR in the train.
 The audit to run afterwards is `resolved == exact union of both parents` with
 0 missing, 0 invented, 0 value conflicts and 0 duplicate keys — three builders ran
@@ -539,7 +466,7 @@ TU member row, main's other rows untouched), not the arithmetic.
 said twice is normal and six is the record; during a single afternoon's train it
 moved **seven** times, four of them inside one builder's run — once between a
 final gate sweep and its push, and once mid-command through the shared `.git`.
-Every base-relative gate (`source_coverage`, `prepush_attribution`,
+Every base-relative gate (`source_coverage`,
 `cpp_tu_state --check-note`) goes red with *other people's* work when that
 happens; the symptom is a gate screaming about an overlay you never touched.
 
@@ -592,9 +519,9 @@ already stale. Getting this wrong costs a full validation cycle.
   Once the source is enrolled in `delinks.txt`, `cmd_linkcheck` sets
   `enrolled_intact_candidate = True` unconditionally and routes down the intact
   path whatever `production_mode` says; it dies at `[4/8]`. Pre-existing — it
-  fails identically for `ov002/daBar_c` on untouched `main`, and a second
+  fails identically for [ov002](../../../config/arm9/overlays/ov002/symbols.txt)/`daBar_c` on untouched `main`, and a second
   control taken on the `dScMgPanel_c` run reproduces it on
-  `ov006/dScMgTeresa_c`, an already-promoted text-only TU that run never
+  [ov006](../../../config/arm9/overlays/ov006/symbols.txt)/`dScMgTeresa_c`, an already-promoted text-only TU that run never
   touched: `FAIL src/actors/dScMgTeresa_c.cpp: isolate: intact TU preparation
   refused: ov006/dScMgTeresa_c: intact production requires one .text claim and
   at least one non-text claim`. The exact chain is
@@ -610,7 +537,7 @@ already stale. Getting this wrong costs a full validation cycle.
   Do not report its failure as a defect in the change.
 
   **But do NOT take the writer's recorded linkcheck as proof of the link.** This
-  file used to say to, and on `ov006/dScMgPanel_c` that was wrong: the manifest
+  file used to say to, and on [ov006](../../../config/arm9/overlays/ov006/symbols.txt)/`dScMgPanel_c` that was wrong: the manifest
   recorded `result: scratch-link-verified` with `phases.link: true`, and the
   source as shipped **did not link at all** — 41 mangled undefined symbols, and
   mwldarm aborting with 22 `Undefined`. **The link proof you can still run is
@@ -635,13 +562,12 @@ already stale. Getting this wrong costs a full validation cycle.
   (`order_ok True, {'LICENSED': 52}` with `#pragma defer_codegen off`;
   `order_ok False -> object-audit-refused` with only that line deleted).
 
-- **`source_coverage --check` and `prepush_attribution` are BASE-RELATIVE, and a
-  stale base makes both scream about other people's work.** A `main` that moved
-  mid-build produced `REGRESSION: 4,672 B stopped being built from source`
-  naming five files in ov002/ov005/ov034 with nothing to do with the class, and
-  a `CREDIT LOST` for a different class entirely. Both read exactly like real
-  regressions. Re-fetch and **merge** `origin/main` before believing either;
-  after the merge both were clean. **Merge, do not rebase** — a rebase of a
+- **`source_coverage --check` is BASE-RELATIVE, and a stale base makes it
+  scream about other people's work.** A `main` that moved mid-build produced
+  `REGRESSION: 4,672 B stopped being built from source` naming five files in
+  [ov002](../../../config/arm9/overlays/ov002/symbols.txt)/[ov005](../../../config/arm9/overlays/ov005/symbols.txt)/[ov034](../../../config/arm9/overlays/ov034/symbols.txt) with nothing to do with the class.
+  Re-fetch and **merge** `origin/main` before believing it; after the merge it
+  was clean. **Merge, do not rebase** — a rebase of a
   branch that is already on the remote makes the next push a non-fast-forward
   against the remote's copy of the same commits, and repairing that costs an
   add/add conflict on the promoted `.cpp` itself. The same applies to `git ls-tree origin/main` — worktrees
@@ -671,7 +597,7 @@ already stale. Getting this wrong costs a full validation cycle.
   prefix on purpose: this gate reads a `tools/...` token in prose as a path
   claim and goes red on it.)
 - **`pytest tools/` is not a CI signal.** The workflows invoke targeted
-  `python -m unittest tools.test_<gate>` modules only, so a green `tools` check
+  `python -m unittest tools.test_<gate>` modules only, so a green `tool tests` check
   does not mean the suite passes. Two tests fail on untouched `origin/main`
   (`test_dtor_members.py::test_the_frozen_census_reproduces` and
   `test_opnew_sizes.py::test_only_two_live_classes_are_genuinely_headerless`).
@@ -772,34 +698,31 @@ descendants' factories each `mov r0, #0x34c` — corroborating the header's
 `0x34c` span from four independent overlays. That is stronger evidence than a
 single factory, so look for it before writing "no size available".
 
-**Check what you actually pushed.** The feature-branch pre-push hook does not run
-the attribution gate and never creates commits. Run `prepush_attribution.py`
-yourself, commit every required `path#symbol` mapping, then run
-`git log origin/<branch>..HEAD`; if it is non-empty, push again. **Also re-read
-the remote head after pushing** with `gh pr view --json headRefOid`. Another
-pipeline agent can push to your branch, which a local extras check cannot see;
-it happened twice on one PR, including after a force-push removed a repair. A PR
-missing its lineage commit looks complete while silently losing contributor
-credit.
+**Check what you actually pushed.** Authors are already in `function-authors.json`
+and a fold does not change them. Run `git log origin/<branch>..HEAD`; if it is
+non-empty, push again. **Also re-read the remote head after pushing** with
+`gh pr view --json headRefOid`. Another pipeline agent can push to your branch,
+which a local extras check cannot see; it happened twice on one PR, including
+after a force-push removed a repair.
 
 Several validator lines are expected on a promotion and are not losses. All are
 the same many-to-one fold artifact: the counter credits only the delinks range's
 **first** symbol and reclassifies the rest as "claimed".
 
-    Contributor credit: 0 added, N changed, 0 lost
     N address range(s) left the byte-verified set
     N more function(s) now claim a match that nothing compiles
     Byte-verified functions -N, code bytes -N,NNN
 
-**These four N's are not one number, and reading them as a family invites a
-wrong PR body.** On a many-to-one fold the ranges-left count is exactly **one
+**These counts are not one number, and reading them as a family invites a
+wrong PR body.** A credit note in the validation report does not fail the merge.
+Do not edit `function-authors.json` to chase it. On a many-to-one fold the ranges-left count is exactly **one
 higher** than the byte-verified function delta, because the TU's own new range
 re-enters the set as the shard ranges leave: the 52-member `dScMgMemory2_c`
 promotion reports 52 ranges left against -51 functions.
 
 The byte figure reconciles exactly — on `daObjCtMecha03_c`, -1,236 is the eight
 functions' 1,312 bytes minus D1's `0x4c`. The same run reports `Relocation
-check: N checked; N VERIFIED`. Explain all four in the PR body, or the next
+check: N checked; N VERIFIED`. Explain each of these in the PR body, or the next
 builder chases the ones you left out.
 
 Add a plain-English TL;DR a CS generalist can read, above the evidence.

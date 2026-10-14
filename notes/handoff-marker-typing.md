@@ -103,10 +103,10 @@ the two extern declarations was byte-neutral. `build_pin.verify` → `(True, '20
 
 Do that, per class, byte-verifying each. Then re-run the census and the clean swaps land.
 
-The 29: `BobOmb BooCage Bowser BowserFire BowserPuzzlePiece Bullet Coffin FlyGuy Goomba
-Koopa Lakitu LakituBro MadPiano MrI MrI_Projectile OneUpMushroom PrincessPeach
-RotatingClockHand Scuttlebug SignPost daBgSnmBdy_c SnowmanHead Snufit Spindrift Stage
-Swoop TtcConveyorBeltLarge WaterBomb YoshiEgg`
+The 29: `BobOmb BooCage daKpa_c daKpaFire_c daObjFl_Puzzle_c daPropeller_Heyho_Fire_c Coffin FlyGuy Goomba
+Koopa daJgm_c daC_Jugem_c daPiano_c MrI MrI_Projectile OneUpMushroom daPeach_c
+RotatingClockHand Scuttlebug daObjTatefuda_c daBgSnmBdy_c daBgSnmHed_c Snufit Spindrift dScStage_c
+daBasabasa_c TtcConveyorBeltLarge WaterBomb daYegg_c`
 
 ## 6. Gates -- run all of them, and know what each cannot see
 
@@ -115,7 +115,6 @@ python tools/check_header_offsets.py <changed headers>   # 0 mismatched, 0 unpar
 python tools/eligible.py                                 # BEFORE and AFTER, diff them
 python tools/rombuild.py                                 # 106/106 exact, PASS
 python tools/check_references.py                         # must say OK
-python tools/prepush_attribution.py                      # 0 changed, 0 lost
 python tools/langmode_audit.py --check langmode-baseline.json
 python tools/test_gen_header.py                          # 17 tests
 ```
@@ -155,7 +154,7 @@ to both gates above. **Keep this one closest.**
 - **36 undecided markers**, with reasons in `build/marker_evidence.json`. Honest.
 - **9 "interior to a typed member"** findings -- header self-contradictions, not typing
   questions. Separate fix.
-- **`Stage.unk_874`** -- rests only on a cast through a locally-declared struct.
+- **`dScStage_c.unk_874`** -- rests only on a cast through a locally-declared struct.
 - **`include/G2x.h`** -- describes hardware registers, not an object. Issue **#1148**,
   someone else is on it. Do not type it.
 - **`ModelBase::SetFile` is declared `void`** but the ROM's call sites consume r0, so it

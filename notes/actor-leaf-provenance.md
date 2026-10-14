@@ -1,7 +1,7 @@
 # dActor_c leaf classes -- field-naming provenance
 
 Evidence for every `unk_NNN` renamed on a class whose immediate base is
-`dActor_c` (excluding `Player`, `Bowser` and `dBgActor_c`, which have their own
+`dActor_c` (excluding `Player`, `daKpa_c` and `dBgActor_c`, which have their own
 notes). Naming is byte-neutral: nothing here changes a compiled byte, and every
 row was taken with `reproducing: 11,059`, `mismatching: 0`,
 `module fidelity: 106/106 exact` on both sides of the edit.
@@ -37,18 +37,18 @@ from `mPos` with `0x64000` added to Y right after -- no enrolled body reads it
 back, so what it is for is unevidenced); 0x3a8 (zeroed, never read); 0x3cb (set
 to 0x96, never read).
 
-## Door -- include/Door.h
+## daDoor_c -- include/daDoor_c.h, src/actors/daDoor_c.cpp
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x138 | `mKeyModel` | `new Model` + `ModelBase::SetFile` in `src/_ZN4Door13InitResourcesEv.c`; `Virtual10(mModel.data.transforms)` then `Render(0)` in `src/_ZN4Door6RenderEv.cpp`, where the local holding it is already called `key`; `delete key` through Model's vtable slot 1 in `src/_ZN4Door16CleanupResourcesEv.cpp`. Owned by the Door. |
+| 0x138 | `mKeyModel` | `new Model` + `ModelBase::SetFile` in `daDoor_c::InitResources`; `Virtual10(mModel.data.transforms)` then `Render(0)` in `daDoor_c::Render`, where the local holding it is already called `key`; `delete key` through Model's vtable slot 1 in `daDoor_c::CleanupResources`. Owned by the door. |
 | 0x13c | `mKeyFile` | handed to `Model::LoadFile` and `Release()`d as a `SharedFilePtr`. Three sources in `InitResources`: [data_ov002_0211094c](../config/arm9/overlays/ov002/symbols.txt), `func_02132894[mKeyModelIdx + 1]` for the keyed-door `param1` range, else [data_ov089_02132c50](../config/arm9/overlays/ov089/symbols.txt). |
-| 0x140 | `mCallbackNode` | `src/_ZN4Door8BehaviorEv.cpp` casts it to a node whose `+0x8` is a `void (Door::*)(int)` and calls it on this Door. |
+| 0x140 | `mCallbackNode` | `daDoor_c::Behavior` casts it to a node whose `+0x8` is a `void (daDoor_c::*)(int)` and calls it on this door. |
 | 0x144 | `mKeyModelIdx` | `param1 - 8` for `param1` in 9..0xd, re-zeroed for `param1 == 0xc`; indexes `LoadKeyModels` and `func_02132894`. The header already carried "key-model index" as a comment. |
 
 Not touched: `unk_0a4` / `unk_0ac` reached through `self->base` are
 `dActor_c`'s own fields, and `include/dActor_c.h` is frozen for this pass --
-the existing note in `src/_ZN4Door13InitResourcesEv.c` about that triple stands.
+the existing note in `daDoor_c::InitResources` about that triple stands.
 
 ## daSCoin_c -- include/daSCoin_c.h
 
@@ -93,28 +93,29 @@ blue-coin model; `func_ov096_0213670c` reads it through the head to select a
 zero or 90-frame regrowth delay, and `func_ov096_021365d4` clears it when the
 segment count reaches three. Its complete gameplay meaning is not claimed.
 
-## BabyPenguin -- include/BabyPenguin.h
+## daPgBby_c -- include/daPgBby_c.h
+
+All bodies are in `src/game/actors/d_a_pg_bby.cpp`.
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x350 | `mSpawnPosX` | `src/_ZN11BabyPenguin13InitResourcesEv.cpp` copies `mPosX` in; never written again. |
+| 0x0d0 | `mEatingPlayer` | InitResources and the state-4 update clear it; the state-5 enter step (`func_ov072_02121368`) places the penguin 0x50 in front of it and clears it. |
+| 0x350 | `mSpawnPosX` | InitResources copies `mPosX` in; `func_ov072_02120d04` copies it back to respawn. |
 | 0x354 | `mSpawnPosY` | same, `mPosY`. |
 | 0x358 | `mSpawnPosZ` | same, `mPosZ`. |
-| 0x364 | `mCachedActor` | `src/_ZN11BabyPenguin8BehaviorEv.cpp`: `if (mCachedActor == 0) mCachedActor = FindWithActorID(0x101, 0)`, lazily filled and never cleared. A `dActor_c*` spelt `s32`. |
+| 0x35c | `mState` | `func_ov072_02121d50` stores `&data_ov072_02122d6c[state]` (16-byte {enter, update} member-pointer pairs); `func_ov072_02121d18` / `func_ov072_02121cdc` call through it. |
+| 0x360 | `mCarrier` | Set to the touching player (actor 0xbf) by `func_ov072_02120e50`; ShowMessage, GetTalkState and DropActor are called on it. |
+| 0x364 | `mMother` | Behavior: `if (mMother == 0) mMother = FindWithActorID(0x101, 0)`; `func_ov072_02120ddc` and `func_ov072_02121670` measure the distance to it. Actor 0x101 (257) is PENGUIN_MOTHER (`notes/ead-debug-name-crossref.md`). |
+| 0x368 | `mStateId` | Each enter step stores its own index 0..5; `func_ov072_02120d04` skips the respawn in state 3. |
+| 0x36c | `mRespawnTimer` | Behavior resets it to 0x384 every near frame; `func_ov072_02120d04` counts it down with DecIfAbove0_Short. |
+| 0x36e | `mSubState` | The per-state step counter every update step switches on. |
 
-`mCachedActor` is named for what it holds and not for what it means on purpose:
-nothing in the tree names actor 0x101, and no enrolled body reads the pointer
-back, so a name like "mMotherPenguin" would be a claim the bytes do not make.
-
-Deliberately left `unk_`: 0x360 (zeroed, never read); 0x36c (set to 0x384 every
-frame the penguin is near the player, never read).
-
-## Lakitu -- include/Lakitu.h
+## daJgm_c -- include/daJgm_c.h
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x3c0 | `mMatrix` | `*(Matrix4x3*)&unk_3c0 = IDENTITY_MATRIX4X3` in `src/_ZN6Lakitu13InitResourcesEv.cpp`. The pad after it runs to 0x3f3, four bytes past the matrix's own 0x30. |
-| 0x3f4 | `mState` | `src/_ZN6Lakitu6RenderEv.cpp` draws the second `Model` only when this is 1. |
+| 0x3c0 | `mMatrix` | `*(Matrix4x3*)&unk_3c0 = IDENTITY_MATRIX4X3` in `daJgm_c::InitResources` (`src/game/actors/d_a_jgm.cpp`). The pad after it runs to 0x3f3, four bytes past the matrix's own 0x30. |
+| 0x3f4 | `mState` | `daJgm_c::Render` (`src/game/actors/d_a_jgm.cpp`) draws the second `Model` only when this is 1. |
 | 0x3f8 | `mSpawnPosX` | `InitResources` copies `this + 0x5c` (`mPosX`) in. |
 | 0x3fc | `mSpawnPosY` | same, `this + 0x60` (`mPosY`). |
 | 0x400 | `mSpawnPosZ` | same, `this + 0x64` (`mPosZ`); this is the only one of the three spelt as a member, the other two are raw `this + 0xNN` stores. |
@@ -140,51 +141,57 @@ so the per-shard citations below are given as member names.
 | 0x3f1 | `mPhase` | `UpdateState0` and `UpdateState3` switch on it; `EnterState0` and `EnterState3` reset it to 0. |
 | 0x3f2 | `mTimer` | `EnterState1` and `EnterState8` set it; `UpdateState1` and `UpdateState8` end the state when `DecIfAbove0_Byte` drives it to 0. |
 
-## Coin -- include/Coin.h
+## daCoin_c (formerly Coin) -- include/daCoin_c.h
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x3ab | `mSpawnFilter` | `param1` bits 4..6 for a red (0x121) or blue (0x122) coin, 0xff otherwise. The same three-bit value `LoadObjects` compares against `data_0209f220` to decide whether an object belongs to the entrance the level was started from (`src/_Z11LoadObjectsRN11LVL_Overlay8ObjTableEij.cpp`). A red coin claims a star-marker slot only when it matches (or `SublevelToLevel` is 0x13); a blue coin whose filter is under 8 clears bit 0 of `mCoinFlags`. |
-| 0x3ae | `mCoinFlags` | the flag byte `src/_ZN4Coin13InitResourcesEv.cpp` already documented as such: bit 0 gates `Render` outright, `Behavior` tests bits 0 and 1. Named `mCoinFlags` and NOT `mFlags`, which is `dActor_c`'s own field 0x0b0. |
+| 0x3ab | `mSpawnFilter` | `param1` bits 4..6 for a red (0x121) or blue (0x122) coin, 0xff otherwise. The same three-bit value `LoadObjects` compares against `data_0209f220` to decide whether an object belongs to the entrance the level was started from (`src/stage/LevelObjects.cpp`). A red coin claims a star-marker slot only when it matches (or `SublevelToLevel` is 0x13); a blue coin whose filter is under 8 clears bit 0 of `mCoinFlags`. |
+| 0x3ae | `mCoinFlags` | the flag byte `InitResources` (now in `src/actors/daCoin_c.cpp`) already documented as such: bit 0 gates `Render` outright, `Behavior` tests bits 0 and 1. Named `mCoinFlags` and NOT `mFlags`, which is `dActor_c`'s own field 0x0b0. |
 
 The read-modify-write sites keep their raw `*(u8*)((int)c + 0x3ae)` spelling --
-that launder is measured and per-site, and the existing note in
-`src/_ZN4Coin13InitResourcesEv.cpp` explains why.
+that launder is measured and per-site, and the "FOUR SITES KEEP RAW OFFSETS"
+note in `daCoin_c::InitResources` (`src/actors/daCoin_c.cpp`) explains why.
 
-## PowerFlower -- include/PowerFlower.h
+## daObjPowerUpItem_c -- include/daObjPowerUpItem_c.h
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x3bc | `mGroundY` | `src/_ZN11PowerFlower13InitResourcesEv.cpp` raycasts a `dBgCh_Gnd` from `mPos` with Y + 0x14000 and stores the hit height (`ray + 0x44`), falling back to the probe's own Y when `DetectClsn` finds nothing. |
-| 0x3c0 | `mState` | `src/_ZN11PowerFlower6RenderEv.cpp` switches on it: 0 draws `mModel1`, 1 and 2 draw `mModel2`. |
+| 0x3bc | `mGroundY` | `src/actors/daObjPowerUpItem_c.cpp` raycasts a `dBgCh_Gnd` from `mPos` with Y + 0x14000 and stores the hit height (`ray + 0x44`), falling back to the probe's own Y when `DetectClsn` finds nothing. |
+| 0x3c0 | `mState` | `src/actors/daObjPowerUpItem_c.cpp` switches on it: 0 draws `mModel1`, 1 and 2 draw `mModel2`. |
 | 0x3ca | `mLifeTimer` | seeded 0xb4 (180 frames) in `InitResources`; `Render` skips drawing on odd values once it is below 0x2d, so the flower blinks through its last 45 frames. |
 
-## Number -- include/Number.h
+## daObjNumber_c -- include/daObjNumber_c.h
 
 The floating score popup, actor 0x14a -- `dActor_c::SpawnNumber` is what puts
 one up, and its parameter list is half the evidence here.
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x138 | `mOwnerUniqueID` | `src/_ZN6Number8BehaviorEv.cpp` resolves it through `dActor_c::FindWithID` and, when the actor still exists, takes the popup's draw position from that actor's own `mPos` triple. 0 means "not following anything" -- the `owner` argument of `SpawnNumber`. |
-| 0x13c | `mStartPosX` | copied from `mPosX` in `src/_ZN6Number13InitResourcesEv.cpp`, alongside the already-named `mStartPosY` at 0x140. |
+| 0x138 | `mOwnerUniqueID` | `src/game/actors/d_a_obj_number.cpp` Behavior resolves it through `dActor_c::FindWithID` and, when the actor still exists, takes the popup's draw position from that actor's own `mPos` triple. 0 means "not following anything" -- the `owner` argument of `SpawnNumber`. |
+| 0x13c | `mStartPosX` | copied from `mPosX` in `src/game/actors/d_a_obj_number.cpp` InitResources, alongside the already-named `mStartPosY` at 0x140. |
 | 0x144 | `mStartPosZ` | same, `mPosZ`. |
 | 0x148 | `mFollowOffsetY` | added to `mPosY - mStartPosY` -- how far the popup has risen -- when the position is taken from the owner. |
 | 0x14c | `mDelay` | the `delay` argument of `SpawnNumber`: while nonzero `Behavior` returns immediately and `Render` decrements it and draws nothing. |
 | 0x14e | `mState` | the bounce. 0: rising, and the first frame back below `mStartPosY` snaps to that floor, sets `mVertSpeed` 0xf000 and advances to 1. 1: the next fall below the floor emits particle 0xd2 and marks the popup for destruction. |
 
-## CrazedCrate, MontyMole, BowserShockwaves -- nothing named
+## daBttBk_c (was CrazedCrate), daChoropu_c (was MontyMole) -- nothing named
 
 Listed so the next reader does not repeat the search.
 
-- `CrazedCrate` 0x374: zeroed in `src/_ZN11CrazedCrate13InitResourcesEv.cpp`, never read.
-- `MontyMole` 0x17c/0x180..0x184/0x188 and the 16 bytes from 0x16c: all written
-  in `src/_ZN9MontyMole13InitResourcesEv.cpp` -- 0x180 is `param1 & 0xf`, 0x182
-  is `(param1 >> 4) & 0xf`, 0x181 is 1 when 0x180 is 0 and `(param1 >> 8) & 1`
-  otherwise -- and none of them is read by any enrolled body. Which nibble means
-  what is a guess until the class's other functions are enrolled.
-- `BowserShockwaves` 0x214: zeroed in
-  `src/_ZN16BowserShockwaves13InitResourcesEv.cpp`, never read.
+- `daBttBk_c` (formerly `CrazedCrate`) 0x374: zeroed in `InitResources`. Once its
+  state-machine helpers were promoted into `src/actors/daBttBk_c.cpp` it turned out
+  to be read: `func_ov080_02124acc` stores the carrier actor there and
+  `func_ov080_02124c3c`/`func_ov080_02124edc` read it.
+- `daChoropu_c` 0x17c/0x180..0x184/0x188 and the 16 bytes from 0x16c: all written
+  in `InitResources` in `src/actors/daChoropu_c.cpp` -- 0x180 is `param1 & 0xf`,
+  0x182 is `(param1 >> 4) & 0xf`, 0x181 is 1 when 0x180 is 0 and `(param1 >> 8) & 1`
+  otherwise. The ov080 TU promotion enrolled the readers, and three are now named
+  from them: 0x16c `mPartnerIDs[4]` and 0x183 `mNumPartners` (filled from the
+  same-group moles by `func_ov080_02123fcc`, read by `func_ov080_02124088` and
+  `func_ov080_02124360`), and 0x17c `mState` (the index into `Behavior`'s state
+  table). 0x180..0x182, 0x184 and 0x188 are still `unk_`.
+- `daFRing_c` 0x214: zeroed in
+  `src/actors/daFRing_c.cpp` InitResources, and Behavior reads it as the shock frame.
 
 ## Three shapes that repeat across these leaves
 
@@ -199,33 +206,32 @@ Worth naming once here rather than thirteen times below.
   `InitResources`, run through `DecIfAbove0_Byte`/`DecIfAbove0_Short` once a
   frame, and destroying the actor at 0. Where `Render` additionally skips
   drawing on odd values below some threshold, the actor blinks before it goes --
-  `PowerFlower` and `WingFeather` both do exactly that at 0xb4 down to 0x2d.
+  `daObjPowerUpItem_c` and `daFeather_c` both do exactly that at 0xb4 down to 0x2d.
 - **The particle handle.** `mParticle = Particle::System::New(mParticle, effect,
   pos...)` -- last frame's handle goes back in as the first argument and the
   result is stored again, so one effect is kept alive rather than a new one
   spawned each frame.
 
-## SpikeBomb -- include/SpikeBomb.h
+## daKirai_c -- include/daKirai_c.h
 
 | offset | new name | evidence |
 | --- | --- | --- |
 | 0x180 | `mHomeHorzDist` | `Vec3_HorzLen` of the spawn position -- how far out in XZ the bomb starts from the world origin. |
 | 0x184 | `mHomeYOffset` | the constant 0x2ee000; `mHomePosY` is raised by `mHomeYOffset >> 3` immediately after the home triple is copied. |
 
-Source: `src/_ZN9SpikeBomb13InitResourcesEv.cpp`. Both branches of the header
+Source: `src/actors/daKirai_c.cpp` (`daKirai_c::InitResources`). Both branches of the header
 carry the rename.
 
-## HealingHeart -- include/HealingHeart.h
+## daObjHeart_c -- include/daObjHeart_c.h
 
 | offset | new name | evidence |
 | --- | --- | --- |
 | 0x16c | `mAnimSpeed` | seeded 0x1000 (1.0), eased toward 0x8000 while the heal cooldown is above 0x2d and back toward 0x1000 otherwise, then copied into `mModelAnim.speed`. The heart spins slowly while idle and fast just after it heals. |
 | 0x171 | `mWasTouched` | edge detector on the collider: latched to 1 (and `mHealTimer` zeroed, so the heal fires that frame) the first frame the `dCcAc_c` reports an occupant, cleared the frame it reports none. |
 
-Sources: `src/_ZN12HealingHeart13InitResourcesEv.cpp`,
-`src/_ZN12HealingHeart8BehaviorEv.cpp`, and `src_tu/actors/HealingHeart.cpp`.
+The names are the reads in InitResources and Behavior.
 
-## WingFeather -- include/WingFeather.h
+## daFeather_c -- include/daFeather_c.h
 
 | offset | new name | evidence |
 | --- | --- | --- |
@@ -234,14 +240,13 @@ Sources: `src/_ZN12HealingHeart13InitResourcesEv.cpp`,
 | 0x380 | `mParticle` | the particle-handle shape above, effect 0x4a. |
 | 0x384 | `mLifeTimer` | 0xb4 at init, counted down only while on the ground, destroys at 0, blinks below 0x2d. |
 
-Sources: `src/game/actors/WingFeather/_ZN11WingFeather13InitResourcesEv.cpp`,
-`src/game/actors/WingFeather/_ZN11WingFeather8BehaviorEv.cpp`,
-`src/game/actors/WingFeather/_ZN11WingFeather6RenderEv.cpp`,
-`src_tu/actors/WingFeather.cpp`.
+Sources: `src/game/actors/daFeather_c/daFeather_c.cpp` (the 8 one-function
+shards merged; the field evidence above now lives in
+`InitResources`/`Behavior`/`Render` there).
 
 ## daObjAbuku_c -- include/daObjAbuku_c.h
 
-The bubble runs the same float as `WingFeather`, one class earlier in the
+The bubble runs the same float as `daFeather_c`, one class earlier in the
 overlay.
 
 | offset | new name | evidence |
@@ -283,18 +288,17 @@ Source: `src/game/actors/d_a_kp_fr.cpp`.
 
 Source: `src/game/actors/d_a_krpa.cpp`.
 
-## Spiny -- include/Spiny.h
+## daTgz_c -- include/daTgz_c.h
 
 | offset | new name | evidence |
 | --- | --- | --- |
 | 0x3a0 | `mMatrix` | identity-matrix shape. |
 | 0x3d8 | `mState` | `Render` draws the still `Model` in states 0 and 4 and the `ModelAnim` otherwise; `Behavior` treats 1 (once on the ground), 4 and 5 as states that must keep running whatever the distance to the player. |
-| 0x3e9 | `mDespawnTimer` | 0x2c (44 frames) at init, counted down ONLY on the frames Spiny is too far from the player to behave, destroys at 0. Not a plain life timer -- being near the player refills nothing but stops the count. |
+| 0x3e9 | `mDespawnTimer` | 0x2c (44 frames) at init, counted down ONLY on the frames daTgz_c is too far from the player to behave, destroys at 0. Not a plain life timer -- being near the player refills nothing but stops the count. |
 
-Sources: `src/_ZN5Spiny13InitResourcesEv.cpp`, `src/_ZN5Spiny6RenderEv.cpp`,
-`src/_ZN5Spiny8BehaviorEv.cpp`, `src_tu/actors/Spiny.cpp`.
+Sources: `src/actors/daTgz_c.cpp`.
 
-## EnemySwitchTag -- include/EnemySwitchTag.h
+## daESwitch_c -- include/EnemySwitchTag.h
 
 The tag sets an `Event` bit while something stands in its collider.
 
@@ -304,9 +308,9 @@ The tag sets an `Event` bit while something stands in its collider.
 | 0x10a | `mHoldTimer` | counts `mHoldDuration` down; at 0 it clears the collider flag and `Event::ClearBit(mEventID)`. |
 | 0x10c | `mIsReusable` | bit 5 of `param1`. Set: the tag re-arms by reloading `mHoldTimer` from `mHoldDuration`. Clear: it marks itself for destruction after firing once. |
 
-Sources: `src/_ZN14EnemySwitchTag13InitResourcesEv.cpp`,
-`src/_ZN14EnemySwitchTag8BehaviorEv.cpp`,
-`src_tu/actors/EnemySpawner+EnemySwitchTag.cpp`.
+Source: `daESwitch_c::InitResources` and `daESwitch_c::Behavior` in
+`src/game/actors/d_a_e_switch.cpp`. The cartridge RTTI spells the class
+`daESwitch_c`; `EnemySwitchTag` remains a compatibility typedef.
 
 ## daDossyCap_c -- include/daDossyCap_c.h
 
@@ -314,7 +318,7 @@ Sources: `src/_ZN14EnemySwitchTag13InitResourcesEv.cpp`,
 | --- | --- | --- |
 | 0x174 | `mCarrier` | the actor the cap is riding, a pointer spelt `s32`. `Behavior` returns immediately when it is null; otherwise it copies the cap position out of that actor 0x0d8 triple and its two angles out of that actor +0xe4 and `dActor_c::mAngleY`. |
 
-Source: `src/_ZN12daDossyCap_c8BehaviorEv.cpp`.
+Source: `daDossyCap_c::Behavior` in `src/actors/daDossy_c.cpp`.
 
 ## Scuttlebug -- include/Scuttlebug.h
 
@@ -326,18 +330,25 @@ Source: `src/actors/Scuttlebug.cpp`, which absorbed the one-function
 `Behavior` file when ov071/Scuttlebug was promoted into a single
 translation unit.
 
-## BowserTail -- include/BowserTail.h
+## daKpaTail_c -- include/daKpaTail_c.h
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x108 | `mBowserUniqueID` | `Behavior` resolves it with `dActor_c::FindWithID` and parks the tail 0x8c units out from Bowser's position along his facing angle. The file already said so in prose. |
+| 0x108 | `mBowserUniqueID` | `Behavior` resolves it with `dActor_c::FindWithID` and parks the tail 0x8c units out from daKpa_c's position along his facing angle. The file already said so in prose. |
 
-Source: `src/_ZN10BowserTail8BehaviorEv.cpp`.
+Source: `src/actors/daKpa_c.cpp`.
+
+## daRedBombhei_c -- include/daRedBombhei_c.h
+
+| offset | new name | evidence |
+| --- | --- | --- |
+| 0x198 | `mShutterID` | initialized to zero, filled with the cannon shutter actor's `uniqueID`, and resolved with `dActor_c::FindWithID` during the camera/opening cutscene. |
+
+Source: `src/game/actors/d_a_red_bombhei.cpp`. The former observation that this
+slot was never read was incomplete; the consolidated helpers expose its uses.
 
 ## More leaves searched, nothing named
 
-- `BobOmbBuddy` 0x198: zeroed in `src/_ZN11BobOmbBuddy13InitResourcesEv.cpp`,
-  never read.
 - `daCamTag_c` 0x0d0 and `daBgSnwmn_c` 0x0d0: four opaque bytes each, touched by
   no enrolled body. `daBgSnwmn_c` already carries a note saying its 0x0cc read
   is the inherited `mAreaId`, not a field of its own.

@@ -8,7 +8,7 @@ with the LAST section of that name. Every function in the object then resolved a
 one fixed table, no matter which function was asked about.
 
 mwccarm emits a destructor TU as D2, D0, D1, so that fixed table is D1's. D1 got its
-own by luck; D0 and D2 got D1's. Observed live: a `BowserFire::~BowserFire()` D0 whose
+own by luck; D0 and D2 got D1's. Observed live: a `daKpaFire_c::~daKpaFire_c()` D0 whose
 seven relocation destinations are all correct was reported WRONG-DEST, because the tool
 compared D1's five against D0's offsets.
 

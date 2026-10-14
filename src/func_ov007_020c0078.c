@@ -1,6 +1,6 @@
 /* func_ov007_020c0078 at 0x020c0078 (ov007)
  *
- * Camera-style perspective setup: writes the viewport register (0x4000580)
+ * dCamera_c-style perspective setup: writes the viewport register (0x4000580)
  * from four byte fields, then calls G3i::PerspectiveW_ with a sine-table FOV
  * pair and an aspect taken from a 64-bit fixed field at +0xbc shifted down
  * by 20, and finally clears 0x400044c.

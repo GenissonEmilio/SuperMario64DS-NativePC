@@ -1,46 +1,66 @@
 //cpp
-/* Reconstructed ov016/daObjKi_Ita_c translation unit.
+/**
+ * Jolly Roger Bay floating plank (`ita` = board).
  *
- * tu_map identifies the RTTI-backed three-function class run at
- * 0x02112ef4..0x02112fbc. The registry-backed factory immediately after it
- * allocates sizeof(daObjKi_Ita_c), constructs the direct base, installs the
- * class vptr, and ends at the next class's D1. That evidence supports testing
- * the combined four-function interval 0x02112ef4..0x02112ff8; tu_map alone
- * does not prove the factory join.
+ * No fields. InitResources hands this overlay's model and collision
+ * files to daObjFloatBoard_c's shared ov002 helper. CleanupResources
+ * is the base's.
  *
- * mwccarm emits ordinary function sections in reverse source order. Keep the
- * factory first. The inline destructor declared last in daObjKi_Ita_c emits
- * the retail D1/D0 pair first and emits no leaf D2 body.
+ * daObjKi_Ita_c_classInit / g_profile_KI_ITA are reconstructed (RTTI
+ * daObjKi_Ita_c, KI_ITA registry). Retail does not store those spellings.
+ *
+ * deslop
+ * Leftover: data_ov016_02114b8c is still the linker name of this
+ *   overlay's three-word file table. Those words sit between this
+ *   class's RTTI and type-name; this TU does not own them.
  */
 
 #include "daObjKi_Ita_c.h"
+#include "SharedFilePtr.h"
 
-extern "C" int func_ov002_020b5e58(void *self, void *data);
-extern "C" void *data_ov016_02114b8c[];
+extern "C" {
+extern daObjFloatBoard_c_Resources data_ov016_02114b8c;
+}
 
-struct KiItaProfile {
-    daObjKi_Ita_c *(*classInit)();
-    s16 profileID;
-    s16 groupFlags;
-    u32 actorFlags;
-    Fix12i cullRadiusX;
-    Fix12i cullRadiusY;
-    u32 executeOrder;
-    u32 drawOrder;
+/* File 1601 / 1602 resource handles. The static initializer registers
+ * their destructors; the spellings are this TU's, mapped onto
+ * func_02017acc / func_02017ab4 and func_02017b4c /
+ * SharedFilePtr_Destruct_Clsn. */
+struct KiItaModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    KiItaModelFilePtr(u32 fileID);
+    ~KiItaModelFilePtr();
 };
 
-typedef char KiItaProfile_size_must_be_0x1c[
-    sizeof(KiItaProfile) == 0x1c ? 1 : -1];
+struct KiItaCollisionFilePtr : SharedFilePtr {
+    u32 words[2];
 
-/* Reconstructed source-style names. SM64DS directly preserves the class RTTI,
- * KI_ITA ID, descriptor relationship, and factory behavior. */
+    KiItaCollisionFilePtr(u32 fileID);
+    ~KiItaCollisionFilePtr();
+};
+
+struct KiItaSpawnInfo {
+    daObjKi_Ita_c *(*classInit)();
+    s16 executePriority; /* +4: also KI_ITA registry id 0x003c = 60 */
+    s16 renderPriority;  /* +6 */
+    u32 actorFlags;
+    Fix12i clipOffsetY;
+    Fix12i clipRadius;
+    Fix12i clipDistance;
+    Fix12i farDistance;
+};
+
+typedef char KiItaSpawnInfo_size_must_be_0x1c[
+    sizeof(KiItaSpawnInfo) == 0x1c ? 1 : -1];
+
 // @symbol daObjKi_Ita_c_classInit
 extern "C" daObjKi_Ita_c *daObjKi_Ita_c_classInit()
 {
     return new daObjKi_Ita_c();
 }
 
-extern "C" KiItaProfile g_profile_KI_ITA = {
+extern "C" KiItaSpawnInfo g_profile_KI_ITA = {
     daObjKi_Ita_c_classInit,
     0x003c,
     0x00b8,
@@ -52,9 +72,13 @@ extern "C" KiItaProfile g_profile_KI_ITA = {
 };
 
 // @symbol _ZN13daObjKi_Ita_c13InitResourcesEv
-#pragma long_calls on
 int daObjKi_Ita_c::InitResources()
 {
-    return func_ov002_020b5e58(this, data_ov016_02114b8c);
+    return func_ov002_020b5e58(&data_ov016_02114b8c);
 }
-#pragma long_calls off
+
+/* Definitions stay after the last .text function so they do not insert
+ * a function into the ROM-ascending run. Construction order is the model
+ * handle, then the collision handle. */
+KiItaModelFilePtr data_ov016_02114e44(1601);
+KiItaCollisionFilePtr data_ov016_02114e4c(1602);

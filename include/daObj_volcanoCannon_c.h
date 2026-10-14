@@ -34,20 +34,12 @@ struct daObj_volcanoCannon_c : dActor_c {
     u32 mParticleID;             /* 0x114 */
     s32 mKillPosY;               /* 0x118 */
 
-    /* Inline is load-bearing: a forcing use in each destructor source emits
-     * the ROM's D1/D0 pair without adding a homeless D2 to the enrolled file. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daObj_volcanoCannon_c() {}   /* no slot */
-#else
-    virtual ~daObj_volcanoCannon_c() {}   /* D1 and D0 */
-#endif
+    /* Declared out of line so the single definition in
+     * src/game/actors/d_a_obj_fl_maruta.cpp pins the D1/D0 sections to the
+     * TU's ROM-ascending order. (An inline body leaves the variants'
+     * emission positions to the compiler, which parks them after the last
+     * defined function -- past func_ov022_02112654.) */
+    virtual ~daObj_volcanoCannon_c();
 
     virtual int InitResources();       /* slot 0 */
     virtual int CleanupResources();    /* slot 3 */

@@ -218,7 +218,7 @@ T track0(const std::vector<uint8_t> &b, uint32_t pool, uint16_t index) {
 //
 // and func_02045178 turns that into a 4x3 matrix as an XYZ Euler rotation with
 // the translation in row 3. The BCA header holds three value pools and a track
-// array at 0x08/0x0c/0x10/0x14 -- the four offsets Animation::UpdateFileOffsets
+// array at 0x08/0x0c/0x10/0x14 -- the four offsets dExtFrameCtrl_c::UpdateFileOffsets
 // rebases -- with one 0x24-byte track record per bone.
 void bmd_bone_matrices(const BmdModel &m, const std::vector<uint8_t> &bca,
                        std::vector<std::array<float, 16>> &out) {

@@ -165,14 +165,14 @@
       "evidence": "model resource handle constructed with file ID 1558"
     },
     {
-      "symbol": "@342",
+      "symbol": "@360",
       "address": "0x02112090",
       "size": "0xc",
       "binding": "STB_GLOBAL",
       "evidence": "compiler-generated collision resource destructor-registration node"
     },
     {
-      "symbol": "@341",
+      "symbol": "@359",
       "address": "0x0211209c",
       "size": "0xc",
       "binding": "STB_GLOBAL",
@@ -230,13 +230,13 @@
       "evidence": "mwcc emits the ctor-table object local; DSD exposes owned symbols globally and cannot encode a local symbols.txt entry"
     },
     {
-      "symbol": "@342",
+      "symbol": "@360",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "compiler-local collision registration node is a configured initializer relocation destination at 0x02112090"
     },
     {
-      "symbol": "@341",
+      "symbol": "@359",
       "from": "STB_LOCAL",
       "to": "STB_GLOBAL",
       "evidence": "compiler-local model registration node is a configured initializer relocation destination at 0x0211209c"
@@ -308,7 +308,7 @@
       "source": "0x02111b00",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "@341",
+      "symbol": "@359",
       "addend": 0,
       "target_module": "ov023",
       "target_address": "0x0211209c"
@@ -338,7 +338,7 @@
       "source": "0x02111b10",
       "type": "R_ARM_ABS32",
       "kind": "load",
-      "symbol": "@342",
+      "symbol": "@360",
       "addend": 0,
       "target_module": "ov023",
       "target_address": "0x02112090"
@@ -799,14 +799,32 @@
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
     "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
-    "object": "build/tu/ov023-daObjFm_Battan_c/daObjFm_Battan_c.o (gitignored)",
+    "object": "build/tu/ov023-daObjFm_Battan_c/d_a_obj_fm_battan.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
     "functions_matched": 9,
     "functions_declared": 9,
     "compilerOnlyOutput": {
-      "requested": [],
-      "unhandled": [
-        "__sinit_d_a_obj_fm_battan.cpp"
+      "requested": [
+        "_ZN10dBgActor_cD2Ev"
+      ],
+      "deadstripped": [
+        "_ZN10dBgActor_cD2Ev"
+      ],
+      "droppedSections": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        22,
+        45,
+        46
       ],
       "data": [
         "_ZTI7fBase_c",
@@ -816,11 +834,17 @@
         "_ZTI7dBase_c",
         "_ZTI10dBgActor_c",
         "_ZTS10dBgActor_c",
+        "_ZTI8dActor_c"
+      ],
+      "dataExternalized": [
+        "_ZTI10dBgActor_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
         "_ZTI8dActor_c",
-        "_ZTI16daObjFm_Battan_c",
-        "_ZTS16daObjFm_Battan_c",
-        "g_profile_FM_BATTAN",
-        "_ZTV16daObjFm_Battan_c"
+        "_ZTS10dBgActor_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c"
       ]
     },
     "criteria": {
@@ -898,19 +922,19 @@
           {
             "section": ".init",
             "original": [
-              47
+              49
             ],
             "desired": [
-              47
+              49
             ]
           },
           {
             "section": ".ctor",
             "original": [
-              45
+              47
             ],
             "desired": [
-              45
+              47
             ]
           },
           {
@@ -1007,5 +1031,17 @@
       },
       "linkerOutput": null
     }
-  }
+  },
+  "defined_symbol_renames": [
+    {
+      "from": "@373",
+      "to": "@359",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    },
+    {
+      "from": "@374",
+      "to": "@360",
+      "evidence": "compiler temp; the types.h Vector3 ctors shift this TU's per-TU @NNN uniquifier, so mwcc emits it under this name now; licensed under the existing pin"
+    }
+  ]
 }

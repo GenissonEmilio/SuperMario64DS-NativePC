@@ -47,56 +47,56 @@
       "ordinal": 2
     },
     {
-      "symbol": "func_ov006_0212093c",
+      "symbol": "_ZN24dScMgTrampoline_DoorMark6RenderEi",
       "address": "0x0212093c",
       "size": "0x00000070",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
       "ordinal": 3
     },
     {
-      "symbol": "func_ov006_021209ac",
+      "symbol": "_ZN24dScMgTrampoline_DoorMark6UpdateEv",
       "address": "0x021209ac",
       "size": "0x0000006c",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
       "ordinal": 4
     },
     {
-      "symbol": "func_ov006_02120a18",
+      "symbol": "_ZN24dScMgTrampoline_DoorMark4ShowEi",
       "address": "0x02120a18",
       "size": "0x0000002c",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
       "ordinal": 5
     },
     {
-      "symbol": "func_ov006_02120a44",
+      "symbol": "_ZN24dScMgTrampoline_DoorMark4HideEv",
       "address": "0x02120a44",
       "size": "0x00000010",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
       "ordinal": 6
     },
     {
-      "symbol": "func_ov006_02120a54",
+      "symbol": "_ZN24dScMgTrampoline_DoorMark4InitEv",
       "address": "0x02120a54",
       "size": "0x00000010",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
       "ordinal": 7
     },
     {
-      "symbol": "func_ov006_02120a64",
+      "symbol": "_ZN4Desc6RenderEv",
       "address": "0x02120a64",
       "size": "0x00000054",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
       "ordinal": 8
     },
     {
-      "symbol": "func_ov006_02120ab8",
+      "symbol": "_ZN4Desc6UpdateEv",
       "address": "0x02120ab8",
       "size": "0x00000078",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
       "ordinal": 9
     },
     {
-      "symbol": "func_ov006_02120b30",
+      "symbol": "_ZN4Desc5SpawnEii",
       "address": "0x02120b30",
       "size": "0x0000004c",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
@@ -159,7 +159,7 @@
       "ordinal": 18
     },
     {
-      "symbol": "func_ov006_02120f18",
+      "symbol": "_ZN17dScMgTrampoline_c9InitBrushEi",
       "address": "0x02120f18",
       "size": "0x00000104",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
@@ -215,14 +215,14 @@
       "ordinal": 26
     },
     {
-      "symbol": "func_ov006_02121750",
+      "symbol": "_ZN17dScMgTrampoline_c11SetDoorSideEs",
       "address": "0x02121750",
       "size": "0x00000018",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
       "ordinal": 27
     },
     {
-      "symbol": "func_ov006_02121768",
+      "symbol": "_ZN17dScMgTrampoline_c11GetDoorSideEv",
       "address": "0x02121768",
       "size": "0x0000000c",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",
@@ -313,7 +313,7 @@
       "ordinal": 40
     },
     {
-      "symbol": "func_ov006_0212231c",
+      "symbol": "_ZN17dScMgTrampoline_c11InitDisplayEv",
       "address": "0x0212231c",
       "size": "0x00000174",
       "legacy_source": "src/actors/d_sc_mg_trampoline.cpp",

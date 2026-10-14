@@ -53,24 +53,13 @@ struct daDossyCap_c : dActor_c {
     /* The actor this cap is riding, a pointer spelt s32. Behavior bails out
        when it is null, and otherwise copies the cap position out of that actor
        0x0d8 triple and its two angles out of the actor +0xe4 and
-       dActor_c::mAngleY. [_ZN12daDossyCap_c8BehaviorEv.cpp] */
+       dActor_c::mAngleY (daDossyCap_c::Behavior, src/actors/daDossy_c.cpp). */
     s32                mCarrier;                 /* 0x174 */
     u8                 pad_178[0xc];
 
-    /* Inline is load-bearing: explicit use in the destructor source files
-       emits D1 then D0 without inventing a homeless D2. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daDossyCap_c() {}   /* no slot */
-#else
-    virtual ~daDossyCap_c() {}   /* D1 and D0 */
-#endif
+    /* Inline is load-bearing: src/actors/daDossy_c.cpp defines the key
+       function InitResources, so it emits D1 then D0 with no homeless D2. */
+    virtual ~daDossyCap_c() {}
 
     virtual s32 InitResources();       /* slot 0 */
     virtual s32 Behavior();            /* slot 6 */

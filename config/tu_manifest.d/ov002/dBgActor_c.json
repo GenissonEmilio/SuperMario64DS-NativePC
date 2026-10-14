@@ -8,13 +8,14 @@
   "boundary_evidence": [
     "contiguous linker run: 0x20ee42c..0x20eea84, 11 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): dBgActor_c",
-    "module sinit corroboration: 26 sinit(s) / 26 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 26 sinit(s) / 26 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "COLLISION-EVENT FOLD (2026-10-09): the nine C-linkage helpers at 0x020eea84..0x020ef320 abut this TU's top with no gap and sit directly below src/actors/dPathLiftActor_c.cpp (0x020ef320). Each takes a mover's dBgCh_Actr, finds the actor owning the collider it hit (dActor_c::FindWithID of dBgPi::GetClsnID) and calls one dActor_c event slot on it, 21..28 (OnGroundPounded..OnHitFromUnderneath); the ninth, func_ov002_020eea84, hurts the player on a hit against actor 0x3a or 0x139. The owners being delivered to are the collider-owning level objects this class bases, so they are folded here, written first (highest address) per the file's reverse-order layout. They reference no TU-local data, so placement is by adjacency and subject; dPathLiftActor_c is the alternative home."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x020ee42c",
-      "end": "0x020eea84"
+      "end": "0x020ef320"
     }
   ],
   "functions": [
@@ -94,6 +95,69 @@
       "size": "0x00000034",
       "legacy_source": "src/_ZN10dBgActor_cC2Ev.cpp",
       "ordinal": 10
+    },
+    {
+      "symbol": "func_ov002_020eea84",
+      "address": "0x020eea84",
+      "size": "0x00000224",
+      "legacy_source": "src/unnamed/ov002/func_ov002_020eea84.c",
+      "ordinal": 11
+    },
+    {
+      "symbol": "func_ov002_020eeca8",
+      "address": "0x020eeca8",
+      "size": "0x0000007c",
+      "legacy_source": "src/unnamed/ov002/func_ov002_020eeca8.cpp",
+      "ordinal": 12
+    },
+    {
+      "symbol": "func_ov002_020eed24",
+      "address": "0x020eed24",
+      "size": "0x0000009c",
+      "legacy_source": "src/unnamed/ov002/func_ov002_020eed24.cpp",
+      "ordinal": 13
+    },
+    {
+      "symbol": "func_ov002_020eedc0",
+      "address": "0x020eedc0",
+      "size": "0x0000007c",
+      "legacy_source": "src/unnamed/ov002/func_ov002_020eedc0.cpp",
+      "ordinal": 14
+    },
+    {
+      "symbol": "func_ov002_020eee3c",
+      "address": "0x020eee3c",
+      "size": "0x0000007c",
+      "legacy_source": "src/unnamed/ov002/func_ov002_020eee3c.cpp",
+      "ordinal": 15
+    },
+    {
+      "symbol": "func_ov002_020eeeb8",
+      "address": "0x020eeeb8",
+      "size": "0x000001b8",
+      "legacy_source": "src/unnamed/ov002/func_ov002_020eeeb8.cpp",
+      "ordinal": 16
+    },
+    {
+      "symbol": "func_ov002_020ef070",
+      "address": "0x020ef070",
+      "size": "0x000001b8",
+      "legacy_source": "src/unnamed/ov002/func_ov002_020ef070.cpp",
+      "ordinal": 17
+    },
+    {
+      "symbol": "func_ov002_020ef228",
+      "address": "0x020ef228",
+      "size": "0x0000007c",
+      "legacy_source": "src/unnamed/ov002/func_ov002_020ef228.cpp",
+      "ordinal": 18
+    },
+    {
+      "symbol": "func_ov002_020ef2a4",
+      "address": "0x020ef2a4",
+      "size": "0x0000007c",
+      "legacy_source": "src/unnamed/ov002/func_ov002_020ef2a4.cpp",
+      "ordinal": 19
     }
   ],
   "data": [],
@@ -186,8 +250,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov002-dBgActor_c/dBgActor_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 11,
-    "functions_declared": 11,
+    "functions_matched": 20,
+    "functions_declared": 20,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN10dBgActor_cC1Ev",

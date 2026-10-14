@@ -37,17 +37,20 @@
 #include "dScMgD3DBase_c.h"
 #include "dMgJump3DMario_c.h"
 
-extern "C" void __cxa_vec_cleanup(void *base, int count, int stride, void *dtor);
+/* The array runtime passes each element address and ignores callback results.
+ * The casts below adapt the existing lifecycle entries at that ABI boundary. */
+extern "C" void __cxa_vec_cleanup(void *base, unsigned int count, unsigned int stride,
+                       void (*dtor)(void *));
 extern "C" void _ZN5ModelD1Ev(void *p);
-extern "C" void func_ov006_020c6f3c(void);
-extern "C" void func_ov006_020eed64(void);
+extern "C" int func_ov006_020c6f3c(int *object);
+extern "C" void func_ov006_020eed64(void *object);
 
 struct dScMgJump2_c : dScMgD3DBase_c {
     /* DEFINED IN THE CLASS BODY, DELIBERATELY -- not a style choice.
        D1 sits at 0x020eebe8, BELOW D0 at 0x020eec9c. An out-of-line member
        definition makes mwccarm 2004/b56 emit the destructor group as
        D0-then-D1 plus a homeless D2, and a single translation unit covering
-       the whole .text run 0x020eebe8..0x020efc08 cannot then be linked: the
+       the whole .text run 0x020eebe8..0x020efc0c cannot then be linked: the
        functions are not emitted in ROM address order. Defining it here emits
        D1 before D0, emits no D2 at all, and costs nothing else -- it is still
        the same body, and it is still not inlined into callers because a
@@ -69,8 +72,8 @@ struct dScMgJump2_c : dScMgD3DBase_c {
     virtual ~dScMgJump2_c() {   /* D1 and D0 */
 #endif
         _ZN5ModelD1Ev((char *)this + 0x5a14);
-        __cxa_vec_cleanup(mArray3, 0x10, 0x24, (void *)func_ov006_020eed64);
-        __cxa_vec_cleanup(mArray2, 6, 0xf0, (void *)func_ov006_020c6f3c);
+        __cxa_vec_cleanup(mArray3, 0x10, 0x24, func_ov006_020eed64);
+        __cxa_vec_cleanup(mArray2, 6, 0xf0, (void (*)(void *))func_ov006_020c6f3c);
     }
     virtual void OnYoshiTryEat(int arg);               /* slot 18 */
     virtual int  OnTurnIntoEgg(int mode);              /* slot 19 */
@@ -88,10 +91,26 @@ struct dScMgJump2_c : dScMgD3DBase_c {
     u8  mArray2[0x5a0];   /* 0x5234 -- 6 * 0xf0,  elem dtor func_ov006_020c6f3c */
     u8  mArray3[0x240];   /* 0x57d4 -- 0x10 * 0x24, elem dtor func_ov006_020eed64 */
     u8  mModel[0x50];     /* 0x5a14 -- a real Model, raw bytes; see banner */
-    s32 unk_5a64;         /* 0x5a64 */
-    u8  pad_5a68[0x4];    /* 0x5a68 */
+    s32 unk_5a64;         /* 0x5a64 -- scroll phase; feeds the model's anim clock */
+    s32 unk_5a68;         /* 0x5a68 -- phase advance rate, applied >> 12 */
     u32 unk_5a6c;         /* 0x5a6c */
-    u8  pad_5a70[0x8];    /* 0x5a70 -- no matched access */
+    u8  pad_5a70[0x4];    /* 0x5a70 -- no matched access */
+    s16 unk_5a74;         /* 0x5a74 -- the state functions' countdown */
+    u16 pad_5a76;         /* 0x5a76 */
+
+    /* The PMF state machine. data_ov006_0213cc74..9c are the eight-byte
+       records the state functions copy into pad_5004 whole; their first
+       words relocate to func_ov006_020ef47c, ..ef5ac, ..ef480, ..ef794 and
+       ..ef4ec respectively (config/arm9/overlays/ov006/relocs.txt). The
+       three remaining members are the transitions that install them. */
+    void func_ov006_020ef47c();
+    void func_ov006_020ef480();
+    void func_ov006_020ef4ec();
+    void func_ov006_020ef580();
+    void func_ov006_020ef5ac();
+    void func_ov006_020ef768();
+    void func_ov006_020ef794();
+    void func_ov006_020ef7f8();
 
     /* --- this class's own vtable overrides, defined out of line under their
        own mangled names. Each re-uses a slot fBase_c already holds rather

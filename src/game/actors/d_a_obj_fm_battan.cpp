@@ -1,39 +1,65 @@
 //cpp
-/* Genuine production translation unit for ov023/daObjFm_Battan_c.
+/* daObjFm_Battan_c -- the slamming slab (FM_BATTAN), ov023.
+ *
+ * It waits until the player is within 1000.0 (sound 0x43), then tips over
+ * about X, accelerating until it lies flat (mAngleX -0x4000). On impact it
+ * shakes the ground, plays 0x44 and raises dust 400.0 behind its heading
+ * (position - 400.0 * facing). After 60 frames it swings back upright
+ * (0x45), rests 60 frames, and the cycle starts over. The shadow stretches with the tilt (UpdateShadow).
  *
  * daObjFm_Battan_c_classInit and g_profile_FM_BATTAN are reconstructed
  * source-style names. SM64DS proves the RTTI class, FM_BATTAN registry ID,
  * descriptor/factory relationship, and object shape; later EAD lineage
- * supplies the spelling prior. Exact original SM64DS symbols are not
- * preserved. Historical project aliases: Squasher_Spawn and
- * Squasher_SpawnInfo. Private helper spellings are likewise inferred; their
- * class ownership, bodies, calls, and ordering are byte/relocation proven.
+ * supplies the spelling prior. Historical project aliases: Squasher_Spawn
+ * and Squasher_SpawnInfo. Private helper spellings are likewise inferred;
+ * their class ownership, bodies, calls, and ordering are byte/relocation
+ * proven.
  *
- * mwccarm emits function sections in reverse source order. Keep the ROM-high
- * factory first and the ROM-low helper last. InitResources is the key function;
- * together with the inline destructor in the real header this naturally emits
- * retail D1 then D0 and the class RTTI/vtable without a forcing object.
+ * _ZTS16daObjFm_Battan_c 0x02111fac. _ZTI16daObjFm_Battan_c 0x02111fa0.
+ * _ZTV16daObjFm_Battan_c 0x02111fe4. InitResources is the key function;
+ * with the inline destructor in the real header this emits retail D1
+ * (0x021111a0) then D0 (0x021111ec).
  *
- * deslop leftovers:
- * - dBgW_KcMbg::SetFile / dActor_c::DropShadowScaleXYZ / dActor_c::Earthquake
- *   6az: InitResources, UpdateShadow, and Behavior pass Fix12<int> by value;
- *   the header method form size-DIFFs.
- * - func_020393d4: InitResources stores dBgW::UpdatePosWithTransform on
+ * DO NOT "TIDY" THESE -- each one is load-bearing:
+ *   Source is reverse ROM order: keep the ROM-high factory first and the
+ *   ROM-low helper last. InitResources is the key function; with the inline
+ *   destructor in the real header this emits retail D1 then D0 and the
+ *   class RTTI/vtable without a forcing object.
+ *   BattanVector3: a local Vector3 would emit vague-linkage ~Vector3.
+ *   common.h first (via dBgActor_c.h): Matrix4x3 is s32 m[12], so the
+ *   translation stays m[9]/m[10]/m[11].
+ *   *(Vector3 *)&mCamSpacePosX: a Vector3 member at 0x074 is a dActor_c
+ *   change, not this leaf's.
+ *
+ * WHY SOME CALLS ARE SPELLED AS MANGLED SYMBOLS (Fix12<int> by value, see
+ * notes/mwccarm-codegen.md 6az; the header method form changes the code
+ * size): dBgW_KcMbg::SetFile
+ * (InitResources), dActor_c::DropShadowScaleXYZ (UpdateShadow) and
+ * dActor_c::Earthquake (Behavior).
+ *
+ * Known limits:
+ *   func_020393d4: InitResources stores dBgW::UpdatePosWithTransform on
  *   mMeshCollider; dBgW.h has no setter.
- * - func_0200fa04: Behavior's squash-impact dust; no named method in this TU.
- * - AddVec3 / Matrix4x3_FromRotationY / Matrix4x3_FromRotationXYZExt: no
- *   shared header this TU can take without a campaign.
- * - BattanVector3: a local Vector3 would emit vague-linkage ~Vector3.
- * - data_ov023_02112088 / 02112080 resource handles and data_ov064_0211ba4c
- *   CLPS; this TU's sinit owns the two handles, overlay .data owns the CLPS.
- * - data_02082214 sine table.
- * - common.h first (via dBgActor_c.h): Matrix4x3 is s32 m[12], so translation
- *   stays m[9]/m[10]/m[11].
- * - *(Vector3 *)&mCamSpacePosX addressing shape (a Vector3 member at 0x074 is
- *   a dActor_c campaign, not this leaf).
- * - no Player.h / Camera.h.
- * - leaf operator new until #2570.
+ *   func_0200fa04 is Behavior's impact dust; no named method in this TU.
+ *   AddVec3 / Matrix4x3_FromRotationY / Matrix4x3_FromRotationXYZExt: no
+ *   shared header this TU can take without a wider change.
+ *   data_ov023_02112088 / 02112080 are resource handles this TU's sinit
+ *   owns; data_ov064_0211ba4c (CLPS) is overlay .data; data_02082214 is the
+ *   sine table.
+ *   No Player.h / dCamera_c.h. The leaf operator new stays until #2570.
  */
+
+// leftovers:
+// - func_020393d4: InitResources stores dBgW::UpdatePosWithTransform on
+//   mMeshCollider; dBgW.h has no setter.
+// - func_0200fa04 is Behavior's impact dust; no named method in this TU.
+// - AddVec3 / Matrix4x3_FromRotationY / Matrix4x3_FromRotationXYZExt: no
+//   shared header this TU can take without a wider change.
+// - data_ov023_02112088 / 02112080 are resource handles this TU's sinit
+//   owns; data_ov064_0211ba4c (CLPS) is overlay .data; data_02082214 is the
+//   sine table.
+// - No Player.h / dCamera_c.h here. The leaf operator new stays until the
+//   fBase_c size_t overload work lands.
 
 #include "daObjFm_Battan_c.h"
 #include "SharedFilePtr.h"
@@ -64,9 +90,10 @@ extern s16 data_02082214[];
 extern void Matrix4x3_FromRotationY(void *, s16);
 extern void Matrix4x3_FromRotationXYZExt(void *, int, int, int);
 /* dActor_c::DropShadowScaleXYZ / Earthquake -- reached through the mangled
-   name because the by-value Fix12<int> parameters are wall 6az. */
-extern int _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
-    dActor_c *, ShadowModel *, Matrix4x3 *, Fix12i, Fix12i, Fix12i, u32);
+   name because the by-value Fix12<int> parameters
+   (notes/mwccarm-codegen.md 6az) break the method form. */
+extern int _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
+    dActor_c *, dExtShadowModel_c *, Matrix4x3 *, Fix12i, Fix12i, Fix12i, u32);
 extern void _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(
     dActor_c *, BattanVector3 *, Fix12i);
 extern void AddVec3(BattanVector3 *, BattanVector3 *, BattanVector3 *);
@@ -77,7 +104,6 @@ extern void func_0200fa04(dActor_c *, BattanVector3 *, int);
 extern void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     dBgW_KcMbg *, KCL_File *, Matrix4x3 *, Fix12i, s16, void *);
 extern void func_020393d4(int *, int);
-extern void _ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_(void);
 }
 
 /* The retail static initializer constructs these two 8-byte resource handles
@@ -140,7 +166,7 @@ int daObjFm_Battan_c::InitResources()
     UpdateClsnPosAndRot();
 
     KCL_File *file = (KCL_File *)dBgW_Kc::LoadFile(data_ov023_02112080);
-    /* MEASURED: by-value Fix12<int> scale is wall 6az. */
+    /* MEASURED: by-value Fix12<int> scale; see notes/mwccarm-codegen.md 6az. */
     _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
         &mMeshCollider, file, &mClsnMat, 0x1000, mAngleY,
         data_ov064_0211ba4c);
@@ -148,7 +174,7 @@ int daObjFm_Battan_c::InitResources()
        no setter, so this stays the 8-byte store helper. */
     func_020393d4(
         (int *)&mMeshCollider,
-        (int)&_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_);
+        (int)&dBgW::UpdatePosWithTransform);
     mMeshCollider.Enable(this);
 
     mAngVelX = 0;
@@ -188,7 +214,7 @@ int daObjFm_Battan_c::Behavior()
             pos.x = mPosX;
             pos.y = mPosY;
             pos.z = mPosZ;
-            /* MEASURED: by-value Fix12<int> is wall 6az. */
+            /* MEASURED: by-value Fix12<int> (notes/mwccarm-codegen.md 6az). */
             _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(
                 this, &pos, 0x04000000);
             Sound::PlayBank3(0x44, *(Vector3 *)&mCamSpacePosX);
@@ -280,8 +306,9 @@ int daObjFm_Battan_c::UpdateShadow()
     mShadowMat.m[9] = mPosX >> 3;
     mShadowMat.m[10] = mPosY >> 3;
     mShadowMat.m[11] = mPosZ >> 3;
-    /* MEASURED: three by-value Fix12<int> scales are wall 6az. */
-    return _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
+    /* MEASURED: three by-value Fix12<int> scales; see notes/mwccarm-codegen.md
+       6az. */
+    return _ZN8dActor_c18DropShadowScaleXYZER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_S5_j(
         this, &mShadowModel, &mShadowMat,
         0x258000, 0x32000, -depth, 0xf);
 }

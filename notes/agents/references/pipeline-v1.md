@@ -32,7 +32,7 @@ open at once, and it exists purely because the validator is one box. See
 `roles/integrator.md`. It re-derives nothing; it moves proven commits onto a
 fresh base and proves that the composition changed nothing.
 
-Stage 2 is wider than its one row suggests. Besides the source and manifest, a
+dScStage_c 2 is wider than its one row suggests. Besides the source and manifest, a
 promotion edits `delinks.txt`, `converted-baseline.json` (via `tiers_ratchet
 --update`, never by hand), `converted-backslide-exceptions.jsonl`, any `port/`
 slice manifest naming a deleted shard, and any prose naming one. Six non-source
@@ -64,8 +64,8 @@ goal is writing the classes back.
 
 **The ruling: convert as far as byte-match allows.** `dScMgMemory2_c` is the proof
 the route works end to end -- but read what it cost before you take 51/52 as a
-target. Measured across its promotion commit `4d92d0f98`, in
-`config/arm9/overlays/ov006/symbols.txt`:
+target. Measured across its promotion commit [#4d92d0f98](https://github.com/tangosdev/sm64ds-decomp/commit/4d92d0f98), in
+[config/arm9/overlays/ov006/symbols.txt](../../../config/arm9/overlays/ov006/symbols.txt) the 52 members are:
 
 | | mangled `_ZN14dScMgMemory2_c*` rows |
 |---|---|
@@ -80,12 +80,12 @@ carrying a mangled name converts as a codegen question -- does it byte-match.
 A member carrying an auto-generated `func_ovNNN_*` name converts only by being
 **renamed**, which is a different, larger, and riskier act: the new name must
 reach `symbols.txt` in the same commit (see below), and every external caller
-must move with it. Measured on `ov071/Scuttlebug`, all 27 unconverted members
+must move with it. Measured on [ov071](../../../config/arm9/overlays/ov071/symbols.txt)/`Scuttlebug`, all 27 unconverted members
 were auto-named, so its ceiling was **name recovery, not codegen and not
 scope** -- a different wall from `dScMgCurling2_c`'s, where all 29 compiled
 byte-neutrally and 12 were refused for scope alone.
 
-State which wall you hit. "10/37" with no wall named is not a result. Stage 3b owns it; it is the same `writer` role file and
+State which wall you hit. "10/37" with no wall named is not a result. dScStage_c 3b owns it; it is the same `writer` role file and
 may run as a separate pass on the same branch when stages 2 and 3 have already
 pushed. A member that will not convert byte-neutrally **stays a free function** --
 that is a result, not a failure. Report the count either way: "31/31 MATCH" hides
@@ -114,7 +114,7 @@ what the ROM proves (member-ness, dispatch-table index) from what is invented (t
 word). Apply the same split to a class name: say what the cartridge attests and what
 you chose.
 
-State the identity either way. `dScMgCurling2_c` is ROM RTTI -- the ov006 bytes at
+State the identity either way. `dScMgCurling2_c` is ROM RTTI -- the [ov006](../../../config/arm9/overlays/ov006/symbols.txt) bytes at
 `0x0213c4c8` are literally `15dScMgCurling2_c` -- and its facts file says so in
 `identity_evidence`. A coined name needs the same field, saying it is coined and on
 what basis. **Do not run `class_rename.py`** to manufacture agreement.
@@ -139,12 +139,12 @@ enclosing scope of `dMgPsOpt_c::TouchIcon_c`. **A raw substring search is not th
 test**: `Koopa`, `Door`, `Coin`, `Key` and `Fish` all "match" inside unrelated ROM
 strings.
 
-Stage 4 is the only stage that DECIDES whether the bytes are right, and it owns
+dScStage_c 4 is the only stage that DECIDES whether the bytes are right, and it owns
 `linkcheck` and `rombuild`. That is not the same as "stages 1-3 never run a byte
 gate", which this file used to say and which is actively harmful at stage 3: a
 humanizer's edits move bytes routinely, `tubuild.py verify` costs 2.6 seconds on
 a 71-member TU, and running it after every batch is the difference between
-knowing and bisecting. Stage 3 never changes semantics. Stage 5 is a different
+knowing and bisecting. dScStage_c 3 never changes semantics. dScStage_c 5 is a different
 agent from stage 4 — a producer's own green output is evidence, not review.
 
 **Every merge to `main` invalidates the pinned base of every other open PR.** So

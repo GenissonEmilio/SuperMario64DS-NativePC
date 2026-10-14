@@ -108,15 +108,32 @@
 #include "SharedFilePtr.h"
 #include "decl_common.h"
 
+/* File 1084 / 1085 resource handles. The static initializer registers
+ * their destructors; the spellings are this TU's, mapped onto
+ * func_02017acc / func_02017ab4 and func_02017b4c /
+ * SharedFilePtr_Destruct_Clsn. */
+struct BcSwitchModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    BcSwitchModelFilePtr(u32 fileID);
+    ~BcSwitchModelFilePtr();
+};
+
+struct BcSwitchCollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    BcSwitchCollisionFilePtr(u32 fileID);
+    ~BcSwitchCollisionFilePtr();
+};
+
 extern "C" {
-extern SharedFilePtr daObjBC_Switch_c_ClsnFile;
-extern SharedFilePtr daObjBC_Switch_c_ModelFile;
+extern BcSwitchCollisionFilePtr daObjBC_Switch_c_ClsnFile;
+extern BcSwitchModelFilePtr daObjBC_Switch_c_ModelFile;
 extern u8 IsAreaShowing(s32 idx);
 /* Sound::ChangeMusicVolume(u32, Fix12<int>) -- wall 6az on Behavior. */
 extern s32 _ZN5Sound17ChangeMusicVolumeEj5Fix12IiE(u32 a, s32 vol);
 extern void _ZN5Event6SetBitEj(u32 bit);
 extern u16 DecIfAbove0_Short(u16 *p);
-extern void *_ZN8dActor_c15FindWithActorIDEjPS_(u32 id, void *prev);
 /* dBgActor_c::IsClsnInRange(Fix12<int>, Fix12<int>) -- wall 6az on Behavior. */
 extern s32 _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *self, s32 a, s32 b);
 /* dBgW_KcMbg::SetFile -- wall 6az on InitResources. */
@@ -313,7 +330,7 @@ s32 daObjBC_Switch_c::Behavior()
                 else
                     mTickSound = func_02012310(mTickSound, 0x38, 0);
                 _ZN5Sound17ChangeMusicVolumeEj5Fix12IiE(0x40, 0xc999);
-                if (_ZN8dActor_c15FindWithActorIDEjPS_(0x122, 0) == 0)
+                if (dActor_c::FindWithActorID(0x122, 0) == 0)
                     mCoinTimer = 1;
             }
         }
@@ -399,3 +416,9 @@ int daObjBC_Switch_c::CleanupResources()
  * isolation places .text in emission order, so the out-of-line spelling
  * failed linkcheck even though objisolate called it clean. Inline in the
  * class body it emits D1, D0 and no D2. */
+
+/* Definitions stay after the last .text function so they do not insert
+ * a function into the ROM-ascending run. Construction order is the model
+ * handle, then the collision handle. */
+BcSwitchModelFilePtr daObjBC_Switch_c_ModelFile(1084);
+BcSwitchCollisionFilePtr daObjBC_Switch_c_ClsnFile(1085);

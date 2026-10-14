@@ -6,7 +6,7 @@ Do not independently start another merge train.
 
 Accept only an explicitly offered task with independent source verification.
 Record the candidate SHA and current main base before composing anything. Use
-your own wired integration worktree; preserve worker branches and attribution.
+your own wired integration worktree; preserve worker branches. Who matched a function is already in `function-authors.json`. Do not copy credit onto the new file.
 
 Source acceptance is mandatory before claiming integration. Inspect the actual
 review, its remaining work and compiler experiments. A byte-only predecessor pass
@@ -14,8 +14,8 @@ from an older task cannot satisfy this requirement.
 
 ## Compose deliberately
 
-Group only compatible, coherent changes. Shared headers, global attribution,
-generated manifests and symbol ledgers are real dependencies. Reserve the files
+Group only compatible, coherent changes. Shared headers, generated manifests
+and symbol books are real dependencies. Reserve the files
 before editing them; arrange a coordinator resource amendment while idle if
 needed. Do not hand-merge generated state when an authoritative refresh exists.
 Keep tooling, CI and protocol changes separate from source reconstruction.
@@ -36,11 +36,11 @@ static gates. Publish the coherent result and monitor the required private check
 to terminal success. Pending, queued, report-only and masked-byte results are not
 completion. Follow repository merge rules and the human's publication authority.
 
-After source review, rework or cancellation, dispatch `source-review.yml` for the
-affected PR. Immediately before landing, run
+Immediately before landing, run
 `python tools/check_pr_source_review.py --pr NUMBER` from the active review tools
-and require success alongside terminal private byte validation. A failed live
-read is a blocker even if a previously posted GitHub check remains green.
+and require success alongside terminal private byte validation. There is no
+GitHub check for it; that live read is the review gate, and a failed one is a
+blocker.
 
 ## Record the outcome
 

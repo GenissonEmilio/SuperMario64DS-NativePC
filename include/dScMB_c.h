@@ -9,7 +9,7 @@
  *   dScMB_c -- dScMB_c_classInit (was func_020352b4), g_profile_MULTIBOOT (was data_0209435c)
  */
 #include "dScene_c.h"
-#include "FaderColor.h"
+#include "dFdColor_c.h"
 #include "dGraph_c.h"
 
 /* Multi-Boot scene: one of dScene_c's ten direct children (see the census in
@@ -30,10 +30,10 @@
  * The same constructor writes the vtable chain fBase_c -> (dBase_c/dScene_c
  * inlined) -> data_020943c4 (dScMB_c's own vtable), sets the usual two
  * spawn-flag bits at fBase_c's own 0x13, then placement-constructs a
- * FaderColor member at 0x50 (writes the Fader -> FaderBrightness ->
- * FaderColor vtable chain and FaderColor's own fields, touching nothing
+ * dFdColor_c member at 0x50 (writes the dFader_c -> dFdBrightness_c ->
+ * dFdColor_c vtable chain and dFdColor_c's own fields, touching nothing
  * past 0x60). dScMB_c::~dScMB_c (func_02034a78/func_02034ac0) destroys the
- * same FaderColor member before calling fBase_c's own D2 -- the standard
+ * same dFdColor_c member before calling fBase_c's own D2 -- the standard
  * "most-derived vptr write, member dtor, base-subobject vptr writes, lowest
  * base dtor" sequence.
  *
@@ -43,9 +43,9 @@
  * NOT an embedded member of dScMB_c. Recovering that nested class's own
  * layout is a separate, later pass; it occupies no space in this header.
  *
- * MEMBERS. FaderColor's own dsize is 0x10 (0x50..0x60); InitResources writes
- * its own u16 at 0x5c (FaderColor's own field, via
- * _ZN8dScene_c9SetFadersEP15FaderBrightness(this+0x50), not a new
+ * MEMBERS. dFdColor_c's own dsize is 0x10 (0x50..0x60); InitResources writes
+ * its own u16 at 0x5c (dFdColor_c's own field, via
+ * _ZN8dScene_c9SetFadersEP15dFdBrightness_c(this+0x50), not a new
  * dScMB_c field). Two int fields at 0x60 and 0x64 are dScMB_c's own --
  * InitResources zeroes both; Behavior uses 0x60 as a state-machine step
  * counter and 0x64 as a frame-timeout counter. 0x64 + sizeof(int) == 0x68,
@@ -53,39 +53,30 @@
  *
  * VTABLE ORDER follows dScene_c's (unchanged slot indices; dScMB_c adds no
  * new virtual). The destructor pair is at slots 16/17, the fBase_c/actor-
- * family convention, not the Fader family's 0/1 -- consistent with every
+ * family convention, not the dFader_c family's 0/1 -- consistent with every
  * other dScene_c child recovered so far.
  */
 struct dScMB_c : dScene_c {
 
     class graphCallback_c;
-    FaderColor fader;      /* 0x50 -- placement-constructed by InitResources,
+    dFdColor_c fader;      /* 0x50 -- placement-constructed by InitResources,
                                destroyed by ~dScMB_c; see derivation above */
-    s32 unk_060;            /* 0x60 -- Behavior state-machine step */
-    s32 unk_064;            /* 0x064 -- Behavior frame-timeout counter */
+    s32 mStep;              /* 0x60 -- Behavior state-machine step */
+    s32 mTimeout;           /* 0x064 -- Behavior frame-timeout counter */
 
-    /* Declared first -- key function; see the family convention discussed in
-       dBase_c.h/dScene_c.h. Never defined as a real method in any TU: both
-       D1 and D0 are plain functions carrying their literal mangled name
-       (src/_ZN7dScMB_cD1Ev.c, src/_ZN7dScMB_cD0Ev.c). */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMB_c();   /* no slot */
-#else
-    virtual ~dScMB_c();   /* D1 and D0 */
-#endif
+    /* Declared first -- key function. Defined out of line; that definition
+       emits D1 then D0. */
+    virtual ~dScMB_c();                                 /* slots 16 (D1), 17 (D0) */
 
     /* --- overrides, in _ZTV8dScene_c/_ZTV7fBase_c order. --- */
     virtual s32 InitResources();                        /* slot  0 */
     virtual s32 CleanupResources();                      /* slot  3 */
     virtual s32 Behavior();                               /* slot  6 */
     virtual s32 Render();                                 /* slot  9 */
+
+    /* Not virtual. The global graph callback calls this on mOwner.
+       The address stays the name. */
+    int func_02034d34();
 };
 
 /* The GLOBAL callback object InitResources registers (data_020a0c68), not a

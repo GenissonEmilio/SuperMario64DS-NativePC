@@ -230,12 +230,13 @@ Also spelled `u16 *p = (u16*)(((int)c + 0x4c0c) & 0xFFFFFFFFFFFFFFFFULL); *p = *
    #define M(a) (*(int*)(((long long)(unsigned)(a)) & 0xFFFFFFFFFFFFFFFFLL))
    #define N(a) (*(int*)(((long long)(long)(a))     & 0xFFFFFFFFFFFFFFFFLL))
    ```
-   (verbatim from `src/func_ov006_02114c04.c`, which needs all three)
+   (verbatim from `func_ov006_02114c04`, which needs all three)
 
 **Landed examples** (all byte-identical, strict relocs, linkcheck VERIFIED):
-`src/func_ov006_02114c04.c` (the clearest -- RMW/single-use split across a whole loop body),
-`src/func_ov006_0211fe78.c` (63 divergences -> 0 in one edit),
-`src/func_ov006_020d8d84.c`, `src/func_ov006_0211e8a8.c`.
+`func_ov006_02114c04` (the clearest -- RMW/single-use split across a whole loop body),
+`func_ov006_0211fe78` (63 divergences -> 0 in one edit),
+`src/actors/dScMgBomroom_c.cpp` (`func_ov006_020d8d84`, folded from its shard), `func_ov006_0211e8a8`
+(both now in `src/actors/dScMgTeresa_c.cpp`).
 
 **Cost of the stale note.** `func_ov006_0211e8a8` was worked to 12 divergences, correctly diagnosed
 as the "first-access-fold wall" per the old text, and abandoned as unmatchable. Pointed at the
@@ -251,7 +252,7 @@ mwcc pool-load it and hoist the result into callee-saved registers (observed: 7-
 Modelling the same thing as a **stride-0x40 struct array** indexed `[i]` yields the ROM's
 `add rX,self,i,lsl#6; add rX,rX,#0x4000; ldrb [rX,#0x694]` and rematerializes per region.
 (`src/actors/dScMgBomroom_c.cpp`, which absorbed the former `func_ov006_020d69b8`
-shard; and `src/func_ov006_020d816c.c`.)
+and `func_ov006_020d816c` shards.)
 
 Related: write the cast **inline** at each use. Hoisting it into a local pointer (`Ent *ents = ...`)
 forces one addressing form everywhere; inline lets mwcc pick per context, which is what the ROM does.
@@ -347,7 +348,7 @@ same subsystem -- neither fell to search:
 - `func_020316d8` was floored at **23 divergences after ~5600 compiles** of declaration-order,
   statement-order, type and pragma hill-climbing, and diagnosed as a pure allocator rotation. The
   supporting finding was even correct: decl order and `register`/type knobs have *zero* effect on
-  that function. It was not an allocator floor. The matched sibling `src/func_0201b100.c` contains
+  that function. It was not an allocator floor. The matched sibling `src/unnamed/arm9/0201/func_0201b100.c` contains
   the same blit loop and carries the load-bearing spellings directly -- a `(short)(int)` double cast
   to defeat the range-folder, the slow path as an `else` block with block-scoped locals, a char-cast
   third store that breaks an mla-coalesce. ~650 compiles from that start.
@@ -419,7 +420,7 @@ your target before starting.**
   struct PVec { s32 x, y, z; ~PVec() {} };
   ```
   Probed and rejected as the cause first: 4-byte structs, non-POD classes, `Vector3`-by-value,
-  varargs, 7-arg models. It is not a struct-ABI effect. (`src/func_ov002_020d869c.cpp`)
+  varargs, 7-arg models. It is not a struct-ABI effect. (`func_ov002_020d869c` in `src/actors/Player.cpp`)
 - Where the ROM keeps several apparently-dead stores to locals, wrap **all the locals in one
   enclosing struct whose address is taken**. That blocks SROA/register promotion for the whole
   aggregate so the dead stores survive, while store-to-load forwarding still supplies the registers.
@@ -436,12 +437,12 @@ offsets; block depth and scope-close order are irrelevant; and **compiler temps 
 all declared locals**. Therefore a ROM slot at the *top* of the frame that is used *first* cannot be
 a declared local -- it must be a temp, i.e. a C99 compound literal (`obj->v = (Vec3){0,0,0};`).
 Deriving the construct from a frame-layout contradiction beats permuting spellings.
-(`src/func_ov007_020ca010.c`)
+(`src/unnamed/ov007/func_ov007_020ca010.c`)
 
 **All-zero aggregate init triggers materialized-base stack zeroing.** `Vec3 v = {0,0,0};` gives
 `add rN,sp,#off; str r,[rN]; str r,[rN,#4]; str r,[rN,#8]`. Field assignments, a pointer local, an
 inlined `VecSet(&v,0,0,0)` and a `void*` helper all fold to `[sp,#off]`. A **non-zero** aggregate
-init instead emits a pool `ldm`/`stm` copy. (`src/func_ov007_020ca010.c`)
+init instead emits a pool `ldm`/`stm` copy. (`src/unnamed/ov007/func_ov007_020ca010.c`)
 
 **Pointer difference carries no conversion node.** To get a base-0 array stride offset into a
 register as an int, `(int)&((char(*)[0x24])0)[idx][0]` emits a surplus `add rX,rY,#0` that mwcc will
@@ -450,25 +451,25 @@ not fold away (~12 cast spellings all did). Spell it as a **pointer difference**
 off = ((char (*)[0x24])0)[idx] - (char*)0;
 ```
 Operand order then matters: the pointer base must be the left operand of the following add, or you
-get the operands swapped. (`src/func_ov006_0211e8a8.c`)
+get the operands swapped. (`func_ov006_0211e8a8`, in `src/actors/dScMgTeresa_c.cpp`)
 
 **`if/else` vs ternary has NON-LOCAL regalloc effects.** The existing "preserve ternaries" guidance
 is not universal. A case written as a ternary poisoned the whole function's r1/r2 assignment for two
 unrelated locals -- *despite* the ROM emitting the classic `moveq/movne` ternary shape. Rewriting it
 as `if/else` fixed a 20-instruction coloring residual far from the ternary itself. When a predicated
 pair is the only construct adjacent to a coloring residual, **try both forms**.
-(`src/func_ov007_020b5f64.c`)
+(`src/unnamed/ov007/func_ov007_020b5f64.c`)
 
 **Parallel loops want their own locals.** Six structurally identical zero-init loops sharing one
 `i`/`p` pair gave correct instruction shape with permuted registers; giving each loop its own counter
 and pointer fixed the allocation exactly. A declaration-order swap did not.
-(`src/func_ov006_020feba8.c`)
+(`src/actors/dScMgPachinko_c.cpp`, `func_ov006_020feba8`, folded from its shard)
 
 **Assignment order, not declaration order.** Where a 24-permutation *declaration*-order sweep is
 inert, reordering the **assignment / first use** can still flip the entire callee-saved assignment
 (observed: 33 divergences -> 0 from moving one assignment). Source position of the first *use* sets
 web rank. Corollary: an inert decl-order sweep means the lever is **gated**, not dead -- try
-`#pragma opt_lifetimes off` and re-sweep. (`src/func_ov006_020fe750.c`)
+`#pragma opt_lifetimes off` and re-sweep. (`src/actors/dScMgPachinko_c.cpp`, `func_ov006_020fe750`, folded from its shard)
 
 **Prefer a respelling to a pragma.** `#pragma opt_strength_reduction off` and the address-tree
 respelling `((int*)c + k)[0x1510]` both killed a spurious induction variable; the respelling was

@@ -22,8 +22,8 @@
  * - Event::GetBit stays the scalar mangled ABI (Behavior).
  * - func_ov029_021126dc / 02112710 stay placeholder labels (Y-rot + pos
  *   into mClsnMat2 / mModel2.mat4x3). Not coined.
- * - data_ov029_0211432c / 02114324 / 0211304c BMD/KCL/CLPS handles; this TU
- *   claims .text only.
+ * - data_ov029_0211432c / 02114324 are this TU's BMD/KCL file handles;
+ *   data_ov029_0211304c the CLPS block stays unowned overlay data.
  * - Behavior case 1 keeps the unsigned short* increment pointer plus the
  *   raw 0x3a0 reload (`*p > 0x168` CSEs and size-DIFFs).
  * - S14: g_profile_WC_OBJ04 stays outside the licensed .text.
@@ -33,6 +33,23 @@
 #include "common.h"
 #include "daObjWc_Obj04_c.h"
 #include "SharedFilePtr.h"
+
+/* Retail constructs these 8-byte handles in this order and registers
+ * their destructors. The wrapper names are local; the ctor/dtor
+ * addresses are the ROM resource-family functions. */
+struct WcObj04ModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    WcObj04ModelFilePtr(u32 fileID);
+    ~WcObj04ModelFilePtr();
+};
+
+struct WcObj04CollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    WcObj04CollisionFilePtr(u32 fileID);
+    ~WcObj04CollisionFilePtr();
+};
 
 extern "C" {
 void func_020393a4(void *p, int v);
@@ -44,10 +61,9 @@ void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
 void Matrix4x3_FromRotationY(Matrix4x3 *m, int angY);
 void func_ov029_021126dc(daObjWc_Obj04_c *c);
 void func_ov029_02112710(daObjWc_Obj04_c *t);
-extern SharedFilePtr data_ov029_0211432c;
-extern SharedFilePtr data_ov029_02114324;
+extern WcObj04ModelFilePtr data_ov029_0211432c;
+extern WcObj04CollisionFilePtr data_ov029_02114324;
 extern CLPS_Block data_ov029_0211304c;
-extern int _ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -86,7 +102,7 @@ int daObjWc_Obj04_c::InitResources()
     }
     func_020393d4(
         (int *)&mMeshCollider,
-        (int)&_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_);
+        (int)&dBgW::UpdatePosWithTransform);
     mState = 0;
     mStateTimer = 0;
     mVisible = 0;
@@ -209,3 +225,8 @@ extern "C" void func_ov029_021126dc(daObjWc_Obj04_c *c)
 
 /* Closes the `optimize_for_size on` opened above. */
 #pragma optimize_for_size off
+
+/* The static-init globals -- mwcc emits __sinit_d_a_obj_wc_obj04.cpp
+   from these: one ctor veneer plus destructor registration per handle. */
+WcObj04ModelFilePtr data_ov029_0211432c(0x6d1);
+WcObj04CollisionFilePtr data_ov029_02114324(0x6d2);

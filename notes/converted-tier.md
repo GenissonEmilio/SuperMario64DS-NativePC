@@ -30,7 +30,8 @@ So a converted method cannot carry any other symbol, and the only way to pass
 `real_name` was to **un-convert** the method back into a flat `extern "C"`
 function. The tier paid you to undo the work it exists to measure.
 
-This is not a hypothetical. `src/_ZN10KoopaShell13OnYoshiTryEatEv.cpp` is:
+This is not a hypothetical. The former KoopaShell OnYoshiTryEat shard
+(now `daShl_c::OnYoshiTryEat` in `src/game/actors/d_a_shl.cpp`) was:
 
 ```cpp
 // @symbol _ZN10KoopaShell13OnYoshiTryEatEv
@@ -81,12 +82,13 @@ It scored `real_name` 972 → 2,611 and CONVERTED → 1,087, and it is wrong fou
 An adversarial audit found all four with concrete cases:
 
 - **Misattribution.** `search()` takes the first match anywhere in the file.
-  `src/_ZN5Stage13UpdateMessageEv.cpp` reports `Message::UpdateWindow` — a
+  `src/_ZN10dScStage_c13UpdateMessageEv.cpp` reports `Message::UpdateWindow` — a
   one-line stub for a *dependency* class declared above the real function.
-  `src/_ZN6Coffin13InitResourcesEv.cpp` matches a bare `MeshCollider::LoadFile`
+  The old `Coffin::InitResources` shard (now `daObjCasket_c::InitResources` in
+  the promoted daObjCasket_c TU) matched a bare `MeshCollider::LoadFile`
   forward declaration that ends in `;` and is defined in another file entirely.
 - **Override of a correct failure.** Four files whose own symbol is a genuinely
-  unidentified `func_ov*` placeholder ([func_ov006_020c8f20](../src/func_ov006_020c8f20.cpp), [func_ov006_020cb030](../src/func_ov006_020cb030.cpp),
+  unidentified `func_ov*` placeholder (`func_ov006_020c8f20` and `func_ov006_020cb030`, now inside `src/actors/dMgTrmpln2Mario_c.cpp`,
   `func_ov064_02117220`, `func_ov079_02126f8c`) had their verdict flipped to pass
   by an unrelated declaration elsewhere in the file.
 - **Dropped qualifiers.** `Sound::Player::SetPlayableSeqCount` came out as
@@ -123,8 +125,11 @@ the tier's binding constraint instead of `real_name`, and it **de-credits 204 of
 a 204-file backslide into a correction about method names would make one number
 answer two questions, and would bury the finding above.
 
-Each is marked `KNOWN HOLE` at its regex in `tools/tiers.py`. They want one PR each,
-with the backslide discussed on its own terms.
+The first and third are marked `KNOWN HOLE` at their regexes in `tools/tiers.py`,
+`MANGLED_REF` and `RAW_OFFSET`, which is the two this heading and the README count. The
+stand-in `struct` row carries no marker there: `shared_header` is reported as one of the
+softer readings rather than as one of the five criteria. They want one PR each, with the
+backslide discussed on its own terms.
 
 ## Consequences for the worklist
 
@@ -165,9 +170,9 @@ registers is a `volatile`-qualified pointer, so the criterion failed the code th
 had no alternative:
 
 ```sh
-src/_ZN8dScene_c22ResetHardwareRegistersEv.cpp   74 volatile hits, all 0x0400xxxx
+src/actors/dScene_c.cpp (ResetHardwareRegisters)  74 volatile hits, all 0x0400xxxx
 src/_ZN2GX13SetBankForTexEt.cpp                  25 volatile hits, all VRAM banks
-src/_ZN3G2x12SetBGyAffineEPVtP9Matrix2x2iiii.cpp  the register block is a PARAMETER
+src/engine/gx/G2x.cpp (SetBGyAffine)              the register block is a PARAMETER
 ```
 
 A reconstructed TU that absorbs any of those inherits the failure for the whole

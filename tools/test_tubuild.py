@@ -2,7 +2,7 @@
 
 Per the assignment this tool generalizes (notes/tu-reconstruction-pilot-report.md):
 if `tubuild.py verify` disagrees with pilot #1's hand-verified result for
-ov045/PoleLift (7/7 MATCH, clean objisolate, one known destructor-order anomaly),
+ov045/daObjKm2_Ami_Bou_c (7/7 MATCH, clean objisolate),
 the TOOL has a bug, not the pilot. This file is that check, automated.
 
 Runs the real CLI via subprocess (not the internal functions) so it exercises
@@ -26,6 +26,7 @@ sys.path.insert(0, str(TOOLS))
 
 import build_pin as BP     # noqa: E402
 import match as M          # noqa: E402
+import tubuild             # noqa: E402
 
 
 def _toolchain():
@@ -70,9 +71,9 @@ def test_list_finds_polelift_and_its_module_neighbours():
     """No compiler needed: `list` only reads build/tu_map.json, config/, and src/."""
     code, out = _run("list", "--module", "ov045", "--verify-sample", "0")
     assert code == 0, out
-    assert "ov045/PoleLift" in out
-    assert "ov045/FireSeaElevator" in out          # its lower-address neighbour
-    assert "ov045/ExtendingPlatform" in out         # its higher-address neighbour
+    assert "ov045/daObjKm2_Ami_Bou_c" in out
+    assert "ov045/daObjKm2_Agaru_c" in out         # its lower-address neighbour
+    assert "ov045/daObjKm2_Nobiru_c" in out         # its higher-address neighbour
     # The class run is six functions, all `complete`. Its reconstructed classInit
     # uses the ROM RTTI class name and now appears as the adjacent anonymous run.
     assert "6     6/6 medium" in out
@@ -101,17 +102,17 @@ def test_inspect_polelift_reproduces_the_pilots_static_findings():
     if not _toolchain():
         raise unittest.SkipTest(
             "needs the pinned compiler and extracted/ ROM dump")
-    code, out = _run("inspect", "ov045/PoleLift")
+    code, out = _run("inspect", "ov045/daObjKm2_Ami_Bou_c")
     assert code == 0, out
-    assert "classes           PoleLift" in out
-    assert "boundary conf.    medium" in out
+    assert "classes           daObjKm2_Ami_Bou_c" in out
+    assert "boundary conf.    high" in out
     # The pilot's report sec 4: D1/D0 are real, D2 is a compiler-only byproduct
     # that only appears once the TU is actually compiled (verify/compile), not here.
-    assert "_ZN8PoleLiftD1Ev" in out and "_ZN8PoleLiftD0Ev" in out
-    assert "D0/D1/D2 destructor variants     : ['_ZN8PoleLiftD1Ev', '_ZN8PoleLiftD0Ev']" in out
-    # The pilot report sec 4: this TU emits the class's vtable because it defines
-    # the key function (~PoleLift is the only virtual PoleLift declares itself).
-    assert "_ZTV8PoleLift" in out
+    assert "_ZN18daObjKm2_Ami_Bou_cD1Ev" in out and "_ZN18daObjKm2_Ami_Bou_cD0Ev" in out
+    assert "D0/D1/D2 destructor variants     : ['_ZN18daObjKm2_Ami_Bou_cD1Ev', '_ZN18daObjKm2_Ami_Bou_cD0Ev']" in out
+    # The class TU emits the vtable because it defines the key function
+    # (inline ~daObjKm2_Ami_Bou_c, first non-inline virtual is the key).
+    assert "_ZTV18daObjKm2_Ami_Bou_c" in out
     assert "all functions verify under the build's pin: True" in out
     assert "manifest entry: status=" in out
 
@@ -123,30 +124,29 @@ def test_verify_reproduces_pilot_1s_7_of_7_and_clean_objisolate():
     walk of match.py + objisolate.py + reloc_audit.py agree with what a human
     found by hand for this exact TU (notes/tu-reconstruction-pilot-report.md sec 1)?
 
-    Runs against the ALREADY-CURATED src_tu/actors/PoleLift.cpp -- `create` is not
-    involved, matching the assignment's instruction to skip it for this candidate.
+    Runs against the promoted src/game/actors/d_a_obj_km2_ami_bou.cpp.
     """
     if not _toolchain():
         raise unittest.SkipTest(
             "needs the pinned compiler and extracted/ ROM dump")
-    shadow = REPO / "src_tu" / "actors" / "PoleLift.cpp"
-    assert shadow.is_file(), "the pilot's committed shadow TU is missing"
+    shadow = REPO / "src" / "game" / "actors" / "d_a_obj_km2_ami_bou.cpp"
+    assert shadow.is_file(), "the promoted TU is missing"
 
     scratch = _scratch_manifest()
     try:
-        code, out = _run("verify", "ov045/PoleLift", manifest=scratch)
+        code, out = _run("verify", "ov045/daObjKm2_Ami_Bou_c", manifest=scratch)
     finally:
         scratch.unlink(missing_ok=True)
     assert code == 0, out
 
-    # Every one of the pilot's seven MATCH lines, independently reproduced.
+    # Every one of the seven MATCH lines, independently reproduced.
     for sym, addr, size in [
-            ("_ZN8PoleLiftD1Ev", "0x0211150c", "0x04c"),
-            ("_ZN8PoleLiftD0Ev", "0x02111558", "0x060"),
-            ("_ZN8PoleLift16CleanupResourcesEv", "0x021115b8", "0x038"),
-            ("_ZN8PoleLift6RenderEv", "0x021115f0", "0x028"),
-            ("_ZN8PoleLift8BehaviorEv", "0x02111618", "0x120"),
-            ("_ZN8PoleLift13InitResourcesEv", "0x02111738", "0x0d0"),
+            ("_ZN18daObjKm2_Ami_Bou_cD1Ev", "0x0211150c", "0x04c"),
+            ("_ZN18daObjKm2_Ami_Bou_cD0Ev", "0x02111558", "0x060"),
+            ("_ZN18daObjKm2_Ami_Bou_c16CleanupResourcesEv", "0x021115b8", "0x038"),
+            ("_ZN18daObjKm2_Ami_Bou_c6RenderEv", "0x021115f0", "0x028"),
+            ("_ZN18daObjKm2_Ami_Bou_c8BehaviorEv", "0x02111618", "0x120"),
+            ("_ZN18daObjKm2_Ami_Bou_c13InitResourcesEv", "0x02111738", "0x0d0"),
             ("daObjKm2_Ami_Bou_c_classInit", "0x02111808", "0x038")]:
         assert f"MATCH    {sym}" in out and addr in out, (sym, out)
 
@@ -170,27 +170,8 @@ def test_verify_reproduces_pilot_1s_7_of_7_and_clean_objisolate():
     assert "NOT in ROM order" not in out, out
     assert "all 7 function(s) in the expected ROM-ascending section order" in out
     assert "Result: 7/7 MATCH, objisolate clean, reloc-destinations clean -> TEXT-VERIFIED" in out
-    # 11 unlicensed .data (the vtable + the RTTI records) and NO unlicensed .text --
-    # present and correctly refusing promotion, not silently dropped.
-    #
-    # This read 12 until #2066, the twelfth being the unlicensed .text D2 that an
-    # out-of-line destructor emitted. Promotion is still refused, but for a narrower
-    # reason: what remains is _ZTI8PoleLift/_ZTS8PoleLift, for which no
-    # compiler_only_output disposition is admissible while PoleLift carries a coined
-    # name the cartridge contradicts.
-    #
-    # THE PILOT'S SEC 4 INVENTORY SAID 15, AND SO DID THIS LINE UNTIL IT WAS MEASURED.
-    # The extra three were Platform's: two out-of-line vague-linkage destructors and
-    # _ZTV8Platform, emitted here because Platform had no key function to anchor them.
-    # #1555 ("Give Platform its 32nd vtable slot: Platform::Kill") gave it one, and
-    # they moved to Platform's own TU. Compiling this file's own historical forms
-    # against their own include/ trees reads 43 sections / 15 unlicensed at fc5b94a54^
-    # and 37 / 12 at fc5b94a54 -- so this expectation went stale at #1555, 116 pull
-    # requests before the collision rename (#1643) that later stopped the file
-    # compiling at all and hid the staleness behind a compile error.
-    assert "11 unlicensed section/symbol(s) present -> PROMOTION REFUSED" in out
-    assert "_ZTV8PoleLift" in out
-    assert "_ZN8PoleLiftD2Ev" not in out, "an out-of-line ~PoleLift() is back; see #2066"
+    assert "_ZTV18daObjKm2_Ami_Bou_c" in out
+    assert "_ZN18daObjKm2_Ami_Bou_cD2Ev" not in out, "an out-of-line destructor is back"
 
 
 def test_compile_report_matches_the_pilots_object_inventory():
@@ -224,9 +205,9 @@ def test_compile_report_matches_the_pilots_object_inventory():
     if not _toolchain():
         raise unittest.SkipTest(
             "needs the pinned compiler and extracted/ ROM dump")
-    code, out = _run("compile", "ov045/PoleLift")
+    code, out = _run("compile", "ov045/daObjKm2_Ami_Bou_c")
     assert code == 0, out
-    assert "sections (35):" in out
+    assert "sections (37):" in out
     # Anchored to the section-LISTING line shape ("[ NN] .text  type=SHT_..."), not
     # a bare substring: "-> section[N] .text  size=..." in the function-mapping
     # block below it also contains the text "] .text ", which a plain count()
@@ -234,19 +215,15 @@ def test_compile_report_matches_the_pilots_object_inventory():
     import re
     n_text = len(re.findall(r"\[\s*\d+\] \.text\s+type=SHT_", out))
     n_data = len(re.findall(r"\[\s*\d+\] \.data\s+type=SHT_", out))
-    assert n_text == 7, f"expected 7 .text sections, counted {n_text}"
+    assert n_text == 8, f"expected 8 .text sections, counted {n_text}"
     assert n_data == 11, f"expected 11 .data sections, counted {n_data}"
-    # No unlicensed .text at all since #2066, so tubuild prints no function block --
-    # asserted as an absence rather than a count of zero, because that is what the
-    # tool emits.
-    assert "UNLICENSED function symbols" not in out, out
-    assert "UNLICENSED object/data symbols (11)" in out
-    assert (REPO / "build" / "tu" / "ov045-PoleLift" / "inventory.txt").is_file()
-    assert (REPO / "build" / "tu" / "ov045-PoleLift" / "PoleLift.o").is_file()
+    assert (REPO / "build" / "tu" / "ov045-daObjKm2_Ami_Bou_c" / "inventory.txt").is_file()
+    assert (REPO / "build" / "tu" / "ov045-daObjKm2_Ami_Bou_c" / "d_a_obj_km2_ami_bou.o").is_file()
 
 
 # ---------------------------------------------------------------- partial isolation
 
+@unittest.skip("ov045/daObjKm2_Ami_Bou_c is promoted; per-function objects were absorbed")
 def test_partial_reproduces_the_production_per_function_objects():
     """plan sec 9 / phase D, as a check.
 
@@ -262,11 +239,11 @@ def test_partial_reproduces_the_production_per_function_objects():
     if not _toolchain():
         raise unittest.SkipTest(
             "needs the pinned compiler and extracted/ ROM dump")
-    code, out = _run("partial", "ov045/PoleLift", "--no-record", timeout=600)
+    code, out = _run("partial", "ov045/daObjKm2_Ami_Bou_c", "--no-record", timeout=600)
     assert code == 0, out
-    for sym in ("_ZN8PoleLiftD1Ev", "_ZN8PoleLiftD0Ev",
-                "_ZN8PoleLift16CleanupResourcesEv", "_ZN8PoleLift6RenderEv",
-                "_ZN8PoleLift8BehaviorEv", "_ZN8PoleLift13InitResourcesEv",
+    for sym in ("_ZN18daObjKm2_Ami_Bou_cD1Ev", "_ZN18daObjKm2_Ami_Bou_cD0Ev",
+                "_ZN18daObjKm2_Ami_Bou_c16CleanupResourcesEv", "_ZN18daObjKm2_Ami_Bou_c6RenderEv",
+                "_ZN18daObjKm2_Ami_Bou_c8BehaviorEv", "_ZN18daObjKm2_Ami_Bou_c13InitResourcesEv",
                 "daObjKm2_Ami_Bou_c_classInit"):
         line = next((l for l in out.splitlines() if f" {sym} " in l), None)
         assert line and "IDENTICAL" in line, (sym, line, out)
@@ -285,7 +262,7 @@ def test_partial_reproduces_the_production_per_function_objects():
 def test_promote_refuses_to_mutate_without_dry_run():
     """The mutating half of `promote` deletes enrolled src/ files and edits tracked
     delinks.txt. Until that lands it must refuse loudly, not half-execute."""
-    code, out = _run("promote", "ov045/PoleLift")
+    code, out = _run("promote", "ov045/daObjKm2_Ami_Bou_c")
     assert code != 0
     assert "only --dry-run is implemented" in out
 
@@ -293,19 +270,23 @@ def test_promote_refuses_to_mutate_without_dry_run():
 def test_promote_dry_run_refuses_a_tu_that_is_not_link_verified_but_still_explains():
     """plan sec 7.7: promotion is refused unless every required gate is green -- and
     the dry run still has to PRINT the plan, because seeing what a promotion would do
-    is the point of a dry run even when it would be refused."""
-    code, out = _run("promote", "ov045/PoleLift", "--dry-run")
+    is the point of a dry run even when it would be refused.
+
+    ov045/daObjKm2_Ami_Bou_c is now promoted; this uses a remaining text-verified
+    src_tu shadow.
+    """
+    code, out = _run("promote", "ov002/OneUpLogo", "--dry-run")
     assert code != 0, "text-verified is not enough to promote"
     assert "promotion would be REFUSED" in out
-    assert "git mv src_tu/actors/PoleLift.cpp" in out
-    assert "git rm src/_ZN8PoleLift6RenderEv.cpp" in out
+    assert "git mv src_tu/actors/OneUpLogo.cpp" in out
+    assert "git rm src/_ZN9OneUpLogo6RenderEv.cpp" in out
     assert "NOTHING IS WRITTEN BY THIS COMMAND" in out
     assert "DRY RUN COMPLETE" in out
     assert "COVERAGE GATE IS TU-AWARE" in out
     assert "function_snapshot() builds {stem: path}" not in out
     assert "tools/cpp_tu_compat.py" in out
-    assert (REPO / "src_tu" / "actors" / "PoleLift.cpp").is_file()
-    assert (REPO / "src" / "_ZN8PoleLift6RenderEv.cpp").is_file()
+    assert (REPO / "src_tu" / "actors" / "OneUpLogo.cpp").is_file()
+    assert (REPO / "src" / "_ZN9OneUpLogo6RenderEv.cpp").is_file()
 
 
 def test_splice_refuses_a_span_whose_legacy_entries_are_not_complete():
@@ -617,6 +598,116 @@ def test_symbol_binding_policy_only_promotes_exact_owned_local():
     rewritten = next(row for row in tubuild.elf_inventory(out)["symbols"]
                      if row["name"] == local["name"])
     assert rewritten["bind"] == "STB_GLOBAL"
+
+
+def test_defined_symbol_rename_policy_renumbers_only_licensed_definition():
+    if not _toolchain():
+        raise unittest.SkipTest("needs the pinned compiler")
+    obj = _compile_tu_fixture(
+        'static int local_word;\nextern "C" int *owner = &local_word;\n')
+    local = next(row for row in tubuild.elf_inventory(obj)["symbols"]
+                 if row["type"] == "STT_OBJECT" and row["bind"] == "STB_LOCAL")
+    entry = {
+        "data": [{"symbol": "@9999", "address": "0x2000", "size": "0x4"}],
+        "defined_symbol_renames": [{
+            "from": local["name"], "to": "@9999", "evidence": "fixture",
+        }],
+    }
+    out, report, reasons = tubuild.apply_defined_symbol_rename_policy(obj, entry)
+    assert reasons == [], reasons
+    assert report["renamed"][0]["from"] == local["name"]
+    names = {row["name"] for row in tubuild.elf_inventory(out)["symbols"]}
+    assert local["name"] not in names
+    assert "@9999" in names
+
+    entry["defined_symbol_renames"][0]["to"] = "@8888"
+    _, _, reasons = tubuild.apply_defined_symbol_rename_policy(obj, entry)
+    assert any("does not own" in reason for reason in reasons), reasons
+
+
+def _binding_rewrite_fixture():
+    if not _toolchain():
+        raise unittest.SkipTest("needs the pinned compiler")
+    return _compile_tu_fixture(
+        'static int first;\nstatic int second;\n'
+        'extern "C" int *owner[] = {&first, &second};\n')
+
+
+def _binding_symbol_table(obj):
+    import io
+    from elftools.elf.elffile import ELFFile
+    return ELFFile(io.BytesIO(obj)).get_section_by_name(".symtab")
+
+
+def test_binding_rewrite_updates_local_boundary_without_changing_storage_or_relocs():
+    import io
+    from elftools.elf.elffile import ELFFile
+
+    raw = _binding_rewrite_fixture()
+    before = ELFFile(io.BytesIO(raw))
+    table = before.get_section_by_name(".symtab")
+    locals_ = [(index, sym) for index, sym in enumerate(table.iter_symbols())
+               if sym.name in ("first", "second")]
+    assert len(locals_) == 2
+    assert all(sym["st_info"]["bind"] == "STB_LOCAL" for _, sym in locals_)
+    assert [index for index, _ in locals_] == list(range(table["sh_info"] - 2,
+                                                        table["sh_info"]))
+
+    # Exercise promotion of one trailing local and of both, as in dMgState's
+    # function-local table plus guard. Relocations still use the same indices.
+    for selected in (locals_[-1:], locals_):
+        out, report = tubuild.OI.rewrite_symbol_bindings(
+            raw, {sym.name: ("STB_LOCAL", "STB_GLOBAL") for _, sym in selected})
+        assert out is not None, report
+        after = ELFFile(io.BytesIO(out))
+        rewritten = after.get_section_by_name(".symtab")
+        assert rewritten["sh_info"] == selected[0][0]
+        assert [sym.name for sym in rewritten.iter_symbols()] == \
+            [sym.name for sym in table.iter_symbols()]
+        assert all((index < rewritten["sh_info"]) ==
+                   (sym["st_info"]["bind"] == "STB_LOCAL")
+                   for index, sym in enumerate(rewritten.iter_symbols()))
+        for old_section, new_section in zip(before.iter_sections(), after.iter_sections()):
+            if old_section.name != ".symtab":
+                assert old_section.header == new_section.header
+                assert old_section.data() == new_section.data()
+
+        # No instruction, symbol coordinate, addend, index or string can change:
+        # only the licensed binding bytes and the section's sh_info are writable.
+        symtab_index = next(index for index, section in enumerate(before.iter_sections())
+                            if section.name == ".symtab")
+        boundary_offset = before["e_shoff"] + symtab_index * before["e_shentsize"] + 28
+        allowed = set(range(boundary_offset, boundary_offset + 4))
+        allowed.update(table["sh_offset"] + index * table["sh_entsize"] + 12
+                       for index, _ in selected)
+        assert len(raw) == len(out)
+        assert {index for index, pair in enumerate(zip(raw, out))
+                if pair[0] != pair[1]} <= allowed
+
+
+def test_binding_rewrite_rejects_noncontiguous_locals():
+    raw = _binding_rewrite_fixture()
+    table = _binding_symbol_table(raw)
+    first_local = next(sym for sym in table.iter_symbols()
+                       if sym.name in ("first", "second"))
+    out, report = tubuild.OI.rewrite_symbol_bindings(
+        raw, {first_local.name: ("STB_LOCAL", "STB_GLOBAL")})
+    assert out is None
+    assert "local symbol after a nonlocal" in report["error"]
+    assert first_local["st_info"]["bind"] == "STB_LOCAL"
+
+
+def test_binding_rewrite_preserves_nonlocal_conversion_boundary():
+    raw = _binding_rewrite_fixture()
+    boundary = _binding_symbol_table(raw)["sh_info"]
+    weak, report = tubuild.OI.rewrite_symbol_bindings(
+        raw, {"owner": ("STB_GLOBAL", "STB_WEAK")})
+    assert weak is not None, report
+    assert _binding_symbol_table(weak)["sh_info"] == boundary
+    restored, report = tubuild.OI.rewrite_symbol_bindings(
+        weak, {"owner": ("STB_WEAK", "STB_GLOBAL")})
+    assert restored is not None, report
+    assert restored == raw
 
 
 def test_derived_function_applies_its_exact_manifest_binding_rewrite():
@@ -1216,6 +1307,136 @@ def test_plain_deadstrip_is_refused_for_an_rtti_record():
                    for r in reasons) for n in data), reasons
 
 
+def test_verify_no_write_leaves_manifest_bytes_unchanged():
+    """`verify --no-write` reports and does not rewrite the manifest.
+
+    The write is the last step of cmd_verify, after compile. Compile and the
+    byte/reloc gates are stubbed, so this does not need mwccarm. The same
+    stubbed run without the flag must change those bytes; otherwise a pass
+    would only mean verify never reached the write.
+    """
+    import contextlib
+    import io
+
+    fd, path = tempfile.mkstemp(suffix=".json", prefix="tu_manifest_nowrite_")
+    os.close(fd)
+    scratch = pathlib.Path(path)
+    entry = {
+        "id": "ov000/ReadOnly",
+        "status": "shadow",
+        "module": "ov000",
+        "source": "src_tu/readonly.cpp",
+        "functions": [{
+            "ordinal": 0,
+            "symbol": "fn",
+            "address": "0x02000000",
+            "size": "0x4",
+            "legacy_source": "src/fn.cpp",
+        }],
+        "sections": [],
+    }
+    tubuild.TUM.save(
+        {"schema_version": 1, "about": "scratch", "entries": [entry]}, scratch)
+    before = scratch.read_bytes()
+    obj_path = tubuild.REPO / "build" / "tu" / "readonly" / "readonly.o"
+    saved = {
+        "MANIFEST": tubuild.MANIFEST,
+        "_compile_tu": tubuild._compile_tu,
+        "elf_inventory": tubuild.elf_inventory,
+        "apply_compiler_only_policy": tubuild.apply_compiler_only_policy,
+        "save_manifest": tubuild.save_manifest,
+        "extract_func": tubuild.M.extract_func,
+        "compare": tubuild.M.compare,
+        "target_bytes": tubuild.BP.target_bytes,
+        "plan": tubuild.OI.plan,
+        "check_destinations": tubuild.RA.check_destinations,
+        "build_name_index": tubuild.RA.build_name_index,
+        "build_config_relocs": tubuild.RA.build_config_relocs,
+        "load_all_syms": tubuild.RL.load_all_syms,
+    }
+    writes = []
+    old_argv = sys.argv
+
+    def _compile(_entry, version_override=None):
+        return b"", "test-version", "-O4,p", obj_path.parent, obj_path
+
+    def _inv(_obj):
+        return {
+            "sections": [{"index": 1, "name": ".text", "type": "SHT_PROGBITS",
+                          "size": 4}],
+            "symbols": [{"name": "fn", "shndx": 1, "value": 0, "size": 4,
+                         "bind": "STB_GLOBAL", "type": "STT_FUNC"}],
+        }
+
+    def _save(data):
+        writes.append(True)
+        saved["save_manifest"](data)
+
+    def _run(*args):
+        buf = io.StringIO()
+        sys.argv = ["tubuild.py", "--manifest", str(scratch), *args]
+        with contextlib.redirect_stdout(buf):
+            code = tubuild.main()
+        return code, buf.getvalue()
+
+    try:
+        tubuild._compile_tu = _compile
+        tubuild.elf_inventory = _inv
+        tubuild.apply_compiler_only_policy = lambda obj, _entry, homes=None: (obj, {}, [])
+        tubuild.save_manifest = _save
+        tubuild.M.extract_func = lambda _obj, _sym: (b"\x00\x00\x00\x00", [])
+        tubuild.M.compare = lambda _tgt, _code, _relocs, verbose=False: (True, 0)
+        tubuild.BP.target_bytes = lambda _mod, _addr, size: b"\x00" * size
+        tubuild.OI.plan = lambda _obj, _sym: {"error": None}
+        tubuild.RA.check_destinations = lambda *_a, **_k: ([], [])
+        tubuild.RA.build_name_index = lambda: {}
+        tubuild.RA.build_config_relocs = lambda: {}
+        tubuild.RL.load_all_syms = lambda: {}
+
+        code, out = _run("verify", "--no-write", "ov000/ReadOnly")
+        assert code == 0, out
+        assert "TEXT-VERIFIED" in out, out
+        assert "--no-write: manifest left unchanged" in out, out
+        assert scratch.read_bytes() == before
+        assert writes == []
+
+        code, out = _run("verify", "ov000/ReadOnly")
+        assert code == 0, out
+        assert "TEXT-VERIFIED" in out, out
+        assert "--no-write" not in out, out
+        assert writes == [True]
+        after = scratch.read_bytes()
+        assert after != before
+        assert b'"status": "text-verified"' in after
+
+        # A banked PASS that this round would downgrade is the sibling-control
+        # case. --no-write must leave those bytes alone too.
+        tubuild.M.compare = lambda _tgt, _code, _relocs, verbose=False: (False, 1)
+        code, out = _run("verify", "--no-write", "ov000/ReadOnly")
+        assert code == 1, out
+        assert "NOT verified" in out, out
+        assert "would downgrade text-verified -> shadow" in out, out
+        assert "left the manifest unchanged" in out, out
+        assert scratch.read_bytes() == after
+        assert writes == [True]
+    finally:
+        sys.argv = old_argv
+        tubuild.MANIFEST = saved["MANIFEST"]
+        tubuild._compile_tu = saved["_compile_tu"]
+        tubuild.elf_inventory = saved["elf_inventory"]
+        tubuild.apply_compiler_only_policy = saved["apply_compiler_only_policy"]
+        tubuild.save_manifest = saved["save_manifest"]
+        tubuild.M.extract_func = saved["extract_func"]
+        tubuild.M.compare = saved["compare"]
+        tubuild.BP.target_bytes = saved["target_bytes"]
+        tubuild.OI.plan = saved["plan"]
+        tubuild.RA.check_destinations = saved["check_destinations"]
+        tubuild.RA.build_name_index = saved["build_name_index"]
+        tubuild.RA.build_config_relocs = saved["build_config_relocs"]
+        tubuild.RL.load_all_syms = saved["load_all_syms"]
+        scratch.unlink(missing_ok=True)
+
+
 def test_unknown_id_fails_closed_with_a_clear_reason():
     code, out = _run("inspect", "ov999/NoSuchClass")
     assert code != 0
@@ -1231,6 +1452,8 @@ if __name__ == "__main__":
             try:
                 fn()
                 print(f"  PASS  {nm}")
+            except unittest.SkipTest as e:
+                print(f"  SKIP  {nm}: {e}")
             except AssertionError as e:
                 fails += 1
                 print(f"  FAIL  {nm}: {e}")
@@ -1239,9 +1462,6 @@ if __name__ == "__main__":
              "themselves rather than failing)")
     print(f"\n{ran} test(s) run, {fails} failure(s)")
     sys.exit(1 if fails else 0)
-
-
-import tubuild
 
 
 def test_manifest_order_handles_rccarpet_owned_subset_after_rtti_externalization():
@@ -2197,7 +2417,7 @@ def test_partitioned_recorder_is_compact_orthogonal_and_preserves_verified_evide
 
 
 def test_partitioned_cli_modes_are_mutually_exclusive_before_any_build():
-    code, out = _run("linkcheck", "ov045/PoleLift", "--partial", "--partitioned")
+    code, out = _run("linkcheck", "ov045/daObjKm2_Ami_Bou_c", "--partial", "--partitioned")
     assert code != 0
     assert "not allowed with argument" in out or "mutually exclusive" in out
 
@@ -2400,8 +2620,8 @@ def test_bare_brace_where_a_signature_belongs_is_refused_not_emitted():
 
 
 def test_elaborated_return_type_is_not_a_shadow_declaration():
-    """Real inputs: src/_ZN11dCapEnemy_c15RespawnIfHasCapEv.cpp and
-    src/func_02041b60.c. Both open on the word `struct`, but as an elaborated
+    """Real inputs: dCapEnemy_c::RespawnIfHasCap and
+    src/unnamed/arm9/0204/func_02041b60.c. Both open on the word `struct`, but as an elaborated
     type specifier on the RETURN type -- the flat-C sources spell it that way
     constantly. Filing the line as a declaration put the function's own
     signature under `shadow struct dActor_c` and left its body headless below;
@@ -2445,8 +2665,9 @@ def test_record_with_a_function_pointer_member_still_reads_as_a_record():
 
 
 def test_definition_inside_a_namespace_or_extern_c_block_names_the_block():
-    """Real inputs: src/_ZN6Memory8AllocateEj.cpp (an Allman `namespace Memory`
-    whose body IS the member) and func_ov006_021063a0, whose shard put the
+    """Real inputs: the Memory wrappers in src/engine/heap/Heap.cpp (this
+    fixture keeps the Allman `namespace Memory` those wrappers used) and
+    func_ov006_021063a0, whose shard put the
     definition inside `extern "C" {` -- that one is now ROM ordinal 50 of
     src/actors/dScMgPanel_c.cpp, absorbed by the ov006/dScMgPanel_c promotion.
     tubuild has nowhere to put a block-scoped member, so

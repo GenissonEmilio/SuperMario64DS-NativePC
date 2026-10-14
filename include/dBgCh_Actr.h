@@ -99,12 +99,12 @@ struct dBgCh_Actr : dBgCh {
     Fix12i mScale;              /* 0x1b8 - (?) Init sets 0x1000 */
 
     /* --- vtable, in ROM order. Do not reorder. --- */
-    /* Defined out of line in the dedicated D1/D0 sources. Nothing derives
-       from this class, and each source enrolls one compiler-emitted variant. */
+    /* Defined out of line in src/engine/collision/dBgCh_Actr.cpp. Nothing
+       derives from this class, so D1 and D0 are the only variants emitted. */
     virtual ~dBgCh_Actr();    /* slots 0 (D1), 1 (D0) */
 
-    /* DECLARED, never defined as a method here -- src/_ZN10dBgCh_ActrC1Ev.cpp
-       owns C1 (notes/ctor-migration.md section 2). Empty body: both member
+    /* DECLARED, never defined as a method here -- the consolidated TU owns
+       C1 (notes/ctor-migration.md section 2). Empty body: both member
        classes have real out-of-line ctors, so synthesis emits base step +
        vptr + both constructions in the ROM's order by itself. */
     dBgCh_Actr();
@@ -128,6 +128,7 @@ struct dBgCh_Actr : dBgCh {
     void UpdateExtraContinous();  /* sic -- the ROM name is missing a 'u' */
     void UpdateDiscreteNoLava();
     void UpdateDiscreteNoLava_2();
+    void Unk_0203589c();           /* func_02037b5c(&mSphereClsn) */
 
     /* --- const accessors, 0x02035564..0x02035727. `const` is not a style
            choice here: these mangle _ZNK, and without it the compiler emits
@@ -153,6 +154,9 @@ struct dBgCh_Actr : dBgCh {
     s32 JustHitGround() const;     /* mFlags & 0x20 */
     s32 ShouldUpdatePos() const;   /* !(mFlags & 0x2000) */
     s32 ShouldUpdatePosY() const;  /* !(mFlags & 0x1000) */
+    void *GetFloorResult() const;  /* func_02037938(&mSphereClsn) -- mClsnResult1 */
+    void *GetWallResult() const;   /* func_020378dc(&mSphereClsn) -- mClsnResult2 */
+    s32 TouchesWater() const;      /* SurfaceInfo flag 0x20 on mSphereClsn.surface */
 };
 
 #ifndef SM64DS_PLATFORM_PC

@@ -2,7 +2,7 @@
  * daObjCtMecha05_c. Profile CT_MECHA05 (113) is TTC_MOVING_BAR in
  * overlay_actors.md. ov065 is TTC.
  *
- * The factory constructs dBgActor_c, then ShadowModel at 0x33c, and
+ * The factory constructs dBgActor_c, then dExtShadowModel_c at 0x33c, and
  * installs this class vptr. The allocation literal is 0x394. */
 #ifndef DAOBJCTMECHA05_C_H
 #define DAOBJCTMECHA05_C_H
@@ -11,7 +11,7 @@
 #ifdef __cplusplus
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 #include "dBgActor_c.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 
 struct daObjCtMecha05_c : dBgActor_c {
     s32 mHomePosX;            /* 0x320 -- snapshot of mPosX at InitResources */
@@ -23,7 +23,7 @@ struct daObjCtMecha05_c : dBgActor_c {
     u8  mState;               /* 0x336 -- Behavior switch key, 0..3 */
     u8  pad_337[0x1];
     s32 mGroundY;             /* 0x338 -- dBgCh_Gnd hit height */
-    ShadowModel mShadowModel; /* 0x33c */
+    dExtShadowModel_c mShadowModel; /* 0x33c */
     Matrix4x3 mShadowMatrix;  /* 0x364 */
 
     int CleanupResources();

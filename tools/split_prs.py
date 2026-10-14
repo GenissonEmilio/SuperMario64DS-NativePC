@@ -13,7 +13,7 @@ The split follows three rules, in priority order:
   2. **Disjoint file sets.** Every file belongs to exactly one branch, each branched from
      the base, so batches can be opened in any order and never conflict.
   3. **Grouped by module, then chunked.** A red batch is then diagnosable and lines up
-     with how CLAIMS.md carves work. Small modules are packed together to avoid a long
+     with the overlay the functions live in. Small modules are packed together to avoid a long
      tail of tiny PRs.
 
 Nothing is pushed. Branches are created locally; the `gh pr create` commands are printed

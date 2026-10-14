@@ -1,18 +1,49 @@
 //cpp
-/* Original dBase_c translation unit.
+/* dBase_c -- the middle link of the actor hierarchy: fBase_c -> dBase_c ->
+ * dActor_c (arm9 0x02013e80..0x02013f4c).
  *
- * The destructor is intentionally defined inline in dBase_c.h. Defining the
- * real key function below makes mwccarm emit the class vtable and, through its
- * destructor slots, the out-of-line D1 and D0 copies in the cartridge's order.
- * There is no hand-spelled destructor and no forcing scaffold in this TU.
+ * Adds no members and no new virtuals; AfterInitResources (slot 2) is the key
+ * function, so this TU owns the vtable with D1/D0 dragged in beside it and no
+ * forcing scaffold. Spawn veneers the actor factory; func_02013edc veneers the
+ * scene-spawn path. Written last-to-first: mwccarm emits .text in reverse
+ * source order. Size is asserted in include/dBase_c.h (0x50, fBase_c's own).
+ *
+ * deslop leftovers:
+ * - func_02013edc keeps its ROM label: the scene-creation veneer, enclosed by
+ *   this class's own run. Spelled void although its only caller
+ *   (dScene_c::SpawnIfNecessary) reads r0 as the spawned scene actor -- a
+ *   0xc-byte veneer cannot evidence a return value, the same doctrine
+ *   include/dBase_c.h records for Spawn.
+ * - Spawn's trailing (int, int) stay unnamed: dActor_c::Spawn passes
+ *   (spawnParam, 2) and other callers (mode/entranceId, 0), and both words
+ *   ride r2/r3 through this veneer into func_02042ffc's factory call, but
+ *   their roles belong to the factory's TU (func_02043098), not this one.
+ * - func_02042ffc / func_02042fe4 keep their ROM labels for the same reason.
  */
 #include "dBase_c.h"
 
 extern "C" {
 extern void func_02042fe4(int a, int b, int c);
 extern fBase_c *func_02042ffc(u32 actorID, fBase_c *parent);
+/* local extern: no header declares it; the next ROM entry's crash-forward
+ * target, called only by the absorbed spin below. */
+extern void func_02013f4c(void);
 }
 
+// @symbol func_02013f28
+/* Absorbed from the retired arm9 helper func_02013f28
+ * (arm9 0x02013f28..0x02013f4c): fatal-error spin, IME off then call the
+ * next entry forever. Defined first because this file emits in reverse
+ * source order, so the tail body lands at the run's right edge. */
+extern "C" void func_02013f28(void)
+{
+    *(volatile unsigned short *)0x4000208;
+    *(volatile unsigned short *)0x4000208 = 0;
+    for (;;)
+        func_02013f4c();
+}
+
+// @symbol _ZN7dBase_c18AfterInitResourcesEj
 void dBase_c::AfterInitResources(u32 vfSuccess)
 {
     if (vfSuccess == 1)
@@ -20,11 +51,13 @@ void dBase_c::AfterInitResources(u32 vfSuccess)
     fBase_c::AfterInitResources(vfSuccess);
 }
 
+// @symbol _ZN7dBase_c5SpawnEjP7fBase_cii
 fBase_c *dBase_c::Spawn(u32 actorID, fBase_c *parent, int, int)
 {
     return func_02042ffc(actorID, parent);
 }
 
+// @symbol func_02013edc
 extern "C" void func_02013edc(int a, int b, int c)
 {
     func_02042fe4(a, b, c);

@@ -1,0 +1,137 @@
+{
+  "id": "arm9/dCapEnemy_c",
+  "module": "arm9",
+  "source": "src/actors/dCapEnemy_c_arm9.cpp",
+  "promoted_source": "src/actors/dCapEnemy_c_arm9.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "NOT FROM tu_map. tools/tu_map.py reports arm9 main as one unit, so this boundary is the address run in config/arm9/symbols.txt.",
+    "Contiguous run 0x02005d94..0x02006588 for the class's arm9 methods. Twelve tile this TU's licensed range 0x02005d94..0x0200651c: 0x94+0xb0+0x34+0x94+0xb4+0xa0+0xbc+0xd0+0x38+0xf8+0x130+0x3c = 0x788. D1 (0x0200651c..0x02006554) and C2 (0x02006554..0x02006588) keep their single-function files at the run's end.",
+    "func_02005e28 and func_02005ed8 are dCapEnemy_c methods, not foreign classes. 0x02005e28 reads mCapId and the player table; 0x02005ed8 tests mCapIcon.mFlags bit 2 and calls dCapIcon_c::Unlink. dCapIcon_c::Unlink itself is ov001 0x020ab110.",
+    "D1 and C2 stay out of this TU because the destructor is the class's key function: only a member ~dCapEnemy_c() emits _ZTV11dCapEnemy_c, and a member dtor/ctor in a multi-function object also emits D0/D2/C1 as STB_GLOBAL homed to the ov002 TU (0x020aedbc, 0x020aedf4), which plan_many cannot deadstrip. The same shape as ov002/daObjKuruma_c's licensed-range trim.",
+    "Below: dScBoot_c::InitResources ends at 0x02005d94. Above: main starts at 0x02007000. Nothing of another class sits inside the run."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x02005d94",
+      "end": "0x0200651c"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN11dCapEnemy_c12Unk_02005d94Ev",
+      "address": "0x02005d94",
+      "size": "0x00000094",
+      "legacy_source": "src/_ZN11dCapEnemy_c12Unk_02005d94Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c13func_02005e28Ev",
+      "address": "0x02005e28",
+      "size": "0x000000b0",
+      "legacy_source": "src/func_02005e28.c",
+      "ordinal": 1
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c13func_02005ed8Ev",
+      "address": "0x02005ed8",
+      "size": "0x00000034",
+      "legacy_source": "src/func_02005ed8.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c21DestroyIfCapNotNeededEv",
+      "address": "0x02005f0c",
+      "size": "0x00000094",
+      "legacy_source": "src/_ZN11dCapEnemy_c21DestroyIfCapNotNeededEv.cpp",
+      "ordinal": 3
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c11GetCapStateEv",
+      "address": "0x02005fa0",
+      "size": "0x000000b4",
+      "legacy_source": "src/_ZN11dCapEnemy_c11GetCapStateEv.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c15RespawnIfHasCapEv",
+      "address": "0x02006054",
+      "size": "0x000000a0",
+      "legacy_source": "src/_ZN11dCapEnemy_c15RespawnIfHasCapEv.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c16GetCapEatenOffItERK7Vector3",
+      "address": "0x020060f4",
+      "size": "0x000000bc",
+      "legacy_source": "src/_ZN11dCapEnemy_c16GetCapEatenOffItERK7Vector3.cpp",
+      "ordinal": 6
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c10ReleaseCapERK7Vector3",
+      "address": "0x020061b0",
+      "size": "0x000000d0",
+      "legacy_source": "src/_ZN11dCapEnemy_c10ReleaseCapERK7Vector3.cpp",
+      "ordinal": 7
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c14RenderCapModelEPK7Vector3",
+      "address": "0x02006280",
+      "size": "0x00000038",
+      "legacy_source": "src/_ZN11dCapEnemy_c14RenderCapModelEPK7Vector3.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c12UpdateCapPosERK7Vector3RK10Vector3_16",
+      "address": "0x020062b8",
+      "size": "0x000000f8",
+      "legacy_source": "src/_ZN11dCapEnemy_c12UpdateCapPosERK7Vector3RK10Vector3_16.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c6AddCapEj",
+      "address": "0x020063b0",
+      "size": "0x00000130",
+      "legacy_source": "src/_ZN11dCapEnemy_c6AddCapEj.cpp",
+      "ordinal": 10
+    },
+    {
+      "symbol": "_ZN11dCapEnemy_c14UnloadCapModelEv",
+      "address": "0x020064e0",
+      "size": "0x0000003c",
+      "legacy_source": "src/_ZN11dCapEnemy_c14UnloadCapModelEv.cpp",
+      "ordinal": 11
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "compiler_only_output": [],
+  "notes": [
+    "The ov002 half stays src/actors/dCapEnemy_c.cpp. This file is the arm9 half because that path is already enrolled in ov002 and rombuild refuses one complete path in two modules.",
+    "D1 and C2 keep per-function shards: the destructor is the key function, and only a member ~dCapEnemy_c() emits _ZTV11dCapEnemy_c for romdata_check. A member definition in this multi-function object would also emit global D0/D2/C1, homed to the ov002 TU, which plan_many cannot deadstrip."
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/arm9-dCapEnemy_c/dCapEnemy_c_arm9.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 12,
+    "functions_declared": 12,
+    "compilerOnlyOutput": {
+      "requested": [],
+      "deadstripped": [],
+      "data": [],
+      "dataExternalized": []
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  }
+}

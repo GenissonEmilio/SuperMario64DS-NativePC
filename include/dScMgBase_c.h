@@ -17,21 +17,10 @@ struct dScMgBase_c : dScene_c {
     dScMgBase_c();
     /* Declared first (key function), and deliberately NOT defined inline:
        descendants call _ZN11dScMgBase_cD2Ev as a real `bl`, and an inline
-       body makes every one of them miss. Defined in
-       src/_ZN11dScMgBase_cD1Ev.cpp and .../_D0Ev.cpp.
+       body makes every one of them miss. Defined once in
+       src/minigames/d_s_mg_base.cpp, which emits D2, D0 and D1.
        MEASURED -- do not move the body up here. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgBase_c();   /* no slot */
-#else
-    virtual ~dScMgBase_c();   /* D1 and D0 */
-#endif
+    virtual ~dScMgBase_c();
 
     /* Own copy, deliberately: mwcc only inlines a D0 route through the class
        itself or its immediate base, so descendants cannot reach dScene_c's.
@@ -93,7 +82,7 @@ ALL EIGHTEEN ARE DECLARED (2026-08-31). This class and all 32 of
 
            The address goes to r1 because r0 still held the call's result, not
            because r0 was reserved for a return value, and the trailing
-           `mov r0,#0` is the constant being stored to unk_51c8.  A `return 0;`
+           `mov r0,#0` is the constant being stored to mPhase.  A `return 0;`
            written after it costs nothing, so Coin is byte-identical under
            BOTH spellings and pins neither.
 
@@ -897,10 +886,11 @@ ALL EIGHTEEN ARE DECLARED (2026-08-31). This class and all 32 of
     s32 unk_0a8;            /* 0x0a8 */
     s32 unk_0ac;            /* 0x0ac */
     u8  pad_0b0[0x4];
-    s32 mHudScore;          /* 0x0b4 -- zeroed by BeforeInitResources; the
-                                value func_ov004_020adb1c writes into the HUD
-                                counter word. Leaves keep their own tallies and
-                                copy the result here */
+    s32 mHudScore;          /* 0x0b4 -- zeroed by BeforeInitResources. Leaves
+                                count into it or copy their own tally here, and
+                                the value leaves submit through
+                                func_ov004_020adb1c, which stores it at
+                                unk_464c */
     s32 unk_0b8;            /* 0x0b8 */
     u32 unk_0bc;            /* 0x0bc */
     u16 mPromptBlinkTimer;  /* 0x0c0 -- free-runs 0..0x2f; the prompt shows
@@ -957,6 +947,8 @@ ALL EIGHTEEN ARE DECLARED (2026-08-31). This class and all 32 of
 class dScMgBase_c::graphCallback_c : public dGraph_c::callback_c {
 public:
     dScMgBase_c *mScene;                             /* 0x04 */
+
+    graphCallback_c();
 
     virtual int GraphCallback0();                            /* slot 0 */
     virtual int GraphCallback1();                            /* slot 1 */

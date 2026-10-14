@@ -22,7 +22,7 @@
  * other slot holds the base's word and is inherited.
  *
  * FIVE DESCENDANTS, more than any other class in this series:
- * daObjBk_Ukisima_c (was RotatingPlatformWf), daObjFl_Koma_D_c (RotatingPlatformLll),
+ * daObjBk_Ukisima_c (was RotatingPlatformWf), daObjFl_Koma_D_c (was RotatingPlatformLll),
  * daObjWc_Obj07_c (was RotatingPlatformWdw), daObjRc_Kaitendai_c (was RotatingPlatformRr)
  * and daObjKm3_Kaitendai_c (include/daObjKm3_Kaitendai_c.h). Each one's destructor
  * stores this class's vtable between its own and _ZTV10dBgActor_c, which is the
@@ -71,7 +71,7 @@ struct daObjKaitendai_c : dBgActor_c {
 #endif
 
     /* Slot 6, this class's own override, defined out of line in
-       src/_ZN16daObjKaitendai_c8BehaviorEv.cpp. LAYOUT-NEUTRAL: it re-uses the
+       src/actors/daObjKaitendai_c.cpp. LAYOUT-NEUTRAL: it re-uses the
        slot dBgActor_c already holds rather than appending one, and adds no
        field, so the 0x320 assert below is untouched.
 

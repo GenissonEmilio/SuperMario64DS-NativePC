@@ -7,6 +7,7 @@
 #include "Model.h"
 
 struct Vector3;
+struct Vector3_16;
 
 /* The base for the enemies that can wear one of the caps. The ROM's RTTI names it
  * dCapEnemy_c and gives it two children, daKrb_c (once coined Goomba) and daTrs_c (once coined Boo).
@@ -69,11 +70,17 @@ struct dCapEnemy_c : dEnemyBase_c {
     int AddCap(unsigned int param);
     int DestroyIfCapNotNeeded();
     int GetCapEatenOffIt(const Vector3 & v_);
+    int GetCapState();
     struct dActor_c * ReleaseCap(const Vector3 & v_);
     struct dActor_c * RespawnIfHasCap();
     void RenderCapModel(const Vector3 * v);
     void UnloadCapModel();
     void Unk_02005d94();
+    void UpdateCapPos(const Vector3 & pos, const Vector3_16 & rot);
+    /* 0x02005e28 / 0x02005ed8. Address names: the cartridge has no English ones.
+       Both take this enemy (mCapId, mCapIcon), not another class. */
+    int func_02005e28();
+    void func_02005ed8();
 };
 
 #ifndef SM64DS_PLATFORM_PC

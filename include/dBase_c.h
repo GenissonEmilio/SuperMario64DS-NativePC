@@ -30,7 +30,7 @@
  * compiler has no body to inline and emits `bl _ZN7dBase_cD2Ev` instead,
  * one store where the ROM has two. So the original source defined it in the
  * class body, and every derived destructor inlined it. Moving this definition
- * back out of the class un-matches dScene_c, Stage and every actor destructor
+ * back out of the class un-matches dScene_c, dScStage_c and every actor destructor
  * below them.
  *
  * There is no second destructor definition and no forcing function. The key

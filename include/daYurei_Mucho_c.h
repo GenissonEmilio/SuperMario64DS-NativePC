@@ -12,7 +12,7 @@
 #include "dEnemyBase_c.h"
 #include "ModelAnim.h"
 #include "dCcAc_c.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "dBgCh_Actr.h"
 
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
@@ -29,7 +29,7 @@ struct daYurei_Mucho_c : dEnemyBase_c {
     dCcAc_c mdCcAc_c;                 /* 0x110 */
     dBgCh_Actr mWithMeshClsn;         /* 0x144 */
     ModelAnim mModelAnim;             /* 0x300 */
-    ShadowModel mShadowModel;         /* 0x364 */
+    dExtShadowModel_c mShadowModel;         /* 0x364 */
     /* DropShadowRadHeight matrix. func_ov065_0211696c writes a translation of
        (mPosX, mPosY - 0x18000, mPosZ) >> 3. s32[12] rather than Matrix4x3:
        the latter embeds a Vector3 whose destructor would run in D1/D0. */
@@ -57,18 +57,7 @@ struct daYurei_Mucho_c : dEnemyBase_c {
 
     /* --- vtable --- */
     /* The inline form emits the retail D1/D0 pair under the pinned compiler. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daYurei_Mucho_c() {}   /* no slot */
-#else
-    virtual ~daYurei_Mucho_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daYurei_Mucho_c() {}
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */
@@ -79,6 +68,20 @@ struct daYurei_Mucho_c : dEnemyBase_c {
     int InitResources();
     void OnPendingDestroy();
     int Render();
+
+    /* Non-virtual. Unowned .data PMFs resolve these by symbols.txt name. */
+    void func_ov065_0211696c();
+    int func_ov065_0211691c(State *s);
+    int func_ov065_021168a8();
+    int func_ov065_02116744();
+    int func_ov065_0211672c();
+    int func_ov065_021165d8();
+    short func_ov065_02116588();
+    int func_ov065_02116364();
+    int func_ov065_02116328();
+    int func_ov065_021162c0();
+    void func_ov065_02115ff0();
+    int func_ov065_02115f84();
 
     static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);

@@ -1,36 +1,34 @@
 //cpp
-/* Genuine production translation unit for ov071/Scuttlebug.
+/* Scuttlebug, the spider enemy. ROM RTTI is daSpd_c; vtable 0x02122c2c.
+ * daSpd_c_classInit is a reconstructed name (alias Scuttlebug_Spawn).
+ * The destructor stays in its own file: it is the key function, and defining
+ * it here would emit _ZTI10Scuttlebug, which the cartridge does not have.
  *
- * SM64DS RTTI names the implementation daSpd_c; the project spells the class
- * Scuttlebug and symbols.txt carries both names on the vtable at 0x02122c2c.
- * daSpd_c_classInit is a reconstructed source-style name (historical alias
- * Scuttlebug_Spawn); the SPIDER registry profile, the 0x3ac allocation size and
- * the vtable identity are proven, the exact original spelling is not.
+ * Source is REVERSE of ROM order (highest address first). Do not reorder.
  *
- * mwccarm emits ordinary function sections in REVERSE source order, so this
- * file is written ROM-descending: the factory at 0x02120618 first and
- * OnYoshiTryEat at 0x0211f0a4 last.  ~Scuttlebug is DECLARED AND NOT DEFINED in
- * include/Scuttlebug.h, ahead of every other virtual, so the destructor -- not
- * OnYoshiTryEat -- is this class's key function, and it is defined elsewhere:
- * the shards src/_ZN10ScuttlebugD1Ev.cpp (0x0211f000) and
- * src/_ZN10ScuttlebugD0Ev.cpp (0x0211f048) stay enrolled and own the emission
- * of _ZTV10Scuttlebug, _ZTI10Scuttlebug and _ZTS10Scuttlebug.  THIS TU EMITS NO
- * VTABLE, NO RTTI AND NO D2; its licensed run is 0x0211f0a4..0x02120668 and its
- * object defines nothing outside .text.  An inline body here would give the
- * vtable and RTTI vague linkage and pull D1/D0 into this object as well; see the
- * closing note at the foot of this file for the measurement.
- *
- * common.h is included FIRST on purpose.  Scuttlebug.h reaches math/Matrix.h
- * through ModelAnim.h, and that header spells Matrix4x3 as `Matrix3x3 r;
- * Vector3 t;` where common.h spells it flat.  The legacy InitResources shard
- * saw the flat one (decl_common.h -> common.h ahead of the actor header) and
- * the whole-matrix assignment into +0x350 only reproduces with that spelling.
+ * deslop leftovers:
+ *  - The 25 state handlers/helpers keep func_ov071_* address names as member
+ *    names; no original names are recovered. SetState was Scuttlebug_SetState.
+ *  - Vec3 and Mtx43 stay plain words: spelling them as Vector3/Matrix4x3
+ *    drags ~Vector3's vague-linkage D1 into functions that never had it.
+ *  - The extern "C" preamble is hand-spelt: Fix12<int>/Vector3 parameters
+ *    are written as plain words where the true types break the register
+ *    convention, and the spelled mangled calls stay where the member
+ *    spelling would change codegen.
+ *  - volatile int force_stack pads OnTurnIntoEgg's frame to the ROM shape.
  */
 
+/* common.h first: its flat Matrix4x3 must win the guard; InitResources'
+ * whole-matrix store at +0x350 only reproduces with that spelling. */
 #include "common.h"
 #include "Scuttlebug.h"
 #include "dBgCh_Gnd.h"
 #include "Player.h"
+#include "SharedFilePtr.h"
+#include "dExtFrameCtrl_c.h"
+#include "SurfaceInfo.h"
+
+bool ApproachLinear(short &value, short target, short step);
 
 /* ------------------------------------------------------------------------
  * Local value shapes carried from the legacy one-function files.
@@ -45,29 +43,11 @@ typedef struct { int x, y, z; } Vec3;
  * at arm9:0x020a0e68 are used: whole-block assignment, never by field. */
 typedef struct Mtx43 { int w[12]; } Mtx43;
 
-/* One row of the state table at ov071:0x02122fa8. */
-typedef struct { int a, b, c, d; } Item16;
+typedef void (Scuttlebug::*PMF)();
 
-/* The dispatch object as the two state-machine trampolines see it: a
- * pointer-to-member-function table at +0x380.  PMF is deliberately formed
- * while ScuttlebugState is INCOMPLETE -- that is what selects the general
- * (offset + index) pointer-to-member representation the ROM uses. */
-struct ScuttlebugState;
-typedef void (ScuttlebugState::*PMF)();
-struct ScuttlebugState { char pad[0x380]; PMF *pp; };
-
-/* Slot 29 (vtable+0x74) reached through a raw cast, in the two functions that
- * ask the actor for its own height rather than going through the header. */
-struct VSlot29 {
-    virtual void v00(); virtual void v01(); virtual void v02(); virtual void v03();
-    virtual void v04(); virtual void v05(); virtual void v06(); virtual void v07();
-    virtual void v08(); virtual void v09(); virtual void v10(); virtual void v11();
-    virtual void v12(); virtual void v13(); virtual void v14(); virtual void v15();
-    virtual void v16(); virtual void v17(); virtual void v18(); virtual void v19();
-    virtual void v20(); virtual void v21(); virtual void v22(); virtual void v23();
-    virtual void v24(); virtual void v25(); virtual void v26(); virtual void v27();
-    virtual void v28(); virtual int  m29();
-};
+/* One row of the state table at ov071:0x02122fa8: enter handler, then the
+ * per-frame run handler. The static initializer copies it from .data words. */
+typedef struct { PMF enter, run; } ScuttlebugStateRow;
 
 /* ------------------------------------------------------------------------
  * ABI imports.  One declaration per symbol, hand-reconciled: the generated
@@ -82,7 +62,6 @@ short AngleDiff(short a, short b);
 void  DecIfAbove0_Short(void *p);
 int   Vec3_Dist(const Vector3 *a, const Vector3 *b);
 short Vec3_HorzAngle(const Vector3 *a, const Vector3 *b);
-void  _Z14ApproachLinearRsss(short &dst, short target, short step);
 int   _ZN4cstd4fdivEii(int a, int b);
 
 void  Matrix4x3_FromRotationY(void *m, int angle);
@@ -94,69 +73,32 @@ void  func_02012694(int id, void *pos);
 int   func_02037e38(unsigned int *p);
 
 void  dBgCh_Actr_UpdateDiscreteNoLava_veneer(void *p);
-int   _ZNK10dBgCh_Actr10IsOnGroundEv(void *self);
-int   _ZNK10dBgCh_Actr8IsOnWallEv(void *self);
-int   _ZNK10dBgCh_Actr13JustHitGroundEv(void *self);
-int   _ZNK10dBgCh_Actr14GetResultFlag1Ev(void *self);
-int   _ZNK10dBgCh_Actr12TouchesWaterEv(void *self);
-void *_ZNK10dBgCh_Actr14GetFloorResultEv(void *self);
-void *_ZNK10dBgCh_Actr13GetWallResultEv(void *self);
-void  _ZN10dBgCh_Actr13SetLimMovFlagEv(void *self);
-void  _ZN10dBgCh_Actr15ClearLimMovFlagEv(void *self);
-void  _ZNK11SurfaceInfo12CopyNormalToER7Vector3(void *self, Vector3 *out);
 
-void  _ZN9Animation7AdvanceEv(void *self);
 void  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *self, void *bca, int a,
                                                   int fix, unsigned int j);
-void  _ZN5dCc_c5ClearEv(void *self);
-void  _ZN5dCc_c6UpdateEv(void *self);
 
-void  _ZN8dActor_c9UpdatePosEP5dCc_c(void *self, void *clsn);
-void *_ZN8dActor_c22ClosestNonVanishPlayerEv(void *self);
-void *_ZN8dActor_c10FindWithIDEj(unsigned int id);
-void *_ZN8dActor_c7FindEggER5dCc_c(void *self, void *clsn);
-int   _ZN8dActor_c16JumpedOnByPlayerER5dCc_cR6Player(void *self, void *clsn,
-                                                     void *player);
-void  _ZN8dActor_c8PoofDustEv(void *self);
 void  _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(void *self, const void *pos,
                                                      unsigned int count,
                                                      int value, short s);
-int   _ZN8dActor_c17DetectRaycastClsnER7Vector3S1_b(void *self, Vector3 *from,
-                                                    Vector3 *out, int doStore);
-void  _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
+void  _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_j(
           void *self, void *shadow, void *mtx, int radius, int height, u32 flags);
-void  _ZN8dActor_c19MakeVanishLuigiWorkER5dCc_c(char *self, void *clsn);
-void  _ZN8dActor_c15GivePlayerCoinsER6Playerhj(void *self, void *player,
-                                               unsigned char count,
-                                               unsigned int flags);
-int   _ZN8dActor_c13DistToCPlayerEv(void *self);
 
 void  _ZN5Sound9PlayBank0EjRK7Vector3(unsigned int id, const void *pos);
 void  _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned int id, int x,
                                                      int y, int z);
 
-int   _ZN6Player15IsCollectingCapEv(void *player);
-void  _ZN6Player20RegisterEggCoinCountEjbb(void *player, unsigned int count,
-                                           int b1, int b2);
-int   _ZN6Player9IsOnShellEv(void *player);
-void  _ZN6Player16IncMegaKillCountEv(void *player);
 void  _ZN6Player6BounceE5Fix12IiE(void *player, int speed);
 int   _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *player, void *pos,
                                               unsigned int a, int damage,
                                               unsigned int b, unsigned int c,
                                               unsigned int d);
 
-void  _ZN7fBase_c18MarkForDestructionEv(void *self);
-void *_ZN7fBase_cnwEj(u32 size);
-void  _ZN8dActor_cC2Ev(void *actor);
-void  _ZN9ModelAnimC1Ev(void *p);
-void  _ZN11ShadowModelC1Ev(void *p);
-void  _ZN7dCcAc_cC1Ev(void *p);
-void  _ZN10dBgCh_ActrC1Ev(void *p);
+void *_ZN8dActor_cC2Ev(void *actor);
+void *_ZN9ModelAnimC1Ev(void *p);
+void *_ZN17dExtShadowModel_cC1Ev(void *p);
+void *_ZN7dCcAc_cC1Ev(void *p);
+void *_ZN10dBgCh_ActrC1Ev(void *p);
 
-void  _ZN13SharedFilePtr7ReleaseEv(void *p);
-void  _ZN9Animation8LoadFileER13SharedFilePtr(void *p);
-void *_ZN5Model8LoadFileER13SharedFilePtr(void *p);
 
 /* Declared by final name rather than as members: both take Fix12<int> where
  * these call sites pass int literals, and dBgCh_Actr::Init's last two
@@ -169,9 +111,6 @@ void  _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(
           void *self, dActor_c *actor, int radius, int height,
           Vector3_16 *a, Vector3_16 *b);
 
-extern int       data_ov071_02122f80[];   /* SharedFilePtr, model  */
-extern int       data_ov071_02122f88[];   /* SharedFilePtr, anim   */
-extern Item16    data_ov071_02122fa8[];   /* state table           */
 extern Matrix4x3 IDENTITY_MATRIX4X3;
 extern Mtx43     data_020a0e68;           /* scratch matrix        */
 extern s16       data_02082214[];         /* sin/cos table         */
@@ -179,22 +118,70 @@ extern s16       data_02082214[];         /* sin/cos table         */
 /* Intra-TU forward declarations.  mwccarm lays .text down in reverse source
  * order, so this file is written ROM-descending and nearly every intra-TU call
  * is a forward reference. */
-void Scuttlebug_SetState(char *self, int idx);
-void func_ov071_021202b4(ScuttlebugState *c);
-void func_ov071_02120278(ScuttlebugState *c);
-void func_ov071_0211f0b4(char *c);
-void func_ov071_0211f148(char *a, char *w);
-void func_ov071_0211f29c(void *thiz);
-void func_ov071_0211f498(int *t);
-void func_ov071_0211f524(char *c);
-
 }
 
+/* The bug's file-scope SharedFilePtr objects, spelled through the same
+   wrapper idiom the landed folds use: the handles' code is the veneer pair
+   the cartridge already carries, so the wrappers get no bodies of their own.
+   The constructors alias func_02017acc (model) and SharedFilePtr::Construct
+   (animation) in this unit's manifest, and the destructors func_02017ab4
+   and SharedFilePtr_Destruct_Anim. */
+struct ScuttlebugModelFilePtr : SharedFilePtr {
+    int unk0; void *file;
+    ScuttlebugModelFilePtr(unsigned int id);
+    ~ScuttlebugModelFilePtr();
+};
+
+struct ScuttlebugAnimFileHandle : SharedFilePtr {
+    int unk0; void *file;
+    ScuttlebugAnimFileHandle(unsigned int id);
+    ~ScuttlebugAnimFileHandle();
+};
+
 /* ------------------------------------------------------------------------
- * ROM ordinal 36 -- daSpd_c_classInit, 0x02120618, size 0x50.
- * Natural `new` selects the wrong allocator, so the measured actor
- * construction seam is retained verbatim.
+ * The model handle, the animation handle and the state table's eighteen
+ * member pointers (nine {enter, run} rows), in static-initializer order:
+ * the initializer constructs each handle, registers its destructor, then
+ * copies the pointers from .data. InitResources feeds the model to
+ * Model::LoadFile and the animation to dExtFrameCtrl_c::LoadFile.
  * ------------------------------------------------------------------------ */
+// @symbol __sinit_Scuttlebug.cpp
+ScuttlebugModelFilePtr   data_ov071_02122f80(0x425);   /* model */
+ScuttlebugAnimFileHandle data_ov071_02122f88(0x426);   /* anim  */
+
+/* The member pointers the initializer copies into the table
+   (0x02122b60..0x02122bec in .data, an unclaimed run). Each record is one
+   eight-byte {fn, adj} pair. */
+extern PMF data_ov071_02122b88;
+extern PMF data_ov071_02122b80;
+extern PMF data_ov071_02122b68;
+extern PMF data_ov071_02122b70;
+extern PMF data_ov071_02122b78;
+extern PMF data_ov071_02122b60;
+extern PMF data_ov071_02122be8;
+extern PMF data_ov071_02122be0;
+extern PMF data_ov071_02122bd8;
+extern PMF data_ov071_02122bd0;
+extern PMF data_ov071_02122bc8;
+extern PMF data_ov071_02122bc0;
+extern PMF data_ov071_02122bb8;
+extern PMF data_ov071_02122b90;
+extern PMF data_ov071_02122bb0;
+extern PMF data_ov071_02122ba8;
+extern PMF data_ov071_02122ba0;
+extern PMF data_ov071_02122b98;
+
+PMF data_ov071_02122fa8[18] = {
+    data_ov071_02122b88, data_ov071_02122b80, data_ov071_02122b68,
+    data_ov071_02122b70, data_ov071_02122b78, data_ov071_02122b60,
+    data_ov071_02122be8, data_ov071_02122be0, data_ov071_02122bd8,
+    data_ov071_02122bd0, data_ov071_02122bc8, data_ov071_02122bc0,
+    data_ov071_02122bb8, data_ov071_02122b90, data_ov071_02122bb0,
+    data_ov071_02122ba8, data_ov071_02122ba0, data_ov071_02122b98,
+};
+
+/* Natural `new` selects the wrong allocator, so the measured actor
+ * construction seam is retained verbatim. */
 
 // @symbol daSpd_c_classInit
 extern "C" int *daSpd_c_classInit(void)
@@ -203,455 +190,396 @@ extern "C" int *daSpd_c_classInit(void)
     if (p) {
         _ZN8dActor_cC2Ev(p);
         p[0] = (int)&_ZTV10Scuttlebug[2];
-        _ZN9ModelAnimC1Ev((char *)p + 0xd4);
-        _ZN11ShadowModelC1Ev((char *)p + 0x138);
-        _ZN7dCcAc_cC1Ev((char *)p + 0x160);
-        _ZN10dBgCh_ActrC1Ev((char *)p + 0x194);
+        _ZN9ModelAnimC1Ev(&((Scuttlebug *)p)->mModelAnim);
+        _ZN17dExtShadowModel_cC1Ev(&((Scuttlebug *)p)->mShadowModel);
+        _ZN7dCcAc_cC1Ev(&((Scuttlebug *)p)->mdCcAc_c);
+        _ZN10dBgCh_ActrC1Ev(&((Scuttlebug *)p)->mWithMeshClsn);
     }
     return p;
 }
 
-/* ROM ordinal 35 -- OnTurnIntoEgg, 0x02120580, size 0x98.
- * Pays the player mCoinCount coins (a cap-collection coin if Yoshi is wearing
- * the cap, an egg coin otherwise).  A spawned-child Scuttlebug (+0x08 != 0)
- * resets to its egg state; the original marks itself for destruction. */
+/* Pays the player mCoinCount coins (a cap coin if Yoshi is wearing the cap,
+ * an egg coin otherwise). A child (param1 != 0) resets; the original dies. */
 
 // @symbol _ZN10Scuttlebug13OnTurnIntoEggER6Player
 void Scuttlebug::OnTurnIntoEgg(Player &player)
 {
     volatile int force_stack;
-    char *a = (char *)this;
     void *p = &player;
     int *bp;
     int t;
-    if (_ZN6Player15IsCollectingCapEv(p))
-        _ZN8dActor_c15GivePlayerCoinsER6Playerhj(a, p, *(unsigned char *)(a + 0x3aa), 0);
+    if (((Player *)p)->IsCollectingCap())
+        GivePlayerCoins(*(Player *)p, mCoinCount, 0);
     else
-        _ZN6Player20RegisterEggCoinCountEjbb(p, *(unsigned char *)(a + 0x3aa), 0, 0);
-    if (*(int *)(a + 8) != 0) {
-        a[0x3aa] = 0;
-        bp = (int *)((int)(a) + 0xb0);
+        ((Player *)p)->RegisterEggCoinCount(mCoinCount, 0, 0);
+    if (param1 != 0) {
+        mCoinCount = 0;
+        bp = (int *)&mFlags;
         t = *bp;
         t &= ~0x40000;
         *bp = t;
-        Scuttlebug_SetState(a, 0);
+        SetState(0);
     } else {
-        _ZN7fBase_c18MarkForDestructionEv(a);
+        MarkForDestruction();
     }
 }
-
-/* ROM ordinal 34 -- InitResources, 0x021203f8, size 0x188. */
 
 // @symbol _ZN10Scuttlebug13InitResourcesEv
 int Scuttlebug::InitResources()
 {
-    char *s = (char *)((dActor_c *)this);
-    void *mf = _ZN5Model8LoadFileER13SharedFilePtr(data_ov071_02122f80);
-    ((ModelBase *)(s + 0xd4))->SetFile((BMD_File *)mf, 1, -1);
-    _ZN9Animation8LoadFileER13SharedFilePtr(data_ov071_02122f88);
-    if (((ShadowModel *)(s + 0x138))->InitCylinder() == 0)
+    void *mf = Model::LoadFile(data_ov071_02122f80);
+    ((ModelBase *)(&mModelAnim))->SetFile((BMD_File *)mf, 1, -1);
+    dExtFrameCtrl_c::LoadFile(data_ov071_02122f88);
+    if (((dExtShadowModel_c *)(&mShadowModel))->InitCylinder() == 0)
         return 0;
     _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(
-        s + 0x160, ((dActor_c *)this), 0x46000, 0x64000, 0x200000, 0x6eff0);
+        &mdCcAc_c, ((dActor_c *)this), 0x46000, 0x64000, 0x200000, 0x6eff0);
     _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(
-        s + 0x194, ((dActor_c *)this), 0x50000, 0x50000, (Vector3_16 *)0, (Vector3_16 *)0);
-    ((dBgCh_Actr *)(s + 0x194))->StartDetectingWater();
-    *(int *)(s + 0x384) = *(int *)(s + 0x5c);
-    *(int *)(s + 0x388) = *(int *)(s + 0x60);
-    *(int *)(s + 0x38c) = *(int *)(s + 0x64);
-    *(short *)(s + 0x3a6) = *(short *)(s + 0x8e);
-    *(int *)(s + 0x390) = *(int *)(s + 0x5c);
-    *(int *)(s + 0x394) = *(int *)(s + 0x60);
-    *(int *)(s + 0x398) = *(int *)(s + 0x64);
-    if (*(int *)(s + 8) != 0)
-        Scuttlebug_SetState(s, 0);
+        &mWithMeshClsn, ((dActor_c *)this), 0x50000, 0x50000, (Vector3_16 *)0, (Vector3_16 *)0);
+    mWithMeshClsn.StartDetectingWater();
+    mHomeX = mPosX;
+    mHomeY = mPosY;
+    mHomeZ = mPosZ;
+    mHomeAngleY = mAngleY;
+    mAnchorX = mPosX;
+    mAnchorY = mPosY;
+    mAnchorZ = mPosZ;
+    if (param1 != 0)
+        SetState(0);
     else
-        Scuttlebug_SetState(s, 2);
-    *(char *)(s + 0x3aa) = 3;
-    *(int *)(s + 0x9c) = -0x2000;
-    *(int *)(s + 0xa0) = -0x3c000;
-    *(int *)(s + 0x80) = 0x1000;
-    *(int *)(s + 0x84) = 0x1000;
-    *(int *)(s + 0x88) = 0x1000;
-    *(int *)(s + 0xd0) = 0;
-    *(short *)(s + 0x3a8) = 0x3c;
-    *(Matrix4x3 *)(s + 0x350) = IDENTITY_MATRIX4X3;
-    func_ov071_0211f524(s);
+        SetState(2);
+    mCoinCount = 3;
+    mVertAccel = -0x2000;
+    mTerminalVelocity = -0x3c000;
+    mScaleX = 0x1000;
+    mScaleY = 0x1000;
+    mScaleZ = 0x1000;
+    mParent = 0;
+    mTimer = 0x3c;
+    *(Matrix4x3 *)mShadowMtx = IDENTITY_MATRIX4X3;
+    func_ov071_0211f524();
     return 1;
 }
-
-/* ROM ordinal 33 -- Behavior, 0x02120398, size 0x60. */
 
 // @symbol _ZN10Scuttlebug8BehaviorEv
 int Scuttlebug::Behavior()
 {
     DecIfAbove0_Short((char *)&mTimer);
-    func_ov071_02120278((ScuttlebugState *)((char *)this));
-    _ZN8dActor_c19MakeVanishLuigiWorkER5dCc_c(((char *)this), ((char *)this) + 0x160);
-    if (_ZNK10dBgCh_Actr14GetResultFlag1Ev((char *)&mWithMeshClsn) &&
-        _ZNK10dBgCh_Actr12TouchesWaterEv((char *)&mWithMeshClsn)) {
-        func_ov071_0211f498((int *)((char *)this));
+    func_ov071_02120278();
+    MakeVanishLuigiWork(mdCcAc_c);
+    if (mWithMeshClsn.GetResultFlag1() &&
+        mWithMeshClsn.TouchesWater()) {
+        func_ov071_0211f498();
     }
-    func_ov071_0211f524(((char *)this));
+    func_ov071_0211f524();
     return 1;
 }
-
-/* ROM ordinal 32 -- Render, 0x0212033c, size 0x5c. */
-
-struct RenderSub {
-    virtual int method0();
-    virtual int method1();
-    virtual int method2();
-    virtual int method3();
-    virtual int method4();
-    virtual int method5(int);
-};
-struct RenderObj {
-    char pad1[0xb0];
-    int flags;
-    char pad2[0x20];
-    RenderSub sub;
-    char pad3[0x2c3];
-    int state39c;
-};
 
 // @symbol _ZN10Scuttlebug6RenderEv
 int Scuttlebug::Render()
 {
-    int flag = (((RenderObj *)this)->flags & 0x40000) ? 1 : 0;
+    int flag = (mFlags & 0x40000) ? 1 : 0;
     if (flag) goto ret;
-    if (!((RenderObj *)this)->state39c) goto ret;
+    if (!mState) goto ret;
     goto call;
 ret:
     return 1;
 call:
-    ((RenderObj *)this)->sub.method5(0);
+    /* ModelAnim slot 5. The call stays virtual. */
+    mModelAnim.Render(0);
     return 1;
 }
 
-/* ROM ordinal 31 -- OnPendingDestroy, 0x02120338, size 0x4.  The ROM body is
- * empty: the override exists only to occupy vtable slot 12. */
+/* Empty: the override exists only to occupy vtable slot 12. */
 
 // @symbol _ZN10Scuttlebug16OnPendingDestroyEv
 void Scuttlebug::OnPendingDestroy()
 {
 }
 
-/* ROM ordinal 30 -- CleanupResources, 0x02120308, size 0x30.  Releases the two
- * shared files the class holds; it never touches `this`. */
+/* Releases the two shared files. Never touches `this`. */
 
 // @symbol _ZN10Scuttlebug16CleanupResourcesEv
 int Scuttlebug::CleanupResources()
 {
-    _ZN13SharedFilePtr7ReleaseEv(data_ov071_02122f80);
-    _ZN13SharedFilePtr7ReleaseEv(data_ov071_02122f88);
+    data_ov071_02122f80.Release();
+    data_ov071_02122f88.Release();
     return 1;
 }
 
-/* ROM ordinal 29 -- Scuttlebug_SetState, 0x021202ec, size 0x1c.  Points the
- * state slot at one row of the table and tail-calls the entry handler. */
+/* Points mStateRow at one row of the table and tail-calls its entry handler. */
 
-// @symbol Scuttlebug_SetState
-extern "C" void Scuttlebug_SetState(char *self, int idx)
+// @symbol _ZN10Scuttlebug8SetStateEi
+void Scuttlebug::SetState(int idx)
 {
-    *(Item16 **)(self + 0x380) = &data_ov071_02122fa8[idx];
-    func_ov071_021202b4((ScuttlebugState *)self);
+    mStateRow = (ScuttlebugStateRow *)data_ov071_02122fa8 + idx;
+    func_ov071_021202b4();
 }
 
-/* ROM ordinal 28 -- 0x021202b4, size 0x38: call the state's entry handler. */
-
-// @symbol func_ov071_021202b4
-extern "C" void func_ov071_021202b4(ScuttlebugState *c)
+// @symbol _ZN10Scuttlebug19func_ov071_021202b4Ev
+void Scuttlebug::func_ov071_021202b4()
 {
-    PMF *p = c->pp;
-    (c->**p)();
+    PMF *p = (PMF *)mStateRow;
+    (this->**p)();
 }
 
-/* ROM ordinal 27 -- 0x02120278, size 0x3c: call the state's per-frame
- * handler, one slot further into the row. */
+/* Call the state's per-frame handler, one slot further into the row. */
 
-// @symbol func_ov071_02120278
-extern "C" void func_ov071_02120278(ScuttlebugState *c)
+// @symbol _ZN10Scuttlebug19func_ov071_02120278Ev
+void Scuttlebug::func_ov071_02120278()
 {
-    PMF *p = c->pp + 1;
-    (c->**p)();
+    PMF *p = (PMF *)mStateRow + 1;
+    (this->**p)();
 }
 
-/* ROM ordinal 26 -- 0x02120200, size 0x78. */
-
-// @symbol func_ov071_02120200
-extern "C" int func_ov071_02120200(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_02120200Ev
+int Scuttlebug::func_ov071_02120200()
 {
-    int *p = (int *)(((int)c + 0xb0));
+    int *p = (int *)&mFlags;
     int z;
     short ang;
 
     *p = *p & ~0x10000001;
-    *(int *)(c + 0x5c) = *(int *)(c + 0x384);
+    mPosX = mHomeX;
     z = 0;
-    *(int *)(c + 0x60) = *(int *)(c + 0x388);
-    *(int *)(c + 0x64) = *(int *)(c + 0x38c);
-    *(short *)(c + 0x94) = *(short *)(c + 0x3a6);
-    ang = *(short *)(c + 0x3a6);
-    *(short *)(c + 0x8c) = z;
-    *(short *)(c + 0x8e) = ang;
-    *(short *)(c + 0x90) = z;
-    *(int *)(c + 0x98) = z;
-    *(short *)(c + 0x3a8) = 0x1e;
-    _ZN5dCc_c5ClearEv(c + 0x160);
-    *(int *)(c + 0x39c) = 0;
+    mPosY = mHomeY;
+    mPosZ = mHomeZ;
+    mPrevAngleY = mHomeAngleY;
+    ang = mHomeAngleY;
+    mAngleX = z;
+    mAngleY = ang;
+    mAngleZ = z;
+    mHorzSpeed = z;
+    mTimer = 0x1e;
+    mdCcAc_c.Clear();
+    mState = 0;
     return 1;
 }
 
-/* ROM ordinal 25 -- 0x021201b4, size 0x4c. */
-
-// @symbol func_ov071_021201b4
-extern "C" int func_ov071_021201b4(void *c)
+// @symbol _ZN10Scuttlebug19func_ov071_021201b4Ev
+int Scuttlebug::func_ov071_021201b4()
 {
-    if (*(unsigned short *)((char *)c + 0x3a8)) return 1;
-    if (_ZN8dActor_c13DistToCPlayerEv(c) < 0x5dc000) Scuttlebug_SetState((char *)c, 1);
+    if (mTimer) return 1;
+    if (DistToCPlayer() < 0x5dc000) SetState(1);
     return 1;
 }
 
-/* ROM ordinal 24 -- 0x02120130, size 0x84. */
-
-// @symbol func_ov071_02120130
-extern "C" int func_ov071_02120130(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_02120130Ev
+int Scuttlebug::func_ov071_02120130()
 {
-    *(int *)(c + 0x9c) = -0x4000;
-    *(int *)(c + 0xa0) = -0x3e000;
-    *(int *)(c + 0x98) = 0x16000;
-    *(int *)(c + 0xa8) = 0x4d000;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov071_02122f88[1], 0, 0x1000, 0);
-    *(int *)(c + 0x130) = 0x1000;
-    _ZN10dBgCh_Actr13SetLimMovFlagEv(c + 0x194);
-    func_0201267c(0xf1, c + 0x74);
-    *(int *)(c + 0x39c) = 1;
+    mVertAccel = -0x4000;
+    mTerminalVelocity = -0x3e000;
+    mHorzSpeed = 0x16000;
+    mVertSpeed = 0x4d000;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov071_02122f88.file, 0, 0x1000, 0);
+    mModelAnim.speed = 0x1000;
+    mWithMeshClsn.SetLimMovFlag();
+    func_0201267c(0xf1, &mCamSpacePosX);
+    mState = 1;
     return 1;
 }
 
-/* ROM ordinal 23 -- 0x02120028, size 0x108. */
-
-// @symbol func_ov071_02120028
-extern "C" int func_ov071_02120028(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_02120028Ev
+int Scuttlebug::func_ov071_02120028()
 {
-    _ZN9Animation7AdvanceEv(c + 0x124);
-    _ZN8dActor_c9UpdatePosEP5dCc_c(c, c + 0x160);
-    dBgCh_Actr_UpdateDiscreteNoLava_veneer(c + 0x194);
-    if (_ZNK10dBgCh_Actr13JustHitGroundEv(c + 0x194)) {
+    mModelAnim.Advance();
+    UpdatePos(&mdCcAc_c);
+    dBgCh_Actr_UpdateDiscreteNoLava_veneer(&mWithMeshClsn);
+    if (mWithMeshClsn.JustHitGround()) {
         Vec3 v;
         int x, y, z;
-        x = *(volatile int *)(c + 0x5c);
+        x = *(volatile int *)&mPosX;
         *(volatile int *)&v.x = x;
-        y = *(volatile int *)(c + 0x60);
+        y = *(volatile int *)&mPosY;
         *(volatile int *)&v.y = y;
-        z = *(volatile int *)(c + 0x64);
+        z = *(volatile int *)&mPosZ;
         y += 0x28000;
         *(volatile int *)&v.z = z;
         *(volatile int *)&v.y = y;
         _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0xb2, x, y, z);
-        *(int *)(c + 0xa8) = *(int *)(c + 0xa8) * -0x28 / 100;
-    } else if (_ZNK10dBgCh_Actr10IsOnGroundEv(c + 0x194)) {
-        *(int *)(c + 0xa8) = 0;
-        _ZN10dBgCh_Actr15ClearLimMovFlagEv(c + 0x194);
-        *(int *)(c + 0x390) = *(int *)(c + 0x5c);
-        *(int *)(c + 0x394) = *(int *)(c + 0x60);
-        *(int *)(c + 0x398) = *(int *)(c + 0x64);
-        *(int *)(c + 0xb0) |= 0x10000001;
-        Scuttlebug_SetState(c, 2);
+        mVertSpeed = mVertSpeed * -0x28 / 100;
+    } else if (mWithMeshClsn.IsOnGround()) {
+        mVertSpeed = 0;
+        mWithMeshClsn.ClearLimMovFlag();
+        mAnchorX = mPosX;
+        mAnchorY = mPosY;
+        mAnchorZ = mPosZ;
+        mFlags |= 0x10000001;
+        SetState(2);
     }
-    func_ov071_0211f29c(c);
-    _ZN5dCc_c5ClearEv(c + 0x160);
-    _ZN5dCc_c6UpdateEv(c + 0x160);
+    func_ov071_0211f29c();
+    mdCcAc_c.Clear();
+    mdCcAc_c.Update();
     return 1;
 }
 
-/* ROM ordinal 22 -- 0x0211ff84, size 0xa4. */
-
-// @symbol func_ov071_0211ff84
-extern "C" int func_ov071_0211ff84(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211ff84Ev
+int Scuttlebug::func_ov071_0211ff84()
 {
-    if (Vec3_Dist((Vector3 *)(c + 0x5c), (Vector3 *)(c + 0x390)) > 0x5dc000) {
-        Scuttlebug_SetState(c, 5);
+    if (Vec3_Dist((Vector3 *)&mPosX,
+                  (Vector3 *)&mAnchorX) > 0x5dc000) {
+        SetState(5);
         return 1;
     }
-    *(int *)(c + 0x9c) = -0x2000;
-    *(int *)(c + 0xa0) = -0x3c000;
-    *(int *)(c + 0x98) = 0x4000;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, *(void **)((char *)data_ov071_02122f88 + 4), 0, 0x1000, 0);
-    *(int *)(c + 0x130) = 0x1000;
-    *(int *)(c + 0x39c) = 2;
+    mVertAccel = -0x2000;
+    mTerminalVelocity = -0x3c000;
+    mHorzSpeed = 0x4000;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov071_02122f88.file, 0, 0x1000, 0);
+    mModelAnim.speed = 0x1000;
+    mState = 2;
     return 1;
 }
 
-/* ROM ordinal 21 -- 0x0211fee4, size 0xa0. */
-
-// @symbol func_ov071_0211fee4
-extern "C" int func_ov071_0211fee4(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211fee4Ev
+int Scuttlebug::func_ov071_0211fee4()
 {
-    *(short *)(c + 0x8e) = (short)(*(short *)(c + 0x8e) + 0x2bc);
-    *(short *)(c + 0x94) = *(short *)(c + 0x8e);
-    ((Animation *)(c + 0x124))->Advance();
-    unsigned short f = (unsigned short)(*(int *)(c + 0x12c) >> 12);
+    mAngleY = (short)(mAngleY + 0x2bc);
+    mPrevAngleY = mAngleY;
+    mModelAnim.Advance();
+    unsigned short f = (unsigned short)(mModelAnim.currFrame >> 12);
     if (f == 0 || f == 8 || f == 0x17 || f == 0x1f) {
-        func_0201267c(0xf0, (void *)(c + 0x74));
+        func_0201267c(0xf0, (void *)(&mCamSpacePosX));
     }
-    func_ov071_0211f0b4(c);
-    ((dActor_c *)c)->UpdatePos((dCc_c *)(c + 0x160));
-    func_ov071_0211f148(c, (char *)(c + 0x194));
-    func_ov071_0211f29c(c);
-    ((dCc_c *)(c + 0x160))->Clear();
-    ((dCc_c *)(c + 0x160))->Update();
+    func_ov071_0211f0b4();
+    UpdatePos((dCc_c *)(&mdCcAc_c));
+    func_ov071_0211f148(&mWithMeshClsn);
+    func_ov071_0211f29c();
+    ((dCc_c *)(&mdCcAc_c))->Clear();
+    ((dCc_c *)(&mdCcAc_c))->Update();
     return 1;
 }
 
-/* ROM ordinal 20 -- 0x0211fe38, size 0xac. */
-
-// @symbol func_ov071_0211fe38
-extern "C" int func_ov071_0211fe38(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211fe38Ev
+int Scuttlebug::func_ov071_0211fe38()
 {
-    int *p3a0 = (int *)(c + 0x3a0);
-    *(int *)(c + 0x9c) = -0x2000;
-    *(int *)(c + 0xa0) = -0x3c000;
-    *(int *)(c + 0x98) = 0xf000;
-    *(int *)(c + 0xa8) = 0x12000;
-    *(short *)(c + 0x8e) = *(short *)(c + 0x3a4);
-    *(short *)(c + 0x94) = *(short *)(c + 0x8e);
+    int *p3a0 = &mLeapDist;
+    mVertAccel = -0x2000;
+    mTerminalVelocity = -0x3c000;
+    mHorzSpeed = 0xf000;
+    mVertSpeed = 0x12000;
+    mAngleY = mLeapAngle;
+    mPrevAngleY = mAngleY;
     *p3a0 += 0x12c000;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov071_02122f88[1], 0, 0x1000, 0);
-    *(int *)(c + 0x130) = 0x2c00;
-    *(int *)(c + 0x12c) = 0;
-    func_0201267c(0xf1, c + 0x74);
-    *(int *)(c + 0x39c) = 3;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov071_02122f88.file, 0, 0x1000, 0);
+    mModelAnim.speed = 0x2c00;
+    mModelAnim.currFrame = 0;
+    func_0201267c(0xf1, &mCamSpacePosX);
+    mState = 3;
     return 1;
 }
 
-/* ROM ordinal 19 -- 0x0211fd58, size 0xe0. */
-
-// @symbol func_ov071_0211fd58
-extern "C" int func_ov071_0211fd58(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211fd58Ev
+int Scuttlebug::func_ov071_0211fd58()
 {
-    _ZN9Animation7AdvanceEv(c + 0x124);
-    int *p = (int *)(((int)c + 0x3a0));
+    mModelAnim.Advance();
+    int *p = &mLeapDist;
     *p -= 0xf000;
-    if (*(int *)(c + 0x3a0) <= 0) {
-        char *b = c + 0x300;
-        *(short *)(b + 0xa8) = 0x3c;
-        Scuttlebug_SetState(c, 2);
+    if (mLeapDist <= 0) {
+        mTimer = 0x3c;
+        SetState(2);
     }
-    _ZN8dActor_c9UpdatePosEP5dCc_c(c, c + 0x160);
-    func_ov071_0211f148(c, c + 0x194);
-    func_ov071_0211f29c(c);
-    _ZN5dCc_c5ClearEv(c + 0x160);
-    _ZN5dCc_c6UpdateEv(c + 0x160);
-    if (_ZNK10dBgCh_Actr10IsOnGroundEv(c + 0x194) != 0) {
-        unsigned int t = (unsigned int)(*(int *)(c + 0x12c) << 4) >> 0x10;
+    UpdatePos(&mdCcAc_c);
+    func_ov071_0211f148(&mWithMeshClsn);
+    func_ov071_0211f29c();
+    mdCcAc_c.Clear();
+    mdCcAc_c.Update();
+    if (mWithMeshClsn.IsOnGround() != 0) {
+        unsigned int t = (unsigned int)(mModelAnim.currFrame << 4) >> 0x10;
         if ((t <= 2) || (t >= 8 && t <= 0xa) || (t >= 0x18 && t <= 0x1a) || (t >= 0x20 && t <= 0x22)) {
-            func_0201267c(0xf0, c + 0x74);
+            func_0201267c(0xf0, &mCamSpacePosX);
         }
     }
     return 1;
 }
 
-/* ROM ordinal 18 -- 0x0211fcd4, size 0x84. */
-
-// @symbol func_ov071_0211fcd4
-extern "C" int func_ov071_0211fcd4(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211fcd4Ev
+int Scuttlebug::func_ov071_0211fcd4()
 {
-    *(int *)(c + 0x9c) = -0x2000;
-    *(int *)(c + 0xa0) = -0x3c000;
-    *(int *)(c + 0x98) = -0x4000;
-    *(int *)(c + 0xa8) = 0x12000;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov071_02122f88[1], 0, 0x1000, 0);
-    *(int *)(c + 0x130) = 0x2c00;
-    func_0201267c(0xf1, c + 0x74);
-    *(int *)(c + 0x39c) = 4;
+    mVertAccel = -0x2000;
+    mTerminalVelocity = -0x3c000;
+    mHorzSpeed = -0x4000;
+    mVertSpeed = 0x12000;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov071_02122f88.file, 0, 0x1000, 0);
+    mModelAnim.speed = 0x2c00;
+    func_0201267c(0xf1, &mCamSpacePosX);
+    mState = 4;
     return 1;
 }
 
-/* ROM ordinal 17 -- 0x0211fc60, size 0x74. */
-
-// @symbol func_ov071_0211fc60
-extern "C" int func_ov071_0211fc60(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211fc60Ev
+int Scuttlebug::func_ov071_0211fc60()
 {
-    _ZN9Animation7AdvanceEv((char *)c + 0x124);
-    if (_ZNK10dBgCh_Actr10IsOnGroundEv((char *)c + 0x194)) {
-        *(short *)(c + 0x3a8) = 0x3c;
-        Scuttlebug_SetState(c, 2);
+    mModelAnim.Advance();
+    if (mWithMeshClsn.IsOnGround()) {
+        mTimer = 0x3c;
+        SetState(2);
     }
-    _ZN8dActor_c9UpdatePosEP5dCc_c(c, (char *)c + 0x160);
-    func_ov071_0211f148(c, (char *)c + 0x194);
-    func_ov071_0211f29c(c);
-    _ZN5dCc_c5ClearEv((char *)c + 0x160);
-    _ZN5dCc_c6UpdateEv((char *)c + 0x160);
+    UpdatePos(&mdCcAc_c);
+    func_ov071_0211f148(&mWithMeshClsn);
+    func_ov071_0211f29c();
+    mdCcAc_c.Clear();
+    mdCcAc_c.Update();
     return 1;
 }
 
-/* ROM ordinal 16 -- 0x0211fbf4, size 0x6c. */
-
-// @symbol func_ov071_0211fbf4
-extern "C" int func_ov071_0211fbf4(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211fbf4Ev
+int Scuttlebug::func_ov071_0211fbf4()
 {
-    *(int *)((char *)c + 0x9c) = -0x2000;
-    *(int *)((char *)c + 0xa0) = -0x3c000;
-    *(int *)((char *)c + 0x98) = 0x4000;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj((char *)c + 0xd4, (void *)data_ov071_02122f88[1], 0, 0x1000, 0);
-    *(int *)((char *)c + 0x130) = 0x1000;
-    *(int *)((char *)c + 0x39c) = 5;
+    mVertAccel = -0x2000;
+    mTerminalVelocity = -0x3c000;
+    mHorzSpeed = 0x4000;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov071_02122f88.file, 0, 0x1000, 0);
+    mModelAnim.speed = 0x1000;
+    mState = 5;
     return 1;
 }
 
-/* ROM ordinal 15 -- 0x0211fb24, size 0xd0. */
-
-// @symbol func_ov071_0211fb24
-extern "C" int func_ov071_0211fb24(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211fb24Ev
+int Scuttlebug::func_ov071_0211fb24()
 {
-    short ang = Vec3_HorzAngle((Vector3 *)(c + 0x5c), (Vector3 *)(c + 0x390));
-    _Z14ApproachLinearRsss(*(short *)(c + 0x8e), ang, 0x2bc);
-    *(short *)(c + 0x94) = *(short *)(c + 0x8e);
-    _ZN9Animation7AdvanceEv(c + 0x124);
-    if (Vec3_Dist((Vector3 *)(c + 0x5c), (Vector3 *)(c + 0x390)) < 0x12c000)
-        Scuttlebug_SetState(c, 2);
-    func_ov071_0211f0b4(c);
-    _ZN8dActor_c9UpdatePosEP5dCc_c(c, c + 0x160);
-    func_ov071_0211f148(c, c + 0x194);
-    func_ov071_0211f29c(c);
-    _ZN5dCc_c5ClearEv(c + 0x160);
-    _ZN5dCc_c6UpdateEv(c + 0x160);
-    unsigned short v = (unsigned short)(*(int *)(c + 0x12c) >> 0xc);
+    short ang = Vec3_HorzAngle((Vector3 *)&mPosX,
+                               (Vector3 *)&mAnchorX);
+    ApproachLinear(mAngleY, ang, 0x2bc);
+    mPrevAngleY = mAngleY;
+    mModelAnim.Advance();
+    if (Vec3_Dist((Vector3 *)&mPosX,
+                  (Vector3 *)&mAnchorX) < 0x12c000)
+        SetState(2);
+    func_ov071_0211f0b4();
+    UpdatePos(&mdCcAc_c);
+    func_ov071_0211f148(&mWithMeshClsn);
+    func_ov071_0211f29c();
+    mdCcAc_c.Clear();
+    mdCcAc_c.Update();
+    unsigned short v = (unsigned short)(mModelAnim.currFrame >> 0xc);
     if (v == 0 || v == 8 || v == 0x17 || v == 0x1f)
-        func_0201267c(0xf0, c + 0x74);
+        func_0201267c(0xf0, &mCamSpacePosX);
     return 1;
 }
 
-/* ROM ordinal 14 -- 0x0211fb0c, size 0x18. */
-
-// @symbol func_ov071_0211fb0c
-extern "C" int func_ov071_0211fb0c(char *p)
+// @symbol _ZN10Scuttlebug19func_ov071_0211fb0cEv
+int Scuttlebug::func_ov071_0211fb0c()
 {
-    *(int *)(p + 0x98) = 0;
-    *(int *)(p + 0x39c) = 6;
+    mHorzSpeed = 0;
+    mState = 6;
     return 1;
 }
 
-/* ROM ordinal 13 -- 0x0211fa54, size 0xb8. */
-
-// @symbol func_ov071_0211fa54
-extern "C" int func_ov071_0211fa54(void *thiz)
+// @symbol _ZN10Scuttlebug19func_ov071_0211fa54Ev
+int Scuttlebug::func_ov071_0211fa54()
 {
-    char *c = (char *)thiz;
-    int b0 = (int)((*(int *)(c + 0xb0) & 0x40000) != 0);
+    int b0 = (int)((mFlags & 0x40000) != 0);
     if (b0 != 0) {
-        int *src = (int *)(((int)(*(char **)(c + 0xd0)) + 0x5c));
-        *(int *)(c + 0x5c) = src[0];
-        *(int *)(c + 0x60) = src[1];
-        *(int *)(c + 0x64) = src[2];
+        int *src = &((dActor_c *)mParent)->mPosX;
+        mPosX = src[0];
+        mPosY = src[1];
+        mPosZ = src[2];
     }
     {
-        int v = *(int *)(c + 0xb0);
+        int v = mFlags;
         int b1 = (int)((v & 0x80000) != 0);
         if (b1 != 0) {
-            Scuttlebug_SetState(c, 7);
+            SetState(7);
             goto done;
         }
         {
@@ -662,18 +590,16 @@ extern "C" int func_ov071_0211fa54(void *thiz)
             int b3 = (int)((v & 0x40000) != 0);
             if (b3 != 0) goto done;
         }
-        *(int *)(c + 0xd0) = 0;
-        Scuttlebug_SetState(c, 2);
+        mParent = 0;
+        SetState(2);
     }
 done:
-    _ZN5dCc_c5ClearEv(c + 0x160);
+    mdCcAc_c.Clear();
     return 1;
 }
 
-/* ROM ordinal 12 -- 0x0211f8d0, size 0x184. */
-
-// @symbol func_ov071_0211f8d0
-extern "C" int func_ov071_0211f8d0(char *self)
+// @symbol _ZN10Scuttlebug19func_ov071_0211f8d0Ev
+int Scuttlebug::func_ov071_0211f8d0()
 {
     Vector3 *pos;
     Vector3 v;
@@ -693,317 +619,299 @@ extern "C" int func_ov071_0211f8d0(char *self)
     int y, z, x, y2;
 
     zero = 0;
-    pb0 = (int *)(((int)self + 0xb0));
+    pb0 = (int *)&mFlags;
     *pb0 = (*pb0) & 0xfff7fffe;
 
-    parent = *(char **)(self + 0xd0);
-    pos = (Vector3 *)(((int)self + 0x5c));
+    parent = (char *)mParent;
+    pos = (Vector3 *)&mPosX;
     mul = 0x5a000;
-    *(int *)(self + 0x98) = *(int *)(parent + 0x98) + 0x7000;
-    *(int *)(self + 0xa8) = zero;
+    mHorzSpeed = ((dActor_c *)parent)->mHorzSpeed + 0x7000;
+    mVertSpeed = zero;
 
-    parent = *(char **)(self + 0xd0);
+    parent = (char *)mParent;
     rnd = 0x800;
-    *(s16 *)(self + 0x8e) = *(s16 *)(parent + 0x8e);
-    py = (int *)(((int)self + 0x60));
-    pz = (int *)(((int)self + 0x64));
-    *(s16 *)(self + 0x94) = *(s16 *)(self + 0x8e);
+    mAngleY = ((dActor_c *)parent)->mAngleY;
+    py = &mPosY;
+    pz = &mPosZ;
+    mPrevAngleY = mAngleY;
 
-    parent = *(char **)(self + 0xd0);
+    parent = (char *)mParent;
     one = 1;
-    srcv = (Vector3 *)(((int)parent + 0x5c));
-    *(int *)(self + 0x5c) = srcv->x;
-    *(int *)(self + 0x60) = srcv->y;
-    *(int *)(self + 0x64) = srcv->z;
+    srcv = (Vector3 *)&((dActor_c *)parent)->mPosX;
+    mPosX = srcv->x;
+    mPosY = srcv->y;
+    mPosZ = srcv->z;
 
     saved_x = pos->x;
-    hang = *(u16 *)(self + 0x8e);
+    /* These two reads are ldrh. mAngleY is signed everywhere else. */
+    hang = *(u16 *)&mAngleY;
     s0 = data_02082214[(hang >> 4) * 2];
     adj = (int)(((s64)s0 * mul + rnd) >> 12);
     pos->x = saved_x + adj;
 
     *py = *py + 0x50000;
 
-    hang = *(u16 *)(self + 0x8e);
+    hang = *(u16 *)&mAngleY;
     s1 = data_02082214[(hang >> 4) * 2 + 1];
     adj = (int)(((s64)s1 * mul + rnd) >> 12);
     *pz = *pz + adj;
 
-    parent = *(char **)(self + 0xd0);
-    y = *(int *)(parent + 0x60);
-    z = *(int *)(parent + 0x64);
+    parent = (char *)mParent;
+    y = ((dActor_c *)parent)->mPosY;
+    z = ((dActor_c *)parent)->mPosZ;
     y2 = y + 0x50000;
-    x = *(int *)(parent + 0x5c);
+    x = ((dActor_c *)parent)->mPosX;
     v.x = x;
     v.y = y2;
     v.z = z;
 
-    _ZN8dActor_c17DetectRaycastClsnER7Vector3S1_b(self, &v, pos, one);
+    DetectRaycastClsn(v, *pos, one);
 
-    *(int *)(self + 0xd0) = zero;
-    _ZN10dBgCh_Actr13SetLimMovFlagEv(self + 0x194);
+    mParent = (dActor_c *)zero;
+    mWithMeshClsn.SetLimMovFlag();
 
-    *(int *)(self + 0x39c) = 7;
+    mState = 7;
     return 1;
 }
 
-/* ROM ordinal 11 -- 0x0211f7d4, size 0xfc. */
-
-// @symbol func_ov071_0211f7d4
-extern "C" int func_ov071_0211f7d4(dActor_c *self)
+// @symbol _ZN10Scuttlebug19func_ov071_0211f7d4Ev
+int Scuttlebug::func_ov071_0211f7d4()
 {
-    char *s = (char *)self;
-    dBgCh_Actr_UpdateDiscreteNoLava_veneer(s + 0x194);
-    *(short *)(s + 0x8c) = *(short *)(s + 0x8c) + 0x1000;
-    if (((dBgCh_Actr *)(s + 0x194))->JustHitGround()) {
-        if (func_02037e38((unsigned int *)((char *)_ZNK10dBgCh_Actr14GetFloorResultEv((dBgCh_Actr *)(s + 0x194)) + 4)) == 4) {
-            func_ov071_0211f498((int *)s);
+    dBgCh_Actr_UpdateDiscreteNoLava_veneer(&mWithMeshClsn);
+    mAngleX = mAngleX + 0x1000;
+    if (mWithMeshClsn.JustHitGround()) {
+        if (func_02037e38((unsigned int *)((char *)mWithMeshClsn.GetFloorResult() + 4)) == 4) {
+            func_ov071_0211f498();
         } else {
-            *(int *)(s + 0xa8) = (*(int *)(s + 0xa8) * -0x3c) / 0x64;
+            mVertSpeed = (mVertSpeed * -0x3c) / 0x64;
         }
-    } else if (((dBgCh_Actr *)(s + 0x194))->IsOnGround()) {
-        dBgCh_Actr *wm = (dBgCh_Actr *)(s + 0x194);
-        *(int *)(s + 0xa8) = 0;
-        wm->ClearLimMovFlag();
-        *(int *)(s + 0xb0) |= 1;
+    } else if (mWithMeshClsn.IsOnGround()) {
+        mVertSpeed = 0;
+        mWithMeshClsn.ClearLimMovFlag();
+        mFlags |= 1;
         short z = 0;
-        short ang = *(short *)(s + 0x94);
-        *(short *)(s + 0x8c) = z;
-        *(short *)(s + 0x8e) = ang;
-        *(short *)(s + 0x90) = z;
-        Scuttlebug_SetState(s, 2);
+        short ang = mPrevAngleY;
+        mAngleX = z;
+        mAngleY = ang;
+        mAngleZ = z;
+        SetState(2);
     }
-    self->UpdatePos((dCc_c *)(s + 0x160));
-    func_ov071_0211f29c(s);
-    _ZN5dCc_c5ClearEv((dCc_c *)(s + 0x160));
-    _ZN5dCc_c6UpdateEv((dCc_c *)(s + 0x160));
+    UpdatePos((dCc_c *)(&mdCcAc_c));
+    func_ov071_0211f29c();
+    mdCcAc_c.Clear();
+    mdCcAc_c.Update();
     return 1;
 }
 
-/* ROM ordinal 10 -- 0x0211f6f8, size 0xdc. */
-
-// @symbol func_ov071_0211f6f8
-extern "C" int func_ov071_0211f6f8(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211f6f8Ev
+int Scuttlebug::func_ov071_0211f6f8()
 {
-    _ZN5Sound9PlayBank0EjRK7Vector3(9, (const void *)(c + 0x74));
-    *(int *)(((int)c + 0xb0)) &= ~1;
-    *(int *)(c + 0x98) = 0xa000;
-    *(int *)(c + 0xa8) = 0x28000;
-    *(short *)(c + 0x3a8) = 0x2d;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, *(void **)((char *)data_ov071_02122f88 + 4), 0, 0x1000, 0);
-    *(int *)(c + 0x130) = 0x4000;
-    VSlot29 *b = (VSlot29 *)c;
-    int r1 = b->m29();
-    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x43, *(int *)(c + 0x5c), *(int *)(c + 0x60) + r1, *(int *)(c + 0x64));
-    int r2 = b->m29();
-    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x44, *(int *)(c + 0x5c), *(int *)(c + 0x60) + r2, *(int *)(c + 0x64));
-    *(int *)(c + 0x39c) = 8;
+    _ZN5Sound9PlayBank0EjRK7Vector3(9, (const void *)(&mCamSpacePosX));
+    mFlags &= ~1;
+    mHorzSpeed = 0xa000;
+    mVertSpeed = 0x28000;
+    mTimer = 0x2d;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov071_02122f88.file, 0, 0x1000, 0);
+    mModelAnim.speed = 0x4000;
+    int yOffset1 = OnAimedAtWithEgg();
+    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x43, mPosX, mPosY + yOffset1, mPosZ);
+    int yOffset2 = OnAimedAtWithEgg();
+    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x44, mPosX, mPosY + yOffset2, mPosZ);
+    mState = 8;
     return 1;
 }
 
-/* ROM ordinal 9 -- 0x0211f694, size 0x64. */
-
-// @symbol func_ov071_0211f694
-extern "C" int func_ov071_0211f694(char *t)
+// @symbol _ZN10Scuttlebug19func_ov071_0211f694Ev
+int Scuttlebug::func_ov071_0211f694()
 {
-    *(short *)(t + 0x8c) = *(short *)(t + 0x8c) - 0x1000;
-    _ZN9Animation7AdvanceEv(t + 0x124);
-    _ZN8dActor_c9UpdatePosEP5dCc_c(t, t + 0x160);
-    dBgCh_Actr_UpdateDiscreteNoLava_veneer(t + 0x194);
-    if (_ZNK10dBgCh_Actr13JustHitGroundEv(t + 0x194) != 0 || *(unsigned short *)(t + 0x3a8) == 0)
-        func_ov071_0211f498((int *)t);
+    mAngleX = mAngleX - 0x1000;
+    mModelAnim.Advance();
+    UpdatePos(&mdCcAc_c);
+    dBgCh_Actr_UpdateDiscreteNoLava_veneer(&mWithMeshClsn);
+    if (mWithMeshClsn.JustHitGround() != 0 || mTimer == 0)
+        func_ov071_0211f498();
     return 1;
 }
 
-/* ROM ordinal 8 -- 0x0211f524, size 0x170. */
-
-// @symbol func_ov071_0211f524
-extern "C" void func_ov071_0211f524(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211f524Ev
+void Scuttlebug::func_ov071_0211f524()
 {
-    int b = (int)((*(u32 *)(c + 0xb0) & 0x40000) != 0);
+    int b = (int)((mFlags & 0x40000) != 0);
     if (b) {
-        if (*(int *)(c + 0x39c) == 0)
+        if (mState == 0)
             return;
     }
 
-    Matrix4x3_FromRotationY(c + 0xf0, *(s16 *)(c + 0x8e));
-    *(int *)(c + 0x114) = *(int *)(c + 0x5c) >> 3;
-    *(int *)(c + 0x118) = *(int *)(c + 0x60) >> 3;
-    *(int *)(c + 0x11c) = *(int *)(c + 0x64) >> 3;
+    Matrix4x3_FromRotationY(&mModelAnim.mat4x3, mAngleY);
+    mModelAnim.mat4x3.m[9] = mPosX >> 3;
+    mModelAnim.mat4x3.m[10] = mPosY >> 3;
+    mModelAnim.mat4x3.m[11] = mPosZ >> 3;
 
-    if (*(s16 *)(c + 0x8c) != 0) {
-        data_020a0e68 = *(Mtx43 *)(c + 0xf0);
-        int y1 = ((VSlot29 *)c)->m29() >> 3;
+    if (mAngleX != 0) {
+        data_020a0e68 = *(Mtx43 *)&mModelAnim.mat4x3;
+        int y1 = OnAimedAtWithEgg() >> 3;
         Matrix4x3_ApplyInPlaceToTranslation(&data_020a0e68, 0, y1, 0);
-        Matrix4x3_ApplyInPlaceToRotationX(&data_020a0e68, *(s16 *)(c + 0x8c));
-        int y2 = (-((VSlot29 *)c)->m29()) >> 3;
+        Matrix4x3_ApplyInPlaceToRotationX(&data_020a0e68, mAngleX);
+        int y2 = (-OnAimedAtWithEgg()) >> 3;
         Matrix4x3_ApplyInPlaceToTranslation(&data_020a0e68, 0, y2, 0);
-        *(Mtx43 *)(c + 0xf0) = data_020a0e68;
+        *(Mtx43 *)&mModelAnim.mat4x3 = data_020a0e68;
     }
 
-    *(int *)(c + 0x374) = *(int *)(c + 0x5c) >> 3;
-    *(int *)(c + 0x378) = *(int *)(c + 0x60) >> 3;
-    *(int *)(c + 0x37c) = *(int *)(c + 0x64) >> 3;
+    mShadowMtx[9] = mPosX >> 3;
+    mShadowMtx[10] = mPosY >> 3;
+    mShadowMtx[11] = mPosZ >> 3;
 
-    int dh = (*(int *)(c + 0x39c) == 8) ? 0x190000 : 0xc8000;
-    _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
-        c, c + 0x138, c + 0x350, 0xa0000, dh, 0xf);
+    int dh = (mState == 8) ? 0x190000 : 0xc8000;
+    _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_j(
+        this, &mShadowModel, mShadowMtx, 0xa0000, dh, 0xf);
 }
 
-/* ROM ordinal 7 -- 0x0211f498, size 0x8c. */
-
-// @symbol func_ov071_0211f498
-extern "C" void func_ov071_0211f498(int *t)
+// @symbol _ZN10Scuttlebug19func_ov071_0211f498Ev
+void Scuttlebug::func_ov071_0211f498()
 {
     Vec3 v;
-    v.x = t[0x17];
-    v.y = t[0x18];
-    v.z = t[0x19];
-    _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(t, &v, *(unsigned char *)((char *)t + 0x3aa), 0xf000, 0);
-    _ZN8dActor_c8PoofDustEv(t);
-    func_02012694(0xc4, (char *)t + 0x74);
-    if (t[2]) {
-        *(unsigned char *)((char *)t + 0x3aa) = 0;
-        Scuttlebug_SetState((char *)t, 0);
+    v.x = mPosX;
+    v.y = mPosY;
+    v.z = mPosZ;
+    _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(this, &v, mCoinCount, 0xf000, 0);
+    PoofDust();
+    func_02012694(0xc4, &mCamSpacePosX);
+    if (param1) {
+        mCoinCount = 0;
+        SetState(0);
         return;
     }
-    _ZN7fBase_c18MarkForDestructionEv(t);
+    ((fBase_c *)this)->MarkForDestruction();
 }
 
-/* ROM ordinal 6 -- 0x0211f29c, size 0x1fc. */
-
-// @symbol func_ov071_0211f29c
-extern "C" void func_ov071_0211f29c(void *thiz)
+// @symbol _ZN10Scuttlebug19func_ov071_0211f29cEv
+void Scuttlebug::func_ov071_0211f29c()
 {
-    unsigned char *c = (unsigned char *)thiz;
-    unsigned char *r4;
+    Player *hitPlayer;
     int b;
 
-    if (_ZN8dActor_c7FindEggER5dCc_c(c, c + 0x160) != 0) {
-        _ZN5Sound9PlayBank0EjRK7Vector3(9, c + 0x74);
-        func_ov071_0211f498((int *)c);
+    if (FindEgg(mdCcAc_c) != 0) {
+        _ZN5Sound9PlayBank0EjRK7Vector3(9, &mCamSpacePosX);
+        func_ov071_0211f498();
         return;
     }
 
     {
-        unsigned int id = *(unsigned int *)(c + 0x184);
+        unsigned int id = mdCcAc_c.otherOwner;
         if (id == 0)
             return;
-        r4 = (unsigned char *)_ZN8dActor_c10FindWithIDEj(id);
+        hitPlayer = (Player *)dActor_c::FindWithID(id);
     }
-    if (r4 == 0)
+    if (hitPlayer == 0)
         return;
 
-    b = (int)(*(unsigned short *)(r4 + 0xc) == 0xbf);
+    b = (int)(hitPlayer->actorID == 0xbf);
     if (b == 0)
         return;
 
-    b = (int)((*(int *)(c + 0xb0) & 0x20000) != 0);
+    b = (int)((mFlags & 0x20000) != 0);
     if (b != 0) {
-        Scuttlebug_SetState((char *)c, 6);
+        SetState(6);
         return;
     }
 
-    if ((*(int *)(c + 0x180) & 0x66fe0)
-        || _ZN6Player9IsOnShellEv(r4) != 0
-        || *(unsigned char *)(r4 + 0x6f9) != 0) {
-        _ZN5Sound9PlayBank0EjRK7Vector3(9, c + 0x74);
-        func_ov071_0211f498((int *)c);
+    if ((mdCcAc_c.hitFlags & 0x66fe0)
+        || hitPlayer->IsOnShell() != 0
+        || hitPlayer->mIsMetal != 0) {
+        _ZN5Sound9PlayBank0EjRK7Vector3(9, &mCamSpacePosX);
+        func_ov071_0211f498();
         return;
     }
 
-    if (*(int *)(c + 0x180) & 0x10) {
-        *(short *)(c + 0x94) = Vec3_HorzAngle((Vector3 *)(r4 + 0x5c), (Vector3 *)(c + 0x5c));
-        *(short *)(c + 0x8e) = (short)(*(short *)(c + 0x94) + 0x8000);
-        _ZN6Player16IncMegaKillCountEv(r4);
-        Scuttlebug_SetState((char *)c, 8);
+    if (mdCcAc_c.hitFlags & 0x10) {
+        mPrevAngleY = Vec3_HorzAngle(
+            (Vector3 *)&hitPlayer->mPosX,
+            (Vector3 *)&mPosX);
+        mAngleY = (short)(mPrevAngleY + 0x8000);
+        hitPlayer->IncMegaKillCount();
+        SetState(8);
         return;
     }
 
-    if (_ZN8dActor_c16JumpedOnByPlayerER5dCc_cR6Player(c, c + 0x160, r4) != 0) {
-        _ZN6Player6BounceE5Fix12IiE(r4, 0x28000);
-        func_ov071_0211f498((int *)c);
+    if (JumpedOnByPlayer(mdCcAc_c, *hitPlayer) != 0) {
+        _ZN6Player6BounceE5Fix12IiE(hitPlayer, 0x28000);
+        func_ov071_0211f498();
         return;
     }
 
-    if (*(int *)(c + 0x39c) == 7)
+    if (mState == 7)
         return;
 
     {
         int v[3];
-        v[0] = *(int *)(c + 0x5c);
-        v[1] = *(int *)(c + 0x60);
-        v[2] = *(int *)(c + 0x64);
-        if (_ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(r4, v, 1, 0xc000, 1, 0, 1) != 0)
-            Scuttlebug_SetState((char *)c, 4);
+        v[0] = mPosX;
+        v[1] = mPosY;
+        v[2] = mPosZ;
+        if (_ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(hitPlayer, v, 1, 0xc000, 1, 0, 1) != 0)
+            SetState(4);
     }
 }
 
-/* ROM ordinal 5 -- 0x0211f148, size 0x154. */
-
-// @symbol func_ov071_0211f148
-extern "C" void func_ov071_0211f148(char *a, char *w)
+// @symbol _ZN10Scuttlebug19func_ov071_0211f148EP10dBgCh_Actr
+void Scuttlebug::func_ov071_0211f148(dBgCh_Actr *w)
 {
     Vector3 pos;
     Vector3 normal;
     Vector3 wallnormal;
 
     dBgCh_Actr_UpdateDiscreteNoLava_veneer(w);
-    if (_ZNK10dBgCh_Actr10IsOnGroundEv(w)) {
+    if (w->IsOnGround()) {
         dBgCh_Gnd rc;
         {
-            int p60 = *(int *)(a + 0x60);
-            int pz = *(int *)(a + 0x64);
+            int p60 = mPosY;
+            int pz = mPosZ;
             int py = p60 + 0x1e000;
-            pos.x = *(int *)(a + 0x5c);
+            pos.x = mPosX;
             pos.y = py;
             pos.z = pz;
         }
-        rc.SetObjAndPos(pos, (dActor_c *)a);
-        if (!rc.DetectClsn() || rc.clsnY < *(int *)(a + 0x60) - 0x32000) {
-            *(int *)(a + 0x98) = 0;
-            *(int *)(a + 0x5c) = *(int *)(a + 0x68);
-            *(int *)(a + 0x60) = *(int *)(a + 0x6c);
-            *(int *)(a + 0x64) = *(int *)(a + 0x70);
+        rc.SetObjAndPos(pos, (dActor_c *)this);
+        if (!rc.DetectClsn() || rc.clsnY < mPosY - 0x32000) {
+            mHorzSpeed = 0;
+            mPosX = mPrevPosX;
+            mPosY = mPrevPosY;
+            mPosZ = mPrevPosZ;
         } else {
-            void *fr = _ZNK10dBgCh_Actr14GetFloorResultEv(w);
-            _ZNK11SurfaceInfo12CopyNormalToER7Vector3((char *)fr + 4, &normal);
+            void *fr = w->GetFloorResult();
+            ((SurfaceInfo *)((char *)fr + 4))->CopyNormalTo(normal);
             if (normal.y != 0) {
-                *(int *)(a + 0xa8) = -(_ZN4cstd4fdivEii(
-                    (int)(((long long)normal.x * *(int *)(a + 0xa4) + 0x800) >> 12)
-                  + (int)(((long long)normal.z * *(int *)(a + 0xac) + 0x800) >> 12),
+                mVertSpeed = -(_ZN4cstd4fdivEii(
+                    (int)(((long long)normal.x * unk_0a4 + 0x800) >> 12)
+                  + (int)(((long long)normal.z * unk_0ac + 0x800) >> 12),
                     normal.y) + 0x8000);
             }
         }
     }
-    if (_ZNK10dBgCh_Actr8IsOnWallEv(w)) {
-        void *wr = _ZNK10dBgCh_Actr13GetWallResultEv(w);
-        _ZNK11SurfaceInfo12CopyNormalToER7Vector3((char *)wr + 4, &wallnormal);
+    if (w->IsOnWall()) {
+        void *wr = w->GetWallResult();
+        ((SurfaceInfo *)((char *)wr + 4))->CopyNormalTo(wallnormal);
     }
 }
 
-/* ROM ordinal 4 -- 0x0211f0b4, size 0x94. */
-
-// @symbol func_ov071_0211f0b4
-extern "C" void func_ov071_0211f0b4(char *c)
+// @symbol _ZN10Scuttlebug19func_ov071_0211f0b4Ev
+void Scuttlebug::func_ov071_0211f0b4()
 {
     dActor_c *p;
     Fix12i d;
     short ang;
-    if (*(unsigned short *)(c + 0x3a8) != 0) return;
-    p = (dActor_c *)_ZN8dActor_c22ClosestNonVanishPlayerEv(c);
+    if (mTimer != 0) return;
+    p = (dActor_c *)ClosestNonVanishPlayer();
     if (p == 0) return;
-    d = Vec3_Dist((const Vector3 *)(c + 0x5c), (const Vector3 *)((char *)p + 0x5c));
+    d = Vec3_Dist((const Vector3 *)&mPosX, (const Vector3 *)&p->mPosX);
     if (d > 0x5dc000) return;
-    ang = Vec3_HorzAngle((const Vector3 *)(c + 0x5c), (const Vector3 *)((char *)p + 0x5c));
-    if (AngleDiff(ang, *(short *)(c + 0x8e)) > 0x12c) return;
-    *(Fix12i *)(c + 0x3a0) = d;
-    *(short *)(c + 0x3a4) = ang;
-    Scuttlebug_SetState(c, 3);
+    ang = Vec3_HorzAngle((const Vector3 *)&mPosX, (const Vector3 *)&p->mPosX);
+    if (AngleDiff(ang, mAngleY) > 0x12c) return;
+    mLeapDist = d;
+    mLeapAngle = ang;
+    SetState(3);
 }
 
-/* ROM ordinal 3 -- OnAimedAtWithEgg, 0x0211f0ac, size 0x8.  Vtable slot 29;
- * the ROM body ignores `this` and returns a constant. */
+/* Vtable slot 29. Ignores `this` and returns a constant. */
 
 // @symbol _ZN10Scuttlebug16OnAimedAtWithEggEv
 int Scuttlebug::OnAimedAtWithEgg()
@@ -1011,10 +919,7 @@ int Scuttlebug::OnAimedAtWithEgg()
     return 204800;
 }
 
-/* ROM ordinal 2 -- OnYoshiTryEat, 0x0211f0a4, size 0x8.  Vtable slot 18, and
- * the first function of this TU's licensed run.  It is NOT the key function:
- * ~Scuttlebug is declared ahead of it and left undefined here, so this TU
- * emits no vtable and no RTTI. */
+/* Vtable slot 18, and the first function of this run. Not the key function. */
 
 // @symbol _ZN10Scuttlebug13OnYoshiTryEatEv
 int Scuttlebug::OnYoshiTryEat()
@@ -1022,11 +927,3 @@ int Scuttlebug::OnYoshiTryEat()
     return 6;
 }
 
-/* ROM ordinals 0 and 1 -- D1 at 0x0211f000 and D0 at 0x0211f048 -- are
- * deliberately NOT in this TU.  ~Scuttlebug is the key function, so whichever
- * translation unit defines it emits _ZTV10Scuttlebug, _ZTI10Scuttlebug and
- * _ZTS10Scuttlebug, and the last two have no address in the cartridge, which
- * spells this class daSpd_c.  Leaving the pair enrolled leaves that emission
- * with src/_ZN10ScuttlebugD1Ev.cpp, where objisolate keeps the .text and
- * discards the data.  ov074/Goomboss and ov066/Eyerok are promoted on exactly
- * this arrangement.  The licensed run is therefore 0x0211f0a4..0x02120668. */

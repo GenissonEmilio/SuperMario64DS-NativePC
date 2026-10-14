@@ -13,7 +13,7 @@
  *     0x110 dCcAc_c         0x34   -> 0x144
  *     0x144 dBgCh_Actr               0x1bc  -> 0x300
  *     0x300 ModelAnim                  0x64   -> 0x364
- *     0x364 ShadowModel                0x28   -> 0x38c
+ *     0x364 dExtShadowModel_c                0x28   -> 0x38c
  *
  * Member NAMES are the ones this header already used -- a rebase should not
  * also rename things its callers spell.
@@ -32,7 +32,7 @@
 #include "ModelAnim.h"
 #include "dCcAc_c.h"
 #include "dCcAcPos_c.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "TextureTransformer.h"
 #include "dBgCh_Actr.h"
 
@@ -51,7 +51,7 @@ struct daPropeller_Heyho_c : dEnemyBase_c {
     dCcAc_c           mdCcAc_c;   /* 0x110 */
     dBgCh_Actr                 mWithMeshClsn;         /* 0x144 */
     ModelAnim                    mModelAnim;            /* 0x300 */
-    ShadowModel                  mShadowModel;          /* 0x364 */
+    dExtShadowModel_c                  mShadowModel;          /* 0x364 */
     /* 0x30-byte block copy from data_020a0e68 in func_ov070_02120070; that
        helper then passes it to DropShadowRadHeight. Left as twelve words
        rather than Matrix4x3: Vector3's destructor would change D1/D0.
@@ -67,8 +67,9 @@ struct daPropeller_Heyho_c : dEnemyBase_c {
     s32                          mHomePosX;             /* 0x3c0 */
     s32                          mHomePosY;             /* 0x3c4 */
     s32                          mHomePosZ;             /* 0x3c8 */
-    /* Attack cooldown. Behavior ticks it with DecIfAbove0_Short; wander
-       early-outs while it is non-zero; fire/dive exits store 0x5a.
+    /* Attack cooldown, in frames. Behavior ticks it with DecIfAbove0_Short;
+       wander skips its chase trigger while it is non-zero; fire/dive/settle exits store
+       0x5a (90 frames).
        [Behavior / func_ov070_0211fd98 / func_ov070_0211f48c /
         func_ov070_0211f62c / func_ov070_0211f6e0,
         in src/game/actors/d_a_propeller_heyho.cpp] */
@@ -79,15 +80,20 @@ struct daPropeller_Heyho_c : dEnemyBase_c {
        [func_ov070_0211f368, in src/game/actors/d_a_propeller_heyho.cpp] */
     u32                          mParticle0;            /* 0x3d0 */
     u32                          mParticle1;            /* 0x3d4 */
-    /* Per-state step/sub-phase word. Dive init (0211fa80), retreat init
-       (0211f694), and return-to-wander (0211f62c) write 0; 0211f100 writes
-       1 when the HURT anim starts.
+    /* Per-state step/sub-phase word. Dive init (0211fa80), settle init
+       (0211f694), and settle main on its way back to wander (0211f62c) write 0;
+       the dive main (0211f6e0) sets it to 1 when it starts its second
+       animation and back to 0 when it returns to wander; 0211f100 writes 1 for a fire hit and for a dive contact that
+       starts the 02123528 animation, and 0 for the attack-mask and metal/shell
+       knock-outs; the mega-character knock-out leaves it unchanged. The knocked-state main (0211f368) spawns its particles only
+       while it is non-zero.
        [func_ov070_0211fa80 / func_ov070_0211f694 / func_ov070_0211f62c /
         func_ov070_0211f100, in src/game/actors/d_a_propeller_heyho.cpp] */
     s32                          mStateStep;            /* 0x3d8 */
-    /* Set 1 when collision starts the hurt anim during the hover-attack
-       state; only the dive init (0211fa80) clears it. 0211f694 only reads
-       it. Dive's finished-anim path only returns to wander while this is 1.
+    /* Set 1 by 0211f100 when a contact that called Player::Hurt starts the
+       02123528 animation during the dive state; only the dive init (0211fa80)
+       clears it. 0211f694 only reads it. Dive's finished-anim path only
+       returns to wander while this is 1.
        [func_ov070_0211f100 / func_ov070_0211fa80 / func_ov070_0211f6e0 /
         func_ov070_0211f694, in src/game/actors/d_a_propeller_heyho.cpp] */
     s32                          mHitDuringAttack;      /* 0x3dc */
@@ -105,18 +111,7 @@ struct daPropeller_Heyho_c : dEnemyBase_c {
     s16                          mTargetAngY;           /* 0x3e6 */
 
     /* --- vtable --- */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daPropeller_Heyho_c() {}   /* no slot */
-#else
-    virtual ~daPropeller_Heyho_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daPropeller_Heyho_c() {}
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */
@@ -127,6 +122,10 @@ struct daPropeller_Heyho_c : dEnemyBase_c {
     int InitResources();
     void OnPendingDestroy();
     int Render();
+
+    int func_ov070_0211f48c();
+    int func_ov070_0211f62c();
+    int func_ov070_0211f6e0();
 
     static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);

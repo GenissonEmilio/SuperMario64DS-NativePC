@@ -15,7 +15,7 @@ classes) is in the project memory note `platform-family-census`.
 ## `include/dBgActor_c.h`
 
 `dBgActor_c` is the base of the level-object family — daObjRc_Guruguru_c,
-PyramidTop, daObjKm3_Kaitendai_c, daObjBSwdoor_c, daObjCvShutter_c, SlidingIce and ~130
+daObjDlPyramid_c, daObjKm3_Kaitendai_c, daObjBSwdoor_c, daObjCvShutter_c, daObjSlIceBlock_c and ~130
 others. Seeded by `tools/gen_header.py` from matched-function evidence, then
 given its real base and real member types by hand.
 
@@ -58,10 +58,10 @@ non-`dBgActor_c` vtable store each, so no intermediate — and each places a
 
 | header name | RTTI name | member at 0x320 |
 |---|---|---|
-| `PyramidTop`    | `daObjDlPyramid_c` | `Model` |
-| `BasementWater` | `daObjC0Water_c`   | `TextureTransformer` |
-| `TowerStep`     | `daObjBk_Lift_c`   | `ShadowModel` |
-| `WallSign`      | `daObjKanban_c`    | `dCcAcPos_c` |
+| `daObjDlPyramid_c`    | `daObjDlPyramid_c` | `Model` |
+| `daObjC0Water_c` | `daObjC0Water_c`   | `TextureTransformer` |
+| `daObjBk_Lift_c`     | `daObjBk_Lift_c`   | `ShadowModel` |
+| `daObjKanban_c`      | `daObjKanban_c`    | `dCcAcPos_c` |
 
 Each is read straight off that class's destructor, which destroys its own member
 at 0x320 before storing `_ZTV10dBgActor_c` and running the base.
@@ -100,7 +100,7 @@ key function, so no translation unit that merely includes this header emits
 vtable this header emitted and the one in the cartridge.
 
 `_ZTV10dBgActor_c` is 0x84 at [ov002](../config/arm9/overlays/ov002/symbols.txt):0x0210ae38 — 33 words, one more than the 32 a
-`dActor_c`-shaped table needs — and `_ZTV8PoleLift`, one of the 70 subclasses, is
+`dActor_c`-shaped table needs — and `_ZTV18daObjKm2_Ami_Bou_c`, one of the 70 subclasses, is
 0x84 as well. `rtti_vtables` agrees from the other side: `dActor_c` has 31 slots
 and `dBgActor_c`'s own overrides are 16 (D1), 17 (D0) and 31, and 97 of its 101
 RTTI children have exactly 32 slots. Without this declaration every one of those
@@ -128,7 +128,7 @@ single-int-by-value fourth parameter, which is exactly what `math/Fix12.h`'s
 Contrast the two `IsClsnInRange*` symbols, whose names make the same `Fix12<int>`
 claim and whose bytes **refuse** it — see the note in `include/dActor_c.h` about
 CW homing class-typed by-value parameters to the stack, and the header comment in
-`src_tu/actors/Platform.cpp`. `UpdateKillByMegaChar` is non-virtual, so the
+`src/actors/dBgActor_c.cpp`. `UpdateKillByMegaChar` is non-virtual, so the
 declaration adds no slot and no field; the 0x320 assertion is unaffected.
 
 ---
@@ -138,7 +138,7 @@ declaration adds no slot and no field; the 0x320 assertion is unaffected.
 Several of these classes still have a compiler-generated D0 destructor living in a
 C translation unit, which reads the fields by offset. Those TUs cannot be
 migrated, so the header keeps a flat C spelling of the same object behind
-`#else`. Same arrangement as `include/ShadowModel.h`.
+`#else`. Same arrangement as `include/dExtShadowModel_c.h`.
 
 ## The standard derived-class argument
 
@@ -146,17 +146,17 @@ For a class whose destructor stores its own vptr and then `dBgActor_c`'s
 (inlined), and destroys the `dBgW_KcMbg` at 0x124 and the `Model` at 0xd4 before
 chaining to `dActor_c`: all three of those are `dBgActor_c`'s own. Everything such
 a header used to restate below 0x31e was `dActor_c`'s and `dBgActor_c`'s, and is
-inherited. This applies to `SlidingPlatformWf`, `FloatOnLavaPlatform`,
-`daObjRc_Guruguru_c`, `RotatingUpDownPlatformUtm` and their siblings.
+inherited. This applies to `daObjSimpleLift_c`, `daObjFl_Block_c`,
+`daObjRc_Guruguru_c`, `daObjRotateUpdownLift_c` and their siblings.
 
 Where a size assertion is only the observed field span rounded up, it guards the
 declaration and is **not** independent evidence about the ROM. Where a factory's
 `operator new` literal is available, that is the real size and it wins — see
-`SlidingPlatformWf` below.
+`daObjSimpleLift_c` below.
 
 ---
 
-## `include/SlidingPlatformWf.h`
+## `include/daObjSimpleLift_c.h`
 
 The field span stops short of the real size. `SlidingPlatformBdw_Spawn` and
 `SlidingPlatformBfsRectangle_Spawn` call `fBase_c::operator new(0x330)`, read off
@@ -174,27 +174,27 @@ Field roles, from `InitResources` [ov091](../config/arm9/overlays/ov091/symbols.
 | 0x320 | `mMoveTimer`  | `DecIfAbove0_Short`; reloaded from [data_ov091_02134504](../config/arm9/overlays/ov091/symbols.txt)`[mVariant]` and the yaw flips by 0x8000 when it expires |
 | 0x322 | `mVariant`    | set 0..6 by a switch on `actorID`; indexes the model, collider and CLPS tables (stride 0xc) and the two [data_ov091_021345xx](../config/arm9/overlays/ov091/symbols.txt) tables |
 
-## `include/RotatingUpDownPlatform.h`
+## `include/daLinelift2_c.h`
 
 Still a flat generated struct. Own fields start at 0x320.
 
 | offset | name | evidence |
 |---|---|---|
-| 0x320 | `mState` | `Behavior` dispatches [data_ov091_021354e0](../config/arm9/overlays/ov091/symbols.txt)`[mState]` as a pointer-to-member; [func_ov091_02132000](../src/func_ov091_02132000.c) sets it to 1 |
+| 0x320 | `mState` | `Behavior` dispatches [data_ov091_021354e0](../config/arm9/overlays/ov091/symbols.txt)`[mState]` as a pointer-to-member; [func_ov091_02132000](../src/game/actors/d_a_linelift2.cpp) sets it to 1 |
 | 0x324 | `mNodeCount` | `= PathPtr::NumNodes()` |
 | 0x328 | `mNodeIndex` | `= 0`, passed to `PathPtr::GetNode(…, idx)`, incremented when the first node equals the start position |
 | 0x32c | `mBasePosX` | `= mPosX` in `InitResources`; `Vec3_Equal(this+0x338, this+0x32c)` reads 0x32c as a `Vector3` |
 | 0x330 | `mBasePosY` | `= mPosY` |
 | 0x334 | `mBasePosZ` | `= mPosZ` |
-| 0x338 | `mTargetPosX` | `PathPtr::GetNode` writes a `Vector3` over 0x338/0x33c/0x340; [func_ov091_02132000](../src/func_ov091_02132000.c) reads all three back as one |
+| 0x338 | `mTargetPosX` | `PathPtr::GetNode` writes a `Vector3` over 0x338/0x33c/0x340; [func_ov091_02132000](../src/game/actors/d_a_linelift2.cpp) reads all three back as one |
 | 0x33c | `mTargetPosY` | as above |
 | 0x340 | `mTargetPosZ` | as above |
 | 0x344 | `mPathPtr` | `PathPtr::FromID(this+0x344, param & 0xf)` |
 | 0x34c | `mSinkOffsetY` | `ApproachLinear(&this[0x34c], mIsPressed ? 0x1e000 : 0, 0x5000)`, then subtracted from `mPosY` |
 | 0x350 | `mBaseAngleY` | `= mAngleY` in `InitResources` |
 | 0x352 | `mVariant` | `= (param1 >> 8) & 0xff`; indexes the model / collider / CLPS tables |
-| 0x354 | `mStateTimer` | incremented every `Behavior`, zeroed on a state change; [func_ov091_02132000](../src/func_ov091_02132000.c) gates on `<= 0x14` |
-| 0x356 | `mIsPressed` | cleared at the end of every `Behavior`; [func_ov091_02132360](../src/func_ov091_02132360.cpp) sets it from a collision callback when the toucher's actorID is 0xbf; when set, `mSinkOffsetY` approaches 0x1e000 and [func_ov091_02132000](../src/func_ov091_02132000.c) advances the state |
+| 0x354 | `mStateTimer` | incremented every `Behavior`, zeroed on a state change; [func_ov091_02132000](../src/game/actors/d_a_linelift2.cpp) gates on `<= 0x14` |
+| 0x356 | `mIsPressed` | cleared at the end of every `Behavior`; [func_ov091_02132360](../src/game/actors/d_a_linelift2.cpp) sets it from a collision callback when the toucher's actorID is 0xbf; when set, `mSinkOffsetY` approaches 0x1e000 and [func_ov091_02132000](../src/game/actors/d_a_linelift2.cpp) advances the state |
 
 `mIsPressed` names the *observed role* (something is bearing on the platform), not
 the identity of actor 0xbf, which is not settled here.
@@ -209,11 +209,11 @@ two `Fix12<int>`, and that type is an aggregate with no converting constructor
 from `int`, so materialising a zero one costs stack traffic the ROM does not have.
 The pair goes in registers exactly as two ints either way.
 
-## `include/RotatingUpDownPlatformUtm.h`
+## `include/daObjRotateUpdownLift_c.h`
 
 Base and size from the factory (`src/d_a_obj_rotate_updown_lift_hs_updown_lift.c`):
 `fBase_c::operator new(936)` — 0x3a8 — then `dBgActor_c::dBgActor_c()`, then stores
-`_ZTV25RotatingUpDownPlatformUtm`. No intermediate base: one non-base vtable
+`_ZTV23daObjRotateUpdownLift_c`. No intermediate base: one non-base vtable
 store, matching the D1 destructor.
 
 `dBgActor_c` ends at 0x320. Members below that used to be restated here under
@@ -252,7 +252,7 @@ a layout claim this pass did not need to make.
 
 `Kill` is slot 31, `dBgActor_c`'s own new virtual, attributed by the vtable:
 [arm9/overlays/ov091/relocs.txt](../config/arm9/overlays/ov091/relocs.txt) has 0x02134cd8 → 0x02131070, and
-`_ZTV25RotatingUpDownPlatformUtm + 4*31 = 0x02134cd8`. It is **not** the key
+`_ZTV23daObjRotateUpdownLift_c + 4*31 = 0x02134cd8`. It is **not** the key
 function: the destructor is declared out of line and defined identically in both
 `D1Ev.cpp` and `D0Ev.cpp`, so those two TUs keep emitting the vtable — checked
 with `objisolate`, not assumed.
@@ -265,13 +265,13 @@ In `Kill`, `Particle::System::NewSimple`'s signature is deliberately the local
 (`Fix12<int>`) which mwccarm passes differently at the call site, so declaring the
 true types breaks the byte match. See `notes/mwccarm-codegen.md` 6az.
 
-## `include/UpDownLiftBbh.h`
+## `include/daUdlift_c.h`
 
-Still a flat generated struct ([ov095](../config/arm9/overlays/ov095/symbols.txt)). Own fields start at 0x320.
+A real `dBgActor_c` subclass ([ov095](../config/arm9/overlays/ov095/symbols.txt)), promoted as [src/actors/daUdlift_c.cpp](../src/actors/daUdlift_c.cpp). Own fields start at 0x320.
 
 | offset | name | evidence |
 |---|---|---|
-| 0x320 | `mRider` | [func_ov095_02136764](../src/func_ov095_02136764.cpp) stores the colliding actor here; `Behavior` passes it to `Player::IsInAir` and clears it when the rider leaves |
+| 0x320 | `mRider` | [func_ov095_02136764](../src/actors/daUdlift_c.cpp) stores the colliding actor here; `Behavior` passes it to `Player::IsInAir` and clears it when the rider leaves |
 | 0x324 | `mClosestPlayer` | `= dActor_c::ClosestPlayer()` every frame |
 | 0x328 | `mVariant` | 0 / 1 / 2 from `actorID` 0x20 / 0x21 / 0x83; indexes [data_ov095_02136f68](../config/arm9/overlays/ov095/symbols.txt) (model), [data_ov095_02136f74](../config/arm9/overlays/ov095/symbols.txt) (collider) and [data_ov095_021375a4](../config/arm9/overlays/ov095/symbols.txt) (CLPS) |
 | 0x32c | `mState` | the index into the [data_ov095_02137910](../config/arm9/overlays/ov095/symbols.txt) pointer-to-member table `Behavior` dispatches |
@@ -281,16 +281,14 @@ Still a flat generated struct ([ov095](../config/arm9/overlays/ov095/symbols.txt
 | 0x33c | `mMiddleY` | `= (mTopY + mBottomY) / 2` |
 | 0x340 | `mSoundHandle` | `= Sound::PlayLong(mSoundHandle, 3, 0x82, …)` in the state functions |
 | 0x344 | `mStateTimer` | incremented every `Behavior`, zeroed on a state change |
-| 0x347 | `mIsArmed` | 1 at init; [func_ov095_02136368](../src/func_ov095_02136368.c) only starts the lift while it is 1 and clears it on trigger; `Behavior` re-arms it when the rider leaves |
-| 0x348 | `mIsRidden` | set by the collider callback [func_ov095_02136764](../src/func_ov095_02136764.cpp), read once and cleared at the end of every `Behavior` |
+| 0x346 | `mIsAtBottom` | set when the descent ([func_ov095_02136178](../src/actors/daUdlift_c.cpp)) reaches `mBottomY`, cleared when the climb ([func_ov095_02136298](../src/actors/daUdlift_c.cpp)) reaches `mTopY`; the waiting state [func_ov095_02136368](../src/actors/daUdlift_c.cpp) branches on it |
+| 0x347 | `mIsArmed` | 1 at init; [func_ov095_02136368](../src/actors/daUdlift_c.cpp) only starts the lift while it is 1 and clears it on trigger; `Behavior` re-arms it when the rider leaves |
+| 0x348 | `mIsRidden` | set by the collider callback [func_ov095_02136764](../src/actors/daUdlift_c.cpp), read once and cleared at the end of every `Behavior` |
 
 Left as `unk_`, honestly:
 
-- `unk_346` — a flag the state functions set and clear ([func_ov095_02136178](../src/func_ov095_02136178.c)
-  sets it, [func_ov095_02136298](../src/func_ov095_02136298.cpp) clears it, [func_ov095_02136368](../src/func_ov095_02136368.c) does both). No body in the tree
-  shows what it means.
 - `unk_349` — set to 0, and to 1 for the `actorID == 0x83` variant. Both
-  `InitResources` and [func_ov095_02136298](../src/func_ov095_02136298.cpp) then compare it against 2 and 0, and
+  `InitResources` and [func_ov095_02136298](../src/actors/daUdlift_c.cpp) then compare it against 2 and 0, and
   the `== 2` arm is unreachable from what the tree can see. It is a byte load in
   the ROM, not the `s32 mVariant` at 0x328 (those are different instructions), so
   it is genuinely its own field and its role is not settled. Do not "fix" the
@@ -307,11 +305,11 @@ below 0x320 is `fBase_c`'s and `dActor_c`'s, restated by `gen_header.py`.
 bytes of padding by the generated header; every access in the ROM is 32-bit, so
 they are `s32` / `u32` now. Same offsets, same size, byte-verified.
 
-## `include/daObjSm_Lift_c.h` (SkiLift)
+## `include/daObjSm_Lift_c.h` (daObjSm_Lift_c)
 
 An RTTI-derived flat placeholder credited to a `deepen_rtti.py` that has
 never existed in this repo (see notes/minigame-provenance.md), shared by
-`SkiLift::InitResources` and [func_ov018_021122ec](../src/game/actors/d_a_pg_mthr.cpp) ([ov018](../config/arm9/overlays/ov018/symbols.txt)).
+`daObjSm_Lift_c::InitResources` and [func_ov018_021122ec](../src/game/actors/d_a_pg_mthr.cpp) ([ov018](../config/arm9/overlays/ov018/symbols.txt)).
 
 | offset | name | evidence |
 |---|---|---|
@@ -354,8 +352,8 @@ the base leaves null.
 **The header was once built from the wrong factory.** It said `sizeof 0x368`,
 "`daObjFl_Amilift_c_classInit` asks `fBase_c::operator new` for 872 bytes", and a
 `PathPtr mPath` at 0x360 "named by `daObjFl_Amilift_c_classInit` calling `_ZN7PathPtrC1Ev`
-at +0x360". `MetalNetLift` is a different class: its factory stores
-`_ZTV12MetalNetLift`, ov064 0x0211bc68, and never mentions this one. This class's
+at +0x360". `daObjFl_Amilift_c` is a different class: its factory stores
+`_ZTV17daObjFl_Amilift_c`, ov064 0x0211bc68, and never mentions this one. This class's
 factory is `daObjFl_Gura_c_classInit`, which allocates 848 = 0x350, stores
 `_ZTV15daObjGuragura_c` and then `_ZTV14daObjFl_Gura_c`, ov064 0x0211bd2c, and
 constructs no `PathPtr`. The two vtables are 0xc4 apart in the same overlay, which
@@ -368,7 +366,7 @@ filename.**
 
 ## `include/daObjKm3_Dorifu_c.h` — the crossed names
 
-The Bowser-in-the-Sky drifting platform. ROM name `daObjKm3_Dorifu_c`. It does
+The daKpa_c-in-the-Sky drifting platform. ROM name `daObjKm3_Dorifu_c`. It does
 not derive from `dBgActor_c`; it derives from `daObjDorifu_c`, which does. The
 destructor stores three vptrs and destroys `daObjDorifu_c`'s `Model[5]` and
 `dBgW_KcMbg[5]` in between, all of it from the base declaration.
@@ -392,17 +390,17 @@ symbol names.
 No fields of its own: `StairsBs_Spawn` passes 0xdcc, which `daObjDorifu_c` fills.
 It overrides slots 0 and 3, which the base leaves null.
 
-## `include/SpinningPlatform.h`
+## `include/daObjCtMecha11_c.h`
 
 `mClsnMat` at 0x2ec: `InitResources` hands `this+0x2ec` to `dBgW_KcMbg::SetFile`
 as its `const Matrix4x3 &`. Was a `u8` marker plus its pad.
 
 `mShadowMat` at 0x350: `ShadowModel` + `Matrix4x3` is the same pair
-`HauntedChair` evidences by byte (a 48-byte identity block-copied over +0x14c,
+`daChair_c` evidences by byte (a 48-byte identity block-copied over +0x14c,
 which lands exactly on the next member), and 0x350 + 0x30 closes on the 0x380
 `SpinningPlatform_Spawn` allocates.
 
-## `include/ExtendingPlatform.h`
+## `include/daObjKm2_Nobiru_c.h`
 
 The `Model` marker's pad ran 0x30 bytes past the end of the object; that space is
 not evidenced and stays explicit padding rather than being folded into the
@@ -428,13 +426,13 @@ still builds 106/106.
 
 | function | module / range | what changed |
 |---|---|---|
-| `SlidingPlatformWf::InitResources` | [ov091](../config/arm9/overlays/ov091/symbols.txt) 0x021325d4 +0x214 | `*(u8 *)(c+0x322)` → `mVariant` throughout, `c+0x320` → `mMoveTimer`, `c+0x324..0x32c` → `mBasePos{X,Y,Z}` |
-| `RotatingUpDownPlatform::Behavior` | [ov091](../config/arm9/overlays/ov091/symbols.txt) 0x02132108 +0x104 | `s+0x320` → `mState`, `s+0x354` → `mStateTimer`, `s+0x352` → `mVariant`, `s+0x356` → `mIsPressed`, `s+0x34c` → `mSinkOffsetY`; the two sink magic numbers become `cSinkDepth` / `cSinkRate` |
-| `RotatingUpDownPlatform::InitResources` | [ov091](../config/arm9/overlays/ov091/symbols.txt) 0x0213220c +0x154 | `this+0x344` → `&mPathPtr`, `this+0x338` → `&mTargetPosX`, `this+0x32c` → `&mBasePosX` |
-| `UpDownLiftBbh::InitResources` and `::Behavior` | [ov095](../config/arm9/overlays/ov095/symbols.txt) 0x021365d8 +0x18c, 0x021364d8 +0x100 | the `*((int *)((char *)&mTopY))` cast wrappers drop away now that the fields are `s32`; `this+0x344` and `(&unk_300)+0x44` both become `mStateTimer` |
+| `daObjSimpleLift_c::InitResources` | [ov091](../config/arm9/overlays/ov091/symbols.txt) 0x021325d4 +0x214 | `*(u8 *)(c+0x322)` → `mVariant` throughout, `c+0x320` → `mMoveTimer`, `c+0x324..0x32c` → `mBasePos{X,Y,Z}` |
+| `daLinelift2_c::Behavior` | [ov091](../config/arm9/overlays/ov091/symbols.txt) 0x02132108 +0x104 | `s+0x320` → `mState`, `s+0x354` → `mStateTimer`, `s+0x352` → `mVariant`, `s+0x356` → `mIsPressed`, `s+0x34c` → `mSinkOffsetY`; the two sink magic numbers become `cSinkDepth` / `cSinkRate` |
+| `daLinelift2_c::InitResources` | [ov091](../config/arm9/overlays/ov091/symbols.txt) 0x0213220c +0x154 | `this+0x344` → `&mPathPtr`, `this+0x338` → `&mTargetPosX`, `this+0x32c` → `&mBasePosX` |
+| `daUdlift_c::InitResources` and `::Behavior` | [ov095](../config/arm9/overlays/ov095/symbols.txt) 0x021365d8 +0x18c, 0x021364d8 +0x100 | the `*((int *)((char *)&mTopY))` cast wrappers drop away now that the fields are `s32`; `this+0x344` and `(&unk_300)+0x44` both become `mStateTimer` |
 
 One thing that did NOT hold: `*(int *)(s + 0x60) -= mSinkOffsetY;` in
-`RotatingUpDownPlatform::Behavior` is followed by `mPosY = saved;`, so the
+`daLinelift2_c::Behavior` is followed by `mPosY = saved;`, so the
 subtraction is dead as the tree spells it. That is what reproduces, and it was
 left exactly as it is — do not "fix" it into something that reads better.
 

@@ -6,10 +6,6 @@
    "ref": "mods/Player_ScaleByCharFactor.c"
   },
   {
-   "file": "notes/actor-leaf-provenance.md",
-   "ref": "src_tu/actors/EnemySpawner"
-  },
-  {
    "file": "notes/actor-naming.md",
    "ref": "include/List/ActorList.h"
   },
@@ -50,8 +46,432 @@
    "ref": "src/_ZN8PlatformD0Ev.cpp"
   },
   {
+   "file": "notes/agents/handoffs/draft-verdict-repair-0918.md",
+   "ref": "src/_ZN11dScMgJump_c13OnYoshiTryEatEi.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/five-cpp-cleanups-0919.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/fold-arm9-actor-1010.md",
+   "ref": "src_tu/actors/Actor.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/fold-arm9-clpsblockref-1020.md",
+   "ref": "src/engine/collision/CLPS_BlockRef.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/fold-arm9-dbgpc-1020.md",
+   "ref": "src/engine/collision/dBgPc.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/fold-ov006-curling2-1005.md",
+   "ref": "config/tu_manifest.d/ov006/dScMgCurling2_c_upper.json"
+  },
+  {
+   "file": "notes/agents/handoffs/fold-ov006-curling2-1005.md",
+   "ref": "src/actors/dScMgCurling2_c_upper.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/fold-ov009-sbird-1008.md",
+   "ref": "src/unnamed/ov009/func_ov009_0211145c.c"
+  },
+  {
+   "file": "notes/agents/handoffs/issue-2410-humanizer-2.md",
+   "ref": "src/func_ov006_020cb030.cpp"
+  },
+  {
    "file": "notes/agents/handoffs/issue-2411-humanizer-2.md",
-   "ref": "src_tu/actors/Koopa"
+   "ref": "src/_ZN5Crate13OnTurnIntoEggER6Player.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/issue-2411-humanizer-2.md",
+   "ref": "src_tu/actors/Actor.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/issue-2411-humanizer-2.md",
+   "ref": "src_tu/actors/Koopa+KoopaSmall.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/issue-2411-humanizer-2.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/issue-2411.md",
+   "ref": "tools/check_src_tu.py"
+  },
+  {
+   "file": "notes/agents/handoffs/issue-2412-humanizer-2.md",
+   "ref": "src/func_ov006_020cb030.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/issue-2413.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-cpp-rename-0926.md",
+   "ref": "src/d_s_mg_curling2.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-cpp-rename-0926.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-3desp-0925.md",
+   "ref": "src/_ZN12dScMg3DEsp_c13InitResourcesEv.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-3desp-0925.md",
+   "ref": "src/_ZN12dScMg3DEsp_c13OnYoshiTryEatEi.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-3desp-0925.md",
+   "ref": "src/_ZN12dScMg3DEsp_c16CleanupResourcesEv.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-3desp-0925.md",
+   "ref": "src/_ZN12dScMg3DEsp_c6RenderEv.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-3desp-0925.md",
+   "ref": "src/_ZN12dScMg3DEsp_c8BehaviorEv.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-3desp-0925.md",
+   "ref": "src/_ZN12dScMg3DEsp_c9Virtual50Ev.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-3desp-0925.md",
+   "ref": "src/_ZN12dScMg3DEsp_cD0Ev.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-3desp-0925.md",
+   "ref": "src/_ZN12dScMg3DEsp_cD1Ev.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-3desp-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-factories-0926.md",
+   "ref": "src/d_s_mg_bomroom.c"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-factories-0926.md",
+   "ref": "src/d_s_mg_curling.c"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-factories-0926.md",
+   "ref": "src/d_s_mg_curling2.c"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-factories-0926.md",
+   "ref": "src/d_s_mg_pachinko.c"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-factories-0926.md",
+   "ref": "src/d_s_mg_panel.c"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-factories-0926.md",
+   "ref": "src/d_s_mg_teresa.c"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-factories-0926.md",
+   "ref": "src/minigames/d_s_mg_slot1.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-factories-0926.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-s3dbase-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-tamaire-0925.md",
+   "ref": "src/_ZN16dScMgPachinko2_c13InitResourcesEv.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-tamaire-0925.md",
+   "ref": "src/_ZN16dScMgPachinko2_c13OnYoshiTryEatEi.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-tamaire-0925.md",
+   "ref": "src/_ZN16dScMgPachinko2_c6RenderEv.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-tamaire-0925.md",
+   "ref": "src/_ZN16dScMgPachinko2_c8BehaviorEv.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-tamaire-0925.md",
+   "ref": "src/_ZN16dScMgPachinko2_cD0Ev.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-tamaire-0925.md",
+   "ref": "src/_ZN16dScMgPachinko2_cD1Ev.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-tamaire-0925.md",
+   "ref": "src/d_s_mg_pachinko2.c"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-p1-tamaire-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-tool-ztv-single-0925.md",
+   "ref": "src/d_s_mg_pachinko2.c"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-tool-ztv-single-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/mg-tu-tamaire-0926.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/minigame-esp-state-readable-0922.md",
+   "ref": "src/func_ov006_020e7f5c.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/pr-2708-source-review-fixes.md",
+   "ref": "src/func_0201267c.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/pr2231-rescue-ov002-batch1.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/pr2231-rescue-ov022-ov013-batch2.md",
+   "ref": "src_tu/actors/daObj_volcanoCannon_c.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/pr2231-rescue-ov022-ov013-batch2.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/pr2868-source-repair-0920.md",
+   "ref": "include/BookShot.h"
+  },
+  {
+   "file": "notes/agents/handoffs/prod-dossunbar-0907-daObjBk_Dossunbar_c.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/prod-snmbdy-0907.md",
+   "ref": "src/game/actors/d_a_bg_snwmn.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov021-newslift-0923.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov025-dpbrock-0924.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov055-luigi-0923.md",
+   "ref": "src/d_a_luigi.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov055-luigi-0923.md",
+   "ref": "src/unnamed/ov055/__sinit_ov055_021118d4.c"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov071-casket-0924.md",
+   "ref": "src/unnamed/ov071/__sinit_ov071_02122a64.c"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov071-casket-0924.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov095-udlift-0923.md",
+   "ref": "src/d_a_udlift_rc_rift02.c"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov095-udlift-0923.md",
+   "ref": "src/d_a_udlift_udlift.c"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov095-udlift-0923.md",
+   "ref": "src/d_a_udlift_udlift_teresa.c"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov095-udlift-0923.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/promote-ov098-wbm-0924.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov021-newslift-0925.md",
+   "ref": "src/func_020393c4.c"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov021-newslift-0925.md",
+   "ref": "src/func_020393d4.c"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov021-newslift-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov025-dpbrock-0925.md",
+   "ref": "src/func_020393d4.c"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov025-dpbrock-0925.md",
+   "ref": "src/unnamed/ov025/__sinit_ov025_02112a44.c"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov025-dpbrock-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov034-hanachan-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov055-luigi-0925.md",
+   "ref": "src/d_a_luigi.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov055-luigi-0925.md",
+   "ref": "src/unnamed/ov055/__sinit_ov055_021118d4.c"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov055-luigi-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov065-basabasa-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov071-casket-0925.md",
+   "ref": "src/func_020393d4.c"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov071-casket-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov071-eykn-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov084-fpkn-0925b.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov084-pkn-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov089-objkey-0925.md",
+   "ref": "src/func_02012694.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov089-objkey-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov092-onms-0925b.md",
+   "ref": "src/_ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov092-onms-0925b.md",
+   "ref": "src/dBgCh_Actr_UpdateContinuous_Veneer.c"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov092-onms-0925b.md",
+   "ref": "src/d_a_onms.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov092-onms-0925b.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov095-udlift-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/readable-ov098-wbm-0925.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-bookshot-0920.md",
+   "ref": "src/_Z14ApproachLinearRsss.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-bookshot-0920.md",
+   "ref": "src/_ZN8BookShot13InitResourcesEv.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-bookshot-0920.md",
+   "ref": "src/_ZN8BookShot8BehaviorEv.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-bookshot-0920.md",
+   "ref": "src/func_ov020_02111418.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-bookshot-0920.md",
+   "ref": "src/func_ov020_02111b28.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-bookshot-0920.md",
+   "ref": "src/func_ov020_02111ee0.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-bookshot-0920.md",
+   "ref": "src/func_ov020_02111fc4.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-bookshot-0920.md",
+   "ref": "src/func_ov020_02112110.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-bookshot-0920.md",
+   "ref": "src/func_ov020_0211216c.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-kinopio-0920.md",
+   "ref": "src/_Z14ApproachLinearRsss.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/shadowback-spiny-0920.md",
+   "ref": "src/_Z14ApproachLinearRsss.cpp"
+  },
+  {
+   "file": "notes/agents/handoffs/src-tu-inventory-test-repair-0926.md",
+   "ref": "tools/check_src_tu.py"
+  },
+  {
+   "file": "notes/agents/handoffs/src-tu-inventory-test-repair-0926.md",
+   "ref": "tools/test_check_src_tu.py"
+  },
+  {
+   "file": "notes/agents/handoffs/tu-ov063-trs-0927.md",
+   "ref": "src/unnamed/ov063"
+  },
+  {
+   "file": "notes/agents/handoffs/tu-ov063-trs-0927.md",
+   "ref": "tools/check_src_tu.py"
+  },
+  {
+   "file": "notes/agents/handoffs/tu-ov063-trs-0927.md",
+   "ref": "tools/check_src_tu_compiles.py"
+  },
+  {
+   "file": "notes/agents/references/builder-v1.md",
+   "ref": "tools/check_src_tu_compiles.py"
   },
   {
    "file": "notes/archive/crack-loop-runbook.md",
@@ -67,11 +487,31 @@
   },
   {
    "file": "notes/archive/n64-decomp-cross-reference.md",
+   "ref": "src/_ZN7dBgW_Kc10DetectClsnER9dBgCh_Gnd.cpp"
+  },
+  {
+   "file": "notes/archive/n64-decomp-cross-reference.md",
+   "ref": "src/_ZN9dCamera_c14GoBehindPlayerEj.cpp"
+  },
+  {
+   "file": "notes/archive/n64-decomp-cross-reference.md",
+   "ref": "src/d_a_book_killer_book.c"
+  },
+  {
+   "file": "notes/archive/n64-decomp-cross-reference.md",
+   "ref": "src/func_02037e38.c"
+  },
+  {
+   "file": "notes/archive/n64-decomp-cross-reference.md",
    "ref": "src/game/mario.c"
   },
   {
    "file": "notes/archive/n64-decomp-cross-reference.md",
    "ref": "src/game/mario_step.c"
+  },
+  {
+   "file": "notes/archive/n64-decomp-cross-reference.md",
+   "ref": "src/unnamed/arm9/0203/func_02037e58.c"
   },
   {
    "file": "notes/archive/plan-gen-header.md",
@@ -94,6 +534,10 @@
    "ref": "src/_ZN9FaderWipeC1Ev.c"
   },
   {
+   "file": "notes/ask-the-compiler.md",
+   "ref": "src/_ZN7dBgW_Kc10DetectClsnER12dBgCh_SphCrr.cpp"
+  },
+  {
    "file": "notes/bgobject-provenance.md",
    "ref": "src/Eyerok_Spawn.cpp"
   },
@@ -107,7 +551,23 @@
   },
   {
    "file": "notes/bgobject-provenance.md",
-   "ref": "src/func_ov025_02111898.c"
+   "ref": "src/_ZN6Eyerok13InitResourcesEv.cpp"
+  },
+  {
+   "file": "notes/bgobject-provenance.md",
+   "ref": "src/_ZN6Eyerok16OnAimedAtWithEggEv.cpp"
+  },
+  {
+   "file": "notes/bgobject-provenance.md",
+   "ref": "src/_ZN8dActor_c19UntrackAndSpawnStarERajRK7Vector3h.cpp"
+  },
+  {
+   "file": "notes/bgobject-provenance.md",
+   "ref": "tools/check_src_tu.py"
+  },
+  {
+   "file": "notes/bgobject-provenance.md",
+   "ref": "tools/check_src_tu_compiles.py"
   },
   {
    "file": "notes/collision-query-classes.md",
@@ -118,6 +578,14 @@
    "ref": "src/_ZN12MeshCollider10DetectClsnER13RaycastGround.cpp"
   },
   {
+   "file": "notes/collision-query-classes.md",
+   "ref": "src/_ZN7dBgW_Kc10DetectClsnER12dBgCh_SphCrr.cpp"
+  },
+  {
+   "file": "notes/collision-query-classes.md",
+   "ref": "src/func_02037a6c.c"
+  },
+  {
    "file": "notes/collision-system.md",
    "ref": "notes/drafts-sphereclsn-detectclsn.cpp"
   },
@@ -126,8 +594,36 @@
    "ref": "port/unmatched/MeshCollider_DetectClsn_Sphere.cpp"
   },
   {
+   "file": "notes/collision-system.md",
+   "ref": "src/_ZN7dBgW_Kc10DetectClsnER12dBgCh_SphCrr.cpp"
+  },
+  {
+   "file": "notes/collision-system.md",
+   "ref": "src/_ZN7dBgW_Kc10DetectClsnER9dBgCh_Gnd.cpp"
+  },
+  {
+   "file": "notes/collision-system.md",
+   "ref": "src/_ZN7dBgW_KcD1Ev.cpp"
+  },
+  {
+   "file": "notes/ctor-migration.md",
+   "ref": "src/_ZN12dBgCh_SphCrrC1Ev.cpp"
+  },
+  {
+   "file": "notes/ctor-migration.md",
+   "ref": "src/_ZN5ModelC1Ev.cpp"
+  },
+  {
+   "file": "notes/ctor-migration.md",
+   "ref": "src/engine/collision/dBgPi.cpp"
+  },
+  {
    "file": "notes/declaration-centralization.md",
    "ref": "include/decl_"
+  },
+  {
+   "file": "notes/decoding-file-structure.md",
+   "ref": "include/Clipper.h"
   },
   {
    "file": "notes/dscene-c-siblings-census.md",
@@ -138,8 +634,48 @@
    "ref": "src/_ZN5EnemyD0Ev.c"
   },
   {
+   "file": "notes/dtor-migration.md",
+   "ref": "src/_ZN5ModelD1Ev.cpp"
+  },
+  {
    "file": "notes/emu-trace-build.md",
    "ref": "nearmiss/ledger"
+  },
+  {
+   "file": "notes/experiments/batch3-2707-tree-clipper-6az.md",
+   "ref": "include/Clipper.h"
+  },
+  {
+   "file": "notes/experiments/boo-2710-advance-thunk.md",
+   "ref": "src/game/actors/daTrs_c/_ZN7daTrs_c8BehaviorEv.cpp"
+  },
+  {
+   "file": "notes/experiments/boo-2710-ccacpos-raw.md",
+   "ref": "src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp"
+  },
+  {
+   "file": "notes/experiments/boo-2710-factory-vtable.md",
+   "ref": "src/game/actors/daTrs_c/d_a_trs_factories.cpp"
+  },
+  {
+   "file": "notes/experiments/boo-2710-flags-shift.md",
+   "ref": "src/game/actors/daTrs_c/_ZN7daTrs_c8BehaviorEv.cpp"
+  },
+  {
+   "file": "notes/experiments/boo-2710-flags16.md",
+   "ref": "src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp"
+  },
+  {
+   "file": "notes/experiments/boo-2710-render-shadow.md",
+   "ref": "src/game/actors/daTrs_c/d_a_trs_cleanup_render.cpp"
+  },
+  {
+   "file": "notes/experiments/boo-2710-setanim-6az.md",
+   "ref": "src/game/actors/daTrs_c/_ZN7daTrs_c13InitResourcesEv.cpp"
+  },
+  {
+   "file": "notes/experiments/piano-2712-sinit-split.md",
+   "ref": "src/game/actors/daPiano_c/__sinit_ov063_0211e5fc.c"
   },
   {
    "file": "notes/ghidra-dsd-landscape.md",
@@ -178,6 +714,10 @@
    "ref": "docs/class-reference-confidence"
   },
   {
+   "file": "notes/handoff-issue-2422.md",
+   "ref": "tools/check_src_tu.py"
+  },
+  {
    "file": "notes/handoff-marker-typing.md",
    "ref": "src/_ZN10FlameChomp13InitResourcesEv.cpp"
   },
@@ -190,8 +730,16 @@
    "ref": "notes/drafts-sphereclsn-detectclsn.cpp"
   },
   {
+   "file": "notes/handoff-sphereclsn-detectclsn.md",
+   "ref": "src/_ZN7dBgW_Kc10DetectClsnER12dBgCh_SphCrr.cpp"
+  },
+  {
    "file": "notes/handoff-validator-and-tests.md",
    "ref": "tools/test_"
+  },
+  {
+   "file": "notes/handoff-validator-and-tests.md",
+   "ref": "tools/test_check_src_tu.py"
   },
   {
    "file": "notes/match-attempts.md",
@@ -208,6 +756,10 @@
   {
    "file": "notes/matching-style.md",
    "ref": "src/func_ov006_02110a20.c"
+  },
+  {
+   "file": "notes/minigames/themes.md",
+   "ref": "src/d_s_mg_curling2.cpp"
   },
   {
    "file": "notes/mwccarm-codegen.md",
@@ -230,8 +782,24 @@
    "ref": "src/_ZN10ChillBully14UpdateRunStateEv.cpp"
   },
   {
+   "file": "notes/plan-cpp-conversion-queue.md",
+   "ref": "src/_ZN7dWipe_c15SetBackwardTimeEj.c"
+  },
+  {
    "file": "notes/plan-cpp-language-mode.md",
    "ref": "src/_ZN9ActorBaseC1Ev.cpp"
+  },
+  {
+   "file": "notes/plan-tu-merge-queue.md",
+   "ref": "src_tu/actors"
+  },
+  {
+   "file": "notes/platform-provenance.md",
+   "ref": "src/d_a_obj_rotate_updown_lift_hs_updown_lift.c"
+  },
+  {
+   "file": "notes/player-provenance.md",
+   "ref": "src_tu/actors"
   },
   {
    "file": "notes/port-selftest-bmp-gate.md",
@@ -259,10 +827,6 @@
   },
   {
    "file": "notes/rom-build.md",
-   "ref": "src/func_ov013_021112a8.c"
-  },
-  {
-   "file": "notes/rom-build.md",
    "ref": "src/func_ov091_02132a0c.c"
   },
   {
@@ -278,6 +842,26 @@
    "ref": "tools/deepen_rtti.py"
   },
   {
+   "file": "notes/sinit-ownership-pilot-ov002.md",
+   "ref": "src/unnamed/ov002/__sinit_ov002_02100938.c"
+  },
+  {
+   "file": "notes/sinit-ownership-wave-edges.md",
+   "ref": "src/unnamed/ov002/__sinit_ov002_02107304.c"
+  },
+  {
+   "file": "notes/sinit-ownership-wave-resource-handles.md",
+   "ref": "src/unnamed/ov009/__sinit_ov009_02112458.c"
+  },
+  {
+   "file": "notes/sinit-ownership-wave-resource-handles.md",
+   "ref": "tools/tu_config.py"
+  },
+  {
+   "file": "notes/sinit-wave-a-ownership.md",
+   "ref": "src/game/actors/daPiano_c/__sinit_ov063_0211e5fc.c"
+  },
+  {
    "file": "notes/smartball-provenance.md",
    "ref": "include/cMgSmartball_"
   },
@@ -290,16 +874,24 @@
    "ref": "src/ui/messages"
   },
   {
-   "file": "notes/translation-unit-reconstruction-plan.md",
-   "ref": "src/actors/Chuckya.cpp"
+   "file": "notes/src-domain-buckets.md",
+   "ref": "src/unnamed/ov063"
   },
   {
-   "file": "notes/tu-filename-reconstruction-pilot.md",
-   "ref": "src/BookShotSpawner_Spawn.c"
+   "file": "notes/tu-cpp-census-2026-08.md",
+   "ref": "src/_ZN7dWipe_c15SetBackwardTimeEj.c"
   },
   {
    "file": "notes/tu-filename-reconstruction-pilot.md",
    "ref": "src/ChainChomp_Spawn.cpp"
+  },
+  {
+   "file": "notes/tu-filename-reconstruction-pilot.md",
+   "ref": "src/__sinit_ov020_02113674.c"
+  },
+  {
+   "file": "notes/tu-filename-reconstruction-pilot.md",
+   "ref": "src/d_s_mg_curling2.cpp"
   },
   {
    "file": "notes/tu-filename-reconstruction-pilot.md",
@@ -308,6 +900,14 @@
   {
    "file": "notes/tu-filename-reconstruction-pilot.md",
    "ref": "src/func_ov006_020e0574.cpp"
+  },
+  {
+   "file": "notes/tu-filename-reconstruction-pilot.md",
+   "ref": "src/unnamed/ov002/__sinit_ov002_02101968.c"
+  },
+  {
+   "file": "notes/tu-filename-reconstruction-pilot.md",
+   "ref": "src/unnamed/ov006/__sinit_ov006_021304ac.c"
   },
   {
    "file": "notes/tu-reconstruction-pilot-2-report.md",
@@ -319,6 +919,10 @@
   },
   {
    "file": "notes/tu-reconstruction-pilot-2-report.md",
+   "ref": "src_tu/actors"
+  },
+  {
+   "file": "notes/tu-reconstruction-pilot-2-report.md",
    "ref": "tools/reloc_audit.check_destinations"
   },
   {
@@ -327,7 +931,7 @@
   },
   {
    "file": "notes/tu-reconstruction-pilot-report.md",
-   "ref": "src/PoleLift_Spawn.c"
+   "ref": "src/unnamed/ov045/__sinit_ov045_02112214.c"
   },
   {
    "file": "port/docs/mmio-inventory.md",
@@ -390,36 +994,24 @@
    "ref": "src/port"
   },
   {
-   "file": "tools/chaos_db_ci.py",
-   "ref": "src/F.c"
-  },
-  {
-   "file": "tools/chaos_db_ci.py",
-   "ref": "src/F.cpp"
-  },
-  {
-   "file": "tools/chaos_db_ci.py",
-   "ref": "src/name.c"
-  },
-  {
-   "file": "tools/chaos_db_ci.py",
-   "ref": "src/name.ext"
-  },
-  {
-   "file": "tools/chaos_db_ci.py",
-   "ref": "src/x.c"
-  },
-  {
-   "file": "tools/check_dead_references.py",
-   "ref": "src/f.c"
-  },
-  {
-   "file": "tools/check_dead_references.py",
-   "ref": "src/game/mario.c"
+   "file": "tools/build_pin.py",
+   "ref": "src/func_ov006_020cb030.cpp"
   },
   {
    "file": "tools/check_dead_references.py",
    "ref": "tools/foo.py"
+  },
+  {
+   "file": "tools/check_decl_agreement.py",
+   "ref": "src/func_ov065_021183c8.c"
+  },
+  {
+   "file": "tools/check_drafts_compile.py",
+   "ref": "src/_ZN11dScMgJump_c13OnYoshiTryEatEi.cpp"
+  },
+  {
+   "file": "tools/check_drafts_compile.py",
+   "ref": "src/func_ov006_020fc8c0.c"
   },
   {
    "file": "tools/check_header_offsets.py",
@@ -430,12 +1022,12 @@
    "ref": "include/Enemy.h"
   },
   {
-   "file": "tools/check_src_tu.py",
-   "ref": "src_tu/actors/CastleWater.cpp"
-  },
-  {
    "file": "tools/d0_migrate.py",
    "ref": "src/_ZN5EnemyD0Ev.c"
+  },
+  {
+   "file": "tools/demember_calls.py",
+   "ref": "src/func_ov006_020cb030.cpp"
   },
   {
    "file": "tools/evidence_history.py",
@@ -468,10 +1060,6 @@
   {
    "file": "tools/match.py",
    "ref": "config/reloc"
-  },
-  {
-   "file": "tools/match_provenance.py",
-   "ref": "src/x.c"
   },
   {
    "file": "tools/nearmiss_db.py",
@@ -510,14 +1098,6 @@
    "ref": "src/b.cpp"
   },
   {
-   "file": "tools/prepush_attribution.py",
-   "ref": "src/F.c"
-  },
-  {
-   "file": "tools/prepush_attribution.py",
-   "ref": "src/F.cpp"
-  },
-  {
    "file": "tools/prepush_linkcheck.py",
    "ref": "src/a.c"
   },
@@ -550,10 +1130,6 @@
    "ref": "src/_ZN12CylinderClsn7ProcessEv.cpp"
   },
   {
-   "file": "tools/srcpath.py",
-   "ref": "src/unnamed/ov006"
-  },
-  {
    "file": "tools/stamp_provenance.py",
    "ref": "src/arm9/func_02001b44.c"
   },
@@ -566,16 +1142,16 @@
    "ref": "src/Foo.cpp"
   },
   {
+   "file": "tools/test_check_decl_agreement.py",
+   "ref": "src/func_ov065_021183c8.c"
+  },
+  {
    "file": "tools/test_demember_calls.py",
    "ref": "src/func_ov022_02111bdc.cpp"
   },
   {
    "file": "tools/test_srcpath.py",
    "ref": "mods/X.c"
-  },
-  {
-   "file": "tools/test_srcpath.py",
-   "ref": "src/unnamed/ov006"
   },
   {
    "file": "tools/test_validate_merge.py",

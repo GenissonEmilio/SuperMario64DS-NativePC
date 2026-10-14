@@ -22,8 +22,8 @@ This document describes this commit. The queue records its immutable output SHA.
   integration-lane state this task does not own.
 - Separate evidence commits and required artifacts in this commit: no separate
   evidence commit. Facts: `notes/data/class-facts/daGmch_c.json` (unchanged from
-  the input). Stage artifacts present: `src/actors/daGmch_c.cpp`,
-  `config/tu_manifest.d/ov081/daGmch_c.json`.
+  the input). dScStage_c artifacts present: `src/actors/daGmch_c.cpp`,
+  [config/tu_manifest.d/ov081/daGmch_c.json](../../../config/tu_manifest.d/ov081/daGmch_c.json).
 - Next action, responsible role and blockers: independent verification of this
   commit (verifier). Blocker for integration only, not for verification:
   `rom_data_regressions` in `tools/validate_merge.py` reads the coined-to-ROM
@@ -38,10 +38,10 @@ This document describes this commit. The queue records its immutable output SHA.
 
 ## What changed and why
 
-- Class/TU/symbol and module-qualified ROM scope: `daGmch_c` in ov081, text
-  `ov081:[0x02126504,0x02127b34)` (37 functions), own metadata
+- Class/TU/symbol and module-qualified ROM scope: `daGmch_c` in [ov081](../../../config/arm9/overlays/ov081/symbols.txt), text
+  [ov081](../../../config/arm9/overlays/ov081/symbols.txt):`[0x02126504,0x02127b34)` (37 functions), own metadata
   `_ZTS8daGmch_c` at 0x02128bc8, `_ZTI8daGmch_c` at 0x02128bd4, vtable storage
-  `ov081:[0x02128bfc,0x02128c80)` with the public address point at 0x02128c04.
+  [ov081](../../../config/arm9/overlays/ov081/symbols.txt):`[0x02128bfc,0x02128c80)` with the public address point at 0x02128c04.
 - Reserved source/header/config surfaces actually touched by this commit:
   `src/actors/daGmch_c.cpp` and `include/daGmch_c.h` only. Two generated notes
   were re-derived because this edit changed what they measure (the TU's line
@@ -51,7 +51,7 @@ This document describes this commit. The queue records its immutable output SHA.
   `symbols/actor_renames.tsv`, `config/converted-baseline.json`,
   `config/converted-backslide-exceptions.jsonl`, `attribution.json`,
   `config/match_attempts.jsonl`, `config/match_provenance.jsonl`,
-  `config/arm9/overlays/ov081/symbols.txt`, `config/arm9/overlays/ov081/delinks.txt`,
+  [config/arm9/overlays/ov081/symbols.txt](../../../config/arm9/overlays/ov081/symbols.txt), [config/arm9/overlays/ov081/delinks.txt](../../../config/arm9/overlays/ov081/delinks.txt),
   the manifest.
 - ROM observations: unchanged from the input and restated in the TU header and
   `include/daGmch_c.h` -- the RTTI name string, the `__si_class_type_info` record
@@ -92,11 +92,11 @@ This document describes this commit. The queue records its immutable output SHA.
 - Exact function/byte and relocation coverage: 37 of 37 functions byte-match
   with relocations resolved to the configured destinations (`tubuild verify`:
   match.py compare + objisolate plan + reloc_audit check_destinations, all
-  clean); the full ROM build links the TU inside the ov081 image at 106/106
+  clean); the full ROM build links the TU inside the [ov081](../../../config/arm9/overlays/ov081/symbols.txt) image at 106/106
   modules exact. Not covered by this task's proof: the 4 BLIND and 1 DRAFT
   relocations in the validator's whole-tree sweep on the input commit belong to
   other files (RollingIronBall, daObjMarioCap_c, dScDSMT_c, dScStarSel_c), none
-  in ov081.
+  in [ov081](../../../config/arm9/overlays/ov081/symbols.txt).
 - Genuine methods; remaining free-function/ABI bridges: 36 of 37 are
   `daGmch_c::` methods; `daGmch_c_classInit` stays a free function by design
   (the cartridge's own symbol is free, and it constructs rather than operates
@@ -166,7 +166,7 @@ Logs are private `build/` files named below; they are not committed.
   exact, 100.000000% of compared bytes; ROM-build analysis PASS; intact TU gates
   "zero new symbol errors"; `dsd check symbols --fail` FAIL with the same 9
   pre-existing errors on baseline control and head (ITCM x4, `_deq`, two arm9
-  `data_020ad5xx`, `overlay_100`/`overlay_102`), none in ov081. Run twice: once
+  `data_020ad5xx`, `overlay_100`/`overlay_102`), none in [ov081](../../../config/arm9/overlays/ov081/symbols.txt). Run twice: once
   on the unmodified input (log `rombuild-9fbb243.log`, same figures) and once on
   this tree (`rombuild-batch2.log`).
 - Explicit function/consumer relocation checks:
@@ -188,7 +188,7 @@ Logs are private `build/` files named below; they are not committed.
   and at least one non-text claim". This is a text-only promotion
   (`data: []`, `bss: []`, no `production_mode`), the manifest is byte-identical
   to the input, and for this route the whole-tree link proof is the full ROM
-  build above, which links the TU inside the ov081 image under rombuild's own
+  build above, which links the TU inside the [ov081](../../../config/arm9/overlays/ov081/symbols.txt) image under rombuild's own
   baseline control and compares every module. The manifest's stored
   `scratch-link-verified` block dates from before enrollment and is carried,
   not re-established, by this commit.
@@ -226,7 +226,7 @@ Logs are private `build/` files named below; they are not committed.
   2026-09-07 05:30 UTC: FAILED with exactly one reason, `ROM data verification
   lost 1 exact symbol(s): ov081:_ZTV8Moneybag`, while reporting module fidelity
   106/106 exact, byte-verified functions +0, relocation check 2,055 checked /
-  2,050 VERIFIED / 4 BLIND / 1 DRAFT (none in ov081), port references 0 stale,
+  2,050 VERIFIED / 4 BLIND / 1 DRAFT (none in [ov081](../../../config/arm9/overlays/ov081/symbols.txt)), port references 0 stale,
   and no `verified bytes fell` companion failure. The prediction on the issue is
   therefore confirmed by a result, not inherited. The failure is the gate's:
   `_data_symbol_set()` keys `verifiedSymbols` by `(module, symbol)` and
@@ -262,7 +262,7 @@ integration stage added on top of it; it changes no source, header or manifest.
   contributors other than the maintainer account: four to `lunavyqo`
   (`EnterState7`, `UpdateState0`, `UpdateState4`, `UpdateState7`), one to
   `ruspecial` (`UpdateState6`) and one to `andrewboudreau` (`UpdateState3`).
-  A local `prepush_attribution` run reports only 27 of these as at risk because
+  A local `the old credit check` run reports only 27 of these as at risk because
   it keys on the vanished shard basename; the ten it omits are still credit the
   merge gate would reassign, so all 37 rows are written.
 - **Generated and ledger state** was audited for shape rather than arithmetic:

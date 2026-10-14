@@ -1,15 +1,7 @@
-/* AUTO-GENERATED from matched-function evidence by tools/gen_header.py
- * class EnemySwitchTag: 5 matched functions, 7 evidenced fields.
- * Offsets/widths are observed, not guessed. Gaps are explicit padding.
- * Field NAMES are placeholders - renaming cannot change codegen.
- *
- * Real inheritance (was a flat, non-inheriting struct re-declaring dActor_c's
- * own 0xd0-byte span as opaque padding): build/rtti_vtables.json keys this
- * class as "daESwitch_c" (11 chars) vs the decomp name "EnemySwitchTag" (14
- * chars) -- a length mismatch, not data-verifiable. parent: dActor_c,
- * parent_slots: 31, own overrides at slots 0/3/6 (InitResources/
- * CleanupResources/Behavior) plus the destructor pair at 16/17 -- no Render
- * or OnPendingDestroy override.
+/* daESwitch_c is the cartridge RTTI name at ov002:0x0210b314.
+ * Its typeinfo at 0x0210b2ec identifies dActor_c as the base. The vtable
+ * address point is 0x0210b3e8, with overrides at slots 0/3/6 and the
+ * destructor pair at 16/17. Field names are reconstructed from behavior.
  */
 #ifndef ENEMYSWITCHTAG_H
 #define ENEMYSWITCHTAG_H
@@ -17,9 +9,9 @@
 #include "dActor_c.h"
 #include "dCcAc_c.h"
 
-struct EnemySwitchTag : dActor_c {
+struct daESwitch_c : dActor_c {
     u8  pad_0d0[0x4];
-    /* dCcAc_c member. The cartridge's own ~EnemySwitchTag calls _ZN7dCcAc_cD1Ev at
+    /* dCcAc_c member. The cartridge's own ~daESwitch_c calls _ZN7dCcAc_cD1Ev at
        +0x0d4 (D0/D1), a relocation the ROM build checks; recovered by
        tools/dtor_members.py. D1 and not D2, so it is this type and not an inlined base. */
     dCcAc_c mdCcAc_c;            /* 0x0d4 */
@@ -29,25 +21,13 @@ struct EnemySwitchTag : dActor_c {
        and clears both the collider flag and the Event bit when it runs out.
        mIsReusable is bit 5 of param1: set, the tag re-arms by reloading
        mHoldTimer from mHoldDuration; clear, it destroys itself after firing
-       once. [_ZN14EnemySwitchTag13InitResourcesEv.cpp,
-        _ZN14EnemySwitchTag8BehaviorEv.cpp] */
+       once. See daESwitch_c::InitResources and ::Behavior. */
     u16 mHoldDuration;            /* 0x108 */
     u16 mHoldTimer;            /* 0x10a */
     u8  mIsReusable;            /* 0x10c */
     u8  mEventID;            /* 0x10d */
 
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~EnemySwitchTag();   /* no slot */
-#else
-    virtual ~EnemySwitchTag();   /* D1 and D0 */
-#endif
+    virtual ~daESwitch_c() {}
 
     virtual s32 InitResources();
     virtual s32 CleanupResources();
@@ -56,7 +36,9 @@ struct EnemySwitchTag : dActor_c {
 
 #ifndef SM64DS_PLATFORM_PC
 /* ROM layout under mwccarm; host ABI divergence is tracked separately. */
-typedef char EnemySwitchTag_size_must_be_0x110[sizeof(EnemySwitchTag) == 0x110 ? 1 : -1];
+typedef char EnemySwitchTag_size_must_be_0x110[sizeof(daESwitch_c) == 0x110 ? 1 : -1];
 #endif
+
+typedef daESwitch_c EnemySwitchTag;
 
 #endif

@@ -2,7 +2,7 @@
 #define SM64DS_MATH_FIX12_H
 
 /* The game's 20.12 fixed-point class template, reconstructed from its own
- * mangled symbols: 5Fix12IiE in e.g. ShadowModel::InitModel and
+ * mangled symbols: 5Fix12IiE in e.g. dExtShadowModel_c::InitModel and
  * Player::SetAnim demangles to Fix12<int>, and the S3_ substitutions for
  * repeated parameters only fall out of a real template-id -- a plain int
  * parameter mangles as i and can never reproduce those names.

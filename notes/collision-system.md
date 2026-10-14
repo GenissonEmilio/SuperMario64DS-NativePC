@@ -115,7 +115,7 @@ dBgCh     dBgCh              # a query against it    ─┐ each embeds a
 dCc_c     CylinderClsn       # actor-vs-actor volume ─┐ intrusive list head
  ├ dCcPos_c    CylinderClsnWithPos                 # │ data_0209cee8, swept
  ├ dCcAc_c     MovingCylinderClsn (actor-attached) # │ once per frame from
- └ dCcAcPos_c  MovingCylinderClsnWithPos          # ─┘ Stage::Render
+ └ dCcAcPos_c  MovingCylinderClsnWithPos          # ─┘ dScStage_c::Render
 ```
 
 **The query family is multiple inheritance, and the old note says it is not.**
@@ -167,7 +167,7 @@ adjustments):
 `KCL_File` (0x38) and `KCL_Tri` (0x10) are typed and documented in
 `include/dBgW_Kc.h`, gate-clean. **[N✓]** Load path, all matched:
 
-1. `Stage::LoadClsnAndObjects` ([ov002](../config/arm9/overlays/ov002/symbols.txt) 0x020fe190) — the level path.
+1. `dScStage_c::LoadClsnAndObjects` ([ov002](../config/arm9/overlays/ov002/symbols.txt) 0x020fe190) — the level path.
 2. `dBgW_Kc::LoadFile(SharedFilePtr&)` (0x02017afc) — per-actor; rebases only on the
    first reference.
 3. `UpdateFileOffsets` (0x02039760) — turns the four header words 0x00–0x0c from file
@@ -211,7 +211,7 @@ collider's) and then by range. `dBgCh_Lin` culls on its own **`dM3dGSph` boundin
 at +0x64** — centre +0x68, radius +0x74. **[P]**
 
 Table lifecycle: `dBgW::Enable(dActor_c*)` (0x02039184, 52 call sites) claims a
-slot, `Disable()` (0x02039140, 154 sites) frees it, `Stage::ResetMeshColliders()`
+slot, `Disable()` (0x02039140, 154 sites) frees it, `dScStage_c::ResetMeshColliders()`
 (0x020391f4) zeroes all 24.
 
 `dBgCh::ShouldPassThroughImpl` (0x02039488, matched, **static**) is the per-triangle filter:
@@ -226,8 +226,8 @@ wall, else underside. **[P]**
 `dCc_c::Clear()` (237 call sites) and `Update()` (189) are called by actors from
 their own behaviour; `Update` links the object at the head of `data_0209cee8`, so the
 active set is rebuilt each frame by whoever chooses to register. `Process()` (0x02014aa8)
-is O(n²) over that list and has **exactly one caller: `Stage::Render()` at 0x0202ba14** —
-verified directly, `src/_ZN5Stage6RenderEv.cpp` is the only file in `src/` that names it.
+is O(n²) over that list and has **exactly one caller: `dScStage_c::Render()` at 0x0202ba14** —
+verified directly, `src/_ZN10dScStage_c6RenderEv.cpp` is the only file in `src/` that names it.
 **[P]**
 
 *(Call-site counts in this section and §3.6 are reloc-table derived — they count sites,
@@ -245,7 +245,7 @@ not files, so they run higher than a `grep -l` over `src/`, which corroborates t
 `…UpdateDiscreteNoLava_veneer` (19) are spread across [ov002](../config/arm9/overlays/ov002/symbols.txt)/[ov030](../config/arm9/overlays/ov030/symbols.txt)/[ov070](../config/arm9/overlays/ov070/symbols.txt)/[ov072](../config/arm9/overlays/ov072/symbols.txt)/[ov085](../config/arm9/overlays/ov085/symbols.txt)/[ov098](../config/arm9/overlays/ov098/symbols.txt)/[ov100](../config/arm9/overlays/ov100/symbols.txt);
 `dBgCh_Gnd::DetectClsn` has 105 call sites and `dBgCh_Lin::DetectClsn` 57. The only
 engine-driven collision call per frame is `dCc_c::Process()` inside
-`Stage::Render()`. **[P]**
+`dScStage_c::Render()`. **[P]**
 
 `dBgActor_c` is the other half: `UpdateClsnPosAndRot()` copies the model matrix, replaces
 the translation row with the actor position and calls `dBgW_KcMbg::Transform`;
@@ -365,9 +365,9 @@ concentrated in structure, status, and numbers.
 #### Retraction: `dBgCh_Lin` 0x54 is not misnamed
 
 A first pass of this survey reported that 0x54 should be `clsnPos`, not `lineEnd`. **That was
-wrong, and it rested on an inverted premise** — that [func_ov002_020fea4c](../src/func_ov002_020fea4c.c) is `GetStart`. Read
+wrong, and it rested on an inverted premise** — that [func_ov002_020fea4c](../src/actors/dM3dGLin.cpp) is `GetStart`. Read
 the body: `a[0..2] = b[3..5]` reads offset 0x44, the `dM3dGLin`'s *second* `Vector3`, so it is
-**GetEnd**; [func_ov002_020fea68](../src/func_ov002_020fea68.c) (`b[0..2]`) is GetStart.
+**GetEnd**; [func_ov002_020fea68](../src/actors/dM3dGLin.cpp) (`b[0..2]`) is GetStart.
 
 So `func_02037608` seeds 0x54 from the line **end**, and `dBgW_KcMbg::DetectClsn`
 depends on that, transforming 0x38 and 0x54 as the two endpoints of the scratch segment. On a
@@ -472,8 +472,8 @@ scores `cand=1750 equal=565 ratio=0.3203`, so Phase 0's gain survived intact.
 
 #### The recipe, as it actually works
 
-Two commits per family — `git mv` only, then content. That is what keeps
-`prepush_attribution` reporting *renamed, credit intact* instead of lost.
+Two commits per family — `git mv` only, then content. Who matched a
+function stays the row in `function-authors.json`. A rename does not change it.
 
 Substitution order inside the content pass is load-bearing:
 
@@ -483,7 +483,7 @@ Substitution order inside the content pass is load-bearing:
 2. **Include guards**, `DECL_` variants before the bare ones.
 3. **Plain class names LAST, and word-bounded** (a regex word boundary at each end).
    Unbounded, `MeshCollider`
-   rewrote `Stage::ResetMeshColliders` into `ResetdBgW_Kcs`. `layout_check.py` caught it —
+   rewrote `dScStage_c::ResetMeshColliders` into `ResetdBgW_Kcs`. `layout_check.py` caught it —
    delinks named a path with no file behind it, which would have let the function fall back
    to ROM bytes silently. Bounding cut 489 corruptions out of 2,755 substitutions, including
    309 `mMeshCollider` members.
@@ -510,7 +510,7 @@ Sequencing, from the tree's own scar tissue:
 - Check `config/rombuild-versions.txt` before renaming (currently one unrelated pin, so
   this should be clear).
 - `port_refcheck.py` is blind to mangled names — run it, but do not treat it as coverage.
-- Expect and accept `CREDIT LOST` on files that become key-function TUs.
+- Who matched a function stays the row in `function-authors.json`. A rename does not change it.
 
 Suggested order, easiest first: `dCc*` (4 classes, self-contained, headers already good) →
 `dBgW*` (4, single-inheritance chain, headers good) → `dBgPi`/`dBgPc`/`dM3dG*` (support

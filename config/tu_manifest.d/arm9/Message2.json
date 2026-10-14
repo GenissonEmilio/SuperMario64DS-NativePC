@@ -1,0 +1,160 @@
+{
+  "id": "arm9/Message2",
+  "module": "arm9",
+  "source": "src/Message2.cpp",
+  "promoted_source": "src/Message2.cpp",
+  "status": "promoted",
+  "boundary_confidence": "medium",
+  "boundary_evidence": [
+    "contiguous linker run: 0x0201ab04..0x0201adfc, 5 function(s), gapless in config/arm9/delinks.txt.",
+    "TOP EDGE: src/unnamed/arm9/0201/func_0201aaec.c (0x0201aaec..0x0201ab04) ends where Message::EndTalk begins. BOTTOM EDGE: src/unnamed/arm9/0201/func_0201adfc.c begins at 0x0201adfc. That C file does not reproduce on mwccarm 2004/b56 (object 0x304 against the ROM's 0x104), so it is the stop. The Message talk-window run is 0x0201AB04..0x0201CB2C; this file is the matched prefix of that run.",
+    "EndTalk and PrepareTalk are Message methods already declared in include/Message.h. The three address-named helpers stay extern \"C\" under their existing names."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x0201ab04",
+      "end": "0x0201adfc"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN7Message7EndTalkEv",
+      "address": "0x0201ab04",
+      "size": "0x00000034",
+      "legacy_source": "src/_ZN7Message7EndTalkEv.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN7Message11PrepareTalkEv",
+      "address": "0x0201ab38",
+      "size": "0x00000034",
+      "legacy_source": "src/_ZN7Message11PrepareTalkEv.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_0201ab6c",
+      "address": "0x0201ab6c",
+      "size": "0x00000138",
+      "legacy_source": "src/unnamed/arm9/0201/func_0201ab6c.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_0201aca4",
+      "address": "0x0201aca4",
+      "size": "0x00000108",
+      "legacy_source": "src/unnamed/arm9/0201/func_0201aca4.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_0201adac",
+      "address": "0x0201adac",
+      "size": "0x00000050",
+      "legacy_source": "src/unnamed/arm9/0201/func_0201adac.c",
+      "ordinal": 4
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "compiler_only_output": [],
+  "notes": [
+    "Message2 is the name the talk-window job reserved (tree Name2 style). It is not the menu-text TU src/Message.cpp.",
+    "Definitions are written descending. Default mwccarm emission is reverse source order, so .text is ROM-ascending. No file-wide optimization pragma.",
+    "func_0201adfc.c is the stop: it does not byte-match 2004/b56 from the source on main. The functions above it are a separate contiguous span and are not in this file."
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/arm9-Message2/Message2.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 5,
+    "functions_declared": 5,
+    "compilerOnlyOutput": {
+      "requested": [],
+      "deadstripped": [],
+      "data": [],
+      "dataExternalized": []
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    },
+    "linkcheck": {
+      "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
+      "result": "link-verified",
+      "scratch": "build/tu/arm9-Message2/link (gitignored)",
+      "phases": {
+        "delink": true,
+        "lcf": true,
+        "compile": true,
+        "link": true,
+        "checkModules": true,
+        "checkSymbols": false,
+        "rom": true
+      },
+      "tuRange": {
+        "start": "0x0201ab04",
+        "end": "0x0201adfc",
+        "differingBytes": 0,
+        "firstDiff": null
+      },
+      "tuRanges": [
+        {
+          "section": ".text",
+          "start": "0x0201ab04",
+          "end": "0x0201adfc",
+          "differingBytes": 0,
+          "firstDiff": null
+        }
+      ],
+      "objectAudit": {
+        "counts": {
+          "LICENSED": 5
+        },
+        "emittedTextOrderIsRomAscending": true,
+        "nonLicensedSymbols": [],
+        "unlicensedSections": []
+      },
+      "nontextSectionOrder": {
+        "groups": [],
+        "objisolate": null,
+        "errors": null
+      },
+      "linkedStorageAliases": null,
+      "symbolCheckNewVsBaseline": [],
+      "symbolCheckErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "symbolCheckBaselineErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "moduleSetSha256": "f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b",
+      "rom": {
+        "bytes": 16777216,
+        "sha256": "ddab9300b24aeae254192c2a30d812b07ece3adff83230e75c865ed915c9de40",
+        "matchesStockRom": true
+      },
+      "linkerOutput": null
+    }
+  }
+}

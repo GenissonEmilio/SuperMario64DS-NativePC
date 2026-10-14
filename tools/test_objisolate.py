@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import objisolate as OI  # noqa: E402
@@ -57,6 +58,63 @@ class Isolate(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def _assert_rename_preserves_object(self, raw, aliases, defined):
+        import io
+        from elftools.elf.elffile import ELFFile
+
+        before = ELFFile(io.BytesIO(raw))
+        original = list(before.get_section_by_name(".symtab").iter_symbols())
+        out, plan = OI.rename_symbols(raw, aliases, defined)
+        self.assertIsNone(plan["error"], plan)
+        self.assertIsNotNone(out)
+        after = ELFFile(io.BytesIO(out))
+        renamed = list(after.get_section_by_name(".symtab").iter_symbols())
+        self.assertEqual([sym.name for sym in renamed],
+                         [aliases.get(sym.name, sym.name) for sym in original])
+        # References use table indices. Names may change; the complete symbol
+        # records, data/code and relocation bytes must retain their identities.
+        self.assertEqual([sym.entry for sym in renamed],
+                         [sym.entry for sym in original])
+        self.assertEqual(after.num_sections(), before.num_sections())
+        for old, new in zip(before.iter_sections(), after.iter_sections()):
+            self.assertEqual(old.header, new.header)
+            if old.name != ".strtab":
+                self.assertEqual(old.data(), new.data(), old.name)
+        return out
+
+    def test_defined_rename_swap_preserves_payloads_and_relocation_indices(self):
+        raw = self.build('extern "C" { int first1 = 7; int first2 = 11; '
+                         'int read_pair() { return first1 - first2; } }').read_bytes()
+        self._assert_rename_preserves_object(
+            raw, {"first1": "first2", "first2": "first1"}, True)
+
+    def test_defined_rename_chain_reuses_a_source_name_as_a_destination(self):
+        raw = self.build('extern "C" { int first1 = 7; int first2 = 11; '
+                         'int keep03 = 13; int read_pair() { '
+                         'return first1 - first2 + keep03; } }').read_bytes()
+        self._assert_rename_preserves_object(
+            raw, {"first1": "first2", "first2": "final2"}, True)
+
+    def test_undefined_alias_swap_preserves_import_relocation_indices(self):
+        raw = self.build('extern "C" { extern int input1, input2; '
+                         'int read_pair() { return input1 - input2; } }').read_bytes()
+        self._assert_rename_preserves_object(
+            raw, {"input1": "input2", "input2": "input1"}, False)
+
+    def test_rename_still_refuses_an_unmoved_destination(self):
+        raw = self.build('extern "C" { int first1 = 7; int first2 = 11; '
+                         'int read_pair() { return first1 - first2; } }').read_bytes()
+        out, plan = OI.rename_defined_symbols(raw, {"first1": "first2"})
+        self.assertIsNone(out)
+        self.assertIn("already exists", plan["error"])
+
+    def test_defined_rename_still_refuses_an_undefined_source(self):
+        raw = self.build('extern "C" { extern int input1; '
+                         'int read_one() { return input1; } }').read_bytes()
+        out, plan = OI.rename_defined_symbols(raw, {"input1": "other1"})
+        self.assertIsNone(out)
+        self.assertIn("is undefined", plan["error"])
 
     def test_plain_destructor_is_isolable(self):
         """The case the whole pass exists for: D0/D1/D2 + vtable reduced to one."""
@@ -1477,6 +1535,63 @@ class Isolate(unittest.TestCase):
         OI.isolate(obj, "_ZN1MC1Ev")
         after = sorted(set(self._vtable_addends(obj, "_ZN1MC1Ev")))
         self.assertEqual(after, [0, 16])
+
+    def test_corrects_a_one_function_new_factory(self):
+        """Nothing to drop is not nothing to do.
+
+        `return new F;` inlines F's implicit constructor, so the object is the
+        factory alone: one `.text`, no `.data`, and `_ZTV1F` UNDEF because F's
+        key function lives elsewhere. The vptr store still carries mwcc's
+        addend 8, and still needs the preamble taken off. This is every
+        minigame factory written as a plain `new`: `dScMgPachinko2_c_classInit`
+        linked 0x0213dbc4 where ov006 has 0x0213dbbc while plan's empty
+        drop and externalise lists short-circuited the rewrite."""
+        obj = self.build("struct B { B(); virtual ~B(); int p[4]; };\n"
+                         "struct F : B { virtual ~F(); };\n"
+                         "extern \"C\" void *F_classInit() { return new F; }\n")
+        raw = obj.read_bytes()
+        plan = OI.plan(raw, "F_classInit")
+        self.assertIsNone(plan["error"])
+        self.assertEqual((plan["drop"], plan["externalise"]), ([], []))
+        self.assertTrue(plan["ztvRebase"])
+        self.assertEqual(self._reloc_addends(raw, "_ZTV1F"), [OI.VTABLE_PREAMBLE])
+
+        out, plan = OI.derive(raw, "F_classInit")
+        self.assertIsNone(plan["error"])
+        self.assertEqual(obj.read_bytes(), raw, "derive must not touch the file")
+        self.assertEqual(self._reloc_addends(out, "_ZTV1F"), [0])
+        self.assertEqual(len(out), len(raw), "only the addend changes")
+        OI.isolate(obj, "F_classInit")
+        self.assertEqual(obj.read_bytes(), out, "isolate and derive must agree")
+        # ...and re-running must not subtract another 8.
+        OI.isolate(obj, "F_classInit")
+        self.assertEqual(obj.read_bytes(), out)
+
+    def _assert_left_alone(self, source, keep):
+        obj = self.build(source)
+        raw = obj.read_bytes()
+        out, plan = OI.derive(raw, keep)
+        self.assertIsNone(plan["error"])
+        self.assertFalse(plan["ztvRebase"])
+        self.assertEqual(out, raw)
+        with mock.patch.object(type(obj), "write_bytes",
+                               side_effect=AssertionError("isolate rewrote an "
+                                                          "unchanged object")):
+            OI.isolate(obj, keep)
+        self.assertEqual(obj.read_bytes(), raw)
+        return raw
+
+    def test_leaves_a_rom_convention_vptr_store_alone(self):
+        """`extern int _ZTV1F[];` already names the slot array: addend 0, no rewrite."""
+        raw = self._assert_left_alone(
+            "extern int _ZTV1F[];\n"
+            "extern \"C\" int *F_install(int *p) { p[0] = (int)_ZTV1F; return p; }\n",
+            "F_install")
+        self.assertEqual(self._reloc_addends(raw, "_ZTV1F"), [0])
+
+    def test_leaves_a_plain_function_alone(self):
+        """No RTTI reference, nothing to drop: the object is already the answer."""
+        self._assert_left_alone("int f(int n) { return n + 1; }\n", "_Z1fi")
 
     def test_still_refuses_a_vtable_addend_below_the_preamble(self):
         """Correctable means "past the preamble". An addend under it is not.

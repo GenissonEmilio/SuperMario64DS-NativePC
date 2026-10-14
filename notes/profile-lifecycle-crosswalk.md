@@ -1,7 +1,7 @@
 # SM64DS profile fields and lifecycle crosswalk
 
 Status: evidence crosswalk for the profile-reconstruction pilot.  It records
-Troy's NSMBW comparison as a hypothesis, then separates the portions confirmed by
+Troy's [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) comparison as a hypothesis, then separates the portions confirmed by
 SM64DS consumers from fields and spellings that remain unresolved.
 
 Second pass adds the recovered create path -- which settles where the group-type
@@ -33,13 +33,13 @@ This sharpens Troy's initial field list in two ways:
 
 1. The apparent profile-ID field is not separate storage from execute order in the
    ROM layout.  SM64DS stores the registry index in `+0x04` and then uses that exact
-   value as behavior/execute order.  This closely resembles NSMBW's `BASE_PROFILE`
-   and `ACTOR_PROFILE` macros, which use the profile number as execute order by
+   value as behavior/execute order.  This closely resembles [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp)['s `BASE_PROFILE`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/include/game/framework/f_profile.hpp#L23)
+   [and `ACTOR_PROFILE`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/include/game/framework/f_profile.hpp#L29) macros, which use the profile number as execute order by
    default.
 2. A distinct group-flags member is absent from both runtime descriptors because it
    is not descriptor data at all.  The `fBase_c +0x12` byte is an argument of the
    framework's create call, and the create path traced below identifies it as
-   NSMBW's group type.  Troy's group flags are a per-spawn parameter supplied by
+   [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp)'s group type.  Troy's group flags are a per-spawn parameter supplied by
    whoever creates the object, not a field the profile carries.
 
 The four actor range words are not merely adjacent values inferred from magnitude.
@@ -88,17 +88,17 @@ own.
 
 Two thin wrappers complete the shape, and both are byte-confirmed:
 
-| function | bytes at | what it does | NSMBW analogue |
+| function | bytes at | what it does | [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) analogue |
 |---|---|---|---|
 | `func_02042fe4` | `0x02042fe4` | `mov r3,r2; mov r2,r1; mov r1,#0; bx` -- shifts the arguments up and passes a null parent | `createRoot(profName, param, groupType)` |
 | `func_02042ffc` | `0x02042ffc` | returns 0 on a null parent, else `add r1,r1,#0x14` and calls `func_02043098` -- converts an `fBase_c *` to `&parent->manager` | `createChild(profName, parent, param, groupType)` |
 | `func_02043098` | `0x02043098` | the core; takes the parent scene node directly | -- |
 
-The pinned NSMBW header declares
-`createChild(ProfileName profName, fBase_c *parent, unsigned long param, u8 groupType)`
-and `createRoot(ProfileName profName, unsigned long param, u8 groupType)`, with
-members `mParam` (u32), `mProfName` (`ProfileName`), and
-`mGroupType` (u8, "value is a `GROUP_TYPE_e`").  SM64DS's `fBase_c` stores the same
+The pinned [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) header [declares
+`createChild(ProfileName profName, fBase_c *parent, unsigned long param, u8 groupType)`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/include/game/framework/f_base.hpp#L242)
+[and `createRoot(ProfileName profName, unsigned long param, u8 groupType)`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/include/game/framework/f_base.hpp#L252), with
+members [`mParam` (u32)](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/include/game/framework/f_base.hpp#L62), [`mProfName` (`ProfileName`)](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/include/game/framework/f_base.hpp#L63), and
+[`mGroupType` (u8)](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/include/game/framework/f_base.hpp#L82), "[value is a `GROUP_TYPE_e`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/include/game/framework/f_base.hpp#L28)".  SM64DS's `fBase_c` stores the same
 three at `+0x08`, `+0x0c`, and `+0x12`, seeded in that order by the same three
 arguments.  The parameter list, its order, and the destination fields all agree.
 
@@ -217,20 +217,20 @@ The lifecycle comparison is stronger than a loose semantic analogy.  Both
 frameworks expose four operations, and each operation has a do/pre/post virtual
 triplet in the same order.
 
-| SM64DS vtable slots | NSMBW operation | confidence | rationale |
+| SM64DS vtable slots | [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) operation | confidence | rationale |
 |---|---|---|---|
-| `InitResources`, `BeforeInitResources`, `AfterInitResources` (0-2) | `create`, `preCreate`, `postCreate` | high structural lineage | initialization may wait across frames; successful post-init schedules behavior and render nodes |
-| `CleanupResources`, `BeforeCleanupResources`, `AfterCleanupResources` (3-5) | `doDelete`, `preDelete`, `postDelete` | high structural lineage | the pre-hook waits on child/auxiliary state and successful post-cleanup unlinks, destroys, destructs, and deallocates |
-| `Behavior`, `BeforeBehavior`, `AfterBehavior` (6-8) | `execute`, `preExecute`, `postExecute` | high structural lineage | the pre-hook applies pause and actor culling gates before per-frame behavior |
-| `Render`, `BeforeRender`, `AfterRender` (9-11) | `draw`, `preDraw`, `postDraw` | high structural lineage | the pre-hook applies pause, hidden-area, and off-screen gates before drawing |
+| `InitResources`, `BeforeInitResources`, `AfterInitResources` (0-2) | [`create`,](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L88) [`preCreate`,](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L92) [`postCreate`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L96) | high structural lineage | initialization may wait across frames; successful post-init schedules behavior and render nodes |
+| `CleanupResources`, `BeforeCleanupResources`, `AfterCleanupResources` (3-5) | [`doDelete`,](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L118) [`preDelete`,](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L126) [`postDelete`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L142) | high structural lineage | the pre-hook waits on child/auxiliary state and successful post-cleanup unlinks, destroys, destructs, and deallocates |
+| `Behavior`, `BeforeBehavior`, `AfterBehavior` (6-8) | [`execute`,](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L168) [`preExecute`,](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L172) [`postExecute`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L180) | high structural lineage | the pre-hook applies pause and actor culling gates before per-frame behavior |
+| `Render`, `BeforeRender`, `AfterRender` (9-11) | [`draw`,](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L188) [`preDraw`,](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L192) [`postDraw`](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/master/source/dol/framework/f_base.cpp#L200) | high structural lineage | the pre-hook applies pause, hidden-area, and off-screen gates before drawing |
 
 The method *roles* and triplet structure are strongly supported.  Renaming the
-SM64DS virtuals to the NSMBW spellings would be a separate source-naming decision.
+SM64DS virtuals to the [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) spellings would be a separate source-naming decision.
 The vtable slots, signatures, dispatch relationships, and bodies are direct
 structural evidence; project spellings such as `InitResources`, `Behavior`, and
 `Render` are not promoted to ROM-preserved names by this comparison.
 
-The pinned public NSMBW framework header declares the corresponding
+The pinned public [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) framework header declares the corresponding
 [`create/preCreate/postCreate`, `doDelete/preDelete/postDelete`,
 `execute/preExecute/postExecute`, and `draw/preDraw/postDraw` triplets](https://github.com/NSMBW-Community/NSMBW-Decomp/blob/2e010f8708d8232c736b1ece507400dfd76aaa9c/include/game/framework/f_base.hpp).
 Its profile header defines `{classInit, executeOrder, drawOrder}` base profiles,
@@ -243,7 +243,7 @@ types, or macro syntax.
 ## Answered since the first pass
 
 - **Troy's group flags.**  Not a profile field.  The `fBase_c +0x12` byte is the
-  fourth argument of the create call, matching NSMBW's `mGroupType`.  Its producer
+  fourth argument of the create call, matching [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp)'s `mGroupType`.  Its producer
   is `func_02043180`, called from `func_02043098`, fed by
   `func_02042fe4`/`func_02042ffc`.  Its *values* remain unknown: no reader has been
   recovered.
@@ -255,7 +255,7 @@ types, or macro syntax.
 ## Open questions
 
 - What are the group-type values, and who reads `fBase_c +0x12`?  A reader would
-  turn the NSMBW `GROUP_TYPE_e` analogy into a checkable claim.
+  turn the [NSMBW](https://github.com/NSMBW-Community/NSMBW-Decomp) `GROUP_TYPE_e` analogy into a checkable claim.
 - Eleven of the fifteen profile-authored flag bits have no recovered consumer:
   `0x04`, `0x80`, `0x200`, `0x8000`, `0x800000`, `0x1000000`, `0x2000000`,
   `0x4000000`, `0x10000000`, `0x20000000`, `0x40000000`.  `0x800000`, `0x4000000`,

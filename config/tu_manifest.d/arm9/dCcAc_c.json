@@ -1,0 +1,198 @@
+{
+  "id": "arm9/dCcAc_c",
+  "module": "arm9",
+  "source": "src/engine/collision/dCcAc_c.cpp",
+  "promoted_source": "src/engine/collision/dCcAc_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "NOT FROM tu_map. tools/tu_map.py reports the arm9 `main` module as UNDER-SEGMENTED, so there is no tu_map boundary or `tubuild.py create` candidate id here; every line below is hand-derived and independently checkable.",
+    "contiguous linker run 0x0201489c..0x02014a34: the delinks entries tile the span exactly with no hole (config/arm9/delinks.txt, config/arm9/symbols.txt).",
+    "class-label homogeneity: every symbol in the run is a member of dCcAc_c or of its derived family class dCcAcPos_c (the position-bearing subclass, _ZTV10dCcAcPos_c at 0x0208e704, _ZTI10dCcAcPos_c at 0x0208e680 recording dCcAc_c as base), plus func_02014a20, the dCcAcPos_c GetOwnerID tail-call veneer the linker emitted for the inherited slot-3 vtable entry.",
+    "neighbour below: dCcPos_c.cpp ends at 0x0201489c (the sibling collision primitive TU). Neighbour above: _ZN10dCcAcPos_cD0Ev.cpp at 0x02014a34, the first of the three dCcAcPos_c lifecycle shards this TU does not claim."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x0201489c",
+      "end": "0x02014a34"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3",
+      "address": "0x0201489c",
+      "size": "0x0000002c",
+      "legacy_source": "src/_ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj",
+      "address": "0x020148c8",
+      "size": "0x00000044",
+      "legacy_source": "src/_ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "_ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj",
+      "address": "0x0201490c",
+      "size": "0x00000030",
+      "legacy_source": "src/_ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj.cpp",
+      "ordinal": 2
+    },
+    {
+      "symbol": "_ZN7dCcAc_c10GetOwnerIDEv",
+      "address": "0x0201493c",
+      "size": "0x0000000c",
+      "legacy_source": "src/_ZN7dCcAc_c10GetOwnerIDEv.cpp",
+      "ordinal": 3
+    },
+    {
+      "symbol": "_ZN7dCcAc_c6GetPosEv",
+      "address": "0x02014948",
+      "size": "0x0000000c",
+      "legacy_source": "src/_ZN7dCcAc_c6GetPosEv.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "_ZN7dCcAc_cD2Ev",
+      "address": "0x02014954",
+      "size": "0x00000024",
+      "legacy_source": "src/_ZN7dCcAc_cD2Ev.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "_ZN7dCcAc_cD0Ev",
+      "address": "0x02014978",
+      "size": "0x0000002c",
+      "legacy_source": "src/_ZN7dCcAc_cD0Ev.cpp",
+      "ordinal": 6
+    },
+    {
+      "symbol": "_ZN7dCcAc_cD1Ev",
+      "address": "0x020149a4",
+      "size": "0x00000024",
+      "legacy_source": "src/_ZN7dCcAc_cD1Ev.cpp",
+      "ordinal": 7
+    },
+    {
+      "symbol": "_ZN7dCcAc_cC1Ev",
+      "address": "0x020149c8",
+      "size": "0x0000002c",
+      "legacy_source": "src/_ZN7dCcAc_cC1Ev.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "_ZN7dCcAc_cC2Ev",
+      "address": "0x020149f4",
+      "size": "0x0000002c",
+      "legacy_source": "src/_ZN7dCcAc_cC2Ev.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_02014a20",
+      "address": "0x02014a20",
+      "size": "0x0000000c",
+      "legacy_source": "src/unnamed/arm9/0201/func_02014a20.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "_ZN10dCcAcPos_c6GetPosEv",
+      "address": "0x02014a2c",
+      "size": "0x00000008",
+      "legacy_source": "src/_ZN10dCcAcPos_c6GetPosEv.cpp",
+      "ordinal": 11
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZTS5dCc_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e658",
+      "reason": "compiler-emitted type-name string '5dCc_c', re-emitted for the base-type reference inside _ZTI7dCcAc_c; canonical bytes verified, contribution is gap data"
+    },
+    {
+      "symbol": "_ZTI5dCc_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e660",
+      "reason": "compiler-emitted root __class_type_info for the dCc_c base (vptr+8, name 0x0208e658), re-emitted alongside the derived _ZTI; canonical bytes verified, contribution is gap data"
+    },
+    {
+      "symbol": "_ZTS7dCcAc_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e668",
+      "reason": "compiler-emitted type-name string '7dCcAc_c'; canonical bytes verified, contribution is gap data"
+    },
+    {
+      "symbol": "_ZTI7dCcAc_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e698",
+      "reason": "compiler-emitted __si_class_type_info naming this class with base _ZTI5dCc_c; canonical bytes verified, contribution is gap data"
+    },
+    {
+      "symbol": "_ZTV7dCcAc_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e6d4",
+      "reason": "compiler-emitted vtable (two-word ABI preamble + slots D1 D0 GetPos GetOwnerID), produced because this TU defines the key function ~dCcAc_c(); canonical bytes verified, contribution is gap data"
+    }
+  ],
+  "notes": [
+    "Hand-assembled, not generated by `tubuild.py create`: tu_map cannot segment arm9/main, so there was no candidate id to create from. The schema follows the arm9/dCc_c and arm9/Clipper entries, which took the same route.",
+    "dCcAc_c is the cylinder collision primitive attached to an dActor_c: Init fixes radius/height/flags on the dCc_c base and stores the owner back-pointer; both virtuals read through owner (GetPos returns the owner's dActor_c+0x5c position, GetOwnerID returns owner->uniqueID at +4).",
+    "dCcAcPos_c, the derived class adding Vector3 pos at +0x34, folds into the same TU for its non-lifecycle members: SetPosRelativeToActor and Init open the run at 0x0201489c/0x020148c8 and the slot-3 veneer plus GetPos close it at 0x02014a20/0x02014a2c. PosInit stays a mangled extern \"C\" definition under the same wall 6az as the base Init; func_02014a20 stays a helper under its address name because the cartridge emitted a linker veneer, not a member body (method-review dCcAcPos_c.tsv: slot-3 inheritance veneer, not an override).",
+    "The dCcAcPos_c lifecycle trio (D0 at 0x02014a34, D1 at 0x02014a60, C1 at 0x02014a84) stays in its own files: ~dCcAcPos_c is the class key function, so defining it here re-emits _ZTV10dCcAcPos_c, and the emitted record binds slot 3 to _ZN7dCcAc_c10GetOwnerIDEv while the cartridge record carries the linker veneer func_02014a20 -- a deadstrip-data compare that cannot pass, and the shared-header override spelling that would fix it is one the header deliberately omits.",
+    "The whole class folds, lifecycle variants included: the cartridge's D2,D0,D1,C1,C2 order for dCcAc_c is the order one ~dCcAc_c() plus one dCcAc_c() emits under deferred codegen; the run is written ROM-descending because mwccarm emits .text in reverse source order, so the emitted object carries the eleven functions ascending 0x0201489c..0x02014a34."
+  ],
+  "relocations": [],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 12,
+    "functions_declared": 12,
+    "compilerOnlyOutput": {
+      "requested": [],
+      "deadstripped": [],
+      "droppedSections": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "data": [
+        "_ZTS5dCc_c",
+        "_ZTI5dCc_c",
+        "_ZTS7dCcAc_c",
+        "_ZTI7dCcAc_c",
+        "_ZTV7dCcAc_c"
+      ],
+      "dataExternalized": [
+        "_ZTI5dCc_c",
+        "_ZTI7dCcAc_c",
+        "_ZTS5dCc_c",
+        "_ZTS7dCcAc_c",
+        "_ZTV7dCcAc_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    },
+    "object": "build/tu/arm9-dCcAc_c/dCcAc_c.o (gitignored)"
+  }
+}

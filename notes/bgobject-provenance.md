@@ -13,59 +13,57 @@ and again after each raw-offset collapse.
 
 ---
 
-## StarSwitch (`include/StarSwitch.h`, [ov002](../config/arm9/overlays/ov002/symbols.txt), size 0x354)
+## daObjSwitch_c (`include/daObjSwitch_c.h`, [ov002](../config/arm9/overlays/ov002/symbols.txt), size 0x354)
 
-Bodies read: `src/_ZN10StarSwitch13InitResourcesEv.cpp`,
-`src/_ZN10StarSwitch8BehaviorEv.cpp`, `src/_ZN10StarSwitch6RenderEv.cpp`,
-`src/_ZN10StarSwitch16CleanupResourcesEv.cpp`,
-`src/_ZN10StarSwitch15OnGroundPoundedER8dActor_c.cpp`, `src/d_a_obj_switch_star_switch.c`.
+Current evidence: the twenty-four-function production TU
+[`src/actors/daObjSwitch_c.cpp`](../src/actors/daObjSwitch_c.cpp) (which now
+also holds the STAR_SWITCH and HANSWITCH factories) and its genuine
+class header. The names describe observed use; retail RTTI
+supplies the class identity, not the English field names. The original
+StarSwitch source and intermediate rename history remain recorded in the
+[source experiment](experiments/pr2874-source-repair-0920.json).
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x320 | `mDrawScaleX` | `InitResources` writes `0x1000` (Fix12 1.0) to 0x320/0x324/0x328; `Render` passes `&mDrawScaleX` to the `Model` at 0xd4 through vtable slot 5. `daObjBC_Switch_c::Render` calls the same slot with a literal `0` — so the argument is an optional pointer, and three consecutive Fix12 1.0s behind it are a scale vector. |
-| 0x324 | `mDrawScaleY` | as above |
-| 0x328 | `mDrawScaleZ` | as above |
-| 0x334 | `mMusicVolume` | `Behavior` reads it into `v`, tests `v == 0x40` / `v == 0x7f`, then passes `v` as the first argument of `Sound::ChangeMusicVolume(u32, Fix12i)`. Every other caller in the tree (`Message::PrepareTalk`, `Message::EndTalk`, `Player::St_Talk_Main`, `func_0201f32c`) passes the literals `0x40` / `0x7f` there, so that parameter is a target volume level, not an id. |
-| 0x338 | `mTimer` (`u16`) | `Behavior` sets it to `1` when the switch's home area starts showing, and increments it once a frame while the pause bit `0x4000000` of `data_0209b454` is clear. The ROM proves the type: the increment only reproduces as a `u16` increment — writing `mTimer++` against the old `s16` declaration cost 1 word, and re-declaring the field `u16` made `mTimer++` byte-exact. |
-| 0x33a | `mTimeLimit` | `InitResources` takes `(param1 >> 8) & 0xff`; `0xff` or `0` becomes `0x190` (400), any other value is multiplied by `0xa`. A frame budget with a spawn-parameter override and a 400-frame default. |
-| 0x33c | `mSwitchType` | `InitResources` sets `2` for `actorID == 0xc` (the silver-star variant) and `param1 & 3` otherwise; `Behavior` gates the music fade on `mSwitchType == 2`. |
-| 0x344 | `mTargetActorID` | pre-existing name; `Behavior` passes it to `dActor_c::FindWithID`. |
-| 0x348 | `mTargetActor` | zeroed in `InitResources`; `Behavior` stores the `dActor_c *` that `dActor_c::FindWithID(mTargetActorID)` returned. Declared type left `s32` — the store is still a cast, because changing the declared type is not needed to make the name true. |
-| 0x34c | `mResourceIdx` | `InitResources` sets `1` for the silver-star variant and `0` otherwise, then uses it as `idx` in `*(int *)(table + idx * 0xc)` for both the BMD table ([data_ov002_021098e8](../config/arm9/overlays/ov002/symbols.txt)) and the KCL tables (`…8ec`, `…8f0`); `CleanupResources` releases the same two rows by the same index. |
-| 0x34d | `mMusicFadeDone` | `InitResources` sets it to `1`; `Behavior` only calls `Sound::ChangeMusicVolume` when it is `0`, and stores the call's return value back into it. A "fade finished" latch, not a counter. |
-| 0x34e | `mEventBit` | `InitResources` sets `(param1 >> 3) & 0xf` and passes it straight to `Event::ClearBit(u32)`. |
-| 0x353 | `mHomeAreaId` | `InitResources` copies `mAreaId` into it; `Behavior` uses it as the argument to `IsAreaShowing` and restores `mAreaId` from it. The area the switch belongs to, kept across the area-id shuffling `Behavior` does. |
+| 0x320/0x324/0x328 | `mDrawScale` (`Vector3`) | `InitResources` sets all three components to Fix12 one. `Render` calls `mModel.Render(&mDrawScale)`. Helper `func_ov002_020ba01c` updates the selected x/y/z components from its axis mask. The flat C compatibility view retains `mDrawScaleX/Y/Z` at the same offsets. |
+| 0x32c | `mDisplacementY` | The scale helper computes the displacement from a `0x3c000` height; the collision-matrix helper subtracts it from `mPosY` for matrix translation. |
+| 0x330 | `mTickSoundHandle` | State executor `func_ov002_020ba1ac` resets it when the remaining timer reaches `0x2d`, then passes it to `func_02012310` with sound `0x38` or `0x39` and stores the returned integer handle. That wrapper forwards the actual `Sound_PlayIfNotActive` result. |
+| 0x334 | `mMusicVolume` | State initializers choose `0x40` or `0x7f`; `Behavior` tests those values and passes the selected volume to the scalar `Sound::ChangeMusicVolume` bridge. |
+| 0x338 | `mTimer` (`u16`) | `Behavior` sets it to one when `IsAreaShowing(mHomeAreaId)` returns zero and increments it while the `0x4000000` pause bit is clear. State initializers reset it; the timed executor compares it with `mTimeLimit`. The declared unsigned halfword increment reproduces retail. |
+| 0x33a | `mTimeLimit` | The high spawn-parameter byte gives the frame budget: zero or `0xff` selects `0x190`; other values are multiplied by ten. |
+| 0x33c | `mSwitchType` | `InitResources` selects two for actor ID `0xc` and `param1 & 3` otherwise. The timed executor and music-fade path test this value. |
+| 0x340 | `mState` | `func_ov002_020ba4d8` stores the next index and invokes the corresponding init member pointer. `func_ov002_020ba520` dispatches the exec member pointer from the same real-class `StateEntry` table. `OnGroundPounded` requires state zero. |
+| 0x344 | `mTargetActorID` | The star-search helper stores a matched actor's `uniqueID`; `Behavior` resolves it through `dActor_c::FindWithID` and clears it when the target disappears. |
+| 0x348 | `mTargetActor` (`dActor_c *`) | Zeroed in `InitResources`; `Behavior` directly stores the pointer returned by `FindWithID`. State executors pass it to the star helpers and inspect the existing daStar_c state view. There is no integer store or receiver cast at this assignment. |
+| 0x34c | `mResourceIdx` | Selects entry zero or one in the class-owned `Resources` table. `InitResources` loads its model and collision files and supplies its CLPS pointer; `CleanupResources` releases those same model/collision resources. |
+| 0x34d | `mMusicFadeDone` | Initialized to one and cleared by the relevant state initializers; `Behavior` calls the volume-change helper only while it is zero and saves the helper's result. |
+| 0x34e | `mEventBit` | Set from `(param1 >> 3) & 0xf`; switch states set and clear that event bit through the existing Event interface. |
+| 0x34f | `mPressTimer` | Initialized/reset to five. `func_ov002_020ba3a8` decrements it while `mPlayerNearby` is set and enters the pressed state when the countdown reaches zero; otherwise it resets the timer. |
+| 0x350 | `mPlayerNearby` | The unpressed-state executor reads this byte to choose the press countdown; `Behavior` clears it at the end of the update. |
+| 0x351 | `mStarID` | The star-switch variant stores the low parameter byte, mapping `0xff` to zero. Its search helper compares the byte with `daStar_c::unk_49d` on actors of ID `0xb2`. |
+| 0x353 | `mHomeAreaId` | Copied from `mAreaId` during initialization, used for the area-visibility query and restored after temporary area changes. |
 
-Left `unk_`:
+The current model/collision code uses genuine `mModel.Render`, `SetFile`,
+`mMeshCollider.IsEnabled`, `Disable`, and `Transform` calls. The collision helper
+assigns `mClsnMat = mModel.mat4x3` before replacing its translation. The remaining
+scalar collider SetFile bridge and widened integer conditions have exact
+compiler experiments; these are bounded constraints, not a claim that all
+interfaces are complete.
 
-* `0x340` — `OnGroundPounded` does `if (unk_340 != 0) return;` and nothing else in any
-  matched body touches it. That says it gates the ground-pound, not what it holds.
-* `0x34f` — written `5` once in `InitResources`, never read in a matched body.
-* `0x350` — cleared at the end of every `Behavior`, never read in a matched body.
-* `0x351` — `InitResources` sets `param1 & 0xff`, mapping `0xff` to `0`, only on the
-  silver-star variant. Its consumer is in un-decompiled code.
-* `0x060`…`0x0c4` in the `#else` C twin — those are `dActor_c`'s fields restated flat,
-  not `StarSwitch`'s. `include/dActor_c.h` is out of scope for this pass.
-
-Raw-offset collapses, each re-verified byte-exact:
-
-* `Behavior`: `(*(u8 *)&mAreaId) = mHomeAreaId;` → `mAreaId = mHomeAreaId;` (2 sites).
-* `Behavior`: `*(void **)((char *)&unk_348) = a;` → `mTargetActor = (s32)a;`.
-* `Render`: the local `struct C { char p1[0xd4]; Sub sub; }` shadow of the whole object
-  is gone; the call now goes through `&mModel` directly, matching the shape
-  `daObjBC_Switch_c::Render` already used.
-* `CleanupResources`: `((dBgW *)((char *)&(*(u8 *)&mMeshCollider)))` →
-  `((dBgW *)&mMeshCollider)`.
+The foreign daStar_c field at `+0x438` still has an explicit unnamed view.
+Padding at `0x31e` and `0x352` has no field claim. The flat C compatibility view
+also restates inherited actor/model/collider storage; it does not make those
+members newly owned by this class. Full source, consumer and metadata proof is
+recorded in the [integration evidence](experiments/pr2874-integration-0920.json).
 
 ---
 
-## Crate (`include/Crate.h`, [ov098](../config/arm9/overlays/ov098/symbols.txt), size 0x608)
+## daObjBlockS_c (`include/daObjBlockS_c.h`, [ov098](../config/arm9/overlays/ov098/symbols.txt), size 0x608)
 
-Bodies read: `src/_ZN5Crate13InitResourcesEv.cpp`, `src/_ZN5Crate8BehaviorEv.cpp`,
-`src/_ZN5Crate6RenderEv.cpp`, `src/_ZN5Crate16CleanupResourcesEv.cpp`,
-`src/_ZN5Crate4KillEv.cpp`, `src/_ZN5Crate13OnTurnIntoEggER6Player.cpp`,
-`src/_ZN5Crate13OnYoshiTryEatEv.cpp`,
-`src/_ZN5Crate15OnGroundPoundedER8dActor_c.cpp`, `src/Crate_SetState.cpp`.
+Formerly the coined `Crate`. Bodies read: `InitResources`, `Behavior`, `Render`,
+`CleanupResources`, `OnTurnIntoEgg`, `OnYoshiTryEat`, `OnGroundPounded`, `Kill` and
+`Crate_SetState` (then per-function files, now together in
+`src/actors/daObjBlockS_c.cpp`).
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -81,7 +79,7 @@ Bodies read: `src/_ZN5Crate13InitResourcesEv.cpp`, `src/_ZN5Crate8BehaviorEv.cpp
 
 In the `#else` C twin only, three offsets that are `dActor_c`'s and are already named
 on the C++ side of the very same header were repointed to those names — the same
-correction `include/CrazedCrate.h` documents having made: `0x09c` → `mVertAccel`
+correction `include/daBttBk_c.h` (then `CrazedCrate.h`) documents having made: `0x09c` → `mVertAccel`
 (`InitResources` writes `-0x2000`), `0x0a0` → `mTerminalVelocity` (`-0x3c000`),
 `0x0b0` → `mFlags`.
 
@@ -91,7 +89,7 @@ Four more C-twin offsets are interior fields of members the C++ side already nam
 exactly those six through the C++ member spellings. They are now
 `mdCcAcPos_c1_posX/Y/Z` and `mdCcAcPos_c2_posX/Y/Z`.
 
-Left `unk_`: nothing in this class's own span. `include/Crate.h`'s `pad_` runs are
+Left `unk_`: nothing in this class's own span. `include/daObjBlockS_c.h`'s `pad_` runs are
 unevidenced and stay padding.
 
 Raw-offset collapses, each re-verified byte-exact:
@@ -99,14 +97,14 @@ Raw-offset collapses, each re-verified byte-exact:
 * `InitResources`: `((char *)this) + 0xd4` → `&mModel`, `+ 0x124` → `&mMeshCollider`,
   `+ 0x2ec` → `&mClsnMat`, `+ 0x320` → `&mWithMeshClsn`. The one remaining raw
   `this + 0xd0` write is deliberate and documented in the header: it is `dBgActor_c`'s
-  generic pad, not a `Crate` field.
+  generic pad, not a `daObjBlockS_c` field.
 * `Behavior`: `*(void **)((char *)&unk_5e4)` → `mHoldingPlayer` (2 sites),
   `(u8 *)((char *)&unk_606)` → `&mBreakTimer`,
   `*(void **)((char *)&unk_5fc) = …` → `mParticleHandle1 = (u32)…` (and `…600`),
   and the two `(char *)&mPosX` / `(char *)&mHomePosX` double casts.
 * `Render`: `(Sub *)((char *)&mModel)` → `(Sub *)&mModel`.
 
-`Crate_SetState.cpp` keeps its local `struct C` shadow on purpose: it calls through a
+`Crate_SetState` keeps a local flat shadow (`BlockSStateHost`) on purpose: it calls through a
 pointer-to-member function, and that representation is not the same for a polymorphic
 class as for the flat shadow the ROM's own code is built against.
 
@@ -156,14 +154,14 @@ was measured instead.
 
 ---
 
-## SignPost (`include/SignPost.h`, [ov002](../config/arm9/overlays/ov002/symbols.txt), size 0x5a4)
+## daObjTatefuda_c (`include/daObjTatefuda_c.h`, [ov002](../config/arm9/overlays/ov002/symbols.txt), size 0x5a4)
 
-Bodies read: `src/_ZN8SignPost13InitResourcesEv.cpp`,
-`src/_ZN8SignPost8BehaviorEv.cpp`, `src/_ZN8SignPost6RenderEv.cpp`,
-`src/_ZN8SignPost16CleanupResourcesEv.cpp`, `src/_ZN8SignPost4KillEv.cpp`,
-`src/_ZN8SignPost15OnGroundPoundedER8dActor_c.cpp`,
-`src/_ZN8SignPost11OnAttacked1ER8dActor_c.cpp`,
-`src/_ZN8SignPost15OnHitByMegaCharER6Player.cpp`.
+Bodies read: `src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`, `src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`, `src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`.
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -173,12 +171,12 @@ Bodies read: `src/_ZN8SignPost13InitResourcesEv.cpp`,
 | 0x3bc/0x3be/0x3c0 | `mHomeAngleX/Y/Z` | `InitResources` copies `mAngleX/mAngleY/mAngleZ` in the same run. |
 | 0x584 | `mParticleHandle1` | `Behavior` passes it as the first argument of `Particle::System::New` and stores the result back — a recycled handle. Effect `0x13a`. Was inside `pad_584`. |
 | 0x588 | `mParticleHandle2` | same shape through `Particle::System::NewUnkCallback818`, effect `0x13b`. Was inside `pad_584`. |
-| 0x58c | `mBreakTimer` | `Behavior` runs the whole break sequence under `if (0x58c != 0)`: disable the mesh collider, `DecIfAbove0_Byte` once a frame traillng the two particles, and on the frame it hits zero poof the dust and hand off to the class's reset routine [func_ov002_020bae9c.c](../src/func_ov002_020bae9c.c). The same shape `Crate` uses at its own 0x606. Was inside `pad_584`. |
+| 0x58c | `mBreakTimer` | `Behavior` runs the whole break sequence under `if (0x58c != 0)`: disable the mesh collider, `DecIfAbove0_Byte` once a frame traillng the two particles, and on the frame it hits zero poof the dust and hand off to the class's reset routine [func_ov002_020bae9c.c](../src/actors/daObjTatefuda_c.cpp). The same shape `daObjBlockS_c` uses at its own 0x606. Was inside `pad_584`. |
 | 0x58e | `mPoundsLeft` | `InitResources` sets `2`. `OnGroundPounded` either sinks the sign by `(mPoundsLeft * 0x2d) << 12` and zeroes it (a hard pound), or by one `0x2d000` step and decrements it. `Behavior` respawns the sign when it is `0`, setting it back to `2`, and only drops the shadow while it is still `2`. A remaining-steps count, not a state. |
 | 0x58f | `mPoundCooldown` | `OnGroundPounded` sets `0xf` on the soft-pound branch and returns early whenever it is nonzero; `Behavior` runs it down with `DecIfAbove0_Byte` once a frame. The gap between two successive pounds. |
 | 0x590 | `mHidden` | `Render` returns without drawing while it is nonzero; `Behavior` skips the collision-range check while it is nonzero and clears it under the same "player is far away" condition that respawns a pounded-in sign. |
 | 0x591 | `mRespawnDelay` | `OnGroundPounded` sets `0x1e` on both branches; `Behavior` requires `DecIfAbove0_Byte(&mRespawnDelay) == 0` **and** `DistToCPlayer > 0x7d0000` before it will restore the sign or clear `mHidden`. |
-| 0x59c | `mHoldingPlayer` | already typed `Player *`; `Behavior` calls `Player::DropActor()` on it through a pause, and `Behavior`/`Render` both read `player + 0xc8` through it. Same shape as `Crate`'s 0x5e4. |
+| 0x59c | `mHoldingPlayer` | already typed `Player *`; `Behavior` calls `Player::DropActor()` on it through a pause, and `Behavior`/`Render` both read `player + 0xc8` through it. Same shape as `daObjBlockS_c`'s 0x5e4. |
 
 In the `#else` C twin only: `0x09c` → `mVertAccel` and `0x0a0` →
 `mTerminalVelocity` (`InitResources` writes `-0x2000` / `-0x3c000` to them through the
@@ -187,13 +185,13 @@ which is what `include/dBgActor_c.h` calls that offset and what `InitResources` 
 to `dBgW_KcMbg::SetFile`. The marker stays `u8`, the idiom the twin already uses for
 `mdCcAc_c` and `mShadowModel`.
 
-`src/_ZN8SignPost8BehaviorEv.cpp` was an `extern "C"` free function over a raw
+`src/actors/daObjTatefuda_c.cpp` was an `extern "C"` free function over a raw
 `char *c` with 30 literal offsets and a local one-word `Vector3`; it is now a real
-`int SignPost::Behavior()`. That conversion is what turned 0x354, 0x380, 0x584, 0x588
+`int daObjTatefuda_c::Behavior()`. That conversion is what turned 0x354, 0x380, 0x584, 0x588
 and 0x58c from padding into evidenced fields. It needed one declaration added to the
 header — `int Behavior();`, placed **after** `virtual void Kill()` so that Kill stays
 this class's key function. `tools/eligible.py` gains exactly one name,
-`_ZN8SignPost8BehaviorEv`, and loses none.
+`_ZN15daObjTatefuda_c8BehaviorEv`, and loses none.
 
 Raw-offset collapses, each re-verified byte-exact: `Render`'s
 `*(void **)((char *)&unk_59c)` and `(Sub041 *)((char *)&mModel)`,
@@ -408,16 +406,14 @@ sub; }` shadow is gone in favour of `mModel.Render(0)`, and `InitResources` reac
 `mModel`, `mMeshCollider` and `mClsnMat` by name.
 
 ---
-## QuestionBlock (`include/QuestionBlock.h`, [ov102](../config/arm9/overlays/ov102/symbols.txt), size 0x3f8)
+## daObjHatenaBlock_c (`include/daObjHatenaBlock_c.h`, [ov102](../config/arm9/overlays/ov102/symbols.txt), size 0x3f8)
 
-Bodies read: `src/_ZN13QuestionBlock13InitResourcesEv.cpp`,
-`src/_ZN13QuestionBlock8BehaviorEv.cpp`, `src/_ZN13QuestionBlock6RenderEv.cpp`,
-`src/_ZN13QuestionBlock16CleanupResourcesEv.cpp`,
-`src/_ZN13QuestionBlock15OnGroundPoundedER8dActor_c.cpp`,
-`src/_ZN13QuestionBlock11OnAttacked1ER8dActor_c.cpp`,
-`src/_ZN13QuestionBlock8OnKickedER8dActor_c.cpp`,
-`src/_ZN13QuestionBlock15OnHitByMegaCharER6Player.cpp`,
-`src/_ZN13QuestionBlock19OnHitFromUnderneathER8dActor_c.cpp`.
+Bodies read: `src/actors/daObjHatenaBlock_c.cpp`, which now holds the whole
+translation unit. `InitResources`, `Behavior`, `Render`, `CleanupResources`,
+`OnGroundPounded`, `OnAttacked1`, `OnKicked`, `OnHitByMegaChar` and
+`OnHitFromUnderneath` were read there as one-function sources before the fold;
+they are real members of the class in that file now, and the offsets below were
+not re-derived from the folded source.
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -440,14 +436,14 @@ whole-object shadow casts are `&mModelAnim` and `&mModel`.
 
 ---
 
-## FortressWall (`include/FortressWall.h`, [ov079](../config/arm9/overlays/ov079/symbols.txt), size 0x324)
+## daObjBk_Kabe_c (`include/daObjBk_Kabe_c.h`, [ov079](../config/arm9/overlays/ov079/symbols.txt), size 0x324)
 
-Bodies read: `src/_ZN12FortressWall13InitResourcesEv.cpp`,
-`src/_ZN12FortressWall8BehaviorEv.cpp`, `src/_ZN12FortressWall6RenderEv.cpp`,
-`src/_ZN12FortressWall4KillEv.cpp`,
-`src/_ZN12FortressWall16CleanupResourcesEv.cpp`,
-`src/_ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c.cpp`,
-`src/FortressWall_Spawn.c`, `src/FortressWallBreakable_Spawn.c`.
+Bodies read: `src/actors/daObjBk_Kabe_c.cpp`, which now holds the whole
+translation unit. `InitResources`, `Behavior`, `Render`, `Kill`,
+`CleanupResources` and `OnHitByCannonBlastedChar` were read as one-function
+sources (then under the coined name `FortressWall`) before the fold, together
+with the two factories, then `src/FortressWall_Spawn.c` and
+`src/FortressWallBreakable_Spawn.c`.
 
 Two actors share this class: `FortressWallBreakable_Spawn` (actorID 0x30) and
 `FortressWall_Spawn`. Every field is about telling those two apart.
@@ -489,7 +485,7 @@ mismatching, 106/106 exact) and `tools/check_src_tu_compiles.py` (72/72).
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x4dc | `mStarActor` | `src/_ZN13daObjHmBskt_c13InitResourcesEv.cpp` stores what `dActor_c::Spawn(0xb2, (param1 & 0xf) or 0x50, ...)` returned; actor `0xb2` is the star (`src/_ZN8dActor_c19UntrackAndSpawnStarERajRK7Vector3h.cpp`). `src/_ZN13daObjHmBskt_c8BehaviorEv.cpp` writes that actor's `+0x5c/+0x60/+0x64` — `dActor_c::mPosX/Y/Z` — from the cage's own position plus `0x3c000` in Y on every falling frame. Declared type left `s32`; the store is still a cast. |
+| 0x4dc | `mStarActor` | `daObjHmBskt_c::InitResources` in `src/game/actors/d_a_obj_hm_bskt.cpp` stores what `dActor_c::Spawn(0xb2, (param1 & 0xf) or 0x50, ...)` returned; actor `0xb2` is the star (`src/_ZN8dActor_c19UntrackAndSpawnStarERajRK7Vector3h.cpp`). `daObjHmBskt_c::Behavior`, in the same TU, writes that actor's `+0x5c/+0x60/+0x64` — `dActor_c::mPosX/Y/Z` — from the cage's own position plus `0x3c000` in Y on every falling frame. Declared type left `s32`; the store is still a cast. |
 
 In the `#else` C twin, ten offsets already named at exactly those offsets in
 `include/dActor_c.h` were repointed to those names: `mPosX/Y/Z` (0x05c),
@@ -518,11 +514,11 @@ The promoted header derives from `dBgActor_c` directly and owns two complete
 
 ---
 
-## CccArena (`include/CccArena.h`, [ov073](../config/arm9/overlays/ov073/symbols.txt), size 0x33c)
+## daObjEwbIce_c (`include/daObjEwbIce_c.h`, [ov073](../config/arm9/overlays/ov073/symbols.txt), size 0x33c)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x320 | `mState` | `src/_ZN8CccArena8BehaviorEv.cpp` reads the WORD here as a pointer, tests `*(p + 8)` and calls the pointer-to-member pair at `p + 8` through `this`. The same shape `Eyerok`'s own 0x48c has. `InitResources` installs it through `func_ov073_021223a4(this, &data_ov073_021234b0)`. Declared type left `u8`. |
+| 0x320 | `mState` | `Behavior` ([src/actors/daObjEwbIce_c.cpp](../src/actors/daObjEwbIce_c.cpp)) reads the WORD here as a pointer, tests `*(p + 8)` and calls the pointer-to-member pair at `p + 8` through `this`. The same shape `Eyerok`'s own 0x48c has. `InitResources` installs it through `func_ov073_021223a4(this, &data_ov073_021234b0)`. Declared type left `u8`. |
 | 0x32c | `mVariant` | `InitResources` sets `0`/`1`/`2` for actorID `0xaa`/`0xab`/`0xac` and then uses it as the row index into all three 0xc-stride ov073 tables — `data_ov073_021231bc` (model), `...1c0` (KCL), `...1c4` (CLPS). `CleanupResources` indexes the first two again to `Release()` them. Was inside `pad_321`. |
 | 0x32d | `mSpawnIndex` | `InitResources` copies the value of a per-variant global counter (`data_ov073_02123424` for `0xab`, `...3420` for `0xac`) and then increments that counter — a serial number among the arena pieces of this variant. Was inside `pad_321`. |
 
@@ -539,7 +535,7 @@ Raw-offset collapses, each re-verified byte-exact: the six
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x31e | `mAngleXSpeed` | `src/_ZN10daKpa2Bg_c8BehaviorEv.cpp` adds it to `dActor_c::mAngleX` every frame and does nothing else with it. |
+| 0x31e | `mAngleXSpeed` | `daKpa2Bg_c::Behavior` (now in `src/actors/daKpa2Bg_c.cpp`) adds it to `dActor_c::mAngleX` every frame and does nothing else with it. |
 | 0x320 | `mAngleYSpeed` | the same, into `mAngleY`. |
 | 0x322 | `mAngleZSpeed` | the same, into `mAngleZ`. |
 
@@ -556,7 +552,7 @@ In the C twin, `unk_08e` was repointed to `mAngleY`.
 
 ---
 
-## TtcRotatingGear (`include/TtcRotatingGear.h`, [ov065](../config/arm9/overlays/ov065/symbols.txt), size 0x330)
+## daObjCtMecha08_c (`include/daObjCtMecha08_c.h`, [ov065](../config/arm9/overlays/ov065/symbols.txt), size 0x330)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -567,7 +563,7 @@ In the C twin, `0x0a0` becomes `mTerminalVelocity` and `0x0a8` becomes `mVertSpe
 
 ---
 
-## SeesawBob (`include/SeesawBob.h`, [ov095](../config/arm9/overlays/ov095/symbols.txt), size 0x328)
+## daObjSeesaw_c (`include/daObjSeesaw_c.h`, [ov095](../config/arm9/overlays/ov095/symbols.txt), size 0x328)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -583,7 +579,7 @@ sites across `InitResources` and `CleanupResources`, and `a[0x326] = 1;` in
 
 ---
 
-## RotatingCogSmall (`include/RotatingCogSmall.h`, [ov035](../config/arm9/overlays/ov035/symbols.txt), size 0x330)
+## daObjCtMecha10_c (`include/daObjCtMecha10_c.h`, [ov035](../config/arm9/overlays/ov035/symbols.txt), size 0x330)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -602,7 +598,7 @@ is three named member stores now.
 
 ---
 
-## IceBlock (`include/IceBlock.h`, [ov081](../config/arm9/overlays/ov081/symbols.txt), size 0x368)
+## daObjIceBlock_c (`include/daObjIceBlock_c.h`, [ov081](../config/arm9/overlays/ov081/symbols.txt), size 0x368)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -619,7 +615,7 @@ In the C twin, `0x340`/`0x344` were repointed to `mdCcAc_c_hitFlags` /
 
 ---
 
-## DonutBlock (`include/DonutBlock.h`, [ov036](../config/arm9/overlays/ov036/symbols.txt), size 0x4ec)
+## daObjRc_Tikuwa_c (`include/daObjRc_Tikuwa_c.h`, [ov036](../config/arm9/overlays/ov036/symbols.txt), size 0x4ec)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -673,7 +669,7 @@ In the C twin, `0x074` becomes `mCamSpacePosX`, `0x08e` `mAngleY`, `0x094`
 
 ---
 
-## PyramidTop (`include/PyramidTop.h`, [ov024](../config/arm9/overlays/ov024/symbols.txt), size 0x3b8)
+## daObjDlPyramid_c (`include/daObjDlPyramid_c.h`, [ov024](../config/arm9/overlays/ov024/symbols.txt), size 0x3b8)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -684,7 +680,7 @@ In the C twin, `0x074` becomes `mCamSpacePosX`.
 
 ---
 
-## KnockDownPlank (`include/KnockDownPlank.h`, [ov015](../config/arm9/overlays/ov015/symbols.txt), size 0x39c)
+## daObjBk_Botaosi_c (`include/daObjBk_Botaosi_c.h`, [ov015](../config/arm9/overlays/ov015/symbols.txt), size 0x39c)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -692,7 +688,7 @@ In the C twin, `0x074` becomes `mCamSpacePosX`.
 
 ---
 
-## BigBrickBlock (`include/BigBrickBlock.h`, [ov002](../config/arm9/overlays/ov002/symbols.txt), size 0x330)
+## daObjBlockL_c (`include/daObjBlockL_c.h`, [ov002](../config/arm9/overlays/ov002/symbols.txt), size 0x330)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -702,14 +698,14 @@ In the C twin, `0x074` becomes `mCamSpacePosX`.
 
 ---
 
-## ArrowSignRight (`include/ArrowSignRight.h`, [ov098](../config/arm9/overlays/ov098/symbols.txt), size 0x380)
+## daObjYajirusi_c (`include/daObjYajirusi_c.h`, [ov098](../config/arm9/overlays/ov098/symbols.txt), size 0x380)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x348 | `mShadowMat` | `Behavior` passes `&mShadowMat` as the `Matrix4x3 &` argument of `dActor_c::DropShadowScaleXYZ(ShadowModel &, Matrix4x3 &, ...)`, with `mShadowModel` as the argument before it. `0x348 + 0x30 = 0x378`. The same shape `SignPost` and `QuestionBlock` already carry. |
+| 0x348 | `mShadowMat` | `Behavior` passes `&mShadowMat` as the `Matrix4x3 &` argument of `dActor_c::DropShadowScaleXYZ(ShadowModel &, Matrix4x3 &, ...)`, with `mShadowModel` as the argument before it. `0x348 + 0x30 = 0x378`. The same shape `daObjTatefuda_c` and `daObjHatenaBlock_c` already carry. |
 | 0x37c | `mVariant` | `InitResources` sets `0`/`1` from actorID and uses it as the row index into all three ov098 resource columns `data_ov098_0213c380/384/388`. |
 
-The rename carried into `src_tu/actors/ArrowSignRight.cpp` as well as `src/`.
+The rename carried into `src/actors/daObjYajirusi_c.cpp` (promoted from `src_tu/`) as well as `src/`.
 In the C twin, `0x00c` becomes `actorID` and `0x08e` `mAngleY`.
 
 ---
@@ -720,16 +716,16 @@ In the C twin, `0x00c` becomes `actorID` and `0x08e` `mAngleY`.
 | --- | --- | --- | --- |
 | `daObjEmmLog_c` ([ov052](../config/arm9/overlays/ov052/symbols.txt)) | 0x320 | `mBasePosY` | `InitResources` copies `mPosY`; `Behavior` computes `mPosY = mBasePosY + (sine * mBobAmplitude >> 12)` from `data_02082214`. |
 | | 0x324 | `mBobAmplitude` | `InitResources` sets `0x64000`, or the spawn byte times `0xa000`; it is the multiplicand of that sine. |
-| `TTC_MovingBeam` ([ov065](../config/arm9/overlays/ov065/symbols.txt)) | 0x330 | `mGroundY` | `InitResources` stores the probe point's Y, then overwrites it with the `dBgCh_Gnd` hit height when `DetectClsn` returns nonzero. |
-| `TTC_MovingBar` ([ov065](../config/arm9/overlays/ov065/symbols.txt)) | 0x31e | `mVariant` | `InitResources` sets `0`/`1` and uses it as the row index into `data_ov065_0211d35c` / `...d360`; `CleanupResources` indexes both again. |
-| | 0x320 | `mGroundY` | the same raycast shape as `TTC_MovingBeam`'s: the probe Y, replaced by `raycast + 0x44` on a hit. |
-| `SlidingIce` ([ov027](../config/arm9/overlays/ov027/symbols.txt)) | 0x31e | `mDelayTimer` | `DecIfAbove0_Short`'d at the top of both variants of `Behavior`, which do nothing at all until it reaches 0; seeded `0x64` or `mNumToBigIce * 0x14` and re-armed to `(mNumToBigIce + 1) * 0x14` after each spawn. |
+| `daObjCtMecha09_c` ([ov065](../config/arm9/overlays/ov065/symbols.txt)) | 0x330 | `mGroundY` | `InitResources` stores the probe point's Y, then overwrites it with the `dBgCh_Gnd` hit height when `DetectClsn` returns nonzero. |
+| `daObjCtKaitendai_c` ([ov065](../config/arm9/overlays/ov065/symbols.txt)) | 0x31e | `mVariant` | `InitResources` sets `0`/`1` and uses it as the row index into `data_ov065_0211d35c` / `...d360`; `CleanupResources` indexes both again. |
+| | 0x320 | `mGroundY` | the same raycast shape as `daObjCtMecha09_c`'s: the probe Y, replaced by `raycast + 0x44` on a hit. |
+| `daObjSlIceBlock_c` ([ov027](../config/arm9/overlays/ov027/symbols.txt)) | 0x31e | `mDelayTimer` | `DecIfAbove0_Short`'d at the top of both variants of `Behavior`, which do nothing at all until it reaches 0; seeded `0x64` or `mNumToBigIce * 0x14` and re-armed to `(mNumToBigIce + 1) * 0x14` after each spawn. |
 | `PyramidStep` ([ov025](../config/arm9/overlays/ov025/symbols.txt)) | 0x374 | `mClsnMat2` | `InitResources` passes `&mClsnMat2` as the `const Matrix4x3 &` of `dBgW_KcMbg::SetFile`, and `0x374 + 0x30 = 0x3a4` — the factory's own `operator new` literal. The header's `pad_378[0x2c]` "tail padding" WAS this matrix; it is gone and the size assert now closes on a field span. |
 | `PathLift` ([ov002](../config/arm9/overlays/ov002/symbols.txt)) | 0x42a | `mAfterClsnRan` | set to `1` by the last statement of `AfterClsn`, cleared by the last statement of `BaseBehavior`. |
 | | 0x42b | `mTriggerDelay` | `AfterClsn` fires `func_ov002_020efa54(this, 1)` only when `DecIfAbove0_Byte(&mTriggerDelay)` returns 0 and `mState == 0`. |
 | `daObjWc_Mizu_c` ([ov029](../config/arm9/overlays/ov029/symbols.txt)) | 0x338 | `mUseSpawnPosY` | `InitResources` sets `param1 & 1`, and when it is clear — and only then — overrides `mPosY` from `data_ov029_02112b2c[clock setting]` before snapshotting `mTargetPosY`. |
 | `daObjWanwanShutter_c` ([ov060](../config/arm9/overlays/ov060/symbols.txt)) | 0x31e | `mDisabled` | both `Behavior` and `Render` return immediately while it is nonzero, and nothing else in a matched body touches it. |
-| `LavaPlank` ([ov022](../config/arm9/overlays/ov022/symbols.txt)) | 0x324 | `mPhaseAngle` | `InitResources` seeds it from `mAngleX`; `Behavior` adds `0x400` per frame and uses `(u16)mPhaseAngle >> 4` as the sine-table index. |
+| `daObjFl_UkiKi_c` ([ov022](../config/arm9/overlays/ov022/symbols.txt)) | 0x324 | `mPhaseAngle` | `InitResources` seeds it from `mAngleX`; `Behavior` adds `0x400` per frame and uses `(u16)mPhaseAngle >> 4` as the sine-table index. |
 
 `PathLift::mAfterClsnRan` also carried into the `daObjRcCarpet_c::Behavior` member
 in `src/game/actors/d_a_obj_rc_carpet.cpp`, a subclass that reads the inherited field — the
@@ -750,28 +746,28 @@ same offsets:
   `mDeathTableID` (0x0ce).
 * `include/daObjC1_Trap_c.h` — its production class TU uses inherited `mPosX/Y/Z`
   (0x05c), `mAngleY` (0x08e), and `mAreaId` (0x0cc) directly through `dActor_c`.
-* `include/TowerStep.h` — `mHorzSpeed`, `mTerminalVelocity`, `mVertSpeed`.
+* `include/daObjBk_Lift_c.h` — `mHorzSpeed`, `mTerminalVelocity`, `mVertSpeed`.
 * `include/daObjMc_Metalnet_c.h` — `param1` (0x008), `mAngleY`, `mClsnMat` (0x2ec).
-* `include/PoleLift.h` — `param1`, `mAngleY`.
-* `include/daObjIceBoard_c.h` and `include/RotatingFirebar.h` — `mAngleY`, and `mFlags`
+* `include/daObjKm2_Ami_Bou_c.h` — `param1`, `mAngleY`.
+* `include/daObjIceBoard_c.h` and `include/daObjFl_KomaU_c.h` — `mAngleY`, and `mFlags`
   (0x0b0).
 * `include/daObjFm_Battan_c.h` — `mCamSpacePosX` (0x074), `mClsnMat` (0x2ec).
-* `include/FortressTower.h` — `actorID` (0x00c).
-* `include/BasementWater.h` — `mCamSpacePosX`.
-* `include/TTC_MovingBeam.h` — `mTerminalVelocity`, `mVertSpeed`, `mClsnMat`.
-* `include/SlidingIce.h` — `mHorzSpeed`.
-* `include/PyramidStep.h` — `param1`, `mAngleY`, `mVertSpeed`.
+* `include/daObjC0Water_c.h` — `mCamSpacePosX`.
+* `include/daObjCtMecha09_c.h` — `mTerminalVelocity`, `mVertSpeed`, `mClsnMat`.
+* `include/daObjSlIceBlock_c.h` — `mHorzSpeed`.
+* `include/daObjDpBrock_c.h` — `param1`, `mAngleY`, `mVertSpeed`.
 * `include/PathLift.h` — `actorID`.
 * `include/daObjEmmLog_c.h` — `mPosY`.
-* `include/RotatingCogSmall.h` — `actorID`, `mAngleY`.
+* `include/daObjCtMecha10_c.h` — `actorID`, `mAngleY`.
 
 ## Left `unk_` across this batch, and why
 
-* `CccArena` 0x330 / 0x334 / 0x338 — written once each by `InitResources`, never read.
-* `RotatingCogSmall` 0x326 — written the same table value as `mAngleYStep`, never read.
+* `daObjEwbIce_c` 0x330 / 0x334 / 0x338 — written once each by `InitResources`, never read.
+* `daObjCtMecha10_c` 0x326 — written the same table value as `mAngleYStep`, never read.
 * `daKpa2Bg_c` 0x56c — zeroed, never read.
-* `RotatingUpDownPlatformUtm` 0x300 in the C twin — that offset is *interior* to
+* `daObjRotateUpdownLift_c` 0x300 in the C twin — that offset is *interior* to
   `dBgActor_c::mClsnMat` (0x2ec + 0x14), and naming a matrix element from a single
   `s16` read would be an invention.
 * The classes with no fields of their own — `daObjMc_Metalnet_c`, `daObjIceBoard_c`,
-  `FortressTower`, `daObjTdWater_c` — have nothing left to name.
+  `daObjTdWater_c` — have nothing left to name. `daObjSimpleBg_c` names `mVariant`
+  at 0x31e, the file-table row.

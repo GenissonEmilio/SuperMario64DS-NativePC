@@ -4,358 +4,48 @@
     .ctor       start:0x02134b68 end:0x02134b80 kind:rodata align:4
     .data       start:0x02134ba0 end:0x02135440 kind:data align:32
     .bss        start:0x02135440 end:0x021356e0 kind:bss align:32
-src/_ZN25RotatingUpDownPlatformUtmD1Ev.cpp:
+src/actors/daObjRotateUpdownLift_c.cpp:
     complete
-    .text start:0x02130f00 end:0x02130f4c
+    .text start:0x02130f00 end:0x02131c14
+    .init start:0x02134524 end:0x021345dc
+    .ctor start:0x02134b68 end:0x02134b6c
+    .bss start:0x02135440 end:0x02135490
 
-src/_ZN25RotatingUpDownPlatformUtmD0Ev.cpp:
+src/game/actors/d_a_linelift2.cpp:
     complete
-    .text start:0x02130f4c end:0x02130fac
+    .text start:0x02131c14 end:0x02132404
+    .init start:0x021345dc end:0x021346e8
+    .ctor start:0x02134b6c end:0x02134b70
+    .bss start:0x02135490 end:0x021354f8
 
-src/func_ov091_02130fac.cpp:
+src/actors/daObjSimpleLift_c.cpp:
     complete
-    .text start:0x02130fac end:0x02131070
+    .text start:0x02132404 end:0x02132938
+    .init start:0x021346e8 end:0x02134930
+    .ctor start:0x02134b70 end:0x02134b74
+    .bss start:0x021354f8 end:0x02135610
 
-src/_ZN25RotatingUpDownPlatformUtm4KillEv.cpp:
+src/actors/daDsn_c.cpp:
     complete
-    .text start:0x02131070 end:0x021310fc
-
-src/_ZN25RotatingUpDownPlatformUtm15OnHitByMegaCharER6Player.cpp:
-    complete
-    .text start:0x021310fc end:0x02131160
-
-src/func_ov091_02131160.c:
-    complete
-    .text start:0x02131160 end:0x02131340
-
-src/func_ov091_02131340.c:
-    complete
-    .text start:0x02131340 end:0x02131388
-
-src/_ZN25RotatingUpDownPlatformUtm16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02131388 end:0x02131408
-
-src/_ZN25RotatingUpDownPlatformUtm6RenderEv.cpp:
-    complete
-    .text start:0x02131408 end:0x02131468
-
-src/_ZN25RotatingUpDownPlatformUtm8BehaviorEv.cpp:
-    complete
-    .text start:0x02131468 end:0x021318f0
-
-src/_ZN25RotatingUpDownPlatformUtm13InitResourcesEv.cpp:
-    complete
-    .text start:0x021318f0 end:0x02131ba4
-
-src/d_a_obj_rotate_updown_lift_hs_updown_lift.c:
-    complete
-    .text start:0x02131ba4 end:0x02131bdc
-
-src/d_a_obj_rotate_updown_lift_updown_lift.c:
-    complete
-    .text start:0x02131bdc end:0x02131c14
-
-src/_ZN22RotatingUpDownPlatformD1Ev.cpp:
-    complete
-    .text start:0x02131c14 end:0x02131c58
-
-src/_ZN22RotatingUpDownPlatformD0Ev.cpp:
-    complete
-    .text start:0x02131c58 end:0x02131cb0
-
-src/func_ov091_02131cb0.c:
-    complete
-    .text start:0x02131cb0 end:0x02131db8
-
-src/func_ov091_02131db8.c:
-    complete
-    .text start:0x02131db8 end:0x02131ef0
-
-src/func_ov091_02131ef0.c:
-    complete
-    .text start:0x02131ef0 end:0x02131f9c
-
-src/func_ov091_02131f9c.c:
-    complete
-    .text start:0x02131f9c end:0x02132000
-
-src/func_ov091_02132000.c:
-    complete
-    .text start:0x02132000 end:0x0213209c
-
-src/_ZN22RotatingUpDownPlatform16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x0213209c end:0x021320e0
-
-src/_ZN22RotatingUpDownPlatform6RenderEv.cpp:
-    complete
-    .text start:0x021320e0 end:0x02132108
-
-src/_ZN22RotatingUpDownPlatform8BehaviorEv.cpp:
-    complete
-    .text start:0x02132108 end:0x0213220c
-
-src/_ZN22RotatingUpDownPlatform13InitResourcesEv.cpp:
-    complete
-    .text start:0x0213220c end:0x02132360
-
-src/func_ov091_02132360.cpp:
-    complete
-    .text start:0x02132360 end:0x02132380
-
-src/func_ov091_02132380.c:
-    complete
-    .text start:0x02132380 end:0x02132394
-
-src/d_a_linelift2_km2_susumu.c:
-    complete
-    .text start:0x02132394 end:0x021323cc
-
-src/d_a_linelift2_km3_lift.c:
-    complete
-    .text start:0x021323cc end:0x02132404
-
-src/_ZN17SlidingPlatformWfD1Ev.cpp:
-    complete
-    .text start:0x02132404 end:0x02132448
-
-src/_ZN17SlidingPlatformWfD0Ev.cpp:
-    complete
-    .text start:0x02132448 end:0x021324a0
-
-src/_ZN17SlidingPlatformWf16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x021324a0 end:0x02132504
-
-src/_ZN17SlidingPlatformWf6RenderEv.cpp:
-    complete
-    .text start:0x02132504 end:0x0213252c
-
-src/_ZN17SlidingPlatformWf8BehaviorEv.cpp:
-    complete
-    .text start:0x0213252c end:0x021325d4
-
-src/_ZN17SlidingPlatformWf13InitResourcesEv.cpp:
-    complete
-    .text start:0x021325d4 end:0x021327e8
-
-src/d_a_obj_simple_lift_bk_transbar.c:
-    complete
-    .text start:0x021327e8 end:0x02132818
-
-src/d_a_obj_simple_lift_km2_rifut02.c:
-    complete
-    .text start:0x02132818 end:0x02132848
-
-src/d_a_obj_simple_lift_km2_rifut01.c:
-    complete
-    .text start:0x02132848 end:0x02132878
-
-src/d_a_obj_simple_lift_rc_rift01.c:
-    complete
-    .text start:0x02132878 end:0x021328a8
-
-src/d_a_obj_simple_lift_km3_deru02.c:
-    complete
-    .text start:0x021328a8 end:0x021328d8
-
-src/d_a_obj_simple_lift_km3_deru01.c:
-    complete
-    .text start:0x021328d8 end:0x02132908
-
-src/d_a_obj_simple_lift_km1_deru.c:
-    complete
-    .text start:0x02132908 end:0x02132938
-
-src/_ZN6ThwompD1Ev.cpp:
-    complete
-    .text start:0x02132938 end:0x02132998
-
-src/_ZN6ThwompD0Ev.cpp:
-    complete
-    .text start:0x02132998 end:0x02132a0c
-
-src/_ZN6Thwomp16OnAimedAtWithEggEv.cpp:
-    complete
-    .text start:0x02132a0c end:0x02132a14
-
-src/_ZN6Thwomp15OnHitByMegaCharER6Player.cpp:
-    complete
-    .text start:0x02132a14 end:0x02132ab0
-
-src/_ZN6Thwomp8BehaviorEv.cpp:
-    complete
-    .text start:0x02132ab0 end:0x02132c84
-
-src/_ZN6Thwomp13InitResourcesEv.cpp:
-    complete
-    .text start:0x02132c84 end:0x02132cb8
-
-src/d_a_dsn.c:
-    complete
-    .text start:0x02132cb8 end:0x02132d04
-
-src/_ZN11daDsnBase_cD0Ev.cpp:
-    complete
-    .text start:0x02132d04 end:0x02132d6c
-
-src/_ZN11daDsnBase_cD1Ev.cpp:
-    complete
-    .text start:0x02132d6c end:0x02132dc0
+    .text start:0x02132938 end:0x02132d04
+    .init start:0x02134930 end:0x021349c4
+    .ctor start:0x02134b74 end:0x02134b78
+    .bss start:0x02135610 end:0x0213564c
 
 src/actors/daDsnBase_c.cpp:
     complete
-    .text start:0x02132dc0 end:0x02133254
+    .text start:0x02132d04 end:0x021333fc
 
-src/func_ov091_02133254.cpp:
+src/actors/daObjPile_c.cpp:
     complete
-    .text start:0x02133254 end:0x021333fc
-
-src/_ZN5StumpD1Ev.cpp:
-    complete
-    .text start:0x021333fc end:0x02133440
-
-src/_ZN5StumpD0Ev.cpp:
-    complete
-    .text start:0x02133440 end:0x02133498
-
-src/func_ov091_02133498.c:
-    complete
-    .text start:0x02133498 end:0x021334b8
-
-src/func_ov091_021334b8.cpp:
-    complete
-    .text start:0x021334b8 end:0x021335d4
-
-src/_ZN5Stump15OnHitByMegaCharER6Player.cpp:
-    complete
-    .text start:0x021335d4 end:0x02133648
-
-src/_ZN5Stump15OnGroundPoundedER8dActor_c.cpp:
-    complete
-    .text start:0x02133648 end:0x021336cc
-
-src/_ZN5Stump16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x021336cc end:0x02133710
-
-src/_ZN5Stump6RenderEv.cpp:
-    complete
-    .text start:0x02133710 end:0x02133738
-
-src/_ZN5Stump8BehaviorEv.cpp:
-    complete
-    .text start:0x02133738 end:0x021338ac
-
-src/_ZN5Stump13InitResourcesEv.cpp:
-    complete
-    .text start:0x021338ac end:0x02133938
-
-src/d_a_obj_pile.c:
-    complete
-    .text start:0x02133938 end:0x02133968
-
-src/_ZN6FwooshD1Ev.cpp:
-    complete
-    .text start:0x02133968 end:0x021339a8
-
-src/_ZN6FwooshD0Ev.cpp:
-    complete
-    .text start:0x021339a8 end:0x021339fc
-
-src/func_ov091_021339fc.c:
-    complete
-    .text start:0x021339fc end:0x02133c6c
-
-src/func_ov091_02133c6c.cpp:
-    complete
-    .text start:0x02133c6c end:0x02133d1c
-
-src/func_ov091_02133d1c.c:
-    complete
-    .text start:0x02133d1c end:0x02133d30
-
-src/func_ov091_02133d30.cpp:
-    complete
-    .text start:0x02133d30 end:0x02133f24
-
-src/func_ov091_02133f24.c:
-    complete
-    .text start:0x02133f24 end:0x02133f60
-
-src/func_ov091_02133f60.c:
-    complete
-    .text start:0x02133f60 end:0x0213400c
-
-src/func_ov091_0213400c.c:
-    complete
-    .text start:0x0213400c end:0x02134044
-
-src/func_ov091_02134044.cpp:
-    complete
-    .text start:0x02134044 end:0x02134094
-
-src/func_ov091_02134094.c:
-    complete
-    .text start:0x02134094 end:0x02134108
-
-src/_ZN6Fwoosh16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02134108 end:0x02134180
-
-src/_ZN6Fwoosh16OnPendingDestroyEv.cpp:
-    complete
-    .text start:0x02134180 end:0x02134184
-
-src/_ZN6Fwoosh6RenderEv.cpp:
-    complete
-    .text start:0x02134184 end:0x021341ec
-
-src/_ZN6Fwoosh8BehaviorEv.cpp:
-    complete
-    .text start:0x021341ec end:0x02134324
-
-src/_ZN6Fwoosh13InitResourcesEv.cpp:
-    complete
-    .text start:0x02134324 end:0x02134484
-
-src/_ZN6Fwoosh16OnAimedAtWithEggEv.cpp:
-    complete
-    .text start:0x02134484 end:0x0213448c
-
-src/_ZN6Fwoosh13OnTurnIntoEggER6Player.cpp:
-    complete
-    .text start:0x0213448c end:0x02134498
-
-src/_ZN6Fwoosh13OnYoshiTryEatEv.cpp:
-    complete
-    .text start:0x02134498 end:0x021344a0
-
-src/d_a_hyuhyu.c:
-    complete
-    .text start:0x021344a0 end:0x021344e8
-
-src/__sinit_ov091_02134524.c:
-    complete
-    .init start:0x02134524 end:0x021345dc
-
-src/__sinit_ov091_021345dc.c:
-    complete
-    .init start:0x021345dc end:0x021346e8
-
-src/__sinit_ov091_021346e8.c:
-    complete
-    .init start:0x021346e8 end:0x02134930
-
-src/__sinit_ov091_02134930.c:
-    complete
-    .init start:0x02134930 end:0x021349c4
-
-src/__sinit_ov091_021349c4.c:
-    complete
+    .text start:0x021333fc end:0x02133968
     .init start:0x021349c4 end:0x02134a30
+    .ctor start:0x02134b78 end:0x02134b7c
+    .bss start:0x0213564c end:0x02135674
 
-src/__sinit_ov091_02134a30.c:
+src/game/actors/d_a_hyuhyu.cpp:
     complete
+    .text start:0x02133968 end:0x021344e8
     .init start:0x02134a30 end:0x02134b68
+    .ctor start:0x02134b7c end:0x02134b80
+    .bss start:0x02135674 end:0x021356e0

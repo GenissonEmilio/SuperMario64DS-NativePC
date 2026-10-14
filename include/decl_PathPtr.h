@@ -22,6 +22,8 @@ extern "C" {
 
 extern int _ZNK7PathPtr5LoopsEv(void*);
 extern int _ZNK7PathPtr8NumNodesEv(void*);
+extern unsigned int _ZNK7PathPtr9GetUnk004Ev(void*);
+extern unsigned int _ZNK7PathPtr13GetPullFactorEv(void*);
 
 
 #ifdef __cplusplus

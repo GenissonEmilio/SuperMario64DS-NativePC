@@ -30,7 +30,7 @@
  * - S14: g_profile_TD_WATER stays outside the licensed .text.
  * - Event::GetBit has no shared header; every caller declares it locally.
  * - common.h first (dBgActor_c.h must see common.h ahead of Model.h).
- * - no Player.h / Camera.h.
+ * - no Player.h / dCamera_c.h.
  *
  * Consolidated from these legacy one-function sources (ROM address order):
  *   [0] 0x02112698  src/_ZN14daObjTdWater_cD1Ev.cpp
@@ -51,9 +51,27 @@
 struct KCL_File;
 struct CLPS_Block;
 
+/* Model handles construct through func_02017acc and destroy through
+ * func_02017ab4; collision handles construct through func_02017b4c and
+ * destroy through SharedFilePtr_Destruct_Clsn. The manifest aliases those
+ * undefined members onto the ROM symbols. */
+struct TdWaterModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    TdWaterModelFilePtr(u32 fileID);
+    ~TdWaterModelFilePtr();
+};
+
+struct TdWaterClsnFileHandle : SharedFilePtr {
+    u32 words[2];
+
+    TdWaterClsnFileHandle(u32 fileID);
+    ~TdWaterClsnFileHandle();
+};
+
 extern "C" {
-extern SharedFilePtr data_ov032_02113afc;   /* the water model's BMD */
-extern SharedFilePtr data_ov032_02113af4;   /* the collision KCL */
+extern TdWaterModelFilePtr data_ov032_02113afc;   /* the water model's BMD */
+extern TdWaterClsnFileHandle data_ov032_02113af4; /* the collision KCL */
 extern BTA_File      data_ov032_02112f64;   /* the scrolling texture animation */
 extern CLPS_Block    data_ov032_02112fb8;
 
@@ -152,3 +170,8 @@ s32 daObjTdWater_c::CleanupResources()
    body out of line here instead flips them to D0-before-D1 and the isolation
    step rejects the object.
  */
+
+/* File-scope objects, in __sinit_d_a_obj_td_water.cpp construction order:
+ * the model's SharedFilePtr, then the collision file's. */
+TdWaterModelFilePtr data_ov032_02113afc(0x6b7);
+TdWaterClsnFileHandle data_ov032_02113af4(0x6b8);

@@ -176,18 +176,7 @@ typedef char dMgDilarCardObj_c_size_must_be_0x30[sizeof(dMgDilarCardObj_c) == 0x
 #endif
 
 struct dScMgCard_c : dScMgSingle3DBase_c {
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgCard_c() {   /* no slot */
-#else
-    virtual ~dScMgCard_c() {   /* D1 and D0 */
-#endif
+    virtual ~dScMgCard_c() {
         __cxa_vec_cleanup(mArray2, 5, 0x30, (void *)_ZN17dMgDilarCardObj_cD1Ev);
         __cxa_vec_cleanup(mArray1, 5, 0x30, (void *)_ZN12dMgCardObj_cD1Ev);
         func_ov006_020c1c64((char *)&mShared);
@@ -206,7 +195,7 @@ struct dScMgCard_c : dScMgSingle3DBase_c {
 
     virtual void OnGroundPounded();   /* slot 21 -- ov006 0x020db6ec */
 
-    /* --- the round state machine and the HUD column ---
+    /* --- the round state machine and the dMeter_c column ---
        UpdateState is the one long switch on mState that Behavior drives
        every frame; RenderHud draws the chip column and the prompt sprite.
        Names coined from the bodies -- the ROM's symbols are address-only. */
@@ -249,7 +238,7 @@ struct dScMgCard_c : dScMgSingle3DBase_c {
     s16 mFrameCounter;       /* 0x5396 -- Behavior's only own statement is
                                 `+= 1`; Render blinks on bit 3 */
     s16 mScore;              /* 0x5398 -- a high-water mark of dScMgBase_c's own
-                                0xb4, pushed to the HUD counter every frame */
+                                0xb4, pushed to the dMeter_c counter every frame */
     s8  unk_539a;             /* 0x539a */
     u8  pad_539b[0x1];        /* 0x539b */
 };

@@ -15,7 +15,7 @@ See also `notes/actor-vtables.md`, `notes/mwccarm-codegen.md`, `notes/actor-nami
 `fBase_c`'s code is one contiguous run, `0x02043444..0x02043f4c`, 25 functions.
 
 That range is a correction. The banner used to say `0x02043494..0x02043e04` and
-both ends were wrong; `src_tu/actors/ActorBase.cpp` reconciled it against the
+both ends were wrong; `src/actors/ActorBase.cpp` reconciled it against the
 cartridge while rebuilding the translation unit.
 
 * `0x02043444` is the real start: `_ZN7fBase_cnwEj`, this class's own
@@ -53,11 +53,11 @@ destructor tears down in reverse order.
 ## 3. `fBase_c` vtable order
 
 Read directly out of `_ZTV7fBase_c` (`0x02099edc`, 18 slots). Every slot resolves
-to a named function, so no inference was needed here -- unlike `include/Fader.h`.
+to a named function, so no inference was needed here -- unlike `include/dFader_c.h`.
 Two consequences, both easy to get wrong:
 
 * The destructor is at slots 16/17, NOT 0/1. Slot index follows declaration
-  order, so `~fBase_c` must be declared AFTER `OnHeapCreated`. Copying the Fader
+  order, so `~fBase_c` must be declared AFTER `OnHeapCreated`. Copying the dFader_c
   header shape, where the destructor comes first, shifts sixteen slots and
   silently changes every virtual call in the tree.
 * `AfterCleanupResources` dispatches through `vtable+0x40`. That is slot 16, the
@@ -102,7 +102,7 @@ Stated precisely: the key function -- the first non-inline virtual declared --
 must never be defined as a real method in any translation unit. Declaring the
 destructor first pins that role to TUs which by construction never will.
 `include/fBase_c.h` reaches the same end differently: it does declare
-`InitResources` (slot 0) in-class, but `src/_ZN7fBase_c13InitResourcesEv.cpp`
+`InitResources` (slot 0) in-class, but `src/actors/ActorBase.cpp`
 deliberately defines it as an `extern "C"` free function rather than a method. Do
 not "fix" that file into a real method, and do not remove the declaration from
 `fBase_c.h` -- removing it would delete slot 0 and shift all 18 slots.
@@ -132,7 +132,7 @@ wrong SIZE (`999 word(s) differ`); with it, 5/5 MATCH.
 Why it is declared on `dActor_c` as well as on `fBase_c`: mwcc inlines
 `operator delete` only when it is found in the class itself or its IMMEDIATE
 base. A declaration on `fBase_c` does NOT reach `dActor_c` (two levels down), nor
-`HUD`, `Minimap` or `dScene_c`, whose immediate base is `dBase_c`. The only
+`dMeter_c`, `dMap_c` or `dScene_c`, whose immediate base is `dBase_c`. The only
 classes `fBase_c`'s copy changes are `fBase_c` itself and `dBase_c` -- the two
 whose D0 the ROM shows inlining it. `dEnemyBase_c` carries its own copy for the
 same reason: it is a flattened struct that does not derive from `dActor_c` in
@@ -162,14 +162,14 @@ once, for every caller at the same time.
 
 CW 1.2 rejects an in-class declaration of `operator new` ("illegal 'operator'
 declaration"), and it is neither virtual nor layout-affecting, so
-`src/_ZN7fBase_cnwEj.cpp` defines it under its mangled name instead.
+`src/actors/ActorBase.cpp` defines it under its mangled name instead.
 
 ## 7. `dActor_c` field widths -- the `0x080..0x0ab` block
 
 `0x080..0x08b` and the `0x098..0x0ab` block were bare padding and `u8`
 placeholders in `dActor_c.h`, while `Player.h` -- describing the same bytes --
 named them and typed them `s32`. Player is right, and the evidence is outside
-Player: `BooCage::InitResources` and `MadPiano::InitResources` write `-0x4000`
+Player: `BooCage::InitResources` and `daPiano_c::InitResources` write `-0x4000`
 and `-0x2000` to `0x09c` and `-0x46000` / `-0x3c000` to `0x0a0`, which are fix12
 gravity and terminal velocity, not bytes. `Player::St_Walk_Main` passes `0x098`
 as a 32-bit argument.
@@ -187,7 +187,7 @@ they are `dActor_c`'s and four bytes wide.
 
 The `#else` C branch carried `pad_0a4`/`pad_0ac` long after the C++ branch above
 promoted them to real `s32` fields -- a drift no gate could catch, because until
-`include/Door.h`'s own C branch nested this struct, NO C translation unit in the
+`include/daDoor_c.h`'s own C branch nested this struct, NO C translation unit in the
 tree included the header at all and the whole `#else` was dead. The two spellings
 now agree field for field.
 
@@ -208,7 +208,7 @@ Named from matched bodies only. See `include/dActor_c.h` for the short form.
 | `0x0c4` | `mClipResult` | the `u8 *` out-parameter `BeforeBehavior` hands to `Clipper::Func_020150E8`. |
 | `0x0ce` | `mDeathTableID` | `GetBitInDeathTable`, `TrackInDeathTable` and `UntrackInDeathTable` pass it straight to `DeathTable_GetBit`/`SetBit`/`ClearBit`; `dActor_c::Spawn`'s last parameter is `s16 deathTableID` and the constructor seeds it from `data_0208e378`. |
 
-`0x0a4` and `0x0ac` are deliberately still `unk_`: `dEnemyBase_c` and `Door` prove
+`0x0a4` and `0x0ac` are deliberately still `unk_`: `dEnemyBase_c` and `daDoor_c` prove
 they exist and are four bytes, and nothing in the tree shows what they mean.
 So are `0x050`'s neighbours `0x058`'s width aside, `0x0c4`'s exact bit meanings,
 and `fBase_c`'s `0x10..0x13` and `0x48`.
@@ -222,16 +222,16 @@ mwcc allocates registers differently for `int` vs `void` even when r0 is neither
 read nor set -- measured by building both, not assumed.
 
 * slot 20 `Virtual50` -- still `int`; untested.
-* slot 21 `OnGroundPounded` -- `Stump::OnGroundPounded` ([ov091](../config/arm9/overlays/ov091/symbols.txt) `0x02133648`)
-  compares two class fields and returns early on either. See `include/Stump.h`.
-  `BigBrickBlock`'s and `QuestionBlock`'s overrides happened not to trigger the
+* slot 21 `OnGroundPounded` -- `daObjPile_c::OnGroundPounded` ([ov091](../config/arm9/overlays/ov091/symbols.txt) `0x02133648`)
+  compares two class fields and returns early on either. See `include/daObjPile_c.h`.
+  `daObjBlockL_c`'s and `daObjHatenaBlock_c`'s overrides happened not to trigger the
   difference under `int` and were re-verified under `void`, so the correction is
   free there.
-* slot 24 `OnKicked` -- `BigBrickBlock::OnKicked` ([ov002](../config/arm9/overlays/ov002/symbols.txt) `0x020b36dc`) has two
-  locals and two early returns. See `include/BigBrickBlock.h`.
-* slot 27 `OnHitByMegaChar` -- `Stump::OnHitByMegaChar` ([ov091](../config/arm9/overlays/ov091/symbols.txt) `0x021335d4`):
+* slot 24 `OnKicked` -- `daObjBlockL_c::OnKicked` ([ov002](../config/arm9/overlays/ov002/symbols.txt) `0x020b36dc`) has two
+  locals and two early returns. See `include/daObjBlockL_c.h`.
+* slot 27 `OnHitByMegaChar` -- `daObjPile_c::OnHitByMegaChar` ([ov091](../config/arm9/overlays/ov091/symbols.txt) `0x021335d4`):
   four early-return field checks, 6-word register mismatch under `int`, exact
-  match under `void`. See `include/Stump.h`. The two already-landed overrides,
+  match under `void`. See `include/daObjPile_c.h`. The two already-landed overrides,
   `dScMgSlot1_c`'s and `daObjMaruta_c`'s, have no locals or early returns, so the
   correction is a re-verified no-op for them.
 * slot 30 `OnAimedAtWithEggReturnVec` returns a `Vector3` BY VALUE, and the ROM

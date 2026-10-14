@@ -1,0 +1,70 @@
+#ifndef DABGSNMHED_C_H
+#define DABGSNMHED_C_H
+
+#include "dActor_c.h"
+#include "Model.h"
+#include "TextureSequence.h"
+#include "dCcAc_c.h"
+#include "dBgCh_Actr.h"
+
+/* The snowman's head. The cartridge RTTI names this class daBgSnmHed_c.
+ * Its __si_class_type_info record (_ZTI12daBgSnmHed_c, ov072 0x0212287c) has
+ * dActor_c as the sole base at offset zero, and its vtable has the same 31
+ * slots as dActor_c. The D1/D0 pair and factory independently pin the four
+ * owned subobjects and the total allocation size.
+ *
+ * The four state pairs are recovered from __sinit_ov072_021221f8, which copies
+ * eight ROM PMF constants into data_ov072_02122c00. SetState indexes that table
+ * at state * 0x10 and invokes the first PMF; Behavior invokes the second.
+ * Descriptive original names are absent, so the ROM-evidenced indices remain.
+ *
+ * The reconstructed factory daBgSnmHed_c_classInit (0x021207d4, historical
+ * alias SnowmanHead_Spawn) constructs it for the BIG_SNOWMAN_HEAD registry
+ * profile and lives in src/actors/daBgSnmHed_c.cpp alongside the rest of the
+ * class.
+ */
+struct daBgSnmHed_c : dActor_c {
+    u8 mPad0d0[0x4];                    /* 0x0d0 */
+    Model mModel;                       /* 0x0d4 */
+    TextureSequence mTextureSequence;   /* 0x124 */
+    dCcAc_c mCylinder;                  /* 0x138 */
+    dBgCh_Actr mWithMeshClsn;           /* 0x16c */
+
+    typedef int (daBgSnmHed_c::*StateFunc)();
+    StateFunc *mStateFuncs;             /* 0x328 */
+    Player *mTalkPlayer;                /* 0x32c */
+    s32 mStateValue;                    /* 0x330 */
+    u8 mSubstate;                       /* 0x334 */
+    u8 mStateTimer;                     /* 0x335 */
+    u8 unk_336;                         /* 0x336 */
+    u8 mPad337;                         /* 0x337 */
+
+    virtual ~daBgSnmHed_c();             /* slots 16, 17 */
+
+    virtual int InitResources();        /* slot  0 */
+    virtual int CleanupResources();     /* slot  3 */
+    virtual int Behavior();             /* slot  6 */
+    virtual int Render();               /* slot  9 */
+    virtual void OnPendingDestroy();    /* slot 12 */
+
+    void UpdateModel();
+    int InitState0();
+    int State0();
+    int InitState1();
+    int State1();
+    int InitState2();
+    int State2();
+    int InitState3();
+    int State3();
+    void CallStateBehavior();
+    void CallStateInit();
+    void SetState(int state);
+};
+
+#ifndef SM64DS_PLATFORM_PC
+/* ROM layout under mwccarm; host ABI divergence is tracked separately. */
+typedef char SnowmanHead_size_must_be_0x338[
+    sizeof(daBgSnmHed_c) == 0x338 ? 1 : -1];
+#endif
+
+#endif

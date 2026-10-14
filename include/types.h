@@ -48,7 +48,7 @@ typedef struct Vector3 {
     Fix12i x, y, z;
 #ifdef __cplusplus
     /* DECLARED, AND EMPTY, BECAUSE THE ROM DESTROYS ARRAYS OF IT. A POD array
-       needs no cleanup, so ChiefChilly's
+       needs no cleanup, so daKing_Donketu_c's
        `__cxa_vec_cleanup(this + 0x3e8, 8, 0xc, func_020072c0)` can only exist if
        the element type declares a destructor -- and 0x020072c0 is four bytes,
        `bx lr`, an empty one. config/arm9/symbols.txt names it
@@ -59,11 +59,19 @@ typedef struct Vector3 {
        and Rabbit::Behavior grows 8 bytes (0x5cc -> 0x5d4). That one is the
        price of the six destructors this unblocks. */
     ~Vector3() {}
+
+    /* Static-init globals spell this `Vector3(x, y, z)`; a real member ctor is
+       what makes mwcc emit the retail shape (elementwise stores, then the
+       ~Vector3() registration above). Declaring any ctor also flips copy
+       lowering from block moves to memberwise in a few TUs -- those sites use
+       a local POD twin instead. */
+    Vector3() {}
+    Vector3(Fix12i x_, Fix12i y_, Fix12i z_) : x(x_), y(y_), z(z_) {}
 #endif
 } Vector3;
 
 #ifdef __cplusplus
-/* 0xc, and the ROM agrees twice over: ChiefChilly's arrays stride by 0xc and
+/* 0xc, and the ROM agrees twice over: daKing_Donketu_c's arrays stride by 0xc and
    its __cxa_vec_cleanup calls pass 0xc as the element size. */
 #ifndef SM64DS_PLATFORM_PC
 /* ROM layout under mwccarm; host ABI divergence is tracked separately. */
@@ -74,11 +82,18 @@ typedef char Vector3_size_must_be_0xc[sizeof(Vector3) == 0xc ? 1 : -1];
 typedef struct Vector3s {
     s16 x, y, z;
 #ifdef __cplusplus
-    /* Declared and empty, for the same reason Vector3's is: Wiggler destroys an
+    /* Declared and empty, for the same reason Vector3's is: daHanachan_c destroys an
        array of a 6-byte type through
        __cxa_vec_cleanup(this + 0x444, 5, 6, func_02011508), a POD array needs no
        cleanup, and 0x02011508 is four bytes of `bx lr`. 6 is sizeof(Vector3s). */
     ~Vector3s() {}
+    /* Empty default construction: daHanachan_c's factory passes
+       func_0203d73c, four bytes of `bx lr`, to __cxa_vec_ctor(this + 0x444,
+       5, 6, ...). The body is defined in Vector3s.h, so a C++ file that
+       default-constructs a Vector3s (a local, an array, or a class holding
+       one) must include that header, or it calls an undefined
+       _ZN8Vector3sC1Ev. */
+    inline Vector3s();
 #endif
 } Vector3s;
 

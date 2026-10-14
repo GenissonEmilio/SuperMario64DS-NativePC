@@ -3,7 +3,7 @@
 
 #include "dActor_c.h"
 #include "Model.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "dCcAc_c.h"
 #include "dBgCh_Actr.h"
 #include "PathPtr.h"
@@ -27,7 +27,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  *
  * SIZE. 0x3a8. daBgSnmBdy_c_classInit at 0x0211fedc opens with
  * fBase_c::operator new(936), and the five subobjects it constructs after the
- * dActor_c base -- Model at 0xd4, ShadowModel at 0x124, dCcAc_c at 0x14c,
+ * dActor_c base -- Model at 0xd4, dExtShadowModel_c at 0x124, dCcAc_c at 0x14c,
  * dBgCh_Actr at 0x180 and PathPtr at 0x380 -- are declared typed below in that
  * same order, which is what makes the compiler emit that exact call sequence.
  *
@@ -48,7 +48,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 struct daBgSnmBdy_c : dActor_c {
     u8 mPad0d0[0x4];                    /* 0x0d0 */
     Model mModel;                       /* 0x0d4 */
-    ShadowModel mShadowModel;           /* 0x124 */
+    dExtShadowModel_c mShadowModel;           /* 0x124 */
     dCcAc_c mCylinder;                  /* 0x14c */
     dBgCh_Actr mWithMeshClsn;           /* 0x180 */
 

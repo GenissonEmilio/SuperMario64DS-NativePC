@@ -6,79 +6,22 @@
 src/game/actors/d_a_obj_c1_trap.cpp:
     complete
     .text start:0x021111a0 end:0x021119d0
-
-src/_ZN9LightBeamD1Ev.cpp:
-    complete
-    .text start:0x021119d0 end:0x02111a08
-
-src/_ZN9LightBeamD0Ev.cpp:
-    complete
-    .text start:0x02111a08 end:0x02111a54
-
-src/func_ov010_02111a54.c:
-    complete
-    .text start:0x02111a54 end:0x02111a94
-
-src/_ZN9LightBeam16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02111a94 end:0x02111ab8
-
-src/_ZN9LightBeam6RenderEv.cpp:
-    complete
-    .text start:0x02111ab8 end:0x02111ae0
-
-src/_ZN9LightBeam8BehaviorEv.cpp:
-    complete
-    .text start:0x02111ae0 end:0x02111d20
-
-src/_ZN9LightBeam13InitResourcesEv.cpp:
-    complete
-    .text start:0x02111d20 end:0x02111dd0
-
-src/d_a_obj_c1_hikari.c:
-    complete
-    .text start:0x02111dd0 end:0x02111e10
-
-src/_ZN13PeachPaintingD1Ev.cpp:
-    complete
-    .text start:0x02111e10 end:0x02111e40
-
-src/_ZN13PeachPaintingD0Ev.cpp:
-    complete
-    .text start:0x02111e40 end:0x02111e84
-
-src/_ZN13PeachPainting20UpdateModelTransformEv.cpp:
-    complete
-    .text start:0x02111e84 end:0x02111ec4
-
-src/_ZN13PeachPainting16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02111ec4 end:0x02111ee8
-
-src/_ZN13PeachPainting6RenderEv.cpp:
-    complete
-    .text start:0x02111ee8 end:0x02111f28
-
-src/_ZN13PeachPainting8BehaviorEv.cpp:
-    complete
-    .text start:0x02111f28 end:0x02111fc0
-
-src/_ZN13PeachPainting13InitResourcesEv.cpp:
-    complete
-    .text start:0x02111fc0 end:0x02112004
-
-src/d_a_obj_c1_peach.c:
-    complete
-    .text start:0x02112004 end:0x0211203c
-
-src/__sinit_ov010_0211203c.c:
-    complete
     .init start:0x0211203c end:0x0211211c
+    .ctor start:0x0211219c end:0x021121a0
+    .data start:0x02112a78 end:0x02112aa0
+    .bss start:0x02112d00 end:0x02112d50
 
-src/__sinit_ov010_0211211c.c:
+src/game/actors/d_a_obj_c1_hikari.cpp:
     complete
+    .text start:0x021119d0 end:0x02111e10
     .init start:0x0211211c end:0x0211215c
+    .ctor start:0x021121a0 end:0x021121a4
+    .bss start:0x02112d50 end:0x02112d64
 
-src/__sinit_ov010_0211215c.c:
+src/actors/daObjC1Peach_c.cpp:
     complete
+    .text start:0x02111e10 end:0x0211203c
     .init start:0x0211215c end:0x0211219c
+    .ctor start:0x021121a4 end:0x021121a8
+    .bss start:0x02112d64 end:0x02112d78
+

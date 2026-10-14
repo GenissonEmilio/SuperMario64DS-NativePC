@@ -113,8 +113,8 @@ source is really `this`; it becomes implicit when the free function turns into a
 Two independent sources agree, and neither of them is this table:
 
 1. **`include/dActor_c.h:131`** declares `virtual int OnYoshiTryEat(); /* slot 18 */`,
-   and a dozen further headers repeat the declaration at the same index — BabyPenguin,
-   daObjFire_c, BobOmb, BookShot, Coin, Crate, CrazedCrate, `daDossyCap_c`, `daEyBm_c`,
+   and a dozen further headers repeat the declaration at the same index — daPgBby_c,
+   daObjFire_c, BobOmb, daBook_c, Coin, daObjBlockS_c, CrazedCrate, `daDossyCap_c`, `daEyBm_c`,
    `daKpFr_c`, `daKrb_c`, `daKrpa_c`, `daObjMarioCap_c`, `daTrs_c`. `dActor_c` sits on
    the *other* branch of `fBase_c` (`fBase_c → dBase_c → dActor_c`, where this family
    is `fBase_c → dBase_c → dScene_c → dScMgBase_c`), so on its own this would only be
@@ -320,24 +320,13 @@ base declaration and the [ov004](../config/arm9/overlays/ov004/symbols.txt) base
 | 34 | `Virtual88` | 0x020ae3b4 | 4 - **DONE**, 5 declarations; the first slot that takes ARGUMENTS (four, unanimous across seven call sites), the first whose purpose is legible from the body alone (a 4bpp pixel brush), and the first whose rename breaks a cross-file reference -- dScMgAmida_c's override calls the base body directly |
 | 35 | `Virtual8C` | 0x020ad660 | 1 - **DONE**, 2 declarations; the LAST slot of the range, the smallest, and the best-evidenced -- 13 dispatch sites across four leaf classes, all 13 of which consume the return with `cmp r0,#0` |
 
-**One deferred cleanup, from slot 31 onward.** The base bodies for slots 31, 32 and
-33 (0x020b2880, 0x020b27f4, 0x020b265c -- ROM ordinals 47, 46 and 45) all live inside
-the same src_tu candidate unit, [unit_ov004_020b0a38](../src_tu/actors/unit_ov004_020b0a38.cpp), which still
-defines them under their old `func_ov004_*` names and whose manifest
-[unit020b0a38.json](../config/tu_manifest.d/ov004/unit020b0a38.json) still lists the old
-`legacy_source` paths.  Nothing is wrong today: that unit is `"status":
-"text-verified"`, it is not enrolled, `src_tu/` is not in the ROM build, and both
-gates that read it -- `check_src_tu_compiles.py` and `tiers_ratchet.promoted_moves()`,
-the latter only looking at `"status": "promoted"` entries -- are green.  But the
-unit is stale, and it will be stale again after 32 and after 33.  Regenerate it ONCE,
-through `tools/tubuild.py`, rather than three times.
-
-**That regeneration is DUE as of slot 33** -- all three base bodies carry their
-mangled names now.  It is deliberately NOT folded into the slot-33 commit: one slot
-per change is the whole safety argument for this campaign, and regenerating a
-`src_tu/` unit touches a different tree read by a different gate.  It is a follow-up
-PR of its own.
-
+**Where the base bodies for slots 31, 32 and 33 live.** They (0x020b2880, 0x020b27f4, 0x020b265c) are
+members of the promoted dScMgBase_c TU, `src/minigames/d_s_mg_base.cpp`
+([config/tu_manifest.d/ov004/dScMgBase_c.json](../config/tu_manifest.d/ov004/dScMgBase_c.json)).
+They were folded in with the rest of the unit above func_ov004_020b2220 once that function
+byte-matched, so the TU now covers the whole ov004 unit 0x020ad660..0x020b2c58. The
+`src_tu/` candidate unit `unit020b0a38` that used to span the hole was retired earlier, so
+there is no stale shadow to regenerate.
 
 134 descendant overrides plus the base's 18 declarations. Slot 18 was the outlier;
 the median slot touches six classes. **Slot 22 has no descendant overrides at all** —

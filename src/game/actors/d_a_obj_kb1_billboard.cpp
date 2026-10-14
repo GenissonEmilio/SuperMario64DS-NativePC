@@ -9,12 +9,12 @@
  * first and UpdateModelTransform last. InitResources is the key function; the
  * inline destructor emits retail D1 then D0 with this class's RTTI and vtable.
  *
- * Leftover:
+ * leftovers:
  * - data_ov044_02111680 model handle; SharedFilePtr.h has no fields
  * - Matrix4x3_FromRotationY stays a free function (no header method)
  * - pad_0d0 unused (not live)
  * - common.h not needed (no 12-word Matrix4x3 copy)
- * - no Player.h / Camera.h
+ * - no Player.h / dCamera_c.h
  */
 
 #include "daObjKb1Billboard_c.h"
@@ -51,6 +51,7 @@ struct Kb1BillboardModelFilePtr : SharedFilePtr {
 };
 
 extern "C" Kb1BillboardModelFilePtr data_ov044_02111680;
+// @symbol __sinit_d_a_obj_kb1_billboard.cpp
 Kb1BillboardModelFilePtr data_ov044_02111680(1570);
 
 /* Every instruction the cartridge has here falls out of the one `new`.

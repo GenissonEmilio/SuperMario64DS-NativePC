@@ -1,19 +1,22 @@
 //cpp
-/* da1up_c -- the 1-Up / Mega Mushroom actor, ov002.
+/* da1up_c -- the mushroom, in all fourteen of the ways it can behave.
  *
- * Reconstructed translation unit: the contiguous linker run
- * 0x020aee40..0x020b0530, ROM ordinals 0..35, 36 functions, assembled from the
- * 36 one-function legacy sources the promotion deletes and then reconciled by
- * hand. config/tu_manifest.d/ov002/da1up_c.json names every one of them.
+ * One class covers the 1-Up and the Mega Mushroom and the ways they are placed:
+ * waiting in the open, hidden until a condition is met, moving off, spinning in
+ * place, falling to the ground. mMushroomType picks one of the 14
+ * behaviours out of a dispatch array and Behavior calls it every frame; the
+ * class also answers to Yoshi (OnYoshiTryEat) and to being turned into an egg
+ * (OnTurnIntoEgg).
+ *
+ * The TU is the contiguous linker run 0x020aee40..0x020b0530, ROM ordinals
+ * 0..35, 36 functions; config/tu_manifest.d/ov002/da1up_c.json names each one.
  *
  * IDENTITY IS THE CARTRIDGE'S, NOT THE TREE'S. ov002 file offset 0x5ad10 ==
  * address 0x02108370 holds `7da1up_c\0`, the length-prefixed Itanium type-name
  * string, and _ZTI7da1up_c at 0x0210837c is the matching __si_class_type_info
- * whose +8 word reaches _ZTI12dEnemyBase_c at 0x021081c0. The project's former
- * spelling `OneUpMushroom` is absent from every image in every encoding tested,
- * so the class, its header and its nine mangled members move to the ROM name in
- * this change. The scout's fact file is still at its pre-rename path,
- * notes/data/class-facts/OneUpMushroom.json, and records `class: da1up_c`.
+ * whose +8 word reaches _ZTI12dEnemyBase_c at 0x021081c0. The tree's former
+ * spelling `OneUpMushroom` is in no image in any encoding tested; the fact
+ * file kept at notes/data/class-facts/OneUpMushroom.json records the result.
  *
  * SOURCE ORDER IS ROM-ASCENDING AND `#pragma defer_codegen off` IS
  * LOAD-BEARING; they are ONE decision, exactly as on ov006/dScMgPanel_c. With
@@ -33,71 +36,88 @@
  * this TU emits the whole chain's vtable and typeinfo as vague-linkage
  * passengers -- see the manifest's compiler_only_output block.
  *
- * EACH `extern "C"` MEMBER KEEPS ITS OWN DECLARATIONS, INSIDE ITS OWN BODY.
- * mwccarm 2004/b56 gives a block-scope declaration in an `extern "C"` region C
- * linkage (measured on ov002/Player, 301 members), so contradictory recovered
- * views of one ROM symbol coexist without a call site being rewritten.
- * Measured on this file as it stands: `_ZN5Sound9PlayBank3EjRK7Vector3` is
- * declared at SEVEN sites and no two spellings are identical, and
- * `func_ov002_020aefb8` is declared at seven sites in five distinct spellings
- * -- `char *`, `unsigned char *` and `void *` first parameters, plus a
- * no-argument `(void)` in ordinal 24, which really does pass nothing.
- * THE EIGHT C++ DEFINITIONS ARE THE EXCEPTION, and they have to be: a class
- * member function cannot sit inside an `extern "C"` region, so the same
- * block-scope declaration there gets C++ LINKAGE and the reference mangles.
- * Their external FUNCTION declarations therefore live in two declaration-only
- * file-scope `extern "C"` regions, each placed immediately above the members
- * that need it. The file's full region census is 30 file-scope `extern "C"`
- * regions: 27 one-member wrappers, those 2, and one at the top of the file for
- * the two upward intra-TU calls. Their external DATA declarations do not: mwccarm leaves
- * a file-scope variable's name unmangled in C++, so those stay in the bodies and
- * `data_ov002_0210d9d8` keeps being a `void *` in ordinal 31 and a
- * `SharedFilePtr` in ordinal 35.
+ * THE MEMBER BODIES CANNOT HOLD THE LOCAL `extern` VIEWS. mwccarm 2004/b56
+ * gives a block-scope declaration inside a member body C++ linkage and
+ * rejects `extern "C"` at block scope outright, so the recovered
+ * per-callsite spellings each shard declared inside its (then `extern
+ * "C"`) free function cannot stay -- a bare `extern` there mangles the
+ * reference and the ROM link fails. The external FUNCTION declarations
+ * the members call are hoisted to the file-scope `extern "C"` region
+ * above the destructor instead, one spelling per symbol; the views
+ * differed only in pointer types, so marshalling and bytes are unchanged.
+ * func_ov002_020aefa4's int-returning view is the exception: a file-scope
+ * `int` declaration is `illegal function overloading` against its `void`
+ * definition, so func_ov002_020af218 tail-returns it through a
+ * function-pointer cast, `((int (*)(void *))func_ov002_020aefa4)(...)`,
+ * which mwccarm folds to the same direct `bl`. External DATA declarations
+ * stay in the bodies: mwccarm leaves a variable's name unmangled in C++.
  *
- * `decl_common.h` IS DELIBERATELY NOT INCLUDED. It declares 11 of these 36
- * symbols and 3 of the 11 have different parameter views from their definitions:
- * `func_ov002_020af4ec` (`char *` vs the definition's `void *`),
- * `func_ov002_020afc68` (`char *` vs `unsigned char *`), and
- * `func_ov002_020af684` (`void *, int, int` vs `char *, int, char *`).
- * The shared void egg-turn contract reconciles the former return disagreements
- * for `func_ov002_020af684` and `func_ov002_020afa6c`. Pulling it in makes each an
- * `illegal function overloading`
- * error against a byte-matched body. ov002/Player and ov006/dScMgPanel_c, the
- * two largest promoted TUs, exclude it for the same reason.
+ * `decl_common.h` IS DELIBERATELY NOT INCLUDED. Its claims on this TU
+ * reduce to `func_ov002_020aefa4(char *)` -- redundant with this file's
+ * own definition -- and `func_ov002_020d0d2c(void *)` and `Vec3_Asr`,
+ * both already in the decl region above; the header's other ~1900
+ * catch-all spellings would only add overloading-conflict surface
+ * against them. ov002/Player and ov006/dScMgPanel_c, the two largest
+ * promoted TUs, exclude it for the same reason.
  *
- * NINE OF THE 36 SYMBOLS ARE METHODS, written as EIGHT `da1up_c::`
- * definitions (ordinals 0 and 1 are two shards of the one destructor), and all
- * nine are this class's own vtable slots: ordinals 0/1 the destructor pair
- * (slots 16/17), 9 OnTurnIntoEgg (19), 10 OnYoshiTryEat (18), 31
- * CleanupResources (3), 32 OnPendingDestroy (12), 33 Render (9), 34 Behavior
- * (6) and 35 InitResources (0). These nine symbols already had native member
- * definitions in the shard sources; promotion consolidates and renames them.
- * The other 27 stay free functions. Fourteen of those are ROM-proven
- * non-static members of this class -- the 14 {function pointer, 0} descriptors
- * at 0x02108300..0x02108370 are pointer-to-member-function objects with a zero
- * `this` adjustment, and __sinit_ov002_02100adc copies them into the 14-element
- * dispatch array at 0x0210dc00 that ordinal 34 indexes by mMushroomType. Their
- * member-ness and their INDEX are proven; their original NAMES are not.
- * They retain address-derived spellings in this packaging step. Explicitly
- * coined names and typed methods remain reconstruction work; the other 13
- * helpers need separate membership evidence. The 14 are, by index:
+ * 35 OF THE 38 SYMBOLS ARE MEMBERS, written as 34 `da1up_c::` definitions
+ * (ordinals 0 and 1 are two shards of the one destructor). Nine are the
+ * class's own vtable slots: ordinals 0/1 the destructor pair (slots 16/17),
+ * 9 OnTurnIntoEgg (19), 10 OnYoshiTryEat (18), 31 CleanupResources (3),
+ * 32 OnPendingDestroy (12), 33 Render (9), 34 Behavior (6) and 35
+ * InitResources (0). The other 26 members are the former free helpers:
+ * fourteen are ROM-proven non-static members -- the {function pointer, 0}
+ * descriptors at 0x02108300..0x02108370 are pointer-to-member-function
+ * objects with a zero `this` adjustment, and the static initializer copies
+ * them into the 14-element dispatch array at 0x0210dc00 that Behavior
+ * indexes by mMushroomType; the rest each took the actor as arg0 in a
+ * `char *`/`void *`/`da1up_c *` spelling and recast it. Their member-ness
+ * and index are proven; their original NAMES are not, so they keep
+ * address-derived spellings. The 14 are, by index:
  * 0 020aff10, 1 020afe4c, 2 020afd10,
  * 3 020afc44, 4 020afbb4, 5 020afa98, 6 020afa6c, 7 020af950, 8 020af924,
  * 9 020af838, 10 020af7cc, 11 020afa50, 12 020af908, 13 020af724.
+ * Behavior dispatches them as `void (da1up_c::*)()`; the opaque shadow
+ * class the shard used for the PMF type is gone (the member-pointer call
+ * shape is byte-identical under the real class).
  * Leftover fold adds the two classInit factories at 0x020b0530/0x020b0580,
  * so the licensed run is 38 functions through 0x020b05d0.
  *
- * deslop
- * Leftover (cited MATCH walls):
+ * deslop leftovers:
+ * - func_ov002_020aefa4 stays a free `void` function: MEASURED, declaring
+ *   it `int` so func_ov002_020af218 could tail-return it costs four of its
+ *   five words; af218 instead tail-returns it through an
+ *   `int (*)(void *)` cast of its name (folds to the same `bl`).
  * - dBgCh_Actr::Init / dCcAc_c::Init / DropShadowRadHeight / ReflectAngle 6az
  *   (Fix12i mangles as i; ROM is Fix12<int> -- method form Undefined)
  * - Particle::System::New / NewSimple: no method declaration in include/
  * - Behavior 0x100: named ++mStateTimer size-DIFF vs unsigned-short launder
- *   (0x38c stays unk_38c: naming it mStateTimer shadowed dEnemyBase_c::mStateTimer
- *   at 0x100. Distinct field; this leftover is the 0x100 u16 launder.)
- * - struct C PMF stand-in (mwccarm PMF representation depends on the class)
+ *   (the u16 casts of dEnemyBase_c::mStateTimer at 0x100 stay everywhere they
+ *   appear. The u16 at 0x38c is a distinct field, mStateFrames.)
+ * - func_ov002_020af0c0: reading the player's position directly instead of
+ *   through the laundered int* changes the bytes, so the launder stays.
  * - SharedFilePtr has no recovered fields; handles stay data_ov002_*
- * - decl_common.h stays out (3 of 11 declarations disagree with MATCH bodies)
+ * - decl_common.h stays out (its surviving claims are redundant with the
+ *   decl region and this file's own definition)
+ *
+ * Readability pass: the da1up_c fields at 0x378..0x394 are named, the mushroom
+ * types are the da1up_MushroomType enum, and actor, sound, cylinder-flag and
+ * particle ids are enums. Leftover:
+ * - The da1up_MushroomType names describe what each type does when it runs;
+ *   they are not recovered original names (nor are the address-named
+ *   handlers).
+ * - unk_0a4 / unk_0ac are dActor_c's velocity x/z words (UpdatePosWithHorzSpeedAndAng
+ *   writes them from mHorzSpeed and mPrevAngleY); they stay unnamed here because
+ *   naming them is a shared dActor_c.h change.
+ * - The SND3_* names and the effect ids are known by use only (0x68 is played
+ *   as a mushroom launches, 0x69 once when type 13 starts).
+ * - The vulnFlags/hitFlags bit names come from the best-effort table in
+ *   include/dCc_c.h.
+ * - The PlayBank3 / IsPlayerInRange / ReflectAngle / DropShadowRadHeight /
+ *   Vec3_* / Matrix4x3_* / cstd / Particle::System::New externs are the
+ *   spelled-out declarations in the file-scope `extern "C"` region (the
+ *   Fix12/undeclared walls above are why real method/header forms are not
+ *   used); member bodies cannot carry per-site views.
  */
 
 #pragma defer_codegen off
@@ -111,24 +131,82 @@
 #include "Sound.h"
 #include "SharedFilePtr.h"
 
+bool ApproachLinear(short &value, short target, short step);
+
+/* Actor IDs, from the profile ids in symbols/actor_debug_names.tsv: 276 and
+   277 are this class's two profiles, 331 is the 1UP logo it spawns. */
+enum {
+    ACTOR_ONEUPKINOKO     = 276,
+    ACTOR_SCALEUP_KINOKO  = 277,
+    ACTOR_OBJ_1UPLOGO     = 331
+};
+
+/* Sound::PlayBank3 ids. SND3_COIN / SND3_COIN_UNDERWATER are the pair
+   dActor_c::GivePlayerCoins plays for a coin (the second when the player is
+   underwater); SND3_GIVE_LIFE is played alongside GiveLives(1) here and in
+   daObjMarioCap_c; SND3_LAUNCH is played as a mushroom pops out; SND3_UNK_69
+   is played once when type 13 starts. Only their use is known. */
+enum {
+    SND3_COIN            = 0x11,
+    SND3_COIN_UNDERWATER = 0x12,
+    SND3_LAUNCH          = 0x68,
+    SND3_UNK_69          = 0x69,
+    SND3_GIVE_LIFE       = 0x6e
+};
+
+/* Bit values of the cylinder and actor flag words used below. dCc_c::flags bit
+   0 disables the cylinder (dCc_c::Update bails on it); the vulnFlags and
+   hitFlags bits are read from the best-effort table in include/dCc_c.h; the
+   mFlags bit is the clip-test enable from the table in include/dActor_c.h. */
+enum {
+    CC_FLAGS_DISABLED    = 0x1,
+    CC_VULN_YOSHI_TONGUE = 0x8000,
+    CC_HIT_PLAYER        = 0x400000,
+    ACTOR_FLAG_CLIP_TEST = 0x1,
+    ACTOR_FLAG_OFF_SCREEN = 0x8
+};
+
+/* Particle effect ids handed to Particle::System::New / NewSimple. */
+enum {
+    PTCL_SCALEUP_KINOKO_TRAIL = 0x108, /* the effect func_ov002_020aeee4 starts for actorID 277 ("trail" is this file's word for it) */
+    PTCL_TYPE_11_12_CLEANUP   = 0xd2   /* started by CleanupResources for types 11 and 12 */
+};
+
 /* The only two intra-TU calls that run UPWARD in ROM address order, so the only
    two that ROM-ascending source order cannot satisfy from the definition above:
    ordinal 21 (0x020afa50) calls ordinal 22 (0x020afa6c), and ordinal 18
    (0x020af908) calls ordinal 19 (0x020af924). Both spellings are the
    definitions' own, so nothing below has to be adapted to them. */
-extern "C" {
-void func_ov002_020afa6c(char *c);
-void func_ov002_020af924(char *c);
-}
 
-/* -------------------------------------------------------------------------- */
+/* File-scope extern "C" region covering the external functions the member
+   bodies below call. mwccarm 2004/b56 gives a block-scope `extern` declaration
+   inside a member body C++ linkage (and rejects `extern "C"` at block scope
+   outright), so the recovered per-callsite views these shards each declared
+   locally cannot stay where they were; one spelling per symbol is hoisted here.
+   The views differed only in pointer types, so marshalling -- and the emitted
+   bytes -- are unchanged. func_ov002_020aefa4 needs no entry: its definition
+   below is already file-scope C linkage. */
+struct Vec3;
+extern "C" {
+int Vec3_HorzLen(const Vector3*);
+short Vec3_HorzAngle(const Vector3*, const Vector3*);
+int func_ov002_020d0d2c(void*);
+void Vec3_Asr(struct Vec3*, struct Vec3*, int);
+void Matrix4x3_FromRotationY(void*, int);
+void Matrix4x3_FromTranslation(void*, int, int, int);
+void GiveCoins(int, int);
+short _ZN4cstd5atan2E5Fix12IiES1_(int, int);
+int _ZN4cstd4fdivEii(int, int);
+short _ZN8dActor_c12ReflectAngleE5Fix12IiES1_s(void*, int, int, short);
+void _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_j(void*, void*, void*, int, int, unsigned char);
+int _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(unsigned int, unsigned int, int, int, int, const struct Vec3*, void*);
+}
 /*                         _ZN7da1up_cD0Ev, 0x020aee88, size 0x5c              */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7da1up_cD1Ev
 // @symbol _ZN7da1up_cD0Ev
 /* ONE definition, both variants. The complete-object destructor (D1) tears the
    four members down in exact reverse of the factories' construction order --
-   ShadowModel at 0x350, Model at 0x300, dBgCh_Actr at 0x144, dCcAc_c at 0x110,
+   dExtShadowModel_c at 0x350, Model at 0x300, dBgCh_Actr at 0x144, dCcAc_c at 0x110,
    then ~dEnemyBase_c -- and every one of those is a typed member of this class,
    so the body is empty and the compiler writes the chain. The deleting
    destructor (D0) inlines that same teardown and then calls
@@ -141,55 +219,67 @@ da1up_c::~da1up_c()
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020aeee4
-extern "C" {
-void func_ov002_020aeee4(char* c) {
-    extern unsigned int _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
-        unsigned int uniqueID, unsigned int effectID,
-        int x, int y, int z, const void* dir, void* callback);
+// @symbol _ZN7da1up_c19func_ov002_020aeee4Ev
+/* Trail effect: asks Particle::System::New for one effect at the mushroom's
+   position, 30 units (0x1e000) above it. The effect id is 0x108 for the Mega
+   Mushroom (actorID 277) and 0 for the 1-Up. The previous frame's handle is read
+   back through a volatile pointer and the new one stored in mParticleID. While
+   the actor is off screen (mFlags bit 3) it only runs when CURRENT_GAMEMODE
+   (data_0209f2d8) is 1. */
+void da1up_c::func_ov002_020aeee4() {
     extern unsigned char data_0209f2d8;
 
-    int t1 = (*(unsigned short*)(c + 0xc) == 0x115);
+    int t1 = (actorID == ACTOR_SCALEUP_KINOKO);
     unsigned int effectID = 0;
-    if (t1 != false) effectID = 0x108;
+    if (t1 != false) effectID = PTCL_SCALEUP_KINOKO_TRAIL;
 
-    int t2 = ((*(unsigned int*)(c + 0xb0) & 8) != 0);
+    int t2 = ((mFlags & ACTOR_FLAG_OFF_SCREEN) != 0);
     if (t2 != false) {
         int t3 = (data_0209f2d8 == 1);
         if (t3 == false) return;
     }
 
     Vector3 pos;
-    pos.x = *(int*)(c + 0x5c);
-    pos.y = *(int*)(c + 0x60);
-    pos.z = *(int*)(c + 0x64);
+    pos.x = mPosX;
+    pos.y = mPosY;
+    pos.z = mPosZ;
     pos.y += 0x1e000;
     volatile Vector3* vp = &pos;
-    *(unsigned int*)(c + 0x394) = _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
-        *(volatile unsigned int*)(c + 0x394), effectID, vp->x, vp->y, pos.z, 0, 0);
-}
+    mParticleID = _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
+        *(volatile unsigned int*)&mParticleID, effectID, vp->x, vp->y, pos.z, 0, 0);
 }
 
-/* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020aefa4
-/* MEASURED: this definition must stay `void`. Declaring it `int` -- so that
-   ordinal 7's `return func_ov002_020aefa4(c);` would type-check against a
-   file-scope declaration -- costs four of this function's five words. Ordinal 7
-   keeps its own `int` view at block scope instead, which is exactly the C
-   linkage the enclosing `extern "C"` region gives it. */
+/* Sets bit 0x8000 in the cylinder's vulnFlags -- the "yoshi tongue" bit of the
+   table in include/dCc_c.h (a best-effort reading there) -- so the mushroom can
+   be eaten. func_ov002_020af218 calls it while the player is in range.
+   MEASURED: this definition must stay `void`. Declaring it `int` -- so that
+   ordinal 7's tail-return would type-check against a file-scope declaration
+   -- costs four of this function's five words, and a file-scope `int`
+   declaration beside this `void` definition is illegal function overloading
+   anyway, so ordinal 7 tail-returns it through an `int (*)(void *)` cast of
+   its name instead. */
 extern "C" {
-void func_ov002_020aefa4(char *self)
+void func_ov002_020aefa4(char *raw)
 {
-    *(unsigned int *)(self + 0x12c) |= 0x8000;
+    da1up_c *self = (da1up_c*)raw;
+    self->mdCcAc_c.vulnFlags |= CC_VULN_YOSHI_TONGUE;
 }
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020aefb8
-/* The shard carried shadow `dActor_c`/`dEnemyBase_c` tags to name three
+// @symbol _ZN7da1up_c19func_ov002_020aefb8Ev
+/* The shared per-frame physics step. Moves by mHorzSpeed along mPrevAngleY
+   (UpdatePosWithHorzSpeedAndAng). While on the ground it adds ten times the
+   floor normal's x and z to the words at 0xa4 / 0xac (the x and z of a velocity
+   whose y is mVertSpeed: func_ov002_020afd10 saves and restores them as that
+   triple), sets mVertSpeed to -0.4 times its value on the frame it lands and to
+   0 otherwise, and raises mHorzSpeed to the horizontal length of that vector
+   when that is larger, capped at 15 units (0xf000). Then it integrates position
+   (UpdatePosWithOnlySpeed), runs the wall/floor collision update, and on a wall
+   hit reflects mPrevAngleY about the wall normal.
+   The shard carried shadow `dActor_c`/`dEnemyBase_c` tags to name three
    non-virtual methods. The merged TU has both real classes complete through
    da1up_c.h, so the shadows are gone and the calls go through the real types --
    which mangle identically, the class name being the whole of the difference.
@@ -197,130 +287,128 @@ void func_ov002_020aefa4(char *self)
    symbol encodes by-value Fix12<int> parameters; the recorded typed-call
    experiment changed the bytes. This bridge remains pending further
    signature/codegen work. */
-extern "C" {
-void func_ov002_020aefb8(char* self) {
-    extern short _ZN8dActor_c12ReflectAngleE5Fix12IiES1_s(void *, int, int, short);
-    extern int Vec3_HorzLen(void*);
+void da1up_c::func_ov002_020aefb8() {
 
-    int *px;
-    int *pz;
-    ((dActor_c*)self)->UpdatePosWithHorzSpeedAndAng();
-    if (((dBgCh_Actr*)(self + 0x144))->IsOnGround()) {
-        px = (int*)(int)(self + 0xa4);
-        *px += *(int*)(self + 0xd4) * 0xa;
-        pz = (int*)(int)(self + 0xac);
-        *pz += *(int*)(self + 0xdc) * 0xa;
-        if (((dBgCh_Actr*)(self + 0x144))->JustHitGround()) {
-            *(int*)(self + 0xa8) = -(*(int*)(self + 0xa8) << 2) / 10;
+    UpdatePosWithHorzSpeedAndAng();
+    if (mWithMeshClsn.IsOnGround()) {
+        unk_0a4 += mFloorNormalX * 0xa;
+        unk_0ac += mFloorNormalZ * 0xa;
+        if (mWithMeshClsn.JustHitGround()) {
+            mVertSpeed = -(mVertSpeed << 2) / 10;
         } else {
-            *(int*)(self + 0xa8) = 0;
+            mVertSpeed = 0;
         }
-        if (Vec3_HorzLen(self + 0xa4) > *(int*)(self + 0x98)) {
-            *(int*)(self + 0x98) = Vec3_HorzLen(self + 0xa4);
-            if (*(int*)(self + 0x98) >= 0xf000) *(int*)(self + 0x98) = 0xf000;
+        if (Vec3_HorzLen((Vector3*)&unk_0a4) > mHorzSpeed) {
+            mHorzSpeed = Vec3_HorzLen((Vector3*)&unk_0a4);
+            if (mHorzSpeed >= 0xf000) mHorzSpeed = 0xf000;
         }
     }
-    ((dActor_c*)self)->UpdatePosWithOnlySpeed((dCc_c*)(self + 0x110));
-    ((dEnemyBase_c*)self)->UpdateWMClsn(*(dBgCh_Actr*)(self + 0x144), 0);
-    if (!((dBgCh_Actr*)(self + 0x144))->IsOnWall()) return;
-    *(short*)(self + 0x94) = _ZN8dActor_c12ReflectAngleE5Fix12IiES1_s((dActor_c*)self, *(int*)(self + 0xe0), *(int*)(self + 0xe8), *(short*)(self + 0x94));
-}
+    UpdatePosWithOnlySpeed((dCc_c*)&mdCcAc_c);
+    UpdateWMClsn(mWithMeshClsn, 0);
+    if (!mWithMeshClsn.IsOnWall()) return;
+    mPrevAngleY = _ZN8dActor_c12ReflectAngleE5Fix12IiES1_s(this, mWallNormalX, mWallNormalZ, mPrevAngleY);
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af0c0
-extern "C" {
-void func_ov002_020af0c0(char* c){
+// @symbol _ZN7da1up_c19func_ov002_020af0c0Ev
+/* Steering toward the player, called from state 1 of type 7. Takes the closest
+   player; if there is one, builds the vector to it -- the aim point is the
+   player's y lowered by 80 units (0x50000) when func_ov002_020d0d2c says the
+   player is in one of two Player states and raised by 120 units (0x78000)
+   otherwise -- and steps mPrevAngleY toward the horizontal bearing and
+   mPrevAngleX toward the pitch (cstd::atan2(horizontal length, height
+   difference)), at most 0x1000 (22.5 degrees) per frame each. mVertSpeed and
+   mHorzSpeed are then 30 units (0x1e) times the two s16 words of
+   data_02082214's entry for mPrevAngleX >> 4 -- the sin/cos table, 0x1000 = 1.0
+   -- mVertSpeed from word 1 and mHorzSpeed from word 0. Always finishes with
+   func_ov002_020af3a8. */
+void da1up_c::func_ov002_020af0c0() {
     extern short data_02082214[];
-    extern char* _ZN8dActor_c13ClosestPlayerEv(void*);
-    extern int func_ov002_020d0d2c(void*);
-    extern int Vec3_HorzLen(const Vector3*);
-    extern int _ZN4cstd5atan2E5Fix12IiES1_(int, int);
-    extern short Vec3_HorzAngle(const Vector3*, const Vector3*);
-    extern void _Z14ApproachLinearRsss(short*, int, int);
     /* Forward: ordinal 11 sits above this one in ROM order. */
-    extern void func_ov002_020af3a8(char* thiz);
 
-    char* p = _ZN8dActor_c13ClosestPlayerEv(c);
+    Player* p = ClosestPlayer();
     if(p != 0){
         Vector3 diff;
         Vector3 ppos;
-        int* s = (int*)((void*)(int)((char*)(p) + 0x5c));
+        /* The player's position is read through an int* laundered via
+           (void*)(int); reading p->mPosX/Y/Z directly here changes the bytes
+           (tried: it did not byte-match), so the launder stays. */
+        int* s = (int*)((void*)(int)&p->mPosX);
         ppos.x = s[0];
         ppos.y = s[1];
         ppos.z = s[2];
-        diff.x = ppos.x - *(int*)(c+0x5c);
+        diff.x = ppos.x - mPosX;
         if(func_ov002_020d0d2c(p) != 0)
-            diff.y = ppos.y - *(int*)(c+0x60) - 0x50000;
+            diff.y = ppos.y - mPosY - 0x50000;
         else
-            diff.y = ppos.y - *(int*)(c+0x60) + 0x78000;
-        diff.z = ppos.z - *(int*)(c+0x64);
+            diff.y = ppos.y - mPosY + 0x78000;
+        diff.z = ppos.z - mPosZ;
         int len = Vec3_HorzLen(&diff);
-        int pitch = _ZN4cstd5atan2E5Fix12IiES1_(len, diff.y);
-        short yaw = Vec3_HorzAngle((Vector3*)(c+0x5c), &ppos);
-        _Z14ApproachLinearRsss((short*)(c+0x94), yaw, 0x1000);
-        _Z14ApproachLinearRsss((short*)(c+0x92), pitch, 0x1000);
-        *(int*)(c+0xa8) = (short)data_02082214[(*(unsigned short*)(c+0x92) >> 4)*2+1] * (short)0x1e;
-        *(int*)(c+0x98) = (short)data_02082214[(*(unsigned short*)(c+0x92) >> 4)*2] * (short)0x1e;
+        short pitch = _ZN4cstd5atan2E5Fix12IiES1_(len, diff.y);
+        short yaw = Vec3_HorzAngle((Vector3*)&mPosX, &ppos);
+        ApproachLinear(mPrevAngleY, yaw, 0x1000);
+        ApproachLinear(mPrevAngleX, pitch, 0x1000);
+        mVertSpeed = (short)data_02082214[(*(unsigned short*)&mPrevAngleX >> 4)*2+1] * (short)0x1e;
+        mHorzSpeed = (short)data_02082214[(*(unsigned short*)&mPrevAngleX >> 4)*2] * (short)0x1e;
     }
-    func_ov002_020af3a8(c);
-}
+    func_ov002_020af3a8();
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af1dc
-extern "C" {
-int func_ov002_020af1dc(char* c){
-  extern int _ZN8dActor_c10FindWithIDEj(unsigned int);
-  int r=0;
-  unsigned int id=*(unsigned int*)(c+0x134);
-  if(id && (r=_ZN8dActor_c10FindWithIDEj(id)) && (*(int*)(c+0x130)&0x400000))
-    return r;
+// @symbol _ZN7da1up_c19func_ov002_020af1dcEv
+/* The player touching the mushroom, or 0. mdCcAc_c.otherOwner is the unique ID
+   of the other cylinder's owner (cleared by dCc_c::Clear, which Behavior calls
+   every frame); it is looked up with dActor_c::FindWithID and returned only
+   when hitFlags bit 0x400000 is set -- the "player" bit of the table in
+   include/dCc_c.h, a best-effort reading there that the callers' use of the
+   result as a Player agrees with. */
+int da1up_c::func_ov002_020af1dc() {
+  Player* r=0;
+  unsigned int id=mdCcAc_c.otherOwner;
+  if(id && (r=(Player*)dActor_c::FindWithID(id)) && (mdCcAc_c.hitFlags&CC_HIT_PLAYER))
+    return (int)r;
   return 0;
 }
-}
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af218
-/* The second parameter is FORWARDED, not merely declared. The five callers
+// @symbol _ZN7da1up_c19func_ov002_020af218Ei
+/* Stores in mShown whether the player is within `range` whole units
+   (IsPlayerInRange shifts it into 20.12), and when it is calls
+   func_ov002_020aefa4 to open the mushroom to Yoshi. Returns 0 when out of range,
+   otherwise that call's result. Every caller in this TU passes 0xbb8 (3000
+   units).
+   The second parameter is FORWARDED, not merely declared. The callers
    below pass 0xbb8 in r1 and this body hands that same word to
    _ZN8dActor_c15IsPlayerInRangeEi, whose ROM name mangles as
-   dActor_c::IsPlayerInRange(int): `this` in r0 and one `int` in r1, exactly as
-   include/decl_Actor.h declares it and as the other five call sites in this
-   file already spell it. The ROM emits no `mov` before the `bl` because r1
-   still holds the incoming range, so naming the argument is byte-neutral here
-   and stops the call from handing the callee whatever r1 happens to hold on a
-   host ABI. */
-extern "C" {
-int func_ov002_020af218(char* c, int range){
-  extern int _ZN8dActor_c15IsPlayerInRangeEi(void*, int);
-  extern int func_ov002_020aefa4(void*);
-  *(char*)(c+0x38e)=(char)_ZN8dActor_c15IsPlayerInRangeEi(c, range);
-  unsigned char v=*(unsigned char*)(c+0x38e);
+   dActor_c::IsPlayerInRange(int): `this` in r0 and one `int` in r1, which is
+   exactly the member call below. The ROM emits no `mov` before the `bl`
+   because r1 still holds the incoming range, so naming the argument is
+   byte-neutral here and stops the call from handing the callee whatever r1
+   happens to hold on a host ABI. */
+int da1up_c::func_ov002_020af218(int range) {
+  mShown=(char)IsPlayerInRange(range);
+  unsigned char v=mShown;
   if(v==0) return v;
-  return func_ov002_020aefa4(c);
-}
+  return ((int (*)(void*))func_ov002_020aefa4)((void*)this);
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af248
-extern "C" {
-int func_ov002_020af248(char* c, int n){
-  extern int _ZN8dActor_c24KillAndTrackInDeathTableEv(void*);
-  int v = ((da1up_c*)c)->unk_38c;
+// @symbol _ZN7da1up_c19func_ov002_020af248Ei
+/* The expiry countdown, called with n = 30 from state 2 of the behaviours that
+   have one. Nothing happens while mStateFrames < n; for the next 40 frames
+   (n <= mStateFrames < n + 0x28) mBlinkOn follows the low bit of mStateFrames
+   (visible on odd frames); from mStateFrames == n + 0x28 on the actor is removed
+   (KillAndTrackInDeathTable) and 1 is returned. Returns 0 otherwise. */
+int da1up_c::func_ov002_020af248(int n) {
+  int v = mStateFrames;
   if(v < n) return 0;
   if(v < n + 0x28){
-    *(unsigned char*)(c+0x38f) = (v & 1) != 0;
+    mBlinkOn = (v & 1) != 0;
   } else {
-    _ZN8dActor_c24KillAndTrackInDeathTableEv(c);
+    KillAndTrackInDeathTable();
     return 1;
   }
   return 0;
-}
 }
 
 /* The first of the two file-scope `extern "C"` regions. Ordinal 9 is a class
@@ -332,41 +420,45 @@ int func_ov002_020af248(char* c, int n){
    ordinals 19 and 22 retain the player lookup result and its null test. */
 extern "C" {
 void GiveLives(int count);
-void func_ov002_020af684(char* self, int target, char* player);
 void func_ov002_020bdf8c(Player* player);
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7da1up_c13OnTurnIntoEggER6Player
 /* Vtable slot 19, verified against config/arm9/overlays/ov002/relocs.txt:
-   _ZTV7da1up_c (0x021083c8) + 0x4c relocates to 0x020af2b0, this address. */
+   _ZTV7da1up_c (0x021083c8) + 0x4c relocates to 0x020af2b0, this address.
+   Collects the mushroom for `player` (the hook for a mushroom being turned
+   into an egg, per its slot). Types 11 and 12 go through
+   func_ov002_020af684 with target 5 and 7, the same hand-off their touch
+   handlers make. Otherwise a 1-Up (actorID 276) plays sound 0x6e, gives one
+   life, spawns the 1UP logo actor (331) 180 units (0xb4000) above itself and
+   removes itself; any other actor ID calls Player::func_ov002_020bdf8c on
+   `player` and removes itself. */
 void da1up_c::OnTurnIntoEgg(Player &player)
 {
-    if (mMushroomType == 0xb) {
-        return func_ov002_020af684((char*)this, 5, (char*)&player);
+    if (mMushroomType == MUSHROOM_SPIN_TRIGGER_FOR_5) {
+        return func_ov002_020af684(MUSHROOM_HIDDEN_FLEE, &player);
     }
-    if (mMushroomType == 0xc) {
-        return func_ov002_020af684((char*)this, 7, (char*)&player);
+    if (mMushroomType == MUSHROOM_SPIN_TRIGGER_FOR_7) {
+        return func_ov002_020af684(MUSHROOM_HIDDEN_CHASE, &player);
     }
-    unsigned isMatch = (actorID == 0x114);
+    unsigned isMatch = (actorID == ACTOR_ONEUPKINOKO);
     if (isMatch) {
         Vector3 vec;
-        Sound::PlayBank3(0x6e, *(Vector3 *)&mCamSpacePosX);
+        Sound::PlayBank3(SND3_GIVE_LIFE, *(Vector3 *)&mCamSpacePosX);
         GiveLives(1);
         vec.x = mPosX;
         vec.y = mPosY;
         vec.z = mPosZ;
         vec.y += 0xb4000;
-        Spawn(0x14b, 8, vec, 0, mAreaId, -1);
+        Spawn(ACTOR_OBJ_1UPLOGO, 8, vec, 0, mAreaId, -1);
         KillAndTrackInDeathTable();
     } else {
-        func_ov002_020bdf8c(&player);
+        ((Player *)(&player))->func_ov002_020bdf8c();
         KillAndTrackInDeathTable();
     }
 }
 
-/* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 // @symbol _ZN7da1up_c13OnYoshiTryEatEv
 /* Vtable slot 18. Two instructions: mov r0,#4; bx lr. */
@@ -376,644 +468,582 @@ s32 da1up_c::OnYoshiTryEat()
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af3a8
-extern "C" {
-void func_ov002_020af3a8(char* c)
-{
-    extern void _ZN5Sound9PlayBank3EjRK7Vector3(u32 id, struct Vector3* v);
-    extern void _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(u32 a, u32 b, struct Vector3* v, void* rot, int e, int f);
-    extern void _ZN8dActor_c24KillAndTrackInDeathTableEv(void* thiz);
-    extern void func_ov002_020bdf8c(int);
+// @symbol _ZN7da1up_c19func_ov002_020af3a8Ev
+/* The touch-collection step, called from every behaviour except types 6, 8, 9,
+   10, 11 and 12. Does nothing unless func_ov002_020af1dc finds a player touching
+   the cylinder. Then: the Mega Mushroom (actorID 277) calls
+   Player::func_ov002_020bdf8c on that player; the 1-Up (actorID 276) plays sound
+   0x6e, gives one life and spawns the 1UP logo actor (331) 180 units (0xb4000)
+   above itself; either way the mushroom then removes itself. */
+void da1up_c::func_ov002_020af3a8() {
 
-    int r = func_ov002_020af1dc(c);
+    Player* r = (Player*)func_ov002_020af1dc();
     if (r == 0)
         return;
 
-    unsigned short h = *(unsigned short*)(c + 0xc);
-    unsigned is115 = (h == 0x115);
+    unsigned short h = actorID;
+    unsigned is115 = (h == ACTOR_SCALEUP_KINOKO);
     if (is115) {
-        func_ov002_020bdf8c(r);
+        r->func_ov002_020bdf8c();
     } else {
-        unsigned is114 = (h == 0x114);
+        unsigned is114 = (h == ACTOR_ONEUPKINOKO);
         if (is114) {
             struct Vector3 vec;
-            _ZN5Sound9PlayBank3EjRK7Vector3(0x6e, (struct Vector3*)(c + 0x74));
+            Sound::PlayBank3(SND3_GIVE_LIFE, *(Vector3*)&mCamSpacePosX);
             GiveLives(1);
-            vec.x = *(Fix12i*)(c + 0x5c);
-            vec.y = *(Fix12i*)(c + 0x60);
-            vec.z = *(Fix12i*)(c + 0x64);
+            vec.x = mPosX;
+            vec.y = mPosY;
+            vec.z = mPosZ;
             vec.y += 0xb4000;
-            _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
-                0x14b, 8, &vec, 0, *(signed char*)(c + 0xcc), -1);
+            dActor_c::Spawn(
+                ACTOR_OBJ_1UPLOGO, 8, vec, 0, mAreaId, -1);
         }
     }
-    _ZN8dActor_c24KillAndTrackInDeathTableEv(c);
-}
+    KillAndTrackInDeathTable();
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af474
-extern "C" {
-void func_ov002_020af474(char* o)
-{
+// @symbol _ZN7da1up_c19func_ov002_020af474Ev
+/* The launch arc of the types that pop out (0, 1, 5 and 7). For the first five
+   frames of the state (mStateTimer < 5) it only sets mVertSpeed to 40 units
+   (0x28000). After that, every frame it lowers mPrevAngleX by 0x1000 (22.5
+   degrees) and reads the s16 pair of data_02082214 (the sin/cos table, 0x1000 =
+   1.0) at index mPrevAngleX >> 4: mVertSpeed = 30 units (0x1e) times word 1 plus
+   2 units (0x2000); mHorzSpeed = -30 units times word 0. */
+void da1up_c::func_ov002_020af474() {
     extern s16 data_02082214[];
     int a;
 
-    if (*(u16*)(o + 0x100) < 5) {
-        *(int*)(o + 0xa8) = 0x28000;
+    if (*(u16*)&mStateTimer < 5) {
+        mVertSpeed = 0x28000;
         return;
     }
 
     {
-        s16* p = (s16*)(o + 0x92);
+        s16* p = &mPrevAngleX;
         *p = *p - 0x1000;
     }
 
-    a = (int)*(u16*)(o + 0x92) >> 4;
-    *(int*)(o + 0xa8) = (s16)data_02082214[a * 2 + 1] * (s16)0x1e + 0x2000;
+    a = (int)*(u16*)&mPrevAngleX >> 4;
+    mVertSpeed = (s16)data_02082214[a * 2 + 1] * (s16)0x1e + 0x2000;
 
-    a = (int)*(u16*)(o + 0x92) >> 4;
-    *(int*)(o + 0x98) = (s16)data_02082214[a * 2] * (s16)-0x1e;
-}
+    a = (int)*(u16*)&mPrevAngleX >> 4;
+    mHorzSpeed = (s16)data_02082214[a * 2] * (s16)-0x1e;
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af4ec
-extern "C" {
-void func_ov002_020af4ec(void* self)
-{
-    extern void Matrix4x3_FromRotationY(void* m, int angle);
-    extern void Vec3_Asr(struct Vector3* d, struct Vector3* s, int sh);
-    extern void Matrix4x3_FromTranslation(void* m, int x, int y, int z);
-    extern int _ZNK10dBgCh_Actr10IsOnGroundEv(void* thiz);
-    extern void _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(void* thiz, void* shadow, void* mtx, int height, int rad, unsigned int x);
+// @symbol _ZN7da1up_c19func_ov002_020af4ecEv
+/* Per-frame model matrix and drop shadow, run at the end of every Behavior,
+   including the frames UpdateYoshiEat returns nonzero. mModel's matrix gets
+     types 11 and 12: a Y rotation by mAngleY and translation mPos >> 3;
+     other types:     translation mPos >> 3 only (through Vec3_Asr).
+   Nothing more happens while mShown is 0. Otherwise the shadow size is chosen and
+   handed to dActor_c::DropShadowRadHeight (shadow, matrix, radius, depth,
+   opacity) with opacity word 0xf; the local named `radius` is passed in the
+   callee's radius slot and `depth` in its depth slot:
+     types 11 and 12: radius = depth = 80 units (0x50000);
+     airborne:        dBgCh_Gnd probes the floor from 40 units (0x28000) above
+                      the actor; depth = the actor's height over the hit (1 unit
+                      at least), radius = twice (cylinder radius - 10 units)
+                      minus depth * 0x180 / 0x1000 (a Fix12 multiply by 0.09375),
+                      10 units at least, and then depth += 60 units (0x3c000);
+     on the ground:   depth = 60 units, radius = twice (cylinder radius - 10 units). */
+void da1up_c::func_ov002_020af4ec() {
 
-    int rad;
-    char* c = (char*)self;
-    int height;
+    int depth;
+    int radius;
     struct Vector3 v2;
     struct Vector3 v1;
 
-    if ((unsigned)(*(int*)(c + 0x384) - 0xb) <= 1) {
-        Matrix4x3_FromRotationY(c + 0x31c, *(short*)(c + 0x8e));
-        *(int*)(c + 0x340) = *(int*)(c + 0x5c) >> 3;
-        *(int*)(c + 0x344) = *(int*)(c + 0x60) >> 3;
-        *(int*)(c + 0x348) = *(int*)(c + 0x64) >> 3;
+    if ((unsigned)(mMushroomType - 0xb) <= 1) {
+        Matrix4x3_FromRotationY(&mModel.mat4x3, mAngleY);
+        mModel.mat4x3.m[9] = mPosX >> 3;
+        mModel.mat4x3.m[10] = mPosY >> 3;
+        mModel.mat4x3.m[11] = mPosZ >> 3;
     } else {
-        Vec3_Asr(&v1, (struct Vector3*)(c + 0x5c), 3);
-        Matrix4x3_FromTranslation(c + 0x31c, v1.x, v1.y, v1.z);
+        Vec3_Asr((struct Vec3*)&v1, (struct Vec3*)&mPosX, 3);
+        Matrix4x3_FromTranslation(&mModel.mat4x3, v1.x, v1.y, v1.z);
     }
 
-    if (*(unsigned char*)(c + 0x38e) == 0) return;
+    if (mShown == 0) return;
 
-    if ((unsigned)(*(int*)(c + 0x384) - 0xb) <= 1) {
-        height = 0x50000;
-        rad = 0x50000;
-    } else if (!_ZNK10dBgCh_Actr10IsOnGroundEv(c + 0x144)) {
-        int y = *(int*)(c + 0x60);
-        int z = *(int*)(c + 0x64);
+    if ((unsigned)(mMushroomType - 0xb) <= 1) {
+        radius = 0x50000;
+        depth = 0x50000;
+    } else if (!mWithMeshClsn.IsOnGround()) {
+        int y = mPosY;
+        int z = mPosZ;
         int adjustedY;
-        int x = *(int*)(c + 0x5c);
+        int x = mPosX;
         adjustedY = y + 0x28000;
         v2.x = x;
         v2.y = adjustedY;
         v2.z = z;
         dBgCh_Gnd rg;
         rg.SetObjAndPos(v2, 0);
-        rad = v2.y;
+        depth = v2.y;
         if (rg.DetectClsn()) {
-            rad = rg.clsnY;
+            depth = rg.clsnY;
         }
-        rad = *(int*)(c + 0x60) - rad;
-        if (rad <= 0x1000) rad = 0x1000;
-        height = (*(int*)(c + 0x114) - 0xa000) * 2 - (int)(((long long)rad * 0x180 + 0x800) >> 12);
-        if (height < 0xa000) height = 0xa000;
-        rad += 0x3c000;
+        depth = mPosY - depth;
+        if (depth <= 0x1000) depth = 0x1000;
+        radius = (mdCcAc_c.radius - 0xa000) * 2 - (int)(((long long)depth * 0x180 + 0x800) >> 12);
+        if (radius < 0xa000) radius = 0xa000;
+        depth += 0x3c000;
     } else {
-        rad = 0x3c000;
-        height = (*(int*)(c + 0x114) - 0xa000) * 2;
+        depth = 0x3c000;
+        radius = (mdCcAc_c.radius - 0xa000) * 2;
     }
 
-    _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(c, c + 0x350, c + 0x31c, height, rad, 0xf);
-}
+    _ZN8dActor_c19DropShadowRadHeightER17dExtShadowModel_cR9Matrix4x35Fix12IiES5_j(this, &mShadowModel, &mModel.mat4x3, radius, depth, 0xf);
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af684
+// @symbol _ZN7da1up_c19func_ov002_020af684EiP6Player
 /* Shared with the egg-turn hook and dispatch indices 8 and 6. This helper
    finishes by killing the actor and returns no value. Its callers use the same
    void contract; the lookup result in ordinals 19 and 22 is still needed as
    the player argument. This reconstructs a consistent interface, not an
-   original return type recovered from an unused register. */
-extern "C" {
-void func_ov002_020af684(char* self, int target, char* player){
-    /* dActor_c is the real class from the includes above. A block-scope
-       `struct dActor_c;` here would declare a LOCAL class instead, and C++
-       gives a local class no linkage, so the extern below would be
-       ill-formed (MSVC C2624). The declaration is dropped; the pointer
-       arithmetic under it is unchanged and so is the object. */
-    extern dActor_c* _ZN8dActor_c15FindWithActorIDEjPS_(unsigned int actorID, dActor_c* prev);
-    extern void GiveCoins(int idx, int amount);
-    extern void _ZN6Player4HealEi(void* p, int amt);
-    extern void _ZN5Sound9PlayBank3EjRK7Vector3(unsigned int id, void* pos);
-    extern void _ZN8dActor_c24KillAndTrackInDeathTableEv(void* thiz);
-
-    char* p = player;
+   original return type recovered from an unused register.
+   What it does: walks the actors that share this mushroom's actorID
+   (FindWithActorID) and, on the first one whose mMushroomType equals `target`,
+   decrements its mUnlockCount. When this mushroom is type 11 or 12 it also gives
+   the player one coin (GiveCoins with the player number) and Heal(0x100),
+   playing sound 0x12 when the player is underwater and 0x11 otherwise -- the
+   same calls and sounds dActor_c::GivePlayerCoins makes for a single coin.
+   Always ends by removing the mushroom. */
+void da1up_c::func_ov002_020af684(int target, Player* player) {
+    Player* p = player;
     dActor_c* found = 0;
     for (;;) {
-        found = _ZN8dActor_c15FindWithActorIDEjPS_(*(unsigned short*)(self + 0xc), found);
+        found = dActor_c::FindWithActorID(actorID, found);
         if (found == 0)
             break;
-        if (target == *(int*)((char*)found + 0x384)) {
-            (*(int *)(((int)found + 0x390)))--;
+        if (target == ((da1up_c*)found)->mMushroomType) {
+            ((da1up_c*)found)->mUnlockCount--;
             break;
         }
     }
-    if ((unsigned int)(*(int*)(self + 0x384) - 0xb) <= 1) {
-        GiveCoins(*(unsigned char*)(p + 0x6d8), 1);
-        _ZN6Player4HealEi(p, 0x100);
-        if (*(unsigned char*)(p + 0x706))
-            _ZN5Sound9PlayBank3EjRK7Vector3(0x12, self + 0x74);
+    if ((unsigned int)(mMushroomType - 0xb) <= 1) {
+        GiveCoins(p->mPlayerNo, 1);
+        p->Heal(0x100);
+        if (p->mIsUnderwater)
+            Sound::PlayBank3(SND3_COIN_UNDERWATER, *(Vector3*)&mCamSpacePosX);
         else
-            _ZN5Sound9PlayBank3EjRK7Vector3(0x11, self + 0x74);
+            Sound::PlayBank3(SND3_COIN, *(Vector3*)&mCamSpacePosX);
     }
-    _ZN8dActor_c24KillAndTrackInDeathTableEv(self);
-}
+    KillAndTrackInDeathTable();
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af724
-/* Dispatch-table index 13. */
-extern "C" {
-void func_ov002_020af724(unsigned char *self)
-{
-    extern void func_ov002_020aefb8(void *c);
-    extern void _ZN5Sound9PlayBank3EjRK7Vector3(unsigned int id, struct Vector3 *v);
-    extern int _ZNK10dBgCh_Actr10IsOnGroundEv(void *c);
-    extern void func_ov002_020af3a8(void *c);
-    extern int func_ov002_020af218(void *c, int a);
-    extern void func_ov002_020aeee4(void *c);
+// @symbol _ZN7da1up_c19func_ov002_020af724Ev
+/* Dispatch-table index 13 (MUSHROOM_FALL_THEN_WAIT). Physics runs every frame.
+   State 0 plays sound 0x69 and moves on; state 1 waits until the actor's floor
+   collision (mWithMeshClsn) reports ground contact, then enables the cylinder
+   (clears bit 0 of its flags, which disables it while set) and moves on; state 2
+   runs the touch check. Then the range check (3000 units) and the trail effect. */
+void da1up_c::func_ov002_020af724() {
 
-    func_ov002_020aefb8(self);
-    switch (*(int *)(self + 0x388)) {
+    func_ov002_020aefb8();
+    switch (mState) {
     case 0:
-        _ZN5Sound9PlayBank3EjRK7Vector3(0x69, (struct Vector3 *)(self + 0x74));
-        *(int *)((int)self + 0x388) += 1;
+        Sound::PlayBank3(SND3_UNK_69, *(Vector3*)&mCamSpacePosX);
+        mState += 1;
         break;
     case 1:
-        if (_ZNK10dBgCh_Actr10IsOnGroundEv((void *)((int)self + 0x144)) != 0) {
-            *(int *)((int)self + 0x128) &= ~1;
-            *(int *)((int)self + 0x388) += 1;
+        if (mWithMeshClsn.IsOnGround() != 0) {
+            mdCcAc_c.flags &= ~CC_FLAGS_DISABLED;
+            mState += 1;
         }
         break;
     case 2:
-        func_ov002_020af3a8(self);
+        func_ov002_020af3a8();
         break;
     }
-    func_ov002_020af218(self, 0xbb8);
-    func_ov002_020aeee4(self);
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af7cc
-/* Dispatch-table index 10. */
-extern "C" {
-void func_ov002_020af7cc(char* c)
-{
-    *(unsigned char*)(c + 0x38e) = 1;
-    if (*(int*)(c + 0x60) >= *(int*)(c + 0x37c) + 0x64000) return;
-    *(int*)(c + 0x60) += 0x5000;
-    if (*(int*)(c + 0x60) < *(int*)(c + 0x37c) + 0x64000) return;
-    *(int*)(c + 0x60) = *(int*)(c + 0x37c) + 0x64000;
-    *(int*)(c + 0x384) = 0;
-    *(int*)(c + 0x388) = 0;
-    *(unsigned short*)(c + 0x100) = 0xffff;
-    ((da1up_c*)c)->unk_38c = 0xffff;
-}
+    func_ov002_020af218(0xbb8);
+    func_ov002_020aeee4();
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af838
-/* Dispatch-table index 9. */
-extern "C" {
-void func_ov002_020af838(char* c)
-{
-    extern void _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(u32 a, u32 b, struct Vector3* v, void* rot, int e, int f);
-    extern void _ZN8dActor_c24KillAndTrackInDeathTableEv(void* thiz);
+// @symbol _ZN7da1up_c19func_ov002_020af7ccEv
+/* Dispatch-table index 10 (MUSHROOM_RISE_THEN_POP_OUT). Marks the mushroom
+   shown and, while it is below 100 units (0x64000) above mSpawnPosY, raises it 5
+   units (0x5000) per frame. On the frame it reaches that height it is clamped
+   to it and turned into type 0 in state 0, with mStateTimer and mStateFrames set
+   to 0xffff so the increments Behavior makes right after the call wrap them to
+   0. */
+void da1up_c::func_ov002_020af7cc() {
+    mShown = 1;
+    if (mPosY >= mSpawnPosY + 0x64000) return;
+    mPosY += 0x5000;
+    if (mPosY < mSpawnPosY + 0x64000) return;
+    mPosY = mSpawnPosY + 0x64000;
+    mMushroomType = 0;
+    mState = 0;
+    *(unsigned short*)&mStateTimer = 0xffff;
+    mStateFrames = 0xffff;
+}
 
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN7da1up_c19func_ov002_020af838Ev
+/* Dispatch-table index 9 (MUSHROOM_SPAWNER). Spawns three mushrooms of the same
+   actor ID around mSpawnPos and then removes itself: spawn param 0x25 (type 5
+   with mUnlockCount 2) 50 units (0x32000) above the spawn point, and two of
+   param 0xb (type 11) at the spawn height, 500 units (0x1f4000) to the -x and +x
+   side. */
+void da1up_c::func_ov002_020af838() {
     struct Vector3 vec;
 
-    vec.x = *(Fix12i*)(c + 0x378);
-    vec.y = *(Fix12i*)(c + 0x37c);
-    vec.z = *(Fix12i*)(c + 0x380);
-    vec.y = *(Fix12i*)(c + 0x37c) + 0x32000;
-    _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
-        *(unsigned short*)(c + 0xc), 0x25, &vec, 0, *(signed char*)(c + 0xcc), -1);
+    vec.x = mSpawnPosX;
+    vec.y = mSpawnPosY;
+    vec.z = mSpawnPosZ;
+    vec.y = mSpawnPosY + 0x32000;
+    dActor_c::Spawn(
+        actorID, 0x25, vec, 0, mAreaId, -1);
 
-    vec.y = *(Fix12i*)(c + 0x37c);
-    vec.x = *(Fix12i*)(c + 0x378) - 0x1f4000;
-    _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
-        *(unsigned short*)(c + 0xc), 0xb, &vec, 0, *(signed char*)(c + 0xcc), -1);
+    vec.y = mSpawnPosY;
+    vec.x = mSpawnPosX - 0x1f4000;
+    dActor_c::Spawn(
+        actorID, 0xb, vec, 0, mAreaId, -1);
 
-    vec.x = *(Fix12i*)(c + 0x378) + 0x1f4000;
-    _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
-        *(unsigned short*)(c + 0xc), 0xb, &vec, 0, *(signed char*)(c + 0xcc), -1);
+    vec.x = mSpawnPosX + 0x1f4000;
+    dActor_c::Spawn(
+        actorID, 0xb, vec, 0, mAreaId, -1);
 
-    _ZN8dActor_c24KillAndTrackInDeathTableEv(c);
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af908
-/* Dispatch-table index 12. */
-extern "C" {
-void func_ov002_020af908(char *self) {
-    *(short *)(int)(self + 0x8e) += 0xc00;
-    func_ov002_020af924(self);
-}
+    KillAndTrackInDeathTable();
 }
 
 /* -------------------------------------------------------------------------- */
+// @symbol _ZN7da1up_c19func_ov002_020af908Ev
+/* Dispatch-table index 12 (MUSHROOM_SPIN_TRIGGER_FOR_7). Turns mAngleY by 0xc00
+   (16.875 degrees) a frame, then runs index 8's handler. */
+void da1up_c::func_ov002_020af908() {
+    mAngleY += 0xc00;
+    func_ov002_020af924();
+}
+
 /* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af924
-/* Dispatch-table index 8. */
-extern "C" {
-void func_ov002_020af924(char* c){
-  extern int func_ov002_020af1dc(void*);
-  int r=func_ov002_020af1dc(c);
+// @symbol _ZN7da1up_c19func_ov002_020af924Ev
+/* Dispatch-table index 8 (MUSHROOM_TRIGGER_FOR_7). If a player is touching it,
+   hands off to func_ov002_020af684 with target 7 (a waiting type 7 loses one
+   from its mUnlockCount). */
+void da1up_c::func_ov002_020af924() {
+  Player* r=(Player*)func_ov002_020af1dc();
   if(!r) return;
-  func_ov002_020af684(c, 7, (char*)r);
-}
+  func_ov002_020af684(7, r);
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020af950
-/* Dispatch-table index 7. */
-extern "C" {
-void func_ov002_020af950(char *self)
-{
-  extern void func_ov002_020aefa4(char *thiz);
-  extern void _ZN5Sound9PlayBank3EjRK7Vector3(unsigned int, const void *);
-  extern void func_ov002_020af0c0(char *thiz);
-  extern void func_ov002_020aefb8(char *thiz);
-  extern void func_ov002_020aeee4(char *thiz);
-  extern void func_ov002_020af474(char *thiz);
+// @symbol _ZN7da1up_c19func_ov002_020af950Ev
+/* Dispatch-table index 7 (MUSHROOM_HIDDEN_CHASE). State 0: hidden (mShown 0)
+   until mUnlockCount is 0; then it appears -- mVertSpeed 40 units (0x28000),
+   state 3, shown, opened to Yoshi (func_ov002_020aefa4), sound 0x68, mFlags bit
+   0 cleared. State 3 is the launch arc (func_ov002_020af474) under physics, with
+   the trail effect once mStateTimer is past 17 (0x11); at mStateTimer 0x25 (37)
+   it enables the cylinder (clears bit 0 of its flags), goes to state 1, sets
+   mVertAccel to 0 and mHorzSpeed to 10 units (0xa000). State 1 steers toward the
+   player (func_ov002_020af0c0) under physics. */
+void da1up_c::func_ov002_020af950() {
 
-  switch (*((int *)(self + 0x388)))
+  switch (mState)
   {
     case 0:
-      *((unsigned char *)(self + 0x38e)) = 0;
-      if (*((int *)(self + 0x390)) != 0)
+      mShown = 0;
+      if (mUnlockCount != 0)
         return;
 
-      *((int *)(self + 0xa8)) = 0x28000;
-      *((int *)(self + 0x388)) = 3;
-      *((unsigned char *)(self + 0x38e)) = 1;
-      func_ov002_020aefa4(self);
-      _ZN5Sound9PlayBank3EjRK7Vector3(0x68, self + 0x74);
-      *((unsigned int *)(self + 0xb0)) &= ~1;
+      mVertSpeed = 0x28000;
+      mState = 3;
+      mShown = 1;
+      func_ov002_020aefa4((char*)this);
+      Sound::PlayBank3(SND3_LAUNCH, *(Vector3*)&mCamSpacePosX);
+      mFlags &= ~ACTOR_FLAG_CLIP_TEST;
       return;
 
     case 1:
-      func_ov002_020af0c0(self);
-      func_ov002_020aefb8(self);
+      func_ov002_020af0c0();
+      func_ov002_020aefb8();
       return;
 
     case 3:
-      func_ov002_020aefb8(self);
-      if (*((unsigned short *)(self + 0x100)) > 0x11)
-        func_ov002_020aeee4(self);
-      func_ov002_020af474(self);
-      if (*((unsigned short *)(self + 0x100)) != 0x25)
+      func_ov002_020aefb8();
+      if (*(unsigned short *)&mStateTimer > 0x11)
+        func_ov002_020aeee4();
+      func_ov002_020af474();
+      if (*(unsigned short *)&mStateTimer != 0x25)
         return;
 
-      *((unsigned int *)(self + 0x128)) &= ~1;
-      *((int *)(self + 0x388)) = 1;
-      *((int *)(self + 0x9c)) = 0;
-      *((int *)(self + 0x98)) = 0xa000;
+      mdCcAc_c.flags &= ~CC_FLAGS_DISABLED;
+      mState = 1;
+      mVertAccel = 0;
+      mHorzSpeed = 0xa000;
       return;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN7da1up_c19func_ov002_020afa50Ev
+/* Dispatch-table index 11 (MUSHROOM_SPIN_TRIGGER_FOR_5). Turns mAngleY by 0xc00
+   (16.875 degrees) a frame, then runs index 6's handler. */
+void da1up_c::func_ov002_020afa50() {
+    mAngleY += 0xc00;
+    func_ov002_020afa6c();
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020afa50
-/* Dispatch-table index 11. */
-extern "C" {
-void func_ov002_020afa50(char *self) {
-    *(short *)(int)(self + 0x8e) += 0xc00;
-    func_ov002_020afa6c(self);
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020afa6c
-/* Dispatch-table index 6. */
-extern "C" {
-void func_ov002_020afa6c(char* c){
-  extern int func_ov002_020af1dc(void*);
-  int r=func_ov002_020af1dc(c);
+// @symbol _ZN7da1up_c19func_ov002_020afa6cEv
+/* Dispatch-table index 6 (MUSHROOM_TRIGGER_FOR_5). If a player is touching it,
+   hands off to func_ov002_020af684 with target 5 (a waiting type 5 loses one
+   from its mUnlockCount). */
+void da1up_c::func_ov002_020afa6c() {
+  Player* r=(Player*)func_ov002_020af1dc();
   if(!r) return;
-  func_ov002_020af684(c, 5, (char*)r);
-}
+  func_ov002_020af684(5, r);
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020afa98
-/* Dispatch-table index 5. */
-extern "C" {
-void func_ov002_020afa98(char *c)
-{
-    extern void _ZN5Sound9PlayBank3EjRK7Vector3(u32 id, struct Vector3 *v);
-    extern void func_ov002_020aefa4(char *thiz);
-    extern void func_ov002_020aefb8(char *thiz);
-    extern void func_ov002_020afde4(char *thiz);
-    extern void func_ov002_020aeee4(char *thiz);
-    extern void func_ov002_020af3a8(char *thiz);
-    extern void func_ov002_020af474(char *thiz);
-    extern int func_ov002_020af248(char *thiz, int n);
+// @symbol _ZN7da1up_c19func_ov002_020afa98Ev
+/* Dispatch-table index 5 (MUSHROOM_HIDDEN_FLEE). State 0: hidden until
+   mUnlockCount is 0, then it appears exactly as index 7 does (state 3, sound
+   0x68, and so on). State 3 is the launch arc under physics with the trail
+   effect once mStateTimer is past 17; at mStateTimer 0x25 (37) it enables the
+   cylinder, goes to state 1 and sets mHorzSpeed to 8 units (0x8000). State 1
+   walks away from the player (func_ov002_020afde4) under physics with the trail
+   effect; state 2 is physics, the touch check and the expiry countdown (30 frames, then 40 blinking, then removed)
+   (func_ov002_020af248). */
+void da1up_c::func_ov002_020afa98() {
 
-    switch (*(s32 *)(c + 0x388)) {
+    switch (mState) {
     case 0:
-        *(u8 *)(c + 0x38e) = 0;
-        if (*(s32 *)(c + 0x390) != 0)
+        mShown = 0;
+        if (mUnlockCount != 0)
             return;
-        *(u32 *)(c + 0xa8) = 0x28000;
-        *(s32 *)(c + 0x388) = 3;
-        *(u8 *)(c + 0x38e) = 1;
-        func_ov002_020aefa4(c);
-        _ZN5Sound9PlayBank3EjRK7Vector3(0x68, (struct Vector3 *)(c + 0x74));
-        *(u32 *)(c + 0xb0) &= ~1;
+        mVertSpeed = 0x28000;
+        mState = 3;
+        mShown = 1;
+        func_ov002_020aefa4((char*)this);
+        Sound::PlayBank3(SND3_LAUNCH, *(Vector3*)&mCamSpacePosX);
+        mFlags &= ~ACTOR_FLAG_CLIP_TEST;
         return;
     case 1:
-        func_ov002_020aefb8(c);
-        func_ov002_020afde4(c);
-        func_ov002_020aeee4(c);
+        func_ov002_020aefb8();
+        func_ov002_020afde4();
+        func_ov002_020aeee4();
         return;
     case 2:
-        func_ov002_020aefb8(c);
-        func_ov002_020af3a8(c);
-        func_ov002_020af248(c, 0x1e);
+        func_ov002_020aefb8();
+        func_ov002_020af3a8();
+        func_ov002_020af248(0x1e);
         return;
     case 3:
-        func_ov002_020aefb8(c);
-        if (*(u16 *)(c + 0x100) > 0x11) {
-            func_ov002_020aeee4(c);
+        func_ov002_020aefb8();
+        if (*(u16 *)&mStateTimer > 0x11) {
+            func_ov002_020aeee4();
         }
-        func_ov002_020af474(c);
-        if (*(u16 *)(c + 0x100) != 0x25)
+        func_ov002_020af474();
+        if (*(u16 *)&mStateTimer != 0x25)
             return;
-        *(u32 *)(c + 0x128) &= ~1;
-        *(s32 *)(c + 0x388) = 1;
-        *(u32 *)(c + 0x98) = 0x8000;
+        mdCcAc_c.flags &= ~CC_FLAGS_DISABLED;
+        mState = 1;
+        mHorzSpeed = 0x8000;
         return;
     }
 }
-}
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020afbb4
-/* Dispatch-table index 4. The two `func_ov002_020aefb8()` calls really do pass
-   no argument -- r0 already carries the object -- so this member keeps its own
-   nullary view of that symbol at block scope. */
-extern "C" {
-void func_ov002_020afbb4(char* c)
-{
-    extern int _ZN8dActor_c15IsPlayerInRangeEi(char* thiz, int r);
-    extern void func_ov002_020aefb8(void);
-    extern void func_ov002_020afde4(char* thiz);
-    extern void func_ov002_020aeee4(char* thiz);
-    extern void func_ov002_020af3a8(char* thiz);
-    extern int func_ov002_020af248(char* thiz, int n);
-    extern int func_ov002_020af218(char* thiz, int n);
+// @symbol _ZN7da1up_c19func_ov002_020afbb4Ev
+/* Dispatch-table index 4 (MUSHROOM_WAIT_THEN_FACE_AWAY). State 0 waits for the
+   player to come within 1000 units (0x3e8), then sets mVertSpeed to 40 units
+   (0x28000) and goes to state 1. State 1 turns away from the player
+   (func_ov002_020afde4) with the trail effect; unlike types 1 and 5 it sets no
+   horizontal speed here; state 2 is the touch check plus
+   the expiry countdown (30 frames, then 40 blinking, then removed). The 3000-unit range check runs every frame. The two
+   `func_ov002_020aefb8()` calls really do read as
+   no-argument calls -- as member calls r0 already carries `this`. */
+void da1up_c::func_ov002_020afbb4() {
 
-    switch (*(int*)(c + 0x388)) {
+    switch (mState) {
     case 0:
-        if (_ZN8dActor_c15IsPlayerInRangeEi(c, 0x3e8)) {
-            *(int*)(c + 0xa8) = 0x28000;
-            *(int*)(c + 0x388) = 1;
+        if (IsPlayerInRange(0x3e8)) {
+            mVertSpeed = 0x28000;
+            mState = 1;
         }
         break;
     case 1:
         func_ov002_020aefb8();
-        func_ov002_020afde4(c);
-        func_ov002_020aeee4(c);
+        func_ov002_020afde4();
+        func_ov002_020aeee4();
         break;
     case 2:
         func_ov002_020aefb8();
-        func_ov002_020af3a8(c);
-        func_ov002_020af248(c, 0x1e);
+        func_ov002_020af3a8();
+        func_ov002_020af248(0x1e);
         break;
     }
-    func_ov002_020af218(c, 0xbb8);
-}
-}
-
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020afc44
-/* Dispatch-table index 3. */
-extern "C" {
-int func_ov002_020afc44(char* c){
-  extern int func_ov002_020af3a8(void*);
-  extern int func_ov002_020af218(void*, int);
-  func_ov002_020af3a8(c);
-  return func_ov002_020af218(c, 0xbb8);
-}
+    func_ov002_020af218(0xbb8);
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020afc68
-extern "C" {
-void func_ov002_020afc68(unsigned char *self)
-{
-    extern int _ZNK10dBgCh_Actr10IsOnGroundEv(void *c);
-    extern int _ZN4cstd4fdivEii(int a, int b);
-    extern int _ZN8dActor_c15IsPlayerInRangeEi(void *thiz, int r);
+// @symbol _ZN7da1up_c19func_ov002_020afc44Ev
+/* Dispatch-table index 3 (MUSHROOM_STATIONARY). Only the touch check and the
+   3000-unit range check; no physics and no state. */
+int da1up_c::func_ov002_020afc44() {
+  func_ov002_020af3a8();
+  return func_ov002_020af218(0xbb8);
+}
 
-    if (_ZNK10dBgCh_Actr10IsOnGroundEv(self + 0x144) != 0) {
-        int *p = (int *)(((int)self + 0x98));
-        *p += 0x19000;
-        *(int *)(self + 0xa8) = 0;
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN7da1up_c19func_ov002_020afc68Ev
+/* State 1 of index 2 (MUSHROOM_WAIT_THEN_ACCELERATE). On the ground it adds 25
+   units (0x19000) to mHorzSpeed and zeroes mVertSpeed. In the air it multiplies
+   mHorzSpeed by 0xfae / 0x1000 (about 0.98) and passes the product through
+   cstd::fdiv(t, 0x1000). mHorzSpeed is capped at 40 units (0x28000). When the
+   player is not within 5000 units (0x1388) it goes to state 2. */
+void da1up_c::func_ov002_020afc68() {
+
+    if (mWithMeshClsn.IsOnGround() != 0) {
+        mHorzSpeed += 0x19000;
+        mVertSpeed = 0;
     } else {
-        int t = (int)(((s64)*(int *)(self + 0x98) * 0xfae + 0x800) >> 12);
-        *(int *)(self + 0x98) = _ZN4cstd4fdivEii(t, 0x1000);
+        int t = (int)(((s64)mHorzSpeed * 0xfae + 0x800) >> 12);
+        mHorzSpeed = _ZN4cstd4fdivEii(t, 0x1000);
     }
-    if (*(int *)(self + 0x98) > 0x28000) {
-        *(int *)(self + 0x98) = 0x28000;
+    if (mHorzSpeed > 0x28000) {
+        mHorzSpeed = 0x28000;
     }
-    if (_ZN8dActor_c15IsPlayerInRangeEi(self, 0x1388) == 0) {
-        *(int *)(self + 0x388) = 2;
+    if (IsPlayerInRange(0x1388) == 0) {
+        mState = 2;
     }
-}
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020afd10
-/* Dispatch-table index 2. */
-extern "C" {
-void func_ov002_020afd10(char* c)
-{
-    extern int _ZN8dActor_c15IsPlayerInRangeEi(char* thiz, int r);
-    extern void func_ov002_020aefb8(char* thiz);
-    extern void func_ov002_020afc68(char* thiz);
-    extern void func_ov002_020af3a8(char* thiz);
-    extern void func_ov002_020aeee4(char* thiz);
-    extern int func_ov002_020af218(char* thiz, int n);
-    extern int func_ov002_020af248(char* thiz, int n);
+// @symbol _ZN7da1up_c19func_ov002_020afd10Ev
+/* Dispatch-table index 2 (MUSHROOM_WAIT_THEN_ACCELERATE). From state 1 on, the
+   words at 0xa4 / 0xa8 / 0xac are saved before the physics step and the first
+   and last restored afterwards. State 0: range check (3000 units), and when the
+   player comes within 1000 units (0x3e8) it sets mVertAccel to -4 units
+   (-0x4000) and goes to state 1. State 1: func_ov002_020afc68. State 2: the
+   expiry countdown (30 frames, then 40 blinking, then removed). Every frame ends with the touch check and the trail effect. */
+void da1up_c::func_ov002_020afd10() {
 
     volatile Fix12i v[3];
 
-    if (*(int*)(c + 0x388) != 0) {
-        v[0] = *(Fix12i*)(c + 0xa4);
-        v[1] = *(Fix12i*)(c + 0xa8);
-        v[2] = *(Fix12i*)(c + 0xac);
-        func_ov002_020aefb8(c);
-        *(Fix12i*)(c + 0xa4) = v[0];
-        *(Fix12i*)(c + 0xac) = v[2];
+    if (mState != 0) {
+        v[0] = unk_0a4;
+        v[1] = mVertSpeed;
+        v[2] = unk_0ac;
+        func_ov002_020aefb8();
+        unk_0a4 = v[0];
+        unk_0ac = v[2];
     }
 
-    switch (*(int*)(c + 0x388)) {
+    switch (mState) {
     case 0:
-        func_ov002_020af218(c, 0xbb8);
-        if (_ZN8dActor_c15IsPlayerInRangeEi(c, 0x3e8)) {
-            *(Fix12i*)(c + 0x9c) = -0x4000;
-            *(int*)(c + 0x388) = 1;
+        func_ov002_020af218(0xbb8);
+        if (IsPlayerInRange(0x3e8)) {
+            mVertAccel = -0x4000;
+            mState = 1;
         }
         break;
     case 1:
-        func_ov002_020afc68(c);
+        func_ov002_020afc68();
         break;
     case 2:
-        func_ov002_020af248(c, 0x1e);
+        func_ov002_020af248(0x1e);
         break;
     }
 
-    func_ov002_020af3a8(c);
-    func_ov002_020aeee4(c);
-}
+    func_ov002_020af3a8();
+    func_ov002_020aeee4();
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020afde4
-extern "C" {
-void func_ov002_020afde4(char* c){
-  extern char* _ZN8dActor_c13ClosestPlayerEv(char*);
-  extern short Vec3_HorzAngle(void*, void*);
-  extern void func_ov002_020af3a8(char*);
-  extern int _ZNK10dBgCh_Actr8IsOnWallEv(char*);
-  extern int _ZN8dActor_c15IsPlayerInRangeEi(char*, int);
-  char* p = _ZN8dActor_c13ClosestPlayerEv(c);
+// @symbol _ZN7da1up_c19func_ov002_020afde4Ev
+/* Walking away from the player, called from state 1 of types 1, 4 and 5. Sets
+   mPrevAngleY to the bearing from the mushroom to the closest player plus half
+   a turn (0x8000), runs the touch check, and goes to state 2 when the floor
+   collision reports a wall or the player is not within 3000 units. */
+void da1up_c::func_ov002_020afde4() {
+  Player* p = ClosestPlayer();
   if(p){
-    *(short*)(c+0x94) = Vec3_HorzAngle(c+0x5c, p+0x5c) + 0x8000;
+    mPrevAngleY = Vec3_HorzAngle((Vector3*)&mPosX, (Vector3*)&p->mPosX) + 0x8000;
   }
-  func_ov002_020af3a8(c);
-  if(_ZNK10dBgCh_Actr8IsOnWallEv(c+0x144)) *(int*)(c+0x388)=2;
-  if(_ZN8dActor_c15IsPlayerInRangeEi(c, 0xbb8)==0) *(int*)(c+0x388)=2;
-}
+  func_ov002_020af3a8();
+  if(mWithMeshClsn.IsOnWall()) mState=2;
+  if(IsPlayerInRange(0xbb8)==0) mState=2;
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020afe4c
-/* Dispatch-table index 1. */
-extern "C" {
-void func_ov002_020afe4c(char* c) {
-    extern void func_ov002_020aefb8(char* thiz);
-    extern void _ZN5Sound9PlayBank3EjRK7Vector3(unsigned a, void* v);
-    extern void func_ov002_020af474(char* thiz);
-    extern void func_ov002_020afde4(char* thiz);
-    extern int func_ov002_020af248(char* thiz, int n);
-    extern void func_ov002_020af3a8(char* thiz);
-    extern int func_ov002_020af218(char* thiz, int n);
-    extern void func_ov002_020aeee4(char* thiz);
+// @symbol _ZN7da1up_c19func_ov002_020afe4cEv
+/* Dispatch-table index 1 (MUSHROOM_POP_OUT_FLEE). Physics every frame. State 0:
+   sound 0x68 on the first frame and the launch arc; at mStateTimer 0x25 (37) it
+   enables the cylinder, goes to state 1 and sets mHorzSpeed to 8 units (0x8000).
+   State 1 walks away from the player (func_ov002_020afde4). State 2 is the
+   expiry countdown (30 frames, then 40 blinking, then removed) and the touch check. Every frame ends with the range check
+   and the trail effect. */
+void da1up_c::func_ov002_020afe4c() {
 
-    func_ov002_020aefb8(c);
-    switch (*(int*)(c+0x388)) {
+    func_ov002_020aefb8();
+    switch (mState) {
     case 0:
-        if (*(unsigned short*)(c+0x100) == 0) {
-            _ZN5Sound9PlayBank3EjRK7Vector3(0x68, c+0x74);
+        if (*(unsigned short*)&mStateTimer == 0) {
+            Sound::PlayBank3(SND3_LAUNCH, *(Vector3*)&mCamSpacePosX);
         }
-        func_ov002_020af474(c);
-        if (*(unsigned short*)(c+0x100) == 0x25) {
-            *(int *)(((int)c + 0x128)) &= ~1;
-            *(int*)(c+0x388) = 1;
-            *(int*)(c+0x98) = 0x8000;
+        func_ov002_020af474();
+        if (*(unsigned short*)&mStateTimer == 0x25) {
+            mdCcAc_c.flags &= ~CC_FLAGS_DISABLED;
+            mState = 1;
+            mHorzSpeed = 0x8000;
         }
         break;
     case 1:
-        func_ov002_020afde4(c);
+        func_ov002_020afde4();
         break;
     case 2:
-        func_ov002_020af248(c, 0x1e);
-        func_ov002_020af3a8(c);
+        func_ov002_020af248(0x1e);
+        func_ov002_020af3a8();
         break;
     }
-    func_ov002_020af218(c, 0xbb8);
-    func_ov002_020aeee4(c);
-}
+    func_ov002_020af218(0xbb8);
+    func_ov002_020aeee4();
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020aff10
-/* Dispatch-table index 0 -- the state the actor starts in. */
-extern "C" {
-void func_ov002_020aff10(char* c){
-  extern void _ZN5Sound9PlayBank3EjRK7Vector3(unsigned int a, void* v);
-  extern void func_ov002_020aefb8(char* thiz);
-  extern void func_ov002_020af474(char* thiz);
-  extern void func_ov002_020af3a8(char* thiz);
-  extern void func_ov002_020aeee4(char* thiz);
-  extern int func_ov002_020af248(char* thiz, int n);
-  extern int func_ov002_020af218(char* thiz, int n);
+// @symbol _ZN7da1up_c19func_ov002_020aff10Ev
+/* Dispatch-table index 0 (MUSHROOM_POP_OUT_DRIFT). Physics every frame.
+   State 0: sound 0x68 on the first frame and the launch arc; at mStateTimer
+   0x25 (37) it enables the cylinder, goes to state 1 and sets mHorzSpeed to
+   2 units (0x2000), which this handler never clears. State 1: touch check, and
+   state 2 once mStateTimer exceeds 300 (0x12c). State 2: the expiry countdown
+   (30 frames, then 40 blinking, then removed) and the touch check. Every frame ends with the range check and the trail effect. */
+void da1up_c::func_ov002_020aff10() {
 
-  func_ov002_020aefb8(c);
-  switch(*(int*)(c+0x388)){
+  func_ov002_020aefb8();
+  switch(mState){
   case 0:
-    if(*(unsigned short*)(c+0x100) == 0) _ZN5Sound9PlayBank3EjRK7Vector3(0x68, c+0x74);
-    func_ov002_020af474(c);
-    if(*(unsigned short*)(c+0x100) != 0x25) break;
-    *(int*)(((int)c + 0x128)) &= ~1;
-    *(int*)(c+0x388) = 1;
-    *(int*)(c+0x98) = 0x2000;
+    if(*(unsigned short*)&mStateTimer == 0) Sound::PlayBank3(SND3_LAUNCH, *(Vector3*)&mCamSpacePosX);
+    func_ov002_020af474();
+    if(*(unsigned short*)&mStateTimer != 0x25) break;
+    mdCcAc_c.flags &= ~CC_FLAGS_DISABLED;
+    mState = 1;
+    mHorzSpeed = 0x2000;
     break;
   case 1:
-    if(*(unsigned short*)(c+0x100) > 0x12c) *(int*)(c+0x388) = 2;
-    func_ov002_020af3a8(c);
+    if(*(unsigned short*)&mStateTimer > 0x12c) mState = 2;
+    func_ov002_020af3a8();
     break;
   case 2:
-    func_ov002_020af248(c, 0x1e);
-    func_ov002_020af3a8(c);
+    func_ov002_020af248(0x1e);
+    func_ov002_020af3a8();
     break;
   }
-  func_ov002_020af218(c, 0xbb8);
-  func_ov002_020aeee4(c);
-}
+  func_ov002_020af218(0xbb8);
+  func_ov002_020aeee4();
 }
 
-/* The second file-scope `extern "C"` region, for the five class members below.
-   Every one of these is spelt as the shard that uses it recovered it; none of
-   the 29 members above declares any of them, so nothing here overrides a
-   recovered view. `func_ov002_020af4ec` needs no entry -- ordinal 13's
-   definition is already visible with C linkage. */
+/* File-scope `extern "C"` region for the members below. Every one of these
+   is spelt as the shard that uses it recovered it; nothing above declares
+   any of them, so nothing here overrides a recovered view. */
 extern "C" {
 void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned int id, int x, int y, int z);
 void _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(void* thiz, dActor_c* a, int r, int h, unsigned int e, unsigned int g);
@@ -1021,24 +1051,26 @@ void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(void* thiz, dAc
 int IsStarCollectedInCurLevel(int a);
 }
 
-/* Ordinal 34 dispatches through a pointer-to-member-function, and mwccarm's
-   representation of one depends on the class it names, so the shard's own
-   opaque stand-in is kept rather than pointed at the real da1up_c: merging a
-   shared shadow struct is a codegen hazard, measured on ov006/dScMgSound_c. */
-struct C;
-typedef void (C::*PMF)();
-struct C {
-  char pad[0x500];
-};
+/* Ordinal 34 dispatches through this pointer-to-member-function type: the
+   fourteen descriptors at 0x02108300..0x02108370 are {function pointer, 0}
+   records on da1up_c, copied into the 14-element array at 0x0210dc00 by
+   the file-scope static initializer. */
+typedef void (da1up_c::*PMF)();
+
+extern PMF data_ov002_0210dc00[14];
 
 /* Ordinal 35's view of data_ov002_0210d9b8: a cached model handle whose second
    word is the BMD file pointer. */
 struct ModelCache { int pad0; BMD_File* file; };
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7da1up_c16CleanupResourcesEv
-/* Vtable slot 3. */
+/* Vtable slot 3. Releases the model file InitResources loaded -- the 1-Up's
+   (data_ov002_0210d9d8) for actorID 276, the other's (data_ov002_0210da30)
+   otherwise -- except for types 11 and 12, which use the shared model
+   data_ov002_0210d9b8 and release nothing here. For types 11 and 12 it also
+   starts particle effect 0xd2 through Particle::System::NewSimple at the
+   mushroom's position, 40 units (0x28000) above it. */
 int da1up_c::CleanupResources()
 {
   extern SharedFilePtr data_ov002_0210d9d8;
@@ -1046,16 +1078,15 @@ int da1up_c::CleanupResources()
 
   int s = mMushroomType;
   if (s != 0xb && s != 0xc){
-    int b = (actorID == 0x114);
+    int b = (actorID == ACTOR_ONEUPKINOKO);
     if (b != 0) data_ov002_0210d9d8.Release();
     else data_ov002_0210da30.Release();
   }
   if ((unsigned int)(mMushroomType - 0xb) <= 1)
-    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0xd2, mPosX, mPosY + 0x28000, mPosZ);
+    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(PTCL_TYPE_11_12_CLEANUP, mPosX, mPosY + 0x28000, mPosZ);
   return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 // @symbol _ZN7da1up_c16OnPendingDestroyEv
 /* Vtable slot 12. One instruction: bx lr. */
@@ -1064,12 +1095,13 @@ void da1up_c::OnPendingDestroy()
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7da1up_c6RenderEv
-/* Vtable slot 9. */
+/* Vtable slot 9. Draws mModel unless mShown or mBlinkOn is 0 or mFlags bit
+   0x40000 -- one of the yoshi-mouth states named in dActor_c.h -- is set.
+   Returns 1 either way. */
 int da1up_c::Render()
 {
-    if (unk_38e == 0 || unk_38f == 0)
+    if (mShown == 0 || mBlinkOn == 0)
         return 1;
     {
         int b = (mFlags & 0x40000) ? 1 : 0;
@@ -1081,47 +1113,60 @@ int da1up_c::Render()
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7da1up_c8BehaviorEv
-/* Vtable slot 6, and the ONLY reader of the 14-element dispatch array at
-   0x0210dc00 anywhere in the ROM besides __sinit_ov002_02100adc, which fills it
-   from the 14 descriptors at 0x02108300..0x02108370. mMushroomType is the
-   index. The array stays `extern`: this TU claims .text only, so the sinit, the
-   descriptors and the array itself remain their own shards. */
+/* Vtable slot 6, and the only code reference to the 14-element dispatch array at
+   0x0210dc00 besides the static initializer, which fills it from the 14
+   descriptors at 0x02108300..0x02108370. mMushroomType is the index.
+   When UpdateYoshiEat returns nonzero only the matrix and shadow
+   (func_ov002_020af4ec) and the cylinder Clear run. Otherwise it zeroes
+   mEatingPlayer, calls the type's handler, advances mStateTimer and
+   mStateFrames by one, and if the handler changed mState zeroes both. */
 int da1up_c::Behavior()
 {
-  extern PMF data_ov002_0210dc00[];
-
   if(UpdateYoshiEat(mWithMeshClsn) != 0){
-    func_ov002_020af4ec(((char*)this));
+    func_ov002_020af4ec();
     mdCcAc_c.Clear();
     return 1;
   }
   mEatingPlayer = 0;
   {
-    int old = unk_388;
-    C* self = (C*)((char*)this);
-    (self->*data_ov002_0210dc00[mMushroomType])();
+    int old = mState;
+    (this->*data_ov002_0210dc00[mMushroomType])();
     /* Named ++mStateTimer / mStateTimer = 0 size-DIFF vs this recovered
        unsigned-short launder; keep MATCH form. */
-    ++*(unsigned short*)((void*)(int)(((char*)this) + 0x100));
-    ++unk_38c;
-    if(old != unk_388){
-      *(unsigned short*)((void*)(int)(((char*)this) + 0x100)) = 0;
-      unk_38c = 0;
+    ++*(unsigned short*)&mStateTimer;
+    ++mStateFrames;
+    if(old != mState){
+      *(unsigned short*)&mStateTimer = 0;
+      mStateFrames = 0;
     }
   }
   mdCcAc_c.Clear();
   mdCcAc_c.Update();
-  func_ov002_020af4ec(((char*)this));
+  func_ov002_020af4ec();
   return 1;
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7da1up_c13InitResourcesEv
 /* Vtable slot 0, the largest member in the TU, and -- because the destructor is
-   declared out of line above it -- NOT this class's key function. */
+   declared out of line above it -- NOT this class's key function.
+   Order of work: mMushroomType from param1 bits 0..3; the model (the shared
+   data_ov002_0210d9b8 for types 11 and 12, otherwise the 1-Up's or the other
+   actor's file by actorID) and the shadow cylinder; the dCcAc_c cylinder
+   (types 6, 8, 11 and 12: radius 100 units, height 64 units, and 11 / 12 also
+   get the yoshi-tongue bit in vulnFlags; otherwise 65 / 65 units for actorID 277
+   and 50 / 50 for the other), with Init flags 0x100002 and vulnFlags 0; mState 0;
+   two 14-byte per-type tables -- data_ov002_020ff040, where a 0 sets bit 0 of
+   the cylinder's flags (disabled until a handler clears it; types 0, 1, 5, 7, 9,
+   10 and 13), and data_ov002_020ff050, where a 0 clears mFlags bit 0 (the
+   clip-test bit; every type except 3, 6 and 8); mShown 1 for types 11 and 12 and
+   0 for the rest; mBlinkOn 1; mUnlockCount from param1 bits 4..7; the spawn
+   point; gravity -2 units (-0x2000) and terminal velocity -50 units (-0x32000);
+   the dBgCh_Actr (50 / 50 units) with its limited-movement flag. Finally, when
+   LEVEL_ID (data_0209f2f8) is 7 and the actor is at y = 3500 units (0xdac000),
+   z = 0, and either STAR_ID (data_0209f220) is 1 or star 1 is not collected in
+   the current level, it calls MarkForDestruction and returns 0. */
 int da1up_c::InitResources()
 {
     extern ModelCache data_ov002_0210d9b8;
@@ -1133,12 +1178,12 @@ int da1up_c::InitResources()
     extern unsigned char data_ov002_020ff050[];
 
     BMD_File* f;
-    int isKind0, isKind115;
+    int isOneUp, isMega;
 
     mMushroomType = param1 & 0xf;
 
-    isKind0 = (actorID == 0x114);
-    if (isKind0) {
+    isOneUp = (actorID == ACTOR_ONEUPKINOKO);
+    if (isOneUp) {
         if ((unsigned int)(mMushroomType - 0xb) <= 1) {
             if (mModel.SetFile(data_ov002_0210d9b8.file, 1, 1) == 0)
                 return 0;
@@ -1162,41 +1207,41 @@ int da1up_c::InitResources()
         return 0;
 
     if (mMushroomType == 6 || mMushroomType == 8 || (unsigned int)(mMushroomType - 0xb) <= 1) {
-        _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(((char*)this) + 0x110, (dActor_c*)((char*)this), 0x64000, 0x40000, 0x100002, 0);
+        _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&mdCcAc_c, (dActor_c*)this, 0x64000, 0x40000, 0x100002, 0);
         if ((unsigned int)(mMushroomType - 0xb) <= 1) {
-            mdCcAc_c.vulnFlags |= 0x8000;
+            mdCcAc_c.vulnFlags |= CC_VULN_YOSHI_TONGUE;
         }
     } else {
-        isKind115 = (actorID == 0x115);
-        if (isKind115) {
-            _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(((char*)this) + 0x110, (dActor_c*)((char*)this), 0x41000, 0x41000, 0x100002, 0);
+        isMega = (actorID == ACTOR_SCALEUP_KINOKO);
+        if (isMega) {
+            _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&mdCcAc_c, (dActor_c*)this, 0x41000, 0x41000, 0x100002, 0);
         } else {
-            _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(((char*)this) + 0x110, (dActor_c*)((char*)this), 0x32000, 0x32000, 0x100002, 0);
+            _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&mdCcAc_c, (dActor_c*)this, 0x32000, 0x32000, 0x100002, 0);
         }
     }
 
-    unk_388 = 0;
+    mState = 0;
     if (data_ov002_020ff040[mMushroomType] == 0) {
-        mdCcAc_c.flags |= 1;
+        mdCcAc_c.flags |= CC_FLAGS_DISABLED;
     }
     if (data_ov002_020ff050[mMushroomType] == 0) {
-        mFlags &= ~1;
+        mFlags &= ~ACTOR_FLAG_CLIP_TEST;
     }
     if ((unsigned int)(mMushroomType - 0xb) <= 1) {
-        unk_38e = 1;
+        mShown = 1;
     } else {
-        unk_38e = 0;
+        mShown = 0;
     }
-    unk_38f = 1;
-    unk_390 = ((unsigned int)param1 >> 4) & 0xf;
-    unk_378 = mPosX;
-    unk_37c = mPosY;
-    unk_380 = mPosZ;
+    mBlinkOn = 1;
+    mUnlockCount = ((unsigned int)param1 >> 4) & 0xf;
+    mSpawnPosX = mPosX;
+    mSpawnPosY = mPosY;
+    mSpawnPosZ = mPosZ;
     mVertAccel = -0x2000;
     mTerminalVelocity = -0x32000;
-    _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(((char*)this) + 0x144, (dActor_c*)((char*)this), 0x32000, 0x32000, 0, 0);
+    _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(&mWithMeshClsn, (dActor_c*)this, 0x32000, 0x32000, 0, 0);
     mWithMeshClsn.SetLimMovFlag();
-    unk_394 = 0;
+    mParticleID = 0;
 
     if (data_0209f2f8 == 7 && mPosY == 0xdac000 && mPosZ == 0
         && (data_0209f220 == 1 || IsStarCollectedInCurLevel(1) == 0)) {
@@ -1208,7 +1253,6 @@ int da1up_c::InitResources()
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 /* MEGA_MUSHROOM (277 / SCALEUP_KINOKO). Leaf operator new routes to
    fBase_c::operator new; the implicit constructor inlines the dEnemyBase_c
    base step, vptr store, and the four member constructors. */
@@ -1219,10 +1263,32 @@ extern "C" da1up_c *da1up_c_classInit_SCALEUP_KINOKO()
 }
 
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 /* ONE_UP_MUSHROOM (276 / ONEUPKINOKO). Same class, second profile. */
 // @symbol da1up_c_classInit_ONEUPKINOKO
 extern "C" da1up_c *da1up_c_classInit_ONEUPKINOKO()
 {
     return new da1up_c();
 }
+
+/* -------------------------------------------------------------------------- */
+/* The mushroom-type dispatch array Behavior indexes by mMushroomType. Entry n
+   is da1up_MushroomType n; entry 3's handler returns int, so it takes a cast.
+   The definition lives at the bottom so the descriptor objects mwccarm
+   materializes for the PMF constants are numbered clear of the anonymous
+   objects earlier TUs already pinned (@NNN is a shared namespace). */
+PMF data_ov002_0210dc00[14] = {
+    &da1up_c::func_ov002_020aff10,      /*  0 MUSHROOM_POP_OUT_DRIFT */
+    &da1up_c::func_ov002_020afe4c,      /*  1 MUSHROOM_POP_OUT_FLEE */
+    &da1up_c::func_ov002_020afd10,      /*  2 MUSHROOM_WAIT_THEN_ACCELERATE */
+    (PMF)&da1up_c::func_ov002_020afc44, /*  3 MUSHROOM_STATIONARY */
+    &da1up_c::func_ov002_020afbb4,      /*  4 MUSHROOM_WAIT_THEN_FACE_AWAY */
+    &da1up_c::func_ov002_020afa98,      /*  5 MUSHROOM_HIDDEN_FLEE */
+    &da1up_c::func_ov002_020afa6c,      /*  6 MUSHROOM_TRIGGER_FOR_5 */
+    &da1up_c::func_ov002_020af950,      /*  7 MUSHROOM_HIDDEN_CHASE */
+    &da1up_c::func_ov002_020af924,      /*  8 MUSHROOM_TRIGGER_FOR_7 */
+    &da1up_c::func_ov002_020af838,      /*  9 MUSHROOM_SPAWNER */
+    &da1up_c::func_ov002_020af7cc,      /* 10 MUSHROOM_RISE_THEN_POP_OUT */
+    &da1up_c::func_ov002_020afa50,      /* 11 MUSHROOM_SPIN_TRIGGER_FOR_5 */
+    &da1up_c::func_ov002_020af908,      /* 12 MUSHROOM_SPIN_TRIGGER_FOR_7 */
+    &da1up_c::func_ov002_020af724,      /* 13 MUSHROOM_FALL_THEN_WAIT */
+};

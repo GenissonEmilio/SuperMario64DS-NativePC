@@ -32,7 +32,7 @@ split below.
 Still unmatched across all 25 builds, and these are the real arm9 endgame:
 
 ```sh
-_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii     _ZN5Stage13InitResourcesEv
+_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii     _ZN10dScStage_c13InitResourcesEv
 func_0202ffec                                   func_02009e70
 ```
 
@@ -47,7 +47,7 @@ Two consequences worth acting on:
   route work by this file without re-measuring first.
 * **Group A's "do not spend" is now better evidenced for the three that remain**, since a
   25-build sweep failing is a stronger negative than the 12-build sweep the original
-  measurement had. `_ZN5Stage13InitResourcesEv` in particular keeps its worked example
+  measurement had. `_ZN10dScStage_c13InitResourcesEv` in particular keeps its worked example
   below, which is still the best description of that wall in the tree.
 
 The rest of the file is left as written -- its mechanisms, worked examples and gotchas are
@@ -87,7 +87,7 @@ priority call, not a proof.
 | `_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi` | 1,152 | 2 | instruction reorder |
 | `_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii` | 1,680 | 2 | instruction reorder |
 | `func_0202ffec` | 472 | 2 | regperm |
-| `_ZN5Stage13InitResourcesEv` | 2,692 | 4 | register allocation |
+| `_ZN10dScStage_c13InitResourcesEv` | 2,692 | 4 | register allocation |
 | `_ZN12WithMeshClsn20UpdateExtraContinousEv` | 2,668 | 5 | register allocation |
 | `func_0206cf98` | 916 | 6 | (unclassified, same shape) |
 
@@ -96,7 +96,7 @@ and no C expression names a register. The only source-level handle is declaratio
 which reranks the allocator's webs, and that space is small enough to sweep exhaustively.
 It has been swept.
 
-`_ZN5Stage13InitResourcesEv` is the worked example, and its evidence is the template for
+`_ZN10dScStage_c13InitResourcesEv` is the worked example, and its evidence is the template for
 judging the others. All four of its divergences sit in one five-instruction window:
 
 ```arm
@@ -212,7 +212,7 @@ ints. Re-derive the parameter list from those offsets before touching the body.
 
 ## What has already been tried, so it is not repeated
 
-- Full hand-sweep of declaration order and type levers on `_ZN5Stage13InitResourcesEv`
+- Full hand-sweep of declaration order and type levers on `_ZN10dScStage_c13InitResourcesEv`
   (~25 variants), detailed above.
 - A permuter pass over the twelve closest arm9 targets at 420s each, `-j4`. Groups A and
   the top of B: no banks, no divergence improvements.
@@ -256,7 +256,7 @@ five simply reproduce and should lose the banner.
 | `_ZN8CapEnemy11GetCapStateEv` | 180 | div 4 under b56, see below |
 | `_ZN5Model27LoadCompressedTextureToVramEPcjPc` | 184 | div 13 both compilers |
 | `_ZN2GX7LoadTexEPKvjj` | 332 | div 34 both compilers |
-| `_ZN5Stage25PS_UpdateOkAndBackButtonsEb` | 340 | size mismatch both |
+| `_ZN10dScStage_c25PS_UpdateOkAndBackButtonsEb` | 340 | size mismatch both |
 | `func_02038824` | 532 | div 25 sp2p3, **div 20 under b56** |
 | `_ZN7Message30DisplayCourseNameForStarSelectEj` | 656 | **already matched** as `.cpp`; the `.c` is a stale duplicate |
 
@@ -272,8 +272,8 @@ symbol, so each pair is a duplicate definition and each also double-counts in an
 |---|---|---|---|
 | `_ZN7Message30DisplayCourseNameForStarSelectEj` | no | MATCH | delete `.c` |
 | [func_ov070_0211f6e0](../config/arm9/overlays/ov070/symbols.txt) | MATCH | no | delete `.cpp` |
-| `_ZN15TtcRotatingGear8BehaviorEv` | MATCH | MATCH | pick one |
-| `_ZN5Stage7PS_InitEv` | MATCH | MATCH | pick one |
+| `_ZN16daObjCtMecha08_c8BehaviorEv` | MATCH | MATCH | pick one |
+| `_ZN10dScStage_c7PS_InitEv` | MATCH | MATCH | pick one |
 | [func_ov006_020f46ec](../config/arm9/overlays/ov006/symbols.txt) | MATCH | MATCH | pick one |
 | [func_ov065_02116364](../config/arm9/overlays/ov065/symbols.txt) | MATCH | MATCH | pick one |
 | [func_ov075_02116f40](../config/arm9/overlays/ov075/symbols.txt) | MATCH | MATCH | pick one |

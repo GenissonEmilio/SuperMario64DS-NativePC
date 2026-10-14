@@ -350,13 +350,19 @@ class MatchedConjunct(unittest.TestCase):
             self.sha[name] = put(self.root / "src" / f"{name}.c", FIXED)
         self.man = self.root / "config" / "bytegate-known-failures.txt"
 
-        # A real git history: chaos_db_ci reads authorship from `git log`, and with no
-        # repository the author field is simply absent, which would make the coin
-        # assertions below vacuous rather than wrong.
+        # Authors come from function-authors.json. The coin assertion below is
+        # vacuous unless these addresses name matcher.
+        (self.root / "function-authors.json").write_text(json.dumps({
+            "functions": {
+                "arm9:0x02000000": {"author": "matcher", "name": "good"},
+                "arm9:0x02000010": {"author": "matcher", "name": "broken"},
+                "arm9:0x02000030": {"author": "matcher", "name": "sized"},
+                "arm9:0x02000200": {"author": "matcher", "name": "lonely"},
+            }
+        }), encoding="utf-8")
         def git(*a):
             subprocess.run(["git", *a], cwd=self.root, check=True, capture_output=True)
         git("init", "-q", "-b", "main")
-        # _handle_from takes the email local-part, so this must be matcher@, not m@.
         git("config", "user.email", "matcher@example.com")
         git("config", "user.name", "matcher")
         git("add", "-A")

@@ -44,12 +44,12 @@ dead with the same confidence as the 13 above.
 
 One review agent (scoped to `tools/test_match_attempts.py`..`tools/worklist.py`)
 proposed archiving 7 test files as testing "modules that no longer exist":
-`test_attribution.py`, `test_fdiff_version.py`, `test_layout.py`,
+`test_fdiff_version.py`, `test_layout.py`,
 `test_pr_linkcheck_renames.py`, `test_pr_linkcheck_verdict.py`,
 `test_reloc_audit_modules.py`, `test_reloc_audit_sections.py`.
 
-This is wrong for at least 3 of the 7: `test_attribution.py`,
-`test_fdiff_version.py`, and `test_layout.py` were outside that agent's
+This is wrong for at least 3 of the 7: `test_fdiff_version.py` and
+`test_layout.py` were outside that agent's
 assigned range in the first place (they belong to the adjacent slice), and
 the agent that *was* assigned them independently confirmed their target
 modules (`chaos_db_ci.py`, `fdiff.py`, `layout_check.py`) are present and

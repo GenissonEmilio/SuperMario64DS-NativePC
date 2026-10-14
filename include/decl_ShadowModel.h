@@ -20,9 +20,9 @@
 extern "C" {
 #endif
 
-extern void _ZN11ShadowModel8CleanAllEv(void);
-extern void _ZN11ShadowModelC1Ev(void*);
-extern void _ZN11ShadowModelD1Ev(void*);
+extern void _ZN17dExtShadowModel_c8CleanAllEv(void);
+extern void *_ZN17dExtShadowModel_cC1Ev(void*);
+extern void _ZN17dExtShadowModel_cD1Ev(void*);
 
 
 #ifdef __cplusplus

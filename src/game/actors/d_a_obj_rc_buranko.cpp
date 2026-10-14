@@ -56,12 +56,34 @@
 #include "SharedFilePtr.h"
 #include "dBgW.h"
 
+/* 8-byte file handles. The model uses func_02017acc / func_02017ab4 and the
+ * collision file func_02017b4c / SharedFilePtr_Destruct_Clsn. The spellings
+ * are local; the manifest aliases the generated names to those ROM symbols. */
+struct RcBurankoModelFilePtr : SharedFilePtr {
+    unsigned int words[2];
+
+    RcBurankoModelFilePtr(unsigned int fileID);
+    ~RcBurankoModelFilePtr();
+};
+
+struct RcBurankoClsnFilePtr : SharedFilePtr {
+    unsigned int words[2];
+
+    RcBurankoClsnFilePtr(unsigned int fileID);
+    ~RcBurankoClsnFilePtr();
+};
+
+typedef char RcBurankoModelFilePtr_size_must_be_8[
+    sizeof(RcBurankoModelFilePtr) == 8 ? 1 : -1];
+typedef char RcBurankoClsnFilePtr_size_must_be_8[
+    sizeof(RcBurankoClsnFilePtr) == 8 ? 1 : -1];
+
 struct KCL_File;
 struct CLPS_Block;
 
 extern "C" {
-extern SharedFilePtr data_ov036_02114020;   /* the collision KCL  */
-extern SharedFilePtr data_ov036_02114028;   /* the platform's BMD */
+extern RcBurankoClsnFilePtr data_ov036_02114020;   /* the collision KCL  */
+extern RcBurankoModelFilePtr data_ov036_02114028;   /* the platform's BMD */
 extern CLPS_Block    data_ov036_02112b68;
 
 void func_ov036_0211123c(daObjRcBuranko_c *self);
@@ -192,3 +214,8 @@ void func_ov036_0211123c(daObjRcBuranko_c *self)
  * the inherited inline operator delete, which is why nothing here names a
  * heap.
  */
+
+/* Source order is construction order: model file 1685, then the collision
+ * file 1686. The compiler registers each destructor beside the object. */
+RcBurankoModelFilePtr data_ov036_02114028(1685);
+RcBurankoClsnFilePtr data_ov036_02114020(1686);

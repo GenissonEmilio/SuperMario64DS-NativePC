@@ -16,13 +16,12 @@
  * vtable is gone, and so is the coined `_ZTV18BowserFireSeaArena` line that named
  * 0x0211a8b0 in ov060's symbols.txt.
  *
- * A curated single-TU form of this class is written and byte-verified
- * (src_tu is not carrying it yet): see config/tu_manifest.d/ov060 in a later
- * change. It cannot be promoted until the CLPS block InitResources passes to
- * dBgW_KcMbg::SetFile is settled -- ov060/relocs.txt records that site as an
- * ambiguous cross-overlay load with twenty candidate modules, and ov060 makes no
- * unambiguous call to any of them, so the reference stays the phantom
- * `func_021115bc`.
+ * src/actors/daKpa2Bg_c.cpp licenses 0x02117980..0x02117d1c (D1 through
+ * InitResources, then daKpa2Bg_c_classInit at 0x02117cdc).
+ * InitResources' CLPS pointer is data_ov046_021115bc: of the three daKpa_c level
+ * overlays resident with ov060, only ov046's bytes there are a CLPS block
+ * ('CLPS' and stride 8). ov044 holds billboard typeinfo and ov048 holds the
+ * shockwave string.
  *
  * SM64DS RTTI names the implementation daKpa2Bg_c. The reconstructed factory
  * daKpa2Bg_c_classInit (historical alias daKpa2Bg_c_classInit)
@@ -45,7 +44,7 @@
  *
  *     dBgActor_c            0x000 + 0x324 = 0x324   -> mModel2
  *     Model               0x324 + 0x050 = 0x374   -> mMovingMeshCollider2
- *     dBgW_KcMbg  0x374 + 0x1c8 = 0x53c   -> padding, then unk_56c
+ *     dBgW_KcMbg  0x374 + 0x1c8 = 0x53c   -> padding, then mSoundHandle
  *
  * mMovingMeshCollider2 was a `u8` marker with 0x1f7 bytes of pad behind it; the pad
  * was the object.
@@ -53,7 +52,7 @@
  * sizeof is 0x570, which is not inferred from the fields: daKpa2Bg_c_classInit
  * asks fBase_c::operator new for 1392 bytes.
  *
- * Field NAMES for the unk_ entries are placeholders. */
+ * pad_53c is not read or written by any function in this class's TU. */
 #ifndef DAKPA2BG_C_H
 #define DAKPA2BG_C_H
 #include "types.h"
@@ -74,27 +73,25 @@ struct daKpa2Bg_c : dBgActor_c {
     Model mModel2;                              /* 0x324 */
     dBgW_KcMbg mMovingMeshCollider2;    /* 0x374 */
     u8  pad_53c[0x30];
-    s32 unk_56c;            /* 0x56c */
+    s32 mSoundHandle;       /* 0x56c -- the handle Sound_PlayIfNotActive returns; InitResources zeroes it */
 
     /* --- vtable, in ROM order. Do not reorder. --- */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daKpa2Bg_c();   /* no slot */
-#else
-    virtual ~daKpa2Bg_c();   /* D1 and D0 */
-#endif
+    /* Out of line in the cpp, under defer_codegen off: one definition emits
+       D1 (0x02117980) then D0 (0x021179d4). Do not also write an in-class
+       body. The homeless D2 is deadstripped. This declaration is the key
+       function, so the TU emits _ZTV10daKpa2Bg_c. */
+    virtual ~daKpa2Bg_c();    /* slots 16 (D1), 17 (D0) */
 
-    /* --- non-virtual --- */
-    int Behavior();
-    int CleanupResources();
-    int InitResources();
-    int Render();
+    /* --- overrides of inherited fBase_c slots; each takes its base's index,
+           so the order here adds nothing to the table. --- */
+    virtual int Behavior();             /* slot  6 */
+    virtual int CleanupResources();     /* slot  3 */
+    virtual int InitResources();        /* slot  0 */
+    virtual int Render();               /* slot  9 */
+
+    void func_ov060_02117a3c();         /* plays mSoundHandle's sound */
+    void func_ov060_02117a64();         /* rebuilds the collider matrix */
+    void func_ov060_02117ae0();         /* rebuilds the model matrix */
 };
 
 #ifndef SM64DS_PLATFORM_PC
@@ -113,7 +110,7 @@ struct daKpa2Bg_c {
     u8  pad_090[0x44];
     /* Model member, named by the class's own destructor calling
        Model's D1 at +0x0d4 -- a relocation the ROM build
-       checks. Was a u8 marker. [_ZN10daKpa2Bg_cD1Ev.c] */
+       checks. Was a u8 marker. [src/actors/daKpa2Bg_c.cpp] */
     Model mModel1;            /* 0x0d4 */
     dBgW_KcMbg mMovingMeshCollider1;    /* 0x124 */
     u8  pad_2ec[0x32];
@@ -125,7 +122,7 @@ struct daKpa2Bg_c {
     Model mModel2;            /* 0x324 */
     dBgW_KcMbg mMovingMeshCollider2;    /* 0x374 */
     u8  pad_53c[0x30];
-    s32 unk_56c;            /* 0x56c */
+    s32 mSoundHandle;       /* 0x56c */
 };
 
 #endif /* __cplusplus */

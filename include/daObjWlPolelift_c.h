@@ -4,7 +4,7 @@
 #include "Model.h"
 #include "dCcAcPos_c.h"
 #include "PathPtr.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 
 /* Pole-mounted lift platform in ov026 (Wet-Dry World's "Wl" prefix): rides a
  * path of nodes, oscillating back and forth (or looping) at a fixed speed,
@@ -24,12 +24,12 @@
  *   Model                       at 0x0d4 (sizeof 0x50, ends 0x124)
  *   dCcAcPos_c   at 0x124 (sizeof 0x40, ends 0x164)
  *   PathPtr                     at 0x164 (sizeof 0x08, ends 0x16c)
- *   ShadowModel                 at 0x188 (sizeof 0x28, ends 0x1b0)
+ *   dExtShadowModel_c                 at 0x188 (sizeof 0x28, ends 0x1b0)
  * dActor_c's own fields run to 0xd0 (dActor_c.h); the Model sub-object
  * starts 4 bytes later at 0xd4.
  *
  * The destructor (func_ov026_021111a0 / _021111e0) tears down the same
- * three sub-objects that have non-trivial destructors -- ShadowModel,
+ * three sub-objects that have non-trivial destructors -- dExtShadowModel_c,
  * dCcAcPos_c, Model -- in reverse-ish order (PathPtr has no
  * destructor call at all, consistent with it being POD).
  *
@@ -52,7 +52,11 @@
  * VTABLE ORDER follows dActor_c's (unchanged slot indices; daObjWlPolelift_c
  * adds no new virtual). The destructor pair is at slots 16/17, the
  * fBase_c/actor-family convention, matching every other actor and scene
- * class recovered so far -- not the Fader family's 0/1.
+ * class recovered so far -- not the dFader_c family's 0/1.
+ *
+ * Every member of this class is defined in one translation unit,
+ * src/game/actors/d_a_obj_wl_polelift.cpp, which owns the whole
+ * 0x021111a0..0x021116c8 linker run.
  */
 struct daObjWlPolelift_c : dActor_c {
     u8   pad_0d0[0x4];              /* 0x0d0 -- unobserved */
@@ -65,26 +69,19 @@ struct daObjWlPolelift_c : dActor_c {
     s32  moveSpeed;                  /* 0x180 */
     s16  bounceTimer;                /* 0x184 */
     u8   pad_186[0x2];               /* 0x186 -- unobserved */
-    ShadowModel shadow;              /* 0x188 */
+    dExtShadowModel_c shadow;              /* 0x188 */
     struct Matrix4x3 dropShadowMtx;  /* 0x1b0 */
     s32  groundY;                    /* 0x1e0 */
 
-    /* Declared first -- key function; see the family convention discussed in
-       dActor_c.h. The D1 and D0 translation units both define this real empty
-       method; CodeWarrior generates their complete-object/member teardown and
-       objisolate retains the enrolled variant from each object. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daObjWlPolelift_c();   /* no slot */
-#else
-    virtual ~daObjWlPolelift_c();   /* D1 and D0 */
-#endif
+    /* Declared first -- the family convention discussed in dActor_c.h.
+       Inline is load-bearing: written out of line mwccarm emits the
+       synthesized D0 ahead of the written D1, the reverse of the cartridge's
+       0x021111a0/0x021111e0 pair, and adds a homeless D2. Inline emits D1
+       then D0 and no D2, and moves the key function to the first non-inline
+       virtual, InitResources. Body is empty: destroying the dExtShadowModel_c,
+       dCcAcPos_c and Model subobjects and running dActor_c's own destructor
+       all follow from the declarations above. */
+    virtual ~daObjWlPolelift_c() {}                      /* slots 16 (D1), 17 (D0) */
 
     /* --- overrides, in _ZTV8dActor_c/_ZTV7fBase_c order. --- */
     virtual s32 InitResources();                         /* slot  0 */

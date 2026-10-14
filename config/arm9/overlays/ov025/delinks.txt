@@ -7,95 +7,27 @@
 src/actors/daDgr_c.cpp:
     complete
     .text start:0x021111a0 end:0x021118c8
+    .init start:0x02112970 end:0x021129dc
+    .ctor start:0x02112b18 end:0x02112b1c
+    .bss start:0x02113a60 end:0x02113a88
 
 src/actors/daDkk_c.cpp:
     complete
     .text start:0x021118c8 end:0x02111d40
-
-src/_ZN11PyramidStepD1Ev.cpp:
-    complete
-    .text start:0x02111d40 end:0x02111d8c
-
-src/_ZN11PyramidStepD0Ev.cpp:
-    complete
-    .text start:0x02111d8c end:0x02111dec
-
-src/func_ov025_02111dec.cpp:
-    complete
-    .text start:0x02111dec end:0x02111e30
-
-src/func_ov025_02111e30.c:
-    complete
-    .text start:0x02111e30 end:0x02111e70
-
-src/_ZN11PyramidStep16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02111e70 end:0x02111ea8
-
-src/_ZN11PyramidStep6RenderEv.cpp:
-    complete
-    .text start:0x02111ea8 end:0x02111ed4
-
-src/_ZN11PyramidStep8BehaviorEv.cpp:
-    complete
-    .text start:0x02111ed4 end:0x02111fa0
-
-src/_ZN11PyramidStep13InitResourcesEv.cpp:
-    complete
-    .text start:0x02111fa0 end:0x021120ac
-
-src/d_a_obj_dp_brock.c:
-    complete
-    .text start:0x021120ac end:0x021120e4
-
-src/_ZN11PyramidLiftD1Ev.cpp:
-    complete
-    .text start:0x021120e4 end:0x02112148
-
-src/_ZN11PyramidLiftD0Ev.cpp:
-    complete
-    .text start:0x02112148 end:0x021121c0
-
-src/_ZN11PyramidLift16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x021121c0 end:0x021121fc
-
-src/_ZN11PyramidLift6RenderEv.cpp:
-    complete
-    .text start:0x021121fc end:0x02112288
-
-src/_ZN11PyramidLift8BehaviorEv.cpp:
-    complete
-    .text start:0x02112288 end:0x02112498
-
-src/_ZN11PyramidLift13InitResourcesEv.cpp:
-    complete
-    .text start:0x02112498 end:0x021125bc
-
-src/func_ov025_021125bc.cpp:
-    complete
-    .text start:0x021125bc end:0x021125dc
-
-src/func_ov025_021125dc.c:
-    complete
-    .text start:0x021125dc end:0x021125f0
-
-src/d_a_dp_lift.cpp:
-    complete
-    .text start:0x021125f0 end:0x02112654
-
-src/__sinit_ov025_02112970.c:
-    complete
-    .init start:0x02112970 end:0x021129dc
-
-src/__sinit_ov025_021129dc.c:
-    complete
     .init start:0x021129dc end:0x02112a44
+    .ctor start:0x02112b1c end:0x02112b20
+    .bss start:0x02113a88 end:0x02113ab0
 
-src/__sinit_ov025_02112a44.c:
+src/actors/daObjDpBrock_c.cpp:
     complete
+    .text start:0x02111d40 end:0x021120e4
     .init start:0x02112a44 end:0x02112aac
+    .ctor start:0x02112b20 end:0x02112b24
+    .bss start:0x02113ab0 end:0x02113ad8
 
-src/__sinit_ov025_02112aac.c:
+src/actors/daDpLift_c.cpp:
     complete
+    .text start:0x021120e4 end:0x02112654
     .init start:0x02112aac end:0x02112b18
+    .ctor start:0x02112b24 end:0x02112b28
+    .bss start:0x02113ad8 end:0x02113b00

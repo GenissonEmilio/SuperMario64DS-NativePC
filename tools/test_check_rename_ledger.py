@@ -27,6 +27,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import check_rename_ledger as CRL  # noqa: E402
+import class_rename  # noqa: E402
 
 TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                     "check_rename_ledger.py")
@@ -206,6 +207,131 @@ class TestFix(unittest.TestCase):
             self.assertIn("no symbols.txt for module(s): ov999", r.stdout)
         finally:
             fx.close()
+
+
+def ledger_lines(fx):
+    with io.open(fx.ledger, "rb") as fh:
+        raw = fh.read().decode("utf-8")
+    lines, _newline = CRL.split_lines(raw)
+    return lines
+
+
+class TestChains(unittest.TestCase):
+    """Temporary ledgers. The live file is not the fixture.
+
+    A healthy chain is one hop. An append-only lineage is the coined name
+    in the middle, still reachable. An in-place rewrite points the first
+    row at the final name and leaves the lineage row sourcing the coined
+    name, which nothing targets.
+    """
+
+    def test_healthy_chain_resolves(self):
+        fx = Fixture(["ov002\t0x020b07f8\tfunc_ov002_020b07f8\t"
+                      "_ZN10daChRoom_cD1Ev\tvtable slot 16"])
+        try:
+            self.assertEqual(CRL.chain_breaks(ledger_lines(fx)), [])
+            r = fx.run()
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        finally:
+            fx.close()
+
+    def test_inplace_rewrite_severs_the_chain(self):
+        fx = Fixture([
+            "ov002\t0x020b07f8\tfunc_ov002_020b07f8\t_ZN10daChRoom_cD1Ev\t"
+            "vtable slot 16 (was _ZN9BlueFlameD1Ev)",
+            "ov002\t0x020b07f8\t_ZN9BlueFlameD1Ev\t_ZN10daChRoom_cD1Ev\t"
+            "class renamed",
+        ])
+        try:
+            breaks = CRL.chain_breaks(ledger_lines(fx))
+            self.assertEqual([b[3] for b in breaks], ["_ZN9BlueFlameD1Ev"])
+            r = fx.run()
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn("not reachable", r.stdout)
+            # The gate reports the break. It does not rewrite the ledger to
+            # paper over it.
+            self.assertIn("(was _ZN9BlueFlameD1Ev)", fx.read())
+        finally:
+            fx.close()
+
+    def test_append_only_lineage_resolves(self):
+        # Column 4 of the first row is the coined mangled name. It is history.
+        # The last row is the live name, and it matches symbols.txt.
+        fx = Fixture([
+            "ov002\t0x020b07f8\tfunc_ov002_020b07f8\t_ZN9BlueFlameD1Ev\t"
+            "vtable slot 16",
+            "ov002\t0x020b07f8\t_ZN9BlueFlameD1Ev\t_ZN10daChRoom_cD1Ev\t"
+            "class renamed",
+        ])
+        try:
+            self.assertEqual(CRL.chain_breaks(ledger_lines(fx)), [])
+            r = fx.run()
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("superseded history", r.stdout)
+        finally:
+            fx.close()
+
+    def test_appended_repair_keeps_the_live_name_and_resolves(self):
+        # Same severed pair as above, then two appended rows: the missing hop
+        # into the coined name, and a restatement of the live name so the last
+        # row does not change what readers take as current.
+        fx = Fixture([
+            "ov002\t0x020b07f8\tfunc_ov002_020b07f8\t_ZN10daChRoom_cD1Ev\t"
+            "vtable slot 16 (was _ZN9BlueFlameD1Ev)",
+            "ov002\t0x020b07f8\t_ZN9BlueFlameD1Ev\t_ZN10daChRoom_cD1Ev\t"
+            "lineage",
+            "ov002\t0x020b07f8\tfunc_ov002_020b07f8\t_ZN9BlueFlameD1Ev\t"
+            "chain repair",
+            "ov002\t0x020b07f8\t_ZN9BlueFlameD1Ev\t_ZN10daChRoom_cD1Ev\t"
+            "chain repair live",
+        ])
+        try:
+            self.assertEqual(CRL.chain_breaks(ledger_lines(fx)), [])
+            r = fx.run()
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        finally:
+            fx.close()
+
+
+class TestLedgerAppend(unittest.TestCase):
+    def test_appends_a_hop_and_leaves_the_earlier_row(self):
+        text = ("module\taddr\told\tnew\twhy\r\n"
+                "ov085\t0x0212a6d4\tfunc_ov085_0212a6d4\t_ZN6RabbitD1Ev\t"
+                "vtable slot 16\r\n")
+        rs = class_rename.rules("Rabbit", "daMip_c", False)
+        out, rows = class_rename.append_ledger_lineage(text, rs, "Rabbit", "daMip_c")
+        self.assertTrue(out.startswith(text))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].split("\t")[:4],
+                         ["ov085", "0x0212a6d4", "_ZN6RabbitD1Ev", "_ZN7daMip_cD1Ev"])
+        self.assertNotIn("\n", out.replace("\r\n", ""))
+        again, more = class_rename.append_ledger_lineage(out, rs, "Rabbit", "daMip_c")
+        self.assertEqual(more, [])
+        self.assertEqual(again, out)
+        lines, _newline = CRL.split_lines(out)
+        self.assertEqual(CRL.chain_breaks(lines), [])
+
+    def test_a_severed_ledger_is_not_rewritten_in_place(self):
+        text = ("module\taddr\told\tnew\twhy\n"
+                "ov085\t0x0212a6d4\tfunc_ov085_0212a6d4\t_ZN7daMip_cD1Ev\t"
+                "vtable slot 16 (was _ZN6RabbitD1Ev)\n"
+                "ov085\t0x0212a6d4\t_ZN6RabbitD1Ev\t_ZN7daMip_cD1Ev\tlineage\n")
+        rs = class_rename.rules("Rabbit", "daMip_c", False)
+        out, rows = class_rename.append_ledger_lineage(text, rs, "Rabbit", "daMip_c")
+        self.assertEqual(rows, [])
+        self.assertEqual(out, text)
+
+    def test_derived_symbol_appends_only_with_derived(self):
+        text = ("module\taddr\told\tnew\twhy\n"
+                "ov085\t0x0212cc2c\tfunc_ov085_0212cc2c\tRabbit_Spawn\tspawnfunc\n")
+        derived = class_rename.rules("Rabbit", "daMip_c", True)
+        _out, rows = class_rename.append_ledger_lineage(
+            text, derived, "Rabbit", "daMip_c")
+        self.assertEqual(rows[0].split("\t")[2:4], ["Rabbit_Spawn", "daMip_c_Spawn"])
+        bare = class_rename.rules("Rabbit", "daMip_c", False)
+        out, rows = class_rename.append_ledger_lineage(text, bare, "Rabbit", "daMip_c")
+        self.assertEqual(rows, [])
+        self.assertEqual(out, text)
 
 
 if __name__ == "__main__":

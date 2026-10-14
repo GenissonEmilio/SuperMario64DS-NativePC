@@ -1,28 +1,31 @@
 # Keeps symbols/actor_renames.tsv honest about what lives at each address.
 #
-# The ledger's fourth column is a present-tense claim, and `tools/cpp_index.py`
-# and `tools/cpp_rename.py` read it back as a live address -> symbol map. When
-# 360 of its 1,635 mangled/vtable rows named the NEXT class along -- the residue
-# of the `parse_spawnfunc` over-scan fixed in #1418-#1423, on a file that was
-# never regenerated afterwards and can no longer be regenerated at all -- every
-# one of those rows was a false lookup result sitting in a tracked file with
-# nothing watching it.
+# The last row at an address is the live claim. `tools/cpp_rename.py` overwrites
+# by address, so that row is the name a lookup returns. Earlier rows are the
+# chain that got there. When 360 of the live mangled/vtable rows named the NEXT
+# class along -- the residue of the `parse_spawnfunc` over-scan fixed in
+# #1418-#1423, on a file that was never regenerated afterwards and can no longer
+# be regenerated at all -- every one of those rows was a false lookup result
+# sitting in a tracked file with nothing watching it.
 #
 # Nothing was watching it because the ledger is not compiled into the ROM. A
 # byte-perfect 106/106 build says nothing about this file, which is exactly the
 # shape of gate this repo keeps having to add after the fact: the failure branch
-# a green run never reaches. `tools/class_rename.py` rewrites rows by NAME, so
-# the drift is reintroducible by an ordinary rename on any future PR.
+# a green run never reaches. `tools/class_rename.py` appends a lineage row and
+# does not rewrite earlier ones. The check fails if a source is not reachable
+# from the first name at its address, which is the break an in-place rewrite
+# leaves behind.
 #
 # Costs nothing: two text files and no compiler, so it runs here rather than on
 # the private build box pr-validate.yml relays to. About a second over 2,574
 # ledger rows and 25 symbols.txt files.
 #
-# NARROW ON PURPOSE. Only `_ZN...` and `_ZTV...` rows are checked, because only
-# those have a symbols.txt counterpart to check against; the coined rows
-# (Foo_Spawn, g_profile_BAR) carry the same shift in at least a few places and
-# this gate will not catch them. The check prints its own unchecked count on
-# every run so the green cannot be read as covering the whole file.
+# NARROW ON PURPOSE. Only the live `_ZN...` and `_ZTV...` row at an address is
+# checked against symbols.txt, because only those have a symbols.txt counterpart;
+# the coined rows (Foo_Spawn, g_profile_BAR) carry the same shift in at least a
+# few places and the symbols.txt half of this gate will not catch them. The
+# reachability half covers every row. The check prints its own unchecked count
+# on every run so the green cannot be read as covering the whole file.
 name: rename ledger
 
 on:
@@ -31,6 +34,7 @@ on:
       - "symbols/actor_renames.tsv"
       - "config/**/symbols.txt"
       - "tools/check_rename_ledger.py"
+      - "tools/class_rename.py"
       - "tools/test_check_rename_ledger.py"
       - ".github/workflows/rename-ledger.yml"
   push:
@@ -39,6 +43,7 @@ on:
       - "symbols/actor_renames.tsv"
       - "config/**/symbols.txt"
       - "tools/check_rename_ledger.py"
+      - "tools/class_rename.py"
       - "tools/test_check_rename_ledger.py"
       - ".github/workflows/rename-ledger.yml"
   workflow_dispatch:
@@ -52,6 +57,7 @@ concurrency:
 
 jobs:
   ledger:
+    name: rename ledger
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

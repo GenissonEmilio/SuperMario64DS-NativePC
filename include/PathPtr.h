@@ -24,7 +24,7 @@ struct PathPtr {
     /* methods */
     /* DECLARED, NEVER DEFINED HERE, and that is the point: an implicit or
        inline-defined constructor would be synthesised into every constructing
-       TU, and src/_ZN7PathPtrC1Ev.cpp needs the compiler to emit the
+       TU, and src/engine/path/PathPtr.cpp needs the compiler to emit the
        constructor as its own function instead. See notes/ctor-migration.md
        section 2. The ROM body is two zero stores at 0x0203ad74, 0x10 bytes --
        exactly this declaration plus the init list below it. */
@@ -32,7 +32,13 @@ struct PathPtr {
     void FromID(unsigned int id);
     unsigned int Loops() const;
     unsigned int NumNodes() const;
+    unsigned int GetPullFactor() const;
+    unsigned int GetUnk004() const;
     void GetNode(Vector3 &node, unsigned int idx) const;
+    void SetDef(PathDef *def);
+    static void SetPathTable(PathDef *defs, int numPaths);
+    static void SetNodeTable(void *nodes);
+    static char *GetNodeTable();
 #endif
 };
 

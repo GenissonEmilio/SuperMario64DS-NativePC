@@ -7,7 +7,9 @@
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
 /**
- * Tiny-Huge Island rolling log. Actor 174 EMM_LOG (debug table 0x0208f980);
+ * Rolling log from the ex_m_map stage (Emm; data/stage/ex_m_map in the ROM
+ * file table -- not Tiny-Huge Island, whose stage dirs are tibi_deka_*).
+ * Actor 174 EMM_LOG (debug table 0x0208f980);
  * ov043 multiplexes the same id as BIG_MOVING_LOG. ov052's other class is
  * daObjEmmYuka_c / EMM_YUKA (175), the SQUARE_PATH_LIFT overlay_actors lists.
  *

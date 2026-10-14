@@ -8,11 +8,33 @@
  * mwccarm emits ordinary function sections in reverse source order. Keep the
  * HS_MOON factory first. The inline destructor emits the retail D1/D0 pair
  * first and emits no leaf D2 body.
+ *
+ * deslop leftovers:
+ * - func_ov031_02111214 (yaw mModel.mat4x3, drop translation to pos >> 3):
+ *   manifest ordinal 2 of this TU, no other src/ consumer; kept as a
+ *   C-linkage ROM label. Member/static form unmeasured.
+ * - data_ov031_02111424 is the extern four-variant SharedFilePtr table
+ *   InitResources indexes by mVariant (this TU's manifest is text-only);
+ *   the individual BMD link names stay data_ov031_*.
+ * - Matrix4x3_FromRotationY stays a TU-local extern: no header declares it.
+ * - The actorID switch stays defaultless in matched form; the registry
+ *   only spawns the four HS_* profiles (0x12e-0x131).
+ * - pad_0d0 stays: untouched anywhere in this TU (Model opens at 0x0d4).
  */
 
 #include "daObjHsBillboard_c.h"
 #include "SharedFilePtr.h"
 #include "BMD_File.h"
+
+/* Four model handles. Each constructs through func_02017acc and destroys
+ * through func_02017ab4. The four-pointer table stays ROM rodata. */
+struct HsBillboardModelFilePtr : SharedFilePtr {
+    unsigned int words[2];
+    HsBillboardModelFilePtr(unsigned int fileId);
+    ~HsBillboardModelFilePtr();
+};
+typedef char HsBillboardModelFilePtr_size_must_be_8[
+    sizeof(HsBillboardModelFilePtr) == 8 ? 1 : -1];
 
 extern "C" {
 extern SharedFilePtr *data_ov031_02111424[];
@@ -85,3 +107,21 @@ extern "C" void func_ov031_02111214(daObjHsBillboard_c *self)
     self->mModel.mat4x3.t.y = self->mPosY >> 3;
     self->mModel.mat4x3.t.z = self->mPosZ >> 3;
 }
+// @symbol _ZN18daObjHsBillboard_cD1Ev
+// @symbol _ZN18daObjHsBillboard_cD0Ev
+/* NOT WRITTEN HERE ON PURPOSE. The inline `~daObjHsBillboard_c() {}` in the
+   header is the whole source of both variants: from an inline body mwcc emits
+   D1 and then D0 -- the cartridge's own order -- and no D2. Written out of
+   line here instead they come out D0-before-D1 and the isolation step rejects
+   the object.
+
+   Both bodies are short because the chain is short: this class's vptr store,
+   then the owned Model at 0xd4, then dActor_c's own teardown, which is where
+   the actor-list unlink lives. D0's trailing deallocation is the inherited
+   inline `operator delete`, which is why nothing here names a heap. */
+
+/* Retail construction order. mwcc emits __sinit_d_a_obj_hs_billboard.cpp. */
+HsBillboardModelFilePtr data_ov031_02111a08(1565);
+HsBillboardModelFilePtr data_ov031_02111a00(1566);
+HsBillboardModelFilePtr data_ov031_02111a10(1569);
+HsBillboardModelFilePtr data_ov031_02111a18(1564);

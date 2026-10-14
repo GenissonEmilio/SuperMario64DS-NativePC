@@ -1,4 +1,5 @@
 //cpp
+#include "Sound.h"
 /* PROMOTED translation unit -- ov029/daObjWc_Mizu_c (9 function(s)).
  *
  * WDW water (profile WDW_WATER 101). RTTI ov029:0x02114098 names
@@ -27,7 +28,10 @@
  *   passes Fix12<int> by value; the header method form size-DIFFs.
  * - Sound::PlayLong: Behavior's long water sound; Sound.h has no PlayLong.
  * - SharedFilePtr +4: InitResources' TextureTransformer::Prepare reads the
- *   BMD at data_ov029_021142fc +4; SharedFilePtr.h has no fields.
+ *   BMD at daObjWc_Obj07_c_ModelFile +4 (words[1]); SharedFilePtr.h has no fields.
+ *   The daObjWc_Obj07_c_* names are a stale symbols.txt attribution: this TU
+ *   is the only consumer and defines both handles (obj07's own handles live
+ *   at 0x021142d4/0x021142dc).
  * - data_ov029_02112b2c / 02112fb8 / 02112fec WDW water-level / BTA / CLPS handles;
  *   this TU consumes them, overlay .data owns them.
  * - S14: g_profile_WC_MIZU stays outside the licensed .text.
@@ -60,20 +64,34 @@ struct BTA_File;
 struct KCL_File;
 struct CLPS_Block;
 
+/* Retail constructs these 8-byte handles in this order and registers
+ * their destructors. The wrapper names are local; the ctor/dtor
+ * addresses are the ROM resource-family functions. */
+struct WcMizuModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    WcMizuModelFilePtr(u32 fileID);
+    ~WcMizuModelFilePtr();
+};
+
+struct WcMizuCollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    WcMizuCollisionFilePtr(u32 fileID);
+    ~WcMizuCollisionFilePtr();
+};
+
 extern "C" {
 void func_ov029_02112250(daObjWc_Mizu_c *self);
 void func_ov029_021122b4(daObjWc_Mizu_c *self);
 void Matrix4x3_FromTranslation(void *m, int x, int y, int z);
 int IsAreaShowing(int idx);
-unsigned _ZN5Sound8PlayLongEjjjRK7Vector3s(unsigned a, unsigned b, unsigned c, void *pos, unsigned e);
 void _ZN18TextureTransformer7SetFileER8BTA_Filei5Fix12IiEj(void *tt, void *bta, int a, int fix, unsigned b);
 void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     void *mc, void *kcl, void *mtx, int fix, short s, void *clps);
 
-extern SharedFilePtr daObjWc_Obj07_c_ModelFile;
-extern SharedFilePtr daObjWc_Obj07_c_ClsnFile;
-extern void *data_ov029_021142fc[];
-extern void *data_ov029_02114304[];
+extern WcMizuModelFilePtr daObjWc_Obj07_c_ModelFile;
+extern WcMizuCollisionFilePtr daObjWc_Obj07_c_ClsnFile;
 extern int data_ov029_02112b2c[];
 extern BTA_File data_ov029_02112fb8;
 extern CLPS_Block data_ov029_02112fec;
@@ -100,9 +118,9 @@ int daObjWc_Mizu_c::InitResources()
     void *m;
     void *k;
 
-    m = Model::LoadFile(*(SharedFilePtr *)data_ov029_021142fc);
+    m = Model::LoadFile(daObjWc_Obj07_c_ModelFile);
     mModel.SetFile((BMD_File *)m, 1, -1);
-    TextureTransformer::Prepare(*(BMD_File *)data_ov029_021142fc[1], data_ov029_02112fb8);
+    TextureTransformer::Prepare(*(BMD_File *)daObjWc_Obj07_c_ModelFile.words[1], data_ov029_02112fb8);
     /* 6az: header SetFile takes Fix12<int> by value. */
     _ZN18TextureTransformer7SetFileER8BTA_Filei5Fix12IiEj(
         &mTextureTransformer, &data_ov029_02112fb8, 0, 0x1000, 0);
@@ -119,7 +137,7 @@ int daObjWc_Mizu_c::InitResources()
     UpdateModelPosAndRotY();
     UpdateClsnPosAndRot();
 
-    k = dBgW_Kc::LoadFile(*(SharedFilePtr *)data_ov029_02114304);
+    k = dBgW_Kc::LoadFile(daObjWc_Obj07_c_ClsnFile);
     /* 6az: header SetFile takes Fix12<int> by value. */
     _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
         &mMeshCollider, k, &mClsnMat, 0x1000, mAngleY, &data_ov029_02112fec);
@@ -174,8 +192,7 @@ int daObjWc_Mizu_c::Behavior()
     if (mPosY != mPrevPosY) {
         /* +0x74 is mCamSpacePosX; named &mCamSpacePosX / mSoundID CSE (size-DIFF).
            Sound.h has no PlayLong. */
-        mSoundID = _ZN5Sound8PlayLongEjjjRK7Vector3s(
-            *(unsigned *)((u8 *)&mSoundID), 3, 0x96, ((u8 *)this) + 0x74, 0);
+        mSoundID = Sound::PlayLong(*(unsigned *)((u8 *)&mSoundID), 3, 0x96, *(const Vector3 *)(((u8 *)this) + 0x74), 0);
     }
 
     {
@@ -248,3 +265,8 @@ extern "C" void func_ov029_02112250(daObjWc_Mizu_c *self)
    body out of line here instead flips them to D0-before-D1 and the isolation
    step rejects the object.
  */
+
+/* The static-init globals -- mwcc emits __sinit_d_a_obj_wc_mizu.cpp
+   from these: one ctor veneer plus destructor registration per handle. */
+WcMizuModelFilePtr daObjWc_Obj07_c_ModelFile(0x6ca);
+WcMizuCollisionFilePtr daObjWc_Obj07_c_ClsnFile(0x6cb);

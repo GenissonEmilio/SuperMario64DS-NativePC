@@ -2,53 +2,40 @@
 #define DSCMINIGM_C_H
 #include "dScene_c.h"
 
-/* The minigame-select menu scene. Four rows of minigame icons on the top
- * screen; the sub screen scrolls sideways by mSubBgScrollX to reveal the
- * second page. See notes/minigame-provenance.md for how the layout below was
- * recovered. */
+/* The minigame-select menu scene. Four character tabs of nine icons
+ * on the top screen; the sub screen scrolls by mSubBgScrollX onto the
+ * second page. */
 struct dScMiniGm_c : dScene_c {
     s32 mSubBgScrollX;           /* 0x050 */
     u8  mPageFlipped;            /* 0x054 */
     u8  pad_055[0x3];
     s32 mGroupBase;              /* 0x058 */
-    s32 unk_05c;                 /* 0x05c */
-    s32 unk_060;                 /* 0x060 */
-    s32 unk_064;                 /* 0x064 */
-    u8  pad_068[0x24];  /* 0x068 -- opaque; untouched by any slot fn */
+    s32 unk_05c;                 /* 0x05c -- InitResources zeroes; 020c0378 copies into the selected entry */
+    s32 unk_060;                 /* 0x060 -- InitResources zeroes */
+    s32 mGfxSlot;                /* 0x064 -- 020c16e4 walks 0..9 for char/palette dest */
+    s32 mGfxSlots[9];            /* 0x068 -- 020c16e4 writes, 020c1688 reads as palette dest */
     s32 mArrowBobPhase;          /* 0x08c */
     s32 mPrevPageTimer;          /* 0x090 */
     s32 mNextPageTimer;          /* 0x094 */
     s32 mExitTimer;              /* 0x098 */
     s32 mIconBlinkPhase;         /* 0x09c */
     s32 mScrollDelay;            /* 0x0a0 */
-    s32 unk_0a4;                 /* 0x0a4 */
-    s32 unk_0a8;                 /* 0x0a8 */
+    s32 unk_0a4;                 /* 0x0a4 -- InitResources zeroes */
+    s32 unk_0a8;                 /* 0x0a8 -- InitResources zeroes */
     u8  mExiting;                /* 0x0ac */
     u8  pad_0ad[0x3];
 
-    /* Declared first -- key function; see the family convention discussed
-       in dScene_c.h. Never defined as a real method in any TU: both D1 and
-       D0 are plain functions carrying their literal mangled name
-       (src/_ZN11dScMiniGm_cD1Ev.c, src/_ZN11dScMiniGm_cD0Ev.c). */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMiniGm_c();   /* no slot */
-#else
-    virtual ~dScMiniGm_c();   /* D1 and D0 */
-#endif
+    /* Inline is load-bearing: out-of-line emits D0 before D1 plus a
+       homeless D2. Empty because this class adds only scalars. */
+    virtual ~dScMiniGm_c() {}                            /* slots 16 (D1), 17 (D0) */
 
-    /* --- overrides, in _ZTV8dScene_c/_ZTV7fBase_c order. --- */
     virtual s32  InitResources();                        /* slot  0 */
     virtual s32  CleanupResources();                     /* slot  3 */
     virtual s32  Behavior();                              /* slot  6 */
     virtual s32  Render();                                /* slot  9 */
     virtual void OnPendingDestroy();                      /* slot 12 */
+
+    void func_ov005_020c0378();
 };
 
 #ifndef SM64DS_PLATFORM_PC

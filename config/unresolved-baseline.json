@@ -2,7 +2,7 @@
  "eligible": 11044,
  "unresolved": {
   "arm9:0x02017848": {
-   "name": "_ZN5FaderD0Ev",
+   "name": "_ZN8dFader_cD0Ev",
    "missing": [
     "base_dtor_Fader"
    ]
@@ -124,13 +124,13 @@
    ]
   },
   "ov002:0x020f83a4": {
-   "name": "_ZN14CutsceneObject13InitResourcesEv",
+   "name": "_ZN8daDemo_c13InitResourcesEv",
    "missing": [
     "func_02113c20"
    ]
   },
   "ov002:0x020feef4": {
-   "name": "_ZN6Bullet13InitResourcesEv",
+   "name": "_ZN24daPropeller_Heyho_Fire_c13InitResourcesEv",
    "missing": [
     "func_0211d610"
    ]
@@ -202,70 +202,20 @@
    ]
   },
   "ov060:0x02119004": {
-   "name": "_ZN16BowserShockwaves13InitResourcesEv",
+   "name": "_ZN9daFRing_c13InitResourcesEv",
    "missing": [
     "func_021115e4",
     "func_021115f4"
    ]
   },
-  "ov065:0x0211ba88": {
-   "name": "_ZN15TtcRotatingGear13InitResourcesEv",
-   "missing": [
-    "func_021121b8"
-   ]
-  },
   "ov065:0x0211bf04": {
-   "name": "_ZN14TTC_MovingBeam13InitResourcesEv",
+   "name": "_ZN16daObjCtMecha09_c13InitResourcesEv",
    "missing": [
     "func_02112118"
    ]
   },
-  "ov066:0x021166c8": {
-   "name": "func_ov066_021166c8",
-   "missing": [
-    "func_02112c88",
-    "func_02112cc8",
-    "func_02112cd8_updatepos"
-   ]
-  },
-  "ov066:0x02116db0": {
-   "name": "func_ov066_02116db0",
-   "missing": [
-    "func_02112c08",
-    "func_02112d48"
-   ]
-  },
-  "ov066:0x021175e8": {
-   "name": "func_ov066_021175e8",
-   "missing": [
-    "func_02112c08",
-    "func_02112d48"
-   ]
-  },
-  "ov066:0x02117bf0": {
-   "name": "func_ov066_02117bf0",
-   "missing": [
-    "func_02112c08",
-    "func_02112d48"
-   ]
-  },
-  "ov066:0x02118188": {
-   "name": "func_ov066_02118188",
-   "missing": [
-    "func_02112c08",
-    "func_02112d48"
-   ]
-  },
-  "ov066:0x02119ce8": {
-   "name": "_ZN6Eyerok13InitResourcesEv",
-   "missing": [
-    "func_02112c08",
-    "func_02112ca8",
-    "func_02112d48"
-   ]
-  },
   "ov074:0x02121e98": {
-   "name": "_ZN8Goomboss13InitResourcesEv",
+   "name": "_ZN12daKuriKing_c13InitResourcesEv",
    "missing": [
     "func_021123f4",
     "func_021124ac"
@@ -279,7 +229,7 @@
    ]
   },
   "ov079:0x02126164": {
-   "name": "_ZN5Whomp13InitResourcesEv",
+   "name": "_ZN7daBtn_c13InitResourcesEv",
    "missing": [
     "func_021135d4"
    ]
@@ -290,14 +240,8 @@
     "normalize"
    ]
   },
-  "ov089:0x0213162c": {
-   "name": "func_ov089_0213162c",
-   "missing": [
-    "data_02111b68"
-   ]
-  },
   "ov096:0x02137564": {
-   "name": "_ZN7Tornado13InitResourcesEv",
+   "name": "_ZN7daTor_c13InitResourcesEv",
    "missing": [
     "func_02112968"
    ]

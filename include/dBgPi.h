@@ -15,10 +15,10 @@ struct dBgPi {
     void **vtable;          /* 0x000 */
     struct dBgPc base;      /* 0x004 */
     u16 triangleID;         /* 0x018 */
-    u16 flags;              /* 0x01a */
-    s32 clsnID;             /* 0x01c */
-    s32 unk_020;            /* 0x020 */
-    s32 unk_024;            /* 0x024 */
+    u16 colliderIdx;        /* 0x01a - slot in the collider table; 0x18 = none */
+    s32 clsnID;             /* 0x01c - the hitting collider's ownerUniqueID */
+    struct dActor_c *owner; /* 0x020 - the hitting collider's owner */
+    struct dBgW *collider;  /* 0x024 - the collider that produced this result */
 };
 
 #ifndef SM64DS_PLATFORM_PC
@@ -29,15 +29,25 @@ typedef struct dBgPi dBgPi;
 
 #else
 
+struct dActor_c;
+struct dBgW;
+
 extern "C" void _ZN6Memory16operator_delete2EPv(void *);
 
 struct dBgPi : dBgPc {
     /* 0x00 is the vptr; the dBgPc base occupies 0x04..0x17. */
     u16 triangleID;         /* 0x018 */
-    u16 flags;              /* 0x01a */
+    /* Which registered collider produced this result: the slot index into
+       the 0x18-entry table data_020a0c80, written by the DetectClsn loops.
+       0x18 is the empty sentinel -- Reset stores it and the validity tests
+       reject it. */
+    u16 colliderIdx;        /* 0x01a */
+    /* The hitting collider's identity: its ownerUniqueID, its owner and the
+       collider itself, recorded together by SetCollider so IsHitBy can test
+       the triplet. */
     s32 clsnID;             /* 0x01c */
-    s32 unk_020;            /* 0x020 */
-    s32 unk_024;            /* 0x024 */
+    struct dActor_c *owner; /* 0x020 */
+    struct dBgW *collider;  /* 0x024 */
 
     /* --- vtable, in ROM order. Do not reorder. --- */
     virtual ~dBgPi();       /* slots 0 (D1), 1 (D0) */
@@ -70,6 +80,16 @@ struct dBgPi : dBgPc {
     dBgPi &operator=(const dBgPi &other);
     void CopyTo(dBgPi &dst) const;
     u32 GetClsnID() const;
+
+    int GetColliderIndex() const;
+    void SetColliderIndex(int idx);
+    int IsHitBy(int uid, struct dActor_c *owner, struct dBgW *collider) const;
+    int IsValid() const;
+    int HasCollider() const;
+    void RecordHit(s16 triID, SurfaceInfo *src);
+    void SetCollider(int idx, int uid, struct dActor_c *owner,
+                     struct dBgW *collider);
+    void Reset();
 };
 
 /* Size is the dBgPi's own span AND the stride of the three consecutive results

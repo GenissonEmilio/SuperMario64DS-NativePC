@@ -3,7 +3,7 @@
 
 #include "ModelAnim.h"
 #include "dCcAcPos_c.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "dBgCh_Actr.h"
 #include "dActor_c.h"
 
@@ -56,6 +56,9 @@ struct daKrpaFrameController {
     u32 *frames;
     u32 count;
     u32 cursor;
+
+    void func_ov070_02121ae0(u32 *frames, u32 count, u32 mode);
+    u32  func_ov070_02121a64();
 };
 
 #ifndef SM64DS_PLATFORM_PC
@@ -67,7 +70,7 @@ typedef char daKrpaFrameController_size_must_be_0x10[
 struct daKrpa_c : dActor_c {
     u8                        pad_0d0[0x4];
     ModelAnim                 mModelAnim;                    /* 0x0d4 */
-    ShadowModel               mShadowModel;                  /* 0x138 */
+    dExtShadowModel_c               mShadowModel;                  /* 0x138 */
     dCcAcPos_c mdCcAcPos_c;    /* 0x160 */
     dBgCh_Actr              mWithMeshClsn;                 /* 0x1a0 */
     Matrix4x3                 mMatrix;                       /* 0x35c */
@@ -77,7 +80,7 @@ struct daKrpa_c : dActor_c {
     Player                   *mPlayer;                       /* 0x3a4 */
     /* InitResources raycasts a dBgCh_Gnd straight down from mPos and stores
        (mPosY - hit height) + 0x1e000, or the constant 0x1f4000 when nothing is
-       hit. [_ZN8daKrpa_c13InitResourcesEv.cpp] */
+       hit. [_ZN8daKrpa_c13InitResourcesEv, now in src/game/actors/d_a_krpa.cpp] */
     Fix12i                    mGroundDistance;                /* 0x3a8 */
     u8                        mStateTimer;                    /* 0x3ac */
     u8                        pad_3ad[0x3];
@@ -85,18 +88,7 @@ struct daKrpa_c : dActor_c {
     /* Inline plus vtable instantiation is load-bearing: mwcc emits retail's
        D1 then D0 pair, with no homeless D2. InitResources is the first
        out-of-line virtual and anchors this TU's vtable/RTTI group. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daKrpa_c() {}   /* no slot */
-#else
-    virtual ~daKrpa_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daKrpa_c() {}
 
     virtual s32  InitResources();       /* slot 0 */
     virtual s32  CleanupResources();    /* slot 3 */
@@ -104,6 +96,21 @@ struct daKrpa_c : dActor_c {
     virtual s32  Render();              /* slot 9 */
     virtual void OnPendingDestroy();    /* slot 12 */
     virtual int  OnYoshiTryEat();       /* slot 18 */
+
+    void func_ov070_021211c4();
+    void func_ov070_02121298();
+    void func_ov070_02121310();
+    int  func_ov070_021213cc();
+    int  func_ov070_02121438();
+    int  func_ov070_021214f8();
+    int  func_ov070_02121548();
+    int  func_ov070_0212156c();
+    int  func_ov070_021216b8();
+    int  func_ov070_02121710();
+    int  func_ov070_021217ac();
+    void func_ov070_0212180c();
+    void func_ov070_02121848();
+    void func_ov070_02121880(int state);
 
     static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);

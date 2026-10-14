@@ -353,21 +353,20 @@ def _probe_langmode():
 def _probe_attribution(repo):
     with _mock_revision(repo):
         functions = VM.function_snapshot("fixture")
-        with mock.patch.object(VM.CHAOS, "first_matchers",
-                               return_value={SOURCE: "maintainer"}), \
-                mock.patch.object(VM.CHAOS, "match_finishers", return_value={}), \
-                mock.patch.object(VM, "_json_at", return_value={
-                    "overrides": {SOURCE: "alice", f"{SOURCE}#{SYMBOLS[1]}": "bob"}
-                }):
+        with mock.patch.object(VM, "_json_at", return_value={
+            "functions": {
+                "arm9:0x02000000": {"author": "alice", "name": SYMBOLS[0]},
+                "arm9:0x02000004": {"author": "bob", "name": SYMBOLS[1]},
+            }}):
             attribution = VM.attribution_snapshot("fixture", functions)
     authors = {key: row["author"] for key, row in attribution["byFunction"].items()}
     ok = set(authors.values()) == {"alice", "bob"}
     return _row(
         "attribution", "ready" if ok else "gap",
         {"requestedAuthors": list(("alice", "bob")), "resolvedByFunction": authors},
-        "Overrides are keyed by the surviving source path, so one override credits every "
-        "member and cannot preserve distinct legacy authors." if not ok else
-        "Attribution can preserve a distinct author for each TU member.")
+        "Both functions share one source file. Each keeps the author stored next to "
+        "its address." if ok else
+        "The author file did not keep a separate author for each address.")
 
 
 def _probe_port_refs(fixture):

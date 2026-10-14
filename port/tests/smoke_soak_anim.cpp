@@ -16,7 +16,7 @@
 #include <cstring>
 
 #include "Model.h"
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 
 #include "ntr/gx.h"
 #include "ntr/mmio.h"
@@ -96,7 +96,7 @@ static int run_pair(unsigned mh, unsigned ah, size_t *tris, int *frames_out)
 
     SharedFilePtrC ap;
     _ZN13SharedFilePtr9ConstructEj(&ap, ah);
-    void *bca = Animation::LoadFile(*(SharedFilePtr *)&ap);
+    void *bca = dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)&ap);
     if (!bca) { _ZN13SharedFilePtr7ReleaseEv(&mp); return 1; }
     unsigned anim_bones = *(unsigned short *)bca;
     int num_frames = *(unsigned short *)((char *)bca + 2);

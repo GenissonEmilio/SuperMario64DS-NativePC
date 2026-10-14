@@ -20,7 +20,7 @@ one, add it here AND, if it recurs, as a rule in `swarm.py` so the free tier can
 The known divergence is that `v = *(T *)p` is a blind byte move in C and scalarises
 to the members' own types in C++. The documented fix -- copy through a struct whose
 only member is an array -- is usually described as restoring the `ldm`/`stm` pair.
-It does more than that, and `RollingRock::Behavior` (ov021 0x02112854, 0x2d8) is the
+It does more than that, and `daGrock_c::Behavior` (ov021 0x02112854, 0x2d8) is the
 case that shows it.
 
 Copying a `Vector3_16` out of an actor at +0x92 as a method scalarised to three
@@ -107,6 +107,34 @@ keep the extern-C definition with scalar args and declare the true signature in
 the class header for callers; a call emits the same substituted symbol either way,
 which the byte gate confirms.
 
+### CORRECTED 2026-09-23: the CALLER pays too
+
+The last sentence above holds for the symbol, not for the bytes. Handing mwccarm a
+`Fix12<int>` BY VALUE costs at the call site as well, independent of what the
+callee does with it -- so "declare the true signature in the class header for
+callers" does not reproduce while the parameter is the class.
+
+First measured on `daObjBC_Switch_c` (#2176): retail passes a constant in a
+register (`mov r3,#0x1000`); every class-typed spelling homes it to the literal
+pool and reloads it (`ldr r3,[pc,#..]` then `ldm r3,{r3}`), 0x68 against 0x60.
+Refuted there: a brace-init local, a `const` local, an inline helper returning the
+wrapper, a gccext compound literal, and a raw-bits constructor on `Fix12`.
+
+Re-measured with a field argument: `daEyBm_c::Render` (ov071 0x02121d14, target
+0x6c) calling `Particle::System::NewUnkCallback818` through a header declaration.
+A pointer cast `*(Fix12<int> *)&mPosX` gives 0x7c -- the field's address is formed
+and read back with `ldmia` instead of the retail `ldr r2,[r4,#0x5c]`. Brace-init
+locals give 0xa4, as does a converting constructor; both copy through stack
+temporaries.
+
+**How to apply.** A `5Fix12IiE` callee cannot be reached through a class-typed
+header declaration. Callers keep a C-linkage extern with a scalar `Fix12i`
+parameter, as `src/game/actors/d_a_obj_bc_switch.cpp` does for
+`Sound::ChangeMusicVolume` -- or, following `IsGoingOffCliff` above, the symbol
+is renamed to its scalar mangling so a real declaration works on both sides.
+The 2026-08-27 result is untouched: inside the callee, an unread class parameter
+still costs nothing.
+
 ## 1. Ground rules of the build
 
 - **Reloc slots are wildcards.** Every `bl`/`blx` target and every pc-relative `ldr` of an
@@ -190,7 +218,8 @@ up - the logic is the same but the codegen differs:
   *less*-optimized one, which `-O4,p` never produces. Confirmed unreachable: swept 6 source
   idioms (deref/ptr-var/index/ref/volatile/split-RMW) x all 11 mwccarm versions x 7 opt
   levels - every optimized build folds, `-O0` adds a stack frame, nothing lands the 5-instr
-  shape. No `-opt nopeephole` knob changes it (it's instruction selection, not a peephole).
+  shape. No `-opt nopeephole` knob changes it (it's instruction selection, not a peephole;
+  2004/b56 has no `nopeephole` keyword anyway, see 6db).
   These are not asm-hatch material either (clean compiled-code shape, no hand-asm tell).
   Treat the whole flag-RMW-materialized cluster as shape-blocked; flag and move on
   (2026-06-27).
@@ -460,7 +489,7 @@ Additions from the 2026-07-04/05 overnight runs (credit: Fable refine agents):
 - **Launder signedness is a value-number lever (2026-07-10).** `(int)` vs `(unsigned int)`
   inside the u64-mask give DISTINCT 64-bit value numbers, so two materialized bases around
   a call both emit instead of CSE keeping the address live across it - a finer-grained tool
-  than respelling the whole mask (found on _ZN6Camera14GoBehindPlayerEj, 9->4 div).
+  than respelling the whole mask (found on _ZN9dCamera_c14GoBehindPlayerEj, 9->4 div).
 - **Bit-field extract coloring: `(short)x << 12` vs `(x << 16) >> 4` (2026-07-10).** Both
   are the same extract, but the cast form forces a non-inplace lsl into a FRESH register
   plus an in-place asr, reproducing a target's r0/r2/r1/r0 coloring that the double-shift
@@ -510,7 +539,7 @@ Additions from the 2026-07-04/05 overnight runs (credit: Fable refine agents):
   threading); (b) a SINGLE reused `int` scratch temp reassigned per range check (not separate
   `rel0`/`rel1` as m2c renders them) reproduces the ROM's stale-temp reads - a later block that
   reads `(u8)tmpv` gets the LAST assignment, matching the ROM's register reuse. On
-  Stage::PS_Update (0x0202635c, 3115 insns) this took case 8 from 213 div to byte-exact incl.
+  dScStage_c::PS_Update (0x0202635c, 3115 insns) this took case 8 from 213 div to byte-exact incl.
   the language arms, placed cases 1 & 0xa's mid-case literal pools exactly, and cut global div
   916->756 / region 690->180 (16->17 cases byte-identical). Pair with per-site u64-mask
   laundering (sec 6e/6g) for the struct-style `add base,idx,lsl#2`+`[rX,#k]` accesses.
@@ -521,8 +550,8 @@ Additions from the 2026-07-04/05 overnight runs (credit: Fable refine agents):
   because mwccarm constant-propagates before instruction selection. Feed the mask through a
   non-const local or a tiny inline helper (`static inline int clr(int x,int m){return x&~m;}`
   called with a runtime-looking `m` that is provably 0) so selection runs on `x & ~m` and
-  picks BIC *before* the value-numbering pass proves `m==0`. Cracked _ZN5Stage8BehaviorEv
-  (Fable, div 49→0) and the same residual on the Stage::PS_Update near-miss. Pairs with
+  picks BIC *before* the value-numbering pass proves `m==0`. Cracked _ZN10dScStage_c8BehaviorEv
+  (Fable, div 49→0) and the same residual on the dScStage_c::PS_Update near-miss. Pairs with
   `#pragma opt_common_subs off` + a named manual-CSE local (the EBB-CSE master lever) which
   carried the rest of that 444-insn C++ dispatcher.
 
@@ -546,7 +575,7 @@ Swept 20 CodeWarrior pragmas x all 96 div<=4 near-misses (1,920 compiles). Verdi
   On LARGE multi-EBB functions with a genuine function-wide shared CSE (e.g. a slot-address
   reused across many switch cases), `opt_common_subs off` is a MASTER lever, not inert - it
   flips global CSE to EBB-local rematerialization, the ROM's shape. See 6e (2026-07-07,
-  Stage::PS_Update). Do NOT skip this pragma on a big function just because the small-batch
+  dScStage_c::PS_Update). Do NOT skip this pragma on a big function just because the small-batch
   sweep found it inert. `opt_propagation off` is likewise live on large functions (6e 07-05).
 
 ## 6g. The materialization "floor", precisely bounded (2026-07-01 corpus search)
@@ -758,7 +787,7 @@ Try the subscript form before parking an index-variable spill as a coloring floo
 
 The section-2 rule "register allocation follows declaration order" has a precise
 DIRECTION for the callee-saved band (r7-r10/sb/sl), learned cracking the biggest
-unmatched function in the game one-shot on Opus (_ZN5Stage9PS_RenderEv, arm9 0xb50 /
+unmatched function in the game one-shot on Opus (_ZN10dScStage_c9PS_RenderEv, arm9 0xb50 /
 724 insns, div 21 -> 0). The long-lived locals that survive across calls are handed the
 callee-saved registers in REVERSE of their C declaration order: the LAST-declared
 long-lived local takes r7, the next-to-last r8, then r9, r10, sb, sl ascending. The
@@ -933,7 +962,7 @@ byte-exact, 4 verified floor. The crack levers:
   one add, no cmp) makes the const arg emit FIRST (mov before add = ROM order) with
   zero other byte changes (func_ov079_02126a84). Wrap the argument whose setup must
   move LATER; wrapping the other argument is inert. The same identical-arm select on a
-  table pointer flips ldr-over-mov promotion on _ZN3HUD13InitResourcesEv but couples
+  table pointer flips ldr-over-mov promotion on _ZN8dMeter_c13InitResourcesEv but couples
   there (a strh stops sinking) - lever real, that function still open.
 - **Loads-before-stores batching fires only in the ELSE arm.** Inverting a guard so
   the store+call arm becomes else (`==0` -> `!=0`, arms swapped) stopped a pool ldr
@@ -964,7 +993,7 @@ What survived BOTH prober and skeptic - marked `floor(ordering)` in nearmiss/db.
 - position-dependent final-block scheduler state: the byte-identical C spelling
   MATCHES in the function's first arm and diverges in the last block before the
   literal pool (func_ov006_020fb230);
-- Stage::PS_Update's case-1 preheader independent-ldr pair (see that file's header).
+- dScStage_c::PS_Update's case-1 preheader independent-ldr pair (see that file's header).
 
 Caveats from this run: two initial floor verdicts fell to the skeptic's fresh lever
 families, and 6n's permuter result cracked a third ordering shape - treat
@@ -1171,7 +1200,7 @@ Everything else follows from that. Corollaries, each verified with minimal toys:
 
 **The one matched precedent, and why it is not available here.** A corpus scan of all of arm9
 for the ROM shape `cmp rX,#0; beq #8; <single mov>` finds exactly TWO sites: `func_02068398`
-and `func_0205c048` -- and c048 is MATCHED. Its source (src/func_0205c048.c) buys the branch
+and `func_0205c048` -- and c048 is MATCHED. Its source (src/unnamed/arm9/0205/func_0205c048.c) buys the branch
 with a genuinely 2-condition guard, giving the assignment block two predecessors:
 ```c
 if (r8 != 0)      goto Lsep1;   /* pred 1: the goto      */
@@ -1452,7 +1481,7 @@ Levers that landed (all steer coloring/scheduling through SOURCE STRUCTURE, not 
 - **Block-scope the loop pointer, declare the counter last** (`func_0203128c`, div 6->0).
   Scoping a pointer inside the if-body and declaring a distinct counter local AFTER it
   flipped a pure r5/r6 swap. This is 6i applied to a loop induction pair.
-- **Stage a store-triple through a local struct temp, in emission order**
+- **dScStage_c a store-triple through a local struct temp, in emission order**
   (`func_0200c394`, div 7->0). Three shifted s16->fx32 values assigned to `t.x/t.z/t.y`
   in that order, then stored out, rotated the load/shift registers to r0/r3/r1/r2
   exactly. A struct temp is a stronger ordering constraint than three scalars.
@@ -1505,7 +1534,7 @@ Levers that landed:
   reference the temp in a degenerate ternary on the other store:
   `vy = <y expr>; v.x = vy ? sx<<3 : sx<<3;`. Generalizes 6y's fake-dependency trick to
   store-emission order.
-- **Mixed temp/RMW interleave beats both pure families** (`Camera::Render`, div 4->0, Fable).
+- **Mixed temp/RMW interleave beats both pure families** (`dCamera_c::Render`, div 4->0, Fable).
   On a 6-element `(x+4)>>3` writeback, *def order* pins register/slot assignment while
   *store-statement order* pins emission. Pure-temp and pure-RMW forms both floor (an
   exhaustive 720-permutation sweep bottomed at div 4); temps for a SUBSET (0,1,2,4) with
@@ -1570,7 +1599,7 @@ New levers:
   case in three batches** -- the recurring tell is a missing or duplicated constant
   materialization. Check the branch offsets before believing a coloring diagnosis.
 
-**Confirmed floors** (survived Opus AND Fable, both exhaustive): `Stage::LoadFog` (r5/r8 swap,
+**Confirmed floors** (survived Opus AND Fable, both exhaustive): `dScStage_c::LoadFog` (r5/r8 swap,
 the CSE'd zero web colors last under every lever), `func_020341a8` (r1/r2 swap rooted in one
 in-place-vs-fresh allocator choice), `GX::LoadTex` (r4/r5 web-identity swap; 9 disjoint probes
 compiled BITWISE IDENTICAL -- a 6y-class allocator-priority floor).
@@ -1626,7 +1655,7 @@ immediate re-crack queue for this recipe. NOT applicable as-is to the s64/smull 
 
 The 6aa recipe fleet ran the full pure-register-permutation near-miss class (42 targets).
 23 fleet matches plus 4 landed concurrently; all three functions previously recorded as
-confirmed allocator floors (Stage::LoadFog, func_020341a8, GX::LoadTex) FELL. New levers,
+confirmed allocator floors (dScStage_c::LoadFog, func_020341a8, GX::LoadTex) FELL. New levers,
 each verified by a div->0 crack:
 
 - **A stubborn scratch-web permutation near a call can be a DROPPED ARGUMENT.** Twice in
@@ -1643,7 +1672,7 @@ each verified by a div->0 crack:
   where every temp-hoist folded back (func_ov002_020d4748, div 8->0 in one step).
 - **Branch-order inversion renumbers webs; decl order arbitrates only after.** Writing
   `if (x != k) cheap else rare` instead of the positive test rotated the loop webs, then
-  reverse-decl-order (6k) landed the exact ROM colors (Stage::LoadFog, div 10->0 after a
+  reverse-decl-order (6k) landed the exact ROM colors (dScStage_c::LoadFog, div 10->0 after a
   6x6 decl grid had floored at 10 under the original branch order).
 - **De-volatile via char-cast reads.** A volatile spill-array crutch stalls at a pure
   color swap; plain array + *(int*)((char*)v + K) call-arg reads keep the memory pin
@@ -1663,8 +1692,7 @@ named-local webs descending from r3 in FIRST-DEFINITION order; a web whose singl
 definition must precede the load that consumes it is rank-pinned, and CSE re-merges every
 splitting attempt (func_ov006_020cb72c, 100+ variants; same signature as the previously
 asm-hatched func_02058568/func_ov007_020bfd70). Six more no-progress hypotheses from the
-fleet are in the nearmiss DB notes for their functions; the remaining unrun backlog is
-listed in CLAIMS.md.
+fleet are in the nearmiss DB notes for their functions.
 
 ## 6ac. Opus groups-of-5 batch (2026-07-26, 9 arm9 matches): the "s64 family" was a mirage, and eight new rules
 
@@ -1724,6 +1752,11 @@ appeared; floor marks mean "do not spend model time by default", and the recorde
 angle (load emission order) is where a genuinely new construct class would attack. ~800 compiles incl. exhaustive
 operand-spelling space (which collapses to 4 points per slot, not 12: Q(a,b)==R(b,a),
 U==Q), pair-flip and annealing sweeps. Do not re-attempt.
+**MATCHED 2026-10-13 (6dc):** the floor was a source-shape error. The operands are 64-bit
+locals, and their declaration order sets the colours.
+(Re-attacked 2026-10-13, still 2 words. The mechanism above is restated more precisely in
+6db: Rm is always the textual LEFT operand, and the residue is a colour tie, not load
+emission order.)
 
 ## 6ad. Opus batch 2 (2026-07-26, 7 arm9 matches incl. func_02048234): siblings beat grinding
 
@@ -1804,7 +1837,7 @@ mechanism claims bounded by known constructs, never impossibility.
   hypothesis, ask what the probe inherited from the draft.
 - **Deep-pile divergence mostly means "draft never got attention"**: func_020345b0
   (120->0), func_0206ece0 (112->0), func_0206655c (179->0) all fell in one session
-  each with ROM-first reading, and Stage::InitResources went 193->4. High div is not
+  each with ROM-first reading, and dScStage_c::InitResources went 193->4. High div is not
   a difficulty signal; it is an attention signal.
 - **Read-order of adjacent globals is a real lever** (func_02032f9c lever 2): naming
   one global's read into a local FIRST and leaving the other inline flips two pool
@@ -2378,7 +2411,7 @@ it**, while plain comparisons in the same translation unit still fold normally.
 
 So a materialized bool sitting inside an `&&` chain is a tell about two things at once:
 the file is C++, and the condition came from an inlined accessor rather than being written
-out. Found on `func_02009e70` `(Camera::Update)`; it was worth ~1300 divergences on its own.
+out. Found on `func_02009e70` `(dCamera_c::Update)`; it was worth ~1300 divergences on its own.
 
 ### The TYPE of a named local selects its callee-saved rank
 
@@ -2450,7 +2483,7 @@ Neither matched, but both moved a long way and every lever below was isolated by
 building the variant WITHOUT it and re-verifying, so the numbers are measured
 rather than attributed.
 
-### func_02009e70 (Camera::Update, 0x109c): 302 -> 183
+### func_02009e70 (dCamera_c::Update, 0x109c): 302 -> 183
 
 Two levers carry the whole distance, and one of them is worth more than everything
 else in this file combined.
@@ -2608,7 +2641,7 @@ independently steerable (7->0, byte-identical, 1.2/sp2p3).
 
 Scope check (same night): a mechanical signedness sweep (singles, pairs, all-flip; 581
 compiles) across the seven other stuck arm9 residues (0202ffec, CapEnemy::GetCapState,
-Stage::InitResources, 0204a730, 020412f0, Stage::PS_UpdateOkAndBackButtons, 02038824)
+dScStage_c::InitResources, 0204a730, 020412f0, dScStage_c::PS_UpdateOkAndBackButtons, 02038824)
 moved NOTHING. The lever fires when the residue is a two-local callee-saved web-identity
 swap; it does not perturb scheduling knots or wider coloring webs. Sweep script pattern:
 flip (unsigned int|int|u32|s32) decls in the bank draft, abverify each.
@@ -2824,7 +2857,7 @@ the RMW through a named temp reaches the same shape with the name kept.
 
 ## 6au. volatile-on-the-OBJECT plus an inline access beats a named pointer (2026-07-31, PS_UpdateOkAndBackButtons MATCHED)
 
-Closing `_ZN5Stage25PS_UpdateOkAndBackButtonsEb` (18 -> 9 -> 0, byte-identical on 1.2/base,
+Closing `_ZN10dScStage_c25PS_UpdateOkAndBackButtonsEb` (18 -> 9 -> 0, byte-identical on 1.2/base,
 1.2/sp2, 1.2/sp2p3 AND 2004/b56). 6at correctly diagnosed the last 9 words as a coloring
 rotation needing the pooled base out of the address-constant class, but the fix is not
 "de-rematerialize the pointer". It is two coupled changes that only work together:
@@ -2863,7 +2896,7 @@ holding the address with an inline `(int*)` cast at the index site (stays addres
 `opt_common_subs off` and `opt_strength_reduction off` (honoured but byte-identical here --
 these are established-real pragmas, verified by a zero-byte disassembly diff, not 6as typos).
 
-## 6av. The outgoing-arg phi coalesce: a build delta no register-resident construct breaks (2026-07-31, Stage::InitResources)
+## 6av. The outgoing-arg phi coalesce: a build delta no register-resident construct breaks (2026-07-31, dScStage_c::InitResources)
 
 A negative worth recording precisely, because it is cheap to re-grind and about 40 constructs
 have now died on it.
@@ -2932,8 +2965,9 @@ Three corrections fell straight out of it, all of which had been recorded as evi
   `opt_generateconditionalassignments`.** The 150-variant `func_02068398` campaign recorded
   this lever as inert; it was never applied. (Re-run with the correct name: still 1 word, so
   the floor survives -- but the earlier evidence was void.)
-- **`scheduling` is not a pragma.** Scheduling is controlled by the `-opt schedule` /
-  `-opt noschedule` COMMAND-LINE flag. Any "`#pragma scheduling off` is inert" line is
+- **`scheduling` is not a pragma.** Nor is it a command-line knob: 2004/b56 has no
+  `-opt schedule` / `-opt noschedule` keyword at all, and it accepts any unknown `-opt`
+  keyword silently (see 6db). Any "`#pragma scheduling off` is inert" line is
   meaningless, including ones asserted this session on the grounds that the token appears in
   the binary -- appearing in the binary is not the same as being pragma-exposed.
 - **`long_calls` is not a pragma.** The source now at
@@ -3797,8 +3831,9 @@ Closed since addendum 2, all inert (byte-identical, div 4, our colouring):
 * **Function signature**: 2, 3 and 4 parameters (the 6ab dropped-argument lever)
   leave it unchanged; giving a callee an extra argument only adds code.
 * **Flags (diagnostic only, not admissible)**: `-opt noschedule`, `-opt schedule`
-  and plain `-O4` all reproduce the same four words, so the residue is purely
-  allocation, not scheduling. `-O4,s` breaks size.
+  and plain `-O4` all reproduce the same four words. (Corrected 2026-10-13: neither
+  `-opt` keyword exists in 2004/b56, so this was not a scheduling test; see 6db.)
+  `-O4,s` breaks size.
 * **6y-1 self-select boosters** (`v = v ? v : v;` as a statement) on the x, z and
   shift webs at every position: best div 10, and the flip never appears.
 * **Bitfield type variations**: `int : 16` and `long : 16` at bit offset 7 are
@@ -4009,9 +4044,28 @@ keeps a variable's pre-shift and post-shift values in ONE web across an in-place
 or one that outranks a call-return-coalesced web against a loop-invariant one. No rule in
 6k / 6q / 6y / 6ab / 6bf spells either yet.
 
+### 6bo resolved (2026-10-13): MATCHED, and the lever was the field's spelling
+
+`func_ov075_02116128` is byte-exact at 2004/b56, with no pragma. The palette is a `u16`
+local (`u16 pal = func_02030958(slot) + 10; if (dim) pal -= 4;`) and every store spells
+the field as `(*e & 0xfff) | (u16)(pal << 12)`. mwccarm narrows `(u16)(pal << 12)` to
+`lsl #0x1c` IN PLACE on `pal`'s own register, with the `lsr #16` folded into each single
+store's `orr` and the loop's copy hoisted. That one web, pre-shift and post-shift, is
+exactly the ROM's r3. Every earlier draft wrote the shift out as explicit `<< 0x1c` /
+`>> 16` steps or as named temporaries, and each of those splits the value into a second
+web. The three attractors above are what that split does to the colouring. Keeping the
+`m`-style `int` offset is still needed for the `mla`, and an inline setter around the
+same expression matches too.
+
+Method point: this was found by trying the natural ways a 2004 programmer writes a
+4-bit field insert (`(pal & 0xf) << 12`, `(u16)(pal << 12)`, `(pal << 12) & 0xf000`).
+Only the u16-cast spelling emits the ROM's `lsl #0x1c`/`lsr #16` pair. The
+~160,000-compile search above never left the explicit-shift spelling, because it had
+been copied from the disassembly.
+
 ## 6bq. Three homing levers and a store-order rank lever (ov074 daKuriKing_c, two MATCHED, one at div 11, 2026-08-30)
 
-The Goomboss overlay's three unsourced bodies. Two fell on the first day; the third is
+The Kuri King overlay's three unsourced bodies. Two fell on the first day; the third is
 one lever short. What they share is that every single blocker was a question about
 which locals mwccarm keeps IN MEMORY, and in what order the source touches them.
 
@@ -4324,7 +4378,7 @@ audit can detect.
 
 ### 6bs TERNARY ORIENTATION is a colouring lever: two rigid regimes, and the bridge between them
 
-Measured on `_ZN14TTC_MovingBeam8BehaviorEv` (ov065, 0x0211bd8c, 0x178), lane TTC of run
+Measured on `_ZN16daObjCtMecha09_c8BehaviorEv` (ov065, 0x0211bd8c, 0x178), lane TTC of run
 vsdec, ~700 compiled variants across 11 product sweeps. The whole body reproduced on the
 first try except one trailing clamp block, which cost the entire session and turned out to
 be a single lever nobody had written down.
@@ -4466,7 +4520,7 @@ the lever should not be re-tried.
 **51 committed sources carry it right now** (`grep -rl '#pragma long_calls' src/`) -- 50 of
 them overlay files (19 in ov007, the rest spread over
 ov002/006/014/015/016/022/029/030/036/063/064/065/066/073/079/080/091/095/098) and exactly
-ONE arm9 file, `src/func_0205d4a0.c`. Most sit under a header comment that says the pragma
+ONE arm9 file, `src/unnamed/arm9/0205/func_0205d4a0.c`. Most sit under a header comment that says the pragma
 is what emits the pooled veneer. They all still byte-match, because the pragma is inert, but
 the comment is wrong and every one of those compiles now prints `warning: illegal #pragma`
 under the `-w illpragmas` in `DEFAULT_FLAGS`. Deleting the line from those files is a no-op
@@ -4647,7 +4701,7 @@ So the ROM's fabricated fourth word -- a zero that rides along in the store mult
 never in the load multiple -- has no C spelling. Combined with the leaf frame
 `stmdb sp!,{r4}` / `ldm sp!,{r4}` (mwccarm spends `push {r4,lr}` here because its block move
 needs `lr` as a scratch), this is a hand-written primitive and the existing HAND-ASM header on
-`src/func_02052514.c` is correct. Do not re-open it.
+`src/unnamed/arm9/0205/func_02052514.c` is correct. Do not re-open it.
 
 The transferable test: **an `ldm`/`stm` pair with different register counts, or an `stm` whose
 register list contains a value the matching `ldm` did not load, is hand-asm.** Equal widths
@@ -5090,7 +5144,7 @@ the size-gap tie-break inside `closeness`; the candidate sizes are exact and equ
 rows. It is the metric.
 
 The same split explains a row that read as wrong and is not.
-`_ZN3MrI13InitResourcesEv` (ov071, 0x02121734, 0x298) stores `divergences: 2`, and both its
+`_ZN8daEykn_c13InitResourcesEv` (ov071, 0x02121734, 0x298) stores `divergences: 2`, and both its
 committed file banner and `fdiff.py` say 3/166. Both are right.
 `nearmiss_db.py reeval --dry-run` over all 59 rows reports `50 unchanged, 0 drifted, 9
 unscorable`, so the stored 2 reproduces exactly under the live evaluator; the 3 is the
@@ -5172,11 +5226,35 @@ the same region. On a two-line probe over a `struct S *p`, canonical flags, whol
 
 The second store is the whole difference: `add #0x5000` once, then `[r2,#0x3c0]`, which is the
 ROM's shape at that site. The bound, and it is why this reads as inert if you probe it in the
-wrong place: **the cast only matters when the base is not already byte-strided.** In the
-banked `func_ov006_020d27dc` candidate the base is a `char *`, and there both spellings
-compile to the same 3652 bytes, md5 `8462f11dba034fd64356bc06233a65cf`, at both surviving
-sites. `(int)p + k` and `p + k` on a `char *` are the same expression after canonicalisation,
-the same way index arithmetic is canonicalised in 6bv item 2.
+wrong place: **a byte-strided base does not make the cast inert, it makes it inert at most
+sites, which is not the same thing.** Re-measured 2026-09-13 against the banked
+`func_ov006_020d27dc` candidate, whose base is a `char *` and which spells `(int)p` on five
+source lines -- 40, 87, 197, 220 and 241, of which 87 is a genuine int-typed local that cannot
+drop the cast:
+
+```
+cast kept at 40/197/220/241                          3656  md5 163fe692d7ce77134ede8bc0db9f5f08
+cast dropped at 40, at 197, at 220, or at all three  3656  md5 163fe692d7ce77134ede8bc0db9f5f08
+cast dropped at 241, alone or with the other three   3652  md5 8462f11dba034fd64356bc06233a65cf
+```
+
+Three of the four removable sites are byte-inert: on either spelling they canonicalise to the
+ROM's `add rN,sb,#0x5000` with an immediate offset, and both objects carry seventeen of those.
+The fourth is worth four bytes. The cast object emits exactly one `ldr rN,[sb,rM]` in the whole
+914-instruction function, at +0x55c, and that register-offset load plus the literal-pool word it
+needs is the entire size difference:
+
+```
+ROM     add r0,sb,#0x5000 / ldr r1,[r0,#0x374] / cmp r1,#5 / blt
+(int)p  ldr r0,[pc,#0x8c4] / ldr r0,[sb,r0]    / cmp r0,#5 / addlt
+p       add r0,sb,#0x5000 / ldr r1,[r0,#0x374] / cmp r1,#5 / addlt
+```
+
+The md5 `8462f11dba034fd64356bc06233a65cf` recorded here previously as what *both* spellings
+produce is the cast-dropped object alone; the banked source produces `163fe692...` at 3656.
+Line 241 is the site whose loaded value feeds the compare of the if-converted block, which is
+why a site-local probe of this lever can return either answer. Probe it at the site that feeds
+the divergence, not at a convenient one.
 
 That lever carried `func_ov006_020d27dc` from 17 divergences to a single instruction, and the
 one that remains is the notes 6d / 6bv item 8 if-conversion floor: mwccarm predicates a
@@ -5184,6 +5262,12 @@ six-instruction else arm and duplicates the epilogue where the ROM emits `blt` a
 unpredicated block. It is now evidenced over 119 pragma settings, 5 optimisation levels, 20
 source spellings and all 20 installed builds. The endpoint source is size-wrong by four bytes,
 so it does not belong in `src/`, and by item 1 it does not belong in the DB either.
+The corollary is the uncomfortable half: the banked row is size-exact at 3656 only because of
+that one spurious pool word, so its 17 is a score on a source that is wrong at line 241, and
+`evaluate_full` sentinels the corrected 3652-byte object at 999 on the size mismatch. The
+correction therefore cannot be ingested as an improvement -- the upsert is strictly improving
+and 999 is worse than 17 -- so the row keeps its stored source and carries a floor mark
+instead. The residue that actually remains is one word, not a size-exact 17.
 
 **4. The reversed-sense ternary, and a launder that is not needed.**
 
@@ -5200,7 +5284,8 @@ every C spelling computes the select before those stores, so the flag is short-l
 callee-saved registers suffice. The stored row's source is also the more admissible problem:
 it fabricates an eighth parameter for `OAM::Render` and passes `(OamAttr *)0x1000`, where the
 seed calls `_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii` with the parameter shape a matched
-sibling on main already uses (`src/func_ov006_020fa7b8.cpp`). Admissibility is not what
+sibling on main already uses (`func_ov006_020fa7b8`, since promoted into the folded TU
+`src/actors/dScMgPachinko_c.cpp`). Admissibility is not what
 `closeness` ranks on, so the DB keeps the worse-shaped source. That is a known cost of the
 metric, not an argument for forcing the ingest.
 
@@ -5216,6 +5301,17 @@ entry-write-order lever of 6bw item 1 does apply here, spelled `th = 0; te = th;
 the three counter zeros moved above the value clamp, and it is worth exactly one positional
 word. `#pragma opt_propagation off` is load-bearing on this function: without it the same
 source scores 91 to 93 instead of 33.
+
+RESOLVED 2026-10-02: the function matches, and "no source lever reaches it" was wrong. The
+lever is not in the homing order at all but in how the matrix is built. Written as the
+NitroSDK shapes, a local `static inline int FX_Mul(int, int)` that names its `s64` product
+before rounding and a local `MTX_Rot22(&m, sin, cos)` that fills the 2x2, the inlined
+parameters change the allocator's creation order and the thousands counter lands in r0.
+Measured: MTX_Rot22 alone 31; both inlines with the product unnamed 5 (an ip/lr swap left in
+the matrix block); FX_Mul with the named product 0. The counters still have to be declared
+te, hu, th (th, te, hu scores 60) and zeroed after the clamp (39 before it), and
+`opt_propagation off` is still needed (38 without). The source is in
+`src/minigames/d_s_mg_base.cpp`.
 
 **6. `volatile` can be ROM structure rather than a codegen pin, and on `func_ov006_02126b4c`
 it is.**
@@ -5403,9 +5499,9 @@ three matched by respelling the read and nothing else. First matched with CVCAST
 #2523); respelt to the plain redundant cast for the ratchet reason above, same bytes,
 same relocations, lane MATCH3B:
 
-  * `Door::InitResources`, ov100 0x021455a0 0x2fc -- one site (`param1 >> 0x10`). Before:
+  * `daDoor_c::InitResources`, ov100 0x021455a0 0x2fc -- one site (`param1 >> 0x10`). Before:
     0x300, 156 of 192 words differing over the shared prefix. After: 0 of 191.
-  * `RollingIronBall::InitResources`, ov100 0x02142de0 0x38c -- one site (`param1 >> 4`).
+  * `daIbl_c::InitResources`, ov100 0x02142de0 0x38c -- one site (`param1 >> 4`).
     Before: 0x390, 186 of 228. After: 0 of 227.
   * `daObjMarioCap_c::InitResources`, ov002 0x020b86d0 0x4c8 -- two sites
     (`param1 -= 0xa` at +0x37c and `param1 &= 0xfff` at +0x448). Before: 0x4d0, 98 of 308.
@@ -5905,14 +6001,14 @@ constant's position alone never leaves 7, and the read order alone never leaves 
 ROM does `bl` then `cmp r0,#0`, so it returns a value. A file that needs the real return type
 declares it locally and does not include `decl_common.h`; the generated header was left alone.
 
-## 6ch. A near-miss that is SHORT by exactly one register-to-register copy is dead-assignment elimination, and `#pragma opt_dead_assignments off` is the probe that proves it (_ZN5Stage13InitResourcesEv, div 3, and func_ov007_020bfd70, div 7 -> 0, 2026-09-13, run link100 crack wave 9 lane CRK-K)
+## 6ch. A near-miss that is SHORT by exactly one register-to-register copy is dead-assignment elimination, and `#pragma opt_dead_assignments off` is the probe that proves it (_ZN10dScStage_c13InitResourcesEv, div 3, and func_ov007_020bfd70, div 7 -> 0, 2026-09-13, run link100 crack wave 9 lane CRK-K)
 
 Two rows in one lane showed the same fingerprint: the cartridge's compiler DECLINES a
 coalesce that 2004/b56 takes, and the cost is the copy instruction that the coalesce
 removes. Reading the residue that way is what separates the one that falls from the one
 that does not.
 
-**The probe.** `_ZN5Stage13InitResourcesEv` (arm9 0x0202cc0c, 0xa84) was banked at div 3.
+**The probe.** `_ZN10dScStage_c13InitResourcesEv` (arm9 0x0202cc0c, 0xa84) was banked at div 3.
 Spelt plainly it is 0xa80 -- four bytes short -- and an aligned instruction diff (not
 `match.py`, which refuses to diff on a size mismatch) shows it byte-identical to the ROM
 everywhere except ONE missing word, `mov r1, r2` at +0x584, the join copy of the `bank`
@@ -5962,7 +6058,7 @@ shape, every immediate and every branch were already right; `wallcrack` tags all
     the 0x800 rounding constant    r0    r1
 ```
 
-Every one of those is the same shape as Stage's: the ROM keeps two webs apart where the
+Every one of those is the same shape as dScStage_c's: the ROM keeps two webs apart where the
 draft folds them together. It closed to 0 by reading the depth component and its
 absolute-value fix-up FIRST, ahead of the angle, the table base and both table reads:
 
@@ -5995,7 +6091,7 @@ recorded. A pure `regperm` residue with no `SCHED` words is the permuter's adver
 home ground and it did not move; the declaration rank did, in one move.
 
 **Porting a C++ draft to the permuter, second data point for 6cc.** A plain-C
-translation of `Stage::InitResources` was made byte-identical to the C++ draft, which is
+translation of `dScStage_c::InitResources` was made byte-identical to the C++ draft, which is
 what a permuter run needs. The naive translation loses 0x64 bytes: C folds
 `int v = (x == N) ? 1 : 0;` straight into the branch where C++ materialises
 `moveq/movne/cmp`. 6cc's `_Bool` two-step restores it exactly, at all ten sites --
@@ -6006,7 +6102,7 @@ missing instruction shifts every later pc-relative offset, so the base scored 5,
 body one word from exact.
 
 **Addendum (2026-09-13, run link100 wave 12 lane W12-6).** The missing copy on
-`_ZN5Stage13InitResourcesEv` was not a coalesce the cartridge's compiler declined. r1 had not
+`_ZN10dScStage_c13InitResourcesEv` was not a coalesce the cartridge's compiler declined. r1 had not
 died at +0x520: `GetSoundGroupID` takes two arguments (src/GetSoundGroupID.c) and the ROM passes
 the area byte still in r1 as the second one, which the draft's one-argument declaration had
 dropped. With the honest declaration the bank default takes r2 and the join copy `mov r1,r2`
@@ -6148,7 +6244,7 @@ the thing that holds it back is outside those knobs.
 
 ## 6cj. `opt_propagation off` is a BLUNT instrument: it buys one folded statement and pays for it with the whole function's colouring. `opt_foldconstants off` buys the same statement and charges nothing (func_ov015_021114f0, div 8 -> 0, 2026-09-13, run link100 lane CRK-O)
 
-`func_ov015_021114f0` (ov015, 0x17c) is KnockDownPlank's drop-shadow scale. It sat at 8
+`func_ov015_021114f0` (ov015, 0x17c) is daObjBk_Botaosi_c's drop-shadow scale. It sat at 8
 through three lanes, and its banner blamed the residue on the ROM's compiler refusing to
 reuse a just-dead register (6bs). That was wrong. Every one of the 8 words was bought by
 the file's own first line, `#pragma opt_propagation off`.
@@ -6349,6 +6445,8 @@ that makes one of the other five long-lived values die before the call block.
 
 ## 6cl. Three floors re-measured with the wave-9 levers, and the two compiler rules underneath them (OAM::Render, func_0202ffec, func_02068398, run link100 lane CRK-N, 2026-09-13)
 
+(func_0202ffec matched 2026-10-13, see 6dc.)
+
 All three rows are floors of the same kind: a residue that every owned build reproduces
 identically and that no source spelling reaches. What is new is that the rule underneath each
 one is now measured rather than described, so the next lane can recognise the shape instead of
@@ -6482,6 +6580,20 @@ the Rm field and the operand's colour are one decision keyed on the syntactic op
 
 ## 6cm. There are FOUR cells for a scaled index, not three, and 2004/b56 can only reach three of them; a 16-bit index type is the one size-neutral way to stop the fold (_ZN12dScMgSlot1_c8BehaviorEv, ov006 0x0210c9e0, 0x81c, div 20 -> 19, floor; 2026-09-13, run link100 waves 9 and 10, lanes CRK-H and CRK2-H)
 
+**SUPERSEDED 2026-10-12: the function MATCHED (div 0, 0x81c).** The "floor" below was a source
+artefact, not a compiler limit. Every cell of the grids recorded here kept the draft's habit of
+naming the object two ways -- some fields as `this->member`, others through `char *c = (char
+*)this` plus literal offsets -- and that mix is the one axis the grids never varied. Synthetic
+probes (one function, one hit block, one factor at a time) showed 2004/b56 folds the hoisted
+touch-record address into `add r0, r0, r2, lsl #2` exactly when the enclosing function names
+the object two ways (member/offset mix, in a member function or a free function over a `X *p`),
+and materializes `lsl r1, r2, #2` / `add r0, r0, r1` when it names it one way (all members, or
+all offsets). Spelling the whole function through members, with case 7 keeping its strided
+`char *p = (char *)this; p += 0x15` row walk and the touch x/y read inside the hit loop through
+a 4-byte record view, gives the retail bytes. The 16-bit index below is not needed. See the
+banner on `_ZN12dScMgSlot1_c8BehaviorEv` in `src/actors/dScMgSlots.cpp` and manifest
+`config/tu_manifest.d/ov006/dScMgSlot1_c+dScMgSlot3_c.json` (boundary_evidence[3], [4]).
+
 This section replaces the wave-9 text filed under the same number ("declare the scaled index
 BETWEEN the guards and the use"), which is right about the placement axis and stops one cell
 short of the mechanism. The wave-9 evidence still stands and is folded in below: twenty
@@ -6599,11 +6711,12 @@ reproduced in a 15-instruction toy, `_abwork/crkh/toyprobe.py`:
   `if (x > 0x64) x = 0x64;` clamp four instructions earlier does not help it.
 * Two MATCHED precedents that 6u's corpus scan missed, both single-condition guards with a
   five-instruction return block that keeps its branch:
-      src/func_02062d10.cpp       `bne` over an arm containing `cmp r0,#0 / beq`
-      src/func_ov006_020e83bc.c   `bge` over an arm containing `cmp r0,#0 / movgt / strgt`
+      src/unnamed/arm9/0206/func_02062d10.cpp       `bne` over an arm containing `cmp r0,#0 / beq`
+      func_ov006_020e83bc         `bge` over an arm containing `cmp r0,#0 / movgt / strgt`
+                                  (now in src/actors/dMg3DEspAnimSet_c.cpp)
   Both are the final `else` of an if / else-if / else chain, so the jumped-over arm is the
   else-if body and contains that arm's own test. The multi-predecessor precedents 6u names
-  (src/func_ov007_020b1f2c.c, src/func_ov002_020d85fc.cpp) are `&&` chains.
+  (src/unnamed/ov007/func_ov007_020b1f2c.c, func_ov002_020d85fc in src/actors/Player.cpp) are `&&` chains.
   Found by disassembling every matched src/ file's ROM range and looking for a forward
   conditional branch into a <=7-instruction block ending in a return whose only predecessor is
   that branch: 16 hits in the whole corpus.
@@ -6619,6 +6732,50 @@ mwccarm.exe at on and off, plus peephole and optimize_for_size, 92 compiles),
 `#pragma optimization_level` IS honoured per function (0/1/2 change the object) but 0, 1 and 2
 all lose far more than the branch is worth, and every one of the 25 installed mwccarm builds
 predicates the same arm.
+
+**Addendum (2026-10-02): the blocker can cost one BIT instead of one word.** A conditional
+region whose two arms are identical survives into the if-conversion decision and is merged
+only afterwards, so it blocks predication but leaves its compare behind as a dead `cmp`
+(measured: `if (p) return; else return;` at the end of the jumped-over arm restores the
+ROM's `blt` and costs exactly that one `cmp sb,#0`). Two refinements: the arms must be bare
+`return`s (identical stores in both arms are folded by the front end before the decision),
+and the condition must be one the front end cannot fold (`c1`, `p == p`, `n == n`,
+`(u32)n >= 0`, `1.0f`, a global's address and a constant-argument inline all fold and change
+nothing). When the condition is `(p + 1) - p`, which the front end leaves alone and the backend
+evaluates to the 1 already materialised for the `strb` that ends the arm, the peephole folds
+the dead compare into that move: `func_ov006_020d27dc` is then size-exact at 914 words with
+one differing bit, `movs r1,#1` where the ROM has `mov r1,#1` (`(p + K) - p` for a K that
+is not already in a register leaves a dead `movs rX,#K` instead). There is no S-bit
+instruction anywhere in the ROM's arm, so this is the floor from the other side, not a match.
+Also measured inert at this site: `break` out of the enclosing loop on either or both arms,
+moving the `< 5` arm's code to a label after the loop, unreachable `goto` targets inside the
+arm, `while`/`for` spellings of the test (they rotate the test), and every frontend-foldable
+spelling of the `< 5` arm's store.
+
+**Resolution (2026-10-02, round 1002h): MATCHED, and the rule above is a symptom of a
+structural one.** Read out of `mwccarm.exe` 2004/b56: the pass that prints "AFTER CONDITIONAL
+OPTIMIZATION" (driver at 0x4f1650, pass at 0x4f10c0) runs after register allocation and BEFORE
+branch-to-epilogue duplication, so every `return` is still a `b` to the one epilogue block. It
+walks the blocks last to first and predicates only two shapes, each arm at most 5 PCode
+instructions:
+
+* triangle: the fall-through block F has exactly one predecessor (the branch block) and its
+  one successor is the branch target T, so F is predicated;
+* diamond: F and T each have exactly one predecessor (the branch block) and exactly one
+  successor, and it is the SAME join block J; then F and/or T is predicated.
+
+The early-return guard here is a diamond whose join is the epilogue. Anything that splits the
+jumped-over arm into more than one block (the conditional region above) breaks "F has one
+successor J", and so does giving the two arms DIFFERENT successors. The cost-free way to do
+that: end the small arm in a non-empty block with two or more predecessors instead of the
+epilogue, which in source is a `return` shared with another path. Blocks are merged and empty
+blocks dropped before the pass, so that shared return block survives to the decision only
+because of its second predecessor. The branch pass after it then threads both branches to the
+epilogue, and the final code is identical. `func_ov006_020d27dc` matched this way: the 0x1e
+path and the next-round store of its `sl == 1` if/else fall to one `return` after the if/else,
+while the five-round arm returns on its own. A goto to a shared `return` label gives the same
+bytes. When the ROM keeps a branch over a small return arm and the arm has no conditional,
+look for another path in the function that could share that arm's `return`.
 
 ## 6co. The verification chain compiled C++ with exceptions ON and the build never does: one "7-word floor" was the flag, not the source (func_ov006_020ea914, div 7 -> 0, 2026-09-13, run link100 lane CRK-B)
 
@@ -6666,7 +6823,7 @@ same way. Eighteen are already byte-exact and always were -- the HAND-ASM PRIMIT
 which carry the banner as a policy marker under the 09-09 ruling -- and the remaining eleven
 keep their residue exactly (func_02009e70 96, `dScStarSel_c::Behavior` 11,
 func_ov015_021114f0 8, func_ov007_020bfd70 7, `Model::LoadCompressedTextureToVram` 5,
-`Stage::InitResources` 4, func_ov075_0211afb0 4, `MrI::InitResources` 3, `OAM::Render` 2,
+`dScStage_c::InitResources` 4, func_ov075_0211afb0 4, `daEykn_c::InitResources` 3, `OAM::Render` 2,
 func_0202ffec 2). Do not go looking for a second free match here; there is one, and this
 was it.
 
@@ -6688,8 +6845,8 @@ second section or change the size. The file therefore enrolls as `rombytes`, not
 link time.
 
 **Addendum (2026-09-13, run link100 wave 12).** Two rows in the list above have since matched,
-neither by a flag: `Stage::InitResources` (a callee's definition takes a second argument, 6cy)
-and `MrI::InitResources` (a callee takes the actor, 6cx addendum). Both were declaration defects
+neither by a flag: `dScStage_c::InitResources` (a callee's definition takes a second argument, 6cy)
+and `daEykn_c::InitResources` (a callee takes the actor, 6cx addendum). Both were declaration defects
 of the 6cx class; the flag reading of the remaining rows stands.
 
 ## 6cp. Running the permuter on a C++ near-miss: set the LANGUAGE in cc.txt, keep the UNMANGLED name, regenerate the relocs, and check the C port's FRAME first (run link100 crack wave 9, lanes CRK-E, CRK-B, CRK-G, CRK-P, 2026-09-13)
@@ -6972,7 +7129,7 @@ Wave 9 left it at 164 with the residue read as "the compiler sinks one read past
 store". It is not a spelling problem at all, and the method that proved that is reusable.
 
 **1. The emit spelling is settled, because a matched sibling already contains it.** The vertex
-block is `src/func_ov007_020ca86c.c`'s inline with shift 8, spelled exactly the way that
+block is `src/unnamed/ov007/func_ov007_020ca86c.c`'s inline with shift 8, spelled exactly the way that
 matched file spells it:
 
 ```c
@@ -7082,6 +7239,20 @@ The created-receiver spellings (z or x held in a function-scope local, the NRM v
 local, the k0/prim preheader form) fold back or cost a frame slot (285 words, 0x84). Array-indexed
 source forms with strength reduction on or off are not the ROM's shape (a mul per access, or 288+
 words). Verdict unchanged: a compiler-side scheduling difference; the stored 164 stands.
+
+**Addendum (2026-10-02, lane mgwiden-cd744hole-1002h, 164 -> 46).** The "stored 164" was the
+inherited draft, not the candidate this section measures. Rewriting the draft as that candidate
+lands at the ROM's exact size: per-row `Vec3 *v0/*v1` and `int *n0/*n1` pointers, each
+post-incremented, the `G3_Vtx` inline above, texcoords indexed `i*4+k`, and no declared constant
+locals (point 2). With `int k;` declared AFTER the four row pointers the size is exactly 0x45c
+(0x460 with k first), and the frame, stack webs and register assignment all match the ROM. The
+46 words left are the scheduling difference point 3 describes, in loop 1's x/y/z issue order
+and pointer step, plus a swapped vertex-pointer and row-counter step in loop 2. The "none
+reaches 0x45c" bound above applies to the register-exact candidate of 2026-09-13, not to this
+one: here 2004/b56, 1.2 base, sp2 and sp2p3 all reach 46 at 0x45c. 22 pragmas, 720 C89
+declaration orders and 24 index spellings leave it at 46 or worse. The matched func_ov080_0212677c
+(daPicGate) shows b56's own z-first, y-late order, so the ROM's x/y/z order still has no
+source lever.
 
 ## 6ct. A value assigned to a variable the optimiser will not propagate gets its own colour, and that is the handle 6cq said did not exist: func_ov075_0211afb0 MATCHED (div 4 -> 0, 2026-09-13, run link100 wave 11 lane WALL-B)
 
@@ -7333,6 +7504,9 @@ writing it up, because the engine's path to a cell is not the lever.
 
 ## 6cw. The callee-saved colour list 2004/b56 hands to main-line call results is r8, r7, r6, r5, fp, sl, sb in declaration order, and the fourth slot is the whole of func_02009e70's exchange (div 72, floor with the mechanism measured; run link100 crack wave 12, lane W12-13, 2026-09-13)
 
+(func_02009e70 matched 2026-10-13, see 6dd. The fourth-slot rank described here is real, but the ROM gets around it by
+reusing locals, not with a fresh one.)
+
 `func_02009e70` (arm9 0x02009e70, 0x109c, the camera update) sits at 72 words, 52 of them one
 web exchange at birth: the func_020093f4 distance limit is born into r5 where the ROM takes sl,
 and the mode-flags word born one call later takes the other register (6ci and its addendum name
@@ -7389,6 +7563,10 @@ product over load order, FXMULC operand orders, the `sb = 0` slot, the abs form,
 variable, the rank order, the block-temp shape and the FXMUL operand order at the fp call (500
 cells) walks the limit through r5, r6, r7 and r8 and never sl.
 
+(Partly superseded 2026-10-13, see 6db: the exchange CAN be moved from source, by making some
+def of the limit web a non-copy. It reaches the ROM's colouring at 53 words, but only through a
+spelling that is not honest source, so 72 stands.)
+
 **Two smaller mechanisms on the same body.** R02 (+0x4ac, 6 words): the constant held in a local
 with the store spelled after the ty load makes +0x4a8..+0x4b0 exact, and then b56 issues the
 `ty + 0x3e8000` add at +0x4b4 ahead of the two ready loads (it frees ty's register) where the ROM
@@ -7440,8 +7618,8 @@ the first ten words: 69. The ROM puts the selector in r0 in 30 of them and in r1
 r0 untouched in 36, and 2004/b56 reproduces BOTH groups on the matched members (20 of the
 r1/r2 group have matched source, five of them ov063 siblings), so the skip is
 source-reachable and the question was what separates the groups. Not the count of
-`mov r0,<home>` copies in the body (`PyramidLift::Behavior` has three and a selector in r0;
-`KnockDownPlank::Behavior` has the identical `switch (mState)` spelling and a selector in
+`mov r0,<home>` copies in the body (`daDpLift_c::Behavior` has three and a selector in r0;
+`daObjBk_Botaosi_c::Behavior` has the identical `switch (mState)` spelling and a selector in
 r1), so the property lives in the case bodies, not the switch. What separates them is a case
 that consumes r0 STRAIGHT FROM THE ENTRY without a copy: `func_ov063_021172a8`, the
 dispatcher that calls this very function, is matched with its selector in r1 and its cases
@@ -7477,18 +7655,18 @@ passes, or a `void` declaration for a callee whose value the ROM keeps (PR #2528
 missing-return-value lever is the same class seen from the other side). A callee's
 declaration is part of the register-allocation input of every function that calls it.
 
-**Addendum (2026-09-13, run link100 wave 12 lane W12-9): second instance, `MrI::InitResources`
+**Addendum (2026-09-13, run link100 wave 12 lane W12-9): second instance, `daEykn_c::InitResources`
 MATCHED (3 -> 0); the two-regime coupling on func_ov006_020fdaf0 (7 -> 6); two ASAP/ALAP
 scheduling floors named.**
 
-`_ZN3MrI13InitResourcesEv` (ov071 0x02121734, 0x298) sat at three words for a month: the slot
+`_ZN8daEykn_c13InitResourcesEv` (ov071 0x02121734, 0x298) sat at three words for a month: the slot
 of `mov r2,#1` in the ModelBase::SetFile argument setup at +0x20 (ROM `mov r2,#1 / mov r1,r0 /
 add r0,r4,#0xd4 / mov r3,r2`, every draft `mov r1,r0 / add r0,r4,#0xd4 / mov r2,#1 / mov r3,r2`).
 CRK-O's micro-lab had reduced it to "a third call ahead of the site in the block loses the
 constant-first order", which is true and was still not the lever. The draft declared the first
 call `void LoadBlueCoinModel(void)` and called it with no argument. Nine matched callers in the
-tree (daPkn_c, daSanbo_c, daTrs_c, BookShotSpawner, FirePiranhaPlantBig, Koopa, daKrb_c,
-BookShot, YoshiEgg) declare it `(void *)` and pass the actor, and the cartridge enters the call
+tree (daPkn_c, daSanbo_c, daTrs_c, daBookGen_c, FirePiranhaPlantBig, Koopa, daKrb_c,
+daBook_c, daYegg_c) declare it `(void *)` and pass the actor, and the cartridge enters the call
 with `this` still in r0. `LoadBlueCoinModel(this)` closes the function: match.py MATCHING,
 linkcheck VERIFIED. The body of LoadBlueCoinModel never reads r0; what the argument buys is the
 incoming parameter's r0 web staying live through the entry block into the first call (this
@@ -7534,9 +7712,56 @@ callee's parameter type names, the byte loaded before the guard) leave the cmp a
 are the same ASAP-versus-ALAP policy delta, and neither is reachable through a receiver because
 the value in question is a constant (the first) or a flag (the second), not a register web.
 
-## 6cy. A "dead mov" residue can be an argument the caller really passes: check every callee's DEFINITION, not its declaration, before banking a 6bs residue (Stage::InitResources MATCHED, div 3 -> 0, 2026-09-13, run link100 wave 12 lane W12-6)
+Closed for the first (func_ov009_0211145c MATCHED, 5 -> 0, 2026-10-12). The lever is the
+control-flow shape around the window, not a spelling inside it: with the two stores in the taken
+arm of `if (p2 != 0) { ... } else { return; }` and the sound call after the join, the pre-RA
+passes see a block boundary between the stores and the call, the argument setup is not hoisted,
+and the else-return is if-converted into the conditional epilogue the ROM already has. Written
+`if (p2 == 0) return;` ahead of the stores (every earlier cell) the stores and the call share one
+block and the hoist comes back; the arm order matters too (`if (p2 == 0) { return; } else { ...
+}` then the call scores 5 again). The corpus shows the same mechanism at dScStage_c::Behavior
++0x2fc and dScMgSmartball_c::SpawnObjects +0x300, and a second, non-transplanting one in
+dScMgTeresa_c::OnYoshiTryEat (>= 3 calls earlier in the same block plus a later stack-argument
+call suppress the hoist inside one block; any `if` boundary or loop re-enables it). Inert on this
+function, measured at 5 each: post-call loads (exact window but a word oversize), extra calls
+including 6-arg ones, labels, `asm` barriers, inline helpers, tail duplication, empty-dtor
+locals, argument precomputation and 59 flag cells.
 
-Stage::InitResources (arm9 0x0202cc0c, 0xa84) sat one word short for three campaigns (6av, 6bs,
+Positive control for the second (round 1002f, about 250 more cells). With the guard, flag and x
+loads all `volatile` (a 64-cell mask matrix; cells 110111, 111011 and 111111), b56 emits the ROM's
+exact tail: the four stack stores, then `mov ip,r4; cmp sl,#0; movne ip,sb` at +0x64..+0x6c, the
+flag byte live in sl, nine pushes and the 0x1c frame. So the compiler can produce the ROM's
+schedule, and the whole residue is one ordering lever: keep the 0x676 byte live in a callee-saved
+register across the stores. `volatile` is not admissible here (notes/matching-style.md confines it
+to MMIO), and those cells score 33 because the prologue reshuffles. What none of the cells tried:
+a legitimate ordering constraint between the flag load and the select (an aliasing store, a
+call, or a by-reference read). That is the next lever to try, not more register-rank
+permutations. Also measured inert or worse: Fix12<int> by-value temps (always oversize, so the
+0x1c frame is the ninth push rounded to 8, not a class temp), declaration order (the named
+`tbl` local is load-bearing; unnamed costs a word), struct and index views of ptr+0x4660,
+2-D table types, 17 pragmas on the best two shapes, and -O1..-O4,s.
+
+Round 1002g (about 300 more cells, none below 26 when admissible) narrows the positive control. A
+6-bit mask over the flag, x, lo, hi, y and prio loads (tbl named, `mode=-1; if (flag) mode=1;`)
+gives the ROM tail only for FXLHYP, FXHYP and FXLYP: the flag, x, y and prio loads must all be
+serialized, plus one of lo/hi. The lever is a whole load-chain order, not one edge between the
+flag and the select. Those cells colour the flag lr (with `o` in sl) and score 32-33. Dropping the
+named `o` local under full volatile puts the flag in sl, with the nine pushes, the 0x1c frame and
+the exact tail (30). The residue there is independent of ordering: the -1 constant takes
+callee-saved rank 1, not the ROM's rank 6, because it is hoisted ahead of the locals and anchored
+early by the palette argument. On top of that, scratch colouring differs. An aliasing store or an
+intervening call needs an instruction the ROM body does not have, so the size rules them out.
+Measured inert with plain loads, where the schedule is rigid (F L H cmp mla X Y P, 26-27): the select
+as an inline helper (by value, `const u8&`, `const u8*`, ternary), the ternary inline in the
+call, C89 function-scope declarations, load-order permutations (byte-identical), dead-use and
+self-assign forwarding blockers, every opt_* pragma on and off (only opt_dead_assignments off
+moves, to 27), `scheduling off` (ignored), the -proc arm9 family, -O4,s/-O3,p/-O4, a pointer-typed
+-1, flag/mode declaration positions under the volatile chain, and a struct overlay at
+ptr+0x4000 with plain or bitfield members.
+
+## 6cy. A "dead mov" residue can be an argument the caller really passes: check every callee's DEFINITION, not its declaration, before banking a 6bs residue (dScStage_c::InitResources MATCHED, div 3 -> 0, 2026-09-13, run link100 wave 12 lane W12-6)
+
+dScStage_c::InitResources (arm9 0x0202cc0c, 0xa84) sat one word short for three campaigns (6av, 6bs,
 CRK-K in 6ch: ~1,500 cells, the full pragma vocabulary, the permuter). Spelt plainly the function
 is 0xa80 and byte-identical to the ROM except the ROM's `mov r1,r2` at +0x584, the join copy of
 the bank phi web into the second argument register of Sound::LoadGroupAndSetBank; 2004/b56
@@ -7567,7 +7792,7 @@ because a callee the draft declared too narrowly was still going to read it. Bef
 the callee's definition in src/ for a parameter that register would carry. Here the tell was
 that r1 stayed untouched for 22 instructions and through an if-chain that only used r0 and r7.
 6cx's func_ov063_02117cdc is the same class from the other side (a `(void)` declaration freed
-r0 the ROM kept for `this`), and 6cx's addendum (MrI::InitResources) a third instance.
+r0 the ROM kept for `this`), and 6cx's addendum (daEykn_c::InitResources) a third instance.
 
 Two smaller things from the same landing:
 * At div 0 match.py reported four WRONG reloc destinations that no earlier lane could see (the
@@ -7641,6 +7866,97 @@ open: the speed base is minted before the sin/cos table address in the ROM and a
 order (ROM nex, ney, &i.x, &idx.x, &i.y, &i.angle, nmx, nmy, ybase, anglebase, speedbase; ours nmx/nmy at
 8/0xc) does not move with nmx/nmy as expressions (0x550) or declared late (identical).
 
+**5. Follow-up, 187 -> 70 (2026-10-02, lane mgwiden-curling2-1002c, ~42 measured cells).** All four of these levers
+are in the draft. They were measured under the same match.py metric, with exact size 0x560 throughout.
+(a) The frame-slot order in point 4 is a pool question, not a declaration question. If the moving stone's new
+velocity is stored in the outer `dx`/`dy` rather than in fresh `nmx`/`nmy` (`dy = cP*vex - sP*vmy;
+dx = sP*vex + cP*vmy`), those two get a second definition and drop from the named-spill chain into the spill pool.
+That gives the ROM slots: nmx -> dx gives 86, and nmx -> dy with nmy -> dx gives 80. (b) Reusing ONE set of
+`rel`/`k`/`c`/`s` temporaries for both stones' table reads adds WAR edges, and those force the ROM's issue order
+for the two blocks. (c) The table value is written FIRST in every product (`FMUL(c, speed)`, `FMUL(cP, vex)`),
+because smull's Rm/Rs follow source operand order. (d) The first wall clamp keeps the overshoot in `xi`
+(`xi = idx.x - 0xc000; i.x += xi;`), which is what the ROM's second test reads. (e) The atan2 block written as
+`dx = i.x - idx.x; dy = i.y - idx.y; atan2(dy, dx)` closes the +0xa8 window at full size. The dy-first, dy-held and
+assignment-in-argument spellings all go 0x540.
+Open at 70: the ROM forms &i.angle (`add r0,r0,r6`, spilled to sp+0x14) and loads the table base before the
+idx-angle load at +0x108, where this draft forms it late (+0x198). The ROM loads T[E]/T[E+1] after the other
+stone's table words and sign-extends them after vex (+0x220), where this draft hoists the T[E] load and its
+`asr #31` to +0x1b4. The ROM mints the 0x4668 literal before the table address. One idx.y reload colours r1 in the
+ROM and r0 here (+0x3f4). These were measured inert, byte-identical at 70: moving the sP/cP statements anywhere
+after the atan2, computing E late, indexing the table inline without E, s16 or long long types for sP/cP/c/s,
+and caching the speed in a local. Reusing `k` for the E index goes to 289/0x530. Reusing c/s or k/s for nmx/nmy
+goes to about 297.
+
+**6. The twin, func_ov006_020e20bc (Shuffle Shell, ov006 0x020e20bc, 0x5e0): 203 -> 53 (2026-10-02, lane
+mgwiden-curling-1002d, about 40 measured cells plus permutation and declaration-order sweeps).** Same metric.
+Points 5(a)-(e) port across and are all in the draft, rewritten as C++ on the class header. Three more levers were
+needed here. (f) The first rotated term written as `dx = FMUL(sN, vmx); dx -= FMUL(cN, vmy);` gives the ROM's issue
+order for that pair of products and is what reaches the exact size (0x5e4 -> 0x5e0). Splitting the other seven
+terms the same way changes nothing. (g) One `k` index reused for all four table reads (both stones' velocities and
+both contact rotations, with `rel = -ang; ... rel = -rel;`) orders the table loads. Reusing it for the C/E pair took the draft to 67, and for
+the A/B pair too, to 64. (h) With the rest fixed, the declaration order of the block's named locals still moves the
+named-spill slots. A hill-climb over that order put rg at sp0, as the ROM has it (56 -> 53). Inert, or worse:
+every one of the 1120 statement orders of the rotation block (identical code: the scheduler orders by dependency
+height); an inline function for FMUL (105); caching the speeds (85); reusing c/s for the velocity reads (80);
+RD in the outer `dy` (65); s16/int for `ang` (0x5d8); int/s16 for `rel` (0x5d0/0x5dc); `<< 1` and `1 + k`
+spellings (identical). The same body compiled as C is 0x5d4.
+Open at 53: the pool spill slots (ROM &idx.angle, &idx.speed, &i.angle at sp4/8/c and RD at sp1c; ours
+spc/8/1c and sp4), the moving stone's index (+0x108: the ROM shifts once and adds the +1 after the other stone's
+index), and the contact-angle truncation (the ROM issues its `lsl #16` at +0x160 and defers the first rotation's
+`<<1`, where this draft does both late, around +0x1c0).
+
+**7. The twin MATCHED, and the pointer-local lever carries half-way to 020e5450 (2026-10-02, lane
+mgwiden-curltwins-1002e): func_ov006_020e20bc 53 -> 0, func_ov006_020e5450 70 -> 30.** Same metric. Three
+spellings closed 020e20bc from point 6's 53, and the first two are frame levers, not schedule levers. (i) The
+contact angle is negated right after atan2 and before the velocity reads (`rel = -ang;` as the next statement).
+(j) The three fields written after a call (the hit stone's x and y, the moving stone's x for the sound) are
+reached through pointer locals taken beside each stone's reads: a named pointer ranks in the frame like any
+named local, in declaration order, so their addresses leave the compiler's spill pool and sit in the named
+chain, which is where the ROM keeps them (pool slots sp4/8/c in point 6 are exactly these three addresses).
+(k) The moving stone's new x velocity reuses the outer `dx`, which drops it to the end of the pool. With those
+three the declaration-order climb of point 6 was no longer needed. The file is in src/actors/dScMgCurling_c.cpp
+and the class is widened to its whole 46-function unit.
+The same levers on 020e5450: the hit stone's angle bound as a reference right after atan2 (`u16 &hitAngle =
+self->mStone[i].angle;`, a reference ranks like a pointer local) took it 70 -> 43; computing `xi` before `yi`
+colours the idx.y reload r1 as the ROM has it (43 -> 41); and pointer locals for &i.x, &idx.x and &i.y, assigned
+AFTER the outer dx/dy reads and used only in the wall clamps and the sound call, 41 -> 30. Position matters:
+assigned before the dx/dy reads, the same pointers grow the frame and the body is 0x540, because the compiler
+then addresses dx/dy through them. Open at 30: one contiguous schedule residue +0x1b4..+0x224, where this draft
+hoists the T[E] (sP) load and its `asr #31` above the hit stone's table chain and spills the sign at sp+0x34
+ahead of the hit cosine at 0x38, while the ROM loads T[E]/T[E+1] after the hit cosine and sine, sign-extends
+both after vex, and keeps the cosine at 0x34 with the signs at 0x38/0x3c; plus the +0x3d0 reload of that slot.
+Inert at 30 (about 20 cells): every source position of the sP/cP reads, E unscaled or inlined, s16 or long long
+for sP/cP, explicit wide copies, a cached hit speed, sine before cosine on the hit stone, declaration-order
+swaps. Worse: reusing `k` or `rel` for the E index (0x578, extra spills), a table pointer `tp = &T[E]` (0x51c),
+`Stone &a/&b` references (size change), rereading T[E] for the 0x1b000 products (0x56c). The lever that is
+missing is one that delays a load the scheduler wants early without adding a slot; the twin never needed it
+because its contact table words are read through the shared `k` after the negation.
+
+A narrower diagnosis from round 1002f (39 more cells, still 30). The draft colours the sign word of
+sP (the `asr #31`) ip; the ROM colours it r3, right after vex's `orr r0,r0,r3,lsl#20`. In ip, its
+spill store has a write-after-read edge against the k+1 index temp, and that edge is what hoists the
+whole sP chain above the hit stone's table chain and swaps the c / sP.hi slots (0x34/0x38), which
+is the +0x3d0 reload. So the missing lever is a dependency or colouring change, not a statement
+position: every placement of the sP/cP reads, and every declaration-order move of sP/cP, is inert.
+Worse: operand swaps in the sP/cP products (42, 45, or 0x520), dx before dy (49), rel through the
+hitAngle reference (41), the idx speed through a pointer (0x564), reusing c/s for the contact words
+(0x548), the 0x1b000 constant first or as a long long (0x524), and the twin's split first statement
+(0x558: the frame drops 0x7c -> 0x6c and the table base leaves r3). The five opt_* pragmas each
+change the size.
+
+Round 1002g (about 110 more cells, still 30) narrowed the cause and closed more spellings. Drop sP
+from the `FMUL(sP, 0x1b000)` product after the calls (a diagnostic, not a candidate) and the sP
+load falls in after the hit stone's c/s loads, as in the ROM: the sign word that
+64x64 product needs is the whole residue. A call barrier before dy moves both sign words after it,
+sP then cP, so they follow their first use; `#pragma optimize_for_size on` shows the sP sign
+spilled right after the T[E] loads. Worse: `(data_02082214 + 1)[k]` or a pointer `p = &T[k]`
+for the hit stone (0x564), the same on both stones (0x584), `(data_02082214 + 1)[E]` (0x54c).
+Of the 24 orders of the dy/dx/nex/ney statements only dy, dx, ney, nex keeps the size (38); of
+the 80 split forms of those statements (`v = a; v op= b;` or `v = -b; v += a;`) three are
+identical at 30, two give 39 and the rest change the size. s16 sP/cP and c/s declaration order
+are inert. `#pragma scheduling off` and `-opt noschedule` do nothing (neither name exists in
+2004/b56, so this measures nothing; see 6db).
+
 ## 6da. A scalar stack parameter the loop uses directly is register-homed in PARAMETER ORDER, and that is the only thing that puts its load ahead of the last self-home store: OAM::Render MATCHED (div 2 -> 0, 2026-09-13, run link100 lane W12-5)
 
 `_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii` (arm9 0x02020994, 0x690) was the game's one
@@ -7713,3 +8029,178 @@ parameter has in the draft: a struct wrapper or a local copy demotes the load to
 and pushes it behind every homing store in the scheduler's input. The 6cf census found no
 other function with the self-home zip, so this is the only instance in the game, but the
 "parameter web vs body web" distinction is general and cheap to test.
+
+### 6bo/6cb follow-up (2026-10-07, lane OV75-OAM): the schedule-exact shape is a pure 4-cycle rotation, and an inline setter does not move it
+
+`func_ov075_02116128` re-attacked from the ROM's own register-priority order rather than
+more declaration permutations. In the ROM the colouring is pal=r0, i=r1, p=r2, shifted
+value=r3, i.e. the four webs were coloured in the order pal, i, p, hi (hi, used only by the
+four singles and by the pal materialisation, comes LAST and so inherits r3). Every
+schedule-exact shape instead colours hi first: an inline `SetPal(u16 *, u32)` setter that
+shifts inside (`(pal << 0x1c) >> 0x10`), with `m` kept as its own int so `mla` is emitted,
+reproduces the ROM schedule word for word and lands as p=r3, hi=r0, pal=r1, i=r2 - every
+register one place round the 4-cycle (div 31). Crossed with it and measured: five setter
+spellings (shift inside / pre-shifted / u16 / int param / nested `Ent()`), four hi types,
+five pragma sets, random declaration order, for/while loops (~6,200 compiles: only the
+24/31/34/38/41 colourings), a named `pal` added AFTER, BEFORE or INSIDE the loop block in
+nine respellings (`hi/0x10000`, `(hi>>15)>>1`, u8/u16/int types ...; ~3,000 compiles, best
+29), and index-form loops (`p[i]`, `map[r][i]`), which do NOT strength-reduce and change
+the size - so the ROM's `p++` is right. Nothing lowers hi's colouring priority below
+pal/i/p. Still NONMATCHING at div 20.
+
+## 6db. Two floors re-attacked, and the `-opt` vocabulary: an unknown `-opt` keyword is silently accepted (func_0202ffec then matched in 6dc, func_02009e70 in 6dd, 2026-10-13)
+
+**The `-opt` vocabulary.** `mwccarm.exe -help opt=opt` lists every `-opt` keyword 2004/b56
+has: `off|none`, `on`, `all|full`, `[no]space`, `[no]speed`, `l[evel]=0..4`, `[no]cse` /
+`[no]commonsubs`, `[no]deadcode`, `[no]deadstore`, `[no]lifetimes`, `[no]loop[invariants]`,
+`[no]prop[agation]`, `[no]strength`, `[no]dead`, `display|dump`. There is no `schedule`,
+`noschedule` or `peephole` keyword, and the string `sched` does not occur in the binary. Any
+unknown keyword after `-O4,p` (`-opt noschedule`, `-opt nopeephole`, even `-opt garbagexyz`)
+compiles with no diagnostic and byte-identical output. Every "`-opt noschedule` is inert"
+result in this file therefore measured nothing; the lines that cited one are annotated. The
+`-opt` keywords are parsed after `-O4,p`: `-opt off` and `-opt level=1` change the output, so
+they are the positive controls. A real keyword can still be inert where the matching pragma is
+not: `-opt nocse` leaves func_0202ffec byte-identical, while `#pragma opt_common_subs off`
+moves it to a different regime. The rule is the same as for pragmas (6av): a flag result counts
+as evidence only when the flag is in the help listing AND the same harness shows a positive
+control.
+
+**func_0202ffec (quaternion product, still 2 words).** Three passes with about 2,500 compiles.
+The precise mechanism, restating the 6ad-era note:
+
+- The smull `Rm` is always the textual LEFT operand of the 64-bit product. That holds without
+  exception for every matched smull in arm9 and all 103 overlays (284 multiply sites mined,
+  smull/smlal/umull/mul). Which operand's load is scheduled first does not matter: CrossVec3 has
+  three "Rm loaded earlier" and three "Rm loaded later" sites in one function, with `Rm = a->...`
+  in all six.
+- Colours for the eight operand values are handed out r3, ip, lr, r4, r5, r6, temps, sl (v1 is
+  always r1). An operand with an explicit `(long long)` cast of an s32 local is coloured first,
+  in textual order. An operand promoted implicitly or through a nested cast is coloured after
+  all the explicit ones. At a shared tie the left operand takes the EARLIER colour. The ROM needs
+  left=m with the LATER colour at x-line sites 1 (`m1*v2`) and 3 (`m0*v3`) only.
+- Inert: declaration order (300), load/assignment order (200), field-access syntax, identity
+  decorations (they fold before the ordering decision), inline helpers in C and C++ (the
+  body's order wins and argument order is substituted away), references, comma and `(void)`
+  uses, `register`/`const`, local arrays, statement order. Exhaustive P/Q/R/nested-cast forms
+  across sites 1-3 reach a best of 26 words, all 256 subsets of 64-bit locals reach 40, and a
+  pair-move sweep from the current source reaches 10 (about 1,600 compiles). C++ `Fix12`-class
+  operators make the function 0x298-0x330 bytes instead of 0x1d8; b56 does not scalarise class
+  temporaries, so the original was plain scalar arithmetic.
+- The only corpus instance of the ROM's tie (right operand coloured earlier than the textual
+  left Rm) is CrossVec3. It gets there from direct reads with all stores at the end. The
+  quaternion cannot use that form: its only caller passes the same quaternion as `m` and `out`,
+  so direct reads with interleaved stores force reloads (size changes), and stores at the end
+  give a fixed colour order (56 words).
+- 1.2/base and 1.2/sp2 reproduce the same 2-word residue; later builds change size.
+  Quaternion_FromVector3, Quaternion_SLerp, Matrix3x3_FromQuaternion and Quaternion_Normalize,
+  its ROM neighbours and probably its TU-mates, all match under b56.
+
+Floor class: smull operand order at a colour tie, operand order only, functionally identical.
+Treat it as terminal unless a construct class appears that colours the right `(long long)`
+operand first while it stays Rs. **That construct class turned up the same day: see 6dc.**
+
+**func_02009e70 (still 72 words; since improved to 62 by #3761's native collision-return
+types and s64 distance accumulation).** Two passes, about 600 cells. They were recorded in the
+source comment that #3761 then replaced; the findings are kept here. They partly overturn 6cw's "Why source cannot reach it":
+
+- The exchange moves from source. Give the mode-flags word a fresh local, keep the limit in `fl`
+  or the f20 local, and make some def of the limit web a non-copy. The result is exactly the
+  ROM's callee-saved colouring at 53 words. The cells that do it use `+ sb` (sb still holds a
+  dead 0) or `+ 1`, and b56 then emits `add sl, r0, #0` where the ROM has `mov sl, r0`. None of
+  those spellings is honest source, so 72 stands.
+- The rank test is per WEB, not per def. A non-copy def on either arm de-ranks the limit; only
+  a web whose every def is a plain copy ranks as a call-result web. Anything that folds before
+  register allocation is inert (identity arithmetic, dead defs above the if, a u16/s16 callee
+  return, inline setters or getters, abs on the limit).
+- One honest lever: the abs of the f20 value written as a ternary (`vf = (vf < 0) ? -vf : vf;`).
+  It gives bare `mov`s at the limit site, but in the wrong colour: 246 words, or 112-127 with a
+  dead `sb = 0` before the if. Both plateaus are flat under every rank and position sweep tried.
+- Open question: a limit def that counts as a non-copy at register allocation yet still emits a
+  bare `mov`.
+
+## 6dc. func_0202ffec matched: 64-bit operand locals, with their assignment order setting the colours (2026-10-13)
+
+The quaternion product's "terminal" 2-word floor (6ay, 6cl, 6db) was a source-shape error. The
+original declares its eight operands as `s64` locals, initialised from the s32 fields, and
+writes every product as the plain textbook `FX_MUL(a, b)` = `(s32)((a * b + 0x800) >> 12)`,
+q1 operand on the left:
+
+    s64 x2 = q2->x, x1 = q1->x;
+    s64 w2 = q2->w, w1 = q1->w;
+    s64 y2 = q2->y, y1 = q1->y;
+    s64 z2 = q2->z, z1 = q1->z;
+    out->x = FX_MUL(w1, x2) + FX_MUL(x1, w2) + FX_MUL(y1, z2) - FX_MUL(z1, y2);
+    ...
+
+Why every earlier pass missed it:
+
+- With s32 operand locals the sign-extension to 64 bits happens at each product, so the colour
+  order comes from the products' cast structure (6db) and declaration order is inert. That
+  inertness was measured 300 times and was real.
+- With s64 locals the extension happens once, where each local is first assigned, and the
+  colour order follows that FIRST-ASSIGNMENT order. A natural `s64 x1, y1, ...;` declaration
+  followed by assignments in the matching order matches; the matching declarations followed
+  by assignments in natural order give 75. In first-assignment order: the first-declared local takes r6, then r5, r4, lr, ip, r3. The left
+  operand of each product is still Rm, so the products can be written in natural order and the
+  ROM's colouring set entirely by the declarations.
+- The 6db sweep of "all 256 subsets of 64-bit locals" (best 40) held the declaration order fixed.
+  Neither lever reaches the ROM alone; only their product does.
+
+The order is tight. Of 725 orders tried with the textbook body (y2 and z1 held last), exactly
+one matches: x2, x1, w2, w1, y1, z2.
+Swapping any adjacent pair of the first six gives 9 to 46 words, and natural orders give 45 to
+75. In the matching order, y2 and z1 are free to move anywhere (56 positions match under the
+ROM-evaluation-order body). The original is therefore a regular, human pattern: each
+component fetched from q2 and then q1, in x, w, y, z order (the block above). Natural
+alternatives score worse even when crossed with every term order inside the lines and both
+associations: q1 then q2 in xyzw, q2 then q1, interleaved pairs in xyzw, and w-first give
+34 to 75. The association `a + (b + c) - d` and the textbook left-assoc
+`a + b + c - d` both match, `0x800` and `0x800LL` both match, and a cross-term-first body
+changes the size.
+
+**General lever for colour-tie floors.** When a residue is two operands of a 64-bit product
+swapped between registers, try declaring the operands as 64-bit locals and permuting their
+declaration order. It turns an unreachable per-site tie into a free global order. Any floor
+whose operands are sign-extended per product may have the same shape.
+
+## 6dd. func_02009e70 matched: the two distance limits are later live ranges of reused locals, ranked by each local's first assignment (2026-10-13)
+
+The camera update (0x109c) went 72 -> 62 with #3761, which used native collision-return types and
+s64 distance accumulation, and then 62 -> 0 with the fixes below. All of them are things a person
+would plausibly write, and most remove a hack from the draft.
+
+1. **Reused locals for the two limits (about 50 words: the +0x2d0 limit word and the whole r5/sl
+   exchange downstream).** The near limit is assigned into the mode-flags local, which is dead by
+   then (`fp = sp1c->flags; ... fp = func_020093f4(self, near + ...)`). The far limit is assigned
+   into the rate/near-distance local (`r4 = 0x1000` rate, then `r4 = sp1c->f1c`, then
+   `r4 = fp` or `r4 = func_020093f4(self, far)`). b56 gives a local's later live ranges a rank
+   from the order the local was FIRST assigned, the same rule as 6dc. So reusing a local puts a
+   new value in the rank slot of that local's first value. Measured: the far-limit host ranks
+   above the flags local, which ranks above the rate local. Any FRESH local for either limit
+   (any type, any declaration position, a u32 block temp) gives 224 to 267 words. Both limits
+   in their own reused locals but swapped gives 20. Making `rate` its own local gives 60. The
+   positions of the host declarations are inert (32 cells). 6cw's "no source reaches the
+   fourth slot" held only for fresh locals.
+2. **s16 wall-angle locals (62 -> 50 together with item 5):** `s16 sba, diff;`,
+   `sba = atan2(...) + 0x8000; diff = sba - self->angle; sba += (diff < 0) ? 0x4000 : -0x4000;`.
+3. **A fourth argument to `Sound_PlayIfNotActive` (2 words at +0xfd4).** The ROM materialises
+   `mov r3, #0` once for the `data_0209b000 = 0` store and reuses r3 as the zero argument. Every
+   other declaration of the symbol in `src/` already had four parameters.
+4. **An inline `SetVec(v, x, y + 0x100000, z)` for the sp4c block (4 words at +0xc90).** Plain
+   field stores give 14, a Vector3 constructor temporary gives 44.
+5. Kept from the hack base and natural in their own right: a dedicated input-flags local `kf`;
+   the ground height as `sb = ground.DetectClsn() ? ground.clsnY : y` with `y` preloaded; a fresh
+   `ceil` local for the ceiling (inert alone, but it frees the near-distance local for reuse). The
+   dead `sb = 0` store is gone.
+
+Inert: every respelling of the limit's else-def (casts, s16/u16/s64/bool/enum return types,
+identity operations, inline wrappers, pragmas, ternaries, arm swaps, copy chains). The `+ 1` /
+`+ sb` hack from 6db only stood in for "a web not coalesced with the call temporary", and reuse
+achieves that honestly. Also inert: the 2^7 product of fresh natural locals, the 2^8 product of
+mid-body declarations, local names, u32 types, and hosting the near limit in `t0` (that web dies
+in the call argument, so it is not a later live range; 265). About 1,030 cells.
+
+**General lever.** When a colouring residue needs a value in a callee-saved slot that no fresh
+local reaches, assign the value into a DEAD earlier local whose first assignment has the rank
+you need. With 6dc this makes one rule: in b56, colour rank comes from the order of FIRST
+assignment, and reused locals inherit it.

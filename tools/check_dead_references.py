@@ -12,7 +12,7 @@ Renames in this tree are heavy -- `Actor` -> `dActor_c`, `MeshCollider` -> `dBgW
 every sentence that names it untouched. Nothing in the build reads a docstring, so a
 citation to a header like `Enemy.h` survives indefinitely after that header stops
 existing. Three of those were found by hand in two days (`check_header_offsets.py`'s
-usage line, `check_src_tu.py`'s "does not compile" list, and a whole family of
+usage line, a retired checker's "does not compile" list, and a whole family of
 `plan-gen-header.md` citations that had outlived that note's move into the notes
 archive), and each one had already been repeated as fact by a reader who trusted it.
 
@@ -118,11 +118,34 @@ TOPDIRS = {"tools", "notes", "src", "src_tu", "include", "config", "config_tu",
 # Gitignored or generated at build time: absent from a clean checkout by design.
 GENERATED = {"build", "extracted", "progress"}
 
+# Directories whose own files are NOT scanned for references, though paths INTO them
+# stay resolvable targets. Only `src_tu/` qualifies, and only because of what it is:
+# the staging area for a translation unit being reconstructed. A file there is not in
+# the ROM build, and its own promotion DELETES it -- median 3 days after it appears,
+# measured over the 32 files present on main at 4caa8622c, 199 of 237 manifest entries
+# having already graduated to src/ leaving no duplicate behind.
+#
+# 30 of those 32 cite a repo path in a comment, because a reconstructed TU documents
+# the legacy one-function shards it was assembled from. A promotion deletes exactly
+# those shards, so scanning the staging copy charged a prose round-trip to correct a
+# comment in a file the same commit removes. Measured both directions on main at
+# 4caa8622c: of the 1,156 non-resolving prose refs, 26 are cited FROM a src_tu file
+# and 3 are cited INTO src_tu.
+#
+# That second direction is the one that catches a real rename -- a reference into
+# src_tu from src/, include/ or notes/ -- and it still fails: targets resolve through
+# `_tree_paths` and `_git_tracked`, which this set does not touch. The prose baseline
+# keeps every entry it has; zero of its 148 is cited from src_tu/. The code baseline
+# did bank 17 src_tu citers carrying 50 refs, and those are pruned in this same
+# commit -- a banked pair we no longer scan would otherwise report as HEALED.
+UNSCANNED_CITERS = ("src_tu/",)
+
+
 SKIP_DIRS = {".git", "build", "extracted", "__pycache__", ".mypy_cache",
              ".pytest_cache", "node_modules", ".venv", "venv"}
 CODE_SUFFIXES = (".c", ".cc", ".cpp", ".h", ".hpp")
 
-PATH_RE = re.compile(r"(?<![\w./\\-])((?:[A-Za-z0-9_.\-]+/)+[A-Za-z0-9_.\-]+)(?![\w-])")
+PATH_RE = re.compile(r"(?<![\w./\\-])((?:[A-Za-z0-9_.+\-]+/)+[A-Za-z0-9_.+\-]+)(?![\w-])")
 # Templates, globs and format placeholders are not paths anyone can resolve.
 GLOBBY = re.compile(r"[*?\[\]{}<>]|\.\.\.|%s|\$\(|::")
 TRAILING = ".,;:)\"'`!?"
@@ -143,6 +166,8 @@ def _prose_targets(root=None):
         rel_base = pathlib.Path(base).relative_to(root).as_posix()
         for f in files:
             rel = f if rel_base == "." else f"{rel_base}/{f}"
+            if rel.startswith(UNSCANNED_CITERS):
+                continue
             if rel.startswith("tools/") and rel.endswith(".py"):
                 out.append(rel)
             elif rel.startswith("notes/") and rel.endswith(".md"):

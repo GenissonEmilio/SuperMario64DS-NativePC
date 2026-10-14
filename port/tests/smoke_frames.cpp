@@ -12,7 +12,7 @@
 #include <cstring>
 
 #include "Model.h"
-#include "Animation.h"
+#include "dExtFrameCtrl_c.h"
 
 #include "ntr/gx.h"
 #include "ntr/mmio.h"
@@ -128,7 +128,7 @@ int main(void)
 
     SharedFilePtrC ap;
     _ZN13SharedFilePtr9ConstructEj(&ap, 1036);          /* piano_attack.bca */
-    g_bca = Animation::LoadFile(*(SharedFilePtr *)&ap);
+    g_bca = dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)&ap);
     CHECK(g_bca != NULL);
 
     /* one throwaway pose to derive a projection held constant across

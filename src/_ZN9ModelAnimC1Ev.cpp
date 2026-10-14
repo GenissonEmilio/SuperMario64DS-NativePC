@@ -1,7 +1,7 @@
 //cpp
 // @symbol _ZN9ModelAnimC1Ev
 /* recovered: real C++ constructor. The ROM's five steps are base step
- * _ZN5ModelC2Ev, base step _ZN9AnimationC2Ev at +0x50, the primary vptr store
+ * _ZN5ModelC2Ev, base step _ZN15dExtFrameCtrl_cC2Ev at +0x50, the primary vptr store
  * (_ZTV9ModelAnim), the secondary vptr store landing on
  * VTable_Animation_ModelAnimThunk (+0x24 into the vtable object, addend 0x2c
  * raw), and the body store file = 0. Declaring both bases' ctors and this

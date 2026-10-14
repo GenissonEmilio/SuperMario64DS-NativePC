@@ -22,10 +22,7 @@
  * classes' constructors (e.g. 0x02074edc).
  *
  * The declarations are virtual so derived callback types retain all four
- * inherited slots when they override only one hook. Each default remains in
- * its independently isolated source file; strict object isolation discards
- * compiler-emitted vtable/RTTI passengers that the function range does not
- * own.
+ * inherited slots when they override only one hook.
  *
  * This class has no virtual destructor and no data members of its own
  * beyond the vptr; derived graphCallback_c objects carry their own fields

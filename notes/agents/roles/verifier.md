@@ -10,7 +10,7 @@ not make your own work independent.
 Confirm the candidate SHA, source base, workflow revision, reserved scope, and
 evidence inputs. Review both source plausibility and byte proof. Check for hidden
 unclaimed shared-header changes, raw-offset leftovers, unsupported identity/layout
-claims, ABI bridges without a measured reason, and attribution lost in renames.
+claims, and ABI bridges without a measured reason. A rename does not change who matched a function. That record is `function-authors.json`.
 A count of promoted TUs is not a count of reconstructed classes.
 
 Publish a structured source judgment for this exact candidate and tested base.

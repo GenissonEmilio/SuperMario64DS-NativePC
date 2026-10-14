@@ -2,7 +2,7 @@
 #define DAKPFR_C_H
 
 #include "dCcAc_c.h"
-#include "ShadowModel.h"
+#include "dExtShadowModel_c.h"
 #include "dBgCh_Actr.h"
 #include "dActor_c.h"
 
@@ -50,7 +50,7 @@ typedef char daKpFrState_size_must_be_0x10[
 
 struct daKpFr_c : dActor_c {
     u8                 pad_0d0[0x4];
-    ShadowModel        mShadowModel;           /* 0x0d4 */
+    dExtShadowModel_c        mShadowModel;           /* 0x0d4 */
     dCcAc_c mdCcAc_c;    /* 0x0fc */
     dBgCh_Actr       mWithMeshClsn;          /* 0x130 */
     /* InitResources assigns IDENTITY_MATRIX4X3 into this slot.
@@ -61,7 +61,7 @@ struct daKpFr_c : dActor_c {
     s32                mStateResult;           /* 0x320 */
     /* Two particle handles, effects 0x7f and 0x80, both fed back into
        Particle::System::NewUnkCallback818 every Render, at mPosY + 0x4b000.
-       [_ZN8daKpFr_c6RenderEv.cpp] */
+       [_ZN8daKpFr_c6RenderEv, now in src/game/actors/d_a_kp_fr.cpp] */
     u32                mParticle1;             /* 0x324 */
     u32                mParticle2;             /* 0x328 */
     u8                 mStateTimer;            /* 0x32c */
@@ -70,18 +70,7 @@ struct daKpFr_c : dActor_c {
     /* Inline plus vtable instantiation is load-bearing: mwcc emits retail's
        D1 then D0 pair, with no homeless D2. InitResources is the first
        out-of-line virtual and anchors this TU's vtable/RTTI group. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daKpFr_c() {}   /* no slot */
-#else
-    virtual ~daKpFr_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daKpFr_c() {}
 
     virtual s32  InitResources();       /* slot 0 */
     virtual s32  CleanupResources();    /* slot 3 */
@@ -89,6 +78,19 @@ struct daKpFr_c : dActor_c {
     virtual s32  Render();              /* slot 9 */
     virtual void OnPendingDestroy();    /* slot 12 */
     virtual int  OnYoshiTryEat();       /* slot 18 */
+
+    void func_ov070_02121be4();
+    void func_ov070_02121c8c();
+    void func_ov070_02121cbc();
+    void func_ov070_02121d50(void *vclsn);
+    void func_ov070_02121e14();
+    int func_ov070_02121eb0();
+    int func_ov070_02121ef8();
+    int func_ov070_02121f18();
+    int func_ov070_02121fb0();
+    void func_ov070_02121fd0();
+    void func_ov070_0212200c();
+    void func_ov070_02122044(int idx);
 
     static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);

@@ -17,8 +17,6 @@ The mechanical steps, all of which this performs and none of which it guesses at
   file's own credit follows) and ``git rm`` every ``legacy_source``;
 * rewrite the manifest entry to ``status: promoted`` with ``source`` at the
   production path, matching the entries already enrolled;
-* add one ``attribution.json`` override per absorbed symbol, so a many-to-one
-  consolidation reads as "consolidated with credit intact" instead of N lost.
 * migrate banked CONVERTED legacy paths to ``promoted-path#symbol`` identities,
   preserving the readability ratchet at function rather than physical-file granularity.
 
@@ -178,43 +176,6 @@ def rewrite_manifest(entry, p):
                     encoding="utf-8", newline="")
 
 
-def attribution_update(plans, lineage):
-    """Prepare attribution overrides without changing the worktree.
-
-    Without these, prepush_attribution reports every legacy basename as CREDIT LOST
-    and the merge gate needs a label to pass -- for a change that took nothing away
-    from anyone.
-    """
-    path = REPO / "attribution.json"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise PromoteError(f"attribution data is unreadable: {exc}") from exc
-    ov = data.setdefault("overrides", {})
-    if not isinstance(ov, dict):
-        raise PromoteError("attribution overrides must be an object")
-    added = 0
-    for p in plans:
-        for f in p["functions"]:
-            stem = pathlib.PurePosixPath(f["legacy_source"]).stem
-            who = lineage.get(f"src/{stem}")
-            if not who:
-                continue
-            key = f"{p['dest']}#{f['symbol']}"
-            if key not in ov:
-                ov[key] = who
-                added += 1
-    return path, data, added
-
-
-def rewrite_attribution(plans, lineage, prepared=None):
-    """Write a preflighted attribution update."""
-    path, data, added = prepared or attribution_update(plans, lineage)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n",
-                    encoding="utf-8", newline="")
-    return added
-
-
 def converted_baseline_update(plans):
     """Prepare a CONVERTED identity rewrite without changing the worktree.
 
@@ -368,13 +329,6 @@ def main():
               "(dry run).")
         return 0
 
-    import prepush_attribution as PA
-    lineage = PA.lineage("HEAD")
-    try:
-        attribution = attribution_update(plans, lineage)
-    except PromoteError as exc:
-        print(f"  refused  {exc}")
-        return 1
     for p, entry in zip(plans, entries):
         rewrite_delinks(p)
         # `git mv` will not create the destination directory, and a promoted_source
@@ -385,10 +339,8 @@ def main():
             git("rm", "-q", source)
         rewrite_manifest(entry, p)
     converted = rewrite_converted_baseline(plans, converted_update)
-    added = rewrite_attribution(plans, lineage, attribution)
     print(f"tu_promote: {len(plans)} entry(ies) promoted, "
           f"{sum(len(p['functions']) for p in plans)} function(s) consolidated, "
-          f"{added} attribution override(s) added, "
           f"{converted} CONVERTED member identity/identities retained.")
     print("tu_promote: now refresh the content-bound control with "
           f"`python tools/tubuild.py linkcheck --baseline --module "

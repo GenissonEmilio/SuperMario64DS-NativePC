@@ -1,8 +1,15 @@
-# TU merge queue
+# TU merge queue (historical August 2026 campaign)
+
+> This is a historical plan and experiment log, not the active queue or launch
+> recipe. Its shadow-only endpoints, review shortcuts, tool availability claims
+> and census counts are superseded by [the promotion workflow](tu-promotion-conventions.md)
+> and [the agent protocol](agents/PIPELINE.md). Preserve its measured compiler
+> observations as evidence; do not repeat the campaign's staging phases by default.
 
 Combining one-function files back into the translation units the linker erased.
 Ground truth and counts: `notes/tu-cpp-census-2026-08.md`. Data: `notes/data/tu-merge-candidates.json`.
-Execution loop: the `decomp-tu-build` skill. Map-reading limits: `decomp-tu-slicing`.
+Current execution: [TU promotion](tu-promotion-conventions.md).
+Map-reading limits: [TU boundaries](tu-boundaries.md).
 
 Planned 2026-08-25 against a freshly regenerated `tu_map` chain. No builds were run
 during planning; every wall-clock figure below is an estimate that B0 and the pilots
@@ -29,7 +36,7 @@ when the function *definition* is inside the block, so `body_start` never gets s
 is `False` for all 173 because the census joined on the wrong key. The real key is
 `entries[*].functions[*].legacy_source`. Joining on it:
 
-* [ov045](../config/arm9/overlays/ov045/symbols.txt)/`PoleLift` (7 files, text-verified + linkcheck record) — **in the safe pool**
+* [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Ami_Bou_c` (7 files, text-verified + linkcheck record) — **in the safe pool**
 * [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Fall_Block_c` (5 files, text-verified) — **in the safe pool**
 * [ov002](../config/arm9/overlays/ov002/symbols.txt)/`Enemy` → [ov002](../config/arm9/overlays/ov002/symbols.txt) `@0x20ad838 dEnemyBase_c` (30 files) — blocked pool
 * [ov002](../config/arm9/overlays/ov002/symbols.txt)/`Platform` → [ov002](../config/arm9/overlays/ov002/symbols.txt) `@0x20ee42c dBgActor_c` (11) — blocked pool
@@ -37,9 +44,9 @@ is `False` for all 173 because the census joined on the wrong key. The real key 
 
 **0.3 — A link-verified TU falsifies a fresh-map boundary.** [ov002](../config/arm9/overlays/ov002/symbols.txt)/`LevelObjects` is
 `link-verified` over `.text 0x020fe190..0x020fea4c`. The regenerated map cuts that range
-into `@0x20fe190` (2 files, class `Stage`) + `@0x20fe3cc` (17 files, no class,
+into `@0x20fe190` (2 files, class `dScStage_c`) + `@0x20fe3cc` (17 files, no class,
 medium/medium), and extends the second *past* the verified end to `0x20fea84`, sweeping
-in [func_ov002_020fea4c.c](../src/func_ov002_020fea4c.c) and [func_ov002_020fea68.c](../src/func_ov002_020fea68.c).
+in [func_ov002_020fea4c.c](../src/actors/dM3dGLin.cpp) and [func_ov002_020fea68.c](../src/actors/dM3dGLin.cpp).
 
 In the one place where ground truth exists to check it, a **medium/medium** boundary is
 wrong in both directions. That is direct empirical support for the high/high +
@@ -56,8 +63,8 @@ it lose it. Both directions are live. Affected Tier 1:
 | Class |
 |---|
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)/`daObjWc_Obj02_c(1/9)`  [ov029](../config/arm9/overlays/ov029/symbols.txt)/`daObjWc_Obj05_c(1/9)`  [ov029](../config/arm9/overlays/ov029/symbols.txt)/`daObjWc_Obj07_c(1/5)` |
-|[ov014](../config/arm9/overlays/ov014/symbols.txt)/`daObjBSwdoor_c(1/6)` [ov030](../config/arm9/overlays/ov030/symbols.txt)/`RollingLogTtm(3/6)` [ov063](../config/arm9/overlays/ov063/symbols.txt)/`FallBlockBbh(2/5)` |
-|[ov015](../config/arm9/overlays/ov015/symbols.txt)/`daObjBk_Fall_Block_c(2/5)` [ov015](../config/arm9/overlays/ov015/symbols.txt)/`daObjBk_Ukisima_c(1/5)` [ov022](../config/arm9/overlays/ov022/symbols.txt)/`RotatingPlatformLll(1/5)` |
+|[ov014](../config/arm9/overlays/ov014/symbols.txt)/`daObjBSwdoor_c(1/6)` [ov030](../config/arm9/overlays/ov030/symbols.txt)/`daObjHmMaruta_c(3/6)` [ov063](../config/arm9/overlays/ov063/symbols.txt)/`daObjTh_Fall_Block_c(2/5)` |
+|[ov015](../config/arm9/overlays/ov015/symbols.txt)/`daObjBk_Fall_Block_c(2/5)` [ov015](../config/arm9/overlays/ov015/symbols.txt)/`daObjBk_Ukisima_c(1/5)` [ov022](../config/arm9/overlays/ov022/symbols.txt)/`daObjFl_Koma_D_c(1/5)` |
 |[ov036](../config/arm9/overlays/ov036/symbols.txt)/`RotatingPlatformRr(1/5)` [ov064](../config/arm9/overlays/ov064/symbols.txt)/`TiltingPlatformLll(2/5)` [ov016](../config/arm9/overlays/ov016/symbols.txt)/`FloatOnWaterPlatformJrb(1/4)` |
 
 
@@ -68,7 +75,7 @@ it lose it. Both directions are live. Affected Tier 1:
 * **All 100 Tier-1 TUs: zero missing, zero incomplete**, map function count == census
   file count exactly. The Tier-1 pool is genuinely clean.
 * 3 Tier-2 TUs hide a blocker: [ov063](../config/arm9/overlays/ov063/symbols.txt)/`Bookshelf+MansionSteps+MerryGoRound+TrapDoor`
-  (`_ZN12MansionSteps13InitResourcesEv` has no source), [ov009](../config/arm9/overlays/ov009/symbols.txt)/`Bird`, [ov055](../config/arm9/overlays/ov055/symbols.txt)/`MirrorLuigi`.
+  (`_ZN12MansionSteps13InitResourcesEv` has no source), [ov009](../config/arm9/overlays/ov009/symbols.txt)/`daSBird_c`, [ov055](../config/arm9/overlays/ov055/symbols.txt)/`MirrorLuigi`.
 * Same failure inflates §6 below.
 
 Two clean confirmations: cross-joining the C++ census's blocker tags against the safe
@@ -120,7 +127,7 @@ unavailable, not failed). `pcov` = how many of the TU's `.c` members the C++ cen
 independently proved C++.
 
 **B0 — calibration / regression control (no new source).**
-[ov045](../config/arm9/overlays/ov045/symbols.txt)/`PoleLift` (7 files), [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Fall_Block_c` (5 files), both already `text-verified`.
+[ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Ami_Bou_c` (7 files), [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Fall_Block_c` (5 files), both already `text-verified`.
 Re-run `compile` + `verify` only. Proves the pinned toolchain, the ROM dump and the
 serial-build assumption reproduce a *known-green* transcript before a real pilot is
 spent. **Run first; 10 minutes, and it de-risks every later "is it me or is it the TU?"**
@@ -134,7 +141,7 @@ spent. **Run first; 10 minutes, and it de-risks every later "is it me or is it t
 |[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20b5734|  n=7|  L=164|  `daObjFire_c`|                uncorrob|
 |[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20b6e08|  n=5|  L=67|   `WaterfallMist`|            uncorrob|
 |[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20ec388|  n=8|  L=148|  `daWarpkun_c`|             uncorrob|
-|[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20f0dd0|  n=8|  L=176|  `OneUpLogo`|                uncorrob|
+|[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20f0dd0|  n=8|  L=176|  `daObj1UpLogo_c`|                uncorrob|
 |[ov006](../config/arm9/overlays/ov006/symbols.txt)| 0x20dbd54|  n=3|  L=36|   `MgPicturePoker`|           uncorrob|
 |[ov006](../config/arm9/overlays/ov006/symbols.txt)| 0x20fa6ac|  n=2|  L=30|   `MgPairAGoneAndOn`|         uncorrob|
 |[ov006](../config/arm9/overlays/ov006/symbols.txt)| 0x210a400|  n=2|  L=32|   `MgMushroomRoulette`|       uncorrob|
@@ -155,16 +162,16 @@ cheapest possible probe of post-regeneration [ov006](../config/arm9/overlays/ov0
 |[ov019](../config/arm9/overlays/ov019/symbols.txt)| 0x211261c|  n=5|  L=93|  `daSldMng_c`| |
 |[ov021](../config/arm9/overlays/ov021/symbols.txt)| 0x2112db4|  n=6|  L=105|  `daObjCvShutter_c`| |
 |[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2111980|  n=8|  L=181|  `daObjFl_London_c`|               uncorrob|
-|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2111cac|  n=8|  L=170|  `LavaSeesaw`|               uncorrob|
+|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2111cac|  n=8|  L=170|  `daObjFl_Seesaw_c`|               uncorrob|
 
 
 **B3 — R0 · 10 TUs / 53 files / net −43 / 1,076 lines**
 | TU | Address | Files | Lines | Description | Status |
 |----|---------|-------|-------|-------------|--------|
-|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2111f6c|  n=5|  L=86|   `FloatingFloorLllSmall`|            pcov=3|
+|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2111f6c|  n=5|  L=86|   `daObjFl_Ukiyuka_c`|            pcov=3|
 |[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2112380|  n=4|  L=60|   `daObjFl_Fall_Block_c`|             pcov=2|
-|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2112498|  n=6|  L=100|  `RollingLogLll`| |
-|[ov026](../config/arm9/overlays/ov026/symbols.txt)| 0x21118b8|  n=6|  L=115|  `Submarine`| |
+|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2112498|  n=6|  L=100|  `daObjFlMaruta_c`| |
+|[ov026](../config/arm9/overlays/ov026/symbols.txt)| 0x21118b8|  n=6|  L=115|  `daObjWlSubmarine_c`| |
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)| 0x21111a0|  n=4|  L=135|  `daObjWcObj01_c`| |
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)| 0x2111ea4|  n=4|  L=124|  `daObjWcObj06_c`| |
 |[ov036](../config/arm9/overlays/ov036/symbols.txt)| 0x2111580|  n=8|  L=146|  `daObjRc_Hane_c`| |
@@ -186,7 +193,7 @@ batch is where shape-family amortization first pays.
 |[ov045](../config/arm9/overlays/ov045/symbols.txt)| 0x2111c30|  n=5|  L=74|   `TiltingPlatformBfs`|    pcov=3|
 |[ov047](../config/arm9/overlays/ov047/symbols.txt)| 0x21111a0|  n=4|  L=68|   `daObjKm3_Kurumajiku_c`| pcov=2|
 |[ov047](../config/arm9/overlays/ov047/symbols.txt)| 0x21114d4|  n=5|  L=96|   `daObjKm3_Dorifu_c`| |
-|[ov085](../config/arm9/overlays/ov085/symbols.txt)| 0x212edac|  n=7|  L=226|  `WallSign`| |
+|[ov085](../config/arm9/overlays/ov085/symbols.txt)| 0x212edac|  n=7|  L=226|  `daObjKanban_c`| |
 
 B4 completes [ov045](../config/arm9/overlays/ov045/symbols.txt): with B0's two, all four [ov045](../config/arm9/overlays/ov045/symbols.txt) safe TUs are done, making ov045 the
 first module where a `config_tu/` conversion becomes conceivable.
@@ -196,8 +203,8 @@ first module where a `config_tu/` conversion becomes conceivable.
 |----|---------|-------|-------------|--------|
 |[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20b09b0|  n=9|   `daChScene_c`|                   CONF1|
 |[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20b46a0|  n=8|   `MegaMushroomCreateTag`|  CONF1 pcov=5|
-|[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20bc5e0|  n=8|   `HealingHeart`|          CONF1 pcov=4|
-|[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20f0894|  n=8|   `Number`|                 CONF1|
+|[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20bc5e0|  n=8|   `daObjHeart_c`|          CONF1 pcov=4|
+|[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20f0894|  n=8|   `daObjNumber_c`|                 CONF1|
 |[ov002](../config/arm9/overlays/ov002/symbols.txt)| 0x20f11b0|  n=9|   `daObjBC_Switch_c`|         CONF2|
 |[ov006](../config/arm9/overlays/ov006/symbols.txt)| 0x212471c|  n=2|   `MgTrampolineTerror`|     CONF1|
 
@@ -207,24 +214,24 @@ first module where a `config_tu/` conversion becomes conceivable.
 |----|---------|-------|-------------|--------|
 |[ov009](../config/arm9/overlays/ov009/symbols.txt)| 0x2111a70|  n=8|   `daObjMcWater_c`|      CONF1|
 |[ov009](../config/arm9/overlays/ov009/symbols.txt)| 0x2111dc4|  n=8|   `daObjMc_Metalnet_c`|         CONF2 pcov=2|
-|[ov010](../config/arm9/overlays/ov010/symbols.txt)| 0x21119d0|  n=8|   `LightBeam`|        CONF1 pcov=3|
-|[ov010](../config/arm9/overlays/ov010/symbols.txt)| 0x2111e10|  n=8|   `PeachPainting`|    CONF1 pcov=3|
-|[ov012](../config/arm9/overlays/ov012/symbols.txt)| 0x2111450|  n=7|   `BasementWater`|    CONF2|
+|[ov010](../config/arm9/overlays/ov010/symbols.txt)| 0x21119d0|  n=8|   `daObjC1Hikari_c`|        CONF1 pcov=3|
+|[ov010](../config/arm9/overlays/ov010/symbols.txt)| 0x2111e10|  n=8|   `daObjC1Peach_c`|    CONF1 pcov=3|
+|[ov012](../config/arm9/overlays/ov012/symbols.txt)| 0x2111450|  n=7|   `daObjC0Water_c`|    CONF2|
 |[ov015](../config/arm9/overlays/ov015/symbols.txt)| 0x2112944|  n=7|   `daObjBk_Rotebar_c`|   CONF2|
-|[ov016](../config/arm9/overlays/ov016/symbols.txt)| 0x211260c|  n=8|   `ShipUp`|           CONF1|
+|[ov016](../config/arm9/overlays/ov016/symbols.txt)| 0x211260c|  n=8|   `daObjKi_Fune_c`|           CONF1|
 
 
 **B7 — R1 · 8 TUs / 63 files / net −55 / 1,440 lines**
 | TU | Address | Files | Description | Status |
 |----|---------|-------|-------------|--------|
-|[ov016](../config/arm9/overlays/ov016/symbols.txt)| 0x2112ff8|  n=8|   `SlidingBox`|           CONF2 pcov=3|
+|[ov016](../config/arm9/overlays/ov016/symbols.txt)| 0x2112ff8|  n=8|   `daSlide_Box_c`|           CONF2 pcov=3|
 |[ov017](../config/arm9/overlays/ov017/symbols.txt)| 0x21111a0|  n=7|   `daObjKsWater_c`|            CONF2 WHOLEMOD pcov=2|
-|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x21111a0|  n=9|   `VolcanoRing`|          CONF1|
-|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x21116c4|  n=9|   `FloatOnLavaPlatform`|  CONF2|
-|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2112130|  n=7|   `LavaPlank`|            CONF2|
+|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x21111a0|  n=9|   `daObjFl_Ring_c`|          CONF1|
+|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x21116c4|  n=9|   `daObjFl_Block_c`|  CONF2|
+|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x2112130|  n=7|   `daObjFl_UkiKi_c`|            CONF2|
 |[ov025](../config/arm9/overlays/ov025/symbols.txt)| 0x2111d40|  n=9|   `PyramidStep`|          CONF1|
 |[ov032](../config/arm9/overlays/ov032/symbols.txt)| 0x2112698|  n=7|   `daObjTdWater_c`|            CONF2|
-|[ov033](../config/arm9/overlays/ov033/symbols.txt)| 0x21113d4|  n=7|   `TinyWater`|            CONF3 pcov=2|
+|[ov033](../config/arm9/overlays/ov033/symbols.txt)| 0x21113d4|  n=7|   `daObjTtWater_c`|            CONF3 pcov=2|
 
 
 **B8 — R1 · 7 TUs / 50 files / net −43 / 1,286 lines**
@@ -233,20 +240,20 @@ first module where a `config_tu/` conversion becomes conceivable.
 |[ov036](../config/arm9/overlays/ov036/symbols.txt)| 0x21111a0|  n=8|   `daObjRcBuranko_c`|   CONF1|
 |[ov043](../config/arm9/overlays/ov043/symbols.txt)| 0x21113fc|  n=5|   `RickshawBdw`|       CONF1|
 |[ov052](../config/arm9/overlays/ov052/symbols.txt)| 0x21111a0|  n=7|   `daObjEmmLog_c`|      CONF3 WHOLEMOD pcov=3 (1 distinct include)|
-|[ov052](../config/arm9/overlays/ov052/symbols.txt)| 0x2111440|  n=7|   `SquarePathLift`|     CONF2|
-|[ov056](../config/arm9/overlays/ov056/symbols.txt)| 0x21111a0|  n=7|   `BigMovingIceBlock`|  CONF2 WHOLEMOD pcov=2|
-|[ov062](../config/arm9/overlays/ov062/symbols.txt)| 0x211af38|  n=8|   `KoopaFlag`|          CONF2 pcov=3|
-|[ov064](../config/arm9/overlays/ov064/symbols.txt)| 0x211a930|  n=8|   `Clam`|               CONF1|
+|[ov052](../config/arm9/overlays/ov052/symbols.txt)| 0x2111440|  n=7|   `daObjEmmYuka_c`|     CONF2|
+|[ov056](../config/arm9/overlays/ov056/symbols.txt)| 0x21111a0|  n=7|   `daObjEwmIceBlock_c`|  CONF2 WHOLEMOD pcov=2|
+|[ov062](../config/arm9/overlays/ov062/symbols.txt)| 0x211af38|  n=8|   `daRFlag_c`|          CONF2 pcov=3|
+|[ov064](../config/arm9/overlays/ov064/symbols.txt)| 0x211a930|  n=8|   `daObjShell_c`|               CONF1|
 
 
 **B9 — R1 tail, largest bodies · 5 TUs / 41 files / net −36 / 1,341 lines**
 | TU | Address | Files | Description | Status |
 |----|---------|-------|-------------|--------|
 |[ov065](../config/arm9/overlays/ov065/symbols.txt)| 0x211ab60|  n=8|   `daObjCtMecha05_c`|   CONF3|
-|[ov065](../config/arm9/overlays/ov065/symbols.txt)| 0x211b328|  n=8|   `TTC_MovingBar`|      CONF2|
-|[ov079](../config/arm9/overlays/ov079/symbols.txt)| 0x2126dbc|  n=9|   `BillBlaster`|        CONF2|
-|[ov079](../config/arm9/overlays/ov079/symbols.txt)| 0x21271e4|  n=9|   `FortressWall`|       CONF1|
-|[ov091](../config/arm9/overlays/ov091/symbols.txt)| 0x2132404|  n=7|   `SlidingPlatformWf`|  CONF2|
+|[ov065](../config/arm9/overlays/ov065/symbols.txt)| 0x211b328|  n=8|   `daObjCtKaitendai_c`|      CONF2|
+|[ov079](../config/arm9/overlays/ov079/symbols.txt)| 0x2126dbc|  n=9|   `daObjBkKillerdai_c`|        CONF2|
+|[ov079](../config/arm9/overlays/ov079/symbols.txt)| 0x21271e4|  n=9|   `daObjBk_Kabe_c`|       CONF1|
+|[ov091](../config/arm9/overlays/ov091/symbols.txt)| 0x2132404|  n=7|   `daObjSimpleLift_c`|  CONF2|
 
 
 **B10 — R2, normalizer required · 9 TUs / 60 files / net −51 / 1,416 lines**
@@ -258,7 +265,7 @@ first module where a `config_tu/` conversion becomes conceivable.
 |[ov006](../config/arm9/overlays/ov006/symbols.txt)| 0x20ede18|  n=2|  `MgWhichWiggler`|         NORM1|
 |[ov006](../config/arm9/overlays/ov006/symbols.txt)| 0x2119824|  n=2|  `MgBingoBallSlotsShot`|   NORM1|
 |[ov013](../config/arm9/overlays/ov013/symbols.txt)| 0x21111a0|  n=8|   `daObjClockHuriko_c`|  NORM1 pcov=4|
-|[ov027](../config/arm9/overlays/ov027/symbols.txt)| 0x21111a0|  n=8|   `SlidingIce`|             NORM1|
+|[ov027](../config/arm9/overlays/ov027/symbols.txt)| 0x21111a0|  n=8|   `daObjSlIceBlock_c`|             NORM1|
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)| 0x21121a4|  n=9|   `daObjWc_Mizu_c`|              NORM1|
 |[ov030](../config/arm9/overlays/ov030/symbols.txt)| 0x21111a0|  n=8|   `daObjHmBskt_c`|              NORM2 pcov=2|
 
@@ -266,10 +273,10 @@ first module where a `config_tu/` conversion becomes conceivable.
 **B11 — R2 tail · 4 TUs / 32 files / net −28 / 759 lines**
 | TU | Address | Files | Description | Status |
 |----|---------|-------|-------------|--------|
-|[ov033](../config/arm9/overlays/ov033/symbols.txt)| 0x21111a0|  n=8|   `TinyCover`|        NORM1|
+|[ov033](../config/arm9/overlays/ov033/symbols.txt)| 0x21111a0|  n=8|   `daObjTtFuta_c`|        NORM1|
 |[ov043](../config/arm9/overlays/ov043/symbols.txt)| 0x21111a0|  n=7|   `daObjKm1_Ukishima_c`|      NORM1|
-|[ov045](../config/arm9/overlays/ov045/symbols.txt)| 0x21111a0|  n=9|   `FireSeaElevator`|  NORM1 CONF2|
-|[ov064](../config/arm9/overlays/ov064/symbols.txt)| 0x21174a0|  n=8|   `BigBully`|         NORM1 pcov=2|
+|[ov045](../config/arm9/overlays/ov045/symbols.txt)| 0x21111a0|  n=9|   `daObjKm2_Agaru_c`|  NORM1 CONF2|
+|[ov064](../config/arm9/overlays/ov064/symbols.txt)| 0x21174a0|  n=8|   `daBDonketu_c`|         NORM1 pcov=2|
 
 
 **B12 — R3, `#pragma long_calls on` · 10 TUs / 59 files / net −49 / 1,265 lines**
@@ -279,18 +286,18 @@ first module where a `config_tu/` conversion becomes conceivable.
 |[ov015](../config/arm9/overlays/ov015/symbols.txt)| 0x2112bd0|  n=5|    `daObjBk_Ukisima_c`|       1/5|
 |[ov015](../config/arm9/overlays/ov015/symbols.txt)| 0x2112cf4|  n=5|    `daObjBk_Fall_Block_c`|              2/5  pcov=3|
 |[ov016](../config/arm9/overlays/ov016/symbols.txt)| 0x2112ef4|  n=4|    `FloatOnWaterPlatformJrb`|  1/4|
-|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x21115a8|  n=5|    `RotatingPlatformLll`|      1/5|
+|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x21115a8|  n=5|    `daObjFl_Koma_D_c`|      1/5|
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)| 0x211137c|  n=9|    `daObjWc_Obj02_c`|                1/9  CONF2|
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)| 0x2111ac4|  n=9|    `daObjWc_Obj05_c`|                 1/9  NORM1|
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)| 0x2112080|  n=5|    `daObjWc_Obj07_c`|          1/5  pcov=3|
-|[ov030](../config/arm9/overlays/ov030/symbols.txt)| 0x211155c|  n=6|    `RollingLogTtm`|            3/6  pcov=4|
+|[ov030](../config/arm9/overlays/ov030/symbols.txt)| 0x211155c|  n=6|    `daObjHmMaruta_c`|            3/6  pcov=4|
 |[ov036](../config/arm9/overlays/ov036/symbols.txt)| 0x2111444|  n=5|    `RotatingPlatformRr`|       1/5|
 
 
 **B13 — R3 tail · 2 TUs / 10 files / net −8 / 206 lines**
 | TU | Address | Files | Description | Status |
 |----|---------|-------|-------------|--------|
-|[ov063](../config/arm9/overlays/ov063/symbols.txt)| 0x211d3a0|  n=5|   `FallBlockBbh`|        2/5|
+|[ov063](../config/arm9/overlays/ov063/symbols.txt)| 0x211d3a0|  n=5|   `daObjTh_Fall_Block_c`|        2/5|
 |[ov064](../config/arm9/overlays/ov064/symbols.txt)| 0x2118020|  n=5|   `TiltingPlatformLll`|  2/5|
 
 
@@ -464,9 +471,9 @@ emission order    : N ordinal pair(s) NOT in ROM order: [...]
 ```
 
 **Pass: N == 0, or the only reported pairs lie within one class's D0/D1/D2 group.** That
-exception is precedented — the committed [ov045](../config/arm9/overlays/ov045/symbols.txt)/`PoleLift` entry records
+exception is precedented — the committed [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Ami_Bou_c` entry records
 `"functions_occur_in_expected_order": "PARTIAL -- ordinal pair(s) not in ROM order: [(0, 1)]"`
-at `text-verified`, and (0,1) is exactly `_ZN8PoleLiftD1Ev`/`_ZN8PoleLiftD0Ev`. Any
+at `text-verified`, and (0,1) is exactly `_ZN18daObjKm2_Ami_Bou_cD1Ev`/`_ZN18daObjKm2_Ami_Bou_cD0Ev`. Any
 cross-group pair is a real order bug and blocks the TU.
 
 ### 2.4 Declaration conflicts — reconcile in place
@@ -512,12 +519,12 @@ reloc-destinations: clean            <- relocation destination identity
 
 A byte MATCH alone is **not** proof: `match.compare` wildcards every relocated word, so a
 member can reproduce the bytes while calling the wrong function. [ov077](../config/arm9/overlays/ov077/symbols.txt)'s
-[func_ov077_02124118](../src/func_ov077_02124118.cpp) called `ApproachLinear` where the ROM calls `ApproachLinear2` —
+[`daJgm_c::UpdateSpitState` (0x02124118)](../src/game/actors/d_a_jgm.cpp) called `ApproachLinear` where the ROM calls `ApproachLinear2` —
 same signature shape, reported MATCH, cost a day. If any of the three could not run, the
 status is "not verified", never "probably fine".
 
 `999 word(s) differ` means **sizes** differ (usually the D0/D1/D2 variant collapse), not
-a type error — go to `decomp-cpp-class-form`.
+a type error — go to [class-form observations](cpp-class-form.md).
 
 Every TU in this pool is a key-function TU, so vtable/RTTI emission appears as
 *unlicensed-but-expected* output. `linkcheck --no-rom` is where a wrong vtable anchor
@@ -537,9 +544,9 @@ python tu_preflight.py --batch B3
 |---|---|---|---|
 | **P1** | **any-pragma scan** — `split_legacy_source(text)["pragmas"]`, not just `opt_*` | `long_calls` going file-global (§0.4); `create` dropping a pragma a member needed. Precedent: [ov062](../config/arm9/overlays/ov062/symbols.txt)/001 went 14 match/24 differ from one stray `optimize_for_size on`; removing it gave 36/2 | **FAIL** if non-empty and the TU is not in B12/B13 with an explicit two-run plan |
 | **P2** | **local-struct + extern collision scan** — replay `tubuild._merge_field`, print both texts side by side; flag same-key/same-text `struct` decls in ≥3 members as advisory | silent layout divergence (§2.5) | **WARN**; count must equal the batch's `CONFn`, all resolved before `verify` |
-| **P3** | **`decl_common.h` usage** — count members including it, print what each actually consumes | it sometimes declares a TU's own functions as **data** → silent mismatch | **WARN**. Policy: drop it and restate the 3–17 lines. Median distinct includes is 6–7; usage 0–6 members/TU (highest [ov016](../config/arm9/overlays/ov016/symbols.txt)/`ShipUp` 6/8) |
+| **P3** | **`decl_common.h` usage** — count members including it, print what each actually consumes | it sometimes declares a TU's own functions as **data** → silent mismatch | **WARN**. Policy: drop it and restate the 3–17 lines. Median distinct includes is 6–7; usage 0–6 members/TU (highest [ov016](../config/arm9/overlays/ov016/symbols.txt)/`daObjKi_Fune_c` 6/8) |
 | **P4** | **sinit accounting** — module `sinits` / `ctor_entries` / `sinit_vs_tu` / `corroborated`, plus this TU's share | two merged TUs that each carried a sinit must produce **one** | **FAIL** if `sinit_vs_tu != "ok"`. **WARN** on `corroborated:false` (67 of 100 Tier-1 — *unavailable*, not *failed*). Corroboration is module-wide, **not narrowed to this TU** |
-| **P5** | **manifest dedupe** — join on `entries[*].functions[*].legacy_source`, **not** the census flag | redoing PoleLift/daObjKm2_Fall_Block_c, or fighting an entry that already claims a member (§0.2) | **FAIL** on partial overlap; route whole-TU overlap to B0 as a re-verify |
+| **P5** | **manifest dedupe** — join on `entries[*].functions[*].legacy_source`, **not** the census flag | redoing daObjKm2_Ami_Bou_c/daObjKm2_Fall_Block_c, or fighting an entry that already claims a member (§0.2) | **FAIL** on partial overlap; route whole-TU overlap to B0 as a re-verify |
 | **P6** | **completeness re-derived** — `SP.path_for(sym)` not `None`, `is_complete(module, path)`, assert `len(unit_functions) == len(census files)` | the census drops sourceless functions (§0.5). Without `complete`, dsd supplies the range from ROM bytes and **your source is never compiled** | **FAIL** on any missing or incomplete. All 100 Tier-1 pass today; 3 Tier-2 fail |
 | **P7** | **`create`-ability probe** — `split_legacy_source`, on error retry `tu_create.normalize` | discovering mid-batch that `create` aborts; the `struct`-return misparse (§2.2) | **INFO**: clean / normalizer-required / HAND-ASSEMBLE. FAIL only on the third |
 | **P8** | **inert-marker + blocker cross-check** — `text.startswith("//cpp")` vs `"//cpp" in text[:400]`; assert no member is in the by-value / not-in-delinks / extra-sections / NONMATCHING sets | a file that looks C++ and compiles as C99; a member invisible to the byte gates | **REPORT ONLY, do not tidy.** All four blocker sets currently have 0 safe-pool hits |
@@ -583,7 +590,7 @@ range. `_ZTV8Squasher` is emitted as unlicensed-but-expected — record it, do n
 as a failure.
 **FAIL**: <9/9 → per-member triage, a reconcile bug. Audits dirty at 9/9 → wrong-callee
 (the [ov077](../config/arm9/overlays/ov077/symbols.txt) class); do **not** record `text-verified`. `linkcheck` failing at 9/9 clean →
-vtable-anchor / class-form; go to `decomp-cpp-class-form` before touching the merge.
+vtable-anchor / class-form; go to [class-form observations](cpp-class-form.md) before touching the merge.
 
 Then run `python tools/rombuild.py` once, serially. It is the final verdict.
 
@@ -617,7 +624,7 @@ reorder: run B1–B9 (no normalizer needed) and hold B10–B11.
 ## 5. The Tier 2 campaign — 73 TUs / 1,338 files / net −1,265 / 40,621 lines
 
 Sizes: 31 TUs at 10–14 members, 11 at 15–19, 18 at 20–24, **13 at 25+** (largest:
-[ov081](../config/arm9/overlays/ov081/symbols.txt)/`MrBlizzard` 35, [ov102](../config/arm9/overlays/ov102/symbols.txt)/`BobOmb` 35, [ov077](../config/arm9/overlays/ov077/symbols.txt)/`Spiny` 34, [ov077](../config/arm9/overlays/ov077/symbols.txt)/`Lakitu` 32,
+[ov081](../config/arm9/overlays/ov081/symbols.txt)/`daSnowman_c` 35, [ov102](../config/arm9/overlays/ov102/symbols.txt)/`BobOmb` 35, [ov077](../config/arm9/overlays/ov077/symbols.txt)/`daTgz_c` 34, [ov077](../config/arm9/overlays/ov077/symbols.txt)/`daJgm_c` 32,
 [ov085](../config/arm9/overlays/ov085/symbols.txt)/`daMip_c` 32). 18 are multi-class. 48 of 73 need the normalizer.
 
 ### 5.1 Greedy admission
@@ -691,7 +698,7 @@ harder to review. 48 of 73 need the normalizer, whose only validation is Pilot 3
 have blockers the census concealed; the 13 TUs at 25+ members are exactly where "0 of 159
 compiled" was measured.
 
-**Exception — run exactly one Tier-2 TU as a cost probe, after B2:** [ov092](../config/arm9/overlays/ov092/symbols.txt)/`ToxBox`
+**Exception — run exactly one Tier-2 TU as a cost probe, after B2:** [ov092](../config/arm9/overlays/ov092/symbols.txt)/`daOnms_c`
 (`.text 0x2130f00`, 23 files, `module_tus=1`, module-edge both ends, `corroborated:true`,
 **all 12 `.c` members census-proven**, `pcov=12/12`). The only Tier-2 TU with a
 module-edge boundary on both sides *and* a settled language variable, so an admission
@@ -700,7 +707,7 @@ wall clock, then decide whether Tier 2 is a campaign or a backlog. Second-best p
 [ov094](../config/arm9/overlays/ov094/symbols.txt)/`HootTheOwl` (22 files, whole-module, corroborated) — but `pcov=0`, so it confounds
 language with admission.
 
-## 6. Deferred-but-recoverable: [ov063](../config/arm9/overlays/ov063/symbols.txt) Boo (94) and [ov060](../config/arm9/overlays/ov060/symbols.txt) Bowser (80)
+## 6. Deferred-but-recoverable: [ov063](../config/arm9/overlays/ov063/symbols.txt) Boo (94) and [ov060](../config/arm9/overlays/ov060/symbols.txt) daKpa_c (80)
 
 Neither is "blocked only by pragmas/incomplete members".
 
@@ -709,20 +716,21 @@ Per `tubuild.py inspect` (authoritative over the census): **6 functions without
 `complete`**, of which **3 have no legacy source at all** — [func_ov063_021166ac](../config/arm9/overlays/ov063/symbols.txt),
 [func_ov063_02117cdc](../config/arm9/overlays/ov063/symbols.txt), `_ZN3Boo6RenderEv`/`_ZN3Boo8BehaviorEv`/`_ZN3Boo13InitResourcesEv`
 region. Boo has no legacy source anywhere and no directory of its own; the nearest
-named relatives are `src/game/actors/daTrs_c` and `src/game/actors/daTBasket_c`.
+named relatives were the `daTrs_c` and `daTBasket_c` shard directories under
+`src/game/actors/`. (Since promoted as one TU: [src/actors/daTrs_c.cpp](../src/actors/daTrs_c.cpp).)
 3 members carry `opt_propagation off` / `opt_common_subs off` / `optimize_for_size on`.
 **Swallower: 97 functions, 69% of [ov063](../config/arm9/overlays/ov063/symbols.txt)**, carrying 4 class labels, **3 separate vtables**
 (`_ZTV3Boo`, `_ZTV7BooCage`, `_ZTV10BigBooIcon`) and 3 destructor pairs. 94 members is
 9.4× the cliff.
 
-**[ov060](../config/arm9/overlays/ov060/symbols.txt) — `Bowser+BowserTail`, `.text 0x2111900..0x2116484`, 80 files.**
+**[ov060](../config/arm9/overlays/ov060/symbols.txt) — `daKpa_c+daKpaTail_c`, `.text 0x2111900..0x2116484`, 80 files.**
 **1 function with no legacy source** ([func_ov060_021140c0](../config/arm9/overlays/ov060/symbols.txt); the census said 0). 2 members
 carry `opt_common_subs` / `opt_lifetimes`. **Swallower: 81 functions, 53% of [ov060](../config/arm9/overlays/ov060/symbols.txt).**
 3,181 lines, 15 includes.
 
 **What actually unblocks them**, in order:
 
-1. **Write the missing sources** (3 for Boo, 1 for Bowser). Without `complete`, dsd
+1. **Write the missing sources** (3 for Boo, 1 for daKpa_c). Without `complete`, dsd
    supplies the range from ROM bytes and your source is never compiled — a merge over
    them proves nothing. Ordinary matching work, not merge work.
 2. **Resolve the swallower.** A 94-function run spanning 69% of a module with 4 class
@@ -799,10 +807,10 @@ not need re-reading); 1 serial `rombuild.py` at merge.
 Tier 1 whole: **13 batches + 3 pilots ≈ 45–75 agent-hours, ≈12–18 h review, 15 serial ROM
 builds**, for −567 files (5.1% of `src/`).
 
-Tier 2 whole: unmeasurable until the ToxBox probe returns. Lower bound ~1,338 compiles for
+Tier 2 whole: unmeasurable until the daOnms_c probe returns. Lower bound ~1,338 compiles for
 one linear pass, ~2,700 with the retry, plus reconcile on 40,621 lines — **plausibly
 2.5–4× Tier 1's effort for 2.2× the files**, with partial results that cost more to
-review. [ov081](../config/arm9/overlays/ov081/symbols.txt)/`MrBlizzard` (35 members, 1,416 lines, 17 local-struct files, 9 normalizer
+review. [ov081](../config/arm9/overlays/ov081/symbols.txt)/`daSnowman_c` (35 members, 1,416 lines, 17 local-struct files, 9 normalizer
 files) is the worst single unit; budget it in hours, alone.
 
 **Bounding the commitment:** B0 + Pilot 1 is ~1 hour and settles whether the toolchain and
@@ -821,7 +829,7 @@ where noted.**
 
 | control | result |
 |---|---|
-| [ov045](../config/arm9/overlays/ov045/symbols.txt)/`PoleLift` | **7/7 MATCH, objisolate clean, reloc-destinations clean → TEXT-VERIFIED.** The one out-of-order pair is the D1/D0 group, the precedented exception. |
+| [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Ami_Bou_c` | **7/7 MATCH, objisolate clean, reloc-destinations clean → TEXT-VERIFIED.** The one out-of-order pair is the D1/D0 group, the precedented exception. |
 | [ov045](../config/arm9/overlays/ov045/symbols.txt)/`daObjKm2_Fall_Block_c` | **3/5 — NOT verified.** Both destructors `999 word(s) differ` with wrong reloc destinations ([ov045](../config/arm9/overlays/ov045/symbols.txt): `_ZTV10dBgActor_c != 0x021130f4`). |
 
 `daObjKm2_Fall_Block_c` is banked in `config/tu_manifest.d/` as `text-verified` and does not
@@ -835,7 +843,7 @@ of them predicted hazards, and all of them recurring across the queue:
 1. **empty-paren prototype** — `extern void func_0200fa04();` called with 3 args. Legal in
    C (unspecified args), illegal in C++. Restate with the signature the call site proves.
 2. **destructor redefined** — D1 and D0 each spell `Squasher::~Squasher()`. One definition
-   emits both (plus D2). Collapse to one, mirroring `PoleLift.cpp`.
+   emits both (plus D2). Collapse to one, mirroring `daObjKm2_Ami_Bou_c.cpp`.
 3. **the vptr store** — see below. This is the one worth memorising.
 
 ### The vptr store: `+ 2` inside the cast
@@ -854,7 +862,7 @@ p[0] = (int)_ZTV8Squasher + 8;     /* WRONG -- mwcc emits an extra ADD; the func
                                     * changes (999 word(s) differ) and the addend stays 0 */
 ```
 
-**The `+ 2` must be inside the cast.** `src_tu/actors/PoleLift.cpp` documents this in a
+**The `+ 2` must be inside the cast.** `src/game/actors/d_a_obj_km2_ami_bou.cpp` documents this in a
 17-line comment that predates this plan; roughly **88 of the 100 Tier-1 TUs** hand-store a
 vtable their own TU owns and will need the same edit. It is the most common reconcile step
 in the queue — a known step, not a blocker. *(An earlier revision of this section claimed
@@ -876,7 +884,7 @@ Run because they were the cheapest, not because the others were blocked.
 | [ov036](../config/arm9/overlays/ov036/symbols.txt)/`daObjRc_Dorifu_c` | 4 | blocked on `mMovingMeshCollider` — the class header does not declare the member. **Header work, not merge work.** |
 | [ov043](../config/arm9/overlays/ov043/symbols.txt)/`daObjKm1_Dorifu_c` | 4 | same |
 | [ov047](../config/arm9/overlays/ov047/symbols.txt)/`daObjKm3_Dorifu_c` | 5 | same, plus an ambiguous overload |
-| [ov065](../config/arm9/overlays/ov065/symbols.txt)/`TTC_MovingBar` | 8 | `class 'TTC_MovingBar' redefined` — the loud form of the local-struct collision |
+| [ov065](../config/arm9/overlays/ov065/symbols.txt)/`daObjCtKaitendai_c` | 8 | `class 'daObjCtKaitendai_c' redefined` — the loud form of the local-struct collision |
 | [ov065](../config/arm9/overlays/ov065/symbols.txt)/`daObjCtMecha05_c` | 8 | [data_ov065_0211c0c8](../config/arm9/overlays/ov065/symbols.txt) redeclared, `short` vs other |
 | [ov006](../config/arm9/overlays/ov006/symbols.txt)/`MgTrampolineTerror` | 2 | overload conflict at the extern block |
 

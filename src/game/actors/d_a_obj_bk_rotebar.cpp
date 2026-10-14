@@ -34,14 +34,31 @@
 struct KCL_File;
 struct CLPS_Block;
 
+/* SharedFilePtr has no fields; the two words are the handle's 8 bytes. The
+ * constructors and destructors are the ROM resource-family veneers, aliased
+ * in the manifest. */
+struct BkRotebarModelFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    BkRotebarModelFilePtr(u32 fileID);
+    ~BkRotebarModelFilePtr();
+};
+
+struct BkRotebarCollisionFilePtr : SharedFilePtr {
+    u32 words[2];
+
+    BkRotebarCollisionFilePtr(u32 fileID);
+    ~BkRotebarCollisionFilePtr();
+};
+
 namespace Sound {
 unsigned PlayLong(unsigned handle, unsigned a, unsigned id,
                   const Vector3 &pos, short f);
 }
 
 extern "C" {
-extern SharedFilePtr data_ov015_02114a84;   /* collision KCL */
-extern SharedFilePtr data_ov015_02114a8c;   /* bar BMD */
+extern BkRotebarCollisionFilePtr data_ov015_02114a84;   /* collision KCL */
+extern BkRotebarModelFilePtr data_ov015_02114a8c;       /* bar BMD */
 extern CLPS_Block    data_ov015_02113654;
 
 unsigned char DecIfAbove0_Byte(unsigned char *p);
@@ -113,4 +130,31 @@ s32 daObjBk_Rotebar_c::CleanupResources()
     data_ov015_02114a8c.Release();
     data_ov015_02114a84.Release();
     return 1;
-}
+
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 1 -- _ZN17daObjBk_Rotebar_cD0Ev, 0x02112988, size 0x58        */
+/* ROM ordinal 0 -- _ZN17daObjBk_Rotebar_cD1Ev, 0x02112944, size 0x44        */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN17daObjBk_Rotebar_cD1Ev
+// @symbol _ZN17daObjBk_Rotebar_cD0Ev
+/* NOT WRITTEN HERE ON PURPOSE. The destructor body is INLINE in
+ * include/daObjBk_Rotebar_c.h and declared FIRST. Two measurements force that:
+ *   - out of line, mwcc emits D0 ahead of D1 and the cartridge has D1 first,
+ *     which rombuild refuses outright;
+ *   - out of line it also emits the D2 base-object variant, which the ROM
+ *     never carried.
+ * Declaring it first is what makes this TU the vtable's home, so _ZTV and the
+ * RTTI pair land here rather than in whichever other TU happens to name them.
+ *
+ * Both bodies are short because the chain is short: this class's vptr store,
+ * then dBgActor_c's -- inlined, its destructor is defined in its class body --
+ * then dBgActor_c's Model and dBgW_KcMbg, then dActor_c. This class adds no
+ * member with a destructor of its own. D0's trailing deallocation is the
+ * inherited inline operator delete, which is why nothing here names a heap.
+ */}
+
+/* The ROM's initializer constructs the model handle with file ID 1435 and
+ * the collision handle with file ID 1436, registering a destructor node for
+ * each. mwcc emits __sinit_d_a_obj_bk_rotebar.cpp from these definitions. */
+BkRotebarModelFilePtr data_ov015_02114a8c(1435);
+BkRotebarCollisionFilePtr data_ov015_02114a84(1436);

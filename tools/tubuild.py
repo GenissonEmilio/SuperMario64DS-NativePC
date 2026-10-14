@@ -13,6 +13,8 @@ Subcommands:
     python tools/tubuild.py create  ov062/Chuckya     # generate a shadow .cpp
     python tools/tubuild.py compile ov045/PoleLift    # compile with the pinned toolchain
     python tools/tubuild.py verify  ov045/PoleLift    # byte + relocation verification
+    python tools/tubuild.py verify  ov045/PoleLift --no-write
+                                                      # same report; manifest bytes stay put
     python tools/tubuild.py partial ov045/PoleLift    # one TU compile -> N derived
                                                       #   per-function objects, each
                                                       #   compared against the object the
@@ -25,7 +27,9 @@ This tool never touches src/, config/**/delinks.txt, or runs real
 `eligible.py` / `rombuild.py`. It only reads production state (the
 committed config/, the extracted ROM, the pinned mwccarm) and writes to
 src_tu/, config/tu_manifest.d/, and build/tu/ (gitignored, see .gitignore's
-bare `build/` entry).
+bare `build/` entry). `verify --no-write` still compiles into build/tu/ but
+leaves the manifest byte-for-byte unchanged; the default verify keeps writing
+the verification block CI and normal callers expect.
 
 Every byte/relocation comparison is delegated to the tree's existing gates --
 tools/match.py (compile + relocation-aware compare), tools/objisolate.py
@@ -57,6 +61,7 @@ sys.path.insert(0, str(TOOLS))
 
 import build_pin as BP          # noqa: E402
 import enroll as EN             # noqa: E402
+import lcf_interior as LI       # noqa: E402
 import match as M               # noqa: E402
 import modules as MOD           # noqa: E402
 import objisolate as OI         # noqa: E402
@@ -784,6 +789,46 @@ def _merge_field(ord_rows, parsed, getter, name_of, kind_label, warnings):
     return live, dead
 
 
+def _conflict_body(text):
+    r"""Legacy text carried INSIDE a `/* TUBUILD CONFLICT -- ... */` marker.
+
+    The marker wraps source that is itself commented C++, so a `*/` anywhere in
+    the carried text closes the outer block early and everything after it becomes
+    code again. Measured on ov006 dScMgSlot1_c+dScMgSlot3_c: 20 of 23 blocks
+    became syntax errors this way and had to be repaired by hand.
+
+    The terminator is neutralised rather than the text dropped. The whole point of
+    the marker is that a human can still read exactly what was not applied, and
+    `*\/` reads as `*/` while closing nothing -- a backslash is only special
+    before a newline, so it never reaches the comment lexer as a terminator.
+    """
+    return text.replace("*/", "*\\/")
+
+
+def _promoted_member_fragment(path, text, name):
+    """One member's text sliced out of an ALREADY-PROMOTED multi-symbol TU.
+
+    `srcpath.path_for` answers with the file the linker actually reads, which for
+    a symbol that has already been folded is the whole promoted TU. But
+    `split_legacy_source` documents that it assumes the ONE-function legacy file
+    AGENTS.md guarantees, so it hands that whole file back as `function_text` and
+    `create` pastes every function in it once per ROM ordinal -- 18 byte-identical
+    copies and about 40 redefinition errors on the fold that found this. 180 files
+    in the tree own more than one symbol today and that number only grows, so this
+    is on the path of every future fold that reaches an already-folded neighbour.
+
+    Returns (fragment, owned_count), where `fragment` is None when the member
+    cannot be sliced unambiguously -- which the caller must REPORT rather than
+    guess past. Returns None when `path` is an ordinary one-function legacy file,
+    which is the common case and must behave exactly as it always did.
+    """
+    owned = SP.symbols_for(path)
+    if len(owned) <= 1:
+        return None
+    import tiers as TI
+    return TI._marked_member_fragment(text, name), len(owned)
+
+
 def assemble_shadow_source(tu_id, ord_rows, parsed):
     warnings = []
     cpp_needed = any(parsed[name]["cpp"] for _o, name, _a, _s in ord_rows)
@@ -864,7 +909,7 @@ def assemble_shadow_source(tu_id, ord_rows, parsed):
             kind, dname, text = item
             out.append(f"/* TUBUILD CONFLICT -- alternate body of {kind} {dname!r}, from the "
                        f"legacy file for {name}, NOT applied:")
-            out.append(text)
+            out.append(_conflict_body(text))
             out.append("*/")
             out.append("")
 
@@ -873,7 +918,7 @@ def assemble_shadow_source(tu_id, ord_rows, parsed):
             out.append(line)
         for key, line, name in dead_macros:
             out.append(f"/* TUBUILD CONFLICT -- alternate #define of {key}, from the legacy "
-                       f"file for {name}, NOT applied: {line} */")
+                       f"file for {name}, NOT applied: {_conflict_body(line)} */")
         out.append("")
 
     if live_externs or dead_externs:
@@ -883,7 +928,7 @@ def assemble_shadow_source(tu_id, ord_rows, parsed):
             out.append(line)
         for key, line, name in dead_externs:
             out.append(f"/* TUBUILD CONFLICT -- alternate declaration of {key}, from the "
-                       f"legacy file for {name}, NOT applied: {line} */")
+                       f"legacy file for {name}, NOT applied: {_conflict_body(line)} */")
         if cpp_needed:
             out.append("}")
         out.append("")
@@ -1026,6 +1071,30 @@ def cmd_create(args):
                             "legacy_path": f"<none for {name}>"}
             continue
         text = legacy.read_text(encoding="utf-8", errors="ignore")
+        promoted = _promoted_member_fragment(legacy, text, name)
+        if promoted is not None:
+            fragment, owned = promoted
+            rel = legacy.relative_to(REPO).as_posix()
+            if fragment is None:
+                pre_warnings.append(
+                    f"PROMOTED-UNSLICEABLE: {name} already lives in {rel}, which owns "
+                    f"{owned} symbols, and no single marker there names it; a banner "
+                    f"marks its slot and verify will report the member MISSING")
+                parsed[name] = {"error": None, "cpp": False, "missing": True,
+                                "includes": [], "pragmas": [], "macros": [],
+                                "externs": [], "shadow_decls": [], "notes": [],
+                                "function_text": "", "legacy_path": rel}
+                continue
+            pre_warnings.append(
+                f"PROMOTED: {name} already lives in {rel}, which owns {owned} symbols; "
+                f"only its own marked member text is carried here. That TU's includes, "
+                f"macros and declarations are NOT carried -- decide what this TU has to "
+                f"declare for the member itself")
+            parsed[name] = {"error": None, "cpp": legacy.suffix == ".cpp",
+                            "includes": [], "pragmas": [], "macros": [], "externs": [],
+                            "shadow_decls": [], "notes": [],
+                            "function_text": fragment.strip(), "legacy_path": rel}
+            continue
         p = split_legacy_source(text)
         p["legacy_path"] = legacy.relative_to(REPO).as_posix()
         if p["error"]:
@@ -1458,14 +1527,27 @@ def cmd_verify(args):
         "relocation_destinations_verified": "PASS" if all_reloc_ok else "FAIL -- see DIFF/objisolate lines above",
     }.items():
         criteria[key] = _keep_richer(key, verdict)
+    downgraded = False
     if text_verified and entry.get("status") == "shadow":
         entry["status"] = "text-verified"
     elif not text_verified and entry.get("status") == "text-verified":
         entry["status"] = "shadow"
-        print("\nNOTE: manifest status downgraded text-verified -> shadow: this round did "
-             "not reproduce it.")
-    upsert_manifest_entry(data, entry)
-    save_manifest(data)
+        downgraded = True
+    # Default still writes: CI and normal verify expect the verification block.
+    # `--no-write` is the sibling-control path, which must not mutate the manifest
+    # it is measuring. The report above is unchanged either way.
+    if args.no_write:
+        if downgraded:
+            print("\nNOTE: this round would downgrade text-verified -> shadow, but "
+                 "--no-write left the manifest unchanged.")
+        else:
+            print("\nNOTE: --no-write: manifest left unchanged.")
+    else:
+        if downgraded:
+            print("\nNOTE: manifest status downgraded text-verified -> shadow: this round did "
+                 "not reproduce it.")
+        upsert_manifest_entry(data, entry)
+        save_manifest(data)
 
     # A PROMOTION REFUSED is a failure of this command even when the bytes
     # reproduced. `text_verified` is deliberately NOT folded into: it drives the
@@ -2187,6 +2269,205 @@ def _relocation_destination_address(reloc_type, symbol, public_address, addend,
     return public_address + addend
 
 
+def canonical_duplicate_policies(entry, homes=None):
+    """Resolve explicit relocation-free duplicate imports, without changing config.
+
+    A canonical name identifies an existing function; it does not grant ownership
+    or infer identity from equal bytes. The row's reason records that source/ROM
+    evidence. Object shape and the complete body are proved separately, before any
+    section is discarded.
+    """
+    rows = entry.get("compiler_only_output") or []
+    if not isinstance(rows, list):
+        return [], []  # The existing policy parser reports malformed containers.
+    selected = [r for r in rows if isinstance(r, dict) and "canonical_symbol" in r]
+    if not selected:
+        return [], []
+    homes = all_symbol_homes() if homes is None else homes
+    owned = {r.get("symbol") for r in entry.get("functions", [])}
+    owned.update(r["symbol"] for _section, r in manifest_owned_symbol_rows(entry))
+    other_policy_names = set()
+    for field in ("undefined_symbol_aliases", "defined_symbol_renames",
+                  "symbol_binding_rewrites", "externalized_output"):
+        for row in entry.get(field, []) or []:
+            if isinstance(row, dict):
+                other_policy_names.update(row.get(k) for k in
+                                          ("symbol", "canonical_symbol", "from", "to"))
+    source_names = [r.get("symbol") for r in rows if isinstance(r, dict)]
+    targets = [r.get("canonical_symbol") for r in selected]
+    # Key by NAME as well as address: an object alias at a function address must
+    # never inherit the function's extent merely because the addresses coincide.
+    functions = collections.defaultdict(list)
+    for path, module in RL.module_universe():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            match = EN.SYM_RE.match(line)
+            if match:
+                functions[match.group(1)].append((RL.normalize_module(module),
+                    int(match.group(4), 16), int(match.group(3), 16)))
+    plans, reasons = [], []
+    for row in selected:
+        name, target = row.get("symbol"), row.get("canonical_symbol")
+        prefix = f"canonical duplicate {name}"
+        errors = []
+        if not isinstance(name, str) or not name or not isinstance(target, str) or not target:
+            reasons.append(f"{prefix}: symbol and canonical_symbol must be non-empty strings")
+            continue
+        if row.get("disposition") != "deadstrip-duplicate":
+            errors.append("canonical_symbol requires deadstrip-duplicate")
+        if not str(row.get("reason", "")).strip():
+            errors.append("needs a non-empty reason documenting callback identity")
+        if name in owned or target in owned:
+            errors.append("source or canonical symbol is owned by this manifest")
+        if source_names.count(name) != 1 or targets.count(target) != 1:
+            errors.append("duplicate source or canonical destination")
+        if target in source_names or {name, target} & other_policy_names:
+            errors.append("overlapping alias, binding, or removal policies")
+        actual = [(RL.normalize_module(m), a) for m, a in homes.get(target, [])]
+        if len(actual) != 1:
+            errors.append("canonical symbol needs exactly one configured ROM home")
+        if homes.get(name):
+            errors.append("emitted name already has configured ROM homes")
+        declared = RB._declared_home(row)
+        if (("canonical_module" in row) != ("canonical_address" in row)
+                or declared == "bad" or (declared is not None and actual != [declared])):
+            errors.append("declared canonical home does not match its unique configured home")
+        definitions = functions.get(target, [])
+        if len(definitions) != 1 or not actual or definitions[0][:2] != actual[0]:
+            errors.append("canonical symbol must be one uniquely configured sized function")
+        if errors:
+            reasons.extend(f"{prefix}: {error}" for error in errors)
+            continue
+        module, address, size = definitions[0]
+        if size <= 0:
+            errors.append("canonical function must have a positive extent")
+        if any(RL.normalize_module(m) == module and address <= a < address + size
+               for symbol in owned for m, a in homes.get(symbol, [])):
+            errors.append("canonical function contains a manifest-owned symbol")
+        if not entry.get("module"):
+            errors.append("manifest module is required to exclude owned ranges")
+        elif RL.normalize_module(entry["module"]) == module:
+            # Ordinary multi-function entries need not declare section ranges.
+            # A canonical callback inside an owned function must still be refused.
+            for function in entry.get("functions", []):
+                try:
+                    start = int(str(function["address"]), 0)
+                    extent = int(str(function["size"]), 0)
+                except (KeyError, TypeError, ValueError):
+                    errors.append("owned function needs a valid address and size")
+                    continue
+                if extent <= 0:
+                    errors.append("owned function needs a positive extent")
+                elif address < start + extent and start < address + size:
+                    errors.append("canonical function overlaps a manifest-owned function")
+            # Section rows are optional for ordinary manifests. Every declared
+            # non-text object also owns its full emitted storage, including a
+            # vtable's preamble before its public address point.
+            for field in _SECTION_SYMBOL_FIELDS.values():
+                rows = entry.get(field, [])
+                if not isinstance(rows, list) or any(
+                        not isinstance(row, dict) or not isinstance(row.get("symbol"), str)
+                        or not row["symbol"] for row in rows):
+                    errors.append(f"owned {field} must contain named object rows")
+            for section, row in manifest_owned_symbol_rows(entry):
+                label = f"owned {section} object {row['symbol']}"
+                address_fields = ("address", "rom_symbol_address",
+                                  "emitted_storage_address", "address_point_bias")
+                if any(not isinstance(row[key], (str, int)) or isinstance(row[key], bool)
+                       for key in address_fields if key in row):
+                    errors.append(f"{label} needs integer addresses and address-point bias")
+                    continue
+                start, storage_error = _manifest_emitted_addr(row)
+                try:
+                    extent = int(str(row["size"]), 0)
+                except (KeyError, TypeError, ValueError):
+                    errors.append(f"{label} needs a valid size")
+                    continue
+                if storage_error or start is None:
+                    errors.append(f"{label} needs a valid emitted storage address: "
+                                  f"{storage_error or 'missing or invalid address'}")
+                    continue
+                end = start + extent
+                public = _manifest_addr(row)
+                if (extent <= 0 or start < 0 or end > 0x100000000
+                        or not start <= public < end):
+                    errors.append(f"{label} needs a positive storage extent containing its public address")
+                elif address < end and start < address + size:
+                    errors.append(f"canonical function overlaps {label} storage")
+            for section in entry.get("sections", []):
+                try:
+                    start, end = int(str(section["start"]), 0), int(str(section["end"]), 0)
+                except (KeyError, TypeError, ValueError):
+                    errors.append("invalid owned range")
+                    continue
+                if address < end and start < address + size:
+                    errors.append("canonical function overlaps a manifest-owned range")
+        body = BP.target_bytes(module, address, size) if size > 0 else None
+        if body is None or len(body) != size:
+            errors.append("complete canonical ROM bytes are unavailable")
+        reasons.extend(f"{prefix}: {error}" for error in errors)
+        if not errors:
+            plans.append({"symbol": name, "canonical_symbol": target, "module": module,
+                          "address": address, "size": size, "body": bytes(body)})
+    return plans, reasons
+
+
+def verify_canonical_duplicates(obj_bytes, plans):
+    """Prove complete, dedicated vague bodies and reject every relocation in them."""
+    if not plans:
+        return []
+    elf = ELFFile(io.BytesIO(obj_bytes))
+    symtab = elf.get_section_by_name(".symtab")
+    if symtab is None:
+        return ["canonical duplicates: object has no symbol table"]
+    symbols = list(symtab.iter_symbols())
+    config = RA.build_config_relocs()
+    reasons = []
+    for plan in plans:
+        name = plan["symbol"]
+        prefix = f"canonical duplicate {name}"
+        matches = [s for s in symbols if s.name == name]
+        if len(matches) != 1:
+            reasons.append(f"{prefix}: needs exactly one emitted definition")
+            continue
+        symbol = matches[0]
+        index = symbol["st_shndx"]
+        if not isinstance(index, int) or index <= 0 or index >= elf.num_sections():
+            reasons.append(f"{prefix}: is not a section definition")
+            continue
+        section = elf.get_section(index)
+        if (symbol["st_info"]["type"] != "STT_FUNC"
+                or symbol["st_info"]["bind"] != "STB_LOPROC"
+                or section["sh_type"] != "SHT_PROGBITS"
+                or not section["sh_flags"] & 4):
+            reasons.append(f"{prefix}: needs executable STB_LOPROC/STT_FUNC output")
+        if (symbol["st_value"] != 0 or symbol["st_size"] != plan["size"]
+                or section["sh_size"] != plan["size"]):
+            reasons.append(f"{prefix}: symbol and dedicated section must span the exact canonical extent")
+        if any(s["st_shndx"] == index and s.name and s.name != name
+               and not s.name.startswith("$") and s["st_info"]["type"] != "STT_SECTION"
+               for s in symbols):
+            reasons.append(f"{prefix}: section has another occupant")
+        if any(s.name == plan["canonical_symbol"] for s in symbols):
+            reasons.append(f"{prefix}: canonical destination already exists in object")
+        if any(isinstance(section, RelocationSection) and section["sh_info"] == index
+               and section.num_relocations() for section in elf.iter_sections()):
+            reasons.append(f"{prefix}: emitted relocations are unsupported")
+        for relocations in elf.iter_sections():
+            if not isinstance(relocations, RelocationSection):
+                continue
+            for relocation in relocations.iter_relocations():
+                target = symbols[relocation["r_info_sym"]]
+                if target["st_shndx"] == index and target.name != name:
+                    reasons.append(f"{prefix}: reference to its section through another symbol")
+        address = plan["address"]
+        if any(address <= a < address + plan["size"]
+               for a in config.get(plan["module"], {})):
+            reasons.append(f"{prefix}: canonical configured relocations are unsupported")
+        if section.data() != plan["body"]:
+            reasons.append(f"{prefix}: complete body differs from canonical ROM bytes")
+    return reasons
+
+
 def apply_compiler_only_policy(obj_bytes, entry, homes=None):
     """Apply exact-symbol historical dead stripping, or refuse with named reasons.
 
@@ -2219,6 +2500,11 @@ def apply_compiler_only_policy(obj_bytes, entry, homes=None):
     stays green.  Rename the class to the cartridge's RTTI spelling (the row then
     resolves as ``deadstrip-data`` and is compared) or drop the row.
     """
+    canonical, canonical_errors = canonical_duplicate_policies(entry, homes)
+    canonical_errors += verify_canonical_duplicates(obj_bytes, canonical)
+    if canonical_errors:
+        return None, {"requested": [], "canonicalDuplicates": []}, canonical_errors
+    canonical_by_name = {row["symbol"]: row for row in canonical}
     inv = elf_inventory(obj_bytes)
     licensed = {f["symbol"] for f in entry.get("functions", [])}
     licensed |= {row["symbol"] for _sec, row in manifest_owned_symbol_rows(entry)}
@@ -2288,7 +2574,7 @@ def apply_compiler_only_policy(obj_bytes, entry, homes=None):
     homes = all_symbol_homes() if homes is None else homes
     for sym in wanted:
         if sym in duplicates:
-            if not homes.get(sym):
+            if not homes.get(sym) and sym not in canonical_by_name:
                 reasons.append(f"compiler_only_output {sym} is declared a duplicate "
                                f"but has no configured ROM home")
         elif homes.get(sym):
@@ -2329,13 +2615,24 @@ def apply_compiler_only_policy(obj_bytes, entry, homes=None):
     # without claiming the body is the cartridge's; this path has no cartridge bytes
     # and leaves that proof to rombuild, which passes `expect` instead.
     out, plan = OI.derive_deadstrip(obj_bytes, wanted + data,
+                                    expect={r["symbol"]: r["body"] for r in canonical},
                                     duplicates=sorted(duplicates))
     if out is None:
         return None, {"requested": wanted, "objisolate": plan}, \
             [f"compiler-only deadstrip refused: {plan.get('error')}"]
+    if canonical:
+        out, renamed = OI.rename_undefined_symbols(
+            out, {r["symbol"]: r["canonical_symbol"] for r in canonical})
+        if out is None:
+            return None, {"requested": wanted}, [renamed["error"]]
     return out, {"requested": wanted, "deadstripped": plan.get("dead", []),
                  "droppedSections": plan.get("drop", []), "data": data,
-                 "dataExternalized": plan.get("externalise", [])}, []
+                 "dataExternalized": plan.get("externalise", []),
+                 "canonicalDuplicates": [{"symbol": r["symbol"],
+                     "canonicalSymbol": r["canonical_symbol"], "module": r["module"],
+                     "address": f"0x{r['address']:08x}", "size": r["size"],
+                     "bodySha256": hashlib.sha256(r["body"]).hexdigest(),
+                     "relocations": 0} for r in canonical]}, []
 
 
 def manifest_externalized_output(entry):
@@ -2703,6 +3000,45 @@ def apply_undefined_symbol_alias_policy(obj_bytes, entry, name_index=None):
         return None, {"requested": requested, "renamed": plan.get("renamed", []),
                       "objisolate": plan}, [f"undefined symbol alias rewrite refused: "
                                             f"{plan.get('error')}"]
+    return out, {"requested": requested, "renamed": plan.get("renamed", []),
+                 "objisolate": plan}, []
+
+
+def apply_defined_symbol_rename_policy(obj_bytes, entry):
+    """Renumber manifest-licensed compiler-local definitions to fleet-unique names."""
+    raw = entry.get("defined_symbol_renames", [])
+    if raw is None:
+        raw = []
+    if not isinstance(raw, list):
+        return None, {"requested": [], "renamed": []}, \
+            ["defined_symbol_renames must be a list"]
+    owned = {row["symbol"] for _section, row in manifest_owned_symbol_rows(entry)}
+    mapping, requested, reasons = {}, [], []
+    for ordinal, row in enumerate(raw):
+        label = f"defined_symbol_renames[{ordinal}]"
+        if not isinstance(row, dict):
+            reasons.append(f"{label} is not an object")
+            continue
+        missing = [key for key in ("from", "to", "evidence") if not row.get(key)]
+        if missing:
+            reasons.append(f"{label} is missing {missing}")
+            continue
+        old, new = str(row["from"]), str(row["to"])
+        if new not in owned:
+            reasons.append(f"{label} renames to {new}, which the manifest does not own")
+            continue
+        if old in mapping:
+            reasons.append(f"duplicate defined symbol rename for {old}")
+            continue
+        mapping[old] = new
+        requested.append(dict(row))
+    if reasons:
+        return None, {"requested": requested, "renamed": []}, reasons
+    out, plan = OI.rename_defined_symbols(obj_bytes, mapping)
+    if out is None:
+        return None, {"requested": requested, "renamed": plan.get("renamed", []),
+                      "objisolate": plan}, \
+            [f"defined symbol rename refused: {plan.get('error')}"]
     return out, {"requested": requested, "renamed": plan.get("renamed", []),
                  "objisolate": plan}, []
 
@@ -3611,6 +3947,23 @@ def _baseline_partition_symbols(names):
     return rows, baseline_sha256, None
 
 
+def policy_dropped_vtable_symbols(entry):
+    """``_ZTV`` names a manifest policy removes from the emitted object.
+
+    ``apply_compiler_only_policy`` and ``apply_externalized_output_policy`` convert
+    such definitions into undefined imports and re-addend surviving references to
+    the repository's public address-point convention.  ``rebias_object_symbols``
+    must not apply its raw-import preamble correction to those references a second
+    time.
+    """
+    out = set()
+    for field in ("compiler_only_output", "externalized_output"):
+        for row in entry.get(field, []):
+            if isinstance(row, dict) and str(row.get("symbol", "")).startswith("_ZTV"):
+                out.add(row["symbol"])
+    return out
+
+
 def partition_vtable_rebiases(entry, claims, baseline_symbols=None,
                                baseline_sha256=None):
     """Exact public-address-point biases required by retained vtable definitions."""
@@ -3861,7 +4214,8 @@ def partition_vtable_rebiases(entry, claims, baseline_symbols=None,
 def prepare_partitioned_nontext_vtables(data_tu, entry, claims, biases):
     """Normalize retained and imported vtables for the partitioned link object."""
     data_tu, bias_report = OI.rebias_object_symbols(
-        data_tu, biases, normalize_undefined=True)
+        data_tu, biases, normalize_undefined=True,
+        skip_undefined=policy_dropped_vtable_symbols(entry))
     if data_tu is None:
         return None, bias_report, None
     owned = verify_owned_sections(
@@ -5029,6 +5383,24 @@ def cmd_linkcheck(args):
                 print(f"      externalized {externalized['externalized']} to exact "
                       "configured canonical homes")
 
+            renamed_tu, defined_renames, rename_reasons = \
+                apply_defined_symbol_rename_policy(linked_tu, entry)
+            report["definedSymbolRenames"] = defined_renames
+            if rename_reasons:
+                print("      REFUSED -- defined symbol rename policy:")
+                for reason in rename_reasons:
+                    print(f"        {reason}")
+                report["definedSymbolRenames"]["errors"] = rename_reasons
+                report["result"] = "defined-rename-refused"
+                _write_link_report(scratch, report)
+                _record_partitioned(data, entry, report)
+                return 1
+            if renamed_tu != linked_tu:
+                linked_tu = renamed_tu
+                scratch_rewrite = True
+                print(f"      renumbered {len(defined_renames['renamed'])} exact "
+                      "compiler-local definition(s) to fleet-unique names")
+
             aliased_tu, undefined_aliases, alias_reasons = \
                 apply_undefined_symbol_alias_policy(linked_tu, entry)
             report["undefinedSymbolAliases"] = undefined_aliases
@@ -5214,6 +5586,25 @@ def cmd_linkcheck(args):
             print(f"      externalized {externalized['externalized']} to their exact "
                   "configured canonical homes in the SCRATCH object only")
 
+        renamed_tu, defined_renames, rename_reasons = \
+            apply_defined_symbol_rename_policy(linked_tu, entry)
+        report["definedSymbolRenames"] = defined_renames
+        if rename_reasons:
+            print("      REFUSED -- defined symbol rename policy:")
+            for reason in rename_reasons:
+                print(f"        {reason}")
+            report["definedSymbolRenames"]["errors"] = rename_reasons
+            report["result"] = "defined-rename-refused"
+            _write_link_report(scratch, report)
+            _record_linkcheck(data, entry, report, baseline)
+            return 1
+        if renamed_tu != linked_tu:
+            linked_tu = renamed_tu
+            scratch_rewrite = True
+            tu_obj.write_bytes(linked_tu)
+            print(f"      renumbered {len(defined_renames['renamed'])} exact "
+                  "compiler-local definition(s) to fleet-unique names")
+
         aliased_tu, undefined_aliases, alias_reasons = \
             apply_undefined_symbol_alias_policy(linked_tu, entry)
         report["undefinedSymbolAliases"] = undefined_aliases
@@ -5297,7 +5688,8 @@ def cmd_linkcheck(args):
             _record_linkcheck(data, entry, report, baseline)
             return 1
         rebased_tu, bias_report = OI.rebias_object_symbols(
-            linked_tu, biases, normalize_undefined=True)
+            linked_tu, biases, normalize_undefined=True,
+            skip_undefined=policy_dropped_vtable_symbols(entry))
         report["vtableRebias"] = bias_report
         if rebased_tu is None:
             print(f"      REFUSED -- vtable symbol rebias: {bias_report.get('error')}")
@@ -5370,6 +5762,11 @@ def cmd_linkcheck(args):
                   "were resolved.")
 
     # -------------------------------------------------------------------------- link
+    defined_interior = LI.patch(scratch / "arm9.lcf", scratch / "objects.txt", cfg_root)
+    if defined_interior:
+        print(f"      lcf: defined {len(defined_interior)} interior row(s) at their ROM "
+              f"address ({', '.join(n for n, _a in defined_interior)})")
+    report["lcfInteriorDefinitions"] = [n for n, _a in defined_interior]
     print("[5/8] mwldarm (scratch module link)")
     ok, out, dt = _run_dsd([*RB.launcher(), str(RB.MW / RB.LD_VERSION / "mwldarm.exe"),
                             *RB.LDFLAGS.split(), f"@{scratch / 'objects.txt'}",
@@ -5934,13 +6331,14 @@ def _record_linkcheck(data, entry, report, baseline):
 # MEANS: a live-state file has to be edited so the gate keyed on it keeps working,
 # while the two provenance logs are address-keyed history whose records must survive
 # a promotion with only their `srcPath` field retargeted (tools/cpp_rename.py does
-# exactly that for renames) -- deleting a record would erase who matched a function.
+# exactly that for renames). Who matched a function is function-authors.json, not
+# these files. A promotion does not edit that author file for a move.
 _PROMOTE_TRACKERS_LIVE = (
     "config/rombuild-versions.txt", "config/rombuild-exclude.txt",
     "config/layout-known-issues.txt", "config/converted-baseline.json",
     "config/unresolved-baseline.json", "config/port_linkage.json",
-    "attribution.json", "contributions.json", "langmode-baseline.json",
-    "stranding-baseline.json", "CLAIMS.md",
+    "langmode-baseline.json",
+    "stranding-baseline.json",
 )
 _PROMOTE_TRACKERS_HISTORY = (
     "config/match_provenance.jsonl", "config/match_attempts.jsonl",
@@ -6096,32 +6494,9 @@ def cmd_promote(args):
           "src/ subdirectory may need adding to port/CMakeLists.txt's source globs "
           "(not checked mechanically here).")
 
-    print("\n-- 4b. contributor attribution -- the structural cost of a promotion")
-    try:
-        import chaos_db_ci as CDB
-        owners = CDB.first_matchers()
-    except Exception as exc:                                     # noqa: BLE001
-        print(f"   could not run chaos_db_ci.first_matchers(): {exc}")
-        owners = None
-    if owners is not None:
-        by_author = collections.defaultdict(list)
-        for rel in legacy:
-            by_author[owners.get(rel, "(no lineage found)")].append(rel)
-        print(f"   the gate's own computation (chaos_db_ci.first_matchers, the same one "
-              f"tools/prepush_attribution.py runs) credits these {len(legacy)} files to "
-              f"{len(by_author)} contributor(s):")
-        for who, rels in sorted(by_author.items(), key=lambda kv: (-len(kv[1]), kv[0])):
-            print(f"     {who:20} {len(rels)} file(s)")
-        print(f"   A TU promotion is a {len(legacy)}-delete + 1-add collapse. Git can pair "
-              f"at most ONE delete with the add as a rename, and only if similarity "
-              f"survives; the other {len(legacy) - 1} lineages END, and the pusher becomes "
-              f"the owner of the merged file. This is NOT the rewrite-then-move hazard "
-              f"prepush_attribution.py documents, which a two-commit split fixes -- a "
-              f"many-to-one collapse has no commit arrangement that preserves N lineages, "
-              f"so `CREDIT LOST` is structural for this workstream. It no longer fails "
-              f"the merge gate, but an attribution.json override keyed on the surviving "
-              f"path still keeps credit correctly recorded before the first real "
-              f"promotion.")
+    print("\n-- 4b. contributor attribution")
+    print("   Who matched each function is function-authors.json, keyed by module and")
+    print("   address. Moving these files into one translation unit does not change it.")
     # validate_merge used to infer ownership only from filename stems. It now asks the
     # revision's delinks enrollment map first, so a single path can retain matched and
     # byte-verified coverage for every licensed function range it owns. Keep the dry
@@ -6189,6 +6564,9 @@ def main():
     p = sub.add_parser("verify", help="byte + relocation verification against the manifest and ROM")
     p.add_argument("id")
     p.add_argument("--version", default=None)
+    p.add_argument("--no-write", action="store_true",
+                   help="do not write the verification block back into the manifest "
+                        "(sibling-control runs; the default still records it)")
     p.set_defaults(func=cmd_verify)
 
     p = sub.add_parser("partial", help="plan sec 9 -- derive one isolated object per "

@@ -273,7 +273,8 @@ class ProductionTuObjects(unittest.TestCase):
         self.assertEqual(output, b"linked")
         order.assert_called_once_with(b"external", entry, claims)
         rebias.assert_called_once_with(
-            b"ordered", {"_ZTV1T": {"bias": 8}}, normalize_undefined=True)
+            b"ordered", {"_ZTV1T": {"bias": 8}}, normalize_undefined=True,
+            skip_undefined=set())
         audit.assert_called_once_with(
             b"linked", entry, 0x1000, 0x1010, {},
             validated_vtable_policies={"_ZTV1T": {"bias": 8}})
@@ -315,7 +316,8 @@ class ProductionTuObjects(unittest.TestCase):
             output, evidence = TP.prepare_intact_object(b"raw", entry)
         self.assertEqual(output, b"external")
         order.assert_called_once_with(b"external", entry, claims)
-        rebias.assert_called_once_with(b"external", {}, normalize_undefined=True)
+        rebias.assert_called_once_with(b"external", {}, normalize_undefined=True,
+                                       skip_undefined=set())
         self.assertEqual(verify.call_args_list, [
             mock.call(b"external", entry, claims),
             mock.call(b"external", entry, claims, public_address_points=True,
@@ -394,7 +396,7 @@ class ProductionTuObjects(unittest.TestCase):
                 result = TP._prepare_one(entry, config, root / "work", 1)
 
         rebias.assert_called_once_with(
-            b"storage", biases, normalize_undefined=True)
+            b"storage", biases, normalize_undefined=True, skip_undefined=set())
         aliases.assert_called_once_with(b"external", entry)
         bindings.assert_called_once_with(b"aliased", entry)
         order.assert_called_once_with(b"bound", entry, claims)

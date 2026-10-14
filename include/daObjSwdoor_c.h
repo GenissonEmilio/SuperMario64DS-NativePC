@@ -21,7 +21,7 @@
  * (D0). Both leaves fill all three nulls, which is why daObjBSwdoor_c and daObjCvShutter_c
  * each have their own InitResources, CleanupResources and Behavior in the tree.
  *
- * TWO DESCENDANTS: daObjBSwdoor_c (was ShutterBob) and daObjCvShutter_c (daObjCvShutter_c).
+ * TWO DESCENDANTS: daObjBSwdoor_c (was ShutterBob) and daObjCvShutter_c.
  * Each one's destructor stores this class's vtable between its own and
  * _ZTV10dBgActor_c.
  *
@@ -59,11 +59,10 @@ struct daObjSwdoor_c : dBgActor_c {
 
     /* Slot 9, ov002 0x020babf0 -- this class's only real slot, so declaring
        it out of line makes THIS the key function: the destructor above is
-       inline and nothing else was migrated first. Its translation unit
-       picks up _ZTV13daObjSwdoor_c (already delinked data, ov002
-       0x021099e4) -- expected to drop this file from
-       tools/eligible.py's name list, same mechanism the Guragura/Kuruma
-       Render comments describe. */
+       inline and nothing else was migrated first. Its translation unit is
+       src/actors/daObjSwdoor_c.cpp, which picks up _ZTV13daObjSwdoor_c
+       (already delinked data, ov002 0x021099e4) -- same mechanism the
+       Guragura/Kuruma Render comments describe. */
     s32 Render();
     /* THE NULL SLOTS THE NOTE ABOVE ALREADY NAMES, SPELT SO THE COMPILER AGREES.
        mwccarm lays down a bare 0x00000000 with no relocation for a pure virtual --

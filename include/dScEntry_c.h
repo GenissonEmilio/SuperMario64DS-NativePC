@@ -6,37 +6,11 @@
 #include "dGraph_c.h"
 #include "dThIcon_c.h"
 
-/* The "entry" scene -- whichever course or minigame is currently loaded, keyed
- * off the actor ID it was spawned with (fBase_c::actorID, inherited at 0x0c).
- * One of dScene_c's ten direct children; it adds no virtual of its own and
- * overrides eight of dScene_c's, destructor pair included.
- *
- * Size 0x288 is read straight off the factories' fBase_c::operator new call.
- * RTTI and the paired array construction/destruction prove the icon_c[9]
- * member at 0x70 derives from dThIcon_c. Its constructor, destructor and two
- * virtual slots are now native C++, so the compiler owns that array's reverse
- * destruction. The separate 0x1b4 array contains four non-polymorphic
- * 0x2c-byte OAM animation players. That class spelling is descriptive and
- * inferred from the fields' consumers; its layout and member lifecycle are
- * byte-proven.
- *
- * RTTI also proves graphCallback_c derives from dGraph_c::callback_c, but it
- * is not the 0x1b4 array: its constructor operates on the separate 0x2c-byte
- * global at ov075:0x0211d71c. Keeping both types distinct corrects the older
- * coincidental-size inference in notes/scene-provenance.md.
- *
- * Real class-form methods use this header. Method-local offset views remain
- * where naming the full opaque object layout would add unsupported claims.
- *
- * SM64DS RTTI names the implementation dScEntry_c. The reconstructed
- * factory dScEntry_c_classInit_RESULT (historical alias
- * func_ov075_0211a740) constructs it for the RESULT
- * registry profile.
- *
- * SM64DS RTTI names the implementation dScEntry_c. The reconstructed
- * factory dScEntry_c_classInit_ENTRY (historical alias
- * func_ov075_0211a854) constructs it for the ENTRY
- * registry profile.
+/* Course-entry / results scene. ov075 hosts ENTRY(6) and RESULT(7); both
+ * spawn dScEntry_c. Nested icon_c (dThIcon_c leaf) and graphCallback_c
+ * (dGraph_c::callback_c leaf). Nine course/character icons on the sub
+ * screen; GraphCallback2 decompresses BG2 then steps every live icon
+ * through Render.
  */
 struct dScEntry_c : dScene_c {
     struct icon_c : dThIcon_c {
@@ -58,21 +32,9 @@ struct dScEntry_c : dScene_c {
     u8  pad_286;                   /* 0x286 */
     u8  unk_287;                   /* 0x287 */
 
-    /* Declared first: the destructor is the class's key function. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScEntry_c();   /* no slot */
-#else
-    virtual ~dScEntry_c();   /* D1 and D0 */
-#endif
+    /* Out of line: the key function, defined first in src/actors/dScEntry_c.cpp. */
+    virtual ~dScEntry_c();                              /* slots 16 (D1), 17 (D0) */
 
-    /* --- overrides, in _ZTV8dScene_c/_ZTV7fBase_c order. --- */
     virtual s32  InitResources();                       /* slot  0 */
     virtual bool BeforeInitResources();                 /* slot  1 */
     virtual s32  CleanupResources();                    /* slot  3 */

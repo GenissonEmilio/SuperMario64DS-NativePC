@@ -13,7 +13,7 @@ the name does not overclaim.
 
 ---
 
-## Particle::SysTracker — `include/Particle.h`, and the copy inside `include/Stage.h`
+## Particle::SysTracker — `include/Particle.h`, and the copy inside `include/dScStage_c.h`
 
 The struct is spelled `Particle` in `include/Particle.h` for historical
 reasons; the ROM's mangled names call it `Particle::SysTracker`. There is one
@@ -28,7 +28,7 @@ files, none of which is a method of the class.
 | Offset | Name | Evidence |
 | --- | --- | --- |
 | 0x000 | `mResourceFile` | `_ZN8Particle10SysTracker10InitialiseEv` stores either `data_02075f14` (the file, used in place) or a heap buffer it fills with `DecompressLZ16`, then hands it to the manager via `func_0204a17c`. `_ZN8Particle10SysTrackerD1Ev` frees it through `Memory::Deallocate` *only* when it is not `data_02075f14` — i.e. only when the tracker owns the decompressed copy. Was `pad_000[0x4]`. |
-| 0x004 | `mManager` | The `Particle::Manager`. `Initialise` allocates it with `func_0204a4c8(...)` and pokes `0x8000` into its `+0x30`; `_ZN8Particle9RenderAllEv` and `_ZN8Particle10SysTracker6UpdateEv` pass it straight to the render/update entry points; `_ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_` and `src/_ZN8Particle10SysTracker8Contents5Entry10InitialiseEjjR7Vector3PK11Vector3_16fPN5dPa_c7level_c10callback_cE.cpp` call `Particle::Manager::AddSystem` on it. Was `unk_004` typed `s32`, now `void *`. |
+| 0x004 | `mManager` | The `Particle::Manager`. `Initialise` allocates it with `func_0204a4c8(...)` and pokes `0x8000` into its `+0x30`; `_ZN8Particle9RenderAllEv` and `_ZN8Particle10SysTracker6UpdateEv` pass it straight to the render/update entry points; `_ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_` and `src/engine/particle/Particle_SysTracker_Contents.cpp` (`Entry::Initialise`) call `Particle::Manager::AddSystem` on it. Was `unk_004` typed `s32`, now `void *`. |
 | 0x008 | `mContents` | A real nested class, not a guess: `_ZN8Particle6System12FromUniqueIDEj` calls `_ZNK8Particle10SysTracker8Contents8FindDataEj(this + 8, uniqueID)` — the mangled callee names `Particle::SysTracker::Contents` and puts it at `+8`. The constructor and destructor run `func_02021c90` / `func_02021b98` on the same address, and `SysTracker::Update` runs `func_02021bec`. Was `unk_008`. |
 
 ### The callback bank, 0x750 upward
@@ -45,9 +45,9 @@ subobject. Three call sites give both halves a role:
 
 | ID slot | Callback | Effect | Proving file |
 | --- | --- | --- | --- |
-| 0x750 `mRunningSlidingDustSystemID` | 0x754 `mRunningSlidingDustCallback` | 0xda | `src/_ZN8Particle20RunningSlidingDustAtE5Fix12IiES1_S1_.c` |
-| 0x768 `mBigSplashSystemID` | 0x76c `mBigSplashCallback` | 0xdd | `src/_ZN8Particle6System12NewBigSplashE5Fix12IiES2_S2_.c` |
-| 0x78c `mRippleSystemID` | 0x790 `mRippleCallback` | 0x109 | `src/_ZN8Particle6System9NewRippleE5Fix12IiES2_S2_.c` |
+| 0x750 `mRunningSlidingDustSystemID` | 0x754 `mRunningSlidingDustCallback` | 0xda | `src/engine/particle/Particle.cpp` |
+| 0x768 `mBigSplashSystemID` | 0x76c `mBigSplashCallback` | 0xdd | `src/engine/particle/Particle.cpp` |
+| 0x78c `mRippleSystemID` | 0x790 `mRippleCallback` | 0x109 | `src/engine/particle/Particle.cpp` |
 
 Two more callbacks are named without an ID slot, because their `New*` wrapper
 takes the unique ID from the caller instead:
@@ -101,7 +101,7 @@ byte-identical. The one-time exception was the simple callback's
 `SpawnParticles`, which opened `namespace Particle { ... }` — including
 `Particle.h` there made the struct name and the namespace name collide, so it
 kept a local shadow. That no longer holds: the function is now
-`src/_ZN5dPa_c7level_c16simpleCallback_c14SpawnParticlesERN8Particle6SystemE.cpp`,
+`src/engine/particle/dPa_c.cpp`,
 a real `dPa_c::level_c::simpleCallback_c` method that opens no namespace,
 includes `Particle__System.h`, and reaches `data_0209ee74->mManager` by name.
 
@@ -114,8 +114,8 @@ constructor variants are now generated from the real nested C++ class.
 ### The third shadow — collapsed onto the real names
 
 `include/Particle__SysTracker.h` is a *third* declaration of this class, and it
-is what `src/_ZN8Particle10SysTracker10InitialiseEv.cpp` and
-`src/_ZN8Particle10SysTracker6UpdateEv.cpp` include. A later pass that owned the
+is what `src/engine/particle/Particle.cpp` and
+`src/engine/particle/Particle.cpp` include. A later pass that owned the
 file finished it: its three fields now read `mResourceFile` / `mManager` /
 `mContents`, with the same types `include/Particle.h` carries, so all three
 declarations of the class spell the head identically.
@@ -131,14 +131,14 @@ file seven times as `*(char**)((char*)self)`; both are now plain
 Both functions still reproduce byte-exact under 2004/b56 (checked per function
 with `build_pin`'s `verify`, from `tools/build_pin.py`).
 
-What is still NOT merged is the three *declarations* into one. `include/Stage.h`
-must keep its own copy because `Stage` embeds the object by value and needs the
+What is still NOT merged is the three *declarations* into one. `include/dScStage_c.h`
+must keep its own copy because `dScStage_c` embeds the object by value and needs the
 declared-never-defined destructor. The second reason has since lapsed: the
 simple callback's `SpawnParticles` no longer opens `namespace Particle`, so a
 header declaring a struct of that name no longer collides there and the
 function takes the shared declaration from `include/Particle__System.h`. Only
-the `Stage.h` copy is still held apart; the names converged.
-`include/Stage.h`'s own header comment still describes the third
+the `dScStage_c.h` copy is still held apart; the names converged.
+`include/dScStage_c.h`'s own header comment still describes the third
 shadow as spelling `unk_`, which is now out of date — that file was frozen for
 the pass that made this change.
 
@@ -150,9 +150,9 @@ the pass that made this change.
 
 ---
 
-## Minimap — `include/Minimap.h`
+## dMap_c — `include/dMap_c.h`
 
-`Minimap` derives from `dBase_c` and there is one of it. Its own six methods
+`dMap_c` derives from `dBase_c` and there is one of it. Its own six methods
 are the evidence here, but the class is still a system class in the sense that
 matters: the fields it computes are consumed by hardware registers and by
 `OAM::Render`, not by anything that looks like actor behaviour, and its two
@@ -169,28 +169,28 @@ names the type in its own mangled signature.
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x050-0x05c | `mBgMatrixA` … `mBgMatrixD` | `Minimap::Behavior` fills them from `data_02082214` scaled by `mInvScale`, sets `C = -B` and `D = A`, and passes `&mBgMatrixA` to `UpdateMinimap` as a four-word block. `Minimap::InitResources` seeds 0x1000, 0, 0, 0x1000 — the Fix12 identity. 0x05c was called `mPosX`; `mPosX = mBgMatrixA` in `Behavior` is what makes that name untenable. |
-| 0x200-0x20c | `mArrowMatrixA` … `mArrowMatrixD` | `Minimap::Render` fills them from the same table scaled by `mArrowScale` (0x210), in both the VS and single-player branches, immediately before drawing `OAM::MM_ARROW`. Seeded to the same Fix12 identity. |
+| 0x050-0x05c | `mBgMatrixA` … `mBgMatrixD` | `dMap_c::Behavior` fills them from `data_02082214` scaled by `mInvScale`, sets `C = -B` and `D = A`, and passes `&mBgMatrixA` to `UpdateMinimap` as a four-word block. `dMap_c::InitResources` seeds 0x1000, 0, 0, 0x1000 — the Fix12 identity. 0x05c was called `mPosX`; `mPosX = mBgMatrixA` in `Behavior` is what makes that name untenable. |
+| 0x200-0x20c | `mArrowMatrixA` … `mArrowMatrixD` | `dMap_c::Render` fills them from the same table scaled by `mArrowScale` (0x210), in both the VS and single-player branches, immediately before drawing `OAM::MM_ARROW`. Seeded to the same Fix12 identity. |
 
 ### Where the map is centred
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
 | 0x1e0-0x1e8 | `mMapOriginX/Y/Z` | A per-level constant world position. `InitResources` writes 0x258000/0/0x64000 for one level group, -0x2bc000/0/-0x2bc000 for another and zero otherwise; nothing else assigns it. |
-| 0x1f4-0x1fc | `mMapCenterWorldX/Y/Z` | The centre actually used this frame. `Behavior` copies `mMapOrigin*` into it, projects the player through `Minimap::GetPosOnMinimap`, clamps the icon to the visible window, unprojects with `Minimap::GetPosFromMinimapPos` and adds the difference back — so the map scrolls only as far as it must to keep the player on screen. Every icon on the map is projected relative to it, and `mMapCenterX/Y` are recomputed from its x and z. |
+| 0x1f4-0x1fc | `mMapCenterWorldX/Y/Z` | The centre actually used this frame. `Behavior` copies `mMapOrigin*` into it, projects the player through `dMap_c::GetPosOnMinimap`, clamps the icon to the visible window, unprojects with `dMap_c::GetPosFromMinimapPos` and adds the difference back — so the map scrolls only as far as it must to keep the player on screen. Every icon on the map is projected relative to it, and `mMapCenterX/Y` are recomputed from its x and z. |
 
 ### Two fields the header did not reach
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x22e | `mStarIconAnimFrame[12]` | Was `pad_22e[0xc]`. `Minimap::Render` advances entry `i` by `data_0208ee44`, wraps it at 12, and uses `% 12 > 4` to choose between the two frames of a star marker; it resets the entry to 0 for any star not on the current map. |
+| 0x22e | `mStarIconAnimFrame[12]` | Was `pad_22e[0xc]`. `dMap_c::Render` advances entry `i` by `data_0208ee44`, wraps it at 12, and uses `% 12 > 4` to choose between the two frames of a star marker; it resets the entry to 0 for any star not on the current map. |
 | 0x256 | `mStarKeyBlinkTimer` | Was past the end of the declared struct entirely. `Render` increments it, wraps it at 5, and draws the first of the two `OAM::MM_STAR_KEYS` frames while it is below 2. The size assert is unchanged: 0x257 still rounds to 0x258. |
 
 ### Shadow structs collapsed onto the header
 
-`Minimap::Render` carried a 33-field private redeclaration of the class and
-`Minimap::UpdateLevelSpecific` a one-method stub; both now include
-`include/Minimap.h`, which needed `int Render();` and
+`dMap_c::Render` carried a 33-field private redeclaration of the class and
+`dMap_c::UpdateLevelSpecific` a one-method stub; both now include
+`include/dMap_c.h`, which needed `int Render();` and
 `static void UpdateLevelSpecific();` added to it. `build/eligible-names.txt` is
 byte-identical across that header change.
 
@@ -284,9 +284,9 @@ conservative name stands.
 
 ---
 
-## Stage — `include/Stage.h`
+## dScStage_c — `include/dScStage_c.h`
 
-`Stage` is the playable level scene, and it had no `unk_` fields of its own:
+`dScStage_c` is the playable level scene, and it had no `unk_` fields of its own:
 the thirty this pass was pointed at all belonged to the `Particle::SysTracker`
 embedded at 0x50, which is the same class as `include/Particle.h` and is
 covered by the table at the top of this file. The two copies are kept identical
@@ -305,25 +305,25 @@ level's texture-animation table (`data_0209f340`):
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x00 | `mTransformer` | `Stage::LoadTextureTransformers` news a 0x14-byte `TextureTransformer`, constructs it, stores it here and calls `SetFile` on it; `Stage::RenderModel` passes it to `TextureTransformer::Update`; `Stage::CleanupResources` destroys it through its vtable. |
-| 0x04 | `mActive` | Gates the slot in three places: `Stage::Render` only advances the animation when it is set, and `Stage::RenderModel` and `Stage::RenderModelTransparent` both use it to decide whether that part's materials get the transparent bit or lose it. |
-| 0x08 | `mBlockList` | `Stage::CleanupResources` walks it as a singly linked list, freeing each block and following the next pointer at the block's `+0x0c` — which is inside the *block*, not the slot; the slot's own stride is 0xc. |
+| 0x00 | `mTransformer` | `dScStage_c::LoadTextureTransformers` news a 0x14-byte `TextureTransformer`, constructs it, stores it here and calls `SetFile` on it; `dScStage_c::RenderModel` passes it to `TextureTransformer::Update`; `dScStage_c::CleanupResources` destroys it through its vtable. |
+| 0x04 | `mActive` | Gates the slot in three places: `dScStage_c::Render` only advances the animation when it is set, and `dScStage_c::RenderModel` and `dScStage_c::RenderModelTransparent` both use it to decide whether that part's materials get the transparent bit or lose it. |
+| 0x08 | `mBlockList` | `dScStage_c::CleanupResources` walks it as a singly linked list, freeing each block and following the next pointer at the block's `+0x0c` — which is inside the *block*, not the slot; the slot's own stride is 0xc. |
 
 Three private redeclarations of this record existed —
-`struct Slot` in `Stage::RenderModel`, `struct AnimSlot` in `Stage::Render`,
-and raw `char *` arithmetic in `Stage::CleanupResources`,
-`Stage::RenderModelTransparent` and `Stage::LoadTextureTransformers`. All but
-`Stage::Render`'s (which carries its own full shadow of `Stage` and is a larger
+`struct Slot` in `dScStage_c::RenderModel`, `struct AnimSlot` in `dScStage_c::Render`,
+and raw `char *` arithmetic in `dScStage_c::CleanupResources`,
+`dScStage_c::RenderModelTransparent` and `dScStage_c::LoadTextureTransformers`. All but
+`dScStage_c::Render`'s (which carries its own full shadow of `dScStage_c` and is a larger
 change) now use the header type. Every one re-verified byte-identical.
 
 ### 0x9c4 — the two-phase load latch
 
 Was inside `pad_9c0[0x8]`, reached as `*(s32*)((char*)thiz + 0x9c4)`.
-`Stage::InitResources` runs its entire first block only while it is zero, sets
+`dScStage_c::InitResources` runs its entire first block only while it is zero, sets
 it to 1 at the end of that block when `data_0209fc68` says a wait is needed,
 and then — on this call and every later one — returns -1 while
 `func_020308a8()` reports the load unfinished. That is a "call me again" latch,
-so the field is `mWaitingForLoad`. `Stage::InitResources` itself carries a
+so the field is `mWaitingForLoad`. `dScStage_c::InitResources` itself carries a
 local shadow of the class and still spells it as a raw poke; the header now
 names the field for anything that includes it.
 

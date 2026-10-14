@@ -61,7 +61,7 @@ the pin:
 ```python
 import sys; sys.path.insert(0, 'tools')
 import build_pin as B, pathlib
-B.verify(pathlib.Path('src/func_ov006_020cb030.cpp'),
+B.verify(pathlib.Path('src/actors/dMgTrmpln2Mario_c.cpp'),
          'func_ov006_020cb030', 0x020cb030, 0x104, 'ov006')
 # -> (True, '2004/b56')
 ```
