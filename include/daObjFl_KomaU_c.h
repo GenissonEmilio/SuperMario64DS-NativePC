@@ -31,7 +31,9 @@
 
 struct daObjFl_KomaU_c : dBgActor_c {
     /* dBgActor_c ends at 0x31e; these ids are 4-byte aligned. */
-    u8 pad_31e[2];
+    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
+    u8  pad_31e[0x2];
+    #endif
     u32 mParticleID[2][8]; /* 0x320, 0x340 */
     dCcPos_c mColliders[8]; /* 0x360 */
 

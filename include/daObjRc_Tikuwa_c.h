@@ -38,7 +38,9 @@
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
 struct daObjRc_Tikuwa_c : dBgActor_c {
-    u8 pad_31e[0x2];                 /* 0x31e -- dBgActor_c tail */
+    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
+    u8  pad_31e[0x2];                 /* 0x31e -- dBgActor_c tail */
+    #endif
     dBgCh_Actr mWithMeshClsn;        /* 0x320 */
     s32 mHomePosX;                   /* 0x4dc */
     s32 mHomePosY;                   /* 0x4e0 */

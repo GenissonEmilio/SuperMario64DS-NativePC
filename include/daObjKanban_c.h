@@ -30,7 +30,9 @@
 #include "dCcAcPos_c.h"
 
 struct daObjKanban_c : dBgActor_c {
+    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
     u8  pad_31e[0x2];
+    #endif
     dCcAcPos_c mdCcAcPos_c;/* 0x320 */
 
     /* --- vtable --- */

@@ -38,7 +38,9 @@ struct daObjEwbIce_c : dBgActor_c {
        round-up -- a byte field placed first lands at 0x31e, not 0x320,
        which the ROM disagrees with (Behavior reads [this, #0x320]).
        Claiming it explicitly here forces the state pointer to its real offset. */
+    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
     u8  pad_31e[0x2];
+    #endif
     daObjEwbIce_State *mState; /* 0x320 */
     u8  pad_324[0x4];
     s32 mWobbleAmp;         /* 0x328 -- arena ice, reset to 0x400 each wobble frame */

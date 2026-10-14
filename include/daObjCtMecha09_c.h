@@ -20,7 +20,9 @@
 #include "dExtShadowModel_c.h"
 
 struct daObjCtMecha09_c : dBgActor_c {
+    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
     u8  pad_31e[0x2];
+    #endif
     s32 mStartPosY;                   /* 0x320 */
     s32 mEndPosY;                     /* 0x324 */
     s8  mDirection;                   /* 0x328 -- +1/-1; Behavior reads it ldrsb and negates it at the travel limits */

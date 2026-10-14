@@ -17,7 +17,9 @@ struct Player;
  * `daObjBk_Dossunbar_c` is the RTTI name.
  */
 struct daObjBk_Dossunbar_c : dBgActor_c {
+    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
     u8  pad_31e[0x2];
+    #endif
     s32 mHomePosX;     /* 0x320 -- Init copies mPos here */
     s32 mHomePosY;     /* 0x324 */
     s32 mHomePosZ;     /* 0x328 */

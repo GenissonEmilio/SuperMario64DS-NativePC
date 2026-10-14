@@ -31,7 +31,9 @@ int _ZN10dBgActor_c21IsClsnInRangeOnScreenE5Fix12IiES1_(
  * the cartridge has ldrsh.
  */
 struct daObjKm2_Ami_Bou_c : dBgActor_c {
-    u8 pad_31e[0x2];
+    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
+    u8  pad_31e[0x2];
+    #endif
     dCcAc_c mdCcAc_c; /* 0x320 */
     u16 mHeightAng;   /* 0x354 */
 

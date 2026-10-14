@@ -29,7 +29,9 @@
 
 struct daObjFl_UkiKi_c : dBgActor_c {
     /* dBgActor_c's fields end at 0x31e; mOriginalPosY needs 4-byte alignment. */
+    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
     u8  pad_31e[0x2];
+    #endif
     /* Where InitResources found the platform. Behavior rebuilds mPosY from this
        rest height plus the sine term, so the bob never accumulates drift. */
     s32 mOriginalPosY;  /* 0x320 */

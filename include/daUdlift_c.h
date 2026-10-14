@@ -32,7 +32,9 @@
 struct daUdlift_c : dBgActor_c {
     /* dBgActor_c's last member ends at 0x31e. Keep its two bytes of tail
        padding so the first word owned by this class starts at 0x320. */
-    u8 pad_31e[0x2];
+    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
+    u8  pad_31e[0x2];
+    #endif
     Player *mRider;                 /* 0x320 */
     Player *mClosestPlayer;         /* 0x324 */
     s32 mVariant;                   /* 0x328 */
