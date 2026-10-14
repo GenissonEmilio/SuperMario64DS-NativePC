@@ -2346,6 +2346,7 @@ extern void *data_0209f394[];
 extern int data_ov002_02110154[];
 void WarpPlayer(int i, int val);
 void StartMinigameMenu(unsigned char a);
+void ExitLevel(void);
 void _ZN6Player11ChangeStateERNS_5StateE(void *, void *);
 void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p, unsigned short val, short amt);
 }
@@ -2406,6 +2407,20 @@ static void port_tp_warp_hook(void)
             if (unl) *(unsigned *)((char *)data_0209caa0 + 0x48) = 0xffffffffu;
             std::fprintf(stderr, "[tprr] f%d StartMinigameMenu(1)\n", rr);
             StartMinigameMenu(1);
+        }
+    }
+    {
+        /* SM64DS_TP_EXIT=<n>[,<level>]: the pause menu's Exit Course (ExitLevel(), the ROM's own
+           function), fired at the n-th call of this hook while that level (any if omitted) is up. */
+        static int ex = -2, exf, exl = -1;
+        if (ex == -2) {
+            const char *e = std::getenv("SM64DS_TP_EXIT");
+            ex = e ? std::atoi(e) : -1;
+            if (e && std::strchr(e, ',')) exl = std::atoi(std::strchr(e, ',') + 1);
+        }
+        if (ex >= 0 && data_0209f394[0] && (exl < 0 || (int)data_0209f2f8 == exl) && exf++ == ex) {
+            std::fprintf(stderr, "[tpexit] ExitLevel() at hook call %d (level %d)\n", ex, (int)data_0209f2f8);
+            ExitLevel();
         }
     }
     if (at >= 0 && frame >= at && frame <= at + 3) {
