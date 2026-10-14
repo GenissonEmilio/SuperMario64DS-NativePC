@@ -3935,10 +3935,11 @@ static int  __fastcall ti_clean(void *, void *)
  * calls, so the saved-esi read is gone; the rule stays as a guard. */
 extern "C" char *data_ov007_0210342c;
 static void *volatile g_ti_vs_self;
+static short g_ti_req_idle;      /* MENUS093: the title state record's request word as of the last frame with no VS press */
 static __declspec(noinline) void ti_vs_refused_say(void)
 {
-    std::printf("[title] VS refused (multiplayer is disabled): verdict 6 -> "
-                "2, the title restarts\n");
+    std::printf("[title] VS press ignored (multiplayer is not in this build): "
+                "the main menu stays\n");
     std::fflush(stdout);
 }
 static int  __fastcall ti_beh(void *s, void *)
@@ -3946,10 +3947,20 @@ static int  __fastcall ti_beh(void *s, void *)
     ++g_ti_hits[6];
     char *g = data_ov007_0210342c;
     if (g && *(int *)(g + 0x10) == 6) {
-        *(int *)(g + 0x10) = 2;
+        /* MENUS093 (D5): the press on the VS button is answered by doing nothing. The old swap (verdict 2, the
+           ROM's own back to the title) restarted the title in the middle of the main menu: the pink logo, the
+           old two-screen layout and swapped screens for a moment. The setter has stored verdict 6 and asked the
+           top state machine for the fade-out (request word, state record +2); both go back to what they were the
+           frame before, so the page never leaves the main menu and every other button keeps working. */
+        char *sp = *(char **)(g + 8);
+        *(int *)(g + 0x10) = 0;
+        if (sp) *(short *)(sp + 2) = g_ti_req_idle;
         g_ti_vs_self = s;
         ti_vs_refused_say();
         s = g_ti_vs_self;
+    } else if (g) {
+        char *sp = *(char **)(g + 8);
+        if (sp) g_ti_req_idle = *(short *)(sp + 2);
     }
     return _ZN9dScDSMT_c8BehaviorEv((char *)s);
 }
@@ -6241,6 +6252,14 @@ static unsigned short g_host_key_bits;
 extern "C" void port_host_keys_set(unsigned short raw)
 {
     g_host_key_bits = raw;
+}
+
+/* MENUS093 (B5): the title's key word is the host key word OR PadData's held word (port_scene_comms_publish), so a press the pad seam takes
+   away from PadData must be taken out of the host word too, or the ROM still reads it (the wrench's confirm arrived as the DS B key and
+   opened the face drawing page under the settings page). */
+extern "C" void port_host_keys_clear(unsigned short mask)
+{
+    g_host_key_bits = (unsigned short)(g_host_key_bits & ~mask);
 }
 
 static void port_scene_comms_publish(void)

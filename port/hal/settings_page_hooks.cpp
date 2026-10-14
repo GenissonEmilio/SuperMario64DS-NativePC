@@ -33,6 +33,7 @@ extern int data_020a0e58[];            /* PadData[i]: {u16 held, u16 pressed} */
 int port_scene_live_id(void);
 int port_title_elem_boxes(int *slot, int *id, int *x0, int *y0, int *x1, int *y1, int max);
 int port_title_page_state(int *top, int *elem, int *req);
+void port_host_keys_clear(unsigned short mask);   /* hal/scene_boot.cpp */
 }
 
 namespace {
@@ -91,6 +92,7 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
     *pressed = (uint16_t)(*pressed & ~confirm);
     unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
     *held = (unsigned short)(*held & ~confirm);
+    if (tgt == TGT_TITLE) port_host_keys_clear(confirm);   /* MENUS093: the title reads the host key word too */
     settings_page_request();
     return 1;
 }
