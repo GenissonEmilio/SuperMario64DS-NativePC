@@ -1139,6 +1139,8 @@ endif()
 # whole-TU hostgen sources above; the ov007 SQRT drivers left out of the TITEX
 # set (func_ov007_020c30ac, func_ov007_020c7d60) are not touched here.
 list(APPEND PORT_HOSTGEN_TU src/unnamed/ov007/func_ov007_020c31e0.c)
+# PORTSYNC3: a TU-local ROM-class view with a virtual destructor needs the host D0 filler (hostgen row)
+list(APPEND PORT_HOSTGEN_TU src/ProcessKuppaScript.cpp)
 # The 2026-10 main merge folded per-function sources the hostgen lists below
 # name one by one into production TUs. Each such TU is substituted whole, here,
 # so every target that compiles any of its functions takes the one generated

@@ -859,6 +859,24 @@ ROWS_04[("VIRTUAL_CALL", "dBgW_Kc_itcm")] = [
      "#define SQRT_RESULT NTR_MMIO(s32, 0x40002b4)  /* hostgen VIRTUAL_CALL */"),
 ]
 
+# ---- ProcessKuppaScript / StartExitFaderWipe ----------------------------------
+# VIRTUAL_CALL (PORTSYNC3). These TUs declare a LOCAL view of the ROM's fader classes whose first
+# virtual is the destructor. mwcc gives it two vtable slots (D1, D0); MSVC one, so every virtual
+# below it landed one slot early against the ROM-numbered fader tables (measured: the opening
+# script's SetForwardTime(0xe, 0) went to the table's SetBackwardTime, and a callee that
+# cleans eight returned over the script's saved registers). The same host-only filler the
+# shared header carries (include/dFader_c.h) restores the numbering.
+ROWS_04[("VIRTUAL_CALL", "ProcessKuppaScript")] = [
+    ("    virtual ~dFdBrightness_c();\n    virtual int Advance();",
+     "    virtual ~dFdBrightness_c();\n    virtual void HostRomD0SlotPad() {}  /* hostgen VIRTUAL_CALL: the ROM's D0 slot */\n    virtual int Advance();"),
+]
+ROWS_04[("VIRTUAL_CALL", "StartExitFaderWipe")] = [
+    ("    virtual ~dFader_c();\n    virtual int Advance();",
+     "    virtual ~dFader_c();\n    virtual void HostRomD0SlotPad() {}  /* hostgen VIRTUAL_CALL: the ROM's D0 slot */\n    virtual int Advance();"),
+    ("    virtual ~dFdWipe_c();\n    virtual int Advance();",
+     "    virtual ~dFdWipe_c();\n    virtual void HostRomD0SlotPad() {}\n    virtual int Advance();"),
+]
+
 # ---- daOnms_c --------------------------------------------------------------
 # EXTERN_C_DATA (new). Main's TU writes the arm9 sin/cos table as
 # `s16 data_02082214[];` with no `extern`, inside its `extern "C" {` block.
