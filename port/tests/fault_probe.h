@@ -392,6 +392,56 @@ static void port_crash_append_playlog(HANDLE out)
     CloseHandle(f);
 }
 
+/* WHICH MODULE IS THIS ADDRESS IN (run hunt8, lane CRASHDRV093). The dump has
+   always printed offsets against the game exe only, so a fault inside a Windows
+   or driver DLL read as "eip-outside-module" and the stack scan, which keeps
+   only exe words, came back empty: 36 reports of one crash named no DLL. This
+   writes "name+0xRVA" for any address into dst (raw Win32, no stdio) and
+   returns the number of bytes written. The name is the file name of the image
+   that owns the page (VirtualQuery's AllocationBase), or "?" for anything that
+   is not an image. */
+static unsigned port_crash_modrva(char *dst, unsigned cap, uintptr_t addr)
+{
+    MEMORY_BASIC_INFORMATION mbi;
+    char full[MAX_PATH];
+    unsigned n = 0, len = 0, i, start = 0;
+    static const char hx[] = "0123456789abcdef";
+    if (VirtualQuery((LPCVOID)addr, &mbi, sizeof mbi) != sizeof mbi ||
+        mbi.State != MEM_COMMIT || mbi.Type != MEM_IMAGE || !mbi.AllocationBase ||
+        !GetModuleFileNameA((HMODULE)mbi.AllocationBase, full, MAX_PATH)) {
+        if (cap > 2) { dst[0] = '?'; return 1; }
+        return 0;
+    }
+    len = (unsigned)lstrlenA(full);
+    for (i = 0; i < len; ++i)
+        if (full[i] == 92 || full[i] == '/') start = i + 1;
+    for (i = start; i < len && n + 24 < cap; ++i)
+        dst[n++] = full[i];
+    dst[n++] = '+';
+    dst[n++] = '0';
+    dst[n++] = 'x';
+    {
+        unsigned v = (unsigned)(addr - (uintptr_t)mbi.AllocationBase);
+        int sh;
+        for (sh = 28; sh >= 0; sh -= 4)
+            dst[n++] = hx[(v >> sh) & 0xf];
+    }
+    return n;
+}
+
+/* The faulting thread's start address (NtQueryInformationThread class 9,
+   resolved at call time: the probe links no ntdll import). 0 when unknown. */
+static uintptr_t port_crash_thread_start(void)
+{
+    typedef LONG (WINAPI *qit_t)(HANDLE, int, void *, ULONG, ULONG *);
+    HMODULE nt = GetModuleHandleA("ntdll.dll");
+    qit_t q = nt ? (qit_t)GetProcAddress(nt, "NtQueryInformationThread") : 0;
+    uintptr_t start = 0;
+    if (q && q(GetCurrentThread(), 9, &start, sizeof start, 0) == 0)
+        return start;
+    return 0;
+}
+
 /* The rich dump itself. `ep` may be null (the orderly-exit path passes null and
    a code); `reason` is a short tag ("exception", "exit", "quarantine",
    "quarantine-fatal"). One static buffer, hand-rolled hex, one file. */
@@ -399,7 +449,7 @@ static void port_rich_dump(EXCEPTION_POINTERS *ep, unsigned code,
                            const char *reason)
 {
     static char path[MAX_PATH + 64];
-    static char buf[4096];
+    static char buf[8192];
     char *base = (char *)GetModuleHandleA(0);
     unsigned p = 0;
     SYSTEMTIME st;
@@ -555,6 +605,50 @@ static void port_rich_dump(EXCEPTION_POINTERS *ep, unsigned code,
     }
     PORT_RD_STR("\r\nresolve: tools/resolve_crash.py <thisfile>"
                 "  (offsets -> build/port/walk_window.map)\r\n");
+    /* WHICH THREAD, WHICH MODULES (lane CRASHDRV093). Every address the dump
+       printed so far was relative to the exe; a fault in a DLL named nothing.
+       Here: the thread id, the module that owns the faulting address, the
+       thread's own start address, and every return-looking word on the stack
+       that lands in ANY module (first 24 of 512 words). */
+    if (ep && ep->ContextRecord) {
+        unsigned *sp2 = (unsigned *)ep->ContextRecord->Esp;
+        int k, got = 0;
+        PORT_RD_STR("---- threads and modules ----\r\ntid ");
+        PORT_RD_HEX(GetCurrentThreadId());
+        PORT_RD_STR("\r\neip in ");
+        if (p < sizeof buf - 80)
+            p += port_crash_modrva(buf + p, (unsigned)(sizeof buf - 40 - p),
+                                   (uintptr_t)ep->ExceptionRecord->ExceptionAddress);
+        PORT_RD_STR("\r\nthread started at ");
+        {
+            uintptr_t ts = port_crash_thread_start();
+            PORT_RD_HEX(ts);
+            PORT_RD_STR(" ");
+            if (ts && p < sizeof buf - 80)
+                p += port_crash_modrva(buf + p, (unsigned)(sizeof buf - 40 - p), ts);
+        }
+        PORT_RD_STR("\r\nstack words in any module:");
+        for (k = 0; k < 512 && got < 24 && p < sizeof buf - 120; ++k) {
+            unsigned v;
+            if (IsBadReadPtr(sp2 + k, 4)) break;
+            v = sp2[k];
+            if (v > 0x10000u && port_addr_is_exec((uintptr_t)v)) {
+                PORT_RD_STR("\r\n  [");
+                PORT_RD_DEC(k);
+                PORT_RD_STR("] ");
+                p += port_crash_modrva(buf + p, (unsigned)(sizeof buf - 40 - p), (uintptr_t)v);
+                ++got;
+            }
+        }
+        PORT_RD_STR("\r\nstack top ");
+        {
+            NT_TIB *tib = (NT_TIB *)NtCurrentTeb();
+            PORT_RD_HEX((uintptr_t)tib->StackBase);
+            PORT_RD_STR(" limit ");
+            PORT_RD_HEX((uintptr_t)tib->StackLimit);
+        }
+        PORT_RD_STR("\r\n");
+    }
     /* THE INSTALL BLOCK. What the asset folder turned out to be, and what
        happened to any save state in it, both settled at boot by
        hal/romdata_loader.cpp and hal/lk7_persist.cpp.
