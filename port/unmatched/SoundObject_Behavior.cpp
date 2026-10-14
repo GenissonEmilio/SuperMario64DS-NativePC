@@ -167,7 +167,7 @@ extern "C" void port_sound_object_states_seat(void)
                          g_sound_obj_states[i].rom);
             std::abort();
         }
-        p[i].fn = PORT_PMF_TC(g_sound_obj_states[i].face);
+        p[i].fn = (unsigned)(size_t)g_sound_obj_states[i].face;
     }
 }
 

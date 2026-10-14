@@ -325,7 +325,7 @@ extern "C" void port_trap36_states_seat(void)
             std::abort();
         }
         RomPmf out;
-        out.fn = PORT_PMF_TC(g_t36_states[i].face);
+        out.fn = (unsigned)(size_t)g_t36_states[i].face;
         out.adj = 0;
         std::memcpy(&port_trap36_states[i], &out, sizeof out);
     }
