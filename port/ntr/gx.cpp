@@ -7776,6 +7776,15 @@ bool ip_particle_pair() {
     return on != 0;
 }
 
+bool ip_newborn_recam() {
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_PARTICLE_RECAM");
+        on = (e && e[0] == '0') ? 0 : 1;
+    }
+    return on != 0;
+}
+
 void ip_rec_begin() {
     IpRec &r = g_ipr[g_ip_w];
     r.ev.clear();
@@ -8046,6 +8055,13 @@ void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st) {
                     (e.mode == MTX_POS || e.mode == MTX_POSVEC))
                     C.blend[ei] = -2;
             }
+            /* a newborn particle: its view-space point is tick N's, so it
+               would ride the screen while the world glides under the blended
+               camera; -3 re-views the point */
+            if (gc.part && gc.nmtx == 1 && ip_newborn_recam()) {
+                const int ei = C.mtx[gc.mtx0];
+                if (C.ev[ei].np == 12) C.blend[ei] = -3;
+            }
         }
     }
     if (st) {
@@ -8120,6 +8136,27 @@ void ip_recamera(const uint32_t *p, int np, uint32_t *out) {
     for (int k = 0; k < 3; ++k) {
         out[four ? 12 + k : 9 + k] = fx(b[k]);
         g_ip_ex[four ? 12 + k : 9 + k] = b[k] * 4096.0;
+    }
+}
+
+/* A newborn particle's MULT_4x3 carries only a view-space point (the 2x2 is the
+   billboard, which faces the camera whatever the camera does). Re-view the
+   point through the blended camera: p' = (p - t_N) R_N^T R_t + t_t. */
+void ip_recamera_trans(const uint32_t *p, uint32_t *out) {
+    const IpCam &c = g_ip_cam;
+    double M[3][3], d[3], b[3];
+    for (int r = 0; r < 3; ++r)
+        for (int k = 0; k < 3; ++k)
+            M[r][k] = c.RN[0][r] * c.Rt[0][k] + c.RN[1][r] * c.Rt[1][k] +
+                      c.RN[2][r] * c.Rt[2][k];
+    for (int k = 0; k < 3; ++k) d[k] = (int32_t)p[9 + k] / 4096.0 - c.tN[k];
+    for (int k = 0; k < 3; ++k)
+        b[k] = d[0] * M[0][k] + d[1] * M[1][k] + d[2] * M[2][k] + c.tt[k];
+    for (int i = 0; i < 12; ++i) { out[i] = p[i]; g_ip_ex[i] = (double)(int32_t)p[i]; }
+    for (int k = 0; k < 3; ++k) {
+        const double sv = b[k] * 4096.0;
+        out[9 + k] = (uint32_t)(int32_t)(sv < 0 ? sv - 0.5 : sv + 0.5);
+        g_ip_ex[9 + k] = sv;
     }
 }
 
@@ -8329,6 +8366,10 @@ int gx_interp_begin(float alpha) {
                     }
                     pp = tmp;
                     ex_on = 1;
+                } else if (b == -3 && alpha < 1.0f && ip_proj_perspective()) {
+                    ip_recamera_trans(pp, tmp);
+                    pp = tmp;
+                    ex_on = 1;
                 } else if (b == -2 && alpha < 1.0f && ip_proj_perspective()) {
                     /* at alpha 1 the blended camera IS tick N's and the
                        re-view is the identity: skip it, so the last picture
@@ -8445,6 +8486,14 @@ static void grid_pool_clear_hook() {
         grids_materialize_w(7);
         std::swap(g, g_ip_saved.g);
     }
+}
+
+/* Probe: how the current tick's group gi was paired. Bit 0 a particle, bit 1
+   paired with the previous tick's group. -1 outside a record. */
+int gx_interp_group_flags(int gi) {
+    if (g_ip_c < 0 || gi < 0 || gi >= (int)g_ipr[g_ip_c].groups.size()) return -1;
+    const IpGroup &G = g_ipr[g_ip_c].groups[gi];
+    return (G.part ? 1 : 0) | (G.match >= 0 ? 2 : 0);
 }
 
 int gx_interp_group_count() {

@@ -882,6 +882,7 @@ extern int data_0209b008[], data_0209b078[], data_0209b0f8[];
 extern void *data_0209f318;          /* the Camera singleton */
 extern signed char data_02092120;    /* currently shown area, -1 = none */
 extern unsigned char data_0209f250;  /* local player index */
+extern "C" void _ZN6Player14InitMetalWarioEv(void *);   /* SM64DS_METAL_POKE */
 extern void *data_0209f394[];        /* per-player Actor* */
 extern unsigned char data_0209f1f8;  /* view-object count */
 extern signed char data_0209f2f8;    /* level/sublevel id (weather select) */
@@ -9618,6 +9619,23 @@ static void ip_probe(int frame, int rom_frame)
         }
         const int nt = ntr::gx_interp_group_box(g_use, box);
         const int np = g_last >= 0 ? ntr::gx_interp_group_box(g_last, pbox) : 0;
+        /* SMOOTH093: where each unpaired (newborn) particle group sits in this picture */
+        for (int gi = 0; gi < ntr::gx_interp_group_count(); ++gi) {
+            const int fl = ntr::gx_interp_group_flags(gi);
+            if (fl < 0 || !(fl & 1) || (fl & 2)) continue;
+            float b4[4];
+            if (ntr::gx_interp_group_box(gi, b4) > 0)
+                fprintf(stderr, "[interp] nb f%d j%d/%d g%d center %.3f %.3f\n", rom_frame, j, k, gi,
+                        (b4[0] + b4[2]) * 0.5f, (b4[1] + b4[3]) * 0.5f);
+        }
+        if (getenv("SM64DS_INTERP_PROBE_BOXES")) {
+            for (int gi = 0; gi < ntr::gx_interp_group_count(); ++gi) {
+                float b4[4];
+                if (ntr::gx_interp_group_box(gi, b4) > 0)
+                    fprintf(stderr, "[interp] gb f%d j%d/%d g%d fl%d center %.3f %.3f\n", rom_frame, j, k, gi,
+                            ntr::gx_interp_group_flags(gi), (b4[0] + b4[2]) * 0.5f, (b4[1] + b4[3]) * 0.5f);
+            }
+        }
         size_t tn = 0;
         ntr::gx_polygons(tn);
         ntr::gx_interp_end();
@@ -16661,6 +16679,43 @@ int main(void)
                                     *(int *)(star + 0x440), sd_hold);
                     }
                     sd_fired = 1;
+                }
+            }
+
+            /* ---- SM64DS_METAL_POKE=<frame>[,<ticks>] ---------------------
+               Test-only: on that frame hand the local Wario the metal cap
+               through the ROM's own Player::InitMetalWario, then set the cap
+               timer (Player+0x6ae) to <ticks> (default 600) so a short run
+               reaches the cap's closing flicker. Inert unless set. */
+            {
+                static int mp_read, mp_frame = -1, mp_ticks = 600;
+                if (!mp_read) {
+                    const char *e = getenv("SM64DS_METAL_POKE");
+                    mp_read = 1;
+                    if (e) {
+                        int a = -1, b = 600;
+                        if (sscanf(e, "%d,%d", &a, &b) >= 1) { mp_frame = a; mp_ticks = b; }
+                    }
+                }
+                if (mp_frame >= 0 && frame == mp_frame) {
+                    char *pl = (char *)data_0209f394[(int)data_0209f250];
+                    if (pl) {
+                        _ZN6Player14InitMetalWarioEv(pl);
+                        *(unsigned short *)(pl + 0x6ae) = (unsigned short)mp_ticks;
+                    }
+                    fprintf(stderr, "[metalpoke] f%d player=%p ticks=%d\n", frame, (void *)pl, mp_ticks);
+                }
+                if (mp_frame >= 0 && frame > mp_frame && getenv("SM64DS_METAL_WATCH")) {
+                    const unsigned char *pl = (const unsigned char *)data_0209f394[(int)data_0209f250];
+                    if (pl)
+                        fprintf(stderr, "[metalwatch] f%d timer %u 6f9 %u 6fa %u 702 %u 700 %u 701 %u bodyid %u opacity %u\n", frame,
+                                (unsigned)*(const unsigned short *)(pl + 0x6ae), pl[0x6f9], pl[0x6fa], pl[0x702], pl[0x700], pl[0x701],
+                                (unsigned)pl[0x6dd], pl[0x6f5]);
+                    if (pl && getenv("SM64DS_METAL_WATCH")[0] == '2')
+                        fprintf(stderr, "[metalmodels] f%d body %08x %08x %08x %08x %08x hat %08x %08x %08x %08x %08x %08x %08x %08x chr %u\n", frame,
+                                *(const unsigned *)(pl + 0xdc), *(const unsigned *)(pl + 0xe0), *(const unsigned *)(pl + 0xe4), *(const unsigned *)(pl + 0xe8), *(const unsigned *)(pl + 0xec),
+                                *(const unsigned *)(pl + 0x154), *(const unsigned *)(pl + 0x158), *(const unsigned *)(pl + 0x15c), *(const unsigned *)(pl + 0x160),
+                                *(const unsigned *)(pl + 0x164), *(const unsigned *)(pl + 0x168), *(const unsigned *)(pl + 0x16c), *(const unsigned *)(pl + 0x170), (unsigned)pl[0x6db]);
                 }
             }
 

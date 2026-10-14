@@ -666,6 +666,7 @@ void gx_interp_end();
 // list (between begin and end), and the group count.
 int gx_interp_group_box(int group, float box[4]);
 int gx_interp_group_count();
+int gx_interp_group_flags(int gi);   /* probe: bit 0 particle, bit 1 paired */
 void gx_interp_dump_groups(void *file, int frame);
 
 
