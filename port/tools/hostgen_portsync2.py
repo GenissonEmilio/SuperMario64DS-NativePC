@@ -838,6 +838,26 @@ ROWS_04[("VIRTUAL_CALL", "daObjYajirusi_c")] = [
      "int *daObjYajirusi_c_classInit_YAJIRUSI_R(void)\n{\n    return port_new_daObjYajirusi_c();  /* hostgen VIRTUAL_CALL */\n}"),
 ]
 
+# ---- dScene_c ----------------------------------------------------------------
+# VIRTUAL_CALL (PORTSYNC3). Main's BeforeBehavior drives the global fader through a
+# local ROM-ABI view of its vtable: plain function pointers called with the object as
+# the FIRST STACK ARGUMENT and, for slots 3 and 4, a second ignored word. The fader
+# objects the host builds are real classes now (dFdDummy_c, dFdBrightness_c), whose
+# virtuals are MSVC members: `this` in ECX, one frame-count argument, callee pops.
+# Called the ROM's way, slot 3 got the vtable's own address as `this` and wrote into
+# it (measured: access violation, title scene, frame 0). The pointers are respelled
+# __thiscall with the one real argument, so the call the host emits IS the member call.
+ROWS_04[("VIRTUAL_CALL", "dScene_c")] = [
+    ("    void (*SetBackwardTime)(void *, u32, u32);\n    void (*SetForwardTime)(void *, u32, u32);\n"
+     "    int  (*IsAtStart)(void *);\n    int  (*IsAtEnd)(void *);\n",
+     "    void (__thiscall *SetBackwardTime)(void *, u32);  /* hostgen VIRTUAL_CALL */\n"
+     "    void (__thiscall *SetForwardTime)(void *, u32);\n"
+     "    int  (__thiscall *IsAtStart)(void *);\n    int  (__thiscall *IsAtEnd)(void *);\n"),
+    ("->vt->SetForwardTime((FaderObject *)&data_0209f5e8, 0, 0);", "->vt->SetForwardTime((FaderObject *)&data_0209f5e8, 0);"),
+    ("->vt->SetForwardTime(data_0209f5bc, 0x1e, 0);", "->vt->SetForwardTime(data_0209f5bc, 0x1e);"),
+    ("->vt->SetBackwardTime(data_0209f5bc, 0x1e, 0);", "->vt->SetBackwardTime(data_0209f5bc, 0x1e);"),
+]
+
 # ---- daOnms_c --------------------------------------------------------------
 # EXTERN_C_DATA (new). Main's TU writes the arm9 sin/cos table as
 # `s16 data_02082214[];` with no `extern`, inside its `extern "C" {` block.
