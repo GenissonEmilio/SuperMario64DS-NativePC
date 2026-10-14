@@ -362,8 +362,7 @@ void eat_begin(char *me, const Claim &c) {
         *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
         const int r5 = entered ? func_ov002_020d5ed0(me) : 0;
         g.rom_mouth = r5 != 0 && state_is(me, data_ov002_02110064) && ptrf(me, kInMouth) == ep;
-        std::fprintf(stderr, "[phit] EAT enter: d5f34 %d, eater link after the state change %p, d5ed0 %d, now %d (me %p eater %p, my slot %d, eater seat %d)
-",
+        std::fprintf(stderr, "[phit] EAT enter: d5f34 %d, eater link after the state change %p, d5ed0 %d, now %d (me %p eater %p, my slot %d, eater seat %d)\n",
                      entered, (void *)l2, r5, g.rom_mouth ? 1 : 0, (void *)me, (void *)ep, (int)data_0209f250, c.attacker);
         if (!g.rom_mouth) ptrf(ep, kMouthObj) = nullptr;
     }
