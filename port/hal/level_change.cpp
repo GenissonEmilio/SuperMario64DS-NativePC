@@ -2363,7 +2363,12 @@ static void port_tp_warp_hook(void)
         char *pl = (char *)data_0209f394[0];
         if (pl) {
             *(unsigned char *)(pl + 0x6e8) = (unsigned char)id;
+            std::fprintf(stderr, "[tpwarp] state %p requested %p before\n",
+                         *(void **)(pl + 0x370), *(void **)(pl + 0x378));
             _ZN6Player11ChangeStateERNS_5StateE(pl, data_ov002_021102a4);
+            std::fprintf(stderr, "[tpwarp] state %p requested %p after (teleport state %p)\n",
+                         *(void **)(pl + 0x370), *(void **)(pl + 0x378),
+                         (void *)data_ov002_021102a4);
         }
     }
 }
