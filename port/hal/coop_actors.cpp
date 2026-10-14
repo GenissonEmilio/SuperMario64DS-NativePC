@@ -333,6 +333,8 @@ bool skip_state(const char *a, const Prof &p) {
     if (*(const unsigned char *)(a + 0x0f) || *(const unsigned char *)(a + 0x0e) == 2) return true;
     const unsigned fl = (unsigned)rd32(a, 0xb0);
     if (fl & 0x60000u) return true;                       // yoshi mouth states
+    // Chain Chomp breaking free (state 3, sub-states 0..9): the release only advances when its own position reaches its target.
+    if (*(const unsigned short *)(a + 0x0c) == 219 && rd32(a, 0x610) == 3) return true;
     return false;
 }
 bool frozen_state(const char *a) {
