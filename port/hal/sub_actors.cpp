@@ -1023,6 +1023,18 @@ int __fastcall hud_render(void *s, void *)
         return 1;
     return ((dMeter_c *)s)->dMeter_c::Render();
 }
+/* PORTSYNC3: called from the top of the real dMeter_c::Render (hostgen row, since the
+   class carries the compiler's vtable and hud_render's slot is never dispatched). */
+}  // namespace
+extern "C" int port_hud_render_hook(void *s)
+{
+    if (port_vs_hud_render_coins_on_top((dMeter_c *)s))
+        return 1;
+    if (port_adv_hud_render_stars_lives_on_top((dMeter_c *)s))
+        return 1;
+    return 0;
+}
+namespace {
 void __fastcall hud_pdes(void *s, void *) { ((dMeter_c *)s)->dMeter_c::OnPendingDestroy(); }
 void *__fastcall hud_d1(void *s, void *) { return _ZN8dMeter_cD1Ev(s); }
 void *__fastcall hud_d0(void *s, void *) { return _ZN8dMeter_cD0Ev(s); }

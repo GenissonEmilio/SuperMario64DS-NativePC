@@ -858,6 +858,21 @@ ROWS_04[("VIRTUAL_CALL", "dScene_c")] = [
     ("->vt->SetBackwardTime(data_0209f5bc, 0x1e, 0);", "->vt->SetBackwardTime(data_0209f5bc, 0x1e);"),
 ]
 
+# ---- dMeter_c ----------------------------------------------------------------
+# VIRTUAL_CALL (PORTSYNC3). The port's two HUD moves (the adventure stars and lives to the
+# top screen, the VS coin row) used to ride vtable slot 9: hal/sub_actors.cpp seated
+# hud_render in the hand-filled _ZTV8dMeter_c the ROM factory stored. Main's factory is
+# `new dMeter_c` now, so the object carries the COMPILER's vtable and that seat is never
+# dispatched (measured: lives and stars stayed on the bottom screen). The two moves are
+# called from the top of the real Render instead; the hook answers 1 when it drew the HUD
+# itself, which is exactly what hud_render returned.
+ROWS_04[("VIRTUAL_CALL", "dMeter_c")] = [
+    ("int dMeter_c::Render()\n{\n    int b = (data_0209f2d8 == 1);\n",
+     "extern \"C\" int port_hud_render_hook(void *self);  /* hal/sub_actors.cpp */\n"
+     "int dMeter_c::Render()\n{\n    if (port_hud_render_hook(this))  /* hostgen VIRTUAL_CALL */\n        return 1;\n"
+     "    int b = (data_0209f2d8 == 1);\n"),
+]
+
 # ---- daOnms_c --------------------------------------------------------------
 # EXTERN_C_DATA (new). Main's TU writes the arm9 sin/cos table as
 # `s16 data_02082214[];` with no `extern`, inside its `extern "C" {` block.
