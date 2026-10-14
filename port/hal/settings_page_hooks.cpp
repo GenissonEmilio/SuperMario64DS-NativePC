@@ -120,8 +120,7 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
                 int t, e, r;
                 const int ok = port_title_page_state(&t, &e, &r);
                 const short *c = data_ov007_02103360 ? *(const short **)data_ov007_02103360 : 0;
-                fprintf(stderr, "[mpguard] pressed %04x held %04x page %d top %d elem %d req %d cursor %d,%d
-", *pressed, *held, ok, t, e, r,
+                fprintf(stderr, "[mpguard] pressed %04x held %04x page %d top %d elem %d req %d cursor %d,%d\n", *pressed, *held, ok, t, e, r,
                         c ? c[0] : -99, c ? c[1] : -99);
             }
             if (title_main_page() && title_cursor_on_vs()) {
