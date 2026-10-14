@@ -15,7 +15,14 @@ extern void MultiStore_Int(int val, int dst, int len);
 extern void func_02031cd4(int a);
 extern void func_020318a4(int a);
 
+#ifdef _MSC_VER
+extern void port_vs_text_seat(void);   /* hal/fs.cpp: empty VS text blob when none is loaded */
+#endif
+
 void func_02034098(void) {
+#ifdef _MSC_VER
+    port_vs_text_seat();
+#endif
     volatile int li;
     int n;
     int idx = data_0209fce8;
