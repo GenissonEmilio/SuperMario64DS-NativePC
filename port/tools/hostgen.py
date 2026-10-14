@@ -395,6 +395,55 @@ def asm_excision_patch(text, sym):
     return apply_patches(text, sym, ASM_EXCISION, "ASM_EXCISION")
 
 
+# ---- WHOLE-FUNCTION ARM ASM INSIDE A FOLDED TU (PORTSYNC3) ------------------
+#
+# The rule above (an asm file is reimplemented by hand, never transformed) was
+# written for one-function files, so a TU was either all asm or all C. Main's
+# folds put the two in ONE file: src/cstd4.cpp is the soft-float and trap
+# library with its `asm float func_0206dc7c(double a, double b, int op)`
+# comparison helpers sitting between plain C bodies. The old slice listed only
+# the eight C-only functions of that run, so nothing ever asked the host to
+# compile an asm body.
+#
+# ASM_PARK removes the whole-function asm bodies from a listed TU's generated
+# copy (they are compiler-support routines that only mwccarm-generated code
+# calls; MSVC emits its own float arithmetic) and turns the one inline trap
+# `asm { dcd 0xe7ffffff }` (cstd::__builtin_trap) into __debugbreak(). Every
+# other asm form is left in place so the refusal in main() still fires: this is
+# a list of the shapes read, not a general asm translator.
+ASM_PARK = {"cstd4"}
+_ASM_FUNC = re.compile(r"^(?:extern[ \t]+\"C\"[ \t]+)?asm[ \t]+[^;{}()]*\([^;{}]*\)[ \t\r\n]*\{", re.M)
+
+
+def asm_park_patch(text, sym):
+    if sym not in ASM_PARK:
+        return text, 0
+    m = _mask_cxx(text)
+    out = []
+    pos = 0
+    n = 0
+    for mm in _ASM_FUNC.finditer(m):
+        if mm.start() < pos:
+            continue
+        depth = 1
+        j = mm.end()
+        while j < len(m) and depth:
+            if m[j] == "{":
+                depth += 1
+            elif m[j] == "}":
+                depth -= 1
+            j += 1
+        head = text[mm.start():mm.end()].splitlines()[0].strip()
+        out.append(text[pos:mm.start()])
+        out.append("/* hostgen ASM_PARK: whole-function ARM asm, no host body: %s */" % head.replace("*/", "* /"))
+        pos = j
+        n += 1
+    out.append(text[pos:])
+    text = "".join(out)
+    text, k = re.subn(r"\basm[ \t]*\{[ \t]*dcd[ \t]+0xe7ffffff[ \t]*\}", "__debugbreak();", text)
+    return text, n + k
+
+
 # ---- MWCC-ONLY SPELLINGS MAIN'S FOLDS BROUGHT IN (PORTSYNC2) ----------------
 #
 # Spellings mwccarm accepts and a host C++ front end refuses, all new with the
@@ -4862,6 +4911,7 @@ def emit(src_path, out_dir, decomp_root, extern_data=False):
     if sym in HEADER_SHADOW:
         text, _ = shadow_header_decl(text, sym, HEADER_SHADOW[sym])
     text, _ = asm_excision_patch(text, sym)
+    text, _ = asm_park_patch(text, sym)
     text, _ = mwcc_spelling_patch(text, sym)
     text, _ = cast_extern_patch(text, sym)
     text, _ = ds_div_patch(text, sym)
@@ -4988,7 +5038,7 @@ def main():
     skipped = []
     for path in targets:
         text = path.read_text(encoding="utf-8", errors="replace")
-        if is_asm(text) and path.stem not in ASM_EXCISION:
+        if is_asm(text) and path.stem not in ASM_EXCISION and path.stem not in ASM_PARK:
             skipped.append(path.stem)
             if not args.all:
                 print(f"{path.name:<44}   ARM asm -- needs a host implementation")

@@ -147,12 +147,6 @@ endif()
 
 # ====================================================================endforeach()
 
-# PORTSYNC3: d_a_obj_fl_maruta declares func_ov022_02112654 with C++ linkage and
-# defines it extern "C" (C2733 to MSVC); see unmatched/FlMaruta_HostAbi.h.
-set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
-    APPEND PROPERTY COMPILE_OPTIONS
-    "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/FlMaruta_HostAbi.h")
-
 # THE PORT-SIDE CALL TRACE (run link100, lane TRACEPORT)
 # ====================================================================endforeach()
 
@@ -25303,3 +25297,10 @@ set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/hostarm/_ZN13BigBrickBlock11OnAttacked1ER8dActor_c.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/unmatched/hostarm/_ZN13BigBrickBlock11OnAttacked2ER8dActor_c.cpp"
     PROPERTIES COMPILE_OPTIONS "/wd4716")
+
+
+# PORTSYNC3: d_a_obj_fl_maruta declares func_ov022_02112654 with C++ linkage and
+# defines it extern "C" (C2733 to MSVC); see unmatched/FlMaruta_HostAbi.h.
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    APPEND PROPERTY COMPILE_OPTIONS
+    "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/FlMaruta_HostAbi.h")
