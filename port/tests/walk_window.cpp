@@ -4306,7 +4306,7 @@ static void fc_push_view(void *cam, const int *eye, const int *at)
       the centre key take the camera back. A player who never uses the mouse never
       sets the flag, so nothing changes for them. */
 extern "C" int _ZN8dActor_c17DetectRaycastClsnER7Vector3S1_b(void *self, void *a0, void *a1, bool a2);
-extern "C" void _ZN6Camera14GoBehindPlayerEj(void *self, unsigned int j);
+extern "C" void _ZN9dCamera_c14GoBehindPlayerEj(void *self, unsigned int j);
 extern "C" unsigned char data_ov002_021102d4[];   /* the Player's cannon-aim State object */
 extern "C" unsigned data_0209b018[], data_0209b028[], data_0209b038[], data_0209b048[], data_0209b058[],
     data_0209b068[], data_0209b088[], data_0209b098[], data_0209b0a8[], data_0209b0b8[], data_0209b0c8[],
@@ -15122,7 +15122,7 @@ int main(void)
                fixed camera a door walk-through uses, so a headless run can show the rig stand down and hand back */
             static int bf = -2;
             if (bf == -2) { const char *e = getenv("SM64DS_CAM93_BEHIND"); bf = e ? atoi(e) : -1; }
-            if (bf >= 0 && frame == bf && cam) _ZN6Camera14GoBehindPlayerEj(cam, 0);
+            if (bf >= 0 && frame == bf && cam) _ZN9dCamera_c14GoBehindPlayerEj(cam, 0);
         }
         {   /* CAMERA093 trace (SM64DS_CAM93_TRACE=1): one line a tick */
             static int tr = -1;

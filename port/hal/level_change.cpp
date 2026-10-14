@@ -104,6 +104,7 @@
 #include <windows.h>
 
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: port::vs_player_count() */
+#include "dScene_c.h"
 
 extern "C" {
 
@@ -2347,7 +2348,7 @@ extern int data_ov002_02110154[];
 void WarpPlayer(int i, int val);
 void StartMinigameMenu(unsigned char a);
 void ExitLevel(void);
-void _ZN8dScene_c9SetFadersEP15FaderBrightness(void *);
+void port_scene_set_faders(void *);   /* below: dScene_c::SetFaders, the synced static method */
 void func_0202ec9c(void *, int);
 extern int data_0209f61c[];
 void _ZN8dScene_c14StartSceneFadeEjjt(unsigned, unsigned, unsigned short);
@@ -2758,7 +2759,7 @@ static int port_level_scene_crossing(void)
             }
             if (qa >= 0 && f == qa) {
                 std::fprintf(stderr, "[tpquit] crossing f%d: the minigame quits (StartSceneFade(5,0,0))\n", f);
-                _ZN8dScene_c9SetFadersEP15FaderBrightness(data_0209f61c);
+                port_scene_set_faders(data_0209f61c);
                 func_0202ec9c(data_0209f61c, 2);
                 _ZN8dScene_c14StartSceneFadeEjjt(5, 0, 0);
             }
@@ -3109,4 +3110,11 @@ extern "C" int port_title_select(int i)
         /* leave data_02092110 for the poll to consume and report */
     }
     return 1;
+}
+
+/* dScene_c::SetFaders is a real static method on the synced line; the 0.9.3 minigame
+   quit hook below reaches it through this thin cdecl face. */
+extern "C" void port_scene_set_faders(void *f)
+{
+    dScene_c::SetFaders((dFdBrightness_c *)f);
 }
