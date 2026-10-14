@@ -51,6 +51,7 @@ extern int data_ov089_02132894[];      // Key kinds 0..6: pointers to the kind's
 extern char data_ov002_0211094c;       // kind 7's model
 }
 
+extern "C" unsigned char data_0209caa0[];             // the live working copy of the save record
 extern "C" const void *port_level_fb_ptr;               // coop_boot.cpp: the level loop's top-screen framebuffer (proof pictures)
 namespace ntr { struct Framebuffer; bool ppu_write_bmp(const char *path, const Framebuffer &fb); }
 
@@ -1159,6 +1160,17 @@ void on_frame(unsigned now) {
     }
     if (!my_player()) return;
     ++g_frames;
+
+    // SMALLS9B proof knob: SM64DS_SMALLS9B_KEYBIT=<frame>:<mask> ORs the mask into my live save copy's flags1 at that frame (the bit a rabbit
+    // catch sets: 0x40 / 0x80, a monotonic bit of the shared record); while the knob is set the live flags1 is logged every 60 frames.
+    if (const char *kb = std::getenv("SM64DS_SMALLS9B_KEYBIT")) {
+        unsigned f = 0, m = 0;
+        if (std::sscanf(kb, "%u:%i", &f, (int *)&m) == 2) {
+            unsigned *fl = (unsigned *)(data_0209caa0 + 4);
+            if (g_frames == f) { *fl |= m; if (g_log) std::fprintf(stderr, "[coopspawn] keybit set mask=%08x frame=%u wall=%lld\n", m, g_frames, wall_ms()); }
+            if (g_log && (g_frames % 60u) == 0) std::fprintf(stderr, "[coopspawn] keybit flags1=%08x frame=%u wall=%lld\n", *fl, g_frames, wall_ms());
+        }
+    }
 
     // SMALLS9B proof pictures: SM64DS_SMALLS9B_SHOT="f1,f2" writes smalls9b_f<N>.bmp (the top screen) when this module's frame count reaches N.
     if (const char *sh = std::getenv("SM64DS_SMALLS9B_SHOT")) {
