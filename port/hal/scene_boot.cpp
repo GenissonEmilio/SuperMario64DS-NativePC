@@ -1929,7 +1929,7 @@ static int l2_eb2c_run_setter(void *s, unsigned frames, int backward)
    so no view is needed. The receiver check is fdr_s08's and earns its place
    the same way: a shape A caller would hand this stub a word off its own frame
    and it says so instead of running on it. */
-static void __cdecl l2_eb2c_s08(void *s)
+extern "C" void __cdecl l2_eb2c_s08_body(void *s)
 {
     if (s == 0 || *(void **)s != (void *)_ZTV10dFdColor_c) {
         l2_trap("_ZTV10dFdDummy_c vtable slot");
@@ -1937,6 +1937,30 @@ static void __cdecl l2_eb2c_s08(void *s)
     }
     l2_eb2c_note(2);
     _ZN10dFdColor_c11AdvanceFadeEv(s);
+}
+
+/* PORTSYNC3: AdvanceFade has two kinds of caller now. src/func_02018efc.c reaches it through a
+   plain function pointer (`vt[2](o)`, cdecl, the receiver on the stack, ECX = the vtable), and
+   main's ProcessKuppaScript calls it as a virtual of its local fader view (thiscall, the
+   receiver in ECX, nothing on the stack). A thiscall caller leaves a FADER in ECX (its first
+   word is this table); a cdecl caller leaves the vtable or an unrelated word there. */
+__declspec(naked) static void l2_eb2c_s08(void)
+{
+    __asm {
+        cmp  ecx, 0x10000000
+        jb   shape_cdecl
+        cmp  ecx, 0x40000000
+        jae  shape_cdecl
+        mov  eax, dword ptr [ecx]
+        cmp  eax, offset _ZTV10dFdColor_c
+        jne  shape_cdecl
+        push ecx                        /* __thiscall: the receiver in ECX, callee cleans nothing */
+        call l2_eb2c_s08_body
+        add  esp, 4
+        ret
+    shape_cdecl:
+        jmp  l2_eb2c_s08_body           /* the stack already is the body's cdecl frame */
+    }
 }
 
 /* +0x0c and +0x10. THE TWO THAT CLEAN NOTHING, and the paragraph this replaces
