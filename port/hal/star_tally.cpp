@@ -63,8 +63,7 @@ void init_once() {
             if (*p == ';') ++p;
         }
     }
-    std::fprintf(stderr, "[startally] on: enabled=%d key=%08x
-", (int)g.enabled, g.key);
+    std::fprintf(stderr, "[startally] on: enabled=%d key=%08x\n", (int)g.enabled, g.key);
 }
 
 bool coop_now() {
@@ -90,8 +89,7 @@ int table_get(const Entry *t, int n, uint32_t key) {
 void add_mine(int n, const char *why) {
     g.mine += n;
     g.dirty = true;
-    std::fprintf(stderr, "[startally] +%d (%s): my own count now %d, level %d act %d
-", n, why,
+    std::fprintf(stderr, "[startally] +%d (%s): my own count now %d, level %d act %d\n", n, why,
                  g.mine, (int)data_0209f2f8, data_0209f220[0]);
 }
 
@@ -204,8 +202,7 @@ bool star_tally_on_payload(bool host, int seat, const uint8_t *pl, int len) {
             table_set(g.tbl, &g.ntbl, k, c, true);
             if (before < (int)c) {
                 g.dirty = true;
-                if (g.log) std::fprintf(stderr, "[startally] host table: seat %d key %08x -> %d
-", seat, k, (int)c);
+                if (g.log) std::fprintf(stderr, "[startally] host table: seat %d key %08x -> %d\n", seat, k, (int)c);
             }
         }
     } else {
