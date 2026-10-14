@@ -51,6 +51,8 @@ dFdWipe_c::~dFdWipe_c() {}
 // hal/fader_wipes.cpp; these only fill compiler vtables, like hal/shims.cpp does.
 void dFdBrightness_c::AdvanceFade() { AdvanceInterp(); }
 void dFdWipe_c::AdvanceFade() {}
+void dFdColor_c::AdvanceFade() { AdvanceInterp(); }  // unexercised on the measured paths; the 2D blend write stays DS-only
+void dFdWipe_c::LoadAndSetFile(u16 ov0ID) { model.LoadAndSetFile(ov0ID, 0, -1); }
 dExtSimpleModel_c::~dExtSimpleModel_c() {}
 dExtAnmModel_c::~dExtAnmModel_c() {}
 daObjYajirusi_c::~daObjYajirusi_c() {}
