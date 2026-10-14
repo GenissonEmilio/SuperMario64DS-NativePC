@@ -34,6 +34,8 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include "daRedBombhei_c.h"
 
 extern "C" {
 
@@ -46,25 +48,28 @@ extern PortBuddyPmf data_ov084_021309dc[], data_ov084_021309ec[],
     data_ov084_021309d4[];
 extern PortBuddyState data_ov084_02130dc4[];
 
-void _ZN14daRedBombhei_c19func_ov084_0212c92cEv(void *self);
-void _ZN14daRedBombhei_c19func_ov084_0212c8b0Ev(void *self);
-void _ZN14daRedBombhei_c19func_ov084_0212c89cEv(void *self);
-void _ZN14daRedBombhei_c19func_ov084_0212c508Ev(void *self);
-void _ZN14daRedBombhei_c19func_ov084_0212c4a0Ev(void *self);
-void _ZN14daRedBombhei_c19func_ov084_0212c1a0Ev(void *self);
-
 }  /* extern "C" */
 
 typedef void (*PortBuddyFn)(void *);
 
-static const struct { PortBuddyPmf *slot; unsigned rom; PortBuddyFn host; }
+/* PORTSYNC3: the dispatcher in the class TU calls the cell's function word with
+   `this` in ecx (a thiscall member), so the host word is the MEMBER's address. The
+   flat symbol of the same name is the facegen face, which reads `this` off the
+   stack, and seating it gave the state body a garbage receiver. */
+template <class C> static PortBuddyFn port_member_addr(void (C::*m)())
+{
+    PortBuddyFn p;
+    std::memcpy(&p, &m, sizeof p);
+    return p;
+}
+static struct { PortBuddyPmf *slot; unsigned rom; PortBuddyFn host; }
 g_buddy_states[] = {
-    {data_ov084_021309dc, 0x0212c92c, _ZN14daRedBombhei_c19func_ov084_0212c92cEv},
-    {data_ov084_021309ec, 0x0212c8b0, _ZN14daRedBombhei_c19func_ov084_0212c8b0Ev},
-    {data_ov084_021309cc, 0x0212c89c, _ZN14daRedBombhei_c19func_ov084_0212c89cEv},
-    {data_ov084_021309e4, 0x0212c508, _ZN14daRedBombhei_c19func_ov084_0212c508Ev},
-    {data_ov084_021309c4, 0x0212c4a0, _ZN14daRedBombhei_c19func_ov084_0212c4a0Ev},
-    {data_ov084_021309d4, 0x0212c1a0, _ZN14daRedBombhei_c19func_ov084_0212c1a0Ev},
+    {data_ov084_021309dc, 0x0212c92c, 0},
+    {data_ov084_021309ec, 0x0212c8b0, 0},
+    {data_ov084_021309cc, 0x0212c89c, 0},
+    {data_ov084_021309e4, 0x0212c508, 0},
+    {data_ov084_021309c4, 0x0212c4a0, 0},
+    {data_ov084_021309d4, 0x0212c1a0, 0},
 };
 
 static void port_buddy_seat_one(PortBuddyPmf *p, unsigned rom, PortBuddyFn host,
@@ -88,6 +93,12 @@ extern "C" void port_bob_omb_buddy_states_seat(void)
     if (done)
         return;
     done = 1;
+    g_buddy_states[0].host = port_member_addr(&daRedBombhei_c::func_ov084_0212c92c);
+    g_buddy_states[1].host = port_member_addr(&daRedBombhei_c::func_ov084_0212c8b0);
+    g_buddy_states[2].host = port_member_addr(&daRedBombhei_c::func_ov084_0212c89c);
+    g_buddy_states[3].host = port_member_addr(&daRedBombhei_c::func_ov084_0212c508);
+    g_buddy_states[4].host = port_member_addr(&daRedBombhei_c::func_ov084_0212c4a0);
+    g_buddy_states[5].host = port_member_addr(&daRedBombhei_c::func_ov084_0212c1a0);
     for (unsigned i = 0; i < 6; ++i) {
         PortBuddyPmf *dst =
             (i & 1) ? &data_ov084_02130dc4[i / 2].main
