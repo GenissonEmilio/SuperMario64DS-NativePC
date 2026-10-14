@@ -593,7 +593,7 @@ static void port_star_door_callbacks_seat(void)
                          g_star_door_callbacks[i].rom);
             std::abort();
         }
-        p->fn = PORT_PMF_TC(g_star_door_callbacks[i].host);
+        p->fn = (unsigned)(size_t)g_star_door_callbacks[i].host;  /* a callback record, not a state cell */
     }
 }
 
