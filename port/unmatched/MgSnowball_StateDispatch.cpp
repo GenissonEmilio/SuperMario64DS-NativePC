@@ -340,7 +340,7 @@ extern "C" void port_mg_snowball_states_seat(void)
 
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
         MgPmf *p = &data_ov006_02143038[seats[i].slot];
-        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(p->code) < 0x02000000u || (unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->code != seats[i].rom || p->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgSnowball_c state table 02143038 "
                          "slot %u: the sinit left %08x/%d, the ROM's own pairs "

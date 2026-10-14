@@ -274,7 +274,7 @@ extern "C" void port_mg_jump_field_seat(void)
     done = 1;
     for (unsigned i = 0; i < sizeof g_bnp_seats / sizeof g_bnp_seats[0]; ++i) {
         MgPmf *p = g_bnp_seats[i].rec;
-        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(p->code) < 0x02000000u || (unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->code != g_bnp_seats[i].rom || p->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgJump_c pair %s: the mount holds "
                          "%08x/%d, the cartridge's own record says %08x/0 -- "

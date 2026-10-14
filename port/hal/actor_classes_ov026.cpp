@@ -487,7 +487,7 @@ extern "C" void port_ov026_states_seat(void)
     done = 1;
     for (int i = 0; i < 6; ++i) {
         PortOv026Pmf &c = *g_ov026_pmf[i].cell;
-        if ((unsigned)(c.fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(c.fn) < 0x02000000u || (unsigned)(c.fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (c.fn != g_ov026_pmf[i].rom || c.adj != 0) {
             std::fprintf(stderr, "FATAL: ov026 PMF source pair %d (%s): the "
                          "mount holds %08x/%u, the ROM's own record says "

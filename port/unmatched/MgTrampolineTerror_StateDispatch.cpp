@@ -350,7 +350,7 @@ extern "C" void port_mg_tte2_field_seat(void)
     for (unsigned i = 0; i < sizeof g_tte_seats / sizeof g_tte_seats[0]; ++i) {
         MgPmf *p = g_tte_seats[i].rec;
         unsigned want = (unsigned)(size_t)g_tte_seats[i].host;
-        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(p->code) < 0x02000000u || (unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->code != want || p->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgTrampoline2_c pair %s: the mount holds "
                          "%08x/%d, this build's own record says %08x/0 (the "

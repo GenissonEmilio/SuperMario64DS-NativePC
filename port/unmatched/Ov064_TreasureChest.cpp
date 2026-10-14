@@ -291,7 +291,7 @@ extern "C" void port_treasure_chest_states_seat(void)
     for (unsigned i = 0; i < sizeof g_treasure_chest_states /
                              sizeof g_treasure_chest_states[0]; ++i) {
         PortPmf *p = g_treasure_chest_states[i].slot;
-        if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(p->fn) < 0x02000000u || (unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (p->fn != g_treasure_chest_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: daObjTbox_c source %u: the mount "
                          "holds %08x/%d, the ROM's own table says %08x/0 -- "

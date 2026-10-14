@@ -100,7 +100,7 @@ void port_intro_seat_dcc(void)
         return;
     done = 1;
     unsigned *w = (unsigned *)(data_02089dcc + 384);
-    if ((unsigned)(*w) >= 0x02400000u) return;  /* PORTSYNC3: already built by the TU's own initialiser */
+    if ((unsigned)(*w) < 0x02000000u || (unsigned)(*w) >= 0x02400000u) return;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
     if (*w != 0x020c020cu) {
         std::fprintf(stderr, "FATAL: data_02089dcc+0x180 holds %08x, the ROM says 020c020c -- WRONG BYTES\n", *w);
         std::abort();

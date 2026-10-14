@@ -474,7 +474,7 @@ extern "C" void port_mg_curling2_states_seat(void)
 
     for (unsigned k = 0; k < sizeof seats / sizeof seats[0]; ++k) {
         MgC2Pair *q = &data_ov006_02141988[seats[k].slot];
-        if ((unsigned)((unsigned)q->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)((unsigned)q->code) < 0x02000000u || (unsigned)((unsigned)q->code) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if ((unsigned)q->code != seats[k].rom || q->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgCurling2_c state table 02141988 "
                          "slot %u: the sinit left %08x/%d, the ROM's own pairs "
@@ -509,7 +509,7 @@ extern "C" void port_mg_curling2_states_seat(void)
     };
     for (unsigned k = 0; k < sizeof seats2 / sizeof seats2[0]; ++k) {
         MgC2Pair *q = &seats2[k].table[seats2[k].slot];
-        if ((unsigned)((unsigned)q->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)((unsigned)q->code) < 0x02000000u || (unsigned)((unsigned)q->code) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if ((unsigned)q->code != seats2[k].rom || q->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgCurling2_c state table %s slot "
                          "%u: the sinit left %08x/%d, the ROM's own pairs say "

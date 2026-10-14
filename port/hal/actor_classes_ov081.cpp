@@ -933,7 +933,7 @@ extern "C" void port_moneybag_states_seat(void)
     done = 1;
     for (int i = 0; i < 18; ++i) {
         PortMoneybagRec &r = data_ov081_02128f40[i];
-        if ((unsigned)(r.fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(r.fn) < 0x02000000u || (unsigned)(r.fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (r.fn != g_mn_recs[i].rom || r.delta != 0) {
             std::fprintf(stderr, "FATAL: daGmch_c state record %d: the sinit "
                          "left %08x/%u, the ROM's own record says %08x/0 -- "

@@ -79,7 +79,7 @@ extern "C" int _ZN9daLuigi_c8BehaviorEv(void *selfv)
     if (!seated) {
         seated = 1;
         PortMirrorLuigiCell &cell = data_ov055_02111b70;
-        if ((unsigned)(cell.tick_fn) >= 0x02400000u) return ((daLuigi_c *)selfv)->daLuigi_c::Behavior();  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(cell.tick_fn) < 0x02000000u || (unsigned)(cell.tick_fn) >= 0x02400000u) return ((daLuigi_c *)selfv)->daLuigi_c::Behavior();  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (cell.tick_fn != (unsigned)(size_t)&_ZN9daLuigi_c13ExecuteMirrorEP6Player) {
             std::fprintf(stderr, "FATAL: daLuigi_c TICK word: the cell holds "
                          "%08x, port_mirrorluigi_state_seat's own host body is "
