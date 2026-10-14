@@ -6237,8 +6237,7 @@ void gx_render(Framebuffer &fb) {
                 ++lines;
                 for (int i = 0; i < 6; ++i) last[i] = cur[i];
                 std::fprintf(stderr, "[rprobe] frame %lu DISP3DCNT %04x FOGCOL %08x FOGOFF %04x FOGTAB0 %08x "
-                             "tl_total %lu tl_depthwrite %lu fogpoly %lu swap %x w=%d
-", fr,
+                             "tl_total %lu tl_depthwrite %lu fogpoly %lu swap %x w=%d\n", fr,
                              (unsigned)cur[0], (unsigned)cur[1], (unsigned)cur[2], (unsigned)cur[3],
                              g_rp_tl, g_rp_tl_dw, g_rp_fog_poly, (unsigned)cur[5], (int)g_wdepth);
             }
