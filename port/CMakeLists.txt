@@ -8712,6 +8712,14 @@ endforeach()
 # block at the end of this file both state. COMPILE_OPTIONS is one property and
 # set_source_files_properties REPLACES it.
 set(PORT_DBGW_HOSTABI_SOURCES
+    # PORTSYNC3: main folded the collision middle into real C++ methods that make REAL
+    # virtual calls on dBgW (the DetectClsn triple, BeforeClsn, TransformPos). Compiled
+    # against the twelve-slot include/dBgW.h they land one slot early (measured: level 1
+    # faulted on frame 0, dBgCh_SphCrr::DetectClsn read slot 5 = GetTriangleOrigin).
+    src/engine/collision/dBgCh_SphCrr_query.cpp
+    src/engine/collision/dBgCh_SphCrr.cpp
+    src/engine/collision/dBgCh_Actr.cpp
+    src/actors/dBgActor_c.cpp
     src/engine/collision/dBgW.cpp
     src/engine/collision/dBgW.cpp
     src/engine/collision/dBgW.cpp
