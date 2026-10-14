@@ -1676,7 +1676,8 @@ target_sources(smoke_heap PRIVATE
 # unresolved names for hundreds, and there is no /Gy in this build for /OPT:REF
 # to drop the difference.
 function(port_smoke_relink _psr_target)
-    cmake_parse_arguments(PSR "" "" "SRC" ${ARGN})
+    set(PSR_SRC ${ARGN})
+    list(REMOVE_ITEM PSR_SRC SRC)
     set(_psr_ledger "${CMAKE_CURRENT_SOURCE_DIR}/faces_sync_smoke_${_psr_target}.txt")
     set(_psr_alias  "${CMAKE_CURRENT_SOURCE_DIR}/hal/smoke_aliases_${_psr_target}.cpp")
     set(_psr_add "")
@@ -22137,6 +22138,36 @@ if(MSVC)
         endforeach()
     endforeach()
 endif()
+
+# PORTSYNC3: the overlay TUs' own dynamic initialisers (main's compiler-made
+# __sinit_<tu>) are held back from the CRT, which would run them before main
+# against a DS runtime that does not exist yet, and are run by the matching
+# __sinit_ovNNN_ADDR at the overlay's bring-up, as on the cartridge. The rows
+# and the one-line headers come from port/tools/sinit_noops.py.
+if(MSVC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sinit_segs.cmake")
+    include("${CMAKE_CURRENT_SOURCE_DIR}/sinit_segs.cmake")
+    port_configure_input("${CMAKE_CURRENT_SOURCE_DIR}/sinit_segs.cmake")
+    foreach(_ss_row IN LISTS PORT_SINIT_SEG_ROWS)
+        string(REPLACE "|" ";" _ss_parts "${_ss_row}")
+        list(GET _ss_parts 0 _ss_rel)
+        list(GET _ss_parts 1 _ss_hdr)
+        if(NOT EXISTS "${PORT_REPO_ROOT_ABS}/${_ss_rel}")
+            message(FATAL_ERROR "sinit_segs row names a source that does not exist: ${_ss_rel}")
+        endif()
+        set(_ss_paths "${PORT_REPO_ROOT_ABS}/${_ss_rel}")
+        if(DEFINED PORT_HOSTGEN_TU_ROW_${_ss_rel})
+            list(APPEND _ss_paths "${PORT_REPO_ROOT_ABS}/${PORT_HOSTGEN_TU_ROW_${_ss_rel}}")
+        endif()
+        string(REGEX REPLACE "[.](c|cpp)$" ".cpp" _ss_gen "${_ss_rel}")
+        list(APPEND _ss_paths "${CMAKE_BINARY_DIR}/host-src/${_ss_gen}")
+        list(REMOVE_DUPLICATES _ss_paths)
+        foreach(_ss_one IN LISTS _ss_paths)
+            set_property(SOURCE "${_ss_one}" APPEND PROPERTY COMPILE_OPTIONS
+                "/FI${CMAKE_CURRENT_SOURCE_DIR}/hal/sinit_seg/${_ss_hdr}")
+        endforeach()
+    endforeach()
+endif()
+
 
 # ====================================================================endforeach()
 
