@@ -128,6 +128,7 @@ struct G {
     unsigned probe_frame = 0;
     bool lab_done = false;      // the gather stops for good once an eat / hold has begun on this console (the spit and the throw fly free)
     int gather_dx = 0, gather_dz = 0; bool gather = false;     // LAB: stand next to the host every frame (pictures independent of frame skew)
+    int lab_seat = -1;      // LAB: forge only toward this hub seat
     unsigned forge_at = 0, eat_hold = 0;      // LAB: forge from this frame on; a longer eat hold for pictures
     Stats st = {};
 } g;
@@ -154,6 +155,7 @@ void read_env() {
     if (const char *e = std::getenv("SM64DS_ATTACH_CARRY")) std::sscanf(e, "%d,%d", &g.carry_ahead, &g.carry_up);
     if (const char *e = std::getenv("SM64DS_PHIT_LAB_GATHER")) { g.gather = true; g.gather_dx = 150; g.gather_dz = 0; std::sscanf(e, "%d,%d", &g.gather_dx, &g.gather_dz); }
     if (const char *e = std::getenv("SM64DS_PHIT_LAB_AT")) g.forge_at = (unsigned)std::atoi(e);
+    if (const char *e = std::getenv("SM64DS_PHIT_LAB_SEAT")) g.lab_seat = std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_EATHOLD")) g.eat_hold = (unsigned)std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_LAB")) {
         char kind[16] = {0}; int units = 0;
@@ -800,6 +802,7 @@ void attacker_scan(char *me) {
     const bool wario = (s32(me, 8) & 7) == kLookWario;
     for (int seat = 0; seat < kHubPartySeats; ++seat) {
         if (seat == comms_hub_my_seat() || !party::seat_is_party(seat) || party::gate(seat) != party::kGateOk) continue;
+        if (lab && g.lab_seat >= 0 && seat != g.lab_seat) continue;
         if (g.send_frame[seat] && g.frame - g.send_frame[seat] < (unsigned)kSendGapFrames) continue;
         Seen s;
         if (!see(seat, &s) || !s.have_ghost) continue;
