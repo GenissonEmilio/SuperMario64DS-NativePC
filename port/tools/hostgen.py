@@ -118,6 +118,10 @@ def mmio_ptr(text):
         ctype = " ".join(m.group(2).split())
         binds[name] = None if name in binds else (ctype, int(m.group(3), 16))
 
+    # PORTSYNC3: words inside comments are not uses (main's G3i.cpp header says
+    # "...to the projection port", which made `port` look like a use that is not a
+    # deref and aborted the whole rewrite, leaving the projection stores unrouted).
+    comment_spans = [m.span() for m in re.finditer(r"//[^\n]*|/\*.*?\*/", text, re.S)]
     edits = []
     for name, info in binds.items():
         if info is None or info[0] not in MMIO_WIDTH:
@@ -134,6 +138,8 @@ def mmio_ptr(text):
         ok = True
         for m in re.finditer(r"\b" + re.escape(name) + r"\b", text):
             if any(a <= m.start() < b for a, b in skip):
+                continue
+            if any(a <= m.start() < b for a, b in comment_spans):
                 continue
             d = re.match(r"\s*\[\s*(\d+)\s*\]", text[m.end():])
             if d:
