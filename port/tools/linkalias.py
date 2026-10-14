@@ -41,7 +41,20 @@ Three rules, tried in order, for every unresolved name of the form `_name`
      and main's TUs and the port's mounts do not always pick the same one. A
      name the link lacks, whose address-and-kind another definition in the link
      already carries under exactly one other module spelling, is aliased onto it.
-  7. THE FIXED TABLE below: linker-script symbols dsd generated for the DS
+  7. VIRTUAL VERSUS NON-VIRTUAL SPELLING OF ONE MEMBER. A port shadow class
+     declares `int InitResources();` (public non-virtual, `QAE`) where main's
+     real class has `virtual int InitResources()` (`UAE`); the shadow means
+     "call this class's own body directly", which is what the __thiscall entry
+     of the virtual's definition is. The access/virtual letter is swapped
+     (Q<->U, I<->M, A<->E) and the swapped name must be defined.
+  8. CLASS-KEY MISMATCH. One header declares `struct Heap`, a port file says
+     `class Heap`; MSVC mangles them differently (U versus V) and the symbol
+     is one function. The tag in a pointer or reference parameter is swapped
+     and the swapped name must be defined.
+  9. STATIC MEMBER VERSUS NAMESPACE FUNCTION (`SA` <-> `YA`) AND FLAT NAMES SPELLED
+     WITH C++ LINKAGE (`?_ZN3OAM11GetObjWidthEii@@YAEHH@Z` is the flat Itanium
+     name declared without extern "C"); both are cdecl and the same function.
+  10. THE FIXED TABLE below: linker-script symbols dsd generated for the DS
      image (OVERLAY_<n>_ID, OV075_BSS_END, OV100_TEXT_START), bound to the hosts
      the port already defines under their pre-sync spellings.
 """
@@ -53,6 +66,18 @@ import re
 import sys
 
 FIXED = {
+    # the two Heap*-taking Memory entry points: the flat spellings ActorBase.cpp's
+    # destructors call. Heap.cpp defines them as namespace functions (cdecl).
+    "__ZN6Memory10DeallocateEPvP4Heap": "?Deallocate@Memory@@YAXPAXPAUHeap@@@Z",
+    "__ZN6Memory8AllocateEjiP4Heap": "?Allocate@Memory@@YAPAXIHPAUHeap@@@Z",
+    # the short-angle helpers of src/ApproachAngle.cpp: callers disagree about the
+    # return type (void / int / bool); every spelling is the same cdecl function
+    "?GetBG3CharPtr@G2S@@YAPADXZ": "?GetBG3CharPtr@G2S@@YAIXZ",
+    "?FlushAndInvalidateDataCache@CP15@@YAXII@Z": "__ZN4CP1527FlushAndInvalidateDataCacheEjj",
+    "__Z11UpdateAngleRssis": "?UpdateAngle@@YAXAAFFHF@Z",
+    "__Z11UpdateAngleRssis__hg_ns_020cb2b4": "?UpdateAngle@@YAXAAFFHF@Z",
+    "?ApproachLinear@@YAHAAFFF@Z": "?ApproachLinear@@YA_NAAFFF@Z",
+    "?ApproachLinear2@@YAFAAFFF@Z": "?ApproachLinear2@@YAHAAFFF@Z",
     # The id of an overlay is the ADDRESS of a symbol. The port hosts one int per id.
     "_OV075_BSS_END": "_data_ov062_0211d9c0",   # hal/link21_rows.cpp's arena-base trap
     "_OV100_TEXT_START": "_func_02140d80",      # hal/scene_boot.cpp's trap
@@ -135,6 +160,47 @@ def main():
     left = []
     for line in open(a.unresolved, encoding="utf-8", errors="replace"):
         s = line.split("  <- ")[0].strip()
+        fk = re.search(r"\((\?[\w$@?]+)\)$", s)
+        fk = fk.group(1) if fk else s
+        if fk in FIXED and FIXED[fk] in defs:
+            rows.append((fk, FIXED[fk], "fixed table"))
+            continue
+        if s.startswith('"') and "(?" in s:
+            dm = re.search(r"\((\?[\w$@?]+)\)$", s)
+            if dm:
+                dsym = dm.group(1)
+                mm = re.match(r"(\?\??[\w$]+@[\w@]+?@@)([QUIMAE])([AB]E)(.*)$", dsym)
+                if mm and dsym not in defs:
+                    swap = {"Q": "U", "U": "Q", "I": "M", "M": "I", "A": "E", "E": "A"}[mm.group(2)]
+                    alt = mm.group(1) + swap + mm.group(3) + mm.group(4)
+                    if alt in defs:
+                        rows.append((dsym, alt, "virtual / non-virtual spelling of one member"))
+                        continue
+        if s.startswith('"') and "(?" in s:
+            dm = re.search(r"\((\?[\w$@?]+)\)$", s)
+            if dm and dm.group(1) not in defs:
+                d0 = dm.group(1)
+                for a_, b_ in (("PAV", "PAU"), ("PAU", "PAV"), ("AAV", "AAU"), ("AAU", "AAV")):
+                    alt = d0.replace(a_, b_)
+                    if alt != d0 and alt in defs:
+                        rows.append((d0, alt, "class key mismatch (struct versus class)"))
+                        break
+        if s.startswith('"') and "(?" in s:
+            dm = re.search(r"\((\?[\w$@?]+)\)$", s)
+            if dm:
+                d1 = dm.group(1)
+                alt = None
+                if "@@SA" in d1:
+                    alt = d1.replace("@@SA", "@@YA", 1)
+                elif "@@YA" in d1:
+                    alt = d1.replace("@@YA", "@@SA", 1)
+                if alt and alt in defs and d1 not in defs:
+                    rows.append((d1, alt, "static member versus namespace function"))
+                    continue
+                mf = re.match(r"\?(_Z\w+)@@YA", d1)
+                if mf and ("_" + mf.group(1)) in defs and d1 not in defs:
+                    rows.append((d1, "_" + mf.group(1), "flat Itanium name declared with C++ linkage"))
+                    continue
         if s.startswith("?") or (s.startswith('"') and "(?" in s):
             dsym = re.search(r"\((\?[\w$@?]+)\)$", s)
             dsym = dsym.group(1) if dsym else s

@@ -1,4 +1,4 @@
-// Seat the whole solid-heap face: ActorBase::Virtual34/Virtual38 into slots
+// Seat the whole solid-heap face: fBase_c::Virtual34/Virtual38 into slots
 // 13/14 of _ZTV5Actor (data_0208e3a4), and SolidHeap's OWN sixteen-slot
 // vtable, hosted here and filled with the class's matched bodies. This is
 // the audited batch slice_gate16.txt's header deferred by name ("pull the
@@ -217,9 +217,9 @@ public:
     u32 VGetNodeID();                               /* slot 14 */
 };
 
-/* the matched Virtual34/38 are real ActorBase methods; this local decl
+/* the matched Virtual34/38 are real fBase_c methods; this local decl
    produces the same ?Virtual34@fBase_c@@QAEHII@Z the TUs define */
-struct ActorBase
+struct fBase_c
 {
     int Virtual34(u32 a, u32 b);
     int Virtual38(u32 a, u32 b);
@@ -241,7 +241,7 @@ struct Heap
     unsigned int ResizeToFit();
     void Destroy();
     /* Heap::_Destroy is the ROM's tail-call veneer onto Heap::Destroy. It is
-       a real method name here because ActorBase::Virtual38 calls it as one. */
+       a real method name here because fBase_c::Virtual38 calls it as one. */
     void _Destroy();
 };
 
@@ -293,9 +293,9 @@ static u32 __fastcall sh_resizetofit(void *s, void *)
 { return _ZN9SolidHeap12VResizeToFitEv(s); }
 
 static int __fastcall ab_v34(void *s, void *, u32 a, u32 b)
-{ return ((ActorBase *)s)->ActorBase::Virtual34(a, b); }
+{ return ((fBase_c *)s)->fBase_c::Virtual34(a, b); }
 static int __fastcall ab_v38(void *s, void *, u32 a, u32 b)
-{ return ((ActorBase *)s)->ActorBase::Virtual38(a, b); }
+{ return ((fBase_c *)s)->fBase_c::Virtual38(a, b); }
 
 /* THE RECEIVER-BRIDGING FACE FOR Heap::SetDefault, replacing the
    /alternatename this file used to carry. Same shape as hal/stage_slot0.cpp's
@@ -504,7 +504,7 @@ void *SolidHeapAllocator::Reallocate(void *ptr, u32 size)
      ret                         <- no stack argument popped, because it has
                                     none to pop
 
-   and the two live call sites in ActorBase::Virtual34 read
+   and the two live call sites in fBase_c::Virtual34 read
 
      004A9838: call 004A9A40          RestoreFromTemporary
      004A983F: mov  esi,[ebp+0Ch]

@@ -21,6 +21,17 @@ ROWS[("MWCC_SPELLING", "func_02009e70")] = [
 # and each one reaches DS-only runtime that the host never defines (OS mutex
 # and interrupt helpers, the DS sound driver's hardware tables, ROM data in
 # overlays the port does not mount). Parking restores exactly what ran before.
+# src/ApproachAngle.cpp keeps ApproachAngle and UpdateAngle behind `#ifndef
+# _MSC_VER` because they call __aeabi_idiv and "the host smoke build has no
+# divider". The window targets call them (Eyerok, dMgJump3DMario, d_a_pg_rcer),
+# so the guard is lifted for the generated copy and the divide goes through the
+# port's own ds_idiv (hal/cstd_div.c), the DS divider with its x/0 = x rule.
+ROWS[("MWCC_SPELLING", "ApproachAngle")] = [
+    ("#ifndef _MSC_VER\n/* The host smoke build has no divider. These two call __aeabi_idiv. */\nextern \"C\" int __aeabi_idiv(int a, int b);",
+     "/* PORTSYNC3: guard lifted for the host; the divide is ds_idiv (hal/cstd_div.c). */\nextern \"C\" int ds_idiv(int a, int b);\n#define __aeabi_idiv ds_idiv"),
+    ("        angle = angle + step;\n    }\n}\n#endif\n",
+     "        angle = angle + step;\n    }\n}\n"),
+]
 ROWS[("PARK_SYMBOL", "cstd4")] = ["func_0206dac4", "func_0206dbf8", "func_0206de14", "func_0206dc4c"]
 ROWS[("PARK_SYMBOL", "cstd6")] = ["func_0207037c"]
 ROWS[("PARK_SYMBOL", "SoundEngine")] = ["func_020506fc", "func_020503a4", "func_020500a4",

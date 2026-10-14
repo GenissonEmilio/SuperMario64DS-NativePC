@@ -145,12 +145,12 @@ int ClsnResultIntFace::GetClsnID() const
 { return (int)((const ClsnResult *)this)->ClsnResult::GetClsnID(); }
 #pragma comment(linker, "/alternatename:?GetClsnID@dBgPi@@QBEHXZ=?GetClsnID@ClsnResultIntFace@@QBEHXZ")
 
-struct WithMeshClsn {
+struct dBgCh_Actr {
     int IsOnGround() const;
     int GetWallResult() const;
     int GetFloorResult() const;
 };
-int WithMeshClsn::IsOnGround() const
+int dBgCh_Actr::IsOnGround() const
 { return _ZNK10dBgCh_Actr10IsOnGroundEv(this); }
 
 struct dCc_c;
@@ -291,9 +291,9 @@ struct dBgCh_Lin { bool DetectClsn(); };
 extern "C" int _ZN9dBgCh_Lin10DetectClsnEv(void *self)
 { return ((dBgCh_Lin *)self)->dBgCh_Lin::DetectClsn() ? 1 : 0; }
 extern "C" int _ZNK10dBgCh_Actr13GetWallResultEv(const void *self)
-{ return ((const WithMeshClsn *)self)->GetWallResult(); }
+{ return ((const dBgCh_Actr *)self)->GetWallResult(); }
 extern "C" int _ZNK10dBgCh_Actr14GetFloorResultEv(const void *self)
-{ return ((const WithMeshClsn *)self)->GetFloorResult(); }
+{ return ((const dBgCh_Actr *)self)->GetFloorResult(); }
 
 /* gate 172: func_ov098_021390ec (Crate's state helper) declares a local
    `struct SurfaceInfo { void CopyNormalTo(Vector3 &) const; }` and calls it as
