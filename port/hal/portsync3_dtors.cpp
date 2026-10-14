@@ -57,7 +57,31 @@ dFdWipe_c::~dFdWipe_c() {}
 // hal/fader_wipes.cpp; these only fill compiler vtables, like hal/shims.cpp does.
 void dFdBrightness_c::AdvanceFade() { AdvanceInterp(); }
 void dFdWipe_c::AdvanceFade() {}
-void dFdColor_c::AdvanceFade() { AdvanceInterp(); }  // unexercised on the measured paths; the 2D blend write stays DS-only
+/* The ROM's dFdColor_c::AdvanceFade (src/engine/fader/dFader_c.cpp keeps it behind #ifndef _MSC_VER
+   because it writes the 2D engine), statement for statement. The host's 2D blend registers are
+   plain mapped memory, and the level-change black hold (hal/level_change.cpp) and the picture's
+   fade both read the sub engine's BLDCNT / BLDY from here: a stub that only stepped the
+   interpolator left both at zero and the exit fade never held (measured on the ending row: the
+   55 black frames after the credits were missing and every later frame sat 55 frames early). */
+extern "C" void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p, unsigned short val, short amt);
+void dFdColor_c::AdvanceFade()
+{
+    int old = currInterp;
+    AdvanceInterp();
+    if (currInterp == old) return;
+    {
+        unsigned short c = this->color;
+        int m = c ? 0x10 : -0x10;
+        int r = (currInterp * m) >> 12;
+        if (r != 0) {
+            _ZN3G2x18SetBlendBrightnessEPVtts((volatile unsigned short *)0x4000050, 0x3f, (short)r);
+            _ZN3G2x18SetBlendBrightnessEPVtts((volatile unsigned short *)0x4001050, 0x3f, (short)r);
+        } else {
+            *(volatile unsigned short *)0x4000050 = 0;
+            *(volatile unsigned short *)0x4001050 = 0;
+        }
+    }
+}
 void dFdWipe_c::LoadAndSetFile(u16 ov0ID) { model.LoadAndSetFile(ov0ID, 0, -1); }
 dExtSimpleModel_c::~dExtSimpleModel_c() {}
 dExtAnmModel_c::~dExtAnmModel_c() {}
