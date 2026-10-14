@@ -1329,6 +1329,12 @@ static void ss_file_put_back(const SsFileKeep *k)
                       : "kept (the snapshot is of another file)",
             stars_back);
 }
+/* After a restore the world's Player is whoever the snapshot had, but the save
+   byte the next level boot spawns from (put back by ss_file_put_back) and the
+   host's pick (g_character*) still hold the pre-load choice, so a swap made
+   after the save came back at the next painting. Defined beside
+   character_set_pending. */
+static void ss_character_resync(void);
 static int ss_load_state(void)
 {
     if (!ss_course_world()) {
@@ -1353,6 +1359,7 @@ static int ss_load_state(void)
     if (lk6_savestate_has()) {
         if (lk6_savestate_load()) {
             ss_file_put_back(&keep);
+            ss_character_resync();
             ss_note("state loaded");
             return 1;
         }
@@ -1364,6 +1371,7 @@ static int ss_load_state(void)
                         "read instead\n");
         if (lk7_persist_read()) {
             ss_file_put_back(&keep);
+            ss_character_resync();
             ss_note("state loaded from disk");
             return 1;
         }
@@ -5119,6 +5127,19 @@ static void character_set_pending(int ch)
     g_character_pending = ch & 3;
     ((unsigned char *)data_0209caa0)[0x41] =
         (unsigned char)g_character_pending;
+}
+
+static void ss_character_resync(void)
+{
+    void *pl = data_0209f394[0];
+    if (!pl) return;
+    const int ch = *(int *)((char *)pl + 8) & 3;   /* Player+8: the live character */
+    fprintf(stderr, "[chr] restore: the snapshot's Player is %s (pick was %s, "
+            "save byte %s)
+", CHAR_NAME[ch], CHAR_NAME[g_character_pending & 3],
+            CHAR_NAME[((unsigned char *)data_0209caa0)[0x41] & 3]);
+    character_set_pending(ch);
+    g_character = ch;
 }
 
 /* Changes character on the spot by re-running Player::InitResources with a

@@ -173,9 +173,19 @@ struct Player {
     // mixer's stream voice for this player plays the recording.
     int replaced;
     sd_s16 var[SD_VARS];
+    // SAVE-STATE MUSIC POSITION (lane TRANS093): how many sequencer ticks this
+    // player has stepped since sd_seq_start, and the SSEQ entry it started
+    // from. F8 records both, F9 starts the song again and sd_seq_seek runs it
+    // forward silently to the recorded tick.
+    sd_u32 tickAge;
+    sd_u32 startOff;
 };
 
 Player g_pl[SD_PLAYERS];
+// 1 while sd_seq_seek replays ticks: start_note makes no sound, so the track
+// code runs exactly as it did the first time and only the voices are skipped.
+int g_seeking;
+sd_u32 g_seekPending[SD_PLAYERS];
 
 /* TrackInit's defaults for a track opened by 0x93 on a sequence that did not
    pre-allocate it (and the same values sd_seq_start gives track 0 and the
@@ -572,6 +582,7 @@ const sd_s16 *psg_table(const SdatNote &n, SdatWave *w)
 void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
                 int ticks)
 {
+    if (g_seeking) return;
     if (!pl.sbnk) {
         SD_VT("note p%d t%d key %d DROPPED: player has no bank\n", pi, ti,
               note);
@@ -1155,6 +1166,8 @@ int run_track(Player &pl, int pi, int ti)
 
 void sd_seq_reset(void)
 {
+    memset(g_seekPending, 0, sizeof g_seekPending);
+    g_seeking = 0;
     // Latched here for sd_mix_reset's reason: this runs before any sound can,
     // and the flag has to be readable from the first note-on.
     pdump_open();
@@ -1250,6 +1263,7 @@ int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
     Player &pl = g_pl[p];
     memset(&pl, 0, sizeof pl);
     pl.active = 1;
+    pl.startOff = startOff;
     pl.seq = seqBase;
     pl.sbnk = sbnk;
     pl.tempo = 120;
@@ -1595,8 +1609,17 @@ void sd_seq_frame(void)
 
         // A paused player is not stepped (sd_seq_pause), only updated.
         if (!pl.paused) pl.tempoCount += pl.tempo;
+        // A pending F9 seek (sd_seq_seek_to): the ticks the song had already
+        // played, run now in one go and silently.
+        const int seekRun = g_seekPending[p] > 0 && !pl.paused;
+        if (seekRun) {
+            pl.tempoCount += 240 * g_seekPending[p];
+            g_seekPending[p] = 0;
+            g_seeking = 1;
+        }
         while (!pl.paused && pl.tempoCount >= 240) {
             pl.tempoCount -= 240;
+            pl.tickAge++;
 
             // Note durations are in sequencer TICKS, so they expire here --
             // inside the tempo loop -- not once per 192 Hz frame. A note with
@@ -1641,6 +1664,8 @@ void sd_seq_frame(void)
             }
         }
 
+        g_seeking = 0;
+
         /* SND_SeqMain: PlayerSeqMain, then PlayerUpdateChannel. The order is
            the point -- this frame's commands have already run, so a PITCHBEND
            written this frame reaches the notes this frame, including the ones
@@ -1652,4 +1677,40 @@ void sd_seq_frame(void)
         if (pl.replaced && pl.active)
             sd_mix_stream_set_db10(p, sd_cnv_vol(pl.volume) + pl.volDb10);
     }
+}
+
+// ---- SAVE-STATE MUSIC POSITION (lane TRANS093) -------------------------------
+//
+// lk6_savestate_load silences the sequencer and starts the level's song again,
+// from its first note. The sequencer is deterministic (the same bytes stepped
+// the same number of ticks land in the same place), so F8 records how far each
+// player had stepped and F9 runs the freshly started song that far, silently.
+// Notes that were sounding at the save are not brought back; the next note on
+// sounds as it did.
+void sd_seq_snapshot(SdSeqPos *out)
+{
+    for (int p = 0; p < SD_SEQ_PLAYERS; p++) {
+        const Player &pl = g_pl[p];
+        out[p].active = (pl.active && sd_seq_active(p)) ? 1 : 0;
+        out[p].seq = pl.seq;
+        out[p].startOff = pl.startOff;
+        out[p].tickAge = pl.tickAge;
+    }
+}
+
+int sd_seq_seek_to(const SdSeqPos *in)
+{
+    int n = 0;
+    for (int p = 0; p < SD_SEQ_PLAYERS; p++) {
+        const Player &pl = g_pl[p];
+        if (!in[p].active || !pl.active || pl.seq != in[p].seq ||
+            pl.startOff != in[p].startOff || in[p].tickAge <= pl.tickAge)
+            continue;
+        g_seekPending[p] = in[p].tickAge - pl.tickAge;
+        fprintf(stderr, "[sseq] seek player %d to tick %u (now %u)
+", p,
+                (unsigned)in[p].tickAge, (unsigned)pl.tickAge);
+        n++;
+    }
+    return n;
 }
