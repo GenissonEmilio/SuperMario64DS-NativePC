@@ -24,6 +24,8 @@
 extern "C" {
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;       // my player slot
+extern unsigned char data_0209f21c;       // number of player bodies
+int port_adventure_ghost_seat(int slot);  // the hub seat a ghost body in player slot `slot` shows (-1: none)
 extern signed char data_0209f2f8;         // level (sublevel id)
 extern signed char data_02092120;         // area
 extern int data_0209f220[];               // [0] & 0xff = act
@@ -113,7 +115,7 @@ struct G {
     CarryV cv;      // I am carried
     CarryH ch;      // I carry
     // knobs
-    bool rom_eat = true, grab_on = true, feedback = true;
+    bool rom_eat = true, rom_grab = true, grab_on = true, feedback = true;
     bool pend = false; Claim pend_claim; Effect pend_fx;      // a believed claim waits here for the frame hook
     unsigned pend_ms = 0;
     int diag_left = 0;     // frames of link diagnostics after an eat / grab begins
@@ -142,7 +144,10 @@ void read_env() {
     r.check_cooldown = !env_flag(std::getenv("SM64DS_PHIT_NOCOOLDOWN"), false);
     r.check_pos = !env_flag(std::getenv("SM64DS_PHIT_NOPOS"), false);
     r.check_busy = !env_flag(std::getenv("SM64DS_PHIT_NOBUSY"), false);
-    g.rom_eat = env_flag(std::getenv("SM64DS_ROOM_EATVIS"), false);     // INTERACT9: 1 = the ROM mouth state (lab: it spits at its first walk on this port)
+    // ROMSTATE9: the victim's own console runs the ROM's real St_InYoshiMouth (eat) and St_Grabbed / thrown (carry) by default;
+    // SM64DS_ROOM_ROMSTATE=0 falls back to INTERACT9's synthetic holds (SM64DS_ROOM_EATVIS=0/1 still picks the eat alone)
+    g.rom_eat = g.rom_grab = env_flag(std::getenv("SM64DS_ROOM_ROMSTATE"), true);
+    if (const char *e = std::getenv("SM64DS_ROOM_EATVIS")) if (*e) g.rom_eat = std::atoi(e) != 0;
     g.grab_on = env_flag(std::getenv("SM64DS_ROOM_GRAB"), true);
     g.feedback = env_flag(std::getenv("SM64DS_PHIT_FEEDBACK"), true);
     if (const char *e = std::getenv("SM64DS_ATTACH_EAT")) std::sscanf(e, "%d,%d", &g.eat_ahead, &g.eat_up);
@@ -165,8 +170,21 @@ char *my_body() {
     const int me = (int)data_0209f250;
     return (me >= 0 && me < 16) ? (char *)data_0209f394[me] : nullptr;
 }
+// ROMSTATE9: the body of a HUB SEAT. Slot i of data_0209f394 is a player SLOT, not a seat: in a party / coop room my own
+// body sits in slot data_0209f250 (0 on every console in the rows) and each friend's ghost body in some other slot, the
+// follower's body -> seat table (port_adventure_ghost_seat) says which. (INTERACT9 indexed the array by seat, so on seat 1
+// the "eater" was my OWN body: the mouth state read its own pointers, found the eater's mouth object was not itself and
+// spat at once; the carry state landed in another state the same way. cdb: out/ROMSTATE9/logs/cdb_dbg11_p1.)
 char *body_of_seat(int seat) {
-    return (seat >= 0 && seat < 16) ? (char *)data_0209f394[seat] : nullptr;
+    if (seat < 0 || seat >= kHubPartySeats) return nullptr;
+    if (seat == comms_hub_my_seat()) return my_body();
+    const int me = (int)data_0209f250;
+    const int nb = (int)data_0209f21c < 16 ? (int)data_0209f21c : 16;
+    for (int i = 0; i < nb; ++i) {
+        if (i == me || !data_0209f394[i]) continue;
+        if (port_adventure_ghost_seat(i) == seat) return (char *)data_0209f394[i];
+    }
+    return nullptr;
 }
 int u(int fix12) { return fix12 >> 12; }
 // A clock every console on this machine shares (the rows compare one console's send with another's apply).
@@ -332,26 +350,21 @@ void eat_begin(char *me, const Claim &c) {
     char *ep = body_of_seat(c.attacker);
     g.rom_mouth = false;
     if (g.rom_eat && ep) {
-        // the ROM's own entry into a mouth (what the arena's EATEN event does): the eater's body is the
-        // mEatingPlayer, its +0x360 names me, my state is St_InYoshiMouth and my anim the curled one (0x3f)
-        // func_ov002_020d5f34 step by step (it sets the eater link, the curled anim, step 0, the state), because the
-        // eater link did not survive the call on this port: each stage's value is logged, and the link is set again
-        // after the state change (the mouth state's Main reads it every frame)
+        // the ROM's own entry into a mouth, the way the arena's EATEN event does it (vs_arena_eat.cpp v_enter): the eater's
+        // body is the mEatingPlayer, its +0x360 names me, my state becomes St_InYoshiMouth (func_ov002_020d5f34), then step 1
+        // (func_ov002_020d5ed0). The eater's two "cannot count down" flags are clear, and its hold timer is the ROM's 90:
+        // the state counts it down by MY button presses, so the ROM's own mash-to-escape works on this console.
         s32(me, kInMouth) = 0;
         ptrf(ep, kMouthObj) = me;
-        ptrf(me, kInMouth) = ep;
-        char *l0 = ptrf(me, kInMouth);
-        _ZN6Player7SetAnimEji5Fix12IiEj(me, 0x3f, 0, 0x3000, 0);
-        char *l1 = ptrf(me, kInMouth);
-        *(unsigned char *)(me + 0x6e3) = 0;
-        _ZN6Player11ChangeStateERNS_5StateE(me, data_ov002_02110064);
+        const int entered = func_ov002_020d5f34(me, ep);
         char *l2 = ptrf(me, kInMouth);
-        ptrf(me, kInMouth) = ep;
-        *(unsigned short *)(ep + kHoldTimer) = g.eat_hold ? (unsigned short)(g.eat_hold + 60) : 0x3c;      // mashing shortens it; our spit comes first
+        *(unsigned short *)(ep + kHoldTimer) = g.eat_hold ? (unsigned short)(g.eat_hold + 60) : 0x5a;
         *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
-        const int r5 = func_ov002_020d5ed0(me);
+        const int r5 = entered ? func_ov002_020d5ed0(me) : 0;
         g.rom_mouth = r5 != 0 && state_is(me, data_ov002_02110064) && ptrf(me, kInMouth) == ep;
-        std::fprintf(stderr, "[phit] EAT enter: eater link after set/anim/state %p %p %p, d5ed0 %d, now %d (eater %p)\n", (void *)l0, (void *)l1, (void *)l2, r5, g.rom_mouth ? 1 : 0, (void *)ep);
+        std::fprintf(stderr, "[phit] EAT enter: d5f34 %d, eater link after the state change %p, d5ed0 %d, now %d (me %p eater %p, my slot %d, eater seat %d)
+",
+                     entered, (void *)l2, r5, g.rom_mouth ? 1 : 0, (void *)me, (void *)ep, (int)data_0209f250, c.attacker);
         if (!g.rom_mouth) ptrf(ep, kMouthObj) = nullptr;
     }
     if (!g.rom_mouth) *(unsigned char *)(me + kNoControl) = 1;           // TUNE: the flag my_body_may_act reads
@@ -499,7 +512,7 @@ void grab_begin(char *me, const Claim &c) {
     *(unsigned short *)(me + player::kInvincibleTimer) = 0;
     *(unsigned char *)(me + 0x708) = 0;
     void *st_before = *(void **)(me + 0x370);
-    const int ok = func_ov002_020db5f4(me, hb);
+    const int ok = g.rom_grab ? func_ov002_020db5f4(me, hb) : 1;        // ROMSTATE9: =0 skips the ROM state (synthetic hold below)
     char *gb0 = ptrf(me, kGrabbedBy);
     ptrf(me, kGrabbedBy) = hb;       // the state change clears the link on this port (as it does the mouth link): set it again
     *(unsigned short *)(me + player::kInvincibleTimer) = inv;
