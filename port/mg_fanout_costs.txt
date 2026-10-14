@@ -193,37 +193,46 @@ matched src TU at all and will need a named trap or a decomp.
   369 before and 369 after, which is the check that the refresh is bookkeeping
   and not a different reading of the vtables.
 
+
+  REFRESHED 2026-10-14 at the main -> port sync (origin/main 47745e59c30),
+  lane PORTSYNC3. The mark column moved downward on sixteen rows (and nosrc
+  1 -> 0 on 0x16c and 0x174): main folded the one-function files into
+  production TUs and dropped the "recovered from vtable slot identity" marker
+  from many bodies. vtablerows now charges the marker to the @symbol group it
+  follows, so one guessed body in a folded TU does not mark its neighbours.
+  ovr did not move on any row: the ROM did not change, the decomp did.
+
   id     spawn symbol                vtable     width  ovr  mark  nosrc
-  0x170  MgBobOmbSquad               0213d9cc      36    6     3      0
-  0x171  MgLakituLaunch              0213dbbc      36    6     3      0   DONE
-  0x172  MgSortOrSplode              0213bbb4      36    6     3      0   DONE
-  0x176  MgShuffleShell (curling)    0213c304      36    6     3      0   DONE
-  0x177  (g_profile_MG_CURLING_J)       0213c510      36    6     3      0   DONE
+  0x170  MgBobOmbSquad               0213d9cc      36    6     0      0
+  0x171  MgLakituLaunch              0213dbbc      36    6     0      0   DONE
+  0x172  MgSortOrSplode              0213bbb4      36    6     0      0   DONE
+  0x176  MgShuffleShell (curling)    0213c304      36    6     0      0   DONE
+  0x177  (g_profile_MG_CURLING_J)       0213c510      36    6     0      0   DONE
   0x17a  MgCoincentration            0213bf50      36    6     0      0
   0x17c  MgPuzzlePanelPuzzlePanic    0213e24c      36    6     0      0   DONE
   0x16e  MgWanted                    0213cf10      36    7     0      0
   0x182  MgWhichWiggler              0213cab8      36    7     0      0
-  0x16c  (g_profile_MG_SLOT1)       0213eb40      36    8     1      1
-  0x183  MgHideAndBooSeek            0213fa0c      36    8     3      0
+  0x16c  (g_profile_MG_SLOT1)       0213eb40      36    8     0      0
+  0x183  MgHideAndBooSeek            0213fa0c      36    8     0      0
   0x178  MgBingoBallSlotsShot        0213eefc      36    9     1      0
-  0x173  (g_profile_MG_AMIDA)       0213b918      37   11     1      0
+  0x173  (g_profile_MG_AMIDA)       0213b918      37   11     0      0
   0x186  (g_profile_MG_FLOWER)       02140140      36   12    0      0
   0x169  (g_profile_MG_CUP)       0213c154      36   13     0      0
   0x16f  MgBoomBox                   0213f844      36   13    0      0
   0x17d  (g_profile_MG_MCARLO)       0213d664      36   13    0      0
   0x17e  MgPairAGoneAndOn            0213d7e8      36   14    0      0   DONE
-  0x17f  MgMushroomRoulette          0213e39c      36   14    8      0   DONE
-  0x16a  MgMemoryMatch               0213d1b8      36   14    8      0
-  0x16b  MgMemoryMaster              0213d4d4      36   14    8      0   DONE
+  0x17f  MgMushroomRoulette          0213e39c      36   14    0      0   DONE
+  0x16a  MgMemoryMatch               0213d1b8      36   14    0      0
+  0x16b  MgMemoryMaster              0213d4d4      36   14    0      0   DONE
   0x184  MgLuckyStars                0213fec8      36   14    0      0
   0x185  MgPsycheOut                 0213c8c4      36   14    0      0
   0x16d  (g_profile_MG_SLOT3)       0213eaa8      36   15    2      0   DONE
   0x17b  MgPicturePoker              0213bdb4      36   15    0      0   DONE
-  0x174  MgBounceAndPounce           0213cbe4      36   23    16      1   DONE
-  0x175  MgBounceAndTrounce          0213ccfc      36   23    23      0   DONE
-  0x181  MgTrampolineTerror          0213fc7c      36   25    13      0   DONE
-  0x180  MgTrampolineTime            0213fb34      36   25    25      0   DONE
-  0x179  MgSnowballSlalom            0214000c      36   16    3      0   DONE
+  0x174  MgBounceAndPounce           0213cbe4      36   23     0      0   DONE
+  0x175  MgBounceAndTrounce          0213ccfc      36   23     0      0   DONE
+  0x181  MgTrampolineTerror          0213fc7c      36   25     0      0   DONE
+  0x180  MgTrampolineTime            0213fb34      36   25     0      0   DONE
+  0x179  MgSnowballSlalom            0214000c      36   16    0      0   DONE
 
     totals   369 override slots, 278 of them marker-carrying, 4 with no src
       (the twenty-nine rows that always resolved:  353 / 264 / 4)

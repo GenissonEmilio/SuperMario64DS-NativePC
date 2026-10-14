@@ -230,12 +230,43 @@ class Sources:
             return self.ivs[i][2]
         return None
 
-    def marked(self, src):
+    def marked(self, src, name=None):
+        """Does the body carry the marker? A one-function file: the file
+        does. A folded TU (several @symbol groups): only the group the
+        marker follows, so one guessed body does not taint its neighbours.
+        `name` is the exact-address symbol of the slot's target; without it
+        the whole file is tested, as before."""
         if src not in self._marked:
             p = self.root / src
-            self._marked[src] = p.is_file() and \
-                MARKER in p.read_text(errors="replace")
-        return self._marked[src]
+            text = p.read_text(errors="replace") if p.is_file() else ""
+            self._marked[src] = (MARKER in text, self._groups(text))
+        whole, groups = self._marked[src]
+        if not whole:
+            return False
+        if name is None or len(groups) <= 1:
+            return True
+        return any(name in syms and flag for syms, flag in groups)
+
+    @staticmethod
+    def _groups(text):
+        lines = text.splitlines()
+        starts = []
+        prev = -2
+        for i, raw in enumerate(lines):
+            m = re.match(r"^//\s*@symbol\s+(\S+)", raw)
+            if not m:
+                continue
+            if i == prev + 1 and starts:
+                starts[-1][1].append(m.group(1))
+            else:
+                starts.append([i, [m.group(1)]])
+            prev = i
+        out = []
+        for gi, (st, syms) in enumerate(starts):
+            end = starts[gi + 1][0] if gi + 1 < len(starts) else len(lines)
+            out.append((set(syms),
+                        any(MARKER in l for l in lines[st:end])))
+        return out
 
 
 def load_symbols(paths):
@@ -372,13 +403,13 @@ def class_rows(ov, base_slots, vtable, width, syms=None):
     return rows
 
 
-def measure(rows, sources):
+def measure(rows, sources, syms=None):
     ovr = [(i, w) for i, w, is_ovr in rows if is_ovr]
     mark = nosrc = 0
     detail = []
     for i, w in ovr:
         o = sources.owner(w)
-        m = bool(o and sources.marked(o))
+        m = bool(o and sources.marked(o, syms.get(w) if syms else None))
         if o is None:
             nosrc += 1
         elif m:
@@ -490,7 +521,7 @@ def cmd_reconstruct(root):
     tot = [0, 0, 0]
     for cid, vt, width, h_ovr, h_mark, h_nosrc in rows:
         n_ovr, n_mark, n_nosrc, _ = measure(
-            class_rows(ov6, base_slots, vt, width, syms), sources)
+            class_rows(ov6, base_slots, vt, width, syms), sources, syms)
         tot[0] += n_ovr
         tot[1] += n_mark
         tot[2] += n_nosrc

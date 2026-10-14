@@ -3240,7 +3240,7 @@ def selftest():
         "__ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_",
         "__ZNK10dBgCh_Actr8IsOnWallEv",
         "__ZNK10dBgCh_Actr13JustHitGroundEv",
-        "__ZN9ModelBase12ApplyOpacityEjj",
+        "__ZN9ModelBase12ApplyOpacityEj",
         "_data_ov004_020beb68",
         "?TrackInDeathTable@dActor_c@@QAEXXZ",
         "_data_ov006_02141950",

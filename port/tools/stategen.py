@@ -667,8 +667,17 @@ def parse_arity(root, tables):
     want = {d["sym"]: a for a, d in tables.items()}
     found = {}
     unresolved = []
+    # main folded the dispatching TUs and their member-pointer tables became
+    # in-class static data, so the old `extern PMF data_...[]` spellings are
+    # kept as fixtures beside the hand sinit sources (PORTSYNC3).
+    fixdir = root / "port" / "tools" / "stategen_fixtures"
+    scan = []
     if srcdir.is_dir():
-        for p in sorted(srcdir.iterdir()):
+        scan += sorted(srcdir.iterdir())
+    if fixdir.is_dir():
+        scan += sorted(fixdir.iterdir())
+    if scan:
+        for p in scan:
             if p.suffix not in (".c", ".cpp"):
                 continue
             try:
@@ -1134,9 +1143,9 @@ def emit_host(m, cls=None):
 
 
 HAND_MG = "port/unmatched/MgCurling_StateDispatch.cpp"
-HAND_MG_SINIT = "src/__sinit_ov006_021304ac.c"
+HAND_MG_SINIT = "port/tools/stategen_fixtures/__sinit_ov006_021304ac.c"
 HAND_PL = "port/hal/player_states.inc"
-HAND_PL_SINIT = "src/__sinit_ov002_021019d0.c"
+HAND_PL_SINIT = "port/tools/stategen_fixtures/__sinit_ov002_021019d0.c"
 
 MG_CASE = re.compile(r"case\s+0x([0-9a-fA-F]{8})u:\s*(\w+)\s*\(")
 PL_CASE = re.compile(r"^\s*case\s+0x([0-9a-fA-F]{8}):\s*(.+?)\s*$", re.M)
