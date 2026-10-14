@@ -2343,7 +2343,8 @@ static int port_level_hold_due(void)
 
 extern "C" {
 extern void *data_0209f394[];
-extern int data_ov002_021102a4[];
+extern int data_ov002_02110154[];
+void WarpPlayer(int i, int val);
 void _ZN6Player11ChangeStateERNS_5StateE(void *, void *);
 void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p, unsigned short val, short amt);
 }
@@ -2373,23 +2374,20 @@ static void port_tp_warp_hook(void)
         }
         if (fat >= 0) ff++;
     }
-    if (at >= 0 && frame++ == at) {
-        std::fprintf(stderr, "[tpwarp] f%d WarpPlayer(0, %d)\n", at, id);
-        /* The state change func_ov002_020c6adc makes when the warp request's
-           bit is set (the request itself only lasts a frame and is read by
-           St_Wait_Main): the teleport id, then ChangeState into the teleport
-           state, so the ROM's own St_Teleport_Init / Main run from here. */
+    if (at >= 0 && frame >= at && frame <= at + 3) {
         char *pl = (char *)data_0209f394[0];
-        if (pl) {
-            *(unsigned char *)(pl + 0x6e8) = (unsigned char)id;
-            std::fprintf(stderr, "[tpwarp] state %p requested %p before\n",
-                         *(void **)(pl + 0x370), *(void **)(pl + 0x378));
-            _ZN6Player11ChangeStateERNS_5StateE(pl, data_ov002_021102a4);
-            std::fprintf(stderr, "[tpwarp] state %p requested %p after (teleport state %p)\n",
-                         *(void **)(pl + 0x370), *(void **)(pl + 0x378),
-                         (void *)data_ov002_021102a4);
+        if (pl && frame == at) {
+            /* stand the Player in ST_WAIT, the state a warp spot takes a
+               request in (Player::CanWarp) */
+            std::fprintf(stderr, "[tpwarp] f%d ChangeState(ST_WAIT)\n", at);
+            _ZN6Player11ChangeStateERNS_5StateE(pl, data_ov002_02110154);
+        }
+        if (pl && frame == at + 3) {
+            std::fprintf(stderr, "[tpwarp] f%d WarpPlayer(0, %d)\n", frame, id);
+            WarpPlayer(0, id);
         }
     }
+    if (at >= 0) frame++;
 }
 
 extern "C" int port_level_change_poll(void)
