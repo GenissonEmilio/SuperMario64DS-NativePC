@@ -463,7 +463,7 @@ void _ZN5ModelD1Ev(void *self);              /* Model member at +0xd4 */
 void _ZN15TextureSequenceD1Ev(void *self);   /* TextureSequence member at +0x124 */
 void *daObj1UpLogo_c_classInit(void);                 /* installs _ZTV9OneUpLogo itself */
 int _ZTV14daObj1UpLogo_c[31];
-int _ZTV14daObj1UpLogo_c[];   /* RTTI alias, ONE speller (_ZN9OneUpLogoD0Ev),
+/* PORTSYNC3: the RTTI-alias declaration is gone (main renamed OneUpLogo to daObj1UpLogo_c, so table and alias are one name):
                                   not a shared placeholder -- aliased below. */
 }
 

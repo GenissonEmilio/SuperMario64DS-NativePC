@@ -147,6 +147,12 @@ endif()
 
 # ====================================================================endforeach()
 
+# PORTSYNC3: d_a_obj_fl_maruta declares func_ov022_02112654 with C++ linkage and
+# defines it extern "C" (C2733 to MSVC); see unmatched/FlMaruta_HostAbi.h.
+set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
+    APPEND PROPERTY COMPILE_OPTIONS
+    "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/FlMaruta_HostAbi.h")
+
 # THE PORT-SIDE CALL TRACE (run link100, lane TRACEPORT)
 # ====================================================================endforeach()
 
@@ -1204,7 +1210,9 @@ list(APPEND PORT_HOSTGEN_TU
     src/actors/dScMgAmida_c.cpp
     src/game/actors/d_a_obj_wl_polelift.cpp
     src/game/actors/daObjPathLift_c.cpp
-    src/game/actors/daPiano_c/d_a_piano.cpp)
+    src/game/actors/daPiano_c/d_a_piano.cpp
+    # PORTSYNC3: bare `return;` in int bodies (hostgen VALUELESS_RETURN).
+    src/actors/daStar_c.cpp)
 list(REMOVE_DUPLICATES PORT_HOSTGEN_TU)
 
 # Whole-TU host copies that REPLACE a src TU (see each copy's header). The
@@ -21792,6 +21800,14 @@ set(PORT_FALLS_OFF_END_SOURCES
     src/actors/dActor_c.cpp
     src/actors/dScMgCup_c.cpp
     src/actors/daOts_c.cpp
+    # PORTSYNC3 (main -> port sync): bodies main's decomp spells without a
+    # return on every path, which mwccarm accepts and MSVC reports as C4716
+    # (the same ROM vtable-slot shape as the rows above; every caller drops
+    # the value).
+    src/actors/daObjFallBlock_c.cpp
+    src/actors/daObjBk_Botaosi_c.cpp
+    src/actors/daObjBk_Lift_c.cpp
+    src/actors/daKuriKing_c.cpp
     # Added at the main -> port sync (lane SYNC5). Lane SEAT2 seats _ZTV5Stage
     # slot 1 on the ROM's own three-word veneer, so smoke_player and
     # walk_window_hires compile this TU for the first time; its body is the

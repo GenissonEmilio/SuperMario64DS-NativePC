@@ -209,7 +209,7 @@ int main(void)
 
     SharedFilePtrC ap2;
     _ZN13SharedFilePtr9ConstructEj(&ap2, 1036);           /* piano_attack.bca */
-    void *bca2 = Animation::LoadFile(*(SharedFilePtr *)&ap2);
+    void *bca2 = dExtFrameCtrl_c::LoadFile(*(SharedFilePtr *)&ap2);
     CHECK(bca2 != NULL);
 
     /* blend in over 4 frames: weight restarts at 0, step = 1/(4+1) */

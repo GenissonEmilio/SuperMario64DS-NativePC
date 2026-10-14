@@ -66,6 +66,24 @@ struct TextureSequence : dExtFrameCtrl_c {
     /* --- vtable: the destructor pair only. --- */
     virtual ~TextureSequence();                       /* slots 0 (D1), 1 (D0) */
 
+    /* HOST-ONLY VTABLE-SHAPE PIN. The ROM's _ZTV15TextureSequence has TWO
+       slots, D1 at 0 and D0 at 1 (0208e7d4 = 02015a2c, 0208e7d8 =
+       02015a00; the words are quoted in hal/model_dtor_seat.cpp). MSVC
+       folds the destructor pair into one ??_E slot, so the host table had
+       ONE slot -- and the ROM's own destructors for daDemo_c::anmModel_c
+       hand-index slot 1 of this table, (*(VFN)((*(int **)p)[1]))(p), which
+       on the host read the next class's RTTI pointer out of .rdata and
+       called it (c0000005 at RVA 0x0043e298 = &??_R4MaterialChanger, on
+       the opening cutscene). This declaration gives the host table the
+       ROM's second slot, holding the ROM's own body for it, the DELETING
+       half. __cdecl because the only readers are those four ROM bodies and
+       their VFN typedef is a plain void (*)(void *) with the receiver
+       pushed as a stack word; nothing MSVC generates ever indexes 1. Host
+       only: mwccarm never sees it, so no matched body changes. */
+#ifdef SM64DS_PLATFORM_PC
+    virtual void __cdecl RomSlot1D0();      /* ROM _ZTV15TextureSequence[1] */
+#endif
+
     /* DECLARED, never defined as a method here -- src/engine/model/TextureSequence.cpp
        owns C1 (notes/ctor-migration.md section 2). */
     TextureSequence();

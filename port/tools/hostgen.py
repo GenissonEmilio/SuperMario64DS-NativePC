@@ -1215,6 +1215,294 @@ def falls_off_return_patch(text, sym):
     return apply_patches(text, sym, FALLS_OFF_RETURN, "FALLS_OFF_RETURN")
 
 
+# ---- VALUELESS RETURN IN A VALUE-RETURNING BODY (PORTSYNC3) ------------------
+#
+# main's decomp spells some early exits as a bare `return;` inside a body whose
+# declared return type is int (or volatile unsigned int): mwccarm accepts it
+# (the ROM body sets no return register and every caller drops the value) and
+# MSVC refuses it with C2561. The statement cannot be fixed in src/ without a
+# decomp-side edit, so the host copy returns 0 instead. Every caller of the
+# bodies listed here is an expression statement (checked per entry below), so
+# the value is unobservable.
+#
+# Keyed on the source stem; each item is the exact text that opens the body
+# (up to and including its `{`). The rewrite is confined to that body's braces.
+VALUELESS_RETURN = {
+    # daStar_c::func_ov002_020e8dd8 and ::func_ov002_020e8c34: both are called
+    # only as statements (daStar_c.cpp: 674, 1140, 1739, 1793).
+    "daStar_c": [
+        "int daStar_c::func_ov002_020e8dd8() {",
+        "volatile unsigned int daStar_c::func_ov002_020e8c34() {",
+    ],
+}
+
+
+def valueless_return_patch(text, sym):
+    rows = VALUELESS_RETURN.get(sym)
+    if not rows:
+        return text, 0
+    total = 0
+    for head in rows:
+        i = text.find(head)
+        if i < 0:
+            sys.exit("hostgen: %s: VALUELESS_RETURN anchor no longer matches:\n"
+                     "    %s\nThe source moved. Re-derive the entry." % (sym, head))
+        j = i + len(head)
+        depth = 1
+        while j < len(text) and depth:
+            c = text[j]
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+            j += 1
+        body = text[i + len(head):j]
+        new_body, n = re.subn(r"\breturn\s*;", "return 0;", body)
+        total += n
+        text = text[:i + len(head)] + new_body + text[j:]
+    return text, total
+
+
+# ---- LOCAL TYPES HOISTED OUT OF FUNCTION BODIES (PORTSYNC3) -------------------
+#
+# main's folded Player.cpp declares, inside one function body after another,
+#
+#     struct State;
+#     extern State data_ov002_0210ffec;
+#     struct P2 { int w[2]; };   /  struct VObj { virtual void f00(); ... };
+#
+# i.e. a block-scope class and block-scope `extern` objects of that class.
+# mwccarm accepts all of it. MSVC refuses each piece: C2624 (a local class
+# cannot declare an extern variable) and C3640 (a virtual member of a local
+# class must be defined). The old per-function files declared the same names
+# at FILE scope, which is the shape MSVC accepts, so this pass puts them back
+# there: every class declared inside a function body is moved, definition and
+# all, to just before that function, and renamed `<Name>__hN` throughout the
+# function so two functions' `State` (different layouts, same name) and a
+# local that shadows a real class (`dCamera_c`) cannot collide. The extern
+# objects keep their ROM names, so the link sees no change; MSVC accepts
+# block-scope externs of one name with different types (measured).
+#
+# Only stems in HOIST_LOCAL_TYPES run it. It is a text transform with a small
+# scanner (comments and string literals masked), not a parser: anything it
+# cannot classify is left alone and the compiler says so.
+HOIST_LOCAL_TYPES = {"Player"}
+
+
+def _mask_cxx(text):
+    """text with comments, strings and char literals blanked (same length)."""
+    out = list(text)
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "/" and i + 1 < n and text[i + 1] == "/":
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            for k in range(i, j):
+                out[k] = " "
+            i = j
+        elif c == "/" and i + 1 < n and text[i + 1] == "*":
+            j = text.find("*/", i + 2)
+            j = n if j < 0 else j + 2
+            for k in range(i, j):
+                if text[k] != "\n":
+                    out[k] = " "
+            i = j
+        elif c in "\"'":
+            j = i + 1
+            while j < n and text[j] != c:
+                j += 2 if text[j] == "\\" else 1
+            j = min(j + 1, n)
+            for k in range(i + 1, j - 1):
+                if text[k] != "\n":
+                    out[k] = " "
+            i = j
+        else:
+            i += 1
+    return "".join(out)
+
+
+def _function_spans(m):
+    """[(header_start, open_idx, close_idx)] of outermost function-like bodies."""
+    n = len(m)
+    stack = []
+    stmt = 0
+    out = []
+    cur = None
+    for i in range(n):
+        c = m[i]
+        if c == ";":
+            stmt = i + 1
+        elif c == "{":
+            head = m[stmt:i].strip()
+            in_func = any(k == "func" for k, _ in stack)
+            if re.match(r'^extern\s*(".*")?\s*$', head) or head.startswith("namespace"):
+                kind = "scope"
+            elif (not in_func) and re.match(r"^(typedef\s+)?(struct|class|union|enum)\b", head) \
+                    and "(" not in head:
+                kind = "type"
+            elif in_func:
+                kind = "inner"
+            else:
+                kind = "func"
+                hs = stmt
+                while hs < i and m[hs] in " \t\r\n":
+                    hs += 1
+                cur = [hs, i, None]
+            stack.append((kind, i))
+            stmt = i + 1
+        elif c == "}":
+            if stack:
+                kind, _ = stack.pop()
+                if kind == "func" and not any(k == "func" for k, _ in stack):
+                    cur[2] = i
+                    out.append(tuple(cur))
+            stmt = i + 1
+    return out
+
+
+_LOCAL_TYPE_DEF = re.compile(
+    r"^[ \t]*(?:struct|class|union)[ \t]+(\w+)(?:[ \t]*:[^;{}()]*)?[ \t\r\n]*\{", re.M)
+_LOCAL_TYPE_FWD = re.compile(r"^[ \t]*(?:struct|class|union)[ \t]+(\w+)[ \t]*;", re.M)
+
+
+def hoist_local_types(text, sym):
+    if sym not in HOIST_LOCAL_TYPES:
+        return text, 0
+    m = _mask_cxx(text)
+    count = 0
+    pieces = []
+    last = 0
+    for hs, op, cl in _function_spans(m):
+        body = m[op + 1:cl]
+        base = op + 1
+        found = []          # (start, end, name, tail) absolute; tail = declarators kept
+        taken = []
+        for mm in _LOCAL_TYPE_DEF.finditer(body):
+            s = base + mm.start()
+            if any(a <= s < b for a, b in taken):
+                continue
+            j = base + mm.end()          # just past the opening brace
+            depth = 1
+            while j < cl and depth:
+                if m[j] == "{":
+                    depth += 1
+                elif m[j] == "}":
+                    depth -= 1
+                j += 1
+            k = j
+            while k < cl and m[k] != ";":
+                k += 1
+            tail = text[j:k].strip()
+            found.append((s, k + 1, mm.group(1), tail))
+            taken.append((s, k + 1))
+        for mm in _LOCAL_TYPE_FWD.finditer(body):
+            s = base + mm.start()
+            if any(a <= s < b for a, b in taken):
+                continue
+            found.append((s, base + mm.end(), mm.group(1), ""))
+            taken.append((s, base + mm.end()))
+        # block-scope typedefs: they name the classes above (or are named by
+        # them), so they travel too, in their original order
+        for mm in re.finditer(r"^[ \t]*typedef\b", body, re.M):
+            s = base + mm.start()
+            if any(a <= s < b for a, b in taken):
+                continue
+            j = base + mm.end()
+            depth = 0
+            while j < cl:
+                ch = m[j]
+                if ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                elif ch == ";" and depth == 0:
+                    break
+                j += 1
+            stmt = m[s:j]
+            pm = re.search(r"\(\s*(?:\w+\s*::\s*)?\*\s*(\w+)\s*\)", stmt)
+            if pm:
+                tname = pm.group(1)
+            else:
+                st = re.sub(r"\[[^\]]*\]\s*$", "", stmt.rstrip())
+                tm = re.search(r"(\w+)\s*$", st)
+                tname = tm.group(1) if tm else None
+            if not tname:
+                continue
+            found.append((s, j + 1, tname, ""))
+            taken.append((s, j + 1))
+        # a local re-declaration of the enclosing class itself (`typedef struct
+        # Player Player;` inside a Player member) is not a new type: leave it
+        hdr = m[hs:op]
+        qual = re.search(r"(\w+)\s*::\s*~?\w+\s*\(", hdr)
+        skip = {sym}
+        if qual:
+            skip.add(qual.group(1))
+        found = [f for f in found if f[2] not in skip]
+        if not found:
+            continue
+        found.sort()
+        names = {}
+        for _, _, nm, _ in found:
+            if nm not in names:
+                names[nm] = "%s__h%d" % (nm, count)
+                count += 1
+        hoisted = []
+        keep = []
+        pos = hs
+        for s, e, nm, tail in found:
+            keep.append(text[pos:s])
+            defn = text[s:e]
+            if tail:
+                # `struct N { .. } var;` -- the type moves, the declarator stays
+                cut = defn.rindex("}") + 1
+                hoisted.append(defn[:cut] + ";")
+                keep.append("%s %s;" % (nm, tail))
+            else:
+                hoisted.append(defn)
+            pos = e
+        keep.append(text[pos:cl + 1])
+
+        def rename(t):
+            for old, newn in names.items():
+                t = re.sub(r"(?<![\w.>:])" + re.escape(old) + r"\b", newn, t)
+            return t
+        pieces.append(text[last:hs])
+        pieces.append("/* hostgen HOIST_LOCAL_TYPES: block-scope classes moved to file scope */\n"
+                      + rename("\n".join(hoisted)) + "\n")
+        pieces.append(rename("".join(keep)))
+        last = cl + 1
+    pieces.append(text[last:])
+    return "".join(pieces), count
+
+
+# ---- BLOCK-SCOPE EXTERNS THAT DISAGREE ON THE RETURN TYPE (PORTSYNC3) -------
+#
+# main's folded Player.cpp redeclares the same ROM function inside many bodies,
+# some as `extern void f(char *)` and some as `extern int f(void *)`, next to
+# the definition (`int f(char *)`). mwccarm never compares them; MSVC reports
+# C2556 / C2371 for a pair that differs only in the return type. Every caller
+# listed here drops the value (expression statements), so the `void`
+# spellings are respelled `int` to agree with the definition. Parameter types
+# are left alone (MSVC does not object to those inside one extern "C" scope).
+UNIFY_EXTERN_RET = {
+    "Player": ["func_ov002_020d6790", "func_ov002_020d5cec",
+               "Player_ReleaseHeldActor"],
+}
+
+
+def unify_extern_ret(text, sym):
+    names = UNIFY_EXTERN_RET.get(sym)
+    if not names:
+        return text, 0
+    total = 0
+    for nm in names:
+        text, n = re.subn(r"\bextern\s+void\s+" + re.escape(nm) + r"\s*\(",
+                          "extern int " + nm + "(", text)
+        total += n
+    return text, total
+
+
 # ---- CALLING CONVENTION: C++ VIRTUAL CALLS ON C VTABLES ----------------------
 #
 # On ARM a virtual call and a plain function-pointer call are the SAME thing:
@@ -4541,7 +4829,7 @@ def _load_rederived():
     import importlib.util
     import os
     here = pathlib.Path(__file__).resolve().parent
-    files = [here / "hostgen_portsync2.py"]
+    files = [here / "hostgen_portsync2.py", here / "hostgen_portsync3.py"]
     files += [pathlib.Path(f) for f in os.environ.get("HOSTGEN_EXTRA", "").split(os.pathsep) if f]
     g = globals()
     for f in files:
@@ -4580,6 +4868,10 @@ def emit(src_path, out_dir, decomp_root, extern_data=False):
     text, _ = ds_shift_patch(text, sym)
     text, _ = mmio_extern_patch(text, sym)
     text, _ = falls_off_return_patch(text, sym)
+    text, _ = valueless_return_patch(text, sym)
+    text, nhoist = hoist_local_types(text, sym)
+    if nhoist and not QUIET_VPTR:
+        print("  %s: %d block-scope class(es) hoisted to file scope" % (sym, nhoist))
     text, _ = virtual_call_patch(text, sym)
     text, _ = mg_pmf_call_patch(text, sym)
     text, _ = pmf_seam_patch(text, sym)
@@ -4597,6 +4889,7 @@ def emit(src_path, out_dir, decomp_root, extern_data=False):
     text, _ = callee_seam_patch(text, sym)
     text, _ = reg_ride_arg_patch(text, sym)
     text, _ = narrow_return_patch(text, sym)
+    text, _ = unify_extern_ret(text, sym)
     text, nztv = ztv_c_linkage(text, sym)
     if nztv and not QUIET_VPTR:
         print("  %s: %d vtable extern(s) given C linkage" % (sym, nztv))

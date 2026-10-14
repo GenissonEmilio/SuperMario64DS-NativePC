@@ -307,7 +307,7 @@ int *_ZN11daFeather_cD0Ev(int *self);
 void *daFeather_c_classInit(void);                   /* installs _ZTV11WingFeather */
 extern unsigned char g_profile_FEATHER[];    /* ov002 0x02108884 */
 int _ZTV11daFeather_c[31];
-int _ZTV11daFeather_c[];      /* RTTI alias, ONE speller (_ZN11WingFeatherD0Ev) */
+/* PORTSYNC3: the RTTI-alias declaration is gone: main renamed WingFeather to daFeather_c, so this table and its alias are one name. */
 }
 /* Both D0 bodies spell their own table by its RTTI name. One object, two C
    names; alias rather than edit the matched src -- the OneUpLogo /
