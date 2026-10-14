@@ -1170,8 +1170,7 @@ void on_frame(unsigned now) {
                 char nm[64]; std::snprintf(nm, sizeof nm, "smalls9b_f%ld.bmp", n);
                 const void *lfb = ::port_level_fb_ptr;
                 const bool w = lfb && ::ntr::ppu_write_bmp(nm, *(const ::ntr::Framebuffer *)lfb);
-                if (g_log) std::fprintf(stderr, "[coopspawn] SMALLS9B picture %s %s pstate=%08x wall=%lld
-", nm, w ? "written" : "FAILED",
+                if (g_log) std::fprintf(stderr, "[coopspawn] SMALLS9B picture %s %s pstate=%08x wall=%lld\n", nm, w ? "written" : "FAILED",
                                         my_player() ? *(const unsigned *)(my_player() + 0x370) : 0u, wall_ms());
             }
             q = end; while (*q == ',' || *q == ' ') ++q;
