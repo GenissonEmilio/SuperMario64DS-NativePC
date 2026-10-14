@@ -87,3 +87,27 @@ extern "C" int _ZNK10dBgCh_Actr14GetFloorResultEv(const void *self)
 #include "daDonketu_c.h"
 int daDonketu_c::CleanupResources() { return daOts_c::CleanupResources(); }
 int daDonketu_c::Render() { return daOts_c::Render(); }
+
+/* ---- daObjYajirusi_c, the host factory ------------------------------------
+ * Main's two classInit factories are `new daObjYajirusi_c`. Under _MSC_VER the
+ * class is the flat view (include/daObjYajirusi_c.h: no base class, no vptr),
+ * so `new` builds neither dBgActor_c nor the vtable. hostgen respells those two
+ * lines to call this, which does what the cartridge's factory does: allocate
+ * 0x380 through fBase_c::operator new, run dBgActor_c's base constructor, seat
+ * the class vtable, construct the shadow model at +0x320. */
+extern "C" {
+void *_ZN7fBase_cnwEj(unsigned size);
+void *_ZN10dBgActor_cC2Ev(void *self);
+void _ZN17dExtShadowModel_cC1Ev(void *self);
+extern void *_ZTV15daObjYajirusi_c[32];
+int *port_new_daObjYajirusi_c(void)
+{
+    int *p = (int *)_ZN7fBase_cnwEj(0x380);
+    if (p) {
+        _ZN10dBgActor_cC2Ev(p);
+        p[0] = (int)(size_t)_ZTV15daObjYajirusi_c;
+        _ZN17dExtShadowModel_cC1Ev((char *)p + 0x320);
+    }
+    return p;
+}
+}

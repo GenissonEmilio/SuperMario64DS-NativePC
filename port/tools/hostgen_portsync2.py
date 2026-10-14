@@ -827,6 +827,28 @@ ROWS_04[("VIRTUAL_CALL", "daObjYajirusi_c")] = [
     ("    KillByMegaChar(player);\n",
      "    reinterpret_cast<dBgActor_c *>(this)->KillByMegaChar(player);"
      "  /* hostgen VIRTUAL_CALL */\n"),
+    # PORTSYNC3: main's factories are `new daObjYajirusi_c` now. On the host the class is
+    # the FLAT view (no base, no vptr), so `new` leaves the vptr and the dBgActor_c
+    # base unbuilt (measured: level 6 faulted on the first signpost spawn, vptr 0).
+    # The port builds the object the way the ROM's factory does.
+    ("int *daObjYajirusi_c_classInit_YAJIRUSI_L(void)
+{
+    return (int *)new daObjYajirusi_c;
+}",
+     "extern \"C\" int *port_new_daObjYajirusi_c(void);  /* hal/portsync3_manual.cpp */
+"
+     "int *daObjYajirusi_c_classInit_YAJIRUSI_L(void)
+{
+    return port_new_daObjYajirusi_c();  /* hostgen VIRTUAL_CALL */
+}"),
+    ("int *daObjYajirusi_c_classInit_YAJIRUSI_R(void)
+{
+    return (int *)new daObjYajirusi_c;
+}",
+     "int *daObjYajirusi_c_classInit_YAJIRUSI_R(void)
+{
+    return port_new_daObjYajirusi_c();  /* hostgen VIRTUAL_CALL */
+}"),
 ]
 
 # ---- daOnms_c --------------------------------------------------------------
