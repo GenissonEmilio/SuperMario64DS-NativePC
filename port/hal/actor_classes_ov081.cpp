@@ -66,6 +66,7 @@
 // table that seeds it, in hal/scene_mg_sound.cpp. Nothing here defines it now,
 // so this file no longer needs the dsstate_seg bracket.
 
+#include "hal/pmf_tc.h"
 #include "port_d16.h"
 
 #include <cstdio>
@@ -1002,7 +1003,6 @@ extern "C" void hal_fill_moneybag_vtable(void)
 #include "daObjIceBlock_c.h"
 #include "daSnowball_c.h"
 #include "daGmch_c.h"
-#include "hal/pmf_tc.h"
 extern "C" {
 int _ZN12daSnowball_c13InitResourcesEv(void *self)
 { return ((daSnowball_c *)self)->daSnowball_c::InitResources(); }

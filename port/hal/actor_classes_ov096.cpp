@@ -81,6 +81,7 @@
  * all: none of the twelve handlers is in its .text range and its slot 12 is
  * the arm9 fBase_c default.
  */
+#include "hal/pmf_tc.h"
 #include "port_d16.h"
 
 #include <cstdio>
@@ -528,7 +529,6 @@ extern "C" void hal_fill_tornado_vtable(void)
 // ============================================================================
 #include "daSanbo_c.h"
 #include "daTor_c.h"
-#include "hal/pmf_tc.h"
 extern "C" int _ZN9daSanbo_c13InitResourcesEv(void *self)
 { return ((daSanbo_c *)self)->daSanbo_c::InitResources(); }
 extern "C" int _ZN9daSanbo_c16CleanupResourcesEv(void *self)
