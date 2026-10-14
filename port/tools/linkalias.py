@@ -81,6 +81,10 @@ FIXED = {
     "__ZN6Memory8AllocateEjiP4Heap": "?Allocate@Memory@@YAPAXIHPAUHeap@@@Z",
     # the short-angle helpers of src/ApproachAngle.cpp: callers disagree about the
     # return type (void / int / bool); every spelling is the same cdecl function
+    # port shadows still spell the base class ActorBase; main's name is fBase_c and
+    # the members are virtual (hal/scene_boot.cpp, hal/stage_bridges.cpp keep the shadow)
+    "?Virtual34@ActorBase@@QAEHII@Z": "?Virtual34@fBase_c@@UAEHII@Z",
+    "?Virtual38@ActorBase@@QAEHII@Z": "?Virtual38@fBase_c@@UAEHII@Z",
     "?GetBG3CharPtr@G2S@@YAPADXZ": "?GetBG3CharPtr@G2S@@YAIXZ",
     "?FlushAndInvalidateDataCache@CP15@@YAXII@Z": "__ZN4CP1527FlushAndInvalidateDataCacheEjj",
     "__Z11UpdateAngleRssis": "?UpdateAngle@@YAXAAFFHF@Z",

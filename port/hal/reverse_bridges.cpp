@@ -8,7 +8,6 @@
 // port grows real ones with the audio/fader gates.
 
 #include <cstdio>
-#include "dBgCh_Actr.h"
 
 struct Vector3 { int x, y, z; };
 struct Actor;
@@ -287,10 +286,9 @@ void Scene::StartSceneFade(unsigned, unsigned, unsigned short) {}
 struct dBgCh_Lin { bool DetectClsn(); };
 extern "C" int _ZN9dBgCh_Lin10DetectClsnEv(void *self)
 { return ((dBgCh_Lin *)self)->dBgCh_Lin::DetectClsn() ? 1 : 0; }
-extern "C" int _ZNK10dBgCh_Actr13GetWallResultEv(const void *self)
-{ return ((const dBgCh_Actr *)self)->GetWallResult(); }
-extern "C" int _ZNK10dBgCh_Actr14GetFloorResultEv(const void *self)
-{ return ((const dBgCh_Actr *)self)->GetFloorResult(); }
+/* PORTSYNC3: the GetWallResult / GetFloorResult flat faces moved to
+   hal/portsync3_manual.cpp, which can include the real dBgCh_Actr.h (they are
+   inline members of that header now). */
 
 /* gate 172: func_ov098_021390ec (Crate's state helper) declares a local
    `struct SurfaceInfo { void CopyNormalTo(Vector3 &) const; }` and calls it as

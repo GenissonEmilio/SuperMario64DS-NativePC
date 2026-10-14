@@ -68,3 +68,13 @@ extern "C" int _ZN7fBase_c7ProcessEMS_FivEMS_FbvEMS_FvjE(fBase_c *self,
 {
     return self->Process(action, before, after);
 }
+
+/* ---- dBgCh_Actr::GetWallResult / GetFloorResult, the flat spellings -------
+ * Both are inline members of include/dBgCh_Actr.h now (they return the sphere
+ * collider's result pointer), so there is no out-of-line member to reach; the
+ * flat names the ROM-shaped callers spell are defined here from the header. */
+#include "dBgCh_Actr.h"
+extern "C" int _ZNK10dBgCh_Actr13GetWallResultEv(const void *self)
+{ return (int)(size_t)((const dBgCh_Actr *)self)->GetWallResult(); }
+extern "C" int _ZNK10dBgCh_Actr14GetFloorResultEv(const void *self)
+{ return (int)(size_t)((const dBgCh_Actr *)self)->GetFloorResult(); }
