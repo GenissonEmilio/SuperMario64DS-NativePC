@@ -2334,8 +2334,28 @@ static int port_level_hold_due(void)
     return port_level_hold_frames(data_02092110);
 }
 
+/* SM64DS_TP_WARP=<frame>[,<id>]: stands in for the player stepping on an in-stage
+   warp spot (daWarpkun_c::Behavior calls WarpPlayer(player, id) when the player
+   stands in its volume and Player::CanWarp). The call is the ROM's own; this
+   only fires it at a chosen frame so a headless run can watch the teleport. */
+extern "C" void WarpPlayer(int i, int val);
+static void port_tp_warp_hook(void)
+{
+    static int frame, at = -2, id = 1;
+    if (at == -2) {
+        const char *e = std::getenv("SM64DS_TP_WARP");
+        at = e ? std::atoi(e) : -1;
+        if (e && std::strchr(e, ',')) id = std::atoi(std::strchr(e, ',') + 1);
+    }
+    if (at >= 0 && frame++ == at) {
+        std::fprintf(stderr, "[tpwarp] f%d WarpPlayer(0, %d)\n", at, id);
+        WarpPlayer(0, id);
+    }
+}
+
 extern "C" int port_level_change_poll(void)
 {
+    port_tp_warp_hook();
     if (data_02092110 < 0 && port_scene_crossing_due())
         port_level_scene_crossing();
     if (data_02092110 < 0) {
