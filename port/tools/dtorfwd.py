@@ -939,6 +939,20 @@ BANNER = '''\
 # rows changes.
 SPLITS = [
     {
+        # PORTSYNC3. include/dScMgJump2_c.h declares extern "C" __cxa_vec_cleanup
+        # with a function-pointer last parameter; five other class headers
+        # (dScMgAmida_c.h, dScMgBSC_c.h ...) declare the same C name with a
+        # void * last parameter. MSVC rejects the pair in one TU (C2733), mwccarm
+        # never sees it. Rows whose header closure carries dScMgJump2_c.h get
+        # their own file; no header in the tree is edited. `against` names a
+        # header that cannot exist, so no row is refused for it.
+        "suffix": "jump2",
+        "header": "dScMgJump2_c.h",
+        "against": "__no_such_header__.h",
+        "why": ("include/dScMgJump2_c.h declares __cxa_vec_cleanup with a "
+                "function-pointer parameter where other class headers use void *"),
+    },
+    {
         "suffix": "stage",
         "header": "Stage.h",
         "against": "dScMgSingle3DBase_c.h",

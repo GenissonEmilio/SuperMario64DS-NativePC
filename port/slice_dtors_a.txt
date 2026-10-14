@@ -46,3 +46,4 @@
 # tools/dtorfwd.py's SPLITS block owns the rule and --verify refuses if this
 # list stops naming exactly the files it generates.
 port/hal/dtor_forwarders_gen.cpp
+port/hal/dtor_forwarders_gen_jump2.cpp

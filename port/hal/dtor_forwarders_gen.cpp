@@ -38,7 +38,6 @@
 #include "dScGameOver_c.h"
 #include "dScMgBSC_c.h"
 #include "dScMgCard_c.h"
-#include "dScMgJump2_c.h"
 #include "dScMgMCarlo2_c.h"
 #include "dScMgMCarlo_c.h"
 #include "dScMgRoulette_c.h"
@@ -216,14 +215,6 @@ extern "C" void _ZN11daWarpkun_cD0Ev(void *self)
 /* ROM 0x020ec388 _ZN11daWarpkun_cD1Ev -- batch 1, the inline ~daWarpkun_c() */
 extern "C" void _ZN11daWarpkun_cD1Ev(void *self)
 { ((daWarpkun_c *)self)->daWarpkun_c::~daWarpkun_c(); }
-
-/* ROM 0x020eec9c _ZN12dScMgJump2_cD0Ev -- batch 1, the inline ~dScMgJump2_c() plus _ZN6Memory10DeallocateEPvP4Heap */
-extern "C" void _ZN12dScMgJump2_cD0Ev(void *self)
-{ ((dScMgJump2_c *)self)->dScMgJump2_c::~dScMgJump2_c(); _ZN6Memory10DeallocateEPvP4Heap(self, GAME_HEAP_PTR); }
-
-/* ROM 0x020eebe8 _ZN12dScMgJump2_cD1Ev -- batch 1, the inline ~dScMgJump2_c() */
-extern "C" void _ZN12dScMgJump2_cD1Ev(void *self)
-{ ((dScMgJump2_c *)self)->dScMgJump2_c::~dScMgJump2_c(); }
 
 /* ROM 0x02119958 _ZN12dScMgSound_cD0Ev -- batch 1, the inline ~dScMgSound_c() plus _ZN6Memory10DeallocateEPvP4Heap */
 extern "C" void _ZN12dScMgSound_cD0Ev(void *self)
