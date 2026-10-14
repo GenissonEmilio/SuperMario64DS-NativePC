@@ -26,6 +26,7 @@ extern void *data_0209f394[];
 extern unsigned char data_0209f250;       // my player slot
 extern unsigned char data_0209f21c;       // number of player bodies
 int port_adventure_ghost_seat(int slot);  // the hub seat a ghost body in player slot `slot` shows (-1: none)
+int port_adventure_ghost_drawpos(int slot, int out[3]);   // where the follower put that ghost this frame (fix12), 0 = not posed
 extern signed char data_0209f2f8;         // level (sublevel id)
 extern signed char data_02092120;         // area
 extern int data_0209f220[];               // [0] & 0xff = act
@@ -199,6 +200,22 @@ char *&ptrf(char *b, int off) { return *(char **)(b + off); }
 // Player::IsState without the call: mState (+0x370) is the state the body is in (a bool-returning ROM method
 // declared int elsewhere can hand back garbage in the upper bits of eax)
 bool state_is(const char *b, const void *st) { return *(void *const *)(b + 0x370) == st; }
+
+// ROMSTATE9: a ghost body sits PARKED (my position + 200000 up) between the follower's pass and the next, so any ROM code that
+// reads the eater's / holder's position from its body (the mouth state's follow, the spit's launch point, the hand placement)
+// must see it where it is drawn: put the body at the follower's drawn position first. False when the ghost is not posed.
+bool pose_ghost_at_draw(char *gb) {
+    if (!gb) return false;
+    const int nb = (int)data_0209f21c < 16 ? (int)data_0209f21c : 16;
+    for (int i = 0; i < nb; ++i) {
+        if (data_0209f394[i] != gb) continue;
+        int dp[3];
+        if (!port_adventure_ghost_drawpos(i, dp)) return false;
+        *player::pos_x(gb) = dp[0]; *player::pos_y(gb) = dp[1]; *player::pos_z(gb) = dp[2];
+        return true;
+    }
+    return false;
+}
 
 Place my_place() {
     Place p; p.level = (int)(unsigned char)data_0209f2f8; p.area = (int)data_02092120; p.act = data_0209f220[0] & 0xff;
@@ -382,6 +399,7 @@ void eat_end(char *me, bool spit, bool escaped = false) {
     *(unsigned char *)(me + kNoControl) = 0;
     if (g.rom_mouth) {
         if (spit && state_is(me, data_ov002_02110064) && ptrf(me, kInMouth)) {
+            pose_ghost_at_draw(ep);                             // the spit's launch point is the eater's body position
             func_ov002_020d5cec(me);                            // the ROM's own spit
             ++g.st.eats_spat;
         } else {
@@ -560,13 +578,17 @@ void carry_v_tick(char *me) {
         carry_v_clear(me, true);
         return;
     }
-    if (g.cv.synth) {
-        // pinned to the holder's hands, no control; a hold nobody ends lets go after ten seconds
+    {
+        // my logical position rides the holder's hands (the ROM's St_Grabbed has no movement of its own, the hand matrix only
+        // moves the DRAWING): camera, my broadcast and the throw's launch point all follow
         const double a = (double)(*(short *)(hb + kYawAngle) & 0xFFFF) * 3.14159265358979323846 / 32768.0;
         // the hub's newest holder position (the holder's ghost body can sit parked, so its own position is not used)
         *player::pos_x(me) = (s.x + (int)std::lround(std::sin(a) * g.carry_ahead)) * 0x1000;
         *player::pos_z(me) = (s.z + (int)std::lround(std::cos(a) * g.carry_ahead)) * 0x1000;
         *player::pos_y(me) = (s.y + g.carry_up) * 0x1000;
+    }
+    if (g.cv.synth) {
+        // pinned to the holder's hands, no control; a hold nobody ends lets go after ten seconds
         *(int *)(me + kHorzSpeed) = 0; *(int *)(me + kVertSpeed) = 0;
         *(unsigned char *)(me + kNoControl) = 1;
         if (g.frame - g.cv.f0 > 300) { *(unsigned char *)(me + kNoControl) = 0; carry_v_clear(me, true); }
@@ -953,6 +975,7 @@ extern "C" void port_party_hits_prewalk(void) {
     if (g.hold.active() && g.rom_mouth) {
         if (char *ep = body_of_seat(g.hold.eater())) {
             if (state_is(me, data_ov002_02110064)) {
+                pose_ghost_at_draw(ep);                   // the mouth state copies the eater's body position every frame
                 ptrf(me, kInMouth) = ep;
                 ptrf(ep, kMouthObj) = me;
                 *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
