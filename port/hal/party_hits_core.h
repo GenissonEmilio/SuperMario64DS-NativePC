@@ -30,18 +30,32 @@ enum IKind : unsigned {
     kStomp = 2,        // landed on the friend's head: squash, small hop for the victim
     kEatClaim = 3,     // Yoshi tongue touched the friend (eater -> victim)
     kEatAck = 4,       // victim -> eater: "I am in your mouth"
-    kEatRelease = 5,   // victim -> eater: "spat out / gave up"
-    kKinds = 6,
+    kEatRelease = 5,   // victim -> eater: "spat out / gave up" (x = 1: broke free by itself, the eater is hurt)
+    // INTERACT9: a Wario hold of a friend and the attach broadcast (same SYNH / SYNB 0x41 channel).
+    kGrabCatch = 6,    // holder -> victim: a claim, judged like a melee but a stun is fine (victim side)
+    kGrabThrow = 7,    // holder -> victim: let go with a throw (yaw = launch yaw, x = speed >> 8)
+    kGrabSwing = 8,    // holder -> victim: let go off the spin (same fields)
+    kGrabBreak = 9,    // victim -> holder: "I broke free" (the holder drops me)
+    kAttach = 10,      // victim -> every other seat: x = 0 off / 1 eaten / 2 carried, yaw = the holder's seat
+    kGrabAck = 11,     // victim -> holder: "I am in your hands"
+    kKinds = 12,
 };
-inline unsigned pack_seq(unsigned ikind, unsigned counter) { return ((ikind & 0xFu) << 12) | (counter & 0xFFFu); }
+// seq = kind (4 bits) | stamp (4 bits) | counter (8 bits). The stamp is the attacker's estimate, in frames,
+// of how old its view of the victim was when it struck (INTERACT9: the victim judges against its own pose
+// that many frames ago).
+inline unsigned pack_seq(unsigned ikind, unsigned counter, unsigned stamp = 0) {
+    return ((ikind & 0xFu) << 12) | ((stamp & 0xFu) << 8) | (counter & 0xFFu);
+}
 inline unsigned seq_ikind(unsigned seq) { return (seq >> 12) & 0xFu; }
-inline unsigned seq_counter(unsigned seq) { return seq & 0xFFFu; }
-inline bool ikind_is_claim(unsigned k) { return k <= kEatClaim; }   // victim-side kinds
-inline bool ikind_is_reply(unsigned k) { return k == kEatAck || k == kEatRelease; }   // eater-side kinds
+inline unsigned seq_stamp(unsigned seq) { return (seq >> 8) & 0xFu; }
+inline unsigned seq_counter(unsigned seq) { return seq & 0xFFu; }
+inline bool ikind_is_claim(unsigned k) { return k <= kEatClaim || k == kGrabCatch; }   // victim-side kinds
+inline bool ikind_is_reply(unsigned k) { return k >= kEatAck && k != kGrabCatch && k < kKinds; }   // everything that is not a claim
 
 // ---- the numbers (all tunable on a device; the proof pins the rules, not the values) -------------
 enum : int {
     kBodyRadius = 56,            // 40 body + 16 pad (party_cyl.cpp)
+    kLagAllowStamped = 90,       // INTERACT9: the slack left once the claim says how old my pose was
     kLagAllow = 150,             // how far a friend can have moved between his frame and my reading (units)
     kPosSlack = 400,             // claimed position vs the position I saw him at
     kCooldownFrames = 30,        // one believed claim per attacker per this
@@ -63,6 +77,7 @@ inline ReachRule reach_rule(unsigned ikind) {
     case kPound:    return { 220 + kLagAllow, -120, 150 };
     case kStomp:    return { 2 * kBodyRadius + kLagAllow, 40, 260 };
     case kEatClaim: return { 420 + kLagAllow, -150, 200 };
+    case kGrabCatch: return { 2 * kBodyRadius + 70 + kLagAllow, -120, 150 };
     }
     return { 0, 0, -1 };         // empty window: nothing reaches
 }
@@ -124,6 +139,7 @@ struct Me {
 struct Claim {
     int attacker = 0, victim = 0;
     unsigned ikind = 0, counter = 0;
+    unsigned stamp = 0;          // frames the attacker's view of me lagged (0 = unknown)
     int yaw = 0;                 // attacker yaw, 16-bit angle
     int x = 0, y = 0, z = 0;     // attacker's claimed position, units
 };
@@ -133,6 +149,8 @@ struct Claim {
 struct Rules {
     bool check_toggle = true, check_room = true, check_level = true, check_reach = true,
          check_cooldown = true, check_busy = true, check_pos = true, check_eat_rearm = true;
+    bool reach_claimed = true;   // INTERACT9: reach is tested from the position the attacker CLAIMS (it passed the
+                                 // position check against where I saw him), against my pose `stamp` frames ago
 };
 
 inline long long sq(long long v) { return v * v; }
@@ -148,6 +166,7 @@ struct Effect {
     int squash_frames = 0;       // visual squash on the victim's body (stomp)
     bool hurt_state = false;     // enter the ROM's hurt state (the stun)
     bool eat = false;            // start the eat hold instead
+    bool grab = false;           // enter the Wario hold instead
 };
 
 inline int angle_from_to(int ax, int az, int bx, int bz) {
@@ -165,8 +184,9 @@ inline Effect effect_for(const Claim &c, const Me &me, const Toggles &t) {
     case kPound: e.speed = 0x24000; e.hop = 0x20000; e.hurt_state = true; break;
     case kStomp: e.speed = 0x04000; e.hop = 0x10000; e.hurt_state = true; e.squash_frames = 20; break;
     case kEatClaim: e.eat = true; break;
+    case kGrabCatch: e.grab = true; break;
     }
-    if (t.damage && !e.eat) e.damage_units = 1;
+    if (t.damage && !e.eat && !e.grab) e.damage_units = 1;
     return e;
 }
 
@@ -223,9 +243,11 @@ private:
         }
         if (rules.check_reach) {
             // judged on MY truth: where I saw him (not where he says he is), against where I am now
-            const ReachRule r = reach_rule(c.ikind);
-            const long long dy = (long long)s.y - me.y;
-            if (horiz2(s.x, s.z, me.x, me.z) > sq(r.horiz) || dy < r.dy_lo || dy > r.dy_hi) return kOutOfReach;
+            ReachRule r = reach_rule(c.ikind);
+            if (c.stamp > 0 && r.horiz > kLagAllow) r.horiz -= (kLagAllow - kLagAllowStamped);   // a stamped claim needs less slack
+            const int ax = rules.reach_claimed ? c.x : s.x, ay = rules.reach_claimed ? c.y : s.y, az = rules.reach_claimed ? c.z : s.z;
+            const long long dy = (long long)ay - me.y;
+            if (horiz2(ax, az, me.x, me.z) > sq(r.horiz) || dy < r.dy_lo || dy > r.dy_hi) return kOutOfReach;
         }
         if (rules.check_busy && (me.busy || me.eaten)) return kVictimBusy;
         if (c.ikind == kEatClaim && rules.check_eat_rearm && last_eat_ && now - last_eat_ < (unsigned)kEatRearmFrames)
@@ -344,7 +366,7 @@ inline bool attacker_contact(unsigned ikind, int mx, int my, int mz, int myaw, i
     const long long dy = (long long)my - ty;        // attacker.y - target.y, as the victim reads it
     const int h = r.horiz - kLagAllow;               // no lag allowance on my own fresh numbers
     if (horiz2(mx, mz, tx, tz) > sq(h) || dy < r.dy_lo || dy > r.dy_hi) return false;
-    if (ikind == kMelee || ikind == kEatClaim) {     // in front of me: within +-0x3000 of my facing
+    if (ikind == kMelee || ikind == kEatClaim || ikind == kGrabCatch) {     // in front of me: within +-0x3000 of my facing
         const int want = angle_from_to(mx, mz, tx, tz);
         int d = (want - myaw) & 0xFFFF;
         if (d > 0x8000) d -= 0x10000;

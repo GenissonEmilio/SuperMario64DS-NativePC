@@ -1140,4 +1140,10 @@ VsGrabStats vs_grab_stats() {
     return s;
 }
 
+// INTERACT9 exports (party / coop holds reuse the arena's link, unlink and carry-pose helpers; nothing else of
+// this file runs outside arena mode).
+void vs_grab_export_link(char *holder, char *carried, bool ready) { link_pair(holder, carried, ready); }
+void vs_grab_export_unlink(char *holder, char *carried) { unlink_pair(holder, carried); }
+void vs_grab_export_overlay(char *holder, char *carried) { puppet_carry_overlay(holder, carried); }
+
 }  // namespace port

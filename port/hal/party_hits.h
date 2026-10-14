@@ -30,6 +30,12 @@ void on_coop_ctl(int seat, const unsigned char *d, int len);
 // the squash after a stomp I landed. Returns 0x1000 when none is running. Optional hook.
 int squash_scale_for_seat(int seat);
 
+// INTERACT9: the attach rule. While the friend on `victim_seat` is in somebody's mouth (kind 1) or hands (kind 2)
+// the follower draws his body at the holder (comms_sync.cpp gw_follow). Returns the holder's seat, or -1.
+int attached_holder(int victim_seat, int *kind);
+// Units ahead of the holder's yaw and up from its feet for the attach kind.
+void attach_offsets(int kind, int *ahead, int *up);
+
 struct Stats {
     unsigned long long claims_sent, claims_recv, applied, refused, bounces, eats_began, eats_spat, eats_aborted;
     unsigned long long refused_by[16];

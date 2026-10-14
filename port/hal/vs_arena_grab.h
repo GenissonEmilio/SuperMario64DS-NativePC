@@ -49,6 +49,11 @@ bool vs_grab_contact(int victim, unsigned flags);
 // Every applied referee event, in order (after vs_arena_ref.cpp's own effect).
 void vs_grab_on_event(const arena_wire::RefEvent *ev, int my_seat, bool directed);
 
+// INTERACT9: the same link / unlink / carry-pose helpers, for the party / coop hold (hal/party_hits.cpp).
+void vs_grab_export_link(char *holder, char *carried, bool ready);
+void vs_grab_export_unlink(char *holder, char *carried);
+void vs_grab_export_overlay(char *holder, char *carried);
+
 struct VsGrabStats {
     bool wrapped;
     unsigned long long contacts, tries, claims, confirmed, denied, unwound,
