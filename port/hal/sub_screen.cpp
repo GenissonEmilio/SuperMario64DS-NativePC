@@ -1629,6 +1629,11 @@ void menu_prepare_sources(unsigned *dst, int w, int h)
             g_msrc.pic_ry = ntr::present_y();
             g_msrc.pic_rw = ntr::present_w();
             g_msrc.pic_rh = ntr::present_h();
+            /* TITLE092: a frame whose 3D was drawn over the whole active frame (the title's scene, ntr::gx_set_menu_scene_cb) has the
+               whole frame as its picture: a piece that takes it whole (source 0,0,256,192, fixdest over the canvas) is a 1:1 copy */
+            if (ntr::gx_menu_scene_active()) {
+                g_msrc.pic_rx = 0; g_msrc.pic_ry = 0; g_msrc.pic_rw = w; g_msrc.pic_rh = h;
+            }
             if (hal_menu_uses_cover()) {
                 /* ASSET1: where the 3D engine wrote a pixel. gx_coverage is valid right after gx_render and nothing
                    rasterises between it and this draw. SCREEN_W stride, like the picture. */
