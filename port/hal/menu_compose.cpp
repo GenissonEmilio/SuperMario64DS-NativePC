@@ -23,6 +23,23 @@
 #include <chrono>
 #include <vector>
 #include <mutex>
+
+namespace ntr { int gx_anti_aliasing(); }
+
+namespace {
+/* The ROM 3D clear colours key_backdrop turns to black: 0x101820 and 0x080808 exactly. MENUS093B (B1): with the edge smoothing on, the
+   title's near-black backdrop polygon (the 4:3 box of the wide attract) is smoothed against the margin fill along its outer column, a
+   two pixel line one to a few steps off 0x080808 at the old 4:3 edges. With the smoothing on a pixel within 12 of 0x080808 on every
+   channel is the same backdrop and keys too; off, only the exact values do, as before. */
+inline bool clear_key(uint32_t p)
+{
+    p &= 0xffffffu;
+    if (p == 0x101820u || p == 0x080808u) return true;
+    if (!ntr::gx_anti_aliasing()) return false;
+    const int r = (int)((p >> 16) & 255) - 8, g = (int)((p >> 8) & 255) - 8, b = (int)(p & 255) - 8;
+    return r >= -8 && r <= 12 && g >= -8 && g <= 12 && b >= -8 && b <= 12;
+}
+}
 #if defined(_MSC_VER) || defined(__SSE2__)
 #include <emmintrin.h>
 #endif
@@ -1217,7 +1234,7 @@ static void piece_draw_ref(const MenuLayout *L, int i, const MenuSources *S, uin
                     continue;
                 }
                 /* INT2: key_backdrop on a picture piece turns the ROM 3D clear colour (0x101820 the dark navy of the star flight, 0x080808 the attract's near-black) to pure black */
-                if (P.key_backdrop && ((prow[qx] & 0xffffffu) == 0x101820u || (prow[qx] & 0xffffffu) == 0x080808u)) { row[xx] = 0xff000000u; continue; }
+                if (P.key_backdrop && clear_key(prow[qx])) { row[xx] = 0xff000000u; continue; }
                 row[xx] = prow[qx] | 0xff000000u;
             }
             continue;
@@ -1438,7 +1455,7 @@ static void piece_draw_pic(const MenuLayout *L, int i, const MenuSources *S, uin
                 if (in3 && exc[xx] >= P.ex3.x && exc[xx] < P.ex3.x + P.ex3.w) continue;
             }
             const uint32_t c = prow[qx];
-            if (P.key_backdrop && ((c & 0xffffffu) == 0x101820u || (c & 0xffffffu) == 0x080808u)) { row[xx] = 0xff000000u; continue; }
+            if (P.key_backdrop && clear_key(c)) { row[xx] = 0xff000000u; continue; }
             row[xx] = c | 0xff000000u;
         }
     }

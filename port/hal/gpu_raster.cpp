@@ -1578,26 +1578,6 @@ void aa_give_up(const char *why, HRESULT hr)
             (unsigned)hr);
 }
 
-/* MENUS093B (B1): the smoothing shaders' picture border (gpu_raster.hlsl's aa_clip): x0, y0, x1, y1, half-open. An empty rectangle is the
-   whole w x h picture. One 16 byte constant buffer, shared by the two smoothing passes, bound at slot 0 just before their draw. */
-ID3D11Buffer *g_aa_cb;
-bool aa_clip_bind(int x0, int y0, int x1, int y1, int w, int h)
-{
-    if (!(x1 > x0 && y1 > y0)) { x0 = 0; y0 = 0; x1 = w; y1 = h; }
-    if (!g_aa_cb) {
-        D3D11_BUFFER_DESC bd;
-        memset(&bd, 0, sizeof bd);
-        bd.ByteWidth = 16;
-        bd.Usage = D3D11_USAGE_DEFAULT;
-        bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-        if (FAILED(g_dev->CreateBuffer(&bd, 0, &g_aa_cb))) { g_aa_cb = 0; return false; }
-    }
-    const int v[4] = { x0, y0, x1, y1 };
-    g_ctx->UpdateSubresource(g_aa_cb, 0, 0, v, 0, 0);
-    g_ctx->PSSetConstantBuffers(0, 1, &g_aa_cb);
-    return true;
-}
-
 bool ensure_aa(int w, int h)
 {
     if (!g_aa_vs) {
@@ -1669,18 +1649,15 @@ void aa_ref(const ntr::GxGpuAa *a, uint32_t *out)
 {
     for (int y = 0; y < a->h; ++y) {
         const uint8_t *crow = a->cover + (size_t)y * a->stride;
-        const bool hc = a->clip_x1 > a->clip_x0 && a->clip_y1 > a->clip_y0;
-        const int cx0 = hc ? a->clip_x0 : 0, cy0 = hc ? a->clip_y0 : 0;
-        const int cx1 = hc ? a->clip_x1 : a->w, cy1 = hc ? a->clip_y1 : a->h;
         const uint32_t *rm = a->src + (size_t)y * a->stride;
-        const uint32_t *rn = a->src + (size_t)(y > cy0 ? y - 1 : y) * a->stride;
-        const uint32_t *rs = a->src + (size_t)(y + 1 < cy1 ? y + 1 : y) * a->stride;
+        const uint32_t *rn = a->src + (size_t)(y > 0 ? y - 1 : 0) * a->stride;
+        const uint32_t *rs = a->src + (size_t)(y + 1 < a->h ? y + 1 : y) * a->stride;
         uint32_t *orow = out + (size_t)y * a->w;
         for (int x = 0; x < a->w; ++x) {
             orow[x] = rm[x];
             if (!crow[x]) continue;
-            const int xw = x > cx0 ? x - 1 : x;
-            const int xe = x + 1 < cx1 ? x + 1 : x;
+            const int xw = x > 0 ? x - 1 : 0;
+            const int xe = x + 1 < a->w ? x + 1 : x;
             const uint32_t pM = rm[x], pN = rn[x], pS = rs[x];
             const uint32_t pW = rm[xw], pE = rm[xe];
             const float lM = aa_luma(pM), lN = aa_luma(pN), lS = aa_luma(pS);
@@ -1765,10 +1742,6 @@ int aa_backend(ntr::GxGpuAa *a)
     g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     g_ctx->VSSetShader(g_aa_vs, 0, 0);
     g_ctx->PSSetShader(g_aa_ps, 0, 0);
-    if (!aa_clip_bind(a->clip_x0, a->clip_y0, a->clip_x1, a->clip_y1, a->w, a->h)) {
-        aa_give_up("its picture border could not be set", 0);
-        return 0;
-    }
     ID3D11ShaderResourceView *srvs[2] = { g_aa_in_srv, g_aa_cv_srv };
     g_ctx->PSSetShaderResources(0, 2, srvs);
     g_ctx->Draw(3, 0);
@@ -1845,7 +1818,6 @@ void aa_at_exit()
     release_aa();
     if (g_aa_vs) { g_aa_vs->Release(); g_aa_vs = 0; }
     if (g_aa_ps) { g_aa_ps->Release(); g_aa_ps = 0; }
-    if (g_aa_cb) { g_aa_cb->Release(); g_aa_cb = 0; }
 }
 #else   /* ntr/gx.h without the edge-smoothing hook: the CPU pass always */
 void aa_at_exit() {}
@@ -2908,7 +2880,6 @@ int draw_full(const ntr::GxGpuFrame *f)
         g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         g_ctx->VSSetShader(g_full_vs, 0, 0);
         g_ctx->PSSetShader(g_ps_faa, 0, 0);
-        aa_clip_bind(f->clip_x0, f->clip_y0, f->clip_x1, f->clip_y1, f->cw, f->ch);   /* MENUS093B (B1) */
         g_ctx->PSSetShaderResources(0, 1, &g_col_srv);
         g_ctx->Draw(3, 0);
         ID3D11ShaderResourceView *none = 0;
@@ -3084,7 +3055,6 @@ int draw_full(const ntr::GxGpuFrame *f)
             ga.w = f->cw;
             ga.h = f->ch;
             ga.changed = 0;
-            ga.clip_x0 = f->clip_x0; ga.clip_y0 = f->clip_y0; ga.clip_x1 = f->clip_x1; ga.clip_y1 = f->clip_y1;
             g_aac_ref.resize((size_t)f->cw * (size_t)f->ch);
             aa_ref(&ga, &g_aac_ref[0]);
             long long bad = 0;

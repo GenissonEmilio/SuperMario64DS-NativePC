@@ -4294,16 +4294,11 @@ static void clear_fill_classic(Framebuffer &fb)
     const bool mw = menu_wide();          /* MENU WIDE 3D: the clear colour covers the whole wide frame */
     const int x0 = mw ? 0 : present_x(), y0 = mw ? 0 : present_y();
     const int x1 = mw ? active_w : x0 + present_w(), y1 = mw ? active_h : y0 + present_h();
-    /* MENUS093B (B1): with the edge smoothing on, the margin outside the present rectangle is filled with the picture's own clear colour
-       and not the old constant. aa_pass / aa_ps / fa_ps read the four neighbours of a covered pixel, and at the rectangle's outer column the
-       neighbour is a margin pixel: the constant (16,24,32) against a black clear blended a two pixel line of (8,9,9) onto the picture's first
-       and last column, which the title's wide scene shows at the old 4:3 edges. Off, the margin is what it always was. */
-    const uint32_t mg = g_aa_mode ? c : kOldClear;
     /* row 0 carries the present rectangle's columns if row 0 is inside it;
        the rest are copies of one of two template rows, built once */
     for (int x = 0; x < w; ++x)
-        fb.px[0][x] = (x >= x0 && x < x1 && 0 >= y0 && 0 < y1) ? c : mg;
-    if (c == mg || (x0 <= 0 && x1 >= w && y0 <= 0 && y1 >= h)) {
+        fb.px[0][x] = (x >= x0 && x < x1 && 0 >= y0 && 0 < y1) ? c : kOldClear;
+    if (c == kOldClear || (x0 <= 0 && x1 >= w && y0 <= 0 && y1 >= h)) {
         for (int y = 1; y < h; ++y)
             std::memcpy(fb.px[y], fb.px[0], (size_t)w * sizeof(fb.px[0][0]));
         return;
@@ -4315,7 +4310,7 @@ static void clear_fill_classic(Framebuffer &fb)
         if (src < 0) {
             if (y != 0)
                 for (int x = 0; x < w; ++x)
-                    fb.px[y][x] = (in && x >= x0 && x < x1) ? c : mg;
+                    fb.px[y][x] = (in && x >= x0 && x < x1) ? c : kOldClear;
             src = y;
         } else {
             std::memcpy(fb.px[y], fb.px[src], (size_t)w * sizeof(fb.px[0][0]));
@@ -4409,7 +4404,7 @@ void gx_card_settle_because(const char *why)
     GxGpuFrame f;
     std::memset(&f, 0, sizeof f);
     f.settle = 1;
-    f.outside_argb = g_aa_mode ? gx_clear_argb() : kOldClear;   /* MENUS093B (B1): see clear_fill_classic */
+    f.outside_argb = kOldClear;
     f.fb = &g_cp_fb->px[0][0];
     f.cover = &g_cover[0][0];
     f.stride = SCREEN_W;
@@ -4467,7 +4462,7 @@ const uint32_t *gx_card_capture_picture()
     GxGpuFrame f;
     std::memset(&f, 0, sizeof f);
     f.settle = 2;
-    f.outside_argb = g_aa_mode ? gx_clear_argb() : kOldClear;   /* MENUS093B (B1): see clear_fill_classic */
+    f.outside_argb = kOldClear;
     f.fb = &g_cp_fb->px[0][0];
     f.pre = g_cp_scratch;
     f.stride = SCREEN_W;
@@ -4544,7 +4539,6 @@ inline uint32_t mix2(uint32_t a, uint32_t b, float t) {
 struct AaCtx {
     Framebuffer *fb;
     int w, h;
-    int cx0, cy0, cx1, cy1;   /* MENUS093B (B1): the clip rectangle, half-open: a neighbour outside it reads as the edge pixel */
 };
 
 void aa_band(void *ctxp, int tid, int nt) {
@@ -4557,12 +4551,12 @@ void aa_band(void *ctxp, int tid, int nt) {
         const uint8_t *crow = g_cover[y];
         uint32_t *frow = c.fb->px[y];
         const uint32_t *rm = src + (size_t)y * SCREEN_W;
-        const uint32_t *rn = src + (size_t)(y > c.cy0 ? y - 1 : y) * SCREEN_W;
-        const uint32_t *rs = src + (size_t)(y + 1 < c.cy1 ? y + 1 : y) * SCREEN_W;
+        const uint32_t *rn = src + (size_t)(y > 0 ? y - 1 : 0) * SCREEN_W;
+        const uint32_t *rs = src + (size_t)(y + 1 < c.h ? y + 1 : y) * SCREEN_W;
         for (int x = 0; x < c.w; ++x) {
             if (!crow[x]) continue;
-            const int xw = x > c.cx0 ? x - 1 : x;
-            const int xe = x + 1 < c.cx1 ? x + 1 : x;
+            const int xw = x > 0 ? x - 1 : 0;
+            const int xe = x + 1 < c.w ? x + 1 : x;
             const uint32_t pM = rm[x], pN = rn[x], pS = rs[x];
             const uint32_t pW = rm[xw], pE = rm[xe];
             const float lM = luma(pM), lN = luma(pN), lS = luma(pS);
@@ -4656,23 +4650,13 @@ static void aa_pass(Framebuffer &fb, int cw, int ch, int nt) {
         a.w = cw;
         a.h = ch;
         a.changed = 0;
-        {
-            int cx0, cy0, cx1, cy1;
-            raster_clip(cx0, cy0, cx1, cy1);
-            a.clip_x0 = cx0; a.clip_y0 = cy0; a.clip_x1 = cx1 + 1; a.clip_y1 = cy1 + 1;
-        }
         if (g_gpu_aa(&a)) {
             g_aa_changed += a.changed;
             g_aa_pre_valid = 1;
             return;
         }
     }
-    AaCtx ctx{&fb, cw, ch, 0, 0, cw, ch};
-    {
-        int cx0, cy0, cx1, cy1;
-        raster_clip(cx0, cy0, cx1, cy1);
-        if (cx1 >= cx0 && cy1 >= cy0) { ctx.cx0 = cx0; ctx.cy0 = cy0; ctx.cx1 = cx1 + 1; ctx.cy1 = cy1 + 1; }
-    }
+    AaCtx ctx{&fb, cw, ch};
     /* THE SAME THREAD COUNT THE RASTER JUST USED, and through the same pool.
        RasterPool::run hands every band the width it was started at, so asking
        for a different one here would leave bands unaccounted for and the wait
@@ -6339,7 +6323,7 @@ void gx_render(Framebuffer &fb) {
         f.full_ok = 2;
         f.out = &gpu_out;
         f.keep = g_cp_pending;
-        f.outside_argb = g_aa_mode ? f.clear_argb : kOldClear;   /* MENUS093B (B1): see clear_fill_classic */
+        f.outside_argb = kOldClear;
         if (g_aa_mode && aa_scratch_alloc()) {
             f.aa_mode = 1;
             f.pre = g_aa_src;

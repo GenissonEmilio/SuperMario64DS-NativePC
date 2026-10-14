@@ -226,16 +226,6 @@ uint mix2(uint a, uint b, float t)
            mix_ch(a & 0xFFu, b & 0xFFu, s, t);
 }
 
-// MENUS093B (B1): the smoothing's picture border. aa_clip = x0, y0, x1, y1 (x1 / y1 exclusive), the rectangle the 3D engine can draw in
-// (the present rectangle narrowed to the game's viewport). A neighbour outside it is not part of the picture: it reads as the edge pixel,
-// the same clamp the picture's own outer rows and columns have always had. Without it the pillarbox margin's fill (a different colour from
-// the picture's own black) was blended in along the first and last column of the picture, a two pixel line at the old 4:3 edges of a wide
-// scene. gx.cpp's aa_band and aa_ref are the same rule.
-cbuffer AaClip : register(b0)
-{
-    int4 aa_clip;
-};
-
 uint aa_ps(float4 pos : SV_Position) : SV_Target0
 {
     int w, h;
@@ -243,10 +233,10 @@ uint aa_ps(float4 pos : SV_Position) : SV_Target0
     int x = (int)pos.x, y = (int)pos.y;
     uint pM = aa_src.Load(int3(x, y, 0));
     if (aa_cov.Load(int3(x, y, 0)) == 0u) return pM;
-    int xw = x > aa_clip.x ? x - 1 : x;
-    int xe = x + 1 < aa_clip.z ? x + 1 : x;
-    int yn = y > aa_clip.y ? y - 1 : y;
-    int ys = y + 1 < aa_clip.w ? y + 1 : y;
+    int xw = x > 0 ? x - 1 : 0;
+    int xe = x + 1 < w ? x + 1 : x;
+    int yn = y > 0 ? y - 1 : 0;
+    int ys = y + 1 < h ? y + 1 : y;
     uint pN = aa_src.Load(int3(x, yn, 0));
     uint pS = aa_src.Load(int3(x, ys, 0));
     uint pW = aa_src.Load(int3(xw, y, 0));
@@ -411,10 +401,10 @@ uint fa_ps(float4 pos : SV_Position) : SV_Target0
     float4 cM = fa_src.Load(int3(x, y, 0));
     if (cM.a <= 0.0) return 0u;
     uint pM = fa_pack(cM);
-    int xw = x > aa_clip.x ? x - 1 : x;
-    int xe = x + 1 < aa_clip.z ? x + 1 : x;
-    int yn = y > aa_clip.y ? y - 1 : y;
-    int ys = y + 1 < aa_clip.w ? y + 1 : y;
+    int xw = x > 0 ? x - 1 : 0;
+    int xe = x + 1 < w ? x + 1 : x;
+    int yn = y > 0 ? y - 1 : 0;
+    int ys = y + 1 < h ? y + 1 : y;
     uint pN = fa_pack(fa_src.Load(int3(x, yn, 0)));
     uint pS = fa_pack(fa_src.Load(int3(x, ys, 0)));
     uint pW = fa_pack(fa_src.Load(int3(xw, y, 0)));

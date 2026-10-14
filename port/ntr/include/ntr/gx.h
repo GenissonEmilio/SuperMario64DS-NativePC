@@ -408,9 +408,6 @@ struct GxGpuAa {
     int stride;
     int w, h;              // the active picture
     unsigned long long changed;  // out: pixels rewritten
-    // MENUS093B (B1): the rectangle the 3D engine drew in (the present rectangle narrowed to the game's viewport), half-open. A neighbour
-    // outside it reads as the edge pixel, as the picture's own outer rows and columns always did; an empty rectangle means the whole picture.
-    int clip_x0, clip_y0, clip_x1, clip_y1;
 };
 typedef int (*GxGpuAaFn)(GxGpuAa *);
 void gx_set_gpu_aa(GxGpuAaFn fn);
