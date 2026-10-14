@@ -1698,6 +1698,24 @@ static void port_level_scene_interlude(void)
            duty it performs -- the message pump, the host input poll that ends
            in PadData, the present, the pace -- has to be performed here or the
            star select cannot be seen, cannot be pressed and cannot be left. */
+        {
+            /* SM64DS_TP_QUIT=<crossing frame>: what a minigame's own quit does
+               (func_ov004_020b72d4 and its siblings: SetFaders, the fade
+               start, StartSceneFade(5, 0, 0)), fired at a chosen crossing
+               frame in place of pausing and touching QUIT. */
+            static int qa = -2;
+            if (qa == -2) {
+                const char *e = std::getenv("SM64DS_TP_QUIT");
+                qa = e ? std::atoi(e) : -1;
+            }
+            if (qa >= 0 && f == qa) {
+                extern char data_0209f61c[];
+                std::fprintf(stderr, "[tpquit] crossing f%d: the minigame quits (StartSceneFade(5,0,0))\n", f);
+                _ZN8dScene_c9SetFadersEP15FaderBrightness(data_0209f61c);
+                func_0202ec9c(data_0209f61c, 2);
+                _ZN8dScene_c14StartSceneFadeEjjt(5, 0, 0);
+            }
+        }
         if (port_interlude_frame_hook) {
             if (port_interlude_frame_hook(f)) {
                 closed = 1;
@@ -2347,6 +2365,8 @@ extern int data_ov002_02110154[];
 void WarpPlayer(int i, int val);
 void StartMinigameMenu(unsigned char a);
 void ExitLevel(void);
+void _ZN8dScene_c9SetFadersEP15FaderBrightness(void *);
+void func_0202ec9c(void *, int);
 void _ZN6Player11ChangeStateERNS_5StateE(void *, void *);
 void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p, unsigned short val, short amt);
 }
