@@ -405,6 +405,7 @@ void eat_tick(char *me) {
     const bool lv = !g.judge.rules.check_level || (s.in_level && s.at.level == mp.level && s.at.area == mp.area);
     in.eater_present = s.have_presence && lv && s.presence_age_ms <= (unsigned)kPresenceMaxAgeMs &&
                        s.have_ghost && s.ghost_age_ms <= (unsigned)kGhostMaxAgeMs;
+    if (!g.judge.rules.check_level) in.eater_present = body_of_seat(eater) != nullptr;    // LAB: the rig's host stalls for seconds
     if (!in.eater_present && g.log > 0)
         std::fprintf(stderr, "[phit] eater gone? presence %d in_level %d lvl %d/%d area %d/%d age %u ghost %d ghost_age %u\n",
                      s.have_presence ? 1 : 0, s.in_level ? 1 : 0, s.at.level, mp.level, s.at.area, mp.area, s.presence_age_ms, s.have_ghost ? 1 : 0, s.ghost_age_ms);
