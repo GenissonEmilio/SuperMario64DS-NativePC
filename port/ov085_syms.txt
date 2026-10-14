@@ -101,4 +101,6 @@ data_ov085_02130860@0x02130860:0x20
 #   data_ov085_02130820                        now defined by src/actors/daC_Jugem_c.cpp
 #   data_ov085_02130830                        now defined by src/actors/daC_Jugem_c.cpp
 #   data_ov085_02130840                        now defined by src/actors/daC_Jugem_c.cpp
-#   data_ov085_0213084c                        now defined by src/actors/daC_Jugem_c.cpp data_ov085_021305ac! data_ov085_021305b0! data_ov085_021305b8! data_ov085_021305c0! data_ov085_021305c8! data_ov085_021305d0! data_ov085_021305d8! data_ov085_021305e0! data_ov085_0213066c! data_ov085_0213067c! data_ov085_0213068c! data_ov085_0213069c! data_ov085_021306ac! data_ov085_021306bc! data_ov085_021306cc! data_ov085_021306dc! data_ov085_021306ec! data_ov085_021306f8! data_ov085_02130704! data_ov085_02130710! data_ov085_02130858!
+#   data_ov085_0213084c                        now defined by src/actors/daC_Jugem_c.cpp
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov085_021305ac! data_ov085_021305b0! data_ov085_021305b8! data_ov085_021305c0! data_ov085_021305c8! data_ov085_021305d0! data_ov085_021305d8! data_ov085_021305e0! data_ov085_0213066c! data_ov085_0213067c! data_ov085_0213068c! data_ov085_0213069c! data_ov085_021306ac! data_ov085_021306bc! data_ov085_021306cc! data_ov085_021306dc! data_ov085_021306ec! data_ov085_021306f8! data_ov085_02130704! data_ov085_02130710! data_ov085_02130858!

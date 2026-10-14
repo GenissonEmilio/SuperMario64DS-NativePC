@@ -678,4 +678,6 @@ data_ov006_02143014 data_ov006_02143020 data_ov006_02143070
 #   data_ov006_02143038                        now defined by src/actors/dScMgSnowball_c.cpp
 #   data_ov006_02143050                        now defined by src/actors/dScMgSnowball_c.cpp
 
-# PORTSYNC3 RETIRED (main's dScMgLuigi_c.cpp now defines these objects itself): data_ov006_02142234 data_ov006_02140330! data_ov006_02140338! data_ov006_02142188! data_ov006_02142190! data_ov006_021421c4! data_ov006_021421cc! data_ov006_02142304! data_ov006_02142334! data_ov006_021423a8! data_ov006_021427d4! data_ov006_02142f94!
+# PORTSYNC3 RETIRED (main's dScMgLuigi_c.cpp now defines these objects itself): data_ov006_02142234
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov006_02140330! data_ov006_02140338! data_ov006_02142188! data_ov006_02142190! data_ov006_021421c4! data_ov006_021421cc! data_ov006_02142304! data_ov006_02142334! data_ov006_021423a8! data_ov006_021427d4! data_ov006_02142f94!

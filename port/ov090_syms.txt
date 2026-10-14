@@ -355,4 +355,6 @@ data_ov090_021345c0@0x021345c0
 #   data_ov090_02134504                        now defined by src/actors/daMenbo_c.cpp
 #   data_ov090_02134514                        now defined by src/actors/daMenbo_c.cpp
 #   data_ov090_02134524                        now defined by src/actors/daManta_c.cpp
-#   data_ov090_0213452c                        now defined by src/actors/daManta_c.cpp data_ov090_0213455c! data_ov090_02134564! data_ov090_02134584! data_ov090_02134594! data_ov090_021345a4! data_ov090_021345ac! data_ov090_021345cc!
+#   data_ov090_0213452c                        now defined by src/actors/daManta_c.cpp
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov090_0213455c! data_ov090_02134564! data_ov090_02134584! data_ov090_02134594! data_ov090_021345a4! data_ov090_021345ac! data_ov090_021345cc!

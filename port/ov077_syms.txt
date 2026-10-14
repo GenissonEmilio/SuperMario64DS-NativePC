@@ -227,4 +227,6 @@ data_ov077_02127d18
 #   data_ov077_02127b50                        now defined by src/game/actors/d_a_jgm.cpp
 #   data_ov077_02127b88                        now defined by src/game/actors/d_a_jgm.cpp
 #   data_ov077_02127bc4                        now defined by src/game/actors/d_a_jgm.cpp
-#   g_profile_JUGEM                            now defined by src/game/actors/d_a_jgm.cpp data_ov077_02127c88! data_ov077_02127c90! data_ov077_02127c98! data_ov077_02127ca0!
+#   g_profile_JUGEM                            now defined by src/game/actors/d_a_jgm.cpp
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov077_02127c88! data_ov077_02127c90! data_ov077_02127c98! data_ov077_02127ca0!

@@ -133,4 +133,6 @@ data_ov016_02114e7c@0x02114e7c data_ov016_02114e88@0x02114e88
 # (hal/dsstate_all.h says why).
 #   data_ov016_02114d4c                        now defined by src/actors/daMoray_c.cpp
 #   data_ov016_02114e6c                        now defined by src/actors/daSlide_Box_c.cpp
-#   data_ov016_02114e74                        now defined by src/actors/daSlide_Box_c.cpp data_ov016_02114d20! data_ov016_02114d28! data_ov016_02114d30! data_ov016_02114d38! data_ov016_02114dcc! data_ov016_02114dd4! data_ov016_02114ddc! data_ov016_02114de4! data_ov016_02114e44! data_ov016_02114e4c!
+#   data_ov016_02114e74                        now defined by src/actors/daSlide_Box_c.cpp
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov016_02114d20! data_ov016_02114d28! data_ov016_02114d30! data_ov016_02114d38! data_ov016_02114dcc! data_ov016_02114dd4! data_ov016_02114ddc! data_ov016_02114de4! data_ov016_02114e44! data_ov016_02114e4c!

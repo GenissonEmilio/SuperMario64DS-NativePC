@@ -1639,7 +1639,6 @@ def main():
         blob = reloc_blob(a, blob)
         if is_ext:
             ext.append((name, a, size))
-            lines.append(f"extern u8 {name}[];")
             continue
         if pack:
             pack_rows.append((a, name, size))
@@ -1647,6 +1646,9 @@ def main():
             lines.append(f"u8 {name}[{size}] = "
                          f"{{ {romblob_common.init_body(blob)} }};")
         emitted.append((name, a, size, blob))
+
+    for _n, _a, _s in ext:
+        lines.append(f"extern u8 {_n}[];")
 
     if pack:
         tag = f"pk{ovid:03d}"

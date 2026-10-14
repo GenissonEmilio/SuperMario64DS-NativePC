@@ -79,4 +79,6 @@ data_ov014_021149c8@0x021149c8:0xc data_ov014_021149d4@0x021149d4:0xc
 #   data_ov014_021149b8                        now defined by src/game/actors/d_a_obj_wanwan_shutter.cpp
 #   data_ov014_021149c0                        now defined by src/game/actors/d_a_obj_wanwan_shutter.cpp
 
-# PORTSYNC3 RETIRED (main's d_a_wanwan.cpp now defines these objects itself): data_ov014_0211476c data_ov014_02114968 data_ov014_02114970 data_ov014_02114978 data_ov014_02114980 data_ov014_02114940! data_ov014_02114948!
+# PORTSYNC3 RETIRED (main's d_a_wanwan.cpp now defines these objects itself): data_ov014_0211476c data_ov014_02114968 data_ov014_02114970 data_ov014_02114978 data_ov014_02114980
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov014_02114940! data_ov014_02114948!

@@ -251,4 +251,6 @@ _ZTS9daSanbo_c _ZTI9daSanbo_c g_profile_SANBO g_profile_SANBO_BODY
 _ZTS7daTor_c _ZTI7daTor_c g_profile_TORNADO
   data_ov096_02137b30@0x02137b30 data_ov096_02137b3c@0x02137b3c
    data_ov096_02137bb8@0x02137bb8
-data_ov096_02137bc4@0x02137bc4 data_ov096_02137b20! data_ov096_02137b28! data_ov096_02137b48! data_ov096_02137ba8! data_ov096_02137bb0!
+data_ov096_02137bc4@0x02137bc4
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov096_02137b20! data_ov096_02137b28! data_ov096_02137b48! data_ov096_02137ba8! data_ov096_02137bb0!

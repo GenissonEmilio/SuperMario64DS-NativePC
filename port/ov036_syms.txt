@@ -352,4 +352,6 @@ data_ov036_021141c0@0x021141c0 data_ov036_021141cc@0x021141cc
 #   data_ov036_0211411c                        now defined by src/game/actors/d_a_obj_rc_dorifu.cpp
 #   data_ov036_0211419c                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
 #   data_ov036_021141a4                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
-#   data_ov036_021141ac                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp data_ov036_02114048! data_ov036_02114050! data_ov036_02114070! data_ov036_021140ac! data_ov036_021140b4!
+#   data_ov036_021141ac                        now defined by src/game/actors/d_a_obj_rc_carpet.cpp
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov036_02114048! data_ov036_02114050! data_ov036_02114070! data_ov036_021140ac! data_ov036_021140b4!

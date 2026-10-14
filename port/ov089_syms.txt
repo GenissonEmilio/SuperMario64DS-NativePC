@@ -64,4 +64,6 @@ data_ov089_02132cd4@0x02132cd4:0xc data_ov089_02132ce0@0x02132ce0:0xc
 #   data_ov089_02132c68                        now defined by src/actors/daObjKey_c.cpp
 #   data_ov089_02132c70                        now defined by src/actors/daObjKey_c.cpp
 #   data_ov089_02132c78                        now defined by src/actors/daObjKey_c.cpp
-#   data_ov089_02132ca4                        now defined by src/actors/daObjKey_c.cpp data_ov089_02132cec!
+#   data_ov089_02132ca4                        now defined by src/actors/daObjKey_c.cpp
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov089_02132cec!

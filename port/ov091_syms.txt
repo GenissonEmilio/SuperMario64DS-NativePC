@@ -99,4 +99,6 @@ data_ov091_021356a4@0x021356a4:0xc
 #   data_ov091_02135654                        now defined by src/actors/daObjPile_c.cpp
 #   data_ov091_021356b0                        now defined by src/game/actors/d_a_hyuhyu.cpp
 #   data_ov091_021356c0                        now defined by src/game/actors/d_a_hyuhyu.cpp
-#   data_ov091_021356d0                        now defined by src/game/actors/d_a_hyuhyu.cpp data_ov091_02135440! data_ov091_02135448! data_ov091_02135450! data_ov091_02135458! data_ov091_02135490! data_ov091_02135498! data_ov091_021354a0! data_ov091_021354a8! data_ov091_02135674! data_ov091_0213567c! data_ov091_02135684!
+#   data_ov091_021356d0                        now defined by src/game/actors/d_a_hyuhyu.cpp
+# PORTSYNC3 name-only rows (the class TU defines the storage):
+data_ov091_02135440! data_ov091_02135448! data_ov091_02135450! data_ov091_02135458! data_ov091_02135490! data_ov091_02135498! data_ov091_021354a0! data_ov091_021354a8! data_ov091_02135674! data_ov091_0213567c! data_ov091_02135684!
