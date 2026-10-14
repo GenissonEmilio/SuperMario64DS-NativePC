@@ -523,7 +523,7 @@ unsigned char func_ov007_020cc600(int arg);
 void func_ov007_020c3e4c(void *arg);
 void func_ov007_020c3e64(void *arg);
 /* the graphCallback_c sub-object's own four, at +0x50 */
-int  _ZN9dScDSMT_c15graphCallback_c14GraphCallback0Ev(void);              /* gc slot 0 */
+int  _ZN9dScDSMT_c15graphCallback_c14GraphCallback0Ev(void *self);              /* gc slot 0 */
 int  _ZN9dScDSMT_c15graphCallback_c14GraphCallback2Ev(void *self);        /* gc slot 2 */
 int  _ZN8dGraph_c10callback_c14GraphCallback1Ev(void *self);/* gc slot 1, matched arm9 */
 int  _ZN8dGraph_c10callback_c14GraphCallback3Ev(void *self);/* gc slot 3, matched arm9 */
@@ -4070,7 +4070,7 @@ static void *__fastcall ti_d0(void *s, void *) { return _ZN9dScDSMT_cD0Ev((int *
  * census says how many times each slot was entered and how many of those
  * arrived with the wrong block. */
 extern "C" void port_r3g_gc_enter(unsigned slot, void *self);
-static int ti_gc0(void *s)  { port_r3g_gc_enter(0, s); return _ZN9dScDSMT_c15graphCallback_c14GraphCallback0Ev(); }
+static int ti_gc0(void *s)  { port_r3g_gc_enter(0, s); return _ZN9dScDSMT_c15graphCallback_c14GraphCallback0Ev(s); }
 static int ti_gc1(void *s)  { port_r3g_gc_enter(1, s); return _ZN8dGraph_c10callback_c14GraphCallback1Ev(s); }
 static int ti_gc2(void *s)  { port_r3g_gc_enter(2, s); return _ZN9dScDSMT_c15graphCallback_c14GraphCallback2Ev(s); }
 static int ti_gc3(void *s)  { port_r3g_gc_enter(3, s); return _ZN8dGraph_c10callback_c14GraphCallback3Ev(s); }
