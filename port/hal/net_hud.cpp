@@ -174,7 +174,7 @@ bool build_room(NetHudView *v) {
     const CommsHubStats st = comms_hub_stats();
     const unsigned now = GetTickCount();
     long long sum = 0;
-    int n = 0;
+    int n = 0, worst = -1;
     bool quiet = false;
     const int others = popcount16(st.seat_mask & 0xFFFFu);
     for (int s = 0; s < kHubMaxSeats; ++s) {
@@ -186,12 +186,19 @@ bool build_room(NetHudView *v) {
         }
         if (info.heard_ms_ago > kQuietMs) quiet = true;
         if (info.rtt_ms < 0) continue;
-        sum += seat_median(s, info, others);
+        const int med = seat_median(s, info, others);
+        sum += med;
+        if (med > worst) worst = med;
         ++n;
     }
     loss_sample(st, st.seat_mask != 0 && !quiet, now);
     const int ping = n ? (int)((sum + n / 2) / n) : -1;
     put_ping(v->line[0], "ping", ping);
+    // SMALLS9B (field item 21): the mean hides the far friend. With two or more
+    // friends measured, the slowest one's median is shown next to it, and only
+    // when it is not the same number ("ping 111 ms worst 157"; the ROM font has no parentheses).
+    if (ping >= 0 && n >= 2 && worst > ping && worst < 10000 && !std::getenv("SM64DS_NET_HUD_NOWORST"))
+        std::snprintf(v->line[0], kNetHudLineMax, "ping %d ms worst %d", ping, worst);
     if (st.seat_mask) {
         put_loss(v->line[1], loss_pct(now, ping));
         v->n = 2;

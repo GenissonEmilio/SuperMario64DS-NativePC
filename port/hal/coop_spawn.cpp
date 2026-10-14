@@ -51,6 +51,10 @@ extern int data_ov089_02132894[];      // Key kinds 0..6: pointers to the kind's
 extern char data_ov002_0211094c;       // kind 7's model
 }
 
+extern "C" unsigned char data_0209caa0[];             // the live working copy of the save record
+extern "C" const void *port_level_fb_ptr;               // coop_boot.cpp: the level loop's top-screen framebuffer (proof pictures)
+namespace ntr { struct Framebuffer; bool ppu_write_bmp(const char *path, const Framebuffer &fb); }
+
 namespace port {
 namespace {
 
@@ -76,7 +80,7 @@ enum : int { kNetMax = 24, kLnkMax = 8, kInMax = 48, kBlkOutMax = 16, kAckMax = 
 bool g_env = false, g_log = false, g_census_log = false;
 struct Off { bool block, red, spawn, gone, snap; } g_off = {};
 // TOTALS9 must-fail switches (SM64DS_TOTALS_OFF=redlocal,guard,coinstar): the same build with the r3 behaviour back.
-struct TOff { bool redlocal, guard, coinstar; } g_toff = {};
+struct TOff { bool redlocal, guard, coinstar, keyview; } g_toff = {};
 CoopSpawnStats g_st = {};
 bool g_registered = false;
 int g_my = -1;
@@ -174,6 +178,7 @@ void read_env() {
         g_toff.redlocal = std::strstr(o, "redlocal") != nullptr;
         g_toff.guard = std::strstr(o, "guard") != nullptr;
         g_toff.coinstar = std::strstr(o, "coinstar") != nullptr;
+        g_toff.keyview = std::strstr(o, "keyview") != nullptr;      // SMALLS9B control: the old behaviour (a watcher builds the key copy)
     }
     if (const char *o = std::getenv("SM64DS_SPAWN_OFF")) {
         g_off.block = std::strstr(o, "block") != nullptr;
@@ -732,6 +737,19 @@ bool key_ok(int lvl, unsigned param) {
 }
 
 void apply_spawn(int seat, const SpSpawnWire &w, unsigned now) {
+    // SMALLS9B (Tango: "everyone sees the animation of the person when they get the key"): the rabbit key (229) runs its caught cutscene
+    // (pose, "You retrieved a key" box) on the Player nearest to it. A copy built here ran that on THIS console's body. The catcher's own
+    // console plays it; a watcher sees the catcher's ghost play the key-get animation (the ghost's animation rides SYNG), and the key bit
+    // counts for everyone through the shared save (the Mip rabbit flags are monotonic bits of the record). So no copy is built here; the id is
+    // acked so a late repeat of the spawn is dropped and the catcher's later "gone" finds nothing to remove.
+    if (w.cls == 229 && !g_toff.keyview) {
+        ack_add(w.origin, w.counter, now);
+        ++g_st.drop_class;
+        g_kp_until = g_frames + 3000u;       // proof: the pprobe lines (my Player's state) run on a watcher too
+        if (g_log) std::fprintf(stderr, "[coopspawn] key view: seat %d's rabbit key (id %d/%d) not built here, I watch the catcher's ghost frame=%u wall=%lld\n",
+                                seat, (int)w.origin, (int)w.counter, g_frames, wall_ms());
+        return;
+    }
     if (w.cls == 282 && !key_ok(g_lvl, w.param)) { ++g_st.drop_class; return; }
     if (w.cls == 282 && !key_model_ready(w.param)) {
         ++g_st.drop_class;
@@ -1142,6 +1160,34 @@ void on_frame(unsigned now) {
     }
     if (!my_player()) return;
     ++g_frames;
+
+    // SMALLS9B proof knob: SM64DS_SMALLS9B_KEYBIT=<frame>:<mask> ORs the mask into my live save copy's flags1 at that frame (the bit a rabbit
+    // catch sets: 0x40 / 0x80, a monotonic bit of the shared record); while the knob is set the live flags1 is logged every 60 frames.
+    if (const char *kb = std::getenv("SM64DS_SMALLS9B_KEYBIT")) {
+        unsigned f = 0, m = 0;
+        if (std::sscanf(kb, "%u:%i", &f, (int *)&m) == 2) {
+            unsigned *fl = (unsigned *)(data_0209caa0 + 4);
+            if (g_frames == f) { *fl |= m; if (g_log) std::fprintf(stderr, "[coopspawn] keybit set mask=%08x frame=%u wall=%lld\n", m, g_frames, wall_ms()); }
+            if (g_log && (g_frames % 60u) == 0) std::fprintf(stderr, "[coopspawn] keybit flags1=%08x frame=%u wall=%lld\n", *fl, g_frames, wall_ms());
+        }
+    }
+
+    // SMALLS9B proof pictures: SM64DS_SMALLS9B_SHOT="f1,f2" writes smalls9b_f<N>.bmp (the top screen) when this module's frame count reaches N.
+    if (const char *sh = std::getenv("SM64DS_SMALLS9B_SHOT")) {
+        for (const char *q = sh; *q;) {
+            char *end = nullptr;
+            const long n = std::strtol(q, &end, 10);
+            if (end == q) break;
+            if (g_frames == (unsigned)n) {
+                char nm[64]; std::snprintf(nm, sizeof nm, "smalls9b_f%ld.bmp", n);
+                const void *lfb = ::port_level_fb_ptr;
+                const bool w = lfb && ::ntr::ppu_write_bmp(nm, *(const ::ntr::Framebuffer *)lfb);
+                if (g_log) std::fprintf(stderr, "[coopspawn] SMALLS9B picture %s %s pstate=%08x wall=%lld\n", nm, w ? "written" : "FAILED",
+                                        my_player() ? *(const unsigned *)(my_player() + 0x370) : 0u, wall_ms());
+            }
+            q = end; while (*q == ',' || *q == ' ') ++q;
+        }
+    }
 
     // the owner's red-coin sum, from a sender that was not yet a member
     if (g_early.on && is_member(g_early.seat)) {
