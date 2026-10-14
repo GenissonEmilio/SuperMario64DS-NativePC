@@ -547,9 +547,10 @@ void carry_v_tick(char *me) {
     if (g.cv.synth) {
         // pinned to the holder's hands, no control; a hold nobody ends lets go after ten seconds
         const double a = (double)(*(short *)(hb + kYawAngle) & 0xFFFF) * 3.14159265358979323846 / 32768.0;
-        *player::pos_x(me) = *player::pos_x(hb) + (int)std::lround(std::sin(a) * g.carry_ahead) * 0x1000;
-        *player::pos_z(me) = *player::pos_z(hb) + (int)std::lround(std::cos(a) * g.carry_ahead) * 0x1000;
-        *player::pos_y(me) = *player::pos_y(hb) + g.carry_up * 0x1000;
+        // the hub's newest holder position (the holder's ghost body can sit parked, so its own position is not used)
+        *player::pos_x(me) = (s.x + (int)std::lround(std::sin(a) * g.carry_ahead)) * 0x1000;
+        *player::pos_z(me) = (s.z + (int)std::lround(std::cos(a) * g.carry_ahead)) * 0x1000;
+        *player::pos_y(me) = (s.y + g.carry_up) * 0x1000;
         *(int *)(me + kHorzSpeed) = 0; *(int *)(me + kVertSpeed) = 0;
         *(unsigned char *)(me + kNoControl) = 1;
         if (g.frame - g.cv.f0 > 300) { *(unsigned char *)(me + kNoControl) = 0; carry_v_clear(me, true); }
