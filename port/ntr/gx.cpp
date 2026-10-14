@@ -595,6 +595,25 @@ bool menu_wide() {
    projection matrix, the widescreen widen and its perspective test are one
    piece of code with one caller each. Byte-identical to what project() did
    inline before, same expression, same order. */
+/* MISC093 (D21 / B3): the menu-wide placement of one clip-space point, view_to_clip's menu branch on its own, so the smoother's
+   grid emit (smooth_emit_grid_cpu, which projects its own points four lanes at a time) puts a tessellated triangle where the
+   plain path puts the untessellated one. Same expression, same order. */
+static inline void menu_wide_place(float &cx, float &cy, float cw) {
+    cx *= (float)present_w() / (float)active_w;
+    cy *= (float)present_h() / (float)active_h;
+    if (!g_menu_sprite) {
+        if (g.mw_kx != 1.0f || g.mw_tx != 0.0f || g.mw_ky != 1.0f || g.mw_ty != 0.0f) {
+            cx *= g.mw_kx;
+            if (g.mw_tx != 0.0f) cx += g.mw_tx * cw;
+            cy *= g.mw_ky;
+            if (g.mw_ty != 0.0f) cy += g.mw_ty * cw;
+        }
+    } else if (g_menu_sprxf_on) {
+        cx = cx * g_menu_sprxf[0] + g_menu_sprxf[1] * cw;
+        cy = cy * g_menu_sprxf[2] + g_menu_sprxf[3] * cw;
+    }
+}
+
 Vec4 view_to_clip(const Vec4 &view) {
     Vec4 c = mul(view, g.proj);
     if (menu_wide()) {
@@ -1098,6 +1117,9 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
                        pj.m[11] != 0.0f;
     const float widen = widen_in ? *widen_in : persp
         ? (4.0f / 3.0f) * ((float)present_h() / (float)present_w()) : 1.0f;
+    /* MISC093: a menu-wide frame (a one-screen page in a wide window) places every point through view_to_clip's menu branch,
+       not the 4:3 widen; a grid the card kept never comes from such a frame (grid_defer_try refuses them) */
+    const bool mwide = menu_wide();
     /* The barycentric weights of every grid point, from the kernel's table:
        the floats the old loop recomputed (ia * (1/tf), 1 - a - b clamped). */
     const SmoothGridTable &T = *smooth_grid_table(tf);
@@ -1138,6 +1160,7 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
         GxVertex &o = v[i];
         o.x = persp ? cv[0] * widen : cv[0];
         o.y = cv[1]; o.z = cv[2]; o.w = cv[3];
+        if (mwide) { o.x = cv[0]; menu_wide_place(o.x, o.y, o.w); }
         o.vx = vv[0]; o.vy = vv[1]; o.vz = vv[2]; o.vw = vv[3];
         SmoothVertex at;
         smooth_grid_attrs_inline(s[0], s[1], s[2], T.a[i], T.b[i], T.c[i], at);
@@ -1240,6 +1263,7 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
                            const SmoothVertex s[3], const Mat *xform,
                            const float *box6) {
     ++g_gd_try;
+    if (menu_wide()) { ++g_gd_state; return false; }     /* MISC093: see smooth_emit_grid_cpu */
     const SmoothGridTable *Tp = smooth_grid_table(tf);
     if (!Tp) return false;
     const int n = Tp->n;
@@ -2152,6 +2176,16 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
                                  nz * g.tex.m[8]) * (1.0f / 16.0f);
                 g.v = g.raw_v + (nx * g.tex.m[1] + ny * g.tex.m[5] +
                                  nz * g.tex.m[9]) * (1.0f / 16.0f);
+            }
+            { /* MISC093 probe (D8): SM64DS_MISC93_TG2=<n> logs the first n texgen-2 normals per run with the texture matrix */
+                static int lim = -2, cnt = 0;
+                if (lim == -2) { const char *e = std::getenv("SM64DS_MISC93_TG2"); lim = e ? std::atoi(e) : -1; }
+                if (lim > 0 && ((g_teximage >> 30) & 3) == 2 && cnt < lim) {
+                    ++cnt;
+                    std::fprintf(stderr, "[tg2] n=%d teximage=%08x n=(%.3f %.3f %.3f) raw=(%.2f %.2f) tex=[%.2f %.2f %.2f / %.2f %.2f %.2f / %.2f %.2f %.2f / %.2f %.2f] uv=(%.2f %.2f) pol=%08x\n",
+                                 cnt, (unsigned)g_teximage, nx, ny, nz, g.raw_u, g.raw_v, g.tex.m[0], g.tex.m[1], g.tex.m[2], g.tex.m[4], g.tex.m[5], g.tex.m[6],
+                                 g.tex.m[8], g.tex.m[9], g.tex.m[10], g.tex.m[12], g.tex.m[13], g.u, g.v, (unsigned)g.poly_attr);
+                }
             }
 
             // Normals are transformed by the directional matrix, not position.
