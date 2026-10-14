@@ -1891,13 +1891,18 @@ static int __fastcall l2_eb2c_view_unreached(void *, void *)
     return 0;
 }
 
-static void *l2_eb2c_msvc_vt[6] = {
-    (void *)l2_eb2c_view_unreached,     /* 0x00  dtor, folded */
-    (void *)l2_eb2c_view_unreached,     /* 0x04  AdvanceFade */
-    (void *)l2_eb2c_view_unreached,     /* 0x08  SetBackwardTime */
-    (void *)l2_eb2c_view_unreached,     /* 0x0c  SetForwardTime */
-    (void *)l2_eb2c_view_is_at_start,   /* 0x10  IsAtStart */
-    (void *)l2_eb2c_view_is_at_end,     /* 0x14  IsAtEnd */
+/* PORTSYNC3: include/dFader_c.h now carries a host-only filler for the ROM's D0 slot, so MSVC
+   numbers dFdBrightness_c's virtuals exactly like the cartridge: IsAtStart at 0x14, IsAtEnd at
+   0x18. The stand-in follows (it used to describe the one-destructor-slot layout). */
+static void *l2_eb2c_msvc_vt[8] = {
+    (void *)l2_eb2c_view_unreached,     /* 0x00  dtor */
+    (void *)l2_eb2c_view_unreached,     /* 0x04  the D0 filler */
+    (void *)l2_eb2c_view_unreached,     /* 0x08  AdvanceFade */
+    (void *)l2_eb2c_view_unreached,     /* 0x0c  SetBackwardTime */
+    (void *)l2_eb2c_view_unreached,     /* 0x10  SetForwardTime */
+    (void *)l2_eb2c_view_is_at_start,   /* 0x14  IsAtStart */
+    (void *)l2_eb2c_view_is_at_end,     /* 0x18  IsAtEnd */
+    (void *)l2_eb2c_view_unreached,     /* 0x1c  IsBetweenStartAndEnd */
 };
 
 static int l2_eb2c_run_setter(void *s, unsigned frames, int backward)

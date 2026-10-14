@@ -401,13 +401,17 @@ static int __fastcall fdr_view_unreached(void *, void *)
     return 0;
 }
 
-static void *fdr_msvc_order_vt[6] = {
-    (void *)fdr_view_unreached,       /* 0x00  dtor, folded */
-    (void *)fdr_view_unreached,       /* 0x04  AdvanceFade */
-    (void *)fdr_view_unreached,       /* 0x08  SetBackwardTime */
-    (void *)fdr_view_unreached,       /* 0x0c  SetForwardTime */
-    (void *)fdr_view_is_at_start,     /* 0x10  IsAtStart */
-    (void *)fdr_view_is_at_end,       /* 0x14  IsAtEnd */
+/* PORTSYNC3: include/dFader_c.h carries a host-only filler for the ROM's D0 slot, so MSVC numbers these
+   virtuals like the cartridge: IsAtStart at 0x14, IsAtEnd at 0x18. The stand-in follows. */
+static void *fdr_msvc_order_vt[8] = {
+    (void *)fdr_view_unreached,
+    (void *)fdr_view_unreached,
+    (void *)fdr_view_unreached,
+    (void *)fdr_view_unreached,
+    (void *)fdr_view_unreached,
+    (void *)fdr_view_is_at_start,   /* 0x14  IsAtStart */
+    (void *)fdr_view_is_at_end,   /* 0x18  IsAtEnd */
+    (void *)fdr_view_unreached,   /* 0x1c */
 };
 
 /* THE SETTER VIEW, run hunt4 lane RECROOM1: the same one-slot skew, in the
@@ -471,13 +475,17 @@ static int __fastcall fdr_setter_unreached(void *, void *)
     return 0;
 }
 
-static void *fdr_setter_msvc_vt[6] = {
-    (void *)fdr_setter_unreached,     /* 0x00  dtor, folded */
-    (void *)fdr_setter_unreached,     /* 0x04  AdvanceFade */
-    (void *)fdr_setter_unreached,     /* 0x08  SetBackwardTime */
-    (void *)fdr_setter_unreached,     /* 0x0c  SetForwardTime */
-    (void *)fdr_setter_is_at_start,   /* 0x10  IsAtStart */
-    (void *)fdr_setter_is_at_end,     /* 0x14  IsAtEnd */
+/* PORTSYNC3: include/dFader_c.h carries a host-only filler for the ROM's D0 slot, so MSVC numbers these
+   virtuals like the cartridge: IsAtStart at 0x14, IsAtEnd at 0x18. The stand-in follows. */
+static void *fdr_setter_msvc_vt[8] = {
+    (void *)fdr_setter_unreached,
+    (void *)fdr_setter_unreached,
+    (void *)fdr_setter_unreached,
+    (void *)fdr_setter_unreached,
+    (void *)fdr_setter_unreached,
+    (void *)fdr_setter_is_at_start,   /* 0x14  IsAtStart */
+    (void *)fdr_setter_is_at_end,   /* 0x18  IsAtEnd */
+    (void *)fdr_setter_unreached,   /* 0x1c */
 };
 
 }  /* extern "C" -- the view's internals are C++ and not ROM names */
