@@ -893,6 +893,18 @@ ROWS_04[("VIRTUAL_CALL", "daDemo_c")] = [
      "  if (mModelAnim) ((void (__thiscall *)(void *))(*(void ***)mModelAnim)[1])(mModelAnim);\n"),
 ]
 
+# ---- daKpa_c -----------------------------------------------------------------
+# VIRTUAL_CALL (PORTSYNC3). func_ov060_02111cc0 hands `a` to ModelAnim::SetAnim as its flags word
+# and never assigns it: on the ARM the caller's third argument is still in r2, so the matched
+# source leaves the parameter out of sight on purpose. MSVC reads an uninitialised stack slot
+# instead (measured: a heap pointer landed in the animation's numFramesAndFlags word, the
+# turn/intro walk animation never reported its last frame, Bowser never walked in and the level
+# 36 / 38 / 40 intro camera diverged from frame 66). The host copy passes the argument itself.
+ROWS_04[("VIRTUAL_CALL", "daKpa_c")] = [
+    ("    int a;  /* deliberately never assigned: it is animFlags, still in r2 (see above) */",
+     "    int a = animFlags;  /* hostgen VIRTUAL_CALL: the ARM's r2 passthrough, spelled */"),
+]
+
 # ---- daOnms_c --------------------------------------------------------------
 # EXTERN_C_DATA (new). Main's TU writes the arm9 sin/cos table as
 # `s16 data_02082214[];` with no `extern`, inside its `extern "C" {` block.
