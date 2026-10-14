@@ -225,6 +225,16 @@ def render(res):
             out.append("void %s(void) {}  /* %s */" % (name, note))
     out.append("}")
     out.append("")
+    out.append("/* Run once, after the ov0 handle table exists (hal/s4ov0_ov0table.cpp): the")
+    out.append("   initialisers no port file calls. They used to run before main; the ones that")
+    out.append("   look a file handle up need the table first. */")
+    out.append('extern "C" void port_ov_sinit_late(void)')
+    out.append("{")
+    for name, ov, addr, cfgname, callers, tu in rows:
+        if tu and not callers:
+            out.append("    %s();" % name)
+    out.append("}")
+    out.append("")
     return "\n".join(out)
 
 

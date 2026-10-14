@@ -1199,3 +1199,11 @@ void __sinit_ov102_0214d714(void) { port_sinit_run(&sinit_daObjSimpleBg_c_b, &si
 void __sinit_ov102_0214d908(void) { port_sinit_run(&sinit_daObjHatenaBlock_c_b, &sinit_daObjHatenaBlock_c_e); }  /* ov102 0x0214d908: __sinit_daObjHatenaBlock_c.cpp; called from port/hal/actor_overlays.cpp; runs src/actors/daObjHatenaBlock_c.cpp */
 void __sinit_ov102_0214dfac(void) { port_sinit_run(&sinit_d_a_shl_b, &sinit_d_a_shl_e); }  /* ov102 0x0214dfac: __sinit_d_a_shl.cpp; called from port/hal/actor_overlays.cpp; runs src/game/actors/d_a_shl.cpp */
 }
+
+/* Run once, after the ov0 handle table exists (hal/s4ov0_ov0table.cpp): the
+   initialisers no port file calls. They used to run before main; the ones that
+   look a file handle up need the table first. */
+extern "C" void port_ov_sinit_late(void)
+{
+    __sinit_ov045_02112280();
+}
