@@ -4350,6 +4350,12 @@ const char *wide_scene_name(void)
     if (sc == 4) return "star_select";
     if (sc == 5) return "rec_room";
     if (sc == 8) return "game_over";
+    if (sc == 0) return "title_attract";
+    if (sc >= 0 && sc < 100) {                          /* any other two-screen scene below the minigames (ids 300 and up) */
+        static char nm[24];
+        std::snprintf(nm, sizeof nm, "scene_%d", sc);
+        return nm;
+    }
     return 0;
 }
 
@@ -4432,7 +4438,7 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
             }
             e[r] = 0xFF000000u | ((sr / 3) << 16) | ((sg / 3) << 8) | (sb / 3);
         }
-        const int R = rows / 36 > 1 ? rows / 36 : 1;
+        const int R = rows / 20 > 1 ? rows / 20 : 1;
         for (int pass = 0; pass < 2; ++pass) {
             unsigned *src = pass == 0 ? e : tmp, *dst = pass == 0 ? tmp : e;
             for (int r = 0; r < rows; ++r) {
