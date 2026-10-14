@@ -2345,6 +2345,7 @@ extern "C" {
 extern void *data_0209f394[];
 extern int data_ov002_02110154[];
 void WarpPlayer(int i, int val);
+void StartMinigameMenu(unsigned char a);
 void _ZN6Player11ChangeStateERNS_5StateE(void *, void *);
 void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p, unsigned short val, short amt);
 }
@@ -2386,6 +2387,26 @@ static void port_tp_warp_hook(void)
         char *pl = (char *)data_0209f394[0];
         if (al >= 0 && pl)
             *(unsigned char *)(pl + 0x6f5) = (unsigned char)al;
+    }
+    {
+        /* SM64DS_TP_RR=<frame>[,<unlock>]: what talking to the castle's Rec Room
+           cupboard does (RecRoomCupboard::Behavior -> StartMinigameMenu(1), the
+           ROM's own function), fired at a chosen frame so a headless run can
+           take the dresser route into the Rec Room and back out of a minigame.
+           ,1 also sets the save's minigame unlock word first (the stand-in for
+           having unlocked them). */
+        static int rr = -2, rrf, unl;
+        if (rr == -2) {
+            const char *e = std::getenv("SM64DS_TP_RR");
+            rr = e ? std::atoi(e) : -1;
+            unl = e && std::strchr(e, ',') ? std::atoi(std::strchr(e, ',') + 1) : 0;
+        }
+        if (rr >= 0 && rrf++ == rr) {
+            extern int data_0209caa0[];
+            if (unl) *(unsigned *)((char *)data_0209caa0 + 0x48) = 0xffffffffu;
+            std::fprintf(stderr, "[tprr] f%d StartMinigameMenu(1)\n", rr);
+            StartMinigameMenu(1);
+        }
     }
     if (at >= 0 && frame >= at && frame <= at + 3) {
         char *pl = (char *)data_0209f394[0];
