@@ -276,7 +276,7 @@ extern "C" void port_ov092_states_seat(void)
 {
     if (g_ov092_seated)
         return;
-    if (g_ov092_seats[0].rec[0] >= 0x02400000u) {
+    if (((unsigned *)&data_ov092_02132568[0])[0] >= 0x02400000u) {
         /* PORTSYNC3: the ToxBox TU's own table is live (host pointers-to-member). */
         g_ov092_seated = true;
         return;
