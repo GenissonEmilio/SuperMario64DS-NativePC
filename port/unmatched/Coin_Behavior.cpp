@@ -31,6 +31,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -126,7 +127,7 @@ extern "C" void port_coin_states_seat(void)
                          data_ov002_0210dc70[i].fn, g_states[i].rom);
             std::abort();
         }
-        data_ov002_0210dc70[i].fn = (unsigned)(size_t)g_states[i].host;
+        data_ov002_0210dc70[i].fn = PORT_PMF_TC(g_states[i].host);
         data_ov002_0210dc70[i].delta = 0;
     }
 }

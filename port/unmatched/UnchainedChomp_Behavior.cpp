@@ -51,6 +51,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -236,7 +237,7 @@ extern "C" void port_unchained_chomp_states_seat(void)
                          g_unchained_chomp_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_unchained_chomp_states[i].host;
+        p->fn = PORT_PMF_TC(g_unchained_chomp_states[i].host);
     }
 }
 

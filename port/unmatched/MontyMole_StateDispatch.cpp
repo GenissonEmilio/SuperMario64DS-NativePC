@@ -38,6 +38,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 /* the two per-frame helpers Behavior calls after the dispatch; matched src */
@@ -130,6 +131,6 @@ extern "C" void port_monty_mole_states_seat(void)
                          g_monty_mole_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_monty_mole_states[i].host;
+        p->fn = PORT_PMF_TC(g_monty_mole_states[i].host);
     }
 }

@@ -72,6 +72,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -167,7 +168,7 @@ extern "C" void port_ov089_states_seat(void)
                          g_ov089_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_ov089_states[i].host;
+        p->fn = PORT_PMF_TC(g_ov089_states[i].host);
     }
     /* THE TAIL. The extent bound says ten cells; the sinit fills eight. The
        two past the filled run must read {0,0} in the mount -- a non-zero word

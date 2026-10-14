@@ -593,7 +593,7 @@ static void port_star_door_callbacks_seat(void)
                          g_star_door_callbacks[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_star_door_callbacks[i].host;
+        p->fn = PORT_PMF_TC(g_star_door_callbacks[i].host);
     }
 }
 
@@ -640,7 +640,7 @@ static void port_ov089_keymodels_fixup(void)
                          i, *w, g_ov089_keymodels[i].rom);
             std::abort();
         }
-        *w = (unsigned)(size_t)g_ov089_keymodels[i].host;
+        *w = PORT_PMF_TC(g_ov089_keymodels[i].host);
     }
 }
 
@@ -657,7 +657,7 @@ static void port_butterfly_states_seat(void)
                          g_butterfly_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_butterfly_states[i].host;
+        p->fn = PORT_PMF_TC(g_butterfly_states[i].host);
     }
 }
 
@@ -685,7 +685,7 @@ static void port_iron_ball_states_seat(void)
                          g_iron_ball_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_iron_ball_states[i].host;
+        p->fn = PORT_PMF_TC(g_iron_ball_states[i].host);
     }
 }
 
@@ -810,7 +810,7 @@ static void port_koopa_quick_states_seat(void)
                          g_koopa_quick_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_koopa_quick_states[i].host;
+        p->fn = PORT_PMF_TC(g_koopa_quick_states[i].host);
     }
 }
 
@@ -1103,7 +1103,7 @@ static void port_king_bob_omb_states_seat(void)
                          g_king_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_king_states[i].host;
+        p->fn = PORT_PMF_TC(g_king_states[i].host);
     }
 }
 
@@ -1120,7 +1120,7 @@ static void port_rabbit_states_seat(void)
                          g_rabbit_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_rabbit_states[i].host;
+        p->fn = PORT_PMF_TC(g_rabbit_states[i].host);
     }
 }
 
@@ -1150,7 +1150,7 @@ static void port_rabbit_key_states_seat(void)
                          g_rabbit_key_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_rabbit_key_states[i].host;
+        p->fn = PORT_PMF_TC(g_rabbit_key_states[i].host);
     }
 }
 
@@ -1227,7 +1227,7 @@ static void port_toad_states_seat(void)
                          "BYTES\n", i, p->fn, p->delta, g_toad_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_toad_states[i].host;
+        p->fn = PORT_PMF_TC(g_toad_states[i].host);
     }
 }
 
@@ -1326,7 +1326,7 @@ static void port_princess_peach_states_seat(void)
                          g_princess_peach_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_princess_peach_states[i].host;
+        p->fn = PORT_PMF_TC(g_princess_peach_states[i].host);
     }
 }
 
@@ -1443,7 +1443,7 @@ static void port_painting_states_seat(void)
                          g_painting_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_painting_states[i].host;
+        p->fn = PORT_PMF_TC(g_painting_states[i].host);
     }
 }
 

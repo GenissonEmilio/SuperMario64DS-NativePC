@@ -29,6 +29,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -132,7 +133,7 @@ static void port_chomp_seat_one(PortChompPmf *p, unsigned rom, PortChompFn host,
                      "BYTES\n", i, where, p->fn, p->delta, rom);
         std::abort();
     }
-    p->fn = (unsigned)(size_t)host;
+    p->fn = PORT_PMF_TC(host);
 }
 
 extern "C" void port_chain_chomp_states_seat(void)

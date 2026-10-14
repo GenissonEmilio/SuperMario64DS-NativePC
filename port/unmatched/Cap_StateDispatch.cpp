@@ -24,6 +24,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 /* ---- the cross-language faces func_ov002_020b7e1c.cpp asks for -------------
    That state TU was recovered as C++ and calls Actor::Spawn, Actor::SetRanges
@@ -151,6 +152,6 @@ extern "C" void port_cap_states_seat(void)
                          "BYTES\n", i, p[i].fn, p[i].delta, g_cap_states[i].rom);
             std::abort();
         }
-        p[i].fn = (unsigned)(size_t)g_cap_states[i].host;
+        p[i].fn = PORT_PMF_TC(g_cap_states[i].host);
     }
 }

@@ -58,6 +58,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -148,6 +149,6 @@ extern "C" void port_water_ring_states_seat(void)
                          "BYTES\n", i, p->fn, p->delta, g_water_ring_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_water_ring_states[i].host;
+        p->fn = PORT_PMF_TC(g_water_ring_states[i].host);
     }
 }

@@ -83,6 +83,7 @@
 #include "dsstate_seg.h"
 #include "dActor_c.h"
 #include "fBase_c.h"
+#include "hal/pmf_tc.h"
 
 /* hal/actor_slot30_seat.cpp -- the shared seat for vtable slot 30,
    Actor::OnAimedAtWithEggReturnVec. The ROM word in slot 30 of this table IS
@@ -324,7 +325,7 @@ extern "C" void port_trap36_states_seat(void)
             std::abort();
         }
         RomPmf out;
-        out.fn = (unsigned)(size_t)g_t36_states[i].face;
+        out.fn = PORT_PMF_TC(g_t36_states[i].face);
         out.adj = 0;
         std::memcpy(&port_trap36_states[i], &out, sizeof out);
     }

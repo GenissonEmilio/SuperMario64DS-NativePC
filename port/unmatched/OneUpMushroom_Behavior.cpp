@@ -38,6 +38,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -127,7 +128,7 @@ extern "C" void port_one_up_mushroom_types_seat(void)
                          g_types[i].rom);
             std::abort();
         }
-        data_ov002_0210dc00[i].fn = (unsigned)(size_t)g_types[i].host;
+        data_ov002_0210dc00[i].fn = PORT_PMF_TC(g_types[i].host);
         data_ov002_0210dc00[i].delta = 0;
     }
 }

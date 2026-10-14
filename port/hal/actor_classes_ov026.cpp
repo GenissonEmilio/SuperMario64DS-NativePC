@@ -145,6 +145,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "daObjWlSubmarine_c.h"
 #include "daWater_Suikomi_c.h"
 #include "daWater_Tatumaki_c.h"
+#include "hal/pmf_tc.h"
 
 // ---- the two private names the G0/G1 routing needs -------------------------
 // include/decl_common.h:244-247 declares data_ov026_02113ebc / _02113eb4 /
@@ -495,7 +496,7 @@ extern "C" void port_ov026_states_seat(void)
                          c.fn, c.adj, g_ov026_pmf[i].rom);
             std::abort();
         }
-        c.fn = (unsigned)(size_t)g_ov026_pmf[i].host;
+        c.fn = PORT_PMF_TC(g_ov026_pmf[i].host);
     }
 }
 

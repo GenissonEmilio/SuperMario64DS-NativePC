@@ -25,6 +25,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 struct PortWithMeshClsn;
 struct PortCylinderClsn;
@@ -128,7 +129,7 @@ extern "C" void port_whomp_states_seat(void)
                          "BYTES\n", i, p->fn, p->delta, g_whomp_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_whomp_states[i].host;
+        p->fn = PORT_PMF_TC(g_whomp_states[i].host);
     }
 }
 

@@ -24,6 +24,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -70,7 +71,7 @@ extern "C" void port_question_block_states_seat(void)
                          g_qblock_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_qblock_states[i].host;
+        p->fn = PORT_PMF_TC(g_qblock_states[i].host);
     }
 }
 

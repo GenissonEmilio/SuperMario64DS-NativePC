@@ -32,6 +32,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -198,7 +199,7 @@ extern "C" void port_lakitu_bro_states_seat(void)
                          p->delta);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_states[i].host;
+        p->fn = PORT_PMF_TC(g_states[i].host);
     }
 }
 

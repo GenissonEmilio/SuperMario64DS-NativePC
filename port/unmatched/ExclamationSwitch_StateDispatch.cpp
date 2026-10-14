@@ -42,6 +42,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 /* the ten state halves, in record order */
@@ -90,7 +91,7 @@ extern "C" void port_exclamation_switch_states_seat(void)
             std::abort();
         }
         data_ov002_0210e00c[i].fn =
-            (unsigned)(size_t)g_switch_states[i].host;
+            PORT_PMF_TC(g_switch_states[i].host);
     }
 }
 

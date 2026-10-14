@@ -36,6 +36,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -110,6 +111,6 @@ extern "C" void port_bullet_states_seat(void)
                          seats[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)seats[i].host;
+        p->fn = PORT_PMF_TC(seats[i].host);
     }
 }

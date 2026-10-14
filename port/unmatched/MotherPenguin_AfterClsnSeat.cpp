@@ -148,6 +148,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 /* ---- defect 4, the C++-LINKAGE SPELLING of two mounted records -----------
    src/game/actors/d_a_pg_mthr.cpp declares its two file records OUTSIDE its own
@@ -267,7 +268,7 @@ extern "C" void port_mother_penguin_afterclsn_seat(void)
                          data_ov018_02113c4c[i].delta, g_mpg_cells[i].rom);
             std::abort();
         }
-        data_ov018_02113c4c[i].fn = (unsigned)(size_t)g_mpg_cells[i].host;
+        data_ov018_02113c4c[i].fn = PORT_PMF_TC(g_mpg_cells[i].host);
     }
     std::atexit(port_mpg_report);
 }

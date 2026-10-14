@@ -55,6 +55,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "daOwl_c.h"
+#include "hal/pmf_tc.h"
 
 extern "C" {
 struct PortHootPmf { unsigned fn; int delta; };
@@ -111,8 +112,8 @@ extern "C" void port_hoot_the_owl_states_seat(void)
                          g_hoot_cells[i].enter_rom, g_hoot_cells[i].tick_rom);
             std::abort();
         }
-        cell[0].fn = (unsigned)(size_t)g_hoot_cells[i].enter_host;
-        cell[1].fn = (unsigned)(size_t)g_hoot_cells[i].tick_host;
+        cell[0].fn = PORT_PMF_TC(g_hoot_cells[i].enter_host);
+        cell[1].fn = PORT_PMF_TC(g_hoot_cells[i].tick_host);
     }
 }
 

@@ -90,6 +90,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -299,6 +300,6 @@ extern "C" void port_treasure_chest_states_seat(void)
                          g_treasure_chest_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_treasure_chest_states[i].host;
+        p->fn = PORT_PMF_TC(g_treasure_chest_states[i].host);
     }
 }

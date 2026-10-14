@@ -47,6 +47,7 @@
 
 #include "Model.h"
 #include "ModelAnim.h"
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -153,7 +154,7 @@ static void pir_seat_one(PortPirPmf *p, unsigned rom, PortPirFn host,
                      "BYTES\n", i, where, p->fn, p->delta, rom);
         std::abort();
     }
-    p->fn = (unsigned)(size_t)host;
+    p->fn = PORT_PMF_TC(host);
 }
 
 extern "C" void port_piranha_plant_states_seat(void)

@@ -26,6 +26,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -164,7 +165,7 @@ extern "C" void port_bowser_puzzle_manager_states_seat(void)
                          "BYTES\n", i, p->fn, p->delta, g_manager_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_manager_states[i].host;
+        p->fn = PORT_PMF_TC(g_manager_states[i].host);
     }
 }
 
@@ -198,6 +199,6 @@ extern "C" void port_bowser_puzzle_piece_states_seat(void)
                          "BYTES\n", i, p->fn, p->delta, g_piece_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_piece_states[i].host;
+        p->fn = PORT_PMF_TC(g_piece_states[i].host);
     }
 }

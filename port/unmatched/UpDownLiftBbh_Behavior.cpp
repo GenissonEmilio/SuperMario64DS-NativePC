@@ -59,6 +59,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 /* the five state bodies, table order = mState order; all matched src */
@@ -117,6 +118,6 @@ extern "C" void port_updownlift_states_seat(void)
                          g_updownlift_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_updownlift_states[i].host;
+        p->fn = PORT_PMF_TC(g_updownlift_states[i].host);
     }
 }

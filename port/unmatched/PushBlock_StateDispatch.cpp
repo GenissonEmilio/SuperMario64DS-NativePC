@@ -54,6 +54,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 struct PortPushBlockPair { unsigned fn; int delta; };
@@ -99,7 +100,7 @@ void port_pushblock_states_seat(void)
                          p->fn, p->delta, seats[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)seats[i].host;
+        p->fn = PORT_PMF_TC(seats[i].host);
     }
 }
 

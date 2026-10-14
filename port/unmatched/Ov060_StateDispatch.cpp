@@ -125,6 +125,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -677,6 +678,6 @@ extern "C" void port_ov060_states_seat(void)
                          g_ov060_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_ov060_states[i].host;
+        p->fn = PORT_PMF_TC(g_ov060_states[i].host);
     }
 }

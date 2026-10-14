@@ -22,6 +22,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 typedef unsigned int u32;
 typedef unsigned short u16;
@@ -114,7 +115,7 @@ extern "C" void port_bullet_bill_states_seat(void)
                          g_bullet_bill_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_bullet_bill_states[i].host;
+        p->fn = PORT_PMF_TC(g_bullet_bill_states[i].host);
     }
 }
 

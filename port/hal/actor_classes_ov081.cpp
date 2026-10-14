@@ -942,7 +942,7 @@ extern "C" void port_moneybag_states_seat(void)
                          "WRONG BYTES\n", i, r.fn, r.delta, g_mn_recs[i].rom);
             std::abort();
         }
-        r.fn = (unsigned)(size_t)g_mn_recs[i].host;
+        r.fn = PORT_PMF_TC(g_mn_recs[i].host);
     }
 }
 
@@ -1002,6 +1002,7 @@ extern "C" void hal_fill_moneybag_vtable(void)
 #include "daObjIceBlock_c.h"
 #include "daSnowball_c.h"
 #include "daGmch_c.h"
+#include "hal/pmf_tc.h"
 extern "C" {
 int _ZN12daSnowball_c13InitResourcesEv(void *self)
 { return ((daSnowball_c *)self)->daSnowball_c::InitResources(); }

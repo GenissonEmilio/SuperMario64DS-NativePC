@@ -63,6 +63,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 /* the eighteen state halves, by ROM address; all matched src. ENTER halves are
@@ -280,6 +281,6 @@ extern "C" void port_scuttlebug_states_seat(void)
                          g_scuttlebug_sources[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_scuttlebug_sources[i].host;
+        p->fn = PORT_PMF_TC(g_scuttlebug_sources[i].host);
     }
 }

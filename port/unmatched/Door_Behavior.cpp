@@ -56,6 +56,7 @@
 #include <cstdlib>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -163,7 +164,7 @@ extern "C" void port_door_callbacks_seat(void)
                          g_door_callbacks[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_door_callbacks[i].host;
+        p->fn = PORT_PMF_TC(g_door_callbacks[i].host);
     }
 }
 

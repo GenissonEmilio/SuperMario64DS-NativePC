@@ -63,6 +63,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 int _ZN5Sound7PlaySubEjjj5Fix12IiEb(unsigned soundID, unsigned vol,
@@ -166,7 +167,7 @@ extern "C" void port_sound_object_states_seat(void)
                          g_sound_obj_states[i].rom);
             std::abort();
         }
-        p[i].fn = (unsigned)(size_t)g_sound_obj_states[i].face;
+        p[i].fn = PORT_PMF_TC(g_sound_obj_states[i].face);
     }
 }
 

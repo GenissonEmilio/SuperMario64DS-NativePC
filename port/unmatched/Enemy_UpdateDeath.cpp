@@ -48,6 +48,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -189,7 +190,7 @@ static void port_enemy_death_seat_one(PortEnemyPmf *p, unsigned rom,
                      i, where, p->fn, p->delta, rom);
         std::abort();
     }
-    p->fn = (unsigned)(size_t)host;
+    p->fn = PORT_PMF_TC(host);
 }
 
 typedef void (*PortEnemyEnterFn)(void *, int, int);

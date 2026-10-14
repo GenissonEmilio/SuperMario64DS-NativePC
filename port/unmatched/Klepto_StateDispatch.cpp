@@ -48,6 +48,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "daJango_c.h"
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -125,6 +126,6 @@ extern "C" void port_klepto_states_seat(void)
                          g_klepto_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_klepto_states[i].host;
+        p->fn = PORT_PMF_TC(g_klepto_states[i].host);
     }
 }

@@ -28,6 +28,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 void _ZN7daWbm_c9StateDropEv(void *c);   /* state 0, the fire */
@@ -65,6 +66,6 @@ extern "C" void port_water_bomb_states_seat(void)
                          g_water_bomb_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_water_bomb_states[i].host;
+        p->fn = PORT_PMF_TC(g_water_bomb_states[i].host);
     }
 }

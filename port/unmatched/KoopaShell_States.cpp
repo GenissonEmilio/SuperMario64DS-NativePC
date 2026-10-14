@@ -22,6 +22,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -57,7 +58,7 @@ static void ksh_seat_one(KshPmf *p, unsigned rom, KshFn host,
                      "WRONG BYTES\n", i, where, p->fn, p->delta, rom);
         std::abort();
     }
-    p->fn = (unsigned)(size_t)host;
+    p->fn = PORT_PMF_TC(host);
 }
 
 extern "C" void port_koopa_shell_states_seat(void)

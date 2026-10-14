@@ -150,6 +150,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "daLinelift2_c.h"
 #include "daObjPile_c.h"
 #include "daHyuhyu_c.h"
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -374,7 +375,7 @@ extern "C" void port_ov091_states_seat(void)
                 "PMF record's delta is 0 in the ROM\n", s.name, s.rec[1]);
             std::abort();
         }
-        s.rec[0] = (unsigned int)(size_t)s.host;
+        s.rec[0] = PORT_PMF_TC(s.host);
     }
     g_ov091_seated = true;
 }

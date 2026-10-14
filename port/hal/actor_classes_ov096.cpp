@@ -306,7 +306,7 @@ extern "C" void port_ov096_states_seat(void)
                 "PMF record's delta is 0 in the ROM\n", s.name, s.rec[1]);
             std::abort();
         }
-        s.rec[0] = (unsigned int)(size_t)s.host;
+        s.rec[0] = PORT_PMF_TC(s.host);
     }
     g_ov096_seated = true;
 }
@@ -528,6 +528,7 @@ extern "C" void hal_fill_tornado_vtable(void)
 // ============================================================================
 #include "daSanbo_c.h"
 #include "daTor_c.h"
+#include "hal/pmf_tc.h"
 extern "C" int _ZN9daSanbo_c13InitResourcesEv(void *self)
 { return ((daSanbo_c *)self)->daSanbo_c::InitResources(); }
 extern "C" int _ZN9daSanbo_c16CleanupResourcesEv(void *self)

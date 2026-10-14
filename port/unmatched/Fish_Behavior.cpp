@@ -23,6 +23,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -114,7 +115,7 @@ extern "C" void port_fish_states_seat(void)
                          "BYTES\n", i, p->fn, p->delta, g_fish_states[i].rom);
             std::abort();
         }
-        p->fn = (unsigned)(size_t)g_fish_states[i].host;
+        p->fn = PORT_PMF_TC(g_fish_states[i].host);
     }
 }
 

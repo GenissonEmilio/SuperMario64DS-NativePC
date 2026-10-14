@@ -84,6 +84,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include "hal/pmf_tc.h"
 
 extern "C" {
 
@@ -126,7 +127,7 @@ extern "C" void port_sign_post_states_seat(void)
                          g_states[i].rom);
             std::abort();
         }
-        p[i].fn = (unsigned)(size_t)g_states[i].host;
+        p[i].fn = PORT_PMF_TC(g_states[i].host);
         p[i].delta = 0;
     }
 }

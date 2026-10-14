@@ -130,6 +130,7 @@ DSSTATE_END
    InitResources needs NO face -- src/_ZN6ToxBox13InitResourcesEv.cpp is a .c
    file and already defines the flat name. */
 #include "daOnms_c.h"
+#include "hal/pmf_tc.h"
 extern "C" {
 int _ZN8daOnms_c16CleanupResourcesEv(void *self)
 { return ((daOnms_c *)self)->daOnms_c::CleanupResources(); }
@@ -300,7 +301,7 @@ extern "C" void port_ov092_states_seat(void)
                 "PMF record's delta is 0 in the ROM\n", s.name, s.rec[1]);
             std::abort();
         }
-        s.rec[0] = (unsigned int)(size_t)s.host;
+        s.rec[0] = PORT_PMF_TC(s.host);
     }
     /* THE TAIL. The extent bound says eleven cells; the sinit fills nine. The
        two past the filled run must read {0,0} in the mount -- a non-zero word
