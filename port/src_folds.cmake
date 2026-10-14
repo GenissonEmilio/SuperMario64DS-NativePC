@@ -49,7 +49,7 @@ set(PORT_SYM_FOLDED__ZN10dMgState_c19func_ov004_020b6b40Ev src/actors/dMgState_c
 set(PORT_SYM_FOLDED__ZN10dMgState_c19func_ov004_020b6c9cEv src/actors/dMgState_c.cpp)
 set(PORT_SYM_FOLDED__ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv src/minigames/d_s_mg_base.cpp)
 set(PORT_SYM_FOLDED__ZN11dScMgJump_c6RenderEv src/actors/dScMgJump_c.cpp)
-set(PORT_SYM_FOLDED__ZN12dScMgSlot1_c13InitResourcesEv src/minigames/d_s_mg_slot1.cpp)
+set(PORT_SYM_FOLDED__ZN12dScMgSlot1_c13InitResourcesEv src/actors/dScMgSlots.cpp)
 set(PORT_SYM_FOLDED__ZN14dScMgBomroom_c19func_ov006_020d8f98Ev src/actors/dScMgBomroom_c.cpp)
 set(PORT_SYM_FOLDED__ZN15ModelComponents6RenderEP9Matrix4x3P7Vector3 src/engine/model/ModelComponents.cpp)
 set(PORT_SYM_FOLDED__ZN15dExtFrameCtrl_c7AdvanceEv src/engine/animation/dExtFrameCtrl_c.cpp)
@@ -119,6 +119,7 @@ set(PORT_SYM_FOLDED_TUS
     src/actors/dScMgBomroom_c.cpp
     src/actors/dScMgJump_c.cpp
     src/actors/dScMgPachinko_c.cpp
+    src/actors/dScMgSlots.cpp
     src/actors/dScMgSnowball_c.cpp
     src/actors/dScene_c.cpp
     src/actors/daKrb_c.cpp
@@ -139,7 +140,6 @@ set(PORT_SYM_FOLDED_TUS
     src/game/actors/d_a_btn.cpp
     src/game/actors/d_a_pg_rcer.cpp
     src/minigames/d_s_mg_base.cpp
-    src/minigames/d_s_mg_slot1.cpp
 )
 
 # Production TUs a path-based hostgen block substitutes; every target takes
