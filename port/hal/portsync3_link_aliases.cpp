@@ -96,7 +96,7 @@
 #pragma comment(linker, "/alternatename:__ZN3G3X11SetFogTableEPv=?SetFogTable@G3X@@SAXPAX@Z")  /* static member / namespace function (cdecl) */
 #pragma comment(linker, "/alternatename:?InitResources@dMeter_c@@QAEHXZ=?InitResources@dMeter_c@@UAEHXZ")  /* virtual / non-virtual spelling of one member */
 #pragma comment(linker, "/alternatename:?Behavior@dMeter_c@@QAEHXZ=?Behavior@dMeter_c@@UAEHXZ")  /* virtual / non-virtual spelling of one member */
-#pragma comment(linker, "/alternatename:?RenderCameraButtons@dMeter_c@@SAXXZ=__ZN8dMeter_c19RenderCameraButtonsEv")  /* flat host definition of the same function */
+/* retired: the face now calls main's plain member (dMeter_c::RenderCameraButtons is not static), which made this alias a self call */
 #pragma comment(linker, "/alternatename:?Render@dMap_c@@QAEHXZ=?Render@dMap_c@@UAEHXZ")  /* virtual / non-virtual spelling of one member */
 #pragma comment(linker, "/alternatename:?Behavior@daObjCtKaitendai_c@@QAEHXZ=?Behavior@daObjCtKaitendai_c@@UAEHXZ")  /* virtual / non-virtual spelling of one member */
 #pragma comment(linker, "/alternatename:?Behavior@daObjCtMecha09_c@@QAEHXZ=?Behavior@daObjCtMecha09_c@@UAEHXZ")  /* virtual / non-virtual spelling of one member */

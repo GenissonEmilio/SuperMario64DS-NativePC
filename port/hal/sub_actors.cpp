@@ -130,7 +130,7 @@ struct dMeter_c {
     void RenderTimeTimer();
     void RenderHealthMeter();
     void UpdateHealthMeter();
-    static void RenderCameraButtons();
+    void RenderCameraButtons();   /* PORTSYNC3: a plain member in main's include/dMeter_c.h */
 };
 
 /* Same story for the Minimap, and the same reason include/Minimap.h is not
@@ -265,7 +265,7 @@ HUD_FACE(_ZN8dMeter_c17UpdateHealthMeterEv, UpdateHealthMeter)
 /* RenderCameraButtons is a STATIC member (no `this` at all -- it draws the two
    arrows and the zoom button from OAM's own templates), so its face takes and
    passes nothing. */
-extern "C" void _ZN8dMeter_c19RenderCameraButtonsEv(void *) { dMeter_c::RenderCameraButtons(); }
+extern "C" void _ZN8dMeter_c19RenderCameraButtonsEv(void *s) { ((dMeter_c *)s)->dMeter_c::RenderCameraButtons(); }
 
 /* Player::IsInsideOfCannon is a real MSVC member, and HUD::RenderHealthMeter
    reaches it as a free function taking void*. That was a C++ free function
