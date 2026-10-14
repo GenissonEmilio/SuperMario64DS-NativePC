@@ -10,6 +10,8 @@
 #include "coop_wire.h"
 #include "comms_hub.h"
 #include "hub_presence.h"
+#include "coop_target.h"
+#include "coop_stats_log.h"
 
 #include <windows.h>
 
@@ -34,7 +36,7 @@ namespace {
 // ---------------------------------------------------------------------------
 CoopMoveStats g_st = {};
 bool g_guard = true;          // SM64DS_COOP_MOVE_GUARD=0 is the proof CONTROL: no size / value guard (the pre-fix behaviour)
-enum : unsigned { kFPhase = 1u, kFSlave = 2u };   // kFSlave: the non-owner pins the pose every frame to the owner's, extrapolated
+enum : unsigned { kFPhase = 1u, kFSlave = 2u, kFBoss = 4u, kFSampleOnly = 8u };   // kFBoss (MOVERS9): the pose owner is the boss's TARGET seat, the same rule as the boss lane's authority   // kFSlave: the non-owner pins the pose every frame to the owner's, extrapolated
 // A phase field: where it sits, how wide it is, and the range a received value must lie in (signed for width 4, unsigned for 1 / 2).
 struct Field { uint16_t off; uint8_t size; int32_t lo, hi; };
 struct Prof {
@@ -65,6 +67,12 @@ Prof g_prof[256] = {
 };
 #undef ROW
 int g_nprof = 0;
+// MOVERS9: always-on per-class sync numbers (read by coop_stats_log.cpp). Cheap: a few adds per actor per tick.
+struct CStat { unsigned ents_max, pub, applied, slaved, owner_ch, pin_n, pin_big, held_pins; double pin_sum, pin_max; };
+CStat g_cs[256];
+bool g_hold_mips = true;      // SM64DS_MOVERS_MIPSHOLD=0 is the MUST-FAIL control: MIPS (187) is not on the carrier list
+bool g_new_rows = true;       // SM64DS_MOVERS_NEWROWS=0 is the MUST-FAIL control: the 12 MOVERS9 classes are only SAMPLED (free-running, as with no row)
+bool g_boss_own = true;       // SM64DS_MOVERS_BOSSOWN=0 is the MUST-FAIL control: boss poses keep the proximity owner
 short g_prof_of[1024];      // class id -> index into g_prof, -1 none
 char  g_prof_name[256][40]; // names of rows added from the profile file
 
@@ -114,10 +122,15 @@ void prof_index() {
         if (p.size == 0) std::fprintf(stderr, "[coopmove] size guard: class %d is not in the size table (pose only, no fields)\n", (int)p.id);
         g_prof_of[p.id] = (short)i;
     }
+    if (!g_new_rows) {
+        static const uint16_t kNew[] = { 262, 250, 251, 236, 240, 238, 315, 234, 18, 194, 96, 72 };
+        for (uint16_t id : kNew) if (g_prof_of[id] >= 0) g_prof[g_prof_of[id]].flags |= kFSampleOnly;
+    }
     // classes a player can pick up: their pose is the carrier's, not the Behavior's
-    static const struct { uint16_t id, off; } kHold[] = { { 206, 0x390 } };
+    static const struct { uint16_t id, off; } kHold[] = { { 206, 0x390 }, { 187, 0x45c } };   // 206 Bob-omb mCarrier; 187 MIPS: the carrier Player* at +0x45c (daMip_c UpdateGrab sets it, StateReleased clears it)
     for (const auto &h : kHold)
-        if (h.id < 1024 && g_prof_of[h.id] >= 0 && g_prof[g_prof_of[h.id]].hold == 0) {
+        if (h.id == 187 && !g_hold_mips) continue;
+        else if (h.id < 1024 && g_prof_of[h.id] >= 0 && g_prof[g_prof_of[h.id]].hold == 0) {
             Prof &hp = g_prof[g_prof_of[h.id]];
             if (hp.size != 0 && h.off + 4u <= hp.size) hp.hold = h.off;
             else { std::fprintf(stderr, "[coopmove] size guard: class %d carried-test word %#x past the class size: not used\n", (int)h.id, (unsigned)h.off); ++g_st.rows_dropped; }
@@ -244,6 +257,9 @@ void read_env() {
     g_env = true;
     auto flag = [](const char *n, bool dflt) { const char *e = std::getenv(n); return (e && *e) ? *e != '0' : dflt; };
     g_log = flag("SM64DS_COOP_MOVE_LOG", false);
+    g_boss_own = flag("SM64DS_MOVERS_BOSSOWN", true);
+    g_new_rows = flag("SM64DS_MOVERS_NEWROWS", true);
+    g_hold_mips = flag("SM64DS_MOVERS_MIPSHOLD", true);
     g_act = flag("SM64DS_COOP_ACT", true);
     g_guard = flag("SM64DS_COOP_MOVE_GUARD", true);
     g_snap_on = flag("SM64DS_COOP_MOVE_SNAP", true);
@@ -516,7 +532,7 @@ void apply_rec(int slot, Slot &s, Rx &x) {
     const bool write = force || phase || err > p.snap;
     if (!force && phase && (p.flags & kFSlave)) {            // slave() owns the pose; the counters are written here
         for (int k = 0; k < p.nf; ++k) write_field(a, p, p.f[k], x.f[k]);
-        ++g_st.applied_write;
+        ++g_st.applied_write; ++g_cs[s.prof].applied;
         s.lvalid = false;
         return;
     }
@@ -526,7 +542,7 @@ void apply_rec(int slot, Slot &s, Rx &x) {
         wr32(a, 0x64, clampi(tz, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
         wr16(a, 0x8c, x.ax); wr16(a, 0x8e, x.ay); wr16(a, 0x90, x.az);
         for (int k = 0; k < p.nf; ++k) write_field(a, p, p.f[k], x.f[k]);
-        ++g_st.applied_write;
+        ++g_st.applied_write; ++g_cs[s.prof].applied;
         if (force) ++g_st.snap_applied;
     } else {
         if (err > p.band) {      // inside the snap radius: close half of the gap per record
@@ -535,7 +551,7 @@ void apply_rec(int slot, Slot &s, Rx &x) {
             wr32(a, 0x64, rd32(a, 0x64) + (int32_t)(((long long)tz - rd32(a, 0x64)) / 2));
         }
         ease_angle(a, 0x8c, cax, x.ax); ease_angle(a, 0x8e, cay, x.ay); ease_angle(a, 0x90, caz, x.az);
-        ++g_st.applied_ease;
+        ++g_st.applied_ease; ++g_cs[s.prof].applied;
     }
     s.lvalid = false;           // the actor was moved under the publisher's cache
     if (g_log && (g_st.applied_write + g_st.applied_ease) <= 40)
@@ -601,6 +617,11 @@ void scan_ents() {
     for (int i = 0; i < kSlots; ++i) if (!g_slot[i].a) g_slot[i].seen = 0;
     g_ents = n;
     g_st.ents = n;
+    {
+        unsigned per[256] = {};
+        for (int i = 0; i < kSlots; ++i) if (g_slot[i].a && g_slot[i].prof >= 0) ++per[g_slot[i].prof];
+        for (int i = 0; i < g_nprof; ++i) if (per[i] > g_cs[i].ents_max) g_cs[i].ents_max = per[i];
+    }
 }
 
 bool alive_rx(const Rx &x, unsigned now) {
@@ -636,6 +657,7 @@ void slave(Slot &s, const Rx &x, unsigned now) {
     if (age > (unsigned)kStaleMs) return;                    // the owner went quiet for good: let the local copy run (a still actor heartbeats every 1.5 s)
     char *a = s.a;
     if (skip_state(a, p)) return;
+    if (p.id == 187 && rd32(a, 0x45c) != 0) ++g_cs[s.prof].held_pins;     // proof: the pin fought a Player that is carrying the rabbit
     int32_t tx = x.x, ty = x.y, tz = x.z;
     int16_t tax = x.ax, tay = x.ay, taz = x.az;
     const long long lead = (long long)(std::min)(age, 150u) + g_lead_ms;   // extrapolate at most 150 ms past the last record
@@ -647,13 +669,19 @@ void slave(Slot &s, const Rx &x, unsigned now) {
         tz += (int32_t)(std::max)(-lim, (std::min)(lim, (long long)(x.z - x.pz) * lead / dt));
         tax = ang_extrap(x.ax, x.pax, lead, dt); tay = ang_extrap(x.ay, x.pay, lead, dt); taz = ang_extrap(x.az, x.paz, lead, dt);
     }
-    if (dist3(a, tx, ty, tz) > 6000.0) return;
+    const double pin = dist3(a, tx, ty, tz);
+    if (pin > 6000.0) return;
+    {
+        CStat &c = g_cs[s.prof];            // how far the pin had to move the local copy: the per-class desync number
+        ++c.pin_n; c.pin_sum += pin; if (pin > c.pin_max) c.pin_max = pin; if (pin > 40.0) ++c.pin_big;
+    }
     wr32(a, 0x5c, clampi(tx, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
     wr32(a, 0x60, clampi(ty, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
     wr32(a, 0x64, clampi(tz, -kMoverMaxUnits * 4096, kMoverMaxUnits * 4096));
     wr16(a, 0x8c, tax); wr16(a, 0x8e, tay); wr16(a, 0x90, taz);
     s.lvalid = false;
     ++g_st.slaved;
+    ++g_cs[s.prof].slaved;
 }
 
 // Ownership, apply, publish: one pass over the slots that exist here.
@@ -668,6 +696,7 @@ void process(unsigned now) {
         Slot &s = g_slot[slot];
         if (!s.a) continue;
         const Prof &p = g_prof[s.prof];
+        if (p.flags & kFSampleOnly) continue;          // the control: seen and sampled, never owned, applied, pinned or published
         const unsigned my_cd = (unsigned)(std::min)(65535.0, dist3(pl, rd32(s.a, 0x5c), rd32(s.a, 0x60), rd32(s.a, 0x64)));
         // 1. who owns this actor
         int best = -1; unsigned best_cd = 0xffffffffu; unsigned cur_cd = 0xffffffffu; bool cur_fresh = false;
@@ -682,10 +711,16 @@ void process(unsigned now) {
         int nown = decide_owner(s.owner, g_my, my_cd, cur_fresh, cur_cd, best, best_cd, g_hyst);
         if (g_hyst && was != nown && was >= 0 && (unsigned)(now - s.owner_t) < (unsigned)kDwellMs && ((was == g_my && s.last_pub != 0) || (was != g_my && cur_fresh)))
             nown = was;                                            // dwell: no flip within a second
+        if (g_boss_own && (p.flags & kFBoss)) {       // MOVERS9: who steers the pose = who the boss chases (the boss lane's authority rule)
+            const int ts = coop_target_seat_of_slot(slot);
+            if (ts == g_my) nown = g_my;
+            else if (ts >= 0 && ts < kSeats && ((coop_group_member_mask() >> ts) & 1u) && alive_rx(g_rx[slot][ts], now)) nown = ts;
+        }
         if (nown != was) {
             s.owner = nown; s.owner_t = now;
             if (was >= 0) {
                 ++g_st.owner_changes;
+                ++g_cs[s.prof].owner_ch;
                 if (g_log && g_st.owner_changes <= 400)
                     std::fprintf(stderr, "[coopmove] owner slot=%d cls=%d %d->%d mycd=%u wall=%lld\n", slot, (int)p.id, was, nown, my_cd, wall_ms());
             }
@@ -735,6 +770,7 @@ void process(unsigned now) {
         for (int k = first; k < i; ++k) {
             Slot &s = g_slot[due[k].slot];
             s.last_pub = now;
+            ++g_cs[s.prof].pub;
             s.lvalid = true; s.lx = rd32(s.a, 0x5c); s.ly = rd32(s.a, 0x60); s.lz = rd32(s.a, 0x64);
             s.lax = rd16(s.a, 0x8c); s.lay = rd16(s.a, 0x8e); s.laz = rd16(s.a, 0x90);
             for (int f = 0; f < g_prof[s.prof].nf; ++f) s.lf[f] = read_field(s.a, g_prof[s.prof].f[f]);
@@ -899,6 +935,7 @@ void stats_line() {
 // ---------------------------------------------------------------------------
 void on_frame(unsigned now) {
     read_env();
+    coop_stats_log_tick(now);
     if (!coop_world_active()) return;
     ensure_registered();
     int lv = -1, ac = 0;
@@ -951,6 +988,19 @@ struct Registrar {
 // Public.
 // ---------------------------------------------------------------------------
 CoopMoveStats coop_move_stats() { return g_st; }
+
+int coop_move_class_stats(CoopClassStat *out, int max) {
+    int n = 0;
+    for (int i = 0; i < g_nprof && n < max; ++i) {
+        const CStat &c = g_cs[i];
+        if (g_prof[i].id == 0 || (c.ents_max == 0 && c.pub == 0 && c.applied == 0)) continue;
+        CoopClassStat &o = out[n++];
+        o.id = g_prof[i].id; o.name = g_prof[i].name ? g_prof[i].name : "?";
+        o.ents_max = c.ents_max; o.pub = c.pub; o.applied = c.applied; o.slaved = c.slaved; o.owner_ch = c.owner_ch;
+        o.pin_n = c.pin_n; o.pin_big = c.pin_big; o.held_pins = c.held_pins; o.pin_avg = c.pin_n ? c.pin_sum / c.pin_n : 0.0; o.pin_max = c.pin_max;
+    }
+    return n;
+}
 
 bool coop_mover_req_validate(const void *p, int len) {
     if (!p || len != (int)sizeof(MoverSnapReq)) return false;
