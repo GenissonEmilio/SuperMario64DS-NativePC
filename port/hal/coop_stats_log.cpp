@@ -57,7 +57,7 @@ void emit(const char *why, unsigned now) {
         for (int i = 0; i < n; ++i)
             std::fprintf(stderr, "[coopstat] cls %u %s placed=%u pub=%u applied=%u pinned=%u pin_avg=%.1f pin_max=%.0f pin_over40=%u owner_ch=%u\n",
                          cs[i].id, cs[i].name, cs[i].ents_max, cs[i].pub, cs[i].applied, cs[i].pin_n, cs[i].pin_avg, cs[i].pin_max,
-                         cs[i].pin_big, cs[i].owner_ch);
+                         cs[i].pin_big, cs[i].owner_ch, cs[i].held_pins);
     }
     {
         std::fprintf(stderr, "[coopstat] hub drops");

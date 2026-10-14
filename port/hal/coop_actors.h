@@ -108,7 +108,7 @@ CoopMoveStats coop_move_stats();
 // coop_stats_log.cpp.
 struct CoopClassStat {
     unsigned id; const char *name;
-    unsigned ents_max, pub, applied, slaved, owner_ch, pin_n, pin_big;
+    unsigned ents_max, pub, applied, slaved, owner_ch, pin_n, pin_big, held_pins;
     double pin_avg, pin_max;
 };
 int coop_move_class_stats(CoopClassStat *out, int max);

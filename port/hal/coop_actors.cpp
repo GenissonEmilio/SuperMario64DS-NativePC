@@ -68,8 +68,9 @@ Prof g_prof[256] = {
 #undef ROW
 int g_nprof = 0;
 // MOVERS9: always-on per-class sync numbers (read by coop_stats_log.cpp). Cheap: a few adds per actor per tick.
-struct CStat { unsigned ents_max, pub, applied, slaved, owner_ch, pin_n, pin_big; double pin_sum, pin_max; };
+struct CStat { unsigned ents_max, pub, applied, slaved, owner_ch, pin_n, pin_big, held_pins; double pin_sum, pin_max; };
 CStat g_cs[256];
+bool g_hold_mips = true;      // SM64DS_MOVERS_MIPSHOLD=0 is the MUST-FAIL control: MIPS (187) is not on the carrier list
 bool g_boss_own = true;       // SM64DS_MOVERS_BOSSOWN=0 is the MUST-FAIL control: boss poses keep the proximity owner
 short g_prof_of[1024];      // class id -> index into g_prof, -1 none
 char  g_prof_name[256][40]; // names of rows added from the profile file
@@ -123,7 +124,8 @@ void prof_index() {
     // classes a player can pick up: their pose is the carrier's, not the Behavior's
     static const struct { uint16_t id, off; } kHold[] = { { 206, 0x390 }, { 187, 0x45c } };   // 206 Bob-omb mCarrier; 187 MIPS: the carrier Player* at +0x45c (daMip_c UpdateGrab sets it, StateReleased clears it)
     for (const auto &h : kHold)
-        if (h.id < 1024 && g_prof_of[h.id] >= 0 && g_prof[g_prof_of[h.id]].hold == 0) {
+        if (h.id == 187 && !g_hold_mips) continue;
+        else if (h.id < 1024 && g_prof_of[h.id] >= 0 && g_prof[g_prof_of[h.id]].hold == 0) {
             Prof &hp = g_prof[g_prof_of[h.id]];
             if (hp.size != 0 && h.off + 4u <= hp.size) hp.hold = h.off;
             else { std::fprintf(stderr, "[coopmove] size guard: class %d carried-test word %#x past the class size: not used\n", (int)h.id, (unsigned)h.off); ++g_st.rows_dropped; }
@@ -251,6 +253,7 @@ void read_env() {
     auto flag = [](const char *n, bool dflt) { const char *e = std::getenv(n); return (e && *e) ? *e != '0' : dflt; };
     g_log = flag("SM64DS_COOP_MOVE_LOG", false);
     g_boss_own = flag("SM64DS_MOVERS_BOSSOWN", true);
+    g_hold_mips = flag("SM64DS_MOVERS_MIPSHOLD", true);
     g_act = flag("SM64DS_COOP_ACT", true);
     g_guard = flag("SM64DS_COOP_MOVE_GUARD", true);
     g_snap_on = flag("SM64DS_COOP_MOVE_SNAP", true);
@@ -648,6 +651,7 @@ void slave(Slot &s, const Rx &x, unsigned now) {
     if (age > (unsigned)kStaleMs) return;                    // the owner went quiet for good: let the local copy run (a still actor heartbeats every 1.5 s)
     char *a = s.a;
     if (skip_state(a, p)) return;
+    if (p.id == 187 && rd32(a, 0x45c) != 0) ++g_cs[s.prof].held_pins;     // proof: the pin fought a Player that is carrying the rabbit
     int32_t tx = x.x, ty = x.y, tz = x.z;
     int16_t tax = x.ax, tay = x.ay, taz = x.az;
     const long long lead = (long long)(std::min)(age, 150u) + g_lead_ms;   // extrapolate at most 150 ms past the last record
@@ -986,7 +990,7 @@ int coop_move_class_stats(CoopClassStat *out, int max) {
         CoopClassStat &o = out[n++];
         o.id = g_prof[i].id; o.name = g_prof[i].name ? g_prof[i].name : "?";
         o.ents_max = c.ents_max; o.pub = c.pub; o.applied = c.applied; o.slaved = c.slaved; o.owner_ch = c.owner_ch;
-        o.pin_n = c.pin_n; o.pin_big = c.pin_big; o.pin_avg = c.pin_n ? c.pin_sum / c.pin_n : 0.0; o.pin_max = c.pin_max;
+        o.pin_n = c.pin_n; o.pin_big = c.pin_big; o.held_pins = c.held_pins; o.pin_avg = c.pin_n ? c.pin_sum / c.pin_n : 0.0; o.pin_max = c.pin_max;
     }
     return n;
 }
