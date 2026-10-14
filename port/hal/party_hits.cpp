@@ -141,7 +141,7 @@ void read_env() {
     r.check_cooldown = !env_flag(std::getenv("SM64DS_PHIT_NOCOOLDOWN"), false);
     r.check_pos = !env_flag(std::getenv("SM64DS_PHIT_NOPOS"), false);
     r.check_busy = !env_flag(std::getenv("SM64DS_PHIT_NOBUSY"), false);
-    g.rom_eat = env_flag(std::getenv("SM64DS_ROOM_EATVIS"), true);      // INTERACT9: 0 = the old synthetic hold
+    g.rom_eat = env_flag(std::getenv("SM64DS_ROOM_EATVIS"), false);     // INTERACT9: 1 = the ROM mouth state (lab: it spits at its first walk on this port)
     g.grab_on = env_flag(std::getenv("SM64DS_ROOM_GRAB"), true);
     g.feedback = env_flag(std::getenv("SM64DS_PHIT_FEEDBACK"), true);
     if (const char *e = std::getenv("SM64DS_ATTACH_EAT")) std::sscanf(e, "%d,%d", &g.eat_ahead, &g.eat_up);
@@ -377,8 +377,19 @@ void eat_end(char *me, bool spit, bool escaped = false) {
     } else {
         _ZN6Player11ChangeStateERNS_5StateE(me, data_ov002_0211013c);
         if (spit) {
-            *(short *)(me + kYawAngle) = (short)g.hold.spit_yaw();
-            *(int *)(me + kHorzSpeed) = 0x20000;           // TUNE: ~kEatSpitUnits over the next frames
+            // func_ov002_020d5cec's own numbers: out 80 units in front of the eater and 50 up, 24 units a frame
+            // forward and 24 up, the flying anim (0x56), facing the way the eater faces
+            int yaw = g.hold.spit_yaw();
+            if (ep) {
+                yaw = *player::facing(ep) & 0xFFFF;
+                const double a = (double)yaw * 3.14159265358979323846 / 32768.0;
+                *player::pos_x(me) = *player::pos_x(ep) + (int)std::lround(std::sin(a) * 80) * 0x1000;
+                *player::pos_z(me) = *player::pos_z(ep) + (int)std::lround(std::cos(a) * 80) * 0x1000;
+                *player::pos_y(me) = *player::pos_y(ep) + 0x32000;
+            }
+            *(short *)(me + kYawAngle) = (short)yaw;
+            _ZN6Player7SetAnimEji5Fix12IiEj(me, 0x56, 0x40000000, 0x1000, 0);
+            *(int *)(me + kHorzSpeed) = 0x18000;
             *(int *)(me + kVertSpeed) = 0x18000;
             ++g.st.eats_spat;
         } else {
@@ -427,10 +438,17 @@ void eat_tick(char *me) {
     const EatStep step = g.hold.tick(g.frame, in);
     if (step == kEatHolding) {
         if (!g.rom_mouth) {
-            int ox, oy, oz;
-            EatHold::mouth_pos(s.x, s.y, s.z, g.hold.spit_yaw(), &ox, &oy, &oz);
-            *player::pos_x(me) = ox << 12; *player::pos_y(me) = oy << 12; *player::pos_z(me) = oz << 12;
+            // in the mouth: at the eater's DRAWN body (the ghost the attach rule also uses), the curled anim, no control
+            char *ep = body_of_seat(eater);
+            int ex = s.x << 12, ey = s.y << 12, ez = s.z << 12, eyaw = g.hold.spit_yaw();
+            if (ep) { ex = *player::pos_x(ep); ey = *player::pos_y(ep); ez = *player::pos_z(ep); eyaw = *player::facing(ep) & 0xFFFF; }
+            const double a = (double)eyaw * 3.14159265358979323846 / 32768.0;
+            *player::pos_x(me) = ex + (int)std::lround(std::sin(a) * g.eat_ahead) * 0x1000;
+            *player::pos_z(me) = ez + (int)std::lround(std::cos(a) * g.eat_ahead) * 0x1000;
+            *player::pos_y(me) = ey + g.eat_up * 0x1000;
             *(int *)(me + kHorzSpeed) = 0; *(int *)(me + kVertSpeed) = 0;
+            *(unsigned char *)(me + kNoControl) = 1;
+            _ZN6Player7SetAnimEji5Fix12IiEj(me, 0x3f, 0, 0x3000, 0);
         }
     } else if (step == kEatSpit) {
         eat_end(me, true);
