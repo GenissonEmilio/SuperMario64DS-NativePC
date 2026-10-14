@@ -116,6 +116,7 @@ struct G {
     bool rom_eat = true, grab_on = true, feedback = true;
     bool pend = false; Claim pend_claim; Effect pend_fx;      // a believed claim waits here for the frame hook
     unsigned pend_ms = 0;
+    int diag_left = 0;     // frames of link diagnostics after an eat / grab begins
     // body-touching replies wait for the frame hook too (the pump runs inside the tick, around the actor walk)
     struct Later { int what = 0; int seat = 0; bool swing = false; int yaw = 0, speed = 0; };
     Later later[6]; int later_n = 0;
@@ -355,6 +356,7 @@ void eat_begin(char *me, const Claim &c) {
     send_wire(c.attacker, kEatAck, 0, 0, 0, 0);
     broadcast_attach(c.attacker, 1);
     g.beat = g.frame;
+    g.diag_left = 6;
     std::fprintf(stderr, "[phit] EAT hold begins, eater seat %d%s\n", c.attacker, g.rom_mouth ? " (ROM mouth state)" : "");
 }
 
@@ -390,8 +392,10 @@ void eat_end(char *me, bool spit, bool escaped = false) {
     std::fprintf(stderr, "[phit] EAT %s (eater seat %d)\n", escaped ? "broke free" : spit ? "spat out" : "released early", eater);
 }
 
+void diag_links(const char *where, char *me);
 void eat_tick(char *me) {
     if (!g.hold.active()) return;
+    diag_links("hook", me);
     const int eater = g.hold.eater();
     Seen s;
     see(eater, &s);
@@ -428,6 +432,16 @@ void eat_tick(char *me) {
     } else if (step == kEatAbort) {
         eat_end(me, false);
     }
+}
+
+void diag_links(const char *where, char *me) {
+    if (g.diag_left <= 0) return;
+    --g.diag_left;
+    char *ep = g.hold.active() ? body_of_seat(g.hold.eater()) : (g.cv.active ? body_of_seat(g.cv.holder) : nullptr);
+    std::fprintf(stderr, "[phit] diag %s f=%u state=%p mouthState=%d grabbedState=%d d0=%p 35c=%p other.360=%p other.358=%p other=%p\n",
+                 where, g.frame, *(void **)(me + 0x370), state_is(me, data_ov002_02110064) ? 1 : 0, state_is(me, data_ov002_0211016c) ? 1 : 0,
+                 (void *)ptrf(me, kInMouth), (void *)ptrf(me, kGrabbedBy), ep ? (void *)ptrf(ep, kMouthObj) : nullptr,
+                 ep ? (void *)ptrf(ep, kHeldObj) : nullptr, (void *)ep);
 }
 
 // ---- the Wario hold: victim side -----------------------------------------------------------------
@@ -473,11 +487,13 @@ void grab_begin(char *me, const Claim &c) {
     g.beat = g.frame;
     send_wire(c.attacker, kGrabAck, 0, 0, 0, 0);
     broadcast_attach(c.attacker, 2);
+    g.diag_left = 6;
     std::fprintf(stderr, "[phit] GRAB: held by seat %d (St_Grabbed entered)\n", c.attacker);
 }
 
 void carry_v_tick(char *me) {
     if (!g.cv.active) return;
+    diag_links("hook", me);
     char *hb = body_of_seat(g.cv.holder);
     Seen s;
     see(g.cv.holder, &s);
@@ -857,6 +873,7 @@ extern "C" void port_party_hits_prewalk(void) {
     if (!g.on) return;
     char *me = my_body();
     if (!me) return;
+    diag_links("prewalk-before", me);
     if (g.hold.active() && g.rom_mouth) {
         if (char *ep = body_of_seat(g.hold.eater())) {
             if (state_is(me, data_ov002_02110064)) {
