@@ -1906,13 +1906,28 @@ void vertex(int16_t x, int16_t y, int16_t z) {
 }
 
 // --- command execution ------------------------------------------------------
+/* TTMSHAKE093: a picture between two ticks blends each matrix word, and a word
+   rounded back to the DS's 4.12 integer is a whole 1/4096 step of the matrix.
+   On a small-scale model matrix (the TTM slide hall's walls, entries a few
+   hundred counts) that step is about a tenth of a percent of the model's size,
+   which is a pixel of wobble from picture to picture while the camera drifts
+   slowly. The replay therefore hands the exact blended value beside the
+   rounded word (g_ip_ex_on) and the matrix commands read that. Off (every
+   tick's own command, and the blend's alpha 1) the words are read as ever. */
+double g_ip_ex[32];
+int g_ip_ex_on = 0;
+inline float mtx_word(const uint32_t *p, int i) {
+    if (g_ip_ex_on) return (float)(g_ip_ex[i] * (double)FX12);
+    return static_cast<int32_t>(p[i]) * FX12;
+}
+
 void load_mtx(Mat &dst, const uint32_t *p, int n) {
     Mat m = Mat::identity();
     if (n == 16) {
-        for (int i = 0; i < 16; ++i) m.m[i] = static_cast<int32_t>(p[i]) * FX12;
+        for (int i = 0; i < 16; ++i) m.m[i] = mtx_word(p, i);
     } else {  // 4x3: three rows of 3 plus a translation row
         for (int r = 0; r < 4; ++r)
-            for (int c = 0; c < 3; ++c) m.m[r * 4 + c] = static_cast<int32_t>(p[r * 3 + c]) * FX12;
+            for (int c = 0; c < 3; ++c) m.m[r * 4 + c] = mtx_word(p, r * 3 + c);
         m.m[3] = m.m[7] = m.m[11] = 0.0f;
         m.m[15] = 1.0f;
     }
@@ -1922,7 +1937,7 @@ void load_mtx(Mat &dst, const uint32_t *p, int n) {
 Mat mat_3x3(const uint32_t *p) {
     Mat m = Mat::identity();
     for (int r = 0; r < 3; ++r)
-        for (int c = 0; c < 3; ++c) m.m[r * 4 + c] = static_cast<int32_t>(p[r * 3 + c]) * FX12;
+        for (int c = 0; c < 3; ++c) m.m[r * 4 + c] = mtx_word(p, r * 3 + c);
     return m;
 }
 
@@ -2099,9 +2114,9 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
         }
         case 0x1B: {                                             // MTX_SCALE
             Mat m = Mat::identity();
-            m.m[0] = static_cast<int32_t>(p[0]) * FX12;
-            m.m[5] = static_cast<int32_t>(p[1]) * FX12;
-            m.m[10] = static_cast<int32_t>(p[2]) * FX12;
+            m.m[0] = mtx_word(p, 0);
+            m.m[5] = mtx_word(p, 1);
+            m.m[10] = mtx_word(p, 2);
             if (g.mode == MTX_PROJ) g.proj = mul(m, g.proj);
             else if (g.mode == MTX_TEX) g.tex = mul(m, g.tex);
             else g.pos = mul(m, g.pos);
@@ -2109,9 +2124,9 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
         }
         case 0x1C: {                                             // MTX_TRANS
             Mat m = Mat::identity();
-            m.m[12] = static_cast<int32_t>(p[0]) * FX12;
-            m.m[13] = static_cast<int32_t>(p[1]) * FX12;
-            m.m[14] = static_cast<int32_t>(p[2]) * FX12;
+            m.m[12] = mtx_word(p, 0);
+            m.m[13] = mtx_word(p, 1);
+            m.m[14] = mtx_word(p, 2);
             if (g.mode == MTX_PROJ) g.proj = mul(m, g.proj);
             else if (g.mode == MTX_TEX) g.tex = mul(m, g.tex);
             else { g.pos = mul(m, g.pos); if (g.mode == MTX_POSVEC) g.vec = mul(m, g.vec); }
@@ -8062,10 +8077,16 @@ void ip_recamera(const uint32_t *p, int np, uint32_t *out) {
         const double s = v * 4096.0;
         return (uint32_t)(int32_t)(s < 0 ? s - 0.5 : s + 0.5);
     };
-    for (int i = 0; i < np; ++i) out[i] = p[i];
+    for (int i = 0; i < np; ++i) { out[i] = p[i]; g_ip_ex[i] = (double)(int32_t)p[i]; }
     for (int r = 0; r < 3; ++r)
-        for (int k = 0; k < 3; ++k) out[four ? r * 4 + k : r * 3 + k] = fx(B[r][k]);
-    for (int k = 0; k < 3; ++k) out[four ? 12 + k : 9 + k] = fx(b[k]);
+        for (int k = 0; k < 3; ++k) {
+            out[four ? r * 4 + k : r * 3 + k] = fx(B[r][k]);
+            g_ip_ex[four ? r * 4 + k : r * 3 + k] = B[r][k] * 4096.0;
+        }
+    for (int k = 0; k < 3; ++k) {
+        out[four ? 12 + k : 9 + k] = fx(b[k]);
+        g_ip_ex[four ? 12 + k : 9 + k] = b[k] * 4096.0;
+    }
 }
 
 bool ip_proj_perspective() {
@@ -8259,24 +8280,33 @@ int gx_interp_begin(float alpha) {
         case IPK_CMD: {
             if (e.cmd == 0x50 || e.cmd == 0x2A || e.cmd == 0x2B) break;
             const uint32_t *pp = e.np ? &C.par[e.off] : nullptr;
+            int ex_on = 0;
             if (ip_is_mtx(e.cmd) && e.np <= 32) {
                 const int b = C.blend.empty() ? -1 : C.blend[i];
                 if (b >= 0 && e.mode != MTX_TEX) {
                     const IpEv &pe = P.ev[b];
                     const int n = e.np < pe.np ? e.np : pe.np;
-                    for (int k = 0; k < e.np; ++k)
+                    for (int k = 0; k < e.np; ++k) {
                         tmp[k] = k < n ? (uint32_t)ip_lerp(P.par[pe.off + k], pp[k], alpha)
                                        : pp[k];
+                        g_ip_ex[k] = k < n ? (double)(int32_t)P.par[pe.off + k] * (1.0 - alpha) +
+                                             (double)(int32_t)pp[k] * alpha
+                                           : (double)(int32_t)pp[k];
+                    }
                     pp = tmp;
+                    ex_on = 1;
                 } else if (b == -2 && alpha < 1.0f && ip_proj_perspective()) {
                     /* at alpha 1 the blended camera IS tick N's and the
                        re-view is the identity: skip it, so the last picture
                        of a tick is the tick's own to the bit */
                     ip_recamera(pp, e.np, tmp);
                     pp = tmp;
+                    ex_on = 1;
                 }
             }
+            g_ip_ex_on = ex_on;
             exec(e.cmd, pp, e.np);
+            g_ip_ex_on = 0;
             break;
         }
         case IPK_BIND: {
