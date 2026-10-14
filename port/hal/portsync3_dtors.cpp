@@ -63,28 +63,3 @@ void daObjFl_Fall_Block_c::Destructor1() { this->daObjFl_Fall_Block_c::~daObjFl_
 void daObjFl_Fall_Block_c::Destructor0() { this->daObjFl_Fall_Block_c::~daObjFl_Fall_Block_c(); }
 void daObjKaitendai_c::Destructor1() { this->daObjKaitendai_c::~daObjKaitendai_c(); }
 void daObjKaitendai_c::Destructor0() { this->daObjKaitendai_c::~daObjKaitendai_c(); }
-
-// ---- the dBgW family's two ROM destructor slots (include/dBgW*.h _MSC_VER arms) -------------
-// Destructor1 is the complete-object destructor (ROM slot 0). Destructor0 is the deleting
-// half; nothing in the port deletes a collision world through the compiler table, so it
-// stops loudly if that ever changes.
-#include "dBgW.h"
-#include "dBgW_Kc.h"
-#include "dBgW_KcMbg.h"
-#include "dBgW_KcMbgSclY.h"
-#include <cstdio>
-#include <cstdlib>
-static void port_dbgw_d0_trap(const char *who)
-{
-    std::fprintf(stderr, "[portsync3] %s::Destructor0 (deleting destructor) entered; "
-                         "nothing deletes a collision world through the compiler table\n", who);
-    std::abort();
-}
-void dBgW::Destructor1() { this->dBgW::~dBgW(); }
-void dBgW::Destructor0() { port_dbgw_d0_trap("dBgW"); }
-void dBgW_Kc::Destructor1() { this->dBgW_Kc::~dBgW_Kc(); }
-void dBgW_Kc::Destructor0() { port_dbgw_d0_trap("dBgW_Kc"); }
-void dBgW_KcMbg::Destructor1() { this->dBgW_KcMbg::~dBgW_KcMbg(); }
-void dBgW_KcMbg::Destructor0() { port_dbgw_d0_trap("dBgW_KcMbg"); }
-void dBgW_KcMbgSclY::Destructor1() { this->dBgW_KcMbgSclY::~dBgW_KcMbgSclY(); }
-void dBgW_KcMbgSclY::Destructor0() { port_dbgw_d0_trap("dBgW_KcMbgSclY"); }
