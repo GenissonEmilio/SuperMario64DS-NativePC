@@ -24,6 +24,9 @@
 extern "C" {
 extern void *data_0209f394[];
 extern unsigned char data_0209f250;       // my player slot
+extern unsigned char data_0209f21c;       // number of player bodies
+int port_adventure_ghost_seat(int slot);  // the hub seat a ghost body in player slot `slot` shows (-1: none)
+int port_adventure_ghost_drawpos(int slot, int out[3]);   // where the follower put that ghost this frame (fix12), 0 = not posed
 extern signed char data_0209f2f8;         // level (sublevel id)
 extern signed char data_02092120;         // area
 extern int data_0209f220[];               // [0] & 0xff = act
@@ -38,10 +41,12 @@ int _ZN6Player7TryGrabER8dActor_c(void *self, void *actor);   // holder->TryGrab
 int _ZN6Player9DropActorEv(void *holder);
 extern unsigned char data_ov002_02110064[];   // St_InYoshiMouth
 extern unsigned char data_ov002_0211016c[];   // St_Grabbed
+extern unsigned char data_ov002_02110604[];   // St_SwingPlayer
 int func_ov002_020d5f34(char *c, void *eater);   // victim: into the mouth (state, +0xd0, anim 0x3f)
 int func_ov002_020d5ed0(char *c);                // victim: mouth step 1
 int _ZN6Player7SetAnimEji5Fix12IiEj(void *c, unsigned anim, int a, int b, unsigned d);
 int func_ov002_020d5cec(char *c);                // victim: the ROM's own spit
+int func_ov002_020beb38(char *c);                // the ROM's mash count (buttons pressed this frame, stick whirl +8)
 int func_ov002_020db5f4(char *victim, char *holder);              // victim: St_Grabbed
 void func_ov002_020db54c(unsigned char *victim, int speed, int vert, short yaw);   // victim: thrown
 void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned id, int x, int y, int z);
@@ -113,7 +118,7 @@ struct G {
     CarryV cv;      // I am carried
     CarryH ch;      // I carry
     // knobs
-    bool rom_eat = true, grab_on = true, feedback = true;
+    bool rom_eat = true, rom_grab = true, grab_on = true, feedback = true;
     bool pend = false; Claim pend_claim; Effect pend_fx;      // a believed claim waits here for the frame hook
     unsigned pend_ms = 0;
     int diag_left = 0;     // frames of link diagnostics after an eat / grab begins
@@ -126,6 +131,8 @@ struct G {
     unsigned probe_frame = 0;
     bool lab_done = false;      // the gather stops for good once an eat / hold has begun on this console (the spit and the throw fly free)
     int gather_dx = 0, gather_dz = 0; bool gather = false;     // LAB: stand next to the host every frame (pictures independent of frame skew)
+    int lab_seat = -1;      // LAB: forge only toward this hub seat
+    int lab_swing = 0; bool swing_done = false;     // LAB: force the holder's St_SwingPlayer this many frames into the hold (the pad's circular stick motion is not scripted; the arena rig does the same)
     unsigned forge_at = 0, eat_hold = 0;      // LAB: forge from this frame on; a longer eat hold for pictures
     Stats st = {};
 } g;
@@ -142,13 +149,18 @@ void read_env() {
     r.check_cooldown = !env_flag(std::getenv("SM64DS_PHIT_NOCOOLDOWN"), false);
     r.check_pos = !env_flag(std::getenv("SM64DS_PHIT_NOPOS"), false);
     r.check_busy = !env_flag(std::getenv("SM64DS_PHIT_NOBUSY"), false);
-    g.rom_eat = env_flag(std::getenv("SM64DS_ROOM_EATVIS"), false);     // INTERACT9: 1 = the ROM mouth state (lab: it spits at its first walk on this port)
+    // ROMSTATE9: the victim's own console runs the ROM's real St_InYoshiMouth (eat) and St_Grabbed / thrown (carry) by default;
+    // SM64DS_ROOM_ROMSTATE=0 falls back to INTERACT9's synthetic holds (SM64DS_ROOM_EATVIS=0/1 still picks the eat alone)
+    g.rom_eat = g.rom_grab = env_flag(std::getenv("SM64DS_ROOM_ROMSTATE"), true);
+    if (const char *e = std::getenv("SM64DS_ROOM_EATVIS")) if (*e) g.rom_eat = std::atoi(e) != 0;
     g.grab_on = env_flag(std::getenv("SM64DS_ROOM_GRAB"), true);
     g.feedback = env_flag(std::getenv("SM64DS_PHIT_FEEDBACK"), true);
     if (const char *e = std::getenv("SM64DS_ATTACH_EAT")) std::sscanf(e, "%d,%d", &g.eat_ahead, &g.eat_up);
     if (const char *e = std::getenv("SM64DS_ATTACH_CARRY")) std::sscanf(e, "%d,%d", &g.carry_ahead, &g.carry_up);
     if (const char *e = std::getenv("SM64DS_PHIT_LAB_GATHER")) { g.gather = true; g.gather_dx = 150; g.gather_dz = 0; std::sscanf(e, "%d,%d", &g.gather_dx, &g.gather_dz); }
     if (const char *e = std::getenv("SM64DS_PHIT_LAB_AT")) g.forge_at = (unsigned)std::atoi(e);
+    if (const char *e = std::getenv("SM64DS_PHIT_LAB_SEAT")) g.lab_seat = std::atoi(e);
+    if (const char *e = std::getenv("SM64DS_PHIT_LAB_SWING")) g.lab_swing = std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_EATHOLD")) g.eat_hold = (unsigned)std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_LAB")) {
         char kind[16] = {0}; int units = 0;
@@ -165,8 +177,21 @@ char *my_body() {
     const int me = (int)data_0209f250;
     return (me >= 0 && me < 16) ? (char *)data_0209f394[me] : nullptr;
 }
+// ROMSTATE9: the body of a HUB SEAT. Slot i of data_0209f394 is a player SLOT, not a seat: in a party / coop room my own
+// body sits in slot data_0209f250 (0 on every console in the rows) and each friend's ghost body in some other slot, the
+// follower's body -> seat table (port_adventure_ghost_seat) says which. (INTERACT9 indexed the array by seat, so on seat 1
+// the "eater" was my OWN body: the mouth state read its own pointers, found the eater's mouth object was not itself and
+// spat at once; the carry state landed in another state the same way. cdb: out/ROMSTATE9/logs/cdb_dbg11_p1.)
 char *body_of_seat(int seat) {
-    return (seat >= 0 && seat < 16) ? (char *)data_0209f394[seat] : nullptr;
+    if (seat < 0 || seat >= kHubPartySeats) return nullptr;
+    if (seat == comms_hub_my_seat()) return my_body();
+    const int me = (int)data_0209f250;
+    const int nb = (int)data_0209f21c < 16 ? (int)data_0209f21c : 16;
+    for (int i = 0; i < nb; ++i) {
+        if (i == me || !data_0209f394[i]) continue;
+        if (port_adventure_ghost_seat(i) == seat) return (char *)data_0209f394[i];
+    }
+    return nullptr;
 }
 int u(int fix12) { return fix12 >> 12; }
 // A clock every console on this machine shares (the rows compare one console's send with another's apply).
@@ -179,6 +204,22 @@ char *&ptrf(char *b, int off) { return *(char **)(b + off); }
 // Player::IsState without the call: mState (+0x370) is the state the body is in (a bool-returning ROM method
 // declared int elsewhere can hand back garbage in the upper bits of eax)
 bool state_is(const char *b, const void *st) { return *(void *const *)(b + 0x370) == st; }
+
+// ROMSTATE9: a ghost body sits PARKED (my position + 200000 up) between the follower's pass and the next, so any ROM code that
+// reads the eater's / holder's position from its body (the mouth state's follow, the spit's launch point, the hand placement)
+// must see it where it is drawn: put the body at the follower's drawn position first. False when the ghost is not posed.
+bool pose_ghost_at_draw(char *gb) {
+    if (!gb) return false;
+    const int nb = (int)data_0209f21c < 16 ? (int)data_0209f21c : 16;
+    for (int i = 0; i < nb; ++i) {
+        if (data_0209f394[i] != gb) continue;
+        int dp[3];
+        if (!port_adventure_ghost_drawpos(i, dp)) return false;
+        *player::pos_x(gb) = dp[0]; *player::pos_y(gb) = dp[1]; *player::pos_z(gb) = dp[2];
+        return true;
+    }
+    return false;
+}
 
 Place my_place() {
     Place p; p.level = (int)(unsigned char)data_0209f2f8; p.area = (int)data_02092120; p.act = data_0209f220[0] & 0xff;
@@ -279,7 +320,10 @@ void att_links() {
         }
         if (want >= 0) {
             char *hb = body_of_seat(want);
-            if (hb && vb) { port::vs_grab_export_overlay(hb, vb); port::vs_grab_export_link(hb, vb, true); }
+            // the holder's raised-arms layer only. NOT the ROM's hand link (holder +0x358 / carried +0x35c): the ROM's hand
+            // placement of a carried body reads the LOCAL player's hand, so on a bystander it drew the carried ghost over my own
+            // head (picture ci_g1_p2 / p3, out/ROMSTATE9). The attach rule in gw_follow places the carried ghost at the holder.
+            if (hb && vb) port::vs_grab_export_overlay(hb, vb);
         }
         linked_h[v] = want;
     }
@@ -332,33 +376,27 @@ void eat_begin(char *me, const Claim &c) {
     char *ep = body_of_seat(c.attacker);
     g.rom_mouth = false;
     if (g.rom_eat && ep) {
-        // the ROM's own entry into a mouth (what the arena's EATEN event does): the eater's body is the
-        // mEatingPlayer, its +0x360 names me, my state is St_InYoshiMouth and my anim the curled one (0x3f)
-        // func_ov002_020d5f34 step by step (it sets the eater link, the curled anim, step 0, the state), because the
-        // eater link did not survive the call on this port: each stage's value is logged, and the link is set again
-        // after the state change (the mouth state's Main reads it every frame)
+        // the ROM's own entry into a mouth, the way the arena's EATEN event does it (vs_arena_eat.cpp v_enter): the eater's
+        // body is the mEatingPlayer, its +0x360 names me, my state becomes St_InYoshiMouth (func_ov002_020d5f34), then step 1
+        // (func_ov002_020d5ed0). The eater's two "cannot count down" flags are clear, and its hold timer is the ROM's 90:
+        // the state counts it down by MY button presses, so the ROM's own mash-to-escape works on this console.
         s32(me, kInMouth) = 0;
         ptrf(ep, kMouthObj) = me;
-        ptrf(me, kInMouth) = ep;
-        char *l0 = ptrf(me, kInMouth);
-        _ZN6Player7SetAnimEji5Fix12IiEj(me, 0x3f, 0, 0x3000, 0);
-        char *l1 = ptrf(me, kInMouth);
-        *(unsigned char *)(me + 0x6e3) = 0;
-        _ZN6Player11ChangeStateERNS_5StateE(me, data_ov002_02110064);
+        const int entered = func_ov002_020d5f34(me, ep);
         char *l2 = ptrf(me, kInMouth);
-        ptrf(me, kInMouth) = ep;
-        *(unsigned short *)(ep + kHoldTimer) = g.eat_hold ? (unsigned short)(g.eat_hold + 60) : 0x3c;      // mashing shortens it; our spit comes first
+        *(unsigned short *)(ep + kHoldTimer) = g.eat_hold ? (unsigned short)(g.eat_hold + 60) : 0x5a;
         *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
-        const int r5 = func_ov002_020d5ed0(me);
+        const int r5 = entered ? func_ov002_020d5ed0(me) : 0;
         g.rom_mouth = r5 != 0 && state_is(me, data_ov002_02110064) && ptrf(me, kInMouth) == ep;
-        std::fprintf(stderr, "[phit] EAT enter: eater link after set/anim/state %p %p %p, d5ed0 %d, now %d (eater %p)\n", (void *)l0, (void *)l1, (void *)l2, r5, g.rom_mouth ? 1 : 0, (void *)ep);
+        std::fprintf(stderr, "[phit] EAT enter: d5f34 %d, eater link after the state change %p, d5ed0 %d, now %d (me %p eater %p, my slot %d, eater seat %d)\n",
+                     entered, (void *)l2, r5, g.rom_mouth ? 1 : 0, (void *)me, (void *)ep, (int)data_0209f250, c.attacker);
         if (!g.rom_mouth) ptrf(ep, kMouthObj) = nullptr;
     }
     if (!g.rom_mouth) *(unsigned char *)(me + kNoControl) = 1;           // TUNE: the flag my_body_may_act reads
     send_wire(c.attacker, kEatAck, 0, 0, 0, 0);
     broadcast_attach(c.attacker, 1);
     g.beat = g.frame;
-    g.diag_left = 6;
+    g.diag_left = 40;
     std::fprintf(stderr, "[phit] EAT hold begins, eater seat %d%s\n", c.attacker, g.rom_mouth ? " (ROM mouth state)" : "");
 }
 
@@ -368,6 +406,7 @@ void eat_end(char *me, bool spit, bool escaped = false) {
     *(unsigned char *)(me + kNoControl) = 0;
     if (g.rom_mouth) {
         if (spit && state_is(me, data_ov002_02110064) && ptrf(me, kInMouth)) {
+            pose_ghost_at_draw(ep);                             // the spit's launch point is the eater's body position
             func_ov002_020d5cec(me);                            // the ROM's own spit
             ++g.st.eats_spat;
         } else {
@@ -437,6 +476,10 @@ void eat_tick(char *me) {
             return;
         }
         if (g.frame - g.beat >= (unsigned)kAttachBeat) { g.beat = g.frame; broadcast_attach(eater, 1); }
+        if (g.log > 0 && ep && (g.frame % 20) == 0)
+            std::fprintf(stderr, "[phit] mash f=%u count=%d phase=%d eater timer=%u step=%d state_is_mouth=%d\n", g.frame,
+                         func_ov002_020beb38(me), (int)*(unsigned char *)(me + 0x6f5), (unsigned)*(unsigned short *)(ep + kHoldTimer),
+                         (int)*(unsigned char *)(me + 0x6e3), state_is(me, data_ov002_02110064) ? 1 : 0);
     }
     const EatStep step = g.hold.tick(g.frame, in);
     if (step == kEatHolding) {
@@ -464,10 +507,12 @@ void diag_links(const char *where, char *me) {
     if (g.diag_left <= 0) return;
     --g.diag_left;
     char *ep = g.hold.active() ? body_of_seat(g.hold.eater()) : (g.cv.active ? body_of_seat(g.cv.holder) : nullptr);
-    std::fprintf(stderr, "[phit] diag %s f=%u state=%p mouthState=%d grabbedState=%d d0=%p 35c=%p other.360=%p other.358=%p other=%p\n",
-                 where, g.frame, *(void **)(me + 0x370), state_is(me, data_ov002_02110064) ? 1 : 0, state_is(me, data_ov002_0211016c) ? 1 : 0,
+    std::fprintf(stderr, "[phit] diag %s f=%u me=%p state=%p mouthState=%d grabbedState=%d step=%d spd=%x pos=%d,%d,%d d0=%p 35c=%p other.360=%p other.358=%p other=%p other.pos=%d,%d,%d\n",
+                 where, g.frame, (void *)me, *(void **)(me + 0x370), state_is(me, data_ov002_02110064) ? 1 : 0, state_is(me, data_ov002_0211016c) ? 1 : 0,
+                 (int)*(unsigned char *)(me + 0x6e3), *(unsigned *)(me + kHorzSpeed), u(*player::pos_x(me)), u(*player::pos_y(me)), u(*player::pos_z(me)),
                  (void *)ptrf(me, kInMouth), (void *)ptrf(me, kGrabbedBy), ep ? (void *)ptrf(ep, kMouthObj) : nullptr,
-                 ep ? (void *)ptrf(ep, kHeldObj) : nullptr, (void *)ep);
+                 ep ? (void *)ptrf(ep, kHeldObj) : nullptr, (void *)ep,
+                 ep ? u(*player::pos_x(ep)) : 0, ep ? u(*player::pos_y(ep)) : 0, ep ? u(*player::pos_z(ep)) : 0);
 }
 
 // ---- the Wario hold: victim side -----------------------------------------------------------------
@@ -499,7 +544,7 @@ void grab_begin(char *me, const Claim &c) {
     *(unsigned short *)(me + player::kInvincibleTimer) = 0;
     *(unsigned char *)(me + 0x708) = 0;
     void *st_before = *(void **)(me + 0x370);
-    const int ok = func_ov002_020db5f4(me, hb);
+    const int ok = g.rom_grab ? func_ov002_020db5f4(me, hb) : 1;        // ROMSTATE9: =0 skips the ROM state (synthetic hold below)
     char *gb0 = ptrf(me, kGrabbedBy);
     ptrf(me, kGrabbedBy) = hb;       // the state change clears the link on this port (as it does the mouth link): set it again
     *(unsigned short *)(me + player::kInvincibleTimer) = inv;
@@ -525,7 +570,7 @@ void grab_begin(char *me, const Claim &c) {
     g.beat = g.frame;
     send_wire(c.attacker, kGrabAck, 0, 0, 0, 0);
     broadcast_attach(c.attacker, 2);
-    g.diag_left = 6;
+    g.diag_left = 40;
     std::fprintf(stderr, "[phit] GRAB: held by seat %d (St_Grabbed entered)\n", c.attacker);
 }
 
@@ -536,11 +581,12 @@ void carry_v_tick(char *me) {
     Seen s;
     see(g.cv.holder, &s);
     const Place mp = my_place();
-    const bool holder_ok = hb && s.have_presence && s.in_level && s.presence_age_ms <= (unsigned)kPresenceMaxAgeMs &&
-                           s.at.level == mp.level && s.at.area == mp.area && s.have_ghost && s.ghost_age_ms <= (unsigned)kGhostMaxAgeMs;
+    bool holder_ok = hb && s.have_presence && s.in_level && s.presence_age_ms <= (unsigned)kPresenceMaxAgeMs &&
+                     s.at.level == mp.level && s.at.area == mp.area && s.have_ghost && s.ghost_age_ms <= (unsigned)kGhostMaxAgeMs;
+    if (!g.judge.rules.check_level) holder_ok = hb != nullptr;         // LAB: the rig's host stalls for seconds
     if (!holder_ok) {
         std::fprintf(stderr, "[phit] GRAB: the holder is gone, out of the hold\n");
-        if (ptrf(me, kGrabbedBy)) func_ov002_020db54c((unsigned char *)me, 0x10000, 0x10000, *(short *)(me + kYawAngle));
+        if (ptrf(me, kGrabbedBy)) { pose_ghost_at_draw(hb); func_ov002_020db54c((unsigned char *)me, 0x10000, 0x10000, *(short *)(me + kYawAngle)); }
         carry_v_clear(me, true);
         return;
     }
@@ -559,6 +605,9 @@ void carry_v_tick(char *me) {
     }
     if (ptrf(hb, kHeldObj) != me) ptrf(hb, kHeldObj) = me;
     u32(me, kFlags) |= kFlagCarried | kFlagHeldOut;
+    if (g.log > 0 && (g.frame % 20) == 0)
+        std::fprintf(stderr, "[phit] mash f=%u count=%d step=%d state_is_grabbed=%d\n", g.frame, func_ov002_020beb38(me),
+                     (int)*(unsigned char *)(me + 0x6e3), state_is(me, data_ov002_0211016c) ? 1 : 0);
     if (!ptrf(me, kGrabbedBy) || !state_is(me, data_ov002_0211016c)) {
         // my own St_Grabbed_Main broke free (the mash count ran out: it dropped the holder and threw me off)
         std::fprintf(stderr, "[phit] GRAB: broke free after %u frames\n", g.frame - g.cv.f0);
@@ -583,6 +632,7 @@ void grab_launch(char *me, int holder, bool swing, int yaw, int speed) {
         *(int *)(me + kVertSpeed) = vert;
     } else {
     if (!swing && speed >= 0x30000) u32(me, kFlags) |= kFlagThrown;
+    pose_ghost_at_draw(hb);      // func_ov002_020db54c launches me from the holder's body position (a Player holder: +100 up): not from where its ghost is parked
     func_ov002_020db54c((unsigned char *)me, speed, vert, (short)yaw);
     }
     if (hb && ptrf(hb, kHeldObj) == me) ptrf(hb, kHeldObj) = nullptr;
@@ -605,15 +655,28 @@ void carry_h_end(const char *why, bool drop) {
 
 void carry_h_tick(char *me) {
     if (!g.ch.active) return;
+    {
+        static int last_st = -1;
+        if (g.log > 0 && g.state != last_st) {
+            std::fprintf(stderr, "[phit] holder state %d -> %d (prev %d) f=%u\n", last_st, g.state, g.prev_state, g.frame);
+            last_st = g.state;
+        }
+    }
     char *vb = body_of_seat(g.ch.victim);
     if (!vb) { g.ch = CarryH(); return; }
     Seen s;
     see(g.ch.victim, &s);
-    if (!s.have_presence || s.presence_age_ms > (unsigned)kPresenceMaxAgeMs || !s.have_ghost || s.ghost_age_ms > (unsigned)kGhostMaxAgeMs) {
+    if (g.judge.rules.check_level && (!s.have_presence || s.presence_age_ms > (unsigned)kPresenceMaxAgeMs || !s.have_ghost || s.ghost_age_ms > (unsigned)kGhostMaxAgeMs)) {
         carry_h_end("the victim is gone", true);
         return;
     }
     if (g.ch.phase == 0 && g.frame - g.ch.f0 > (unsigned)kGrabAckWait) { carry_h_end("no ack", true); return; }
+    if (g.lab_swing > 0 && !g.swing_done && g.ch.phase == 1 && g.frame - g.ch.f0 >= (unsigned)g.lab_swing && ptrf(me, kHeldObj) == vb) {
+        g.swing_done = true;
+        _ZN6Player11ChangeStateERNS_5StateE(me, data_ov002_02110604);
+        *(short *)(me + kSwingSpeed) = 0x1800;
+        std::fprintf(stderr, "[phit] LAB: St_SwingPlayer forced on the holder\n");
+    }
     if (ptrf(me, kHeldObj) != vb) {
         // the ROM let go: how? (St_Throw -> the throw, St_SwingPlayer -> the spin's release, else a soft drop)
         if (g.ch.phase == 0) { carry_h_end("let go before the ack", false); return; }
@@ -786,6 +849,7 @@ void attacker_scan(char *me) {
     const bool wario = (s32(me, 8) & 7) == kLookWario;
     for (int seat = 0; seat < kHubPartySeats; ++seat) {
         if (seat == comms_hub_my_seat() || !party::seat_is_party(seat) || party::gate(seat) != party::kGateOk) continue;
+        if (lab && g.lab_seat >= 0 && seat != g.lab_seat) continue;
         if (g.send_frame[seat] && g.frame - g.send_frame[seat] < (unsigned)kSendGapFrames) continue;
         Seen s;
         if (!see(seat, &s) || !s.have_ghost) continue;
@@ -936,6 +1000,7 @@ extern "C" void port_party_hits_prewalk(void) {
     if (g.hold.active() && g.rom_mouth) {
         if (char *ep = body_of_seat(g.hold.eater())) {
             if (state_is(me, data_ov002_02110064)) {
+                pose_ghost_at_draw(ep);                   // the mouth state copies the eater's body position every frame
                 ptrf(me, kInMouth) = ep;
                 ptrf(ep, kMouthObj) = me;
                 *(unsigned char *)(ep + 0x708) = 0; *(unsigned char *)(ep + 0x709) = 0;
@@ -944,6 +1009,7 @@ extern "C" void port_party_hits_prewalk(void) {
     }
     if (g.cv.active && state_is(me, data_ov002_0211016c)) {
         if (char *hb = body_of_seat(g.cv.holder)) {
+            pose_ghost_at_draw(hb);
             ptrf(hb, kHeldObj) = me;
             ptrf(me, kGrabbedBy) = hb;
             u32(me, kFlags) |= kFlagCarried | kFlagHeldOut;

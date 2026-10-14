@@ -3280,7 +3280,10 @@ ghost_tongue::Blink g_gblink[kCommsMaxPlayers];
    the holder is me, else the holder's ghost at its draw time), offset along the holder's yaw. */
 bool gw_attach_target(int holder_seat, unsigned tnow, int *x, int *y, int *z, int *yaw) {
     const int me = (int)data_0209f250;
-    if (holder_seat == me || holder_seat == comms_hub_my_seat()) {
+    /* ROMSTATE9: `me` is my player SLOT (0 on every console in a party / coop room), holder_seat a HUB SEAT: comparing the two
+       made seat 0 (the host) look like "me" on every other console, so the carried / eaten ghost was drawn at the bystander's own
+       body instead of at the holder. Seats only. */
+    if (holder_seat == comms_hub_my_seat()) {
         char *mb = (char *)data_0209f394[me];
         if (!mb) return false;
         *x = *player::pos_x(mb); *y = *player::pos_y(mb); *z = *player::pos_z(mb);
