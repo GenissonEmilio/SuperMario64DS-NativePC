@@ -174,4 +174,4 @@ data_ov073_02123488@0x02123488 data_ov073_02123494@0x02123494
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov073_021234a0                        now defined by src/actors/daObjEwbIce_c.cpp
+#   data_ov073_021234a0                        now defined by src/actors/daObjEwbIce_c.cpp data_ov073_02123280! data_ov073_02123288! data_ov073_02123290! data_ov073_02123298! data_ov073_021232a0! data_ov073_021232a8! data_ov073_021232b0! data_ov073_021232b8! data_ov073_02123428! data_ov073_02123430! data_ov073_02123438! data_ov073_02123440! data_ov073_02123448! data_ov073_02123450! data_ov073_021234b0! data_ov073_021234c0! data_ov073_021234d0!

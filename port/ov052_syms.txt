@@ -113,4 +113,4 @@ g_profile_EMM_YUKA
 # which gives the chain node the 12 bytes func_020731dc writes through it.
   data_ov052_02112690@0x02112690
 data_ov052_0211269c@0x0211269c  
-data_ov052_021126b8@0x021126b8 data_ov052_021126c4@0x021126c4
+data_ov052_021126b8@0x021126b8 data_ov052_021126c4@0x021126c4 data_ov052_02112680! data_ov052_02112688! data_ov052_021126a8! data_ov052_021126b0!

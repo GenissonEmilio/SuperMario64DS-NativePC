@@ -414,4 +414,4 @@ data_ov026_02113f78@0x02113f78
 # (hal/dsstate_all.h says why).
 #   data_ov026_02113ea0                        now defined by src/game/actors/d_a_obj_wl_polelift.cpp
 #   data_ov026_02113f04                        now defined by src/actors/daWater_Tatumaki_c.cpp
-#   data_ov026_02113f0c                        now defined by src/actors/daWater_Tatumaki_c.cpp
+#   data_ov026_02113f0c                        now defined by src/actors/daWater_Tatumaki_c.cpp data_ov026_02113f58!

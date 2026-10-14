@@ -307,4 +307,4 @@ data_ov027_02113d10
 #   data_ov027_02113c84                        now defined by src/actors/daPgDfdr_c.cpp
 #   data_ov027_02113c8c                        now defined by src/actors/daPgDfdr_c.cpp
 #   data_ov027_02113c94                        now defined by src/actors/daPgDfdr_c.cpp
-#   data_ov027_02113ce4                        now defined by src/actors/daPgDfdr_c.cpp
+#   data_ov027_02113ce4                        now defined by src/actors/daPgDfdr_c.cpp data_ov027_02113be0! data_ov027_02113be8! data_ov027_02113c08! data_ov027_02113c10! data_ov027_02113c18! data_ov027_02113c20! data_ov027_02113c28!

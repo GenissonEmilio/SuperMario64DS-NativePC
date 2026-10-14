@@ -174,4 +174,4 @@ g_profile_KM2_YOKOSEESAW:0x1c g_profile_RC_RIFT02:0x1c
 # twice (LNK2005). The src TUs among the definers are on PORT_DSSTATE_FI_SOURCES
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
-#   data_ov095_02137910                        now defined by src/actors/daUdlift_c.cpp
+#   data_ov095_02137910                        now defined by src/actors/daUdlift_c.cpp data_ov095_02137780! data_ov095_02137788! data_ov095_02137790! data_ov095_02137798! data_ov095_021377a0! data_ov095_021377a8! data_ov095_021377b0! data_ov095_021377b8! data_ov095_021377c0! data_ov095_021377c8! data_ov095_021377d0! data_ov095_021377d8! data_ov095_021377e0! data_ov095_021377e8! data_ov095_02137898! data_ov095_021378a0! data_ov095_021378a8! data_ov095_021378b0! data_ov095_021378b8! data_ov095_021378c0!

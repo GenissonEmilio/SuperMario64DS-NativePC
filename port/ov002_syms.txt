@@ -710,4 +710,4 @@ data_ov002_0210d914:0x20 data_ov002_0210d934:0x20 data_ov002_0210d974:0x20
 #   g_profile_POWER_UP_ITEM                    now defined by src/actors/daObjPowerUpItem_c.cpp
 #   g_profile_RED_COIN                         now defined by src/actors/daCoin_c.cpp
 # PORTSYNC3: objects main's TUs read that no mount carried (found by the first MSVC link).
-data_ov002_02110b00:0x4 data_ov002_0211104c:0xc0 data_ov002_0210e158:0x4 data_ov002_02110794:0x70
+data_ov002_02110b00:0x4 data_ov002_0211104c:0xc0 data_ov002_0210e158:0x4 data_ov002_02110794:0x70 data_ov002_02110944! data_ov002_02110a9c! data_ov002_02110aa4!

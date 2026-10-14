@@ -263,4 +263,4 @@ data_ov030_02115e00 data_ov030_02115e0c
 # in port/CMakeLists.txt, so the objects stay inside the captured .dsstate span
 # (hal/dsstate_all.h says why).
 #   data_ov030_02115c80                        now defined by src/game/actors/d_a_obj_hm_bskt.cpp
-#   data_ov030_02115c88                        now defined by src/game/actors/d_a_obj_hm_bskt.cpp
+#   data_ov030_02115c88                        now defined by src/game/actors/d_a_obj_hm_bskt.cpp data_ov030_02115ca8! data_ov030_02115cb0!

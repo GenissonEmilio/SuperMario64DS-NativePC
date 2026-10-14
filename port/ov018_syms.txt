@@ -169,4 +169,4 @@ data_ov018_02113c7c@0x02113c7c data_ov018_02113c84@0x02113c84 data_ov018_02113c8
 #   data_ov018_02113bf8                        now defined by src/game/actors/d_a_pg_mthr.cpp
 #   data_ov018_02113c00                        now defined by src/game/actors/d_a_pg_mthr.cpp
 #   data_ov018_02113c08                        now defined by src/game/actors/d_a_pg_mthr.cpp
-#   data_ov018_02113c4c                        now defined by src/game/actors/d_a_pg_mthr.cpp
+#   data_ov018_02113c4c                        now defined by src/game/actors/d_a_pg_mthr.cpp data_ov018_02113bc0! data_ov018_02113bc8!

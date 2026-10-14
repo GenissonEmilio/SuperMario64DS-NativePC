@@ -138,4 +138,4 @@ data_ov063_0211efbc:0x24
 #   data_ov063_0211ee20                        now defined by src/actors/daTrs_c.cpp
 #   data_ov063_0211ee74                        now defined by src/actors/daTrs_c.cpp
 #   data_ov063_0211ee80                        now defined by src/actors/daTrs_c.cpp
-#   data_ov063_0211ee8c                        now defined by src/actors/daTrs_c.cpp
+#   data_ov063_0211ee8c                        now defined by src/actors/daTrs_c.cpp data_ov063_0211edc4! data_ov063_0211edcc! data_ov063_0211edd4! data_ov063_0211eddc! data_ov063_0211ede4! data_ov063_0211edec! data_ov063_0211edf4! data_ov063_0211ee98! data_ov063_0211eea0! data_ov063_0211eea8! data_ov063_0211eeb0! data_ov063_0211eeb8! data_ov063_0211eec0! data_ov063_0211eec8! data_ov063_0211eed0! data_ov063_0211ef58! data_ov063_0211ef60! data_ov063_0211ef80! data_ov063_0211ef88! data_ov063_0211ef90!

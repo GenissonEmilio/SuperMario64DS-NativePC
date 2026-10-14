@@ -468,4 +468,4 @@ data_ov065_0211d9dc@0x0211d9dc data_ov065_0211d9e8@0x0211d9e8:0x18
 #   data_ov065_0211d88c                        now defined by src/actors/daObjCtMecha03_c.cpp
 #   data_ov065_0211d894                        now defined by src/actors/daObjCtMecha03_c.cpp
 #   data_ov065_0211d9cc                        now defined by src/actors/daObjCtMecha09_c.cpp
-#   data_ov065_0211d9d4                        now defined by src/actors/daObjCtMecha09_c.cpp
+#   data_ov065_0211d9d4                        now defined by src/actors/daObjCtMecha09_c.cpp data_ov065_0211d720! data_ov065_0211d728! data_ov065_0211d730! data_ov065_0211d738! data_ov065_0211d740! data_ov065_0211d748! data_ov065_0211d750! data_ov065_0211d758! data_ov065_0211d760! data_ov065_0211d768! data_ov065_0211d770! data_ov065_0211d814! data_ov065_0211d81c! data_ov065_0211d824! data_ov065_0211d82c! data_ov065_0211d834! data_ov065_0211d83c! data_ov065_0211d8b4! data_ov065_0211d8bc! data_ov065_0211d8c4! data_ov065_0211d8cc! data_ov065_0211d92c! data_ov065_0211d934! data_ov065_0211d93c! data_ov065_0211d944! data_ov065_0211d984! data_ov065_0211d994!

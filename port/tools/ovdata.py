@@ -1563,7 +1563,17 @@ def main():
     # at runtime rather than trusting the linker.
     pack_rows = []
     emitted = []          # (name, ds_addr, size)
+    ext = []              # (name, ds_addr, size): "name!" rows, see below
     for name in wanted:
+        # "name!" MOUNTS THE NAME AND NOT THE STORAGE (PORTSYNC3). A class TU that
+        # main folded this object into DEFINES it (and its sinit constructs it);
+        # port/hal/portsync3_flat_aliases.cpp points the flat name at that
+        # definition. The row stays in the list so a pointer into the object still
+        # rebases onto it, by name, but no array is emitted and no ROM bytes are
+        # loaded over the TU's object.
+        is_ext = name.endswith("!")
+        if is_ext:
+            name = name[:-1]
         # "name:0xNNN" pins the size -- for tables the game indexes past an
         # interior symbol (next-symbol deltas under-size those; on the DS the
         # memory is contiguous, on host separate arrays would break it).
@@ -1627,6 +1637,10 @@ def main():
         if len(blob) < size:
             blob = blob + b"\0" * (size - len(blob))   # tail runs into bss
         blob = reloc_blob(a, blob)
+        if is_ext:
+            ext.append((name, a, size))
+            lines.append(f"extern u8 {name}[];")
+            continue
         if pack:
             pack_rows.append((a, name, size))
         else:
@@ -1869,7 +1883,8 @@ def main():
     # same standard of evidence the cross pass below already holds itself to,
     # and the reason given there -- a constant can fall in the window -- turns
     # out to apply within one mount too.
-    covering = make_covering((a, a + sz, n) for n, a, sz, _ in emitted)
+    covering = make_covering(
+        [(a, a + sz, n) for n, a, sz, _ in emitted] + [(a, a + sz, n) for n, a, sz in ext])
 
     # SIX FALSE RELOCS.TXT ROWS, MEASURED AGAINST THE CARTRIDGE (run link100 lane
     # TEX3, 2026-09-19). Tango's bug 6 was "buggy texture spots" on the file-select
@@ -1969,7 +1984,7 @@ def main():
                 wants.append((name, off, t))
     write_map(out_path, ov, "pack" if pack else "syms",
               (base, base + len(data) + overlay_bss(root, ovid, len(data))),
-              [(n, a, sz) for n, a, sz, _ in emitted], wants)
+              [(n, a, sz) for n, a, sz, _ in emitted] + list(ext), wants)
     print(f"{len(wanted)} symbols, {len(patches)} pointer patches, "
           f"{len(wants)} cross-mount candidates -> {out_path}")
 

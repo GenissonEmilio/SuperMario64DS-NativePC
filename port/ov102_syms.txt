@@ -74,4 +74,4 @@ data_ov102_0214ea30:0xc data_ov102_0214ea3c:0xc
 #   data_ov102_0214ea68                        now defined by src/game/actors/d_a_shl.cpp
 #   data_ov102_0214ea78                        now defined by src/game/actors/d_a_shl.cpp
 
-# PORTSYNC3 RETIRED (main's daBmb_c.cpp now defines these objects itself): data_ov102_0214e514 data_ov102_0214e524 g_profile_BOMBHEI
+# PORTSYNC3 RETIRED (main's daBmb_c.cpp now defines these objects itself): data_ov102_0214e514 data_ov102_0214e524 g_profile_BOMBHEI data_ov102_0214e6e0! data_ov102_0214e6e8! data_ov102_0214e6f0! data_ov102_0214e6f8! data_ov102_0214e700! data_ov102_0214e708! data_ov102_0214e710! data_ov102_0214e718! data_ov102_0214e720! data_ov102_0214e728! data_ov102_0214e730! data_ov102_0214e738! data_ov102_0214e7d0! data_ov102_0214e7d8! data_ov102_0214e7e0! data_ov102_0214e7e8! data_ov102_0214e7f0! data_ov102_0214e7f8! data_ov102_0214e800! data_ov102_0214e808! data_ov102_0214e870! data_ov102_0214e890! data_ov102_0214e8c0!
