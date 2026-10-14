@@ -290,6 +290,42 @@ def marker_symbol(abs_path):
     return None
 
 
+def marker_symbols_in_text(text):
+    """The @symbol names whose body carries the marker.
+
+    A one-function file (the old shape) exports one symbol and the marker can
+    sit anywhere in it: that symbol, first line only, as before. A folded TU
+    holds many @symbol groups (consecutive @symbol lines are one group, e.g. a
+    D1/D0 pair) and the marker sits in the group it follows. The marker is
+    charged to that group only, so one guessed body in a folded TU does not
+    taint its real neighbours.
+    """
+    if MARKER not in text:
+        return []
+    lines = text.splitlines()
+    groups = []          # [start_line, [symbols]]
+    prev = -2
+    for i, raw in enumerate(lines):
+        m = SYMBOL_LINE.match(raw)
+        if not m:
+            continue
+        if i == prev + 1 and groups:
+            groups[-1][1].append(m.group(1).strip())
+        else:
+            groups.append([i, [m.group(1).strip()]])
+        prev = i
+    if not groups:
+        return []
+    if len(groups) == 1:
+        return [groups[0][1][0]]
+    out = []
+    for gi, (start, syms) in enumerate(groups):
+        end = groups[gi + 1][0] if gi + 1 < len(groups) else len(lines)
+        if any(MARKER in l for l in lines[start:end]):
+            out.extend(syms)
+    return out
+
+
 class BlindRoute(Exception):
     """A seating route could not be read at all.
 
@@ -429,15 +465,14 @@ def live_marker_bodies(port_dir, repo_dir):
             text = fh.read()
         if MARKER not in text:
             return None
-        sym = marker_symbol(abs_path)
-        return (sym, rel) if sym else None
+        return [(sym, rel) for sym in marker_symbols_in_text(text)]
 
     bodies = {}
     with concurrent.futures.ThreadPoolExecutor(
             max_workers=_read_workers()) as pool:
         for got in pool.map(_one, tus):
-            if got is not None:
-                bodies[got[0]] = got[1]
+            for sym, r in (got or []):
+                bodies[sym] = r
     return bodies
 
 
@@ -455,17 +490,15 @@ def marker_symbols_anywhere(repo_dir):
             text = fh.read()
         if MARKER not in text:
             return None
-        sym = marker_symbol(abs_path)
-        if not sym:
-            return None
-        return sym, os.path.relpath(abs_path, repo_dir).replace(os.sep, "/")
+        rel = os.path.relpath(abs_path, repo_dir).replace(os.sep, "/")
+        return [(sym, rel) for sym in marker_symbols_in_text(text)]
 
     found = {}
     with concurrent.futures.ThreadPoolExecutor(
             max_workers=_read_workers()) as pool:
         for got in pool.map(_one, files):
-            if got is not None:
-                found[got[0]] = got[1]
+            for sym, r in (got or []):
+                found[sym] = r
     return found
 
 
