@@ -144,6 +144,7 @@ void func_ov002_020e4768(char *self);
 // The in-place character change every swap entry point shares
 // (hal/player_bridges.cpp, the door path by default).
 void port_player_set_character(void *player, unsigned ch);
+int port_player_render_hidden(const void *player);   /* POSE9: the ROM Render gates, for the blink probe */
 // Stage::Behavior's own call counter (hal/stage_frame.cpp): it does not move on
 // a frame the game did not tick, which is what "paused" means here.
 unsigned port_stage_behavior_calls(void);
@@ -3543,10 +3544,12 @@ void gw_follow() {
                 std::fprintf(stderr, "[ghost-blink] f=%u seat=%d body=%d hurt anim %u: 36-frame blink
 ",
                              g_gw_frame, s, i, (unsigned)sm.anim);
-            if (v && gw_err_log())
-                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d timer=%u hidden=%d
+            static int blog = -1;       // LAB: SM64DS_GHOST_BLINK_LOG=1, a line per blink frame with the ROM's own draw gate
+            if (blog < 0) blog = std::getenv("SM64DS_GHOST_BLINK_LOG") ? 1 : 0;
+            if (v && blog)
+                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d timer=%u render_hidden=%d
 ",
-                             g_gw_frame, s, v, (v & 1) ? 1 : 0);
+                             g_gw_frame, s, v, port_player_render_hidden(a));
         }
         if (gw_err_log())
             std::fprintf(stderr, "[gwshown] t=%u f=%u seat=%d body=%d bc=%u "
