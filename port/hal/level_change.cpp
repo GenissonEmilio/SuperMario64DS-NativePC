@@ -2219,8 +2219,10 @@ static int g_hold_tail;            /* the last frames of a white hold that are B
    state restore, a warp, a scene change) ends the hold here, read once per
    frame by the level loop, so the frozen black can never outlive its change. */
 
+static void port_tp_warp_hook(void);
 extern "C" int port_level_hold_live(void)
 {
+    port_tp_warp_hook();
     if (data_02092110 < 0) {
         g_hold_left = -1;
         g_hold_live = 0;
@@ -2355,7 +2357,6 @@ static void port_tp_warp_hook(void)
 
 extern "C" int port_level_change_poll(void)
 {
-    port_tp_warp_hook();
     if (data_02092110 < 0 && port_scene_crossing_due())
         port_level_scene_crossing();
     if (data_02092110 < 0) {
