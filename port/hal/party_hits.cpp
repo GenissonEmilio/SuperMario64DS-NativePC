@@ -18,6 +18,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <chrono>
 #include <cstring>
 
 extern "C" {
@@ -111,7 +112,8 @@ struct G {
     CarryV cv;      // I am carried
     CarryH ch;      // I carry
     // knobs
-    bool rom_eat = true, grab_on = true, feedback = true;
+    bool rom_eat = true, grab_on = true, feedback = true, defer = false;
+    bool pend = false; Claim pend_claim; Effect pend_fx;      // SM64DS_PHIT_DEFER=1: the old next-frame apply (A/B control)
     int eat_ahead = 28, eat_up = 30, carry_ahead = 8, carry_up = 85;
     // lab
     char forge_kind = 0; int forge_units = 0; bool forged = false;
@@ -135,6 +137,7 @@ void read_env() {
     g.rom_eat = env_flag(std::getenv("SM64DS_ROOM_EATVIS"), true);      // INTERACT9: 0 = the old synthetic hold
     g.grab_on = env_flag(std::getenv("SM64DS_ROOM_GRAB"), true);
     g.feedback = env_flag(std::getenv("SM64DS_PHIT_FEEDBACK"), true);
+    g.defer = env_flag(std::getenv("SM64DS_PHIT_DEFER"), false);
     if (const char *e = std::getenv("SM64DS_ATTACH_EAT")) std::sscanf(e, "%d,%d", &g.eat_ahead, &g.eat_up);
     if (const char *e = std::getenv("SM64DS_ATTACH_CARRY")) std::sscanf(e, "%d,%d", &g.carry_ahead, &g.carry_up);
     if (const char *e = std::getenv("SM64DS_PHIT_LAB_AT")) g.forge_at = (unsigned)std::atoi(e);
@@ -158,6 +161,10 @@ char *body_of_seat(int seat) {
     return (seat >= 0 && seat < 16) ? (char *)data_0209f394[seat] : nullptr;
 }
 int u(int fix12) { return fix12 >> 12; }
+// A clock every console on this machine shares (the rows compare one console's send with another's apply).
+unsigned wall_ms() {
+    return (unsigned)(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() & 0x7fffffff);
+}
 int &s32(char *b, int off) { return *(int *)(b + off); }
 unsigned &u32(char *b, int off) { return *(unsigned *)(b + off); }
 char *&ptrf(char *b, int off) { return *(char **)(b + off); }
@@ -301,6 +308,8 @@ void apply_effect(char *me, const Claim &c, const Effect &fx) {
     *(int *)(me + kVertSpeed) = fx.hop;
     *(unsigned short *)(me + player::kInvincibleTimer) = kBlinkFrames;
     ++g.st.applied;
+    std::fprintf(stderr, "[phit] t=%u f=%u HURT applied ik=%u, blink timer 0x%x
+", wall_ms(), g.frame, c.ikind, (unsigned)*(unsigned short *)(me + player::kInvincibleTimer));
 }
 
 void eat_begin(char *me, const Claim &c) {
@@ -551,6 +560,7 @@ void handle_claim(int attacker, unsigned ikind, unsigned counter, unsigned stamp
     const Verdict v = g.judge.judge(c, s, m, g.frame, &fx);
     log_verdict(c, v);
     if (v != kOk) return;
+    if (g.defer) { if (!g.pend) { g.pend = true; g.pend_claim = c; g.pend_fx = fx; } return; }
     // INTERACT9: applied in the same pump (the pump runs outside the actor walk, like the frame hook)
     if (fx.eat) eat_begin(me, c);
     else if (fx.grab) grab_begin(me, c);
@@ -771,6 +781,12 @@ extern "C" void port_party_hits_frame(void) {
         r.x = u(*player::pos_x(me)); r.y = u(*player::pos_y(me)); r.z = u(*player::pos_z(me));
     }
     g.book.tick(g.frame);
+    if (g.pend) {
+        g.pend = false;
+        if (g.pend_fx.eat) eat_begin(me, g.pend_claim);
+        else if (g.pend_fx.grab) grab_begin(me, g.pend_claim);
+        else apply_effect(me, g.pend_claim, g.pend_fx);
+    }
     att_links();
     eat_tick(me);
     carry_v_tick(me);
