@@ -1262,31 +1262,6 @@ long long g_rbt_n[2];
    IEEE single multiply either way) -- so the buffers come out byte for byte
    the same; SM64DS_RENDERER_RBCHECK=1 compares them with the one-pixel loop
    on every frame. */
-/* MENUS093 (D6): the card's scissor for the frame's 3D. The present rectangle narrowed to the game's viewport (the ending's letterbox) as
-   before; but a frame whose 3D covers the whole wide window (the title's full-canvas scene, gx.cpp menu_wide) has a clip wider than the
-   4:3 present rectangle, and then the clip alone is the scissor: intersecting made the drawing page's pinned Mario button (and anything
-   pinned past the DS box) a one-pixel sliver on the card. */
-void frame_scissor(const ntr::GxGpuFrame *f, D3D11_RECT *sc)
-{
-    sc->left = f->px0;
-    sc->top = f->py0;
-    sc->right = f->px0 + f->pw;
-    sc->bottom = f->py0 + f->ph;
-    if (f->clip_x1 > f->clip_x0 && f->clip_y1 > f->clip_y0) {
-        const bool wider = f->clip_x0 < sc->left || f->clip_x1 > sc->right || f->clip_y0 < sc->top || f->clip_y1 > sc->bottom;
-        if (wider) {
-            sc->left = f->clip_x0; sc->top = f->clip_y0; sc->right = f->clip_x1; sc->bottom = f->clip_y1;
-            return;
-        }
-        if (f->clip_x0 > sc->left) sc->left = f->clip_x0;
-        if (f->clip_y0 > sc->top) sc->top = f->clip_y0;
-        if (f->clip_x1 < sc->right) sc->right = f->clip_x1;
-        if (f->clip_y1 < sc->bottom) sc->bottom = f->clip_y1;
-        if (sc->right < sc->left) sc->right = sc->left;
-        if (sc->bottom < sc->top) sc->bottom = sc->top;
-    }
-}
-
 void copy_box(const ntr::GxGpuFrame *f, int bx0, int by0, int bx1, int by1,
               const D3D11_MAPPED_SUBRESOURCE &mc,
               const D3D11_MAPPED_SUBRESOURCE &mi,
@@ -2691,7 +2666,23 @@ int draw_full(const ntr::GxGpuFrame *f)
         vp.MaxDepth = 1.0f;
         g_ctx->RSSetViewports(1, &vp);
         D3D11_RECT sc;
-        frame_scissor(f, &sc);
+        sc.left = f->px0;
+        sc.top = f->py0;
+        sc.right = f->px0 + f->pw;
+        sc.bottom = f->py0 + f->ph;
+        /* THE SCISSOR IS THE SOFTWARE RASTER'S CLIP RECTANGLE (run hunt8, lane
+           CREDITCROP1): the present rectangle narrowed to the game's viewport,
+           so the ending's letterbox bars stay the clear colour. The frame's
+           own geometry (px0..ph, which a held frame is composited by) stays
+           the present rectangle. */
+        if (f->clip_x1 > f->clip_x0 && f->clip_y1 > f->clip_y0) {
+            if (f->clip_x0 > sc.left) sc.left = f->clip_x0;
+            if (f->clip_y0 > sc.top) sc.top = f->clip_y0;
+            if (f->clip_x1 < sc.right) sc.right = f->clip_x1;
+            if (f->clip_y1 < sc.bottom) sc.bottom = f->clip_y1;
+            if (sc.right < sc.left) sc.right = sc.left;
+            if (sc.bottom < sc.top) sc.bottom = sc.top;
+        }
         g_ctx->RSSetScissorRects(1, &sc);
         g_ctx->RSSetState(g_rast);
         g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -4320,7 +4311,10 @@ int draw_frame(const ntr::GxGpuFrame *f)
         vp.MaxDepth = 1.0f;
         g_ctx->RSSetViewports(1, &vp);
         D3D11_RECT sc;
-        frame_scissor(f, &sc);
+        sc.left = f->px0;
+        sc.top = f->py0;
+        sc.right = f->px0 + f->pw;
+        sc.bottom = f->py0 + f->ph;
         g_ctx->RSSetScissorRects(1, &sc);
         g_ctx->RSSetState(g_rast);
         g_ctx->OMSetDepthStencilState(g_frame_w ? g_dss_w : g_dss, 0);
