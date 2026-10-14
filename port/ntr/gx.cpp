@@ -8080,13 +8080,13 @@ void ip_match(IpRec &C, const IpRec &P, const IpRec *P2, GxInterpStats *st) {
             /* the group is part of a model that did draw last tick: ride
                the nearest paired part of it (a rigid attachment), which keeps
                the offset between them the tick's own at every picture */
-            if (gc.load_ev >= 0 && C.ev[gc.load_ev].np == 12) {
+            if (gc.load_ev >= 0 && (C.ev[gc.load_ev].np == 12 || C.ev[gc.load_ev].np == 16)) {
                 int best = -1;
                 double bd = 36.0;   // 6 units
                 for (size_t hi = 0; hi < C.groups.size(); ++hi) {
                     const IpGroup &gh = C.groups[hi];
                     if (gh.match < 0 || gh.part || !gh.has_pos || gh.load_ev < 0) continue;
-                    if (C.ev[gh.load_ev].np != 12) continue;
+                    if (C.ev[gh.load_ev].np != C.ev[gc.load_ev].np) continue;
                     const double d = ip_dist2(gc, gh);
                     if (d < bd) { bd = d; best = (int)hi; }
                 }
@@ -8208,26 +8208,27 @@ void ip_recamera_trans(const uint32_t *p, uint32_t *out) {
 /* G(alpha) = G_N . inv(H_N) . H_alpha for two 4x3 matrices (row vectors,
    x' = x R + t): the blinking part G keeps its tick-N offset from its
    sibling H, whatever H does between the ticks. */
-void ip_attach(const uint32_t *g, const uint32_t *hn, const uint32_t *hp, double alpha, uint32_t *out) {
+void ip_attach(const uint32_t *g, const uint32_t *hn, const uint32_t *hp, int np, double alpha, uint32_t *out) {
+    const int S = (np == 16) ? 4 : 3, T = (np == 16) ? 12 : 9;
     double Rg[3][3], tg[3], Rn[3][3], tn[3], Ra[3][3], ta[3];
     for (int r = 0; r < 3; ++r)
         for (int k = 0; k < 3; ++k) {
-            Rg[r][k] = (int32_t)g[r * 3 + k] / 4096.0;
-            Rn[r][k] = (int32_t)hn[r * 3 + k] / 4096.0;
-            const double hpv = (int32_t)hp[r * 3 + k] / 4096.0;
+            Rg[r][k] = (int32_t)g[r * S + k] / 4096.0;
+            Rn[r][k] = (int32_t)hn[r * S + k] / 4096.0;
+            const double hpv = (int32_t)hp[r * S + k] / 4096.0;
             Ra[r][k] = hpv * (1.0 - alpha) + Rn[r][k] * alpha;
         }
     for (int k = 0; k < 3; ++k) {
-        tg[k] = (int32_t)g[9 + k] / 4096.0;
-        tn[k] = (int32_t)hn[9 + k] / 4096.0;
-        const double hpv = (int32_t)hp[9 + k] / 4096.0;
+        tg[k] = (int32_t)g[T + k] / 4096.0;
+        tn[k] = (int32_t)hn[T + k] / 4096.0;
+        const double hpv = (int32_t)hp[T + k] / 4096.0;
         ta[k] = hpv * (1.0 - alpha) + tn[k] * alpha;
     }
     /* inverse of Rn by cofactors */
     double det = Rn[0][0] * (Rn[1][1] * Rn[2][2] - Rn[1][2] * Rn[2][1]) -
                  Rn[0][1] * (Rn[1][0] * Rn[2][2] - Rn[1][2] * Rn[2][0]) +
                  Rn[0][2] * (Rn[1][0] * Rn[2][1] - Rn[1][1] * Rn[2][0]);
-    for (int i = 0; i < 12; ++i) { out[i] = g[i]; g_ip_ex[i] = (double)(int32_t)g[i]; }
+    for (int i = 0; i < np; ++i) { out[i] = g[i]; g_ip_ex[i] = (double)(int32_t)g[i]; }
     if (det > -1e-9 && det < 1e-9) return;
     double I[3][3];
     I[0][0] = (Rn[1][1] * Rn[2][2] - Rn[1][2] * Rn[2][1]) / det;
@@ -8252,13 +8253,13 @@ void ip_attach(const uint32_t *g, const uint32_t *hn, const uint32_t *hp, double
     for (int r = 0; r < 3; ++r)
         for (int k = 0; k < 3; ++k) {
             const double v = R1[r][0] * Ra[0][k] + R1[r][1] * Ra[1][k] + R1[r][2] * Ra[2][k];
-            out[r * 3 + k] = fx(v);
-            g_ip_ex[r * 3 + k] = v * 4096.0;
+            out[r * S + k] = fx(v);
+            g_ip_ex[r * S + k] = v * 4096.0;
         }
     for (int k = 0; k < 3; ++k) {
         const double v = t1[0] * Ra[0][k] + t1[1] * Ra[1][k] + t1[2] * Ra[2][k] + ta[k];
-        out[9 + k] = fx(v);
-        g_ip_ex[9 + k] = v * 4096.0;
+        out[T + k] = fx(v);
+        g_ip_ex[T + k] = v * 4096.0;
     }
 }
 
@@ -8461,8 +8462,8 @@ int gx_interp_begin(float alpha) {
                 const int b = C.blend.empty() ? -1 : C.blend[i];
                 const int b2 = C.blend2.empty() ? -1 : C.blend2[i];
                 const int an = C.anchor.empty() ? -1 : C.anchor[i];
-                if (an >= 0 && e.np == 12 && e.mode != MTX_TEX && C.blend[an] >= 0) {
-                    ip_attach(pp, &C.par[C.ev[an].off], &P.par[P.ev[C.blend[an]].off], alpha, tmp);
+                if (an >= 0 && (e.np == 12 || e.np == 16) && e.np == C.ev[an].np && e.mode != MTX_TEX && C.blend[an] >= 0) {
+                    ip_attach(pp, &C.par[C.ev[an].off], &P.par[P.ev[C.blend[an]].off], e.np, alpha, tmp);
                     pp = tmp;
                     ex_on = 1;
                 } else if (b2 >= 0 && e.mode != MTX_TEX && g_ip_p2 >= 0) {
