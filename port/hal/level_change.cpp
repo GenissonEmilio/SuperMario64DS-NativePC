@@ -2349,6 +2349,7 @@ void StartMinigameMenu(unsigned char a);
 void ExitLevel(void);
 void _ZN8dScene_c9SetFadersEP15FaderBrightness(void *);
 void func_0202ec9c(void *, int);
+extern int data_0209f61c[];
 void _ZN8dScene_c14StartSceneFadeEjjt(unsigned, unsigned, unsigned short);
 void _ZN6Player11ChangeStateERNS_5StateE(void *, void *);
 void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p, unsigned short val, short amt);
@@ -2756,7 +2757,6 @@ static int port_level_scene_crossing(void)
                 qa = e ? std::atoi(e) : -1;
             }
             if (qa >= 0 && f == qa) {
-                extern char data_0209f61c[];
                 std::fprintf(stderr, "[tpquit] crossing f%d: the minigame quits (StartSceneFade(5,0,0))\n", f);
                 _ZN8dScene_c9SetFadersEP15FaderBrightness(data_0209f61c);
                 func_0202ec9c(data_0209f61c, 2);
