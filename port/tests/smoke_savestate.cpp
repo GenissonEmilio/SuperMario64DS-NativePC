@@ -106,6 +106,8 @@ extern unsigned char data_0209d660;                 /* message-active lock */
 // cannot see that bug. It is the walk_window reproducer
 // (SM64DS_SS_SAVE/SM64DS_SS_LOAD) that covers it, against the real queue.
 void sd_seq_reset(void) {}
+void sd_seq_snapshot(struct SdSeqPos *) {}
+int sd_seq_seek_to(const struct SdSeqPos *) { return 0; }
 void sd_mix_reset(void) {}
 void sd_consumer_reset(void) {}
 void sd_waves_reset(void) {}

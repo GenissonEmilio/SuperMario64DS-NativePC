@@ -123,6 +123,8 @@ extern int LCG_STATE_0204da4c;
 // smoke links ntr, so the real port_hw_regions_* in ntr/io.cpp serve both lk6
 // and lk7 against the real reservations.
 void sd_seq_reset(void) {}
+void sd_seq_snapshot(struct SdSeqPos *) {}
+int sd_seq_seek_to(const struct SdSeqPos *) { return 0; }
 void sd_mix_reset(void) {}
 void sd_consumer_reset(void) {}
 void sd_waves_reset(void) {}

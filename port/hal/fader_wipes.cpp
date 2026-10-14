@@ -1138,17 +1138,53 @@ int port_fader_entrance_wipe_armed(void)
    *toWhite (nonzero for a white fade, zero for black) when a fade is being
    driven; 0 otherwise. Reads the blend registers the advance wrote, so the
    compositor sees exactly what the ROM's own hardware path produced. */
+extern int data_020a0db0[8];            /* the frame clock (port_frame_clock_tick, below) */
+extern unsigned char data_0209f20c;     /* the level-clear screen owns the game */
+extern unsigned char data_0209f2d4;     /* LC_Update's state word */
+
+/* MENUS093B (D3, "sudden darkening"): the course-clear save screen's dim. Stage::LC_Update case 2 writes BLDY -7 on both engines in ONE
+   tick (src/_ZN5Stage9LC_UpdateEv.cpp:154), so the whole picture drops by seven sixteenths between two frames, and with the buttons already
+   standing on the screen it reads as a flash (the forum video: 161 -> 97 mean brightness in one frame). The cartridge does exactly that and
+   it is the one place the dim lands as a step; the port gives it a short ramp. ONLY a rise of engine A's coefficient while the level-clear
+   screen is up is eased, over kLcEaseTicks of the game's own tick count (the frame clock, so interpolated frames between two ticks follow the
+   same curve); a fall, every other fade and every other screen are untouched. The value the compositors read is this one, so the dimmed
+   plates, lettering and 3D picture all take the same coefficient. */
+static int lc_dim_ease(int e)
+{
+    const int kLcEaseTicks = 12;
+    static int s_to, s_from, s_t0;
+    const int tick = data_020a0db0[0];
+    const int up = data_0209f20c != 0 && data_0209f2d4 >= 1 && data_0209f2d4 <= 3;
+    if (!up) { s_to = e; s_from = e; return e; }
+    int cur = s_to;
+    if (s_to != s_from) {
+        const int dt = tick - s_t0;
+        cur = (dt >= kLcEaseTicks || dt < 0) ? s_to : s_from + (s_to - s_from) * dt / kLcEaseTicks;
+    }
+    if (e != s_to) {
+        s_from = e > cur ? cur : e;            /* only a rise is eased */
+        s_to = e;
+        s_t0 = tick;
+        cur = s_from;
+    }
+    return cur;
+}
+
 int port_fader_blend_state(int *evy, int *toWhite)
 {
     unsigned short bldcnt = *(volatile unsigned short *)0x4000050;
     unsigned short bldy = *(volatile unsigned short *)0x4000054;
     int mode = (bldcnt >> 6) & 3;            /* 2 = brighten, 3 = darken */
-    if (mode != 2 && mode != 3)
-        return 0;
-    int e = bldy & 0x1f;
-    if (e > 16) e = 16;
+    int e = 0;
+    if (mode == 2 || mode == 3) {
+        e = bldy & 0x1f;
+        if (e > 16) e = 16;
+    }
+    e = lc_dim_ease(e);
     if (e == 0)
         return 0;
+    if (mode != 2 && mode != 3)
+        mode = 3;                            /* an eased tail after the ROM's own dim went off: a darken */
     if (evy) *evy = e;
     if (toWhite) *toWhite = (mode == 2);
     return 1;

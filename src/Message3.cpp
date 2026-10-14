@@ -25,6 +25,10 @@
 
 struct OamAttr;
 
+#ifdef _MSC_VER
+extern "C" void port_vs_text_seat(void);   /* hal/fs.cpp: empty VS text blob when none is loaded */
+#endif
+
 extern "C" {
 extern u8 data_0209fc6c;
 extern u8 data_0209fc70;
@@ -667,6 +671,9 @@ extern "C" void func_02032f54(void){
 // @symbol func_02032f9c
 extern "C" void func_02032f9c(int a)
 {
+#ifdef _MSC_VER
+    port_vs_text_seat();
+#endif
     volatile int li;
     volatile unsigned short ls;
     int idx;
@@ -1174,6 +1181,9 @@ extern "C" void func_02033bb8(int param0)
 #pragma opt_strength_reduction off
 extern "C" void func_02033e50(int p0, int p1)
 {
+#ifdef _MSC_VER
+    port_vs_text_seat();
+#endif
     int i;
     int idx = data_0209fce8;
     char *base = (char*)data_0209fd08;
@@ -1252,6 +1262,9 @@ extern "C" void func_02033e50(int p0, int p1)
 
 // @symbol func_02034098
 extern "C" void func_02034098(void) {
+#ifdef _MSC_VER
+    port_vs_text_seat();
+#endif
     volatile int li;
     int n;
     int idx = data_0209fce8;
@@ -1272,6 +1285,9 @@ extern "C" void func_02034098(void) {
 
 // @symbol func_020341a8
 extern "C" void func_020341a8(int a0, int a1) {
+#ifdef _MSC_VER
+    port_vs_text_seat();
+#endif
     volatile int li;
     int n, i, oldc;
     short *scr;
@@ -1367,6 +1383,9 @@ extern "C" void func_02034504(void)
 // @symbol func_020345b0
 extern "C" void func_020345b0(int arg0)
 {
+#ifdef _MSC_VER
+    port_vs_text_seat();
+#endif
     void *scr;
     s32 i;
     s32 cols;

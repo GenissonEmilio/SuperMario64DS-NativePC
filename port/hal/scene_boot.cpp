@@ -3441,6 +3441,16 @@ static int  __fastcall sc_bbeh(void *s, void *)
     /* POLISH1A: a scene the carrier spawned after the first one is a NEW object: the killed edge of the old one must not follow it (the
        title -> Rec Room hand-over answered scene id -1 for the whole Rec Room, so no one-screen recipe ever matched there) */
     if (s != g_sc_obj) g_sc_killed = 0;
+    /* B6 (TRANS093): the same goes for a new scene that the heap put at the OLD scene's address (the Rec Room's menu scene coming back
+       after a minigame quit lands where the minigame scene was): s == g_sc_obj, the killed latch is still up, and the live id answered
+       -1 for the whole Rec Room, so no one-screen recipe matched and the level layout (top screen full, menu in the minimap corner)
+       stayed. A scene that is being behaved with its own killed byte clear is not the dead one; say so on the edge. */
+    else if (g_sc_killed && ((const unsigned char *)s)[0xf] == 0) {
+        std::printf("[scene] live scene %p (id %u) reuses the killed scene's address: the killed latch is cleared\n", s,
+                    (unsigned)*(const unsigned short *)((const char *)s + 0x0c));
+        std::fflush(stdout);
+        g_sc_killed = 0;
+    }
     g_sc_obj = s;
     ++g_sc_beh_ticks;
     if (((const unsigned char *)s)[0xf] != 0)
@@ -6270,6 +6280,14 @@ static unsigned short g_host_key_bits;
 extern "C" void port_host_keys_set(unsigned short raw)
 {
     g_host_key_bits = raw;
+}
+
+/* MENUS093 (B5): the title's key word is the host key word OR PadData's held word (port_scene_comms_publish), so a press the pad seam takes
+   away from PadData must be taken out of the host word too, or the ROM still reads it (the wrench's confirm arrived as the DS B key and
+   opened the face drawing page under the settings page). */
+extern "C" void port_host_keys_clear(unsigned short mask)
+{
+    g_host_key_bits = (unsigned short)(g_host_key_bits & ~mask);
 }
 
 static void port_scene_comms_publish(void)

@@ -47,6 +47,7 @@ int port_title_page_state(int *top, int *elem, int *req);
 
 namespace {
 
+enum { kMpDimAlpha = 110 };   /* MENUS093: how faint the unavailable MP plank is drawn (alpha of 255) */
 enum { V_ATTRACT = 1, V_MAIN = 2, V_FILES = 3, V_OPTIONS = 4, V_DOODLE = 5, V_TABLE = 6, V_INTRO = 7, V_TOY = 8 };   /* V_TOY: the face press (top 4, elem 0), FACE1 */
 
 /* the 24 element boxes as dumped on the shipped ROM (SM64DS_TITLE_ELEMS, identical at f299, f419, f650,
@@ -62,7 +63,7 @@ const Box kBoxes[24] = {
 };
 
 enum { CH_NONE = 0, CH_INTRO = 1, CH_RETURN = 2 };
-enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 10, CH_LOGO_IN = 14, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
+enum { CH_LOGO_POP = 22, CH_BOUNCE_LEN = 40, CH_FACE_FADE = 24, CH_LOGO_OUT = 24, CH_LOGO_IN = 30, CH_PLANK_DUR = 28, CH_PLANK_GAP = 6,
        CH_PLANK_START = 4, CH_FLY = 14, CH_SWAP_END = CH_PLANK_START + 2 * CH_PLANK_GAP + CH_PLANK_DUR, CH_VEIL = 10 };
 struct Chore {
     int mode;            /* CH_* */
@@ -465,6 +466,7 @@ void build_main(MenuLayout *L, bool intro)
             pl.fx = (short)(L->w / 2 + cxu * L->unum / L->uden - dw / 2);
             pl.fy = (short)(cyu2 * L->unum / (2 * L->uden) - dh / 2);
             if (cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
+            if (k == 0) { pl.hl = 0; pl.alpha = kMpDimAlpha; }    /* MENUS093: multiplayer is not in this build, the MP plank is greyed (a press does nothing) */
             const int ip = menu_add_piece(L, pl);
             menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
             continue;
@@ -542,7 +544,7 @@ void build_main(MenuLayout *L, bool intro)
        follows at once instead of 33 frames later.
      - the PC logo pops in 22 frames after the iris appears (about two thirds open) with the DS logo's own bounce.
      - the swap starts when the logo has bounced and the ROM is at rest (top-state 0, the face is where it is on the 4:3 screen): the face fades in over
-       24 frames (it is never drawn before: no walk in from off screen), the big logo fades out over 10, the small logo fades in at the top left over 14,
+       24 frames (it is never drawn before: no walk in from off screen), the big logo fades out over 24, the small logo fades in at the top left over 30 (B2 (d), TRANS093: slower than the 10 and 14 it had),
        and the planks come up from the bottom edge with an overshoot, 6 frames apart, 28 frames each. Input is live as soon as the ROM is at rest.
        A confirm press during the swap finishes it at once and still goes to the ROM (it shows the cursor on ADVENTURE).
      - a return from a file page (the ROM walks the head in again) skips the iris and the big logo: the small logo is there, the page fades in from
@@ -1066,6 +1068,11 @@ void build_main_pc(MenuLayout *L, bool intro)
             pl.fy = (short)(cyu2 * un / (2 * ud) - dh / 2 + Uf(rise));
             if (plank_a < 255) pl.alpha = (uint8_t)(plank_a < 1 ? 1 : plank_a);
             if (landed && cur == kPlateId[k]) pl.hl = (uint8_t)(1 | (prs ? 2 : 0));
+            if (k == 0) {                                           /* MENUS093: the MP plank stays greyed, in its fades too */
+                pl.hl = 0;
+                const int a = plank_a < 255 ? plank_a : 255;
+                pl.alpha = (uint8_t)(a * kMpDimAlpha / 255 < 1 ? 1 : a * kMpDimAlpha / 255);
+            }
             const int ip = menu_add_piece(L, pl);
             if (!toy) menu_add_hotspot(L, ip, bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0, -1);
         }

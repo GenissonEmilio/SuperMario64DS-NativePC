@@ -1490,6 +1490,11 @@ extern "C" void port_stage_anims_load(void *self)
         for (unsigned i = 0; i < n; ++i)
             *(void **)(slots + i * 0xc) = 0;     /* drop the old level's */
         ((dScStage_c *)self)->dScStage_c::LoadTextureTransformers();
+        /* dScStage_c::InitResources never runs here, so dScStage_c::LoadFog never did
+           either: mFog stayed zero and every level drew with the fog off
+           (Tick Tock Clock has a fog record; D12). Same trigger as the BTA
+           load: once per level entry, after the loaders stored the records. */
+        ((dScStage_c *)self)->dScStage_c::LoadFog();
         int live = 0;
         for (unsigned i = 0; i < n; ++i)
             if (*(void **)(slots + i * 0xc))

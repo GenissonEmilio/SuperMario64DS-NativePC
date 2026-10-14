@@ -32,6 +32,7 @@
 #include <windows.h>
 #endif
 
+extern "C" int (*port_fog_probe_hook)(unsigned char *o8) = 0;
 namespace ntr {
 namespace {
 
@@ -594,6 +595,25 @@ bool menu_wide() {
    projection matrix, the widescreen widen and its perspective test are one
    piece of code with one caller each. Byte-identical to what project() did
    inline before, same expression, same order. */
+/* MISC093 (D21 / B3): the menu-wide placement of one clip-space point, view_to_clip's menu branch on its own, so the smoother's
+   grid emit (smooth_emit_grid_cpu, which projects its own points four lanes at a time) puts a tessellated triangle where the
+   plain path puts the untessellated one. Same expression, same order. */
+static inline void menu_wide_place(float &cx, float &cy, float cw) {
+    cx *= (float)present_w() / (float)active_w;
+    cy *= (float)present_h() / (float)active_h;
+    if (!g_menu_sprite) {
+        if (g.mw_kx != 1.0f || g.mw_tx != 0.0f || g.mw_ky != 1.0f || g.mw_ty != 0.0f) {
+            cx *= g.mw_kx;
+            if (g.mw_tx != 0.0f) cx += g.mw_tx * cw;
+            cy *= g.mw_ky;
+            if (g.mw_ty != 0.0f) cy += g.mw_ty * cw;
+        }
+    } else if (g_menu_sprxf_on) {
+        cx = cx * g_menu_sprxf[0] + g_menu_sprxf[1] * cw;
+        cy = cy * g_menu_sprxf[2] + g_menu_sprxf[3] * cw;
+    }
+}
+
 Vec4 view_to_clip(const Vec4 &view) {
     Vec4 c = mul(view, g.proj);
     if (menu_wide()) {
@@ -786,6 +806,70 @@ GxVertex clip_lerp(const GxVertex &a, const GxVertex &b, float t) {
 static bool g_frame_ortho;
 static bool g_wdepth;
 
+/* THE FRAME'S FOG (run hunt8, RENDER093, D12). Stage::RenderFog writes
+   DISP3DCNT bit 7 (and the shift in bits 8-11), FOG_COLOR, FOG_OFFSET and the
+   32 FOG_TABLE bytes every frame; nothing here ever read them, so every fog
+   level drew clear. This is melonDS' CalculateFogDensity, one frame latch and
+   one per-pixel lookup, applied to the polygons whose POLYGON_ATTR bit 15 is
+   set: the density 0..128 comes from the pixel's 24-bit depth (W is 12 bit
+   fraction, so w * 4096; Z is the 0..1 key * 0xFFFFFF) and blends the colour
+   toward the fog colour. DISP3DCNT bit 6 (alpha only) leaves the colour alone,
+   so it counts as no fog here. */
+struct FogState {
+    int on = 0;
+    int shift = 0;
+    uint32_t offset = 0;
+    float rgb[3] = {0, 0, 0};
+    int tab[34] = {0};
+    float wscale = 256.0f;   /* depth24 = w * wscale in a W frame, see fog_latch */
+};
+static FogState g_fog;
+
+static void fog_latch() {
+    g_fog.on = 0;
+    if (!io_ready()) return;
+    static const int off = std::getenv("SM64DS_FOG") && *std::getenv("SM64DS_FOG") == '0';
+    const uint32_t cnt = *reinterpret_cast<const volatile uint16_t *>(0x04000060u);
+    if (off || !(cnt & 0x80u) || (cnt & 0x40u)) return;
+    g_fog.on = 1;
+    g_fog.shift = (int)((cnt >> 8) & 0xF);
+    g_fog.offset = ((uint32_t)(*reinterpret_cast<const volatile uint16_t *>(0x0400035Cu)) & 0x7FFFu) * 0x200u;
+    /* The depth a W frame fogs by is the 24-bit W, 4096 a unit, in melonDS and
+       on paper; fed straight in, every pixel the game draws lands past the
+       table's end and the whole picture is fog colour. The table the ROM
+       builds only spreads over the scene at a sixteenth of that, so the W
+       key is taken at 256 a unit. Calibrated by eye, not read off a cartridge
+       capture; SM64DS_FOG_WSCALE=4096 gives the literal figure. */
+    static const float ws = std::getenv("SM64DS_FOG_WSCALE") ? (float)std::atof(std::getenv("SM64DS_FOG_WSCALE")) : 256.0f;
+    g_fog.wscale = ws;
+    const uint32_t col = *reinterpret_cast<const volatile uint32_t *>(0x04000358u);
+    for (int k = 0; k < 3; ++k) {
+        const uint32_t c5 = (col >> (5 * k)) & 31u;
+        g_fog.rgb[2 - k] = (float)((c5 << 3) | (c5 >> 2));   /* BGR555 to R, G, B */
+    }
+    for (int i = 0; i < 32; ++i) {
+        const int v = *reinterpret_cast<const volatile uint8_t *>(0x04000360u + i) & 0x7F;
+        g_fog.tab[i + 1] = v;
+    }
+    g_fog.tab[0] = g_fog.tab[1];
+    g_fog.tab[33] = g_fog.tab[32];   /* the table's tail is flat, as the hardware's is */
+}
+
+static inline uint32_t fog_density(float depth24) {
+    uint32_t z = depth24 >= 16777215.0f ? 0xFFFFFFu : (depth24 <= 0.0f ? 0u : (uint32_t)depth24);
+    uint32_t id, frac;
+    if (z < g_fog.offset) { id = 0; frac = 0; }
+    else {
+        z -= g_fog.offset;
+        z = (z >> 2) << g_fog.shift;
+        id = z >> 17;
+        if (id >= 32) { id = 32; frac = 0; }
+        else frac = z & 0x1FFFFu;
+    }
+    const uint32_t d = (uint32_t)(((uint64_t)g_fog.tab[id] * (0x20000u - frac) + (uint64_t)g_fog.tab[id + 1] * frac) >> 17);
+    return d >= 127u ? 128u : d;
+}
+
 /* THE W-BUFFER'S TIE RULE (run hunt7, lane POLES1). The depth key above is
    exact to a float ulp, and the cartridge's is not: its geometry engine cuts
    every polygon's vertex W to 16 significant bits before it interpolates
@@ -837,6 +921,7 @@ static inline bool w_depth_fail(float z, float d, float q, bool eq = false) {
    material state, so a smoothed grid (smooth_emit_grid) builds it once and
    copies it for each of its sub-triangles instead of rebuilding it 64 times.
    `t` must be value-initialised by the caller (padding stays deterministic). */
+static unsigned long g_rp_tl, g_rp_tl_dw, g_rp_fog_poly;
 static inline void fill_tri_state(GxTriangle &t) {
     t.tex = g.tex_rgba; t.tw = g.tw; t.th = g.th;
     /* the bound texture's host-pixels-per-texel travels with the triangle
@@ -850,6 +935,7 @@ static inline void fill_tri_state(GxTriangle &t) {
     t.mode = static_cast<uint8_t>((g.poly_attr >> 4) & 3);
     t.polyid = static_cast<uint8_t>((g.poly_attr >> 24) & 63);
     t.depth_eq = static_cast<uint8_t>((g.poly_attr >> 14) & 1);
+    t.fog = static_cast<uint8_t>((g.poly_attr >> 15) & 1);
     t.wrap = g.tex_wrap;
     /* TEXIMAGE_PARAM bits 26-28 are the format; 1 (A3I5) and 6 (A5I3)
        are the two translucent-texture formats. Attr alpha 0 is wire and
@@ -863,6 +949,8 @@ static inline void fill_tri_state(GxTriangle &t) {
         (t.tex && (fmt == 1 || fmt == 6)) ||
         t.mode == 3);
     t.dbg_tex = g_teximage;
+    if (t.translucent) { ++g_rp_tl; if (g.poly_attr & 0x800u) ++g_rp_tl_dw; }
+    if (g.poly_attr & 0x8000u) ++g_rp_fog_poly;
 }
 
 void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
@@ -1029,6 +1117,9 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
                        pj.m[11] != 0.0f;
     const float widen = widen_in ? *widen_in : persp
         ? (4.0f / 3.0f) * ((float)present_h() / (float)present_w()) : 1.0f;
+    /* MISC093: a menu-wide frame (a one-screen page in a wide window) places every point through view_to_clip's menu branch,
+       not the 4:3 widen; a grid the card kept never comes from such a frame (grid_defer_try refuses them) */
+    const bool mwide = menu_wide();
     /* The barycentric weights of every grid point, from the kernel's table:
        the floats the old loop recomputed (ia * (1/tf), 1 - a - b clamped). */
     const SmoothGridTable &T = *smooth_grid_table(tf);
@@ -1069,6 +1160,7 @@ static void smooth_emit_grid_cpu(const float *pts, int tf, const SmoothVertex s[
         GxVertex &o = v[i];
         o.x = persp ? cv[0] * widen : cv[0];
         o.y = cv[1]; o.z = cv[2]; o.w = cv[3];
+        if (mwide) { o.x = cv[0]; menu_wide_place(o.x, o.y, o.w); }
         o.vx = vv[0]; o.vy = vv[1]; o.vz = vv[2]; o.vw = vv[3];
         SmoothVertex at;
         smooth_grid_attrs_inline(s[0], s[1], s[2], T.a[i], T.b[i], T.c[i], at);
@@ -1171,6 +1263,7 @@ static bool grid_defer_try(const float *pts, long pool_off, int tf,
                            const SmoothVertex s[3], const Mat *xform,
                            const float *box6) {
     ++g_gd_try;
+    if (menu_wide()) { ++g_gd_state; return false; }     /* MISC093: see smooth_emit_grid_cpu */
     const SmoothGridTable *Tp = smooth_grid_table(tf);
     if (!Tp) return false;
     const int n = Tp->n;
@@ -1837,13 +1930,28 @@ void vertex(int16_t x, int16_t y, int16_t z) {
 }
 
 // --- command execution ------------------------------------------------------
+/* TTMSHAKE093: a picture between two ticks blends each matrix word, and a word
+   rounded back to the DS's 4.12 integer is a whole 1/4096 step of the matrix.
+   On a small-scale model matrix (the TTM slide hall's walls, entries a few
+   hundred counts) that step is about a tenth of a percent of the model's size,
+   which is a pixel of wobble from picture to picture while the camera drifts
+   slowly. The replay therefore hands the exact blended value beside the
+   rounded word (g_ip_ex_on) and the matrix commands read that. Off (every
+   tick's own command, and the blend's alpha 1) the words are read as ever. */
+double g_ip_ex[32];
+int g_ip_ex_on = 0;
+inline float mtx_word(const uint32_t *p, int i) {
+    if (g_ip_ex_on) return (float)(g_ip_ex[i] * (double)FX12);
+    return static_cast<int32_t>(p[i]) * FX12;
+}
+
 void load_mtx(Mat &dst, const uint32_t *p, int n) {
     Mat m = Mat::identity();
     if (n == 16) {
-        for (int i = 0; i < 16; ++i) m.m[i] = static_cast<int32_t>(p[i]) * FX12;
+        for (int i = 0; i < 16; ++i) m.m[i] = mtx_word(p, i);
     } else {  // 4x3: three rows of 3 plus a translation row
         for (int r = 0; r < 4; ++r)
-            for (int c = 0; c < 3; ++c) m.m[r * 4 + c] = static_cast<int32_t>(p[r * 3 + c]) * FX12;
+            for (int c = 0; c < 3; ++c) m.m[r * 4 + c] = mtx_word(p, r * 3 + c);
         m.m[3] = m.m[7] = m.m[11] = 0.0f;
         m.m[15] = 1.0f;
     }
@@ -1853,7 +1961,7 @@ void load_mtx(Mat &dst, const uint32_t *p, int n) {
 Mat mat_3x3(const uint32_t *p) {
     Mat m = Mat::identity();
     for (int r = 0; r < 3; ++r)
-        for (int c = 0; c < 3; ++c) m.m[r * 4 + c] = static_cast<int32_t>(p[r * 3 + c]) * FX12;
+        for (int c = 0; c < 3; ++c) m.m[r * 4 + c] = mtx_word(p, r * 3 + c);
     return m;
 }
 
@@ -2030,9 +2138,9 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
         }
         case 0x1B: {                                             // MTX_SCALE
             Mat m = Mat::identity();
-            m.m[0] = static_cast<int32_t>(p[0]) * FX12;
-            m.m[5] = static_cast<int32_t>(p[1]) * FX12;
-            m.m[10] = static_cast<int32_t>(p[2]) * FX12;
+            m.m[0] = mtx_word(p, 0);
+            m.m[5] = mtx_word(p, 1);
+            m.m[10] = mtx_word(p, 2);
             if (g.mode == MTX_PROJ) g.proj = mul(m, g.proj);
             else if (g.mode == MTX_TEX) g.tex = mul(m, g.tex);
             else g.pos = mul(m, g.pos);
@@ -2040,9 +2148,9 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
         }
         case 0x1C: {                                             // MTX_TRANS
             Mat m = Mat::identity();
-            m.m[12] = static_cast<int32_t>(p[0]) * FX12;
-            m.m[13] = static_cast<int32_t>(p[1]) * FX12;
-            m.m[14] = static_cast<int32_t>(p[2]) * FX12;
+            m.m[12] = mtx_word(p, 0);
+            m.m[13] = mtx_word(p, 1);
+            m.m[14] = mtx_word(p, 2);
             if (g.mode == MTX_PROJ) g.proj = mul(m, g.proj);
             else if (g.mode == MTX_TEX) g.tex = mul(m, g.tex);
             else { g.pos = mul(m, g.pos); if (g.mode == MTX_POSVEC) g.vec = mul(m, g.vec); }
@@ -2068,6 +2176,16 @@ void exec(uint8_t cmd, const uint32_t *p, int np) {
                                  nz * g.tex.m[8]) * (1.0f / 16.0f);
                 g.v = g.raw_v + (nx * g.tex.m[1] + ny * g.tex.m[5] +
                                  nz * g.tex.m[9]) * (1.0f / 16.0f);
+            }
+            { /* MISC093 probe (D8): SM64DS_MISC93_TG2=<n> logs the first n texgen-2 normals per run with the texture matrix */
+                static int lim = -2, cnt = 0;
+                if (lim == -2) { const char *e = std::getenv("SM64DS_MISC93_TG2"); lim = e ? std::atoi(e) : -1; }
+                if (lim > 0 && ((g_teximage >> 30) & 3) == 2 && cnt < lim) {
+                    ++cnt;
+                    std::fprintf(stderr, "[tg2] n=%d teximage=%08x n=(%.3f %.3f %.3f) raw=(%.2f %.2f) tex=[%.2f %.2f %.2f / %.2f %.2f %.2f / %.2f %.2f %.2f / %.2f %.2f] uv=(%.2f %.2f) pol=%08x\n",
+                                 cnt, (unsigned)g_teximage, nx, ny, nz, g.raw_u, g.raw_v, g.tex.m[0], g.tex.m[1], g.tex.m[2], g.tex.m[4], g.tex.m[5], g.tex.m[6],
+                                 g.tex.m[8], g.tex.m[9], g.tex.m[10], g.tex.m[12], g.tex.m[13], g.u, g.v, (unsigned)g.poly_attr);
+                }
             }
 
             // Normals are transformed by the directional matrix, not position.
@@ -5708,6 +5826,8 @@ void raster_ref(const RefArgs &ra, int tid, int nt) {
                    modulates the vertex red on all three channels and adds the
                    entry after, saturating (GBATEK DS 3D Polygon Attributes;
                    melonDS RenderPixel, the same order). */
+                const uint32_t fd = (g_fog.on && t.fog)
+                    ? fog_density(wdepth ? -g_fog.wscale / z : z * 16777215.0f) : 0u;
                 const float *te = nullptr;
                 if (toon)
                     te = &g_toon8[toon_index(l0 * acol[0] + l1 * bcol[0] +
@@ -5720,7 +5840,9 @@ void raster_ref(const RefArgs &ra, int tid, int nt) {
                     const float m = inv255.v[(texel >> sh) & 0xFF];
                     int i = static_cast<int>(v * m + 0.5f);
                     if (toon == 2) i += static_cast<int>(te[k]);
-                    return static_cast<uint32_t>(i < 0 ? 0 : (i > 255 ? 255 : i));
+                    i = i < 0 ? 0 : (i > 255 ? 255 : i);
+                    if (fd) i = (int)(((uint32_t)i * (128u - fd) + (uint32_t)g_fog.rgb[k] * fd) >> 7);
+                    return static_cast<uint32_t>(i);
                 };
                 /* effective alpha = poly attr alpha combined with the
                    TEXEL alpha (A3I5/A5I3 gradients -- the grass-fade
@@ -6215,6 +6337,38 @@ void gx_render(Framebuffer &fb) {
        only when a mode-2 polygon is in it (see gx_toon_table in ntr/gx.h). A
        frame without one leaves g_toon_shade 0 and every band below takes the
        plain modulation it always took. */
+    {
+        static const int rp = std::getenv("SM64DS_RENDER_PROBE") ? 1 : 0;
+        if (rp && io_ready()) {
+            static unsigned long fr = 0, lines = 0;
+            static uint32_t last[6];
+            ++fr;
+            const uint32_t cur[6] = {
+                *reinterpret_cast<const volatile uint16_t *>(0x04000060u),
+                *reinterpret_cast<const volatile uint32_t *>(0x04000358u),
+                *reinterpret_cast<const volatile uint16_t *>(0x0400035Cu),
+                *reinterpret_cast<const volatile uint32_t *>(0x04000360u),
+                (uint32_t)(g_rp_tl_dw ? 1 : 0) | (uint32_t)(g_rp_fog_poly ? 2 : 0),
+                g_swap_param};
+            bool ch = false;
+            for (int i = 0; i < 6; ++i) if (cur[i] != last[i]) ch = true;
+            if ((fr % 300) == 1) {
+                unsigned char fb8[8] = {0};
+                const int nrec = port_fog_probe_hook ? port_fog_probe_hook(fb8) : -1;
+                std::fprintf(stderr, "[rprobe] level fog records %d, first %02x %02x %02x %02x %02x %02x %02x %02x\n", nrec,
+                             fb8[0], fb8[1], fb8[2], fb8[3], fb8[4], fb8[5], fb8[6], fb8[7]);
+            }
+            if ((ch || (fr % 300) == 1) && lines < 200) {
+                ++lines;
+                for (int i = 0; i < 6; ++i) last[i] = cur[i];
+                std::fprintf(stderr, "[rprobe] frame %lu DISP3DCNT %04x FOGCOL %08x FOGOFF %04x FOGTAB0 %08x "
+                             "tl_total %lu tl_depthwrite %lu fogpoly %lu swap %x w=%d\n", fr,
+                             (unsigned)cur[0], (unsigned)cur[1], (unsigned)cur[2], (unsigned)cur[3],
+                             g_rp_tl, g_rp_tl_dw, g_rp_fog_poly, (unsigned)cur[5], (int)g_wdepth);
+            }
+        }
+    }
+    fog_latch();
     g_toon_shade = 0;
     {
         size_t n2 = g.grid_mode2;
@@ -6294,6 +6448,12 @@ void gx_render(Framebuffer &fb) {
         f.py0 = present_y();
         f.pw = present_w();
         f.ph = present_h();
+        if (g_menu_scene_cb && menu_wide()) {
+            /* MENUS093 (D6): the title's full-canvas scene is drawn over the whole wide frame, so the whole frame is its present rectangle
+               for the card's composite: pixels outside the 4:3 box were replaced by the old clear colour, which cut the drawing page's pinned
+               Mario button to a one-pixel sliver (the processor path drew it whole) */
+            f.px0 = 0; f.py0 = 0; f.pw = cw; f.ph = ch;
+        }
         {
             /* the software raster's clip: the present rectangle narrowed to
                the game's viewport (the ending's letterbox); the card scissors
@@ -6314,6 +6474,12 @@ void gx_render(Framebuffer &fb) {
                        : (cw > 0 && ch > 0) ? fb.px[f.py0][f.px0] : 0xFF000000u;
         f.toon_shade = g_toon_shade;
         f.toon_rgb = g_toon8;
+        f.fog_on = g_fog.on;
+        f.fog_wscale = frame_wdepth() ? g_fog.wscale : 0.0f;
+        f.fog_shift = g_fog.shift;
+        f.fog_offset = g_fog.offset;
+        for (int fi = 0; fi < 3; ++fi) f.fog_rgb[fi] = g_fog.rgb[fi];
+        for (int fi = 0; fi < 34; ++fi) f.fog_tab[fi] = g_fog.tab[fi];
         f.full_ok = 2;
         f.out = &gpu_out;
         f.keep = g_cp_pending;
@@ -6771,6 +6937,8 @@ void gx_render(Framebuffer &fb) {
                    modulates the vertex red on all three channels and adds the
                    entry after, saturating (GBATEK DS 3D Polygon Attributes;
                    melonDS RenderPixel, the same order). */
+                const uint32_t fd = (g_fog.on && t.fog)
+                    ? fog_density(wdepth ? -g_fog.wscale / z : z * 16777215.0f) : 0u;
                 const float *te = nullptr;
                 if (toon)
                     te = &g_toon8[toon_index(l0 * acol[0] + l1 * bcol[0] +
@@ -6783,7 +6951,9 @@ void gx_render(Framebuffer &fb) {
                     const float m = inv255.v[(texel >> sh) & 0xFF];
                     int i = static_cast<int>(v * m + 0.5f);
                     if (toon == 2) i += static_cast<int>(te[k]);
-                    return static_cast<uint32_t>(i < 0 ? 0 : (i > 255 ? 255 : i));
+                    i = i < 0 ? 0 : (i > 255 ? 255 : i);
+                    if (fd) i = (int)(((uint32_t)i * (128u - fd) + (uint32_t)g_fog.rgb[k] * fd) >> 7);
+                    return static_cast<uint32_t>(i);
                 };
                 /* effective alpha = poly attr alpha combined with the
                    TEXEL alpha (A3I5/A5I3 gradients -- the grass-fade
@@ -7041,6 +7211,12 @@ void gx_render(Framebuffer &fb) {
         /* the frame's toon table, for its mode-2 polygons (0 = none) */
         f.toon_shade = g_toon_shade;
         f.toon_rgb = g_toon8;
+        f.fog_on = g_fog.on;
+        f.fog_wscale = frame_wdepth() ? g_fog.wscale : 0.0f;
+        f.fog_shift = g_fog.shift;
+        f.fog_offset = g_fog.offset;
+        for (int fi = 0; fi < 3; ++fi) f.fog_rgb[fi] = g_fog.rgb[fi];
+        for (int fi = 0; fi < 34; ++fi) f.fog_tab[fi] = g_fog.tab[fi];
         /* THE WHOLE-FRAME HAND-OVER (run cardfull). A backend that can draw the
            second pass says so by returning 2; one that cannot returns 1 or 0
            and nothing below changes. The smoothing is offered to it only
@@ -7600,6 +7776,15 @@ bool ip_particle_pair() {
     return on != 0;
 }
 
+bool ip_newborn_recam() {
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("SM64DS_PARTICLE_RECAM");
+        on = (e && e[0] == '0') ? 0 : 1;
+    }
+    return on != 0;
+}
+
 void ip_rec_begin() {
     IpRec &r = g_ipr[g_ip_w];
     r.ev.clear();
@@ -7870,6 +8055,13 @@ void ip_match(IpRec &C, const IpRec &P, GxInterpStats *st) {
                     (e.mode == MTX_POS || e.mode == MTX_POSVEC))
                     C.blend[ei] = -2;
             }
+            /* a newborn particle: its view-space point is tick N's, so it
+               would ride the screen while the world glides under the blended
+               camera; -3 re-views the point */
+            if (gc.part && gc.nmtx == 1 && ip_newborn_recam()) {
+                const int ei = C.mtx[gc.mtx0];
+                if (C.ev[ei].np == 12) C.blend[ei] = -3;
+            }
         }
     }
     if (st) {
@@ -7935,10 +8127,37 @@ void ip_recamera(const uint32_t *p, int np, uint32_t *out) {
         const double s = v * 4096.0;
         return (uint32_t)(int32_t)(s < 0 ? s - 0.5 : s + 0.5);
     };
-    for (int i = 0; i < np; ++i) out[i] = p[i];
+    for (int i = 0; i < np; ++i) { out[i] = p[i]; g_ip_ex[i] = (double)(int32_t)p[i]; }
     for (int r = 0; r < 3; ++r)
-        for (int k = 0; k < 3; ++k) out[four ? r * 4 + k : r * 3 + k] = fx(B[r][k]);
-    for (int k = 0; k < 3; ++k) out[four ? 12 + k : 9 + k] = fx(b[k]);
+        for (int k = 0; k < 3; ++k) {
+            out[four ? r * 4 + k : r * 3 + k] = fx(B[r][k]);
+            g_ip_ex[four ? r * 4 + k : r * 3 + k] = B[r][k] * 4096.0;
+        }
+    for (int k = 0; k < 3; ++k) {
+        out[four ? 12 + k : 9 + k] = fx(b[k]);
+        g_ip_ex[four ? 12 + k : 9 + k] = b[k] * 4096.0;
+    }
+}
+
+/* A newborn particle's MULT_4x3 carries only a view-space point (the 2x2 is the
+   billboard, which faces the camera whatever the camera does). Re-view the
+   point through the blended camera: p' = (p - t_N) R_N^T R_t + t_t. */
+void ip_recamera_trans(const uint32_t *p, uint32_t *out) {
+    const IpCam &c = g_ip_cam;
+    double M[3][3], d[3], b[3];
+    for (int r = 0; r < 3; ++r)
+        for (int k = 0; k < 3; ++k)
+            M[r][k] = c.RN[0][r] * c.Rt[0][k] + c.RN[1][r] * c.Rt[1][k] +
+                      c.RN[2][r] * c.Rt[2][k];
+    for (int k = 0; k < 3; ++k) d[k] = (int32_t)p[9 + k] / 4096.0 - c.tN[k];
+    for (int k = 0; k < 3; ++k)
+        b[k] = d[0] * M[0][k] + d[1] * M[1][k] + d[2] * M[2][k] + c.tt[k];
+    for (int i = 0; i < 12; ++i) { out[i] = p[i]; g_ip_ex[i] = (double)(int32_t)p[i]; }
+    for (int k = 0; k < 3; ++k) {
+        const double sv = b[k] * 4096.0;
+        out[9 + k] = (uint32_t)(int32_t)(sv < 0 ? sv - 0.5 : sv + 0.5);
+        g_ip_ex[9 + k] = sv;
+    }
 }
 
 bool ip_proj_perspective() {
@@ -8132,24 +8351,37 @@ int gx_interp_begin(float alpha) {
         case IPK_CMD: {
             if (e.cmd == 0x50 || e.cmd == 0x2A || e.cmd == 0x2B) break;
             const uint32_t *pp = e.np ? &C.par[e.off] : nullptr;
+            int ex_on = 0;
             if (ip_is_mtx(e.cmd) && e.np <= 32) {
                 const int b = C.blend.empty() ? -1 : C.blend[i];
                 if (b >= 0 && e.mode != MTX_TEX) {
                     const IpEv &pe = P.ev[b];
                     const int n = e.np < pe.np ? e.np : pe.np;
-                    for (int k = 0; k < e.np; ++k)
+                    for (int k = 0; k < e.np; ++k) {
                         tmp[k] = k < n ? (uint32_t)ip_lerp(P.par[pe.off + k], pp[k], alpha)
                                        : pp[k];
+                        g_ip_ex[k] = k < n ? (double)(int32_t)P.par[pe.off + k] * (1.0 - alpha) +
+                                             (double)(int32_t)pp[k] * alpha
+                                           : (double)(int32_t)pp[k];
+                    }
                     pp = tmp;
+                    ex_on = 1;
+                } else if (b == -3 && alpha < 1.0f && ip_proj_perspective()) {
+                    ip_recamera_trans(pp, tmp);
+                    pp = tmp;
+                    ex_on = 1;
                 } else if (b == -2 && alpha < 1.0f && ip_proj_perspective()) {
                     /* at alpha 1 the blended camera IS tick N's and the
                        re-view is the identity: skip it, so the last picture
                        of a tick is the tick's own to the bit */
                     ip_recamera(pp, e.np, tmp);
                     pp = tmp;
+                    ex_on = 1;
                 }
             }
+            g_ip_ex_on = ex_on;
             exec(e.cmd, pp, e.np);
+            g_ip_ex_on = 0;
             break;
         }
         case IPK_BIND: {
@@ -8254,6 +8486,14 @@ static void grid_pool_clear_hook() {
         grids_materialize_w(7);
         std::swap(g, g_ip_saved.g);
     }
+}
+
+/* Probe: how the current tick's group gi was paired. Bit 0 a particle, bit 1
+   paired with the previous tick's group. -1 outside a record. */
+int gx_interp_group_flags(int gi) {
+    if (g_ip_c < 0 || gi < 0 || gi >= (int)g_ipr[g_ip_c].groups.size()) return -1;
+    const IpGroup &G = g_ipr[g_ip_c].groups[gi];
+    return (G.part ? 1 : 0) | (G.match >= 0 ? 2 : 0);
 }
 
 int gx_interp_group_count() {

@@ -1706,6 +1706,14 @@ void hal_render_player_world(void *player)
        (UpdateVerts, the palette stamp) is already done and the alpha is what
        the raster reads. */
     if (ghost) ghost_opacity(ma);
+    else
+        /* THE LOCAL BODY'S OWN OPACITY (Player+0x6f5), the first statement of
+           Player::Render's body arm (src/_ZN6Player6RenderEv.cpp:63). It is
+           31 in play and runs down to 1 and back while St_Teleport is on (the
+           secret warp spots), so the body dissolves out and back in: this copy
+           of the render only ever stamped it on the balloon arm, and a warp
+           showed the body fully solid until the screen flash took it. */
+        _ZN9ModelBase12ApplyOpacityEj(ma, *(const unsigned char *)(c + 0x6f5));
     /* THE ROM'S BODY DRAW, WHOLE. src/_ZN6Player6RenderEv.cpp:79 is one
        statement carrying two facts, and the port used to get both of them
        wrong with `ma->ModelAnim::Render(0)`:
@@ -1773,6 +1781,8 @@ void hal_render_player_world(void *player)
                         hid, (int)(hsink_t1 - hsink_t0));
             hal_player_vs_palette(c, head);
             if (ghost) ghost_opacity(head);
+            else    /* the head's own line of the same statement block (:104) */
+                _ZN9ModelBase12ApplyOpacityEj(head, *(const unsigned char *)(c + 0x6f5));
             hal_render_head_group(c, head, hid, ma, scene);
             hal_player_texseq_head(c, hid);
             /* THE MIRROR, once for the body (above) and once here for the

@@ -2336,6 +2336,15 @@ static void port_load1(void *t, int a, unsigned b)
                      "(held at 0 so Camera::InitResources had a body to "
                      "follow)\n", (int)saved_local);
 }
+extern "C" { extern int data_0209f31c[4]; extern unsigned char data_0209f258[4]; }
+extern "C" int port_fog_probe(unsigned char *o8)
+{
+    const unsigned char *fp = (const unsigned char *)(uintptr_t)data_0209f31c[0];
+    for (int i = 0; i < 8; ++i) o8[i] = fp ? fp[i] : 0;
+    return (int)data_0209f258[0];
+}
+extern "C" int (*port_fog_probe_hook)(unsigned char *o8);
+static struct PortFogProbeInit { PortFogProbeInit() { port_fog_probe_hook = port_fog_probe; } } g_port_fog_probe_init;
 static void port_load2(void *t, int a, unsigned b)
 { port_loader_enter(2, t); _Z19LoadPathNodeObjectsRN11LVL_Overlay11ObjSubTableEij(t, a, b); }
 static void port_load3(void *t, int a, unsigned b)
