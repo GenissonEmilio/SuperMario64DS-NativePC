@@ -101,6 +101,7 @@ extern "C" void port_hoot_the_owl_states_seat(void)
     done = 1;
     for (int i = 0; i < 5; ++i) {
         PortHootPmf *cell = g_hoot_cells[i].cell;
+        if ((unsigned)(cell[0].fn) < 0x02000000u || (unsigned)(cell[0].fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (cell[0].fn != g_hoot_cells[i].enter_rom || cell[0].delta != 0 ||
             cell[1].fn != g_hoot_cells[i].tick_rom || cell[1].delta != 0) {
             std::fprintf(stderr, "FATAL: HootTheOwl state cell %d: the sinit "

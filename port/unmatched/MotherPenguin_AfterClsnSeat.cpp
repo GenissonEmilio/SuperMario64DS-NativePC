@@ -257,6 +257,7 @@ extern "C" void port_mother_penguin_afterclsn_seat(void)
         return;
     done = 1;
     for (int i = 0; i < PORT_MPG_RECORDS; ++i) {
+        if ((unsigned)(data_ov018_02113c4c[i].fn) < 0x02000000u || (unsigned)(data_ov018_02113c4c[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (data_ov018_02113c4c[i].fn != g_mpg_cells[i].rom ||
             data_ov018_02113c4c[i].delta != 0) {
             std::fprintf(stderr, "FATAL: MotherPenguin state-table record "

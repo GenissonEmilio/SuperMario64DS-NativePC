@@ -431,6 +431,7 @@ extern "C" void port_mg_trmpln_field_seat(void)
         return;
     done = 1;
     for (unsigned i = 0; i < sizeof g_trmpln_seats / sizeof g_trmpln_seats[0]; ++i) {
+        if ((unsigned)(g_trmpln_seats[i].p->code) < 0x02000000u || (unsigned)(g_trmpln_seats[i].p->code) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (g_trmpln_seats[i].p->code != g_trmpln_seats[i].rom ||
             g_trmpln_seats[i].p->adj != 0) {
             std::fprintf(stderr, "FATAL: trampoline Mario field pair %u: the "

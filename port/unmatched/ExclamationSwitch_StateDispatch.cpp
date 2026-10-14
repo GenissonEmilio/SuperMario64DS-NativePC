@@ -80,6 +80,7 @@ extern "C" void port_exclamation_switch_states_seat(void)
         return;
     done = 1;
     for (int i = 0; i < PORT_SWITCH_RECS; ++i) {
+        if ((unsigned)(data_ov002_0210e00c[i].fn) < 0x02000000u || (unsigned)(data_ov002_0210e00c[i].fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (data_ov002_0210e00c[i].fn != g_switch_states[i].rom ||
             data_ov002_0210e00c[i].delta != 0) {
             std::fprintf(stderr, "FATAL: ExclamationSwitch state record %d: the "

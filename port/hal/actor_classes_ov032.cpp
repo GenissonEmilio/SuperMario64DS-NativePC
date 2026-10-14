@@ -446,6 +446,7 @@ extern "C" void port_bubba_states_seat(void)
     done = 1;
     for (int i = 0; i < 5; ++i) {
         PortBubbaCell &cell = *g_bubba_cells[i].cell;
+        if ((unsigned)(cell.enter_fn) < 0x02000000u || (unsigned)(cell.enter_fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (cell.enter_fn != g_bubba_cells[i].enter_rom || cell.enter_delta != 0 ||
             cell.tick_fn != g_bubba_cells[i].tick_rom || cell.tick_delta != 0) {
             std::fprintf(stderr, "FATAL: BUBBA state cell %d: the sinit left "

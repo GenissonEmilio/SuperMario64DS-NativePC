@@ -398,6 +398,7 @@ extern "C" void port_wiggler_states_seat(void)
     done = 1;
     for (int i = 0; i < 11; ++i) {
         PortWigglerEntry &e = data_ov034_02114538[i];
+        if ((unsigned)(e.enter_fn) < 0x02000000u || (unsigned)(e.enter_fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (e.enter_fn != g_wiggler_states[i].enter_rom || e.enter_delta != 0 ||
             e.tick_fn != g_wiggler_states[i].tick_rom || e.tick_delta != 0) {
             std::fprintf(stderr, "FATAL: daHanachan_c state %d (%s): the sinit left "

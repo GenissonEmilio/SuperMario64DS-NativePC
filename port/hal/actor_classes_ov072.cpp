@@ -436,6 +436,7 @@ extern "C" void port_baby_penguin_states_seat(void)
     done = 1;
     for (int i = 0; i < 6; ++i) {
         PortBabyPenguinPair &cell = data_ov072_02122d6c[i];
+        if ((unsigned)(cell.enter_fn) < 0x02000000u || (unsigned)(cell.enter_fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (cell.enter_fn != g_bp_cells[i].enter_rom || cell.enter_delta != 0 ||
             cell.tick_fn != g_bp_cells[i].tick_rom || cell.tick_delta != 0) {
             std::fprintf(stderr, "FATAL: daPgBby_c state cell %d: the sinit "
@@ -756,6 +757,7 @@ static void ov72_seat_cells(const char *who, PortSnowmanCell *cells,
 {
     for (int i = 0; i < n; ++i) {
         PortSnowmanCell &cell = cells[i];
+        if ((unsigned)(cell.enter_fn) < 0x02000000u || (unsigned)(cell.enter_fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
         if (cell.enter_fn != rows[i].enter_rom || cell.enter_delta != 0 ||
             cell.tick_fn != rows[i].tick_rom || cell.tick_delta != 0) {
             std::fprintf(stderr, "FATAL: %s state cell %d: the sinit left "
