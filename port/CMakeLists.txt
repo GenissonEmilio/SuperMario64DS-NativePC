@@ -16348,8 +16348,10 @@ set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_m
 # data_ov025_02112654, so today the reference is simply undefined and the TU
 # could not be seated; left unrenamed with an ov025 mount that did define it,
 # this would have been the ov006 "seating one CALLS INTO A DATA ARRAY" shape.
-set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
-    APPEND PROPERTY COMPILE_DEFINITIONS "data_ov025_02112654=func_ov022_02112654")
+# PORTSYNC3: the -D rename that stood here is retired: main's TU spells the
+# function by its own name (func_ov022_02112654) now, and decl_common.h's
+# `extern int data_ov025_02112654(void*)` collided with that definition once
+# the rename made them one symbol.
 #
 # W3, THE TWO CleanupResources BODIES THAT SPELL THEIR SharedFilePtrs G0/G1.
 # hal/cxx_aliases.cpp binds _G0 to the game heap pointer and _G1 to SignPost's
@@ -21802,6 +21804,7 @@ set(PORT_FALLS_OFF_END_SOURCES
     src/actors/daObjBk_Botaosi_c.cpp
     src/actors/daObjBk_Lift_c.cpp
     src/actors/daKuriKing_c.cpp
+    src/cstd4.cpp
     # Added at the main -> port sync (lane SYNC5). Lane SEAT2 seats _ZTV5Stage
     # slot 1 on the ROM's own three-word veneer, so smoke_player and
     # walk_window_hires compile this TU for the first time; its body is the
@@ -25304,3 +25307,16 @@ set_source_files_properties(
 set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../src/game/actors/d_a_obj_fl_maruta.cpp"
     APPEND PROPERTY COMPILE_OPTIONS
     "/FI${CMAKE_CURRENT_SOURCE_DIR}/unmatched/FlMaruta_HostAbi.h")
+
+# PORTSYNC3: the smoke harnesses now compile some TUs through hostgen (main's
+# folds put those functions into TUs the shared-TU substitution routes there),
+# and every generated copy includes ntr/mmio.h.
+foreach(_ps3_t smoke_roots smoke_model smoke_frames smoke_soak smoke_clsn
+        smoke_modelanim smoke_oam smoke_soak_anim smoke_anim smoke_fs
+        smoke_heap smoke_actor smoke_gx smoke_player smoke_persist
+        smoke_savestate)
+    if(TARGET ${_ps3_t})
+        target_include_directories(${_ps3_t} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
+    endif()
+endforeach()
