@@ -837,6 +837,7 @@ static inline bool w_depth_fail(float z, float d, float q, bool eq = false) {
    material state, so a smoothed grid (smooth_emit_grid) builds it once and
    copies it for each of its sub-triangles instead of rebuilding it 64 times.
    `t` must be value-initialised by the caller (padding stays deterministic). */
+static unsigned long g_rp_tl, g_rp_tl_dw, g_rp_fog_poly;
 static inline void fill_tri_state(GxTriangle &t) {
     t.tex = g.tex_rgba; t.tw = g.tw; t.th = g.th;
     /* the bound texture's host-pixels-per-texel travels with the triangle
@@ -863,6 +864,8 @@ static inline void fill_tri_state(GxTriangle &t) {
         (t.tex && (fmt == 1 || fmt == 6)) ||
         t.mode == 3);
     t.dbg_tex = g_teximage;
+    if (t.translucent) { ++g_rp_tl; if (g.poly_attr & 0x800u) ++g_rp_tl_dw; }
+    if (g.poly_attr & 0x8000u) ++g_rp_fog_poly;
 }
 
 void push_screen_tri(const GxVertex &a, const GxVertex &b, const GxVertex &c) {
@@ -6215,6 +6218,32 @@ void gx_render(Framebuffer &fb) {
        only when a mode-2 polygon is in it (see gx_toon_table in ntr/gx.h). A
        frame without one leaves g_toon_shade 0 and every band below takes the
        plain modulation it always took. */
+    {
+        static const int rp = std::getenv("SM64DS_RENDER_PROBE") ? 1 : 0;
+        if (rp && io_ready()) {
+            static unsigned long fr = 0, lines = 0;
+            static uint32_t last[6];
+            ++fr;
+            const uint32_t cur[6] = {
+                *reinterpret_cast<const volatile uint16_t *>(0x04000060u),
+                *reinterpret_cast<const volatile uint32_t *>(0x04000358u),
+                *reinterpret_cast<const volatile uint16_t *>(0x0400035Cu),
+                *reinterpret_cast<const volatile uint32_t *>(0x04000360u),
+                (uint32_t)(g_rp_tl_dw ? 1 : 0) | (uint32_t)(g_rp_fog_poly ? 2 : 0),
+                g_swap_param};
+            bool ch = false;
+            for (int i = 0; i < 6; ++i) if (cur[i] != last[i]) ch = true;
+            if ((ch || (fr % 300) == 1) && lines < 200) {
+                ++lines;
+                for (int i = 0; i < 6; ++i) last[i] = cur[i];
+                std::fprintf(stderr, "[rprobe] frame %lu DISP3DCNT %04x FOGCOL %08x FOGOFF %04x FOGTAB0 %08x "
+                             "tl_total %lu tl_depthwrite %lu fogpoly %lu swap %x w=%d
+", fr,
+                             (unsigned)cur[0], (unsigned)cur[1], (unsigned)cur[2], (unsigned)cur[3],
+                             g_rp_tl, g_rp_tl_dw, g_rp_fog_poly, (unsigned)cur[5], (int)g_wdepth);
+            }
+        }
+    }
     g_toon_shade = 0;
     {
         size_t n2 = g.grid_mode2;
