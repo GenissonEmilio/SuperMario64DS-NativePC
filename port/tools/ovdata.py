@@ -1739,7 +1739,7 @@ def main():
         if mt:
             DATA_WIN = (int(mt.group(2), 16), DATA_WIN[1])
     for _ in range(5):
-        cov = sorted((a, a + sz) for _, a, sz, _ in emitted)
+        cov = sorted([(a, a + sz) for _, a, sz, _ in emitted] + [(a, a + sz) for _, a, sz in ext])
 
         def covered(v):
             for s, e in cov:
