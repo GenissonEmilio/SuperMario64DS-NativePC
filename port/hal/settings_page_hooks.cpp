@@ -18,7 +18,6 @@
 #include "menu_compose.h"
 
 #include <stdint.h>
-#include <stdio.h>
 
 extern "C" {
 extern unsigned char data_0209f248;    /* the pause state PS_Update is in */
@@ -116,13 +115,6 @@ extern "C" int settings_page_hook_pad(uint16_t *pressed)
         const uint16_t bits = 0x0001 | 0x0002 | 0x0008;
         unsigned short *held = (unsigned short *)((char *)data_020a0e58 + data_020a0e40 * 4);
         if ((*pressed | *held) & bits) {
-            if (hal_menu_trace_on() && port_scene_live_id() == 1) {
-                int t, e, r;
-                const int ok = port_title_page_state(&t, &e, &r);
-                const short *c = data_ov007_02103360 ? *(const short **)data_ov007_02103360 : 0;
-                fprintf(stderr, "[mpguard] pressed %04x held %04x page %d top %d elem %d req %d cursor %d,%d\n", *pressed, *held, ok, t, e, r,
-                        c ? c[0] : -99, c ? c[1] : -99);
-            }
             if (title_main_page() && title_cursor_on_vs()) {
                 *pressed = (uint16_t)(*pressed & ~bits);
                 *held = (unsigned short)(*held & ~bits);

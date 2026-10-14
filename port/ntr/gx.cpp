@@ -4294,11 +4294,16 @@ static void clear_fill_classic(Framebuffer &fb)
     const bool mw = menu_wide();          /* MENU WIDE 3D: the clear colour covers the whole wide frame */
     const int x0 = mw ? 0 : present_x(), y0 = mw ? 0 : present_y();
     const int x1 = mw ? active_w : x0 + present_w(), y1 = mw ? active_h : y0 + present_h();
+    /* MENUS093B (B1): with the edge smoothing on, the margin outside the present rectangle is filled with the picture's own clear colour
+       and not the old constant. aa_pass / aa_ps / fa_ps read the four neighbours of a covered pixel, and at the rectangle's outer column the
+       neighbour is a margin pixel: the constant (16,24,32) against a black clear blended a two pixel line of (8,9,9) onto the picture's first
+       and last column, which the title's wide scene shows at the old 4:3 edges. Off, the margin is what it always was. */
+    const uint32_t mg = g_aa_mode ? c : kOldClear;
     /* row 0 carries the present rectangle's columns if row 0 is inside it;
        the rest are copies of one of two template rows, built once */
     for (int x = 0; x < w; ++x)
-        fb.px[0][x] = (x >= x0 && x < x1 && 0 >= y0 && 0 < y1) ? c : kOldClear;
-    if (c == kOldClear || (x0 <= 0 && x1 >= w && y0 <= 0 && y1 >= h)) {
+        fb.px[0][x] = (x >= x0 && x < x1 && 0 >= y0 && 0 < y1) ? c : mg;
+    if (c == mg || (x0 <= 0 && x1 >= w && y0 <= 0 && y1 >= h)) {
         for (int y = 1; y < h; ++y)
             std::memcpy(fb.px[y], fb.px[0], (size_t)w * sizeof(fb.px[0][0]));
         return;
@@ -4310,7 +4315,7 @@ static void clear_fill_classic(Framebuffer &fb)
         if (src < 0) {
             if (y != 0)
                 for (int x = 0; x < w; ++x)
-                    fb.px[y][x] = (in && x >= x0 && x < x1) ? c : kOldClear;
+                    fb.px[y][x] = (in && x >= x0 && x < x1) ? c : mg;
             src = y;
         } else {
             std::memcpy(fb.px[y], fb.px[src], (size_t)w * sizeof(fb.px[0][0]));
@@ -4404,7 +4409,7 @@ void gx_card_settle_because(const char *why)
     GxGpuFrame f;
     std::memset(&f, 0, sizeof f);
     f.settle = 1;
-    f.outside_argb = kOldClear;
+    f.outside_argb = g_aa_mode ? gx_clear_argb() : kOldClear;   /* MENUS093B (B1): see clear_fill_classic */
     f.fb = &g_cp_fb->px[0][0];
     f.cover = &g_cover[0][0];
     f.stride = SCREEN_W;
@@ -4462,7 +4467,7 @@ const uint32_t *gx_card_capture_picture()
     GxGpuFrame f;
     std::memset(&f, 0, sizeof f);
     f.settle = 2;
-    f.outside_argb = kOldClear;
+    f.outside_argb = g_aa_mode ? gx_clear_argb() : kOldClear;   /* MENUS093B (B1): see clear_fill_classic */
     f.fb = &g_cp_fb->px[0][0];
     f.pre = g_cp_scratch;
     f.stride = SCREEN_W;
@@ -6323,7 +6328,7 @@ void gx_render(Framebuffer &fb) {
         f.full_ok = 2;
         f.out = &gpu_out;
         f.keep = g_cp_pending;
-        f.outside_argb = kOldClear;
+        f.outside_argb = g_aa_mode ? f.clear_argb : kOldClear;   /* MENUS093B (B1): see clear_fill_classic */
         if (g_aa_mode && aa_scratch_alloc()) {
             f.aa_mode = 1;
             f.pre = g_aa_src;
