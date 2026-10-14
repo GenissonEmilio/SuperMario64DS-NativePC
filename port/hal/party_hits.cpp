@@ -380,12 +380,13 @@ void eat_end(char *me, bool spit, bool escaped = false) {
             // func_ov002_020d5cec's own numbers: out 80 units in front of the eater and 50 up, 24 units a frame
             // forward and 24 up, the flying anim (0x56), facing the way the eater faces
             int yaw = g.hold.spit_yaw();
-            if (ep) {
+            Seen es;
+            if (ep && see(eater, &es) && es.have_ghost) {
                 yaw = *player::facing(ep) & 0xFFFF;
                 const double a = (double)yaw * 3.14159265358979323846 / 32768.0;
-                *player::pos_x(me) = *player::pos_x(ep) + (int)std::lround(std::sin(a) * 80) * 0x1000;
-                *player::pos_z(me) = *player::pos_z(ep) + (int)std::lround(std::cos(a) * 80) * 0x1000;
-                *player::pos_y(me) = *player::pos_y(ep) + 0x32000;
+                *player::pos_x(me) = (es.x + (int)std::lround(std::sin(a) * 80)) * 0x1000;
+                *player::pos_z(me) = (es.z + (int)std::lround(std::cos(a) * 80)) * 0x1000;
+                *player::pos_y(me) = (es.y + 50) * 0x1000;
             }
             *(short *)(me + kYawAngle) = (short)yaw;
             _ZN6Player7SetAnimEji5Fix12IiEj(me, 0x56, 0x40000000, 0x1000, 0);
@@ -441,7 +442,7 @@ void eat_tick(char *me) {
             // in the mouth: at the eater's DRAWN body (the ghost the attach rule also uses), the curled anim, no control
             char *ep = body_of_seat(eater);
             int ex = s.x << 12, ey = s.y << 12, ez = s.z << 12, eyaw = g.hold.spit_yaw();
-            if (ep) { ex = *player::pos_x(ep); ey = *player::pos_y(ep); ez = *player::pos_z(ep); eyaw = *player::facing(ep) & 0xFFFF; }
+            if (ep) eyaw = *player::facing(ep) & 0xFFFF;      // (the ghost body can sit parked: its position is not trusted, the hub's newest SYNG position is)
             const double a = (double)eyaw * 3.14159265358979323846 / 32768.0;
             *player::pos_x(me) = ex + (int)std::lround(std::sin(a) * g.eat_ahead) * 0x1000;
             *player::pos_z(me) = ez + (int)std::lround(std::cos(a) * g.eat_ahead) * 0x1000;
