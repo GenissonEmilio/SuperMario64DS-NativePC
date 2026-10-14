@@ -339,41 +339,6 @@ void DecompressLZ16(void *src_, void *dst_)
     }
 }
 
-/* The VS text blob (data_0209fd14, split into data_0209fd04 / fcf8 / fcfc / fd08
-   by Message::SetTextGlobalsVS) is loaded by LoadFont3D -> Message::LoadTextVS,
-   which only the VS menu scene runs. Debug course select can still boot the two
-   VS arenas (levels 42 and 51) in a plain session, and pausing there takes the
-   VS pause screen, Message::DisplayPauseTextVS, whose text plot reads those
-   pointers. On the cartridge a never-loaded pointer is zero and the read lands
-   in low memory (a blank line of text); on the PC build it is an access
-   violation, which froze the Stage actor (crash C7, quarantine of actor id 3 at
-   func_020341a8 / func_02033e50 on levels 42 and 51). Seat an all-zero blob
-   when nothing was loaded, through the same four stores SetTextGlobalsVS makes,
-   so the VS text readers walk empty strings. A real blob loaded later replaces
-   it, since LoadTextVS rewrites all four pointers. */
-extern "C" {
-extern int data_0209fd14[];
-extern int data_0209fd04[];
-extern int data_0209fcf8[];
-extern int data_0209fcfc[];
-extern int data_0209fd08[];
-}
-static int g_vs_text_zero_blob[0x1000];
-extern "C" void port_vs_text_seat(void)
-{
-    int ip;
-    if (data_0209fd08[0] != 0)
-        return;
-    ip = (int)(size_t)g_vs_text_zero_blob;
-    data_0209fd14[0] = ip;
-    data_0209fd04[0] = ip;
-    data_0209fcf8[0] = ip + 0x20;
-    data_0209fcfc[0] = ip + 0x20 + *(int *)(ip + 0x24);
-    data_0209fd08[0] = ip + 0x30;
-    fprintf(stderr, "[vstext] no VS text blob is loaded; seated an empty one so the VS pause and "
-            "exit text readers have something to read\n");
-}
-
 /* Archive-interior file IDs (>= 0x8000): the DS mounts 13 NARC archives
    whose id ranges live in the ROM's mount table; interior id - base
    indexes the NARC's own FAT. port_archive_map is the host-shaped copy
