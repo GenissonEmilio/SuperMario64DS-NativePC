@@ -846,6 +846,19 @@ ROWS_04[("VIRTUAL_CALL", "dMeter_c")] = [
      "    int b = (data_0209f2d8 == 1);\n"),
 ]
 
+# ---- dBgW_Kc_itcm ------------------------------------------------------------
+# VIRTUAL_CALL (PORTSYNC3). Main spells the square-root result register as a MACRO,
+# `#define SQRT_RESULT (*(const s32 *)0x40002b4)`, and reads it at the end of the sphere
+# pass. hostgen's literal-deref rewrite only sees the volatile spelling, so the macro
+# stayed a raw read of host address 0x40002b4 (zero page garbage) while the writes beside
+# it went through the modelled divider/sqrt unit: every sphere hypotenuse came back wrong
+# and the camera never met a wall (measured: level 36 camera runs straight through the
+# cave wall the 0.9.2 line stops at).
+ROWS_04[("VIRTUAL_CALL", "dBgW_Kc_itcm")] = [
+    ("#define SQRT_RESULT (*(const s32 *)0x40002b4)",
+     "#define SQRT_RESULT NTR_MMIO(s32, 0x40002b4)  /* hostgen VIRTUAL_CALL */"),
+]
+
 # ---- daOnms_c --------------------------------------------------------------
 # EXTERN_C_DATA (new). Main's TU writes the arm9 sin/cos table as
 # `s16 data_02082214[];` with no `extern`, inside its `extern "C" {` block.
