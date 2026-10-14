@@ -7,6 +7,7 @@
 extern "C" int port_adventure_ghost_seat(int slot);
 extern "C" int port_adventure_ghost_drawpos(int slot, int out[3]);
 extern "C" unsigned char data_0209f2d8;
+extern "C" int port_rom_frame(void);
 
 namespace {
 
@@ -32,6 +33,18 @@ int log_env() {
 
 extern "C" int port_coop_minimap_ghost(int slot, int pos[3]) {
     if (!mode_env() || data_0209f2d8 == 1) return 0;     // VS draws its own
+    {   // proof knob SM64DS_COOP_MINIMAP_BLINK=<from>:<to>: the hook answers "not a ghost" for ROM frames
+        // from..to-1, so one run holds both pictures (the icon on, then off) for the same scene
+        static int b0 = -2, b1 = -2;
+        if (b0 == -2) {
+            b0 = b1 = -1;
+            const char *e = std::getenv("SM64DS_COOP_MINIMAP_BLINK");
+            int x = 0, y = 0;
+            if (e && std::sscanf(e, "%d:%d", &x, &y) == 2) { b0 = x; b1 = y; }
+        }
+        const int f = port_rom_frame();
+        if (b0 >= 0 && f >= b0 && f < b1) return 0;
+    }
     if (port_adventure_ghost_seat(slot) < 0) return 0;   // not a hub ghost
     if (!port_adventure_ghost_drawpos(slot, pos)) return 2;
     if (log_env()) {
