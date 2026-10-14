@@ -4425,6 +4425,8 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
     }
     unsigned *E[2] = { buf, buf + rows };
     unsigned *tmp = buf + 2 * (size_t)rows;
+    int flat[2] = { 0, 0 };
+    unsigned flatc[2] = { 0, 0 };
     /* per row, per side: the edge colour (mean of the 3 outermost picture columns), then blurred down the picture */
     for (int side = 0; side < 2; ++side) {
         unsigned *e = E[side];
@@ -4437,6 +4439,24 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
                 sr += (c >> 16) & 255; sg += (c >> 8) & 255; sb += c & 255;
             }
             e[r] = 0xFF000000u | ((sr / 3) << 16) | ((sg / 3) << 8) | (sb / 3);
+        }
+        /* WIDEBG2: an edge strip that is (nearly) one flat colour is continued as EXACTLY that colour: a white screen gets
+           white sides, no blur, no darkening. Nearly = every row within 8 of the strip's mean in each channel. */
+        {
+            unsigned lo[3] = { 255, 255, 255 }, hi[3] = { 0, 0, 0 };
+            unsigned long long sum[3] = { 0, 0, 0 };
+            for (int r = 0; r < rows; ++r) {
+                const unsigned c = e[r];
+                const unsigned ch[3] = { (c >> 16) & 255, (c >> 8) & 255, c & 255 };
+                for (int k = 0; k < 3; ++k) { if (ch[k] < lo[k]) lo[k] = ch[k]; if (ch[k] > hi[k]) hi[k] = ch[k]; sum[k] += ch[k]; }
+            }
+            const unsigned m0 = (unsigned)(sum[0] / (unsigned)rows), m1 = (unsigned)(sum[1] / (unsigned)rows), m2 = (unsigned)(sum[2] / (unsigned)rows);
+            {
+                if (hi[0] - m0 <= 8 && m0 - lo[0] <= 8 && hi[1] - m1 <= 8 && m1 - lo[1] <= 8 && hi[2] - m2 <= 8 && m2 - lo[2] <= 8) {
+                    flat[side] = 1;
+                    flatc[side] = 0xFF000000u | (m0 << 16) | (m1 << 8) | m2;
+                }
+            }
         }
         const int R = rows / 20 > 1 ? rows / 20 : 1;
         for (int pass = 0; pass < 2; ++pass) {
@@ -4474,8 +4494,11 @@ void wide_fill_screen(unsigned *img, int iw, int y0, int rows, int cx0, int cx1,
                 const unsigned a = art->px[(size_t)ayi * art->w + axi];
                 if ((a >> 24) >= 128) { c = 0xFF000000u | (a & 0xFFFFFFu); have = 1; }
             }
+            if (!have && flat[left ? 0 : 1]) { c = flatc[left ? 0 : 1]; have = 1; }
             if (!have) {
-                const int f = 224 - (m > 0 ? 72 * d / m : 0);         /* 0.875 at the seam, 0.59 at the window edge */
+                static int darken = -1;
+                if (darken < 0) { const char *e = std::getenv("SM64DS_WIDE_DARKEN"); darken = (e && *e == '1') ? 1 : 0; }
+                const int f = darken ? 224 - (m > 0 ? 72 * d / m : 0) : 256;   /* WIDEBG2: no darkening (=1 brings WIDEBG1's back) */
                 c = wide_mix(E[left ? 0 : 1][r], f);
             }
             row[x] = c;
