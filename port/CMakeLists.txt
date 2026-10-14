@@ -22110,6 +22110,14 @@ list(APPEND PORT_DSSTATE_FI_SOURCES
     src/minigames/d_s_mg_bsc.cpp src/actors/daDoor_c.cpp src/actors/daFRing_c.cpp
     src/actors/daHanachan_c.cpp src/actors/daMip_c.cpp src/actors/daObj1UpLogo_c.cpp
     src/actors/daTor_c.cpp src/actors/daWbm_c.cpp)
+list(APPEND PORT_DSSTATE_FI_SOURCES
+    src/game/actors/d_a_btn.cpp
+    src/game/actors/d_a_obj_emm_log.cpp
+    src/game/actors/d_a_obj_hs_billboard.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/daObjBlockS_c.cpp
+    src/actors/daObjEmmYuka_c.cpp
+    src/actors/daObjEwmIceBlock_c.cpp)
 list(REMOVE_DUPLICATES PORT_DSSTATE_FI_SOURCES)
 if(MSVC)
     foreach(_dsfi_rel IN LISTS PORT_DSSTATE_FI_SOURCES)
