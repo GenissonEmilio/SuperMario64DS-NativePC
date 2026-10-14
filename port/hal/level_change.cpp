@@ -2374,6 +2374,19 @@ static void port_tp_warp_hook(void)
         }
         if (fat >= 0) ff++;
     }
+    {
+        /* SM64DS_TP_ALPHA=<0..31>: the Player's own opacity byte (+0x6f5, what
+           Player::Render hands ApplyOpacity), held from the first call, to see
+           how the pictures treat a translucent Player without a teleport. */
+        static int al = -2;
+        if (al == -2) {
+            const char *e = std::getenv("SM64DS_TP_ALPHA");
+            al = e ? std::atoi(e) : -1;
+        }
+        char *pl = (char *)data_0209f394[0];
+        if (al >= 0 && pl)
+            *(unsigned char *)(pl + 0x6f5) = (unsigned char)al;
+    }
     if (at >= 0 && frame >= at && frame <= at + 3) {
         char *pl = (char *)data_0209f394[0];
         if (pl && frame == at) {
