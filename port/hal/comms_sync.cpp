@@ -69,6 +69,7 @@
 #include "player_fields.h"
 #include "star_tally.h"      // SMALLS9: per-player star count in a coop room
 #include "ghost_door.h"      // GHOSTDOOR1: door / area / hidden look of a hub ghost
+#include "ghost_tongue.h"    // POSE9: a Yoshi ghost's tongue, the hurt blink
 #include "party.h"           // PBODY1: solid party bodies (membership by seat)
 #include "party_hits.h"      // PLAYINT1: the squash after a stomp
 #include "host_settings.h"   // port::adventure_ghost_mode(): adventure runs this
@@ -144,6 +145,7 @@ void func_ov002_020e4768(char *self);
 // The in-place character change every swap entry point shares
 // (hal/player_bridges.cpp, the door path by default).
 void port_player_set_character(void *player, unsigned ch);
+int port_player_render_hidden(const void *player);   /* POSE9: the ROM Render gates, for the blink probe */
 // Stage::Behavior's own call counter (hal/stage_frame.cpp): it does not move on
 // a frame the game did not tick, which is what "paused" means here.
 unsigned port_stage_behavior_calls(void);
@@ -3267,8 +3269,14 @@ void gw_park_body(void *a) {
     ++g_gws.parked;
 }
 
+/* POSE9: per ghost body, the Yoshi tongue (head animation) and the hurt blink. */
+ghost_tongue::State g_gtongue[kCommsMaxPlayers];
+ghost_tongue::Blink g_gblink[kCommsMaxPlayers];
+
 void gw_follow() {
-    static int no_repose = -1, no_swap = -1;
+    static int no_repose = -1, no_swap = -1, no_tongue = -1, no_blink = -1;
+    if (no_tongue < 0) { const char *e = std::getenv("SM64DS_GHOST_TONGUE"); no_tongue = (e && e[0] == '0' && !e[1]) ? 1 : 0; }
+    if (no_blink < 0) { const char *e = std::getenv("SM64DS_GHOST_BLINK"); no_blink = (e && e[0] == '0' && !e[1]) ? 1 : 0; }
     if (no_repose < 0) no_repose = std::getenv("SM64DS_GHOST_NO_REPOSE") ? 1 : 0;
     if (no_swap < 0) no_swap = std::getenv("SM64DS_GHOST_NO_CHARSWAP") ? 1 : 0;
     /* GHOSTSMOOTH1: THE RING AT THIS INSTANT. sync_tick drained the hub at the
@@ -3380,6 +3388,7 @@ void gw_follow() {
                 (unsigned)(now - z.char_try_ms) >= 250u) {
                 z.char_try_ms = now;
                 port_player_set_character(a, sm.character);
+                ghost_tongue::forget(g_gtongue[i]);     // POSE9: the model was rebuilt
                 ++g_gws.charswaps;
                 ++z.sm_swaps;
                 std::fprintf(stderr, "[ghost] seat %d body %d character -> %u\n",
@@ -3406,6 +3415,17 @@ void gw_follow() {
            first, then SetAnim lands the wire's frame. */
         int want_f = sm.cursor >> 12;
         if (want_f < 0) want_f = 0;
+        /* LAB (POSE9 pictures): SM64DS_GHOST_TONGUE_FREEZE=<frame> holds the first ghost
+           that has driven a tongue on the pull-out pose at that body frame, so a picture
+           taken whenever shows the tongue out. Never set outside a proof. */
+        {
+            static int frz = -2, frz_body = -1;
+            if (frz == -2) { const char *e = std::getenv("SM64DS_GHOST_TONGUE_FREEZE"); frz = e && *e ? std::atoi(e) : -1; }
+            if (frz >= 0) {
+                if (frz_body < 0 && g_gtongue[i].frames > 0) frz_body = i;
+                if (frz_body == i) { sm.anim = ghost_tongue::retract_anim(); want_f = frz; sm.cursor = frz << 12; }
+            }
+        }
         {
             int *cur = player::anim_frame_ptr(a);
             if (player::anim_id(a) == sm.anim && cur && (*cur >> 12) != want_f) {
@@ -3435,6 +3455,18 @@ void gw_follow() {
             }
         }
         if (frames <= 0) { gw_park_body(a); continue; }
+        /* POSE9 THE TONGUE. Yoshi's tongue is the head model's own animation
+           (ghost_tongue.h): when the wire's body anim is a tongue anim make the
+           ROM's call once, then put the head on the body's frame. */
+        if (!no_tongue) {
+            bool started = false;
+            const int targ = ghost_tongue::select(g_gtongue[i], (char *)a, sm.anim,
+                                                  gw_char(a) == 3u, &started);
+            if (started)
+                std::fprintf(stderr, "[ghost-tongue] f=%u seat=%d body=%d tongue %d (anim %u)\n",
+                             g_gw_frame, s, i, targ, (unsigned)sm.anim);
+            if (targ >= 0) ghost_tongue::follow(g_gtongue[i], (char *)a, want_f, nullptr);
+        }
         /* PLACE, THEN POSE, in Player::Behavior's own order: the body matrix
            and the shadow node from the position (func_ov002_020e444c), then
            the bones (func_ov002_020e4768), which read that matrix. A ghost
@@ -3513,6 +3545,30 @@ void gw_follow() {
                 *(int *)((char *)a + 0x84) = 0x1000;
                 squashed[i] = false;
             }
+        }
+        /* POSE9 THE BLINK (item 20): after party::follow, which clears the timer
+           for a solid party body. The ROM's Render hides a body on odd timer
+           frames; nothing counts a ghost's timer down, so this is the count. */
+        if (!no_blink) {
+            bool started = false;
+            unsigned v = ghost_tongue::blink_step(g_gblink[i], sm.anim, &started);
+            /* LAB (POSE9 pictures): SM64DS_GHOST_BLINK_PIN=1 / 2 holds a ghost that has
+               started a blink on the hidden (1) or the drawn (2) frame for good. */
+            {
+                static int pin = -2;
+                if (pin == -2) { const char *e = std::getenv("SM64DS_GHOST_BLINK_PIN"); pin = e && *e ? std::atoi(e) : 0; }
+                static bool pinned[kCommsMaxPlayers];
+                if (pin > 0 && (started || pinned[i])) { pinned[i] = true; v = (unsigned)(pin & 3); g_gblink[i].left = 1; }
+            }
+            *(unsigned short *)((char *)a + player::kInvincibleTimer) = (unsigned short)v;
+            if (started)
+                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d body=%d hurt anim %u: 36-frame blink\n",
+                             g_gw_frame, s, i, (unsigned)sm.anim);
+            static int blog = -1;       // LAB: SM64DS_GHOST_BLINK_LOG=1, a line per blink frame with the ROM's own draw gate
+            if (blog < 0) blog = std::getenv("SM64DS_GHOST_BLINK_LOG") ? 1 : 0;
+            if (v && blog)
+                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d timer=%u render_hidden=%d\n",
+                             g_gw_frame, s, v, port_player_render_hidden(a));
         }
         if (gw_err_log())
             std::fprintf(stderr, "[gwshown] t=%u f=%u seat=%d body=%d bc=%u "

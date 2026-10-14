@@ -51,6 +51,7 @@
 #include "vs_arena.h"
 
 #include "comms_hub.h"
+#include "ghost_tongue.h"
 #include "host_settings.h"
 #include "player_fields.h"
 #include "vs_arena_eat.h"
@@ -769,8 +770,8 @@ struct Pup {
                        older = 0, swaps = 0, sfx_played = 0, hits = 0;
     // VSPUP2: the face (eye) sequence, the tongue (head animation), anims the
     // ROM would refuse, and the puppet sounds the range kept out
-    int tongue_arg = -1;                   // 0 / 1 / 2 while the head plays the tongue, else -1
-    unsigned long long face_adv = 0, tongue_frames = 0, tongue_starts = 0,
+    ghost_tongue::State tongue;            // POSE9: arg 0 / 1 / 2 while the head plays the tongue, else -1 (ghost_tongue.cpp)
+    unsigned long long face_adv = 0,
                        anim_refused = 0, sfx_far = 0, sfx_near = 0;
     unsigned last_refused_id = 0xffffffffu;
     unsigned long long puton = 0, puff_changes = 0;
@@ -1099,30 +1100,6 @@ void pup_cam_pos(char *c, const PupDraw &d) {
     p[0] = out[0]; p[1] = out[1]; p[2] = out[2];
 }
 
-// V8: the body anim ids of the two tongue anims are the first two words of a
-// table in the overlay (func_ov002_020d71ec's arr[0..1]); 0x6c is the pull back.
-// Ready = the ids make sense and the head files the ROM call reads exist, so
-// the call cannot read a null file.
-enum : unsigned { kTongueRetractAnim = 0x6c };
-unsigned g_tongue_id[2] = {0x6e, 0x6f};
-bool pup_tongue_ready() {
-    static int ok = -1;
-    if (ok >= 0) return ok != 0;
-    const unsigned *w = (const unsigned *)data_ov002_0210a34c;
-    const unsigned *h = (const unsigned *)data_ov002_0210a084;
-    ok = 1;
-    if (w[0] < 0x11u || w[0] >= 0x72u || w[1] < 0x11u || w[1] >= 0x72u) ok = 0;
-    for (int i = 0; ok && i < 2; ++i) {
-        const unsigned p = h[i];
-        if (!p || !*(const unsigned *)(p + 4)) ok = 0;
-    }
-    if (!*(const unsigned *)(data_ov002_0210eb88 + 4)) ok = 0;
-    if (ok) { g_tongue_id[0] = w[0]; g_tongue_id[1] = w[1]; }
-    std::fprintf(stderr, "[puppet] tongue anims %u %u + %u: %s\n", g_tongue_id[0], g_tongue_id[1],
-                 (unsigned)kTongueRetractAnim, ok ? "head files present" : "NOT USABLE here, tongue off");
-    return ok != 0;
-}
-
 // One puppet body, taken over and posed (see the banner).
 void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
     PupDraw d = d0;
@@ -1162,7 +1139,7 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
         if (frz_n == -2) { const char *e = std::getenv("SM64DS_PUPPET_TONGUE_FREEZE"); frz_n = e && *e ? std::atoi(e) : -1; }
         if (frz_n >= 0) {
             if (frz_seat == seat) d = frz_d;
-            else if (frz_seat < 0 && pp.tongue_arg >= 0 && (int)pp.tongue_frames >= frz_n) {
+            else if (frz_seat < 0 && pp.tongue.arg >= 0 && (int)pp.tongue.frames >= frz_n) {
                 frz_seat = seat; frz_d = d;
                 std::fprintf(stderr, "[pup-tongue] f%u seat %d held on its tongue frame (anim %u)\n", g.frame, seat, (unsigned)d.anim);
             }
@@ -1248,24 +1225,11 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
         alt = puff ? 1 : 0;
     }
     {
-        int targ = -1;
-        if (pup_tongue_fix() && is_yoshi && pup_tongue_ready()) {
-            if (d.anim == g_tongue_id[0]) targ = 0;
-            else if (d.anim == g_tongue_id[1]) targ = 1;
-            else if (d.anim == kTongueRetractAnim) targ = 2;
-        }
-        if (targ != pp.tongue_arg) {
-            if (targ >= 0) {
-                func_ov002_020d71ec(a, targ);
-                ++pp.tongue_starts;
-                if (pup_log() || pup_sfx_log())
-                    std::fprintf(stderr, "[puppet] f%u seat %d tongue %d (anim %u)\n", g.frame, seat,
-                                 targ, (unsigned)d.anim);
-            } else if (pp.tongue_arg >= 0) {
-                func_ov002_020d71a0(a);
-            }
-            pp.tongue_arg = targ;
-        }
+        bool started = false;
+        const int targ = ghost_tongue::select(pp.tongue, a, d.anim, is_yoshi && pup_tongue_fix(), &started);
+        if (started && (pup_log() || pup_sfx_log()))
+            std::fprintf(stderr, "[puppet] f%u seat %d tongue %d (anim %u)\n", g.frame, seat,
+                         targ, (unsigned)d.anim);
     }
     // LAB: SM64DS_PUPPET_PUTON_PROBE=1, for 90 frames after a put-on cap spawn a line every 6
     // frames: this puppet's body and every cap actor (position, type +0x3f0, holder +0x3bc, follows +0x3c0)
@@ -1337,19 +1301,16 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
         if (frames > 0) *(int *)(m + 0x58) = (want_f % frames) << 12;
     }
     if (frames <= 0) return;                // nothing to pose
-    if (pp.tongue_arg >= 0) {
-        if (char *hm = *(char **)(a + 0x160)) {
-            const int hframes = (*(int *)(hm + 0x54) & ~(int)0xc0000000) >> 12;
-            if (hframes > 0) {
-                *(int *)(hm + 0x58) = (want_f % hframes) << 12;
-                ++pp.tongue_frames;
-                static int tp = -1;       // LAB: SM64DS_PUPPET_TONGUE_PROBE=1, a line per tongue frame
-                if (tp < 0) tp = env_on("SM64DS_PUPPET_TONGUE_PROBE") ? 1 : 0;
-                if (tp)
-                    std::fprintf(stderr, "[pup-tongue] f%u seat=%d arg=%d body_anim=%u body_frame=%d/%d head_frame=%d/%d\n",
-                                 g.frame, seat, pp.tongue_arg, (unsigned)d.anim, want_f % frames, frames,
-                                 *(int *)(hm + 0x58) >> 12, hframes);
-            }
+    {
+        int hframes = 0;
+        const int hf = ghost_tongue::follow(pp.tongue, a, want_f, &hframes);
+        static int tp = -1;       // LAB: SM64DS_PUPPET_TONGUE_PROBE=1, a line per tongue frame
+        if (hf >= 0) {
+            if (tp < 0) tp = env_on("SM64DS_PUPPET_TONGUE_PROBE") ? 1 : 0;
+            if (tp)
+                std::fprintf(stderr, "[pup-tongue] f%u seat=%d arg=%d body_anim=%u body_frame=%d/%d head_frame=%d/%d\n",
+                             g.frame, seat, pp.tongue.arg, (unsigned)d.anim, want_f % frames, frames,
+                             hf, hframes);
         }
     }
     if (pup_face_probe() && (g.frame % 30u) == 0 && face_seq)
@@ -1360,7 +1321,7 @@ void pup_drive(int seat, char *a, const PupDraw &d0, Pup &pp) {
                      *(int *)(face_seq + 8) >> 12, *(int *)(face_seq + 0xc),
                      (unsigned)*(unsigned short *)(a + 0x73c), func_ov002_020bea7c(a),
                      func_ov002_020becf4(a, (unsigned)*(unsigned char *)(a + 0x6db), 1),
-                     (unsigned)*(unsigned char *)(a + kPlayerOpacity), pp.tongue_arg);
+                     (unsigned)*(unsigned char *)(a + kPlayerOpacity), pp.tongue.arg);
     // fully opaque to the ROM's own gates, not culled (BeforeBehavior is not
     // writing the cull bits for a body that does not think) EXCEPT while it is
     // in somebody's mouth: the ROM hides an eaten player once (func_ov002_020d5ed0
@@ -1812,7 +1773,7 @@ void pup_report() {
                      p.older, p.swaps, p.sfx_played, p.hits, p.buf_ms);
         std::fprintf(stderr, "[puppet] exit seat=%d face_adv=%llu tongue_starts=%llu tongue_frames=%llu "
                      "anim_refused=%llu sfx_near=%llu sfx_far=%llu puton=%llu\n", k, p.face_adv,
-                     p.tongue_starts, p.tongue_frames, p.anim_refused, p.sfx_near, p.sfx_far, p.puton);
+                     p.tongue.starts, p.tongue.frames, p.anim_refused, p.sfx_near, p.sfx_far, p.puton);
         std::fprintf(stderr, "[puppet] exit seat=%d mouths=%llu mouth_frames=%llu "
                      "mouth_drawn=%llu unconfirmed=%llu\n", k, p.mouth_enters, p.mouth_frames,
                      p.mouth_drawn, p.mouth_unconfirmed);
