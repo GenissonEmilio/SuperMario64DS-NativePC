@@ -886,31 +886,48 @@ bool knob_chest(char *a) {
 // door / gate unlock START with the real player: the ROM's own TryTalkToDoor / TryTalkToKeyDoor (the player takes the
 // talk state and runs the unlock cutscene, the ROM writes the save bit at its end), then the node the ROM sets.
 // state arg: 1 star door (353), 2 key door (353), 3 star gate (354). Returns true when the player took the state.
-bool knob_unlock(char *a, int cls) {
-    void *me = nullptr;
+// The ROM does this inside the door's own tick: the door asks the Player for the talk state (the Player takes it in its own
+// tick, a moment later), and the unlock node then waits for that state (func_ov100_02144bf4 / 021449c8, St_Unlocking_Main) before
+// it writes the save bit. So the harness does the same in two steps: stage 0 asks, every frame, until the player is standing and
+// the ask succeeds; stage 1, one frame later (the Player has ticked), puts the door into its unlock node / state.
+struct UlKnob { bool on; int cls; char *door; int stage; unsigned t0; int idx, cand, of; } g_ul = {};
+void *local_player() {
     const int mi = (int)data_0209f250;
-    if (mi >= 0 && mi < 16) me = data_0209f394[mi];
-    if (!me) return false;
-    if (cls == 353) {
-        const int idx = rd_i32(a, 8);
-        if (idx < 0 || idx >= 64) return false;
-        const signed char *e = data_ov100_02148204 + idx * 16;
-        if (e[8] >= 0) {
-            if (!_ZN6Player13TryTalkToDoorEh(me, 0)) return false;
-            func_ov100_021453d8(a, data_ov100_021488d4, (int)(intptr_t)me);
-            return true;
+    return (mi >= 0 && mi < 16) ? data_0209f394[mi] : nullptr;
+}
+void ul_step() {
+    if (!g_ul.on) return;
+    char *a = g_ul.door;
+    void *me = local_player();
+    if (!a || !me || a_dead(a)) { g_ul.on = false; return; }
+    if (g_ul.stage == 0) {
+        bool ok = false;
+        if (g_ul.cls == 353) {
+            const int idx = rd_i32(a, 8);
+            const signed char *e = data_ov100_02148204 + idx * 16;
+            if (e[8] >= 0) ok = _ZN6Player13TryTalkToDoorEh(me, 0) != 0;
+            else if (e[9] >= 0) ok = _ZN6Player16TryTalkToKeyDoorEv(me) != 0;
+        } else {
+            ok = _ZN6Player13TryTalkToDoorEh(me, 1) != 0;
+            if (ok) _ZN6Player11OpenBigDoorEv(me);
         }
-        if (e[9] >= 0) {
-            if (!_ZN6Player16TryTalkToKeyDoorEv(me)) return false;
-            func_ov100_021453d8(a, data_ov100_021488e4, (int)(intptr_t)me);
-            return true;
+        const bool giveup = !ok && g_frames - g_ul.t0 > 900;
+        if (ok || giveup) {
+            std::fprintf(stderr, "[coopsw-knob] press cls=%d slot=-1 (candidate %d of %d) param=%d order=0 did=%d waited=%u wall=%lld\n",
+                         g_ul.cls, g_ul.cand, g_ul.of, rd_i32(a, 8), (int)ok, g_frames - g_ul.t0, wall_ms());
+            if (ok) g_ul.stage = 1; else g_ul.on = false;
         }
-        return false;
+        return;
     }
-    if (!_ZN6Player13TryTalkToDoorEh(me, 1)) return false;
-    *(void **)(a + 0x110) = (void *)_ZN12daStarGate_c12ST_UNLOCKINGE;      // ChangeState(&ST_UNLOCKING)
-    _ZN6Player11OpenBigDoorEv(me);                                           // its init half
-    return true;
+    // stage 1
+    if (g_ul.cls == 353) {
+        const signed char *e = data_ov100_02148204 + rd_i32(a, 8) * 16;
+        func_ov100_021453d8(a, e[8] >= 0 ? data_ov100_021488d4 : data_ov100_021488e4, (int)(intptr_t)me);
+    } else {
+        *(void **)(a + 0x110) = (void *)_ZN12daStarGate_c12ST_UNLOCKINGE;      // ChangeState(&ST_UNLOCKING)
+    }
+    std::fprintf(stderr, "[coopsw-knob] unlock node set cls=%d idx=%d wall=%lld\n", g_ul.cls, rd_i32(a, 8), wall_ms());
+    g_ul.on = false;
 }
 
 void knob_press(PressKnob &k) {
@@ -943,7 +960,10 @@ void knob_press(PressKnob &k) {
         bool did = false;
         if (k.cls == 13) did = knob_chest(a);
         else if (k.cls == 27) { did = rd_u8(a, 0x31e) != 0; if (did) func_ov091_021334b8(a, 0); }
-        else did = knob_unlock(a, k.cls);
+        else {
+            g_ul.on = true; g_ul.cls = k.cls; g_ul.door = a; g_ul.stage = 0; g_ul.t0 = g_frames; g_ul.cand = k.nth % n; g_ul.of = n;
+            return;                                          // ul_step reports
+        }
         std::fprintf(stderr, "[coopsw-knob] press cls=%d slot=%d (candidate %d of %d) param=%d order=%d did=%d wall=%lld\n", k.cls, (int)a_slot(a), k.nth % n, n,
                      rd_i32(a, 8), k.cls == 13 ? rd_u8(a, 0x172) : 0, (int)did, wall_ms());
         return;
@@ -1108,6 +1128,7 @@ void on_frame(unsigned now) {
         if (!g_press[i].done && g_armed && g_frames >= g_press[i].frame) { g_press[i].done = true; knob_press(g_press[i]); }
     watch_record();
     watch_field(now);
+    ul_step();
     if (g_rec_on) {
         for (int i = 0; i < 3; ++i) if (g_rec_n == i && g_frames >= g_rec[i]) { rec_take(i); ++g_rec_n; if (i == 2) rec_report(); }
     }
