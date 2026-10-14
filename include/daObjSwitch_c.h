@@ -28,9 +28,7 @@ struct daObjSwitch_c : dBgActor_c {
     typedef void (daObjSwitch_c::*State)();
     struct StateEntry { State init; State exec; };
 
-    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
     u8  pad_31e[0x2];
-    #endif
     Vector3 mDrawScale;              /* 0x320 */
     s32 mDisplacementY;              /* 0x32c */
     s32 mTickSoundHandle;            /* 0x330 */

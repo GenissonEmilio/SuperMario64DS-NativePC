@@ -43,9 +43,7 @@
 #ifdef __cplusplus
 
 struct daObjMaruta_c : dBgActor_c {
-    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
     u8  pad_31e[0x2];
-    #endif
     s32 mRestPosX;          /* 0x320 -- InitResources copies mPosX */
     s32 mRestPosY;          /* 0x324 */
     s32 mRestPosZ;          /* 0x328 */

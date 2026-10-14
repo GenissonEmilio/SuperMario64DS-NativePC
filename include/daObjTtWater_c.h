@@ -20,9 +20,7 @@
 #include "TextureTransformer.h"
 
 struct daObjTtWater_c : dBgActor_c {
-    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
     u8  pad_31e[0x2];
-    #endif
     TextureTransformer mTextureTransformer;/* 0x320 */
     s32 mMinPosY;                      /* 0x334 */
     /* Named out of the padding by this class's own Behavior, which stores

@@ -41,9 +41,7 @@
 #include "PathPtr.h"
 
 struct daObjEmmYuka_c : dBgActor_c {
-    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
-    u8  pad_31e[0x2];
-    #endif
+    u8 pad_31e[2];
     PathPtr mPath;       /* 0x320 */
     s32 mNodeIndex;      /* 0x328 */
     s32 mPathDir;        /* 0x32c -- +1 or -1 */

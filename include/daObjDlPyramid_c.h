@@ -20,9 +20,7 @@
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
 struct daObjDlPyramid_c : dBgActor_c {
-    #ifndef _MSC_VER   /* HOST: MSVC does not reuse dBgActor_c's two bytes of tail padding, so this pad would push every later member four bytes past its ROM offset (include/daObjYajirusi_c.h) */
     u8  pad_31e[0x2];
-    #endif
     /* The class's own model. NOT "mModel": dBgActor_c's inherited
        Model at 0xd4 already owns that name. */
     Model mTopModel;                 /* 0x320 */
