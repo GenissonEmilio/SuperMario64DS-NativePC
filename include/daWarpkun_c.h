@@ -78,9 +78,9 @@ struct daWarpkun_c : dActor_c {
     virtual s32   Render();                /* slot  9 */
     virtual void  OnPendingDestroy();      /* slot 12 */
 
-    /* Leaf adapter until fBase_c::operator new(unsigned long) lands (#2570).
+    /* Leaf adapter until fBase_c::operator new(size_t) lands (#2570).
        `return new daWarpkun_c()` then routes through the retail allocator. */
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 };

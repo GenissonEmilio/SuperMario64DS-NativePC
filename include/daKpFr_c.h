@@ -16,7 +16,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  * FlameChompFire_Spawn).
  * The factory is `return new daKpFr_c()`. A bare `new` without the leaf
  * operator new below relocates to unresolved `_Znwm`; the in-class
- * `operator new(unsigned long)` forwards `_ZN7fBase_cnwEj((unsigned)size)`
+ * `operator new(size_t)` forwards `_ZN7fBase_cnwEj((unsigned)size)`
  * until #2570's fBase overload lands.
  *
  * The synthesized ctor constructs the three owned subobjects below at

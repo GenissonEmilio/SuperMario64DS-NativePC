@@ -5,7 +5,7 @@
  * RTTI ov009:0x02113b60 names daMcFlag_c; the debug table names MC_FLAG.
  * This is the flag, not metalnet and not castle water.
  *
- * Factory is `return new daMcFlag_c()`. Leaf operator new(unsigned long)
+ * Factory is `return new daMcFlag_c()`. Leaf operator new(size_t)
  * forwards `_ZN7fBase_cnwEj` until #2570. Definitions run in reverse address
  * order for mwccarm 2004/b56. The inline destructor in the header emits the
  * required D1/D0 pair; `new` odr-uses the class so that pair is emitted here.

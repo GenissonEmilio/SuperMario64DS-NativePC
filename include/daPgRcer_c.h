@@ -16,7 +16,7 @@ struct Player;
  * overlay_actors maps ov019 RACING_PENGUIN (259). Direct base is dActor_c
  * (_ZTI word 0x0208e390). SIZE 0x398 is daPgRcer_c_classInit's allocation.
  *
- * Factory is `return new daPgRcer_c()`; fBase_c::operator new(unsigned long)
+ * Factory is `return new daPgRcer_c()`; fBase_c::operator new(size_t)
  * is inherited. daPgRcer_c_classInit is reconstructed (RTTI + PENGUIN_RACER
  * registry). Retail does not store that spelling.
  *

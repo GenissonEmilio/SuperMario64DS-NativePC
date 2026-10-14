@@ -424,12 +424,9 @@ MWCC_SPELLING = {
         ("  struct Vec3 v;\n  Vec3_Asr(&v, (struct Vec3 *)&mPosX, 3);",
          "  Vec3 v;\n  Vec3_Asr(&v, (Vec3 *)&mPosX, 3);"),
     ],
-    # src/engine/collision/dBgW_KcMbg.cpp, dBgW_KcMbg::SetFile (the C-region
-    # body): `thiz` is the void* parameter, `self` its dBgW_KcMbg* cast.
-    "dBgW_KcMbg": [
-        ("  func_02039e18(thiz, (Vector3 *) (stk + 0x60), (Vector3 *) (c + 0x28));",
-         "  func_02039e18(self, (Vector3 *) (stk + 0x60), (Vector3 *) (c + 0x28));"),
-    ],
+    # PORTSYNC3: the dBgW_KcMbg row (dBgW_KcMbg::SetFile's `thiz` void* spelling
+    # of the func_02039e18 call) is retired: main rewrote SetFile as a real
+    # method that passes `this`, so there is no `thiz` left to respell.
 }
 
 # CAST_EXTERN. `((extern int(*)(unsigned int i))func_02050a5c)(a0)` -- a
@@ -1072,19 +1069,11 @@ MMIO_EXTERN = {
          "the DS inherits it from fdiv_async; see MMIO_EXTERN */\n"
          "    *(volatile u64 *)0x4000290 = (u64)(unsigned)tmp << 32;"),
     ],
-    "func_02053130": [
-        # the busy-bit spin: SQRTCNT through the proxy; the local pointer
-        # binding goes with it (keeping it would keep the &SQRTCNT reference)
-        # RE-DERIVED 2026-09-13 (main -> port sync, lane SYNC3): main spells
-        # the two registers REG_SQRTCNT and REG_SQRT_RESULT and the busy bit
-        # SQRT_CONTROL_BUSY now. Same two registers, same two addresses; only
-        # the names in the source moved.
-        ("    sqrtcnt = &REG_SQRTCNT;\n"
-         "    while (*sqrtcnt & SQRT_CONTROL_BUSY)\n        ;",
-         "    while (NTR_MMIO(u16, 0x40002b0) & SQRT_CONTROL_BUSY)\n        ;"),
-        # the result read, at the width the ROM read it
-        ("(s64)REG_SQRT_RESULT", "(s64)(s32)NTR_MMIO(s32, 0x40002b4)"),
-    ],
+    # PORTSYNC3: the func_02053130 row (the SQRTCNT busy-bit spin and the
+    # REG_SQRT_RESULT read) is gone: main's src/cstd.cpp spells those registers
+    # as literal 0x40002b0 / 0x40002b4 volatile derefs now, which hostgen's
+    # own MMIO rewrite pass routes through NTR_MMIO, and func_02053130 is no
+    # longer a body in that TU.
 }
 
 
@@ -2097,7 +2086,12 @@ static void camterm_emit(const void *self)
 }
 """
 
-CAM_TERMS = {
+# PORTSYNC3: RETIRED. Main rewrote the follow state (func_02009e70) and moved
+# every anchor below. The table is measurement only (inert unless
+# SM64DS_CAM_TERMS is set), so the body is kept as CAM_TERMS_RETIRED for the
+# next camera lane to re-anchor and the live table is empty.
+CAM_TERMS = {}
+CAM_TERMS_RETIRED = {
     "func_02009e70": [
         ("    r6 = func_0200c66c(self, (struct Vector3 *)(self + 0x98), &sp20, &sp1c, &sp24);",
          "    r6 = func_0200c66c(self, (struct Vector3 *)(self + 0x98), &sp20, &sp1c, &sp24);\n"
@@ -2259,12 +2253,10 @@ ARG_WIDTH = {
     # AX and sign-extend it, which is what the ARM did. The two other call
     # sites in the same file are bit-identical either way: one assigns to a u16
     # and one casts the sum to s16.
-    "func_02009e70": [
-        ("extern s32 _ZN4cstd5atan2E5Fix12IiES1_(s32 y, s32 x);",
-         "extern s16 _ZN4cstd5atan2E5Fix12IiES1_(s32 y, s32 x);"
-         "  /* hostgen ARG_WIDTH: the definition returns s16 and the ROM body"
-         " sign-extends it in its epilogue, see the table */"),
-    ],
+    # PORTSYNC3: the func_02009e70 row (cstd::atan2 declared s16, the camera
+    # swim fix) is retired: main's src/unnamed/arm9/0200/func_02009e70.cpp
+    # declares `extern s16 _ZN4cstd5atan2E5Fix12IiES1_` itself now, so the
+    # width is right at the source and the patch has nothing to change.
 }
 
 

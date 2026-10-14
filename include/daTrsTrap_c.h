@@ -82,9 +82,9 @@ struct daTrsTrap_c : dActor_c {
     void func_ov063_0211c89c(); /* 2 BOOKSHELF -- shelf slide,   0x0211c89c */
     void func_ov063_0211c7b0(); /* 3 MERRYGOROUND -- spin,       0x0211c7b0 */
 
-    /* Leaf adapter until fBase_c::operator new(unsigned long) lands (#2570).
+    /* Leaf adapter until fBase_c::operator new(size_t) lands (#2570).
        `return new daTrsTrap_c()` then routes through the retail allocator. */
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 };

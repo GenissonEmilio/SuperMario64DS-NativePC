@@ -134,7 +134,7 @@ struct daSanbo_c : dActor_c {
     void func_ov096_021368f0();
     void func_ov096_02136928(int a);
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 };

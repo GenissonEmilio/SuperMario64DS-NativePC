@@ -45,7 +45,7 @@ struct daObjEmmLog_c : dBgActor_c {
     s32 Behavior();           /* slot  6 */
     s32 Render();             /* slot  9 */
 
-    /* Leaf until fBase_c::operator new(unsigned long) lands (#2570).
+    /* Leaf until fBase_c::operator new(size_t) lands (#2570).
      * MWCC has no size_t here; unsigned long is the new-expression operand. */
     static void *operator new(size_t size)
     {

@@ -24,7 +24,7 @@
  * Leftover: Behavior writes mPrevAngleZ through a short* (member
  *   assignment size-DIFFs).
  * Leftover: inline destructor (out-of-line emits D0 before D1 plus a
- *   homeless D2). Leaf operator new(unsigned long) until #2570.
+ *   homeless D2). Leaf operator new(size_t) until #2570.
  */
 
 #include "common.h"

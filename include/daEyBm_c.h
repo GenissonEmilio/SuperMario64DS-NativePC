@@ -72,7 +72,7 @@ struct daEyBm_c : dActor_c {
     virtual void OnPendingDestroy();    /* slot 12 */
     virtual int  OnYoshiTryEat();       /* slot 18 */
 
-    /* Leaf in-class operator new until fBase_c::operator new(unsigned long)
+    /* Leaf in-class operator new until fBase_c::operator new(size_t)
        lands (#2570). unsigned long, not unsigned int: `new daEyBm_c()` looks
        up _Znwm. */
     static void *operator new(size_t size) {

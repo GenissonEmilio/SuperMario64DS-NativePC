@@ -22,7 +22,7 @@ struct daObjKm2_Ukishima_c : daObjUkiyuka_c {
     virtual s32 CleanupResources(); /* slot 3 */
     virtual s32 InitResources();    /* slot 0 */
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj(size);
     }
 };

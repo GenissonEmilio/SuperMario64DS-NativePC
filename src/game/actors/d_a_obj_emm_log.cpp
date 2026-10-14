@@ -21,7 +21,7 @@
  *   symbols.txt has no recovered name.
  * Leftover: sine table data_02082214 (arm9).
  * Leftover: inline destructor (out-of-line emits D0 before D1 plus a
- *   homeless D2). Leaf operator new(unsigned long) until #2570.
+ *   homeless D2). Leaf operator new(size_t) until #2570.
  * Leftover: g_profile_EMM_LOG lives outside this TU (S14).
  */
 

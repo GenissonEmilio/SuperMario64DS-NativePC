@@ -649,7 +649,7 @@ class Residency:
 
         scene_src = _src_defining(root, "GetSceneOverlayID").read_text()
         self.scene = {int(n) for n in
-                      re.findall(r"return \(int\)&overlay_(\d+);", scene_src)}
+                      re.findall(r"return \(int\)&(?:overlay_|OVERLAY_)(\d+)(?:_ID)?;", scene_src)}
         if not self.scene:
             sys.exit("residency: GetSceneOverlayID's source names no "
                      "overlay_N -- refusing to guess the scene set.")
@@ -665,8 +665,8 @@ class Residency:
         load_src = _src_defining(root, "func_0201a798").read_text()
         self.passenger = {
             int(a): int(b) for a, b in re.findall(
-                r"if \(id == \(int\)&overlay_(\d+)\)\s*"
-                r"LoadOverlay\(\(int\)&overlay_(\d+)\);", load_src)}
+                r"if \(id == \(int\)&(?:overlay_|OVERLAY_)(\d+)(?:_ID)?\)\s*"
+                r"LoadOverlay\(\(int\)&(?:overlay_|OVERLAY_)(\d+)(?:_ID)?\);", load_src)}
         if not self.passenger:
             sys.exit(f"residency: {_src_defining(root, 'func_0201a798')} names "
                      f"no `if (id == (int)&overlay_A) "
@@ -684,9 +684,9 @@ class Residency:
             ln for ln in unload_path.read_text().splitlines()
             if not ln.lstrip().startswith("extern"))
         for host, rider in self.passenger.items():
-            if not (re.search(r"UnloadOverlay\([^;]*\boverlay_%d\b" % rider,
+            if not (re.search(r"UnloadOverlay\([^;]*\b(?:overlay_|OVERLAY_)%d(?:_ID)?\b" % rider,
                               unload_body)
-                    and re.search(r"\boverlay_%d\b" % host, unload_body)):
+                    and re.search(r"\b(?:overlay_|OVERLAY_)%d(?:_ID)?\b" % host, unload_body)):
                 sys.exit(f"residency: func_0201a798 loads ov{rider:03d} with "
                          f"ov{host:03d} but {unload_path} has no "
                          f"UnloadOverlay() call on ov{rider:03d} keyed off "
@@ -700,7 +700,7 @@ class Residency:
         switch_src = _src_defining(root, "func_0201a694").read_text()
         body = switch_src[switch_src.index("int func_0201a694("):]
         seq = [m.group(1) for m in re.finditer(
-            r"(func_0201a754|func_0201a798)\((?!\(int\)&overlay_)", body)]
+            r"(func_0201a754|func_0201a798)\((?!\(int\)&(?:overlay_|OVERLAY_))", body)]
         if seq[:2] != ["func_0201a754", "func_0201a798"]:
             sys.exit("residency: func_0201a694 does not unload the previous "
                      "scene overlay before loading the next -- the scene slot "
@@ -725,7 +725,7 @@ class Residency:
         for func in ("func_0201a694", "func_0201a614"):
             src = _src_defining(root, func).read_text()
             for n in re.findall(
-                    r"func_0201a(?:754|798)\(\(int\)&overlay_(\d+)\)", src):
+                    r"func_0201a(?:754|798)\(\(int\)&(?:overlay_|OVERLAY_)(\d+)(?:_ID)?\)", src):
                 if int(n) not in self.scene:
                     self.sticky.add(int(n))
 

@@ -22,7 +22,7 @@ struct daObjKm1_Dorifu_c : daObjDorifu_c {
     s32 CleanupResources();                /* slot  3 */
     s32 InitResources();                   /* slot  0 */
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj(size);
     }
 };

@@ -29,7 +29,7 @@ struct daObjWaterfall_c : dActor_c {
     virtual s32 InitResources(); /* slot 0 */
     virtual s32 Behavior();      /* slot 6 */
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj(size);
     }
 };

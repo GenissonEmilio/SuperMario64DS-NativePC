@@ -103,7 +103,7 @@ typedef char CannonShutterSpawnInfo_size_must_be_0x1c[
  * profile; later EAD lineage supplies classInit. Exact original spelling is
  * not preserved. Historical alias: daObjCannonShutter_c_Spawn.
  *
- * Leaf operator new(unsigned long) forwards _ZN7fBase_cnwEj until a tree-wide
+ * Leaf operator new(size_t) forwards _ZN7fBase_cnwEj until a tree-wide
  * fBase_c::operator new lands. A natural `new daObjCannonShutter_c` then emits
  * the retail allocation/base/vptr seam (dBgActor_c C2, vptr). */
 extern "C" daObjCannonShutter_c *daObjCannonShutter_c_classInit()

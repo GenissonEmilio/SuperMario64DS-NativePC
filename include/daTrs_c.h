@@ -336,7 +336,7 @@ struct daTrs_c : dCapEnemy_c {
 
     /* Existing leaf forwarding adapter: `return new daTrs_c()` routes
        through the retail allocator. fBase_c also declares an adapter. */
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 

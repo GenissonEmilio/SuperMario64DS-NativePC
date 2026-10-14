@@ -172,7 +172,7 @@ struct daMip_c : dEnemyBase_c {
     int  StateTalkInit();                  /* record 0x021306dc */
     int  StateTalkMain();
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 };

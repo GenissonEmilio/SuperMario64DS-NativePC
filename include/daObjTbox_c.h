@@ -70,7 +70,7 @@ struct daObjTbox_c : dActor_c {
      * operator new with the literal 0x178. Spelling it here as a leaf
      * operator new is what lets the factory be written as a plain
      * `new daObjTbox_c()` and still emit that call. */
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 };

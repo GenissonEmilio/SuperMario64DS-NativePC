@@ -20,11 +20,11 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 struct daObjWcObj06_c : daObjFloatBoard_c {
     int InitResources();               /* slot  0 */
 
-    static void *operator new(unsigned long size);
+    static void *operator new(size_t size);
     virtual ~daObjWcObj06_c() {}
 };
 
-inline void *daObjWcObj06_c::operator new(unsigned long size)
+inline void *daObjWcObj06_c::operator new(size_t size)
 {
     return _ZN7fBase_cnwEj(size);
 }

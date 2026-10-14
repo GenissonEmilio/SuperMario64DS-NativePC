@@ -17,7 +17,7 @@ struct daSCre_c : dActor_c {
     virtual ~daSCre_c() {}
     virtual s32 Behavior();
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj(size);
     }
 

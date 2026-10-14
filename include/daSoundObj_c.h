@@ -38,9 +38,9 @@ struct daSoundObj_c : dActor_c {
     virtual int InitResources();        /* slot 0 */
     virtual int Behavior();             /* slot 6 */
 
-    /* Leaf adapter until fBase_c::operator new(unsigned long) lands (#2570).
+    /* Leaf adapter until fBase_c::operator new(size_t) lands (#2570).
        `return new daSoundObj_c()` then routes through the retail allocator. */
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 };

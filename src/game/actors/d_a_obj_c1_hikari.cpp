@@ -88,7 +88,7 @@ extern int _ZTV15daObjC1Hikari_c[];
  * preserved. Historical alias: LightBeam_Spawn.
  *
  * Every instruction the cartridge has here falls out of the one `new`.
- * fBase_c::operator new(unsigned long) keeps the allocation on
+ * fBase_c::operator new(size_t) keeps the allocation on
  * _ZN7fBase_cnwEj; without it the call relocates to the unavailable global
  * `_Znwm`. */
 // @symbol daObjC1Hikari_c_classInit

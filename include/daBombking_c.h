@@ -166,7 +166,7 @@ struct daBombking_c : dEnemyBase_c {
     void func_ov078_02125de0();
     void func_ov078_02125f8c();
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 };

@@ -56,7 +56,7 @@
  * deslop
  * Leftover:
  * - common.h first (func_ov036_02111618 twelve-word Matrix4x3 copy)
- * - leaf operator new(unsigned long) until #2570
+ * - leaf operator new(size_t) until #2570
  * - mFrame pointer RMW (named mFrame++ CSEs the field address)
  * - (s64) table <<n + 0x800 >> 12 (Fix12 round; (long long)(int) size-DIFF)
  * - data_ov036_02114070 / data_02082214 / data_020a0e68 handles

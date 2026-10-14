@@ -22,7 +22,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  * then `_ZTV10dBgActor_c` -- one intermediate-free inlined base.
  *
  * SIZE IS 0x334 (820 decimal), THE LITERAL THE FACTORY PASSES TO operator new.
- * The factory is `return new daDgr_c()`: leaf `operator new(unsigned long)`
+ * The factory is `return new daDgr_c()`: leaf `operator new(size_t)`
  * forwards `_ZN7fBase_cnwEj`, the implicit ctor calls `dBgActor_c()` and
  * stores `_ZTV7daDgr_c`. No dedicated `daDgr_c()` body exists in the ROM.
  *

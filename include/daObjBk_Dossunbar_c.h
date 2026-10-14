@@ -32,7 +32,7 @@ struct daObjBk_Dossunbar_c : dBgActor_c {
     virtual void OnHitByMegaChar(Player &player);
     virtual void Kill();
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj(size);
     }
 

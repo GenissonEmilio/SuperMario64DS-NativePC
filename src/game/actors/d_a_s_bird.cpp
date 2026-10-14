@@ -8,7 +8,7 @@
  * daSBird_c_classInit is reconstructed (RTTI daSBird_c, SBIRD registry).
  * Retail does not store that spelling. Historical alias: Bird_Spawn.
  *
- * Factory is `return new daSBird_c()`. fBase_c::operator new(unsigned long)
+ * Factory is `return new daSBird_c()`. fBase_c::operator new(size_t)
  * forwards `_ZN7fBase_cnwEj`. The destructor is out of line and is
  * defined in d_a_s_bird_head.cpp, below the hatch. Key function is
  * ~daSBird_c(), so that file emits D1/D0 and the class vtable and RTTI.

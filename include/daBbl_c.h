@@ -79,7 +79,7 @@ struct daBbl_c : dEnemyBase_c {
     int func_ov064_021187d0();
     int func_ov064_021187ec(State *state);
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 };

@@ -17,7 +17,7 @@ typedef signed long long   s64;
    the other's spelling, because the rule is on the TYPE and not on the width --
    all three candidates are four bytes here. mwccarm rejects
    `operator new(unsigned int)` with "illegal 'operator' declaration"; 32-bit
-   MSVC rejects `operator new(unsigned long)` with C2821, "first formal
+   MSVC rejects `operator new(size_t)` with C2821, "first formal
    parameter to 'operator new' must be 'size_t'". Neither arm below is visible
    to the other compiler, so no ROM byte moves: mwccarm keeps the `unsigned
    long` the nine actor headers already declared. */

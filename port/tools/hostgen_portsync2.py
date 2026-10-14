@@ -700,10 +700,9 @@ ROWS_03[("LEDGER_PARK", "d_a_wanwan")] = [
     ('extern "C" daWanwan_c *daWanwan_c_classInit()\n{\n',
      "#if 0  /* hostgen LEDGER_PARK: daWanwan_c_classInit */\n"
      'extern "C" daWanwan_c *daWanwan_c_classInit()\n{\n'),
-    ("            (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);\n"
-     "    }\n    return c;\n}\n",
-     "            (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);\n"
-     "    }\n    return c;\n}\n"
+    # PORTSYNC3 re-anchor: main's factory is `return new daWanwan_c();` now.
+    ("    return new daWanwan_c();\n}\n",
+     "    return new daWanwan_c();\n}\n"
      "#endif  /* hostgen LEDGER_PARK: daWanwan_c_classInit */\n"),
 ]
 
@@ -913,10 +912,9 @@ ROWS_04[("HOST_COPY_PARK", "daWanwan2_c")] = [
      "#if 0  /* hostgen HOST_COPY_PARK: port/unmatched/UnchainedChomp_Behavior.cpp\n"
      "          defines this factory */\n"
      'extern "C" daWanwan2_c *daWanwan2_c_classInit()\n{\n'),
-    ("(void (*)(void *))func_0203d73c, (void (*)(void *))_ZN8Vector3sD1Ev);\n"
-     "    }\n    return actor;\n}\n",
-     "(void (*)(void *))func_0203d73c, (void (*)(void *))_ZN8Vector3sD1Ev);\n"
-     "    }\n    return actor;\n}\n"
+    # PORTSYNC3 re-anchor: main's factory is `return new daWanwan2_c();` now.
+    ("    return new daWanwan2_c();\n}\n",
+     "    return new daWanwan2_c();\n}\n"
      "#endif  /* hostgen HOST_COPY_PARK: daWanwan2_c_classInit */\n"),
 ]
 

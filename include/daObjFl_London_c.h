@@ -43,7 +43,7 @@ struct daObjFl_London_c : dBgActor_c {
     u8  mCooldown;                         /* 0x31e */
     u8  mFlag;                             /* 0x31f */
 
-    /* Leaf until fBase_c::operator new(unsigned long) lands (#2570).
+    /* Leaf until fBase_c::operator new(size_t) lands (#2570).
      * MWCC has no size_t here; unsigned long is the new-expression operand. */
     static void *operator new(size_t size)
     {

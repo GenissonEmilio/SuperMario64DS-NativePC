@@ -23,7 +23,7 @@ struct daObjKm3_Kurumajiku_c : daObjKurumajiku_c {
     int CleanupResources();                /* slot  3 */
     int InitResources();                   /* slot  0 */
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj(size);
     }
 };
