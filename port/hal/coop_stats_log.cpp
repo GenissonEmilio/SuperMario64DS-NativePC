@@ -1,14 +1,14 @@
 // COOP SYNC STATS LINE, ALWAYS ON. Run mp1, lane MOVERS9 (COOPSCOUT9A items 10 / 14 / 24, step 1).
 //
-// Every 60 seconds in a coop room (and once at process exit) this writes a block of [coopstat] lines to stderr, so a field log answers
+// Every 60 seconds in a coop room (and once at process exit) this writes a block of [syncstat] lines to stderr, so a field log answers
 // "which classes drifted, which queue dropped what, how often did the owner flip" without a special run:
-//   [coopstat] hdr   seat, level / act, group, uptime
-//   [coopstat] move  the coop_actors counters (sent / received / applied / dropped by reason)
-//   [coopstat] cls   one line per class seen: placed copies, records sent, applied, pinned, owner flips, and the pin distance
+//   [syncstat] hdr   seat, level / act, group, uptime
+//   [syncstat] move  the coop_actors counters (sent / received / applied / dropped by reason)
+//   [syncstat] cls   one line per class seen: placed copies, records sent, applied, pinned, owner flips, and the pin distance
 //                    (avg / max world units the slave pin had to move the local copy = the per-class desync number; 0 = the local
 //                    Behavior agrees with the owner)
-//   [coopstat] hub   evictions per datagram kind (ghost ident chat voice ... coop world, coop control) and in the mover queue
-//   [coopstat] spawn / sw / boss / pop / world   the counters of the other coop lanes
+//   [syncstat] hub   evictions per datagram kind (ghost ident chat voice ... coop world, coop control) and in the mover queue
+//   [syncstat] spawn / sw / boss / pop / world   the counters of the other coop lanes
 // INERT outside a coop room (nothing is printed). SM64DS_COOP_STATS=0 switches it off; SM64DS_COOP_STATS_SEC=N changes the period.
 // PORT_HOST_ABI: reads counters only, writes nothing in the game.
 
@@ -39,12 +39,12 @@ const char *const kKindName[kHubKinds + 1] = {
 void emit(const char *why, unsigned now) {
     int lv = -1, ac = 0;
     coop_group_key(&lv, &ac);
-    std::fprintf(stderr, "[coopstat] hdr why=%s t=%us seat=%d level=%d act=%d members=%#x owner=%d\n", why,
+    std::fprintf(stderr, "[syncstat] hdr why=%s t=%us seat=%d level=%d act=%d members=%#x owner=%d\n", why,
                  (now - g_first) / 1000u, comms_hub_my_seat(), lv, ac, coop_group_member_mask(), coop_group_owner());
     {
         const CoopMoveStats s = coop_move_stats();
         std::fprintf(stderr,
-            "[coopstat] move ents=%llu sent=%llu/%llu snap=%llu/%llu rx=%llu/%llu applied w%llu e%llu band%llu skip%llu clsmis%llu "
+            "[syncstat] move ents=%llu sent=%llu/%llu snap=%llu/%llu rx=%llu/%llu applied w%llu e%llu band%llu skip%llu clsmis%llu "
             "snapapp%llu owner_ch=%llu stale=%llu thr=%llu slv=%llu drop bad%llu group%llu member%llu far%llu val%llu\n",
             s.ents, s.batches_sent, s.recs_sent, s.snap_batches_sent, s.snap_recs_sent, s.batches_rx, s.recs_rx, s.applied_write,
             s.applied_ease, s.in_band, s.skipped_state, s.cls_mismatch, s.snap_applied, s.owner_changes, s.owner_stale, s.throttled,
@@ -55,12 +55,12 @@ void emit(const char *why, unsigned now) {
         const int n = coop_move_class_stats(cs, 128);
         std::sort(cs, cs + n, [](const CoopClassStat &a, const CoopClassStat &b) { return a.pin_big > b.pin_big; });
         for (int i = 0; i < n; ++i)
-            std::fprintf(stderr, "[coopstat] cls %u %s placed=%u pub=%u applied=%u pinned=%u pin_avg=%.1f pin_max=%.0f pin_over40=%u owner_ch=%u\n",
+            std::fprintf(stderr, "[syncstat] cls %u %s placed=%u pub=%u applied=%u pinned=%u pin_avg=%.1f pin_max=%.0f pin_over40=%u owner_ch=%u\n",
                          cs[i].id, cs[i].name, cs[i].ents_max, cs[i].pub, cs[i].applied, cs[i].pin_n, cs[i].pin_avg, cs[i].pin_max,
                          cs[i].pin_big, cs[i].owner_ch, cs[i].held_pins);
     }
     {
-        std::fprintf(stderr, "[coopstat] hub drops");
+        std::fprintf(stderr, "[syncstat] hub drops");
         for (int k = 0; k <= (int)kHubKinds; ++k) {
             const unsigned long long d = comms_hub_queue_drops(k);
             if (d) std::fprintf(stderr, " %s=%llu", kKindName[k], d);
@@ -71,7 +71,7 @@ void emit(const char *why, unsigned now) {
     {
         const CoopSpawnStats s = coop_spawn_stats();
         std::fprintf(stderr,
-            "[coopstat] spawn sent s%llu g%llu b%llu r%llu rx s%llu g%llu b%llu r%llu applied spawn%llu block%llu adopted%llu dup%llu failed%llu gone%llu "
+            "[syncstat] spawn sent s%llu g%llu b%llu r%llu rx s%llu g%llu b%llu r%llu applied spawn%llu block%llu adopted%llu dup%llu failed%llu gone%llu "
             "red_remote%llu star_native%llu drop bad%llu group%llu member%llu class%llu old%llu rate%llu full%llu\n",
             s.sent_spawn, s.sent_gone, s.sent_block, s.sent_red, s.recv_spawn, s.recv_gone, s.recv_block, s.recv_red, s.spawn_applied,
             s.block_applied, s.spawn_adopted, s.spawn_dup, s.spawn_failed, s.gone_applied, s.red_remote, s.star_spawn_native,
@@ -80,7 +80,7 @@ void emit(const char *why, unsigned now) {
     {
         const CoopSwitchStats s = coop_switch_stats();
         std::fprintf(stderr,
-            "[coopstat] sw sent bit%llu word%llu press%llu kick%llu field%llu rx bit%llu word%llu press%llu kick%llu field%llu applied bits%llu press%llu "
+            "[syncstat] sw sent bit%llu word%llu press%llu kick%llu field%llu rx bit%llu word%llu press%llu kick%llu field%llu applied bits%llu press%llu "
             "kick%llu field%llu states%llu pending%llu drop bad%llu group%llu member%llu class%llu old%llu notfound%llu\n",
             s.sent_bit, s.sent_word, s.sent_press, s.sent_kick, s.sent_field, s.recv_bit, s.recv_word, s.recv_press, s.recv_kick, s.recv_field,
             s.bits_applied, s.press_applied, s.kick_applied, s.field_applied, s.states_applied, s.states_pending,
@@ -89,7 +89,7 @@ void emit(const char *why, unsigned now) {
     {
         const CoopBossStats s = coop_boss_stats();
         std::fprintf(stderr,
-            "[coopstat] boss ticks=%llu bosses=%llu sent=%llu recs=%llu hits=%llu rx=%llu applied state%llu hp%llu fields%llu mismatch%llu hit_local%llu "
+            "[syncstat] boss ticks=%llu bosses=%llu sent=%llu recs=%llu hits=%llu rx=%llu applied state%llu hp%llu fields%llu mismatch%llu hit_local%llu "
             "adopted%llu claims=%llu stars spawned%llu suppressed%llu dead_marked=%llu dead_killed=%llu drop bad%llu group%llu member%llu notauth%llu cls%llu\n",
             s.ticks, s.bosses, s.sent, s.recs_sent, s.hits_sent, s.rx, s.applied_state, s.applied_hp, s.applied_fields, s.state_mismatch, s.hit_local,
             s.hit_adopted, s.claims, s.stars_spawned, s.stars_suppressed, s.dead_marked, s.dead_killed, s.drop_bad, s.drop_group, s.drop_member,
@@ -97,12 +97,12 @@ void emit(const char *why, unsigned now) {
     }
     {
         const StarPopupStats s = star_popup_stats();
-        std::fprintf(stderr, "[coopstat] pop tx=%llu rx=%llu shown=%llu toast=%llu exits=%llu dropped=%llu dup=%llu\n", s.tx, s.rx, s.shown, s.toast, s.exits, s.dropped, s.dup);
+        std::fprintf(stderr, "[syncstat] pop tx=%llu rx=%llu shown=%llu toast=%llu exits=%llu dropped=%llu dup=%llu\n", s.tx, s.rx, s.shown, s.toast, s.exits, s.dropped, s.dup);
     }
     {
         const CoopWorldStats s = coop_world_stats();
         std::fprintf(stderr,
-            "[coopstat] world sent snap%llu ack%llu owner%llu delta%llu full%llu rx hello%llu enter%llu snap%llu delta%llu full%llu bits_applied=%llu "
+            "[syncstat] world sent snap%llu ack%llu owner%llu delta%llu full%llu rx hello%llu enter%llu snap%llu delta%llu full%llu bits_applied=%llu "
             "reconcile_kills=%llu first_in=%llu snap_timeouts=%llu star_collects=%llu drop bad%llu group%llu target%llu unknown_sub%llu seat%llu trust%llu\n",
             s.sent_snap, s.sent_ack, s.sent_owner, s.sent_delta, s.sent_full, s.recv_hello, s.recv_enter, s.recv_snap, s.recv_delta, s.recv_full,
             s.bits_applied, s.reconcile_kills, s.first_in, s.snap_timeouts, s.star_collects, s.drop_bad, s.drop_group, s.drop_target,
