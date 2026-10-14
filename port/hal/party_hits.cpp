@@ -87,7 +87,7 @@ enum : unsigned {
 
 struct Pos3 { int x = 0, y = 0, z = 0; };
 struct Attach { int by = -1; int kind = 0; unsigned until = 0; };
-struct CarryV { bool active = false; int holder = -1; unsigned f0 = 0; };
+struct CarryV { bool active = false; int holder = -1; unsigned f0 = 0; bool synth = false; };
 struct CarryH { bool active = false; int victim = -1; unsigned f0 = 0; int phase = 0; };
 
 struct G {
@@ -451,6 +451,7 @@ void diag_links(const char *where, char *me) {
 // ---- the Wario hold: victim side -----------------------------------------------------------------
 void carry_v_clear(char *me, bool broke) {
     const int h = g.cv.holder;
+    if (g.cv.synth && me) *(unsigned char *)(me + kNoControl) = 0;
     char *hb = body_of_seat(h);
     if (hb) port::vs_grab_export_unlink(hb, me);
     if (me) u32(me, kFlags) &= ~(kFlagHeldOut | kFlagCarried);
@@ -489,6 +490,15 @@ void grab_begin(char *me, const Claim &c) {
         return;
     }
     g.cv.active = true; g.cv.holder = c.attacker; g.cv.f0 = g.frame;
+    // the ROM's St_Grabbed did not take (the state change landed elsewhere on this port): hold the body by hand,
+    // pinned to the holder's hands with no control, and let the holder's throw launch it
+    g.cv.synth = !state_is(me, data_ov002_0211016c);
+    if (g.cv.synth) {
+        ptrf(me, kGrabbedBy) = nullptr;
+        u32(me, kFlags) &= ~(kFlagHeldOut | kFlagCarried);
+        *(unsigned char *)(me + kNoControl) = 1;
+        std::fprintf(stderr, "[phit] GRAB: St_Grabbed did not take, synthetic hold\n");
+    }
     g.beat = g.frame;
     send_wire(c.attacker, kGrabAck, 0, 0, 0, 0);
     broadcast_attach(c.attacker, 2);
@@ -511,6 +521,18 @@ void carry_v_tick(char *me) {
         carry_v_clear(me, true);
         return;
     }
+    if (g.cv.synth) {
+        // pinned to the holder's hands, no control; a hold nobody ends lets go after ten seconds
+        const double a = (double)(*(short *)(hb + kYawAngle) & 0xFFFF) * 3.14159265358979323846 / 32768.0;
+        *player::pos_x(me) = *player::pos_x(hb) + (int)std::lround(std::sin(a) * g.carry_ahead) * 0x1000;
+        *player::pos_z(me) = *player::pos_z(hb) + (int)std::lround(std::cos(a) * g.carry_ahead) * 0x1000;
+        *player::pos_y(me) = *player::pos_y(hb) + g.carry_up * 0x1000;
+        *(int *)(me + kHorzSpeed) = 0; *(int *)(me + kVertSpeed) = 0;
+        *(unsigned char *)(me + kNoControl) = 1;
+        if (g.frame - g.cv.f0 > 300) { *(unsigned char *)(me + kNoControl) = 0; carry_v_clear(me, true); }
+        if (g.frame - g.beat >= (unsigned)kAttachBeat) { g.beat = g.frame; broadcast_attach(g.cv.holder, 2); }
+        return;
+    }
     if (ptrf(hb, kHeldObj) != me) ptrf(hb, kHeldObj) = me;
     u32(me, kFlags) |= kFlagCarried | kFlagHeldOut;
     if (!ptrf(me, kGrabbedBy) || !state_is(me, data_ov002_0211016c)) {
@@ -529,8 +551,16 @@ void grab_launch(char *me, int holder, bool swing, int yaw, int speed) {
     const int vert = swing ? 0x20000 : 0x10000;
     std::fprintf(stderr, "[phit] GRAB: %s by seat %d: speed 0x%x yaw %d\n", swing ? "swung off" : "thrown", holder, (unsigned)speed, yaw & 0xFFFF);
     u32(me, kFlags) &= ~(kFlagHeldOut | kFlagCarried);
+    if (g.cv.synth) {
+        *(unsigned char *)(me + kNoControl) = 0;
+        _ZN6Player11ChangeStateERNS_5StateE(me, data_ov002_0211013c);
+        *(short *)(me + kYawAngle) = (short)yaw;
+        *(int *)(me + kHorzSpeed) = speed;
+        *(int *)(me + kVertSpeed) = vert;
+    } else {
     if (!swing && speed >= 0x30000) u32(me, kFlags) |= kFlagThrown;
     func_ov002_020db54c((unsigned char *)me, speed, vert, (short)yaw);
+    }
     if (hb && ptrf(hb, kHeldObj) == me) ptrf(hb, kHeldObj) = nullptr;
     carry_v_clear(me, false);
     ++g.st.applied;
