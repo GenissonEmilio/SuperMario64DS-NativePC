@@ -3417,8 +3417,7 @@ static int  __fastcall sc_bbeh(void *s, void *)
        -1 for the whole Rec Room, so no one-screen recipe matched and the level layout (top screen full, menu in the minimap corner)
        stayed. A scene that is being behaved with its own killed byte clear is not the dead one; say so on the edge. */
     else if (g_sc_killed && ((const unsigned char *)s)[0xf] == 0) {
-        std::printf("[scene] live scene %p (id %u) reuses the killed scene's address: the killed latch is cleared
-", s,
+        std::printf("[scene] live scene %p (id %u) reuses the killed scene's address: the killed latch is cleared\n", s,
                     (unsigned)*(const unsigned short *)((const char *)s + 0x0c));
         std::fflush(stdout);
         g_sc_killed = 0;
