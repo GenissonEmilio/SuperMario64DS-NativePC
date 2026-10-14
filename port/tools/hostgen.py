@@ -3842,12 +3842,29 @@ def park_symbol_patch(text, sym):
         d = _skip_ws_comments(text, k)
         b = text.find("{", d)
         semi = text.find(";", d)
-        if (b < 0 or 0 <= semi < b) and not name.startswith("_ZN"):
-            # PORTSYNC3: the marker can sit above the TU's extern declarations
-            # for the body (cstd4's OS helpers); find the definition by its own
-            # name instead: `<type> name(<params>) {` after the marker.
-            dm = re.compile(r"^[ \t]*[A-Za-z_][^\n;{}#]*\b%s[ \t]*\([^;{}]*\)[ \t\r\n]*\{"
-                            % re.escape(name), re.M).search(text, k)
+        # PORTSYNC3: find the DEFINITION by its own name, not by "the first brace
+        # after the marker": a marker can sit above extern declarations (cstd4's
+        # OS helpers) or above a struct the body uses (Player's PVec869c), and
+        # the first `{` is then the wrong one. A flat name is searched as
+        # `<type> name(<params>) {`; an Itanium member name as `Cls::meth(`.
+        pat = None
+        if name.startswith("_ZN"):
+            k2, parts = 3, []
+            while k2 < len(name) and name[k2].isdigit():
+                k3 = k2
+                while name[k3].isdigit():
+                    k3 += 1
+                ln = int(name[k2:k3])
+                parts.append(name[k3:k3 + ln])
+                k2 = k3 + ln
+            if len(parts) >= 2:
+                pat = r"\b%s[ \t]*::[ \t]*%s[ \t]*\(" % (
+                    r"[ \t]*::[ \t]*".join(re.escape(x) for x in parts[:-1]),
+                    re.escape(parts[-1]))
+        else:
+            pat = r"\b%s[ \t]*\(" % re.escape(name)
+        if pat:
+            dm = re.compile(r"^[ \t]*[A-Za-z_][^\n;{}#]*" + pat + r"[^;{}]*\)[^;{}]*\{", re.M).search(text, k)
             if dm:
                 d = dm.start()
                 b = dm.end() - 1

@@ -21,7 +21,7 @@ ROWS[("MWCC_SPELLING", "func_02009e70")] = [
 # and each one reaches DS-only runtime that the host never defines (OS mutex
 # and interrupt helpers, the DS sound driver's hardware tables, ROM data in
 # overlays the port does not mount). Parking restores exactly what ran before.
-ROWS[("PARK_SYMBOL", "cstd4")] = ["func_0206dac4", "func_0206dbf8", "func_0206de14"]
+ROWS[("PARK_SYMBOL", "cstd4")] = ["func_0206dac4", "func_0206dbf8", "func_0206de14", "func_0206dc4c"]
 ROWS[("PARK_SYMBOL", "cstd6")] = ["func_0207037c"]
 ROWS[("PARK_SYMBOL", "SoundEngine")] = ["func_020506fc", "func_020503a4", "func_020500a4",
                                         "func_0204fed0", "func_0204f194"]
