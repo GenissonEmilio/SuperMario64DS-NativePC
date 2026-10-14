@@ -71,7 +71,8 @@
 #include "ghost_door.h"      // GHOSTDOOR1: door / area / hidden look of a hub ghost
 #include "ghost_tongue.h"    // POSE9: a Yoshi ghost's tongue, the hurt blink
 #include "party.h"           // PBODY1: solid party bodies (membership by seat)
-#include "party_hits.h"      // PLAYINT1: the squash after a stomp
+#include "party_hits.h"
+#include <cmath>      // PLAYINT1: the squash after a stomp
 #include "host_settings.h"   // port::adventure_ghost_mode(): adventure runs this
                              // layer without SM64DS_SYNC
 
@@ -3273,6 +3274,26 @@ void gw_park_body(void *a) {
 ghost_tongue::State g_gtongue[kCommsMaxPlayers];
 ghost_tongue::Blink g_gblink[kCommsMaxPlayers];
 
+/* INTERACT9: THE ATTACH RULE. While seat V is in somebody's mouth or hands (party_hits.cpp keeps the
+   book from the victim's own broadcast), every console that draws V places V's body at the holder's
+   mouth / hand instead of where V's own frames say: this console's idea of the holder (my own body when
+   the holder is me, else the holder's ghost at its draw time), offset along the holder's yaw. */
+bool gw_attach_target(int holder_seat, unsigned tnow, int *x, int *y, int *z, int *yaw) {
+    const int me = (int)data_0209f250;
+    if (holder_seat == me || holder_seat == comms_hub_my_seat()) {
+        char *mb = (char *)data_0209f394[me];
+        if (!mb) return false;
+        *x = *player::pos_x(mb); *y = *player::pos_y(mb); *z = *player::pos_z(mb);
+        *yaw = (int)*player::facing(mb);
+        return true;
+    }
+    if (holder_seat < 0 || holder_seat >= kHubMaxSeats || !gw_visible(holder_seat)) return false;
+    GwSample h;
+    if (!gw_sample(holder_seat, tnow, &h)) return false;
+    *x = h.x; *y = h.y; *z = h.z; *yaw = (int)h.yaw;
+    return true;
+}
+
 void gw_follow() {
     static int no_repose = -1, no_swap = -1, no_tongue = -1, no_blink = -1;
     if (no_tongue < 0) { const char *e = std::getenv("SM64DS_GHOST_TONGUE"); no_tongue = (e && e[0] == '0' && !e[1]) ? 1 : 0; }
@@ -3354,6 +3375,27 @@ void gw_follow() {
         if (z.show_n + 1 != g_gw_follow_n) z.show_ms = now;
         z.show_n = g_gw_follow_n;
         if (sm.teleport) ++g_gws.teleports;
+        int akind = 0;       /* INTERACT9 attach (see gw_attach_target) */
+        const int holder = port::party_hits::attached_holder(s, &akind);
+        {
+            if (holder >= 0) {
+                int hx, hy, hz, hyaw;
+                if (gw_attach_target(holder, tnow, &hx, &hy, &hz, &hyaw)) {
+                    int ahead = 0, up = 0;
+                    port::party_hits::attach_offsets(akind, &ahead, &up);
+                    const double ang = (double)((unsigned)hyaw & 0xFFFFu) * 3.14159265358979323846 / 32768.0;
+                    sm.x = hx + (int)std::lround(std::sin(ang) * ahead) * 0x1000;
+                    sm.z = hz + (int)std::lround(std::cos(ang) * ahead) * 0x1000;
+                    sm.y = hy + up * 0x1000;
+                    sm.yaw = (short)(hyaw + 0x8000);       /* faces the holder */
+                    sm.teleport = false;
+                    static unsigned alog;
+                    if (alog++ % 30 == 0)
+                        std::fprintf(stderr, "[attach] f=%u seat=%d kind=%d held by seat %d at (%d,%d,%d) holder (%d,%d,%d)\n",
+                                     g_gw_frame, s, akind, holder, sm.x >> 12, sm.y >> 12, sm.z >> 12, hx >> 12, hy >> 12, hz >> 12);
+                }
+            }
+        }
         if (gw_err_log())
             std::fprintf(stderr, "[gwdraw] t=%u f=%u seat=%d mode=%c pos=%d,%d,%d "
                          "yaw=%d anim=%u buf=%d dk=%u df=%u tp=%d lv=%d "
@@ -3530,8 +3572,9 @@ void gw_follow() {
         ++z.driven;
         shown_any = true;
         /* PBODY1: a party friend in my level and area, fully shown, is a solid body */
+        /* INTERACT9: a body in somebody's mouth or hands is not solid (its cylinder would shove the holder) */
         if (pseat && !z.leaving && !sm.door_kind && gw_fade_out(s) >= 256 &&
-            party::gate(s) == party::kGateOk)
+            party::gate(s) == party::kGateOk && holder < 0)
             party::follow(a, i, s);
         if (pseat) {
             /* PLAYINT1 hook 4: the squash after a stomp I landed (+0x84 is the Y scale).
@@ -4625,6 +4668,14 @@ void sync_report(const char *tag) {
                                      : 0),
                  (unsigned long long)g_stats.gated,
                  (unsigned long long)g_stats.pose_held);
+}
+
+/* INTERACT9: what the follower last drew for a seat (anim id, character), for party_hits' grab and eat gates. */
+bool comms_sync_ghost_look(int seat, unsigned *anim, unsigned *character) {
+    if (seat < 0 || seat >= kHubMaxSeats || !g_gw[seat].last_have) return false;
+    if (anim) *anim = g_gw_last[seat].anim;
+    if (character) *character = g_gw_last[seat].character;
+    return true;
 }
 
 }  // namespace port
