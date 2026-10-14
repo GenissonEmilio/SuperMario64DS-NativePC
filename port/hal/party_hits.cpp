@@ -655,6 +655,13 @@ void carry_h_end(const char *why, bool drop) {
 
 void carry_h_tick(char *me) {
     if (!g.ch.active) return;
+    {
+        static int last_st = -1;
+        if (g.log > 0 && g.state != last_st) {
+            std::fprintf(stderr, "[phit] holder state %d -> %d (prev %d) f=%u\n", last_st, g.state, g.prev_state, g.frame);
+            last_st = g.state;
+        }
+    }
     char *vb = body_of_seat(g.ch.victim);
     if (!vb) { g.ch = CarryH(); return; }
     Seen s;
