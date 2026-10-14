@@ -98,6 +98,9 @@ struct TitleFacts {
     int e3o;                  /* FACE3: ticks since the ROM left the free-draw state for the face tracing (the hand button), 1 on the first tick, 0 = not leaving it */
     int e3;                   /* FACE3: ticks since the ROM entered the free-draw state (element machine 3), 1 on the first tick, 0 = not in it */
     int toy_v;                /* FACE1: the face press page's own frame counter (the page object's +0xc) PLUS ONE while top 4 / elem 0 is up, 0 = not the press page (a zeroed blob is not the press page) */
+    int dd_live;              /* TITLE092 (3b): ticks since the drawing page's own picture became the page (1 on the first live tick), 0 = still the ROM's black hand-over frames */
+    int sc_on;                /* TITLE092: this frame's 3D was drawn as the full-canvas scene (g_sc), and sc_T is its transform */
+    float sc_K, sc_Tx, sc_Ty;
 };
 static_assert(sizeof(TitleFacts) <= sizeof(MenuFacts::blob), "TitleFacts must fit MenuFacts.blob");
 thread_local const TitleFacts *t_f = 0;     /* set for the length of one build() */
@@ -787,6 +790,132 @@ void toy_dest(const MenuLayout *L, float growth_t, int *ox, int *oy, int *ow, in
     *ow = (int)(hostx0 + 256.f * k * upx + 0.5f) - x0; *oh = (int)(hosty0 + 192.f * k * upx + 0.5f) - y0;
 }
 
+/* ====================================================================================================================
+   TITLE092: THE TITLE'S LOWER SCREEN AS ONE FULL-CANVAS 3D SCENE (Tango, 10-14: "instead of actually moving the UI and things, you just
+   cut out that zone and moved it which is lazy"). The lower screen is a 3D scene; the old recipes drew it into the DS 256 x 192 box and cut
+   a rect of the finished picture, so whatever the ROM put outside the box (a star above the top, a stroke past the right edge, a spark at
+   the side edge of a wide window) was clipped, and a scaled cut was upscaled pixels. Now the scene callback (ntr/gx.h
+   gx_set_menu_scene_cb) makes the 3D cover the whole frame and places the scene by a real transform, drawn sharp at the window's own
+   resolution: the head, stars and sparkles and the page's models by the scene transform, each sprite object by its own (the wrench pinned
+   to the corner, the drawing page's buttons to the edges). The recipe then lays that one layer over the host wallpaper (one piece: the
+   whole 3D layer as a unit, keyed by coverage) and keeps only click-mapping twins for the touch areas.
+   T = {K, Tx, Ty}: the DS box centre (128, 96) lands at the canvas centre + (Tx, Ty) canvas units, scaled K about it
+   (canvas unit = window height / 192; Ty down). {1, 0, 0} is the DS layout. SM64DS_TITLE_WIDE=0 turns the whole thing off (the old cut
+   pieces draw); SM64DS_TITLE_SCENE=Kpermille,Tx,Ty tunes the main menu's. */
+struct SceneT { float K, Tx, Ty; };
+struct SceneNow {              /* what this frame's callback answered; build reads it through TitleFacts */
+    int on, variant, frame;
+    SceneT T;
+    int e3;                    /* the callback's own free-draw tick counter (same rule as the facts' e3) */
+} g_sc;
+int scene_on_env()
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("SM64DS_TITLE_WIDE"); v = (e && *e == '0') ? 0 : 1; }
+    return v;
+}
+int stune(int idx, int dflt)         /* SM64DS_TITLE_SCENE=Kpermille,Tx,Ty (canvas units, Ty down) */
+{
+    static int v[3], have = 0;
+    if (!have) {
+        have = 1;
+        for (int i = 0; i < 3; ++i) v[i] = -9999;
+        const char *e = getenv("SM64DS_TITLE_SCENE");
+        for (int i = 0; e && *e && i < 3; ++i) {
+            char *q;
+            v[i] = (int)strtol(e, &q, 10);
+            if (*q != ',') break;
+            e = q + 1;
+        }
+    }
+    return v[idx] == -9999 ? dflt : v[idx];
+}
+/* the main menu's place: the head 1.05 times the DS size (the old recipe drew it at 5/6, so 26 percent bigger), its cap top at canvas y
+   about 12 and its chin about 124 (the old chin was 136): bigger and higher between the small logo and the planks, and the DS screen's top
+   edge lands above the canvas top, so the star that falls in from the top of the DS screen enters at the canvas edge */
+SceneT scene_main()
+{
+    SceneT t;
+    t.K = (float)stune(0, 1050) / 1000.f;
+    t.Tx = (float)stune(1, 0);
+    t.Ty = (float)stune(2, -12);
+    return t;
+}
+/* the press page (top 4): the ROM grows the head to 1.345 times; the scene is drawn at the main menu's step divided by that growth and
+   anchored on the cap, so the head keeps its size and place (FACE1's rule, as an affine) */
+SceneT scene_toy(float growth_t)
+{
+    const SceneT m = scene_main();
+    const float gr = 1.f + 0.345f * growth_t, k = m.K / gr;
+    const float ay = 27.8f + (24.2f - 27.8f) * growth_t;
+    SceneT t;
+    t.K = k;
+    t.Tx = m.Tx + (123.3f - 128.f) * (m.K - k);
+    t.Ty = m.Ty + (27.8f - 96.f) * m.K - (ay - 96.f) * k;
+    return t;
+}
+/* the drawing page: the strokes were traced at the toy's rest pose; the free-draw state grows the canvas to the DS canvas's own size,
+   centred (e3 ticks since it began) */
+SceneT scene_doodle(int e3)
+{
+    SceneT t = scene_toy(1.f);
+    if (e3 > 0) {
+        const float u = (float)(e3 - 8) / 26.f, g = u <= 0.f ? 0.f : u >= 1.f ? 1.f : u * u * (3.f - 2.f * u);
+        t.K = t.K + (1.f - t.K) * g; t.Tx *= (1.f - g); t.Ty *= (1.f - g);
+    }
+    return t;
+}
+/* the canvas in units: width, height (window / unit) */
+void scene_canvas_units(float *cw, float *ch)
+{
+    const float ph = (float)(ntr::present_h() > 0 ? ntr::present_h() : 192);
+    *cw = (float)ntr::active_w * 192.f / ph;
+    *ch = (float)ntr::active_h * 192.f / ph;
+}
+void scene_xf(const SceneT &t, float cw, float ch, float xf[4])
+{
+    xf[0] = t.K; xf[1] = 2.f * t.Tx / cw; xf[2] = t.K; xf[3] = -2.f * t.Ty / ch;
+}
+/* DS box rect -> host pixels under T for a layout (the touch twins of the scene's parts) */
+void scene_rect_host(const MenuLayout *L, const SceneT &t, int sx, int sy, int sw, int sh, short *ox, short *oy, short *ow, short *oh)
+{
+    const float u = (float)L->unum / (float)L->uden;
+    const float x0 = (float)L->w * 0.5f + (t.Tx + ((float)sx - 128.f) * t.K) * u, y0 = (float)L->h * 0.5f + (t.Ty + ((float)sy - 96.f) * t.K) * u;
+    const float x1 = x0 + (float)sw * t.K * u, y1 = y0 + (float)sh * t.K * u;
+    *ox = (short)(x0 + 0.5f); *oy = (short)(y0 + 0.5f);
+    *ow = (short)((int)(x1 + 0.5f) - (int)(x0 + 0.5f)); *oh = (short)((int)(y1 + 0.5f) - (int)(y0 + 0.5f));
+}
+/* the free-draw tick counter, advanced once per ROM frame by the callback (the facts' e3c rule) */
+void scene_e3_step(int top, int elem, int frame)
+{
+    static int last_frame = -1;
+    if (frame == last_frame) return;
+    last_frame = frame;
+    g_sc.e3 = (elem == 3 || (elem == 4 && top == 0 && g_sc.e3 > 0)) ? g_sc.e3 + 1 : 0;
+}
+
+/* TITLE092: this tick's 3D is the full-canvas scene (facts), and its transform */
+bool scene_now() { return t_f && t_f->wide3d && t_f->sc_on; }
+SceneT scene_of_facts() { SceneT t; t.K = t_f->sc_K; t.Tx = t_f->sc_Tx; t.Ty = t_f->sc_Ty; return t; }
+/* the whole 3D layer as ONE element (the layer is a unit, the scene the ROM drew, not a rect of a finished screen): the window-sized
+   copy of the frame's 3D picture keyed by what the 3D engine wrote */
+MenuPiece scene_layer(const MenuLayout *L)
+{
+    MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    p.fixdest = 1; p.fx = 0; p.fy = 0; p.fw = (short)L->w; p.fh = (short)L->h;
+    p.keycover = 1; p.bg = 1;
+    return p;
+}
+/* a click-mapping twin of a DS rect of the scene, placed where the scene puts it */
+MenuPiece scene_twin(const MenuLayout *L, const SceneT &t, int sx, int sy, int sw, int sh)
+{
+    MenuPiece p = menu_piece_make(SRC_TOP_PIC, sx, sy, sw, sh, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+    p.fixdest = 1;
+    scene_rect_host(L, t, sx, sy, sw, sh, &p.fx, &p.fy, &p.fw, &p.fh);
+    p.touch = 1; p.nodraw = 1;
+    return p;
+}
+
 void build_main_pc(MenuLayout *L, bool intro)
 {
     Chore c = t_f ? t_f->ch : Chore();      /* a copy: build() never writes the clock */
@@ -853,6 +982,33 @@ void build_main_pc(MenuLayout *L, bool intro)
         const int tv = t_f ? t_f->toy_v - 1 : -1;      /* FACE1: >= 0 on the face press page */
         const bool toy = tv >= 0;
         const int fa = toy ? 255 : c.face_a;
+        if (scene_now()) {
+            /* TITLE092: the head, stars, sparkles and wrench are one 3D layer the scene already placed (bigger, higher, unclipped); the
+               pieces below are only click maps */
+            const SceneT T = scene_of_facts();
+            if (toy && tv > 93) {
+                /* 3b: from counter 94 the ROM dims the lower screen for the hand-over; its dim lands on the 3D pixels but not on our wallpaper, so
+                   the head went dark against a bright page (the flash). The bright frame held at counter 93 stays instead. */
+                MenuPiece sn = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
+                sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)L->w; sn.fh = (short)L->h;
+                menu_add_piece(L, sn);
+            } else if (fa > 0) {
+                MenuPiece sc = scene_layer(L);
+                sc.alpha = (uint8_t)(fa >= 255 ? 0 : fa);
+                menu_add_piece(L, sc);
+            }
+            if (toy) {
+                if (tv <= 93) L->snap_save = 1;      /* FACE2: the held frame of the crossfade into the drawing page */
+                menu_add_piece(L, scene_twin(L, T, 0, 0, 256, 192));        /* the page reads touches over the whole layer */
+            } else {
+                menu_add_piece(L, scene_twin(L, T, 20, 0, 156, 134));
+                MenuPiece wr = menu_piece_make(SRC_TOP_PIC, 216, 0, 40, 40, MENU_AX_R, MENU_AY_T, 0, 0, 1, 1);
+                wr.touch = 1; wr.nodraw = 1;
+                const int iwr = menu_add_piece(L, wr);
+                static const int wr_ids[1] = { 7 };
+                hot(L, iwr, wr_ids, 1);
+            }
+        } else
         if (toy) {
             MenuPiece face = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_T, 0, 0, 1, 1);
             face.fixdest = 1; face.keycover = 1; face.bg = 1; face.has_ex = 1; face.ex.x = 216; face.ex.y = 0; face.ex.w = 40; face.ex.h = 40;
@@ -960,6 +1116,15 @@ void build_main_pc(MenuLayout *L, bool intro)
         float Rds = 0.f;
         if (vis && c.ct >= 0) Rds = 0.004382f * (float)s48;
         if (c.ct >= 0 && !vis) c.iris_covered = 1;
+        {
+            /* TITLE092 (3a): the iris opens from the frame the star leaves the top, at 1.5 times the ROM's pace (8.28 DS pixels of radius a
+               frame), not from the ROM's own start 5 frames later at its pace; the ROM's value still wins once it is ahead */
+            const int n = c.fly_t + (c.ct > 0 ? c.ct : 0) - 14;
+            if (n >= 0) {
+                const float syn = 8.28f * (float)ctune(10, 150) / 100.f * (float)(n + 1);
+                if (syn > Rds) Rds = syn;
+            }
+        }
         const float Rpx = Rds * (float)h / 192.f;
         ir.icx = w / 2;
         ir.icy = (int)((96.f + 0.0864f * Rds) * (float)h / 192.f + 0.5f);
@@ -1010,8 +1175,12 @@ void build_doodle(MenuLayout *L)
     L->backdrop = MENU_BACKDROP_TOP_AS_IS;
     L->stage = MENU_STAGE_POST_FADE;
     L->no_focus_paint = 1;
-    const int e = (t_f && t_f->dd_e > 0) ? t_f->dd_e : 1000;
     const bool live = !(t_f && t_f->dd_dead);
+    /* TITLE092 (3b): the crossfade from the held face frame to the drawing page runs from the moment the page IS live (the ROM's own
+       hand-over frames are black and its brightness fade dims the picture): until then the held bright frame stays, whole; then the paper
+       and the page's pieces fade in over it. Before, the fade ran over the dead frames, so the paper was bare for a while and the strokes
+       and buttons then appeared at once. */
+    const int e = (t_f && t_f->dd_e > 0) ? (live ? (t_f->dd_live > 0 ? t_f->dd_live : 1) : 0) : 1000;
     const bool closing = t_f && t_f->vis && (t_f->e3 > 0 || t_f->yh);    /* FACE3: the Yoshi press: the ROM closes its star iris (polygons in the 3D layer, drawn only in the 4:3 area) */
     if (live && e >= DD_XF && !closing && !(t_f && t_f->yh)) L->snap_save = 1;      /* the held frame of the way out (and of the iris: the last frame before the ROM's iris shows) */
     if (e < DD_XF) {
@@ -1019,7 +1188,7 @@ void build_doodle(MenuLayout *L)
         sn.bg = 1; sn.snap = 1; sn.lden = 1; sn.lnum = 1; sn.fx = 0; sn.fy = 0; sn.fw = (short)w; sn.fh = (short)h;
         menu_add_piece(L, sn);
     }
-    {
+    if (e > 0) {
         MenuPiece pp = menu_piece_make(SRC_HOSTIMG, 0, 0, 1, 1, MENU_AX_L, MENU_AY_T, 0, 0, 1, 1);
         pp.bg = 1; pp.paper = 1; pp.lden = 1; pp.lnum = 1; pp.fx = 0; pp.fy = 0; pp.fw = (short)w; pp.fh = (short)h;
         const int a = e >= DD_XF ? 255 : 255 * e / DD_XF;
@@ -1056,7 +1225,29 @@ void build_doodle(MenuLayout *L)
         return;
     }
     if (!live) return;
-    static const DsRect kYo = { 0, 132, 60, 60 }, kPen = { 196, 132, 60, 60 }, kBar = { 84, 168, 88, 24 };     /* the buttons' rows of the lower screen: boxes x 4..44 / 212..252, y 148..188, with the slide-in path below */
+    static const DsRect kYo = { 0, 132, 60, 60 }, kPen = { 196, 132, 60, 60 }, kBar = { 84, 168, 88, 24 };
+    if (scene_now()) {
+        /* TITLE092: the strokes, the Yoshi button, the pencil and the ink bar are one 3D layer the scene placed (the strokes at the head's
+           size and place, the buttons pinned to the canvas edges at their DS rows, nothing clipped at the DS box); only click maps here */
+        const SceneT T = scene_of_facts();
+        MenuPiece sc = scene_layer(L);
+        if (e < DD_XF) { const int a = 255 * e / DD_XF; sc.alpha = (uint8_t)(a < 1 ? 1 : a); }      /* 3b: the page's own parts fade in with the paper, they do not pop */
+        menu_add_piece(L, sc);
+        const int th = e3 > 0 ? 146 : 130;           /* the canvas reaches down to the button rows (box tops at 148) only in the free-draw state */
+        menu_add_piece(L, scene_twin(L, T, 0, 0, 256, th));
+        MenuPiece yo = menu_piece_make(SRC_TOP_PIC, kYo.x, kYo.y, kYo.w, kYo.h, MENU_AX_L, MENU_AY_B, 0, 0, 1, 1);
+        yo.touch = 1; yo.nodraw = 1;
+        menu_add_piece(L, yo);
+        MenuPiece pe = menu_piece_make(SRC_TOP_PIC, kPen.x, kPen.y, kPen.w, kPen.h, MENU_AX_R, MENU_AY_B, 0, 0, 1, 1);
+        pe.touch = 1; pe.nodraw = 1;
+        menu_add_piece(L, pe);
+        if (e3 > 0) {
+            MenuPiece br = menu_piece_make(SRC_TOP_PIC, kBar.x, kBar.y, kBar.w, kBar.h, MENU_AX_C, MENU_AY_B, 0, 0, 1, 1);
+            br.touch = 1; br.nodraw = 1;
+            menu_add_piece(L, br);
+        }
+        return;
+    }     /* the buttons' rows of the lower screen: boxes x 4..44 / 212..252, y 148..188, with the slide-in path below */
     int x0, y0, fw, fh;
     toy_dest(L, 1.f, &x0, &y0, &fw, &fh);
     if (e3 > 0) {      /* FACE3: the canvas starts at the head's size and place (the cut from the drawing page is seamless), then grows to the DS canvas's own size, centred, for drawing */
@@ -1159,9 +1350,11 @@ void menu_title_facts(MenuFacts *f)
     rom_iris(&tf.vis, &tf.s48);
     tf.ch = g_ch;
     tf.wide3d = ntr::gx_menu_wide_active() ? 1 : 0;
+    tf.sc_on = (tf.wide3d && g_sc.on && data_ov007_0210342c && g_sc.frame + 1 >= data_ov007_0210342c[0]) ? 1 : 0;   /* the callback ran in this tick's Render (the counter moved on once since) */
+    tf.sc_K = g_sc.T.K; tf.sc_Tx = g_sc.T.Tx; tf.sc_Ty = g_sc.T.Ty;
     tf.toy_v = 0;
     {
-        static int last_v = -1, last_e = 0, dd_chain = 0, dd_e = 0, was_dd = 0, out_e = 0;
+        static int last_v = -1, last_e = 0, dd_chain = 0, dd_e = 0, was_dd = 0, out_e = 0, dd_live_c = 0;
         int top = -1, elem = -1, req = -1;
         const bool st = port_title_page_state(&top, &elem, &req) != 0;
         static int e3c = 0, e3oc = 0;
@@ -1181,7 +1374,7 @@ void menu_title_facts(MenuFacts *f)
             if (tf.toy_v < 0) tf.toy_v = 0;
             tf.toy_v += 1;
             last_v = tf.toy_v; last_e = 0;
-            dd_chain = 1; dd_e = 0; was_dd = 0; out_e = 0;
+            dd_chain = 1; dd_e = 0; was_dd = 0; out_e = 0; dd_live_c = 0;
         } else if (last_v >= 0 && elem == 1 && (top == 0 || top == 1)) {   /* the ROM's hand-over: its own fade, the drawing page not up yet */
             tf.toy_v = 1001; tf.toy_e = ++last_e;
         } else {
@@ -1191,12 +1384,14 @@ void menu_title_facts(MenuFacts *f)
         if (g_last == V_DOODLE || (g_last == V_TOY && tf.toy_v >= 1000)) {
             if (dd_chain) { dd_e = tf.toy_v >= 1000 ? tf.toy_e : dd_e + 1; tf.dd_e = dd_e; }
             tf.dd_dead = (tf.toy_v >= 1000 || (elem == 1 && top != 2)) ? 1 : 0;
+            dd_live_c = (dd_chain && !tf.dd_dead) ? dd_live_c + 1 : 0;
+            tf.dd_live = dd_live_c;
             was_dd = 1; out_e = 0;
         } else if (was_dd && yoshi_out) {
-            was_dd = 0; out_e = 0; dd_chain = 0;
+            was_dd = 0; out_e = 0; dd_chain = 0; dd_live_c = 0;
         } else if (was_dd) {
             tf.out_e = ++out_e;
-            if (out_e >= DD_XF + 2) { was_dd = 0; out_e = 0; dd_chain = 0; }
+            if (out_e >= DD_XF + 2) { was_dd = 0; out_e = 0; dd_chain = 0; dd_live_c = 0; }
         }
     }
     memcpy(f->blob, &tf, sizeof tf);
@@ -1264,10 +1459,14 @@ bool table_skip_active()
     return variant_for(top, elem) == V_TABLE;
 }
 int file_skip_inner(char *o);
+void scene_sprite_xf(char *o);
 int file_skip(char *o)
 {
     const int r = file_skip_inner(o);
-    if (!r) ntr::gx_menu_sprite(1);      /* FILE2: this object is drawn: its triangles are sprite objects, not the page model */
+    if (!r) {
+        ntr::gx_menu_sprite(1);      /* FILE2: this object is drawn: its triangles are sprite objects, not the page model */
+        scene_sprite_xf(o);          /* TITLE092: and in the title's full-canvas scene it has its own place */
+    }
     return r;
 }
 void file_draw_end() { ntr::gx_menu_sprite(0); }
@@ -1321,12 +1520,108 @@ bool file_wide_cb(float *zoom, float *dy)
     *dy = (float)dp / 1000.0f;
     return true;
 }
+/* TITLE092: THE SCENE CALLBACK, asked once per frame at the first 3D command (in the ROM's Render, so the page is live). The file pages
+   keep FILE2's zoom (file_wide_cb); the attract, the intro, the main menu, the face press page and the drawing page answer with the
+   scene transform of their page (see the block above build_main_pc). Every one of those pages is built from this answer in build():
+   a page this callback does not answer for is built by its old cut pieces, so the two conditions below mirror build_main_sel's. */
+int title_page_counter()
+{
+    if (!data_ov007_0210342c) return 0;
+    const char *sp = *(const char *const *)((const char *)data_ov007_0210342c + 8);
+    return sp ? *(const int *)(sp + 0xc) : 0;
+}
+bool title_scene_cb(float xf[4])
+{
+    g_sc.on = 0;
+    float z = 1.f, dy = 0.f;
+    if (file_wide_cb(&z, &dy)) { xf[0] = z; xf[1] = 0.f; xf[2] = z; xf[3] = dy; return true; }
+    if (!scene_on_env() || ntr::active_h <= 0 || ntr::active_w <= 0) return false;
+    if (!hal_menu_live()) return false;
+    if (!data_ov007_0210342c || g_up_stamp != data_ov007_0210342c[0]) return false;
+    int top, elem, req;
+    if (!port_title_page_state(&top, &elem, &req)) return false;
+    const int v = variant_for(top, elem);
+    const int fr = data_ov007_0210342c[0];
+    scene_e3_step(top, elem, fr);
+    SceneT T = { 1.f, 0.f, 0.f };
+    const bool pc = pc_assets_ready();
+    switch (v) {
+    case V_ATTRACT:
+        break;
+    case V_INTRO:
+        if (g_ch.mode == CH_INTRO && g_ch.ct < 0) break;           /* the first frames of the intro: the DS layout, the host star flies over it */
+        if (!pc) return false;
+        T = scene_main();
+        break;
+    case V_MAIN:
+        if (!pc) return false;
+        T = scene_main();
+        break;
+    case V_TOY:
+        if (!pc) return false;
+        if (top == 4 && elem == 0) T = scene_toy(toy_grow(title_page_counter()));
+        else T = scene_doodle(0);                                   /* the hand-over frames: the drawing page's rest pose */
+        break;
+    case V_DOODLE:
+        T = scene_doodle(g_sc.e3);
+        break;
+    default:
+        return false;
+    }
+    float cw, ch;
+    scene_canvas_units(&cw, &ch);
+    scene_xf(T, cw, ch, xf);
+    g_sc.on = 1; g_sc.variant = v; g_sc.frame = fr; g_sc.T = T;
+    {
+        static int last_v = -1;
+        if (hal_menu_trace_on() && (v != last_v || getenv("SM64DS_TITLE_SCENETRACE")))
+            fprintf(stderr, "[scene92] f%d variant %d top %d elem %d T K %.3f Tx %.2f Ty %.2f canvas %.1f x %.1f xf %.3f %.3f %.3f %.3f
+", fr, v, top, elem,
+                    T.K, T.Tx, T.Ty, cw, ch, xf[0], xf[1], xf[2], xf[3]);
+        last_v = v;
+    }
+    return true;
+}
+
+/* TITLE092: a sprite object (the ROM's 3D quads through func_ov007_020c421c) in the scene frame. Its screen place is its own x / y (DS
+   pixels, o + 4 / o + 8); the scene transform does not touch sprite objects, so each is placed here: the wrench pinned to the top right
+   corner of the canvas (and lifted out of the top as the face is pressed), the drawing page's buttons pinned to the left / right /
+   bottom edge at their DS rows, anything else on the drawing page (the canvas the strokes are on) by the scene transform. */
+void scene_sprite_xf(char *o)
+{
+    if (!g_sc.on || !data_ov007_0210342c || g_sc.frame != data_ov007_0210342c[0]) return;
+    const int v = g_sc.variant;
+    if (v == V_ATTRACT || (v == V_INTRO && g_ch.ct < 0)) return;
+    float cw, ch;
+    scene_canvas_units(&cw, &ch);
+    const float sx = (cw - 256.f) * 0.5f, sy = (ch - 192.f) * 0.5f;       /* the canvas margins beside / above the DS box */
+    const int id = *(unsigned char *)(o + 0x4e), x = ((const int *)o)[1] >> 12, y = ((const int *)o)[2] >> 12;
+    if (hal_menu_trace_on() && getenv("SM64DS_TITLE_SCENETRACE") && (data_ov007_0210342c[0] % 30) == 0)
+        fprintf(stderr, "[scene92] f%d sprite id=%02x x=%d y=%d variant %d
+", data_ov007_0210342c[0], id, x, y, v);
+    if (v == V_MAIN || v == V_INTRO || v == V_TOY) {
+        if (id == 0x1b && y < 100) {
+            float up = 0.f;
+            if (v == V_TOY) { const int tv = title_page_counter(); const float e = tv >= 10 ? 1.f : (float)tv / 10.f; up = e * e * 60.f; }
+            ntr::gx_menu_sprite_xf(1.f, 2.f * sx / cw, 1.f, 2.f * (sy + up) / ch);
+        }
+        return;
+    }
+    if (v == V_DOODLE) {
+        if (x < 64) ntr::gx_menu_sprite_xf(1.f, -2.f * sx / cw, 1.f, -2.f * sy / ch);               /* the Yoshi button: left edge, bottom */
+        else if (x > 192) ntr::gx_menu_sprite_xf(1.f, 2.f * sx / cw, 1.f, -2.f * sy / ch);         /* the pencil: right edge, bottom */
+        else if (y >= 160) ntr::gx_menu_sprite_xf(1.f, 0.f, 1.f, -2.f * sy / ch);                  /* the ink bar: bottom centre */
+        else { float xf[4]; scene_xf(g_sc.T, cw, ch, xf); ntr::gx_menu_sprite_xf(xf[0], xf[1], xf[2], xf[3]); }
+    }
+}
+
 struct FileHookInit {
     FileHookInit()
     {
         g_file_prev_skip = g_port_title_draw_skip; g_port_title_draw_skip = file_skip;
         g_port_title_draw_end = file_draw_end;
         ntr::gx_set_menu_wide_cb(file_wide_cb);
+        ntr::gx_set_menu_scene_cb(title_scene_cb);
     }
 } g_file_hook_init;
 
@@ -1458,17 +1753,31 @@ static void menu_title_build_impl(int variant, MenuLayout *L)
         add_black_under(L);
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
         p.touch = 1; p.key_backdrop = 1;
+        if (scene_now()) {      /* TITLE092: the scene covers the canvas (nothing clipped at the DS box's edge); the 4:3 piece only maps the touch */
+            MenuPiece sc = scene_layer(L);
+            sc.key_backdrop = 1;
+            menu_add_piece(L, sc);
+            p.nodraw = 1;
+        }
         menu_add_piece(L, p);
         L->backdrop = MENU_BACKDROP_TOP_AS_IS;
         L->stage = MENU_STAGE_POST_FADE;
         return;
     }
-    if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && !getenv("SM64DS_CHORE_BLACK")) {
+    /* TITLE092 (3a): the black first frames are only while the host star is on its way up (fly_t < 14: its centre is above the top edge at
+       14); from then the iris takes over at once, see build_main_pc, instead of a black beat and the ROM's iris starting from a point */
+    if (variant == V_INTRO && t_f && t_f->ch.mode == CH_INTRO && t_f->ch.ct < 0 && (t_f->ch.fly_t < 14 || getenv("SM64DS_CHORE_BLACK"))) {
         add_black_under(L);
         /* ASSET6: the first frames of the ROM's state 10 are the lower screen going out (the star leaves, the screen fades to black): shown
            as the ROM draws them until its iris sprite appears */
         MenuPiece p = menu_piece_make(SRC_TOP_PIC, 0, 0, 256, 192, MENU_AX_C, MENU_AY_M, 0, 0, 1, 1);
         p.touch = 1; p.key_backdrop = 1;
+        if (scene_now()) {      /* TITLE092: as the attract */
+            MenuPiece sc = scene_layer(L);
+            sc.key_backdrop = 1;
+            menu_add_piece(L, sc);
+            p.nodraw = 1;
+        }
         menu_add_piece(L, p);
         L->backdrop = MENU_BACKDROP_TOP_AS_IS;
         L->stage = MENU_STAGE_POST_FADE;

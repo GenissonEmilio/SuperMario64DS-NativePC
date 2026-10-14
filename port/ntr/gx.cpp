@@ -188,6 +188,9 @@ struct State {
     /* MENU WIDE 3D (run menu1, lane FILE2): evaluated at most once per frame, see menu_wide(). */
     int mw_eval = 0, mw_on = 0;
     float mw_zoom = 1.0f, mw_dy = 0.0f;
+    /* TITLE092: the scene transform in clip units (x' = x * mw_kx + mw_tx * w, y' = y * mw_ky + mw_ty * w). The FILE2 zoom is the case
+       kx = ky = zoom, tx = 0, ty = dy; a scene callback (gx_set_menu_scene_cb) sets all four. */
+    float mw_kx = 1.0f, mw_tx = 0.0f, mw_ky = 1.0f, mw_ty = 0.0f;
 
     // Lighting state. diffuse/ambient/specular/emission are 0..1 per channel.
     float diffuse[3] = {1, 1, 1}, ambient[3] = {0, 0, 0};
@@ -215,7 +218,7 @@ int g_store_count;
    because exec() and the texture binds below feed it. The whole mechanism is
    the block after gx_render; with the SmoothMotion key off g_ip_armed is 0
    and every hook is one test of it. */
-enum { IPK_CMD = 0, IPK_BIND, IPK_LIGHT, IPK_LMASK, IPK_SLOT, IPK_SPRITE };
+enum { IPK_CMD = 0, IPK_BIND, IPK_LIGHT, IPK_LMASK, IPK_SLOT, IPK_SPRITE, IPK_SPRXF };
 int g_ip_armed = 0;       // the key is on: level frames are recorded
 int g_ip_rec = 0;         // a frame's stream is being recorded right now
 int g_ip_replaying = 0;   // a recorded stream is being replayed right now
@@ -560,14 +563,25 @@ const Mat *mtx_for_gen(uint32_t gen) {
    func_ov007_020c421c (plates, glyphs, arrows: gx_menu_sprite brackets each submit) land exactly where they do natively;
    everything else (the page model: the castle reflection) is zoomed by the callback's factor about the frame centre. */
 bool (*g_menu_wide_cb)(float *zoom, float *dy);
+bool (*g_menu_scene_cb)(float xf[4]);       /* TITLE092: kx, tx, ky, ty (see State::mw_kx) */
 int g_menu_sprite;
+int g_menu_sprxf_on;                         /* TITLE092: the sprite object being drawn has its own transform */
+float g_menu_sprxf[4];
 bool menu_wide() {
-    if (!g_menu_wide_cb) return false;
+    if (!g_menu_wide_cb && !g_menu_scene_cb) return false;
     if (!g.mw_eval) {
         g.mw_eval = 1;
         float z = 1.0f, dy = 0.0f;
-        g.mw_on = g_menu_wide_cb(&z, &dy) ? 1 : 0;
-        g.mw_zoom = z; g.mw_dy = dy;
+        float xf[4] = { 1.0f, 0.0f, 1.0f, 0.0f };
+        if (g_menu_scene_cb) {
+            g.mw_on = g_menu_scene_cb(xf) ? 1 : 0;
+            g.mw_kx = xf[0]; g.mw_tx = xf[1]; g.mw_ky = xf[2]; g.mw_ty = xf[3];
+            g.mw_zoom = 1.0f; g.mw_dy = 0.0f;
+        } else {
+            g.mw_on = g_menu_wide_cb(&z, &dy) ? 1 : 0;
+            g.mw_zoom = z; g.mw_dy = dy;
+            g.mw_kx = z; g.mw_tx = 0.0f; g.mw_ky = z; g.mw_ty = dy;
+        }
         if (g.mw_on) { g.vp_x = 0; g.vp_y = 0; g.vp_w = active_w; g.vp_h = active_h; }
     }
     return g.mw_on != 0;
@@ -588,9 +602,16 @@ Vec4 view_to_clip(const Vec4 &view) {
            zoom: clipping crops it, the texels stay sharp), the sprite objects are not. */
         c.x *= (float)present_w() / (float)active_w;
         c.y *= (float)present_h() / (float)active_h;
-        if (!g_menu_sprite && (g.mw_zoom != 1.0f || g.mw_dy != 0.0f)) {
-            c.x *= g.mw_zoom;
-            c.y = c.y * g.mw_zoom + g.mw_dy * c.w;
+        if (!g_menu_sprite) {
+            if (g.mw_kx != 1.0f || g.mw_tx != 0.0f || g.mw_ky != 1.0f || g.mw_ty != 0.0f) {
+                c.x *= g.mw_kx;
+                if (g.mw_tx != 0.0f) c.x += g.mw_tx * c.w;
+                c.y *= g.mw_ky;
+                if (g.mw_ty != 0.0f) c.y += g.mw_ty * c.w;
+            }
+        } else if (g_menu_sprxf_on) {
+            c.x = c.x * g_menu_sprxf[0] + g_menu_sprxf[1] * c.w;
+            c.y = c.y * g_menu_sprxf[2] + g_menu_sprxf[3] * c.w;     /* TITLE092: this sprite object's own place and size (gx_menu_sprite_xf) */
         }
         return c;
     }
@@ -4301,10 +4322,19 @@ static void clear_fill_classic(Framebuffer &fb)
 void gx_set_menu_wide_cb(bool (*cb)(float *zoom, float *dy)) { g_menu_wide_cb = cb; }
 void gx_menu_sprite(int on) {
     g_menu_sprite = on;
+    g_menu_sprxf_on = 0;
     /* MENUINTERP2: the bracket is part of the frame's stream, so a replay zooms the page model and not the sprite objects */
     if (g_ip_rec) { const uint32_t v = on ? 1u : 0u; ip_push(IPK_SPRITE, 0, 1, &v); }
 }
 bool gx_menu_wide_active() { return menu_wide(); }
+/* TITLE092: the scene transform seam and the per-sprite-object transform, see gx.h */
+void gx_set_menu_scene_cb(bool (*cb)(float xf[4])) { g_menu_scene_cb = cb; }
+bool gx_menu_scene_active() { return g_menu_scene_cb != 0 && menu_wide(); }
+void gx_menu_sprite_xf(float kx, float tx, float ky, float ty) {
+    g_menu_sprxf[0] = kx; g_menu_sprxf[1] = tx; g_menu_sprxf[2] = ky; g_menu_sprxf[3] = ty;
+    g_menu_sprxf_on = 1;
+    if (g_ip_rec) { uint32_t v[4]; std::memcpy(v, g_menu_sprxf, sizeof v); ip_push(IPK_SPRXF, 0, 4, v); }
+}
 
 void gx_configure_anti_aliasing(int mode) {
     g_aa_mode = mode < 0 ? 0 : (mode > 1 ? 1 : mode);
@@ -7463,6 +7493,7 @@ struct IpRec {
     uint32_t sealed = 0;         // events that reached the frame's gx_render
     int mw_eval = 0, mw_on = 0;  // MENUINTERP2: the frame's menu-wide answer, as the tick evaluated it
     float mw_zoom = 1.0f, mw_dy = 0.0f;
+    float mw_kx = 1.0f, mw_tx = 0.0f, mw_ky = 1.0f, mw_ty = 0.0f;   // TITLE092: the scene transform
     int is_sealed = 0;
     int valid = 0;
     int snap = 0;
@@ -7497,6 +7528,7 @@ struct IpSaved {
 };
 IpSaved g_ip_saved;
 int g_ip_sprite_saved = 0;
+int g_ip_sprxf_saved_on = 0;       // TITLE092: the live sprite transform flag during a replay
 int g_ip_grid_defer_saved = 0;
 
 /* Per group, the triangles one replay produced: [begin, end) into g.tris. The
@@ -7585,6 +7617,7 @@ void ip_rec_seal() {
     IpRec &r = g_ipr[g_ip_w];
     r.sealed = static_cast<uint32_t>(r.ev.size());
     r.mw_eval = g.mw_eval; r.mw_on = g.mw_on; r.mw_zoom = g.mw_zoom; r.mw_dy = g.mw_dy;
+    r.mw_kx = g.mw_kx; r.mw_tx = g.mw_tx; r.mw_ky = g.mw_ky; r.mw_ty = g.mw_ty;
     r.is_sealed = 1;
     r.tex_gen = g_tex_generation;
     g_ip_rec = 0;
@@ -8056,8 +8089,11 @@ int gx_interp_begin(float alpha) {
     /* MENUINTERP2: the replay starts from the tick's own wide-page answer (the callback reads ROM state and must not be asked again) */
     g_ip_sprite_saved = g_menu_sprite;
     g_menu_sprite = 0;
+    g_ip_sprxf_saved_on = g_menu_sprxf_on;
+    g_menu_sprxf_on = 0;
     if (C.mw_eval) {
         g.mw_eval = 1; g.mw_on = C.mw_on; g.mw_zoom = C.mw_zoom; g.mw_dy = C.mw_dy;
+        g.mw_kx = C.mw_kx; g.mw_tx = C.mw_tx; g.mw_ky = C.mw_ky; g.mw_ty = C.mw_ty;
         if (g.mw_on) { g.vp_x = 0; g.vp_y = 0; g.vp_w = active_w; g.vp_h = active_h; }
     }
     g.tris = std::move(g_ip_tris);
@@ -8140,7 +8176,15 @@ int gx_interp_begin(float alpha) {
             break;
         case IPK_SPRITE:
             g_menu_sprite = C.par[e.off] ? 1 : 0;
+            g_menu_sprxf_on = 0;
             break;
+        case IPK_SPRXF: {
+            float v[4];
+            std::memcpy(v, &C.par[e.off], sizeof v);
+            for (int i = 0; i < 4; ++i) g_menu_sprxf[i] = v[i];
+            g_menu_sprxf_on = 1;
+            break;
+        }
         case IPK_SLOT: {
             float m[16];
             std::memcpy(m, &C.par[e.off + 1], sizeof m);
@@ -8178,6 +8222,7 @@ void gx_interp_end() {
     }
     g_ip_rec = s.rec;
     g_menu_sprite = g_ip_sprite_saved;
+    g_menu_sprxf_on = g_ip_sprxf_saved_on;
     g_ip_open = 0;
 }
 

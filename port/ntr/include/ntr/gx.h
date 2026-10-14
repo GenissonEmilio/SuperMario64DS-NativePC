@@ -512,6 +512,15 @@ void gx_set_menu_wide_cb(bool (*cb)(float *zoom, float *dy));
 void gx_menu_sprite(int on);
 bool gx_menu_wide_active();
 
+/* TITLE092: the title's lower-screen 3D as one full-canvas scene. gx_set_menu_scene_cb installs a callback (null = never; it replaces
+   gx_set_menu_wide_cb's when both are set) asked once per frame like it: true = this frame's 3D covers the whole active frame, and
+   xf = {kx, tx, ky, ty} places everything the frame draws OUTSIDE a gx_menu_sprite(1) bracket: clip x' = x * kx + tx * w,
+   y' = y * ky + ty * w, in the frame's own clip units after the native 4:3 box has been centred in it (so {1,0,1,0} is the DS layout).
+   gx_menu_sprite_xf, called inside a bracket, gives that one sprite object its own {kx, tx, ky, ty} (the bracket's end clears it). */
+void gx_set_menu_scene_cb(bool (*cb)(float xf[4]));
+void gx_menu_sprite_xf(float kx, float tx, float ky, float ty);
+bool gx_menu_scene_active();     // the scene callback is installed and this frame's answer is yes
+
 // THE TOON TABLE (GBATEK, DS 3D Toon/Edge/Fog: TOON_TABLE 0x04000380, 32
 // BGR555 halfwords; DS 3D Polygon Attributes: mode 2). A mode-2 polygon's
 // vertex RED picks one of the 32 entries, per pixel, from the interpolated
