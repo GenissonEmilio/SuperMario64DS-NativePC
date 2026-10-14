@@ -41,6 +41,7 @@ int _ZN6Player7TryGrabER8dActor_c(void *self, void *actor);   // holder->TryGrab
 int _ZN6Player9DropActorEv(void *holder);
 extern unsigned char data_ov002_02110064[];   // St_InYoshiMouth
 extern unsigned char data_ov002_0211016c[];   // St_Grabbed
+extern unsigned char data_ov002_02110604[];   // St_SwingPlayer
 int func_ov002_020d5f34(char *c, void *eater);   // victim: into the mouth (state, +0xd0, anim 0x3f)
 int func_ov002_020d5ed0(char *c);                // victim: mouth step 1
 int _ZN6Player7SetAnimEji5Fix12IiEj(void *c, unsigned anim, int a, int b, unsigned d);
@@ -131,6 +132,7 @@ struct G {
     bool lab_done = false;      // the gather stops for good once an eat / hold has begun on this console (the spit and the throw fly free)
     int gather_dx = 0, gather_dz = 0; bool gather = false;     // LAB: stand next to the host every frame (pictures independent of frame skew)
     int lab_seat = -1;      // LAB: forge only toward this hub seat
+    int lab_swing = 0; bool swing_done = false;     // LAB: force the holder's St_SwingPlayer this many frames into the hold (the pad's circular stick motion is not scripted; the arena rig does the same)
     unsigned forge_at = 0, eat_hold = 0;      // LAB: forge from this frame on; a longer eat hold for pictures
     Stats st = {};
 } g;
@@ -158,6 +160,7 @@ void read_env() {
     if (const char *e = std::getenv("SM64DS_PHIT_LAB_GATHER")) { g.gather = true; g.gather_dx = 150; g.gather_dz = 0; std::sscanf(e, "%d,%d", &g.gather_dx, &g.gather_dz); }
     if (const char *e = std::getenv("SM64DS_PHIT_LAB_AT")) g.forge_at = (unsigned)std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_LAB_SEAT")) g.lab_seat = std::atoi(e);
+    if (const char *e = std::getenv("SM64DS_PHIT_LAB_SWING")) g.lab_swing = std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_EATHOLD")) g.eat_hold = (unsigned)std::atoi(e);
     if (const char *e = std::getenv("SM64DS_PHIT_LAB")) {
         char kind[16] = {0}; int units = 0;
@@ -661,6 +664,12 @@ void carry_h_tick(char *me) {
         return;
     }
     if (g.ch.phase == 0 && g.frame - g.ch.f0 > (unsigned)kGrabAckWait) { carry_h_end("no ack", true); return; }
+    if (g.lab_swing > 0 && !g.swing_done && g.ch.phase == 1 && g.frame - g.ch.f0 >= (unsigned)g.lab_swing && ptrf(me, kHeldObj) == vb) {
+        g.swing_done = true;
+        _ZN6Player11ChangeStateERNS_5StateE(me, data_ov002_02110604);
+        *(short *)(me + kSwingSpeed) = 0x1800;
+        std::fprintf(stderr, "[phit] LAB: St_SwingPlayer forced on the holder\n");
+    }
     if (ptrf(me, kHeldObj) != vb) {
         // the ROM let go: how? (St_Throw -> the throw, St_SwingPlayer -> the spin's release, else a soft drop)
         if (g.ch.phase == 0) { carry_h_end("let go before the ack", false); return; }
