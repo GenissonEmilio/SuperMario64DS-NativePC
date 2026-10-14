@@ -8082,13 +8082,13 @@ void ip_match(IpRec &C, const IpRec &P, const IpRec *P2, GxInterpStats *st) {
                the offset between them the tick's own at every picture */
             if (gc.load_ev >= 0 && (C.ev[gc.load_ev].np == 12 || C.ev[gc.load_ev].np == 16)) {
                 int best = -1;
-                double bd = 36.0;   // 6 units
-                for (size_t hi = 0; hi < C.groups.size(); ++hi) {
+                /* the part drawn just before it: a model draws its parts in
+                   one run, and the blinking ones follow the part they sit on */
+                for (int hi = (int)gi - 1; hi >= 0 && hi >= (int)gi - 4; --hi) {
                     const IpGroup &gh = C.groups[hi];
                     if (gh.match < 0 || gh.part || !gh.has_pos || gh.load_ev < 0) continue;
                     if (C.ev[gh.load_ev].np != C.ev[gc.load_ev].np) continue;
-                    const double d = ip_dist2(gc, gh);
-                    if (d < bd) { bd = d; best = (int)hi; }
+                    if (ip_dist2(gc, gh) < 36.0) { best = hi; break; }
                 }
                 if (best >= 0) C.anchor[gc.load_ev] = C.groups[best].load_ev;
             }
