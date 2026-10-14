@@ -36,7 +36,7 @@ namespace {
 // ---------------------------------------------------------------------------
 CoopMoveStats g_st = {};
 bool g_guard = true;          // SM64DS_COOP_MOVE_GUARD=0 is the proof CONTROL: no size / value guard (the pre-fix behaviour)
-enum : unsigned { kFPhase = 1u, kFSlave = 2u, kFBoss = 4u };   // kFBoss (MOVERS9): the pose owner is the boss's TARGET seat, the same rule as the boss lane's authority   // kFSlave: the non-owner pins the pose every frame to the owner's, extrapolated
+enum : unsigned { kFPhase = 1u, kFSlave = 2u, kFBoss = 4u, kFSampleOnly = 8u };   // kFBoss (MOVERS9): the pose owner is the boss's TARGET seat, the same rule as the boss lane's authority   // kFSlave: the non-owner pins the pose every frame to the owner's, extrapolated
 // A phase field: where it sits, how wide it is, and the range a received value must lie in (signed for width 4, unsigned for 1 / 2).
 struct Field { uint16_t off; uint8_t size; int32_t lo, hi; };
 struct Prof {
@@ -71,6 +71,7 @@ int g_nprof = 0;
 struct CStat { unsigned ents_max, pub, applied, slaved, owner_ch, pin_n, pin_big, held_pins; double pin_sum, pin_max; };
 CStat g_cs[256];
 bool g_hold_mips = true;      // SM64DS_MOVERS_MIPSHOLD=0 is the MUST-FAIL control: MIPS (187) is not on the carrier list
+bool g_new_rows = true;       // SM64DS_MOVERS_NEWROWS=0 is the MUST-FAIL control: the 13 MOVERS9 classes are only SAMPLED (free-running, as with no row)
 bool g_boss_own = true;       // SM64DS_MOVERS_BOSSOWN=0 is the MUST-FAIL control: boss poses keep the proximity owner
 short g_prof_of[1024];      // class id -> index into g_prof, -1 none
 char  g_prof_name[256][40]; // names of rows added from the profile file
@@ -120,6 +121,10 @@ void prof_index() {
         if (!ok) { std::fprintf(stderr, "[coopmove] profile row %d (class %d) rejected\n", i, (int)p.id); ++g_st.rows_dropped; p.id = 0; continue; }
         if (p.size == 0) std::fprintf(stderr, "[coopmove] size guard: class %d is not in the size table (pose only, no fields)\n", (int)p.id);
         g_prof_of[p.id] = (short)i;
+    }
+    if (!g_new_rows) {
+        static const uint16_t kNew[] = { 262, 250, 251, 236, 240, 238, 315, 234, 18, 194, 193, 96, 72 };
+        for (uint16_t id : kNew) if (g_prof_of[id] >= 0) g_prof[g_prof_of[id]].flags |= kFSampleOnly;
     }
     // classes a player can pick up: their pose is the carrier's, not the Behavior's
     static const struct { uint16_t id, off; } kHold[] = { { 206, 0x390 }, { 187, 0x45c } };   // 206 Bob-omb mCarrier; 187 MIPS: the carrier Player* at +0x45c (daMip_c UpdateGrab sets it, StateReleased clears it)
@@ -253,6 +258,7 @@ void read_env() {
     auto flag = [](const char *n, bool dflt) { const char *e = std::getenv(n); return (e && *e) ? *e != '0' : dflt; };
     g_log = flag("SM64DS_COOP_MOVE_LOG", false);
     g_boss_own = flag("SM64DS_MOVERS_BOSSOWN", true);
+    g_new_rows = flag("SM64DS_MOVERS_NEWROWS", true);
     g_hold_mips = flag("SM64DS_MOVERS_MIPSHOLD", true);
     g_act = flag("SM64DS_COOP_ACT", true);
     g_guard = flag("SM64DS_COOP_MOVE_GUARD", true);
@@ -690,6 +696,7 @@ void process(unsigned now) {
         Slot &s = g_slot[slot];
         if (!s.a) continue;
         const Prof &p = g_prof[s.prof];
+        if (p.flags & kFSampleOnly) continue;          // the control: seen and sampled, never owned, applied, pinned or published
         const unsigned my_cd = (unsigned)(std::min)(65535.0, dist3(pl, rd32(s.a, 0x5c), rd32(s.a, 0x60), rd32(s.a, 0x64)));
         // 1. who owns this actor
         int best = -1; unsigned best_cd = 0xffffffffu; unsigned cur_cd = 0xffffffffu; bool cur_fresh = false;
