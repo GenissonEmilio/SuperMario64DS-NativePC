@@ -3449,8 +3449,7 @@ void gw_follow() {
             const int targ = ghost_tongue::select(g_gtongue[i], (char *)a, sm.anim,
                                                   gw_char(a) == 3u, &started);
             if (started)
-                std::fprintf(stderr, "[ghost-tongue] f=%u seat=%d body=%d tongue %d (anim %u)
-",
+                std::fprintf(stderr, "[ghost-tongue] f=%u seat=%d body=%d tongue %d (anim %u)\n",
                              g_gw_frame, s, i, targ, (unsigned)sm.anim);
             if (targ >= 0) ghost_tongue::follow(g_gtongue[i], (char *)a, want_f, nullptr);
         }
@@ -3541,14 +3540,12 @@ void gw_follow() {
             const unsigned v = ghost_tongue::blink_step(g_gblink[i], sm.anim, &started);
             *(unsigned short *)((char *)a + player::kInvincibleTimer) = (unsigned short)v;
             if (started)
-                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d body=%d hurt anim %u: 36-frame blink
-",
+                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d body=%d hurt anim %u: 36-frame blink\n",
                              g_gw_frame, s, i, (unsigned)sm.anim);
             static int blog = -1;       // LAB: SM64DS_GHOST_BLINK_LOG=1, a line per blink frame with the ROM's own draw gate
             if (blog < 0) blog = std::getenv("SM64DS_GHOST_BLINK_LOG") ? 1 : 0;
             if (v && blog)
-                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d timer=%u render_hidden=%d
-",
+                std::fprintf(stderr, "[ghost-blink] f=%u seat=%d timer=%u render_hidden=%d\n",
                              g_gw_frame, s, v, port_player_render_hidden(a));
         }
         if (gw_err_log())
