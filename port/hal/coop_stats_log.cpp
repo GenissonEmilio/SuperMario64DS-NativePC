@@ -55,7 +55,7 @@ void emit(const char *why, unsigned now) {
         const int n = coop_move_class_stats(cs, 128);
         std::sort(cs, cs + n, [](const CoopClassStat &a, const CoopClassStat &b) { return a.pin_big > b.pin_big; });
         for (int i = 0; i < n; ++i)
-            std::fprintf(stderr, "[syncstat] cls %u %s placed=%u pub=%u applied=%u pinned=%u pin_avg=%.1f pin_max=%.0f pin_over40=%u owner_ch=%u\n",
+            std::fprintf(stderr, "[syncstat] cls %u %s placed=%u pub=%u applied=%u pinned=%u pin_avg=%.1f pin_max=%.0f pin_over40=%u owner_ch=%u held_pins=%u\n",
                          cs[i].id, cs[i].name, cs[i].ents_max, cs[i].pub, cs[i].applied, cs[i].pin_n, cs[i].pin_avg, cs[i].pin_max,
                          cs[i].pin_big, cs[i].owner_ch, cs[i].held_pins);
     }
