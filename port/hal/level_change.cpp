@@ -2340,7 +2340,7 @@ static int port_level_hold_due(void)
    warp spot (daWarpkun_c::Behavior calls WarpPlayer(player, id) when the player
    stands in its volume and Player::CanWarp). The call is the ROM's own; this
    only fires it at a chosen frame so a headless run can watch the teleport. */
-extern "C" void WarpPlayer(int i, int val);
+
 static void port_tp_warp_hook(void)
 {
     static int frame, at = -2, id = 1;
@@ -2351,7 +2351,15 @@ static void port_tp_warp_hook(void)
     }
     if (at >= 0 && frame++ == at) {
         std::fprintf(stderr, "[tpwarp] f%d WarpPlayer(0, %d)\n", at, id);
-        WarpPlayer(0, id);
+        /* WarpPlayer(0, id) alone is cleared again before the Player reads it
+           from outside the frame, so this writes what func_ov002_020c2e78 writes
+           when it takes the request: the teleport id and flag bit 8. */
+        extern void *data_0209f394[];
+        char *pl = (char *)data_0209f394[0];
+        if (pl) {
+            *(unsigned char *)(pl + 0x6e8) = (unsigned char)id;
+            *(unsigned short *)(pl + 0x6ce) |= 8;
+        }
     }
 }
 
