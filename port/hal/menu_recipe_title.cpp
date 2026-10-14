@@ -75,7 +75,6 @@ struct Chore {
     int skip;            /* a confirm press asked for the resting state */
     int iris_covered;    /* the iris covered the picture on the last drawn frame */
     int ff2_done;
-    int voice2;          /* INTROVOICE1: 0 = the counter has not been moved to the ROM's second voice call yet, then frames since */
     int attract_t;       /* the ROM's attract counter as last read */
     int fly_t;           /* ASSET6: frames since the press, while the star flies off the top (state 10 before the iris) */
 } g_ch;
@@ -532,8 +531,9 @@ void build_main(MenuLayout *L, bool intro)
        lower screen (attract counter 56), the port gives the ROM the touch-to-start edge it would have taken from the player (the same path the
        ROM's own skip takes: the upper-screen logo reveal that follows is not on this picture anyway). SM64DS_TITLE_FF=0 turns this and the
        next two off.
-     - state 10: the picture is black until the ROM's iris sprite appears; the dead 27 frames of the counter between its t = 31 and t = 58 are skipped
-       (t is written once; the t = 30 sound has played; nothing is keyed on a t in between).
+     - state 10: the picture is black until the ROM's iris sprite appears; from the t = 30 voice on the counter runs the ROM's own way (INTROVOICE2:
+       the dead 27 frames used to be skipped, which put the t = 60 iris whoosh 3 frames after "It's-a me" and the t = 128 "Mario!" 41 frames
+       after it, over its tail; the DS has 30 and 98 frames).
      - the iris: this file reads the ROM's own sprite scale every frame, so the pacing is the ROM's, and draws the star clean over the wallpaper
        (menu_compose.cpp draw_iris). Once it covers the picture the ROM's own iris is told it is finished (progress set to its end) so the arrival
        follows at once instead of 33 frames later.
@@ -552,8 +552,6 @@ int ff_on()
     if (v < 0) { const char *e = getenv("SM64DS_TITLE_FF"); v = (e && *e == '0') ? 0 : 1; }
     return v;
 }
-
-enum { VOICE_WAIT = 2 };       /* INTROVOICE1: frames the iris finish waits after the counter move */
 
 int ctune(int idx, int dflt)         /* SM64DS_CHORE_TUNE=a,b,c,... integer knobs for timing / look iteration */
 {
@@ -609,7 +607,7 @@ void chore_step(int variant, int top, int elem, int req)
     if (!c.in_fam) {              /* entering the main family */
         c.in_fam = 1;
         c.mode = (c.prev_variant == V_ATTRACT) ? CH_INTRO : CH_RETURN;
-        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.voice2 = 0; c.fly_t = 0;
+        c.ct = -1; c.fam_t = 0; c.sw_t = -1; c.face_a = 0; c.skip = 0; c.iris_covered = 0; c.ff2_done = 0; c.fly_t = 0;
         if (hal_menu_trace_on()) fprintf(stderr, "[chore] enter family mode=%s top=%d\n", c.mode == CH_INTRO ? "intro" : "return", top);
     }
     ++c.fam_t;
@@ -717,32 +715,23 @@ void chore_rom_writes(int top, int req)
     if (top == 11 && g_elem == 5 && *t >= 9 && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] file page exit: idle counter skipped\n"); }
     if (top == 10 && g_ch.mode == CH_INTRO) {
         /* the ROM's iris starts at t = 60; before it the lower screen is black and nothing is keyed on t after the t = 30 sound */
-        /* ASSET6: the star has flown off the top (CH_FLY frames after the press); the counter skips to 29 (the t = 30 sound still plays), then to
-           58 once past it, so the iris (t = 60) follows within a few frames */
+        /* ASSET6: the star has flown off the top (CH_FLY frames after the press); the counter skips to 29 (the t = 30 sound still plays) and
+           runs the ROM's own way after it (INTROVOICE2), so the iris comes at t = 60 */
         if (*t >= ctune(9, CH_FLY) && *t < 29) { *t = 29; if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t jumped to 29\n"); }
-        else if (*t >= 31 && *t < 58) { *t = 58; if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t jumped to 58\n"); }
-        /* once our iris covers the picture the ROM's iris is finished: progress to its last step so the callback asks for the arrival */
+        /* once our iris covers the picture the ROM's iris is finished: progress to its last step so the callback asks for the arrival.
+           INTROVOICE2: src/func_ov007_020b10dc.c plays the title voice in two calls of the top-state 10 handler: id 0x2b ("It's-a me") at
+           t = 30 and id 0x2d ("Mario!") at t = 128 (Luigi 0x2c at 30 and 0x2e at 122), with the iris whoosh (0x30) at t = 60 between them.
+           Our iris covers the picture well before t = 128, so the finish waits until the ROM's own handler has made the second call (t past
+           it): the DS order and gaps 0x2b, 0x30, 0x2d, never overlapping. A confirm press (skip) does not wait. */
         if (g_ch.iris_covered && !g_ch.ff2_done && data_ov007_02104bd8) {
             char *o6 = *(char **)data_ov007_02104bd8;
-            /* INTROVOICE1: the second half of the title line. src/func_ov007_020b10dc.c plays the voice in two calls of the top-state 10
-               handler: id 0x2b at t = 30 ("It's-a me") and id 0x2d at t = 128 ("Mario!"; Luigi 0x2c at 30 and 0x2e at 122), the second on the
-               frame the star iris ends, as the head's arrival starts. Finishing the iris early left t at its iris-time value, so the ROM never
-               reached that call. The counter is moved to the frame before the ROM's second call and the iris is finished VOICE_WAIT frames
-               later, so the ROM's own handler plays it (it picks the character's id itself) on the beat the DS does: the end of the iris,
-               as the head arrives. */
-            if (o6 && *(int *)(o6 + 8) == 1 && g_ch.voice2 == 0) {
-                const int voice_t = (*(int *)(g + 0xec) == 1) ? 0x7a : 0x80;
-                if (*t < voice_t) *t = voice_t - 1;
-                g_ch.voice2 = 1;
-                if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM counter t moved to %d for the second voice call\n", voice_t - 1);
-            } else if (g_ch.voice2 > 0 && g_ch.voice2 < VOICE_WAIT) {
-                ++g_ch.voice2;
-            } else if (o6 && *(int *)(o6 + 8) == 1) {
+            const int voice_t = (*(int *)(g + 0xec) == 1) ? 0x7a : 0x80;
+            if (o6 && *(int *)(o6 + 8) == 1 && (*t > voice_t || g_ch.skip)) {
                 const int step = *(int *)(o6 + 0x18);
                 const int want = 0x1000 - step + 1;
                 if (*(int *)(o6 + 0x14) < want) *(int *)(o6 + 0x14) = want;
                 g_ch.ff2_done = 1;
-                if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM iris progress finished early\n");
+                if (hal_menu_trace_on()) fprintf(stderr, "[chore] ROM iris progress finished early (t %d)\n", *t);
             }
         }
     }
