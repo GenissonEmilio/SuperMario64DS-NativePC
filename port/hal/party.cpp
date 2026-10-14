@@ -248,8 +248,7 @@ bool follow(void *a, int body, int seat) {
         cyl_withhold(a);
         reg = false;
         static unsigned skips;
-        if (g_log > 0 && (skips++ % 600u) == 0) std::fprintf(stderr, "[party] shove: no cylinder for seat %d (mine is %d), lower seat wins the push
-", seat, comms_hub_my_seat());
+        if (g_log > 0 && (skips++ % 600u) == 0) std::fprintf(stderr, "[party] shove: no cylinder for seat %d (mine is %d), lower seat wins the push\n", seat, comms_hub_my_seat());
     } else {
         reg = cyl_register(a, seat);
     }
