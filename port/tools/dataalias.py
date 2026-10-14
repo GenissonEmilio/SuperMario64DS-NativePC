@@ -33,8 +33,19 @@ def main():
     ap.add_argument("--unresolved", required=True)
     ap.add_argument("--map", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--old-config", help="root holding the pre-sync config/: a datum main "
+                    "renamed is bound to the old name the port hosts, found by address")
     a = ap.parse_args()
     defs = load_defs(a.map)
+    new_inv = old_names = None
+    if a.old_config:
+        import os
+        here = os.path.dirname(os.path.abspath(__file__))
+        sys.path.insert(0, here)
+        import linkalias as LA
+        repo = os.path.normpath(os.path.join(here, "..", ".."))
+        _n, new_inv = LA.load_cfg(repo)
+        old_names, _oi = LA.load_cfg(a.old_config)
     rows = []
     skipped = []
     for line in open(a.unresolved, encoding="utf-8", errors="replace"):
@@ -53,6 +64,12 @@ def main():
             skipped.append((dec, "pointer to member"))
             continue
         flat = "_" + name
+        if flat not in defs and new_inv is not None:
+            for key in new_inv.get(name, []):
+                o = old_names.get(key)
+                if o and o != name and ("_" + o) in defs:
+                    flat = "_" + o
+                    break
         if flat not in defs:
             skipped.append((dec, "no C definition %s in the link" % flat))
             continue

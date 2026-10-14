@@ -392,9 +392,9 @@ struct dActor_c { void UpdatePosWithOnlySpeed(dCc_c *c); };
 extern "C" void _ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c(void *self,
                                                                   void *cl)
 { ((dActor_c *)self)->dActor_c::UpdatePosWithOnlySpeed((dCc_c *)cl); }
-struct Camera { void SetFlag_3(); };
+struct dCamera_c { void SetFlag_3(); };
 extern "C" void _ZN9dCamera_c9SetFlag_3Ev(void *self)
-{ ((Camera *)self)->SetFlag_3(); }
+{ ((dCamera_c *)self)->SetFlag_3(); }
 
 /* THE HOST BODY IS GONE (run linkw wave 3, w3-a). It read the objID at +0x1c
    itself; the matched src/_ZNK5dBgPi9GetClsnIDEv.cpp reads

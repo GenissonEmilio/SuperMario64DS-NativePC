@@ -601,11 +601,11 @@ extern "C" void *port_factory_fall_block_bbh(void)
         *(void **)p = (void *)_ZTV20daObjTh_Fall_Block_c;
     return p;
 }
-struct FallBlockBbh { int InitResources(); int CleanupResources(); };
+struct daObjTh_Fall_Block_c { int InitResources(); int CleanupResources(); };
 static int __fastcall fbb_init(void *s, void *)
-{ return ((FallBlockBbh *)s)->FallBlockBbh::InitResources(); }
+{ return ((daObjTh_Fall_Block_c *)s)->daObjTh_Fall_Block_c::InitResources(); }
 static int __fastcall fbb_clean(void *s, void *)
-{ return ((FallBlockBbh *)s)->FallBlockBbh::CleanupResources(); }
+{ return ((daObjTh_Fall_Block_c *)s)->daObjTh_Fall_Block_c::CleanupResources(); }
 static int __fastcall fbb_behavior(void *s, void *)
 { return _ZN16daObjFallBlock_c8BehaviorEv((char *)s); }
 static int __fastcall fbb_render(void *s, void *)
@@ -663,10 +663,10 @@ DSSTATE_BEGIN
 void *_ZTV9daPiano_c[32];
 DSSTATE_END
 }
-struct MadPiano { int InitResources(); int CleanupResources();
+struct daPiano_c { int InitResources(); int CleanupResources();
                   int Behavior(); int Render(); };
 static int __fastcall mp_init(void *s, void *)
-{ return ((MadPiano *)s)->MadPiano::InitResources(); }
+{ return ((daPiano_c *)s)->daPiano_c::InitResources(); }
 /* slot 3, SEATED on the matched TU (run rel042, lane SEATS042). A host
    transcription stood here because the src file once spelled its three
    SharedFilePtrs as the placeholders G0/G1/G2, and hal/cxx_aliases.cpp binds
@@ -722,14 +722,14 @@ static void ov63_seats042_cell(const char *name, const void *cell,
 static int __fastcall mp_clean(void *s, void *)
 {
     if (!ov63_seats042_trace_on())
-        return ((MadPiano *)s)->MadPiano::CleanupResources();
+        return ((daPiano_c *)s)->daPiano_c::CleanupResources();
     unsigned char m[8], a[8], c[8], spm[8], spc[8];
     std::memcpy(m, data_ov063_0211ef80, 8);
     std::memcpy(a, data_ov063_0211ef90, 8);
     std::memcpy(c, data_ov063_0211ef88, 8);
     std::memcpy(spm, &data_ov002_0210e064, 8);
     std::memcpy(spc, &data_ov002_0210e05c, 8);
-    const int r = ((MadPiano *)s)->MadPiano::CleanupResources();
+    const int r = ((daPiano_c *)s)->daPiano_c::CleanupResources();
     void *word = (*(void ***)s)[3];
     const unsigned id = *(const unsigned short *)((const char *)s + 0xc);
     std::fprintf(stderr, "SEATS042: _ZTV9daPiano_c[3] CleanupResources (ov063 "
@@ -751,10 +751,10 @@ static int __fastcall mp_clean(void *s, void *)
     return r;
 }
 static int __fastcall mp_behavior(void *s, void *)
-{ return ((MadPiano *)s)->MadPiano::Behavior(); }
+{ return ((daPiano_c *)s)->daPiano_c::Behavior(); }
 static int __fastcall mp_render(void *s, void *)
 { port_actor_render_probe("MAD_PIANO", (char *)s + 0x320);
-  return ((MadPiano *)s)->MadPiano::Render(); }
+  return ((daPiano_c *)s)->daPiano_c::Render(); }
 static int __fastcall mp_d1(void *s, void *)
 { return (int)(size_t)_ZN9daPiano_cD1Ev(s); }
 static int __fastcall mp_d0(void *s, void *)
@@ -921,8 +921,8 @@ DSSTATE_END
    extracted/overlays/overlay_0020.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
 /* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV8daBook_c=__ZTV8daBook_c")
-struct BookShot { int InitResources(); int CleanupResources(); int Behavior(); };
-struct BookShotSpawner { int InitResources(); int CleanupResources(); };
+struct daBook_c { int InitResources(); int CleanupResources(); int Behavior(); };
+struct daBookGen_c { int InitResources(); int CleanupResources(); };
 
 /* CAPTURED, and the argument is hal/level_boot.cpp's on g_level_mounted: this
    flag says "port_bk_bringup has run", and everything that pass writes --
@@ -945,11 +945,11 @@ extern "C" void port_bk_bringup(void)
 }
 
 static int __fastcall bk_init(void *s, void *)
-{ return ((BookShot *)s)->BookShot::InitResources(); }
+{ return ((daBook_c *)s)->daBook_c::InitResources(); }
 static int __fastcall bk_clean(void *s, void *)
-{ return ((BookShot *)s)->BookShot::CleanupResources(); }
+{ return ((daBook_c *)s)->daBook_c::CleanupResources(); }
 static int __fastcall bk_behavior(void *s, void *)
-{ return ((BookShot *)s)->BookShot::Behavior(); }
+{ return ((daBook_c *)s)->daBook_c::Behavior(); }
 static int __fastcall bk_render(void *s, void *)
 { port_actor_render_probe("BOOK", (char *)s + 0x174);
   return _ZN8daBook_c6RenderEv((char *)s); }
@@ -977,9 +977,9 @@ extern "C" void hal_fill_book_shot_vtable(void)
 }
 
 static int __fastcall bks_init(void *s, void *)
-{ return ((BookShotSpawner *)s)->BookShotSpawner::InitResources(); }
+{ return ((daBookGen_c *)s)->daBookGen_c::InitResources(); }
 static int __fastcall bks_clean(void *s, void *)
-{ return ((BookShotSpawner *)s)->BookShotSpawner::CleanupResources(); }
+{ return ((daBookGen_c *)s)->daBookGen_c::CleanupResources(); }
 static int __fastcall bks_behavior(void *s, void *)
 { return _ZN11daBookGen_c8BehaviorEv((char *)s); }
 static int __fastcall bks_render(void *s, void *)
@@ -1057,16 +1057,16 @@ DSSTATE_END
    extracted/overlays/overlay_0080.bin; the LHS is not a config symbol
    anywhere, so the alias cannot be defeated by a later slice. */
 /* PORTSYNC2: both names of this ROM word are one name in main now; the alias would bind a symbol to itself. */ // #pragma comment(linker, "/alternatename:__ZTV9daBttBk_c=__ZTV9daBttBk_c")
-struct CrazedCrate { int InitResources(); int Behavior(); int Render(); };
+struct daBttBk_c { int InitResources(); int Behavior(); int Render(); };
 static int __fastcall cc_init(void *s, void *)
-{ return ((CrazedCrate *)s)->CrazedCrate::InitResources(); }
+{ return ((daBttBk_c *)s)->daBttBk_c::InitResources(); }
 static int __fastcall cc_clean(void *s, void *)
 { return _ZN9daBttBk_c16CleanupResourcesEv(); }
 static int __fastcall cc_behavior(void *s, void *)
-{ return ((CrazedCrate *)s)->CrazedCrate::Behavior(); }
+{ return ((daBttBk_c *)s)->daBttBk_c::Behavior(); }
 static int __fastcall cc_render(void *s, void *)
 { port_actor_render_probe("CRAZED_CRATE", (char *)s + 0xd4);
-  return ((CrazedCrate *)s)->CrazedCrate::Render(); }
+  return ((daBttBk_c *)s)->daBttBk_c::Render(); }
 static int __fastcall cc_pdes(void *s, void *)
 { (void)s; _ZN9daBttBk_c16OnPendingDestroyEv(); return 0; }
 /* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
@@ -1134,16 +1134,16 @@ DSSTATE_BEGIN
 void *_ZTV13daObjCasket_c[32];
 DSSTATE_END
 }
-struct Coffin { int InitResources(); int CleanupResources(); int Behavior(); int Render(); };
+struct daObjCasket_c { int InitResources(); int CleanupResources(); int Behavior(); int Render(); };
 static int __fastcall cf_init(void *s, void *)
-{ return ((Coffin *)s)->Coffin::InitResources(); }
+{ return ((daObjCasket_c *)s)->daObjCasket_c::InitResources(); }
 static int __fastcall cf_clean(void *s, void *)
-{ return ((Coffin *)s)->Coffin::CleanupResources(); }
+{ return ((daObjCasket_c *)s)->daObjCasket_c::CleanupResources(); }
 static int __fastcall cf_behavior(void *s, void *)
-{ return ((Coffin *)s)->Coffin::Behavior(); }
+{ return ((daObjCasket_c *)s)->daObjCasket_c::Behavior(); }
 static int __fastcall cf_render(void *s, void *)
 { port_actor_render_probe("COFFIN", (char *)s + 0xd4);
-  return ((Coffin *)s)->Coffin::Render(); }
+  return ((daObjCasket_c *)s)->daObjCasket_c::Render(); }
 static int __fastcall cf_d1(void *s, void *)
 { return (int)(size_t)_ZN13daObjCasket_cD1Ev(s); }
 static int __fastcall cf_d0(void *s, void *)

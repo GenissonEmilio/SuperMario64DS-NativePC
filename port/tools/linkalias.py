@@ -28,7 +28,15 @@ Three rules, tried in order, for every unresolved name of the form `_name`
      the whole bridge (facegen refuses these rows only because they are not
      __thiscall members). Taken when the link holds exactly one such definition
      of that class and method.
-  5. THE FIXED TABLE below: linker-script symbols dsd generated for the DS
+  5. A DECORATED FREE FUNCTION WITH ANOTHER RETURN TYPE OR A FLAT HOST BODY.
+     TUs of main spell one cdecl function with different return types
+     (`G2S::GetBG3CharPtr` as char *, void *, int; the link defines it once, as
+     unsigned int). A cdecl function with no parameters returns the same register
+     whatever the declared type, so the unresolved spelling is aliased onto the
+     defined one. A decorated namespace/static function whose Itanium flat
+     spelling (`__ZN4CP1527FlushAndInvalidateDataCacheEjj`) the port defines is
+     aliased onto that flat definition. Both only when the match is unique.
+  6. THE FIXED TABLE below: linker-script symbols dsd generated for the DS
      image (OVERLAY_<n>_ID, OV075_BSS_END, OV100_TEXT_START), bound to the hosts
      the port already defines under their pre-sync spellings.
 """
@@ -84,10 +92,45 @@ def main():
         m = re.match(r"\?(\w+)@(\w+)@@(?:SA|YA)", d)
         if m:
             statics[(m.group(2), m.group(1))].append(d)
+    freefn = collections.defaultdict(list)
+    for d in defs:
+        m = re.match(r"\?(\w+)@(\w+)@@(YA|SA)(.*)$", d)
+        if m:
+            freefn[(m.group(2), m.group(1))].append(d)
+    flatit = collections.defaultdict(list)
+    for d in defs:
+        m = re.match(r"__ZN(\d+)(\w+)", d)
+        if m:
+            # first two components only; the rest is parameters
+            s = d[4:]
+            parts, i = [], 0
+            while i < len(s) and s[i].isdigit():
+                j = i
+                while s[j].isdigit():
+                    j += 1
+                ln = int(s[i:j])
+                parts.append(s[j:j + ln])
+                i = j + ln
+                if len(parts) == 2:
+                    break
+            if len(parts) == 2:
+                flatit[(parts[0], parts[1])].append(d)
     rows = []
     left = []
     for line in open(a.unresolved, encoding="utf-8", errors="replace"):
         s = line.split("  <- ")[0].strip()
+        if s.startswith("?") or (s.startswith('"') and "(?" in s):
+            dsym = re.search(r"\((\?[\w$@?]+)\)$", s)
+            dsym = dsym.group(1) if dsym else s
+            m = re.match(r"\?(\w+)@(\w+)@@(YA|SA)(.*)$", dsym)
+            if m and dsym not in defs:
+                key = (m.group(2), m.group(1))
+                others = [d for d in freefn.get(key, []) if d != dsym]
+                if len(others) == 1 and dsym.endswith("XZ") and others[0].endswith("XZ"):
+                    rows.append((dsym, others[0], "same cdecl function, other return type"))
+                elif len(flatit.get(key, [])) == 1:
+                    rows.append((dsym, flatit[key][0], "flat host definition of the same function"))
+            continue
         if s.startswith("__ZN"):
             i, parts = 4, []
             while i < len(s) and s[i].isdigit():

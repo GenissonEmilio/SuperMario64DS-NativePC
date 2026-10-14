@@ -39,10 +39,10 @@
 // #pragma comment(linker, "/alternatename:?Spawn@dActor_c@@SAPAU1@IIABUVector3@@PBUVector3_16@@HH@Z=__ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as")
 #pragma comment(linker, "/alternatename:?FindWithID@dActor_c@@SAPAU1@I@Z=__ZN8dActor_c10FindWithIDEj")
 
-struct Bully {
+struct daDonketu_c {
     public: virtual void UpdateDeathState();
 };
 
 /* ROM 0x02117220 -> ?UpdateDeathState@Bully@@UAEXXZ */
 extern "C" void _ZN11daDonketu_c16UpdateDeathStateEv(void *self)
-{ ((Bully *)self)->Bully::UpdateDeathState(); }
+{ ((daDonketu_c *)self)->daDonketu_c::UpdateDeathState(); }

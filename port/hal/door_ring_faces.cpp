@@ -13,7 +13,7 @@
 
 struct dActor_c;
 
-struct Camera {
+struct dCamera_c {
     struct State;
     void LookAtExit(dActor_c &actor);
     void ChangeState(State *st);
@@ -25,13 +25,13 @@ void _ZN9dCamera_c11ChangeStateEPNS_5StateE(void *self, void *st);
 
 /* cdecl entry faces onto the __thiscall method definitions */
 void _ZN9dCamera_c14GoBehindPlayerEj(void *self, unsigned int j)
-{ ((Camera *)self)->GoBehindPlayer(j); }
+{ ((dCamera_c *)self)->GoBehindPlayer(j); }
 void _ZN9dCamera_c10LookAtExitER8dActor_c(void *self, void *actor)
-{ ((Camera *)self)->LookAtExit(*(dActor_c *)actor); }
+{ ((dCamera_c *)self)->LookAtExit(*(dActor_c *)actor); }
 }  /* extern "C" */
 
 /* the reverse shim: method-form callers (LookAtExit's own body enters the
    exit-look state with this->ChangeState(...)) onto the C-linkage dispatcher
    the port hosts in hal/camera_bridges.cpp. */
-void Camera::ChangeState(State *st)
+void dCamera_c::ChangeState(State *st)
 { _ZN9dCamera_c11ChangeStateEPNS_5StateE(this, st); }

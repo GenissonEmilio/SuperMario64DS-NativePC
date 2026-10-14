@@ -42,7 +42,7 @@ int port_level_id(void);
 int hal_sub_screen_stacked(void);
 }
 
-class Stage {
+class dScStage_c {
 public:
     static int IsPauseDisabled();
     static int CanPause();
@@ -111,7 +111,7 @@ extern "C" int menu_bigmap_pad_seam(void)
     }
     const int rom_would_pause_ok =
         data_0209f294 == 0 && data_0209d660 == 0 && data_0209d4b0 == 0 && data_02092110 < 0
-        && Stage::CanPause() != 0 && Stage::IsPauseDisabled() == 0;
+        && dScStage_c::CanPause() != 0 && dScStage_c::IsPauseDisabled() == 0;
 
     const int sel = ((*pressed | *split) & 0x4) != 0;
     const int start = ((*pressed | *split) & 0x8) != 0;

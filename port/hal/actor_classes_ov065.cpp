@@ -842,16 +842,16 @@ extern "C" void hal_fill_shutter_hmc_vtable(void)
    TU's own unnamed-namespace tag (?A0x...), so every call would emit a symbol
    no definition anywhere carries and the link would fail on five names that
    read correctly. */
-class TtcRotatingCube      { public: int InitResources(); int CleanupResources();
+class daObjCtRotateBlock_c      { public: int InitResources(); int CleanupResources();
                                      int Behavior(); int Render(); };
 class TtcConveyorBeltLarge { public: int InitResources(); int CleanupResources();
                                      int Behavior(); int Render(); };
-class TTC_MovingBar        { public: int InitResources(); int CleanupResources();
+class daObjCtKaitendai_c        { public: int InitResources(); int CleanupResources();
                                      int Behavior(); int Render(); };
-class TtcRotatingGear      { public: int InitResources(); int CleanupResources();
+class daObjCtMecha08_c      { public: int InitResources(); int CleanupResources();
                                      int Render(); };
 class TtcMovingCubeA       { public: int CleanupResources(); int Render(); };
-class TTC_MovingBeam       { public: int Behavior(); };
+class daObjCtMecha09_c       { public: int Behavior(); };
 
 extern "C" {
 /* The seven host tables, named for the RTTI string at each table[-1]. 32 slots
@@ -1157,14 +1157,14 @@ static void ttc_bringup(void)
 
 /* ids 108 TTC_ROTATING_CUBE / 109 TTC_ROTATING_PRISM -- 0x0211d028 */
 static int __fastcall ctrb_init(void *s, void *)
-{ return ((TtcRotatingCube *)s)->TtcRotatingCube::InitResources(); }
+{ return ((daObjCtRotateBlock_c *)s)->daObjCtRotateBlock_c::InitResources(); }
 static int __fastcall ctrb_clean(void *s, void *)
-{ return ((TtcRotatingCube *)s)->TtcRotatingCube::CleanupResources(); }
+{ return ((daObjCtRotateBlock_c *)s)->daObjCtRotateBlock_c::CleanupResources(); }
 static int __fastcall ctrb_behavior(void *s, void *)
-{ return ((TtcRotatingCube *)s)->TtcRotatingCube::Behavior(); }
+{ return ((daObjCtRotateBlock_c *)s)->daObjCtRotateBlock_c::Behavior(); }
 static int __fastcall ctrb_render(void *s, void *)
 { port_actor_render_probe("TTC_ROTATING_CUBE", (char *)s + 0xd4);
-  return ((TtcRotatingCube *)s)->TtcRotatingCube::Render(); }
+  return ((daObjCtRotateBlock_c *)s)->daObjCtRotateBlock_c::Render(); }
 static int __fastcall ctrb_d1(void *s, void *)
 { return (int)(size_t)_ZN20daObjCtRotateBlock_cD1Ev((int *)s); }
 static int __fastcall ctrb_d0(void *s, void *)
@@ -1270,14 +1270,14 @@ extern "C" void hal_fill_ct_mecha05_vtable(void)
 /* ids 114 TTC_ROTATING_GEAR / 115 TTC_ROTATING_TRIANGLE -- 0x0211d3b4.
    dsd spells these bodies _ZN13TTC_MovingBar*, which is id 113's NAME. */
 static int __fastcall kai_init(void *s, void *)
-{ return ((TTC_MovingBar *)s)->TTC_MovingBar::InitResources(); }
+{ return ((daObjCtKaitendai_c *)s)->daObjCtKaitendai_c::InitResources(); }
 static int __fastcall kai_clean(void *s, void *)
-{ return ((TTC_MovingBar *)s)->TTC_MovingBar::CleanupResources(); }
+{ return ((daObjCtKaitendai_c *)s)->daObjCtKaitendai_c::CleanupResources(); }
 static int __fastcall kai_behavior(void *s, void *)
-{ return ((TTC_MovingBar *)s)->TTC_MovingBar::Behavior(); }
+{ return ((daObjCtKaitendai_c *)s)->daObjCtKaitendai_c::Behavior(); }
 static int __fastcall kai_render(void *s, void *)
 { port_actor_render_probe("TTC_ROTATING_GEAR", (char *)s + 0xd4);
-  return ((TTC_MovingBar *)s)->TTC_MovingBar::Render(); }
+  return ((daObjCtKaitendai_c *)s)->daObjCtKaitendai_c::Render(); }
 static int __fastcall kai_d1(void *s, void *)
 { return (int)(size_t)_ZN18daObjCtKaitendai_cD1Ev((int *)s); }
 static int __fastcall kai_d0(void *s, void *)
@@ -1300,14 +1300,14 @@ extern "C" void hal_fill_ct_kaitendai_vtable(void)
    dsd spells these bodies _ZN15TtcRotatingGear*, which is id 114's name. Slot 6
    is a .c body and an extern "C" free function, so it is called by name. */
 static int __fastcall m08_init(void *s, void *)
-{ return ((TtcRotatingGear *)s)->TtcRotatingGear::InitResources(); }
+{ return ((daObjCtMecha08_c *)s)->daObjCtMecha08_c::InitResources(); }
 static int __fastcall m08_clean(void *s, void *)
-{ return ((TtcRotatingGear *)s)->TtcRotatingGear::CleanupResources(); }
+{ return ((daObjCtMecha08_c *)s)->daObjCtMecha08_c::CleanupResources(); }
 static int __fastcall m08_behavior(void *s, void *)
 { return _ZN16daObjCtMecha08_c8BehaviorEv((char *)s); }
 static int __fastcall m08_render(void *s, void *)
 { port_actor_render_probe("TTC_MOVING_CUBE", (char *)s + 0xd4);
-  return ((TtcRotatingGear *)s)->TtcRotatingGear::Render(); }
+  return ((daObjCtMecha08_c *)s)->daObjCtMecha08_c::Render(); }
 static int __fastcall m08_d1(void *s, void *)
 { return (int)(size_t)_ZN16daObjCtMecha08_cD1Ev((int *)s); }
 static int __fastcall m08_d0(void *s, void *)
@@ -1334,7 +1334,7 @@ static int __fastcall m09_init(void *s, void *)
 static int __fastcall m09_clean(void *s, void *)
 { return ((TtcMovingCubeA *)s)->TtcMovingCubeA::CleanupResources(); }
 static int __fastcall m09_behavior(void *s, void *)
-{ return ((TTC_MovingBeam *)s)->TTC_MovingBeam::Behavior(); }
+{ return ((daObjCtMecha09_c *)s)->daObjCtMecha09_c::Behavior(); }
 static int __fastcall m09_render(void *s, void *)
 { port_actor_render_probe("TTC_MOVING_BEAM", (char *)s + 0xd4);
   return ((TtcMovingCubeA *)s)->TtcMovingCubeA::Render(); }

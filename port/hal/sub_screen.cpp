@@ -111,7 +111,7 @@ void Reset();
 /* Stage::LoadGraphics2D is a real C++ static member in its own TU, so it is
    reached by its MSVC name through a matching declaration rather than by the
    Itanium alias the .c callers use. */
-class Stage {
+class dScStage_c {
 public:
     static void LoadGraphics2D(bool b, int i);
 };
@@ -3280,9 +3280,9 @@ extern "C" void hal_sub_screen_level_init(void)
            already, so they were right. port_level_id() is the value
            level_boot writes into data_0209f2f8 a few lines later. */
         const int entering = (int)port_level_id();
-        Stage::LoadGraphics2D(false, entering);
+        dScStage_c::LoadGraphics2D(false, entering);
         data_0209caa0[8] = saved;
-        std::printf("[sub] Stage::LoadGraphics2D(0, %d) done, layer mask "
+        std::printf("[sub] dScStage_c::LoadGraphics2D(0, %d) done, layer mask "
                     "data_0209d454 = %02x\n", entering,
                     data_0209d454);
     }

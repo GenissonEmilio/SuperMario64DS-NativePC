@@ -214,12 +214,12 @@ extern "C" void _ZN11daObjTbox_c8SetStateEi(void *self, int i);
    THE `if (fn)` GUARD DOES NOT COME BACK.  The seat still verifies all six
    ROM words and aborts on wrong bytes; what changes is that record 0's tick
    is now the ROM's own body rather than a transcription of it. */
-struct TreasureChest {
+struct daObjTbox_c {
     public: void State0();
 };
 extern "C" int _ZN11daObjTbox_c6State0Ev(void *self)
 {
-    ((TreasureChest *)self)->TreasureChest::State0();
+    ((daObjTbox_c *)self)->daObjTbox_c::State0();
     return 0;
 }
 
@@ -292,7 +292,7 @@ extern "C" void port_treasure_chest_states_seat(void)
                              sizeof g_treasure_chest_states[0]; ++i) {
         PortPmf *p = g_treasure_chest_states[i].slot;
         if (p->fn != g_treasure_chest_states[i].rom || p->delta != 0) {
-            std::fprintf(stderr, "FATAL: TreasureChest source %u: the mount "
+            std::fprintf(stderr, "FATAL: daObjTbox_c source %u: the mount "
                          "holds %08x/%d, the ROM's own table says %08x/0 -- "
                          "WRONG BYTES\n", i, p->fn, p->delta,
                          g_treasure_chest_states[i].rom);

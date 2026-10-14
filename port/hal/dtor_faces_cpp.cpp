@@ -181,8 +181,8 @@ CPPD1V(Door, daDoor_c)
 CPPD1Q(daStarGate_c, daStarGate_c)
 
 /* group 3: ov060 / ov070 / ov071 / ov072, the enemy overlays */
-CPPD1(BowserTail)
-CPPD1(Bowser)
+CPPD1(daKpaTail_c)
+CPPD1(daKpa_c)
 CPPD1V(BowserSkyPlatform, daKpa3Bg_c)
 CPPD1V(daBrq_c, daBrq_c)
 CPPD1V(daKrpa_c, daKrpa_c)

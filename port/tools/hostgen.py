@@ -1552,6 +1552,41 @@ def unify_extern_ret(text, sym):
     return text, total
 
 
+# ---- BOTH ARMS OF A DESTRUCTOR `#ifdef _MSC_VER` (PORTSYNC3) ----------------
+#
+# Main writes a destructor's host arm and its mwccarm arm as
+#
+#     #ifdef _MSC_VER
+#     extern "C" X *_ZN1XD0Ev(X *thiz) { thiz->X::~X(); X::operator delete(thiz); ... }
+#     #else
+#     X::~X() { }
+#     #endif
+#
+# on the premise that the MSVC build's header defines ~X() inline. The headers
+# that premise relied on lost their inline definitions in the sync, so the host
+# arm calls a destructor nobody defines. The port needs both: the flat D0 the
+# host arm spells AND the destructor itself, so the generated copy keeps both
+# arms (the #else body is the ROM's own, and for the stems listed it is `{ }`
+# apart from member teardown the compiler generates).
+MSC_ARMS_BOTH = {"daKpa_c", "daStar_c"}
+
+
+def msc_arms_both(text, sym):
+    if sym not in MSC_ARMS_BOTH:
+        return text, 0
+    pat = re.compile(r"^#ifdef _MSC_VER[ \t]*\n(.*?)^#else[ \t]*\n(.*?)^#endif[^\n]*\n", re.M | re.S)
+    n = 0
+
+    def rep(m):
+        nonlocal n
+        if re.search(r"(\w+)::~\1\s*\(", m.group(2)):
+            n += 1
+            return ("/* hostgen MSC_ARMS_BOTH: host arm and the ROM arm, both compiled */\n"
+                    + m.group(1) + m.group(2))
+        return m.group(0)
+    return pat.sub(rep, text), n
+
+
 # ---- CALLING CONVENTION: C++ VIRTUAL CALLS ON C VTABLES ----------------------
 #
 # On ARM a virtual call and a plain function-pointer call are the SAME thing:
@@ -4946,6 +4981,7 @@ def emit(src_path, out_dir, decomp_root, extern_data=False):
     text, _ = mmio_extern_patch(text, sym)
     text, _ = falls_off_return_patch(text, sym)
     text, _ = valueless_return_patch(text, sym)
+    text, _ = msc_arms_both(text, sym)
     text, nhoist = hoist_local_types(text, sym)
     if nhoist and not QUIET_VPTR:
         print("  %s: %d block-scope class(es) hoisted to file scope" % (sym, nhoist))

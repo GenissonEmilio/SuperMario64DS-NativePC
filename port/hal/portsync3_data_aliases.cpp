@@ -3,9 +3,12 @@
  * PORTSYNC3. The second pass of hal/portsync2_data_aliases.cpp: the names the
  * first link of the 2026-10-14 main merge left unresolved, bound the same way
  * (see port/tools/dataalias.py for the rule and for what it leaves out).
- * 103 rows. GENERATED, then checked in. Includes nothing.
+ * 115 rows. GENERATED, then checked in. Includes nothing.
  */
 
+#pragma comment(linker, "/alternatename:?NUM_PATHS@@3HA=_data_020a0d8c")
+#pragma comment(linker, "/alternatename:?PATH_DEFS@@3PAUPathDef@@A=_data_020a0d84")
+#pragma comment(linker, "/alternatename:?PATH_NODES@@3PADA=_data_020a0d88")
 #pragma comment(linker, "/alternatename:?_ZTV11daPicGate_c@@3PAHA=__ZTV11daPicGate_c")
 #pragma comment(linker, "/alternatename:?_ZTV15dScMgSnowball_c@@3PAPAXA=__ZTV15dScMgSnowball_c")
 #pragma comment(linker, "/alternatename:?_ZTV16dScMgSmartball_c@@3PAHA=__ZTV16dScMgSmartball_c")
@@ -109,3 +112,12 @@
 #pragma comment(linker, "/alternatename:?data_ov091_02134c38@@3PAUUpdownClpsSlot@@A=_data_ov091_02134c38")
 #pragma comment(linker, "/alternatename:?data_ov091_02134cdc@@3PAUUpdownPath@@A=_data_ov091_02134cdc")
 #pragma comment(linker, "/alternatename:?data_ov091_02134d1c@@3PAUUpdownTopY@@A=_data_ov091_02134d1c")
+#pragma comment(linker, "/alternatename:?gActivePlayerSlot@@3EA=_data_020a0e40")
+#pragma comment(linker, "/alternatename:?gTouchEdge@@3PAEA=_data_020a0de9")
+#pragma comment(linker, "/alternatename:?gTouchEdge@@3PAY03EA=_data_020a0de9")
+#pragma comment(linker, "/alternatename:?gTouchHeld@@3PAEA=_data_020a0de8")
+#pragma comment(linker, "/alternatename:?gTouchHeld@@3PAUTab@@A=_data_020a0de8")
+#pragma comment(linker, "/alternatename:?gTouchHeld@@3PAUWarpEntry_730@@A=_data_020a0de8")
+#pragma comment(linker, "/alternatename:?gTouchHeld@@3PAY03EA=_data_020a0de8")
+#pragma comment(linker, "/alternatename:?gTouchX@@3PAY03EA=_data_020a0dea")
+#pragma comment(linker, "/alternatename:?gTouchY@@3PAY03EA=_data_020a0deb")

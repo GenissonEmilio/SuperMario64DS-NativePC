@@ -130,7 +130,7 @@ void _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(int draw, void *obj, int px,
    members, non-static Behavior, static everything else. This is a DECLARATION
    of the ROM's own methods, not a second definition of the class the port uses;
    nothing here has storage. */
-class Stage {
+class dScStage_c {
 public:
     /* the ROM bodies this file's two lanes seat. Defined in src/, not here. */
     int  Behavior();
@@ -169,7 +169,7 @@ public:
 void Stage::PS_Cleanup()            { _ZN5Stage10PS_CleanupEv(); }
 void Stage::VE_Init()               { _ZN5Stage7VE_InitEv(); }
 void Stage::VE_Update()             { _ZN5Stage9VE_UpdateEv(); }             */
-void Stage::UpdateMessage()         { port_message_pump(); }
+void dScStage_c::UpdateMessage()         { port_message_pump(); }
 void Scene::SetSceneToSpawn(unsigned int a, unsigned int b)
 { _ZN8dScene_c15SetSceneToSpawnEjj(a, b); }
 
@@ -330,7 +330,7 @@ int OAM::Render(bool draw, OamAttr *obj, int px, int py, int pal, int prio,
 static void slot9_seam(const char *what, const char *why)
 {
     std::fprintf(stderr,
-                 "[stageframe] SEAM: %s (_ZTV10dScStage_c slot 9, Stage::Render) is "
+                 "[stageframe] SEAM: %s (_ZTV10dScStage_c slot 9, dScStage_c::Render) is "
                  "not hosted -- %s. See port/slice_slot9.txt and "
                  "port/stage_lifecycle_map.txt section 18.\n", what, why);
 }
@@ -348,12 +348,12 @@ static void slot9_seam(const char *what, const char *why)
  * for slot 9 alone. */
 #pragma comment(linker, "/alternatename:__ZN10dScStage_c12RenderNumberEhiibi=?RenderNumber@dScStage_c@@SAXEHH_NH@Z")
 
-void Stage::RenderVsModeNewStar()
+void dScStage_c::RenderVsModeNewStar()
 {
     static int said;
     if (!said) {
         said = 1;
-        slot9_seam("Stage::RenderVsModeNewStar, the VS new-star popup's draw",
+        slot9_seam("dScStage_c::RenderVsModeNewStar, the VS new-star popup's draw",
                    "OAM::VS_NEW_STAR_APPEARED and four more are unmounted "
                    "ov002 rows at 0x0210cfd0..0x0210d188");
     }
@@ -446,7 +446,7 @@ extern "C" void func_020199a4(void)
     if (!said) {
         said = 1;
         std::fprintf(stderr,
-                     "[stageframe] SEAM: func_020199a4 (Stage::Behavior's VS "
+                     "[stageframe] SEAM: func_020199a4 (dScStage_c::Behavior's VS "
                      "arm, data_0209fcc8 >= 7) is not hosted -- its closure is "
                      "the DS heap allocator and the IRQ primitives. See "
                      "port/slice_gate220.txt and hal/stage_frame.cpp.\n");
@@ -481,8 +481,8 @@ static unsigned g_ren_calls;
 
 static void stage_frame_report(void)
 {
-    std::fprintf(stderr, "[stageframe] Stage::Behavior ran %u time(s), "
-                 "Stage::Render ran %u time(s)\n", g_beh_calls, g_ren_calls);
+    std::fprintf(stderr, "[stageframe] dScStage_c::Behavior ran %u time(s), "
+                 "dScStage_c::Render ran %u time(s)\n", g_beh_calls, g_ren_calls);
 }
 
 static void stage_frame_arm(void)
@@ -611,7 +611,7 @@ extern "C" int port_stage_rom_behavior(void *self)
     stage_frame_arm();
     ++g_beh_calls;
     port_frame_ctrl_prime();
-    const int r = ((Stage *)self)->Stage::Behavior();
+    const int r = ((dScStage_c *)self)->dScStage_c::Behavior();
     port_frame_ctrl_publish();
     return r;
 }
@@ -650,5 +650,5 @@ extern "C" int port_stage_rom_render(void *self)
     stage_frame_arm();
     ++g_ren_calls;
     port_stage_anims_load(self);
-    return ((Stage *)self)->Stage::Render();
+    return ((dScStage_c *)self)->dScStage_c::Render();
 }

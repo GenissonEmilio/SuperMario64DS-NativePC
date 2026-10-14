@@ -68,7 +68,7 @@
    `class Dorrie { public: int Behavior(); };`; only the access and the
    signature reach the decoration, and both are public int(void). */
 struct BowserPuzzleManager { int Behavior(); };
-struct Dorrie { int Behavior(); };
+struct daDossy_c { int Behavior(); };
 
 extern "C" {
 
@@ -93,7 +93,7 @@ int _ZN16daObjFl_Puzzle_c8BehaviorEv(void *self)
 
 /* ov065 0x02118df0 -- ov065 data_ov065_0211d7fc, 3 cells */
 int _ZN9daDossy_c8BehaviorEv(void *self)
-{ return ((Dorrie *)self)->Dorrie::Behavior(); }
+{ return ((daDossy_c *)self)->daDossy_c::Behavior(); }
 
 /* ov079 0x02125fcc -- ov079 data_ov079_02128280, 12 cells */
 int _ZN7daBtn_c8BehaviorEv(void *self)

@@ -1395,7 +1395,7 @@ static int ss_load_state(void)
    below). Same method-shadow trick, same reason it is exact: both are
    statics, so the decorated name is the class name and the signature and
    nothing else. */
-struct ShadowModel {
+struct dExtShadowModel_c {
     static void RenderAll();
     static void CleanAll();
 };
@@ -18980,7 +18980,7 @@ int main(void)
                     size_t sh_before = 0, sh_after = 0;
                     if (sh_tr) ntr::gx_polygons(sh_before);
                     if (!rb_skip_render())
-                        ShadowModel::RenderAll();
+                        dExtShadowModel_c::RenderAll();
                     if (sh_tr) {
                         const ntr::GxTriangle *st2 = ntr::gx_polygons(sh_after);
                         float mnx = 1e30f, mxx = -1e30f, mny = 1e30f,

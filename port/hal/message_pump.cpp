@@ -108,7 +108,7 @@ static void port_message_flush_engine_a_regs(void)
 struct Message {
     static void Update();
 };
-struct Stage {
+struct dScStage_c {
     static void UpdateMessage_rom();   /* src/_ZN5Stage13UpdateMessageEv.cpp, renamed */
 };
 
@@ -123,5 +123,5 @@ void Message::Update()
 /* hal/stage_frame.cpp's Stage::UpdateMessage face lands here. */
 extern "C" void port_message_pump(void)
 {
-    Stage::UpdateMessage_rom();
+    dScStage_c::UpdateMessage_rom();
 }

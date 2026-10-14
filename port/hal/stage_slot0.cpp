@@ -317,7 +317,7 @@ DSSTATE_END
 // port/stage_lifecycle_map.txt section 7 on why landing faces alone moves no
 // number.
 
-struct Stage {
+struct dScStage_c {
     /* Signatures fixed by the definitions named above. A mismatch here is an
        LNK2019 on a name that does not exist, never a call to a sibling. */
     static void LoadGraphics2D(bool b, int i);
@@ -328,7 +328,7 @@ struct Stage {
     int InitResources();
 };
 
-struct ShadowModel {
+struct dExtShadowModel_c {
     static void CleanAll();
 };
 
@@ -338,19 +338,19 @@ extern "C" {
    low byte of the 4-byte stack slot the caller's `int` fills, and the caller's
    value is the 0/1 of a `== 1` comparison. */
 void _ZN10dScStage_c14LoadGraphics2DEbi(int b, int level)
-{ Stage::LoadGraphics2D(b != 0, level); }
+{ dScStage_c::LoadGraphics2D(b != 0, level); }
 
 /* Receiver delivered: the ROM caller pushes the Stage, the qualified call puts
    it in ECX. Qualified so nothing re-dispatches through a vtable. */
 void _ZN10dScStage_c7LoadFogEv(void *thiz)
-{ ((Stage *)thiz)->Stage::LoadFog(); }
+{ ((dScStage_c *)thiz)->dScStage_c::LoadFog(); }
 
 void _ZN10dScStage_c23LoadTextureTransformersEv(void *thiz)
-{ ((Stage *)thiz)->Stage::LoadTextureTransformers(); }
+{ ((dScStage_c *)thiz)->dScStage_c::LoadTextureTransformers(); }
 
 /* No receiver: static, no arguments. CleanAll, not RenderAll. */
 void _ZN17dExtShadowModel_c8CleanAllEv(void)
-{ ShadowModel::CleanAll(); }
+{ dExtShadowModel_c::CleanAll(); }
 
 }  /* extern "C" */
 
@@ -672,9 +672,9 @@ extern "C" int port_slot0_rom_init(void *self)
     if (mode >= 2)
         port_slot0_seed_lvl_table();
     std::fprintf(stderr, "[slot0] mode %d: calling the ROM's "
-                 "Stage::InitResources on %p (level %d, LVL_Overlay %p)\n",
+                 "dScStage_c::InitResources on %p (level %d, LVL_Overlay %p)\n",
                  mode, self, (int)data_0209f2f8, (void *)data_0209f340);
-    const int r = ((Stage *)self)->Stage::InitResources();
+    const int r = ((dScStage_c *)self)->dScStage_c::InitResources();
     std::fprintf(stderr, "[slot0] InitResources returned %d; LVL_Overlay is "
                  "now %p\n", r, (void *)data_0209f340);
     port_slot0_check_wipes(wipes_before);

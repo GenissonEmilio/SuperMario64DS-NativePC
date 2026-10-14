@@ -118,7 +118,7 @@ void port_ov001_pack_check(void);
    mangled name of a member does not depend on the class layout, so one
    declaration here reaches all of them. include/HUD.h is deliberately NOT
    included: it declares the same class without InitResources or Behavior. */
-struct HUD {
+struct dMeter_c {
     int InitResources();
     int CleanupResources();
     int Behavior();
@@ -137,7 +137,7 @@ struct HUD {
    included: it declares three of the four members and Render's own TU declares
    a fourth against a struct of its own. Behavior is the odd one -- its TU
    defines the C name taking the object as an argument, so it needs no face. */
-struct Minimap {
+struct dMap_c {
     int InitResources();
     int CleanupResources();
     int Render();
@@ -152,7 +152,7 @@ struct Minimap {
    member and InitResources calls it by the Itanium C name, so it needs a face
    the way HUD::RenderCoinCount and friends do. */
 extern "C" void _ZN6dMap_c19UpdateLevelSpecificEv(void)
-{ Minimap::UpdateLevelSpecific(); }
+{ dMap_c::UpdateLevelSpecific(); }
 
 // ---- the arm9 bss the Minimap reads ----------------------------------------
 //
@@ -247,7 +247,7 @@ DSSTATE_END
 // never held `this`, so each needs a real face. Same mechanism as
 // hal/method_faces.cpp.
 #define HUD_FACE(sym, meth)                                                   \
-    extern "C" void sym(void *s) { ((HUD *)s)->HUD::meth(); }
+    extern "C" void sym(void *s) { ((dMeter_c *)s)->dMeter_c::meth(); }
 
 /* Only the leaves whose own TU defines a __thiscall MEMBER. The other four --
    RenderStarCount, RenderSilverStars, RenderRedCoins, RenderVsTimer -- define
@@ -265,7 +265,7 @@ HUD_FACE(_ZN8dMeter_c17UpdateHealthMeterEv, UpdateHealthMeter)
 /* RenderCameraButtons is a STATIC member (no `this` at all -- it draws the two
    arrows and the zoom button from OAM's own templates), so its face takes and
    passes nothing. */
-extern "C" void _ZN8dMeter_c19RenderCameraButtonsEv(void *) { HUD::RenderCameraButtons(); }
+extern "C" void _ZN8dMeter_c19RenderCameraButtonsEv(void *) { dMeter_c::RenderCameraButtons(); }
 
 /* Player::IsInsideOfCannon is a real MSVC member, and HUD::RenderHealthMeter
    reaches it as a free function taking void*. That was a C++ free function
@@ -338,7 +338,7 @@ extern "C" void _ZN8dMeter_c15CalculateDigitsEt(void *self, unsigned short n);
    The body is kept below under #if 0 rather than deleted, so the
    evidence in it stays readable. */
 #if 0
-void HUD::CalculateDigits(unsigned short n)
+void dMeter_c::CalculateDigits(unsigned short n)
 {
     _ZN8dMeter_c15CalculateDigitsEt(this, n);
 }
@@ -532,7 +532,7 @@ extern unsigned char data_0209fc9c;      /* HUD::Render's VS early-out */
 
 /* Returns 1 when it has drawn the whole VS arm itself and the caller must NOT
    also run HUD::Render; 0 means "not my case, run the ROM's". */
-static int port_vs_hud_render_coins_on_top(HUD *self)
+static int port_vs_hud_render_coins_on_top(dMeter_c *self)
 {
     static int want = -1, dy = 0;
     if (want < 0) {
@@ -674,7 +674,7 @@ extern unsigned char NumStars(void);
    A) instead of 1 and its y carries dy. The special-state block is already
    sub=0 in the ROM and is copied unchanged. digits[3] is at HUD+0x74, x at
    HUD+0x70. */
-static void port_adv_star_count_top(HUD *self, int dy)
+static void port_adv_star_count_top(dMeter_c *self, int dy)
 {
     int x = *(short *)((char *)self + 0x70);
     const signed char *digits = (const signed char *)((char *)self + 0x74);
@@ -723,7 +723,7 @@ static void port_adv_star_count_top(HUD *self, int dy)
    run unconditionally: the icon via the ten-argument OAM::Render(0, ...) at
    scale 0x1000, glyph and digits at sub=0. xBase is at HUD+0x6e, digits at
    HUD+0x74. */
-static void port_adv_life_count_top(HUD *self, int dy)
+static void port_adv_life_count_top(dMeter_c *self, int dy)
 {
     unsigned char idx = data_0209f250;
     const unsigned char *info = (const unsigned char *)data_0209f394[idx];
@@ -755,7 +755,7 @@ extern "C" {
 int SublevelToLevel(int i);
 extern signed char data_0209f2f8;
 }
-static void port_adv_coin_count_top(HUD *self, int dy)
+static void port_adv_coin_count_top(dMeter_c *self, int dy)
 {
     if (SublevelToLevel(data_0209f2f8) == 0x1d)
         return;
@@ -905,7 +905,7 @@ static void port_adv_red_silver_bottom(void)
 
 /* Returns 1 when it has drawn the whole adventure arm itself and the caller
    must NOT also run HUD::Render; 0 means "not my case, run the ROM's". */
-static int port_adv_hud_render_stars_lives_on_top(HUD *self)
+static int port_adv_hud_render_stars_lives_on_top(dMeter_c *self)
 {
     static int want = -1, star_dy = 0, coin_dy = 18, life_dy = 0;
     static int rs_bottom = 1;
@@ -989,9 +989,9 @@ static int port_adv_hud_render_stars_lives_on_top(HUD *self)
 }
 
 // ---- HUD -------------------------------------------------------------------
-int __fastcall hud_init(void *s, void *) { return ((HUD *)s)->HUD::InitResources(); }
-int __fastcall hud_clean(void *s, void *) { return ((HUD *)s)->HUD::CleanupResources(); }
-int __fastcall hud_behavior(void *s, void *) { return ((HUD *)s)->HUD::Behavior(); }
+int __fastcall hud_init(void *s, void *) { return ((dMeter_c *)s)->dMeter_c::InitResources(); }
+int __fastcall hud_clean(void *s, void *) { return ((dMeter_c *)s)->dMeter_c::CleanupResources(); }
+int __fastcall hud_behavior(void *s, void *) { return ((dMeter_c *)s)->dMeter_c::Behavior(); }
 int __fastcall hud_render(void *s, void *)
 {
     /* SM64DS_HUD_TRACE=1: the two globals every HUD render leaf dereferences
@@ -1015,21 +1015,21 @@ int __fastcall hud_render(void *s, void *)
     }
     /* the VS coin move, above; it answers 0 on every path that is not the VS
        full-render arm, and the ROM's own Render runs then exactly as before */
-    if (port_vs_hud_render_coins_on_top((HUD *)s))
+    if (port_vs_hud_render_coins_on_top((dMeter_c *)s))
         return 1;
     /* the adventure star/life move; answers 0 on VS and on want=0, and the
        ROM's own Render runs then exactly as before */
-    if (port_adv_hud_render_stars_lives_on_top((HUD *)s))
+    if (port_adv_hud_render_stars_lives_on_top((dMeter_c *)s))
         return 1;
-    return ((HUD *)s)->HUD::Render();
+    return ((dMeter_c *)s)->dMeter_c::Render();
 }
-void __fastcall hud_pdes(void *s, void *) { ((HUD *)s)->HUD::OnPendingDestroy(); }
+void __fastcall hud_pdes(void *s, void *) { ((dMeter_c *)s)->dMeter_c::OnPendingDestroy(); }
 void *__fastcall hud_d1(void *s, void *) { return _ZN8dMeter_cD1Ev(s); }
 void *__fastcall hud_d0(void *s, void *) { return _ZN8dMeter_cD0Ev(s); }
 
 // ---- Minimap ---------------------------------------------------------------
-int __fastcall map_init(void *s, void *) { return ((Minimap *)s)->Minimap::InitResources(); }
-int __fastcall map_clean(void *s, void *) { return ((Minimap *)s)->Minimap::CleanupResources(); }
+int __fastcall map_init(void *s, void *) { return ((dMap_c *)s)->dMap_c::InitResources(); }
+int __fastcall map_clean(void *s, void *) { return ((dMap_c *)s)->dMap_c::CleanupResources(); }
 int __fastcall map_behavior(void *s, void *) { return _ZN6dMap_c8BehaviorEv(s); }
 int __fastcall map_render(void *s, void *)
 {
@@ -1054,9 +1054,9 @@ int __fastcall map_render(void *s, void *)
         }
         ++n;
     }
-    return ((Minimap *)s)->Minimap::Render();
+    return ((dMap_c *)s)->dMap_c::Render();
 }
-void __fastcall map_pdes(void *s, void *) { ((Minimap *)s)->Minimap::OnPendingDestroy(); }
+void __fastcall map_pdes(void *s, void *) { ((dMap_c *)s)->dMap_c::OnPendingDestroy(); }
 void *__fastcall map_d1(void *s, void *) { return _ZN6dMap_cD1Ev(s); }
 void *__fastcall map_d0(void *s, void *) { return _ZN6dMap_cD0Ev(s); }
 
