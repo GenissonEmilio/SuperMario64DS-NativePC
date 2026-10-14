@@ -171,6 +171,7 @@ inline bool sw_obj_validate(int kind, const void *p, int len) {
     SwObjWire w; std::memcpy(&w, p, sizeof w);
     if (!coop_key_ok(w.key) || w.slot >= kSwSlots || w.reserved != 0 || w.seq == 0) return false;
     if (!sw_class_ok(kind, w.cls)) return false;
+    if ((w.cls == 353 && w.slot >= 64) || (w.cls == 354 && w.slot >= 4)) return false;   // a door is named by its table index
     if (kind == kSwKindPress) return w.state == 1 && w.value == 0;
     if (kind == kSwKindKick) return w.state >= 1 && w.state <= 3 && w.value == 0;
     return w.state == 0 && sw_field_value_ok_cls(w.cls, w.value);
@@ -195,6 +196,7 @@ inline bool sw_states_validate(const void *p, int len) {
         SwStateEntry e; std::memcpy(&e, s + i * sizeof e, sizeof e);
         if (e.slot >= kSwSlots || e.kind < kSwKindPress || e.kind > kSwKindField) return false;
         if (!sw_class_ok(e.kind, e.cls)) return false;
+        if ((e.cls == 353 && e.slot >= 64) || (e.cls == 354 && e.slot >= 4)) return false;
         if (e.kind == kSwKindField ? (e.state != 0 || !sw_field_value_ok_cls(e.cls, e.value))
                                    : (e.state < 1 || e.state > 3 || e.value != 0)) return false;
     }
