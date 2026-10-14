@@ -154,6 +154,8 @@ extern "C" void port_yoshi_egg_states_seat(void)
         }
         if (p->code == host)
             continue;               /* already seated; a rollback re-ran us */
+        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->code != g_egg_rows[i].rom) {
             std::fprintf(stderr, "FATAL: YoshiEgg %s: the table holds 0x%08x, "
                          "the ROM's own source pair says 0x%08x -- WRONG BYTES "

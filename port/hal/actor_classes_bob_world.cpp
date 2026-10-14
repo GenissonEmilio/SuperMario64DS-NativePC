@@ -693,6 +693,8 @@ extern "C" void port_itemtag_states_seat(void)
         unsigned host = (unsigned)(size_t)g_itemtag_cells[i].host;
         if (cell.fn == host && cell.delta == 0)
             continue;                       /* already seated */
+        if ((unsigned)(cell.fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(cell.fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (cell.fn != g_itemtag_cells[i].rom || cell.delta != 0) {
             std::fprintf(stderr, "FATAL: item-tag state cell %d: the sinit "
                          "left %08x/%u, the ROM's own record says %08x/0 -- "

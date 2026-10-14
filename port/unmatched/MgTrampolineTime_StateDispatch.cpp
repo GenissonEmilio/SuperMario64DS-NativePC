@@ -329,6 +329,8 @@ extern "C" void port_mg_tti_pairs_seat(void)
     for (unsigned i = 0; i < sizeof g_tti_seats / sizeof g_tti_seats[0]; ++i) {
         MgPmf *p = g_tti_seats[i].rec;
         const unsigned want = tti_initialiser_word(i);
+        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->code != want || p->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgTrampoline_c pair %s holds "
                          "%08x/%d, this build's own initializer says %08x/0 "

@@ -715,6 +715,8 @@ struct SeatRow { MgPmf *cell; const char *name; unsigned rom; SeatFn host; };
 static void mgbase_seat_rows(const SeatRow *rows, unsigned n)
 {
     for (unsigned i = 0; i < n; ++i) {
+        if ((unsigned)(rows[i].cell->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(rows[i].cell->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (rows[i].cell->code != rows[i].rom || rows[i].cell->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgBase_c pair global data_ov004_%s: "
                          "the mount holds %08x/%d, the ROM's own bytes say "

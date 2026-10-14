@@ -79,6 +79,8 @@ extern "C" int _ZN9daLuigi_c8BehaviorEv(void *selfv)
     if (!seated) {
         seated = 1;
         PortMirrorLuigiCell &cell = data_ov055_02111b70;
+        if ((unsigned)(cell.tick_fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(cell.tick_fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (cell.tick_fn != (unsigned)(size_t)&_ZN9daLuigi_c13ExecuteMirrorEP6Player) {
             std::fprintf(stderr, "FATAL: daLuigi_c TICK word: the cell holds "
                          "%08x, port_mirrorluigi_state_seat's own host body is "

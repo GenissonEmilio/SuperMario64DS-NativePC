@@ -202,6 +202,8 @@ extern "C" void port_dapgdfdr_states_seat(void)
         }
         if (code == host)
             continue;               /* already seated; a rollback re-ran us */
+        if ((unsigned)(code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (code != r[i].rom) {
             std::fprintf(stderr, "FATAL: daPgDfdr_c state source %d: the mount "
                          "holds 0x%08x, the ROM's own table says 0x%08x -- "

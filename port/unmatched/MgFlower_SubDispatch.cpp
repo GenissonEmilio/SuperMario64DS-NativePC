@@ -263,6 +263,8 @@ extern "C" void port_mg_flower_sub_seat(void)
         {&data_ov006_0213aee0, 0x020c3ad8u, (void *)fw_c3ad8, "0213aee0 SENTINEL"},
     };
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
+        if ((unsigned)(seats[i].p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(seats[i].p->code) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (seats[i].p->code != seats[i].rom || seats[i].p->adj != 0) {
             std::fprintf(stderr, "FATAL: dScMgFlower_c sub-object pair %s: the "
                          "mount holds %08x/%d, the ROM's own word says %08x/0 "

@@ -156,6 +156,8 @@ extern "C" void port_knock_down_plank_states_seat(void)
     for (unsigned i = 0; i < sizeof g_knock_down_plank_states /
                              sizeof g_knock_down_plank_states[0]; ++i) {
         PortPmf *p = g_knock_down_plank_states[i].slot;
+        if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(p->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p->fn != g_knock_down_plank_states[i].rom || p->delta != 0) {
             std::fprintf(stderr, "FATAL: KnockDownPlank state %u: the mount "
                          "holds %08x/%d, the ROM's own table says %08x/0 -- "

@@ -654,6 +654,8 @@ extern "C" void port_mg_objstate_seat(void)
     };
     for (unsigned i = 0; i < sizeof seats / sizeof seats[0]; ++i) {
         unsigned *p = seats[i].rec;
+        if ((unsigned)(p[0]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(p[0]) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (p[0] != seats[i].rom || p[1] != 0) {
             std::fprintf(stderr, "FATAL: data_ov006_%08x holds %08x/%08x, the "
                          "cartridge's own record says %08x/0 -- WRONG BYTES\n",

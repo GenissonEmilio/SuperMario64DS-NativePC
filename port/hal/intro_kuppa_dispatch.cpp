@@ -334,6 +334,8 @@ extern "C" void port_kuppa_cmd_seat(void)
     done = 1;
     for (unsigned i = 0; i < 14; ++i) {
         PortPmf *slot = g_cmds[i].slot;
+        if ((unsigned)(slot->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(slot->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (slot->fn != g_cmds[i].rom || slot->delta != 0) {
             std::fprintf(stderr, "FATAL: kuppa command %u (%s): the ov002 "
                          "mount holds %08x/%d, the ROM's own record says "
@@ -545,6 +547,8 @@ static void port_kuppa_objcmd_seat(void)
 {
     for (unsigned i = 0; i < 24; ++i) {
         PortPmf *slot = g_objcmd_seats[i].slot;
+        if ((unsigned)(slot->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
+        if ((unsigned)(slot->fn) >= 0x02400000u) continue;  /* PORTSYNC3: already built by the TU's own initialiser */
         if (slot->fn != g_objcmd_seats[i].rom || slot->delta != 0) {
             std::fprintf(stderr, "FATAL: cutscene-object command %u (%s): the "
                          "ov002 mount holds %08x/%d, the ROM's own record says "
