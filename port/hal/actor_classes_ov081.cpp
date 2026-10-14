@@ -707,7 +707,7 @@ extern "C" void port_snowball_states_seat(void)
         return;
     done = 1;
     PortSnowballPair &cell = data_ov081_02128eb4;
-    if ((unsigned)(cell.enter_fn) < 0x02000000u || (unsigned)(cell.enter_fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
+    if ((unsigned)(cell.enter_fn) < 0x02000000u || (unsigned)(cell.enter_fn) >= 0x02400000u) return;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
     if (cell.enter_fn != 0x021261b8u || cell.enter_delta != 0 ||
         cell.tick_fn != 0x021260fcu || cell.tick_delta != 0) {
         std::fprintf(stderr, "FATAL: daSnowball_c state cell: the sinit left "

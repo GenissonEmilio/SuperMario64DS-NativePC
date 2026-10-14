@@ -282,7 +282,7 @@ extern "C" void port_mirrorluigi_state_seat(void)
         return;
     done = 1;
     PortMirrorLuigiCell &cell = data_ov055_02111b70;
-    if ((unsigned)(cell.enter_fn) < 0x02000000u || (unsigned)(cell.enter_fn) >= 0x02400000u) continue;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
+    if ((unsigned)(cell.enter_fn) < 0x02000000u || (unsigned)(cell.enter_fn) >= 0x02400000u) return;  /* PORTSYNC3: a mount word that is not a DS code address: the class TU owns the live table */
     if (cell.enter_fn != 0x021112bc || cell.enter_delta != 0 ||
         cell.tick_fn != 0x02111288 || cell.tick_delta != 0) {
         std::fprintf(stderr, "FATAL: daLuigi_c state cell: the sinit left "
