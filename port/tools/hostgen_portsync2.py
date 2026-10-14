@@ -838,41 +838,6 @@ ROWS_04[("VIRTUAL_CALL", "daObjYajirusi_c")] = [
      "int *daObjYajirusi_c_classInit_YAJIRUSI_R(void)\n{\n    return port_new_daObjYajirusi_c();  /* hostgen VIRTUAL_CALL */\n}"),
 ]
 
-# ---- dScene_c ----------------------------------------------------------------
-# VIRTUAL_CALL (PORTSYNC3). Main's BeforeBehavior drives the global fader through a
-# local ROM-ABI view of its vtable: plain function pointers called with the object as
-# the FIRST STACK ARGUMENT and, for slots 3 and 4, a second ignored word. The fader
-# objects the host builds are real classes now (dFdDummy_c, dFdBrightness_c), whose
-# virtuals are MSVC members: `this` in ECX, one frame-count argument, callee pops.
-# Called the ROM's way, slot 3 got the vtable's own address as `this` and wrote into
-# it (measured: access violation, title scene, frame 0). The pointers are respelled
-# __thiscall with the one real argument, so the call the host emits IS the member call.
-ROWS_04[("VIRTUAL_CALL", "dScene_c")] = [
-    ("    void (*SetBackwardTime)(void *, u32, u32);\n    void (*SetForwardTime)(void *, u32, u32);\n"
-     "    int  (*IsAtStart)(void *);\n    int  (*IsAtEnd)(void *);\n",
-     "    void (__thiscall *SetBackwardTime)(void *, u32);  /* hostgen VIRTUAL_CALL */\n"
-     "    void (__thiscall *SetForwardTime)(void *, u32);\n"
-     "    int  (__thiscall *IsAtStart)(void *);\n    int  (__thiscall *IsAtEnd)(void *);\n"),
-    ("->vt->SetForwardTime((FaderObject *)&data_0209f5e8, 0, 0);", "->vt->SetForwardTime((FaderObject *)&data_0209f5e8, 0);"),
-    ("->vt->SetForwardTime(data_0209f5bc, 0x1e, 0);", "->vt->SetForwardTime(data_0209f5bc, 0x1e);"),
-    ("->vt->SetBackwardTime(data_0209f5bc, 0x1e, 0);", "->vt->SetBackwardTime(data_0209f5bc, 0x1e);"),
-]
-
-# ---- dMeter_c ----------------------------------------------------------------
-# VIRTUAL_CALL (PORTSYNC3). The port's two HUD moves (the adventure stars and lives to the
-# top screen, the VS coin row) used to ride vtable slot 9: hal/sub_actors.cpp seated
-# hud_render in the hand-filled _ZTV8dMeter_c the ROM factory stored. Main's factory is
-# `new dMeter_c` now, so the object carries the COMPILER's vtable and that seat is never
-# dispatched (measured: lives and stars stayed on the bottom screen). The two moves are
-# called from the top of the real Render instead; the hook answers 1 when it drew the HUD
-# itself, which is exactly what hud_render returned.
-ROWS_04[("VIRTUAL_CALL", "dMeter_c")] = [
-    ("int dMeter_c::Render()\n{\n    int b = (data_0209f2d8 == 1);\n",
-     "extern \"C\" int port_hud_render_hook(void *self);  /* hal/sub_actors.cpp */\n"
-     "int dMeter_c::Render()\n{\n    if (port_hud_render_hook(this))  /* hostgen VIRTUAL_CALL */\n        return 1;\n"
-     "    int b = (data_0209f2d8 == 1);\n"),
-]
-
 # ---- daOnms_c --------------------------------------------------------------
 # EXTERN_C_DATA (new). Main's TU writes the arm9 sin/cos table as
 # `s16 data_02082214[];` with no `extern`, inside its `extern "C" {` block.

@@ -40,7 +40,14 @@ extern "C" fBase_c *_ZN7fBase_cD2Ev(fBase_c *self);
 fBase_c::~fBase_c() { _ZN7fBase_cD2Ev(this); }
 
 dFdWipe_c::dFdWipe_c() {}
-dFdDummy_c::dFdDummy_c() {}
+extern "C" void *_ZTV10dFdDummy_c[12];   /* hal/scene_boot.cpp: the ROM-shaped table with the dual cdecl/thiscall slots */
+/* PORTSYNC3: a dFdDummy_c built by main's code (`new dFdDummy_c`) carries the compiler's
+   vtable, whose slots 3 and 4 are one-argument thiscall members. Every caller of those two
+   slots passes the ROM's two words (dScene_c::BeforeBehavior through a cdecl pointer view,
+   dMgState_c and ProcessKuppaScript as thiscall with two), which only the hal table's
+   trampolines answer. So the object gets the hal table, exactly as the ROM constructor
+   stores its own. */
+dFdDummy_c::dFdDummy_c() { *(void **)(void *)this = (void *)_ZTV10dFdDummy_c; }
 dFader_c::~dFader_c() {}
 dFdBrightness_c::~dFdBrightness_c() {}
 dFdColor_c::~dFdColor_c() {}
